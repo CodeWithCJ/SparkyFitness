@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useAppLocale } from '../localization';
 import { AppState } from 'react-native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -140,6 +141,7 @@ interface StoredGoalNotification {
   fastId: string;
   target: string | null;
   notificationId: string;
+  language?: string | null;
 }
 
 async function readStoredGoalNotification(): Promise<StoredGoalNotification | null> {
@@ -154,6 +156,7 @@ async function readStoredGoalNotification(): Promise<StoredGoalNotification | nu
         // upgraded record is treated as stale and rescheduled, not orphaned.
         target: typeof parsed.target === 'string' ? parsed.target : null,
         notificationId: parsed.notificationId,
+        language: typeof parsed.language === 'string' ? parsed.language : null,
       };
     }
     return null;
@@ -186,6 +189,7 @@ export async function cancelFastGoalNotification(): Promise<void> {
  */
 export async function reconcileFastGoalNotification(
   currentFast: FastingLog | null,
+  language?: string,
 ): Promise<void> {
   // Callers fire this with `void`, so a thrown error (from notification
   // scheduling or AsyncStorage) would surface as an unhandled rejection.
@@ -217,7 +221,7 @@ export async function reconcileFastGoalNotification(
     // A stored notification whose target no longer matches the active fast's
     // target (e.g. the goal was edited on web / another device) is stale — drop
     // it so we reschedule for the new target time.
-    if (stored && stored.target !== target) {
+    if (stored && (stored.target !== target || stored.language !== (language ?? null))) {
       await clearStoredGoalNotification(stored.notificationId);
       stored = null;
     }
@@ -232,7 +236,12 @@ export async function reconcileFastGoalNotification(
       if (notificationId) {
         await AsyncStorage.setItem(
           GOAL_NOTIF_STORAGE_KEY,
-          JSON.stringify({ fastId: currentFast.id, target, notificationId }),
+          JSON.stringify({
+            fastId: currentFast.id,
+            target,
+            notificationId,
+            ...(language !== undefined ? { language } : {}),
+          }),
         );
       }
     } finally {
@@ -259,6 +268,7 @@ export function useFastingGoalReconciler(
     (s) => s.fastingGoalNotificationsEnabled,
   );
   const goalNotificationsActive = notificationsEnabled && fastingGoalNotificationsEnabled;
+  const appLocale = useAppLocale();
 
   useEffect(() => {
     if (isLoading) return;
@@ -268,7 +278,7 @@ export function useFastingGoalReconciler(
       void cancelFastGoalNotification();
       return;
     }
-    void reconcileFastGoalNotification(currentFast ?? null);
+    void reconcileFastGoalNotification(currentFast ?? null, appLocale);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isLoading,
@@ -276,6 +286,7 @@ export function useFastingGoalReconciler(
     currentFast?.id,
     currentFast?.target_end_time,
     currentFast?.status,
+    appLocale,
   ]);
 
   // On resume, refetch so a fast started/edited on another device is seen. The

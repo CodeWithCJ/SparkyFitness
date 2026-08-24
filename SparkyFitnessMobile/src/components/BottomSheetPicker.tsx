@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -38,9 +39,10 @@ export function PickerTrigger({
   label,
   onPress,
   accessibilityLabel,
-  accessibilityHint = 'Opens selection menu',
+  accessibilityHint = undefined,
   containerStyle,
 }: PickerTriggerProps) {
+  const { t } = useTranslation();
   const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
   return (
     <TouchableOpacity
@@ -50,7 +52,7 @@ export function PickerTrigger({
       activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint}
+      accessibilityHint={accessibilityHint ?? t('common.openSelectionMenu', { defaultValue: 'Opens selection menu' })}
     >
       <Text className="text-base flex-1 text-text-primary">{label}</Text>
       <Icon name="chevron-down" size={16} color={textMuted} />
@@ -80,12 +82,13 @@ function BottomSheetPicker<T extends string | number>({
   options,
   sections,
   onSelect,
-  placeholder = 'Select an option',
+  placeholder = '',
   title,
   accessibilityHint,
   containerStyle,
   renderTrigger,
 }: BottomSheetPickerProps<T>) {
+  const { t } = useTranslation();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const [primary, textMuted, surfaceBg] = useCSSVariable([
     '--color-accent-primary',
@@ -106,7 +109,7 @@ function BottomSheetPicker<T extends string | number>({
   );
 
   const selectedOption = flatOptions.find((opt) => opt.value === value);
-  const displayText = selectedOption?.label || placeholder;
+  const displayText = selectedOption?.label || placeholder || t('common.selectOption', { defaultValue: 'Select an option' });
 
   // For long lists (>8 items), use a fixed max height with scrolling
   // For short lists, use dynamic sizing to fit content exactly
@@ -146,6 +149,12 @@ function BottomSheetPicker<T extends string | number>({
         style={{ borderBottomWidth: StyleSheet.hairlineWidth }}
         onPress={() => handleSelect(item)}
         activeOpacity={0.7}
+        accessibilityRole="radio"
+        accessibilityLabel={item.label}
+        accessibilityState={{ selected: isSelected }}
+        accessibilityHint={t('common.selectOptionHint', {
+          defaultValue: 'Double tap to select this option',
+        })}
       >
         <Text
           className={`text-base text-text-primary ${isSelected ? 'font-semibold' : ''}`}

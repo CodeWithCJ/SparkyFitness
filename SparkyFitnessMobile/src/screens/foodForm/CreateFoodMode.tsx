@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, TouchableOpacity, Platform, Text } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,7 +20,7 @@ import { setPendingMealIngredientSelection } from '../../services/mealBuilderSel
 import { useMealTypes, usePreferences } from '../../hooks';
 import { useSaveFood } from '../../hooks/useSaveFood';
 import { useAddFoodEntry } from '../../hooks/useAddFoodEntry';
-import { getMealTypeDisplayLabel } from '../../utils/mealNutrition';
+import { getLocalizedMealLabel } from '../../constants/meals';
 import { getTodayDate, normalizeDate, formatDateLabel } from '../../utils/dateUtils';
 import { parseOptional } from '../../types/foodInfo';
 import { createFoodVariant } from '../../services/api/foodsApi';
@@ -35,7 +36,7 @@ import {
 import { buildMealIngredientDraftFromSavedFood } from '../../utils/mealBuilderDraft';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../../hooks/useScreenHeader';
+import { useScreenHeader } from '../../hooks/useScreenHeader';
 import { BarcodeField, BARCODE_REGEX } from './BarcodeField';
 import {
   buildVariantFromFormData,
@@ -50,6 +51,8 @@ type CreateFoodParams = Extract<FoodFormScreenProps['route']['params'], { mode: 
 const CREATE_FORM_SOURCE_VARIANT_ID = '__create-form-source-variant__';
 
 export function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodParams; navigation: FoodFormScreenProps['navigation']; routeKey: string }) {
+  const { t , i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [textPrimary, textSecondary] = useCSSVariable(['--color-text-primary', '--color-text-secondary']) as [string, string];
@@ -122,6 +125,10 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
   const effectiveMealId = selectedMealId ?? defaultMealTypeId;
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
+  const mealTypeLabel = (mealType: (typeof mealTypes)[number]) =>
+    mealType.user_id == null
+      ? getLocalizedMealLabel(t, mealType.name.toLowerCase() === 'snack' ? 'snacks' : mealType.name.toLowerCase())
+      : mealType.name;
 
   const [saveToDatabase, setSaveToDatabase] = useState(true);
   const initialServingSize = parseDecimalInput(initialFood?.servingSize ?? '') || 100;
@@ -182,7 +189,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
     setQuantityTouched(true);
   };
 
-  const mealPickerOptions = mealTypes.map((mt) => ({ label: getMealTypeDisplayLabel(mt), value: mt.id }));
+  const mealPickerOptions = mealTypes.map((mt) => ({ label: mealTypeLabel(mt), value: mt.id }));
 
   const [customNutrientValues, setCustomNutrientValues] = useState<Record<string, number>>({});
 
@@ -210,16 +217,16 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
 
   const handleSubmit = async (data: FoodFormData) => {
     if (!data.name.trim()) {
-      Toast.show({ type: 'error', text1: 'Missing name', text2: 'Please enter a food name.' });
+      Toast.show({ type: 'error', text1: t('createFood.errors.missingName', { defaultValue: 'Missing name' }), text2: t('createFood.errors.nameRequired', { defaultValue: 'Please enter a food name.' }) });
       return;
     }
     if (!parseDecimalInput(data.servingSize)) {
-      Toast.show({ type: 'error', text1: 'Invalid serving size', text2: 'Serving size must be greater than zero.' });
+      Toast.show({ type: 'error', text1: t('createFood.errors.invalidServingSize', { defaultValue: 'Invalid serving size' }), text2: t('createFood.errors.servingSizeRequired', { defaultValue: 'Serving size must be greater than zero.' }) });
       return;
     }
     const trimmedBarcode = barcodeInput.trim();
     if (showBarcodeField && trimmedBarcode !== '' && !BARCODE_REGEX.test(trimmedBarcode)) {
-      Toast.show({ type: 'error', text1: 'Invalid barcode', text2: 'Barcode must be 8-14 digits.' });
+      Toast.show({ type: 'error', text1: t('createFood.errors.invalidBarcode', { defaultValue: 'Invalid barcode' }), text2: t('createFood.errors.barcodeRequired', { defaultValue: 'Barcode must be 8-14 digits.' }) });
       return;
     }
     const resolvedBarcode = showBarcodeField
@@ -286,7 +293,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
           }),
         ),
       ).catch(() => {
-        Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+        Toast.show({ type: 'error', text1: t('createFood.errors.equivalentsSaveFailed', { defaultValue: 'Some equivalent units could not be saved' }) });
       });
     };
 
@@ -314,7 +321,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
         const savedFood = await saveFoodAsync(saveFoodPayload, imageArgs);
         isSavingRef.current = true;
         saveEquivalentsAsync(savedFood.id);
-        Toast.show({ type: 'success', text1: 'Food saved' });
+        Toast.show({ type: 'success', text1: t('createFood.success.foodSaved', { defaultValue: 'Food saved' }) });
         navigation.dispatch(StackActions.pop(returnDepth));
       } catch {
         // Error toast is handled in the save hook.
@@ -323,11 +330,11 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
     }
 
     if (!quantity) {
-      Toast.show({ type: 'error', text1: 'Invalid amount', text2: 'Amount must be greater than zero.' });
+      Toast.show({ type: 'error', text1: t('createFood.errors.invalidAmount', { defaultValue: 'Invalid amount' }), text2: t('createFood.errors.amountRequired', { defaultValue: 'Amount must be greater than zero.' }) });
       return;
     }
     if (!effectiveMealId) {
-      Toast.show({ type: 'error', text1: 'No meal type', text2: 'No meal types are available. Please check your account settings.' });
+      Toast.show({ type: 'error', text1: t('createFood.errors.noMealType', { defaultValue: 'No meal type' }), text2: t('createFood.errors.noMealTypesAvailable', { defaultValue: 'No meal types are available. Please check your account settings.' }) });
       return;
     }
 
@@ -349,10 +356,10 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
 
   // Library mode saves a food record (a form Save); the diary/meal-builder
   // modes commit the food to the diary, so keep the "Add Food" verb there.
-  const primaryLabel = isLibraryMode ? SAVE_LABEL : 'Add Food';
+  const primaryLabel = isLibraryMode ? t('common.save', { defaultValue: 'Save' }) : t('createFood.actions.addFood', { defaultValue: 'Add Food' });
 
   const header = useScreenHeader({
-    title: 'New Food',
+    title: t('createFood.title', { defaultValue: 'New Food' }),
     left: {
       kind: 'dismiss',
       onPress: () => navigation.goBack(),
@@ -362,7 +369,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
     right: {
       kind: 'primary',
       label: primaryLabel,
-      busyLabel: SAVING_LABEL,
+      busyLabel: t('common.saving', { defaultValue: 'Saving…' }),
       busy: isSubmitting,
       disabled: isSubmitting,
       placement: 'native-only',
@@ -418,9 +425,9 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
               activeOpacity={0.7}
               className="flex-1 flex-row items-center"
             >
-              <Text className="text-text-secondary text-base mr-3">Date</Text>
+              <Text className="text-text-secondary text-base mr-3">{t('common.date', { defaultValue: 'Date' })}</Text>
               <Text className="text-text-primary text-base font-medium mx-1.5">
-                {formatDateLabel(selectedDate)}
+                {formatDateLabel(selectedDate, t, dateLocale)}
               </Text>
               <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
             </TouchableOpacity>
@@ -428,12 +435,12 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
             {/* Meal */}
             {selectedMealType ? (
               <View className="flex-1 flex-row items-center">
-                <Text className="text-text-secondary text-base mx-3">Meal</Text>
+                <Text className="text-text-secondary text-base mx-3">{t('createFood.meal', { defaultValue: 'Meal' })}</Text>
                 <BottomSheetPicker
                   value={effectiveMealId!}
                   options={mealPickerOptions}
                   onSelect={setSelectedMealId}
-                  title="Select Meal"
+                  title={t('createFood.selectMeal', { defaultValue: 'Select Meal' })}
                   renderTrigger={({ onPress }) => (
                     <TouchableOpacity
                       onPress={onPress}
@@ -441,7 +448,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
                       className="flex-row items-center"
                     >
                       <Text className="text-text-primary text-base font-medium mx-1.5">
-                        {getMealTypeDisplayLabel(selectedMealType)}
+                        {mealTypeLabel(selectedMealType)}
                       </Text>
                       <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
                     </TouchableOpacity>
@@ -465,15 +472,15 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
               </Text>
             </View>
             <Text className="text-text-secondary text-sm mt-2">
-              {servings % 1 === 0 ? servings : servings.toFixed(1)} {servings === 1 ? 'serving' : 'servings'}
-              {' \u00b7 '}{formatServingSizeDisplay(formServingSize)} {formatServingUnit(formServingUnit)} per serving
+              {t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{count}} servings', defaultValue_one: 'meal makes {{count}} serving', defaultValue_other: 'meal makes {{count}} servings', count: servings, formattedCount: servings % 1 === 0 ? servings : servings.toFixed(1) })}
+              {' \u00b7 '}{formatServingSizeDisplay(formServingSize)} {formatServingUnit(formServingUnit)} {t('foodEntryAdd.labels.perServing', { defaultValue: 'per serving' })}
             </Text>
           </View>
           {/* Save to Database */}
           <View className="flex-row items-center justify-between">
-            <Text className="text-text-secondary text-base">Save to Database</Text>
+            <Text className="text-text-secondary text-base">{t('createFood.saveToDatabase', { defaultValue: 'Save to Database' })}</Text>
             <Switch
-              accessibilityLabel="Save to Database"
+              accessibilityLabel={t('createFood.saveToDatabase', { defaultValue: 'Save to Database' })}
               value={saveToDatabase}
               onValueChange={setSaveToDatabase}
             />

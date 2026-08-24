@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, Image, Platform, ActivityIndicator } from 'react-native';
-import { HEALTH_METRICS, HealthMetric, CATEGORY_ORDER } from '../HealthMetrics';
+import { HEALTH_METRICS, HealthMetric, CATEGORY_ORDER, getHealthMetricLabel, getHealthCategoryLabel } from '../HealthMetrics';
 import Button from './ui/Button';
 import Switch from './ui/Switch';
 import CollapsibleSection from './CollapsibleSection';
 import { saveCollapsedCategories, loadCollapsedCategories } from '../services/storage';
 import { NO_DATA_DISPLAY } from '../services/healthDataDisplay';
+import { useTranslation } from 'react-i18next';
 
 // Re-export HealthMetric for backwards compatibility
 export type { HealthMetric };
@@ -38,18 +39,19 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   healthData,
   isLoadingHealthData,
 }) => {
+  const { t } = useTranslation();
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
   const [isLoaded, setIsLoaded] = useState(false);
   const [learnMoreExpanded, setLearnMoreExpanded] = useState(false);
 
   const isIOS = Platform.OS === 'ios';
-  const platformSubtitle = isIOS ? 'Apple Health' : 'Health Connect';
+  const platformSubtitle = isIOS ? t('healthSync.appleHealth', { defaultValue: 'Apple Health' }) : t('healthSync.healthConnect', { defaultValue: 'Health Connect' });
   const platformSummary = isIOS
-    ? 'Reads selected data from Apple Health and syncs it to your self-hosted server.'
-    : 'Reads selected data from Health Connect and syncs it to your self-hosted server.';
+    ? t('healthSync.appleSummary', { defaultValue: 'Reads selected data from Apple Health and syncs it to your self-hosted server.' })
+    : t('healthSync.connectSummary', { defaultValue: 'Reads selected data from Health Connect and syncs it to your self-hosted server.' });
   const platformDetail = isIOS
-    ? 'SparkyFitness reads the health data you select below using Apple Health (HealthKit). If sync is enabled, data is synchronized only between your device and your self-hosted SparkyFitness server (manual or background).\n\nManage or remove access in Settings → Health → Data Access & Devices → SparkyFitnessMobile'
-    : 'SparkyFitness reads the health data you select below using Health Connect. If sync is enabled, data is synchronized only between your device and your self-hosted SparkyFitness server (manual or background).';
+    ? t('healthSync.appleDetail', { defaultValue: 'SparkyFitness reads the health data you select below using Apple Health (HealthKit). If sync is enabled, data is synchronized only between your device and your self-hosted SparkyFitness server (manual or background).\n\nManage or remove access in Settings → Health → Data Access & Devices → SparkyFitnessMobile' })
+    : t('healthSync.connectDetail', { defaultValue: 'SparkyFitness reads the health data you select below using Health Connect. If sync is enabled, data is synchronized only between your device and your self-hosted SparkyFitness server (manual or background).' });
 
   const handleLearnMoreToggle = useCallback(() => {
     setLearnMoreExpanded((prev) => !prev);
@@ -84,7 +86,11 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
   const groupedMetrics = groupMetricsByCategory(HEALTH_METRICS);
 
   const renderMetricItem = (metric: HealthMetric) => {
+    const metricLabel = getHealthMetricLabel(t, metric);
     const value = healthData?.[metric.id];
+    const displayValue = value === NO_DATA_DISPLAY
+      ? t('healthSync.noData', { defaultValue: 'No data' })
+      : value;
     const showLoading = isLoadingHealthData && !value;
 
     return (
@@ -96,21 +102,28 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            {metric.label}
+            {metricLabel}
           </Text>
         </View>
         {showLoading && (
-          <ActivityIndicator size="small" className="mr-2" />
+          <ActivityIndicator
+            size="small"
+            className="mr-2"
+            accessibilityLabel={t('healthSync.loading', { defaultValue: 'Loading health data' })}
+            accessibilityState={{ busy: true }}
+          />
         )}
         {value && (
           <Text
             className={`text-sm mr-2 flex-shrink-0 ${value === NO_DATA_DISPLAY ? 'text-text-muted italic' : 'text-text-muted'}`}
             numberOfLines={1}
           >
-            {value}
+            {displayValue}
           </Text>
         )}
         <Switch
+          accessibilityLabel={t('healthSync.syncMetricLabel', { defaultValue: 'Sync {{metric}}', metric: metricLabel })}
+          accessibilityHint={t('healthSync.syncMetricHint', { defaultValue: 'Toggles synchronization for this health metric.' })}
           onValueChange={(newValue) => handleToggleHealthMetric(metric, newValue)}
           value={healthMetricStates[metric.stateKey]}
         />
@@ -120,7 +133,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-      <Text className="text-lg font-bold mb-3 text-text-primary">Health Data to Sync</Text>
+      <Text className="text-lg font-bold mb-3 text-text-primary">{t('healthSync.title', { defaultValue: 'Health Data to Sync' })}</Text>
       <View className="mb-3">
         <Text className="text-sm font-semibold text-text-secondary mb-1">{platformSubtitle}</Text>
         <Text className="text-sm text-text-secondary">{platformSummary}</Text>
@@ -128,7 +141,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
           <>
             <Text className="text-sm text-text-secondary mt-2">{platformDetail}</Text>
             <Text className="text-sm text-text-secondary mt-1">
-              <Text className="font-semibold">Not medical advice.</Text> Consult a healthcare professional for medical advice, diagnosis, or treatment.
+              <Text className="font-semibold">{t('healthSync.notMedicalAdvice', { defaultValue: 'Not medical advice.' })}</Text> {t('healthSync.consultProfessional', { defaultValue: 'Consult a healthcare professional for medical advice, diagnosis, or treatment.' })}
             </Text>
           </>
         )}
@@ -137,8 +150,13 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
           onPress={handleLearnMoreToggle}
           className="self-start py-0 px-0 mt-1"
           textClassName="text-sm"
+          accessibilityRole="button"
+          accessibilityState={{ expanded: learnMoreExpanded }}
+          accessibilityLabel={learnMoreExpanded
+            ? t('common.showLess', { defaultValue: 'Show less' })
+            : t('common.learnMore', { defaultValue: 'Learn more' })}
         >
-          {learnMoreExpanded ? 'Show less' : 'Learn more'}
+          {learnMoreExpanded ? t('common.showLess', { defaultValue: 'Show less' }) : t('common.learnMore', { defaultValue: 'Learn more' })}
         </Button>
       </View>
       <View className="flex-row justify-between items-center mb-2">
@@ -148,16 +166,18 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
             numberOfLines={1}
             ellipsizeMode="tail"
           >
-            Enable All Health Metrics
+            {t('healthSync.enableAll', { defaultValue: 'Enable All Health Metrics' })}
           </Text>
         </View>
         <Switch
+          accessibilityLabel={t('healthSync.enableAll', { defaultValue: 'Enable All Health Metrics' })}
+          accessibilityHint={t('healthSync.enableAllHint', { defaultValue: 'Toggles synchronization for all health metrics.' })}
           onValueChange={handleToggleAllMetrics}
           value={isAllMetricsEnabled}
         />
       </View>
       <Text className="text-xs text-text-muted mb-3">
-        Enabling many health metrics may increase battery usage. Each enabled metric allows the app to wake in the background when new data is available.
+        {t('healthSync.batteryNote', { defaultValue: 'Enabling many health metrics may increase battery usage. Each enabled metric allows the app to wake in the background when new data is available.' })}
       </Text>
       {isLoaded && CATEGORY_ORDER.map((category) => {
         const metricsInCategory = groupedMetrics[category];
@@ -167,7 +187,7 @@ const HealthDataSync: React.FC<HealthDataSyncProps> = ({
         return (
           <CollapsibleSection
             key={category}
-            title={category}
+            title={getHealthCategoryLabel(t, category)}
             expanded={!collapsedCategories.has(category)}
             onToggle={() => handleCategoryToggle(category)}
             itemCount={metricsInCategory.length}

@@ -5,8 +5,8 @@ import {
   formatDuration,
   getFirstImage,
   getSessionCalories,
-  getWorkoutSummary,
-  buildSessionSubtitle,
+  getWorkoutSummary as getWorkoutSummaryWithTranslation,
+  buildSessionSubtitle as buildSessionSubtitleWithTranslation,
   calculateExerciseStats,
   calculateCaloriesBurned,
   calculateActiveCalories,
@@ -70,6 +70,7 @@ import {
   workoutPresetExerciseRequestSchema,
 } from '@workspace/shared';
 import { weightFromKg } from '../../src/utils/unitConversions';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 import type { WorkoutDraftExercise } from '../../src/types/drafts';
 import type {
   WorkoutPreset,
@@ -82,6 +83,17 @@ type PresetSession = Extract<ExerciseSessionResponse, { type: 'preset' }>;
 
 /** Format a number the same way the source does (runtime-locale toLocaleString). */
 const fmt = (n: number) => n.toLocaleString();
+
+const getWorkoutSummary = (session: ExerciseSessionResponse) =>
+  getWorkoutSummaryWithTranslation(session, i18n.t);
+
+const buildSessionSubtitle = (
+  session: ExerciseSessionResponse,
+  duration: number,
+  calories: number,
+  weightUnit: 'kg' | 'lbs' = 'kg',
+  distanceUnit: 'km' | 'miles' = 'km',
+) => buildSessionSubtitleWithTranslation(session, duration, calories, i18n.t, weightUnit, distanceUnit);
 
 const makeIndividual = (overrides?: Partial<IndividualSession>): IndividualSession => ({
   type: 'individual',
@@ -474,7 +486,7 @@ describe('workoutSession', () => {
             } as any,
           ],
         });
-        expect(buildSessionSubtitle(session, 60, 0)).toBe('1 exercise · 1 sets');
+        expect(buildSessionSubtitle(session, 60, 0)).toBe('1 exercise · 1 set');
       });
 
       it('shows singular "exercise" for one exercise', () => {
@@ -565,7 +577,7 @@ describe('workoutSession', () => {
           ],
         });
         expect(buildSessionSubtitle(session, 40, 300)).toBe(
-          '2 exercises · 1 sets · 500 kg · 5.2 km · 300 Cal',
+          '2 exercises · 1 set · 500 kg · 5.2 km · 300 Cal',
         );
       });
 
@@ -625,6 +637,42 @@ describe('workoutSession', () => {
           ] as any,
         });
         expect(buildSessionSubtitle(session, 45, 200)).toBe('3 sets · 45 min · 200 Cal');
+      });
+
+      it.each([
+        [1, '1 set'],
+        [2, '2 sets'],
+      ])('localizes %s strength sets in English', (setCount, expected) => {
+        const session = makeStrengthIndividual({
+          sets: Array.from({ length: setCount }, () => ({ weight: null, reps: null })) as any,
+        });
+        expect(buildSessionSubtitle(session, 0, 0)).toBe(expected);
+      });
+
+      it('localizes Polish strength set counts and restores English afterwards', async () => {
+        const cases: [number, string][] = [
+          [1, '1 seria'],
+          [2, '2 serie'],
+          [5, '5 serii'],
+          [22, '22 serie'],
+          [25, '25 serii'],
+        ];
+        const englishSetNoun = /\bsets?\b/i;
+
+        await initializeI18n('pl');
+        await i18n.changeLanguage('pl');
+        try {
+          for (const [setCount, expected] of cases) {
+            const session = makeStrengthIndividual({
+              sets: Array.from({ length: setCount }, () => ({ weight: null, reps: null })) as any,
+            });
+            const subtitle = buildSessionSubtitle(session, 0, 0);
+            expect(subtitle).toBe(expected);
+            expect(subtitle).not.toMatch(englishSetNoun);
+          }
+        } finally {
+          await i18n.changeLanguage('en');
+        }
       });
 
       it('includes volume when sets have weight and reps', () => {
@@ -2464,7 +2512,7 @@ describe('workoutSession', () => {
     const completed = { '101': 1_000, '102': 2_000, '201': 3_000 };
 
     it('counts sets, excludes warmups and skipped sets from volume, and averages logged RPE', () => {
-      const summary = buildWorkoutCompletionSummary(makeSummarySession(), completed, {});
+      const summary = buildWorkoutCompletionSummary(makeSummarySession(), completed, {}, i18n.t);
 
       expect(summary.totalSetCount).toBe(4);
       expect(summary.completedSetCount).toBe(3);
@@ -2500,12 +2548,12 @@ describe('workoutSession', () => {
         ],
       } as unknown as PresetSession;
 
-      const summary = buildWorkoutCompletionSummary(session, { '301': 1_000 }, {});
+      const summary = buildWorkoutCompletionSummary(session, { '301': 1_000 }, {}, i18n.t);
       expect(summary.totalDistanceKm).toBe(5.2);
     });
 
     it('builds per-exercise rows with top completed working set and notes', () => {
-      const summary = buildWorkoutCompletionSummary(makeSummarySession(), completed, {});
+      const summary = buildWorkoutCompletionSummary(makeSummarySession(), completed, {}, i18n.t);
 
       const [bench, squat] = summary.exercises;
       expect(bench).toMatchObject({
@@ -2543,7 +2591,7 @@ describe('workoutSession', () => {
 
     it('returns a null average RPE when no completed set logged one', () => {
       const session = makeSummarySession();
-      const summary = buildWorkoutCompletionSummary(session, { '201': 3_000 }, {});
+      const summary = buildWorkoutCompletionSummary(session, { '201': 3_000 }, {}, i18n.t);
 
       expect(summary.averageRpe).toBeNull();
     });
@@ -2919,17 +2967,34 @@ describe('workoutSession', () => {
       ) => ({ setNumber: 1, setType, weight, reps });
 
       it('formats weight × reps, converting for the display unit', () => {
-        expect(formatRecentSessionSet(recentSet(100, 5), 'kg')).toBe('100 × 5');
-        expect(formatRecentSessionSet(recentSet(100, 5), 'lbs')).toBe('220.5 × 5');
+        expect(formatRecentSessionSet(recentSet(100, 5), 'kg', i18n.t)).toBe('100 × 5');
+        expect(formatRecentSessionSet(recentSet(100, 5), 'lbs', i18n.t)).toBe('220.5 × 5');
       });
 
       it('prefixes warmup sets with W', () => {
-        expect(formatRecentSessionSet(recentSet(60, 10, 'warmup'), 'kg')).toBe('W 60 × 10');
+        expect(formatRecentSessionSet(recentSet(60, 10, 'warmup'), 'kg', i18n.t)).toBe('W 60 × 10');
       });
 
       it('handles weight-only and reps-only sets', () => {
-        expect(formatRecentSessionSet(recentSet(80, null), 'kg')).toBe('80');
-        expect(formatRecentSessionSet(recentSet(null, 12), 'kg')).toBe('12 reps');
+        expect(formatRecentSessionSet(recentSet(80, null), 'kg', i18n.t)).toBe('80');
+        expect(formatRecentSessionSet(recentSet(null, 12), 'kg', i18n.t)).toBe('12 reps');
+      });
+
+      it('localizes reps and fractional presentation in English and Polish', async () => {
+        expect(formatRecentSessionSet(recentSet(null, 1), 'kg', i18n.t)).toBe('1 rep');
+        expect(formatRecentSessionSet(recentSet(null, 2), 'kg', i18n.t)).toBe('2 reps');
+        expect(formatSetLoad({ weightKg: 12.3, reps: null }, 'kg', i18n.t)).toBe('12.3 kg');
+        expect(formatRecentSessionSet({ ...recentSet(null, null), duration: 60, distance: 1.25 }, 'kg', i18n.t, 'duration_distance')).toBe('1:00 · 1.25 km');
+        await initializeI18n('pl'); await i18n.changeLanguage('pl');
+        try {
+          expect(formatRecentSessionSet(recentSet(null, 1), 'kg', i18n.t)).toBe('1 powtórzenie');
+          expect(formatRecentSessionSet(recentSet(null, 2), 'kg', i18n.t)).toBe('2 powtórzenia');
+          expect(formatRecentSessionSet(recentSet(null, 5), 'kg', i18n.t)).toBe('5 powtórzeń');
+          expect(formatRecentSessionSet(recentSet(null, 22), 'kg', i18n.t)).toBe('22 powtórzenia');
+          expect(formatRecentSessionSet(recentSet(null, 25), 'kg', i18n.t)).toBe('25 powtórzeń');
+          expect(formatSetLoad({ weightKg: 12.3, reps: null }, 'kg', i18n.t)).toBe('12,3 kg');
+          expect(formatRecentSessionSet({ ...recentSet(null, null), duration: 60, distance: 1.25 }, 'kg', i18n.t, 'duration_distance')).toBe('1:00 · 1,25 km');
+        } finally { await i18n.changeLanguage('en'); }
       });
 
       it('formats duration-modality sets as seconds prose', () => {
@@ -2937,6 +3002,7 @@ describe('workoutSession', () => {
           formatRecentSessionSet(
             { ...recentSet(null, null), duration: 45 },
             'kg',
+            i18n.t,
             'duration',
           ),
         ).toBe('45s');
@@ -2944,22 +3010,23 @@ describe('workoutSession', () => {
           formatRecentSessionSet(
             { ...recentSet(null, null, 'warmup'), duration: 90 },
             'kg',
+            i18n.t,
             'duration_distance',
           ),
         ).toBe('W 1:30');
       });
 
       it('shows legacy reps as seconds only for duration modality', () => {
-        expect(formatRecentSessionSet(recentSet(null, 45), 'kg', 'duration')).toBe('45s');
-        expect(formatRecentSessionSet(recentSet(null, 10), 'kg', 'duration_distance')).toBe(
+        expect(formatRecentSessionSet(recentSet(null, 45), 'kg', i18n.t, 'duration')).toBe('45s');
+        expect(formatRecentSessionSet(recentSet(null, 10), 'kg', i18n.t, 'duration_distance')).toBe(
           '–',
         );
       });
 
       it('renders a dash for all-null sets and seconds without a modality', () => {
-        expect(formatRecentSessionSet(recentSet(null, null), 'kg')).toBe('–');
+        expect(formatRecentSessionSet(recentSet(null, null), 'kg', i18n.t)).toBe('–');
         expect(
-          formatRecentSessionSet({ ...recentSet(null, null), duration: 30 }, 'kg'),
+          formatRecentSessionSet({ ...recentSet(null, null), duration: 30 }, 'kg', i18n.t),
         ).toBe('30s');
       });
 
@@ -2968,6 +3035,7 @@ describe('workoutSession', () => {
           formatRecentSessionSet(
             { ...recentSet(null, null), duration: 1920, distance: 5.2 },
             'kg',
+            i18n.t,
             'duration_distance',
           ),
         ).toBe('32:00 · 5.2 km');
@@ -2975,6 +3043,7 @@ describe('workoutSession', () => {
           formatRecentSessionSet(
             { ...recentSet(null, null), duration: 1920, distance: 1.609344 },
             'kg',
+            i18n.t,
             'duration_distance',
             'miles',
           ),
@@ -2986,6 +3055,7 @@ describe('workoutSession', () => {
           formatRecentSessionSet(
             { ...recentSet(null, null), duration: null, distance: 5 },
             'kg',
+            i18n.t,
             'duration_distance',
           ),
         ).toBe('5 km');
@@ -2996,6 +3066,7 @@ describe('workoutSession', () => {
           formatRecentSessionSet(
             { ...recentSet(null, null), duration: 45, distance: 5 },
             'kg',
+            i18n.t,
             'duration',
           ),
         ).toBe('45s');
@@ -3432,24 +3503,24 @@ describe('workoutSession', () => {
 
     describe('formatSetLoad', () => {
       it('formats weight × reps with the display unit, converting for lbs', () => {
-        expect(formatSetLoad({ weightKg: 60, reps: 8 }, 'kg')).toBe('60 kg × 8');
-        expect(formatSetLoad({ weightKg: 60, reps: 8 }, 'lbs')).toBe('132.3 lbs × 8');
+        expect(formatSetLoad({ weightKg: 60, reps: 8 }, 'kg', i18n.t)).toBe('60 kg × 8');
+        expect(formatSetLoad({ weightKg: 60, reps: 8 }, 'lbs', i18n.t)).toBe('132.3 lbs × 8');
       });
 
       it('handles reps-only and weight-only sets', () => {
-        expect(formatSetLoad({ weightKg: null, reps: 12 }, 'kg')).toBe('12 reps');
-        expect(formatSetLoad({ weightKg: 80, reps: null }, 'kg')).toBe('80 kg');
+        expect(formatSetLoad({ weightKg: null, reps: 12 }, 'kg', i18n.t)).toBe('12 reps');
+        expect(formatSetLoad({ weightKg: 80, reps: null }, 'kg', i18n.t)).toBe('80 kg');
       });
 
       it('returns null when the set has neither weight nor reps', () => {
-        expect(formatSetLoad({ weightKg: null, reps: null }, 'kg')).toBeNull();
+        expect(formatSetLoad({ weightKg: null, reps: null }, 'kg', i18n.t)).toBeNull();
       });
 
       it('prefers a duration over weight/reps text', () => {
-        expect(formatSetLoad({ weightKg: null, reps: null, durationSec: 45 }, 'kg')).toBe(
+        expect(formatSetLoad({ weightKg: null, reps: null, durationSec: 45 }, 'kg', i18n.t)).toBe(
           '45s',
         );
-        expect(formatSetLoad({ weightKg: 60, reps: 8, durationSec: 90 }, 'kg')).toBe(
+        expect(formatSetLoad({ weightKg: 60, reps: 8, durationSec: 90 }, 'kg', i18n.t)).toBe(
           '1:30',
         );
       });
@@ -3923,7 +3994,7 @@ describe('workoutSession', () => {
         name: 'Bench Press',
         category: 'Strength',
         images: ['bench.png'],
-      });
+      }, i18n.t);
       expect(exercise).toMatchObject({
         id: 'ex-1',
         name: 'Bench Press',
@@ -3940,7 +4011,7 @@ describe('workoutSession', () => {
     });
 
     it('defaults name and nullable/array fields when omitted', () => {
-      const exercise = makeSparseExercise({ id: 'ex-2' });
+      const exercise = makeSparseExercise({ id: 'ex-2' }, i18n.t);
       expect(exercise.name).toBe('Exercise');
       expect(exercise.category).toBeNull();
       expect(exercise.images).toEqual([]);
@@ -3964,7 +4035,7 @@ describe('workoutSession', () => {
         secondary_muscles: ['glutes'],
         instructions: ['Stand with the bar on your back.', 'Squat down.'],
         images: ['https://wger.de/media/squat.png'],
-      });
+      }, i18n.t);
       expect(exercise).toMatchObject({
         id: '123',
         name: 'Wger Squat',
@@ -4021,7 +4092,7 @@ describe('workoutSession', () => {
     };
 
     it('maps a snapshotless draft to a sparse Exercise keyed by exerciseId', () => {
-      const exercise = exerciseFromDraft(baseDraft);
+      const exercise = exerciseFromDraft(baseDraft, i18n.t);
       expect(exercise).toMatchObject({
         id: 'ex-9',
         name: 'Squat',
@@ -4045,7 +4116,7 @@ describe('workoutSession', () => {
         level: null,
         mechanic: null,
       };
-      const exercise = exerciseFromDraft({ ...baseDraft, snapshot });
+      const exercise = exerciseFromDraft({ ...baseDraft, snapshot }, i18n.t);
       expect(exercise).toMatchObject({
         id: 'snap-9',
         name: 'Barbell Squat',

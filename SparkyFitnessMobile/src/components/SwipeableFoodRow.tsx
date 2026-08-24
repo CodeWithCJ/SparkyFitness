@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, View, Text, TouchableOpacity } from 'react-native';
 import Button from './ui/Button';
 import { useNavigation } from '@react-navigation/native';
@@ -8,6 +9,7 @@ import { DeleteRowAction } from './SwipeableDeleteRow';
 import { useRowCollapse } from '../hooks/useRowCollapse';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
+import { usePreferences } from '../hooks/usePreferences';
 import type { FoodEntry } from '../types/foodEntries';
 import type { EntryNutrition } from '../utils/mealNutrition';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
@@ -23,6 +25,8 @@ interface SwipeableFoodRowProps {
 }
 
 const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, onAdjustServing }) => {
+  const { t } = useTranslation();
+  const { preferences } = usePreferences();
   const navigation = useNavigation();
   const swipeableRef = useRef<any>(null);
   const invalidateCacheRef = useRef<() => void>(() => {});
@@ -64,12 +68,16 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
   }, [isMealComponent, mealDelete.invalidateCache, foodEntryDelete.invalidateCache]);
 
   const renderRightActions = () => (
-    <DeleteRowAction onPress={confirmAndDelete} className="ml-4" />
+    <DeleteRowAction
+      onPress={confirmAndDelete}
+      className="ml-4"
+      accessibilityLabel={t('foodRow.deleteFood', { defaultValue: 'Delete food' })}
+    />
   );
 
   const canQuickAdjust = !isMealComponent && !!onAdjustServing && Number(entry.serving_size) > 0;
-  const name = entry.food_name || 'Unknown food';
-  const timeLabel = formatTimeLabel(entry.entry_time);
+  const name = entry.food_name || t('foodRow.unknownFood', { defaultValue: 'Unknown food' });
+  const timeLabel = formatTimeLabel(entry.entry_time, preferences?.time_format);
 
   const handlePress = () => {
     if (isMealComponent && entry.food_entry_meal_id) {
@@ -86,10 +94,10 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
       onPress?: () => void;
     }[] = [];
     if (canQuickAdjust) {
-      buttons.push({ text: 'Adjust serving', onPress: () => onAdjustServing!(entry) });
+      buttons.push({ text: t('foodRow.adjustServing', { defaultValue: 'Adjust serving' }), onPress: () => onAdjustServing!(entry) });
     }
-    buttons.push({ text: 'Delete', style: 'destructive', onPress: deleteEntry });
-    buttons.push({ text: 'Cancel', style: 'cancel' });
+    buttons.push({ text: t('common.delete', { defaultValue: 'Delete' }), style: 'destructive', onPress: deleteEntry });
+    buttons.push({ text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' });
     Alert.alert(name, undefined, buttons);
   };
 
@@ -143,11 +151,11 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
               className="py-0 px-0"
               textClassName="text-sm text-text-secondary font-medium"
             >
-              {`${nutrition.calories} Cal ▾`}
+              {`${nutrition.calories} ${t('foodRow.caloriesUnit', { defaultValue: 'Cal' })} ▾`}
             </Button>
           ) : (
             <Text className="text-sm text-text-secondary font-medium mr-2">
-              {nutrition.calories} Cal
+              {nutrition.calories} {t('foodRow.caloriesUnit', { defaultValue: 'Cal' })}
             </Text>
           )}
         </View>

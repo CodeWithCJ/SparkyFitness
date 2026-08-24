@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { saveFood, type SaveFoodPayload } from '../services/api/foodsApi';
 import { favoritesQueryKey, foodsQueryKey } from './queryKeys';
@@ -12,6 +13,7 @@ type SaveFoodVariables = {
 };
 
 export function useSaveFood() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
@@ -24,7 +26,7 @@ export function useSaveFood() {
       queryClient.invalidateQueries({ queryKey: favoritesQueryKey });
     },
     onError: () => {
-      Toast.show({ type: 'error', text1: 'Failed to save food', text2: 'Please try again.' });
+      Toast.show({ type: 'error', text1: t('foodSave.failed', { defaultValue: 'Failed to save food' }), text2: t('common.tryAgain', { defaultValue: 'Please try again.' }) });
     },
   });
 

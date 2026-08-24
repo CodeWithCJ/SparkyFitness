@@ -10,12 +10,13 @@ import {
   getAggregatedBasalEnergyByDate,
 } from '../../src/services/healthConnectService';
 import { addLog } from '../../src/services/LogService';
+import i18n, { formatLocalizedNumber, initializeI18n } from '../../src/localization/i18n';
 import type { TimeRange } from '../../src/services/storage';
 
 // A single, controllable metric list — the real HEALTH_METRICS is platform
 // filtered and huge. We mutate this array per test so we can drive one record
 // type through `fetchHealthDisplayData` and assert the formatter output.
-const mockHealthMetrics: { id: string; label: string; recordType: string }[] = [];
+const mockHealthMetrics: { id: string; defaultLabel: string; recordType: string }[] = [];
 
 jest.mock('../../src/HealthMetrics', () => ({
   get HEALTH_METRICS() {
@@ -60,7 +61,7 @@ const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 
 function setMetric(recordType: string): void {
   mockHealthMetrics.length = 0;
-  mockHealthMetrics.push({ id: 'metric', label: recordType, recordType });
+  mockHealthMetrics.push({ id: 'metric', defaultLabel: recordType, recordType });
 }
 
 const TIME_RANGE: TimeRange = '7d';
@@ -73,8 +74,10 @@ async function displayFor(recordType: string): Promise<string> {
 }
 
 describe('fetchHealthDisplayData', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     jest.clearAllMocks();
+    await initializeI18n('en');
+    await i18n.changeLanguage('en');
     mockGetSyncStartDate.mockReturnValue(new Date('2026-06-01T00:00:00Z'));
     mockReadHealthRecords.mockResolvedValue([]);
     mockSteps.mockResolvedValue([]);
@@ -85,22 +88,28 @@ describe('fetchHealthDisplayData', () => {
     mockBasalEnergy.mockResolvedValue([]);
   });
 
+  it('formats aggregated values according to the active Polish app locale', async () => {
+    await i18n.changeLanguage('pl');
+    mockSteps.mockResolvedValue([{ value: 5000 }, { value: 432 }]);
+    expect(await displayFor('Steps')).toBe(formatLocalizedNumber(5432));
+  });
+
   describe('aggregated formatters', () => {
     it('formats steps as a localized total', async () => {
       mockSteps.mockResolvedValue([{ value: 5000 }, { value: 432 }]);
-      expect(await displayFor('Steps')).toBe((5432).toLocaleString());
+      expect(await displayFor('Steps')).toBe(formatLocalizedNumber(5432));
       // Aggregated metrics never read raw records.
       expect(mockReadHealthRecords).not.toHaveBeenCalled();
     });
 
     it('formats active calories as a localized total', async () => {
       mockActiveCals.mockResolvedValue([{ value: 300 }, { value: 200 }]);
-      expect(await displayFor('ActiveCaloriesBurned')).toBe((500).toLocaleString());
+      expect(await displayFor('ActiveCaloriesBurned')).toBe(formatLocalizedNumber(500));
     });
 
     it('formats total calories as a localized total', async () => {
       mockTotalCals.mockResolvedValue([{ value: 1500 }, { value: 500 }]);
-      expect(await displayFor('TotalCaloriesBurned')).toBe((2000).toLocaleString());
+      expect(await displayFor('TotalCaloriesBurned')).toBe(formatLocalizedNumber(2000));
     });
 
     it('converts distance from metres to kilometres', async () => {
@@ -110,7 +119,7 @@ describe('fetchHealthDisplayData', () => {
 
     it('rounds floors climbed before localizing', async () => {
       mockFloors.mockResolvedValue([{ value: 10.4 }, { value: 2.4 }]);
-      expect(await displayFor('FloorsClimbed')).toBe((13).toLocaleString());
+      expect(await displayFor('FloorsClimbed')).toBe(formatLocalizedNumber(13));
     });
 
     it('passes the resolved start/end window to the fetcher', async () => {
@@ -126,14 +135,14 @@ describe('fetchHealthDisplayData', () => {
       // Unlike raw formatters, aggregated metrics skip the no-records short-circuit,
       // so an empty result sums to 0 and is localized.
       mockSteps.mockResolvedValue([]);
-      expect(await displayFor('Steps')).toBe((0).toLocaleString());
+      expect(await displayFor('Steps')).toBe(formatLocalizedNumber(0));
     });
   });
 
   describe('basal metabolic rate', () => {
     it('averages the aggregated resting-energy values when present', async () => {
       mockBasalEnergy.mockResolvedValue([{ value: 1500 }, { value: 1600 }]);
-      expect(await displayFor('BasalMetabolicRate')).toBe('1550 kcal');
+      expect(await displayFor('BasalMetabolicRate')).toBe('1,550 kcal');
       expect(mockReadHealthRecords).not.toHaveBeenCalled();
     });
 
@@ -147,7 +156,7 @@ describe('fetchHealthDisplayData', () => {
         { time: '2026-06-02T10:00:00Z', basalMetabolicRate: { inKilocaloriesPerDay: 1700 } },
       ] as unknown[]);
       // Bucket avgs = [1550, 1700], overall avg = 1625.
-      expect(await displayFor('BasalMetabolicRate')).toBe('1625 kcal');
+      expect(await displayFor('BasalMetabolicRate')).toBe('1,625 kcal');
     });
 
     it('shows no-data when neither aggregate nor raw records exist', async () => {
@@ -167,7 +176,7 @@ describe('fetchHealthDisplayData', () => {
     ])('extracts a raw BMR value from a $label payload', async ({ record }) => {
       mockBasalEnergy.mockResolvedValue([]);
       mockReadHealthRecords.mockResolvedValue([record] as unknown[]);
-      expect(await displayFor('BasalMetabolicRate')).toBe('1500 kcal');
+      expect(await displayFor('BasalMetabolicRate')).toBe('1,500 kcal');
     });
   });
 
@@ -302,12 +311,12 @@ describe('fetchHealthDisplayData', () => {
       {
         recordType: 'RespiratoryRate',
         records: [{ rate: 14 }, { rate: 16 }],
-        expected: '15 br/min',
+        expected: '15/min',
       },
       {
         recordType: 'Nutrition',
         records: [{ energy: { inCalories: 1500000 } }, { energy: { inCalories: 500000 } }],
-        expected: '2000 kcal',
+        expected: '2,000 kcal',
       },
       {
         recordType: 'Workout',
@@ -320,6 +329,35 @@ describe('fetchHealthDisplayData', () => {
       mockReadHealthRecords.mockResolvedValue(records);
       expect(await displayFor(recordType)).toBe(expected);
     });
+
+    it('uses English plural fallback when a plural translation resolves to its raw key', async () => {
+      await i18n.changeLanguage('en');
+      i18n.removeResourceBundle('en', 'translation');
+      mockReadHealthRecords.mockResolvedValue([{}, {}]);
+
+      expect(await displayFor('Workout')).toBe('2 workouts');
+    });
+
+    it('formats aggregated and pluralized output in Polish using app locale', async () => {
+      await i18n.changeLanguage('pl');
+      mockSteps.mockResolvedValue([{ value: 1234.5 }]);
+      expect(await displayFor('Steps')).toBe('1234,5');
+      mockReadHealthRecords.mockResolvedValue([{}, {}, {}, {}, {}]);
+      expect(await displayFor('Workout')).toBe('5 treningów');
+      expect(await displayFor('Stress')).toBe('5 rekordów');
+    });
+
+    it('formats zero-valued temperature, mass, height and glucose records', async () => {
+      mockReadHealthRecords.mockResolvedValue([{ time: '2026-06-01T00:00:00Z', temperature: { inCelsius: 0 } }]);
+      expect(await displayFor('BodyTemperature')).toBe('0.0°C');
+      mockReadHealthRecords.mockResolvedValue([{ time: '2026-06-01T00:00:00Z', weight: { inKilograms: 0 } }]);
+      expect(await displayFor('Weight')).toBe('0.0 kg');
+      mockReadHealthRecords.mockResolvedValue([{ time: '2026-06-01T00:00:00Z', height: { inMeters: 0 } }]);
+      expect(await displayFor('Height')).toBe('0.0 cm');
+      mockReadHealthRecords.mockResolvedValue([{ time: '2026-06-01T00:00:00Z', level: { inMillimolesPerLiter: 0 } }]);
+      expect(await displayFor('BloodGlucose')).toBe('0.0 mmol/L');
+    });
+
 
     it('ignores oxygen-saturation readings outside the 0–100 range', async () => {
       // The latest reading (0%) is invalid, so the earlier valid 96% wins.
@@ -401,8 +439,8 @@ describe('fetchHealthDisplayData', () => {
     it('isolates failures so one bad metric does not sink the others', async () => {
       mockHealthMetrics.length = 0;
       mockHealthMetrics.push(
-        { id: 'good', label: 'Weight', recordType: 'Weight' },
-        { id: 'bad', label: 'Heart Rate', recordType: 'HeartRate' },
+        { id: 'good', defaultLabel: 'Weight', recordType: 'Weight' },
+        { id: 'bad', defaultLabel: 'Heart Rate', recordType: 'HeartRate' },
       );
       mockReadHealthRecords.mockImplementation(async (recordType: string) => {
         if (recordType === 'HeartRate') throw new Error('boom');

@@ -1,4 +1,5 @@
 import { localDateToDay } from '@workspace/shared';
+import type { TFunction } from 'i18next';
 
 /**
  * Converts a timestamp to a local date string (YYYY-MM-DD).
@@ -36,56 +37,61 @@ export const addDays = (dateString: string, days: number): string => {
 export const normalizeDate = (dateString: string): string => dateString.split('T')[0];
 
 // Format a YYYY-MM-DD date for display ("Mon, Jan 6")
-export const formatDate = (dateString: string): string => {
+export const formatDate = (dateString: string, locale: string): string => {
   const [year, month, day] = dateString.split('-').map(Number);
   const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
 };
 
 // Format a YYYY-MM-DD date for short display ("Jun 30")
-export const formatShortDate = (dateString: string): string => {
+export const formatShortDate = (dateString: string, locale: string): string => {
   const [year, month, day] = dateString.split('-').map(Number);
   const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
 };
 
 // Format a YYYY-MM-DD date for display ("Today", "Yesterday", or "Mon, Jan 6")
-export const formatDateLabel = (dateString: string): string => {
+export const formatDateLabel = (
+  dateString: string,
+  t: TFunction,
+  locale: string,
+): string => {
+  const normalized = normalizeDate(dateString);
   const today = getTodayDate();
-  if (dateString === today) return 'Today';
-  if (dateString === addDays(today, -1)) return 'Yesterday';
-  return formatDate(dateString);
+  if (normalized === today) return t('date.today', { defaultValue: 'Today' });
+  if (normalized === addDays(today, -1)) return t('date.yesterday', { defaultValue: 'Yesterday' });
+  return formatDate(normalized, locale);
 };
 
 // Format a timestamp as a human-readable relative time ("Just now", "3 minutes ago", etc.)
-export const formatRelativeTime = (timestamp: Date | null): string => {
-  if (!timestamp) return 'Never synced';
+export interface RelativeTimeTranslator {
+  (key: string, options: Record<string, unknown>): string;
+}
+
+export const formatRelativeTime = (timestamp: Date | null, translate: RelativeTimeTranslator, locale: string): string => {
+  if (!timestamp) return translate('date.neverSynced', { defaultValue: 'Never synced' });
 
   const now = new Date();
-  const diffMs = now.getTime() - timestamp.getTime();
-  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffSeconds = Math.floor((now.getTime() - timestamp.getTime()) / 1000);
   const diffMinutes = Math.floor(diffSeconds / 60);
   const diffHours = Math.floor(diffMinutes / 60);
   const diffDays = Math.floor(diffHours / 24);
+  const time = timestamp.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
 
-  if (diffSeconds < 60) {
-    return 'Just now';
-  } else if (diffMinutes < 60) {
-    return `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
-  } else if (diffHours < 24) {
-    return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-  } else if (diffDays === 1) {
-    return `Yesterday at ${timestamp.toLocaleTimeString([], {
-      hour: 'numeric',
-      minute: '2-digit',
-    })}`;
-  } else {
-    return `${timestamp.toLocaleDateString([], {
-      month: 'short',
-      day: 'numeric',
-    })} at ${timestamp.toLocaleTimeString([], {
-      hour: 'numeric',
-      minute: '2-digit',
-    })}`;
-  }
+  if (diffSeconds < 60) return translate('date.justNow', { defaultValue: 'Just now' });
+  if (diffMinutes < 60) return translate('date.minutesAgo', {
+    count: diffMinutes,
+    defaultValue: '{{count}} minute ago',
+    defaultValue_one: '{{count}} minute ago',
+    defaultValue_other: '{{count}} minutes ago',
+  });
+  if (diffHours < 24) return translate('date.hoursAgo', {
+    count: diffHours,
+    defaultValue: '{{count}} hour ago',
+    defaultValue_one: '{{count}} hour ago',
+    defaultValue_other: '{{count}} hours ago',
+  });
+  if (diffDays === 1) return translate('date.yesterdayAt', { time, defaultValue: 'Yesterday at {{time}}' });
+  const date = timestamp.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+  return translate('date.onDateAt', { date, time, defaultValue: '{{date}} at {{time}}' });
 };

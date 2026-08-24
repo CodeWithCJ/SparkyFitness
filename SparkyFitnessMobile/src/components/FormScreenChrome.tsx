@@ -1,5 +1,6 @@
 import React, { useCallback, useRef } from 'react';
 import { View, Platform } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createDuplicatePressGuard } from '../utils/duplicatePress';
@@ -23,9 +24,15 @@ export const FooterSaveBar: React.FC<FooterSaveBarProps> = ({
   onPress,
   disabled,
   busy,
-  label = SAVE_LABEL,
+  label,
 }) => {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+  // Localize the canonical SAVE_LABEL marker (and the default) so the sticky
+  // footer button follows the active app language (PL "Zapisz"), not English.
+  const resolvedLabel =
+    label && label !== SAVE_LABEL ? label : t('common.save', 'Save');
+  const resolvedBusyLabel = t('common.saving', 'Saving…');
 
   // Synchronous re-entrancy guard; see createDuplicatePressGuard for why the
   // `disabled`/`busy` props cannot do this job. The same guard covers the
@@ -50,7 +57,7 @@ export const FooterSaveBar: React.FC<FooterSaveBarProps> = ({
         className="py-3"
         textClassName="text-sm text-center"
       >
-        {label}
+        {busy ? resolvedBusyLabel : resolvedLabel}
       </Button>
     </View>
   );

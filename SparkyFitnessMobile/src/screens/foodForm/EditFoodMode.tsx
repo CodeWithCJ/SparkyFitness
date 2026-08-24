@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Platform } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,9 +35,12 @@ import {
   buildLocalUnitVariants,
   buildCreateFoodVariantPayload,
   diffSiblingRows,
+  formatServingSizeForDisplay,
   groupEquivalentVariants,
   toEquivalentUnit,
 } from '../../utils/foodDetails';
+import { formatLocalizedNumber } from '../../localization';
+import { localizeFoodUnit } from '../../utils/foodUnitLocalization';
 import { parseDecimalInput } from '../../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../../services/nativeTabBarPreference';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../../hooks/useScreenHeader';
@@ -85,6 +89,7 @@ function buildUpdatedFoodInfo(item: FoodInfoItem, data: FoodFormData, variantId:
 
 export function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigation: FoodFormScreenProps['navigation'] }) {
   const { item, initialValues, returnKey, foodId, variantId, customNutrients } = params;
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
@@ -281,7 +286,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
       // row would be misclassified as a create and duplicate the existing variant.
       Toast.show({
         type: 'error',
-        text1: 'Still loading food details. Try again in a moment.',
+        text1: t('foodForm.loadingDetails', { defaultValue: 'Still loading food details. Try again in a moment.' }),
       });
       return;
     }
@@ -373,7 +378,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
         if (nutritionChanged && currentVariantId) {
           const activeVariant = variants?.find((v) => v.id === currentVariantId);
           const unitLabel = activeVariant
-            ? `${activeVariant.serving_size} ${activeVariant.serving_unit}`
+            ? `${formatServingSizeForDisplay(activeVariant.serving_size)} ${localizeFoodUnit(activeVariant.serving_unit, t)}`
             : data.servingUnit;
           const choice = await confirmVariantOverwrite(unitLabel);
           if (choice === 'cancel') {
@@ -403,7 +408,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
             invalidateFoodCaches(queryClient, foodId);
             // Skip the diff/overwrite path — new variant is already saved.
             setEquivalentBaseline(equivalentDraft);
-            Toast.show({ type: 'success', text1: 'Saved as new variant' });
+            Toast.show({ type: 'success', text1: t('foodForm.savedNewVariant', { defaultValue: 'Saved as new variant' }) });
 
             // Same prompt as the main path: one rule — every save of a food
             // you own asks before touching diary history.
@@ -416,12 +421,12 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
                   syncChoice === 'nutrition-and-photos',
                 );
                 invalidateFoodCaches(queryClient, foodId);
-                Toast.show({ type: 'success', text1: 'Past entries updated' });
+                Toast.show({ type: 'success', text1: t('foodForm.pastEntriesUpdated', { defaultValue: 'Past entries updated' }) });
               } catch {
                 Toast.show({
                   type: 'error',
-                  text1: 'Could not update past entries',
-                  text2: 'Your food was saved.',
+                  text1: t('foodForm.pastEntriesFailed', { defaultValue: 'Could not update past entries' }),
+                  text2: t('foodForm.foodSaved', { defaultValue: 'Your food was saved.' }),
                 });
               }
             }
@@ -479,8 +484,14 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
         type: 'success',
         text1:
           equivalentChangedCount > 0
-            ? `Saved · ${equivalentChangedCount} equivalent unit${equivalentChangedCount === 1 ? '' : 's'} updated`
-            : 'Saved',
+            ? t('foodForm.equivalentUnitsUpdated', {
+                count: equivalentChangedCount,
+                formattedCount: formatLocalizedNumber(equivalentChangedCount),
+                defaultValue: 'Saved · {{formattedCount}} equivalent units updated',
+                defaultValue_one: 'Saved · {{formattedCount}} equivalent unit updated',
+                defaultValue_other: 'Saved · {{formattedCount}} equivalent units updated',
+              })
+            : t('foodForm.saved', { defaultValue: 'Saved' }),
       });
 
       // Past diary entries keep the nutrition snapshot they were logged with.
@@ -497,14 +508,14 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
             syncChoice === 'nutrition-and-photos',
           );
           invalidateFoodCaches(queryClient, foodId);
-          Toast.show({ type: 'success', text1: 'Past entries updated' });
+          Toast.show({ type: 'success', text1: t('foodForm.pastEntriesUpdated', { defaultValue: 'Past entries updated' }) });
         } catch {
           // The food itself saved fine; only the optional sync failed, so say
           // so rather than implying the edit was lost.
           Toast.show({
             type: 'error',
-            text1: 'Could not update past entries',
-            text2: 'Your food was saved.',
+            text1: t('foodForm.pastEntriesFailed', { defaultValue: 'Could not update past entries' }),
+            text2: t('foodForm.foodSaved', { defaultValue: 'Your food was saved.' }),
           });
         }
       }
@@ -520,7 +531,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
 
       navigation.goBack();
     } catch {
-      Toast.show({ type: 'error', text1: 'Could not update food' });
+      Toast.show({ type: 'error', text1: t('foodForm.updateFailed', { defaultValue: 'Could not update food' }) });
     } finally {
       setIsSubmitting(false);
     }
@@ -529,7 +540,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
   const submitRequestRef = useRef<(() => void) | null>(null);
 
   const header = useScreenHeader({
-    title: 'Edit Food',
+    title: t('foodForm.editTitle', { defaultValue: 'Edit Food' }),
     left: {
       kind: 'dismiss',
       onPress: () => navigation.goBack(),

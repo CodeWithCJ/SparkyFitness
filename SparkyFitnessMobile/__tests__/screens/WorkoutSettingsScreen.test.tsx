@@ -100,4 +100,18 @@ describe('WorkoutSettingsScreen', () => {
     fireEvent(keepAwakeToggle, 'valueChange', true);
     expect(useAppPreferencesStore.getState().workoutKeepAwakeEnabled).toBe(true);
   });
+
+  it('localizes the Polish labels and rest accessibility fallback', async () => {
+    const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+    await initializeI18n('pl');
+    const { getByText, getAllByRole } = renderScreen();
+
+    expect(getByText('Domyślny okres odpoczynku')).toBeTruthy();
+    expect(getByText('Dźwięk timera odpoczynku')).toBeTruthy();
+    expect(getAllByRole('switch')[0].props.accessibilityLabel).toBe('Dźwięk timera odpoczynku');
+    expect(i18n.t('workoutSettings.defaultRestAccessibility', {
+      defaultValue: 'Default rest period, {{duration}}',
+      duration: '1:30',
+    })).toBe('Domyślny odpoczynek: 1:30');
+  });
 });

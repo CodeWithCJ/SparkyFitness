@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import {
@@ -33,6 +34,7 @@ function useEntryImageMutation<TVariables, TResult>(
   mutationFn: (variables: TVariables) => Promise<TResult>,
   options: EntryImageOptions<TResult>,
 ) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { entryDate, extraKeys, onSuccess, errorText } = options;
 
@@ -48,7 +50,7 @@ function useEntryImageMutation<TVariables, TResult>(
       onSuccess?.(result);
     },
     onError: () => {
-      Toast.show({ type: 'error', text1: errorText, text2: 'Please try again.' });
+      Toast.show({ type: 'error', text1: errorText, text2: t('common.pleaseTryAgain', { defaultValue: 'Please try again.' }) });
     },
   });
 }
@@ -58,6 +60,7 @@ export function useSetFoodEntryImages(
   entryDate: string,
   options?: { onSuccess?: (result: Awaited<ReturnType<typeof setFoodEntryImages>>) => void },
 ) {
+  const { t } = useTranslation();
   const mutation = useEntryImageMutation(
     (items: PickerImage[]) => {
       const { order, newUris } = splitPickerImages(items);
@@ -66,7 +69,7 @@ export function useSetFoodEntryImages(
     {
       entryDate,
       onSuccess: options?.onSuccess,
-      errorText: 'Failed to save photo',
+      errorText: t('entryImage.saveFailed', { defaultValue: 'Failed to save photo' }),
     },
   );
 
@@ -82,10 +85,11 @@ export function useClearFoodEntryImage(
   entryDate: string,
   options?: { onSuccess?: () => void },
 ) {
+  const { t } = useTranslation();
   const mutation = useEntryImageMutation<void, void>(() => clearFoodEntryImage(entryId), {
     entryDate,
     onSuccess: options?.onSuccess,
-    errorText: 'Failed to remove photo',
+    errorText: t('entryImage.removeFailed', { defaultValue: 'Failed to remove photo' }),
   });
 
   return { clearImage: () => mutation.mutate(), isPending: mutation.isPending };
@@ -96,6 +100,7 @@ export function useSetFoodEntryMealImages(
   entryDate: string,
   options?: { onSuccess?: () => void },
 ) {
+  const { t } = useTranslation();
   const mutation = useEntryImageMutation(
     (items: PickerImage[]) => {
       const { order, newUris } = splitPickerImages(items);
@@ -105,7 +110,7 @@ export function useSetFoodEntryMealImages(
       entryDate,
       extraKeys: [foodEntryMealDetailQueryKey(entryId)],
       onSuccess: options?.onSuccess,
-      errorText: 'Failed to save photo',
+      errorText: t('entryImage.saveFailed', { defaultValue: 'Failed to save photo' }),
     },
   );
 
@@ -121,13 +126,14 @@ export function useClearFoodEntryMealImage(
   entryDate: string,
   options?: { onSuccess?: () => void },
 ) {
+  const { t } = useTranslation();
   const mutation = useEntryImageMutation<void, void>(
     () => clearFoodEntryMealImage(entryId),
     {
       entryDate,
       extraKeys: [foodEntryMealDetailQueryKey(entryId)],
       onSuccess: options?.onSuccess,
-      errorText: 'Failed to remove photo',
+      errorText: t('entryImage.removeFailed', { defaultValue: 'Failed to remove photo' }),
     },
   );
 

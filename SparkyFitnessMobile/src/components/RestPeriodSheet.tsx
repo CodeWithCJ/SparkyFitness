@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Text, TouchableOpacity, View } from 'react-native';
 import {
   BottomSheetModal,
@@ -42,6 +43,7 @@ interface RestPeriodSheetProps {
 
 const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
   ({ onChange }, ref) => {
+    const { t } = useTranslation();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const [accentPrimary, surfaceBg, textMuted] = useCSSVariable([
       '--color-accent-primary',
@@ -122,7 +124,7 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
       >
         <BottomSheetView className="px-6 pb-safe-or-8">
           <Text className="text-lg font-semibold text-text-primary text-center mb-4">
-            Rest period
+            {t('restPeriod.title', { defaultValue: 'Rest period' })}
           </Text>
 
           <View className="flex-row flex-wrap justify-center" style={{ gap: 8 }}>
@@ -143,7 +145,7 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
                     className="text-sm font-medium"
                     style={{ color: selected ? '#fff' : textMuted }}
                   >
-                    {formatRestLabel(preset)}
+                    {formatRestLabel(preset, t('restPeriod.off', { defaultValue: 'Off' }))}
                   </Text>
                 </TouchableOpacity>
               );
@@ -151,7 +153,7 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
           </View>
 
           <CollapsibleSection
-            title="Custom"
+            title={t('restPeriod.custom', { defaultValue: 'Custom' })}
             expanded={customOpen}
             onToggle={() => setCustomOpen((v) => !v)}
             itemCount={1}
@@ -168,11 +170,11 @@ const RestPeriodSheet = forwardRef<RestPeriodSheetRef, RestPeriodSheetProps>(
                   InputComponent={BottomSheetTextInput}
                 />
                 <Text className="text-text-secondary text-base ml-3">
-                  {formatRestLabel(Number.isNaN(parsedCustom) ? currentValue : parsedCustom)}
+                  {formatRestLabel(Number.isNaN(parsedCustom) ? currentValue : parsedCustom, t('restPeriod.off', { defaultValue: 'Off' }))}
                 </Text>
               </View>
               <Button variant="primary" onPress={handleCustomSave}>
-                Save
+                {t('common.save', { defaultValue: 'Save' })}
               </Button>
             </View>
           </CollapsibleSection>

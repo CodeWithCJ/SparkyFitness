@@ -71,7 +71,7 @@ describe('iOS WidgetKit localization resources', () => {
       expect(pl.get('widget.protein')).toBe('Białko');
       expect(pl.get('widget.carbs')).toBe('Węglowodany');
       expect(pl.get('widget.fat')).toBe('Tłuszcz');
-      expect(pl.get('widget.food')).toBe('Jedzenie');
+      expect(pl.get('widget.food')).toBe('Spożycie');
       expect(pl.get('widget.burned')).toBe('Spalone');
       expect(pl.get('widget.goal')).toBe('Cel');
       // Word order under the ring number: "1515 / kcal pozostało" reads as

@@ -61,6 +61,30 @@ describe('WeeklyChecklist', () => {
     );
   });
 
+  it('uses a localized generic label for an unknown completed template key', () => {
+    mockUsePregnancyChecklist.mockReturnValue({
+      items: [
+        {
+          id: 'unknown-row',
+          user_id: 'u1',
+          pregnancy_id: 'p1',
+          template_key: 'new_template_v2',
+          custom_title: null,
+          week: 1,
+          completed_at: '2026-01-01T00:00:00Z',
+          dismissed: false,
+        },
+      ],
+      isLoading: false,
+    });
+
+    const { getByText, queryByText } = render(<WeeklyChecklist pregnancyId="p1" currentWeek={1} />);
+
+    expect(getByText('Checklist item')).toBeTruthy();
+    expect(queryByText('new_template_v2')).toBeNull();
+  });
+
+
   it('shows an empty state when nothing is scheduled for the week', () => {
     mockUsePregnancyChecklist.mockReturnValue({ items: [], isLoading: false });
 

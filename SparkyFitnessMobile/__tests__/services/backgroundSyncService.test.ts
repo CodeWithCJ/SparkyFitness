@@ -28,16 +28,16 @@ jest.mock('../../src/HealthMetrics', () => ({
   // Real derivation logic — the readKind triage depends on it.
   metricReadKind: jest.requireActual('../../src/HealthMetrics').metricReadKind,
   HEALTH_METRICS: [
-    { id: 'steps', recordType: 'Steps', preferenceKey: 'isStepsSyncEnabled', label: 'Steps', readKind: 'cumulative-day' },
-    { id: 'active-calories', recordType: 'ActiveCaloriesBurned', preferenceKey: 'isActiveCaloriesSyncEnabled', label: 'Active Calories', readKind: 'cumulative-day' },
-    { id: 'total-calories', recordType: 'TotalCaloriesBurned', preferenceKey: 'isTotalCaloriesSyncEnabled', label: 'Total Calories', readKind: 'cumulative-day' },
-    { id: 'distance', recordType: 'Distance', preferenceKey: 'isDistanceSyncEnabled', label: 'Distance', readKind: 'cumulative-day' },
-    { id: 'floors', recordType: 'FloorsClimbed', preferenceKey: 'isFloorsClimbedSyncEnabled', label: 'Floors', readKind: 'cumulative-day' },
-    { id: 'bmr', recordType: 'BasalMetabolicRate', preferenceKey: 'isBmrSyncEnabled', label: 'BMR', readKind: 'cumulative-day' },
-    { id: 'heart-rate', recordType: 'HeartRate', preferenceKey: 'isHeartRateSyncEnabled', label: 'Heart Rate', type: 'heart_rate', unit: 'bpm', aggregationStrategy: 'min-max-avg' },
-    { id: 'sleep', recordType: 'SleepSession', preferenceKey: 'isSleepSyncEnabled', label: 'Sleep' },
-    { id: 'exercise', recordType: 'ExerciseSession', preferenceKey: 'isExerciseSyncEnabled', label: 'Exercise' },
-    { id: 'weight', recordType: 'Weight', preferenceKey: 'isWeightSyncEnabled', label: 'Weight' },
+    { id: 'steps', recordType: 'Steps', preferenceKey: 'isStepsSyncEnabled', defaultLabel: 'Steps', readKind: 'cumulative-day' },
+    { id: 'active-calories', recordType: 'ActiveCaloriesBurned', preferenceKey: 'isActiveCaloriesSyncEnabled', defaultLabel: 'Active Calories', readKind: 'cumulative-day' },
+    { id: 'total-calories', recordType: 'TotalCaloriesBurned', preferenceKey: 'isTotalCaloriesSyncEnabled', defaultLabel: 'Total Calories', readKind: 'cumulative-day' },
+    { id: 'distance', recordType: 'Distance', preferenceKey: 'isDistanceSyncEnabled', defaultLabel: 'Distance', readKind: 'cumulative-day' },
+    { id: 'floors', recordType: 'FloorsClimbed', preferenceKey: 'isFloorsClimbedSyncEnabled', defaultLabel: 'Floors', readKind: 'cumulative-day' },
+    { id: 'bmr', recordType: 'BasalMetabolicRate', preferenceKey: 'isBmrSyncEnabled', defaultLabel: 'BMR', readKind: 'cumulative-day' },
+    { id: 'heart-rate', recordType: 'HeartRate', preferenceKey: 'isHeartRateSyncEnabled', defaultLabel: 'Heart Rate', type: 'heart_rate', unit: 'bpm', aggregationStrategy: 'min-max-avg' },
+    { id: 'sleep', recordType: 'SleepSession', preferenceKey: 'isSleepSyncEnabled', defaultLabel: 'Sleep' },
+    { id: 'exercise', recordType: 'ExerciseSession', preferenceKey: 'isExerciseSyncEnabled', defaultLabel: 'Exercise' },
+    { id: 'weight', recordType: 'Weight', preferenceKey: 'isWeightSyncEnabled', defaultLabel: 'Weight' },
   ],
 }));
 

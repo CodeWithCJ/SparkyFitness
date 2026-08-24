@@ -1,4 +1,5 @@
 import type { WellnessPalette } from '../components/wellness/theme/wellnessTokens';
+import type { TFunction } from 'i18next';
 
 export type CyclePhaseKey = 'menstrual' | 'follicular' | 'fertile' | 'ovulation' | 'luteal' | 'unknown';
 
@@ -6,21 +7,21 @@ export type CyclePhaseKey = 'menstrual' | 'follicular' | 'fertile' | 'ovulation'
  * Single source of truth for user-facing phase display labels across Dashboard & Hub.
  * Respects discreet mode to avoid revealing sensitive terms when enabled.
  */
-export function getPhaseDisplayName(phase: string, discreetMode = false): string {
-  if (discreetMode) return 'Active Phase';
+export function getPhaseDisplayName(phase: string, discreetMode: boolean, t: TFunction): string {
+  if (discreetMode) return t('cycle.phase.active', { defaultValue: 'Active Phase' });
   switch (phase) {
     case 'menstrual':
-      return 'Period';
+      return t('cycle.phase.period', { defaultValue: 'Period' });
     case 'follicular':
-      return 'Follicular Phase';
+      return t('cycle.phase.follicular', { defaultValue: 'Follicular Phase' });
     case 'fertile':
-      return 'Est. Fertile Window';
+      return t('cycle.phase.fertile', { defaultValue: 'Est. Fertile Window' });
     case 'ovulation':
-      return 'Est. Ovulation';
+      return t('cycle.phase.ovulation', { defaultValue: 'Est. Ovulation' });
     case 'luteal':
-      return 'Luteal Phase';
+      return t('cycle.phase.luteal', { defaultValue: 'Luteal Phase' });
     default:
-      return 'Cycle Active';
+      return t('cycle.phase.activeCycle', { defaultValue: 'Cycle Active' });
   }
 }
 

@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react';
 import { createInstance } from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { getLocales } from 'expo-localization';
@@ -35,6 +36,37 @@ export function normalizeLanguage(language: string | null | undefined): Supporte
 
 export function getDeviceLanguage(): SupportedLanguage {
   return normalizeLanguage(getLocales()[0]?.languageCode);
+}
+
+export function getAppLocale(): 'pl-PL' | 'en-US' {
+  return i18n.resolvedLanguage === 'pl' ? 'pl-PL' : 'en-US';
+}
+
+/**
+ * Reactive application-locale snapshot backed directly by SparkyFitness's
+ * custom i18next instance. This is required by retained portal/bottom-sheet
+ * subtrees: an imperative getAppLocale() call alone cannot cause a render when
+ * i18n changes language at runtime.
+ */
+function subscribeToAppLocale(onStoreChange: () => void): () => void {
+  const handleLanguageChanged = () => onStoreChange();
+  i18n.on('languageChanged', handleLanguageChanged);
+  return () => i18n.off('languageChanged', handleLanguageChanged);
+}
+
+export function useAppLocale(): 'pl-PL' | 'en-US' {
+  return useSyncExternalStore(
+    subscribeToAppLocale,
+    getAppLocale,
+    getAppLocale,
+  );
+}
+
+export function formatLocalizedNumber(
+  value: number,
+  options?: Intl.NumberFormatOptions,
+): string {
+  return value.toLocaleString(getAppLocale(), options);
 }
 
 /**

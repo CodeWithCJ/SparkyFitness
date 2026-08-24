@@ -12,6 +12,7 @@ import {
   ensureNotificationPermission,
   fireRestCompleteCue,
   initNotifications,
+  registerLocalizedNotificationPresentation,
   maybePromptForExactAlarmPermission,
   scheduleFastGoalNotification,
   scheduleRestNotification,
@@ -21,6 +22,7 @@ import {
 import { ExactAlarmBridge } from '../../src/services/ExactAlarmBridge';
 import { __resetSoundsForTests } from '../../src/services/sounds';
 import { useAppPreferencesStore } from '../../src/stores/appPreferencesStore';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 
 jest.mock('../../src/services/ExactAlarmBridge', () => ({
   ExactAlarmBridge: {
@@ -67,6 +69,7 @@ const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
 
 describe('notifications service', () => {
   beforeEach(async () => {
+    await initializeI18n('en');
     await AsyncStorage.clear();
     __resetNotificationStateForTests();
     mockGetPerms.mockReset().mockResolvedValue({ status: 'granted' } as any);
@@ -89,6 +92,21 @@ describe('notifications service', () => {
       await initNotifications();
       await initNotifications();
       expect(mockSetHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('registers localized Android presentation in the current language', async () => {
+      Object.defineProperty(Platform, 'OS', { get: () => 'android', configurable: true });
+      await initNotifications();
+      expect(mockSetChannel).toHaveBeenCalledWith('workout-timer', expect.objectContaining({ name: 'Workout timer' }));
+      await i18n.changeLanguage('pl');
+      await registerLocalizedNotificationPresentation();
+      expect(mockSetChannel).toHaveBeenLastCalledWith('medication-reminders', expect.objectContaining({ name: 'Przypomnienia o lekach' }));
+      expect(mockSetCategory).toHaveBeenLastCalledWith('medication-reminder', expect.arrayContaining([
+        expect.objectContaining({ identifier: 'medication-taken', buttonTitle: 'Oznacz jako przyjęty' }),
+      ]));
+      await i18n.changeLanguage('en');
+      await registerLocalizedNotificationPresentation();
+      expect(mockSetChannel).toHaveBeenLastCalledWith('medication-reminders', expect.objectContaining({ name: 'Medication reminders' }));
     });
 
     it('creates Android channel with HIGH importance', async () => {

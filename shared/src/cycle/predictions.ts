@@ -627,6 +627,8 @@ export interface AnomalyAlert {
   key: string;
   severity: "info" | "attention";
   message: string;
+  /** Structured numeric parameters referenced by the message (e.g. cycle length). */
+  params?: Record<string, number>;
 }
 
 export function detectAnomalies(
@@ -655,6 +657,7 @@ export function detectAnomalies(
       anomalies.push({
         key: "short_cycle",
         severity: "info",
+        params: { cycleLength: c.cycle_length },
         message: `You had a short cycle of ${c.cycle_length} days. Cycles shorter than 21 days are worth tracking.`,
       });
       break;
@@ -663,6 +666,7 @@ export function detectAnomalies(
       anomalies.push({
         key: "long_cycle",
         severity: "info",
+        params: { cycleLength: c.cycle_length },
         message: `You had a long cycle of ${c.cycle_length} days. Cycles longer than 45 days are worth tracking.`,
       });
       break;
@@ -700,6 +704,8 @@ export interface CycleAlert {
   key: string;
   severity: "info" | "attention";
   message: string;
+  /** Structured numeric parameters referenced by the message (e.g. days late). */
+  params?: Record<string, number>;
 }
 
 export function buildCycleAlerts(
@@ -716,12 +722,20 @@ export function buildCycleAlerts(
       alerts.push({
         key: "late_period",
         severity: "attention",
+        params: { days: diff },
         message: `Your period is expected and is ${diff} day${diff > 1 ? "s" : ""} late.`,
       });
-    } else if (diff >= -3 && diff <= 0) {
+    } else if (diff === 0) {
+      alerts.push({
+        key: "upcoming_period_today",
+        severity: "info",
+        message: "Period is expected today.",
+      });
+    } else if (diff >= -3) {
       alerts.push({
         key: "upcoming_period",
         severity: "info",
+        params: { days: Math.abs(diff) },
         message: `Period is expected in ${Math.abs(diff)} day${Math.abs(diff) !== 1 ? "s" : ""}.`,
       });
     }

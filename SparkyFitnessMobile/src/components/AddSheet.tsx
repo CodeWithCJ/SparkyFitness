@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } 
 import { View, Text, Pressable, LayoutAnimation } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
+
 import Icon, { type IconName } from './Icon';
 import Button from './ui/Button';
 import { useSheetBackdrop } from './ui/sheetChrome';
@@ -37,6 +39,7 @@ interface ActionCard {
 
 const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
   ({ onAddFood, onStartWorkout, onAddActivity, onLogWorkout, onSyncHealthData, onBarcodeScan, onAddMeasurements, onAskSparky, onOpenCycle, showCycleCard, cycleLabel, cycleIcon, onDismissWithoutAction }, ref) => {
+    const { t } = useTranslation();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const isDismissingRef = useRef(false);
     const isOpenRef = useRef(false);
@@ -162,10 +165,10 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     }, [clearScheduledPresent]);
 
     const cards: ActionCard[] = [
-      { label: 'Food', icon: 'food', onPress: onAddFood },
-      { label: 'Exercise', icon: 'exercise-weights' },
-      { label: 'Measurements', icon: 'measurements', onPress: onAddMeasurements },
-      { label: 'Scan Food', icon: 'scan', onPress: onBarcodeScan },
+      { label: t('addSheet.food', { defaultValue: 'Food' }), icon: 'food', onPress: onAddFood },
+      { label: t('addSheet.exercise', { defaultValue: 'Exercise' }), icon: 'exercise-weights' },
+      { label: t('addSheet.measurements', { defaultValue: 'Measurements' }), icon: 'measurements', onPress: onAddMeasurements },
+      { label: t('addSheet.scanFood', { defaultValue: 'Scan Food' }), icon: 'scan', onPress: onBarcodeScan },
     ];
 
     const renderCard = (card: ActionCard) => (
@@ -249,6 +252,8 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
             <>
               <Pressable
                 className="flex-row items-center mb-3 px-1.5"
+                accessibilityRole="button"
+                accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
                 onPress={() => {
                   LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                   setShowExerciseMenu(false);
@@ -256,13 +261,13 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
               >
                 <Icon name="chevron-back" size={20} color={accentPrimary} />
                 <Text className="text-sm font-medium ml-1" style={{ color: accentPrimary }}>
-                  Back
+                  {t('common.back', { defaultValue: 'Back' })}
                 </Text>
               </Pressable>
               <View className="flex-row">
-                {renderExerciseOption('Workout', 'Live sets & reps', 'exercise-weights', onStartWorkout)}
-                {renderExerciseOption('Activity', 'Duration & distance', 'exercise-running-filled', onAddActivity)}
-                {renderExerciseOption('Log Workout', 'Past sets & reps', 'pencil', onLogWorkout)}
+                {renderExerciseOption(t('addSheet.workout', { defaultValue: 'Workout' }), t('addSheet.liveSets', { defaultValue: 'Live sets & reps' }), 'exercise-weights', onStartWorkout)}
+                {renderExerciseOption(t('addSheet.activity', { defaultValue: 'Activity' }), t('addSheet.durationDistance', { defaultValue: 'Duration & distance' }), 'exercise-running-filled', onAddActivity)}
+                {renderExerciseOption(t('addSheet.logWorkout', { defaultValue: 'Log Workout' }), t('addSheet.pastSets', { defaultValue: 'Past sets & reps' }), 'pencil', onLogWorkout)}
               </View>
             </>
           ) : (
@@ -276,10 +281,10 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
                 {renderCard(cards[3])}
               </View>
               {showCycleCard && onOpenCycle
-                ? renderSecondaryRow(cycleLabel ?? 'Wellness', cycleIcon ?? 'wellness-filled', onOpenCycle)
+                ? renderSecondaryRow(cycleLabel ?? t('addSheet.wellness', { defaultValue: 'Wellness' }), cycleIcon ?? 'wellness-filled', onOpenCycle)
                 : null}
-              {renderSecondaryRow('Ask Sparky', 'sparkles', onAskSparky)}
-              {renderSecondaryRow('Sync Health Data', 'sync', onSyncHealthData)}
+              {renderSecondaryRow(t('addSheet.askSparky', { defaultValue: 'Ask Sparky' }), 'sparkles', onAskSparky)}
+              {renderSecondaryRow(t('addSheet.syncHealth', { defaultValue: 'Sync Health Data' }), 'sync', onSyncHealthData)}
             </>
           )}
         </BottomSheetView>

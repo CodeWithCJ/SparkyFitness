@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { getSettings, putSettings } from '../services/api/cycleApi';
 import { cycleSettingsQueryKey } from './queryKeys';
@@ -6,6 +7,7 @@ import { addLog } from '../services/LogService';
 import type { SharedCycleSettings } from '../types/womensHealth';
 
 export function useCycleSettings() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -51,8 +53,8 @@ export function useCycleSettings() {
       addLog(`Failed to update cycle settings: ${error}`, 'ERROR');
       Toast.show({
         type: 'error',
-        text1: 'Update failed',
-        text2: 'Could not save cycle settings. Please try again.',
+        text1: t('cycleSettings.updateFailed', { defaultValue: 'Update failed' }),
+        text2: t('cycleSettings.saveFailed', { defaultValue: 'Could not save cycle settings. Please try again.' }),
       });
     },
   });

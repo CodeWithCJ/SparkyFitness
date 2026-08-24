@@ -34,6 +34,8 @@ export interface UserPreferences {
   auto_clear_history?: string;
   logging_level?: string;
   timezone?: string | null;
+  /** Clock display preference: 'HH:mm' (24-hour), 'h:mm A'/'h:mm a' (12-hour). */
+  time_format?: 'HH:mm' | 'h:mm A' | 'h:mm a';
   item_display_limit?: number;
   language?: string;
   first_day_of_week?: number;

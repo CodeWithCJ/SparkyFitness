@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -90,6 +91,7 @@ function useSparkyChatRuntime({
   serviceConfigId: string;
   initialMessages: InitialMessages;
 }) {
+  const { t } = useTranslation();
   const transport = useMemo(
     () =>
       new AssistantChatTransport({
@@ -121,8 +123,8 @@ function useSparkyChatRuntime({
       addLog('Chat stream error', 'ERROR', [error?.message ?? String(error)]);
       Toast.show({
         type: 'error',
-        text1: 'Chat error',
-        text2: error?.message || 'Something went wrong. Tap retry to try again.',
+        text1: t('chat.error', { defaultValue: 'Chat error' }),
+        text2: error?.message || t('chat.errorRetry', { defaultValue: 'Something went wrong. Tap retry to try again.' }),
       });
     },
   });
@@ -130,6 +132,7 @@ function useSparkyChatRuntime({
 
 /** A single chat bubble. Rendered inside the message context. */
 function MessageBubble({ role }: { role: MessageRole }) {
+  const { t } = useTranslation();
   const isUser = role === 'user';
   const [dangerBg, dangerIcon, dangerText, muted] = useCSSVariable([
     '--color-bg-danger-subtle',
@@ -211,7 +214,7 @@ function MessageBubble({ role }: { role: MessageRole }) {
               <ActionBarPrimitive.Reload>
                 <View className="flex-row items-center gap-1">
                   <Icon name="sync" size={15} color={muted} />
-                  <Text className="text-text-secondary text-xs">Retry</Text>
+                  <Text className="text-text-secondary text-xs">{t('chat.retry', { defaultValue: 'Retry' })}</Text>
                 </View>
               </ActionBarPrimitive.Reload>
             </MessagePrimitive.If>
@@ -219,7 +222,7 @@ function MessageBubble({ role }: { role: MessageRole }) {
               {({ isCopied }) => (
                 <View className="flex-row items-center gap-1">
                   <Icon name={isCopied ? 'checkmark' : 'copy'} size={15} color={muted} />
-                  <Text className="text-text-secondary text-xs">{isCopied ? 'Copied' : 'Copy'}</Text>
+                  <Text className="text-text-secondary text-xs">{isCopied ? t('chat.copied', { defaultValue: 'Copied' }) : t('chat.copy', { defaultValue: 'Copy' })}</Text>
                 </View>
               )}
             </ActionBarPrimitive.Copy>
@@ -235,7 +238,7 @@ function MessageBubble({ role }: { role: MessageRole }) {
             {({ isCopied }) => (
               <View className="flex-row items-center gap-1">
                 <Icon name={isCopied ? 'checkmark' : 'copy'} size={15} color={muted} />
-                <Text className="text-text-secondary text-xs">{isCopied ? 'Copied' : 'Copy'}</Text>
+                <Text className="text-text-secondary text-xs">{isCopied ? t('chat.copied', { defaultValue: 'Copied' }) : t('chat.copy', { defaultValue: 'Copy' })}</Text>
               </View>
             )}
           </ActionBarPrimitive.Copy>
@@ -310,6 +313,7 @@ function LocalComposerInput({ autoFocusReady, ...props }: LocalComposerInputProp
 
 /** The bottom input row. Send/Cancel stay on assistant-ui actions. */
 function Composer({ autoFocusReady }: { autoFocusReady: boolean }) {
+  const { t } = useTranslation();
   const [muted, raised, textPrimary] = useCSSVariable([
     '--color-text-muted',
     '--color-raised',
@@ -322,7 +326,7 @@ function Composer({ autoFocusReady }: { autoFocusReady: boolean }) {
     >
       <LocalComposerInput
         autoFocusReady={autoFocusReady}
-        placeholder="Message Sparky…"
+        placeholder={t('chat.placeholder', { defaultValue: 'Message Sparky…' })}
         placeholderTextColor={muted}
         multiline
         style={{
@@ -370,6 +374,25 @@ function RunningReporter({ onRunningChange }: { onRunningChange: (running: boole
 }
 
 /** The live thread. Only mounted once baseUrl + serviceConfigId are known. */
+function getLocalizedSuggestionLabel(
+  t: (key: string, options?: Record<string, unknown>) => string,
+  labelKey: string,
+  defaultLabel: string,
+): string {
+  switch (labelKey) {
+    case 'chat.suggestions.breakfast':
+      return t('chat.suggestions.breakfast', { defaultValue: 'Log two eggs and a banana for breakfast' });
+    case 'chat.suggestions.run':
+      return t('chat.suggestions.run', { defaultValue: 'Log a 30 minute run today' });
+    case 'chat.suggestions.calories':
+      return t('chat.suggestions.calories', { defaultValue: 'How many calories do I have left today?' });
+    case 'chat.suggestions.snack':
+      return t('chat.suggestions.snack', { defaultValue: 'Suggest a high-protein snack' });
+    default:
+      return defaultLabel;
+  }
+}
+
 function ChatThread({
   baseUrl,
   serviceConfigId,
@@ -383,6 +406,7 @@ function ChatThread({
   onRunningChange: (running: boolean) => void;
   autoFocusReady: boolean;
 }) {
+  const { t } = useTranslation();
   const runtime = useSparkyChatRuntime({ baseUrl, serviceConfigId, initialMessages });
 
   // Keep the message list pinned to the bottom as content grows: lands on the
@@ -429,15 +453,15 @@ function ChatThread({
           <ThreadPrimitive.Empty>
             <View className="flex-1 items-center justify-center p-8">
               <Text className="text-text-muted text-center text-base mb-6">
-                Ask Sparky anything about your nutrition, exercise, or goals.
+                {t('chat.emptyPrompt', { defaultValue: 'Ask Sparky anything about your nutrition, exercise, or goals.' })}
               </Text>
               {/* ThreadPrimitive.Suggestion IS the Pressable, so its child must be a
                   non-touchable styled View (nested pressables swallow touches). */}
               <View className="w-full gap-2">
-                {CHAT_SUGGESTIONS.map((prompt) => (
-                  <ThreadPrimitive.Suggestion key={prompt} prompt={prompt} send clearComposer>
+                {CHAT_SUGGESTIONS.map((suggestion) => (
+                  <ThreadPrimitive.Suggestion key={suggestion.prompt} prompt={suggestion.prompt} send clearComposer>
                     <View className="bg-surface border border-border-subtle rounded-2xl px-4 py-3">
-                      <Text className="text-text-primary text-sm text-center">{prompt}</Text>
+                      <Text className="text-text-primary text-sm text-center">{getLocalizedSuggestionLabel(t, suggestion.labelKey, suggestion.defaultLabel)}</Text>
                     </View>
                   </ThreadPrimitive.Suggestion>
                 ))}
@@ -471,6 +495,7 @@ function Centered({ text }: { text: string }) {
 }
 
 export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const accent = useCSSVariable('--color-accent-primary') as string;
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -536,12 +561,12 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
 
   const handleClear = useCallback(() => {
     Alert.alert(
-      'Clear chat',
-      'This permanently deletes your Sparky chat history. This cannot be undone.',
+      t('chat.clearTitle', { defaultValue: 'Clear chat' }),
+      t('chat.clearMessage', { defaultValue: 'This permanently deletes your Sparky chat history. This cannot be undone.' }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
         {
-          text: 'Clear',
+          text: t('common.clear', { defaultValue: 'Clear' }),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -555,20 +580,20 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
               ]);
               Toast.show({
                 type: 'error',
-                text1: 'Could not clear chat',
-                text2: 'Please try again.',
+                text1: t('chat.clearFailed', { defaultValue: 'Could not clear chat' }),
+                text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
               });
             }
           },
         },
       ]
     );
-  }, [queryClient]);
+  }, [queryClient, t]);
 
   // Clear chat is disabled while a stream runs so the server's in-flight
   // onFinish save can't resurrect the exchange after the DELETE.
   const header = useScreenHeader({
-    title: 'Sparky',
+    title: t('chat.title', { defaultValue: 'Sparky' }),
     left: { kind: 'back' },
     right: baseUrl
       ? {
@@ -578,7 +603,7 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
           role: 'secondary',
           disabled: running,
           onPress: handleClear,
-          accessibilityLabel: 'Clear chat',
+          accessibilityLabel: t('chat.clearAccessibility', { defaultValue: 'Clear chat' }),
           identifier: 'chat-clear',
         }
       : null,
@@ -610,9 +635,9 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
             <ActivityIndicator color={accent} />
           </View>
         ) : !baseUrl ? (
-          <Centered text="No active server config. Set one up in Settings first." />
+          <Centered text={t('chat.noServer', { defaultValue: 'No active server config. Set one up in Settings first.' })} />
         ) : !serviceConfigId ? (
-          <Centered text="No active AI provider. Configure one in the web app first." />
+          <Centered text={t('chat.noProvider', { defaultValue: 'No active AI provider. Configure one in the web app first.' })} />
         ) : (
           <ChatThread
             key={threadKey}

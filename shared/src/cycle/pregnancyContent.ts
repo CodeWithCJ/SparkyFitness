@@ -63,6 +63,7 @@ export interface ChecklistTemplateItem {
   key: string;
   weekStart: number;
   weekEnd: number;
+  /** English fallback only; clients must localize by key before rendering. */
   title: string;
 }
 
@@ -90,6 +91,7 @@ export function checklistForWeek(week: number): ChecklistTemplateItem[] {
 export type SafetyStatus = 'safe' | 'caution' | 'avoid';
 
 export interface SafetyItem {
+  key: string;
   name: string;
   aliases: string[];
   status: SafetyStatus;
@@ -98,39 +100,39 @@ export interface SafetyItem {
 }
 
 export const FOOD_SAFETY: readonly SafetyItem[] = [
-  { name: 'Cooked salmon', aliases: ['salmon'], status: 'safe', note: 'Well-cooked, low-mercury fish is a great source of omega-3s. Aim for 2–3 servings/week.', category: 'fish' },
-  { name: 'Tuna (canned light)', aliases: ['tuna'], status: 'caution', note: 'Limit to ~2 servings/week; choose light over albacore for lower mercury.', category: 'fish' },
-  { name: 'Swordfish', aliases: ['shark', 'king mackerel', 'marlin'], status: 'avoid', note: 'High-mercury fish should be avoided during pregnancy.', category: 'fish' },
-  { name: 'Sushi (raw)', aliases: ['sashimi', 'raw fish'], status: 'avoid', note: 'Raw fish carries a risk of parasites and bacteria. Cooked rolls are fine.', category: 'fish' },
-  { name: 'Shrimp (cooked)', aliases: ['prawns'], status: 'safe', note: 'Fully cooked shellfish is low-mercury and safe.', category: 'fish' },
-  { name: 'Soft cheese (unpasteurized)', aliases: ['brie', 'feta', 'camembert', 'blue cheese'], status: 'avoid', note: 'Unpasteurized soft cheeses risk listeria. Pasteurized versions are fine.', category: 'dairy' },
-  { name: 'Hard cheese', aliases: ['cheddar', 'parmesan'], status: 'safe', note: 'Hard and pasteurized cheeses are safe.', category: 'dairy' },
-  { name: 'Pasteurized milk', aliases: ['milk'], status: 'safe', note: 'Pasteurized dairy is safe and a good calcium source.', category: 'dairy' },
-  { name: 'Deli meat (cold)', aliases: ['lunch meat', 'cold cuts', 'ham'], status: 'caution', note: 'Heat until steaming to reduce listeria risk.', category: 'meat' },
-  { name: 'Undercooked meat', aliases: ['rare steak', 'raw meat'], status: 'avoid', note: 'Cook meat thoroughly to avoid toxoplasmosis and bacteria.', category: 'meat' },
-  { name: 'Cooked chicken', aliases: ['chicken', 'poultry'], status: 'safe', note: 'Fully cooked poultry is a safe protein source.', category: 'meat' },
-  { name: 'Runny/raw eggs', aliases: ['raw egg', 'soft egg'], status: 'caution', note: 'Cook until firm, or use pasteurized eggs, to avoid salmonella.', category: 'eggs' },
-  { name: 'Coffee', aliases: ['caffeine', 'espresso'], status: 'caution', note: 'Limit caffeine to about 200 mg/day (roughly one 12 oz coffee).', category: 'drinks' },
-  { name: 'Alcohol', aliases: ['wine', 'beer', 'liquor'], status: 'avoid', note: 'No amount of alcohol is considered safe during pregnancy.', category: 'drinks' },
-  { name: 'Herbal tea', aliases: ['tea'], status: 'caution', note: 'Some herbs are not recommended; check specific teas with your provider.', category: 'drinks' },
-  { name: 'Cooked leafy greens', aliases: ['spinach', 'kale', 'vegetables'], status: 'safe', note: 'Wash well; a great source of folate and iron.', category: 'produce' },
-  { name: 'Unwashed produce', aliases: ['raw sprouts', 'sprouts'], status: 'caution', note: 'Wash thoroughly; avoid raw sprouts, which can harbor bacteria.', category: 'produce' },
-  { name: 'Liver / pâté', aliases: ['liver', 'pate'], status: 'avoid', note: 'Very high in vitamin A, which can be harmful in large amounts.', category: 'meat' },
-  { name: 'Peanuts', aliases: ['nuts'], status: 'safe', note: 'Safe unless you have a personal allergy; a good protein source.', category: 'other' },
-  { name: 'Honey', aliases: [], status: 'safe', note: 'Safe for you in pregnancy (avoid giving to infants under 1 year).', category: 'other' },
+  { key: 'cooked_salmon', name: 'Cooked salmon', aliases: ['salmon'], status: 'safe', note: 'Well-cooked, low-mercury fish is a great source of omega-3s. Aim for 2–3 servings/week.', category: 'fish' },
+  { key: 'tuna_canned_light', name: 'Tuna (canned light)', aliases: ['tuna'], status: 'caution', note: 'Limit to ~2 servings/week; choose light over albacore for lower mercury.', category: 'fish' },
+  { key: 'swordfish', name: 'Swordfish', aliases: ['shark', 'king mackerel', 'marlin'], status: 'avoid', note: 'High-mercury fish should be avoided during pregnancy.', category: 'fish' },
+  { key: 'sushi_raw', name: 'Sushi (raw)', aliases: ['sashimi', 'raw fish'], status: 'avoid', note: 'Raw fish carries a risk of parasites and bacteria. Cooked rolls are fine.', category: 'fish' },
+  { key: 'shrimp_cooked', name: 'Shrimp (cooked)', aliases: ['prawns'], status: 'safe', note: 'Fully cooked shellfish is low-mercury and safe.', category: 'fish' },
+  { key: 'soft_cheese_unpasteurized', name: 'Soft cheese (unpasteurized)', aliases: ['brie', 'feta', 'camembert', 'blue cheese'], status: 'avoid', note: 'Unpasteurized soft cheeses risk listeria. Pasteurized versions are fine.', category: 'dairy' },
+  { key: 'hard_cheese', name: 'Hard cheese', aliases: ['cheddar', 'parmesan'], status: 'safe', note: 'Hard and pasteurized cheeses are safe.', category: 'dairy' },
+  { key: 'pasteurized_milk', name: 'Pasteurized milk', aliases: ['milk'], status: 'safe', note: 'Pasteurized dairy is safe and a good calcium source.', category: 'dairy' },
+  { key: 'deli_meat_cold', name: 'Deli meat (cold)', aliases: ['lunch meat', 'cold cuts', 'ham'], status: 'caution', note: 'Heat until steaming to reduce listeria risk.', category: 'meat' },
+  { key: 'undercooked_meat', name: 'Undercooked meat', aliases: ['rare steak', 'raw meat'], status: 'avoid', note: 'Cook meat thoroughly to avoid toxoplasmosis and bacteria.', category: 'meat' },
+  { key: 'cooked_chicken', name: 'Cooked chicken', aliases: ['chicken', 'poultry'], status: 'safe', note: 'Fully cooked poultry is a safe protein source.', category: 'meat' },
+  { key: 'runny_raw_eggs', name: 'Runny/raw eggs', aliases: ['raw egg', 'soft egg'], status: 'caution', note: 'Cook until firm, or use pasteurized eggs, to avoid salmonella.', category: 'eggs' },
+  { key: 'coffee', name: 'Coffee', aliases: ['caffeine', 'espresso'], status: 'caution', note: 'Limit caffeine to about 200 mg/day (roughly one 12 oz coffee).', category: 'drinks' },
+  { key: 'alcohol', name: 'Alcohol', aliases: ['wine', 'beer', 'liquor'], status: 'avoid', note: 'No amount of alcohol is considered safe during pregnancy.', category: 'drinks' },
+  { key: 'herbal_tea', name: 'Herbal tea', aliases: ['tea'], status: 'caution', note: 'Some herbs are not recommended; check specific teas with your provider.', category: 'drinks' },
+  { key: 'cooked_leafy_greens', name: 'Cooked leafy greens', aliases: ['spinach', 'kale', 'vegetables'], status: 'safe', note: 'Wash well; a great source of folate and iron.', category: 'produce' },
+  { key: 'unwashed_produce', name: 'Unwashed produce', aliases: ['raw sprouts', 'sprouts'], status: 'caution', note: 'Wash thoroughly; avoid raw sprouts, which can harbor bacteria.', category: 'produce' },
+  { key: 'liver_pate', name: 'Liver / pâté', aliases: ['liver', 'pate'], status: 'avoid', note: 'Very high in vitamin A, which can be harmful in large amounts.', category: 'meat' },
+  { key: 'peanuts', name: 'Peanuts', aliases: ['nuts'], status: 'safe', note: 'Safe unless you have a personal allergy; a good protein source.', category: 'other' },
+  { key: 'honey', name: 'Honey', aliases: [], status: 'safe', note: 'Safe for you in pregnancy (avoid giving to infants under 1 year).', category: 'other' },
 ] as const;
 
 export const MED_SAFETY: readonly SafetyItem[] = [
-  { name: 'Acetaminophen (Tylenol)', aliases: ['paracetamol', 'tylenol', 'acetaminophen'], status: 'safe', note: 'Generally considered first-line for pain/fever at recommended doses. Confirm with your provider.', category: 'pain' },
-  { name: 'Ibuprofen (Advil)', aliases: ['ibuprofen', 'advil', 'nsaid', 'motrin'], status: 'caution', note: 'Avoid especially in the third trimester; use only if your provider advises.', category: 'pain' },
-  { name: 'Aspirin', aliases: ['aspirin'], status: 'caution', note: 'Only low-dose if prescribed; regular-dose aspirin is generally avoided.', category: 'pain' },
-  { name: 'Prenatal vitamin', aliases: ['prenatal', 'folic acid'], status: 'safe', note: 'Recommended throughout pregnancy for folic acid, iron and DHA.', category: 'supplement' },
-  { name: 'Antacids (Tums)', aliases: ['tums', 'calcium carbonate', 'antacid'], status: 'safe', note: 'Calcium-based antacids are commonly used for heartburn.', category: 'digestion' },
-  { name: 'Diphenhydramine (Benadryl)', aliases: ['benadryl', 'diphenhydramine'], status: 'caution', note: 'Often considered okay short-term, but check with your provider.', category: 'allergy' },
-  { name: 'Ibuprofen gel', aliases: ['topical nsaid'], status: 'caution', note: 'Discuss topical NSAIDs with your provider before use.', category: 'pain' },
-  { name: 'Isotretinoin (Accutane)', aliases: ['accutane', 'isotretinoin', 'retinoid'], status: 'avoid', note: 'Retinoids cause serious birth defects and must be avoided.', category: 'skin' },
-  { name: 'Decongestant (pseudoephedrine)', aliases: ['sudafed', 'pseudoephedrine'], status: 'caution', note: 'Generally avoided in the first trimester; ask your provider.', category: 'cold' },
-  { name: 'Vitamin A (high dose)', aliases: ['retinol', 'vitamin a'], status: 'avoid', note: 'High-dose vitamin A can harm the baby; stick to prenatal amounts.', category: 'supplement' },
+  { key: 'acetaminophen', name: 'Acetaminophen (Tylenol)', aliases: ['paracetamol', 'tylenol', 'acetaminophen'], status: 'safe', note: 'Generally considered first-line for pain/fever at recommended doses. Confirm with your provider.', category: 'pain' },
+  { key: 'ibuprofen', name: 'Ibuprofen (Advil)', aliases: ['ibuprofen', 'advil', 'nsaid', 'motrin'], status: 'caution', note: 'Avoid especially in the third trimester; use only if your provider advises.', category: 'pain' },
+  { key: 'aspirin', name: 'Aspirin', aliases: ['aspirin'], status: 'caution', note: 'Only low-dose if prescribed; regular-dose aspirin is generally avoided.', category: 'pain' },
+  { key: 'prenatal_vitamin', name: 'Prenatal vitamin', aliases: ['prenatal', 'folic acid'], status: 'safe', note: 'Recommended throughout pregnancy for folic acid, iron and DHA.', category: 'supplement' },
+  { key: 'antacids_tums', name: 'Antacids (Tums)', aliases: ['tums', 'calcium carbonate', 'antacid'], status: 'safe', note: 'Calcium-based antacids are commonly used for heartburn.', category: 'digestion' },
+  { key: 'diphenhydramine', name: 'Diphenhydramine (Benadryl)', aliases: ['benadryl', 'diphenhydramine'], status: 'caution', note: 'Often considered okay short-term, but check with your provider.', category: 'allergy' },
+  { key: 'ibuprofen_gel', name: 'Ibuprofen gel', aliases: ['topical nsaid'], status: 'caution', note: 'Discuss topical NSAIDs with your provider before use.', category: 'pain' },
+  { key: 'isotretinoin', name: 'Isotretinoin (Accutane)', aliases: ['accutane', 'isotretinoin', 'retinoid'], status: 'avoid', note: 'Retinoids cause serious birth defects and must be avoided.', category: 'skin' },
+  { key: 'pseudoephedrine', name: 'Decongestant (pseudoephedrine)', aliases: ['sudafed', 'pseudoephedrine'], status: 'caution', note: 'Generally avoided in the first trimester; ask your provider.', category: 'cold' },
+  { key: 'vitamin_a_high_dose', name: 'Vitamin A (high dose)', aliases: ['retinol', 'vitamin a'], status: 'avoid', note: 'High-dose vitamin A can harm the baby; stick to prenatal amounts.', category: 'supplement' },
 ] as const;
 
 export function lookupSafety(

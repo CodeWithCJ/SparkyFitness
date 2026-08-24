@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import Toast from 'react-native-toast-message';
 import { addLog } from './LogService';
+import i18n from '../localization/i18n';
 import { fireSuccessHaptic } from './haptics';
 import { isRestTimerSoundEnabled, playRestCompleteSound } from './sounds';
 import { ExactAlarmBridge } from './ExactAlarmBridge';
@@ -12,6 +13,11 @@ const CHANNEL_ID = 'workout-timer';
 const FASTING_CHANNEL_ID = 'fasting';
 export const MEDICATION_REMINDER_CHANNEL_ID = 'medication-reminders';
 const EXACT_ALARM_PROMPT_KEY = '@SparkyFitness/exactAlarmPromptShown';
+
+function notificationCopy(key: string, defaultValue: string): string {
+  // i18n-audit-ignore-next-line dynamic-i18n-key -- all call sites use literal notification catalog keys.
+  return i18n.t(key, { defaultValue });
+}
 
 const REST_COMPLETE_CATEGORY = 'rest-complete';
 /**
@@ -35,10 +41,50 @@ let hasShownDeniedToast = false;
  * scheduling can run from a background task, where `initNotifications`
  * (invoked from App startup) may not have run in the current JS context.
  */
+export async function registerLocalizedNotificationPresentation(): Promise<void> {
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
+      name: notificationCopy('notifications.channels.workoutTimer', 'Workout timer'),
+      importance: Notifications.AndroidImportance.HIGH,
+      enableVibrate: true,
+    });
+    await Notifications.setNotificationChannelAsync(FASTING_CHANNEL_ID, {
+      name: notificationCopy('notifications.channels.fasting', 'Fasting'),
+      importance: Notifications.AndroidImportance.HIGH,
+      enableVibrate: true,
+    });
+    await Notifications.setNotificationChannelAsync(MEDICATION_REMINDER_CHANNEL_ID, {
+      name: notificationCopy('notifications.channels.medicationReminders', 'Medication reminders'),
+      importance: Notifications.AndroidImportance.HIGH,
+      enableVibrate: true,
+    });
+  }
+
+  await Notifications.setNotificationCategoryAsync(REST_COMPLETE_CATEGORY, [
+    {
+      identifier: COMPLETE_SET_ACTION,
+      buttonTitle: notificationCopy('notifications.actions.completeSet', 'Complete Set'),
+      options: { opensAppToForeground: false },
+    },
+  ]);
+  await Notifications.setNotificationCategoryAsync(MEDICATION_REMINDER_CATEGORY, [
+    {
+      identifier: MEDICATION_TAKEN_ACTION,
+      buttonTitle: notificationCopy('notifications.actions.logAsTaken', 'Log as taken'),
+      options: { opensAppToForeground: false },
+    },
+    {
+      identifier: MEDICATION_SKIP_ACTION,
+      buttonTitle: notificationCopy('notifications.actions.skip', 'Skip'),
+      options: { opensAppToForeground: false },
+    },
+  ]);
+}
+
 export async function ensureMedicationReminderChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(MEDICATION_REMINDER_CHANNEL_ID, {
-    name: 'Medication reminders',
+    name: notificationCopy('notifications.channels.medicationReminders', 'Medication reminders'),
     importance: Notifications.AndroidImportance.HIGH,
     enableVibrate: true,
   });
@@ -104,43 +150,7 @@ export async function initNotifications(): Promise<void> {
       },
     });
 
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
-        name: 'Workout timer',
-        importance: Notifications.AndroidImportance.HIGH,
-        enableVibrate: true,
-      });
-      await Notifications.setNotificationChannelAsync(FASTING_CHANNEL_ID, {
-        name: 'Fasting',
-        importance: Notifications.AndroidImportance.HIGH,
-        enableVibrate: true,
-      });
-      await ensureMedicationReminderChannel();
-    }
-
-    // "Complete Set" button on the rest-complete ping. The press is handled
-    // in the background — no app open; iOS reveals it on long-press/pull-down,
-    // Android shows it directly on the notification.
-    await Notifications.setNotificationCategoryAsync(REST_COMPLETE_CATEGORY, [
-      {
-        identifier: COMPLETE_SET_ACTION,
-        buttonTitle: 'Complete Set',
-        options: { opensAppToForeground: false },
-      },
-    ]);
-
-    await Notifications.setNotificationCategoryAsync(MEDICATION_REMINDER_CATEGORY, [
-      {
-        identifier: MEDICATION_TAKEN_ACTION,
-        buttonTitle: 'Log as taken',
-        options: { opensAppToForeground: false },
-      },
-      {
-        identifier: MEDICATION_SKIP_ACTION,
-        buttonTitle: 'Skip',
-        options: { opensAppToForeground: false },
-      },
-    ]);
+    await registerLocalizedNotificationPresentation();
   } catch (err) {
     addLog(`initNotifications failed: ${(err as Error).message}`, 'ERROR');
   }
@@ -159,8 +169,8 @@ export async function ensureNotificationPermission(): Promise<boolean> {
       hasShownDeniedToast = true;
       Toast.show({
         type: 'info',
-        text1: 'Notifications off',
-        text2: 'Timer will still alert in the app.',
+        text1: notificationCopy('notifications.permission.notificationsOff', 'Notifications off'),
+        text2: notificationCopy('notifications.permission.timerInApp', 'Timer will still alert in the app.'),
       });
     }
     return false;
@@ -227,12 +237,12 @@ export async function maybePromptForExactAlarmPermission(): Promise<void> {
     if ((await AsyncStorage.getItem(EXACT_ALARM_PROMPT_KEY)) === 'true') return;
     await AsyncStorage.setItem(EXACT_ALARM_PROMPT_KEY, 'true');
     Alert.alert(
-      'On-time alerts',
-      'Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable "Alarms & reminders" so rest timers and medication reminders ring on time.',
+      notificationCopy('notifications.exactAlarm.title', 'On-time alerts'),
+      notificationCopy('notifications.exactAlarm.message', 'Android delays scheduled alerts unless SparkyFitness is allowed to set exact alarms. Enable \"Alarms & reminders\" so rest timers and medication reminders ring on time.'),
       [
-        { text: 'Not Now', style: 'cancel' },
+        { text: notificationCopy('notifications.exactAlarm.notNow', 'Not Now'), style: 'cancel' },
         {
-          text: 'Open Settings',
+          text: notificationCopy('notifications.exactAlarm.openSettings', 'Open Settings'),
           onPress: () => {
             void ExactAlarmBridge.openExactAlarmSettings().catch(
               (err: unknown) => {
@@ -273,7 +283,7 @@ export async function scheduleRestNotification(
   try {
     const id = await Notifications.scheduleNotificationAsync({
       content: {
-        title: content?.title ?? 'Rest complete',
+        title: content?.title ?? notificationCopy('notifications.rest.title', 'Rest complete'),
         body: content?.body ?? exerciseName,
         sound: true,
         categoryIdentifier: REST_COMPLETE_CATEGORY,
@@ -350,8 +360,8 @@ export async function scheduleFastGoalNotification(
   try {
     const id = await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'Fasting goal reached',
-        body: "You've hit your fasting goal. Great work!",
+        title: notificationCopy('notifications.fasting.title', 'Fasting goal reached'),
+        body: notificationCopy('notifications.fasting.body', "You've hit your fasting goal. Great work!"),
         sound: true,
       },
       trigger: {

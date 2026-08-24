@@ -5,6 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import FoodScanScreen from '../../src/screens/FoodScanScreen';
 import { lookupBarcodeV2, scanNutritionLabel } from '../../src/services/api/externalFoodSearchApi';
 import { ApiError } from '../../src/services/api/errors';
+import { TimeoutError } from '../../src/utils/concurrency';
 import { fireSuccessHaptic } from '../../src/services/haptics';
 import { useActiveAiServiceSetting } from '../../src/hooks/useActiveAiServiceSetting';
 import { hasSeenFoodPhotoIntro, markFoodPhotoIntroSeen } from '../../src/services/foodPhotoIntro';
@@ -640,4 +641,25 @@ describe('FoodScanScreen', () => {
       });
     });
   });
+  it('localizes timeout lookup failures and keeps recovery actions visible', async () => {
+    mockLookupBarcodeV2.mockRejectedValue(new TimeoutError('Request', 30000));
+    const screen = renderScreen();
+    fireEvent(screen.getByTestId('camera-view'), 'onBarcodeScanned', { data: '012345678905' });
+    await waitFor(() => expect(screen.getByText('Lookup failed')).toBeTruthy());
+    expect(screen.getByText('Request timed out. Check your server connection.')).toBeTruthy();
+    expect(screen.queryByText('No match for barcode')).toBeNull();
+    expect(screen.getByText('Scan Nutrition Label')).toBeTruthy();
+  });
+
+  it('exposes selected state for scan mode tabs', () => {
+    const screen = renderScreen();
+    const barcodeTab = screen.getByText('Barcode').parent?.parent;
+    const labelTab = screen.getByText('Label').parent?.parent;
+    expect(barcodeTab?.props.accessibilityState?.selected).toBe(true);
+    expect(labelTab?.props.accessibilityState?.selected).toBe(false);
+    fireEvent.press(screen.getByText('Label'));
+    expect(screen.getByText('Barcode').parent?.parent?.props.accessibilityState?.selected).toBe(false);
+    expect(screen.getByText('Label').parent?.parent?.props.accessibilityState?.selected).toBe(true);
+  });
+
 });

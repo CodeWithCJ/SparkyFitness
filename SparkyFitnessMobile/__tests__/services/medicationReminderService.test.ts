@@ -216,6 +216,7 @@ describe('reconcileMedicationReminders', () => {
             key: BASE_KEY,
             baseKey: BASE_KEY,
             hideNames: 'false',
+            locale: 'en',
           },
         },
         trigger: {
@@ -365,6 +366,18 @@ describe('reconcileMedicationReminders', () => {
         `${baseKey}_20`,
         `${baseKey}_30`,
       ]);
+    });
+
+    it('replaces pending reminders when the effective app language changes', async () => {
+      useAppPreferencesStore.setState({ medicationReminderRepeats: false });
+      mockGetAllScheduled.mockResolvedValue([
+        pendingRequest('english', { medicationId: 'med-1', key: BASE_KEY, hideNames: 'false', locale: 'pl' }),
+      ]);
+
+      await reconcileMedicationReminders([buildMedication()], []);
+
+      expect(mockCancel).toHaveBeenCalledWith('english');
+      expect(mockSchedule.mock.calls[0][0].content.data?.locale).toBe('en');
     });
 
     it('does not reschedule a dose whose base reminder is already pending', async () => {

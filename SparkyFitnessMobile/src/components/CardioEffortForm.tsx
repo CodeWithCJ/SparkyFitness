@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View, type TextInput } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import CompletionCheck, { LogCircle } from './CompletionCheck';
@@ -101,6 +102,7 @@ export default function CardioEffortForm({
   onActivateSet,
   onRegisterAccessoryHandle,
 }: CardioEffortFormProps) {
+  const { t } = useTranslation();
   const [accentPrimary, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
@@ -248,11 +250,11 @@ export default function CardioEffortForm({
     return (
       <View
         className="mt-2 px-1 pb-2 flex-row gap-3"
-        accessibilityLabel={`${exerciseName} effort`}
+        accessibilityLabel={t('cardioEffort.effort', { defaultValue: '{{name}} effort', name: exerciseName })}
       >
         <View className="flex-1 items-center">
           <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
-            Duration (min)
+            {t('cardioEffort.duration', { defaultValue: 'Duration (min)' })}
           </Text>
           <Text
             className="text-center text-sm text-text-primary"
@@ -263,7 +265,7 @@ export default function CardioEffortForm({
         </View>
         <View className="flex-1 items-center">
           <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
-            Distance ({distanceLabel})
+            {t('cardioEffort.distance', { defaultValue: 'Distance ({{unit}})', unit: distanceLabel })}
           </Text>
           <Text
             className="text-center text-sm text-text-primary"
@@ -280,7 +282,7 @@ export default function CardioEffortForm({
     <View className="mt-2 px-1 pb-2 flex-row items-end gap-3">
       <View className="flex-1 items-center">
         <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
-          Duration (min)
+          {t('cardioEffort.duration', { defaultValue: 'Duration (min)' })}
         </Text>
         <SetCellInput
           inputRef={durationInputRef}
@@ -295,7 +297,7 @@ export default function CardioEffortForm({
             commitMinutes(minutesDraft);
           }}
           keyboardType="decimal-pad"
-          accessibilityLabel={`Duration in minutes for ${exerciseName}`}
+          accessibilityLabel={t('cardioEffort.durationHint', { defaultValue: 'Duration in minutes for {{name}}', name: exerciseName })}
           className="w-16"
           placeholder={assumedMinutesText ?? '–'}
           flat
@@ -303,7 +305,7 @@ export default function CardioEffortForm({
       </View>
       <View className="flex-1 items-center">
         <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
-          Distance ({distanceLabel})
+          {t('cardioEffort.distance', { defaultValue: 'Distance ({{unit}})', unit: distanceLabel })}
         </Text>
         <SetCellInput
           inputRef={distanceInputRef}
@@ -318,7 +320,7 @@ export default function CardioEffortForm({
             commitDistance(distanceDraft);
           }}
           keyboardType="decimal-pad"
-          accessibilityLabel={`Distance in ${distanceLabel} for ${exerciseName}`}
+          accessibilityLabel={t('cardioEffort.distanceHint', { defaultValue: 'Distance in {{unit}} for {{name}}', unit: distanceLabel, name: exerciseName })}
           className="w-16"
           placeholder={assumedDistanceText ?? '–'}
           flat
@@ -331,7 +333,9 @@ export default function CardioEffortForm({
           accessibilityRole="button"
           accessibilityState={{ checked: completed }}
           accessibilityLabel={
-            completed ? `Mark ${exerciseName} incomplete` : `Complete ${exerciseName}`
+            completed
+              ? t('cardioEffort.markIncomplete', { defaultValue: 'Mark {{name}} incomplete', name: exerciseName })
+              : t('cardioEffort.complete', { defaultValue: 'Complete {{name}}', name: exerciseName })
           }
           className="pb-1"
         >

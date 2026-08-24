@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { listSymptomEntries, createSymptomEntry, deleteSymptomEntry, type SymptomEntry } from '../services/api/symptomsApi';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import { symptomEntriesQueryKey } from './queryKeys';
@@ -30,6 +31,7 @@ export function useSymptomEntries({ fromDate, toDate, enabled = true }: UseSympt
 }
 
 export function useSymptomMutations(fromDate: string, toDate: string) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const queryKey = symptomEntriesQueryKey(fromDate, toDate);
 
@@ -42,7 +44,7 @@ export function useSymptomMutations(fromDate: string, toDate: string) {
     },
     onError: (err) => {
       addLog(`Failed to save symptom entry: ${err}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Failed to save symptom' });
+      Toast.show({ type: 'error', text1: t('symptoms.saveFailed', { defaultValue: 'Failed to save symptom' }) });
     },
   });
 
@@ -54,7 +56,7 @@ export function useSymptomMutations(fromDate: string, toDate: string) {
     },
     onError: (err) => {
       addLog(`Failed to remove symptom entry: ${err}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Failed to remove symptom' });
+      Toast.show({ type: 'error', text1: t('symptoms.removeFailed', { defaultValue: 'Failed to remove symptom' }) });
     },
   });
 

@@ -447,6 +447,28 @@ export function Test() {
     expect(result.report.missingFallbackFindings.length).toBe(0);
   });
 
+  it('flags a static defaultValue that differs from the English catalog', () => {
+    const source = `
+import { useTranslation } from 'react-i18next';
+export function Test() {
+  const { t } = useTranslation();
+  return t('example.greeting', { defaultValue: 'Hi, {{name}}' });
+}
+`;
+    const tmpDir = createFixtureStructure(
+      {
+        en: '{"example": {"greeting": "Hello, {{name}}"}}',
+        pl: '{"example": {"greeting": "Cześć, {{name}}"}}',
+      },
+      { 'test.ts': source },
+    );
+
+    const result = auditRun(tmpDir);
+
+    expect(result.hasErrors).toBe(true);
+    expect(result.report.missingFallbackFindings.some((e) => e.key === 'example.greeting')).toBe(true);
+  });
+
   it('rejects a dynamic defaultValue variable', () => {
     const source = `
 import { useTranslation } from 'react-i18next';
@@ -698,6 +720,22 @@ export function Test() {
   });
 });
 
+describe('Custom component UI text detection', () => {
+  it('detects literal custom component props and button children', () => {
+    const source = `
+import React from 'react';
+import { View } from 'react-native';
+function Footer({ errorMessage }) { return <View>{errorMessage}</View>; }
+export function Test() {
+  return <Footer errorMessage="Failed to load more" />;
+}
+`;
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'test.tsx': source });
+    const values = hardcodedValues(scan(tmpDir).findings);
+    expect(values).toContain('Failed to load more');
+  });
+});
+
 describe('False positive exclusion', () => {
   it('18. does not flag route names, icon names, or testIDs', () => {
     const source = `
@@ -755,6 +793,39 @@ describe('Static key resolution', () => {
     );
     const result = auditRun(tmpDir);
     expect(result.report.missingStaticKeys.length).toBe(0);
+  });
+
+  it('flags a count lookup backed only by singular catalog keys', () => {
+    const src = `export function F(t, count){ return t('measurement', { count, defaultValue: '{{count}} measurement' }); }`;
+    const tmpDir = createFixtureStructure(
+      {
+        en: '{"measurement":"{{count}} measurement"}',
+        pl: '{"measurement":"{{count}} pomiar"}',
+      },
+      { 'x.ts': src },
+    );
+
+    const result = auditRun(tmpDir);
+
+    expect(result.hasErrors).toBe(true);
+    expect(result.report.pluralErrors.some((e) => e.key === 'measurement' && e.locale === 'en')).toBe(true);
+    expect(result.report.pluralErrors.some((e) => e.key === 'measurement' && e.locale === 'pl')).toBe(true);
+  });
+
+  it('flags a plural fallback that differs from the English _other form', () => {
+    const src = `export function F(t, count){ return t('measurement', { count, defaultValue: '{{count}} measure', defaultValue_one: '{{count}} measurement', defaultValue_other: '{{count}} measurements' }); }`;
+    const tmpDir = createFixtureStructure(
+      {
+        en: '{"measurement_one":"{{count}} measurement","measurement_other":"{{count}} measurements"}',
+        pl: '{"measurement_one":"{{count}} pomiar","measurement_few":"{{count}} pomiary","measurement_many":"{{count}} pomiarów","measurement_other":"{{count}} pomiarów"}',
+      },
+      { 'x.ts': src },
+    );
+
+    const result = auditRun(tmpDir);
+
+    expect(result.hasErrors).toBe(true);
+    expect(result.report.missingFallbackFindings.some((e) => e.key === 'measurement')).toBe(true);
   });
 
   it('static template literal `common.save` is static', () => {
@@ -929,5 +1000,134 @@ describe('groupPluralKeys', () => {
         expect.objectContaining({ base: 'item', isPlural: false, keys: ['item'] }),
       ]),
     );
+  });
+});
+
+describe('Hardened presentation literal extraction', () => {
+  it('collects conditional, logical, nested, and asserted presentation literals', () => {
+    const source = `
+import React from 'react';
+import { Text } from 'react-native';
+export function Test({ condition, bar, userLabel, userTitle, userValue }) {
+  return <>
+    <Text>{condition ? 'First branch' : 'Second branch'}</Text>
+    <Text>{condition && 'Visible message'}</Text>
+    <Text>{(condition ? 'Condition-only A' : 'Condition-only B') && 'Visible RHS'}</Text>
+    <Text>{condition ? (bar || 'Fallback A') : (userValue ? 'Fallback B' : 'Fallback C')}</Text>
+    <Text>{('Asserted text' as const)}</Text>
+    <Text>{('Typed text' as string)}</Text>
+    <Text>{('Satisfied text' satisfies string)}</Text>
+    <Text>{userLabel || 'Fallback label'}</Text>
+    <Text>{userTitle ?? 'Fallback title'}</Text>
+  </>;
+}
+`;
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'test.tsx': source });
+    const values = hardcodedValues(scan(tmpDir).findings);
+    expect(values).toEqual(expect.arrayContaining([
+      'First branch', 'Second branch', 'Visible message', 'Fallback A', 'Fallback B',
+      'Fallback C', 'Asserted text', 'Typed text', 'Satisfied text', 'Fallback label', 'Fallback title', 'Visible RHS',
+    ]));
+    expect(values).not.toContain('condition');
+    expect(values).not.toContain('Condition-only A');
+    expect(values).not.toContain('Condition-only B');
+  });
+
+  it('reaches a real TypeAssertionExpression in a .ts presentation context', () => {
+    const source = `
+import { Alert } from 'react-native';
+Alert.alert(<string>'Type asserted text');
+`;
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'type-assertion.ts': source });
+    expect(hardcodedValues(scan(tmpDir).findings)).toContain('Type asserted text');
+  });
+
+  it('detects Unicode UI letters but not arbitrary Unicode strings', () => {
+    const source = `
+import { Text } from 'react-native';
+const canonical = '内部';
+export function Test() {
+  return <>
+    <Text>{'Żółć'}</Text>
+    <Text>{'保存'}</Text>
+  </>;
+}
+`;
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'unicode.tsx': source });
+    const values = hardcodedValues(scan(tmpDir).findings);
+    expect(values).toContain('Żółć');
+    expect(values).toContain('保存');
+    expect(values).not.toContain('内部');
+  });
+
+  it('preserves punctuation-only dynamic template filtering', () => {
+    const source = [
+      "import { Text } from 'react-native';",
+      'export function Test({ value }) {',
+      '  return <Text>{`${value} ·`}</Text>;',
+      '}',
+    ].join('\\n');
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'dynamic.tsx': source });
+    expect(hardcodedValues(scan(tmpDir).findings)).not.toContain(' ·');
+  });
+
+  it('collects conditional Alert and Toast presentation values without scanning conditions', () => {
+    const source = `
+import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
+Alert.alert(condition ? 'Title A' : 'Title B', userMessage ?? 'Message fallback', [
+  { text: condition && 'Button text', onPress() {} },
+]);
+Toast.show({ text1: ready ? 'Toast A' : 'Toast B', text2: value || 'Toast fallback' });
+`;
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'test.ts': source });
+    const values = hardcodedValues(scan(tmpDir).findings);
+    expect(values).toEqual(expect.arrayContaining([
+      'Title A', 'Title B', 'Message fallback', 'Button text', 'Toast A', 'Toast B', 'Toast fallback',
+    ]));
+    expect(values).not.toContain('condition');
+    expect(values).not.toContain('ready');
+  });
+
+  it('does not inspect arbitrary expressions or condition comparisons', () => {
+    const source = `
+const payload = { label: 'Not UI' };
+const value = mode === 'DELETE' ? 'Not UI either' : 'Still not UI';
+const canonical = 'GET';
+export function Test({ condition }) {
+  return condition ? <View /> : <Text t={value} />;
+}
+`;
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, { 'test.tsx': source });
+    const values = hardcodedValues(scan(tmpDir).findings);
+    expect(values).not.toEqual(expect.arrayContaining(['Not UI', 'Not UI either', 'Still not UI', 'DELETE', 'GET']));
+  });
+
+  it('keeps t() results out of hardcoded findings and preserves one-finding suppression', () => {
+    const suppressedSource = `
+import { Text } from 'react-native';
+import { t } from 'i18next';
+export function Translated() {
+  return <Text>{t('first', { defaultValue: 'Translated value' })}</Text>;
+}
+`;
+    const translatedDir = createFixtureStructure({ en: '{"first":"First"}', pl: '{"first":"Pierwszy"}' }, {
+      'translated.tsx': suppressedSource,
+    });
+    expect(hardcodedValues(scan(translatedDir).findings)).not.toContain('Translated value');
+
+    const suppressedSourceWithDirective = `
+import { Text } from 'react-native';
+export function Test({ condition }) {
+  // i18n-audit-ignore-next-line hardcoded-ui-text -- one candidate only
+  return <Text>{condition ? 'First suppressed' : 'Second unsuppressed'}</Text>;
+}
+`;
+    const tmpDir = createFixtureStructure({ en: '{"first":"First"}', pl: '{"first":"Pierwszy"}' }, {
+      'test.tsx': suppressedSourceWithDirective,
+    });
+    const findings = scan(tmpDir).findings.filter((f) => f.kind === 'hardcoded-ui-text');
+    expect(findings.filter((f) => f.value === 'Second unsuppressed')).toHaveLength(1);
+    expect(findings.filter((f) => f.value === 'First suppressed')).toHaveLength(0);
   });
 });

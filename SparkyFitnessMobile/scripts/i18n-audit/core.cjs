@@ -16,6 +16,19 @@ function localeHasKey(keySet, key) {
   return false;
 }
 
+function localeHasRequiredPluralForms(keySet, key, locale) {
+  const requiredForms = locale === 'en'
+    ? ['_one', '_other']
+    : ['_one', '_few', '_many', '_other'];
+  return requiredForms.every((form) => keySet.has(`${key}${form}`));
+}
+
+function expectedFallbackKey(key, fallbackName, hasCount) {
+  if (!hasCount) return key;
+  if (fallbackName === 'defaultValue') return `${key}_other`;
+  return `${key}_${fallbackName.slice('defaultValue_'.length)}`;
+}
+
 /**
  * Runs the i18n audit.
  *
@@ -102,6 +115,34 @@ function runAudit(options = {}) {
 
   for (const finding of scanResult.findings) {
     if (finding.kind === 'static-t-key') {
+      const { fallbacks = {}, hasCount = false } = finding.context;
+      if (hasCount) {
+        for (const locale of ['en', 'pl']) {
+          const keySet = locale === 'en' ? enKeySet : plKeySet;
+          if (!localeHasRequiredPluralForms(keySet, finding.value, locale)) {
+            report.pluralErrors.push({
+              rule: 'count-requires-plural-group',
+              locale,
+              key: finding.value,
+              file: finding.file,
+              line: finding.line,
+              message: `Count lookup t("${finding.value}") requires ${locale === 'en' ? '_one and _other' : '_one, _few, _many, and _other'} forms in the ${locale === 'en' ? 'English' : 'Polish'} locale`,
+            });
+          }
+        }
+      }
+      for (const [fallbackName, fallbackValue] of Object.entries(fallbacks)) {
+        const expectedKey = expectedFallbackKey(finding.value, fallbackName, hasCount);
+        if (localeResult.enValues[expectedKey] !== fallbackValue) {
+          report.missingFallbackFindings.push({
+            rule: 'default-value-mismatch',
+            file: finding.file,
+            line: finding.line,
+            key: finding.value,
+            message: `Fallback ${fallbackName} for t("${finding.value}") must exactly match English locale key "${expectedKey}"`,
+          });
+        }
+      }
       if (!seenStaticKeys.has(finding.value)) {
         seenStaticKeys.add(finding.value);
         if (!localeHasKey(enKeySet, finding.value)) {

@@ -1,4 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useQueryClient } from '@tanstack/react-query';
@@ -16,7 +18,10 @@ import {
 } from '../services/notifications';
 import { getActiveServerConfig } from '../services/storage';
 import { getTodayDate } from '../utils/dateUtils';
-import { extractPlannedSetValues, stripPlannedSetValues } from '../utils/workoutSession';
+import {
+  extractPlannedSetValues,
+  stripPlannedSetValues,
+} from '../utils/workoutSession';
 import type { RootStackParamList } from '../types/navigation';
 
 type StartLiveWorkoutNavigation = Pick<
@@ -51,16 +56,23 @@ export function promptForActiveWorkoutConflict(
     /** "Clear & Start": runs after the flush and store clear. */
     onClearAndStart: () => void | Promise<void>;
   },
+  t: TFunction,
 ): boolean {
   if (useActiveWorkoutStore.getState().sessionId === null) return false;
   Alert.alert(
-    'Workout in progress',
-    'You already have a workout in progress. Starting another clears it here. Any sets already saved stay in your diary.',
+    t('liveWorkout.inProgressTitle', { defaultValue: 'Workout in progress' }),
+    t('liveWorkout.inProgressMessage', {
+      defaultValue:
+        'You already have a workout in progress. Starting another clears it here. Any sets already saved stay in your diary.',
+    }),
     [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Go to Workout', onPress: options.onGoToWorkout },
+      { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
       {
-        text: 'Clear & Start',
+        text: t('liveWorkout.goToWorkout', { defaultValue: 'Go to Workout' }),
+        onPress: options.onGoToWorkout,
+      },
+      {
+        text: t('liveWorkout.clearAndStart', { defaultValue: 'Clear & Start' }),
         style: 'destructive',
         onPress: () => {
           void (async () => {
@@ -90,6 +102,7 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
   startLiveWorkout: (args: StartLiveWorkoutArgs) => Promise<void>;
   isStarting: boolean;
 } {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { createSession, invalidateCache } = useCreateWorkout();
   const inFlightRef = useRef(false);
@@ -103,8 +116,12 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
       if (exercises.length === 0) {
         Toast.show({
           type: 'error',
-          text1: 'Nothing to start',
-          text2: 'This preset has no exercises.',
+          text1: t('liveWorkout.nothingToStart', {
+            defaultValue: 'Nothing to start',
+          }),
+          text2: t('liveWorkout.noExercises', {
+            defaultValue: 'This preset has no exercises.',
+          }),
         });
         return;
       }
@@ -118,7 +135,9 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
         // already-created session. Preset ids collide across servers, so the
         // link is only meaningful scoped to the active config.
         const sourceServerConfigId =
-          sourcePresetId != null ? (await getActiveServerConfig())?.id : undefined;
+          sourcePresetId != null
+            ? (await getActiveServerConfig())?.id
+            : undefined;
         // Hevy-style start: sets are created with empty weight/reps — the
         // plan renders as gray placeholders and is only recorded when a set
         // is completed or typed over.
@@ -162,26 +181,35 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
         setIsStarting(false);
       }
     },
-    [createSession, invalidateCache, navigation],
+    [createSession, invalidateCache, navigation, t],
   );
 
   const startLiveWorkout = useCallback(
     async (args: StartLiveWorkoutArgs) => {
       if (!queryClient.getQueryData(serverConnectionQueryKey)) {
         Alert.alert(
-          'No Server Connected',
-          'Configure your server connection in Settings to start a workout.',
+          t('liveWorkout.noServerTitle', {
+            defaultValue: 'No Server Connected',
+          }),
+          t('liveWorkout.noServerMessage', {
+            defaultValue:
+              'Configure your server connection in Settings to start a workout.',
+          }),
         );
         return;
       }
-      const prompted = promptForActiveWorkoutConflict(queryClient, {
-        onGoToWorkout: () => navigation.navigate('ActiveWorkout'),
-        onClearAndStart: () => runStart(args),
-      });
+      const prompted = promptForActiveWorkoutConflict(
+        queryClient,
+        {
+          onGoToWorkout: () => navigation.navigate('ActiveWorkout'),
+          onClearAndStart: () => runStart(args),
+        },
+        t,
+      );
       if (prompted) return;
       await runStart(args);
     },
-    [queryClient, navigation, runStart],
+    [queryClient, navigation, runStart, t],
   );
 
   return { startLiveWorkout, isStarting };

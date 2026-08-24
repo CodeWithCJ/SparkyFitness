@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
@@ -31,11 +32,6 @@ import { parseDecimalInput, DECIMAL_INPUT_REGEX } from '../utils/numericInput';
 import { mapEstimateError } from '../utils/foodPhotoEstimate';
 
 type Props = FoodPhotoFlowScreenProps<'Improve'>;
-
-const WEIGHT_UNITS: Segment<'g' | 'oz'>[] = [
-  { key: 'g', label: 'grams' },
-  { key: 'oz', label: 'ounces' },
-];
 
 const DESCRIPTION_MAX = 500;
 
@@ -88,27 +84,22 @@ function resolveMimeType(img: StagedImage): string {
 const FADE_IN_MS = 200;
 const FADE_OUT_MS = 150;
 
-const PENDING_MESSAGES: { startsAt: number; text: string }[] = [
-  { startsAt: 0, text: 'Reading your photo…' },
-  { startsAt: 6, text: 'Identifying ingredients…' },
-  { startsAt: 15, text: 'Estimating portions…' },
-  { startsAt: 28, text: 'Calculating nutrition…' },
-  { startsAt: 45, text: 'Almost there…' },
-];
-
-function pendingMessageFor(elapsedSec: number, imageCount: number): string {
-  let current = PENDING_MESSAGES[0].text;
-  for (const m of PENDING_MESSAGES) {
-    if (elapsedSec >= m.startsAt) current = m.text;
-  }
-  // Pluralize the first ("Reading your photo…") message for multi-image sets.
-  if (imageCount > 1 && current === PENDING_MESSAGES[0].text) {
-    return 'Reading your photos…';
-  }
-  return current;
+function pendingMessageFor(
+  elapsedSec: number,
+  imageCount: number,
+  messages: readonly [string, string, string, string, string, string],
+): string {
+  const [readingPhoto, readingPhotos, identifyingIngredients, estimatingPortions, calculatingNutrition, almostThere] = messages;
+  let current = readingPhoto;
+  if (elapsedSec >= 6) current = identifyingIngredients;
+  if (elapsedSec >= 15) current = estimatingPortions;
+  if (elapsedSec >= 28) current = calculatingNutrition;
+  if (elapsedSec >= 45) current = almostThere;
+  return imageCount > 1 && elapsedSec < 6 ? readingPhotos : current;
 }
 
 const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [accentPrimary, textPrimary, dangerColor] = useCSSVariable([
@@ -140,6 +131,11 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   );
 
   const mutation = useEstimateFoodPhoto();
+
+  const weightUnits: Segment<'g' | 'oz'>[] = [
+    { key: 'g', label: t('foodPhotoImprove.grams', { defaultValue: 'grams' }) },
+    { key: 'oz', label: t('foodPhotoImprove.ounces', { defaultValue: 'ounces' }) },
+  ];
 
   const cancelledRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -200,8 +196,8 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       if (!permission.granted) {
         Toast.show({
           type: 'error',
-          text1: 'Camera permission needed',
-          text2: 'Enable camera access to add a photo.',
+          text1: t('foodPhotoImprove.cameraPermissionNeeded', { defaultValue: 'Camera permission needed' }),
+          text2: t('foodPhotoImprove.cameraPermissionMessage', { defaultValue: 'Enable camera access to add a photo.' }),
         });
         return;
       }
@@ -215,7 +211,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[Food Photo Improve] Camera capture failed: ${message}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Could not take photo' });
+      Toast.show({ type: 'error', text1: t('foodPhotoImprove.takePhotoFailed', { defaultValue: 'Could not take photo' }) });
     } finally {
       pickerLock.current = false;
     }
@@ -240,7 +236,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[Food Photo Improve] Library pick failed: ${message}`, 'ERROR');
-      Toast.show({ type: 'error', text1: 'Could not load photo' });
+      Toast.show({ type: 'error', text1: t('foodPhotoImprove.loadPhotoFailed', { defaultValue: 'Could not load photo' }) });
     } finally {
       pickerLock.current = false;
     }
@@ -273,8 +269,8 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       if (Number.isNaN(parsedWeight)) {
         Toast.show({
           type: 'error',
-          text1: 'Invalid weight',
-          text2: 'Total weight must be a positive number.',
+          text1: t('foodPhotoImprove.invalidWeight', { defaultValue: 'Invalid weight' }),
+          text2: t('foodPhotoImprove.invalidWeightMessage', { defaultValue: 'Total weight must be a positive number.' }),
         });
         return;
       }
@@ -284,8 +280,8 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       if (descriptionTooLong) {
         Toast.show({
           type: 'error',
-          text1: 'Description too long',
-          text2: `Keep it under ${DESCRIPTION_MAX} characters.`,
+          text1: t('foodPhotoImprove.descriptionTooLong', { defaultValue: 'Description too long' }),
+          text2: t('foodPhotoImprove.descriptionTooLongMessage', { defaultValue: 'Keep it under {{max}} characters.', max: DESCRIPTION_MAX }),
         });
         return;
       }
@@ -295,8 +291,8 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
     if (images.length === 0) {
       Toast.show({
         type: 'error',
-        text1: 'No images',
-        text2: 'Add at least one photo to generate an estimate.',
+        text1: t('foodPhotoImprove.noImages', { defaultValue: 'No images' }),
+        text2: t('foodPhotoImprove.noImagesMessage', { defaultValue: 'Add at least one photo to generate an estimate.' }),
       });
       return;
     }
@@ -321,8 +317,8 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       addLog(`[Food Photo Improve] Failed to read photo: ${message}`, 'ERROR');
       Toast.show({
         type: 'error',
-        text1: 'Could not read photo',
-        text2: 'Please retake the photo and try again.',
+        text1: t('foodPhotoImprove.readPhotoFailed', { defaultValue: 'Could not read photo' }),
+        text2: t('foodPhotoImprove.readPhotoFailedMessage', { defaultValue: 'Please retake the photo and try again.' }),
       });
       return;
     }
@@ -357,11 +353,39 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
           abortControllerRef.current = null;
           if (cancelledRef.current) return;
           const copy = mapEstimateError(error.code);
-          Toast.show({
-            type: 'error',
-            text1: copy.title,
-            text2: copy.message,
-          });
+          let title = copy.titleDefaultValue;
+          let message = copy.messageDefaultValue;
+          switch (copy.titleKey) {
+            case 'aiNotConfiguredTitle':
+              title = t('foodPhotoImprove.aiNotConfiguredTitle', { defaultValue: 'AI not configured' });
+              message = t('foodPhotoImprove.aiNotConfiguredMessage', { defaultValue: 'Configure an AI provider in the web app to use photo estimates.' });
+              break;
+            case 'photoTooLargeTitle':
+              title = t('foodPhotoImprove.photoTooLargeTitle', { defaultValue: 'Photo too large' });
+              message = t('foodPhotoImprove.photoTooLargeMessage', { defaultValue: 'Retake the photo at lower quality.' });
+              break;
+            case 'unexpectedImageFormatTitle':
+              title = t('foodPhotoImprove.unexpectedImageFormatTitle', { defaultValue: 'Unexpected image format' });
+              message = t('foodPhotoImprove.unexpectedImageFormatMessage', { defaultValue: 'Retake the photo.' });
+              break;
+            case 'couldNotProcessPhotoTitle':
+              title = t('foodPhotoImprove.couldNotProcessPhotoTitle', { defaultValue: 'Could not process photo' });
+              message = t('foodPhotoImprove.couldNotProcessPhotoMessage', { defaultValue: 'The provider blocked this image. Try another shot.' });
+              break;
+            case 'providerTimedOutTitle':
+              title = t('foodPhotoImprove.providerTimedOutTitle', { defaultValue: 'AI provider timed out' });
+              message = t('foodPhotoImprove.providerTimedOutMessage', { defaultValue: 'The estimate took too long. Try again, or log this food manually.' });
+              break;
+            case 'providerNotAllowedTitle':
+              title = t('foodPhotoImprove.providerNotAllowedTitle', { defaultValue: 'AI provider not allowed' });
+              message = t('foodPhotoImprove.providerNotAllowedMessage', { defaultValue: 'This AI provider points to a private network address. Ask an admin to configure it globally.' });
+              break;
+            case 'providerUnreachableTitle':
+              title = t('foodPhotoImprove.providerUnreachableTitle', { defaultValue: "Couldn\'t reach AI provider" });
+              message = t('foodPhotoImprove.providerUnreachableMessage', { defaultValue: 'Try again, or log this food manually.' });
+              break;
+          }
+          Toast.show({ type: 'error', text1: title, text2: message });
           if (copy.invalidateAiSettings) {
             queryClient.invalidateQueries({
               queryKey: activeAiServiceSettingQueryKey,
@@ -381,7 +405,14 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const isPending = mutation.isPending;
-  const pendingMessage = pendingMessageFor(elapsedSec, images.length);
+  const pendingMessage = pendingMessageFor(elapsedSec, images.length, [
+    t('foodPhotoImprove.readingPhoto', { defaultValue: 'Reading your photo…' }),
+    t('foodPhotoImprove.readingPhotos', { defaultValue: 'Reading your photos…' }),
+    t('foodPhotoImprove.identifyingIngredients', { defaultValue: 'Identifying ingredients…' }),
+    t('foodPhotoImprove.estimatingPortions', { defaultValue: 'Estimating portions…' }),
+    t('foodPhotoImprove.calculatingNutrition', { defaultValue: 'Calculating nutrition…' }),
+    t('foodPhotoImprove.almostThere', { defaultValue: 'Almost there…' }),
+  ]);
 
   return (
     <View
@@ -394,13 +425,13 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
           onPress={() => navigation.getParent<NativeStackNavigationProp<RootStackParamList>>()?.popToTop()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="z-10 p-0"
-          accessibilityLabel="Cancel"
+          accessibilityLabel={t('foodPhotoImprove.cancel', { defaultValue: 'Cancel' })}
           disabled={isPending}
         >
           <Icon name="close" size={22} color={backColor} />
         </Button>
         <Text className="absolute left-0 right-0 text-center text-text-primary text-lg font-semibold">
-          Improve estimate
+          {t('foodPhotoImprove.title', { defaultValue: 'Improve estimate' })}
         </Text>
       </View>
 
@@ -435,7 +466,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
                   <Pressable
                     onPress={() => removeImage(index)}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    accessibilityLabel={`Remove image ${index + 1}`}
+                    accessibilityLabel={t('foodPhotoImprove.removeImage', { defaultValue: 'Remove image {{number}}', number: index + 1 })}
                     className="absolute top-1 right-1 rounded-full bg-background/80 p-0.5"
                   >
                     <Icon name="close" size={16} color={textPrimary} />
@@ -446,12 +477,12 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             {!isPending && !atImageCap ? (
               <Pressable
                 onPress={() => setSheetVisible(true)}
-                accessibilityLabel="Add another image"
+                accessibilityLabel={t('foodPhotoImprove.addAnotherImage', { defaultValue: 'Add another image' })}
                 className="rounded-xl items-center justify-center border border-dashed border-border-subtle"
                 style={{ width: 96, height: 96 }}
               >
                 <Icon name="add" size={28} color={accentPrimary} />
-                <Text className="text-text-secondary text-xs mt-1">Add</Text>
+                <Text className="text-text-secondary text-xs mt-1">{t('common.add', { defaultValue: 'Add' })}</Text>
               </Pressable>
             ) : null}
           </ScrollView>
@@ -479,17 +510,16 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             exiting={FadeOut.duration(FADE_OUT_MS)}
           >
             <Text className="text-text-secondary text-sm mb-4 leading-5">
-              Add anything the {images.length > 1 ? 'photos' : 'photo'} might not
-              make obvious.
+              {t('foodPhotoImprove.descriptionHint', { defaultValue: 'Add anything the {{subject}} might not make obvious.', subject: t('foodPhotoImprove.subjectLabel', { defaultValue: 'photos', count: images.length }) })}
             </Text>
 
             <Text className="text-text-primary text-base font-semibold mb-2">
-              Total weight (optional)
+              {t('foodPhotoImprove.totalWeightOptional', { defaultValue: 'Total weight (optional)' })}
             </Text>
             <View className="flex-row items-center gap-2 mb-2">
               <FormInput
                 className="flex-1"
-                placeholder="e.g. 350"
+                placeholder={t('foodPhotoImprove.weightPlaceholder', { defaultValue: 'e.g. 350' })}
                 keyboardType="decimal-pad"
                 value={totalWeight}
                 onChangeText={handleWeightChange}
@@ -498,22 +528,21 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
             <View className="mb-4">
               <SegmentedControl
-                segments={WEIGHT_UNITS}
+                segments={weightUnits}
                 activeKey={weightUnit}
                 onSelect={setWeightUnit}
               />
             </View>
 
             <Text className="text-text-primary text-base font-semibold mb-2">
-              Description (optional)
+              {t('foodPhotoImprove.descriptionOptional', { defaultValue: 'Description (optional)' })}
             </Text>
             <Text className="text-text-secondary text-sm mb-2 leading-5">
-              Include oils, butter, cream, sauces, toppings, sides, or restaurant
-              names.
+              {t('foodPhotoImprove.descriptionExamples', { defaultValue: 'Include oils, butter, cream, sauces, toppings, sides, or restaurant names.' })}
             </Text>
             <FormInput
               className="mb-1"
-              placeholder='e.g. salmon with lemon dill cream sauce'
+              placeholder={t('foodPhotoImprove.descriptionPlaceholder', { defaultValue: 'e.g. salmon with lemon dill cream sauce' })}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -549,7 +578,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
               exiting={FadeOut.duration(FADE_OUT_MS)}
             >
               <Button variant="outline" onPress={handleCancel}>
-                Cancel
+                {t('common.cancel', { defaultValue: 'Cancel' })}
               </Button>
             </Animated.View>
           ) : (
@@ -564,7 +593,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
                   void submit();
                 }}
               >
-                Generate estimate
+                {t('foodPhotoImprove.generateEstimate', { defaultValue: 'Generate estimate' })}
               </Button>
             </Animated.View>
           )}
@@ -580,7 +609,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
         <Pressable
           className="flex-1 justify-end bg-black/50"
           onPress={() => setSheetVisible(false)}
-          accessibilityLabel="Dismiss"
+          accessibilityLabel={t('common.close', { defaultValue: 'Close' })}
         >
           <Pressable
             // Tap-absorbing wrapper only; hide it from screen readers so they
@@ -597,7 +626,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
               <View className="h-1 w-10 rounded-full bg-border-subtle" />
             </View>
             <Text className="text-text-primary text-base font-semibold mb-2 px-1">
-              Add another image
+              {t('foodPhotoImprove.addAnotherImage', { defaultValue: 'Add another image' })}
             </Text>
             <Button
               variant="outline"
@@ -607,7 +636,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
               }}
             >
               <Icon name="camera" size={22} color={accentPrimary} />
-              <Text className="text-text-primary text-base">Take photo</Text>
+              <Text className="text-text-primary text-base">{t('foodPhotoImprove.takePhoto', { defaultValue: 'Take photo' })}</Text>
             </Button>
             <Button
               variant="outline"
@@ -618,7 +647,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             >
               <Icon name="photo-library" size={22} color={accentPrimary} />
               <Text className="text-text-primary text-base">
-                Choose from library
+                {t('foodPhotoImprove.chooseFromLibrary', { defaultValue: 'Choose from library' })}
               </Text>
             </Button>
           </Pressable>

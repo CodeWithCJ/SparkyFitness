@@ -1,4 +1,5 @@
-import { MEAL_CONFIG } from '../constants/meals';
+import { getLocalizedMealLabel } from '../constants/meals';
+import type { TFunction } from 'i18next';
 import type { FoodEntry } from '../types/foodEntries';
 import type { FoodDisplayValues } from './foodDetails';
 import type { DailyGoals } from '../types/goals';
@@ -23,24 +24,10 @@ export interface EntryNutrition {
 }
 
 /**
- * Static English display label for a system meal type NAME, derived from the
- * canonical `MEAL_CONFIG` (single source of truth — no parallel map). Only
- * meaningful once the type has been confirmed as system-owned (`isSystem` /
- * `user_id === null`); custom types named "breakfast"/"lunch"/... must never
- * be routed through this map. Legacy `snack` (singular) aliases `snacks`.
- * Returns `''` for unknown names so callers can fall back to the literal name.
- */
-function getMealTypeSystemLabel(name: string): string {
-  const lower = name.toLowerCase();
-  const key = lower === 'snack' ? 'snacks' : lower;
-  return MEAL_CONFIG[key]?.label ?? '';
-}
-
-/**
  * Single source of truth for a KNOWN meal type's display label.
  *
  * The decision is based on ownership metadata, never on the name string alone:
- * - `user_id === null` (system)  → static English label from MEAL_CONFIG.
+ * - `user_id === null` (system)  → localized label via mealTypes.* (app language).
  * - `user_id !== null` (custom)  → the literal user-defined name.
  *
  * A custom category called "breakfast", "lunch", "dinner", "snack" or
@@ -48,10 +35,12 @@ function getMealTypeSystemLabel(name: string): string {
  */
 export function getMealTypeDisplayLabel(
   mealType: Pick<MealType, 'name' | 'user_id'>,
+  t: TFunction,
 ): string {
   if (mealType.user_id != null) return mealType.name;
-  const label = getMealTypeSystemLabel(mealType.name);
-  return label || mealType.name;
+  const lower = mealType.name.toLowerCase();
+  const key = lower === 'snack' ? 'snacks' : lower;
+  return getLocalizedMealLabel(t, key);
 }
 
 /**
@@ -63,9 +52,10 @@ export function getMealTypeDisplayLabel(
  */
 export function getHistoricalMealTypeLabel(
   name: string | null | undefined,
+  t: TFunction,
 ): string {
   const trimmed = (name ?? '').trim();
-  if (!trimmed) return 'Other';
+  if (!trimmed) return t('mealTypes.other', { defaultValue: 'Other' });
   return trimmed;
 }
 
@@ -79,20 +69,21 @@ export function getHistoricalMealTypeLabel(
 export function getFoodEntryMealTypeLabel(
   entry: { meal_type_id?: string | null; meal_type?: string | null },
   mealTypes: MealType[],
+  t: TFunction,
 ): string {
   if (entry.meal_type_id) {
     const mt = mealTypes.find((m) => m.id === entry.meal_type_id);
-    if (mt) return getMealTypeDisplayLabel(mt);
-    return getHistoricalMealTypeLabel(entry.meal_type);
+    if (mt) return getMealTypeDisplayLabel(mt, t);
+    return getHistoricalMealTypeLabel(entry.meal_type, t);
   }
   // No id: legacy name matching may occur (pre-id servers). Resolve against
   // the active list with ownership-aware display; blank names stay literal.
   const name = ((entry.meal_type || '') as string).toLowerCase();
   if (name) {
     const mt = mealTypes.find((m) => m.name.toLowerCase() === name);
-    if (mt) return getMealTypeDisplayLabel(mt);
+    if (mt) return getMealTypeDisplayLabel(mt, t);
   }
-  return getHistoricalMealTypeLabel(entry.meal_type);
+  return getHistoricalMealTypeLabel(entry.meal_type, t);
 }
 
 export function groupFoodEntriesByMealType(
@@ -191,11 +182,16 @@ export function groupFoodEntriesByMealType(
  * `isSystem` — never on the raw name — so a deleted custom type named
  * "breakfast" never renders as the translated system "Breakfast".
  */
-export function getMealGroupLabel(group: MealGroup): string {
+export function getMealGroupLabel(
+  group: MealGroup,
+  t: TFunction,
+): string {
   if (group.isSystem) {
-    return getMealTypeSystemLabel(group.name) || getHistoricalMealTypeLabel(group.name);
+    const lower = group.name.toLowerCase();
+    const key = lower === 'snack' ? 'snacks' : lower;
+    return getLocalizedMealLabel(t, key);
   }
-  return getHistoricalMealTypeLabel(group.name);
+  return getHistoricalMealTypeLabel(group.name, t);
 }
 
 /**
@@ -313,4 +309,14 @@ export function getMealPercentage(mealName: string, goals?: DailyGoals): number 
   }
 
   return 0;
+}
+
+/** Localized fallback for a historical system group. Non-system groups keep literal name. */
+export function getLocalizedMealGroupLabel(
+  group: Pick<MealGroup, 'name' | 'isSystem'>,
+  t: TFunction,
+): string {
+  if (!group.isSystem) return getHistoricalMealTypeLabel(group.name, t);
+  const key = group.name.toLowerCase() === 'snack' ? 'snacks' : group.name.toLowerCase();
+  return getLocalizedMealLabel(t, key);
 }

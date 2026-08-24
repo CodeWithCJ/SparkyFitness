@@ -11,6 +11,7 @@ import { getTodayDate, normalizeDate } from '../utils/dateUtils';
 import { weightFromKg, distanceFromKm } from '../utils/unitConversions';
 import { buildExercisesPayload } from '../utils/workoutSession';
 import type { WorkoutDraft, WorkoutDraftExercise } from '../types/drafts';
+import { getAppLocale } from '../localization';
 import type { PresetSessionResponse } from '@workspace/shared';
 import type { WorkoutPreset } from '../types/workoutPresets';
 
@@ -21,7 +22,7 @@ export type { WorkoutDraft, WorkoutDraftExercise, WorkoutDraftSet } from '../typ
 function formatWorkoutDate(dateString: string): string {
   const [year, month, day] = dateString.split('-').map(Number);
   const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(getAppLocale(), { month: 'short', day: 'numeric' });
 }
 
 export function defaultWorkoutName(dateString: string): string {

@@ -73,9 +73,10 @@ export function createNativeHeaderTextButtonItem({
  */
 export function createNativeHeaderAccentBadge(
   accentColor: string,
+  value = '•',
 ): NativeStackHeaderItemMenu['badge'] {
   return {
-    value: '•',
+    value,
     style: {
       backgroundColor: accentColor,
       color: accentColor,
@@ -108,6 +109,9 @@ export function createNativeHeaderMenuButtonItem({
     accessibilityLabel,
     identifier,
     sharesBackground: true,
+    // Keep the raw badge field for the native runtime, while mirroring it
+    // as `badge` in the test/runtime descriptor expected by our header
+    // contract helpers.
     badge,
     menu: { items: menuItems },
   };

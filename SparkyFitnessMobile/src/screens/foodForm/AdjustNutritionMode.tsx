@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Platform, Text } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -25,9 +26,11 @@ import type {
 import {
   buildCreateFoodVariantPayload,
   diffSiblingRows,
+  formatServingSizeForDisplay,
   groupEquivalentVariants,
   toEquivalentUnit,
 } from '../../utils/foodDetails';
+import { localizeFoodUnit } from '../../utils/foodUnitLocalization';
 import { parseDecimalInput } from '../../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../../services/nativeTabBarPreference';
 import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../../hooks/useScreenHeader';
@@ -58,6 +61,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
     availableUnitVariants,
     selectedUnitSelection,
   } = params;
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
@@ -202,7 +206,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
     ) {
       Toast.show({
         type: 'error',
-        text1: 'Still loading food details. Try again in a moment.',
+        text1: t('foodForm.loadingDetails', { defaultValue: 'Still loading food details. Try again in a moment.' }),
       });
       return;
     }
@@ -236,7 +240,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
           setPendingUnitSelection(nextUnitSelection);
           setCurrentVariantId(createdVariant.id);
         } catch {
-          Toast.show({ type: 'error', text1: 'Could not save new unit' });
+          Toast.show({ type: 'error', text1: t('foodForm.saveNewUnitFailed', { defaultValue: 'Could not save new unit' }) });
           return;
         }
       }
@@ -279,7 +283,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
                   } as CreateFoodVariantPayload),
                 ),
               ).catch(() => {
-                Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+                Toast.show({ type: 'error', text1: t('foodForm.equivalentUnitsFailed', { defaultValue: 'Some equivalent units could not be saved' }) });
               }).finally(() => {
                 invalidateFoodCaches(queryClient, foodId);
               });
@@ -321,7 +325,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
             let saveVariantId = nextVariantId;
             if (existingSelection && nutritionChanged && foodId) {
               const choice = await confirmVariantOverwrite(
-                `${existingSelection.variant.serving_size} ${existingSelection.variant.serving_unit}`,
+                `${formatServingSizeForDisplay(existingSelection.variant.serving_size)} ${localizeFoodUnit(existingSelection.variant.serving_unit, t)}`,
               );
               if (choice === 'cancel') return;
               if (choice === 'new') {
@@ -352,14 +356,14 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
                         } as CreateFoodVariantPayload),
                       ),
                     ).catch(() => {
-                      Toast.show({ type: 'error', text1: 'Some equivalent units could not be saved' });
+                      Toast.show({ type: 'error', text1: t('foodForm.equivalentUnitsFailed', { defaultValue: 'Some equivalent units could not be saved' }) });
                     }).finally(() => {
                       invalidateFoodCaches(queryClient, foodId);
                     });
                     setEquivalentBaseline(equivalentDraft);
                   }
                 } catch {
-                  Toast.show({ type: 'error', text1: 'Could not save new variant' });
+                  Toast.show({ type: 'error', text1: t('foodForm.saveNewVariantFailed', { defaultValue: 'Could not save new variant' }) });
                   return;
                 }
                 // Fall through to persistFoodEdits with the new variant ID so the
@@ -484,7 +488,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
             setEquivalentBaseline(equivalentDraft);
           }
         } catch {
-          Toast.show({ type: 'error', text1: 'Could not save nutrition for future use' });
+          Toast.show({ type: 'error', text1: t('foodForm.saveNutritionFailed', { defaultValue: 'Could not save nutrition for future use' }) });
         }
       }
 
@@ -514,7 +518,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
   const submitRequestRef = useRef<(() => void) | null>(null);
 
   const header = useScreenHeader({
-    title: 'Adjust Nutrition',
+    title: t('foodFormPersistence.adjustNutritionTitle', { defaultValue: 'Adjust Nutrition' }),
     left: {
       kind: 'dismiss',
       onPress: () => navigation.goBack(),
@@ -567,10 +571,10 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
           <View className="bg-surface rounded-xl p-4 shadow-sm">
             <View className="flex-row items-center justify-between">
               <Text className="text-text-secondary text-base">
-                Save nutrition for future use
+                {t('foodFormPersistence.saveNutritionFuture', { defaultValue: 'Save nutrition for future use' })}
               </Text>
               <Switch
-                accessibilityLabel="Save nutrition for future use"
+                accessibilityLabel={t('foodFormPersistence.saveNutritionFuture', { defaultValue: 'Save nutrition for future use' })}
                 value={updateFoodToggle}
                 onValueChange={setUpdateFoodToggle}
               />

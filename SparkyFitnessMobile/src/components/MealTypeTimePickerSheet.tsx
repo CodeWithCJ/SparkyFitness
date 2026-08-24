@@ -1,4 +1,5 @@
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Platform, Text, TouchableOpacity, View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
@@ -31,6 +32,7 @@ export interface MealTypeTimePickerSheetRef {
  * - scrolling the wheel alone never mutates anything.
  */
 const MealTypeTimePickerSheet = forwardRef<MealTypeTimePickerSheetRef>((_props, ref) => {
+  const { t } = useTranslation();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const [surfaceBg, textMuted, textPrimary] = useCSSVariable([
     '--color-surface',
@@ -91,7 +93,7 @@ const MealTypeTimePickerSheet = forwardRef<MealTypeTimePickerSheetRef>((_props, 
     >
       <BottomSheetView className="px-5 pb-safe-or-8">
         <Text className="text-text-primary text-lg font-semibold text-center mb-3">
-          Default Time
+          {t('mealTypeTime.defaultTitle', { defaultValue: 'Default Time' })}
         </Text>
 
         {/* Dominant wheel area (shared component, own full-width layout). The
@@ -109,20 +111,20 @@ const MealTypeTimePickerSheet = forwardRef<MealTypeTimePickerSheetRef>((_props, 
             onPress={() => commit(null)}
             className="flex-1 items-center justify-center py-3 rounded-lg border border-border-subtle"
             accessibilityRole="button"
-            accessibilityLabel="Clear default time"
+            accessibilityLabel={t('mealTypeTime.clearHint', { defaultValue: 'Clear default time' })}
           >
             <View className="flex-row items-center gap-1.5">
               <Icon name="close" size={16} color={textPrimary} />
-              <Text className="text-sm font-medium text-text-primary">Clear</Text>
+              <Text className="text-sm font-medium text-text-primary">{t('common.clear', { defaultValue: 'Clear' })}</Text>
             </View>
           </TouchableOpacity>
           <Button
             variant="primary"
             className="flex-1"
             onPress={() => commit(pendingValue)}
-            accessibilityLabel="Save default time"
+            accessibilityLabel={t('mealTypeTime.saveHint', { defaultValue: 'Save default time' })}
           >
-            Save
+            {t('common.save', { defaultValue: 'Save' })}
           </Button>
         </View>
       </BottomSheetView>

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity, Text, Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import Icon, { type IconName } from './Icon';
 
@@ -19,6 +20,7 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({
   descriptors,
   navigation,
 }) => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [chrome, chromeBorder, tabActive, tabInactive, accentPrimary] =
     useCSSVariable([
@@ -72,7 +74,7 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({
             <View key={route.key} className="flex-1 items-center justify-end pb-1">
               <TouchableOpacity
                 accessibilityRole="button"
-                accessibilityLabel={options.tabBarAccessibilityLabel ?? 'Add'}
+                accessibilityLabel={options.tabBarAccessibilityLabel ?? t('navigation.add', { defaultValue: 'Add' })}
                 onPress={onPress}
                 onLongPress={onLongPress}
                 activeOpacity={0.8}
@@ -110,7 +112,7 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({
             key={route.key}
             accessibilityRole="button"
             accessibilityState={isFocused ? { selected: true } : undefined}
-            accessibilityLabel={options.tabBarAccessibilityLabel}
+            accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
             onPress={onPress}
             onLongPress={onLongPress}
             className="flex-1 items-center justify-center pt-2 pb-1 gap-0.5"

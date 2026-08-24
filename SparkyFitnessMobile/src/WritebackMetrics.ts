@@ -27,7 +27,9 @@ export interface WritebackRemovalResult {
 
 export interface WritebackMetric {
   id: WritebackMetricId;
-  label: string;
+  defaultLabel: string;
+  /** Stable localization key for the application-owned metric label. */
+  labelKey: string;
   /** loadHealthPreference/saveHealthPreference key (under the @HealthConnect prefix on
    *  Android, @HealthKit on iOS — the platform-resolved preferences module owns it). */
   preferenceKey: string;
@@ -40,7 +42,8 @@ export interface WritebackMetric {
 export const WRITEBACK_METRICS: WritebackMetric[] = [
   {
     id: 'nutrition',
-    label: 'Nutrition',
+    labelKey: 'healthMetrics.nutrition',
+    defaultLabel: 'Nutrition',
     preferenceKey: 'writebackNutritionEnabled',
     recordType: 'Nutrition',
     permission: { accessType: 'write', recordType: 'Nutrition' },
@@ -49,7 +52,8 @@ export const WRITEBACK_METRICS: WritebackMetric[] = [
   },
   {
     id: 'hydration',
-    label: 'Hydration',
+    labelKey: 'healthMetrics.hydration',
+    defaultLabel: 'Hydration',
     preferenceKey: 'writebackHydrationEnabled',
     recordType: 'Hydration',
     permission: { accessType: 'write', recordType: 'Hydration' },

@@ -13,7 +13,11 @@ import { useUpdateWorkoutPreset } from '../../src/hooks/useWorkoutPresetMutation
 import { fireSuccessHaptic } from '../../src/services/haptics';
 import type { PresetSessionResponse } from '@workspace/shared';
 import type { RootStackParamList } from '../../src/types/navigation';
-import type { WorkoutPreset, WorkoutPresetSet } from '../../src/types/workoutPresets';
+import type {
+  WorkoutPreset,
+  WorkoutPresetSet,
+} from '../../src/types/workoutPresets';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
@@ -21,7 +25,9 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 jest.mock('../../src/hooks/usePreferences', () => ({
-  usePreferences: jest.fn(() => ({ preferences: { default_weight_unit: 'kg' } })),
+  usePreferences: jest.fn(() => ({
+    preferences: { default_weight_unit: 'kg' },
+  })),
 }));
 
 jest.mock('../../src/hooks/useProfile', () => ({
@@ -33,7 +39,9 @@ jest.mock('../../src/hooks/useWorkoutPresetMutations', () => ({
 }));
 
 jest.mock('../../src/hooks/useExerciseImageSource', () => ({
-  useExerciseImageSource: jest.fn(() => ({ getImageSource: jest.fn(() => null) })),
+  useExerciseImageSource: jest.fn(() => ({
+    getImageSource: jest.fn(() => null),
+  })),
 }));
 
 jest.mock('../../src/hooks/useNavigationActionGuard', () => ({
@@ -60,16 +68,17 @@ jest.mock('../../src/services/haptics', () => ({
   fireSelectionHaptic: jest.fn(),
 }));
 
-const mockUseIsFocused = useIsFocused as jest.MockedFunction<typeof useIsFocused>;
+const mockUseIsFocused = useIsFocused as jest.MockedFunction<
+  typeof useIsFocused
+>;
 const mockGetPresetById = getWorkoutPresetById as jest.MockedFunction<
   typeof getWorkoutPresetById
 >;
 const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<
   typeof getActiveServerConfig
 >;
-const mockUseUpdateWorkoutPreset = useUpdateWorkoutPreset as jest.MockedFunction<
-  typeof useUpdateWorkoutPreset
->;
+const mockUseUpdateWorkoutPreset =
+  useUpdateWorkoutPreset as jest.MockedFunction<typeof useUpdateWorkoutPreset>;
 
 function makeSet(id: number, overrides?: Record<string, unknown>) {
   return {
@@ -141,12 +150,9 @@ function makeSession(): PresetSessionResponse {
         makeSet(102, { set_number: 2, set_type: 'warmup', weight: 60 }),
         makeSet(103, { set_number: 3 }),
       ]),
-      makeExercise(
-        'ex-b',
-        'Squat',
-        [makeSet(201, { weight: 120, reps: 3 })],
-        { notes: 'felt strong' },
-      ),
+      makeExercise('ex-b', 'Squat', [makeSet(201, { weight: 120, reps: 3 })], {
+        notes: 'felt strong',
+      }),
     ],
   };
 }
@@ -198,12 +204,17 @@ function renderScreen(paramOverrides?: Partial<typeof baseParams>) {
 describe('WorkoutCompleteScreen', () => {
   const updatePresetAsync = jest.fn();
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await initializeI18n('en');
+    await i18n.changeLanguage('en');
     jest.clearAllMocks();
     // Never-resolving by default; calories-specific tests override.
     (getWorkout as jest.Mock).mockImplementation(() => new Promise(() => {}));
     mockUseIsFocused.mockReturnValue(true);
-    mockUseUpdateWorkoutPreset.mockReturnValue({ updatePresetAsync, isPending: false });
+    mockUseUpdateWorkoutPreset.mockReturnValue({
+      updatePresetAsync,
+      isPending: false,
+    });
     mockGetActiveServerConfig.mockResolvedValue({
       id: 'config-1',
       url: 'https://example.com',
@@ -217,6 +228,28 @@ describe('WorkoutCompleteScreen', () => {
     expect(getByText('Workout Complete')).toBeTruthy();
     expect(getByText('Push Day')).toBeTruthy();
     expect(getByText('3 of 4 sets')).toBeTruthy();
+  });
+
+  it('updates completion actions and personal record count when the mounted screen changes languages', async () => {
+    const screen = renderScreen();
+
+    expect(screen.getByText('Workout Complete')).toBeTruthy();
+    expect(screen.getByText('Done')).toBeTruthy();
+    expect(screen.getByText('1 Personal Record')).toBeTruthy();
+
+    await act(async () => {
+      await i18n.changeLanguage('pl');
+    });
+    expect(screen.getByText('Trening ukończony')).toBeTruthy();
+    expect(screen.getByText('Gotowe')).toBeTruthy();
+    expect(screen.getByText('1 rekord osobisty')).toBeTruthy();
+
+    await act(async () => {
+      await i18n.changeLanguage('en');
+    });
+    expect(screen.getByText('Workout Complete')).toBeTruthy();
+    expect(screen.getByText('Done')).toBeTruthy();
+    expect(screen.getByText('1 Personal Record')).toBeTruthy();
   });
 
   it('says "All N sets" when every set was logged', () => {
@@ -253,19 +286,43 @@ describe('WorkoutCompleteScreen', () => {
     // Two completed cardio efforts (25 + 5 min); the strength entries logged
     // nothing but carry stale 14-minute stamps that must not be counted.
     session.exercises = [
-      makeExercise('ex-a', 'Bench Press', [makeSet(101)], { duration_minutes: 14 }),
+      makeExercise('ex-a', 'Bench Press', [makeSet(101)], {
+        duration_minutes: 14,
+      }),
       makeExercise('ex-b', 'Squat', [makeSet(201)], { duration_minutes: 14 }),
       makeExercise(
         'ex-c',
         'Run',
-        [makeSet(301, { reps: null, weight: null, duration: 1500, rest_time: 0, distance: 5 })],
-        { duration_minutes: 25, exercise_snapshot: cardioSnapshot('x-ex-c', 'Run') },
+        [
+          makeSet(301, {
+            reps: null,
+            weight: null,
+            duration: 1500,
+            rest_time: 0,
+            distance: 5,
+          }),
+        ],
+        {
+          duration_minutes: 25,
+          exercise_snapshot: cardioSnapshot('x-ex-c', 'Run'),
+        },
       ),
       makeExercise(
         'ex-d',
         'Walk',
-        [makeSet(401, { reps: null, weight: null, duration: 300, rest_time: 0, distance: 0.5 })],
-        { duration_minutes: 5, exercise_snapshot: cardioSnapshot('x-ex-d', 'Walk') },
+        [
+          makeSet(401, {
+            reps: null,
+            weight: null,
+            duration: 300,
+            rest_time: 0,
+            distance: 0.5,
+          }),
+        ],
+        {
+          duration_minutes: 5,
+          exercise_snapshot: cardioSnapshot('x-ex-d', 'Walk'),
+        },
       ),
     ];
 
@@ -285,6 +342,33 @@ describe('WorkoutCompleteScreen', () => {
     expect(getByText('1 Personal Record')).toBeTruthy();
     expect(getByText('120 kg × 3')).toBeTruthy();
     expect(fireSuccessHaptic).toHaveBeenCalledTimes(1);
+  });
+
+  it('localizes the English personal record count for multiple records', () => {
+    const { getByText } = renderScreen({ prSetIds: { '101': true as const, '201': true as const } });
+
+    expect(getByText('2 Personal Records')).toBeTruthy();
+  });
+
+  it.each([
+    [1, '1 rekord osobisty'],
+    [2, '2 rekordy osobiste'],
+    [5, '5 rekordów osobistych'],
+    [22, '22 rekordy osobiste'],
+    [25, '25 rekordów osobistych'],
+  ])('renders the Polish personal record plural for %s', async (count, expected) => {
+    await i18n.changeLanguage('pl');
+    const prSetIds: Record<string, true> = {};
+    const session = makeSession();
+    const sets = Array.from({ length: count as number }, (_, index) =>
+      makeSet(10_000 + index, { weight: 100 + index }),
+    );
+    session.exercises = [makeExercise('ex-pr', 'Bench Press', sets)];
+    const completedSetIdsForCase = Object.fromEntries(sets.map(set => [String(set.id), set.id]));
+    Object.keys(completedSetIdsForCase).forEach(id => { prSetIds[id] = true; });
+    const { getByText } = renderScreen({ session, completedSetIds: completedSetIdsForCase, prSetIds });
+
+    expect(getByText(expected as string)).toBeTruthy();
   });
 
   it('hides the records card entirely and skips the haptic without PRs', () => {
@@ -316,14 +400,17 @@ describe('WorkoutCompleteScreen', () => {
   it('shimmers the calories tile until the post-save refetch lands', async () => {
     let resolve: (value: PresetSessionResponse) => void;
     (getWorkout as jest.Mock).mockImplementation(
-      () => new Promise((res) => (resolve = res)),
+      () => new Promise(res => (resolve = res)),
     );
     const { getByLabelText, findByText } = renderScreen();
 
     expect(getByLabelText('Calculating')).toBeTruthy();
 
     const refreshed = makeSession();
-    refreshed.exercises = refreshed.exercises.map((e) => ({ ...e, calories_burned: 171 }));
+    refreshed.exercises = refreshed.exercises.map(e => ({
+      ...e,
+      calories_burned: 171,
+    }));
     resolve!(refreshed);
 
     expect(await findByText(/342/)).toBeTruthy();
@@ -331,7 +418,10 @@ describe('WorkoutCompleteScreen', () => {
 
   it('shows snapshot calories immediately when the flush already carried them', () => {
     const session = makeSession();
-    session.exercises = session.exercises.map((e) => ({ ...e, calories_burned: 150 }));
+    session.exercises = session.exercises.map(e => ({
+      ...e,
+      calories_burned: 150,
+    }));
     const { getByText, queryByLabelText } = renderScreen({ session });
 
     expect(getByText(/300/)).toBeTruthy();
@@ -343,7 +433,9 @@ describe('WorkoutCompleteScreen', () => {
 
     fireEvent.press(getByText('Done'));
 
-    expect(navigation.navigate).toHaveBeenCalledWith('Tabs', { screen: 'Diary' });
+    expect(navigation.navigate).toHaveBeenCalledWith('Tabs', {
+      screen: 'Diary',
+    });
   });
 
   it('Save as Preset opens the prefilled preset create form', () => {
@@ -359,7 +451,10 @@ describe('WorkoutCompleteScreen', () => {
 
   it('View Workout opens the workout detail, preferring the refetched session', async () => {
     const refreshed = makeSession();
-    refreshed.exercises = refreshed.exercises.map((e) => ({ ...e, calories_burned: 171 }));
+    refreshed.exercises = refreshed.exercises.map(e => ({
+      ...e,
+      calories_burned: 171,
+    }));
     (getWorkout as jest.Mock).mockResolvedValue(refreshed);
     const { getByText, findByText } = renderScreen();
     await findByText(/342/);
@@ -395,7 +490,9 @@ describe('WorkoutCompleteScreen', () => {
     }
 
     /** Mirrors makeSession() exactly, so the canonicalized sides are equal. */
-    function makeMatchingPreset(overrides: Partial<WorkoutPreset> = {}): WorkoutPreset {
+    function makeMatchingPreset(
+      overrides: Partial<WorkoutPreset> = {},
+    ): WorkoutPreset {
       return {
         id: 42,
         user_id: 'user-1',
@@ -431,7 +528,9 @@ describe('WorkoutCompleteScreen', () => {
     }
 
     /** The matching preset with one weight off — the session deviates from it. */
-    function makeDeviatingPreset(overrides: Partial<WorkoutPreset> = {}): WorkoutPreset {
+    function makeDeviatingPreset(
+      overrides: Partial<WorkoutPreset> = {},
+    ): WorkoutPreset {
       const preset = makeMatchingPreset(overrides);
       preset.exercises[0].sets[0].weight = 95;
       return preset;
@@ -459,7 +558,9 @@ describe('WorkoutCompleteScreen', () => {
 
     function alertButton(label: string): { onPress?: () => void } {
       const call = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
-      const button = (call?.[2] ?? []).find((b: { text?: string }) => b.text === label);
+      const button = (call?.[2] ?? []).find(
+        (b: { text?: string }) => b.text === label,
+      );
       expect(button).toBeDefined();
       return button;
     }
@@ -507,8 +608,16 @@ describe('WorkoutCompleteScreen', () => {
               exercise_id: 'x-ex-a',
               sort_order: 0,
               sets: [
-                expect.objectContaining({ set_number: 1, weight: 100, reps: 5 }),
-                expect.objectContaining({ set_number: 2, set_type: 'warmup', weight: 60 }),
+                expect.objectContaining({
+                  set_number: 1,
+                  weight: 100,
+                  reps: 5,
+                }),
+                expect.objectContaining({
+                  set_number: 2,
+                  set_type: 'warmup',
+                  weight: 60,
+                }),
                 expect.objectContaining({ set_number: 3, weight: 100 }),
               ],
             }),
@@ -516,7 +625,10 @@ describe('WorkoutCompleteScreen', () => {
           ],
         },
       });
-      expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Preset updated' });
+      expect(Toast.show).toHaveBeenCalledWith({
+        type: 'success',
+        text1: 'Preset updated',
+      });
     });
 
     it('shows no success toast and swallows the rejection when the update fails', async () => {
@@ -546,7 +658,9 @@ describe('WorkoutCompleteScreen', () => {
     });
 
     it('does not prompt for a preset the user does not own', async () => {
-      mockGetPresetById.mockResolvedValue(makeDeviatingPreset({ user_id: 'someone-else' }));
+      mockGetPresetById.mockResolvedValue(
+        makeDeviatingPreset({ user_id: 'someone-else' }),
+      );
       renderScreen(promptParams);
       await flushFetch();
       firePromptTimer();

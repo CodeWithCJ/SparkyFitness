@@ -1,6 +1,6 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import WorkoutPresetDetailScreen from '../../src/screens/WorkoutPresetDetailScreen';
@@ -14,6 +14,7 @@ import {
 } from '../../src/stores/appPreferencesStore';
 import type { WorkoutPreset, WorkoutPresetSet } from '../../src/types/workoutPresets';
 import type { RootStackScreenProps } from '../../src/types/navigation';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 
 type ScreenProps = RootStackScreenProps<'WorkoutPresetDetail'>;
 
@@ -123,7 +124,9 @@ describe('WorkoutPresetDetailScreen', () => {
     );
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await initializeI18n('en');
+    await i18n.changeLanguage('en');
     jest.clearAllMocks();
     __resetAppPreferencesStoreForTests();
     mockUsePreferences.mockReturnValue({
@@ -138,6 +141,39 @@ describe('WorkoutPresetDetailScreen', () => {
       createPresetAsync: jest.fn(),
       isPending: false,
     });
+  });
+
+  it('renders application-owned strings in Polish while preserving literal user content', async () => {
+    await i18n.changeLanguage('pl');
+    const preset = buildPreset({ exercises: [{ id: 'pe-1', exercise_id: 'ex-1', exercise_name: 'Bench Press', image_url: null, sets: [buildSet()] }] });
+    const screen = renderScreen(preset);
+    expect(screen.getByText('Rozpocznij trening')).toBeTruthy();
+    expect(screen.getByText('Zapisz wcześniejszy trening')).toBeTruthy();
+    expect(screen.getByText('Powiel szablon')).toBeTruthy();
+    expect(screen.getByText('1 ćwiczenie')).toBeTruthy();
+    expect(screen.getByText('Push Day')).toBeTruthy();
+    expect(screen.getByText('Bench Press')).toBeTruthy();
+  });
+
+  it('updates visible strings on an EN to PL runtime language switch without remounting', async () => {
+    const screen = renderScreen(buildPreset({ exercises: [{ id: 'pe-1', exercise_id: 'ex-1', exercise_name: 'Bench Press', image_url: null, sets: [buildSet()] }] }));
+    expect(screen.getByText('Start workout')).toBeTruthy();
+    expect(screen.getByText('Duplicate preset')).toBeTruthy();
+    await act(async () => { await i18n.changeLanguage('pl'); });
+    expect(screen.getByText('Rozpocznij trening')).toBeTruthy();
+    expect(screen.getByText('Powiel szablon')).toBeTruthy();
+    expect(screen.getByText('Push Day')).toBeTruthy();
+    expect(screen.getByText('Bench Press')).toBeTruthy();
+  });
+
+  it('uses the localized Polish copy-name contract and success presentation when duplicating', async () => {
+    const createPresetAsync = jest.fn().mockResolvedValue(buildPreset({ id: 8, name: 'Push Day (kopia)' }));
+    mockUseCreateWorkoutPreset.mockReturnValue({ createPresetAsync, isPending: false });
+    await i18n.changeLanguage('pl');
+    const screen = renderScreen(buildPreset());
+    fireEvent.press(screen.getByLabelText('Powiel szablon treningu'));
+    await waitFor(() => expect(createPresetAsync).toHaveBeenCalledWith(expect.objectContaining({ name: 'Push Day (kopia)' })));
+    expect(createPresetAsync.mock.calls[0][0].name).toContain('Push Day');
   });
 
   it('starts a live workout with the preset-built payload on Start workout', () => {
@@ -268,7 +304,8 @@ describe('WorkoutPresetDetailScreen', () => {
     expect(startLiveWorkout).not.toHaveBeenCalled();
   });
 
-  it('prompts to resume an active draft before logging a past preset workout', async () => {
+  it('prompts with Polish draft actions before logging a past preset workout', async () => {
+    await i18n.changeLanguage('pl');
     const alertSpy = jest.spyOn(Alert, 'alert');
     mockLoadActiveDraft.mockResolvedValue({
       type: 'workout',
@@ -295,19 +332,43 @@ describe('WorkoutPresetDetailScreen', () => {
     });
     const screen = renderScreen(buildPreset());
 
-    fireEvent.press(screen.getByText('Log past workout'));
+    fireEvent.press(screen.getByText('Zapisz wcześniejszy trening'));
 
     await waitFor(() => {
       expect(alertSpy).toHaveBeenCalledWith(
-        'Draft in Progress',
+        'Niezapisany szkic',
         expect.any(String),
         expect.any(Array),
       );
     });
 
     const buttons = alertSpy.mock.calls[0][2] as { text: string; onPress?: () => void }[];
-    buttons.find((button) => button.text === 'Resume Draft')?.onPress?.();
+    expect(buttons.map((button) => button.text)).toEqual(
+      expect.arrayContaining(['Wznów szkic', 'Odrzuć i kontynuuj']),
+    );
+    buttons.find((button) => button.text === 'Wznów szkic')?.onPress?.();
     expect(navigation.navigate).toHaveBeenCalledWith('WorkoutAdd');
+  });
+
+  it.each([
+    [1, '1 ćwiczenie'],
+    [2, '2 ćwiczenia'],
+    [5, '5 ćwiczeń'],
+    [22, '22 ćwiczenia'],
+    [25, '25 ćwiczeń'],
+  ])('renders the Polish exercise count for %i exercises', async (count, expected) => {
+    await i18n.changeLanguage('pl');
+    const preset = buildPreset({
+      exercises: Array.from({ length: count as number }, (_, index) => ({
+        id: `pe-${index + 1}`,
+        exercise_id: `ex-${index + 1}`,
+        exercise_name: `Exercise ${index + 1}`,
+        image_url: null,
+        sets: [buildSet()],
+      })),
+    });
+    const screen = renderScreen(preset);
+    expect(screen.getByText(expected as string)).toBeTruthy();
   });
 
   it('renders preset name, description, and exercise count', () => {
@@ -348,7 +409,7 @@ describe('WorkoutPresetDetailScreen', () => {
     const screen = renderScreen(preset);
 
     // No expand tap needed — preset cards default expanded.
-    expect(screen.getByText('KG')).toBeTruthy();
+    expect(screen.getByText('kg')).toBeTruthy();
     expect(screen.getByText('100')).toBeTruthy();
     expect(screen.getByText('5')).toBeTruthy();
   });
@@ -399,7 +460,7 @@ describe('WorkoutPresetDetailScreen', () => {
     const screen = renderScreen(preset);
 
     // 100kg → ~220.5 lbs
-    expect(screen.getByText('LBS')).toBeTruthy();
+    expect(screen.getByText('lbs')).toBeTruthy();
     expect(screen.getByText('220.5')).toBeTruthy();
   });
 

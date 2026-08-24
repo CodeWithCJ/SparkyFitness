@@ -22,35 +22,35 @@ export const FASTING_PRESETS: FastingPreset[] = [
     name: '16:8 Leangains',
     fastingHours: 16,
     eatingHours: 8,
-    description: 'Skip breakfast and eat during an 8-hour window.',
+    description: '',
   },
   {
     id: '18-6',
     name: '18:6 Warrior',
     fastingHours: 18,
     eatingHours: 6,
-    description: 'More aggressive fast with a 6-hour eating window.',
+    description: '',
   },
   {
     id: '20-4',
     name: '20:4 Warrior',
     fastingHours: 20,
     eatingHours: 4,
-    description: 'Eat one large meal or spread calories over 4 hours.',
+    description: '',
   },
   {
     id: 'circumadian',
     name: 'Circadian Rhythm',
     fastingHours: 13,
     eatingHours: 11,
-    description: 'Fast from sunset to morning.',
+    description: '',
   },
   {
     id: 'custom',
     name: 'Custom Fast',
     fastingHours: 12,
     eatingHours: 12,
-    description: 'Set your own fasting duration.',
+    description: '',
   },
 ];
 
@@ -86,7 +86,7 @@ export const METABOLIC_STAGES: MetabolicStage[] = [
     maxHours: 4,
     colorVar: '--color-accent-primary',
     rangeLabel: '0–4h',
-    description: 'Fed state · insulin elevated',
+    description: '',
   },
   {
     key: 'catabolic',
@@ -95,7 +95,7 @@ export const METABOLIC_STAGES: MetabolicStage[] = [
     maxHours: 16,
     colorVar: '--color-cat-orange',
     rangeLabel: '4–16h',
-    description: 'Glycogen depleting · fat metabolism ramping up',
+    description: '',
   },
   {
     key: 'fat-burning',
@@ -107,7 +107,7 @@ export const METABOLIC_STAGES: MetabolicStage[] = [
     // Neutral copy on purpose: fat burning is fixed at 16h, but the *goal* varies
     // by protocol, so the mockup's "Starts at your 16h goal" would be wrong for
     // 18:6 / 20:4 / Custom.
-    description: 'Fat burning ramps up',
+    description: '',
   },
   {
     key: 'ketosis',
@@ -116,7 +116,7 @@ export const METABOLIC_STAGES: MetabolicStage[] = [
     maxHours: 72,
     colorVar: '--color-cat-violet',
     rangeLabel: '24–72h',
-    description: 'Ketone production rises',
+    description: '',
   },
   {
     key: 'deep-ketosis',
@@ -125,7 +125,7 @@ export const METABOLIC_STAGES: MetabolicStage[] = [
     maxHours: null,
     colorVar: '--color-calories',
     rangeLabel: '72h+',
-    description: 'Autophagy peak',
+    description: '',
   },
 ];
 

@@ -155,6 +155,19 @@ describe('AddSheet', () => {
     expect(props.onLogWorkout).not.toHaveBeenCalled();
   });
 
+
+  it('renders Polish labels when the active i18n language is Polish', async () => {
+    const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+    await initializeI18n('en');
+    const { ref, getByText } = renderAddSheet();
+    await i18n.changeLanguage('pl');
+    act(() => ref.current?.present({ initialMenu: 'exercise' }));
+    expect(getByText('Trening')).toBeTruthy();
+    expect(getByText('Serie i powtórzenia na żywo')).toBeTruthy();
+    expect(getByText('Wstecz')).toBeTruthy();
+    await i18n.changeLanguage('en');
+  });
+
   it('fires onLogWorkout from the Log Workout submenu option', () => {
     const { ref, props, getByText } = renderAddSheet();
 

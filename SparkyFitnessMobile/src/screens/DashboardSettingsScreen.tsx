@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -37,6 +38,7 @@ const SERVER_DEFAULT_SUMMARY_NUTRIENTS = [
 ];
 
 const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -103,7 +105,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
       if (context?.previous) {
         queryClient.setQueryData(nutrientDisplayPreferencesQueryKey, context.previous);
       }
-      Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to update setting.' });
+      Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('dashboardSettings.updateFailed', { defaultValue: 'Failed to update setting.' }) });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: nutrientDisplayPreferencesQueryKey });
@@ -126,11 +128,10 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
       return (
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <Text className="text-base font-semibold text-text-primary mb-2">
-            No custom nutrients
+            {t('dashboardSettings.noCustomNutrients', { defaultValue: 'No custom nutrients' })}
           </Text>
           <Text className="text-text-secondary text-sm">
-            Custom nutrients are created in the SparkyFitness web app. Once you add
-            some, they will appear here so you can choose which show on your Dashboard.
+            {t('dashboardSettings.customNutrientsDescription', { defaultValue: 'Custom nutrients are created in the SparkyFitness web app. Once you add some, they will appear here so you can choose which show on your Dashboard.' })}
           </Text>
         </View>
       );
@@ -145,6 +146,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
             subtitle={cn.unit}
             rightAccessory={
               <Switch
+                accessibilityLabel={cn.name}
                 value={base.includes(cn.name)}
                 onValueChange={(value) => handleToggle(cn.name, value)}
               />
@@ -155,7 +157,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
     );
   };
 
-  const header = useScreenHeader({ title: 'Dashboard Settings', left: { kind: 'back' } });
+  const header = useScreenHeader({ title: t('dashboardSettings.title', { defaultValue: 'Dashboard Settings' }), left: { kind: 'back' } });
 
   return (
     <View
@@ -173,50 +175,55 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
       >
         <SettingsRowGroup>
           <SettingsRow
-            title="Ask Sparky"
-            subtitle="Show the Ask Sparky chat launcher on the Dashboard"
+            title={t('dashboardSettings.askSparky', { defaultValue: 'Ask Sparky' })}
+            subtitle={t('dashboardSettings.askSparkySubtitle', { defaultValue: 'Show the Ask Sparky chat launcher on the Dashboard' })}
             rightAccessory={
               <Switch
+                accessibilityLabel={t('dashboardSettings.askSparky', { defaultValue: 'Ask Sparky' })}
                 value={askSparkyVisible}
                 onValueChange={setAskSparkyVisible}
               />
             }
           />          
           <SettingsRow
-            title="Hydration"
-            subtitle="Show the hydration card on the Dashboard"
+            title={t('dashboardSettings.hydration', { defaultValue: 'Hydration' })}
+            subtitle={t('dashboardSettings.hydrationSubtitle', { defaultValue: 'Show the hydration card on the Dashboard' })}
             rightAccessory={
               <Switch
+                accessibilityLabel={t('dashboardSettings.hydration', { defaultValue: 'Hydration' })}
                 value={hydrationCardVisible}
                 onValueChange={setHydrationCardVisible}
               />
             }
           />
           <SettingsRow
-            title="Fasting"
-            subtitle="Show the fasting card on the Dashboard"
+            title={t('dashboardSettings.fasting', { defaultValue: 'Fasting' })}
+            subtitle={t('dashboardSettings.fastingSubtitle', { defaultValue: 'Show the fasting card on the Dashboard' })}
             rightAccessory={
               <Switch
+                accessibilityLabel={t('dashboardSettings.fasting', { defaultValue: 'Fasting' })}
                 value={fastingCardVisible}
                 onValueChange={setFastingCardVisible}
               />
             }
           />
           <SettingsRow
-            title="Cycle & Pregnancy"
-            subtitle="Show the wellness card on the Dashboard"
+            title={t('dashboardSettings.cyclePregnancy', { defaultValue: 'Cycle & Pregnancy' })}
+            subtitle={t('dashboardSettings.cyclePregnancySubtitle', { defaultValue: 'Show the wellness card on the Dashboard' })}
             rightAccessory={
               <Switch
+                accessibilityLabel={t('dashboardSettings.cyclePregnancy', { defaultValue: 'Cycle & Pregnancy' })}
                 value={cycleCardVisible}
                 onValueChange={setCycleCardVisible}
               />
             }
           />
           <SettingsRow
-            title="Medications"
-            subtitle="Show the medications card on the Dashboard"
+            title={t('dashboardSettings.medications', { defaultValue: 'Medications' })}
+            subtitle={t('dashboardSettings.medicationsSubtitle', { defaultValue: 'Show the medications card on the Dashboard' })}
             rightAccessory={
               <Switch
+                accessibilityLabel={t('dashboardSettings.medications', { defaultValue: 'Medications' })}
                 value={medicationsCardVisible}
                 onValueChange={setMedicationsCardVisible}
               />
@@ -226,7 +233,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
         </SettingsRowGroup>
 
         <Text className="text-base font-semibold text-text-primary mb-4">
-          Custom Nutrient Display
+          {t('dashboardSettings.customNutrientDisplay', { defaultValue: 'Custom Nutrient Display' })}
         </Text>
 
         {renderContent()}

@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, View, Text, ScrollView } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
@@ -31,13 +32,15 @@ import {
 import { useSupersetBorders } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
 
-type WorkoutPresetDetailScreenProps = RootStackScreenProps<'WorkoutPresetDetail'>;
+type WorkoutPresetDetailScreenProps =
+  RootStackScreenProps<'WorkoutPresetDetail'>;
 
 const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   navigation,
   route,
 }) => {
   const preset = route.params.updatedPreset ?? route.params.preset;
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -48,7 +51,8 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   // we never quietly hand an unsupported unit to weightFromKg.
   const weightUnit: 'kg' | 'lbs' =
     preferences?.default_weight_unit === 'kg' ? 'kg' : 'lbs';
-  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
+  const distanceUnit =
+    (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   const exerciseCount = preset.exercises?.length ?? 0;
 
   const { getImageSource } = useExerciseImageSource();
@@ -71,23 +75,27 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
       const card = cardExercises.find(c => c.id === entryId);
       if (!card) return;
       navigation.navigate('ExerciseDetail', {
-        item: makeSparseExercise({
-          id: card.exercise_id,
-          name: card.exercise_snapshot?.name,
-          category: card.exercise_snapshot?.category,
-          images: card.exercise_snapshot?.images,
-        }),
+        item: makeSparseExercise(
+          {
+            id: card.exercise_id,
+            name: card.exercise_snapshot?.name,
+            category: card.exercise_snapshot?.category,
+            images: card.exercise_snapshot?.images,
+          },
+          t,
+        ),
         hideWorkoutActions: true,
       });
     },
-    [cardExercises, navigation],
+    [cardExercises, navigation, t],
   );
 
   // Metric column is shared with the workout screens (intended). Preset sets
   // store no RPE, so an 'rpe' selection falls back to volume for display and
   // the picker hides the RPE option — same as the preset form.
   const metricColumn = useAppPreferencesStore(s => s.activeWorkoutMetricColumn);
-  const effectiveMetricColumn = metricColumn === 'rpe' ? 'volume' : metricColumn;
+  const effectiveMetricColumn =
+    metricColumn === 'rpe' ? 'volume' : metricColumn;
   const [metricMenu, setMetricMenu] = useState<{
     anchor: AnchorRect;
     clampedToRpe: boolean;
@@ -105,11 +113,14 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   // WorkoutPreset uses snake_case `user_id` (it's a thin wrapper over server
   // JSON), unlike Exercise/FoodInfoItem which use camelCase `userId`.
   const canManagePreset = !!(
-    isConnected && preset.user_id && profile?.id === preset.user_id
+    isConnected &&
+    preset.user_id &&
+    profile?.id === preset.user_id
   );
 
   const isPublic = !!preset.is_public;
-  const { updatePresetAsync, isPending: isSharePending } = useUpdateWorkoutPreset();
+  const { updatePresetAsync, isPending: isSharePending } =
+    useUpdateWorkoutPreset();
 
   const handleToggleShare = useCallback(async () => {
     const nextIsPublic = !isPublic;
@@ -122,7 +133,13 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
         navigation.setParams({ updatedPreset: updated });
         Toast.show({
           type: 'success',
-          text1: updated.is_public ? 'Workout preset shared publicly' : 'Workout preset made private',
+          text1: updated.is_public
+            ? t('workoutPresetDetail.toast.shared', {
+                defaultValue: 'Workout preset shared publicly',
+              })
+            : t('workoutPresetDetail.toast.private', {
+                defaultValue: 'Workout preset made private',
+              }),
         });
       } catch {
         // useUpdateWorkoutPreset hook already shows error Toast on failure
@@ -131,28 +148,42 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
 
     if (nextIsPublic) {
       Alert.alert(
-        'Make public?',
-        'This workout preset will become visible to all users on this server.',
+        t('workoutPresetDetail.share.title', { defaultValue: 'Make public?' }),
+        t('workoutPresetDetail.share.message', {
+          defaultValue:
+            'This workout preset will become visible to all users on this server.',
+        }),
         [
-          { text: 'Cancel', style: 'cancel' },
           {
-            text: 'Make Public',
+            text: t('common.cancel', { defaultValue: 'Cancel' }),
+            style: 'cancel',
+          },
+          {
+            text: t('workoutPresetDetail.share.confirm', {
+              defaultValue: 'Make public',
+            }),
             onPress: () => void runUpdate(),
           },
-        ]
+        ],
       );
     } else {
       void runUpdate();
     }
-  }, [preset.id, isPublic, updatePresetAsync, navigation]);
+  }, [preset.id, isPublic, updatePresetAsync, navigation, t]);
 
-  const { confirmAndDelete, isPending: isDeletePending } = useDeleteWorkoutPreset({
-    presetId: preset.id,
-    onSuccess: () => {
-      Toast.show({ type: 'success', text1: 'Workout preset deleted' });
-      navigation.goBack();
-    },
-  });
+  const { confirmAndDelete, isPending: isDeletePending } =
+    useDeleteWorkoutPreset({
+      presetId: preset.id,
+      onSuccess: () => {
+        Toast.show({
+          type: 'success',
+          text1: t('workoutPresetDetail.toast.deleted', {
+            defaultValue: 'Workout preset deleted',
+          }),
+        });
+        navigation.goBack();
+      },
+    });
 
   const { startLiveWorkout, isStarting } = useStartLiveWorkout(navigation);
 
@@ -182,18 +213,40 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     }
 
     Alert.alert(
-      'Draft in Progress',
-      `You have an unsaved ${draft.type === 'workout' ? 'workout' : 'activity'} draft. What would you like to do?`,
+      t('workoutPresetDetail.draft.title', {
+        defaultValue: 'Draft in Progress',
+      }),
+      t('workoutPresetDetail.draft.message', {
+        defaultValue:
+          'You have an unsaved {{type}} draft. What would you like to do?',
+        type:
+          draft.type === 'workout'
+            ? t('workoutPresetDetail.draft.workout', {
+                defaultValue: 'workout',
+              })
+            : t('workoutPresetDetail.draft.activity', {
+                defaultValue: 'activity',
+              }),
+      }),
       [
-        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Resume Draft',
+          text: t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+        },
+        {
+          text: t('workoutPresetDetail.draft.resume', {
+            defaultValue: 'Resume Draft',
+          }),
           onPress: () => {
-            navigation.navigate(draft.type === 'workout' ? 'WorkoutAdd' : 'ActivityAdd');
+            navigation.navigate(
+              draft.type === 'workout' ? 'WorkoutAdd' : 'ActivityAdd',
+            );
           },
         },
         {
-          text: 'Discard & Continue',
+          text: t('workoutPresetDetail.draft.discard', {
+            defaultValue: 'Discard & Continue',
+          }),
           style: 'destructive',
           onPress: async () => {
             await clearDraft();
@@ -202,7 +255,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
         },
       ],
     );
-  }, [navigateToPresetWorkout, navigation]);
+  }, [navigateToPresetWorkout, navigation, t]);
 
   const handleEdit = useCallback(() => {
     navigation.navigate('WorkoutPresetForm', {
@@ -215,11 +268,15 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   // Available regardless of ownership (unlike Share/Edit below) — duplicating
   // someone else's public preset is exactly how you'd fork it into your own
   // library.
-  const { createPresetAsync, isPending: isDuplicatePending } = useCreateWorkoutPreset();
+  const { createPresetAsync, isPending: isDuplicatePending } =
+    useCreateWorkoutPreset();
   const handleDuplicatePreset = useCallback(async () => {
     try {
       const created = await createPresetAsync({
-        name: `${preset.name} (Copy)`,
+        name: t('workoutPresetDetail.duplicateName', {
+          defaultValue: '{{name}} (Copy)',
+          name: preset.name,
+        }),
         description: preset.description,
         is_public: false,
         // The list/detail read queries never select wpe.sort_order (see
@@ -245,7 +302,12 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           })),
         })),
       });
-      Toast.show({ type: 'success', text1: 'Workout preset duplicated' });
+      Toast.show({
+        type: 'success',
+        text1: t('workoutPresetDetail.toast.duplicated', {
+          defaultValue: 'Workout preset duplicated',
+        }),
+      });
       // navigate() to the route already focused replaces its params instead of
       // pushing a new screen (React Navigation 7) — push so Back still returns
       // to the original preset instead of the fresh copy. Same fix as
@@ -254,7 +316,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     } catch {
       // useCreateWorkoutPreset already shows an error Toast on failure.
     }
-  }, [createPresetAsync, preset, navigation]);
+  }, [createPresetAsync, preset, navigation, t]);
 
   const rightItems: HeaderItem[] = canManagePreset
     ? [
@@ -266,15 +328,23 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           useIoniconOnIOS: !isPublic,
           disabled: isSharePending,
           onPress: handleToggleShare,
-          accessibilityLabel: isPublic ? 'Make private' : 'Share with public',
+          accessibilityLabel: isPublic
+            ? t('workoutPresetDetail.accessibility.makePrivate', {
+                defaultValue: 'Make private',
+              })
+            : t('workoutPresetDetail.accessibility.sharePublic', {
+                defaultValue: 'Share with public',
+              }),
           identifier: 'workout-preset-detail-share',
         } as const,
         {
           kind: 'text',
-          label: 'Edit',
+          label: t('common.edit', { defaultValue: 'Edit' }),
           role: 'secondary',
           onPress: handleEdit,
-          accessibilityLabel: 'Edit workout preset',
+          accessibilityLabel: t('workoutPresetDetail.accessibility.edit', {
+            defaultValue: 'Edit workout preset',
+          }),
           identifier: 'workout-preset-detail-edit',
         } as const,
       ]
@@ -289,7 +359,10 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   });
 
   return (
-    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
 
       <ScrollView
@@ -301,10 +374,17 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
         }}
       >
         {preset.description ? (
-          <Text className="text-base text-text-secondary mt-2">{preset.description}</Text>
+          <Text className="text-base text-text-secondary mt-2">
+            {preset.description}
+          </Text>
         ) : null}
         <Text className="text-sm text-text-muted mt-2 mb-4">
-          {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
+          {t('workoutPresetDetail.exerciseCount', {
+            count: exerciseCount,
+            defaultValue: '{{count}} exercises',
+            defaultValue_one: '{{count}} exercise',
+            defaultValue_other: '{{count}} exercises',
+          })}
         </Text>
 
         {/* Pull back part of the scroll container's 16px inset so the cards
@@ -362,7 +442,13 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           className="mt-4"
         >
           <Text className="text-white text-base font-semibold">
-            {isStarting ? 'Starting...' : 'Start workout'}
+            {isStarting
+              ? t('workoutPresetDetail.actions.starting', {
+                  defaultValue: 'Starting…',
+                })
+              : t('workoutPresetDetail.actions.start', {
+                  defaultValue: 'Start workout',
+                })}
           </Text>
         </Button>
 
@@ -373,7 +459,9 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           className="mt-3"
           textClassName="text-text-secondary font-medium"
         >
-          Log past workout
+          {t('workoutPresetDetail.actions.logPast', {
+            defaultValue: 'Log past workout',
+          })}
         </Button>
 
         <Button
@@ -382,9 +470,17 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           disabled={isDuplicatePending}
           className="mt-3"
           textClassName="text-text-secondary font-medium"
-          accessibilityLabel="Duplicate workout preset"
+          accessibilityLabel={t('workoutPresetDetail.accessibility.duplicate', {
+            defaultValue: 'Duplicate workout preset',
+          })}
         >
-          {isDuplicatePending ? 'Duplicating...' : 'Duplicate preset'}
+          {isDuplicatePending
+            ? t('workoutPresetDetail.actions.duplicating', {
+                defaultValue: 'Duplicating…',
+              })
+            : t('workoutPresetDetail.actions.duplicate', {
+                defaultValue: 'Duplicate preset',
+              })}
         </Button>
 
         {canManagePreset && (
@@ -394,7 +490,13 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
             disabled={isDeletePending}
             className="mt-3"
           >
-            {isDeletePending ? 'Deleting...' : 'Delete preset'}
+            {isDeletePending
+              ? t('workoutPresetDetail.actions.deleting', {
+                  defaultValue: 'Deleting…',
+                })
+              : t('workoutPresetDetail.actions.delete', {
+                  defaultValue: 'Delete preset',
+                })}
           </Button>
         )}
       </ScrollView>
