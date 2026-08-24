@@ -1162,7 +1162,8 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
   },
   {
     category: 'allergens',
-    keywords: /\b(allerg\w*|intoleran\w*)\b/i,
+    keywords:
+      /\b(allerg\w*|intoleran\w*|peanut\w*|tree\s*nut\w*|gluten|dairy|lactose|shellfish|soy|sesame)\b/i,
   },
   {
     category: 'favorites',
@@ -1358,6 +1359,7 @@ Your response must contain ONLY the matched domain names as a comma-separated li
       'coaching',
       'profile',
       'vision',
+      'allergens',
     ];
     for (const cat of validCategories) {
       if (parts.includes(cat)) {

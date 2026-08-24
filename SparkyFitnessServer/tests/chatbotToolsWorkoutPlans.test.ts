@@ -132,6 +132,21 @@ describe('sparky_manage_workout_plans', () => {
     );
   });
 
+  it('returns NOT_FOUND when deleting a missing plan', async () => {
+    svc.deleteWorkoutPlanTemplate.mockRejectedValue(
+      new Error('Workout plan template not found.')
+    );
+    const result = await getTool().execute!(
+      { action: 'delete_workout_plan', plan_id: PLAN_ID },
+      opts
+    );
+    expect(result).toBe(
+      "Error [NOT_FOUND]: Workout plan with ID '" +
+        PLAN_ID +
+        "' not found.\n\nSuggestion: Check the ID and try again."
+    );
+  });
+
   it('rejects a non-UUID plan_id (VALIDATION)', async () => {
     const result = await getTool().execute!(
       { action: 'get_workout_plan', plan_id: 'not-a-uuid' },

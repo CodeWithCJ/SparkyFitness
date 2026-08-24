@@ -2,12 +2,12 @@ import { vi, beforeEach, describe, expect, it } from 'vitest';
 import { buildBarcodeTools } from '../ai/tools/barcodeTools.js';
 import foodCoreService from '../services/foodCoreService.js';
 
-vi.mock('../services/foodCoreService', () => ({
+vi.mock('../services/foodCoreService.js', () => ({
   default: {
     lookupBarcode: vi.fn(),
   },
 }));
-vi.mock('../config/logging', () => ({
+vi.mock('../config/logging.js', () => ({
   log: vi.fn(),
 }));
 

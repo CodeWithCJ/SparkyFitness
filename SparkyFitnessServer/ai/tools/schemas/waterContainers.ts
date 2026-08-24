@@ -70,7 +70,19 @@ const updateWaterContainerSchema = z
     is_primary: z.boolean().optional(),
     servings_per_container: servingsSchema.optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (data) =>
+      data.name !== undefined ||
+      data.volume !== undefined ||
+      data.unit !== undefined ||
+      data.is_primary !== undefined ||
+      data.servings_per_container !== undefined,
+    {
+      message:
+        'Provide at least one field to update (name, volume, unit, is_primary, or servings_per_container).',
+    }
+  );
 
 const deleteWaterContainerSchema = z
   .object({

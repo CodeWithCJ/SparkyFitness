@@ -96,16 +96,22 @@ describe('sparky_manage_progress_photos', () => {
   });
 
   it('list_photos defaults to today when no date is provided', async () => {
-    svc.getPhotosByDate.mockResolvedValue([]);
-    const today = todayInZone('UTC');
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-02-15T12:00:00Z'));
+    try {
+      svc.getPhotosByDate.mockResolvedValue([]);
+      const today = todayInZone('UTC');
 
-    const result = await tools.sparky_manage_progress_photos.execute!(
-      { action: 'list_photos' },
-      opts
-    );
+      const result = await tools.sparky_manage_progress_photos.execute!(
+        { action: 'list_photos' },
+        opts
+      );
 
-    expect(result).toBe(`# Progress Photos (${today})\n\nNo results found.`);
-    expect(svc.getPhotosByDate).toHaveBeenCalledWith('user-1', today);
+      expect(result).toBe(`# Progress Photos (${today})\n\nNo results found.`);
+      expect(svc.getPhotosByDate).toHaveBeenCalledWith('user-1', today);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('delete_photo confirms deletion', async () => {

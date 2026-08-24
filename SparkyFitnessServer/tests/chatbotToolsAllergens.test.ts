@@ -62,6 +62,28 @@ describe('sparky_manage_allergens', () => {
     expect(result).toBe('# Tracked Allergens\n\nNo results found.');
   });
 
+  it('list_allergens paginates and appends a footer when truncated', async () => {
+    const rows = Array.from({ length: 25 }, (_unused, i) => ({
+      id: `id-${i}`,
+      allergen_name: `a${i}`,
+    }));
+    vi.mocked(
+      AllergenPreferenceService.getAllergenPreferences
+    ).mockResolvedValue(rows);
+
+    const result = await tools.sparky_manage_allergens.execute!(
+      { action: 'list_allergens', limit: 2 },
+      opts
+    );
+
+    expect(result).toBe(
+      '# Tracked Allergens\n\n' +
+        '**a0**\n  ID: id-0\n\n' +
+        '**a1**\n  ID: id-1\n\n' +
+        '_Showing 1-2 of 25. Use limit/offset to page._'
+    );
+  });
+
   it('infers list_allergens when no action or fields are provided', async () => {
     vi.mocked(
       AllergenPreferenceService.getAllergenPreferences

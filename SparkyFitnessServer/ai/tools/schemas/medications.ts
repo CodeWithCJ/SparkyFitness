@@ -277,7 +277,27 @@ const addScheduleSchema = z
       .describe('Reason for a PRN (as-needed) schedule'),
     start_date: optionalDateSchema,
   })
-  .strict();
+  .strict()
+  .refine(
+    (data) =>
+      data.schedule_type_id !== 'specific_days' ||
+      (data.days_of_week !== undefined && data.days_of_week.length > 0),
+    {
+      message:
+        'days_of_week is required (and must be non-empty) when schedule_type_id is "specific_days".',
+      path: ['days_of_week'],
+    }
+  )
+  .refine(
+    (data) =>
+      data.schedule_type_id !== 'every_n_days' ||
+      data.interval_days !== undefined,
+    {
+      message:
+        'interval_days is required when schedule_type_id is "every_n_days".',
+      path: ['interval_days'],
+    }
+  );
 
 const deleteScheduleSchema = z
   .object({

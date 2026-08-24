@@ -11,19 +11,27 @@ export const WORKOUT_PLAN_ACTIONS = [
   'delete_workout_plan',
 ] as const;
 
-const listWorkoutPlansSchema = z.object({
-  action: z.literal('list_workout_plans'),
-});
+const listWorkoutPlansSchema = z
+  .object({
+    action: z.literal('list_workout_plans'),
+  })
+  .strict();
 
-const getWorkoutPlanSchema = z.object({
-  action: z.literal('get_workout_plan'),
-  plan_id: uuidSchema.describe('UUID of the workout plan template to inspect'),
-});
+const getWorkoutPlanSchema = z
+  .object({
+    action: z.literal('get_workout_plan'),
+    plan_id: uuidSchema.describe(
+      'UUID of the workout plan template to inspect'
+    ),
+  })
+  .strict();
 
-const deleteWorkoutPlanSchema = z.object({
-  action: z.literal('delete_workout_plan'),
-  plan_id: uuidSchema.describe('UUID of the workout plan template to delete'),
-});
+const deleteWorkoutPlanSchema = z
+  .object({
+    action: z.literal('delete_workout_plan'),
+    plan_id: uuidSchema.describe('UUID of the workout plan template to delete'),
+  })
+  .strict();
 
 export const manageWorkoutPlansSchema = z.discriminatedUnion('action', [
   listWorkoutPlansSchema,

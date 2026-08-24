@@ -2,13 +2,13 @@ import { vi, beforeEach, describe, expect, it } from 'vitest';
 import { buildSyncedDataTools } from '../ai/tools/syncedDataTools.js';
 import syncedDataService from '../services/syncedDataService.js';
 
-vi.mock('../services/syncedDataService', () => ({
+vi.mock('../services/syncedDataService.js', () => ({
   default: {
     getSyncedSources: vi.fn(),
     deleteSyncedSource: vi.fn(),
   },
 }));
-vi.mock('../config/logging', () => ({
+vi.mock('../config/logging.js', () => ({
   log: vi.fn(),
 }));
 

@@ -200,11 +200,24 @@ Actions:
               args.days_of_week ||
               args.interval_days ||
               args.with_meal ||
-              args.prn_reason
+              args.prn_reason ||
+              args.start_date
             ) {
               return 'add_schedule';
             }
-            if (args.name) {
+            const hasMedicationUpdateField =
+              args.name !== undefined ||
+              args.strength_value !== undefined ||
+              args.strength_unit !== undefined ||
+              args.dose_amount !== undefined ||
+              args.dose_unit !== undefined ||
+              args.type_id !== undefined ||
+              args.reason_text !== undefined ||
+              args.is_glp1 !== undefined ||
+              args.is_supplement !== undefined ||
+              args.is_active !== undefined ||
+              args.notes !== undefined;
+            if (hasMedicationUpdateField && !args.entry_id) {
               return args.medication_id
                 ? 'update_medication'
                 : 'create_medication';

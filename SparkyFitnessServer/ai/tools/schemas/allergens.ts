@@ -11,9 +11,26 @@ const allergenNameSchema = z
   .max(100, 'Allergen name must be 100 characters or fewer')
   .describe('Name of the allergen (e.g. "peanuts", "gluten", "shellfish")');
 
+const limitSchema = z.coerce
+  .number()
+  .int('limit must be an integer')
+  .min(1, 'limit must be at least 1')
+  .max(50, 'limit must be 50 or fewer');
+
+const offsetSchema = z.coerce
+  .number()
+  .int('offset must be an integer')
+  .min(0, 'offset must be 0 or greater');
+
 const listAllergensSchema = z
   .object({
     action: z.literal('list_allergens'),
+    limit: limitSchema
+      .optional()
+      .describe('Maximum number of allergens to return (1-50, default 20)'),
+    offset: offsetSchema
+      .optional()
+      .describe('Number of allergens to skip before returning results'),
   })
   .strict();
 
@@ -54,4 +71,10 @@ export const manageAllergensInput = z.object({
   id: uuidSchema
     .optional()
     .describe('remove_allergen: UUID of the allergen preference to remove'),
+  limit: limitSchema
+    .optional()
+    .describe('list_allergens: maximum number of allergens to return (1-50)'),
+  offset: offsetSchema
+    .optional()
+    .describe('list_allergens: number of allergens to skip'),
 });

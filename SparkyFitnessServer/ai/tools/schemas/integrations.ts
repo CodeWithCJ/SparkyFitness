@@ -5,13 +5,17 @@ export const INTEGRATION_ACTIONS = [
   'list_provider_types',
 ] as const;
 
-const listProvidersSchema = z.object({
-  action: z.literal('list_providers'),
-});
+const listProvidersSchema = z
+  .object({
+    action: z.literal('list_providers'),
+  })
+  .strict();
 
-const listProviderTypesSchema = z.object({
-  action: z.literal('list_provider_types'),
-});
+const listProviderTypesSchema = z
+  .object({
+    action: z.literal('list_provider_types'),
+  })
+  .strict();
 
 export const integrationsSchema = z.discriminatedUnion('action', [
   listProvidersSchema,

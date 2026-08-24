@@ -224,6 +224,9 @@ async function deleteWorkoutPlanTemplate(userId: any, templateId: any) {
       templateId,
       userId
     );
+  if (ownerId === null || ownerId === undefined) {
+    throw new Error('Workout plan template not found.');
+  }
   if (ownerId !== userId) {
     throw new Error(
       'Forbidden: You do not have permission to delete this workout plan template.'

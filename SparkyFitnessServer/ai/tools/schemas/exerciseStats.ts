@@ -31,36 +31,44 @@ const distanceStandardSchema = z.enum([
   'custom',
 ]);
 
-const statsSummarySchema = z.object({
-  action: z.literal('stats_summary'),
-  interval: intervalSchema.optional(),
-  start_date: optionalDateSchema,
-  end_date: optionalDateSchema,
-  category: z.string().trim().min(1).optional(),
-  unit_system: unitSystemSchema.optional(),
-});
+const statsSummarySchema = z
+  .object({
+    action: z.literal('stats_summary'),
+    interval: intervalSchema.optional(),
+    start_date: optionalDateSchema,
+    end_date: optionalDateSchema,
+    category: z.string().trim().min(1).optional(),
+    unit_system: unitSystemSchema.optional(),
+  })
+  .strict();
 
-const queryActivitiesSchema = z.object({
-  action: z.literal('query_activities'),
-  category: z.string().trim().min(1).optional(),
-  distance_standard: distanceStandardSchema.optional(),
-  start_date: optionalDateSchema,
-  end_date: optionalDateSchema,
-  search_keyword: z.string().trim().min(1).optional(),
-  unit_system: unitSystemSchema.optional(),
-  page: z.coerce.number().int().min(1).optional(),
-  page_size: z.coerce.number().int().min(1).max(100).optional(),
-});
+const queryActivitiesSchema = z
+  .object({
+    action: z.literal('query_activities'),
+    category: z.string().trim().min(1).optional(),
+    distance_standard: distanceStandardSchema.optional(),
+    start_date: optionalDateSchema,
+    end_date: optionalDateSchema,
+    search_keyword: z.string().trim().min(1).optional(),
+    unit_system: unitSystemSchema.optional(),
+    page: z.coerce.number().int().min(1).optional(),
+    page_size: z.coerce.number().int().min(1).max(100).optional(),
+  })
+  .strict();
 
-const personalRecordsSchema = z.object({
-  action: z.literal('personal_records'),
-  unit_system: unitSystemSchema.optional(),
-});
+const personalRecordsSchema = z
+  .object({
+    action: z.literal('personal_records'),
+    unit_system: unitSystemSchema.optional(),
+  })
+  .strict();
 
-const matchedCoursesSchema = z.object({
-  action: z.literal('matched_courses'),
-  unit_system: unitSystemSchema.optional(),
-});
+const matchedCoursesSchema = z
+  .object({
+    action: z.literal('matched_courses'),
+    unit_system: unitSystemSchema.optional(),
+  })
+  .strict();
 
 export const exerciseStatsSchema = z.discriminatedUnion('action', [
   statsSummarySchema,

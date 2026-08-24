@@ -48,12 +48,21 @@ Actions:
           tz,
           VALID_ACTIONS,
           (args) => {
-            if (args.id !== undefined || args.type !== undefined) {
-              return 'add_favorite';
+            // Only infer the read action. Mutations (add/remove) must be
+            // requested explicitly — inferring one from the presence of an
+            // id/type would guess between add and remove and could favorite
+            // an item the user meant to unfavorite (or vice versa).
+            if (args.id === undefined && args.type === undefined) {
+              return 'list_favorites';
             }
-            return 'list_favorites';
+            return undefined;
           }
         );
+        if ((normalized as Record<string, unknown>).action === undefined) {
+          return ERRORS.VALIDATION(
+            'action is required: use "add_favorite" or "remove_favorite" (with type and id), or "list_favorites".'
+          );
+        }
         const parsed = manageFavoritesSchema.safeParse(normalized);
         if (!parsed.success) {
           return formatZodError(parsed.error);

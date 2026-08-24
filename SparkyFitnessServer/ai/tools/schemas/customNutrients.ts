@@ -64,7 +64,16 @@ const updateCustomNutrientSchema = z
     unit: nutrientUnitSchema.optional(),
     aliases: aliasesSchema.optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (data) =>
+      data.name !== undefined ||
+      data.unit !== undefined ||
+      data.aliases !== undefined,
+    {
+      message: 'Provide at least one field to update (name, unit, or aliases).',
+    }
+  );
 
 const deleteCustomNutrientSchema = z
   .object({

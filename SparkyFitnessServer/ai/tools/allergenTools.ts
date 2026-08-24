@@ -9,6 +9,7 @@ import {
   type ManageAllergensInput,
 } from './schemas/allergens.js';
 import { normalizeActionArgs } from './dates.js';
+import { normalizePagination } from './pagination.js';
 
 const VALID_ACTIONS = ['list_allergens', 'add_allergen', 'remove_allergen'];
 
@@ -58,11 +59,21 @@ Actions:
                 (await AllergenPreferenceService.getAllergenPreferences(
                   userId
                 )) as AllergenPreferenceRow[];
-              return formatList(
-                rows,
+              const { limit, offset } = normalizePagination(
+                args.limit,
+                args.offset
+              );
+              const page = rows.slice(offset, offset + limit);
+              const list = formatList(
+                page,
                 'Tracked Allergens',
                 (row) => `**${row.allergen_name}**\n  ID: ${row.id}`
               );
+              const shownEnd = offset + page.length;
+              if (rows.length > page.length || offset > 0) {
+                return `${list}\n\n_Showing ${page.length === 0 ? 0 : offset + 1}-${shownEnd} of ${rows.length}. Use limit/offset to page._`;
+              }
+              return list;
             }
 
             case 'add_allergen': {

@@ -3,12 +3,12 @@ import { buildDashboardTools } from '../ai/tools/dashboardTools.js';
 import dashboardService from '../services/DashboardService.js';
 import { todayInZone } from '@workspace/shared';
 
-vi.mock('../services/DashboardService', () => ({
+vi.mock('../services/DashboardService.js', () => ({
   default: {
     getDashboardStats: vi.fn(),
   },
 }));
-vi.mock('../config/logging', () => ({
+vi.mock('../config/logging.js', () => ({
   log: vi.fn(),
 }));
 
@@ -65,26 +65,38 @@ describe('sparky_get_dashboard', () => {
   });
 
   it('daily_summary defaults to today when no date is given', async () => {
-    svc.getDashboardStats.mockResolvedValue(STATS);
-    const today = todayInZone('UTC');
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-02-15T12:00:00Z'));
+    try {
+      svc.getDashboardStats.mockResolvedValue(STATS);
+      const today = todayInZone('UTC');
 
-    const result = await tools.sparky_get_dashboard.execute!(
-      { action: 'daily_summary' },
-      opts
-    );
+      const result = await tools.sparky_get_dashboard.execute!(
+        { action: 'daily_summary' },
+        opts
+      );
 
-    expect(result).toBe(EXPECTED(today));
-    expect(svc.getDashboardStats).toHaveBeenCalledWith('user-1', today);
+      expect(result).toBe(EXPECTED(today));
+      expect(svc.getDashboardStats).toHaveBeenCalledWith('user-1', today);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('infers daily_summary from an empty payload', async () => {
-    svc.getDashboardStats.mockResolvedValue(STATS);
-    const today = todayInZone('UTC');
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-02-15T12:00:00Z'));
+    try {
+      svc.getDashboardStats.mockResolvedValue(STATS);
+      const today = todayInZone('UTC');
 
-    const result = await tools.sparky_get_dashboard.execute!({}, opts);
+      const result = await tools.sparky_get_dashboard.execute!({}, opts);
 
-    expect(result).toBe(EXPECTED(today));
-    expect(svc.getDashboardStats).toHaveBeenCalledWith('user-1', today);
+      expect(result).toBe(EXPECTED(today));
+      expect(svc.getDashboardStats).toHaveBeenCalledWith('user-1', today);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('returns a DB error string when the service throws', async () => {

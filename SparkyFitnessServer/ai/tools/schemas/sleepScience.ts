@@ -11,35 +11,49 @@ export const SLEEP_SCIENCE_ACTIONS = [
   'recalculate_baseline',
 ] as const;
 
-const sleepDebtSchema = z.object({
-  action: z.literal('sleep_debt'),
-});
+const sleepDebtSchema = z
+  .object({
+    action: z.literal('sleep_debt'),
+  })
+  .strict();
 
-const mctqStatsSchema = z.object({
-  action: z.literal('mctq_stats'),
-});
+const mctqStatsSchema = z
+  .object({
+    action: z.literal('mctq_stats'),
+  })
+  .strict();
 
-const dailyNeedSchema = z.object({
-  action: z.literal('daily_need'),
-  date: optionalDateSchema,
-});
+const dailyNeedSchema = z
+  .object({
+    action: z.literal('daily_need'),
+    date: optionalDateSchema,
+  })
+  .strict();
 
-const energyCurveSchema = z.object({
-  action: z.literal('energy_curve'),
-});
+const energyCurveSchema = z
+  .object({
+    action: z.literal('energy_curve'),
+  })
+  .strict();
 
-const chronotypeSchema = z.object({
-  action: z.literal('chronotype'),
-});
+const chronotypeSchema = z
+  .object({
+    action: z.literal('chronotype'),
+  })
+  .strict();
 
-const dataSufficiencySchema = z.object({
-  action: z.literal('data_sufficiency'),
-});
+const dataSufficiencySchema = z
+  .object({
+    action: z.literal('data_sufficiency'),
+  })
+  .strict();
 
-const recalculateBaselineSchema = z.object({
-  action: z.literal('recalculate_baseline'),
-  window_days: z.coerce.number().int().min(14).max(365).optional(),
-});
+const recalculateBaselineSchema = z
+  .object({
+    action: z.literal('recalculate_baseline'),
+    window_days: z.coerce.number().int().min(14).max(365).optional(),
+  })
+  .strict();
 
 export const sleepScienceSchema = z.discriminatedUnion('action', [
   sleepDebtSchema,

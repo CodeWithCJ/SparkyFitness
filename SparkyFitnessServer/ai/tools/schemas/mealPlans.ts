@@ -13,24 +13,32 @@ export const MEAL_PLAN_ACTIONS = [
   'delete_meal_plan',
 ] as const;
 
-const listMealPlansSchema = z.object({
-  action: z.literal('list_meal_plans'),
-});
+const listMealPlansSchema = z
+  .object({
+    action: z.literal('list_meal_plans'),
+  })
+  .strict();
 
-const getMealPlanSchema = z.object({
-  action: z.literal('get_meal_plan'),
-  plan_id: uuidSchema.describe('UUID of the meal plan template to inspect'),
-});
+const getMealPlanSchema = z
+  .object({
+    action: z.literal('get_meal_plan'),
+    plan_id: uuidSchema.describe('UUID of the meal plan template to inspect'),
+  })
+  .strict();
 
-const duplicateMealPlanSchema = z.object({
-  action: z.literal('duplicate_meal_plan'),
-  plan_id: uuidSchema.describe('UUID of the meal plan template to duplicate'),
-});
+const duplicateMealPlanSchema = z
+  .object({
+    action: z.literal('duplicate_meal_plan'),
+    plan_id: uuidSchema.describe('UUID of the meal plan template to duplicate'),
+  })
+  .strict();
 
-const deleteMealPlanSchema = z.object({
-  action: z.literal('delete_meal_plan'),
-  plan_id: uuidSchema.describe('UUID of the meal plan template to delete'),
-});
+const deleteMealPlanSchema = z
+  .object({
+    action: z.literal('delete_meal_plan'),
+    plan_id: uuidSchema.describe('UUID of the meal plan template to delete'),
+  })
+  .strict();
 
 export const manageMealPlansSchema = z.discriminatedUnion('action', [
   listMealPlansSchema,
