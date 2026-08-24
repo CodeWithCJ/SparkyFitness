@@ -51,6 +51,16 @@ export function skipDuplicatePressWindow(): void {
   }
 }
 
+// Restored per test so a shifted clock never leaks into a sibling test that
+// asserts on dates. Registered here rather than in each importing file so the
+// helper cannot be used without its cleanup.
+afterEach(() => {
+  if (jest.isMockFunction(Date.now)) {
+    (Date.now as unknown as jest.SpyInstance).mockRestore();
+  }
+  pressClockOffsetMs = 0;
+});
+
 function collectHeaderItems(navigation: { setOptions?: unknown }): HeaderItem[] {
   const setOptions = navigation?.setOptions as
     | { mock?: { calls: unknown[][] } }

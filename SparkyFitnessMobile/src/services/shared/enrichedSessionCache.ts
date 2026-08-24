@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getActiveServerConfig } from '../storage';
+import { getActiveServerConfigId } from '../storage';
 
 /**
  * Remembers which workout sessions already had their telemetry collected.
@@ -75,8 +75,7 @@ const storageKeyForScope = (scope: string): string =>
 
 const activeScope = async (): Promise<string> => {
   try {
-    const config = await getActiveServerConfig();
-    return config?.id ?? UNSCOPED;
+    return (await getActiveServerConfigId()) ?? UNSCOPED;
   } catch {
     return UNSCOPED;
   }
@@ -84,7 +83,16 @@ const activeScope = async (): Promise<string> => {
 
 // Loaded once per scope, then kept in memory. `loadPromise` collapses the
 // concurrent first calls that the enrichment fan-out makes into one read.
+//
+// The array carries insertion order, which is what eviction needs; `cacheIndex`
+// mirrors it for membership. Both matter: the route-consent prefetch asks about
+// every session in the window (up to ROUTE_PREFETCH_PAGE_SIZE ×
+// ROUTE_PREFETCH_MAX_PAGES of them) before it can tell which are enrichment
+// candidates, and a linear scan per session over MAX_ENRICHED_SESSION_KEYS is
+// millions of comparisons on the JS thread — the exact stall this whole change
+// exists to remove (#2191).
 let cache: string[] | null = null;
+let cacheIndex: Set<string> = new Set();
 let cacheScope: string | null = null;
 let loadPromise: Promise<string[]> | null = null;
 let legacyKeyCleared = false;
@@ -112,6 +120,7 @@ const load = async (): Promise<string[]> => {
   loadPromise = (async () => {
     const keys = await readScope(scope);
     cache = keys;
+    cacheIndex = new Set(keys);
     if (!legacyKeyCleared) {
       legacyKeyCleared = true;
       // Best effort: nothing reads it any more, so a failure costs only the
@@ -128,8 +137,8 @@ const load = async (): Promise<string[]> => {
 /** Whether this session's telemetry was already collected and uploaded. */
 export const hasEnrichedSession = async (key: string | null): Promise<boolean> => {
   if (!key) return false;
-  const keys = await load();
-  return keys.includes(key);
+  await load();
+  return cacheIndex.has(key);
 };
 
 // Commits are serialised. Without this, two runs (a foreground sync overlapping
@@ -146,6 +155,7 @@ const commit = async (fresh: string[]): Promise<void> => {
   const trimmed = merged.slice(-MAX_ENRICHED_SESSION_KEYS);
   const scope = cacheScope ?? (await activeScope());
   cache = trimmed;
+  cacheIndex = new Set(trimmed);
   cacheScope = scope;
 
   try {
@@ -188,6 +198,7 @@ export const markEnrichedSessions = async (keys: (string | null)[]): Promise<voi
 export const clearEnrichedSessions = async (): Promise<void> => {
   const scope = await activeScope();
   cache = [];
+  cacheIndex = new Set();
   cacheScope = scope;
   try {
     await AsyncStorage.removeItem(storageKeyForScope(scope));
@@ -199,6 +210,7 @@ export const clearEnrichedSessions = async (): Promise<void> => {
 /** Drops the in-memory copy so the next read comes from storage (tests). */
 export const _resetEnrichedSessionCacheForTests = (): void => {
   cache = null;
+  cacheIndex = new Set();
   cacheScope = null;
   loadPromise = null;
   legacyKeyCleared = false;

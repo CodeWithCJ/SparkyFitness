@@ -7,20 +7,20 @@ import {
   markEnrichedSessions,
   sessionTelemetryKey,
 } from '../../../src/services/shared/enrichedSessionCache';
-import { getActiveServerConfig } from '../../../src/services/storage';
+import { getActiveServerConfigId } from '../../../src/services/storage';
 
 jest.mock('../../../src/services/storage', () => ({
-  getActiveServerConfig: jest.fn(),
+  getActiveServerConfigId: jest.fn(),
 }));
 
-const mockActiveConfig = getActiveServerConfig as jest.Mock;
+const mockActiveConfig = getActiveServerConfigId as jest.Mock;
 const keyFor = (scope: string) => `@SparkyFitness/enrichedSessions:${scope}`;
 
 describe('enrichedSessionCache', () => {
   beforeEach(async () => {
     await AsyncStorage.clear();
     _resetEnrichedSessionCacheForTests();
-    mockActiveConfig.mockResolvedValue({ id: 'server-a' });
+    mockActiveConfig.mockResolvedValue('server-a');
   });
 
   describe('sessionTelemetryKey', () => {
@@ -44,11 +44,11 @@ describe('enrichedSessionCache', () => {
       // The user switches to a second server. That server has never received
       // this session's telemetry, so it must be collected again — otherwise it
       // only ever gets the summary, with no window that re-covers it.
-      mockActiveConfig.mockResolvedValue({ id: 'server-b' });
+      mockActiveConfig.mockResolvedValue('server-b');
       expect(await hasEnrichedSession('rec-1:m')).toBe(false);
 
       // Switching back still sees the original server's entry.
-      mockActiveConfig.mockResolvedValue({ id: 'server-a' });
+      mockActiveConfig.mockResolvedValue('server-a');
       expect(await hasEnrichedSession('rec-1:m')).toBe(true);
     });
 
