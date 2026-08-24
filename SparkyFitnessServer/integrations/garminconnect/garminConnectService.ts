@@ -1,11 +1,66 @@
+import http from 'http';
+import https from 'https';
 import { log } from '../../config/logging.js';
 import axios from 'axios';
+import type { AxiosResponse } from 'axios';
 import externalProviderRepository from '../../models/externalProviderRepository.js';
 import { encrypt, ENCRYPTION_KEY } from '../../security/encryption.js';
-import { GarminJwtPayload, GarminTokenPayload } from 'types/garmin.ts';
+import {
+  GarminJwtPayload,
+  GarminTokenPayload,
+  GarminLoginResponseDto,
+} from 'types/garmin.ts';
 import { addDays } from '@workspace/shared';
+
 const GARMIN_MICROSERVICE_URL =
   process.env.GARMIN_MICROSERVICE_URL || 'http://localhost:8000'; // Default for local dev
+
+const httpAgent = new http.Agent({ keepAlive: true, timeout: 60000 });
+const httpsAgent = new https.Agent({ keepAlive: true, timeout: 60000 });
+
+const garminAxios = axios.create({
+  httpAgent,
+  httpsAgent,
+  timeout: 120000,
+});
+
+/**
+ * Execute a POST request to the Garmin microservice with automatic retries on transient connection errors.
+ */
+async function postWithRetry<T = unknown>(
+  url: string,
+  data: unknown,
+  retries = 2
+): Promise<AxiosResponse<T>> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await garminAxios.post<T>(url, data);
+    } catch (err: unknown) {
+      const isTransient =
+        axios.isAxiosError(err) &&
+        (err.code === 'ECONNRESET' ||
+          err.code === 'ETIMEDOUT' ||
+          err.code === 'ECONNREFUSED' ||
+          err.code === 'ECONNABORTED' ||
+          err.code === 'EAI_AGAIN' ||
+          Boolean(
+            err.message && err.message.toLowerCase().includes('timeout')
+          ) ||
+          (err.response?.status !== undefined && err.response.status >= 500));
+      if (attempt < retries && isTransient) {
+        const delayMs = (attempt + 1) * 1000;
+        log(
+          'warn',
+          `[garminConnectService] Transient error calling ${url} (${err instanceof Error ? err.message : String(err)}). Retrying in ${delayMs}ms (attempt ${attempt + 1}/${retries})...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error(`Failed after ${retries} retries`);
+}
 
 /**
  * Extract a human-meaningful detail string from any error thrown by an
@@ -45,9 +100,13 @@ function formatGarminMicroserviceError(error: unknown): {
   return { detail, errorData: errorData ?? codeDetail ?? detail };
 }
 
-async function garminLogin(userId: string, email: string, password: string) {
+async function garminLogin(
+  userId: string,
+  email: string,
+  password: string
+): Promise<GarminLoginResponseDto> {
   try {
-    const response = await axios.post(
+    const response = await postWithRetry<GarminLoginResponseDto>(
       `${GARMIN_MICROSERVICE_URL}/auth/garmin/login`,
       {
         user_id: userId,
@@ -67,9 +126,9 @@ async function garminResumeLogin(
   userId: string,
   clientState: string,
   mfaCode: string
-) {
+): Promise<GarminLoginResponseDto> {
   try {
-    const response = await axios.post(
+    const response = await postWithRetry<GarminLoginResponseDto>(
       `${GARMIN_MICROSERVICE_URL}/auth/garmin/resume_login`,
       {
         user_id: userId,
@@ -86,6 +145,7 @@ async function garminResumeLogin(
     });
   }
 }
+
 async function handleGarminTokens(
   userId: string,
   tokensObj: GarminTokenPayload
@@ -174,304 +234,364 @@ async function handleGarminTokens(
     });
   }
 }
+
+/**
+ * Splits a calendar day range [startDate, endDate] into consecutive chunks of maximum chunkSizeDays days.
+ */
+function getGarminDateChunks(
+  startDate: string,
+  endDate: string,
+  chunkSizeDays = 7
+): Array<{ start: string; end: string }> {
+  const chunks: Array<{ start: string; end: string }> = [];
+  let currentStart = startDate;
+  const endLimit = endDate;
+  const daysOffset = Math.max(1, chunkSizeDays) - 1;
+
+  while (currentStart <= endLimit) {
+    const nextEndCandidate = addDays(currentStart, daysOffset);
+    const nextEnd = nextEndCandidate <= endLimit ? nextEndCandidate : endLimit;
+    chunks.push({
+      start: currentStart,
+      end: nextEnd,
+    });
+    currentStart = addDays(nextEnd, 1);
+  }
+  return chunks;
+}
+
+async function getDecryptedGarminTokens(userId: string): Promise<string> {
+  const provider =
+    await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
+      userId,
+      'garmin'
+    );
+  if (!provider || !provider.garth_dump) {
+    throw new Error('Garmin tokens not found for this user.');
+  }
+  return provider.garth_dump;
+}
+
+/**
+ * Fetches a single chunk of Health and Wellness data from the Garmin microservice.
+ */
+async function fetchGarminHealthAndWellnessChunk(
+  userId: string,
+  startDate: string,
+  endDate: string,
+  metricTypes?: string[]
+): Promise<{
+  data: Record<string, Array<Record<string, unknown>>>;
+  new_tokens?: GarminTokenPayload;
+}> {
+  try {
+    const tokens = await getDecryptedGarminTokens(userId);
+    const response = await postWithRetry<{
+      data?: Record<string, Array<Record<string, unknown>>>;
+      new_tokens?: GarminTokenPayload;
+    }>(`${GARMIN_MICROSERVICE_URL}/data/health_and_wellness`, {
+      user_id: userId,
+      tokens,
+      start_date: startDate,
+      end_date: endDate,
+      metric_types: metricTypes || [],
+    });
+
+    const result = response.data;
+    if (result.new_tokens) {
+      log(
+        'info',
+        `Detected token refresh during health sync chunk for user ${userId}. Updating...`
+      );
+      await handleGarminTokens(userId, result.new_tokens);
+    }
+    return {
+      data: result.data || {},
+      new_tokens: result.new_tokens,
+    };
+  } catch (error: unknown) {
+    const { detail, errorData } = formatGarminMicroserviceError(error);
+    log(
+      'error',
+      `Error fetching Garmin health and wellness chunk for user ${userId} from ${startDate} to ${endDate}:`,
+      errorData
+    );
+    throw new Error(
+      `Failed to fetch Garmin health and wellness chunk (${startDate} to ${endDate}): ${detail}`,
+      { cause: error }
+    );
+  }
+}
+
+/**
+ * Fetches a single chunk of Activities and Workouts from the Garmin microservice.
+ */
+async function fetchGarminActivitiesAndWorkoutsChunk(
+  userId: string,
+  startDate: string,
+  endDate: string,
+  activityType?: string
+): Promise<{
+  activities: unknown[];
+  workouts: unknown[];
+  new_tokens?: GarminTokenPayload;
+}> {
+  try {
+    const tokens = await getDecryptedGarminTokens(userId);
+    const response = await postWithRetry<{
+      activities?: unknown[];
+      workouts?: unknown[];
+      new_tokens?: GarminTokenPayload;
+    }>(`${GARMIN_MICROSERVICE_URL}/data/activities_and_workouts`, {
+      user_id: userId,
+      tokens,
+      start_date: startDate,
+      end_date: endDate,
+      activity_type: activityType,
+    });
+
+    const result = response.data;
+    if (result.new_tokens) {
+      log(
+        'info',
+        `Detected token refresh during activity sync chunk for user ${userId}. Updating...`
+      );
+      await handleGarminTokens(userId, result.new_tokens);
+    }
+    return {
+      activities: Array.isArray(result.activities) ? result.activities : [],
+      workouts: Array.isArray(result.workouts) ? result.workouts : [],
+      new_tokens: result.new_tokens,
+    };
+  } catch (error: unknown) {
+    const { detail, errorData } = formatGarminMicroserviceError(error);
+    log(
+      'error',
+      `Error fetching Garmin activities chunk for user ${userId} from ${startDate} to ${endDate}:`,
+      errorData
+    );
+    throw new Error(
+      `Failed to fetch Garmin activities chunk (${startDate} to ${endDate}): ${detail}`,
+      { cause: error }
+    );
+  }
+}
+
+/**
+ * Fetches a single chunk of Nutrition Diary data from the Garmin microservice.
+ */
+async function fetchGarminNutritionDiaryChunk(
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<{
+  nutrition_data: Array<Record<string, unknown>>;
+  new_tokens?: GarminTokenPayload;
+}> {
+  try {
+    const tokens = await getDecryptedGarminTokens(userId);
+    const response = await postWithRetry<{
+      nutrition_data?: Array<Record<string, unknown>>;
+      new_tokens?: GarminTokenPayload;
+    }>(`${GARMIN_MICROSERVICE_URL}/data/nutrition_diary`, {
+      user_id: userId,
+      tokens,
+      start_date: startDate,
+      end_date: endDate,
+    });
+
+    const result = response.data;
+    if (result.new_tokens) {
+      log(
+        'info',
+        `Detected token refresh during nutrition sync chunk for user ${userId}. Updating...`
+      );
+      await handleGarminTokens(userId, result.new_tokens);
+    }
+    return {
+      nutrition_data: Array.isArray(result.nutrition_data)
+        ? result.nutrition_data
+        : [],
+      new_tokens: result.new_tokens,
+    };
+  } catch (error: unknown) {
+    const { detail, errorData } = formatGarminMicroserviceError(error);
+    log(
+      'error',
+      `Error fetching Garmin nutrition diary chunk for user ${userId} from ${startDate} to ${endDate}:`,
+      errorData
+    );
+    throw new Error(
+      `Failed to fetch Garmin nutrition diary chunk (${startDate} to ${endDate}): ${detail}`,
+      { cause: error }
+    );
+  }
+}
+
 async function syncGarminHealthAndWellness(
   userId: string,
   startDate: string,
   endDate: string,
   metricTypes?: string[]
-) {
-  try {
-    const chunks: { start: string; end: string }[] = [];
-    let currentStart = startDate;
-    const endLimit = endDate;
+): Promise<{ data: Record<string, Array<Record<string, unknown>>> }> {
+  const chunks = getGarminDateChunks(startDate, endDate, 7);
+  log(
+    'info',
+    `syncGarminHealthAndWellness: Split range ${startDate} to ${endDate} into ${chunks.length} chunks of max 7 days.`
+  );
 
-    while (currentStart <= endLimit) {
-      const nextEndCandidate = addDays(currentStart, 6);
-      const nextEnd =
-        nextEndCandidate <= endLimit ? nextEndCandidate : endLimit;
-      chunks.push({
-        start: currentStart,
-        end: nextEnd,
-      });
-      currentStart = addDays(nextEnd, 1);
-    }
+  const aggregatedResult: {
+    data: Record<string, Array<Record<string, unknown>>>;
+  } = {
+    data: {},
+  };
 
+  for (const chunk of chunks) {
     log(
       'info',
-      `syncGarminHealthAndWellness: Split range ${startDate} to ${endDate} into ${chunks.length} chunks of max 7 days.`
+      `syncGarminHealthAndWellness: Fetching chunk ${chunk.start} to ${chunk.end} for user ${userId}`
     );
-
-    const provider =
-      await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
-        userId,
-        'garmin'
-      );
-    if (!provider || !provider.garth_dump) {
-      throw new Error('Garmin tokens not found for this user.');
-    }
-    let decryptedGarthDump = provider.garth_dump;
-
-    const aggregatedResult: any = {
-      data: {},
-    };
-
-    for (const chunk of chunks) {
-      log(
-        'info',
-        `syncGarminHealthAndWellness: Fetching chunk ${chunk.start} to ${chunk.end} for user ${userId}`
-      );
-
-      const response = await axios.post(
-        `${GARMIN_MICROSERVICE_URL}/data/health_and_wellness`,
-        {
-          user_id: userId,
-          tokens: decryptedGarthDump,
-          start_date: chunk.start,
-          end_date: chunk.end,
-          metric_types: metricTypes || [],
-        },
-        {
-          timeout: 120000,
+    const chunkResult = await fetchGarminHealthAndWellnessChunk(
+      userId,
+      chunk.start,
+      chunk.end,
+      metricTypes
+    );
+    if (chunkResult.data) {
+      for (const metric in chunkResult.data) {
+        if (!aggregatedResult.data[metric]) {
+          aggregatedResult.data[metric] = [];
         }
-      );
-      const result = response.data;
-
-      if (result.new_tokens) {
-        log(
-          'info',
-          `Detected token refresh during health sync chunk for user ${userId}. Updating...`
-        );
-        await handleGarminTokens(userId, result.new_tokens);
-        decryptedGarthDump = JSON.stringify(result.new_tokens);
-      }
-
-      if (result.data) {
-        for (const metric in result.data) {
-          if (!aggregatedResult.data[metric]) {
-            aggregatedResult.data[metric] = [];
-          }
-          if (Array.isArray(result.data[metric])) {
-            aggregatedResult.data[metric].push(...result.data[metric]);
-          }
+        if (Array.isArray(chunkResult.data[metric])) {
+          aggregatedResult.data[metric].push(...chunkResult.data[metric]);
         }
       }
     }
-
-    return aggregatedResult;
-  } catch (error: unknown) {
-    const { detail, errorData } = formatGarminMicroserviceError(error);
-    log(
-      'error',
-      `Error fetching Garmin health and wellness data for user ${userId} from ${startDate} to ${endDate}:`,
-      errorData
-    );
-    throw new Error(
-      `Failed to fetch Garmin health and wellness data: ${detail}`,
-      { cause: error }
-    );
   }
+  return aggregatedResult;
 }
+
 async function fetchGarminActivitiesAndWorkouts(
   userId: string,
   startDate: string,
   endDate: string,
   activityType?: string
 ) {
-  try {
-    const chunks: { start: string; end: string }[] = [];
-    let currentStart = startDate;
-    const endLimit = endDate;
+  const chunks = getGarminDateChunks(startDate, endDate, 7);
+  log(
+    'info',
+    `fetchGarminActivitiesAndWorkouts: Split range ${startDate} to ${endDate} into ${chunks.length} chunks of max 7 days.`
+  );
 
-    while (currentStart <= endLimit) {
-      const nextEndCandidate = addDays(currentStart, 6);
-      const nextEnd =
-        nextEndCandidate <= endLimit ? nextEndCandidate : endLimit;
-      chunks.push({
-        start: currentStart,
-        end: nextEnd,
-      });
-      currentStart = addDays(nextEnd, 1);
-    }
+  const aggregatedResult: {
+    user_id: string;
+    start_date: string;
+    end_date: string;
+    activities: unknown[];
+    workouts: unknown[];
+  } = {
+    user_id: userId,
+    start_date: startDate,
+    end_date: endDate,
+    activities: [],
+    workouts: [],
+  };
 
+  for (const chunk of chunks) {
     log(
       'info',
-      `fetchGarminActivitiesAndWorkouts: Split range ${startDate} to ${endDate} into ${chunks.length} chunks of max 7 days.`
+      `fetchGarminActivitiesAndWorkouts: Fetching chunk ${chunk.start} to ${chunk.end} for user ${userId}`
     );
-
-    const provider =
-      await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
-        userId,
-        'garmin'
-      );
-    if (!provider || !provider.garth_dump) {
-      throw new Error('Garmin tokens not found for this user.');
+    const chunkResult = await fetchGarminActivitiesAndWorkoutsChunk(
+      userId,
+      chunk.start,
+      chunk.end,
+      activityType
+    );
+    if (chunkResult.activities && Array.isArray(chunkResult.activities)) {
+      aggregatedResult.activities.push(...chunkResult.activities);
     }
-    let decryptedGarthDump = provider.garth_dump;
-
-    const aggregatedResult: any = {
-      user_id: userId,
-      start_date: startDate,
-      end_date: endDate,
-      activities: [],
-      workouts: [],
-    };
-
-    for (const chunk of chunks) {
-      log(
-        'info',
-        `fetchGarminActivitiesAndWorkouts: Fetching chunk ${chunk.start} to ${chunk.end} for user ${userId}`
-      );
-
-      const response = await axios.post(
-        `${GARMIN_MICROSERVICE_URL}/data/activities_and_workouts`,
-        {
-          user_id: userId,
-          tokens: decryptedGarthDump,
-          start_date: chunk.start,
-          end_date: chunk.end,
-          activity_type: activityType,
-        },
-        {
-          timeout: 120000,
-        }
-      );
-      const result = response.data;
-
-      if (result.new_tokens) {
-        log(
-          'info',
-          `Detected token refresh during activity sync chunk for user ${userId}. Updating...`
-        );
-        await handleGarminTokens(userId, result.new_tokens);
-        decryptedGarthDump = JSON.stringify(result.new_tokens);
-      }
-
-      if (result.activities && Array.isArray(result.activities)) {
-        aggregatedResult.activities.push(...result.activities);
-      }
-      if (result.workouts && Array.isArray(result.workouts)) {
-        aggregatedResult.workouts.push(...result.workouts);
-      }
+    if (chunkResult.workouts && Array.isArray(chunkResult.workouts)) {
+      aggregatedResult.workouts.push(...chunkResult.workouts);
     }
-
-    return aggregatedResult;
-  } catch (error: unknown) {
-    const { detail, errorData } = formatGarminMicroserviceError(error);
-    log(
-      'error',
-      `Error fetching Garmin activities and workouts for user ${userId} from ${startDate} to ${endDate}:`,
-      errorData
-    );
-    throw new Error(
-      `Failed to fetch Garmin activities and workouts: ${detail}`,
-      { cause: error }
-    );
   }
+
+  return aggregatedResult;
 }
+
 async function fetchGarminNutritionDiary(
   userId: string,
   startDate: string,
   endDate: string
-) {
-  try {
-    const chunks: { start: string; end: string }[] = [];
-    let currentStart = startDate;
-    const endLimit = endDate;
+): Promise<{
+  user_id: string;
+  start_date: string;
+  end_date: string;
+  nutrition_data: Array<Record<string, unknown>>;
+}> {
+  const chunks = getGarminDateChunks(startDate, endDate, 7);
+  log(
+    'info',
+    `fetchGarminNutritionDiary: Split range ${startDate} to ${endDate} into ${chunks.length} chunks of max 7 days.`
+  );
 
-    while (currentStart <= endLimit) {
-      const nextEndCandidate = addDays(currentStart, 6);
-      const nextEnd =
-        nextEndCandidate <= endLimit ? nextEndCandidate : endLimit;
-      chunks.push({
-        start: currentStart,
-        end: nextEnd,
-      });
-      currentStart = addDays(nextEnd, 1);
-    }
+  const aggregatedResult: {
+    user_id: string;
+    start_date: string;
+    end_date: string;
+    nutrition_data: Array<Record<string, unknown>>;
+  } = {
+    user_id: userId,
+    start_date: startDate,
+    end_date: endDate,
+    nutrition_data: [],
+  };
 
+  for (const chunk of chunks) {
     log(
       'info',
-      `fetchGarminNutritionDiary: Split range ${startDate} to ${endDate} into ${chunks.length} chunks of max 7 days.`
+      `fetchGarminNutritionDiary: Fetching chunk ${chunk.start} to ${chunk.end} for user ${userId}`
     );
-
-    const provider =
-      await externalProviderRepository.getExternalDataProviderByUserIdAndProviderName(
-        userId,
-        'garmin'
-      );
-    if (!provider || !provider.garth_dump) {
-      throw new Error('Garmin tokens not found for this user.');
-    }
-    let decryptedGarthDump = provider.garth_dump;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const aggregatedResult: any = {
-      user_id: userId,
-      start_date: startDate,
-      end_date: endDate,
-      nutrition_data: [],
-    };
-
-    for (const chunk of chunks) {
-      log(
-        'info',
-        `fetchGarminNutritionDiary: Fetching chunk ${chunk.start} to ${chunk.end} for user ${userId}`
-      );
-
-      const response = await axios.post(
-        `${GARMIN_MICROSERVICE_URL}/data/nutrition_diary`,
-        {
-          user_id: userId,
-          tokens: decryptedGarthDump,
-          start_date: chunk.start,
-          end_date: chunk.end,
-        },
-        {
-          timeout: 120000,
-        }
-      );
-      const result = response.data;
-
-      if (result.new_tokens) {
-        log(
-          'info',
-          `Detected token refresh during nutrition sync chunk for user ${userId}. Updating...`
-        );
-        await handleGarminTokens(userId, result.new_tokens);
-        decryptedGarthDump = JSON.stringify(result.new_tokens);
-      }
-
-      if (result.nutrition_data && Array.isArray(result.nutrition_data)) {
-        aggregatedResult.nutrition_data.push(...result.nutrition_data);
-      }
-    }
-
-    return aggregatedResult;
-  } catch (error: unknown) {
-    const { detail, errorData } = formatGarminMicroserviceError(error);
-    log(
-      'error',
-      `Error fetching Garmin nutrition diary for user ${userId} from ${startDate} to ${endDate}:`,
-      errorData
+    const chunkResult = await fetchGarminNutritionDiaryChunk(
+      userId,
+      chunk.start,
+      chunk.end
     );
-    throw new Error(`Failed to fetch Garmin nutrition diary: ${detail}`, {
-      cause: error,
-    });
+    if (
+      chunkResult.nutrition_data &&
+      Array.isArray(chunkResult.nutrition_data)
+    ) {
+      aggregatedResult.nutrition_data.push(...chunkResult.nutrition_data);
+    }
   }
+
+  return aggregatedResult;
 }
 
-export { garminLogin };
-export { garminResumeLogin };
-export { handleGarminTokens };
-export { syncGarminHealthAndWellness };
-export { fetchGarminActivitiesAndWorkouts };
-export { fetchGarminNutritionDiary };
-export { formatGarminMicroserviceError };
+export {
+  garminLogin,
+  garminResumeLogin,
+  handleGarminTokens,
+  getGarminDateChunks,
+  fetchGarminHealthAndWellnessChunk,
+  fetchGarminActivitiesAndWorkoutsChunk,
+  fetchGarminNutritionDiaryChunk,
+  syncGarminHealthAndWellness,
+  fetchGarminActivitiesAndWorkouts,
+  fetchGarminNutritionDiary,
+  formatGarminMicroserviceError,
+};
+
 export default {
   garminLogin,
   garminResumeLogin,
   handleGarminTokens,
+  getGarminDateChunks,
+  fetchGarminHealthAndWellnessChunk,
+  fetchGarminActivitiesAndWorkoutsChunk,
+  fetchGarminNutritionDiaryChunk,
   syncGarminHealthAndWellness,
   fetchGarminActivitiesAndWorkouts,
   fetchGarminNutritionDiary,
+  formatGarminMicroserviceError,
 };

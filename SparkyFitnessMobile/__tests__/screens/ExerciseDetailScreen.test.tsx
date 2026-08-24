@@ -5,8 +5,7 @@ import Toast from 'react-native-toast-message';
 import {
   pressAction,
   expectActionPresent,
-  findHeaderItem,
-} from './helpers/nativeHeaderTestUtils';
+  findHeaderItem, skipDuplicatePressWindow } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ExerciseDetailScreen from '../../src/screens/ExerciseDetailScreen';
 import {
@@ -702,6 +701,10 @@ describe('ExerciseDetailScreen', () => {
 
       // The in-flight guard must clear on failure, so a retry can succeed.
       mockImportExercise.mockResolvedValueOnce({ ...baseExercise, id: uuidId });
+      // Reading the error toast and pressing again is seconds of real user
+      // time; the header action guard treats two presses inside its window as
+      // one.
+      skipDuplicatePressWindow();
       pressAction(screen, navigation, 'Add');
 
       await waitFor(() =>

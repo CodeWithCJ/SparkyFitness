@@ -16,17 +16,46 @@ import {
   type ReadResult,
 } from '../../types/healthRecords';
 import { ceilToLocalDayStart, getSyncStartDate } from '../../utils/syncUtils';
-import { isQuotaExceededError } from '../shared/quotaError';
+import { isClientUnavailableError, isQuotaExceededError } from '../shared/quotaError';
+import { type TelemetryRunContext } from '../shared/telemetryBudget';
 import {
-  createTelemetryRunContext,
-  type TelemetryRunContext,
-} from '../shared/telemetryBudget';
-import { collectSessionTelemetry } from './workoutTelemetry';
+  hasEnrichedSession,
+} from '../shared/enrichedSessionCache';
+import { createConcurrencyLimiter, runTasksInBatches } from '../../utils/concurrency';
+import { getErrorMessage } from '../../utils/errors';
+import { collectSessionTelemetry, sessionCacheKey } from './workoutTelemetry';
 import { deriveActiveCalories } from '@workspace/shared';
 
 // Re-export for backward compatibility with callers importing from this module
 export { getSyncStartDate };
 export { isQuotaExceededError };
+export { sessionCacheKey };
+
+/**
+ * Enrichment runs two very different costs per session, so they get two limits.
+ *
+ * The three calories/distance aggregates return a single scalar each — cheap to
+ * carry over the bridge. Throttling those as hard as telemetry is what would
+ * push a large workout library toward the 60s per-metric timeout, so they run
+ * at the wider limit.
+ *
+ * Telemetry (route plus up to five sample series) returns large arrays that are
+ * deserialized, flat-mapped and sorted on the JS thread — that is the burst
+ * that froze the UI in #2191, and it stays tightly capped no matter how wide
+ * the outer batch runs.
+ *
+ * Both are far below the unbounded fan-out that caused the bug, and well inside
+ * the Health Connect API call quota (see shared/quotaError.ts).
+ */
+const AGGREGATE_CONCURRENCY = 6;
+const TELEMETRY_CONCURRENCY = 2;
+
+/**
+ * Shared across concurrent enrichment runs (a foreground sync overlapping a
+ * background one), so the cap is a real ceiling on native telemetry reads
+ * rather than a per-run one.
+ */
+const limitTelemetry = createConcurrencyLimiter(TELEMETRY_CONCURRENCY);
 
 export const initHealthConnect = async (): Promise<boolean> => {
   try {
@@ -177,7 +206,13 @@ const readHealthRecordsOnce = async (
   recordType: string,
   startDate: Date,
   endDate: Date
-): Promise<HealthConnectReadResult & { failedOnFirstPage: boolean; quotaExceeded?: boolean }> => {
+): Promise<
+  HealthConnectReadResult & {
+    failedOnFirstPage: boolean;
+    quotaExceeded?: boolean;
+    clientUnavailable?: boolean;
+  }
+> => {
   const allRecords: unknown[] = [];
   let pageToken: string | undefined;
   let page = 0;
@@ -225,6 +260,7 @@ const readHealthRecordsOnce = async (
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const quotaExceeded = isQuotaExceededError(error);
+    const clientUnavailable = isClientUnavailableError(error);
     addLog(
       `[HealthConnectService] Failed reading ${recordType} on page ${page}: ${message}. Returning ${allRecords.length} records collected so far.`,
       'ERROR'
@@ -234,6 +270,7 @@ const readHealthRecordsOnce = async (
       error: message,
       failedOnFirstPage: page <= 1 && allRecords.length === 0,
       quotaExceeded,
+      clientUnavailable,
     };
   }
 };
@@ -290,12 +327,66 @@ const readHealthRecordsFallback = async (
   return { records, error };
 };
 
+/**
+ * Client-unavailable bookkeeping for one sync run.
+ *
+ * The Health Connect client is created once at startup and never rebuilt, so
+ * when it goes away (the app was backgrounded, the provider updated) every
+ * remaining read in the run fails the same way. Reconnecting is nearly always
+ * enough — but it must be attempted once per run, not once per metric, or 33
+ * enabled metrics mean 33 reconnects. Mirrors the iOS locked-device counters
+ * (`databaseInaccessibleCount` in healthkit/index.ts).
+ */
+let clientUnavailableCount = 0;
+let reconnectAttemptedThisRun = false;
+
+export function resetClientUnavailableState(): void {
+  clientUnavailableCount = 0;
+  reconnectAttemptedThisRun = false;
+}
+
+export function getClientUnavailableCount(): number {
+  return clientUnavailableCount;
+}
+
+/**
+ * Reconnects once per run and reports whether a retry is worth attempting.
+ * A second caller in the same run gets false — the first attempt already
+ * settled it, and the client does not become available by asking twice.
+ */
+const tryReconnectOnce = async (): Promise<boolean> => {
+  if (reconnectAttemptedThisRun) return false;
+  reconnectAttemptedThisRun = true;
+
+  addLog(
+    '[HealthConnectService] Health Connect client is unavailable — reconnecting once before giving up.',
+    'WARNING',
+  );
+  return initHealthConnect();
+};
+
 export const readHealthRecordsDetailed = async (
   recordType: string,
   startDate: Date,
   endDate: Date
 ): Promise<HealthConnectReadResult> => {
-  const result = await readHealthRecordsOnce(recordType, startDate, endDate);
+  let result = await readHealthRecordsOnce(recordType, startDate, endDate);
+
+  // A dead client is recoverable far more often than not, and the previous
+  // behaviour (splitting the window and failing once per day) recovered
+  // nothing. Reconnect and read again before treating it as fatal (#2191).
+  if (result.clientUnavailable) {
+    clientUnavailableCount++;
+    if (await tryReconnectOnce()) {
+      result = await readHealthRecordsOnce(recordType, startDate, endDate);
+      if (!result.clientUnavailable) {
+        addLog(
+          `[HealthConnectService] Reconnected to Health Connect; ${recordType} read resumed.`,
+          'INFO',
+        );
+      }
+    }
+  }
 
   if (!result.error || !result.failedOnFirstPage) {
     return { records: result.records, error: result.error };
@@ -306,6 +397,19 @@ export const readHealthRecordsDetailed = async (
   if (result.quotaExceeded) {
     addLog(
       `[HealthConnectService] Skipping fallback split for ${recordType}: Health Connect quota exceeded.`,
+      'WARNING',
+    );
+    return { records: result.records, error: result.error };
+  }
+
+  // Still dead after the reconnect above. Splitting would turn one error into
+  // one per window per metric — hundreds of identical log lines and the
+  // AsyncStorage churn that comes with them, for no recovered records (#2191).
+  // The error reaches syncErrors, which holds the cursor so the window is
+  // retried next cycle.
+  if (result.clientUnavailable) {
+    addLog(
+      `[HealthConnectService] Skipping fallback split for ${recordType}: Health Connect client is unavailable.`,
       'WARNING',
     );
     return { records: result.records, error: result.error };
@@ -1106,13 +1210,13 @@ export const isPlausibleSessionDistance = (meters: number, durationMs: number): 
  */
 export const enrichExerciseSessions = async (
   records: unknown[],
-  telemetry?: TelemetryRunContext,
+  telemetry: TelemetryRunContext,
 ): Promise<unknown[]> => {
   if (records.length === 0) return records;
 
   addLog(`[HealthConnectService] Enriching ${records.length} exercise session(s) with calories/distance`, 'DEBUG');
 
-  const ctx = telemetry ?? createTelemetryRunContext();
+  const ctx = telemetry;
 
   // Budget slots are assigned newest-first before any read starts. Claiming
   // inside the concurrent map below would award them in Promise completion
@@ -1125,19 +1229,39 @@ export const enrichExerciseSessions = async (
     const bStart = (b as { startTime?: string }).startTime ?? '';
     return bStart.localeCompare(aStart);
   });
+  const startedAtMs = Date.now();
+  let skippedInvalid = 0;
+  let skippedAlreadyCollected = 0;
   for (const record of byNewest) {
     const rec = record as Record<string, unknown>;
-    if (typeof rec.startTime !== 'string' || typeof rec.endTime !== 'string') continue;
+    if (typeof rec.startTime !== 'string' || typeof rec.endTime !== 'string') {
+      skippedInvalid++;
+      continue;
+    }
     // Claimed slots are never refunded, so a record the enrichment loop below
     // would reject for an invalid window must not consume one.
     const startMs = Date.parse(rec.startTime);
     const endMs = Date.parse(rec.endTime);
-    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) continue;
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
+      skippedInvalid++;
+      continue;
+    }
+    // Already-collected sessions neither consume a slot nor get re-read, so a
+    // bounded budget works through the backlog across syncs instead of
+    // re-picking the same newest few every run (#2191).
+    if (await hasEnrichedSession(sessionCacheKey(record))) {
+      skippedAlreadyCollected++;
+      continue;
+    }
     if (!ctx.claim()) break;
     telemetryAllowed.add(record);
   }
 
-  const enriched = await Promise.all(records.map(async (record) => {
+  // Bounded fan-out. An unbounded Promise.all over a busy window issued well
+  // over a hundred concurrent native calls, whose results are deserialized and
+  // sorted on the JS thread, which starves the UI until they drain (#2191).
+  // The expensive half is capped separately by limitTelemetry below.
+  const settled = await runTasksInBatches(records, AGGREGATE_CONCURRENCY, async (record) => {
     const rec = record as Record<string, unknown>;
     const startTime = rec.startTime as string | undefined;
     const endTime = rec.endTime as string | undefined;
@@ -1206,9 +1330,9 @@ export const enrichExerciseSessions = async (
     // telemetry on a later interactive sync (while they remain inside the 6h
     // overlap window) and upserted in place server-side.
     if (telemetryAllowed.has(record)) {
-      const bundle = await collectSessionTelemetry(rec, {
+      const bundle = await limitTelemetry(() => collectSessionTelemetry(rec, {
         interactive: ctx.interactive,
-      });
+      }));
       if (bundle.gps_points) enrichedFields.gps_points = bundle.gps_points;
       if (bundle.hr_samples) enrichedFields.hr_samples = bundle.hr_samples;
       if (bundle.laps) enrichedFields.laps = bundle.laps;
@@ -1217,12 +1341,59 @@ export const enrichExerciseSessions = async (
         if (kcal != null) telemetry.active_calories = kcal;
         enrichedFields.telemetry = telemetry;
       }
+      // Recorded even when the session turned out to have nothing beyond its
+      // summary: the reads that established that are exactly what we must not
+      // repeat every sync. A later edit to the record changes its cache key.
+      //
+      // Not recorded when the bundle came back `incomplete` — a failed read is
+      // not the same answer as an empty one, and this cache has no expiry, so
+      // caching a transient failure strands the session's telemetry for good.
+      //
+      // Interactive runs only. A headless run cannot present the per-session
+      // route-consent dialog, so collectSessionRoute returns no route for a
+      // session awaiting consent — caching that would make the next foreground
+      // sync skip it and the route would never be collected at all.
+      if (ctx.interactive && !bundle.incomplete) {
+        ctx.stageCollected(sessionCacheKey(record));
+      }
     }
 
     return Object.keys(enrichedFields).length > 0
       ? { ...rec, ...enrichedFields }
       : record;
-  }));
+  });
+
+  // Index-aligned with `records`; a rejected task keeps the original record so
+  // a telemetry failure never drops a session from the sync.
+  const enriched = settled.map((result, index) =>
+    result.status === 'fulfilled' ? result.value : records[index],
+  );
+
+  // Batching must not change failure semantics: Promise.all rejected the whole
+  // read before, which surfaced as a metric error and held the sync cursor so
+  // the window is retried. Swallowing the rejection here would advance the
+  // cursor past a session we never actually read.
+  const failure = settled.find(result => result.status === 'rejected');
+  if (failure && failure.status === 'rejected') {
+    addLog(
+      `[HealthConnectService] Exercise session enrichment failed: ${getErrorMessage(failure.reason)}`,
+      'ERROR',
+    );
+    throw failure.reason;
+  }
+
+  // One summary line per run, so the budget and the reuse cache are visible in
+  // the in-app log and in the exported diagnostic. This is the field-verifiable
+  // signal for #2191: on a healthy run the telemetry count is bounded and the
+  // "already collected" count carries the rest.
+  const overBudget =
+    records.length - skippedInvalid - skippedAlreadyCollected - telemetryAllowed.size;
+  addLog(
+    `[HealthConnectService] Enriched ${records.length} session(s) in ${Date.now() - startedAtMs}ms ` +
+      `(telemetry: ${telemetryAllowed.size}, already collected: ${skippedAlreadyCollected}, ` +
+      `over budget: ${Math.max(overBudget, 0)}, invalid: ${skippedInvalid})`,
+    'INFO',
+  );
 
   return enriched;
 };

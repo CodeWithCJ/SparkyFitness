@@ -95,6 +95,7 @@ jest.mock('../../src/services/healthConnectService', () => {
     loadHealthPreference: jest.fn(),
     resetDatabaseInaccessibleCount: jest.fn(),
     getDatabaseInaccessibleCount: jest.fn().mockReturnValue(0),
+    getClientUnavailableCount: jest.fn().mockReturnValue(0),
     healthReadProvider,
     // Direct handles for the tests.
     readCumulativeByDay,
@@ -145,6 +146,7 @@ const healthService = {
     getAggregatedFloorsClimbedByDate: jest.Mock;
     resetDatabaseInaccessibleCount: jest.Mock;
     getDatabaseInaccessibleCount: jest.Mock;
+    getClientUnavailableCount: jest.Mock;
   }),
   aggregateByDay: (require('../../src/services/shared/dataAggregation') as { aggregateByDay: jest.Mock }).aggregateByDay,
 };
@@ -177,6 +179,63 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  describe('stale-cursor clamp and dead-client reporting (#2191)', () => {
+    const addLog = require('../../src/services/LogService').addLog as jest.Mock;
+
+    const logsMatching = (needle: string) =>
+      addLog.mock.calls.filter(([m]: [string]) => String(m).includes(needle));
+
+    test('warns, with the uncovered span, when a stale cursor is clamped', async () => {
+      const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      storage.loadLastSyncedTime.mockResolvedValue(ninetyDaysAgo.toISOString());
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.getAggregatedStepsByDate.mockResolvedValue([]);
+
+      await triggerManualSync();
+
+      // Silently skipping ~76 days of catch-up is the part that would be a
+      // surprise; the clamp itself is deliberate.
+      const warnings = logsMatching('are NOT covered here');
+      expect(warnings).toHaveLength(1);
+      expect(warnings[0][1]).toBe('WARNING');
+      expect(String(warnings[0][0])).toMatch(/History Import/);
+    });
+
+    test('says nothing about clamping on an ordinary run', async () => {
+      storage.loadLastSyncedTime.mockResolvedValue(new Date().toISOString());
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.getAggregatedStepsByDate.mockResolvedValue([]);
+
+      await triggerManualSync();
+
+      expect(logsMatching('are NOT covered here')).toHaveLength(0);
+    });
+
+    test('summarises a dead Health Connect client once per run', async () => {
+      storage.loadLastSyncedTime.mockResolvedValue(null);
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.getAggregatedStepsByDate.mockResolvedValue([]);
+      healthService.getClientUnavailableCount.mockReturnValue(7);
+
+      await triggerManualSync();
+
+      const summary = logsMatching('Health Connect was unavailable');
+      expect(summary).toHaveLength(1);
+      expect(String(summary[0][0])).toMatch(/retry next cycle/);
+    });
+
+    test('says nothing when the client was healthy', async () => {
+      storage.loadLastSyncedTime.mockResolvedValue(null);
+      healthService.loadHealthPreference.mockResolvedValue(true);
+      healthService.getAggregatedStepsByDate.mockResolvedValue([]);
+      healthService.getClientUnavailableCount.mockReturnValue(0);
+
+      await triggerManualSync();
+
+      expect(logsMatching('Health Connect was unavailable')).toHaveLength(0);
+    });
   });
 
   describe('telemetry budget (regression: manual sync must not silently cap itself)', () => {

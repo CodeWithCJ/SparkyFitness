@@ -127,7 +127,7 @@ router.post('/switch-context', authenticate, async (req, res, next) => {
     // Set the new active user ID in the cookie
     res.cookie('sparky_active_user_id', activeUserId, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: req.secure,
       sameSite: 'strict',
       path: '/',
     });

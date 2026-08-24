@@ -77,11 +77,13 @@ body:
         - Mobile app (iOS)
         - Mobile app (Android)
         - Server / API
-        - AI / SparkyAI
-        - Integrations (Garmin, Fitbit, etc.)
         - Database / migrations
+        - AI / SparkyAI
+        - Integrations (Garmin, Google Health, Polar, Oura, etc.)
         - Docker / deployment
         - Other
+    validations:
+      required: true
 
   - type: textarea
     id: docker_setup

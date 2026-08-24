@@ -181,7 +181,7 @@ describe('collectWorkoutSeries', () => {
     });
     const workout: WorkoutProxyLike = { getWorkoutRoutes: jest.fn() };
 
-    const series = await collectWorkoutSeries(workout);
+    const { series } = await collectWorkoutSeries(workout);
 
     // A single activity only ever produces one of the two — this proves both
     // land under the shared 'speed' key regardless of which one fired.
@@ -204,7 +204,7 @@ describe('collectWorkoutSeries', () => {
     });
     const workout: WorkoutProxyLike = { getWorkoutRoutes: jest.fn() };
 
-    const series = await collectWorkoutSeries(workout);
+    const { series } = await collectWorkoutSeries(workout);
 
     expect(series.hr).toEqual([{ t: at(0), v: 120 }]);
   });
@@ -221,7 +221,7 @@ describe('collectWorkoutSeries', () => {
     });
     const workout: WorkoutProxyLike = { getWorkoutRoutes: jest.fn() };
 
-    const series = await collectWorkoutSeries(workout);
+    const { series } = await collectWorkoutSeries(workout);
 
     expect(series.hr).toBeUndefined();
     expect(series.speed).toEqual([{ t: at(0), v: 2.5 }]);
@@ -231,7 +231,7 @@ describe('collectWorkoutSeries', () => {
     mockQueryQuantitySamples.mockResolvedValue([]);
     const workout: WorkoutProxyLike = { getWorkoutRoutes: jest.fn() };
 
-    const series = await collectWorkoutSeries(workout);
+    const { series } = await collectWorkoutSeries(workout);
 
     expect(Object.keys(series)).toEqual([]);
   });
@@ -248,7 +248,7 @@ describe('collectWorkoutSeries', () => {
     });
     const workout: WorkoutProxyLike = { getWorkoutRoutes: jest.fn() };
 
-    const series = await collectWorkoutSeries(workout);
+    const { series } = await collectWorkoutSeries(workout);
 
     expect(series.hr?.map((p) => p.t)).toEqual([at(0), at(2000)]);
   });
@@ -371,10 +371,16 @@ describe('collectWorkoutTelemetry', () => {
     ]);
   });
 
-  it('is additive, not required: an unexpected failure anywhere returns {} instead of throwing', async () => {
+  it('is additive, not required: an unexpected failure anywhere is reported, not thrown', async () => {
     // Simulates a bug in a downstream helper — proves the outer try/catch in
     // collectWorkoutTelemetry protects the whole workout sync, not just the
     // per-series/per-route reads that already guard themselves internally.
+    //
+    // It reports `incomplete` rather than an empty bundle: an empty bundle is
+    // the answer for a workout that genuinely has nothing beyond its summary,
+    // and the caller caches that so it is not re-read every sync. A failure
+    // must not be cached — the reuse cache has no expiry, so it would strand
+    // this workout's telemetry permanently.
     const spy = jest
       .spyOn(telemetryDownsample, 'downsampleGpsPoints')
       .mockImplementation(() => {
@@ -385,8 +391,53 @@ describe('collectWorkoutTelemetry', () => {
       { locations: [{ date: at(0), latitude: 1, longitude: 2 }] },
     ]);
 
-    await expect(collectWorkoutTelemetry(workout, [])).resolves.toEqual({});
+    await expect(collectWorkoutTelemetry(workout, [])).resolves.toEqual({
+      incomplete: true,
+    });
 
     spy.mockRestore();
+  });
+
+  it('a generic series read rejection is reported, not cached as empty', async () => {
+    // HealthKit returns [] when there are simply no samples, so a rejection is
+    // never "no data". An unclassified failure must not be recorded as
+    // collected — the reuse cache has no expiry.
+    mockQueryQuantitySamples.mockRejectedValue(new Error('HKErrorDomain error 6'));
+
+    await expect(
+      collectWorkoutTelemetry(workoutWithRoutes([]), []),
+    ).resolves.toEqual({ incomplete: true });
+  });
+
+  it('an explicitly unauthorized series type is stable and stays cacheable', async () => {
+    mockQueryQuantitySamples.mockRejectedValue(
+      new Error('Authorization not determined'),
+    );
+
+    await expect(
+      collectWorkoutTelemetry(workoutWithRoutes([]), []),
+    ).resolves.toEqual({});
+  });
+
+  it('an indoor workout with no route is NOT incomplete', async () => {
+    // getWorkoutRoutes throws for every indoor activity. Treating that as
+    // incomplete would keep indoor workouts out of the reuse cache forever and
+    // churn the per-run telemetry budget on them (#2191).
+    mockQueryQuantitySamples.mockResolvedValue([]);
+    const workout: WorkoutProxyLike = {
+      getWorkoutRoutes: jest.fn().mockRejectedValue(new Error('no route')),
+    };
+
+    await expect(collectWorkoutTelemetry(workout, [])).resolves.toEqual({});
+  });
+
+  it('a workout with genuinely nothing to collect returns an empty bundle', async () => {
+    // The distinction the reuse cache keys on: nothing found is a stable
+    // answer worth caching, a failed read is not.
+    mockQueryQuantitySamples.mockResolvedValue([]);
+
+    await expect(
+      collectWorkoutTelemetry(workoutWithRoutes([]), []),
+    ).resolves.toEqual({});
   });
 });

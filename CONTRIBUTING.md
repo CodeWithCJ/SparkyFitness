@@ -13,8 +13,10 @@ Every PR must include:
 - **Tests**: Automated tests for your changes if applicable.
 - **Screenshots**: Attach "Before" vs "After" screenshots for any UI changes.
 - **Quality Checks**: You must run these before submitting:
-  - **Frontend**: Run `pnpm run validate` in `SparkyFitnessFrontend/`
-  - **Backend**: Run `pnpm run typecheck && pnpm run lint && pnpm run test` in `SparkyFitnessServer/`\n  - **Mobile**: Run `pnpm run lint && pnpm run test:run -- --watchman=false --runInBand` in `SparkyFitnessMobile/`
+  - **Frontend**: Run `pnpm format && pnpm test && pnpm validate` in `SparkyFitnessFrontend/`
+  - **Backend**: Run `pnpm format && pnpm test && pnpm validate` in `SparkyFitnessServer/`
+  - **Mobile**: Run `pnpm test && pnpm validate` in `SparkyFitnessMobile/`
+  - **Garmin Microservice**: Run `./venv/bin/python -m unittest discover tests` in `SparkyFitnessGarmin/`
 - **Backend Code Standards** (if applicable):
   - **TypeScript Only**: New backend files must be written in TypeScript
   - **Zod Validation**: New endpoints must include Zod schemas for request/response validation

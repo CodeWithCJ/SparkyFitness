@@ -21,4 +21,17 @@ describe('getGarminSyncPhaseErrors', () => {
 
     expect(getGarminSyncPhaseErrors(result)).toEqual([]);
   });
+
+  it('treats partialErrors as phase failures to prevent advancing last_sync_at on incomplete syncs', () => {
+    const result = {
+      health: {
+        processedEntries: 5,
+        partialErrors: ['[2026-08-01..2026-08-07]: ECONNRESET'],
+      },
+      activities: { processedEntries: 10 },
+      nutrition: { processedEntries: 3 },
+    };
+
+    expect(getGarminSyncPhaseErrors(result)).toEqual(['health']);
+  });
 });

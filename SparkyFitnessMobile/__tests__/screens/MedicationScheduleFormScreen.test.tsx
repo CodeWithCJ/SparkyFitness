@@ -2,7 +2,7 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { pressAction } from './helpers/nativeHeaderTestUtils';
+import { pressAction, skipDuplicatePressWindow } from './helpers/nativeHeaderTestUtils';
 import MedicationScheduleFormScreen from '../../src/screens/MedicationScheduleFormScreen';
 import {
   useMedicationDetail,
@@ -297,6 +297,9 @@ describe('MedicationScheduleFormScreen', () => {
 
     fireEvent.press(screen.getByLabelText('Wednesday, not selected'));
     fireEvent.press(screen.getByLabelText('Monday, not selected'));
+    // Picking the days is seconds of real user time; the header Save guard
+    // treats two presses inside its window as one.
+    skipDuplicatePressWindow();
     pressAction(screen, mockNavigation, 'Save');
 
     expect(createMutate).toHaveBeenCalledWith(

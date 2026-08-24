@@ -11,12 +11,14 @@ import type {
 import * as api from '../api/healthDataApi';
 import type { HealthDataPayload } from '../api/healthDataApi';
 import { runWriteback } from '../writeback';
+import { markEnrichedSessions } from './enrichedSessionCache';
 import { addLog } from '../LogService';
 import { aggregateByDay } from './dataAggregation';
 import { serverSupportsPerRecordWater } from '../api/measurementsApi';
 import { runTasksInBatches, TimeoutError, withTimeout } from '../../utils/concurrency';
 import {
   createTelemetryRunContext,
+  FOREGROUND_TELEMETRY_BUDGET,
   type TelemetryRunContext,
 } from './telemetryBudget';
 import {
@@ -67,13 +69,18 @@ export interface HealthReadProvider {
   postProcessRaw(
     metric: HealthMetric,
     records: unknown[],
-    telemetry?: TelemetryRunContext,
+    telemetry: TelemetryRunContext,
   ): Promise<unknown[]>;
   /** Interactive-run preparation with no deadline, run before the timed metric
    *  reads. Android resolves per-session route-consent dialogs here — a dialog
    *  waits on the user, so inside the per-metric timeout it would fail the
    *  whole sync. */
   prepareInteractiveRead?(metrics: HealthMetric[], windows: SyncWindows): Promise<void>;
+  /** Clears platform run-scoped state before a run's reads begin. Android uses
+   *  it to reset the Health Connect reconnect attempt, so "reconnect once" is
+   *  once per sync rather than once per app process. Synchronous and
+   *  non-throwing: it must never be able to fail a sync. */
+  beginRun?(): void;
   /** Platform transform tables (record shapes and timezone metadata differ). */
   transform(records: unknown[], metric: MetricConfig): TransformOutput[];
 }
@@ -191,14 +198,23 @@ const collectMetric = async (
  * per-metric timeout; a timeout stops later batches, marking them 'skipped').
  * Pure collection: no cursor, upload, or writeback concerns — shells own those,
  * along with all user-facing log phrasing for the outcomes.
+ *
+ * `opts.telemetry` is required: it carries the per-run workout-telemetry budget
+ * and whether UI may be shown. See telemetryBudget.ts.
  */
 export const collectHealthData = async (
   provider: HealthReadProvider,
   metrics: HealthMetric[],
   windows: SyncWindows,
-  opts: { timeoutLabelPrefix: string; timeoutMs?: number; telemetry?: TelemetryRunContext },
+  opts: { timeoutLabelPrefix: string; timeoutMs?: number; telemetry: TelemetryRunContext },
 ): Promise<MetricSyncOutcome[]> => {
-  const telemetry = opts.telemetry ?? createTelemetryRunContext();
+  // Required, not defaulted: an omitted context used to fall back to the
+  // unbounded interactive shape, which is exactly how runForegroundSync ended
+  // up enriching every workout in a 365-day window on every sync (#2191).
+  // Every run shell must state its own policy.
+  const telemetry = opts.telemetry;
+
+  provider.beginRun?.();
 
   // Probed once per run, and only when a per-record water metric is enabled.
   const waterFallbackToSum = metrics.some(
@@ -250,6 +266,36 @@ export const collectHealthData = async (
   });
 };
 
+/**
+ * Record types whose reads stage telemetry keys into the run context.
+ *
+ * Kept as data rather than a provider flag because both platform providers
+ * stage from exactly one metric each, and the shells need the answer from the
+ * outcome list alone.
+ */
+const TELEMETRY_STAGING_RECORD_TYPES = new Set(['ExerciseSession', 'Workout']);
+
+/**
+ * Whether the run's staged telemetry keys are safe to commit.
+ *
+ * Sessions are staged one at a time *during* the session read, before that
+ * metric's outcome is known. METRIC_TIMEOUT_MS is non-cancelling, so a session
+ * read that times out (or that rejects, as enrichment does when a batch task
+ * fails) keeps running and keeps staging, while its records never reach
+ * `allTransformedData`. Committing on upload success alone would then mark
+ * sessions collected that the server never received — permanently, since the
+ * cache has no expiry and the next sync re-sends them summary-only.
+ *
+ * Evaluated from the settled outcome list rather than inside the read, so a
+ * late-completing timed-out task cannot confirm itself after the fact.
+ */
+export const sessionTelemetryOutcomesUsable = (
+  outcomes: MetricSyncOutcome[],
+): boolean =>
+  outcomes
+    .filter(outcome => TELEMETRY_STAGING_RECORD_TYPES.has(outcome.metric.recordType))
+    .every(outcome => outcome.status === 'fulfilled');
+
 export interface ForegroundSyncOptions {
   /** Log-message prefix, e.g. '[HealthConnectService]'. */
   logTag: string;
@@ -276,9 +322,22 @@ export const runForegroundSync = async (
   const enabledMetricStates = healthMetricStates && typeof healthMetricStates === 'object' ? healthMetricStates : {};
   const metricsToSync = HEALTH_METRICS.filter(metric => enabledMetricStates[metric.stateKey]);
 
+  // Interactive (a user is present to answer a route-consent dialog) but still
+  // bounded: this window is the user's full configured sync range, so an
+  // unbounded budget scales the per-run cost with their whole history.
+  const telemetry = createTelemetryRunContext({
+    budget: FOREGROUND_TELEMETRY_BUDGET,
+    interactive: true,
+  });
+
   const outcomes = await collectHealthData(provider, metricsToSync, windows, {
     timeoutLabelPrefix: opts.timeoutLabelPrefix,
+    telemetry,
   });
+
+  // Decided here, from the settled outcomes, and used for both drain sites
+  // below.
+  const telemetryUsable = sessionTelemetryOutcomesUsable(outcomes);
 
   const allTransformedData: HealthDataPayload = [];
   const syncErrors: { type: string; error: string }[] = [];
@@ -319,6 +378,17 @@ export const runForegroundSync = async (
   if (allTransformedData.length > 0) {
     try {
       const apiResponse = await api.syncHealthData(allTransformedData);
+
+      // Commit the telemetry reuse cache only on a fully accepted upload; see
+      // the invariant on markEnrichedSessions. Per-record rejections carry no
+      // usable record identity (RecordSyncError.entry is an opaque echo), so
+      // there is no way to commit just the accepted subset — a partial
+      // rejection leaves the whole run's staging undrained and the next sync
+      // re-collects. Wasteful when an unrelated record is the one rejected,
+      // but the alternative silently strips telemetry from the rejected one.
+      if (telemetryUsable && (apiResponse?.recordErrors?.length ?? 0) === 0) {
+        await markEnrichedSessions(telemetry.drainCollected());
+      }
       return {
         success: true,
         apiResponse,
@@ -332,5 +402,12 @@ export const runForegroundSync = async (
     }
   }
 
+  // A run that legitimately found no new records still commits what it read.
+  // Still gated: an empty payload is also what a timed-out session read leaves
+  // behind when it was the only metric with data, and those staged keys belong
+  // to sessions the server never saw.
+  if (telemetryUsable) {
+    await markEnrichedSessions(telemetry.drainCollected());
+  }
   return { success: true, message: opts.emptyMessage, syncErrors };
 };

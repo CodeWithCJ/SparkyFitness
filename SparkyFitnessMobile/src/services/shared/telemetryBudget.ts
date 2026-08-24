@@ -22,6 +22,19 @@
 /** Workouts to enrich per background read. */
 export const BACKGROUND_TELEMETRY_BUDGET = 3;
 
+/**
+ * Workouts to enrich per foreground read.
+ *
+ * Higher than the background budget — a user-present run has no OS deadline —
+ * but not unlimited: the foreground window is the user's whole configured sync
+ * range (up to 365 days), so an uncapped run enriches every workout in that
+ * range on every single sync. At roughly a dozen native reads per workout, whose
+ * results are deserialized and sorted on the JS thread, that starves the UI and
+ * taps queue up for seconds (#2191). Sessions beyond the cap are picked up by
+ * later syncs, which skip the ones already collected.
+ */
+export const FOREGROUND_TELEMETRY_BUDGET = 25;
+
 export interface TelemetryRunContext {
   /**
    * Whether collection may show UI. Android route access can require a
@@ -35,6 +48,19 @@ export interface TelemetryRunContext {
    * Callers that skip collection do not consume budget.
    */
   claim(): boolean;
+  /**
+   * Records a session whose telemetry this run collected, pending the upload
+   * that will commit it to the reuse cache.
+   *
+   * Run-scoped for the same reason the budget is: overlapping runs would
+   * otherwise share one staging area, and a successful upload in one run would
+   * commit keys staged by another whose upload later failed — marking those
+   * sessions collected when the server never received their telemetry.
+   * Null keys (no stable record identity) are ignored.
+   */
+  stageCollected(key: string | null): void;
+  /** Drains the staged keys, for the shell to commit after a successful upload. */
+  drainCollected(): string[];
 }
 
 /**
@@ -47,12 +73,21 @@ export const createTelemetryRunContext = (options?: {
   interactive?: boolean;
 }): TelemetryRunContext => {
   let remaining = options?.budget ?? Number.POSITIVE_INFINITY;
+  let collected: string[] = [];
   return {
     interactive: options?.interactive ?? true,
     claim: (): boolean => {
       if (remaining <= 0) return false;
       remaining -= 1;
       return true;
+    },
+    stageCollected: (key: string | null): void => {
+      if (key) collected.push(key);
+    },
+    drainCollected: (): string[] => {
+      const staged = collected;
+      collected = [];
+      return staged;
     },
   };
 };

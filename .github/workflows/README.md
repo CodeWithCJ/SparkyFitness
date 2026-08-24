@@ -133,6 +133,56 @@ hasUIChanges = .tsx/.jsx/.css files in components/screens/pages/
 
 ---
 
+### Issue & PR Management Workflows
+
+#### `issue-auto-label.yml`
+
+**Purpose**: Automatically label newly opened or edited issues based on the issue template choices (e.g. `has-pr-volunteer`, `mobile`, `frontend`, `backend`).
+
+**Triggers**: Issues (opened, edited)
+
+---
+
+#### `auto-merge-bot-prs.yml`
+
+**Purpose**: Automatically and safely merges clean automated PRs for Translations (`i18n/*`) and Nix hashes (`nix/*`) once all CI checks pass. If there are any merge conflicts, the PR is held untouched for manual review.
+
+**Triggers**: Pull requests (opened, synchronize, labeled, ready_for_review), Check suites completed, and manual workflow dispatch
+
+---
+
+#### `first-contributor-welcome.yml`
+
+**Purpose**: Greets first-time contributors with a warm, tailored welcome comment when they open their very first pull request, feature request, or issue.
+
+**Triggers**: Issues opened, Pull requests opened
+
+---
+
+#### `pr-license-enforcement.yml`
+
+**Purpose**: Sweeps open pull requests on a schedule and closes PRs where the mandatory Integrity & License agreement checkbox was not confirmed within the 7-day grace period.
+
+**Triggers**: Scheduled (hourly) and manual workflow dispatch
+
+---
+
+#### `pr-merged-issue-notifier.yml`
+
+**Purpose**: When a PR is merged, automatically replies to linked issues informing reporters that the fix or enhancement is completed and will be available in the upcoming release.
+
+**Triggers**: Pull requests closed (`merged == true`)
+
+---
+
+#### `release-published-notifier.yml`
+
+**Purpose**: When a new release is published, automatically comments on all issues resolved in that release announcing that the release is now live with links to the release notes.
+
+**Triggers**: Release published (`published`)
+
+---
+
 ## Development Notes
 
 ### Testing Workflows Locally

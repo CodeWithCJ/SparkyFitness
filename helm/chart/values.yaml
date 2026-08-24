@@ -552,8 +552,9 @@ postgresql:
         # Grant CREATEROLE so the app can create the sparky role on first startup.
         psql --username "${POSTGRES_USER}" --dbname postgres \
           -c "ALTER USER \"${APP_USERNAME}\" CREATEROLE"
-        # Install required extensions and grant function execution (must run as superuser).
+        # Grant schema permissions and install legacy extensions for backward compatibility
         psql --username "${POSTGRES_USER}" --dbname "${APP_DATABASE}" \
+          -c "GRANT ALL ON SCHEMA public TO \"${APP_USERNAME}\"" \
           -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"' \
           -c 'CREATE EXTENSION IF NOT EXISTS "pgcrypto"' \
           -c 'CREATE EXTENSION IF NOT EXISTS "pg_stat_statements"' \

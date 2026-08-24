@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SymbolView } from 'expo-symbols';
 import { useCSSVariable } from 'uniwind';
 import { useNavigation } from '@react-navigation/native';
+import { createDuplicatePressGuard } from '../utils/duplicatePress';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import type { ParamListBase } from '@react-navigation/native';
@@ -567,6 +568,19 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
   const handlersRef = useRef<Record<string, () => void>>({});
   const nextHandlers: Record<string, () => void> = {};
 
+  // `kind: 'primary'` is the Save sugar, and most screens expose their only
+  // Save through it. Those presses dispatch straight through `handlersRef` with
+  // no synchronous guard, so a burst of taps replayed off a blocked JS thread
+  // ran the handler once per tap — screen-local isPending checks do not help,
+  // because every queued press sees the previous render's closure (#2191).
+  //
+  // Same guard the footer Save bar uses, and scoped to the RIGHT-slot primary:
+  // that is the accent write action, the only one where a repeated press
+  // writes twice. The left slot is navigation, and at least one screen uses
+  // the primary sugar for a wizard Back (CycleOnboardingScreen) where rapid
+  // repeated presses are exactly what the user means.
+  const allowPress = useRef(createDuplicatePressGuard()).current;
+
   const goBack = () => navigation.goBack();
   // A menu item's own press only exists on the custom path: measure the
   // trigger and open the AnchoredMenu under it. (Natively the system presents
@@ -575,17 +589,24 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
     measureAnchoredMenuTrigger(menuTriggerRefs.current[id] ?? null, (anchor) =>
       setOpenMenu({ id, anchor }),
     );
-  const registerHandlers = (item: HeaderItem, id: string) => {
-    nextHandlers[id] = item.kind === 'menu' ? openAnchoredMenu(id) : resolvePress(item, goBack);
+  const registerHandlers = (item: HeaderItem, id: string, slot: 'left' | 'right') => {
+    const press = item.kind === 'menu' ? openAnchoredMenu(id) : resolvePress(item, goBack);
+    nextHandlers[id] =
+      item.kind === 'primary' && slot === 'right'
+        ? () => {
+            if (!allowPress(id)) return;
+            press();
+          }
+        : press;
     collectMenuHandlers(item, id, nextHandlers);
   };
   const leftId = left ? resolveIdentifier(left, 'header-left') : 'header-left';
   if (left) {
-    registerHandlers(left, leftId);
+    registerHandlers(left, leftId, 'left');
   }
   const rightMeta = rightItems.map((item, index) => {
     const id = resolveIdentifier(item, `header-right-${index}`);
-    registerHandlers(item, id);
+    registerHandlers(item, id, 'right');
     return { item, id };
   });
   handlersRef.current = nextHandlers;

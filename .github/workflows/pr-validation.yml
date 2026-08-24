@@ -3,6 +3,10 @@ name: PR Checks
 on:
   pull_request_target:
     types: [opened, edited, synchronize, reopened, ready_for_review, converted_to_draft]
+  pull_request_review:
+    types: [submitted, dismissed]
+  pull_request_review_comment:
+    types: [created, deleted]
 
 permissions:
   contents: read
@@ -40,7 +44,7 @@ jobs:
             const isDraft = pr.draft === true;
 
             const { LICENSE_LABEL, LICENSE_ITEM } = policy;
-            const GRACE_HOURS = Math.round(policy.GRACE_MS / (60 * 60 * 1000));
+            const GRACE_DAYS = Math.round(policy.GRACE_MS / (24 * 60 * 60 * 1000));
 
             // Bots (our own schema-backup / nix / translation-sync PRs and any future
             // automation), maintainers, and same-repo automation branches.
@@ -129,11 +133,6 @@ jobs:
                 text: '**[MANDATORY for Frontend changes] Quality**: I have run `pnpm run validate` and it passes.',
               },
               {
-                label: '[MANDATORY for Frontend changes] Translations',
-                required: hasEnTranslationChange,
-                text: '**[MANDATORY for Frontend changes] Translations**: I have only updated the English (`en`) translation file.',
-              },
-              {
                 label: '[MANDATORY for Backend changes] Code Quality',
                 required: hasBackendChanges,
                 text: '**[MANDATORY for Backend changes] Code Quality**: I have run typecheck, lint, and tests. New files use TypeScript, new endpoints have Zod schemas, and new endpoints include tests.',
@@ -219,9 +218,6 @@ jobs:
                 `Remove changes to: ${nonEnLocaleFiles.map(f => '`' + f + '`').join(', ')}.`
               );
             }
-            if (hasEnTranslationChange && !checked('[MANDATORY for Frontend changes] Translations')) {
-              errors.push('**[MANDATORY for Frontend changes]** You modified `en/translation.json`. Check the "Translations" checkbox.');
-            }
 
             // Backend
             if (hasBackendChanges && !checked('[MANDATORY for Backend changes] Code Quality')) {
@@ -249,6 +245,63 @@ jobs:
               }
             }
 
+            // ---- Unresolved Review Conversations Check ----
+            let unresolvedThreads = [];
+            if (!isDraft && !isAutomation) {
+              try {
+                let hasNextPage = true;
+                let cursor = null;
+
+                while (hasNextPage) {
+                  const query = `
+                    query($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
+                      repository(owner: $owner, name: $repo) {
+                        pullRequest(number: $number) {
+                          reviewThreads(first: 100, after: $cursor) {
+                            pageInfo {
+                              hasNextPage
+                              endCursor
+                            }
+                            nodes {
+                              id
+                              isResolved
+                              isOutdated
+                            }
+                          }
+                        }
+                      }
+                    }
+                  `;
+                  const result = await github.graphql(query, {
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    number: pr.number,
+                    cursor,
+                  });
+
+                  const threadsData = result?.repository?.pullRequest?.reviewThreads;
+                  const nodes = threadsData?.nodes || [];
+                  for (const node of nodes) {
+                    if (!node.isResolved) {
+                      unresolvedThreads.push(node);
+                    }
+                  }
+
+                  hasNextPage = Boolean(threadsData?.pageInfo?.hasNextPage);
+                  cursor = threadsData?.pageInfo?.endCursor;
+                }
+              } catch (err) {
+                core.warning(`Could not fetch review threads: ${err.message}`);
+              }
+
+              if (unresolvedThreads.length > 0) {
+                errors.push(
+                  `**[Review Conversations]** There are ${unresolvedThreads.length} unresolved review conversation(s). ` +
+                  'Please address the feedback, make any necessary fixes, and click **"Resolve conversation"** (or reply if it is a false positive) in GitHub.'
+                );
+              }
+            }
+
             // ---- Warnings ----
             if (!isIssue && !isNewFeature && !isRefactor && !isDocs) {
               warnings.push('Please select a PR type (Issue, New Feature, Refactor, or Documentation).');
@@ -265,7 +318,7 @@ jobs:
             }
 
             // ---- License countdown label ----
-            // Adding the label starts the 24h clock; pr-license-enforcement.yml reads the `labeled`
+            // Adding the label starts the 7-day clock; pr-license-enforcement.yml reads the `labeled`
             // event timestamp. Ticking the box removes the label here and cancels the countdown.
             if (licenseCountdown) {
               try {
@@ -277,7 +330,17 @@ jobs:
                   description: policy.LICENSE_LABEL_DESCRIPTION,
                 });
               } catch (error) {
-                if (error.status !== 422) throw error; // 422 = already exists
+                if (error.status === 422) {
+                  await github.rest.issues.updateLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    name: LICENSE_LABEL,
+                    color: policy.LICENSE_LABEL_COLOR,
+                    description: policy.LICENSE_LABEL_DESCRIPTION,
+                  });
+                } else {
+                  throw error;
+                }
               }
 
               await github.rest.issues.addLabels({
@@ -317,13 +380,10 @@ jobs:
 
             if (licenseCountdown) {
               message +=
-                '> [!WARNING]\n' +
-                `> ⏳ **This PR will be closed automatically in ${GRACE_HOURS} hours** unless the ` +
-                `**${LICENSE_ITEM}** checkbox is ticked in the PR description.\n` +
-                '> We can only accept contributions from people who have agreed to the project ' +
-                'license, and this box is how that agreement is recorded. ' +
-                'If the checklist is missing, it has been added back to the description for you — ' +
-                'just tick the box (no new commit needed) and this check will pass.\n\n';
+                '> [!NOTE]\n' +
+                `> ⏳ **Reminder:** In order for us to review and accept this PR, please complete the mandatory questionnaire checkboxes (Integrity & License, etc.) in the PR description. ` +
+                `If any mandatory checkboxes were removed, they have been automatically added back to the bottom of your description for your convenience — just tick the boxes and this check will pass. ` +
+                `PRs with incomplete mandatory items are automatically closed after ${GRACE_DAYS} days, and can be reopened at any time once completed.\n\n`;
             } else if (isDraft && !licenseAgreed && !licenseExempt) {
               message +=
                 '> [!NOTE]\n' +
@@ -346,6 +406,14 @@ jobs:
               message += '- ℹ️ No tracked directory changes detected\n';
             }
             message += '\n';
+
+            if (unresolvedThreads.length > 0) {
+              message += `### 💬 Unresolved Review Conversations (${unresolvedThreads.length})\n\n`;
+              message += '> [!NOTE]\n' +
+                `> There are **${unresolvedThreads.length} unresolved review conversation(s)** on this PR. ` +
+                'GitHub requires all review comments from CodeRabbit and reviewers to be marked as resolved before merging. ' +
+                'Once addressed (or verified as false positives), please click **"Resolve conversation"** on each comment in the Conversations tab above.\n\n';
+            }
 
             if (errors.length > 0) {
               message += `### ❌ Required Actions (${errors.length})\n\n`;

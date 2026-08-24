@@ -36,6 +36,9 @@ export const getSyncStartDate = HealthKit.getSyncStartDate;
 
 // Locked-device detection (HealthKit database inaccessible)
 export const resetDatabaseInaccessibleCount = HealthKit.resetDatabaseInaccessibleCount;
+// HealthKit has no equivalent: its store is not a separate client that can
+// disconnect. Locked-device failures are covered by databaseInaccessibleCount.
+export const getClientUnavailableCount = (): number => 0;
 export const getDatabaseInaccessibleCount = HealthKit.getDatabaseInaccessibleCount;
 
 export const aggregateByDay = HealthKitAggregation.aggregateByDay;

@@ -1,7 +1,6 @@
 import { log } from '../config/logging.js';
 import garminConnectService from '../integrations/garminconnect/garminConnectService.js';
-import garminMeasurementMapping from '../integrations/garminconnect/garminMeasurementMapping.js';
-import moment from 'moment';
+import { parseGarminHealthMeasurements } from '../integrations/garminconnect/garminMeasurementMapping.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { todayInZone, addDays } from '@workspace/shared';
 import measurementService from './measurementService.js';
@@ -27,7 +26,60 @@ import {
 } from './garmin/garminHealthProcessor.js';
 
 /**
+ * Helper to process and persist a single chunk of Health and Wellness data.
+ */
+async function processHealthChunk(
+  userId: string,
+  healthData: Record<string, Array<Record<string, unknown>>>,
+  startDate: string,
+  endDate: string
+) {
+  const processedGarminHealthData = await processGarminHealthAndWellnessData(
+    userId,
+    userId,
+    healthData,
+    startDate,
+    endDate
+  );
+
+  const processedHealthData = parseGarminHealthMeasurements(healthData);
+
+  let measurementServiceResult = {};
+  if (processedHealthData.length > 0) {
+    measurementServiceResult = await measurementService.processHealthData(
+      processedHealthData,
+      userId,
+      userId
+    );
+  }
+
+  let processedSleepData = {};
+  if (
+    healthData &&
+    Array.isArray(healthData.sleep) &&
+    healthData.sleep.length > 0
+  ) {
+    processedSleepData = await processGarminSleepData(
+      userId,
+      userId,
+      healthData.sleep,
+      startDate,
+      endDate
+    );
+  }
+
+  return {
+    processedGarminHealthData,
+    measurementServiceResult,
+    processedSleepData,
+    processedEntries: processedHealthData.length,
+  };
+}
+
+/**
  * Main orchestrator for syncing all Garmin telemetry and health data streams for a given user.
+ * Processes and persists data incrementally chunk-by-chunk to prevent memory bloating, socket timeouts,
+ * and loss of partial sync progress.
  */
 async function syncGarminData(
   userId: string,
@@ -57,179 +109,153 @@ async function syncGarminData(
     `[garminService] Starting Garmin sync (${syncType}) for user ${userId} from ${startDate} to ${endDate}.`
   );
 
+  const chunks = garminConnectService.getGarminDateChunks(
+    startDate,
+    endDate,
+    7
+  );
+  log(
+    'info',
+    `[garminService] Range ${startDate} to ${endDate} split into ${chunks.length} incremental chunks.`
+  );
+
   const results: GarminSyncResult = {
     health: null,
     activities: null,
     nutrition: null,
   };
 
-  // Phase 1: Health and Wellness — runs independently
-  try {
-    log('info', '[garminService] Fetching Health and Wellness data...');
-    const healthWellnessData =
-      await garminConnectService.syncGarminHealthAndWellness(
-        userId,
-        startDate,
-        endDate,
-        []
-      );
+  let totalProcessedHealth = 0;
+  let totalProcessedActivities = 0;
+  let totalProcessedNutrition = 0;
+  let lastHealthResult: Record<string, unknown> | null = null;
+  const healthErrors: string[] = [];
+  const activityErrors: string[] = [];
+  const nutritionErrors: string[] = [];
 
-    const processedGarminHealthData = await processGarminHealthAndWellnessData(
-      userId,
-      userId,
-      healthWellnessData.data,
-      startDate,
-      endDate
-    );
-
-    const processedHealthData: any[] = [];
-    for (const metric in healthWellnessData.data) {
-      if (metric === 'stress') continue;
-      const dailyEntries = healthWellnessData.data[metric];
-      if (Array.isArray(dailyEntries)) {
-        for (const entry of dailyEntries) {
-          const calendarDateRaw = entry.date;
-          if (!calendarDateRaw) continue;
-          const calendarDate = moment(calendarDateRaw).format('YYYY-MM-DD');
-          for (const key in entry) {
-            if (key === 'date') continue;
-            let mapping = (garminMeasurementMapping as Record<string, any>)[
-              key
-            ];
-            if (!mapping && key === 'value') {
-              mapping = (garminMeasurementMapping as Record<string, any>)[
-                metric
-              ];
-            }
-            if (mapping) {
-              const value = entry[key];
-              if (value === null || value === undefined) continue;
-              if (
-                value === 0 &&
-                mapping.targetType === 'check_in' &&
-                (mapping.field === 'weight' ||
-                  mapping.field === 'body_fat_percentage')
-              )
-                continue;
-              const type =
-                mapping.targetType === 'check_in'
-                  ? mapping.field
-                  : mapping.name;
-              processedHealthData.push({
-                type: type,
-                value: value,
-                date: calendarDate,
-                source: 'garmin',
-                dataType: mapping.dataType,
-                measurementType: mapping.measurementType,
-              });
-            }
-          }
-        }
-      }
-    }
-
-    let measurementServiceResult = {};
-    if (processedHealthData.length > 0) {
-      measurementServiceResult = await measurementService.processHealthData(
-        processedHealthData,
-        userId,
-        userId
-      );
-    }
-
-    let processedSleepData = {};
-    if (
-      healthWellnessData.data &&
-      healthWellnessData.data.sleep &&
-      healthWellnessData.data.sleep.length > 0
-    ) {
-      processedSleepData = await processGarminSleepData(
-        userId,
-        userId,
-        healthWellnessData.data.sleep,
-        startDate,
-        endDate
-      );
-    }
-
-    results.health = {
-      processedGarminHealthData,
-      measurementServiceResult,
-      processedSleepData,
-    };
-  } catch (healthError) {
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
     log(
-      'error',
-      `[garminService] Error during health sync for user ${userId}:`,
-      healthError
+      'info',
+      `[garminService] Processing chunk ${i + 1}/${chunks.length} (${chunk.start} to ${chunk.end}) for user ${userId}...`
     );
-    results.health = {
-      error:
+
+    // Phase 1: Health and Wellness for this chunk
+    try {
+      const healthData =
+        await garminConnectService.fetchGarminHealthAndWellnessChunk(
+          userId,
+          chunk.start,
+          chunk.end,
+          []
+        );
+      const healthChunkResult = await processHealthChunk(
+        userId,
+        healthData.data,
+        chunk.start,
+        chunk.end
+      );
+      totalProcessedHealth += healthChunkResult.processedEntries || 0;
+      lastHealthResult = healthChunkResult;
+    } catch (healthError: unknown) {
+      const errMsg =
         healthError instanceof Error
           ? healthError.message
-          : String(healthError),
-    };
-  }
-
-  // Phase 2: Activities and Workouts — always runs
-  try {
-    log('info', '[garminService] Fetching Activities and Workouts data...');
-    const activitiesData =
-      await garminConnectService.fetchGarminActivitiesAndWorkouts(
-        userId,
-        startDate,
-        endDate
+          : String(healthError);
+      log(
+        'error',
+        `[garminService] Error during health sync for chunk ${chunk.start} to ${chunk.end}:`,
+        errMsg
       );
+      healthErrors.push(`[${chunk.start}..${chunk.end}]: ${errMsg}`);
+    }
 
-    const processedActivities = await processActivitiesAndWorkouts(
-      userId,
-      activitiesData,
-      startDate,
-      endDate,
-      tz
-    );
-    results.activities = processedActivities;
-  } catch (activitiesError) {
-    log(
-      'error',
-      `[garminService] Error during activities sync for user ${userId}:`,
-      activitiesError
-    );
-    results.activities = {
-      error:
+    // Phase 2: Activities and Workouts for this chunk
+    try {
+      const activitiesData =
+        await garminConnectService.fetchGarminActivitiesAndWorkoutsChunk(
+          userId,
+          chunk.start,
+          chunk.end
+        );
+      const actResult = await processActivitiesAndWorkouts(
+        userId,
+        activitiesData,
+        chunk.start,
+        chunk.end,
+        tz
+      );
+      totalProcessedActivities += actResult.processedEntries;
+    } catch (activitiesError: unknown) {
+      const errMsg =
         activitiesError instanceof Error
           ? activitiesError.message
-          : String(activitiesError),
+          : String(activitiesError);
+      log(
+        'error',
+        `[garminService] Error during activities sync for chunk ${chunk.start} to ${chunk.end}:`,
+        errMsg
+      );
+      activityErrors.push(`[${chunk.start}..${chunk.end}]: ${errMsg}`);
+    }
+
+    // Phase 3: Nutrition Diary for this chunk
+    try {
+      const nutritionData =
+        await garminConnectService.fetchGarminNutritionDiaryChunk(
+          userId,
+          chunk.start,
+          chunk.end
+        );
+      const nutrResult = await processGarminNutritionData(
+        userId,
+        nutritionData.nutrition_data,
+        chunk.start,
+        chunk.end
+      );
+      totalProcessedNutrition += nutrResult.processedEntries;
+    } catch (nutritionError: unknown) {
+      const errMsg =
+        nutritionError instanceof Error
+          ? nutritionError.message
+          : String(nutritionError);
+      log(
+        'error',
+        `[garminService] Error during nutrition sync for chunk ${chunk.start} to ${chunk.end}:`,
+        errMsg
+      );
+      nutritionErrors.push(`[${chunk.start}..${chunk.end}]: ${errMsg}`);
+    }
+  }
+
+  // Finalize Phase 1 result
+  if (healthErrors.length === chunks.length) {
+    results.health = { error: healthErrors.join('; ') };
+  } else {
+    results.health = {
+      ...(lastHealthResult || {}),
+      processedEntries: totalProcessedHealth,
+      ...(healthErrors.length > 0 ? { partialErrors: healthErrors } : {}),
     };
   }
 
-  // Phase 3: Nutrition Diary — runs independently
-  try {
-    log('info', '[garminService] Fetching Nutrition Diary data...');
-    const nutritionData = await garminConnectService.fetchGarminNutritionDiary(
-      userId,
-      startDate,
-      endDate
-    );
-    const processedNutrition = await processGarminNutritionData(
-      userId,
-      nutritionData.nutrition_data,
-      startDate,
-      endDate
-    );
-    results.nutrition = processedNutrition;
-  } catch (nutritionError) {
-    log(
-      'error',
-      `[garminService] Error during nutrition sync for user ${userId}:`,
-      nutritionError
-    );
+  // Finalize Phase 2 result
+  if (activityErrors.length === chunks.length) {
+    results.activities = { error: activityErrors.join('; ') };
+  } else {
+    results.activities = {
+      processedEntries: totalProcessedActivities,
+      ...(activityErrors.length > 0 ? { partialErrors: activityErrors } : {}),
+    };
+  }
+
+  // Finalize Phase 3 result
+  if (nutritionErrors.length === chunks.length) {
+    results.nutrition = { error: nutritionErrors.join('; ') };
+  } else {
     results.nutrition = {
-      error:
-        nutritionError instanceof Error
-          ? nutritionError.message
-          : String(nutritionError),
+      processedEntries: totalProcessedNutrition,
+      ...(nutritionErrors.length > 0 ? { partialErrors: nutritionErrors } : {}),
     };
   }
 

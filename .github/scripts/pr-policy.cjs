@@ -11,16 +11,16 @@
 // Both workflows check out the BASE branch (never PR head), so a pull request
 // cannot change the rules that judge it.
 
-const LICENSE_LABEL = 'needs-license-agreement';
+const LICENSE_LABEL = 'integrity-license-pending';
 const LICENSE_LABEL_COLOR = 'b60205';
 const LICENSE_LABEL_DESCRIPTION =
-  'License checkbox not ticked; PR closes 24h after this label was applied';
+  'Integrity & license agreement pending; PR closes 7 days after this label was applied';
 
 const LICENSE_ITEM = '[MANDATORY - ALL] Integrity & License';
 const LICENSE_ITEM_TEXT =
   '**[MANDATORY - ALL] Integrity & License**: I certify this is my own work, free of malicious code, and I agree to the [License terms](https://github.com/CodeWithCJ/SparkyFitness/blob/main/LICENSE).';
 
-const GRACE_MS = 24 * 60 * 60 * 1000;
+const GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 
 // Deliberately owner-only. On a user-owned repo `OWNER` is exactly one person --
 // the account that owns the repo (CodeWithCJ) -- so this is "the maintainer and

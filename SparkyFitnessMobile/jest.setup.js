@@ -103,6 +103,7 @@ jest.mock('react-native-health-connect', () => ({
   requestPermission: jest.fn().mockResolvedValue([]),
   getGrantedPermissions: jest.fn().mockResolvedValue([]),
   readRecords: jest.fn().mockResolvedValue({ records: [] }),
+  requestExerciseRoute: jest.fn().mockResolvedValue([]),
   aggregateRecord: jest.fn().mockResolvedValue({}),
   aggregateGroupByDuration: jest.fn().mockResolvedValue([]),
   aggregateGroupByPeriod: jest.fn().mockResolvedValue([]),
