@@ -24,7 +24,8 @@
       "favorites": "Favorites",
       "meal_plans": "Meal Plans",
       "custom_nutrients": "Custom Nutrients",
-      "water_containers": "Water Containers"
+      "water_containers": "Water Containers",
+      "workout_plans": "Workout Plans"
     },
     "errorClearingHistory": "Failed to clear chat history.",
     "errorLoadingHistory": "Failed to load chat history.",

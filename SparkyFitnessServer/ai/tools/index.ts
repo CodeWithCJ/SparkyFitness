@@ -26,6 +26,7 @@ import { buildProfileTools } from './profileTools.js';
 import { buildReportTools } from './reportTools.js';
 import { buildVisionTools } from './visionTools.js';
 import { buildWizardTools } from './wizardTools.js';
+import { buildWorkoutPlanTools } from './workoutPlanTools.js';
 
 /**
  * Tool surfaces the chatbot can expose:
@@ -68,6 +69,7 @@ const CATEGORY_BUILDERS: Record<
   meal_plans: [(u, tz) => buildMealPlanTools(u, tz)],
   custom_nutrients: [(u, tz) => buildCustomNutrientTools(u, tz)],
   water_containers: [(u, tz) => buildWaterContainerTools(u, tz)],
+  workout_plans: [(u, tz) => buildWorkoutPlanTools(u, tz)],
 };
 
 // Composition order: the core categories first (a strict prefix of the full
@@ -87,6 +89,7 @@ const CATEGORY_ORDER: ChatToolCategorySlug[] = [
   'meal_plans',
   'custom_nutrients',
   'water_containers',
+  'workout_plans',
 ];
 
 // Resolves the category set to compose: an explicit (already-validated,

@@ -1182,6 +1182,11 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
     keywords:
       /\b(water\s+container\w*|water\s+bottle\w*|drink\s+container\w*)\b/i,
   },
+  {
+    category: 'workout_plans',
+    keywords:
+      /\b(workout\s+plan\w*|workout\s+template\w*|training\s+plan\w*|training\s+program\w*)\b/i,
+  },
 ];
 
 function extractMessageText(msg: ChatMessage): string {

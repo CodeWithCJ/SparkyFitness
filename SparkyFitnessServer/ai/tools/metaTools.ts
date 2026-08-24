@@ -39,6 +39,8 @@ export const CATEGORY_SUMMARIES: Record<ChatToolCategorySlug, string> = {
     'list, create, update, and delete user-defined custom nutrient definitions (tools: sparky_manage_custom_nutrients)',
   water_containers:
     'list, create, update, delete, and set the primary reusable water container for quick water logging (tools: sparky_manage_water_containers)',
+  workout_plans:
+    'list, view, and delete saved workout plan templates and their weekly assignments (tools: sparky_manage_workout_plans)',
 };
 
 const EnableToolsSchema = z.object({
