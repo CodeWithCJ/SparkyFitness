@@ -42,6 +42,7 @@ const CATEGORY_LABELS: Record<ChatToolCategorySlug, [string, string]> = {
   sleep_science: ['chat.toolCategories.sleep_science', 'Sleep Science'],
   integrations: ['chat.toolCategories.integrations', 'Integrations'],
   synced_data: ['chat.toolCategories.synced_data', 'Synced Data'],
+  progress_photos: ['chat.toolCategories.progress_photos', 'Progress Photos'],
 };
 
 /**

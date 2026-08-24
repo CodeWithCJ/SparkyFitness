@@ -49,6 +49,8 @@ export const CATEGORY_SUMMARIES: Record<ChatToolCategorySlug, string> = {
     'read connected external integrations and available integration types, including status, visibility, and sync info without exposing credentials (tools: sparky_get_integrations)',
   synced_data:
     'list and bulk-delete entry data synced from external providers by source, without touching hand-entered data (tools: sparky_manage_synced_data)',
+  progress_photos:
+    'list the days that have progress (check-in) photos, list the photos for a day, and delete a photo; uploads happen in the app UI (tools: sparky_manage_progress_photos)',
 };
 
 const EnableToolsSchema = z.object({

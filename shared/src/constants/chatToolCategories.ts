@@ -31,6 +31,7 @@ export const CHAT_TOOL_CATEGORY_SLUGS = [
   'sleep_science',
   'integrations',
   'synced_data',
+  'progress_photos',
 ] as const;
 
 export type ChatToolCategorySlug = (typeof CHAT_TOOL_CATEGORY_SLUGS)[number];

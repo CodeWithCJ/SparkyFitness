@@ -90,6 +90,7 @@ describe('getSystemPrompt dormant-domain listing', () => {
       'sleep_science',
       'integrations',
       'synced_data',
+      'progress_photos',
     ]);
     expect(prompt).not.toContain('sparky_enable_tools');
   });
@@ -132,6 +133,7 @@ describe('buildEscalationPrepareStep', () => {
     sleep_science: ['sparky_get_sleep_science'],
     integrations: ['sparky_get_integrations'],
     synced_data: ['sparky_manage_synced_data'],
+    progress_photos: ['sparky_manage_progress_photos'],
   };
   const base = ['sparky_manage_food', 'sparky_enable_tools'];
 

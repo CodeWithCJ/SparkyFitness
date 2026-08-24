@@ -1207,6 +1207,11 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
     keywords:
       /\b(synced\s+data|sync\w*\s+(source|data)|delete\s+synced|imported\s+data|remove\s+(garmin|healthkit|health\s*connect)\s+data)\b/i,
   },
+  {
+    category: 'progress_photos',
+    keywords:
+      /\b(progress\s+photo\w*|check[-\s]?in\s+photo\w*|body\s+photo\w*|transformation\s+photo\w*)\b/i,
+  },
 ];
 
 function extractMessageText(msg: ChatMessage): string {
