@@ -71,6 +71,24 @@ interface InjectionWithPenRow extends InjectionRow {
   } | null;
 }
 
+interface MedicationMutationRow {
+  id: string;
+  display_name: string | null;
+  name: string;
+  strength_value: number | null;
+  strength_unit: string | null;
+  is_active: boolean;
+}
+
+interface ScheduleRow {
+  id: string;
+  schedule_type_id: string;
+  time_of_day: string | null;
+  dose_amount: number | null;
+  active: boolean | null;
+  prn_reason: string | null;
+}
+
 interface PreProcessedArgs {
   action?: string;
   entry_date?: string;
@@ -92,6 +110,24 @@ interface PreProcessedArgs {
   site?: string;
   deduct_pen?: boolean;
   entry_id?: string;
+  name?: string;
+  strength_value?: number | null;
+  strength_unit?: string | null;
+  dose_amount?: number | null;
+  dose_unit?: string | null;
+  type_id?: string | null;
+  reason_text?: string | null;
+  is_glp1?: boolean;
+  is_supplement?: boolean;
+  is_active?: boolean;
+  schedule_id?: string;
+  schedule_type_id?: string;
+  time_of_day?: string;
+  days_of_week?: number[];
+  interval_days?: number;
+  with_meal?: 'before' | 'with' | 'after';
+  prn_reason?: string;
+  start_date?: string;
 }
 
 const VALID_ACTIONS = [
@@ -103,6 +139,12 @@ const VALID_ACTIONS = [
   'delete_entry',
   'log_injection',
   'list_injections',
+  'create_medication',
+  'update_medication',
+  'delete_medication',
+  'list_schedules',
+  'add_schedule',
+  'delete_schedule',
 ];
 
 async function resolveMedicationId(
@@ -127,11 +169,17 @@ async function resolveMedicationId(
 export function buildMedicationTools(userId: string, tz: string) {
   return {
     sparky_manage_medications: tool({
-      description: `Medication tracking: list medications, log doses, and view history.
+      description: `Medication tracking: manage medications and schedules, log doses, and view history.
 
 Actions:
 - list_medications(glp1_only?, active_only?)
 - get_medication(medication_id)
+- create_medication(name, strength_value?, strength_unit?, dose_amount?, dose_unit?, type_id?, reason_text?, is_glp1?, is_supplement?, is_active?, notes?)
+- update_medication(medication_id, name?, strength_value?, strength_unit?, dose_amount?, dose_unit?, type_id?, reason_text?, is_glp1?, is_supplement?, is_active?, notes?)
+- delete_medication(medication_id)
+- list_schedules(medication_id)
+- add_schedule(medication_id, schedule_type_id?, time_of_day?, dose_amount?, days_of_week?, interval_days?, with_meal?, prn_reason?, start_date?)
+- delete_schedule(schedule_id)
 - log(medication_id?|medication_name?, status?, taken_at?, entry_date?, dosage?, dosage_unit?, notes?)
 - list_entries(medication_id?, from_date?, to_date?)
 - update_entry(entry_id, status?, taken_at?, entry_date?, notes?)
@@ -145,6 +193,22 @@ Actions:
           tz,
           VALID_ACTIONS,
           (args: Record<string, unknown>) => {
+            if (args.schedule_id) return 'delete_schedule';
+            if (
+              args.schedule_type_id ||
+              args.time_of_day ||
+              args.days_of_week ||
+              args.interval_days ||
+              args.with_meal ||
+              args.prn_reason
+            ) {
+              return 'add_schedule';
+            }
+            if (args.name) {
+              return args.medication_id
+                ? 'update_medication'
+                : 'create_medication';
+            }
             if (args.entry_id) {
               if (
                 args.status !== undefined ||
@@ -372,6 +436,115 @@ Actions:
                 (i) =>
                   `${dayString(i.entry_date)}: ${i.dose_mg} mg${i.site ? ` at ${i.site}` : ''}${i.notes ? ` — ${i.notes}` : ''}`
               );
+            }
+            case 'create_medication': {
+              const med: MedicationMutationRow =
+                await medicationRepository.createMedication(userId, {
+                  name: args.name!,
+                  strength_value: args.strength_value ?? undefined,
+                  strength_unit: args.strength_unit ?? undefined,
+                  dose_amount: args.dose_amount ?? undefined,
+                  dose_unit: args.dose_unit ?? undefined,
+                  type_id: args.type_id ?? undefined,
+                  reason_text: args.reason_text ?? undefined,
+                  is_glp1: args.is_glp1,
+                  is_supplement: args.is_supplement,
+                  is_active: args.is_active,
+                  notes: args.notes ?? undefined,
+                });
+              let label = `**${med.display_name || med.name}**`;
+              if (med.strength_value && med.strength_unit) {
+                label += ` — ${med.strength_value}${med.strength_unit}`;
+              }
+              return formatConfirmation(
+                `Medication ${label} created (ID: ${med.id}).`
+              );
+            }
+            case 'update_medication': {
+              const med: MedicationMutationRow | null =
+                await medicationRepository.updateMedication(
+                  userId,
+                  args.medication_id,
+                  {
+                    name: args.name ?? undefined,
+                    strength_value: args.strength_value ?? undefined,
+                    strength_unit: args.strength_unit ?? undefined,
+                    dose_amount: args.dose_amount ?? undefined,
+                    dose_unit: args.dose_unit ?? undefined,
+                    type_id: args.type_id ?? undefined,
+                    reason_text: args.reason_text ?? undefined,
+                    is_glp1: args.is_glp1,
+                    is_supplement: args.is_supplement,
+                    is_active: args.is_active,
+                    notes: args.notes ?? undefined,
+                  }
+                );
+              if (!med)
+                return ERRORS.NOT_FOUND('Medication', args.medication_id);
+              let label = `**${med.display_name || med.name}**`;
+              if (med.strength_value && med.strength_unit) {
+                label += ` — ${med.strength_value}${med.strength_unit}`;
+              }
+              return formatConfirmation(`Medication ${label} updated.`);
+            }
+            case 'delete_medication': {
+              const ok = await medicationRepository.deleteMedication(
+                userId,
+                args.medication_id
+              );
+              if (!ok)
+                return ERRORS.NOT_FOUND('Medication', args.medication_id);
+              return formatConfirmation('Medication deleted.');
+            }
+            case 'list_schedules': {
+              const med: MedicationDetailRow | null =
+                await medicationRepository.getMedicationById(
+                  userId,
+                  args.medication_id
+                );
+              if (!med)
+                return ERRORS.NOT_FOUND('Medication', args.medication_id);
+              const schedules = (med.schedules || []) as ScheduleRow[];
+              return formatList(
+                schedules,
+                `Schedules for ${med.display_name || med.name}`,
+                (s) => {
+                  let text = `**${s.time_of_day || 'Any time'}** (${s.schedule_type_id})`;
+                  if (!s.active) text += ' (inactive)';
+                  if (s.dose_amount) text += ` | ${s.dose_amount}`;
+                  if (s.prn_reason) text += ` | PRN: ${s.prn_reason}`;
+                  text += `\n  ID: ${s.id}`;
+                  return text;
+                }
+              );
+            }
+            case 'add_schedule': {
+              const schedule: ScheduleRow =
+                await medicationRepository.addSchedule(
+                  userId,
+                  args.medication_id,
+                  {
+                    schedule_type_id: args.schedule_type_id,
+                    time_of_day: args.time_of_day ?? null,
+                    dose_amount: args.dose_amount ?? undefined,
+                    days_of_week: args.days_of_week ?? null,
+                    interval_days: args.interval_days ?? null,
+                    with_meal: args.with_meal ?? null,
+                    prn_reason: args.prn_reason ?? null,
+                    start_date: args.start_date ?? null,
+                  }
+                );
+              return formatConfirmation(
+                `Schedule added (${schedule.schedule_type_id}${schedule.time_of_day ? ` at ${schedule.time_of_day}` : ''}, ID: ${schedule.id}).`
+              );
+            }
+            case 'delete_schedule': {
+              const ok = await medicationRepository.deleteSchedule(
+                userId,
+                args.schedule_id
+              );
+              if (!ok) return ERRORS.NOT_FOUND('Schedule', args.schedule_id);
+              return formatConfirmation('Schedule deleted.');
             }
             default:
               return ERRORS.INVALID_ACTION(

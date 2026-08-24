@@ -134,6 +134,158 @@ const listInjectionsSchema = z
   })
   .strict();
 
+const createMedicationSchema = z
+  .object({
+    action: z.literal('create_medication'),
+    name: z.string().min(1, 'Medication name is required'),
+    strength_value: z
+      .number()
+      .optional()
+      .describe('Strength value (e.g. 300 for 300mg)'),
+    strength_unit: z
+      .string()
+      .optional()
+      .describe('Strength unit (e.g. mg, mL)'),
+    dose_amount: z
+      .number()
+      .positive()
+      .optional()
+      .describe('Default dose amount per intake'),
+    dose_unit: z.string().optional().describe('Default dose unit'),
+    type_id: z
+      .string()
+      .optional()
+      .describe(
+        'Medication form: pill, tablet, capsule, liquid, injection, patch, inhaler, drops, cream, suppository, other'
+      ),
+    reason_text: z
+      .string()
+      .optional()
+      .describe('Why the medication is taken (condition/reason)'),
+    is_glp1: z
+      .boolean()
+      .optional()
+      .describe('Whether this is a GLP-1 medication'),
+    is_supplement: z
+      .boolean()
+      .optional()
+      .describe('Whether this is a supplement rather than a prescription'),
+    is_active: z
+      .boolean()
+      .optional()
+      .describe('Whether the medication is active'),
+    notes: z.string().optional().describe('Optional notes'),
+  })
+  .strict();
+
+const updateMedicationSchema = z
+  .object({
+    action: z.literal('update_medication'),
+    medication_id: uuidSchema.describe('UUID of the medication to update'),
+    name: z.string().min(1).optional().describe('New name'),
+    strength_value: z
+      .number()
+      .nullable()
+      .optional()
+      .describe('New strength value'),
+    strength_unit: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('New strength unit'),
+    dose_amount: z
+      .number()
+      .positive()
+      .nullable()
+      .optional()
+      .describe('New default dose amount'),
+    dose_unit: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('New default dose unit'),
+    type_id: z.string().nullable().optional().describe('New medication form'),
+    reason_text: z.string().nullable().optional().describe('New reason'),
+    is_glp1: z.boolean().optional().describe('Set GLP-1 flag'),
+    is_supplement: z.boolean().optional().describe('Set supplement flag'),
+    is_active: z.boolean().optional().describe('Set active flag'),
+    notes: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('New notes (pass null to clear)'),
+  })
+  .strict();
+
+const deleteMedicationSchema = z
+  .object({
+    action: z.literal('delete_medication'),
+    medication_id: uuidSchema.describe('UUID of the medication to delete'),
+  })
+  .strict();
+
+const listSchedulesSchema = z
+  .object({
+    action: z.literal('list_schedules'),
+    medication_id: uuidSchema.describe('UUID of the medication'),
+  })
+  .strict();
+
+const addScheduleSchema = z
+  .object({
+    action: z.literal('add_schedule'),
+    medication_id: uuidSchema.describe('UUID of the medication'),
+    schedule_type_id: z
+      .enum([
+        'daily',
+        'specific_days',
+        'every_n_days',
+        'cyclic',
+        'weekly',
+        'monthly',
+        'prn',
+        'taper',
+      ])
+      .default('daily')
+      .describe('Schedule recurrence type (defaults to daily)'),
+    time_of_day: z
+      .string()
+      .optional()
+      .describe("Time of day in 'HH:MM' 24-hour format (e.g. 08:00, 18:00)"),
+    dose_amount: z
+      .number()
+      .positive()
+      .optional()
+      .describe('Dose amount for this schedule slot'),
+    days_of_week: z
+      .array(z.number().int().min(0).max(6))
+      .optional()
+      .describe('Days of week for specific_days (0=Sun … 6=Sat)'),
+    interval_days: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe('Interval in days for every_n_days'),
+    with_meal: z
+      .enum(['before', 'with', 'after'])
+      .optional()
+      .describe('Timing relative to a meal'),
+    prn_reason: z
+      .string()
+      .optional()
+      .describe('Reason for a PRN (as-needed) schedule'),
+    start_date: optionalDateSchema,
+  })
+  .strict();
+
+const deleteScheduleSchema = z
+  .object({
+    action: z.literal('delete_schedule'),
+    schedule_id: uuidSchema.describe('UUID of the schedule to delete'),
+  })
+  .strict();
+
 export const manageMedicationsSchema = z
   .discriminatedUnion('action', [
     listMedicationsSchema,
@@ -144,6 +296,12 @@ export const manageMedicationsSchema = z
     deleteEntrySchema,
     logInjectionSchema,
     listInjectionsSchema,
+    createMedicationSchema,
+    updateMedicationSchema,
+    deleteMedicationSchema,
+    listSchedulesSchema,
+    addScheduleSchema,
+    deleteScheduleSchema,
   ])
   .refine(
     (data) => {
@@ -168,6 +326,12 @@ export const manageMedicationsInput = z.object({
       'delete_entry',
       'log_injection',
       'list_injections',
+      'create_medication',
+      'update_medication',
+      'delete_medication',
+      'list_schedules',
+      'add_schedule',
+      'delete_schedule',
     ])
     .optional()
     .describe('Action to perform'),
@@ -225,4 +389,77 @@ export const manageMedicationsInput = z.object({
     .boolean()
     .optional()
     .describe('Whether to deduct from pen inventory'),
+  name: z
+    .string()
+    .optional()
+    .describe('Medication name (for create_medication / update_medication)'),
+  strength_value: z
+    .number()
+    .nullable()
+    .optional()
+    .describe('Strength value (e.g. 300 for 300mg)'),
+  strength_unit: z
+    .string()
+    .nullable()
+    .optional()
+    .describe('Strength unit (e.g. mg, mL)'),
+  dose_amount: z
+    .number()
+    .nullable()
+    .optional()
+    .describe('Default dose amount per intake'),
+  dose_unit: z.string().nullable().optional().describe('Default dose unit'),
+  type_id: z
+    .string()
+    .nullable()
+    .optional()
+    .describe(
+      'Medication form: pill, tablet, capsule, liquid, injection, patch, inhaler, drops, cream, suppository, other'
+    ),
+  reason_text: z
+    .string()
+    .nullable()
+    .optional()
+    .describe('Why the medication is taken'),
+  is_glp1: z
+    .boolean()
+    .optional()
+    .describe('Whether this is a GLP-1 medication'),
+  is_supplement: z
+    .boolean()
+    .optional()
+    .describe('Whether this is a supplement'),
+  is_active: z
+    .boolean()
+    .optional()
+    .describe('Whether the medication is active'),
+  schedule_id: uuidSchema
+    .optional()
+    .describe('UUID of the schedule (for delete_schedule)'),
+  schedule_type_id: z
+    .string()
+    .optional()
+    .describe(
+      'Schedule recurrence type: daily, specific_days, every_n_days, cyclic, weekly, monthly, prn, taper'
+    ),
+  time_of_day: z
+    .string()
+    .optional()
+    .describe("Schedule time in 'HH:MM' 24-hour format"),
+  days_of_week: z
+    .array(z.number().int().min(0).max(6))
+    .optional()
+    .describe('Days of week for specific_days (0=Sun … 6=Sat)'),
+  interval_days: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe('Interval in days for every_n_days'),
+  with_meal: z
+    .enum(['before', 'with', 'after'])
+    .optional()
+    .describe('Timing relative to a meal'),
+  prn_reason: z.string().optional().describe('Reason for a PRN schedule'),
+  start_date: optionalDateSchema,
 });
