@@ -72,6 +72,7 @@
     "@types/express": "^5.0.6",
     "@types/heic-convert": "^2.1.1",
     "@types/node": "^25.5.0",
+    "@types/nodemailer": "^8.0.1",
     "@types/papaparse": "^5.5.2",
     "@types/pg": "^8.18.0",
     "@types/proxy-from-env": "^1.0.4",
