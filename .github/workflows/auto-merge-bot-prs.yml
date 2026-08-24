@@ -1,0 +1,216 @@
+name: Auto-Merge Bot PRs
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, labeled, ready_for_review]
+  check_suite:
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+  statuses: read
+
+concurrency:
+  group: auto-merge-bot-prs
+  cancel-in-progress: false
+
+jobs:
+  auto-merge:
+    name: Auto-Merge Translations and Nix PRs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check and Merge Clean Automation PRs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Allowed branch prefixes and labels for safe auto-merging
+            const ALLOWED_BRANCH_PREFIXES = ['i18n/', 'nix/'];
+            const ALLOWED_LABELS = ['i18n', 'translations', 'nix'];
+
+            // Helper: determine if a PR is an allowed automated PR
+            function isEligible(pr) {
+              // 1. Must originate from within this repository (reject all forks)
+              const headRepo = pr.head?.repo?.full_name;
+              const baseRepo = pr.base?.repo?.full_name;
+              if (!headRepo || !baseRepo || headRepo !== baseRepo) return false;
+
+              // 2. Must be authored by a bot or repository owner
+              const isBot = pr.user?.type === 'Bot' || pr.user?.login?.endsWith('[bot]');
+              const isOwner = pr.user?.login === owner || pr.author_association === 'OWNER';
+              if (!isBot && !isOwner) return false;
+
+              // 3. Must match allowed automation branch prefixes or labels
+              const headRef = pr.head?.ref || '';
+              const matchesBranch = ALLOWED_BRANCH_PREFIXES.some(prefix => headRef.startsWith(prefix));
+              const matchesLabel = (pr.labels || []).some(l => ALLOWED_LABELS.includes(l.name));
+              return matchesBranch || matchesLabel;
+            }
+
+            // 1. Gather candidate PRs to inspect
+            let candidatePRs = [];
+
+            if (context.eventName === 'pull_request_target') {
+              candidatePRs = [context.payload.pull_request];
+            } else if (context.eventName === 'check_suite') {
+              const suitePRs = context.payload.check_suite?.pull_requests || [];
+              if (suitePRs.length > 0) {
+                candidatePRs = suitePRs;
+              } else {
+                // If check_suite payload does not list PRs directly, search open PRs with matching head SHA
+                const headSha = context.payload.check_suite?.head_sha;
+                if (headSha) {
+                  const openPulls = await github.paginate(github.rest.pulls.list, {
+                    owner,
+                    repo,
+                    state: 'open',
+                    per_page: 100,
+                  });
+                  candidatePRs = openPulls.filter(p => p.head.sha === headSha);
+                }
+              }
+            } else {
+              // workflow_dispatch sweep: all open PRs
+              candidatePRs = await github.paginate(github.rest.pulls.list, {
+                owner,
+                repo,
+                state: 'open',
+                per_page: 100,
+              });
+            }
+
+            if (candidatePRs.length === 0) {
+              core.info('No candidate PRs to evaluate.');
+              return;
+            }
+
+            for (const item of candidatePRs) {
+              // Fetch latest PR data for complete mergeable state and labels
+              let pr;
+              try {
+                const res = await github.rest.pulls.get({
+                  owner,
+                  repo,
+                  pull_number: item.number,
+                });
+                pr = res.data;
+              } catch (err) {
+                core.warning(`Failed to fetch details for PR #${item.number}: ${err.message}`);
+                continue;
+              }
+
+              if (pr.state !== 'open') {
+                core.info(`PR #${pr.number} is ${pr.state}, skipping.`);
+                continue;
+              }
+
+              if (pr.draft) {
+                core.info(`PR #${pr.number} is a draft, skipping.`);
+                continue;
+              }
+
+              const headRef = pr.head?.ref || '';
+              if (!isEligible(pr)) {
+                core.info(`PR #${pr.number} (${headRef}) is not an eligible translation/nix automation PR.`);
+                continue;
+              }
+
+              core.info(`Evaluating eligible automation PR #${pr.number} (${headRef})...`);
+
+              // 2. Check mergeability & conflicts
+              // If GitHub is currently calculating mergeability (null), wait briefly and retry once
+              if (pr.mergeable === null) {
+                core.info(`PR #${pr.number} mergeability is null (calculating). Waiting 3 seconds...`);
+                await new Promise(r => setTimeout(r, 3000));
+                const retry = await github.rest.pulls.get({
+                  owner,
+                  repo,
+                  pull_number: pr.number,
+                });
+                pr = retry.data;
+              }
+
+              if (pr.mergeable === false || pr.mergeable_state === 'dirty' || pr.mergeable_state === 'conflicting') {
+                core.warning(
+                  `⚠️ PR #${pr.number} (${headRef}) has merge conflicts (mergeable_state: '${pr.mergeable_state}'). ` +
+                  'Skipping auto-merge to wait for manual maintainer review.'
+                );
+                continue;
+              }
+
+              // 3. Verify CI check runs and commit status
+              const headSha = pr.head.sha;
+
+              const checkRunsRes = await github.rest.checks.listForRef({
+                owner,
+                repo,
+                ref: headSha,
+                per_page: 100,
+              });
+
+              const checkRuns = (checkRunsRes.data?.check_runs || []).filter(
+                r => r.name !== 'Auto-Merge Translations and Nix PRs' && r.name !== context.job
+              );
+
+              const hasFailingCheck = checkRuns.some(
+                r => r.conclusion === 'failure' || r.conclusion === 'timed_out' || r.conclusion === 'cancelled'
+              );
+
+              const hasPendingCheck = checkRuns.some(
+                r => r.status !== 'completed'
+              );
+
+              if (hasFailingCheck) {
+                core.warning(`PR #${pr.number} has failing CI check runs. Skipping auto-merge.`);
+                continue;
+              }
+
+              if (hasPendingCheck) {
+                core.info(`PR #${pr.number} has pending CI check runs. Waiting for completion.`);
+                continue;
+              }
+
+              // Also check combined status API (for status-based CI)
+              const combinedStatus = await github.rest.repos.getCombinedStatusForRef({
+                owner,
+                repo,
+                ref: headSha,
+              });
+
+              if (combinedStatus.data.state === 'failure') {
+                core.warning(`PR #${pr.number} has failing commit status. Skipping auto-merge.`);
+                continue;
+              }
+
+              if (combinedStatus.data.state === 'pending' && combinedStatus.data.total_count > 0) {
+                core.info(`PR #${pr.number} has pending commit status. Waiting for completion.`);
+                continue;
+              }
+
+              if (checkRuns.length === 0 && combinedStatus.data.total_count === 0) {
+                core.info(`PR #${pr.number} has no check runs or statuses yet. Waiting.`);
+                continue;
+              }
+
+              // 4. Merge the clean PR
+              try {
+                core.info(`All checks passed and no conflicts found. Auto-merging PR #${pr.number} (${headRef})...`);
+                await github.rest.pulls.merge({
+                  owner,
+                  repo,
+                  pull_number: pr.number,
+                  sha: headSha,
+                  merge_method: 'squash',
+                  commit_title: `${pr.title} (#${pr.number})`,
+                });
+                core.info(`🎉 Successfully auto-merged PR #${pr.number}!`);
+              } catch (err) {
+                core.error(`Failed to merge PR #${pr.number}: ${err.message}`);
+              }
+            }

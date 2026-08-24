@@ -1,0 +1,131 @@
+name: PR Merged Notification
+
+on:
+  pull_request_target:
+    types: [closed]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: pr-merged-notification-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  notify-linked-issues:
+    name: Notify Linked Issues
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Comment on linked issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const body = pr.body || '';
+
+            const issueNumbers = new Set();
+
+            // 1. Query GitHub GraphQL API for formally linked closing issues
+            try {
+              const query = `
+                query($owner: String!, $repo: String!, $number: Int!) {
+                  repository(owner: $owner, name: $repo) {
+                    pullRequest(number: $number) {
+                      closingIssuesReferences(first: 50) {
+                        nodes {
+                          number
+                        }
+                      }
+                    }
+                  }
+                }
+              `;
+              const result = await github.graphql(query, {
+                owner,
+                repo,
+                number: pr.number,
+              });
+
+              const nodes = result?.repository?.pullRequest?.closingIssuesReferences?.nodes || [];
+              for (const node of nodes) {
+                if (node?.number) {
+                  issueNumbers.add(node.number);
+                }
+              }
+            } catch (err) {
+              core.warning(`GraphQL closingIssuesReferences query failed: ${err.message}`);
+            }
+
+            // 2. Regex fallback / supplement for issue references in PR description
+            // Matches patterns like "Linked Issue: Closes #123", "Closes #123", "Fixes #123", "Resolves #123"
+            const regex = /\b(?:(?:closes|close|closed|fixes|fix|fixed|resolves|resolve|resolved|linked issue:?\s*(?:closes|fixes|resolves)?):?\s*#(\d+))/gi;
+            let match;
+            while ((match = regex.exec(body)) !== null) {
+              const num = parseInt(match[1], 10);
+              if (num && num !== pr.number) {
+                issueNumbers.add(num);
+              }
+            }
+
+            if (issueNumbers.size === 0) {
+              core.info(`No linked issues found for PR #${pr.number}.`);
+              return;
+            }
+
+            core.info(`Found linked issue candidate(s) for PR #${pr.number}: ${Array.from(issueNumbers).join(', ')}`);
+
+            const NOTIFICATION_TAG = `<!-- sparky-pr-${pr.number}-merged-notification -->`;
+
+            for (const issueNumber of issueNumbers) {
+              try {
+                // Verify target is an issue, not a pull request
+                const issue = await github.rest.issues.get({
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                });
+
+                if (issue.data.pull_request) {
+                  core.info(`#${issueNumber} is a pull request, skipping.`);
+                  continue;
+                }
+
+                // Check existing comments to avoid duplicate notifications
+                const comments = await github.paginate(github.rest.issues.listComments, {
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  per_page: 100,
+                });
+
+                const alreadyNotified = comments.some(c => (c.body || '').includes(NOTIFICATION_TAG));
+                if (alreadyNotified) {
+                  core.info(`Issue #${issueNumber} was already notified for PR #${pr.number}.`);
+                  continue;
+                }
+
+                const commentBody = [
+                  NOTIFICATION_TAG,
+                  `🎉 **Update:** The fix/enhancement for this issue has been merged in #${pr.number} and will be available in the upcoming release! 🚀`,
+                  '',
+                  'Thank you for reporting and helping improve SparkyFitness!',
+                ].join('\n');
+
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: issueNumber,
+                  body: commentBody,
+                });
+
+                core.info(`Successfully posted release notification on Issue #${issueNumber}.`);
+              } catch (err) {
+                core.warning(`Failed to notify Issue #${issueNumber}: ${err.message}`);
+              }
+            }
