@@ -40,7 +40,7 @@ jobs:
             const isDraft = pr.draft === true;
 
             const { LICENSE_LABEL, LICENSE_ITEM } = policy;
-            const GRACE_HOURS = Math.round(policy.GRACE_MS / (60 * 60 * 1000));
+            const GRACE_DAYS = Math.round(policy.GRACE_MS / (24 * 60 * 60 * 1000));
 
             // Bots (our own schema-backup / nix / translation-sync PRs and any future
             // automation), maintainers, and same-repo automation branches.
@@ -265,7 +265,7 @@ jobs:
             }
 
             // ---- License countdown label ----
-            // Adding the label starts the 24h clock; pr-license-enforcement.yml reads the `labeled`
+            // Adding the label starts the 7-day clock; pr-license-enforcement.yml reads the `labeled`
             // event timestamp. Ticking the box removes the label here and cancels the countdown.
             if (licenseCountdown) {
               try {
@@ -317,13 +317,10 @@ jobs:
 
             if (licenseCountdown) {
               message +=
-                '> [!WARNING]\n' +
-                `> ⏳ **This PR will be closed automatically in ${GRACE_HOURS} hours** unless the ` +
-                `**${LICENSE_ITEM}** checkbox is ticked in the PR description.\n` +
-                '> We can only accept contributions from people who have agreed to the project ' +
-                'license, and this box is how that agreement is recorded. ' +
-                'If the checklist is missing, it has been added back to the description for you — ' +
-                'just tick the box (no new commit needed) and this check will pass.\n\n';
+                '> [!NOTE]\n' +
+                `> ⏳ **Reminder:** In order for us to review and accept this PR, please complete the mandatory questionnaire checkboxes (Integrity & License, etc.) in the PR description. ` +
+                `If any mandatory checkboxes were removed, they have been automatically added back to the bottom of your description for your convenience — just tick the boxes and this check will pass. ` +
+                `PRs with incomplete mandatory items are automatically closed after ${GRACE_DAYS} days, and can be reopened at any time once completed.\n\n`;
             } else if (isDraft && !licenseAgreed && !licenseExempt) {
               message +=
                 '> [!NOTE]\n' +

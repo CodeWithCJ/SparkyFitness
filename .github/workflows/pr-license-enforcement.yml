@@ -41,7 +41,7 @@ jobs:
 
             const { LICENSE_LABEL, LICENSE_ITEM, LICENSE_ITEM_TEXT, GRACE_MS } = policy;
             const BOT_TAG = '<!-- license-enforcement-bot -->';
-            const GRACE_HOURS = Math.round(GRACE_MS / (60 * 60 * 1000));
+            const GRACE_DAYS = Math.round(GRACE_MS / (24 * 60 * 60 * 1000));
 
             const owner = context.repo.owner;
             const repo  = context.repo.repo;
@@ -136,28 +136,22 @@ jobs:
                   issue_number: pr.number,
                   body: [
                     BOT_TAG,
-                    `@${author} thanks for the contribution! ⚠️ **This PR is missing the mandatory license agreement.**`,
+                    `Hi @${author}! Thank you for opening this pull request.`,
                     '',
-                    'This project can only accept contributions from people who have agreed to the terms in',
-                    'our [LICENSE](https://github.com/CodeWithCJ/SparkyFitness/blob/main/LICENSE). Our PR template',
-                    'contains a checkbox that records that agreement, and it is either unticked or was removed',
-                    'when the template was replaced. Without it we have no record of your permission to ship your',
-                    'code, so we cannot review or merge it.',
+                    'In order for us to review and accept this PR, please complete the mandatory checklist checkboxes in the PR description.',
                     '',
-                    '**What to do (takes 10 seconds, no new commit needed):**',
+                    'If any mandatory checkboxes were removed or omitted, they have been automatically added back to the bottom of your PR description for your convenience. Please make sure the required items (Integrity & License, etc.) are ticked:',
                     '',
-                    '1. Click **Edit** on the PR description above.',
-                    '2. Make sure this line is present and ticked:',
+                    '```markdown',
+                    `- [x] ${LICENSE_ITEM_TEXT}`,
+                    '```',
                     '',
-                    '   ```markdown',
-                    `   - [x] ${LICENSE_ITEM_TEXT}`,
-                    '   ```',
+                    '**How to resolve this:**',
+                    '1. Click **Edit** on your PR description above.',
+                    '2. Tick the mandatory checkbox(es).',
+                    '3. Click **Update comment** (no new commit needed).',
                     '',
-                    '3. Save. The `PR Checks` workflow re-runs and this label is removed automatically.',
-                    '',
-                    `⏳ **If this is not done by \`${deadline} UTC\` (${GRACE_HOURS} hours), this PR will be closed automatically.**`,
-                    'Please also keep the rest of the PR template checklist in the description — it is how we',
-                    'track what still needs verifying.',
+                    `⏳ *PRs with incomplete mandatory items are automatically closed after ${GRACE_DAYS} days (\`${deadline} UTC\`). Once completed, you are welcome to reopen at any time!*`,
                   ].join('\n'),
                 });
 
@@ -186,8 +180,10 @@ jobs:
 
               const elapsed = Date.now() - labeledAt;
               if (elapsed < GRACE_MS) {
+                const daysLeft = Math.ceil((GRACE_MS - elapsed) / (24 * 60 * 60 * 1000));
                 const hoursLeft = Math.ceil((GRACE_MS - elapsed) / (60 * 60 * 1000));
-                core.info(`PR #${pr.number}: ${hoursLeft}h left before auto-close.`);
+                const timeLeftStr = daysLeft > 1 ? `${daysLeft}d` : `${hoursLeft}h`;
+                core.info(`PR #${pr.number}: ${timeLeftStr} left before auto-close.`);
                 continue;
               }
 
@@ -197,29 +193,21 @@ jobs:
                 issue_number: pr.number,
                 body: [
                   BOT_TAG,
-                  `@${author} **closing this PR — we did not receive your agreement to the project license.**`,
+                  `Hi @${author}, thank you for your contribution!`,
                   '',
-                  `We can only accept pull requests from contributors who confirm they agree to the terms and`,
-                  `conditions in our [LICENSE](https://github.com/CodeWithCJ/SparkyFitness/blob/main/LICENSE), and`,
-                  `who certify the contribution is their own work and free of malicious code. That confirmation is`,
-                  `recorded by ticking the **${LICENSE_ITEM}** checkbox in the PR description.`,
+                  `We are closing this pull request for now because the mandatory questionnaire checkboxes were not completed within ${GRACE_DAYS} days.`,
                   '',
-                  `That box was not ticked within ${GRACE_HOURS} hours of us asking, so we have no recorded`,
-                  'agreement for this contribution and cannot review or merge it.',
+                  'In order for us to review and accept pull requests, all mandatory questionnaire checkboxes (Integrity & License, etc.) in the PR description must be completed.',
                   '',
-                  '**To be clear: this is not a judgement on your code.** It is a licensing requirement we are not',
-                  'able to waive for any contribution, however good it is. We appreciate the time you put in.',
+                  '**You are welcome to reopen this PR at any time!** Your work and discussion history are completely preserved. Whenever you are ready to continue:',
                   '',
-                  '**This is easy to undo and you are very welcome to continue.** Tick the box in the PR',
-                  'description and reopen the PR (or leave a comment here and a maintainer will reopen it for',
-                  'you). Your commits, reviews and discussion are all preserved exactly as they are — nothing is',
-                  'lost by this close.',
+                  '1. Edit your PR description above to check the mandatory box(es):',
                   '',
-                  'The line to tick:',
-                  '',
-                  '```markdown',
+                  '   ```markdown',
                   `- [x] ${LICENSE_ITEM_TEXT}`,
-                  '```',
+                  '   ```',
+                  '',
+                  '2. Click **Reopen pull request** (or leave a comment here and a maintainer will reopen it for you).',
                 ].join('\n'),
               });
 
@@ -239,7 +227,7 @@ jobs:
               `- Exempt (bots / maintainers / automation branches): **${exempted.length}**${list(exempted)}`,
               `- Drafts skipped (countdown paused): **${drafts.length}**${list(drafts)}`,
               `- Warned, countdown started: **${warned.length}**${list(warned)}`,
-              `- Closed after ${GRACE_HOURS}h: **${closed.length}**${list(closed)}`,
+              `- Closed after ${GRACE_DAYS} days: **${closed.length}**${list(closed)}`,
               `- Label cleared: **${cleared.length}**${list(cleared)}`,
             ].join('\n');
 
