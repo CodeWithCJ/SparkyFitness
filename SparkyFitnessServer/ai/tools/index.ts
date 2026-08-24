@@ -17,6 +17,7 @@ import { buildFavoritesTools } from './favoritesTools.js';
 import { buildFoodTools } from './foodTools.js';
 import { buildGoalTools } from './goalTools.js';
 import { buildHabitTools } from './habitTools.js';
+import { buildMealPlanTools } from './mealPlansTools.js';
 import { buildMedicationTools } from './medicationTools.js';
 import { ENABLE_TOOLS_TOOL_NAME, buildMetaTools } from './metaTools.js';
 import { buildProfileTools } from './profileTools.js';
@@ -62,6 +63,7 @@ const CATEGORY_BUILDERS: Record<
   medications: [(u, tz) => buildMedicationTools(u, tz)],
   allergens: [(u, tz) => buildAllergenTools(u, tz)],
   favorites: [(u, tz) => buildFavoritesTools(u, tz)],
+  meal_plans: [(u, tz) => buildMealPlanTools(u, tz)],
 };
 
 // Composition order: the core categories first (a strict prefix of the full
@@ -78,6 +80,7 @@ const CATEGORY_ORDER: ChatToolCategorySlug[] = [
   'medications',
   'allergens',
   'favorites',
+  'meal_plans',
 ];
 
 // Resolves the category set to compose: an explicit (already-validated,

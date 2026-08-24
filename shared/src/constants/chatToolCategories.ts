@@ -23,6 +23,7 @@ export const CHAT_TOOL_CATEGORY_SLUGS = [
   'medications',
   'allergens',
   'favorites',
+  'meal_plans',
 ] as const;
 
 export type ChatToolCategorySlug = (typeof CHAT_TOOL_CATEGORY_SLUGS)[number];

@@ -47,6 +47,7 @@ const EXPECTED_TOOLS = [
   'sparky_manage_food',
   'sparky_manage_goals',
   'sparky_manage_habits',
+  'sparky_manage_meal_plans',
   'sparky_manage_medications',
   'sparky_manage_profile',
   'sparky_scan_label',

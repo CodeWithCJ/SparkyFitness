@@ -33,6 +33,8 @@ export const CATEGORY_SUMMARIES: Record<ChatToolCategorySlug, string> = {
     'track food allergens and intolerances to flag in meals (tools: sparky_manage_allergens)',
   favorites:
     'list, add, and remove favorite foods and meals for quick logging (tools: sparky_manage_favorites)',
+  meal_plans:
+    'list, inspect, duplicate, and delete saved meal plan templates (tools: sparky_manage_meal_plans)',
 };
 
 const EnableToolsSchema = z.object({

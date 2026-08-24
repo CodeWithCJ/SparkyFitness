@@ -21,7 +21,8 @@
       "profile": "Profile & Habits",
       "medications": "Medications",
       "allergens": "Allergens",
-      "favorites": "Favorites"
+      "favorites": "Favorites",
+      "meal_plans": "Meal Plans"
     },
     "errorClearingHistory": "Failed to clear chat history.",
     "errorLoadingHistory": "Failed to load chat history.",
