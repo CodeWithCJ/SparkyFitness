@@ -70,17 +70,13 @@ jobs:
               });
             } catch (error) {
               if (error.status === 422) {
-                try {
-                  await github.rest.issues.updateLabel({
-                    owner,
-                    repo,
-                    name: LICENSE_LABEL,
-                    color: policy.LICENSE_LABEL_COLOR,
-                    description: policy.LICENSE_LABEL_DESCRIPTION,
-                  });
-                } catch (updateErr) {
-                  core.debug(`Could not update label: ${updateErr.message}`);
-                }
+                await github.rest.issues.updateLabel({
+                  owner,
+                  repo,
+                  name: LICENSE_LABEL,
+                  color: policy.LICENSE_LABEL_COLOR,
+                  description: policy.LICENSE_LABEL_DESCRIPTION,
+                });
               } else {
                 throw error;
               }
