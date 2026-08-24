@@ -18,6 +18,7 @@ import { buildExerciseStatsTools } from './exerciseStatsTools.js';
 import { buildExerciseTools } from './exerciseTools.js';
 import { buildSleepScienceTools } from './sleepScienceTools.js';
 import { buildIntegrationsTools } from './integrationsTools.js';
+import { buildSyncedDataTools } from './syncedDataTools.js';
 import { buildFavoritesTools } from './favoritesTools.js';
 import { buildFoodTools } from './foodTools.js';
 import { buildGoalTools } from './goalTools.js';
@@ -76,6 +77,7 @@ const CATEGORY_BUILDERS: Record<
   exercise_stats: [(u, tz) => buildExerciseStatsTools(u, tz)],
   sleep_science: [(u, tz) => buildSleepScienceTools(u, tz)],
   integrations: [(u, tz) => buildIntegrationsTools(u, tz)],
+  synced_data: [(u, tz) => buildSyncedDataTools(u, tz)],
 };
 
 // Composition order: the core categories first (a strict prefix of the full
@@ -99,6 +101,7 @@ const CATEGORY_ORDER: ChatToolCategorySlug[] = [
   'exercise_stats',
   'sleep_science',
   'integrations',
+  'synced_data',
 ];
 
 // Resolves the category set to compose: an explicit (already-validated,

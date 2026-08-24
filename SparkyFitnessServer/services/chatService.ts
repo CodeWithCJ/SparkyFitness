@@ -1202,6 +1202,11 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
     keywords:
       /\b(integration\w*|connected\s+(app|service|device|provider)\w*|external\s+provider\w*|wearable\w*|garmin|withings|fitbit|oura|polar|strava|hevy)\b/i,
   },
+  {
+    category: 'synced_data',
+    keywords:
+      /\b(synced\s+data|sync\w*\s+(source|data)|delete\s+synced|imported\s+data|remove\s+(garmin|healthkit|health\s*connect)\s+data)\b/i,
+  },
 ];
 
 function extractMessageText(msg: ChatMessage): string {

@@ -28,7 +28,8 @@
       "workout_plans": "Workout Plans",
       "exercise_stats": "Exercise Stats",
       "sleep_science": "Sleep Science",
-      "integrations": "Integrations"
+      "integrations": "Integrations",
+      "synced_data": "Synced Data"
     },
     "errorClearingHistory": "Failed to clear chat history.",
     "errorLoadingHistory": "Failed to load chat history.",

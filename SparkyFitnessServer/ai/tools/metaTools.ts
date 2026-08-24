@@ -47,6 +47,8 @@ export const CATEGORY_SUMMARIES: Record<ChatToolCategorySlug, string> = {
     'read sleep science analytics: sleep debt, MCTQ chronotype stats, daily sleep need, circadian energy curve, chronotype, data sufficiency, and baseline recalculation (tools: sparky_get_sleep_science)',
   integrations:
     'read connected external integrations and available integration types, including status, visibility, and sync info without exposing credentials (tools: sparky_get_integrations)',
+  synced_data:
+    'list and bulk-delete entry data synced from external providers by source, without touching hand-entered data (tools: sparky_manage_synced_data)',
 };
 
 const EnableToolsSchema = z.object({
