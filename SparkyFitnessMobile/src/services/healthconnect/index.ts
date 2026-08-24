@@ -1043,39 +1043,44 @@ const getAggregatedBasalCaloriesByDateDetailed = (
     endDate,
   );
 
-/** Prefer reported active energy; derive total minus basal only when absent. */
+/** Prefer reported active energy per day; derive total minus basal only for missing days. */
 export const getAggregatedActiveCaloriesByDateDetailed = async (
   startDate: Date,
   endDate: Date,
 ): Promise<HealthConnectAggregateResult> => {
-  const activeResult = await getNativeActiveCaloriesByDateDetailed(startDate, endDate);
-  if (activeResult.records.length > 0) {
-    return activeResult;
-  }
-
-  const [totalResult, basalResult] = await Promise.all([
+  const [activeResult, totalResult] = await Promise.all([
+    getNativeActiveCaloriesByDateDetailed(startDate, endDate),
     getAggregatedTotalCaloriesByDateDetailed(startDate, endDate),
-    getAggregatedBasalCaloriesByDateDetailed(startDate, endDate),
   ]);
 
-  const basalByDate = new Map(basalResult.records.map(record => [record.date, record.value]));
-  const derivedRecords = totalResult.records.flatMap(totalRecord => {
-    const basal = basalByDate.get(totalRecord.date);
-    if (basal == null) return [];
-    const derived = deriveActiveCalories(totalRecord.value, basal);
-    if (derived == null) return [];
-    return [{
-      ...totalRecord,
-      value: Math.round(derived),
-      type: 'active_calories',
-    }];
-  });
+  const activeDates = new Set(activeResult.records.map(record => record.date));
+  const fallbackTotals = totalResult.records.filter(record => !activeDates.has(record.date));
+  let derivedRecords: AggregatedHealthRecord[] = [];
+  let basalError: string | undefined;
+  if (fallbackTotals.length > 0) {
+    const basalResult = await getAggregatedBasalCaloriesByDateDetailed(startDate, endDate);
+    basalError = basalResult.error;
+    const basalByDate = new Map(basalResult.records.map(record => [record.date, record.value]));
+    derivedRecords = fallbackTotals.flatMap(totalRecord => {
+      const basal = basalByDate.get(totalRecord.date);
+      if (basal == null) return [];
+      const derived = deriveActiveCalories(totalRecord.value, basal);
+      if (derived == null) return [];
+      return [{
+        ...totalRecord,
+        value: Math.round(derived),
+        type: 'active_calories',
+      }];
+    });
+  }
 
   if (derivedRecords.length > 0) {
-    addLog('[HealthConnectService] Active calorie aggregate missing; derived fallback from total minus basal calories', 'DEBUG');
+    addLog('[HealthConnectService] Derived missing active-calorie days from total minus basal calories', 'DEBUG');
   }
-  const error = activeResult.error ?? totalResult.error ?? basalResult.error;
-  return { records: derivedRecords, ...(error ? { error } : {}) };
+  const error = activeResult.error ?? totalResult.error ?? basalError;
+  const records = [...activeResult.records, ...derivedRecords]
+    .sort((a, b) => a.date.localeCompare(b.date));
+  return { records, ...(error ? { error } : {}) };
 };
 
 export const getAggregatedActiveCaloriesByDate = (
@@ -1281,16 +1286,19 @@ export const enrichExerciseSessions = async (
       return record;
     }
 
+    // Leave calorie aggregates unfiltered so Health Connect can apply the user's
+    // Activity-data source priority. For example, Hevy may own the session while
+    // Samsung Health owns the more complete calorie total for the same window.
+    // Distance remains scoped to the session origin to avoid attaching another
+    // concurrent activity's route distance to this workout.
     const [activeCaloriesResult, totalCaloriesResult, distanceResult] = await Promise.allSettled([
       aggregateRecord({
         recordType: 'ActiveCaloriesBurned',
         timeRangeFilter,
-        dataOriginFilter,
       }),
       aggregateRecord({
         recordType: 'TotalCaloriesBurned',
         timeRangeFilter,
-        dataOriginFilter,
       }),
       aggregateRecord({
         recordType: 'Distance',
