@@ -16,6 +16,10 @@ import goalRepository from '../models/goalRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import reportRepository from '../models/reportRepository.js';
 import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
+import type {
+  CopyReviewedFoodEntriesFromUserBody,
+  CopySelectedFoodEntriesFromUserBody,
+} from '../schemas/foodEntryCopySchemas.js';
 
 import Papa from 'papaparse';
 import { isDayString } from '@workspace/shared';
@@ -135,6 +139,12 @@ interface MealTypeRow {
   id: string;
   name: string;
   user_id: string | null;
+}
+
+type HttpStatusError = Error & { statusCode: number };
+
+function copyStatusError(message: string, statusCode: number): HttpStatusError {
+  return Object.assign(new Error(message), { statusCode });
 }
 
 // Resolves a meal type selector (a UUID or a legacy name) to its canonical
@@ -1313,6 +1323,207 @@ async function copyFoodEntriesFromUser(
     throw error;
   }
 }
+
+async function copySelectedFoodEntriesFromUser(
+  targetUserId: string,
+  actingUserId: string,
+  sourceUserId: string,
+  sourceDate: string,
+  targetDate: string,
+  targetMealType: string,
+  selections: CopySelectedFoodEntriesFromUserBody['entries']
+) {
+  // checkCopyPermissions requires both diary management and food-library
+  // access, and must be evaluated for the real actor rather than a switched
+  // active-user context.
+  const hasAccess = await familyAccessRepository.checkCopyPermissions(
+    actingUserId,
+    sourceUserId
+  );
+  if (!hasAccess) {
+    throw copyStatusError(
+      'Forbidden: You do not have permissions to copy from this family member.',
+      403
+    );
+  }
+
+  const targetMealTypeId = await resolveMealTypeId(
+    targetUserId,
+    targetMealType
+  );
+  if (!targetMealTypeId) {
+    throw copyStatusError('Invalid target meal type.', 400);
+  }
+
+  // Do not trust client-side diary rows. Re-fetch every requested source row
+  // before preparing anything for insertion, so an unavailable or changed row
+  // fails the entire selected-copy operation.
+  const selectedEntries = await Promise.all(
+    selections.map(async (selection) => ({
+      selection,
+      entry: await foodRepository.getFoodEntryById(
+        selection.entryId,
+        sourceUserId
+      ),
+    }))
+  );
+
+  for (const { selection, entry } of selectedEntries) {
+    if (
+      !entry ||
+      entry.id !== selection.entryId ||
+      entry.user_id !== sourceUserId ||
+      entry.entry_date !== sourceDate ||
+      !Number.isFinite(Number(entry.serving_size)) ||
+      Number(entry.serving_size) <= 0
+    ) {
+      throw copyStatusError(
+        'One or more source entries changed. Refresh the family diary.',
+        409
+      );
+    }
+  }
+
+  const entriesToCreate: FoodEntryInput[] = [];
+  for (const { selection, entry } of selectedEntries) {
+    const existingEntry = await foodRepository.getFoodEntryByDetails(
+      targetUserId,
+      entry.food_id,
+      targetMealTypeId,
+      targetDate,
+      entry.variant_id,
+      null
+    );
+    if (existingEntry) continue;
+
+    entriesToCreate.push({
+      user_id: targetUserId,
+      created_by_user_id: actingUserId,
+      food_id: entry.food_id,
+      variant_id: entry.variant_id,
+      meal_type_id: targetMealTypeId,
+      food_entry_meal_id: null,
+      meal_plan_template_id: null,
+      entry_date: targetDate,
+      entry_time: entry.entry_time ?? null,
+      quantity: selection.quantity,
+      unit: entry.unit,
+      food_name: entry.food_name,
+      brand_name: entry.brand_name,
+      serving_size: entry.serving_size,
+      serving_unit: entry.serving_unit,
+      calories: entry.calories,
+      protein: entry.protein,
+      carbs: entry.carbs,
+      fat: entry.fat,
+      saturated_fat: entry.saturated_fat,
+      polyunsaturated_fat: entry.polyunsaturated_fat,
+      monounsaturated_fat: entry.monounsaturated_fat,
+      trans_fat: entry.trans_fat,
+      cholesterol: entry.cholesterol,
+      sodium: entry.sodium,
+      potassium: entry.potassium,
+      dietary_fiber: entry.dietary_fiber,
+      sugars: entry.sugars,
+      vitamin_a: entry.vitamin_a,
+      vitamin_c: entry.vitamin_c,
+      calcium: entry.calcium,
+      iron: entry.iron,
+      glycemic_index: entry.glycemic_index,
+      custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
+    });
+  }
+
+  return entriesToCreate.length === 0
+    ? []
+    : foodRepository.bulkCreateFoodEntries(entriesToCreate, targetUserId);
+}
+
+function hasExactReviewedEntries(
+  sourceEntries: Array<{ id?: string; quantity?: number | string | null }>,
+  reviewedEntries: CopyReviewedFoodEntriesFromUserBody['entries']
+) {
+  if (sourceEntries.length !== reviewedEntries.length) return false;
+
+  const reviewedQuantityById = new Map(
+    reviewedEntries.map(({ entryId, quantity }) => [entryId, quantity])
+  );
+
+  return sourceEntries.every((entry) => {
+    if (!entry.id) return false;
+    const reviewedQuantity = reviewedQuantityById.get(entry.id);
+    return (
+      reviewedQuantity !== undefined &&
+      Number.isFinite(Number(entry.quantity)) &&
+      Number(entry.quantity) === reviewedQuantity
+    );
+  });
+}
+
+async function copyReviewedFoodEntriesFromUser(
+  targetUserId: string,
+  actingUserId: string,
+  sourceUserId: string,
+  sourceDate: string,
+  sourceMealType: string,
+  targetDate: string,
+  targetMealType: string,
+  reviewedEntries: CopyReviewedFoodEntriesFromUserBody['entries']
+) {
+  // This path is deliberately separate from copyFoodEntriesFromUser: the
+  // latter remains the web route whose target is the active context. The
+  // reviewed mobile path always writes into the authenticated actor's diary.
+  const hasAccess = await familyAccessRepository.checkCopyPermissions(
+    actingUserId,
+    sourceUserId
+  );
+  if (!hasAccess) {
+    throw copyStatusError(
+      'Forbidden: You do not have permissions to copy from this family member.',
+      403
+    );
+  }
+
+  const sourceMealTypeId = await resolveMealTypeId(
+    sourceUserId,
+    sourceMealType
+  );
+  const targetMealTypeId = await resolveMealTypeId(
+    targetUserId,
+    targetMealType
+  );
+  if (!sourceMealTypeId || !targetMealTypeId) {
+    throw copyStatusError('Invalid source or target meal type.', 400);
+  }
+
+  // This early check produces the clear 409 without creating a container. The
+  // repository repeats the same comparison inside its serializable write
+  // transaction so a concurrent source mutation cannot slip through.
+  const currentSourceEntries =
+    await foodRepository.getFoodEntriesByDateAndMealType(
+      sourceUserId,
+      sourceDate,
+      sourceMealTypeId
+    );
+  if (!hasExactReviewedEntries(currentSourceEntries, reviewedEntries)) {
+    throw copyStatusError(
+      'One or more source entries changed. Refresh the family diary.',
+      409
+    );
+  }
+
+  return foodRepository.copyReviewedFoodEntriesFromUser({
+    targetUserId,
+    actingUserId,
+    sourceUserId,
+    sourceDate,
+    sourceMealTypeId,
+    targetDate,
+    targetMealTypeId,
+    reviewedEntries,
+  });
+}
+
 async function copyFoodEntriesToUser(
   authenticatedUserId: string,
   actingUserId: string,
@@ -3448,7 +3659,9 @@ export { getFoodEntryMealsByDate };
 export { deleteFoodEntryMeal };
 export { exportAllDiaryEntriesToCSVStream };
 export { copyFoodEntriesFromUser };
+export { copyReviewedFoodEntriesFromUser };
 export { copyFoodEntriesToUser };
+export { copySelectedFoodEntriesFromUser };
 export { importFoodDiaryEntriesInBulk };
 export default {
   createFoodEntry,
@@ -3470,6 +3683,8 @@ export default {
   deleteFoodEntryMeal,
   exportAllDiaryEntriesToCSVStream,
   copyFoodEntriesFromUser,
+  copyReviewedFoodEntriesFromUser,
   copyFoodEntriesToUser,
+  copySelectedFoodEntriesFromUser,
   importFoodDiaryEntriesInBulk,
 };
