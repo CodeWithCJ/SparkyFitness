@@ -1212,6 +1212,11 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
     keywords:
       /\b(progress\s+photo\w*|check[-\s]?in\s+photo\w*|body\s+photo\w*|transformation\s+photo\w*)\b/i,
   },
+  {
+    category: 'dashboard',
+    keywords:
+      /\b(dashboard|daily\s+summary|calorie\s+balance|calories\s+remaining|net\s+calories|today'?s\s+(summary|calories|stats))\b/i,
+  },
 ];
 
 function extractMessageText(msg: ChatMessage): string {

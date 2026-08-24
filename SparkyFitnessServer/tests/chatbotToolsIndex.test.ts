@@ -24,6 +24,7 @@ const EXPECTED_TOOLS = [
   'sparky_get_contextual_nudge',
   'sparky_get_daily_exercise_totals',
   'sparky_get_daily_report',
+  'sparky_get_dashboard',
   'sparky_get_exercise_details',
   'sparky_get_exercise_diary',
   'sparky_get_exercise_progress',

@@ -32,6 +32,7 @@ export const CHAT_TOOL_CATEGORY_SLUGS = [
   'integrations',
   'synced_data',
   'progress_photos',
+  'dashboard',
 ] as const;
 
 export type ChatToolCategorySlug = (typeof CHAT_TOOL_CATEGORY_SLUGS)[number];

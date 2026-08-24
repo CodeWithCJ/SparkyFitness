@@ -51,6 +51,8 @@ export const CATEGORY_SUMMARIES: Record<ChatToolCategorySlug, string> = {
     'list and bulk-delete entry data synced from external providers by source, without touching hand-entered data (tools: sparky_manage_synced_data)',
   progress_photos:
     'list the days that have progress (check-in) photos, list the photos for a day, and delete a photo; uploads happen in the app UI (tools: sparky_manage_progress_photos)',
+  dashboard:
+    'read the daily dashboard calorie-balance summary for a date: eaten, burned, remaining, goal, net, progress, steps, and BMR (tools: sparky_get_dashboard)',
 };
 
 const EnableToolsSchema = z.object({

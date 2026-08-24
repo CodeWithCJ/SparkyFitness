@@ -30,7 +30,8 @@
       "sleep_science": "Sleep Science",
       "integrations": "Integrations",
       "synced_data": "Synced Data",
-      "progress_photos": "Progress Photos"
+      "progress_photos": "Progress Photos",
+      "dashboard": "Dashboard"
     },
     "errorClearingHistory": "Failed to clear chat history.",
     "errorLoadingHistory": "Failed to load chat history.",

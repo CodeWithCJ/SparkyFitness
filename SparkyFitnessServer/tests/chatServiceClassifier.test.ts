@@ -91,6 +91,7 @@ describe('getSystemPrompt dormant-domain listing', () => {
       'integrations',
       'synced_data',
       'progress_photos',
+      'dashboard',
     ]);
     expect(prompt).not.toContain('sparky_enable_tools');
   });
@@ -134,6 +135,7 @@ describe('buildEscalationPrepareStep', () => {
     integrations: ['sparky_get_integrations'],
     synced_data: ['sparky_manage_synced_data'],
     progress_photos: ['sparky_manage_progress_photos'],
+    dashboard: ['sparky_get_dashboard'],
   };
   const base = ['sparky_manage_food', 'sparky_enable_tools'];
 
