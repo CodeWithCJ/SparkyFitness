@@ -366,8 +366,8 @@ router.post(
  *     tags: [Nutrition & Meals]
  *     description: >
  *       Preserves logged composite meal containers. The submitted entry IDs and
- *       quantities are an optimistic-concurrency snapshot; any added, removed,
- *       or quantity-changed source row returns 409 and writes nothing.
+ *       source fingerprints are an optimistic-concurrency snapshot; any added,
+ *       removed, or changed source row returns 409 and writes nothing.
  *     requestBody:
  *       required: true
  *       content:
@@ -404,14 +404,14 @@ router.post(
  *                 items:
  *                   type: object
  *                   additionalProperties: false
- *                   required: [entryId, quantity]
+ *                   required: [entryId, sourceFingerprint]
  *                   properties:
  *                     entryId:
  *                       type: string
  *                       format: uuid
- *                     quantity:
- *                       type: number
- *                       exclusiveMinimum: 0
+ *                     sourceFingerprint:
+ *                       type: string
+ *                       description: Exact reviewed source-row snapshot.
  *     responses:
  *       201:
  *         description: The reviewed meal was copied successfully.
@@ -425,7 +425,6 @@ router.post(
 router.post(
   '/copy-reviewed-from-user',
   authenticate,
-  checkPermissionMiddleware('diary'),
   async (req, res, next) => {
     const parsed = CopyReviewedFoodEntriesFromUserBodySchema.safeParse(
       req.body
@@ -498,7 +497,7 @@ router.post(
  *                 items:
  *                   type: object
  *                   additionalProperties: false
- *                   required: [entryId, quantity]
+ *                   required: [entryId, quantity, sourceFingerprint]
  *                   properties:
  *                     entryId:
  *                       type: string
@@ -506,6 +505,9 @@ router.post(
  *                     quantity:
  *                       type: number
  *                       exclusiveMinimum: 0
+ *                     sourceFingerprint:
+ *                       type: string
+ *                       description: Exact reviewed source-row snapshot.
  *     responses:
  *       201:
  *         description: The selected food entries were copied successfully.
@@ -519,7 +521,6 @@ router.post(
 router.post(
   '/copy-selected-from-user',
   authenticate,
-  checkPermissionMiddleware('diary'),
   async (req, res, next) => {
     const parsed = CopySelectedFoodEntriesFromUserBodySchema.safeParse(
       req.body

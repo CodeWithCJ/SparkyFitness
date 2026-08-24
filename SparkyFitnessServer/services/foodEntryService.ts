@@ -22,7 +22,11 @@ import type {
 } from '../schemas/foodEntryCopySchemas.js';
 
 import Papa from 'papaparse';
-import { isDayString } from '@workspace/shared';
+import {
+  foodEntryCopyFingerprint,
+  type FoodEntryCopyFingerprintInput,
+  isDayString,
+} from '@workspace/shared';
 import customNutrientService from './customNutrientService.js';
 import { removeOrphanedImages } from '../middleware/imageUpload.js';
 import express from 'express';
@@ -1374,6 +1378,7 @@ async function copySelectedFoodEntriesFromUser(
       entry.id !== selection.entryId ||
       entry.user_id !== sourceUserId ||
       entry.entry_date !== sourceDate ||
+      foodEntryCopyFingerprint(entry) !== selection.sourceFingerprint ||
       !Number.isFinite(Number(entry.serving_size)) ||
       Number(entry.serving_size) <= 0
     ) {
@@ -1440,22 +1445,22 @@ async function copySelectedFoodEntriesFromUser(
 }
 
 function hasExactReviewedEntries(
-  sourceEntries: Array<{ id?: string; quantity?: number | string | null }>,
+  sourceEntries: Array<FoodEntryCopyFingerprintInput & { id?: string }>,
   reviewedEntries: CopyReviewedFoodEntriesFromUserBody['entries']
 ) {
   if (sourceEntries.length !== reviewedEntries.length) return false;
 
-  const reviewedQuantityById = new Map(
-    reviewedEntries.map(({ entryId, quantity }) => [entryId, quantity])
+  const reviewedFingerprintById = new Map(
+    reviewedEntries.map(({ entryId, sourceFingerprint }) => [
+      entryId,
+      sourceFingerprint,
+    ])
   );
 
   return sourceEntries.every((entry) => {
     if (!entry.id) return false;
-    const reviewedQuantity = reviewedQuantityById.get(entry.id);
     return (
-      reviewedQuantity !== undefined &&
-      Number.isFinite(Number(entry.quantity)) &&
-      Number(entry.quantity) === reviewedQuantity
+      reviewedFingerprintById.get(entry.id) === foodEntryCopyFingerprint(entry)
     );
   });
 }

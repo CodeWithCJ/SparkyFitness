@@ -10,7 +10,11 @@ import type {
   CopySelectedFoodEntriesFromUserPayload,
 } from '../types/familyDiary';
 import { ApiError } from '../services/api/errors';
-import { dailySummaryQueryKey, familyUsersQueryKey } from './queryKeys';
+import {
+  dailySummaryQueryKey,
+  familyDailySummaryQueryKey,
+  familyUsersQueryKey,
+} from './queryKeys';
 
 export type FamilyCopyRequest =
   | { kind: 'whole'; payload: CopyReviewedFoodEntriesFromUserPayload }
@@ -18,6 +22,7 @@ export type FamilyCopyRequest =
 
 interface UseCopyFamilyFoodEntriesOptions {
   onSuccess?: (request: FamilyCopyRequest) => void;
+  onStale?: (request: FamilyCopyRequest) => void;
 }
 
 export function useCopyFamilyFoodEntries(
@@ -43,7 +48,7 @@ export function useCopyFamilyFoodEntries(
       });
       options?.onSuccess?.(request);
     },
-    onError: error => {
+    onError: (error, request) => {
       if (error instanceof ApiError && error.statusCode === 403) {
         void queryClient.invalidateQueries({ queryKey: familyUsersQueryKey });
         void queryClient.refetchQueries({ queryKey: familyUsersQueryKey });
@@ -60,16 +65,22 @@ export function useCopyFamilyFoodEntries(
       }
 
       if (error instanceof ApiError && error.statusCode === 409) {
+        const sourceQueryKey = familyDailySummaryQueryKey(
+          request.payload.familyUserId,
+          request.payload.sourceDate,
+        );
+        void queryClient.invalidateQueries({ queryKey: sourceQueryKey });
+        void queryClient.refetchQueries({ queryKey: sourceQueryKey });
         Toast.show({
           type: 'error',
           text1: t('familyDiary.copyStale', {
             defaultValue: 'Family diary changed',
           }),
           text2: t('familyDiary.copyStaleGuidance', {
-            defaultValue:
-              'Refresh the family diary and review the foods again.',
+            defaultValue: 'The latest family diary is opening for review.',
           }),
         });
+        options?.onStale?.(request);
         return;
       }
 

@@ -46,11 +46,28 @@ const body = {
   sourceMealType: 'Lunch',
   targetDate: '2026-08-24',
   targetMealType: '33333333-3333-4333-8333-333333333333',
-  entries: [{ entryId: '44444444-4444-4444-8444-444444444444', quantity: 150 }],
+  entries: [
+    {
+      entryId: '44444444-4444-4444-8444-444444444444',
+      sourceFingerprint: 'snapshot',
+    },
+  ],
 };
 
 describe('POST /copy-reviewed-from-user', () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it('does not attach the active-context diary permission middleware', () => {
+    const routeLayer = (
+      foodEntryRoutes as unknown as {
+        stack: Array<{
+          route?: { path: string; stack: unknown[] };
+        }>;
+      }
+    ).stack.find((layer) => layer.route?.path === '/copy-reviewed-from-user');
+
+    expect(routeLayer?.route?.stack).toHaveLength(2);
+  });
 
   it('uses actor A as target, actor, and cache owner when active context C copies source B', async () => {
     vi.mocked(

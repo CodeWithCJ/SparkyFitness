@@ -7,6 +7,7 @@ import { useMealTypes } from '../../src/hooks/useMealTypes';
 import { useDiaryDateStore } from '../../src/stores/diaryDateStore';
 import type { FoodEntry } from '../../src/types/foodEntries';
 import type { FamilyDiaryUser } from '../../src/types/familyDiary';
+import { foodEntryCopyFingerprint } from '@workspace/shared';
 
 const familyUser: FamilyDiaryUser = {
   userId: 'member-b',
@@ -48,10 +49,12 @@ const sauce: FoodEntry = {
 const navigation = {
   goBack: jest.fn(),
   navigate: jest.fn(),
+  popTo: jest.fn(),
   setOptions: jest.fn(),
 };
 const copyFromFamilyAsync = jest.fn();
 let onCopySuccess: ((request: unknown) => void) | undefined;
+let onCopyStale: ((request: unknown) => void) | undefined;
 
 jest.mock('../../src/hooks/useScreenHeader', () => ({
   useScreenHeader: () => null,
@@ -164,6 +167,7 @@ describe('FamilyCopyReviewScreen', () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-08-24T10:00:00'));
     jest.clearAllMocks();
     onCopySuccess = undefined;
+    onCopyStale = undefined;
     copyFromFamilyAsync.mockResolvedValue(undefined);
     useDiaryDateStore.setState({
       selectedDate: '2026-08-23',
@@ -171,6 +175,7 @@ describe('FamilyCopyReviewScreen', () => {
     });
     mockCopyMutation.mockImplementation(options => {
       onCopySuccess = options?.onSuccess as typeof onCopySuccess;
+      onCopyStale = options?.onStale as typeof onCopyStale;
       return {
         copyFromFamily: jest.fn(),
         copyFromFamilyAsync,
@@ -258,7 +263,13 @@ describe('FamilyCopyReviewScreen', () => {
         sourceDate: '2026-08-23',
         targetDate: '2026-08-24',
         targetMealType: 'dinner-id',
-        entries: [{ entryId: 'pasta-id', quantity: 150.5 }],
+        entries: [
+          {
+            entryId: 'pasta-id',
+            quantity: 150.5,
+            sourceFingerprint: foodEntryCopyFingerprint(pasta),
+          },
+        ],
       },
     });
   });
@@ -294,8 +305,14 @@ describe('FamilyCopyReviewScreen', () => {
         targetDate: '2026-08-24',
         targetMealType: 'dinner-id',
         entries: [
-          { entryId: 'pasta-id', quantity: 150 },
-          { entryId: 'sauce-id', quantity: 50 },
+          {
+            entryId: 'pasta-id',
+            sourceFingerprint: foodEntryCopyFingerprint(pasta),
+          },
+          {
+            entryId: 'sauce-id',
+            sourceFingerprint: foodEntryCopyFingerprint(sauce),
+          },
         ],
       },
     });
@@ -312,7 +329,13 @@ describe('FamilyCopyReviewScreen', () => {
         sourceDate: '2026-08-23',
         targetDate: '2026-08-24',
         targetMealType: 'dinner-id',
-        entries: [{ entryId: 'pasta-id', quantity: 150 }],
+        entries: [
+          {
+            entryId: 'pasta-id',
+            quantity: 150,
+            sourceFingerprint: foodEntryCopyFingerprint(pasta),
+          },
+        ],
       },
     });
   });
@@ -333,8 +356,16 @@ describe('FamilyCopyReviewScreen', () => {
         targetDate: '2026-08-24',
         targetMealType: 'dinner-id',
         entries: [
-          { entryId: 'sauce-id', quantity: 50 },
-          { entryId: 'pasta-id', quantity: 200 },
+          {
+            entryId: 'sauce-id',
+            quantity: 50,
+            sourceFingerprint: foodEntryCopyFingerprint(sauce),
+          },
+          {
+            entryId: 'pasta-id',
+            quantity: 200,
+            sourceFingerprint: foodEntryCopyFingerprint(pasta),
+          },
         ],
       },
     });
@@ -412,6 +443,16 @@ describe('FamilyCopyReviewScreen', () => {
     expect(navigation.navigate).toHaveBeenCalledWith('Tabs', {
       screen: 'Diary',
       params: { selectedDate: '2026-08-24' },
+    });
+  });
+
+  test('returns to the source diary when a stale review is rejected', () => {
+    renderReview();
+
+    onCopyStale?.({});
+
+    expect(navigation.popTo).toHaveBeenCalledWith('FamilyDiary', {
+      familyUser,
     });
   });
 });

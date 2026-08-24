@@ -21,6 +21,7 @@ import {
 } from '../utils/familyDiary';
 import { formatDate, getTodayDate } from '../utils/dateUtils';
 import { parseDecimalInput } from '../utils/numericInput';
+import { foodEntryCopyFingerprint } from '@workspace/shared';
 
 type FamilyCopyReviewScreenProps = RootStackScreenProps<'FamilyCopyReview'>;
 
@@ -133,6 +134,9 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
         params: { selectedDate: request.payload.targetDate },
       });
     },
+    onStale: () => {
+      navigation.popTo('FamilyDiary', { familyUser });
+    },
   });
 
   useEffect(() => {
@@ -142,6 +146,7 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
 
   const header = useScreenHeader({
     title: t('familyDiary.copyReview', { defaultValue: 'Review copy' }),
+    nativeTitle: t('familyDiary.copyReview', { defaultValue: 'Review copy' }),
     left: { kind: 'back' },
   });
   const selectedIds = new Set(selectedEntries.map(entry => entry.id));
@@ -172,7 +177,7 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
             targetMealType: resolvedTargetMealTypeId,
             entries: sourceEntries.map(entry => ({
               entryId: entry.id,
-              quantity: entry.quantity,
+              sourceFingerprint: foodEntryCopyFingerprint(entry),
             })),
           },
         }
@@ -186,6 +191,7 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
             entries: selectedEntries.map(entry => ({
               entryId: entry.id,
               quantity: quantitiesById[entry.id],
+              sourceFingerprint: foodEntryCopyFingerprint(entry),
             })),
           },
         };

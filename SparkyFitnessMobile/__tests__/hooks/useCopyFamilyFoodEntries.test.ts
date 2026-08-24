@@ -37,7 +37,7 @@ const wholeRequest: FamilyCopyRequest = {
     sourceMealType: 'breakfast',
     targetDate: '2026-08-24',
     targetMealType: 'breakfast',
-    entries: [{ entryId: 'entry-1', quantity: 100 }],
+    entries: [{ entryId: 'entry-1', sourceFingerprint: 'snapshot' }],
   },
 };
 
@@ -48,7 +48,9 @@ const selectedRequest: FamilyCopyRequest = {
     sourceDate: '2026-08-23',
     targetDate: '2026-08-24',
     targetMealType: 'lunch',
-    entries: [{ entryId: 'entry-1', quantity: 1.5 }],
+    entries: [
+      { entryId: 'entry-1', quantity: 1.5, sourceFingerprint: 'snapshot' },
+    ],
   },
 };
 
@@ -175,12 +177,14 @@ describe('useCopyFamilyFoodEntries', () => {
     });
   });
 
-  test('keeps the review and explains how to recover from a stale 409 source', async () => {
+  test('refreshes and reopens the source diary after a stale 409 source', async () => {
     (copySelectedFoodEntriesFromUser as jest.Mock).mockRejectedValue(
       new ApiError('Conflict', 409),
     );
     const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
-    const { result } = renderHook(() => useCopyFamilyFoodEntries(), {
+    const refetchSpy = jest.spyOn(queryClient, 'refetchQueries');
+    const onStale = jest.fn();
+    const { result } = renderHook(() => useCopyFamilyFoodEntries({ onStale }), {
       wrapper: createQueryWrapper(queryClient),
     });
 
@@ -190,12 +194,20 @@ describe('useCopyFamilyFoodEntries', () => {
       }),
     ).rejects.toThrow('Conflict');
 
-    expect(invalidateSpy).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ['familyDailySummary', 'family-user', '2026-08-23'],
+      }),
+    );
+    expect(refetchSpy).toHaveBeenCalledWith({
+      queryKey: ['familyDailySummary', 'family-user', '2026-08-23'],
+    });
+    expect(onStale).toHaveBeenCalledWith(selectedRequest);
     await waitFor(() =>
       expect(Toast.show).toHaveBeenCalledWith({
         type: 'error',
         text1: 'Family diary changed',
-        text2: 'Refresh the family diary and review the foods again.',
+        text2: 'The latest family diary is opening for review.',
       }),
     );
   });

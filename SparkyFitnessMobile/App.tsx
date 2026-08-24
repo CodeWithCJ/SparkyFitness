@@ -343,29 +343,30 @@ function AppContent() {
           <Stack.Screen
             name="FamilyMembers"
             component={SafeFamilyMembers}
-            options={createStackScreenOptions('Family Diaries', {
+            options={createStackScreenOptions(t('familyDiary.title', { defaultValue: 'Family Diaries' }), {
               headerBackButtonDisplayMode: 'minimal',
             })}
           />
           <Stack.Screen
             name="FamilyDiary"
             component={SafeFamilyDiary}
-            options={createStackScreenOptions('Family Diary', {
-              headerBackTitle: 'Family Diaries',
-            })}
+            options={({ route }) => createStackScreenOptions(
+              route.params.familyUser.displayName.trim() || t('familyDiary.unnamedMember', { defaultValue: 'Family member' }),
+              { headerBackButtonDisplayMode: 'minimal' },
+            )}
           />
           <Stack.Screen
             name="FamilyMealDetail"
             component={SafeFamilyMealDetail}
-            options={createStackScreenOptions('Select Foods', {
-              headerBackTitle: 'Family Diary',
+            options={({ route }) => createStackScreenOptions(route.params.mealTypeName, {
+              headerBackButtonDisplayMode: 'minimal',
             })}
           />
           <Stack.Screen
             name="FamilyCopyReview"
             component={SafeFamilyCopyReview}
-            options={createStackScreenOptions('Review Copy', {
-              headerBackTitle: 'Select Foods',
+            options={createStackScreenOptions(t('familyDiary.copyReview', { defaultValue: 'Review copy' }), {
+              headerBackButtonDisplayMode: 'minimal',
             })}
           />
           <Stack.Screen

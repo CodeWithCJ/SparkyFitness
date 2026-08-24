@@ -12,7 +12,7 @@ export interface CopyReviewedFoodEntriesFromUserPayload {
   sourceMealType: string;
   targetDate: string;
   targetMealType: string;
-  entries: { entryId: string; quantity: number }[];
+  entries: { entryId: string; sourceFingerprint: string }[];
 }
 
 export interface CopySelectedFoodEntriesFromUserPayload {
@@ -20,5 +20,9 @@ export interface CopySelectedFoodEntriesFromUserPayload {
   sourceDate: string;
   targetDate: string;
   targetMealType: string;
-  entries: { entryId: string; quantity: number }[];
+  entries: {
+    entryId: string;
+    quantity: number;
+    sourceFingerprint: string;
+  }[];
 }

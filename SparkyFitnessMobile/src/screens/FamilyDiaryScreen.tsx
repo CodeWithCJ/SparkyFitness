@@ -49,6 +49,7 @@ const FamilyDiaryScreen: React.FC<FamilyDiaryScreenProps> = ({
   });
   const header = useScreenHeader({
     title: displayName,
+    nativeTitle: displayName,
     left: { kind: 'back' },
   });
 

@@ -3,6 +3,7 @@ import { copySelectedFoodEntriesFromUser } from '../services/foodEntryService.js
 import familyAccessRepository from '../models/familyAccessRepository.js';
 import foodRepository from '../models/foodRepository.js';
 import mealTypeRepository from '../models/mealType.js';
+import { foodEntryCopyFingerprint } from '@workspace/shared';
 
 vi.mock('../models/familyAccessRepository');
 vi.mock('../models/foodRepository');
@@ -36,6 +37,15 @@ const validSourceEntry = {
   fat: 3,
   custom_nutrients: { magnesium: 12 },
 };
+const selection = (entryId = ENTRY_ID, quantity = 150) => ({
+  entryId,
+  quantity,
+  sourceFingerprint: foodEntryCopyFingerprint({
+    ...validSourceEntry,
+    id: entryId,
+    food_id: entryId === ENTRY_ID ? 'food-1' : 'food-2',
+  }),
+});
 
 describe('copySelectedFoodEntriesFromUser', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -53,7 +63,7 @@ describe('copySelectedFoodEntriesFromUser', () => {
         SOURCE_DATE,
         TARGET_DATE,
         TARGET_MEAL,
-        [{ entryId: ENTRY_ID, quantity: 150 }]
+        [selection()]
       )
     ).rejects.toMatchObject({ statusCode: 403 });
 
@@ -93,7 +103,7 @@ describe('copySelectedFoodEntriesFromUser', () => {
           SOURCE_DATE,
           TARGET_DATE,
           TARGET_MEAL,
-          [{ entryId: ENTRY_ID, quantity: 150 }]
+          [selection()]
         )
       ).rejects.toMatchObject({ statusCode: 409 });
 
@@ -125,7 +135,7 @@ describe('copySelectedFoodEntriesFromUser', () => {
       SOURCE_DATE,
       TARGET_DATE,
       TARGET_MEAL,
-      [{ entryId: ENTRY_ID, quantity: 150 }]
+      [selection()]
     );
 
     expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledWith(
@@ -177,10 +187,7 @@ describe('copySelectedFoodEntriesFromUser', () => {
       SOURCE_DATE,
       TARGET_DATE,
       TARGET_MEAL,
-      [
-        { entryId: ENTRY_ID, quantity: 150 },
-        { entryId: SECOND_ENTRY_ID, quantity: 75 },
-      ]
+      [selection(), selection(SECOND_ENTRY_ID, 75)]
     );
 
     expect(foodRepository.getFoodEntryById).toHaveBeenNthCalledWith(
@@ -201,5 +208,32 @@ describe('copySelectedFoodEntriesFromUser', () => {
       ],
       ACTOR
     );
+  });
+
+  it('rejects a row whose reviewed food or nutrition snapshot changed', async () => {
+    vi.mocked(familyAccessRepository.checkCopyPermissions).mockResolvedValue(
+      true
+    );
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      { id: TARGET_MEAL, name: 'Lunch', user_id: null },
+    ]);
+    vi.mocked(foodRepository.getFoodEntryById).mockResolvedValue({
+      ...validSourceEntry,
+      calories: 250,
+    });
+
+    await expect(
+      copySelectedFoodEntriesFromUser(
+        ACTOR,
+        ACTOR,
+        SOURCE,
+        SOURCE_DATE,
+        TARGET_DATE,
+        TARGET_MEAL,
+        [selection()]
+      )
+    ).rejects.toMatchObject({ statusCode: 409 });
+
+    expect(foodRepository.bulkCreateFoodEntries).not.toHaveBeenCalled();
   });
 });

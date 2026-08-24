@@ -523,7 +523,7 @@ describe('foodEntriesApi', () => {
       sourceMealType: 'breakfast',
       targetDate: '2026-08-24',
       targetMealType: 'lunch',
-      entries: [{ entryId: 'entry-1', quantity: 150 }],
+      entries: [{ entryId: 'entry-1', sourceFingerprint: 'snapshot' }],
     };
 
     const selectedPayload = {
@@ -531,7 +531,7 @@ describe('foodEntriesApi', () => {
       sourceDate: '2026-08-23',
       targetDate: '2026-08-24',
       targetMealType: 'lunch',
-      entries: [{ entryId: 'entry-1', quantity: 150 }],
+      entries: [{ entryId: 'entry-1', quantity: 150, sourceFingerprint: 'snapshot' }],
     };
 
     test('posts a reviewed whole family meal with its exact snapshot', async () => {

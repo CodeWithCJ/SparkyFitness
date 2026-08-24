@@ -44,11 +44,29 @@ const body = {
   sourceDate: '2026-08-23',
   targetDate: '2026-08-24',
   targetMealType: '33333333-3333-4333-8333-333333333333',
-  entries: [{ entryId: '44444444-4444-4444-8444-444444444444', quantity: 150 }],
+  entries: [
+    {
+      entryId: '44444444-4444-4444-8444-444444444444',
+      quantity: 150,
+      sourceFingerprint: 'snapshot',
+    },
+  ],
 };
 
 describe('POST /copy-selected-from-user', () => {
   beforeEach(() => vi.clearAllMocks());
+
+  it('does not attach the active-context diary permission middleware', () => {
+    const routeLayer = (
+      foodEntryRoutes as unknown as {
+        stack: Array<{
+          route?: { path: string; stack: unknown[] };
+        }>;
+      }
+    ).stack.find((layer) => layer.route?.path === '/copy-selected-from-user');
+
+    expect(routeLayer?.route?.stack).toHaveLength(2);
+  });
 
   it('rejects unknown fields before calling the selected-copy service', async () => {
     const response = await request(app)

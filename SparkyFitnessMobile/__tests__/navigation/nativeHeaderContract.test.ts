@@ -344,39 +344,39 @@ describe('native header navigation contract', () => {
       {
         routeName: 'FamilyMembers',
         component: 'SafeFamilyMembers',
-        title: 'Family Diaries',
+        optionSnippet: "t('familyDiary.title', { defaultValue: 'Family Diaries' })",
         backOption: "headerBackButtonDisplayMode: 'minimal'",
       },
       {
         routeName: 'FamilyDiary',
         component: 'SafeFamilyDiary',
-        title: 'Family Diary',
-        backOption: "headerBackTitle: 'Family Diaries'",
+        optionSnippet: 'route.params.familyUser.displayName.trim()',
+        backOption: "headerBackButtonDisplayMode: 'minimal'",
       },
       {
         routeName: 'FamilyMealDetail',
         component: 'SafeFamilyMealDetail',
-        title: 'Select Foods',
-        backOption: "headerBackTitle: 'Family Diary'",
+        optionSnippet: 'route.params.mealTypeName',
+        backOption: "headerBackButtonDisplayMode: 'minimal'",
       },
       {
         routeName: 'FamilyCopyReview',
         component: 'SafeFamilyCopyReview',
-        title: 'Review Copy',
-        backOption: "headerBackTitle: 'Select Foods'",
+        optionSnippet: "t('familyDiary.copyReview', { defaultValue: 'Review copy' })",
+        backOption: "headerBackButtonDisplayMode: 'minimal'",
       },
     ] as const;
     const rootStackScreenNames = extractScreenNames(appSource, 'Stack');
     const stackComponentsByRoute = extractStackComponentsByRoute(appSource);
 
-    for (const { routeName, component, title, backOption } of familyRoutes) {
+    for (const { routeName, component, optionSnippet, backOption } of familyRoutes) {
       expect(rootStackScreenNames.filter((name) => name === routeName)).toHaveLength(1);
       expect(stackComponentsByRoute.get(routeName)).toBe(component);
 
       const screenBlock = getStackScreenBlock(appSource, routeName);
       expect(screenBlock).toBeDefined();
       expect(screenBlock).toContain(`component={${component}}`);
-      expect(screenBlock).toContain(`createStackScreenOptions('${title}', {`);
+      expect(screenBlock).toContain(optionSnippet);
       expect(screenBlock).toContain(backOption);
       expect(screenBlock).not.toMatch(/\bpresentation\s*:/);
     }

@@ -5,10 +5,11 @@ import format from 'pg-format';
 import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
 import { toImageArray } from '../utils/imageLocalizer.js';
 import type { FoodEntryInput, FoodEntrySnapshot } from '../types/nutrition.js';
+import { foodEntryCopyFingerprint } from '@workspace/shared';
 
 interface ReviewedFoodEntry {
   entryId: string;
-  quantity: number;
+  sourceFingerprint: string;
 }
 
 interface ReviewedFoodEntryCopyInput {
@@ -50,18 +51,16 @@ function exactReviewedSnapshot(
   reviewedEntries: ReviewedFoodEntry[]
 ) {
   if (sourceEntries.length !== reviewedEntries.length) return false;
-  const quantitiesById = new Map(
-    reviewedEntries.map(({ entryId, quantity }) => [entryId, quantity])
+  const fingerprintsById = new Map(
+    reviewedEntries.map(({ entryId, sourceFingerprint }) => [
+      entryId,
+      sourceFingerprint,
+    ])
   );
-  if (quantitiesById.size !== reviewedEntries.length) return false;
+  if (fingerprintsById.size !== reviewedEntries.length) return false;
 
   return sourceEntries.every((entry) => {
-    const reviewedQuantity = quantitiesById.get(entry.id);
-    return (
-      reviewedQuantity !== undefined &&
-      Number.isFinite(Number(entry.quantity)) &&
-      Number(entry.quantity) === reviewedQuantity
-    );
+    return fingerprintsById.get(entry.id) === foodEntryCopyFingerprint(entry);
   });
 }
 /**
@@ -870,6 +869,23 @@ async function copyReviewedFoodEntriesFromUser({
 
     const copiedEntries: unknown[] = [];
     const targetMealIdBySourceMealId = new Map<string, string>();
+    const existingStandaloneResult = (await client.query(
+      `SELECT food_id, variant_id
+       FROM food_entries
+       WHERE user_id = $1
+         AND meal_type_id = $2
+         AND entry_date = $3
+         AND food_entry_meal_id IS NULL`,
+      [targetUserId, targetMealTypeId, targetDate]
+    )) as {
+      rows: Array<{ food_id: string | null; variant_id: string | null }>;
+    };
+    const existingStandaloneKeys = new Set(
+      existingStandaloneResult.rows.map(
+        ({ food_id, variant_id }) =>
+          `${food_id ?? 'null'}:${variant_id ?? 'null'}`
+      )
+    );
 
     for (const entry of sourceEntries) {
       let targetFoodEntryMealId: string | null = null;
@@ -941,24 +957,8 @@ async function copyReviewedFoodEntriesFromUser({
           );
         }
       } else {
-        const existingEntry = (await client.query(
-          `SELECT id
-           FROM food_entries
-           WHERE user_id = $1
-             AND food_id IS NOT DISTINCT FROM $2
-             AND meal_type_id = $3
-             AND entry_date = $4
-             AND variant_id IS NOT DISTINCT FROM $5
-             AND food_entry_meal_id IS NULL`,
-          [
-            targetUserId,
-            entry.food_id,
-            targetMealTypeId,
-            targetDate,
-            entry.variant_id,
-          ]
-        )) as { rows: Array<{ id: string }> };
-        if (existingEntry.rows[0]) continue;
+        const standaloneKey = `${entry.food_id ?? 'null'}:${entry.variant_id ?? 'null'}`;
+        if (existingStandaloneKeys.has(standaloneKey)) continue;
       }
 
       const inserted = await client.query(

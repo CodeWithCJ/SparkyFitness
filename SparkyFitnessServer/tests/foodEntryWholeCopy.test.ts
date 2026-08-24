@@ -3,6 +3,7 @@ import { copyReviewedFoodEntriesFromUser } from '../services/foodEntryService.js
 import familyAccessRepository from '../models/familyAccessRepository.js';
 import foodRepository from '../models/foodRepository.js';
 import mealTypeRepository from '../models/mealType.js';
+import { foodEntryCopyFingerprint } from '@workspace/shared';
 
 vi.mock('../models/familyAccessRepository');
 vi.mock('../models/foodRepository');
@@ -21,7 +22,12 @@ const sourceEntry = {
   entry_date: SOURCE_DATE,
   quantity: 150,
 };
-const reviewedEntries = [{ entryId: sourceEntry.id, quantity: 150 }];
+const reviewedEntries = [
+  {
+    entryId: sourceEntry.id,
+    sourceFingerprint: foodEntryCopyFingerprint(sourceEntry),
+  },
+];
 
 describe('copyReviewedFoodEntriesFromUser', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -119,5 +125,36 @@ describe('copyReviewedFoodEntriesFromUser', () => {
         reviewedEntries,
       })
     );
+  });
+
+  it('rejects a source row whose reviewed nutrition changed', async () => {
+    vi.mocked(familyAccessRepository.checkCopyPermissions).mockResolvedValue(
+      true
+    );
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockImplementation(
+      async (userId) => [
+        {
+          id: userId === SOURCE_B ? 'source-lunch-id' : TARGET_MEAL,
+          name: 'Lunch',
+          user_id: null,
+        },
+      ]
+    );
+    vi.mocked(foodRepository.getFoodEntriesByDateAndMealType).mockResolvedValue(
+      [{ ...sourceEntry, calories: 250 }]
+    );
+
+    await expect(
+      copyReviewedFoodEntriesFromUser(
+        ACTOR_A,
+        ACTOR_A,
+        SOURCE_B,
+        SOURCE_DATE,
+        'Lunch',
+        TARGET_DATE,
+        TARGET_MEAL,
+        reviewedEntries
+      )
+    ).rejects.toMatchObject({ statusCode: 409 });
   });
 });

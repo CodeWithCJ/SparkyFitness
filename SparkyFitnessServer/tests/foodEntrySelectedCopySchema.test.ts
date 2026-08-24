@@ -6,7 +6,13 @@ const valid = {
   sourceDate: '2026-08-23',
   targetDate: '2026-08-24',
   targetMealType: '22222222-2222-4222-8222-222222222222',
-  entries: [{ entryId: '33333333-3333-4333-8333-333333333333', quantity: 150 }],
+  entries: [
+    {
+      entryId: '33333333-3333-4333-8333-333333333333',
+      quantity: 150,
+      sourceFingerprint: 'snapshot',
+    },
+  ],
 };
 
 describe('CopySelectedFoodEntriesFromUserBodySchema', () => {
@@ -20,6 +26,7 @@ describe('CopySelectedFoodEntriesFromUserBodySchema', () => {
     { ...valid, sourceDate: '2026-02-30' },
     { ...valid, entries: [] },
     { ...valid, entries: [{ ...valid.entries[0], quantity: 0 }] },
+    { ...valid, entries: [{ ...valid.entries[0], sourceFingerprint: '' }] },
     { ...valid, unexpected: true },
   ])('rejects invalid request %#', (input) => {
     expect(

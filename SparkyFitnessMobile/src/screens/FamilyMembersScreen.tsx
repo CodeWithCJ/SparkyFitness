@@ -23,6 +23,7 @@ const FamilyMembersScreen: React.FC<FamilyMembersScreenProps> = ({
   const { data: users = [], isLoading, isError, refetch } = useFamilyUsers();
   const header = useScreenHeader({
     title: t('familyDiary.title', { defaultValue: 'Family Diaries' }),
+    nativeTitle: t('familyDiary.title', { defaultValue: 'Family Diaries' }),
     left: { kind: 'back' },
   });
 

@@ -37,6 +37,7 @@ const FamilyMealDetailScreen: React.FC<FamilyMealDetailScreenProps> = ({
   );
   const header = useScreenHeader({
     title: mealTypeName,
+    nativeTitle: mealTypeName,
     left: { kind: 'back' },
   });
   const selectedEntries = useMemo(

@@ -9,15 +9,14 @@ const SelectedFoodEntrySchema = z
   .object({
     entryId: z.string().uuid(),
     quantity: z.number().finite().positive(),
+    sourceFingerprint: z.string().min(1).max(20_000),
   })
   .strict();
 
 const ReviewedFoodEntrySchema = z
   .object({
     entryId: z.string().uuid(),
-    // This is an optimistic-concurrency snapshot, never a client-provided
-    // quantity to persist. The service reloads and compares it before copy.
-    quantity: z.number().finite().positive(),
+    sourceFingerprint: z.string().min(1).max(20_000),
   })
   .strict();
 
