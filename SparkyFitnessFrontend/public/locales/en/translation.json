@@ -31,7 +31,8 @@
       "integrations": "Integrations",
       "synced_data": "Synced Data",
       "progress_photos": "Progress Photos",
-      "dashboard": "Dashboard"
+      "dashboard": "Dashboard",
+      "barcode": "Barcode Lookup"
     },
     "errorClearingHistory": "Failed to clear chat history.",
     "errorLoadingHistory": "Failed to load chat history.",

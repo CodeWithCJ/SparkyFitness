@@ -1217,6 +1217,11 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
     keywords:
       /\b(dashboard|daily\s+summary|calorie\s+balance|calories\s+remaining|net\s+calories|today'?s\s+(summary|calories|stats))\b/i,
   },
+  {
+    category: 'barcode',
+    keywords:
+      /\b(barcode|bar\s?code|scan\s+(a\s+)?(product|item|food)|UPC|EAN)\b/i,
+  },
 ];
 
 function extractMessageText(msg: ChatMessage): string {

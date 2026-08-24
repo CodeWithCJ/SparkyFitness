@@ -44,6 +44,7 @@ const CATEGORY_LABELS: Record<ChatToolCategorySlug, [string, string]> = {
   synced_data: ['chat.toolCategories.synced_data', 'Synced Data'],
   progress_photos: ['chat.toolCategories.progress_photos', 'Progress Photos'],
   dashboard: ['chat.toolCategories.dashboard', 'Dashboard'],
+  barcode: ['chat.toolCategories.barcode', 'Barcode Lookup'],
 };
 
 /**

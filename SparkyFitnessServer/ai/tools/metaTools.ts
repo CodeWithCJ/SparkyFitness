@@ -53,6 +53,8 @@ export const CATEGORY_SUMMARIES: Record<ChatToolCategorySlug, string> = {
     'list the days that have progress (check-in) photos, list the photos for a day, and delete a photo; uploads happen in the app UI (tools: sparky_manage_progress_photos)',
   dashboard:
     'read the daily dashboard calorie-balance summary for a date: eaten, burned, remaining, goal, net, progress, steps, and BMR (tools: sparky_get_dashboard)',
+  barcode:
+    'look up a food product by barcode across your saved foods and configured external providers, returning per-serving macros (tools: sparky_get_barcode)',
 };
 
 const EnableToolsSchema = z.object({

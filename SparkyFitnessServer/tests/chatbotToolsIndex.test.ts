@@ -21,6 +21,7 @@ const EXPECTED_TOOLS = [
   'sparky_detect_patterns',
   'sparky_generate_coaching_plan',
   'sparky_get_30_day_trends',
+  'sparky_get_barcode',
   'sparky_get_contextual_nudge',
   'sparky_get_daily_exercise_totals',
   'sparky_get_daily_report',
