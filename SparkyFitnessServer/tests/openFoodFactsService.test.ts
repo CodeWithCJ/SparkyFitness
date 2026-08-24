@@ -16,7 +16,8 @@ vi.mock('../integrations/openfoodfacts/openFoodFactsAuth.js', () => ({
   DEFAULT_OFF_BASE_URL: 'https://world.openfoodfacts.org',
 }));
 
-global.fetch = vi.fn();
+const fetchMock = vi.fn();
+global.fetch = fetchMock;
 
 describe('openFoodFactsService', () => {
   beforeEach(() => {
@@ -79,31 +80,51 @@ describe('openFoodFactsService', () => {
       });
     });
 
-    it('returns relevance-ordered hits and normalizes Search-a-licious brand arrays', async () => {
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      fetch.mockResolvedValue({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            hits: [
-              {
-                code: 'first',
-                product_name: 'Exact Match',
-                brands: ['Brand One', 'Brand Two'],
-                nutriments: {},
-              },
-              {
-                code: 'second',
-                product_name: 'Less Relevant Match',
-                brands: ['Other Brand'],
-                nutriments: {},
-              },
-            ],
-            page: 1,
-            page_size: 20,
-            count: 2,
-          }),
-      });
+    it('returns current Product Opener records in Search-a-licious relevance order', async () => {
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              hits: [
+                {
+                  code: 'first',
+                  product_name: 'Exact Match',
+                  brands: ['Brand One', 'Brand Two'],
+                  nutriments: {},
+                },
+                {
+                  code: 'second',
+                  product_name: 'Less Relevant Match',
+                  brands: ['Other Brand'],
+                  nutriments: {},
+                },
+              ],
+              page: 1,
+              page_size: 20,
+              count: 2,
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              products: [
+                {
+                  code: 'second',
+                  product_name: 'Less Relevant Match',
+                  brands: 'Other Brand',
+                  nutriments: {},
+                },
+                {
+                  code: 'first',
+                  product_name: 'Exact Match',
+                  brands: 'Brand One, Brand Two',
+                  nutriments: {},
+                },
+              ],
+            }),
+        });
 
       const result = await searchOpenFoodFacts('exact match');
 
@@ -118,30 +139,50 @@ describe('openFoodFactsService', () => {
     });
 
     it('prioritizes a complete brand and product-name match over partial matches', async () => {
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      fetch.mockResolvedValue({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            hits: [
-              {
-                code: 'partial',
-                product_name: 'High Protein Pudding',
-                brands: ['Milbona'],
-                nutriments: {},
-              },
-              {
-                code: 'complete',
-                product_name: 'High Protein Pudding',
-                brands: ['Ehrmann'],
-                nutriments: {},
-              },
-            ],
-            page: 1,
-            page_size: 20,
-            count: 2,
-          }),
-      });
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              hits: [
+                {
+                  code: 'partial',
+                  product_name: 'High Protein Pudding',
+                  brands: ['Milbona'],
+                  nutriments: {},
+                },
+                {
+                  code: 'complete',
+                  product_name: 'High Protein Pudding',
+                  brands: ['Ehrmann'],
+                  nutriments: {},
+                },
+              ],
+              page: 1,
+              page_size: 20,
+              count: 2,
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              products: [
+                {
+                  code: 'partial',
+                  product_name: 'High Protein Pudding',
+                  brands: 'Milbona',
+                  nutriments: {},
+                },
+                {
+                  code: 'complete',
+                  product_name: 'High Protein Pudding',
+                  brands: 'Ehrmann',
+                  nutriments: {},
+                },
+              ],
+            }),
+        });
 
       const result = await searchOpenFoodFacts(
         'Ehrmann High Protein Pudding',
@@ -155,6 +196,155 @@ describe('openFoodFactsService', () => {
       ]);
     });
 
+    it('does not treat a query token embedded inside another word as a phrase match', async () => {
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              hits: [
+                { code: 'shampoo', product_name: 'Herbal Shampoo' },
+                { code: 'ham', product_name: 'Smoked Ham' },
+              ],
+              page: 1,
+              page_size: 20,
+              count: 2,
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              products: [
+                { code: 'shampoo', product_name: 'Herbal Shampoo' },
+                { code: 'ham', product_name: 'Smoked Ham' },
+              ],
+            }),
+        });
+
+      const result = await searchOpenFoodFacts('ham');
+
+      expect(result.products.map((product) => product.code)).toEqual([
+        'ham',
+        'shampoo',
+      ]);
+    });
+
+    it('hydrates search hits with current serving-scaled nutrition data', async () => {
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              hits: [
+                {
+                  code: '4056489472261',
+                  product_name: 'High Protein Pudding',
+                  serving_quantity: 100,
+                  nutriments: { 'energy-kcal_100g': 77 },
+                },
+              ],
+              page: 1,
+              page_size: 20,
+              count: 1,
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              products: [
+                {
+                  code: '4056489472261',
+                  product_name: 'High Protein Pudding',
+                  serving_quantity: 200,
+                  serving_quantity_unit: 'g',
+                  nutriments: {
+                    'energy-kcal_100g': 77,
+                    proteins_100g: 10,
+                    magnesium_100g: 0.018,
+                    magnesium_unit: 'g',
+                  },
+                },
+              ],
+            }),
+        });
+
+      const result = await searchOpenFoodFacts('high protein pudding');
+      const mapped = mapOpenFoodFactsProduct(result.products[0]);
+
+      expect(mapped.default_variant).toEqual(
+        expect.objectContaining({
+          serving_size: 200,
+          calories: 154,
+          protein: 20,
+          provider_nutrients: expect.objectContaining({ magnesium: 0.036 }),
+        })
+      );
+      // @ts-expect-error mocked global fetch
+      expect(fetch.mock.calls[1][0]).toContain(
+        '/api/v2/search?code=4056489472261'
+      );
+    });
+
+    it('falls back to a product-by-code lookup when bulk hydration is unavailable', async () => {
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              hits: [{ code: '123', product_name: 'Current Product' }],
+              page: 1,
+              page_size: 20,
+              count: 1,
+            }),
+        })
+        .mockResolvedValueOnce({ ok: false, status: 503 })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              status: 1,
+              product: {
+                code: '123',
+                product_name: 'Current Product',
+                serving_quantity: 250,
+              },
+            }),
+        });
+
+      const result = await searchOpenFoodFacts('current product');
+
+      expect(result.products).toEqual([
+        expect.objectContaining({ code: '123', serving_quantity: 250 }),
+      ]);
+      // @ts-expect-error mocked global fetch
+      expect(fetch.mock.calls[2][0]).toContain('/api/v2/product/123.json');
+    });
+
+    it('throws a compact error for malformed Product Opener hydration data', async () => {
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              hits: [{ code: '123', product_name: 'Product' }],
+              page: 1,
+              page_size: 20,
+              count: 1,
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: () => Promise.reject(new SyntaxError('Unexpected <html>')),
+        });
+
+      await expect(searchOpenFoodFacts('product')).rejects.toThrow(
+        'OpenFoodFacts search returned an invalid response (HTTP 200)'
+      );
+    });
+
     it('throws a compact error without exposing an upstream HTML response', async () => {
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
       fetch.mockResolvedValue({
@@ -165,6 +355,19 @@ describe('openFoodFactsService', () => {
 
       await expect(searchOpenFoodFacts('pizza')).rejects.toThrow(
         'OpenFoodFacts search failed (HTTP 503)'
+      );
+    });
+
+    it('throws a compact error for a successful HTML Search-a-licious response', async () => {
+      // @ts-expect-error mocked global fetch
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.reject(new SyntaxError('Unexpected token <html>')),
+      });
+
+      await expect(searchOpenFoodFacts('pizza')).rejects.toThrow(
+        'OpenFoodFacts search returned an invalid response (HTTP 200)'
       );
     });
   });
@@ -339,6 +542,26 @@ describe('openFoodFactsService', () => {
           /^http:\/\/sparkyfitness-foodfacts:8080\/cgi\/search\.pl/
         ),
         expect.any(Object)
+      );
+    });
+
+    it('throws a compact error for a successful HTML self-hosted search response', async () => {
+      // @ts-expect-error mocked provider resolver
+      resolveOpenFoodFactsProvider.mockResolvedValue({
+        session: null,
+        baseUrl: 'http://sparkyfitness-foodfacts:8080',
+      });
+      // @ts-expect-error mocked global fetch
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.reject(new SyntaxError('Unexpected token <html>')),
+      });
+
+      await expect(
+        searchOpenFoodFacts('pizza', 1, 'en', 'user-A', 'prov-1')
+      ).rejects.toThrow(
+        'OpenFoodFacts search returned an invalid response (HTTP 200)'
       );
     });
 

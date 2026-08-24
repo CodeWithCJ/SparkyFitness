@@ -310,6 +310,23 @@ describe('GET /v2/foods/search/:providerType', () => {
     expect(searchProviderFoods).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['page', '0'],
+    ['page', '-1'],
+    ['page', '1.5'],
+    ['pageSize', '0'],
+    ['pageSize', '1.5'],
+    ['pageSize', '101'],
+  ])('rejects invalid %s=%s pagination', async (parameter, value) => {
+    const res = await request(app).get(
+      `/v2/foods/search/usda?query=apple&${parameter}=${value}`
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toMatch(/pagination/i);
+    expect(searchProviderFoods).not.toHaveBeenCalled();
+  });
+
   it('maps status-tagged service errors to HTTP status codes', async () => {
     vi.mocked(searchProviderFoods).mockRejectedValue(
       Object.assign(new Error('Missing providerId query parameter'), {

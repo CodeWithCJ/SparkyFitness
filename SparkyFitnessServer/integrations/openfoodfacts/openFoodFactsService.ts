@@ -63,10 +63,52 @@ interface SearchALiciousHit extends Omit<OffProduct, 'brands'> {
 }
 
 interface SearchALiciousResponse {
-  hits?: SearchALiciousHit[];
+  hits: SearchALiciousHit[];
   page?: number;
   page_size?: number;
   count?: number;
+}
+
+interface ProductOpenerSearchResponse {
+  products: OffProduct[];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+async function parseSearchResponse<T>(
+  response: Response,
+  isValid: (value: unknown) => value is T
+): Promise<T> {
+  try {
+    const data: unknown = await response.json();
+    if (isValid(data)) return data;
+  } catch {
+    // Normalize JSON/parser errors so an upstream HTML body is never exposed.
+  }
+
+  throw new Error(
+    `OpenFoodFacts search returned an invalid response (HTTP ${response.status || 200})`
+  );
+}
+
+function isLegacySearchResponse(
+  value: unknown
+): value is LegacyOffSearchResponse & { products: OffProduct[] } {
+  return isRecord(value) && Array.isArray(value.products);
+}
+
+function isSearchALiciousResponse(
+  value: unknown
+): value is SearchALiciousResponse {
+  return isRecord(value) && Array.isArray(value.hits);
+}
+
+function isProductOpenerSearchResponse(
+  value: unknown
+): value is ProductOpenerSearchResponse {
+  return isRecord(value) && Array.isArray(value.products);
 }
 
 function normalizeSearchText(value: string): string {
@@ -84,7 +126,8 @@ function rankSearchHits(
   language: string
 ): SearchALiciousHit[] {
   const normalizedQuery = normalizeSearchText(query);
-  const queryTokens = [...new Set(normalizedQuery.split(' ').filter(Boolean))];
+  const phraseTokens = normalizedQuery.split(' ').filter(Boolean);
+  const queryTokens = [...new Set(phraseTokens)];
   if (!normalizedQuery || queryTokens.length === 0) return hits;
 
   return hits
@@ -101,11 +144,18 @@ function rankSearchHits(
           hit.product_name_en || '',
         ].join(' ')
       );
-      const candidateTokens = new Set(searchableText.split(' '));
+      const searchableTokens = searchableText.split(' ').filter(Boolean);
+      const candidateTokens = new Set(searchableTokens);
       const tokenCoverage =
         queryTokens.filter((token) => candidateTokens.has(token)).length /
         queryTokens.length;
-      const phraseBoost = searchableText.includes(normalizedQuery) ? 2 : 0;
+      const phraseBoost = searchableTokens.some((_, start) =>
+        phraseTokens.every(
+          (token, offset) => searchableTokens[start + offset] === token
+        )
+      )
+        ? 2
+        : 0;
 
       return { hit, index, score: phraseBoost + tokenCoverage };
     })
@@ -174,6 +224,99 @@ async function fetchOpenFoodFacts(
   return response;
 }
 
+async function hydrateSearchHits(
+  hits: SearchALiciousHit[],
+  fields: string[],
+  language: string,
+  requestContext: {
+    authenticatedUserId?: string;
+    providerId?: string;
+    sessionCookie: string | null;
+    baseUrl: string;
+  }
+): Promise<OffProduct[]> {
+  const codes = [
+    ...new Set(
+      hits
+        .map((hit) => String(hit.code || '').trim())
+        .filter((code) => code.length > 0)
+    ),
+  ];
+  if (codes.length === 0) return [];
+
+  const fieldsParam = fields.join(',');
+  const batchUrl = `${requestContext.baseUrl}/api/v2/search?code=${codes.join(',')}&fields=${fieldsParam}&page_size=${codes.length}&lc=${language}`;
+  const batchResponse = await fetchOpenFoodFacts(batchUrl, requestContext);
+
+  let currentProducts: OffProduct[];
+  if (batchResponse.ok) {
+    const batchData = await parseSearchResponse(
+      batchResponse,
+      isProductOpenerSearchResponse
+    );
+    currentProducts = batchData.products;
+  } else if (batchResponse.status === 429 || batchResponse.status >= 500) {
+    // Product Opener's bulk-search service can be rate-limited independently.
+    // Product-by-code lookups are a documented read path and provide a useful
+    // bounded fallback without returning stale Search-a-licious nutrition.
+    currentProducts = [];
+    const concurrency = 4;
+    for (let start = 0; start < codes.length; start += concurrency) {
+      const chunk = codes.slice(start, start + concurrency);
+      const products = await Promise.all(
+        chunk.map(async (code): Promise<OffProduct | null> => {
+          try {
+            const productUrl = `${requestContext.baseUrl}/api/v2/product/${encodeURIComponent(code)}.json?fields=${fieldsParam}&lc=${language}`;
+            const response = await fetchOpenFoodFacts(
+              productUrl,
+              requestContext
+            );
+            if (!response.ok) return null;
+            const data: unknown = await response.json();
+            if (
+              !isRecord(data) ||
+              data.status !== 1 ||
+              !isRecord(data.product)
+            ) {
+              return null;
+            }
+            return data.product as OffProduct;
+          } catch (error) {
+            log(
+              'warn',
+              `OpenFoodFacts product hydration failed for barcode "${code}":`,
+              error
+            );
+            return null;
+          }
+        })
+      );
+      currentProducts.push(
+        ...products.filter((product): product is OffProduct => product !== null)
+      );
+    }
+
+    if (currentProducts.length === 0) {
+      throw new Error(
+        `OpenFoodFacts search failed (HTTP ${batchResponse.status})`
+      );
+    }
+  } else {
+    throw new Error(
+      `OpenFoodFacts search failed (HTTP ${batchResponse.status})`
+    );
+  }
+
+  const productsByCode = new Map(
+    currentProducts
+      .filter((product) => product.code)
+      .map((product) => [String(product.code).trim(), product])
+  );
+  return codes
+    .map((code) => productsByCode.get(code))
+    .filter((product): product is OffProduct => product !== undefined);
+}
+
 async function searchOpenFoodFacts(
   query: string,
   page = 1,
@@ -222,7 +365,7 @@ async function searchOpenFoodFacts(
           `OpenFoodFacts search failed (HTTP ${response.status})`
         );
       }
-      const data = (await response.json()) as LegacyOffSearchResponse;
+      const data = await parseSearchResponse(response, isLegacySearchResponse);
       return {
         products: data.products || [],
         pagination: {
@@ -259,14 +402,14 @@ async function searchOpenFoodFacts(
       );
       throw new Error(`OpenFoodFacts search failed (HTTP ${response.status})`);
     }
-    const data = (await response.json()) as SearchALiciousResponse;
-    const rankedHits = rankSearchHits(data.hits || [], query, language);
-    const products = rankedHits.map(
-      (hit): OffProduct => ({
-        ...hit,
-        brands: Array.isArray(hit.brands) ? hit.brands.join(', ') : hit.brands,
-      })
-    );
+    const data = await parseSearchResponse(response, isSearchALiciousResponse);
+    const rankedHits = rankSearchHits(data.hits, query, language);
+    const products = await hydrateSearchHits(rankedHits, fields, language, {
+      authenticatedUserId,
+      providerId,
+      sessionCookie,
+      baseUrl,
+    });
     return {
       products,
       pagination: {
