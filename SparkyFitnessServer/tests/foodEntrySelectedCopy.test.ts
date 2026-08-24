@@ -236,4 +236,46 @@ describe('copySelectedFoodEntriesFromUser', () => {
 
     expect(foodRepository.bulkCreateFoodEntries).not.toHaveBeenCalled();
   });
+
+  it('copies a custom source row even when an unrelated custom target row exists', async () => {
+    const customEntry = {
+      ...validSourceEntry,
+      food_id: null,
+      food_name: 'Family recipe',
+    };
+    vi.mocked(familyAccessRepository.checkCopyPermissions).mockResolvedValue(
+      true
+    );
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      { id: TARGET_MEAL, name: 'Lunch', user_id: null },
+    ]);
+    vi.mocked(foodRepository.getFoodEntryById).mockResolvedValue(customEntry);
+    vi.mocked(foodRepository.getFoodEntryByDetails).mockResolvedValue({
+      id: 'unrelated-target-row',
+    });
+    vi.mocked(foodRepository.bulkCreateFoodEntries).mockResolvedValue([
+      { id: 'copied-custom-row' },
+    ]);
+
+    await expect(
+      copySelectedFoodEntriesFromUser(
+        ACTOR,
+        ACTOR,
+        SOURCE,
+        SOURCE_DATE,
+        TARGET_DATE,
+        TARGET_MEAL,
+        [
+          {
+            entryId: ENTRY_ID,
+            quantity: 150,
+            sourceFingerprint: foodEntryCopyFingerprint(customEntry),
+          },
+        ]
+      )
+    ).resolves.toEqual([{ id: 'copied-custom-row' }]);
+
+    expect(foodRepository.getFoodEntryByDetails).not.toHaveBeenCalled();
+    expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledOnce();
+  });
 });

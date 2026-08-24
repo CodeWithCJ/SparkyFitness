@@ -825,6 +825,7 @@ async function copyReviewedFoodEntriesFromUser({
       `SELECT
         fe.id,
         fe.food_id,
+        fe.meal_type_id,
         fe.quantity,
         fe.unit,
         fe.entry_date,
@@ -875,16 +876,19 @@ async function copyReviewedFoodEntriesFromUser({
        WHERE user_id = $1
          AND meal_type_id = $2
          AND entry_date = $3
-         AND food_entry_meal_id IS NULL`,
+         AND food_entry_meal_id IS NULL
+         AND food_id IS NOT NULL`,
       [targetUserId, targetMealTypeId, targetDate]
     )) as {
       rows: Array<{ food_id: string | null; variant_id: string | null }>;
     };
     const existingStandaloneKeys = new Set(
-      existingStandaloneResult.rows.map(
-        ({ food_id, variant_id }) =>
-          `${food_id ?? 'null'}:${variant_id ?? 'null'}`
-      )
+      existingStandaloneResult.rows
+        .filter(({ food_id }) => food_id !== null)
+        .map(
+          ({ food_id, variant_id }) =>
+            `${food_id ?? 'null'}:${variant_id ?? 'null'}`
+        )
     );
 
     for (const entry of sourceEntries) {
@@ -958,7 +962,12 @@ async function copyReviewedFoodEntriesFromUser({
         }
       } else {
         const standaloneKey = `${entry.food_id ?? 'null'}:${entry.variant_id ?? 'null'}`;
-        if (existingStandaloneKeys.has(standaloneKey)) continue;
+        if (
+          entry.food_id !== null &&
+          entry.food_id !== undefined &&
+          existingStandaloneKeys.has(standaloneKey)
+        )
+          continue;
       }
 
       const inserted = await client.query(

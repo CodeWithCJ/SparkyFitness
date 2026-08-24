@@ -8,6 +8,7 @@ vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
 const reviewedRow = {
   id: '33333333-3333-4333-8333-333333333333',
+  meal_type_id: 'source-lunch-id',
   quantity: 150,
   food_entry_meal_id: null,
 };
@@ -76,11 +77,16 @@ describe('copyReviewedFoodEntriesFromUser repository transaction', () => {
   );
 
   it.each([
-    ['unlinked rows', null, null],
-    ['rows with the same food and variant', 'food-1', 'variant-1'],
+    [
+      'unlinked rows despite an unrelated unlinked target row',
+      null,
+      null,
+      [{ food_id: null, variant_id: null }],
+    ],
+    ['rows with the same food and variant', 'food-1', 'variant-1', []],
   ])(
     'copies every reviewed standalone row when the source contains repeated %s',
-    async (_case, foodId, variantId) => {
+    async (_case, foodId, variantId, existingTargetRows) => {
       const secondRow = {
         ...reviewedRow,
         id: '44444444-4444-4444-8444-444444444444',
@@ -103,7 +109,7 @@ describe('copyReviewedFoodEntriesFromUser repository transaction', () => {
       query
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [firstRow, secondRow] })
-        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: existingTargetRows })
         .mockResolvedValueOnce({ rows: [{ id: 'copy-1' }] })
         .mockResolvedValueOnce({ rows: [{ id: 'copy-2' }] })
         .mockResolvedValueOnce({ rows: [] });
@@ -115,6 +121,7 @@ describe('copyReviewedFoodEntriesFromUser repository transaction', () => {
       const insertCalls = query.mock.calls.filter(([sql]) =>
         /^\s*INSERT INTO food_entries/i.test(String(sql))
       );
+      expect(String(query.mock.calls[1][0])).toContain('fe.meal_type_id');
       expect(insertCalls).toHaveLength(2);
       expect(query).toHaveBeenLastCalledWith('COMMIT');
       expect(release).toHaveBeenCalledOnce();

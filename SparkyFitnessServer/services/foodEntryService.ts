@@ -1391,14 +1391,19 @@ async function copySelectedFoodEntriesFromUser(
 
   const entriesToCreate: FoodEntryInput[] = [];
   for (const { selection, entry } of selectedEntries) {
-    const existingEntry = await foodRepository.getFoodEntryByDetails(
-      targetUserId,
-      entry.food_id,
-      targetMealTypeId,
-      targetDate,
-      entry.variant_id,
-      null
-    );
+    // Catalog-linked rows have a stable identity for duplicate detection.
+    // Custom snapshot rows do not: treating every null food_id as the same
+    // food silently drops unrelated entries, so they must remain copyable.
+    const existingEntry = entry.food_id
+      ? await foodRepository.getFoodEntryByDetails(
+          targetUserId,
+          entry.food_id,
+          targetMealTypeId,
+          targetDate,
+          entry.variant_id,
+          null
+        )
+      : null;
     if (existingEntry) continue;
 
     entriesToCreate.push({
