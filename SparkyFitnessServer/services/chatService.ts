@@ -1197,6 +1197,11 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
     keywords:
       /\b(sleep\s+debt|sleep\s+need|chronotype|energy\s+curve|circadian|MCTQ|sleep\s+science|social\s+jetlag)\b/i,
   },
+  {
+    category: 'integrations',
+    keywords:
+      /\b(integration\w*|connected\s+(app|service|device|provider)\w*|external\s+provider\w*|wearable\w*|garmin|withings|fitbit|oura|polar|strava|hevy)\b/i,
+  },
 ];
 
 function extractMessageText(msg: ChatMessage): string {

@@ -29,6 +29,7 @@ export const CHAT_TOOL_CATEGORY_SLUGS = [
   'workout_plans',
   'exercise_stats',
   'sleep_science',
+  'integrations',
 ] as const;
 
 export type ChatToolCategorySlug = (typeof CHAT_TOOL_CATEGORY_SLUGS)[number];
