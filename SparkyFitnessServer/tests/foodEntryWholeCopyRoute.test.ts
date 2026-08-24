@@ -7,14 +7,18 @@ import foodEntryService from '../services/foodEntryService.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 import errorHandler from '../middleware/errorHandler.js';
 
+const { diaryPermissionMiddleware } = vi.hoisted(() => ({
+  diaryPermissionMiddleware: vi.fn(
+    (_req: unknown, _res: unknown, next: () => void) => next()
+  ),
+}));
+
 vi.mock('../services/foodEntryService.js');
 vi.mock('../services/AdaptiveTdeeService.js', () => ({
   clearUserTdeeCache: vi.fn(),
 }));
 vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
-  default: vi.fn(
-    () => (_req: unknown, _res: unknown, next: () => void) => next()
-  ),
+  default: vi.fn(() => diaryPermissionMiddleware),
 }));
 vi.mock('../middleware/authMiddleware.js', () => ({
   authenticate: vi.fn(
@@ -57,16 +61,17 @@ const body = {
 describe('POST /copy-reviewed-from-user', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('does not attach the active-context diary permission middleware', () => {
-    const routeLayer = (
-      foodEntryRoutes as unknown as {
-        stack: Array<{
-          route?: { path: string; stack: unknown[] };
-        }>;
-      }
-    ).stack.find((layer) => layer.route?.path === '/copy-reviewed-from-user');
+  it('bypasses the active-context diary permission middleware', async () => {
+    vi.mocked(
+      foodEntryService.copyReviewedFoodEntriesFromUser
+    ).mockResolvedValue([{ id: 'copy-1' }]);
 
-    expect(routeLayer?.route?.stack).toHaveLength(2);
+    const response = await request(app)
+      .post('/copy-reviewed-from-user')
+      .send(body);
+
+    expect(response.status).toBe(201);
+    expect(diaryPermissionMiddleware).not.toHaveBeenCalled();
   });
 
   it('uses actor A as target, actor, and cache owner when active context C copies source B', async () => {

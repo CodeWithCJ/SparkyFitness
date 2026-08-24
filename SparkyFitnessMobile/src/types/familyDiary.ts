@@ -6,23 +6,8 @@ export interface FamilyDiaryUser {
   accessEndDate: string | null;
 }
 
-export interface CopyReviewedFoodEntriesFromUserPayload {
-  familyUserId: string;
-  sourceDate: string;
-  sourceMealType: string;
-  targetDate: string;
-  targetMealType: string;
-  entries: { entryId: string; sourceFingerprint: string }[];
-}
 
-export interface CopySelectedFoodEntriesFromUserPayload {
-  familyUserId: string;
-  sourceDate: string;
-  targetDate: string;
-  targetMealType: string;
-  entries: {
-    entryId: string;
-    quantity: number;
-    sourceFingerprint: string;
-  }[];
-}
+export type {
+  CopyReviewedFoodEntriesFromUserPayload,
+  CopySelectedFoodEntriesFromUserPayload,
+} from '@workspace/shared';

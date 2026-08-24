@@ -49,6 +49,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const { t, i18n: translationI18n } = useTranslation();
   const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const insets = useSafeAreaInsets();
+  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
   const setSelectedDate = useDiaryDateStore((s) => s.setSelectedDate);
   const goToPreviousDay = useDiaryDateStore((s) => s.goToPreviousDay);
@@ -106,12 +107,14 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         dateLabel: `${formatDateLabel(selectedDate, t, dateLocale)} ▾`,
         t,
         locale: dateLocale,
-        leadingAction: {
-          sfSymbol: 'person.2.fill',
-          onPress: openFamilyDiaries,
-          accessibilityLabel: familyDiariesAccessibilityLabel,
-          identifier: 'family-diaries',
-        },
+        leadingAction: isConnected
+          ? {
+              sfSymbol: 'person.2.fill',
+              onPress: openFamilyDiaries,
+              accessibilityLabel: familyDiariesAccessibilityLabel,
+              identifier: 'family-diaries',
+            }
+          : undefined,
       },
     );
   }, [
@@ -123,6 +126,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     openCalendar,
     selectedDate,
     familyDiariesAccessibilityLabel,
+    isConnected,
     usesNativeTabs,
     t,
     dateLocale,
@@ -172,7 +176,6 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const heightMode = preferences?.default_measurement_unit ?? 'cm';
   const { getImageSource } = useExerciseImageSource();
 
-  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const {
     summary,
     isLoading,

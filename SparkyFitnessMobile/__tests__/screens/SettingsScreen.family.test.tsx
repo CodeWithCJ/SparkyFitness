@@ -8,7 +8,16 @@ import {
   useServerConnection,
 } from '../../src/hooks';
 
-const navigation = { navigate: jest.fn() } as any;
+type ScreenProps = React.ComponentProps<typeof SettingsScreen>;
+
+const navigation = {
+  navigate: jest.fn(),
+} as unknown as ScreenProps['navigation'];
+const route = {
+  key: 'Settings-1',
+  name: 'Settings',
+  params: undefined,
+} as unknown as ScreenProps['route'];
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -76,7 +85,7 @@ describe('SettingsScreen family diary entry', () => {
           insets: { top: 0, bottom: 0, left: 0, right: 0 },
         }}
       >
-        <SettingsScreen navigation={navigation} route={{} as any} />
+        <SettingsScreen navigation={navigation} route={route} />
       </SafeAreaProvider>,
     );
 
@@ -97,7 +106,7 @@ describe('SettingsScreen family diary entry', () => {
           insets: { top: 0, bottom: 0, left: 0, right: 0 },
         }}
       >
-        <SettingsScreen navigation={navigation} route={{} as any} />
+        <SettingsScreen navigation={navigation} route={route} />
       </SafeAreaProvider>,
     );
 

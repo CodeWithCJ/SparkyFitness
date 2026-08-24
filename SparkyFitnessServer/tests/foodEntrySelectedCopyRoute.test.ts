@@ -6,14 +6,18 @@ import foodEntryRoutes from '../routes/foodEntryRoutes.js';
 import foodEntryService from '../services/foodEntryService.js';
 import errorHandler from '../middleware/errorHandler.js';
 
+const { diaryPermissionMiddleware } = vi.hoisted(() => ({
+  diaryPermissionMiddleware: vi.fn(
+    (_req: unknown, _res: unknown, next: () => void) => next()
+  ),
+}));
+
 vi.mock('../services/foodEntryService.js');
 vi.mock('../services/AdaptiveTdeeService.js', () => ({
   clearUserTdeeCache: vi.fn(),
 }));
 vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
-  default: vi.fn(
-    () => (_req: unknown, _res: unknown, next: () => void) => next()
-  ),
+  default: vi.fn(() => diaryPermissionMiddleware),
 }));
 vi.mock('../middleware/authMiddleware.js', () => ({
   authenticate: vi.fn(
@@ -56,16 +60,17 @@ const body = {
 describe('POST /copy-selected-from-user', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('does not attach the active-context diary permission middleware', () => {
-    const routeLayer = (
-      foodEntryRoutes as unknown as {
-        stack: Array<{
-          route?: { path: string; stack: unknown[] };
-        }>;
-      }
-    ).stack.find((layer) => layer.route?.path === '/copy-selected-from-user');
+  it('bypasses the active-context diary permission middleware', async () => {
+    vi.mocked(
+      foodEntryService.copySelectedFoodEntriesFromUser
+    ).mockResolvedValue([{ id: 'copy-1' }]);
 
-    expect(routeLayer?.route?.stack).toHaveLength(2);
+    const response = await request(app)
+      .post('/copy-selected-from-user')
+      .send(body);
+
+    expect(response.status).toBe(201);
+    expect(diaryPermissionMiddleware).not.toHaveBeenCalled();
   });
 
   it('rejects unknown fields before calling the selected-copy service', async () => {
@@ -104,9 +109,12 @@ describe('POST /copy-selected-from-user', () => {
   });
 
   it('preserves a service conflict response through the error handler', async () => {
-    const conflict = Object.assign(new Error('Copy conflicts with target'), {
-      statusCode: 409,
-    });
+    const conflict = Object.assign(
+      new Error(
+        'One or more source entries changed. Refresh the family diary.'
+      ),
+      { statusCode: 409 }
+    );
     vi.mocked(
       foodEntryService.copySelectedFoodEntriesFromUser
     ).mockRejectedValue(conflict);
@@ -117,7 +125,7 @@ describe('POST /copy-selected-from-user', () => {
 
     expect(response.status).toBe(409);
     expect(response.body).toMatchObject({
-      error: 'Copy conflicts with target',
+      error: 'One or more source entries changed. Refresh the family diary.',
     });
   });
 });

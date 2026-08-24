@@ -7,8 +7,8 @@ import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 import {
   CopyReviewedFoodEntriesFromUserBodySchema,
   CopySelectedFoodEntriesFromUserBodySchema,
-} from '../schemas/foodEntryCopySchemas.js';
-import { isEntryTimeString } from '@workspace/shared';
+  isEntryTimeString,
+} from '@workspace/shared';
 import {
   uploadImages,
   applyImageOrder,
@@ -21,8 +21,22 @@ import {
 const router = express.Router();
 
 router.use(express.json());
-// Apply diary permission check to all food entry routes
-router.use(checkPermissionMiddleware('diary'));
+const actorScopedCopyPaths = new Set([
+  '/copy-reviewed-from-user',
+  '/copy-selected-from-user',
+]);
+const diaryPermissionMiddleware = checkPermissionMiddleware('diary');
+
+// Actor-scoped copy routes perform their own source-copy permission check and
+// always write to the authenticated actor, independent of an active family
+// context. All remaining routes retain the context-scoped diary middleware.
+router.use((req, res, next) => {
+  if (req.method === 'POST' && actorScopedCopyPaths.has(req.path)) {
+    next();
+    return;
+  }
+  diaryPermissionMiddleware(req, res, next);
+});
 
 /**
  * @swagger
@@ -516,7 +530,7 @@ router.post(
  *       403:
  *         description: Forbidden.
  *       409:
- *         description: A copied entry conflicts with the target diary.
+ *         description: A selected source entry changed after it was reviewed.
  */
 router.post(
   '/copy-selected-from-user',

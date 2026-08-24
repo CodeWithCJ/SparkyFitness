@@ -16,15 +16,12 @@ import goalRepository from '../models/goalRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import reportRepository from '../models/reportRepository.js';
 import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
-import type {
-  CopyReviewedFoodEntriesFromUserBody,
-  CopySelectedFoodEntriesFromUserBody,
-} from '../schemas/foodEntryCopySchemas.js';
-
 import Papa from 'papaparse';
 import {
+  type CopyReviewedFoodEntriesFromUserBody,
+  type CopySelectedFoodEntriesFromUserBody,
   foodEntryCopyFingerprint,
-  type FoodEntryCopyFingerprintInput,
+  hasExactReviewedFoodEntrySnapshot,
   isDayString,
 } from '@workspace/shared';
 import customNutrientService from './customNutrientService.js';
@@ -1449,27 +1446,6 @@ async function copySelectedFoodEntriesFromUser(
     : foodRepository.bulkCreateFoodEntries(entriesToCreate, targetUserId);
 }
 
-function hasExactReviewedEntries(
-  sourceEntries: Array<FoodEntryCopyFingerprintInput & { id?: string }>,
-  reviewedEntries: CopyReviewedFoodEntriesFromUserBody['entries']
-) {
-  if (sourceEntries.length !== reviewedEntries.length) return false;
-
-  const reviewedFingerprintById = new Map(
-    reviewedEntries.map(({ entryId, sourceFingerprint }) => [
-      entryId,
-      sourceFingerprint,
-    ])
-  );
-
-  return sourceEntries.every((entry) => {
-    if (!entry.id) return false;
-    return (
-      reviewedFingerprintById.get(entry.id) === foodEntryCopyFingerprint(entry)
-    );
-  });
-}
-
 async function copyReviewedFoodEntriesFromUser(
   targetUserId: string,
   actingUserId: string,
@@ -1515,7 +1491,9 @@ async function copyReviewedFoodEntriesFromUser(
       sourceDate,
       sourceMealTypeId
     );
-  if (!hasExactReviewedEntries(currentSourceEntries, reviewedEntries)) {
+  if (
+    !hasExactReviewedFoodEntrySnapshot(currentSourceEntries, reviewedEntries)
+  ) {
     throw copyStatusError(
       'One or more source entries changed. Refresh the family diary.',
       409

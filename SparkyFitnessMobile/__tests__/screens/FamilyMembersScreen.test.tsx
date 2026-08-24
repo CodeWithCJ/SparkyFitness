@@ -3,12 +3,21 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import FamilyMembersScreen from '../../src/screens/FamilyMembersScreen';
 import { useFamilyUsers } from '../../src/hooks';
+import type { RootStackScreenProps } from '../../src/types/navigation';
+
+type ScreenProps = RootStackScreenProps<'FamilyMembers'>;
 
 const navigation = {
   goBack: jest.fn(),
   navigate: jest.fn(),
   setOptions: jest.fn(),
-} as any;
+} as unknown as ScreenProps['navigation'];
+
+const route = {
+  key: 'FamilyMembers-1',
+  name: 'FamilyMembers',
+  params: undefined,
+} as unknown as ScreenProps['route'];
 
 jest.mock('../../src/hooks', () => ({
   useFamilyUsers: jest.fn(),
@@ -56,7 +65,7 @@ const renderScreen = (bottomInset = 0) =>
         insets: { top: 0, bottom: bottomInset, left: 0, right: 0 },
       }}
     >
-      <FamilyMembersScreen navigation={navigation} route={{} as any} />
+      <FamilyMembersScreen navigation={navigation} route={route} />
     </SafeAreaProvider>,
   );
 

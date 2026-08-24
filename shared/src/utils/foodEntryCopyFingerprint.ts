@@ -33,6 +33,11 @@ export interface FoodEntryCopyFingerprintInput {
   custom_nutrients?: unknown;
 }
 
+export interface ReviewedFoodEntryFingerprint {
+  entryId: string;
+  sourceFingerprint: string;
+}
+
 const numericFields = [
   "quantity",
   "serving_size",
@@ -74,7 +79,7 @@ function stableValue(value: unknown): unknown {
   if (value && typeof value === "object") {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>)
-        .sort(([left], [right]) => left.localeCompare(right))
+        .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
         .map(([key, child]) => [key, stableValue(child)]),
     );
   }
@@ -97,4 +102,37 @@ export function foodEntryCopyFingerprint(
   }
   snapshot.custom_nutrients = stableValue(entry.custom_nutrients);
   return JSON.stringify(snapshot);
+}
+
+/** Checks that reviewed IDs and fingerprints exactly match the current rows. */
+export function hasExactReviewedFoodEntrySnapshot(
+  sourceEntries: ReadonlyArray<
+    FoodEntryCopyFingerprintInput & { id?: unknown }
+  >,
+  reviewedEntries: readonly ReviewedFoodEntryFingerprint[],
+): boolean {
+  if (sourceEntries.length !== reviewedEntries.length) return false;
+
+  const reviewedFingerprintById = new Map(
+    reviewedEntries.map(({ entryId, sourceFingerprint }) => [
+      entryId,
+      sourceFingerprint,
+    ]),
+  );
+  if (reviewedFingerprintById.size !== reviewedEntries.length) return false;
+
+  const sourceIds = new Set<string>();
+  return sourceEntries.every((entry) => {
+    if (
+      typeof entry.id !== "string" ||
+      entry.id.length === 0 ||
+      sourceIds.has(entry.id)
+    ) {
+      return false;
+    }
+    sourceIds.add(entry.id);
+    return (
+      reviewedFingerprintById.get(entry.id) === foodEntryCopyFingerprint(entry)
+    );
+  });
 }

@@ -8,7 +8,7 @@ import {
 import type {
   CopyReviewedFoodEntriesFromUserPayload,
   CopySelectedFoodEntriesFromUserPayload,
-} from '../types/familyDiary';
+} from '@workspace/shared';
 import { ApiError } from '../services/api/errors';
 import {
   dailySummaryQueryKey,

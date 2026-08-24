@@ -5,12 +5,10 @@ import format from 'pg-format';
 import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
 import { toImageArray } from '../utils/imageLocalizer.js';
 import type { FoodEntryInput, FoodEntrySnapshot } from '../types/nutrition.js';
-import { foodEntryCopyFingerprint } from '@workspace/shared';
-
-interface ReviewedFoodEntry {
-  entryId: string;
-  sourceFingerprint: string;
-}
+import {
+  hasExactReviewedFoodEntrySnapshot,
+  type ReviewedFoodEntryFingerprint,
+} from '@workspace/shared';
 
 interface ReviewedFoodEntryCopyInput {
   targetUserId: string;
@@ -20,7 +18,7 @@ interface ReviewedFoodEntryCopyInput {
   sourceMealTypeId: string;
   targetDate: string;
   targetMealTypeId: string;
-  reviewedEntries: ReviewedFoodEntry[];
+  reviewedEntries: ReviewedFoodEntryFingerprint[];
 }
 
 interface ReviewedSourceEntry extends FoodEntryInput {
@@ -46,23 +44,6 @@ function reviewedCopyConflict() {
   );
 }
 
-function exactReviewedSnapshot(
-  sourceEntries: ReviewedSourceEntry[],
-  reviewedEntries: ReviewedFoodEntry[]
-) {
-  if (sourceEntries.length !== reviewedEntries.length) return false;
-  const fingerprintsById = new Map(
-    reviewedEntries.map(({ entryId, sourceFingerprint }) => [
-      entryId,
-      sourceFingerprint,
-    ])
-  );
-  if (fingerprintsById.size !== reviewedEntries.length) return false;
-
-  return sourceEntries.every((entry) => {
-    return fingerprintsById.get(entry.id) === foodEntryCopyFingerprint(entry);
-  });
-}
 /**
  * @swagger
  * components:
@@ -864,7 +845,7 @@ async function copyReviewedFoodEntriesFromUser({
       [sourceUserId, sourceDate, sourceMealTypeId]
     )) as { rows: ReviewedSourceEntry[] };
     const sourceEntries = sourceResult.rows;
-    if (!exactReviewedSnapshot(sourceEntries, reviewedEntries)) {
+    if (!hasExactReviewedFoodEntrySnapshot(sourceEntries, reviewedEntries)) {
       throw reviewedCopyConflict();
     }
 

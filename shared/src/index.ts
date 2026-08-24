@@ -10,6 +10,7 @@ export * from "./schemas/api/ExerciseEntries.api.zod.ts";
 export * from "./schemas/api/ExerciseStats.api.zod.ts";
 export * from "./schemas/api/Exercises.api.zod.ts";
 export * from "./schemas/api/FoodEntries.api.zod.ts";
+export * from "./schemas/api/FoodEntryCopy.api.zod.ts";
 export * from "./schemas/api/FoodPhotoEstimate.api.zod.ts";
 export * from "./schemas/api/Pagination.api.zod.ts";
 export * from "./schemas/api/SleepScience.api.zod.ts";

@@ -1,6 +1,6 @@
 import { apiFetch } from './apiClient';
 import type { FoodEntry } from '../../types/foodEntries';
-import type { CopyReviewedFoodEntriesFromUserPayload, CopySelectedFoodEntriesFromUserPayload } from '../../types/familyDiary';
+import type { CopyReviewedFoodEntriesFromUserPayload, CopySelectedFoodEntriesFromUserPayload } from '@workspace/shared';
 
 export interface CreateFoodEntryPayload {
   meal_type_id: string;

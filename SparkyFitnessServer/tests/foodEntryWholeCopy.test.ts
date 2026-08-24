@@ -32,6 +32,30 @@ const reviewedEntries = [
 describe('copyReviewedFoodEntriesFromUser', () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it('rejects the reviewed path when the actor lacks copy permission', async () => {
+    vi.mocked(familyAccessRepository.checkCopyPermissions).mockResolvedValue(
+      false
+    );
+
+    await expect(
+      copyReviewedFoodEntriesFromUser(
+        ACTOR_A,
+        ACTOR_A,
+        SOURCE_B,
+        SOURCE_DATE,
+        'Lunch',
+        TARGET_DATE,
+        TARGET_MEAL,
+        reviewedEntries
+      )
+    ).rejects.toMatchObject({ statusCode: 403 });
+
+    expect(mealTypeRepository.getAllMealTypes).not.toHaveBeenCalled();
+    expect(
+      foodRepository.copyReviewedFoodEntriesFromUser
+    ).not.toHaveBeenCalled();
+  });
+
   it.each([
     [
       'added',

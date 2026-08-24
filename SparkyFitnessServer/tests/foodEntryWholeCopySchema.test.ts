@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CopyReviewedFoodEntriesFromUserBodySchema } from '../schemas/foodEntryCopySchemas.js';
+import { CopyReviewedFoodEntriesFromUserBodySchema } from '@workspace/shared';
 
 const valid = {
   familyUserId: '11111111-1111-4111-8111-111111111111',

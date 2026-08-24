@@ -3,6 +3,7 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 import { RefreshControl } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import DiaryScreen from '../../src/screens/DiaryScreen';
+import type DateNavigatorComponent from '../../src/components/DateNavigator';
 import {
   useDailySummary,
   useCustomNutrients,
@@ -16,6 +17,9 @@ import { getTodayDate } from '../../src/utils/dateUtils';
 import { useNativeIOSTabsActive } from '../../src/services/nativeTabBarPreference';
 import { setNativeHeaderDatePickerOptions } from '../../src/utils/nativeHeaderDatePicker';
 
+type DiaryScreenProps = React.ComponentProps<typeof DiaryScreen>;
+type DateNavigatorProps = React.ComponentProps<typeof DateNavigatorComponent>;
+
 const mockNavigation = {
   setOptions: jest.fn(),
   goBack: jest.fn(),
@@ -23,7 +27,13 @@ const mockNavigation = {
   setParams: jest.fn(),
   addListener: jest.fn(() => jest.fn()),
   isFocused: jest.fn(() => true),
-} as any;
+} as unknown as DiaryScreenProps['navigation'];
+
+const diaryRoute = {
+  key: 'Diary-1',
+  name: 'Diary',
+  params: undefined,
+} as unknown as DiaryScreenProps['route'];
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
@@ -112,7 +122,7 @@ jest.mock('../../src/components/DateNavigator', () => {
   const { Pressable, Text, View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ title, action }: any) => (
+    default: ({ title, action }: DateNavigatorProps) => (
       <View testID="date-navigator">
         <Text>{title}</Text>
         {action ? (
@@ -180,7 +190,7 @@ jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ name }: any) => <View testID={`icon-${name}`} />,
+    default: ({ name }: { name: string }) => <View testID={`icon-${name}`} />,
   };
 });
 
@@ -217,7 +227,7 @@ const configureConnection = (isConnected: boolean, isLoading = false) => {
     isLoading,
     isError: false,
     refetch: jest.fn(),
-  } as any);
+  } as ReturnType<typeof useServerConnection>);
 };
 
 const configureOnlineData = (overrides: {
@@ -236,25 +246,25 @@ const configureOnlineData = (overrides: {
     isLoading: false,
     isError: false,
     refetch: refetchSummary,
-  } as any);
+  } as ReturnType<typeof useDailySummary>);
   mockUseMeasurements.mockReturnValue({
     measurements: null,
     isLoading: false,
     isError: false,
     refetch: refetchMeasurements,
-  } as any);
+  } as ReturnType<typeof useMeasurements>);
   mockUseCustomMeasurementsByDate.mockReturnValue({
     data: [],
     refetch: refetchCustomMeasurements,
-  } as any);
+  } as ReturnType<typeof useCustomMeasurementsByDate>);
   mockUseCustomNutrients.mockReturnValue({
     customNutrients: [],
     refetch: refetchCustomNutrients,
-  } as any);
+  } as ReturnType<typeof useCustomNutrients>);
   mockUseNutrientDisplayPreferences.mockReturnValue({
     preferences: [],
     refetch: refetchNutrientPrefs,
-  } as any);
+  } as ReturnType<typeof useNutrientDisplayPreferences>);
 };
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
@@ -263,7 +273,7 @@ const frame = { x: 0, y: 0, width: 390, height: 844 };
 const renderScreen = () =>
   render(
     <SafeAreaProvider initialMetrics={{ frame, insets }}>
-      <DiaryScreen navigation={mockNavigation} route={{} as any} />
+      <DiaryScreen navigation={mockNavigation} route={diaryRoute} />
     </SafeAreaProvider>,
   );
 
@@ -393,7 +403,7 @@ describe('DiaryScreen custom queries', () => {
       isLoading: false,
       isError: false,
       refetch: refetchReject,
-    } as any);
+    } as ReturnType<typeof useCustomMeasurementsByDate>);
     const { UNSAFE_getByType, UNSAFE_queryByType } = renderScreen();
 
     const refreshControl = UNSAFE_queryByType(RefreshControl);
@@ -435,6 +445,18 @@ describe('DiaryScreen custom queries', () => {
     options?.leadingAction?.onPress();
 
     expect(mockNavigation.navigate).toHaveBeenCalledWith('FamilyMembers');
+  });
+
+  test('hides the native family diaries action while disconnected', () => {
+    configureConnection(false);
+    mockUseNativeIOSTabsActive.mockReturnValue(true);
+
+    renderScreen();
+
+    const options = mockSetNativeHeaderDatePickerOptions.mock.calls[
+      mockSetNativeHeaderDatePickerOptions.mock.calls.length - 1
+    ]?.[1];
+    expect(options?.leadingAction).toBeUndefined();
   });
 
 });
