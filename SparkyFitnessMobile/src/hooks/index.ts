@@ -3,6 +3,8 @@ export {
   serverConnectionQueryKey,
   serverConfigsQueryKey,
   dailySummaryQueryKey,
+  familyUsersQueryKey,
+  familyDailySummaryQueryKey,
   measurementsQueryKey,
   preferencesQueryKey,
   waterContainersQueryKey,
@@ -61,6 +63,9 @@ export { useServerConnection } from './useServerConnection';
 export { useServerConfigs } from './useServerConfigs';
 export { useSyncHealthData } from './useSyncHealthData';
 export { useDailySummary } from './useDailySummary';
+export { useFamilyUsers, useFamilyDailySummary } from './useFamilyDiary';
+export { useCopyFamilyFoodEntries } from './useCopyFamilyFoodEntries';
+export type { FamilyCopyRequest } from './useCopyFamilyFoodEntries';
 export { useMeasurements } from './useMeasurements';
 export { useUpsertCheckIn } from './useUpsertCheckIn';
 export { usePreferences } from './usePreferences';

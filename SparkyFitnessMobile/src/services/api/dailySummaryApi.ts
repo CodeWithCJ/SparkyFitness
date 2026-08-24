@@ -3,7 +3,7 @@ import type { DailyGoals } from '../../types/goals';
 import type { FoodEntry } from '../../types/foodEntries';
 import type { ExerciseSessionResponse, CalorieBalance, SupplementTotals } from '@workspace/shared';
 
-interface DailySummaryApiResponse {
+export interface DailySummaryApiResponse {
   goals: DailyGoals;
   foodEntries: FoodEntry[];
   exerciseSessions: ExerciseSessionResponse[];
@@ -16,9 +16,13 @@ interface DailySummaryApiResponse {
   adjustedGoals?: { calories: number; protein: number; carbs: number; fat: number } | null;
 }
 
-export const fetchDailySummary = (date: string): Promise<DailySummaryApiResponse> =>
-  apiFetch<DailySummaryApiResponse>({
-    endpoint: `/api/daily-summary?date=${encodeURIComponent(date)}`,
+export const fetchDailySummary = (date: string, userId?: string): Promise<DailySummaryApiResponse> => {
+  const params = new URLSearchParams({ date });
+  if (userId) params.set('userId', userId);
+
+  return apiFetch<DailySummaryApiResponse>({
+    endpoint: `/api/daily-summary?${params.toString()}`,
     serviceName: 'Daily Summary API',
-    operation: 'fetch daily summary',
+    operation: userId ? 'fetch family daily summary' : 'fetch daily summary',
   });
+};
