@@ -249,38 +249,47 @@ jobs:
             let unresolvedThreads = [];
             if (!isDraft && !isAutomation) {
               try {
-                const query = `
-                  query($owner: String!, $repo: String!, $number: Int!) {
-                    repository(owner: $owner, name: $repo) {
-                      pullRequest(number: $number) {
-                        reviewThreads(first: 100) {
-                          nodes {
-                            id
-                            isResolved
-                            isOutdated
-                            comments(first: 1) {
-                              nodes {
-                                author {
-                                  login
-                                }
-                                path
-                                line
-                                url
-                              }
+                let hasNextPage = true;
+                let cursor = null;
+
+                while (hasNextPage) {
+                  const query = `
+                    query($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
+                      repository(owner: $owner, name: $repo) {
+                        pullRequest(number: $number) {
+                          reviewThreads(first: 100, after: $cursor) {
+                            pageInfo {
+                              hasNextPage
+                              endCursor
+                            }
+                            nodes {
+                              id
+                              isResolved
+                              isOutdated
                             }
                           }
                         }
                       }
                     }
+                  `;
+                  const result = await github.graphql(query, {
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    number: pr.number,
+                    cursor,
+                  });
+
+                  const threadsData = result?.repository?.pullRequest?.reviewThreads;
+                  const nodes = threadsData?.nodes || [];
+                  for (const node of nodes) {
+                    if (!node.isResolved) {
+                      unresolvedThreads.push(node);
+                    }
                   }
-                `;
-                const result = await github.graphql(query, {
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  number: pr.number,
-                });
-                const nodes = result?.repository?.pullRequest?.reviewThreads?.nodes || [];
-                unresolvedThreads = nodes.filter(t => !t.isResolved);
+
+                  hasNextPage = Boolean(threadsData?.pageInfo?.hasNextPage);
+                  cursor = threadsData?.pageInfo?.endCursor;
+                }
               } catch (err) {
                 core.warning(`Could not fetch review threads: ${err.message}`);
               }
