@@ -341,6 +341,40 @@ describe('LogService', () => {
     });
   });
 
+
+  describe('flush cost (#2191)', () => {
+    /**
+     * A burst of sync errors used to flush every 20 entries, and every flush
+     * re-read and re-parsed the whole ~240 KB log store on the JS thread. The
+     * store is now mirrored in memory, so storage is read at most once.
+     */
+    test('a long burst of logs reads the store at most once', async () => {
+      await setCaptureLevel('all');
+      const getItem = AsyncStorage.getItem as unknown as jest.Mock;
+      getItem.mockClear();
+
+      for (let i = 0; i < 200; i++) {
+        await addLog(`burst ${i}`, 'ERROR');
+      }
+      await _flushBuffer();
+
+      const logKeyReads = getItem.mock.calls.filter(([key]) => key === 'app_logs');
+      expect(logKeyReads.length).toBeLessThanOrEqual(1);
+    });
+
+    test('the burst is still persisted and readable, newest first', async () => {
+      await setCaptureLevel('all');
+
+      for (let i = 0; i < 60; i++) {
+        await addLog(`burst ${i}`, 'ERROR');
+      }
+      await _flushBuffer();
+
+      const logs = await getLogs(0, 3);
+      expect(logs.map(l => l.message)).toEqual(['burst 59', 'burst 58', 'burst 57']);
+    });
+  });
+
   describe('setCaptureLevel / getCaptureLevel', () => {
     test('persists capture level setting', async () => {
       await setCaptureLevel('warnings_errors');
@@ -874,5 +908,37 @@ describe('LogService', () => {
       expect(logs).toHaveLength(1);
       expect(logs[0].message).toBe('Entry during flush');
     });
+  });
+});
+
+describe('LogService flush failure (PR #2218 review)', () => {
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    _resetForTesting();
+    await AsyncStorage.clear();
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('a failed write does not leave the mirror ahead of storage', async () => {
+    await setCaptureLevel('all');
+    const setItem = AsyncStorage.setItem as unknown as jest.Mock;
+
+    await addLog('first', 'ERROR');
+    setItem.mockRejectedValueOnce(new Error('disk full'));
+    await _flushBuffer();
+
+    // The failed flush requeues its entries. If the mirror had already been
+    // updated, the retry would merge them into a copy that already held them
+    // and persist duplicates.
+    setItem.mockClear();
+    await _flushBuffer();
+
+    const logs = await getLogs(0, 50);
+    expect(logs.filter(l => l.message === 'first')).toHaveLength(1);
   });
 });

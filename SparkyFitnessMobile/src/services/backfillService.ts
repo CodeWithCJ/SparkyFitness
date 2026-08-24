@@ -8,6 +8,7 @@ import {
 import { addLog } from './LogService';
 import { collectHealthData, type MetricSyncOutcome } from './shared/healthSyncEngine';
 import { createTelemetryRunContext } from './shared/telemetryBudget';
+import { markEnrichedSessions } from './shared/enrichedSessionCache';
 import { isQuotaExceededError } from './shared/quotaError';
 import {
   loadHealthPreference,
@@ -309,6 +310,11 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
 
       emitProgress('importing', cp, window);
 
+      // One context per window, because each window uploads on its own: a
+      // window whose upload fails must leave its own staging undrained so the
+      // retry re-collects, without affecting any other window.
+      const telemetry = createTelemetryRunContext({ interactive: false });
+
       const collectWindow = async (): Promise<MetricSyncOutcome[]> => {
         appBecameInactive = false;
         resetDatabaseInaccessibleCount();
@@ -323,7 +329,7 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
             // apps would otherwise fire one Android route-consent dialog per
             // workout. Routes that need consent are skipped, not lost — a
             // normal foreground sync can still collect any inside its window.
-            telemetry: createTelemetryRunContext({ interactive: false }),
+            telemetry,
           },
         );
       };
@@ -371,6 +377,11 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
         let uploadSummary: HealthDataSyncSummary | undefined;
         try {
           uploadSummary = await syncHealthData(payload);
+          // Only a fully accepted window commits the telemetry reuse cache;
+          // see the invariant on markEnrichedSessions.
+          if ((uploadSummary?.recordErrors?.length ?? 0) === 0) {
+            await markEnrichedSessions(telemetry.drainCollected());
+          }
         } catch (error) {
           return { outcome: 'upload-failed', error: getErrorMessage(error), recordsUploaded };
         }

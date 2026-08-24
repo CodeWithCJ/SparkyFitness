@@ -113,6 +113,21 @@ export const saveServerConfig = async (config: ServerConfig): Promise<void> => {
 };
 
 /**
+ * The active config's id alone, without hydrating any config.
+ *
+ * getActiveServerConfig has to read three SecureStore entries per saved server
+ * (and can trigger the legacy plaintext-key migration write), which is far too
+ * much for callers that only need a cache-partitioning key. Reads one
+ * AsyncStorage value and nothing else.
+ */
+export const getActiveServerConfigId = async (): Promise<string | null> => {
+  if (activeServerConfigCache !== undefined) {
+    return activeServerConfigCache?.id ?? null;
+  }
+  return AsyncStorage.getItem(ACTIVE_SERVER_CONFIG_ID_KEY);
+};
+
+/**
  * Retrieves the currently active server configuration.
  */
 export const getActiveServerConfig = async (): Promise<ServerConfig | null> => {

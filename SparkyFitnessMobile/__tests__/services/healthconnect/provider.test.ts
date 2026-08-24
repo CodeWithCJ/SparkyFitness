@@ -9,6 +9,7 @@ import {
   aggregateRecord,
   readRecords,
 } from 'react-native-health-connect';
+import { createTelemetryRunContext } from '../../../src/services/shared/telemetryBudget';
 
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -81,7 +82,7 @@ describe('healthconnect provider', () => {
   describe('postProcessRaw', () => {
     test('passes non-exercise records through untouched', async () => {
       const records = [{ value: 75.5 }];
-      await expect(postProcessRaw({ recordType: 'Weight' }, records)).resolves.toBe(records);
+      await expect(postProcessRaw({ recordType: 'Weight' }, records, createTelemetryRunContext())).resolves.toBe(records);
     });
 
     test('enriches exercise sessions with native calories and distance aggregates', async () => {
@@ -102,7 +103,7 @@ describe('healthconnect provider', () => {
         }
       });
 
-      const result = await postProcessRaw({ recordType: 'ExerciseSession' }, records);
+      const result = await postProcessRaw({ recordType: 'ExerciseSession' }, records, createTelemetryRunContext());
 
       // Active/Total ratio 400/450 ≥ 0.5 → session calories resolve to the Active value.
       expect(result[0]).toMatchObject({

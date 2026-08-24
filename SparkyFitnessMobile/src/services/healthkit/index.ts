@@ -32,9 +32,39 @@ import {
   createTelemetryRunContext,
   type TelemetryRunContext,
 } from '../shared/telemetryBudget';
+import {
+  hasEnrichedSession,
+  sessionTelemetryKey,
+} from '../shared/enrichedSessionCache';
+import { createConcurrencyLimiter, runTasksInBatches } from '../../utils/concurrency';
+import { getErrorMessage } from '../../utils/errors';
 
 // Re-export for backward compatibility with callers importing from this module
 export { getSyncStartDate };
+
+/**
+ * Two limits, because enrichment runs two very different costs per workout.
+ * The statistics queries return a scalar each and run at the wider limit;
+ * telemetry (route plus per-workout sample series) returns large arrays that
+ * are parsed on the JS thread and stays tightly capped. See the matching
+ * comment in healthconnect/index.ts.
+ */
+const AGGREGATE_CONCURRENCY = 6;
+const TELEMETRY_CONCURRENCY = 2;
+
+/** Shared across overlapping runs, so the cap is a real ceiling. */
+const limitTelemetry = createConcurrencyLimiter(TELEMETRY_CONCURRENCY);
+
+/**
+ * Telemetry-collection cache key for a HealthKit workout. endDate moves if the
+ * workout is still being written, so a session in flight is re-collected
+ * rather than frozen at its first reading.
+ */
+const workoutCacheKey = (workout: unknown): string | null => {
+  const w = workout as { uuid?: string; endDate?: string | Date };
+  const end = w.endDate instanceof Date ? w.endDate.toISOString() : w.endDate;
+  return sessionTelemetryKey(w.uuid, end);
+};
 
 // Track if HealthKit is available on this device
 let isHealthKitAvailable = false;
@@ -742,7 +772,7 @@ type RecordHandler = (
   identifier: string,
   startDate: Date,
   endDate: Date,
-  telemetry?: TelemetryRunContext
+  telemetry: TelemetryRunContext
 ) => Promise<unknown[]>;
 
 // Filter helpers for date range checking. Every handler pushes the window into the
@@ -854,15 +884,28 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate, tel
   // slots in Promise completion order — whichever workout's reads resolve
   // first — so a capped background run could spend its budget on old workouts
   // while the newest go unenriched.
-  const ctx = telemetry ?? createTelemetryRunContext();
+  const ctx = telemetry;
   const telemetryAllowed = new Set<unknown>();
+  const startedAtMs = Date.now();
+  let skippedAlreadyCollected = 0;
   for (const w of filteredWorkouts) {
+    // Already-collected workouts neither consume a slot nor get re-read, so a
+    // bounded budget works through the backlog across syncs instead of
+    // re-picking the same newest few every run (#2191).
+    if (await hasEnrichedSession(workoutCacheKey(w))) {
+      skippedAlreadyCollected++;
+      continue;
+    }
     if (!ctx.claim()) break;
     telemetryAllowed.add(w);
   }
 
-  // Fetch statistics (calories, distance) for each workout
-  const workoutsWithStats = await Promise.all(filteredWorkouts.map(async (w) => {
+  // Fetch statistics (calories, distance) for each workout. Bounded fan-out:
+  // each workout issues several statistics queries plus, when telemetry is
+  // allowed, a route read and per-workout sample queries, and every result is
+  // deserialized on the JS thread — an unbounded Promise.all over a wide
+  // window converts that into one UI-starving burst (#2191).
+  const settled = await runTasksInBatches(filteredWorkouts, AGGREGATE_CONCURRENCY, async (w) => {
     const workoutAny = w as unknown as {
       totalEnergyBurned?: number | { quantity?: number };
       totalDistance?: number | { quantity?: number };
@@ -961,20 +1004,53 @@ const handleWorkout: RecordHandler = async (_identifier, startDate, endDate, tel
     // proxy: the per-workout sample predicate takes the proxy object itself,
     // and the proxy cannot be carried out on the returned record.
     if (telemetryAllowed.has(w)) {
-      const bundle = await collectWorkoutTelemetry(
+      const bundle = await limitTelemetry(() => collectWorkoutTelemetry(
         w as unknown as WorkoutProxyLike,
         (w as unknown as { events?: readonly { type: number; startDate: Date; endDate: Date }[] }).events,
-      );
+      ));
       if (bundle.gps_points) record.gps_points = bundle.gps_points;
       if (bundle.hr_samples) record.hr_samples = bundle.hr_samples;
       if (bundle.laps) record.laps = bundle.laps;
       Object.assign(telemetry, bundle.telemetry);
+      // Recorded even when the workout had nothing beyond its summary: the
+      // reads that established that are exactly what must not repeat. A bundle
+      // that came back `incomplete` is a failed read, not an empty one, and is
+      // left uncached so the next sync retries it.
+      if (!bundle.incomplete) ctx.stageCollected(workoutCacheKey(w));
     }
 
     if (Object.keys(telemetry).length > 0) record.telemetry = telemetry;
 
     return record;
-  }));
+  });
+
+  // Batching must not change failure semantics: Promise.all rejected the whole
+  // read before, which surfaced as a metric error and held the sync cursor so
+  // the window is retried. Dropping the failed workout instead would advance
+  // the cursor past one we never actually read.
+  const failure = settled.find(result => result.status === 'rejected');
+  if (failure && failure.status === 'rejected') {
+    addLog(
+      `[HealthKitService] Workout enrichment failed: ${getErrorMessage(failure.reason)}`,
+      'ERROR',
+    );
+    throw failure.reason;
+  }
+
+  const workoutsWithStats = settled.flatMap(result =>
+    result.status === 'fulfilled' ? [result.value] : [],
+  );
+
+  // One summary line per run — the field-verifiable signal for #2191. See the
+  // matching log in healthconnect/index.ts.
+  const overBudget =
+    filteredWorkouts.length - skippedAlreadyCollected - telemetryAllowed.size;
+  addLog(
+    `[HealthKitService] Enriched ${filteredWorkouts.length} workout(s) in ${Date.now() - startedAtMs}ms ` +
+      `(telemetry: ${telemetryAllowed.size}, already collected: ${skippedAlreadyCollected}, ` +
+      `over budget: ${Math.max(overBudget, 0)})`,
+    'INFO',
+  );
 
   return workoutsWithStats;
 };
@@ -1284,7 +1360,7 @@ export const readHealthRecordsDetailed = async (
   recordType: string,
   startDate: Date,
   endDate: Date,
-  telemetry?: TelemetryRunContext
+  telemetry: TelemetryRunContext
 ): Promise<HealthKitReadResult> => {
   if (!isHealthKitAvailable) {
     return { records: [] };
@@ -1304,12 +1380,25 @@ export const readHealthRecordsDetailed = async (
   }
 };
 
+/**
+ * Read-only convenience wrapper for display and diagnostics paths.
+ *
+ * Pinned to a zero budget and non-interactive: these callers only render values,
+ * so they must never spend per-workout telemetry reads or raise a route-consent
+ * dialog. The sync engine uses readHealthRecordsDetailed directly and supplies
+ * its own run context.
+ */
 export const readHealthRecords = (
   recordType: string,
   startDate: Date,
   endDate: Date
 ): Promise<unknown[]> =>
-  readHealthRecordsDetailed(recordType, startDate, endDate).then(result => result.records);
+  readHealthRecordsDetailed(
+    recordType,
+    startDate,
+    endDate,
+    createTelemetryRunContext({ budget: 0, interactive: false }),
+  ).then(result => result.records);
 
 // ============================================================================
 // Earliest-sample probes (history-import floor detection)

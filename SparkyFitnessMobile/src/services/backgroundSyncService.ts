@@ -10,9 +10,11 @@ import {
   healthReadProvider,
   resetDatabaseInaccessibleCount,
   getDatabaseInaccessibleCount,
+  getClientUnavailableCount,
 } from './healthConnectService';
-import { collectHealthData } from './shared/healthSyncEngine';
-import { buildBackgroundWindows } from '../utils/syncUtils';
+import { collectHealthData, sessionTelemetryOutcomesUsable } from './shared/healthSyncEngine';
+import { markEnrichedSessions } from './shared/enrichedSessionCache';
+import { buildBackgroundWindows, MAX_BACKGROUND_LOOKBACK_DAYS } from '../utils/syncUtils';
 import {
   loadLastSyncedTime,
   saveLastSyncedTime,
@@ -126,6 +128,22 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
 
   addLog(`[Background Sync] Syncing sessions from ${windows.sessionStart.toISOString()}, aggregated from ${windows.aggregatedStart.toISOString()} to ${windows.end.toISOString()}`, 'INFO');
 
+  // The clamp stops a stuck cursor from widening the window every cycle until
+  // it can never finish, but the span it drops is genuinely not read by the
+  // background task — say so rather than silently skipping it (#2191).
+  if (windows.clampedFrom) {
+    const skippedDays = Math.round(
+      (windows.sessionStart.getTime() - windows.clampedFrom.getTime()) / (24 * 60 * 60 * 1000),
+    );
+    addLog(
+      `[Background Sync] Last sync was ${MAX_BACKGROUND_LOOKBACK_DAYS}+ days ago — reading only the last ` +
+      `${MAX_BACKGROUND_LOOKBACK_DAYS} days. About ${skippedDays} earlier day(s) ` +
+      `(${windows.clampedFrom.toISOString()} to ${windows.sessionStart.toISOString()}) are NOT covered here. ` +
+      `Run History Import, or a manual sync with a wider time range, to bring them in.`,
+      'WARNING',
+    );
+  }
+
   const allData: HealthDataPayload = [];
   const collectedCounts: string[] = [];
   let syncErrors = 0;
@@ -152,6 +170,10 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
     timeoutLabelPrefix: 'Background query',
     telemetry,
   });
+
+  // Staged telemetry keys are only committable when the session read itself
+  // completed; see sessionTelemetryOutcomesUsable.
+  const telemetryUsable = sessionTelemetryOutcomesUsable(outcomes);
 
   for (const outcome of outcomes) {
     const metric = outcome.metric;
@@ -187,6 +209,19 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
 
   const inaccessibleCount = getDatabaseInaccessibleCount();
 
+  // One line for the whole run instead of one error per metric. The reads
+  // already surfaced errors, which hold the cursor — this just makes the cause
+  // legible in the exported diagnostic (#2191).
+  const clientUnavailableCount = getClientUnavailableCount();
+  if (clientUnavailableCount > 0) {
+    addLog(
+      `[Background Sync] Health Connect was unavailable for ${clientUnavailableCount} metric read(s) ` +
+      `(the client disconnects when the app is backgrounded or the provider updates). ` +
+      `Reconnect was attempted once; unread metrics hold the sync timestamp and retry next cycle.`,
+      'WARNING',
+    );
+  }
+
   if (inaccessibleCount > 0 && allData.length === 0) {
     await addLog(
       `[Background Sync] Device appears locked — ${inaccessibleCount} HealthKit query(s) returned database inaccessible ` +
@@ -207,7 +242,12 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
   if (allData.length > 0) {
     addLog(`[Background Sync] Collected ${allData.length} records (${collectedCounts.join(', ')})`, 'INFO');
     addLog(`[Background Sync] Sending ${allData.length} records to server`, 'INFO');
-    await syncHealthData(allData);
+    const uploadSummary = await syncHealthData(allData);
+    // Only a fully accepted upload commits the telemetry reuse cache; see the
+    // invariant on markEnrichedSessions.
+    if (telemetryUsable && (uploadSummary?.recordErrors?.length ?? 0) === 0) {
+      await markEnrichedSessions(telemetry.drainCollected());
+    }
     await refreshHealthSyncCacheWhenActive();
 
     if (syncErrors > 0) {

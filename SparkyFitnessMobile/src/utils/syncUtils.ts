@@ -36,6 +36,13 @@ export interface SyncWindows {
   sessionStart: Date;
   aggregatedStart: Date;
   end: Date;
+  /**
+   * Set by buildBackgroundWindows only when MAX_BACKGROUND_LOOKBACK_DAYS
+   * shortened the window: the start that was requested but not honoured. The
+   * span between this and sessionStart is what the background task will not
+   * read, and needs a manual sync or History Import to recover.
+   */
+  clampedFrom?: Date;
 }
 
 export const buildForegroundWindows = (duration: SyncDuration): SyncWindows => {
@@ -112,15 +119,43 @@ export const enumerateDayAlignedWindows = (
 // picked up. The server upserts by record identity, so duplicates are harmless.
 export const SESSION_OVERLAP_MS = 6 * 60 * 60 * 1000; // 6 hours
 
+/**
+ * Floor on how far back a background run will read.
+ *
+ * The cursor only advances when a run finishes with no read errors, so a
+ * persistently failing sync holds it in place while `now` keeps moving — each
+ * run then reads a wider window than the last, takes longer, and is more likely
+ * to fail again. Observed in #2191 as background runs reading 12- and 27-day
+ * windows for a sync whose nominal window is `lastSynced − 6h`. Clamping breaks
+ * the ratchet; a genuinely long gap is the history-import backfill's job, not
+ * the background task's.
+ */
+export const MAX_BACKGROUND_LOOKBACK_DAYS = 14;
+
 export const buildBackgroundWindows = (lastSyncedTime: string | null, now: Date = new Date()): SyncWindows => {
   const lastSynced = lastSyncedTime
     ? new Date(lastSyncedTime)
     : new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const sessionStart = new Date(lastSynced.getTime() - SESSION_OVERLAP_MS);
+  const requestedStart = new Date(lastSynced.getTime() - SESSION_OVERLAP_MS);
+  const floor = new Date(
+    now.getTime() - MAX_BACKGROUND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
+  );
+  // An unparseable cursor would make every comparison false and leave an
+  // Invalid Date in the window, so fall back to the floor. Validity is tracked
+  // separately from the floor comparison: an invalid cursor is not a "clamped"
+  // window, and reporting it as one hands the caller an Invalid Date to format.
+  const hasValidRequestedStart = Number.isFinite(requestedStart.getTime());
+  // >= so a start exactly on the floor is not reported as shortened.
+  const withinFloor = hasValidRequestedStart && requestedStart >= floor;
+  const sessionStart = withinFloor ? requestedStart : floor;
   return {
     sessionStart,
     aggregatedStart: alignToLocalDayStart(sessionStart),
     end: now,
+    // Set only when the clamp actually shortened the window, so the caller can
+    // tell the user which span the background task will not cover. Reported as
+    // data rather than logged here to keep these date helpers side-effect free.
+    ...(hasValidRequestedStart && !withinFloor ? { clampedFrom: requestedStart } : {}),
   };
 };
 
