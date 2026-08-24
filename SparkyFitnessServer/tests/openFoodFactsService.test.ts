@@ -29,29 +29,142 @@ describe('openFoodFactsService', () => {
   });
 
   describe('searchOpenFoodFacts', () => {
-    it('should append the lc parameter with the specified language to the search URL', async () => {
+    it('uses Search-a-licious relevance search with the requested language and pagination', async () => {
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
       fetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ products: [], count: 0 }),
+        json: () =>
+          Promise.resolve({
+            hits: [],
+            page: 2,
+            page_size: 12,
+            count: 25,
+          }),
       });
-      await searchOpenFoodFacts('pizza', 1, 'fr');
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('&lc=fr'),
-        expect.any(Object)
+
+      const result = await searchOpenFoodFacts(
+        'whole milk',
+        2,
+        'fr',
+        undefined,
+        undefined,
+        12
       );
+
+      expect(fetch).toHaveBeenCalledWith(
+        'https://search.openfoodfacts.org/search',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+        })
+      );
+      // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
+      const request = fetch.mock.calls[0][1];
+      expect(JSON.parse(request.body)).toEqual(
+        expect.objectContaining({
+          q: 'whole milk',
+          page: 2,
+          page_size: 12,
+          boost_phrase: true,
+          langs: ['fr', 'en'],
+        })
+      );
+      expect(result.pagination).toEqual({
+        page: 2,
+        pageSize: 12,
+        totalCount: 25,
+        hasMore: true,
+      });
     });
 
-    it("should default to language 'en' when not specified", async () => {
+    it('returns relevance-ordered hits and normalizes Search-a-licious brand arrays', async () => {
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
       fetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ products: [], count: 0 }),
+        json: () =>
+          Promise.resolve({
+            hits: [
+              {
+                code: 'first',
+                product_name: 'Exact Match',
+                brands: ['Brand One', 'Brand Two'],
+                nutriments: {},
+              },
+              {
+                code: 'second',
+                product_name: 'Less Relevant Match',
+                brands: ['Other Brand'],
+                nutriments: {},
+              },
+            ],
+            page: 1,
+            page_size: 20,
+            count: 2,
+          }),
       });
-      await searchOpenFoodFacts('pizza', 1);
-      expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining('&lc=en'),
-        expect.any(Object)
+
+      const result = await searchOpenFoodFacts('exact match');
+
+      expect(result.products.map((product) => product.code)).toEqual([
+        'first',
+        'second',
+      ]);
+      expect(result.products[0].brands).toBe('Brand One, Brand Two');
+      // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
+      const requestBody = JSON.parse(fetch.mock.calls[0][1].body);
+      expect(requestBody.langs).toEqual(['en']);
+    });
+
+    it('prioritizes a complete brand and product-name match over partial matches', async () => {
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      fetch.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            hits: [
+              {
+                code: 'partial',
+                product_name: 'High Protein Pudding',
+                brands: ['Milbona'],
+                nutriments: {},
+              },
+              {
+                code: 'complete',
+                product_name: 'High Protein Pudding',
+                brands: ['Ehrmann'],
+                nutriments: {},
+              },
+            ],
+            page: 1,
+            page_size: 20,
+            count: 2,
+          }),
+      });
+
+      const result = await searchOpenFoodFacts(
+        'Ehrmann High Protein Pudding',
+        1,
+        'de'
+      );
+
+      expect(result.products.map((product) => product.code)).toEqual([
+        'complete',
+        'partial',
+      ]);
+    });
+
+    it('throws a compact error without exposing an upstream HTML response', async () => {
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      fetch.mockResolvedValue({
+        ok: false,
+        status: 503,
+        text: () => Promise.resolve('<html>temporary outage</html>'),
+      });
+
+      await expect(searchOpenFoodFacts('pizza')).rejects.toThrow(
+        'OpenFoodFacts search failed (HTTP 503)'
       );
     });
   });
@@ -170,29 +283,25 @@ describe('openFoodFactsService', () => {
       expect(fetch.mock.calls[1][1].headers.Cookie).toBeUndefined();
     });
 
-    it('on 503 with cookie, retries unauthenticated and returns final response', async () => {
+    it('does not send an OpenFoodFacts session cookie to Search-a-licious', async () => {
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
       resolveOpenFoodFactsProvider.mockResolvedValue({
         session: 'SESS_TOKEN',
         baseUrl: DEFAULT_OFF_BASE_URL,
       });
-      fetch
-        // @ts-expect-error TS(2339): Property 'mockResolvedValueOnce' does not exist on... Remove this comment to see the full error message
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 503,
-          text: () => Promise.resolve('unavailable'),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          json: () => Promise.resolve({ products: [], count: 0 }),
-        });
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({ hits: [], page: 1, page_size: 20, count: 0 }),
+      });
 
       await searchOpenFoodFacts('pizza', 1, 'en', 'user-A', 'prov-1');
 
-      expect(fetch).toHaveBeenCalledTimes(2);
-      expect(invalidateOpenFoodFactsSession).toHaveBeenCalled();
+      expect(fetch).toHaveBeenCalledTimes(1);
+      // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
+      expect(fetch.mock.calls[0][1].headers.Cookie).toBeUndefined();
     });
 
     it('does not retry on 429 when no cookie was attached', async () => {
@@ -265,14 +374,15 @@ describe('openFoodFactsService', () => {
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
       fetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ products: [], count: 0 }),
+        json: () =>
+          Promise.resolve({ hits: [], page: 1, page_size: 20, count: 0 }),
       });
 
       await searchOpenFoodFacts('pizza', 1, 'en');
 
       expect(resolveOpenFoodFactsProvider).not.toHaveBeenCalled();
       expect(fetch).toHaveBeenCalledWith(
-        expect.stringContaining(DEFAULT_OFF_BASE_URL),
+        'https://search.openfoodfacts.org/search',
         expect.any(Object)
       );
     });

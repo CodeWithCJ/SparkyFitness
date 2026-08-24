@@ -292,7 +292,8 @@ export async function searchProviderFoods(
         language,
 
         offProviderId ? credentialUserId : undefined,
-        offProviderId || undefined
+        offProviderId || undefined,
+        pageSize
       );
       const products = (result.products || []).filter(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -13,6 +13,7 @@ import {
 } from '../../utils/foodUtils.js';
 const { name, version } = package$0;
 const USER_AGENT = `${name}/${version} (https://github.com/CodeWithCJ/SparkyFitness)`;
+const SEARCH_A_LICIOUS_URL = 'https://search.openfoodfacts.org/search';
 const OFF_HEADERS = {
   'User-Agent': USER_AGENT,
 };
@@ -50,11 +51,66 @@ interface OffProduct {
   [key: string]: unknown;
 }
 
-interface OffSearchResponse {
+interface LegacyOffSearchResponse {
   products?: OffProduct[];
   page?: number;
   page_size?: number;
   count?: number;
+}
+
+interface SearchALiciousHit extends Omit<OffProduct, 'brands'> {
+  brands?: string | string[];
+}
+
+interface SearchALiciousResponse {
+  hits?: SearchALiciousHit[];
+  page?: number;
+  page_size?: number;
+  count?: number;
+}
+
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+function rankSearchHits(
+  hits: SearchALiciousHit[],
+  query: string,
+  language: string
+): SearchALiciousHit[] {
+  const normalizedQuery = normalizeSearchText(query);
+  const queryTokens = [...new Set(normalizedQuery.split(' ').filter(Boolean))];
+  if (!normalizedQuery || queryTokens.length === 0) return hits;
+
+  return hits
+    .map((hit, index) => {
+      const brand = Array.isArray(hit.brands)
+        ? hit.brands.join(' ')
+        : hit.brands || '';
+      const localizedName = hit[`product_name_${language}`];
+      const searchableText = normalizeSearchText(
+        [
+          brand,
+          typeof localizedName === 'string' ? localizedName : '',
+          hit.product_name || '',
+          hit.product_name_en || '',
+        ].join(' ')
+      );
+      const candidateTokens = new Set(searchableText.split(' '));
+      const tokenCoverage =
+        queryTokens.filter((token) => candidateTokens.has(token)).length /
+        queryTokens.length;
+      const phraseBoost = searchableText.includes(normalizedQuery) ? 2 : 0;
+
+      return { hit, index, score: phraseBoost + tokenCoverage };
+    })
+    .sort((left, right) => right.score - left.score || left.index - right.index)
+    .map(({ hit }) => hit);
 }
 
 // Resolves the session cookie (if the provider has login credentials) and
@@ -123,7 +179,8 @@ async function searchOpenFoodFacts(
   page = 1,
   language = 'en',
   authenticatedUserId?: string,
-  providerId?: string
+  providerId?: string,
+  pageSize = 20
 ): Promise<{
   products: OffProduct[];
   pagination: {
@@ -143,26 +200,82 @@ async function searchOpenFoodFacts(
       authenticatedUserId,
       providerId
     );
-    const searchUrl = `${baseUrl}/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=20&page=${page}&fields=${fields.join(',')}&lc=${language}`;
-    const response = await fetchOpenFoodFacts(searchUrl, {
-      authenticatedUserId,
-      providerId,
-      sessionCookie,
+
+    // Search-a-licious is Open Food Facts' relevance-ranked full-text search
+    // API. Custom/self-hosted Product Opener instances do not necessarily run
+    // it, so preserve their legacy local search endpoint.
+    const isPublicOpenFoodFacts =
+      baseUrl.replace(/\/+$/, '') === DEFAULT_OFF_BASE_URL.replace(/\/+$/, '');
+    if (!isPublicOpenFoodFacts) {
+      const searchUrl = `${baseUrl}/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=${pageSize}&page=${page}&fields=${fields.join(',')}&lc=${language}`;
+      const response = await fetchOpenFoodFacts(searchUrl, {
+        authenticatedUserId,
+        providerId,
+        sessionCookie,
+      });
+      if (!response.ok) {
+        log(
+          'error',
+          `OpenFoodFacts legacy search failed with HTTP ${response.status}`
+        );
+        throw new Error(
+          `OpenFoodFacts search failed (HTTP ${response.status})`
+        );
+      }
+      const data = (await response.json()) as LegacyOffSearchResponse;
+      return {
+        products: data.products || [],
+        pagination: {
+          page: data.page || page,
+          pageSize: data.page_size || pageSize,
+          totalCount: data.count || 0,
+          hasMore:
+            (data.page || page) * (data.page_size || pageSize) <
+            (data.count || 0),
+        },
+      };
+    }
+
+    const langs = language === 'en' ? ['en'] : [language, 'en'];
+    const response = await fetch(SEARCH_A_LICIOUS_URL, {
+      method: 'POST',
+      headers: {
+        ...OFF_HEADERS,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        q: query,
+        page,
+        page_size: pageSize,
+        boost_phrase: true,
+        langs,
+        fields,
+      }),
     });
     if (!response.ok) {
-      const errorText = await response.text();
-      log('error', 'OpenFoodFacts Search API error:', errorText);
-      throw new Error(`OpenFoodFacts API error: ${errorText}`);
+      log(
+        'error',
+        `OpenFoodFacts Search-a-licious request failed with HTTP ${response.status}`
+      );
+      throw new Error(`OpenFoodFacts search failed (HTTP ${response.status})`);
     }
-    const data = (await response.json()) as OffSearchResponse;
+    const data = (await response.json()) as SearchALiciousResponse;
+    const rankedHits = rankSearchHits(data.hits || [], query, language);
+    const products = rankedHits.map(
+      (hit): OffProduct => ({
+        ...hit,
+        brands: Array.isArray(hit.brands) ? hit.brands.join(', ') : hit.brands,
+      })
+    );
     return {
-      products: data.products || [],
+      products,
       pagination: {
         page: data.page || page,
-        pageSize: data.page_size || 20,
+        pageSize: data.page_size || pageSize,
         totalCount: data.count || 0,
         hasMore:
-          (data.page || page) * (data.page_size || 20) < (data.count || 0),
+          (data.page || page) * (data.page_size || pageSize) <
+          (data.count || 0),
       },
     };
   } catch (error) {
