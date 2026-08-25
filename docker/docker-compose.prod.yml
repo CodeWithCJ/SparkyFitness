@@ -16,6 +16,9 @@ services:
       GUID: 1000
     volumes:
       - ${DB_PATH:-./postgresql}:/var/lib/postgresql
+    # Uncomment the below section to mount the file-based secrets
+    #secrets:
+    #  - sparkyfitness_db_password
     networks:
       - sparkyfitness-network # Use the new named network
 
@@ -119,6 +122,15 @@ services:
     volumes:
       - ${SERVER_BACKUP_PATH:-./backup}:/app/SparkyFitnessServer/backup # Mount volume for backups
       - ${SERVER_UPLOADS_PATH:-./uploads}:/app/SparkyFitnessServer/uploads # Mount volume for Profile pictures and excercise images
+    # Uncomment the below section to mount the file-based secrets
+    #secrets:
+    #  - sparkyfitness_db_password
+    #  - sparkyfitness_app_db_password
+    #  - sparkyfitness_api_key
+    #  - sparkyfitness_better_auth_secret
+    #  - sparkyfitness_email_pass
+    #  - sparkyfitness_oidc_client_id
+    #  - sparkyfitness_oidc_client_secret
 
   sparkyfitness-frontend:
     image: codewithcj/sparkyfitness:latest # Use pre-built image
@@ -164,3 +176,21 @@ services:
 networks:
   sparkyfitness-network:
     driver: bridge
+
+# Uncomment the below section to mount the file-based secrets
+# These are the file paths on the host and should not be the same as the paths mentioned above which are in the containers themselves
+#secrets:
+#   sparkyfitness_db_password:
+#     file: ${SPARKY_FITNESS_DB_PASSWORD_FILE:-./sparkyfitness_db_password.key}
+#   sparkyfitness_app_db_password:
+#     file: ${SPARKY_FITNESS_APP_DB_PASSWORD_FILE:-./sparkyfitness_app_db_password.key}
+#   sparkyfitness_api_key:
+#     file: ${SPARKY_FITNESS_API_ENCRYPTION_KEY_FILE:-./sparkyfitness_api_key.key}
+#   sparkyfitness_better_auth_secret:
+#     file: ${BETTER_AUTH_SECRET_FILE:-./sparkyfitness_better_auth_secret.key}
+#   sparkyfitness_email_pass:
+#     file: ${SPARKY_FITNESS_EMAIL_PASS_FILE:-./sparkyfitness_email_pass.key}
+#   sparkyfitness_oidc_client_id:
+#     file: ${SPARKY_FITNESS_OIDC_CLIENT_ID_FILE:-./sparkyfitness_oidc_client_id.key}
+#   sparkyfitness_oidc_client_secret:
+#     file: ${SPARKY_FITNESS_OIDC_CLIENT_SECRET_FILE:-./sparkyfitness_oidc_client_secret.key}
