@@ -111,11 +111,12 @@ describe('healthconnect provider', () => {
         energy: { inKilocalories: 400 },
         distance: { inMeters: 8000 },
       });
-      // Health Connect resolves calorie source priority across origins. Distance
-      // remains scoped so a concurrent activity cannot donate its route length.
+      // The first pass is scoped to the session origin. Cross-origin calorie
+      // source priority is only used when that scoped pair needs a fallback.
       expect(mockAggregateRecord).toHaveBeenCalledWith(expect.objectContaining({
         recordType: 'ActiveCaloriesBurned',
         timeRangeFilter: { operator: 'between', startTime: sessionStart, endTime: sessionEnd },
+        dataOriginFilter: ['com.example.app'],
       }));
       expect(mockAggregateRecord).toHaveBeenCalledWith(expect.objectContaining({
         recordType: 'Distance',

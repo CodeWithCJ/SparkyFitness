@@ -1112,6 +1112,31 @@ describe('getAggregatedActiveCaloriesByDate', () => {
     )).not.toContain('BasalMetabolicRate');
   });
 
+  test('does not surface an optional total-calorie error after the native active read succeeds', async () => {
+    mockAggregateGroupByPeriod.mockImplementation(
+      ({ recordType }: { recordType: string }) => {
+        if (recordType === 'ActiveCaloriesBurned') {
+          return Promise.resolve([
+            periodBucket(2024, 1, 15, { ACTIVE_CALORIES_TOTAL: { inKilocalories: 525 } }),
+          ]);
+        }
+        if (recordType === 'TotalCaloriesBurned') {
+          return Promise.reject(new Error('Total permission denied'));
+        }
+        return Promise.resolve([]);
+      },
+    );
+
+    const result = await getAggregatedActiveCaloriesByDateDetailed(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15),
+    );
+
+    expect(result).toEqual({
+      records: [{ date: '2024-01-15', value: 525, type: 'active_calories' }],
+    });
+  });
+
   test('derives only dates missing from a partial active-calorie aggregate', async () => {
     mockAggregateGroupByPeriod.mockImplementation(
       ({ recordType }: { recordType: string }) => {
@@ -1342,22 +1367,37 @@ describe('enrichExerciseSessions', () => {
     expect(mockAggregateRecord).not.toHaveBeenCalled();
   });
 
-  test('lets Health Connect resolve calorie sources while keeping distance scoped to the session origin', async () => {
-    mockAggregateRecord.mockResolvedValue({});
+  test('keeps complete calorie and distance aggregates scoped to the session origin', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 300 } });
+      }
+      if (recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 350 } });
+      }
+      return Promise.resolve({ DISTANCE: { inMeters: 5000 } });
+    });
 
-    await enrichExerciseSessions([makeSession({ metadata: { dataOrigin: 'com.ohealth' } })], createTelemetryRunContext());
+    const result = await enrichExerciseSessions(
+      [makeSession({ metadata: { dataOrigin: 'com.ohealth' } })],
+      createTelemetryRunContext(),
+    );
 
     const requests = mockAggregateRecord.mock.calls.map((call: unknown[]) => call[0] as {
       recordType: string;
       dataOriginFilter?: string[];
     });
     expect(requests).toHaveLength(3);
-    expect(requests.find(request => request.recordType === 'ActiveCaloriesBurned')?.dataOriginFilter).toBeUndefined();
-    expect(requests.find(request => request.recordType === 'TotalCaloriesBurned')?.dataOriginFilter).toBeUndefined();
-    expect(requests.find(request => request.recordType === 'Distance')?.dataOriginFilter).toEqual(['com.ohealth']);
+    expect(requests.every(request =>
+      request.dataOriginFilter?.[0] === 'com.ohealth',
+    )).toBe(true);
+    expect(result[0]).toMatchObject({
+      energy: { inKilocalories: 300 },
+      distance: { inMeters: 5000 },
+    });
   });
 
-  test('uses a higher-priority calorie source for a Hevy exercise session', async () => {
+  test('uses cross-origin calories when the Hevy-scoped pair is incomplete', async () => {
     mockAggregateRecord.mockImplementation((request: { recordType: string; dataOriginFilter?: string[] }) => {
       if (request.recordType === 'ActiveCaloriesBurned') {
         return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 50 } });
@@ -1379,6 +1419,59 @@ describe('enrichExerciseSessions', () => {
     ], createTelemetryRunContext());
 
     expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 307 });
+    const calorieRequests = mockAggregateRecord.mock.calls
+      .map((call: unknown[]) => call[0] as { recordType: string; dataOriginFilter?: string[] })
+      .filter(request => request.recordType !== 'Distance');
+    expect(calorieRequests).toEqual([
+      expect.objectContaining({
+        recordType: 'ActiveCaloriesBurned',
+        dataOriginFilter: ['app.hevy'],
+      }),
+      expect.objectContaining({
+        recordType: 'TotalCaloriesBurned',
+        dataOriginFilter: ['app.hevy'],
+      }),
+      expect.objectContaining({ recordType: 'ActiveCaloriesBurned' }),
+      expect.objectContaining({ recordType: 'TotalCaloriesBurned' }),
+    ]);
+    expect(calorieRequests[2]).not.toHaveProperty('dataOriginFilter');
+    expect(calorieRequests[3]).not.toHaveProperty('dataOriginFilter');
+  });
+
+  test('uses cross-origin calories when the scoped pair fails the session ratio check', async () => {
+    mockAggregateRecord.mockImplementation((request: { recordType: string; dataOriginFilter?: string[] }) => {
+      if (request.recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({
+          ACTIVE_CALORIES_TOTAL: { inKilocalories: request.dataOriginFilter ? 20 : 45 },
+        });
+      }
+      if (request.recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({
+          ENERGY_TOTAL: { inKilocalories: request.dataOriginFilter ? 150 : 307 },
+        });
+      }
+      return Promise.resolve({});
+    });
+
+    const result = await enrichExerciseSessions([
+      makeSession({
+        startTime: '2024-01-15T10:00:00Z',
+        endTime: '2024-01-15T10:40:00Z',
+        metadata: { dataOrigin: 'app.hevy' },
+      }),
+    ], createTelemetryRunContext());
+
+    expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 307 });
+    const calorieRequests = mockAggregateRecord.mock.calls
+      .map((call: unknown[]) => call[0] as { recordType: string; dataOriginFilter?: string[] })
+      .filter(request => request.recordType !== 'Distance');
+    expect(calorieRequests).toHaveLength(4);
+    expect(calorieRequests.slice(0, 2).every(
+      request => request.dataOriginFilter?.[0] === 'app.hevy',
+    )).toBe(true);
+    expect(calorieRequests.slice(2).every(
+      request => request.dataOriginFilter == null,
+    )).toBe(true);
   });
 
   test('prefers TotalCaloriesBurned when ActiveCaloriesBurned is a tiny passive fragment (issue #1296: 41-min walk)', async () => {
