@@ -517,6 +517,68 @@ describe('transformHealthRecords', () => {
       expect(result[0].activityType).toBe('Exercise Session');
     });
 
+    // Health Connect has no bowling code, so bowling apps write
+    // EXERCISE_TYPE_OTHER_WORKOUT (0) and name the sport in the title.
+    test('uses the source title when the type is OTHER_WORKOUT', () => {
+      const records = [
+        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', exerciseType: 0, title: 'Bowling' },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result[0].activityType).toBe('Bowling');
+      expect(result[0].title).toBe('Bowling');
+    });
+
+    // 0 is falsy: the old truthiness check skipped EXERCISE_MAP entirely.
+    test('maps OTHER_WORKOUT to "Other Workout" when the record has no title', () => {
+      const records = [
+        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', exerciseType: 0 },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result[0].activityType).toBe('Other Workout');
+    });
+
+    test('uses the source title for codes newer than the map', () => {
+      const records = [
+        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', exerciseType: 999, title: 'Padel' },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result[0].activityType).toBe('Padel');
+    });
+
+    test('uses the source title when the record has no exerciseType at all', () => {
+      const records = [
+        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', title: 'Bowling' },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result[0].activityType).toBe('Bowling');
+    });
+
+    // The server creates one exercises row per distinct name, so a per-workout
+    // nickname must never displace a recognized code.
+    test('keeps the mapped name when a specific code carries a nickname title', () => {
+      const records = [
+        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', exerciseType: 56, title: 'Morning Run' },
+        { startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T11:00:00Z', exerciseType: 9, title: 'Hometrainer' },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result[0].activityType).toBe('Running');
+      expect(result[1].activityType).toBe('Biking (Stationary)');
+    });
+
+    test('ignores a blank title', () => {
+      const records = [
+        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', exerciseType: 0, title: '   ' },
+      ];
+      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+
+      expect(result[0].activityType).toBe('Other Workout');
+    });
+
     test('uses activityType as title when no explicit title', () => {
       const records = [
         { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', exerciseType: 56 },
