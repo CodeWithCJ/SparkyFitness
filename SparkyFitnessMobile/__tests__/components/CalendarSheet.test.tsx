@@ -33,28 +33,30 @@ jest.mock('@gorhom/bottom-sheet', () => {
 jest.mock('react-native-ui-datepicker', () => {
   const React = require('react');
   const { View } = require('react-native');
+  // Mount-only: capture initialView once per mount. The real library only
+  // honours initialView at mount; subsequent prop changes are ignored. We
+  // model this with a proper React function component (uppercase name so
+  // react-hooks/rules-of-hooks allows useRef) that captures initialView in
+  // a ref on first render and never overwrites it.
+  function MockPicker(props: any) {
+    const mountRef = React.useRef(false);
+    if (!mountRef.current) {
+      mountRef.current = true;
+      mockMountCount += 1;
+      mockMountedInitialView = props.initialView;
+    }
+    // Expose live props (month, year, callbacks) for test interaction, but
+    // initialView reflects the mount-only snapshot, NOT the current prop.
+    pickerProps.month = props.month;
+    pickerProps.year = props.year;
+    pickerProps.onMonthChange = props.onMonthChange;
+    pickerProps.onYearChange = props.onYearChange;
+    pickerProps.initialView = mockMountedInitialView;
+    return <View testID="calendar-picker" />;
+  }
   return {
     __esModule: true,
-    default: (props: any) => {
-      // Mount-only: capture initialView once per mount. React calls this
-      // function component on every re-render, but the real library only
-      // honours initialView at mount. We use a ref-like pattern keyed to the
-      // component instance so re-renders do NOT overwrite the mounted value.
-      const mountRef = React.useRef<number | null>(null);
-      if (mountRef.current === null) {
-        mockMountCount += 1;
-        mountRef.current = mockMountCount;
-        mockMountedInitialView = props.initialView;
-      }
-      // Expose live props (month, year, callbacks) for test interaction, but
-      // initialView reflects the mount-only snapshot, NOT the current prop.
-      pickerProps.month = props.month;
-      pickerProps.year = props.year;
-      pickerProps.onMonthChange = props.onMonthChange;
-      pickerProps.onYearChange = props.onYearChange;
-      pickerProps.initialView = mockMountedInitialView;
-      return <View testID="calendar-picker" />;
-    },
+    default: MockPicker,
   };
 });
 
