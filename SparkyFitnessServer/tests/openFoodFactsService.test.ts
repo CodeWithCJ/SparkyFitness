@@ -474,6 +474,28 @@ describe('openFoodFactsService', () => {
         vi.useRealTimers();
       }
     });
+
+    it('rejects a Product Opener hydration payload with non-record product entries', async () => {
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              hits: [{ code: '123', product_name: 'Broken Product' }],
+              page: 1,
+              page_size: 20,
+              count: 1,
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ products: [null] }),
+        });
+
+      await expect(searchOpenFoodFacts('broken')).rejects.toThrow(
+        'OpenFoodFacts search returned an invalid response (HTTP 200)'
+      );
+    });
   });
 
   describe('searchOpenFoodFactsByBarcodeFields', () => {
@@ -609,6 +631,70 @@ describe('openFoodFactsService', () => {
       expect(fetch).toHaveBeenCalledTimes(1);
       // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
       expect(fetch.mock.calls[0][1].headers.Cookie).toBeUndefined();
+    });
+
+    it('gives the unauthenticated retry only the remaining request budget', async () => {
+      vi.useFakeTimers();
+      const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+      try {
+        let call = 0;
+        // @ts-expect-error TS(2339): Property 'mockImplementation' does not exist o... Remove this comment to see the full error message
+        fetch.mockImplementation(async () => {
+          call += 1;
+          if (call === 1) {
+            return {
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  hits: [{ code: '123', product_name: 'Cookie Product' }],
+                  page: 1,
+                  page_size: 20,
+                  count: 1,
+                }),
+            };
+          }
+          if (call === 2) {
+            // The authenticated bulk request answers slowly (consuming most
+            // of its budget) and fails with 5x...
+            vi.setSystemTime(Date.now() + 8_000);
+            return { ok: false, status: 503, text: () => Promise.resolve('') };
+          }
+          // ...so its unauthenticated retry only shares what is left (2s).
+          return {
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                products: [
+                  {
+                    code: '123',
+                    product_name: 'Cookie Product',
+                    nutriments: {},
+                  },
+                ],
+              }),
+          };
+        });
+        // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on type '{ (input: ... Remove this comment to see the full error message
+        resolveOpenFoodFactsProvider.mockResolvedValue({
+          session: 'stale-cookie',
+          baseUrl: DEFAULT_OFF_BASE_URL,
+        });
+
+        const result = await searchOpenFoodFacts(
+          'cookie',
+          1,
+          'en',
+          'user-A',
+          'prov-1'
+        );
+
+        expect(result.products.map((product) => product.code)).toEqual(['123']);
+        // Budget 10s minus the 8s the failed first attempt consumed.
+        expect(timeoutSpy).toHaveBeenLastCalledWith(2000);
+      } finally {
+        timeoutSpy.mockRestore();
+        vi.useRealTimers();
+      }
     });
 
     it('does not retry on 429 when no cookie was attached', async () => {

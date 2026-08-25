@@ -145,7 +145,11 @@ function isSearchALiciousResponse(
 function isProductOpenerSearchResponse(
   value: unknown
 ): value is ProductOpenerSearchResponse {
-  return isRecord(value) && Array.isArray(value.products);
+  return (
+    isRecord(value) &&
+    Array.isArray(value.products) &&
+    value.products.every(isRecord)
+  );
 }
 
 function normalizeSearchText(value: string): string {
@@ -247,6 +251,10 @@ async function fetchOpenFoodFacts(
     ? { ...baseHeaders, Cookie: `session=${sessionCookie}` }
     : baseHeaders;
 
+  // The unauthenticated retry shares this request's deadline, so a 429/5xx
+  // answered near the end of the budget cannot double the wall-clock time.
+  const requestDeadline = Date.now() + timeoutMs;
+
   const response = await fetchWithTimeout(
     url,
     {
@@ -270,7 +278,7 @@ async function fetchOpenFoodFacts(
         method: 'GET',
         headers: baseHeaders,
       },
-      timeoutMs
+      Math.max(0, requestDeadline - Date.now())
     );
   }
 
