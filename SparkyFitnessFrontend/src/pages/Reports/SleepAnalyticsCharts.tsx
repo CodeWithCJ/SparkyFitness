@@ -319,10 +319,10 @@ const SleepAnalyticsCharts = ({
                   </>
                 ) : (
                   <>
-                    {t(
-                      'sleepAnalyticsCharts.showAll',
-                      `Show All (${sortedHypnograms.length})`
-                    )}
+                    {t('sleepAnalyticsCharts.showAll', {
+                      count: sortedHypnograms.length,
+                      defaultValue: `Show All (${sortedHypnograms.length})`,
+                    })}
                     <ChevronDown className="w-4 h-4 ml-1" />
                   </>
                 )}
