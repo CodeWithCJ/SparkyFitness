@@ -289,13 +289,20 @@ async function fetchOpenFoodFacts(
     if (authenticatedUserId && providerId) {
       invalidateOpenFoodFactsSession(authenticatedUserId, providerId);
     }
+    const remainingTimeoutMs = requestDeadline - Date.now();
+    if (remainingTimeoutMs <= 0) {
+      log('warn', `OpenFoodFacts retry deadline exhausted: ${url}`);
+      throw Object.assign(new Error('OpenFoodFacts request timed out'), {
+        status: 504,
+      });
+    }
     return fetchWithTimeout(
       url,
       {
         method: 'GET',
         headers: baseHeaders,
       },
-      Math.max(0, requestDeadline - Date.now())
+      remainingTimeoutMs
     );
   }
 

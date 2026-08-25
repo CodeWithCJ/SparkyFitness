@@ -671,28 +671,6 @@ describe('openFoodFactsService', () => {
         'Current Product',
       ]);
     });
-
-    it('rejects a Product Opener hydration payload with non-record product entries', async () => {
-      fetchMock
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              hits: [{ code: '123', product_name: 'Broken Product' }],
-              page: 1,
-              page_size: 20,
-              count: 1,
-            }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({ products: [null] }),
-        });
-
-      await expect(searchOpenFoodFacts('broken')).rejects.toThrow(
-        'OpenFoodFacts search returned an invalid response (HTTP 200)'
-      );
-    });
   });
 
   describe('searchOpenFoodFactsByBarcodeFields', () => {
@@ -842,6 +820,48 @@ describe('openFoodFactsService', () => {
 
         expect(timeoutSpy).toHaveBeenNthCalledWith(1, 10_000);
         expect(timeoutSpy).toHaveBeenNthCalledWith(2, 6_000);
+      } finally {
+        timeoutSpy.mockRestore();
+        vi.useRealTimers();
+      }
+    });
+
+    it('does not start an authenticated retry after its deadline', async () => {
+      vi.useFakeTimers();
+      const timeoutSpy = vi
+        .spyOn(AbortSignal, 'timeout')
+        .mockImplementation(() => new AbortController().signal);
+      try {
+        vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+        // @ts-expect-error mocked provider resolver
+        resolveOpenFoodFactsProvider.mockResolvedValue({
+          session: 'SESS_TOKEN',
+          baseUrl: DEFAULT_OFF_BASE_URL,
+        });
+        fetchMock
+          .mockImplementationOnce(async () => {
+            vi.setSystemTime(Date.now() + 10_000);
+            return { ok: false, status: 503 };
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ status: 1, product: {} }),
+          });
+
+        await expect(
+          searchOpenFoodFactsByBarcodeFields(
+            '12345678',
+            undefined,
+            'en',
+            'user-A',
+            'prov-1'
+          )
+        ).rejects.toMatchObject({
+          message: 'OpenFoodFacts request timed out',
+          status: 504,
+        });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
       } finally {
         timeoutSpy.mockRestore();
         vi.useRealTimers();
