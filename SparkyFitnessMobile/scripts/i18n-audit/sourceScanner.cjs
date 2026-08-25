@@ -243,6 +243,50 @@ function resolveStaticTranslationKeyArg(arg) {
   return null;
 }
 
+function containsCountOneComparison(node) {
+  let found = false;
+  function visit(n) {
+    if (ts.isBinaryExpression(n) &&
+      [ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken].includes(n.operatorToken.kind)) {
+      const left = n.left.getText();
+      const right = n.right.getText();
+      if ((/^(count|reps|items|sets|[A-Za-z]+Count)$/.test(left) && right === '1') ||
+          (/^(count|reps|items|sets|[A-Za-z]+Count)$/.test(right) && left === '1')) found = true;
+    }
+    ts.forEachChild(n, visit);
+  }
+  visit(node);
+  return found;
+}
+
+function staticTranslationKeyFromExpression(node) {
+  if (!ts.isCallExpression(node)) return null;
+  return resolveStaticTranslationKeyArg(node.arguments[0]);
+}
+
+/** Bounded presentation-only guard against English singular/plural branching. */
+function scanManualPluralization(node, sourceFile, relPath, context) {
+  if (!containsCountOneComparison(node)) return;
+  let finding = null;
+  function visit(n) {
+    if (finding || !ts.isConditionalExpression(n) || !containsCountOneComparison(n.condition)) {
+      ts.forEachChild(n, visit);
+      return;
+    }
+    const leftKey = staticTranslationKeyFromExpression(n.whenTrue);
+    const rightKey = staticTranslationKeyFromExpression(n.whenFalse);
+    const leftText = literalText(n.whenTrue);
+    const rightText = literalText(n.whenFalse);
+    if ((leftKey && rightKey && leftKey !== rightKey) ||
+        (leftText !== null && rightText !== null && leftText !== rightText)) {
+      finding = n.getText(sourceFile);
+    }
+    ts.forEachChild(n, visit);
+  }
+  visit(node);
+  if (finding) recordFinding(relPath, getLinePosition(node, sourceFile), finding, 'manual-pluralization', { context });
+}
+
 function isTextLikeElement(node) {
   if (!ts.isJsxElement(node)) return false;
   const tag = node.openingElement.tagName;
@@ -498,6 +542,7 @@ function visitSourceFile(filePath, rootDir) {
           }
         } else if (ts.isJsxExpression(child) && child.expression) {
           scanPresentationNumbers(child.expression, sourceFile, relPath, { context: 'JSX presentation' });
+          scanManualPluralization(child.expression, sourceFile, relPath, 'JSX presentation');
           const values = collectLiteralTexts(child.expression);
           const childLine = getLinePosition(child, sourceFile);
           for (const value of values) {
@@ -546,6 +591,7 @@ function visitSourceFile(filePath, rootDir) {
           }
         } else if (ts.isJsxExpression(node.initializer) && node.initializer.expression) {
           scanPresentationNumbers(node.initializer.expression, sourceFile, relPath, { context: `presentation attribute ${attrName}` });
+          scanManualPluralization(node.initializer.expression, sourceFile, relPath, `presentation attribute ${attrName}`);
           for (const value of collectLiteralTexts(node.initializer.expression)) {
             if (!isLikelyFalsePositive(value)) {
               recordFinding(relPath, line, value, 'hardcoded-ui-text', { attr: attrName, form: 'expression' });
@@ -567,6 +613,7 @@ function visitSourceFile(filePath, rootDir) {
       const propName = propertyNameText(node.name);
       if (propName && LOCALIZED_ATTRIBUTE_NAMES.has(propName)) {
         scanPresentationNumbers(node.initializer, sourceFile, relPath, { context: `presentation property ${propName}` });
+        scanManualPluralization(node.initializer, sourceFile, relPath, `presentation property ${propName}`);
         const line = getLinePosition(node, sourceFile);
         for (const value of collectLiteralTexts(node.initializer)) {
           if (!isLikelyFalsePositive(value)) {
@@ -586,7 +633,10 @@ function visitSourceFile(filePath, rootDir) {
       const titleArg = node.arguments[0];
       const messageArg = node.arguments[1];
       const args = [titleArg, messageArg].filter((a) => a !== undefined);
-      for (const arg of args) scanPresentationNumbers(arg, sourceFile, relPath, { context: 'Alert.alert' });
+      for (const arg of args) {
+        scanPresentationNumbers(arg, sourceFile, relPath, { context: 'Alert.alert' });
+        scanManualPluralization(arg, sourceFile, relPath, 'Alert.alert');
+      }
       for (let i = 0; i < args.length; i++) {
         for (const value of collectLiteralTexts(args[i])) {
           if (!isLikelyFalsePositive(value)) {
@@ -627,6 +677,7 @@ function visitSourceFile(filePath, rootDir) {
               if (propName === 'text1' || propName === 'text2') {
                 toastTextProps.add(prop);
                 scanPresentationNumbers(prop.initializer, sourceFile, relPath, { context: `Toast.show ${propName}` });
+                scanManualPluralization(prop.initializer, sourceFile, relPath, `Toast.show ${propName}`);
                 for (const value of collectLiteralTexts(prop.initializer)) {
                   if (!isLikelyFalsePositive(value)) {
                     recordFinding(relPath, line, value, 'hardcoded-ui-text', { context: 'Toast.show', prop: propName });
@@ -727,6 +778,7 @@ module.exports = {
   hasExplicitFallback,
   getExplicitFallbacks,
   hasCountOption,
+  scanManualPluralization,
   isLikelyRoute,
   isLikelyCss,
   isLikelyTechnical,

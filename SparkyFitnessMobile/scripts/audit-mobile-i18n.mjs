@@ -81,6 +81,7 @@ function printHumanReport() {
   }
   console.log(`hardcoded UI strings (blocking): ${summary.hardcodedUiFindings}`);
   console.log(`locale-unsafe number formatting (blocking): ${summary.unsafeNumberFormatFindings ?? 0}`);
+  console.log(`manual pluralization antipatterns (blocking): ${summary.manualPluralizationFindings ?? 0}`);
 }
 
 if (showJson) {

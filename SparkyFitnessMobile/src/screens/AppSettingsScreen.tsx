@@ -129,9 +129,11 @@ const AppSettingsScreen: React.FC<AppSettingsScreenProps> = ({ navigation }) => 
             title={t('settings.language.title', 'Language')}
             subtitle={t('settings.language.iosSubtitle', {
               defaultValue: '{{language}} · {{managedBy}}',
-              language: iosLanguage === 'pl'
-                ? t('settings.language.polish', { defaultValue: 'Polski' })
-                : t('settings.language.english', { defaultValue: 'English' }),
+              // i18n-audit-ignore-next-line dynamic-i18n-key -- registry metadata is a bounded static translation-key map
+              language: t(
+                SHIPPED_LOCALES[iosLanguage ?? 'en'].displayNameKey,
+                SHIPPED_LOCALES[iosLanguage ?? 'en'].defaultDisplayName,
+              ),
               managedBy: t('settings.language.managedByIOS', { defaultValue: 'Managed by iOS' }),
             })}
             subtitleNumberOfLines={0}

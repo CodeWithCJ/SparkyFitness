@@ -67,6 +67,7 @@ function runAudit(options = {}) {
     hardcodedUiFindings: [],
     dynamicI18nFindings: [],
     unsafeNumberFormatFindings: [],
+    manualPluralizationFindings: [],
     translationCoverage: {},
     summary: {},
   };
@@ -181,6 +182,8 @@ function runAudit(options = {}) {
         expression: finding.value,
         message: `Dynamic i18n key "${finding.value}" at ${finding.file}:${finding.line} — use a static map instead`,
       });
+    } else if (finding.kind === 'manual-pluralization') {
+      report.manualPluralizationFindings.push({ rule: 'manual-pluralization', file: finding.file, line: finding.line, expression: finding.value, context: finding.context });
     } else if (finding.kind === 'locale-unsafe-number-format') {
       report.unsafeNumberFormatFindings.push({ rule: 'locale-unsafe-number-format', file: finding.file, line: finding.line, expression: finding.value, context: finding.context });
     } else if (finding.kind === 'hardcoded-ui-text') {
@@ -203,6 +206,7 @@ function runAudit(options = {}) {
     report.missingFallbackFindings.length,
     report.dynamicI18nFindings.length,
     report.unsafeNumberFormatFindings.length,
+    report.manualPluralizationFindings.length,
   ].reduce((a, b) => a + b, 0);
 
   report.summary = buildSummary(report);
@@ -227,6 +231,7 @@ function buildSummary(report) {
     hardcodedUiFindings: report.hardcodedUiFindings.length,
     dynamicI18nFindings: report.dynamicI18nFindings.length,
     unsafeNumberFormatFindings: report.unsafeNumberFormatFindings.length,
+    manualPluralizationFindings: report.manualPluralizationFindings.length,
     sourceScanErrors: report.localeStructuralErrors.filter(
       (e) => e.rule === SOURCE_SCAN_ERROR_RULE,
     ).length,

@@ -4,8 +4,7 @@ import { initReactI18next } from 'react-i18next';
 import { getLocales } from 'expo-localization';
 
 import { addLog } from '../services/LogService';
-import enTranslation from './locales/en/translation.json';
-import plTranslation from './locales/pl/translation.json';
+import { RESOURCE_MAP } from './generatedLocaleResources';
 import {
   FALLBACK_LOCALE,
   metadataForLanguage,
@@ -15,14 +14,10 @@ import {
   type SupportedLanguage,
 } from './localeRegistry';
 
+export { RESOURCE_MAP } from './generatedLocaleResources';
 export { FALLBACK_LOCALE, SHIPPED_LOCALES, SUPPORTED_LANGUAGES } from './localeRegistry';
 export type { SupportedLanguage } from './localeRegistry';
 export type LanguagePreference = 'system' | SupportedLanguage;
-
-export const RESOURCE_MAP = {
-  en: { translation: enTranslation },
-  pl: { translation: plTranslation },
-} satisfies Record<SupportedLanguage, { translation: object }>;
 
 const i18n = createInstance();
 const I18N_INIT_OPTIONS = {

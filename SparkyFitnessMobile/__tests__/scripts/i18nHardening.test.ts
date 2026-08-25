@@ -146,3 +146,23 @@ describe('bounded locale-unsafe number scanner', () => {
     expect(result).toHaveLength(0);
   });
 });
+
+describe('bounded manual pluralization guard', () => {
+  function pluralFindings(source: string) {
+    const root = fixture(source);
+    return scanner.collectFindings(root, [path.join(root, 'src')]).findings
+      .filter((x: { kind: string }) => x.kind === 'manual-pluralization');
+  }
+
+  it.each([
+    "<Text>{`${count} item${count === 1 ? '' : 's'}`}</Text>",
+    "<Text>{count === 1 ? t('item', 'item') : t('items', 'items')}</Text>",
+    "Toast.show({ text1: count !== 1 ? t('items', 'items') : t('item', 'item') });",
+  ])('blocks presentation-side singular/plural branching: %s', (source) => {
+    expect(pluralFindings(source)).toHaveLength(1);
+  });
+
+  it('allows i18next pluralization that passes count directly to t()', () => {
+    expect(pluralFindings("<Text>{t('item', { count, formattedCount, defaultValue: '{{formattedCount}} items' })}</Text>")).toHaveLength(0);
+  });
+});

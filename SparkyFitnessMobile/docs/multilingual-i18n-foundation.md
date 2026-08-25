@@ -12,3 +12,53 @@ Missing or empty target translations are allowed, reported as non-blocking cover
 `src/localization/localeRegistry.json` is the shared registry data contract. Registry keys are the canonical application/native BCP-47 tags; only explicitly registered locales are shipped. Adding a language to Weblate does not ship it until the registry and native/platform support are updated.
 
 React Native catalogs and native resources are separate translation surfaces: Expo metadata (`locales/*.json`), Android widget resources (`targets/android-widget/res/values*/`), and iOS widget/Live Activity resources (`targets/widget/*.lproj/Localizable.strings`).
+
+## Weblate and future-language contract
+
+`localeRegistry.json` is the sole shipping contract. A Weblate directory is a
+translation candidate, not a product language: target catalogs discovered below
+`src/localization/locales/*/translation.json` are audited for coverage and
+structural correctness, but only a registry entry makes a locale visible to the
+runtime, language picker, Expo native configuration, Android locale bridge, and
+widget locale bridge.
+
+### Translation surfaces / Weblate components
+
+1. **React Native runtime** — source
+   `src/localization/locales/en/translation.json`; mask
+   `src/localization/locales/*/translation.json`.
+2. **Expo/native metadata** — source `locales/en.json`; mask `locales/*.json`.
+3. **Android widgets** — source
+   `targets/android-widget/res/values/widget_strings.xml`; targets
+   `targets/android-widget/res/values-*/widget_strings.xml`. Language-only tags
+   use `values-de`; BCP-47 tags with region/script use Android's
+   `values-b+de+DE` form.
+4. **iOS widgets / Live Activities** — source
+   `targets/widget/en.lproj/Localizable.strings`; mask
+   `targets/widget/*.lproj/Localizable.strings`.
+
+These may be separate Weblate components. EN is the canonical source and
+fallback. Only EN requires complete, non-empty source coverage. Target missing
+or empty values are coverage diagnostics and fall back to EN/default native
+resources; malformed JSON/XML/strings, incompatible type/array shape,
+placeholder mismatch, plural collision, and invalid CLDR plural category remain
+blocking.
+
+`pnpm run i18n:generate` deterministically emits
+`src/localization/generatedLocaleResources.ts` with Metro-safe static imports
+for every shipped runtime catalog. `pnpm run i18n:generate:check` is included in
+`validate`, so a registry change without regenerated source fails CI. The same
+validation requires a metadata JSON and syntactically valid Android/iOS widget
+resource surface for every shipped locale; widget files may be partial because
+native resource resolution falls back to default/source resources.
+
+### Adding `de`
+
+1. Let Weblate create/sync runtime, metadata, Android-widget and iOS-widget
+   translations. They can be incomplete throughout translation work.
+2. When ready to ship, add `de` metadata to `localeRegistry.json`, provide its
+   runtime and metadata files plus (possibly partial) native widget files, and
+   run `pnpm run i18n:generate`.
+3. Run `pnpm run validate` and prebuild. No edits to `i18n.ts`,
+   `AppSettingsScreen.tsx`, `app.config.ts`, Android Kotlin, Swift, or the Expo
+   plugins are required.
