@@ -1,6 +1,5 @@
 package com.sparkyapps.sparkyfitness.widget
 
-import android.app.LocaleManager
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -24,6 +23,11 @@ import java.util.Locale
  * configuration-change window for Glance rendering after the app has already
  * applied a language change through i18next, before the live process Context
  * necessarily reflects that change.
+ *
+ * `android.app.LocaleManager` is referenced ONLY from `WidgetLocaleApi33`,
+ * which is loaded lazily after the API 33 guard. This keeps the class verifier
+ * on Android <=12 from resolving `LocaleManager` when `WidgetLocale` is loaded,
+ * preventing `NoClassDefFoundError` / `VerifyError` at startup.
  */
 object WidgetLocale {
 
@@ -181,27 +185,16 @@ object WidgetLocale {
 
     private fun systemPlatformLanguage(context: Context): String? {
         if (!isNativeAppLanguageSupported()) return null
-        val manager = context.getSystemService(LocaleManager::class.java) ?: return null
-        val systemLocales = manager.systemLocales
-        return if (systemLocales != null && !systemLocales.isEmpty) {
-            normalizeLanguage(systemLocales[0])
-        } else {
-            null
-        }
+        return WidgetLocaleApi33.systemPlatformLanguage(context)
     }
 
     private fun currentPlatformLanguage(context: Context): String? {
         if (!isNativeAppLanguageSupported()) return null
-        val manager = context.getSystemService(LocaleManager::class.java) ?: return null
-        val appLocales = manager.applicationLocales
-        val platformLocale = if (appLocales != null && !appLocales.isEmpty) {
-            appLocales[0]
-        } else {
-            val systemLocales = manager.systemLocales
-            if (systemLocales != null && !systemLocales.isEmpty) systemLocales[0] else null
-        }
-        return platformLocale?.let(::normalizeLanguage)
+        return WidgetLocaleApi33.currentPlatformLanguage(context)
     }
+
+    /** Public alias so `WidgetLocaleApi33` can reuse the normalization logic. */
+    internal fun normalizeLanguagePublic(locale: Locale): String = normalizeLanguage(locale)
 
     /**
      * Bumps the dedicated Glance state revision without changing any snapshot

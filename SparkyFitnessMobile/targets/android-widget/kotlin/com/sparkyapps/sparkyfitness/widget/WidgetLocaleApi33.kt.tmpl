@@ -1,0 +1,42 @@
+package com.sparkyapps.sparkyfitness.widget
+
+import android.app.LocaleManager
+import android.content.Context
+import android.os.Build
+import android.os.LocaleList
+import androidx.annotation.RequiresApi
+
+/**
+ * Isolated Android 13+ (API 33+) helper for reading platform per-app language
+ * state through `android.app.LocaleManager`.
+ *
+ * This is the ONLY widget-side class that references `android.app.LocaleManager`.
+ * `WidgetLocale` calls it only after a runtime `Build.VERSION.SDK_INT >=
+ * Build.VERSION_CODES.TIRAMISU` guard, so the class verifier on Android <=12
+ * never resolves `LocaleManager` and cannot raise `NoClassDefFoundError` /
+ * `VerifyError` when `WidgetLocale` is loaded.
+ */
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+internal object WidgetLocaleApi33 {
+    fun systemPlatformLanguage(context: Context): String? {
+        val manager = context.getSystemService(LocaleManager::class.java) ?: return null
+        val systemLocales = manager.systemLocales
+        return if (systemLocales != null && !systemLocales.isEmpty) {
+            WidgetLocale.normalizeLanguagePublic(systemLocales[0])
+        } else {
+            null
+        }
+    }
+
+    fun currentPlatformLanguage(context: Context): String? {
+        val manager = context.getSystemService(LocaleManager::class.java) ?: return null
+        val appLocales = manager.applicationLocales
+        val platformLocale = if (appLocales != null && !appLocales.isEmpty) {
+            appLocales[0]
+        } else {
+            val systemLocales = manager.systemLocales
+            if (systemLocales != null && !systemLocales.isEmpty) systemLocales[0] else null
+        }
+        return platformLocale?.let(WidgetLocale::normalizeLanguagePublic)
+    }
+}
