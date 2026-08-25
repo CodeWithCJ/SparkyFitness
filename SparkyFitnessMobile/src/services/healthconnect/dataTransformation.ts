@@ -444,6 +444,14 @@ const EXERCISE_MAP: Record<number, string> = {
   83: 'Yoga',
 } as const;
 
+/**
+ * EXERCISE_TYPE_OTHER_WORKOUT. Health Connect has no code for every sport —
+ * bowling, padel and darts have none — so those apps write this code and put
+ * the real activity in the record's `title`. It is a number, and 0 is falsy,
+ * so it has to be compared explicitly rather than tested for truthiness.
+ */
+const EXERCISE_TYPE_OTHER_WORKOUT = 0;
+
 // Health Connect SleepStageType constants from react-native-health-connect.
 // We skip UNKNOWN values so they do not distort asleep-time totals downstream.
 const mapHealthConnectSleepStage = (stage: number): SleepStageType | null => {
@@ -650,10 +658,28 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
     if (durationInSeconds <= 0) return;
     const recordDate = toLocalDateString(rec.startTime as string);
     const exerciseType = rec.exerciseType as number | undefined;
-    const activityTypeName = exerciseType
-      ? (EXERCISE_MAP[exerciseType] || `Exercise Type ${exerciseType}`)
-      : 'Exercise Session';
-    const title = (rec.title as string) || activityTypeName;
+    const sourceTitle = typeof rec.title === 'string' ? rec.title.trim() : '';
+    const mappedName = exerciseType == null ? undefined : EXERCISE_MAP[exerciseType];
+
+    // A recognized, specific code is authoritative: it names the same activity
+    // every session, which keeps the server's exercise-library row stable. The
+    // title is a per-workout label ("Morning Run", "Lauf am Morgen"), and the
+    // server creates one exercise per distinct name, so letting it win over a
+    // specific code would fragment the library and split PR history.
+    const isSpecificType =
+      mappedName !== undefined && exerciseType !== EXERCISE_TYPE_OTHER_WORKOUT;
+
+    // Only when the code carries no activity — OTHER_WORKOUT, absent, or a code
+    // newer than EXERCISE_MAP — is the title the most specific thing we have,
+    // and it beats a generic fallback that would drop the activity entirely.
+    const genericName =
+      mappedName ??
+      (exerciseType == null ? 'Exercise Session' : `Exercise Type ${exerciseType}`);
+
+    const activityTypeName = isSpecificType
+      ? mappedName
+      : sourceTitle || genericName;
+    const title = sourceTitle || activityTypeName;
 
     // Extract calories burned
     let caloriesBurned = 0;
