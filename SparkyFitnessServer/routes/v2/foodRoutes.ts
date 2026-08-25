@@ -221,8 +221,22 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
     return;
   }
 
-  const page = Number(req.query.page) || 1;
-  const pageSize = Number(req.query.pageSize) || 20;
+  const page = req.query.page === undefined ? 1 : Number(req.query.page);
+  const pageSize =
+    req.query.pageSize === undefined ? 20 : Number(req.query.pageSize);
+  if (
+    !Number.isInteger(page) ||
+    page < 1 ||
+    !Number.isInteger(pageSize) ||
+    pageSize < 1 ||
+    pageSize > 100
+  ) {
+    res.status(400).json({
+      error:
+        'Invalid pagination parameters: page must be a positive integer and pageSize must be an integer from 1 to 100',
+    });
+    return;
+  }
   const providerId = req.query.providerId as string | undefined;
   const autoScale = ((req.query.autoScale as string) ?? 'true') !== 'false';
 

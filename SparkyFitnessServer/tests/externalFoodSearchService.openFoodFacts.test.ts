@@ -41,7 +41,12 @@ vi.mock('../integrations/swissfood/swissFoodService.js', () => ({
 }));
 
 import externalProviderService from '../services/externalProviderService.js';
-import { resolveOpenFoodFactsProviderId } from '../services/externalFoodSearchService.js';
+import preferenceService from '../services/preferenceService.js';
+import { searchOpenFoodFacts } from '../integrations/openfoodfacts/openFoodFactsService.js';
+import {
+  resolveOpenFoodFactsProviderId,
+  searchProviderFoods,
+} from '../services/externalFoodSearchService.js';
 
 const mockGetDetails = vi.mocked(
   externalProviderService.getExternalDataProviderDetails
@@ -105,5 +110,43 @@ describe('resolveOpenFoodFactsProviderId', () => {
 
     expect(id).toBe('active-id');
     expect(mockGetDetails).not.toHaveBeenCalled();
+  });
+});
+
+describe('searchProviderFoods OpenFoodFacts pagination', () => {
+  it('forwards the requested page size to the OpenFoodFacts search adapter', async () => {
+    mockGetActiveId.mockResolvedValue(PROVIDER_ID);
+    vi.mocked(preferenceService.getUserPreferences).mockResolvedValue({
+      language: 'de',
+    });
+    vi.mocked(searchOpenFoodFacts).mockResolvedValue({
+      products: [
+        {
+          code: '80051428',
+          product_name: 'Nutella',
+          brands: 'Ferrero',
+          nutriments: {},
+        },
+      ],
+      pagination: {
+        page: 3,
+        pageSize: 7,
+        totalCount: 15,
+        hasMore: false,
+      },
+    });
+    await searchProviderFoods(USER_ID, 'openfoodfacts', 'nutella', {
+      page: 3,
+      pageSize: 7,
+    });
+
+    expect(searchOpenFoodFacts).toHaveBeenCalledWith(
+      'nutella',
+      3,
+      'de',
+      USER_ID,
+      PROVIDER_ID,
+      7
+    );
   });
 });
