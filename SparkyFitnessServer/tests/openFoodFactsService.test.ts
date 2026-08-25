@@ -359,7 +359,7 @@ describe('openFoodFactsService', () => {
     });
 
     it('throws a compact error for a successful HTML Search-a-licious response', async () => {
-      // @ts-expect-error mocked global fetch
+      // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
       fetch.mockResolvedValue({
         ok: true,
         status: 200,
@@ -368,6 +368,60 @@ describe('openFoodFactsService', () => {
 
       await expect(searchOpenFoodFacts('pizza')).rejects.toThrow(
         'OpenFoodFacts search returned an invalid response (HTTP 200)'
+      );
+    });
+
+    it('maps upstream timeout aborts to a compact gateway timeout error', async () => {
+      // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
+      fetch.mockRejectedValue(
+        Object.assign(new Error('The operation was aborted due to timeout'), {
+          name: 'TimeoutError',
+        })
+      );
+
+      await expect(searchOpenFoodFacts('pizza')).rejects.toMatchObject({
+        message: 'OpenFoodFacts request timed out',
+        status: 504,
+      });
+    });
+
+    it('keeps hits whose barcode is stored under its UPC-A/EAN-13 sibling form', async () => {
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              // Search-a-licious indexes the zero-padded EAN-13 form...
+              hits: [{ code: '0012345678905', product_name: 'Nutella' }],
+              page: 1,
+              page_size: 20,
+              count: 1,
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              // ...while Product Opener stores the 12-digit UPC-A form.
+              products: [
+                {
+                  code: '012345678905',
+                  product_name: 'Nutella',
+                  brands: 'Ferrero',
+                  nutriments: {},
+                },
+              ],
+            }),
+        });
+
+      const result = await searchOpenFoodFacts('nutella');
+
+      expect(result.products.map((product) => product.code)).toEqual([
+        '012345678905',
+      ]);
+      // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
+      expect(fetch.mock.calls[1][0]).toContain(
+        '/api/v2/search?code=0012345678905,012345678905&'
       );
     });
   });

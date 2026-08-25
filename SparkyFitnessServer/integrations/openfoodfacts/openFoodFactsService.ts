@@ -17,6 +17,42 @@ const SEARCH_A_LICIOUS_URL = 'https://search.openfoodfacts.org/search';
 const OFF_HEADERS = {
   'User-Agent': USER_AGENT,
 };
+// Upstream availability is intermittent (the public API periodically answers
+// very slowly or not at all under load). Bound every outbound call so a hung
+// provider request cannot hold the client request open indefinitely.
+const OFF_FETCH_TIMEOUT_MS = 10_000;
+
+function isTimeoutError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.name === 'TimeoutError' ||
+      error.name === 'AbortError' ||
+      error.message.includes('timed out'))
+  );
+}
+
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit = {}
+): Promise<Response> {
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: AbortSignal.timeout(OFF_FETCH_TIMEOUT_MS),
+    });
+  } catch (error) {
+    if (isTimeoutError(error)) {
+      log(
+        'warn',
+        `OpenFoodFacts request timed out after ${OFF_FETCH_TIMEOUT_MS}ms: ${url}`
+      );
+      throw Object.assign(new Error('OpenFoodFacts request timed out'), {
+        status: 504,
+      });
+    }
+    throw error;
+  }
+}
 const OFF_FIELDS = [
   'product_name',
   'product_name_en',
@@ -208,7 +244,10 @@ async function fetchOpenFoodFacts(
     ? { ...baseHeaders, Cookie: `session=${sessionCookie}` }
     : baseHeaders;
 
-  const response = await fetch(url, { method: 'GET', headers });
+  const response = await fetchWithTimeout(url, {
+    method: 'GET',
+    headers,
+  });
 
   if (sessionCookie && (response.status === 429 || response.status >= 500)) {
     log(
@@ -218,10 +257,19 @@ async function fetchOpenFoodFacts(
     if (authenticatedUserId && providerId) {
       invalidateOpenFoodFactsSession(authenticatedUserId, providerId);
     }
-    return fetch(url, { method: 'GET', headers: baseHeaders });
+    return fetchWithTimeout(url, { method: 'GET', headers: baseHeaders });
   }
 
   return response;
+}
+
+// UPC-A (12 digits) and its zero-padded EAN-13 sibling describe the same
+// product. Search-a-licious and Product Opener do not always agree on which
+// form they store, so resolve both.
+function offCodeAliases(code: string): string[] {
+  if (/^\d{12}$/.test(code)) return ['0' + code];
+  if (/^0\d{12}$/.test(code)) return [code.slice(1)];
+  return [];
 }
 
 async function hydrateSearchHits(
@@ -244,8 +292,13 @@ async function hydrateSearchHits(
   ];
   if (codes.length === 0) return [];
 
+  // Ask for both barcode forms so the bulk lookup also finds products Product
+  // Opener stores under the sibling UPC-A/EAN-13 representation.
+  const requestCodes = [
+    ...new Set(codes.flatMap((code) => [code, ...offCodeAliases(code)])),
+  ];
   const fieldsParam = fields.join(',');
-  const batchUrl = `${requestContext.baseUrl}/api/v2/search?code=${codes.join(',')}&fields=${fieldsParam}&page_size=${codes.length}&lc=${language}`;
+  const batchUrl = `${requestContext.baseUrl}/api/v2/search?code=${requestCodes.join(',')}&fields=${fieldsParam}&page_size=${requestCodes.length}&lc=${language}`;
   const batchResponse = await fetchOpenFoodFacts(batchUrl, requestContext);
 
   let currentProducts: OffProduct[];
@@ -261,8 +314,8 @@ async function hydrateSearchHits(
     // bounded fallback without returning stale Search-a-licious nutrition.
     currentProducts = [];
     const concurrency = 4;
-    for (let start = 0; start < codes.length; start += concurrency) {
-      const chunk = codes.slice(start, start + concurrency);
+    for (let start = 0; start < requestCodes.length; start += concurrency) {
+      const chunk = requestCodes.slice(start, start + concurrency);
       const products = await Promise.all(
         chunk.map(async (code): Promise<OffProduct | null> => {
           try {
@@ -312,8 +365,16 @@ async function hydrateSearchHits(
       .filter((product) => product.code)
       .map((product) => [String(product.code).trim(), product])
   );
+  // Product Opener may store a product under its UPC-A/EAN-13 sibling form,
+  // while Search-a-licious indexes the other one. Without this fallback such
+  // hits silently vanish from the result list ("intermittently no results").
+  const lookupProduct = (code: string): OffProduct | undefined =>
+    productsByCode.get(code) ??
+    offCodeAliases(code)
+      .map((alias) => productsByCode.get(alias))
+      .find((product) => product !== undefined);
   return codes
-    .map((code) => productsByCode.get(code))
+    .map(lookupProduct)
     .filter((product): product is OffProduct => product !== undefined);
 }
 
@@ -380,7 +441,7 @@ async function searchOpenFoodFacts(
     }
 
     const langs = language === 'en' ? ['en'] : [language, 'en'];
-    const response = await fetch(SEARCH_A_LICIOUS_URL, {
+    const response = await fetchWithTimeout(SEARCH_A_LICIOUS_URL, {
       method: 'POST',
       headers: {
         ...OFF_HEADERS,
