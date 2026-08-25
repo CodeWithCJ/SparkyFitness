@@ -272,6 +272,12 @@ function offCodeAliases(code: string): string[] {
   return [];
 }
 
+// Overall wall-clock budget for the product-by-code fallback so a degraded
+// Product Opener cannot stretch one search into minutes of sequential
+// timeouts. Chunks that would start past the deadline are skipped and the
+// partial result set is returned instead.
+const HYDRATION_FALLBACK_BUDGET_MS = 10_000;
+
 async function hydrateSearchHits(
   hits: SearchALiciousHit[],
   fields: string[],
@@ -298,7 +304,11 @@ async function hydrateSearchHits(
     ...new Set(codes.flatMap((code) => [code, ...offCodeAliases(code)])),
   ];
   const fieldsParam = fields.join(',');
-  const batchUrl = `${requestContext.baseUrl}/api/v2/search?code=${requestCodes.join(',')}&fields=${fieldsParam}&page_size=${requestCodes.length}&lc=${language}`;
+  const batchUrl = `${requestContext.baseUrl}/api/v2/search?code=${requestCodes
+    .map(encodeURIComponent)
+    .join(
+      ','
+    )}&fields=${fieldsParam}&page_size=${requestCodes.length}&lc=${language}`;
   const batchResponse = await fetchOpenFoodFacts(batchUrl, requestContext);
 
   let currentProducts: OffProduct[];
@@ -314,7 +324,15 @@ async function hydrateSearchHits(
     // bounded fallback without returning stale Search-a-licious nutrition.
     currentProducts = [];
     const concurrency = 4;
+    const fallbackDeadline = Date.now() + HYDRATION_FALLBACK_BUDGET_MS;
     for (let start = 0; start < requestCodes.length; start += concurrency) {
+      if (start > 0 && Date.now() >= fallbackDeadline) {
+        log(
+          'warn',
+          `OpenFoodFacts product-by-code hydration budget exhausted after ${currentProducts.length}/${requestCodes.length} codes`
+        );
+        break;
+      }
       const chunk = requestCodes.slice(start, start + concurrency);
       const products = await Promise.all(
         chunk.map(async (code): Promise<OffProduct | null> => {
