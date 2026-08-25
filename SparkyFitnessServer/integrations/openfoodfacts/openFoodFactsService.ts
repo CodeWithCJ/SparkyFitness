@@ -33,12 +33,13 @@ function isTimeoutError(error: unknown): boolean {
 
 async function fetchWithTimeout(
   url: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
+  timeoutMs: number = OFF_FETCH_TIMEOUT_MS
 ): Promise<Response> {
   try {
     return await fetch(url, {
       ...init,
-      signal: AbortSignal.timeout(OFF_FETCH_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {
     if (isTimeoutError(error)) {
@@ -232,10 +233,12 @@ async function fetchOpenFoodFacts(
     authenticatedUserId,
     providerId,
     sessionCookie,
+    timeoutMs = OFF_FETCH_TIMEOUT_MS,
   }: {
     authenticatedUserId?: string;
     providerId?: string;
     sessionCookie?: string | null;
+    timeoutMs?: number;
   } = {}
 ) {
   const baseHeaders = { ...OFF_HEADERS };
@@ -244,10 +247,14 @@ async function fetchOpenFoodFacts(
     ? { ...baseHeaders, Cookie: `session=${sessionCookie}` }
     : baseHeaders;
 
-  const response = await fetchWithTimeout(url, {
-    method: 'GET',
-    headers,
-  });
+  const response = await fetchWithTimeout(
+    url,
+    {
+      method: 'GET',
+      headers,
+    },
+    timeoutMs
+  );
 
   if (sessionCookie && (response.status === 429 || response.status >= 500)) {
     log(
@@ -257,7 +264,14 @@ async function fetchOpenFoodFacts(
     if (authenticatedUserId && providerId) {
       invalidateOpenFoodFactsSession(authenticatedUserId, providerId);
     }
-    return fetchWithTimeout(url, { method: 'GET', headers: baseHeaders });
+    return fetchWithTimeout(
+      url,
+      {
+        method: 'GET',
+        headers: baseHeaders,
+      },
+      timeoutMs
+    );
   }
 
   return response;
@@ -333,15 +347,21 @@ async function hydrateSearchHits(
         );
         break;
       }
+      // A chunk that starts just before the deadline only gets the remaining
+      // budget, so in-flight requests cannot outlive it.
+      const chunkTimeoutMs = Math.max(
+        0,
+        Math.min(fallbackDeadline - Date.now(), OFF_FETCH_TIMEOUT_MS)
+      );
       const chunk = requestCodes.slice(start, start + concurrency);
       const products = await Promise.all(
         chunk.map(async (code): Promise<OffProduct | null> => {
           try {
             const productUrl = `${requestContext.baseUrl}/api/v2/product/${encodeURIComponent(code)}.json?fields=${fieldsParam}&lc=${language}`;
-            const response = await fetchOpenFoodFacts(
-              productUrl,
-              requestContext
-            );
+            const response = await fetchOpenFoodFacts(productUrl, {
+              ...requestContext,
+              timeoutMs: chunkTimeoutMs,
+            });
             if (!response.ok) return null;
             const data: unknown = await response.json();
             if (

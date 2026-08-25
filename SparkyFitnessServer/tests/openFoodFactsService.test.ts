@@ -424,6 +424,56 @@ describe('openFoodFactsService', () => {
         '/api/v2/search?code=0012345678905,012345678905&'
       );
     });
+
+    it('stops the product-by-code fallback once the wall-clock budget is exhausted', async () => {
+      vi.useFakeTimers();
+      try {
+        const hits = Array.from({ length: 6 }, (_, i) => ({
+          code: `00${i}`,
+          product_name: 'Budget Product',
+        }));
+        let call = 0;
+        // @ts-expect-error TS(2339): Property 'mockImplementation' does not exist o... Remove this comment to see the full error message
+        fetch.mockImplementation(async (url: string) => {
+          call += 1;
+          if (call === 1) {
+            return {
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  hits,
+                  page: 1,
+                  page_size: 20,
+                  count: hits.length,
+                }),
+            };
+          }
+          if (call === 2) {
+            return { ok: false, status: 503, text: () => Promise.resolve('') };
+          }
+          // Simulate the first chunk consuming the entire fallback budget.
+          vi.setSystemTime(Date.now() + 11_000);
+          const code = String(url).match(/product\/(\d+)\.json/)?.[1];
+          return {
+            ok: true,
+            json: () => Promise.resolve({ status: 1, product: { code } }),
+          };
+        });
+
+        const result = await searchOpenFoodFacts('budget');
+
+        // Chunks starting past the deadline are skipped: only the first
+        // (concurrency 4) chunk of codes comes back.
+        expect(result.products.map((product) => product.code)).toEqual([
+          '000',
+          '001',
+          '002',
+          '003',
+        ]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   describe('searchOpenFoodFactsByBarcodeFields', () => {
