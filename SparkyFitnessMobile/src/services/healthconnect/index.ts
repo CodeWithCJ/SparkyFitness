@@ -1077,7 +1077,13 @@ export const getAggregatedActiveCaloriesByDateDetailed = async (
   if (derivedRecords.length > 0) {
     addLog('[HealthConnectService] Derived missing active-calorie days from total minus basal calories', 'DEBUG');
   }
-  const fallbackDependedOnTotal = activeResult.records.length === 0 || fallbackTotals.length > 0;
+  const expectedDayCount = Math.max(
+    0,
+    dayIndexSpan(wallClockParts(startDate), endDate) + 1,
+  );
+  const activeDayCount = new Set(activeResult.records.map(record => record.date)).size;
+  const activeCoversFullRange = activeDayCount >= expectedDayCount;
+  const fallbackDependedOnTotal = !activeCoversFullRange || fallbackTotals.length > 0;
   const totalError = fallbackDependedOnTotal ? totalResult.error : undefined;
   const error = activeResult.error ?? totalError ?? basalError;
   const records = [...activeResult.records, ...derivedRecords]
@@ -1175,6 +1181,7 @@ const activeCaloriesPassSessionCheck = (
   total: number,
   durationMs: number,
 ): boolean => {
+  if (active > total) return false;
   const ratio = active / total;
   const durationMinutes = durationMs / 60_000;
   const delta = total - active;

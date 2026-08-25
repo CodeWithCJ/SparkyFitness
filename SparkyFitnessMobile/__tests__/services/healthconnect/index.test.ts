@@ -1137,6 +1137,32 @@ describe('getAggregatedActiveCaloriesByDate', () => {
     });
   });
 
+  test('surfaces a total-calorie error when native active coverage is only partial', async () => {
+    mockAggregateGroupByPeriod.mockImplementation(
+      ({ recordType }: { recordType: string }) => {
+        if (recordType === 'ActiveCaloriesBurned') {
+          return Promise.resolve([
+            periodBucket(2024, 1, 15, { ACTIVE_CALORIES_TOTAL: { inKilocalories: 525 } }),
+          ]);
+        }
+        if (recordType === 'TotalCaloriesBurned') {
+          return Promise.reject(new Error('Total read failed'));
+        }
+        return Promise.resolve([]);
+      },
+    );
+
+    const result = await getAggregatedActiveCaloriesByDateDetailed(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 16),
+    );
+
+    expect(result.records).toEqual([
+      { date: '2024-01-15', value: 525, type: 'active_calories' },
+    ]);
+    expect(result.error).toContain('Total read failed');
+  });
+
   test('derives only dates missing from a partial active-calorie aggregate', async () => {
     mockAggregateGroupByPeriod.mockImplementation(
       ({ recordType }: { recordType: string }) => {
@@ -1472,6 +1498,32 @@ describe('enrichExerciseSessions', () => {
     expect(calorieRequests.slice(2).every(
       request => request.dataOriginFilter == null,
     )).toBe(true);
+  });
+
+  test('rejects scoped active calories above total and retries across origins', async () => {
+    mockAggregateRecord.mockImplementation((request: { recordType: string; dataOriginFilter?: string[] }) => {
+      if (request.recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({
+          ACTIVE_CALORIES_TOTAL: { inKilocalories: request.dataOriginFilter ? 400 : 320 },
+        });
+      }
+      if (request.recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({
+          ENERGY_TOTAL: { inKilocalories: request.dataOriginFilter ? 300 : 350 },
+        });
+      }
+      return Promise.resolve({});
+    });
+
+    const result = await enrichExerciseSessions([
+      makeSession({ metadata: { dataOrigin: 'app.hevy' } }),
+    ], createTelemetryRunContext());
+
+    expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 320 });
+    const calorieRequests = mockAggregateRecord.mock.calls
+      .map((call: unknown[]) => call[0] as { recordType: string; dataOriginFilter?: string[] })
+      .filter(request => request.recordType !== 'Distance');
+    expect(calorieRequests).toHaveLength(4);
   });
 
   test('prefers TotalCaloriesBurned when ActiveCaloriesBurned is a tiny passive fragment (issue #1296: 41-min walk)', async () => {
