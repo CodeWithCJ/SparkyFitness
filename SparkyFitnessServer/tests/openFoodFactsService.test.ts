@@ -22,6 +22,7 @@ global.fetch = fetchMock;
 describe('openFoodFactsService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    fetchMock.mockReset();
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     resolveOpenFoodFactsProvider.mockResolvedValue({
       session: null,
@@ -78,6 +79,88 @@ describe('openFoodFactsService', () => {
         totalCount: 25,
         hasMore: true,
       });
+    });
+
+    it('reports an inexact Search-a-licious count as the loaded range plus one', async () => {
+      const hits = Array.from({ length: 20 }, (_, index) => ({
+        code: String(index + 1),
+        product_name: `Product ${index + 1}`,
+      }));
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              hits,
+              page: 1,
+              page_size: 20,
+              count: 10_000,
+              is_count_exact: false,
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ products: hits }),
+        });
+
+      const result = await searchOpenFoodFacts('product');
+
+      expect(result.pagination).toEqual({
+        page: 1,
+        pageSize: 20,
+        totalCount: 21,
+        hasMore: true,
+      });
+    });
+
+    it('does not advertise a page beyond the Search-a-licious result window', async () => {
+      const hits = Array.from({ length: 30 }, (_, index) => ({
+        code: String(index + 1),
+        product_name: `Product ${index + 1}`,
+      }));
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              hits,
+              page: 333,
+              page_size: 30,
+              count: 10_000,
+              is_count_exact: false,
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ products: hits }),
+        });
+
+      const result = await searchOpenFoodFacts(
+        'product',
+        333,
+        'en',
+        undefined,
+        undefined,
+        30
+      );
+
+      expect(result.pagination).toEqual({
+        page: 333,
+        pageSize: 30,
+        totalCount: 9_990,
+        hasMore: false,
+      });
+    });
+
+    it('rejects public searches outside the Search-a-licious result window', async () => {
+      await expect(
+        searchOpenFoodFacts('product', 501, 'en', undefined, undefined, 20)
+      ).rejects.toMatchObject({
+        message: 'OpenFoodFacts search supports at most 10000 results',
+        status: 400,
+        statusCode: 400,
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
     });
 
     it('returns current Product Opener records in Search-a-licious relevance order', async () => {
@@ -287,42 +370,114 @@ describe('openFoodFactsService', () => {
       );
     });
 
-    it('falls back to a product-by-code lookup when bulk hydration is unavailable', async () => {
+    it('encodes barcode values without escaping the bulk separator', async () => {
       fetchMock
         .mockResolvedValueOnce({
           ok: true,
           json: () =>
             Promise.resolve({
-              hits: [{ code: '123', product_name: 'Current Product' }],
+              hits: [{ code: '12&34', product_name: 'Encoded Product' }],
               page: 1,
               page_size: 20,
               count: 1,
             }),
         })
-        .mockResolvedValueOnce({ ok: false, status: 503 })
         .mockResolvedValueOnce({
           ok: true,
           json: () =>
             Promise.resolve({
-              status: 1,
-              product: {
-                code: '123',
-                product_name: 'Current Product',
-                serving_quantity: 250,
-              },
+              products: [{ code: '12&34', product_name: 'Encoded Product' }],
             }),
         });
 
-      const result = await searchOpenFoodFacts('current product');
+      await searchOpenFoodFacts('encoded product');
 
-      expect(result.products).toEqual([
-        expect.objectContaining({ code: '123', serving_quantity: 250 }),
-      ]);
-      // @ts-expect-error mocked global fetch
-      expect(fetch.mock.calls[2][0]).toContain('/api/v2/product/123.json');
+      expect(fetchMock.mock.calls[1][0]).toContain(
+        '/api/v2/search?code=12%2634&'
+      );
     });
 
-    it('throws a compact error for malformed Product Opener hydration data', async () => {
+    it('uses complete Search-a-licious hits without product fan-out when bulk hydration is unavailable', async () => {
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              hits: [
+                {
+                  code: '123',
+                  product_name: 'Available Product',
+                  brands: ['Search Brand'],
+                  serving_quantity: 250,
+                  nutriments: { 'energy-kcal_100g': 50 },
+                },
+                {
+                  code: '456',
+                  product_name: 'Second Product',
+                  brands: ['Other Brand'],
+                },
+              ],
+              page: 1,
+              page_size: 20,
+              count: 2,
+              is_count_exact: true,
+            }),
+        })
+        .mockResolvedValueOnce({ ok: false, status: 503 });
+
+      const result = await searchOpenFoodFacts('available product');
+
+      expect(result.products).toEqual([
+        expect.objectContaining({
+          code: '123',
+          brands: 'Search Brand',
+          serving_quantity: 250,
+        }),
+        expect.objectContaining({ code: '456', brands: 'Other Brand' }),
+      ]);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it.each([
+      [
+        'malformed JSON',
+        () => Promise.reject(new SyntaxError('Unexpected <html>')),
+      ],
+      [
+        'malformed product entries',
+        () => Promise.resolve({ products: [null] }),
+      ],
+      ['an empty product list', () => Promise.resolve({ products: [] })],
+    ])(
+      'keeps ranked hits when bulk hydration returns %s',
+      async (_case, json) => {
+        fetchMock
+          .mockResolvedValueOnce({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                hits: [{ code: '123', product_name: 'Product' }],
+                page: 1,
+                page_size: 20,
+                count: 1,
+              }),
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json,
+          });
+
+        const result = await searchOpenFoodFacts('product');
+
+        expect(result.products).toEqual([
+          expect.objectContaining({ code: '123', product_name: 'Product' }),
+        ]);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+      }
+    );
+
+    it('keeps ranked hits when bulk hydration rejects at the network layer', async () => {
       fetchMock
         .mockResolvedValueOnce({
           ok: true,
@@ -334,15 +489,47 @@ describe('openFoodFactsService', () => {
               count: 1,
             }),
         })
+        .mockRejectedValueOnce(new Error('socket closed'));
+
+      const result = await searchOpenFoodFacts('product');
+
+      expect(result.products).toEqual([
+        expect.objectContaining({ code: '123', product_name: 'Product' }),
+      ]);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('fills only missing hydration records from Search-a-licious', async () => {
+      fetchMock
         .mockResolvedValueOnce({
           ok: true,
-          status: 200,
-          json: () => Promise.reject(new SyntaxError('Unexpected <html>')),
+          json: () =>
+            Promise.resolve({
+              hits: [
+                { code: '123', product_name: 'Indexed First' },
+                { code: '456', product_name: 'Indexed Second' },
+              ],
+              page: 1,
+              page_size: 20,
+              count: 2,
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              products: [
+                { code: '123', product_name: 'Current First', nutriments: {} },
+              ],
+            }),
         });
 
-      await expect(searchOpenFoodFacts('product')).rejects.toThrow(
-        'OpenFoodFacts search returned an invalid response (HTTP 200)'
-      );
+      const result = await searchOpenFoodFacts('indexed');
+
+      expect(result.products.map((product) => product.product_name)).toEqual([
+        'Current First',
+        'Indexed Second',
+      ]);
     });
 
     it('throws a compact error without exposing an upstream HTML response', async () => {
@@ -425,54 +612,64 @@ describe('openFoodFactsService', () => {
       );
     });
 
-    it('stops the product-by-code fallback once the wall-clock budget is exhausted', async () => {
-      vi.useFakeTimers();
-      try {
-        const hits = Array.from({ length: 6 }, (_, i) => ({
-          code: `00${i}`,
-          product_name: 'Budget Product',
-        }));
-        let call = 0;
-        // @ts-expect-error TS(2339): Property 'mockImplementation' does not exist o... Remove this comment to see the full error message
-        fetch.mockImplementation(async (url: string) => {
-          call += 1;
-          if (call === 1) {
-            return {
-              ok: true,
-              json: () =>
-                Promise.resolve({
-                  hits,
-                  page: 1,
-                  page_size: 20,
-                  count: hits.length,
-                }),
-            };
-          }
-          if (call === 2) {
-            return { ok: false, status: 503, text: () => Promise.resolve('') };
-          }
-          // Simulate the first chunk consuming the entire fallback budget.
-          vi.setSystemTime(Date.now() + 11_000);
-          const code = String(url).match(/product\/(\d+)\.json/)?.[1];
-          return {
-            ok: true,
-            json: () => Promise.resolve({ status: 1, product: { code } }),
-          };
+    it('keeps ranked hits that do not contain a barcode', async () => {
+      fetchMock.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            hits: [
+              {
+                product_name: 'Product Without Barcode',
+                brands: ['Index Brand'],
+              },
+            ],
+            page: 1,
+            page_size: 20,
+            count: 1,
+          }),
+      });
+
+      const result = await searchOpenFoodFacts('product without barcode');
+
+      expect(result.products).toEqual([
+        expect.objectContaining({
+          product_name: 'Product Without Barcode',
+          brands: 'Index Brand',
+        }),
+      ]);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('preserves duplicate ranked hits while reusing their hydrated product', async () => {
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              hits: [
+                { code: '123', product_name: 'First Indexed Record' },
+                { code: '123', product_name: 'Second Indexed Record' },
+              ],
+              page: 1,
+              page_size: 20,
+              count: 2,
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              products: [{ code: '123', product_name: 'Current Product' }],
+            }),
         });
 
-        const result = await searchOpenFoodFacts('budget');
+      const result = await searchOpenFoodFacts('product');
 
-        // Chunks starting past the deadline are skipped: only the first
-        // (concurrency 4) chunk of codes comes back.
-        expect(result.products.map((product) => product.code)).toEqual([
-          '000',
-          '001',
-          '002',
-          '003',
-        ]);
-      } finally {
-        vi.useRealTimers();
-      }
+      expect(result.products).toHaveLength(2);
+      expect(result.products.map((product) => product.product_name)).toEqual([
+        'Current Product',
+        'Current Product',
+      ]);
     });
 
     it('rejects a Product Opener hydration payload with non-record product entries', async () => {
@@ -612,6 +809,45 @@ describe('openFoodFactsService', () => {
       expect(fetch.mock.calls[1][1].headers.Cookie).toBeUndefined();
     });
 
+    it('shares one absolute timeout across an authenticated retry', async () => {
+      vi.useFakeTimers();
+      const timeoutSpy = vi
+        .spyOn(AbortSignal, 'timeout')
+        .mockImplementation(() => new AbortController().signal);
+      try {
+        vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+        // @ts-expect-error mocked provider resolver
+        resolveOpenFoodFactsProvider.mockResolvedValue({
+          session: 'SESS_TOKEN',
+          baseUrl: DEFAULT_OFF_BASE_URL,
+        });
+        fetchMock
+          .mockImplementationOnce(async () => {
+            vi.setSystemTime(Date.now() + 4_000);
+            return { ok: false, status: 503 };
+          })
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ status: 1, product: {} }),
+          });
+
+        await searchOpenFoodFactsByBarcodeFields(
+          '12345678',
+          undefined,
+          'en',
+          'user-A',
+          'prov-1'
+        );
+
+        expect(timeoutSpy).toHaveBeenNthCalledWith(1, 10_000);
+        expect(timeoutSpy).toHaveBeenNthCalledWith(2, 6_000);
+      } finally {
+        timeoutSpy.mockRestore();
+        vi.useRealTimers();
+      }
+    });
+
     it('does not send an OpenFoodFacts session cookie to Search-a-licious', async () => {
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
       resolveOpenFoodFactsProvider.mockResolvedValue({
@@ -731,6 +967,25 @@ describe('openFoodFactsService', () => {
         expect.stringMatching(
           /^http:\/\/sparkyfitness-foodfacts:8080\/cgi\/search\.pl/
         ),
+        expect.any(Object)
+      );
+    });
+
+    it('does not apply the public result-window limit to a custom provider', async () => {
+      // @ts-expect-error mocked provider resolver
+      resolveOpenFoodFactsProvider.mockResolvedValue({
+        session: null,
+        baseUrl: 'http://sparkyfitness-foodfacts:8080',
+      });
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ products: [], count: 0 }),
+      });
+
+      await searchOpenFoodFacts('pizza', 501, 'en', 'user-A', 'prov-1', 20);
+
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('page=501'),
         expect.any(Object)
       );
     });

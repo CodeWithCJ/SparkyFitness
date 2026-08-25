@@ -14,6 +14,7 @@ import {
 const { name, version } = package$0;
 const USER_AGENT = `${name}/${version} (https://github.com/CodeWithCJ/SparkyFitness)`;
 const SEARCH_A_LICIOUS_URL = 'https://search.openfoodfacts.org/search';
+const SEARCH_A_LICIOUS_RESULT_WINDOW = 10_000;
 const OFF_HEADERS = {
   'User-Agent': USER_AGENT,
 };
@@ -22,6 +23,7 @@ const OFF_HEADERS = {
 // provider request cannot hold the client request open indefinitely.
 const OFF_FETCH_TIMEOUT_MS = 10_000;
 
+/** Identifies timeout-shaped errors emitted by Node fetch implementations. */
 function isTimeoutError(error: unknown): boolean {
   return (
     error instanceof Error &&
@@ -31,6 +33,7 @@ function isTimeoutError(error: unknown): boolean {
   );
 }
 
+/** Runs one OFF request with a hard wall-clock timeout. */
 async function fetchWithTimeout(
   url: string,
   init: RequestInit = {},
@@ -45,7 +48,7 @@ async function fetchWithTimeout(
     if (isTimeoutError(error)) {
       log(
         'warn',
-        `OpenFoodFacts request timed out after ${OFF_FETCH_TIMEOUT_MS}ms: ${url}`
+        `OpenFoodFacts request timed out after ${timeoutMs}ms: ${url}`
       );
       throw Object.assign(new Error('OpenFoodFacts request timed out'), {
         status: 504,
@@ -104,16 +107,19 @@ interface SearchALiciousResponse {
   page?: number;
   page_size?: number;
   count?: number;
+  is_count_exact?: boolean;
 }
 
 interface ProductOpenerSearchResponse {
   products: OffProduct[];
 }
 
+/** Narrows untrusted JSON values to non-null objects. */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+/** Parses an upstream JSON response and rejects data outside its schema. */
 async function parseSearchResponse<T>(
   response: Response,
   isValid: (value: unknown) => value is T
@@ -130,18 +136,27 @@ async function parseSearchResponse<T>(
   );
 }
 
+/** Validates the minimum legacy Product Opener search response shape. */
 function isLegacySearchResponse(
   value: unknown
 ): value is LegacyOffSearchResponse & { products: OffProduct[] } {
   return isRecord(value) && Array.isArray(value.products);
 }
 
+/** Validates Search-a-licious hits and its optional count-accuracy flag. */
 function isSearchALiciousResponse(
   value: unknown
 ): value is SearchALiciousResponse {
-  return isRecord(value) && Array.isArray(value.hits);
+  return (
+    isRecord(value) &&
+    Array.isArray(value.hits) &&
+    value.hits.every(isRecord) &&
+    (value.is_count_exact === undefined ||
+      typeof value.is_count_exact === 'boolean')
+  );
 }
 
+/** Validates every product returned by the Product Opener bulk endpoint. */
 function isProductOpenerSearchResponse(
   value: unknown
 ): value is ProductOpenerSearchResponse {
@@ -152,6 +167,7 @@ function isProductOpenerSearchResponse(
   );
 }
 
+/** Normalizes names and brands for accent-insensitive token matching. */
 function normalizeSearchText(value: string): string {
   return value
     .normalize('NFKD')
@@ -161,6 +177,7 @@ function normalizeSearchText(value: string): string {
     .trim();
 }
 
+/** Stably promotes hits that cover the complete query phrase and tokens. */
 function rankSearchHits(
   hits: SearchALiciousHit[],
   query: string,
@@ -204,9 +221,10 @@ function rankSearchHits(
     .map(({ hit }) => hit);
 }
 
-// Resolves the session cookie (if the provider has login credentials) and
-// the base URL (self-hosted or the public default) for a single OFF
-// provider lookup, so callers only hit the provider row once per request.
+/**
+ * Resolves the session and base URL once for an OFF lookup, falling back to
+ * the public provider when an optional provider cannot be resolved.
+ */
 async function resolveOffRequestContext(
   authenticatedUserId?: string,
   providerId?: string
@@ -226,11 +244,10 @@ async function resolveOffRequestContext(
   }
 }
 
-// Wraps fetch with optional session-cookie authentication for OFF endpoints.
-// On 429/5xx with an attached cookie, invalidates the session and retries once
-// without the cookie. OFF returns 200 on stale cookies (no 401 signal), so we
-// don't try to distinguish that case — we only retry on the observable
-// failure mode (rate limiting).
+/**
+ * Fetches an OFF endpoint with optional session authentication. A retry after
+ * an authenticated 429/5xx shares the original request's absolute deadline.
+ */
 async function fetchOpenFoodFacts(
   url: string,
   {
@@ -285,21 +302,25 @@ async function fetchOpenFoodFacts(
   return response;
 }
 
-// UPC-A (12 digits) and its zero-padded EAN-13 sibling describe the same
-// product. Search-a-licious and Product Opener do not always agree on which
-// form they store, so resolve both.
+/** Returns the equivalent UPC-A or zero-padded EAN-13 barcode, when present. */
 function offCodeAliases(code: string): string[] {
   if (/^\d{12}$/.test(code)) return ['0' + code];
   if (/^0\d{12}$/.test(code)) return [code.slice(1)];
   return [];
 }
 
-// Overall wall-clock budget for the product-by-code fallback so a degraded
-// Product Opener cannot stretch one search into minutes of sequential
-// timeouts. Chunks that would start past the deadline are skipped and the
-// partial result set is returned instead.
-const HYDRATION_FALLBACK_BUDGET_MS = 10_000;
+/** Converts a Search-a-licious hit into the Product Opener product shape. */
+function productFromSearchHit(hit: SearchALiciousHit): OffProduct {
+  return {
+    ...hit,
+    brands: Array.isArray(hit.brands) ? hit.brands.join(', ') : hit.brands,
+  };
+}
 
+/**
+ * Refreshes ranked hits in one Product Opener bulk request while preserving
+ * every original hit when hydration is partial or unavailable.
+ */
 async function hydrateSearchHits(
   hits: SearchALiciousHit[],
   fields: string[],
@@ -318,7 +339,7 @@ async function hydrateSearchHits(
         .filter((code) => code.length > 0)
     ),
   ];
-  if (codes.length === 0) return [];
+  if (codes.length === 0) return hits.map(productFromSearchHit);
 
   // Ask for both barcode forms so the bulk lookup also finds products Product
   // Opener stores under the sibling UPC-A/EAN-13 representation.
@@ -331,79 +352,24 @@ async function hydrateSearchHits(
     .join(
       ','
     )}&fields=${fieldsParam}&page_size=${requestCodes.length}&lc=${language}`;
-  const batchResponse = await fetchOpenFoodFacts(batchUrl, requestContext);
-
-  let currentProducts: OffProduct[];
-  if (batchResponse.ok) {
+  let currentProducts: OffProduct[] = [];
+  try {
+    const batchResponse = await fetchOpenFoodFacts(batchUrl, requestContext);
+    if (!batchResponse.ok) {
+      throw new Error(
+        `OpenFoodFacts bulk hydration failed (HTTP ${batchResponse.status})`
+      );
+    }
     const batchData = await parseSearchResponse(
       batchResponse,
       isProductOpenerSearchResponse
     );
     currentProducts = batchData.products;
-  } else if (batchResponse.status === 429 || batchResponse.status >= 500) {
-    // Product Opener's bulk-search service can be rate-limited independently.
-    // Product-by-code lookups are a documented read path and provide a useful
-    // bounded fallback without returning stale Search-a-licious nutrition.
-    currentProducts = [];
-    const concurrency = 4;
-    const fallbackDeadline = Date.now() + HYDRATION_FALLBACK_BUDGET_MS;
-    for (let start = 0; start < requestCodes.length; start += concurrency) {
-      if (start > 0 && Date.now() >= fallbackDeadline) {
-        log(
-          'warn',
-          `OpenFoodFacts product-by-code hydration budget exhausted after ${currentProducts.length}/${requestCodes.length} codes`
-        );
-        break;
-      }
-      // A chunk that starts just before the deadline only gets the remaining
-      // budget, so in-flight requests cannot outlive it.
-      const chunkTimeoutMs = Math.max(
-        0,
-        Math.min(fallbackDeadline - Date.now(), OFF_FETCH_TIMEOUT_MS)
-      );
-      const chunk = requestCodes.slice(start, start + concurrency);
-      const products = await Promise.all(
-        chunk.map(async (code): Promise<OffProduct | null> => {
-          try {
-            const productUrl = `${requestContext.baseUrl}/api/v2/product/${encodeURIComponent(code)}.json?fields=${fieldsParam}&lc=${language}`;
-            const response = await fetchOpenFoodFacts(productUrl, {
-              ...requestContext,
-              timeoutMs: chunkTimeoutMs,
-            });
-            if (!response.ok) return null;
-            const data: unknown = await response.json();
-            if (
-              !isRecord(data) ||
-              data.status !== 1 ||
-              !isRecord(data.product)
-            ) {
-              return null;
-            }
-            return data.product as OffProduct;
-          } catch (error) {
-            log(
-              'warn',
-              `OpenFoodFacts product hydration failed for barcode "${code}":`,
-              error
-            );
-            return null;
-          }
-        })
-      );
-      currentProducts.push(
-        ...products.filter((product): product is OffProduct => product !== null)
-      );
-    }
-
-    if (currentProducts.length === 0) {
-      throw new Error(
-        `OpenFoodFacts search failed (HTTP ${batchResponse.status})`
-      );
-    }
-  } else {
-    throw new Error(
-      `OpenFoodFacts search failed (HTTP ${batchResponse.status})`
-    );
+  } catch (error) {
+    // Search-a-licious already returned complete product records. Hydration is
+    // only a freshness improvement, so a separate Product Opener outage must
+    // not turn a successful search into an error or a rate-limited fan-out.
+    log('warn', 'OpenFoodFacts bulk hydration unavailable:', error);
   }
 
   const productsByCode = new Map(
@@ -419,11 +385,49 @@ async function hydrateSearchHits(
     offCodeAliases(code)
       .map((alias) => productsByCode.get(alias))
       .find((product) => product !== undefined);
-  return codes
-    .map(lookupProduct)
-    .filter((product): product is OffProduct => product !== undefined);
+  return hits.map((hit) => {
+    const code = String(hit.code || '').trim();
+    return (
+      (code ? lookupProduct(code) : undefined) ?? productFromSearchHit(hit)
+    );
+  });
 }
 
+/** Builds pagination that respects inexact counts and the 10,000-hit window. */
+function getSearchALiciousPagination(
+  data: SearchALiciousResponse,
+  requestedPage: number,
+  requestedPageSize: number
+) {
+  const page = data.page || requestedPage;
+  const pageSize = data.page_size || requestedPageSize;
+  const loadedThrough = (page - 1) * pageSize + data.hits.length;
+  const nextPageFitsWindow =
+    (page + 1) * pageSize <= SEARCH_A_LICIOUS_RESULT_WINDOW;
+
+  if (data.is_count_exact === false) {
+    const hasMore = data.hits.length === pageSize && nextPageFitsWindow;
+    return {
+      page,
+      pageSize,
+      totalCount: loadedThrough + (hasMore ? 1 : 0),
+      hasMore,
+    };
+  }
+
+  const totalCount = Math.min(
+    data.count ?? loadedThrough,
+    SEARCH_A_LICIOUS_RESULT_WINDOW
+  );
+  return {
+    page,
+    pageSize,
+    totalCount,
+    hasMore: page * pageSize < totalCount && nextPageFitsWindow,
+  };
+}
+
+/** Searches either public Search-a-licious or a custom legacy OFF provider. */
 async function searchOpenFoodFacts(
   query: string,
   page = 1,
@@ -486,6 +490,15 @@ async function searchOpenFoodFacts(
       };
     }
 
+    if (page * pageSize > SEARCH_A_LICIOUS_RESULT_WINDOW) {
+      throw Object.assign(
+        new Error(
+          `OpenFoodFacts search supports at most ${SEARCH_A_LICIOUS_RESULT_WINDOW} results`
+        ),
+        { status: 400, statusCode: 400 }
+      );
+    }
+
     const langs = language === 'en' ? ['en'] : [language, 'en'];
     const response = await fetchWithTimeout(SEARCH_A_LICIOUS_URL, {
       method: 'POST',
@@ -519,14 +532,7 @@ async function searchOpenFoodFacts(
     });
     return {
       products,
-      pagination: {
-        page: data.page || page,
-        pageSize: data.page_size || pageSize,
-        totalCount: data.count || 0,
-        hasMore:
-          (data.page || page) * (data.page_size || pageSize) <
-          (data.count || 0),
-      },
+      pagination: getSearchALiciousPagination(data, page, pageSize),
     };
   } catch (error) {
     log(
