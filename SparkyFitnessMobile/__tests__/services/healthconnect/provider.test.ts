@@ -87,8 +87,8 @@ describe('healthconnect provider', () => {
 
     test('enriches exercise sessions with native calories and distance aggregates', async () => {
       // enrichExerciseSessions aggregates ActiveCalories/TotalCalories/Distance over
-      // each session window (scoped to its dataOrigin) and attaches the selected,
-      // plausibility-checked values back onto the record.
+      // each session window and attaches the selected, plausibility-checked values
+      // back onto the record.
       const sessionStart = '2026-07-02T08:00:00.000Z';
       const sessionEnd = '2026-07-02T09:00:00.000Z'; // 1h session
       const records = [
@@ -111,9 +111,15 @@ describe('healthconnect provider', () => {
         energy: { inKilocalories: 400 },
         distance: { inMeters: 8000 },
       });
-      // Aggregates are scoped to the session window and its data origin.
+      // The first pass is scoped to the session origin. Cross-origin calorie
+      // source priority is only used when that scoped pair needs a fallback.
       expect(mockAggregateRecord).toHaveBeenCalledWith(expect.objectContaining({
         recordType: 'ActiveCaloriesBurned',
+        timeRangeFilter: { operator: 'between', startTime: sessionStart, endTime: sessionEnd },
+        dataOriginFilter: ['com.example.app'],
+      }));
+      expect(mockAggregateRecord).toHaveBeenCalledWith(expect.objectContaining({
+        recordType: 'Distance',
         timeRangeFilter: { operator: 'between', startTime: sessionStart, endTime: sessionEnd },
         dataOriginFilter: ['com.example.app'],
       }));

@@ -1056,11 +1056,21 @@ describe('getAggregatedActiveCaloriesByDate', () => {
 
   test('does not replace a reported active-calorie aggregate', async () => {
     mockAggregateGroupByPeriod.mockImplementation(
-      ({ recordType }: { recordType: string }) => recordType === 'ActiveCaloriesBurned'
-        ? Promise.resolve([
+      ({ recordType }: { recordType: string }) => {
+        if (recordType === 'ActiveCaloriesBurned') {
+          return Promise.resolve([
             periodBucket(2024, 1, 15, { ACTIVE_CALORIES_TOTAL: { inKilocalories: 525 } }),
-          ])
-        : Promise.resolve([]),
+          ]);
+        }
+        if (recordType === 'TotalCaloriesBurned') {
+          return Promise.resolve([
+            periodBucket(2024, 1, 15, { ENERGY_TOTAL: { inKilocalories: 2400 } }),
+          ]);
+        }
+        return Promise.resolve([
+          periodBucket(2024, 1, 15, { BASAL_CALORIES_TOTAL: { inKilocalories: 1750 } }),
+        ]);
+      },
     );
 
     const result = await getAggregatedActiveCaloriesByDate(
@@ -1070,18 +1080,106 @@ describe('getAggregatedActiveCaloriesByDate', () => {
 
     expect(result[0].value).toBe(525);
     expect(result).toHaveLength(1);
-    expect(mockAggregateGroupByPeriod).toHaveBeenCalledTimes(1);
   });
 
-  test('does not derive missing dates when the active aggregate has any records', async () => {
+  test('does not query basal calories when total has no dates missing from active', async () => {
     mockAggregateGroupByPeriod.mockImplementation(
-      ({ recordType }: { recordType: string }) => recordType === 'ActiveCaloriesBurned'
-        ? Promise.resolve([
+      ({ recordType }: { recordType: string }) => {
+        if (recordType === 'ActiveCaloriesBurned') {
+          return Promise.resolve([
             periodBucket(2024, 1, 15, { ACTIVE_CALORIES_TOTAL: { inKilocalories: 525 } }),
-          ])
-        : Promise.resolve([
+          ]);
+        }
+        if (recordType === 'TotalCaloriesBurned') {
+          return Promise.resolve([
+            periodBucket(2024, 1, 15, { ENERGY_TOTAL: { inKilocalories: 2400 } }),
+          ]);
+        }
+        return Promise.reject(new Error('Basal permission denied'));
+      },
+    );
+
+    const result = await getAggregatedActiveCaloriesByDateDetailed(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15),
+    );
+
+    expect(result).toEqual({
+      records: [{ date: '2024-01-15', value: 525, type: 'active_calories' }],
+    });
+    expect(mockAggregateGroupByPeriod.mock.calls.map(
+      (call: unknown[]) => (call[0] as { recordType: string }).recordType,
+    )).not.toContain('BasalMetabolicRate');
+  });
+
+  test('does not surface an optional total-calorie error after the native active read succeeds', async () => {
+    mockAggregateGroupByPeriod.mockImplementation(
+      ({ recordType }: { recordType: string }) => {
+        if (recordType === 'ActiveCaloriesBurned') {
+          return Promise.resolve([
+            periodBucket(2024, 1, 15, { ACTIVE_CALORIES_TOTAL: { inKilocalories: 525 } }),
+          ]);
+        }
+        if (recordType === 'TotalCaloriesBurned') {
+          return Promise.reject(new Error('Total permission denied'));
+        }
+        return Promise.resolve([]);
+      },
+    );
+
+    const result = await getAggregatedActiveCaloriesByDateDetailed(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 15),
+    );
+
+    expect(result).toEqual({
+      records: [{ date: '2024-01-15', value: 525, type: 'active_calories' }],
+    });
+  });
+
+  test('surfaces a total-calorie error when native active coverage is only partial', async () => {
+    mockAggregateGroupByPeriod.mockImplementation(
+      ({ recordType }: { recordType: string }) => {
+        if (recordType === 'ActiveCaloriesBurned') {
+          return Promise.resolve([
+            periodBucket(2024, 1, 15, { ACTIVE_CALORIES_TOTAL: { inKilocalories: 525 } }),
+          ]);
+        }
+        if (recordType === 'TotalCaloriesBurned') {
+          return Promise.reject(new Error('Total read failed'));
+        }
+        return Promise.resolve([]);
+      },
+    );
+
+    const result = await getAggregatedActiveCaloriesByDateDetailed(
+      localMidnight(2024, 1, 15),
+      localEndOfDay(2024, 1, 16),
+    );
+
+    expect(result.records).toEqual([
+      { date: '2024-01-15', value: 525, type: 'active_calories' },
+    ]);
+    expect(result.error).toContain('Total read failed');
+  });
+
+  test('derives only dates missing from a partial active-calorie aggregate', async () => {
+    mockAggregateGroupByPeriod.mockImplementation(
+      ({ recordType }: { recordType: string }) => {
+        if (recordType === 'ActiveCaloriesBurned') {
+          return Promise.resolve([
+            periodBucket(2024, 1, 15, { ACTIVE_CALORIES_TOTAL: { inKilocalories: 525 } }),
+          ]);
+        }
+        if (recordType === 'TotalCaloriesBurned') {
+          return Promise.resolve([
             periodBucket(2024, 1, 16, { ENERGY_TOTAL: { inKilocalories: 2400 } }),
-          ]),
+          ]);
+        }
+        return Promise.resolve([
+          periodBucket(2024, 1, 16, { BASAL_CALORIES_TOTAL: { inKilocalories: 1750 } }),
+        ]);
+      },
     );
 
     const result = await getAggregatedActiveCaloriesByDate(
@@ -1091,8 +1189,8 @@ describe('getAggregatedActiveCaloriesByDate', () => {
 
     expect(result).toEqual([
       { date: '2024-01-15', value: 525, type: 'active_calories' },
+      { date: '2024-01-16', value: 650, type: 'active_calories' },
     ]);
-    expect(mockAggregateGroupByPeriod).toHaveBeenCalledTimes(1);
   });
 
   test('propagates an active-read error even when fallback rows are derived', async () => {
@@ -1295,17 +1393,137 @@ describe('enrichExerciseSessions', () => {
     expect(mockAggregateRecord).not.toHaveBeenCalled();
   });
 
-  test('issues all three aggregates in parallel with the same dataOriginFilter', async () => {
-    mockAggregateRecord.mockResolvedValue({});
+  test('keeps complete calorie and distance aggregates scoped to the session origin', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 300 } });
+      }
+      if (recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 350 } });
+      }
+      return Promise.resolve({ DISTANCE: { inMeters: 5000 } });
+    });
 
-    await enrichExerciseSessions([makeSession({ metadata: { dataOrigin: 'com.ohealth' } })], createTelemetryRunContext());
+    const result = await enrichExerciseSessions(
+      [makeSession({ metadata: { dataOrigin: 'com.ohealth' } })],
+      createTelemetryRunContext(),
+    );
 
-    const recordTypes = mockAggregateRecord.mock.calls.map((c: unknown[]) => (c[0] as { recordType: string }).recordType);
-    expect(recordTypes).toHaveLength(3);
-    expect(recordTypes).toEqual(expect.arrayContaining(['ActiveCaloriesBurned', 'TotalCaloriesBurned', 'Distance']));
-    for (const call of mockAggregateRecord.mock.calls) {
-      expect(call[0].dataOriginFilter).toEqual(['com.ohealth']);
-    }
+    const requests = mockAggregateRecord.mock.calls.map((call: unknown[]) => call[0] as {
+      recordType: string;
+      dataOriginFilter?: string[];
+    });
+    expect(requests).toHaveLength(3);
+    expect(requests.every(request =>
+      request.dataOriginFilter?.[0] === 'com.ohealth',
+    )).toBe(true);
+    expect(result[0]).toMatchObject({
+      energy: { inKilocalories: 300 },
+      distance: { inMeters: 5000 },
+    });
+  });
+
+  test('uses cross-origin calories when the Hevy-scoped pair is incomplete', async () => {
+    mockAggregateRecord.mockImplementation((request: { recordType: string; dataOriginFilter?: string[] }) => {
+      if (request.recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 50 } });
+      }
+      if (request.recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve(request.dataOriginFilter
+          ? {}
+          : { ENERGY_TOTAL: { inKilocalories: 307 } });
+      }
+      return Promise.resolve({});
+    });
+
+    const result = await enrichExerciseSessions([
+      makeSession({
+        startTime: '2024-01-15T10:00:00Z',
+        endTime: '2024-01-15T10:40:00Z',
+        metadata: { dataOrigin: 'app.hevy' },
+      }),
+    ], createTelemetryRunContext());
+
+    expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 307 });
+    const calorieRequests = mockAggregateRecord.mock.calls
+      .map((call: unknown[]) => call[0] as { recordType: string; dataOriginFilter?: string[] })
+      .filter(request => request.recordType !== 'Distance');
+    expect(calorieRequests).toEqual([
+      expect.objectContaining({
+        recordType: 'ActiveCaloriesBurned',
+        dataOriginFilter: ['app.hevy'],
+      }),
+      expect.objectContaining({
+        recordType: 'TotalCaloriesBurned',
+        dataOriginFilter: ['app.hevy'],
+      }),
+      expect.objectContaining({ recordType: 'ActiveCaloriesBurned' }),
+      expect.objectContaining({ recordType: 'TotalCaloriesBurned' }),
+    ]);
+    expect(calorieRequests[2]).not.toHaveProperty('dataOriginFilter');
+    expect(calorieRequests[3]).not.toHaveProperty('dataOriginFilter');
+  });
+
+  test('uses cross-origin calories when the scoped pair fails the session ratio check', async () => {
+    mockAggregateRecord.mockImplementation((request: { recordType: string; dataOriginFilter?: string[] }) => {
+      if (request.recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({
+          ACTIVE_CALORIES_TOTAL: { inKilocalories: request.dataOriginFilter ? 20 : 45 },
+        });
+      }
+      if (request.recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({
+          ENERGY_TOTAL: { inKilocalories: request.dataOriginFilter ? 150 : 307 },
+        });
+      }
+      return Promise.resolve({});
+    });
+
+    const result = await enrichExerciseSessions([
+      makeSession({
+        startTime: '2024-01-15T10:00:00Z',
+        endTime: '2024-01-15T10:40:00Z',
+        metadata: { dataOrigin: 'app.hevy' },
+      }),
+    ], createTelemetryRunContext());
+
+    expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 307 });
+    const calorieRequests = mockAggregateRecord.mock.calls
+      .map((call: unknown[]) => call[0] as { recordType: string; dataOriginFilter?: string[] })
+      .filter(request => request.recordType !== 'Distance');
+    expect(calorieRequests).toHaveLength(4);
+    expect(calorieRequests.slice(0, 2).every(
+      request => request.dataOriginFilter?.[0] === 'app.hevy',
+    )).toBe(true);
+    expect(calorieRequests.slice(2).every(
+      request => request.dataOriginFilter == null,
+    )).toBe(true);
+  });
+
+  test('rejects scoped active calories above total and retries across origins', async () => {
+    mockAggregateRecord.mockImplementation((request: { recordType: string; dataOriginFilter?: string[] }) => {
+      if (request.recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({
+          ACTIVE_CALORIES_TOTAL: { inKilocalories: request.dataOriginFilter ? 400 : 320 },
+        });
+      }
+      if (request.recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({
+          ENERGY_TOTAL: { inKilocalories: request.dataOriginFilter ? 300 : 350 },
+        });
+      }
+      return Promise.resolve({});
+    });
+
+    const result = await enrichExerciseSessions([
+      makeSession({ metadata: { dataOrigin: 'app.hevy' } }),
+    ], createTelemetryRunContext());
+
+    expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 320 });
+    const calorieRequests = mockAggregateRecord.mock.calls
+      .map((call: unknown[]) => call[0] as { recordType: string; dataOriginFilter?: string[] })
+      .filter(request => request.recordType !== 'Distance');
+    expect(calorieRequests).toHaveLength(4);
   });
 
   test('prefers TotalCaloriesBurned when ActiveCaloriesBurned is a tiny passive fragment (issue #1296: 41-min walk)', async () => {

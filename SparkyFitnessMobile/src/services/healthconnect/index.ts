@@ -1043,39 +1043,52 @@ const getAggregatedBasalCaloriesByDateDetailed = (
     endDate,
   );
 
-/** Prefer reported active energy; derive total minus basal only when absent. */
+/** Prefer reported active energy per day; derive total minus basal only for missing days. */
 export const getAggregatedActiveCaloriesByDateDetailed = async (
   startDate: Date,
   endDate: Date,
 ): Promise<HealthConnectAggregateResult> => {
-  const activeResult = await getNativeActiveCaloriesByDateDetailed(startDate, endDate);
-  if (activeResult.records.length > 0) {
-    return activeResult;
-  }
-
-  const [totalResult, basalResult] = await Promise.all([
+  const [activeResult, totalResult] = await Promise.all([
+    getNativeActiveCaloriesByDateDetailed(startDate, endDate),
     getAggregatedTotalCaloriesByDateDetailed(startDate, endDate),
-    getAggregatedBasalCaloriesByDateDetailed(startDate, endDate),
   ]);
 
-  const basalByDate = new Map(basalResult.records.map(record => [record.date, record.value]));
-  const derivedRecords = totalResult.records.flatMap(totalRecord => {
-    const basal = basalByDate.get(totalRecord.date);
-    if (basal == null) return [];
-    const derived = deriveActiveCalories(totalRecord.value, basal);
-    if (derived == null) return [];
-    return [{
-      ...totalRecord,
-      value: Math.round(derived),
-      type: 'active_calories',
-    }];
-  });
+  const activeDates = new Set(activeResult.records.map(record => record.date));
+  const fallbackTotals = totalResult.records.filter(record => !activeDates.has(record.date));
+  let derivedRecords: AggregatedHealthRecord[] = [];
+  let basalError: string | undefined;
+  if (fallbackTotals.length > 0) {
+    const basalResult = await getAggregatedBasalCaloriesByDateDetailed(startDate, endDate);
+    basalError = basalResult.error;
+    const basalByDate = new Map(basalResult.records.map(record => [record.date, record.value]));
+    derivedRecords = fallbackTotals.flatMap(totalRecord => {
+      const basal = basalByDate.get(totalRecord.date);
+      if (basal == null) return [];
+      const derived = deriveActiveCalories(totalRecord.value, basal);
+      if (derived == null) return [];
+      return [{
+        ...totalRecord,
+        value: Math.round(derived),
+        type: 'active_calories',
+      }];
+    });
+  }
 
   if (derivedRecords.length > 0) {
-    addLog('[HealthConnectService] Active calorie aggregate missing; derived fallback from total minus basal calories', 'DEBUG');
+    addLog('[HealthConnectService] Derived missing active-calorie days from total minus basal calories', 'DEBUG');
   }
-  const error = activeResult.error ?? totalResult.error ?? basalResult.error;
-  return { records: derivedRecords, ...(error ? { error } : {}) };
+  const expectedDayCount = Math.max(
+    0,
+    dayIndexSpan(wallClockParts(startDate), endDate) + 1,
+  );
+  const activeDayCount = new Set(activeResult.records.map(record => record.date)).size;
+  const activeCoversFullRange = activeDayCount >= expectedDayCount;
+  const fallbackDependedOnTotal = !activeCoversFullRange || fallbackTotals.length > 0;
+  const totalError = fallbackDependedOnTotal ? totalResult.error : undefined;
+  const error = activeResult.error ?? totalError ?? basalError;
+  const records = [...activeResult.records, ...derivedRecords]
+    .sort((a, b) => a.date.localeCompare(b.date));
+  return { records, ...(error ? { error } : {}) };
 };
 
 export const getAggregatedActiveCaloriesByDate = (
@@ -1160,6 +1173,22 @@ const MIN_DISTANCE_FOR_LONG_SESSION_M = 100;
 const CALORIE_ACTIVE_RATIO_MIN = 0.5;
 const CALORIE_BMR_KCAL_PER_MIN_CAP = 2;
 
+const isPositiveCalories = (value: number | undefined): value is number =>
+  value != null && value > 0;
+
+const activeCaloriesPassSessionCheck = (
+  active: number,
+  total: number,
+  durationMs: number,
+): boolean => {
+  if (active > total) return false;
+  const ratio = active / total;
+  const durationMinutes = durationMs / 60_000;
+  const delta = total - active;
+  const bmrCap = durationMinutes * CALORIE_BMR_KCAL_PER_MIN_CAP;
+  return ratio >= CALORIE_ACTIVE_RATIO_MIN || delta <= bmrCap;
+};
+
 /**
  * Picks the session calorie value from the Active/Total pair.
  * Treats 0 and undefined as "missing" (Android bridge returns 0.0 for empty ranges).
@@ -1175,23 +1204,44 @@ export const selectSessionCalories = (
   total: number | undefined,
   durationMs: number,
 ): number | undefined => {
-  const activeValid = active != null && active > 0 ? active : undefined;
-  const totalValid = total != null && total > 0 ? total : undefined;
+  const activeValid = isPositiveCalories(active) ? active : undefined;
+  const totalValid = isPositiveCalories(total) ? total : undefined;
 
   if (activeValid == null && totalValid == null) return undefined;
   if (activeValid == null) return totalValid;
   if (totalValid == null) return activeValid;
 
-  const ratio = activeValid / totalValid;
-  const durationMinutes = durationMs / 60_000;
-  const delta = totalValid - activeValid;
-  const bmrCap = durationMinutes * CALORIE_BMR_KCAL_PER_MIN_CAP;
-
-  if (ratio >= CALORIE_ACTIVE_RATIO_MIN || delta <= bmrCap) {
+  if (activeCaloriesPassSessionCheck(activeValid, totalValid, durationMs)) {
     return activeValid;
   }
   return totalValid;
 };
+
+const shouldTryCrossOriginCalories = (
+  active: number | undefined,
+  total: number | undefined,
+  durationMs: number,
+): boolean => {
+  if (!isPositiveCalories(active) || !isPositiveCalories(total)) return true;
+  return !activeCaloriesPassSessionCheck(active, total, durationMs);
+};
+
+type SessionCaloriePair = {
+  active?: number;
+  total?: number;
+};
+
+const extractSessionCaloriePair = (
+  activeResult: PromiseSettledResult<unknown>,
+  totalResult: PromiseSettledResult<unknown>,
+): SessionCaloriePair => ({
+  active: activeResult.status === 'fulfilled'
+    ? (activeResult.value as { ACTIVE_CALORIES_TOTAL?: { inKilocalories?: number } }).ACTIVE_CALORIES_TOTAL?.inKilocalories
+    : undefined,
+  total: totalResult.status === 'fulfilled'
+    ? (totalResult.value as { ENERGY_TOTAL?: { inKilocalories?: number } }).ENERGY_TOTAL?.inKilocalories
+    : undefined,
+});
 
 /**
  * Distance is plausible unless the session is long enough that a real workout
@@ -1281,6 +1331,11 @@ export const enrichExerciseSessions = async (
       return record;
     }
 
+    // Start with the session origin, matching Health Connect's associated-session
+    // guidance and preventing another concurrent activity from donating energy or
+    // distance. If that origin has an incomplete or implausible calorie pair, retry
+    // calories without an origin filter so Health Connect can apply the user's
+    // Activity source priority (for example, Hevy session + Samsung calories).
     const [activeCaloriesResult, totalCaloriesResult, distanceResult] = await Promise.allSettled([
       aggregateRecord({
         recordType: 'ActiveCaloriesBurned',
@@ -1304,14 +1359,37 @@ export const enrichExerciseSessions = async (
     // overwrite potentially valid data with a synthetic zero.
     const enrichedFields: Record<string, unknown> = {};
 
-    const active = activeCaloriesResult.status === 'fulfilled'
-      ? (activeCaloriesResult.value as { ACTIVE_CALORIES_TOTAL?: { inKilocalories?: number } }).ACTIVE_CALORIES_TOTAL?.inKilocalories
-      : undefined;
-    const total = totalCaloriesResult.status === 'fulfilled'
-      ? (totalCaloriesResult.value as { ENERGY_TOTAL?: { inKilocalories?: number } }).ENERGY_TOTAL?.inKilocalories
-      : undefined;
+    const scopedCalories = extractSessionCaloriePair(activeCaloriesResult, totalCaloriesResult);
+    let kcal = selectSessionCalories(scopedCalories.active, scopedCalories.total, durationMs);
+    if (dataOriginFilter && shouldTryCrossOriginCalories(
+      scopedCalories.active,
+      scopedCalories.total,
+      durationMs,
+    )) {
+      const [unfilteredActiveResult, unfilteredTotalResult] = await Promise.allSettled([
+        aggregateRecord({
+          recordType: 'ActiveCaloriesBurned',
+          timeRangeFilter,
+        }),
+        aggregateRecord({
+          recordType: 'TotalCaloriesBurned',
+          timeRangeFilter,
+        }),
+      ]);
+      const unfilteredCalories = extractSessionCaloriePair(
+        unfilteredActiveResult,
+        unfilteredTotalResult,
+      );
+      const unfilteredKcal = selectSessionCalories(
+        unfilteredCalories.active,
+        unfilteredCalories.total,
+        durationMs,
+      );
+      if (unfilteredKcal != null && (kcal == null || unfilteredKcal > kcal)) {
+        kcal = unfilteredKcal;
+      }
+    }
 
-    const kcal = selectSessionCalories(active, total, durationMs);
     if (kcal != null) {
       enrichedFields.energy = { inKilocalories: kcal };
     }

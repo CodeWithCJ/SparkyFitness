@@ -7,8 +7,12 @@ export const CALORIE_CALCULATION_CONSTANTS = {
   DEFAULT_HEIGHT_CM: 175,
 
   // Conversion constants
-  STRIDE_LENGTH_MULTIPLIER: 0.414, // Avg multiplier for height to stride length
-  NET_CALORIES_PER_KG_PER_KM: 0.4, // Net calories burned per kg per km (above BMR)
+  // Kept under its shipped name for API compatibility; the value represents
+  // average step length (one footfall), not a two-step gait cycle.
+  STRIDE_LENGTH_MULTIPLIER: 0.414,
+  // Mean net walking cost at 1.34 m/s: 2.22 J/kg/m = 0.53 kcal/kg/km.
+  // DOI: 10.14814/phy2.16023. Net cost avoids counting resting energy twice.
+  NET_CALORIES_PER_KG_PER_KM: 0.53,
 
   // Day projection constants
   MIN_DAY_FRACTION: 0.05, // 5% of the day (~72 min)

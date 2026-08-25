@@ -62,7 +62,9 @@ export const readMinMaxAvgByDay = async (
 /**
  * Platform massaging of non-empty raw reads before transform. Exercise sessions
  * are enriched with active/total calories and distance via native aggregateRecord
- * over the session window, scoped to the session's data origin.
+ * over the session window. Reads start at the session's data origin; incomplete
+ * or implausible calorie pairs retry across origins so Health Connect can apply
+ * source priority. Distance always stays scoped to the session origin.
  */
 export const postProcessRaw = async (
   metric: Pick<HealthMetric, 'recordType'>,
