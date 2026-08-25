@@ -783,7 +783,7 @@ function ActiveWorkoutSetRow({
       style={{ fontVariant: ['tabular-nums'] }}
     >
       {set.distance != null
-        ? String(parseFloat(distanceFromKm(set.distance, distanceUnit).toFixed(2)))
+        ? formatLocalizedNumber(distanceFromKm(set.distance, distanceUnit), { maximumFractionDigits: 2 })
         : '–'}
     </Text>
   );

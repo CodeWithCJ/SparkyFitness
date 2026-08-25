@@ -88,7 +88,7 @@ export function resolveCalendarPresentation(
  * resetting the selected or visible month.
  */
 export function useCalendarPresentation(): {
-  appLocale: 'pl-PL' | 'en-US';
+  appLocale: string;
   presentation: CalendarPresentation;
   isLoadingPreferences: boolean;
 } {

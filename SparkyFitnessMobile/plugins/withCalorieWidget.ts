@@ -15,6 +15,7 @@ import {
 } from 'expo/config-plugins';
 import fs from 'fs';
 import path from 'path';
+import { FALLBACK_LOCALE, SUPPORTED_LANGUAGES } from '../src/localization/localeRegistry';
 
 const WIDGET_PACKAGE = 'com.sparkyapps.sparkyfitness.widget';
 const WIDGET_PACKAGE_IMPORT = `import ${WIDGET_PACKAGE}.CalorieWidgetPackage`;
@@ -85,7 +86,9 @@ const withCalorieWidget: ConfigPlugin = (config) => {
         if (base.endsWith(TEMPLATE_SUFFIX)) {
           const substituted = contents
             .toString('utf8')
-            .replace(/\{\{APPLICATION_ID\}\}/g, applicationId);
+            .replace(/\{\{APPLICATION_ID\}\}/g, applicationId)
+            .replace(/\{\{SUPPORTED_LOCALES\}\}/g, SUPPORTED_LANGUAGES.map((language) => `"${language}"`).join(', '))
+            .replace(/\{\{FALLBACK_LOCALE\}\}/g, FALLBACK_LOCALE);
           return {
             destName: base.slice(0, -TEMPLATE_SUFFIX.length),
             contents: Buffer.from(substituted, 'utf8'),

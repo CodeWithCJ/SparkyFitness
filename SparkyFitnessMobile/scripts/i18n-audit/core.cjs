@@ -1,10 +1,14 @@
 const path = require('node:path');
-const { LocaleValidator, PLURAL_SUFFIXES } = require('./localeValidator.cjs');
+const fs = require('node:fs');
+const { LocaleValidator, PLURAL_SUFFIXES, requiredPluralForms } = require('./localeValidator.cjs');
+const REGISTRY_MANIFEST = require('../../src/localization/localeRegistry.json');
 const { collectFindings: scanFindings, getAllSuppressionIssues, SOURCE_SCAN_ERROR_RULE } = require('./sourceScanner.cjs');
 
 const MOBILE_ROOT = path.resolve(__dirname, '..', '..');
-const EN_LOCALE_PATH = path.join(MOBILE_ROOT, 'src', 'localization', 'locales', 'en', 'translation.json');
-const PL_LOCALE_PATH = path.join(MOBILE_ROOT, 'src', 'localization', 'locales', 'pl', 'translation.json');
+const SOURCE_LOCALE = REGISTRY_MANIFEST.sourceLocale;
+const FALLBACK_LOCALE = REGISTRY_MANIFEST.fallbackLocale;
+const EN_LOCALE_PATH = path.join(MOBILE_ROOT, 'src', 'localization', 'locales', SOURCE_LOCALE, 'translation.json');
+const SOURCE_INTL_LOCALE = REGISTRY_MANIFEST.locales[SOURCE_LOCALE].intlLocale;
 
 function localeHasKey(keySet, key) {
   if (keySet.has(key)) return true;
@@ -16,12 +20,6 @@ function localeHasKey(keySet, key) {
   return false;
 }
 
-function localeHasRequiredPluralForms(keySet, key, locale) {
-  const requiredForms = locale === 'en'
-    ? ['_one', '_other']
-    : ['_one', '_few', '_many', '_other'];
-  return requiredForms.every((form) => keySet.has(`${key}${form}`));
-}
 
 function expectedFallbackKey(key, fallbackName, hasCount) {
   if (!hasCount) return key;
@@ -35,8 +33,8 @@ function expectedFallbackKey(key, fallbackName, hasCount) {
  * Blocking (exit != 0 when present):
  *   - user-facing t() without an explicit English fallback
  *   - dynamic t(variable) / unsafe template-literal translation keys
- *   - missing static locale keys
- *   - EN/PL structure mismatch (missing/extra keys, type mismatch)
+ *   - missing static source keys
+ *   - source structural errors and existing translation structural corruption
  *   - placeholder mismatch
  *   - plural mismatch / missing plural forms
  *   - duplicate/singular-plural collisions reported by the validator
@@ -44,13 +42,18 @@ function expectedFallbackKey(key, fallbackName, hasCount) {
  *     closed instead of silently reducing coverage)
  *   - invalid suppression directives
  *
- * Informational (reported in the summary, never blocking):
- *   - hardcoded UI strings (full inventory and migration live in PR5)
+ * Translation completeness and stale target keys are non-blocking coverage diagnostics.
+ * Hardcoded UI and locale-unsafe number formatting remain blocking.
  */
 function runAudit(options = {}) {
   const rootDir = options.rootDir || MOBILE_ROOT;
-  const enLocalePath = options.enLocalePath || EN_LOCALE_PATH;
-  const plLocalePath = options.plLocalePath || PL_LOCALE_PATH;
+  const enLocalePath = options.enLocalePath || path.join(rootDir, "src", "localization", "locales", SOURCE_LOCALE, "translation.json");
+  let manifest = REGISTRY_MANIFEST;
+  const registryPath = options.registryPath || path.join(rootDir, 'src', 'localization', 'localeRegistry.json');
+  if (fs.existsSync(registryPath)) {
+    try { manifest = JSON.parse(fs.readFileSync(registryPath, 'utf8')); }
+    catch { manifest = REGISTRY_MANIFEST; }
+  }
   // Default source roots derive from the ACTUAL rootDir so a custom-root run
   // scans its own source tree; the production default remains mobile/src.
   const sourceRoots = options.sourceRoots || [path.join(rootDir, 'src')];
@@ -63,10 +66,26 @@ function runAudit(options = {}) {
     missingFallbackFindings: [],
     hardcodedUiFindings: [],
     dynamicI18nFindings: [],
+    unsafeNumberFormatFindings: [],
+    manualPluralizationFindings: [],
+    translationCoverage: {},
     summary: {},
   };
 
-  const validator = new LocaleValidator(enLocalePath, plLocalePath);
+  const sourceLocaleDir = path.dirname(enLocalePath);
+  const localeRoot = path.dirname(sourceLocaleDir);
+  let localePaths = [];
+  if (fs.existsSync(localeRoot)) {
+    localePaths = fs.readdirSync(localeRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && entry.name !== SOURCE_LOCALE)
+      .map((entry) => ({ locale: entry.name, path: path.join(localeRoot, entry.name, 'translation.json'), intlLocale: manifest.locales[entry.name]?.intlLocale || entry.name }))
+      .filter((entry) => {
+        if (!fs.existsSync(entry.path)) return false;
+        try { new Intl.PluralRules(entry.intlLocale || manifest.locales[entry.locale]?.intlLocale || entry.locale); return true; }
+        catch { report.localeStructuralErrors.push({ rule: 'invalid-locale-tag', locale: entry.locale, message: `Invalid locale tag "${entry.intlLocale}" discovered in locale root; skipping` }); return false; }
+      });
+  }
+  const validator = new LocaleValidator(enLocalePath, null, { localePaths, sourceLocale: SOURCE_LOCALE, fallbackLocale: FALLBACK_LOCALE, sourceIntlLocale: SOURCE_INTL_LOCALE });
   let localeResult;
   try {
     localeResult = validator.validate();
@@ -78,6 +97,8 @@ function runAudit(options = {}) {
     report.summary = buildSummary(report);
     return { report, hasErrors: true };
   }
+
+  report.translationCoverage = localeResult.coverage || {};
 
   for (const error of localeResult.errors) {
     if (error.rule === 'missing-plural-form') {
@@ -109,7 +130,7 @@ function runAudit(options = {}) {
   }
 
   const enKeySet = new Set(localeResult.enKeys || []);
-  const plKeySet = new Set(localeResult.plKeys || []);
+  const sourceRequiredForms = requiredPluralForms(SOURCE_INTL_LOCALE);
 
   const seenStaticKeys = new Set();
 
@@ -117,19 +138,7 @@ function runAudit(options = {}) {
     if (finding.kind === 'static-t-key') {
       const { fallbacks = {}, hasCount = false } = finding.context;
       if (hasCount) {
-        for (const locale of ['en', 'pl']) {
-          const keySet = locale === 'en' ? enKeySet : plKeySet;
-          if (!localeHasRequiredPluralForms(keySet, finding.value, locale)) {
-            report.pluralErrors.push({
-              rule: 'count-requires-plural-group',
-              locale,
-              key: finding.value,
-              file: finding.file,
-              line: finding.line,
-              message: `Count lookup t("${finding.value}") requires ${locale === 'en' ? '_one and _other' : '_one, _few, _many, and _other'} forms in the ${locale === 'en' ? 'English' : 'Polish'} locale`,
-            });
-          }
-        }
+        if (!sourceRequiredForms.every((form) => enKeySet.has(`${finding.value}${form}`))) report.pluralErrors.push({ rule: 'count-requires-plural-group', locale: SOURCE_LOCALE, key: finding.value, file: finding.file, line: finding.line, message: `Count lookup requires ${sourceRequiredForms.join(', ')} forms in the ${SOURCE_LOCALE} source locale` });
       }
       for (const [fallbackName, fallbackValue] of Object.entries(fallbacks)) {
         const expectedKey = expectedFallbackKey(finding.value, fallbackName, hasCount);
@@ -148,23 +157,14 @@ function runAudit(options = {}) {
         if (!localeHasKey(enKeySet, finding.value)) {
           report.missingStaticKeys.push({
             rule: 'missing-static-key',
-            locale: 'en',
+            locale: SOURCE_LOCALE,
             key: finding.value,
             file: finding.file,
             line: finding.line,
             message: `Static t("${finding.value}") not found in English locale`,
           });
         }
-        if (!localeHasKey(plKeySet, finding.value)) {
-          report.missingStaticKeys.push({
-            rule: 'missing-static-key',
-            locale: 'pl',
-            key: finding.value,
-            file: finding.file,
-            line: finding.line,
-            message: `Static t("${finding.value}") not found in Polish locale`,
-          });
-        }
+        // Missing target keys are represented by translation coverage, not errors.
       }
     } else if (finding.kind === 'missing-fallback-key') {
       report.missingFallbackFindings.push({
@@ -182,9 +182,12 @@ function runAudit(options = {}) {
         expression: finding.value,
         message: `Dynamic i18n key "${finding.value}" at ${finding.file}:${finding.line} — use a static map instead`,
       });
+    } else if (finding.kind === 'manual-pluralization') {
+      report.manualPluralizationFindings.push({ rule: 'manual-pluralization', file: finding.file, line: finding.line, expression: finding.value, context: finding.context });
+    } else if (finding.kind === 'locale-unsafe-number-format') {
+      report.unsafeNumberFormatFindings.push({ rule: 'locale-unsafe-number-format', file: finding.file, line: finding.line, expression: finding.value, context: finding.context });
     } else if (finding.kind === 'hardcoded-ui-text') {
-      // Informational only: the full hardcoded-UI inventory and its migration
-      // belong to PR5. PR3 reports the count without a checked-in snapshot.
+      // Hardcoded application-owned UI is a blocking regression guard.
       report.hardcodedUiFindings.push({
         rule: 'hardcoded-ui-text',
         file: finding.file,
@@ -202,11 +205,13 @@ function runAudit(options = {}) {
     report.pluralErrors.length,
     report.missingFallbackFindings.length,
     report.dynamicI18nFindings.length,
+    report.unsafeNumberFormatFindings.length,
+    report.manualPluralizationFindings.length,
   ].reduce((a, b) => a + b, 0);
 
   report.summary = buildSummary(report);
 
-  return { report, hasErrors: structuralErrorCount > 0 };
+  return { report, hasErrors: structuralErrorCount > 0 || report.hardcodedUiFindings.length > 0 || report.unsafeNumberFormatFindings.length > 0 };
 }
 
 function collectFindingsForSource(rootDir, sourceRoots) {
@@ -215,6 +220,9 @@ function collectFindingsForSource(rootDir, sourceRoots) {
 
 function buildSummary(report) {
   return {
+    translationCoverage: report.translationCoverage || {},
+    sourceLocale: SOURCE_LOCALE,
+    fallbackLocale: FALLBACK_LOCALE,
     localeStructuralErrors: report.localeStructuralErrors.length,
     missingStaticKeys: report.missingStaticKeys.length,
     placeholderErrors: report.placeholderErrors.length,
@@ -222,6 +230,8 @@ function buildSummary(report) {
     missingFallbackFindings: report.missingFallbackFindings.length,
     hardcodedUiFindings: report.hardcodedUiFindings.length,
     dynamicI18nFindings: report.dynamicI18nFindings.length,
+    unsafeNumberFormatFindings: report.unsafeNumberFormatFindings.length,
+    manualPluralizationFindings: report.manualPluralizationFindings.length,
     sourceScanErrors: report.localeStructuralErrors.filter(
       (e) => e.rule === SOURCE_SCAN_ERROR_RULE,
     ).length,
@@ -233,6 +243,5 @@ module.exports = {
   collectFindingsForSource,
   MOBILE_ROOT,
   EN_LOCALE_PATH,
-  PL_LOCALE_PATH,
   buildSummary,
 };

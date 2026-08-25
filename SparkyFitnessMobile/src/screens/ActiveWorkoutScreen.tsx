@@ -480,7 +480,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     Alert.alert(t('workout.removeExerciseTitle', { defaultValue: 'Remove exercise?' }), t('workout.removeExerciseMessage', { defaultValue: '{{name}} will be removed from this workout.', name }), [
       { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
       {
-        text: t('workout.removeExercise', { defaultValue: 'Remove exercise' }),
+        text: t('common.remove', { defaultValue: 'Remove' }),
         style: 'destructive',
         onPress: () => useActiveWorkoutStore.getState().removeExercise(entryId),
       },
@@ -849,7 +849,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         [
           { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
           {
-            text: t('workout.removeExercise', { defaultValue: 'Remove exercise' }),
+            text: t('common.remove', { defaultValue: 'Remove' }),
             style: 'destructive',
             onPress: () => useActiveWorkoutStore.getState().deleteSet(setId),
           },

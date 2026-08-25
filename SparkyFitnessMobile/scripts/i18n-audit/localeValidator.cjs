@@ -7,11 +7,7 @@ function isPlainObject(value) {
 }
 
 function isStringOrArrayOfStrings(value) {
-  if (typeof value === 'string') return true;
-  if (Array.isArray(value)) {
-    return value.every((item) => typeof item === 'string');
-  }
-  return false;
+  return typeof value === 'string' || (Array.isArray(value) && value.every((item) => typeof item === 'string'));
 }
 
 function flattenLocale(value, prefix = '', result = {}) {
@@ -21,8 +17,7 @@ function flattenLocale(value, prefix = '', result = {}) {
   }
   if (isPlainObject(value)) {
     for (const [key, child] of Object.entries(value)) {
-      const next = prefix ? `${prefix}.${key}` : key;
-      flattenLocale(child, next, result);
+      flattenLocale(child, prefix ? `${prefix}.${key}` : key, result);
     }
     return result;
   }
@@ -31,363 +26,245 @@ function flattenLocale(value, prefix = '', result = {}) {
 }
 
 function parseLocaleJson(filePath) {
-  const raw = fs.readFileSync(filePath, 'utf8');
-  const data = JSON.parse(raw);
-  return flattenLocale(data);
+  return flattenLocale(JSON.parse(fs.readFileSync(filePath, 'utf8')));
 }
 
 function getPluralBase(key) {
   for (const suffix of PLURAL_SUFFIXES) {
-    if (key.endsWith(suffix)) {
-      return key.slice(0, key.length - suffix.length);
-    }
+    if (key.endsWith(suffix)) return key.slice(0, -suffix.length);
   }
   return null;
+}
+
+function getPluralSuffix(key) {
+  const base = getPluralBase(key);
+  return base === null ? null : key.slice(base.length);
 }
 
 function groupPluralKeys(keys) {
   const groups = new Map();
   const singles = new Set();
-
   for (const key of keys) {
     const base = getPluralBase(key);
-    if (base !== null) {
-      if (!groups.has(base)) {
-        groups.set(base, new Set());
-      }
+    if (base === null) singles.add(key);
+    else {
+      if (!groups.has(base)) groups.set(base, new Set());
       groups.get(base).add(key);
-    } else {
-      // Collect plain keys unconditionally. Doing so even when a plural group
-      // of the same base exists is intentional: it lets
-      // detectSingularPluralCollision() spot a plain key that collides with a
-      // plural group, regardless of property order in the locale file.
-      singles.add(key);
     }
   }
-
-  const result = [];
-  for (const [base, keys] of groups) {
-    result.push({ base, isPlural: true, keys: [...keys] });
-  }
-  for (const key of singles) {
-    result.push({ base: key, isPlural: false, keys: [key] });
-  }
-  return result;
+  return [
+    ...[...groups].map(([base, values]) => ({ base, isPlural: true, keys: [...values] })),
+    ...[...singles].map((base) => ({ base, isPlural: false, keys: [base] })),
+  ];
 }
 
 function placeholderNames(value) {
-  if (typeof value !== 'string') return [];
-  return [...value.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).sort();
+  return typeof value === 'string'
+    ? [...value.matchAll(/\{\{(\w+)\}\}/g)].map((match) => match[1]).sort()
+    : [];
 }
 
-function samePlaceholderMultiset(a, b) {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) return false;
-  }
+function samePlaceholderMultiset(left, right) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
+function isEmptyTranslation(value) {
+  return typeof value === 'string' && value.trim() === '';
+}
+
+function translatedValueIsPresent(value) {
+  if (isEmptyTranslation(value)) return false;
+  if (Array.isArray(value)) return value.every((item) => !isEmptyTranslation(item));
   return true;
 }
 
-function firstAvailablePluralValue(enFormMap, plFormMap) {
-  const forms = [...new Set([...enFormMap.keys(), ...plFormMap.keys()])];
-  for (const form of forms) {
-    const val = enFormMap.get(form) ?? plFormMap.get(form);
-    if (val !== undefined) return val;
-  }
-  return undefined;
+function requiredPluralForms(intlLocale) {
+  return new Intl.PluralRules(intlLocale).resolvedOptions().pluralCategories.map((category) => `_${category}`);
 }
 
-/**
- * Detects a plain (singular) key sharing its base with a plural group in the
- * same locale, e.g. both `item` and `item_one`/`item_other`. This is ambiguous
- * for i18next lookups and is a structural error that cannot be suppressed.
- */
-function detectSingularPluralCollision(groups, localeName) {
-  const errors = [];
-  const pluralBases = new Set();
-  const plainKeys = new Set();
+function detectSingularPluralCollisions(groups, locale) {
+  const pluralBases = new Set(groups.filter((group) => group.isPlural).map((group) => group.base));
+  const plainKeys = new Set(groups.filter((group) => !group.isPlural).map((group) => group.base));
+  return [...pluralBases]
+    .filter((base) => plainKeys.has(base))
+    .map((base) => ({
+      rule: 'singular-plural-collision',
+      locale,
+      key: base,
+      message: `Singular key "${base}" collides with plural forms in ${locale}`,
+    }));
+}
 
-  for (const group of groups) {
-    if (group.isPlural) {
-      pluralBases.add(group.base);
-    } else {
-      plainKeys.add(group.base);
-    }
+function valueType(value) {
+  if (Array.isArray(value)) return 'array';
+  return typeof value;
+}
+
+function compareValues(sourceValue, translatedValue, key, locale, errors) {
+  if (sourceValue === undefined || translatedValue === undefined) return;
+  if (valueType(sourceValue) !== valueType(translatedValue)) {
+    errors.push({ rule: 'type-mismatch', locale, key, sourceType: valueType(sourceValue), translatedType: valueType(translatedValue), message: `Type mismatch for "${key}" in ${locale}` });
+    return;
   }
-
-  for (const base of pluralBases) {
-    if (plainKeys.has(base)) {
-      const forms = groups
-        .find((g) => g.base === base && g.isPlural)
-        .keys.map((k) => k.slice(base.length));
-      errors.push({
-        rule: 'singular-plural-collision',
-        locale: localeName,
-        key: base,
-        plain_key: base,
-        plural_forms: forms,
-        message: `Singular key "${base}" collides with plural forms in ${localeName}: ${forms.join(', ')}`,
-      });
+  if (Array.isArray(sourceValue)) {
+    if (sourceValue.length !== translatedValue.length) {
+      errors.push({ rule: 'array-length-mismatch', locale, key, sourceLength: sourceValue.length, translatedLength: translatedValue.length, message: `Array length mismatch for "${key}" in ${locale}` });
+      return;
     }
+    sourceValue.forEach((sourceItem, index) => {
+      const translatedItem = translatedValue[index];
+      if (typeof sourceItem !== typeof translatedItem) {
+        errors.push({ rule: 'type-mismatch', locale, key: `${key}[${index}]`, message: `Array element type mismatch for "${key}[${index}]" in ${locale}` });
+      } else if (typeof sourceItem === 'string' && !samePlaceholderMultiset(placeholderNames(sourceItem), placeholderNames(translatedItem))) {
+        errors.push({ rule: 'placeholder-mismatch', locale, key: `${key}[${index}]`, sourcePlaceholders: placeholderNames(sourceItem), translatedPlaceholders: placeholderNames(translatedItem), message: `Placeholder mismatch for "${key}[${index}]" in ${locale}` });
+      }
+    });
+    return;
   }
+  if (typeof sourceValue === 'string' && typeof translatedValue === 'string' && !samePlaceholderMultiset(placeholderNames(sourceValue), placeholderNames(translatedValue))) {
+    errors.push({ rule: 'placeholder-mismatch', locale, key, sourcePlaceholders: placeholderNames(sourceValue), translatedPlaceholders: placeholderNames(translatedValue), message: `Placeholder mismatch for "${key}" in ${locale}` });
+  }
+}
 
-  return errors;
+function canonicalPluralPlaceholders(source, group) {
+  const values = group.keys.map((key) => source[key]).filter((value) => value !== undefined);
+  return values.length ? placeholderNames(values[0]) : [];
 }
 
 class LocaleValidator {
-  constructor(enPath, plPath) {
-    this.enPath = enPath;
-    this.plPath = plPath;
+  constructor(sourcePath, legacyTranslationPath, options = {}) {
+    this.sourcePath = sourcePath;
+    this.legacyTranslationPath = legacyTranslationPath;
+    this.options = options;
   }
 
   validate() {
     const errors = [];
-
-    let enData, plData;
-
+    let source;
     try {
-      enData = parseLocaleJson(this.enPath);
-    } catch (err) {
-      errors.push({
-        rule: 'malformed-json',
-        path: this.enPath,
-        message: `Invalid JSON in ${this.enPath}: ${err.message}`,
-      });
-      return { errors, enKeys: [], plKeys: [], enValues: {}, plValues: {} };
+      source = parseLocaleJson(this.sourcePath);
+    } catch (error) {
+      return { errors: [{ rule: 'malformed-json', locale: this.options.sourceLocale || 'en', path: this.sourcePath, message: `Invalid JSON in ${this.sourcePath}: ${error.message}` }], enKeys: [], plKeys: [], enValues: {}, plValues: {}, translations: {}, coverage: {} };
     }
 
-    try {
-      plData = parseLocaleJson(this.plPath);
-    } catch (err) {
-      errors.push({
-        rule: 'malformed-json',
-        path: this.plPath,
-        message: `Invalid JSON in ${this.plPath}: ${err.message}`,
-      });
-      return { errors, enKeys: [], plKeys: [], enValues: {}, plValues: {} };
-    }
-
-    const enGroups = groupPluralKeys(Object.keys(enData));
-    const plGroups = groupPluralKeys(Object.keys(plData));
-
-    const enBases = new Set(enGroups.map((g) => g.base));
-    const plBases = new Set(plGroups.map((g) => g.base));
-
-    // Detect a plain key colliding with a plural group of the same base.
-    for (const localeName of ['en', 'pl']) {
-      const isEn = localeName === 'en';
-      const groups = isEn ? enGroups : plGroups;
-      const collisionErrors = detectSingularPluralCollision(groups, localeName);
-      for (const error of collisionErrors) {
-        errors.push(error);
+    const sourceLocale = this.options.sourceLocale || 'en';
+    const sourceIntlLocale = this.options.sourceIntlLocale || 'en-US';
+    const sourceGroups = groupPluralKeys(Object.keys(source));
+    for (const [key, value] of Object.entries(source)) {
+      if (isEmptyTranslation(value) || (Array.isArray(value) && value.some(isEmptyTranslation))) {
+        errors.push({ rule: 'empty-source-value', locale: sourceLocale, key, message: `Source value "${key}" must not be empty` });
+      }
+      if (!isStringOrArrayOfStrings(value)) {
+        errors.push({ rule: 'invalid-source-leaf', locale: sourceLocale, key, sourceType: valueType(value), message: `Source leaf "${key}" must be a string or array of strings` });
       }
     }
+    errors.push(...detectSingularPluralCollisions(sourceGroups, sourceLocale));
 
-    for (const base of enBases) {
-      if (!plBases.has(base)) {
-        const enGroup = enGroups.find((g) => g.base === base);
-        if (enGroup.isPlural) {
-          errors.push({
-            rule: 'missing-plural-group',
-            locale: 'pl',
-            key: base,
-            message: `Missing plural group "${base}" in Polish locale`,
-          });
-        } else {
-          errors.push({
-            rule: 'missing-key',
-            locale: 'pl',
-            key: base,
-            message: `Missing key "${base}" in Polish locale`,
-          });
+    const sourceRequiredForms = requiredPluralForms(sourceIntlLocale);
+    for (const group of sourceGroups.filter((item) => item.isPlural)) {
+      for (const key of group.keys) {
+        const suffix = getPluralSuffix(key);
+        if (suffix !== '_zero' && !sourceRequiredForms.includes(suffix)) {
+          errors.push({ rule: 'invalid-plural-category', locale: sourceLocale, key, form: suffix, message: `Invalid source plural category "${suffix}" for ${sourceLocale}` });
+        }
+      }
+      for (const form of sourceRequiredForms) {
+        if (!Object.hasOwn(source, `${group.base}${form}`)) {
+          errors.push({ rule: 'missing-plural-form', locale: sourceLocale, key: group.base, form, message: `Missing source plural form "${group.base}${form}" in ${sourceLocale}` });
+        }
+      }
+      const canonical = canonicalPluralPlaceholders(source, group);
+      for (const key of group.keys) {
+        if (!samePlaceholderMultiset(placeholderNames(source[key]), canonical)) {
+          errors.push({ rule: 'placeholder-mismatch', locale: sourceLocale, key, sourcePlaceholders: placeholderNames(source[key]), translatedPlaceholders: canonical, message: `Source plural placeholder mismatch for "${key}"` });
         }
       }
     }
 
-    for (const base of plBases) {
-      if (!enBases.has(base)) {
-        errors.push({
-          rule: 'missing-key',
-          locale: 'en',
-          key: base,
-          message: `Missing key "${base}" in English locale`,
-        });
-      }
-    }
+    const localePaths = this.options.localePaths || (this.legacyTranslationPath ? [{ locale: 'pl', path: this.legacyTranslationPath, intlLocale: 'pl-PL' }] : []);
+    const translations = {};
+    const coverage = {};
+    const sourceKeys = new Set(Object.keys(source));
 
-    const enGroupMap = new Map(enGroups.map((g) => [g.base, g]));
-    const plGroupMap = new Map(plGroups.map((g) => [g.base, g]));
-
-    for (const base of enBases) {
-      if (!plBases.has(base)) continue;
-      const enGroup = enGroupMap.get(base);
-      const plGroup = plGroupMap.get(base);
-
-      if (enGroup.isPlural !== plGroup.isPlural) {
-        errors.push({
-          rule: 'plural-mismatch',
-          key: base,
-          message: `Key "${base}" is plural in one locale but singular in another`,
-        });
+    for (const target of localePaths) {
+      let translated;
+      try {
+        translated = parseLocaleJson(target.path);
+      } catch (error) {
+        errors.push({ rule: 'malformed-json', locale: target.locale, path: target.path, message: `Invalid JSON in ${target.path}: ${error.message}` });
         continue;
       }
+      translations[target.locale] = translated;
+      const targetIntlLocale = target.intlLocale || target.locale;
+      const targetRequiredForms = requiredPluralForms(targetIntlLocale);
+      const targetGroups = groupPluralKeys(Object.keys(translated));
+      errors.push(...detectSingularPluralCollisions(targetGroups, target.locale));
 
-      if (enGroup.isPlural) {
-        const enForms = new Set();
-        const plForms = new Set();
-        for (const key of enGroup.keys) {
-          enForms.add('_' + key.slice(base.length + 1));
+      let requiredTotal = 0;
+      let presentTotal = 0;
+      for (const sourceGroup of sourceGroups) {
+        if (!sourceGroup.isPlural) {
+          requiredTotal += 1;
+          if (Object.hasOwn(translated, sourceGroup.base) && translatedValueIsPresent(translated[sourceGroup.base])) presentTotal += 1;
+          if (translatedValueIsPresent(translated[sourceGroup.base])) compareValues(source[sourceGroup.base], translated[sourceGroup.base], sourceGroup.base, target.locale, errors);
+          continue;
         }
-        for (const key of plGroup.keys) {
-          plForms.add('_' + key.slice(base.length + 1));
-        }
-
-        const requiredEn = ['_one', '_other'];
-        const requiredPl = ['_one', '_few', '_many', '_other'];
-
-        for (const form of requiredEn) {
-          if (!enForms.has(form)) {
-            errors.push({
-              rule: 'missing-plural-form',
-              locale: 'en',
-              key: base,
-              form,
-              message: `Missing plural form "${base}${form}" in English locale`,
-            });
-          }
-        }
-
-        for (const form of requiredPl) {
-          if (!plForms.has(form)) {
-            errors.push({
-              rule: 'missing-plural-form',
-              locale: 'pl',
-              key: base,
-              form,
-              message: `Missing plural form "${base}${form}" in Polish locale`,
-            });
-          }
-        }
-
-        const enFormMap = new Map();
-        for (const key of enGroup.keys) {
-          enFormMap.set('_' + key.slice(base.length + 1), enData[key]);
-        }
-        const plFormMap = new Map();
-        for (const key of plGroup.keys) {
-          plFormMap.set('_' + key.slice(base.length + 1), plData[key]);
-        }
-
-        // Canonical placeholder set for the whole plural group. Prefer EN _one;
-        // if absent (which is already a structural error), fall back to the
-        // first available form purely to collect additional diagnostics.
-        const canonicalForm =
-          enFormMap.get('_one') ?? firstAvailablePluralValue(enFormMap, plFormMap);
-        const canonicalPlaceholders = placeholderNames(canonicalForm ?? '');
-
-        const allForms = new Set([...enFormMap.keys(), ...plFormMap.keys()]);
-        for (const form of allForms) {
-          const checks = [
-            ['en', enFormMap.get(form)],
-            ['pl', plFormMap.get(form)],
-          ];
-          for (const [locale, val] of checks) {
-            if (val === undefined) continue;
-            const placeholders = placeholderNames(val);
-            if (!samePlaceholderMultiset(placeholders, canonicalPlaceholders)) {
-              errors.push({
-                rule: 'placeholder-mismatch',
-                locale,
-                key: `${base}${form}`,
-                enPlaceholders: placeholderNames(enFormMap.get(form) ?? ''),
-                plPlaceholders: placeholderNames(plFormMap.get(form) ?? ''),
-                forms: [...allForms],
-                message: `Placeholder mismatch for "${base}${form}" in ${locale} (expected ${canonicalPlaceholders.join(', ') || 'none'})`,
-              });
-            }
-          }
-        }
-      } else {
-        const enVal = enData[base];
-        const plVal = plData[base];
-
-        if (Array.isArray(enVal) || Array.isArray(plVal)) {
-          if (Array.isArray(enVal) && !Array.isArray(plVal)) {
-            errors.push({
-              rule: 'type-mismatch',
-              key: base,
-              enType: 'array',
-              plType: typeof plVal,
-              message: `Type mismatch for "${base}": EN is array, PL is ${typeof plVal}`,
-            });
-          } else if (!Array.isArray(enVal) && Array.isArray(plVal)) {
-            errors.push({
-              rule: 'type-mismatch',
-              key: base,
-              enType: typeof enVal,
-              plType: 'array',
-              message: `Type mismatch for "${base}": EN is ${typeof enVal}, PL is array`,
-            });
-          } else if (Array.isArray(enVal) && Array.isArray(plVal)) {
-            if (enVal.length !== plVal.length) {
-              errors.push({
-                rule: 'array-length-mismatch',
-                key: base,
-                enLength: enVal.length,
-                plLength: plVal.length,
-                message: `Array length mismatch for "${base}": EN has ${enVal.length}, PL has ${plVal.length}`,
-              });
-            } else {
-              for (let i = 0; i < enVal.length; i++) {
-                const enEl = enVal[i];
-                const plEl = plVal[i];
-                if (typeof enEl !== 'string' || typeof plEl !== 'string') {
-                  errors.push({
-                    rule: 'type-mismatch',
-                    key: `${base}[${i}]`,
-                    message: `Element type mismatch at "${base}[${i}]"`,
-                  });
-                } else {
-                  const enPlaceholders = placeholderNames(enEl);
-                  const plPlaceholders = placeholderNames(plEl);
-                  if (!samePlaceholderMultiset(enPlaceholders, plPlaceholders)) {
-                    errors.push({
-                      rule: 'placeholder-mismatch',
-                      key: `${base}[${i}]`,
-                      enPlaceholders,
-                      plPlaceholders,
-                      message: `Placeholder mismatch for "${base}[${i}]"`,
-                    });
-                  }
-                }
+        const canonical = canonicalPluralPlaceholders(source, sourceGroup);
+        requiredTotal += targetRequiredForms.length;
+        for (const form of targetRequiredForms) {
+          const targetKey = `${sourceGroup.base}${form}`;
+          if (Object.hasOwn(translated, targetKey)) {
+            if (translatedValueIsPresent(translated[targetKey])) presentTotal += 1;
+            if (translatedValueIsPresent(translated[targetKey]) && (form !== '_zero' || Object.hasOwn(source, `${sourceGroup.base}${form}`))) {
+              if (!samePlaceholderMultiset(placeholderNames(translated[targetKey]), canonical)) {
+                errors.push({ rule: 'placeholder-mismatch', locale: target.locale, key: targetKey, sourcePlaceholders: canonical, translatedPlaceholders: placeholderNames(translated[targetKey]), message: `Placeholder mismatch for "${targetKey}" in ${target.locale}` });
               }
             }
           }
-        } else if (typeof enVal !== typeof plVal) {
-          errors.push({
-            rule: 'type-mismatch',
-            key: base,
-            enType: typeof enVal,
-            plType: typeof plVal,
-            message: `Type mismatch for "${base}": EN is ${typeof enVal}, PL is ${typeof plVal}`,
-          });
-        } else if (typeof enVal === 'string' && typeof plVal === 'string') {
-          const enPlaceholders = placeholderNames(enVal);
-          const plPlaceholders = placeholderNames(plVal);
-          if (!samePlaceholderMultiset(enPlaceholders, plPlaceholders)) {
-            errors.push({
-              rule: 'placeholder-mismatch',
-              key: base,
-              enPlaceholders,
-              plPlaceholders,
-              message: `Placeholder mismatch for "${base}"`,
-            });
+        }
+        for (const key of targetGroups.find((group) => group.base === sourceGroup.base)?.keys || []) {
+          const suffix = getPluralSuffix(key);
+          if (suffix === '_zero') {
+            const targetKey = `${sourceGroup.base}_zero`;
+            if (translatedValueIsPresent(translated[targetKey]) && !samePlaceholderMultiset(placeholderNames(translated[targetKey]), canonical)) {
+              errors.push({ rule: 'placeholder-mismatch', locale: target.locale, key: targetKey, sourcePlaceholders: canonical, translatedPlaceholders: placeholderNames(translated[targetKey]), message: `Placeholder mismatch for "${targetKey}" in ${target.locale}` });
+            }
+          } else if (!targetRequiredForms.includes(suffix)) {
+            errors.push({ rule: 'invalid-plural-category', locale: target.locale, key, form: suffix, message: `Invalid plural category "${suffix}" for ${target.locale}` });
           }
         }
       }
+
+      const sourcePluralBases = new Set(sourceGroups.filter((g) => g.isPlural).map((g) => g.base));
+      for (const key of Object.keys(translated)) {
+        const pluralBase = getPluralBase(key);
+        const isStale = !sourceKeys.has(key) && (!pluralBase || !sourcePluralBases.has(pluralBase));
+        if (isStale) {
+          // Stale translations are intentionally non-blocking coverage diagnostics.
+          coverage[target.locale] = coverage[target.locale] || {};
+          coverage[target.locale].stale = (coverage[target.locale].stale || 0) + 1;
+        }
+      }
+      coverage[target.locale] = {
+        translated: presentTotal,
+        total: requiredTotal,
+        missing: requiredTotal - presentTotal,
+        percent: requiredTotal === 0 ? 100 : Math.round((presentTotal / requiredTotal) * 100),
+        ...(coverage[target.locale] || {}),
+      };
     }
 
-    return { errors, enKeys: Object.keys(enData), plKeys: Object.keys(plData), enValues: enData, plValues: plData };
+    const firstLocale = localePaths[0]?.locale;
+    return {
+      errors,
+      enKeys: Object.keys(source),
+      plKeys: firstLocale ? Object.keys(translations[firstLocale] || {}) : [],
+      enValues: source,
+      plValues: firstLocale ? translations[firstLocale] || {} : {},
+      sourceValues: source,
+      translations,
+      coverage,
+    };
   }
 }
 
@@ -396,9 +273,11 @@ module.exports = {
   flattenLocale,
   groupPluralKeys,
   getPluralBase,
+  getPluralSuffix,
   placeholderNames,
   isPlainObject,
   isStringOrArrayOfStrings,
+  requiredPluralForms,
   PLURAL_SUFFIXES,
   LocaleValidator,
 };

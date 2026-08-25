@@ -39,9 +39,10 @@ class AppLanguageModule(reactContext: ReactApplicationContext) :
             return
         }
 
-        val normalized = language?.trim()?.lowercase(Locale.ROOT)?.ifEmpty { null }
-        if (normalized != null && normalized !in SUPPORTED_LANGUAGES) {
-            promise.reject("E_UNSUPPORTED_LANGUAGE", "Only en, pl, or null are supported")
+        val normalized = language?.trim()?.ifEmpty { null }
+        val canonical = normalized?.let(::canonicalTag)
+        if (canonical != null && canonical !in SUPPORTED_LANGUAGES_CANONICAL) {
+            promise.reject("E_UNSUPPORTED_LANGUAGE", "Unsupported application language")
             return
         }
 
@@ -77,12 +78,12 @@ class AppLanguageModule(reactContext: ReactApplicationContext) :
     fun getEffectiveLanguage(promise: Promise) {
         try {
             val language = if (Build.VERSION.SDK_INT >= API_33) {
-                localeManager()?.applicationLocales?.get(0)?.language
-                    ?: reactApplicationContext.resources.configuration.locales[0]?.language
-                    ?: Locale.getDefault().language
+                localeManager()?.applicationLocales?.get(0)?.toLanguageTag()
+                    ?: reactApplicationContext.resources.configuration.locales[0]?.toLanguageTag()
+                    ?: Locale.getDefault().toLanguageTag()
             } else {
-                reactApplicationContext.resources.configuration.locales[0]?.language
-                    ?: Locale.getDefault().language
+                reactApplicationContext.resources.configuration.locales[0]?.toLanguageTag()
+                    ?: Locale.getDefault().toLanguageTag()
             }
             promise.resolve(language)
         } catch (error: Exception) {
@@ -93,6 +94,14 @@ class AppLanguageModule(reactContext: ReactApplicationContext) :
     companion object {
         private const val MODULE_NAME = "AppLanguage"
         private const val API_33 = 33
-        private val SUPPORTED_LANGUAGES = setOf("en", "pl")
+        // Generated from the TypeScript shipped-locale registry by Expo config.
+        private val SUPPORTED_LANGUAGES = setOf({{SUPPORTED_LOCALES}})
+        private const val FALLBACK_LOCALE = "{{FALLBACK_LOCALE}}"
+        private val SUPPORTED_LANGUAGES_CANONICAL = SUPPORTED_LANGUAGES.map(::canonicalTag).toSet()
+
+        private fun canonicalTag(value: String): String =
+            Locale.forLanguageTag(value).toLanguageTag().lowercase(Locale.ROOT)
+
+        private fun fallbackTag(): String = FALLBACK_LOCALE
     }
 }

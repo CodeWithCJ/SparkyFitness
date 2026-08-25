@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { SHIPPED_LOCALES, SOURCE_LOCALE } from '../../src/localization/localeRegistry';
 
 const TARGETS_ROOT = path.join(
   __dirname,
@@ -9,17 +10,34 @@ const TARGETS_ROOT = path.join(
 const KOTLIN_ROOT = path.join(TARGETS_ROOT, 'kotlin', 'com', 'sparkyapps', 'sparkyfitness', 'widget');
 const RES_ROOT = path.join(TARGETS_ROOT, 'res');
 
-function readWidgetStringResources(): { name: string; value: string }[] {
-  const xml = fs.readFileSync(
-    path.join(RES_ROOT, 'values', 'widget_strings.xml'),
-    'utf8',
-  );
-  return extractStringResources(xml);
+/**
+ * Discover every Android widget resource directory below `res/`, mapping
+ * locale tags the same way the native validator does (`values` → source,
+ * `values-de` → `de`, `values-b+de+DE` → `de-DE`).
+ */
+function discoverWidgetLocaleDirs(): Map<string, string> {
+  const result = new Map<string, string>();
+  for (const entry of fs.readdirSync(RES_ROOT, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    if (entry.name === 'values') {
+      result.set(SOURCE_LOCALE, entry.name);
+    } else if (entry.name.startsWith('values-')) {
+      const qualifier = entry.name.slice('values-'.length);
+      const locale = qualifier.startsWith('b+') ? qualifier.slice(2).replaceAll('+', '-') : qualifier;
+      result.set(locale, entry.name);
+    }
+  }
+  return result;
 }
 
-function readWidgetStringResourcesPl(): { name: string; value: string }[] {
+const WIDGET_LOCALE_DIRS = discoverWidgetLocaleDirs();
+const SHIPPED_WIDGET_LOCALES = Object.keys(SHIPPED_LOCALES).filter((locale) => WIDGET_LOCALE_DIRS.has(locale));
+
+function readWidgetStringResources(locale: string = SOURCE_LOCALE): { name: string; value: string }[] {
+  const dir = WIDGET_LOCALE_DIRS.get(locale);
+  if (!dir) throw new Error(`No Android widget resource directory for locale "${locale}"`);
   const xml = fs.readFileSync(
-    path.join(RES_ROOT, 'values-pl', 'widget_strings.xml'),
+    path.join(RES_ROOT, dir, 'widget_strings.xml'),
     'utf8',
   );
   return extractStringResources(xml);
@@ -63,7 +81,7 @@ const REQUIRED_KEYS = [
 ];
 
 // Keys that existed only for the removed resize/responsive experiment layouts.
-// EN and PL must stay identical; a key without a consumer must not linger.
+// A key without a consumer must not linger in any locale.
 const DEAD_RESIZE_KEYS = [
   'widget_kcal_left_caption',
   'widget_kcal_left_value',
@@ -107,35 +125,54 @@ describe('Android widget localization contract', () => {
       }
     });
 
-    it('defines the same key set in values and values-pl', () => {
-      const en = readWidgetStringResources().map((r) => r.name).sort();
-      const pl = readWidgetStringResourcesPl().map((r) => r.name).sort();
+    it('discovers every shipped locale and the source widget resource directory', () => {
+      // The source locale must always have a widget resource directory.
+      expect(WIDGET_LOCALE_DIRS.has(SOURCE_LOCALE)).toBe(true);
+      // Every shipped locale must have a corresponding Android widget resource directory.
+      for (const locale of Object.keys(SHIPPED_LOCALES)) {
+        expect(WIDGET_LOCALE_DIRS.has(locale)).toBe(true);
+      }
+    });
 
-      expect(pl).toEqual(en);
+    it('does not require target widget key sets to match source (missing allowed, extra forbidden)', () => {
+      // Android resource resolution falls back to default `values` when a key
+      // is absent from `values-<locale>`. Missing keys are coverage diagnostics,
+      // not blocking. Extra keys that do not exist in source remain blocking.
+      const en = new Set(readWidgetStringResources().map((r) => r.name));
+      for (const locale of SHIPPED_WIDGET_LOCALES) {
+        if (locale === SOURCE_LOCALE) continue;
+        const target = readWidgetStringResources(locale);
+        for (const resource of target) {
+          expect(en.has(resource.name)).toBe(true);
+        }
+      }
     });
 
     it('does not keep resource keys that lost their consumer after the resize removal', () => {
-      const en = new Set(readWidgetStringResources().map((r) => r.name));
-      const pl = new Set(readWidgetStringResourcesPl().map((r) => r.name));
-
-      for (const key of DEAD_RESIZE_KEYS) {
-        expect(en.has(key)).toBe(false);
-        expect(pl.has(key)).toBe(false);
+      for (const locale of WIDGET_LOCALE_DIRS.keys()) {
+        const resources = new Set(readWidgetStringResources(locale).map((r) => r.name));
+        for (const key of DEAD_RESIZE_KEYS) {
+          expect(resources.has(key)).toBe(false);
+        }
       }
     });
 
-    it('has non-empty values in both locales', () => {
+    it('has non-empty source values (empty target values are allowed coverage gaps)', () => {
       const en = readWidgetStringResources();
-      const pl = readWidgetStringResourcesPl();
-
-      for (const resource of [...en, ...pl]) {
+      for (const resource of en) {
         expect(resource.value).not.toBe('');
       }
+      // Target locale values may be empty (missing) — that is a non-blocking
+      // coverage gap. Structural correctness of present values is verified by
+      // the native widget validator and the placeholder tests below.
     });
 
     it('uses approved Polish translations with diacritics where natural', () => {
+      // PL-specific regression guard: these translations were reviewed and
+      // approved. This test is intentionally PL-specific (not registry-driven)
+      // because it verifies known-good linguistic content, not architecture.
       const pl = new Map(
-        readWidgetStringResourcesPl().map((r) => [r.name, r.value]),
+        readWidgetStringResources('pl').map((r) => [r.name, r.value]),
       );
 
       expect(pl.get('sparky_calorie_widget_name')).toBe('Kalorie');
@@ -148,32 +185,34 @@ describe('Android widget localization contract', () => {
       expect(pl.get('widget_kcal_left')).toBe('Pozostało %1$s kcal');
     });
 
-    it('keeps placeholder position compatible between EN and PL', () => {
+    it('keeps placeholder positions compatible across all shipped widget locales', () => {
       const en = new Map(
         readWidgetStringResources().map((r) => [r.name, r.value]),
       );
-      const pl = new Map(
-        readWidgetStringResourcesPl().map((r) => [r.name, r.value]),
-      );
-
       const placeholderKeys = [
         'widget_kcal_left',
         'widget_grams',
       ];
-      for (const key of placeholderKeys) {
-        const enCount = (en.get(key)?.match(/%\d+\$[sd]/g) ?? []).length;
-        const plCount = (pl.get(key)?.match(/%\d+\$[sd]/g) ?? []).length;
-        expect(plCount).toBe(enCount);
-        expect(plCount).toBeGreaterThan(0);
+      for (const locale of SHIPPED_WIDGET_LOCALES) {
+        if (locale === SOURCE_LOCALE) continue;
+        const target = new Map(readWidgetStringResources(locale).map((r) => [r.name, r.value]));
+        for (const key of placeholderKeys) {
+          const enCount = (en.get(key)?.match(/%\d+\$[sd]/g) ?? []).length;
+          const targetCount = (target.get(key)?.match(/%\d+\$[sd]/g) ?? []).length;
+          // Missing key: Android falls back to default `values` — allowed.
+          if (!target.has(key) || target.get(key) === '') continue;
+          expect(targetCount).toBe(enCount);
+          expect(targetCount).toBeGreaterThan(0);
+        }
       }
     });
 
-    it('does not use i18next placeholder syntax in Android XML', () => {
-      const en = readWidgetStringResources();
-      const pl = readWidgetStringResourcesPl();
-      for (const resource of [...en, ...pl]) {
-        expect(resource.value).not.toMatch(/\{\{/);
-        expect(resource.value).not.toMatch(/\}\}/);
+    it('does not use i18next placeholder syntax in any Android widget XML', () => {
+      for (const locale of WIDGET_LOCALE_DIRS.keys()) {
+        for (const resource of readWidgetStringResources(locale)) {
+          expect(resource.value).not.toMatch(/\{\{/);
+          expect(resource.value).not.toMatch(/\}\}/);
+        }
       }
     });
 
@@ -530,8 +569,8 @@ describe('Android widget localization contract', () => {
       expect(src).toMatch(/editor\.remove\(KEY_EFFECTIVE_RENDER_LOCALE\)/);
       expect(src).toMatch(/editor\.remove\(KEY_LOCALE\)/);
       expect(src).toMatch(/editor\.putString\(KEY_LOCALE, normalizedPreference\)/);
-      expect(src).toMatch(/Locale\.forLanguageTag\("en"\)/);
-      expect(src).toMatch(/Locale\.forLanguageTag\("pl"\)/);
+      expect(src).toMatch(/\{\{SUPPORTED_LOCALES\}\}/);
+      expect(src).toMatch(/\{\{FALLBACK_LOCALE\}\}/);
     });
 
     it('refreshes the broadcast locale payload before LOCALE_CHANGED updateAll', () => {

@@ -24,7 +24,10 @@
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
     "typecheck": "tsc --noEmit",
-    "validate": "pnpm run typecheck && pnpm run lint && pnpm run i18n:audit"
+    "validate": "pnpm run i18n:generate:check && pnpm run typecheck && pnpm run lint && pnpm run i18n:audit && pnpm run native-locales:check",
+    "i18n:generate": "node scripts/generate-locale-resources.mjs",
+    "i18n:generate:check": "node scripts/generate-locale-resources.mjs --check",
+    "native-locales:check": "node scripts/validate-native-widget-locales.mjs"
   },
   "dependencies": {
     "@assistant-ui/react-ai-sdk": "^1.3.37",

@@ -53,11 +53,22 @@ const CalendarContent = ({
   const monthLabels = useMemo(() => getCalendarMonthNames(appLocale), [appLocale]);
   const [initialYear, initialMonth] = selectedDate.split('-').map(Number);
   const [visible, setVisible] = useState({ year: initialYear, month: initialMonth - 1 });
-  // react-native-ui-datepicker only honours `initialView` on mount, so switching
-  // the month/year quick-jump grid remounts the picker with a key carrying the
-  // active view. Selecting a month/year calls onMonthChange/onYearChange, which
-  // both update the visible month/year and reset back to the day grid.
+  // react-native-ui-datepicker only honours `initialView` on mount. The parent
+  // tracks `pickerView` ('day' | 'month' | 'year') as logical UI state and a
+  // separate `pickerMountVersion` token that increments ONLY when the user
+  // explicitly opens the quick-jump grid from the header. The token drives the
+  // `key` so the picker remounts with the correct `initialView`. Selecting a
+  // month/year calls onMonthChange/onYearChange, which update the visible
+  // month/year and reset back to the day grid WITHOUT touching the token, so a
+  // stale 'month'/'year' state after a no-op same-month/year tap does NOT remount
+  // the picker back into the grid.
   const [pickerView, setPickerView] = useState<PickerView>('day');
+  const [pickerMountVersion, setPickerMountVersion] = useState(0);
+
+  const openQuickJump = useCallback((view: 'month' | 'year') => {
+    setPickerView(view);
+    setPickerMountVersion((v) => v + 1);
+  }, []);
 
   const shiftVisible = useCallback((delta: number) => {
     setVisible((prev) => {
@@ -66,6 +77,14 @@ const CalendarContent = ({
       const date = new Date(prev.year, prev.month + step, 1);
       return { year: date.getFullYear(), month: date.getMonth() };
     });
+    // The chevron always returns to the day grid so accessibility labels and
+    // subsequent navigation reflect month (not year) stepping. This also covers
+    // the case where the library internally returned to day view after the
+    // user tapped the already-selected month/year, which does NOT fire
+    // onMonthChange/onYearChange (see react-native-ui-datepicker v3.1.2).
+    // Only logical state is reset — the mount token is NOT bumped so the picker
+    // is not forced back into the month/year grid.
+    setPickerView('day');
   }, [pickerView]);
 
   const [sy, sm, sd] = selectedDate.split('-').map(Number);
@@ -109,7 +128,19 @@ const CalendarContent = ({
         </Pressable>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Pressable
-            onPress={() => setPickerView((view) => (view === 'month' ? 'day' : 'month'))}
+            onPress={() => {
+              if (pickerView === 'month') {
+                // Toggling the month caption off returns to the day grid.
+                // The mount token must be bumped so the picker remounts with
+                // initialView='day' — react-native-ui-datepicker 3.1.2 treats
+                // initialView as mount-only, so without a remount the picker
+                // would stay stuck in the month grid.
+                setPickerView('day');
+                setPickerMountVersion((v) => v + 1);
+              } else {
+                openQuickJump('month');
+              }
+            }}
             hitSlop={6}
             accessibilityLabel={t('cycleCalendar.selectMonth', { defaultValue: 'Select month' })}
           >
@@ -119,7 +150,17 @@ const CalendarContent = ({
           </Pressable>
           <Text style={{ color: textPrimary, fontSize: 16, fontWeight: '600' }}>{' '}</Text>
           <Pressable
-            onPress={() => setPickerView((view) => (view === 'year' ? 'day' : 'year'))}
+            onPress={() => {
+              if (pickerView === 'year') {
+                // Toggling the year caption off returns to the day grid.
+                // The mount token must be bumped so the picker remounts with
+                // initialView='day' — see the month toggle above for rationale.
+                setPickerView('day');
+                setPickerMountVersion((v) => v + 1);
+              } else {
+                openQuickJump('year');
+              }
+            }}
             hitSlop={6}
             accessibilityLabel={t('cycleCalendar.selectYear', { defaultValue: 'Select year' })}
           >
@@ -144,7 +185,12 @@ const CalendarContent = ({
         hideHeader
         locale={presentation.locale}
         firstDayOfWeek={presentation.firstDayOfWeek}
-        key={`calendar-${presentation.locale}-${presentation.firstDayOfWeek}-${visible.month}-${visible.year}-${pickerView}`}
+        // `pickerMountVersion` drives the remount: it only changes when the user
+        // explicitly opens the quick-jump grid via openQuickJump(). When the
+        // library internally returns to day view after a same-month/year tap
+        // (no callback fired), parent pickerView resets to 'day' but the token
+        // stays the same, preventing a stale 'month'/'year' remount.
+        key={`calendar-${presentation.locale}-${presentation.firstDayOfWeek}-${visible.month}-${visible.year}-${pickerMountVersion}`}
         components={{
           Weekday: (weekday) => (
             <View style={{ minWidth: 30 }}>

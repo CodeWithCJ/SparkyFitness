@@ -33,8 +33,8 @@ interface AuditError {
   file?: string;
   line?: number;
   message?: string;
-  enPlaceholders?: string[];
-  plPlaceholders?: string[];
+  sourcePlaceholders?: string[];
+  translatedPlaceholders?: string[];
   context?: Record<string, unknown>;
 }
 
@@ -54,7 +54,9 @@ interface AuditReport {
   missingFallbackFindings: AuditError[];
   dynamicI18nFindings: AuditError[];
   hardcodedUiFindings: AuditFinding[];
+  unsafeNumberFormatFindings: AuditFinding[];
   summary: Record<string, number>;
+  translationCoverage: Record<string, LocaleCoverage>;
 }
 
 interface AuditResult {
@@ -66,6 +68,7 @@ interface AuditOptions {
   rootDir?: string;
   enLocalePath?: string;
   plLocalePath?: string;
+  registryPath?: string;
   sourceRoots?: string[];
 }
 
@@ -74,10 +77,19 @@ interface ScanResult {
   errors: AuditError[];
 }
 
+interface LocaleCoverage {
+  translated: number;
+  total: number;
+  missing: number;
+  percent: number;
+  stale?: number;
+}
+
 interface ValidatorResult {
   errors: AuditError[];
   enKeys: string[];
   plKeys: string[];
+  coverage: Record<string, LocaleCoverage>;
 }
 
 interface LocaleValidatorInstance {
@@ -96,21 +108,36 @@ function createFixtureStructure(
   const srcDir = path.join(tmpDir, 'src');
   const scriptsDir = path.join(tmpDir, 'scripts');
   const localeDir = path.join(srcDir, 'localization', 'locales');
-  const enDir = path.join(localeDir, 'en');
-  const plDir = path.join(localeDir, 'pl');
+  const registryDir = path.join(srcDir, 'localization');
 
-  fs.mkdirSync(enDir, { recursive: true });
-  fs.mkdirSync(plDir, { recursive: true });
+  fs.mkdirSync(localeDir, { recursive: true });
   fs.mkdirSync(scriptsDir, { recursive: true });
 
-  const enContent = structure.en || '{}';
-  const plContent = structure.pl || '{}';
+  const locales = Object.keys(structure);
+  const localeEntries: Record<string, { languageCode: string; intlLocale: string; displayNameKey: string; defaultDisplayName: string }> = {};
+  for (const locale of locales) {
+    const dir = path.join(localeDir, locale);
+    fs.mkdirSync(dir, { recursive: true });
+    const localePath = path.join(dir, 'translation.json');
+    fs.writeFileSync(localePath, structure[locale] || '{}');
+    if (locale === 'en') enLocalePath = localePath;
+    else if (locale === 'pl') plLocalePath = localePath;
+    const intlLocaleMap: Record<string, string> = { en: 'en-US', pl: 'pl-PL', de: 'de-DE' };
+    localeEntries[locale] = {
+      languageCode: locale,
+      intlLocale: intlLocaleMap[locale] || locale,
+      displayNameKey: `settings.language.${locale}`,
+      defaultDisplayName: locale,
+    };
+  }
 
-  enLocalePath = path.join(enDir, 'translation.json');
-  plLocalePath = path.join(plDir, 'translation.json');
-
-  fs.writeFileSync(enLocalePath, enContent);
-  fs.writeFileSync(plLocalePath, plContent);
+  // Write fixture localeRegistry.json so core.cjs can discover locales
+  const registry = {
+    sourceLocale: 'en',
+    fallbackLocale: 'en',
+    locales: localeEntries,
+  };
+  fs.writeFileSync(path.join(registryDir, 'localeRegistry.json'), JSON.stringify(registry, null, 2));
 
   for (const [relPath, content] of Object.entries(sourceFiles)) {
     const fullPath = path.join(srcDir, relPath);
@@ -169,7 +196,7 @@ describe('LocaleValidator', () => {
     expect(result.errors).toHaveLength(0);
   });
 
-  it('2. fails for missing plain key in PL', () => {
+  it('2. allows missing plain key in PL and reports coverage', () => {
     const tmpDir = createFixtureStructure({
       en: '{"common": {"save": "Save", "close": "Close"}}',
       pl: '{"common": {"save": "Zapisz"}}',
@@ -181,10 +208,11 @@ describe('LocaleValidator', () => {
     );
 
     const result = validator.validate();
-    expect(result.errors.some((e) => e.rule === 'missing-key' && e.key === 'common.close')).toBe(true);
+    expect(result.errors).toHaveLength(0);
+    expect(result.coverage.pl.missing).toBe(1);
   });
 
-  it('3. fails for extra key in PL', () => {
+  it('3. reports extra key in PL as non-blocking stale coverage', () => {
     const tmpDir = createFixtureStructure({
       en: '{"common": {"save": "Save"}}',
       pl: '{"common": {"save": "Zapisz", "extra": "Dodatkowy"}}',
@@ -196,7 +224,8 @@ describe('LocaleValidator', () => {
     );
 
     const result = validator.validate();
-    expect(result.errors.some((e) => e.rule === 'missing-key' && e.locale === 'en' && e.key === 'common.extra')).toBe(true);
+    expect(result.errors).toHaveLength(0);
+    expect(result.coverage.pl.stale).toBe(1);
   });
 
   it('4. fails for malformed JSON', () => {
@@ -291,7 +320,7 @@ describe('LocaleValidator', () => {
 });
 
 describe('Pluralization', () => {
-  it('9. fails for missing _many in Polish', () => {
+  it('9. allows incomplete Polish plural coverage', () => {
     const tmpDir = createFixtureStructure({
       en: '{"count": {"item_one": "item", "item_other": "items"}}',
       pl: '{"count": {"item_one": "przedmiot", "item_few": "przedmioty", "item_other": "przedmiotów"}}',
@@ -303,7 +332,8 @@ describe('Pluralization', () => {
     );
 
     const result = validator.validate();
-    expect(result.errors.some((e) => e.rule === 'missing-plural-form' && e.locale === 'pl' && e.form === '_many')).toBe(true);
+    expect(result.errors).toHaveLength(0);
+    expect(result.coverage.pl.missing).toBeGreaterThan(0);
   });
 
   it('10. passes for EN _one/_other and PL _one/_few/_many/_other', () => {
@@ -615,7 +645,7 @@ export function Test({ name }) {
   });
 });
 
-describe('Hardcoded UI text detection (informational)', () => {
+describe('Hardcoded UI text detection (blocking)', () => {
   it('14. reports new hardcoded text in <Text> without failing the audit', () => {
     const source = `
 import React from 'react';
@@ -635,7 +665,7 @@ export function Test() {
     );
 
     expect(hardcoded.length).toBe(1);
-    expect(result.hasErrors).toBe(false);
+    expect(result.hasErrors).toBe(true);
     expect(result.report.hardcodedUiFindings.length).toBeGreaterThan(0);
   });
 
@@ -809,7 +839,7 @@ describe('Static key resolution', () => {
 
     expect(result.hasErrors).toBe(true);
     expect(result.report.pluralErrors.some((e) => e.key === 'measurement' && e.locale === 'en')).toBe(true);
-    expect(result.report.pluralErrors.some((e) => e.key === 'measurement' && e.locale === 'pl')).toBe(true);
+    expect(result.report.pluralErrors.some((e) => e.key === 'measurement' && e.locale === 'en')).toBe(true);
   });
 
   it('flags a plural fallback that differs from the English _other form', () => {
@@ -1130,4 +1160,187 @@ export function Test({ condition }) {
     expect(findings.filter((f) => f.value === 'Second unsuppressed')).toHaveLength(1);
     expect(findings.filter((f) => f.value === 'First suppressed')).toHaveLength(0);
   });
+});
+
+
+describe('Multilingual source-first regressions', () => {
+  it('discovers sibling locale directories from the locale root', () => {
+    const tmpDir = createFixtureStructure({
+      en: '{"dashboard": {"weeklyProgress": "Weekly progress"}}',
+      pl: '{"dashboard": {}}',
+      de: '{"dashboard": {"weeklyProgress": "Wöchentlicher Fortschritt"}}',
+    });
+    const result = auditRun(tmpDir);
+    expect(result.hasErrors).toBe(false);
+    expect(result.report.translationCoverage.pl).toMatchObject({ missing: 1 });
+    expect(result.report.translationCoverage.de).toMatchObject({ missing: 0, translated: 1, total: 1 });
+  });
+
+  it('fails when a statically used source key is absent from English', () => {
+    const tmpDir = createFixtureStructure(
+      { en: '{"common": {"save": "Save"}}', pl: '{}' },
+      { 'missing.ts': "export const label = t('missing.source', 'Missing source');" },
+    );
+    const result = auditRun(tmpDir);
+    expect(result.hasErrors).toBe(true);
+    expect(result.report.missingStaticKeys.some((item) => item.key === 'missing.source' && item.locale === 'en')).toBe(true);
+  });
+
+  it('fails source plural placeholder drift', () => {
+    const tmpDir = createFixtureStructure({
+      en: '{"item_one": "{{count}} item", "item_other": "{{total}} items"}',
+      pl: '{}',
+    });
+    const validator = new LocaleValidator(path.join(tmpDir, 'src/localization/locales/en/translation.json'), path.join(tmpDir, 'src/localization/locales/pl/translation.json'));
+    expect(validator.validate().errors.some((item) => item.rule === 'placeholder-mismatch' && item.locale === 'en')).toBe(true);
+  });
+
+  it('fails target plural placeholder drift against the source family', () => {
+    const tmpDir = createFixtureStructure({
+      en: '{"item_one": "{{count}} item", "item_other": "{{count}} items"}',
+      pl: '{"item_one": "{{count}} przedmiot", "item_few": "{{total}} przedmioty", "item_many": "{{count}} przedmiotów", "item_other": "{{count}} przedmiotów"}',
+    });
+    const validator = new LocaleValidator(path.join(tmpDir, 'src/localization/locales/en/translation.json'), path.join(tmpDir, 'src/localization/locales/pl/translation.json'));
+    expect(validator.validate().errors.some((item) => item.rule === 'placeholder-mismatch' && item.locale === 'pl')).toBe(true);
+  });
+
+  it('rejects an unsupported English _few and _many compatibility pair', () => {
+    const tmpDir = createFixtureStructure({ en: '{"item_one":"item", "item_other":"items", "item_few":"items", "item_many":"items"}', pl: '{}' });
+    const validator = new LocaleValidator(path.join(tmpDir, 'src/localization/locales/en/translation.json'), path.join(tmpDir, 'src/localization/locales/pl/translation.json'));
+    expect(validator.validate().errors.filter((item) => item.rule === 'invalid-plural-category' && item.locale === 'en')).toHaveLength(2);
+  });
+
+  it('allows empty target values as missing non-blocking coverage', () => {
+    const tmpDir = createFixtureStructure({ en: '{"greeting":"Hello {{name}}"}', pl: '{"greeting":""}' });
+    const result = new LocaleValidator(path.join(tmpDir, 'src/localization/locales/en/translation.json'), path.join(tmpDir, 'src/localization/locales/pl/translation.json')).validate();
+    expect(result.errors).toHaveLength(0);
+    expect(result.coverage.pl.missing).toBe(1);
+  });
+
+  it('still blocks non-empty target placeholder corruption', () => {
+    const tmpDir = createFixtureStructure({ en: '{"greeting":"Hello {{name}}"}', pl: '{"greeting":"Witaj {{wrong}}"}' });
+    const result = new LocaleValidator(path.join(tmpDir, 'src/localization/locales/en/translation.json'), path.join(tmpDir, 'src/localization/locales/pl/translation.json')).validate();
+    expect(result.errors.some((item) => item.rule === 'placeholder-mismatch')).toBe(true);
+  });
+
+  it('derives German target coverage independently from the English source', () => {
+    const deForms = new Intl.PluralRules('de-DE')
+      .resolvedOptions()
+      .pluralCategories
+      .map((category) => `_${category}`);
+    const tmpDir = createFixtureStructure({
+      en: JSON.stringify({ item_one: '{{count}} item', item_other: '{{count}} items' }),
+      pl: '{}',
+    });
+    const dePath = path.join(tmpDir, 'src/localization/locales/de', 'translation.json');
+    fs.mkdirSync(path.dirname(dePath), { recursive: true });
+    fs.writeFileSync(dePath, JSON.stringify(Object.fromEntries(
+      deForms.map((form) => [`item${form}`, '{{count}} German item']),
+    )));
+
+    const result = new LocaleValidator(
+      path.join(tmpDir, 'src/localization/locales/en/translation.json'),
+      path.join(tmpDir, 'src/localization/locales/pl/translation.json'),
+      { localePaths: [{ locale: 'de', path: dePath, intlLocale: 'de-DE' }] },
+    ).validate();
+
+    expect(result.errors.filter((error) => error.locale === 'de')).toHaveLength(0);
+    expect(result.coverage.de).toMatchObject({
+      total: deForms.length,
+      translated: deForms.length,
+      missing: 0,
+    });
+  });
+
+  it('derives Arabic target coverage independently from the English source', () => {
+    const arForms = new Intl.PluralRules('ar')
+      .resolvedOptions()
+      .pluralCategories
+      .map((category) => `_${category}`);
+    const tmpDir = createFixtureStructure({
+      en: JSON.stringify({ item_one: '{{count}} item', item_other: '{{count}} items' }),
+      pl: '{}',
+    });
+    const arPath = path.join(tmpDir, 'src/localization/locales/ar', 'translation.json');
+    fs.mkdirSync(path.dirname(arPath), { recursive: true });
+    fs.writeFileSync(arPath, JSON.stringify(Object.fromEntries(
+      arForms.map((form) => [`item${form}`, '{{count}} Arabic fixture']),
+    )));
+
+    const result = new LocaleValidator(
+      path.join(tmpDir, 'src/localization/locales/en/translation.json'),
+      path.join(tmpDir, 'src/localization/locales/pl/translation.json'),
+      { localePaths: [{ locale: 'ar', path: arPath, intlLocale: 'ar' }] },
+    ).validate();
+
+    expect(result.errors.filter((error) => error.locale === 'ar')).toHaveLength(0);
+    expect(result.coverage.ar).toMatchObject({
+      total: arForms.length,
+      translated: arForms.length,
+      missing: 0,
+    });
+  });
+
+  it('blocks unsafe localized JSX and object presentation properties', () => {
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, {
+      'unsafe.tsx': `export const View = () => <Metric label={value.toFixed(1)} subtitle={value.toLocaleString('en-US')} />; const config = { label: value.toFixed(1) };`,
+    });
+    const findings = scan(tmpDir).findings.filter((finding) => finding.kind === 'locale-unsafe-number-format');
+    expect(findings.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('allows the shared localized formatter in presentation properties', () => {
+    const tmpDir = createFixtureStructure({ en: '{}', pl: '{}' }, {
+      'safe.tsx': `export const View = () => <Metric label={formatLocalizedNumber(value)} />;`,
+    });
+    expect(scan(tmpDir).findings.filter((finding) => finding.kind === 'locale-unsafe-number-format')).toHaveLength(0);
+  });
+
+  it('supports synthetic region variants without collapsing them', () => {
+    const registry = {
+      'pt-BR': { languageCode: 'pt', intlLocale: 'pt-BR', displayNameKey: 'x', defaultDisplayName: 'Português (Brasil)' },
+      'pt-PT': { languageCode: 'pt', intlLocale: 'pt-PT', displayNameKey: 'x', defaultDisplayName: 'Português (Portugal)' },
+    };
+    const { normalizeLocaleFromRegistry } = require('../../src/localization/localeRegistry');
+    expect(normalizeLocaleFromRegistry('pt-BR-x-private', registry)).toBe('pt-BR');
+    expect(normalizeLocaleFromRegistry('pt-PT-x-private', registry)).toBe('pt-PT');
+  });
+
+  it('reports stale target plural family when source has removed the plural base', () => {
+    const tmpDir = createFixtureStructure({
+      en: JSON.stringify({ greeting: 'Hello' }),
+      pl: JSON.stringify({ greeting: 'Czesc', item_one: '{{count}} przedmiot', item_other: '{{count}} przedmiotow' }),
+    });
+    const result = new LocaleValidator(
+      path.join(tmpDir, 'src/localization/locales/en/translation.json'),
+      path.join(tmpDir, 'src/localization/locales/pl/translation.json'),
+    ).validate();
+    expect(result.errors).toHaveLength(0);
+    expect(result.coverage.pl.stale).toBeGreaterThanOrEqual(2);
+  });
+
+  it('placeholder errors include locale, sourcePlaceholders, and translatedPlaceholders fields', () => {
+    const tmpDir = createFixtureStructure({
+      en: JSON.stringify({ greeting: 'Hello {{name}}' }),
+      pl: JSON.stringify({ greeting: 'Witaj {{wrong}}' }),
+    });
+    const result = new LocaleValidator(
+      path.join(tmpDir, 'src/localization/locales/en/translation.json'),
+      path.join(tmpDir, 'src/localization/locales/pl/translation.json'),
+    ).validate();
+    const mismatch = result.errors.find((e) => e.rule === 'placeholder-mismatch');
+    expect(mismatch).toBeDefined();
+    expect(mismatch?.locale).toBe('pl');
+    expect(mismatch?.sourcePlaceholders).toEqual(['name']);
+    expect(mismatch?.translatedPlaceholders).toEqual(['wrong']);
+  });
+
+  it('handles missing locale root gracefully without crashing', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'i18n-audit-noroot-'));
+    fs.mkdirSync(path.join(tmpDir, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, 'src', 'empty.ts'), 'export const x = 1;');
+    const result = auditRun(tmpDir, { enLocalePath: path.join(tmpDir, 'nonexistent', 'en', 'translation.json') });
+    expect(result.hasErrors).toBe(true);
+  });
+
 });
