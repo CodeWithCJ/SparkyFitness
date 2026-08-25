@@ -1162,8 +1162,7 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
   },
   {
     category: 'allergens',
-    keywords:
-      /\b(allerg\w*|intoleran\w*|peanut\w*|tree\s*nut\w*|gluten|dairy|lactose|shellfish|soy|sesame)\b/i,
+    keywords: /\b(allerg\w*|intoleran\w*|anaphyla\w*)\b/i,
   },
   {
     category: 'favorites',

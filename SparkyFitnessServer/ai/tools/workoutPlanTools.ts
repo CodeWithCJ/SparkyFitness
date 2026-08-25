@@ -121,7 +121,7 @@ Actions:
           if (message.includes('not found')) {
             return ERRORS.NOT_FOUND(
               'Workout plan',
-              'plan_id' in args ? args.plan_id : ''
+              'plan_id' in args ? String(args.plan_id) : ''
             );
           }
           log('error', '[Workout Plan Tool] Error:', error);

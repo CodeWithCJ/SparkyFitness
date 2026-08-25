@@ -82,7 +82,11 @@ const updateWaterContainerSchema = z
       message:
         'Provide at least one field to update (name, volume, unit, is_primary, or servings_per_container).',
     }
-  );
+  )
+  .refine((data) => data.volume === undefined || data.unit !== undefined, {
+    message: 'unit is required when volume is provided.',
+    path: ['unit'],
+  });
 
 const deleteWaterContainerSchema = z
   .object({

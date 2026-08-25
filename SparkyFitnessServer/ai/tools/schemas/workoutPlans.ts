@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import { uuidSchema } from './common.js';
+
+// workout_plan_templates.id is a SERIAL PRIMARY KEY (integer), so plan_id must be
+// a positive integer, not a UUID. z.coerce accepts the numeric string the model
+// echoes back from list_workout_plans output.
+const planIdSchema = z.coerce
+  .number()
+  .int()
+  .positive('Workout plan ID must be a positive integer');
 
 // Workout plan templates carry nested day-of-week assignment and set arrays that
 // do not map cleanly onto a flat chatbot tool schema, so authoring (create/update)
@@ -20,8 +27,8 @@ const listWorkoutPlansSchema = z
 const getWorkoutPlanSchema = z
   .object({
     action: z.literal('get_workout_plan'),
-    plan_id: uuidSchema.describe(
-      'UUID of the workout plan template to inspect'
+    plan_id: planIdSchema.describe(
+      'ID of the workout plan template to inspect'
     ),
   })
   .strict();
@@ -29,7 +36,7 @@ const getWorkoutPlanSchema = z
 const deleteWorkoutPlanSchema = z
   .object({
     action: z.literal('delete_workout_plan'),
-    plan_id: uuidSchema.describe('UUID of the workout plan template to delete'),
+    plan_id: planIdSchema.describe('ID of the workout plan template to delete'),
   })
   .strict();
 
@@ -45,5 +52,5 @@ export type ManageWorkoutPlansInput = z.infer<typeof manageWorkoutPlansSchema>;
 // union above inside the handler.
 export const manageWorkoutPlansInput = z.object({
   action: z.enum(WORKOUT_PLAN_ACTIONS).optional(),
-  plan_id: z.string().optional(),
+  plan_id: z.union([z.string(), z.number()]).optional(),
 });

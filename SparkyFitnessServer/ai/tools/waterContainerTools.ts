@@ -25,13 +25,35 @@ interface WaterContainerRow {
   servings_per_container: number;
 }
 
+// Volume is persisted in ml regardless of the unit the user picked, so convert
+// back to the container's own unit for display (mirrors the frontend
+// convertMlToSelectedUnit helper in nutritionCalculations.ts).
+function convertMlToUnit(ml: number, unit: string): number {
+  switch (unit) {
+    case 'oz':
+      return ml / 29.5735;
+    case 'liter':
+      return ml / 1000;
+    default:
+      return ml;
+  }
+}
+
+function formatVolume(ml: number, unit: string): string {
+  const value = convertMlToUnit(ml, unit);
+  // Trim trailing zeros: whole numbers render without decimals, others to 2dp.
+  const rounded = Math.round(value * 100) / 100;
+  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
+  return `${text} ${unit}`;
+}
+
 function formatContainer(row: WaterContainerRow): string {
   const primary = row.is_primary ? ' — primary' : '';
   const servings =
     row.servings_per_container > 1
       ? ` (${row.servings_per_container} servings)`
       : '';
-  return `**${row.name}** ${row.volume}${row.unit}${servings}${primary}\n  ID: ${row.id}`;
+  return `**${row.name}** ${formatVolume(row.volume, row.unit)}${servings}${primary}\n  ID: ${row.id}`;
 }
 
 export function buildWaterContainerTools(userId: string, tz: string) {

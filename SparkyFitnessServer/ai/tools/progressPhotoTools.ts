@@ -79,7 +79,13 @@ Actions:
             }
 
             case 'delete_photo': {
-              await checkInPhotoService.deletePhoto(userId, args.photo_id);
+              const deleted = await checkInPhotoService.deletePhoto(
+                userId,
+                args.photo_id
+              );
+              if (!deleted) {
+                return ERRORS.NOT_FOUND('Progress photo', args.photo_id);
+              }
               return formatConfirmation('Progress photo deleted.');
             }
 

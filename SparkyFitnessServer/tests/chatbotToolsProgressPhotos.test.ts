@@ -115,7 +115,7 @@ describe('sparky_manage_progress_photos', () => {
   });
 
   it('delete_photo confirms deletion', async () => {
-    svc.deletePhoto.mockResolvedValue(undefined);
+    svc.deletePhoto.mockResolvedValue(true);
 
     const result = await tools.sparky_manage_progress_photos.execute!(
       { action: 'delete_photo', photo_id: PHOTO_ID },
@@ -126,8 +126,22 @@ describe('sparky_manage_progress_photos', () => {
     expect(svc.deletePhoto).toHaveBeenCalledWith('user-1', PHOTO_ID);
   });
 
+  it('delete_photo returns NOT_FOUND when nothing was deleted', async () => {
+    svc.deletePhoto.mockResolvedValue(false);
+
+    const result = await tools.sparky_manage_progress_photos.execute!(
+      { action: 'delete_photo', photo_id: PHOTO_ID },
+      opts
+    );
+
+    expect(result).toBe(
+      `Error [NOT_FOUND]: Progress photo with ID '${PHOTO_ID}' not found.\n\nSuggestion: Check the ID and try again.`
+    );
+    expect(svc.deletePhoto).toHaveBeenCalledWith('user-1', PHOTO_ID);
+  });
+
   it('infers delete_photo when a photo_id is provided', async () => {
-    svc.deletePhoto.mockResolvedValue(undefined);
+    svc.deletePhoto.mockResolvedValue(true);
 
     const result = await tools.sparky_manage_progress_photos.execute!(
       { photo_id: PHOTO_ID },

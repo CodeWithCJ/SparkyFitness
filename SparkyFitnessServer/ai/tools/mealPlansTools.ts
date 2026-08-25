@@ -66,7 +66,7 @@ Actions:
 - action: 'list_meal_plans' — returns every saved meal plan template (name, active state, assignment count, ID)
 - action: 'get_meal_plan' (fields: plan_id) — returns one plan with its full day-by-day assignments
 - action: 'duplicate_meal_plan' (fields: plan_id) — copies a plan (the copy is created inactive)
-- action: 'delete_meal_plan' (fields: plan_id) — permanently deletes the plan with the given ID`,
+- action: 'delete_meal_plan' (fields: plan_id) — permanently deletes the plan with the given ID. This ALSO deletes any food diary entries that were created from that plan from today forward. This is destructive; confirm with the user first.`,
       inputSchema: manageMealPlansInput,
       execute: async (rawArgs) => {
         const normalized = normalizeActionArgs(
@@ -121,10 +121,14 @@ Actions:
             }
 
             case 'delete_meal_plan': {
-              await mealPlanTemplateService.deleteMealPlanTemplate(
-                args.plan_id,
-                userId
-              );
+              const deleted =
+                (await mealPlanTemplateService.deleteMealPlanTemplate(
+                  args.plan_id,
+                  userId
+                )) as unknown as MealPlanTemplateRow | undefined;
+              if (!deleted) {
+                return ERRORS.NOT_FOUND('Meal plan', args.plan_id);
+              }
               return formatConfirmation('Meal plan deleted.');
             }
 

@@ -67,7 +67,7 @@ describe('sparky_get_exercise_stats', () => {
     });
     const result = await getTool().execute!({}, opts);
     expect(result).toBe(
-      '# Exercise Stats (month: 2026-01-01 → 2026-01-31)\n' +
+      '# Exercise Stats (bucketed by month, 2026-01-01 → 2026-01-31)\n' +
         '\n' +
         '- Workouts: 12 (+20% vs previous)\n' +
         '- Distance: 42.0 km (+10%)\n' +

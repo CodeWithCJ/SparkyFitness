@@ -30,11 +30,11 @@ function formatSummary(summary: ExerciseStatsSummaryResponse): string {
   const distUnit = unitSystem === 'imperial' ? 'mi' : 'km';
   const sign = (n: number): string => (n >= 0 ? `+${n}` : `${n}`);
   const lines = [
-    `# Exercise Stats (${summary.interval}: ${summary.startDate} → ${summary.endDate})`,
+    `# Exercise Stats (bucketed by ${summary.interval}, ${summary.startDate} → ${summary.endDate})`,
     '',
     `- Workouts: ${totals.workoutCount} (${sign(cmp.workoutCountChangePercent)}% vs previous)`,
     `- Distance: ${totals.totalDistanceFormatted} ${distUnit} (${sign(cmp.distanceChangePercent)}%)`,
-    `- Duration: ${totals.totalDurationMinutes} min (${sign(cmp.durationChangePercent)}%)`,
+    `- Duration: ${Math.round(totals.totalDurationMinutes)} min (${sign(cmp.durationChangePercent)}%)`,
     `- Calories: ${totals.totalCaloriesBurned} (${sign(cmp.caloriesChangePercent)}%)`,
     `- Lifted volume: ${totals.totalLiftedVolumeKg} kg over ${totals.totalReps} reps`,
     `- Elevation gain: ${totals.totalElevationGainMeters} m`,

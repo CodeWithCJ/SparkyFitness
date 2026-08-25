@@ -161,7 +161,10 @@ describe('sparky_manage_meal_plans', () => {
 
   it('delete_meal_plan confirms the deletion', async () => {
     vi.mocked(mealPlanTemplateService.deleteMealPlanTemplate).mockResolvedValue(
-      undefined as never
+      {
+        id: PLAN_ID,
+        plan_name: 'Cutting Week',
+      } as never
     );
 
     const result = await tools.sparky_manage_meal_plans.execute!(
@@ -170,6 +173,25 @@ describe('sparky_manage_meal_plans', () => {
     );
 
     expect(result).toBe('✅ Meal plan deleted.');
+    expect(mealPlanTemplateService.deleteMealPlanTemplate).toHaveBeenCalledWith(
+      PLAN_ID,
+      'user-1'
+    );
+  });
+
+  it('delete_meal_plan returns NOT_FOUND when nothing was deleted', async () => {
+    vi.mocked(mealPlanTemplateService.deleteMealPlanTemplate).mockResolvedValue(
+      undefined as never
+    );
+
+    const result = await tools.sparky_manage_meal_plans.execute!(
+      { action: 'delete_meal_plan', plan_id: PLAN_ID },
+      opts
+    );
+
+    expect(result).toBe(
+      `Error [NOT_FOUND]: Meal plan with ID '${PLAN_ID}' not found.\n\nSuggestion: Check the ID and try again.`
+    );
     expect(mealPlanTemplateService.deleteMealPlanTemplate).toHaveBeenCalledWith(
       PLAN_ID,
       'user-1'

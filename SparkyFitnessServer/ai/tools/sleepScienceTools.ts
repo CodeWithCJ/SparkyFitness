@@ -28,7 +28,7 @@ interface MctqStatsView {
     method: string;
     confidence: number;
     basedOnDays: number;
-    socialJetlag: number;
+    socialJetlag: number | null;
   } | null;
 }
 
@@ -148,7 +148,7 @@ export function buildSleepScienceTools(userId: string, tz: string) {
                 `- Baseline sleep need: ${p.baselineSleepNeed} h`,
                 `- Method: ${p.method} (confidence ${p.confidence})`,
                 `- Based on ${p.basedOnDays} days`,
-                `- Social jetlag: ${p.socialJetlag} h`,
+                `- Social jetlag: ${p.socialJetlag ?? 'n/a'} h`,
               ].join('\n');
             }
             case 'daily_need': {

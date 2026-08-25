@@ -64,8 +64,26 @@ describe('sparky_manage_water_containers', () => {
       opts
     );
     expect(result).toBe(
-      '# Water Containers\n\n**Big Bottle** 1000ml (4 servings) — primary\n  ID: 1\n\n**Cup** 250ml\n  ID: 2'
+      '# Water Containers\n\n**Big Bottle** 1000 ml (4 servings) — primary\n  ID: 1\n\n**Cup** 250 ml\n  ID: 2'
     );
+  });
+
+  it('converts stored ml to the user unit when listing', async () => {
+    svc.getWaterContainersByUserId.mockResolvedValue([
+      {
+        id: 3,
+        name: 'Hydro Flask',
+        volume: 709.764,
+        unit: 'oz',
+        is_primary: false,
+        servings_per_container: 1,
+      },
+    ]);
+    const result = await getTool().execute!(
+      { action: 'list_water_containers' },
+      opts
+    );
+    expect(result).toBe('# Water Containers\n\n**Hydro Flask** 24 oz\n  ID: 3');
   });
 
   it('renders no results when list is empty (inferred from {})', async () => {
@@ -89,7 +107,7 @@ describe('sparky_manage_water_containers', () => {
       { action: 'get_water_container', id: 1 },
       opts
     );
-    expect(result).toBe('# Water Container\n\n**Big Bottle** 1000ml\n  ID: 1');
+    expect(result).toBe('# Water Container\n\n**Big Bottle** 1000 ml\n  ID: 1');
   });
 
   it('returns NOT_FOUND when getting a missing container', async () => {

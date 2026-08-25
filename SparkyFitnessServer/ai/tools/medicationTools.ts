@@ -215,13 +215,7 @@ Actions:
               args.reason_text !== undefined ||
               args.is_glp1 !== undefined ||
               args.is_supplement !== undefined ||
-              args.is_active !== undefined ||
-              args.notes !== undefined;
-            if (hasMedicationUpdateField && !args.entry_id) {
-              return args.medication_id
-                ? 'update_medication'
-                : 'create_medication';
-            }
+              args.is_active !== undefined;
             if (args.entry_id) {
               if (
                 args.status !== undefined ||
@@ -238,6 +232,11 @@ Actions:
             }
             if (args.medication_name || args.dosage !== undefined) return 'log';
             if (args.status) return 'log';
+            if (hasMedicationUpdateField) {
+              return args.medication_id
+                ? 'update_medication'
+                : 'create_medication';
+            }
             if (args.medication_id) {
               if (args.from_date || args.to_date) return 'list_entries';
               return 'get_medication';

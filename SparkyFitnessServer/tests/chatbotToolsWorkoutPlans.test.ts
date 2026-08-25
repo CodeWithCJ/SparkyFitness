@@ -17,7 +17,7 @@ import { buildWorkoutPlanTools } from '../ai/tools/workoutPlanTools.js';
 
 const opts = { toolCallId: 'tc-1', messages: [] };
 
-const PLAN_ID = '123e4567-e89b-12d3-a456-426614174000';
+const PLAN_ID = 42;
 
 const DB_ERROR_TEXT =
   'Error [DB_ERROR]: A database error occurred.\n\nSuggestion: Do NOT retry the same call — it will fail the same way. Tell the user what failed and stop.';
@@ -47,7 +47,7 @@ describe('sparky_manage_workout_plans', () => {
         assignments: [{ day_of_week: 1 }, { day_of_week: 3 }],
       },
       {
-        id: '223e4567-e89b-12d3-a456-426614174000',
+        id: 43,
         plan_name: 'Beginner',
         is_active: false,
         assignments: [{ day_of_week: 0 }],
@@ -57,7 +57,7 @@ describe('sparky_manage_workout_plans', () => {
     expect(result).toBe(
       '# Workout Plans\n\n**Push Pull Legs** (active, 2 assignments)\n  ID: ' +
         PLAN_ID +
-        '\n\n**Beginner** (inactive, 1 assignment)\n  ID: 223e4567-e89b-12d3-a456-426614174000'
+        '\n\n**Beginner** (inactive, 1 assignment)\n  ID: 43'
     );
   });
 
@@ -147,9 +147,9 @@ describe('sparky_manage_workout_plans', () => {
     );
   });
 
-  it('rejects a non-UUID plan_id (VALIDATION)', async () => {
+  it('rejects a non-integer plan_id (VALIDATION)', async () => {
     const result = await getTool().execute!(
-      { action: 'get_workout_plan', plan_id: 'not-a-uuid' },
+      { action: 'get_workout_plan', plan_id: 'not-a-number' },
       opts
     );
     expect(result).toContain('Error [VALIDATION]');
