@@ -84,6 +84,26 @@ describe('sparky_manage_allergens', () => {
     );
   });
 
+  it('list_allergens reports an empty page cleanly when offset is beyond the rows', async () => {
+    const rows = Array.from({ length: 3 }, (_unused, i) => ({
+      id: `id-${i}`,
+      allergen_name: `a${i}`,
+    }));
+    vi.mocked(
+      AllergenPreferenceService.getAllergenPreferences
+    ).mockResolvedValue(rows);
+
+    const result = await tools.sparky_manage_allergens.execute!(
+      { action: 'list_allergens', limit: 2, offset: 10 },
+      opts
+    );
+
+    expect(result).toBe(
+      '# Tracked Allergens\n\nNo results found.\n\n' +
+        '_Showing 0 of 3. Use limit/offset to page._'
+    );
+  });
+
   it('infers list_allergens when no action or fields are provided', async () => {
     vi.mocked(
       AllergenPreferenceService.getAllergenPreferences

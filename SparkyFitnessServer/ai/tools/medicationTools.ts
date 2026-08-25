@@ -480,16 +480,16 @@ Actions:
                   args.medication_id,
                   {
                     name: args.name ?? undefined,
-                    strength_value: args.strength_value ?? undefined,
-                    strength_unit: args.strength_unit ?? undefined,
-                    dose_amount: args.dose_amount ?? undefined,
-                    dose_unit: args.dose_unit ?? undefined,
-                    type_id: args.type_id ?? undefined,
-                    reason_text: args.reason_text ?? undefined,
+                    strength_value: args.strength_value,
+                    strength_unit: args.strength_unit,
+                    dose_amount: args.dose_amount,
+                    dose_unit: args.dose_unit,
+                    type_id: args.type_id,
+                    reason_text: args.reason_text,
                     is_glp1: args.is_glp1,
                     is_supplement: args.is_supplement,
                     is_active: args.is_active,
-                    notes: args.notes ?? undefined,
+                    notes: args.notes,
                   }
                 );
               if (!med)

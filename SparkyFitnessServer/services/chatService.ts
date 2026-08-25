@@ -1350,17 +1350,8 @@ Your response must contain ONLY the matched domain names as a comma-separated li
       .map((t) => t.trim().replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, ''));
 
     const categoriesList: ChatToolCategorySlug[] = [];
-    const validCategories: ChatToolCategorySlug[] = [
-      'exercise',
-      'food',
-      'checkin',
-      'goals',
-      'reports',
-      'coaching',
-      'profile',
-      'vision',
-      'allergens',
-    ];
+    const validCategories: readonly ChatToolCategorySlug[] =
+      CHAT_TOOL_CATEGORY_SLUGS;
     for (const cat of validCategories) {
       if (parts.includes(cat)) {
         categoriesList.push(cat);

@@ -124,6 +124,32 @@ describe('sparky_manage_medications create/update/delete + schedules', () => {
     expect(result).toBe('✅ Medication **Bupropion XL** — 300mg updated.');
   });
 
+  it('update_medication passes null through to clear a field', async () => {
+    vi.mocked(medicationRepository.updateMedication).mockResolvedValue({
+      id: MED_ID,
+      display_name: null,
+      name: 'Bupropion XL',
+      strength_value: 300,
+      strength_unit: 'mg',
+      is_active: true,
+    });
+
+    await tools.sparky_manage_medications.execute!(
+      {
+        action: 'update_medication',
+        medication_id: MED_ID,
+        reason_text: null,
+      },
+      opts
+    );
+
+    expect(medicationRepository.updateMedication).toHaveBeenCalledWith(
+      'user-1',
+      MED_ID,
+      expect.objectContaining({ reason_text: null })
+    );
+  });
+
   it('update_medication returns NOT_FOUND when the med is missing', async () => {
     vi.mocked(medicationRepository.updateMedication).mockResolvedValue(null);
 
