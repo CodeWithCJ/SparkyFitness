@@ -37,6 +37,7 @@ beforeAll(() => {
 import {
   __resetActiveWorkoutStoreForTests,
   useActiveWorkoutStore,
+  buildRestNotificationContent,
 } from '../../src/stores/activeWorkoutStore';
 import type { PresetSessionResponse } from '@workspace/shared';
 
@@ -197,5 +198,112 @@ describe('buildRestNotificationContent — localization', () => {
     });
     expect(body).toContain('cel');
     expect(body).not.toContain('target');
+  });
+});
+
+describe('buildRestNotificationContent — dependency injection', () => {
+  // The helper must accept an injected TFunction and produce output based on
+  // THAT translator, NOT the global i18n singleton. This proves the helper is
+  // dependency-injected and does not hide a singleton i18n.t() fallback.
+  const session = {
+    id: 'session-di',
+    exercises: [
+      {
+        id: 'ex-di',
+        exercise_snapshot: { name: 'DI Exercise' },
+        sets: [{ id: 'set-di', set_type: 'reps', rest_time: 60 }],
+      },
+    ],
+  } as unknown as PresetSessionResponse;
+
+  beforeEach(() => {
+    __resetActiveWorkoutStoreForTests();
+  });
+
+  it('produces PL output when given a PL TFunction, regardless of global i18n language', () => {
+    // Set global i18n to EN — the helper must NOT use it.
+    i18n.changeLanguage('en');
+    // Get a PL translator via getFixedT.
+    const plT = i18n.getFixedT('pl');
+    const content = buildRestNotificationContent(plT, session, 'set-di', 'Rest');
+    // PL title should be Polish, not English.
+    expect(content.title).not.toBe('Rest complete: next set up');
+    // PL body should contain Polish content (e.g. "Seria").
+    expect(content.body).toContain('Seria');
+  });
+
+  it('produces EN output when given an EN TFunction, regardless of global i18n language', () => {
+    // Set global i18n to PL — the helper must NOT use it.
+    i18n.changeLanguage('pl');
+    // Get an EN translator via getFixedT.
+    const enT = i18n.getFixedT('en');
+    const content = buildRestNotificationContent(enT, session, 'set-di', 'Rest');
+    // EN title should be English.
+    expect(content.title).toBe('Rest complete: next set up');
+    // EN body should contain English content (e.g. "Set").
+    expect(content.body).toContain('Set');
+  });
+
+  it('PL 1 rep uses singular plural form', () => {
+    const plT = i18n.getFixedT('pl');
+    const repsSession = {
+      id: 'session-reps-pl-1',
+      exercises: [
+        {
+          id: 'ex-reps-pl-1',
+          exercise_snapshot: { name: 'Push-ups' },
+          sets: [{ id: 'set-reps-pl-1', set_type: 'reps', target_reps: 1, rest_time: 30 }],
+        },
+      ],
+    } as unknown as PresetSessionResponse;
+    useActiveWorkoutStore.setState({
+      previousSessionSets: [],
+      plannedSetValues: { 'set-reps-pl-1': { reps: 1 } },
+    });
+    const content = buildRestNotificationContent(plT, repsSession, 'set-reps-pl-1', 'Rest');
+    // PL singular: 1 powtórzenie target
+    expect(content.body).toContain('powt');
+  });
+
+  it('PL 2 reps uses _few plural form', () => {
+    const plT = i18n.getFixedT('pl');
+    const repsSession = {
+      id: 'session-reps-pl-2',
+      exercises: [
+        {
+          id: 'ex-reps-pl-2',
+          exercise_snapshot: { name: 'Push-ups' },
+          sets: [{ id: 'set-reps-pl-2', set_type: 'reps', target_reps: 2, rest_time: 30 }],
+        },
+      ],
+    } as unknown as PresetSessionResponse;
+    useActiveWorkoutStore.setState({
+      previousSessionSets: [],
+      plannedSetValues: { 'set-reps-pl-2': { reps: 2 } },
+    });
+    const content = buildRestNotificationContent(plT, repsSession, 'set-reps-pl-2', 'Rest');
+    // PL _few: 2 powtórzenia target
+    expect(content.body).toContain('powt');
+  });
+
+  it('PL 5 reps uses _many plural form', () => {
+    const plT = i18n.getFixedT('pl');
+    const repsSession = {
+      id: 'session-reps-pl-5',
+      exercises: [
+        {
+          id: 'ex-reps-pl-5',
+          exercise_snapshot: { name: 'Push-ups' },
+          sets: [{ id: 'set-reps-pl-5', set_type: 'reps', target_reps: 5, rest_time: 30 }],
+        },
+      ],
+    } as unknown as PresetSessionResponse;
+    useActiveWorkoutStore.setState({
+      previousSessionSets: [],
+      plannedSetValues: { 'set-reps-pl-5': { reps: 5 } },
+    });
+    const content = buildRestNotificationContent(plT, repsSession, 'set-reps-pl-5', 'Rest');
+    // PL _many: 5 powtórzeń target
+    expect(content.body).toContain('powt');
   });
 });

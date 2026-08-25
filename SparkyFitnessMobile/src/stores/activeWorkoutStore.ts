@@ -1,4 +1,5 @@
 import i18n, { formatLocalizedNumber } from '../localization/i18n';
+import type { TFunction } from 'i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 import { create } from 'zustand';
@@ -816,7 +817,8 @@ function cancelCurrentRestNotification(rest: Rest): void {
  * the alert says what's next (exercise, set N of M, rep target) instead of just
  * the exercise name.
  */
-function buildRestNotificationContent(
+export function buildRestNotificationContent(
+  t: TFunction,
   session: PresetSessionResponse | null,
   setId: string | null,
   fallbackExerciseName: string,
@@ -827,7 +829,7 @@ function buildRestNotificationContent(
   const desc = describeActiveSetAssumed(session, setId, previousSessionSets, plannedSetValues);
   if (desc != null) {
     const name = desc.exerciseName ?? fallbackExerciseName;
-    const setProgress = i18n.t('notifications.rest.bodySetProgress', {
+    const setProgress = t('notifications.rest.bodySetProgress', {
       defaultValue: '{{name}} · Set {{setNumber}} of {{setCount}}',
       name,
       setNumber: desc.setNumber,
@@ -835,13 +837,13 @@ function buildRestNotificationContent(
     });
     let body: string;
     if (desc.durationSec != null) {
-      body = i18n.t('notifications.rest.bodySetProgressDuration', {
+      body = t('notifications.rest.bodySetProgressDuration', {
         defaultValue: '{{setProgress}} · {{duration}} target',
         setProgress,
         duration: formatDurationSeconds(desc.durationSec),
       });
     } else if (desc.reps != null) {
-      body = i18n.t('notifications.rest.bodySetProgressReps', {
+      body = t('notifications.rest.bodySetProgressReps', {
         defaultValue: '{{setProgress}} · {{formattedCount}} reps target',
         defaultValue_one: '{{setProgress}} · {{formattedCount}} rep target',
         defaultValue_other: '{{setProgress}} · {{formattedCount}} reps target',
@@ -852,9 +854,9 @@ function buildRestNotificationContent(
     } else {
       body = setProgress;
     }
-    return { title: i18n.t('notifications.rest.nextSetTitle', { defaultValue: 'Rest complete: next set up' }), body };
+    return { title: t('notifications.rest.nextSetTitle', { defaultValue: 'Rest complete: next set up' }), body };
   }
-  return { title: i18n.t('notifications.rest.title', { defaultValue: 'Rest complete' }), body: fallbackExerciseName };
+  return { title: t('notifications.rest.title', { defaultValue: 'Rest complete' }), body: fallbackExerciseName };
 }
 
 /**
@@ -912,7 +914,7 @@ function startRestForStep(
   };
 
   const exerciseName = step?.exerciseName ?? 'Rest';
-  const content = buildRestNotificationContent(session, setId, exerciseName);
+  const content = buildRestNotificationContent(i18n.getFixedT(i18n.language), session, setId, exerciseName);
   scheduleGuardedRestNotification(exerciseName, durationSec, token, content);
 
   return rest;
@@ -1267,7 +1269,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const step = activeSetId != null ? steps.find((s) => s.setId === activeSetId) : null;
         const exerciseName = step?.exerciseName ?? 'Rest';
         const seconds = Math.max(1, Math.ceil(remainingMs / 1000));
-        const content = buildRestNotificationContent(state.session, activeSetId, exerciseName);
+        const content = buildRestNotificationContent(i18n.getFixedT(i18n.language), state.session, activeSetId, exerciseName);
         scheduleGuardedRestNotification(exerciseName, seconds, token, content);
       },
 
@@ -1301,7 +1303,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           const step = activeSetId != null ? steps.find((s) => s.setId === activeSetId) : null;
           const exerciseName = step?.exerciseName ?? 'Rest';
           const seconds = Math.max(1, Math.ceil((newEndsAt - Date.now()) / 1000));
-          const content = buildRestNotificationContent(state.session, activeSetId, exerciseName);
+          const content = buildRestNotificationContent(i18n.getFixedT(i18n.language), state.session, activeSetId, exerciseName);
           scheduleGuardedRestNotification(exerciseName, seconds, token, content);
           return;
         }
