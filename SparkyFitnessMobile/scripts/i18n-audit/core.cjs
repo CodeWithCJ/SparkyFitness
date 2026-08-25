@@ -47,7 +47,7 @@ function expectedFallbackKey(key, fallbackName, hasCount) {
  */
 function runAudit(options = {}) {
   const rootDir = options.rootDir || MOBILE_ROOT;
-  const enLocalePath = options.enLocalePath || EN_LOCALE_PATH;
+  const enLocalePath = options.enLocalePath || path.join(rootDir, "src", "localization", "locales", SOURCE_LOCALE, "translation.json");
   let manifest = REGISTRY_MANIFEST;
   const registryPath = options.registryPath || path.join(rootDir, 'src', 'localization', 'localeRegistry.json');
   if (fs.existsSync(registryPath)) {
