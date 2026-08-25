@@ -3,7 +3,8 @@
   "type": "module",
   "scripts": {
     "prepare": "husky",
-    "set-version": "node scripts/set-version.js"
+    "set-version": "node scripts/set-version.js",
+    "reset-dev": "./scripts/reset-dev.sh"
   },
   "devDependencies": {
     "husky": "^9.0.0",
