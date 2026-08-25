@@ -210,8 +210,42 @@ describe('useWidgetSync', () => {
       fat: 55,
       calories: 1540,
       remaining: 460,
+      // The widget's per-macro bars need each goal to show real progress; without
+      // them it can only compare macros against each other, which barely moves
+      // across the day (#2228).
+      proteinGoal: 150,
+      carbsGoal: 200,
+      fatGoal: 65,
     });
     expect(androidReloadMacro).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-pushes the macro snapshot when only a macro goal changes', async () => {
+    Object.defineProperty(Platform, 'OS', {
+      get: () => 'android',
+      configurable: true,
+    });
+
+    const { rerender } = renderHook(
+      ({ summary }) => useWidgetSync(summary),
+      { initialProps: { summary: makeSummary() } },
+    );
+    await flushWidgetPush();
+    expect(androidSetMacroSnapshot).toHaveBeenCalledTimes(1);
+
+    // Consumption is identical, so a snapshot keyed only on consumed grams
+    // would dedupe this away and leave the bars rendering against a stale goal.
+    rerender({
+      summary: makeSummary({ protein: { consumed: 92, goal: 180 } }),
+    });
+    await flushWidgetPush();
+
+    expect(androidSetMacroSnapshot).toHaveBeenCalledTimes(2);
+    const latest = JSON.parse(
+      androidSetMacroSnapshot.mock.calls[1][0] as string,
+    );
+    expect(latest).toMatchObject({ protein: 92, proteinGoal: 180 });
+    expect(androidReloadMacro).toHaveBeenCalledTimes(2);
   });
 
   it('skips Android pushes when only non-rendered summary fields change', async () => {

@@ -267,6 +267,9 @@ class MacroWidget : GlanceAppWidget() {
         val fat: Double,
         val calories: Double,
         val remaining: Double?,
+        val proteinGoal: Double?,
+        val carbsGoal: Double?,
+        val fatGoal: Double?,
         val lastUpdated: Long,
     ) {
         val proteinKcal: Double = protein * 4.0
@@ -304,11 +307,10 @@ class MacroWidget : GlanceAppWidget() {
                 carbs = obj.safeDouble("carbs"),
                 fat = obj.safeDouble("fat"),
                 calories = obj.safeDouble("calories"),
-                remaining = if (obj.has("remaining")) {
-                    obj.safeDouble("remaining")
-                } else {
-                    null
-                },
+                remaining = obj.optionalDouble("remaining"),
+                proteinGoal = obj.optionalDouble("proteinGoal"),
+                carbsGoal = obj.optionalDouble("carbsGoal"),
+                fatGoal = obj.optionalDouble("fatGoal"),
                 lastUpdated = obj.optLong("lastUpdated", 0L),
             )
         } catch (e: Exception) {
@@ -316,8 +318,39 @@ class MacroWidget : GlanceAppWidget() {
         }
     }
 
+    /**
+     * Progress toward each macro's own goal, which is what a per-macro bar
+     * reads as.
+     *
+     * These are three independent bars, so the share-of-total this used to show
+     * was the wrong shape entirely: those three fractions always sum to one, and
+     * a day's macro ratio barely shifts as the day fills up, so the bars looked
+     * frozen while the kcal header moved (#2228). The iOS widget keeps the
+     * share-of-total maths because it draws one segmented ring, where the three
+     * shares summing to one is the intended reading.
+     */
     private fun MacroSnapshot?.progressFor(kind: MacroKind): Float {
         val snapshot = this ?: return 0f
+
+        val consumed = when (kind) {
+            MacroKind.PROTEIN -> snapshot.protein
+            MacroKind.CARBS -> snapshot.carbs
+            MacroKind.FAT -> snapshot.fat
+        }
+        val goal = when (kind) {
+            MacroKind.PROTEIN -> snapshot.proteinGoal
+            MacroKind.CARBS -> snapshot.carbsGoal
+            MacroKind.FAT -> snapshot.fatGoal
+        }
+
+        if (goal != null && goal > 0.0) {
+            return (consumed / goal).coerceIn(0.0, 1.0).toFloat()
+        }
+
+        // No goal in the snapshot: either it predates the goal fields (the app
+        // has not refreshed the widget since updating) or the user has no goal
+        // set for this macro. Fall back to the old share-of-total so the bar
+        // still carries some signal rather than collapsing to empty.
         val total = snapshot.macroKcalTotal
         if (total <= 0.0) return 0f
 
@@ -332,6 +365,13 @@ class MacroWidget : GlanceAppWidget() {
     private fun JSONObject.safeDouble(name: String): Double {
         val value = optDouble(name, 0.0)
         return if (value.isFinite()) value else 0.0
+    }
+
+    /** Absent, JSON null and non-finite all read as "not supplied". */
+    private fun JSONObject.optionalDouble(name: String): Double? {
+        if (!has(name) || isNull(name)) return null
+        val value = optDouble(name, Double.NaN)
+        return if (value.isFinite()) value else null
     }
 
     private fun isToday(date: String): Boolean {

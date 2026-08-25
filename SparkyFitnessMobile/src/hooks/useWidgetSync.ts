@@ -128,6 +128,11 @@ export function useWidgetSync(summary: DailySummary | undefined): void {
         }
       }
 
+      // Goals ride along so the widget's per-macro bars can show progress
+      // toward each goal. Without them the widget can only compare a macro
+      // against the day's other macros, which barely moves as the day fills up
+      // (#2228). Not sent on iOS: that widget draws a composition ring, where
+      // the three shares summing to one is the intended reading.
       const macroSnapshot = {
         date,
         protein: summary.protein.consumed,
@@ -135,6 +140,9 @@ export function useWidgetSync(summary: DailySummary | undefined): void {
         fat: summary.fat.consumed,
         calories: summary.caloriesConsumed,
         remaining: balance?.remaining,
+        proteinGoal: summary.protein.goal,
+        carbsGoal: summary.carbs.goal,
+        fatGoal: summary.fat.goal,
       };
       const macroSnapshotKey = JSON.stringify(macroSnapshot);
       if (lastAndroidMacroSnapshotKeyRef.current === macroSnapshotKey) return;
