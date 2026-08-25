@@ -220,9 +220,9 @@ describe('buildRestNotificationContent — dependency injection', () => {
     __resetActiveWorkoutStoreForTests();
   });
 
-  it('produces PL output when given a PL TFunction, regardless of global i18n language', () => {
+  it('produces PL output when given a PL TFunction, regardless of global i18n language', async () => {
     // Set global i18n to EN — the helper must NOT use it.
-    i18n.changeLanguage('en');
+    await i18n.changeLanguage('en');
     // Get a PL translator via getFixedT.
     const plT = i18n.getFixedT('pl');
     const content = buildRestNotificationContent(plT, session, 'set-di', 'Rest');
@@ -232,9 +232,9 @@ describe('buildRestNotificationContent — dependency injection', () => {
     expect(content.body).toContain('Seria');
   });
 
-  it('produces EN output when given an EN TFunction, regardless of global i18n language', () => {
+  it('produces EN output when given an EN TFunction, regardless of global i18n language', async () => {
     // Set global i18n to PL — the helper must NOT use it.
-    i18n.changeLanguage('pl');
+    await i18n.changeLanguage('pl');
     // Get an EN translator via getFixedT.
     const enT = i18n.getFixedT('en');
     const content = buildRestNotificationContent(enT, session, 'set-di', 'Rest');
@@ -261,8 +261,10 @@ describe('buildRestNotificationContent — dependency injection', () => {
       plannedSetValues: { 'set-reps-pl-1': { reps: 1 } },
     });
     const content = buildRestNotificationContent(plT, repsSession, 'set-reps-pl-1', 'Rest');
-    // PL singular: 1 powtórzenie target
-    expect(content.body).toContain('powt');
+    // PL singular (_one): 1 powtórzenie
+    expect(content.body).toContain('1 powtórzenie');
+    expect(content.body).not.toContain('1 powtórzenia');
+    expect(content.body).not.toContain('1 powtórzeń');
   });
 
   it('PL 2 reps uses _few plural form', () => {
@@ -282,8 +284,10 @@ describe('buildRestNotificationContent — dependency injection', () => {
       plannedSetValues: { 'set-reps-pl-2': { reps: 2 } },
     });
     const content = buildRestNotificationContent(plT, repsSession, 'set-reps-pl-2', 'Rest');
-    // PL _few: 2 powtórzenia target
-    expect(content.body).toContain('powt');
+    // PL _few: 2 powtórzenia
+    expect(content.body).toContain('2 powtórzenia');
+    expect(content.body).not.toContain('2 powtórzenie');
+    expect(content.body).not.toContain('2 powtórzeń');
   });
 
   it('PL 5 reps uses _many plural form', () => {
@@ -303,7 +307,9 @@ describe('buildRestNotificationContent — dependency injection', () => {
       plannedSetValues: { 'set-reps-pl-5': { reps: 5 } },
     });
     const content = buildRestNotificationContent(plT, repsSession, 'set-reps-pl-5', 'Rest');
-    // PL _many: 5 powtórzeń target
-    expect(content.body).toContain('powt');
+    // PL _many: 5 powtórzeń
+    expect(content.body).toContain('5 powtórzeń');
+    expect(content.body).not.toContain('5 powtórzenie');
+    expect(content.body).not.toContain('5 powtórzenia');
   });
 });

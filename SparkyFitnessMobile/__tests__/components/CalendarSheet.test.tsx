@@ -3,15 +3,26 @@ import { render, act, fireEvent } from '@testing-library/react-native';
 import CalendarSheet from '../../src/components/CalendarSheet';
 
 /**
+ * Explicit type for the mock picker props. The real library accepts many
+ * props, but the mock only reads the fields below; unknown props are
+ * captured via the index signature so the mock stays forward-compatible
+ * without pulling in the full library type.
+ */
+interface MockPickerProps {
+  initialView?: string;
+  month?: number;
+  year?: number;
+  onMonthChange?: (month: number) => void;
+  onYearChange?: (year: number) => void;
+  onChange?: (value: unknown) => void;
+  [key: string]: unknown;
+}
+
+/**
  * Picker mock that models react-native-ui-datepicker 3.1.2 behaviour:
  * `initialView` is consumed ONLY on mount. Subsequent prop changes are
- * ignored by the library — the internal calendar view is controlled by the
- * library itself (user taps, onMonthChange/onYearChange). A remount (via React
- * `key` change) is the only way to apply a new `initialView`.
- *
- * `mockMountedInitialView` captures the view at mount time and does NOT update on
- * re-render, matching the real library contract. `mockMountCount` increments on
- * every mount so tests can assert that a remount actually occurred.
+ * ignored by the library. A remount (via React `key` change) is the only
+ * way to apply a new `initialView`.
  */
 const pickerProps: { month?: number; year?: number; onMonthChange?: (month: number) => void; onYearChange?: (year: number) => void; initialView?: string } = {};
 let mockMountedInitialView: string | undefined;
@@ -40,9 +51,9 @@ jest.mock('react-native-ui-datepicker', () => {
   // react-hooks/refs on CI). The mount-count side effect runs inside
   // useEffect([]) so it fires exactly once per mount.
   let mountRecorder: ((initialView: string) => void) | null = null;
-  let propsRecorder: ((props: any) => void) | null = null;
+  let propsRecorder: ((props: MockPickerProps) => void) | null = null;
 
-  function MockPicker(props: any) {
+  function MockPicker(props: MockPickerProps) {
     // Lazy initializer captures initialView only on the first render (mount).
     // Subsequent re-renders ignore the prop change, matching the library.
     const [mountInitialView] = React.useState(() => props.initialView);
@@ -59,7 +70,7 @@ jest.mock('react-native-ui-datepicker', () => {
     mockMountCount += 1;
     mockMountedInitialView = initialView;
   };
-  propsRecorder = (props: any) => {
+  propsRecorder = (props: MockPickerProps) => {
     pickerProps.month = props.month;
     pickerProps.year = props.year;
     pickerProps.onMonthChange = props.onMonthChange;
@@ -367,17 +378,37 @@ describe('CalendarSheet', () => {
     expect(mockMountedInitialView).toBe('year');
   });
 
-  it('toggling month caption off returns to day without remount', () => {
+  it('toggling month caption off remounts the picker to day view', () => {
     // Pressing the month caption when already in month view toggles back to
-    // day WITHOUT bumping the mount token (no new quick-jump open).
+    // day. Because react-native-ui-datepicker 3.1.2 treats initialView as
+    // mount-only, the mount token MUST be bumped so the picker remounts with
+    // initialView='day'. Without the remount the picker would stay stuck in
+    // the month grid even though pickerView is 'day'.
     const { getByLabelText } = render(
       <CalendarSheet selectedDate="2026-08-23" onSelectDate={jest.fn()} />,
     );
     fireEvent.press(getByLabelText('cycleCalendar.selectMonth'));
     expect(mockMountCount).toBe(2);
-    // Toggle off — parent sets pickerView='day' but does NOT bump token.
+    expect(mockMountedInitialView).toBe('month');
+    // Toggle off — parent sets pickerView='day' AND bumps the mount token.
     fireEvent.press(getByLabelText('cycleCalendar.selectMonth'));
-    expect(mockMountCount).toBe(2); // no remount
+    expect(mockMountCount).toBe(3); // remount occurred
+    expect(mockMountedInitialView).toBe('day'); // NOT stuck in month grid
+  });
+
+  it('toggling year caption off remounts the picker to day view', () => {
+    // Same mount-only contract as the month toggle: pressing the year caption
+    // when already in year view must remount the picker with initialView='day'.
+    const { getByLabelText } = render(
+      <CalendarSheet selectedDate="2026-08-23" onSelectDate={jest.fn()} />,
+    );
+    fireEvent.press(getByLabelText('cycleCalendar.selectYear'));
+    expect(mockMountCount).toBe(2);
+    expect(mockMountedInitialView).toBe('year');
+    // Toggle off — parent sets pickerView='day' AND bumps the mount token.
+    fireEvent.press(getByLabelText('cycleCalendar.selectYear'));
+    expect(mockMountCount).toBe(3); // remount occurred
+    expect(mockMountedInitialView).toBe('day'); // NOT stuck in year grid
   });
 
 });

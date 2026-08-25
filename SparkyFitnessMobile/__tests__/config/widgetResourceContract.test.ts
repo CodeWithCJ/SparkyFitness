@@ -157,20 +157,14 @@ describe('Android widget localization contract', () => {
       }
     });
 
-    it('has non-empty source values and non-empty translated target values', () => {
+    it('has non-empty source values (empty target values are allowed coverage gaps)', () => {
       const en = readWidgetStringResources();
       for (const resource of en) {
         expect(resource.value).not.toBe('');
       }
-      // Non-empty translated target values must not be empty either.
-      // (Empty target values are allowed as "missing" coverage.)
-      for (const locale of SHIPPED_WIDGET_LOCALES) {
-        if (locale === SOURCE_LOCALE) continue;
-        for (const resource of readWidgetStringResources(locale)) {
-          // Source values are already checked above; target empty is allowed.
-          if (resource.value !== '') continue;
-        }
-      }
+      // Target locale values may be empty (missing) — that is a non-blocking
+      // coverage gap. Structural correctness of present values is verified by
+      // the native widget validator and the placeholder tests below.
     });
 
     it('uses approved Polish translations with diacritics where natural', () => {

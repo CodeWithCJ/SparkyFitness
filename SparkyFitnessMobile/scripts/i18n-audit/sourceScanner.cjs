@@ -261,6 +261,11 @@ function containsCountOneComparison(node) {
 
 function staticTranslationKeyFromExpression(node) {
   if (!ts.isCallExpression(node)) return null;
+  // Only treat genuine t() calls as translation-key sources. Without this
+  // guard, any call expression (e.g. getLabel('single')) would be mistaken
+  // for a translation call and could trigger false manual-pluralization
+  // findings on benign presentation helpers.
+  if (!isStaticTranslationKey(node)) return null;
   return resolveStaticTranslationKeyArg(node.arguments[0]);
 }
 

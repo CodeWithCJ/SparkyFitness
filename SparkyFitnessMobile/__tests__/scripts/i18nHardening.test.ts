@@ -165,4 +165,10 @@ describe('bounded manual pluralization guard', () => {
   it('allows i18next pluralization that passes count directly to t()', () => {
     expect(pluralFindings("<Text>{t('item', { count, formattedCount, defaultValue: '{{formattedCount}} items' })}</Text>")).toHaveLength(0);
   });
+
+  it('does not flag non-i18n call expressions with count-based ternary (e.g. getLabel)', () => {
+    // A presentation helper that is NOT a translation call should not trigger
+    // manual-pluralization findings, even if it uses a count === 1 ternary.
+    expect(pluralFindings("const label = count === 1 ? getLabel('single') : getLabel('multiple');")).toHaveLength(0);
+  });
 });

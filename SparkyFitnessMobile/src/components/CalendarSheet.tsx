@@ -130,7 +130,13 @@ const CalendarContent = ({
           <Pressable
             onPress={() => {
               if (pickerView === 'month') {
+                // Toggling the month caption off returns to the day grid.
+                // The mount token must be bumped so the picker remounts with
+                // initialView='day' — react-native-ui-datepicker 3.1.2 treats
+                // initialView as mount-only, so without a remount the picker
+                // would stay stuck in the month grid.
                 setPickerView('day');
+                setPickerMountVersion((v) => v + 1);
               } else {
                 openQuickJump('month');
               }
@@ -146,7 +152,11 @@ const CalendarContent = ({
           <Pressable
             onPress={() => {
               if (pickerView === 'year') {
+                // Toggling the year caption off returns to the day grid.
+                // The mount token must be bumped so the picker remounts with
+                // initialView='day' — see the month toggle above for rationale.
                 setPickerView('day');
+                setPickerMountVersion((v) => v + 1);
               } else {
                 openQuickJump('year');
               }
