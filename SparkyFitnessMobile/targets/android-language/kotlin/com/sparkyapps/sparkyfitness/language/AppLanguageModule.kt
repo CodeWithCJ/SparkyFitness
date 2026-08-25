@@ -17,10 +17,11 @@ import java.util.Locale
  * module defensive regardless. AppCompat locale APIs are intentionally NOT
  * used on any API level.
  *
- * `LocaleManager` is referenced ONLY from `AppLanguageApi33`, which is loaded
- * lazily after the API 33 guard. This keeps the class verifier on Android
- * <=12 from resolving `android.app.LocaleManager` during module registration,
- * preventing `NoClassDefFoundError` / `VerifyError` at startup.
+ * Every API 33+ reference (android.app.LocaleManager, applicationLocales) is
+ * isolated in `AppLanguageApi33`, which is loaded lazily only after the API 33
+ * guard. This keeps the class verifier on Android <=12 from resolving
+ * `android.app.LocaleManager` during module registration, preventing
+ * `NoClassDefFoundError` / `VerifyError` at startup.
  */
 class AppLanguageModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
@@ -69,8 +70,11 @@ class AppLanguageModule(reactContext: ReactApplicationContext) :
     @ReactMethod
     fun getEffectiveLanguage(promise: Promise) {
         try {
+            // The API 33+ platform tag is preferred when available; the
+            // configuration/Locale fallbacks are safe on every API level and
+            // are kept here so the API 33 helper never has to handle them.
             val language = if (Build.VERSION.SDK_INT >= API_33) {
-                AppLanguageApi33.getEffectiveLanguage(reactApplicationContext)
+                AppLanguageApi33.getApplicationLanguageTag(reactApplicationContext)
                     ?: reactApplicationContext.resources.configuration.locales[0]?.toLanguageTag()
                     ?: Locale.getDefault().toLanguageTag()
             } else {
@@ -88,12 +92,9 @@ class AppLanguageModule(reactContext: ReactApplicationContext) :
         private const val API_33 = 33
         // Generated from the TypeScript shipped-locale registry by Expo config.
         private val SUPPORTED_LANGUAGES = setOf("en", "pl")
-        private const val FALLBACK_LOCALE = "en"
         private val SUPPORTED_LANGUAGES_CANONICAL = SUPPORTED_LANGUAGES.map(::canonicalTag).toSet()
 
         private fun canonicalTag(value: String): String =
             Locale.forLanguageTag(value).toLanguageTag().lowercase(Locale.ROOT)
-
-        private fun fallbackTag(): String = FALLBACK_LOCALE
     }
 }

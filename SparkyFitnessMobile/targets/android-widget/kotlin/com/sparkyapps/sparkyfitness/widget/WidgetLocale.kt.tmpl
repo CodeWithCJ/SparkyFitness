@@ -132,10 +132,12 @@ object WidgetLocale {
             packageName == context.packageName && intent.hasExtra(Intent.EXTRA_LOCALE_LIST)
 
         val effective = if (hasAppLocaleExtras) {
-            val appLocales = intent.getParcelableExtra(
-                Intent.EXTRA_LOCALE_LIST,
-                LocaleList::class.java,
-            )
+            // The API 33+ getParcelableExtra(String, Class<T>) overload is
+            // isolated in WidgetLocaleApi33; the legacy overload lacks the type
+            // token and is unsafe on API 33+. Both paths are guarded by
+            // isNativeAppLanguageSupported() above, so this branch only runs on
+            // API 33+ where the helper is loadable.
+            val appLocales = WidgetLocaleApi33.getLocaleListExtra(intent)
             if (appLocales != null && !appLocales.isEmpty) {
                 languageFromLocaleList(appLocales)
             } else {
