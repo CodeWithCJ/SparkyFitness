@@ -66,6 +66,12 @@ const CalendarContent = ({
       const date = new Date(prev.year, prev.month + step, 1);
       return { year: date.getFullYear(), month: date.getMonth() };
     });
+    // The chevron always returns to the day grid so accessibility labels and
+    // subsequent navigation reflect month (not year) stepping. This also covers
+    // the case where the library internally returned to day view after the
+    // user tapped the already-selected month/year, which does NOT fire
+    // onMonthChange/onYearChange (see react-native-ui-datepicker v3.1.2).
+    setPickerView('day');
   }, [pickerView]);
 
   const [sy, sm, sd] = selectedDate.split('-').map(Number);
@@ -144,7 +150,11 @@ const CalendarContent = ({
         hideHeader
         locale={presentation.locale}
         firstDayOfWeek={presentation.firstDayOfWeek}
-        key={`calendar-${presentation.locale}-${presentation.firstDayOfWeek}-${visible.month}-${visible.year}-${pickerView}`}
+        // `pickerView` is intentionally NOT part of the key. The library manages
+        // its own internal calendar view; including `pickerView` here remounts
+        // the picker with `initialView` and re-opens the month/year grid right
+        // after the library already returned to the day grid on its own.
+        key={`calendar-${presentation.locale}-${presentation.firstDayOfWeek}-${visible.month}-${visible.year}`}
         components={{
           Weekday: (weekday) => (
             <View style={{ minWidth: 30 }}>

@@ -145,9 +145,13 @@ describe('CalendarSheet', () => {
   it('uses the year-step prev/next labels inside the month and year quick-jump grids', () => {
     const { getByLabelText } = render(
       <CalendarSheet selectedDate="2026-08-23" onSelectDate={jest.fn()} />);
+    // Open month grid — chevrons use year-step labels.
     fireEvent.press(getByLabelText('cycleCalendar.selectMonth'));
     fireEvent.press(getByLabelText('cycleCalendar.nextYear'));
     expect(pickerProps).toMatchObject({ month: 7, year: 2027 });
+    // After a chevron press, pickerView resets to 'day' so the next chevron
+    // steps by one month. Re-open the month grid to test the previous-year step.
+    fireEvent.press(getByLabelText('cycleCalendar.selectMonth'));
     fireEvent.press(getByLabelText('cycleCalendar.previousYear'));
     expect(pickerProps).toMatchObject({ month: 7, year: 2026 });
   });
@@ -173,4 +177,80 @@ describe('CalendarSheet', () => {
     // just because the language changed.
     expect(pickerProps).toMatchObject({ month: 7, year: 2026 });
   });
+
+  it('resets pickerView to day after chevron navigation from month grid (no-callback scenario)', () => {
+    // Library contract: selecting the CURRENT month does NOT fire onMonthChange,
+    // but the library internally returns to day view. The parent must also
+    // reset pickerView to 'day' so chevrons step by 1 month (not 12) and
+    // accessibility labels say "Previous/Next month" (not year).
+    const { getByLabelText } = render(
+      <CalendarSheet selectedDate="2026-08-23" onSelectDate={jest.fn()} />,
+    );
+    // Open month grid — chevron label is now 'nextYear'
+    fireEvent.press(getByLabelText('cycleCalendar.selectMonth'));
+    expect(pickerProps.initialView).toBe('month');
+    // Simulate "user taps the current month (August = month 7)" — library
+    // does NOT call onMonthChange because value === currentMonth.
+    // (No onMonthChange call here — this is the bug scenario.)
+    // Press the next chevron (year-step in month grid) — it steps by 12 months
+    // AND resets pickerView to 'day'.
+    fireEvent.press(getByLabelText('cycleCalendar.nextYear'));
+    expect(pickerProps).toMatchObject({ month: 7, year: 2027, initialView: 'day' });
+    // Now the chevron label should be 'nextMonth' (day grid), and pressing it
+    // steps by exactly 1 month, proving pickerView is 'day'.
+    fireEvent.press(getByLabelText('cycleCalendar.nextMonth'));
+    expect(pickerProps).toMatchObject({ month: 8, year: 2027, initialView: 'day' });
+  });
+
+  it('resets pickerView to day after chevron navigation from year grid (no-callback scenario)', () => {
+    const { getByLabelText } = render(
+      <CalendarSheet selectedDate="2026-08-23" onSelectDate={jest.fn()} />,
+    );
+    // Open year grid — chevron label is 'nextYear'
+    fireEvent.press(getByLabelText('cycleCalendar.selectYear'));
+    expect(pickerProps.initialView).toBe('year');
+    // Simulate "user taps the current year (2026)" — library does NOT call
+    // onYearChange because value === currentYear. No callback fired.
+    // Press next chevron (year-step) — steps by 12 months AND resets to 'day'.
+    fireEvent.press(getByLabelText('cycleCalendar.nextYear'));
+    expect(pickerProps).toMatchObject({ month: 7, year: 2027, initialView: 'day' });
+    // Now in day grid — next chevron steps by 1 month.
+    fireEvent.press(getByLabelText('cycleCalendar.nextMonth'));
+    expect(pickerProps).toMatchObject({ month: 8, year: 2027, initialView: 'day' });
+  });
+
+  it('keeps month navigation stepping at 1 month after same-month selection + chevron', () => {
+    // After the no-callback scenario, subsequent chevron presses step by 1
+    // month (not 12), proving pickerView is stable at 'day'.
+    const { getByLabelText } = render(
+      <CalendarSheet selectedDate="2026-08-23" onSelectDate={jest.fn()} />,
+    );
+    fireEvent.press(getByLabelText('cycleCalendar.selectMonth'));
+    // No onMonthChange call (same month scenario). Press year-step chevron
+    // which resets pickerView to 'day'.
+    fireEvent.press(getByLabelText('cycleCalendar.nextYear'));
+    expect(pickerProps).toMatchObject({ month: 7, year: 2027 });
+    // Now in day grid — two month-step presses, each +1 month.
+    fireEvent.press(getByLabelText('cycleCalendar.nextMonth'));
+    expect(pickerProps).toMatchObject({ month: 8, year: 2027 });
+    fireEvent.press(getByLabelText('cycleCalendar.nextMonth'));
+    expect(pickerProps).toMatchObject({ month: 9, year: 2027 });
+  });
+
+  it('does not re-open month grid after same-month no-callback selection + chevron', () => {
+    // The key must NOT carry pickerView, so the library does not remount
+    // with initialView='month' after the library already returned to day.
+    const { getByLabelText, rerender } = render(
+      <CalendarSheet selectedDate="2026-08-23" onSelectDate={jest.fn()} />,
+    );
+    fireEvent.press(getByLabelText('cycleCalendar.selectMonth'));
+    expect(pickerProps.initialView).toBe('month');
+    // Same-month selection — no callback. Press chevron (resets to day).
+    fireEvent.press(getByLabelText('cycleCalendar.nextYear'));
+    expect(pickerProps.initialView).toBe('day');
+    // Rerender — picker should stay in day view, not re-open month grid.
+    act(() => rerender(<CalendarSheet selectedDate="2026-08-23" onSelectDate={jest.fn()} />));
+    expect(pickerProps.initialView).toBe('day');
+  });
+
 });

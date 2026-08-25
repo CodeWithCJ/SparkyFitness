@@ -1,4 +1,4 @@
-import i18n from '../localization/i18n';
+import i18n, { formatLocalizedNumber } from '../localization/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 import { create } from 'zustand';
@@ -827,11 +827,30 @@ function buildRestNotificationContent(
   const desc = describeActiveSetAssumed(session, setId, previousSessionSets, plannedSetValues);
   if (desc != null) {
     const name = desc.exerciseName ?? fallbackExerciseName;
-    let body = `${name} · Set ${desc.setNumber} of ${desc.setCount}`;
+    const setProgress = i18n.t('notifications.rest.bodySetProgress', {
+      defaultValue: '{{name}} · Set {{setNumber}} of {{setCount}}',
+      name,
+      setNumber: desc.setNumber,
+      setCount: desc.setCount,
+    });
+    let body: string;
     if (desc.durationSec != null) {
-      body += ` · ${formatDurationSeconds(desc.durationSec)} target`;
+      body = i18n.t('notifications.rest.bodySetProgressDuration', {
+        defaultValue: '{{setProgress}} · {{duration}} target',
+        setProgress,
+        duration: formatDurationSeconds(desc.durationSec),
+      });
     } else if (desc.reps != null) {
-      body += ` · ${desc.reps} rep${desc.reps === 1 ? '' : 's'} target`;
+      body = i18n.t('notifications.rest.bodySetProgressReps', {
+        defaultValue: '{{setProgress}} · {{formattedCount}} reps target',
+        defaultValue_one: '{{setProgress}} · {{formattedCount}} rep target',
+        defaultValue_other: '{{setProgress}} · {{formattedCount}} reps target',
+        setProgress,
+        count: desc.reps,
+        formattedCount: formatLocalizedNumber(desc.reps, { maximumFractionDigits: 0 }),
+      });
+    } else {
+      body = setProgress;
     }
     return { title: i18n.t('notifications.rest.nextSetTitle', { defaultValue: 'Rest complete: next set up' }), body };
   }

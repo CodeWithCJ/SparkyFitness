@@ -167,7 +167,13 @@
     },
     "rest": {
       "title": "Odpoczynek zakończony",
-      "nextSetTitle": "Odpoczynek zakończony: następna seria"
+      "nextSetTitle": "Odpoczynek zakończony: następna seria",
+      "bodySetProgress": "{{name}} · Seria {{setNumber}} z {{setCount}}",
+      "bodySetProgressReps_one": "{{setProgress}} · cel {{formattedCount}} powtórzenie",
+      "bodySetProgressReps_few": "{{setProgress}} · cel {{formattedCount}} powtórzenia",
+      "bodySetProgressReps_many": "{{setProgress}} · cel {{formattedCount}} powtórzeń",
+      "bodySetProgressReps_other": "{{setProgress}} · cel {{formattedCount}} powtórzenia",
+      "bodySetProgressDuration": "{{setProgress}} · cel {{duration}}"
     },
     "fasting": {
       "title": "Osiągnięto cel postu",

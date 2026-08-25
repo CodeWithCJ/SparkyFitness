@@ -165,7 +165,11 @@
     },
     "rest": {
       "title": "Rest complete",
-      "nextSetTitle": "Rest complete: next set up"
+      "nextSetTitle": "Rest complete: next set up",
+      "bodySetProgress": "{{name}} · Set {{setNumber}} of {{setCount}}",
+      "bodySetProgressReps_one": "{{setProgress}} · {{formattedCount}} rep target",
+      "bodySetProgressReps_other": "{{setProgress}} · {{formattedCount}} reps target",
+      "bodySetProgressDuration": "{{setProgress}} · {{duration}} target"
     },
     "fasting": {
       "title": "Fasting goal reached",

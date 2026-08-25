@@ -336,6 +336,30 @@ describe('ActiveWorkoutScreen overflow menu wiring', () => {
     ]);
     const remove = mockSheet.props?.items.find((i) => i.key === 'remove');
     expect(remove?.destructive).toBe(true);
+    // Menu item must show the full action "Remove exercise", not the short
+    // destructive alert button text "Remove".
+    expect(remove?.label).toBe('Remove exercise');
+  });
+
+  it('uses short "Remove" for the destructive alert button, not "Remove exercise"', () => {
+    // The alert destructive button must use common.remove ("Remove") not
+    // workout.removeExercise ("Remove exercise") — they are different UX contexts.
+    const { Alert } = require('react-native');
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+    const { getByTestId } = renderScreen();
+    fireEvent.press(getByTestId('card-ex-a-overflow'));
+    const removeItem = mockSheet.props?.items.find((i) => i.key === 'remove');
+    expect(removeItem?.label).toBe('Remove exercise');
+    // Press the remove menu item to trigger the alert
+    act(() => removeItem?.onPress?.('ex-a'));
+    // The alert's destructive button text should be "Remove" (common.remove),
+    // not "Remove exercise" (workout.removeExercise).
+    const lastCall = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
+    const buttons = lastCall?.[2] as Array<{ text: string; style?: string }>;
+    const destructive = buttons?.find((b) => b.style === 'destructive');
+    expect(destructive?.text).toBe('Remove');
+    alertSpy.mockRestore();
   });
 
   it('offers Clear logged sets only for exercises with a completed set', () => {
