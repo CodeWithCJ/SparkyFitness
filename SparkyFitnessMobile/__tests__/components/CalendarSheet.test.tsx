@@ -35,18 +35,21 @@ jest.mock('react-native-ui-datepicker', () => {
   const { View } = require('react-native');
   // Mount-only: capture initialView once per mount. The real library only
   // honours initialView at mount; subsequent prop changes are ignored.
-  // We use a render-props pattern: the mock calls module-level callbacks
-  // (declared outside the component) to record mount events and live props,
-  // avoiding direct variable mutation inside the React component body.
+  // We use useState with a lazy initializer to capture the mount-time
+  // initialView without touching ref.current during render (which violates
+  // react-hooks/refs on CI). The mount-count side effect runs inside
+  // useEffect([]) so it fires exactly once per mount.
   let mountRecorder: ((initialView: string) => void) | null = null;
   let propsRecorder: ((props: any) => void) | null = null;
 
   function MockPicker(props: any) {
-    const mountRef = React.useRef(false);
-    if (!mountRef.current) {
-      mountRef.current = true;
-      if (mountRecorder) mountRecorder(props.initialView);
-    }
+    // Lazy initializer captures initialView only on the first render (mount).
+    // Subsequent re-renders ignore the prop change, matching the library.
+    const [mountInitialView] = React.useState(() => props.initialView);
+    React.useEffect(() => {
+      if (mountRecorder) mountRecorder(mountInitialView);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     if (propsRecorder) propsRecorder(props);
     return <View testID="calendar-picker" />;
   }
