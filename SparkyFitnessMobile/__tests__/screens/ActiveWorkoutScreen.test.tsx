@@ -356,7 +356,7 @@ describe('ActiveWorkoutScreen overflow menu wiring', () => {
     // The alert's destructive button text should be "Remove" (common.remove),
     // not "Remove exercise" (workout.removeExercise).
     const lastCall = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
-    const buttons = lastCall?.[2] as Array<{ text: string; style?: string }>;
+    const buttons = lastCall?.[2] as { text: string; style?: string }[];
     const destructive = buttons?.find((b) => b.style === 'destructive');
     expect(destructive?.text).toBe('Remove');
     alertSpy.mockRestore();
