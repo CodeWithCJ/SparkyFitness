@@ -899,9 +899,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                 </View>
                 <View className="flex-row items-center mt-2">
                   <Text className="text-text-secondary text-sm">
-                    {editServings % 1 === 0
-                      ? editServings
-                      : formatLocalizedNumber(editServings, { maximumFractionDigits: 2 })}{' '}
+                    {formatLocalizedNumber(editServings, { maximumFractionDigits: 2 })}{' '}
                     {t('foodEntryAdd.labels.serving', { defaultValue: 'servings', defaultValue_one: 'serving', defaultValue_other: 'servings', count: editServings })}
                   </Text>
                   {variantPickerOptions.length > 1 ? (

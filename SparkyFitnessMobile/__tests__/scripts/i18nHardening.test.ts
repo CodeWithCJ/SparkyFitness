@@ -4,8 +4,70 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(__filename);
-const validator = require('../../scripts/i18n-audit/localeValidator.cjs');
-const scanner = require('../../scripts/i18n-audit/sourceScanner.cjs');
+const localeMod = require('../../scripts/i18n-audit/localeValidator.cjs') as LocaleValidatorModule;
+const scannerMod = require('../../scripts/i18n-audit/sourceScanner.cjs') as SourceScannerModule;
+
+const validator = localeMod;
+const scanner = scannerMod;
+
+interface PluralGroup {
+  base: string;
+  isPlural: boolean;
+  keys: string[];
+}
+
+interface LocaleValidatorInstance {
+  validate(): ValidatorResult;
+}
+
+interface ValidatorResult {
+  errors: ValidatorError[];
+  enKeys: string[];
+  plKeys: string[];
+  coverage: Record<string, LocaleCoverage>;
+}
+
+interface LocaleCoverage {
+  translated: number;
+  total: number;
+  missing: number;
+  percent: number;
+  stale?: number;
+}
+
+interface ValidatorError {
+  rule: string;
+  locale?: string;
+  key?: string;
+  form?: string;
+  message?: string;
+  sourcePlaceholders?: string[];
+  translatedPlaceholders?: string[];
+}
+
+interface LocaleValidatorModule {
+  LocaleValidator: new (enPath: string, plPath: string, options?: Record<string, unknown>) => LocaleValidatorInstance;
+  requiredPluralForms: (intlLocale: string) => string[];
+  groupPluralKeys: (keys: string[]) => PluralGroup[];
+  PLURAL_SUFFIXES: string[];
+}
+
+interface ScanFinding {
+  file: string;
+  line: number;
+  kind: string;
+  value: string;
+  context: Record<string, unknown>;
+}
+
+interface ScanResult {
+  findings: ScanFinding[];
+  errors: unknown[];
+}
+
+interface SourceScannerModule {
+  collectFindings: (rootDir: string, sourceRoots: string[]) => ScanResult;
+}
 
 function fixture(source: string) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'i18n-hardening-'));
@@ -61,9 +123,22 @@ describe('bounded locale-unsafe number scanner', () => {
   ])('finds unsafe presentation: %s', (source) => expect(findings(source).length).toBeGreaterThan(0));
 
   it('allows internal and app-locale formatting', () => {
-    expect(findings('const storage = value.toFixed(1);')).toHaveLength(0);
+    expect(findings('const storage = formatLocalizedNumber(value, { maximumFractionDigits: 1 });')).toHaveLength(0);
     expect(findings('<Text>{formatLocalizedNumber(value)}</Text>')).toHaveLength(0);
     expect(findings('<Text>{value.toLocaleString(getAppLocale())}</Text>')).toHaveLength(0);
+  });
+
+  it.each([
+    'const f = new Intl.NumberFormat();',
+    'const f = new Intl.NumberFormat(undefined);',
+    'const f = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });',
+    'const f = Intl.NumberFormat();',
+    'const f = Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });',
+  ])('finds unsafe Intl.NumberFormat with implicit or undefined locale: %s', (source) => expect(findings(source).length).toBeGreaterThan(0));
+
+  it('allows Intl.NumberFormat with explicit app-locale argument', () => {
+    expect(findings("const f = new Intl.NumberFormat(getAppLocale());")).toHaveLength(0);
+    expect(findings("const f = Intl.NumberFormat(getAppLocale());")).toHaveLength(0);
   });
 
   it('supports one exact-line suppression', () => {

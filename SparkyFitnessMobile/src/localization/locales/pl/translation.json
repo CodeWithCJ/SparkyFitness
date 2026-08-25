@@ -2913,10 +2913,10 @@
       "serving_few": "porcje",
       "serving_many": "porcji",
       "serving_other": "porcji",
-      "mealMakes_one": "posiłek daje {{count}} porcję",
-      "mealMakes_few": "posiłek daje {{count}} porcje",
-      "mealMakes_many": "posiłek daje {{count}} porcji",
-      "mealMakes_other": "posiłek daje {{count}} porcji"
+      "mealMakes_one": "posiłek daje {{formattedCount}} porcję",
+      "mealMakes_few": "posiłek daje {{formattedCount}} porcje",
+      "mealMakes_many": "posiłek daje {{formattedCount}} porcji",
+      "mealMakes_other": "posiłek daje {{formattedCount}} porcji"
     },
     "pickers": {
       "selectServing": "Wybierz porcję",

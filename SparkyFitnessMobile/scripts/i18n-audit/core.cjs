@@ -48,6 +48,12 @@ function expectedFallbackKey(key, fallbackName, hasCount) {
 function runAudit(options = {}) {
   const rootDir = options.rootDir || MOBILE_ROOT;
   const enLocalePath = options.enLocalePath || EN_LOCALE_PATH;
+  let manifest = REGISTRY_MANIFEST;
+  const registryPath = options.registryPath || path.join(rootDir, 'src', 'localization', 'localeRegistry.json');
+  if (fs.existsSync(registryPath)) {
+    try { manifest = JSON.parse(fs.readFileSync(registryPath, 'utf8')); }
+    catch { manifest = REGISTRY_MANIFEST; }
+  }
   // Default source roots derive from the ACTUAL rootDir so a custom-root run
   // scans its own source tree; the production default remains mobile/src.
   const sourceRoots = options.sourceRoots || [path.join(rootDir, 'src')];
@@ -67,10 +73,17 @@ function runAudit(options = {}) {
 
   const sourceLocaleDir = path.dirname(enLocalePath);
   const localeRoot = path.dirname(sourceLocaleDir);
-  const localePaths = fs.readdirSync(localeRoot, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && entry.name !== SOURCE_LOCALE)
-    .map((entry) => ({ locale: entry.name, path: path.join(localeRoot, entry.name, 'translation.json'), intlLocale: REGISTRY_MANIFEST.locales[entry.name]?.intlLocale || entry.name }))
-    .filter((entry) => fs.existsSync(entry.path));
+  let localePaths = [];
+  if (fs.existsSync(localeRoot)) {
+    localePaths = fs.readdirSync(localeRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && entry.name !== SOURCE_LOCALE)
+      .map((entry) => ({ locale: entry.name, path: path.join(localeRoot, entry.name, 'translation.json'), intlLocale: manifest.locales[entry.name]?.intlLocale || entry.name }))
+      .filter((entry) => {
+        if (!fs.existsSync(entry.path)) return false;
+        try { new Intl.PluralRules(entry.intlLocale || manifest.locales[entry.locale]?.intlLocale || entry.locale); return true; }
+        catch { report.localeStructuralErrors.push({ rule: 'invalid-locale-tag', locale: entry.locale, message: `Invalid locale tag "${entry.intlLocale}" discovered in locale root; skipping` }); return false; }
+      });
+  }
   const validator = new LocaleValidator(enLocalePath, null, { localePaths, sourceLocale: SOURCE_LOCALE, fallbackLocale: FALLBACK_LOCALE, sourceIntlLocale: SOURCE_INTL_LOCALE });
   let localeResult;
   try {
@@ -116,6 +129,7 @@ function runAudit(options = {}) {
   }
 
   const enKeySet = new Set(localeResult.enKeys || []);
+  const sourceRequiredForms = requiredPluralForms(SOURCE_INTL_LOCALE);
 
   const seenStaticKeys = new Set();
 
@@ -123,8 +137,7 @@ function runAudit(options = {}) {
     if (finding.kind === 'static-t-key') {
       const { fallbacks = {}, hasCount = false } = finding.context;
       if (hasCount) {
-        const requiredForms = requiredPluralForms(SOURCE_INTL_LOCALE);
-        if (!requiredForms.every((form) => enKeySet.has(`${finding.value}${form}`))) report.pluralErrors.push({ rule: 'count-requires-plural-group', locale: 'en', key: finding.value, file: finding.file, line: finding.line, message: `Count lookup requires ${requiredForms.join(', ')} forms in the English source locale` });
+        if (!sourceRequiredForms.every((form) => enKeySet.has(`${finding.value}${form}`))) report.pluralErrors.push({ rule: 'count-requires-plural-group', locale: SOURCE_LOCALE, key: finding.value, file: finding.file, line: finding.line, message: `Count lookup requires ${sourceRequiredForms.join(', ')} forms in the ${SOURCE_LOCALE} source locale` });
       }
       for (const [fallbackName, fallbackValue] of Object.entries(fallbacks)) {
         const expectedKey = expectedFallbackKey(finding.value, fallbackName, hasCount);
@@ -143,7 +156,7 @@ function runAudit(options = {}) {
         if (!localeHasKey(enKeySet, finding.value)) {
           report.missingStaticKeys.push({
             rule: 'missing-static-key',
-            locale: 'en',
+            locale: SOURCE_LOCALE,
             key: finding.value,
             file: finding.file,
             line: finding.line,

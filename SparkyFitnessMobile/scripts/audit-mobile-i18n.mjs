@@ -38,7 +38,7 @@ function printHumanReport() {
   if (report.placeholderErrors.length > 0) {
     console.log('\nPlaceholder errors:');
     for (const e of report.placeholderErrors) {
-      console.log(`  - ${e.key}: EN=${JSON.stringify(e.enPlaceholders)} PL=${JSON.stringify(e.plPlaceholders)}`);
+      console.log(`  - ${e.locale} ${e.key}: source=${JSON.stringify(e.sourcePlaceholders)} translated=${JSON.stringify(e.translatedPlaceholders)}`);
     }
   }
 
@@ -63,9 +63,9 @@ function printHumanReport() {
     }
   }
 
+  console.log('\n=== Summary ===');
   console.log(`source locale: ${summary.sourceLocale ?? 'en'}`);
   console.log(`fallback locale: ${summary.fallbackLocale ?? 'en'}`);
-  console.log('\n=== Summary ===');
   console.log(`locale structural errors: ${summary.localeStructuralErrors}`);
   console.log(`missing static keys: ${summary.missingStaticKeys}`);
   console.log(`placeholder errors: ${summary.placeholderErrors}`);

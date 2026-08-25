@@ -372,6 +372,8 @@ function parseSuppressions(source, relPath) {
   return records;
 }
 
+const CHART_FORMATTER_NAMES = new Set(['tickFormat', 'labelFormat', 'valueFormat', 'formatX', 'formatY', 'tooltipFormat', 'formatTooltip']);
+
 function recordNumberFinding(relPath, line, expression, context) {
   const normalized = normalizeText(expression);
   const idx = suppressionRecords.findIndex((r) => !r.consumed && r.rule === 'locale-unsafe-number-format' && r.targetLine === line);
@@ -395,8 +397,14 @@ function scanPresentationNumbers(node, sourceFile, relPath, context) {
         recordNumberFinding(relPath, getLinePosition(current, sourceFile), current.getText(sourceFile), context);
       }
     }
-    if (ts.isNewExpression(current) && current.expression.getText(sourceFile) === 'Intl.NumberFormat' && current.arguments?.length && ts.isStringLiteral(current.arguments[0])) {
-      recordNumberFinding(relPath, getLinePosition(current, sourceFile), current.getText(sourceFile), context);
+    if ((ts.isNewExpression(current) || ts.isCallExpression(current)) &&
+        current.expression.getText(sourceFile) === 'Intl.NumberFormat') {
+      const localeArg = current.arguments?.[0];
+      const isImplicitLocale = localeArg === undefined ||
+        (ts.isIdentifier(localeArg) && localeArg.text === 'undefined');
+      if (isImplicitLocale || ts.isStringLiteral(localeArg)) {
+        recordNumberFinding(relPath, getLinePosition(current, sourceFile), current.getText(sourceFile), context);
+      }
     }
     ts.forEachChild(current, (child) => walk(child, current));
   }
@@ -501,16 +509,32 @@ function visitSourceFile(filePath, rootDir) {
       }
     }
 
+    // Scan variable initializers and expression statements for Intl.NumberFormat
+    // (toFixed/toLocaleString can be internal, but Intl.NumberFormat is always locale-sensitive)
+    if (ts.isVariableDeclaration(node) && node.initializer) {
+      const init = node.initializer;
+      function scanForIntlNumberFormat(n) {
+        if ((ts.isNewExpression(n) || ts.isCallExpression(n)) && n.expression.getText(sourceFile) === 'Intl.NumberFormat') {
+          const localeArg = n.arguments?.[0];
+          const isImplicitLocale = localeArg === undefined ||
+            (ts.isIdentifier(localeArg) && localeArg.text === 'undefined');
+          if (isImplicitLocale || ts.isStringLiteral(localeArg)) {
+            recordNumberFinding(relPath, getLinePosition(n, sourceFile), n.getText(sourceFile), { context: 'variable initializer' });
+          }
+        }
+        ts.forEachChild(n, scanForIntlNumberFormat);
+      }
+      scanForIntlNumberFormat(init);
+    }
+
     if (ts.isPropertyAssignment(node)) {
-      const formatterNames = new Set(['tickFormat', 'labelFormat', 'valueFormat', 'formatX', 'formatY', 'tooltipFormat', 'formatTooltip']);
       const propName = propertyNameText(node.name);
-      if (propName && formatterNames.has(propName)) scanPresentationNumbers(node.initializer, sourceFile, relPath, { context: `chart formatter ${propName}` });
+      if (propName && CHART_FORMATTER_NAMES.has(propName)) scanPresentationNumbers(node.initializer, sourceFile, relPath, { context: `chart formatter ${propName}` });
     }
 
     if (ts.isJsxAttribute(node)) {
       const attrName = node.name.getText(sourceFile);
-      const formatterNames = new Set(['tickFormat', 'labelFormat', 'valueFormat', 'formatX', 'formatY', 'tooltipFormat', 'formatTooltip']);
-      if (formatterNames.has(attrName) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression) {
+      if (CHART_FORMATTER_NAMES.has(attrName) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression) {
         scanPresentationNumbers(node.initializer.expression, sourceFile, relPath, { context: `chart formatter ${attrName}` });
       }
       if ((LOCALIZED_ATTRIBUTE_NAMES.has(attrName) || CUSTOM_UI_ATTRIBUTE_NAMES.has(attrName)) && node.initializer) {

@@ -33,8 +33,8 @@ interface AuditError {
   file?: string;
   line?: number;
   message?: string;
-  enPlaceholders?: string[];
-  plPlaceholders?: string[];
+  sourcePlaceholders?: string[];
+  translatedPlaceholders?: string[];
   context?: Record<string, unknown>;
 }
 
@@ -54,8 +54,9 @@ interface AuditReport {
   missingFallbackFindings: AuditError[];
   dynamicI18nFindings: AuditError[];
   hardcodedUiFindings: AuditFinding[];
+  unsafeNumberFormatFindings: AuditFinding[];
   summary: Record<string, number>;
-  translationCoverage?: Record<string, unknown>;
+  translationCoverage: Record<string, LocaleCoverage>;
 }
 
 interface AuditResult {
@@ -67,6 +68,7 @@ interface AuditOptions {
   rootDir?: string;
   enLocalePath?: string;
   plLocalePath?: string;
+  registryPath?: string;
   sourceRoots?: string[];
 }
 
@@ -75,10 +77,19 @@ interface ScanResult {
   errors: AuditError[];
 }
 
+interface LocaleCoverage {
+  translated: number;
+  total: number;
+  missing: number;
+  percent: number;
+  stale?: number;
+}
+
 interface ValidatorResult {
   errors: AuditError[];
   enKeys: string[];
   plKeys: string[];
+  coverage: Record<string, LocaleCoverage>;
 }
 
 interface LocaleValidatorInstance {
@@ -97,21 +108,36 @@ function createFixtureStructure(
   const srcDir = path.join(tmpDir, 'src');
   const scriptsDir = path.join(tmpDir, 'scripts');
   const localeDir = path.join(srcDir, 'localization', 'locales');
-  const enDir = path.join(localeDir, 'en');
-  const plDir = path.join(localeDir, 'pl');
+  const registryDir = path.join(srcDir, 'localization');
 
-  fs.mkdirSync(enDir, { recursive: true });
-  fs.mkdirSync(plDir, { recursive: true });
+  fs.mkdirSync(localeDir, { recursive: true });
   fs.mkdirSync(scriptsDir, { recursive: true });
 
-  const enContent = structure.en || '{}';
-  const plContent = structure.pl || '{}';
+  const locales = Object.keys(structure);
+  const localeEntries: Record<string, { languageCode: string; intlLocale: string; displayNameKey: string; defaultDisplayName: string }> = {};
+  for (const locale of locales) {
+    const dir = path.join(localeDir, locale);
+    fs.mkdirSync(dir, { recursive: true });
+    const localePath = path.join(dir, 'translation.json');
+    fs.writeFileSync(localePath, structure[locale] || '{}');
+    if (locale === 'en') enLocalePath = localePath;
+    else if (locale === 'pl') plLocalePath = localePath;
+    const intlLocaleMap: Record<string, string> = { en: 'en-US', pl: 'pl-PL', de: 'de-DE' };
+    localeEntries[locale] = {
+      languageCode: locale,
+      intlLocale: intlLocaleMap[locale] || locale,
+      displayNameKey: `settings.language.${locale}`,
+      defaultDisplayName: locale,
+    };
+  }
 
-  enLocalePath = path.join(enDir, 'translation.json');
-  plLocalePath = path.join(plDir, 'translation.json');
-
-  fs.writeFileSync(enLocalePath, enContent);
-  fs.writeFileSync(plLocalePath, plContent);
+  // Write fixture localeRegistry.json so core.cjs can discover locales
+  const registry = {
+    sourceLocale: 'en',
+    fallbackLocale: 'en',
+    locales: localeEntries,
+  };
+  fs.writeFileSync(path.join(registryDir, 'localeRegistry.json'), JSON.stringify(registry, null, 2));
 
   for (const [relPath, content] of Object.entries(sourceFiles)) {
     const fullPath = path.join(srcDir, relPath);
@@ -1142,10 +1168,12 @@ describe('Multilingual source-first regressions', () => {
     const tmpDir = createFixtureStructure({
       en: '{"dashboard": {"weeklyProgress": "Weekly progress"}}',
       pl: '{"dashboard": {}}',
+      de: '{"dashboard": {"weeklyProgress": "Wöchentlicher Fortschritt"}}',
     });
     const result = auditRun(tmpDir);
     expect(result.hasErrors).toBe(false);
     expect(result.report.translationCoverage.pl).toMatchObject({ missing: 1 });
+    expect(result.report.translationCoverage.de).toMatchObject({ missing: 0, translated: 1, total: 1 });
   });
 
   it('fails when a statically used source key is absent from English', () => {
@@ -1277,4 +1305,42 @@ describe('Multilingual source-first regressions', () => {
     expect(normalizeLocaleFromRegistry('pt-BR-x-private', registry)).toBe('pt-BR');
     expect(normalizeLocaleFromRegistry('pt-PT-x-private', registry)).toBe('pt-PT');
   });
+
+  it('reports stale target plural family when source has removed the plural base', () => {
+    const tmpDir = createFixtureStructure({
+      en: JSON.stringify({ greeting: 'Hello' }),
+      pl: JSON.stringify({ greeting: 'Czesc', item_one: '{{count}} przedmiot', item_other: '{{count}} przedmiotow' }),
+    });
+    const result = new LocaleValidator(
+      path.join(tmpDir, 'src/localization/locales/en/translation.json'),
+      path.join(tmpDir, 'src/localization/locales/pl/translation.json'),
+    ).validate();
+    expect(result.errors).toHaveLength(0);
+    expect(result.coverage.pl.stale).toBeGreaterThanOrEqual(2);
+  });
+
+  it('placeholder errors include locale, sourcePlaceholders, and translatedPlaceholders fields', () => {
+    const tmpDir = createFixtureStructure({
+      en: JSON.stringify({ greeting: 'Hello {{name}}' }),
+      pl: JSON.stringify({ greeting: 'Witaj {{wrong}}' }),
+    });
+    const result = new LocaleValidator(
+      path.join(tmpDir, 'src/localization/locales/en/translation.json'),
+      path.join(tmpDir, 'src/localization/locales/pl/translation.json'),
+    ).validate();
+    const mismatch = result.errors.find((e) => e.rule === 'placeholder-mismatch');
+    expect(mismatch).toBeDefined();
+    expect(mismatch?.locale).toBe('pl');
+    expect(mismatch?.sourcePlaceholders).toEqual(['name']);
+    expect(mismatch?.translatedPlaceholders).toEqual(['wrong']);
+  });
+
+  it('handles missing locale root gracefully without crashing', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'i18n-audit-noroot-'));
+    fs.mkdirSync(path.join(tmpDir, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, 'src', 'empty.ts'), 'export const x = 1;');
+    const result = auditRun(tmpDir, { enLocalePath: path.join(tmpDir, 'nonexistent', 'en', 'translation.json') });
+    expect(result.hasErrors).toBe(true);
+  });
+
 });

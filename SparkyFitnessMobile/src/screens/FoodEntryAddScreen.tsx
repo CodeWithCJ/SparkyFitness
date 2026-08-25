@@ -1421,7 +1421,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               item.source === 'meal' &&
               (item.mealTotalServings ?? 1) > 1 && (
                 <Text className="text-text-secondary text-sm">
-                  {' \u00b7 '}{t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{count}} servings', defaultValue_one: 'meal makes {{count}} serving', defaultValue_other: 'meal makes {{count}} servings', count: item.mealTotalServings })}
+                  {' \u00b7 '}{t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{formattedCount}} servings', defaultValue_one: 'meal makes {{formattedCount}} serving', defaultValue_other: 'meal makes {{formattedCount}} servings', count: item.mealTotalServings ?? 1, formattedCount: formatLocalizedNumber(item.mealTotalServings ?? 1, { maximumFractionDigits: 1 }) })}
                 </Text>
               )}
           </View>

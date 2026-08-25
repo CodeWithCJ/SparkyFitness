@@ -2827,8 +2827,8 @@
       "meal": "Meal",
       "serving_one": "serving",
       "serving_other": "servings",
-      "mealMakes_one": "meal makes {{count}} serving",
-      "mealMakes_other": "meal makes {{count}} servings"
+      "mealMakes_one": "meal makes {{formattedCount}} serving",
+      "mealMakes_other": "meal makes {{formattedCount}} servings"
     },
     "pickers": {
       "selectServing": "Select Serving",

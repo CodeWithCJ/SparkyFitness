@@ -235,8 +235,11 @@ class LocaleValidator {
         }
       }
 
+      const sourcePluralBases = new Set(sourceGroups.filter((g) => g.isPlural).map((g) => g.base));
       for (const key of Object.keys(translated)) {
-        if (!sourceKeys.has(key) && !getPluralBase(key)) {
+        const pluralBase = getPluralBase(key);
+        const isStale = !sourceKeys.has(key) && (!pluralBase || !sourcePluralBases.has(pluralBase));
+        if (isStale) {
           // Stale translations are intentionally non-blocking coverage diagnostics.
           coverage[target.locale] = coverage[target.locale] || {};
           coverage[target.locale].stale = (coverage[target.locale].stale || 0) + 1;

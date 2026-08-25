@@ -473,7 +473,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
               </Text>
             </View>
             <Text className="text-text-secondary text-sm mt-2">
-              {t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{count}} servings', defaultValue_one: 'meal makes {{count}} serving', defaultValue_other: 'meal makes {{count}} servings', count: servings, formattedCount: formatLocalizedNumber(servings, { maximumFractionDigits: 1 }) })}
+              {t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{formattedCount}} servings', defaultValue_one: 'meal makes {{formattedCount}} serving', defaultValue_other: 'meal makes {{formattedCount}} servings', count: servings, formattedCount: formatLocalizedNumber(servings, { maximumFractionDigits: 1 }) })}
               {' \u00b7 '}{formatServingSizeDisplay(formServingSize)} {formatServingUnit(formServingUnit)} {t('foodEntryAdd.labels.perServing', { defaultValue: 'per serving' })}
             </Text>
           </View>
