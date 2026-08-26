@@ -2557,5 +2557,233 @@
         }
       }
     }
+  },
+  "cycleToday": {
+    "menstrualFlow": "Flujo menstrual",
+    "flow": {
+      "none": "Ninguno",
+      "spot": "Manchado",
+      "light": "Ligero",
+      "medium": "Medio",
+      "heavy": "Abundante"
+    },
+    "weight": "Peso ({{unit}})",
+    "weightExampleLbs": "p. ej. 143",
+    "weightExampleKg": "p. ej. 65",
+    "cervicalMucus": "Moco cervical",
+    "selectCervicalMucus": "Seleccionar moco cervical",
+    "tapToSelect": "Toca para seleccionar...",
+    "mucus": {
+      "none": "Ninguno",
+      "dry": "Seco",
+      "sticky": "Pegajoso",
+      "creamy": "Cremoso",
+      "watery": "Acuoso",
+      "eggWhite": "Clara de huevo"
+    },
+    "intercourse": "Relaciones sexuales",
+    "intercourseOption": {
+      "none": "Ninguna",
+      "yes": "Sí",
+      "no": "No"
+    },
+    "protection": "Protección",
+    "protectionOption": {
+      "protected": "Protegidas",
+      "unprotected": "Sin protección"
+    },
+    "cervicalPosition": "Posición cervical",
+    "selectCervicalPosition": "Seleccionar posición cervical",
+    "position": {
+      "none": "Ninguna",
+      "low": "Baja",
+      "medium": "Media",
+      "high": "Alta"
+    },
+    "basalTemperature": "Temperatura basal",
+    "basalTemperatureHint": "Registra tu temperatura al despertar (°C) para identificar los cambios bifásicos tras la ovulación.",
+    "temperatureExample": "p. ej. 36,5",
+    "notes": "Notas",
+    "notesPlaceholder": "Registra detalles sobre cómo te sientes, tu nivel de energía...",
+    "saving": "Guardando...",
+    "save": "Guardar entrada",
+    "invalidTemperature": "Temperatura no válida",
+    "invalidWeight": "Peso no válido"
+  },
+  "cycleCard": {
+    "mode": {
+      "wellness": "Bienestar",
+      "pregnancy": "Seguimiento del embarazo",
+      "fertility": "Seguimiento de fertilidad",
+      "postpartum": "Recuperación posparto",
+      "menopause": "Seguimiento de la menopausia",
+      "cycle": "Seguimiento del ciclo",
+      "cyclePregnancy": "Ciclo y embarazo"
+    },
+    "setupA11y": "Configurar el seguimiento del ciclo y el embarazo",
+    "setUp": "Configurar",
+    "weekDay": "Semana {{week}}, día {{day}}",
+    "sizeOf": "Tamaño de {{comparison}}",
+    "cm": "{{value}} cm",
+    "grams": "{{value}} g",
+    "dueNow": "Fecha de parto ahora",
+    "pregnancyActive": "Seguimiento del embarazo activo",
+    "gestationalProgress": "Toca para ver el progreso gestacional.",
+    "wellnessActive": "Seguimiento de bienestar activo",
+    "modeValue": "Modo {{mode}}",
+    "hubProgress": "Toca para ver el centro de seguimiento del ciclo.",
+    "hubA11y": "Abrir el centro de seguimiento del ciclo y el embarazo",
+    "hub": "Centro",
+    "phase": {
+      "period": "Periodo",
+      "follicular": "Fase folicular",
+      "fertile": "Ventana fértil est.",
+      "ovulation": "Ovulación est.",
+      "luteal": "Fase lútea",
+      "active": "Ciclo activo"
+    },
+    "discreetDescription": "Registra tus parámetros de bienestar y predicciones.",
+    "description": "Registra las fases del ciclo, predicciones, síntomas e hitos del embarazo.",
+    "nextPeriod": "Próximo periodo est. {{date}}",
+    "day": "Día {{day}}",
+    "active": "Activo",
+    "periodLate_one": "Periodo con {{count}} día de retraso",
+    "periodLate_other": "Periodo con {{count}} días de retraso",
+    "daysToDue_one": "{{count}} día para la fecha de parto",
+    "daysToDue_other": "{{count}} d para la fecha de parto"
+  },
+  "cycleHub": {
+    "tools": "Herramientas",
+    "trends": "Tendencias",
+    "wellness": "Bienestar",
+    "pregnancyHub": "Centro de embarazo",
+    "cycleHub": "Centro del ciclo",
+    "logEntry": "Registrar entrada",
+    "overview": "Resumen",
+    "history": "Historial",
+    "ring": {
+      "day": "Día {{day}}",
+      "dayCycle_one": "Ciclo de {{count}} día",
+      "dayCycle_other": "Ciclo de {{count}} días"
+    }
+  },
+  "cycleLog": {
+    "saved": "Guardado",
+    "updated": "Registro diario actualizado correctamente.",
+    "saveFailed": "Error al guardar",
+    "saveError": "No se pudo guardar la entrada. Inténtalo de nuevo.",
+    "deleted": "Eliminado",
+    "cleared": "Registro diario borrado.",
+    "deleteFailed": "Error al eliminar",
+    "deleteError": "No se pudo borrar la entrada. Inténtalo de nuevo."
+  },
+  "cycle": {
+    "phase": {
+      "active": "Fase activa",
+      "period": "Periodo",
+      "follicular": "Fase folicular",
+      "fertile": "Ventana fértil est.",
+      "ovulation": "Ovulación est.",
+      "luteal": "Fase lútea",
+      "activeCycle": "Ciclo activo"
+    }
+  },
+  "cycleCalendar": {
+    "previousMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "previousYear": "Año anterior",
+    "nextYear": "Año siguiente",
+    "selectMonth": "Seleccionar mes",
+    "selectYear": "Seleccionar año",
+    "weekdays": {
+      "sunday": "D",
+      "monday": "L",
+      "tuesday": "M",
+      "wednesday": "X",
+      "thursday": "J",
+      "friday": "V",
+      "saturday": "S"
+    },
+    "legend": {
+      "period": "Periodo",
+      "predictedPeriod": "Periodo previsto",
+      "fertileWindow": "Ventana fértil",
+      "estimatedOvulation": "Ovulación est.",
+      "logged": "Registrado"
+    }
+  },
+  "cycleHistory": {
+    "title": "Historial del ciclo",
+    "logManual": "Registrar ciclo manual",
+    "startDate": "Fecha de inicio",
+    "selectDate": "Seleccionar fecha",
+    "periodDays": "Días de periodo",
+    "cycleDays": "Días de ciclo",
+    "excludeFromPredictions": "Excluir de las predicciones",
+    "saveManual": "Guardar ciclo manual",
+    "empty": "Aún no hay ciclos registrados.",
+    "startedAccessibility": "Ciclo iniciado el {{date}}",
+    "started": "Iniciado el {{date}}",
+    "currentCycle": "Ciclo actual",
+    "toast": {
+      "success": "Correcto",
+      "error": "Error",
+      "manualAdded": "Ciclo manual añadido correctamente.",
+      "manualAddFailed": "No se pudo añadir la entrada de ciclo manual.",
+      "updated": "Entrada de ciclo actualizada correctamente.",
+      "updateFailed": "No se pudo actualizar la entrada de ciclo.",
+      "deleted": "Entrada de ciclo eliminada correctamente.",
+      "deleteFailed": "No se pudo eliminar la entrada de ciclo."
+    },
+    "dayPeriod_one": "Periodo de {{count}} día",
+    "dayPeriod_other": "Periodos de {{count}} días",
+    "dayCycle_one": "Ciclo de {{count}} día",
+    "dayCycle_other": "Ciclo de {{count}} días"
+  },
+  "fertility": {
+    "title": "Fertilidad",
+    "fertileWindow": "Ventana fértil est.",
+    "ovulation": "Ovulación est.",
+    "nextPeriod": "Próximo periodo en",
+    "days_one": "{{count}} día",
+    "days_other": "{{count}} días",
+    "twoWeekWait": "Espera de dos semanas",
+    "ovulationDay": "Día de ovulación",
+    "daysPastOvulation_one": "{{count}} día tras la ovulación",
+    "daysPastOvulation_other": "{{count}} días tras la ovulación",
+    "testAccuracy": "Las pruebas caseras suelen ser más precisas entre 12 y 14 días después de la ovulación.",
+    "disclaimer": "Estimaciones a partir de tus datos registrados. No es consejo médico."
+  },
+  "testQuickLog": {
+    "title": "Registrar una prueba",
+    "ovulation": "Ovulación (test OPK)",
+    "pregnancy": "Embarazo (test HPT)",
+    "recent": "Pruebas registradas recientes",
+    "testLogged": "Prueba registrada",
+    "logFailed": "No se pudo registrar la prueba",
+    "removeFailed": "No se pudo quitar la prueba",
+    "results": {
+      "negative": "Negativo",
+      "low": "Bajo",
+      "high": "Alto",
+      "peak": "Máximo",
+      "faint": "Tenue",
+      "positive": "Positivo"
+    },
+    "ovulationShort": "Ovulación",
+    "pregnancyShort": "Embarazo",
+    "entryTitle": "{{type}} · {{result}}"
+  },
+  "symptoms": {
+    "saveFailed": "No se pudo guardar el síntoma",
+    "removeFailed": "No se pudo quitar el síntoma"
+  },
+  "checkIn": {
+    "saveFailed": "Error al guardar",
+    "saveMessage": "No se pudieron guardar las medidas. Inténtalo de nuevo."
+  },
+  "shareStatus": {
+    "public": "Compartido públicamente",
+    "family": "Compartido con la familia"
   }
 }
