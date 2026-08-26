@@ -2785,5 +2785,270 @@
   "shareStatus": {
     "public": "Compartido públicamente",
     "family": "Compartido con la familia"
+  },
+  "cycleSettings": {
+    "updateFailed": "Error al actualizar",
+    "saveFailed": "No se pudieron guardar los ajustes del ciclo. Inténtalo de nuevo.",
+    "mode": {
+      "standard": "Ciclo estándar",
+      "ttc": "Buscando embarazo",
+      "pregnant": "Seguimiento del embarazo",
+      "postpartum": "Posparto",
+      "menopause": "Adaptado a la menopausia"
+    },
+    "birthControl": {
+      "none": "Ninguno",
+      "pill": "Píldora",
+      "iudHormonal": "DIU hormonal",
+      "iudCopper": "DIU de cobre",
+      "implant": "Implante",
+      "ring": "Anillo",
+      "patch": "Parche",
+      "shot": "Inyección",
+      "condoms": "Preservativos / barrera",
+      "other": "Otro"
+    },
+    "condition": {
+      "pcos": "SOP",
+      "endometriosis": "Endometriosis",
+      "fibroids": "Miomas",
+      "thyroid": "Trastorno tiroideo",
+      "other": "Otro"
+    },
+    "terminology": {
+      "default": "Predeterminada",
+      "neutral": "Neutra en género"
+    },
+    "reset": {
+      "title": "Restablecer configuración inicial",
+      "message": "¿Seguro que quieres restablecer la configuración inicial del ciclo? Esto borrará tu progreso de configuración, pero tus días de ciclo registrados permanecerán intactos.",
+      "action": "Restablecer",
+      "success": "Configuración inicial restablecida."
+    },
+    "export": {
+      "preparing": "Preparando exportación",
+      "generating": "Generando archivo de exportación JSON...",
+      "failed": "Error de exportación",
+      "failedMessage": "No se pudieron exportar los datos del ciclo."
+    },
+    "title": {
+      "wellness": "Ajustes de bienestar",
+      "cyclePregnancy": "Ciclo y embarazo"
+    },
+    "enable": {
+      "title": "Activar el seguimiento del ciclo y el embarazo",
+      "subtitle": "Activa el registro, las predicciones y el historial"
+    },
+    "groups": {
+      "features": "Configuración de funciones",
+      "calculations": "Ajustes de cálculo del ciclo",
+      "conditions": "Condiciones",
+      "conditionsSubtitle": "Selecciona las condiciones aplicables para personalizar tu seguimiento.",
+      "display": "Opciones de visualización",
+      "actions": "Acciones"
+    },
+    "fields": {
+      "trackingMode": "Modo de seguimiento",
+      "birthControl": "Método anticonceptivo",
+      "averageCycleLength": "Duración media del ciclo",
+      "averagePeriodLength": "Duración media del periodo",
+      "lutealLength": "Duración de la fase lútea",
+      "showFertileWindow": "Mostrar ventana fértil",
+      "discreetMode": "Modo discreto",
+      "terminology": "Terminología",
+      "export": "Exportar datos de ciclo y embarazo",
+      "reset": "Restablecer el asistente de configuración"
+    },
+    "pickers": {
+      "mode": "Seleccionar modo",
+      "method": "Seleccionar método",
+      "terminology": "Seleccionar terminología"
+    },
+    "values": {
+      "custom": "Valor personalizado",
+      "defaultHistory": "Predeterminado/Historial",
+      "lutealSubtitle": "Días tras la ovulación (predeterminado 14)",
+      "fertileSubtitle": "Resaltar los días fértiles en el calendario",
+      "discreetSubtitle": "Oculta las etiquetas «Ciclo» o «Embarazo» en la interfaz",
+      "exportSubtitle": "Descargar exportación de datos en JSON",
+      "resetSubtitle": "Reiniciar el recorrido de configuración"
+    }
+  },
+  "cycleOnboarding": {
+    "checkDates": "Comprueba las fechas",
+    "setupComplete": "¡Configuración completada!",
+    "profileInitialized": "Tu perfil de bienestar se ha inicializado.",
+    "setupFailed": "Error de configuración",
+    "setupFailedMessage": "No se pudo completar la configuración inicial. Inténtalo de nuevo.",
+    "stepTitle": "Configuración: paso {{step}} de 4",
+    "goalTitle": "¿Cuál es tu objetivo de seguimiento?",
+    "goalDescription": "Selecciona el modo que mejor se ajuste a tu enfoque de salud actual. Puedes cambiarlo cuando quieras en los ajustes.",
+    "datesTitle": "Fechas y medias",
+    "dueDateDescription": "Dinos cómo estimar tu fecha de parto. Puedes cambiarlo más tarde en los ajustes.",
+    "noConfiguration": "No se necesita configuración",
+    "recoveryDescription": "Adaptaremos tus recomendaciones a la recuperación hormonal o a los síntomas de la transición a la menopausia. Pasemos al siguiente paso.",
+    "predictionsDescription": "Ayúdanos a crear predicciones para tu ciclo.",
+    "lastPeriodStart": "Fecha de inicio del último periodo",
+    "averageCycleLength": "Duración media del ciclo",
+    "averagePeriodLength": "Duración media del periodo",
+    "profileTitle": "Perfil y condiciones",
+    "profileDescription": "Selecciona las condiciones o métodos anticonceptivos relevantes para personalizar tu seguimiento.",
+    "birthControlMethod": "Método anticonceptivo",
+    "selectMethod": "Seleccionar método",
+    "conditions": "Condiciones",
+    "disclaimerTitle": "Aviso y finalización",
+    "medicalDisclaimer": "Aviso médico",
+    "disclaimerBody": "El rastreador de bienestar y salud reproductiva de SparkyFitness está diseñado para ayudarte a seguir predicciones, síntomas y parámetros fisiológicos. NO está pensado para usarse como método anticonceptivo ni como herramienta de diagnóstico o tratamiento.",
+    "consultProfessional": "Consulta siempre a un profesional médico cualificado ante cualquier problema de salud.",
+    "acceptInitialize": "Aceptar e inicializar perfil",
+    "mode": {
+      "standard": "Ciclo menstrual estándar",
+      "ttc": "Buscando embarazo (TTC)",
+      "pregnant": "Seguimiento del embarazo",
+      "postpartum": "Posparto / Recuperación",
+      "menopause": "Transición a la menopausia"
+    },
+    "birthControl": {
+      "none": "Ninguno",
+      "pill": "Píldora",
+      "iud": "DIU",
+      "implant": "Implante",
+      "patch": "Parche",
+      "ring": "Anillo",
+      "injection": "Inyección",
+      "other": "Otro",
+      "iudHormonal": "DIU hormonal",
+      "iudCopper": "DIU de cobre",
+      "condoms": "Preservativos / barrera",
+      "shot": "Inyección"
+    },
+    "condition": {
+      "pcos": "SOP",
+      "endometriosis": "Endometriosis",
+      "fibroids": "Miomas",
+      "thyroid": "Trastorno tiroideo",
+      "other": "Otro"
+    }
+  },
+  "cycleSymptoms": {
+    "title": "Síntomas",
+    "showAll": "Ver todos",
+    "showLess": "Ver menos",
+    "items": {
+      "cramps": "Cólicos",
+      "headache": "Dolor de cabeza",
+      "migraine": "Migraña",
+      "backache": "Dolor de espalda",
+      "ovulation_pain": "Dolor de ovulación",
+      "tender_breasts": "Pechos sensibles",
+      "nausea": "Náuseas",
+      "bloating": "Hinchazón",
+      "diarrhea": "Diarrea",
+      "constipation": "Estreñimiento",
+      "cravings": "Antojos",
+      "acne": "Acné",
+      "oily_skin": "Piel grasa",
+      "fatigue": "Cansancio",
+      "insomnia": "Insomnio",
+      "dizziness": "Mareo",
+      "mood_swings": "Cambios de humor",
+      "anxiety": "Ansiedad",
+      "hot_flashes": "Sofocos",
+      "spotting": "Manchado",
+      "body_aches": "Dolores corporales",
+      "joint_pain": "Dolor articular",
+      "muscle_soreness": "Agujetas",
+      "pelvic_pain": "Dolor pélvico",
+      "cervical_pain": "Dolor cervical",
+      "stiff_neck": "Rigidez de cuello",
+      "digestive_cramps": "Retortijones digestivos",
+      "acid_reflux": "Reflujo ácido",
+      "indigestion": "Indigestión",
+      "increased_appetite": "Aumento del apetito",
+      "decreased_appetite": "Disminución del apetito",
+      "fatigue_morning": "Cansancio matutino",
+      "brain_fog": "Niebla mental",
+      "irritability": "Irritabilidad",
+      "sadness": "Tristeza",
+      "oversleeping": "Dormir en exceso",
+      "restless_sleep": "Sueño inquieto",
+      "dry_skin": "Piel seca",
+      "skin_breakouts": "Brotes en la piel",
+      "chills": "Escalofríos",
+      "night_sweats": "Sudores nocturnos",
+      "swollen_feet": "Pies hinchados",
+      "breast_swelling": "Hinchazón de pechos"
+    }
+  },
+  "cycleInsights": {
+    "cycleSummary": "Resumen del ciclo",
+    "avgCycle": "Ciclo medio",
+    "avgPeriod": "Periodo medio",
+    "regularity": "Regularidad",
+    "set": "Definir",
+    "regular": "Regular",
+    "nextPredictions": "Próximas predicciones",
+    "upcomingCycle": "Ciclo próximo",
+    "followingCycle": "Ciclo siguiente",
+    "nextPeriod": "Próximo periodo",
+    "estimatedOvulation": "Ovulación est.",
+    "patternsToWatch": "Patrones a vigilar",
+    "symptomForecast": "Previsión de síntomas",
+    "forecastHint": "Registra síntomas durante un par de ciclos para prever los próximos días.",
+    "personalCorrelations": "Correlaciones personales",
+    "days_one": "{{count}} día",
+    "days_other": "{{count}} días",
+    "anomaly": {
+      "irregular_cycles": "La duración de tus ciclos ha variado en más de unos días recientemente. Si esto es nuevo para ti, quizá valga la pena comentarlo con un profesional.",
+      "short_cycle_one": "Tuviste un ciclo corto de {{count}} día. Los ciclos de menos de 21 días conviene vigilarlos.",
+      "short_cycle_other": "Tuviste un ciclo corto de {{count}} días. Los ciclos de menos de 21 días conviene vigilarlos.",
+      "long_cycle_one": "Tuviste un ciclo largo de {{count}} día. Los ciclos de más de 45 días conviene vigilarlos.",
+      "long_cycle_other": "Tuviste un ciclo largo de {{count}} días. Los ciclos de más de 45 días conviene vigilarlos.",
+      "heavy_bleeding": "Tus registros recientes muestran un flujo más abundante de lo habitual o periodos de más de 7 días. Si continúa, plantéate comentarlo con un profesional.",
+      "unusual_discharge": "Has registrado un flujo inusual. Plantéate anotar cambios de color, olor o textura.",
+      "short_cycle_generic": "Se registró un ciclo corto. Los ciclos de menos de 21 días conviene vigilarlos.",
+      "long_cycle_generic": "Se registró un ciclo largo. Los ciclos de más de 45 días conviene vigilarlos."
+    },
+    "alert": {
+      "late_period_one": "Tu periodo tiene {{count}} día de retraso.",
+      "late_period_other": "Tu periodo tiene {{count}} días de retraso.",
+      "upcoming_period_one": "Se espera el periodo en {{count}} día.",
+      "upcoming_period_other": "Se espera el periodo en {{count}} días.",
+      "ovulation_today": "Se prevé que la ovulación ocurra hoy.",
+      "upcoming_period_today": "Se espera el periodo hoy."
+    }
+  },
+  "cycleCorrelations": {
+    "metrics": {
+      "weight": "Peso",
+      "mood": "Estado de ánimo",
+      "sleep": "Sueño",
+      "energy": "Energía"
+    },
+    "phases": {
+      "menstrual": "Menstrual",
+      "follicular": "Folicular",
+      "fertile": "Fértil",
+      "ovulation": "Ovulación",
+      "luteal": "Lútea"
+    },
+    "byPhase": "{{metric}} por fase del ciclo",
+    "higher": "más alto",
+    "lower": "más bajo",
+    "peak": "{{phase}}: {{metric}} tiende a ser {{direction}} ({{delta}}{{unit}} frente a tu media).",
+    "noDataTitle": "Las correlaciones se desbloquean con más datos",
+    "noDataHint": "Sigue registrando peso, estado de ánimo, sueño y energía durante unos ciclos para ver cómo se mueven con tus fases.",
+    "conditions": {
+      "longCycles": "Tus ciclos promedian más de 35 días. Si esto es nuevo para ti, quizá valga la pena hablarlo con un profesional.",
+      "irregularCycles": "Tus ciclos varían bastante. Registrar unos cuantos más afinará tu panorama; plantéate comentarlo con un profesional.",
+      "shortCycles": "Tus ciclos son más cortos de lo típico. Si es nuevo, quizá valga la pena la opinión de un profesional."
+    },
+    "phasesSentence": {
+      "menstrual": "Fase menstrual",
+      "follicular": "Fase folicular",
+      "fertile": "Fase fértil",
+      "ovulation": "Ovulación",
+      "luteal": "Fase lútea"
+    }
   }
 }
