@@ -1084,5 +1084,313 @@
   "foodEntryCopy": {
     "success": "Comida copiada",
     "failed": "No se pudo copiar la comida"
+  },
+  "fastingDetail": {
+    "title": "Ayuno",
+    "metabolicStages": "Etapas metabólicas",
+    "now": "ahora",
+    "remaining": "{{percent}}% · quedan {{time}}",
+    "goalReached": "Objetivo alcanzado",
+    "elapsed": "{{time}} transcurrido",
+    "avgFast": "Ayuno medio",
+    "fasts": "N.º de ayunos",
+    "total": "Total",
+    "protocol": "Protocolo",
+    "started": "Iniciado",
+    "endFast": "Terminar ayuno",
+    "protocolWithGoal": "{{protocol}} · ayuno de {{hours}} h",
+    "noActiveFast": "Ningún ayuno activo",
+    "startDescription": "Inicia un ayuno para seguir tu ventana de ayuno y tus etapas metabólicas.",
+    "startFast": "Iniciar ayuno",
+    "range": "{{start}}–{{end}} {{unit}}",
+    "rangeOpen": "{{start}} {{unit}}+",
+    "stages": {
+      "anabolic": {
+        "name": "Anabólica",
+        "description": "Estado alimentado · insulina elevada"
+      },
+      "catabolic": {
+        "name": "Catabólica",
+        "description": "Agotamiento del glucógeno · mayor uso de grasa como energía"
+      },
+      "fatBurning": {
+        "name": "Quema de grasa",
+        "description": "La quema de grasa se acelera"
+      },
+      "ketosis": {
+        "name": "Cetosis",
+        "description": "Aumenta la producción de cetonas"
+      },
+      "deepKetosis": {
+        "name": "Cetosis profunda",
+        "description": "Una etapa a menudo asociada con un aumento de la autofagia"
+      }
+    }
+  },
+  "fastingCard": {
+    "title": "Ayuno",
+    "openDetails": "Abrir detalles del ayuno",
+    "viewHistory": "Ver historial de ayunos",
+    "history": "Historial",
+    "viewDetails": "Ver detalles",
+    "goalProgress": "{{remaining}} para tu objetivo de {{goal}} h",
+    "goalReached": "Objetivo alcanzado · {{goal}} h",
+    "elapsed": "{{elapsed}} transcurrido",
+    "startFast": "Iniciar un ayuno",
+    "readyToStart": "Listo para empezar",
+    "startFastAction": "Iniciar ayuno",
+    "duration": {
+      "minutes": "{{minutes}} min",
+      "hours": "{{hours}} h {{minutes}} min",
+      "hoursMinutes": "{{hours}} h {{minutes}} min"
+    },
+    "lastFast": "Último ayuno {{duration}}",
+    "lastFastWithDate": "Último ayuno {{duration}} · {{date}}",
+    "today": "hoy",
+    "yesterday": "ayer"
+  },
+  "fastingProtocol": {
+    "fastStarted": "Ayuno iniciado",
+    "failedStart": "No se pudo iniciar el ayuno",
+    "startTitle": "Iniciar un ayuno",
+    "hourFast": "horas de ayuno",
+    "startTime": "Hora de inicio",
+    "starting": "Iniciando...",
+    "startAction": "Iniciar ayuno",
+    "accessibility": {
+      "startTime": "Hora de inicio: {{time}}",
+      "decreaseHours": "Reducir la duración del ayuno",
+      "durationHours": "Duración del ayuno en horas",
+      "increaseHours": "Aumentar la duración del ayuno"
+    },
+    "presets": {
+      "leangains": {
+        "name": "16:8 Leangains",
+        "description": "Sáltate el desayuno y come en una ventana de 8 horas."
+      },
+      "warrior18": {
+        "name": "18:6 Warrior",
+        "description": "Ayuno más exigente con una ventana de comida de 6 horas."
+      },
+      "warrior20": {
+        "name": "20:4 Warrior",
+        "description": "Come una comida grande o reparte las calorías en 4 horas."
+      },
+      "circadian": {
+        "name": "Ritmo circadiano",
+        "description": "Ayuna desde el atardecer hasta la mañana."
+      },
+      "custom": {
+        "name": "Ayuno personalizado",
+        "description": "Define tu propia duración de ayuno."
+      }
+    }
+  },
+  "fastingEdit": {
+    "fastEnded": "Ayuno terminado",
+    "failedEnd": "No se pudo terminar el ayuno",
+    "endTitle": "Terminar ayuno",
+    "time": "Hora",
+    "fasted": "{{duration}} de ayuno",
+    "started": "Iniciado",
+    "ended": "Terminado",
+    "beforeEnd": "La hora de inicio debe ser anterior a la de fin.",
+    "ending": "Terminando...",
+    "endAction": "Terminar ayuno",
+    "updated": "Ayuno actualizado",
+    "failedUpdate": "No se pudo actualizar el ayuno",
+    "deleted": "Ayuno eliminado",
+    "failedDelete": "No se pudo eliminar el ayuno",
+    "deleteTitle": "¿Eliminar ayuno?",
+    "deleteMessage": "Esto no se puede deshacer.",
+    "editTitle": "Editar ayuno",
+    "saving": "Guardando...",
+    "saveChanges": "Guardar cambios",
+    "deleting": "Eliminando...",
+    "deleteAction": "Eliminar ayuno"
+  },
+  "fastingHistory": {
+    "deleteTitle": "¿Eliminar ayuno?",
+    "deleteMessage": "Esto no se puede deshacer.",
+    "deleted": "Ayuno eliminado",
+    "failedDelete": "No se pudo eliminar el ayuno",
+    "title": "Historial de ayunos",
+    "hint": "Toca para editar · desliza a la izquierda para eliminar",
+    "empty": "Aún no hay ayunos anteriores."
+  },
+  "exerciseDetail": {
+    "sharedPublicly": "Ejercicio compartido públicamente",
+    "madePrivate": "Ejercicio hecho privado",
+    "makePublicTitle": "¿Hacer público?",
+    "makePublicMessage": "Este ejercicio pasará a ser visible para todos los usuarios de este servidor.",
+    "makePublic": "Hacer público",
+    "deleted": "Ejercicio eliminado",
+    "addFailed": "No se pudo añadir el ejercicio",
+    "summary": "Resumen",
+    "history": "Historial",
+    "howTo": "Cómo hacerlo",
+    "editExercise": "Editar ejercicio",
+    "addExercise": "Añadir ejercicio",
+    "instructions": "Instrucciones",
+    "description": "Descripción",
+    "showMore": "Ver más",
+    "best": "Mejor ({{unit}})",
+    "last": "Último ({{unit}})",
+    "caloriesPerHour": "Cal / hora",
+    "equipment": "Equipamiento",
+    "primaryMuscles": "Músculos principales",
+    "secondaryMuscles": "Músculos secundarios",
+    "details": "Detalles del ejercicio",
+    "category": "Categoría",
+    "level": "Nivel",
+    "force": "Fuerza",
+    "mechanic": "Mecánica",
+    "source": "Fuente",
+    "starting": "Iniciando…",
+    "startWorkout": "Empezar entrenamiento",
+    "logExercise": "Registrar ejercicio",
+    "deleting": "Eliminando...",
+    "deleteExercise": "Eliminar ejercicio",
+    "makePrivate": "Hacer privado",
+    "shareWithPublic": "Compartir con el público"
+  },
+  "exerciseSearch": {
+    "title": "Ejercicios",
+    "tabs": {
+      "search": "Buscar",
+      "online": "En línea"
+    },
+    "sections": {
+      "recent": "Recientes",
+      "popular": "Populares"
+    },
+    "search": {
+      "placeholder": "Buscar ejercicios..."
+    },
+    "errors": {
+      "failedToAddExercise": "No se pudo añadir el ejercicio"
+    },
+    "actions": {
+      "viewDetails": "Ver detalles del ejercicio",
+      "loadMoreFailed": "No se pudo cargar más. Toca para reintentar",
+      "loadMore": "Cargar más",
+      "clearSearch": "Borrar búsqueda"
+    },
+    "states": {
+      "failedToSearch": "No se pudieron buscar ejercicios",
+      "noMatches": "No se encontraron ejercicios coincidentes",
+      "connectToView": "Conéctate a un servidor para ver ejercicios",
+      "failedToLoad": "No se pudieron cargar los ejercicios",
+      "searchToStart": "Busca un ejercicio para empezar",
+      "failedToSearchProvider": "No se pudo buscar en {{provider}}",
+      "connectToSearchOnline": "Conéctate a un servidor para buscar ejercicios en línea",
+      "failedToLoadProviders": "No se pudieron cargar los proveedores",
+      "noProviders": "No hay proveedores de ejercicios en línea configurados",
+      "searchProvider": "Buscar ejercicios en {{provider}}"
+    },
+    "filter": {
+      "noun": "ejercicios",
+      "all": "Todos",
+      "mine": "Míos",
+      "family": "Familia",
+      "public": "Públicos",
+      "show": "Mostrar",
+      "accessibility": "Filtrar {{noun}}, filtrado a {{filter}}",
+      "emptyTitle": "No hay {{noun}} en {{filter}}",
+      "emptySubtitle": "Cambia el filtro para ver tus otros {{noun}}.",
+      "showAll": "Mostrar todos"
+    },
+    "accessibility": {
+      "provider": "Proveedor de ejercicios {{provider}}",
+      "loadingMore": "Cargando más ejercicios"
+    }
+  },
+  "exerciseLibrary": {
+    "title": "Ejercicios",
+    "search": "Buscar ejercicios...",
+    "noServer": "Sin servidor configurado",
+    "configure": "Configura la conexión con tu servidor en Ajustes para ver tu biblioteca de ejercicios.",
+    "go": "Ir a Ajustes",
+    "loading": "Cargando ejercicios...",
+    "failed": "No se pudieron cargar los ejercicios",
+    "retry": "Reintentar",
+    "check": "Comprueba tu conexión e inténtalo de nuevo.",
+    "noMatch": "No se encontraron ejercicios coincidentes",
+    "noItems": "No se encontraron ejercicios",
+    "trySearch": "Prueba con otro término de búsqueda para encontrar ejercicios guardados.",
+    "empty": "Los ejercicios que guardes o registres aparecerán aquí.",
+    "moreFailed": "No se pudieron cargar más ejercicios.",
+    "view": "Ver ejercicio",
+    "noun": "ejercicios"
+  },
+  "exerciseMutations": {
+    "errors": {
+      "deleteFailed": "No se pudo eliminar",
+      "saveWorkout": "No se pudo guardar el entrenamiento",
+      "updateWorkout": "No se pudo actualizar el entrenamiento",
+      "saveActivity": "No se pudo guardar la actividad",
+      "updateActivity": "No se pudo actualizar la actividad",
+      "createExercise": "No se pudo crear el ejercicio",
+      "updateExercise": "No se pudo actualizar el ejercicio",
+      "deleteExercise": "No se pudo eliminar el ejercicio",
+      "editPermission": "No tienes permiso para editar este ejercicio.",
+      "deletePermission": "No tienes permiso para eliminar este ejercicio."
+    },
+    "confirm": {
+      "deleteWorkoutTitle": "¿Eliminar entrenamiento?",
+      "deleteWorkoutMessage": "Este entrenamiento y todos sus ejercicios se eliminarán permanentemente.",
+      "deleteActivityTitle": "¿Eliminar actividad?",
+      "deleteActivityMessage": "Esta actividad se eliminará permanentemente.",
+      "deleteExerciseTitle": "¿Eliminar ejercicio?",
+      "deleteExerciseMessage": "Este ejercicio se quitará de tu biblioteca. Las sesiones ya registradas se conservan."
+    }
+  },
+  "exerciseSummary": {
+    "tapToAdd": "Toca para añadir ejercicio",
+    "addExercise": "Añadir ejercicio",
+    "title": "Ejercicio"
+  },
+  "exerciseHistory": {
+    "noSetData": "Sin datos de series",
+    "loadError": "No se pudo cargar el historial.",
+    "empty": "Aún no hay sesiones registradas."
+  },
+  "exerciseEditing": {
+    "removeTitle": "¿Quitar ejercicio?",
+    "removeMessage": "¿Quitar «{{name}}» y todas sus series?"
+  },
+  "exerciseImage": {
+    "playAnimation": "Reproducir animación del ejercicio",
+    "pauseAnimation": "Pausar animación del ejercicio"
+  },
+  "exerciseRow": {
+    "deleteExercise": "Eliminar ejercicio"
+  },
+  "restPeriod": {
+    "title": "Periodo de descanso",
+    "rest": "Descanso {{duration}}",
+    "off": "Desactivado",
+    "custom": "Personalizado",
+    "accessibilityLabel": "Descanso {{duration}}",
+    "buttonLabel": "Descanso {{duration}}",
+    "buttonHint": "Abre la selección del periodo de descanso"
+  },
+  "exerciseSetRest": {
+    "overwriteTitle": "¿Sobrescribir los tiempos de descanso?",
+    "overwriteMessage": "Estas series tienen tiempos de descanso distintos. ¿Poner todas a {{rest}}?",
+    "all": "Todas",
+    "roundRest": "Descanso de ronda",
+    "rest": "Descanso",
+    "round": "Ronda",
+    "set": "Serie"
+  },
+  "cardioEffort": {
+    "effort": "Esfuerzo de {{name}}",
+    "duration": "Duración (min)",
+    "distance": "Distancia ({{unit}})",
+    "durationHint": "Duración en minutos para {{name}}",
+    "distanceHint": "Distancia en {{unit}} para {{name}}",
+    "markIncomplete": "Marcar {{name}} como incompleto",
+    "complete": "Completar {{name}}"
   }
 }
