@@ -3844,5 +3844,251 @@
     "editFoodTitle": "Editar alimento",
     "adjustNutritionTitle": "Ajustar nutrición",
     "saveNutritionFuture": "Guardar nutrición para uso futuro"
+  },
+  "importHistory": {
+    "paused": {
+      "quota": "Se alcanzó el límite diario de historial de {{source}}. Tu progreso se ha guardado. Reanuda mañana para continuar donde lo dejaste.",
+      "deviceLocked": "Tu dispositivo se bloqueó durante la importación, así que los datos de salud dejaron de poder leerse. Desbloquea el dispositivo y reanuda.",
+      "appInactive": "La app pasó a segundo plano durante la importación. Mantenla abierta y desbloqueada, luego reanuda.",
+      "serverChanged": "El servidor activo cambió durante la importación. Vuelve a ese servidor para reanudar, o empieza de nuevo para importar en este.",
+      "uploadFailed": "La subida a tu servidor falló{{details}}. Comprueba tu conexión y reanuda para reintentar.",
+      "windowFailed": "La lectura de datos de salud falló{{details}}. Reanuda para reintentar desde donde se detuvo.",
+      "alreadyRunningResume": "Ahora mismo hay otra sincronización en curso. Espera un momento a que termine y luego reanuda."
+    },
+    "idle": {
+      "noHistory": "No se encontraron datos históricos en {{source}} para tus métricas activadas.",
+      "noMetrics": "No hay métricas activadas. Activa primero las métricas que quieras en Sincronización de salud.",
+      "noServer": "No hay ningún servidor activo configurado.",
+      "serverChanged": "El servidor activo cambió durante la importación, así que se detuvo. Empieza de nuevo para importar en el servidor actual.",
+      "alreadyRunning": "Ahora mismo hay otra sincronización en curso. Espera un momento a que termine y luego inicia la importación.",
+      "title": "Importa tu historial de salud",
+      "description": "Importa todos tus datos anteriores de {{source}} a SparkyFitness con un rellenado único de cada métrica activada, desde tus primeros datos registrados hasta hoy.",
+      "source": "Fuente",
+      "dataTypes": "Tipos de datos activados",
+      "timing": "Tarda unos minutos. Puedes pausar en cualquier momento y continuar donde lo dejaste."
+    },
+    "time": {
+      "underMinute": "Menos de un minuto",
+      "hoursMinutes": "{{formattedHours}} h {{formattedMinutes}} min",
+      "hours": "{{formattedHours}} h",
+      "minutes_one": "{{formattedCount}} min",
+      "minutes_other": "{{formattedCount}} min"
+    },
+    "progress": {
+      "recordsWritten": "Registros escritos",
+      "timeRemaining": "Tiempo restante",
+      "around": "Alrededor de {{date}}",
+      "ofDays_one": "de {{formattedCount}} día",
+      "ofDays_other": "de {{formattedCount}} días"
+    },
+    "actions": {
+      "start": "Iniciar importación",
+      "pausing": "Pausando…",
+      "pause": "Pausar importación",
+      "resume": "Reanudar",
+      "startOver": "Empezar de nuevo"
+    },
+    "syncFinishing": "Una sincronización aún está terminando. Esto se activará en un momento.",
+    "syncFinishingPlural": "Una sincronización aún está terminando. Estos se activarán en un momento.",
+    "healthConnectUnavailable": "Health Connect no está disponible. Asegúrate de que está instalado y activado.",
+    "healthKitUnavailable": "Los datos de salud (HealthKit) no están disponibles. Activa el acceso a Salud en la app Salud de iOS.",
+    "androidLimit": "Health Connect limita cuántos datos históricos pueden leer las apps cada día. Si se alcanza ese límite, la importación se reanuda automáticamente más tarde donde se quedó.",
+    "running": {
+      "scanning": "Escaneando tu historial…",
+      "finding": "Buscando tus primeros datos registrados",
+      "limitedAccess": "No se concedió el acceso a todos los datos anteriores, así que la importación solo puede llegar unos 30 días atrás. Concédelo en los ajustes de Health Connect y empieza de nuevo para ir más atrás.",
+      "keepOpen": "Mantén la app abierta y tu dispositivo desbloqueado mientras se ejecuta la importación.",
+      "finishingPause": "Terminando y luego pausando."
+    },
+    "interrupted": {
+      "selectionChanged": "Tu selección de métricas ha cambiado desde que empezó esta importación. Reanudar continúa con la selección original y Empezar de nuevo usa la actual.",
+      "savedDays": "Los días ya importados están guardados. Empezar de nuevo los descarta y reimporta desde el día 1."
+    },
+    "done": {
+      "complete": "Importación completada",
+      "completed": "Completada",
+      "nextSync": "Los datos nuevos se recogerán automáticamente con la sincronización normal. Ejecuta otra importación solo si activas métricas de salud adicionales.",
+      "daysImported_one": "{{formattedCount}} día importado",
+      "daysImported_other": "{{formattedCount}} días importados"
+    }
+  },
+  "syncScreen": {
+    "healthConnectSettings": "Ajustes de Health Connect",
+    "healthAppSettings": "Ajustes de la app Salud",
+    "title": "Sincronización de datos de salud",
+    "syncNow": "Sincronizar ahora",
+    "syncing": "Sincronizando…",
+    "sendToServer": "Envía tus datos de salud a tu servidor",
+    "lastSynced": "Última sincronización:",
+    "commonError": "Error",
+    "timeRanges": {
+      "today": "Hoy",
+      "last24Hours": "Últimas 24 horas",
+      "last3Days": "Últimos 3 días",
+      "last7Days": "Últimos 7 días",
+      "last30Days": "Últimos 30 días",
+      "last90Days": "Últimos 90 días",
+      "last6Months": "Últimos 6 meses",
+      "lastYear": "Último año"
+    },
+    "permissionRequired": {
+      "title": "Permiso necesario",
+      "backgroundAccess": "Se necesita permiso de acceso en segundo plano para la sincronización en segundo plano. Concédelo en los ajustes de Health Connect.",
+      "allTitle": "Permisos necesarios",
+      "allMessage": "Algunos permisos no se concedieron. Activa todos los permisos de salud necesarios en {{settings}} para sincronizar todos los datos."
+    },
+    "permissionError": {
+      "title": "Error de permisos",
+      "backgroundAccess": "No se pudo solicitar el permiso de acceso en segundo plano: {{error}}",
+      "metricRead": "No se pudieron solicitar los permisos de {{metric}}: {{error}}",
+      "metricWrite": "No se pudo solicitar el permiso de escritura de {{metric}}: {{error}}",
+      "allMetrics": "Se produjo un error al solicitar los permisos de salud: {{error}}"
+    },
+    "permissionDenied": {
+      "title": "Permiso denegado",
+      "read": "Concede el permiso de {{metric}} en {{settings}}.",
+      "write": "Concede el permiso de escritura de {{metric}} en {{settings}}."
+    },
+    "removal": {
+      "removed": "Quitado",
+      "deleted": "Datos de SparkyFitness eliminados de {{store}}.",
+      "partial": "Quitado parcialmente",
+      "partialMessage": "Algunos registros no se pudieron eliminar de {{store}}.",
+      "errorMessage": "No se pudieron quitar los datos de {{store}}.",
+      "confirmTitle": "Quitar todos los datos de {{store}}",
+      "confirmMessage": "¿Eliminar todos los registros de nutrición e hidratación que SparkyFitness escribió en {{store}} y desactivar la escritura? Tu diario de SparkyFitness y los registros de otras apps no se ven afectados."
+    },
+    "range": {
+      "title": "Intervalo de sincronización",
+      "selectTitle": "Seleccionar intervalo de sincronización",
+      "description": "Controla cuántos datos se incluirán en la próxima sincronización",
+      "largeWarning": "Los intervalos de tiempo grandes pueden tardar un rato."
+    },
+    "unavailable": {
+      "healthConnect": "Health Connect no está disponible. Asegúrate de que está instalado y activado.",
+      "healthKit": "Los datos de salud (HealthKit) no están disponibles. Activa el acceso a Salud en la app Salud de iOS."
+    },
+    "import": {
+      "title": "Importar historial completo",
+      "subtitle": "Importación única de todos los datos de salud anteriores"
+    },
+    "report": {
+      "generating": "Generando…",
+      "title": "Informe de datos de salud",
+      "subtitle": "Exporta datos de salud anonimizados para informes de errores",
+      "privacy": "Lee las últimas 4 horas de datos de Health Connect para diagnóstico.\nLos valores se redondean por privacidad. No se envía nada automáticamente.",
+      "error": "No se pudo generar el informe de datos de salud: {{error}}"
+    }
+  },
+  "logScreen": {
+    "title": "Registros",
+    "all": "Todos",
+    "clearLogs": "Borrar registros",
+    "filterSaveFailed": "No se pudo guardar el filtro de registros.",
+    "clearTitle": "Borrar registros",
+    "clearMessage": "¿Seguro que quieres borrar todos los registros?",
+    "copied": "Copiado",
+    "copiedMessage": "Entrada de registro copiada al portapapeles",
+    "noLogs": "Aún no hay registros.",
+    "noMatchingLogs": "Ningún registro coincide con el filtro actual.",
+    "showingLogs_one": "Mostrando {{count}} registro",
+    "showingLogs_other": "Mostrando {{count}} registros",
+    "status": {
+      "error": "Error",
+      "warning": "Advertencia",
+      "info": "Info",
+      "debug": "Depuración"
+    },
+    "clipboard": {
+      "status": "Estado",
+      "message": "Mensaje",
+      "details": "Detalles",
+      "timestamp": "Marca de tiempo"
+    }
+  },
+  "serverSettingsUi": {
+    "activeServerChanged": "Servidor activo cambiado",
+    "setActiveFailed": "No se pudo establecer la configuración de servidor activa: {{error}}",
+    "configurationDeleted": "Configuración de servidor eliminada.",
+    "configurationDeletedToast": "Configuración de servidor eliminada",
+    "deleteFailed": "No se pudo eliminar la configuración de servidor: {{error}}",
+    "noServerConfiguredTitle": "Sin servidor configurado",
+    "noServerConfiguredMessage": "Añade primero un servidor.",
+    "openDashboardFailed": "No se pudo abrir el panel web: {{error}}",
+    "connected": "Conectado",
+    "connectionFailed": "Conexión fallida",
+    "selectAction": "Selecciona una acción",
+    "setActive": "Establecer como activo",
+    "configure": "Configurar",
+    "activeConfiguration": "Configuración activa",
+    "activeServer": "Servidor activo",
+    "optionsFor": "Opciones para {{url}}",
+    "openWeb": "Abrir web",
+    "testConnection": "Probar conexión",
+    "otherServers": "Otros servidores",
+    "noServersConfigured": "Aún no hay servidores configurados.",
+    "addConfiguration": "Añadir nueva configuración"
+  },
+  "charts": {
+    "weight": {
+      "title": "Peso",
+      "loadFailed": "No se pudieron cargar los datos de peso"
+    },
+    "steps": {
+      "title": "Pasos",
+      "loadFailed": "No se pudieron cargar los datos de pasos",
+      "empty": "No hay datos de pasos para este periodo",
+      "tooltip_one": "{{formattedCount}} paso",
+      "tooltip_other": "{{formattedCount}} pasos"
+    },
+    "loading": "Cargando gráfica...",
+    "weightLoadFailed": "No se pudieron cargar los datos de peso",
+    "stepsLoadFailed": "No se pudieron cargar los datos de pasos",
+    "noStepData": "No hay datos de pasos para este periodo",
+    "trendLoadFailed": "No se pudieron cargar los datos de tendencia",
+    "noLoggedIntake": "No hay ingesta registrada para este periodo",
+    "consumed": "consumido",
+    "tooltip": "{{value}}{{unit}} consumido · {{date}}",
+    "nutrients": {
+      "loadFailed": "No se pudieron cargar los datos de tendencia",
+      "empty": "No hay ingesta registrada para este periodo"
+    },
+    "bbt": {
+      "tooltip": "Pulsa la línea para ver detalles",
+      "empty": "Registra tu temperatura diaria para ver tu gráfica de temperatura basal."
+    }
+  },
+  "passkeySettings": {
+    "loadFailed": "No se pudieron cargar las claves de acceso: {{error}}",
+    "registered": "¡Clave de acceso registrada correctamente!",
+    "cancelledTitle": "Cancelado",
+    "cancelledMessage": "El registro de la clave de acceso se canceló.",
+    "registrationFailedTitle": "Error de registro",
+    "requiredTitle": "Obligatorio",
+    "nameRequired": "Introduce un nombre para esta clave de acceso.",
+    "nameAlreadyUsedTitle": "Nombre ya usado",
+    "nameAlreadyUsedMessage": "Ya tienes una clave de acceso llamada «{{name}}». Elige un nombre diferente.",
+    "noActiveSession": "No hay sesión activa. Inicia sesión de nuevo.",
+    "deleteTitle": "Eliminar clave de acceso",
+    "deleteMessage": "¿Seguro que quieres eliminar «{{name}}»?",
+    "unnamed": "Clave de acceso sin nombre",
+    "deletedTitle": "Eliminada",
+    "deletedMessage": "La clave de acceso se ha quitado.",
+    "deleteFailed": "No se pudo eliminar la clave de acceso: {{error}}",
+    "sessionOnly": "Las claves de acceso solo se admiten en servidores que usan autenticación basada en sesión.",
+    "apiKeyUnsupported": "Si te conectas mediante una clave API, no se pueden usar claves de acceso.",
+    "noneRegistered": "No hay claves de acceso registradas",
+    "noneHint": "Añade este dispositivo o credenciales biométricas para iniciar sesión rápidamente la próxima vez.",
+    "registeredOn": "Registrada el {{date}}",
+    "deleteAccessibility": "Eliminar clave de acceso",
+    "add": "Añadir clave de acceso",
+    "securityHint": "Las claves de acceso te permiten iniciar sesión de forma segura usando {{methods}} sin introducir tu contraseña.",
+    "registerTitle": "Registrar clave de acceso",
+    "nameHint": "Ponle un nombre reconocible a esta clave de acceso para identificarla más tarde (p. ej. {{example}}).",
+    "namePlaceholder": "p. ej. {{example}}",
+    "iosAuthMethods": "Face ID, Touch ID o el PIN de tu dispositivo",
+    "androidAuthMethods": "tu huella, el desbloqueo facial o el PIN de tu dispositivo",
+    "iosNameExample": "Mi iPhone",
+    "androidNameExample": "Mi teléfono Android"
   }
 }
