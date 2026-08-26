@@ -110,14 +110,17 @@ async function getSyncedSourceSummary(
       for (const row of result.rows) {
         const source: string = row.source;
         const count: number = row.count;
-        const existing = summary.get(source) ?? {
+        // Merge case variants (e.g. 'Garmin' + 'garmin') under one entry so the
+        // reported totals match what a single case-insensitive delete removes.
+        const key = source.toLowerCase();
+        const existing = summary.get(key) ?? {
           source,
           totalCount: 0,
           byTable: {},
         };
         existing.totalCount += count;
-        existing.byTable[table] = count;
-        summary.set(source, existing);
+        existing.byTable[table] = (existing.byTable[table] ?? 0) + count;
+        summary.set(key, existing);
       }
     }
     return Array.from(summary.values()).sort(
@@ -147,8 +150,11 @@ async function deleteSyncedDataBySource(
     const byTable: Record<string, number> = {};
     let totalDeleted = 0;
     for (const [table, column] of SYNCED_TABLE_COLUMNS) {
+      // Match case-insensitively: the app stamps provider names inconsistently
+      // (e.g. 'Garmin' vs 'garmin'), so a case-sensitive delete would clear one
+      // casing and silently leave the other behind.
       const result = await client.query(
-        `DELETE FROM ${table} WHERE user_id = $1 AND ${column} = $2`,
+        `DELETE FROM ${table} WHERE user_id = $1 AND LOWER(${column}) = LOWER($2)`,
         [userId, source]
       );
       const deleted = result.rowCount ?? 0;

@@ -12,21 +12,21 @@ import { formatZodError } from './errors.js';
  * system prompt's dormant-domain listing.
  */
 export const CATEGORY_SUMMARIES: Record<ChatToolCategorySlug, string> = {
-  food: 'log meals/water, search foods, view diaries (tools: sparky_manage_food, sparky_list_foods, sparky_get_food_details, sparky_search_foods, sparky_get_food_diary, sparky_get_nutrition_summary, sparky_get_recent_food_entries, sparky_get_food_usage)',
+  food: 'log meals/water, search foods, view diaries, favorites, meal plans, custom nutrients, water containers, allergens, and barcode lookup (tools: sparky_manage_food, sparky_list_foods, sparky_get_food_details, sparky_search_foods, sparky_get_food_diary, sparky_get_nutrition_summary, sparky_get_recent_food_entries, sparky_get_food_usage, sparky_manage_favorites, sparky_manage_meal_plans, sparky_manage_custom_nutrients, sparky_manage_water_containers, sparky_manage_allergens, sparky_get_barcode)',
   exercise:
-    'log workouts, search exercises, view exercise diaries (tools: sparky_manage_exercise, sparky_list_exercises, sparky_get_exercise_details, sparky_search_exercises, sparky_get_exercise_diary, sparky_get_daily_exercise_totals, sparky_get_recent_exercise_entries, sparky_get_exercise_usage, sparky_get_exercise_progress)',
+    'log workouts, search exercises, view exercise diaries, exercise stats/analytics, and workout plan templates (tools: sparky_manage_exercise, sparky_list_exercises, sparky_get_exercise_details, sparky_search_exercises, sparky_get_exercise_diary, sparky_get_daily_exercise_totals, sparky_get_recent_exercise_entries, sparky_get_exercise_usage, sparky_get_exercise_progress, sparky_get_exercise_stats, sparky_manage_workout_plans)',
   checkin:
-    'log weight, measurements, mood, sleep, fasting, check-ins (tools: sparky_manage_checkin)',
+    'log weight, measurements, mood, sleep, fasting, check-ins, progress photos, and sleep-science analytics (tools: sparky_manage_checkin, sparky_manage_progress_photos, sparky_get_sleep_science)',
   goals:
     'view/change goals and targets (tools: sparky_manage_goals, sparky_get_goal_snapshot)',
   reports:
-    'daily/weekly summaries, progress reports, trends, TDEE (tools: sparky_get_report, sparky_get_daily_report)',
+    'daily/weekly summaries, progress reports, trends, TDEE, and the daily dashboard calorie-balance summary (tools: sparky_get_report, sparky_get_daily_report, sparky_get_dashboard)',
   coaching:
     'coaching plans, nudges, patterns, and check-in wizard (tools: sparky_generate_coaching_plan, sparky_get_health_summary, sparky_analyze_trends, sparky_get_30_day_trends, sparky_detect_patterns, sparky_check_engagement, sparky_get_logging_streak, sparky_get_contextual_nudge, sparky_daily_checkin_wizard)',
   vision:
     'analyze food photos and scan nutrition labels (tools: sparky_analyze_food_image, sparky_scan_label)',
   profile:
-    'profile details, preferences, units, timezone, habits (tools: sparky_manage_profile, sparky_manage_habits)',
+    'profile details, preferences, units, timezone, habits, connected integrations, and synced-data listing (tools: sparky_manage_profile, sparky_manage_habits, sparky_get_integrations, sparky_get_synced_data)',
   medications:
     'medication and GLP-1 tracking (tools: sparky_manage_medications)',
 };

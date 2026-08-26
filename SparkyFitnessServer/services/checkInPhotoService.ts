@@ -249,7 +249,7 @@ export const getPhotoFileById = async (
 export const deletePhoto = async (
   userId: string,
   photoId: string
-): Promise<void> => {
+): Promise<boolean> => {
   const client = await getClient(userId);
   try {
     const result = await client.query(
@@ -258,7 +258,7 @@ export const deletePhoto = async (
       [photoId, userId]
     );
     if (result.rows.length === 0) {
-      return;
+      return false;
     }
     const filePath = resolveFilePath(result.rows[0].file_path);
     try {
@@ -276,6 +276,7 @@ export const deletePhoto = async (
         );
       }
     }
+    return true;
   } finally {
     client.release();
   }

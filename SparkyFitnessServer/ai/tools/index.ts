@@ -7,20 +7,33 @@ import {
   type ChatToolCategorySlug,
 } from '@workspace/shared';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
+import { buildAllergenTools } from './allergenTools.js';
 import { buildAskTools } from './askTools.js';
 import { buildCheckinTools } from './checkinTools.js';
+import { buildCustomNutrientTools } from './customNutrientTools.js';
+import { buildWaterContainerTools } from './waterContainerTools.js';
 import { buildCoachTools } from './coachTools.js';
 import { buildEngagementTools } from './engagementTools.js';
+import { buildExerciseStatsTools } from './exerciseStatsTools.js';
 import { buildExerciseTools } from './exerciseTools.js';
+import { buildSleepScienceTools } from './sleepScienceTools.js';
+import { buildIntegrationsTools } from './integrationsTools.js';
+import { buildSyncedDataTools } from './syncedDataTools.js';
+import { buildProgressPhotoTools } from './progressPhotoTools.js';
+import { buildBarcodeTools } from './barcodeTools.js';
+import { buildDashboardTools } from './dashboardTools.js';
+import { buildFavoritesTools } from './favoritesTools.js';
 import { buildFoodTools } from './foodTools.js';
 import { buildGoalTools } from './goalTools.js';
 import { buildHabitTools } from './habitTools.js';
+import { buildMealPlanTools } from './mealPlansTools.js';
 import { buildMedicationTools } from './medicationTools.js';
 import { ENABLE_TOOLS_TOOL_NAME, buildMetaTools } from './metaTools.js';
 import { buildProfileTools } from './profileTools.js';
 import { buildReportTools } from './reportTools.js';
 import { buildVisionTools } from './visionTools.js';
 import { buildWizardTools } from './wizardTools.js';
+import { buildWorkoutPlanTools } from './workoutPlanTools.js';
 
 /**
  * Tool surfaces the chatbot can expose:
@@ -45,9 +58,25 @@ const CATEGORY_BUILDERS: Record<
   ChatToolCategorySlug,
   ((userId: string, tz: string) => ToolMap)[]
 > = {
-  exercise: [(u, tz) => buildExerciseTools(u, tz)],
-  food: [(u, tz) => buildFoodTools(u, tz)],
-  checkin: [(u, tz) => buildCheckinTools(u, tz)],
+  exercise: [
+    (u, tz) => buildExerciseTools(u, tz),
+    (u, tz) => buildExerciseStatsTools(u, tz),
+    (u, tz) => buildWorkoutPlanTools(u, tz),
+  ],
+  food: [
+    (u, tz) => buildFoodTools(u, tz),
+    (u, tz) => buildFavoritesTools(u, tz),
+    (u, tz) => buildMealPlanTools(u, tz),
+    (u, tz) => buildCustomNutrientTools(u, tz),
+    (u, tz) => buildWaterContainerTools(u, tz),
+    (u, tz) => buildAllergenTools(u, tz),
+    (u, tz) => buildBarcodeTools(u, tz),
+  ],
+  checkin: [
+    (u, tz) => buildCheckinTools(u, tz),
+    (u, tz) => buildProgressPhotoTools(u, tz),
+    (u, tz) => buildSleepScienceTools(u, tz),
+  ],
   goals: [(u, tz) => buildGoalTools(u, tz)],
   coaching: [
     (u, tz) => buildCoachTools(u, tz),
@@ -55,8 +84,16 @@ const CATEGORY_BUILDERS: Record<
     (u) => buildWizardTools(u),
   ],
   vision: [(u) => buildVisionTools(u)],
-  profile: [(u) => buildProfileTools(u), (u, tz) => buildHabitTools(u, tz)],
-  reports: [(u, tz) => buildReportTools(u, tz)],
+  profile: [
+    (u) => buildProfileTools(u),
+    (u, tz) => buildHabitTools(u, tz),
+    (u, tz) => buildIntegrationsTools(u, tz),
+    (u, tz) => buildSyncedDataTools(u, tz),
+  ],
+  reports: [
+    (u, tz) => buildReportTools(u, tz),
+    (u, tz) => buildDashboardTools(u, tz),
+  ],
   medications: [(u, tz) => buildMedicationTools(u, tz)],
 };
 

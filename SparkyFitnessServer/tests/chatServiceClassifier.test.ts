@@ -80,6 +80,19 @@ describe('getSystemPrompt dormant-domain listing', () => {
       'vision',
       'profile',
       'medications',
+      'allergens',
+      'favorites',
+      'meal_plans',
+      'custom_nutrients',
+      'water_containers',
+      'workout_plans',
+      'exercise_stats',
+      'sleep_science',
+      'integrations',
+      'synced_data',
+      'progress_photos',
+      'dashboard',
+      'barcode',
     ]);
     expect(prompt).not.toContain('sparky_enable_tools');
   });
@@ -112,6 +125,19 @@ describe('buildEscalationPrepareStep', () => {
     vision: ['sparky_analyze_food_image'],
     profile: ['sparky_manage_profile'],
     medications: ['sparky_manage_medications'],
+    allergens: ['sparky_manage_allergens'],
+    favorites: ['sparky_manage_favorites'],
+    meal_plans: ['sparky_manage_meal_plans'],
+    custom_nutrients: ['sparky_manage_custom_nutrients'],
+    water_containers: ['sparky_manage_water_containers'],
+    workout_plans: ['sparky_manage_workout_plans'],
+    exercise_stats: ['sparky_get_exercise_stats'],
+    sleep_science: ['sparky_get_sleep_science'],
+    integrations: ['sparky_get_integrations'],
+    synced_data: ['sparky_get_synced_data'],
+    progress_photos: ['sparky_manage_progress_photos'],
+    dashboard: ['sparky_get_dashboard'],
+    barcode: ['sparky_get_barcode'],
   };
   const base = ['sparky_manage_food', 'sparky_enable_tools'];
 

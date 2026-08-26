@@ -69,7 +69,7 @@ describe('syncedDataRepository', () => {
 
       for (const [table, column] of SYNCED_TABLE_COLUMNS) {
         expect(mockQuery).toHaveBeenCalledWith(
-          `DELETE FROM ${table} WHERE user_id = $1 AND ${column} = $2`,
+          `DELETE FROM ${table} WHERE user_id = $1 AND LOWER(${column}) = LOWER($2)`,
           ['user-1', 'garmin']
         );
       }
