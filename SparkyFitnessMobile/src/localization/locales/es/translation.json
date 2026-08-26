@@ -3472,5 +3472,177 @@
     "makesSummary_other": "Rinde {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}",
     "items_one": "{{formattedCount}} elemento",
     "items_other": "{{formattedCount}} elementos"
+  },
+  "workoutPresetDetail": {
+    "toast": {
+      "shared": "Plantilla de entrenamiento compartida públicamente",
+      "private": "Plantilla de entrenamiento hecha privada",
+      "deleted": "Plantilla de entrenamiento eliminada",
+      "duplicated": "Plantilla de entrenamiento duplicada"
+    },
+    "share": {
+      "title": "¿Hacer pública?",
+      "message": "Esta plantilla de entrenamiento pasará a ser visible para todos los usuarios de este servidor.",
+      "confirm": "Hacer pública"
+    },
+    "draft": {
+      "title": "Borrador en curso",
+      "message": "Tienes un borrador de {{type}} sin guardar. ¿Qué quieres hacer?",
+      "workout": "entrenamiento",
+      "activity": "actividad",
+      "resume": "Reanudar borrador",
+      "discard": "Descartar y continuar"
+    },
+    "accessibility": {
+      "makePrivate": "Hacer privada",
+      "sharePublic": "Compartir con el público",
+      "edit": "Editar plantilla de entrenamiento",
+      "duplicate": "Duplicar plantilla de entrenamiento"
+    },
+    "duplicateName": "{{name}} (Copia)",
+    "exerciseCount_other": "{{count}} ejercicios",
+    "actions": {
+      "starting": "Iniciando…",
+      "start": "Empezar entrenamiento",
+      "logPast": "Registrar entrenamiento pasado",
+      "delete": "Eliminar plantilla",
+      "deleting": "Eliminando…",
+      "duplicating": "Duplicando…",
+      "duplicate": "Duplicar plantilla"
+    },
+    "exerciseCount_one": "{{count}} ejercicio"
+  },
+  "workoutPresetForm": {
+    "nameRequired": "Nombre *",
+    "namePlaceholder": "p. ej. Día de empuje",
+    "description": "Descripción",
+    "descriptionPlaceholder": "Notas opcionales sobre esta rutina",
+    "reorderExercises": "Reordenar ejercicios",
+    "newTitle": "Nueva plantilla",
+    "editTitle": "Editar plantilla",
+    "created": "Plantilla de entrenamiento creada",
+    "updated": "Plantilla de entrenamiento actualizada",
+    "errors": {
+      "missingName": "Falta el nombre",
+      "nameRequired": "Introduce un nombre para esta plantilla.",
+      "addExercise": "Añade un ejercicio",
+      "addExerciseSet": "Añade al menos un ejercicio con una serie antes de guardar."
+    }
+  },
+  "workoutPresetMutations": {
+    "errors": {
+      "create": "No se pudo crear la plantilla de entrenamiento",
+      "update": "No se pudo actualizar la plantilla",
+      "delete": "No se pudo eliminar la plantilla",
+      "editPermission": "No tienes permiso para editar esta plantilla.",
+      "deletePermission": "No tienes permiso para eliminar esta plantilla."
+    },
+    "confirm": {
+      "title": "¿Eliminar plantilla de entrenamiento?",
+      "message": "Esta plantilla se eliminará permanentemente de tu biblioteca."
+    }
+  },
+  "workoutPresetLibrary": {
+    "configure": "Configura la conexión con tu servidor en Ajustes para ver tus plantillas de entrenamiento."
+  },
+  "presetLibrary": {
+    "title": "Plantillas de entrenamiento",
+    "search": "Buscar plantillas de entrenamiento...",
+    "noServer": "Sin servidor configurado",
+    "configure": "Configura la conexión con tu servidor en Ajustes para ver tus plantillas de entrenamiento.",
+    "go": "Ir a Ajustes",
+    "loading": "Cargando plantillas de entrenamiento...",
+    "failed": "No se pudieron cargar las plantillas de entrenamiento",
+    "retry": "Reintentar",
+    "check": "Comprueba tu conexión e inténtalo de nuevo.",
+    "noMatch": "No se encontraron plantillas coincidentes",
+    "noItems": "Aún no hay plantillas de entrenamiento",
+    "trySearch": "Prueba con otro término de búsqueda para encontrar una plantilla de entrenamiento.",
+    "empty": "Las plantillas de entrenamiento que crees aparecerán aquí.",
+    "moreFailed": "No se pudieron cargar más plantillas.",
+    "exercise": "ejercicio",
+    "exercises": "ejercicios",
+    "exerciseCount_one": "{{count}} ejercicio",
+    "exerciseCount_other": "{{count}} ejercicios",
+    "noun": "plantillas de entrenamiento"
+  },
+  "presetSearch": {
+    "title": "Empezar entrenamiento",
+    "noun": "plantillas",
+    "viewDetails": "Ver detalles de la plantilla",
+    "searchFailed": "No se pudieron buscar plantillas",
+    "noMatches": "No se encontraron plantillas coincidentes",
+    "loadFailed": "No se pudieron cargar las plantillas",
+    "noPresetsYet": "Aún no hay plantillas",
+    "noPresetsYetMessage": "Empieza un entrenamiento vacío, o guarda un entrenamiento como plantilla para verlo aquí",
+    "searchPlaceholder": "Buscar plantillas...",
+    "emptyWorkout": "Entrenamiento vacío",
+    "pickFirstExercise": "Elige tu primer ejercicio",
+    "noPresetsIn": "No hay {{noun}} en {{filter}}",
+    "changeFilter": "Cambia el filtro para ver tus otras plantillas."
+  },
+  "activityAdd": {
+    "fields": {
+      "activity": "Actividad",
+      "duration": "Duración (min)",
+      "distance": "Distancia ({{unit}})",
+      "calories": "Calorías",
+      "avgHeartRate": "Frecuencia cardíaca media (ppm)",
+      "notes": "Notas",
+      "notesPlaceholder": "Notas opcionales..."
+    },
+    "actions": {
+      "useYesterday": "Usar ayer",
+      "useToday": "Usar hoy",
+      "selectActivity": "Seleccionar actividad"
+    },
+    "labels": {
+      "custom": "Personalizado",
+      "autoCalculated": "Calculado automáticamente"
+    },
+    "accessibility": {
+      "activityName": "Nombre de la actividad",
+      "useYesterday": "Usar ayer",
+      "useToday": "Usar hoy",
+      "editActivityName": "Editar el nombre de la actividad",
+      "selectExercise": "Seleccionar ejercicio",
+      "duration": "Duración en minutos",
+      "distance": "Distancia en {{unit}}",
+      "calories": "Calorías",
+      "avgHeartRate": "Frecuencia cardíaca media en pulsaciones por minuto",
+      "notes": "Notas de la actividad"
+    },
+    "errors": {
+      "saveFailed": "No se pudo guardar la actividad"
+    }
+  },
+  "activityDetail": {
+    "errors": {
+      "saveFailed": "No se pudo guardar la actividad"
+    },
+    "stats": {
+      "duration": "Duración",
+      "calories": "Calorías",
+      "distance": "Distancia",
+      "avgHeartRate": "Frecuencia cardíaca media",
+      "steps": "Pasos",
+      "pace": "Ritmo"
+    },
+    "labels": {
+      "sets": "Series",
+      "set": "Serie",
+      "secondsShort": "Seg",
+      "weight": "Peso",
+      "reps": "Reps",
+      "notes": "Notas"
+    },
+    "placeholders": {
+      "activityName": "Nombre de la actividad",
+      "notes": "Añadir notas..."
+    },
+    "accessibility": {
+      "save": "Guardar",
+      "edit": "Editar actividad"
+    }
   }
 }
