@@ -3,8 +3,7 @@ import { fetchMeasurementsRange } from '../services/api/measurementsApi';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import { measurementsRangeQueryKey } from './queryKeys';
 import { getTodayDate, addDays } from '../utils/dateUtils';
-
-export type StepsRange = '7d' | '30d' | '90d';
+import { RANGE_DAYS, type HealthTrendDateRange } from '../types/healthTrends';
 
 export type StepsDataPoint = {
   day: string;
@@ -16,14 +15,8 @@ export type WeightDataPoint = {
   weight: number;
 };
 
-const RANGE_DAYS: Record<StepsRange, number> = {
-  '7d': 7,
-  '30d': 30,
-  '90d': 90,
-};
-
 interface UseMeasurementsRangeOptions {
-  range: StepsRange;
+  range: HealthTrendDateRange;
   enabled?: boolean;
 }
 

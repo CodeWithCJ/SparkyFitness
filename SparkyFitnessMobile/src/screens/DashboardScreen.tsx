@@ -13,14 +13,14 @@ import {
   usePreferences,
   useMeasurements,
   useWaterIntakeMutation,
-  useMeasurementsRange,
+  useHealthTrends,
   useWidgetSync,
   useCustomNutrients,
   useNutrientDisplayPreferences,
   fastingRootQueryKey,
   medicationsRootQueryKey,
 } from '../hooks';
-import type { StepsRange } from '../hooks';
+import type { HealthTrendDateRange } from '../types/healthTrends';
 import CalorieRingCard from '../components/CalorieRingCard';
 import MacroCard from '../components/MacroCard';
 import DateNavigator from '../components/DateNavigator';
@@ -52,7 +52,7 @@ import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 
-const RANGE_SEGMENTS = (t: (key: string, options: { defaultValue: string }) => string): Segment<StepsRange>[] => [
+const RANGE_SEGMENTS = (t: (key: string, options: { defaultValue: string }) => string): Segment<HealthTrendDateRange>[] => [
   { key: '7d', label: t('ranges.7d', { defaultValue: '7d' }) },
   { key: '30d', label: t('ranges.30d', { defaultValue: '30d' }) },
   { key: '90d', label: t('ranges.90d', { defaultValue: '90d' }) },
@@ -73,7 +73,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const goToNextDay = useDiaryDateStore((s) => s.goToNextDay);
   const goToToday = useDiaryDateStore((s) => s.goToToday);
   const syncTodayRollover = useDiaryDateStore((s) => s.syncTodayRollover);
-  const [stepsRange, setStepsRange] = useState<StepsRange>('7d');
+  const [trendsRange, setTrendsRange] = useState<HealthTrendDateRange>('7d');
   const scrollViewRef = useRef<ScrollView>(null);
   const calendarRef = useRef<CalendarSheetRef>(null);
 
@@ -147,8 +147,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     enabled: isConnected,
   });
 
-  const { stepsData, weightData: rawWeightData, isLoading: isStepsLoading, isError: isStepsError, refetch: refetchSteps } = useMeasurementsRange({
-    range: stepsRange,
+  const trends = useHealthTrends({
+    range: trendsRange,
     enabled: isConnected,
   });
 
@@ -160,10 +160,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   // The chart is a single-axis line graph; if the user picked stones+lbs, plot lbs.
   const weightUnit: 'kg' | 'lbs' =
     (preferences?.default_weight_unit ?? 'kg') === 'kg' ? 'kg' : 'lbs';
-  const weightData = useMemo(() => {
-    if (weightUnit === 'kg') return rawWeightData;
-    return rawWeightData.map(p => ({ ...p, weight: weightFromKg(p.weight, weightUnit) }));
-  }, [rawWeightData, weightUnit]);
+  const weightSeries = useMemo(() => {
+    if (weightUnit === 'kg') return trends.weight;
+    return {
+      ...trends.weight,
+      data: trends.weight.data.map(p => ({ ...p, weight: weightFromKg(p.weight, weightUnit) })),
+    };
+  }, [trends.weight, weightUnit]);
 
   // CSS variable macro colors are theme-aware (lower saturation than hardcoded hex)
   const [proteinColor, carbsColor, fatColor, fiberColor, progressTrackOverfillColor] = useCSSVariable([
@@ -201,7 +204,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       refetch(),
       refetchPreferences(),
       refetchMeasurements(),
-      refetchSteps(),
+      trends.refetch(),
       refetchCustomNutrients(),
       refetchNutrientPrefs(),
       // FastingCard owns its own queries; nudge them on pull-to-refresh.
@@ -210,7 +213,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey }),
     ]);
     setRefreshing(false);
-  }, [refetch, refetchPreferences, refetchMeasurements, refetchSteps, refetchCustomNutrients, refetchNutrientPrefs, queryClient]);
+  }, [refetch, refetchPreferences, refetchMeasurements, trends, refetchCustomNutrients, refetchNutrientPrefs, queryClient]);
 
   // Render content based on state
   const renderContent = () => {
@@ -450,14 +453,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         {medicationsCardVisible && <MedicationsCard navigation={navigation} />}
 
         <Text className="text-text-primary text-xl font-bold mb-2">{t('dashboard.healthTrends', { defaultValue: 'Health Trends' })}</Text>
-        <SegmentedControl segments={RANGE_SEGMENTS(t)} activeKey={stepsRange} onSelect={setStepsRange} />
+        <SegmentedControl segments={RANGE_SEGMENTS(t)} activeKey={trendsRange} onSelect={setTrendsRange} />
 
         <HealthTrendsPager
-          stepsData={stepsData}
-          weightData={weightData}
-          isLoading={isStepsLoading}
-          isError={isStepsError}
-          range={stepsRange}
+          steps={trends.steps}
+          weight={weightSeries}
+          sleep={trends.sleep}
+          range={trendsRange}
           weightUnit={weightUnit}
           activePage={chartPage}
           onPageSelected={setChartPage}

@@ -4015,6 +4015,12 @@
       "tooltip_many": "{{formattedCount}} kroków",
       "tooltip_other": "{{formattedCount}} kroków"
     },
+    "sleep": {
+      "title": "Sen",
+      "loadFailed": "Nie udało się wczytać danych o śnie",
+      "empty": "Brak danych o śnie w tym okresie",
+      "tooltip": "{{formattedHours}} h"
+    },
     "loading": "Wczytywanie wykresu...",
     "weightLoadFailed": "Nie udało się wczytać danych masy ciała",
     "stepsLoadFailed": "Nie udało się wczytać danych kroków",

@@ -1,12 +1,12 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
-import { CartesianChart, Line } from 'victory-native';
-import { useCSSVariable } from 'uniwind';
+import { useTranslation } from 'react-i18next';
 import { formatLocalizedNumber } from '../localization/i18n';
+import { CartesianChart, Bar } from 'victory-native';
+import { useCSSVariable } from 'uniwind';
 import { makeChartFont, formatXLabel7d, formatXLabel30d90d, formatTooltipDate } from './charts/chartFormatting';
-import type { WeightDataPoint } from '../hooks/useMeasurementsRange';
 import type { HealthTrendDateRange } from '../types/healthTrends';
+import type { SleepDataPoint } from '../types/sleep';
 import ChartTouchOverlay, {
   ChartLayoutReporter,
   EMPTY_CHART_TOUCH_LAYOUT,
@@ -14,12 +14,17 @@ import ChartTouchOverlay, {
   type ChartTouchLayout,
 } from './ChartTouchOverlay';
 
-type WeightLineChartProps = {
-  data: WeightDataPoint[];
+type SleepBarChartProps = {
+  data: SleepDataPoint[];
   isLoading: boolean;
   isError: boolean;
   range: HealthTrendDateRange;
-  unit: string;
+};
+
+const INNER_PADDING: Record<HealthTrendDateRange, number> = {
+  '7d': 0.3,
+  '30d': 0.2,
+  '90d': 0.1,
 };
 
 const X_TICK_COUNT: Record<HealthTrendDateRange, number> = {
@@ -32,36 +37,45 @@ const font = makeChartFont(12);
 
 const DEFAULT_TOOLTIP = '';
 
-const WeightTooltip: React.FC<{ text: string }> = ({ text }) => (
+/**
+ * Nightly sleep tops out around 12 hours, so the compact/thousands handling in the
+ * shared `formatChartYLabel` never applies here. One decimal keeps a 7.5h tick readable
+ * without printing the full float tail.
+ */
+const formatHours = (value: number): string =>
+  formatLocalizedNumber(value, { maximumFractionDigits: 1 });
+
+const SleepTooltip: React.FC<{ text: string }> = ({ text }) => (
   <View className="h-6 justify-center mt-3 mb-1">
     <Text className="text-text-secondary text-sm text-center">{text}</Text>
   </View>
 );
 
 /**
- * Builds the tooltip copy from the semantically selected data point. The weight
- * value, unit, and date are derived from the current application locale on
- * every render, so an already-visible tooltip can never retain stale copy after
- * a language switch.
+ * Builds the tooltip copy from the semantically selected data point. The text is derived
+ * from the current `t` translator and the current application locale on every render, so
+ * an already-visible tooltip can never retain stale copy after a language switch.
+ *
+ * The hours unit is a plain (non-plural) key on purpose: a `count`-based key would make
+ * this a plural family, which the i18n audit then requires every catalog to complete.
  */
-export const buildWeightTooltipText = (
-  point: { weight: number; day: string } | undefined,
-  unit: string,
+export const buildSleepTooltipText = (
+  point: SleepDataPoint | undefined,
+  t: ReturnType<typeof useTranslation>['t'],
 ): string => {
   if (!point) return DEFAULT_TOOLTIP;
-  const formattedWeight = formatLocalizedNumber(point.weight, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  return `${formattedWeight} ${unit} · ${formatTooltipDate(point.day)}`;
+  const formattedHours = formatHours(point.hours);
+  return `${t('charts.sleep.tooltip', {
+    formattedHours,
+    defaultValue: '{{formattedHours}} h',
+  })} · ${formatTooltipDate(point.day)}`;
 };
 
-const WeightLineChart: React.FC<WeightLineChartProps> = ({
+const SleepBarChart: React.FC<SleepBarChartProps> = ({
   data,
   isLoading,
   isError,
   range,
-  unit,
 }) => {
   const { t } = useTranslation();
   const [accentColor, textMuted] = useCSSVariable([
@@ -73,27 +87,23 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
     EMPTY_CHART_TOUCH_LAYOUT,
   );
 
-  const hasData = useMemo(() => data.length > 0, [data]);
+  const hasData = useMemo(() => data.some(d => d.hours > 0), [data]);
 
   const formatXLabel = range === '7d' ? formatXLabel7d : formatXLabel30d90d;
 
-  // Reset a lingering selection when the dataset, range, or unit changes. Done
-  // during render (instead of in an effect) so the tooltip is already cleared on
-  // the first render after the data changes.
-  const [tooltipResetKey, setTooltipResetKey] = useState({ data, range, unit });
-  if (
-    tooltipResetKey.data !== data ||
-    tooltipResetKey.range !== range ||
-    tooltipResetKey.unit !== unit
-  ) {
-    setTooltipResetKey({ data, range, unit });
+  // Reset a lingering selection when the dataset or range changes. Done during
+  // render (instead of in an effect) so the tooltip is already cleared on the
+  // first render after the data changes.
+  const [tooltipResetKey, setTooltipResetKey] = useState({ data, range });
+  if (tooltipResetKey.data !== data || tooltipResetKey.range !== range) {
+    setTooltipResetKey({ data, range });
     setSelectedIndex(null);
   }
 
   // Derive the presentation text from the selected point on every render, so
   // an already-visible tooltip reflects the current app language immediately.
   const selectedPoint = selectedIndex != null ? data[selectedIndex] : undefined;
-  const tooltipText = buildWeightTooltipText(selectedPoint, unit);
+  const tooltipText = buildSleepTooltipText(selectedPoint, t);
 
   const handleTouchLayoutChange = useCallback(
     (nextLayout: ChartTouchLayout) => {
@@ -111,7 +121,7 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
     [],
   );
 
-  const handleSelectPoint = useCallback(
+  const handleSelectBar = useCallback(
     (index: number) => {
       const point = data[index];
 
@@ -128,17 +138,13 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
     setSelectedIndex(null);
   }, []);
 
-  if (!hasData && !isLoading && !isError) {
-    return null;
-  }
-
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
       <Text className="text-text-primary text-lg font-semibold mb-2">
-        {t('charts.weight.title', { defaultValue: 'Weight' })}
+        {t('charts.sleep.title', { defaultValue: 'Sleep' })}
       </Text>
 
-      <WeightTooltip text={tooltipText} />
+      <SleepTooltip text={tooltipText} />
 
       {isLoading ? (
         <View className="h-50 justify-center items-center">
@@ -147,7 +153,13 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
       ) : isError ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            {t('charts.weight.loadFailed', { defaultValue: 'Failed to load weight data' })}
+            {t('charts.sleep.loadFailed', { defaultValue: 'Failed to load sleep data' })}
+          </Text>
+        </View>
+      ) : !hasData ? (
+        <View className="h-50 justify-center items-center">
+          <Text className="text-text-muted text-sm">
+            {t('charts.sleep.empty', { defaultValue: 'No sleep data for this period' })}
           </Text>
         </View>
       ) : (
@@ -155,7 +167,8 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
           <CartesianChart
             data={data}
             xKey="day"
-            yKeys={['weight']}
+            yKeys={['hours']}
+            domain={{ y: [0] }}
             domainPadding={{ left: 25, right: 25 }}
             xAxis={{
               font,
@@ -168,6 +181,7 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
                 font,
                 tickCount: 5,
                 labelColor: textMuted,
+                formatYLabel: formatHours,
               },
             ]}
           >
@@ -175,25 +189,25 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
               <>
                 <ChartLayoutReporter
                   chartBounds={chartBounds}
-                  points={points.weight}
+                  points={points.hours}
                   onChange={handleTouchLayoutChange}
                 />
-                <Line
-                  points={points.weight}
+                <Bar
+                  points={points.hours}
+                  chartBounds={chartBounds}
                   color={accentColor}
-                  strokeWidth={2}
+                  innerPadding={INNER_PADDING[range]}
                   animate={{ type: 'timing', duration: 300 }}
-                  curveType="cardinal"
-                  connectMissingData
+                  roundedCorners={{ topLeft: 6, topRight: 6 }}
                 />
               </>
             )}
           </CartesianChart>
           <ChartTouchOverlay
             layout={touchLayout}
-            onSelect={handleSelectPoint}
+            onSelect={handleSelectBar}
             onClear={handleClearSelection}
-            testIDPrefix="weight-touch-overlay"
+            testIDPrefix="sleep-touch-overlay"
           />
         </View>
       )}
@@ -201,4 +215,4 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
   );
 };
 
-export default WeightLineChart;
+export default SleepBarChart;

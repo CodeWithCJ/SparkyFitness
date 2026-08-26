@@ -3863,6 +3863,12 @@
       "tooltip_one": "{{formattedCount}} step",
       "tooltip_other": "{{formattedCount}} steps"
     },
+    "sleep": {
+      "title": "Sleep",
+      "loadFailed": "Failed to load sleep data",
+      "empty": "No sleep data for this period",
+      "tooltip": "{{formattedHours}} h"
+    },
     "loading": "Loading chart...",
     "weightLoadFailed": "Failed to load weight data",
     "stepsLoadFailed": "Failed to load step data",
