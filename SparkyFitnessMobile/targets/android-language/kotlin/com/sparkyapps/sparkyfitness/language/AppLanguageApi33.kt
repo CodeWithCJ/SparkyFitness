@@ -6,7 +6,6 @@ import android.os.Build
 import android.os.LocaleList
 import androidx.annotation.DoNotInline
 import androidx.annotation.RequiresApi
-import java.util.Locale
 
 /**
  * Isolated Android 13+ (API 33+) helper for the platform per-app language API

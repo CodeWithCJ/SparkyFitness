@@ -91,10 +91,13 @@ class AppLanguageModule(reactContext: ReactApplicationContext) :
         private const val MODULE_NAME = "AppLanguage"
         private const val API_33 = 33
         // Generated from the TypeScript shipped-locale registry by Expo config.
-        private val SUPPORTED_LANGUAGES = setOf("en", "pl")
+        private val SUPPORTED_LANGUAGES = setOf({{SUPPORTED_LOCALES}})
+        private const val FALLBACK_LOCALE = "{{FALLBACK_LOCALE}}"
         private val SUPPORTED_LANGUAGES_CANONICAL = SUPPORTED_LANGUAGES.map(::canonicalTag).toSet()
 
         private fun canonicalTag(value: String): String =
             Locale.forLanguageTag(value).toLanguageTag().lowercase(Locale.ROOT)
+
+        private fun fallbackTag(): String = FALLBACK_LOCALE
     }
 }

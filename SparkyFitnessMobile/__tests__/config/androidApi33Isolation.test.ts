@@ -49,6 +49,16 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
       expect(code).not.toMatch(/LocaleManager\b/);
     });
 
+    it('1a. AppLanguageModule.kt uses generated locale placeholders, not hardcoded locale lists', () => {
+      // The native supported-locale list MUST be generated from the central
+      // localeRegistry by the withAppLanguage config plugin. Hardcoding
+      // "en"/"pl" would silently break the next shipped locale.
+      const src = readSource(LANGUAGE_ROOT, 'AppLanguageModule.kt');
+      expect(src).toMatch(/\{\{SUPPORTED_LOCALES\}\}/);
+      expect(src).toMatch(/\{\{FALLBACK_LOCALE\}\}/);
+      expect(src).not.toMatch(/setOf\(\s*"en"\s*,\s*"pl"\s*\)/);
+    });
+
     it('AppLanguagePackage.kt has no code reference to LocaleManager', () => {
       const code = stripComments(readSource(LANGUAGE_ROOT, 'AppLanguagePackage.kt'));
       expect(code).not.toMatch(/LocaleManager\b/);
