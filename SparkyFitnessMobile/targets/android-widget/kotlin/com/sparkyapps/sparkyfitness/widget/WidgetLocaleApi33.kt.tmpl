@@ -50,7 +50,7 @@ internal object WidgetLocaleApi33 {
         val manager = localeManager(context) ?: return null
         val systemLocales = manager.systemLocales
         return if (systemLocales != null && !systemLocales.isEmpty) {
-            WidgetLocale.normalizeLanguagePublic(systemLocales[0])
+            WidgetLocale.normalizeLanguage(systemLocales[0])
         } else {
             null
         }
@@ -67,6 +67,6 @@ internal object WidgetLocaleApi33 {
             val systemLocales = manager.systemLocales
             if (systemLocales != null && !systemLocales.isEmpty) systemLocales[0] else null
         }
-        return platformLocale?.let(WidgetLocale::normalizeLanguagePublic)
+        return platformLocale?.let(WidgetLocale::normalizeLanguage)
     }
 }

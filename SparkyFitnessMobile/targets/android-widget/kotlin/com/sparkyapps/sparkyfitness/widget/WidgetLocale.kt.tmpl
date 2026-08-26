@@ -173,7 +173,7 @@ object WidgetLocale {
         return normalizeLanguage(locales[0])
     }
 
-    private fun normalizeLanguage(locale: Locale): String {
+    internal fun normalizeLanguage(locale: Locale): String {
         val tag = canonicalTag(locale.toLanguageTag())
         return SUPPORTED_LOCALES
             .map { it to canonicalTag(it) }
@@ -194,9 +194,6 @@ object WidgetLocale {
         if (!isNativeAppLanguageSupported()) return null
         return WidgetLocaleApi33.currentPlatformLanguage(context)
     }
-
-    /** Public alias so `WidgetLocaleApi33` can reuse the normalization logic. */
-    internal fun normalizeLanguagePublic(locale: Locale): String = normalizeLanguage(locale)
 
     /**
      * Bumps the dedicated Glance state revision without changing any snapshot

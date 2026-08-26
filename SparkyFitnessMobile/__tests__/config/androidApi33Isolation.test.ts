@@ -344,19 +344,40 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
   });
 
   describe('no other widget Kotlin source references API 33 surface', () => {
-    const otherFiles = [
-      'CalorieWidgetModule.kt.tmpl',
-      'CalorieWidgetReceiver.kt.tmpl',
-      'CalorieWidget.kt.tmpl',
-      'MacroWidget.kt.tmpl',
-      'MacroWidgetReceiver.kt.tmpl',
-      'CalorieWidgetPackage.kt',
-    ];
+    // Dynamic discovery: audit every regular Kotlin file in the widget
+    // targets directory EXCEPT the intentional API 33 helper. This catches
+    // future regressions automatically — a new widget .kt.tmpl importing
+    // LocaleManager would be caught without needing to update this list.
+    // WidgetLocale.kt.tmpl is intentionally NOT excluded: redundancy with the
+    // dedicated tests above is desirable here.
+    const API_33_WIDGET_HELPERS = new Set([
+      'WidgetLocaleApi33.kt.tmpl',
+    ]);
 
-    it.each(otherFiles)('%s does not reference LocaleManager or the API 33 overload', (file) => {
-      const code = stripComments(readSource(WIDGET_ROOT, file));
-      expect(code).not.toMatch(/LocaleManager\b/);
-      expect(code).not.toMatch(/getParcelableExtra\([^)]*::class\.java\)/);
+    const widgetKotlinFiles = fs
+      .readdirSync(WIDGET_ROOT, { withFileTypes: true })
+      .filter(
+        (entry) =>
+          entry.isFile() &&
+          (entry.name.endsWith('.kt') || entry.name.endsWith('.kt.tmpl')),
+      )
+      .map((entry) => entry.name)
+      .filter((file) => !API_33_WIDGET_HELPERS.has(file));
+
+    it('directory discovery finds .kt and .kt.tmpl files and excludes the API 33 helper', () => {
+      expect(widgetKotlinFiles.length).toBeGreaterThan(0);
+      expect(widgetKotlinFiles).not.toContain('WidgetLocaleApi33.kt.tmpl');
+      expect(widgetKotlinFiles.some((f) => f.endsWith('.kt'))).toBe(true);
+      expect(widgetKotlinFiles.some((f) => f.endsWith('.kt.tmpl'))).toBe(true);
     });
+
+    it.each(widgetKotlinFiles)(
+      '%s does not reference LocaleManager or the API 33 overload',
+      (file) => {
+        const code = stripComments(readSource(WIDGET_ROOT, file));
+        expect(code).not.toMatch(/LocaleManager\b/);
+        expect(code).not.toMatch(/getParcelableExtra\([^)]*::class\.java\)/);
+      },
+    );
   });
 });
