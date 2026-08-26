@@ -3644,5 +3644,205 @@
       "save": "Guardar",
       "edit": "Editar actividad"
     }
+  },
+  "foodPhotoImprove": {
+    "grams": "gramos",
+    "ounces": "onzas",
+    "readingPhoto": "Leyendo tu foto…",
+    "readingPhotos": "Leyendo tus fotos…",
+    "identifyingIngredients": "Identificando ingredientes…",
+    "estimatingPortions": "Estimando porciones…",
+    "calculatingNutrition": "Calculando nutrición…",
+    "almostThere": "Casi listo…",
+    "cameraPermissionNeeded": "Se necesita permiso de cámara",
+    "cameraPermissionMessage": "Activa el acceso a la cámara para añadir una foto.",
+    "takePhotoFailed": "No se pudo hacer la foto",
+    "loadPhotoFailed": "No se pudo cargar la foto",
+    "invalidWeight": "Peso no válido",
+    "invalidWeightMessage": "El peso total debe ser un número positivo.",
+    "descriptionTooLong": "Descripción demasiado larga",
+    "descriptionTooLongMessage": "Mantenla por debajo de {{max}} caracteres.",
+    "noImages": "Sin imágenes",
+    "noImagesMessage": "Añade al menos una foto para generar una estimación.",
+    "readPhotoFailed": "No se pudo leer la foto",
+    "readPhotoFailedMessage": "Vuelve a hacer la foto e inténtalo de nuevo.",
+    "cancel": "Cancelar",
+    "title": "Mejorar estimación",
+    "removeImage": "Quitar imagen {{number}}",
+    "addAnotherImage": "Añadir otra imagen",
+    "descriptionHint": "Añade cualquier cosa que la {{subject}} pueda no dejar clara.",
+    "subjectLabel_one": "foto",
+    "subjectLabel_other": "fotos",
+    "totalWeightOptional": "Peso total (opcional)",
+    "weightPlaceholder": "p. ej. 350",
+    "descriptionOptional": "Descripción (opcional)",
+    "descriptionExamples": "Incluye aceites, mantequilla, nata, salsas, coberturas, acompañamientos o nombres de restaurantes.",
+    "descriptionPlaceholder": "p. ej. salmón con salsa de nata, limón y eneldo",
+    "generateEstimate": "Generar estimación",
+    "takePhoto": "Hacer foto",
+    "chooseFromLibrary": "Elegir de la galería",
+    "aiNotConfiguredTitle": "IA no configurada",
+    "aiNotConfiguredMessage": "Configura un proveedor de IA en la app web para usar las estimaciones por foto.",
+    "photoTooLargeTitle": "Foto demasiado grande",
+    "photoTooLargeMessage": "Vuelve a hacer la foto con menor calidad.",
+    "unexpectedImageFormatTitle": "Formato de imagen inesperado",
+    "unexpectedImageFormatMessage": "Vuelve a hacer la foto.",
+    "couldNotProcessPhotoTitle": "No se pudo procesar la foto",
+    "couldNotProcessPhotoMessage": "El proveedor bloqueó esta imagen. Prueba con otra toma.",
+    "providerTimedOutTitle": "El proveedor de IA agotó el tiempo",
+    "providerTimedOutMessage": "La estimación tardó demasiado. Inténtalo de nuevo o registra este alimento manualmente.",
+    "providerNotAllowedTitle": "Proveedor de IA no permitido",
+    "providerNotAllowedMessage": "Este proveedor de IA apunta a una dirección de red privada. Pide a un administrador que lo configure de forma global.",
+    "providerUnreachableTitle": "No se pudo contactar con el proveedor de IA",
+    "providerUnreachableMessage": "Inténtalo de nuevo o registra este alimento manualmente."
+  },
+  "foodPhotoEstimate": {
+    "title": "Revisar estimación",
+    "confidence": {
+      "good": "Buena",
+      "fair": "Aceptable",
+      "rough": "Aproximada",
+      "likely": "Probable",
+      "possible": "Posible",
+      "uncertain": "Incierta"
+    },
+    "labels": {
+      "overallEstimate": "Estimación {{confidence}}",
+      "totalEstimatedWeight": "Peso total estimado: {{weight}}"
+    },
+    "actions": {
+      "hideIngredients": "Ocultar ingredientes detectados ▴",
+      "showIngredients": "Mostrar ingredientes detectados ▾"
+    },
+    "errors": {
+      "nameRequired": "Nombre obligatorio",
+      "nameRequiredMessage": "Ponle un nombre a este alimento.",
+      "invalidNutrition": "Nutrición no válida",
+      "invalidRequiredNutrition": "Las calorías, proteínas, carbohidratos y grasas deben ser números no negativos.",
+      "invalidOptionalNutrition": "Todos los valores nutricionales deben ser números no negativos.",
+      "invalidServingSize": "Tamaño de ración no válido",
+      "invalidServingSizeMessage": "El tamaño de la ración debe ser un número positivo."
+    }
+  },
+  "foodPhotoIntro": {
+    "title": "Estima la nutrición a partir de una foto",
+    "subtitle": "Convierte la foto de una comida en una estimación de nutrición editable.",
+    "weight": "Añade el peso cuando lo sepas",
+    "description": "Añade una breve descripción",
+    "review": "Revisa antes de guardar",
+    "logManually": "Registrar manualmente en su lugar",
+    "weightHelp": "El peso total de la comida ayuda con las porciones, las calorías y los macros.",
+    "descriptionHelp": "Menciona salsas, aceites, coberturas, nombres de restaurantes o cualquier cosa oculta.",
+    "reviewHelp": "Las estimaciones por foto son un punto de partida. Podrás editarlo todo antes de registrarlo."
+  },
+  "foodPhotoLogEntry": {
+    "estimateSaved": "Estimación guardada",
+    "selectMealType": "Selecciona un tipo de comida",
+    "invalidServings": "Raciones no válidas",
+    "positiveServings": "Las raciones deben ser un número positivo.",
+    "back": "Atrás",
+    "title": "Registrar entrada",
+    "meal": "Comida",
+    "selectMeal": "Seleccionar comida",
+    "date": "Fecha",
+    "servings": "Raciones"
+  },
+  "editBarcode": {
+    "title": "Código de barras",
+    "errors": {
+      "invalid": "Código de barras no válido",
+      "invalidFormat": "El código de barras debe tener entre 8 y 14 dígitos.",
+      "saveFailed": "No se pudo guardar el código de barras",
+      "removeFailed": "No se pudo quitar el código de barras"
+    },
+    "confirm": {
+      "inUseTitle": "Código de barras ya en uso",
+      "inUseMessage": "Este código de barras ya está asociado a «{{otherName}}». ¿Asociarlo a «{{foodName}}» de todos modos?",
+      "removeTitle": "Quitar código de barras",
+      "removeMessage": "¿Quitar el código de barras de «{{foodName}}»?"
+    },
+    "actions": {
+      "attach": "Asociar",
+      "remove": "Quitar",
+      "scanWithCamera": "Escanear con la cámara",
+      "removeBarcode": "Quitar código de barras"
+    },
+    "success": {
+      "saved": "Código de barras guardado",
+      "removed": "Código de barras quitado"
+    },
+    "accessibility": {
+      "save": "Guardar código de barras"
+    },
+    "labels": {
+      "forFood": "Para {{foodName}}"
+    },
+    "help": {
+      "standardFormat": "Los códigos de barras estándar tienen entre 8 y 14 dígitos."
+    }
+  },
+  "editLoggedMeal": {
+    "fields": {
+      "mealName": "Nombre de la comida",
+      "servings": "Raciones",
+      "meal": "Comida",
+      "selectMeal": "Seleccionar comida",
+      "time": "Hora",
+      "foodsInMeal": "Alimentos de esta comida"
+    },
+    "states": {
+      "noFoods": "Aún no hay alimentos en esta comida."
+    },
+    "actions": {
+      "addFood": "Añadir alimento",
+      "deleteMeal": "Eliminar comida"
+    },
+    "accessibility": {
+      "saveMeal": "Guardar comida",
+      "mealName": "Nombre de la comida",
+      "date": "Seleccionar fecha: {{date}}",
+      "meal": "Seleccionar comida: {{meal}}",
+      "time": "Seleccionar hora: {{time}}",
+      "clearTime": "Borrar la hora de la entrada"
+    },
+    "errors": {
+      "saveFailed": "No se pudo guardar la comida",
+      "permission": "No tienes permiso para editar esta comida.",
+      "deleteFailed": "No se pudo eliminar la comida"
+    },
+    "deleteConfirm": "¿Eliminar esta comida?"
+  },
+  "foodFormPersistence": {
+    "discardTitle": "¿Descartar equivalentes sin guardar?",
+    "discardMessage": "Tienes tamaños equivalentes sin guardar. ¿Descartarlos para continuar?",
+    "discard": "Descartar",
+    "updateTitle": "¿Actualizar entradas anteriores?",
+    "updateMessage": "Tu alimento de la biblioteca se ha guardado. ¿Quieres actualizar también las entradas anteriores del diario para este alimento con la nueva nutrición? Las entradas que no actualices mantienen sus valores originales.",
+    "dontUpdate": "No actualizar",
+    "update": "Actualizar",
+    "updatePhotosMessage": "Tu alimento de la biblioteca se ha guardado. ¿Qué deben usar las entradas anteriores del diario para este alimento?",
+    "updateNutrition": "Actualizar solo la nutrición",
+    "updateNutritionPhotos": "Actualizar nutrición y fotos",
+    "saveNutritionTitle": "Guardar nutrición",
+    "overwriteMessage": "«{{unitLabel}}» ya es una variante guardada. ¿Quieres actualizarla con estos valores o guardar como nueva variante?",
+    "saveAsNew": "Guardar como nueva",
+    "updateExisting": "Actualizar la existente",
+    "missingName": "Falta el nombre",
+    "nameRequired": "Introduce un nombre de alimento.",
+    "invalidServingSize": "Tamaño de ración no válido",
+    "servingSizeRequired": "El tamaño de la ración debe ser mayor que cero.",
+    "loadingDetails": "Aún se están cargando los detalles del alimento. Inténtalo de nuevo en un momento.",
+    "savedNewVariant": "Guardado como nueva variante",
+    "pastUpdated": "Entradas anteriores actualizadas",
+    "pastUpdateFailed": "No se pudieron actualizar las entradas anteriores",
+    "foodSaved": "Tu alimento se guardó.",
+    "updateFoodFailed": "No se pudo actualizar el alimento",
+    "saveUnitFailed": "No se pudo guardar la nueva unidad",
+    "equivalentsFailed": "Algunas unidades equivalentes no se pudieron guardar",
+    "saveVariantFailed": "No se pudo guardar la nueva variante",
+    "saveNutritionFailed": "No se pudo guardar la nutrición para uso futuro",
+    "editFoodTitle": "Editar alimento",
+    "adjustNutritionTitle": "Ajustar nutrición",
+    "saveNutritionFuture": "Guardar nutrición para uso futuro"
   }
 }
