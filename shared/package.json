@@ -1,6 +1,6 @@
 {
   "name": "@workspace/shared",
-  "version": "1.6.3",
+  "version": "1.6.4",
   "main": "src/index.ts",
   "type": "module",
   "types": "./src/index.ts",
