@@ -797,6 +797,7 @@ async function copyReviewedFoodEntriesFromUser({
 }: ReviewedFoodEntryCopyInput) {
   const client = await getClient(targetUserId, actingUserId);
   let transactionStarted = false;
+  let releaseError: Error | undefined;
 
   try {
     await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
@@ -1009,13 +1010,19 @@ async function copyReviewedFoodEntriesFromUser({
     await client.query('COMMIT');
     return copiedEntries;
   } catch (error) {
-    if (transactionStarted) await client.query('ROLLBACK');
+    if (transactionStarted) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        releaseError = rollbackError as Error;
+      }
+    }
     if ((error as { code?: string }).code === '40001') {
       throw reviewedCopyConflict();
     }
     throw error;
   } finally {
-    client.release();
+    client.release(releaseError);
   }
 }
 

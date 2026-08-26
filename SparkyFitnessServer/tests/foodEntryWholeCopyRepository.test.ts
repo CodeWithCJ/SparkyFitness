@@ -34,8 +34,45 @@ describe('copyReviewedFoodEntriesFromUser repository transaction', () => {
   const release = vi.fn();
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    query.mockReset();
+    release.mockReset();
+    vi.mocked(getClient).mockReset();
     vi.mocked(getClient).mockResolvedValue({ query, release });
+  });
+
+  it('preserves the original conflict and discards the client when rollback fails', async () => {
+    const serializationFailure = Object.assign(
+      new Error('serialization failure'),
+      { code: '40001' }
+    );
+    const rollbackFailure = new Error('rollback failure');
+
+    query.mockImplementation(async (sql) => {
+      if (sql === 'BEGIN ISOLATION LEVEL SERIALIZABLE') return { rows: [] };
+      if (sql === 'ROLLBACK') throw rollbackFailure;
+      throw serializationFailure;
+    });
+
+    await expect(copyReviewedFoodEntriesFromUser(input)).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    expect(release).toHaveBeenCalledWith(rollbackFailure);
+  });
+
+  it('preserves an ordinary original error and discards the client when rollback fails', async () => {
+    const originalFailure = new Error('insert failure');
+    const rollbackFailure = new Error('rollback failure');
+
+    query.mockImplementation(async (sql) => {
+      if (sql === 'BEGIN ISOLATION LEVEL SERIALIZABLE') return { rows: [] };
+      if (sql === 'ROLLBACK') throw rollbackFailure;
+      throw originalFailure;
+    });
+
+    await expect(copyReviewedFoodEntriesFromUser(input)).rejects.toBe(
+      originalFailure
+    );
+    expect(release).toHaveBeenCalledWith(rollbackFailure);
   });
 
   it.each([
