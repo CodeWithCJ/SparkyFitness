@@ -113,24 +113,16 @@ describe('with a pinned clock', () => {
       expect(other).not.toBe('Yesterday');
     });
 
-    test('accepts localized relative labels and date formatting', () => {
-      expect(
-        formatDateLabel('2024-06-15', {
-          locale: 'pl',
-          todayLabel: 'Dzisiaj',
-          yesterdayLabel: 'Wczoraj',
-        }),
-      ).toBe('Dzisiaj');
-      expect(
-        formatDateLabel('2024-06-14', {
-          locale: 'pl',
-          todayLabel: 'Dzisiaj',
-          yesterdayLabel: 'Wczoraj',
-        }),
-      ).toBe('Wczoraj');
+    test('accepts localized relative labels and date formatting', async () => {
+      await initializeI18n('pl');
+      await i18n.changeLanguage('pl');
+      const polishTranslator = i18n.getFixedT('pl');
+      expect(formatDateLabel('2024-06-15', polishTranslator, 'pl')).toBe('Dzisiaj');
+      expect(formatDateLabel('2024-06-14', polishTranslator, 'pl')).toBe('Wczoraj');
       expect(formatDate('2024-06-13', 'pl')).not.toBe(
         formatDate('2024-06-13', 'en-US'),
       );
+      await i18n.changeLanguage('en');
     });
   });
 
