@@ -5,6 +5,45 @@ import format from 'pg-format';
 import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
 import { toImageArray } from '../utils/imageLocalizer.js';
 import type { FoodEntryInput, FoodEntrySnapshot } from '../types/nutrition.js';
+import {
+  hasExactReviewedFoodEntrySnapshot,
+  type ReviewedFoodEntryFingerprint,
+} from '@workspace/shared';
+
+interface ReviewedFoodEntryCopyInput {
+  targetUserId: string;
+  actingUserId: string;
+  sourceUserId: string;
+  sourceDate: string;
+  sourceMealTypeId: string;
+  targetDate: string;
+  targetMealTypeId: string;
+  reviewedEntries: ReviewedFoodEntryFingerprint[];
+}
+
+interface ReviewedSourceEntry extends FoodEntryInput {
+  id: string;
+  food_entry_meal_id: string | null;
+}
+
+interface SourceMealContainer {
+  id: string;
+  meal_template_id: string | null;
+  entry_time: string | null;
+  name: string;
+  description: string | null;
+  quantity: number | null;
+  unit: string | null;
+  legacy_serving_unit_math: boolean;
+}
+
+function reviewedCopyConflict() {
+  return Object.assign(
+    new Error('One or more source entries changed. Refresh the family diary.'),
+    { statusCode: 409 }
+  );
+}
+
 /**
  * @swagger
  * components:
@@ -743,6 +782,250 @@ async function getFoodEntryByDetails(
   }
 }
 
+// Copies a complete, reviewed family meal in one serializable transaction.
+// The source snapshot check belongs next to the writes so an update that races
+// the service's preliminary check cannot leave partially-created containers.
+async function copyReviewedFoodEntriesFromUser({
+  targetUserId,
+  actingUserId,
+  sourceUserId,
+  sourceDate,
+  sourceMealTypeId,
+  targetDate,
+  targetMealTypeId,
+  reviewedEntries,
+}: ReviewedFoodEntryCopyInput) {
+  const client = await getClient(targetUserId, actingUserId);
+  let transactionStarted = false;
+  let releaseError: Error | undefined;
+
+  try {
+    await client.query('BEGIN ISOLATION LEVEL SERIALIZABLE');
+    transactionStarted = true;
+
+    const sourceResult = (await client.query(
+      `SELECT
+        fe.id,
+        fe.food_id,
+        fe.meal_type_id,
+        fe.quantity,
+        fe.unit,
+        fe.entry_date,
+        fe.entry_time,
+        fe.variant_id,
+        fe.meal_plan_template_id,
+        fe.food_entry_meal_id,
+        fe.food_name,
+        fe.brand_name,
+        fe.serving_size,
+        fe.serving_unit,
+        fe.calories,
+        fe.protein,
+        fe.carbs,
+        fe.fat,
+        fe.saturated_fat,
+        fe.polyunsaturated_fat,
+        fe.monounsaturated_fat,
+        fe.trans_fat,
+        fe.cholesterol,
+        fe.sodium,
+        fe.potassium,
+        fe.dietary_fiber,
+        fe.sugars,
+        fe.vitamin_a,
+        fe.vitamin_c,
+        fe.calcium,
+        fe.iron,
+        fe.glycemic_index,
+        fe.custom_nutrients
+       FROM food_entries fe
+       WHERE fe.user_id = $1
+         AND fe.entry_date = $2
+         AND fe.meal_type_id = $3
+       FOR SHARE`,
+      [sourceUserId, sourceDate, sourceMealTypeId]
+    )) as { rows: ReviewedSourceEntry[] };
+    const sourceEntries = sourceResult.rows;
+    if (!hasExactReviewedFoodEntrySnapshot(sourceEntries, reviewedEntries)) {
+      throw reviewedCopyConflict();
+    }
+
+    const copiedEntries: unknown[] = [];
+    const targetMealIdBySourceMealId = new Map<string, string>();
+    const existingStandaloneResult = (await client.query(
+      `SELECT food_id, variant_id
+       FROM food_entries
+       WHERE user_id = $1
+         AND meal_type_id = $2
+         AND entry_date = $3
+         AND food_entry_meal_id IS NULL
+         AND food_id IS NOT NULL`,
+      [targetUserId, targetMealTypeId, targetDate]
+    )) as {
+      rows: Array<{ food_id: string | null; variant_id: string | null }>;
+    };
+    const existingStandaloneKeys = new Set(
+      existingStandaloneResult.rows
+        .filter(({ food_id }) => food_id !== null)
+        .map(
+          ({ food_id, variant_id }) =>
+            `${food_id ?? 'null'}:${variant_id ?? 'null'}`
+        )
+    );
+
+    for (const entry of sourceEntries) {
+      let targetFoodEntryMealId: string | null = null;
+      if (entry.food_entry_meal_id) {
+        targetFoodEntryMealId =
+          targetMealIdBySourceMealId.get(entry.food_entry_meal_id) ?? null;
+
+        if (!targetFoodEntryMealId) {
+          const sourceMealResult = (await client.query(
+            `SELECT
+              id,
+              meal_template_id,
+              entry_time,
+              name,
+              description,
+              quantity,
+              unit,
+              legacy_serving_unit_math
+             FROM food_entry_meals
+             WHERE id = $1 AND user_id = $2
+             FOR SHARE`,
+            [entry.food_entry_meal_id, sourceUserId]
+          )) as { rows: SourceMealContainer[] };
+          const sourceMeal = sourceMealResult.rows[0];
+          if (!sourceMeal) throw reviewedCopyConflict();
+
+          const targetMealResult = (await client.query(
+            `INSERT INTO food_entry_meals (
+              user_id,
+              meal_template_id,
+              meal_type_id,
+              entry_date,
+              entry_time,
+              name,
+              description,
+              quantity,
+              unit,
+              legacy_serving_unit_math,
+              created_by_user_id,
+              updated_by_user_id,
+              images
+            ) VALUES (
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+              COALESCE((SELECT images FROM meals WHERE id = $2), '[]'::jsonb)
+            )
+            RETURNING id`,
+            [
+              targetUserId,
+              sourceMeal.meal_template_id,
+              targetMealTypeId,
+              targetDate,
+              sourceMeal.entry_time,
+              sourceMeal.name,
+              sourceMeal.description,
+              sourceMeal.quantity,
+              sourceMeal.unit,
+              sourceMeal.legacy_serving_unit_math,
+              actingUserId,
+              actingUserId,
+            ]
+          )) as { rows: Array<{ id: string }> };
+          targetFoodEntryMealId = targetMealResult.rows[0]?.id ?? null;
+          if (!targetFoodEntryMealId) {
+            throw new Error('Could not create copied meal container.');
+          }
+          targetMealIdBySourceMealId.set(
+            entry.food_entry_meal_id,
+            targetFoodEntryMealId
+          );
+        }
+      } else {
+        const standaloneKey = `${entry.food_id ?? 'null'}:${entry.variant_id ?? 'null'}`;
+        if (
+          entry.food_id !== null &&
+          entry.food_id !== undefined &&
+          existingStandaloneKeys.has(standaloneKey)
+        )
+          continue;
+      }
+
+      const inserted = await client.query(
+        `INSERT INTO food_entries (
+          user_id, food_id, meal_type_id, quantity, unit, entry_date,
+          entry_time, variant_id, meal_plan_template_id, food_entry_meal_id,
+          created_by_user_id, updated_by_user_id, food_name, brand_name,
+          serving_size, serving_unit, calories, protein, carbs, fat,
+          saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
+          cholesterol, sodium, potassium, dietary_fiber, sugars, vitamin_a,
+          vitamin_c, calcium, iron, glycemic_index, custom_nutrients
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+          $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
+          $27, $28, $29, $30, $31, $32, $33, $34, $35
+        ) RETURNING *`,
+        [
+          targetUserId,
+          entry.food_id,
+          targetMealTypeId,
+          entry.quantity,
+          entry.unit,
+          targetDate,
+          entry.entry_time ?? null,
+          entry.variant_id,
+          null,
+          targetFoodEntryMealId,
+          actingUserId,
+          actingUserId,
+          entry.food_name,
+          entry.brand_name,
+          entry.serving_size,
+          entry.serving_unit,
+          entry.calories,
+          entry.protein,
+          entry.carbs,
+          entry.fat,
+          entry.saturated_fat,
+          entry.polyunsaturated_fat,
+          entry.monounsaturated_fat,
+          entry.trans_fat,
+          entry.cholesterol,
+          entry.sodium,
+          entry.potassium,
+          entry.dietary_fiber,
+          entry.sugars,
+          entry.vitamin_a,
+          entry.vitamin_c,
+          entry.calcium,
+          entry.iron,
+          entry.glycemic_index,
+          sanitizeCustomNutrients(entry.custom_nutrients),
+        ]
+      );
+      copiedEntries.push(...inserted.rows);
+    }
+
+    await client.query('COMMIT');
+    return copiedEntries;
+  } catch (error) {
+    if (transactionStarted) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        releaseError = rollbackError as Error;
+      }
+    }
+    if ((error as { code?: string }).code === '40001') {
+      throw reviewedCopyConflict();
+    }
+    throw error;
+  } finally {
+    client.release(releaseError);
+  }
+}
+
 async function bulkCreateFoodEntries(
   entriesData: FoodEntryInput[],
   authenticatedUserId: string
@@ -1059,6 +1342,7 @@ export { getFoodEntriesByDate };
 export { getFoodEntriesByDateAndMealType };
 export { getFoodEntriesByDateRange };
 export { getFoodEntryByDetails };
+export { copyReviewedFoodEntriesFromUser };
 export { bulkCreateFoodEntries };
 export { getFoodEntryById };
 export { getFoodEntryComponentsByFoodEntryMealId };
@@ -1076,6 +1360,7 @@ export default {
   getFoodEntriesByDateAndMealType,
   getFoodEntriesByDateRange,
   getFoodEntryByDetails,
+  copyReviewedFoodEntriesFromUser,
   bulkCreateFoodEntries,
   getFoodEntryById,
   getFoodEntryComponentsByFoodEntryMealId,

@@ -16,9 +16,14 @@ import goalRepository from '../models/goalRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import reportRepository from '../models/reportRepository.js';
 import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
-
 import Papa from 'papaparse';
-import { isDayString } from '@workspace/shared';
+import {
+  type CopyReviewedFoodEntriesFromUserBody,
+  type CopySelectedFoodEntriesFromUserBody,
+  foodEntryCopyFingerprint,
+  hasExactReviewedFoodEntrySnapshot,
+  isDayString,
+} from '@workspace/shared';
 import customNutrientService from './customNutrientService.js';
 import { removeOrphanedImages } from '../middleware/imageUpload.js';
 import express from 'express';
@@ -135,6 +140,12 @@ interface MealTypeRow {
   id: string;
   name: string;
   user_id: string | null;
+}
+
+type HttpStatusError = Error & { statusCode: number };
+
+function copyStatusError(message: string, statusCode: number): HttpStatusError {
+  return Object.assign(new Error(message), { statusCode });
 }
 
 // Resolves a meal type selector (a UUID or a legacy name) to its canonical
@@ -1313,6 +1324,194 @@ async function copyFoodEntriesFromUser(
     throw error;
   }
 }
+
+async function copySelectedFoodEntriesFromUser(
+  targetUserId: string,
+  actingUserId: string,
+  sourceUserId: string,
+  sourceDate: string,
+  targetDate: string,
+  targetMealType: string,
+  selections: CopySelectedFoodEntriesFromUserBody['entries']
+) {
+  // checkCopyPermissions requires both diary management and food-library
+  // access, and must be evaluated for the real actor rather than a switched
+  // active-user context.
+  const hasAccess = await familyAccessRepository.checkCopyPermissions(
+    actingUserId,
+    sourceUserId
+  );
+  if (!hasAccess) {
+    throw copyStatusError(
+      'Forbidden: You do not have permissions to copy from this family member.',
+      403
+    );
+  }
+
+  const targetMealTypeId = await resolveMealTypeId(
+    targetUserId,
+    targetMealType
+  );
+  if (!targetMealTypeId) {
+    throw copyStatusError('Invalid target meal type.', 400);
+  }
+
+  // Do not trust client-side diary rows. Re-fetch every requested source row
+  // before preparing anything for insertion, so an unavailable or changed row
+  // fails the entire selected-copy operation.
+  const selectedEntries = await Promise.all(
+    selections.map(async (selection) => ({
+      selection,
+      entry: await foodRepository.getFoodEntryById(
+        selection.entryId,
+        sourceUserId
+      ),
+    }))
+  );
+
+  for (const { selection, entry } of selectedEntries) {
+    if (
+      !entry ||
+      entry.id !== selection.entryId ||
+      entry.user_id !== sourceUserId ||
+      entry.entry_date !== sourceDate ||
+      foodEntryCopyFingerprint(entry) !== selection.sourceFingerprint ||
+      !Number.isFinite(Number(entry.serving_size)) ||
+      Number(entry.serving_size) <= 0
+    ) {
+      throw copyStatusError(
+        'One or more source entries changed. Refresh the family diary.',
+        409
+      );
+    }
+  }
+
+  const entriesToCreate: FoodEntryInput[] = [];
+  for (const { selection, entry } of selectedEntries) {
+    // Catalog-linked rows have a stable identity for duplicate detection.
+    // Rows without food_id are not de-duplicated here, but they cannot be
+    // copied today: chk_food_or_meal_id requires meal_id when food_id is null,
+    // and neither this path nor the existing web copy path inserts meal_id.
+    const existingEntry = entry.food_id
+      ? await foodRepository.getFoodEntryByDetails(
+          targetUserId,
+          entry.food_id,
+          targetMealTypeId,
+          targetDate,
+          entry.variant_id,
+          null
+        )
+      : null;
+    if (existingEntry) continue;
+
+    entriesToCreate.push({
+      user_id: targetUserId,
+      created_by_user_id: actingUserId,
+      food_id: entry.food_id,
+      variant_id: entry.variant_id,
+      meal_type_id: targetMealTypeId,
+      food_entry_meal_id: null,
+      meal_plan_template_id: null,
+      entry_date: targetDate,
+      entry_time: entry.entry_time ?? null,
+      quantity: selection.quantity,
+      unit: entry.unit,
+      food_name: entry.food_name,
+      brand_name: entry.brand_name,
+      serving_size: entry.serving_size,
+      serving_unit: entry.serving_unit,
+      calories: entry.calories,
+      protein: entry.protein,
+      carbs: entry.carbs,
+      fat: entry.fat,
+      saturated_fat: entry.saturated_fat,
+      polyunsaturated_fat: entry.polyunsaturated_fat,
+      monounsaturated_fat: entry.monounsaturated_fat,
+      trans_fat: entry.trans_fat,
+      cholesterol: entry.cholesterol,
+      sodium: entry.sodium,
+      potassium: entry.potassium,
+      dietary_fiber: entry.dietary_fiber,
+      sugars: entry.sugars,
+      vitamin_a: entry.vitamin_a,
+      vitamin_c: entry.vitamin_c,
+      calcium: entry.calcium,
+      iron: entry.iron,
+      glycemic_index: entry.glycemic_index,
+      custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
+    });
+  }
+
+  return entriesToCreate.length === 0
+    ? []
+    : foodRepository.bulkCreateFoodEntries(entriesToCreate, targetUserId);
+}
+
+async function copyReviewedFoodEntriesFromUser(
+  targetUserId: string,
+  actingUserId: string,
+  sourceUserId: string,
+  sourceDate: string,
+  sourceMealType: string,
+  targetDate: string,
+  targetMealType: string,
+  reviewedEntries: CopyReviewedFoodEntriesFromUserBody['entries']
+) {
+  // Keep the reviewed-entry fingerprint contract isolated to this endpoint.
+  // Consolidating the otherwise overlapping copy paths is separate work.
+  const hasAccess = await familyAccessRepository.checkCopyPermissions(
+    actingUserId,
+    sourceUserId
+  );
+  if (!hasAccess) {
+    throw copyStatusError(
+      'Forbidden: You do not have permissions to copy from this family member.',
+      403
+    );
+  }
+
+  const sourceMealTypeId = await resolveMealTypeId(
+    sourceUserId,
+    sourceMealType
+  );
+  const targetMealTypeId = await resolveMealTypeId(
+    targetUserId,
+    targetMealType
+  );
+  if (!sourceMealTypeId || !targetMealTypeId) {
+    throw copyStatusError('Invalid source or target meal type.', 400);
+  }
+
+  // This early check produces the clear 409 without creating a container. The
+  // repository repeats the same comparison inside its serializable write
+  // transaction so a concurrent source mutation cannot slip through.
+  const currentSourceEntries =
+    await foodRepository.getFoodEntriesByDateAndMealType(
+      sourceUserId,
+      sourceDate,
+      sourceMealTypeId
+    );
+  if (
+    !hasExactReviewedFoodEntrySnapshot(currentSourceEntries, reviewedEntries)
+  ) {
+    throw copyStatusError(
+      'One or more source entries changed. Refresh the family diary.',
+      409
+    );
+  }
+
+  return foodRepository.copyReviewedFoodEntriesFromUser({
+    targetUserId,
+    actingUserId,
+    sourceUserId,
+    sourceDate,
+    sourceMealTypeId,
+    targetDate,
+    targetMealTypeId,
+    reviewedEntries,
+  });
+}
+
 async function copyFoodEntriesToUser(
   authenticatedUserId: string,
   actingUserId: string,
@@ -3448,7 +3647,9 @@ export { getFoodEntryMealsByDate };
 export { deleteFoodEntryMeal };
 export { exportAllDiaryEntriesToCSVStream };
 export { copyFoodEntriesFromUser };
+export { copyReviewedFoodEntriesFromUser };
 export { copyFoodEntriesToUser };
+export { copySelectedFoodEntriesFromUser };
 export { importFoodDiaryEntriesInBulk };
 export default {
   createFoodEntry,
@@ -3470,6 +3671,8 @@ export default {
   deleteFoodEntryMeal,
   exportAllDiaryEntriesToCSVStream,
   copyFoodEntriesFromUser,
+  copyReviewedFoodEntriesFromUser,
   copyFoodEntriesToUser,
+  copySelectedFoodEntriesFromUser,
   importFoodDiaryEntriesInBulk,
 };

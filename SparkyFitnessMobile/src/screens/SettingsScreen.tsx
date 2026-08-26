@@ -29,7 +29,7 @@ type SettingsScreenProps = CompositeScreenProps<
 >;
 
 const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
-  const { t , i18n: translationI18n } = useTranslation();
+  const { t, i18n: translationI18n } = useTranslation();
   const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
@@ -178,6 +178,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                 onPress={() => navigation.navigate('AppSettings')}
                 iconColor={catViolet}
               />
+              {isConnected && (
+                <SettingsRow
+                  icon="people"
+                  title={t('familyDiary.title', { defaultValue: 'Family Diaries' })}
+                  onPress={() => navigation.navigate('FamilyMembers')}
+                  iconColor={catTeal}
+                />
+              )}
               {isConnected && (
                 <SettingsRow
                   icon="calorie-settings"

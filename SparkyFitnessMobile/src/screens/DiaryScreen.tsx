@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
 import { View, Text, ScrollView, RefreshControl } from 'react-native';
-import { useTranslation } from 'react-i18next';
 import Button from '../components/ui/Button';
 import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
 import { useFocusEffect } from '@react-navigation/native';
@@ -18,7 +17,14 @@ import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import DiaryCalorieMacroSummary from '../components/DiaryCalorieMacroSummary';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useServerConnection, useDailySummary, useCustomNutrients, useNutrientDisplayPreferences, useMealTypes } from '../hooks';
+import {
+  useServerConnection,
+  useDailySummary,
+  useCustomNutrients,
+  useFamilyUsers,
+  useNutrientDisplayPreferences,
+  useMealTypes,
+} from '../hooks';
 import { useMeasurements } from '../hooks/useMeasurements';
 import { useCustomMeasurementsByDate } from '../hooks/useCustomMeasurements';
 import { isManualSource } from '../utils/customMeasurementsForm';
@@ -39,6 +45,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useTranslation } from 'react-i18next';
 
 type DiaryScreenProps = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Diary'>,
@@ -46,9 +53,12 @@ type DiaryScreenProps = CompositeScreenProps<
 >;
 
 const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
-  const { t , i18n: translationI18n } = useTranslation();
+  const { t, i18n: translationI18n } = useTranslation();
   const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const insets = useSafeAreaInsets();
+  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { data: familyUsers = [] } = useFamilyUsers({ enabled: isConnected });
+  const hasFamilyDiaries = isConnected && familyUsers.length > 0;
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
   const setSelectedDate = useDiaryDateStore((s) => s.setSelectedDate);
   const goToPreviousDay = useDiaryDateStore((s) => s.goToPreviousDay);
@@ -81,6 +91,10 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   }, [navigation, selectedDate]);
 
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
+  const openFamilyDiaries = useCallback(() => navigation.navigate('FamilyMembers'), [navigation]);
+  const familyDiariesAccessibilityLabel = t('familyDiary.openFamilyDiaries', {
+    defaultValue: 'Open family diaries',
+  });
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const usesNativeTabs = useNativeIOSTabsActive();
   const { defaultColor: nativeHeaderActionColor } = useHeaderActionColors();
@@ -102,6 +116,14 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         dateLabel: `${formatDateLabel(selectedDate, t, dateLocale)} ▾`,
         t,
         locale: dateLocale,
+        leadingAction: hasFamilyDiaries
+          ? {
+              sfSymbol: 'person.2.fill',
+              onPress: openFamilyDiaries,
+              accessibilityLabel: familyDiariesAccessibilityLabel,
+              identifier: 'family-diaries',
+            }
+          : undefined,
       },
     );
   }, [
@@ -109,8 +131,11 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     goToPreviousDay,
     nativeHeaderActionColor,
     navigation,
+    openFamilyDiaries,
     openCalendar,
     selectedDate,
+    familyDiariesAccessibilityLabel,
+    hasFamilyDiaries,
     usesNativeTabs,
     t,
     dateLocale,
@@ -160,7 +185,6 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const heightMode = preferences?.default_measurement_unit ?? 'cm';
   const { getImageSource } = useExerciseImageSource();
 
-  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const {
     summary,
     isLoading,
@@ -402,6 +426,15 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           onToday={goToToday}
           onDatePress={openCalendar}
           showDateAlways
+          action={
+            hasFamilyDiaries
+              ? {
+                  icon: 'people',
+                  accessibilityLabel: familyDiariesAccessibilityLabel,
+                  onPress: openFamilyDiaries,
+                }
+              : undefined
+          }
         />
       ) : !isConnectionLoading && (
         <View

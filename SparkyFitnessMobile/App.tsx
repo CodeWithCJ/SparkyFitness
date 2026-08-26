@@ -78,6 +78,10 @@ import {
   SafeWhatsNew,
   SafeDailyNutritionDetails,
   SafeNutrientTrends,
+  SafeFamilyMembers,
+  SafeFamilyDiary,
+  SafeFamilyMealDetail,
+  SafeFamilyCopyReview,
   SafeCycleSettings,
   SafeCycleOnboarding,
   SafeCycleHub,
@@ -336,6 +340,35 @@ function AppContent() {
               />
             )}
           </Stack.Screen>
+          <Stack.Screen
+            name="FamilyMembers"
+            component={SafeFamilyMembers}
+            options={createStackScreenOptions(t('familyDiary.title', { defaultValue: 'Family Diaries' }), {
+              headerBackButtonDisplayMode: 'minimal',
+            })}
+          />
+          <Stack.Screen
+            name="FamilyDiary"
+            component={SafeFamilyDiary}
+            options={({ route }) => createStackScreenOptions(
+              route.params.familyUser.displayName.trim() || t('familyDiary.unnamedMember', { defaultValue: 'Family member' }),
+              { headerBackButtonDisplayMode: 'minimal' },
+            )}
+          />
+          <Stack.Screen
+            name="FamilyMealDetail"
+            component={SafeFamilyMealDetail}
+            options={({ route }) => createStackScreenOptions(route.params.mealTypeName, {
+              headerBackButtonDisplayMode: 'minimal',
+            })}
+          />
+          <Stack.Screen
+            name="FamilyCopyReview"
+            component={SafeFamilyCopyReview}
+            options={createStackScreenOptions(t('familyDiary.copyReview', { defaultValue: 'Review copy' }), {
+              headerBackButtonDisplayMode: 'minimal',
+            })}
+          />
           <Stack.Screen
             name="FoodsLibrary"
             component={SafeFoodsLibrary}

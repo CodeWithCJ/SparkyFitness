@@ -6,6 +6,10 @@ export const dailySummaryQueryKey = (date: string) => ['dailySummary', date] as 
 /** Prefix for every date, so a mutation that moves a day's totals can invalidate without knowing which day. */
 export const dailySummaryRootQueryKey = ['dailySummary'] as const;
 
+export const familyUsersQueryKey = ['familyDiaryUsers'] as const;
+export const familyDailySummaryQueryKey = (familyUserId: string, date: string) =>
+  ['familyDailySummary', familyUserId, date] as const;
+
 export const measurementsQueryKey = (date: string) => ['measurements', date] as const;
 
 export const preferencesQueryKey = ['userPreferences'] as const;

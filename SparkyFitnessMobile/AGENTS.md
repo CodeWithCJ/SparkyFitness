@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-08-24*
+*Last updated: 2026-08-26*
 
 SparkyFitness Mobile is a React Native 0.85 + Expo SDK 56 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -78,7 +78,7 @@ npx expo prebuild --clean
 - Screens intentionally off the hook (e.g. `FoodSearchScreen`'s bespoke anchored-menu bar) must mirror custom actions with `unstable_header{Left,Right}Items` themselves, hide the screen-owned React header behind `useNativeIOSHeadersActive()` with a guard such as `{!usesNativeHeader && <Header />}`, and gate the `useLayoutEffect` that sets native header items on the same flag; otherwise iOS renders both headers.
 - When adding a tab, update `TabParamList`, `NativeTab.Screen`, and `FallbackTab.Screen`; for content tabs also add a tab-local native stack screen using `createIOSNativeHeaderOptions(...)`.
 - `__tests__/navigation/nativeHeaderContract.test.ts` enforces this native-header wiring. If it fails, fix the route/type/navigator alignment instead of weakening the test.
-- Current stack screens include onboarding/tabs, library/detail/form flows for foods/meals/exercises/presets, food entry view/edit, meal type detail and copy, `EditBarcode`, food search/entry/scan/photo flow, workout/activity add/detail, exercise/preset search, settings subscreens, logs, sync, measurements, fasting, and `WhatsNew`.
+- Current stack screens include onboarding/tabs, library/detail/form flows for foods/meals/exercises/presets, food entry view/edit, meal type detail and copy, the family diary flows (`FamilyMembers`, `FamilyDiary`, `FamilyMealDetail`, and `FamilyCopyReview`), `EditBarcode`, food search/entry/scan/photo flow, workout/activity add/detail, exercise/preset search, settings subscreens, logs, sync, measurements, fasting, and `WhatsNew`.
 - `AddSheet` offers Food, Workout, Activity, Preset, Measurements, Scan Food, Ask Sparky, and Sync Health Data. Keep its present/dismiss refs intact to avoid Android re-present loops.
 - `useNavigationActionGuard` locks navigation-triggering actions while a native-stack transition is running (idle-callback unlock on re-focus, 5s safety release) so double-taps cannot queue duplicate screens; Library create actions use it.
 - `ActiveWorkoutBar` is mounted outside normal screen trees, uses the root navigation ref, and hides itself on modal/editor routes such as food search/forms/scan/photo, exercise search, workout/activity add, measurements, and barcode edit.
@@ -88,7 +88,7 @@ npx expo prebuild --clean
 
 - `src/components/` - reusable UI, charts, settings rows, custom tab bar, add sheet, workout HUD, form chrome, library rows, diary rows, serving sheets, food/workout editors, fasting UI, writeback UI, and `ui/` primitives.
 - `src/components/auth/` - MFA UI shared by onboarding, setup, and reauth.
-- `src/screens/` - top-level route destinations: dashboard, diary, settings, sync, logs, Whats New, fasting, food search/scan/photo, library CRUD flows, workout/activity flows, and measurement entry.
+- `src/screens/` - top-level route destinations: dashboard, diary, family member/diary/meal/copy-review flows, settings, sync, logs, Whats New, fasting, food search/scan/photo, library CRUD flows, workout/activity flows, and measurement entry.
 - `src/navigation/` - navigation-level modules such as `safeScreens.tsx`, the error-boundary-wrapped screen components registered in `App.tsx`. (`FoodPhotoFlow` lives in `src/components/`.)
 - `src/hooks/` - TanStack Query hooks, auth/connection hooks, library/search/mutation hooks, measurement/water/check-in hooks, fasting hooks, workout form hooks, widget sync, query client, query keys, and cache helpers.
 - `src/services/api/` - backend clients. `apiClient.ts` handles normal API auth/proxy headers; `healthDataApi.ts`, `aiSettingsApi.ts`, food-photo estimate, and other raw fetch paths must keep auth, proxy, timeout, and session-expiry behavior aligned.
@@ -312,6 +312,7 @@ const androidService = require('../../src/services/healthConnectService.ts');
 - Health writeback bug: inspect `HealthDataWriteback`, `services/writeback.ts` / `.ios.ts`, platform writeback modules, mapper files, tracking storage, app permissions, and inbound source filters.
 - Food library/edit bug: inspect `LibraryScreen`, food library/detail/form/barcode screens, `FoodForm`, unit selector, food hooks, `foodsApi`, food unit types, and `foodDetails.ts`.
 - Meal bug: inspect meals library/detail/add/edit screens, `MealTypeDetailScreen`, food picker routes, meal hooks/API, selection service, logged-meal API, and meal nutrition utils.
+- Family diary bug: inspect `FamilyMembersScreen`, `FamilyDiaryScreen`, `FamilyMealDetailScreen`, `FamilyCopyReviewScreen`, family hooks/API, navigation params, and the server family/food-entry routes and models.
 - Exercise/preset bug: inspect library/detail/form/search screens, related hooks/API, selected-exercise handoff, rest-period controls, and workout session helpers.
 - Workout/activity/HUD bug: inspect `AddSheet`, workout/activity screens, workout form hooks, `workoutDraftService`, `activeWorkoutStore`, `ActiveWorkoutBar`, rest notifications, and detail screen set interactions.
 - Fasting bug: inspect `FastingDetailScreen`, `FastingCard`, `FastingGoalReconciler`, `useFasting`, `useFastingTimer`, `fastingApi`, `notifications`, and card visibility preferences.

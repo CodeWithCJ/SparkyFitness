@@ -1,5 +1,6 @@
 import type { NativeStackHeaderItem } from '@react-navigation/native-stack';
 import { formatDateLabel } from './dateUtils';
+import { createNativeHeaderIconButtonItem } from './nativeHeaderItems';
 
 export type NativeHeaderDatePickerOptions = {
   selectedDate: string;
@@ -13,11 +14,18 @@ export type NativeHeaderDatePickerOptions = {
   dateLabel?: string;
   t: import('i18next').TFunction;
   locale: string;
+  leadingAction?: {
+    sfSymbol: string;
+    onPress: () => void;
+    accessibilityLabel: string;
+    identifier: string;
+  };
 };
 
 export type NativeHeaderDatePickerNavigation = {
   setOptions: (options: {
     unstable_headerRightItems: () => NativeStackHeaderItem[];
+    unstable_headerLeftItems?: () => NativeStackHeaderItem[];
   }) => void;
 };
 
@@ -25,9 +33,21 @@ export function setNativeHeaderDatePickerOptions(
   navigation: NativeHeaderDatePickerNavigation,
   options: NativeHeaderDatePickerOptions,
 ) {
+  const leadingAction = options.leadingAction;
+
   navigation.setOptions({
-    unstable_headerRightItems: () =>
-      createNativeHeaderDatePickerItems(options),
+    unstable_headerRightItems: () => createNativeHeaderDatePickerItems(options),
+    unstable_headerLeftItems: leadingAction
+      ? () => [
+          createNativeHeaderIconButtonItem({
+            sfSymbol: leadingAction.sfSymbol,
+            onPress: leadingAction.onPress,
+            tintColor: options.tintColor,
+            accessibilityLabel: leadingAction.accessibilityLabel,
+            identifier: leadingAction.identifier,
+          }),
+        ]
+      : undefined,
   });
 }
 

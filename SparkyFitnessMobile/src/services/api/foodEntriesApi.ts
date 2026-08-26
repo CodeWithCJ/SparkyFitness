@@ -1,5 +1,6 @@
 import { apiFetch } from './apiClient';
 import type { FoodEntry } from '../../types/foodEntries';
+import type { CopyReviewedFoodEntriesFromUserPayload, CopySelectedFoodEntriesFromUserPayload } from '@workspace/shared';
 
 export interface CreateFoodEntryPayload {
   meal_type_id: string;
@@ -120,6 +121,33 @@ export const copyFoodEntries = async (payload: CopyFoodEntriesPayload): Promise<
     endpoint: '/api/food-entries/copy',
     serviceName: 'Food Entries API',
     operation: 'copy food entries',
+    method: 'POST',
+    body: payload,
+  });
+};
+
+/**
+ * Copies a complete meal from an explicitly selected family diary user.
+ * The server preserves composite-meal containers for this whole-meal route.
+ */
+export const copyReviewedFoodEntriesFromUser = async (payload: CopyReviewedFoodEntriesFromUserPayload): Promise<void> => {
+  await apiFetch<unknown>({
+    endpoint: '/api/food-entries/copy-reviewed-from-user',
+    serviceName: 'Food Entries API',
+    operation: 'copy reviewed food entries from family user',
+    method: 'POST',
+    body: payload,
+  });
+};
+
+/**
+ * Copies selected entries from an explicitly selected family diary user.
+ */
+export const copySelectedFoodEntriesFromUser = async (payload: CopySelectedFoodEntriesFromUserPayload): Promise<void> => {
+  await apiFetch<unknown>({
+    endpoint: '/api/food-entries/copy-selected-from-user',
+    serviceName: 'Food Entries API',
+    operation: 'copy selected food entries from family user',
     method: 'POST',
     body: payload,
   });

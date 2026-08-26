@@ -4,7 +4,11 @@ import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.j
 import foodEntryService from '../services/foodEntryService.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
-import { isEntryTimeString } from '@workspace/shared';
+import {
+  CopyReviewedFoodEntriesFromUserBodySchema,
+  CopySelectedFoodEntriesFromUserBodySchema,
+  isEntryTimeString,
+} from '@workspace/shared';
 import {
   uploadImages,
   applyImageOrder,
@@ -17,8 +21,22 @@ import {
 const router = express.Router();
 
 router.use(express.json());
-// Apply diary permission check to all food entry routes
-router.use(checkPermissionMiddleware('diary'));
+const actorScopedCopyPaths = new Set([
+  '/copy-reviewed-from-user',
+  '/copy-selected-from-user',
+]);
+const diaryPermissionMiddleware = checkPermissionMiddleware('diary');
+
+// Actor-scoped copy routes perform their own source-copy permission check and
+// always write to the authenticated actor, independent of an active family
+// context. All remaining routes retain the context-scoped diary middleware.
+router.use((req, res, next) => {
+  if (req.method === 'POST' && actorScopedCopyPaths.has(req.path)) {
+    next();
+    return;
+  }
+  diaryPermissionMiddleware(req, res, next);
+});
 
 /**
  * @swagger
@@ -350,6 +368,201 @@ router.post(
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         return res.status(403).json({ error: error.message });
       }
+      next(error);
+    }
+  }
+);
+/**
+ * @swagger
+ * /food-entries/copy-reviewed-from-user:
+ *   post:
+ *     summary: Copy an unchanged reviewed family meal into the authenticated user's diary
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Preserves logged composite meal containers. The submitted entry IDs and
+ *       source fingerprints are an optimistic-concurrency snapshot; any added,
+ *       removed, or changed source row returns 409 and writes nothing.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             additionalProperties: false
+ *             required:
+ *               - familyUserId
+ *               - sourceDate
+ *               - sourceMealType
+ *               - targetDate
+ *               - targetMealType
+ *               - entries
+ *             properties:
+ *               familyUserId:
+ *                 type: string
+ *                 format: uuid
+ *               sourceDate:
+ *                 type: string
+ *                 format: date
+ *               sourceMealType:
+ *                 type: string
+ *               targetDate:
+ *                 type: string
+ *                 format: date
+ *               targetMealType:
+ *                 type: string
+ *                 format: uuid
+ *               entries:
+ *                 type: array
+ *                 minItems: 1
+ *                 maxItems: 100
+ *                 items:
+ *                   type: object
+ *                   additionalProperties: false
+ *                   required: [entryId, sourceFingerprint]
+ *                   properties:
+ *                     entryId:
+ *                       type: string
+ *                       format: uuid
+ *                     sourceFingerprint:
+ *                       type: string
+ *                       description: Exact reviewed source-row snapshot.
+ *     responses:
+ *       201:
+ *         description: The reviewed meal was copied successfully.
+ *       400:
+ *         description: Invalid request body.
+ *       403:
+ *         description: Forbidden.
+ *       409:
+ *         description: The reviewed source meal changed before it could be copied.
+ */
+router.post(
+  '/copy-reviewed-from-user',
+  authenticate,
+  async (req, res, next) => {
+    const parsed = CopyReviewedFoodEntriesFromUserBodySchema.safeParse(
+      req.body
+    );
+    if (!parsed.success) {
+      res.status(400).json({
+        error: 'Invalid request',
+        details: parsed.error.flatten().fieldErrors,
+      });
+      return;
+    }
+
+    try {
+      const actorUserId =
+        req.originalUserId || req.authenticatedUserId || req.userId;
+      const copiedEntries =
+        await foodEntryService.copyReviewedFoodEntriesFromUser(
+          actorUserId,
+          actorUserId,
+          parsed.data.familyUserId,
+          parsed.data.sourceDate,
+          parsed.data.sourceMealType,
+          parsed.data.targetDate,
+          parsed.data.targetMealType,
+          parsed.data.entries
+        );
+      clearUserTdeeCache(actorUserId);
+      res.status(201).json(copiedEntries);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+/**
+ * @swagger
+ * /food-entries/copy-selected-from-user:
+ *   post:
+ *     summary: Copy selected food entries from a family member's diary
+ *     tags: [Nutrition & Meals]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             additionalProperties: false
+ *             required:
+ *               - familyUserId
+ *               - sourceDate
+ *               - targetDate
+ *               - targetMealType
+ *               - entries
+ *             properties:
+ *               familyUserId:
+ *                 type: string
+ *                 format: uuid
+ *               sourceDate:
+ *                 type: string
+ *                 format: date
+ *               targetDate:
+ *                 type: string
+ *                 format: date
+ *               targetMealType:
+ *                 type: string
+ *                 format: uuid
+ *               entries:
+ *                 type: array
+ *                 minItems: 1
+ *                 maxItems: 100
+ *                 items:
+ *                   type: object
+ *                   additionalProperties: false
+ *                   required: [entryId, quantity, sourceFingerprint]
+ *                   properties:
+ *                     entryId:
+ *                       type: string
+ *                       format: uuid
+ *                     quantity:
+ *                       type: number
+ *                       exclusiveMinimum: 0
+ *                     sourceFingerprint:
+ *                       type: string
+ *                       description: Exact reviewed source-row snapshot.
+ *     responses:
+ *       201:
+ *         description: The selected food entries were copied successfully.
+ *       400:
+ *         description: Invalid request body.
+ *       403:
+ *         description: Forbidden.
+ *       409:
+ *         description: A selected source entry changed after it was reviewed.
+ */
+router.post(
+  '/copy-selected-from-user',
+  authenticate,
+  async (req, res, next) => {
+    const parsed = CopySelectedFoodEntriesFromUserBodySchema.safeParse(
+      req.body
+    );
+    if (!parsed.success) {
+      res.status(400).json({
+        error: 'Invalid request',
+        details: parsed.error.flatten().fieldErrors,
+      });
+      return;
+    }
+
+    try {
+      const actorUserId =
+        req.originalUserId || req.authenticatedUserId || req.userId;
+      const copiedEntries =
+        await foodEntryService.copySelectedFoodEntriesFromUser(
+          actorUserId,
+          actorUserId,
+          parsed.data.familyUserId,
+          parsed.data.sourceDate,
+          parsed.data.targetDate,
+          parsed.data.targetMealType,
+          parsed.data.entries
+        );
+      clearUserTdeeCache(actorUserId);
+      res.status(201).json(copiedEntries);
+    } catch (error) {
       next(error);
     }
   }

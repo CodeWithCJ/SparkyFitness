@@ -4,6 +4,8 @@ import {
   updateFoodEntry,
   deleteFoodEntry,
   copyFoodEntries,
+  copyReviewedFoodEntriesFromUser,
+  copySelectedFoodEntriesFromUser,
   calculateCaloriesConsumed,
   calculateProtein,
   calculateCarbs,
@@ -504,6 +506,55 @@ describe('foodEntriesApi', () => {
 
       await expect(copyFoodEntries(payload)).rejects.toThrow(
         'Server configuration not found.'
+      );
+    });
+  });
+
+  describe('family copies', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key-12345',
+    };
+
+    const wholeMealPayload = {
+      familyUserId: 'member-b',
+      sourceDate: '2026-08-23',
+      sourceMealType: 'breakfast',
+      targetDate: '2026-08-24',
+      targetMealType: 'lunch',
+      entries: [{ entryId: 'entry-1', sourceFingerprint: 'snapshot' }],
+    };
+
+    const selectedPayload = {
+      familyUserId: 'member-b',
+      sourceDate: '2026-08-23',
+      targetDate: '2026-08-24',
+      targetMealType: 'lunch',
+      entries: [{ entryId: 'entry-1', quantity: 150, sourceFingerprint: 'snapshot' }],
+    };
+
+    test('posts a reviewed whole family meal with its exact snapshot', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({ ok: true, status: 204, headers: { get: () => null } });
+
+      await copyReviewedFoodEntriesFromUser(wholeMealPayload);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/food-entries/copy-reviewed-from-user',
+        expect.objectContaining({ method: 'POST', body: JSON.stringify(wholeMealPayload) }),
+      );
+    });
+
+    test('posts selected family entry IDs and quantities', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({ ok: true, status: 204, headers: { get: () => null } });
+
+      await copySelectedFoodEntriesFromUser(selectedPayload);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/food-entries/copy-selected-from-user',
+        expect.objectContaining({ method: 'POST', body: JSON.stringify(selectedPayload) }),
       );
     });
   });
