@@ -176,7 +176,6 @@ export async function estimateUnitConversion(
     api_key: aiService.api_key ?? undefined,
     model_name: aiService.model_name ?? undefined,
     custom_url: aiService.custom_url ?? undefined,
-    timeout: aiService.timeout ?? undefined,
   };
 
   // 4. Build prompt + dispatch. The helper owns the api-key/custom-url checks,

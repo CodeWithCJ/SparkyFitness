@@ -295,7 +295,7 @@ describe('extractNutritionFromLabel', () => {
       expect(init.body).toContain('Extract the nutrition facts');
     });
 
-    it('passes the configured timeout to the Ollama agent', async () => {
+    it('gives the Ollama agent the 5-minute cold-start timeout', async () => {
       mockGetVisionSetting.mockResolvedValue(
         makeAiSetting({ service_type: 'ollama' })
       );
@@ -304,7 +304,6 @@ describe('extractNutritionFromLabel', () => {
           service_type: 'ollama',
           api_key: null,
           custom_url: 'http://localhost:11434',
-          timeout: 5000,
         })
       );
       mockFetch(ollamaBody(sampleNutrition));
@@ -317,10 +316,32 @@ describe('extractNutritionFromLabel', () => {
       expect(result.success).toBe(true);
       expect(mockAgent).toHaveBeenCalledWith(
         expect.objectContaining({
-          headersTimeout: 5000,
-          bodyTimeout: 5000,
+          headersTimeout: 300_000,
+          bodyTimeout: 300_000,
         })
       );
+    });
+
+    it('asks Ollama to keep the model resident between requests', async () => {
+      mockGetVisionSetting.mockResolvedValue(
+        makeAiSetting({ service_type: 'ollama' })
+      );
+      mockGetBackendSetting.mockResolvedValue(
+        makeAiServiceDetail({
+          service_type: 'ollama',
+          api_key: null,
+          custom_url: 'http://localhost:11434',
+        })
+      );
+      const m = mockFetch(ollamaBody(sampleNutrition));
+      await extractNutritionFromLabel(
+        TEST_BASE64,
+        TEST_MIME,
+        TEST_USER_ID,
+        true
+      );
+      const init = m.mock.calls[0][1] as { body: string };
+      expect(JSON.parse(init.body).keep_alive).toBe('30m');
     });
   });
 

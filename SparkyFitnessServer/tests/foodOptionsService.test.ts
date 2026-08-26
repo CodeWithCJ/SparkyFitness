@@ -247,13 +247,12 @@ describe('processFoodOptionsRequest', () => {
       expect(body.options.temperature).toBe(0.7);
     });
 
-    it('passes the configured timeout to the Ollama agent', async () => {
+    it('defaults the Ollama agent timeout to 300000ms', async () => {
       mockGetBackendSetting.mockResolvedValue(
         makeAiServiceDetail({
           service_type: 'ollama',
           api_key: null,
           custom_url: 'http://localhost:11434',
-          timeout: 5000,
         })
       );
       mockFetch(ollamaBody(sampleFoodOptions));
@@ -261,28 +260,8 @@ describe('processFoodOptionsRequest', () => {
       expect(result.success).toBe(true);
       expect(mockAgent).toHaveBeenCalledWith(
         expect.objectContaining({
-          headersTimeout: 5000,
-          bodyTimeout: 5000,
-        })
-      );
-    });
-
-    it('defaults the Ollama agent timeout to 120000ms when unset', async () => {
-      mockGetBackendSetting.mockResolvedValue(
-        makeAiServiceDetail({
-          service_type: 'ollama',
-          api_key: null,
-          custom_url: 'http://localhost:11434',
-          timeout: null,
-        })
-      );
-      mockFetch(ollamaBody(sampleFoodOptions));
-      const result = await runFoodOptions(true);
-      expect(result.success).toBe(true);
-      expect(mockAgent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          headersTimeout: 120000,
-          bodyTimeout: 120000,
+          headersTimeout: 300_000,
+          bodyTimeout: 300_000,
         })
       );
     });

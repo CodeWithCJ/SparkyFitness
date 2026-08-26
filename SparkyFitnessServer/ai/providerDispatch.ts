@@ -40,7 +40,6 @@ export interface ProviderConfig {
   api_key?: string;
   model_name?: string;
   custom_url?: string;
-  timeout?: number;
 }
 
 export interface DispatchImage {
@@ -73,7 +72,7 @@ export interface DispatchRequest {
   parseJson?: boolean;
   /** Forwarded to every provider family; omitted from the request body when unset. */
   temperature?: number;
-  /** Default 90_000; Ollama default 120_000 (or `provider.timeout`). */
+  /** Default 90_000; Ollama default 300_000. */
   timeoutMs?: number;
 }
 
@@ -100,7 +99,16 @@ export type DispatchResult =
     };
 
 const DEFAULT_TIMEOUT_MS = 90_000;
-const OLLAMA_DEFAULT_TIMEOUT_MS = 120_000;
+// Ollama is nearly always a local server, where the first request after an idle
+// period pays a cold start: loading a multi-billion-parameter model into VRAM
+// can take minutes on modest hardware, before inference begins. 120s was short
+// enough to fail that load outright. Matches CHAT_REQUEST_TIMEOUT_MS in
+// chatService.ts, so the dispatch path is no longer the stricter of the two.
+const OLLAMA_DEFAULT_TIMEOUT_MS = 5 * 60_000;
+// Ask Ollama to hold the model in memory well past its 5-minute default, so
+// only the first request in a session pays the cold start rather than every
+// request that follows a short pause.
+const OLLAMA_KEEP_ALIVE = '30m';
 // On Claude Opus 5 and Sonnet 5, omitting the `thinking` parameter runs
 // adaptive thinking by default, and max_tokens caps thinking *and* the visible
 // response together. At 2048 with a forced tool call, reasoning could consume
@@ -599,6 +607,7 @@ function buildOllamaRequest(ctx: BuildContext): BuiltRequest {
     model: ctx.model,
     messages: [message],
     stream: false,
+    keep_alive: OLLAMA_KEEP_ALIVE,
     options: {
       num_ctx: 8192, // Enforce 8k context window support
       ...(ctx.temperature !== undefined && { temperature: ctx.temperature }),
@@ -978,7 +987,7 @@ async function performOllama(
 function resolveTimeout(req: DispatchRequest, family: ProviderFamily): number {
   if (typeof req.timeoutMs === 'number') return req.timeoutMs;
   if (family === 'ollama') {
-    return req.provider.timeout ?? OLLAMA_DEFAULT_TIMEOUT_MS;
+    return OLLAMA_DEFAULT_TIMEOUT_MS;
   }
   return DEFAULT_TIMEOUT_MS;
 }
