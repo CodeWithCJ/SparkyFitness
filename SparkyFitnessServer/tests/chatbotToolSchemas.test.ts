@@ -84,6 +84,7 @@ describe('published (flat) chatbot tool schemas', () => {
         'meal_type_id',
         'entry_date',
         'entry_time',
+        'is_quick_food',
         'meal_id',
         'meal_name',
         'search_type',
