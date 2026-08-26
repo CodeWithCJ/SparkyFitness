@@ -2203,5 +2203,359 @@
     "mealRelation": {
       "awayFromMeals": "Lejos de las comidas"
     }
+  },
+  "pregnancy": {
+    "prompt": {
+      "title": "Configura tu embarazo",
+      "message": "Añade tu fecha de parto para seguir el crecimiento del bebé semana a semana y llevar un diario de fotos de tu barriga.",
+      "getStarted": "Empezar"
+    },
+    "weekBanner": {
+      "due": "Fecha de parto",
+      "wellnessProgress": "Progreso de bienestar",
+      "week": "Semana {{week}}",
+      "weekDay": "{{week}} sem {{day}} d",
+      "edit": "Editar detalles del embarazo",
+      "anyDayNow": "En cualquier momento",
+      "daysToGo_one": "Queda {{days}} día",
+      "daysToGo_other": "Quedan {{days}} días"
+    },
+    "trimester": {
+      "first": "Primer trimestre",
+      "second": "Segundo trimestre",
+      "third": "Tercer trimestre"
+    },
+    "checklist": {
+      "title": "Tareas de esta semana",
+      "empty": "No tienes nada en tu lista para esta semana.",
+      "item": "Elemento de la lista",
+      "items": {
+        "firstAppt": "Reserva tu primera cita prenatal",
+        "prenatalVitamin": "Empieza un suplemento prenatal con ácido fólico",
+        "ntScan": "Programa el cribado del primer trimestre",
+        "shareNews": "Comparte la noticia si te apetece",
+        "anatomyScan": "Acude a tu ecografía morfológica",
+        "glucoseTest": "Reserva tu prueba de cribado de glucosa",
+        "countKicks": "Empieza a contar las patadas del bebé a diario",
+        "birthClass": "Apúntate a una clase de preparación al parto o crianza",
+        "birthPlan": "Redacta tu plan de parto",
+        "hospitalBag": "Prepara tu bolsa para el hospital",
+        "installCarSeat": "Instala y revisa la silla de coche",
+        "pediatrician": "Elige un pediatra"
+      }
+    },
+    "babyDev": {
+      "w4": {
+        "comparison": "Una semilla de amapola",
+        "baby": "El embrión se ha implantado y la placenta empieza a formarse.",
+        "mom": "Puede que acabes de tener una falta. Las primeras hormonas están subiendo."
+      },
+      "w5": {
+        "comparison": "Una semilla de sésamo",
+        "baby": "El tubo neural —el inicio del cerebro y la médula espinal— se está formando.",
+        "mom": "Pueden empezar los primeros síntomas, como sensibilidad en los pechos y cansancio."
+      },
+      "w6": {
+        "comparison": "Una lenteja",
+        "baby": "Un diminuto corazón empieza a latir y a bombear sangre.",
+        "mom": "Las náuseas matutinas pueden empezar por ahora."
+      },
+      "w7": {
+        "comparison": "Un arándano",
+        "baby": "Aparecen los brotes de brazos y piernas; el cerebro crece rápido.",
+        "mom": "Tu útero empieza a expandirse, aunque aún no se note."
+      },
+      "w8": {
+        "comparison": "Una frambuesa",
+        "baby": "Se están formando los dedos de manos y pies y comienzan pequeños movimientos.",
+        "mom": "El volumen de sangre aumenta para apoyar a tu bebé."
+      },
+      "w9": {
+        "comparison": "Una cereza",
+        "baby": "Los órganos esenciales están formados; el bebé es ya oficialmente un feto.",
+        "mom": "Puede que notes cambios de humor por las hormonas."
+      },
+      "w10": {
+        "comparison": "Una fresa",
+        "baby": "Los órganos vitales funcionan y empiezan a desarrollarse pequeñas uñas.",
+        "mom": "Tu cintura puede empezar a cambiar."
+      },
+      "w11": {
+        "comparison": "Una lima",
+        "baby": "El bebé puede abrir y cerrar los puños; los huesos se endurecen.",
+        "mom": "Las náuseas suelen empezar a remitir en las próximas semanas."
+      },
+      "w12": {
+        "comparison": "Una ciruela",
+        "baby": "Se desarrollan los reflejos; el bebé puede doblar los dedos de manos y pies.",
+        "mom": "El final del primer trimestre está cerca; suele volver la energía."
+      },
+      "w13": {
+        "comparison": "Una vaina de guisantes",
+        "baby": "Se forman diminutas huellas dactilares y se desarrollan las cuerdas vocales.",
+        "mom": "Bienvenida al segundo trimestre, a menudo el más cómodo."
+      },
+      "w14": {
+        "comparison": "Un limón",
+        "baby": "El bebé puede hacer expresiones faciales y puede chuparse el pulgar.",
+        "mom": "Puede que empieces a sentirte más tú misma de nuevo."
+      },
+      "w15": {
+        "comparison": "Una manzana",
+        "baby": "El bebé puede percibir la luz y mueve el líquido amniótico.",
+        "mom": "Puede que notes que aparece una pequeña barriguita."
+      },
+      "w16": {
+        "comparison": "Un aguacate",
+        "baby": "El bebé puede oír sonidos y su corazón bombea mucha sangre a diario.",
+        "mom": "Algunas personas sienten los primeros movimientos («aleteos») por ahora."
+      },
+      "w17": {
+        "comparison": "Un nabo",
+        "baby": "Empiezan a formarse reservas de grasa y el esqueleto se endurece.",
+        "mom": "Tu centro de gravedad cambia a medida que crece tu barriga."
+      },
+      "w18": {
+        "comparison": "Un pimiento",
+        "baby": "El bebé puede oír tu voz y puede responder a los sonidos.",
+        "mom": "Puede que sientas movimientos más definidos ahora."
+      },
+      "w19": {
+        "comparison": "Un mango",
+        "baby": "Una capa protectora (vérnix) cubre la piel.",
+        "mom": "Son comunes los dolores del ligamento redondo por el estiramiento."
+      },
+      "w20": {
+        "comparison": "Un plátano",
+        "baby": "¡A mitad de camino! El bebé traga y desarrolla las papilas gustativas.",
+        "mom": "Tu ecografía morfológica suele hacerse por ahora."
+      },
+      "w21": {
+        "comparison": "Una zanahoria",
+        "baby": "El bebé se mueve más, con ciclos regulares de sueño y vigilia.",
+        "mom": "Puede que sientas las patadas con más fuerza y regularidad."
+      },
+      "w22": {
+        "comparison": "Una calabaza espagueti",
+        "baby": "Los labios, los párpados y las cejas están más definidos.",
+        "mom": "Tu barriga ya es claramente visible."
+      },
+      "w23": {
+        "comparison": "Un mango grande",
+        "baby": "El bebé puede oír sonidos fuertes y va ganando peso.",
+        "mom": "Puede empezar la hinchazón en pies y tobillos."
+      },
+      "w24": {
+        "comparison": "Una mazorca de maíz",
+        "baby": "Los pulmones se desarrollan; el bebé alcanza un hito de viabilidad.",
+        "mom": "Puede que pronto tengas una prueba de cribado de glucosa."
+      },
+      "w25": {
+        "comparison": "Un colinabo",
+        "baby": "Al bebé le crece el pelo y se desarrolla su reflejo de sobresalto.",
+        "mom": "Los dolores de espalda son comunes a medida que crece tu barriga."
+      },
+      "w26": {
+        "comparison": "Un manojo de cebolletas",
+        "baby": "Los ojos empiezan a abrirse y los pulmones practican movimientos respiratorios.",
+        "mom": "Puede que sientas movimientos rítmicos: el bebé tiene hipo."
+      },
+      "w27": {
+        "comparison": "Una coliflor",
+        "baby": "La actividad cerebral aumenta mucho; el bebé puede reconocer tu voz.",
+        "mom": "Bienvenida al tercer trimestre."
+      },
+      "w28": {
+        "comparison": "Una berenjena",
+        "baby": "El bebé puede parpadear y se le han formado las pestañas.",
+        "mom": "Las visitas prenatales suelen hacerse más frecuentes ahora."
+      },
+      "w29": {
+        "comparison": "Una calabaza cacahuete",
+        "baby": "Los músculos y los pulmones siguen madurando; los huesos están totalmente formados.",
+        "mom": "Puede que te falte el aire a medida que sube tu útero."
+      },
+      "w30": {
+        "comparison": "Un repollo grande",
+        "baby": "El bebé regula mejor su propia temperatura ahora.",
+        "mom": "El cansancio puede volver en el tercer trimestre."
+      },
+      "w31": {
+        "comparison": "Un coco",
+        "baby": "El bebé gana peso rápidamente y se mueve a menudo.",
+        "mom": "Puede que notes contracciones de práctica de Braxton-Hicks."
+      },
+      "w32": {
+        "comparison": "Una jícama",
+        "baby": "Los pulmones practican la respiración; el bebé suele colocarse cabeza abajo.",
+        "mom": "Plantéate empezar tu plan de parto y la bolsa del hospital."
+      },
+      "w33": {
+        "comparison": "Una piña",
+        "baby": "Los huesos del bebé se endurecen, aunque el cráneo sigue blando.",
+        "mom": "Puede que sientas más presión en la pelvis."
+      },
+      "w34": {
+        "comparison": "Un melón cantalupo",
+        "baby": "El sistema nervioso central y los pulmones maduran bien.",
+        "mom": "El cansancio y la hinchazón son comunes; descansa cuando puedas."
+      },
+      "w35": {
+        "comparison": "Un melón verde",
+        "baby": "El bebé se está rellenando; casi todos los sistemas están listos.",
+        "mom": "Tu profesional puede comprobar la posición del bebé."
+      },
+      "w36": {
+        "comparison": "Una lechuga romana",
+        "baby": "El bebé probablemente está cabeza abajo y gana unos 28 g al día.",
+        "mom": "Las revisiones semanales suelen empezar por ahora."
+      },
+      "w37": {
+        "comparison": "Un manojo de acelgas",
+        "baby": "El bebé se considera a término temprano y practica la respiración.",
+        "mom": "Atenta a las señales de parto y ten la bolsa preparada."
+      },
+      "w38": {
+        "comparison": "Un puerro",
+        "baby": "Los órganos están listos para la vida fuera; el bebé agarra con firmeza.",
+        "mom": "Puede que sientas que el bebé «baja» hacia tu pelvis."
+      },
+      "w39": {
+        "comparison": "Una sandía pequeña",
+        "baby": "El bebé está a término y listo para conocerte.",
+        "mom": "En cualquier momento; atenta a las contracciones regulares."
+      },
+      "w40": {
+        "comparison": "Una calabaza pequeña",
+        "baby": "¡Tu fecha de parto ha llegado! Los bebés llegan a su propio ritmo.",
+        "mom": "Si el parto no ha empezado, tu profesional hablará de los siguientes pasos."
+      }
+    },
+    "safety": {
+      "food": {
+        "cooked_salmon": {
+          "name": "Salmón cocinado",
+          "note": "El pescado bien cocinado y bajo en mercurio es una gran fuente de omega-3. Intenta 2–3 raciones a la semana."
+        },
+        "tuna_canned_light": {
+          "name": "Atún (claro en lata)",
+          "note": "Limítalo a ~2 raciones a la semana; elige claro en vez de blanco para menos mercurio."
+        },
+        "swordfish": {
+          "name": "Pez espada",
+          "note": "Los pescados con alto contenido en mercurio deben evitarse durante el embarazo."
+        },
+        "sushi_raw": {
+          "name": "Sushi (crudo)",
+          "note": "El pescado crudo conlleva riesgo de parásitos y bacterias. Los rollos cocinados están bien."
+        },
+        "shrimp_cooked": {
+          "name": "Gambas (cocinadas)",
+          "note": "El marisco bien cocinado es bajo en mercurio y seguro."
+        },
+        "soft_cheese_unpasteurized": {
+          "name": "Queso blando (sin pasteurizar)",
+          "note": "Los quesos blandos sin pasteurizar tienen riesgo de listeria. Las versiones pasteurizadas están bien."
+        },
+        "hard_cheese": {
+          "name": "Queso curado",
+          "note": "Los quesos curados y pasteurizados son seguros."
+        },
+        "pasteurized_milk": {
+          "name": "Leche pasteurizada",
+          "note": "Los lácteos pasteurizados son seguros y una buena fuente de calcio."
+        },
+        "deli_meat_cold": {
+          "name": "Fiambre (frío)",
+          "note": "Caliéntalo hasta que humee para reducir el riesgo de listeria."
+        },
+        "undercooked_meat": {
+          "name": "Carne poco hecha",
+          "note": "Cocina bien la carne para evitar la toxoplasmosis y las bacterias."
+        },
+        "cooked_chicken": {
+          "name": "Pollo cocinado",
+          "note": "Las aves bien cocinadas son una fuente segura de proteína."
+        },
+        "runny_raw_eggs": {
+          "name": "Huevos crudos/poco cuajados",
+          "note": "Cocínalos hasta que estén firmes, o usa huevos pasteurizados, para evitar la salmonela."
+        },
+        "coffee": {
+          "name": "Café",
+          "note": "Limita la cafeína a unos 200 mg al día (aproximadamente un café de 350 ml)."
+        },
+        "alcohol": {
+          "name": "Alcohol",
+          "note": "No se considera segura ninguna cantidad de alcohol durante el embarazo."
+        },
+        "herbal_tea": {
+          "name": "Infusión de hierbas",
+          "note": "Algunas hierbas no se recomiendan; consulta las infusiones concretas con tu profesional."
+        },
+        "cooked_leafy_greens": {
+          "name": "Verduras de hoja cocinadas",
+          "note": "Lávalas bien; una gran fuente de folato y hierro."
+        },
+        "unwashed_produce": {
+          "name": "Frutas y verduras sin lavar",
+          "note": "Lávalas a fondo; evita los brotes crudos, que pueden albergar bacterias."
+        },
+        "liver_pate": {
+          "name": "Hígado / paté",
+          "note": "Muy alto en vitamina A, que puede ser perjudicial en grandes cantidades."
+        },
+        "peanuts": {
+          "name": "Cacahuetes",
+          "note": "Seguros salvo que tengas alergia personal; una buena fuente de proteína."
+        },
+        "honey": {
+          "name": "Miel",
+          "note": "Segura para ti durante el embarazo (evita darla a bebés menores de 1 año)."
+        }
+      },
+      "med": {
+        "acetaminophen": {
+          "name": "Paracetamol (Tylenol)",
+          "note": "Suele considerarse de primera elección para el dolor/la fiebre a las dosis recomendadas. Confírmalo con tu profesional."
+        },
+        "ibuprofen": {
+          "name": "Ibuprofeno (Advil)",
+          "note": "Evítalo sobre todo en el tercer trimestre; úsalo solo si tu profesional lo indica."
+        },
+        "aspirin": {
+          "name": "Aspirina",
+          "note": "Solo a dosis baja si está prescrita; la aspirina a dosis normal suele evitarse."
+        },
+        "prenatal_vitamin": {
+          "name": "Suplemento prenatal",
+          "note": "Se recomienda durante todo el embarazo por el ácido fólico, el hierro y el DHA."
+        },
+        "antacids_tums": {
+          "name": "Antiácidos (Tums)",
+          "note": "Los antiácidos a base de calcio se usan a menudo para la acidez."
+        },
+        "diphenhydramine": {
+          "name": "Difenhidramina (Benadryl)",
+          "note": "A menudo se considera aceptable a corto plazo, pero consúltalo con tu profesional."
+        },
+        "ibuprofen_gel": {
+          "name": "Gel de ibuprofeno",
+          "note": "Consulta los AINE tópicos con tu profesional antes de usarlos."
+        },
+        "isotretinoin": {
+          "name": "Isotretinoína (Accutane)",
+          "note": "Los retinoides causan defectos congénitos graves y deben evitarse."
+        },
+        "pseudoephedrine": {
+          "name": "Descongestionante (pseudoefedrina)",
+          "note": "Suele evitarse en el primer trimestre; pregunta a tu profesional."
+        },
+        "vitamin_a_high_dose": {
+          "name": "Vitamina A (dosis alta)",
+          "note": "La vitamina A a dosis alta puede dañar al bebé; cíñete a las cantidades del prenatal."
+        }
+      }
+    }
   }
 }
