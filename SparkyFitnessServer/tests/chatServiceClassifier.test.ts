@@ -134,7 +134,7 @@ describe('buildEscalationPrepareStep', () => {
     exercise_stats: ['sparky_get_exercise_stats'],
     sleep_science: ['sparky_get_sleep_science'],
     integrations: ['sparky_get_integrations'],
-    synced_data: ['sparky_manage_synced_data'],
+    synced_data: ['sparky_get_synced_data'],
     progress_photos: ['sparky_manage_progress_photos'],
     dashboard: ['sparky_get_dashboard'],
     barcode: ['sparky_get_barcode'],

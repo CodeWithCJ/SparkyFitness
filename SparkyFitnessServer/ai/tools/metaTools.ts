@@ -26,7 +26,7 @@ export const CATEGORY_SUMMARIES: Record<ChatToolCategorySlug, string> = {
   vision:
     'analyze food photos and scan nutrition labels (tools: sparky_analyze_food_image, sparky_scan_label)',
   profile:
-    'profile details, preferences, units, timezone, habits, connected integrations, and synced-data management (tools: sparky_manage_profile, sparky_manage_habits, sparky_get_integrations, sparky_manage_synced_data)',
+    'profile details, preferences, units, timezone, habits, connected integrations, and synced-data listing (tools: sparky_manage_profile, sparky_manage_habits, sparky_get_integrations, sparky_get_synced_data)',
   medications:
     'medication and GLP-1 tracking (tools: sparky_manage_medications)',
 };
