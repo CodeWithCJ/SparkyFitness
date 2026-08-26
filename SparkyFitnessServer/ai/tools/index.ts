@@ -58,9 +58,25 @@ const CATEGORY_BUILDERS: Record<
   ChatToolCategorySlug,
   ((userId: string, tz: string) => ToolMap)[]
 > = {
-  exercise: [(u, tz) => buildExerciseTools(u, tz)],
-  food: [(u, tz) => buildFoodTools(u, tz)],
-  checkin: [(u, tz) => buildCheckinTools(u, tz)],
+  exercise: [
+    (u, tz) => buildExerciseTools(u, tz),
+    (u, tz) => buildExerciseStatsTools(u, tz),
+    (u, tz) => buildWorkoutPlanTools(u, tz),
+  ],
+  food: [
+    (u, tz) => buildFoodTools(u, tz),
+    (u, tz) => buildFavoritesTools(u, tz),
+    (u, tz) => buildMealPlanTools(u, tz),
+    (u, tz) => buildCustomNutrientTools(u, tz),
+    (u, tz) => buildWaterContainerTools(u, tz),
+    (u, tz) => buildAllergenTools(u, tz),
+    (u, tz) => buildBarcodeTools(u, tz),
+  ],
+  checkin: [
+    (u, tz) => buildCheckinTools(u, tz),
+    (u, tz) => buildProgressPhotoTools(u, tz),
+    (u, tz) => buildSleepScienceTools(u, tz),
+  ],
   goals: [(u, tz) => buildGoalTools(u, tz)],
   coaching: [
     (u, tz) => buildCoachTools(u, tz),
@@ -68,22 +84,17 @@ const CATEGORY_BUILDERS: Record<
     (u) => buildWizardTools(u),
   ],
   vision: [(u) => buildVisionTools(u)],
-  profile: [(u) => buildProfileTools(u), (u, tz) => buildHabitTools(u, tz)],
-  reports: [(u, tz) => buildReportTools(u, tz)],
+  profile: [
+    (u) => buildProfileTools(u),
+    (u, tz) => buildHabitTools(u, tz),
+    (u, tz) => buildIntegrationsTools(u, tz),
+    (u, tz) => buildSyncedDataTools(u, tz),
+  ],
+  reports: [
+    (u, tz) => buildReportTools(u, tz),
+    (u, tz) => buildDashboardTools(u, tz),
+  ],
   medications: [(u, tz) => buildMedicationTools(u, tz)],
-  allergens: [(u, tz) => buildAllergenTools(u, tz)],
-  favorites: [(u, tz) => buildFavoritesTools(u, tz)],
-  meal_plans: [(u, tz) => buildMealPlanTools(u, tz)],
-  custom_nutrients: [(u, tz) => buildCustomNutrientTools(u, tz)],
-  water_containers: [(u, tz) => buildWaterContainerTools(u, tz)],
-  workout_plans: [(u, tz) => buildWorkoutPlanTools(u, tz)],
-  exercise_stats: [(u, tz) => buildExerciseStatsTools(u, tz)],
-  sleep_science: [(u, tz) => buildSleepScienceTools(u, tz)],
-  integrations: [(u, tz) => buildIntegrationsTools(u, tz)],
-  synced_data: [(u, tz) => buildSyncedDataTools(u, tz)],
-  progress_photos: [(u, tz) => buildProgressPhotoTools(u, tz)],
-  dashboard: [(u, tz) => buildDashboardTools(u, tz)],
-  barcode: [(u, tz) => buildBarcodeTools(u, tz)],
 };
 
 // Composition order: the core categories first (a strict prefix of the full
@@ -98,19 +109,6 @@ const CATEGORY_ORDER: ChatToolCategorySlug[] = [
   'profile',
   'reports',
   'medications',
-  'allergens',
-  'favorites',
-  'meal_plans',
-  'custom_nutrients',
-  'water_containers',
-  'workout_plans',
-  'exercise_stats',
-  'sleep_science',
-  'integrations',
-  'synced_data',
-  'progress_photos',
-  'dashboard',
-  'barcode',
 ];
 
 // Resolves the category set to compose: an explicit (already-validated,

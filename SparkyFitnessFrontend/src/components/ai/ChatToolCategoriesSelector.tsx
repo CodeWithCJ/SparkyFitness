@@ -26,25 +26,6 @@ const CATEGORY_LABELS: Record<ChatToolCategorySlug, [string, string]> = {
   vision: ['chat.toolCategories.vision', 'Vision'],
   profile: ['chat.toolCategories.profile', 'Profile & Habits'],
   medications: ['chat.toolCategories.medications', 'Medications'],
-  allergens: ['chat.toolCategories.allergens', 'Allergens'],
-  favorites: ['chat.toolCategories.favorites', 'Favorites'],
-  meal_plans: ['chat.toolCategories.meal_plans', 'Meal Plans'],
-  custom_nutrients: [
-    'chat.toolCategories.custom_nutrients',
-    'Custom Nutrients',
-  ],
-  water_containers: [
-    'chat.toolCategories.water_containers',
-    'Water Containers',
-  ],
-  workout_plans: ['chat.toolCategories.workout_plans', 'Workout Plans'],
-  exercise_stats: ['chat.toolCategories.exercise_stats', 'Exercise Stats'],
-  sleep_science: ['chat.toolCategories.sleep_science', 'Sleep Science'],
-  integrations: ['chat.toolCategories.integrations', 'Integrations'],
-  synced_data: ['chat.toolCategories.synced_data', 'Synced Data'],
-  progress_photos: ['chat.toolCategories.progress_photos', 'Progress Photos'],
-  dashboard: ['chat.toolCategories.dashboard', 'Dashboard'],
-  barcode: ['chat.toolCategories.barcode', 'Barcode Lookup'],
 };
 
 /**

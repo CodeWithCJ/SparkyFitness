@@ -68,13 +68,17 @@ const EXPECTED_TOOLS = [
 // The 'core' profile (used for Ollama and other small/local models): the
 // food, exercise, and measurement logging the system prompt centers on, plus
 // goals (a coaching chat must answer "what are my goals?"), minus the
-// analytics, coaching, vision, profile, habit, wizard, and report tools that
-// weaker models struggle to drive and that inflate prefill cost.
+// coaching, vision, profile, and report tools that weaker models struggle to
+// drive. The food/exercise/checkin domains also carry their folded single-tool
+// helpers (favorites, meal plans, water containers, workout plans, progress
+// photos, sleep science, etc.) since those now live inside those categories.
 const EXPECTED_CORE_TOOLS = [
+  'sparky_get_barcode',
   'sparky_get_daily_exercise_totals',
   'sparky_get_exercise_details',
   'sparky_get_exercise_diary',
   'sparky_get_exercise_progress',
+  'sparky_get_exercise_stats',
   'sparky_get_exercise_usage',
   'sparky_get_food_details',
   'sparky_get_food_diary',
@@ -83,12 +87,20 @@ const EXPECTED_CORE_TOOLS = [
   'sparky_get_nutrition_summary',
   'sparky_get_recent_exercise_entries',
   'sparky_get_recent_food_entries',
+  'sparky_get_sleep_science',
   'sparky_list_exercises',
   'sparky_list_foods',
+  'sparky_manage_allergens',
   'sparky_manage_checkin',
+  'sparky_manage_custom_nutrients',
   'sparky_manage_exercise',
+  'sparky_manage_favorites',
   'sparky_manage_food',
   'sparky_manage_goals',
+  'sparky_manage_meal_plans',
+  'sparky_manage_progress_photos',
+  'sparky_manage_water_containers',
+  'sparky_manage_workout_plans',
   'sparky_search_exercises',
   'sparky_search_foods',
 ];

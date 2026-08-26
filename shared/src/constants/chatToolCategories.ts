@@ -21,19 +21,6 @@ export const CHAT_TOOL_CATEGORY_SLUGS = [
   'vision',
   'profile',
   'medications',
-  'allergens',
-  'favorites',
-  'meal_plans',
-  'custom_nutrients',
-  'water_containers',
-  'workout_plans',
-  'exercise_stats',
-  'sleep_science',
-  'integrations',
-  'synced_data',
-  'progress_photos',
-  'dashboard',
-  'barcode',
 ] as const;
 
 export type ChatToolCategorySlug = (typeof CHAT_TOOL_CATEGORY_SLUGS)[number];
