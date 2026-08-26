@@ -4312,5 +4312,209 @@
   },
   "languageSettings": {
     "subtitle": "Usa el idioma de tu dispositivo o elige un idioma para SparkyFitness."
+  },
+  "devTools": {
+    "title": "Herramientas de desarrollo",
+    "description": "Estas herramientas solo son visibles en compilaciones de desarrollo.",
+    "seed": {
+      "title": "Sembrar datos de salud",
+      "description": "Insertar datos de salud de muestra para pruebas.",
+      "sevenDays": "7 días",
+      "fourteenDays": "14 días",
+      "thirtyDays": "30 días",
+      "oneYear": "1 año",
+      "steps": "(Pasos)",
+      "oldData": "Datos antiguos",
+      "oldRange": "(1-3 años)",
+      "richWorkout": "Entrenamiento completo",
+      "richWorkoutDetail": "(Ruta+FC+Vueltas)",
+      "richWorkoutIosDetail": "(Ruta+FC)",
+      "richStrength": "Fuerza completa",
+      "richStrengthDetail": "(FC irregular)"
+    },
+    "healthConnect": {
+      "title": "Health Connect",
+      "data": "Datos de Health Connect",
+      "backgroundPermission": {
+        "title": "Permiso de acceso en segundo plano",
+        "granted": "El permiso de acceso en segundo plano está concedido.",
+        "notGranted": "El permiso de acceso en segundo plano NO está concedido."
+      }
+    },
+    "sync": {
+      "title": "Sincronización en segundo plano",
+      "description": "Dispara manualmente el proceso de sincronización en segundo plano.",
+      "trigger": "Disparar sincronización",
+      "checkPermission": "Comprobar permiso 2.º plano"
+    },
+    "auth": {
+      "title": "Autenticación",
+      "description": "Dispara los modales de autenticación para pruebas.",
+      "reauth": "Mostrar ReauthModal"
+    },
+    "whatsNew": {
+      "title": "Banner de novedades",
+      "description": "Borra la última versión vista para que el banner reaparezca sobre la barra de pestañas.",
+      "reset": "Restablecer banner"
+    },
+    "announcement": {
+      "title": "Anuncio del sistema",
+      "description": "Borra la marca de anuncio descartado para que los anuncios activos del sistema reaparezcan.",
+      "reset": "Restablecer anuncio"
+    },
+    "popovers": {
+      "title": "Popovers de búsqueda de comida",
+      "description": "Borra una marca de visto para que su popover de ayuda reaparezca en la próxima búsqueda de comida.",
+      "sources": "Introducción a Fuentes",
+      "provider": "Selector de fuente"
+    },
+    "toast": {
+      "syncCompleted": "Sincronización en segundo plano completada. Consulta los registros para ver detalles.",
+      "syncFailed": "La sincronización falló: {{message}}",
+      "healthSeeded_one": "Se sembró {{count}} registro de salud de los últimos {{days}} días.",
+      "healthSeeded_other": "Se sembraron {{count}} registros de salud de los últimos {{days}} días.",
+      "healthSeedFailed": "No se pudieron sembrar los datos de salud.",
+      "healthSeedFailedWithMessage": "No se pudieron sembrar los datos de salud: {{message}}",
+      "historicalSeeded_one": "Se sembró {{count}} registro de pasos histórico del último año.",
+      "historicalSeeded_other": "Se sembraron {{count}} registros de pasos históricos del último año.",
+      "historicalSeedFailed": "No se pudieron sembrar los datos de pasos históricos.",
+      "historicalSeedFailedWithMessage": "No se pudieron sembrar los datos de pasos históricos: {{message}}",
+      "reset": "Restablecer",
+      "whatsNewReset": "El banner de novedades reaparecerá.",
+      "announcementReset": "El modal de anuncio del sistema reaparecerá.",
+      "announcementResetFailed": "No se pudo restablecer el anuncio.",
+      "popoverReset": "El popover {{label}} reaparecerá.",
+      "popoverResetFailed": "No se pudo restablecer el popover.",
+      "seedOldSeeded_one": "Se sembró {{count}} registro en grupos de 1-3 años atrás.",
+      "seedOldSeeded_other": "Se sembraron {{count}} registros en grupos de 1-3 años atrás.",
+      "seedOldFailedWithMessage": "No se pudieron sembrar los datos de salud antiguos: {{message}}",
+      "seedOldFailed": "No se pudieron sembrar los datos de salud antiguos.",
+      "richWorkoutSeeded": "Se sembró una caminata de 12 minutos con ruta, FC, velocidad y vueltas. Ejecuta una sincronización en primer plano para incorporarla.",
+      "richWorkoutIosSeeded": "Se sembró una caminata de 12 minutos con ruta y FC. Ejecuta una sincronización en primer plano para incorporarla.",
+      "richStrengthSeeded": "Se sembró una sesión de fuerza de 35 minutos con FC irregular (sin ruta/reps: los dispositivos nunca los reportan). Ejecuta una sincronización en primer plano para incorporarla.",
+      "richStrengthIosSeeded": "Se sembró una sesión de fuerza de 35 minutos con FC irregular (sin ruta/vueltas/reps: los dispositivos nunca los reportan). Ejecuta una sincronización en primer plano para incorporarla.",
+      "richWorkoutFailed": "No se pudo sembrar el entrenamiento completo.",
+      "richWorkoutFailedWithMessage": "No se pudo sembrar el entrenamiento completo: {{message}}",
+      "richStrengthFailed": "No se pudo sembrar el entrenamiento de fuerza completo.",
+      "richStrengthFailedWithMessage": "No se pudo sembrar el entrenamiento de fuerza completo: {{message}}"
+    },
+    "gallery": {
+      "title": "Galería de la tarjeta de ciclo",
+      "description": "Vista previa con datos ficticios de la tarjeta de ciclo del panel en cada fase. Los diseños de embarazo y discreto siguen datos reales: cambia de modo en los ajustes del Centro.",
+      "cycleTracking": "Seguimiento del ciclo",
+      "state": {
+        "menstrual": "Menstrual — día 2",
+        "follicular": "Folicular — día 8",
+        "fertile": "Ventana fértil — día 12",
+        "ovulation": "Ovulación — día 14",
+        "luteal": "Lútea — día 21",
+        "late": "Periodo con retraso — día 31",
+        "unknown": "Fase del ciclo"
+      }
+    }
+  },
+  "whatsNewPage": {
+    "title": "Novedades",
+    "mockup": {
+      "today": "HOY",
+      "kcalLeft": "kcal restantes",
+      "in": "Entrada",
+      "out": "Salida",
+      "chatQuestion": "¿Qué puedo cenar con 500 calorías restantes?",
+      "chatAnswer": "Salmón a la plancha con una ensalada te deja cerca de 480 kcal.",
+      "estimatedCalories": "~412 kcal",
+      "lutealPhase": "Fase lútea",
+      "day18": "Día 18",
+      "symptomFlowLog": "Registro de síntomas y flujo",
+      "mildNormal": "Leve • Normal",
+      "benchPress": "Press de banca",
+      "threeSets": "3 series",
+      "setOneReps": "Serie 1: 10 reps",
+      "doneWeight": "80 kg • Hecho",
+      "fauxprofen": "Fauxprofeno",
+      "dailyDose": "200 mg • Diaria",
+      "taken": "Tomada",
+      "caloriesLeftValue": "1.515",
+      "caloriesInValue": "1.540",
+      "caloriesOutValue": "255",
+      "eightAm": "8:00",
+      "eyebrow": "iOS 26"
+    },
+    "features": {
+      "medications": {
+        "eyebrow": "MEDICACIÓN",
+        "headline": "Controla tu medicación",
+        "body": "Añade tus medicamentos, define pautas de dosis y registra cada toma desde el panel con recordatorios opcionales.",
+        "cta": "Configurar medicación"
+      },
+      "cycle": {
+        "eyebrow": "CICLO Y EMBARAZO",
+        "headline": "Sigue tu ciclo y embarazo",
+        "body": "Seguimiento completo de fases del ciclo, síntomas, flujo y progreso del embarazo, con recomendaciones a medida y ajustes de objetivos."
+      },
+      "workout": {
+        "eyebrow": "ENTRENAMIENTO Y EJERCICIOS",
+        "headline": "Flujos de entrenamiento renovados",
+        "body": "Registro de ejercicios simplificado, gestión actualizada de la biblioteca de ejercicios y mejor seguimiento del rendimiento con varias series."
+      },
+      "ios": {
+        "eyebrow": "iOS 26",
+        "headline": "Un aspecto Liquid Glass",
+        "body": "Activa la navegación Liquid Glass para pestañas y cabeceras translúcidas que recogen el color que hay detrás. Actívala cuando quieras en los ajustes de la app.",
+        "cta": "Abrir ajustes"
+      },
+      "chat": {
+        "eyebrow": "PREGUNTA A SPARKY",
+        "headline": "Chatea con tu entrenador de IA",
+        "body": "Pide a Sparky que registre comidas, planifique qué comer y responda preguntas sobre tu día a través del chat.",
+        "cta": "Empezar a chatear"
+      },
+      "widget": {
+        "eyebrow": "WIDGET DE PANTALLA DE INICIO",
+        "headline": "Las calorías en tu pantalla de inicio",
+        "body": "Ve de un vistazo cómo va tu día. Añade SparkyFitness desde la galería de widgets de tu pantalla de inicio."
+      },
+      "photo": {
+        "eyebrow": "ESCANEO DE FOTO CON IA",
+        "headline": "Haz una foto a tu comida y registra los macros",
+        "body": "Estima la nutrición a partir de una foto cuando tengas poco tiempo.",
+        "cta": "Pruébalo"
+      }
+    }
+  },
+  "workoutPresetCount_one": "{{formattedCount}} ejercicio",
+  "workoutPresetCount_other": "{{formattedCount}} ejercicios",
+  "chat": {
+    "title": "Sparky",
+    "error": "Error de chat",
+    "errorRetry": "Algo salió mal. Toca reintentar para volver a intentarlo.",
+    "retry": "Reintentar",
+    "placeholder": "Mensaje para Sparky…",
+    "emptyPrompt": "Pregúntale a Sparky lo que quieras sobre tu nutrición, ejercicio u objetivos.",
+    "clearTitle": "Borrar chat",
+    "clearMessage": "Esto elimina permanentemente tu historial de chat con Sparky. No se puede deshacer.",
+    "clearFailed": "No se pudo borrar el chat",
+    "clearAccessibility": "Borrar chat",
+    "noServer": "No hay configuración de servidor activa. Configura una primero en Ajustes.",
+    "noProvider": "No hay proveedor de IA activo. Configura uno primero en la app web.",
+    "copied": "Copiado",
+    "copy": "Copiar",
+    "suggestions": {
+      "breakfast": "Registra dos huevos y un plátano para desayunar",
+      "run": "Registra una carrera de 30 minutos hoy",
+      "calories": "¿Cuántas calorías me quedan hoy?",
+      "snack": "Sugiéreme un tentempié rico en proteínas"
+    },
+    "tools": {
+      "food": "Comida",
+      "exercise": "Ejercicio",
+      "checkin": "Registro",
+      "goals": "Objetivos",
+      "lookedUp": "Se consultó {{name}}"
+    },
+    "typing": "Sparky está escribiendo"
+  },
+  "foodEntryMeal": {
+    "failed": "No se pudo añadir la comida"
   }
 }
