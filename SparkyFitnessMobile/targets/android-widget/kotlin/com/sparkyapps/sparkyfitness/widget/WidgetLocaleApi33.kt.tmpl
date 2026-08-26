@@ -1,0 +1,72 @@
+package com.sparkyapps.sparkyfitness.widget
+
+import android.app.LocaleManager
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.os.LocaleList
+import androidx.annotation.DoNotInline
+import androidx.annotation.RequiresApi
+
+/**
+ * Isolated Android 13+ (API 33+) helper for reading platform per-app language
+ * state through `android.app.LocaleManager` and the API 33+
+ * `Intent.getParcelableExtra(String, Class<T>)` overload.
+ *
+ * This is the ONLY widget-side class that references `android.app.LocaleManager`
+ * and the ONLY place that calls the API 33+ `getParcelableExtra` overload.
+ * `WidgetLocale` calls these methods only after a runtime
+ * `Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU` guard, so the class
+ * verifier on Android <=12 never resolves `LocaleManager` or the API 33
+ * overload when `WidgetLocale` is loaded.
+ *
+ * `@RequiresApi` marks the boundary for lint; `@DoNotInline` + `@JvmStatic`
+ * follow the AndroidX out-of-line pattern so R8/ART does not inline these
+ * bodies back into the common `WidgetLocale` object (which would re-introduce
+ * the API 33 class/method references on the minSdk path).
+ *
+ * No method exposes `LocaleManager` or an API-33-only type across the helper
+ * boundary: callers receive only `String?` / `LocaleList?` values that are
+ * safe on every API level (`LocaleList` exists since API 24).
+ */
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+internal object WidgetLocaleApi33 {
+    private fun localeManager(context: Context): LocaleManager? =
+        context.getSystemService(LocaleManager::class.java)
+
+    /**
+     * Reads the API 33+ `Intent.EXTRA_LOCALE_LIST` parcelable using the
+     * `getParcelableExtra(String, Class<T>)` overload added in API 33.
+     * Returns null when the extra is absent or not a `LocaleList`.
+     */
+    @JvmStatic
+    @DoNotInline
+    fun getLocaleListExtra(intent: Intent): LocaleList? =
+        intent.getParcelableExtra(Intent.EXTRA_LOCALE_LIST, LocaleList::class.java)
+
+    @JvmStatic
+    @DoNotInline
+    fun systemPlatformLanguage(context: Context): String? {
+        val manager = localeManager(context) ?: return null
+        val systemLocales = manager.systemLocales
+        return if (systemLocales != null && !systemLocales.isEmpty) {
+            WidgetLocale.normalizeLanguage(systemLocales[0])
+        } else {
+            null
+        }
+    }
+
+    @JvmStatic
+    @DoNotInline
+    fun currentPlatformLanguage(context: Context): String? {
+        val manager = localeManager(context) ?: return null
+        val appLocales = manager.applicationLocales
+        val platformLocale = if (appLocales != null && !appLocales.isEmpty) {
+            appLocales[0]
+        } else {
+            val systemLocales = manager.systemLocales
+            if (systemLocales != null && !systemLocales.isEmpty) systemLocales[0] else null
+        }
+        return platformLocale?.let(WidgetLocale::normalizeLanguage)
+    }
+}

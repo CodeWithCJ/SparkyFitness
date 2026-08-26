@@ -595,7 +595,11 @@ describe('Android widget localization contract', () => {
       );
       expect(locale).toMatch(/Intent\.EXTRA_PACKAGE_NAME/);
       expect(locale).toMatch(/Intent\.EXTRA_LOCALE_LIST/);
-      expect(locale).toMatch(/getParcelableExtra\(\s*Intent\.EXTRA_LOCALE_LIST,\s*LocaleList::class\.java,?\s*\)/);
+      // The API 33+ getParcelableExtra(String, Class<T>) overload is isolated
+      // in WidgetLocaleApi33 (issue #2253); the common WidgetLocale object only
+      // delegates to it.
+      expect(locale).toMatch(/WidgetLocaleApi33\.getLocaleListExtra\(intent\)/);
+      expect(locale).not.toMatch(/getParcelableExtra\(\s*Intent\.EXTRA_LOCALE_LIST,\s*LocaleList::class\.java,?\s*\)/);
       expect(locale).toMatch(/systemPlatformLanguage\(context\)/);
       expect(locale).toMatch(/refreshEffectiveRenderLocaleFromBroadcast/);
       expect(locale).not.toMatch(/refreshEffectiveRenderLocaleFromPlatform/);
@@ -617,6 +621,13 @@ describe('Android widget localization contract', () => {
       expect(appPayloadBranch).toMatch(/languageFromLocaleList\(appLocales\)/);
       expect(broadcastBody).toMatch(/systemPlatformLanguage\(context\)/);
       expect(broadcastBody).toMatch(/editor\.putString\(KEY_EFFECTIVE_RENDER_LOCALE, effective\)/);
+
+      // The API 33+ overload must live in the isolated helper (issue #2253).
+      const helper = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'WidgetLocaleApi33.kt.tmpl'),
+        'utf8',
+      );
+      expect(helper).toMatch(/getParcelableExtra\(\s*Intent\.EXTRA_LOCALE_LIST,\s*LocaleList::class\.java,?\s*\)/);
     });
 
     it('exposes prepareWidgetLocale through the native bridge', () => {

@@ -1,9 +1,6 @@
 package com.sparkyapps.sparkyfitness.language
 
-import android.app.LocaleManager
-import android.content.Context
 import android.os.Build
-import android.os.LocaleList
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
@@ -19,16 +16,17 @@ import java.util.Locale
  * resolves through expo-localization); the SDK_INT guards below keep the
  * module defensive regardless. AppCompat locale APIs are intentionally NOT
  * used on any API level.
+ *
+ * Every API 33+ reference (android.app.LocaleManager, applicationLocales) is
+ * isolated in `AppLanguageApi33`, which is loaded lazily only after the API 33
+ * guard. This keeps the class verifier on Android <=12 from resolving
+ * `android.app.LocaleManager` during module registration, preventing
+ * `NoClassDefFoundError` / `VerifyError` at startup.
  */
 class AppLanguageModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
 
     override fun getName(): String = MODULE_NAME
-
-    private fun localeManager(): LocaleManager? {
-        if (Build.VERSION.SDK_INT < API_33) return null
-        return reactApplicationContext.getSystemService(Context.LOCALE_SERVICE) as? LocaleManager
-    }
 
     @ReactMethod
     fun setApplicationLanguage(language: String?, promise: Promise) {
@@ -47,12 +45,7 @@ class AppLanguageModule(reactContext: ReactApplicationContext) :
         }
 
         try {
-            val locales = if (normalized == null) {
-                LocaleList.getEmptyLocaleList()
-            } else {
-                LocaleList.forLanguageTags(normalized)
-            }
-            localeManager()?.applicationLocales = locales
+            AppLanguageApi33.setApplicationLanguage(reactApplicationContext, normalized)
             promise.resolve(null)
         } catch (error: Exception) {
             promise.reject("E_SET_LANGUAGE_FAILED", error)
@@ -67,7 +60,7 @@ class AppLanguageModule(reactContext: ReactApplicationContext) :
             return
         }
         try {
-            val tags = localeManager()?.applicationLocales?.toLanguageTags()
+            val tags = AppLanguageApi33.getApplicationLanguage(reactApplicationContext)
             promise.resolve(tags?.substringBefore(',')?.ifEmpty { null })
         } catch (error: Exception) {
             promise.reject("E_GET_LANGUAGE_FAILED", error)
@@ -77,8 +70,11 @@ class AppLanguageModule(reactContext: ReactApplicationContext) :
     @ReactMethod
     fun getEffectiveLanguage(promise: Promise) {
         try {
+            // The API 33+ platform tag is preferred when available; the
+            // configuration/Locale fallbacks are safe on every API level and
+            // are kept here so the API 33 helper never has to handle them.
             val language = if (Build.VERSION.SDK_INT >= API_33) {
-                localeManager()?.applicationLocales?.get(0)?.toLanguageTag()
+                AppLanguageApi33.getApplicationLanguageTag(reactApplicationContext)
                     ?: reactApplicationContext.resources.configuration.locales[0]?.toLanguageTag()
                     ?: Locale.getDefault().toLanguageTag()
             } else {
