@@ -41,6 +41,43 @@ function stripComments(src: string): string {
   return result;
 }
 
+/**
+ * Extract the body of a Kotlin `fun` (including the @ReactMethod annotation
+ * line if present) using a brace-balanced scan. This scopes guard-vs-helper
+ * assertions to a single method body, so a guard from another method can no
+ * longer satisfy the assertion for a different method (CodeRabbit finding on
+ * PR #2259).
+ *
+ * The scan starts at the first `fun name(` occurrence and returns the text
+ * from the first `{` to its matching `}`. String literals and comments inside
+ * the body are left as-is; for the assertions in this file that is safe
+ * because they look for specific Kotlin expressions that do not appear as
+ * string literals in the audited sources.
+ */
+function extractFunctionBody(source: string, functionName: string): string {
+  const functionIndex = source.indexOf(`fun ${functionName}(`);
+  if (functionIndex === -1) {
+    throw new Error(`Function ${functionName} not found`);
+  }
+
+  const openBrace = source.indexOf('{', functionIndex);
+  if (openBrace === -1) {
+    throw new Error(`Function body for ${functionName} not found`);
+  }
+
+  let depth = 0;
+  for (let i = openBrace; i < source.length; i += 1) {
+    if (source[i] === '{') depth += 1;
+    if (source[i] === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return source.slice(openBrace + 1, i);
+      }
+    }
+  }
+  throw new Error(`Unterminated function body for ${functionName}`);
+}
+
 describe('Android API 33 isolation contract (issue #2253)', () => {
   describe('common language bridge layer (loaded unconditionally)', () => {
     it('1. AppLanguageModule.kt has no code reference to LocaleManager (imports, types, calls)', () => {
@@ -64,43 +101,99 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
       expect(code).not.toMatch(/LocaleManager\b/);
     });
 
-    it('6. AppLanguageModule guards API 33 calls with SDK_INT before delegating', () => {
+    it('6. AppLanguageModule guards API 33 calls with SDK_INT before delegating (per method body)', () => {
       const src = readSource(LANGUAGE_ROOT, 'AppLanguageModule.kt');
-      // setApplicationLanguage must guard before calling the API 33 helper.
-      const setGuard = src.indexOf('Build.VERSION.SDK_INT < API_33');
-      const setDelegate = src.indexOf('AppLanguageApi33.setApplicationLanguage');
+
+      // setApplicationLanguage: guard before helper, inside the same body.
+      const setBody = extractFunctionBody(src, 'setApplicationLanguage');
+      const setGuard = setBody.indexOf('Build.VERSION.SDK_INT < API_33');
+      const setDelegate = setBody.indexOf('AppLanguageApi33.setApplicationLanguage');
       expect(setGuard).toBeGreaterThan(-1);
       expect(setDelegate).toBeGreaterThan(-1);
       expect(setDelegate).toBeGreaterThan(setGuard);
 
-      // getEffectiveLanguage has an SDK_INT >= API_33 branch before the helper.
-      const effGuard = src.indexOf('Build.VERSION.SDK_INT >= API_33');
-      const effDelegate = src.indexOf('AppLanguageApi33.getApplicationLanguageTag');
+      // getApplicationLanguage: its OWN guard before its OWN helper call.
+      const getBody = extractFunctionBody(src, 'getApplicationLanguage');
+      const getGuard = getBody.indexOf('Build.VERSION.SDK_INT < API_33');
+      const getDelegate = getBody.indexOf('AppLanguageApi33.getApplicationLanguage');
+      expect(getGuard).toBeGreaterThan(-1);
+      expect(getDelegate).toBeGreaterThan(-1);
+      expect(getDelegate).toBeGreaterThan(getGuard);
+
+      // getEffectiveLanguage: its OWN >= API_33 branch before its OWN helper.
+      const effBody = extractFunctionBody(src, 'getEffectiveLanguage');
+      const effGuard = effBody.indexOf('Build.VERSION.SDK_INT >= API_33');
+      const effDelegate = effBody.indexOf('AppLanguageApi33.getApplicationLanguageTag');
       expect(effGuard).toBeGreaterThan(-1);
       expect(effDelegate).toBeGreaterThan(-1);
       expect(effDelegate).toBeGreaterThan(effGuard);
     });
 
-    it('7. AppLanguageModule never reaches the API 33 helper on the API <=32 path', () => {
+    it('7. AppLanguageModule never reaches the API 33 helper on the API <=32 path (per method body)', () => {
       const src = readSource(LANGUAGE_ROOT, 'AppLanguageModule.kt');
-      // Every AppLanguageApi33 call site must be preceded by an SDK_INT guard
-      // in the same method body. There are three call sites; each must have a
-      // guard earlier in the file within the enclosing method.
-      const callSites = ['AppLanguageApi33.setApplicationLanguage', 'AppLanguageApi33.getApplicationLanguage', 'AppLanguageApi33.getApplicationLanguageTag'];
-      for (const call of callSites) {
-        const idx = src.indexOf(call);
-        if (idx === -1) continue; // not all may be present
-        // Find the nearest preceding SDK_INT check (same method).
-        const guardIdx = Math.max(
-          src.lastIndexOf('Build.VERSION.SDK_INT < API_33', idx),
-          src.lastIndexOf('Build.VERSION.SDK_INT >= API_33', idx),
-        );
+
+      // Each method body must contain its OWN guard before its helper call.
+      // A guard from another method must not satisfy this assertion.
+      const cases: { fn: string; guard: string; helper: string }[] = [
+        { fn: 'setApplicationLanguage', guard: 'Build.VERSION.SDK_INT < API_33', helper: 'AppLanguageApi33.setApplicationLanguage' },
+        { fn: 'getApplicationLanguage', guard: 'Build.VERSION.SDK_INT < API_33', helper: 'AppLanguageApi33.getApplicationLanguage' },
+        { fn: 'getEffectiveLanguage', guard: 'Build.VERSION.SDK_INT >= API_33', helper: 'AppLanguageApi33.getApplicationLanguageTag' },
+      ];
+
+      for (const { fn, guard, helper } of cases) {
+        const body = extractFunctionBody(src, fn);
+        const guardIdx = body.indexOf(guard);
+        const helperIdx = body.indexOf(helper);
         expect(guardIdx).toBeGreaterThan(-1);
-        // Ensure no `return` between the guard and the call (which would mean
-        // the guard returns early on API <=32 and the call is unreachable there).
-        // The helper call must come after the guard in the same method.
-        expect(idx).toBeGreaterThan(guardIdx);
+        expect(helperIdx).toBeGreaterThan(-1);
+        expect(helperIdx).toBeGreaterThan(guardIdx);
       }
+    });
+
+    it('7a. extractFunctionBody scopes guards per method (mutation regression)', () => {
+      // Prove the test above would FAIL if getApplicationLanguage lost its
+      // own guard. We synthesize a source where that guard is removed and
+      // assert the helper still appears WITHOUT the guard in the same body —
+      // which is exactly the regression the per-method test must catch.
+      const src = readSource(LANGUAGE_ROOT, 'AppLanguageModule.kt');
+      const getBody = extractFunctionBody(src, 'getApplicationLanguage');
+
+      // Sanity: the real source has the guard.
+      expect(getBody).toContain('Build.VERSION.SDK_INT < API_33');
+
+      // Mutate: remove the guard from getApplicationLanguage only.
+      const mutatedGetBody = getBody.replace(
+        /if \(Build\.VERSION\.SDK_INT < API_33\)\s*\{[^}]*\}/,
+        '',
+      );
+      // Confirm the mutation removed the guard but left the helper call.
+      expect(mutatedGetBody).not.toContain('Build.VERSION.SDK_INT < API_33');
+      expect(mutatedGetBody).toContain('AppLanguageApi33.getApplicationLanguage');
+
+      // Reconstruct the full source with the mutated body so the per-method
+      // extraction in test 7 would see the missing guard. We replace the
+      // original body in the source by locating the function boundaries.
+      const fnStart = src.indexOf('fun getApplicationLanguage(');
+      const openBrace = src.indexOf('{', fnStart);
+      // Find the matching close brace using the same balanced scan.
+      let depth = 0;
+      let closeBrace = -1;
+      for (let i = openBrace; i < src.length; i += 1) {
+        if (src[i] === '{') depth += 1;
+        if (src[i] === '}') {
+          depth -= 1;
+          if (depth === 0) { closeBrace = i; break; }
+        }
+      }
+      expect(closeBrace).toBeGreaterThan(openBrace);
+      const mutatedSrc =
+        src.slice(0, openBrace + 1) + mutatedGetBody + src.slice(closeBrace);
+
+      // Now extract the mutated body and verify the guard is gone while the
+      // helper call remains — this is the condition test 7 rejects.
+      const reExtracted = extractFunctionBody(mutatedSrc, 'getApplicationLanguage');
+      expect(reExtracted).not.toContain('Build.VERSION.SDK_INT < API_33');
+      expect(reExtracted).toContain('AppLanguageApi33.getApplicationLanguage');
     });
   });
 
@@ -131,28 +224,25 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
       expect(helperCall).toBeGreaterThan(broadcastFn);
     });
 
-    it('6. WidgetLocale delegates to WidgetLocaleApi33 only behind isNativeAppLanguageSupported', () => {
+    it('6. WidgetLocale delegates to WidgetLocaleApi33 only behind isNativeAppLanguageSupported (per method body)', () => {
       const src = readSource(WIDGET_ROOT, 'WidgetLocale.kt.tmpl');
-      // refreshEffectiveRenderLocaleFromBroadcast must early-return on API <=32.
-      const broadcastFn = src.indexOf('fun refreshEffectiveRenderLocaleFromBroadcast');
-      const earlyReturn = src.indexOf('isNativeAppLanguageSupported()', broadcastFn);
-      const helperCall = src.indexOf('WidgetLocaleApi33.getLocaleListExtra', broadcastFn);
-      expect(earlyReturn).toBeGreaterThan(broadcastFn);
-      expect(helperCall).toBeGreaterThan(earlyReturn);
 
-      // systemPlatformLanguage / currentPlatformLanguage delegates must also
-      // be guarded.
-      const sysFn = src.indexOf('fun systemPlatformLanguage');
-      const sysDelegate = src.indexOf('WidgetLocaleApi33.systemPlatformLanguage', sysFn);
-      const sysGuard = src.indexOf('isNativeAppLanguageSupported()', sysFn);
-      expect(sysGuard).toBeGreaterThan(sysFn);
-      expect(sysGuard).toBeLessThan(sysDelegate);
+      // Each method must contain its OWN guard before its helper call, scoped
+      // to the method body so a guard from another method cannot satisfy it.
+      const cases: { fn: string; helper: string }[] = [
+        { fn: 'refreshEffectiveRenderLocaleFromBroadcast', helper: 'WidgetLocaleApi33.getLocaleListExtra' },
+        { fn: 'systemPlatformLanguage', helper: 'WidgetLocaleApi33.systemPlatformLanguage' },
+        { fn: 'currentPlatformLanguage', helper: 'WidgetLocaleApi33.currentPlatformLanguage' },
+      ];
 
-      const curFn = src.indexOf('fun currentPlatformLanguage');
-      const curDelegate = src.indexOf('WidgetLocaleApi33.currentPlatformLanguage', curFn);
-      const curGuard = src.indexOf('isNativeAppLanguageSupported()', curFn);
-      expect(curGuard).toBeGreaterThan(curFn);
-      expect(curGuard).toBeLessThan(curDelegate);
+      for (const { fn, helper } of cases) {
+        const body = extractFunctionBody(src, fn);
+        const guardIdx = body.indexOf('isNativeAppLanguageSupported()');
+        const helperIdx = body.indexOf(helper);
+        expect(guardIdx).toBeGreaterThan(-1);
+        expect(helperIdx).toBeGreaterThan(-1);
+        expect(helperIdx).toBeGreaterThan(guardIdx);
+      }
     });
 
     it('WidgetLocale.kt.tmpl still mentions applicationLocales/systemLocales in comments (contract doc)', () => {
