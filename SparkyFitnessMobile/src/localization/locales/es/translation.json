@@ -4090,5 +4090,227 @@
     "androidAuthMethods": "tu huella, el desbloqueo facial o el PIN de tu dispositivo",
     "iosNameExample": "Mi iPhone",
     "androidNameExample": "Mi teléfono Android"
+  },
+  "mealTypeForm": {
+    "createTitle": "Añadir tipo de comida",
+    "editTitle": "Editar tipo de comida",
+    "name": "Nombre",
+    "namePlaceholder": "p. ej. Almuerzo 2.0",
+    "quickLog": "Registro rápido",
+    "defaultTime": "Hora predeterminada",
+    "notSet": "Sin definir",
+    "create": "Crear",
+    "delete": "Eliminar tipo de comida",
+    "accessibility": {
+      "name": "Nombre del tipo de comida",
+      "quickLog": "Registro rápido de {{name}}",
+      "defaultTime": "Hora predeterminada para {{name}}{{time}}",
+      "cancelCreate": "Cancelar la creación del tipo de comida",
+      "create": "Crear tipo de comida",
+      "save": "Guardar tipo de comida",
+      "delete": "Eliminar tipo de comida"
+    }
+  },
+  "mealTypeDetail": {
+    "states": {
+      "noServer": "Sin servidor configurado",
+      "noServerHint": "Configura la conexión con tu servidor en Ajustes para ver la nutrición de la comida.",
+      "loading": "Cargando comida…",
+      "loadFailed": "No se pudo cargar la comida",
+      "noFoods": "No hay alimentos en {{meal}}",
+      "noFoodsHint": "{{date}} no tiene alimentos registrados para esta comida."
+    },
+    "labels": {
+      "foods": "Alimentos"
+    },
+    "accessibility": {
+      "addFood": "Añadir alimento",
+      "copyMeal": "Copiar la comida a otro día"
+    },
+    "targetCalories": "Objetivo: {{calories}} kcal"
+  },
+  "mealTypeTime": {
+    "defaultTitle": "Hora predeterminada",
+    "clearHint": "Borrar la hora predeterminada",
+    "saveHint": "Guardar la hora predeterminada"
+  },
+  "foodLibrary": {
+    "title": "Alimentos",
+    "search": "Buscar alimentos...",
+    "noServer": "Sin servidor configurado",
+    "configure": "Configura la conexión con tu servidor en Ajustes para ver tu biblioteca de alimentos.",
+    "go": "Ir a Ajustes",
+    "loading": "Cargando alimentos...",
+    "failed": "No se pudieron cargar los alimentos",
+    "retry": "Reintentar",
+    "check": "Comprueba tu conexión e inténtalo de nuevo.",
+    "noMatch": "No se encontraron alimentos coincidentes",
+    "noItems": "No se encontraron alimentos",
+    "trySearch": "Prueba con otro término de búsqueda para encontrar alimentos guardados.",
+    "empty": "Los alimentos que guardes o registres aparecerán aquí.",
+    "moreFailed": "No se pudieron cargar más alimentos.",
+    "noun": "alimentos"
+  },
+  "mealLibrary": {
+    "title": "Comidas",
+    "search": "Buscar comidas...",
+    "noServer": "Sin servidor configurado",
+    "configure": "Configura la conexión con tu servidor en Ajustes para ver tu biblioteca de comidas.",
+    "go": "Ir a Ajustes",
+    "loading": "Cargando comidas...",
+    "failed": "No se pudieron cargar las comidas",
+    "searchFailed": "No se pudieron buscar comidas",
+    "retry": "Reintentar",
+    "check": "Comprueba tu conexión e inténtalo de nuevo.",
+    "noMatch": "No se encontraron comidas coincidentes",
+    "noItems": "No se encontraron comidas",
+    "trySearch": "Prueba con otro término de búsqueda para encontrar comidas guardadas.",
+    "empty": "Las comidas que crees aparecerán aquí.",
+    "noun": "comidas"
+  },
+  "mealMutations": {
+    "createFailed": "No se pudo crear la comida",
+    "updateFailed": "No se pudo actualizar la comida",
+    "deleteFailed": "No se pudo eliminar la comida",
+    "deleteTitle": "Eliminar comida",
+    "deleteWithUsage": "¿Eliminar esta comida de tu biblioteca? Las entradas del diario ya registradas no cambiarán, pero los planes de comidas relacionados pueden verse afectados.",
+    "deleteWithoutUsage": "¿Eliminar esta comida de tu biblioteca? Las entradas del diario ya registradas no cambiarán.",
+    "deleteVerificationFailedTitle": "No se pudo verificar la eliminación",
+    "deleteVerificationFailedMessage": "No pudimos verificar si esta comida se usa en otro sitio. Inténtalo de nuevo antes de eliminarla."
+  },
+  "barcode": {
+    "title": "Código de barras",
+    "invalid": "El código de barras debe tener entre 8 y 14 dígitos.",
+    "help": "Opcional. Los códigos de barras estándar tienen entre 8 y 14 dígitos.",
+    "scan": "Escanear con la cámara"
+  },
+  "pregnancyDueDate": {
+    "errors": {
+      "lmpFuture": "Tu último periodo no puede estar en el futuro.",
+      "conceptionFuture": "La fecha de concepción no puede estar en el futuro.",
+      "past": "Esa fecha de parto está en el pasado. Comprueba la fecha.",
+      "tooFar": "Esa fecha de parto está demasiado lejos: un embarazo dura unas 40 semanas."
+    },
+    "basedOn": "Basado en",
+    "estimateBy": "Estimar la fecha de parto por",
+    "estimated": "Fecha de parto estimada",
+    "options": {
+      "dueDate": "Fecha de parto",
+      "ultrasoundScan": "Ecografía",
+      "lastPeriod": "Último periodo (FUM)",
+      "conceptionDate": "Fecha de concepción"
+    },
+    "fields": {
+      "firstDayLastPeriod": "Primer día del último periodo",
+      "conceptionDate": "Fecha de concepción",
+      "estimatedDueDate": "Fecha de parto estimada",
+      "estimatedDueDateFromScan": "Fecha de parto estimada (por ecografía)"
+    }
+  },
+  "bumpPhotos": {
+    "title": "Fotos de barriga",
+    "add": "Añadir foto",
+    "empty": "Captura tu primera foto de barriga para empezar un diario semanal.",
+    "week": "Semana {{week}}",
+    "remove": "Quitar",
+    "taken": "Tomada el {{date}}",
+    "addTitle": "Añadir foto de barriga",
+    "takePhoto": "Hacer foto",
+    "chooseLibrary": "Elegir de la galería",
+    "cameraPermission": "Se necesita permiso de cámara",
+    "noPhoto": "El selector no devolvió ninguna foto.",
+    "photoAdded": "Foto añadida",
+    "uploadFailed": "No se pudo subir la foto",
+    "removeFailed": "No se pudo quitar la foto"
+  },
+  "pregnancySafety": {
+    "title": "Seguridad de alimentos y medicamentos",
+    "food": "Alimentos",
+    "medications": "Medicamentos",
+    "safe": "Seguro",
+    "caution": "Precaución",
+    "avoid": "Evitar",
+    "searchHint": "Busca para ver cómo se suele categorizar un alimento o medicamento durante el embarazo.",
+    "noMatch": "No se encontró coincidencia. Esta lista no es exhaustiva, así que consulta a tu profesional si tienes dudas.",
+    "disclaimer": "Solo orientación general, no es consejo médico. Confírmalo siempre con tu profesional.",
+    "foodExample": "Sushi",
+    "medicationExample": "Ibuprofeno"
+  },
+  "pregnancySetup": {
+    "checkDates": "Comprueba las fechas",
+    "updated": "Embarazo actualizado",
+    "created": "Embarazo configurado",
+    "saveFailed": "No se pudo guardar el embarazo",
+    "editTitle": "Editar embarazo",
+    "title": "Configuración del embarazo",
+    "description": "Dinos cómo estimar tu fecha de parto. Puedes cambiarlo más tarde.",
+    "numberOfBabies": "Número de bebés"
+  },
+  "babyGrowth": {
+    "weeklyMilestone": "Hito semanal",
+    "weekActive": "Seguimiento activo de la semana {{week}}.",
+    "title": "El bebé esta semana",
+    "sizeOf": "Tamaño de {{comparison}}",
+    "length": "Longitud",
+    "weight": "Peso",
+    "forYou": "Para ti",
+    "noData": "El desarrollo del bebé semana a semana empieza sobre la semana 4. ¡Vuelve pronto!"
+  },
+  "scheduleSummary": {
+    "daily": "Diaria",
+    "weekly": "Semanal",
+    "everyNDays": "Cada {{count}} días",
+    "monthlyOnDay": "Mensual el día {{day}}",
+    "monthly": "Mensual",
+    "cycle": "{{on}}, {{off}}",
+    "asNeeded": "Según necesidad",
+    "taper": "Pauta descendente",
+    "at": "{{frequency}} a las {{time}}",
+    "cycleOn_one": "{{count}} día activo",
+    "cycleOn_other": "{{count}} días activos",
+    "cycleOff_one": "{{count}} día de descanso",
+    "cycleOff_other": "{{count}} días de descanso"
+  },
+  "announcementModal": {
+    "title": "Anuncio",
+    "close": "Cerrar anuncio",
+    "dismiss": "Entendido, no volver a mostrar"
+  },
+  "whatsNew": {
+    "seeUpdate": "Ver las novedades de esta actualización",
+    "title": "Novedades",
+    "subtitle": "Ver lo que ha mejorado en esta actualización"
+  },
+  "privacyPolicy": {
+    "title": "Política de privacidad",
+    "noData": "Esta app no recopila, almacena ni vende tus datos personales.",
+    "healthData": "Todos los datos de HealthKit permanecen en tu dispositivo y solo se transmiten a tu propio servidor.",
+    "learnMore": "Más información en nuestra Política de privacidad."
+  },
+  "medicalDisclaimer": {
+    "text": "Solo para seguimiento e información general, no es consejo médico. Habla con tu profesional sanitario sobre cualquier problema médico."
+  },
+  "ranges": {
+    "7d": "7d",
+    "30d": "30d",
+    "90d": "90d"
+  },
+  "dateRange": {
+    "removeTitle": "Selecciona un intervalo de fechas para quitar",
+    "removeAction": "Quitar el intervalo seleccionado"
+  },
+  "duration": {
+    "minutes": "Minutos",
+    "seconds": "Segundos"
+  },
+  "activeWorkoutAutosave": {
+    "failedTitle": "Entrenamiento no guardado",
+    "failedMessage": "Los cambios se conservan en este dispositivo y se reintentarán."
+  },
+  "time": {
+    "hoursShort": "h"
+  },
+  "languageSettings": {
+    "subtitle": "Usa el idioma de tu dispositivo o elige un idioma para SparkyFitness."
   }
 }
