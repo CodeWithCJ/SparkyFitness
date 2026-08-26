@@ -1,9 +1,9 @@
 import express from 'express';
+import { log } from '../config/logging.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import measurementService from '../services/measurementService.js';
 import sleepAnalyticsService from '../services/sleepAnalyticsService.js';
-import { log } from '../config/logging.js';
 import permissionUtils from '../utils/permissionUtils.js';
 const router = express.Router();
 /**
@@ -49,7 +49,7 @@ const router = express.Router();
 router.get(
   '/analytics',
   authenticate,
-  checkPermissionMiddleware('reports'),
+  checkPermissionMiddleware('checkin'),
   async (req, res, next) => {
     try {
       const { startDate, endDate, userId } = req.query;
