@@ -41,10 +41,9 @@ function convertMlToUnit(ml: number, unit: string): number {
 
 function formatVolume(ml: number, unit: string): string {
   const value = convertMlToUnit(ml, unit);
-  // Trim trailing zeros: whole numbers render without decimals, others to 2dp.
+  // Round to 2dp; String() drops trailing zeros (24 -> "24", 1.5 -> "1.5").
   const rounded = Math.round(value * 100) / 100;
-  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
-  return `${text} ${unit}`;
+  return `${String(rounded)} ${unit}`;
 }
 
 function formatContainer(row: WaterContainerRow): string {
