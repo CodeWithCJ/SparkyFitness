@@ -706,5 +706,383 @@
     },
     "title": "Medidas",
     "edit": "Editar medidas"
+  },
+  "foodSearch": {
+    "menu": {
+      "newFood": "Nuevo alimento",
+      "newMeal": "Nueva comida",
+      "show": "Mostrar",
+      "allSources": "Todas las fuentes"
+    },
+    "accessibility": {
+      "moreFiltered": "Más opciones, filtrado a {{filter}}",
+      "moreOptions": "Más opciones",
+      "clearSearch": "Borrar búsqueda",
+      "scanFood": "Escanear comida",
+      "searchingFoods": "Buscando alimentos guardados",
+      "searchingFoodsMeals": "Buscando alimentos y comidas guardados",
+      "sourceChange": "Fuente {{source}}, toca para cambiar",
+      "providerError": "{{provider}}, no se pudo cargar, toca para reintentar",
+      "providerNoResults": "{{provider}}, sin resultados",
+      "favorite": "Favorito",
+      "viewPhoto": "Ver foto",
+      "verifiedFood": "Alimento verificado",
+      "providerExpand_one": "{{provider}}, {{count}} resultado, toca para {{action}}",
+      "providerExpand_other": "{{provider}}, {{count}} resultados, toca para {{action}}"
+    },
+    "errors": {
+      "detailsUnavailable": "Detalles no disponibles",
+      "loadNutritionDetails": "No se pudieron cargar los detalles nutricionales completos."
+    },
+    "sections": {
+      "favorites": "Favoritos",
+      "recentlyLogged": "Registrado recientemente",
+      "top": "Destacados",
+      "yourFoods": "Tus alimentos",
+      "yourMeals": "Tus comidas",
+      "topMatches": "Mejores coincidencias",
+      "bySource": "Por fuente",
+      "onlineResults": "Resultados en línea"
+    },
+    "search": {
+      "placeholder": "Buscar alimentos..."
+    },
+    "states": {
+      "connectToSearch": "Conéctate a un servidor para buscar alimentos",
+      "failedToLoad": "No se pudieron cargar los alimentos",
+      "noFilteredFoods": "No hay alimentos en {{filter}}",
+      "searchToLog": "Busca un alimento o comida para registrar",
+      "noSavedFoods": "No se encontraron alimentos guardados",
+      "noSavedFoodsMeals": "No se encontraron alimentos ni comidas guardados",
+      "noFilteredSaved": "{{message}} en {{filter}}",
+      "couldNotLoad": "No se pudo cargar",
+      "noResults": "Sin resultados",
+      "noOnlineResultsFrom": "Sin resultados en línea de {{provider}}"
+    },
+    "filter": {
+      "all": "Todos",
+      "mine": "Míos",
+      "family": "Familia",
+      "public": "Públicos",
+      "showAll": "Mostrar todos"
+    },
+    "actions": {
+      "loadMoreFailed": "No se pudo cargar más. Toca para reintentar",
+      "loadMore": "Cargar más",
+      "showAllProviderResults_one": "Mostrar {{count}} resultado de {{provider}}",
+      "showAllProviderResults_other": "Mostrar los {{count}} resultados de {{provider}}",
+      "showAllLocalResults_one": "Mostrar {{count}} {{itemType}}",
+      "showAllLocalResults_other": "Mostrar los {{count}} {{itemType}}"
+    },
+    "pickers": {
+      "onlineProvider": "Proveedor en línea"
+    },
+    "labels": {
+      "caloriesShort": "kcal",
+      "caloriesUnit": "cal",
+      "foods": "alimentos",
+      "meals": "comidas",
+      "meal": "Comida",
+      "itemCount_one": "{{count}} elemento",
+      "itemCount_other": "{{count}} elementos"
+    }
+  },
+  "foodForm": {
+    "equivalentSizes": "Tamaños equivalentes",
+    "selectUnit": "Seleccionar unidad",
+    "unit": "unidad",
+    "removeEquivalent": "Quitar equivalente",
+    "addEquivalent": "+ Añadir equivalente",
+    "foodName": "Nombre del alimento",
+    "foodNamePlaceholder": "p. ej. Pechuga de pollo",
+    "brand": "Marca",
+    "optional": "Opcional",
+    "servingSize": "Tamaño de la ración",
+    "servingUnit": "Unidad de ración",
+    "autoScaleNutrition": "Escalar nutrición automáticamente",
+    "caloriesRequired": "Calorías (kcal) *",
+    "ai": {
+      "couldNotEstimate": "No se pudo estimar",
+      "noTrustedDefault": "El alimento no tiene un valor de referencia fiable desde el que escalar.",
+      "servingSizeRequired": "Define primero un tamaño de ración",
+      "estimating": "Estimando…",
+      "convertWithAI": "Convertir con IA",
+      "estimateFailed": "La estimación con IA falló.",
+      "estimateQuality": {
+        "high": "Buena estimación",
+        "medium": "Estimación aceptable",
+        "low": "Estimación aproximada"
+      }
+    },
+    "manualUpdate": {
+      "title": "Actualización manual de nutrición",
+      "message": "No se puede convertir entre unidades. Actualiza los valores nutricionales manualmente antes de guardar.",
+      "saveAnyway": "Guardar de todos modos",
+      "banner": "No se puede convertir entre unidades. Actualiza los valores nutricionales manualmente."
+    },
+    "loadingDetails": "Aún se están cargando los detalles del alimento. Inténtalo de nuevo en un momento.",
+    "saveNewUnitFailed": "No se pudo guardar la nueva unidad",
+    "equivalentUnitsFailed": "Algunas unidades equivalentes no se pudieron guardar",
+    "saveNewVariantFailed": "No se pudo guardar la nueva variante",
+    "saveNutritionFailed": "No se pudo guardar la nutrición para uso futuro",
+    "savedNewVariant": "Guardado como nueva variante",
+    "pastEntriesUpdated": "Entradas anteriores actualizadas",
+    "pastEntriesFailed": "No se pudieron actualizar las entradas anteriores",
+    "foodSaved": "Tu alimento se guardó.",
+    "updateFailed": "No se pudo actualizar el alimento",
+    "editTitle": "Editar alimento",
+    "addFood": "Añadir alimento",
+    "saved": "Guardado",
+    "equivalentUnitsUpdated_one": "Guardado · {{formattedCount}} unidad equivalente actualizada",
+    "equivalentUnitsUpdated_other": "Guardado · {{formattedCount}} unidades equivalentes actualizadas"
+  },
+  "foodDetail": {
+    "sharedPublicly": "Alimento compartido públicamente",
+    "madePrivate": "Alimento hecho privado",
+    "shareFailed": "No se pudo actualizar el uso compartido",
+    "makePublicTitle": "¿Hacer público?",
+    "makePublicMessage": "Este alimento pasará a ser visible para todos los usuarios de este servidor.",
+    "makePublic": "Hacer público",
+    "makePrivate": "Hacer privado",
+    "sharePublic": "Compartir con el público",
+    "editFood": "Editar alimento",
+    "noServer": "Sin servidor configurado",
+    "configureServer": "Configura la conexión con tu servidor en Ajustes para ver los detalles del alimento.",
+    "serving": "Ración",
+    "selectServing": "Seleccionar ración",
+    "servingOptions": "Opciones de ración",
+    "loadingServingOptions": "Cargando opciones de ración...",
+    "servingOptionsError": "Algunas opciones de ración no se pudieron cargar ahora mismo.",
+    "barcode": "Código de barras",
+    "logFood": "Registrar alimento",
+    "deleteFood": "Eliminar alimento"
+  },
+  "createFood": {
+    "title": "Nuevo alimento",
+    "meal": "Comida",
+    "selectMeal": "Seleccionar comida",
+    "perServing": "por ración",
+    "saveToDatabase": "Guardar en la base de datos",
+    "actions": {
+      "addFood": "Añadir alimento"
+    },
+    "success": {
+      "foodSaved": "Alimento guardado"
+    },
+    "errors": {
+      "missingName": "Falta el nombre",
+      "nameRequired": "Introduce un nombre de alimento.",
+      "invalidServingSize": "Tamaño de ración no válido",
+      "servingSizeRequired": "El tamaño de la ración debe ser mayor que cero.",
+      "invalidBarcode": "Código de barras no válido",
+      "barcodeRequired": "El código de barras debe tener entre 8 y 14 dígitos.",
+      "equivalentsSaveFailed": "Algunas unidades equivalentes no se pudieron guardar",
+      "invalidAmount": "Cantidad no válida",
+      "amountRequired": "La cantidad debe ser mayor que cero.",
+      "noMealType": "Sin tipo de comida",
+      "noMealTypesAvailable": "No hay tipos de comida disponibles. Comprueba los ajustes de tu cuenta."
+    }
+  },
+  "foodEntryAdd": {
+    "errors": {
+      "equivalentsNotSaved": "Algunas unidades equivalentes no se pudieron guardar",
+      "invalidAmount": "Cantidad no válida",
+      "amountGreaterThanZero": "La cantidad debe ser mayor que cero.",
+      "failedToAddFood": "No se pudo añadir el alimento",
+      "tryAgain": "Inténtalo de nuevo.",
+      "mealsNotSupported": "Aquí no se admiten comidas",
+      "selectFoodInstead": "Selecciona un alimento en lugar de otra comida.",
+      "savedFoodUnitFailed": "Alimento guardado, pero no la nueva unidad",
+      "savedFoodUnitFailedDetails": "Aún puedes añadir el alimento y luego volver a intentar guardar esa unidad.",
+      "chooseDifferentServing": "Elige una ración diferente."
+    },
+    "actions": {
+      "adjustNutrition": "Ajustar nutrición",
+      "saveFood": "Guardar alimento",
+      "useYesterday": "Usar ayer",
+      "useToday": "Usar hoy",
+      "now": "Ahora",
+      "clear": "Borrar",
+      "addFood": "Añadir alimento",
+      "addMeal": "Añadir comida",
+      "removeFavorite": "Quitar de favoritos",
+      "addFavorite": "Añadir a favoritos"
+    },
+    "labels": {
+      "perServing": "por ración",
+      "time": "Hora",
+      "none": "Ninguna",
+      "meal": "Comida",
+      "serving_one": "ración",
+      "serving_other": "raciones",
+      "mealMakes_one": "la comida rinde {{formattedCount}} ración",
+      "mealMakes_other": "la comida rinde {{formattedCount}} raciones"
+    },
+    "pickers": {
+      "selectServing": "Seleccionar ración",
+      "selectMeal": "Seleccionar comida"
+    }
+  },
+  "foodEntryView": {
+    "saveChanges": "Guardar cambios de la entrada de comida",
+    "editEntry": "Editar entrada de comida",
+    "selectServing": "Seleccionar ración",
+    "tapToEditNutrition": "Toca para editar la nutrición",
+    "meal": "Comida",
+    "selectMeal": "Seleccionar comida",
+    "time": "Hora",
+    "unknownFood": "Alimento desconocido",
+    "deleteEntry": "Eliminar entrada",
+    "servingOptionsHint": "Abre las opciones de ración",
+    "mealSelectorHint": "Abre la selección de comida",
+    "dateSelectorHint": "Abre la selección de fecha",
+    "timeSelectorHint": "Abre la selección de hora",
+    "clearTime": "Borrar hora",
+    "nutritionEditHint": "Abre la edición de nutrición",
+    "servingOptionsLabel": "Opciones de ración: {{serving}}",
+    "timeSelectorLabel": "Seleccionar hora: {{time}}",
+    "clearTimeLabel": "Borrar la hora de la entrada",
+    "errors": {
+      "permission": "No tienes permiso para editar esta entrada.",
+      "saveFailed": "No se pudieron guardar los cambios",
+      "deleteFailed": "No se pudo eliminar"
+    },
+    "deleteConfirm": "¿Seguro que quieres eliminar esta entrada de comida?"
+  },
+  "foodScan": {
+    "segment": {
+      "barcode": "Código",
+      "label": "Etiqueta",
+      "photo": "Foto"
+    },
+    "errors": {
+      "capturePhoto": "No se pudo capturar la foto.",
+      "processPhoto": "No se pudo procesar la foto.",
+      "noPhoto": "El selector no devolvió ninguna foto.",
+      "analyzeLabel": "No se pudo analizar la etiqueta nutricional. Inténtalo de nuevo.",
+      "loadPhoto": "No se pudo cargar la foto.",
+      "lookupBarcode": "No se pudo buscar este código de barras. Inténtalo de nuevo.",
+      "timeout": "La solicitud caducó. Comprueba la conexión con tu servidor."
+    },
+    "permission": {
+      "camera": "Necesitamos tu permiso para mostrar la cámara",
+      "grant": "Conceder permiso"
+    },
+    "label": {
+      "analyzing": "Analizando etiqueta...",
+      "retake": "Repetir",
+      "usePhoto": "Usar foto"
+    },
+    "lookup": {
+      "failed": "La búsqueda falló",
+      "noMatch": "Sin coincidencia para el código de barras",
+      "nextSteps": "Puedes escanear la etiqueta nutricional o introducirla manualmente.",
+      "scanLabel": "Escanear etiqueta nutricional",
+      "addManually": "Añadir alimento manualmente"
+    },
+    "photo": {
+      "frameMeal": "Encuadra toda la comida",
+      "notSetUp": "Las estimaciones por foto con IA no están configuradas",
+      "setupHelp": "Abre SparkyFitness en un navegador y ve a Ajustes → IA para añadir un proveedor de IA, luego vuelve aquí.",
+      "logManually": "Registrar manualmente"
+    },
+    "barcode": {
+      "typeInstead": "Escribir el código en su lugar"
+    },
+    "manual": {
+      "title": "Introducir código de barras",
+      "placeholder": "Número de código de barras",
+      "useBarcode": "Usar código de barras",
+      "lookup": "Buscar"
+    },
+    "accessibility": {
+      "chooseLabelPhoto": "Elegir foto de etiqueta de la galería",
+      "choosePhoto": "Elegir foto de la galería",
+      "howItWorks": "Cómo funciona la estimación por foto",
+      "back": "Volver",
+      "flashlightOn": "Encender la linterna",
+      "flashlightOff": "Apagar la linterna",
+      "retakePhoto": "Repetir foto",
+      "takeLabelPhoto": "Hacer foto de la etiqueta nutricional",
+      "takeMealPhoto": "Hacer foto de la comida"
+    }
+  },
+  "foodRow": {
+    "unknownFood": "Alimento desconocido",
+    "adjustServing": "Ajustar ración",
+    "caloriesShort": "kcal",
+    "caloriesUnit": "Cal",
+    "deleteFood": "Eliminar alimento"
+  },
+  "foodSummary": {
+    "tapToAddFood": "Toca para añadir comida",
+    "caloriesShort": "kcal",
+    "caloriesUnit": "Cal",
+    "nutritionBreakdown": "Desglose nutricional de {{label}}"
+  },
+  "foodDelete": {
+    "failed": "No se pudo eliminar el alimento",
+    "title": "Eliminar alimento",
+    "message": "¿Seguro que quieres eliminar este alimento? Las entradas ya registradas no cambiarán."
+  },
+  "foodSave": {
+    "failed": "No se pudo guardar el alimento"
+  },
+  "favorites": {
+    "updateFailed": "No se pudieron actualizar los favoritos"
+  },
+  "foodNutrition": {
+    "hideExtra": "Ocultar nutrientes adicionales ▴",
+    "showMore": "Mostrar más nutrientes ▾"
+  },
+  "ingredientRow": {
+    "lastWarning": "Este es el último ingrediente. Añade otro antes de poder guardar, o usa Eliminar comida para quitar toda la comida.",
+    "removeTitle": "¿Quitar {{name}}?",
+    "edit": "Editar {{name}}"
+  },
+  "entryImage": {
+    "photo": "Foto",
+    "addHelp": "Añade una foto para asignar una a esta entrada.",
+    "entryOnly": "Esta foto se aplica solo a esta entrada.",
+    "saveFailed": "No se pudo guardar la foto",
+    "removeFailed": "No se pudo quitar la foto"
+  },
+  "foodImagePicker": {
+    "photos": "Fotos",
+    "errors": {
+      "addFailed": "No se pudo añadir la foto",
+      "cameraPermission": "Se necesita permiso de cámara",
+      "cameraPermissionBody": "Activa el acceso a la cámara para añadir una foto."
+    },
+    "actions": {
+      "addPhoto": "Añadir foto",
+      "takePhoto": "Hacer foto",
+      "chooseFromLibrary": "Elegir de la galería",
+      "setAsMain": "Establecer como principal",
+      "remove": "Quitar",
+      "photo": "Foto"
+    },
+    "labels": {
+      "main": "Principal"
+    },
+    "accessibility": {
+      "mainPhotoEdit": "Foto principal, editar",
+      "photoEdit": "Foto {{number}}, editar",
+      "addPhoto": "Añadir foto"
+    }
+  },
+  "copyMeal": {
+    "title": "Copiar comida: {{meal}}",
+    "sourceDate": "Fecha de origen: {{date}}",
+    "targetDate": "Fecha de destino",
+    "targetMeal": "Comida de destino",
+    "copy": "Copiar",
+    "copying": "Copiando...",
+    "duplicateTitle": "No se puede copiar la comida",
+    "duplicateMessage": "Actualmente no se pueden usar nombres de tipo de comida duplicados para Copiar comida."
+  },
+  "foodEntryCopy": {
+    "success": "Comida copiada",
+    "failed": "No se pudo copiar la comida"
   }
 }
