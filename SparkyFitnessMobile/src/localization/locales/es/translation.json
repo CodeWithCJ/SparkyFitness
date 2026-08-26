@@ -12,6 +12,441 @@
       "iosSettingsHint": "Cambia el idioma de esta app en los Ajustes de iOS",
       "openSettingsFailed": "No se pudieron abrir los Ajustes de iOS",
       "iosSubtitle": "{{language}} · {{managedBy}}"
+    },
+    "app": "Ajustes de la app",
+    "lastSynced": "Última sincronización {{time}}",
+    "addServer": "Toca para añadir un servidor",
+    "title": "Ajustes",
+    "shareReportFailed": "No se pudo compartir el informe de diagnóstico: {{error}}",
+    "serverConnected": "Ajustes del servidor. Conectado.",
+    "serverConnectionFailed": "Ajustes del servidor. Conexión fallida.",
+    "serverNotConfigured": "Ajustes del servidor. Sin servidor configurado.",
+    "shareReportDescription": "Exporta un informe de diagnóstico local (versión de la app, estado de sincronización, registros). No incluye datos personales de salud ni de comida. No se envía nada automáticamente.",
+    "rows": {
+      "server": "Servidor",
+      "healthSync": "Sincronización de datos de salud",
+      "app": "Ajustes de la app",
+      "calories": "Calorías y TMB",
+      "food": "Comida",
+      "dashboard": "Panel",
+      "diary": "Diario",
+      "wellness": "Bienestar",
+      "cyclePregnancy": "Ciclo y embarazo",
+      "workout": "Entrenamiento",
+      "whatsNew": "Novedades",
+      "logs": "Ver registros",
+      "about": "Acerca de",
+      "shareReport": "Compartir informe de diagnóstico"
+    },
+    "theme": {
+      "title": "Tema",
+      "light": "Claro",
+      "dark": "Oscuro",
+      "amoled": "AMOLED",
+      "system": "Sistema"
+    },
+    "liquidGlass": {
+      "title": "Navegación Liquid Glass",
+      "subtitle": "Usa la barra de pestañas y las cabeceras de cristal de iOS 26."
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "subtitle": "Temporizadores de descanso, objetivos de ayuno y recordatorios de medicación."
+    },
+    "haptics": {
+      "title": "Respuesta háptica",
+      "subtitle": "Vibraciones ligeras para temporizadores y confirmaciones."
+    },
+    "cameraShutter": {
+      "title": "Disparador de cámara",
+      "subtitle": "Reproduce un sonido al capturar fotos."
     }
+  },
+  "common": {
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "back": "Atrás",
+    "showLess": "Ver menos",
+    "learnMore": "Más información",
+    "next": "Siguiente",
+    "later": "Más tarde",
+    "close": "Cerrar",
+    "cancel": "Cancelar",
+    "continue": "Continuar",
+    "retry": "Reintentar",
+    "details": "Detalles",
+    "error": "Error",
+    "delete": "Eliminar",
+    "collapseSection": "Contraer esta sección",
+    "expandSection": "Expandir esta sección",
+    "itemCount_one": "{{count}} elemento",
+    "itemCount_other": "{{count}} elementos",
+    "off": "Desactivado",
+    "openSelectionMenu": "Abre el menú de selección",
+    "selectOptionHint": "Toca dos veces para seleccionar esta opción",
+    "success": "Correcto",
+    "clear": "Borrar",
+    "discardChanges": "Descartar cambios",
+    "loadMore": "Cargar más",
+    "edit": "Editar",
+    "connectionRetry": "Comprueba tu conexión e inténtalo de nuevo.",
+    "deleteItemTitle": "¿Eliminar {{title}}?",
+    "tryAgain": "Inténtalo de nuevo.",
+    "yes": "Sí",
+    "no": "No",
+    "and": "y",
+    "listFinalSeparator": " y ",
+    "date": "Fecha",
+    "add": "Añadir",
+    "loading": "Cargando...",
+    "pleaseTryAgain": "Inténtalo de nuevo.",
+    "ok": "OK",
+    "collapse": "contraer",
+    "expand": "expandir",
+    "removeFromFavorites": "Quitar de favoritos",
+    "addToFavorites": "Añadir a favoritos",
+    "goToSettings": "Ir a Ajustes",
+    "notSet": "Sin definir",
+    "deleting": "Eliminando...",
+    "done": "Hecho",
+    "none": "Ninguno",
+    "food": "Comida",
+    "dismiss": "Descartar",
+    "remove": "Quitar",
+    "overwrite": "Sobrescribir",
+    "previousDay": ": día anterior",
+    "nextDay": ": día siguiente",
+    "dismissMenu": "Cerrar menú",
+    "units": {
+      "cm": "cm"
+    },
+    "unknownDate": "Fecha desconocida",
+    "selectOption": "Selecciona una opción",
+    "requestTimedOut": "La solicitud caducó. Comprueba la conexión con tu servidor.",
+    "nextStep": "Siguiente paso",
+    "notNow": "Ahora no"
+  },
+  "navigation": {
+    "settings": "Ajustes",
+    "library": "Biblioteca",
+    "presets": "Plantillas",
+    "foods": "Alimentos",
+    "meals": "Comidas",
+    "exercises": "Ejercicios",
+    "diary": "Diario",
+    "details": "Detalles",
+    "dashboard": "Panel",
+    "add": "Añadir",
+    "mealTypes": "Tipos de comida"
+  },
+  "diary": {
+    "chooseDate": "Elegir fecha del diario",
+    "noServer": "Sin servidor configurado",
+    "configureServer": "Configura la conexión con tu servidor en Ajustes para ver tu diario.",
+    "goToSettings": "Ir a Ajustes",
+    "loading": "Cargando diario...",
+    "loadFailed": "No se pudo cargar el diario",
+    "checkConnection": "Comprueba tu conexión e inténtalo de nuevo.",
+    "retry": "Reintentar",
+    "title": "Diario",
+    "addFood": "Añadir alimento",
+    "emptyDay": "No hay entradas registradas para este día"
+  },
+  "dashboard": {
+    "chooseDate": "Elegir fecha del panel",
+    "noServerConfigured": "Sin servidor configurado",
+    "configureServer": "Configura la conexión con tu servidor en Ajustes para ver tu resumen diario.",
+    "goToSettings": "Ir a Ajustes",
+    "loadingSummary": "Cargando resumen...",
+    "loadFailed": "No se pudo cargar el resumen",
+    "checkConnection": "Comprueba tu conexión e inténtalo de nuevo.",
+    "askSparky": "Pregunta a Sparky…",
+    "nutrients": "Nutrientes",
+    "food": "Comida",
+    "tapToAddFood": "Toca para añadir comida",
+    "healthTrends": "Tendencias de salud",
+    "consumed": "Consumidas",
+    "remaining": "restantes",
+    "ofCalories": "de {{value}} kcal",
+    "burned": "Quemadas",
+    "hydration": "Hidratación",
+    "ofVolume": "de {{value}} {{unit}}",
+    "perBottle": "{{value}} {{unit}} por botella",
+    "configureWaterContainer": "Configura un recipiente de agua en el servidor para\nactivar los botones de añadir/quitar rápido",
+    "exercise": "Ejercicio",
+    "minutes": "Minutos",
+    "calories": "Calorías",
+    "noExerciseEntries": "Aún no hay entradas de ejercicio",
+    "removeWater": "Quitar agua",
+    "addWater": "Añadir agua",
+    "selectContainer": "Seleccionar {{container}}",
+    "perContainer": "{{value}} {{unit}} por recipiente"
+  },
+  "addSheet": {
+    "food": "Comida",
+    "exercise": "Ejercicio",
+    "measurements": "Medidas",
+    "scanFood": "Escanear comida",
+    "workout": "Entrenamiento",
+    "liveSets": "Series y reps en vivo",
+    "activity": "Actividad",
+    "durationDistance": "Duración y distancia",
+    "logWorkout": "Registrar entrenamiento",
+    "pastSets": "Series y reps pasadas",
+    "wellness": "Bienestar",
+    "askSparky": "Pregunta a Sparky",
+    "syncHealth": "Sincronizar datos de salud",
+    "logPregnancyEntry": "Registrar entrada de embarazo",
+    "logCycle": "Registrar ciclo"
+  },
+  "addSheetActions": {
+    "noServerTitle": "Sin servidor conectado",
+    "configureForExercise": "Configura la conexión con tu servidor en Ajustes para añadir un ejercicio.",
+    "configureForWorkout": "Configura la conexión con tu servidor en Ajustes para empezar un entrenamiento.",
+    "draft": {
+      "title": "Borrador en curso",
+      "message": "Tienes un borrador de {{type}} sin guardar. ¿Qué quieres hacer?",
+      "workout": "entrenamiento",
+      "activity": "actividad",
+      "resume": "Reanudar borrador",
+      "discard": "Descartar y continuar"
+    },
+    "healthUnavailable": {
+      "title": "Datos de salud no disponibles",
+      "message": "No se pudo iniciar el acceso a los datos de salud. Comprueba los permisos en Ajustes."
+    }
+  },
+  "date": {
+    "neverSynced": "Nunca sincronizado",
+    "justNow": "Ahora mismo",
+    "minutesAgo_one": "hace {{count}} minuto",
+    "minutesAgo_other": "hace {{count}} minutos",
+    "hoursAgo_one": "hace {{count}} hora",
+    "hoursAgo_other": "hace {{count}} horas",
+    "yesterdayAt": "Ayer a las {{time}}",
+    "onDateAt": "{{date}} a las {{time}}",
+    "today": "Hoy",
+    "yesterday": "Ayer"
+  },
+  "waterIntake": {
+    "updateFailed": "Error",
+    "updateMessage": "No se pudo actualizar la ingesta de agua. Inténtalo de nuevo.",
+    "noPrimary": "Sin recipiente principal",
+    "noContainers": "Sin recipientes de agua",
+    "multipleNoPrimary": "Tienes varios recipientes de agua pero ninguno marcado como principal. Marca uno como principal en el servidor.",
+    "configure": "Configura un recipiente de agua en el servidor para registrar la hidratación."
+  },
+  "errorBoundary": {
+    "somethingWentWrong": "Algo salió mal",
+    "serverMayNeedUpdate": "Se produjo un error inesperado. Puede que tu servidor necesite actualizarse.",
+    "tryAgain": "Reintentar",
+    "goBack": "Volver",
+    "sectionFailed": "No se pudo cargar esta sección."
+  },
+  "about": {
+    "title": "Acerca de",
+    "version": "Versión {{version}} ({{build}})",
+    "descriptionTitle": "Acerca de esta app",
+    "description": "SparkyFitness es un rastreador de nutrición, ejercicio y datos de salud de código abierto que se sincroniza con tu propio servidor. Esta app es el complemento móvil para registrar comidas, entrenamientos y medidas sobre la marcha.",
+    "github": "Proyecto en GitHub",
+    "documentation": "Documentación",
+    "privacyPolicy": "Política de privacidad",
+    "openExternalLink": "Se abre en tu navegador"
+  },
+  "onboarding": {
+    "subtitle": "Tu rastreador de fitness autoalojado",
+    "learnMoreTitle": "Más información sobre SparkyFitness",
+    "learnMoreBody": "SparkyFitness te ayuda a registrar tu comida, entrenamientos y datos de salud en un solo lugar.",
+    "learnMorePrivacy": "Se ejecuta en tu propio servidor, así que tus datos siguen siendo privados.",
+    "errors": {
+      "validFrontendUrl": "Introduce una URL de Frontend válida",
+      "serverUnreachable": "No se pudo contactar con el servidor. Comprueba la URL e inténtalo de nuevo."
+    }
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "channels": {
+      "medicationReminders": "Recordatorios de medicación",
+      "workoutTimer": "Temporizador de entrenamiento",
+      "fasting": "Ayuno"
+    },
+    "actions": {
+      "completeSet": "Completar serie",
+      "logAsTaken": "Registrar como tomada",
+      "skip": "Omitir"
+    },
+    "permission": {
+      "notificationsOff": "Notificaciones desactivadas",
+      "timerInApp": "El temporizador seguirá avisando dentro de la app."
+    },
+    "exactAlarm": {
+      "title": "Avisos puntuales",
+      "message": "Android retrasa los avisos programados salvo que permitas a SparkyFitness programar alarmas exactas. Activa «Alarmas y recordatorios» para que los temporizadores de descanso y los recordatorios de medicación suenen a tiempo.",
+      "notNow": "Ahora no",
+      "openSettings": "Abrir Ajustes"
+    },
+    "rest": {
+      "title": "Descanso completado",
+      "nextSetTitle": "Descanso completado: siguiente serie",
+      "bodySetProgress": "{{name}} · Serie {{setNumber}} de {{setCount}}",
+      "bodySetProgressReps_one": "{{setProgress}} · objetivo {{formattedCount}} rep",
+      "bodySetProgressReps_other": "{{setProgress}} · objetivo {{formattedCount}} reps",
+      "bodySetProgressDuration": "{{setProgress}} · objetivo {{duration}}"
+    },
+    "fasting": {
+      "title": "Objetivo de ayuno alcanzado",
+      "body": "Has alcanzado tu objetivo de ayuno. ¡Buen trabajo!"
+    }
+  },
+  "notificationSettings": {
+    "title": "Notificaciones",
+    "allow": "Permitir notificaciones",
+    "allowSubtitle": "Interruptor principal de todos los avisos de SparkyFitness.",
+    "alerts": "Avisos",
+    "restTimer": "Temporizador de descanso",
+    "restTimerSubtitle": "Avisa cuando termina un periodo de descanso, incluso en segundo plano.",
+    "fastingGoals": "Objetivos de ayuno",
+    "fastingGoalsSubtitle": "Avisa cuando alcanzas tu objetivo de ayuno.",
+    "medications": "Medicación",
+    "medicationReminders": "Recordatorios de medicación",
+    "medicationRemindersSubtitle": "Recordatorios de la medicación programada.",
+    "repeatReminders": "Repetir recordatorios",
+    "repeatRemindersSubtitle": "Repite cada recordatorio cada 10 minutos, hasta 3 veces, hasta que registres la dosis.",
+    "hideMedicationNames": "Ocultar nombres de medicación",
+    "hideMedicationNamesSubtitle": "Muestra un recordatorio genérico en lugar del nombre y la dosis de la medicación.",
+    "enableNotifications": "Activar notificaciones",
+    "openSettings": "Abrir Ajustes",
+    "permissionTitle": "Concede permisos",
+    "permissionBody": "Los avisos de SparkyFitness (temporizadores de descanso, objetivos de ayuno, recordatorios de medicación) no se activarán.",
+    "permissionWarningAccessibility": "{{title}}. {{body}} {{action}}."
+  },
+  "diarySettings": {
+    "updateFailed": "No se pudo actualizar el ajuste.",
+    "limitReached": "Límite alcanzado",
+    "noCustomNutrients": "Sin nutrientes personalizados",
+    "customNutrientsDescription": "Los nutrientes personalizados se crean en la app web de SparkyFitness. Una vez que añadas algunos, aparecerán aquí para que elijas cuáles mostrar en tu Diario.",
+    "title": "Ajustes del diario",
+    "summary": "Resumen del diario",
+    "summarySubtitle": "Mostrar calorías y macronutrientes",
+    "customNutrientDisplay": "Visualización de nutrientes personalizados",
+    "limitDescription_one": "Se puede mostrar aquí hasta {{count}} nutriente personalizado.",
+    "limitDescription_other": "Se pueden mostrar aquí hasta {{count}} nutrientes personalizados."
+  },
+  "dashboardSettings": {
+    "updateFailed": "No se pudo actualizar el ajuste.",
+    "noCustomNutrients": "Sin nutrientes personalizados",
+    "customNutrientsDescription": "Los nutrientes personalizados se crean en la app web de SparkyFitness. Una vez que añadas algunos, aparecerán aquí para que elijas cuáles mostrar en tu Panel.",
+    "title": "Ajustes del panel",
+    "askSparky": "Pregunta a Sparky",
+    "askSparkySubtitle": "Muestra el lanzador de chat Pregunta a Sparky en el Panel",
+    "hydration": "Hidratación",
+    "hydrationSubtitle": "Muestra la tarjeta de hidratación en el Panel",
+    "fasting": "Ayuno",
+    "fastingSubtitle": "Muestra la tarjeta de ayuno en el Panel",
+    "cyclePregnancy": "Ciclo y embarazo",
+    "cyclePregnancySubtitle": "Muestra la tarjeta de bienestar en el Panel",
+    "medications": "Medicación",
+    "medicationsSubtitle": "Muestra la tarjeta de medicación en el Panel",
+    "customNutrientDisplay": "Visualización de nutrientes personalizados"
+  },
+  "workoutSettings": {
+    "title": "Ajustes de entrenamiento",
+    "defaultRest": "Descanso predeterminado",
+    "defaultRestSubtitle": "Descanso entre series para los ejercicios recién añadidos.",
+    "defaultRestAccessibility": "Descanso predeterminado, {{duration}}",
+    "restSound": "Sonido del temporizador de descanso",
+    "restSoundSubtitle": "Reproduce un sonido cuando termina el temporizador de descanso con la app abierta.",
+    "keepAwake": "Mantener la pantalla encendida",
+    "keepAwakeSubtitle": "Evita que la pantalla se apague mientras hay un entrenamiento activo.",
+    "restSoundAccessibility": "Sonido del temporizador de descanso",
+    "keepAwakeAccessibility": "Mantener la pantalla encendida"
+  },
+  "foodSettings": {
+    "title": "Ajustes de comida",
+    "errors": {
+      "error": "Error",
+      "updateFailed": "No se pudo actualizar el ajuste."
+    },
+    "mealTypes": {
+      "title": "Tipos de comida",
+      "subtitle": "Añade, edita, reordena o elimina categorías de comida personalizadas"
+    },
+    "netCarbs": {
+      "title": "Mostrar carbohidratos netos",
+      "description": "Cuando se activa, los resúmenes de carbohidratos muestran los carbohidratos netos (carbohidratos totales − fibra), y se añade una fila de Carbohidratos totales en los desgloses de nutrientes."
+    },
+    "foodSource": {
+      "title": "Fuente de alimentos predeterminada",
+      "pickerTitle": "Proveedor de búsqueda",
+      "firstAvailable": "Primero disponible",
+      "description": "Se usa al buscar alimentos por nombre."
+    },
+    "openFacts": {
+      "title": "Ajustar valores de Open Food Facts",
+      "description": "Open Food Facts usa valores por 100 g. Esto los convierte al tamaño de ración del producto."
+    },
+    "barcode": {
+      "title": "Escaneo de código de barras",
+      "provider": "Proveedor",
+      "pickerTitle": "Proveedor de código de barras",
+      "default": "Predeterminado",
+      "retryTitle": "Reintentar con Open Food Facts",
+      "retryDescription": "Si no se encuentra ningún resultado, prueba Open Food Facts automáticamente."
+    }
+  },
+  "mealTypes": {
+    "breakfast": "Desayuno",
+    "lunch": "Almuerzo",
+    "snacks": "Tentempiés",
+    "dinner": "Cena",
+    "other": "Otro"
+  },
+  "mealTypeSettings": {
+    "reorder": "Reordenar {{name}}",
+    "moveUp": "Subir",
+    "moveDown": "Bajar",
+    "edit": "Editar {{name}}",
+    "visible": "Visible {{name}}",
+    "failedUpdate": "No se pudo actualizar",
+    "deleted": "Tipo de comida eliminado",
+    "failedDelete": "No se pudo eliminar",
+    "failedReorder": "No se pudieron reordenar los tipos de comida",
+    "capacity": "No se pueden colocar más tipos de comida {{gap}}.",
+    "add": "Añadir tipo de comida",
+    "createdPartial": "Creado, pero algunos ajustes no se guardaron.",
+    "created": "Tipo de comida creado",
+    "failedCreate": "No se pudo crear el tipo de comida",
+    "deleteTitle": "Eliminar tipo de comida",
+    "deleteMessage": "¿Eliminar '{{name}}'?",
+    "loading": "Cargando tipos de comida...",
+    "loadFailed": "No se pudieron cargar los tipos de comida.",
+    "empty": "No se encontraron tipos de comida",
+    "defaultTime": "Hora predeterminada para {{name}}{{time}}",
+    "notSet": "Sin definir"
+  },
+  "ownership": {
+    "all": "Todos",
+    "mine": "Míos",
+    "family": "Familia",
+    "public": "Públicos",
+    "show": "Mostrar",
+    "filter": "Filtrar {{noun}}, filtrado a {{filter}}",
+    "showAll": "Mostrar todos",
+    "emptyTitle": "No hay {{noun}} en {{filter}}",
+    "emptySubtitle": "Cambia el filtro para ver tus otros {{noun}}."
+  },
+  "syncFrequency": {
+    "title": "Sincronización en segundo plano",
+    "enable": "Activar sincronización en segundo plano",
+    "iosNote": "Cuando está activada, la app se actualizará en segundo plano cuando tu teléfono lo permita. La sincronización manual siempre se actualiza al instante.",
+    "toggleLabel": "Sincronización en segundo plano",
+    "toggleHint": "Activa o desactiva la sincronización de datos de salud en segundo plano."
+  },
+  "syncOnOpen": {
+    "title": "Sincronizar al abrir",
+    "enable": "Sincronizar al abrir la app",
+    "description": "Cuando está activado, los datos de salud se sincronizarán automáticamente al abrir la app.",
+    "toggleLabel": "Sincronizar al abrir la app",
+    "toggleHint": "Activa o desactiva la sincronización automática al abrir la app."
   }
 }
