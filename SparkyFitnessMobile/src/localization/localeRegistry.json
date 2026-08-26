@@ -13,6 +13,12 @@
       "intlLocale": "pl-PL",
       "displayNameKey": "settings.language.polish",
       "defaultDisplayName": "Polski"
+    },
+    "es": {
+      "languageCode": "es",
+      "intlLocale": "es-ES",
+      "displayNameKey": "settings.language.spanish",
+      "defaultDisplayName": "Español"
     }
   }
 }

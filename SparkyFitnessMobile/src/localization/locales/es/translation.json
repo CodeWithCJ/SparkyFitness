@@ -1,0 +1,17 @@
+{
+  "settings": {
+    "language": {
+      "title": "Idioma",
+      "system": "Sistema",
+      "english": "English",
+      "polish": "Polski",
+      "spanish": "Español",
+      "pickerHint": "Abre el menú de selección de idioma",
+      "changeFailed": "No se pudo cambiar el idioma",
+      "managedByIOS": "Gestionado por iOS",
+      "iosSettingsHint": "Cambia el idioma de esta app en los Ajustes de iOS",
+      "openSettingsFailed": "No se pudieron abrir los Ajustes de iOS",
+      "iosSubtitle": "{{language}} · {{managedBy}}"
+    }
+  }
+}
