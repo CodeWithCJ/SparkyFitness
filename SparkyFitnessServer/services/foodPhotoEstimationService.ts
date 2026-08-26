@@ -332,7 +332,6 @@ async function estimateFoodPhotoNutrition(
     api_key: aiService.api_key ?? undefined,
     model_name: aiService.model_name ?? undefined,
     custom_url: aiService.custom_url ?? undefined,
-    timeout: aiService.timeout ?? undefined,
   };
 
   const result = await dispatchAiRequest({
