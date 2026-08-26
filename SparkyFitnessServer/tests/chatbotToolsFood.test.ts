@@ -1806,6 +1806,28 @@ describe('log_external_food', () => {
     expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
   });
 
+  // Regression: the retry example is what the model copies verbatim. Dropping
+  // is_quick_food here saved a visible food after the user asked not to.
+  it('carries Quick Add into the create_food fallback suggestion', async () => {
+    mockUsdaLookup([]);
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_external_food',
+        food_name: 'dragonfruit smoothie',
+        meal_type: 'snacks',
+        entry_date: '2026-06-10',
+        is_quick_food: true,
+      },
+      opts
+    );
+
+    expect(result).toContain('"is_quick_food":true');
+    expect(result).toBe(
+      'Error [VALIDATION]: No external match found for "dragonfruit smoothie". Please estimate the nutrition yourself and call create_food (include meal_type_id (or meal_type) and entry_date to save and log in one step), for example: {"action":"create_food","food_name":"dragonfruit smoothie","calories":300,"protein":15,"carbs":40,"fat":5,"meal_type":"snacks","entry_date":"2026-06-10","is_quick_food":true}'
+    );
+  });
+
   // Regression: a custom meal_type_id must survive into the retry example so
   // the model is not steered back to a built-in category (issue #1959).
   it('keeps a custom meal_type_id in the create_food retry example', async () => {

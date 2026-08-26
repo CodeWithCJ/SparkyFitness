@@ -1396,6 +1396,11 @@ Actions:
                   fat: 5,
                   ...mealSelector,
                   entry_date: entryDate,
+                  // Carry Quick Add into the retry example too. Dropping it
+                  // here would silently save a visible food after the user
+                  // explicitly asked not to — the same way the caller's meal
+                  // selector must survive above.
+                  ...(args.is_quick_food ? { is_quick_food: true } : {}),
                 });
                 return ERRORS.VALIDATION(
                   `No external match found for "${args.food_name}". Please estimate the nutrition yourself and call create_food (include meal_type_id (or meal_type) and entry_date to save and log in one step), for example: ${exampleCall}`
