@@ -12,6 +12,16 @@ import {
   paginationSchema,
 } from './common.js';
 
+// Mirrors the web/mobile "Quick Add" checkbox (foods.is_quick_food). Shared by
+// the strict create_food union member and the flat published input schema so
+// both carry the same opt-in-only wording.
+const quickFoodSchema = z
+  .boolean()
+  .optional()
+  .describe(
+    'Quick Add: log this food to the diary without adding it to the user\'s reusable food list (hidden from food search, favorites, and recents). Set true ONLY when the user explicitly asks for it — "quick add", "don\'t save this to my foods", "just log it". Defaults to false. Requires meal_type_id (or meal_type) in the same call. It only skips saving a NEW food: on log_food, and on log_external_food when the food is already in the list, the existing food stays visible and the reply says Quick Add was not applied.'
+  );
+
 const searchFoodSchema = z
   .object({
     action: z.literal('search_food'),
@@ -89,6 +99,7 @@ const logFoodSchema = z
       .describe('Meal type UUID, including custom meal types'),
     entry_date: optionalDateSchema,
     entry_time: optionalEntryTimeSchema,
+    is_quick_food: quickFoodSchema,
   })
   .strict();
 
@@ -137,6 +148,7 @@ const logExternalFoodSchema = z
       .describe('Meal type UUID, including custom meal types'),
     entry_date: optionalDateSchema,
     entry_time: optionalEntryTimeSchema,
+    is_quick_food: quickFoodSchema,
   })
   .strict();
 
@@ -269,6 +281,7 @@ const createFoodSchema = z
       'Optional: Date for automatic log (YYYY-MM-DD)'
     ),
     entry_time: optionalEntryTimeSchema,
+    is_quick_food: quickFoodSchema,
   })
   .strict();
 
@@ -733,6 +746,7 @@ export const manageFoodInput = z.object({
     ),
   entry_date: dateSchema.optional().describe('Date for the entry (YYYY-MM-DD)'),
   entry_time: optionalEntryTimeSchema,
+  is_quick_food: quickFoodSchema,
   meal_id: uuidSchema.optional().describe('Meal template UUID'),
   meal_name: z
     .string()

@@ -69,6 +69,13 @@ const VALID_ACTIONS = [
 // providers are excluded). Derived from VALID_PROVIDER_TYPES.
 const FOOD_PROVIDER_TYPES = [...VALID_PROVIDER_TYPES];
 
+// Quick Add only skips *saving* a new food. Actions that log a food already in
+// the user's list (log_food always, log_external_food on an internal match)
+// accept the flag but must never flip the existing row hidden — that would take
+// away a food the user relies on. They say so instead of silently ignoring it.
+const QUICK_ADD_NOT_APPLIED =
+  ' Quick Add was not applied because this food is already in your food list.';
+
 // Units where an omitted create_food quantity defaults to 1 instead of 100.
 const COUNT_BASED_UNITS = [
   'serving',
@@ -891,8 +898,8 @@ Actions:
 - lookup_food_nutrition(food_name, provider_type?) — AI MUST call this cascade lookup first before creating or estimating a food. Bypasses regular cascade to search specific provider (e.g. openfoodfacts, usda, yazio) if provider_type given.
 - list_meal_types() — lists the user's built-in and custom meal types with IDs, names, and sort order.
 - log_food(quantity, meal_type_id?|meal_type?, food_name?|food_id?, unit?, entry_date?, variant_id?) — use meal_type_id for custom meal types; the legacy meal_type fallback accepts "breakfast"|"lunch"|"dinner"|"snacks". meal_type_id takes precedence when both are supplied. Provide food_name or food_id (an internal food UUID, never a lookup result's External ID); unit defaults to the food's serving unit, entry_date defaults to today. Works only for foods already in the database (source='internal').
-- log_external_food(food_name, meal_type_id?|meal_type?, quantity?, unit?, entry_date?, external_id?, provider_type?) — PREFERRED way to log an external lookup_food_nutrition match (usda/openfoodfacts/...): the server re-fetches the provider result, saves it with full nutrition, and logs it in one call. quantity is in servings and defaults to 1.
-- create_food(food_name, calories, protein, carbs, fat, brand?, quantity?, unit?, meal_type_id?, meal_type?, entry_date?, saturated_fat?, fiber?, sugar?, sodium?, ...) — MANDATORY: You must run lookup_food_nutrition first. Call only when lookup returns source='ai_estimate' (no match anywhere) or for custom/homemade foods, using AI-estimated values; for external lookup matches use log_external_food instead. Include meal_type_id (or legacy meal_type) + entry_date to also log the food in the same call. Populate as many micro-nutrients, GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros.
+- log_external_food(food_name, meal_type_id?|meal_type?, quantity?, unit?, entry_date?, external_id?, provider_type?, is_quick_food?) — PREFERRED way to log an external lookup_food_nutrition match (usda/openfoodfacts/...): the server re-fetches the provider result, saves it with full nutrition, and logs it in one call. quantity is in servings and defaults to 1. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list.
+- create_food(food_name, calories, protein, carbs, fat, brand?, quantity?, unit?, meal_type_id?, meal_type?, entry_date?, is_quick_food?, saturated_fat?, fiber?, sugar?, sodium?, ...) — MANDATORY: You must run lookup_food_nutrition first. Call only when lookup returns source='ai_estimate' (no match anywhere) or for custom/homemade foods, using AI-estimated values; for external lookup matches use log_external_food instead. Include meal_type_id (or legacy meal_type) + entry_date to also log the food in the same call. Populate as many micro-nutrients, GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list; it then requires meal_type_id (or meal_type) in the same call.
 - search_meal(meal_name)
 - log_meal(meal_type_id?|meal_type?, entry_date, meal_id?, meal_name?, quantity?)
 - list_diary(entry_date?)
@@ -1356,9 +1363,11 @@ Actions:
                   entry_time: args.entry_time,
                 }
               );
-              return formatConfirmation(
-                `Logged "${entry.food_name}" (${resolvedLog.quantity} ${resolvedLog.unit}) for ${mealType.name} on ${entryDate}.`
-              );
+              let loggedMsg = `Logged "${entry.food_name}" (${resolvedLog.quantity} ${resolvedLog.unit}) for ${mealType.name} on ${entryDate}.`;
+              // log_food only ever logs a food already in the database, so
+              // Quick Add can never apply here.
+              if (args.is_quick_food) loggedMsg += QUICK_ADD_NOT_APPLIED;
+              return formatConfirmation(loggedMsg);
             }
 
             case 'log_external_food': {
@@ -1396,6 +1405,11 @@ Actions:
                   fat: 5,
                   ...mealSelector,
                   entry_date: entryDate,
+                  // Carry Quick Add into the retry example too. Dropping it
+                  // here would silently save a visible food after the user
+                  // explicitly asked not to — the same way the caller's meal
+                  // selector must survive above.
+                  ...(args.is_quick_food ? { is_quick_food: true } : {}),
                 });
                 return ERRORS.VALIDATION(
                   `No external match found for "${args.food_name}". Please estimate the nutrition yourself and call create_food (include meal_type_id (or meal_type) and entry_date to save and log in one step), for example: ${exampleCall}`
@@ -1457,9 +1471,14 @@ Actions:
                     entry_time: args.entry_time,
                   }
                 );
-                return formatConfirmation(
-                  `"${entry.food_name}" was already in the food database — logged ${logged.quantity} ${logged.unit} for ${mealType.name} on ${entryDate}.`
-                );
+                let existingMsg = `"${entry.food_name}" was already in the food database — logged ${logged.quantity} ${logged.unit} for ${mealType.name} on ${entryDate}.`;
+                if (args.is_quick_food) {
+                  // Never flip an existing library food to quick: the user
+                  // already has it saved, and hiding it would remove a food
+                  // they rely on rather than skip saving a new one.
+                  existingMsg += QUICK_ADD_NOT_APPLIED;
+                }
+                return formatConfirmation(existingMsg);
               }
 
               const v = pickBestVariant(match);
@@ -1506,6 +1525,12 @@ Actions:
                 // assistant gets the same image as one added from the UI.
                 image_url: match.image_url ?? null,
                 image_source_url: match.image_source_url ?? null,
+                // Quick Add applies here too: this branch saves a brand-new
+                // library food, which is exactly what the user is opting out
+                // of. createFood's provider dedup can't flip an existing food
+                // to quick — refreshExistingExternalFoodMetadata only ever
+                // writes provider_verified and images.
+                is_quick_food: args.is_quick_food === true,
               });
 
               // Create the other variants returned by the provider
@@ -1611,9 +1636,12 @@ Actions:
                 meal_type_id: mealType.id,
                 entry_time: args.entry_time,
               });
-              return formatConfirmation(
-                `Saved "${food.name}" from ${result.source} (${dv?.calories || 0} kcal per ${dv?.serving_size || 100}${dv?.serving_unit || 'g'}) and logged ${logged.quantity} ${logged.unit} to ${mealType.name} on ${entryDate}.`
-              );
+              let savedMsg = `Saved "${food.name}" from ${result.source} (${dv?.calories || 0} kcal per ${dv?.serving_size || 100}${dv?.serving_unit || 'g'}) and logged ${logged.quantity} ${logged.unit} to ${mealType.name} on ${entryDate}.`;
+              if (args.is_quick_food) {
+                savedMsg +=
+                  ' Saved as Quick Add — hidden from your food list and search.';
+              }
+              return formatConfirmation(savedMsg);
             }
 
             case 'create_food': {
@@ -1653,6 +1681,14 @@ Actions:
                   `Meal type "${args.meal_type_id ?? args.meal_type}" was not found or is not available to this user.`
                 );
               }
+              // A quick food is filtered out of every discovery query, so one
+              // that is never logged is unreachable from both the food list and
+              // the diary — dead data with no way for the user to find it.
+              if (args.is_quick_food && !mealType) {
+                return ERRORS.VALIDATION(
+                  'Quick Add foods are hidden from the food list and search, so they must be logged in the same call. Add meal_type_id (or meal_type) to this create_food call, or drop is_quick_food to save it to the food list.'
+                );
+              }
               // The `|| null` on optional fields is MCP's storage quirk
               // (an explicit 0 is stored as null), ported as-is.
               const food = await foodCoreService.createFood(userId, {
@@ -1679,6 +1715,9 @@ Actions:
                 calcium: args.calcium || null,
                 iron: args.iron || null,
                 glycemic_index: args.gi || null,
+                // Not `|| null`: that quirk is for numerics, and it would turn
+                // an explicit false into null.
+                is_quick_food: args.is_quick_food === true,
               });
               const v = food.default_variant;
               let msg = `Food "${food.name}" created with ${v?.calories || 0} kcal per ${v?.serving_size || 100}${v?.serving_unit || 'g'}.`;
@@ -1695,6 +1734,10 @@ Actions:
                   entry_time: args.entry_time,
                 });
                 msg += ` Also logged to ${mealType.name} for ${entryDate}.`;
+              }
+              if (args.is_quick_food) {
+                msg +=
+                  ' Saved as Quick Add — hidden from your food list and search.';
               }
               return formatConfirmation(msg);
             }
