@@ -1693,5 +1693,294 @@
     "setOf_other": "Serie {{number}} de {{count}}",
     "repCount_one": "{{formattedCount}} rep",
     "repCount_other": "{{formattedCount}} reps"
+  },
+  "activeWorkout": {
+    "liveActivity": {
+      "rest": "Descanso",
+      "paused": "En pausa",
+      "elapsed": "Transcurrido",
+      "workoutComplete": "Entrenamiento completado",
+      "complete": "Completar",
+      "addFifteenSeconds": "Añadir 15 segundos",
+      "addFifteenSecondsShort": "+15 s",
+      "skipRest": "Saltar descanso",
+      "workout": "Entrenamiento",
+      "exercise": "Ejercicio",
+      "set": "Serie",
+      "setOf": "de"
+    },
+    "bar": {
+      "clearWorkout": "Borrar entrenamiento",
+      "clear": "Borrar",
+      "clearWorkoutTitle": "¿Borrar entrenamiento?",
+      "saveFailed": "No se pudo guardar tu entrenamiento",
+      "unsavedChanges": "Algunos cambios no han llegado al servidor.",
+      "discardAnyway": "Descartar de todos modos",
+      "endWithoutSaving": "Esto terminará el entrenamiento actual sin guardar el progreso.",
+      "doneStartNextSet": "Hecho, empezar la siguiente serie",
+      "finishWorkout": "Finalizar entrenamiento",
+      "open": "Abrir entrenamiento activo",
+      "pause": "Pausar",
+      "resume": "Reanudar",
+      "skipRest": "Saltar descanso",
+      "resting": "Descansando",
+      "paused": "En pausa",
+      "workoutComplete": "Entrenamiento completado",
+      "workoutActive": "Entrenamiento activo",
+      "nextSet": "{{prefix}}: {{exercise}} — {{set}}",
+      "nextUpSet": "A continuación: {{exerciseName}} — serie {{setNumber}}/{{setCount}}",
+      "next": "Siguiente",
+      "nextUp": "A continuación",
+      "doneNext": "Hecho, empezar la siguiente serie"
+    },
+    "header": {
+      "addExercise": "Añadir ejercicio",
+      "back": "Atrás",
+      "clearAllSets": "Borrar todas las series registradas",
+      "discardWorkout": "Descartar entrenamiento",
+      "elapsedTime": "{{time}} transcurrido",
+      "endWorkout": "Terminar entrenamiento",
+      "exerciseProgress_one": "{{completed}} / {{count}} ejercicio",
+      "exerciseProgress_other": "{{completed}} / {{count}} ejercicios",
+      "renameWorkout": "Renombrar entrenamiento",
+      "reorderExercises": "Reordenar ejercicios",
+      "menu": "Menú del entrenamiento",
+      "settings": "Ajustes de entrenamiento"
+    },
+    "exerciseCard": {
+      "addNote": "Añade una nota para este ejercicio…",
+      "addSetFallback": "Añadir serie al ejercicio",
+      "addSetTo": "Añadir serie a {{exerciseName}}",
+      "addSet": "Añadir serie",
+      "best": "Mejor {{value}}",
+      "caloriesBurnedFallback": "Calorías quemadas del ejercicio",
+      "caloriesBurnedFor": "Calorías quemadas de {{exerciseName}}",
+      "changeMetricColumn": "Cambiar la columna de métrica",
+      "collapseFallback": "Contraer ejercicio",
+      "collapse": "Contraer {{exerciseName}}",
+      "editCaloriesFallback": "Editar las calorías quemadas del ejercicio",
+      "expand": "Expandir {{exerciseName}}",
+      "expandFallback": "Expandir ejercicio",
+      "viewDetailsFor": "Ver detalles de {{exerciseName}}",
+      "viewDetailsFallback": "Ver detalles del ejercicio",
+      "editCaloriesFor": "Editar las calorías quemadas de {{exerciseName}}",
+      "moreOptionsFor": "Más opciones para {{exerciseName}}",
+      "moreOptionsFallback": "Más opciones para el ejercicio",
+      "notesFor": "Notas de {{exerciseName}}",
+      "notesFallback": "Notas del ejercicio",
+      "setSummary_one": "{{count}} serie{{detail}}",
+      "setSummary_other": "{{count}} series{{detail}}",
+      "notesForSet": "Notas de la serie {{setNumber}}"
+    },
+    "rail": {
+      "add": "Añadir",
+      "addExercise": "Añadir ejercicio"
+    },
+    "rest": {
+      "addSecondsShort": "+{{seconds}} s",
+      "subtractSecondsShort": "−{{seconds}} s",
+      "completeSet": "Completar serie",
+      "completeSetTitle": "Completar serie",
+      "extendBySeconds": "Alargar el descanso {{seconds}} segundos",
+      "shortenBySeconds": "Acortar el descanso {{seconds}} segundos",
+      "skip": "Saltar descanso",
+      "pause": "Pausar descanso",
+      "resume": "Reanudar descanso",
+      "targetValue": "Objetivo {{value}}",
+      "shorten": "Acortar el descanso 15 segundos",
+      "extend": "Alargar el descanso 15 segundos"
+    },
+    "setDetail": {
+      "addNote": "Añade una nota para esta serie…",
+      "notesForSet": "Notas de la serie {{setNumber}}",
+      "notes": "Notas de la serie"
+    },
+    "setRow": {
+      "changeType": "Cambiar el tipo de la serie {{setNumber}}",
+      "delete": "Eliminar serie {{setNumber}}",
+      "duration": "Duración",
+      "log": "Registrar serie {{setNumber}}",
+      "reps": "Reps",
+      "complete": "Marcar la serie {{setNumber}} como completada",
+      "incomplete": "Desmarcar la serie {{setNumber}}",
+      "weight": "Peso",
+      "rpe": "RPE",
+      "fillFromPrevious": "Rellenar la serie {{setNumber}} desde la anterior"
+    },
+    "columns": {
+      "set": "Serie",
+      "previous": "Ant",
+      "seconds": "Seg"
+    },
+    "exercise": {
+      "expand": "Expandir {{name}}",
+      "viewDetails": "Ver detalles de {{name}}",
+      "collapse": "Contraer {{name}}",
+      "moreOptions": "Más opciones para {{name}}",
+      "notePlaceholder": "Añade una nota para este ejercicio…",
+      "notesFor": "Notas de {{name}}",
+      "caloriesFor": "Calorías quemadas de {{name}}",
+      "editCaloriesFor": "Editar las calorías quemadas de {{name}}",
+      "best": "Mejor {{value}}",
+      "changeMetric": "Cambiar la columna de métrica",
+      "notesForSet": "Notas de la serie {{number}}",
+      "addSet": "Añadir serie a {{name}}",
+      "caloriesUnit": "kcal",
+      "addSetLabel": "Añadir serie"
+    },
+    "nextSet": "Siguiente serie"
+  },
+  "workoutComplete": {
+    "title": "Entrenamiento completado",
+    "stats": {
+      "duration": "Duración",
+      "volume": "Volumen",
+      "sets": "Series",
+      "calories": "Calorías",
+      "distance": "Distancia",
+      "averageRpe": "RPE medio"
+    },
+    "labels": {
+      "todayAt": " · Hoy a las ",
+      "skipped": "omitida",
+      "all": "Todas",
+      "of": "de",
+      "top": "máx.",
+      "logged": "registradas",
+      "partialSets": "{{completed}} de {{total}} series",
+      "allSetsOne": "1 serie",
+      "allSets_one": "{{count}} serie",
+      "allSets_other": "{{count}} series",
+      "sets_one": "{{count}} serie",
+      "sets_other": "{{count}} series",
+      "personalRecordCount_one": "{{formattedCount}} récord personal",
+      "personalRecordCount_other": "{{formattedCount}} récords personales"
+    },
+    "accessibility": {
+      "calculating": "Calculando"
+    },
+    "actions": {
+      "saveAsPreset": "Guardar como plantilla",
+      "viewWorkout": "Ver entrenamiento",
+      "done": "Listo",
+      "keepPreset": "Conservar plantilla",
+      "update": "Actualizar"
+    },
+    "success": {
+      "presetUpdated": "Plantilla actualizada"
+    },
+    "confirm": {
+      "updatePresetTitle": "¿Actualizar plantilla?",
+      "updatePresetMessage": "El entrenamiento de hoy difiere de «{{preset}}». ¿Actualizar la plantilla para que coincida?"
+    },
+    "rpe": {
+      "easy": "Fácil",
+      "moderate": "Moderado",
+      "hard": "Difícil",
+      "max": "Esfuerzo máximo"
+    },
+    "sections": {
+      "exercises": "Ejercicios",
+      "volume": "Volumen"
+    }
+  },
+  "workoutDetail": {
+    "summary": {
+      "exercise_one": "Ejercicio",
+      "exercise_other": "Ejercicios",
+      "sets": "Series",
+      "volume": "Volumen",
+      "calories": "Calorías"
+    },
+    "errors": {
+      "needsExercise": "El entrenamiento necesita un ejercicio",
+      "addExerciseOrDelete": "Añade al menos un ejercicio con una serie o elimina el entrenamiento.",
+      "saveFailed": "No se pudo guardar el entrenamiento"
+    },
+    "labels": {
+      "details": "Detalles",
+      "name": "Nombre",
+      "notes": "Notas"
+    },
+    "placeholders": {
+      "workoutName": "Nombre del entrenamiento",
+      "notes": "Añadir notas..."
+    },
+    "accessibility": {
+      "save": "Guardar",
+      "reorder": "Reordenar ejercicios",
+      "saveAsPreset": "Guardar como plantilla",
+      "editWorkout": "Editar entrenamiento"
+    },
+    "title": {
+      "edit": "Editar entrenamiento"
+    },
+    "actions": {
+      "startHere": "Empezar entrenamiento aquí",
+      "deleteWorkout": "Eliminar entrenamiento"
+    }
+  },
+  "workoutAdd": {
+    "addExercise": "Añadir un ejercicio",
+    "addExerciseMessage": "Añade al menos un ejercicio con una serie antes de guardar.",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "saveChangesTitle": "¿Guardar cambios?",
+    "saveWorkoutTitle": "¿Guardar entrenamiento?",
+    "saveMessage": "¿Guardar «{{name}}» con {{count}} ejercicio(s)?",
+    "saveFailed": "No se pudo guardar el entrenamiento",
+    "tryAgain": "Inténtalo de nuevo.",
+    "reorderExercises": "Reordenar ejercicios",
+    "workoutPlaceholder": "Entrenamiento",
+    "useYesterday": "Usar ayer",
+    "useToday": "Usar hoy"
+  },
+  "workoutForm": {
+    "viewExercise": "Ver ejercicio",
+    "notes": "Notas",
+    "supersetWith": "Superserie con…",
+    "removeFromSuperset": "Quitar de la superserie",
+    "replaceExercise": "Reemplazar ejercicio",
+    "clearLoggedSets": "Borrar series registradas",
+    "removeExercise": "Quitar ejercicio",
+    "addExercise": "Añadir ejercicio",
+    "exercise": "Ejercicio",
+    "duplicateExercise": "Duplicar ejercicio"
+  },
+  "workoutReorder": {
+    "sets_one": "{{count}} serie",
+    "sets_other": "{{count}} series",
+    "drag": "Arrastra para reordenar",
+    "title": "Reordenar ejercicios",
+    "doneHint": "Reordenación terminada"
+  },
+  "liveWorkout": {
+    "inProgressTitle": "Entrenamiento en curso",
+    "inProgressMessage": "Ya tienes un entrenamiento en curso. Empezar otro lo borra aquí. Las series ya guardadas permanecen en tu diario.",
+    "goToWorkout": "Ir al entrenamiento",
+    "clearAndStart": "Borrar y empezar",
+    "nothingToStart": "Nada que empezar",
+    "noExercises": "Esta plantilla no tiene ejercicios.",
+    "noServerTitle": "Sin servidor conectado",
+    "noServerMessage": "Configura la conexión con tu servidor en Ajustes para empezar un entrenamiento."
+  },
+  "editableSet": {
+    "removeTitle": "Serie {{number}}"
+  },
+  "workoutDraft": {
+    "saveFailed": "No se pudo guardar el borrador"
+  },
+  "activitySummary": {
+    "avgHeartRate": "FC media",
+    "maxHeartRate": "FC máx.",
+    "elevationGain": "Desnivel positivo",
+    "avgCadence": "Cadencia media",
+    "zone": "Zona {{zone}}",
+    "heartRateZone": "Zona de frecuencia cardíaca: {{zone}}",
+    "heartRateZoneLight": "Ligera",
+    "heartRateZoneModerate": "Moderada",
+    "heartRateZoneIntense": "Intensa",
+    "heartRateZonePeak": "Máxima",
+    "durationMinutesSeconds": "{{minutes}} min {{seconds}} s"
   }
 }
