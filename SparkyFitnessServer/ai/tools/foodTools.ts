@@ -69,6 +69,13 @@ const VALID_ACTIONS = [
 // providers are excluded). Derived from VALID_PROVIDER_TYPES.
 const FOOD_PROVIDER_TYPES = [...VALID_PROVIDER_TYPES];
 
+// Quick Add only skips *saving* a new food. Actions that log a food already in
+// the user's list (log_food always, log_external_food on an internal match)
+// accept the flag but must never flip the existing row hidden — that would take
+// away a food the user relies on. They say so instead of silently ignoring it.
+const QUICK_ADD_NOT_APPLIED =
+  ' Quick Add was not applied because this food is already in your food list.';
+
 // Units where an omitted create_food quantity defaults to 1 instead of 100.
 const COUNT_BASED_UNITS = [
   'serving',
@@ -1356,9 +1363,11 @@ Actions:
                   entry_time: args.entry_time,
                 }
               );
-              return formatConfirmation(
-                `Logged "${entry.food_name}" (${resolvedLog.quantity} ${resolvedLog.unit}) for ${mealType.name} on ${entryDate}.`
-              );
+              let loggedMsg = `Logged "${entry.food_name}" (${resolvedLog.quantity} ${resolvedLog.unit}) for ${mealType.name} on ${entryDate}.`;
+              // log_food only ever logs a food already in the database, so
+              // Quick Add can never apply here.
+              if (args.is_quick_food) loggedMsg += QUICK_ADD_NOT_APPLIED;
+              return formatConfirmation(loggedMsg);
             }
 
             case 'log_external_food': {
@@ -1467,8 +1476,7 @@ Actions:
                   // Never flip an existing library food to quick: the user
                   // already has it saved, and hiding it would remove a food
                   // they rely on rather than skip saving a new one.
-                  existingMsg +=
-                    ' Quick Add was not applied because this food is already in your food list.';
+                  existingMsg += QUICK_ADD_NOT_APPLIED;
                 }
                 return formatConfirmation(existingMsg);
               }

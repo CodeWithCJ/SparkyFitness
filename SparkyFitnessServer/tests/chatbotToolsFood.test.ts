@@ -779,6 +779,38 @@ describe('lookup_food_nutrition', () => {
 });
 
 describe('log_food', () => {
+  // Regression: logFoodSchema is strict, so is_quick_food used to be stripped
+  // before the handler ran and the request vanished without a word. log_food
+  // only ever logs a food that is already saved, so the flag must be reported
+  // as not applied — never used to hide the existing food.
+  it('reports Quick Add as not applied instead of dropping it', async () => {
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
+      eggsRow,
+    ]);
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+      food_name: 'Eggs',
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_food',
+        food_name: 'Eggs',
+        quantity: 2,
+        meal_type: 'breakfast',
+        entry_date: '2026-06-10',
+        is_quick_food: true,
+      },
+      opts
+    );
+
+    expect(result).toContain(
+      'Quick Add was not applied because this food is already in your food list.'
+    );
+    expect(foodCoreService.createFood).not.toHaveBeenCalled();
+    expect(foodEntryService.createFoodEntry).toHaveBeenCalled();
+  });
+
   it('reports the legacy meal_type name when resolution fails', async () => {
     vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([]);
 
