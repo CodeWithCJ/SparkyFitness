@@ -17,7 +17,14 @@ import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import DiaryCalorieMacroSummary from '../components/DiaryCalorieMacroSummary';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useServerConnection, useDailySummary, useCustomNutrients, useNutrientDisplayPreferences, useMealTypes } from '../hooks';
+import {
+  useServerConnection,
+  useDailySummary,
+  useCustomNutrients,
+  useFamilyUsers,
+  useNutrientDisplayPreferences,
+  useMealTypes,
+} from '../hooks';
 import { useMeasurements } from '../hooks/useMeasurements';
 import { useCustomMeasurementsByDate } from '../hooks/useCustomMeasurements';
 import { isManualSource } from '../utils/customMeasurementsForm';
@@ -50,6 +57,8 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const insets = useSafeAreaInsets();
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { data: familyUsers = [] } = useFamilyUsers({ enabled: isConnected });
+  const hasFamilyDiaries = isConnected && familyUsers.length > 0;
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
   const setSelectedDate = useDiaryDateStore((s) => s.setSelectedDate);
   const goToPreviousDay = useDiaryDateStore((s) => s.goToPreviousDay);
@@ -107,7 +116,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         dateLabel: `${formatDateLabel(selectedDate, t, dateLocale)} ▾`,
         t,
         locale: dateLocale,
-        leadingAction: isConnected
+        leadingAction: hasFamilyDiaries
           ? {
               sfSymbol: 'person.2.fill',
               onPress: openFamilyDiaries,
@@ -126,7 +135,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     openCalendar,
     selectedDate,
     familyDiariesAccessibilityLabel,
-    isConnected,
+    hasFamilyDiaries,
     usesNativeTabs,
     t,
     dateLocale,
@@ -417,11 +426,15 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           onToday={goToToday}
           onDatePress={openCalendar}
           showDateAlways
-          action={{
-            icon: 'people',
-            accessibilityLabel: familyDiariesAccessibilityLabel,
-            onPress: openFamilyDiaries,
-          }}
+          action={
+            hasFamilyDiaries
+              ? {
+                  icon: 'people',
+                  accessibilityLabel: familyDiariesAccessibilityLabel,
+                  onPress: openFamilyDiaries,
+                }
+              : undefined
+          }
         />
       ) : !isConnectionLoading && (
         <View

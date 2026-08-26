@@ -11,6 +11,7 @@ jest.mock('../../src/hooks', () => ({
   useCustomNutrients: () => ({ customNutrients: [] }),
   useNutrientDisplayPreferences: () => ({ preferences: [] }),
   useMealTypes: () => ({ mealTypes: [], isLoading: false, isError: false }),
+  useFamilyUsers: () => ({ data: [] }),
 }));
 
 jest.mock('../../src/hooks/useMeasurements', () => ({

@@ -9,10 +9,15 @@ interface UseFamilyDailySummaryOptions {
   enabled?: boolean;
 }
 
-export function useFamilyUsers() {
+interface UseFamilyUsersOptions {
+  enabled?: boolean;
+}
+
+export function useFamilyUsers({ enabled = true }: UseFamilyUsersOptions = {}) {
   return useQuery({
     queryKey: familyUsersQueryKey,
     queryFn: fetchFamilyDiaryUsers,
+    enabled,
   });
 }
 

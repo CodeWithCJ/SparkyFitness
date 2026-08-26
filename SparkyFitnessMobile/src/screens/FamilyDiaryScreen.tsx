@@ -184,13 +184,6 @@ const FamilyDiaryScreen: React.FC<FamilyDiaryScreenProps> = ({
         onNextDay={() => setSelectedDate(date => addDays(date, 1))}
         onToday={() => setSelectedDate(getTodayDate())}
         onDatePress={() => calendarRef.current?.present()}
-        dateFormat={{
-          locale,
-          todayLabel: t('familyDiary.today', { defaultValue: 'Today' }),
-          yesterdayLabel: t('familyDiary.yesterday', {
-            defaultValue: 'Yesterday',
-          }),
-        }}
         dateControls={{
           previousDayLabel: t('familyDiary.previousDay', {
             defaultValue: 'Previous day',

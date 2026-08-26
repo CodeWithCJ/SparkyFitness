@@ -7,6 +7,7 @@ import type DateNavigatorComponent from '../../src/components/DateNavigator';
 import {
   useDailySummary,
   useCustomNutrients,
+  useFamilyUsers,
   useNutrientDisplayPreferences,
   useServerConnection,
 } from '../../src/hooks';
@@ -50,6 +51,7 @@ jest.mock('../../src/hooks', () => ({
   useServerConnection: jest.fn(),
   useDailySummary: jest.fn(),
   useCustomNutrients: jest.fn(),
+  useFamilyUsers: jest.fn(),
   useNutrientDisplayPreferences: jest.fn(),
   useMealTypes: jest.fn(() => ({ mealTypes: [], isLoading: false, isError: false })),
 }));
@@ -84,6 +86,7 @@ jest.mock('../../src/hooks/useHeaderActionColors', () => ({
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key === 'familyDiary.openFamilyDiaries' ? 'Open family diaries' : key,
+    i18n: { language: 'en-US' },
   }),
 }));
 
@@ -197,6 +200,7 @@ jest.mock('../../src/components/Icon', () => {
 const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
 const mockUseDailySummary = useDailySummary as jest.MockedFunction<typeof useDailySummary>;
 const mockUseCustomNutrients = useCustomNutrients as jest.MockedFunction<typeof useCustomNutrients>;
+const mockUseFamilyUsers = useFamilyUsers as jest.MockedFunction<typeof useFamilyUsers>;
 const mockUseNutrientDisplayPreferences = useNutrientDisplayPreferences as jest.MockedFunction<
   typeof useNutrientDisplayPreferences
 >;
@@ -228,6 +232,18 @@ const configureConnection = (isConnected: boolean, isLoading = false) => {
     isError: false,
     refetch: jest.fn(),
   } as ReturnType<typeof useServerConnection>);
+};
+
+const configureFamilyUsers = (users: {
+  userId: string;
+  displayName: string;
+  email: string | null;
+  canCopy: boolean;
+  accessEndDate: string | null;
+}[]) => {
+  mockUseFamilyUsers.mockReturnValue({
+    data: users,
+  } as ReturnType<typeof useFamilyUsers>);
 };
 
 const configureOnlineData = (overrides: {
@@ -285,6 +301,16 @@ describe('DiaryScreen custom queries', () => {
       lastKnownToday: getTodayDate(),
     });
     configureConnection(true);
+    mockUseNativeIOSTabsActive.mockReturnValue(false);
+    configureFamilyUsers([
+      {
+        userId: 'member-b',
+        displayName: 'Member B',
+        email: 'b@example.test',
+        canCopy: true,
+        accessEndDate: null,
+      },
+    ]);
     configureOnlineData();
   });
 
@@ -409,9 +435,9 @@ describe('DiaryScreen custom queries', () => {
     const refreshControl = UNSAFE_queryByType(RefreshControl);
     const onRefresh = refreshControl?.props.onRefresh as () => Promise<void>;
 
-    await expect(async () => {
-      await onRefresh();
-    }).not.toThrow();
+    await act(async () => {
+      await expect(onRefresh()).resolves.toBeUndefined();
+    });
 
     // Every other query still ran.
     expect(refetchSummary).toHaveBeenCalled();
@@ -449,6 +475,26 @@ describe('DiaryScreen custom queries', () => {
 
   test('hides the native family diaries action while disconnected', () => {
     configureConnection(false);
+    mockUseNativeIOSTabsActive.mockReturnValue(true);
+
+    renderScreen();
+
+    const options = mockSetNativeHeaderDatePickerOptions.mock.calls[
+      mockSetNativeHeaderDatePickerOptions.mock.calls.length - 1
+    ]?.[1];
+    expect(options?.leadingAction).toBeUndefined();
+  });
+
+  test('hides the custom family diaries action when no diary is shared', () => {
+    configureFamilyUsers([]);
+
+    const { queryByLabelText } = renderScreen();
+
+    expect(queryByLabelText('Open family diaries')).toBeNull();
+  });
+
+  test('hides the native family diaries action when no diary is shared', () => {
+    configureFamilyUsers([]);
     mockUseNativeIOSTabsActive.mockReturnValue(true);
 
     renderScreen();

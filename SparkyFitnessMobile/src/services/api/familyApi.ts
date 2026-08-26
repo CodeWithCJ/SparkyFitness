@@ -13,12 +13,20 @@ const hasDiaryPermission = (
   permissions: AccessibleFamilyUserResponse['permissions'],
 ) =>
   Boolean(
-    permissions?.diary || permissions?.calorie || permissions?.can_manage_diary,
+    permissions?.diary ||
+      permissions?.calorie ||
+      permissions?.can_manage_diary ||
+      permissions?.can_view_reports ||
+      permissions?.can_view_food_library,
   );
 
-const hasFoodLibraryPermission = (
+const hasCopyPermission = (
   permissions: AccessibleFamilyUserResponse['permissions'],
-) => Boolean(permissions?.food_list || permissions?.can_view_food_library);
+) =>
+  Boolean(
+    permissions?.can_manage_diary &&
+      (permissions.food_list || permissions.can_view_food_library),
+  );
 
 export async function fetchFamilyDiaryUsers(): Promise<FamilyDiaryUser[]> {
   const users = await apiFetch<AccessibleFamilyUserResponse[]>({
@@ -33,7 +41,7 @@ export async function fetchFamilyDiaryUsers(): Promise<FamilyDiaryUser[]> {
       userId: user.user_id,
       displayName: user.full_name ?? user.email ?? '',
       email: user.email,
-      canCopy: hasFoodLibraryPermission(user.permissions),
+      canCopy: hasCopyPermission(user.permissions),
       accessEndDate: user.access_end_date,
     }));
 }

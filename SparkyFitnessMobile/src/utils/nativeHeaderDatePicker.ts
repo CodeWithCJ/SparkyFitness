@@ -37,19 +37,17 @@ export function setNativeHeaderDatePickerOptions(
 
   navigation.setOptions({
     unstable_headerRightItems: () => createNativeHeaderDatePickerItems(options),
-    ...(leadingAction
-      ? {
-          unstable_headerLeftItems: () => [
-            createNativeHeaderIconButtonItem({
-              sfSymbol: leadingAction.sfSymbol,
-              onPress: leadingAction.onPress,
-              tintColor: options.tintColor,
-              accessibilityLabel: leadingAction.accessibilityLabel,
-              identifier: leadingAction.identifier,
-            }),
-          ],
-        }
-      : {}),
+    unstable_headerLeftItems: leadingAction
+      ? () => [
+          createNativeHeaderIconButtonItem({
+            sfSymbol: leadingAction.sfSymbol,
+            onPress: leadingAction.onPress,
+            tintColor: options.tintColor,
+            accessibilityLabel: leadingAction.accessibilityLabel,
+            identifier: leadingAction.identifier,
+          }),
+        ]
+      : undefined,
   });
 }
 

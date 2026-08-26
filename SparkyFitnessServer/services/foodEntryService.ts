@@ -1389,8 +1389,9 @@ async function copySelectedFoodEntriesFromUser(
   const entriesToCreate: FoodEntryInput[] = [];
   for (const { selection, entry } of selectedEntries) {
     // Catalog-linked rows have a stable identity for duplicate detection.
-    // Custom snapshot rows do not: treating every null food_id as the same
-    // food silently drops unrelated entries, so they must remain copyable.
+    // Rows without food_id are not de-duplicated here, but they cannot be
+    // copied today: chk_food_or_meal_id requires meal_id when food_id is null,
+    // and neither this path nor the existing web copy path inserts meal_id.
     const existingEntry = entry.food_id
       ? await foodRepository.getFoodEntryByDetails(
           targetUserId,
@@ -1456,9 +1457,8 @@ async function copyReviewedFoodEntriesFromUser(
   targetMealType: string,
   reviewedEntries: CopyReviewedFoodEntriesFromUserBody['entries']
 ) {
-  // This path is deliberately separate from copyFoodEntriesFromUser: the
-  // latter remains the web route whose target is the active context. The
-  // reviewed mobile path always writes into the authenticated actor's diary.
+  // Keep the reviewed-entry fingerprint contract isolated to this endpoint.
+  // Consolidating the otherwise overlapping copy paths is separate work.
   const hasAccess = await familyAccessRepository.checkCopyPermissions(
     actingUserId,
     sourceUserId

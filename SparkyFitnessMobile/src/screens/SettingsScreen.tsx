@@ -18,7 +18,6 @@ import { formatRelativeTime } from '../utils/dateUtils';
 import type { DiagnosticQueryState } from '../types/diagnosticReport';
 import Constants from 'expo-constants';
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
-import { useTranslation } from 'react-i18next';
 
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';

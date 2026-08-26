@@ -74,7 +74,6 @@ jest.mock('../../src/components/DateNavigator', () => {
     onToday,
     onDatePress,
     dateControls,
-    dateFormat,
   }: {
     title: string;
     selectedDate: string;
@@ -83,13 +82,10 @@ jest.mock('../../src/components/DateNavigator', () => {
     onToday: () => void;
     onDatePress: () => void;
     dateControls: { previousDayLabel: string; nextDayLabel: string };
-    dateFormat: { todayLabel: string; yesterdayLabel: string };
   }) => (
     <View>
       <Text>{title}</Text>
       <Text>{selectedDate}</Text>
-      <Text>{dateFormat.todayLabel}</Text>
-      <Text>{dateFormat.yesterdayLabel}</Text>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={dateControls.previousDayLabel}
@@ -160,6 +156,7 @@ jest.mock('react-i18next', () => ({
         /\{\{(\w+)\}\}/g,
         (match, name: string) => String(options?.[name] ?? match),
       ),
+    i18n: { language: 'en-US' },
   }),
 }));
 

@@ -64,6 +64,14 @@ describe('useFamilyDiary', () => {
     );
   });
 
+  test('does not fetch accessible family users while the server is disconnected', async () => {
+    renderHook(() => useFamilyUsers({ enabled: false }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await waitFor(() => expect(mockFetchFamilyDiaryUsers).not.toHaveBeenCalled());
+  });
+
   test('isolates family summaries by family user and date without collapsing entries', async () => {
     mockFetchDailySummary.mockResolvedValue({
       goals: {},

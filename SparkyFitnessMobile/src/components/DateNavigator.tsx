@@ -6,7 +6,6 @@ import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import type { IconName } from './Icon';
 import { formatDateLabel, formatDate } from '../utils/dateUtils';
-import type { DateLabelOptions } from '../utils/dateUtils';
 
 interface DateNavigatorProps {
   title: string;
@@ -35,19 +34,7 @@ interface DateNavigatorProps {
     goToTodayLabel: string;
     goToTodayHint: string;
   };
-  dateFormat?: DateLabelOptions;
 }
-
-const defaultDateControls = {
-  previousDayLabel: 'Previous day',
-  previousDayHint: 'Shows the previous day',
-  nextDayLabel: 'Next day',
-  nextDayHint: 'Shows the next day',
-  chooseDateLabel: 'Choose date',
-  chooseDateHint: 'Opens the date picker',
-  goToTodayLabel: 'Go to today',
-  goToTodayHint: 'Returns to today',
-};
 
 const DateNavigator: React.FC<DateNavigatorProps> = ({
   title,
@@ -62,13 +49,36 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
   skipHorizontalPadding,
   compact,
   action,
-  dateControls = defaultDateControls,
-  dateFormat,
+  dateControls,
 }) => {
   // Subscribe to the reactive app language so the date label re-localizes
   // immediately on a runtime PL <-> EN switch without an app restart.
   const { t, i18n } = useTranslation();
   const locale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
+  const resolvedDateControls = dateControls ?? {
+    previousDayLabel: t('familyDiary.previousDay', {
+      defaultValue: 'Previous day',
+    }),
+    previousDayHint: t('familyDiary.previousDayHint', {
+      defaultValue: 'Shows the previous day',
+    }),
+    nextDayLabel: t('familyDiary.nextDay', { defaultValue: 'Next day' }),
+    nextDayHint: t('familyDiary.nextDayHint', {
+      defaultValue: 'Shows the next day',
+    }),
+    chooseDateLabel: t('familyDiary.chooseDate', {
+      defaultValue: 'Choose date',
+    }),
+    chooseDateHint: t('familyDiary.chooseDateHint', {
+      defaultValue: 'Opens the date picker',
+    }),
+    goToTodayLabel: t('familyDiary.goToToday', {
+      defaultValue: 'Go to today',
+    }),
+    goToTodayHint: t('familyDiary.goToTodayHint', {
+      defaultValue: 'Returns to today',
+    }),
+  };
   const insets = useSafeAreaInsets();
   const secondaryTextColor = useCSSVariable('--color-text-secondary') as string;
   const primaryTextColor = useCSSVariable('--color-text-primary') as string;
@@ -105,8 +115,8 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
           <TouchableOpacity
             onPress={onPreviousDay}
             accessibilityRole="button"
-            accessibilityLabel={dateControls.previousDayLabel}
-            accessibilityHint={dateControls.previousDayHint}
+            accessibilityLabel={resolvedDateControls.previousDayLabel}
+            accessibilityHint={resolvedDateControls.previousDayHint}
             className="items-center justify-center"
             style={{ minWidth: 44, minHeight: 44 }}
           >
@@ -118,13 +128,13 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
           accessibilityRole="button"
           accessibilityLabel={
             onDatePress
-              ? dateControls.chooseDateLabel
-              : dateControls.goToTodayLabel
+              ? resolvedDateControls.chooseDateLabel
+              : resolvedDateControls.goToTodayLabel
           }
           accessibilityHint={
             onDatePress
-              ? dateControls.chooseDateHint
-              : dateControls.goToTodayHint
+              ? resolvedDateControls.chooseDateHint
+              : resolvedDateControls.goToTodayHint
           }
           className="flex-row items-center justify-center px-2"
           style={{ minWidth: 44, minHeight: 44 }}
@@ -145,8 +155,8 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
           <TouchableOpacity
             onPress={onNextDay}
             accessibilityRole="button"
-            accessibilityLabel={dateControls.nextDayLabel}
-            accessibilityHint={dateControls.nextDayHint}
+            accessibilityLabel={resolvedDateControls.nextDayLabel}
+            accessibilityHint={resolvedDateControls.nextDayHint}
             className="items-center justify-center"
             style={{ minWidth: 44, minHeight: 44 }}
           >

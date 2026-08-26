@@ -2,8 +2,17 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import DateNavigator from '../../src/components/DateNavigator';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 
 describe('DateNavigator action', () => {
+  beforeAll(async () => {
+    await initializeI18n('en');
+  });
+
+  afterAll(async () => {
+    await i18n.changeLanguage('en');
+  });
+
   test('renders an accessible 44 by 44 header action', () => {
     const onPress = jest.fn();
     const { getByRole } = render(
@@ -79,7 +88,7 @@ describe('DateNavigator action', () => {
     expect(onNextDay).toHaveBeenCalledTimes(1);
   });
 
-  test('renders localized relative dates and accessible controls', () => {
+  test('renders the global relative date and translated accessible controls', () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date(2025, 0, 15, 12));
     const screen = render(
@@ -95,11 +104,6 @@ describe('DateNavigator action', () => {
           onPreviousDay={jest.fn()}
           onNextDay={jest.fn()}
           onToday={jest.fn()}
-          dateFormat={{
-            locale: 'pl',
-            todayLabel: 'Dzisiaj',
-            yesterdayLabel: 'Wczoraj',
-          }}
           dateControls={{
             previousDayLabel: 'Poprzedni dzień',
             previousDayHint: 'Pokazuje poprzedni dzień',
@@ -114,11 +118,39 @@ describe('DateNavigator action', () => {
       </SafeAreaProvider>,
     );
 
-    expect(screen.getByText('Dzisiaj')).toBeTruthy();
+    expect(screen.getByText('Today')).toBeTruthy();
     expect(
       screen.getByRole('button', { name: 'Poprzedni dzień' }),
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Następny dzień' })).toBeTruthy();
     jest.useRealTimers();
+  });
+
+  test('localizes default accessible controls for existing callers', async () => {
+    await i18n.changeLanguage('pl');
+
+    const screen = render(
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: { x: 0, y: 0, width: 390, height: 844 },
+          insets: { top: 0, bottom: 0, left: 0, right: 0 },
+        }}
+      >
+        <DateNavigator
+          title="Dziennik"
+          selectedDate="2025-01-15"
+          onPreviousDay={jest.fn()}
+          onNextDay={jest.fn()}
+          onToday={jest.fn()}
+          onDatePress={jest.fn()}
+        />
+      </SafeAreaProvider>,
+    );
+
+    expect(
+      screen.getByRole('button', { name: 'Poprzedni dzień' }),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Wybierz datę' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Następny dzień' })).toBeTruthy();
   });
 });

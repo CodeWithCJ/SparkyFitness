@@ -237,7 +237,7 @@ describe('copySelectedFoodEntriesFromUser', () => {
     expect(foodRepository.bulkCreateFoodEntries).not.toHaveBeenCalled();
   });
 
-  it('copies a custom source row even when an unrelated custom target row exists', async () => {
+  it('does not conflate null food ids during the duplicate lookup', async () => {
     const customEntry = {
       ...validSourceEntry,
       food_id: null,
@@ -276,6 +276,9 @@ describe('copySelectedFoodEntriesFromUser', () => {
     ).resolves.toEqual([{ id: 'copied-custom-row' }]);
 
     expect(foodRepository.getFoodEntryByDetails).not.toHaveBeenCalled();
-    expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledOnce();
+    expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledWith(
+      [expect.objectContaining({ food_id: null })],
+      ACTOR
+    );
   });
 });
