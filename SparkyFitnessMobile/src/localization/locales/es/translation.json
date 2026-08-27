@@ -376,7 +376,7 @@
       "description": "Cuando se activa, los resúmenes de carbohidratos muestran los carbohidratos netos (carbohidratos totales − fibra), y se añade una fila de Carbohidratos totales en los desgloses de nutrientes."
     },
     "foodSource": {
-      "title": "Fuente de alimentos predeterminada",
+      "title": "Fuente por defecto",
       "pickerTitle": "Proveedor de búsqueda",
       "firstAvailable": "Primero disponible",
       "description": "Se usa al buscar alimentos por nombre."
@@ -1602,8 +1602,8 @@
     "levelBeginner": "Principiante",
     "levelIntermediate": "Intermedio",
     "levelExpert": "Experto",
-    "forcePull": "Tirón",
-    "forcePush": "Empuje",
+    "forcePull": "Tirar",
+    "forcePush": "Empujar",
     "forceStatic": "Estático",
     "mechanicCompound": "Compuesto",
     "mechanicIsolation": "Aislamiento",
@@ -2112,7 +2112,7 @@
       "everyDay": "Todos los días"
     },
     "dose": {
-      "log": "Registrar",
+      "log": "Registro",
       "skip": "Omitir",
       "taken": "Tomada",
       "skipped": "Omitida",
@@ -2146,7 +2146,7 @@
       "monthly": "Mensual",
       "cyclic": "Ciclo (activo/descanso)",
       "prn": "Según necesidad",
-      "pill": "Píldora",
+      "pill": "Pastilla",
       "tablet": "Comprimido",
       "capsule": "Cápsula",
       "liquid": "Líquido",
@@ -2211,7 +2211,7 @@
       "getStarted": "Empezar"
     },
     "weekBanner": {
-      "due": "Fecha de parto",
+      "due": "Fecha prevista",
       "wellnessProgress": "Progreso de bienestar",
       "week": "Semana {{week}}",
       "weekDay": "{{week}} sem {{day}} d",
@@ -2766,7 +2766,7 @@
       "negative": "Negativo",
       "low": "Bajo",
       "high": "Alto",
-      "peak": "Máximo",
+      "peak": "Pico",
       "faint": "Tenue",
       "positive": "Positivo"
     },
@@ -2798,7 +2798,7 @@
     },
     "birthControl": {
       "none": "Ninguno",
-      "pill": "Píldora",
+      "pill": "Pastilla",
       "iudHormonal": "DIU hormonal",
       "iudCopper": "DIU de cobre",
       "implant": "Implante",
@@ -2910,7 +2910,7 @@
     },
     "birthControl": {
       "none": "Ninguno",
-      "pill": "Píldora",
+      "pill": "Pastilla",
       "iud": "DIU",
       "implant": "Implante",
       "patch": "Parche",
@@ -3460,9 +3460,9 @@
     "ingredientsLabel_other": "ingredientes",
     "foodsInMeal": "Alimentos de la comida",
     "linkedMeal": "Comida vinculada",
-    "protein": "proteínas",
+    "protein": "proteína",
     "carbs": "carbohidratos",
-    "fat": "grasas",
+    "fat": "grasa",
     "calories": "cal",
     "viewLinkedMeal": "Ver comida vinculada {{name}}",
     "logMeal": "Registrar comida",

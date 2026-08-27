@@ -185,6 +185,21 @@ describe('Android widget localization contract', () => {
       expect(pl.get('widget_kcal_left')).toBe('Pozostało %1$s kcal');
     });
 
+    it('uses approved Spanish translations with diacritics where natural', () => {
+      const es = new Map(
+        readWidgetStringResources('es').map((r) => [r.name, r.value]),
+      );
+
+      expect(es.get('sparky_calorie_widget_name')).toBe('Calorías');
+      expect(es.get('sparky_macro_widget_name')).toBe('Macros');
+      expect(es.get('widget_protein')).toBe('Proteínas');
+      expect(es.get('widget_carbs')).toBe('Carbohidratos');
+      expect(es.get('widget_fat')).toBe('Grasas');
+      expect(es.get('widget_search_food')).toBe('Buscar comida');
+      expect(es.get('widget_scan_barcode')).toBe('Escanear código');
+      expect(es.get('widget_kcal_left')).toBe('%1$s kcal restantes');
+    });
+
     it('keeps placeholder positions compatible across all shipped widget locales', () => {
       const en = new Map(
         readWidgetStringResources().map((r) => [r.name, r.value]),

@@ -23,6 +23,12 @@ describe('normalizeLanguage', () => {
     expect(normalizeLanguage('PL')).toBe('pl');
   });
 
+  it('maps Spanish tags to es', () => {
+    expect(normalizeLanguage('es')).toBe('es');
+    expect(normalizeLanguage('es-ES')).toBe('es');
+    expect(normalizeLanguage('ES')).toBe('es');
+  });
+
   it('maps everything else to en', () => {
     expect(normalizeLanguage('en')).toBe('en');
     expect(normalizeLanguage('de')).toBe('en');
@@ -41,6 +47,13 @@ describe('getDeviceLanguage', () => {
       { languageCode: 'pl', languageTag: 'pl-PL', regionCode: 'PL', textDirection: 'ltr' },
     ]);
     expect(getDeviceLanguage()).toBe('pl');
+  });
+
+  it('returns es for Spanish locale', () => {
+    (getLocales as jest.Mock).mockReturnValue([
+      { languageCode: 'es', languageTag: 'es-ES', regionCode: 'ES', textDirection: 'ltr' },
+    ]);
+    expect(getDeviceLanguage()).toBe('es');
   });
 
   it('returns en for English locale', () => {
@@ -66,8 +79,8 @@ describe('getDeviceLanguage', () => {
 });
 
 describe('SUPPORTED_LANGUAGES', () => {
-  it('includes en and pl', () => {
-    expect(SUPPORTED_LANGUAGES).toEqual(['en', 'pl']);
+  it('includes en, pl and es', () => {
+    expect(SUPPORTED_LANGUAGES).toEqual(['en', 'pl', 'es']);
   });
 });
 
@@ -103,6 +116,24 @@ describe('representative PR3 strings', () => {
       expect(i18n.t('navigation.settings')).toBe('Ustawienia');
       expect(i18n.t('common.save')).toBe('Zapisz');
       expect(i18n.t('common.saving')).toBe('Zapisywanie…');
+    });
+  });
+
+  it('renders the language settings, shell and save strings in Spanish', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n('es');
+
+      expect(i18n.t('settings.language.title')).toBe('Idioma');
+      expect(i18n.t('settings.language.system')).toBe('Sistema');
+      expect(i18n.t('settings.language.english')).toBe('English');
+      expect(i18n.t('settings.language.polish')).toBe('Polski');
+      expect(i18n.t('settings.language.spanish')).toBe('Español');
+      expect(i18n.t('settings.language.pickerHint')).toBe('Abre el menú de selección de idioma');
+      expect(i18n.t('settings.app')).toBe('Ajustes de la app');
+      expect(i18n.t('navigation.settings')).toBe('Ajustes');
+      expect(i18n.t('common.save')).toBe('Guardar');
+      expect(i18n.t('common.saving')).toBe('Guardando…');
     });
   });
 
@@ -296,10 +327,31 @@ describe('ImportHistory pluralization', () => {
       expect(imported(25)).toBe('Zaimportowano 25 dni');
     });
   });
+
+  it('uses Spanish one/other forms for representative day counts', async () => {
+    await jest.isolateModulesAsync(async () => {
+      const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+      await initializeI18n('es');
+      const progress = (count: number) => i18n.t('importHistory.progress.ofDays', {
+        defaultValue: 'of {{formattedCount}} days',
+        count,
+        formattedCount: String(count),
+      });
+      const imported = (count: number) => i18n.t('importHistory.done.daysImported', {
+        defaultValue: '{{formattedCount}} days imported',
+        count,
+        formattedCount: String(count),
+      });
+      expect(progress(1)).toBe('de 1 día');
+      expect(progress(2)).toBe('de 2 días');
+      expect(imported(1)).toBe('1 día importado');
+      expect(imported(12)).toBe('12 días importados');
+    });
+  });
 });
 
 describe('controlled glycemic index translations', () => {
-  it('resolves all GI enum labels in English and Polish from the catalogs', async () => {
+  it('resolves all GI enum labels in English, Polish and Spanish from the catalogs', async () => {
     await jest.isolateModulesAsync(async () => {
       const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
       await initializeI18n('en');
@@ -318,6 +370,11 @@ describe('controlled glycemic index translations', () => {
       const polish = ['Brak', 'Bardzo niski', 'Niski', 'Średni', 'Wysoki', 'Bardzo wysoki'];
       keys.forEach(([key], index) => {
         expect(i18n.t(key, { defaultValue: keys[index][1] })).toBe(polish[index]);
+      });
+      await i18n.changeLanguage('es');
+      const spanish = ['Ninguno', 'Muy bajo', 'Bajo', 'Medio', 'Alto', 'Muy alto'];
+      keys.forEach(([key], index) => {
+        expect(i18n.t(key, { defaultValue: keys[index][1] })).toBe(spanish[index]);
       });
     });
   });
@@ -362,7 +419,7 @@ describe('ImportHistory plural fallback contract', () => {
 });
 
 describe('FoodEntryAdd localization', () => {
-  it('resolves serving and meal yield plurals in English and Polish', async () => {
+  it('resolves serving and meal yield plurals in English, Polish and Spanish', async () => {
     await jest.isolateModulesAsync(async () => {
       const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
       await initializeI18n('en');
@@ -377,12 +434,17 @@ describe('FoodEntryAdd localization', () => {
       expect(i18n.t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{formattedCount}} serving', defaultValue_one: 'meal makes {{formattedCount}} serving', defaultValue_other: 'meal makes {{formattedCount}} servings', count: 1, formattedCount: '1' })).toBe('posiłek daje 1 porcję');
       expect(i18n.t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{formattedCount}} serving', defaultValue_one: 'meal makes {{formattedCount}} serving', defaultValue_other: 'meal makes {{formattedCount}} servings', count: 2, formattedCount: '2' })).toBe('posiłek daje 2 porcje');
       expect(i18n.t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{formattedCount}} serving', defaultValue_one: 'meal makes {{formattedCount}} serving', defaultValue_other: 'meal makes {{formattedCount}} servings', count: 5, formattedCount: '5' })).toBe('posiłek daje 5 porcji');
+      await i18n.changeLanguage('es');
+      expect(i18n.t('foodEntryAdd.labels.serving', { defaultValue: 'serving', count: 1 })).toBe('ración');
+      expect(i18n.t('foodEntryAdd.labels.serving', { defaultValue: 'serving', count: 2 })).toBe('raciones');
+      expect(i18n.t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{formattedCount}} serving', defaultValue_one: 'meal makes {{formattedCount}} serving', defaultValue_other: 'meal makes {{formattedCount}} servings', count: 1, formattedCount: '1' })).toBe('la comida rinde 1 ración');
+      expect(i18n.t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{formattedCount}} serving', defaultValue_one: 'meal makes {{formattedCount}} serving', defaultValue_other: 'meal makes {{formattedCount}} servings', count: 2, formattedCount: '2' })).toBe('la comida rinde 2 raciones');
     });
   });
 });
 
 describe('ExerciseSearch localization', () => {
-  it('resolves exercise search copy and ownership filter labels in English and Polish', async () => {
+  it('resolves exercise search copy and ownership filter labels in English, Polish and Spanish', async () => {
     await jest.isolateModulesAsync(async () => {
       const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
       await initializeI18n('en');
@@ -395,12 +457,17 @@ describe('ExerciseSearch localization', () => {
       expect(i18n.t('exerciseSearch.actions.clearSearch', { defaultValue: 'Clear search' })).toBe('Wyczyść wyszukiwanie');
       expect(i18n.t('exerciseSearch.filter.emptyTitle', { defaultValue: 'No {{noun}} in {{filter}}', noun: 'ćwiczenia', filter: 'Moje' })).toBe('Brak: ćwiczenia — Moje');
       expect(i18n.t('exerciseSearch.accessibility.provider', { defaultValue: 'Exercise provider {{provider}}', provider: 'Wger' })).toBe('Dostawca ćwiczeń: Wger');
+      await i18n.changeLanguage('es');
+      expect(i18n.t('exerciseSearch.tabs.search', { defaultValue: 'Search' })).toBe('Buscar');
+      expect(i18n.t('exerciseSearch.actions.clearSearch', { defaultValue: 'Clear search' })).toBe('Borrar búsqueda');
+      expect(i18n.t('exerciseSearch.filter.emptyTitle', { defaultValue: 'No {{noun}} in {{filter}}', noun: 'ejercicios', filter: 'Míos' })).toBe('No hay ejercicios en Míos');
+      expect(i18n.t('exerciseSearch.accessibility.provider', { defaultValue: 'Exercise provider {{provider}}', provider: 'Wger' })).toBe('Proveedor de ejercicios Wger');
     });
   });
 });
 
 describe('FoodSearch localization', () => {
-  it('resolves food search copy and filter labels in English and Polish', async () => {
+  it('resolves food search copy and filter labels in English, Polish and Spanish', async () => {
     await jest.isolateModulesAsync(async () => {
       const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
       await initializeI18n('en');
@@ -411,12 +478,16 @@ describe('FoodSearch localization', () => {
       expect(i18n.t('foodSearch.menu.newFood', { defaultValue: 'New Food' })).toBe('Nowy produkt');
       expect(i18n.t('foodSearch.search.placeholder', { defaultValue: 'Search foods...' })).toBe('Szukaj produktów...');
       expect(i18n.t('foodSearch.states.noFilteredFoods', { defaultValue: 'No foods in {{filter}}', filter: 'Moje' })).toBe('Brak produktów: Moje');
+      await i18n.changeLanguage('es');
+      expect(i18n.t('foodSearch.menu.newFood', { defaultValue: 'New Food' })).toBe('Nuevo alimento');
+      expect(i18n.t('foodSearch.search.placeholder', { defaultValue: 'Search foods...' })).toBe('Buscar alimentos...');
+      expect(i18n.t('foodSearch.states.noFilteredFoods', { defaultValue: 'No foods in {{filter}}', filter: 'Míos' })).toBe('No hay alimentos en Míos');
     });
   });
 });
 
 describe('EditBarcode localization', () => {
-  it('resolves barcode confirmation, validation, and action copy in Polish', async () => {
+  it('resolves barcode confirmation, validation, and action copy in Polish and Spanish', async () => {
     await jest.isolateModulesAsync(async () => {
       const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
       await initializeI18n('pl');
@@ -424,12 +495,17 @@ describe('EditBarcode localization', () => {
       expect(i18n.t('editBarcode.confirm.inUseMessage', { defaultValue: 'This barcode is already attached to "{{otherName}}". Attach it to "{{foodName}}" anyway?', otherName: 'A', foodName: 'B' })).toBe('Ten kod jest już przypisany do „A”. Czy mimo to przypisać go do „B”?');
       expect(i18n.t('editBarcode.errors.invalidFormat', { defaultValue: 'Barcode must be 8-14 digits.' })).toContain('8');
       expect(i18n.t('editBarcode.actions.attach', { defaultValue: 'Attach' })).toBe('Przypisz');
+      await i18n.changeLanguage('es');
+      expect(i18n.t('editBarcode.title', { defaultValue: 'Barcode' })).toBe('Código de barras');
+      expect(i18n.t('editBarcode.confirm.inUseMessage', { defaultValue: 'This barcode is already attached to "{{otherName}}". Attach it to "{{foodName}}" anyway?', otherName: 'A', foodName: 'B' })).toBe('Este código de barras ya está asociado a «A». ¿Asociarlo a «B» de todos modos?');
+      expect(i18n.t('editBarcode.errors.invalidFormat', { defaultValue: 'Barcode must be 8-14 digits.' })).toContain('8');
+      expect(i18n.t('editBarcode.actions.attach', { defaultValue: 'Attach' })).toBe('Asociar');
     });
   });
 });
 
 describe('WorkoutDetail localization', () => {
-  it('resolves workout summary and editing copy in Polish', async () => {
+  it('resolves workout summary and editing copy in Polish and Spanish', async () => {
     await jest.isolateModulesAsync(async () => {
       const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
       await initializeI18n('pl');
@@ -438,12 +514,17 @@ describe('WorkoutDetail localization', () => {
       expect(i18n.t('workoutDetail.summary.exercise_many', { defaultValue: 'Exercises' })).toBe('Ćwiczeń');
       expect(i18n.t('workoutDetail.labels.details', { defaultValue: 'Details' })).toBe('Szczegóły');
       expect(i18n.t('workoutDetail.title.edit', { defaultValue: 'Edit Workout' })).toBe('Edytuj trening');
+      await i18n.changeLanguage('es');
+      expect(i18n.t('workoutDetail.summary.exercise_one', { defaultValue: 'Exercise' })).toBe('Ejercicio');
+      expect(i18n.t('workoutDetail.summary.exercise_other', { defaultValue: 'Exercises' })).toBe('Ejercicios');
+      expect(i18n.t('workoutDetail.labels.details', { defaultValue: 'Details' })).toBe('Detalles');
+      expect(i18n.t('workoutDetail.title.edit', { defaultValue: 'Edit Workout' })).toBe('Editar entrenamiento');
     });
   });
 });
 
 describe('ActivityDetail localization', () => {
-  it('resolves activity detail statistics and editing copy in Polish', async () => {
+  it('resolves activity detail statistics and editing copy in Polish and Spanish', async () => {
     await jest.isolateModulesAsync(async () => {
       const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
       await initializeI18n('pl');
@@ -451,12 +532,17 @@ describe('ActivityDetail localization', () => {
       expect(i18n.t('activityDetail.stats.avgHeartRate', { defaultValue: 'Avg Heart Rate' })).toBe('Średnie tętno');
       expect(i18n.t('activityDetail.labels.secondsShort', { defaultValue: 'Sec' })).toBe('Sek.');
       expect(i18n.t('activityDetail.accessibility.edit', { defaultValue: 'Edit activity' })).toBe('Edytuj aktywność');
+      await i18n.changeLanguage('es');
+      expect(i18n.t('activityDetail.stats.duration', { defaultValue: 'Duration' })).toBe('Duración');
+      expect(i18n.t('activityDetail.stats.avgHeartRate', { defaultValue: 'Avg Heart Rate' })).toBe('Frecuencia cardíaca media');
+      expect(i18n.t('activityDetail.labels.secondsShort', { defaultValue: 'Sec' })).toBe('Seg');
+      expect(i18n.t('activityDetail.accessibility.edit', { defaultValue: 'Edit activity' })).toBe('Editar actividad');
     });
   });
 });
 
 describe('FoodSettings localization', () => {
-  it('resolves food settings labels and descriptions in Polish', async () => {
+  it('resolves food settings labels and descriptions in Polish and Spanish', async () => {
     await jest.isolateModulesAsync(async () => {
       const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
       await initializeI18n('pl');
@@ -464,12 +550,17 @@ describe('FoodSettings localization', () => {
       expect(i18n.t('foodSettings.mealTypes.title', { defaultValue: 'Meal Types' })).toBe('Typy posiłków');
       expect(i18n.t('foodSettings.netCarbs.title', { defaultValue: 'Show Net Carbs' })).toBe('Pokaż węglowodany netto');
       expect(i18n.t('foodSettings.barcode.retryTitle', { defaultValue: 'Retry with Open Food Facts' })).toBe('Spróbuj ponownie z Open Food Facts');
+      await i18n.changeLanguage('es');
+      expect(i18n.t('foodSettings.title', { defaultValue: 'Food Settings' })).toBe('Ajustes de comida');
+      expect(i18n.t('foodSettings.mealTypes.title', { defaultValue: 'Meal Types' })).toBe('Tipos de comida');
+      expect(i18n.t('foodSettings.netCarbs.title', { defaultValue: 'Show Net Carbs' })).toBe('Mostrar carbohidratos netos');
+      expect(i18n.t('foodSettings.barcode.retryTitle', { defaultValue: 'Retry with Open Food Facts' })).toBe('Reintentar con Open Food Facts');
     });
   });
 });
 
 describe('WorkoutComplete localization', () => {
-  it('resolves completion labels, RPE, and Polish set plurals', async () => {
+  it('resolves completion labels, RPE, and Polish and Spanish set plurals', async () => {
     await jest.isolateModulesAsync(async () => {
       const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
       await initializeI18n('pl');
@@ -477,6 +568,12 @@ describe('WorkoutComplete localization', () => {
       expect(i18n.t('workoutComplete.rpe.hard', { defaultValue: 'Hard' })).toBe('Trudny');
       expect(i18n.t('workoutComplete.labels.sets', { defaultValue: '{{count}} sets', count: 1 })).toBe('1 seria');
       expect(i18n.t('workoutComplete.actions.done', { defaultValue: 'Done' })).toBe('Gotowe');
+      await i18n.changeLanguage('es');
+      expect(i18n.t('workoutComplete.title', { defaultValue: 'Workout Complete' })).toBe('Entrenamiento completado');
+      expect(i18n.t('workoutComplete.rpe.hard', { defaultValue: 'Hard' })).toBe('Difícil');
+      expect(i18n.t('workoutComplete.labels.sets', { defaultValue: '{{count}} sets', count: 1 })).toBe('1 serie');
+      expect(i18n.t('workoutComplete.labels.sets', { defaultValue: '{{count}} sets', count: 2 })).toBe('2 series');
+      expect(i18n.t('workoutComplete.actions.done', { defaultValue: 'Done' })).toBe('Listo');
     });
   });
 });
