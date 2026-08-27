@@ -3,7 +3,7 @@ import { ExternalProvider } from '../types/externalProviders';
 
 // Per-provider signature colours used to tell sources apart at a glance in the
 // All Providers search: a tinted badge behind Top Matches rows and a dot before
-// each By Source provider. Colours are drawn from the theme's category palette
+// each By Provider entry. Colours are drawn from the theme's category palette
 // in global.css (the same contrast-tuned vars used for the settings icons)
 // rather than hardcoded hex, so they stay consistent with the rest of the app
 // and adapt to light/dark/amoled themes.

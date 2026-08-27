@@ -9,6 +9,10 @@ export interface UserPreferences {
   sugar_calculation_algorithm?: string;
   default_food_data_provider_id?: string;
   default_barcode_provider_id?: string;
+  /** When on, food search defaults to the aggregated "All Providers" mode. Held
+   *  separately from default_food_data_provider_id, a uuid column that cannot
+   *  store the sentinel, so the single-provider choice survives turning it off. */
+  food_search_all_providers_default?: boolean;
 
   default_weight_unit?: 'kg' | 'lbs' | 'st_lbs';
   default_distance_unit?: 'km' | 'miles';

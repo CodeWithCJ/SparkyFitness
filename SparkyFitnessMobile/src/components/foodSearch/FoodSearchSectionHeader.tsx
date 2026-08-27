@@ -48,7 +48,7 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
   const { t } = useTranslation();
   if (!section.title) return null;
 
-  // The External Results / Top Matches header doubles as the source switcher:
+  // The External Results / Top Matches header doubles as the provider switcher:
   // a single provider, or "All Providers" for the aggregated view. The current
   // value is shown in the accent colour with a double-arrow selector icon so it
   // reads as a switchable control; the icon becomes a spinner while loading.
@@ -56,7 +56,7 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
     const canSwitch = providerOptions.length > 1;
     const label =
       section.kind === 'online-top' ? t('foodSearch.sections.topMatches', { defaultValue: 'Top Matches' }) : t('foodSearch.sections.onlineResults', { defaultValue: 'Online Results' });
-    const value = isAllProviders ? t('foodSearch.menu.allSources', { defaultValue: 'All Sources' }) : selectedProviderName;
+    const value = isAllProviders ? t('foodSearch.menu.allProviders', { defaultValue: 'All Providers' }) : selectedProviderName;
     const loading = isAllProviders ? anyProviderLoading : isOnlineSearching;
     const header = (
       <View className="px-4 py-1 bg-background flex-row items-center justify-between">
@@ -94,7 +94,7 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
               onPress();
             }}
             accessibilityRole="button"
-            accessibilityLabel={t('foodSearch.accessibility.sourceChange', { defaultValue: 'Source {{source}}, tap to change', source: value })}
+            accessibilityLabel={t('foodSearch.accessibility.providerChange', { defaultValue: 'Provider {{provider}}, tap to change', provider: value })}
           >
             {header}
           </Pressable>
@@ -103,7 +103,7 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
     );
   }
 
-  // By Source: a tappable accordion header per provider, with a result-count
+  // By Provider: a tappable accordion header per provider, with a result-count
   // badge and a per-provider loading spinner.
   if (section.kind === 'online-provider' && section.provider) {
     const provider = section.provider;

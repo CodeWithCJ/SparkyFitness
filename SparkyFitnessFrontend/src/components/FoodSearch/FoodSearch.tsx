@@ -169,6 +169,7 @@ const EnhancedFoodSearch = ({
   >('all');
   const {
     defaultFoodDataProviderId,
+    foodSearchAllProvidersDefault,
     defaultBarcodeProviderId,
     itemDisplayLimit,
     foodDisplayLimit,
@@ -441,7 +442,8 @@ const EnhancedFoodSearch = ({
   const selectedFoodDataProvider = resolveFoodProviderId(
     manualProviderId,
     defaultFoodDataProviderId,
-    foodProviderOptions
+    foodProviderOptions,
+    foodSearchAllProvidersDefault
   );
   const selectedProviderName =
     foodDataProviders.find((p) => p.id === selectedFoodDataProvider)

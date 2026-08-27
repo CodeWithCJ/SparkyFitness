@@ -55,6 +55,9 @@ jest.mock('../../src/services/api/externalFoodSearchApi', () => ({
 jest.mock('uniwind', () => ({
   useCSSVariable: (keys: string | string[]) =>
     Array.isArray(keys) ? keys.map(() => '#111827') : '#111827',
+  // Reached only above one provider, where the online section header becomes a
+  // BottomSheetPicker trigger and the sheet chrome asks for the theme.
+  useUniwind: () => ({ theme: 'light' }),
 }));
 
 jest.mock('../../src/components/Icon', () => {
@@ -775,4 +778,99 @@ describe('FoodSearchScreen', () => {
     );
   });
 
+  describe('persisted "All Providers" default', () => {
+    const twoProviders = {
+      providers: [
+        { id: 'p1', provider_type: 'fatsecret', provider_name: 'FatSecret' },
+        {
+          id: 'p2',
+          provider_type: 'openfoodfacts',
+          provider_name: 'OpenFoodFacts',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any;
+
+    function activeAllProvidersSearch() {
+      return {
+        providerResults: [
+          {
+            provider: twoProviders.providers[0],
+            items: [externalItem],
+            totalCount: 1,
+            isLoading: false,
+            isError: false,
+            refetch: jest.fn(),
+          },
+        ],
+        isSearchActive: true,
+        anyLoading: false,
+      } as any;
+    }
+
+    it('opens search in All Providers when the preference is on', () => {
+      mockUsePreferences.mockReturnValue({
+        preferences: {
+          food_search_all_providers_default: true,
+          default_food_data_provider_id: 'p1',
+        },
+      } as any);
+      mockUseExternalProviders.mockReturnValue(twoProviders);
+      mockUseAllProvidersSearch.mockReturnValue(activeAllProvidersSearch());
+
+      const screen = renderSearching();
+
+      // The online section header names the active source. Asserted through the
+      // trigger's accessibility label rather than the bare text, which also
+      // appears as an option inside the provider sheet.
+      expect(
+        screen.getByLabelText('Provider All Providers, tap to change'),
+      ).toBeTruthy();
+    });
+
+    it('opens on the stored single provider when the preference is off', () => {
+      mockUsePreferences.mockReturnValue({
+        preferences: {
+          food_search_all_providers_default: false,
+          default_food_data_provider_id: 'p2',
+        },
+      } as any);
+      mockUseExternalProviders.mockReturnValue(twoProviders);
+      mockUseExternalFoodSearch.mockReturnValue(
+        activeExternalSearch({ searchResults: [externalItem] }),
+      );
+
+      const screen = renderSearching();
+
+      expect(
+        screen.queryByLabelText('Provider All Providers, tap to change'),
+      ).toBeNull();
+      expect(
+        screen.getByLabelText('Provider OpenFoodFacts, tap to change'),
+      ).toBeTruthy();
+    });
+
+    it('degrades to the single provider when only one is active', () => {
+      // "All Providers" is not offered below two providers, so the stored
+      // preference must fall through instead of stranding the selector on a
+      // sentinel with no matching option.
+      mockUsePreferences.mockReturnValue({
+        preferences: {
+          food_search_all_providers_default: true,
+          default_food_data_provider_id: 'p1',
+        },
+      } as any);
+      mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+      mockUseExternalFoodSearch.mockReturnValue(
+        activeExternalSearch({ searchResults: [externalItem] }),
+      );
+
+      const screen = renderSearching();
+
+      expect(screen.queryByText('All Providers')).toBeNull();
+      expect(screen.getByText('FatSecret')).toBeTruthy();
+    });
+  });
 });

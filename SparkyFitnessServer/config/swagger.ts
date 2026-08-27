@@ -1171,6 +1171,11 @@ const options = {
               description:
                 'Custom calorie safety floor in kcal/day. Used when calorie_safety_floor_mode is custom.',
             },
+            food_search_all_providers_default: {
+              type: 'boolean',
+              description:
+                'When true, food search defaults to the aggregated "All Providers" mode rather than a single provider. Held separately from default_food_data_provider_id, which is a uuid and cannot store the aggregated sentinel, so the single-provider choice survives turning this off. Ignored while fewer than two food providers are active.',
+            },
           },
         },
         OnboardingStatus: {
