@@ -6,23 +6,23 @@ import type {
   PresetSessionResponse,
   SharedPregnancy,
 } from '@workspace/shared';
-import type { FoodInfoItem } from './foodInfo';
-import type { FoodEntry } from './foodEntries';
 import type { FoodFormData } from '../components/FoodForm';
+import type { SaveFoodPayload } from '../services/api/foodsApi';
+import type { CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
+import type { MealTypeKey } from '../utils/mealNutrition';
+import type { AssumedSetValues } from '../utils/workoutSession';
 import type { Exercise } from './exercise';
-import type { Meal, MealIngredientDraft } from './meals';
+import type { FamilyDiaryUser } from './familyDiary';
+import type { FoodEntry } from './foodEntries';
 import type { FoodEntryMeal } from './foodEntryMeals';
+import type { FoodInfoItem } from './foodInfo';
 import type {
   EquivalentUnit,
   FoodUnitSelectionResult,
   FoodUnitVariant,
 } from './foodUnitVariants';
+import type { Meal, MealIngredientDraft } from './meals';
 import type { WorkoutPreset } from './workoutPresets';
-import type { MealTypeKey } from '../utils/mealNutrition';
-import type { SaveFoodPayload } from '../services/api/foodsApi';
-import type { CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
-import type { AssumedSetValues } from '../utils/workoutSession';
-import type { FamilyDiaryUser } from './familyDiary';
 
 export type FoodPickerMode = 'log-entry' | 'meal-builder' | 'library';
 
@@ -231,6 +231,7 @@ export type RootStackParamList = {
   };
   ActivityDetail: { session: IndividualSessionResponse };
   FastingDetail: undefined;
+  SleepDetail: { entryId: string; day: string };
   Chat: undefined;
   Logs: undefined;
   Sync: undefined;

@@ -468,7 +468,8 @@
       "failedRecentItems": "Failed to load recent items.",
       "noRecentItems": "No recent items yet",
       "recentItemsHint": "Foods, meals, and exercises you log will appear here for quick access."
-    }
+    },
+    "sleep": "Sleep"
   },
   "healthMetrics": {
     "steps": "Steps",
@@ -4537,7 +4538,8 @@
     "configure": "Configure your server connection in Settings to view your workout presets."
   },
   "time": {
-    "hoursShort": "h"
+    "hoursShort": "h",
+    "minutesShort": "m"
   },
   "exerciseImage": {
     "playAnimation": "Play exercise animation",
@@ -4583,5 +4585,42 @@
     "workouts_other": "{{count}} workouts",
     "records_one": "{{count}} record",
     "records_other": "{{count}} records"
+  },
+  "sleep": {
+    "wakeUp": "Wake Up",
+    "wakeUpA11y": "Open wake up sleep details",
+    "bedTime": "Bed Time",
+    "bedTimeA11y": "Open bed time sleep details",
+    "napCount_one": "{{count}} nap",
+    "napCount_other": "{{count}} naps",
+    "napA11y": "Open nap details",
+    "timeAsleep": "Time asleep",
+    "timeInBed": "Time in bed",
+    "score": "Score",
+    "valueUnavailable": "—",
+    "detailTitle": "Sleep",
+    "loading": "Loading sleep...",
+    "notFound": "Sleep entry not found",
+    "notFoundSubtitle": "This sleep session may have been removed or is no longer synced.",
+    "bedtimeToWake": "{{bedtime}} – {{wakeTime}}",
+    "hypnogram": "Sleep Stages",
+    "hypnogramEmpty": "This source did not record sleep stages.",
+    "stageBreakdown": "Stage Breakdown",
+    "percentValue": "{{percent}}%",
+    "stage": {
+      "awake": "Awake",
+      "rem": "REM",
+      "light": "Light",
+      "deep": "Deep",
+      "other": "Other"
+    },
+    "biometrics": "Overnight Biometrics",
+    "averageSpo2": "Average SpO2",
+    "lowestSpo2": "Lowest SpO2",
+    "highestSpo2": "Highest SpO2",
+    "restingHeartRate": "Resting heart rate",
+    "percentUnit": "%",
+    "bpmUnit": "bpm",
+    "quality": "Sleep Quality"
   }
 }

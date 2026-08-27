@@ -1,7 +1,8 @@
-import { fetchSleepAnalytics } from '../../../src/services/api/sleepApi';
+import { fetchSleepAnalytics, fetchSleepEntries } from '../../../src/services/api/sleepApi';
 import { ApiError } from '../../../src/services/api/errors';
 import { getActiveServerConfig, ServerConfig } from '../../../src/services/storage';
 import type { SleepAnalyticsDay } from '../../../src/types/sleep';
+import { buildSleepEntry, buildStageEvent } from '../../helpers/sleepFixtures';
 
 jest.mock('../../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
@@ -157,6 +158,66 @@ describe('sleepApi', () => {
       const options = lastRequest()[1];
       expect(options.method).toBe('GET');
       expect(options.body).toBeUndefined();
+    });
+  });
+
+  describe('fetchSleepEntries', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key-12345',
+    };
+
+    const requestUrl = (): string => mockFetch.mock.calls[0][0] as string;
+
+    test('requests /api/sleep with startDate and endDate query params', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+
+      await fetchSleepEntries('2026-08-23', '2026-08-24');
+
+      expect(requestUrl()).toContain(
+        'https://example.com/api/sleep?startDate=2026-08-23&endDate=2026-08-24',
+      );
+    });
+
+    test('percent-encodes date params rather than injecting them raw', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+
+      await fetchSleepEntries('2026/08/23', '2026-08-24');
+
+      expect(requestUrl()).toContain('startDate=2026%2F08%2F23');
+      expect(requestUrl()).not.toContain('startDate=2026/08/23');
+    });
+
+    test('returns the resolved rows verbatim, including stage_events', async () => {
+      const rows = [buildSleepEntry({ stage_events: [buildStageEvent()] })];
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(rows) });
+
+      const result = await fetchSleepEntries('2026-08-23', '2026-08-24');
+
+      expect(result).toEqual(rows);
+      // The client is a pass-through: the hook does the bucketing, not the API layer.
+      expect(result[0].stage_events).toHaveLength(1);
+      expect(result[0].entry_date).toBe('2026-08-23');
+    });
+
+    test('propagates an ApiError unchanged — degradation belongs to the hook', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 403,
+        text: () => Promise.resolve('Forbidden'),
+      });
+
+      const error = await fetchSleepEntries('2026-08-23', '2026-08-24').catch(
+        (e: unknown) => e,
+      );
+
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).statusCode).toBe(403);
     });
   });
 });

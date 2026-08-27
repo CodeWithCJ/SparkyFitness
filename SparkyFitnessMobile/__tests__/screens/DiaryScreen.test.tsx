@@ -14,9 +14,11 @@ import {
 import { useMeasurements } from '../../src/hooks/useMeasurements';
 import { useCustomMeasurementsByDate } from '../../src/hooks/useCustomMeasurements';
 import { useDiaryDateStore } from '../../src/stores/diaryDateStore';
+import { useSleepDay } from '../../src/hooks/useSleepDay';
 import { getTodayDate } from '../../src/utils/dateUtils';
 import { useNativeIOSTabsActive } from '../../src/services/nativeTabBarPreference';
 import { setNativeHeaderDatePickerOptions } from '../../src/utils/nativeHeaderDatePicker';
+import { buildSleepEntry } from '../helpers/sleepFixtures';
 
 type DiaryScreenProps = React.ComponentProps<typeof DiaryScreen>;
 type DateNavigatorProps = React.ComponentProps<typeof DateNavigatorComponent>;
@@ -62,6 +64,20 @@ jest.mock('../../src/hooks/useMeasurements', () => ({
 
 jest.mock('../../src/hooks/useCustomMeasurements', () => ({
   useCustomMeasurementsByDate: jest.fn(),
+}));
+
+// This suite renders DiaryScreen without a QueryClientProvider, so the sleep hook's real
+// useQuery would throw. Mocked to an empty day by default.
+jest.mock('../../src/hooks/useSleepDay', () => ({
+  useSleepDay: jest.fn(() => ({
+    wakeUp: null,
+    naps: [],
+    bedTime: null,
+    isLoading: false,
+    isError: false,
+    isForbidden: false,
+    refetch: jest.fn().mockResolvedValue(undefined),
+  })),
 }));
 
 jest.mock('../../src/hooks/usePreferences', () => ({
@@ -224,6 +240,9 @@ const refetchMeasurements = jest.fn();
 const refetchCustomMeasurements = jest.fn();
 const refetchCustomNutrients = jest.fn();
 const refetchNutrientPrefs = jest.fn();
+const refetchSleep = jest.fn();
+
+const mockUseSleepDay = useSleepDay as jest.MockedFunction<typeof useSleepDay>;
 
 const configureConnection = (isConnected: boolean, isLoading = false) => {
   mockUseServerConnection.mockReturnValue({
@@ -505,4 +524,190 @@ describe('DiaryScreen custom queries', () => {
     expect(options?.leadingAction).toBeUndefined();
   });
 
+});
+
+describe('DiaryScreen sleep cards', () => {
+  const napEntry = buildSleepEntry({
+    id: 'nap-1',
+    duration_in_seconds: 1800,
+    bedtime: '2024-06-15T14:00:00+00:00',
+  });
+
+  const configureSleep = (overrides: Record<string, unknown> = {}) => {
+    mockUseSleepDay.mockReturnValue({
+      wakeUp: buildSleepEntry({ id: 'overnight' }),
+      naps: [napEntry],
+      bedTime: buildSleepEntry({ id: 'tonight', entry_date: '2024-06-16' }),
+      isLoading: false,
+      isError: false,
+      isForbidden: false,
+      refetch: refetchSleep,
+      ...overrides,
+    } as any);
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    useDiaryDateStore.setState({
+      selectedDate: '2024-06-15',
+      lastKnownToday: getTodayDate(),
+    });
+    configureConnection(true);
+    configureOnlineData();
+    configureSleep();
+  });
+
+  test('renders all three cards when the day has sleep data', () => {
+    const { getByTestId } = renderScreen();
+
+    expect(getByTestId('wake-up-card')).toBeTruthy();
+    expect(getByTestId('naps-card')).toBeTruthy();
+    expect(getByTestId('bed-time-card')).toBeTruthy();
+  });
+
+  test('sleep alone keeps the day non-empty, suppressing the illustration', () => {
+    // baseSummary has no food, exercise or measurements — sleep is the only thing
+    // recorded. A day the user slept through is not an empty day.
+    const { getByTestId, queryByTestId } = renderScreen();
+
+    expect(queryByTestId('empty-day')).toBeNull();
+    expect(getByTestId('wake-up-card')).toBeTruthy();
+    // The food and exercise sections still render, empty, as the day's scaffolding.
+    expect(getByTestId('food-summary')).toBeTruthy();
+    expect(getByTestId('exercise-summary')).toBeTruthy();
+  });
+
+  test('a nap alone is enough to keep the day non-empty', () => {
+    // Each sleep field independently suppresses the illustration, so a day holding
+    // only an afternoon nap still renders as a real day.
+    configureSleep({ wakeUp: null, naps: [napEntry], bedTime: null });
+
+    const { getByTestId, queryByTestId } = renderScreen();
+
+    expect(queryByTestId('empty-day')).toBeNull();
+    expect(getByTestId('naps-card')).toBeTruthy();
+    expect(queryByTestId('wake-up-card')).toBeNull();
+    expect(queryByTestId('bed-time-card')).toBeNull();
+  });
+
+  test('waits for the sleep query before deciding the day is empty', () => {
+    // Summary already resolved, sleep still in flight, nothing else logged. Rendering
+    // now would show the empty-day illustration and then flip to the sleep cards.
+    configureSleep({ wakeUp: null, naps: [], bedTime: null, isLoading: true });
+
+    const { getByTestId, queryByTestId } = renderScreen();
+
+    expect(getByTestId('status-view')).toBeTruthy();
+    expect(queryByTestId('empty-day')).toBeNull();
+    expect(queryByTestId('wake-up-card')).toBeNull();
+  });
+
+  test('a bed time alone is enough to keep the day non-empty', () => {
+    configureSleep({
+      wakeUp: null,
+      naps: [],
+      bedTime: buildSleepEntry({ id: 'tonight', entry_date: '2024-06-16' }),
+    });
+
+    const { getByTestId, queryByTestId } = renderScreen();
+
+    expect(queryByTestId('empty-day')).toBeNull();
+    expect(getByTestId('bed-time-card')).toBeTruthy();
+  });
+
+  test('orders the day chronologically, with Bed Time last before the measurements', () => {
+    // A populated day so the food/exercise/measurements branch renders.
+    mockUseDailySummary.mockReturnValue({
+      summary: { ...baseSummary, foodEntries: [{ id: 'f1' }] },
+      isLoading: false,
+      isError: false,
+      refetch: refetchSummary,
+    } as any);
+
+    const { getByTestId, UNSAFE_root } = renderScreen();
+
+    const order = ['wake-up-card', 'food-summary', 'exercise-summary', 'naps-card', 'bed-time-card', 'measurements-summary'];
+    const positions = order.map((testID) => {
+      const node = getByTestId(testID);
+      // Index of each rendered node in a depth-first walk of the tree.
+      const all: unknown[] = [];
+      const walk = (n: any) => {
+        all.push(n);
+        (n.children ?? []).forEach((child: any) => {
+          if (typeof child !== 'string') walk(child);
+        });
+      };
+      walk(UNSAFE_root);
+      return all.indexOf(node);
+    });
+
+    expect(positions.every((position) => position >= 0)).toBe(true);
+    // Strictly increasing => rendered in exactly this order.
+    for (let index = 1; index < positions.length; index++) {
+      expect(positions[index]).toBeGreaterThan(positions[index - 1]);
+    }
+  });
+
+  test('skips the sleep request entirely while offline', () => {
+    configureConnection(false);
+
+    renderScreen();
+
+    expect(mockUseSleepDay).toHaveBeenCalledWith(
+      '2024-06-15',
+      expect.objectContaining({ enabled: false }),
+    );
+  });
+
+  test('requests the Diary’s selected date, and re-requests when it changes', () => {
+    renderScreen();
+    expect(mockUseSleepDay).toHaveBeenCalledWith(
+      '2024-06-15',
+      expect.objectContaining({ enabled: true }),
+    );
+
+    mockUseSleepDay.mockClear();
+    useDiaryDateStore.setState({ selectedDate: '2024-06-16' });
+    renderScreen();
+
+    expect(mockUseSleepDay).toHaveBeenCalledWith(
+      '2024-06-16',
+      expect.objectContaining({ enabled: true }),
+    );
+  });
+
+  test('a day with no sleep data renders no sleep cards at all', () => {
+    configureSleep({ wakeUp: null, naps: [], bedTime: null });
+
+    const { getByTestId, queryByTestId } = renderScreen();
+
+    // All three hide rather than showing empty states, so a user with no sleep source
+    // sees no sleep section on the Diary.
+    expect(queryByTestId('wake-up-card')).toBeNull();
+    expect(queryByTestId('naps-card')).toBeNull();
+    expect(queryByTestId('bed-time-card')).toBeNull();
+    // The pre-existing empty-day behaviour is untouched.
+    expect(getByTestId('empty-day')).toBeTruthy();
+  });
+
+  test('hides the cards entirely on a 403 rather than showing empty states', () => {
+    configureSleep({ wakeUp: null, naps: [], bedTime: null, isForbidden: true });
+
+    const { queryByTestId, getByTestId } = renderScreen();
+
+    expect(queryByTestId('wake-up-card')).toBeNull();
+    expect(queryByTestId('bed-time-card')).toBeNull();
+    // The rest of the Diary is unaffected.
+    expect(getByTestId('empty-day')).toBeTruthy();
+  });
+
+  test('pull-to-refresh refetches the sleep query alongside the others', async () => {
+    const { UNSAFE_getByType } = renderScreen();
+
+    const onRefresh = UNSAFE_getByType(RefreshControl).props.onRefresh as () => Promise<void>;
+    await onRefresh();
+
+    expect(refetchSleep).toHaveBeenCalled();
+    expect(refetchSummary).toHaveBeenCalled();
+  });
 });

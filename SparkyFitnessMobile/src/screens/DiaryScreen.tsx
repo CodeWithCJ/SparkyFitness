@@ -1,51 +1,53 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
-import { View, Text, ScrollView, RefreshControl } from 'react-native';
-import Button from '../components/ui/Button';
-import { Gesture, GestureDetector, Directions } from 'react-native-gesture-handler';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { CompositeScreenProps } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { hasSupplementNutrition } from '@workspace/shared';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Directions, Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import { hasSupplementNutrition } from '@workspace/shared';
-import DateNavigator from '../components/DateNavigator';
-import FoodSummary from '../components/FoodSummary';
-import ExerciseSummary from '../components/ExerciseSummary';
-import MeasurementsSummary from '../components/MeasurementsSummary';
+import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { addSheetRef } from '../components/AddSheet';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import ServingAdjustSheet, { type ServingAdjustSheetRef } from '../components/ServingAdjustSheet';
-import EmptyDayIllustration from '../components/EmptyDayIllustration';
+import DateNavigator from '../components/DateNavigator';
 import DiaryCalorieMacroSummary from '../components/DiaryCalorieMacroSummary';
+import EmptyDayIllustration from '../components/EmptyDayIllustration';
+import ExerciseSummary from '../components/ExerciseSummary';
+import FoodSummary from '../components/FoodSummary';
+import MeasurementsSummary from '../components/MeasurementsSummary';
+import ServingAdjustSheet, { type ServingAdjustSheetRef } from '../components/ServingAdjustSheet';
+import { BedTimeCard, NapsCard, WakeUpCard } from '../components/SleepCards';
 import StatusView from '../components/StatusView';
-import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import Button from '../components/ui/Button';
 import {
-  useServerConnection,
-  useDailySummary,
   useCustomNutrients,
+  useDailySummary,
   useFamilyUsers,
-  useNutrientDisplayPreferences,
   useMealTypes,
+  useNutrientDisplayPreferences,
+  useServerConnection,
 } from '../hooks';
-import { useMeasurements } from '../hooks/useMeasurements';
 import { useCustomMeasurementsByDate } from '../hooks/useCustomMeasurements';
-import { isManualSource } from '../utils/customMeasurementsForm';
-import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useMeasurements } from '../hooks/useMeasurements';
+import { usePreferences } from '../hooks/usePreferences';
+import { useSleepDay } from '../hooks/useSleepDay';
+import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
+import { useDiaryDateStore } from '../stores/diaryDateStore';
+import type { FoodEntry } from '../types/foodEntries';
+import type { RootStackParamList, TabParamList } from '../types/navigation';
+import { isManualSource } from '../utils/customMeasurementsForm';
+import { formatDateLabel } from '../utils/dateUtils';
+import { getHistoricalMealTypeLabel, getMealTypeDisplayLabel } from '../utils/mealNutrition';
 import {
   setNativeHeaderDatePickerOptions,
   type NativeHeaderDatePickerNavigation,
 } from '../utils/nativeHeaderDatePicker';
-import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
-import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
-import { useDiaryDateStore } from '../stores/diaryDateStore';
-import { getHistoricalMealTypeLabel, getMealTypeDisplayLabel } from '../utils/mealNutrition';
-import { formatDateLabel } from '../utils/dateUtils';
-import type { FoodEntry } from '../types/foodEntries';
-import type { CompositeScreenProps } from '@react-navigation/native';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList, TabParamList } from '../types/navigation';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
-import { useTranslation } from 'react-i18next';
 
 type DiaryScreenProps = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Diary'>,
@@ -213,6 +215,15 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     preferences: nutrientPrefs,
     refetch: refetchNutrientPrefs,
   } = useNutrientDisplayPreferences({ enabled: isConnected });
+
+  const {
+    wakeUp,
+    naps,
+    bedTime,
+    isLoading: isSleepLoading,
+    refetch: refetchSleep,
+  } = useSleepDay(selectedDate, { enabled: isConnected });
+
   const diaryNutrientRow = nutrientPrefs.find(
     (p) => p.view_group === 'diary' && p.platform === 'mobile',
   );
@@ -258,6 +269,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         refetchCustomMeasurements(),
         refetchCustomNutrients(),
         refetchNutrientPrefs(),
+        refetchSleep(),
       ]);
     } finally {
       setRefreshing(false);
@@ -269,9 +281,20 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     refetchCustomMeasurements,
     refetchCustomNutrients,
     refetchNutrientPrefs,
+    refetchSleep,
   ]);
 
   const isRefreshing = refreshing;
+
+  const isDayEmpty = useMemo(() => { 
+    return wakeUp === null &&
+        summary?.foodEntries.length === 0 &&
+        !hasSupplementNutrition(summary?.supplementTotals) && //A logged supplement is something the user recorded for this day, so the day is not empty even with no food, exercise or measurement.
+        summary?.exerciseEntries.length === 0 &&
+        !hasAnyMeasurement &&
+        naps.length === 0 && 
+        bedTime === null;
+  },[wakeUp, summary, hasAnyMeasurement, naps, bedTime]);
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
@@ -287,7 +310,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       );
     }
 
-    if (isLoading || isConnectionLoading) {
+    if (isLoading || isConnectionLoading || isSleepLoading) {
       return <StatusView loading title={t('diary.loading', { defaultValue: 'Loading diary...' })} />;
     }
 
@@ -337,12 +360,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             customNutrients={customNutrients}
           />
         )}
-        {/* A logged supplement is something the user recorded for this day, so the day is
-            not empty even with no food, exercise or measurement. */}
-        {summary.foodEntries.length === 0 &&
-        !hasSupplementNutrition(summary.supplementTotals) &&
-        summary.exerciseEntries.length === 0 &&
-        !hasAnyMeasurement ? (
+        {isDayEmpty ? (
           <>
             <EmptyDayIllustration />
             <Button
@@ -355,6 +373,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           </>
         ) : (
           <>
+            <WakeUpCard entry={wakeUp} day={selectedDate} navigation={navigation} />
             <FoodSummary
               foodEntries={summary.foodEntries}
               mealTypes={mealTypes}
@@ -385,6 +404,8 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
                 }
               }}
             />
+            <NapsCard naps={naps} day={selectedDate} navigation={navigation} />
+            <BedTimeCard entry={bedTime} day={selectedDate} navigation={navigation} />
             <MeasurementsSummary
               measurements={measurements}
               customMeasurements={manualCustomMeasurements}
