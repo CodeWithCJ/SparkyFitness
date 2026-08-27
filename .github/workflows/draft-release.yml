@@ -1,0 +1,86 @@
+name: Draft release
+
+# Creates a DRAFT release whose body is the preamble in
+# .github/release-preamble.md followed by GitHub's auto-generated changelog.
+#
+# Why this exists: GitHub's "Generate release notes" button only ever emits the
+# "What's Changed" block from .github/release.yml (categories + exclude). It has
+# no preamble support, and no workflow can patch a draft afterwards — GitHub does
+# not fire release events for draft releases. So the draft has to be built here.
+#
+# Drafts do not create the git tag (GitHub only creates the ref on publish), so
+# running this does not trigger the v* tag workflows. They run on publish, as before.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag for the new release (e.g. v1.6.4)"
+        required: true
+        type: string
+      previous_tag:
+        description: "Previous tag to diff against (optional; GitHub picks the last release if blank)"
+        required: false
+        type: string
+      target:
+        description: "Branch or commit the release is cut from"
+        required: false
+        default: main
+        type: string
+
+jobs:
+  draft:
+    name: Create draft release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build release body
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          PREVIOUS_TAG: ${{ inputs.previous_tag }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          set -euo pipefail
+
+          # Same generator the "Generate release notes" button uses, so the
+          # categories/exclude rules in .github/release.yml still apply.
+          args=(
+            -X POST
+            "repos/${GITHUB_REPOSITORY}/releases/generate-notes"
+            -f "tag_name=${TAG}"
+            -f "target_commitish=${TARGET}"
+          )
+          if [ -n "${PREVIOUS_TAG}" ]; then
+            args+=(-f "previous_tag_name=${PREVIOUS_TAG}")
+          fi
+
+          gh api "${args[@]}" --jq .body > generated-notes.md
+
+          cat .github/release-preamble.md > release-body.md
+          printf '\n' >> release-body.md
+          cat generated-notes.md >> release-body.md
+
+          echo "----- release body -----"
+          cat release-body.md
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          TARGET: ${{ inputs.target }}
+        run: |
+          set -euo pipefail
+          gh release create "${TAG}" \
+            --draft \
+            --title "${TAG}" \
+            --target "${TARGET}" \
+            --notes-file release-body.md
+
+          echo "Draft created. Review it at:"
+          gh release view "${TAG}" --json url --jq .url
