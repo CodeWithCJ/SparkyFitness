@@ -3540,6 +3540,7 @@ CREATE TABLE public.user_preferences (
     active_vision_ai_service_id uuid,
     added_sugar_algorithm text DEFAULT 'WHO_IDEAL'::text NOT NULL,
     time_format text DEFAULT 'h:mm A'::text NOT NULL,
+    food_search_all_providers_default boolean DEFAULT false NOT NULL,
     calorie_safety_floor_mode text DEFAULT 'standard'::text NOT NULL,
     calorie_safety_floor_value integer DEFAULT 1200 NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
