@@ -532,7 +532,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                       energyUnit: getEnergyUnitString(energyUnit),
                     }
                   )}
-                  {(bmrSource === 'check_in' || bmrSource === 'external') &&
+                  {bmrSource === 'measured' &&
                     ` (${t('exercise.dailyProgress.bmrSourceMeasured', 'Measured')})`}
                 </div>
               )}
