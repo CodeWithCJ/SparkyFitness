@@ -1,0 +1,4520 @@
+{
+  "settings": {
+    "language": {
+      "title": "Idioma",
+      "system": "Sistema",
+      "english": "English",
+      "polish": "Polski",
+      "spanish": "Español",
+      "pickerHint": "Abre el menú de selección de idioma",
+      "changeFailed": "No se pudo cambiar el idioma",
+      "managedByIOS": "Gestionado por iOS",
+      "iosSettingsHint": "Cambia el idioma de esta app en los Ajustes de iOS",
+      "openSettingsFailed": "No se pudieron abrir los Ajustes de iOS",
+      "iosSubtitle": "{{language}} · {{managedBy}}"
+    },
+    "app": "Ajustes de la app",
+    "lastSynced": "Última sincronización {{time}}",
+    "addServer": "Toca para añadir un servidor",
+    "title": "Ajustes",
+    "shareReportFailed": "No se pudo compartir el informe de diagnóstico: {{error}}",
+    "serverConnected": "Ajustes del servidor. Conectado.",
+    "serverConnectionFailed": "Ajustes del servidor. Conexión fallida.",
+    "serverNotConfigured": "Ajustes del servidor. Sin servidor configurado.",
+    "shareReportDescription": "Exporta un informe de diagnóstico local (versión de la app, estado de sincronización, registros). No incluye datos personales de salud ni de comida. No se envía nada automáticamente.",
+    "rows": {
+      "server": "Servidor",
+      "healthSync": "Sincronización de datos de salud",
+      "app": "Ajustes de la app",
+      "calories": "Calorías y TMB",
+      "food": "Comida",
+      "dashboard": "Panel",
+      "diary": "Diario",
+      "wellness": "Bienestar",
+      "cyclePregnancy": "Ciclo y embarazo",
+      "workout": "Entrenamiento",
+      "whatsNew": "Novedades",
+      "logs": "Ver registros",
+      "about": "Acerca de",
+      "shareReport": "Compartir informe de diagnóstico"
+    },
+    "theme": {
+      "title": "Tema",
+      "light": "Claro",
+      "dark": "Oscuro",
+      "amoled": "AMOLED",
+      "system": "Sistema"
+    },
+    "liquidGlass": {
+      "title": "Navegación Liquid Glass",
+      "subtitle": "Usa la barra de pestañas y las cabeceras de cristal de iOS 26."
+    },
+    "notifications": {
+      "title": "Notificaciones",
+      "subtitle": "Temporizadores de descanso, objetivos de ayuno y recordatorios de medicación."
+    },
+    "haptics": {
+      "title": "Respuesta háptica",
+      "subtitle": "Vibraciones ligeras para temporizadores y confirmaciones."
+    },
+    "cameraShutter": {
+      "title": "Disparador de cámara",
+      "subtitle": "Reproduce un sonido al capturar fotos."
+    }
+  },
+  "common": {
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "back": "Atrás",
+    "showLess": "Ver menos",
+    "learnMore": "Más información",
+    "next": "Siguiente",
+    "later": "Más tarde",
+    "close": "Cerrar",
+    "cancel": "Cancelar",
+    "continue": "Continuar",
+    "retry": "Reintentar",
+    "details": "Detalles",
+    "error": "Error",
+    "delete": "Eliminar",
+    "collapseSection": "Contraer esta sección",
+    "expandSection": "Expandir esta sección",
+    "itemCount_one": "{{count}} elemento",
+    "itemCount_other": "{{count}} elementos",
+    "off": "Desactivado",
+    "openSelectionMenu": "Abre el menú de selección",
+    "selectOptionHint": "Toca dos veces para seleccionar esta opción",
+    "success": "Correcto",
+    "clear": "Borrar",
+    "discardChanges": "Descartar cambios",
+    "loadMore": "Cargar más",
+    "edit": "Editar",
+    "connectionRetry": "Comprueba tu conexión e inténtalo de nuevo.",
+    "deleteItemTitle": "¿Eliminar {{title}}?",
+    "tryAgain": "Inténtalo de nuevo.",
+    "yes": "Sí",
+    "no": "No",
+    "and": "y",
+    "listFinalSeparator": " y ",
+    "date": "Fecha",
+    "add": "Añadir",
+    "loading": "Cargando...",
+    "pleaseTryAgain": "Inténtalo de nuevo.",
+    "ok": "OK",
+    "collapse": "contraer",
+    "expand": "expandir",
+    "removeFromFavorites": "Quitar de favoritos",
+    "addToFavorites": "Añadir a favoritos",
+    "goToSettings": "Ir a Ajustes",
+    "notSet": "Sin definir",
+    "deleting": "Eliminando...",
+    "done": "Hecho",
+    "none": "Ninguno",
+    "food": "Comida",
+    "dismiss": "Descartar",
+    "remove": "Quitar",
+    "overwrite": "Sobrescribir",
+    "previousDay": ": día anterior",
+    "nextDay": ": día siguiente",
+    "dismissMenu": "Cerrar menú",
+    "units": {
+      "cm": "cm"
+    },
+    "unknownDate": "Fecha desconocida",
+    "selectOption": "Selecciona una opción",
+    "requestTimedOut": "La solicitud caducó. Comprueba la conexión con tu servidor.",
+    "nextStep": "Siguiente paso",
+    "notNow": "Ahora no"
+  },
+  "navigation": {
+    "settings": "Ajustes",
+    "library": "Biblioteca",
+    "presets": "Plantillas",
+    "foods": "Alimentos",
+    "meals": "Comidas",
+    "exercises": "Ejercicios",
+    "diary": "Diario",
+    "details": "Detalles",
+    "dashboard": "Panel",
+    "add": "Añadir",
+    "mealTypes": "Tipos de comida"
+  },
+  "diary": {
+    "chooseDate": "Elegir fecha del diario",
+    "noServer": "Sin servidor configurado",
+    "configureServer": "Configura la conexión con tu servidor en Ajustes para ver tu diario.",
+    "goToSettings": "Ir a Ajustes",
+    "loading": "Cargando diario...",
+    "loadFailed": "No se pudo cargar el diario",
+    "checkConnection": "Comprueba tu conexión e inténtalo de nuevo.",
+    "retry": "Reintentar",
+    "title": "Diario",
+    "addFood": "Añadir alimento",
+    "emptyDay": "No hay entradas registradas para este día"
+  },
+  "dashboard": {
+    "chooseDate": "Elegir fecha del panel",
+    "noServerConfigured": "Sin servidor configurado",
+    "configureServer": "Configura la conexión con tu servidor en Ajustes para ver tu resumen diario.",
+    "goToSettings": "Ir a Ajustes",
+    "loadingSummary": "Cargando resumen...",
+    "loadFailed": "No se pudo cargar el resumen",
+    "checkConnection": "Comprueba tu conexión e inténtalo de nuevo.",
+    "askSparky": "Pregunta a Sparky…",
+    "nutrients": "Nutrientes",
+    "food": "Comida",
+    "tapToAddFood": "Toca para añadir comida",
+    "healthTrends": "Tendencias de salud",
+    "consumed": "Consumidas",
+    "remaining": "restantes",
+    "ofCalories": "de {{value}} kcal",
+    "burned": "Quemadas",
+    "hydration": "Hidratación",
+    "ofVolume": "de {{value}} {{unit}}",
+    "perBottle": "{{value}} {{unit}} por botella",
+    "configureWaterContainer": "Configura un recipiente de agua en el servidor para\nactivar los botones de añadir/quitar rápido",
+    "exercise": "Ejercicio",
+    "minutes": "Minutos",
+    "calories": "Calorías",
+    "noExerciseEntries": "Aún no hay entradas de ejercicio",
+    "removeWater": "Quitar agua",
+    "addWater": "Añadir agua",
+    "selectContainer": "Seleccionar {{container}}",
+    "perContainer": "{{value}} {{unit}} por recipiente"
+  },
+  "addSheet": {
+    "food": "Comida",
+    "exercise": "Ejercicio",
+    "measurements": "Medidas",
+    "scanFood": "Escanear comida",
+    "workout": "Entrenamiento",
+    "liveSets": "Series y reps en vivo",
+    "activity": "Actividad",
+    "durationDistance": "Duración y distancia",
+    "logWorkout": "Registrar entrenamiento",
+    "pastSets": "Series y reps pasadas",
+    "wellness": "Bienestar",
+    "askSparky": "Pregunta a Sparky",
+    "syncHealth": "Sincronizar datos de salud",
+    "logPregnancyEntry": "Registrar entrada de embarazo",
+    "logCycle": "Registrar ciclo"
+  },
+  "addSheetActions": {
+    "noServerTitle": "Sin servidor conectado",
+    "configureForExercise": "Configura la conexión con tu servidor en Ajustes para añadir un ejercicio.",
+    "configureForWorkout": "Configura la conexión con tu servidor en Ajustes para empezar un entrenamiento.",
+    "draft": {
+      "title": "Borrador en curso",
+      "message": "Tienes un borrador de {{type}} sin guardar. ¿Qué quieres hacer?",
+      "workout": "entrenamiento",
+      "activity": "actividad",
+      "resume": "Reanudar borrador",
+      "discard": "Descartar y continuar"
+    },
+    "healthUnavailable": {
+      "title": "Datos de salud no disponibles",
+      "message": "No se pudo iniciar el acceso a los datos de salud. Comprueba los permisos en Ajustes."
+    }
+  },
+  "date": {
+    "neverSynced": "Nunca sincronizado",
+    "justNow": "Ahora mismo",
+    "minutesAgo_one": "hace {{count}} minuto",
+    "minutesAgo_other": "hace {{count}} minutos",
+    "hoursAgo_one": "hace {{count}} hora",
+    "hoursAgo_other": "hace {{count}} horas",
+    "yesterdayAt": "Ayer a las {{time}}",
+    "onDateAt": "{{date}} a las {{time}}",
+    "today": "Hoy",
+    "yesterday": "Ayer"
+  },
+  "waterIntake": {
+    "updateFailed": "Error",
+    "updateMessage": "No se pudo actualizar la ingesta de agua. Inténtalo de nuevo.",
+    "noPrimary": "Sin recipiente principal",
+    "noContainers": "Sin recipientes de agua",
+    "multipleNoPrimary": "Tienes varios recipientes de agua pero ninguno marcado como principal. Marca uno como principal en el servidor.",
+    "configure": "Configura un recipiente de agua en el servidor para registrar la hidratación."
+  },
+  "errorBoundary": {
+    "somethingWentWrong": "Algo salió mal",
+    "serverMayNeedUpdate": "Se produjo un error inesperado. Puede que tu servidor necesite actualizarse.",
+    "tryAgain": "Reintentar",
+    "goBack": "Volver",
+    "sectionFailed": "No se pudo cargar esta sección."
+  },
+  "about": {
+    "title": "Acerca de",
+    "version": "Versión {{version}} ({{build}})",
+    "descriptionTitle": "Acerca de esta app",
+    "description": "SparkyFitness es un rastreador de nutrición, ejercicio y datos de salud de código abierto que se sincroniza con tu propio servidor. Esta app es el complemento móvil para registrar comidas, entrenamientos y medidas sobre la marcha.",
+    "github": "Proyecto en GitHub",
+    "documentation": "Documentación",
+    "privacyPolicy": "Política de privacidad",
+    "openExternalLink": "Se abre en tu navegador"
+  },
+  "onboarding": {
+    "subtitle": "Tu rastreador de fitness autoalojado",
+    "learnMoreTitle": "Más información sobre SparkyFitness",
+    "learnMoreBody": "SparkyFitness te ayuda a registrar tu comida, entrenamientos y datos de salud en un solo lugar.",
+    "learnMorePrivacy": "Se ejecuta en tu propio servidor, así que tus datos siguen siendo privados.",
+    "errors": {
+      "validFrontendUrl": "Introduce una URL de Frontend válida",
+      "serverUnreachable": "No se pudo contactar con el servidor. Comprueba la URL e inténtalo de nuevo."
+    }
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "channels": {
+      "medicationReminders": "Recordatorios de medicación",
+      "workoutTimer": "Temporizador de entrenamiento",
+      "fasting": "Ayuno"
+    },
+    "actions": {
+      "completeSet": "Completar serie",
+      "logAsTaken": "Registrar como tomada",
+      "skip": "Omitir"
+    },
+    "permission": {
+      "notificationsOff": "Notificaciones desactivadas",
+      "timerInApp": "El temporizador seguirá avisando dentro de la app."
+    },
+    "exactAlarm": {
+      "title": "Avisos puntuales",
+      "message": "Android retrasa los avisos programados salvo que permitas a SparkyFitness programar alarmas exactas. Activa «Alarmas y recordatorios» para que los temporizadores de descanso y los recordatorios de medicación suenen a tiempo.",
+      "notNow": "Ahora no",
+      "openSettings": "Abrir Ajustes"
+    },
+    "rest": {
+      "title": "Descanso completado",
+      "nextSetTitle": "Descanso completado: siguiente serie",
+      "bodySetProgress": "{{name}} · Serie {{setNumber}} de {{setCount}}",
+      "bodySetProgressReps_one": "{{setProgress}} · objetivo {{formattedCount}} rep",
+      "bodySetProgressReps_other": "{{setProgress}} · objetivo {{formattedCount}} reps",
+      "bodySetProgressDuration": "{{setProgress}} · objetivo {{duration}}"
+    },
+    "fasting": {
+      "title": "Objetivo de ayuno alcanzado",
+      "body": "Has alcanzado tu objetivo de ayuno. ¡Buen trabajo!"
+    }
+  },
+  "notificationSettings": {
+    "title": "Notificaciones",
+    "allow": "Permitir notificaciones",
+    "allowSubtitle": "Interruptor principal de todos los avisos de SparkyFitness.",
+    "alerts": "Avisos",
+    "restTimer": "Temporizador de descanso",
+    "restTimerSubtitle": "Avisa cuando termina un periodo de descanso, incluso en segundo plano.",
+    "fastingGoals": "Objetivos de ayuno",
+    "fastingGoalsSubtitle": "Avisa cuando alcanzas tu objetivo de ayuno.",
+    "medications": "Medicación",
+    "medicationReminders": "Recordatorios de medicación",
+    "medicationRemindersSubtitle": "Recordatorios de la medicación programada.",
+    "repeatReminders": "Repetir recordatorios",
+    "repeatRemindersSubtitle": "Repite cada recordatorio cada 10 minutos, hasta 3 veces, hasta que registres la dosis.",
+    "hideMedicationNames": "Ocultar nombres de medicación",
+    "hideMedicationNamesSubtitle": "Muestra un recordatorio genérico en lugar del nombre y la dosis de la medicación.",
+    "enableNotifications": "Activar notificaciones",
+    "openSettings": "Abrir Ajustes",
+    "permissionTitle": "Concede permisos",
+    "permissionBody": "Los avisos de SparkyFitness (temporizadores de descanso, objetivos de ayuno, recordatorios de medicación) no se activarán.",
+    "permissionWarningAccessibility": "{{title}}. {{body}} {{action}}."
+  },
+  "diarySettings": {
+    "updateFailed": "No se pudo actualizar el ajuste.",
+    "limitReached": "Límite alcanzado",
+    "noCustomNutrients": "Sin nutrientes personalizados",
+    "customNutrientsDescription": "Los nutrientes personalizados se crean en la app web de SparkyFitness. Una vez que añadas algunos, aparecerán aquí para que elijas cuáles mostrar en tu Diario.",
+    "title": "Ajustes del diario",
+    "summary": "Resumen del diario",
+    "summarySubtitle": "Mostrar calorías y macronutrientes",
+    "customNutrientDisplay": "Visualización de nutrientes personalizados",
+    "limitDescription_one": "Se puede mostrar aquí hasta {{count}} nutriente personalizado.",
+    "limitDescription_other": "Se pueden mostrar aquí hasta {{count}} nutrientes personalizados."
+  },
+  "dashboardSettings": {
+    "updateFailed": "No se pudo actualizar el ajuste.",
+    "noCustomNutrients": "Sin nutrientes personalizados",
+    "customNutrientsDescription": "Los nutrientes personalizados se crean en la app web de SparkyFitness. Una vez que añadas algunos, aparecerán aquí para que elijas cuáles mostrar en tu Panel.",
+    "title": "Ajustes del panel",
+    "askSparky": "Pregunta a Sparky",
+    "askSparkySubtitle": "Muestra el lanzador de chat Pregunta a Sparky en el Panel",
+    "hydration": "Hidratación",
+    "hydrationSubtitle": "Muestra la tarjeta de hidratación en el Panel",
+    "fasting": "Ayuno",
+    "fastingSubtitle": "Muestra la tarjeta de ayuno en el Panel",
+    "cyclePregnancy": "Ciclo y embarazo",
+    "cyclePregnancySubtitle": "Muestra la tarjeta de bienestar en el Panel",
+    "medications": "Medicación",
+    "medicationsSubtitle": "Muestra la tarjeta de medicación en el Panel",
+    "customNutrientDisplay": "Visualización de nutrientes personalizados"
+  },
+  "workoutSettings": {
+    "title": "Ajustes de entrenamiento",
+    "defaultRest": "Descanso predeterminado",
+    "defaultRestSubtitle": "Descanso entre series para los ejercicios recién añadidos.",
+    "defaultRestAccessibility": "Descanso predeterminado, {{duration}}",
+    "restSound": "Sonido del temporizador de descanso",
+    "restSoundSubtitle": "Reproduce un sonido cuando termina el temporizador de descanso con la app abierta.",
+    "keepAwake": "Mantener la pantalla encendida",
+    "keepAwakeSubtitle": "Evita que la pantalla se apague mientras hay un entrenamiento activo.",
+    "restSoundAccessibility": "Sonido del temporizador de descanso",
+    "keepAwakeAccessibility": "Mantener la pantalla encendida"
+  },
+  "foodSettings": {
+    "title": "Ajustes de comida",
+    "errors": {
+      "error": "Error",
+      "updateFailed": "No se pudo actualizar el ajuste."
+    },
+    "mealTypes": {
+      "title": "Tipos de comida",
+      "subtitle": "Añade, edita, reordena o elimina categorías de comida personalizadas"
+    },
+    "netCarbs": {
+      "title": "Mostrar carbohidratos netos",
+      "description": "Cuando se activa, los resúmenes de carbohidratos muestran los carbohidratos netos (carbohidratos totales − fibra), y se añade una fila de Carbohidratos totales en los desgloses de nutrientes."
+    },
+    "foodSource": {
+      "title": "Fuente por defecto",
+      "pickerTitle": "Proveedor de búsqueda",
+      "firstAvailable": "Primero disponible",
+      "description": "Se usa al buscar alimentos por nombre."
+    },
+    "openFacts": {
+      "title": "Ajustar valores de Open Food Facts",
+      "description": "Open Food Facts usa valores por 100 g. Esto los convierte al tamaño de ración del producto."
+    },
+    "barcode": {
+      "title": "Escaneo de código de barras",
+      "provider": "Proveedor",
+      "pickerTitle": "Proveedor de código de barras",
+      "default": "Predeterminado",
+      "retryTitle": "Reintentar con Open Food Facts",
+      "retryDescription": "Si no se encuentra ningún resultado, prueba Open Food Facts automáticamente."
+    }
+  },
+  "mealTypes": {
+    "breakfast": "Desayuno",
+    "lunch": "Almuerzo",
+    "snacks": "Tentempiés",
+    "dinner": "Cena",
+    "other": "Otro"
+  },
+  "mealTypeSettings": {
+    "reorder": "Reordenar {{name}}",
+    "moveUp": "Subir",
+    "moveDown": "Bajar",
+    "edit": "Editar {{name}}",
+    "visible": "Visible {{name}}",
+    "failedUpdate": "No se pudo actualizar",
+    "deleted": "Tipo de comida eliminado",
+    "failedDelete": "No se pudo eliminar",
+    "failedReorder": "No se pudieron reordenar los tipos de comida",
+    "capacity": "No se pueden colocar más tipos de comida {{gap}}.",
+    "add": "Añadir tipo de comida",
+    "createdPartial": "Creado, pero algunos ajustes no se guardaron.",
+    "created": "Tipo de comida creado",
+    "failedCreate": "No se pudo crear el tipo de comida",
+    "deleteTitle": "Eliminar tipo de comida",
+    "deleteMessage": "¿Eliminar '{{name}}'?",
+    "loading": "Cargando tipos de comida...",
+    "loadFailed": "No se pudieron cargar los tipos de comida.",
+    "empty": "No se encontraron tipos de comida",
+    "defaultTime": "Hora predeterminada para {{name}}{{time}}",
+    "notSet": "Sin definir"
+  },
+  "ownership": {
+    "all": "Todos",
+    "mine": "Míos",
+    "family": "Familia",
+    "public": "Públicos",
+    "show": "Mostrar",
+    "filter": "Filtrar {{noun}}, filtrado a {{filter}}",
+    "showAll": "Mostrar todos",
+    "emptyTitle": "No hay {{noun}} en {{filter}}",
+    "emptySubtitle": "Cambia el filtro para ver tus otros {{noun}}."
+  },
+  "syncFrequency": {
+    "title": "Sincronización en segundo plano",
+    "enable": "Activar sincronización en segundo plano",
+    "iosNote": "Cuando está activada, la app se actualizará en segundo plano cuando tu teléfono lo permita. La sincronización manual siempre se actualiza al instante.",
+    "toggleLabel": "Sincronización en segundo plano",
+    "toggleHint": "Activa o desactiva la sincronización de datos de salud en segundo plano."
+  },
+  "syncOnOpen": {
+    "title": "Sincronizar al abrir",
+    "enable": "Sincronizar al abrir la app",
+    "description": "Cuando está activado, los datos de salud se sincronizarán automáticamente al abrir la app.",
+    "toggleLabel": "Sincronizar al abrir la app",
+    "toggleHint": "Activa o desactiva la sincronización automática al abrir la app."
+  },
+  "auth": {
+    "frontendUrl": "URL de Frontend",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "apiKey": "Clave API",
+    "signIn": "Iniciar sesión",
+    "sso": "SSO",
+    "passkey": "Clave de acceso",
+    "connect": "Conectar",
+    "connectTitle": "Conectar con SparkyFitness",
+    "signInWithPasskey": "Iniciar sesión con clave de acceso",
+    "orSignInWith": "O inicia sesión con",
+    "noMethods": "Actualmente no hay métodos de inicio de sesión estándar habilitados en este servidor. Usa una clave API o contacta con un administrador.",
+    "pasteUrl": "Pegar URL del portapapeles",
+    "twoFactorTitle": "Autenticación de dos factores",
+    "errors": {
+      "emailRequired": "Introduce tu correo electrónico.",
+      "passwordRequired": "Introduce tu contraseña.",
+      "connectionFailed": "No se pudo conectar con el servidor. Comprueba la URL e inténtalo de nuevo.",
+      "apiKeyRequired": "Introduce una clave API.",
+      "invalidApiKey": "Clave API no válida. Compruébala e inténtalo de nuevo.",
+      "unknown": "Error desconocido",
+      "connectionStatus": "Conexión fallida ({{status}}): {{message}}",
+      "connectionWithMessage": "No se pudo conectar con el servidor: {{message}}",
+      "verificationCodeRequired": "Introduce el código de verificación.",
+      "tooManyAttempts": "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
+      "invalidVerificationCode": "Código de verificación no válido. Inténtalo de nuevo.",
+      "sessionExpired": "Tu sesión ha caducado. Inicia sesión de nuevo.",
+      "verificationFailed": "La verificación falló. Inténtalo de nuevo.",
+      "sendEmailCodeFailed": "No se pudo enviar el código por correo. Inténtalo de nuevo.",
+      "noServerSelected": "No hay ningún servidor seleccionado.",
+      "httpsRequired": "Se requiere HTTPS para las conexiones al servidor.",
+      "frontendUrlRequired": "Introduce primero tu URL de Frontend.",
+      "saveFailed": "No se pudo guardar: {{message}}",
+      "generic": "La autenticación falló. Inténtalo de nuevo.",
+      "connectionRetry": "No se pudo conectar con el servidor. Inténtalo de nuevo.",
+      "httpsRequiredEdit": "Se requiere HTTPS para las conexiones al servidor. Edita esta configuración para usar HTTPS.",
+      "httpsRequiredServer": "Las conexiones al servidor requieren HTTPS."
+    },
+    "authenticatorApp": "App de autenticación",
+    "emailCode": "Código por correo",
+    "enterAuthenticatorCode": "Introduce el código de tu app de autenticación.",
+    "enterEmailCode": "Introduce el código enviado a tu correo.",
+    "requestEmailCode": "Toca el botón de abajo para recibir un código de verificación por correo.",
+    "sendCode": "Enviar código",
+    "verify": "Verificar",
+    "resendCode": "Reenviar código",
+    "useApiKeyInstead": "Usar clave API en su lugar",
+    "sessionExpiredTitle": "Sesión caducada",
+    "pasteApiKey": "Pegar clave API del portapapeles",
+    "editServer": "Editar servidor",
+    "addServer": "Añadir servidor",
+    "advancedOptions": "Opciones avanzadas",
+    "proxyHeaders": "Cabeceras de proxy",
+    "addHeader": "Añadir cabecera",
+    "proxyHeadersHelp": "Se usan al funcionar detrás de ciertos proxies inversos",
+    "reservedHeader": "Cabecera reservada",
+    "reservedHeaderMessage": "«{{name}}» puede entrar en conflicto con cabeceras que define la app. ¿Continuar de todos modos?",
+    "signInWithProvider": "Iniciar sesión con {{provider}}",
+    "passwordPlaceholder": "Contraseña",
+    "hidePassword": "Ocultar contraseña",
+    "showPassword": "Mostrar contraseña",
+    "hideApiKey": "Ocultar clave API",
+    "showApiKey": "Mostrar clave API",
+    "headerNamePlaceholder": "Nombre (p. ej. X-Access-Token)",
+    "headerValuePlaceholder": "Valor",
+    "removeHeader": "Quitar cabecera {{number}}",
+    "hideHeaderValue": "Ocultar valor de la cabecera",
+    "showHeaderValue": "Mostrar valor de la cabecera",
+    "noStandardMethods": "Actualmente no hay métodos de inicio de sesión estándar habilitados en este servidor. Usa una clave API o contacta con un administrador."
+  },
+  "screens": {
+    "foods": "Alimentos",
+    "meals": "Comidas",
+    "exercises": "Ejercicios",
+    "workoutPresets": "Plantillas de entrenamiento",
+    "addFood": "Añadir alimento",
+    "newFood": "Nuevo alimento",
+    "editFood": "Editar alimento",
+    "adjustNutrition": "Ajustar nutrición",
+    "barcodes": "Códigos de barras",
+    "editExercise": "Editar ejercicio",
+    "newExercise": "Nuevo ejercicio",
+    "editPreset": "Editar plantilla",
+    "newPreset": "Nueva plantilla",
+    "scanFood": "Escanear comida",
+    "photoFood": "Foto de comida",
+    "sparky": "Sparky",
+    "editMeal": "Editar comida",
+    "createMeal": "Crear comida",
+    "foodEntry": "Entrada de comida",
+    "meal": "Comida",
+    "nutritionDetails": "Detalles de nutrición",
+    "trends": "Tendencias",
+    "selectExercise": "Seleccionar ejercicio",
+    "startWorkout": "Empezar entrenamiento",
+    "editWorkout": "Editar entrenamiento",
+    "newWorkout": "Nuevo entrenamiento",
+    "editActivity": "Editar actividad",
+    "newActivity": "Nueva actividad",
+    "workout": "Entrenamiento",
+    "activity": "Actividad",
+    "logs": "Registros",
+    "healthSync": "Sincronización de salud",
+    "importHistory": "Importar historial",
+    "measurements": "Medidas",
+    "calorieSettings": "Ajustes de calorías",
+    "foodSettings": "Ajustes de comida",
+    "mealTypes": "Tipos de comida",
+    "dashboardSettings": "Ajustes del panel",
+    "diarySettings": "Ajustes del diario",
+    "workoutSettings": "Ajustes de entrenamiento",
+    "serverSettings": "Ajustes del servidor",
+    "passkeys": "Claves de acceso",
+    "about": "Acerca de",
+    "whatsNew": "Novedades",
+    "cyclePregnancy": "Ciclo y embarazo",
+    "cycleSetup": "Configuración del ciclo",
+    "wellnessHub": "Centro de bienestar",
+    "logDailyEntry": "Registrar entrada diaria",
+    "pregnancySetup": "Configuración del embarazo",
+    "medications": "Medicación",
+    "medication": "Medicamento",
+    "library": {
+      "noServerConfigured": "Sin servidor configurado",
+      "configureServer": "Configura la conexión con tu servidor en Ajustes para ver tu biblioteca.",
+      "goToSettings": "Ir a Ajustes",
+      "loading": "Cargando biblioteca...",
+      "title": "Biblioteca",
+      "create": "Crear",
+      "food": "Alimento",
+      "manualEntry": "Entrada manual",
+      "meal": "Comida",
+      "groupFoods": "Agrupar alimentos",
+      "exercise": "Ejercicio",
+      "workoutPreset": "Plantilla de entrenamiento",
+      "exerciseRoutine": "Rutina de ejercicio",
+      "browse": "Explorar",
+      "foods": "Alimentos",
+      "meals": "Comidas",
+      "exercises": "Ejercicios",
+      "workoutPresets": "Plantillas de entrenamiento",
+      "medications": "Medicación",
+      "recentlyLogged": "Registrado recientemente",
+      "loadingRecentItems": "Cargando elementos recientes...",
+      "failedRecentItems": "No se pudieron cargar los elementos recientes.",
+      "noRecentItems": "Aún no hay elementos recientes",
+      "recentItemsHint": "Los alimentos, comidas y ejercicios que registres aparecerán aquí para un acceso rápido."
+    }
+  },
+  "nutrients": {
+    "calories": "Calorías",
+    "protein": "Proteínas",
+    "carbs": "Carbohidratos",
+    "fat": "Grasas",
+    "fiber": "Fibra",
+    "saturatedFatShort": "Grasa sat.",
+    "saturatedFatLabel": "Grasa saturada",
+    "polyunsaturatedFatShort": "Grasa poli.",
+    "monounsaturatedFatShort": "Grasa mono.",
+    "transFat": "Grasas trans",
+    "cholesterol": "Colesterol",
+    "sodium": "Sodio",
+    "potassium": "Potasio",
+    "sugars": "Azúcares",
+    "vitaminA": "Vitamina A",
+    "vitaminC": "Vitamina C",
+    "calcium": "Calcio",
+    "iron": "Hierro",
+    "glycemicIndex": "Índice glucémico",
+    "totalCarbs": "Carbohidratos totales",
+    "netCarbs": "Carbohidratos netos",
+    "glycemicIndexNone": "Ninguno",
+    "glycemicIndexVeryLow": "Muy bajo",
+    "glycemicIndexLow": "Bajo",
+    "glycemicIndexMedium": "Medio",
+    "glycemicIndexHigh": "Alto",
+    "glycemicIndexVeryHigh": "Muy alto",
+    "saturatedFatCompact": "Grasa sat."
+  },
+  "nutrition": {
+    "protein": "proteínas",
+    "carbs": "carbohidratos",
+    "fat": "grasas",
+    "caloriesShort": "kcal",
+    "caloriesUnit": "Cal",
+    "proteinAmount": "proteínas",
+    "carbsAmount": "carbohidratos",
+    "fatAmount": "grasas",
+    "left": "restantes",
+    "calories": "calorías",
+    "remaining": "{{value}} g restantes",
+    "over": "{{value}} g de más",
+    "met": "cumplido",
+    "goalSeparator": " / {{value}}"
+  },
+  "measurements": {
+    "fields": {
+      "weight": "Peso",
+      "bodyFatPercentage": "% de grasa corporal",
+      "height": "Altura",
+      "neck": "Cuello",
+      "waist": "Cintura",
+      "hips": "Cadera",
+      "steps": "Pasos",
+      "heightWithUnit": "Altura ({{unit}})",
+      "neckWithUnit": "Cuello ({{unit}})",
+      "waistWithUnit": "Cintura ({{unit}})",
+      "hipsWithUnit": "Cadera ({{unit}})",
+      "weightWithUnit": "Peso ({{unit}})",
+      "weightStones": "Peso en stones",
+      "weightPounds": "Peso en libras",
+      "heightFeet": "Altura en pies",
+      "heightInches": "Altura en pulgadas"
+    },
+    "validation": {
+      "invalid": "{{label}} no válido",
+      "enterNumber": "Introduce un número.",
+      "wholeNumber": "{{label}} debe ser un número entero.",
+      "max": "Debe ser {{max}} o menos.",
+      "invalidWeight": "Peso no válido",
+      "stonesLbsNumber": "Introduce un número para stones y libras.",
+      "nonNegative": "Los valores deben ser 0 o mayores.",
+      "invalidHeight": "Altura no válida",
+      "feetInchesNumber": "Introduce un número para pies y pulgadas.",
+      "bodyFatRange": "El % de grasa corporal debe estar entre 0 y 100."
+    },
+    "nothingToSave": "Nada que guardar",
+    "enterValue": "Introduce o borra al menos un valor.",
+    "saved": "Guardado",
+    "partialSave": "Puede que algunos cambios no se hayan guardado.",
+    "date": "Fecha",
+    "willBeCleared": "Se borrará",
+    "custom": {
+      "title": "Medidas personalizadas",
+      "loadError": "No se pudieron cargar las medidas personalizadas.",
+      "deleteEntry": "Eliminar entrada de {{label}}",
+      "moreCategories": "Más categorías ▾",
+      "hideCategories": "Ocultar categorías ▴",
+      "hideCategoriesToggle": "Ocultar categorías ▴",
+      "moreCategoriesToggle": "Más categorías ▾"
+    },
+    "confirm": {
+      "measurement": "medida",
+      "measurements": "medidas",
+      "message": "{{labels}} se borrarán.",
+      "title_one": "¿Borrar {{count}} medida?",
+      "title_other": "¿Borrar {{count}} medidas?"
+    },
+    "units": {
+      "st": "st",
+      "lb": "lb",
+      "ft": "ft",
+      "in": "in"
+    },
+    "title": "Medidas",
+    "edit": "Editar medidas"
+  },
+  "foodSearch": {
+    "menu": {
+      "newFood": "Nuevo alimento",
+      "newMeal": "Nueva comida",
+      "show": "Mostrar",
+      "allSources": "Todas las fuentes"
+    },
+    "accessibility": {
+      "moreFiltered": "Más opciones, filtrado a {{filter}}",
+      "moreOptions": "Más opciones",
+      "clearSearch": "Borrar búsqueda",
+      "scanFood": "Escanear comida",
+      "searchingFoods": "Buscando alimentos guardados",
+      "searchingFoodsMeals": "Buscando alimentos y comidas guardados",
+      "sourceChange": "Fuente {{source}}, toca para cambiar",
+      "providerError": "{{provider}}, no se pudo cargar, toca para reintentar",
+      "providerNoResults": "{{provider}}, sin resultados",
+      "favorite": "Favorito",
+      "viewPhoto": "Ver foto",
+      "verifiedFood": "Alimento verificado",
+      "providerExpand_one": "{{provider}}, {{count}} resultado, toca para {{action}}",
+      "providerExpand_other": "{{provider}}, {{count}} resultados, toca para {{action}}"
+    },
+    "errors": {
+      "detailsUnavailable": "Detalles no disponibles",
+      "loadNutritionDetails": "No se pudieron cargar los detalles nutricionales completos."
+    },
+    "sections": {
+      "favorites": "Favoritos",
+      "recentlyLogged": "Registrado recientemente",
+      "top": "Destacados",
+      "yourFoods": "Tus alimentos",
+      "yourMeals": "Tus comidas",
+      "topMatches": "Mejores coincidencias",
+      "bySource": "Por fuente",
+      "onlineResults": "Resultados en línea"
+    },
+    "search": {
+      "placeholder": "Buscar alimentos..."
+    },
+    "states": {
+      "connectToSearch": "Conéctate a un servidor para buscar alimentos",
+      "failedToLoad": "No se pudieron cargar los alimentos",
+      "noFilteredFoods": "No hay alimentos en {{filter}}",
+      "searchToLog": "Busca un alimento o comida para registrar",
+      "noSavedFoods": "No se encontraron alimentos guardados",
+      "noSavedFoodsMeals": "No se encontraron alimentos ni comidas guardados",
+      "noFilteredSaved": "{{message}} en {{filter}}",
+      "couldNotLoad": "No se pudo cargar",
+      "noResults": "Sin resultados",
+      "noOnlineResultsFrom": "Sin resultados en línea de {{provider}}"
+    },
+    "filter": {
+      "all": "Todos",
+      "mine": "Míos",
+      "family": "Familia",
+      "public": "Públicos",
+      "showAll": "Mostrar todos"
+    },
+    "actions": {
+      "loadMoreFailed": "No se pudo cargar más. Toca para reintentar",
+      "loadMore": "Cargar más",
+      "showAllProviderResults_one": "Mostrar {{count}} resultado de {{provider}}",
+      "showAllProviderResults_other": "Mostrar los {{count}} resultados de {{provider}}",
+      "showAllLocalResults_one": "Mostrar {{count}} {{itemType}}",
+      "showAllLocalResults_other": "Mostrar los {{count}} {{itemType}}"
+    },
+    "pickers": {
+      "onlineProvider": "Proveedor en línea"
+    },
+    "labels": {
+      "caloriesShort": "kcal",
+      "caloriesUnit": "cal",
+      "foods": "alimentos",
+      "meals": "comidas",
+      "meal": "Comida",
+      "itemCount_one": "{{count}} elemento",
+      "itemCount_other": "{{count}} elementos"
+    }
+  },
+  "foodForm": {
+    "equivalentSizes": "Tamaños equivalentes",
+    "selectUnit": "Seleccionar unidad",
+    "unit": "unidad",
+    "removeEquivalent": "Quitar equivalente",
+    "addEquivalent": "+ Añadir equivalente",
+    "foodName": "Nombre del alimento",
+    "foodNamePlaceholder": "p. ej. Pechuga de pollo",
+    "brand": "Marca",
+    "optional": "Opcional",
+    "servingSize": "Tamaño de la ración",
+    "servingUnit": "Unidad de ración",
+    "autoScaleNutrition": "Escalar nutrición automáticamente",
+    "caloriesRequired": "Calorías (kcal) *",
+    "ai": {
+      "couldNotEstimate": "No se pudo estimar",
+      "noTrustedDefault": "El alimento no tiene un valor de referencia fiable desde el que escalar.",
+      "servingSizeRequired": "Define primero un tamaño de ración",
+      "estimating": "Estimando…",
+      "convertWithAI": "Convertir con IA",
+      "estimateFailed": "La estimación con IA falló.",
+      "estimateQuality": {
+        "high": "Buena estimación",
+        "medium": "Estimación aceptable",
+        "low": "Estimación aproximada"
+      }
+    },
+    "manualUpdate": {
+      "title": "Actualización manual de nutrición",
+      "message": "No se puede convertir entre unidades. Actualiza los valores nutricionales manualmente antes de guardar.",
+      "saveAnyway": "Guardar de todos modos",
+      "banner": "No se puede convertir entre unidades. Actualiza los valores nutricionales manualmente."
+    },
+    "loadingDetails": "Aún se están cargando los detalles del alimento. Inténtalo de nuevo en un momento.",
+    "saveNewUnitFailed": "No se pudo guardar la nueva unidad",
+    "equivalentUnitsFailed": "Algunas unidades equivalentes no se pudieron guardar",
+    "saveNewVariantFailed": "No se pudo guardar la nueva variante",
+    "saveNutritionFailed": "No se pudo guardar la nutrición para uso futuro",
+    "savedNewVariant": "Guardado como nueva variante",
+    "pastEntriesUpdated": "Entradas anteriores actualizadas",
+    "pastEntriesFailed": "No se pudieron actualizar las entradas anteriores",
+    "foodSaved": "Tu alimento se guardó.",
+    "updateFailed": "No se pudo actualizar el alimento",
+    "editTitle": "Editar alimento",
+    "addFood": "Añadir alimento",
+    "saved": "Guardado",
+    "equivalentUnitsUpdated_one": "Guardado · {{formattedCount}} unidad equivalente actualizada",
+    "equivalentUnitsUpdated_other": "Guardado · {{formattedCount}} unidades equivalentes actualizadas"
+  },
+  "foodDetail": {
+    "sharedPublicly": "Alimento compartido públicamente",
+    "madePrivate": "Alimento hecho privado",
+    "shareFailed": "No se pudo actualizar el uso compartido",
+    "makePublicTitle": "¿Hacer público?",
+    "makePublicMessage": "Este alimento pasará a ser visible para todos los usuarios de este servidor.",
+    "makePublic": "Hacer público",
+    "makePrivate": "Hacer privado",
+    "sharePublic": "Compartir con el público",
+    "editFood": "Editar alimento",
+    "noServer": "Sin servidor configurado",
+    "configureServer": "Configura la conexión con tu servidor en Ajustes para ver los detalles del alimento.",
+    "serving": "Ración",
+    "selectServing": "Seleccionar ración",
+    "servingOptions": "Opciones de ración",
+    "loadingServingOptions": "Cargando opciones de ración...",
+    "servingOptionsError": "Algunas opciones de ración no se pudieron cargar ahora mismo.",
+    "barcode": "Código de barras",
+    "logFood": "Registrar alimento",
+    "deleteFood": "Eliminar alimento"
+  },
+  "createFood": {
+    "title": "Nuevo alimento",
+    "meal": "Comida",
+    "selectMeal": "Seleccionar comida",
+    "perServing": "por ración",
+    "saveToDatabase": "Guardar en la base de datos",
+    "actions": {
+      "addFood": "Añadir alimento"
+    },
+    "success": {
+      "foodSaved": "Alimento guardado"
+    },
+    "errors": {
+      "missingName": "Falta el nombre",
+      "nameRequired": "Introduce un nombre de alimento.",
+      "invalidServingSize": "Tamaño de ración no válido",
+      "servingSizeRequired": "El tamaño de la ración debe ser mayor que cero.",
+      "invalidBarcode": "Código de barras no válido",
+      "barcodeRequired": "El código de barras debe tener entre 8 y 14 dígitos.",
+      "equivalentsSaveFailed": "Algunas unidades equivalentes no se pudieron guardar",
+      "invalidAmount": "Cantidad no válida",
+      "amountRequired": "La cantidad debe ser mayor que cero.",
+      "noMealType": "Sin tipo de comida",
+      "noMealTypesAvailable": "No hay tipos de comida disponibles. Comprueba los ajustes de tu cuenta."
+    }
+  },
+  "foodEntryAdd": {
+    "errors": {
+      "equivalentsNotSaved": "Algunas unidades equivalentes no se pudieron guardar",
+      "invalidAmount": "Cantidad no válida",
+      "amountGreaterThanZero": "La cantidad debe ser mayor que cero.",
+      "failedToAddFood": "No se pudo añadir el alimento",
+      "tryAgain": "Inténtalo de nuevo.",
+      "mealsNotSupported": "Aquí no se admiten comidas",
+      "selectFoodInstead": "Selecciona un alimento en lugar de otra comida.",
+      "savedFoodUnitFailed": "Alimento guardado, pero no la nueva unidad",
+      "savedFoodUnitFailedDetails": "Aún puedes añadir el alimento y luego volver a intentar guardar esa unidad.",
+      "chooseDifferentServing": "Elige una ración diferente."
+    },
+    "actions": {
+      "adjustNutrition": "Ajustar nutrición",
+      "saveFood": "Guardar alimento",
+      "useYesterday": "Usar ayer",
+      "useToday": "Usar hoy",
+      "now": "Ahora",
+      "clear": "Borrar",
+      "addFood": "Añadir alimento",
+      "addMeal": "Añadir comida",
+      "removeFavorite": "Quitar de favoritos",
+      "addFavorite": "Añadir a favoritos"
+    },
+    "labels": {
+      "perServing": "por ración",
+      "time": "Hora",
+      "none": "Ninguna",
+      "meal": "Comida",
+      "serving_one": "ración",
+      "serving_other": "raciones",
+      "mealMakes_one": "la comida rinde {{formattedCount}} ración",
+      "mealMakes_other": "la comida rinde {{formattedCount}} raciones"
+    },
+    "pickers": {
+      "selectServing": "Seleccionar ración",
+      "selectMeal": "Seleccionar comida"
+    }
+  },
+  "foodEntryView": {
+    "saveChanges": "Guardar cambios de la entrada de comida",
+    "editEntry": "Editar entrada de comida",
+    "selectServing": "Seleccionar ración",
+    "tapToEditNutrition": "Toca para editar la nutrición",
+    "meal": "Comida",
+    "selectMeal": "Seleccionar comida",
+    "time": "Hora",
+    "unknownFood": "Alimento desconocido",
+    "deleteEntry": "Eliminar entrada",
+    "servingOptionsHint": "Abre las opciones de ración",
+    "mealSelectorHint": "Abre la selección de comida",
+    "dateSelectorHint": "Abre la selección de fecha",
+    "timeSelectorHint": "Abre la selección de hora",
+    "clearTime": "Borrar hora",
+    "nutritionEditHint": "Abre la edición de nutrición",
+    "servingOptionsLabel": "Opciones de ración: {{serving}}",
+    "timeSelectorLabel": "Seleccionar hora: {{time}}",
+    "clearTimeLabel": "Borrar la hora de la entrada",
+    "errors": {
+      "permission": "No tienes permiso para editar esta entrada.",
+      "saveFailed": "No se pudieron guardar los cambios",
+      "deleteFailed": "No se pudo eliminar"
+    },
+    "deleteConfirm": "¿Seguro que quieres eliminar esta entrada de comida?"
+  },
+  "foodScan": {
+    "segment": {
+      "barcode": "Código",
+      "label": "Etiqueta",
+      "photo": "Foto"
+    },
+    "errors": {
+      "capturePhoto": "No se pudo capturar la foto.",
+      "processPhoto": "No se pudo procesar la foto.",
+      "noPhoto": "El selector no devolvió ninguna foto.",
+      "analyzeLabel": "No se pudo analizar la etiqueta nutricional. Inténtalo de nuevo.",
+      "loadPhoto": "No se pudo cargar la foto.",
+      "lookupBarcode": "No se pudo buscar este código de barras. Inténtalo de nuevo.",
+      "timeout": "La solicitud caducó. Comprueba la conexión con tu servidor."
+    },
+    "permission": {
+      "camera": "Necesitamos tu permiso para mostrar la cámara",
+      "grant": "Conceder permiso"
+    },
+    "label": {
+      "analyzing": "Analizando etiqueta...",
+      "retake": "Repetir",
+      "usePhoto": "Usar foto"
+    },
+    "lookup": {
+      "failed": "La búsqueda falló",
+      "noMatch": "Sin coincidencia para el código de barras",
+      "nextSteps": "Puedes escanear la etiqueta nutricional o introducirla manualmente.",
+      "scanLabel": "Escanear etiqueta nutricional",
+      "addManually": "Añadir alimento manualmente"
+    },
+    "photo": {
+      "frameMeal": "Encuadra toda la comida",
+      "notSetUp": "Las estimaciones por foto con IA no están configuradas",
+      "setupHelp": "Abre SparkyFitness en un navegador y ve a Ajustes → IA para añadir un proveedor de IA, luego vuelve aquí.",
+      "logManually": "Registrar manualmente"
+    },
+    "barcode": {
+      "typeInstead": "Escribir el código en su lugar"
+    },
+    "manual": {
+      "title": "Introducir código de barras",
+      "placeholder": "Número de código de barras",
+      "useBarcode": "Usar código de barras",
+      "lookup": "Buscar"
+    },
+    "accessibility": {
+      "chooseLabelPhoto": "Elegir foto de etiqueta de la galería",
+      "choosePhoto": "Elegir foto de la galería",
+      "howItWorks": "Cómo funciona la estimación por foto",
+      "back": "Volver",
+      "flashlightOn": "Encender la linterna",
+      "flashlightOff": "Apagar la linterna",
+      "retakePhoto": "Repetir foto",
+      "takeLabelPhoto": "Hacer foto de la etiqueta nutricional",
+      "takeMealPhoto": "Hacer foto de la comida"
+    }
+  },
+  "foodRow": {
+    "unknownFood": "Alimento desconocido",
+    "adjustServing": "Ajustar ración",
+    "caloriesShort": "kcal",
+    "caloriesUnit": "Cal",
+    "deleteFood": "Eliminar alimento"
+  },
+  "foodSummary": {
+    "tapToAddFood": "Toca para añadir comida",
+    "caloriesShort": "kcal",
+    "caloriesUnit": "Cal",
+    "nutritionBreakdown": "Desglose nutricional de {{label}}"
+  },
+  "foodDelete": {
+    "failed": "No se pudo eliminar el alimento",
+    "title": "Eliminar alimento",
+    "message": "¿Seguro que quieres eliminar este alimento? Las entradas ya registradas no cambiarán."
+  },
+  "foodSave": {
+    "failed": "No se pudo guardar el alimento"
+  },
+  "favorites": {
+    "updateFailed": "No se pudieron actualizar los favoritos"
+  },
+  "foodNutrition": {
+    "hideExtra": "Ocultar nutrientes adicionales ▴",
+    "showMore": "Mostrar más nutrientes ▾"
+  },
+  "ingredientRow": {
+    "lastWarning": "Este es el último ingrediente. Añade otro antes de poder guardar, o usa Eliminar comida para quitar toda la comida.",
+    "removeTitle": "¿Quitar {{name}}?",
+    "edit": "Editar {{name}}"
+  },
+  "entryImage": {
+    "photo": "Foto",
+    "addHelp": "Añade una foto para asignar una a esta entrada.",
+    "entryOnly": "Esta foto se aplica solo a esta entrada.",
+    "saveFailed": "No se pudo guardar la foto",
+    "removeFailed": "No se pudo quitar la foto"
+  },
+  "foodImagePicker": {
+    "photos": "Fotos",
+    "errors": {
+      "addFailed": "No se pudo añadir la foto",
+      "cameraPermission": "Se necesita permiso de cámara",
+      "cameraPermissionBody": "Activa el acceso a la cámara para añadir una foto."
+    },
+    "actions": {
+      "addPhoto": "Añadir foto",
+      "takePhoto": "Hacer foto",
+      "chooseFromLibrary": "Elegir de la galería",
+      "setAsMain": "Establecer como principal",
+      "remove": "Quitar",
+      "photo": "Foto"
+    },
+    "labels": {
+      "main": "Principal"
+    },
+    "accessibility": {
+      "mainPhotoEdit": "Foto principal, editar",
+      "photoEdit": "Foto {{number}}, editar",
+      "addPhoto": "Añadir foto"
+    }
+  },
+  "copyMeal": {
+    "title": "Copiar comida: {{meal}}",
+    "sourceDate": "Fecha de origen: {{date}}",
+    "targetDate": "Fecha de destino",
+    "targetMeal": "Comida de destino",
+    "copy": "Copiar",
+    "copying": "Copiando...",
+    "duplicateTitle": "No se puede copiar la comida",
+    "duplicateMessage": "Actualmente no se pueden usar nombres de tipo de comida duplicados para Copiar comida."
+  },
+  "foodEntryCopy": {
+    "success": "Comida copiada",
+    "failed": "No se pudo copiar la comida"
+  },
+  "fastingDetail": {
+    "title": "Ayuno",
+    "metabolicStages": "Etapas metabólicas",
+    "now": "ahora",
+    "remaining": "{{percent}}% · quedan {{time}}",
+    "goalReached": "Objetivo alcanzado",
+    "elapsed": "{{time}} transcurrido",
+    "avgFast": "Ayuno medio",
+    "fasts": "N.º de ayunos",
+    "total": "Total",
+    "protocol": "Protocolo",
+    "started": "Iniciado",
+    "endFast": "Terminar ayuno",
+    "protocolWithGoal": "{{protocol}} · ayuno de {{hours}} h",
+    "noActiveFast": "Ningún ayuno activo",
+    "startDescription": "Inicia un ayuno para seguir tu ventana de ayuno y tus etapas metabólicas.",
+    "startFast": "Iniciar ayuno",
+    "range": "{{start}}–{{end}} {{unit}}",
+    "rangeOpen": "{{start}} {{unit}}+",
+    "stages": {
+      "anabolic": {
+        "name": "Anabólica",
+        "description": "Estado alimentado · insulina elevada"
+      },
+      "catabolic": {
+        "name": "Catabólica",
+        "description": "Agotamiento del glucógeno · mayor uso de grasa como energía"
+      },
+      "fatBurning": {
+        "name": "Quema de grasa",
+        "description": "La quema de grasa se acelera"
+      },
+      "ketosis": {
+        "name": "Cetosis",
+        "description": "Aumenta la producción de cetonas"
+      },
+      "deepKetosis": {
+        "name": "Cetosis profunda",
+        "description": "Una etapa a menudo asociada con un aumento de la autofagia"
+      }
+    }
+  },
+  "fastingCard": {
+    "title": "Ayuno",
+    "openDetails": "Abrir detalles del ayuno",
+    "viewHistory": "Ver historial de ayunos",
+    "history": "Historial",
+    "viewDetails": "Ver detalles",
+    "goalProgress": "{{remaining}} para tu objetivo de {{goal}} h",
+    "goalReached": "Objetivo alcanzado · {{goal}} h",
+    "elapsed": "{{elapsed}} transcurrido",
+    "startFast": "Iniciar un ayuno",
+    "readyToStart": "Listo para empezar",
+    "startFastAction": "Iniciar ayuno",
+    "duration": {
+      "minutes": "{{minutes}} min",
+      "hours": "{{hours}} h {{minutes}} min",
+      "hoursMinutes": "{{hours}} h {{minutes}} min"
+    },
+    "lastFast": "Último ayuno {{duration}}",
+    "lastFastWithDate": "Último ayuno {{duration}} · {{date}}",
+    "today": "hoy",
+    "yesterday": "ayer"
+  },
+  "fastingProtocol": {
+    "fastStarted": "Ayuno iniciado",
+    "failedStart": "No se pudo iniciar el ayuno",
+    "startTitle": "Iniciar un ayuno",
+    "hourFast": "horas de ayuno",
+    "startTime": "Hora de inicio",
+    "starting": "Iniciando...",
+    "startAction": "Iniciar ayuno",
+    "accessibility": {
+      "startTime": "Hora de inicio: {{time}}",
+      "decreaseHours": "Reducir la duración del ayuno",
+      "durationHours": "Duración del ayuno en horas",
+      "increaseHours": "Aumentar la duración del ayuno"
+    },
+    "presets": {
+      "leangains": {
+        "name": "16:8 Leangains",
+        "description": "Sáltate el desayuno y come en una ventana de 8 horas."
+      },
+      "warrior18": {
+        "name": "18:6 Warrior",
+        "description": "Ayuno más exigente con una ventana de comida de 6 horas."
+      },
+      "warrior20": {
+        "name": "20:4 Warrior",
+        "description": "Come una comida grande o reparte las calorías en 4 horas."
+      },
+      "circadian": {
+        "name": "Ritmo circadiano",
+        "description": "Ayuna desde el atardecer hasta la mañana."
+      },
+      "custom": {
+        "name": "Ayuno personalizado",
+        "description": "Define tu propia duración de ayuno."
+      }
+    }
+  },
+  "fastingEdit": {
+    "fastEnded": "Ayuno terminado",
+    "failedEnd": "No se pudo terminar el ayuno",
+    "endTitle": "Terminar ayuno",
+    "time": "Hora",
+    "fasted": "{{duration}} de ayuno",
+    "started": "Iniciado",
+    "ended": "Terminado",
+    "beforeEnd": "La hora de inicio debe ser anterior a la de fin.",
+    "ending": "Terminando...",
+    "endAction": "Terminar ayuno",
+    "updated": "Ayuno actualizado",
+    "failedUpdate": "No se pudo actualizar el ayuno",
+    "deleted": "Ayuno eliminado",
+    "failedDelete": "No se pudo eliminar el ayuno",
+    "deleteTitle": "¿Eliminar ayuno?",
+    "deleteMessage": "Esto no se puede deshacer.",
+    "editTitle": "Editar ayuno",
+    "saving": "Guardando...",
+    "saveChanges": "Guardar cambios",
+    "deleting": "Eliminando...",
+    "deleteAction": "Eliminar ayuno"
+  },
+  "fastingHistory": {
+    "deleteTitle": "¿Eliminar ayuno?",
+    "deleteMessage": "Esto no se puede deshacer.",
+    "deleted": "Ayuno eliminado",
+    "failedDelete": "No se pudo eliminar el ayuno",
+    "title": "Historial de ayunos",
+    "hint": "Toca para editar · desliza a la izquierda para eliminar",
+    "empty": "Aún no hay ayunos anteriores."
+  },
+  "exerciseDetail": {
+    "sharedPublicly": "Ejercicio compartido públicamente",
+    "madePrivate": "Ejercicio hecho privado",
+    "makePublicTitle": "¿Hacer público?",
+    "makePublicMessage": "Este ejercicio pasará a ser visible para todos los usuarios de este servidor.",
+    "makePublic": "Hacer público",
+    "deleted": "Ejercicio eliminado",
+    "addFailed": "No se pudo añadir el ejercicio",
+    "summary": "Resumen",
+    "history": "Historial",
+    "howTo": "Cómo hacerlo",
+    "editExercise": "Editar ejercicio",
+    "addExercise": "Añadir ejercicio",
+    "instructions": "Instrucciones",
+    "description": "Descripción",
+    "showMore": "Ver más",
+    "best": "Mejor ({{unit}})",
+    "last": "Último ({{unit}})",
+    "caloriesPerHour": "Cal / hora",
+    "equipment": "Equipamiento",
+    "primaryMuscles": "Músculos principales",
+    "secondaryMuscles": "Músculos secundarios",
+    "details": "Detalles del ejercicio",
+    "category": "Categoría",
+    "level": "Nivel",
+    "force": "Fuerza",
+    "mechanic": "Mecánica",
+    "source": "Fuente",
+    "starting": "Iniciando…",
+    "startWorkout": "Empezar entrenamiento",
+    "logExercise": "Registrar ejercicio",
+    "deleting": "Eliminando...",
+    "deleteExercise": "Eliminar ejercicio",
+    "makePrivate": "Hacer privado",
+    "shareWithPublic": "Compartir con el público"
+  },
+  "exerciseSearch": {
+    "title": "Ejercicios",
+    "tabs": {
+      "search": "Buscar",
+      "online": "En línea"
+    },
+    "sections": {
+      "recent": "Recientes",
+      "popular": "Populares"
+    },
+    "search": {
+      "placeholder": "Buscar ejercicios..."
+    },
+    "errors": {
+      "failedToAddExercise": "No se pudo añadir el ejercicio"
+    },
+    "actions": {
+      "viewDetails": "Ver detalles del ejercicio",
+      "loadMoreFailed": "No se pudo cargar más. Toca para reintentar",
+      "loadMore": "Cargar más",
+      "clearSearch": "Borrar búsqueda"
+    },
+    "states": {
+      "failedToSearch": "No se pudieron buscar ejercicios",
+      "noMatches": "No se encontraron ejercicios coincidentes",
+      "connectToView": "Conéctate a un servidor para ver ejercicios",
+      "failedToLoad": "No se pudieron cargar los ejercicios",
+      "searchToStart": "Busca un ejercicio para empezar",
+      "failedToSearchProvider": "No se pudo buscar en {{provider}}",
+      "connectToSearchOnline": "Conéctate a un servidor para buscar ejercicios en línea",
+      "failedToLoadProviders": "No se pudieron cargar los proveedores",
+      "noProviders": "No hay proveedores de ejercicios en línea configurados",
+      "searchProvider": "Buscar ejercicios en {{provider}}"
+    },
+    "filter": {
+      "noun": "ejercicios",
+      "all": "Todos",
+      "mine": "Míos",
+      "family": "Familia",
+      "public": "Públicos",
+      "show": "Mostrar",
+      "accessibility": "Filtrar {{noun}}, filtrado a {{filter}}",
+      "emptyTitle": "No hay {{noun}} en {{filter}}",
+      "emptySubtitle": "Cambia el filtro para ver tus otros {{noun}}.",
+      "showAll": "Mostrar todos"
+    },
+    "accessibility": {
+      "provider": "Proveedor de ejercicios {{provider}}",
+      "loadingMore": "Cargando más ejercicios"
+    }
+  },
+  "exerciseLibrary": {
+    "title": "Ejercicios",
+    "search": "Buscar ejercicios...",
+    "noServer": "Sin servidor configurado",
+    "configure": "Configura la conexión con tu servidor en Ajustes para ver tu biblioteca de ejercicios.",
+    "go": "Ir a Ajustes",
+    "loading": "Cargando ejercicios...",
+    "failed": "No se pudieron cargar los ejercicios",
+    "retry": "Reintentar",
+    "check": "Comprueba tu conexión e inténtalo de nuevo.",
+    "noMatch": "No se encontraron ejercicios coincidentes",
+    "noItems": "No se encontraron ejercicios",
+    "trySearch": "Prueba con otro término de búsqueda para encontrar ejercicios guardados.",
+    "empty": "Los ejercicios que guardes o registres aparecerán aquí.",
+    "moreFailed": "No se pudieron cargar más ejercicios.",
+    "view": "Ver ejercicio",
+    "noun": "ejercicios"
+  },
+  "exerciseMutations": {
+    "errors": {
+      "deleteFailed": "No se pudo eliminar",
+      "saveWorkout": "No se pudo guardar el entrenamiento",
+      "updateWorkout": "No se pudo actualizar el entrenamiento",
+      "saveActivity": "No se pudo guardar la actividad",
+      "updateActivity": "No se pudo actualizar la actividad",
+      "createExercise": "No se pudo crear el ejercicio",
+      "updateExercise": "No se pudo actualizar el ejercicio",
+      "deleteExercise": "No se pudo eliminar el ejercicio",
+      "editPermission": "No tienes permiso para editar este ejercicio.",
+      "deletePermission": "No tienes permiso para eliminar este ejercicio."
+    },
+    "confirm": {
+      "deleteWorkoutTitle": "¿Eliminar entrenamiento?",
+      "deleteWorkoutMessage": "Este entrenamiento y todos sus ejercicios se eliminarán permanentemente.",
+      "deleteActivityTitle": "¿Eliminar actividad?",
+      "deleteActivityMessage": "Esta actividad se eliminará permanentemente.",
+      "deleteExerciseTitle": "¿Eliminar ejercicio?",
+      "deleteExerciseMessage": "Este ejercicio se quitará de tu biblioteca. Las sesiones ya registradas se conservan."
+    }
+  },
+  "exerciseSummary": {
+    "tapToAdd": "Toca para añadir ejercicio",
+    "addExercise": "Añadir ejercicio",
+    "title": "Ejercicio"
+  },
+  "exerciseHistory": {
+    "noSetData": "Sin datos de series",
+    "loadError": "No se pudo cargar el historial.",
+    "empty": "Aún no hay sesiones registradas."
+  },
+  "exerciseEditing": {
+    "removeTitle": "¿Quitar ejercicio?",
+    "removeMessage": "¿Quitar «{{name}}» y todas sus series?"
+  },
+  "exerciseImage": {
+    "playAnimation": "Reproducir animación del ejercicio",
+    "pauseAnimation": "Pausar animación del ejercicio"
+  },
+  "exerciseRow": {
+    "deleteExercise": "Eliminar ejercicio"
+  },
+  "restPeriod": {
+    "title": "Periodo de descanso",
+    "rest": "Descanso {{duration}}",
+    "off": "Desactivado",
+    "custom": "Personalizado",
+    "accessibilityLabel": "Descanso {{duration}}",
+    "buttonLabel": "Descanso {{duration}}",
+    "buttonHint": "Abre la selección del periodo de descanso"
+  },
+  "exerciseSetRest": {
+    "overwriteTitle": "¿Sobrescribir los tiempos de descanso?",
+    "overwriteMessage": "Estas series tienen tiempos de descanso distintos. ¿Poner todas a {{rest}}?",
+    "all": "Todas",
+    "roundRest": "Descanso de ronda",
+    "rest": "Descanso",
+    "round": "Ronda",
+    "set": "Serie"
+  },
+  "cardioEffort": {
+    "effort": "Esfuerzo de {{name}}",
+    "duration": "Duración (min)",
+    "distance": "Distancia ({{unit}})",
+    "durationHint": "Duración en minutos para {{name}}",
+    "distanceHint": "Distancia en {{unit}} para {{name}}",
+    "markIncomplete": "Marcar {{name}} como incompleto",
+    "complete": "Completar {{name}}"
+  },
+  "workout": {
+    "couldNotSave": "No se pudo guardar tu entrenamiento",
+    "sets": "series",
+    "editActivity": "Editar actividad",
+    "durationTitle": "Duración del entrenamiento",
+    "durationDescription": "Minutos que cuenta este entrenamiento, hasta su duración de {{span}}.",
+    "date": "Fecha",
+    "useToday": "Usar hoy",
+    "useYesterday": "Usar ayer",
+    "namePlaceholder": "Entrenamiento",
+    "workoutNamePlaceholder": "Nombre del entrenamiento",
+    "notes": "Notas",
+    "addExercise": "Añadir un ejercicio",
+    "reorderExercises": "Reordenar ejercicios",
+    "addExerciseBeforeSave": "Añade al menos un ejercicio con una serie antes de guardar.",
+    "clearLoggedSets": "Borrar series registradas",
+    "removeExercise": "Quitar ejercicio",
+    "removeFromSuperset": "Quitar de la superserie",
+    "replaceExercise": "Reemplazar ejercicio",
+    "supersetWith": "Superserie con…",
+    "viewExercise": "Ver ejercicio",
+    "deleteSet": "Eliminar serie",
+    "removeExerciseTitle": "¿Quitar ejercicio?",
+    "removeExerciseMessage": "{{name}} se quitará de este entrenamiento.",
+    "deleteOnlySetMessage": "Eliminar la única serie quita {{name}} de este entrenamiento.",
+    "clearAllSetsTitle": "¿Borrar todas las series registradas?",
+    "clearAllSetsMessage": "Desmarca todas las series registradas de este entrenamiento. Se conservan los pesos y repeticiones.",
+    "discardWorkoutTitle": "¿Descartar entrenamiento?",
+    "discardWorkoutMessage": "Esto elimina el entrenamiento de tu diario.",
+    "discardChangesTitle": "¿Descartar cambios sin guardar?",
+    "discardChangesMessage": "Las series y ediciones que no hayan llegado al servidor se perderán. Los cambios ya guardados se conservan.",
+    "clearWorkoutMessage": "Borra tu progreso en este dispositivo y descarta los cambios sin guardar. Las ediciones ya guardadas en el servidor se conservan.",
+    "endWorkoutTitle": "¿Terminar entrenamiento?",
+    "endWorkoutMessage": "Este entrenamiento abarca {{span}}, incluyendo un descanso largo. ¿Registrar {{active}} de tiempo activo en su lugar?",
+    "adjustDurationTitle": "¿Ajustar la duración del entrenamiento?",
+    "noActiveWorkout": "Ningún entrenamiento activo",
+    "renameWorkout": "Renombrar entrenamiento",
+    "renamePlaceholder": "Nombre del entrenamiento",
+    "dismissRename": "Cerrar el cambio de nombre",
+    "nextSet": "Siguiente serie",
+    "log": "Registrar",
+    "keepGoing": "Sigue así",
+    "keep": "Conservar {{name}}",
+    "logWorkout": "Registrar {{name}}",
+    "endWorkout": "Terminar entrenamiento",
+    "retry": "Reintentar",
+    "couldntDelete": "No se pudo eliminar el entrenamiento",
+    "remainsInDiary": "Permanece en tu diario.",
+    "saveError": "No se pudo guardar tu entrenamiento",
+    "failedChangesMessage": "Algunos cambios aún no han llegado al servidor.",
+    "metricRpe": "RPE",
+    "metricVolume": "Volumen",
+    "metricE1rm": "1RM est.",
+    "metricTenrm": "10RM est.",
+    "reorderDone": "Reordenación terminada",
+    "reorderDoneText": "Listo",
+    "dragToReorder": "Arrastra para reordenar",
+    "reorderTitle": "Reordenar ejercicios",
+    "set": "Serie",
+    "activity": "Actividad",
+    "activityName": "Nombre de la actividad",
+    "selectActivity": "Seleccionar actividad",
+    "duration": "Duración (min)",
+    "distance": "Distancia",
+    "calories": "Calorías",
+    "custom": "Personalizado…",
+    "autoCalculated": "Calculado automáticamente",
+    "avgHeartRate": "Frecuencia cardíaca media (ppm)",
+    "optionalNotes": "Notas opcionales...",
+    "addNotes": "Añadir notas...",
+    "failedSaveActivity": "No se pudo guardar la actividad",
+    "exerciseDetails": "Detalles del ejercicio",
+    "description": "Descripción",
+    "instructions": "Instrucciones",
+    "category": "Categoría",
+    "equipment": "Equipamiento",
+    "level": "Nivel",
+    "force": "Fuerza",
+    "mechanic": "Mecánica",
+    "primaryMuscles": "Músculos principales",
+    "secondaryMuscles": "Músculos secundarios",
+    "source": "Fuente",
+    "history": "Historial",
+    "summary": "Resumen",
+    "howTo": "Cómo hacerlo",
+    "logExercise": "Registrar ejercicio",
+    "addExerciseLabel": "Añadir ejercicio",
+    "editExercise": "Editar ejercicio",
+    "exerciseDeleted": "Ejercicio eliminado",
+    "failedAddExercise": "No se pudo añadir el ejercicio",
+    "makePublicTitle": "¿Hacer público?",
+    "makePublicMessage": "Este ejercicio pasará a ser visible para todos los usuarios de este servidor.",
+    "makePublic": "Hacer público",
+    "exerciseNamePlaceholder": "p. ej. Sentadilla búlgara",
+    "exerciseNameRequired": "Introduce un nombre de ejercicio.",
+    "missingName": "Falta el nombre",
+    "invalidNumber": "Introduce un número válido.",
+    "exerciseCreated": "Ejercicio creado",
+    "exerciseUpdated": "Ejercicio actualizado",
+    "advanced": "Avanzado",
+    "nameRequired": "Nombre *",
+    "commaSeparated": "Separados por comas",
+    "commaSeparatedEquipment": "Separados por comas (p. ej. mancuerna, banco)",
+    "commaSeparatedMuscles": "Separados por comas (p. ej. cuádriceps, glúteos)",
+    "oneStepPerLine": "Un paso por línea",
+    "optionalExerciseNotes": "Notas opcionales sobre el ejercicio",
+    "select": "Seleccionar {{label}}",
+    "all": "Todos",
+    "mine": "Míos",
+    "family": "Familia",
+    "public": "Públicos",
+    "online": "En línea",
+    "popular": "Populares",
+    "recent": "Recientes",
+    "exercises": "Ejercicios",
+    "presets": "Plantillas",
+    "searchExercises": "Buscar ejercicios...",
+    "searchPresets": "Buscar plantillas...",
+    "search": "Buscar",
+    "noMatchingExercises": "No se encontraron ejercicios coincidentes",
+    "noMatchingPresets": "No se encontraron plantillas coincidentes",
+    "noPresets": "Aún no hay plantillas",
+    "emptyWorkout": "Entrenamiento vacío",
+    "pickFirstExercise": "Elige tu primer ejercicio",
+    "startWorkout": "Empezar entrenamiento",
+    "searchExerciseToStart": "Busca un ejercicio para empezar",
+    "connectToSearch": "Conéctate a un servidor para buscar ejercicios en línea",
+    "connectToView": "Conéctate a un servidor para ver ejercicios",
+    "noProviders": "No hay proveedores de ejercicios en línea configurados",
+    "failedLoadExercises": "No se pudieron cargar los ejercicios",
+    "failedLoadProviders": "No se pudieron cargar los proveedores",
+    "failedSearchExercises": "No se pudieron buscar ejercicios",
+    "failedAdd": "No se pudo añadir el ejercicio",
+    "viewExerciseDetails": "Ver detalles del ejercicio",
+    "failedSearchPresets": "No se pudieron buscar plantillas",
+    "startEmptyOrSave": "Empieza un entrenamiento vacío, o guarda un entrenamiento como plantilla para verlo aquí",
+    "changeOwnership": "Prueba a cambiar tu filtro de propiedad",
+    "viewPresetDetails": "Ver detalles de la plantilla",
+    "presetNamePlaceholder": "p. ej. Día de empuje",
+    "optionalPresetNotes": "Notas opcionales sobre esta rutina",
+    "presetDescription": "Descripción",
+    "presetCreated": "Plantilla de entrenamiento creada",
+    "presetUpdated": "Plantilla de entrenamiento actualizada",
+    "presetDeleted": "Plantilla de entrenamiento eliminada",
+    "presetAddBeforeSave": "Añade al menos un ejercicio con una serie antes de guardar.",
+    "presetMissingName": "Falta el nombre",
+    "presetNameRequired": "Introduce un nombre para esta plantilla.",
+    "draftInProgress": "Borrador en curso",
+    "resumeDraft": "Reanudar borrador",
+    "discardContinue": "Descartar y continuar",
+    "editPreset": "Editar plantilla de entrenamiento",
+    "makePresetPublicTitle": "¿Hacer público?",
+    "makePresetPublicMessage": "Esta plantilla de entrenamiento pasará a ser visible para todos los usuarios de este servidor.",
+    "makePresetPublic": "Hacer público",
+    "presetDraftMessage": "Tienes un borrador de {{name}} sin guardar. ¿Qué quieres hacer?",
+    "workoutComplete": "Entrenamiento completado",
+    "averageRpe": "RPE medio",
+    "calculating": "Calculando",
+    "volume": "Volumen",
+    "viewWorkout": "Ver entrenamiento",
+    "saveAsPreset": "Guardar como plantilla",
+    "keepPreset": "Conservar plantilla",
+    "updatePresetTitle": "¿Actualizar plantilla?",
+    "updatePreset": "Actualizar",
+    "presetUpdatedToast": "Plantilla actualizada",
+    "todayDiffers": "El entrenamiento de hoy difiere de «{{name}}». ¿Actualizar la plantilla para que coincida?",
+    "of": "de",
+    "setsLabel": "Series",
+    "caloriesLabel": "Calorías",
+    "distanceLabel": "Distancia",
+    "durationLabel": "Duración",
+    "details": "Detalles",
+    "name": "Nombre",
+    "saveAsPresetLabel": "Guardar como plantilla",
+    "startHere": "Empezar entrenamiento aquí",
+    "workoutNeedsExercise": "El entrenamiento necesita un ejercicio",
+    "presetsTitle": "Plantillas de entrenamiento",
+    "noServer": "Sin servidor configurado",
+    "configureServer": "Configura la conexión con tu servidor en Ajustes para ver tus plantillas de entrenamiento.",
+    "loadingPresets": "Cargando plantillas de entrenamiento...",
+    "tryConnection": "Comprueba tu conexión e inténtalo de nuevo.",
+    "tryOwnership": "Prueba a cambiar tu filtro de propiedad.",
+    "defaultRest": "Descanso predeterminado",
+    "defaultRestAccessibility": "Descanso predeterminado, {{value}}",
+    "defaultRestSubtitle": "Descanso entre series para los ejercicios recién añadidos.",
+    "restTimerSound": "Sonido del temporizador de descanso",
+    "restTimerSoundSubtitle": "Reproduce un sonido cuando termina el temporizador de descanso con la app abierta.",
+    "keepAwake": "Mantener la pantalla encendida",
+    "keepAwakeSubtitle": "Evita que la pantalla se apague mientras hay un entrenamiento activo.",
+    "durationSpan": "Minutos que cuenta este entrenamiento, hasta su duración de {{span}}.",
+    "selectActivityPlaceholder": "Actividad",
+    "categoryGeneral": "General",
+    "categoryStrength": "Fuerza",
+    "categoryCardio": "Cardio",
+    "categoryYoga": "Yoga",
+    "categoryPowerlifting": "Powerlifting",
+    "categoryOlympicWeightlifting": "Halterofilia olímpica",
+    "categoryStrongman": "Strongman",
+    "categoryPlyometrics": "Pliometría",
+    "categoryStretching": "Estiramientos",
+    "categoryIsometric": "Isométrico",
+    "trackingType": "Tipo de seguimiento",
+    "modalityWeightReps": "Peso y reps",
+    "modalityReps": "Reps",
+    "modalityDuration": "Duración",
+    "modalityDurationDistance": "Duración y distancia",
+    "levelBeginner": "Principiante",
+    "levelIntermediate": "Intermedio",
+    "levelExpert": "Experto",
+    "forcePull": "Tirar",
+    "forcePush": "Empujar",
+    "forceStatic": "Estático",
+    "mechanicCompound": "Compuesto",
+    "mechanicIsolation": "Aislamiento",
+    "caloriesPerHour": "Calorías por hora",
+    "muscles": "Músculos",
+    "classification": "Clasificación",
+    "selectValue": "Seleccionar…",
+    "next": "Siguiente",
+    "exerciseCount_one": "{{formattedCount}} ejercicio",
+    "exerciseCount_other": "{{formattedCount}} ejercicios",
+    "failedToSaveActivity": "No se pudo guardar la actividad",
+    "pleaseTryAgain": "Inténtalo de nuevo.",
+    "avgHeartRateLabel": "Frecuencia cardíaca media",
+    "steps": "Pasos",
+    "pace": "Ritmo",
+    "sec": "Seg",
+    "weight": "Peso",
+    "repsLabel": "Reps",
+    "setLabel": "Serie",
+    "startWorkoutHere": "Empezar entrenamiento aquí",
+    "failedLoadPresets": "No se pudieron cargar las plantillas de entrenamiento",
+    "deleteActivity": "Eliminar actividad",
+    "deleting": "Eliminando...",
+    "addNotesPlaceholder": "Añadir notas...",
+    "exercise": "Ejercicio",
+    "selectedMetric": "✓ {{label}}",
+    "setTypeNormal": "Normal",
+    "setTypeWarmup": "Calentamiento",
+    "setTypeDropSet": "Serie descendente",
+    "setTypeFailure": "Al fallo",
+    "thisExercise": "este ejercicio",
+    "discard": "Descartar",
+    "setsRemaining": "{{done}} de {{total}} series registradas. Quedan {{remaining}}.",
+    "allSetsLogged": "Las {{total}} series registradas. ¡Buen trabajo!",
+    "setNumber": "Serie {{number}}",
+    "exerciseShared": "Ejercicio compartido públicamente",
+    "exercisePrivate": "Ejercicio hecho privado",
+    "makePrivate": "Hacer privado",
+    "sharePublic": "Compartir con el público",
+    "best": "Mejor ({{unit}})",
+    "last": "Último ({{unit}})",
+    "calPerHour": "Cal / hora",
+    "starting": "Iniciando...",
+    "invalidCalories": "Calorías por hora no válidas",
+    "failedLoadMore": "No se pudo cargar más. Toca para reintentar",
+    "loadMore": "Cargar más",
+    "failedSearchProvider": "No se pudo buscar en {{provider}}",
+    "searchProviderExercises": "Buscar ejercicios en {{provider}}",
+    "failedLoadPresetsShort": "No se pudieron cargar las plantillas",
+    "rpeEasy": "Fácil",
+    "rpeModerate": "Moderado",
+    "rpeHard": "Difícil",
+    "rpeMax": "Esfuerzo máximo",
+    "addExerciseOrDelete": "Añade al menos un ejercicio con una serie o elimina el entrenamiento.",
+    "failedToSaveWorkout": "No se pudo guardar el entrenamiento",
+    "editWorkout": "Editar entrenamiento",
+    "presetShared": "Plantilla de entrenamiento compartida públicamente",
+    "presetPrivate": "Plantilla de entrenamiento hecha privada",
+    "workout": "entrenamiento",
+    "startWorkoutLower": "Empezar entrenamiento",
+    "logPastWorkout": "Registrar entrenamiento pasado",
+    "deletePreset": "Eliminar plantilla",
+    "noWorkoutPresets": "Aún no hay plantillas de entrenamiento",
+    "tryDifferentPresetSearch": "Prueba con otro término de búsqueda para encontrar una plantilla de entrenamiento.",
+    "presetsAppearHere": "Las plantillas de entrenamiento que crees aparecerán aquí.",
+    "failedLoadPresetsFull": "No se pudieron cargar las plantillas de entrenamiento",
+    "failedMorePresets": "No se pudieron cargar más plantillas.",
+    "searchWorkoutPresets": "Buscar plantillas de entrenamiento...",
+    "workoutPresetCount_one": "{{formattedCount}} ejercicio",
+    "workoutPresetCount_other": "{{formattedCount}} ejercicios",
+    "metricVolumeShort": "Vol",
+    "metricE1rmShort": "1RM",
+    "metricTenrmShort": "10RM",
+    "kg": "kg",
+    "lbs": "lbs",
+    "prev": "Ant",
+    "mi": "mi",
+    "km": "km",
+    "reps": "Reps",
+    "setCount_one": "{{formattedCount}} serie",
+    "setCount_other": "{{formattedCount}} series",
+    "caloriesShort": "kcal",
+    "caloriesUnit": "Cal",
+    "unknownExercise": "Ejercicio desconocido",
+    "addNotePlaceholder": "Añadir una nota…",
+    "setOf_one": "Serie {{number}} de {{count}}",
+    "setOf_other": "Serie {{number}} de {{count}}",
+    "repCount_one": "{{formattedCount}} rep",
+    "repCount_other": "{{formattedCount}} reps"
+  },
+  "activeWorkout": {
+    "liveActivity": {
+      "rest": "Descanso",
+      "paused": "En pausa",
+      "elapsed": "Transcurrido",
+      "workoutComplete": "Entrenamiento completado",
+      "complete": "Completar",
+      "addFifteenSeconds": "Añadir 15 segundos",
+      "addFifteenSecondsShort": "+15 s",
+      "skipRest": "Saltar descanso",
+      "workout": "Entrenamiento",
+      "exercise": "Ejercicio",
+      "set": "Serie",
+      "setOf": "de"
+    },
+    "bar": {
+      "clearWorkout": "Borrar entrenamiento",
+      "clear": "Borrar",
+      "clearWorkoutTitle": "¿Borrar entrenamiento?",
+      "saveFailed": "No se pudo guardar tu entrenamiento",
+      "unsavedChanges": "Algunos cambios no han llegado al servidor.",
+      "discardAnyway": "Descartar de todos modos",
+      "endWithoutSaving": "Esto terminará el entrenamiento actual sin guardar el progreso.",
+      "doneStartNextSet": "Hecho, empezar la siguiente serie",
+      "finishWorkout": "Finalizar entrenamiento",
+      "open": "Abrir entrenamiento activo",
+      "pause": "Pausar",
+      "resume": "Reanudar",
+      "skipRest": "Saltar descanso",
+      "resting": "Descansando",
+      "paused": "En pausa",
+      "workoutComplete": "Entrenamiento completado",
+      "workoutActive": "Entrenamiento activo",
+      "nextSet": "{{prefix}}: {{exercise}} — {{set}}",
+      "nextUpSet": "A continuación: {{exerciseName}} — serie {{setNumber}}/{{setCount}}",
+      "next": "Siguiente",
+      "nextUp": "A continuación",
+      "doneNext": "Hecho, empezar la siguiente serie"
+    },
+    "header": {
+      "addExercise": "Añadir ejercicio",
+      "back": "Atrás",
+      "clearAllSets": "Borrar todas las series registradas",
+      "discardWorkout": "Descartar entrenamiento",
+      "elapsedTime": "{{time}} transcurrido",
+      "endWorkout": "Terminar entrenamiento",
+      "exerciseProgress_one": "{{completed}} / {{count}} ejercicio",
+      "exerciseProgress_other": "{{completed}} / {{count}} ejercicios",
+      "renameWorkout": "Renombrar entrenamiento",
+      "reorderExercises": "Reordenar ejercicios",
+      "menu": "Menú del entrenamiento",
+      "settings": "Ajustes de entrenamiento"
+    },
+    "exerciseCard": {
+      "addNote": "Añade una nota para este ejercicio…",
+      "addSetFallback": "Añadir serie al ejercicio",
+      "addSetTo": "Añadir serie a {{exerciseName}}",
+      "addSet": "Añadir serie",
+      "best": "Mejor {{value}}",
+      "caloriesBurnedFallback": "Calorías quemadas del ejercicio",
+      "caloriesBurnedFor": "Calorías quemadas de {{exerciseName}}",
+      "changeMetricColumn": "Cambiar la columna de métrica",
+      "collapseFallback": "Contraer ejercicio",
+      "collapse": "Contraer {{exerciseName}}",
+      "editCaloriesFallback": "Editar las calorías quemadas del ejercicio",
+      "expand": "Expandir {{exerciseName}}",
+      "expandFallback": "Expandir ejercicio",
+      "viewDetailsFor": "Ver detalles de {{exerciseName}}",
+      "viewDetailsFallback": "Ver detalles del ejercicio",
+      "editCaloriesFor": "Editar las calorías quemadas de {{exerciseName}}",
+      "moreOptionsFor": "Más opciones para {{exerciseName}}",
+      "moreOptionsFallback": "Más opciones para el ejercicio",
+      "notesFor": "Notas de {{exerciseName}}",
+      "notesFallback": "Notas del ejercicio",
+      "setSummary_one": "{{count}} serie{{detail}}",
+      "setSummary_other": "{{count}} series{{detail}}",
+      "notesForSet": "Notas de la serie {{setNumber}}"
+    },
+    "rail": {
+      "add": "Añadir",
+      "addExercise": "Añadir ejercicio"
+    },
+    "rest": {
+      "addSecondsShort": "+{{seconds}} s",
+      "subtractSecondsShort": "−{{seconds}} s",
+      "completeSet": "Completar serie",
+      "completeSetTitle": "Completar serie",
+      "extendBySeconds": "Alargar el descanso {{seconds}} segundos",
+      "shortenBySeconds": "Acortar el descanso {{seconds}} segundos",
+      "skip": "Saltar descanso",
+      "pause": "Pausar descanso",
+      "resume": "Reanudar descanso",
+      "targetValue": "Objetivo {{value}}",
+      "shorten": "Acortar el descanso 15 segundos",
+      "extend": "Alargar el descanso 15 segundos"
+    },
+    "setDetail": {
+      "addNote": "Añade una nota para esta serie…",
+      "notesForSet": "Notas de la serie {{setNumber}}",
+      "notes": "Notas de la serie"
+    },
+    "setRow": {
+      "changeType": "Cambiar el tipo de la serie {{setNumber}}",
+      "delete": "Eliminar serie {{setNumber}}",
+      "duration": "Duración",
+      "log": "Registrar serie {{setNumber}}",
+      "reps": "Reps",
+      "complete": "Marcar la serie {{setNumber}} como completada",
+      "incomplete": "Desmarcar la serie {{setNumber}}",
+      "weight": "Peso",
+      "rpe": "RPE",
+      "fillFromPrevious": "Rellenar la serie {{setNumber}} desde la anterior"
+    },
+    "columns": {
+      "set": "Serie",
+      "previous": "Ant",
+      "seconds": "Seg"
+    },
+    "exercise": {
+      "expand": "Expandir {{name}}",
+      "viewDetails": "Ver detalles de {{name}}",
+      "collapse": "Contraer {{name}}",
+      "moreOptions": "Más opciones para {{name}}",
+      "notePlaceholder": "Añade una nota para este ejercicio…",
+      "notesFor": "Notas de {{name}}",
+      "caloriesFor": "Calorías quemadas de {{name}}",
+      "editCaloriesFor": "Editar las calorías quemadas de {{name}}",
+      "best": "Mejor {{value}}",
+      "changeMetric": "Cambiar la columna de métrica",
+      "notesForSet": "Notas de la serie {{number}}",
+      "addSet": "Añadir serie a {{name}}",
+      "caloriesUnit": "kcal",
+      "addSetLabel": "Añadir serie"
+    },
+    "nextSet": "Siguiente serie"
+  },
+  "workoutComplete": {
+    "title": "Entrenamiento completado",
+    "stats": {
+      "duration": "Duración",
+      "volume": "Volumen",
+      "sets": "Series",
+      "calories": "Calorías",
+      "distance": "Distancia",
+      "averageRpe": "RPE medio"
+    },
+    "labels": {
+      "todayAt": " · Hoy a las ",
+      "skipped": "omitida",
+      "all": "Todas",
+      "of": "de",
+      "top": "máx.",
+      "logged": "registradas",
+      "partialSets": "{{completed}} de {{total}} series",
+      "allSetsOne": "1 serie",
+      "allSets_one": "{{count}} serie",
+      "allSets_other": "{{count}} series",
+      "sets_one": "{{count}} serie",
+      "sets_other": "{{count}} series",
+      "personalRecordCount_one": "{{formattedCount}} récord personal",
+      "personalRecordCount_other": "{{formattedCount}} récords personales"
+    },
+    "accessibility": {
+      "calculating": "Calculando"
+    },
+    "actions": {
+      "saveAsPreset": "Guardar como plantilla",
+      "viewWorkout": "Ver entrenamiento",
+      "done": "Listo",
+      "keepPreset": "Conservar plantilla",
+      "update": "Actualizar"
+    },
+    "success": {
+      "presetUpdated": "Plantilla actualizada"
+    },
+    "confirm": {
+      "updatePresetTitle": "¿Actualizar plantilla?",
+      "updatePresetMessage": "El entrenamiento de hoy difiere de «{{preset}}». ¿Actualizar la plantilla para que coincida?"
+    },
+    "rpe": {
+      "easy": "Fácil",
+      "moderate": "Moderado",
+      "hard": "Difícil",
+      "max": "Esfuerzo máximo"
+    },
+    "sections": {
+      "exercises": "Ejercicios",
+      "volume": "Volumen"
+    }
+  },
+  "workoutDetail": {
+    "summary": {
+      "exercise_one": "Ejercicio",
+      "exercise_other": "Ejercicios",
+      "sets": "Series",
+      "volume": "Volumen",
+      "calories": "Calorías"
+    },
+    "errors": {
+      "needsExercise": "El entrenamiento necesita un ejercicio",
+      "addExerciseOrDelete": "Añade al menos un ejercicio con una serie o elimina el entrenamiento.",
+      "saveFailed": "No se pudo guardar el entrenamiento"
+    },
+    "labels": {
+      "details": "Detalles",
+      "name": "Nombre",
+      "notes": "Notas"
+    },
+    "placeholders": {
+      "workoutName": "Nombre del entrenamiento",
+      "notes": "Añadir notas..."
+    },
+    "accessibility": {
+      "save": "Guardar",
+      "reorder": "Reordenar ejercicios",
+      "saveAsPreset": "Guardar como plantilla",
+      "editWorkout": "Editar entrenamiento"
+    },
+    "title": {
+      "edit": "Editar entrenamiento"
+    },
+    "actions": {
+      "startHere": "Empezar entrenamiento aquí",
+      "deleteWorkout": "Eliminar entrenamiento"
+    }
+  },
+  "workoutAdd": {
+    "addExercise": "Añadir un ejercicio",
+    "addExerciseMessage": "Añade al menos un ejercicio con una serie antes de guardar.",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "saveChangesTitle": "¿Guardar cambios?",
+    "saveWorkoutTitle": "¿Guardar entrenamiento?",
+    "saveMessage": "¿Guardar «{{name}}» con {{count}} ejercicio(s)?",
+    "saveFailed": "No se pudo guardar el entrenamiento",
+    "tryAgain": "Inténtalo de nuevo.",
+    "reorderExercises": "Reordenar ejercicios",
+    "workoutPlaceholder": "Entrenamiento",
+    "useYesterday": "Usar ayer",
+    "useToday": "Usar hoy"
+  },
+  "workoutForm": {
+    "viewExercise": "Ver ejercicio",
+    "notes": "Notas",
+    "supersetWith": "Superserie con…",
+    "removeFromSuperset": "Quitar de la superserie",
+    "replaceExercise": "Reemplazar ejercicio",
+    "clearLoggedSets": "Borrar series registradas",
+    "removeExercise": "Quitar ejercicio",
+    "addExercise": "Añadir ejercicio",
+    "exercise": "Ejercicio",
+    "duplicateExercise": "Duplicar ejercicio"
+  },
+  "workoutReorder": {
+    "sets_one": "{{count}} serie",
+    "sets_other": "{{count}} series",
+    "drag": "Arrastra para reordenar",
+    "title": "Reordenar ejercicios",
+    "doneHint": "Reordenación terminada"
+  },
+  "liveWorkout": {
+    "inProgressTitle": "Entrenamiento en curso",
+    "inProgressMessage": "Ya tienes un entrenamiento en curso. Empezar otro lo borra aquí. Las series ya guardadas permanecen en tu diario.",
+    "goToWorkout": "Ir al entrenamiento",
+    "clearAndStart": "Borrar y empezar",
+    "nothingToStart": "Nada que empezar",
+    "noExercises": "Esta plantilla no tiene ejercicios.",
+    "noServerTitle": "Sin servidor conectado",
+    "noServerMessage": "Configura la conexión con tu servidor en Ajustes para empezar un entrenamiento."
+  },
+  "editableSet": {
+    "removeTitle": "Serie {{number}}"
+  },
+  "workoutDraft": {
+    "saveFailed": "No se pudo guardar el borrador"
+  },
+  "activitySummary": {
+    "avgHeartRate": "FC media",
+    "maxHeartRate": "FC máx.",
+    "elevationGain": "Desnivel positivo",
+    "avgCadence": "Cadencia media",
+    "zone": "Zona {{zone}}",
+    "heartRateZone": "Zona de frecuencia cardíaca: {{zone}}",
+    "heartRateZoneLight": "Ligera",
+    "heartRateZoneModerate": "Moderada",
+    "heartRateZoneIntense": "Intensa",
+    "heartRateZonePeak": "Máxima",
+    "durationMinutesSeconds": "{{minutes}} min {{seconds}} s"
+  },
+  "medications": {
+    "title": "Medicación",
+    "medication": "Medicamento",
+    "addMedication": "Añadir medicamento",
+    "addMedicationTitle": "Añadir medicamento",
+    "viewAll": "Ver todos",
+    "viewAllMedications": "Ver todos los medicamentos",
+    "loading": "Cargando medicamentos...",
+    "loadFailed": "No se pudieron cargar los medicamentos.",
+    "noMedications": "Aún no hay medicamentos",
+    "emptyDescription": "Añade tu primer medicamento para empezar a hacer seguimiento.",
+    "retry": "Reintentar",
+    "inactive": "Inactivo",
+    "form": {
+      "newTitle": "Nuevo medicamento",
+      "editTitle": "Editar medicamento",
+      "name": "Nombre *",
+      "namePlaceholder": "Ipsumol",
+      "type": "Tipo",
+      "typeTitle": "Tipo de medicamento",
+      "strength": "Concentración",
+      "dose": "Dosis",
+      "unit": "Unidad",
+      "strengthUnitPlaceholder": "mg",
+      "doseUnitPlaceholder": "comprimido",
+      "details": "Detalles",
+      "reason": "Motivo",
+      "reasonPlaceholder": "Tensión arterial",
+      "prescriber": "Médico que receta",
+      "prescriberPlaceholder": "Dr. Ipsum",
+      "pharmacy": "Farmacia",
+      "pharmacyPlaceholder": "Farmacia Sol",
+      "notes": "Notas",
+      "active": "Activo",
+      "required": "Obligatorio",
+      "nameRequired": "Introduce un nombre de medicamento.",
+      "invalidNumber": "Número no válido",
+      "invalidNumberMessage": "Introduce valores numéricos válidos para la concentración y la dosis.",
+      "updateFailed": "No se pudo actualizar el medicamento: {{error}}",
+      "createFailed": "No se pudo crear el medicamento: {{error}}"
+    },
+    "detail": {
+      "deleteTitle": "Eliminar medicamento",
+      "deleteMessage": "¿Seguro que quieres eliminar '{{name}}'? Esto también eliminará todas las pautas y las tomas registradas.",
+      "removeDoseTitle": "Quitar toma",
+      "removeDoseMessage": "¿Quitar esta toma registrada de las {{time}}?",
+      "deleteFailed": "No se pudo eliminar el medicamento",
+      "removeFailed": "No se pudo quitar la toma",
+      "edit": "Editar",
+      "loading": "Cargando...",
+      "inactive": "Inactivo",
+      "noDoses": "No hay tomas programadas para este día.",
+      "asNeeded": "Según necesidad",
+      "removeDose": "Quitar toma",
+      "schedules": "Pautas",
+      "addSchedule": "Añadir pauta",
+      "add": "Añadir",
+      "noSchedule": "Sin pauta. Las tomas se registran según necesidad.",
+      "details": "Detalles",
+      "prescriber": "Médico que receta",
+      "pharmacy": "Farmacia",
+      "rxNumber": "Número de receta",
+      "notes": "Notas",
+      "delete": "Eliminar medicamento",
+      "logged": "Registrada",
+      "today": "hoy"
+    },
+    "schedule": {
+      "newTitle": "Nueva pauta",
+      "editTitle": "Editar pauta",
+      "required": "Obligatorio",
+      "daysRequired": "Selecciona al menos un día de la semana.",
+      "invalidInterval": "Intervalo no válido",
+      "intervalMessage": "El intervalo debe ser de al menos 1 día.",
+      "everyNStart": "Las pautas de cada N días necesitan una fecha de inicio.",
+      "invalidCycle": "Ciclo no válido",
+      "cycleMessage": "Los días activos deben ser al menos 1 y los días de descanso al menos 0.",
+      "cycleStart": "Las pautas cíclicas necesitan una fecha de inicio.",
+      "invalidDay": "Día no válido",
+      "dayMessage": "El día del mes debe estar entre 1 y 31.",
+      "invalidDose": "Dosis no válida",
+      "doseMessage": "Introduce una cantidad de dosis válida.",
+      "invalidLimit": "Límite no válido",
+      "limitMessage": "El máximo por día debe ser al menos 1.",
+      "invalidDates": "Fechas no válidas",
+      "datesMessage": "La fecha de fin debe ser igual o posterior a la de inicio.",
+      "updateFailed": "No se pudo actualizar la pauta: {{error}}",
+      "createFailed": "No se pudo crear la pauta: {{error}}",
+      "deleteTitle": "Eliminar pauta",
+      "deleteMessage": "¿Eliminar esta pauta? Las tomas registradas se conservan.",
+      "deleteFailed": "No se pudo eliminar la pauta",
+      "none": "Ninguna",
+      "time": "Hora",
+      "setTime": "Establecer hora",
+      "clearTime": "Borrar hora",
+      "clear": "Borrar",
+      "scheduleType": "Tipo de pauta",
+      "frequency": "Frecuencia",
+      "daysOfWeek": "Días de la semana",
+      "selectDays": "Selecciona los días de la semana",
+      "everyNDays": "Cada N días",
+      "dayOfMonth": "Día del mes",
+      "daysOn": "Días activos",
+      "daysOff": "Días de descanso",
+      "reason": "Motivo",
+      "reasonPlaceholder": "Dolor de cabeza",
+      "maxPerDay": "Máximo por día",
+      "noLimit": "Sin límite",
+      "noTimeReminder": "Una pauta sin hora no recibirá recordatorio.",
+      "default": "Predeterminado",
+      "doseOverride": "Dosis específica ({{unit}})",
+      "doseOverridePlain": "Dosis específica",
+      "withMealTitle": "Con la comida",
+      "withMeal": "Con la comida",
+      "startDate": "Fecha de inicio",
+      "startDateRequired": "Fecha de inicio *",
+      "setStartDate": "Establecer fecha de inicio",
+      "clearStartDate": "Borrar fecha de inicio",
+      "endDate": "Fecha de fin",
+      "setEndDate": "Establecer fecha de fin",
+      "clearEndDate": "Borrar fecha de fin",
+      "active": "Activa",
+      "delete": "Eliminar pauta",
+      "loading": "Cargando...",
+      "notFound": "Pauta no encontrada",
+      "daysTitle": "Días de la semana",
+      "everyDay": "Todos los días"
+    },
+    "dose": {
+      "log": "Registro",
+      "skip": "Omitir",
+      "taken": "Tomada",
+      "skipped": "Omitida",
+      "logTaken": "Registrar {{title}} como tomada",
+      "skipTitle": "Omitir {{title}}",
+      "markTaken": "Marcar {{title}} como tomada",
+      "unmark": "Desmarcar {{title}}",
+      "logTitle": "Registrar {{title}}",
+      "logged": "{{name}} registrada",
+      "takenToast": "{{name}} tomada",
+      "skippedToast": "{{name}} omitida",
+      "unmarked": "{{name}} desmarcada",
+      "unskipped": "{{name}} ya no omitida",
+      "removed": "Toma de {{name}} quitada",
+      "tapUndo": "Toca para deshacer",
+      "failedRemoveDose": "No se pudo quitar la toma de {{name}}",
+      "failedUnmark": "No se pudo desmarcar {{name}}",
+      "failedUpdate": "No se pudo actualizar {{name}}",
+      "failedLog": "No se pudo registrar {{name}}"
+    },
+    "card": {
+      "title": "Medicación",
+      "viewAll": "Ver todos",
+      "viewAllA11y": "Ver todos los medicamentos",
+      "medicationA11y": "{{name}}{{summary}}"
+    },
+    "types": {
+      "daily": "Diaria",
+      "weekly": "Días específicos",
+      "every_n_days": "Cada N días",
+      "monthly": "Mensual",
+      "cyclic": "Ciclo (activo/descanso)",
+      "prn": "Según necesidad",
+      "pill": "Pastilla",
+      "tablet": "Comprimido",
+      "capsule": "Cápsula",
+      "liquid": "Líquido",
+      "injection": "Inyección",
+      "patch": "Parche",
+      "inhaler": "Inhalador",
+      "drops": "Gotas",
+      "nasal_spray": "Espray nasal",
+      "cream": "Crema",
+      "suppository": "Supositorio",
+      "other": "Otro",
+      "beforeMeal": "Antes de la comida",
+      "withMeal": "Con la comida",
+      "afterMeal": "Después de la comida",
+      "awayFromMeals": "Lejos de las comidas"
+    },
+    "weekdays": {
+      "title": "Días de la semana",
+      "sun": "Domingo",
+      "mon": "Lunes",
+      "tue": "Martes",
+      "wed": "Miércoles",
+      "thu": "Jueves",
+      "fri": "Viernes",
+      "sat": "Sábado",
+      "itemA11y": "{{day}}, {{state}}",
+      "selected": "seleccionado",
+      "notSelected": "no seleccionado"
+    },
+    "notificationTitle": "Recordatorio de medicación",
+    "scheduleSummary": {
+      "daily": "Diaria",
+      "weekly": "Semanal",
+      "monthlyOnDay": "Mensual el día {{day}}",
+      "monthly": "Mensual",
+      "cycle": "{{on}}, {{off}}",
+      "asNeeded": "Según necesidad",
+      "taper": "Pauta descendente",
+      "at": "{{frequency}} a las {{time}}",
+      "unknown": "Pauta",
+      "cycleOn_one": "{{count}} día activo",
+      "cycleOn_other": "{{count}} días activos",
+      "cycleOff_one": "{{count}} día de descanso",
+      "cycleOff_other": "{{count}} días de descanso",
+      "everyNDays_one": "Cada {{count}} día",
+      "everyNDays_other": "Cada {{count}} días"
+    },
+    "notificationScheduledDose": "Tienes una toma programada",
+    "notificationScheduledDoseNamed": "Toma programada: {{name}}{{dose}}",
+    "inactiveA11y_one": "Medicamento inactivo ({{count}})",
+    "inactiveA11y_other": "Medicamentos inactivos ({{count}})",
+    "inactiveCount_one": "Inactivo ({{count}})",
+    "inactiveCount_other": "Inactivos ({{count}})",
+    "mealRelation": {
+      "awayFromMeals": "Lejos de las comidas"
+    }
+  },
+  "pregnancy": {
+    "prompt": {
+      "title": "Configura tu embarazo",
+      "message": "Añade tu fecha de parto para seguir el crecimiento del bebé semana a semana y llevar un diario de fotos de tu barriga.",
+      "getStarted": "Empezar"
+    },
+    "weekBanner": {
+      "due": "Fecha prevista",
+      "wellnessProgress": "Progreso de bienestar",
+      "week": "Semana {{week}}",
+      "weekDay": "{{week}} sem {{day}} d",
+      "edit": "Editar detalles del embarazo",
+      "anyDayNow": "En cualquier momento",
+      "daysToGo_one": "Queda {{days}} día",
+      "daysToGo_other": "Quedan {{days}} días"
+    },
+    "trimester": {
+      "first": "Primer trimestre",
+      "second": "Segundo trimestre",
+      "third": "Tercer trimestre"
+    },
+    "checklist": {
+      "title": "Tareas de esta semana",
+      "empty": "No tienes nada en tu lista para esta semana.",
+      "item": "Elemento de la lista",
+      "items": {
+        "firstAppt": "Reserva tu primera cita prenatal",
+        "prenatalVitamin": "Empieza un suplemento prenatal con ácido fólico",
+        "ntScan": "Programa el cribado del primer trimestre",
+        "shareNews": "Comparte la noticia si te apetece",
+        "anatomyScan": "Acude a tu ecografía morfológica",
+        "glucoseTest": "Reserva tu prueba de cribado de glucosa",
+        "countKicks": "Empieza a contar las patadas del bebé a diario",
+        "birthClass": "Apúntate a una clase de preparación al parto o crianza",
+        "birthPlan": "Redacta tu plan de parto",
+        "hospitalBag": "Prepara tu bolsa para el hospital",
+        "installCarSeat": "Instala y revisa la silla de coche",
+        "pediatrician": "Elige un pediatra"
+      }
+    },
+    "babyDev": {
+      "w4": {
+        "comparison": "Una semilla de amapola",
+        "baby": "El embrión se ha implantado y la placenta empieza a formarse.",
+        "mom": "Puede que acabes de tener una falta. Las primeras hormonas están subiendo."
+      },
+      "w5": {
+        "comparison": "Una semilla de sésamo",
+        "baby": "El tubo neural —el inicio del cerebro y la médula espinal— se está formando.",
+        "mom": "Pueden empezar los primeros síntomas, como sensibilidad en los pechos y cansancio."
+      },
+      "w6": {
+        "comparison": "Una lenteja",
+        "baby": "Un diminuto corazón empieza a latir y a bombear sangre.",
+        "mom": "Las náuseas matutinas pueden empezar por ahora."
+      },
+      "w7": {
+        "comparison": "Un arándano",
+        "baby": "Aparecen los brotes de brazos y piernas; el cerebro crece rápido.",
+        "mom": "Tu útero empieza a expandirse, aunque aún no se note."
+      },
+      "w8": {
+        "comparison": "Una frambuesa",
+        "baby": "Se están formando los dedos de manos y pies y comienzan pequeños movimientos.",
+        "mom": "El volumen de sangre aumenta para apoyar a tu bebé."
+      },
+      "w9": {
+        "comparison": "Una cereza",
+        "baby": "Los órganos esenciales están formados; el bebé es ya oficialmente un feto.",
+        "mom": "Puede que notes cambios de humor por las hormonas."
+      },
+      "w10": {
+        "comparison": "Una fresa",
+        "baby": "Los órganos vitales funcionan y empiezan a desarrollarse pequeñas uñas.",
+        "mom": "Tu cintura puede empezar a cambiar."
+      },
+      "w11": {
+        "comparison": "Una lima",
+        "baby": "El bebé puede abrir y cerrar los puños; los huesos se endurecen.",
+        "mom": "Las náuseas suelen empezar a remitir en las próximas semanas."
+      },
+      "w12": {
+        "comparison": "Una ciruela",
+        "baby": "Se desarrollan los reflejos; el bebé puede doblar los dedos de manos y pies.",
+        "mom": "El final del primer trimestre está cerca; suele volver la energía."
+      },
+      "w13": {
+        "comparison": "Una vaina de guisantes",
+        "baby": "Se forman diminutas huellas dactilares y se desarrollan las cuerdas vocales.",
+        "mom": "Bienvenida al segundo trimestre, a menudo el más cómodo."
+      },
+      "w14": {
+        "comparison": "Un limón",
+        "baby": "El bebé puede hacer expresiones faciales y puede chuparse el pulgar.",
+        "mom": "Puede que empieces a sentirte más tú misma de nuevo."
+      },
+      "w15": {
+        "comparison": "Una manzana",
+        "baby": "El bebé puede percibir la luz y mueve el líquido amniótico.",
+        "mom": "Puede que notes que aparece una pequeña barriguita."
+      },
+      "w16": {
+        "comparison": "Un aguacate",
+        "baby": "El bebé puede oír sonidos y su corazón bombea mucha sangre a diario.",
+        "mom": "Algunas personas sienten los primeros movimientos («aleteos») por ahora."
+      },
+      "w17": {
+        "comparison": "Un nabo",
+        "baby": "Empiezan a formarse reservas de grasa y el esqueleto se endurece.",
+        "mom": "Tu centro de gravedad cambia a medida que crece tu barriga."
+      },
+      "w18": {
+        "comparison": "Un pimiento",
+        "baby": "El bebé puede oír tu voz y puede responder a los sonidos.",
+        "mom": "Puede que sientas movimientos más definidos ahora."
+      },
+      "w19": {
+        "comparison": "Un mango",
+        "baby": "Una capa protectora (vérnix) cubre la piel.",
+        "mom": "Son comunes los dolores del ligamento redondo por el estiramiento."
+      },
+      "w20": {
+        "comparison": "Un plátano",
+        "baby": "¡A mitad de camino! El bebé traga y desarrolla las papilas gustativas.",
+        "mom": "Tu ecografía morfológica suele hacerse por ahora."
+      },
+      "w21": {
+        "comparison": "Una zanahoria",
+        "baby": "El bebé se mueve más, con ciclos regulares de sueño y vigilia.",
+        "mom": "Puede que sientas las patadas con más fuerza y regularidad."
+      },
+      "w22": {
+        "comparison": "Una calabaza espagueti",
+        "baby": "Los labios, los párpados y las cejas están más definidos.",
+        "mom": "Tu barriga ya es claramente visible."
+      },
+      "w23": {
+        "comparison": "Un mango grande",
+        "baby": "El bebé puede oír sonidos fuertes y va ganando peso.",
+        "mom": "Puede empezar la hinchazón en pies y tobillos."
+      },
+      "w24": {
+        "comparison": "Una mazorca de maíz",
+        "baby": "Los pulmones se desarrollan; el bebé alcanza un hito de viabilidad.",
+        "mom": "Puede que pronto tengas una prueba de cribado de glucosa."
+      },
+      "w25": {
+        "comparison": "Un colinabo",
+        "baby": "Al bebé le crece el pelo y se desarrolla su reflejo de sobresalto.",
+        "mom": "Los dolores de espalda son comunes a medida que crece tu barriga."
+      },
+      "w26": {
+        "comparison": "Un manojo de cebolletas",
+        "baby": "Los ojos empiezan a abrirse y los pulmones practican movimientos respiratorios.",
+        "mom": "Puede que sientas movimientos rítmicos: el bebé tiene hipo."
+      },
+      "w27": {
+        "comparison": "Una coliflor",
+        "baby": "La actividad cerebral aumenta mucho; el bebé puede reconocer tu voz.",
+        "mom": "Bienvenida al tercer trimestre."
+      },
+      "w28": {
+        "comparison": "Una berenjena",
+        "baby": "El bebé puede parpadear y se le han formado las pestañas.",
+        "mom": "Las visitas prenatales suelen hacerse más frecuentes ahora."
+      },
+      "w29": {
+        "comparison": "Una calabaza cacahuete",
+        "baby": "Los músculos y los pulmones siguen madurando; los huesos están totalmente formados.",
+        "mom": "Puede que te falte el aire a medida que sube tu útero."
+      },
+      "w30": {
+        "comparison": "Un repollo grande",
+        "baby": "El bebé regula mejor su propia temperatura ahora.",
+        "mom": "El cansancio puede volver en el tercer trimestre."
+      },
+      "w31": {
+        "comparison": "Un coco",
+        "baby": "El bebé gana peso rápidamente y se mueve a menudo.",
+        "mom": "Puede que notes contracciones de práctica de Braxton-Hicks."
+      },
+      "w32": {
+        "comparison": "Una jícama",
+        "baby": "Los pulmones practican la respiración; el bebé suele colocarse cabeza abajo.",
+        "mom": "Plantéate empezar tu plan de parto y la bolsa del hospital."
+      },
+      "w33": {
+        "comparison": "Una piña",
+        "baby": "Los huesos del bebé se endurecen, aunque el cráneo sigue blando.",
+        "mom": "Puede que sientas más presión en la pelvis."
+      },
+      "w34": {
+        "comparison": "Un melón cantalupo",
+        "baby": "El sistema nervioso central y los pulmones maduran bien.",
+        "mom": "El cansancio y la hinchazón son comunes; descansa cuando puedas."
+      },
+      "w35": {
+        "comparison": "Un melón verde",
+        "baby": "El bebé se está rellenando; casi todos los sistemas están listos.",
+        "mom": "Tu profesional puede comprobar la posición del bebé."
+      },
+      "w36": {
+        "comparison": "Una lechuga romana",
+        "baby": "El bebé probablemente está cabeza abajo y gana unos 28 g al día.",
+        "mom": "Las revisiones semanales suelen empezar por ahora."
+      },
+      "w37": {
+        "comparison": "Un manojo de acelgas",
+        "baby": "El bebé se considera a término temprano y practica la respiración.",
+        "mom": "Atenta a las señales de parto y ten la bolsa preparada."
+      },
+      "w38": {
+        "comparison": "Un puerro",
+        "baby": "Los órganos están listos para la vida fuera; el bebé agarra con firmeza.",
+        "mom": "Puede que sientas que el bebé «baja» hacia tu pelvis."
+      },
+      "w39": {
+        "comparison": "Una sandía pequeña",
+        "baby": "El bebé está a término y listo para conocerte.",
+        "mom": "En cualquier momento; atenta a las contracciones regulares."
+      },
+      "w40": {
+        "comparison": "Una calabaza pequeña",
+        "baby": "¡Tu fecha de parto ha llegado! Los bebés llegan a su propio ritmo.",
+        "mom": "Si el parto no ha empezado, tu profesional hablará de los siguientes pasos."
+      }
+    },
+    "safety": {
+      "food": {
+        "cooked_salmon": {
+          "name": "Salmón cocinado",
+          "note": "El pescado bien cocinado y bajo en mercurio es una gran fuente de omega-3. Intenta 2–3 raciones a la semana."
+        },
+        "tuna_canned_light": {
+          "name": "Atún (claro en lata)",
+          "note": "Limítalo a ~2 raciones a la semana; elige claro en vez de blanco para menos mercurio."
+        },
+        "swordfish": {
+          "name": "Pez espada",
+          "note": "Los pescados con alto contenido en mercurio deben evitarse durante el embarazo."
+        },
+        "sushi_raw": {
+          "name": "Sushi (crudo)",
+          "note": "El pescado crudo conlleva riesgo de parásitos y bacterias. Los rollos cocinados están bien."
+        },
+        "shrimp_cooked": {
+          "name": "Gambas (cocinadas)",
+          "note": "El marisco bien cocinado es bajo en mercurio y seguro."
+        },
+        "soft_cheese_unpasteurized": {
+          "name": "Queso blando (sin pasteurizar)",
+          "note": "Los quesos blandos sin pasteurizar tienen riesgo de listeria. Las versiones pasteurizadas están bien."
+        },
+        "hard_cheese": {
+          "name": "Queso curado",
+          "note": "Los quesos curados y pasteurizados son seguros."
+        },
+        "pasteurized_milk": {
+          "name": "Leche pasteurizada",
+          "note": "Los lácteos pasteurizados son seguros y una buena fuente de calcio."
+        },
+        "deli_meat_cold": {
+          "name": "Fiambre (frío)",
+          "note": "Caliéntalo hasta que humee para reducir el riesgo de listeria."
+        },
+        "undercooked_meat": {
+          "name": "Carne poco hecha",
+          "note": "Cocina bien la carne para evitar la toxoplasmosis y las bacterias."
+        },
+        "cooked_chicken": {
+          "name": "Pollo cocinado",
+          "note": "Las aves bien cocinadas son una fuente segura de proteína."
+        },
+        "runny_raw_eggs": {
+          "name": "Huevos crudos/poco cuajados",
+          "note": "Cocínalos hasta que estén firmes, o usa huevos pasteurizados, para evitar la salmonela."
+        },
+        "coffee": {
+          "name": "Café",
+          "note": "Limita la cafeína a unos 200 mg al día (aproximadamente un café de 350 ml)."
+        },
+        "alcohol": {
+          "name": "Alcohol",
+          "note": "No se considera segura ninguna cantidad de alcohol durante el embarazo."
+        },
+        "herbal_tea": {
+          "name": "Infusión de hierbas",
+          "note": "Algunas hierbas no se recomiendan; consulta las infusiones concretas con tu profesional."
+        },
+        "cooked_leafy_greens": {
+          "name": "Verduras de hoja cocinadas",
+          "note": "Lávalas bien; una gran fuente de folato y hierro."
+        },
+        "unwashed_produce": {
+          "name": "Frutas y verduras sin lavar",
+          "note": "Lávalas a fondo; evita los brotes crudos, que pueden albergar bacterias."
+        },
+        "liver_pate": {
+          "name": "Hígado / paté",
+          "note": "Muy alto en vitamina A, que puede ser perjudicial en grandes cantidades."
+        },
+        "peanuts": {
+          "name": "Cacahuetes",
+          "note": "Seguros salvo que tengas alergia personal; una buena fuente de proteína."
+        },
+        "honey": {
+          "name": "Miel",
+          "note": "Segura para ti durante el embarazo (evita darla a bebés menores de 1 año)."
+        }
+      },
+      "med": {
+        "acetaminophen": {
+          "name": "Paracetamol (Tylenol)",
+          "note": "Suele considerarse de primera elección para el dolor/la fiebre a las dosis recomendadas. Confírmalo con tu profesional."
+        },
+        "ibuprofen": {
+          "name": "Ibuprofeno (Advil)",
+          "note": "Evítalo sobre todo en el tercer trimestre; úsalo solo si tu profesional lo indica."
+        },
+        "aspirin": {
+          "name": "Aspirina",
+          "note": "Solo a dosis baja si está prescrita; la aspirina a dosis normal suele evitarse."
+        },
+        "prenatal_vitamin": {
+          "name": "Suplemento prenatal",
+          "note": "Se recomienda durante todo el embarazo por el ácido fólico, el hierro y el DHA."
+        },
+        "antacids_tums": {
+          "name": "Antiácidos (Tums)",
+          "note": "Los antiácidos a base de calcio se usan a menudo para la acidez."
+        },
+        "diphenhydramine": {
+          "name": "Difenhidramina (Benadryl)",
+          "note": "A menudo se considera aceptable a corto plazo, pero consúltalo con tu profesional."
+        },
+        "ibuprofen_gel": {
+          "name": "Gel de ibuprofeno",
+          "note": "Consulta los AINE tópicos con tu profesional antes de usarlos."
+        },
+        "isotretinoin": {
+          "name": "Isotretinoína (Accutane)",
+          "note": "Los retinoides causan defectos congénitos graves y deben evitarse."
+        },
+        "pseudoephedrine": {
+          "name": "Descongestionante (pseudoefedrina)",
+          "note": "Suele evitarse en el primer trimestre; pregunta a tu profesional."
+        },
+        "vitamin_a_high_dose": {
+          "name": "Vitamina A (dosis alta)",
+          "note": "La vitamina A a dosis alta puede dañar al bebé; cíñete a las cantidades del prenatal."
+        }
+      }
+    }
+  },
+  "cycleToday": {
+    "menstrualFlow": "Flujo menstrual",
+    "flow": {
+      "none": "Ninguno",
+      "spot": "Manchado",
+      "light": "Ligero",
+      "medium": "Medio",
+      "heavy": "Abundante"
+    },
+    "weight": "Peso ({{unit}})",
+    "weightExampleLbs": "p. ej. 143",
+    "weightExampleKg": "p. ej. 65",
+    "cervicalMucus": "Moco cervical",
+    "selectCervicalMucus": "Seleccionar moco cervical",
+    "tapToSelect": "Toca para seleccionar...",
+    "mucus": {
+      "none": "Ninguno",
+      "dry": "Seco",
+      "sticky": "Pegajoso",
+      "creamy": "Cremoso",
+      "watery": "Acuoso",
+      "eggWhite": "Clara de huevo"
+    },
+    "intercourse": "Relaciones sexuales",
+    "intercourseOption": {
+      "none": "Ninguna",
+      "yes": "Sí",
+      "no": "No"
+    },
+    "protection": "Protección",
+    "protectionOption": {
+      "protected": "Protegidas",
+      "unprotected": "Sin protección"
+    },
+    "cervicalPosition": "Posición cervical",
+    "selectCervicalPosition": "Seleccionar posición cervical",
+    "position": {
+      "none": "Ninguna",
+      "low": "Baja",
+      "medium": "Media",
+      "high": "Alta"
+    },
+    "basalTemperature": "Temperatura basal",
+    "basalTemperatureHint": "Registra tu temperatura al despertar (°C) para identificar los cambios bifásicos tras la ovulación.",
+    "temperatureExample": "p. ej. 36,5",
+    "notes": "Notas",
+    "notesPlaceholder": "Registra detalles sobre cómo te sientes, tu nivel de energía...",
+    "saving": "Guardando...",
+    "save": "Guardar entrada",
+    "invalidTemperature": "Temperatura no válida",
+    "invalidWeight": "Peso no válido"
+  },
+  "cycleCard": {
+    "mode": {
+      "wellness": "Bienestar",
+      "pregnancy": "Seguimiento del embarazo",
+      "fertility": "Seguimiento de fertilidad",
+      "postpartum": "Recuperación posparto",
+      "menopause": "Seguimiento de la menopausia",
+      "cycle": "Seguimiento del ciclo",
+      "cyclePregnancy": "Ciclo y embarazo"
+    },
+    "setupA11y": "Configurar el seguimiento del ciclo y el embarazo",
+    "setUp": "Configurar",
+    "weekDay": "Semana {{week}}, día {{day}}",
+    "sizeOf": "Tamaño de {{comparison}}",
+    "cm": "{{value}} cm",
+    "grams": "{{value}} g",
+    "dueNow": "Fecha de parto ahora",
+    "pregnancyActive": "Seguimiento del embarazo activo",
+    "gestationalProgress": "Toca para ver el progreso gestacional.",
+    "wellnessActive": "Seguimiento de bienestar activo",
+    "modeValue": "Modo {{mode}}",
+    "hubProgress": "Toca para ver el centro de seguimiento del ciclo.",
+    "hubA11y": "Abrir el centro de seguimiento del ciclo y el embarazo",
+    "hub": "Centro",
+    "phase": {
+      "period": "Periodo",
+      "follicular": "Fase folicular",
+      "fertile": "Ventana fértil est.",
+      "ovulation": "Ovulación est.",
+      "luteal": "Fase lútea",
+      "active": "Ciclo activo"
+    },
+    "discreetDescription": "Registra tus parámetros de bienestar y predicciones.",
+    "description": "Registra las fases del ciclo, predicciones, síntomas e hitos del embarazo.",
+    "nextPeriod": "Próximo periodo est. {{date}}",
+    "day": "Día {{day}}",
+    "active": "Activo",
+    "periodLate_one": "Periodo con {{count}} día de retraso",
+    "periodLate_other": "Periodo con {{count}} días de retraso",
+    "daysToDue_one": "{{count}} día para la fecha de parto",
+    "daysToDue_other": "{{count}} d para la fecha de parto"
+  },
+  "cycleHub": {
+    "tools": "Herramientas",
+    "trends": "Tendencias",
+    "wellness": "Bienestar",
+    "pregnancyHub": "Centro de embarazo",
+    "cycleHub": "Centro del ciclo",
+    "logEntry": "Registrar entrada",
+    "overview": "Resumen",
+    "history": "Historial",
+    "ring": {
+      "day": "Día {{day}}",
+      "dayCycle_one": "Ciclo de {{count}} día",
+      "dayCycle_other": "Ciclo de {{count}} días"
+    }
+  },
+  "cycleLog": {
+    "saved": "Guardado",
+    "updated": "Registro diario actualizado correctamente.",
+    "saveFailed": "Error al guardar",
+    "saveError": "No se pudo guardar la entrada. Inténtalo de nuevo.",
+    "deleted": "Eliminado",
+    "cleared": "Registro diario borrado.",
+    "deleteFailed": "Error al eliminar",
+    "deleteError": "No se pudo borrar la entrada. Inténtalo de nuevo."
+  },
+  "cycle": {
+    "phase": {
+      "active": "Fase activa",
+      "period": "Periodo",
+      "follicular": "Fase folicular",
+      "fertile": "Ventana fértil est.",
+      "ovulation": "Ovulación est.",
+      "luteal": "Fase lútea",
+      "activeCycle": "Ciclo activo"
+    }
+  },
+  "cycleCalendar": {
+    "previousMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "previousYear": "Año anterior",
+    "nextYear": "Año siguiente",
+    "selectMonth": "Seleccionar mes",
+    "selectYear": "Seleccionar año",
+    "weekdays": {
+      "sunday": "D",
+      "monday": "L",
+      "tuesday": "M",
+      "wednesday": "X",
+      "thursday": "J",
+      "friday": "V",
+      "saturday": "S"
+    },
+    "legend": {
+      "period": "Periodo",
+      "predictedPeriod": "Periodo previsto",
+      "fertileWindow": "Ventana fértil",
+      "estimatedOvulation": "Ovulación est.",
+      "logged": "Registrado"
+    }
+  },
+  "cycleHistory": {
+    "title": "Historial del ciclo",
+    "logManual": "Registrar ciclo manual",
+    "startDate": "Fecha de inicio",
+    "selectDate": "Seleccionar fecha",
+    "periodDays": "Días de periodo",
+    "cycleDays": "Días de ciclo",
+    "excludeFromPredictions": "Excluir de las predicciones",
+    "saveManual": "Guardar ciclo manual",
+    "empty": "Aún no hay ciclos registrados.",
+    "startedAccessibility": "Ciclo iniciado el {{date}}",
+    "started": "Iniciado el {{date}}",
+    "currentCycle": "Ciclo actual",
+    "toast": {
+      "success": "Correcto",
+      "error": "Error",
+      "manualAdded": "Ciclo manual añadido correctamente.",
+      "manualAddFailed": "No se pudo añadir la entrada de ciclo manual.",
+      "updated": "Entrada de ciclo actualizada correctamente.",
+      "updateFailed": "No se pudo actualizar la entrada de ciclo.",
+      "deleted": "Entrada de ciclo eliminada correctamente.",
+      "deleteFailed": "No se pudo eliminar la entrada de ciclo."
+    },
+    "dayPeriod_one": "Periodo de {{count}} día",
+    "dayPeriod_other": "Periodos de {{count}} días",
+    "dayCycle_one": "Ciclo de {{count}} día",
+    "dayCycle_other": "Ciclo de {{count}} días"
+  },
+  "fertility": {
+    "title": "Fertilidad",
+    "fertileWindow": "Ventana fértil est.",
+    "ovulation": "Ovulación est.",
+    "nextPeriod": "Próximo periodo en",
+    "days_one": "{{count}} día",
+    "days_other": "{{count}} días",
+    "twoWeekWait": "Espera de dos semanas",
+    "ovulationDay": "Día de ovulación",
+    "daysPastOvulation_one": "{{count}} día tras la ovulación",
+    "daysPastOvulation_other": "{{count}} días tras la ovulación",
+    "testAccuracy": "Las pruebas caseras suelen ser más precisas entre 12 y 14 días después de la ovulación.",
+    "disclaimer": "Estimaciones a partir de tus datos registrados. No es consejo médico."
+  },
+  "testQuickLog": {
+    "title": "Registrar una prueba",
+    "ovulation": "Ovulación (test OPK)",
+    "pregnancy": "Embarazo (test HPT)",
+    "recent": "Pruebas registradas recientes",
+    "testLogged": "Prueba registrada",
+    "logFailed": "No se pudo registrar la prueba",
+    "removeFailed": "No se pudo quitar la prueba",
+    "results": {
+      "negative": "Negativo",
+      "low": "Bajo",
+      "high": "Alto",
+      "peak": "Pico",
+      "faint": "Tenue",
+      "positive": "Positivo"
+    },
+    "ovulationShort": "Ovulación",
+    "pregnancyShort": "Embarazo",
+    "entryTitle": "{{type}} · {{result}}"
+  },
+  "symptoms": {
+    "saveFailed": "No se pudo guardar el síntoma",
+    "removeFailed": "No se pudo quitar el síntoma"
+  },
+  "checkIn": {
+    "saveFailed": "Error al guardar",
+    "saveMessage": "No se pudieron guardar las medidas. Inténtalo de nuevo."
+  },
+  "shareStatus": {
+    "public": "Compartido públicamente",
+    "family": "Compartido con la familia"
+  },
+  "cycleSettings": {
+    "updateFailed": "Error al actualizar",
+    "saveFailed": "No se pudieron guardar los ajustes del ciclo. Inténtalo de nuevo.",
+    "mode": {
+      "standard": "Ciclo estándar",
+      "ttc": "Buscando embarazo",
+      "pregnant": "Seguimiento del embarazo",
+      "postpartum": "Posparto",
+      "menopause": "Adaptado a la menopausia"
+    },
+    "birthControl": {
+      "none": "Ninguno",
+      "pill": "Pastilla",
+      "iudHormonal": "DIU hormonal",
+      "iudCopper": "DIU de cobre",
+      "implant": "Implante",
+      "ring": "Anillo",
+      "patch": "Parche",
+      "shot": "Inyección",
+      "condoms": "Preservativos / barrera",
+      "other": "Otro"
+    },
+    "condition": {
+      "pcos": "SOP",
+      "endometriosis": "Endometriosis",
+      "fibroids": "Miomas",
+      "thyroid": "Trastorno tiroideo",
+      "other": "Otro"
+    },
+    "terminology": {
+      "default": "Predeterminada",
+      "neutral": "Neutra en género"
+    },
+    "reset": {
+      "title": "Restablecer configuración inicial",
+      "message": "¿Seguro que quieres restablecer la configuración inicial del ciclo? Esto borrará tu progreso de configuración, pero tus días de ciclo registrados permanecerán intactos.",
+      "action": "Restablecer",
+      "success": "Configuración inicial restablecida."
+    },
+    "export": {
+      "preparing": "Preparando exportación",
+      "generating": "Generando archivo de exportación JSON...",
+      "failed": "Error de exportación",
+      "failedMessage": "No se pudieron exportar los datos del ciclo."
+    },
+    "title": {
+      "wellness": "Ajustes de bienestar",
+      "cyclePregnancy": "Ciclo y embarazo"
+    },
+    "enable": {
+      "title": "Activar el seguimiento del ciclo y el embarazo",
+      "subtitle": "Activa el registro, las predicciones y el historial"
+    },
+    "groups": {
+      "features": "Configuración de funciones",
+      "calculations": "Ajustes de cálculo del ciclo",
+      "conditions": "Condiciones",
+      "conditionsSubtitle": "Selecciona las condiciones aplicables para personalizar tu seguimiento.",
+      "display": "Opciones de visualización",
+      "actions": "Acciones"
+    },
+    "fields": {
+      "trackingMode": "Modo de seguimiento",
+      "birthControl": "Método anticonceptivo",
+      "averageCycleLength": "Duración media del ciclo",
+      "averagePeriodLength": "Duración media del periodo",
+      "lutealLength": "Duración de la fase lútea",
+      "showFertileWindow": "Mostrar ventana fértil",
+      "discreetMode": "Modo discreto",
+      "terminology": "Terminología",
+      "export": "Exportar datos de ciclo y embarazo",
+      "reset": "Restablecer el asistente de configuración"
+    },
+    "pickers": {
+      "mode": "Seleccionar modo",
+      "method": "Seleccionar método",
+      "terminology": "Seleccionar terminología"
+    },
+    "values": {
+      "custom": "Valor personalizado",
+      "defaultHistory": "Predeterminado/Historial",
+      "lutealSubtitle": "Días tras la ovulación (predeterminado 14)",
+      "fertileSubtitle": "Resaltar los días fértiles en el calendario",
+      "discreetSubtitle": "Oculta las etiquetas «Ciclo» o «Embarazo» en la interfaz",
+      "exportSubtitle": "Descargar exportación de datos en JSON",
+      "resetSubtitle": "Reiniciar el recorrido de configuración"
+    }
+  },
+  "cycleOnboarding": {
+    "checkDates": "Comprueba las fechas",
+    "setupComplete": "¡Configuración completada!",
+    "profileInitialized": "Tu perfil de bienestar se ha inicializado.",
+    "setupFailed": "Error de configuración",
+    "setupFailedMessage": "No se pudo completar la configuración inicial. Inténtalo de nuevo.",
+    "stepTitle": "Configuración: paso {{step}} de 4",
+    "goalTitle": "¿Cuál es tu objetivo de seguimiento?",
+    "goalDescription": "Selecciona el modo que mejor se ajuste a tu enfoque de salud actual. Puedes cambiarlo cuando quieras en los ajustes.",
+    "datesTitle": "Fechas y medias",
+    "dueDateDescription": "Dinos cómo estimar tu fecha de parto. Puedes cambiarlo más tarde en los ajustes.",
+    "noConfiguration": "No se necesita configuración",
+    "recoveryDescription": "Adaptaremos tus recomendaciones a la recuperación hormonal o a los síntomas de la transición a la menopausia. Pasemos al siguiente paso.",
+    "predictionsDescription": "Ayúdanos a crear predicciones para tu ciclo.",
+    "lastPeriodStart": "Fecha de inicio del último periodo",
+    "averageCycleLength": "Duración media del ciclo",
+    "averagePeriodLength": "Duración media del periodo",
+    "profileTitle": "Perfil y condiciones",
+    "profileDescription": "Selecciona las condiciones o métodos anticonceptivos relevantes para personalizar tu seguimiento.",
+    "birthControlMethod": "Método anticonceptivo",
+    "selectMethod": "Seleccionar método",
+    "conditions": "Condiciones",
+    "disclaimerTitle": "Aviso y finalización",
+    "medicalDisclaimer": "Aviso médico",
+    "disclaimerBody": "El rastreador de bienestar y salud reproductiva de SparkyFitness está diseñado para ayudarte a seguir predicciones, síntomas y parámetros fisiológicos. NO está pensado para usarse como método anticonceptivo ni como herramienta de diagnóstico o tratamiento.",
+    "consultProfessional": "Consulta siempre a un profesional médico cualificado ante cualquier problema de salud.",
+    "acceptInitialize": "Aceptar e inicializar perfil",
+    "mode": {
+      "standard": "Ciclo menstrual estándar",
+      "ttc": "Buscando embarazo (TTC)",
+      "pregnant": "Seguimiento del embarazo",
+      "postpartum": "Posparto / Recuperación",
+      "menopause": "Transición a la menopausia"
+    },
+    "birthControl": {
+      "none": "Ninguno",
+      "pill": "Pastilla",
+      "iud": "DIU",
+      "implant": "Implante",
+      "patch": "Parche",
+      "ring": "Anillo",
+      "injection": "Inyección",
+      "other": "Otro",
+      "iudHormonal": "DIU hormonal",
+      "iudCopper": "DIU de cobre",
+      "condoms": "Preservativos / barrera",
+      "shot": "Inyección"
+    },
+    "condition": {
+      "pcos": "SOP",
+      "endometriosis": "Endometriosis",
+      "fibroids": "Miomas",
+      "thyroid": "Trastorno tiroideo",
+      "other": "Otro"
+    }
+  },
+  "cycleSymptoms": {
+    "title": "Síntomas",
+    "showAll": "Ver todos",
+    "showLess": "Ver menos",
+    "items": {
+      "cramps": "Cólicos",
+      "headache": "Dolor de cabeza",
+      "migraine": "Migraña",
+      "backache": "Dolor de espalda",
+      "ovulation_pain": "Dolor de ovulación",
+      "tender_breasts": "Pechos sensibles",
+      "nausea": "Náuseas",
+      "bloating": "Hinchazón",
+      "diarrhea": "Diarrea",
+      "constipation": "Estreñimiento",
+      "cravings": "Antojos",
+      "acne": "Acné",
+      "oily_skin": "Piel grasa",
+      "fatigue": "Cansancio",
+      "insomnia": "Insomnio",
+      "dizziness": "Mareo",
+      "mood_swings": "Cambios de humor",
+      "anxiety": "Ansiedad",
+      "hot_flashes": "Sofocos",
+      "spotting": "Manchado",
+      "body_aches": "Dolores corporales",
+      "joint_pain": "Dolor articular",
+      "muscle_soreness": "Agujetas",
+      "pelvic_pain": "Dolor pélvico",
+      "cervical_pain": "Dolor cervical",
+      "stiff_neck": "Rigidez de cuello",
+      "digestive_cramps": "Retortijones digestivos",
+      "acid_reflux": "Reflujo ácido",
+      "indigestion": "Indigestión",
+      "increased_appetite": "Aumento del apetito",
+      "decreased_appetite": "Disminución del apetito",
+      "fatigue_morning": "Cansancio matutino",
+      "brain_fog": "Niebla mental",
+      "irritability": "Irritabilidad",
+      "sadness": "Tristeza",
+      "oversleeping": "Dormir en exceso",
+      "restless_sleep": "Sueño inquieto",
+      "dry_skin": "Piel seca",
+      "skin_breakouts": "Brotes en la piel",
+      "chills": "Escalofríos",
+      "night_sweats": "Sudores nocturnos",
+      "swollen_feet": "Pies hinchados",
+      "breast_swelling": "Hinchazón de pechos"
+    }
+  },
+  "cycleInsights": {
+    "cycleSummary": "Resumen del ciclo",
+    "avgCycle": "Ciclo medio",
+    "avgPeriod": "Periodo medio",
+    "regularity": "Regularidad",
+    "set": "Definir",
+    "regular": "Regular",
+    "nextPredictions": "Próximas predicciones",
+    "upcomingCycle": "Ciclo próximo",
+    "followingCycle": "Ciclo siguiente",
+    "nextPeriod": "Próximo periodo",
+    "estimatedOvulation": "Ovulación est.",
+    "patternsToWatch": "Patrones a vigilar",
+    "symptomForecast": "Previsión de síntomas",
+    "forecastHint": "Registra síntomas durante un par de ciclos para prever los próximos días.",
+    "personalCorrelations": "Correlaciones personales",
+    "days_one": "{{count}} día",
+    "days_other": "{{count}} días",
+    "anomaly": {
+      "irregular_cycles": "La duración de tus ciclos ha variado en más de unos días recientemente. Si esto es nuevo para ti, quizá valga la pena comentarlo con un profesional.",
+      "short_cycle_one": "Tuviste un ciclo corto de {{count}} día. Los ciclos de menos de 21 días conviene vigilarlos.",
+      "short_cycle_other": "Tuviste un ciclo corto de {{count}} días. Los ciclos de menos de 21 días conviene vigilarlos.",
+      "long_cycle_one": "Tuviste un ciclo largo de {{count}} día. Los ciclos de más de 45 días conviene vigilarlos.",
+      "long_cycle_other": "Tuviste un ciclo largo de {{count}} días. Los ciclos de más de 45 días conviene vigilarlos.",
+      "heavy_bleeding": "Tus registros recientes muestran un flujo más abundante de lo habitual o periodos de más de 7 días. Si continúa, plantéate comentarlo con un profesional.",
+      "unusual_discharge": "Has registrado un flujo inusual. Plantéate anotar cambios de color, olor o textura.",
+      "short_cycle_generic": "Se registró un ciclo corto. Los ciclos de menos de 21 días conviene vigilarlos.",
+      "long_cycle_generic": "Se registró un ciclo largo. Los ciclos de más de 45 días conviene vigilarlos."
+    },
+    "alert": {
+      "late_period_one": "Tu periodo tiene {{count}} día de retraso.",
+      "late_period_other": "Tu periodo tiene {{count}} días de retraso.",
+      "upcoming_period_one": "Se espera el periodo en {{count}} día.",
+      "upcoming_period_other": "Se espera el periodo en {{count}} días.",
+      "ovulation_today": "Se prevé que la ovulación ocurra hoy.",
+      "upcoming_period_today": "Se espera el periodo hoy."
+    }
+  },
+  "cycleCorrelations": {
+    "metrics": {
+      "weight": "Peso",
+      "mood": "Estado de ánimo",
+      "sleep": "Sueño",
+      "energy": "Energía"
+    },
+    "phases": {
+      "menstrual": "Menstrual",
+      "follicular": "Folicular",
+      "fertile": "Fértil",
+      "ovulation": "Ovulación",
+      "luteal": "Lútea"
+    },
+    "byPhase": "{{metric}} por fase del ciclo",
+    "higher": "más alto",
+    "lower": "más bajo",
+    "peak": "{{phase}}: {{metric}} tiende a ser {{direction}} ({{delta}}{{unit}} frente a tu media).",
+    "noDataTitle": "Las correlaciones se desbloquean con más datos",
+    "noDataHint": "Sigue registrando peso, estado de ánimo, sueño y energía durante unos ciclos para ver cómo se mueven con tus fases.",
+    "conditions": {
+      "longCycles": "Tus ciclos promedian más de 35 días. Si esto es nuevo para ti, quizá valga la pena hablarlo con un profesional.",
+      "irregularCycles": "Tus ciclos varían bastante. Registrar unos cuantos más afinará tu panorama; plantéate comentarlo con un profesional.",
+      "shortCycles": "Tus ciclos son más cortos de lo típico. Si es nuevo, quizá valga la pena la opinión de un profesional."
+    },
+    "phasesSentence": {
+      "menstrual": "Fase menstrual",
+      "follicular": "Fase folicular",
+      "fertile": "Fase fértil",
+      "ovulation": "Ovulación",
+      "luteal": "Fase lútea"
+    }
+  },
+  "healthMetrics": {
+    "steps": "Pasos",
+    "calories": "Calorías activas",
+    "totalCalories": "Calorías totales",
+    "heartRate": "Frecuencia cardíaca",
+    "weight": "Peso",
+    "bloodPressure": "Tensión arterial",
+    "nutrition": "Nutrición",
+    "sleepSession": "Sesión de sueño",
+    "stress": "Estrés",
+    "basalBodyTemperature": "Temperatura basal",
+    "basalMetabolicRate": "Tasa metabólica basal",
+    "bloodGlucose": "Glucosa en sangre",
+    "bodyFat": "Grasa corporal",
+    "bodyTemperature": "Temperatura corporal",
+    "distance": "Distancia",
+    "exerciseSession": "Sesión de ejercicio",
+    "floorsClimbed": "Pisos subidos",
+    "height": "Altura",
+    "hydration": "Hidratación",
+    "leanBodyMass": "Masa corporal magra",
+    "respiratoryRate": "Frecuencia respiratoria",
+    "restingHeartRate": "Frecuencia cardíaca en reposo",
+    "heartRateVariability": "Variabilidad de la frecuencia cardíaca",
+    "vo2Max": "VO2 máx.",
+    "wheelchairPushes": "Impulsos de silla de ruedas",
+    "speed": "Velocidad",
+    "power": "Potencia",
+    "elevationGained": "Desnivel acumulado",
+    "boneMass": "Masa ósea",
+    "cervicalMucus": "Moco cervical",
+    "cyclingPedalingCadence": "Cadencia de pedaleo",
+    "intermenstrualBleeding": "Sangrado intermenstrual",
+    "menstruationPeriod": "Periodo menstrual",
+    "ovulationTest": "Test de ovulación",
+    "stepsCadence": "Cadencia de pasos",
+    "bloodOxygenSaturation": "Saturación de oxígeno en sangre",
+    "bloodAlcoholContent": "Tasa de alcohol en sangre",
+    "menstruationFlow": "Flujo menstrual",
+    "nutritionDietaryFatTotal": "Grasa total dietética",
+    "nutritionDietaryProtein": "Proteína dietética",
+    "nutritionDietarySodium": "Sodio dietético",
+    "walkingSpeed": "Velocidad al caminar",
+    "walkingStepLength": "Longitud del paso al caminar",
+    "walkingAsymmetryPercentage": "% de asimetría al caminar",
+    "walkingDoubleSupportPercentage": "% de doble apoyo al caminar",
+    "runningGroundContactTime": "Tiempo de contacto con el suelo al correr",
+    "runningStrideLength": "Longitud de zancada al correr",
+    "runningPower": "Potencia al correr",
+    "runningVerticalOscillation": "Oscilación vertical al correr",
+    "runningSpeed": "Velocidad al correr",
+    "cyclingSpeed": "Velocidad en bici",
+    "cyclingPower": "Potencia en bici",
+    "cyclingCadence": "Cadencia en bici",
+    "cyclingFunctionalThresholdPower": "Potencia umbral funcional (FTP)",
+    "environmentalAudioExposure": "Exposición a sonido ambiental",
+    "headphoneAudioExposure": "Exposición a sonido por auriculares",
+    "appleMoveTime": "Tiempo de movimiento de Apple",
+    "appleExerciseTime": "Tiempo de ejercicio de Apple",
+    "appleStandTime": "Tiempo de pie de Apple",
+    "unknown": "Métrica de salud"
+  },
+  "healthDataDisplay": {
+    "distance": "{{value}} km",
+    "kcal": "{{value}} kcal",
+    "bpm": "{{value}} ppm",
+    "kg": "{{value}} kg",
+    "percent": "{{value}}%",
+    "celsius": "{{value}}°C",
+    "mmHg": "{{systolic}}/{{diastolic}} mmHg",
+    "sleepHours": "{{count}} h",
+    "sleepMinutes": "{{count}} min",
+    "liters": "{{value}} L",
+    "cm": "{{value}} cm",
+    "mmolL": "{{value}} mmol/L",
+    "ms": "{{value}} ms",
+    "vo2": "{{value}} ml/min/kg",
+    "minutes": "{{count}} min",
+    "meters": "{{value}} m",
+    "watts": "{{value}} W",
+    "metersPerSecond": "{{value}} m/s",
+    "breathsPerMinute": "{{value}}/min",
+    "error": "Error",
+    "workouts_one": "{{count}} entrenamiento",
+    "workouts_other": "{{count}} entrenamientos",
+    "records_one": "{{count}} registro",
+    "records_other": "{{count}} registros"
+  },
+  "healthCategories": {
+    "Common": "Comunes",
+    "Activity": "Actividad",
+    "Vitals": "Constantes vitales",
+    "Body Measurements": "Medidas corporales",
+    "Nutrition": "Nutrición",
+    "Reproductive": "Salud reproductiva",
+    "Mobility": "Movilidad",
+    "Running": "Carrera",
+    "Cycling": "Ciclismo",
+    "Environment": "Entorno",
+    "Apple": "Apple",
+    "unknown": "Otros"
+  },
+  "healthSync": {
+    "appleHealth": "Apple Health",
+    "healthConnect": "Health Connect",
+    "appleSummary": "Lee los datos seleccionados de Apple Health y los sincroniza con tu servidor autoalojado.",
+    "connectSummary": "Lee los datos seleccionados de Health Connect y los sincroniza con tu servidor autoalojado.",
+    "appleDetail": "SparkyFitness lee los datos de salud que selecciones abajo usando Apple Health (HealthKit). Si la sincronización está activada, los datos se sincronizan solo entre tu dispositivo y tu servidor SparkyFitness autoalojado (manual o en segundo plano).\n\nGestiona o revoca el acceso en Ajustes → Salud → Acceso a datos y dispositivos → SparkyFitnessMobile",
+    "connectDetail": "SparkyFitness lee los datos de salud que selecciones abajo usando Health Connect. Si la sincronización está activada, los datos se sincronizan solo entre tu dispositivo y tu servidor SparkyFitness autoalojado (manual o en segundo plano).",
+    "title": "Datos de salud a sincronizar",
+    "notMedicalAdvice": "No es consejo médico.",
+    "consultProfessional": "Consulta a un profesional sanitario para obtener consejo médico, diagnóstico o tratamiento.",
+    "enableAll": "Activar todas las métricas de salud",
+    "batteryNote": "Activar muchas métricas de salud puede aumentar el consumo de batería. Cada métrica activada permite que la app se active en segundo plano cuando haya nuevos datos disponibles.",
+    "writeTitle": "Escribir en {{store}}",
+    "writeSummary": "Sincroniza los datos que registras en SparkyFitness hacia {{store}}, manteniendo ambos sincronizados.",
+    "removeFrom": "Quitar de {{store}}",
+    "allTime": "Todo el tiempo",
+    "pickDateRange": "Elige un intervalo de fechas…",
+    "removeData": "Quitar los datos de SparkyFitness de {{store}}",
+    "source": "Fuente:",
+    "syncMetricLabel": "Sincronizar {{metric}}",
+    "syncMetricHint": "Activa o desactiva la sincronización de esta métrica de salud.",
+    "enableAllHint": "Activa o desactiva la sincronización de todas las métricas de salud.",
+    "writeMetricLabel": "Escribir {{metric}} en {{store}}",
+    "writeMetricHint": "Activa o desactiva la escritura de esta métrica en el almacén de salud.",
+    "noData": "Sin datos",
+    "loading": "Cargando datos de salud",
+    "alerts": {
+      "healthAppUnavailableTitle": "App de Salud no disponible",
+      "healthAppUnavailableMessage": "Instala la app Apple Health para sincronizar tus datos de salud.",
+      "permissionErrorTitle": "Error de permisos",
+      "permissionErrorMessage": "Se produjo un error inesperado al solicitar los permisos de Salud: {{error}}"
+    }
+  },
+  "syncHealth": {
+    "unknownError": "Error de sincronización desconocido",
+    "syncing": "Sincronizando datos de salud…",
+    "incomplete": "Sincronización incompleta",
+    "complete": "Sincronización completada",
+    "success": "Datos de salud sincronizados correctamente.",
+    "error": "Error de sincronización",
+    "errorDetails": "La sincronización de datos de salud falló: {{message}}",
+    "loading": "Cargando datos de salud",
+    "readErrors_one": "No se pudo leer {{count}} métrica. Se reintentará en la próxima sincronización.",
+    "readErrors_other": "No se pudieron leer {{count}} métricas. Se reintentarán en la próxima sincronización.",
+    "uploadErrors_one": "El servidor rechazó {{count}} registro. Consulta los registros.",
+    "uploadErrors_other": "El servidor rechazó {{count}} registros. Consulta los registros."
+  },
+  "dailyNutritionDetails": {
+    "title": "Detalles de nutrición",
+    "loadFailed": "No se pudieron cargar los detalles de nutrición",
+    "tryAgain": "Comprueba tu conexión e inténtalo de nuevo.",
+    "left": "{{value}}{{unit}} restantes",
+    "over": "{{value}}{{unit}} de más",
+    "met": "cumplido",
+    "percentRemaining": "{{percent}}% · {{remaining}}",
+    "nutrientBreakdown": "Desglose de nutrientes",
+    "customTracked": "Nutrientes personalizados seguidos"
+  },
+  "nutrientTrends": {
+    "title": "Tendencias de {{nutrient}}",
+    "states": {
+      "loadFailed": "No se pudieron cargar los datos de tendencia"
+    },
+    "labels": {
+      "summary": "Estadísticas de resumen",
+      "dailyAverage": "Media diaria",
+      "highestDay": "Día de mayor consumo",
+      "targetGoal": "Objetivo diario",
+      "averageVsTarget": "Media frente al objetivo",
+      "percentOfGoal": "{{percent}}% del objetivo"
+    }
+  },
+  "diarySummary": {
+    "remaining": "restantes",
+    "over": "de más",
+    "title": "Resumen",
+    "collapse": "Contraer esta sección",
+    "expand": "Expandir esta sección"
+  },
+  "calorieSettings": {
+    "restingEnergy": "Energía en reposo",
+    "bmr": "TMB",
+    "title": "Ajustes de calorías y TMB",
+    "modeLabel": "Modo de calorías",
+    "adjustmentMode": "Modo de ajuste",
+    "modeDescription": "Controla cómo se ajusta tu objetivo diario de calorías según la actividad.",
+    "exerciseCaloriesApplied": "Calorías de ejercicio aplicadas",
+    "exerciseCaloriesDescription": "Qué parte de tus calorías de ejercicio se suman de nuevo a tu objetivo diario.",
+    "activityLevel": "Nivel de actividad",
+    "activityBaseline": "Se usa como base para el GET (TDEE).",
+    "adaptiveFallback": "Actúa como alternativa hasta que tengas suficientes datos de seguimiento.",
+    "allowNegative": "Permitir ajuste negativo",
+    "negativeDescription": "Reduce tu objetivo diario cuando quemas menos de lo esperado.",
+    "includeResting": "Incluir calorías en reposo",
+    "includeRestingDescription": "Incluye tu energía basal (TMB) en los cálculos netos.",
+    "howThisWorks": "Cómo funciona",
+    "burnedCalories": "Calorías quemadas",
+    "netEnergy": "Energía neta",
+    "remainingCalories": "Calorías restantes",
+    "useExternal": "Usar {{metric}} de {{source}}",
+    "externalDescription": "Usa {{metric}} de {{source}} cuando esté disponible. Si no, la {{formula}} seleccionada",
+    "iosNote": "El valor sincronizado ya incluye la actividad diaria ligera, así que quizá quieras poner",
+    "iosNoteContinuation": "tu Nivel de actividad en Ninguno (×1,0) para no contarla dos veces.",
+    "updateFailed": "No se pudo actualizar el ajuste.",
+    "modes": {
+      "adaptive": "Objetivo adaptativo",
+      "dynamic": "Objetivo dinámico",
+      "fixed": "Objetivo fijo",
+      "percentage": "Recuperación por porcentaje",
+      "tdee": "Proyección del dispositivo"
+    },
+    "activity": {
+      "none": "Ninguno (×1,0)",
+      "sedentary": "Sedentario (×1,2)",
+      "light": "Ligeramente activo (×1,375)",
+      "moderate": "Moderadamente activo (×1,55)",
+      "heavy": "Muy activo (×1,725)"
+    },
+    "formulas": {
+      "activityWithBmr": "Actividad + TMB",
+      "activityOnly": "Solo actividad (ejercicio + pasos)",
+      "eatenBurned": "Ingerido − Quemado",
+      "dynamic": "Objetivo − Energía neta",
+      "percentageWithBmr": "Objetivo − Ingerido + TMB + {{percentage}}% del ejercicio",
+      "percentage": "Objetivo − Ingerido + {{percentage}}% del ejercicio",
+      "tdee": "Objetivo − Ingerido + (Proyección − GET)",
+      "adaptive": "Objetivo − Ingerido",
+      "fixed": "Objetivo − Ingerido"
+    },
+    "notes": {
+      "dynamic": "El objetivo crece a medida que te mueves",
+      "tdee": "La proyección converge a medianoche",
+      "adaptive": "Objetivo = GET adaptativo",
+      "fixed": "La actividad no cambia tu presupuesto"
+    },
+    "externalFormula": "fórmula",
+    "safetyFloor": {
+      "title": "Límite de seguridad",
+      "standard": "Estándar",
+      "custom": "Personalizado",
+      "disabled": "Desactivado",
+      "customMinimum": "Mínimo personalizado ({{unit}})",
+      "standardDescription": "Usa el mayor entre tu RMR estimado y el mínimo clínico.",
+      "customDescription": "Sustituye el límite estándar por el mínimo que elijas. Las recomendaciones de salud siguen visibles.",
+      "disabledDescription": "Detiene el ajuste automático del objetivo. Las advertencias de salud siguen visibles."
+    }
+  },
+  "foodUnit": {
+    "updateFailed": "No se pudo actualizar esa unidad",
+    "savedCustomUnits": "Unidades personalizadas guardadas",
+    "aiEstimate": "Estimación de IA",
+    "aiEstimateWithConfidence": "Estimación de IA (confianza {{confidence}})",
+    "groups": {
+      "weight": "Peso",
+      "volume": "Volumen",
+      "quantity": "Cantidad"
+    },
+    "units": {
+      "g": "g",
+      "kg": "kg",
+      "mg": "mg",
+      "oz": "oz",
+      "lb": "lb",
+      "lbs": "lb",
+      "ml": "ml",
+      "l": "l",
+      "liter": "l",
+      "liters": "l",
+      "cup": "taza",
+      "cups": "tazas",
+      "tbsp": "cda",
+      "tsp": "cdta",
+      "piece": "pieza",
+      "slice": "rebanada",
+      "serving": "ración",
+      "portion": "porción",
+      "can": "lata",
+      "bottle": "botella",
+      "packet": "paquete",
+      "bag": "bolsa",
+      "bowl": "bol",
+      "plate": "plato",
+      "handful": "puñado",
+      "scoop": "cazo",
+      "bar": "barrita",
+      "stick": "barra",
+      "whole": "entero"
+    },
+    "confidence": {
+      "high": "Alta",
+      "medium": "Media",
+      "low": "Baja"
+    },
+    "unitPlurals": {
+      "cup_one": "taza",
+      "cup_other": "tazas",
+      "cups_one": "taza",
+      "cups_other": "tazas",
+      "tbsp_one": "cda",
+      "tbsp_other": "cdas",
+      "tsp_one": "cdta",
+      "tsp_other": "cdtas",
+      "piece_one": "pieza",
+      "piece_other": "piezas",
+      "slice_one": "rebanada",
+      "slice_other": "rebanadas",
+      "serving_one": "ración",
+      "serving_other": "raciones",
+      "portion_one": "porción",
+      "portion_other": "porciones",
+      "can_one": "lata",
+      "can_other": "latas",
+      "bottle_one": "botella",
+      "bottle_other": "botellas",
+      "packet_one": "paquete",
+      "packet_other": "paquetes",
+      "bag_one": "bolsa",
+      "bag_other": "bolsas",
+      "bowl_one": "bol",
+      "bowl_other": "boles",
+      "plate_one": "plato",
+      "plate_other": "platos",
+      "handful_one": "puñado",
+      "handful_other": "puñados",
+      "scoop_one": "cazo",
+      "scoop_other": "cazos",
+      "bar_one": "barrita",
+      "bar_other": "barritas",
+      "stick_one": "barra",
+      "stick_other": "barras",
+      "whole_one": "entero",
+      "whole_other": "enteros"
+    }
+  },
+  "mealBuilder": {
+    "linkedMeal": "Comida vinculada",
+    "linkedMealWebEdit": "Edita este ingrediente de subcomida en la app web.",
+    "editTitle": "Editar comida",
+    "createTitle": "Crear comida",
+    "loading": "Cargando comida...",
+    "loadErrorTitle": "No se pudo cargar la comida",
+    "mealName": "Nombre de la comida",
+    "mealNamePlaceholder": "p. ej. Bol de pollo con arroz",
+    "descriptionOptional": "Descripción (opcional)",
+    "descriptionPlaceholder": "Notas sobre esta comida",
+    "totalServings": "Raciones totales",
+    "totalAmount": "Cantidad total ({{unit}}) *",
+    "unit": "Unidad",
+    "selectUnit": "Seleccionar unidad",
+    "servingSize": "Tamaño de la ración ({{unit}}) *",
+    "servingUnit": "ración",
+    "foodsInMeal": "Alimentos de la comida",
+    "ingredient": "ingrediente",
+    "removeIngredient": "Quitar {{name}}",
+    "editIngredient": "Editar {{name}}",
+    "addFood": "Añadir alimento",
+    "mealTotal": "Total de la comida",
+    "perServing": "Por ración",
+    "errors": {
+      "missingNameTitle": "Falta el nombre de la comida",
+      "missingNameMessage": "Introduce un nombre para tu comida.",
+      "invalidServingSizeTitle": "Tamaño de ración no válido",
+      "invalidServingSizeMessage": "El tamaño de ración predeterminado debe ser mayor que cero.",
+      "invalidTotalServingsTitle": "Raciones totales no válidas",
+      "invalidTotalServingsMessage": "Las raciones totales deben ser mayores que cero.",
+      "invalidTotalAmountTitle": "Cantidad total no válida",
+      "invalidTotalAmountMessage": "La cantidad total debe ser mayor que cero.",
+      "noIngredientsTitle": "Aún no hay ingredientes",
+      "noIngredientsMessage": "Añade al menos un alimento antes de guardar esta comida.",
+      "missingIngredientTitle": "Faltan datos del ingrediente",
+      "missingIngredientMessage": "A uno de los alimentos seleccionados le falta una variante de ración. Vuelve a añadirlo."
+    },
+    "units": {
+      "serving": "ración",
+      "g": "g",
+      "ml": "ml",
+      "oz": "oz",
+      "cup": "taza",
+      "tbsp": "cda",
+      "tsp": "cdta",
+      "piece": "pieza"
+    },
+    "unitPickerLabel": "Unidad, {{unit}}"
+  },
+  "mealDetail": {
+    "sharedPublicly": "Comida compartida públicamente",
+    "madePrivate": "Comida hecha privada",
+    "makePublicTitle": "¿Hacer pública?",
+    "makePublicMessage": "Esta comida y todos sus alimentos ingredientes pasarán a ser visibles para todos los usuarios de este servidor.",
+    "makePublic": "Hacer pública",
+    "removeFavorite": "Quitar de favoritos",
+    "addFavorite": "Añadir a favoritos",
+    "makePrivate": "Hacer privada",
+    "shareWithPublic": "Compartir con el público",
+    "editMeal": "Editar comida",
+    "noServer": "Sin servidor configurado",
+    "configureServer": "Configura la conexión con tu servidor en Ajustes para ver los detalles de la comida.",
+    "loading": "Cargando comida...",
+    "loadFailed": "No se pudo cargar la comida",
+    "perServing": "Por ración",
+    "total": "Total",
+    "servingsLabel_one": "ración",
+    "servingsLabel_other": "raciones",
+    "ingredientsLabel_one": "ingrediente",
+    "ingredientsLabel_other": "ingredientes",
+    "foodsInMeal": "Alimentos de la comida",
+    "linkedMeal": "Comida vinculada",
+    "protein": "proteína",
+    "carbs": "carbohidratos",
+    "fat": "grasa",
+    "calories": "cal",
+    "viewLinkedMeal": "Ver comida vinculada {{name}}",
+    "logMeal": "Registrar comida",
+    "deleting": "Eliminando...",
+    "deleteMeal": "Eliminar comida",
+    "makesSummary_one": "Rinde {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}",
+    "makesSummary_other": "Rinde {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}",
+    "items_one": "{{formattedCount}} elemento",
+    "items_other": "{{formattedCount}} elementos"
+  },
+  "workoutPresetDetail": {
+    "toast": {
+      "shared": "Plantilla de entrenamiento compartida públicamente",
+      "private": "Plantilla de entrenamiento hecha privada",
+      "deleted": "Plantilla de entrenamiento eliminada",
+      "duplicated": "Plantilla de entrenamiento duplicada"
+    },
+    "share": {
+      "title": "¿Hacer pública?",
+      "message": "Esta plantilla de entrenamiento pasará a ser visible para todos los usuarios de este servidor.",
+      "confirm": "Hacer pública"
+    },
+    "draft": {
+      "title": "Borrador en curso",
+      "message": "Tienes un borrador de {{type}} sin guardar. ¿Qué quieres hacer?",
+      "workout": "entrenamiento",
+      "activity": "actividad",
+      "resume": "Reanudar borrador",
+      "discard": "Descartar y continuar"
+    },
+    "accessibility": {
+      "makePrivate": "Hacer privada",
+      "sharePublic": "Compartir con el público",
+      "edit": "Editar plantilla de entrenamiento",
+      "duplicate": "Duplicar plantilla de entrenamiento"
+    },
+    "duplicateName": "{{name}} (Copia)",
+    "exerciseCount_other": "{{count}} ejercicios",
+    "actions": {
+      "starting": "Iniciando…",
+      "start": "Empezar entrenamiento",
+      "logPast": "Registrar entrenamiento pasado",
+      "delete": "Eliminar plantilla",
+      "deleting": "Eliminando…",
+      "duplicating": "Duplicando…",
+      "duplicate": "Duplicar plantilla"
+    },
+    "exerciseCount_one": "{{count}} ejercicio"
+  },
+  "workoutPresetForm": {
+    "nameRequired": "Nombre *",
+    "namePlaceholder": "p. ej. Día de empuje",
+    "description": "Descripción",
+    "descriptionPlaceholder": "Notas opcionales sobre esta rutina",
+    "reorderExercises": "Reordenar ejercicios",
+    "newTitle": "Nueva plantilla",
+    "editTitle": "Editar plantilla",
+    "created": "Plantilla de entrenamiento creada",
+    "updated": "Plantilla de entrenamiento actualizada",
+    "errors": {
+      "missingName": "Falta el nombre",
+      "nameRequired": "Introduce un nombre para esta plantilla.",
+      "addExercise": "Añade un ejercicio",
+      "addExerciseSet": "Añade al menos un ejercicio con una serie antes de guardar."
+    }
+  },
+  "workoutPresetMutations": {
+    "errors": {
+      "create": "No se pudo crear la plantilla de entrenamiento",
+      "update": "No se pudo actualizar la plantilla",
+      "delete": "No se pudo eliminar la plantilla",
+      "editPermission": "No tienes permiso para editar esta plantilla.",
+      "deletePermission": "No tienes permiso para eliminar esta plantilla."
+    },
+    "confirm": {
+      "title": "¿Eliminar plantilla de entrenamiento?",
+      "message": "Esta plantilla se eliminará permanentemente de tu biblioteca."
+    }
+  },
+  "workoutPresetLibrary": {
+    "configure": "Configura la conexión con tu servidor en Ajustes para ver tus plantillas de entrenamiento."
+  },
+  "presetLibrary": {
+    "title": "Plantillas de entrenamiento",
+    "search": "Buscar plantillas de entrenamiento...",
+    "noServer": "Sin servidor configurado",
+    "configure": "Configura la conexión con tu servidor en Ajustes para ver tus plantillas de entrenamiento.",
+    "go": "Ir a Ajustes",
+    "loading": "Cargando plantillas de entrenamiento...",
+    "failed": "No se pudieron cargar las plantillas de entrenamiento",
+    "retry": "Reintentar",
+    "check": "Comprueba tu conexión e inténtalo de nuevo.",
+    "noMatch": "No se encontraron plantillas coincidentes",
+    "noItems": "Aún no hay plantillas de entrenamiento",
+    "trySearch": "Prueba con otro término de búsqueda para encontrar una plantilla de entrenamiento.",
+    "empty": "Las plantillas de entrenamiento que crees aparecerán aquí.",
+    "moreFailed": "No se pudieron cargar más plantillas.",
+    "exercise": "ejercicio",
+    "exercises": "ejercicios",
+    "exerciseCount_one": "{{count}} ejercicio",
+    "exerciseCount_other": "{{count}} ejercicios",
+    "noun": "plantillas de entrenamiento"
+  },
+  "presetSearch": {
+    "title": "Empezar entrenamiento",
+    "noun": "plantillas",
+    "viewDetails": "Ver detalles de la plantilla",
+    "searchFailed": "No se pudieron buscar plantillas",
+    "noMatches": "No se encontraron plantillas coincidentes",
+    "loadFailed": "No se pudieron cargar las plantillas",
+    "noPresetsYet": "Aún no hay plantillas",
+    "noPresetsYetMessage": "Empieza un entrenamiento vacío, o guarda un entrenamiento como plantilla para verlo aquí",
+    "searchPlaceholder": "Buscar plantillas...",
+    "emptyWorkout": "Entrenamiento vacío",
+    "pickFirstExercise": "Elige tu primer ejercicio",
+    "noPresetsIn": "No hay {{noun}} en {{filter}}",
+    "changeFilter": "Cambia el filtro para ver tus otras plantillas."
+  },
+  "activityAdd": {
+    "fields": {
+      "activity": "Actividad",
+      "duration": "Duración (min)",
+      "distance": "Distancia ({{unit}})",
+      "calories": "Calorías",
+      "avgHeartRate": "Frecuencia cardíaca media (ppm)",
+      "notes": "Notas",
+      "notesPlaceholder": "Notas opcionales..."
+    },
+    "actions": {
+      "useYesterday": "Usar ayer",
+      "useToday": "Usar hoy",
+      "selectActivity": "Seleccionar actividad"
+    },
+    "labels": {
+      "custom": "Personalizado",
+      "autoCalculated": "Calculado automáticamente"
+    },
+    "accessibility": {
+      "activityName": "Nombre de la actividad",
+      "useYesterday": "Usar ayer",
+      "useToday": "Usar hoy",
+      "editActivityName": "Editar el nombre de la actividad",
+      "selectExercise": "Seleccionar ejercicio",
+      "duration": "Duración en minutos",
+      "distance": "Distancia en {{unit}}",
+      "calories": "Calorías",
+      "avgHeartRate": "Frecuencia cardíaca media en pulsaciones por minuto",
+      "notes": "Notas de la actividad"
+    },
+    "errors": {
+      "saveFailed": "No se pudo guardar la actividad"
+    }
+  },
+  "activityDetail": {
+    "errors": {
+      "saveFailed": "No se pudo guardar la actividad"
+    },
+    "stats": {
+      "duration": "Duración",
+      "calories": "Calorías",
+      "distance": "Distancia",
+      "avgHeartRate": "Frecuencia cardíaca media",
+      "steps": "Pasos",
+      "pace": "Ritmo"
+    },
+    "labels": {
+      "sets": "Series",
+      "set": "Serie",
+      "secondsShort": "Seg",
+      "weight": "Peso",
+      "reps": "Reps",
+      "notes": "Notas"
+    },
+    "placeholders": {
+      "activityName": "Nombre de la actividad",
+      "notes": "Añadir notas..."
+    },
+    "accessibility": {
+      "save": "Guardar",
+      "edit": "Editar actividad"
+    }
+  },
+  "foodPhotoImprove": {
+    "grams": "gramos",
+    "ounces": "onzas",
+    "readingPhoto": "Leyendo tu foto…",
+    "readingPhotos": "Leyendo tus fotos…",
+    "identifyingIngredients": "Identificando ingredientes…",
+    "estimatingPortions": "Estimando porciones…",
+    "calculatingNutrition": "Calculando nutrición…",
+    "almostThere": "Casi listo…",
+    "cameraPermissionNeeded": "Se necesita permiso de cámara",
+    "cameraPermissionMessage": "Activa el acceso a la cámara para añadir una foto.",
+    "takePhotoFailed": "No se pudo hacer la foto",
+    "loadPhotoFailed": "No se pudo cargar la foto",
+    "invalidWeight": "Peso no válido",
+    "invalidWeightMessage": "El peso total debe ser un número positivo.",
+    "descriptionTooLong": "Descripción demasiado larga",
+    "descriptionTooLongMessage": "Mantenla por debajo de {{max}} caracteres.",
+    "noImages": "Sin imágenes",
+    "noImagesMessage": "Añade al menos una foto para generar una estimación.",
+    "readPhotoFailed": "No se pudo leer la foto",
+    "readPhotoFailedMessage": "Vuelve a hacer la foto e inténtalo de nuevo.",
+    "cancel": "Cancelar",
+    "title": "Mejorar estimación",
+    "removeImage": "Quitar imagen {{number}}",
+    "addAnotherImage": "Añadir otra imagen",
+    "descriptionHint": "Añade cualquier cosa que la {{subject}} pueda no dejar clara.",
+    "subjectLabel_one": "foto",
+    "subjectLabel_other": "fotos",
+    "totalWeightOptional": "Peso total (opcional)",
+    "weightPlaceholder": "p. ej. 350",
+    "descriptionOptional": "Descripción (opcional)",
+    "descriptionExamples": "Incluye aceites, mantequilla, nata, salsas, coberturas, acompañamientos o nombres de restaurantes.",
+    "descriptionPlaceholder": "p. ej. salmón con salsa de nata, limón y eneldo",
+    "generateEstimate": "Generar estimación",
+    "takePhoto": "Hacer foto",
+    "chooseFromLibrary": "Elegir de la galería",
+    "aiNotConfiguredTitle": "IA no configurada",
+    "aiNotConfiguredMessage": "Configura un proveedor de IA en la app web para usar las estimaciones por foto.",
+    "photoTooLargeTitle": "Foto demasiado grande",
+    "photoTooLargeMessage": "Vuelve a hacer la foto con menor calidad.",
+    "unexpectedImageFormatTitle": "Formato de imagen inesperado",
+    "unexpectedImageFormatMessage": "Vuelve a hacer la foto.",
+    "couldNotProcessPhotoTitle": "No se pudo procesar la foto",
+    "couldNotProcessPhotoMessage": "El proveedor bloqueó esta imagen. Prueba con otra toma.",
+    "providerTimedOutTitle": "El proveedor de IA agotó el tiempo",
+    "providerTimedOutMessage": "La estimación tardó demasiado. Inténtalo de nuevo o registra este alimento manualmente.",
+    "providerNotAllowedTitle": "Proveedor de IA no permitido",
+    "providerNotAllowedMessage": "Este proveedor de IA apunta a una dirección de red privada. Pide a un administrador que lo configure de forma global.",
+    "providerUnreachableTitle": "No se pudo contactar con el proveedor de IA",
+    "providerUnreachableMessage": "Inténtalo de nuevo o registra este alimento manualmente."
+  },
+  "foodPhotoEstimate": {
+    "title": "Revisar estimación",
+    "confidence": {
+      "good": "Buena",
+      "fair": "Aceptable",
+      "rough": "Aproximada",
+      "likely": "Probable",
+      "possible": "Posible",
+      "uncertain": "Incierta"
+    },
+    "labels": {
+      "overallEstimate": "Estimación {{confidence}}",
+      "totalEstimatedWeight": "Peso total estimado: {{weight}}"
+    },
+    "actions": {
+      "hideIngredients": "Ocultar ingredientes detectados ▴",
+      "showIngredients": "Mostrar ingredientes detectados ▾"
+    },
+    "errors": {
+      "nameRequired": "Nombre obligatorio",
+      "nameRequiredMessage": "Ponle un nombre a este alimento.",
+      "invalidNutrition": "Nutrición no válida",
+      "invalidRequiredNutrition": "Las calorías, proteínas, carbohidratos y grasas deben ser números no negativos.",
+      "invalidOptionalNutrition": "Todos los valores nutricionales deben ser números no negativos.",
+      "invalidServingSize": "Tamaño de ración no válido",
+      "invalidServingSizeMessage": "El tamaño de la ración debe ser un número positivo."
+    }
+  },
+  "foodPhotoIntro": {
+    "title": "Estima la nutrición a partir de una foto",
+    "subtitle": "Convierte la foto de una comida en una estimación de nutrición editable.",
+    "weight": "Añade el peso cuando lo sepas",
+    "description": "Añade una breve descripción",
+    "review": "Revisa antes de guardar",
+    "logManually": "Registrar manualmente en su lugar",
+    "weightHelp": "El peso total de la comida ayuda con las porciones, las calorías y los macros.",
+    "descriptionHelp": "Menciona salsas, aceites, coberturas, nombres de restaurantes o cualquier cosa oculta.",
+    "reviewHelp": "Las estimaciones por foto son un punto de partida. Podrás editarlo todo antes de registrarlo."
+  },
+  "foodPhotoLogEntry": {
+    "estimateSaved": "Estimación guardada",
+    "selectMealType": "Selecciona un tipo de comida",
+    "invalidServings": "Raciones no válidas",
+    "positiveServings": "Las raciones deben ser un número positivo.",
+    "back": "Atrás",
+    "title": "Registrar entrada",
+    "meal": "Comida",
+    "selectMeal": "Seleccionar comida",
+    "date": "Fecha",
+    "servings": "Raciones"
+  },
+  "editBarcode": {
+    "title": "Código de barras",
+    "errors": {
+      "invalid": "Código de barras no válido",
+      "invalidFormat": "El código de barras debe tener entre 8 y 14 dígitos.",
+      "saveFailed": "No se pudo guardar el código de barras",
+      "removeFailed": "No se pudo quitar el código de barras"
+    },
+    "confirm": {
+      "inUseTitle": "Código de barras ya en uso",
+      "inUseMessage": "Este código de barras ya está asociado a «{{otherName}}». ¿Asociarlo a «{{foodName}}» de todos modos?",
+      "removeTitle": "Quitar código de barras",
+      "removeMessage": "¿Quitar el código de barras de «{{foodName}}»?"
+    },
+    "actions": {
+      "attach": "Asociar",
+      "remove": "Quitar",
+      "scanWithCamera": "Escanear con la cámara",
+      "removeBarcode": "Quitar código de barras"
+    },
+    "success": {
+      "saved": "Código de barras guardado",
+      "removed": "Código de barras quitado"
+    },
+    "accessibility": {
+      "save": "Guardar código de barras"
+    },
+    "labels": {
+      "forFood": "Para {{foodName}}"
+    },
+    "help": {
+      "standardFormat": "Los códigos de barras estándar tienen entre 8 y 14 dígitos."
+    }
+  },
+  "editLoggedMeal": {
+    "fields": {
+      "mealName": "Nombre de la comida",
+      "servings": "Raciones",
+      "meal": "Comida",
+      "selectMeal": "Seleccionar comida",
+      "time": "Hora",
+      "foodsInMeal": "Alimentos de esta comida"
+    },
+    "states": {
+      "noFoods": "Aún no hay alimentos en esta comida."
+    },
+    "actions": {
+      "addFood": "Añadir alimento",
+      "deleteMeal": "Eliminar comida"
+    },
+    "accessibility": {
+      "saveMeal": "Guardar comida",
+      "mealName": "Nombre de la comida",
+      "date": "Seleccionar fecha: {{date}}",
+      "meal": "Seleccionar comida: {{meal}}",
+      "time": "Seleccionar hora: {{time}}",
+      "clearTime": "Borrar la hora de la entrada"
+    },
+    "errors": {
+      "saveFailed": "No se pudo guardar la comida",
+      "permission": "No tienes permiso para editar esta comida.",
+      "deleteFailed": "No se pudo eliminar la comida"
+    },
+    "deleteConfirm": "¿Eliminar esta comida?"
+  },
+  "foodFormPersistence": {
+    "discardTitle": "¿Descartar equivalentes sin guardar?",
+    "discardMessage": "Tienes tamaños equivalentes sin guardar. ¿Descartarlos para continuar?",
+    "discard": "Descartar",
+    "updateTitle": "¿Actualizar entradas anteriores?",
+    "updateMessage": "Tu alimento de la biblioteca se ha guardado. ¿Quieres actualizar también las entradas anteriores del diario para este alimento con la nueva nutrición? Las entradas que no actualices mantienen sus valores originales.",
+    "dontUpdate": "No actualizar",
+    "update": "Actualizar",
+    "updatePhotosMessage": "Tu alimento de la biblioteca se ha guardado. ¿Qué deben usar las entradas anteriores del diario para este alimento?",
+    "updateNutrition": "Actualizar solo la nutrición",
+    "updateNutritionPhotos": "Actualizar nutrición y fotos",
+    "saveNutritionTitle": "Guardar nutrición",
+    "overwriteMessage": "«{{unitLabel}}» ya es una variante guardada. ¿Quieres actualizarla con estos valores o guardar como nueva variante?",
+    "saveAsNew": "Guardar como nueva",
+    "updateExisting": "Actualizar la existente",
+    "missingName": "Falta el nombre",
+    "nameRequired": "Introduce un nombre de alimento.",
+    "invalidServingSize": "Tamaño de ración no válido",
+    "servingSizeRequired": "El tamaño de la ración debe ser mayor que cero.",
+    "loadingDetails": "Aún se están cargando los detalles del alimento. Inténtalo de nuevo en un momento.",
+    "savedNewVariant": "Guardado como nueva variante",
+    "pastUpdated": "Entradas anteriores actualizadas",
+    "pastUpdateFailed": "No se pudieron actualizar las entradas anteriores",
+    "foodSaved": "Tu alimento se guardó.",
+    "updateFoodFailed": "No se pudo actualizar el alimento",
+    "saveUnitFailed": "No se pudo guardar la nueva unidad",
+    "equivalentsFailed": "Algunas unidades equivalentes no se pudieron guardar",
+    "saveVariantFailed": "No se pudo guardar la nueva variante",
+    "saveNutritionFailed": "No se pudo guardar la nutrición para uso futuro",
+    "editFoodTitle": "Editar alimento",
+    "adjustNutritionTitle": "Ajustar nutrición",
+    "saveNutritionFuture": "Guardar nutrición para uso futuro"
+  },
+  "importHistory": {
+    "paused": {
+      "quota": "Se alcanzó el límite diario de historial de {{source}}. Tu progreso se ha guardado. Reanuda mañana para continuar donde lo dejaste.",
+      "deviceLocked": "Tu dispositivo se bloqueó durante la importación, así que los datos de salud dejaron de poder leerse. Desbloquea el dispositivo y reanuda.",
+      "appInactive": "La app pasó a segundo plano durante la importación. Mantenla abierta y desbloqueada, luego reanuda.",
+      "serverChanged": "El servidor activo cambió durante la importación. Vuelve a ese servidor para reanudar, o empieza de nuevo para importar en este.",
+      "uploadFailed": "La subida a tu servidor falló{{details}}. Comprueba tu conexión y reanuda para reintentar.",
+      "windowFailed": "La lectura de datos de salud falló{{details}}. Reanuda para reintentar desde donde se detuvo.",
+      "alreadyRunningResume": "Ahora mismo hay otra sincronización en curso. Espera un momento a que termine y luego reanuda."
+    },
+    "idle": {
+      "noHistory": "No se encontraron datos históricos en {{source}} para tus métricas activadas.",
+      "noMetrics": "No hay métricas activadas. Activa primero las métricas que quieras en Sincronización de salud.",
+      "noServer": "No hay ningún servidor activo configurado.",
+      "serverChanged": "El servidor activo cambió durante la importación, así que se detuvo. Empieza de nuevo para importar en el servidor actual.",
+      "alreadyRunning": "Ahora mismo hay otra sincronización en curso. Espera un momento a que termine y luego inicia la importación.",
+      "title": "Importa tu historial de salud",
+      "description": "Importa todos tus datos anteriores de {{source}} a SparkyFitness con un rellenado único de cada métrica activada, desde tus primeros datos registrados hasta hoy.",
+      "source": "Fuente",
+      "dataTypes": "Tipos de datos activados",
+      "timing": "Tarda unos minutos. Puedes pausar en cualquier momento y continuar donde lo dejaste."
+    },
+    "time": {
+      "underMinute": "Menos de un minuto",
+      "hoursMinutes": "{{formattedHours}} h {{formattedMinutes}} min",
+      "hours": "{{formattedHours}} h",
+      "minutes_one": "{{formattedCount}} min",
+      "minutes_other": "{{formattedCount}} min"
+    },
+    "progress": {
+      "recordsWritten": "Registros escritos",
+      "timeRemaining": "Tiempo restante",
+      "around": "Alrededor de {{date}}",
+      "ofDays_one": "de {{formattedCount}} día",
+      "ofDays_other": "de {{formattedCount}} días"
+    },
+    "actions": {
+      "start": "Iniciar importación",
+      "pausing": "Pausando…",
+      "pause": "Pausar importación",
+      "resume": "Reanudar",
+      "startOver": "Empezar de nuevo"
+    },
+    "syncFinishing": "Una sincronización aún está terminando. Esto se activará en un momento.",
+    "syncFinishingPlural": "Una sincronización aún está terminando. Estos se activarán en un momento.",
+    "healthConnectUnavailable": "Health Connect no está disponible. Asegúrate de que está instalado y activado.",
+    "healthKitUnavailable": "Los datos de salud (HealthKit) no están disponibles. Activa el acceso a Salud en la app Salud de iOS.",
+    "androidLimit": "Health Connect limita cuántos datos históricos pueden leer las apps cada día. Si se alcanza ese límite, la importación se reanuda automáticamente más tarde donde se quedó.",
+    "running": {
+      "scanning": "Escaneando tu historial…",
+      "finding": "Buscando tus primeros datos registrados",
+      "limitedAccess": "No se concedió el acceso a todos los datos anteriores, así que la importación solo puede llegar unos 30 días atrás. Concédelo en los ajustes de Health Connect y empieza de nuevo para ir más atrás.",
+      "keepOpen": "Mantén la app abierta y tu dispositivo desbloqueado mientras se ejecuta la importación.",
+      "finishingPause": "Terminando y luego pausando."
+    },
+    "interrupted": {
+      "selectionChanged": "Tu selección de métricas ha cambiado desde que empezó esta importación. Reanudar continúa con la selección original y Empezar de nuevo usa la actual.",
+      "savedDays": "Los días ya importados están guardados. Empezar de nuevo los descarta y reimporta desde el día 1."
+    },
+    "done": {
+      "complete": "Importación completada",
+      "completed": "Completada",
+      "nextSync": "Los datos nuevos se recogerán automáticamente con la sincronización normal. Ejecuta otra importación solo si activas métricas de salud adicionales.",
+      "daysImported_one": "{{formattedCount}} día importado",
+      "daysImported_other": "{{formattedCount}} días importados"
+    }
+  },
+  "syncScreen": {
+    "healthConnectSettings": "Ajustes de Health Connect",
+    "healthAppSettings": "Ajustes de la app Salud",
+    "title": "Sincronización de datos de salud",
+    "syncNow": "Sincronizar ahora",
+    "syncing": "Sincronizando…",
+    "sendToServer": "Envía tus datos de salud a tu servidor",
+    "lastSynced": "Última sincronización:",
+    "commonError": "Error",
+    "timeRanges": {
+      "today": "Hoy",
+      "last24Hours": "Últimas 24 horas",
+      "last3Days": "Últimos 3 días",
+      "last7Days": "Últimos 7 días",
+      "last30Days": "Últimos 30 días",
+      "last90Days": "Últimos 90 días",
+      "last6Months": "Últimos 6 meses",
+      "lastYear": "Último año"
+    },
+    "permissionRequired": {
+      "title": "Permiso necesario",
+      "backgroundAccess": "Se necesita permiso de acceso en segundo plano para la sincronización en segundo plano. Concédelo en los ajustes de Health Connect.",
+      "allTitle": "Permisos necesarios",
+      "allMessage": "Algunos permisos no se concedieron. Activa todos los permisos de salud necesarios en {{settings}} para sincronizar todos los datos."
+    },
+    "permissionError": {
+      "title": "Error de permisos",
+      "backgroundAccess": "No se pudo solicitar el permiso de acceso en segundo plano: {{error}}",
+      "metricRead": "No se pudieron solicitar los permisos de {{metric}}: {{error}}",
+      "metricWrite": "No se pudo solicitar el permiso de escritura de {{metric}}: {{error}}",
+      "allMetrics": "Se produjo un error al solicitar los permisos de salud: {{error}}"
+    },
+    "permissionDenied": {
+      "title": "Permiso denegado",
+      "read": "Concede el permiso de {{metric}} en {{settings}}.",
+      "write": "Concede el permiso de escritura de {{metric}} en {{settings}}."
+    },
+    "removal": {
+      "removed": "Quitado",
+      "deleted": "Datos de SparkyFitness eliminados de {{store}}.",
+      "partial": "Quitado parcialmente",
+      "partialMessage": "Algunos registros no se pudieron eliminar de {{store}}.",
+      "errorMessage": "No se pudieron quitar los datos de {{store}}.",
+      "confirmTitle": "Quitar todos los datos de {{store}}",
+      "confirmMessage": "¿Eliminar todos los registros de nutrición e hidratación que SparkyFitness escribió en {{store}} y desactivar la escritura? Tu diario de SparkyFitness y los registros de otras apps no se ven afectados."
+    },
+    "range": {
+      "title": "Intervalo de sincronización",
+      "selectTitle": "Seleccionar intervalo de sincronización",
+      "description": "Controla cuántos datos se incluirán en la próxima sincronización",
+      "largeWarning": "Los intervalos de tiempo grandes pueden tardar un rato."
+    },
+    "unavailable": {
+      "healthConnect": "Health Connect no está disponible. Asegúrate de que está instalado y activado.",
+      "healthKit": "Los datos de salud (HealthKit) no están disponibles. Activa el acceso a Salud en la app Salud de iOS."
+    },
+    "import": {
+      "title": "Importar historial completo",
+      "subtitle": "Importación única de todos los datos de salud anteriores"
+    },
+    "report": {
+      "generating": "Generando…",
+      "title": "Informe de datos de salud",
+      "subtitle": "Exporta datos de salud anonimizados para informes de errores",
+      "privacy": "Lee las últimas 4 horas de datos de Health Connect para diagnóstico.\nLos valores se redondean por privacidad. No se envía nada automáticamente.",
+      "error": "No se pudo generar el informe de datos de salud: {{error}}"
+    }
+  },
+  "logScreen": {
+    "title": "Registros",
+    "all": "Todos",
+    "clearLogs": "Borrar registros",
+    "filterSaveFailed": "No se pudo guardar el filtro de registros.",
+    "clearTitle": "Borrar registros",
+    "clearMessage": "¿Seguro que quieres borrar todos los registros?",
+    "copied": "Copiado",
+    "copiedMessage": "Entrada de registro copiada al portapapeles",
+    "noLogs": "Aún no hay registros.",
+    "noMatchingLogs": "Ningún registro coincide con el filtro actual.",
+    "showingLogs_one": "Mostrando {{count}} registro",
+    "showingLogs_other": "Mostrando {{count}} registros",
+    "status": {
+      "error": "Error",
+      "warning": "Advertencia",
+      "info": "Info",
+      "debug": "Depuración"
+    },
+    "clipboard": {
+      "status": "Estado",
+      "message": "Mensaje",
+      "details": "Detalles",
+      "timestamp": "Marca de tiempo"
+    }
+  },
+  "serverSettingsUi": {
+    "activeServerChanged": "Servidor activo cambiado",
+    "setActiveFailed": "No se pudo establecer la configuración de servidor activa: {{error}}",
+    "configurationDeleted": "Configuración de servidor eliminada.",
+    "configurationDeletedToast": "Configuración de servidor eliminada",
+    "deleteFailed": "No se pudo eliminar la configuración de servidor: {{error}}",
+    "noServerConfiguredTitle": "Sin servidor configurado",
+    "noServerConfiguredMessage": "Añade primero un servidor.",
+    "openDashboardFailed": "No se pudo abrir el panel web: {{error}}",
+    "connected": "Conectado",
+    "connectionFailed": "Conexión fallida",
+    "selectAction": "Selecciona una acción",
+    "setActive": "Establecer como activo",
+    "configure": "Configurar",
+    "activeConfiguration": "Configuración activa",
+    "activeServer": "Servidor activo",
+    "optionsFor": "Opciones para {{url}}",
+    "openWeb": "Abrir web",
+    "testConnection": "Probar conexión",
+    "otherServers": "Otros servidores",
+    "noServersConfigured": "Aún no hay servidores configurados.",
+    "addConfiguration": "Añadir nueva configuración"
+  },
+  "charts": {
+    "weight": {
+      "title": "Peso",
+      "loadFailed": "No se pudieron cargar los datos de peso"
+    },
+    "steps": {
+      "title": "Pasos",
+      "loadFailed": "No se pudieron cargar los datos de pasos",
+      "empty": "No hay datos de pasos para este periodo",
+      "tooltip_one": "{{formattedCount}} paso",
+      "tooltip_other": "{{formattedCount}} pasos"
+    },
+    "loading": "Cargando gráfica...",
+    "weightLoadFailed": "No se pudieron cargar los datos de peso",
+    "stepsLoadFailed": "No se pudieron cargar los datos de pasos",
+    "noStepData": "No hay datos de pasos para este periodo",
+    "trendLoadFailed": "No se pudieron cargar los datos de tendencia",
+    "noLoggedIntake": "No hay ingesta registrada para este periodo",
+    "consumed": "consumido",
+    "tooltip": "{{value}}{{unit}} consumido · {{date}}",
+    "nutrients": {
+      "loadFailed": "No se pudieron cargar los datos de tendencia",
+      "empty": "No hay ingesta registrada para este periodo"
+    },
+    "bbt": {
+      "tooltip": "Pulsa la línea para ver detalles",
+      "empty": "Registra tu temperatura diaria para ver tu gráfica de temperatura basal."
+    }
+  },
+  "passkeySettings": {
+    "loadFailed": "No se pudieron cargar las claves de acceso: {{error}}",
+    "registered": "¡Clave de acceso registrada correctamente!",
+    "cancelledTitle": "Cancelado",
+    "cancelledMessage": "El registro de la clave de acceso se canceló.",
+    "registrationFailedTitle": "Error de registro",
+    "requiredTitle": "Obligatorio",
+    "nameRequired": "Introduce un nombre para esta clave de acceso.",
+    "nameAlreadyUsedTitle": "Nombre ya usado",
+    "nameAlreadyUsedMessage": "Ya tienes una clave de acceso llamada «{{name}}». Elige un nombre diferente.",
+    "noActiveSession": "No hay sesión activa. Inicia sesión de nuevo.",
+    "deleteTitle": "Eliminar clave de acceso",
+    "deleteMessage": "¿Seguro que quieres eliminar «{{name}}»?",
+    "unnamed": "Clave de acceso sin nombre",
+    "deletedTitle": "Eliminada",
+    "deletedMessage": "La clave de acceso se ha quitado.",
+    "deleteFailed": "No se pudo eliminar la clave de acceso: {{error}}",
+    "sessionOnly": "Las claves de acceso solo se admiten en servidores que usan autenticación basada en sesión.",
+    "apiKeyUnsupported": "Si te conectas mediante una clave API, no se pueden usar claves de acceso.",
+    "noneRegistered": "No hay claves de acceso registradas",
+    "noneHint": "Añade este dispositivo o credenciales biométricas para iniciar sesión rápidamente la próxima vez.",
+    "registeredOn": "Registrada el {{date}}",
+    "deleteAccessibility": "Eliminar clave de acceso",
+    "add": "Añadir clave de acceso",
+    "securityHint": "Las claves de acceso te permiten iniciar sesión de forma segura usando {{methods}} sin introducir tu contraseña.",
+    "registerTitle": "Registrar clave de acceso",
+    "nameHint": "Ponle un nombre reconocible a esta clave de acceso para identificarla más tarde (p. ej. {{example}}).",
+    "namePlaceholder": "p. ej. {{example}}",
+    "iosAuthMethods": "Face ID, Touch ID o el PIN de tu dispositivo",
+    "androidAuthMethods": "tu huella, el desbloqueo facial o el PIN de tu dispositivo",
+    "iosNameExample": "Mi iPhone",
+    "androidNameExample": "Mi teléfono Android"
+  },
+  "mealTypeForm": {
+    "createTitle": "Añadir tipo de comida",
+    "editTitle": "Editar tipo de comida",
+    "name": "Nombre",
+    "namePlaceholder": "p. ej. Almuerzo 2.0",
+    "quickLog": "Registro rápido",
+    "defaultTime": "Hora predeterminada",
+    "notSet": "Sin definir",
+    "create": "Crear",
+    "delete": "Eliminar tipo de comida",
+    "accessibility": {
+      "name": "Nombre del tipo de comida",
+      "quickLog": "Registro rápido de {{name}}",
+      "defaultTime": "Hora predeterminada para {{name}}{{time}}",
+      "cancelCreate": "Cancelar la creación del tipo de comida",
+      "create": "Crear tipo de comida",
+      "save": "Guardar tipo de comida",
+      "delete": "Eliminar tipo de comida"
+    }
+  },
+  "mealTypeDetail": {
+    "states": {
+      "noServer": "Sin servidor configurado",
+      "noServerHint": "Configura la conexión con tu servidor en Ajustes para ver la nutrición de la comida.",
+      "loading": "Cargando comida…",
+      "loadFailed": "No se pudo cargar la comida",
+      "noFoods": "No hay alimentos en {{meal}}",
+      "noFoodsHint": "{{date}} no tiene alimentos registrados para esta comida."
+    },
+    "labels": {
+      "foods": "Alimentos"
+    },
+    "accessibility": {
+      "addFood": "Añadir alimento",
+      "copyMeal": "Copiar la comida a otro día"
+    },
+    "targetCalories": "Objetivo: {{calories}} kcal"
+  },
+  "mealTypeTime": {
+    "defaultTitle": "Hora predeterminada",
+    "clearHint": "Borrar la hora predeterminada",
+    "saveHint": "Guardar la hora predeterminada"
+  },
+  "foodLibrary": {
+    "title": "Alimentos",
+    "search": "Buscar alimentos...",
+    "noServer": "Sin servidor configurado",
+    "configure": "Configura la conexión con tu servidor en Ajustes para ver tu biblioteca de alimentos.",
+    "go": "Ir a Ajustes",
+    "loading": "Cargando alimentos...",
+    "failed": "No se pudieron cargar los alimentos",
+    "retry": "Reintentar",
+    "check": "Comprueba tu conexión e inténtalo de nuevo.",
+    "noMatch": "No se encontraron alimentos coincidentes",
+    "noItems": "No se encontraron alimentos",
+    "trySearch": "Prueba con otro término de búsqueda para encontrar alimentos guardados.",
+    "empty": "Los alimentos que guardes o registres aparecerán aquí.",
+    "moreFailed": "No se pudieron cargar más alimentos.",
+    "noun": "alimentos"
+  },
+  "mealLibrary": {
+    "title": "Comidas",
+    "search": "Buscar comidas...",
+    "noServer": "Sin servidor configurado",
+    "configure": "Configura la conexión con tu servidor en Ajustes para ver tu biblioteca de comidas.",
+    "go": "Ir a Ajustes",
+    "loading": "Cargando comidas...",
+    "failed": "No se pudieron cargar las comidas",
+    "searchFailed": "No se pudieron buscar comidas",
+    "retry": "Reintentar",
+    "check": "Comprueba tu conexión e inténtalo de nuevo.",
+    "noMatch": "No se encontraron comidas coincidentes",
+    "noItems": "No se encontraron comidas",
+    "trySearch": "Prueba con otro término de búsqueda para encontrar comidas guardadas.",
+    "empty": "Las comidas que crees aparecerán aquí.",
+    "noun": "comidas"
+  },
+  "mealMutations": {
+    "createFailed": "No se pudo crear la comida",
+    "updateFailed": "No se pudo actualizar la comida",
+    "deleteFailed": "No se pudo eliminar la comida",
+    "deleteTitle": "Eliminar comida",
+    "deleteWithUsage": "¿Eliminar esta comida de tu biblioteca? Las entradas del diario ya registradas no cambiarán, pero los planes de comidas relacionados pueden verse afectados.",
+    "deleteWithoutUsage": "¿Eliminar esta comida de tu biblioteca? Las entradas del diario ya registradas no cambiarán.",
+    "deleteVerificationFailedTitle": "No se pudo verificar la eliminación",
+    "deleteVerificationFailedMessage": "No pudimos verificar si esta comida se usa en otro sitio. Inténtalo de nuevo antes de eliminarla."
+  },
+  "barcode": {
+    "title": "Código de barras",
+    "invalid": "El código de barras debe tener entre 8 y 14 dígitos.",
+    "help": "Opcional. Los códigos de barras estándar tienen entre 8 y 14 dígitos.",
+    "scan": "Escanear con la cámara"
+  },
+  "pregnancyDueDate": {
+    "errors": {
+      "lmpFuture": "Tu último periodo no puede estar en el futuro.",
+      "conceptionFuture": "La fecha de concepción no puede estar en el futuro.",
+      "past": "Esa fecha de parto está en el pasado. Comprueba la fecha.",
+      "tooFar": "Esa fecha de parto está demasiado lejos: un embarazo dura unas 40 semanas."
+    },
+    "basedOn": "Basado en",
+    "estimateBy": "Estimar la fecha de parto por",
+    "estimated": "Fecha de parto estimada",
+    "options": {
+      "dueDate": "Fecha de parto",
+      "ultrasoundScan": "Ecografía",
+      "lastPeriod": "Último periodo (FUM)",
+      "conceptionDate": "Fecha de concepción"
+    },
+    "fields": {
+      "firstDayLastPeriod": "Primer día del último periodo",
+      "conceptionDate": "Fecha de concepción",
+      "estimatedDueDate": "Fecha de parto estimada",
+      "estimatedDueDateFromScan": "Fecha de parto estimada (por ecografía)"
+    }
+  },
+  "bumpPhotos": {
+    "title": "Fotos de barriga",
+    "add": "Añadir foto",
+    "empty": "Captura tu primera foto de barriga para empezar un diario semanal.",
+    "week": "Semana {{week}}",
+    "remove": "Quitar",
+    "taken": "Tomada el {{date}}",
+    "addTitle": "Añadir foto de barriga",
+    "takePhoto": "Hacer foto",
+    "chooseLibrary": "Elegir de la galería",
+    "cameraPermission": "Se necesita permiso de cámara",
+    "noPhoto": "El selector no devolvió ninguna foto.",
+    "photoAdded": "Foto añadida",
+    "uploadFailed": "No se pudo subir la foto",
+    "removeFailed": "No se pudo quitar la foto"
+  },
+  "pregnancySafety": {
+    "title": "Seguridad de alimentos y medicamentos",
+    "food": "Alimentos",
+    "medications": "Medicamentos",
+    "safe": "Seguro",
+    "caution": "Precaución",
+    "avoid": "Evitar",
+    "searchHint": "Busca para ver cómo se suele categorizar un alimento o medicamento durante el embarazo.",
+    "noMatch": "No se encontró coincidencia. Esta lista no es exhaustiva, así que consulta a tu profesional si tienes dudas.",
+    "disclaimer": "Solo orientación general, no es consejo médico. Confírmalo siempre con tu profesional.",
+    "foodExample": "Sushi",
+    "medicationExample": "Ibuprofeno"
+  },
+  "pregnancySetup": {
+    "checkDates": "Comprueba las fechas",
+    "updated": "Embarazo actualizado",
+    "created": "Embarazo configurado",
+    "saveFailed": "No se pudo guardar el embarazo",
+    "editTitle": "Editar embarazo",
+    "title": "Configuración del embarazo",
+    "description": "Dinos cómo estimar tu fecha de parto. Puedes cambiarlo más tarde.",
+    "numberOfBabies": "Número de bebés"
+  },
+  "babyGrowth": {
+    "weeklyMilestone": "Hito semanal",
+    "weekActive": "Seguimiento activo de la semana {{week}}.",
+    "title": "El bebé esta semana",
+    "sizeOf": "Tamaño de {{comparison}}",
+    "length": "Longitud",
+    "weight": "Peso",
+    "forYou": "Para ti",
+    "noData": "El desarrollo del bebé semana a semana empieza sobre la semana 4. ¡Vuelve pronto!"
+  },
+  "scheduleSummary": {
+    "daily": "Diaria",
+    "weekly": "Semanal",
+    "everyNDays": "Cada {{count}} días",
+    "monthlyOnDay": "Mensual el día {{day}}",
+    "monthly": "Mensual",
+    "cycle": "{{on}}, {{off}}",
+    "asNeeded": "Según necesidad",
+    "taper": "Pauta descendente",
+    "at": "{{frequency}} a las {{time}}",
+    "cycleOn_one": "{{count}} día activo",
+    "cycleOn_other": "{{count}} días activos",
+    "cycleOff_one": "{{count}} día de descanso",
+    "cycleOff_other": "{{count}} días de descanso"
+  },
+  "announcementModal": {
+    "title": "Anuncio",
+    "close": "Cerrar anuncio",
+    "dismiss": "Entendido, no volver a mostrar"
+  },
+  "whatsNew": {
+    "seeUpdate": "Ver las novedades de esta actualización",
+    "title": "Novedades",
+    "subtitle": "Ver lo que ha mejorado en esta actualización"
+  },
+  "privacyPolicy": {
+    "title": "Política de privacidad",
+    "noData": "Esta app no recopila, almacena ni vende tus datos personales.",
+    "healthData": "Todos los datos de HealthKit permanecen en tu dispositivo y solo se transmiten a tu propio servidor.",
+    "learnMore": "Más información en nuestra Política de privacidad."
+  },
+  "medicalDisclaimer": {
+    "text": "Solo para seguimiento e información general, no es consejo médico. Habla con tu profesional sanitario sobre cualquier problema médico."
+  },
+  "ranges": {
+    "7d": "7d",
+    "30d": "30d",
+    "90d": "90d"
+  },
+  "dateRange": {
+    "removeTitle": "Selecciona un intervalo de fechas para quitar",
+    "removeAction": "Quitar el intervalo seleccionado"
+  },
+  "duration": {
+    "minutes": "Minutos",
+    "seconds": "Segundos"
+  },
+  "activeWorkoutAutosave": {
+    "failedTitle": "Entrenamiento no guardado",
+    "failedMessage": "Los cambios se conservan en este dispositivo y se reintentarán."
+  },
+  "time": {
+    "hoursShort": "h"
+  },
+  "languageSettings": {
+    "subtitle": "Usa el idioma de tu dispositivo o elige un idioma para SparkyFitness."
+  },
+  "devTools": {
+    "title": "Herramientas de desarrollo",
+    "description": "Estas herramientas solo son visibles en compilaciones de desarrollo.",
+    "seed": {
+      "title": "Sembrar datos de salud",
+      "description": "Insertar datos de salud de muestra para pruebas.",
+      "sevenDays": "7 días",
+      "fourteenDays": "14 días",
+      "thirtyDays": "30 días",
+      "oneYear": "1 año",
+      "steps": "(Pasos)",
+      "oldData": "Datos antiguos",
+      "oldRange": "(1-3 años)",
+      "richWorkout": "Entrenamiento completo",
+      "richWorkoutDetail": "(Ruta+FC+Vueltas)",
+      "richWorkoutIosDetail": "(Ruta+FC)",
+      "richStrength": "Fuerza completa",
+      "richStrengthDetail": "(FC irregular)"
+    },
+    "healthConnect": {
+      "title": "Health Connect",
+      "data": "Datos de Health Connect",
+      "backgroundPermission": {
+        "title": "Permiso de acceso en segundo plano",
+        "granted": "El permiso de acceso en segundo plano está concedido.",
+        "notGranted": "El permiso de acceso en segundo plano NO está concedido."
+      }
+    },
+    "sync": {
+      "title": "Sincronización en segundo plano",
+      "description": "Dispara manualmente el proceso de sincronización en segundo plano.",
+      "trigger": "Disparar sincronización",
+      "checkPermission": "Comprobar permiso 2.º plano"
+    },
+    "auth": {
+      "title": "Autenticación",
+      "description": "Dispara los modales de autenticación para pruebas.",
+      "reauth": "Mostrar ReauthModal"
+    },
+    "whatsNew": {
+      "title": "Banner de novedades",
+      "description": "Borra la última versión vista para que el banner reaparezca sobre la barra de pestañas.",
+      "reset": "Restablecer banner"
+    },
+    "announcement": {
+      "title": "Anuncio del sistema",
+      "description": "Borra la marca de anuncio descartado para que los anuncios activos del sistema reaparezcan.",
+      "reset": "Restablecer anuncio"
+    },
+    "popovers": {
+      "title": "Popovers de búsqueda de comida",
+      "description": "Borra una marca de visto para que su popover de ayuda reaparezca en la próxima búsqueda de comida.",
+      "sources": "Introducción a Fuentes",
+      "provider": "Selector de fuente"
+    },
+    "toast": {
+      "syncCompleted": "Sincronización en segundo plano completada. Consulta los registros para ver detalles.",
+      "syncFailed": "La sincronización falló: {{message}}",
+      "healthSeeded_one": "Se sembró {{count}} registro de salud de los últimos {{days}} días.",
+      "healthSeeded_other": "Se sembraron {{count}} registros de salud de los últimos {{days}} días.",
+      "healthSeedFailed": "No se pudieron sembrar los datos de salud.",
+      "healthSeedFailedWithMessage": "No se pudieron sembrar los datos de salud: {{message}}",
+      "historicalSeeded_one": "Se sembró {{count}} registro de pasos histórico del último año.",
+      "historicalSeeded_other": "Se sembraron {{count}} registros de pasos históricos del último año.",
+      "historicalSeedFailed": "No se pudieron sembrar los datos de pasos históricos.",
+      "historicalSeedFailedWithMessage": "No se pudieron sembrar los datos de pasos históricos: {{message}}",
+      "reset": "Restablecer",
+      "whatsNewReset": "El banner de novedades reaparecerá.",
+      "announcementReset": "El modal de anuncio del sistema reaparecerá.",
+      "announcementResetFailed": "No se pudo restablecer el anuncio.",
+      "popoverReset": "El popover {{label}} reaparecerá.",
+      "popoverResetFailed": "No se pudo restablecer el popover.",
+      "seedOldSeeded_one": "Se sembró {{count}} registro en grupos de 1-3 años atrás.",
+      "seedOldSeeded_other": "Se sembraron {{count}} registros en grupos de 1-3 años atrás.",
+      "seedOldFailedWithMessage": "No se pudieron sembrar los datos de salud antiguos: {{message}}",
+      "seedOldFailed": "No se pudieron sembrar los datos de salud antiguos.",
+      "richWorkoutSeeded": "Se sembró una caminata de 12 minutos con ruta, FC, velocidad y vueltas. Ejecuta una sincronización en primer plano para incorporarla.",
+      "richWorkoutIosSeeded": "Se sembró una caminata de 12 minutos con ruta y FC. Ejecuta una sincronización en primer plano para incorporarla.",
+      "richStrengthSeeded": "Se sembró una sesión de fuerza de 35 minutos con FC irregular (sin ruta/reps: los dispositivos nunca los reportan). Ejecuta una sincronización en primer plano para incorporarla.",
+      "richStrengthIosSeeded": "Se sembró una sesión de fuerza de 35 minutos con FC irregular (sin ruta/vueltas/reps: los dispositivos nunca los reportan). Ejecuta una sincronización en primer plano para incorporarla.",
+      "richWorkoutFailed": "No se pudo sembrar el entrenamiento completo.",
+      "richWorkoutFailedWithMessage": "No se pudo sembrar el entrenamiento completo: {{message}}",
+      "richStrengthFailed": "No se pudo sembrar el entrenamiento de fuerza completo.",
+      "richStrengthFailedWithMessage": "No se pudo sembrar el entrenamiento de fuerza completo: {{message}}"
+    },
+    "gallery": {
+      "title": "Galería de la tarjeta de ciclo",
+      "description": "Vista previa con datos ficticios de la tarjeta de ciclo del panel en cada fase. Los diseños de embarazo y discreto siguen datos reales: cambia de modo en los ajustes del Centro.",
+      "cycleTracking": "Seguimiento del ciclo",
+      "state": {
+        "menstrual": "Menstrual — día 2",
+        "follicular": "Folicular — día 8",
+        "fertile": "Ventana fértil — día 12",
+        "ovulation": "Ovulación — día 14",
+        "luteal": "Lútea — día 21",
+        "late": "Periodo con retraso — día 31",
+        "unknown": "Fase del ciclo"
+      }
+    }
+  },
+  "whatsNewPage": {
+    "title": "Novedades",
+    "mockup": {
+      "today": "HOY",
+      "kcalLeft": "kcal restantes",
+      "in": "Entrada",
+      "out": "Salida",
+      "chatQuestion": "¿Qué puedo cenar con 500 calorías restantes?",
+      "chatAnswer": "Salmón a la plancha con una ensalada te deja cerca de 480 kcal.",
+      "estimatedCalories": "~412 kcal",
+      "lutealPhase": "Fase lútea",
+      "day18": "Día 18",
+      "symptomFlowLog": "Registro de síntomas y flujo",
+      "mildNormal": "Leve • Normal",
+      "benchPress": "Press de banca",
+      "threeSets": "3 series",
+      "setOneReps": "Serie 1: 10 reps",
+      "doneWeight": "80 kg • Hecho",
+      "fauxprofen": "Fauxprofeno",
+      "dailyDose": "200 mg • Diaria",
+      "taken": "Tomada",
+      "caloriesLeftValue": "1.515",
+      "caloriesInValue": "1.540",
+      "caloriesOutValue": "255",
+      "eightAm": "8:00",
+      "eyebrow": "iOS 26"
+    },
+    "features": {
+      "medications": {
+        "eyebrow": "MEDICACIÓN",
+        "headline": "Controla tu medicación",
+        "body": "Añade tus medicamentos, define pautas de dosis y registra cada toma desde el panel con recordatorios opcionales.",
+        "cta": "Configurar medicación"
+      },
+      "cycle": {
+        "eyebrow": "CICLO Y EMBARAZO",
+        "headline": "Sigue tu ciclo y embarazo",
+        "body": "Seguimiento completo de fases del ciclo, síntomas, flujo y progreso del embarazo, con recomendaciones a medida y ajustes de objetivos."
+      },
+      "workout": {
+        "eyebrow": "ENTRENAMIENTO Y EJERCICIOS",
+        "headline": "Flujos de entrenamiento renovados",
+        "body": "Registro de ejercicios simplificado, gestión actualizada de la biblioteca de ejercicios y mejor seguimiento del rendimiento con varias series."
+      },
+      "ios": {
+        "eyebrow": "iOS 26",
+        "headline": "Un aspecto Liquid Glass",
+        "body": "Activa la navegación Liquid Glass para pestañas y cabeceras translúcidas que recogen el color que hay detrás. Actívala cuando quieras en los ajustes de la app.",
+        "cta": "Abrir ajustes"
+      },
+      "chat": {
+        "eyebrow": "PREGUNTA A SPARKY",
+        "headline": "Chatea con tu entrenador de IA",
+        "body": "Pide a Sparky que registre comidas, planifique qué comer y responda preguntas sobre tu día a través del chat.",
+        "cta": "Empezar a chatear"
+      },
+      "widget": {
+        "eyebrow": "WIDGET DE PANTALLA DE INICIO",
+        "headline": "Las calorías en tu pantalla de inicio",
+        "body": "Ve de un vistazo cómo va tu día. Añade SparkyFitness desde la galería de widgets de tu pantalla de inicio."
+      },
+      "photo": {
+        "eyebrow": "ESCANEO DE FOTO CON IA",
+        "headline": "Haz una foto a tu comida y registra los macros",
+        "body": "Estima la nutrición a partir de una foto cuando tengas poco tiempo.",
+        "cta": "Pruébalo"
+      }
+    }
+  },
+  "workoutPresetCount_one": "{{formattedCount}} ejercicio",
+  "workoutPresetCount_other": "{{formattedCount}} ejercicios",
+  "chat": {
+    "title": "Sparky",
+    "error": "Error de chat",
+    "errorRetry": "Algo salió mal. Toca reintentar para volver a intentarlo.",
+    "retry": "Reintentar",
+    "placeholder": "Mensaje para Sparky…",
+    "emptyPrompt": "Pregúntale a Sparky lo que quieras sobre tu nutrición, ejercicio u objetivos.",
+    "clearTitle": "Borrar chat",
+    "clearMessage": "Esto elimina permanentemente tu historial de chat con Sparky. No se puede deshacer.",
+    "clearFailed": "No se pudo borrar el chat",
+    "clearAccessibility": "Borrar chat",
+    "noServer": "No hay configuración de servidor activa. Configura una primero en Ajustes.",
+    "noProvider": "No hay proveedor de IA activo. Configura uno primero en la app web.",
+    "copied": "Copiado",
+    "copy": "Copiar",
+    "suggestions": {
+      "breakfast": "Registra dos huevos y un plátano para desayunar",
+      "run": "Registra una carrera de 30 minutos hoy",
+      "calories": "¿Cuántas calorías me quedan hoy?",
+      "snack": "Sugiéreme un tentempié rico en proteínas"
+    },
+    "tools": {
+      "food": "Comida",
+      "exercise": "Ejercicio",
+      "checkin": "Registro",
+      "goals": "Objetivos",
+      "lookedUp": "Se consultó {{name}}"
+    },
+    "typing": "Sparky está escribiendo"
+  },
+  "foodEntryMeal": {
+    "failed": "No se pudo añadir la comida"
+  }
+}

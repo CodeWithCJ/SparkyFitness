@@ -20,7 +20,7 @@ describe('localizeExerciseTaxonomyValue', () => {
     expect(localizeExerciseTaxonomyValue(i18n.t.bind(i18n), kind, value)).toBe(expected);
   });
 
-  it('localizes known values in Polish and reacts to runtime language changes', async () => {
+  it('localizes known values in Polish and Spanish and reacts to runtime language changes', async () => {
     const t = i18n.t.bind(i18n);
     expect(localizeExerciseTaxonomyValue(t, 'category', 'strength')).toBe('Strength');
     await i18n.changeLanguage('pl');
@@ -29,6 +29,12 @@ describe('localizeExerciseTaxonomyValue', () => {
     expect(localizeExerciseTaxonomyValue(t, 'level', 'beginner')).toBe('Początkujący');
     expect(localizeExerciseTaxonomyValue(t, 'force', 'push')).toBe('Wypychanie');
     expect(localizeExerciseTaxonomyValue(t, 'mechanic', 'compound')).toBe('Złożone');
+    await i18n.changeLanguage('es');
+    expect(localizeExerciseTaxonomyValue(t, 'category', 'strength')).toBe('Fuerza');
+    expect(localizeExerciseTaxonomyValue(t, 'modality', 'weight_reps')).toBe('Peso y reps');
+    expect(localizeExerciseTaxonomyValue(t, 'level', 'beginner')).toBe('Principiante');
+    expect(localizeExerciseTaxonomyValue(t, 'force', 'push')).toBe('Empujar');
+    expect(localizeExerciseTaxonomyValue(t, 'mechanic', 'compound')).toBe('Compuesto');
     await i18n.changeLanguage('en');
     expect(localizeExerciseTaxonomyValue(t, 'category', 'strength')).toBe('Strength');
   });

@@ -46,15 +46,17 @@ describe('iOS WidgetKit localization resources', () => {
       }
     });
 
-    it('defines the same key set in English and Polish', () => {
+    it('defines the same key set in English, Polish and Spanish', () => {
       const en = [...readStringsFile('en.lproj/Localizable.strings').keys()].sort();
       const pl = [...readStringsFile('pl.lproj/Localizable.strings').keys()].sort();
+      const es = [...readStringsFile('es.lproj/Localizable.strings').keys()].sort();
 
       expect(pl).toEqual(en);
+      expect(es).toEqual(en);
     });
 
-    it('has non-empty values in both locales', () => {
-      for (const locale of ['en.lproj', 'pl.lproj']) {
+    it('has non-empty values in all shipped locales', () => {
+      for (const locale of ['en.lproj', 'pl.lproj', 'es.lproj']) {
         const strings = readStringsFile(`${locale}/Localizable.strings`);
         for (const [key, value] of strings) {
           expect(`${locale}:${key}`).not.toBe('');
@@ -81,16 +83,34 @@ describe('iOS WidgetKit localization resources', () => {
       expect(pl.get('widget.scan_barcode')).toBe('Skanuj kod kreskowy');
     });
 
+    it('uses approved Spanish translations for key labels', () => {
+      const es = readStringsFile('es.lproj/Localizable.strings');
+
+      expect(es.get('widget.calorie.name')).toBe('Calorías');
+      expect(es.get('widget.macro.name')).toBe('Macros');
+      expect(es.get('widget.protein')).toBe('Proteínas');
+      expect(es.get('widget.carbs')).toBe('Carbohidratos');
+      expect(es.get('widget.fat')).toBe('Grasas');
+      expect(es.get('widget.food')).toBe('Comida');
+      expect(es.get('widget.burned')).toBe('Quemadas');
+      expect(es.get('widget.goal')).toBe('Objetivo');
+      expect(es.get('widget.kcal_left')).toBe('kcal restantes');
+      expect(es.get('widget.search_food')).toBe('Buscar comida');
+      expect(es.get('widget.scan_barcode')).toBe('Escanear código');
+    });
+
     it('keeps the two widget names distinct', () => {
       const en = readStringsFile('en.lproj/Localizable.strings');
       const pl = readStringsFile('pl.lproj/Localizable.strings');
+      const es = readStringsFile('es.lproj/Localizable.strings');
 
       expect(en.get('widget.calorie.name')).not.toBe(en.get('widget.macro.name'));
       expect(pl.get('widget.calorie.name')).not.toBe(pl.get('widget.macro.name'));
+      expect(es.get('widget.calorie.name')).not.toBe(es.get('widget.macro.name'));
     });
 
     it('does not use i18next placeholder syntax', () => {
-      for (const locale of ['en.lproj', 'pl.lproj']) {
+      for (const locale of ['en.lproj', 'pl.lproj', 'es.lproj']) {
         const strings = readStringsFile(`${locale}/Localizable.strings`);
         for (const value of strings.values()) {
           expect(value).not.toMatch(/\{\{/);
@@ -99,15 +119,19 @@ describe('iOS WidgetKit localization resources', () => {
       }
     });
 
-    it('keeps format placeholder compatibility between EN and PL', () => {
+    it('keeps format placeholder compatibility between EN, PL and ES', () => {
       const en = readStringsFile('en.lproj/Localizable.strings');
       const pl = readStringsFile('pl.lproj/Localizable.strings');
+      const es = readStringsFile('es.lproj/Localizable.strings');
 
       for (const key of ['widget.grams', 'widget.a11y.kcal_left', 'widget.a11y.kcal']) {
         const enCount = (en.get(key)?.match(/%\@/g) ?? []).length;
         const plCount = (pl.get(key)?.match(/%\@/g) ?? []).length;
+        const esCount = (es.get(key)?.match(/%\@/g) ?? []).length;
         expect(plCount).toBe(enCount);
+        expect(esCount).toBe(enCount);
         expect(plCount).toBeGreaterThan(0);
+        expect(esCount).toBeGreaterThan(0);
       }
     });
   });

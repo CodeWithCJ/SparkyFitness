@@ -74,11 +74,12 @@ function cleanup(root: string): void {
 // ---------------------------------------------------------------------------
 
 describe('language picker excludes unshipped Weblate locales', () => {
-  it('SUPPORTED_LANGUAGES contains only shipped locales (en, pl) and not unshipped (de, fr)', () => {
-    // The production registry ships en + pl. Even if Weblate syncs de/fr
+  it('SUPPORTED_LANGUAGES contains only shipped locales (en, pl, es) and not unshipped (de, fr)', () => {
+    // The production registry ships en + pl + es. Even if Weblate syncs de/fr
     // catalogs, those locales must not appear in the runtime language picker.
     expect(SUPPORTED_LANGUAGES).toContain('en');
     expect(SUPPORTED_LANGUAGES).toContain('pl');
+    expect(SUPPORTED_LANGUAGES).toContain('es');
     expect(SUPPORTED_LANGUAGES).not.toContain('de');
     expect(SUPPORTED_LANGUAGES).not.toContain('fr');
   });

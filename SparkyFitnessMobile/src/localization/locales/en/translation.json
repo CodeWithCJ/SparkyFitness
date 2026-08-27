@@ -71,6 +71,7 @@
       "system": "System",
       "english": "English",
       "polish": "Polski",
+      "spanish": "Español",
       "pickerHint": "Opens language selection menu",
       "changeFailed": "Couldn't change the language",
       "managedByIOS": "Managed by iOS",
