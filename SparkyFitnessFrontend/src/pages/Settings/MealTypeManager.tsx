@@ -390,12 +390,17 @@ const MealTypeManager = () => {
         </DialogContent>
       </Dialog>
 
-      <DeleteMealTypeDialog
-        pendingDeletion={pendingDeletion}
-        mealTypes={mealTypes}
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setPendingDeletion(null)}
-      />
+      {/* Rendered only while open: returning null from the dialog would keep
+          it mounted, and its chosen reassign target would then carry over into
+          the next meal category's delete. */}
+      {pendingDeletion && (
+        <DeleteMealTypeDialog
+          pendingDeletion={pendingDeletion}
+          mealTypes={mealTypes}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setPendingDeletion(null)}
+        />
+      )}
     </div>
   );
 };

@@ -1,4 +1,12 @@
-import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  vi,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type Mock,
+} from 'vitest';
 import mealTypeRepository, {
   MEAL_TYPE_IN_USE_MESSAGE,
   MEAL_TYPE_INVALID_TARGET_MESSAGE,
@@ -11,9 +19,16 @@ vi.mock('../db/poolManager', () => ({
   getClient: vi.fn(),
 }));
 
+// One recorded client.query(...) call: the SQL text and its bound params.
+type QueryCall = [string, unknown[]?];
+
+interface MockClient {
+  query: Mock;
+  release: Mock;
+}
+
 describe('mealTypeRepository.deleteMealType', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockClient: any;
+  let mockClient: MockClient;
   const mealTypeId = uuidv4();
   const targetMealTypeId = uuidv4();
   const userId = uuidv4();
@@ -26,8 +41,7 @@ describe('mealTypeRepository.deleteMealType', () => {
       ownerId?: string | null;
       targetExists?: boolean;
       deleteRowCount?: number;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      failFinalDeleteWith?: any;
+      failFinalDeleteWith?: { code: string };
     } = {}
   ) => {
     const {
@@ -59,20 +73,21 @@ describe('mealTypeRepository.deleteMealType', () => {
   };
 
   const queryTexts = (): string[] =>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockClient.query.mock.calls.map((call: any[]) => call[0]);
+    (mockClient.query.mock.calls as QueryCall[]).map((call) => call[0]);
 
   const indexOfMatch = (needle: string): number =>
     queryTexts().findIndex((sql) => sql.includes(needle));
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const callMatching = (needle: string): any[] | undefined =>
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockClient.query.mock.calls.find((call: any[]) => call[0].includes(needle));
+  const callMatching = (needle: string): QueryCall | undefined =>
+    (mockClient.query.mock.calls as QueryCall[]).find((call) =>
+      call[0].includes(needle)
+    );
 
   beforeEach(() => {
     mockClient = { query: vi.fn(), release: vi.fn() };
-    vi.mocked(getClient).mockResolvedValue(mockClient);
+    vi.mocked(getClient).mockResolvedValue(
+      mockClient as unknown as Awaited<ReturnType<typeof getClient>>
+    );
   });
 
   afterEach(() => {
@@ -156,7 +171,7 @@ describe('mealTypeRepository.deleteMealType', () => {
       ]) {
         const call = callMatching(table);
         expect(call, table).toBeDefined();
-        expect(call![1][0]).toBe(targetMealTypeId);
+        expect(call?.[1]?.[0]).toBe(targetMealTypeId);
       }
 
       const texts = queryTexts();

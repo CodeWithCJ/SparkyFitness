@@ -349,11 +349,15 @@ async function deleteMealType(
       // CASCADE, so deleting a container takes its children with it. Detach any
       // child that belongs to a different meal type first, otherwise the
       // cascade would destroy data the user never asked to delete.
+      //
+      // Deliberately not filtered by user_id: the subquery already limits this
+      // to the caller's own containers, and a child row owned by someone else
+      // needs protecting from the cascade just as much. RLS still bounds which
+      // rows the UPDATE can actually touch.
       await client.query(
         `UPDATE food_entries
          SET food_entry_meal_id = NULL
-         WHERE user_id = $2
-           AND meal_type_id <> $1
+         WHERE meal_type_id <> $1
            AND food_entry_meal_id IN (
              SELECT id FROM food_entry_meals
              WHERE meal_type_id = $1 AND user_id = $2

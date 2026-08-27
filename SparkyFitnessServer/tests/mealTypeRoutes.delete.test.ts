@@ -2,6 +2,7 @@ import { vi, beforeEach, describe, expect, it } from 'vitest';
 // @ts-expect-error TS(7016): supertest has no bundled type declarations.
 import request from 'supertest';
 import express from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import {
   deleteMealType,
   getMealTypeById,
@@ -23,10 +24,12 @@ vi.mock('../models/mealType.js', async (importOriginal) => {
     getMealTypeDeletionImpact: vi.fn(),
   };
 });
+vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
+  default: () => (_req: Request, _res: Response, next: NextFunction) => next(),
+}));
 vi.mock('../middleware/authMiddleware.js', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticate: (req: any, _res: any, next: any) => {
-    req.userId = 'test-user';
+  authenticate: (req: Request, _res: Response, next: NextFunction) => {
+    (req as Request & { userId: string }).userId = 'test-user';
     next();
   },
 }));
@@ -35,8 +38,8 @@ const app = express();
 app.use(express.json());
 app.use('/api/meal-types', mealTypeRoutes);
 
-const MEAL_TYPE_ID = 'meal-type-1';
-const TARGET_ID = 'meal-type-2';
+const MEAL_TYPE_ID = '11111111-1111-4111-8111-111111111111';
+const TARGET_ID = '22222222-2222-4222-8222-222222222222';
 
 describe('DELETE /meal-types/:id', () => {
   beforeEach(() => {
@@ -80,6 +83,22 @@ describe('DELETE /meal-types/:id', () => {
   it('rejects reassign with no target before reaching the repository', async () => {
     const res = await request(app).delete(
       `/api/meal-types/${MEAL_TYPE_ID}?mode=reassign`
+    );
+
+    expect(res.status).toBe(400);
+    expect(deleteMealType).not.toHaveBeenCalled();
+  });
+
+  it('rejects a malformed meal type id with 400, not a 500 from Postgres', async () => {
+    const res = await request(app).delete('/api/meal-types/not-a-uuid');
+
+    expect(res.status).toBe(400);
+    expect(deleteMealType).not.toHaveBeenCalled();
+  });
+
+  it('rejects a malformed reassign target', async () => {
+    const res = await request(app).delete(
+      `/api/meal-types/${MEAL_TYPE_ID}?mode=reassign&reassignTo=nope`
     );
 
     expect(res.status).toBe(400);
@@ -162,8 +181,7 @@ describe('GET /meal-types/:id/deletion-impact', () => {
       templateAssignments: 0,
       totalReferences: 15,
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(getMealTypeById).mockResolvedValue({ id: MEAL_TYPE_ID } as any);
+    vi.mocked(getMealTypeById).mockResolvedValue({ id: MEAL_TYPE_ID });
     vi.mocked(getMealTypeDeletionImpact).mockResolvedValue(impact);
 
     const res = await request(app).get(
@@ -175,8 +193,7 @@ describe('GET /meal-types/:id/deletion-impact', () => {
   });
 
   it('returns 404 for a meal type the user cannot see', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    vi.mocked(getMealTypeById).mockResolvedValue(undefined as any);
+    vi.mocked(getMealTypeById).mockResolvedValue(undefined);
 
     const res = await request(app).get(
       `/api/meal-types/${MEAL_TYPE_ID}/deletion-impact`

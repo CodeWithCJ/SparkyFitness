@@ -10,9 +10,13 @@ import {
   MEAL_TYPE_IN_USE_MESSAGE,
   MEAL_TYPE_INVALID_TARGET_MESSAGE,
 } from '../models/mealType.js';
-import type { MealTypeDeleteMode } from '../models/mealType.js';
+import {
+  MealTypeIdParamSchema,
+  DeleteMealTypeQuerySchema,
+} from '../schemas/mealTypeSchemas.js';
 import { log } from '../config/logging.js';
 import { authenticate } from '../middleware/authMiddleware.js';
+import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import { isEntryTimeString } from '@workspace/shared';
 const router = express.Router();
 router.use(authenticate);
@@ -308,27 +312,35 @@ router.put('/:id', async (req, res) => {
  *       500:
  *         description: Failed to fetch meal type deletion impact.
  */
-router.get('/:id/deletion-impact', async (req, res) => {
-  try {
-    const userId = req.userId;
-    const { id } = req.params;
-    const mealType = await getMealTypeById(id, userId);
-    if (!mealType) {
-      return res.status(404).json({ error: 'Meal type not found' });
+router.get(
+  '/:id/deletion-impact',
+  checkPermissionMiddleware('diary'),
+  async (req, res) => {
+    try {
+      const userId = req.userId;
+      const params = MealTypeIdParamSchema.safeParse(req.params);
+      if (!params.success) {
+        return res.status(400).json({ error: 'id must be a valid UUID' });
+      }
+      const { id } = params.data;
+      const mealType = await getMealTypeById(id, userId);
+      if (!mealType) {
+        return res.status(404).json({ error: 'Meal type not found' });
+      }
+      const impact = await getMealTypeDeletionImpact(id, userId);
+      res.status(200).json(impact);
+    } catch (error) {
+      log(
+        'error',
+        `Route GET /meal-types/${req.params.id}/deletion-impact error:`,
+        error
+      );
+      res
+        .status(500)
+        .json({ error: 'Failed to fetch meal type deletion impact' });
     }
-    const impact = await getMealTypeDeletionImpact(id, userId);
-    res.status(200).json(impact);
-  } catch (error) {
-    log(
-      'error',
-      `Route GET /meal-types/${req.params.id}/deletion-impact error:`,
-      error
-    );
-    res
-      .status(500)
-      .json({ error: 'Failed to fetch meal type deletion impact' });
   }
-});
+);
 /**
  * @swagger
  * /meal-types/{id}:
@@ -384,24 +396,22 @@ router.get('/:id/deletion-impact', async (req, res) => {
  *       500:
  *         description: Failed to delete meal type.
  */
-const DELETE_MODES: MealTypeDeleteMode[] = ['strict', 'reassign', 'force'];
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', checkPermissionMiddleware('diary'), async (req, res) => {
   try {
     const userId = req.userId;
-    const { id } = req.params;
-    const rawMode =
-      typeof req.query.mode === 'string' ? req.query.mode : 'strict';
-    if (!DELETE_MODES.includes(rawMode as MealTypeDeleteMode)) {
-      return res.status(400).json({
-        error: `Invalid mode. Expected one of: ${DELETE_MODES.join(', ')}.`,
-      });
+    const params = MealTypeIdParamSchema.safeParse(req.params);
+    if (!params.success) {
+      return res.status(400).json({ error: 'id must be a valid UUID' });
     }
-    const mode = rawMode as MealTypeDeleteMode;
-    const targetMealTypeId =
-      typeof req.query.reassignTo === 'string' ? req.query.reassignTo : null;
-    if (mode === 'reassign' && !targetMealTypeId) {
-      return res.status(400).json({ error: MEAL_TYPE_INVALID_TARGET_MESSAGE });
+    const query = DeleteMealTypeQuerySchema.safeParse(req.query);
+    if (!query.success) {
+      return res
+        .status(400)
+        .json({ error: query.error.issues[0]?.message ?? 'Invalid request.' });
     }
+    const { id } = params.data;
+    const { mode } = query.data;
+    const targetMealTypeId = query.data.reassignTo ?? null;
     const result = await deleteMealType(id, userId, { mode, targetMealTypeId });
     if (!result.deleted) {
       return res
