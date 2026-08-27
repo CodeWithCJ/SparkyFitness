@@ -1843,5 +1843,8 @@
     "liveAiContextTitle": "Contexto de IA em direto",
     "liveAiContextDescription": "Este é o contexto atual que seria fornecido ao assistente de IA",
     "loadingAiContext": "A carregar o contexto de IA..."
+  },
+  "layout": {
+    "welcome": "Bem vindo {{activeUserName}}"
   }
 }

@@ -7,7 +7,12 @@
     "exercises": "Exercícios",
     "goals": "Metas",
     "settings": "Configurações",
-    "admin": "Administrador"
+    "admin": "Administrador",
+    "cycle": "Ciclo",
+    "pregnancy": "Gravidez",
+    "medications": "Medicamentos",
+    "foodLog": "Registro de comida",
+    "wellness": "Bem-estar"
   },
   "settings": {
     "profileInformation": {
@@ -660,7 +665,8 @@
       "time": "Hora",
       "value": "Valor"
     },
-    "noMapDataAvailable": "Não há dados de mapa disponíveis."
+    "noMapDataAvailable": "Não há dados de mapa disponíveis.",
+    "spo2Minimum": "Mínimo"
   },
   "logExerciseEntryDialog": {
     "typeLabel": "Tipo",
@@ -830,7 +836,23 @@
     "measurementDeletedSuccessfully": "Medição excluída com sucesso",
     "failedToDeleteMeasurement": "Falha ao excluir a medição",
     "failedToLoadRecentMeasurements": "Falha ao carregar medições recentes",
-    "enterCustomCategory": "Informe {{categoryName}}"
+    "enterCustomCategory": "Informe {{categoryName}}",
+    "bodyWater": "Água Corporal %",
+    "boneMass": "Massa Óssea",
+    "exercise": "Exercício",
+    "failedToCreateCategory": "Falha ao criar categoria.",
+    "failedToLoadCategories": "Falha ao carregar categorias customizadas.",
+    "photos": {
+      "upload": "Enviar",
+      "uploadError": "Envio falhou",
+      "uploadSuccess": "Foto salva"
+    },
+    "tabs": {
+      "measurements": "Medidas",
+      "photos": "Fotos",
+      "sleep": "Sono"
+    },
+    "useLast": "Usar último"
   },
   "workoutReport": {
     "weight": "Peso",
@@ -1183,7 +1205,9 @@
     "setActiveLabel": "Definir como plano ativo",
     "setsLabel": "Séries",
     "validationErrorDescription": "Nome do Plano e Data de início são necessários.",
-    "validationErrorTitle": "Erro de validação"
+    "validationErrorTitle": "Erro de validação",
+    "addExerciseButtonInDay": "Adicionar Exercício",
+    "pasteButton": "Colar"
   },
   "workoutPresetsManager": {
     "loading": "Carregando...",
@@ -1332,7 +1356,17 @@
       "iron": "ferro"
     },
     "of": "de",
-    "nutritionSummary": "Resumo da Nutrição"
+    "nutritionSummary": "Resumo da Nutrição",
+    "dailyEnergyGoal": "Objetivo de energia diária",
+    "waterIntake": "Ingestão de água",
+    "exercise": "Exercício",
+    "widgets": {
+      "layout": "Personalizar o layout",
+      "done": "Feito",
+      "maximize": "Maximizar",
+      "restore": "Restaurar",
+      "hide": "Ocultar"
+    }
   },
   "foodDiary": {
     "title": "Diário de alimentação",
@@ -1491,7 +1525,9 @@
       "oidcProviderManagement": {
         "title": "Gestão de Provedores de OIDC",
         "description": "Configure seus provedores OpenID Connect (OIDC)."
-      }
+      },
+      "error": "Erro",
+      "errorLoadingSettings": "Erro"
     },
     "backupSettings": {
       "title": "Configurações de backup",
@@ -1519,7 +1555,8 @@
       "restoreFailed": "Falha ao restaurar o Backup.",
       "failedToFetchSettings": "Falha em recuperar as configurações de backup.",
       "failedToSaveSettings": "Falha ao salvar configurações de backup.",
-      "failedToRestoreBackup": "Falha para restaurar o backup."
+      "failedToRestoreBackup": "Falha para restaurar o backup.",
+      "invalidTimeTitle": "Tempo de backup inválido"
     },
     "oidcSettings": {
       "title": "Provedores de Autenticação OIDC",
@@ -1596,7 +1633,8 @@
       "toggleUserRoleConfirm": "Tem certeza de que deseja alterar a função do usuário {{userName}} para {{newRole}}?",
       "toggleUserStatusConfirm": "Tem certeza de que deseja {{action}} usuário {{userName}}?",
       "userRoleUpdated": "Função do usuário {{userName}} atualizada para {{newRole}} com sucesso.",
-      "userStatusUpdated": "Usuário {{userName}} {{action}} com sucesso."
+      "userStatusUpdated": "Usuário {{userName}} {{action}} com sucesso.",
+      "deleteUser": "Remover"
     }
   },
   "workoutPlansManager": {
@@ -1798,7 +1836,42 @@
     "snacks": "Lanches",
     "errorOccurred": "Um Erro Ocorreu",
     "confirm": "Confirma",
-    "notApplicable": "N/A"
+    "notApplicable": "N/A",
+    "back": "Voltar",
+    "calculating": "Calculando...",
+    "caloriesUnit": "calorias",
+    "close": "Fechar",
+    "collapse": "Recolher",
+    "copied": "Copiado!",
+    "copying": "Copiando...",
+    "create": "Criar",
+    "creating": "Criando...",
+    "date": "Data",
+    "delete": "Remover",
+    "duplicate": "Duplicar",
+    "edit": "Editar",
+    "error": "Erro",
+    "expand": "Expandir",
+    "favorite": "Favoritar",
+    "favorited": "Favoritado",
+    "info": "Info",
+    "items": "itens",
+    "kcalUnit": "kcal",
+    "kJ": "kJ",
+    "kJUnit": "kJ",
+    "loading": "Carregando...",
+    "min": "min",
+    "minutesUnit": "Tempo",
+    "next": "Próximo",
+    "outOfTotal": "do total de {{totalCount}} itens",
+    "pause": "Pausar",
+    "processing": "Processando...",
+    "reps": "reps",
+    "resume": "Continuar",
+    "save": "Salvar",
+    "savePreferences": "Salvar Preferências",
+    "select": "Selecionar",
+    "workout": "Treino"
   },
   "documentationViewer": {
     "loadingAiContext": "Carregando o contexto de IA...",
@@ -1860,7 +1933,7 @@
     "calories": "Calorias",
     "protein": "Proteína",
     "carbohydrates": "Carboidratos",
-    "carbs": "Carb",
+    "carbs": "Carboidratos",
     "fat": "Gordura",
     "saturatedFat": "Gordura Saturada",
     "polyunsaturatedFat": "Gordura Poliinsaturada",
@@ -1875,7 +1948,12 @@
     "vitaminA": "Vitamina A",
     "vitaminC": "Vitamina C",
     "calcium": "Cálcio",
-    "iron": "Ferro"
+    "iron": "Ferro",
+    "netCarbs": "Carboidratos Líquidos",
+    "autoCalculate": "Auto-calculado",
+    "autoCalculateTooltip": "Auto-calculado usando {{algorithm}}",
+    "autoCalculateDisabledNoSex": "Defina seu sexo no Perfil para permitir calculo automático",
+    "autoCalculateSelectAll": "Selecionar tudo"
   },
   "sync": {
     "syncAll": "Sincronizar todas as fontes ativas",
@@ -1892,7 +1970,7 @@
       "symptoms": "Sintomas"
     },
     "common": {
-      "logging": "Entrando…",
+      "logging": "Registrando…",
       "saving": "Salvando…",
       "save": "Salvar",
       "reset": "Resetar",
@@ -1905,7 +1983,7 @@
       "adherence14": "adesão de 14 dias",
       "perfectDays": "Dias perfeitos (14d)",
       "last14": "Últimos 14 dias",
-      "streak": "{{count}}-sequência de dias",
+      "streak": "{{count}} dias seguidos",
       "checklistToday": "Lista de hoje",
       "checklistMed": "Lista de Medicação",
       "scheduled": "Agendado",
@@ -1948,6 +2026,195 @@
       "monthly": "Mensal no dia {{day}}",
       "prn": "Conforme necessário (PRN)",
       "taper": "Afinamento/titulação"
+    },
+    "calendar": {
+      "title": "Calendário de Registro de Medicamentos",
+      "noMeds": "Adicione um medicamento para ver o seu calendário de registro aqui.",
+      "selectMedication": "Selecione um medicamento",
+      "allMedications": "Todos os medicamentos",
+      "generalSymptom": "Sintomas gerais"
+    },
+    "symptoms": {
+      "addCustom": "Adicionar sintomas personalizados"
     }
+  },
+  "layout": {
+    "welcome": "Bem-vindo {{activeUserName}}"
+  },
+  "calculationSettings": {
+    "calories": "Calorias",
+    "energyUnitSaveError": "Erro",
+    "showNetCarbs": "Mostrar carboidratos líquidos (carboidratos menos fibras)",
+    "showNetCarbsHint": "Quando ativo, resumos de carboidratos exibem carboidratos totais menos fibras alimentares.",
+    "bmrAlgorithm": "Algoritmo do Metabolismo Basal",
+    "bmrAlgorithmHint": "Selecione a fórmula usada para calcular sua taxa metabólica basal.",
+    "bodyFatAlgorithm": "Algoritmo de gordura corporal",
+    "bodyFatAlgorithmHint": "Selecione a fórmula usada para estimar a porcentagem de gordura corporal a partir de medições.",
+    "energyUnitHint": "Escolha sua unidade preferida para exibir valores de energia (por exemplo, calorias, quilojoules).",
+    "energyUnitLabel": "Unidade de Energia",
+    "energyUnitSaveSuccess": "Sucesso",
+    "energyUnitSaveSuccessDesc": "Unidade de energia atualizada com sucesso.",
+    "includeBmrInNetCalories": "Incluir TMB em calorias líquidas",
+    "includeBmrInNetCaloriesHint": "Quando ativado, sua TMB será subtraída do seu total de calorias líquidas diárias.",
+    "joules": "Joules",
+    "saveError": "Erro",
+    "saveSuccess": "Sucesso",
+    "saveSuccessDesc": "Configurações de cálculo salvas com sucesso!",
+    "selectBmrAlgorithm": "Selecione o algoritmo de TMB",
+    "selectBodyFatAlgorithm": "Selecione o algoritmo de gordura corporal",
+    "selectEnergyUnitPlaceholder": "Selecione a unidade de energia"
+  },
+  "chat": {
+    "toolCategories": {
+      "profile": "Perfil e Hábitos",
+      "goals": "Objetivos",
+      "food": "Comida e Água",
+      "exercise": "Exercícios"
+    }
+  },
+  "csvImport": {
+    "cancel": "Cancelar",
+    "changeFormat": "Alterar",
+    "confirmMapping": "Confirmar",
+    "dateLabel": "Formato de Data",
+    "summary": {
+      "autoDecimalUs": "Decimais automáticas (1,234.56)"
+    }
+  },
+  "copyFoodEntryDialog": {
+    "copyButton": "Copiar"
+  },
+  "foodCsvImport": {
+    "deleteRow": "Excluir linha",
+    "overrideLabel": "Sobrepor detalhes de alimentos existentes",
+    "importing": "Importando...",
+    "importData": "Dados de importação",
+    "importErrorTitle": "Erro de importação",
+    "pasteFirst": "Por favor, cole alguns dados CSV primeiro.",
+    "invalidFormatTitle": "Formato CSV inválido",
+    "headersMismatchText": "Os cabeçalhos não correspondem ao formato necessário. Use o modelo.",
+    "successTitle": "Sucesso",
+    "emptyFile": "O arquivo selecionado está vazio.",
+    "title": "Importar dados alimentares",
+    "addRow": "Adicionar linha",
+    "uploadCsv": "Enviar CSV",
+    "downloadTemplate": "Baixar Modelo",
+    "clearData": "Limpar Dados",
+    "pastePlaceholder": "Ou cole o conteúdo CSV aqui...",
+    "recordsLoaded": "{{count}} registro(s) carregados com sucesso.",
+    "actions": "Ações",
+    "overrideDescription": "Se um alimento com o mesmo nome e marca já existir, atualize sua nutrição em vez de falhar a importação. Deixe desmarcado para pular e emitir erro em duplicatas.",
+    "importRecords_one": "Importar {{count}} registro",
+    "importRecords_many": "Importar {{count}} registros",
+    "importRecords_other": "Importar {{count}} registros",
+    "loadedRowsFromText": "Foram carregadas {{count}} linhas do texto.",
+    "parseText": "Analisar texto",
+    "booleanTrue": "Sim",
+    "booleanFalse": "Não",
+    "headersMismatchFile": "Os cabeçalhos CSV não correspondem ao formato necessário. Por favor, mapeie os campos para continuar.",
+    "noDataTitle": "Nenhum dado encontrado",
+    "noDataText": "O arquivo CSV contém cabeçalhos, mas sem linhas de dados.",
+    "validationErrorTitle": "Erro de validação",
+    "nameRequired": "O campo \"nome\" não pode estar vazio.",
+    "fileTooLarge": "O arquivo selecionado é muito grande. Por favor, envie um arquivo menor que 25MB.",
+    "missingDefaultWarning": "Aviso: {{count}} comida(s) não têm uma variante padrão. Por favor, defina pelo menos uma variante como padrão (destacada em amarelo abaixo).",
+    "missingDefaultValidationError": "Pelo menos uma variante por alimento deve ser definida como a unidade padrão.",
+    "showAllRows": "Mostrar todas as linhas ({{count}})"
+  },
+  "workout": {
+    "weight": "peso",
+    "type": "Tipo",
+    "restSec": "Descanso (s)",
+    "reps": "Repetições",
+    "durationMin": "Duração (min)",
+    "distance": "Distância",
+    "calories": "Calorias"
+  },
+  "syncRangeDialog": {
+    "timeoutWarning": "Para grandes intervalos de data, o navegador pode sair, mas o servidor continuará sincronizando em segundo plano.",
+    "syncNow": "Iniciar Sincronização",
+    "startDate": "Data de início",
+    "polarWarning": "Nota: A Polar só permite sincronizar dados gravados depois de conectar sua conta ao SparkyFitness.",
+    "last90Days": "Últimos 90 Dias",
+    "last7Days": "Últimos 7 dias",
+    "endDate": "Data final",
+    "description": "Escolha o intervalo de datas que você gostaria de sincronizar de {{provider}}.",
+    "title": "Sincronizar dados de {{provider}}",
+    "last365Days": "Últimos 365 dias",
+    "last30Days": "Últimos 30 dias",
+    "last180Days": "Últimos 180 dias"
+  },
+  "success": "Sucesso",
+  "providers": {
+    "updateSuccess": "Provedor de dados externo atualizado com sucesso",
+    "statusUpdateSuccess": "Provedor de dados externo atualizado com sucesso",
+    "deleteSuccess": "Provedor de dados externo excluído com sucesso",
+    "updateError": "Falha ao atualizar o provedor de dados externo",
+    "statusUpdateError": "Falha ao atualizar o status do provedor de dados externo",
+    "deleteError": "Falha ao excluir o provedor de dados externo",
+    "createSuccess": "Provedor de dados externo adicionado com sucesso."
+  },
+  "mealTypeManager": {
+    "add": "Adicionar Categoria"
+  },
+  "mealCreation": {
+    "mealName": "Nome da refeição",
+    "mealCreatedSuccessfully": "Refeição criada com sucesso a partir de entradas de diário.",
+    "makePublic": "Tornar público",
+    "enterDetails": "Digite detalhes para o seu novo modelo de refeição.",
+    "description": "Descrição"
+  },
+  "key": "texto",
+  "i18n": {
+    "locale": "en-US"
+  },
+  "auth": {
+    "successTitle": "Sucesso",
+    "resetEmailSent": "Se uma conta existir, um e-mail de redefinição de senha foi enviado.",
+    "registerSuccess": "Conta criada com sucesso!",
+    "passkeySuccess": "Entrou com Passkey!",
+    "passkeyErrorTitle": "Erro de Passkey",
+    "loginSuccess": "Login bem sucedido!",
+    "invalidOrigin": "Acesso negado: Esta conexão",
+    "emailExists": "Usuário com este e-mail já existe."
+  },
+  "diaryCsvImport": {
+    "validationErrorTitle": "Erro de validação",
+    "scopePublic": "Público",
+    "scopeFamily": "Família"
+  },
+  "cycle": {
+    "history": {
+      "startDate": "Data de início"
+    }
+  },
+  "warning": "Atenção",
+  "review": {
+    "errorLoadingItems": "Falha ao carregar itens para revisão.",
+    "errorLoadingCount": "Falha ao carregar itens para revisão."
+  },
+  "workoutLaps": {
+    "power": "Potência"
+  },
+  "dailyHealthMetrics": {
+    "bodyBattery": "Body Battery",
+    "peak": "pico",
+    "low": "baixa: {{val}}",
+    "avgStress": "Estresse Médio",
+    "max": "Máx: {{val}}",
+    "restingHr": "FC em Repouso",
+    "recovery": "Recuperação: {{val}}",
+    "vo2Max": "VO2 Max",
+    "fitnessAge": "Idade Corporal: {{val}}",
+    "readiness": "Prontidão",
+    "recHours": "Rec: {{val}}",
+    "title": "Resumo Diário de Saúde do Dispositivo"
+  },
+  "preferences": {
+    "resetError": "Falha ao redefinir as preferências"
+  },
+  "foods": {
+    "providerVerified": "Alimentos verificados",
+    "removeNutrient": "Remover {{nutrient}}"
   }
 }

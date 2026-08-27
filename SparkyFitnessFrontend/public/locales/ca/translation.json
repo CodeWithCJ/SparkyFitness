@@ -1,0 +1,62 @@
+{
+  "layout": {
+    "welcome": "Benvingut/da {{activeUserName}}"
+  },
+  "chat": {
+    "toolCategories": {
+      "tooltip": "Escull eines del xatbot",
+      "title": "Eines del xatbot",
+      "description": "Algunes eines ajuden els models a respondre de manera fiable.",
+      "presetFull": "Complet",
+      "presetCore": "Base",
+      "clearAll": "Netejar tot",
+      "emptyHint": "Cap categoria seleccionada — el xatbot utilitzarà les eines per defecte.",
+      "food": "Menjar i aigua",
+      "exercise": "Exercici",
+      "checkin": "Cos i revisions",
+      "goals": "Objectius",
+      "reports": "Informes i anàlisis",
+      "coaching": "Acompanyament",
+      "vision": "Visió",
+      "profile": "Perfil i hàbits",
+      "medications": "Medicacions"
+    },
+    "errorClearingHistory": "No s'ha pogut esborrar l'historial del xat.",
+    "errorLoadingHistory": "No s'ha pogut carregar l'historial del xat.",
+    "errorLoadingPreferences": "No s'han pogut carregar les preferències del xat.",
+    "successClearingHistory": "L'historial del xat s'ha esborrat correctament."
+  },
+  "workoutLaps": {
+    "title": "Intervals d'exercici i voltes",
+    "lapsCount": "{{count}} voltes",
+    "lap": "Volta",
+    "distance": "Distància",
+    "time": "Temps",
+    "avgMaxHr": "Mitjana / màxim de pulsacions",
+    "cadence": "Cadència",
+    "power": "Potència"
+  },
+  "dailyHealthMetrics": {
+    "bodyBattery": "Bateria del cos",
+    "peak": "Màxim",
+    "low": "baix: {{val}}",
+    "avgStress": "Estrés mitjà",
+    "max": "Màxim: {{val}}",
+    "restingHr": "Pulsacions en repòs",
+    "recovery": "Recuperació: {{val}}",
+    "fitnessAge": "Edat física: {{val}}"
+  },
+  "foodCsvImport": {
+    "title": "Importa dades d'alimentació",
+    "addRow": "Afegir fila",
+    "uploadCsv": "Pujar CSV",
+    "downloadTemplate": "Descarregar plantilla",
+    "clearData": "Esborrar dades",
+    "pastePlaceholder": "O enganxa contingut CSV aquí...",
+    "recordsLoaded": "S'han carregat {{count}} entrades correctament.",
+    "actions": "Accions",
+    "booleanTrue": "Cert",
+    "booleanFalse": "Fals",
+    "deleteRow": "Esborrar fila"
+  }
+}

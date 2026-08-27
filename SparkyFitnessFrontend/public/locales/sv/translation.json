@@ -207,5 +207,62 @@
     "vitaminC": "Vitamin C",
     "calcium": "Kalcium",
     "iron": "Järn"
+  },
+  "layout": {
+    "welcome": "Välkommen {{activeUserName}}"
+  },
+  "chat": {
+    "toolCategories": {
+      "presetFull": "Fullständiga",
+      "food": "Mat & Vatten",
+      "exercise": "Träning",
+      "goals": "Mål",
+      "medications": "Mediciner",
+      "tooltip": "Välj chatbot verktyg",
+      "title": "Chatbot verktyg",
+      "description": "Färre verktyg hjälper små lokala modeller att svara mer tillförlitligt.",
+      "clearAll": "Rensa alla",
+      "profile": "Profil & Vanor",
+      "presetCore": "Bål",
+      "reports": "Rapporter & Analyser",
+      "coaching": "Coachning",
+      "vision": "Visuell",
+      "emptyHint": "Inga kategorier valda — chattboten kommer att använda sina standardverktyg.",
+      "checkin": "Kropp & Check-ins"
+    },
+    "errorClearingHistory": "Det gick inte att rensa chatthistoriken.",
+    "errorLoadingHistory": "Det gick inte att läsa in chatthistoriken.",
+    "successClearingHistory": "Rensning av chatthistoriken lyckades.",
+    "errorLoadingPreferences": "Det gick inte att läsa in chattinställningarna."
+  },
+  "workoutLaps": {
+    "lapsCount": "{{count}} Varv",
+    "lap": "Varv",
+    "distance": "Avstånd",
+    "time": "Tid",
+    "title": "Träningspass: Intervaller & Varv",
+    "pace": "Tempo (/{{unit}})",
+    "avgMaxHr": "Avg / Max HR",
+    "resp": "Resp (brpm)",
+    "cadence": "Kadens",
+    "power": "Kraft"
+  },
+  "key": "text",
+  "mealBuilder": {
+    "servingUnit": "Enhet",
+    "mealImages": "Bilder",
+    "updateLinkedMeal": "Uppdatera"
+  },
+  "mealPlanCalendar": {
+    "title": "Måltidsplan",
+    "createNewPlan": "Skapa Ny Plan",
+    "activate": "Aktivera",
+    "activatePlan": "Aktivera Plan"
+  },
+  "dailyHealthMetrics": {
+    "title": "Daglig Wearable Hälso Sammanfattning",
+    "bodyBattery": "Kroppsbatteri",
+    "peak": "topp",
+    "low": "låg: {{val}}"
   }
 }

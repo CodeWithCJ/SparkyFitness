@@ -2721,8 +2721,13 @@
       "reports": "Rapports et analyses",
       "coaching": "Coaching",
       "vision": "Vision",
-      "profile": "Profil et habitudes"
-    }
+      "profile": "Profil et habitudes",
+      "medications": "Médicaments"
+    },
+    "errorClearingHistory": "Échec du nettoyage de la conversion.",
+    "errorLoadingHistory": "Échec de la récupération de l'historie.",
+    "errorLoadingPreferences": "Échec de la récupération des préférences.",
+    "successClearingHistory": "Succès du nettoyage de la conversation."
   },
   "onboarding": {
     "completeSetup": "Terminer la configuration"
@@ -2871,5 +2876,21 @@
     "resetToDefault": "Réinitialiser par défaut",
     "failedToLoad": "Échec du chargement des préférences de sens des objectifs nutritionnels.",
     "failedToSave": "Échec de l'enregistrement du sens de l'objectif nutritionnel."
+  },
+  "workoutLaps": {
+    "distance": "Distance",
+    "time": "Temps",
+    "cadence": "Cadence",
+    "title": "Programme d'Entraînement: Intervalles et Tours",
+    "lapsCount": "{{count}} Tours",
+    "lap": "Tour",
+    "power": "Puissance"
+  },
+  "dailyHealthMetrics": {
+    "vo2Max": "VO2 Max",
+    "peak": "peak"
+  },
+  "layout": {
+    "welcome": "Bienvenue {{activeUserName}}"
   }
 }
