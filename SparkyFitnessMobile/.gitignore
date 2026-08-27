@@ -74,3 +74,4 @@ plans/
 /vendor
 /installations
 /.bundle
+/targets/watch/generated.entitlements

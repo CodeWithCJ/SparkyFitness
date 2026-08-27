@@ -12,6 +12,7 @@ import { resetWhatsNewBanner } from '../services/whatsNewBanner';
 import { resetAnnouncementModal } from './AnnouncementModal';
 import { CycleCardRingContent, type CycleRingContentInfo } from './CycleCard';
 import { openHealthConnectSettings, openHealthConnectDataManagement, getGrantedPermissions } from 'react-native-health-connect';
+import { useWatchConnectivity } from '../hooks/useWatchConnectivity';
 
 const CYCLE_GALLERY_BASE: Omit<CycleRingContentInfo, 'day' | 'phase'> = {
   avgCycleLength: 28,
@@ -53,6 +54,11 @@ const DevTools: React.FC = () => {
   const { t } = useTranslation();
   const [isSeeding, setIsSeeding] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const {
+    isSupported: isWatchSupported,
+    isPaired: isWatchPaired,
+    isReachable: isWatchReachable,
+  } = useWatchConnectivity();
 
   const handleTriggerSync = async () => {
     setIsSyncing(true);
@@ -348,6 +354,35 @@ const DevTools: React.FC = () => {
           )}
         </View>
       </View>
+
+      {Platform.OS === 'ios' && (
+        <View className="mt-5">
+          <Text className="text-sm text-text-primary">Apple Watch</Text>
+          <Text className="text-text-muted mb-3 text-[13px]">
+            Status of the watch companion link. Check-ins captured on the watch are
+            queued and delivered even when &quot;reachable&quot; is off, so a red dot here
+            does not mean data is lost.
+          </Text>
+          <View className="flex-row items-center mb-1">
+            <View
+              className="w-2 h-2 rounded-full mr-2"
+              style={{ backgroundColor: isWatchPaired ? '#22c55e' : '#ef4444' }}
+            />
+            <Text className="text-sm text-text-secondary">
+              {isWatchSupported ? (isWatchPaired ? 'Watch paired' : 'No watch paired') : 'Not supported on this platform'}
+            </Text>
+          </View>
+          <View className="flex-row items-center">
+            <View
+              className="w-2 h-2 rounded-full mr-2"
+              style={{ backgroundColor: isWatchReachable ? '#22c55e' : '#9ca3af' }}
+            />
+            <Text className="text-sm text-text-secondary">
+              {isWatchReachable ? 'Watch app reachable now' : 'Watch app not in foreground'}
+            </Text>
+          </View>
+        </View>
+      )}
 
       <View className="mt-5">
         <Text className="text-sm text-text-primary">{t('devTools.auth.title', { defaultValue: 'Auth' })}</Text>

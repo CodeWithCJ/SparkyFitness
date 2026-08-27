@@ -122,6 +122,14 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
     './plugins/withNetworkSecurityConfig',
   ];
 
+  // Plugins only included in dev builds. The push-notification entitlement is
+  // stripped because free Apple "Personal Team" accounts cannot sign a build
+  // that declares the Push Notifications capability, and only local
+  // notifications are used. See plugins/withoutPushNotificationEntitlement.ts.
+  const devPlugins = [
+    './plugins/withoutPushNotificationEntitlement',
+  ];
+
   return {
     ...config,
     name: APP_NAME,
@@ -214,6 +222,8 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
         },
       ],
       ...(!isDev ? prodPlugins : []),
+      // Must come last: it deletes an entitlement that expo-notifications adds.
+      ...(isDev ? devPlugins : []),
     ],
     extra: {
       ...config.extra,
