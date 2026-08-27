@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import DeleteMealTypeDialog from '@/pages/Settings/DeleteMealTypeDialog';
+import type { PendingMealTypeDeletion } from '@/pages/Settings/DeleteMealTypeDialog';
 import type { MealTypeDefinition } from '@/types/diary';
 
 jest.mock('react-i18next', () => ({
@@ -47,6 +48,25 @@ const renderDialog = (totalReferences: number, onConfirm = jest.fn()) => {
   return onConfirm;
 };
 
+// Mirrors how MealTypeManager renders the dialog: only while a deletion is
+// pending. Returning null from inside the dialog would leave it mounted, and a
+// target chosen for one meal type would survive into the next one's delete.
+const Harness = ({
+  pending,
+  onConfirm,
+}: {
+  pending: PendingMealTypeDeletion | null;
+  onConfirm: jest.Mock;
+}) =>
+  pending ? (
+    <DeleteMealTypeDialog
+      pendingDeletion={pending}
+      mealTypes={MEAL_TYPES}
+      onConfirm={onConfirm}
+      onCancel={jest.fn()}
+    />
+  ) : null;
+
 describe('DeleteMealTypeDialog', () => {
   it('does not preselect a reassign target, so nothing can move silently', () => {
     const onConfirm = renderDialog(3);
@@ -70,6 +90,35 @@ describe('DeleteMealTypeDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Delete everything' }));
     expect(onConfirm).toHaveBeenCalledWith({ mode: 'force' });
+  });
+
+  it('starts every delete with no target, even after cancelling a previous one', () => {
+    const onConfirm = jest.fn();
+    const first: PendingMealTypeDeletion = {
+      mealType: DOOMED,
+      impact: impact(2),
+    };
+    const second: PendingMealTypeDeletion = {
+      mealType: mealType('other-id', 'Another', 110),
+      impact: impact(1),
+    };
+
+    const { rerender } = render(
+      <Harness pending={first} onConfirm={onConfirm} />
+    );
+    expect(
+      screen.getByRole('button', { name: 'Move items and delete' })
+    ).toBeDisabled();
+
+    rerender(<Harness pending={null} onConfirm={onConfirm} />); // cancelled
+    expect(
+      screen.queryByRole('button', { name: 'Move items and delete' })
+    ).not.toBeInTheDocument();
+
+    rerender(<Harness pending={second} onConfirm={onConfirm} />); // reopened
+    expect(
+      screen.getByRole('button', { name: 'Move items and delete' })
+    ).toBeDisabled();
   });
 
   it('deletes directly when nothing references the meal type', () => {

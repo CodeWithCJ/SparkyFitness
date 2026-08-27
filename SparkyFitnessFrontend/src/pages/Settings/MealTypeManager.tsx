@@ -94,7 +94,13 @@ const MealTypeManager = () => {
   const handleDeleteRequest = async (item: MealTypeDefinition) => {
     try {
       const impact = await queryClient.fetchQuery(
-        mealTypeDeletionImpactOptions(item.id)
+        mealTypeDeletionImpactOptions(
+          item.id,
+          t(
+            'mealTypeManager.impactLoadError',
+            'Could not check what uses this meal category. Please try again.'
+          )
+        )
       );
       setPendingDeletion({ mealType: item, impact });
     } catch {

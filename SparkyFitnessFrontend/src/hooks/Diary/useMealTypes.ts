@@ -83,16 +83,19 @@ export const useUpdateMealTypeMutation = () => {
   });
 };
 
-export const mealTypeDeletionImpactOptions = (mealTypeId: string | null) => ({
+// Not a hook, so it cannot call useTranslation itself: the caller passes an
+// already-translated message for the global query error handler to surface.
+export const mealTypeDeletionImpactOptions = (
+  mealTypeId: string | null,
+  errorMessage: string
+) => ({
   queryKey: mealTypeId
     ? mealTypeKeys.impact(mealTypeId)
     : (['mealTypes', 'impact', 'disabled'] as const),
   queryFn: () => getMealTypeDeletionImpact(mealTypeId!),
   enabled: !!mealTypeId,
   staleTime: 0,
-  meta: {
-    errorMessage: 'Could not fetch deletion impact. Please try again.',
-  },
+  meta: { errorMessage },
 });
 
 export const useDeleteMealTypeMutation = () => {

@@ -4533,6 +4533,7 @@
     "editTitle": "Edit Meals",
     "forceDeleteWarning": "Deleting everything permanently removes these records, including their logged nutrition. This cannot be undone.",
     "impactFoodEntries": "{{count}} diary entries",
+    "impactLoadError": "Could not check what uses this meal category. Please try again.",
     "impactLoggedMeals": "{{count}} logged meals",
     "impactMealPlans": "{{count}} planned items",
     "impactTemplateAssignments": "{{count}} meal plan template items",
