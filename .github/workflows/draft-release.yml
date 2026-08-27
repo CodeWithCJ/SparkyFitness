@@ -38,6 +38,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Only needed to read .github/release-preamble.md. Every API call below
+          # authenticates through GH_TOKEN, so there is no reason to leave a
+          # credential behind in .git/config.
+          persist-credentials: false
 
       - name: Build release body
         env:
