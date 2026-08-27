@@ -100,7 +100,7 @@ export function foodEntryCopyFingerprint(
     const value = entry[field];
     snapshot[field] = value == null ? null : Number(value);
   }
-  snapshot.custom_nutrients = stableValue(entry.custom_nutrients);
+  snapshot["custom_nutrients"] = stableValue(entry.custom_nutrients);
   return JSON.stringify(snapshot);
 }
 
