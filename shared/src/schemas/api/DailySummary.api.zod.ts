@@ -15,7 +15,7 @@ export const calorieBalanceSchema = z.object({
   net: z.number(),
   progress: z.number(),
   bmr: z.number(),
-  bmrSource: z.enum(["formula", "external"]).optional(),
+  bmrSource: z.enum(["formula", "measured"]).optional(),
   exerciseSource: z.enum(["logged", "active", "steps", "none"]),
   tdeeProjection: z
     .object({

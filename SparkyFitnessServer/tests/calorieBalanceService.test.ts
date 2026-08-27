@@ -329,7 +329,7 @@ describe('sumFoodEntryCalories', () => {
   });
 });
 
-describe('external BMR override', () => {
+describe('measured / external BMR override', () => {
   const externalPrefs = {
     timezone: 'UTC',
     activity_level: 'not_much',
@@ -338,18 +338,44 @@ describe('external BMR override', () => {
     use_external_bmr: true,
   };
 
-  test('prefers a synced BMR inside the sanity bounds', () => {
+  test('prefers a check-in measured BMR even without use_external_bmr preference', () => {
+    const balance = computeCalorieBalance(
+      inputs({
+        measurements: { weight: 80, height: 180, bmr: 1850 },
+        userPreferences: { ...externalPrefs, use_external_bmr: false },
+      })
+    );
+
+    expect(balance.bmr).toBe(1850);
+    expect(balance.bmrSource).toBe('measured');
+    expect(balance.burned).toBe(1850);
+  });
+
+  test('prefers check-in BMR over synced external BMR when both are present', () => {
+    const balance = computeCalorieBalance(
+      inputs({
+        measurements: { weight: 80, height: 180, bmr: 1900 },
+        externalBmr: 1750,
+        userPreferences: externalPrefs,
+      })
+    );
+
+    expect(balance.bmr).toBe(1900);
+    expect(balance.bmrSource).toBe('measured');
+  });
+
+  test('prefers a synced BMR inside the sanity bounds when opted in', () => {
     const balance = computeCalorieBalance(
       inputs({ externalBmr: 1800, userPreferences: externalPrefs })
     );
 
     expect(balance.bmr).toBe(1800);
-    expect(balance.bmrSource).toBe('external');
+    expect(balance.bmrSource).toBe('measured');
     expect(balance.burned).toBe(1800);
   });
 
   // A bad sample must not be able to zero out the day's target.
-  test.each([599, 6001, 0, -50])(
+  test.each([299, 10001, 0, -50])(
     'keeps the formula BMR when the synced value %s is out of bounds',
     (value) => {
       const balance = computeCalorieBalance(
@@ -361,13 +387,13 @@ describe('external BMR override', () => {
     }
   );
 
-  test.each([600, 6000])('accepts the boundary value %s', (value) => {
+  test.each([300, 10000])('accepts the boundary value %s', (value) => {
     const balance = computeCalorieBalance(
       inputs({ externalBmr: value, userPreferences: externalPrefs })
     );
 
     expect(balance.bmr).toBe(value);
-    expect(balance.bmrSource).toBe('external');
+    expect(balance.bmrSource).toBe('measured');
   });
 
   test('ignores a synced BMR when the user has not opted in', () => {

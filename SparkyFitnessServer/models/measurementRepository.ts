@@ -64,6 +64,7 @@ const ALLOWED_CHECK_IN_COLUMNS = [
   'muscle_mass_kg',
   'bone_mass_kg',
   'body_water_percentage',
+  'bmr',
 ];
 // Column types for the batch-UPDATE unnest casts in bulkUpsertCheckInMeasurements.
 const CHECK_IN_COLUMN_TYPES: Record<string, string> = {
@@ -77,6 +78,7 @@ const CHECK_IN_COLUMN_TYPES: Record<string, string> = {
   muscle_mass_kg: 'numeric',
   bone_mass_kg: 'numeric',
   body_water_percentage: 'numeric',
+  bmr: 'numeric',
 };
 // Tolerance in milliliters for matching historical manual records with incoming sync data
 const WATER_ADOPTION_TOLERANCE_ML = 5;
@@ -601,6 +603,7 @@ async function getLatestCheckInMeasurementsOnOrBeforeDate(
          (SELECT muscle_mass_kg FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND muscle_mass_kg IS NOT NULL AND muscle_mass_kg > 0 ORDER BY entry_date DESC LIMIT 1) as muscle_mass_kg,
          (SELECT bone_mass_kg FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND bone_mass_kg IS NOT NULL AND bone_mass_kg > 0 ORDER BY entry_date DESC LIMIT 1) as bone_mass_kg,
          (SELECT body_water_percentage FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND body_water_percentage IS NOT NULL AND body_water_percentage > 0 ORDER BY entry_date DESC LIMIT 1) as body_water_percentage,
+         (SELECT bmr FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND bmr IS NOT NULL AND bmr > 0 ORDER BY entry_date DESC LIMIT 1) as bmr,
          le.created_at,
          le.updated_at,
          le.created_by_user_id,
@@ -1494,6 +1497,10 @@ async function getLatestMeasurement(userId: any) {
          (SELECT steps FROM check_in_measurements WHERE user_id = $1 AND steps IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as steps,
          (SELECT height FROM check_in_measurements WHERE user_id = $1 AND height IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as height,
          (SELECT body_fat_percentage FROM check_in_measurements WHERE user_id = $1 AND body_fat_percentage IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as body_fat_percentage,
+         (SELECT muscle_mass_kg FROM check_in_measurements WHERE user_id = $1 AND muscle_mass_kg IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as muscle_mass_kg,
+         (SELECT bone_mass_kg FROM check_in_measurements WHERE user_id = $1 AND bone_mass_kg IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as bone_mass_kg,
+         (SELECT body_water_percentage FROM check_in_measurements WHERE user_id = $1 AND body_water_percentage IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as body_water_percentage,
+         (SELECT bmr FROM check_in_measurements WHERE user_id = $1 AND bmr IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as bmr,
          (SELECT created_at FROM check_in_measurements WHERE user_id = $1 ORDER BY entry_date DESC LIMIT 1) as created_at,
          (SELECT updated_at FROM check_in_measurements WHERE user_id = $1 ORDER BY entry_date DESC LIMIT 1) as updated_at`,
       [userId]

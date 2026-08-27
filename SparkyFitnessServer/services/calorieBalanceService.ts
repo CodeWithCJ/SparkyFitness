@@ -49,6 +49,7 @@ export interface CalorieBalanceMeasurements {
   weight?: string | number | null;
   height?: string | number | null;
   body_fat_percentage?: string | number | null;
+  bmr?: string | number | null;
 }
 
 export interface ExerciseCalorieStats {
@@ -214,18 +215,32 @@ export function computeCalorieBalance({
     }
   }
 
-  // 1b. External BMR override — when the user opts in and a synced resting/BMR value
-  // exists for the day, prefer it over the formula. Sanity-bounded so a bad sample
-  // can't zero out the target; otherwise we keep the formula.
-  let bmrSource: 'formula' | 'external' = 'formula';
-  if (
+  // 1b. Measured BMR override — when the user has entered a BMR in check-in
+  // or synced from an external provider, prefer it over the formula. Sanity-bounded
+  // so a bad sample can't zero out the target; otherwise we keep the formula.
+  let bmrSource: 'formula' | 'measured' = 'formula';
+  const checkInBmr = measurements?.bmr
+    ? parseFloat(String(measurements.bmr))
+    : null;
+  const validCheckInBmr =
+    checkInBmr !== null &&
+    Number.isFinite(checkInBmr) &&
+    checkInBmr >= 300 &&
+    checkInBmr <= 10000
+      ? checkInBmr
+      : null;
+
+  if (validCheckInBmr !== null) {
+    bmr = validCheckInBmr;
+    bmrSource = 'measured';
+  } else if (
     useExternalBmr &&
     externalBmr !== null &&
-    externalBmr >= 600 &&
-    externalBmr <= 6000
+    externalBmr >= 300 &&
+    externalBmr <= 10000
   ) {
     bmr = externalBmr;
-    bmrSource = 'external';
+    bmrSource = 'measured';
   }
 
   // 2. Resolve exercise calories (3-tier fallback). max(active, logged + steps) —

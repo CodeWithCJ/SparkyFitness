@@ -63,7 +63,11 @@ type FieldKey =
   | 'hips'
   | 'steps'
   | 'height'
-  | 'bodyFatPercentage';
+  | 'bodyFatPercentage'
+  | 'muscleMassKg'
+  | 'boneMassKg'
+  | 'bodyWaterPercentage'
+  | 'bmr';
 
 type FormState = Record<FieldKey, string> & {
   heightFeet: string;
@@ -80,6 +84,10 @@ const EMPTY_FORM: FormState = {
   heightFeet: '',
   weightStones: '',
   bodyFatPercentage: '',
+  muscleMassKg: '',
+  boneMassKg: '',
+  bodyWaterPercentage: '',
+  bmr: '',
 };
 
 const FIELD_FORM_KEYS: Record<FieldKey, (keyof FormState)[]> = {
@@ -90,6 +98,10 @@ const FIELD_FORM_KEYS: Record<FieldKey, (keyof FormState)[]> = {
   steps: ['steps'],
   height: ['height', 'heightFeet'],
   bodyFatPercentage: ['bodyFatPercentage'],
+  muscleMassKg: ['muscleMassKg'],
+  boneMassKg: ['boneMassKg'],
+  bodyWaterPercentage: ['bodyWaterPercentage'],
+  bmr: ['bmr'],
 };
 
 const FORM_FIELD_KEYS: Record<keyof FormState, FieldKey> = {
@@ -102,6 +114,10 @@ const FORM_FIELD_KEYS: Record<keyof FormState, FieldKey> = {
   height: 'height',
   heightFeet: 'height',
   bodyFatPercentage: 'bodyFatPercentage',
+  muscleMassKg: 'muscleMassKg',
+  boneMassKg: 'boneMassKg',
+  bodyWaterPercentage: 'bodyWaterPercentage',
+  bmr: 'bmr',
 };
 
 const formatNumberForInput = (value: number): string => {
@@ -144,6 +160,10 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       case 'waist': return t('measurements.fields.waist', { defaultValue: 'Waist' });
       case 'hips': return t('measurements.fields.hips', { defaultValue: 'Hips' });
       case 'steps': return t('measurements.fields.steps', { defaultValue: 'Steps' });
+      case 'muscleMassKg': return t('measurements.fields.muscleMass', { defaultValue: 'Muscle mass' });
+      case 'boneMassKg': return t('measurements.fields.boneMass', { defaultValue: 'Bone mass' });
+      case 'bodyWaterPercentage': return t('measurements.fields.bodyWaterPercentage', { defaultValue: 'Body water %' });
+      case 'bmr': return t('measurements.fields.bmr', { defaultValue: 'BMR' });
       default: return fallback;
     }
   }, [t]);
@@ -323,6 +343,26 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       if (measurements.body_fat_percentage != null) {
         next.bodyFatPercentage = formatNumberForInput(measurements.body_fat_percentage);
         prefilled.add('bodyFatPercentage');
+      }
+      if (measurements.muscle_mass_kg != null) {
+        next.muscleMassKg = formatNumberForInput(
+          weightFromKg(measurements.muscle_mass_kg, weightMode === 'st_lbs' ? 'kg' : weightMode)
+        );
+        prefilled.add('muscleMassKg');
+      }
+      if (measurements.bone_mass_kg != null) {
+        next.boneMassKg = formatNumberForInput(
+          weightFromKg(measurements.bone_mass_kg, weightMode === 'st_lbs' ? 'kg' : weightMode)
+        );
+        prefilled.add('boneMassKg');
+      }
+      if (measurements.body_water_percentage != null) {
+        next.bodyWaterPercentage = formatNumberForInput(measurements.body_water_percentage);
+        prefilled.add('bodyWaterPercentage');
+      }
+      if (measurements.bmr != null) {
+        next.bmr = formatNumberForInput(measurements.bmr);
+        prefilled.add('bmr');
       }
     }
     setForm((current) => {
@@ -530,6 +570,44 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       )
     )
       return;
+    if (
+      !apply(
+        'muscleMassKg',
+        evaluateField('muscleMassKg', fieldLabel('muscleMassKg', 'Muscle mass')),
+        (v) => weightToKg(v, weightMode === 'st_lbs' ? 'kg' : weightMode),
+      )
+    )
+      return;
+    if (
+      !apply(
+        'boneMassKg',
+        evaluateField('boneMassKg', fieldLabel('boneMassKg', 'Bone mass')),
+        (v) => weightToKg(v, weightMode === 'st_lbs' ? 'kg' : weightMode),
+      )
+    )
+      return;
+    if (
+      !apply(
+        'bodyWaterPercentage',
+        evaluateField('bodyWaterPercentage', fieldLabel('bodyWaterPercentage', 'Body water %'), {
+          max: 100,
+          maxMessage: t('measurements.validation.bodyWaterRange', { defaultValue: 'Body water % must be between 0 and 100.' }),
+        }),
+        (v) => v,
+      )
+    )
+      return;
+    if (
+      !apply(
+        'bmr',
+        evaluateField('bmr', fieldLabel('bmr', 'BMR'), {
+          max: 10000,
+          maxMessage: t('measurements.validation.bmrRange', { defaultValue: 'BMR must be between 0 and 10000 kcal.' }),
+        }),
+        (v) => v,
+      )
+    )
+      return;
 
     const fieldKeys: FieldKey[] = [
       'weight',
@@ -539,6 +617,10 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       'height',
       'steps',
       'bodyFatPercentage',
+      'muscleMassKg',
+      'boneMassKg',
+      'bodyWaterPercentage',
+      'bmr',
     ];
     const hasAnyField = fieldKeys.some((k) => payload[k] !== undefined);
 
@@ -971,6 +1053,72 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 returnKeyType="done"
               />
               {renderClearHint('steps')}
+            </View>
+
+            <View className="mb-4">
+              <Text className="text-text-secondary text-sm mb-1">
+                {t('measurements.fields.muscleMassWithUnit', {
+                  defaultValue: 'Muscle mass ({{unit}})',
+                  unit: weightMode === 'st_lbs' ? 'kg' : weightMode,
+                })}
+              </Text>
+              <FormInput
+                value={form.muscleMassKg}
+                onChangeText={(v) => updateField('muscleMassKg', v)}
+                keyboardType="decimal-pad"
+                placeholder="0"
+                accessibilityLabel={t('measurements.fields.muscleMass', { defaultValue: 'Muscle mass' })}
+                returnKeyType="done"
+              />
+              {renderClearHint('muscleMassKg')}
+            </View>
+
+            <View className="mb-4">
+              <Text className="text-text-secondary text-sm mb-1">
+                {t('measurements.fields.boneMassWithUnit', {
+                  defaultValue: 'Bone mass ({{unit}})',
+                  unit: weightMode === 'st_lbs' ? 'kg' : weightMode,
+                })}
+              </Text>
+              <FormInput
+                value={form.boneMassKg}
+                onChangeText={(v) => updateField('boneMassKg', v)}
+                keyboardType="decimal-pad"
+                placeholder="0"
+                accessibilityLabel={t('measurements.fields.boneMass', { defaultValue: 'Bone mass' })}
+                returnKeyType="done"
+              />
+              {renderClearHint('boneMassKg')}
+            </View>
+
+            <View className="mb-4">
+              <Text className="text-text-secondary text-sm mb-1">
+                {t('measurements.fields.bodyWaterPercentage', { defaultValue: 'Body water %' })}
+              </Text>
+              <FormInput
+                value={form.bodyWaterPercentage}
+                onChangeText={(v) => updateField('bodyWaterPercentage', v)}
+                keyboardType="decimal-pad"
+                placeholder="0"
+                accessibilityLabel={t('measurements.fields.bodyWaterPercentage', { defaultValue: 'Body water %' })}
+                returnKeyType="done"
+              />
+              {renderClearHint('bodyWaterPercentage')}
+            </View>
+
+            <View className="mb-4">
+              <Text className="text-text-secondary text-sm mb-1">
+                {t('measurements.fields.bmrWithUnit', { defaultValue: 'BMR (kcal)' })}
+              </Text>
+              <FormInput
+                value={form.bmr}
+                onChangeText={(v) => updateField('bmr', v)}
+                keyboardType="decimal-pad"
+                placeholder="0"
+                accessibilityLabel={t('measurements.fields.bmr', { defaultValue: 'BMR' })}
+                returnKeyType="done"
+              />
+              {renderClearHint('bmr')}
             </View>
 
             {isCustomDataError ? (

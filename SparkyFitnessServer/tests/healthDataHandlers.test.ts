@@ -55,6 +55,10 @@ describe('health data handler registry', () => {
     ['bone_mass', 'bone_mass_kg'],
     ['BoneMass', 'bone_mass_kg'],
     ['body_water_percentage', 'body_water_percentage'],
+    ['bmr', 'bmr'],
+    ['basal_metabolic_rate', 'bmr'],
+    ['BasalMetabolicRate', 'bmr'],
+    ['resting_energy', 'bmr'],
   ])("resolves '%s' to the '%s' handler", (rawType, canonicalKey) => {
     expect(resolveHandler(rawType)).toBe(HEALTH_TYPE_HANDLERS[canonicalKey]);
   });

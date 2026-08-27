@@ -382,7 +382,12 @@ const CalculationSettings = () => {
   };
 
   // Live Preview Math
-  const { bmr, weight: weightKg, height: heightCm } = useCalculatedBMR();
+  const {
+    bmr,
+    measuredBmr,
+    weight: weightKg,
+    height: heightCm,
+  } = useCalculatedBMR();
   const todayStr = todayInZone(timezone || 'UTC');
   const { data: adaptiveTdeeData } = useAdaptiveTdee(todayStr);
   const { data: goalsData } = useDiaryGoals(todayStr, false);
@@ -457,6 +462,7 @@ const CalculationSettings = () => {
     calculateBmrFn: calculateBmr,
     calorieSafetyFloorMode,
     calorieSafetyFloorValue,
+    measuredBmr,
   });
 
   // The safety floor clamps silently, so a goal mode that cannot be reached at

@@ -60,6 +60,7 @@ export function buildCheckInMeasurementsPayload(
     muscleMassKg: string;
     boneMassKg: string;
     bodyWaterPercentage: string;
+    bmr: string;
   },
   existing: CheckInMeasurementsResponse | null | undefined
 ): UpdateCheckInMeasurementsRequest {
@@ -76,7 +77,8 @@ export function buildCheckInMeasurementsPayload(
       | 'body_fat_percentage'
       | 'muscle_mass_kg'
       | 'bone_mass_kg'
-      | 'body_water_percentage',
+      | 'body_water_percentage'
+      | 'bmr',
     raw: string | undefined,
     parse: (value: string) => number
   ) => {
@@ -102,6 +104,7 @@ export function buildCheckInMeasurementsPayload(
   apply('muscle_mass_kg', form.muscleMassKg, parseFloat);
   apply('bone_mass_kg', form.boneMassKg, parseFloat);
   apply('body_water_percentage', form.bodyWaterPercentage, parseFloat);
+  apply('bmr', form.bmr, parseFloat);
 
   return payload;
 }
@@ -254,6 +257,10 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     return existingCheckIn?.body_water_percentage?.toString() || '';
   }, [existingCheckIn?.body_water_percentage]);
 
+  const derivedBmr = useMemo(() => {
+    return existingCheckIn?.bmr?.toString() || '';
+  }, [existingCheckIn?.bmr]);
+
   const derivedMood = useMemo(() => {
     return existingMood?.mood_value ?? 50;
   }, [existingMood?.mood_value]);
@@ -325,6 +332,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     derivedBodyWater,
     selectedDate
   );
+  const [bmr, setBmr] = useDerivedState<string>(derivedBmr, selectedDate);
   const [bodyFatPercentage, setBodyFatPercentage] = useDerivedState<string>(
     derivedBodyFat,
     selectedDate
@@ -601,6 +609,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
           muscleMassKg,
           boneMassKg,
           bodyWaterPercentage,
+          bmr,
         },
         existingCheckIn
       );
@@ -778,6 +787,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     boneMassKg,
     bodyWaterPercentage,
     muscleMassKg,
+    bmr,
     customCategories,
     customNotes,
     customValues,
@@ -798,6 +808,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     setBoneMassKg,
     setBodyWaterPercentage,
     setMuscleMassKg,
+    setBmr,
     setCustomNotes,
     setCustomValues,
     setHeight,

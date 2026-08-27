@@ -91,6 +91,8 @@ const boundedNullableOptionalLegacyNumber = (min: number, max: number) =>
 // numeric(5,2) columns, so 999.99 is the largest storable mass.
 const smartScaleMassKg = boundedNullableOptionalLegacyNumber(0, 999.99);
 const percentage = boundedNullableOptionalLegacyNumber(0, 100);
+// numeric(6,1) column for BMR kcal (300 to 10000 kcal).
+const smartScaleBmrKcal = boundedNullableOptionalLegacyNumber(0, 10000);
 
 export const UpsertWaterIntakeBodySchema = z
   .object({
@@ -130,6 +132,7 @@ export const UpsertCheckInBodySchema = z
     muscle_mass_kg: smartScaleMassKg,
     bone_mass_kg: smartScaleMassKg,
     body_water_percentage: percentage,
+    bmr: smartScaleBmrKcal,
   })
   .loose();
 
@@ -148,6 +151,7 @@ export const UpdateCheckInBodySchema = z
     muscle_mass_kg: smartScaleMassKg,
     bone_mass_kg: smartScaleMassKg,
     body_water_percentage: percentage,
+    bmr: smartScaleBmrKcal,
   })
   .loose();
 

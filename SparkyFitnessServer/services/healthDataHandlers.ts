@@ -621,8 +621,9 @@ function prepareCheckInMeasurement(
     case 'waist':
     case 'hips':
     case 'muscle_mass_kg':
-    case 'bone_mass_kg': {
-      // The smart-scale masses (muscle/bone) are always stored in kg;
+    case 'bone_mass_kg':
+    case 'bmr': {
+      // The smart-scale masses (muscle/bone) and BMR are stored in check_in_measurements;
       // providers normalize before dispatch — Garmin via grams_to_kg in the
       // Python service, Withings via its kg-denominated measure types.
       const numericValue = parseFloat(entry.value);
@@ -921,6 +922,11 @@ const boneMassHandler: HealthTypeHandler = {
 };
 
 const bodyWaterHandler: HealthTypeHandler = {
+  handle: handleCheckInEntry,
+  handleBatch: checkInHandleBatch,
+};
+
+const bmrHandler: HealthTypeHandler = {
   handle: handleCheckInEntry,
   handleBatch: checkInHandleBatch,
 };
@@ -1753,6 +1759,7 @@ export const HEALTH_TYPE_HANDLERS: Record<string, HealthTypeHandler> = {
   muscle_mass_kg: muscleMassHandler,
   bone_mass_kg: boneMassHandler,
   body_water_percentage: bodyWaterHandler,
+  bmr: bmrHandler,
   SleepSession: sleepSessionHandler,
   Stress: stressHandler,
   Workout: workoutHandler,
@@ -1776,6 +1783,9 @@ export const TYPE_ALIASES: Record<string, string> = {
   BoneMass: 'bone_mass_kg',
   muscle_mass: 'muscle_mass_kg',
   Height: 'height',
+  basal_metabolic_rate: 'bmr',
+  BasalMetabolicRate: 'bmr',
+  resting_energy: 'bmr',
   ExerciseSession: 'Workout',
   mood: 'Mood',
 };

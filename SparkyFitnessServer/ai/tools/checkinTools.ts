@@ -300,6 +300,9 @@ Actions:
               if (isSet(args.body_water)) {
                 measurements.body_water_percentage = args.body_water;
               }
+              if (isSet(args.bmr)) {
+                measurements.bmr = args.bmr;
+              }
 
               await measurementService.upsertCheckInMeasurements(
                 userId,
@@ -325,6 +328,7 @@ Actions:
                 parts.push(`bone mass: ${args.bone_mass}${wUnit}`);
               if (isSet(args.body_water))
                 parts.push(`body water: ${args.body_water}%`);
+              if (isSet(args.bmr)) parts.push(`bmr: ${args.bmr}kcal`);
               const summary =
                 parts.length > 0 ? parts.join(', ') : 'no changes';
               return formatConfirmation(

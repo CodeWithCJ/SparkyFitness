@@ -51,6 +51,7 @@ interface CheckInRow {
   weight?: number | string | null;
   height?: number | string | null;
   body_fat_percentage?: number | string | null;
+  bmr?: number | string | null;
 }
 
 /**
@@ -61,6 +62,7 @@ const MEASUREMENT_FIELDS = [
   'weight',
   'height',
   'body_fat_percentage',
+  'bmr',
 ] as const satisfies readonly (keyof CalorieBalanceMeasurements)[];
 
 /**
@@ -184,6 +186,7 @@ export async function getDailySummaryRange({
     height: (seedMeasurement as CalorieBalanceMeasurements | null)?.height,
     body_fat_percentage: (seedMeasurement as CalorieBalanceMeasurements | null)
       ?.body_fat_percentage,
+    bmr: (seedMeasurement as CalorieBalanceMeasurements | null)?.bmr,
   };
 
   const days: DailyCalorieBalanceRow[] = [];
