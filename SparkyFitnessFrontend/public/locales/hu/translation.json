@@ -79,10 +79,32 @@
       "emptyHint": "Nincsenek kategóriák kiválasztva - az alapértelmezett eszközök lesznek beállítva.",
       "food": "Étel & Víz",
       "exercise": "Edzés",
-      "goals": "Célok"
+      "goals": "Célok",
+      "checkin": "Test és Check-inek"
     }
   },
   "foodCsvImport": {
-    "clearData": "Adatok törlése"
+    "clearData": "Adatok törlése",
+    "title": "Étkezési Adatok importálása",
+    "addRow": "Row hozzáadása",
+    "uploadCsv": "CSV-Fájl feltöltése"
+  },
+  "layout": {
+    "welcome": "Üdvözlet, {{activeUserName}}"
+  },
+  "workoutLaps": {
+    "avgMaxHr": "Átlag / Max BPM",
+    "power": "Erő"
+  },
+  "dailyHealthMetrics": {
+    "title": "Napi Összefoglaló az Eszközeidről",
+    "bodyBattery": "Testi Akkumulátor",
+    "peak": "Maximum",
+    "low": "kevés: {{val}}",
+    "avgStress": "Átlag Stressz",
+    "max": "Max: {{val}}",
+    "vo2Max": "VO2 Max",
+    "fitnessAge": "Fitnesszi Korod: {{val}}",
+    "readiness": "Elkészültség"
   }
 }

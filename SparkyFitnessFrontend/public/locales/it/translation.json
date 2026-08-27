@@ -2312,5 +2312,8 @@
     "nameRequired": "Il campo “nome” non può essere vuoto.",
     "fileTooLarge": "Il file selezionato è troppo grande. Carica un file di dimensioni inferiori a 25 MB.",
     "defaultVariantNote": "Per ogni alimento deve essere impostata almeno una variante come unità predefinita (Is Default = True)."
+  },
+  "layout": {
+    "welcome": "Benvenuto {{activeUserName}}"
   }
 }

@@ -15,8 +15,13 @@
       "reports": "Rapporter og analyser",
       "coaching": "Coaching",
       "vision": "Visjon",
-      "profile": "Profil og vaner"
-    }
+      "profile": "Profil og vaner",
+      "medications": "Medisiner"
+    },
+    "errorLoadingHistory": "Lasting av chat-historikk feilet.",
+    "errorLoadingPreferences": "Lasting av chattepreferanser feilet.",
+    "errorClearingHistory": "Tømming av chat-historikk feilet.",
+    "successClearingHistory": "Chat-historikken ble tømt."
   },
   "foodCsvImport": {
     "title": "Importer matdata",
@@ -26,6 +31,241 @@
     "clearData": "Fjern data",
     "pastePlaceholder": "Eller lim inn CSV innhold her.",
     "parseText": "Sjekk tekst",
-    "recordsLoaded": "Suksess! {{count}} loggføringer lastet opp."
+    "recordsLoaded": "Suksess! {{count}} loggføringer lastet opp.",
+    "booleanFalse": "Usann",
+    "booleanTrue": "Sann",
+    "deleteRow": "Slett rad",
+    "overrideLabel": "Overstyr eksisterende matdetaljer",
+    "overrideDescription": "Hvis en matvare med samme navn og merke allerede eksisterer, oppdater næringsinnholdet på den i stedet for å feile importen. La denne instillingen være av for å hoppe over og feile på duplikater.",
+    "importing": "Importerer...",
+    "importData": "Importer Data",
+    "importRecords_one": "Importer {{count}} Post",
+    "importRecords_other": "Importer {{count}} Poster",
+    "importErrorTitle": "Importfeil",
+    "pasteFirst": "Lim inn noe CSV-data først.",
+    "invalidFormatTitle": "Ugyldig CSV-format",
+    "headersMismatchText": "Overskrifter samsvarer ikke med forventet format. Bruk malen.",
+    "successTitle": "Suksess",
+    "loadedRowsFromText": "Lastet {{count}} rader fra tekst.",
+    "emptyFile": "Den valgte filen er tom.",
+    "headersMismatchFile": "CSV-overskriftene stemmer ikke med forventet format. Koble sammen feltene for å fortsette.",
+    "noDataTitle": "Ingen data funnet",
+    "noDataText": "CSV-filen inneholder overskrifter, men ingen datarader.",
+    "validationErrorTitle": "Valideringsfeil",
+    "nameRequired": "Feltet \"navn\" kan ikke være tomt.",
+    "fileTooLarge": "Den valgte filen er for stor. Last opp en fil som er mindre enn 25MB.",
+    "defaultVariantNote": "Minst en varian per matvare må være satt som standard enhet (Standard = Sann).",
+    "upfrontNote": "Merk: Hver matvare må ha minst en variant satt som standard enhet (Standard = Sann).",
+    "missingDefaultWarning": "Advarsel: {{count}} matvare(r) har ikke en standard variant satt. Angi minst en variant som standard (uthevet i gul nedenfor).",
+    "missingDefaultValidationError": "Minst en variant per matvare må være satt som standard enhet.",
+    "filterMissingDefault": "Vis Manglende Standard ({{count}})",
+    "showAllRows": "Vis Alle Rader ({{count}})",
+    "actions": "Handlinger"
+  },
+  "workoutLaps": {
+    "lap": "Runde",
+    "distance": "Distanse",
+    "time": "Tid",
+    "pace": "Tempo (/{{unit}})",
+    "lapsCount": "{{count}} Runder"
+  },
+  "dailyHealthMetrics": {
+    "vo2Max": "VO2-maks",
+    "restingHr": "Hvilepuls",
+    "recovery": "Restitusjon: {{val}}"
+  },
+  "layout": {
+    "welcome": "Velkommen {{activeUserName}}"
+  },
+  "foods": {
+    "providerVerified": "Verifisert matvare",
+    "removeNutrient": "Fjern {{nutrient}}"
+  },
+  "medications": {
+    "tabs": {
+      "log": "Logg",
+      "symptoms": "Symptomer"
+    },
+    "calendar": {
+      "allSupplements": "Alle kosttilskudd",
+      "selectSupplement": "Velg et kosttilskudd",
+      "partialTaken": "Delvis tatt",
+      "sun": "Søn",
+      "mon": "Man",
+      "tue": "Tir",
+      "wed": "Ons",
+      "thu": "Tor",
+      "fri": "Fre",
+      "sat": "Lør"
+    },
+    "common": {
+      "saving": "Lagrer…",
+      "save": "Lagre"
+    },
+    "today": {
+      "supplementsTitle": "Dagens kosttilskudd"
+    },
+    "glp1": {
+      "doseMg": "Dose (mg)",
+      "pkDayLabel": "Dag {{day}}",
+      "dateTime": "Dato og tid",
+      "pkAxisDates": "Datoer",
+      "pkAxisDays": "Dager",
+      "addStep": "Legg til steg",
+      "statusPlanned": "Planlagt",
+      "statusActive": "Aktiv (nåværende)",
+      "statusDone": "Utført",
+      "notes": "Notater"
+    },
+    "types": {
+      "tablet": "tablett",
+      "capsule": "kapsel",
+      "liquid": "væske",
+      "injection": "injeksjon",
+      "drops": "dråper",
+      "cream": "krem",
+      "other": "annet"
+    },
+    "cabinet": {
+      "macroLabel_calories": "Kalorier",
+      "macroLabel_protein": "Protein",
+      "macroLabel_carbs": "Karbo",
+      "macroLabel_fat": "Fett",
+      "macroLabel_dietary_fiber": "Fiber",
+      "includeMacros": "Inkluder makroer",
+      "servingUnit_tablet_one": "tablett",
+      "servingUnit_tablet_other": "tabletter",
+      "servingUnit_capsule_one": "kapsel",
+      "servingUnit_capsule_other": "kapsler",
+      "servingUnit_pill_one": "pille",
+      "servingUnit_pill_other": "piller",
+      "clearNutrients": "Fjern alle"
+    }
+  },
+  "nutrition": {
+    "calories": "Kalorier",
+    "protein": "Protein",
+    "carbohydrates": "Karbohydrater",
+    "carbs": "Karbohydrater",
+    "fat": "Fett",
+    "saturatedFat": "Mettet Fett",
+    "polyunsaturatedFat": "Flerumettet Fett",
+    "monounsaturatedFat": "Enumettet Fett",
+    "transFat": "Transfett",
+    "cholesterol": "Kolesterol",
+    "sodium": "Salt",
+    "potassium": "Kalium",
+    "dietaryFiber": "Kostfiber",
+    "fiber": "Fiber",
+    "sugars": "Sukker",
+    "vitaminA": "Vitamin A",
+    "vitaminC": "Vitamin C",
+    "calcium": "Kalsium",
+    "iron": "Jern",
+    "autoCalculate": "Auto-kalkuler",
+    "autoCalculateTooltip": "Auto-kalkuler using {{algorithm}}",
+    "autoCalculateDisabledNoSex": "Velg kjønn i profilen din for å tilgjengeliggjøre auto-kalkulasjon",
+    "autoCalculateSelect": "Inkluder i masse-auto-kalkuler",
+    "autoCalculateSelectAll": "Velg Alle",
+    "autoCalculateSelectNone": "Velg Ingen",
+    "autoCalculateApplySelected": "Auto-kalkuler Valgte ({{count}})"
+  },
+  "calculationSettings": {
+    "showNetCarbs": "Vis netto karbohydrater (karbohydrater minus fiber)",
+    "showNetCarbsHint": "Når aktivert vil oppsummeringer av karbohydrater vise total minus kostfiber.",
+    "bmrAlgorithm": "BMR-algoritme",
+    "bmrAlgorithmHint": "Velg formelen som skal brukes for å kalkulere din Basal Metabolic Rate.",
+    "bodyFatAlgorithmHint": "Velg formel som brukes til å estimere fettprosent fra mål.",
+    "calories": "Kalorier",
+    "energyUnitHint": "Velg foretrukket enhet for energi (f.eks. kalorier, kilojoule).",
+    "energyUnitLabel": "Energienhet",
+    "energyUnitSaveError": "Feil",
+    "energyUnitSaveErrorDesc": "Oppdatering av energienhet feilet.",
+    "energyUnitSaveSuccess": "Suksess",
+    "energyUnitSaveSuccessDesc": "Energienheten er oppdatert.",
+    "joules": "Joule",
+    "saveError": "Feil",
+    "saveErrorDesc": "Lagring av kalkulasjonsinnstillinger feilet.",
+    "saveSuccess": "Suksess",
+    "saveSuccessDesc": "Kalkulasjonsinnstillinger ble lagret!",
+    "selectBmrAlgorithm": "Velg BMR-algoritme",
+    "selectEnergyUnitPlaceholder": "Velg energienhet"
+  },
+  "aboutDialog": {
+    "title": "Om SparkyFitness",
+    "description1": "SparkyFitness: Bygget for Familier. Drevet av KI. Spor mat, trening, vann og helse — sammen.",
+    "applicationVersion": "Applikasjonsversjon: ",
+    "joinDiscord": "Bli med i fellesskapet vårt på Discord: ",
+    "discordLink": "discord.gg/vcnMT5cPEA",
+    "moreInfoVisit": "For mer informasjon, besøk ",
+    "githubRepo": "GitHub repoet",
+    "technologiesUsed": "Teknologier Brukt:",
+    "frontend": "Frontend:",
+    "backend": "Backend:",
+    "externalApis": "Eksterne APIer:"
+  },
+  "exercise": {
+    "title": "Øvelser",
+    "addExerciseDialog": {
+      "title": "Legg til Øvelse",
+      "description": "Legg til en ny øvelse i databasen din, enten ved å opprette en egendefinert en, eller å importere fra en ekstern kilde.",
+      "myExercisesTab": "Mine Øvelser"
+    }
+  },
+  "foodSearchDialog": {
+    "title": "Søk og Legg til Matvare",
+    "description": "Søk etter matvarer å legge til din database."
+  },
+  "enhancedFoodSearch": {
+    "database": "Database",
+    "meals": "Måltid",
+    "scanBarcode": "Skann Strekkode",
+    "customFood": "Egendefinert Matvare",
+    "importFromCSV": "Importer fra CSV",
+    "searchFoodsPlaceholder": "Søk etter matvarer...",
+    "selectProvider": "Velg Tilbyder",
+    "searchingFoods": "Søker etter matvarer...",
+    "yourFoods": "Dine Matvarer",
+    "yourMeals": "Dine Måltid",
+    "noSavedFoods": "Ingen lagrede matvarer funnet.",
+    "noSavedFoodsOrMeals": "Ingen lagrede matvarer eller måltid funnet.",
+    "searchOnlineToImport": "Søk for å finne matvarer fra dine tilbydere på nett.",
+    "onlineSearchFailed": "Søk i tilbyder på nett feilet.",
+    "loadMore": "Last mer",
+    "loadMoreFailed": "Lasting av flere resultat feilet.",
+    "scannedProduct": "Skannet produkt",
+    "recentFoods": "Nylige Matvarer",
+    "private": "Privat",
+    "public": "Offentlig",
+    "family": "Familie",
+    "topFoods": "Topp Matvarer",
+    "noRecentOrTopFoods": "Ingen nylige eller mest brukte matvarer funnet. Begynn å loggføre mat for å se dem her.",
+    "noRecentOrTopItems": "Ingen nylige eller ofte brukte matvarer eller måltid funnet. Begynn å loggføre for å se dem her.",
+    "recent": "Nylig",
+    "frequent": "Ofte brukt",
+    "noItemsFoundInDatabase": "Ingen treff i din database på \"{{searchTerm}}\".",
+    "clickSearchIconOnline": "Klikk på søkeikonet for å søke på nett.",
+    "noFoodsFoundOnline": "Ingen matvarer funnet fra valgte tilbydere på nett.",
+    "mealie": "Mealie",
+    "editAndAdd": "Endre og Legg til",
+    "meal": "Måltid",
+    "openFoodFacts": "OpenFoodFacts",
+    "nutritionix": "Nutritionix",
+    "fatSecret": "FatSecret",
+    "editFoodDetails": "Endre Matvaredetaljer",
+    "addNewFood": "Legg til Ny Matvare"
+  },
+  "workout": {
+    "weight": "vekt"
+  },
+  "food": {
+    "imagesLabel": "Bilder",
+    "imagePreviewAlt": "Matbilde {{number}}",
+    "newImagePreviewAlt": "Nytt bilde {{number}}",
+    "removeImage": "Fjern bilde",
+    "viewImages": "Se bilder",
+    "imageViewer": "Bildeframviser",
+    "previousImage": "Forrige bilde",
+    "nextImage": "Neste bilde"
   }
 }

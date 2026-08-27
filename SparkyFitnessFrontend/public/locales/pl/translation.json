@@ -2907,7 +2907,11 @@
       "vision": "Analiza obrazu",
       "profile": "Profil i nawyki",
       "medications": "Leki"
-    }
+    },
+    "errorClearingHistory": "Nie udało się wyczyścić historii czatu.",
+    "errorLoadingHistory": "Nie udało się załadować historii czatu.",
+    "errorLoadingPreferences": "Nie udało się wczytać ustawień czatu.",
+    "successClearingHistory": "Pomyślnie wyczyszczono historię czatu."
   },
   "foodCsvImport": {
     "title": "Import danych żywności",
@@ -3062,5 +3066,13 @@
   },
   "healthDataImport": {
     "fileTooLarge": "Wybrany plik jest zbyt duży. Prześlij plik mniejszy niż 25 MB."
+  },
+  "workoutLaps": {
+    "lap": "Okrążenie",
+    "distance": "Dystans",
+    "time": "Czas"
+  },
+  "layout": {
+    "welcome": "Witaj {{activeUserName}}"
   }
 }
