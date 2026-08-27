@@ -25,12 +25,17 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
+  mealTypeDeletionImpactOptions,
   useCreateMealTypeMutation,
   useDeleteMealTypeMutation,
   useMealTypes,
   useUpdateMealTypeMutation,
 } from '@/hooks/Diary/useMealTypes';
+import type { DeleteMealTypeOptions } from '@/hooks/Diary/useMealTypes';
 import { MealTypeDefinition } from '@/types/diary';
+import { useQueryClient } from '@tanstack/react-query';
+import DeleteMealTypeDialog from './DeleteMealTypeDialog';
+import type { PendingMealTypeDeletion } from './DeleteMealTypeDialog';
 
 const MealTypeManager = () => {
   const { t } = useTranslation();
@@ -45,10 +50,14 @@ const MealTypeManager = () => {
   const [newSortOrder, setNewSortOrder] = useState(100);
   const [newDefaultTime, setNewDefaultTime] = useState<string>('');
 
+  const [pendingDeletion, setPendingDeletion] =
+    useState<PendingMealTypeDeletion | null>(null);
+
+  const queryClient = useQueryClient();
   const { data: mealTypes = [] } = useMealTypes();
   const { mutateAsync: createMealType } = useCreateMealTypeMutation();
   const { mutateAsync: updateMealType } = useUpdateMealTypeMutation();
-  const { mutate: deleteMealType } = useDeleteMealTypeMutation();
+  const { mutateAsync: deleteMealType } = useDeleteMealTypeMutation();
 
   const handleAdd = async () => {
     if (!newName.trim()) return;
@@ -80,8 +89,30 @@ const MealTypeManager = () => {
     setEditingMealType(null);
   };
 
-  const handleDelete = (id: string) => {
-    deleteMealType(id);
+  // Fetch what references the meal type first, so the dialog can show exact
+  // counts instead of deleting silently on a single click.
+  const handleDeleteRequest = async (item: MealTypeDefinition) => {
+    try {
+      const impact = await queryClient.fetchQuery(
+        mealTypeDeletionImpactOptions(item.id)
+      );
+      setPendingDeletion({ mealType: item, impact });
+    } catch {
+      // The failure is already surfaced by the global query error handler;
+      // caught here only so the click handler does not reject unhandled.
+    }
+  };
+
+  const handleConfirmDelete = async (options: DeleteMealTypeOptions) => {
+    if (!pendingDeletion) return;
+    try {
+      await deleteMealType({ id: pendingDeletion.mealType.id, ...options });
+      setPendingDeletion(null);
+    } catch {
+      // Toasted by the global mutation error handler. The dialog stays open so
+      // the user can pick a different option — a delete can still be refused
+      // when another user's entries reference this meal type.
+    }
   };
 
   const toggleVisibility = async (item: MealTypeDefinition) => {
@@ -299,7 +330,7 @@ const MealTypeManager = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => handleDeleteRequest(item)}
                       >
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
@@ -358,6 +389,13 @@ const MealTypeManager = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <DeleteMealTypeDialog
+        pendingDeletion={pendingDeletion}
+        mealTypes={mealTypes}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setPendingDeletion(null)}
+      />
     </div>
   );
 };

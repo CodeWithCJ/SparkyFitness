@@ -3,12 +3,25 @@ import { useTranslation } from 'react-i18next';
 import {
   createMealType,
   deleteMealType,
+  getMealTypeDeletionImpact,
   getMealTypes,
   updateMealType,
 } from '@/api/Diary/mealTypeService';
-import { mealTypeKeys } from '@/api/keys/diary';
+import type { DeleteMealTypeOptions } from '@/api/Diary/mealTypeService';
+// Re-exported so components can type these without importing from @/api
+// directly, which the no-restricted-imports rule reserves for hooks.
+export type {
+  DeleteMealTypeOptions,
+  MealTypeDeleteMode,
+  MealTypeDeletionImpact,
+} from '@/api/Diary/mealTypeService';
+import {
+  foodEntryKeys,
+  foodEntryMealKeys,
+  mealTypeKeys,
+} from '@/api/keys/diary';
 import { createMealFromDiary } from '@/api/Foods/meals';
-import { mealKeys } from '@/api/keys/meals';
+import { mealKeys, mealPlanKeys } from '@/api/keys/meals';
 
 export const useMealTypes = () => {
   const { t } = useTranslation();
@@ -70,14 +83,32 @@ export const useUpdateMealTypeMutation = () => {
   });
 };
 
+export const mealTypeDeletionImpactOptions = (mealTypeId: string | null) => ({
+  queryKey: mealTypeId
+    ? mealTypeKeys.impact(mealTypeId)
+    : (['mealTypes', 'impact', 'disabled'] as const),
+  queryFn: () => getMealTypeDeletionImpact(mealTypeId!),
+  enabled: !!mealTypeId,
+  staleTime: 0,
+  meta: {
+    errorMessage: 'Could not fetch deletion impact. Please try again.',
+  },
+});
+
 export const useDeleteMealTypeMutation = () => {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
 
   return useMutation({
-    mutationFn: deleteMealType,
+    mutationFn: ({ id, ...options }: { id: string } & DeleteMealTypeOptions) =>
+      deleteMealType(id, options),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: mealTypeKeys.lists() });
+      // A reassign or force delete rewrites diary and plan rows, not just the
+      // meal type list, so every view built on those must be refetched.
+      queryClient.invalidateQueries({ queryKey: mealTypeKeys.all });
+      queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
+      queryClient.invalidateQueries({ queryKey: foodEntryMealKeys.all });
+      queryClient.invalidateQueries({ queryKey: mealPlanKeys.all });
     },
     meta: {
       successMessage: t(
