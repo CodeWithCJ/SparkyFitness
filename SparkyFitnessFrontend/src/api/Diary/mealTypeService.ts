@@ -39,9 +39,43 @@ export const updateMealType = async (
   return response;
 };
 
-export const deleteMealType = async (id: string): Promise<unknown> => {
-  const response = await apiCall(`/meal-types/${id}`, {
-    method: 'DELETE',
+export type MealTypeDeleteMode = 'strict' | 'reassign' | 'force';
+
+export interface MealTypeDeletionImpact {
+  foodEntries: number;
+  foodEntryMeals: number;
+  mealPlans: number;
+  templateAssignments: number;
+  totalReferences: number;
+}
+
+export interface DeleteMealTypeOptions {
+  mode?: MealTypeDeleteMode;
+  reassignTo?: string;
+}
+
+export const getMealTypeDeletionImpact = async (
+  id: string
+): Promise<MealTypeDeletionImpact> => {
+  const response = await apiCall(`/meal-types/${id}/deletion-impact`, {
+    method: 'GET',
   });
+  return response;
+};
+
+export const deleteMealType = async (
+  id: string,
+  options: DeleteMealTypeOptions = {}
+): Promise<unknown> => {
+  const params = new URLSearchParams();
+  if (options.mode) params.set('mode', options.mode);
+  if (options.reassignTo) params.set('reassignTo', options.reassignTo);
+  const query = params.toString();
+  const response = await apiCall(
+    `/meal-types/${id}${query ? `?${query}` : ''}`,
+    {
+      method: 'DELETE',
+    }
+  );
   return response;
 };
