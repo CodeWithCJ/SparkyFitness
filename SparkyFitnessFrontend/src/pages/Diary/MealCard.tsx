@@ -16,6 +16,7 @@ import {
   Trash2,
   History,
   Utensils,
+  Camera,
   ClipboardCopy,
   PlusCircle,
   Users,
@@ -63,6 +64,7 @@ import AllergenBadges from '@/components/AllergenBadges';
 import { diaryEntryImages, usableFoodImages } from '@/utils/foodImages';
 import { useImageLightbox } from '@/hooks/Foods/useImageLightbox';
 import ImageLightbox from '@/components/FoodSearch/ImageLightbox';
+import FoodPhotoEstimateDialog from './FoodPhotoEstimateDialog';
 
 const MOBILE_ENTRY_NUTRIENT_LIMIT = 4;
 
@@ -123,6 +125,7 @@ const MealCard = ({
   customNutrients = [], // Default to empty array
 }: MealCardProps) => {
   const { t } = useTranslation();
+  const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
   const {
     loggingLevel,
     nutrientDisplayPreferences,
@@ -326,6 +329,15 @@ const MealCard = ({
                 </DialogContent>
               </Dialog>
               {/* Existing clock icon would go here if it were part of this component */}
+              <Button
+                size="default"
+                onClick={() => setPhotoDialogOpen(true)}
+                title={t('foodPhoto.title', {
+                  defaultValue: 'Estimate from a photo',
+                })}
+              >
+                <Camera className="w-4 h-4" />
+              </Button>
               <Button
                 size="default"
                 onClick={() => onCopyClick(meal.type)}
@@ -796,6 +808,12 @@ const MealCard = ({
             </div>
           )}
         </CardContent>
+        <FoodPhotoEstimateDialog
+          open={photoDialogOpen}
+          onOpenChange={setPhotoDialogOpen}
+          entryDate={selectedDate}
+          mealType={meal.type}
+        />
       </Card>
 
       {/* Edit Food Database Dialog */}

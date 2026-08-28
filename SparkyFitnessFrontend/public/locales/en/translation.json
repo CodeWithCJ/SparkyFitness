@@ -4786,5 +4786,74 @@
     "moveImageEarlier": "Move image left",
     "moveImageLater": "Move image right",
     "imagesReorderHint": "Drag to reorder. The first image is used as the thumbnail."
+  },
+  "foodPhoto": {
+    "title": "Estimate from a photo",
+    "captureDescription": "Add one or more photos of the meal. A second angle helps with stacked or mixed dishes.",
+    "reviewDescription": "Check each ingredient before logging. Editing the grams recalculates that row.",
+    "addPhotos": "Add photos",
+    "photoAlt": "Meal photo {{number}}",
+    "removePhoto": "Remove photo {{number}}",
+    "descriptionLabel": "Description (optional)",
+    "descriptionPlaceholder": "e.g. chicken thigh, no skin, cooked in olive oil",
+    "weightLabel": "Total weight in grams (optional)",
+    "weightHint": "Portion size is where photo estimates are least accurate. Weighing the plate makes the numbers far more reliable.",
+    "analyse": "Analyse photo",
+    "log": "Log to diary",
+    "logged": "Estimate logged",
+    "logFailedTitle": "Could not log the estimate",
+    "logFailedMessage": "Please try again.",
+    "noIngredients": "Keep at least one ingredient with a weight above zero.",
+    "emptyIngredients": "Every ingredient was removed. Switch to \"One food\" to log the plate as a single entry.",
+    "removeIngredient": "Remove {{name}}",
+    "recalcFromGrams": "Recalculate from grams",
+    "tooManyPhotosTitle": "Too many photos",
+    "tooManyPhotosMessage": "Up to {{count}} photos can be analysed together.",
+    "photosTooLargeTitle": "Photos too large",
+    "photosTooLargeMessage": "Remove a photo, or use smaller images.",
+    "columns": {
+      "ingredient": "Ingredient",
+      "grams": "Grams",
+      "gramsFor": "Grams for {{name}}",
+      "calories": "Calories",
+      "protein": "Protein",
+      "carbs": "Carbs",
+      "fat": "Fat",
+      "fiber": "Fiber",
+      "sugar": "Sugar",
+      "total": "Total"
+    },
+    "confidence": {
+      "high": "Likely",
+      "medium": "Possible",
+      "low": "Uncertain"
+    },
+    "match": {
+      "use": "Use {{name}} from your foods",
+      "using": "Using {{name}}",
+      "summary": "{{count}} ingredients matched to foods already in your library."
+    },
+    "mode": {
+      "ingredients": "Ingredients",
+      "combined": "One food",
+      "explainerIngredients": "Logs one meal you can expand to each ingredient.",
+      "explainerCombined": "Logs the whole plate as a single food."
+    },
+    "errors": {
+      "aiNotConfiguredTitle": "AI not configured",
+      "aiNotConfiguredMessage": "Configure an AI provider in Settings to use photo estimates.",
+      "providerNotAllowedTitle": "AI provider not allowed",
+      "providerNotAllowedMessage": "This AI provider points to a private network address. Ask an admin to configure it globally.",
+      "photoTooLargeTitle": "Photo too large",
+      "photoTooLargeMessage": "Use a smaller image.",
+      "unexpectedFormatTitle": "Unexpected image format",
+      "unexpectedFormatMessage": "Use a JPEG, PNG, or WebP image.",
+      "couldNotProcessTitle": "Could not process photo",
+      "couldNotProcessMessage": "The provider blocked this image. Try another shot.",
+      "timedOutTitle": "AI provider timed out",
+      "timedOutMessage": "The estimate took too long. Try again, or log this food manually.",
+      "unreachableTitle": "Couldn't reach AI provider",
+      "unreachableMessage": "Try again, or log this food manually."
+    }
   }
 }

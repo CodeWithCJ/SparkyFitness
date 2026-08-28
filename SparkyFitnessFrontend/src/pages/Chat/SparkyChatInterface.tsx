@@ -20,6 +20,7 @@ import { useEffect } from 'react';
 
 import { MessagePart, ImagePart } from '@/types/Chatbot_types';
 import { type UIMessage } from 'ai';
+import { resizeImageBase64 } from '@/utils/imageResize';
 
 interface SparkyChatInnerProps {
   activeAIServiceSetting: {
@@ -33,62 +34,6 @@ interface SparkyChatInnerProps {
     parts?: MessagePart[];
   }>;
 }
-
-const resizeImageBase64 = (
-  base64Str: string,
-  maxDim = 1024
-): Promise<string> => {
-  return new Promise((resolve) => {
-    if (!base64Str.startsWith('data:image/')) {
-      resolve(base64Str);
-      return;
-    }
-
-    const img = new Image();
-    img.onload = () => {
-      let width = img.width;
-      let height = img.height;
-
-      if (width <= maxDim && height <= maxDim) {
-        resolve(base64Str);
-        return;
-      }
-
-      if (width > height) {
-        if (width > maxDim) {
-          height = Math.round((height * maxDim) / width);
-          width = maxDim;
-        }
-      } else {
-        if (height > maxDim) {
-          width = Math.round((width * maxDim) / height);
-          height = maxDim;
-        }
-      }
-
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        resolve(base64Str);
-        return;
-      }
-
-      ctx.drawImage(img, 0, 0, width, height);
-      // Convert to JPEG with 0.8 quality to keep size minimal
-      const resized = canvas.toDataURL('image/jpeg', 0.8);
-      resolve(resized);
-    };
-
-    img.onerror = () => {
-      resolve(base64Str);
-    };
-
-    img.src = base64Str;
-  });
-};
 
 const SparkyChatInner = ({
   activeAIServiceSetting,
