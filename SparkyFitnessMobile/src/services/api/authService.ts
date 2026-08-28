@@ -6,7 +6,7 @@ import { ssoClient } from '@better-auth/sso/client';
 import * as WebBrowser from 'expo-web-browser';
 import { clearSessionToken, ServerConfig } from '../storage';
 import { addLog } from '../LogService';
-import { normalizeUrl, isInsecureUrlBlocked } from '../../utils/serverUrl';
+import { normalizeUrl, isInsecureUrlBlocked, isPasskeyUrlBlocked } from '../../utils/serverUrl';
 import { getErrorMessage } from '../../utils/errors';
 import { LoginError } from './authErrors';
 import {
@@ -620,7 +620,12 @@ const getPasskeyBrowserPackage = async (): Promise<string | undefined> => {
 export const loginWithPasskey = async (serverUrl: string): Promise<LoginSuccess> => {
   const baseUrl = normalizeUrl(serverUrl);
 
-  if (isInsecureUrlBlocked(baseUrl)) {
+  // Passkey sign-in uses a browser secure context (window.isSecureContext),
+  // which plain HTTP never satisfies even on a private/LAN/VPN address. Use
+  // the stricter HTTPS-only guard here instead of the general private-network
+  // allowance so the failure is reported up front, not after the browser
+  // session opens and the passkey page silently refuses to proceed.
+  if (isPasskeyUrlBlocked(baseUrl)) {
     throw new LoginError('A secure (HTTPS) server URL is required to sign in.');
   }
 

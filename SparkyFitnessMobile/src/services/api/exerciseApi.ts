@@ -1,4 +1,5 @@
 import { apiFetch, normalizeUrl } from './apiClient';
+import { isInsecureUrlBlocked } from '../../utils/serverUrl';
 import { ApiError } from './errors';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
 import { getAuthHeaders, notifySessionExpired } from './authService';
@@ -273,6 +274,9 @@ export async function createExercise(payload: CreateExercisePayload): Promise<Ex
   const config = await getActiveServerConfig();
   if (!config) throw new Error('Server configuration not found.');
   const baseUrl = normalizeUrl(config.url);
+  if (isInsecureUrlBlocked(baseUrl)) {
+    throw new Error('HTTPS is required for server connections. Please update your server URL in Settings.');
+  }
 
   const exerciseData = {
     ...payload,
@@ -425,6 +429,9 @@ export async function updateExercise(
   const config = await getActiveServerConfig();
   if (!config) throw new Error('Server configuration not found.');
   const baseUrl = normalizeUrl(config.url);
+  if (isInsecureUrlBlocked(baseUrl)) {
+    throw new Error('HTTPS is required for server connections. Please update your server URL in Settings.');
+  }
 
   const form = new FormData();
   form.append('exerciseData', JSON.stringify(payload));

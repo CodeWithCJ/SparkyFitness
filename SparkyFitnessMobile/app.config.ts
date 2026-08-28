@@ -147,13 +147,19 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
           'SparkyFitness lets you choose photos from your library for your foods, meals, and diary entries.',
         NSAppTransportSecurity: {
           NSAllowsArbitraryLoads: false,
-          // Lets HTTP (no TLS) reach RFC 1918 / link-local LAN addresses
-          // without punching a hole for arbitrary internet hosts. Self-hosted
-          // servers on a home network can be reached over plain HTTP; a
-          // mesh-VPN host (e.g. Tailscale's 100.64.0.0/10 range, or a custom
-          // ZeroTier range) is not covered by this iOS flag and still needs
-          // HTTPS — see src/utils/serverUrl.ts for the matching JS-side
-          // private-network allowance.
+          // Lets HTTP (no TLS) reach IP-literal hosts (RFC 1918/link-local LAN
+          // addresses, and mesh-VPN ranges such as Tailscale's CGNAT
+          // 100.64.0.0/10 or a custom ZeroTier range) and unqualified/.local
+          // hostnames, without punching a hole for arbitrary internet hosts.
+          // Per Apple's docs, this exemption applies to any IP-address literal
+          // (not just "private" ranges) on iOS 10+; on iOS 17+ it's what
+          // re-enables IP-literal loads that ATS otherwise blocks by default.
+          // A *qualified* mesh-VPN hostname (e.g. a Tailscale MagicDNS name
+          // instead of a raw tailnet IP) is NOT covered by this flag and still
+          // needs HTTPS. See src/utils/serverUrl.ts for the matching JS-side
+          // private-network allowance, which is the actual security boundary
+          // here since this ATS flag (like Android's cleartext permission)
+          // can't itself distinguish "private" from "public" IP literals.
           NSAllowsLocalNetworking: true,
         },
         ITSAppUsesNonExemptEncryption: false,

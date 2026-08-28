@@ -39,6 +39,7 @@ import { CHAT_SUGGESTIONS } from '../constants/chat';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../services/storage';
 import { getAuthHeaders } from '../services/api/authService';
 import { normalizeUrl } from '../services/api/apiClient';
+import { isInsecureUrlBlocked } from '../utils/serverUrl';
 import { clearAllChatHistory } from '../services/api/chatApi';
 import { addLog } from '../services/LogService';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -538,7 +539,11 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
       try {
         const config = await getActiveServerConfig();
         if (cancelled) return;
-        setBaseUrl(config ? normalizeUrl(config.url) : null);
+        const url = config ? normalizeUrl(config.url) : null;
+        // Treat an insecure (blocked) server URL as "no server" for chat: the
+        // stream transport carries auth headers and should never be pointed
+        // at a URL the rest of the app wouldn't send credentials to either.
+        setBaseUrl(url && !isInsecureUrlBlocked(url) ? url : null);
       } catch (error) {
         // getActiveServerConfig re-throws on storage failure; without this the
         // spinner would hang forever. Fall through to the "no server" branch.

@@ -13,7 +13,7 @@ import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import FormInput from './FormInput';
 import MfaForm, { ErrorBanner, OidcProviderLogo, PrimaryButton } from './MfaForm';
-import { isInsecureUrlBlocked } from '../utils/serverUrl';
+import { isInsecureUrlBlocked, isPasskeyUrlBlocked } from '../utils/serverUrl';
 import {
   login,
   LoginError,
@@ -216,7 +216,10 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
 
   const handlePasskeySignIn = async () => {
     if (!currentUrl) { setError(t('auth.errors.noServerSelected', { defaultValue: 'No server selected.' })); return; }
-    if (isInsecureUrlBlocked(currentUrl)) {
+    // Stricter than the general private-network allowance: the passkey page
+    // requires a browser secure context, which plain HTTP never satisfies
+    // even on a private/LAN/VPN address.
+    if (isPasskeyUrlBlocked(currentUrl)) {
       setError(t('auth.errors.httpsRequired', { defaultValue: 'HTTPS is required for server connections.' }));
       return;
     }

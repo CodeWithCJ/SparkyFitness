@@ -29,6 +29,18 @@ const PRIVATE_IP_RANGES = ['loopback', 'private', 'linkLocal', 'uniqueLocal', 'c
  * `isPrivateNetworkAddress`) or a local-only TLD (.local/.lan/.internal/
  * .home.arpa). These are LAN / self-hosting / mesh-VPN (Tailscale, ZeroTier)
  * targets where plain HTTP is an accepted trade-off.
+ *
+ * Known limitation: the hostname-suffix branch (`.local`/`.lan`/`.internal`/
+ * `.home.arpa`) is a string match, not a DNS resolution + IP check, so it
+ * can't detect DNS rebinding (a suffix hostname whose record is later
+ * changed, or was always pointed, at a public IP). React Native has no
+ * reliable synchronous DNS-resolution API to close this without adding a
+ * native module. This is judged an acceptable residual risk because, unlike
+ * a CORS Origin header, the hostname here is not attacker-supplied per
+ * request — it's the user's own server address, typed once into Settings —
+ * so exploiting it requires talking a user into entering a specific
+ * malicious hostname as their trusted server, not just getting them to visit
+ * a web page or open a link.
  */
 export const isPrivateOrLocalHost = (url: string): boolean => {
   const host = extractHost(url);
@@ -88,3 +100,15 @@ export const getInsecureUrlError = (url: string, localizedMessage?: string): str
  * user-facing message.
  */
 export const isInsecureUrlBlocked = (url: string): boolean => getInsecureUrlError(url) !== null;
+
+/**
+ * Stricter guard for browser-based passkey (WebAuthn) sign-in specifically.
+ * Unlike {@link isInsecureUrlBlocked}, this does NOT allow the private/LAN/
+ * VPN-range carve-out: the server's passkey page requires a browser secure
+ * context (`window.isSecureContext`), which plain HTTP never satisfies even
+ * on a private IP, so opening the passkey browser flow over HTTP would just
+ * fail silently after the fact. Requiring HTTPS up front here gives the user
+ * an accurate error immediately instead.
+ */
+export const isPasskeyUrlBlocked = (url: string): boolean =>
+  !normalizeUrl(url).toLowerCase().startsWith('https://');
