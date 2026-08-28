@@ -12,7 +12,14 @@ import { getTodayDate, addDays } from '../utils/dateUtils';
 import { addLog } from '../services/LogService';
 import { queryClient } from './queryClient';
 import { usePreferences } from './usePreferences';
+import { useDailySummary } from './useDailySummary';
 import type { CheckInMeasurement } from '../types/measurements';
+
+/** Clamps a goal-progress fraction to 0...1 — passing a goal always reads as 1. */
+function goalProgress(consumed: number, goal: number): number {
+  if (goal <= 0) return 0;
+  return Math.max(0, Math.min(1, consumed / goal));
+}
 
 /** Days of history relayed to the watch — matches the watch's 14-day chart. */
 const HISTORY_DAYS = 14;
@@ -45,6 +52,52 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     || preferences?.default_weight_unit === 'st_lbs'
     ? 'lbs'
     : 'kg';
+
+  // Always today's summary regardless of what date the Dashboard happens to
+  // have selected — this hook seeds the watch, which only ever cares about
+  // today. Same underlying query the Dashboard uses, so this rides its cache
+  // rather than adding a second fetch when both are mounted.
+  const { summary: dailySummary } = useDailySummary({ date: getTodayDate(), enabled });
+
+  // EVERY calorie figure sent to the watch comes from this one object — the
+  // same one the phone's own summary bar (DiaryCalorieMacroSummary) and the
+  // iOS home-screen widget read.
+  //
+  // The flatter `summary.caloriesBurned` / `caloriesConsumed` /
+  // `remainingCalories` fields are rawer inputs and do NOT agree with it:
+  // `calorieBalance.burned` accounts for the day's exercise source
+  // (logged / active / steps / none) and BMR, and `.eaten` has supplement
+  // doses folded in. Reading those instead is what made the watch show 993
+  // burned against the phone's 607. Issue #2094 was this same class of bug
+  // one layer up, which is why the balance is computed in exactly one place.
+  const balance = dailySummary?.calorieBalance;
+
+  const calorieGoalProgress = balance && balance.goal > 0
+    ? Math.max(0, Math.min(1, balance.progress / 100))
+    : 0;
+  const proteinGoalProgress = dailySummary
+    ? goalProgress(dailySummary.protein.consumed, dailySummary.protein.goal)
+    : 0;
+  const carbsGoalProgress = dailySummary
+    ? goalProgress(dailySummary.carbs.consumed, dailySummary.carbs.goal)
+    : 0;
+  const fatGoalProgress = dailySummary
+    ? goalProgress(dailySummary.fat.consumed, dailySummary.fat.goal)
+    : 0;
+
+  // Totals behind the watch's Goals page: eaten on the left, remaining in the
+  // ring, burned on the right. Null rather than 0 while the summary is still
+  // loading, so the watch can show dashes instead of a convincing-looking
+  // zero it has no way to tell apart from a real "nothing logged yet".
+  const caloriesConsumed = balance?.eaten ?? null;
+  const caloriesBurned = balance?.burned ?? null;
+  const caloriesRemaining = balance?.remaining ?? null;
+  const proteinConsumed = dailySummary?.protein.consumed ?? null;
+  const proteinGoal = dailySummary?.protein.goal ?? null;
+  const carbsConsumed = dailySummary?.carbs.consumed ?? null;
+  const carbsGoal = dailySummary?.carbs.goal ?? null;
+  const fatConsumed = dailySummary?.fat.consumed ?? null;
+  const fatGoal = dailySummary?.fat.goal ?? null;
 
   const pushContext = useCallback(async (): Promise<void> => {
     if (!WatchConnectivity) return;
@@ -90,6 +143,19 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         history,
         ackedClientIds: ackedClientIdsRef.current.slice(-20),
         weightUnit,
+        calorieGoalProgress,
+        proteinGoalProgress,
+        carbsGoalProgress,
+        fatGoalProgress,
+        caloriesConsumed,
+        caloriesBurned,
+        caloriesRemaining,
+        proteinConsumed,
+        proteinGoal,
+        carbsConsumed,
+        carbsGoal,
+        fatConsumed,
+        fatGoal,
       };
 
       await WatchConnectivity.updateContext(context);
@@ -98,10 +164,28 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       // again next time it becomes reachable.
       addLog(`Watch context push failed: ${String(error)}`, 'WARNING');
     }
-    // weightUnit is a dep so flipping the phone's setting mid-session re-pushes
-    // context immediately — the effect below re-subscribes whenever pushContext's
-    // identity changes, which includes calling it once on the way in.
-  }, [weightUnit]);
+    // weightUnit and every nutrition value are deps so flipping the phone's
+    // unit setting, or logging food, re-pushes context immediately — the effect
+    // below re-subscribes whenever pushContext's identity changes, which
+    // includes calling it once on the way in. They're listed as individual
+    // primitives rather than depending on the summary object, so an identical
+    // refetch doesn't churn the listeners.
+  }, [
+    weightUnit,
+    calorieGoalProgress,
+    proteinGoalProgress,
+    carbsGoalProgress,
+    fatGoalProgress,
+    caloriesConsumed,
+    caloriesBurned,
+    caloriesRemaining,
+    proteinConsumed,
+    proteinGoal,
+    carbsConsumed,
+    carbsGoal,
+    fatConsumed,
+    fatGoal,
+  ]);
 
   const handleCheckIn = useCallback(
     async (payload: WatchCheckInPayload): Promise<void> => {

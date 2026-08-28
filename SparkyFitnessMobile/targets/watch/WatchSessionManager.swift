@@ -69,6 +69,42 @@ final class WatchSessionManager: NSObject, ObservableObject {
             )
         }
 
+        // Reassembles the flat nutrition keys into a structured snapshot. Only
+        // built when the phone actually sent totals — an older phone build, or
+        // one whose Dashboard hasn't loaded yet, sends none of them, and the
+        // Goals page should say so rather than show a wall of honest-looking
+        // zeros.
+        let nutrition: NutritionSnapshot? = {
+            func value(_ key: String) -> Double? { payload[key] as? Double }
+            guard
+                let consumed = value("caloriesConsumed"),
+                let burned = value("caloriesBurned"),
+                let remaining = value("caloriesRemaining")
+            else { return nil }
+            return NutritionSnapshot(
+                day: payload["today"] as? String ?? CheckInDate.today(),
+                caloriesConsumed: consumed,
+                caloriesBurned: burned,
+                caloriesRemaining: remaining,
+                calorieProgress: value("calorieGoalProgress") ?? 0,
+                carbs: MacroGoal(
+                    consumed: value("carbsConsumed") ?? 0,
+                    goal: value("carbsGoal") ?? 0,
+                    progress: value("carbsGoalProgress") ?? 0
+                ),
+                fat: MacroGoal(
+                    consumed: value("fatConsumed") ?? 0,
+                    goal: value("fatGoal") ?? 0,
+                    progress: value("fatGoalProgress") ?? 0
+                ),
+                protein: MacroGoal(
+                    consumed: value("proteinConsumed") ?? 0,
+                    goal: value("proteinGoal") ?? 0,
+                    progress: value("proteinGoalProgress") ?? 0
+                )
+            )
+        }()
+
         let incoming = WatchContext(
             today: payload["today"] as? String,
             todayWeightKg: payload["todayWeightKg"] as? Double,
@@ -81,9 +117,21 @@ final class WatchSessionManager: NSObject, ObservableObject {
             updatedAt: Date(),
             // nil (→ .kg via effectiveWeightUnit) when absent or unrecognized,
             // e.g. a phone build from before this field existed.
-            weightUnit: (payload["weightUnit"] as? String).flatMap(WeightUnit.init(rawValue:))
+            weightUnit: (payload["weightUnit"] as? String).flatMap(WeightUnit.init(rawValue:)),
+            nutrition: nutrition
         )
         store.apply(context: incoming)
+
+        // The complication is a separate process and cannot read this app's own
+        // storage, only the shared App Group — so the same numbers go out a
+        // second time, from the raw payload, regardless of what the snapshot
+        // above did with them.
+        EnergyGoalSync.write(
+            calorieGoalProgress: payload["calorieGoalProgress"] as? Double ?? 0,
+            proteinGoalProgress: payload["proteinGoalProgress"] as? Double ?? 0,
+            carbsGoalProgress: payload["carbsGoalProgress"] as? Double ?? 0,
+            fatGoalProgress: payload["fatGoalProgress"] as? Double ?? 0
+        )
     }
 
     private func handle(ack payload: [String: Any]) {

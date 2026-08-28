@@ -41,6 +41,42 @@ struct HistoryPoint: Codable, Equatable, Identifiable {
     var date: Date? { CheckInDate.parse(day) }
 }
 
+/// One macro's standing against today's goal.
+struct MacroGoal: Codable, Equatable {
+    let consumed: Double
+    let goal: Double
+    /// Clamped 0...1 by the phone, so this screen and the Daily Energy Goal
+    /// complication fill from identical numbers rather than each doing their
+    /// own arithmetic and drifting apart.
+    let progress: Double
+
+    var hasGoal: Bool { goal > 0 }
+}
+
+/// Today's nutrition, mirrored from the phone's Dashboard for the Goals page.
+///
+/// Arrives as flat keys in the context payload and is reassembled here (see
+/// `WatchSessionManager.handle(context:)`). Every property is non-optional
+/// because the watch builds the whole struct itself, defaulting anything the
+/// phone left out — but note that makes it decode-fragile: any field added
+/// here later MUST be Optional, or a snapshot persisted by an older build
+/// will fail to decode and take the entire `WatchContext` down with it.
+struct NutritionSnapshot: Codable, Equatable {
+    /// The calendar day these totals describe. Yesterday's numbers are worse
+    /// than none — the watch can wake long before the phone syncs a new day.
+    let day: String
+    let caloriesConsumed: Double
+    let caloriesBurned: Double
+    /// Goal minus net calories. Negative once the wearer is over.
+    let caloriesRemaining: Double
+    let calorieProgress: Double
+    let carbs: MacroGoal
+    let fat: MacroGoal
+    let protein: MacroGoal
+
+    var isToday: Bool { day == CheckInDate.today() }
+}
+
 /// Everything the phone relays to the watch: what to seed the crown with, and
 /// recent history to draw. Latest-value-only — delivered via
 /// `updateApplicationContext`, so a missed update is simply superseded.
@@ -67,6 +103,15 @@ struct WatchContext: Codable, Equatable {
     /// key on an Optional property as `nil`, not a decode failure. Read
     /// `effectiveWeightUnit` instead of this directly.
     var weightUnit: WeightUnit?
+    /// Today's nutrition totals for the Goals page. Optional for the same
+    /// Codable reason as `weightUnit`: a context blob persisted before this
+    /// existed still decodes, with nil meaning "the phone hasn't said yet" —
+    /// which the Goals page renders as dashes rather than zeros.
+    ///
+    /// The complication does not read this. It is fed separately by
+    /// `EnergyGoalSync`, straight from the raw payload into shared App Group
+    /// storage, because a widget extension can't see this app's own storage.
+    var nutrition: NutritionSnapshot?
 
     static let empty = WatchContext(
         today: nil,
@@ -78,7 +123,8 @@ struct WatchContext: Codable, Equatable {
         history: [],
         ackedClientIds: [],
         updatedAt: nil,
-        weightUnit: nil
+        weightUnit: nil,
+        nutrition: nil
     )
 
     /// True when there is no value to anchor the Digital Crown to, which is the

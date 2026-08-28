@@ -41,6 +41,40 @@ export interface WatchContextPayload {
    * drawn on screen there. Missing/unrecognized defaults to kg on the watch.
    */
   weightUnit?: 'kg' | 'lbs' | null;
+  /**
+   * Today's progress toward the phone's daily nutrition goals, each already
+   * clamped to 0...1 — reaching or passing a goal always reads as 1, same
+   * convention the iOS calorie widget already uses. Powers the watch's
+   * "Daily Energy Goal" complication; the watch app itself doesn't display
+   * these, it only relays them into shared storage the complication reads.
+   */
+  calorieGoalProgress?: number | null;
+  proteinGoalProgress?: number | null;
+  carbsGoalProgress?: number | null;
+  fatGoalProgress?: number | null;
+  /**
+   * Today's nutrition totals, for the watch's Goals summary page — the same
+   * numbers the phone's own summary bar shows.
+   *
+   * The three calorie figures MUST come from `DailySummary.calorieBalance`
+   * (`eaten` / `burned` / `remaining`), never from the flatter top-level
+   * `caloriesConsumed` / `caloriesBurned` / `remainingCalories` fields: those
+   * are rawer inputs that disagree with what's on screen, because the balance
+   * additionally accounts for the day's exercise source and BMR.
+   *
+   * Sent as flat keys (rather than a nested object) so the watch's existing
+   * payload parsing and the complication's storage path stay untouched; the
+   * watch reassembles them into a structured snapshot on arrival.
+   */
+  caloriesConsumed?: number | null;
+  caloriesBurned?: number | null;
+  caloriesRemaining?: number | null;
+  proteinConsumed?: number | null;
+  proteinGoal?: number | null;
+  carbsConsumed?: number | null;
+  carbsGoal?: number | null;
+  fatConsumed?: number | null;
+  fatGoal?: number | null;
 }
 
 export type WatchConnectivityEvents = {

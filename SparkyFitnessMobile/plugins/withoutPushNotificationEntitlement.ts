@@ -17,6 +17,13 @@ import { ConfigPlugin, withEntitlementsPlist } from 'expo/config-plugins';
  *
  * Applied to dev builds only (see app.config.ts), so production builds signed
  * with a paid team keep the entitlement.
+ *
+ * Must be registered FIRST in app.config.ts's `plugins` array, not last: for
+ * a given mod type, @expo/config-plugins runs each newly-registered mod
+ * before delegating to the previously-registered one, so execution order is
+ * the reverse of registration order. Registering first here makes this
+ * delete the last thing that runs, after expo-notifications and
+ * expo-widgets have both already added the entitlement back.
  */
 const withoutPushNotificationEntitlement: ConfigPlugin = (config) =>
   withEntitlementsPlist(config, (innerConfig) => {

@@ -126,6 +126,17 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
   // stripped because free Apple "Personal Team" accounts cannot sign a build
   // that declares the Push Notifications capability, and only local
   // notifications are used. See plugins/withoutPushNotificationEntitlement.ts.
+  //
+  // MUST be spread FIRST in the `plugins` array below, not last. For a given
+  // mod type (e.g. "entitlements"), @expo/config-plugins wraps each newly
+  // registered mod around the previously registered one and runs the NEW
+  // one's function first, then delegates to the previous one — so execution
+  // order is the REVERSE of registration order. Registering last (as this
+  // used to) made our delete run FIRST, before expo-notifications/
+  // expo-widgets had added `aps-environment` back, so it never actually
+  // stripped anything. Registering first makes our delete run last, after
+  // every other plugin has had its say — which is what "must come last"
+  // actually requires.
   const devPlugins = [
     './plugins/withoutPushNotificationEntitlement',
   ];
@@ -180,6 +191,8 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       }
     },
     plugins: [
+      // Must be first — see the comment on `devPlugins` above for why.
+      ...(isDev ? devPlugins : []),
       ...(config.plugins ?? []),
       'expo-image',
       [
@@ -222,8 +235,6 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
         },
       ],
       ...(!isDev ? prodPlugins : []),
-      // Must come last: it deletes an entitlement that expo-notifications adds.
-      ...(isDev ? devPlugins : []),
     ],
     extra: {
       ...config.extra,
