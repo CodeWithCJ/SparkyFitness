@@ -54,12 +54,18 @@ WHERE NOT EXISTS (
     AND ci.entry_date = cm_latest.entry_date
 );
 
--- 3. Clean up legacy custom_measurements for basal_metabolic_rate now that data is in check_in_measurements
+-- 3. Clean up only the custom_measurements rows that were successfully transferred to check_in_measurements
 DELETE FROM custom_measurements cm
-USING custom_categories cc
+USING custom_categories cc, check_in_measurements ci
 WHERE cc.id = cm.category_id
-  AND cc.name = 'basal_metabolic_rate';
+  AND cc.name = 'basal_metabolic_rate'
+  AND ci.user_id = cm.user_id
+  AND ci.entry_date = cm.entry_date
+  AND ci.bmr IS NOT NULL;
 
--- 4. Remove the obsolete basal_metabolic_rate custom category
-DELETE FROM custom_categories
-WHERE name = 'basal_metabolic_rate';
+-- 4. Remove the basal_metabolic_rate custom category only if all its rows were cleaned up
+DELETE FROM custom_categories cc
+WHERE cc.name = 'basal_metabolic_rate'
+  AND NOT EXISTS (
+    SELECT 1 FROM custom_measurements cm WHERE cm.category_id = cc.id
+  );
