@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   foodPhotoEstimateItemSchema,
   foodPhotoEstimateResponseSchema,
@@ -365,8 +366,11 @@ describe('provider JSON schema stays internally consistent', () => {
   // propertyOrdering, OpenAI/Anthropic strict mode reads required, and every
   // provider reads properties — so a field added to one list and forgotten in
   // another degrades silently on some providers and not others. Pin them.
+  // The server package is ESM ("type": "module"), so `__dirname` exists only
+  // through Vitest's CJS interop and would break under plain node.
+  const here = dirname(fileURLToPath(import.meta.url));
   const source = readFileSync(
-    resolve(__dirname, '../services/foodPhotoEstimationService.ts'),
+    resolve(here, '../services/foodPhotoEstimationService.ts'),
     'utf8'
   );
 

@@ -100,32 +100,39 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
 
   const { date, estimate, request } = route.params;
 
-  const initialFormValues = useMemo<Partial<FoodFormData>>(
-    () => ({
-      name: estimate.meal_summary || 'Photo estimate',
-      brand: '',
-      servingSize:
-        request?.totalWeight !== undefined
-          ? toFieldString(request.totalWeight)
-          : String(Math.round(estimate.totals.total_grams)),
-      servingUnit:
-        request?.totalWeight !== undefined ? request.weightUnit ?? 'g' : 'g',
-      calories: toFieldString(estimate.totals.calories_kcal),
-      protein: toFieldString(estimate.totals.protein_g),
-      carbs: toFieldString(estimate.totals.carbs_g),
-      fat: toFieldString(estimate.totals.fat_g),
-      fiber: toFieldString(estimate.totals.fiber_g),
-      sugars: toFieldString(estimate.totals.sugar_g),
-    }),
-    [estimate, request],
-  );
-
-  const [showConfidenceReason, setShowConfidenceReason] = useState(false);
   // Grouped is the default: it is strictly more informative than a single
   // opaque food, and the diary still collapses it to one row.
   const [mode, setMode] = useState<'grouped' | 'combined'>('grouped');
-  const { rows, expandedId, totals, totalGrams, matchedCount, dispatch } =
+  const { rows, isEdited, expandedId, totals, totalGrams, matchedCount, dispatch } =
     useFoodPhotoIngredientDraft(estimate.items);
+
+  // Seeded from the CURRENT draft, not the original estimate, so switching to
+  // "One food" after editing or removing ingredients carries those edits over
+  // instead of silently reverting to the AI's first answer. With no rows left
+  // (everything removed) it falls back to the estimate totals.
+  const initialFormValues = useMemo<Partial<FoodFormData>>(() => {
+    // Only override the model's plate total once the user has edited.
+    const hasDraft = isEdited && rows.length > 0;
+    const grams = hasDraft ? totalGrams : estimate.totals.total_grams;
+    const macros = hasDraft ? totals : estimate.totals;
+    const useRequestWeight = !hasDraft && request?.totalWeight !== undefined;
+    return {
+      name: estimate.meal_summary || 'Photo estimate',
+      brand: '',
+      servingSize: useRequestWeight
+        ? toFieldString(request?.totalWeight)
+        : String(Math.round(grams)),
+      servingUnit: useRequestWeight ? (request?.weightUnit ?? 'g') : 'g',
+      calories: toFieldString(macros.calories_kcal),
+      protein: toFieldString(macros.protein_g),
+      carbs: toFieldString(macros.carbs_g),
+      fat: toFieldString(macros.fat_g),
+      fiber: toFieldString(macros.fiber_g),
+      sugars: toFieldString(macros.sugar_g),
+    };
+  }, [estimate, request, isEdited, rows, totals, totalGrams]);
+
+  const [showConfidenceReason, setShowConfidenceReason] = useState(false);
 
   const overallTone = confidenceTones[estimate.overall_confidence];
   const overallLabel = confidenceLabel(t, estimate.overall_confidence, 'overall');
@@ -200,6 +207,15 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
       mealName: estimate.meal_summary || 'Photo estimate',
       description: estimate.confidence_reason || undefined,
       ingredients: items,
+      nutrition: {
+        grams: totalGrams,
+        calories: totals.calories_kcal,
+        protein: totals.protein_g,
+        carbs: totals.carbs_g,
+        fat: totals.fat_g,
+        fiber: totals.fiber_g,
+        sugars: totals.sugar_g,
+      },
     });
   };
 

@@ -267,4 +267,20 @@ describe('FoodPhotoEstimateReviewScreen', () => {
     const screen = renderScreen(estimate);
     expect(screen.getByText(/Greek yogurt/)).toBeTruthy();
   });
+
+  describe('switching to One food (PR #2282 review)', () => {
+    it('keeps the model plate total when the ingredients were not touched', () => {
+      // estimate.totals is the model's own figure for the whole plate and can
+      // exceed the sum of the itemised rows, so an untouched draft must not
+      // replace it with the row sum.
+      const screen = renderCombined();
+
+      fireEvent.press(screen.getByText('Next'));
+
+      const [, params] = navigation.navigate.mock.calls[0];
+      expect(params.saveFoodPayload.calories).toBe(320);
+      expect(params.saveFoodPayload.serving_size).toBe(250);
+    });
+
+  });
 });

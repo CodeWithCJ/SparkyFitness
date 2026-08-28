@@ -41,6 +41,8 @@ export interface IngredientDraftRow {
   /** The AI's original values, kept so "revert" and match-toggle can restore. */
   aiGrams: number;
   aiMacros: PortionMacros;
+  /** The AI's original name, kept so clearing a match can restore it. */
+  aiName: string;
 
   match?: FoodPhotoEstimateMatch | null;
   alternates: FoodPhotoEstimateMatch[];
@@ -91,6 +93,7 @@ function toRow(item: FoodPhotoEstimateItem, index: number): IngredientDraftRow {
     macros,
     aiGrams: grams,
     aiMacros: macros,
+    aiName: item.name,
     match: item.match ?? null,
     alternates: item.alternates ?? [],
     // Applied on open only when the server says the match is strong enough.
@@ -145,6 +148,11 @@ export function ingredientDraftReducer(
       return mapRow(state, action.id, (row) => ({
         ...row,
         manualOverride: true,
+        // Detach the match. A row still flagged `matchApplied` serializes as
+        // `source: 'existing'`, and the server then snapshots the matched
+        // variant from the database — silently throwing this edit away.
+        // The match itself is kept so the row can re-apply it.
+        matchApplied: false,
         macros: asPortionMacros({
           ...row.macros,
           [action.key]:
@@ -153,7 +161,13 @@ export function ingredientDraftReducer(
       }));
 
     case 'SET_NAME':
-      return mapRow(state, action.id, (row) => ({ ...row, name: action.name }));
+      // Renaming detaches for the same reason: an `existing` row is logged
+      // under the database food's name, not the typed one.
+      return mapRow(state, action.id, (row) => ({
+        ...row,
+        name: action.name,
+        matchApplied: false,
+      }));
 
     case 'REMOVE_ROW':
       return {
@@ -186,6 +200,9 @@ export function ingredientDraftReducer(
           ...row,
           matchApplied: false,
           manualOverride: false,
+          // Without this the row keeps the rejected match's name and is logged
+          // as a new quick food named after the food the user just declined.
+          name: row.aiName,
           macros: restored ?? row.aiMacros,
         };
       });
@@ -216,6 +233,30 @@ export function ingredientDraftReducer(
   }
 }
 
+
+/**
+ * True once the user has actually changed the detected ingredients.
+ *
+ * This matters for the "One food" view. The model's `totals` is its own figure
+ * for the whole plate and can legitimately exceed the sum of the itemised rows
+ * (oil, sauces and seasoning it accounted for without listing). So an untouched
+ * draft must keep using `estimate.totals`, and only a real edit — a removed
+ * row, a changed weight or name, a hand-edited macro, an applied match — should
+ * make the row sum authoritative instead.
+ */
+export function isIngredientDraftEdited(
+  rows: IngredientDraftRow[],
+  originalCount: number
+): boolean {
+  if (rows.length !== originalCount) return true;
+  return rows.some(
+    (row) =>
+      row.manualOverride ||
+      row.matchApplied ||
+      row.name !== row.aiName ||
+      row.grams !== row.aiGrams
+  );
+}
 
 /** Derived totals for a set of draft rows. Never stored — always recomputed. */
 export function ingredientDraftTotals(rows: IngredientDraftRow[]) {

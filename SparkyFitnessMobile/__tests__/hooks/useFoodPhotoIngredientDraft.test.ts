@@ -1,5 +1,6 @@
 import {
   ingredientDraftReducer,
+  isIngredientDraftEdited,
   type IngredientDraftAction,
   type FoodPhotoEstimateItem,
   type FoodPhotoEstimateMatch,
@@ -277,6 +278,107 @@ describe('ingredientDraftReducer', () => {
         grams: 10,
       });
       expect(after.rows[0]).toEqual(before.rows[0]);
+    });
+  });
+
+  describe('edits after a match is applied (PR #2282 review)', () => {
+    it('detaches the match when a macro is edited, so the edit survives logging', () => {
+      const state = run([{ ...chicken, match }], [
+        { type: 'APPLY_MATCH', id: 'local-0' },
+        { type: 'SET_MACRO', id: 'local-0', key: 'protein_g', value: 42 },
+      ]);
+      // A row still flagged matchApplied serializes as source:'existing', and
+      // the server would then snapshot the database variant and drop this edit.
+      expect(state.rows[0].matchApplied).toBe(false);
+      expect(state.rows[0].macros.protein_g).toBe(42);
+      // The other matched values are kept — only the link is broken.
+      expect(state.rows[0].macros.calories_kcal).toBe(200);
+      // The match stays available to re-apply.
+      expect(state.rows[0].match).not.toBeNull();
+    });
+
+    it('detaches the match when the name is edited', () => {
+      const state = run([{ ...chicken, match }], [
+        { type: 'APPLY_MATCH', id: 'local-0' },
+        { type: 'SET_NAME', id: 'local-0', name: 'Turkey thigh' },
+      ]);
+      expect(state.rows[0].matchApplied).toBe(false);
+      expect(state.rows[0].name).toBe('Turkey thigh');
+    });
+
+    it('restores the AI name when the match is cleared', () => {
+      const state = run([{ ...chicken, match }], [
+        { type: 'APPLY_MATCH', id: 'local-0' },
+        { type: 'CLEAR_MATCH', id: 'local-0' },
+      ]);
+      // Otherwise the row logs as a new quick food named after the food the
+      // user just rejected.
+      expect(state.rows[0].name).toBe('Grilled chicken thigh');
+      expect(state.rows[0].macros.calories_kcal).toBe(290);
+    });
+
+    it('can re-apply the match after an edit detached it', () => {
+      const state = run([{ ...chicken, match }], [
+        { type: 'APPLY_MATCH', id: 'local-0' },
+        { type: 'SET_MACRO', id: 'local-0', key: 'protein_g', value: 42 },
+        { type: 'APPLY_MATCH', id: 'local-0' },
+      ]);
+      expect(state.rows[0].matchApplied).toBe(true);
+      expect(state.rows[0].macros.protein_g).toBe(30);
+      expect(state.rows[0].name).toBe('Chicken Thigh');
+    });
+  });
+
+  describe('isIngredientDraftEdited', () => {
+    // Drives whether "One food" keeps the model's plate total or switches to
+    // the sum of the reviewed rows.
+    it('is false for an untouched draft', () => {
+      const state = init([chicken, rice]);
+      expect(isIngredientDraftEdited(state.rows, 2)).toBe(false);
+    });
+
+    it('is true once a row is removed', () => {
+      const state = run([chicken, rice], [{ type: 'REMOVE_ROW', id: 'local-0' }]);
+      expect(isIngredientDraftEdited(state.rows, 2)).toBe(true);
+    });
+
+    it('is true once the grams change', () => {
+      const state = run([chicken], [{ type: 'SET_GRAMS', id: 'local-0', grams: 90 }]);
+      expect(isIngredientDraftEdited(state.rows, 1)).toBe(true);
+    });
+
+    it('is true once a macro is hand-edited', () => {
+      const state = run([chicken], [
+        { type: 'SET_MACRO', id: 'local-0', key: 'protein_g', value: 42 },
+      ]);
+      expect(isIngredientDraftEdited(state.rows, 1)).toBe(true);
+    });
+
+    it('is true once a row is renamed', () => {
+      const state = run([chicken], [
+        { type: 'SET_NAME', id: 'local-0', name: 'Turkey thigh' },
+      ]);
+      expect(isIngredientDraftEdited(state.rows, 1)).toBe(true);
+    });
+
+    it('is true once a match is applied', () => {
+      const state = run([{ ...chicken, match }], [
+        { type: 'APPLY_MATCH', id: 'local-0' },
+      ]);
+      expect(isIngredientDraftEdited(state.rows, 1)).toBe(true);
+    });
+
+    it('returns to false after a match is applied and then cleared', () => {
+      const state = run([{ ...chicken, match }], [
+        { type: 'APPLY_MATCH', id: 'local-0' },
+        { type: 'CLEAR_MATCH', id: 'local-0' },
+      ]);
+      expect(isIngredientDraftEdited(state.rows, 1)).toBe(false);
+    });
+
+    it('ignores expanding a row', () => {
+      const state = run([chicken], [{ type: 'TOGGLE_EXPANDED', id: 'local-0' }]);
+      expect(isIngredientDraftEdited(state.rows, 1)).toBe(false);
     });
   });
 });

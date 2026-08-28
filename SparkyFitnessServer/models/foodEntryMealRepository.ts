@@ -37,7 +37,21 @@ async function resolveMealTypeIdWithClient(
   mealTypeId: string | null | undefined,
   mealTypeName: string | null | undefined
 ): Promise<string | null | undefined> {
-  if (mealTypeId || !mealTypeName) return mealTypeId;
+  if (mealTypeId) {
+    // A supplied id still has to exist. It arrives from a client and is only
+    // checked for uuid shape by the schema, so an unknown-but-well-formed id
+    // would otherwise reach the insert and fail on the foreign key instead of
+    // surfacing as INVALID_MEAL_TYPE.
+    const idRes = await client.query(
+      'SELECT id FROM meal_types WHERE id = $1',
+      [mealTypeId]
+    );
+    if (idRes.rows.length === 0) {
+      throw new Error(`Invalid meal type: ${mealTypeId}`);
+    }
+    return mealTypeId;
+  }
+  if (!mealTypeName) return mealTypeId;
   const typeRes = await client.query(
     'SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)',
     [mealTypeName]

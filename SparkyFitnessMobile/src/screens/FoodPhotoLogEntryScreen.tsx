@@ -92,32 +92,19 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
     if (params.mode === 'combined') {
       return saveFoodPayloadToDisplayValues(params.saveFoodPayload);
     }
-    // Each grouped item stores per-100 g nutrition with the eaten grams on
-    // `quantity`, so the portion contribution is value * quantity / 100.
-    const totals = params.ingredients.reduce(
-      (acc, item) => {
-        if (item.source !== 'new') return acc;
-        const factor = item.quantity / 100;
-        acc.calories += (item.food.calories ?? 0) * factor;
-        acc.protein += (item.food.protein ?? 0) * factor;
-        acc.carbs += (item.food.carbs ?? 0) * factor;
-        acc.fat += (item.food.fat ?? 0) * factor;
-        acc.fiber += (item.food.dietary_fiber ?? 0) * factor;
-        acc.sugars += (item.food.sugars ?? 0) * factor;
-        acc.grams += item.quantity;
-        return acc;
-      },
-      { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugars: 0, grams: 0 },
-    );
+    // Use the nutrition the user reviewed. Summing `ingredients` would drop
+    // every item matched to a saved food, since those carry no nutrition of
+    // their own, and the recap would under-report the meal.
+    const n = params.nutrition;
     return {
-      servingSize: totals.grams || 1,
+      servingSize: n.grams || 1,
       servingUnit: 'g',
-      calories: totals.calories,
-      protein: totals.protein,
-      carbs: totals.carbs,
-      fat: totals.fat,
-      fiber: totals.fiber,
-      sugars: totals.sugars,
+      calories: n.calories,
+      protein: n.protein,
+      carbs: n.carbs,
+      fat: n.fat,
+      fiber: n.fiber,
+      sugars: n.sugars,
     } as FoodDisplayValues;
   }, [params]);
 

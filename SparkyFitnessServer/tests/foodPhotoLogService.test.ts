@@ -1,4 +1,5 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
+import type { FoodPhotoLogRequest } from '@workspace/shared';
 
 const queryMock = vi.fn();
 const releaseMock = vi.fn();
@@ -80,7 +81,9 @@ const NEW_FOOD = {
   fat: 1.2,
 };
 
-function payload(overrides: Record<string, unknown> = {}) {
+function payload(
+  overrides: Partial<FoodPhotoLogRequest> = {}
+): FoodPhotoLogRequest {
   return {
     mode: 'grouped',
     entry_date: '2026-08-27',
@@ -100,8 +103,7 @@ function payload(overrides: Record<string, unknown> = {}) {
       { source: 'new', food: NEW_FOOD, quantity: 85, unit: 'g' },
     ],
     ...overrides,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any;
+  };
 }
 
 /** SQL keywords issued on the transaction client, in order. */
@@ -343,5 +345,20 @@ describe('createPhotoLoggedMeal', () => {
       createPhotoLoggedMeal('user-1', 'user-1', payload())
     ).rejects.toThrow('boom');
     expect(releaseMock).toHaveBeenCalledTimes(1);
+  });
+
+  describe('meal type validation (PR #2282 review)', () => {
+    it('rejects a well-formed but unknown meal_type_id before creating anything', async () => {
+      resolveMealTypeIdWithClientMock.mockRejectedValue(
+        new Error('Invalid meal type: 77777777-7777-4777-8777-777777777777')
+      );
+      await expect(
+        createPhotoLoggedMeal('user-1', 'user-1', payload())
+      ).rejects.toMatchObject({ code: 'INVALID_MEAL_TYPE' });
+
+      expect(createFoodWithClientMock).not.toHaveBeenCalled();
+      expect(createFoodEntryMealWithClientMock).not.toHaveBeenCalled();
+      expect(txSteps()).toEqual(['BEGIN', 'ROLLBACK']);
+    });
   });
 });

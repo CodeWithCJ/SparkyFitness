@@ -181,6 +181,31 @@ describe('attachFoodMatches', () => {
     expect(loose.items[0].preselect_match).toBe(false);
   });
 
+  it('never preselects a match the client cannot gram-scale', async () => {
+    // An exact, high-scoring name match measured in cups still has
+    // scaled: null, so preselecting it would apply nutrition the client has
+    // no way to render.
+    findFoodMatchCandidatesMock.mockImplementation(
+      async (_u, queries) =>
+        new Map([
+          [
+            queries[0].key,
+            [
+              candidate({
+                query_key: queries[0].key,
+                serving_unit: 'cup',
+                serving_size: 1,
+              }),
+            ],
+          ],
+        ])
+    );
+    const result = await attachFoodMatches(USER, estimate);
+    expect(result.items[0].match!.match_score).toBeGreaterThanOrEqual(0.9);
+    expect(result.items[0].match!.gram_convertible).toBe(false);
+    expect(result.items[0].preselect_match).toBe(false);
+  });
+
   it('marks a non-weight variant as not gram-convertible with null nutrition', async () => {
     findFoodMatchCandidatesMock.mockImplementation(
       async (_u, queries) =>
@@ -304,5 +329,44 @@ describe('matchItems', () => {
   it('returns an empty map for no items', async () => {
     expect((await matchItems(USER, [])).size).toBe(0);
     expect(findFoodMatchCandidatesMock).not.toHaveBeenCalled();
+  });
+
+  describe('recency is measured in calendar days', () => {
+    it('treats an entry_date as a day, not a UTC instant', async () => {
+      const today = new Date();
+      const iso = today.toISOString().slice(0, 10);
+      findFoodMatchCandidatesMock.mockImplementation(
+        async (_u, queries) =>
+          new Map([
+            [
+              queries[0].key,
+              [candidate({ query_key: queries[0].key, last_used: iso })],
+            ],
+          ])
+      );
+      const result = await attachFoodMatches(USER, estimate);
+      // Same calendar day must count as recent regardless of the hour the
+      // estimate runs; the old millisecond maths flipped this near midnight.
+      expect(result.items[0].match!.match_score).toBeGreaterThan(0.9);
+    });
+
+    it('ignores a malformed last_used instead of scoring it as ancient', async () => {
+      findFoodMatchCandidatesMock.mockImplementation(
+        async (_u, queries) =>
+          new Map([
+            [
+              queries[0].key,
+              [
+                candidate({
+                  query_key: queries[0].key,
+                  last_used: 'not-a-date',
+                }),
+              ],
+            ],
+          ])
+      );
+      const result = await attachFoodMatches(USER, estimate);
+      expect(result.items[0].match).not.toBeNull();
+    });
   });
 });

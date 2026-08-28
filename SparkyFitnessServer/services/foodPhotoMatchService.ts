@@ -40,11 +40,29 @@ function toNumber(value: number | string | null): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+/**
+ * Whole days between a diary entry's calendar day and today.
+ *
+ * `food_entries.entry_date` is a DATE — a calendar day, not an instant. Parsing
+ * it as a UTC timestamp and dividing elapsed milliseconds makes the answer flip
+ * by one either side of midnight UTC, which would hand out or withhold the
+ * recency bonus depending on the hour the estimate ran. Both sides are pinned
+ * to midday UTC so the subtraction is a day count and DST cannot shift it.
+ */
 function daysSince(lastUsed: string | null): number | null {
   if (!lastUsed) return null;
-  const then = new Date(lastUsed).getTime();
+  const day = String(lastUsed).slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const then = Date.parse(`${day}T12:00:00Z`);
   if (!Number.isFinite(then)) return null;
-  return Math.max(0, Math.floor((Date.now() - then) / 86_400_000));
+  const today = new Date();
+  const todayNoon = Date.UTC(
+    today.getUTCFullYear(),
+    today.getUTCMonth(),
+    today.getUTCDate(),
+    12
+  );
+  return Math.max(0, Math.round((todayNoon - then) / 86_400_000));
 }
 
 function toMatch(
@@ -155,17 +173,12 @@ async function matchItems(
       .sort((a, b) => b.score - a.score);
 
     const [best, ...rest] = scored;
+    const bestMatch = best
+      ? toMatch(best.row, best.score, best.source, userId, item.estimated_grams)
+      : null;
     results.set(item.resolvedId, {
       item_id: item.resolvedId,
-      match: best
-        ? toMatch(
-            best.row,
-            best.score,
-            best.source,
-            userId,
-            item.estimated_grams
-          )
-        : null,
+      match: bestMatch,
       alternates: rest
         .slice(0, MAX_ALTERNATES)
         .map((entry) =>
@@ -182,7 +195,10 @@ async function matchItems(
       preselect_match: Boolean(
         best &&
         best.score >= MATCH_PRESELECT_SCORE &&
-        best.source === 'exact_name'
+        best.source === 'exact_name' &&
+        // A variant measured in cups or slices has no gram-scaled nutrition,
+        // so preselecting it would apply a match the client cannot render.
+        bestMatch?.gram_convertible
       ),
     });
   }

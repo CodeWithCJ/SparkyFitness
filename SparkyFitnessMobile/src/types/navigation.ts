@@ -307,6 +307,20 @@ export type FoodPhotoFlowParamList = {
         mealName: string;
         description?: string;
         ingredients: FoodPhotoLogItem[];
+        /**
+         * Nutrition as reviewed, for the confirmation recap. Items matched to a
+         * saved food carry no nutrition of their own (the server snapshots it
+         * from the database), so the recap cannot be summed from `ingredients`.
+         */
+        nutrition: {
+          grams: number;
+          calories: number;
+          protein: number;
+          carbs: number;
+          fat: number;
+          fiber: number;
+          sugars: number;
+        };
       };
 };
 

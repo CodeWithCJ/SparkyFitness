@@ -131,9 +131,108 @@ router.post('/', async (req, res, next) => {
  *       `combined` mode it is a single food and a single entry. Ingredients
  *       that matched an existing food reuse it; the rest are created as hidden
  *       quick foods.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [mode, entry_date, meal_type, name, items]
+ *             properties:
+ *               mode:
+ *                 type: string
+ *                 enum: [grouped, combined]
+ *                 description: >
+ *                   `grouped` creates an ad-hoc food_entry_meals parent with one
+ *                   component entry per ingredient. `combined` logs a single
+ *                   food and requires exactly one `new` item.
+ *               user_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Log on behalf of another user; requires `diary` permission.
+ *               entry_date:
+ *                 type: string
+ *                 format: date
+ *                 description: Calendar day (YYYY-MM-DD).
+ *               entry_time:
+ *                 type: string
+ *                 nullable: true
+ *               meal_type:
+ *                 type: string
+ *               meal_type_id:
+ *                 type: string
+ *                 format: uuid
+ *                 nullable: true
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *                 nullable: true
+ *               items:
+ *                 type: array
+ *                 minItems: 1
+ *                 maxItems: 25
+ *                 items:
+ *                   oneOf:
+ *                     - type: object
+ *                       required: [source, food_id, variant_id, quantity, unit]
+ *                       properties:
+ *                         source: { type: string, enum: [existing] }
+ *                         food_id: { type: string, format: uuid }
+ *                         variant_id: { type: string, format: uuid }
+ *                         quantity: { type: number }
+ *                         unit: { type: string }
+ *                     - type: object
+ *                       required: [source, food, quantity, unit]
+ *                       properties:
+ *                         source: { type: string, enum: [new] }
+ *                         quantity:
+ *                           type: number
+ *                           description: Amount eaten, in `unit` (grams).
+ *                         unit: { type: string }
+ *                         food:
+ *                           type: object
+ *                           description: >
+ *                             Nutrition is always per 100 g (serving_size 100,
+ *                             serving_unit "g"); the amount eaten travels on
+ *                             `quantity`. The server forces is_quick_food,
+ *                             provider_type and shared_with_public.
+ *                           required: [name, serving_size, serving_unit, calories, protein, carbs, fat]
+ *                           properties:
+ *                             name: { type: string }
+ *                             brand: { type: string, nullable: true }
+ *                             serving_size: { type: number }
+ *                             serving_unit: { type: string }
+ *                             calories: { type: number }
+ *                             protein: { type: number }
+ *                             carbs: { type: number }
+ *                             fat: { type: number }
+ *                             dietary_fiber: { type: number }
+ *                             sugars: { type: number }
  *     responses:
  *       201:
  *         description: The estimate was logged.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [mode, food_entry_meal_id, food_entry_ids, created_food_ids]
+ *               properties:
+ *                 mode:
+ *                   type: string
+ *                   enum: [grouped, combined]
+ *                 food_entry_meal_id:
+ *                   type: string
+ *                   format: uuid
+ *                   nullable: true
+ *                   description: Null in combined mode; there is no parent meal.
+ *                 food_entry_ids:
+ *                   type: array
+ *                   items: { type: string, format: uuid }
+ *                 created_food_ids:
+ *                   type: array
+ *                   items: { type: string, format: uuid }
+ *                   description: Only foods this request created; matched foods are not listed.
  *       400:
  *         description: Invalid payload or meal type.
  *       403:

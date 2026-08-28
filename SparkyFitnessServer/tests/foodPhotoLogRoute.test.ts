@@ -2,6 +2,13 @@ import { vi, beforeEach, describe, expect, it } from 'vitest';
 // @ts-expect-error TS(7016): supertest has no types
 import request from 'supertest';
 import express from 'express';
+import type {
+  ErrorRequestHandler,
+  NextFunction,
+  Request,
+  RequestHandler,
+  Response,
+} from 'express';
 import foodEntryMealRoutes from '../routes/foodEntryMealRoutes.js';
 import foodPhotoLogService from '../services/foodPhotoLogService.js';
 import { PhotoLogError } from '../services/foodPhotoLogService.js';
@@ -40,20 +47,22 @@ vi.mock('../utils/permissionUtils.js', () => ({
 }));
 
 vi.mock('../middleware/authMiddleware.js', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticate: vi.fn((req: any, _res: any, next: any) => {
+  authenticate: vi.fn<RequestHandler>((req, _res, next) => {
+    // `userId` / `authenticatedUserId` are attached by the real auth
+    // middleware via an Express Request augmentation.
     req.userId = 'user-123';
     req.authenticatedUserId = 'user-123';
     next();
   }),
 }));
 vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  default: vi.fn(() => (req: any, res: any, next: any) => next()),
+  default: vi.fn(
+    (): RequestHandler => (_req: Request, _res: Response, next: NextFunction) =>
+      next()
+  ),
 }));
 vi.mock('../middleware/imageUpload.js', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  uploadImages: (req: any, res: any, next: any) => next(),
+  uploadImages: (_req: Request, _res: Response, next: NextFunction) => next(),
   applyImageOrder: vi.fn(),
   parseImageOrder: vi.fn(),
   finalizeUploadedImages: vi.fn(),
@@ -66,10 +75,11 @@ vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 const app = express();
 app.use(express.json());
 app.use('/food-entry-meals', foodEntryMealRoutes);
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-app.use((err: any, _req: any, res: any, _next: any) => {
-  res.status(500).json({ error: err.message });
-});
+const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+  const message = err instanceof Error ? err.message : String(err);
+  res.status(500).json({ error: message });
+};
+app.use(errorHandler);
 
 const NEW_FOOD = {
   name: 'Steamed broccoli',
