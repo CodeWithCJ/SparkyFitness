@@ -195,8 +195,10 @@ router.post('/', async (req, res, next) => {
  *                           description: >
  *                             Nutrition is always per 100 g (serving_size 100,
  *                             serving_unit "g"); the amount eaten travels on
- *                             `quantity`. The server forces is_quick_food,
- *                             provider_type and shared_with_public.
+ *                             `quantity`. The server owns provider_type and
+ *                             shared_with_public. Ingredients are created as
+ *                             normal reusable foods, so a later photo can
+ *                             match them.
  *                           required: [name, serving_size, serving_unit, calories, protein, carbs, fat]
  *                           properties:
  *                             name: { type: string }

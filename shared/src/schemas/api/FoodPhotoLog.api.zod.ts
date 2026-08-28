@@ -31,10 +31,13 @@ const dayStringSchema = z
  * `shared/src/utils/foodPhotoEstimateMath.ts`, whose branded return type makes
  * passing per-portion numbers here a compile error.
  *
- * Note what is deliberately ABSENT: `is_quick_food`, `provider_type`, and
- * `shared_with_public`. The server forces all three. Food-library hygiene is
- * not something a client gets a vote on — a client that forgot `is_quick_food`
- * would quietly fill the user's library with AI guesses.
+ * Note what is deliberately ABSENT: `is_quick_food`, `provider_type` and
+ * `shared_with_public`. The server owns all three, so a client cannot publish a
+ * food to other users or hide one from the matcher.
+ *
+ * Ingredients are created as normal, reusable foods. They are not quick foods:
+ * a hidden food is invisible to `findFoodMatchCandidates`, so the next photo of
+ * the same dish could never reuse it.
  */
 export const foodPhotoLogNewFoodSchema = z
   .object({

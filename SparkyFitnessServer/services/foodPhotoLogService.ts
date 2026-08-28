@@ -114,11 +114,17 @@ function buildNewFoodInput(
     ...food,
     user_id: targetUserId,
     is_custom: true,
-    // Server-forced, never client-supplied. A photo estimate creates a food per
-    // detected ingredient; at two meals a day that is ~180 rows a month. Quick
-    // foods log normally but are excluded from search, favorites, recents, and
-    // the food list, so the user's library stays theirs.
-    is_quick_food: true,
+    // Deliberately a normal, visible food — NOT a quick food.
+    //
+    // Quick foods are excluded from search, favorites, recents and, crucially,
+    // from `findFoodMatchCandidates`. Hiding an ingredient would mean the next
+    // photo of the same dish could never match it, so every biryani would mint
+    // another "chicken" and the library would fill with invisible duplicates
+    // the user could not merge or reuse.
+    //
+    // Visible foods close the loop instead: the first photo creates "chicken
+    // thigh", the second matches it, and a correction the user makes once
+    // applies to every later estimate.
     provider_type: 'food_photo_estimate',
     shared_with_public: false,
     source: 'ai_estimate',

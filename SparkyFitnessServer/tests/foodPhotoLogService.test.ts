@@ -163,13 +163,23 @@ describe('createPhotoLoggedMeal', () => {
     expect(bulkCreateFoodEntriesWithClientMock.mock.calls[0][0]).toBe(client);
   });
 
-  it('forces the food-library hygiene flags regardless of the payload', async () => {
+  it('creates ingredients as normal reusable foods, not quick foods', async () => {
     await createPhotoLoggedMeal('user-1', 'user-1', payload());
     const created = createFoodWithClientMock.mock.calls[0][1];
-    expect(created.is_quick_food).toBe(true);
+    // A quick food is excluded from findFoodMatchCandidates, so hiding an
+    // ingredient would stop the next photo of the same dish from ever
+    // matching it and the user would accumulate unusable duplicates.
+    expect(created.is_quick_food).toBeFalsy();
+    expect(created.is_custom).toBe(true);
     expect(created.provider_type).toBe('food_photo_estimate');
     expect(created.shared_with_public).toBe(false);
     expect(created.user_id).toBe('user-1');
+  });
+
+  it('does not let a client publish an ingredient to other users', async () => {
+    await createPhotoLoggedMeal('user-1', 'user-1', payload());
+    const created = createFoodWithClientMock.mock.calls[0][1];
+    expect(created.shared_with_public).toBe(false);
   });
 
   it('stores new-food nutrition unscaled, on the per-100g basis it arrived in', async () => {

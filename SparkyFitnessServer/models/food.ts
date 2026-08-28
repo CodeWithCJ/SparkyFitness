@@ -425,9 +425,10 @@ export interface FoodMatchCandidateRow {
  *    Postgres. Calling `searchFoods` per ingredient would acquire and release a
  *    client each time — six ingredients, six connections from a pool of ten.
  *
- * `is_quick_food = FALSE` matters beyond tidiness: photo estimates create
- * hidden quick foods, and letting those match future estimates would compound
- * the AI's error across days.
+ * `is_quick_food = FALSE` mirrors every other food-discovery query: a quick add
+ * is a deliberate "log this once, do not keep it", so it must not be offered as
+ * a match. Photo-estimate ingredients are NOT quick foods — they are normal
+ * foods precisely so a later photo can match and reuse them.
  */
 async function findFoodMatchCandidates(
   userId: string,
