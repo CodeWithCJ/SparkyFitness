@@ -8,6 +8,7 @@ import {
   resolveFoodProviderOrder,
   lookupFoodFromProviders,
   pickBestVariant,
+  type ProviderFoodItem,
 } from './foodProviderLookupService.js';
 import { boundedMap } from '../utils/boundedMap.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
@@ -48,8 +49,8 @@ const MAX_ALTERNATES = 2;
  */
 const PROVIDER_LOOKUP_CONCURRENCY = 3;
 
-function toNumber(value: number | string | null): number {
-  if (value === null) return 0;
+function toNumber(value: number | string | null | undefined): number {
+  if (value === null || value === undefined) return 0;
   const parsed = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 }
@@ -124,8 +125,7 @@ function toMatch(
  * guess. `provider_type` / `provider_external_id` ride along as provenance.
  */
 function toProviderMatch(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  food: any,
+  food: ProviderFoodItem,
   providerSource: string,
   estimatedGrams: number
 ): FoodPhotoEstimateMatch | null {

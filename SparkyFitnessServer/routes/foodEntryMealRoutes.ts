@@ -130,8 +130,8 @@ router.post('/', async (req, res, next) => {
  *       transaction. In `grouped` mode this is an ad-hoc food_entry_meals
  *       parent plus one component food_entries row per ingredient; in
  *       `combined` mode it is a single food and a single entry. Ingredients
- *       that matched an existing food reuse it; the rest are created as hidden
- *       quick foods.
+ *       that matched an existing food reuse it; the rest are created as normal
+ *       reusable foods.
  *     requestBody:
  *       required: true
  *       content:
@@ -169,6 +169,12 @@ router.post('/', async (req, res, next) => {
  *               description:
  *                 type: string
  *                 nullable: true
+ *               save_as_meal:
+ *                 type: object
+ *                 description: Also save this plate as a reusable meal template (grouped mode only).
+ *                 required: [name]
+ *                 properties:
+ *                   name: { type: string }
  *               items:
  *                 type: array
  *                 minItems: 1
@@ -229,6 +235,11 @@ router.post('/', async (req, res, next) => {
  *                   format: uuid
  *                   nullable: true
  *                   description: Null in combined mode; there is no parent meal.
+ *                 meal_template_id:
+ *                   type: string
+ *                   format: uuid
+ *                   nullable: true
+ *                   description: The created meal template id, or null if not requested or creation failed.
  *                 food_entry_ids:
  *                   type: array
  *                   items: { type: string, format: uuid }

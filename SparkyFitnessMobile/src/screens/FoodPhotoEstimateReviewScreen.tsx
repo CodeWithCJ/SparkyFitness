@@ -436,7 +436,7 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
       }),
       hint: t('foodPhotoEstimate.mode.hintIngredientsOnly', {
         defaultValue:
-          'Each ingredient becomes its own food. Nothing is added to your meals.',
+          'Each ingredient becomes its own food. No reusable meal is saved.',
       }),
     },
     {

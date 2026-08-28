@@ -129,13 +129,6 @@ export const foodPhotoLogRequestSchema = z
     save_as_meal: z
       .object({
         name: z.string().min(1).max(200),
-        /**
-         * How to resolve a name clash. `meals.name` has no unique constraint,
-         * so this is the caller's decision, not the database's.
-         */
-        on_conflict: z.enum(["new", "update"]).optional(),
-        /** The template to replace when `on_conflict` is "update". */
-        meal_id: z.string().uuid().optional(),
       })
       .optional(),
   })

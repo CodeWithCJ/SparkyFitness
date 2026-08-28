@@ -88,6 +88,47 @@ export async function resolveFoodProviderOrder(
   return targets;
 }
 
+export interface ProviderFoodVariant {
+  id?: string;
+  serving_size?: number | string | null;
+  serving_unit?: string | null;
+  calories?: number | string | null;
+  energy?: number | string | null;
+  protein?: number | string | null;
+  carbs?: number | string | null;
+  fat?: number | string | null;
+  saturated_fat?: number | string | null;
+  polyunsaturated_fat?: number | string | null;
+  monounsaturated_fat?: number | string | null;
+  trans_fat?: number | string | null;
+  cholesterol?: number | string | null;
+  sodium?: number | string | null;
+  potassium?: number | string | null;
+  dietary_fiber?: number | string | null;
+  fiber?: number | string | null;
+  sugars?: number | string | null;
+  sugar?: number | string | null;
+  vitamin_a?: number | string | null;
+  vitamin_c?: number | string | null;
+  calcium?: number | string | null;
+  iron?: number | string | null;
+  glycemic_index?: string | null;
+  is_default?: boolean | null;
+  [key: string]: unknown;
+}
+
+export interface ProviderFoodItem {
+  id?: string;
+  name: string;
+  brand?: string | null;
+  images?: unknown[];
+  provider_type?: string | null;
+  provider_external_id?: string | null;
+  variants?: ProviderFoodVariant[];
+  default_variant?: ProviderFoodVariant | null;
+  [key: string]: unknown;
+}
+
 /**
  * Ranks provider results so plain whole foods beat branded products.
  *
@@ -96,12 +137,13 @@ export async function resolveFoodProviderOrder(
  * models just take the first result. Stable within each tier, so the provider's
  * own relevance order is otherwise preserved.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function rankProviderMatches(foods: any[], query: string): any[] {
+export function rankProviderMatches<T extends ProviderFoodItem>(
+  foods: T[],
+  query: string
+): T[] {
   const q = query.trim().toLowerCase();
   const qStem = q.replace(/s$/, '');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const score = (f: any): number => {
+  const score = (f: T): number => {
     const name = String(f?.name ?? '').toLowerCase();
     const branded = Boolean(f?.brand && String(f.brand).trim());
     const firstSegment = name.split(',')[0].trim();
@@ -129,15 +171,15 @@ export const IMPLAUSIBLE_SERVING_UNITS = new Set(['mg', 'mcg', 'µg', 'ug']);
  * positive size, keeping the provider's own default only as a tiebreak within
  * that set. Shared with the chatbot so both quote the same serving.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function pickBestVariant(food: any) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const variants: any[] = (
-    food?.variants?.length ? food.variants : [food?.default_variant]
-  ).filter(Boolean);
-  if (variants.length === 0) return food?.default_variant ?? null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const isPlausible = (v: any) =>
+export function pickBestVariant(
+  food: ProviderFoodItem | null | undefined
+): ProviderFoodVariant | null {
+  if (!food) return null;
+  const variants: ProviderFoodVariant[] = (
+    food.variants?.length ? food.variants : [food.default_variant]
+  ).filter((v): v is ProviderFoodVariant => Boolean(v));
+  if (variants.length === 0) return food.default_variant ?? null;
+  const isPlausible = (v: ProviderFoodVariant) =>
     Number(v.serving_size) > 0 &&
     !IMPLAUSIBLE_SERVING_UNITS.has(String(v.serving_unit || '').toLowerCase());
   const pool = variants.filter(isPlausible);
@@ -147,10 +189,8 @@ export function pickBestVariant(food: any) {
 
 export interface ProviderLookupResult {
   source: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  food: any | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  alternatives?: any[];
+  food: ProviderFoodItem | null;
+  alternatives?: ProviderFoodItem[];
 }
 
 /**
@@ -176,7 +216,10 @@ export async function lookupFoodFromProviders(
         { providerId: provider.id }
       );
       if (result.foods.length > 0) {
-        const ranked = rankProviderMatches(result.foods, foodName);
+        const ranked = rankProviderMatches(
+          result.foods as ProviderFoodItem[],
+          foodName
+        );
         return {
           source: provider.provider_type,
           food: ranked[0],

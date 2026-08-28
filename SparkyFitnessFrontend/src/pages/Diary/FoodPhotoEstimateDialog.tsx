@@ -110,7 +110,11 @@ const FoodPhotoEstimateDialog = ({
 
   const draft = useFoodPhotoIngredientDraft(estimate?.items ?? NO_ITEMS);
 
+  const analysisRequestIdRef = useRef(0);
+  const currentAnalysisIdRef = useRef(0);
+
   const reset = useCallback(() => {
+    analysisRequestIdRef.current += 1;
     setStep('capture');
     setImages([]);
     setDescription('');
@@ -170,11 +174,13 @@ const FoodPhotoEstimateDialog = ({
 
   const estimateMutation = useEstimateFoodPhoto({
     onSuccess: (result) => {
+      if (currentAnalysisIdRef.current !== analysisRequestIdRef.current) return;
       setEstimate(result);
       setMealName(result.meal_summary || 'Photo estimate');
       setStep('review');
     },
     onError: (error) => {
+      if (currentAnalysisIdRef.current !== analysisRequestIdRef.current) return;
       const code =
         error instanceof FoodPhotoEstimateError ? error.code : 'UPSTREAM_ERROR';
       const copy = describeEstimateError(code);
@@ -295,6 +301,8 @@ const FoodPhotoEstimateDialog = ({
 
   /** Encode the staged photos and kick off the estimate. */
   const handleAnalyse = () => {
+    const reqId = ++analysisRequestIdRef.current;
+    currentAnalysisIdRef.current = reqId;
     const payloadImages = images
       .map((dataUrl) => splitDataUrl(dataUrl))
       .filter((item): item is NonNullable<typeof item> => item !== null)
@@ -494,7 +502,7 @@ const FoodPhotoEstimateDialog = ({
                   : saveMode === 'ingredients_only'
                     ? t('foodPhoto.mode.hintIngredientsOnly', {
                         defaultValue:
-                          'Each ingredient becomes its own food. Nothing is added to your meals.',
+                          'Each ingredient becomes its own food. No reusable meal is saved.',
                       })
                     : t('foodPhoto.mode.hintOneFood', {
                         defaultValue:
