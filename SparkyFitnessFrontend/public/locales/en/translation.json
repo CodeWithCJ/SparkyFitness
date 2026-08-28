@@ -742,7 +742,8 @@
       "activeCalories": "Active Calories: {{activeCaloriesFromExercise}} cal",
       "stepsCalories": "Steps: {{dailySteps}} = {{stepsCalories}} cal",
       "bmrCalories": "BMR: {{bmr}} cal",
-      "bmrSourceExternal": "Health App",
+      "bmrSourceMeasured": "Measured",
+      "bmrSourceAlgorithm": "Algorithm",
       "totalCaloriesBurned": "Total: {{totalCaloriesBurned}} cal",
       "goal": "goal",
       "caloriesBurnedBreakdownTitle": "Calories Burned Breakdown",
@@ -2354,6 +2355,8 @@
     "addError": "Failed to add food.",
     "addSuccess": "Food added successfully.",
     "calculateExplanation": {
+      "bmrMeasured": "Measured",
+      "bmrMeasuredDesc": "Using your measured BMR. No formula applied.",
       "dialogDescription": "Step-by-step breakdown of how your daily energy target is calculated.",
       "todayTarget": "How today's target is calculated"
     },
@@ -2608,6 +2611,7 @@
       "deleteError": "Failed to remove photo",
       "calendarLegend": "Progress photos"
     },
+    "bmr": "BMR (kcal)",
     "bodyWater": "Body Water %",
     "boneMass": "Bone Mass",
     "couldNotLoadUserProfileOrPrefs": "Could not load user profile or preferences for calculation.",
@@ -3460,6 +3464,12 @@
     "inches": "inches",
     "waist": "Waist",
     "hips": "Hips",
+    "height": "Height",
+    "bodyFatPercentage": "Body Fat %",
+    "muscleMass": "Muscle Mass",
+    "boneMass": "Bone Mass",
+    "bodyWaterPercentage": "Body Water %",
+    "bmr": "BMR",
     "dailySteps": "Daily Steps",
     "failedToLoadComparisonData": "Failed to load comparison data."
   },
@@ -3486,6 +3496,10 @@
     "steps": "Steps",
     "height": "Height",
     "bodyFatPercentage": "Body Fat %",
+    "muscleMass": "Muscle Mass",
+    "boneMass": "Bone Mass",
+    "bodyWaterPercentage": "Body Water %",
+    "bmr": "BMR",
     "meal": "Meal",
     "food": "Food",
     "quantity": "Quantity",
@@ -4549,6 +4563,7 @@
     "warning": "Warning!"
   },
   "measurements": {
+    "errorLoadingBmr": "Failed to load most recent BMR.",
     "errorLoadingBodyFat": "Failed to load most recent body fat.",
     "errorLoadingHeight": "Failed to load most recent height.",
     "errorLoadingWeight": "Failed to load most recent weight."

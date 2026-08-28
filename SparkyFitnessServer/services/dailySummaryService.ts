@@ -111,22 +111,6 @@ export async function getDailySummary({
       )
     : 0;
 
-  // External BMR override — only when opted in AND checkin data is permitted
-  // (includeCheckin is the route's permission gate; the override must not bypass it).
-  const externalBmr =
-    userPreferences?.use_external_bmr && includeCheckin
-      ? await measurementRepository
-          .getExternalBmrForDate(targetUserId, date)
-          .catch((error: unknown) => {
-            log(
-              'warn',
-              `External BMR fetch failed for user ${targetUserId} on ${date}:`,
-              error
-            );
-            return null;
-          })
-      : null;
-
   const calorieBalance = computeCalorieBalance({
     eatenCalories:
       sumFoodEntryCalories(foodEntries) + supplementTotals.calories,
@@ -138,7 +122,6 @@ export async function getDailySummary({
     userProfile,
     userPreferences,
     measurements,
-    externalBmr,
     // A past day is finished, so its burn needs no end-of-day projection. Reading the
     // wall clock here (as this did before) made the same historical day report different
     // numbers depending on when you opened it.

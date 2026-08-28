@@ -16,6 +16,10 @@ interface UpsertCheckInVars {
   steps?: number | null;
   height?: number | null;
   bodyFatPercentage?: number | null;
+  muscleMassKg?: number | null;
+  boneMassKg?: number | null;
+  bodyWaterPercentage?: number | null;
+  bmr?: number | null;
 }
 
 export function useUpsertCheckIn(options?: { showErrorToast?: boolean }) {

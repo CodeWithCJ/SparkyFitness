@@ -51,6 +51,7 @@ interface CheckInRow {
   weight?: number | string | null;
   height?: number | string | null;
   body_fat_percentage?: number | string | null;
+  bmr?: number | string | null;
 }
 
 /**
@@ -61,6 +62,7 @@ const MEASUREMENT_FIELDS = [
   'weight',
   'height',
   'body_fat_percentage',
+  'bmr',
 ] as const satisfies readonly (keyof CalorieBalanceMeasurements)[];
 
 /**
@@ -132,20 +134,6 @@ export async function getDailySummaryRange({
     preferenceRepository.getUserPreferences(targetUserId),
   ]);
 
-  const externalBmrByDate =
-    userPreferences?.use_external_bmr && includeCheckin
-      ? await measurementRepository
-          .getExternalBmrByDateRange(targetUserId, startDate, endDate)
-          .catch((error: unknown) => {
-            log(
-              'warn',
-              `External BMR range fetch failed for user ${targetUserId}:`,
-              error
-            );
-            return new Map<string, number>();
-          })
-      : new Map<string, number>();
-
   const eatenByDate = new Map<string, number>();
   for (const row of nutritionRows as Array<{
     date: string;
@@ -184,6 +172,7 @@ export async function getDailySummaryRange({
     height: (seedMeasurement as CalorieBalanceMeasurements | null)?.height,
     body_fat_percentage: (seedMeasurement as CalorieBalanceMeasurements | null)
       ?.body_fat_percentage,
+    bmr: (seedMeasurement as CalorieBalanceMeasurements | null)?.bmr,
   };
 
   const days: DailyCalorieBalanceRow[] = [];
@@ -236,7 +225,6 @@ export async function getDailySummaryRange({
         userProfile,
         userPreferences,
         measurements: carried,
-        externalBmr: externalBmrByDate.get(date) ?? null,
         dayFraction: resolveDayFraction(date, tz, now),
       }),
     });

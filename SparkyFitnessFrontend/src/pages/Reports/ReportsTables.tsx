@@ -375,10 +375,16 @@ const ReportsTables = ({
     .filter(
       (measurement) =>
         measurement.weight !== undefined ||
+        measurement.height !== undefined ||
         measurement.neck !== undefined ||
         measurement.waist !== undefined ||
         measurement.hips !== undefined ||
-        measurement.steps !== undefined
+        measurement.body_fat_percentage !== undefined ||
+        measurement.steps !== undefined ||
+        measurement.muscle_mass_kg !== undefined ||
+        measurement.bone_mass_kg !== undefined ||
+        measurement.body_water_percentage !== undefined ||
+        measurement.bmr !== undefined
     )
     .sort(
       (a, b) =>
@@ -813,6 +819,20 @@ const ReportsTables = ({
                     <TableHead>
                       {t('reportsTables.bodyFatPercentage', 'Body Fat %')}
                     </TableHead>
+                    <TableHead>
+                      {t('reportsTables.muscleMass', 'Muscle Mass')} (
+                      {weightUnit})
+                    </TableHead>
+                    <TableHead>
+                      {t('reportsTables.boneMass', 'Bone Mass')} ({weightUnit})
+                    </TableHead>
+                    <TableHead>
+                      {t('reportsTables.bodyWaterPercentage', 'Body Water %')}
+                    </TableHead>
+                    <TableHead>
+                      {t('reportsTables.bmr', 'BMR')} (
+                      {getEnergyUnitString(energyUnit)})
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -842,7 +862,27 @@ const ReportsTables = ({
                       </TableCell>
                       <TableCell>
                         {measurement.body_fat_percentage
-                          ? measurement.body_fat_percentage.toFixed(1)
+                          ? `${measurement.body_fat_percentage.toFixed(1)}%`
+                          : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {measurement.muscle_mass_kg
+                          ? formatWeight(measurement.muscle_mass_kg, weightUnit)
+                          : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {measurement.bone_mass_kg
+                          ? formatWeight(measurement.bone_mass_kg, weightUnit)
+                          : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {measurement.body_water_percentage
+                          ? `${measurement.body_water_percentage.toFixed(1)}%`
+                          : '-'}
+                      </TableCell>
+                      <TableCell>
+                        {measurement.bmr
+                          ? `${Math.round(convertEnergy(Number(measurement.bmr), 'kcal', energyUnit))}`
                           : '-'}
                       </TableCell>
                     </TableRow>

@@ -143,32 +143,13 @@ describe('getDashboardStats includeCheckin gate', () => {
     expect(result.stepCalories).toBe(0);
   });
 
-  test('includeCheckin=false skips external BMR even when use_external_bmr=true', async () => {
-    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
-      ...basePreferences,
-      use_external_bmr: true,
-    });
-
-    await getDashboardStats('user1', '2026-06-13', false);
-
-    expect(measurementRepository.getExternalBmrForDate).not.toHaveBeenCalled();
-  });
-
-  test('includeCheckin=true applies external BMR when use_external_bmr=true and value is in range', async () => {
-    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
-      ...basePreferences,
-      use_external_bmr: true,
-    });
-    vi.mocked(measurementRepository.getExternalBmrForDate).mockResolvedValue(
-      1950
-    );
+  test('includeCheckin=true applies check-in measured BMR when present', async () => {
+    vi.mocked(
+      measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate
+    ).mockResolvedValue({ weight: 80, height: 180, bmr: 1950 } as never);
 
     const result = await getDashboardStats('user1', '2026-06-13', true);
 
-    expect(measurementRepository.getExternalBmrForDate).toHaveBeenCalledWith(
-      'user1',
-      '2026-06-13'
-    );
     expect(result.bmr).toBe(1950);
   });
 });

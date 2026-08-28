@@ -190,6 +190,22 @@ export const useMostRecentBodyFatQuery = (enabled = true) => {
   });
 };
 
+export const useMostRecentBmrQuery = (enabled = true) => {
+  const { t } = useTranslation();
+
+  return useQuery({
+    queryKey: dailyProgressKeys.measurements.mostRecent('bmr'),
+    queryFn: () => getMostRecentMeasurement('bmr'),
+    enabled,
+    meta: {
+      errorMessage: t(
+        'measurements.errorLoadingBmr',
+        'Failed to load most recent BMR.'
+      ),
+    },
+  });
+};
+
 export const useCalculatedBMR = () => {
   const { user } = useAuth();
   const { bmrAlgorithm, includeBmrInNetCalories, timezone } = usePreferences();
@@ -203,6 +219,22 @@ export const useCalculatedBMR = () => {
   const { data: weightData } = useMostRecentWeightQuery();
   const { data: heightData } = useMostRecentHeightQuery();
   const { data: bodyFatData } = useMostRecentBodyFatQuery();
+  const { data: bmrData } = useMostRecentBmrQuery();
+
+  const rawMeasured = bmrData?.bmr ? Number(bmrData.bmr) : null;
+  const isMeasured = Boolean(
+    rawMeasured && rawMeasured >= 300 && rawMeasured <= 10000
+  );
+
+  if (isMeasured && rawMeasured !== null) {
+    return {
+      bmr: rawMeasured,
+      measuredBmr: rawMeasured,
+      includeInNet: includeBmrInNetCalories || false,
+      weight: weightData?.weight || 0,
+      height: heightData?.height || 0,
+    };
+  }
 
   if (
     !userProfile ||
@@ -229,6 +261,7 @@ export const useCalculatedBMR = () => {
 
     return {
       bmr,
+      measuredBmr: null,
       includeInNet: includeBmrInNetCalories || false,
       weight: weightData.weight,
       height: heightData.height,
