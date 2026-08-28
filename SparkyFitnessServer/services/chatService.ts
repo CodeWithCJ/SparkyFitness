@@ -1388,12 +1388,14 @@ async function classifyUserIntent(
   const text = extractMessageText(lastUserMessage);
 
   // 1. Deterministic + keyword signals (instant, 0ms). An attached image
-  // always implies vision (+ food, the dominant meal-photo case) regardless
-  // of accompanying text.
+  // on the current turn or recent turns in the active conversation always implies
+  // vision (+ food), ensuring follow-up logging turns have vision tools like
+  // sparky_log_food_photo loaded.
   const matchedCategories = new Set<ChatToolCategorySlug>(
     classifyByKeywords(text)
   );
-  if (hasImageParts(lastUserMessage)) {
+  const hasRecentImage = messages.slice(-4).some((m) => hasImageParts(m));
+  if (hasRecentImage || hasImageParts(lastUserMessage)) {
     matchedCategories.add('vision');
     matchedCategories.add('food');
   }

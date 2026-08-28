@@ -12,7 +12,7 @@ When the user wants to log an analyzed food photo:
 
 - **ALWAYS use 'sparky_log_food_photo'**.
 - **DO NOT use 'sparky_manage_food'** (lookup_food_nutrition, create_food, log_food, etc.) for photo logging! Retyping or looking up ingredients individually with 'sparky_manage_food' breaks the meal grouping, loses verified per-ingredient matches, and creates duplicate or mis-matched entries.
-- **If the analysis found MORE THAN ONE ingredient**, ask first with 'sparky_ask_user' (mode 'choose'), offering exactly these options:
+- **If the analysis found MORE THAN ONE ingredient**, you MUST call 'sparky_ask_user' (mode 'choose') in the SAME turn to render interactive quick-reply chips. Do NOT ask the question as plain markdown text. Offer exactly these options:
   - "Ingredients + reusable meal" — every ingredient becomes its own food grouped in a collapsible meal, and the meal template is saved so they can log it again later without a photo.
   - "One food" — the whole plate is logged as a single combined food, with no breakdown.
 
