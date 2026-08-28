@@ -5,8 +5,10 @@ import {
 import { setBackfillRunning, tryClaimAutoSync, isSyncInFlight } from '../../src/services/autoSyncCoordinator';
 import { refreshHealthSyncCache } from '../../src/hooks/refreshHealthSyncCache';
 import { TimeoutError } from '../../src/utils/concurrency';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import * as telemetryBudget from '../../src/services/shared/telemetryBudget';
+import { fetchDailySummary } from '../../src/services/api/dailySummaryApi';
+import { CalorieWidgetBridge } from '../../src/services/CalorieWidgetBridge';
 
 jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -14,6 +16,20 @@ jest.mock('../../src/services/LogService', () => ({
 
 jest.mock('../../src/services/api/healthDataApi', () => ({
   syncHealthData: jest.fn(),
+}));
+
+jest.mock('../../src/services/api/dailySummaryApi', () => ({
+  fetchDailySummary: jest.fn(),
+}));
+
+jest.mock('../../src/services/CalorieWidgetBridge', () => ({
+  CalorieWidgetBridge: {
+    setCalorieSnapshot: jest.fn(() => Promise.resolve()),
+    reloadWidget: jest.fn(() => Promise.resolve()),
+    setMacroSnapshot: jest.fn(() => Promise.resolve()),
+    reloadMacroWidget: jest.fn(() => Promise.resolve()),
+    isAvailable: true,
+  },
 }));
 
 jest.mock('../../src/services/storage', () => ({
@@ -153,6 +169,63 @@ const healthService = {
 const mockRefreshHealthSyncCache = refreshHealthSyncCache as jest.MockedFunction<
   typeof refreshHealthSyncCache
 >;
+const mockFetchDailySummary = fetchDailySummary as jest.MockedFunction<
+  typeof fetchDailySummary
+>;
+const mockSetCalorieSnapshot =
+  CalorieWidgetBridge.setCalorieSnapshot as jest.MockedFunction<
+    typeof CalorieWidgetBridge.setCalorieSnapshot
+  >;
+const mockReloadCalorieWidget =
+  CalorieWidgetBridge.reloadWidget as jest.MockedFunction<
+    typeof CalorieWidgetBridge.reloadWidget
+  >;
+const mockSetMacroSnapshot =
+  CalorieWidgetBridge.setMacroSnapshot as jest.MockedFunction<
+    typeof CalorieWidgetBridge.setMacroSnapshot
+  >;
+const mockReloadMacroWidget =
+  CalorieWidgetBridge.reloadMacroWidget as jest.MockedFunction<
+    typeof CalorieWidgetBridge.reloadMacroWidget
+  >;
+const widgetSummaryResponse: Awaited<ReturnType<typeof fetchDailySummary>> = {
+  goals: {
+    calories: 2100,
+    protein: 160,
+    carbs: 220,
+    fat: 70,
+    dietary_fiber: 30,
+  },
+  foodEntries: [
+    {
+      id: 'remote-entry',
+      meal_type: 'snacks',
+      quantity: 1,
+      unit: 'serving',
+      entry_date: '2024-01-15',
+      serving_size: 1,
+      calories: 350,
+      protein: 20,
+      carbs: 40,
+      fat: 12,
+    },
+  ],
+  exerciseSessions: [],
+  waterIntake: 0,
+  stepCalories: 0,
+  calorieBalance: {
+    eaten: 350,
+    burned: 100,
+    remaining: 1850,
+    goal: 2100,
+    net: 250,
+    progress: 17,
+    bmr: 1700,
+    exerciseSource: 'steps',
+    tdeeProjection: null,
+  },
+  adjustedGoals: null,
+};
 
 describe('performBackgroundSync (via triggerManualSync)', () => {
   const setAppState = (state: string) => {
@@ -174,11 +247,98 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
     api.syncHealthData.mockResolvedValue(undefined);
     storage.savePendingHealthSyncCacheRefresh.mockResolvedValue(undefined);
     storage.consumePendingHealthSyncCacheRefresh.mockResolvedValue(false);
+    mockFetchDailySummary.mockReset();
+    mockSetCalorieSnapshot.mockReset().mockResolvedValue(undefined);
+    mockReloadCalorieWidget.mockReset().mockResolvedValue(undefined);
+    mockSetMacroSnapshot.mockReset().mockResolvedValue(undefined);
+    mockReloadMacroWidget.mockReset().mockResolvedValue(undefined);
+    Object.defineProperty(Platform, 'OS', {
+      configurable: true,
+      value: 'ios',
+    });
     setAppState('active');
   });
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  describe('Android widget refresh (#2291)', () => {
+    test('pulls the current server summary after a no-data background run without opening the app', async () => {
+      Object.defineProperty(Platform, 'OS', {
+        configurable: true,
+        value: 'android',
+      });
+      healthService.loadHealthPreference.mockResolvedValue(false);
+      mockFetchDailySummary.mockResolvedValue(widgetSummaryResponse);
+
+      await triggerManualSync();
+
+      expect(mockFetchDailySummary).toHaveBeenCalledWith('2024-01-15');
+      const caloriePayload = JSON.parse(
+        mockSetCalorieSnapshot.mock.calls[0][0],
+      ) as Record<string, number | string>;
+      expect(caloriePayload).toMatchObject({
+        date: '2024-01-15',
+        remaining: 1850,
+        goal: 2100,
+        progress: 0.17,
+      });
+      expect(mockReloadCalorieWidget).toHaveBeenCalledTimes(1);
+
+      const macroPayload = JSON.parse(
+        mockSetMacroSnapshot.mock.calls[0][0],
+      ) as Record<string, number | string>;
+      expect(macroPayload).toMatchObject({
+        date: '2024-01-15',
+        protein: 20,
+        carbs: 40,
+        fat: 12,
+        calories: 350,
+        remaining: 1850,
+        proteinGoal: 160,
+        carbsGoal: 220,
+        fatGoal: 70,
+      });
+      expect(mockReloadMacroWidget).toHaveBeenCalledTimes(1);
+    });
+
+    test('keeps a successful background sync successful when the widget refresh fails', async () => {
+      Object.defineProperty(Platform, 'OS', {
+        configurable: true,
+        value: 'android',
+      });
+      healthService.loadHealthPreference.mockResolvedValue(false);
+      mockFetchDailySummary.mockRejectedValue(
+        new Error('daily summary unavailable'),
+      );
+      const addLog = require('../../src/services/LogService')
+        .addLog as jest.Mock;
+
+      await expect(triggerManualSync()).resolves.toBeUndefined();
+
+      expect(addLog).toHaveBeenCalledWith(
+        '[Background Sync] Android widget refresh failed: daily summary unavailable',
+        'ERROR',
+      );
+    });
+
+    test('still refreshes the macro widget when the calorie widget write fails', async () => {
+      Object.defineProperty(Platform, 'OS', {
+        configurable: true,
+        value: 'android',
+      });
+      healthService.loadHealthPreference.mockResolvedValue(false);
+      mockFetchDailySummary.mockResolvedValue(widgetSummaryResponse);
+      mockSetCalorieSnapshot.mockRejectedValue(
+        new Error('calorie widget unavailable'),
+      );
+
+      await expect(triggerManualSync()).resolves.toBeUndefined();
+
+      expect(mockSetMacroSnapshot).toHaveBeenCalledTimes(1);
+      expect(mockReloadMacroWidget).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('stale-cursor clamp and dead-client reporting (#2191)', () => {

@@ -1,6 +1,6 @@
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { syncHealthData, HealthDataPayload } from './api/healthDataApi';
 import { runWriteback } from './writeback';
 import { addLog, _flushBuffer } from './LogService';
@@ -34,6 +34,7 @@ import {
   createTelemetryRunContext,
   type TelemetryRunContext,
 } from './shared/telemetryBudget';
+import { refreshAndroidWidgetsFromServer } from './androidWidgetSyncService';
 
 const isAppActive = (): boolean => AppState.currentState === 'active';
 
@@ -115,6 +116,17 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
         interactive: false,
       });
   await runBackgroundSync(taskId, telemetry);
+  if (Platform.OS === 'android') {
+    try {
+      await refreshAndroidWidgetsFromServer();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(
+        `[Background Sync] Android widget refresh failed: ${message}`,
+        'ERROR',
+      );
+    }
+  }
 };
 
 const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext): Promise<void> => {
