@@ -274,7 +274,8 @@ function renderPhotoLogResult(
 
 export function buildVisionTools(
   userId: string,
-  estimateSink?: FoodPhotoEstimateSink
+  estimateSink?: FoodPhotoEstimateSink,
+  imageSource?: { latestImageDataUrl?: string | null }
 ) {
   return {
     sparky_analyze_food_image: tool({
@@ -287,7 +288,12 @@ export function buildVisionTools(
           return formatZodError(parsed.error);
         }
         try {
-          const image = parseImageInput(parsed.data.image_url);
+          // The model cannot hand over the bytes of an image it can see, so
+          // whatever it puts in `image_url` is usually a guess. Prefer the
+          // image actually attached to this turn and fall back to the argument
+          // only when there is none (an explicit data URL the user pasted).
+          const attached = imageSource?.latestImageDataUrl;
+          const image = parseImageInput(attached || parsed.data.image_url);
           if (!image.ok) {
             return `❌ Error analyzing image: ${imageInputError(image.reason)}`;
           }

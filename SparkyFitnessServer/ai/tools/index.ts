@@ -62,6 +62,16 @@ type ToolMap = Record<string, Tool>;
  */
 export interface ToolBuildContext {
   foodPhotoEstimateSink?: FoodPhotoEstimateSink;
+  /**
+   * The image attached to this turn, as a data URL.
+   *
+   * A model can see an attached image but cannot put it in a tool call — a
+   * tool call is JSON text and the bytes are not something it can transcribe.
+   * Asked for an `image_url` it therefore invents one, which the vision tool
+   * rejects. Set after the tools are built (the caller has the messages, the
+   * builder does not); the tools read it at call time.
+   */
+  latestImageDataUrl?: string | null;
 }
 
 const CATEGORY_BUILDERS: Record<
@@ -93,7 +103,9 @@ const CATEGORY_BUILDERS: Record<
     (u, tz) => buildEngagementTools(u, tz),
     (u) => buildWizardTools(u),
   ],
-  vision: [(u, _tz, ctx) => buildVisionTools(u, ctx?.foodPhotoEstimateSink)],
+  vision: [
+    (u, _tz, ctx) => buildVisionTools(u, ctx?.foodPhotoEstimateSink, ctx),
+  ],
   profile: [
     (u) => buildProfileTools(u),
     (u, tz) => buildHabitTools(u, tz),
