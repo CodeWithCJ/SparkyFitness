@@ -19,7 +19,8 @@ import {
 import Button from '../components/ui/Button';
 import FoodForm, { type FoodFormData } from '../components/FoodForm';
 import Icon from '../components/Icon';
-import SegmentedControl from '../components/SegmentedControl';
+import BottomSheetPicker from '../components/BottomSheetPicker';
+import FormInput from '../components/FormInput';
 import { FooterSaveBar } from '../components/FormScreenChrome';
 import FoodPhotoIngredientRow from '../components/FoodPhotoIngredientRow';
 import { useFoodPhotoIngredientDraft } from '../hooks/useFoodPhotoIngredientDraft';
@@ -31,7 +32,11 @@ import {
   type ConfidenceTone,
 } from '../utils/foodPhotoEstimate';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { FoodPhotoFlowScreenProps, RootStackParamList } from '../types/navigation';
+import type {
+  FoodPhotoFlowScreenProps,
+  RootStackParamList,
+  SaveMode,
+} from '../types/navigation';
 
 type Props = FoodPhotoFlowScreenProps<'EstimateReview'>;
 
@@ -102,7 +107,17 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
 
   // Grouped is the default: it is strictly more informative than a single
   // opaque food, and the diary still collapses it to one row.
-  const [mode, setMode] = useState<'grouped' | 'combined'>('grouped');
+  /**
+   * How the plate is saved. The two ingredient options produce an identical
+   * diary row; they differ only in whether a reusable meal template is created,
+   * which is what makes the plate re-loggable later without another photo.
+   */
+  const [saveMode, setSaveMode] = useState<SaveMode>('ingredients_and_meal');
+  const [mealName, setMealName] = useState(
+    estimate.meal_summary || 'Photo estimate',
+  );
+  const isCombined = saveMode === 'one_food';
+  const mode: 'grouped' | 'combined' = isCombined ? 'combined' : 'grouped';
   const { rows, isEdited, expandedId, totals, totalGrams, matchedCount, dispatch } =
     useFoodPhotoIngredientDraft(estimate.items);
 
@@ -207,9 +222,10 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
       date,
       mealTypeId: route.params.mealTypeId ?? undefined,
       mode: 'grouped',
-      mealName: estimate.meal_summary || 'Photo estimate',
+      mealName: mealName.trim() || estimate.meal_summary || 'Photo estimate',
       description: estimate.confidence_reason || undefined,
       ingredients: items,
+      saveAsMeal: saveMode === 'ingredients_and_meal',
       nutrition: {
         grams: totalGrams,
         calories: totals.calories_kcal,
@@ -398,35 +414,83 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
       </Text>
     );
 
+  const SAVE_MODE_OPTIONS: { value: SaveMode; label: string; hint: string }[] = [
+    {
+      value: 'ingredients_and_meal',
+      label: t('foodPhotoEstimate.mode.ingredientsAndMeal', {
+        defaultValue: 'Ingredients + reusable meal',
+      }),
+      hint: t('foodPhotoEstimate.mode.hintIngredientsAndMeal', {
+        defaultValue:
+          'Each ingredient becomes its own food, and the meal is saved so you can log it again without a photo.',
+      }),
+    },
+    {
+      value: 'ingredients_only',
+      label: t('foodPhotoEstimate.mode.ingredientsOnly', {
+        defaultValue: 'Ingredients only',
+      }),
+      hint: t('foodPhotoEstimate.mode.hintIngredientsOnly', {
+        defaultValue:
+          'Each ingredient becomes its own food. Nothing is added to your meals.',
+      }),
+    },
+    {
+      value: 'one_food',
+      label: t('foodPhotoEstimate.mode.oneFood', {
+        defaultValue: 'One food',
+      }),
+      hint: t('foodPhotoEstimate.mode.hintOneFood', {
+        defaultValue: 'Saves the whole plate as a single food, with no breakdown.',
+      }),
+    },
+  ];
+
+  const activeOption =
+    SAVE_MODE_OPTIONS.find((option) => option.value === saveMode) ??
+    SAVE_MODE_OPTIONS[0];
+
   const modeControl = (
     <View className="mb-4">
-      <SegmentedControl
-        segments={[
-          {
-            key: 'grouped',
-            label: t('foodPhotoEstimate.mode.ingredients', {
-              defaultValue: 'Ingredients',
-            }),
-          },
-          {
-            key: 'combined',
-            label: t('foodPhotoEstimate.mode.combined', {
-              defaultValue: 'One food',
-            }),
-          },
-        ]}
-        activeKey={mode}
-        onSelect={setMode}
+      <Text className="text-text-secondary text-xs mb-1">
+        {t('foodPhotoEstimate.mode.label', { defaultValue: 'Save as' })}
+      </Text>
+      <BottomSheetPicker
+        value={saveMode}
+        options={SAVE_MODE_OPTIONS.map((option) => ({
+          label: option.label,
+          value: option.value,
+        }))}
+        onSelect={(value) => setSaveMode(value as SaveMode)}
+        title={t('foodPhotoEstimate.mode.label', { defaultValue: 'Save as' })}
+        renderTrigger={({ onPress }) => (
+          <TouchableOpacity
+            onPress={onPress}
+            activeOpacity={0.7}
+            className="flex-row items-center justify-between rounded-lg bg-raised p-3"
+            accessibilityRole="button"
+            accessibilityLabel={t('foodPhotoEstimate.mode.label', {
+              defaultValue: 'Save as',
+            })}
+          >
+            <Text className="text-text-primary text-base font-medium flex-1 pr-2">
+              {activeOption.label}
+            </Text>
+            <Icon name="chevron-down" size={12} color={textPrimary} />
+          </TouchableOpacity>
+        )}
       />
       <Text className="text-text-secondary text-xs mt-2 px-1">
-        {mode === 'grouped'
-          ? t('foodPhotoEstimate.mode.explainerIngredients', {
-              defaultValue: 'Logs one meal you can expand to each ingredient.',
-            })
-          : t('foodPhotoEstimate.mode.explainerCombined', {
-              defaultValue: 'Logs the whole plate as a single food.',
-            })}
+        {activeOption.hint}
       </Text>
+      {saveMode === 'ingredients_and_meal' ? (
+        <View className="mt-3">
+          <Text className="text-text-secondary text-xs mb-1">
+            {t('foodPhotoEstimate.mode.mealName', { defaultValue: 'Meal name' })}
+          </Text>
+          <FormInput value={mealName} onChangeText={setMealName} />
+        </View>
+      ) : null}
     </View>
   );
 

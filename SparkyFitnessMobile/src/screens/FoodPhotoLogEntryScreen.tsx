@@ -219,6 +219,11 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
           name: params.mealName,
           description: params.description ?? null,
           items: params.ingredients,
+          // Only set when the user picked "Ingredients + reusable meal"; the
+          // server rejects it outside grouped mode.
+          ...(params.saveAsMeal
+            ? { save_as_meal: { name: params.mealName } }
+            : {}),
         });
         invalidatePhotoLogCache(entryDate);
       } catch {

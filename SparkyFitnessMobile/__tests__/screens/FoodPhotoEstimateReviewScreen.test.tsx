@@ -218,8 +218,33 @@ describe('FoodPhotoEstimateReviewScreen', () => {
 
   it('opens on the editable ingredient list, not the single-food form', () => {
     const screen = renderScreen();
-    expect(screen.getByText('Ingredients')).toBeTruthy();
+    // Defaults to the option that also saves a reusable meal.
+    expect(screen.getAllByText('Ingredients + reusable meal').length).toBeGreaterThan(0);
+    expect(screen.getByText('Ingredients only')).toBeTruthy();
     expect(screen.getByText('One food')).toBeTruthy();
+  });
+
+  it('asks the server to save a reusable meal by default', () => {
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByText('Next'));
+
+    const [, params] = navigation.navigate.mock.calls[0];
+    expect(params.mode).toBe('grouped');
+    expect(params.saveAsMeal).toBe(true);
+    expect(params.mealName).toBe('Bowl of yogurt and berries');
+  });
+
+  it('logs ingredients without a template when "Ingredients only" is picked', () => {
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByText('Ingredients only'));
+    fireEvent.press(screen.getByText('Next'));
+
+    const [, params] = navigation.navigate.mock.calls[0];
+    // Same grouped diary row, but nothing added to the Meals library.
+    expect(params.mode).toBe('grouped');
+    expect(params.saveAsMeal).toBe(false);
   });
 
   it('sends grouped items built from the detected ingredients', () => {

@@ -271,6 +271,8 @@ async function createPhotoLoggedMeal(
     return {
       mode: payload.mode,
       food_entry_meal_id: foodEntryMealId,
+      // Filled in by the route after COMMIT — see the note there.
+      meal_template_id: null,
       food_entry_ids: created.map((row: { id: string }) => row.id),
       created_food_ids: createdFoodIds,
     };

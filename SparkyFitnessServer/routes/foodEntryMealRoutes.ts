@@ -13,6 +13,7 @@ import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.j
 import foodPhotoLogService, {
   PhotoLogError,
 } from '../services/foodPhotoLogService.js';
+import mealService from '../services/mealService.js';
 import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
 import {
   uploadImages,
@@ -281,7 +282,45 @@ router.post(
         `User ${userId} logged a ${parsed.data.mode} photo estimate with ${parsed.data.items.length} item(s)`
       );
       clearUserTdeeCache(targetUserId);
-      return res.status(201).json(foodPhotoLogResponseSchema.parse(result));
+
+      // The reusable template is built AFTER the log commits, deliberately.
+      //
+      // It reads the entries back out of the diary, so it cannot see them while
+      // they are still uncommitted. More importantly the diary rows are the
+      // thing the user asked for and the template is a convenience on top: if
+      // template creation fails, losing a correctly logged meal to roll it back
+      // would be the worse outcome. The response reports meal_template_id as
+      // null instead, and "convert to meal" remains available.
+      let mealTemplateId: string | null = null;
+      const saveAsMeal = parsed.data.save_as_meal;
+      if (saveAsMeal && result.food_entry_meal_id) {
+        try {
+          const meal = await mealService.createMealFromDiaryEntries(
+            targetUserId,
+            parsed.data.entry_date,
+            parsed.data.meal_type,
+            saveAsMeal.name,
+            parsed.data.description,
+            false,
+            result.food_entry_meal_id
+          );
+          mealTemplateId = meal?.id ?? null;
+        } catch (mealError) {
+          log(
+            'warn',
+            `Photo estimate logged for user ${userId} but the meal template could not be saved: ${
+              mealError instanceof Error ? mealError.message : String(mealError)
+            }`
+          );
+        }
+      }
+
+      return res.status(201).json(
+        foodPhotoLogResponseSchema.parse({
+          ...result,
+          meal_template_id: mealTemplateId,
+        })
+      );
     } catch (err) {
       if (err instanceof PhotoLogError) {
         const status =

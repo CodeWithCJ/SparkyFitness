@@ -944,22 +944,38 @@ async function updateMealEntriesSnapshot(
     throw error;
   }
 }
+/**
+ * Builds a reusable meal template from entries already in the diary.
+ *
+ * `foodEntryMealId` scopes it to a single logged meal. Without it the template
+ * absorbs EVERYTHING logged for that date and meal type — a coffee logged at
+ * lunch would end up inside a "Chicken Biryani" template. That was fine while
+ * the only caller was the web "convert this meal type to a meal" button, but it
+ * is wrong for any caller that means one specific grouped meal.
+ */
 async function createMealFromDiaryEntries(
   userId: string,
   date: string,
   mealType: string,
   mealName: string | null,
   description: string | null = null,
-  isPublic = false
+  isPublic = false,
+  foodEntryMealId: string | null = null
 ) {
   try {
     // 1. Retrieve food entries for the specified date and meal type
-    const foodEntries =
+    const allEntries =
       await foodEntryRepository.getFoodEntriesByDateAndMealType(
         userId,
         date,
         mealType
       );
+    const foodEntries = foodEntryMealId
+      ? allEntries.filter(
+          (entry: { food_entry_meal_id?: string | null }) =>
+            entry.food_entry_meal_id === foodEntryMealId
+        )
+      : allEntries;
     if (foodEntries.length === 0) {
       throw new Error(`No food entries found for ${mealType} on ${date}.`);
     }
@@ -1036,6 +1052,12 @@ async function createMealFromDiaryEntries(
       name: mealName || defaultMealName,
       description: description,
       is_public: isPublic,
+      // One serving of this meal IS the plate as recorded. A template-backed
+      // logged meal scales its components by
+      // consumed_quantity / (serving_size * total_servings), so 1/serving/1
+      // makes re-logging one serving reproduce these exact amounts. Do not
+      // "improve" these to the plate's gram weight — that silently rescales
+      // every future log of the template.
       serving_size: 1.0,
       serving_unit: 'serving',
       total_servings: 1.0,

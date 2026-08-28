@@ -265,6 +265,18 @@ declare global {
 export type RootStackScreenProps<T extends keyof RootStackParamList> =
   NativeStackScreenProps<RootStackParamList, T>;
 
+/**
+ * How a reviewed photo estimate is saved.
+ *
+ * The two ingredient options render an identical diary row; they differ only in
+ * whether a reusable meal template is created, which is what lets the plate be
+ * re-logged later without another photo.
+ */
+export type SaveMode =
+  | 'ingredients_and_meal'
+  | 'ingredients_only'
+  | 'one_food';
+
 export type FoodPhotoFlowParamList = {
   Improve: {
     date?: string;
@@ -307,6 +319,8 @@ export type FoodPhotoFlowParamList = {
         mealName: string;
         description?: string;
         ingredients: FoodPhotoLogItem[];
+        /** Also save the plate as a reusable meal template. */
+        saveAsMeal: boolean;
         /**
          * Nutrition as reviewed, for the confirmation recap. Items matched to a
          * saved food carry no nutrition of their own (the server snapshots it

@@ -3572,7 +3572,15 @@
       "ingredients": "Ingredients",
       "combined": "One food",
       "explainerIngredients": "Logs one meal you can expand to each ingredient.",
-      "explainerCombined": "Logs the whole plate as a single food."
+      "explainerCombined": "Logs the whole plate as a single food.",
+      "label": "Save as",
+      "ingredientsAndMeal": "Ingredients + reusable meal",
+      "ingredientsOnly": "Ingredients only",
+      "oneFood": "One food",
+      "mealName": "Meal name",
+      "hintIngredientsAndMeal": "Each ingredient becomes its own food, and the meal is saved so you can log it again without a photo.",
+      "hintIngredientsOnly": "Each ingredient becomes its own food. Nothing is added to your meals.",
+      "hintOneFood": "Saves the whole plate as a single food, with no breakdown."
     }
   },
   "mealTypeForm": {

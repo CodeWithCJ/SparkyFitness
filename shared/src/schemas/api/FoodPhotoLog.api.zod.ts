@@ -112,9 +112,35 @@ export const foodPhotoLogRequestSchema = z
     name: z.string().min(1).max(200),
     description: z.string().max(1000).nullable().default(null),
     items: z.array(foodPhotoLogItemSchema).min(1).max(FOOD_PHOTO_LOG_MAX_ITEMS),
+
+    /**
+     * Also save this plate as a reusable meal template, so it can be re-logged
+     * from the Meals library without another photo. Grouped mode only — there
+     * are no components to combine in combined mode.
+     */
+    save_as_meal: z
+      .object({
+        name: z.string().min(1).max(200),
+        /**
+         * How to resolve a name clash. `meals.name` has no unique constraint,
+         * so this is the caller's decision, not the database's.
+         */
+        on_conflict: z.enum(["new", "update"]).optional(),
+        /** The template to replace when `on_conflict` is "update". */
+        meal_id: z.string().uuid().optional(),
+      })
+      .optional(),
   })
   .strict()
   .superRefine((data, ctx) => {
+    if (data.save_as_meal && data.mode !== "grouped") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "save_as_meal requires grouped mode.",
+        path: ["save_as_meal"],
+      });
+    }
+
     if (data.mode !== "combined") return;
 
     // Combined mode is "one food for the whole plate". More than one item, or
@@ -143,6 +169,12 @@ export const foodPhotoLogResponseSchema = z.object({
   mode: z.enum(["grouped", "combined"]),
   /** Null in combined mode — there is no parent meal. */
   food_entry_meal_id: z.string().uuid().nullable(),
+  /**
+   * The reusable template, when `save_as_meal` was requested. Null when it was
+   * not asked for, or when the diary rows saved but the template did not —
+   * the log is the source of truth and is never rolled back for it.
+   */
+  meal_template_id: z.string().uuid().nullable().default(null),
   food_entry_ids: z.array(z.string().uuid()),
   /** Only the foods this request created; matched foods are not listed. */
   created_food_ids: z.array(z.string().uuid()),

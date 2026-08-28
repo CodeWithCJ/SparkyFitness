@@ -41,6 +41,14 @@ vi.mock('../services/AdaptiveTdeeService.js', () => ({
   clearUserTdeeCache: vi.fn(),
 }));
 
+const createMealFromDiaryEntriesMock = vi.fn();
+vi.mock('../services/mealService.js', () => ({
+  default: {
+    createMealFromDiaryEntries: (...a: unknown[]) =>
+      createMealFromDiaryEntriesMock(...(a as [])),
+  },
+}));
+
 let canAccess = true;
 vi.mock('../utils/permissionUtils.js', () => ({
   canAccessUserData: vi.fn(async () => canAccess),
@@ -112,6 +120,7 @@ const validBody = {
 const successResult = {
   mode: 'grouped' as const,
   food_entry_meal_id: '33333333-3333-4333-8333-333333333333',
+  meal_template_id: null,
   food_entry_ids: [
     '44444444-4444-4444-8444-444444444444',
     '44444444-4444-4444-8444-444444444445',
@@ -281,5 +290,75 @@ describe('POST /food-entry-meals/from-photo-estimate', () => {
       .post('/food-entry-meals/from-photo-estimate')
       .send(validBody);
     expect(res.status).toBe(201);
+  });
+
+  describe('save_as_meal', () => {
+    const withMeal = {
+      ...validBody,
+      save_as_meal: { name: 'Chicken Biryani' },
+    };
+
+    it('creates a reusable template scoped to the logged meal', async () => {
+      createMealFromDiaryEntriesMock.mockResolvedValue({
+        id: '66666666-6666-4666-8666-666666666666',
+      });
+
+      const res = await request(app)
+        .post('/food-entry-meals/from-photo-estimate')
+        .send(withMeal);
+
+      expect(res.status).toBe(201);
+      expect(res.body.meal_template_id).toBe(
+        '66666666-6666-4666-8666-666666666666'
+      );
+      // The last argument scopes it to this logged meal; without it the
+      // template would absorb everything else logged at that meal type.
+      expect(createMealFromDiaryEntriesMock).toHaveBeenCalledWith(
+        'user-123',
+        '2026-08-27',
+        'lunch',
+        'Chicken Biryani',
+        null,
+        false,
+        successResult.food_entry_meal_id
+      );
+    });
+
+    it('does not create a template when none was asked for', async () => {
+      const res = await request(app)
+        .post('/food-entry-meals/from-photo-estimate')
+        .send(validBody);
+
+      expect(res.status).toBe(201);
+      expect(res.body.meal_template_id).toBeNull();
+      expect(createMealFromDiaryEntriesMock).not.toHaveBeenCalled();
+    });
+
+    it('still reports the log as successful when the template fails', async () => {
+      createMealFromDiaryEntriesMock.mockRejectedValue(new Error('boom'));
+
+      const res = await request(app)
+        .post('/food-entry-meals/from-photo-estimate')
+        .send(withMeal);
+
+      // The diary rows are what the user asked for; losing them because a
+      // convenience failed would be the worse outcome.
+      expect(res.status).toBe(201);
+      expect(res.body.food_entry_ids).toHaveLength(2);
+      expect(res.body.meal_template_id).toBeNull();
+    });
+
+    it('rejects save_as_meal in combined mode', async () => {
+      const res = await request(app)
+        .post('/food-entry-meals/from-photo-estimate')
+        .send({
+          ...withMeal,
+          mode: 'combined',
+          items: [{ source: 'new', food: NEW_FOOD, quantity: 410, unit: 'g' }],
+        });
+
+      expect(res.status).toBe(400);
+      expect(createMealFromDiaryEntriesMock).not.toHaveBeenCalled();
+    });
   });
 });

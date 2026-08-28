@@ -12,6 +12,13 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -37,7 +44,12 @@ import FoodPhotoIngredientTable from './FoodPhotoIngredientTable';
 import { useFoodPhotoIngredientDraft } from './useFoodPhotoIngredientDraft';
 
 type Step = 'capture' | 'review';
-type LogMode = 'grouped' | 'combined';
+/**
+ * How the plate is saved. The two ingredient options render an identical diary
+ * row; they differ only in whether a reusable meal template is created, which
+ * is what lets the plate be re-logged later without another photo.
+ */
+type SaveMode = 'ingredients_and_meal' | 'ingredients_only' | 'one_food';
 
 export interface FoodPhotoEstimateDialogProps {
   open: boolean;
@@ -84,7 +96,10 @@ const FoodPhotoEstimateDialog = ({
   const [estimate, setEstimate] = useState<FoodPhotoEstimateResponse | null>(
     null
   );
-  const [mode, setMode] = useState<LogMode>('grouped');
+  const [saveMode, setSaveMode] = useState<SaveMode>('ingredients_and_meal');
+  const [mealName, setMealName] = useState('');
+  const mode: 'grouped' | 'combined' =
+    saveMode === 'one_food' ? 'combined' : 'grouped';
 
   const draft = useFoodPhotoIngredientDraft(estimate?.items ?? []);
 
@@ -94,7 +109,8 @@ const FoodPhotoEstimateDialog = ({
     setDescription('');
     setTotalWeight('');
     setEstimate(null);
-    setMode('grouped');
+    setSaveMode('ingredients_and_meal');
+    setMealName('');
   }, []);
 
   const handleClose = (next: boolean) => {
@@ -148,6 +164,7 @@ const FoodPhotoEstimateDialog = ({
   const estimateMutation = useEstimateFoodPhoto({
     onSuccess: (result) => {
       setEstimate(result);
+      setMealName(result.meal_summary || 'Photo estimate');
       setStep('review');
     },
     onError: (error) => {
@@ -304,9 +321,12 @@ const FoodPhotoEstimateDialog = ({
       entry_time: null,
       meal_type: mealType,
       meal_type_id: mealTypeId ?? null,
-      name: estimate?.meal_summary || 'Photo estimate',
+      name: mealName.trim() || estimate?.meal_summary || 'Photo estimate',
       description: estimate?.confidence_reason || null,
       items,
+      ...(saveMode === 'ingredients_and_meal'
+        ? { save_as_meal: { name: mealName.trim() || 'Photo estimate' } }
+        : {}),
     });
   };
 
@@ -427,35 +447,64 @@ const FoodPhotoEstimateDialog = ({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant={mode === 'grouped' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setMode('grouped')}
+            <div className="space-y-2">
+              <Label htmlFor="photo-save-mode">
+                {t('foodPhoto.mode.label', { defaultValue: 'Save as' })}
+              </Label>
+              <Select
+                value={saveMode}
+                onValueChange={(value) => setSaveMode(value as SaveMode)}
               >
-                {t('foodPhoto.mode.ingredients', {
-                  defaultValue: 'Ingredients',
-                })}
-              </Button>
-              <Button
-                type="button"
-                variant={mode === 'combined' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setMode('combined')}
-              >
-                {t('foodPhoto.mode.combined', { defaultValue: 'One food' })}
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                {mode === 'grouped'
-                  ? t('foodPhoto.mode.explainerIngredients', {
-                      defaultValue:
-                        'Logs one meal you can expand to each ingredient.',
-                    })
-                  : t('foodPhoto.mode.explainerCombined', {
-                      defaultValue: 'Logs the whole plate as a single food.',
+                <SelectTrigger id="photo-save-mode" className="w-full sm:w-96">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ingredients_and_meal">
+                    {t('foodPhoto.mode.ingredientsAndMeal', {
+                      defaultValue: 'Ingredients + reusable meal',
                     })}
-              </span>
+                  </SelectItem>
+                  <SelectItem value="ingredients_only">
+                    {t('foodPhoto.mode.ingredientsOnly', {
+                      defaultValue: 'Ingredients only',
+                    })}
+                  </SelectItem>
+                  <SelectItem value="one_food">
+                    {t('foodPhoto.mode.oneFood', { defaultValue: 'One food' })}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {saveMode === 'ingredients_and_meal'
+                  ? t('foodPhoto.mode.hintIngredientsAndMeal', {
+                      defaultValue:
+                        'Each ingredient becomes its own food, and the meal is saved so you can log it again without a photo.',
+                    })
+                  : saveMode === 'ingredients_only'
+                    ? t('foodPhoto.mode.hintIngredientsOnly', {
+                        defaultValue:
+                          'Each ingredient becomes its own food. Nothing is added to your meals.',
+                      })
+                    : t('foodPhoto.mode.hintOneFood', {
+                        defaultValue:
+                          'Saves the whole plate as a single food, with no breakdown.',
+                      })}
+              </p>
+              {saveMode === 'ingredients_and_meal' ? (
+                <div className="space-y-1 pt-1">
+                  <Label htmlFor="photo-meal-name">
+                    {t('foodPhoto.mode.mealName', {
+                      defaultValue: 'Meal name',
+                    })}
+                  </Label>
+                  <Input
+                    id="photo-meal-name"
+                    value={mealName}
+                    onChange={(event) => setMealName(event.target.value)}
+                    className="w-full sm:w-96"
+                  />
+                </div>
+              ) : null}
             </div>
 
             {estimate?.confidence_reason ? (
