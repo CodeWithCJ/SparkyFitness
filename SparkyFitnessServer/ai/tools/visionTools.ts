@@ -318,7 +318,11 @@ export function buildVisionTools(
           // and logged verbatim. The model still only sees the markdown, so
           // this changes nothing about what it reads.
           estimateSink?.set(result.estimate);
-          return `🔬 Food Image Analysis Result:\n\n${renderFoodPhotoEstimate(result.estimate)}`;
+          return {
+            text: `🔬 Food Image Analysis Result:\n\n${renderFoodPhotoEstimate(result.estimate)}`,
+            estimate: result.estimate,
+            meal_type: parsed.data.meal_type,
+          };
         } catch (error) {
           log('error', '[Vision Tool] analyzeFoodImage error:', error);
           return `❌ Error analyzing image: ${error instanceof Error ? error.message : 'Unknown error'}`;

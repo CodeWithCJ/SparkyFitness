@@ -32,6 +32,10 @@ import {
   useUpdateMealMutation,
 } from '@/hooks/Foods/useMeals';
 import {
+  databaseFoodSearchOptions,
+  useCreateFoodDatabaseItemMutation,
+} from '@/hooks/Foods/useFoods';
+import {
   getNutrientMetadata,
   formatNutrientValue,
 } from '@/utils/nutrientUtils';
@@ -54,6 +58,8 @@ interface MealBuilderProps {
   duplicateFromMealId?: string; // Optional: seed a NEW meal from an existing one (Duplicate action)
   onCancel?: () => void;
   initialFoods?: MealFood[]; // New prop for food diary entries
+  initialMealName?: string;
+  initialDescription?: string;
   source?: 'meal-management' | 'food-diary'; // New prop to differentiate context
   foodEntryId?: string; // ID of the FoodEntryMeal when editing a logged meal
   foodEntryDate?: string; // New prop for food diary editing
@@ -96,6 +102,8 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   duplicateFromMealId,
   onCancel,
   initialFoods,
+  initialMealName,
+  initialDescription,
   source = 'meal-management', // Default to meal-management
   foodEntryId, // Using foodEntryId here as the actual ID of the FoodEntryMeal
   foodEntryDate,
@@ -133,11 +141,13 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         : ['calories', 'protein', 'carbs', 'fat'],
     [quickInfoPreferences]
   );
-  const [mealName, setMealName] = useState('');
+  const [mealName, setMealName] = useState(initialMealName || '');
   // One ordered list of saved images and staged files, so the user can drag a
   // new photo ahead of an existing one before saving.
   const [mealImageItems, setMealImageItems] = useState<PickerImage[]>([]);
-  const [mealDescription, setMealDescription] = useState('');
+  const [mealDescription, setMealDescription] = useState(
+    initialDescription || ''
+  );
   const [entryTime, setEntryTime] = useState<string>(
     toHourMinute(initialEntryTime) || ''
   );
@@ -203,6 +213,8 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
 
   const { mutateAsync: updateMeal } = useUpdateMealMutation();
   const { mutateAsync: createMeal } = useCreateMealMutation();
+  const { mutateAsync: createFoodDatabaseItem } =
+    useCreateFoodDatabaseItemMutation();
   const { mutateAsync: createFoodEntryMeal } = useCreateFoodEntryMealMutation();
   const { mutateAsync: updateFoodEntryMeal } = useUpdateFoodEntryMealMutation();
   // Tracks which source (meal/entry) has already seeded the form, so the load
@@ -373,8 +385,8 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       } else if (initialFoods) {
         // For new food-diary entries or when initialFoods are pre-loaded
         setMealFoods(initialFoods);
-        setMealName(foodEntryMealType || 'Logged Meal');
-        setMealDescription('');
+        setMealName(initialMealName || foodEntryMealType || 'Logged Meal');
+        setMealDescription(initialDescription || '');
         // Set template info based on props for scaling logic, defaults to 1 serving otherwise
         const initialSize = initialServingSize || 1;
         const initialUnit = initialServingUnit || 'serving';
@@ -412,6 +424,8 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     loggingLevel,
     source,
     initialFoods,
+    initialMealName,
+    initialDescription,
     foodEntryId,
     foodEntryMealType,
     initialServingSize,
@@ -547,36 +561,36 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     }
     if (mealFoodToEdit) {
       // Create a dummy Food object for FoodUnitSelector
-      // This is a workaround as FoodUnitSelector expects a Food object
+      const defaultVariant: FoodVariant = {
+        id: mealFoodToEdit.variant_id,
+        serving_size: mealFoodToEdit.serving_size || 100,
+        serving_unit: mealFoodToEdit.serving_unit || mealFoodToEdit.unit || 'g',
+        calories: mealFoodToEdit.calories || 0,
+        protein: mealFoodToEdit.protein || 0,
+        carbs: mealFoodToEdit.carbs || 0,
+        fat: mealFoodToEdit.fat || 0,
+        saturated_fat: mealFoodToEdit.saturated_fat,
+        polyunsaturated_fat: mealFoodToEdit.polyunsaturated_fat,
+        monounsaturated_fat: mealFoodToEdit.monounsaturated_fat,
+        trans_fat: mealFoodToEdit.trans_fat,
+        cholesterol: mealFoodToEdit.cholesterol,
+        sodium: mealFoodToEdit.sodium,
+        potassium: mealFoodToEdit.potassium,
+        dietary_fiber: mealFoodToEdit.dietary_fiber,
+        sugars: mealFoodToEdit.sugars,
+        vitamin_a: mealFoodToEdit.vitamin_a,
+        vitamin_c: mealFoodToEdit.vitamin_c,
+        calcium: mealFoodToEdit.calcium,
+        iron: mealFoodToEdit.iron,
+        glycemic_index: mealFoodToEdit.glycemic_index as GlycemicIndex,
+        custom_nutrients: mealFoodToEdit.custom_nutrients,
+      };
       const dummyFood: Food = {
-        id: mealFoodToEdit.food_id || '',
+        id: mealFoodToEdit.food_id || `temp-${index}`,
         name: mealFoodToEdit.food_name || '',
-        is_custom: false, // Assuming foods added to meals are not always custom, or this property is not relevant for editing quantity/unit
-        default_variant: {
-          id: mealFoodToEdit.variant_id,
-          serving_size: mealFoodToEdit.serving_size || 1,
-          serving_unit:
-            mealFoodToEdit.serving_unit || mealFoodToEdit.unit || 'serving',
-          calories: mealFoodToEdit.calories || 0,
-          protein: mealFoodToEdit.protein || 0,
-          carbs: mealFoodToEdit.carbs || 0,
-          fat: mealFoodToEdit.fat || 0,
-          saturated_fat: mealFoodToEdit.saturated_fat,
-          polyunsaturated_fat: mealFoodToEdit.polyunsaturated_fat,
-          monounsaturated_fat: mealFoodToEdit.monounsaturated_fat,
-          trans_fat: mealFoodToEdit.trans_fat,
-          cholesterol: mealFoodToEdit.cholesterol,
-          sodium: mealFoodToEdit.sodium,
-          potassium: mealFoodToEdit.potassium,
-          dietary_fiber: mealFoodToEdit.dietary_fiber,
-          sugars: mealFoodToEdit.sugars,
-          vitamin_a: mealFoodToEdit.vitamin_a,
-          vitamin_c: mealFoodToEdit.vitamin_c,
-          calcium: mealFoodToEdit.calcium,
-          iron: mealFoodToEdit.iron,
-          glycemic_index: mealFoodToEdit.glycemic_index as GlycemicIndex,
-          custom_nutrients: mealFoodToEdit.custom_nutrients,
-        },
+        is_custom: false,
+        default_variant: defaultVariant,
+        variants: [defaultVariant],
       };
       setSelectedFoodForUnitSelection(dummyFood);
       setEditingMealFood({ mealFood: mealFoodToEdit, index });
@@ -674,6 +688,65 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       return;
     }
 
+    // Resolve any un-persisted foods (e.g. from photo estimation) before saving
+    const resolvedFoods: MealFood[] = [];
+    for (const mf of mealFoods) {
+      if (mf.item_type === 'meal' || mf.child_meal_id || mf.food_id) {
+        resolvedFoods.push(mf);
+        continue;
+      }
+      try {
+        const cleanName = (mf.food_name || '').trim().toLowerCase();
+        let matchedFood: Food | null = null;
+        if (cleanName) {
+          try {
+            const searchResults = (await queryClient.fetchQuery(
+              databaseFoodSearchOptions(mf.food_name || '', 5)
+            )) as Food[];
+            const found = (
+              Array.isArray(searchResults) ? searchResults : []
+            ).find((f: Food) => f.name.trim().toLowerCase() === cleanName);
+            if (found) {
+              matchedFood = found;
+            }
+          } catch {
+            // ignore search error and proceed to create
+          }
+        }
+
+        if (matchedFood?.id) {
+          resolvedFoods.push({
+            ...mf,
+            food_id: matchedFood.id,
+            variant_id:
+              matchedFood.variants?.[0]?.id ||
+              matchedFood.default_variant?.id ||
+              undefined,
+          });
+          continue;
+        }
+
+        const created = await createFoodDatabaseItem({
+          name: mf.food_name || 'Food item',
+          calories: mf.calories ?? 0,
+          protein: mf.protein ?? 0,
+          carbs: mf.carbs ?? 0,
+          fat: mf.fat ?? 0,
+          serving_size: mf.serving_size || 100,
+          serving_unit: mf.serving_unit || 'g',
+          is_custom: true,
+        });
+        resolvedFoods.push({
+          ...mf,
+          food_id: created.id,
+          variant_id: created.variants?.[0]?.id || undefined,
+        });
+      } catch (err) {
+        error(loggingLevel, 'Failed to create food for meal ingredient:', err);
+        resolvedFoods.push(mf);
+      }
+    }
+
     if (source === 'meal-management') {
       if (!mealName.trim()) {
         toast({
@@ -757,7 +830,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         serving_unit: servingUnit,
         total_servings: persistedTotalServings,
         images: mealImageOrder,
-        foods: mealFoods.map((mf) => ({
+        foods: resolvedFoods.map((mf) => ({
           item_type: mf.item_type || 'food',
           food_id: mf.food_id,
           child_meal_id: mf.child_meal_id,
@@ -820,20 +893,75 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         return;
       }
 
+      let templateId = templateInfo.id;
+      // If saving a new meal to diary, also save as reusable meal template if a name is provided
+      if (!foodEntryId && !templateId && mealName.trim()) {
+        try {
+          const mealTemplateData: MealPayload = {
+            name: mealName.trim(),
+            description: mealDescription,
+            is_public: false,
+            serving_size: 1,
+            serving_unit: servingUnit || 'serving',
+            total_servings: 1,
+            images: [],
+            foods: resolvedFoods.map((mf) => ({
+              item_type: mf.item_type || 'food',
+              food_id: mf.food_id,
+              child_meal_id: mf.child_meal_id,
+              food_name: mf.food_name,
+              variant_id: mf.variant_id,
+              quantity: mf.quantity,
+              unit: mf.unit,
+              calories: mf.calories,
+              protein: mf.protein,
+              carbs: mf.carbs,
+              fat: mf.fat,
+              serving_size: mf.serving_size,
+              serving_unit: mf.serving_unit,
+              saturated_fat: mf.saturated_fat,
+              polyunsaturated_fat: mf.polyunsaturated_fat,
+              monounsaturated_fat: mf.monounsaturated_fat,
+              trans_fat: mf.trans_fat,
+              cholesterol: mf.cholesterol,
+              sodium: mf.sodium,
+              potassium: mf.potassium,
+              dietary_fiber: mf.dietary_fiber,
+              sugars: mf.sugars,
+              vitamin_a: mf.vitamin_a,
+              vitamin_c: mf.vitamin_c,
+              calcium: mf.calcium,
+              iron: mf.iron,
+              glycemic_index: mf.glycemic_index,
+              custom_nutrients: mf.custom_nutrients,
+            })),
+          };
+          const createdMeal = await createMeal({
+            mealPayload: mealTemplateData,
+            imageFiles: [],
+          });
+          if (createdMeal?.id) {
+            templateId = createdMeal.id;
+          }
+        } catch (err) {
+          warn(loggingLevel, 'Could not save reusable meal template:', err);
+        }
+      }
+
       const foodEntryMealData = {
-        meal_template_id: templateInfo.id, // Preserve template ID for proper scaling now that it has logic to handle missing template info
+        meal_template_id: templateId,
         meal_type: foodEntryMealType,
         entry_date: foodEntryDate,
-        name: mealName.trim() || 'Custom Meal', // Use edited name or default
+        name: mealName.trim() || 'Custom Meal',
         description: mealDescription,
         quantity: parseFloat(servingSize) || 1,
         unit: servingUnit,
-        foods: mealFoods,
+        foods: resolvedFoods,
         entry_time: entryTime || null,
       };
 
       console.log('[MealBuilder] Saving food diary meal:', {
-        meal_template_id: templateInfo.id,
+        meal_template_id: templateId,
         quantity: foodEntryMealData.quantity,
         unit: foodEntryMealData.unit,
         templateInfo,
@@ -931,7 +1059,6 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             'mealBuilder.mealNamePlaceholder',
             'e.g., High Protein Breakfast'
           )}
-          disabled={source === 'food-diary'} // Disable name editing for food diary entries
         />
       </div>
       <div className="space-y-2">
@@ -946,7 +1073,6 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             'mealBuilder.mealDescriptionPlaceholder',
             'e.g., My go-to morning meal'
           )}
-          disabled={source === 'food-diary'} // Disable description editing for food diary entries
         />
       </div>
       {source !== 'food-diary' && (
@@ -1374,12 +1500,17 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
 
       {selectedFoodForUnitSelection && (
         <FoodUnitSelector
+          key={`${selectedFoodForUnitSelection.id}-${editingMealFood?.index}-${isFoodUnitSelectorOpen}`}
           food={selectedFoodForUnitSelection}
           open={isFoodUnitSelectorOpen}
           onOpenChange={setIsFoodUnitSelectorOpen}
           onSelect={handleFoodUnitSelected}
           initialQuantity={editingMealFood?.mealFood.quantity}
-          initialUnit={editingMealFood?.mealFood.unit}
+          initialUnit={
+            editingMealFood?.mealFood.unit ||
+            editingMealFood?.mealFood.serving_unit ||
+            'g'
+          }
           initialVariantId={editingMealFood?.mealFood.variant_id}
         />
       )}

@@ -350,8 +350,48 @@ const FoodUnitSelector = ({
       initialUnit,
       initialVariantId,
     });
-    if (open && food && food.id) {
-      loadVariantsData();
+    if (open && food) {
+      if (food.id && !food.id.startsWith('temp-')) {
+        loadVariantsData();
+      } else {
+        const primaryUnit: FoodVariant = {
+          id: food.default_variant?.id || 'default',
+          serving_size: food.default_variant?.serving_size || 100,
+          serving_unit: food.default_variant?.serving_unit || 'g',
+          serving_description: food.default_variant?.serving_description,
+          calories: food.default_variant?.calories || 0,
+          protein: food.default_variant?.protein || 0,
+          carbs: food.default_variant?.carbs || 0,
+          fat: food.default_variant?.fat || 0,
+          saturated_fat: food.default_variant?.saturated_fat || 0,
+          polyunsaturated_fat: food.default_variant?.polyunsaturated_fat || 0,
+          monounsaturated_fat: food.default_variant?.monounsaturated_fat || 0,
+          trans_fat: food.default_variant?.trans_fat || 0,
+          cholesterol: food.default_variant?.cholesterol || 0,
+          sodium: food.default_variant?.sodium || 0,
+          potassium: food.default_variant?.potassium || 0,
+          dietary_fiber: food.default_variant?.dietary_fiber || 0,
+          sugars: food.default_variant?.sugars || 0,
+          vitamin_a: food.default_variant?.vitamin_a || 0,
+          vitamin_c: food.default_variant?.vitamin_c || 0,
+          calcium: food.default_variant?.calcium || 0,
+          iron: food.default_variant?.iron || 0,
+          custom_nutrients: food.default_variant?.custom_nutrients,
+          source: food.default_variant?.source,
+          ai_confidence: food.default_variant?.ai_confidence,
+        };
+        const allVariants =
+          food.variants && food.variants.length > 0
+            ? food.variants
+            : [primaryUnit];
+        setVariants(allVariants);
+        const selected =
+          (initialVariantId &&
+            allVariants.find((v) => v.id === initialVariantId)) ||
+          allVariants[0] ||
+          null;
+        setSelectedVariant(selected);
+      }
       setQuantity(
         initialQuantity !== undefined
           ? initialQuantity
