@@ -5,6 +5,12 @@ import {
   type FoodMatchCandidateRow,
 } from '../models/food.js';
 import {
+  resolveFoodProviderOrder,
+  lookupFoodFromProviders,
+  pickBestVariant,
+} from './foodProviderLookupService.js';
+import { boundedMap } from '../utils/boundedMap.js';
+import {
   scoreFoodMatch,
   scaleVariantToGrams,
   unbrandMacros,
@@ -33,6 +39,12 @@ import {
  */
 
 const MAX_ALTERNATES = 2;
+/**
+ * How many provider lookups may be in flight at once. Kept low deliberately:
+ * this runs after an already-slow vision call, and nothing rate-limits
+ * OpenFoodFacts on the server.
+ */
+const PROVIDER_LOOKUP_CONCURRENCY = 3;
 
 function toNumber(value: number | string | null): number {
   if (value === null) return 0;
@@ -102,6 +114,59 @@ function toMatch(
     // client hides the swap rather than inventing a number.
     gram_convertible: scaledPortion !== null,
     scaled: scaledPortion ? unbrandMacros(roundMacros(scaledPortion)) : null,
+  };
+}
+
+/**
+ * Builds a match from an external provider hit.
+ *
+ * There is no `food_id`: the food does not exist locally, so applying this
+ * match means creating it from the provider's nutrition rather than the AI's
+ * guess. `provider_type` / `provider_external_id` ride along as provenance.
+ */
+function toProviderMatch(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  food: any,
+  providerSource: string,
+  estimatedGrams: number
+): FoodPhotoEstimateMatch | null {
+  const variant = pickBestVariant(food);
+  if (!variant) return null;
+
+  const servingSize = toNumber(variant.serving_size);
+  const scaledPortion = scaleVariantToGrams(
+    {
+      calories_kcal: toNumber(variant.calories),
+      protein_g: toNumber(variant.protein),
+      carbs_g: toNumber(variant.carbs),
+      fat_g: toNumber(variant.fat),
+      fiber_g: toNumber(variant.dietary_fiber ?? variant.fiber),
+      sugar_g: toNumber(variant.sugars ?? variant.sugar),
+    },
+    servingSize,
+    String(variant.serving_unit ?? ''),
+    estimatedGrams,
+    getConversionFactor
+  );
+  // A provider serving measured in cups or pieces cannot be gram-scaled, and
+  // an unscalable number is worse than the AI estimate it would replace.
+  if (!scaledPortion) return null;
+
+  return {
+    provider_type: providerSource,
+    provider_external_id: food?.provider_external_id
+      ? String(food.provider_external_id)
+      : undefined,
+    food_name: String(food?.name ?? ''),
+    brand: food?.brand ? String(food.brand) : null,
+    serving_size: servingSize,
+    serving_unit: String(variant.serving_unit ?? ''),
+    // Provider data is verified, so it outranks any name-similarity score.
+    match_score: 1,
+    match_source: 'provider',
+    is_own_food: false,
+    gram_convertible: true,
+    scaled: unbrandMacros(roundMacros(scaledPortion)),
   };
 }
 
@@ -201,6 +266,56 @@ async function matchItems(
         bestMatch?.gram_convertible
       ),
     });
+  }
+
+  // Anything the user's own foods did not cover falls through to the provider
+  // cascade — the same order and ranking the chatbot uses. This is the policy
+  // in prompts/chatbot-full-food.md: verified data beats an AI guess.
+  const unmatched = withIds.filter(
+    (item) => !results.get(item.resolvedId)?.match && item.term.length > 0
+  );
+  if (unmatched.length > 0) {
+    try {
+      const providers = await resolveFoodProviderOrder(userId);
+      await boundedMap(unmatched, PROVIDER_LOOKUP_CONCURRENCY, async (item) => {
+        try {
+          const hit = await lookupFoodFromProviders(
+            userId,
+            item.term,
+            providers
+          );
+          if (!hit.food) return;
+          const match = toProviderMatch(
+            hit.food,
+            hit.source,
+            item.estimated_grams
+          );
+          if (!match) return;
+          const existing = results.get(item.resolvedId);
+          if (existing) {
+            existing.match = match;
+            // Verified provider nutrition is applied on open; the user can
+            // still revert to the AI estimate with one tap.
+            existing.preselect_match = true;
+          }
+        } catch (error) {
+          // One bad provider must not cost the user the whole estimate.
+          log(
+            'warn',
+            `[foodPhotoMatchService] provider lookup failed for "${item.term}": ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          );
+        }
+      });
+    } catch (error) {
+      log(
+        'warn',
+        `[foodPhotoMatchService] could not resolve provider order; keeping AI estimates: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
   }
 
   return results;

@@ -35,17 +35,37 @@ export const foodPhotoEstimateMacrosSchema = z.object({
  * explicit, reversible choice instead.
  */
 export const foodPhotoEstimateMatchSchema = z.object({
-  food_id: z.string().uuid(),
-  variant_id: z.string().uuid(),
+  /**
+   * Present for a food already in the user's database. ABSENT for a match that
+   * came from an external provider (OpenFoodFacts, USDA, …) — that food does
+   * not exist locally yet, so applying it creates one from the provider's
+   * nutrition instead of reusing a row.
+   */
+  food_id: z.string().uuid().optional(),
+  variant_id: z.string().uuid().optional(),
+  /** Provenance for a provider match, carried onto the food that gets created. */
+  provider_type: z.string().optional(),
+  provider_external_id: z.string().optional(),
+
   food_name: z.string(),
   brand: z.string().nullable(),
   serving_size: z.number(),
   serving_unit: z.string(),
   /** 0..1, from `scoreFoodMatch`. Below MATCH_MIN_SCORE is never attached. */
   match_score: z.number().min(0).max(1),
-  match_source: z.enum(["exact_name", "token_overlap", "recent_usage"]),
+  match_source: z.enum([
+    "exact_name",
+    "token_overlap",
+    "recent_usage",
+    /**
+     * From the external provider cascade. `prompts/chatbot-full-food.md` makes
+     * verified provider data preferred over an AI guess; this carries the same
+     * rule into the photo flow.
+     */
+    "provider",
+  ]),
   is_own_food: z.boolean(),
-  /** False when the stored variant is measured in cups/slices/etc. */
+  /** False when the matched variant is measured in cups/slices/etc. */
   gram_convertible: z.boolean(),
   /**
    * The matched food's real nutrition, already scaled to this item's

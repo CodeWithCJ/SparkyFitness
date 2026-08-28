@@ -151,7 +151,10 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
     for (const row of rows) {
       if (row.grams <= 0) continue;
 
-      if (row.matchApplied && row.match) {
+      // Only a match against a food that already exists locally can be logged
+      // by id. A provider match has no food_id — the food is created below
+      // from the provider's nutrition, which `row.macros` already holds.
+      if (row.matchApplied && row.match?.food_id && row.match.variant_id) {
         items.push({
           source: 'existing',
           food_id: row.match.food_id,
@@ -169,7 +172,7 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
         source: 'new',
         food: {
           name: row.name.trim() || row.canonicalName,
-          brand: null,
+          brand: row.matchApplied ? (row.match?.brand ?? null) : null,
           serving_size: 100,
           serving_unit: 'g',
           calories: rounded.calories_kcal,

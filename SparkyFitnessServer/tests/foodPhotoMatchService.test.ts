@@ -7,6 +7,21 @@ vi.mock('../models/food.js', () => ({
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
+const resolveFoodProviderOrderMock = vi.fn();
+const lookupFoodFromProvidersMock = vi.fn();
+vi.mock('../services/foodProviderLookupService.js', async () => {
+  const actual = await vi.importActual<
+    typeof import('../services/foodProviderLookupService.js')
+  >('../services/foodProviderLookupService.js');
+  return {
+    ...actual,
+    resolveFoodProviderOrder: (...a: unknown[]) =>
+      resolveFoodProviderOrderMock(...(a as [])),
+    lookupFoodFromProviders: (...a: unknown[]) =>
+      lookupFoodFromProvidersMock(...(a as [])),
+  };
+});
+
 const { attachFoodMatches, matchItems } =
   await import('../services/foodPhotoMatchService.js');
 
@@ -67,10 +82,39 @@ const estimate = {
   clarifying_questions: [],
 };
 
+function providerFood(overrides: Record<string, unknown> = {}) {
+  return {
+    name: 'Chicken Thigh, Raw',
+    brand: null,
+    provider_external_id: 'off-123',
+    variants: [
+      {
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 209,
+        protein: 26,
+        carbs: 0,
+        fat: 11,
+        dietary_fiber: 0,
+        sugars: 0,
+        is_default: true,
+      },
+    ],
+    ...overrides,
+  };
+}
+
 describe('attachFoodMatches', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     findFoodMatchCandidatesMock.mockResolvedValue(new Map());
+    resolveFoodProviderOrderMock.mockResolvedValue([
+      { provider_type: 'openfoodfacts', provider_name: 'OpenFoodFacts' },
+    ]);
+    lookupFoodFromProvidersMock.mockResolvedValue({
+      source: 'ai_estimate',
+      food: null,
+    });
   });
 
   it('never rewrites the AI nutrition or the totals', async () => {
@@ -368,5 +412,121 @@ describe('matchItems', () => {
       const result = await attachFoodMatches(USER, estimate);
       expect(result.items[0].match).not.toBeNull();
     });
+  });
+});
+
+describe('provider cascade fallback', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    findFoodMatchCandidatesMock.mockResolvedValue(new Map());
+    resolveFoodProviderOrderMock.mockResolvedValue([
+      { provider_type: 'openfoodfacts', provider_name: 'OpenFoodFacts' },
+    ]);
+    lookupFoodFromProvidersMock.mockResolvedValue({
+      source: 'ai_estimate',
+      food: null,
+    });
+  });
+
+  it('falls back to the provider when the user has no matching food', async () => {
+    lookupFoodFromProvidersMock.mockResolvedValue({
+      source: 'openfoodfacts',
+      food: providerFood(),
+    });
+
+    const result = await attachFoodMatches(USER, estimate);
+    const match = result.items[0].match!;
+
+    expect(match.match_source).toBe('provider');
+    expect(match.provider_type).toBe('openfoodfacts');
+    expect(match.provider_external_id).toBe('off-123');
+    // No local row exists yet, so there is nothing to log by id.
+    expect(match.food_id).toBeUndefined();
+    expect(match.variant_id).toBeUndefined();
+    // 209 kcal per 100 g scaled to the 200 g the model estimated.
+    expect(match.scaled!.calories_kcal).toBeCloseTo(418, 2);
+  });
+
+  it('applies verified provider nutrition on open', async () => {
+    lookupFoodFromProvidersMock.mockResolvedValue({
+      source: 'openfoodfacts',
+      food: providerFood(),
+    });
+    const result = await attachFoodMatches(USER, estimate);
+    expect(result.items[0].preselect_match).toBe(true);
+  });
+
+  it('leaves the AI numbers untouched even when a provider matches', async () => {
+    lookupFoodFromProvidersMock.mockResolvedValue({
+      source: 'openfoodfacts',
+      food: providerFood(),
+    });
+    const result = await attachFoodMatches(USER, estimate);
+    // Attach, never substitute — an old client keeps reading what it read before.
+    expect(result.items[0].calories_kcal).toBe(290);
+    expect(result.totals).toEqual(estimate.totals);
+  });
+
+  it('does NOT hit a provider when the user already has the food', async () => {
+    findFoodMatchCandidatesMock.mockImplementation(
+      async (_u, queries) =>
+        new Map([[queries[0].key, [candidate({ query_key: queries[0].key })]]])
+    );
+    await attachFoodMatches(USER, estimate);
+    // The user's own food wins; no reason to spend a network call.
+    expect(lookupFoodFromProvidersMock).not.toHaveBeenCalled();
+  });
+
+  it('skips a provider serving that cannot be gram-scaled', async () => {
+    lookupFoodFromProvidersMock.mockResolvedValue({
+      source: 'openfoodfacts',
+      food: providerFood({
+        variants: [
+          {
+            serving_size: 1,
+            serving_unit: 'cup',
+            calories: 200,
+            protein: 5,
+            carbs: 30,
+            fat: 2,
+            is_default: true,
+          },
+        ],
+      }),
+    });
+    const result = await attachFoodMatches(USER, estimate);
+    // An unscalable number is worse than the AI estimate it would replace.
+    expect(result.items[0].match).toBeUndefined();
+  });
+
+  it('keeps the estimate when every provider fails', async () => {
+    lookupFoodFromProvidersMock.mockRejectedValue(new Error('offline'));
+    const result = await attachFoodMatches(USER, estimate);
+    expect(result.items[0].calories_kcal).toBe(290);
+    expect(result.items[0].match).toBeUndefined();
+  });
+
+  it('keeps the estimate when provider order cannot be resolved', async () => {
+    resolveFoodProviderOrderMock.mockRejectedValue(new Error('db down'));
+    const result = await attachFoodMatches(USER, estimate);
+    expect(result.items[0].calories_kcal).toBe(290);
+  });
+
+  it('resolves the provider order once for the whole plate', async () => {
+    lookupFoodFromProvidersMock.mockResolvedValue({
+      source: 'openfoodfacts',
+      food: providerFood(),
+    });
+    await attachFoodMatches(USER, {
+      ...estimate,
+      items: [
+        estimateItem,
+        { ...estimateItem, canonical_name: 'rice' },
+        { ...estimateItem, canonical_name: 'ghee' },
+      ],
+    });
+    // Preferences would otherwise be re-read once per ingredient.
+    expect(resolveFoodProviderOrderMock).toHaveBeenCalledTimes(1);
+    expect(lookupFoodFromProvidersMock).toHaveBeenCalledTimes(3);
   });
 });
