@@ -84,6 +84,10 @@ import {
 import { CATEGORY_SUMMARIES } from '../ai/tools/metaTools.js';
 import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
+import {
+  createFoodPhotoEstimateSink,
+  FOOD_PHOTO_ESTIMATE_PART_TYPE,
+} from '../ai/tools/foodPhotoEstimateSink.js';
 import path from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -559,6 +563,12 @@ async function prepareChatContext(
   let activeToolNames: string[] | undefined;
   let prepareStep: ReturnType<typeof buildEscalationPrepareStep> | undefined;
 
+  // Catches the structured estimate if this turn analyses a food photo, so the
+  // numbers can be persisted and logged verbatim instead of the model retyping
+  // them one food at a time. Per-turn: two users' turns share this process.
+  const foodPhotoEstimateSink = createFoodPhotoEstimateSink();
+  const toolBuildContext = { foodPhotoEstimateSink };
+
   if (categoriesAreManual) {
     tools = buildChatbotTools(
       authenticatedUserId,
@@ -568,12 +578,17 @@ async function prepareChatContext(
       toolCategories,
       // Quick-reply chips: full profile only (the small local models 'core'
       // exists for pick tools unreliably from a wider surface).
-      toolProfile === 'full'
+      toolProfile === 'full',
+      toolBuildContext
     );
     activeToolNames = undefined; // every composed tool is sent
     prepareStep = undefined; // no mid-request widening
   } else {
-    const surface = buildChatToolSurface(authenticatedUserId, chatTz);
+    const surface = buildChatToolSurface(
+      authenticatedUserId,
+      chatTz,
+      toolBuildContext
+    );
     tools = surface.tools;
     activeToolNames = [
       ...new Set(
@@ -633,6 +648,10 @@ async function prepareChatContext(
     activeToolNames,
     prepareStep,
     toolProfile,
+    // Returned so onFinish can persist whatever the vision tool captured this
+    // turn. The tools close over it, but they are built here and the message
+    // is saved in processChatMessageStream.
+    foodPhotoEstimateSink,
   };
 }
 
@@ -2032,6 +2051,7 @@ async function processChatMessageStream(
       activeToolNames,
       prepareStep,
       toolProfile,
+      foodPhotoEstimateSink,
     } = await prepareChatContext(
       authenticatedUserId,
       aiService.service_type,
@@ -2153,6 +2173,12 @@ async function processChatMessageStream(
             log('error', 'Failed to save user chat history:', err)
           );
 
+        // A photo estimate analysed this turn is persisted with the message.
+        // Asking the user how to save it always ends the turn, so their answer
+        // arrives in a fresh one — and chat history strips images, so without
+        // this the numbers would be gone and the photo unrepeatable.
+        const capturedEstimate = foodPhotoEstimateSink.get();
+
         // A turn that ends on a quick-reply call carries the question in the
         // tool call, so it must be persisted too — otherwise the chips (and the
         // question they answer) vanish on reload, and the reloaded transcript
@@ -2161,7 +2187,7 @@ async function processChatMessageStream(
           (call) => call.toolName === ASK_USER_TOOL_NAME
         );
 
-        if (!text.trim() && !askCall) {
+        if (!text.trim() && !askCall && !capturedEstimate) {
           log(
             'warn',
             `Skipping empty assistant chat history for user ${userId} (finishReason: ${finishReason})`
@@ -2171,6 +2197,12 @@ async function processChatMessageStream(
 
         const assistantParts: Record<string, unknown>[] = [];
         if (text.trim()) assistantParts.push({ type: 'text', text });
+        if (capturedEstimate) {
+          assistantParts.push({
+            type: FOOD_PHOTO_ESTIMATE_PART_TYPE,
+            data: capturedEstimate,
+          });
+        }
         if (askCall) {
           assistantParts.push({
             type: ASK_USER_PART_TYPE,
