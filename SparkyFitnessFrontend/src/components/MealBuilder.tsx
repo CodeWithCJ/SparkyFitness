@@ -123,6 +123,13 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   } = usePreferences();
   const { t } = useTranslation();
 
+  // Diary mode normally logs against an existing meal template, which supplies
+  // the yield (total_servings). A brand-new custom meal built here — the food
+  // photo estimate opened in the builder — has no template yet, so the user
+  // declares the yield inline: the ingredient rows describe the WHOLE dish and
+  // "Quantity Consumed" says how much of it goes in the diary.
+  const showDiaryYield = source === 'food-diary' && !mealId && !foodEntryId;
+
   const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
     return unit === 'kcal'
       ? t('common.kcalUnit', 'kcal')
@@ -166,11 +173,12 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   // mental model: "I made 2000 ml") and derive total_servings on save as
   // totalAmount / servingSize.
   const [totalAmountText, setTotalAmountText] = useState<string>('1');
-  // Nutrition view toggle (meal-management mode only). Default to per-serving
-  // to match mobile MealDetailScreen and surface the most useful framing.
-  const [nutritionView, setNutritionView] = useState<'perServing' | 'total'>(
-    'perServing'
-  );
+  // Nutrition view toggle. Meal-management defaults to per-serving (matches
+  // mobile MealDetailScreen); diary mode with an inline yield defaults to
+  // "Logged" — the portion actually going into the diary.
+  const [nutritionView, setNutritionView] = useState<
+    'logged' | 'perServing' | 'total'
+  >(source === 'food-diary' ? 'logged' : 'perServing');
   const [mealFoods, setMealFoods] = useState<MealFood[]>(initialFoods || []);
   const [isFoodUnitSelectorOpen, setIsFoodUnitSelectorOpen] = useState(false);
   const [showFoodSearchDialog, setShowFoodSearchDialog] = useState(false);
@@ -893,6 +901,25 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         return;
       }
 
+      // With an inline yield the ingredient rows describe the whole dish, so
+      // the yield has to be a positive number before anything is scaled by it.
+      let diaryTotalServings = 1;
+      if (showDiaryYield) {
+        const parsedYield = parseFloat(totalServings);
+        if (!Number.isFinite(parsedYield) || parsedYield <= 0) {
+          toast({
+            title: t('mealBuilder.errorTitle', 'Error'),
+            description: t(
+              'mealBuilder.invalidTotalServings',
+              'Total servings must be greater than zero.'
+            ),
+            variant: 'destructive',
+          });
+          return;
+        }
+        diaryTotalServings = parsedYield;
+      }
+
       let templateId = templateInfo.id;
       // If saving a new meal to diary, also save as reusable meal template if a name is provided
       if (!foodEntryId && !templateId && mealName.trim()) {
@@ -903,7 +930,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             is_public: false,
             serving_size: 1,
             serving_unit: servingUnit || 'serving',
-            total_servings: 1,
+            total_servings: diaryTotalServings,
             images: [],
             foods: resolvedFoods.map((mf) => ({
               item_type: mf.item_type || 'food',
@@ -948,15 +975,28 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         }
       }
 
+      // The server scales the rows it is sent by
+      // quantity / (serving_size × total_servings) of the template. Without a
+      // template (no meal name, so none was created) its multiplier is 1, so
+      // apply the same portion factor here instead of logging the whole dish.
+      const consumedQuantity = parseFloat(servingSize) || 1;
+      const entryFoods =
+        showDiaryYield && !templateId
+          ? resolvedFoods.map((mf) => ({
+              ...mf,
+              quantity: mf.quantity * (consumedQuantity / diaryTotalServings),
+            }))
+          : resolvedFoods;
+
       const foodEntryMealData = {
         meal_template_id: templateId,
         meal_type: foodEntryMealType,
         entry_date: foodEntryDate,
         name: mealName.trim() || 'Custom Meal',
         description: mealDescription,
-        quantity: parseFloat(servingSize) || 1,
+        quantity: consumedQuantity,
         unit: servingUnit,
-        foods: resolvedFoods,
+        foods: entryFoods,
         entry_time: entryTime || null,
       };
 
@@ -1044,6 +1084,31 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   ]); // Recalculate on changes
 
   const mealTotals = calculateMealNutrition();
+
+  // How the aggregated ingredient totals map onto the selected view.
+  //   - meal-management: "Per serving" divides the full recipe by the yield.
+  //   - diary with an inline yield: the totals are the whole dish, so "Logged"
+  //     applies quantity / yield and "Per serving" applies 1 / yield.
+  //   - diary against a template: calculateMealNutrition already applied the
+  //     per-log multiplier, so its values are shown as-is.
+  const parsedTotalServings = parseFloat(totalServings);
+  const yieldCount =
+    Number.isFinite(parsedTotalServings) && parsedTotalServings > 0
+      ? parsedTotalServings
+      : 1;
+  const parsedConsumed = parseFloat(servingSize);
+  const consumedServings =
+    Number.isFinite(parsedConsumed) && parsedConsumed > 0 ? parsedConsumed : 1;
+  let displayScale = 1;
+  if (showDiaryYield) {
+    if (nutritionView === 'logged') {
+      displayScale = consumedServings / yieldCount;
+    } else if (nutritionView === 'perServing') {
+      displayScale = 1 / yieldCount;
+    }
+  } else if (source !== 'food-diary' && nutritionView === 'perServing') {
+    displayScale = 1 / yieldCount;
+  }
 
   return (
     <div className="space-y-6 pt-4">
@@ -1221,8 +1286,39 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         )}
 
         {source === 'food-diary' ? (
-          // Diary mode: keep the existing "Quantity Consumed" + locked unit pair + time.
-          <div className="grid grid-cols-3 gap-4">
+          // Diary mode: "Quantity Consumed" + locked unit pair + time. A custom
+          // meal with no template behind it also gets "Total Servings" first,
+          // so the ingredient rows can describe the whole dish while only a
+          // portion of it is logged.
+          <div
+            className={
+              showDiaryYield
+                ? 'grid grid-cols-2 sm:grid-cols-4 gap-4'
+                : 'grid grid-cols-3 gap-4'
+            }
+          >
+            {showDiaryYield && (
+              <div className="space-y-2">
+                <Label htmlFor="diaryTotalServings">
+                  {t('mealBuilder.totalServings', 'Total Servings')}
+                </Label>
+                <Input
+                  id="diaryTotalServings"
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={totalServings}
+                  onChange={(e) => setTotalServings(e.target.value)}
+                  placeholder="1"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    'mealBuilder.diaryTotalServingsHint',
+                    'Servings the whole dish makes'
+                  )}
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="servingSize">
                 {t('mealBuilder.consumedQuantity', 'Quantity Consumed')}
@@ -1235,6 +1331,14 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                 onChange={(e) => setServingSize(e.target.value)}
                 placeholder="1"
               />
+              {showDiaryYield && (
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    'mealBuilder.diaryConsumedQuantityHint',
+                    'Servings you are logging'
+                  )}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="servingUnit">
@@ -1422,22 +1526,28 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           </div>
         )}
         <div className="space-y-2">
-          {source === 'food-diary' ? (
+          {source === 'food-diary' && !showDiaryYield ? (
             <h4 className="text-sm font-medium">
               {t('mealBuilder.loggedNutritionLabel', 'Logged Nutrition:')}
             </h4>
           ) : (
-            // Meal-management mode shows a Per serving / Total toggle (matches
-            // mobile MealDetailScreen). The toggle replaces the static header —
-            // selecting "Per serving" divides the recipe totals by
-            // total_servings; "Total" shows the raw full-recipe sum.
+            // Per serving / Total toggle (matches mobile MealDetailScreen).
+            // The toggle replaces the static header — "Per serving" divides the
+            // recipe totals by total_servings; "Total" shows the raw
+            // full-recipe sum. Diary mode with an inline yield adds "Logged"
+            // for the portion being written to the diary.
             <Tabs
               value={nutritionView}
               onValueChange={(value) =>
-                setNutritionView(value as 'perServing' | 'total')
+                setNutritionView(value as 'logged' | 'perServing' | 'total')
               }
             >
               <TabsList>
+                {showDiaryYield && (
+                  <TabsTrigger value="logged">
+                    {t('mealBuilder.loggedTab', 'Logged')}
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="perServing">
                   {t('mealBuilder.perServingTab', 'Per serving')}
                 </TabsTrigger>
@@ -1451,14 +1561,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             {visibleNutrients.map((key) => {
               const meta = getNutrientMetadata(key);
               const rawVal = mealTotals[key] || 0;
-              // Only meal-management mode divides by total_servings; food-diary
-              // mode's calculateMealNutrition already applies the per-log
-              // multiplier, so we display its values as-is.
-              const divisor =
-                source !== 'food-diary' && nutritionView === 'perServing'
-                  ? parseFloat(totalServings) || 1
-                  : 1;
-              const val = divisor > 0 ? rawVal / divisor : rawVal;
+              const val = rawVal * displayScale;
               const displayVal =
                 key === 'calories'
                   ? formatNutrientValue(

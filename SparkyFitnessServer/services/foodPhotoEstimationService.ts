@@ -395,6 +395,66 @@ function normalizeEstimatePayload(raw: unknown): unknown {
   return ensureTotals(obj);
 }
 
+// The vision model writes ingredient names in lower case ("penne pasta").
+// That name is what the review card, the meal builder, and every food created
+// from the estimate end up showing, so title-case it once here instead of in
+// each client. `canonical_name` is deliberately left alone — it is the
+// food-database search term, not display text.
+const TITLE_CASE_MINOR_WORDS = new Set([
+  'a',
+  'an',
+  'and',
+  'at',
+  'de',
+  'in',
+  'of',
+  'on',
+  'or',
+  'the',
+  'to',
+  'with',
+  'without',
+]);
+
+function titleCaseFoodName(value: string): string {
+  let wordIndex = 0;
+  return value
+    .split(/(\s+)/)
+    .map((part) => {
+      if (part === '' || /^\s+$/.test(part)) return part;
+      const isFirstWord = wordIndex === 0;
+      wordIndex += 1;
+      // A word the model already capitalised (a brand, an acronym) is left
+      // exactly as written.
+      if (/[A-Z]/.test(part)) return part;
+      if (
+        !isFirstWord &&
+        TITLE_CASE_MINOR_WORDS.has(part.replace(/[^a-z]/g, ''))
+      ) {
+        return part;
+      }
+      // Capitalise after a hyphen or slash too: "sun-dried" -> "Sun-Dried".
+      return part.replace(
+        /(^|[-/])([a-z])/g,
+        (_match, separator: string, letter: string) =>
+          separator + letter.toUpperCase()
+      );
+    })
+    .join('');
+}
+
+function titleCaseItemNames(
+  estimate: FoodPhotoEstimateResponse
+): FoodPhotoEstimateResponse {
+  return {
+    ...estimate,
+    items: estimate.items.map((item) => ({
+      ...item,
+      name: titleCaseFoodName(item.name),
+    })),
+  };
+}
+
 export type EstimateFoodPhotoNutritionResult =
   | { success: true; estimate: FoodPhotoEstimateResponse }
   | { success: false; code: FoodPhotoEstimateErrorCode; error: string };
@@ -484,7 +544,8 @@ async function estimateFoodPhotoNutrition(
   // failure is swallowed inside the service so it can never cost the user an
   // estimate they already paid an AI call for.
   const enriched = await attachFoodMatches(userId, parsed.data);
-  return { success: true, estimate: enriched };
+  // After matching, so the search terms the matcher sees are the model's own.
+  return { success: true, estimate: titleCaseItemNames(enriched) };
 }
 
 export { estimateFoodPhotoNutrition };

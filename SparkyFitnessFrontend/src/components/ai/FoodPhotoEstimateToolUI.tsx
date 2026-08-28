@@ -16,7 +16,9 @@ import {
   toPer100g,
   unbrandMacros,
   roundMacros,
+  defaultMealTypeForTime,
   todayInZone,
+  userHourMinute,
   type FoodPhotoEstimateResponse,
   type FoodPhotoLogItem,
   type FoodPhotoLogRequest,
@@ -35,6 +37,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -42,6 +45,8 @@ import { toast } from '@/hooks/use-toast';
 import { useLogFoodPhotoEstimate } from '@/hooks/Foods/useFoodPhotoEstimate';
 import { useFoodPhotoIngredientDraft } from '@/pages/Diary/useFoodPhotoIngredientDraft';
 import { useDiaryInvalidation } from '@/hooks/useInvalidateKeys';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 import MealBuilder from '@/components/MealBuilder';
 import type { MealFood } from '@/types/meal';
 import { cn } from '@/lib/utils';
@@ -57,18 +62,24 @@ function cleanMealName(summary?: string | null): string {
   return cleaned || 'Photo Meal';
 }
 
+// Only used while the user's meal types are still loading; once they arrive
+// the slot comes from defaultMealTypeForTime, the same helper the diary and
+// the food dialogs use. Names must match a real meal type — the server
+// resolves the slot by exact name and rejects anything else.
 function getDefaultMealType(): string {
   const hour = new Date().getHours();
   if (hour >= 5 && hour < 11) return 'breakfast';
   if (hour >= 11 && hour < 16) return 'lunch';
   if (hour >= 16 && hour < 22) return 'dinner';
-  return 'snack';
+  return 'snacks';
 }
 
-function getTodayString(): string {
+const ISO_DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function getTodayString(timezone?: string | null): string {
   try {
     return todayInZone(
-      Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+      timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
     );
   } catch {
     return new Date().toISOString().slice(0, 10);
@@ -79,13 +90,20 @@ interface EstimateToolResult {
   text?: string;
   estimate?: FoodPhotoEstimateResponse;
   meal_type?: string;
+  entry_date?: string;
 }
 
 export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
-  { image_url?: string; meal_type?: string },
+  { image_url?: string; meal_type?: string; entry_date?: string },
   EstimateToolResult | string
 > = ({ args, result, status }) => {
   const { t } = useTranslation();
+  const { timezone } = usePreferences();
+  const { data: allMealTypes = [] } = useMealTypes();
+  const mealTypes = useMemo(
+    () => allMealTypes.filter((mealType) => mealType.is_visible !== false),
+    [allMealTypes]
+  );
   const invalidateDiary = useDiaryInvalidation();
   const [logged, setLogged] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -105,10 +123,59 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
     return null;
   }, [args, result]);
 
-  const [selectedMealType, setSelectedMealType] = useState<string | null>(null);
-  const mealType = selectedMealType || detectedMealType || getDefaultMealType();
+  // The model writes the slot the way the user said it ("snack", "Snacks",
+  // a custom category); the diary resolves meal types by exact name, so map
+  // it onto one of the user's own before it can be logged with.
+  const resolvedMealType = useMemo(() => {
+    const wanted = detectedMealType?.trim().toLowerCase();
+    if (!wanted) return null;
+    const exact = mealTypes.find(
+      (mealType) => mealType.name.toLowerCase() === wanted
+    );
+    if (exact) return exact.name;
+    // Singular/plural drift: the model says "snack", the meal type is "Snacks".
+    const loose = mealTypes.find((mealType) => {
+      const name = mealType.name.toLowerCase();
+      return name === `${wanted}s` || `${name}s` === wanted;
+    });
+    return loose ? loose.name : null;
+  }, [detectedMealType, mealTypes]);
 
-  const [entryDate] = useState<string>(getTodayString);
+  const defaultMealType = useMemo(
+    () =>
+      mealTypes.length > 0
+        ? defaultMealTypeForTime(mealTypes, userHourMinute(timezone))
+        : getDefaultMealType(),
+    [mealTypes, timezone]
+  );
+
+  const [selectedMealType, setSelectedMealType] = useState<string | null>(null);
+  const mealType = selectedMealType || resolvedMealType || defaultMealType;
+
+  // The day the user asked for, when they named one ("log this for
+  // yesterday") — the model passes it to the tool. Without it the card falls
+  // back to today in the user's own timezone, not the browser's.
+  const detectedEntryDate = useMemo(() => {
+    if (args?.entry_date && ISO_DAY_PATTERN.test(args.entry_date)) {
+      return args.entry_date;
+    }
+    if (
+      typeof result === 'object' &&
+      result &&
+      'entry_date' in result &&
+      typeof result.entry_date === 'string' &&
+      ISO_DAY_PATTERN.test(result.entry_date)
+    ) {
+      return result.entry_date;
+    }
+    return null;
+  }, [args, result]);
+
+  const [selectedEntryDate, setSelectedEntryDate] = useState<string | null>(
+    null
+  );
+  const entryDate =
+    selectedEntryDate || detectedEntryDate || getTodayString(timezone);
 
   // Parse structured estimate from tool call result
   const estimate = useMemo<FoodPhotoEstimateResponse | null>(() => {
@@ -384,8 +451,8 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
 
       {isExpanded && (
         <div className="p-4 space-y-4">
-          {/* Meal Title Input & Slot Picker */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Meal Title Input, Day & Slot Picker */}
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div className="sm:col-span-2 space-y-1">
               <Label className="text-xs text-muted-foreground">
                 {t('foodPhoto.mode.mealName', { defaultValue: 'Meal Name' })}
@@ -412,12 +479,28 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="breakfast">Breakfast</SelectItem>
-                  <SelectItem value="lunch">Lunch</SelectItem>
-                  <SelectItem value="dinner">Dinner</SelectItem>
-                  <SelectItem value="snack">Snack</SelectItem>
+                  {(mealTypes.length > 0
+                    ? mealTypes.map((entry) => entry.name)
+                    : [mealType]
+                  ).map((name) => (
+                    <SelectItem key={name} value={name} className="capitalize">
+                      {name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">
+                {t('common.date', { defaultValue: 'Date' })}
+              </Label>
+              <Input
+                type="date"
+                value={entryDate}
+                onChange={(e) => setSelectedEntryDate(e.target.value || null)}
+                disabled={logged}
+                className="h-9"
+              />
             </div>
           </div>
 
@@ -692,6 +775,11 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
             <DialogTitle>
               {t('mealManagement.createMeal', { defaultValue: 'Create Meal' })}
             </DialogTitle>
+            {/* The builder has no date field of its own, so name the day and
+                slot this entry lands in — both are picked on the card above. */}
+            <DialogDescription className="capitalize">
+              {mealType} · {entryDate}
+            </DialogDescription>
           </DialogHeader>
           <MealBuilder
             initialFoods={mealBuilderFoods}

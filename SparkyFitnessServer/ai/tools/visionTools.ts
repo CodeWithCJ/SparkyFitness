@@ -322,6 +322,7 @@ export function buildVisionTools(
             text: `🔬 Food Image Analysis Result:\n\n${renderFoodPhotoEstimate(result.estimate)}`,
             estimate: result.estimate,
             meal_type: parsed.data.meal_type,
+            entry_date: parsed.data.entry_date,
           };
         } catch (error) {
           log('error', '[Vision Tool] analyzeFoodImage error:', error);
@@ -337,7 +338,8 @@ Use this INSTEAD of retyping the numbers into sparky_manage_food — it keeps th
 
 - save_mode 'ingredients_and_meal': each ingredient becomes its own reusable food AND the plate is saved as a reusable meal, so the user can log it again later without a photo.
 - save_mode 'one_food': the whole plate is logged as a single food with no breakdown.
-Ask the user which they want with sparky_ask_user FIRST when the analysis found more than one ingredient; log directly when it found only one.`,
+
+Only call this when the user explicitly asks to log the plate in a message AFTER the analysis, whatever the ingredient count. sparky_analyze_food_image renders a review card the user logs from themselves, so logging here in the same turn duplicates their entry.`,
       inputSchema: LogFoodPhotoSchema,
       execute: async (rawArgs) => {
         const parsed = LogFoodPhotoSchema.safeParse(rawArgs);

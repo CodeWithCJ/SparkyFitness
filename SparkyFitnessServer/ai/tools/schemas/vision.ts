@@ -9,10 +9,18 @@ export const AnalyzeFoodImageSchema = z
         'Optional. The image is automatically read from the attached user message, so this can be omitted.'
       ),
     meal_type: z
-      .enum(['breakfast', 'lunch', 'dinner', 'snack'])
+      .string()
+      .min(1)
       .optional()
       .describe(
-        'Optional. The meal slot for this food if specified by the user in the prompt (e.g. "breakfast", "lunch", "dinner", "snack").'
+        "Optional. The meal slot the user named for this food: breakfast | lunch | dinner | snacks, or a custom meal type name. The card matches it against the user's own meal types."
+      ),
+    entry_date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional()
+      .describe(
+        'Optional. Calendar day (YYYY-MM-DD) the user asked this to be logged for (e.g. "yesterday", "last Monday"). Omit for today; the meal card defaults to the user\'s current day.'
       ),
   })
   .strict();
