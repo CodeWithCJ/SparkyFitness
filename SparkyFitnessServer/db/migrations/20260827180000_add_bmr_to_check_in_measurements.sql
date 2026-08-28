@@ -11,19 +11,29 @@ COMMENT ON COLUMN check_in_measurements.bmr IS 'Basal Metabolic Rate (BMR) in kc
 -- Backfill check_in_measurements.bmr from custom_measurements where category name is 'basal_metabolic_rate'
 -- 1. Update existing check_in_measurements rows
 UPDATE check_in_measurements ci
-SET bmr = ROUND(cm_latest.value::numeric, 1)::numeric(6, 1)
+SET bmr = ROUND(cm_latest.parsed_value, 1)::numeric(6, 1)
 FROM (
-  SELECT DISTINCT ON (cm.user_id, cm.entry_date)
-    cm.user_id,
-    cm.entry_date,
-    cm.value
-  FROM custom_measurements cm
-  JOIN custom_categories cc ON cc.id = cm.category_id
-  WHERE cc.name = 'basal_metabolic_rate'
-    AND cm.value ~ '^[0-9]+(\.[0-9]+)?$'
-    AND cm.value::numeric >= 300
-    AND cm.value::numeric <= 10000
-  ORDER BY cm.user_id, cm.entry_date, cm.updated_at DESC, cm.entry_timestamp DESC
+  SELECT DISTINCT ON (valid_cm.user_id, valid_cm.entry_date)
+    valid_cm.user_id,
+    valid_cm.entry_date,
+    valid_cm.parsed_value
+  FROM (
+    SELECT
+      cm.user_id,
+      cm.entry_date,
+      cm.updated_at,
+      cm.entry_timestamp,
+      CASE
+        WHEN cm.value ~ '^[0-9]+(\.[0-9]+)?$' THEN cm.value::numeric
+        ELSE NULL
+      END AS parsed_value
+    FROM custom_measurements cm
+    JOIN custom_categories cc ON cc.id = cm.category_id
+    WHERE cc.name = 'basal_metabolic_rate'
+  ) valid_cm
+  WHERE valid_cm.parsed_value >= 300
+    AND valid_cm.parsed_value <= 10000
+  ORDER BY valid_cm.user_id, valid_cm.entry_date, valid_cm.updated_at DESC NULLS LAST, valid_cm.entry_timestamp DESC NULLS LAST
 ) cm_latest
 WHERE ci.user_id = cm_latest.user_id
   AND ci.entry_date = cm_latest.entry_date
@@ -34,19 +44,29 @@ INSERT INTO check_in_measurements (user_id, entry_date, bmr)
 SELECT
   cm_latest.user_id,
   cm_latest.entry_date,
-  ROUND(cm_latest.value::numeric, 1)::numeric(6, 1)
+  ROUND(cm_latest.parsed_value, 1)::numeric(6, 1)
 FROM (
-  SELECT DISTINCT ON (cm.user_id, cm.entry_date)
-    cm.user_id,
-    cm.entry_date,
-    cm.value
-  FROM custom_measurements cm
-  JOIN custom_categories cc ON cc.id = cm.category_id
-  WHERE cc.name = 'basal_metabolic_rate'
-    AND cm.value ~ '^[0-9]+(\.[0-9]+)?$'
-    AND cm.value::numeric >= 300
-    AND cm.value::numeric <= 10000
-  ORDER BY cm.user_id, cm.entry_date, cm.updated_at DESC, cm.entry_timestamp DESC
+  SELECT DISTINCT ON (valid_cm.user_id, valid_cm.entry_date)
+    valid_cm.user_id,
+    valid_cm.entry_date,
+    valid_cm.parsed_value
+  FROM (
+    SELECT
+      cm.user_id,
+      cm.entry_date,
+      cm.updated_at,
+      cm.entry_timestamp,
+      CASE
+        WHEN cm.value ~ '^[0-9]+(\.[0-9]+)?$' THEN cm.value::numeric
+        ELSE NULL
+      END AS parsed_value
+    FROM custom_measurements cm
+    JOIN custom_categories cc ON cc.id = cm.category_id
+    WHERE cc.name = 'basal_metabolic_rate'
+  ) valid_cm
+  WHERE valid_cm.parsed_value >= 300
+    AND valid_cm.parsed_value <= 10000
+  ORDER BY valid_cm.user_id, valid_cm.entry_date, valid_cm.updated_at DESC NULLS LAST, valid_cm.entry_timestamp DESC NULLS LAST
 ) cm_latest
 WHERE NOT EXISTS (
   SELECT 1 FROM check_in_measurements ci

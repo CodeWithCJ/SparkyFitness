@@ -134,20 +134,6 @@ export async function getDailySummaryRange({
     preferenceRepository.getUserPreferences(targetUserId),
   ]);
 
-  const externalBmrByDate =
-    userPreferences?.use_external_bmr && includeCheckin
-      ? await measurementRepository
-          .getExternalBmrByDateRange(targetUserId, startDate, endDate)
-          .catch((error: unknown) => {
-            log(
-              'warn',
-              `External BMR range fetch failed for user ${targetUserId}:`,
-              error
-            );
-            return new Map<string, number>();
-          })
-      : new Map<string, number>();
-
   const eatenByDate = new Map<string, number>();
   for (const row of nutritionRows as Array<{
     date: string;
@@ -239,7 +225,6 @@ export async function getDailySummaryRange({
         userProfile,
         userPreferences,
         measurements: carried,
-        externalBmr: externalBmrByDate.get(date) ?? null,
         dayFraction: resolveDayFraction(date, tz, now),
       }),
     });

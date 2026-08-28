@@ -337,25 +337,10 @@ describe('dailySummaryService', () => {
 
   describe('external BMR override', () => {
     // Use dynamic mode so calorieBalance.bmr reflects the resolved BMR directly
-    // without TDEE projection math in the way.
-    const dynamicPrefs = (extra: Record<string, unknown> = {}) => ({
-      bmr_algorithm: 'Mifflin-St Jeor',
-      activity_level: 'not_much',
-      calorie_goal_adjustment_mode: 'dynamic',
-      exercise_calorie_percentage: 100,
-      include_bmr_in_net_calories: false,
-      tdee_allow_negative_adjustment: false,
-      timezone: 'UTC',
-      ...extra,
-    });
-
-    test('overrides formula BMR with the synced value for the day', async () => {
-      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue(
-        dynamicPrefs({ use_external_bmr: true })
-      );
-      vi.mocked(measurementRepository.getExternalBmrForDate).mockResolvedValue(
-        1500
-      );
+    test('overrides formula BMR with the check-in measured value', async () => {
+      vi.mocked(
+        measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate
+      ).mockResolvedValue({ weight: 80, height: 180, bmr: 1500 } as never);
 
       const result = await getDailySummary({
         actorUserId,
@@ -364,17 +349,14 @@ describe('dailySummaryService', () => {
         includeCheckin: true,
       });
 
-      // Formula BMR is mocked at 1800; the synced value (1500) must win.
       expect(result.calorieBalance.bmr).toBe(1500);
+      expect(result.calorieBalance.bmrSource).toBe('measured');
     });
 
-    test('falls back to formula when no synced value exists for the day', async () => {
-      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue(
-        dynamicPrefs({ use_external_bmr: true })
-      );
-      vi.mocked(measurementRepository.getExternalBmrForDate).mockResolvedValue(
-        null
-      );
+    test('falls back to formula when no measured BMR exists on check-in', async () => {
+      vi.mocked(
+        measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate
+      ).mockResolvedValue({ weight: 80, height: 180, bmr: null } as never);
 
       const result = await getDailySummary({
         actorUserId,
@@ -384,68 +366,7 @@ describe('dailySummaryService', () => {
       });
 
       expect(result.calorieBalance.bmr).toBe(1800);
-    });
-
-    test('ignores synced value when the toggle is off', async () => {
-      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue(
-        dynamicPrefs({ use_external_bmr: false })
-      );
-      // Even if a value were returned, it must be ignored (and not even read).
-      vi.mocked(measurementRepository.getExternalBmrForDate).mockResolvedValue(
-        1500
-      );
-
-      const result = await getDailySummary({
-        actorUserId,
-        targetUserId,
-        date,
-        includeCheckin: true,
-      });
-
-      expect(result.calorieBalance.bmr).toBe(1800);
-      expect(
-        measurementRepository.getExternalBmrForDate
-      ).not.toHaveBeenCalled();
-    });
-
-    test('falls back to formula for out-of-bounds synced values', async () => {
-      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue(
-        dynamicPrefs({ use_external_bmr: true })
-      );
-      vi.mocked(measurementRepository.getExternalBmrForDate).mockResolvedValue(
-        200
-      ); // below the 600 floor
-
-      const result = await getDailySummary({
-        actorUserId,
-        targetUserId,
-        date,
-        includeCheckin: true,
-      });
-
-      expect(result.calorieBalance.bmr).toBe(1800);
-    });
-
-    test('does not read or apply the override when includeCheckin is false', async () => {
-      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue(
-        dynamicPrefs({ use_external_bmr: true })
-      );
-      vi.mocked(measurementRepository.getExternalBmrForDate).mockResolvedValue(
-        1500
-      );
-
-      const result = await getDailySummary({
-        actorUserId,
-        targetUserId,
-        date,
-        includeCheckin: false,
-      });
-
-      // includeCheckin is the permission gate; the override must not bypass it.
-      expect(
-        measurementRepository.getExternalBmrForDate
-      ).not.toHaveBeenCalled();
-      expect(result.calorieBalance.bmr).toBe(1800);
+      expect(result.calorieBalance.bmrSource).toBe('formula');
     });
   });
 

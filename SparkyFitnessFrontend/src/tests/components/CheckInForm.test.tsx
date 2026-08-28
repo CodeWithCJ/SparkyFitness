@@ -22,6 +22,7 @@ const emptyPlaceholders = {
   hips: null,
   height: null,
   bodyFatPercentage: null,
+  bmr: null,
 };
 
 const defaultProps = {

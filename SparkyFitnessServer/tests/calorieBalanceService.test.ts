@@ -34,7 +34,6 @@ const inputs = (
     include_bmr_in_net_calories: false,
   },
   measurements: { weight: 80, height: 180 },
-  externalBmr: null,
   dayFraction: 1,
   ...overrides,
 });
@@ -329,20 +328,19 @@ describe('sumFoodEntryCalories', () => {
   });
 });
 
-describe('measured / external BMR override', () => {
-  const externalPrefs = {
+describe('measured BMR override', () => {
+  const prefs = {
     timezone: 'UTC',
     activity_level: 'not_much',
     calorie_goal_adjustment_mode: 'dynamic' as const,
     include_bmr_in_net_calories: true,
-    use_external_bmr: true,
   };
 
-  test('prefers a check-in measured BMR even without use_external_bmr preference', () => {
+  test('prefers a check-in measured BMR over the formula calculation', () => {
     const balance = computeCalorieBalance(
       inputs({
         measurements: { weight: 80, height: 180, bmr: 1850 },
-        userPreferences: { ...externalPrefs, use_external_bmr: false },
+        userPreferences: prefs,
       })
     );
 
@@ -351,35 +349,15 @@ describe('measured / external BMR override', () => {
     expect(balance.burned).toBe(1850);
   });
 
-  test('prefers check-in BMR over synced external BMR when both are present', () => {
-    const balance = computeCalorieBalance(
-      inputs({
-        measurements: { weight: 80, height: 180, bmr: 1900 },
-        externalBmr: 1750,
-        userPreferences: externalPrefs,
-      })
-    );
-
-    expect(balance.bmr).toBe(1900);
-    expect(balance.bmrSource).toBe('measured');
-  });
-
-  test('prefers a synced BMR inside the sanity bounds when opted in', () => {
-    const balance = computeCalorieBalance(
-      inputs({ externalBmr: 1800, userPreferences: externalPrefs })
-    );
-
-    expect(balance.bmr).toBe(1800);
-    expect(balance.bmrSource).toBe('measured');
-    expect(balance.burned).toBe(1800);
-  });
-
   // A bad sample must not be able to zero out the day's target.
   test.each([299, 10001, 0, -50])(
-    'keeps the formula BMR when the synced value %s is out of bounds',
+    'keeps the formula BMR when the check-in value %s is out of bounds',
     (value) => {
       const balance = computeCalorieBalance(
-        inputs({ externalBmr: value, userPreferences: externalPrefs })
+        inputs({
+          measurements: { weight: 80, height: 180, bmr: value },
+          userPreferences: prefs,
+        })
       );
 
       expect(balance.bmr).toBe(BMR);
@@ -389,18 +367,21 @@ describe('measured / external BMR override', () => {
 
   test.each([300, 10000])('accepts the boundary value %s', (value) => {
     const balance = computeCalorieBalance(
-      inputs({ externalBmr: value, userPreferences: externalPrefs })
+      inputs({
+        measurements: { weight: 80, height: 180, bmr: value },
+        userPreferences: prefs,
+      })
     );
 
     expect(balance.bmr).toBe(value);
     expect(balance.bmrSource).toBe('measured');
   });
 
-  test('ignores a synced BMR when the user has not opted in', () => {
+  test('falls back to formula BMR when check-in BMR is absent', () => {
     const balance = computeCalorieBalance(
       inputs({
-        externalBmr: 1800,
-        userPreferences: { ...externalPrefs, use_external_bmr: false },
+        measurements: { weight: 80, height: 180, bmr: null },
+        userPreferences: prefs,
       })
     );
 

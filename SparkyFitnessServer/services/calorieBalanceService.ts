@@ -77,8 +77,6 @@ export interface CalorieBalanceInputs {
   userPreferences: CalorieBalanceUserPreferences | null;
   /** Latest measurement on or before the day. Drives the BMR formula. */
   measurements: CalorieBalanceMeasurements | null;
-  /** Synced resting/BMR for the day, or null. */
-  externalBmr: number | null;
   /**
    * Fraction of the day elapsed, 0..1. Used only by the tdee/smart projection.
    * See `resolveDayFraction` -- pass 1 for a completed day.
@@ -174,14 +172,12 @@ export function computeCalorieBalance({
   userProfile,
   userPreferences,
   measurements,
-  externalBmr,
   dayFraction,
 }: CalorieBalanceInputs): CalorieBalance {
   // 1. BMR
   let bmr = 0;
   const activityLevel = userPreferences?.activity_level || 'not_much';
   const includeInNet = userPreferences?.include_bmr_in_net_calories || false;
-  const useExternalBmr = userPreferences?.use_external_bmr || false;
 
   if (userProfile && userPreferences) {
     const tz = userPreferences.timezone || 'UTC';
@@ -215,9 +211,9 @@ export function computeCalorieBalance({
     }
   }
 
-  // 1b. Measured BMR override — when the user has entered a BMR in check-in
-  // or synced from an external provider, prefer it over the formula. Sanity-bounded
-  // so a bad sample can't zero out the target; otherwise we keep the formula.
+  // 1b. Measured BMR override — when a measured BMR is recorded on the day
+  // (from a smart scale, health provider sync, or manual check-in entry),
+  // prefer it over the formula. Sanity-bounded between 300 and 10000 kcal.
   let bmrSource: 'formula' | 'measured' = 'formula';
   const checkInBmr = measurements?.bmr
     ? parseFloat(String(measurements.bmr))
@@ -232,14 +228,6 @@ export function computeCalorieBalance({
 
   if (validCheckInBmr !== null) {
     bmr = validCheckInBmr;
-    bmrSource = 'measured';
-  } else if (
-    useExternalBmr &&
-    externalBmr !== null &&
-    externalBmr >= 300 &&
-    externalBmr <= 10000
-  ) {
-    bmr = externalBmr;
     bmrSource = 'measured';
   }
 

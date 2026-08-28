@@ -743,6 +743,7 @@
       "stepsCalories": "Steps: {{dailySteps}} = {{stepsCalories}} cal",
       "bmrCalories": "BMR: {{bmr}} cal",
       "bmrSourceMeasured": "Measured",
+      "bmrSourceAlgorithm": "Algorithm",
       "totalCaloriesBurned": "Total: {{totalCaloriesBurned}} cal",
       "goal": "goal",
       "caloriesBurnedBreakdownTitle": "Calories Burned Breakdown",

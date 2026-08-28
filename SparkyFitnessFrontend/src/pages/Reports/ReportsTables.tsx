@@ -375,10 +375,16 @@ const ReportsTables = ({
     .filter(
       (measurement) =>
         measurement.weight !== undefined ||
+        measurement.height !== undefined ||
         measurement.neck !== undefined ||
         measurement.waist !== undefined ||
         measurement.hips !== undefined ||
-        measurement.steps !== undefined
+        measurement.body_fat_percentage !== undefined ||
+        measurement.steps !== undefined ||
+        measurement.muscle_mass_kg !== undefined ||
+        measurement.bone_mass_kg !== undefined ||
+        measurement.body_water_percentage !== undefined ||
+        measurement.bmr !== undefined
     )
     .sort(
       (a, b) =>

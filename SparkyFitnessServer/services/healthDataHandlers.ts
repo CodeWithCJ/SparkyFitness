@@ -634,8 +634,14 @@ function prepareCheckInMeasurement(
       return { measurements: { [canonical]: numericValue } };
     }
     case 'bmr': {
-      const numericValue = parseFloat(entry.value);
-      if (isNaN(numericValue) || numericValue < 300 || numericValue > 10000) {
+      const trimmed = String(entry.value).trim();
+      const numericValue = Number(trimmed);
+      if (
+        trimmed === '' ||
+        !Number.isFinite(numericValue) ||
+        numericValue < 300 ||
+        numericValue > 10000
+      ) {
         return {
           error: `Invalid value for ${entry.type}. Must be between 300 and 10000 kcal.`,
         };

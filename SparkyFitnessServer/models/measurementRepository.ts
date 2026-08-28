@@ -623,14 +623,10 @@ async function getLatestCheckInMeasurementsOnOrBeforeDate(
 }
 
 /**
- * Returns the synced external BMR / resting-energy value (kcal) stored as a custom
- * measurement for the exact given day, or null if none exists for that day.
+ * Legacy compatibility helper returning synced external BMR / resting-energy values
+ * stored as custom measurements for the exact given day, or null if none exists.
  *
- * Mobile syncs this under the custom category named 'basal_metabolic_rate'
- * (see measurementService.processHealthData default branch + getOrCreateCustomCategory).
- * Lookup is EXACT-date (not <= date) so "no value for that day" correctly falls back to
- * the formula BMR upstream. A single date can hold multiple rows across sources (unique
- * key is user+category+date+source), so we apply a deterministic "latest write wins" rule.
+ * Active smart scale and health data syncs now land directly in check_in_measurements.bmr.
  */
 async function getExternalBmrForDate(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1448,10 +1444,8 @@ async function getCheckInStepsForDate(
 }
 
 /**
- * Synced resting/BMR values keyed by date, for a whole range.
- *
- * The per-date sibling `getExternalBmrForDate` issues one query per day; the ranged
- * report path would turn that into one query per day in the window.
+ * Legacy compatibility helper returning synced resting/BMR values keyed by date for a whole range.
+ * Active writes and smart scale syncs land in check_in_measurements.bmr.
  */
 async function getExternalBmrByDateRange(
   userId: string,

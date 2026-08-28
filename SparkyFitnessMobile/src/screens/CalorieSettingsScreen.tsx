@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, Text, ScrollView, Platform } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -11,7 +11,6 @@ import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import FormInput from '../components/FormInput';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import HealthSourceLabel from '../components/HealthSourceLabel';
 import Switch from '../components/ui/Switch';
 import { usePreferences } from '../hooks/usePreferences';
 import { updatePreferences } from '../services/api/preferencesApi';
@@ -39,7 +38,6 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
     exerciseCaloriePercentage: prefs?.exercise_calorie_percentage ?? 100,
     includeBmrInNetCalories: prefs?.include_bmr_in_net_calories ?? false,
     tdeeAllowNegativeAdjustment: prefs?.tdee_allow_negative_adjustment ?? false,
-    useExternalBmr: prefs?.use_external_bmr ?? false,
     calorieSafetyFloorMode: prefs?.calorie_safety_floor_mode ?? 'standard',
     calorieSafetyFloorValue:
       prefs?.calorie_safety_floor_value ??
@@ -56,12 +54,6 @@ const toKcal = (value: number, unit: 'kcal' | 'kJ') =>
 
 const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   const { t } = useTranslation();
-  const healthSourceName = Platform.OS === 'ios'
-    ? t('healthSync.appleHealth', { defaultValue: 'Apple Health' })
-    : t('healthSync.healthConnect', { defaultValue: 'Health Connect' });
-  const bmrMetricName = Platform.OS === 'ios'
-    ? t('calorieSettings.restingEnergy', { defaultValue: 'Resting Energy' })
-    : t('calorieSettings.bmr', { defaultValue: 'BMR' });
   const safetyFloorOptions = useMemo(() => [
     { label: t('calorieSettings.safetyFloor.standard', { defaultValue: 'Standard' }), value: 'standard' },
     { label: t('calorieSettings.safetyFloor.custom', { defaultValue: 'Custom' }), value: 'custom' },
@@ -163,10 +155,6 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
 
   const handleNegativeAdjustmentToggle = useCallback((value: boolean) => {
     mutation.mutate({ tdee_allow_negative_adjustment: value });
-  }, [mutation]);
-
-  const handleExternalBmrToggle = useCallback((value: boolean) => {
-    mutation.mutate({ use_external_bmr: value });
   }, [mutation]);
 
   const handleSafetyFloorModeChange = useCallback(
@@ -470,34 +458,6 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
             )}
           </Animated.View>
         </Animated.View>
-
-        {/* External BMR — use connected health app's resting energy / BMR */}
-        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-base font-semibold text-text-primary flex-1 mr-3">
-              {t('calorieSettings.useExternal', { defaultValue: 'Use {{metric}} from {{source}}', metric: bmrMetricName, source: healthSourceName })}
-            </Text>
-            <Switch
-              onValueChange={handleExternalBmrToggle}
-              value={normalized.useExternalBmr}
-              accessibilityLabel={t('calorieSettings.useExternal', { defaultValue: 'Use {{metric}} from {{source}}', metric: bmrMetricName, source: healthSourceName })}
-            />
-          </View>
-          <Text className="text-text-secondary text-sm mt-3">
-            {t('calorieSettings.externalDescription', { defaultValue: 'Uses {{source}} {{metric}} when available. Otherwise, the selected {{formula}}', source: healthSourceName, metric: bmrMetricName, formula: t('calorieSettings.externalFormula', { defaultValue: 'formula' }) })}
-          </Text>
-          {normalized.useExternalBmr && (
-            <View className="mt-3">
-              <HealthSourceLabel />
-              {Platform.OS === 'ios' && (
-                <Text className="text-text-secondary text-xs mt-3">
-                  {t('calorieSettings.iosNote', { defaultValue: 'The synced value already includes light daily activity, so you may want to set' })}
-                  {' '}{t('calorieSettings.iosNoteContinuation', { defaultValue: 'your Activity Level to None (×1.0) to avoid counting it twice.' })}
-                </Text>
-              )}
-            </View>
-          )}
-        </View>
       </ScrollView>
     </View>
   );

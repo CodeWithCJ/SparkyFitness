@@ -439,8 +439,9 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                           energyUnit: getEnergyUnitString(energyUnit),
                         }
                       )}
-                      {bmrSource === 'measured' &&
-                        ` (${t('exercise.dailyProgress.bmrSourceMeasured', 'Measured')})`}
+                      {bmrSource === 'measured'
+                        ? ` (${t('exercise.dailyProgress.bmrSourceMeasured', 'Measured')})`
+                        : ` (${t('exercise.dailyProgress.bmrSourceAlgorithm', 'Algorithm')})`}
                     </p>
                   )}
 
@@ -532,8 +533,9 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                       energyUnit: getEnergyUnitString(energyUnit),
                     }
                   )}
-                  {bmrSource === 'measured' &&
-                    ` (${t('exercise.dailyProgress.bmrSourceMeasured', 'Measured')})`}
+                  {bmrSource === 'measured'
+                    ? ` (${t('exercise.dailyProgress.bmrSourceMeasured', 'Measured')})`
+                    : ` (${t('exercise.dailyProgress.bmrSourceAlgorithm', 'Algorithm')})`}
                 </div>
               )}
             </div>
