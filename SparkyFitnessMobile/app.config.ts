@@ -147,19 +147,21 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
           'SparkyFitness lets you choose photos from your library for your foods, meals, and diary entries.',
         NSAppTransportSecurity: {
           NSAllowsArbitraryLoads: false,
-          // Lets HTTP (no TLS) reach IP-literal hosts (RFC 1918/link-local LAN
-          // addresses, and mesh-VPN ranges such as Tailscale's CGNAT
-          // 100.64.0.0/10 or a custom ZeroTier range) and unqualified/.local
-          // hostnames, without punching a hole for arbitrary internet hosts.
-          // Per Apple's docs, this exemption applies to any IP-address literal
-          // (not just "private" ranges) on iOS 10+; on iOS 17+ it's what
-          // re-enables IP-literal loads that ATS otherwise blocks by default.
-          // A *qualified* mesh-VPN hostname (e.g. a Tailscale MagicDNS name
-          // instead of a raw tailnet IP) is NOT covered by this flag and still
-          // needs HTTPS. See src/utils/serverUrl.ts for the matching JS-side
-          // private-network allowance, which is the actual security boundary
-          // here since this ATS flag (like Android's cleartext permission)
-          // can't itself distinguish "private" from "public" IP literals.
+          // Lets HTTP (no TLS) reach IP-literal LAN hosts (RFC 1918/link-local)
+          // and unqualified/.local hostnames, without punching a hole for
+          // arbitrary internet hosts. Apple's own guidance is inconsistent on
+          // whether this flag exempts every IP literal (any range) or is
+          // scoped more narrowly, and iOS 17+ separately blocks bare
+          // IP-literal connections by default without an NSExceptionDomains
+          // entry. Given that ambiguity, treat carrier-grade NAT (Tailscale/
+          // ZeroTier's 100.64.0.0/10) as still requiring HTTPS on iOS
+          // specifically, pending real-device verification — see
+          // IOS_UNVERIFIED_PRIVATE_RANGES in src/utils/serverUrl.ts, which is
+          // the actual security boundary here (this ATS flag, like Android's
+          // cleartext permission, can't itself distinguish "private" from
+          // "public" IP literals). A *qualified* mesh-VPN hostname (e.g. a
+          // Tailscale MagicDNS name instead of a raw tailnet IP) is not
+          // covered by this flag at all and always needs HTTPS.
           NSAllowsLocalNetworking: true,
         },
         ITSAppUsesNonExemptEncryption: false,

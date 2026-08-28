@@ -23,6 +23,19 @@ const extractHost = (url: string): string => {
 // tailnet IPs from, which ipaddr.js does not bucket under `private`.
 const PRIVATE_IP_RANGES = ['loopback', 'private', 'linkLocal', 'uniqueLocal', 'carrierGradeNat'];
 
+// iOS-only: ranges that are private/local but that iOS's ATS
+// `NSAllowsLocalNetworking` exception cannot be relied on to cover. Apple's
+// own guidance is inconsistent about whether it exempts every IP literal or
+// only RFC1918/link-local (see the discussion in app.config.ts), and as of
+// iOS 17 ATS additionally blocks bare IP-literal connections by default
+// unless an `NSExceptionDomains` entry exists. Rather than gamble on
+// undocumented OS behavior for a security-relevant decision, treat
+// carrier-grade NAT (Tailscale/ZeroTier's 100.64.0.0/10) as still requiring
+// HTTPS on iOS specifically, until real-device testing confirms otherwise.
+// Android has no such ambiguity: its cleartext permission isn't scoped by IP
+// range at all once the base-config allows it.
+const IOS_UNVERIFIED_PRIVATE_RANGES = ['carrierGradeNat'];
+
 /**
  * True when the URL points at a loopback/RFC-1918/link-local/unique-local/
  * carrier-grade-NAT IP (classified with ipaddr.js, matching the server's
@@ -41,6 +54,11 @@ const PRIVATE_IP_RANGES = ['loopback', 'private', 'linkLocal', 'uniqueLocal', 'c
  * so exploiting it requires talking a user into entering a specific
  * malicious hostname as their trusted server, not just getting them to visit
  * a web page or open a link.
+ *
+ * On iOS, carrier-grade-NAT addresses (Tailscale/ZeroTier's 100.64.0.0/10)
+ * are excluded from this allowance — see {@link IOS_UNVERIFIED_PRIVATE_RANGES}
+ * — because it's unverified whether iOS's ATS actually permits plain HTTP to
+ * that range. Android has no such carve-out.
  */
 export const isPrivateOrLocalHost = (url: string): boolean => {
   const host = extractHost(url);
@@ -57,14 +75,18 @@ export const isPrivateOrLocalHost = (url: string): boolean => {
     return true;
   }
 
+  const isAllowedRange = (range: string): boolean =>
+    PRIVATE_IP_RANGES.includes(range) &&
+    !(Platform.OS === 'ios' && IOS_UNVERIFIED_PRIVATE_RANGES.includes(range));
+
   // IP literals: classify the range with ipaddr.js.
   try {
     const addr = ipaddr.parse(host);
-    if (PRIVATE_IP_RANGES.includes(addr.range())) return true;
+    if (isAllowedRange(addr.range())) return true;
     // IPv4-mapped IPv6 (e.g. ::ffff:192.168.1.1) → check the embedded IPv4.
     if (addr.kind() === 'ipv6') {
       const v6 = addr as ipaddr.IPv6;
-      if (v6.isIPv4MappedAddress() && PRIVATE_IP_RANGES.includes(v6.toIPv4Address().range())) {
+      if (v6.isIPv4MappedAddress() && isAllowedRange(v6.toIPv4Address().range())) {
         return true;
       }
     }
@@ -78,11 +100,14 @@ export const isPrivateOrLocalHost = (url: string): boolean => {
  * Returns a user-facing error when the server URL must use HTTPS but doesn't,
  * otherwise null. HTTPS always passes (including IP hosts with self-signed
  * certs). Plain HTTP is accepted for private/LAN/VPN hosts (RFC 1918,
- * link-local, unique-local, carrier-grade NAT such as Tailscale's
- * 100.64.0.0/10, and local-only TLDs) so self-hosters reachable only over a
- * home network or a mesh VPN like Tailscale/ZeroTier aren't forced onto
- * HTTPS. Plain HTTP to any other host (public domains/IPs) is always
- * rejected, in both development and production builds.
+ * link-local, unique-local, and local-only TLDs) so self-hosters reachable
+ * only over a home network aren't forced onto HTTPS. On Android, carrier-
+ * grade NAT (Tailscale's 100.64.0.0/10) is included in that allowance too;
+ * on iOS it is not (see {@link IOS_UNVERIFIED_PRIVATE_RANGES}), so a
+ * Tailscale/ZeroTier user on iOS still needs HTTPS until that platform's ATS
+ * behavior is device-verified. Plain HTTP to any other host (public
+ * domains/IPs) is always rejected, in both development and production
+ * builds.
  */
 export const getInsecureUrlError = (url: string, localizedMessage?: string): string | null => {
   const normalized = normalizeUrl(url).toLowerCase();

@@ -3421,6 +3421,7 @@
     "clearFailed": "Could not clear chat",
     "clearAccessibility": "Clear chat",
     "noServer": "No active server config. Set one up in Settings first.",
+    "serverUrlInsecure": "HTTPS is required for server connections. Please edit this server in Settings.",
     "noProvider": "No active AI provider. Configure one in the web app first.",
     "copied": "Copied",
     "copy": "Copy",

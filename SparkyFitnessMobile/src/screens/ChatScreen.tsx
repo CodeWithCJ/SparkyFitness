@@ -513,6 +513,10 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
     : CHAT_KEYBOARD_EXTRA_SPACING;
 
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
+  // Tracked separately from "no server configured" so the render path can show
+  // the correct recovery instruction (edit the URL vs. set one up) when an
+  // active server exists but its URL fails the transport guard.
+  const [serverUrlBlocked, setServerUrlBlocked] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [running, setRunning] = useState(false);
   // Remounting ChatThread by key resets the in-memory runtime (it ignores
@@ -540,10 +544,12 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
         const config = await getActiveServerConfig();
         if (cancelled) return;
         const url = config ? normalizeUrl(config.url) : null;
-        // Treat an insecure (blocked) server URL as "no server" for chat: the
-        // stream transport carries auth headers and should never be pointed
-        // at a URL the rest of the app wouldn't send credentials to either.
-        setBaseUrl(url && !isInsecureUrlBlocked(url) ? url : null);
+        // Treat an insecure (blocked) server URL as "no server" for the stream
+        // transport (which carries auth headers), but still surface the
+        // HTTPS-required message rather than the generic no-server message.
+        const blocked = !!url && isInsecureUrlBlocked(url);
+        setServerUrlBlocked(blocked);
+        setBaseUrl(url && !blocked ? url : null);
       } catch (error) {
         // getActiveServerConfig re-throws on storage failure; without this the
         // spinner would hang forever. Fall through to the "no server" branch.
@@ -640,7 +646,15 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
             <ActivityIndicator color={accent} />
           </View>
         ) : !baseUrl ? (
-          <Centered text={t('chat.noServer', { defaultValue: 'No active server config. Set one up in Settings first.' })} />
+          <Centered
+            text={
+              serverUrlBlocked
+                ? t('chat.serverUrlInsecure', {
+                    defaultValue: 'HTTPS is required for server connections. Please edit this server in Settings.',
+                  })
+                : t('chat.noServer', { defaultValue: 'No active server config. Set one up in Settings first.' })
+            }
+          />
         ) : !serviceConfigId ? (
           <Centered text={t('chat.noProvider', { defaultValue: 'No active AI provider. Configure one in the web app first.' })} />
         ) : (

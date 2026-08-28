@@ -1,4 +1,16 @@
+import { Platform } from 'react-native';
 import { normalizeUrl, isPrivateOrLocalHost, getInsecureUrlError } from '../../src/utils/serverUrl';
+
+/** Temporarily overrides Platform.OS for the duration of a test. */
+const withPlatform = (os: 'ios' | 'android', fn: () => void) => {
+  const original = Platform.OS;
+  Object.defineProperty(Platform, 'OS', { value: os, configurable: true });
+  try {
+    fn();
+  } finally {
+    Object.defineProperty(Platform, 'OS', { value: original, configurable: true });
+  }
+};
 
 describe('normalizeUrl', () => {
   test('trims whitespace and trailing slashes', () => {
@@ -47,9 +59,6 @@ describe('isPrivateOrLocalHost', () => {
       'http://172.31.255.254',
       'http://192.168.1.100:3010',
       'http://169.254.10.10',
-      // Carrier-grade NAT (100.64.0.0/10) — the range Tailscale assigns.
-      'http://100.64.0.1',
-      'http://100.127.255.254',
     ])('%s is private/local', (url) => {
       expect(isPrivateOrLocalHost(url)).toBe(true);
     });
@@ -63,6 +72,26 @@ describe('isPrivateOrLocalHost', () => {
       'http://100.128.0.0',
     ])('%s is public', (url) => {
       expect(isPrivateOrLocalHost(url)).toBe(false);
+    });
+
+    describe('carrier-grade NAT (100.64.0.0/10, Tailscale/ZeroTier)', () => {
+      test.each(['http://100.64.0.1', 'http://100.127.255.254'])(
+        '%s is private on Android',
+        (url) => {
+          withPlatform('android', () => {
+            expect(isPrivateOrLocalHost(url)).toBe(true);
+          });
+        },
+      );
+
+      test.each(['http://100.64.0.1', 'http://100.127.255.254'])(
+        '%s is NOT private on iOS (unverified ATS behavior, requires HTTPS)',
+        (url) => {
+          withPlatform('ios', () => {
+            expect(isPrivateOrLocalHost(url)).toBe(false);
+          });
+        },
+      );
     });
   });
 
@@ -120,8 +149,15 @@ describe('getInsecureUrlError', () => {
     expect(getInsecureUrlError('http://192.168.1.10:3010')).toBeNull();
     expect(getInsecureUrlError('http://localhost:3010')).toBeNull();
     expect(getInsecureUrlError('http://web.lan')).toBeNull();
-    // Tailscale tailnet IP (carrier-grade NAT range, 100.64.0.0/10).
-    expect(getInsecureUrlError('http://100.64.10.5:3010')).toBeNull();
+  });
+
+  test('carrier-grade NAT (Tailscale/ZeroTier) HTTP passes on Android but is rejected on iOS', () => {
+    withPlatform('android', () => {
+      expect(getInsecureUrlError('http://100.64.10.5:3010')).toBeNull();
+    });
+    withPlatform('ios', () => {
+      expect(getInsecureUrlError('http://100.64.10.5:3010')).toBeTruthy();
+    });
   });
 
   test('plain http to a public host is always rejected', () => {
