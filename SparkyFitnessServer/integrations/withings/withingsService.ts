@@ -90,17 +90,23 @@ async function exchangeCodeForTokens(userId: any, code: any, redirectUri: any) {
       app_key_tag,
       ENCRYPTION_KEY
     );
+    if (!clientId || !clientSecret) {
+      throw new Error('Withings client ID or client secret is missing.');
+    }
+
     const response = await axios.post(
       `${WITHINGS_API_BASE_URL}/v2/oauth2`,
-      null,
+      new URLSearchParams({
+        action: 'requesttoken',
+        grant_type: 'authorization_code',
+        client_id: clientId,
+        client_secret: clientSecret,
+        code: code,
+        redirect_uri: redirectUri,
+      }),
       {
-        params: {
-          action: 'requesttoken',
-          grant_type: 'authorization_code',
-          client_id: clientId,
-          client_secret: clientSecret,
-          code: code,
-          redirect_uri: redirectUri,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
       }
     );
@@ -239,16 +245,23 @@ async function refreshAccessToken(userId: any) {
       refresh_token_tag,
       ENCRYPTION_KEY
     );
+    if (!clientId || !clientSecret || !refreshToken) {
+      throw new Error(
+        'Withings client ID, client secret, or refresh token is missing.'
+      );
+    }
     const response = await axios.post(
       `${WITHINGS_API_BASE_URL}/v2/oauth2`,
-      null,
+      new URLSearchParams({
+        action: 'requesttoken',
+        grant_type: 'refresh_token',
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+      }),
       {
-        params: {
-          action: 'requesttoken',
-          grant_type: 'refresh_token',
-          client_id: clientId,
-          client_secret: clientSecret,
-          refresh_token: refreshToken,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
       }
     );
