@@ -621,15 +621,23 @@ function prepareCheckInMeasurement(
     case 'waist':
     case 'hips':
     case 'muscle_mass_kg':
-    case 'bone_mass_kg':
-    case 'bmr': {
-      // The smart-scale masses (muscle/bone) and BMR are stored in check_in_measurements;
+    case 'bone_mass_kg': {
+      // The smart-scale masses (muscle/bone) are stored in check_in_measurements;
       // providers normalize before dispatch — Garmin via grams_to_kg in the
       // Python service, Withings via its kg-denominated measure types.
       const numericValue = parseFloat(entry.value);
       if (isNaN(numericValue) || numericValue <= 0) {
         return {
           error: `Invalid value for ${entry.type}. Must be a positive number.`,
+        };
+      }
+      return { measurements: { [canonical]: numericValue } };
+    }
+    case 'bmr': {
+      const numericValue = parseFloat(entry.value);
+      if (isNaN(numericValue) || numericValue < 300 || numericValue > 10000) {
+        return {
+          error: `Invalid value for ${entry.type}. Must be between 300 and 10000 kcal.`,
         };
       }
       return { measurements: { [canonical]: numericValue } };

@@ -92,7 +92,7 @@ const boundedNullableOptionalLegacyNumber = (min: number, max: number) =>
 const smartScaleMassKg = boundedNullableOptionalLegacyNumber(0, 999.99);
 const percentage = boundedNullableOptionalLegacyNumber(0, 100);
 // numeric(6,1) column for BMR kcal (300 to 10000 kcal).
-const smartScaleBmrKcal = boundedNullableOptionalLegacyNumber(0, 10000);
+const smartScaleBmrKcal = boundedNullableOptionalLegacyNumber(300, 10000);
 
 export const UpsertWaterIntakeBodySchema = z
   .object({

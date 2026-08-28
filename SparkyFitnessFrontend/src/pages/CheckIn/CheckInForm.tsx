@@ -364,10 +364,14 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
               <Input
                 id="bmr"
                 type="number"
+                min="300"
+                max="10000"
                 step="1"
                 value={bmr}
                 onChange={(e) => setBmr(e.target.value)}
-                placeholder="0"
+                placeholder={
+                  placeholders.bmr ? placeholders.bmr.toString() : 'e.g. 1650'
+                }
               />
             </div>
             {/* Custom Categories */}

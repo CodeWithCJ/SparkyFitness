@@ -221,6 +221,21 @@ export const useCalculatedBMR = () => {
   const { data: bodyFatData } = useMostRecentBodyFatQuery();
   const { data: bmrData } = useMostRecentBmrQuery();
 
+  const rawMeasured = bmrData?.bmr ? Number(bmrData.bmr) : null;
+  const isMeasured = Boolean(
+    rawMeasured && rawMeasured >= 300 && rawMeasured <= 10000
+  );
+
+  if (isMeasured && rawMeasured !== null) {
+    return {
+      bmr: rawMeasured,
+      measuredBmr: rawMeasured,
+      includeInNet: includeBmrInNetCalories || false,
+      weight: weightData?.weight || 0,
+      height: heightData?.height || 0,
+    };
+  }
+
   if (
     !userProfile ||
     !weightData?.weight ||
@@ -235,25 +250,18 @@ export const useCalculatedBMR = () => {
     : 0;
 
   try {
-    const rawMeasured = bmrData?.bmr ? Number(bmrData.bmr) : null;
-    const isMeasured = Boolean(
-      rawMeasured && rawMeasured >= 300 && rawMeasured <= 10000
+    const bmr = calculateBmr(
+      bmrAlgorithm as BmrAlgorithm,
+      weightData.weight,
+      heightData.height,
+      age,
+      userProfile.gender as 'male' | 'female',
+      bodyFatData?.body_fat_percentage
     );
-
-    const bmr = isMeasured
-      ? (rawMeasured as number)
-      : calculateBmr(
-          bmrAlgorithm as BmrAlgorithm,
-          weightData.weight,
-          heightData.height,
-          age,
-          userProfile.gender as 'male' | 'female',
-          bodyFatData?.body_fat_percentage
-        );
 
     return {
       bmr,
-      measuredBmr: isMeasured ? rawMeasured : null,
+      measuredBmr: null,
       includeInNet: includeBmrInNetCalories || false,
       weight: weightData.weight,
       height: heightData.height,

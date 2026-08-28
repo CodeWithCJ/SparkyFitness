@@ -2,6 +2,10 @@
 ALTER TABLE check_in_measurements
 ADD COLUMN IF NOT EXISTS bmr NUMERIC(6, 1);
 
+ALTER TABLE check_in_measurements
+DROP CONSTRAINT IF EXISTS check_in_measurements_bmr_check,
+ADD CONSTRAINT check_in_measurements_bmr_check CHECK (bmr IS NULL OR (bmr >= 300 AND bmr <= 10000));
+
 COMMENT ON COLUMN check_in_measurements.bmr IS 'Basal Metabolic Rate (BMR) in kcal, measured from smart weight scale or synced from health provider.';
 
 -- Backfill check_in_measurements.bmr from custom_measurements where category name is 'basal_metabolic_rate'

@@ -18,25 +18,27 @@ const SMART_SCALE_FIELDS = [
 
 describe('check-in body schemas cover smart-scale composition', () => {
   it.each(SMART_SCALE_FIELDS)('accepts a numeric %s on upsert', (field) => {
+    const testValue = field === 'bmr' ? 1650.5 : 34.2;
     const result = UpsertCheckInBodySchema.safeParse({
       entry_date: '2026-07-31',
-      [field]: 34.2,
+      [field]: testValue,
     });
 
     expect(result.success).toBe(true);
-    expect(result.data?.[field]).toBe(34.2);
+    expect(result.data?.[field]).toBe(testValue);
   });
 
   it.each(SMART_SCALE_FIELDS)(
     'coerces a numeric string %s rather than passing it through raw',
     (field) => {
+      const testValue = field === 'bmr' ? 1650.5 : 34.2;
       const result = UpsertCheckInBodySchema.safeParse({
         entry_date: '2026-07-31',
-        [field]: '34.2',
+        [field]: testValue.toString(),
       });
 
       expect(result.success).toBe(true);
-      expect(result.data?.[field]).toBe(34.2);
+      expect(result.data?.[field]).toBe(testValue);
     }
   );
 
@@ -90,6 +92,7 @@ describe('check-in body schemas cover smart-scale composition', () => {
     ['muscle_mass_kg', 1000],
     ['bone_mass_kg', 1000],
     ['body_water_percentage', 101],
+    ['bmr', 299],
     ['bmr', 10001],
   ] as const)('rejects an out-of-range %s of %s', (field, value) => {
     expect(
@@ -109,7 +112,7 @@ describe('check-in body schemas cover smart-scale composition', () => {
       muscle_mass_kg: 999.99,
       bone_mass_kg: 0,
       body_water_percentage: 100,
-      bmr: 10000,
+      bmr: 300,
     });
 
     expect(result.success).toBe(true);

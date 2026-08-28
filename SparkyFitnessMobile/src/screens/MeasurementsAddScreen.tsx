@@ -460,7 +460,13 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     const evaluateField = (
       key: FieldKey,
       label: string,
-      opts?: { integer?: boolean; max?: number; maxMessage?: string },
+      opts?: {
+        integer?: boolean;
+        min?: number;
+        max?: number;
+        minMessage?: string;
+        maxMessage?: string;
+      },
     ): FieldResult => {
       const trimmed = form[key].trim();
       if (trimmed === '') {
@@ -477,6 +483,10 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       }
       if (opts?.integer && !Number.isInteger(parsed)) {
         Toast.show({ type: 'error', text1: t('measurements.validation.invalid', { defaultValue: 'Invalid {{label}}', label }), text2: t('measurements.validation.wholeNumber', { defaultValue: '{{label}} must be a whole number.', label }) });
+        return { kind: 'invalid' };
+      }
+      if (opts?.min != null && parsed < opts.min) {
+        Toast.show({ type: 'error', text1: t('measurements.validation.invalid', { defaultValue: 'Invalid {{label}}', label }), text2: opts.minMessage ?? t('measurements.validation.min', { defaultValue: 'Must be {{min}} or greater.', min: opts.min }) });
         return { kind: 'invalid' };
       }
       if (opts?.max != null && parsed > opts.max) {
@@ -601,8 +611,10 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       !apply(
         'bmr',
         evaluateField('bmr', fieldLabel('bmr', 'BMR'), {
+          min: 300,
           max: 10000,
-          maxMessage: t('measurements.validation.bmrRange', { defaultValue: 'BMR must be between 0 and 10000 kcal.' }),
+          minMessage: t('measurements.validation.bmrRange', { defaultValue: 'BMR must be between 300 and 10000 kcal.' }),
+          maxMessage: t('measurements.validation.bmrRange', { defaultValue: 'BMR must be between 300 and 10000 kcal.' }),
         }),
         (v) => v,
       )

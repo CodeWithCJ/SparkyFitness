@@ -10,6 +10,7 @@ export interface CheckInPlaceholders {
   hips: number | null;
   height: number | null;
   bodyFatPercentage: number | null;
+  bmr?: number | null;
 }
 
 export interface CombinedMeasurement {

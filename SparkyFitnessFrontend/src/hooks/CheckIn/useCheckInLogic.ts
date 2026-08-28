@@ -364,6 +364,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
       hips: latestCheckIn?.hips ?? null,
       height: latestCheckIn?.height ?? null,
       bodyFatPercentage: latestCheckIn?.body_fat_percentage ?? null,
+      bmr: latestCheckIn?.bmr ?? null,
     }),
     [latestCheckIn]
   );

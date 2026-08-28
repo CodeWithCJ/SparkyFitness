@@ -278,10 +278,7 @@ Calculated: ${bfp.toFixed(1)}%`;
       "How today's target is calculated"
     );
 
-  const isMeasuredBmr =
-    bmrSource === 'check_in' ||
-    bmrSource === 'external' ||
-    bmrSource === 'measured';
+  const isMeasuredBmr = bmrSource === 'measured';
 
   const body = (
     <div className="mt-3 space-y-4 pl-1 text-xs text-muted-foreground leading-relaxed border-l border-border/60 ml-1.5 text-left font-sans">

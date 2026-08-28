@@ -150,7 +150,7 @@ export function buildCheckinTools(userId: string, tz: string) {
       description: `Health tracking: weight, steps, body measurements, mood, sleep, fasting, custom metrics.
 
 Actions:
-- log_biometrics(entry_date, weight?, steps?, height?, neck?, waist?, hips?, body_fat?, muscle_mass?, bone_mass?, body_water?, weight_unit?:"kg"|"lbs", height_unit?:"cm"|"in", measurements_unit?:"cm"|"in")
+- log_biometrics(entry_date, weight?, steps?, height?, neck?, waist?, hips?, body_fat?, muscle_mass?, bone_mass?, body_water?, bmr?, weight_unit?:"kg"|"lbs", height_unit?:"cm"|"in", measurements_unit?:"cm"|"in")
 - log_mood(entry_date, mood_value:1-10, notes?)
 - log_sleep(entry_date, duration_seconds?, sleep_score?:0-100, bedtime?, wake_time?, source?)
 - log_fasting(start_time:ISO8601, end_time?, fasting_status?:"ACTIVE"|"COMPLETED"|"CANCELLED", fasting_type?)
@@ -197,7 +197,11 @@ Actions:
               args.body_fat !== undefined ||
               args.neck !== undefined ||
               args.waist !== undefined ||
-              args.hips !== undefined
+              args.hips !== undefined ||
+              args.muscle_mass !== undefined ||
+              args.bone_mass !== undefined ||
+              args.body_water !== undefined ||
+              args.bmr !== undefined
             ) {
               return 'log_biometrics';
             }

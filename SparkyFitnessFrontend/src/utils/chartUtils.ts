@@ -141,6 +141,10 @@ export function getChartConfig(dataKey: string) {
     'hips',
     'height',
     'body_fat_percentage',
+    'muscle_mass_kg',
+    'bone_mass_kg',
+    'body_water_percentage',
+    'bmr',
   ];
   const nutritionMetrics = ['calories', 'protein', 'carbs', 'fat'];
   const vitaminMetrics = ['vitamin_a', 'vitamin_c', 'calcium', 'iron'];

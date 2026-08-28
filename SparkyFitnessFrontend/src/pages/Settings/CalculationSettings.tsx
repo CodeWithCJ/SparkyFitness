@@ -1601,6 +1601,7 @@ const CalculationSettings = () => {
                 rawManualGoal={rawManualGoal}
                 adjustedManualGoal={currentGoalBase}
                 activityMultiplier={activityMultiplier}
+                bmrSource={measuredBmr != null ? 'measured' : undefined}
               />
             </div>
           </div>
