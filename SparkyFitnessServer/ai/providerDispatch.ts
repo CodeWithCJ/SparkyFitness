@@ -596,9 +596,12 @@ function buildAnthropicRequest(ctx: BuildContext): BuiltRequest {
 }
 
 function buildOllamaRequest(ctx: BuildContext): BuiltRequest {
+  const prompt = ctx.jsonSchema
+    ? `${ctx.prompt}\n\nRespond with a single JSON object that conforms to this JSON Schema:\n${JSON.stringify(toStrictJsonSchema(ctx.jsonSchema))}`
+    : ctx.prompt;
   const message: Record<string, unknown> = {
     role: 'user',
-    content: ctx.prompt,
+    content: prompt,
   };
   if (ctx.images.length > 0) {
     message.images = ctx.images.map((img) => img.base64);
@@ -614,7 +617,7 @@ function buildOllamaRequest(ctx: BuildContext): BuiltRequest {
     },
   };
   if (ctx.jsonSchema) {
-    body.format = ctx.jsonSchema;
+    body.format = 'json';
   }
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',

@@ -296,7 +296,9 @@ export function buildVisionTools(
           // image actually attached to this turn and fall back to the argument
           // only when there is none (an explicit data URL the user pasted).
           const attached = imageSource?.latestImageDataUrl;
-          const image = parseImageInput(attached || parsed.data.image_url);
+          const image = parseImageInput(
+            attached || parsed.data.image_url || ''
+          );
           if (!image.ok) {
             return `❌ Error analyzing image: ${imageInputError(image.reason)}`;
           }
@@ -401,7 +403,10 @@ Ask the user which they want with sparky_ask_user FIRST when the analysis found 
           return formatZodError(parsed.error);
         }
         try {
-          const image = parseImageInput(parsed.data.image_url);
+          const attached = imageSource?.latestImageDataUrl;
+          const image = parseImageInput(
+            attached || parsed.data.image_url || ''
+          );
           if (!image.ok) {
             return `❌ Error scanning label: ${imageInputError(image.reason)}`;
           }

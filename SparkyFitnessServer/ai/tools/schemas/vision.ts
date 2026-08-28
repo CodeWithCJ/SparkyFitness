@@ -2,13 +2,23 @@ import { z } from 'zod';
 
 export const AnalyzeFoodImageSchema = z
   .object({
-    image_url: z.string().min(1).describe('Base64 encoded image data or URL'),
+    image_url: z
+      .string()
+      .optional()
+      .describe(
+        'Optional. The image is automatically read from the attached user message, so this can be omitted.'
+      ),
   })
   .strict();
 
 export const ScanLabelSchema = z
   .object({
-    image_url: z.string().min(1).describe('Base64 encoded image data or URL'),
+    image_url: z
+      .string()
+      .optional()
+      .describe(
+        'Optional. The image is automatically read from the attached user message, so this can be omitted.'
+      ),
   })
   .strict();
 
