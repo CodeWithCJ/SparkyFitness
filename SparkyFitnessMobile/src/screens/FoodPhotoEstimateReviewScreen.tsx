@@ -6,13 +6,23 @@ import {
   TouchableOpacity,
   Platform,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
-import type { FoodPhotoEstimateItem } from '@workspace/shared';
+import {
+  toPer100g,
+  unbrandMacros,
+  roundMacros,
+  type FoodPhotoLogItem,
+} from '@workspace/shared';
 import Button from '../components/ui/Button';
 import FoodForm, { type FoodFormData } from '../components/FoodForm';
 import Icon from '../components/Icon';
+import SegmentedControl from '../components/SegmentedControl';
+import { FooterSaveBar } from '../components/FormScreenChrome';
+import FoodPhotoIngredientRow from '../components/FoodPhotoIngredientRow';
+import { useFoodPhotoIngredientDraft } from '../hooks/useFoodPhotoIngredientDraft';
 import { parseDecimalInput } from '../utils/numericInput';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import {
@@ -82,10 +92,7 @@ function confidenceLabel(
 const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const [accentPrimary, textPrimary] = useCSSVariable([
-    '--color-accent-primary',
-    '--color-text-primary',
-  ]) as [string, string];
+  const textPrimary = useCSSVariable('--color-text-primary') as string;
   const { backColor } = useHeaderActionColors();
 
   const dismissFlow = () =>
@@ -114,15 +121,87 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
   );
 
   const [showConfidenceReason, setShowConfidenceReason] = useState(false);
-  const [showIngredients, setShowIngredients] = useState(false);
+  // Grouped is the default: it is strictly more informative than a single
+  // opaque food, and the diary still collapses it to one row.
+  const [mode, setMode] = useState<'grouped' | 'combined'>('grouped');
+  const { rows, expandedId, totals, totalGrams, matchedCount, dispatch } =
+    useFoodPhotoIngredientDraft(estimate.items);
 
   const overallTone = confidenceTones[estimate.overall_confidence];
   const overallLabel = confidenceLabel(t, estimate.overall_confidence, 'overall');
 
-  const totalWeightLabel = useMemo(
-    () => `${Math.round(estimate.totals.total_grams)} g`,
-    [estimate.totals.total_grams],
-  );
+
+  /**
+   * Turn the edited rows into the log payload.
+   *
+   * Nutrition on the rows is per-portion (it describes `grams`); a created food
+   * stores per-100 g. `toPer100g` is the only bridge, and its branded return
+   * type makes shipping per-portion numbers as per-100 g a compile error. A row
+   * whose weight is zero has no meaningful per-100 g form, so it is dropped.
+   */
+  const buildGroupedItems = (): FoodPhotoLogItem[] => {
+    const items: FoodPhotoLogItem[] = [];
+    for (const row of rows) {
+      if (row.grams <= 0) continue;
+
+      if (row.matchApplied && row.match) {
+        items.push({
+          source: 'existing',
+          food_id: row.match.food_id,
+          variant_id: row.match.variant_id,
+          quantity: row.grams,
+          unit: 'g',
+        });
+        continue;
+      }
+
+      const per100g = toPer100g(row.macros, row.grams);
+      if (!per100g) continue;
+      const rounded = unbrandMacros(roundMacros(per100g));
+      items.push({
+        source: 'new',
+        food: {
+          name: row.name.trim() || row.canonicalName,
+          brand: null,
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: rounded.calories_kcal,
+          protein: rounded.protein_g,
+          carbs: rounded.carbs_g,
+          fat: rounded.fat_g,
+          dietary_fiber: rounded.fiber_g,
+          sugars: rounded.sugar_g,
+        },
+        quantity: row.grams,
+        unit: 'g',
+      });
+    }
+    return items;
+  };
+
+  const handleGroupedNext = () => {
+    const items = buildGroupedItems();
+    if (items.length === 0) {
+      Toast.show({
+        type: 'error',
+        text1: t('foodPhotoEstimate.errors.invalidNutrition', {
+          defaultValue: 'Invalid nutrition',
+        }),
+        text2: t('foodPhotoEstimate.errors.noIngredients', {
+          defaultValue: 'Keep at least one ingredient, or switch to One food.',
+        }),
+      });
+      return;
+    }
+    navigation.navigate('LogEntry', {
+      date,
+      mealTypeId: route.params.mealTypeId ?? undefined,
+      mode: 'grouped',
+      mealName: estimate.meal_summary || 'Photo estimate',
+      description: estimate.confidence_reason || undefined,
+      ingredients: items,
+    });
+  };
 
   const handleSubmit = (data: FoodFormData) => {
     if (!data.name.trim()) {
@@ -183,6 +262,7 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
     navigation.navigate('LogEntry', {
       date,
       mealTypeId: route.params.mealTypeId ?? undefined,
+      mode: 'combined',
       saveFoodPayload: {
         name: data.name.trim(),
         brand: data.brand.trim() ? data.brand.trim() : null,
@@ -206,41 +286,6 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
         provider_type: 'food_photo_estimate',
       },
     });
-  };
-
-  const renderItem = (item: FoodPhotoEstimateItem, idx: number) => {
-    const itemLabel = confidenceLabel(t, item.item_confidence, 'item');
-    const itemTone = confidenceTones[item.item_confidence];
-    const grams = Math.round(item.estimated_grams);
-    const prepLabel = item.preparation?.trim() ?? '';
-    const portion = item.portion_description?.trim() ?? '';
-    return (
-      <View
-        key={`${item.name}-${idx}`}
-        className="rounded-lg bg-raised p-3 mb-2"
-      >
-        <View className="flex-row items-center justify-between mb-1">
-          <Text
-            className="text-text-primary text-base font-medium flex-1 pr-2"
-            numberOfLines={2}
-          >
-            {item.name}
-            {prepLabel ? (
-              <Text className="text-text-secondary font-normal"> · {prepLabel}</Text>
-            ) : null}
-          </Text>
-          <View className={`px-2 py-0.5 rounded-full ${TONE_BG_CLASS[itemTone]}`}>
-            <Text className={`text-xs font-semibold ${TONE_TEXT_CLASS[itemTone]}`}>
-              {itemLabel}
-            </Text>
-          </View>
-        </View>
-        <Text className="text-text-secondary text-sm">
-          {portion ? `${portion} · ` : ''}
-          {grams} g
-        </Text>
-      </View>
-    );
   };
 
   const headerChildren = (
@@ -273,31 +318,98 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
   );
 
   const ingredientsSection =
-    estimate.items.length > 0 ? (
+    rows.length > 0 ? (
       <View>
         <Text className="text-text-secondary text-xs mb-3">
-          {t('foodPhotoEstimate.labels.totalEstimatedWeight', { defaultValue: 'Total estimated weight: {{weight}}', weight: totalWeightLabel })}
+          {t('foodPhotoEstimate.labels.totalEstimatedWeight', {
+            defaultValue: 'Total estimated weight: {{weight}}',
+            weight: `${Math.round(totalGrams)} g`,
+          })}
         </Text>
-        <Button
-          variant="ghost"
-          onPress={() => setShowIngredients((prev) => !prev)}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          className="self-start py-0 px-0 mb-3"
-          textClassName="text-sm"
-        >
-          <Text style={{ color: accentPrimary }} className="text-sm font-medium">
-            {showIngredients
-              ? t('foodPhotoEstimate.actions.hideIngredients', { defaultValue: 'Hide detected ingredients ▴' })
-              : t('foodPhotoEstimate.actions.showIngredients', { defaultValue: 'Show detected ingredients ▾' })}
+        {matchedCount > 0 ? (
+          <Text className="text-text-secondary text-xs mb-3">
+            {t('foodPhotoEstimate.match.matchedCount', {
+              defaultValue: '{{count}} ingredients matched to your foods',
+              count: matchedCount,
+            })}
           </Text>
-        </Button>
-        {showIngredients ? estimate.items.map(renderItem) : null}
+        ) : null}
+        {rows.map((row) => (
+          <FoodPhotoIngredientRow
+            key={row.id}
+            row={row}
+            expanded={expandedId === row.id}
+            onToggle={() => dispatch({ type: 'TOGGLE_EXPANDED', id: row.id })}
+            onRemove={() => dispatch({ type: 'REMOVE_ROW', id: row.id })}
+            onChangeGrams={(grams) =>
+              dispatch({ type: 'SET_GRAMS', id: row.id, grams })
+            }
+            onChangeName={(name) => dispatch({ type: 'SET_NAME', id: row.id, name })}
+            onChangeMacro={(key, value) =>
+              dispatch({ type: 'SET_MACRO', id: row.id, key, value })
+            }
+            onApplyMatch={() => dispatch({ type: 'APPLY_MATCH', id: row.id })}
+            onClearMatch={() => dispatch({ type: 'CLEAR_MATCH', id: row.id })}
+            onRecalcFromGrams={() =>
+              dispatch({ type: 'RECALC_FROM_GRAMS', id: row.id })
+            }
+          />
+        ))}
+        <View className="flex-row justify-between mt-2 px-1">
+          <Text className="text-text-primary text-sm font-semibold">
+            {t('foodPhotoEstimate.ingredients.totals', { defaultValue: 'Total' })}
+          </Text>
+          <Text className="text-text-primary text-sm font-semibold">
+            {t('foodPhotoEstimate.ingredients.macroSummary', {
+              defaultValue: '{{calories}} kcal · {{protein}}P · {{carbs}}C · {{fat}}F',
+              calories: Math.round(totals.calories_kcal),
+              protein: Math.round(totals.protein_g),
+              carbs: Math.round(totals.carbs_g),
+              fat: Math.round(totals.fat_g),
+            })}
+          </Text>
+        </View>
       </View>
     ) : (
-      <Text className="text-text-secondary text-xs">
-        {t('foodPhotoEstimate.labels.totalEstimatedWeight', { defaultValue: 'Total estimated weight: {{weight}}', weight: totalWeightLabel })}
+      <Text className="text-text-secondary text-sm">
+        {t('foodPhotoEstimate.ingredients.empty', {
+          defaultValue:
+            'Every ingredient was removed. Add one back, or switch to One food.',
+        })}
       </Text>
     );
+
+  const modeControl = (
+    <View className="mb-4">
+      <SegmentedControl
+        segments={[
+          {
+            key: 'grouped',
+            label: t('foodPhotoEstimate.mode.ingredients', {
+              defaultValue: 'Ingredients',
+            }),
+          },
+          {
+            key: 'combined',
+            label: t('foodPhotoEstimate.mode.combined', {
+              defaultValue: 'One food',
+            }),
+          },
+        ]}
+        activeKey={mode}
+        onSelect={setMode}
+      />
+      <Text className="text-text-secondary text-xs mt-2 px-1">
+        {mode === 'grouped'
+          ? t('foodPhotoEstimate.mode.explainerIngredients', {
+              defaultValue: 'Logs one meal you can expand to each ingredient.',
+            })
+          : t('foodPhotoEstimate.mode.explainerCombined', {
+              defaultValue: 'Logs the whole plate as a single food.',
+            })}
+      </Text>
+    </View>
+  );
 
   return (
     <View
@@ -319,15 +431,39 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
         </Text>
       </View>
 
-      <FoodForm
-        initialValues={initialFormValues}
-        onSubmit={handleSubmit}
-        submitLabel={t('common.next', { defaultValue: 'Next' })}
-        convertServingSizeOnUnitChange
-        headerChildren={headerChildren}
-      >
-        {ingredientsSection}
-      </FoodForm>
+      {mode === 'combined' ? (
+        // Combined mode is the original screen, untouched: one FoodForm
+        // prefilled from the estimate totals.
+        <FoodForm
+          initialValues={initialFormValues}
+          onSubmit={handleSubmit}
+          submitLabel={t('common.next', { defaultValue: 'Next' })}
+          convertServingSizeOnUnitChange
+          headerChildren={
+            <View>
+              {modeControl}
+              {headerChildren}
+            </View>
+          }
+        />
+      ) : (
+        <>
+          <KeyboardAwareScrollView
+            contentContainerClassName="px-4 py-4"
+            bottomOffset={80}
+            keyboardShouldPersistTaps="handled"
+          >
+            {modeControl}
+            <View className="mb-4">{headerChildren}</View>
+            {ingredientsSection}
+          </KeyboardAwareScrollView>
+          <FooterSaveBar
+            onPress={handleGroupedNext}
+            label={t('common.next', { defaultValue: 'Next' })}
+            disabled={rows.length === 0}
+          />
+        </>
+      )}
     </View>
   );
 };

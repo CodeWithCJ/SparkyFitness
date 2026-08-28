@@ -19,6 +19,7 @@ import BottomSheetPicker from '../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { FooterSaveBar } from '../components/FormScreenChrome';
 import { useAddFoodEntry } from '../hooks/useAddFoodEntry';
+import { useCreatePhotoLoggedMeal } from '../hooks/useCreatePhotoLoggedMeal';
 import { useMealTypes } from '../hooks/useMealTypes';
 import { usePreferences } from '../hooks';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
@@ -65,7 +66,14 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
   const textPrimary = useCSSVariable('--color-text-primary') as string;
   const { backColor } = useHeaderActionColors();
 
-  const { saveFoodPayload, mealTypeId: initialMealTypeId } = route.params;
+  const params = route.params;
+  const initialMealTypeId = params.mealTypeId;
+  const isGrouped = params.mode === 'grouped';
+
+  // Grouped mode has no single food to show, so the recap is built by summing
+  // the reviewed ingredient rows. Both modes then render the same chrome.
+  const displayName = isGrouped ? params.mealName : params.saveFoodPayload.name;
+  const displayBrand = isGrouped ? null : params.saveFoodPayload.brand;
 
   const { mealTypes, defaultMealTypeId } = useMealTypes();
   const [selectedMealTypeId, setSelectedMealTypeId] = useState<string | null>(null);
@@ -80,18 +88,49 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
     staleTime: 1000 * 60 * 5,
   });
 
-  const displayValues = useMemo(
-    () => saveFoodPayloadToDisplayValues(saveFoodPayload),
-    [saveFoodPayload],
-  );
+  const displayValues = useMemo(() => {
+    if (params.mode === 'combined') {
+      return saveFoodPayloadToDisplayValues(params.saveFoodPayload);
+    }
+    // Each grouped item stores per-100 g nutrition with the eaten grams on
+    // `quantity`, so the portion contribution is value * quantity / 100.
+    const totals = params.ingredients.reduce(
+      (acc, item) => {
+        if (item.source !== 'new') return acc;
+        const factor = item.quantity / 100;
+        acc.calories += (item.food.calories ?? 0) * factor;
+        acc.protein += (item.food.protein ?? 0) * factor;
+        acc.carbs += (item.food.carbs ?? 0) * factor;
+        acc.fat += (item.food.fat ?? 0) * factor;
+        acc.fiber += (item.food.dietary_fiber ?? 0) * factor;
+        acc.sugars += (item.food.sugars ?? 0) * factor;
+        acc.grams += item.quantity;
+        return acc;
+      },
+      { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugars: 0, grams: 0 },
+    );
+    return {
+      servingSize: totals.grams || 1,
+      servingUnit: 'g',
+      calories: totals.calories,
+      protein: totals.protein,
+      carbs: totals.carbs,
+      fat: totals.fat,
+      fiber: totals.fiber,
+      sugars: totals.sugars,
+    } as FoodDisplayValues;
+  }, [params]);
 
   const { preferences } = usePreferences();
   const showNetCarbs = preferences?.show_net_carbs === true;
 
   const servingsNumber = useMemo(() => {
+    // A grouped log has no meal-level multiplier: every ingredient already
+    // carries the exact grams the user reviewed.
+    if (isGrouped) return 1;
     const parsed = parseDecimalInput(quantity);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-  }, [quantity]);
+  }, [quantity, isGrouped]);
 
   const goalPercent = (value: number, goalValue: number | undefined) => {
     if (!goalValue || goalValue === 0) return null;
@@ -121,7 +160,22 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
     setSelectedMealTypeId(defaultMealTypeId);
   }
 
-  const { addEntryAsync, isPending, invalidateCache } = useAddFoodEntry({
+  const {
+    logEstimateAsync,
+    isPending: isLoggingEstimate,
+    invalidateCache: invalidatePhotoLogCache,
+  } = useCreatePhotoLoggedMeal({
+    onSuccess: () => {
+      fireSuccessHaptic();
+      Toast.show({
+        type: 'success',
+        text1: t('foodPhotoLogEntry.estimateSaved', { defaultValue: 'Estimate saved' }),
+      });
+      navigation.getParent<NativeStackNavigationProp<RootStackParamList>>()?.popToTop();
+    },
+  });
+
+  const { addEntryAsync, isPending: isAddingFood, invalidateCache } = useAddFoodEntry({
     onSuccess: () => {
       fireSuccessHaptic();
       Toast.show({ type: 'success', text1: t('foodPhotoLogEntry.estimateSaved', { defaultValue: 'Estimate saved' }) });
@@ -153,6 +207,8 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
     return found ? getMealTypeDisplayLabel(found, t) : t('foodPhotoLogEntry.selectMeal', { defaultValue: 'Select Meal' });
   }, [mealTypes, selectedMealTypeId, t]);
 
+  const isPending = isAddingFood || isLoggingEstimate;
+
   const handleSave = async () => {
     if (isPending) return;
 
@@ -161,6 +217,30 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
 
+    if (params.mode === 'grouped') {
+      // No servings multiplier here: each ingredient already carries the exact
+      // grams the user reviewed, and an ad-hoc parent meal does not scale its
+      // components anyway.
+      const selectedMealType = mealTypes.find((mt) => mt.id === selectedMealTypeId);
+      try {
+        await logEstimateAsync({
+          mode: 'grouped',
+          entry_date: entryDate,
+          entry_time: null,
+          meal_type: selectedMealType?.name ?? '',
+          meal_type_id: selectedMealTypeId,
+          name: params.mealName,
+          description: params.description ?? null,
+          items: params.ingredients,
+        });
+        invalidatePhotoLogCache(entryDate);
+      } catch {
+        // useCreatePhotoLoggedMeal shows its own toast on error.
+      }
+      return;
+    }
+
+    const { saveFoodPayload } = params;
     const servingsValue = parseDecimalInput(quantity);
     if (!Number.isFinite(servingsValue) || servingsValue <= 0) {
       Toast.show({
@@ -217,8 +297,8 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
       >
         <View className="mb-4">
           <FoodNutritionSummary
-            name={saveFoodPayload.name}
-            brand={saveFoodPayload.brand}
+            name={displayName}
+            brand={displayBrand}
             values={displayValues}
             servings={servingsNumber}
             goalPercentages={goalPercentages}
@@ -276,17 +356,27 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Servings row */}
-        <View className="flex-row items-center justify-between mb-4">
-          <Text className="text-text-secondary text-base">{t('foodPhotoLogEntry.servings', { defaultValue: 'Servings' })}</Text>
-          <StepperInput
-            value={quantity}
-            onChangeText={handleQuantityChange}
-            onIncrement={() => adjustQuantity(1)}
-            onDecrement={() => adjustQuantity(-1)}
-            keyboardType="decimal-pad"
-          />
-        </View>
+        {/* Servings row — hidden for a grouped log, where the amounts live on
+            each ingredient and a meal-level multiplier would be misleading. */}
+        {isGrouped ? (
+          <Text className="text-text-secondary text-sm mb-4">
+            {t('foodPhotoLogEntry.groupedSummary', {
+              defaultValue: '{{count}} ingredients will be logged as one meal.',
+              count: params.mode === 'grouped' ? params.ingredients.length : 0,
+            })}
+          </Text>
+        ) : (
+          <View className="flex-row items-center justify-between mb-4">
+            <Text className="text-text-secondary text-base">{t('foodPhotoLogEntry.servings', { defaultValue: 'Servings' })}</Text>
+            <StepperInput
+              value={quantity}
+              onChangeText={handleQuantityChange}
+              onIncrement={() => adjustQuantity(1)}
+              onDecrement={() => adjustQuantity(-1)}
+              keyboardType="decimal-pad"
+            />
+          </View>
+        )}
       </KeyboardAwareScrollView>
 
       <FooterSaveBar

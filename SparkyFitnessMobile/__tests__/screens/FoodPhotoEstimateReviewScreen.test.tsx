@@ -116,6 +116,16 @@ describe('FoodPhotoEstimateReviewScreen', () => {
     navigation.getParent.mockReturnValue(parentNavigation);
   });
 
+  /**
+   * The screen now opens on the editable ingredient list. These cases cover the
+   * single-food path, so they switch to "One food" first.
+   */
+  const renderCombined = (estimate = buildEstimate()) => {
+    const screen = renderScreen(estimate);
+    fireEvent.press(screen.getByText('One food'));
+    return screen;
+  };
+
   const renderScreen = (estimate = buildEstimate()) =>
     render(
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
@@ -135,7 +145,7 @@ describe('FoodPhotoEstimateReviewScreen', () => {
     );
 
   it('navigates to LogEntry with a saveFoodPayload reflecting the prefilled totals', () => {
-    const screen = renderScreen();
+    const screen = renderCombined();
 
     fireEvent.press(screen.getByText('Next'));
 
@@ -166,7 +176,7 @@ describe('FoodPhotoEstimateReviewScreen', () => {
     const estimate = buildEstimate();
     estimate.totals.fiber_g = 0;
     estimate.totals.sugar_g = 0;
-    const screen = renderScreen(estimate);
+    const screen = renderCombined(estimate);
 
     fireEvent.press(screen.getByText('Next'));
 
@@ -176,7 +186,7 @@ describe('FoodPhotoEstimateReviewScreen', () => {
   });
 
   it('converts serving size when toggling between g and oz', () => {
-    const screen = renderScreen();
+    const screen = renderCombined();
 
     // Default: 250 g — switch to oz.
     fireEvent.press(screen.getByText('oz'));
@@ -204,5 +214,57 @@ describe('FoodPhotoEstimateReviewScreen', () => {
     fireEvent.press(screen.getByLabelText('Cancel'));
 
     expect(parentNavigation.popToTop).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens on the editable ingredient list, not the single-food form', () => {
+    const screen = renderScreen();
+    expect(screen.getByText('Ingredients')).toBeTruthy();
+    expect(screen.getByText('One food')).toBeTruthy();
+  });
+
+  it('sends grouped items built from the detected ingredients', () => {
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByText('Next'));
+
+    const [routeName, params] = navigation.navigate.mock.calls[0];
+    expect(routeName).toBe('LogEntry');
+    expect(params.mode).toBe('grouped');
+    expect(params.ingredients).toHaveLength(1);
+  });
+
+  it('converts each ingredient to per-100g nutrition with the grams on quantity', () => {
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByText('Next'));
+
+    const [, params] = navigation.navigate.mock.calls[0];
+    const [first] = params.ingredients;
+    expect(first.source).toBe('new');
+    expect(first.food.serving_size).toBe(100);
+    expect(first.food.serving_unit).toBe('g');
+    // The AI reported 100 kcal for a 170 g portion, so the stored food is
+    // 100/1.7 = 58.82 kcal per 100 g and the entry logs the 170 g eaten.
+    expect(first.quantity).toBe(170);
+    expect(first.food.calories).toBeCloseTo(58.82, 2);
+    expect(first.food.protein).toBeCloseTo(10.59, 2);
+  });
+
+  it('blocks Next when every ingredient was removed', () => {
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByLabelText('Remove Greek yogurt'));
+    fireEvent.press(screen.getByText('Next'));
+
+    expect(navigation.navigate).not.toHaveBeenCalled();
+  });
+
+  it('renders an old-server estimate that carries no item_id or match', () => {
+    const estimate = buildEstimate();
+    expect(estimate.items[0].item_id).toBeUndefined();
+    expect(estimate.items[0].match).toBeUndefined();
+
+    const screen = renderScreen(estimate);
+    expect(screen.getByText(/Greek yogurt/)).toBeTruthy();
   });
 });

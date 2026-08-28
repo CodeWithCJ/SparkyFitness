@@ -2,6 +2,7 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type {
   FoodPhotoEstimateResponse,
+  FoodPhotoLogItem,
   IndividualSessionResponse,
   PresetSessionResponse,
   SharedPregnancy,
@@ -285,12 +286,28 @@ export type FoodPhotoFlowParamList = {
     /** Preserved when the photo flow was started from a meal detail screen. */
     mealTypeId?: string;
   };
-  LogEntry: {
-    date?: string;
-    saveFoodPayload: SaveFoodPayload;
-    /** Preselected meal type when the flow was started from a meal detail. */
-    mealTypeId?: string;
-  };
+  /**
+   * Discriminated on `mode`, because the two log shapes carry genuinely
+   * different data: `combined` is the original single-food path, `grouped`
+   * carries the reviewed ingredient rows straight to the batch log endpoint.
+   */
+  LogEntry:
+    | {
+        date?: string;
+        /** Preselected meal type when the flow was started from a meal detail. */
+        mealTypeId?: string;
+        mode: 'combined';
+        saveFoodPayload: SaveFoodPayload;
+      }
+    | {
+        date?: string;
+        mealTypeId?: string;
+        mode: 'grouped';
+        /** Meal name for the ad-hoc food_entry_meals parent. */
+        mealName: string;
+        description?: string;
+        ingredients: FoodPhotoLogItem[];
+      };
 };
 
 export type FoodPhotoFlowScreenProps<T extends keyof FoodPhotoFlowParamList> =
