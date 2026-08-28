@@ -80,6 +80,7 @@ import {
   ENABLE_TOOLS_TOOL_NAME,
   ASK_USER_TOOL_NAME,
   type ChatToolProfile,
+  type ToolBuildContext,
 } from '../ai/tools/index.js';
 import { CATEGORY_SUMMARIES } from '../ai/tools/metaTools.js';
 import { readFileSync, existsSync } from 'fs';
@@ -509,7 +510,8 @@ async function prepareChatContext(
   // auto-classified selection stays self-healing (escalation tool + widening
   // prepareStep) since there's no human-set limit to respect.
   categoriesAreManual = false,
-  serviceSystemPrompt?: string | null
+  serviceSystemPrompt?: string | null,
+  latestImageDataUrl?: string | null
 ) {
   const { chatTz, customCategoriesList } =
     await chatContextInputsCache.getOrLoad(authenticatedUserId, async () => {
@@ -567,7 +569,10 @@ async function prepareChatContext(
   // numbers can be persisted and logged verbatim instead of the model retyping
   // them one food at a time. Per-turn: two users' turns share this process.
   const foodPhotoEstimateSink = createFoodPhotoEstimateSink();
-  const toolBuildContext = { foodPhotoEstimateSink };
+  const toolBuildContext: ToolBuildContext = {
+    foodPhotoEstimateSink,
+    latestImageDataUrl,
+  };
 
   if (categoriesAreManual) {
     tools = buildChatbotTools(
@@ -1185,6 +1190,39 @@ function toCoreMessages(messages: ChatMessage[]): LlmMessage[] {
   });
 }
 
+/**
+ * Extracts the latest image data URL or base64 payload from the most recent
+ * user turn in the conversation history, if any.
+ */
+function extractLatestImageDataUrl(messages: ChatMessage[]): string | null {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const msg = messages[i];
+    if (msg.role !== 'user') continue;
+    const partsSource = Array.isArray(msg.parts)
+      ? msg.parts
+      : Array.isArray(msg.content)
+        ? (msg.content as ChatMessagePart[])
+        : null;
+    if (!partsSource) continue;
+    for (const part of partsSource) {
+      if (
+        part.type === 'image' ||
+        part.type === 'image_url' ||
+        (part.type === 'file' &&
+          (part.mimeType?.startsWith('image/') ||
+            part.mediaType?.startsWith('image/') ||
+            part.url?.startsWith('data:image/')))
+      ) {
+        const url = part.image_url?.url || part.image || part.url;
+        if (typeof url === 'string' && url.trim().length > 0) {
+          return url.trim();
+        }
+      }
+    }
+  }
+  return null;
+}
+
 // Applies the context-window controls in order: drop trailing empty assistant
 // messages some clients send, strip historical images, trim to the profile's
 // token budget, and ensure the window starts with a user message (some models
@@ -1507,6 +1545,7 @@ async function processChatMessage(
       );
     }
 
+    const latestImageDataUrl = extractLatestImageDataUrl(messages);
     const {
       systemPromptContent,
       tools,
@@ -1519,7 +1558,8 @@ async function processChatMessage(
       aiService.chat_tool_profile,
       activeCategories,
       categoriesAreManual,
-      aiService.system_prompt
+      aiService.system_prompt,
+      latestImageDataUrl
     );
 
     const chatProviderOptions = buildChatProviderOptions(
@@ -2045,6 +2085,7 @@ async function processChatMessageStream(
       );
     }
 
+    const latestImageDataUrl = extractLatestImageDataUrl(messages);
     const {
       systemPromptContent,
       tools,
@@ -2058,7 +2099,8 @@ async function processChatMessageStream(
       aiService.chat_tool_profile,
       activeCategories,
       categoriesAreManual,
-      aiService.system_prompt
+      aiService.system_prompt,
+      latestImageDataUrl
     );
 
     const chatProviderOptions = buildChatProviderOptions(
