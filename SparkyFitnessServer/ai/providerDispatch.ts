@@ -616,9 +616,15 @@ function buildOllamaRequest(ctx: BuildContext): BuiltRequest {
   if (ctx.jsonSchema) {
     body.format = ctx.jsonSchema;
   }
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (ctx.provider.api_key) {
+    headers['Authorization'] = `Bearer ${ctx.provider.api_key}`;
+  }
   return {
     url: `${ctx.provider.custom_url}/api/chat`,
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body,
   };
 }

@@ -299,6 +299,102 @@ function resolveImages(input: EstimateFoodPhotoNutritionInput): PhotoImage[] {
   );
 }
 
+function ensureTotals(obj: Record<string, unknown>): Record<string, unknown> {
+  if (Array.isArray(obj.items)) {
+    const items = obj.items as Array<Record<string, unknown>>;
+    if (!obj.totals || typeof obj.totals !== 'object') {
+      let calories = 0;
+      let protein = 0;
+      let carbs = 0;
+      let fat = 0;
+      let fiber = 0;
+      let sugar = 0;
+      let totalGrams = 0;
+      for (const item of items) {
+        calories += Number(item.calories_kcal) || 0;
+        protein += Number(item.protein_g) || 0;
+        carbs += Number(item.carbs_g) || 0;
+        fat += Number(item.fat_g) || 0;
+        fiber += Number(item.fiber_g) || 0;
+        sugar += Number(item.sugar_g) || 0;
+        totalGrams += Number(item.estimated_grams) || 0;
+      }
+      obj.totals = {
+        calories_kcal: Math.round(calories * 10) / 10,
+        protein_g: Math.round(protein * 10) / 10,
+        carbs_g: Math.round(carbs * 10) / 10,
+        fat_g: Math.round(fat * 10) / 10,
+        fiber_g: Math.round(fiber * 10) / 10,
+        sugar_g: Math.round(sugar * 10) / 10,
+        total_grams: Math.round(totalGrams * 10) / 10,
+      };
+    }
+    if (obj.user_weight_reconciliation === undefined) {
+      obj.user_weight_reconciliation = '';
+    }
+    if (!Array.isArray(obj.clarifying_questions)) {
+      obj.clarifying_questions = [];
+    }
+    if (!obj.overall_confidence) {
+      obj.overall_confidence = 'medium';
+    }
+    if (obj.confidence_reason === undefined) {
+      obj.confidence_reason = '';
+    }
+    if (typeof obj.meal_summary !== 'string' && items.length > 0) {
+      obj.meal_summary =
+        items
+          .map((i) => String(i.name || ''))
+          .filter(Boolean)
+          .join(', ') || 'Meal';
+    }
+  }
+  return obj;
+}
+
+function normalizeEstimatePayload(raw: unknown): unknown {
+  if (typeof raw !== 'object' || raw === null) return raw;
+  if (Array.isArray(raw)) {
+    if (raw.length === 1 && typeof raw[0] === 'object' && raw[0] !== null) {
+      return normalizeEstimatePayload(raw[0]);
+    }
+    if (
+      raw.every(
+        (item) => typeof item === 'object' && item !== null && 'name' in item
+      )
+    ) {
+      return ensureTotals({ items: raw });
+    }
+    return raw;
+  }
+  const obj = { ...(raw as Record<string, unknown>) };
+  if ('meal_summary' in obj || 'items' in obj) {
+    return ensureTotals(obj);
+  }
+  const wrapperKeys = [
+    'food_photo_estimate',
+    'response',
+    'data',
+    'result',
+    'estimate',
+    'output',
+  ];
+  for (const key of wrapperKeys) {
+    if (obj[key] && typeof obj[key] === 'object') {
+      return normalizeEstimatePayload(obj[key]);
+    }
+  }
+  const keys = Object.keys(obj);
+  if (
+    keys.length === 1 &&
+    typeof obj[keys[0]] === 'object' &&
+    obj[keys[0]] !== null
+  ) {
+    return normalizeEstimatePayload(obj[keys[0]]);
+  }
+  return ensureTotals(obj);
+}
+
 export type EstimateFoodPhotoNutritionResult =
   | { success: true; estimate: FoodPhotoEstimateResponse }
   | { success: false; code: FoodPhotoEstimateErrorCode; error: string };
@@ -368,19 +464,13 @@ async function estimateFoodPhotoNutrition(
     return { success: false, code, error: result.detail };
   }
 
-  const parsed = foodPhotoEstimateResponseSchema.safeParse(result.json);
+  const normalized = normalizeEstimatePayload(result.json);
+  const parsed = foodPhotoEstimateResponseSchema.safeParse(normalized);
   if (!parsed.success) {
     log(
       'error',
-      `Food-photo estimation: ${provider.service_type} JSON failed schema validation for user ${userId}`,
+      `Food-photo estimation: ${provider.service_type} JSON failed schema validation for user ${userId}. Raw response: ${result.text.slice(0, 2000)}`,
       parsed.error.issues
-    );
-    // The issues above describe what was *missing* against the expected shape;
-    // logging the raw payload shows what the provider *actually* returned, which
-    // is what you need to tell "wrong shape" from "truncated/garbage".
-    log(
-      'debug',
-      `Food-photo estimation: ${provider.service_type} raw response that failed validation for user ${userId}: ${result.text.slice(0, 4000)}`
     );
     return {
       success: false,
