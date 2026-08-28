@@ -1,6 +1,7 @@
 import { getActiveServerConfig, proxyHeadersToRecord, ServerConfig } from '../storage';
 import { addLog } from '../LogService';
 import { normalizeUrl } from './apiClient';
+import { isInsecureUrlBlocked } from '../../utils/serverUrl';
 import { ApiError } from './errors';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { ensureTimezoneBootstrapped } from './preferencesApi';
@@ -427,7 +428,7 @@ export const syncHealthData = async (
 
   const url = normalizeUrl(config.url);
 
-  if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
+  if (isInsecureUrlBlocked(url)) {
     throw new Error('HTTPS is required for server connections. Please update your server URL in Settings.');
   }
 
@@ -494,7 +495,7 @@ export const checkServerConnection = async (): Promise<boolean> => {
 
   const url = normalizeUrl(config.url);
 
-  if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
+  if (isInsecureUrlBlocked(url)) {
     addLog('[API] Connection check blocked: HTTPS is required', 'WARNING');
     return false;
   }

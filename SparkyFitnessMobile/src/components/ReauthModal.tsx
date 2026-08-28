@@ -13,6 +13,7 @@ import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import FormInput from './FormInput';
 import MfaForm, { ErrorBanner, OidcProviderLogo, PrimaryButton } from './MfaForm';
+import { isInsecureUrlBlocked } from '../utils/serverUrl';
 import {
   login,
   LoginError,
@@ -215,7 +216,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
 
   const handlePasskeySignIn = async () => {
     if (!currentUrl) { setError(t('auth.errors.noServerSelected', { defaultValue: 'No server selected.' })); return; }
-    if (!__DEV__ && currentUrl.toLowerCase().startsWith('http://')) {
+    if (isInsecureUrlBlocked(currentUrl)) {
       setError(t('auth.errors.httpsRequired', { defaultValue: 'HTTPS is required for server connections.' }));
       return;
     }
@@ -241,7 +242,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
 
   const handleOidcLogin = async (providerId: string) => {
     if (!currentUrl) { setError(t('auth.errors.noServerSelected', { defaultValue: 'No server selected.' })); return; }
-    if (!__DEV__ && currentUrl.toLowerCase().startsWith('http://')) {
+    if (isInsecureUrlBlocked(currentUrl)) {
       setError(t('auth.errors.httpsRequired', { defaultValue: 'HTTPS is required for server connections.' }));
       return;
     }

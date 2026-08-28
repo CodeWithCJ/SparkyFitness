@@ -1,5 +1,6 @@
 import { addLog } from '../LogService';
 import { normalizeUrl } from './apiClient';
+import { isInsecureUrlBlocked } from '../../utils/serverUrl';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
 import { DEFAULT_API_TIMEOUT_MS, fetchWithTimeout } from '../../utils/concurrency';
@@ -18,7 +19,7 @@ export async function fetchUserAiConfigAllowed(): Promise<boolean> {
   if (!config) return false;
 
   const baseUrl = normalizeUrl(config.url);
-  if (!__DEV__ && baseUrl.toLowerCase().startsWith('http://')) {
+  if (isInsecureUrlBlocked(baseUrl)) {
     return false;
   }
 
@@ -61,7 +62,7 @@ export async function fetchActiveAiServiceSetting(): Promise<ActiveAiServiceSett
   if (!config) return null;
 
   const baseUrl = normalizeUrl(config.url);
-  if (!__DEV__ && baseUrl.toLowerCase().startsWith('http://')) {
+  if (isInsecureUrlBlocked(baseUrl)) {
     return null;
   }
 

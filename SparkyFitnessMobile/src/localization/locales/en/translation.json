@@ -2471,6 +2471,7 @@
   "serverSettingsUi": {
     "activeServerChanged": "Active server changed",
     "setActiveFailed": "Failed to set active server configuration: {{error}}",
+    "httpsRequiredToActivate": "HTTPS is required for server connections. Please edit this configuration to use HTTPS.",
     "configurationDeleted": "Server configuration deleted.",
     "configurationDeletedToast": "Server configuration deleted",
     "deleteFailed": "Failed to delete server configuration: {{error}}",

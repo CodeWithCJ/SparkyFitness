@@ -1,5 +1,6 @@
 import { File } from 'expo-file-system';
 import { normalizeUrl } from './apiClient';
+import { isInsecureUrlBlocked } from '../../utils/serverUrl';
 import { ApiError } from './errors';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
 import { getAuthHeaders, notifySessionExpired } from './authService';
@@ -48,9 +49,9 @@ export async function postImageMultipart<T>(params: {
   const config = await getActiveServerConfig();
   if (!config) throw new Error('Server configuration not found.');
   const baseUrl = normalizeUrl(config.url);
-  // Same transport guard `apiFetch` applies: these requests carry auth headers
-  // and user photos, so never send them over plaintext in a release build.
-  if (!__DEV__ && baseUrl.toLowerCase().startsWith('http://')) {
+  // Transport guard: these requests carry auth headers and user photos, so
+  // plain HTTP is only allowed to private/LAN/VPN-range hosts (see serverUrl.ts).
+  if (isInsecureUrlBlocked(baseUrl)) {
     throw new Error(
       'HTTPS is required for server connections. Please update your server URL in Settings.',
     );

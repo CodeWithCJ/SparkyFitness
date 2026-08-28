@@ -3,7 +3,7 @@ import { addLog } from '../LogService';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { ApiError } from './errors';
 import { DEFAULT_API_TIMEOUT_MS, fetchWithTimeout } from '../../utils/concurrency';
-import { normalizeUrl } from '../../utils/serverUrl';
+import { normalizeUrl, isInsecureUrlBlocked } from '../../utils/serverUrl';
 
 export { normalizeUrl };
 
@@ -35,7 +35,7 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
 
   const baseUrl = normalizeUrl(config.url);
 
-  if (!__DEV__ && baseUrl.toLowerCase().startsWith('http://')) {
+  if (isInsecureUrlBlocked(baseUrl)) {
     throw new Error('HTTPS is required for server connections. Please update your server URL in Settings.');
   }
 

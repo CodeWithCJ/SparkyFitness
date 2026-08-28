@@ -6,7 +6,7 @@ import { ssoClient } from '@better-auth/sso/client';
 import * as WebBrowser from 'expo-web-browser';
 import { clearSessionToken, ServerConfig } from '../storage';
 import { addLog } from '../LogService';
-import { normalizeUrl } from '../../utils/serverUrl';
+import { normalizeUrl, isInsecureUrlBlocked } from '../../utils/serverUrl';
 import { getErrorMessage } from '../../utils/errors';
 import { LoginError } from './authErrors';
 import {
@@ -243,7 +243,7 @@ export const login = async (
 ): Promise<LoginResult> => {
   const baseUrl = normalizeUrl(serverUrl);
 
-  if (!__DEV__ && !baseUrl.startsWith('https://')) {
+  if (isInsecureUrlBlocked(baseUrl)) {
     throw new LoginError('A secure (HTTPS) server URL is required to sign in.');
   }
 
@@ -513,7 +513,7 @@ export const loginWithOidc = async (
 ): Promise<LoginResult> => {
   const baseUrl = normalizeUrl(serverUrl);
 
-  if (!__DEV__ && !baseUrl.startsWith('https://')) {
+  if (isInsecureUrlBlocked(baseUrl)) {
     throw new LoginError('A secure (HTTPS) server URL is required to sign in.');
   }
 
@@ -620,7 +620,7 @@ const getPasskeyBrowserPackage = async (): Promise<string | undefined> => {
 export const loginWithPasskey = async (serverUrl: string): Promise<LoginSuccess> => {
   const baseUrl = normalizeUrl(serverUrl);
 
-  if (!__DEV__ && !baseUrl.startsWith('https://')) {
+  if (isInsecureUrlBlocked(baseUrl)) {
     throw new LoginError('A secure (HTTPS) server URL is required to sign in.');
   }
 

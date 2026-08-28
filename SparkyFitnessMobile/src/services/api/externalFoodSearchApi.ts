@@ -1,4 +1,5 @@
 import { apiFetch, normalizeUrl } from './apiClient';
+import { isInsecureUrlBlocked } from '../../utils/serverUrl';
 import { AI_TIMEOUT_MS } from '../../utils/concurrency';
 import type {
   FoodPhotoEstimateErrorCode,
@@ -706,7 +707,7 @@ export async function estimateFoodPhoto(
   }
 
   const baseUrl = normalizeUrl(config.url);
-  if (!__DEV__ && baseUrl.toLowerCase().startsWith('http://')) {
+  if (isInsecureUrlBlocked(baseUrl)) {
     throw new FoodPhotoEstimateError(
       'UPSTREAM_ERROR',
       'HTTPS is required for server connections. Please update your server URL in Settings.',

@@ -21,7 +21,18 @@ const withNetworkSecurityConfig: ConfigPlugin = (config) => {
         filePath,
         `<?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-  <base-config cleartextTrafficPermitted="false">
+  <!--
+    Cleartext (HTTP) traffic is permitted at the OS layer so self-hosters can
+    reach their server over a LAN IP or a mesh VPN (Tailscale/ZeroTier)
+    without a TLS cert. Android's network-security-config domain-config only
+    matches exact hostnames/IPs, not CIDR ranges, so it cannot enforce
+    "private networks only" here. That restriction is enforced in JS instead:
+    src/utils/serverUrl.ts (getInsecureUrlError) only lets the app store/use
+    an http:// server URL when the host resolves to a private/loopback/
+    link-local/carrier-grade-NAT range or a local-only TLD; any public
+    http:// host is rejected before a request is ever made.
+  -->
+  <base-config cleartextTrafficPermitted="true">
     <trust-anchors>
       <certificates src="system" />
       <certificates src="user" />

@@ -34,6 +34,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useServerConfigs, useServerConnection } from '../hooks';
 import { serverConfigsQueryKey, serverConnectionQueryKey } from '../hooks/queryKeys';
+import { getInsecureUrlError } from '../utils/serverUrl';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type ServerSettingsScreenProps = RootStackScreenProps<'ServerSettings'>;
@@ -66,16 +67,15 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
     queryClient.invalidateQueries({ queryKey: serverConfigsQueryKey });
 
   const handleSetActiveConfig = async (configId: string): Promise<void> => {
-    if (!__DEV__) {
-      const config = allConfigs.find((c) => c.id === configId);
-      if (config?.url.toLowerCase().startsWith('http://')) {
-        Toast.show({
-          type: 'error',
-          text1: t('common.error', { defaultValue: 'Error' }),
-          text2: t('auth.errors.httpsRequiredEdit', { defaultValue: 'HTTPS is required for server connections. Please edit this configuration to use HTTPS.' }),
-        });
-        return;
-      }
+    const config = allConfigs.find((c) => c.id === configId);
+    const insecureUrlError = config ? getInsecureUrlError(config.url) : null;
+    if (insecureUrlError) {
+      Toast.show({
+        type: 'error',
+        text1: t('common.error', { defaultValue: 'Error' }),
+        text2: t('serverSettingsUi.httpsRequiredToActivate', { defaultValue: 'HTTPS is required for server connections. Please edit this configuration to use HTTPS.' }),
+      });
+      return;
     }
     try {
       await setActiveServerConfig(configId);

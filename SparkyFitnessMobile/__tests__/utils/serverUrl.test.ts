@@ -47,6 +47,9 @@ describe('isPrivateOrLocalHost', () => {
       'http://172.31.255.254',
       'http://192.168.1.100:3010',
       'http://169.254.10.10',
+      // Carrier-grade NAT (100.64.0.0/10) — the range Tailscale assigns.
+      'http://100.64.0.1',
+      'http://100.127.255.254',
     ])('%s is private/local', (url) => {
       expect(isPrivateOrLocalHost(url)).toBe(true);
     });
@@ -56,6 +59,8 @@ describe('isPrivateOrLocalHost', () => {
       'http://172.32.0.1',
       'http://11.0.0.1',
       'http://193.168.1.1',
+      'http://100.63.255.255',
+      'http://100.128.0.0',
     ])('%s is public', (url) => {
       expect(isPrivateOrLocalHost(url)).toBe(false);
     });
@@ -105,39 +110,22 @@ describe('isPrivateOrLocalHost', () => {
 });
 
 describe('getInsecureUrlError', () => {
-  const globalWithDev = globalThis as unknown as { __DEV__: boolean };
-  let originalDev: boolean;
-
-  beforeEach(() => {
-    originalDev = globalWithDev.__DEV__;
-  });
-
-  afterEach(() => {
-    globalWithDev.__DEV__ = originalDev;
-  });
-
   test('https always passes, including IP hosts and messy formatting', () => {
     expect(getInsecureUrlError('https://sparky.example.com')).toBeNull();
     expect(getInsecureUrlError('https://192.168.1.10:3010')).toBeNull();
     expect(getInsecureUrlError('  HTTPS://Example.com/  ')).toBeNull();
   });
 
-  test('plain http to a private/LAN host passes in dev', () => {
-    globalWithDev.__DEV__ = true;
+  test('plain http to a private/LAN/VPN host passes, in dev and production alike', () => {
     expect(getInsecureUrlError('http://192.168.1.10:3010')).toBeNull();
     expect(getInsecureUrlError('http://localhost:3010')).toBeNull();
     expect(getInsecureUrlError('http://web.lan')).toBeNull();
+    // Tailscale tailnet IP (carrier-grade NAT range, 100.64.0.0/10).
+    expect(getInsecureUrlError('http://100.64.10.5:3010')).toBeNull();
   });
 
-  test('plain http to a public host is rejected even in dev', () => {
-    globalWithDev.__DEV__ = true;
+  test('plain http to a public host is always rejected', () => {
     expect(getInsecureUrlError('http://sparky.example.com')).toBeTruthy();
     expect(getInsecureUrlError('http://8.8.8.8')).toBeTruthy();
-  });
-
-  test('production rejects plain http even for private/LAN hosts', () => {
-    globalWithDev.__DEV__ = false;
-    expect(getInsecureUrlError('http://192.168.1.10:3010')).toBeTruthy();
-    expect(getInsecureUrlError('http://localhost:3010')).toBeTruthy();
   });
 });

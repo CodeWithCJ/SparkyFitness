@@ -18,14 +18,17 @@ const extractHost = (url: string): string => {
   return hostPort.split(':')[0].toLowerCase().replace(/\.$/, '');
 };
 
-// Same private/local ranges the server classifies in utils/corsHelper.ts.
-const PRIVATE_IP_RANGES = ['loopback', 'private', 'linkLocal', 'uniqueLocal'];
+// Same private/local ranges the server classifies in utils/corsHelper.ts, plus
+// `carrierGradeNat` (100.64.0.0/10) — the range Tailscale assigns its
+// tailnet IPs from, which ipaddr.js does not bucket under `private`.
+const PRIVATE_IP_RANGES = ['loopback', 'private', 'linkLocal', 'uniqueLocal', 'carrierGradeNat'];
 
 /**
- * True when the URL points at a loopback/RFC-1918/link-local/unique-local IP
- * (classified with ipaddr.js, matching the server's `isPrivateNetworkAddress`)
- * or a local-only TLD (.local/.lan/.internal/.home.arpa). These are LAN /
- * self-hosting targets where plain HTTP is expected during local development.
+ * True when the URL points at a loopback/RFC-1918/link-local/unique-local/
+ * carrier-grade-NAT IP (classified with ipaddr.js, matching the server's
+ * `isPrivateNetworkAddress`) or a local-only TLD (.local/.lan/.internal/
+ * .home.arpa). These are LAN / self-hosting / mesh-VPN (Tailscale, ZeroTier)
+ * targets where plain HTTP is an accepted trade-off.
  */
 export const isPrivateOrLocalHost = (url: string): boolean => {
   const host = extractHost(url);
@@ -62,15 +65,26 @@ export const isPrivateOrLocalHost = (url: string): boolean => {
 /**
  * Returns a user-facing error when the server URL must use HTTPS but doesn't,
  * otherwise null. HTTPS always passes (including IP hosts with self-signed
- * certs). Plain HTTP is accepted only for private/LAN hosts during development;
- * production always requires HTTPS.
+ * certs). Plain HTTP is accepted for private/LAN/VPN hosts (RFC 1918,
+ * link-local, unique-local, carrier-grade NAT such as Tailscale's
+ * 100.64.0.0/10, and local-only TLDs) so self-hosters reachable only over a
+ * home network or a mesh VPN like Tailscale/ZeroTier aren't forced onto
+ * HTTPS. Plain HTTP to any other host (public domains/IPs) is always
+ * rejected, in both development and production builds.
  */
 export const getInsecureUrlError = (url: string, localizedMessage?: string): string | null => {
   const normalized = normalizeUrl(url).toLowerCase();
   if (normalized.startsWith('https://')) return null;
 
-  if (__DEV__ && isPrivateOrLocalHost(url)) return null;
+  if (isPrivateOrLocalHost(url)) return null;
 
   const healthPolicy = Platform.OS === 'ios' ? 'Apple Health' : 'Health Connect';
-  return localizedMessage ?? `HTTPS is required to securely register passkeys, access your camera, and sync health data in compliance with ${healthPolicy} security policies.`;
+  return localizedMessage ?? `HTTPS is required to securely register passkeys, access your camera, and sync health data in compliance with ${healthPolicy} security policies. Plain HTTP is only allowed for private network addresses (e.g. LAN IPs, Tailscale, ZeroTier).`;
 };
+
+/**
+ * Boolean form of {@link getInsecureUrlError} for call sites (API/auth
+ * clients) that just need a transport guard before sending a request, not a
+ * user-facing message.
+ */
+export const isInsecureUrlBlocked = (url: string): boolean => getInsecureUrlError(url) !== null;

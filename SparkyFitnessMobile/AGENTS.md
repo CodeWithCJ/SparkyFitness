@@ -214,7 +214,7 @@ npx expo prebuild --clean
 - `OnboardingScreen` handles first-run setup, session sign-in, API keys, MFA, theme, external food source defaults, and finish-without-connection.
 - `ServerSettingsScreen` handles server list management, active server switching, connection tests, web dashboard launch, and `ServerConfigModal`.
 - `useAuth`, `ReauthModal`, `ServerConfigModal`, `authService.ts`, and `MfaForm` coordinate auth recovery, MFA, session expiry, and API-key fallback.
-- Production rejects HTTP server URLs. Preserve HTTPS guards in onboarding, settings, raw fetch paths, and health sync.
+- Production allows plain HTTP only to private/LAN/VPN-range hosts (RFC 1918, link-local, unique-local, carrier-grade NAT such as Tailscale, and local-only TLDs; see `src/utils/serverUrl.ts`); HTTP to any public host is always rejected. Preserve this HTTPS/private-network guard in onboarding, settings, raw fetch paths, and health sync.
 - Proxy headers support reverse-proxy auth. They must be injected before auth headers in `apiClient.ts` and raw fetch clients.
 - During login before a config is saved, `authService` manages pending proxy headers via `setPendingProxyHeaders()` / `clearPendingProxyHeaders()`.
 - Prefer `getApiErrorMessage` / API error helpers over ad hoc error parsing in UI.

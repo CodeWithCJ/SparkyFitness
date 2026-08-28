@@ -147,6 +147,14 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
           'SparkyFitness lets you choose photos from your library for your foods, meals, and diary entries.',
         NSAppTransportSecurity: {
           NSAllowsArbitraryLoads: false,
+          // Lets HTTP (no TLS) reach RFC 1918 / link-local LAN addresses
+          // without punching a hole for arbitrary internet hosts. Self-hosted
+          // servers on a home network can be reached over plain HTTP; a
+          // mesh-VPN host (e.g. Tailscale's 100.64.0.0/10 range, or a custom
+          // ZeroTier range) is not covered by this iOS flag and still needs
+          // HTTPS — see src/utils/serverUrl.ts for the matching JS-side
+          // private-network allowance.
+          NSAllowsLocalNetworking: true,
         },
         ITSAppUsesNonExemptEncryption: false,
         // Keep the native per-app Language entry visible in iOS Settings even
