@@ -1264,8 +1264,17 @@ CREATE TABLE public.check_in_measurements (
     updated_by_user_id uuid,
     muscle_mass_kg numeric(5,2),
     bone_mass_kg numeric(5,2),
-    body_water_percentage numeric(5,2)
+    body_water_percentage numeric(5,2),
+    bmr numeric(6,1),
+    CONSTRAINT check_in_measurements_bmr_check CHECK (((bmr IS NULL) OR ((bmr >= (300)::numeric) AND (bmr <= (10000)::numeric))))
 );
+
+
+--
+-- Name: COLUMN check_in_measurements.bmr; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.check_in_measurements.bmr IS 'Basal Metabolic Rate (BMR) in kcal, measured from smart weight scale or synced from health provider.';
 
 
 --
