@@ -10,12 +10,14 @@ import {
   pickBestVariant,
 } from './foodProviderLookupService.js';
 import { boundedMap } from '../utils/boundedMap.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import {
   scoreFoodMatch,
   scaleVariantToGrams,
   unbrandMacros,
   roundMacros,
   getConversionFactor,
+  todayInZone,
   MATCH_MIN_SCORE,
   MATCH_PRESELECT_SCORE,
   type FoodPhotoEstimateItem,
@@ -53,28 +55,25 @@ function toNumber(value: number | string | null): number {
 }
 
 /**
- * Whole days between a diary entry's calendar day and today.
+ * Whole days between a diary entry's calendar day and the user's today.
  *
- * `food_entries.entry_date` is a DATE — a calendar day, not an instant. Parsing
- * it as a UTC timestamp and dividing elapsed milliseconds makes the answer flip
- * by one either side of midnight UTC, which would hand out or withhold the
- * recency bonus depending on the hour the estimate ran. Both sides are pinned
- * to midday UTC so the subtraction is a day count and DST cannot shift it.
+ * `food_entries.entry_date` is a DATE — a calendar day, not an instant — so
+ * both sides are compared as calendar days. `today` comes from the user's own
+ * timezone: someone in UTC+13 logging at 09:00 local is already on tomorrow's
+ * UTC date, and deriving "today" from UTC would age that entry by a day and
+ * withhold the recency boost.
+ *
+ * Both days are pinned to midday before subtracting so DST cannot shift the
+ * count.
  */
-function daysSince(lastUsed: string | null): number | null {
+function daysSince(lastUsed: string | null, today: string): number | null {
   if (!lastUsed) return null;
   const day = String(lastUsed).slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
   const then = Date.parse(`${day}T12:00:00Z`);
-  if (!Number.isFinite(then)) return null;
-  const today = new Date();
-  const todayNoon = Date.UTC(
-    today.getUTCFullYear(),
-    today.getUTCMonth(),
-    today.getUTCDate(),
-    12
-  );
-  return Math.max(0, Math.round((todayNoon - then) / 86_400_000));
+  const now = Date.parse(`${today}T12:00:00Z`);
+  if (!Number.isFinite(then) || !Number.isFinite(now)) return null;
+  return Math.max(0, Math.round((now - then) / 86_400_000));
 }
 
 function toMatch(
@@ -203,6 +202,10 @@ async function matchItems(
     term: (item.canonical_name || item.name || '').trim(),
   }));
 
+  // Resolved once for the whole plate: recency is measured against the user's
+  // calendar day, not the server's UTC date.
+  const today = todayInZone(await loadUserTimezone(userId));
+
   let candidates: Map<string, FoodMatchCandidateRow[]>;
   try {
     candidates = await findFoodMatchCandidates(
@@ -230,7 +233,7 @@ async function matchItems(
           candidateBrand: row.brand,
           queryName: item.term,
           isOwnFood: row.user_id === userId,
-          daysSinceLastUsed: daysSince(row.last_used),
+          daysSinceLastUsed: daysSince(row.last_used, today),
         });
         return { row, score, source };
       })

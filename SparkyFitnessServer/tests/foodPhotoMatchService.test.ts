@@ -7,6 +7,11 @@ vi.mock('../models/food.js', () => ({
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
+const loadUserTimezoneMock = vi.fn(async () => 'UTC');
+vi.mock('../utils/timezoneLoader.js', () => ({
+  loadUserTimezone: (...a: unknown[]) => loadUserTimezoneMock(...(a as [])),
+}));
+
 const resolveFoodProviderOrderMock = vi.fn();
 const lookupFoodFromProvidersMock = vi.fn();
 vi.mock('../services/foodProviderLookupService.js', async () => {
@@ -528,5 +533,68 @@ describe('provider cascade fallback', () => {
     // Preferences would otherwise be re-read once per ingredient.
     expect(resolveFoodProviderOrderMock).toHaveBeenCalledTimes(1);
     expect(lookupFoodFromProvidersMock).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('recency uses the user calendar day, not UTC', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    loadUserTimezoneMock.mockResolvedValue('UTC');
+    resolveFoodProviderOrderMock.mockResolvedValue([]);
+    lookupFoodFromProvidersMock.mockResolvedValue({
+      source: 'ai_estimate',
+      food: null,
+    });
+  });
+
+  it('loads the timezone once for the whole plate', async () => {
+    findFoodMatchCandidatesMock.mockResolvedValue(new Map());
+    await attachFoodMatches(USER, {
+      ...estimate,
+      items: [estimateItem, estimateItem, estimateItem],
+    });
+    expect(loadUserTimezoneMock).toHaveBeenCalledTimes(1);
+    expect(loadUserTimezoneMock).toHaveBeenCalledWith(USER);
+  });
+
+  it('measures recency against the user day, not the server UTC day', async () => {
+    // 05:00 UTC on the 2nd is still the 1st in Midway (UTC-11). An entry from
+    // Feb 22 is 7 days old for this user (inside the >7-day recency tier) but
+    // 8 days old by UTC, which would drop it a tier and change the ranking.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-02T05:00:00Z'));
+    try {
+      loadUserTimezoneMock.mockResolvedValue('Pacific/Midway');
+      findFoodMatchCandidatesMock.mockImplementation(
+        async (_u, queries) =>
+          new Map([
+            [
+              queries[0].key,
+              [
+                candidate({
+                  query_key: queries[0].key,
+                  // Not an exact name, so the recency tier is what moves the score.
+                  food_name: 'Chicken Thigh, Roasted',
+                  last_used: '2026-02-22',
+                }),
+              ],
+            ],
+          ])
+      );
+      const result = await attachFoodMatches(USER, estimate);
+      expect(result.items[0].match!.match_source).toBe('recent_usage');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('falls back to UTC when the timezone cannot be read', async () => {
+    loadUserTimezoneMock.mockResolvedValue('UTC');
+    findFoodMatchCandidatesMock.mockImplementation(
+      async (_u, queries) =>
+        new Map([[queries[0].key, [candidate({ query_key: queries[0].key })]]])
+    );
+    const result = await attachFoodMatches(USER, estimate);
+    expect(result.items[0].match).not.toBeNull();
   });
 });

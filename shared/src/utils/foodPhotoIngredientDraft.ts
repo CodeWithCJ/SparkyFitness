@@ -235,6 +235,25 @@ export function ingredientDraftReducer(
 
 
 /**
+ * Whether a new `items` prop should reset the draft.
+ *
+ * Identity alone is not enough. A caller writing `estimate?.items ?? []`
+ * produces a fresh array on every render before the estimate arrives, and
+ * resetting on that sets state during render forever — React aborts the tree
+ * with "Too many re-renders". Two empty lists are therefore the same estimate.
+ *
+ * Shared so the web dialog and the mobile review screen cannot drift on it;
+ * both wrap it in the same three-line `useState` guard.
+ */
+export function shouldResetIngredientDraft(
+  items: readonly FoodPhotoEstimateItem[],
+  seenItems: readonly FoodPhotoEstimateItem[],
+): boolean {
+  if (items === seenItems) return false;
+  return !(items.length === 0 && seenItems.length === 0);
+}
+
+/**
  * True once the user has actually changed the detected ingredients.
  *
  * This matters for the "One food" view. The model's `totals` is its own figure
