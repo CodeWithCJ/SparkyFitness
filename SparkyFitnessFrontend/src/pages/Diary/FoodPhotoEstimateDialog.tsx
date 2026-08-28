@@ -26,6 +26,7 @@ import {
   unbrandMacros,
   roundMacros,
   type FoodPhotoEstimateResponse,
+  type FoodPhotoEstimateItem,
   type FoodPhotoLogItem,
 } from '@workspace/shared';
 import {
@@ -50,6 +51,12 @@ type Step = 'capture' | 'review';
  * is what lets the plate be re-logged later without another photo.
  */
 type SaveMode = 'ingredients_and_meal' | 'ingredients_only' | 'one_food';
+
+/**
+ * Stable empty list for the pre-estimate render. An inline `[]` would be a new
+ * reference every render, which the draft hook would read as a new estimate.
+ */
+const NO_ITEMS: FoodPhotoEstimateItem[] = [];
 
 export interface FoodPhotoEstimateDialogProps {
   open: boolean;
@@ -101,7 +108,7 @@ const FoodPhotoEstimateDialog = ({
   const mode: 'grouped' | 'combined' =
     saveMode === 'one_food' ? 'combined' : 'grouped';
 
-  const draft = useFoodPhotoIngredientDraft(estimate?.items ?? []);
+  const draft = useFoodPhotoIngredientDraft(estimate?.items ?? NO_ITEMS);
 
   const reset = useCallback(() => {
     setStep('capture');

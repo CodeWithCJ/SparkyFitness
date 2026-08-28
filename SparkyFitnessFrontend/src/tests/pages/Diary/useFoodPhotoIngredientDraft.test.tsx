@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, render } from '@testing-library/react';
 import { useFoodPhotoIngredientDraft } from '@/pages/Diary/useFoodPhotoIngredientDraft';
 import type { FoodPhotoEstimateItem } from '@workspace/shared';
 
@@ -81,5 +81,33 @@ describe('useFoodPhotoIngredientDraft (web)', () => {
 
     expect(result.current.rows[0]!.grams).toBe(170);
     expect(result.current.totals.calories_kcal).toBeCloseTo(178, 6);
+  });
+
+  it('does not loop when a caller passes a fresh empty array each render', () => {
+    // Reproduces the dialog: it renders `estimate?.items ?? []`, so every
+    // render supplies a NEW array. One unrelated re-render is enough to start
+    // the loop — the hook resets, which re-renders, which supplies another new
+    // array, forever. React aborts with "Too many re-renders".
+    const Harness = () => {
+      const draft = useFoodPhotoIngredientDraft([]);
+      return <span data-testid="rows">{draft.rows.length}</span>;
+    };
+
+    const view = render(<Harness />);
+    view.rerender(<Harness />);
+
+    expect(view.getByTestId('rows').textContent).toBe('0');
+  });
+
+  it('still resets when a real estimate replaces an empty list', () => {
+    const { result, rerender } = renderHook(
+      ({ items }) => useFoodPhotoIngredientDraft(items),
+      { initialProps: { items: [] as FoodPhotoEstimateItem[] } }
+    );
+
+    rerender({ items: [] });
+    rerender({ items: [broccoli] });
+
+    expect(result.current.rows).toHaveLength(1);
   });
 });

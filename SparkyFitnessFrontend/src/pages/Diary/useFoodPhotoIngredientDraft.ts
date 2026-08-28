@@ -32,7 +32,13 @@ export function useFoodPhotoIngredientDraft(items: FoodPhotoEstimateItem[]) {
   // render — rather than in an effect — avoids a frame of stale rows, and the
   // identity guard makes it self-limiting.
   const [seenItems, setSeenItems] = useState(items);
-  if (items !== seenItems) {
+  // Compare by identity, but treat two empty lists as the same estimate. A
+  // caller writing `estimate?.items ?? []` passes a fresh array on every
+  // render before the estimate arrives; resetting on that would setState in
+  // render forever ("Too many re-renders").
+  const itemsChanged =
+    items !== seenItems && !(items.length === 0 && seenItems.length === 0);
+  if (itemsChanged) {
     setSeenItems(items);
     dispatch({ type: 'RESET', items });
   }
