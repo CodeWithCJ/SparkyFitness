@@ -4,6 +4,13 @@ import { estimateFoodPhotoNutrition } from '../services/foodPhotoEstimationServi
 
 vi.mock('../models/chatRepository');
 vi.mock('../config/logging', () => ({ log: vi.fn() }));
+// Matching is a separate service with its own tests and its own DB access;
+// this file covers prompt building and provider dispatch.
+vi.mock('../services/foodPhotoMatchService.js', () => ({
+  attachFoodMatches: vi.fn(
+    async (_userId: string, estimate: unknown) => estimate
+  ),
+}));
 
 // Mock the undici Agent so the Ollama path never constructs a real agent.
 // (global.fetch is mocked per-test; the dispatcher option is ignored by it.)

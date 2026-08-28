@@ -4,7 +4,15 @@ import { authenticate } from '../middleware/authMiddleware.js';
 import { log } from '../config/logging.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
-import { isEntryTimeString } from '@workspace/shared';
+import {
+  isEntryTimeString,
+  foodPhotoLogRequestSchema,
+  foodPhotoLogResponseSchema,
+} from '@workspace/shared';
+import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
+import foodPhotoLogService, {
+  PhotoLogError,
+} from '../services/foodPhotoLogService.js';
 import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
 import {
   uploadImages,
@@ -110,6 +118,84 @@ router.post('/', async (req, res, next) => {
     next(err);
   }
 });
+/**
+ * @swagger
+ * /food-entry-meals/from-photo-estimate:
+ *   post:
+ *     summary: Log a reviewed AI food-photo estimate
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Creates the diary rows for a reviewed photo estimate in one
+ *       transaction. In `grouped` mode this is an ad-hoc food_entry_meals
+ *       parent plus one component food_entries row per ingredient; in
+ *       `combined` mode it is a single food and a single entry. Ingredients
+ *       that matched an existing food reuse it; the rest are created as hidden
+ *       quick foods.
+ *     responses:
+ *       201:
+ *         description: The estimate was logged.
+ *       400:
+ *         description: Invalid payload or meal type.
+ *       403:
+ *         description: User does not have permission to log for this user.
+ *       404:
+ *         description: A referenced food or variant was not found.
+ */
+router.post(
+  '/from-photo-estimate',
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    // The router mounts `authenticate` but not the diary permission check, so
+    // this route asks for it explicitly.
+    const parsed = foodPhotoLogRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Invalid food photo log payload.',
+        code: 'INVALID_REQUEST',
+        issues: parsed.error.issues,
+      });
+    }
+
+    const userId = req.userId;
+    const targetUserId = req.body?.user_id || userId;
+    if (targetUserId !== userId) {
+      const hasPermission = await canAccessUserData(
+        targetUserId,
+        'diary',
+        userId
+      );
+      if (!hasPermission) {
+        return res.status(403).json({ error: 'Forbidden', code: 'FORBIDDEN' });
+      }
+    }
+
+    try {
+      const result = await foodPhotoLogService.createPhotoLoggedMeal(
+        targetUserId,
+        userId,
+        parsed.data
+      );
+      log(
+        'info',
+        `User ${userId} logged a ${parsed.data.mode} photo estimate with ${parsed.data.items.length} item(s)`
+      );
+      clearUserTdeeCache(targetUserId);
+      return res.status(201).json(foodPhotoLogResponseSchema.parse(result));
+    } catch (err) {
+      if (err instanceof PhotoLogError) {
+        const status =
+          err.code === 'FOOD_NOT_FOUND' || err.code === 'VARIANT_NOT_FOUND'
+            ? 404
+            : err.code === 'FORBIDDEN'
+              ? 403
+              : 400;
+        return res.status(status).json({ error: err.message, code: err.code });
+      }
+      return next(err);
+    }
+  }
+);
+
 /**
  * @swagger
  * /food-entry-meals/by-date/{date}:

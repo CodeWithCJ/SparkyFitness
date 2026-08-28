@@ -7,6 +7,7 @@ import {
   type ProviderConfig,
 } from '../ai/providerDispatch.js';
 import { deriveAiNetworkPolicy } from '../utils/outboundUrlPolicy.js';
+import { attachFoodMatches } from './foodPhotoMatchService.js';
 import {
   foodPhotoEstimateResponseSchema,
   type FoodPhotoEstimateErrorCode,
@@ -49,6 +50,11 @@ const RESPONSE_SCHEMA: JsonSchemaNode = {
             type: 'string',
             description:
               "Specific food name, e.g. 'grilled chicken thigh', 'white jasmine rice', 'steamed broccoli'",
+          },
+          canonical_name: {
+            type: 'string',
+            description:
+              "The same food as a plain, generic, searchable name: drop preparation adjectives, brands, and quantities. 'grilled chicken thigh' -> 'chicken thigh'; '1 cup white jasmine rice' -> 'jasmine rice'; 'steamed broccoli florets' -> 'broccoli'. This is used to look the item up in a food database, so keep it to the noun the food would be filed under.",
           },
           estimated_grams: {
             type: 'number',
@@ -103,6 +109,7 @@ const RESPONSE_SCHEMA: JsonSchemaNode = {
         },
         required: [
           'name',
+          'canonical_name',
           'estimated_grams',
           'portion_description',
           'preparation',
@@ -117,6 +124,7 @@ const RESPONSE_SCHEMA: JsonSchemaNode = {
         ],
         propertyOrdering: [
           'name',
+          'canonical_name',
           'estimated_grams',
           'portion_description',
           'preparation',
@@ -247,6 +255,9 @@ Rules:
     proportionally to your visual estimate, then recalculate nutrition.
   - Break mixed dishes into component ingredients when reasonable (e.g. a
     burrito → tortilla, rice, beans, meat, cheese, salsa).
+  - Give every item a canonical_name as well as its display name: the plain
+    generic food noun, with preparation adjectives, brands, and quantities
+    removed. It is used to look the item up in a food database.
   - Be explicit about assumptions (oil used, milk type, skin on/off).
   - Lower your confidence when portions are ambiguous or ingredients hidden.
   - Only ask clarifying questions that would materially change the estimate.`;
@@ -376,7 +387,12 @@ async function estimateFoodPhotoNutrition(
     };
   }
 
-  return { success: true, estimate: parsed.data };
+  // Enrich with food-database matches. Additive only: existing fields, and
+  // therefore what an older client displays, are never touched. A matching
+  // failure is swallowed inside the service so it can never cost the user an
+  // estimate they already paid an AI call for.
+  const enriched = await attachFoodMatches(userId, parsed.data);
+  return { success: true, estimate: enriched };
 }
 
 export { estimateFoodPhotoNutrition };

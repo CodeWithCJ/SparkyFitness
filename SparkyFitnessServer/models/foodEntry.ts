@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
@@ -1026,19 +1027,17 @@ async function copyReviewedFoodEntriesFromUser({
   }
 }
 
-async function bulkCreateFoodEntries(
-  entriesData: FoodEntryInput[],
-  authenticatedUserId: string
+/**
+ * Inserts many `food_entries` rows in one statement on a caller-supplied
+ * client. Split out of `bulkCreateFoodEntries` so a transactional caller can
+ * insert entries that reference foods created earlier in the same transaction.
+ * The caller owns BEGIN/COMMIT/ROLLBACK and the client's lifetime.
+ */
+async function bulkCreateFoodEntriesWithClient(
+  client: PoolClient,
+  entriesData: FoodEntryInput[]
 ) {
-  log(
-    'info',
-    `bulkCreateFoodEntries in foodEntry.js: entriesData: ${JSON.stringify(entriesData)}, authenticatedUserId: ${authenticatedUserId}`
-  );
-  // For bulk create, assuming all entries belong to the same user,
-  // and the first entry's user_id can be used for RLS context.
-  const client = await getClient(authenticatedUserId); // User-specific operation
-  try {
-    const query = `
+  const query = `
       INSERT INTO food_entries (
         user_id, 
         food_id, 
@@ -1077,47 +1076,62 @@ async function bulkCreateFoodEntries(
         custom_nutrients
       )
       VALUES %L RETURNING *`;
-    const values = entriesData.map((entry: FoodEntryInput) => [
-      entry.user_id,
-      entry.food_id,
-      entry.meal_type_id,
-      entry.quantity,
-      entry.unit,
-      entry.entry_date,
-      entry.entry_time ?? null,
-      entry.variant_id,
-      entry.meal_plan_template_id || null, // meal_plan_template_id can be null
-      entry.food_entry_meal_id || null, // New column value
-      entry.created_by_user_id, // created_by_user_id
-      entry.created_by_user_id, // updated_by_user_id
-      // Snapshot data
-      entry.food_name,
-      entry.brand_name,
-      entry.serving_size,
-      entry.serving_unit,
-      entry.calories,
-      entry.protein,
-      entry.carbs,
-      entry.fat,
-      entry.saturated_fat,
-      entry.polyunsaturated_fat,
-      entry.monounsaturated_fat,
-      entry.trans_fat,
-      entry.cholesterol,
-      entry.sodium,
-      entry.potassium,
-      entry.dietary_fiber,
-      entry.sugars,
-      entry.vitamin_a,
-      entry.vitamin_c,
-      entry.calcium,
-      entry.iron,
-      entry.glycemic_index,
-      entry.custom_nutrients || {},
-    ]);
-    const formattedQuery = format(query, values);
-    const result = await client.query(formattedQuery);
-    return result.rows;
+  const values = entriesData.map((entry: FoodEntryInput) => [
+    entry.user_id,
+    entry.food_id,
+    entry.meal_type_id,
+    entry.quantity,
+    entry.unit,
+    entry.entry_date,
+    entry.entry_time ?? null,
+    entry.variant_id,
+    entry.meal_plan_template_id || null, // meal_plan_template_id can be null
+    entry.food_entry_meal_id || null, // New column value
+    entry.created_by_user_id, // created_by_user_id
+    entry.created_by_user_id, // updated_by_user_id
+    // Snapshot data
+    entry.food_name,
+    entry.brand_name,
+    entry.serving_size,
+    entry.serving_unit,
+    entry.calories,
+    entry.protein,
+    entry.carbs,
+    entry.fat,
+    entry.saturated_fat,
+    entry.polyunsaturated_fat,
+    entry.monounsaturated_fat,
+    entry.trans_fat,
+    entry.cholesterol,
+    entry.sodium,
+    entry.potassium,
+    entry.dietary_fiber,
+    entry.sugars,
+    entry.vitamin_a,
+    entry.vitamin_c,
+    entry.calcium,
+    entry.iron,
+    entry.glycemic_index,
+    entry.custom_nutrients || {},
+  ]);
+  const formattedQuery = format(query, values);
+  const result = await client.query(formattedQuery);
+  return result.rows;
+}
+
+async function bulkCreateFoodEntries(
+  entriesData: FoodEntryInput[],
+  authenticatedUserId: string
+) {
+  log(
+    'info',
+    `bulkCreateFoodEntries in foodEntry.js: entriesData: ${JSON.stringify(entriesData)}, authenticatedUserId: ${authenticatedUserId}`
+  );
+  // For bulk create, assuming all entries belong to the same user,
+  // and the first entry's user_id can be used for RLS context.
+  const client = await getClient(authenticatedUserId); // User-specific operation
+  try {
+    return await bulkCreateFoodEntriesWithClient(client, entriesData);
   } finally {
     client.release();
   }
@@ -1369,3 +1383,5 @@ export default {
   getRecentFoodEntries,
   getFoodUsage,
 };
+
+export { bulkCreateFoodEntriesWithClient };

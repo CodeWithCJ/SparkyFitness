@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import { getClient } from '../db/poolManager.js';
 import { toImageArray } from '../utils/imageLocalizer.js';
 import { log } from '../config/logging.js';
@@ -25,34 +26,51 @@ interface FoodEntryMealInput {
 /** The subset of fields an update may change. */
 type FoodEntryMealUpdate = Partial<FoodEntryMealInput>;
 
-async function createFoodEntryMeal(
+/**
+ * Resolves a meal type name to its id on a caller-supplied client.
+ *
+ * Split out so a transactional caller can resolve the id before deciding
+ * whether to create anything, and so the resolution rule lives in one place.
+ */
+async function resolveMealTypeIdWithClient(
+  client: PoolClient,
+  mealTypeId: string | null | undefined,
+  mealTypeName: string | null | undefined
+): Promise<string | null | undefined> {
+  if (mealTypeId || !mealTypeName) return mealTypeId;
+  const typeRes = await client.query(
+    'SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)',
+    [mealTypeName]
+  );
+  if (typeRes.rows.length === 0) {
+    throw new Error(`Invalid meal type: ${mealTypeName}`);
+  }
+  return typeRes.rows[0].id;
+}
+
+/**
+ * Inserts the parent `food_entry_meals` row on a caller-supplied client.
+ *
+ * Split out of `createFoodEntryMeal` so a caller already inside a transaction
+ * can create the parent and its component `food_entries` atomically. The caller
+ * owns BEGIN/COMMIT/ROLLBACK and the client's lifetime.
+ */
+async function createFoodEntryMealWithClient(
+  client: PoolClient,
   foodEntryMealData: FoodEntryMealInput,
   createdByUserId: string
 ) {
-  log(
-    'info',
-    `createFoodEntryMeal in foodEntryMealRepository: foodEntryMealData: ${JSON.stringify(foodEntryMealData)}, createdByUserId: ${createdByUserId}`
+  const mealTypeId = await resolveMealTypeIdWithClient(
+    client,
+    foodEntryMealData.meal_type_id,
+    foodEntryMealData.meal_type
   );
-  const client = await getClient(foodEntryMealData.user_id, createdByUserId);
-  try {
-    let mealTypeId = foodEntryMealData.meal_type_id;
-    if (!mealTypeId && foodEntryMealData.meal_type) {
-      const typeRes = await client.query(
-        'SELECT id FROM meal_types WHERE LOWER(name) = LOWER($1)',
-        [foodEntryMealData.meal_type]
-      );
-      if (typeRes.rows.length > 0) {
-        mealTypeId = typeRes.rows[0].id;
-      } else {
-        throw new Error(`Invalid meal type: ${foodEntryMealData.meal_type}`);
-      }
-    }
-    // Snapshot the template's photo onto the logged meal, mirroring how the
-    // nutrition of its components is snapshotted: editing the template later
-    // must not rewrite what past entries show. Ad-hoc logged meals have no
-    // template and simply keep an empty array.
-    const result = await client.query(
-      `INSERT INTO food_entry_meals (
+  // Snapshot the template's photo onto the logged meal, mirroring how the
+  // nutrition of its components is snapshotted: editing the template later
+  // must not rewrite what past entries show. Ad-hoc logged meals have no
+  // template and simply keep an empty array.
+  const result = await client.query(
+    `INSERT INTO food_entry_meals (
                 user_id, meal_template_id, meal_type_id, entry_date, entry_time, name, description,
                 quantity, unit, legacy_serving_unit_math,
                 created_by_user_id, updated_by_user_id, images
@@ -64,22 +82,39 @@ async function createFoodEntryMeal(
               )
             )
             RETURNING *`,
-      [
-        foodEntryMealData.user_id,
-        foodEntryMealData.meal_template_id,
-        mealTypeId,
-        foodEntryMealData.entry_date,
-        foodEntryMealData.entry_time ?? null,
-        foodEntryMealData.name,
-        foodEntryMealData.description,
-        foodEntryMealData.quantity,
-        foodEntryMealData.unit,
-        foodEntryMealData.legacy_serving_unit_math ?? false,
-        createdByUserId,
-        createdByUserId,
-      ]
+    [
+      foodEntryMealData.user_id,
+      foodEntryMealData.meal_template_id,
+      mealTypeId,
+      foodEntryMealData.entry_date,
+      foodEntryMealData.entry_time ?? null,
+      foodEntryMealData.name,
+      foodEntryMealData.description,
+      foodEntryMealData.quantity,
+      foodEntryMealData.unit,
+      foodEntryMealData.legacy_serving_unit_math ?? false,
+      createdByUserId,
+      createdByUserId,
+    ]
+  );
+  return result.rows[0];
+}
+
+async function createFoodEntryMeal(
+  foodEntryMealData: FoodEntryMealInput,
+  createdByUserId: string
+) {
+  log(
+    'info',
+    `createFoodEntryMeal in foodEntryMealRepository: foodEntryMealData: ${JSON.stringify(foodEntryMealData)}, createdByUserId: ${createdByUserId}`
+  );
+  const client = await getClient(foodEntryMealData.user_id, createdByUserId);
+  try {
+    return await createFoodEntryMealWithClient(
+      client,
+      foodEntryMealData,
+      createdByUserId
     );
-    return result.rows[0];
   } catch (error) {
     log('error', 'Error creating food entry meal in repository:', error);
     throw error;
@@ -398,3 +433,5 @@ export default {
   deleteFoodEntryMeal,
   moveFoodEntryMealToMealType,
 };
+
+export { createFoodEntryMealWithClient, resolveMealTypeIdWithClient };
