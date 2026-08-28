@@ -276,6 +276,7 @@ export interface EstimateFoodPhotoNutritionInput {
   /** Legacy single-image field; use images[]. Still accepted for backward compatibility. */
   mimeType?: string;
   userId: string;
+  serviceConfigId?: string;
   description?: string;
   weightSlot?: string;
   actorIsAdmin?: boolean;
@@ -315,18 +316,19 @@ async function estimateFoodPhotoNutrition(
     };
   }
 
-  const setting = await chatRepository.getActiveVisionAiServiceSetting(userId);
-  if (!setting) {
-    return {
-      success: false,
-      code: 'NO_AI_CONFIGURED',
-      error: 'No AI service configured.',
-    };
-  }
-  const aiService = await chatRepository.getAiServiceSettingForBackend(
-    setting.id,
-    userId
-  );
+  const aiService = input.serviceConfigId
+    ? await chatRepository.getAiServiceSettingForBackend(
+        input.serviceConfigId,
+        userId
+      )
+    : await (async () => {
+        const setting =
+          await chatRepository.getActiveVisionAiServiceSetting(userId);
+        return setting
+          ? chatRepository.getAiServiceSettingForBackend(setting.id, userId)
+          : null;
+      })();
+
   if (!aiService) {
     return {
       success: false,

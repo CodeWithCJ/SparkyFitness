@@ -511,7 +511,8 @@ async function prepareChatContext(
   // prepareStep) since there's no human-set limit to respect.
   categoriesAreManual = false,
   serviceSystemPrompt?: string | null,
-  latestImageDataUrl?: string | null
+  latestImageDataUrl?: string | null,
+  serviceConfigId?: string | null
 ) {
   const { chatTz, customCategoriesList } =
     await chatContextInputsCache.getOrLoad(authenticatedUserId, async () => {
@@ -572,6 +573,7 @@ async function prepareChatContext(
   const toolBuildContext: ToolBuildContext = {
     foodPhotoEstimateSink,
     latestImageDataUrl,
+    serviceConfigId,
   };
 
   if (categoriesAreManual) {
@@ -1561,7 +1563,8 @@ async function processChatMessage(
       activeCategories,
       categoriesAreManual,
       aiService.system_prompt,
-      latestImageDataUrl
+      latestImageDataUrl,
+      aiService.id
     );
 
     const chatProviderOptions = buildChatProviderOptions(
@@ -2102,7 +2105,8 @@ async function processChatMessageStream(
       activeCategories,
       categoriesAreManual,
       aiService.system_prompt,
-      latestImageDataUrl
+      latestImageDataUrl,
+      aiService.id
     );
 
     const chatProviderOptions = buildChatProviderOptions(

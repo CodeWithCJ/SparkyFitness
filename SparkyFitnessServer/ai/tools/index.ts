@@ -72,6 +72,8 @@ export interface ToolBuildContext {
    * builder does not); the tools read it at call time.
    */
   latestImageDataUrl?: string | null;
+  /** The active AI service config ID from the current chat session, if known. */
+  serviceConfigId?: string | null;
 }
 
 const CATEGORY_BUILDERS: Record<

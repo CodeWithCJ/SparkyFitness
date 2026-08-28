@@ -275,7 +275,10 @@ function renderPhotoLogResult(
 export function buildVisionTools(
   userId: string,
   estimateSink?: FoodPhotoEstimateSink,
-  imageSource?: { latestImageDataUrl?: string | null }
+  imageSource?: {
+    latestImageDataUrl?: string | null;
+    serviceConfigId?: string | null;
+  }
 ) {
   return {
     sparky_analyze_food_image: tool({
@@ -301,6 +304,7 @@ export function buildVisionTools(
             await foodPhotoEstimationService.estimateFoodPhotoNutrition({
               images: [{ base64: image.base64, mimeType: image.mimeType }],
               userId,
+              serviceConfigId: imageSource?.serviceConfigId ?? undefined,
             });
           if (!result.success) {
             if (result.code === 'NO_AI_CONFIGURED') {
