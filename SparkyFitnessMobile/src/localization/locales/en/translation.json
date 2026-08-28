@@ -4630,5 +4630,9 @@
     "workouts_other": "{{count}} workouts",
     "records_one": "{{count}} record",
     "records_other": "{{count}} records"
+  },
+  "foodProvenance": {
+    "aiEstimate": "AI estimate",
+    "aiEstimateAccessibility": "Nutrition estimated by AI"
   }
 }

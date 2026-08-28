@@ -371,4 +371,36 @@ describe('createPhotoLoggedMeal', () => {
       expect(txSteps()).toEqual(['BEGIN', 'ROLLBACK']);
     });
   });
+
+  describe('provenance of created foods', () => {
+    it('marks a food built from the model as an AI estimate', async () => {
+      await createPhotoLoggedMeal(
+        'user-1',
+        'user-1',
+        payload({
+          items: [
+            {
+              source: 'new',
+              food: { ...NEW_FOOD, ai_confidence: 'medium' },
+              quantity: 85,
+              unit: 'g',
+            },
+          ],
+        })
+      );
+      const created = createFoodWithClientMock.mock.calls[0][1];
+      // Both clients render source + ai_confidence as an "AI estimate" marker,
+      // so a guess is not mistaken for verified data in the library.
+      expect(created.source).toBe('ai_estimate');
+      expect(created.ai_confidence).toBe('medium');
+    });
+
+    it('marks a food built from a provider match as imported, not a guess', async () => {
+      await createPhotoLoggedMeal('user-1', 'user-1', payload());
+      const created = createFoodWithClientMock.mock.calls[0][1];
+      // No ai_confidence means the row was showing verified provider numbers.
+      expect(created.source).toBe('imported');
+      expect(created.ai_confidence).toBeUndefined();
+    });
+  });
 });

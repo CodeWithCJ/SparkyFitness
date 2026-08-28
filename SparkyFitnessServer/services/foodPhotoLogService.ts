@@ -127,7 +127,10 @@ function buildNewFoodInput(
     // applies to every later estimate.
     provider_type: 'food_photo_estimate',
     shared_with_public: false,
-    source: 'ai_estimate',
+    // A food built from a provider match is imported data, not a guess. Only
+    // rows still carrying the model's own numbers arrive with ai_confidence,
+    // and only those should be marked as estimates.
+    source: food.ai_confidence ? 'ai_estimate' : 'imported',
     is_default: true,
   };
 }

@@ -196,6 +196,10 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
           fat: rounded.fat_g,
           dietary_fiber: rounded.fiber_g,
           sugars: rounded.sugar_g,
+          // Marks the stored food as an AI estimate so it is not mistaken for
+          // verified data later. A row showing a matched provider food is not
+          // a guess, so it carries no confidence.
+          ...(row.matchApplied ? {} : { ai_confidence: row.confidence }),
         },
         quantity: row.grams,
         unit: 'g',

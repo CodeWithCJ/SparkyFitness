@@ -62,6 +62,14 @@ export const foodPhotoLogNewFoodSchema = z
     iron: z.number().nonnegative().optional(),
     vitamin_a: z.number().nonnegative().optional(),
     vitamin_c: z.number().nonnegative().optional(),
+
+    /**
+     * The model's confidence in this ingredient, stored on the created variant.
+     * Both clients already surface `source: 'ai_estimate'` + `ai_confidence` as
+     * an "AI estimate" marker, so passing it makes a guessed food visibly
+     * distinguishable from a barcode-scanned or provider-sourced one.
+     */
+    ai_confidence: z.enum(["high", "medium", "low"]).optional(),
   })
   .strict();
 
