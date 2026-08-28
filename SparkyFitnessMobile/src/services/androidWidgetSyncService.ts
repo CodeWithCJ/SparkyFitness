@@ -1,10 +1,11 @@
+import { todayInZone } from '@workspace/shared';
 import { CalorieWidgetBridge } from './CalorieWidgetBridge';
+import { ensureTimezoneBootstrapped } from './api/preferencesApi';
 import {
   buildDailySummary,
   loadDailySummaryRawData,
 } from './dailySummaryService';
 import type { DailySummary } from '../types/dailySummary';
-import { getTodayDate } from '../utils/dateUtils';
 
 /**
  * Android widget snapshot contracts mirrored by `parseSnapshot` in the
@@ -91,7 +92,11 @@ export async function pushAndroidMacroSnapshot(
 }
 
 export async function refreshAndroidWidgetsFromServer(): Promise<void> {
-  const date = getTodayDate();
+  const timezone = await ensureTimezoneBootstrapped({ throwOnFailure: true });
+  if (!timezone) {
+    throw new Error('Account timezone is unavailable for widget refresh');
+  }
+  const date = todayInZone(timezone);
   const raw = await loadDailySummaryRawData(date);
   const summary = buildDailySummary(date, raw);
   const snapshots = buildAndroidWidgetSnapshots(summary);

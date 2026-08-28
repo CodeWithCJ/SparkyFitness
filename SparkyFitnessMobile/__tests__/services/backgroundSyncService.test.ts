@@ -8,6 +8,7 @@ import { TimeoutError } from '../../src/utils/concurrency';
 import { AppState, Platform } from 'react-native';
 import * as telemetryBudget from '../../src/services/shared/telemetryBudget';
 import { fetchDailySummary } from '../../src/services/api/dailySummaryApi';
+import { ensureTimezoneBootstrapped } from '../../src/services/api/preferencesApi';
 import { CalorieWidgetBridge } from '../../src/services/CalorieWidgetBridge';
 
 jest.mock('../../src/services/LogService', () => ({
@@ -20,6 +21,10 @@ jest.mock('../../src/services/api/healthDataApi', () => ({
 
 jest.mock('../../src/services/api/dailySummaryApi', () => ({
   fetchDailySummary: jest.fn(),
+}));
+
+jest.mock('../../src/services/api/preferencesApi', () => ({
+  ensureTimezoneBootstrapped: jest.fn(),
 }));
 
 jest.mock('../../src/services/CalorieWidgetBridge', () => ({
@@ -172,6 +177,9 @@ const mockRefreshHealthSyncCache = refreshHealthSyncCache as jest.MockedFunction
 const mockFetchDailySummary = fetchDailySummary as jest.MockedFunction<
   typeof fetchDailySummary
 >;
+const mockEnsureTimezoneBootstrapped = ensureTimezoneBootstrapped as jest.MockedFunction<
+  typeof ensureTimezoneBootstrapped
+>;
 const mockSetCalorieSnapshot =
   CalorieWidgetBridge.setCalorieSnapshot as jest.MockedFunction<
     typeof CalorieWidgetBridge.setCalorieSnapshot
@@ -248,6 +256,7 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
     storage.savePendingHealthSyncCacheRefresh.mockResolvedValue(undefined);
     storage.consumePendingHealthSyncCacheRefresh.mockResolvedValue(false);
     mockFetchDailySummary.mockReset();
+    mockEnsureTimezoneBootstrapped.mockReset().mockResolvedValue('UTC');
     mockSetCalorieSnapshot.mockReset().mockResolvedValue(undefined);
     mockReloadCalorieWidget.mockReset().mockResolvedValue(undefined);
     mockSetMacroSnapshot.mockReset().mockResolvedValue(undefined);
@@ -264,6 +273,29 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
   });
 
   describe('Android widget refresh (#2291)', () => {
+    test('uses the account timezone to select the current server day', async () => {
+      Object.defineProperty(Platform, 'OS', {
+        configurable: true,
+        value: 'android',
+      });
+      healthService.loadHealthPreference.mockResolvedValue(false);
+      mockEnsureTimezoneBootstrapped.mockResolvedValue('Pacific/Kiritimati');
+      mockFetchDailySummary.mockResolvedValue(widgetSummaryResponse);
+
+      await triggerManualSync();
+
+      expect(mockEnsureTimezoneBootstrapped).toHaveBeenCalledWith({
+        throwOnFailure: true,
+      });
+      expect(mockFetchDailySummary).toHaveBeenCalledWith('2024-01-16');
+      expect(JSON.parse(mockSetCalorieSnapshot.mock.calls[0][0])).toMatchObject({
+        date: '2024-01-16',
+      });
+      expect(JSON.parse(mockSetMacroSnapshot.mock.calls[0][0])).toMatchObject({
+        date: '2024-01-16',
+      });
+    });
+
     test('pulls the current server summary after a no-data background run without opening the app', async () => {
       Object.defineProperty(Platform, 'OS', {
         configurable: true,
