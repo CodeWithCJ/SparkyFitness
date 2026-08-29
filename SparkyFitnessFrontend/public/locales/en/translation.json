@@ -2922,7 +2922,23 @@
     "updateEntryButton": "Update Entry",
     "updateLinkedMeal": "Update",
     "mealImages": "Images",
-    "invalidConsumedQuantity": "Quantity consumed must be greater than zero."
+    "invalidConsumedQuantity": "Quantity consumed must be greater than zero.",
+    "servingUnits": {
+      "serving": "serving",
+      "g": "grams (g)",
+      "ml": "milliliters (ml)",
+      "oz": "ounces (oz)",
+      "cup": "cup",
+      "tbsp": "tablespoon (tbsp)",
+      "tsp": "teaspoon (tsp)",
+      "piece": "piece"
+    },
+    "entryTimeOptional": "Time (optional)",
+    "clear": "Clear",
+    "clearTime": "Clear time",
+    "setToCurrentTime": "Set to current local time",
+    "ingredientResolveFailed": "Could not save the ingredient \"{{foodName}}\". Please try again.",
+    "now": "Now"
   },
   "mealPlanCalendar": {
     "title": "Meal Plan",

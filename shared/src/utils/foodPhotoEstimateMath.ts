@@ -195,7 +195,9 @@ export function scaleVariantToGrams(
     return null;
   if (!Number.isFinite(targetGrams) || targetGrams <= 0) return null;
 
-  // 1 variantServingUnit = factor grams.
+  // `getConversionFactor(from, to)` returns how many `from` units make one
+  // `to` unit, so this is variantServingUnits-per-gram — NOT grams per unit.
+  // Hence the division below: 4 oz / (1/28.3495) = 113.4 g.
   const factor = getGramFactor(variantServingUnit, "g");
   if (factor === null || !Number.isFinite(factor) || factor <= 0) return null;
 
@@ -250,6 +252,21 @@ export function roundMacros<T extends PortionMacros | Per100gMacros>(
     rounded[key] = Math.round(rounded[key] * factor) / factor;
   }
   return rounded as T;
+}
+
+/**
+ * Round for storage or the wire, and drop the brand in one step.
+ *
+ * Every caller that serializes macros — the vision tool, the matcher, both
+ * clients — wants exactly this pair, and doing it by hand invites rounding one
+ * value and forgetting the other. Basis is preserved by the argument: pass
+ * per-100 g in, get per-100 g out.
+ */
+export function roundedMacros(
+  macros: PortionMacros | Per100gMacros,
+  decimals = 2,
+): EstimateMacros {
+  return unbrandMacros(roundMacros(macros, decimals));
 }
 
 // --------------------------------------------------------------------------

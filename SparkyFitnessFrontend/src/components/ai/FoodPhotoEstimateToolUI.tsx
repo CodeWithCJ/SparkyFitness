@@ -14,8 +14,7 @@ import {
 import type { ToolCallMessagePartComponent } from '@assistant-ui/react';
 import {
   toPer100g,
-  unbrandMacros,
-  roundMacros,
+  roundedMacros,
   defaultMealTypeForTime,
   todayInZone,
   userHourMinute,
@@ -256,7 +255,7 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
         });
         return;
       }
-      const rounded = unbrandMacros(roundMacros(per100g));
+      const rounded = roundedMacros(per100g);
       items = [
         {
           source: 'new',
@@ -291,7 +290,7 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
         } else {
           const per100g = toPer100g(row.macros, row.grams);
           if (!per100g) continue;
-          const rounded = unbrandMacros(roundMacros(per100g));
+          const rounded = roundedMacros(per100g);
           items.push({
             source: 'new',
             food: {
@@ -650,7 +649,9 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
                   })}
                 </span>
                 <span className="text-[11px] text-muted-foreground mt-0.5 leading-tight">
-                  Grouped in diary + saved to Meals tab
+                  {t('foodPhoto.mode.hintIngredientsAndMeal', {
+                    defaultValue: 'Grouped in diary + saved to Meals tab',
+                  })}
                 </span>
               </button>
 
@@ -672,7 +673,9 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
                   })}
                 </span>
                 <span className="text-[11px] text-muted-foreground mt-0.5 leading-tight">
-                  Individual items without reusable template
+                  {t('foodPhoto.mode.hintIngredientsOnly', {
+                    defaultValue: 'Individual items without reusable template',
+                  })}
                 </span>
               </button>
 
@@ -694,7 +697,9 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
                   })}
                 </span>
                 <span className="text-[11px] text-muted-foreground mt-0.5 leading-tight">
-                  Single merged food item for whole dish
+                  {t('foodPhoto.mode.hintOneFood', {
+                    defaultValue: 'Single merged food item for whole dish',
+                  })}
                 </span>
               </button>
             </div>

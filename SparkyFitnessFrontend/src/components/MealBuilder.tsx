@@ -78,7 +78,10 @@ interface MealBuilderProps {
   initialEntryTime?: string | null;
 }
 
-/** Long-form labels for the shared meal unit list, which carries bare keys. */
+/**
+ * Long-form labels for the shared meal unit list, which carries bare keys.
+ * The English text is the i18n default, so an untranslated locale still reads.
+ */
 const MEAL_SERVING_UNIT_LABELS: Record<MealServingUnit, string> = {
   serving: 'serving',
   g: 'grams (g)',
@@ -771,8 +774,19 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           variant_id: created.variants?.[0]?.id || undefined,
         });
       } catch (err) {
+        // Pushing the unresolved row and carrying on would save a meal whose
+        // ingredient has no food_id — silently unlinked, reported as success,
+        // and impossible for the user to notice. Stop and say which one.
         error(loggingLevel, 'Failed to create food for meal ingredient:', err);
-        resolvedFoods.push(mf);
+        toast({
+          title: t('mealBuilder.errorTitle', 'Error'),
+          description: t('mealBuilder.ingredientResolveFailed', {
+            foodName: mf.food_name,
+            defaultValue: `Could not save the ingredient "${mf.food_name}". Please try again.`,
+          }),
+          variant: 'destructive',
+        });
+        return;
       }
     }
 
@@ -1283,7 +1297,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             <SelectContent>
               {MEAL_SERVING_UNITS.map((unit) => (
                 <SelectItem key={unit} value={unit}>
-                  {MEAL_SERVING_UNIT_LABELS[unit]}
+                  {t(`mealBuilder.servingUnits.${unit}`, {
+                    defaultValue: MEAL_SERVING_UNIT_LABELS[unit],
+                  })}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1519,7 +1535,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                 <SelectContent>
                   {MEAL_SERVING_UNITS.map((unit) => (
                     <SelectItem key={unit} value={unit}>
-                      {MEAL_SERVING_UNIT_LABELS[unit]}
+                      {t(`mealBuilder.servingUnits.${unit}`, {
+                        defaultValue: MEAL_SERVING_UNIT_LABELS[unit],
+                      })}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -1527,17 +1545,23 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="entryTime">Time (optional)</Label>
+                <Label htmlFor="entryTime">
+                  {t('mealBuilder.entryTimeOptional', {
+                    defaultValue: 'Time (optional)',
+                  })}
+                </Label>
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => setEntryTime('')}
                     disabled={!entryTime}
                     className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-muted-foreground shadow-sm hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-40 disabled:pointer-events-none"
-                    title="Clear time"
+                    title={t('mealBuilder.clearTime', {
+                      defaultValue: 'Clear time',
+                    })}
                   >
                     <X className="h-4 w-4" />
-                    Clear
+                    {t('mealBuilder.clear', { defaultValue: 'Clear' })}
                   </button>
                   <button
                     type="button"
@@ -1548,10 +1572,12 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                       );
                     }}
                     className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-                    title="Set to current local time"
+                    title={t('mealBuilder.setToCurrentTime', {
+                      defaultValue: 'Set to current local time',
+                    })}
                   >
                     <Clock className="h-4 w-4" />
-                    Now
+                    {t('mealBuilder.now', { defaultValue: 'Now' })}
                   </button>
                 </div>
               </div>
@@ -1593,17 +1619,23 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="entryTime">Time (optional)</Label>
+                  <Label htmlFor="entryTime">
+                    {t('mealBuilder.entryTimeOptional', {
+                      defaultValue: 'Time (optional)',
+                    })}
+                  </Label>
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => setEntryTime('')}
                       disabled={!entryTime}
                       className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-muted-foreground shadow-sm hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-40 disabled:pointer-events-none"
-                      title="Clear time"
+                      title={t('mealBuilder.clearTime', {
+                        defaultValue: 'Clear time',
+                      })}
                     >
                       <X className="h-4 w-4" />
-                      Clear
+                      {t('mealBuilder.clear', { defaultValue: 'Clear' })}
                     </button>
                     <button
                       type="button"
@@ -1614,10 +1646,12 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                         );
                       }}
                       className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-                      title="Set to current local time"
+                      title={t('mealBuilder.setToCurrentTime', {
+                        defaultValue: 'Set to current local time',
+                      })}
                     >
                       <Clock className="h-4 w-4" />
-                      Now
+                      {t('mealBuilder.now', { defaultValue: 'Now' })}
                     </button>
                   </div>
                 </div>

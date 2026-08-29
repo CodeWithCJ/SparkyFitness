@@ -16,8 +16,7 @@ import {
   scoreFoodMatch,
   hasUsableMacros,
   scaleVariantToGrams,
-  unbrandMacros,
-  roundMacros,
+  roundedMacros,
   getConversionFactor,
   todayInZone,
   MATCH_MIN_SCORE,
@@ -114,7 +113,7 @@ function toMatch(
     // A variant measured in cups or slices cannot be gram-scaled, so the
     // client hides the swap rather than inventing a number.
     gram_convertible: scaledPortion !== null,
-    scaled: scaledPortion ? unbrandMacros(roundMacros(scaledPortion)) : null,
+    scaled: scaledPortion ? roundedMacros(scaledPortion) : null,
   };
 }
 
@@ -166,7 +165,7 @@ function toProviderMatch(
     match_source: 'provider',
     is_own_food: false,
     gram_convertible: true,
-    scaled: unbrandMacros(roundMacros(scaledPortion)),
+    scaled: roundedMacros(scaledPortion),
   };
 }
 

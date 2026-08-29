@@ -1,4 +1,3 @@
-import { splitDataUrl } from '@/utils/imageResize';
 import { estimateRowsToMealFoods } from '@/utils/foodPhotoEstimate';
 import {
   ingredientDraftReducer,
@@ -22,23 +21,6 @@ const item: FoodPhotoEstimateItem = {
   item_confidence: 'high',
   assumptions: [],
 };
-
-describe('splitDataUrl', () => {
-  it('separates the mime type from the raw base64 the server expects', () => {
-    expect(splitDataUrl('data:image/jpeg;base64,AAAA')).toEqual({
-      mimeType: 'image/jpeg',
-      base64: 'AAAA',
-    });
-  });
-
-  it('returns null for a non-data URL', () => {
-    expect(splitDataUrl('https://example.com/a.jpg')).toBeNull();
-  });
-
-  it('returns null for a data URL that is not base64 encoded', () => {
-    expect(splitDataUrl('data:image/svg+xml,<svg/>')).toBeNull();
-  });
-});
 
 describe('web ingredient draft', () => {
   const init = (items: FoodPhotoEstimateItem[]) =>

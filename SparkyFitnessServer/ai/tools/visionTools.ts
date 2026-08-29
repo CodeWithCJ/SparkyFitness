@@ -12,8 +12,7 @@ import foodPhotoLogService, {
 import {
   asPortionMacros,
   toPer100g,
-  unbrandMacros,
-  roundMacros,
+  roundedMacros,
   type FoodPhotoLogItem,
 } from '@workspace/shared';
 import {
@@ -190,7 +189,7 @@ function buildPhotoLogItems(
     const grams = estimate.totals.total_grams;
     const per100g = toPer100g(asPortionMacros(estimate.totals), grams);
     if (!per100g) return [];
-    const rounded = unbrandMacros(roundMacros(per100g));
+    const rounded = roundedMacros(per100g);
     return [
       {
         source: 'new',
@@ -235,7 +234,7 @@ function buildPhotoLogItems(
     const portion = asPortionMacros(match?.scaled ?? item);
     const per100g = toPer100g(portion, grams);
     if (!per100g) continue;
-    const rounded = unbrandMacros(roundMacros(per100g));
+    const rounded = roundedMacros(per100g);
     items.push({
       source: 'new',
       food: {

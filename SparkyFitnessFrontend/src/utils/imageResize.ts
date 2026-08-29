@@ -69,21 +69,3 @@ export const resizeImageBase64 = (
     img.src = base64Str;
   });
 };
-
-export interface SplitDataUrl {
-  base64: string;
-  mimeType: string;
-}
-
-/**
- * Splits a `data:image/jpeg;base64,AAAA` URL into the parts the photo-estimate
- * endpoint wants: raw base64 with no prefix, plus the mime type as its own
- * field. Returns null for anything that is not a base64 data URL.
- */
-export function splitDataUrl(dataUrl: string): SplitDataUrl | null {
-  const match = /^data:([^;,]+);base64,(.+)$/.exec(dataUrl);
-  const mimeType = match?.[1];
-  const base64 = match?.[2];
-  if (!mimeType || !base64) return null;
-  return { mimeType, base64 };
-}

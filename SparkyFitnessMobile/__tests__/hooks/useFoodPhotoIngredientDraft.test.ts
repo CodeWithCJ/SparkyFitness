@@ -236,6 +236,18 @@ describe('ingredientDraftReducer', () => {
       expect(state.rows[0].macros.calories_kcal).toBe(200);
     });
 
+    it('APPLY_MATCH after a grams edit scales the match to the NEW weight', () => {
+      const state = run([{ ...chicken, match }], [
+        { type: 'SET_GRAMS', id: 'local-0', grams: 290 },
+        { type: 'APPLY_MATCH', id: 'local-0' },
+      ]);
+      // `scaled` is the match at the AI's 145 g. The row now weighs 290 g, so
+      // it must carry double — not the 200 kcal that described half the plate.
+      expect(state.rows[0].grams).toBe(290);
+      expect(state.rows[0].macros.calories_kcal).toBeCloseTo(400, 6);
+      expect(state.rows[0].macros.protein_g).toBeCloseTo(60, 6);
+    });
+
     it('CLEAR_MATCH restores the AI estimate at the current weight', () => {
       const state = run([{ ...chicken, match }], [
         { type: 'APPLY_MATCH', id: 'local-0' },

@@ -226,7 +226,10 @@ describe('attachFoodMatches', () => {
         ])
     );
     const loose = await attachFoodMatches(USER, estimate);
-    expect(loose.items[0].match).not.toBeNull();
+    // toBeDefined, not not.toBeNull: an unmatched item is left untouched and
+    // has no `match` key at all, so not.toBeNull() would pass vacuously.
+    expect(loose.items[0].match).toBeDefined();
+    expect(loose.items[0].match!.food_name).toBe('Chicken Thigh, Roasted');
     expect(loose.items[0].preselect_match).toBe(false);
   });
 
@@ -382,8 +385,14 @@ describe('matchItems', () => {
 
   describe('recency is measured in calendar days', () => {
     it('treats an entry_date as a day, not a UTC instant', async () => {
-      const today = new Date();
-      const iso = today.toISOString().slice(0, 10);
+      // Pin both sides. Deriving the fixture day from the system clock only
+      // agreed with `todayInZone` because the timezone mock happened to still
+      // be 'UTC' from file order — vi.clearAllMocks() does not restore an
+      // implementation set with mockResolvedValue in a later describe block.
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-03-02T23:30:00Z'));
+      loadUserTimezoneMock.mockResolvedValue('UTC');
+      const iso = '2026-03-02';
       findFoodMatchCandidatesMock.mockImplementation(
         async (_u, queries) =>
           new Map([
@@ -393,10 +402,14 @@ describe('matchItems', () => {
             ],
           ])
       );
-      const result = await attachFoodMatches(USER, estimate);
-      // Same calendar day must count as recent regardless of the hour the
-      // estimate runs; the old millisecond maths flipped this near midnight.
-      expect(result.items[0].match!.match_score).toBeGreaterThan(0.9);
+      try {
+        const result = await attachFoodMatches(USER, estimate);
+        // Same calendar day must count as recent regardless of the hour the
+        // estimate runs; the old millisecond maths flipped this near midnight.
+        expect(result.items[0].match!.match_score).toBeGreaterThan(0.9);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('ignores a malformed last_used instead of scoring it as ancient', async () => {
@@ -415,7 +428,10 @@ describe('matchItems', () => {
           ])
       );
       const result = await attachFoodMatches(USER, estimate);
-      expect(result.items[0].match).not.toBeNull();
+      // The candidate must survive the malformed date, not merely be "not
+      // null" — an unmatched item is `undefined`, which passes not.toBeNull().
+      expect(result.items[0].match).toBeDefined();
+      expect(result.items[0].match!.food_name).toBe('Chicken Thigh');
     });
   });
 });
@@ -636,6 +652,7 @@ describe('recency uses the user calendar day, not UTC', () => {
         new Map([[queries[0].key, [candidate({ query_key: queries[0].key })]]])
     );
     const result = await attachFoodMatches(USER, estimate);
-    expect(result.items[0].match).not.toBeNull();
+    expect(result.items[0].match).toBeDefined();
+    expect(result.items[0].match!.food_name).toBe('Chicken Thigh');
   });
 });

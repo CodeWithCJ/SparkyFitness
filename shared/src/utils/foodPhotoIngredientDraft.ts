@@ -324,13 +324,21 @@ export function ingredientDraftReducer(
         // and one whose scaled nutrition is all zeros has nothing worth
         // applying — in both cases there is nothing to swap in.
         if (!match?.scaled) return row;
+        // `match.scaled` is the matched variant's nutrition at the weight the
+        // AI estimated (`row.aiGrams`) — the server scales it once, before the
+        // user can touch anything. If the grams were edited first, assigning it
+        // straight across would leave the row claiming its new weight while
+        // carrying the old weight's macros. SET_GRAMS and RECALC_FROM_GRAMS
+        // both treat `scaled` as an aiGrams-basis value; do the same here.
+        const base = asPortionMacros(match.scaled);
+        const scaled = scalePortionMacros(base, row.aiGrams, row.grams);
         return {
           ...row,
           match,
           matchApplied: true,
           manualOverride: false,
           name: match.food_name,
-          macros: asPortionMacros(match.scaled),
+          macros: scaled ?? base,
         };
       });
 

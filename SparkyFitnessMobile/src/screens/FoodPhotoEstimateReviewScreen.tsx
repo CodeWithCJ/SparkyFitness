@@ -13,8 +13,7 @@ import { useCSSVariable } from 'uniwind';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   toPer100g,
-  unbrandMacros,
-  roundMacros,
+  roundedMacros,
   getConversionFactor,
   ingredientRowFromPickedFood,
   MEAL_SERVING_UNITS,
@@ -356,7 +355,7 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
 
       const per100g = toPer100g(row.macros, row.grams);
       if (!per100g) continue;
-      const rounded = unbrandMacros(roundMacros(per100g));
+      const rounded = roundedMacros(per100g);
       items.push({
         source: 'new',
         food: {

@@ -170,6 +170,23 @@ export const foodPhotoLogRequestSchema = z
       });
     }
 
+    // `serving_unit: 'serving'` implies `serving_size: 1` — one serving is
+    // tautologically one serving, and `mealService.normalizeServingFields`
+    // rewrites it to 1 on create regardless. Accepting any other size here
+    // lets the route fold it into `quantityScale` against a template that
+    // does not record it, so re-logging one serving returns the wrong amount.
+    if (
+      data.serving_unit === MEAL_SERVING_UNIT_DEFAULT &&
+      data.serving_size !== 1
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "serving_size must be 1 when serving_unit is 'serving'; state the yield in total_servings.",
+        path: ["serving_size"],
+      });
+    }
+
     if (data.mode !== "combined") return;
 
     if (
