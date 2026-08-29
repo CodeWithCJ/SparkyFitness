@@ -80,10 +80,15 @@ import {
   ENABLE_TOOLS_TOOL_NAME,
   ASK_USER_TOOL_NAME,
   type ChatToolProfile,
+  type ToolBuildContext,
 } from '../ai/tools/index.js';
 import { CATEGORY_SUMMARIES } from '../ai/tools/metaTools.js';
 import { readFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
+import {
+  createFoodPhotoEstimateSink,
+  FOOD_PHOTO_ESTIMATE_PART_TYPE,
+} from '../ai/tools/foodPhotoEstimateSink.js';
 import path from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -505,7 +510,9 @@ async function prepareChatContext(
   // auto-classified selection stays self-healing (escalation tool + widening
   // prepareStep) since there's no human-set limit to respect.
   categoriesAreManual = false,
-  serviceSystemPrompt?: string | null
+  serviceSystemPrompt?: string | null,
+  latestImageDataUrl?: string | null,
+  serviceConfigId?: string | null
 ) {
   const { chatTz, customCategoriesList } =
     await chatContextInputsCache.getOrLoad(authenticatedUserId, async () => {
@@ -559,6 +566,16 @@ async function prepareChatContext(
   let activeToolNames: string[] | undefined;
   let prepareStep: ReturnType<typeof buildEscalationPrepareStep> | undefined;
 
+  // Catches the structured estimate if this turn analyses a food photo, so the
+  // numbers can be persisted and logged verbatim instead of the model retyping
+  // them one food at a time. Per-turn: two users' turns share this process.
+  const foodPhotoEstimateSink = createFoodPhotoEstimateSink();
+  const toolBuildContext: ToolBuildContext = {
+    foodPhotoEstimateSink,
+    latestImageDataUrl,
+    serviceConfigId,
+  };
+
   if (categoriesAreManual) {
     tools = buildChatbotTools(
       authenticatedUserId,
@@ -568,12 +585,17 @@ async function prepareChatContext(
       toolCategories,
       // Quick-reply chips: full profile only (the small local models 'core'
       // exists for pick tools unreliably from a wider surface).
-      toolProfile === 'full'
+      toolProfile === 'full',
+      toolBuildContext
     );
     activeToolNames = undefined; // every composed tool is sent
     prepareStep = undefined; // no mid-request widening
   } else {
-    const surface = buildChatToolSurface(authenticatedUserId, chatTz);
+    const surface = buildChatToolSurface(
+      authenticatedUserId,
+      chatTz,
+      toolBuildContext
+    );
     tools = surface.tools;
     activeToolNames = [
       ...new Set(
@@ -633,6 +655,10 @@ async function prepareChatContext(
     activeToolNames,
     prepareStep,
     toolProfile,
+    // Returned so onFinish can persist whatever the vision tool captured this
+    // turn. The tools close over it, but they are built here and the message
+    // is saved in processChatMessageStream.
+    foodPhotoEstimateSink,
   };
 }
 
@@ -1166,6 +1192,39 @@ function toCoreMessages(messages: ChatMessage[]): LlmMessage[] {
   });
 }
 
+/**
+ * Extracts the latest image data URL or base64 payload from the most recent
+ * user turn in the conversation history, if any.
+ */
+function extractLatestImageDataUrl(messages: ChatMessage[]): string | null {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const msg = messages[i];
+    if (msg.role !== 'user') continue;
+    const partsSource = Array.isArray(msg.parts)
+      ? msg.parts
+      : Array.isArray(msg.content)
+        ? (msg.content as ChatMessagePart[])
+        : null;
+    if (!partsSource) continue;
+    for (const part of partsSource) {
+      if (
+        part.type === 'image' ||
+        part.type === 'image_url' ||
+        (part.type === 'file' &&
+          (part.mimeType?.startsWith('image/') ||
+            part.mediaType?.startsWith('image/') ||
+            part.url?.startsWith('data:image/')))
+      ) {
+        const url = part.image_url?.url || part.image || part.url;
+        if (typeof url === 'string' && url.trim().length > 0) {
+          return url.trim();
+        }
+      }
+    }
+  }
+  return null;
+}
+
 // Applies the context-window controls in order: drop trailing empty assistant
 // messages some clients send, strip historical images, trim to the profile's
 // token budget, and ensure the window starts with a user message (some models
@@ -1289,15 +1348,22 @@ function extractMessageText(msg: ChatMessage): string {
 // True when a message carries an image part. Deterministic signal (unlike
 // text keywords or the LLM fallback, an attached image is unambiguous), so
 // it's applied directly rather than routed through classification.
-function hasImageParts(msg: ChatMessage): boolean {
+export function hasImageParts(msg: ChatMessage): boolean {
   const partsSource = Array.isArray(msg.parts)
     ? msg.parts
     : Array.isArray(msg.content)
       ? (msg.content as ChatMessagePart[])
       : null;
   return (
-    partsSource?.some((p) => p.type === 'image' || p.type === 'image_url') ??
-    false
+    partsSource?.some(
+      (p) =>
+        p.type === 'image' ||
+        p.type === 'image_url' ||
+        (p.type === 'file' &&
+          (p.mimeType?.startsWith('image/') ||
+            p.mediaType?.startsWith('image/') ||
+            p.url?.startsWith('data:image/')))
+    ) ?? false
   );
 }
 
@@ -1331,12 +1397,14 @@ async function classifyUserIntent(
   const text = extractMessageText(lastUserMessage);
 
   // 1. Deterministic + keyword signals (instant, 0ms). An attached image
-  // always implies vision (+ food, the dominant meal-photo case) regardless
-  // of accompanying text.
+  // on the current turn or recent turns in the active conversation always implies
+  // vision (+ food), ensuring follow-up logging turns have vision tools like
+  // sparky_log_food_photo loaded.
   const matchedCategories = new Set<ChatToolCategorySlug>(
     classifyByKeywords(text)
   );
-  if (hasImageParts(lastUserMessage)) {
+  const hasRecentImage = messages.slice(-4).some((m) => hasImageParts(m));
+  if (hasRecentImage || hasImageParts(lastUserMessage)) {
     matchedCategories.add('vision');
     matchedCategories.add('food');
   }
@@ -1488,6 +1556,7 @@ async function processChatMessage(
       );
     }
 
+    const latestImageDataUrl = extractLatestImageDataUrl(messages);
     const {
       systemPromptContent,
       tools,
@@ -1500,7 +1569,9 @@ async function processChatMessage(
       aiService.chat_tool_profile,
       activeCategories,
       categoriesAreManual,
-      aiService.system_prompt
+      aiService.system_prompt,
+      latestImageDataUrl,
+      aiService.id
     );
 
     const chatProviderOptions = buildChatProviderOptions(
@@ -2026,19 +2097,23 @@ async function processChatMessageStream(
       );
     }
 
+    const latestImageDataUrl = extractLatestImageDataUrl(messages);
     const {
       systemPromptContent,
       tools,
       activeToolNames,
       prepareStep,
       toolProfile,
+      foodPhotoEstimateSink,
     } = await prepareChatContext(
       authenticatedUserId,
       aiService.service_type,
       aiService.chat_tool_profile,
       activeCategories,
       categoriesAreManual,
-      aiService.system_prompt
+      aiService.system_prompt,
+      latestImageDataUrl,
+      aiService.id
     );
 
     const chatProviderOptions = buildChatProviderOptions(
@@ -2153,6 +2228,12 @@ async function processChatMessageStream(
             log('error', 'Failed to save user chat history:', err)
           );
 
+        // A photo estimate analysed this turn is persisted with the message.
+        // Asking the user how to save it always ends the turn, so their answer
+        // arrives in a fresh one — and chat history strips images, so without
+        // this the numbers would be gone and the photo unrepeatable.
+        const capturedEstimate = foodPhotoEstimateSink.get();
+
         // A turn that ends on a quick-reply call carries the question in the
         // tool call, so it must be persisted too — otherwise the chips (and the
         // question they answer) vanish on reload, and the reloaded transcript
@@ -2161,7 +2242,7 @@ async function processChatMessageStream(
           (call) => call.toolName === ASK_USER_TOOL_NAME
         );
 
-        if (!text.trim() && !askCall) {
+        if (!text.trim() && !askCall && !capturedEstimate) {
           log(
             'warn',
             `Skipping empty assistant chat history for user ${userId} (finishReason: ${finishReason})`
@@ -2171,6 +2252,12 @@ async function processChatMessageStream(
 
         const assistantParts: Record<string, unknown>[] = [];
         if (text.trim()) assistantParts.push({ type: 'text', text });
+        if (capturedEstimate) {
+          assistantParts.push({
+            type: FOOD_PHOTO_ESTIMATE_PART_TYPE,
+            data: capturedEstimate,
+          });
+        }
         if (askCall) {
           assistantParts.push({
             type: ASK_USER_PART_TYPE,

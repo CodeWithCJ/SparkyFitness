@@ -28,7 +28,10 @@
       "\\.(css|less|sass|scss)$": "identity-obj-proxy",
       "^@/(.*)$": "<rootDir>/src/$1",
       "^@workspace/shared$": "<rootDir>/../shared/src/index.ts",
-      "^@workspace/shared/(.*)$": "<rootDir>/../shared/src/$1"
+      "^@workspace/shared/(.*)$": "<rootDir>/../shared/src/$1",
+      "^better-auth$": "<rootDir>/src/tests/stubs/betterAuth.ts",
+      "^better-auth/(.*)$": "<rootDir>/src/tests/stubs/betterAuth.ts",
+      "^@better-auth/(.*)$": "<rootDir>/src/tests/stubs/betterAuth.ts"
     },
     "transform": {
       "^.+\\.tsx?$": [

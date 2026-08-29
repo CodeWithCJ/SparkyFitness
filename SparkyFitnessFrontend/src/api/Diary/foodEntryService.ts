@@ -1,3 +1,7 @@
+import type {
+  FoodPhotoLogRequest,
+  FoodPhotoLogResponse,
+} from '@workspace/shared';
 import { apiCall } from '../api';
 import { buildImageFormData } from '../imageRequest';
 import type { MealFood } from '@/types/meal';
@@ -330,5 +334,18 @@ export const clearFoodEntryMealImage = async (
 ): Promise<FoodEntryMeal> => {
   return await apiCall(`/food-entry-meals/${entryId}/image`, {
     method: 'DELETE',
+  });
+};
+
+/**
+ * Logs a reviewed AI photo estimate in one transactional request.
+ * `apiCall` already attaches `X-Meal-Model-Version`.
+ */
+export const createPhotoLoggedMeal = async (
+  payload: FoodPhotoLogRequest
+): Promise<FoodPhotoLogResponse> => {
+  return apiCall('/food-entry-meals/from-photo-estimate', {
+    method: 'POST',
+    body: payload,
   });
 };

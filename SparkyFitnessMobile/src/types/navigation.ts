@@ -2,6 +2,7 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type {
   FoodPhotoEstimateResponse,
+  FoodPhotoLogItem,
   IndividualSessionResponse,
   PresetSessionResponse,
   SharedPregnancy,
@@ -264,6 +265,18 @@ declare global {
 export type RootStackScreenProps<T extends keyof RootStackParamList> =
   NativeStackScreenProps<RootStackParamList, T>;
 
+/**
+ * How a reviewed photo estimate is saved.
+ *
+ * The two ingredient options render an identical diary row; they differ only in
+ * whether a reusable meal template is created, which is what lets the plate be
+ * re-logged later without another photo.
+ */
+export type SaveMode =
+  | 'ingredients_and_meal'
+  | 'ingredients_only'
+  | 'one_food';
+
 export type FoodPhotoFlowParamList = {
   Improve: {
     date?: string;
@@ -285,12 +298,54 @@ export type FoodPhotoFlowParamList = {
     /** Preserved when the photo flow was started from a meal detail screen. */
     mealTypeId?: string;
   };
-  LogEntry: {
-    date?: string;
-    saveFoodPayload: SaveFoodPayload;
-    /** Preselected meal type when the flow was started from a meal detail. */
-    mealTypeId?: string;
-  };
+  /**
+   * Discriminated on `mode`, because the two log shapes carry genuinely
+   * different data: `combined` is the original single-food path, `grouped`
+   * carries the reviewed ingredient rows straight to the batch log endpoint.
+   */
+  LogEntry:
+    | {
+        date?: string;
+        /** Preselected meal type when the flow was started from a meal detail. */
+        mealTypeId?: string;
+        mode: 'combined';
+        saveFoodPayload: SaveFoodPayload;
+      }
+    | {
+        date?: string;
+        mealTypeId?: string;
+        mode: 'grouped';
+        /** Meal name for the ad-hoc food_entry_meals parent. */
+        mealName: string;
+        description?: string;
+        ingredients: FoodPhotoLogItem[];
+        /** Also save the plate as a reusable meal template. */
+        saveAsMeal: boolean;
+        /**
+         * How the dish divides and how much of it is being logged. `ingredients`
+         * always describes the WHOLE dish; the server logs
+         * `consumedQuantity / (servingSize * totalServings)` of it and keeps the
+         * whole dish in the reusable meal.
+         */
+        servingSize: number;
+        servingUnit: string;
+        totalServings: number;
+        consumedQuantity: number;
+        /**
+         * Nutrition as reviewed, for the confirmation recap. Items matched to a
+         * saved food carry no nutrition of their own (the server snapshots it
+         * from the database), so the recap cannot be summed from `ingredients`.
+         */
+        nutrition: {
+          grams: number;
+          calories: number;
+          protein: number;
+          carbs: number;
+          fat: number;
+          fiber: number;
+          sugars: number;
+        };
+      };
 };
 
 export type FoodPhotoFlowScreenProps<T extends keyof FoodPhotoFlowParamList> =
