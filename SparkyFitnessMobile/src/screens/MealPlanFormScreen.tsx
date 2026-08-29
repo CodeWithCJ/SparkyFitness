@@ -1,22 +1,23 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
-import BottomSheetPicker, { type PickerOption } from '../components/BottomSheetPicker';
-import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
 import { FooterSaveBar } from '../components/FormScreenChrome';
 import FormInput from '../components/FormInput';
 import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
 import Button from '../components/ui/Button';
 import Switch from '../components/ui/Switch';
+import { useMealPlanNutrition } from '../hooks/useMealPlanNutrition';
 import { useMealTypes } from '../hooks/useMealTypes';
 import { useCreateMealPlan, useUpdateMealPlan } from '../hooks/useMealPlans';
 import { useMeals } from '../hooks/useMeals';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { consumePendingMealPlanSelection } from '../services/mealPlanSelection';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type {
   MealPlanDraft,
@@ -24,50 +25,54 @@ import type {
   MealPlanValidationErrors,
 } from '../types/mealPlans';
 import type { RootStackScreenProps } from '../types/navigation';
-import { formatDateLabel, toLocalDateString } from '../utils/dateUtils';
+import { toLocalDateString } from '../utils/dateUtils';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
+import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
 import {
   buildMealPlanPayload,
+  calculateMealPlanDayNutrition,
   createMealAssignment,
   createMealPlanDraft,
   validateMealPlanDraft,
+  type MealPlanNutritionTotals,
 } from '../utils/mealPlanForm';
 
 type MealPlanFormScreenProps = RootStackScreenProps<'MealPlanForm'>;
 
-interface DateFieldProps {
+interface NutritionStatProps {
+  accessibilityLabel: string;
   label: string;
-  date: string;
-  emptyLabel?: string;
-  onPress: () => void;
-  formattedDate: string;
+  value: string;
+  color: string;
 }
 
-const DateField: React.FC<DateFieldProps> = ({ label, date, emptyLabel, onPress, formattedDate }) => (
-  <View className="flex-1">
-    <Text className="text-sm font-medium text-text-secondary mb-2">{label}</Text>
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      className="min-h-11 px-3 py-2.5 rounded-lg border border-border-subtle bg-raised flex-row items-center justify-between"
-      onPress={onPress}
-    >
-      <Text className={date ? 'text-base text-text-primary' : 'text-base text-text-muted'}>
-        {date ? formattedDate : emptyLabel}
-      </Text>
-      <Icon name="calendar" size={18} color="#737373" />
-    </Pressable>
+const NutritionStat: React.FC<NutritionStatProps> = ({ accessibilityLabel, color, label, value }) => (
+  <View className="flex-1 items-center" accessibilityLabel={accessibilityLabel}>
+    <Text className="text-base font-bold" style={{ color }}>{value}</Text>
+    <Text className="text-xs text-text-secondary mt-0.5">{label}</Text>
   </View>
 );
 
+function formatNutritionValue(value: number): string {
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
 const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({ navigation, route }) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
-  const [dangerColor] = useCSSVariable(['--color-icon-danger']) as [string];
+  const [dangerColor, caloriesColor, proteinColor, carbsColor, fatColor] = useCSSVariable([
+    '--color-icon-danger',
+    '--color-cat-orange',
+    '--color-cat-blue',
+    '--color-cat-amber',
+    '--color-cat-purple',
+  ]) as [string, string, string, string, string];
   const template = route.params?.template;
   const initialMeal = route.params?.initialMeal;
   const initialDate = useMemo(() => toLocalDateString(new Date()), []);
+  const initialDay = template?.assignments[0]?.day_of_week ?? (initialMeal ? 1 : new Date().getDay());
   const {
     meals,
     isLoading: isMealsLoading,
@@ -87,34 +92,27 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({ navigation, rou
       return {
         ...initialDraft,
         planName: initialMeal.name,
-        assignments: [createMealAssignment(initialMeal, defaultMealTypeId, 1)],
+        assignments: [createMealAssignment(initialMeal, defaultMealTypeId, initialDay)],
       };
     }
     return initialDraft;
   });
+  const [selectedDay, setSelectedDay] = useState(initialDay);
   const [appliedInitialMealId, setAppliedInitialMealId] = useState<string | null>(() =>
-    !template && initialMeal && defaultMealTypeId ? initialMeal.id : null);
+    !template && initialMeal && defaultMealTypeId ? initialMeal.id : null,
+  );
   const [errors, setErrors] = useState<MealPlanValidationErrors>({});
-  const startCalendarRef = useRef<CalendarSheetRef>(null);
-  const endCalendarRef = useRef<CalendarSheetRef>(null);
   const { createMealPlanAsync, isPending: isCreating } = useCreateMealPlan();
   const { updateMealPlanAsync, isPending: isUpdating } = useUpdateMealPlan(template?.id);
   const isSaving = isCreating || isUpdating;
-  const planningOptionsUnavailable =
-    isMealsLoading ||
-    isMealTypesLoading ||
-    isMealsError ||
-    isMealTypesError ||
-    (!template && (meals.length === 0 || mealTypes.length === 0));
-  const dateLocale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
-  const dayOptions = useMemo<PickerOption<number>[]>(() => [
-    { label: t('mealPlans.weekdays.sunday', { defaultValue: 'Sunday' }), value: 0 },
-    { label: t('mealPlans.weekdays.monday', { defaultValue: 'Monday' }), value: 1 },
-    { label: t('mealPlans.weekdays.tuesday', { defaultValue: 'Tuesday' }), value: 2 },
-    { label: t('mealPlans.weekdays.wednesday', { defaultValue: 'Wednesday' }), value: 3 },
-    { label: t('mealPlans.weekdays.thursday', { defaultValue: 'Thursday' }), value: 4 },
-    { label: t('mealPlans.weekdays.friday', { defaultValue: 'Friday' }), value: 5 },
-    { label: t('mealPlans.weekdays.saturday', { defaultValue: 'Saturday' }), value: 6 },
+  const dayOptions = useMemo(() => [
+    t('mealPlans.weekdays.sunday', { defaultValue: 'Sunday' }),
+    t('mealPlans.weekdays.monday', { defaultValue: 'Monday' }),
+    t('mealPlans.weekdays.tuesday', { defaultValue: 'Tuesday' }),
+    t('mealPlans.weekdays.wednesday', { defaultValue: 'Wednesday' }),
+    t('mealPlans.weekdays.thursday', { defaultValue: 'Thursday' }),
+    t('mealPlans.weekdays.friday', { defaultValue: 'Friday' }),
+    t('mealPlans.weekdays.saturday', { defaultValue: 'Saturday' }),
   ], [t]);
 
   if (!template && initialMeal && defaultMealTypeId && appliedInitialMealId !== initialMeal.id) {
@@ -124,22 +122,65 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({ navigation, rou
       planName: current.planName || initialMeal.name,
       assignments: current.assignments.length > 0
         ? current.assignments
-        : [createMealAssignment(initialMeal, defaultMealTypeId, 1)],
+        : [createMealAssignment(initialMeal, defaultMealTypeId, initialDay)],
     }));
   }
 
-  const mealOptions = useMemo(
-    () => meals.map((meal) => ({ label: meal.name, value: meal.id })),
-    [meals],
+  useFocusEffect(
+    useCallback(() => {
+      const selection = consumePendingMealPlanSelection();
+      if (!selection) return;
+      setSelectedDay(selection.assignment.day_of_week);
+      setDraft((current) => {
+        if (selection.assignmentIndex === undefined) {
+          return {
+            ...current,
+            assignments: [...current.assignments, selection.assignment],
+          };
+        }
+        if (!current.assignments[selection.assignmentIndex]) return current;
+        return {
+          ...current,
+          assignments: current.assignments.map((assignment, index) =>
+            index === selection.assignmentIndex ? selection.assignment : assignment),
+        };
+      });
+      setErrors((current) => ({ ...current, assignments: undefined }));
+    }, []),
   );
-  const mealTypeOptions = useMemo(
-    () => mealTypes.map((mealType) => ({ label: mealType.name, value: mealType.id })),
-    [mealTypes],
+
+  const {
+    resolveNutrition,
+    isLoading: isNutritionLoading,
+    isError: isNutritionError,
+    refetch: refetchNutrition,
+  } = useMealPlanNutrition(draft.assignments, meals);
+  const planningOptionsUnavailable =
+    isMealsLoading
+    || isMealsError
+    || isMealTypesLoading
+    || isMealTypesError
+    || isNutritionLoading
+    || isNutritionError
+    || mealTypes.length === 0;
+  const resolvedAssignments = useMemo(
+    () => draft.assignments.map((assignment) => ({
+      ...assignment,
+      nutrition: resolveNutrition(assignment),
+    })),
+    [draft.assignments, resolveNutrition],
+  );
+  const dayTotals = useMemo(
+    () => calculateMealPlanDayNutrition(resolvedAssignments, selectedDay),
+    [resolvedAssignments, selectedDay],
   );
 
   const updateDraft = useCallback(<K extends keyof MealPlanDraft>(key: K, value: MealPlanDraft[K]) => {
     setDraft((current) => ({ ...current, [key]: value }));
-    setErrors((current) => ({ ...current, [key === 'planName' ? 'planName' : key === 'startDate' ? 'startDate' : key === 'endDate' ? 'endDate' : 'assignments']: undefined }));
+    setErrors((current) => ({
+      ...current,
+      [key === 'planName' ? 'planName' : key === 'startDate' ? 'startDate' : key === 'endDate' ? 'endDate' : 'assignments']: undefined,
+    }));
   }, []);
 
   const updateAssignment = useCallback((index: number, next: MealPlanDraftAssignment) => {
@@ -151,29 +192,6 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({ navigation, rou
     setErrors((current) => ({ ...current, assignments: undefined }));
   }, []);
 
-  const addMeal = useCallback(() => {
-    const meal = meals[0];
-    const mealTypeId = defaultMealTypeId ?? mealTypes[0]?.id;
-    if (!meal || !mealTypeId) {
-      Toast.show({
-        type: 'error',
-        text1: t('mealPlans.assignmentUnavailable', { defaultValue: 'A reusable meal and meal type are required' }),
-      });
-      return;
-    }
-    setDraft((current) => ({
-      ...current,
-      assignments: [...current.assignments, createMealAssignment(meal, mealTypeId, 1)],
-    }));
-    setErrors((current) => ({ ...current, assignments: undefined }));
-  }, [defaultMealTypeId, mealTypes, meals, t]);
-
-  const changeMeal = useCallback((index: number, assignment: MealPlanDraftAssignment, mealId: string) => {
-    const meal = meals.find((candidate) => candidate.id === mealId);
-    if (!meal) return;
-    updateAssignment(index, createMealAssignment(meal, assignment.meal_type_id, assignment.day_of_week));
-  }, [meals, updateAssignment]);
-
   const removeAssignment = useCallback((index: number) => {
     setDraft((current) => ({
       ...current,
@@ -181,19 +199,33 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({ navigation, rou
     }));
   }, []);
 
+  const openUnifiedSearch = useCallback((
+    mealTypeId: string,
+    mealTypeName: string,
+    assignmentIndex?: number,
+  ) => {
+    navigation.navigate('FoodSearch', {
+      pickerMode: 'meal-plan',
+      mealPlanTarget: {
+        dayOfWeek: selectedDay,
+        mealTypeId,
+        mealTypeName,
+        ...(assignmentIndex === undefined ? {} : { assignmentIndex }),
+      },
+    });
+  }, [navigation, selectedDay]);
+
   const save = useCallback(async () => {
     const nextErrors = validateMealPlanDraft(draft);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
-
     try {
-      const payload = buildMealPlanPayload(draft);
       const currentClientDate = toLocalDateString(new Date());
-      if (template) {
-        await updateMealPlanAsync(payload, currentClientDate);
-      } else {
-        await createMealPlanAsync(payload, currentClientDate);
-      }
+      const payload = buildMealPlanPayload(template
+        ? draft
+        : { ...draft, startDate: currentClientDate });
+      if (template) await updateMealPlanAsync(payload, currentClientDate);
+      else await createMealPlanAsync(payload, currentClientDate);
       Toast.show({
         type: 'success',
         text1: template
@@ -213,8 +245,8 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({ navigation, rou
   }, [createMealPlanAsync, draft, navigation, t, template, updateMealPlanAsync]);
 
   const retryPlanningOptions = useCallback(() => {
-    void Promise.all([refetchMeals(), refetchMealTypes()]);
-  }, [refetchMealTypes, refetchMeals]);
+    void Promise.all([refetchMeals(), refetchMealTypes(), refetchNutrition()]);
+  }, [refetchMealTypes, refetchMeals, refetchNutrition]);
 
   const header = useScreenHeader({
     title: template
@@ -230,163 +262,110 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({ navigation, rou
     },
   });
 
-  if (isMealsLoading || isMealTypesLoading) {
+  if (isMealsLoading || isMealTypesLoading || isNutritionLoading) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}
-      >
+      <View className="flex-1 bg-background" style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}>
         {header}
-        <StatusView
-          loading
-          title={t('mealPlans.loadingPlanningOptions', {
-            defaultValue: 'Loading planning options...',
-          })}
-        />
+        <StatusView loading title={t('mealPlans.loadingPlanningOptions', { defaultValue: 'Loading planning options...' })} />
       </View>
     );
   }
 
-  if (isMealsError || isMealTypesError) {
+  if (isMealsError || isMealTypesError || isNutritionError) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}
-      >
+      <View className="flex-1 bg-background" style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}>
         {header}
         <StatusView
           icon="alert-circle"
           iconTone="danger"
-          title={t('mealPlans.planningOptionsFailed', {
-            defaultValue: 'Failed to load planning options',
-          })}
-          subtitle={t('mealPlans.planningOptionsFailedSubtitle', {
-            defaultValue: 'Check your connection and try again.',
-          })}
-          action={{
-            label: t('common.retry', { defaultValue: 'Retry' }),
-            onPress: retryPlanningOptions,
-            variant: 'primary',
-          }}
+          title={t('mealPlans.planningOptionsFailed', { defaultValue: 'Failed to load planning options' })}
+          subtitle={t('mealPlans.planningOptionsFailedSubtitle', { defaultValue: 'Check your connection and try again.' })}
+          action={{ label: t('common.retry', { defaultValue: 'Retry' }), onPress: retryPlanningOptions, variant: 'primary' }}
         />
       </View>
     );
   }
 
-  if (!template && (meals.length === 0 || mealTypes.length === 0)) {
+  if (mealTypes.length === 0) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}
-      >
+      <View className="flex-1 bg-background" style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}>
         {header}
         <StatusView
           icon="meal"
-          title={t('mealPlans.planningSetupNeeded', {
-            defaultValue: 'Meal planning setup needed',
-          })}
-          subtitle={
-            meals.length === 0
-              ? t('mealPlans.noReusableMeals', {
-                  defaultValue: 'Create a reusable meal before creating a plan.',
-                })
-              : t('mealPlans.noMealTypes', {
-                  defaultValue: 'Add a visible meal type before creating a plan.',
-                })
-          }
-          action={{
-            label: t('common.retry', { defaultValue: 'Retry' }),
-            onPress: retryPlanningOptions,
-          }}
+          title={t('mealPlans.planningSetupNeeded', { defaultValue: 'Meal planning setup needed' })}
+          subtitle={t('mealPlans.noMealTypes', { defaultValue: 'Add a visible meal type before creating a plan.' })}
+          action={{ label: t('common.retry', { defaultValue: 'Retry' }), onPress: retryPlanningOptions }}
         />
       </View>
     );
   }
 
-  const renderMealAssignment = (assignment: MealPlanDraftAssignment, index: number) => {
-    if (assignment.item_type === 'food') {
-      return (
-        <View key={assignment.id ?? `food-${index}`} className="bg-surface rounded-xl p-4 mb-3 border border-border-subtle">
-          <View className="flex-row items-start justify-between">
-            <View className="flex-1 mr-3">
-              <Text className="text-base font-semibold text-text-primary">
-                {assignment.food_name || t('mealPlans.foodAssignment', { defaultValue: 'Food assignment' })}
-              </Text>
-              <Text className="text-sm text-text-secondary mt-1">
-                {dayOptions.find((day) => day.value === assignment.day_of_week)?.label} · {assignment.meal_type || assignment.meal_type_id} · {assignment.quantity} {assignment.unit}
-              </Text>
-            </View>
-            <View className="bg-raised rounded-full px-2.5 py-1">
-              <Text className="text-xs font-semibold text-text-secondary">
-                {t('mealPlans.managedOnWeb', { defaultValue: 'Managed on web' })}
-              </Text>
-            </View>
-          </View>
-          <Text className="text-sm text-text-secondary mt-3">
-            {t('mealPlans.foodPreserved', { defaultValue: 'This food assignment is preserved when you save. Edit it in the web app.' })}
-          </Text>
-        </View>
-      );
-    }
+  const nutritionStats: { key: keyof MealPlanNutritionTotals; label: string; unit: string; color: string }[] = [
+    { key: 'calories', label: t('mealPlans.caloriesLabel', { defaultValue: 'Calories' }), unit: 'kcal', color: caloriesColor },
+    { key: 'protein', label: t('mealPlans.proteinLabel', { defaultValue: 'Protein' }), unit: 'g', color: proteinColor },
+    { key: 'carbs', label: t('mealPlans.carbsLabel', { defaultValue: 'Carbs' }), unit: 'g', color: carbsColor },
+    { key: 'fat', label: t('mealPlans.fatLabel', { defaultValue: 'Fat' }), unit: 'g', color: fatColor },
+  ];
 
-    const selectedMeal = meals.find((meal) => meal.id === assignment.meal_id);
+  const renderAssignment = (
+    assignment: MealPlanDraftAssignment,
+    index: number,
+    mealTypeName: string,
+  ) => {
+    const name = assignment.item_type === 'meal' ? assignment.meal_name : assignment.food_name;
+    const totals = calculateMealPlanDayNutrition([assignment], selectedDay);
     return (
-      <View key={assignment.id ?? `meal-${index}`} className="bg-surface rounded-xl p-4 mb-3 border border-border-subtle">
-        <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-base font-semibold text-text-primary">
-            {t('mealPlans.mealAssignment', { defaultValue: 'Meal assignment' })}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('mealPlans.removeAssignment', { defaultValue: 'Remove meal assignment' })}
-            hitSlop={8}
-            onPress={() => removeAssignment(index)}
-          >
-            <Icon name="trash" size={19} color={dangerColor} />
-          </Pressable>
+      <View key={assignment.id ?? `${assignment.item_type}-${index}`} className="border-t border-border-subtle pt-3 mt-3">
+        <View className="flex-row items-start justify-between">
+          <View className="flex-1 mr-3">
+            <View className="flex-row items-center gap-2">
+              <Text className="text-base font-semibold text-text-primary">{name}</Text>
+              <View className="bg-raised rounded-full px-2 py-0.5">
+                <Text className="text-xs font-medium text-text-secondary">
+                  {assignment.item_type === 'meal'
+                    ? t('mealPlans.mealBadge', { defaultValue: 'Meal' })
+                    : t('mealPlans.foodBadge', { defaultValue: 'Food' })}
+                </Text>
+              </View>
+            </View>
+            {assignment.nutrition ? (
+              <Text className="text-xs text-text-secondary mt-1">
+                {t('mealPlans.nutritionLine', {
+                  defaultValue: '{{calories}} kcal · {{protein}} g P · {{carbs}} g C · {{fat}} g F',
+                  calories: formatNutritionValue(totals.calories),
+                  protein: formatNutritionValue(totals.protein),
+                  carbs: formatNutritionValue(totals.carbs),
+                  fat: formatNutritionValue(totals.fat),
+                })}
+              </Text>
+            ) : null}
+          </View>
+          <View className="flex-row items-center gap-4">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('mealPlans.replaceAssignmentFor', { defaultValue: 'Replace {{name}}', name: name ?? '' })}
+              hitSlop={8}
+              onPress={() => openUnifiedSearch(assignment.meal_type_id, mealTypeName, index)}
+            >
+              <Icon name="pencil" size={19} color={proteinColor} />
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('mealPlans.removeAssignmentFor', { defaultValue: 'Remove {{name}}', name: name ?? '' })}
+              hitSlop={8}
+              onPress={() => removeAssignment(index)}
+            >
+              <Icon name="trash" size={19} color={dangerColor} />
+            </Pressable>
+          </View>
         </View>
-
-        <Text className="text-sm font-medium text-text-secondary mb-2">
-          {t('mealPlans.weekday', { defaultValue: 'Weekday' })}
-        </Text>
-        <BottomSheetPicker<number>
-          value={assignment.day_of_week}
-          options={dayOptions}
-          title={t('mealPlans.selectWeekday', { defaultValue: 'Select weekday' })}
-          onSelect={(day) => updateAssignment(index, { ...assignment, day_of_week: day })}
-        />
-
-        <Text className="text-sm font-medium text-text-secondary mt-4 mb-2">
-          {t('mealPlans.mealType', { defaultValue: 'Meal type' })}
-        </Text>
-        <BottomSheetPicker<string>
-          value={assignment.meal_type_id}
-          options={mealTypeOptions}
-          title={t('mealPlans.selectMealType', { defaultValue: 'Select meal type' })}
-          onSelect={(mealTypeId) => updateAssignment(index, {
-            ...assignment,
-            meal_type_id: mealTypeId,
-            meal_type: mealTypes.find((mealType) => mealType.id === mealTypeId)?.name ?? null,
-          })}
-        />
-
-        <Text className="text-sm font-medium text-text-secondary mt-4 mb-2">
-          {t('mealPlans.reusableMeal', { defaultValue: 'Reusable meal' })}
-        </Text>
-        <BottomSheetPicker<string>
-          value={assignment.meal_id ?? ''}
-          options={mealOptions}
-          title={t('mealPlans.selectMeal', { defaultValue: 'Select meal' })}
-          onSelect={(mealId) => changeMeal(index, assignment, mealId)}
-        />
-
-        <View className="flex-row items-end mt-4">
+        <View className="flex-row items-end mt-3">
           <View className="flex-1 mr-3">
             <Text className="text-sm font-medium text-text-secondary mb-2">
               {t('mealPlans.quantity', { defaultValue: 'Quantity' })}
             </Text>
             <FormInput
-              accessibilityLabel={t('mealPlans.quantityFor', { defaultValue: 'Quantity for {{name}}', name: selectedMeal?.name || assignment.meal_name || '' })}
+              accessibilityLabel={t('mealPlans.quantityFor', { defaultValue: 'Quantity for {{name}}', name: name ?? '' })}
               keyboardType="decimal-pad"
               value={assignment.quantityText ?? (assignment.quantity > 0 ? String(assignment.quantity) : '')}
               onChangeText={(value) => {
@@ -404,11 +383,6 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({ navigation, rou
             <Text className="text-base text-text-primary">{assignment.unit}</Text>
           </View>
         </View>
-        <Text className="text-xs text-text-secondary mt-2">
-          {t('mealPlans.quantityHint', {
-            defaultValue: 'Use the meal serving unit. For weighed meal prep, enter the amount placed in one container.',
-          })}
-        </Text>
       </View>
     );
   };
@@ -418,31 +392,19 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({ navigation, rou
       {header}
       <KeyboardAwareScrollView
         className="flex-1"
-        contentContainerStyle={{
-          paddingHorizontal: 16,
-          paddingTop: 16,
-          paddingBottom: 24,
-        }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 24 }}
         keyboardShouldPersistTaps="handled"
         bottomOffset={20}
       >
-        <Text className="text-sm font-medium text-text-secondary mb-2">
-          {t('mealPlans.name', { defaultValue: 'Plan name' })}
-        </Text>
+        <Text className="text-sm font-medium text-text-secondary mb-2">{t('mealPlans.name', { defaultValue: 'Plan name' })}</Text>
         <FormInput
           value={draft.planName}
           placeholder={t('mealPlans.namePlaceholder', { defaultValue: 'Meal plan name' })}
           onChangeText={(value) => updateDraft('planName', value)}
         />
-        {errors.planName ? (
-          <Text className="text-sm text-icon-danger mt-1">
-            {t('mealPlans.nameRequired', { defaultValue: 'Plan name is required.' })}
-          </Text>
-        ) : null}
+        {errors.planName ? <Text className="text-sm text-icon-danger mt-1">{t('mealPlans.nameRequired', { defaultValue: 'Plan name is required.' })}</Text> : null}
 
-        <Text className="text-sm font-medium text-text-secondary mt-4 mb-2">
-          {t('mealPlans.description', { defaultValue: 'Description' })}
-        </Text>
+        <Text className="text-sm font-medium text-text-secondary mt-4 mb-2">{t('mealPlans.description', { defaultValue: 'Description' })}</Text>
         <FormInput
           value={draft.description}
           placeholder={t('mealPlans.descriptionPlaceholder', { defaultValue: 'Optional notes about this plan' })}
@@ -451,96 +413,113 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({ navigation, rou
           style={{ minHeight: 84, textAlignVertical: 'top' }}
         />
 
-        <View className="flex-row mt-4 gap-3">
-          <DateField
-            label={t('mealPlans.startDate', { defaultValue: 'Start date' })}
-            date={draft.startDate}
-            formattedDate={formatDateLabel(draft.startDate, t, dateLocale)}
-            onPress={() => startCalendarRef.current?.present()}
-          />
-          <DateField
-            label={t('mealPlans.endDate', { defaultValue: 'End date' })}
-            date={draft.endDate}
-            emptyLabel={t('mealPlans.noEndDate', { defaultValue: 'No end date' })}
-            formattedDate={draft.endDate ? formatDateLabel(draft.endDate, t, dateLocale) : ''}
-            onPress={() => endCalendarRef.current?.present()}
-          />
-        </View>
-        {draft.endDate ? (
-          <Button variant="link" className="self-end px-0 py-2" onPress={() => updateDraft('endDate', '')}>
-            {t('mealPlans.clearEndDate', { defaultValue: 'Clear end date' })}
-          </Button>
-        ) : null}
-        {errors.endDate ? (
-          <Text className="text-sm text-icon-danger mt-1">
-            {t('mealPlans.endBeforeStart', { defaultValue: 'End date cannot be before the start date.' })}
-          </Text>
-        ) : null}
-
         <View className="bg-surface rounded-xl px-4 py-4 mt-4 flex-row items-center justify-between">
           <View className="flex-1 mr-4">
-            <Text className="text-base font-semibold text-text-primary">
-              {t('mealPlans.activePlan', { defaultValue: 'Active plan' })}
-            </Text>
-            <Text className="text-sm text-text-secondary mt-1">
-              {t('mealPlans.activePlanHint', { defaultValue: 'Active plans populate matching future diary days.' })}
-            </Text>
+            <Text className="text-base font-semibold text-text-primary">{t('mealPlans.activePlan', { defaultValue: 'Active plan' })}</Text>
+            <Text className="text-sm text-text-secondary mt-1">{t('mealPlans.activePlanHint', { defaultValue: 'Active plans populate matching future diary days.' })}</Text>
           </View>
-          <Switch
-            accessibilityLabel={t('mealPlans.activePlan', { defaultValue: 'Active plan' })}
-            value={draft.isActive}
-            onValueChange={(value) => updateDraft('isActive', value)}
-          />
+          <Switch accessibilityLabel={t('mealPlans.activePlan', { defaultValue: 'Active plan' })} value={draft.isActive} onValueChange={(value) => updateDraft('isActive', value)} />
         </View>
 
-        <View className="flex-row items-center justify-between mt-6 mb-3">
-          <View className="flex-1 mr-3">
-            <Text className="text-lg font-semibold text-text-primary">
-              {t('mealPlans.assignments', { defaultValue: 'Weekly assignments' })}
-            </Text>
-            <Text className="text-sm text-text-secondary mt-1">
-              {t('mealPlans.assignmentsHint', { defaultValue: 'Choose what amount of a reusable meal should appear on each day.' })}
-            </Text>
-          </View>
-          <Button
-            variant="secondary"
-            disabled={isMealsLoading || isMealTypesLoading}
-            onPress={addMeal}
-            className="px-3 py-2.5"
-            textClassName="text-sm"
-          >
-            {t('mealPlans.addMeal', { defaultValue: 'Add meal' })}
-          </Button>
+        <Text className="text-lg font-semibold text-text-primary mt-6">{t('mealPlans.weeklyPlan', { defaultValue: 'Weekly plan' })}</Text>
+        <Text className="text-sm text-text-secondary mt-1 mb-3">{t('mealPlans.oneDayHint', { defaultValue: 'Choose a day, then add foods or reusable meals to each meal type.' })}</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          {dayOptions.map((label, day) => {
+            const isSelected = day === selectedDay;
+            const hasAssignments = draft.assignments.some((assignment) => assignment.day_of_week === day);
+            return (
+              <Pressable
+                key={label}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isSelected }}
+                onPress={() => setSelectedDay(day)}
+                className={isSelected ? 'min-w-24 rounded-xl bg-accent-primary px-3 py-2.5 items-center' : 'min-w-24 rounded-xl bg-raised px-3 py-2.5 items-center'}
+              >
+                <Text className={isSelected ? 'text-sm font-semibold text-white' : 'text-sm font-semibold text-text-primary'}>{label}</Text>
+                <View className={hasAssignments ? 'w-1.5 h-1.5 rounded-full bg-white mt-1' : 'w-1.5 h-1.5 mt-1'} />
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        <View className="bg-surface rounded-xl px-3 py-4 mt-4 flex-row border border-border-subtle">
+          {nutritionStats.map((stat) => {
+            const value = formatNutritionValue(dayTotals[stat.key]);
+            return (
+              <NutritionStat
+                key={stat.key}
+                accessibilityLabel={t('mealPlans.dailyNutritionAccessibility', {
+                  defaultValue: 'Daily {{nutrient}} {{value}} {{unit}}',
+                  nutrient: stat.label,
+                  value,
+                  unit: stat.unit,
+                })}
+                color={stat.color}
+                label={stat.label}
+                value={`${value} ${stat.unit}`}
+              />
+            );
+          })}
         </View>
 
-        {draft.assignments.map(renderMealAssignment)}
-        {errors.assignments ? (
-          <Text className="text-sm text-icon-danger mb-3">
-            {t('mealPlans.assignmentRequired', { defaultValue: 'Add at least one complete meal assignment.' })}
-          </Text>
-        ) : null}
+        {mealTypes.map((mealType) => {
+          const mealTypeLabel = getMealTypeDisplayLabel(mealType, t);
+          const assignmentEntries = resolvedAssignments
+            .map((assignment, index) => ({ assignment, index }))
+            .filter(({ assignment }) => assignment.day_of_week === selectedDay && assignment.meal_type_id === mealType.id);
+          const sectionTotals = calculateMealPlanDayNutrition(assignmentEntries.map(({ assignment }) => assignment), selectedDay);
+          return (
+            <View key={mealType.id} className="bg-surface rounded-xl px-4 py-4 mt-4 border border-border-subtle">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center gap-2">
+                  <Icon name="meal" size={20} color={proteinColor} />
+                  <Text className="text-lg font-semibold text-text-primary">{mealTypeLabel}</Text>
+                </View>
+                <Text className="text-sm font-semibold text-text-secondary">
+                  {t('mealPlans.caloriesValue', {
+                    defaultValue: '{{value}} kcal',
+                    value: formatNutritionValue(sectionTotals.calories),
+                  })}
+                </Text>
+              </View>
+              <Text
+                className="text-xs text-text-secondary mt-1"
+                accessibilityLabel={t('mealPlans.mealTypeNutritionAccessibility', {
+                  defaultValue: '{{mealType}} total {{calories}} kcal, {{protein}} g protein, {{carbs}} g carbs, {{fat}} g fat',
+                  mealType: mealTypeLabel,
+                  calories: formatNutritionValue(sectionTotals.calories),
+                  protein: formatNutritionValue(sectionTotals.protein),
+                  carbs: formatNutritionValue(sectionTotals.carbs),
+                  fat: formatNutritionValue(sectionTotals.fat),
+                })}
+              >
+                {t('mealPlans.mealTypeMacros', {
+                  defaultValue: '{{protein}} g P · {{carbs}} g C · {{fat}} g F',
+                  protein: formatNutritionValue(sectionTotals.protein),
+                  carbs: formatNutritionValue(sectionTotals.carbs),
+                  fat: formatNutritionValue(sectionTotals.fat),
+                })}
+              </Text>
+              {assignmentEntries.map(({ assignment, index }) => renderAssignment(assignment, index, mealTypeLabel))}
+              <Button
+                variant="secondary"
+                accessibilityLabel={t('mealPlans.addToMealType', { defaultValue: 'Add food or meal to {{mealType}}', mealType: mealTypeLabel })}
+                onPress={() => openUnifiedSearch(mealType.id, mealTypeLabel)}
+                className="mt-4"
+              >
+                {t('mealPlans.addFoodOrMeal', { defaultValue: 'Add food or meal' })}
+              </Button>
+            </View>
+          );
+        })}
 
-        <View className="bg-raised rounded-xl px-4 py-3 mt-1">
-          <Text className="text-sm text-text-secondary">
-            {t('mealPlans.familyNotice', { defaultValue: 'You can schedule your own meals plus family or public meals already visible in your meal library. The plan stays private to this account and does not change meal sharing.' })}
-          </Text>
+        {errors.assignments ? <Text className="text-sm text-icon-danger mt-3">{t('mealPlans.assignmentRequired', { defaultValue: 'Add at least one complete meal assignment.' })}</Text> : null}
+        <View className="bg-raised rounded-xl px-4 py-3 mt-4">
+          <Text className="text-sm text-text-secondary">{t('mealPlans.familyNotice', { defaultValue: 'You can schedule your own meals plus family or public meals already visible in your meal library. The plan stays private to this account and does not change meal sharing.' })}</Text>
         </View>
       </KeyboardAwareScrollView>
 
-      {!usesNativeHeader ? (
-        <FooterSaveBar onPress={() => void save()} busy={isSaving} disabled={isSaving} />
-      ) : null}
-
-      <CalendarSheet
-        ref={startCalendarRef}
-        selectedDate={draft.startDate}
-        onSelectDate={(date) => updateDraft('startDate', date)}
-      />
-      <CalendarSheet
-        ref={endCalendarRef}
-        selectedDate={draft.endDate || draft.startDate}
-        onSelectDate={(date) => updateDraft('endDate', date)}
-      />
+      {!usesNativeHeader ? <FooterSaveBar onPress={() => void save()} busy={isSaving} disabled={isSaving || planningOptionsUnavailable} /> : null}
     </View>
   );
 };

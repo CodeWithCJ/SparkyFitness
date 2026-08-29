@@ -1,5 +1,20 @@
 export type MealPlanItemType = 'food' | 'meal';
 
+export interface MealPlanNutritionSnapshot {
+  servingSize: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+export interface MealPlanPickerTarget {
+  dayOfWeek: number;
+  mealTypeId: string;
+  mealTypeName: string;
+  assignmentIndex?: number;
+}
+
 export interface MealPlanAssignment {
   id?: string;
   day_of_week: number;
@@ -19,6 +34,8 @@ export interface MealPlanDraftAssignment extends Omit<MealPlanAssignment, 'quant
   quantity: number;
   quantityText?: string;
   unit: string;
+  /** Client-only values used for live totals; never included in API payloads. */
+  nutrition?: MealPlanNutritionSnapshot;
 }
 
 export interface MealPlanTemplate {
@@ -40,7 +57,7 @@ export interface SaveMealPlanPayload {
   start_date: string;
   end_date: string | null;
   is_active: boolean;
-  assignments: MealPlanDraftAssignment[];
+  assignments: Omit<MealPlanDraftAssignment, 'quantityText' | 'nutrition'>[];
 }
 
 export interface MealPlanDraft {

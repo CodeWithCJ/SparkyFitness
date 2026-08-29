@@ -13,6 +13,7 @@ import {
   useFoodVariants,
 } from '../../src/hooks/useFoodVariants';
 import { setPendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
+import { setPendingMealPlanSelection } from '../../src/services/mealPlanSelection';
 import { updateFoodEntriesSnapshot } from '../../src/services/api/foodsApi';
 
 const mockPop = jest.fn((count: number) => ({ type: 'POP', payload: { count } }));
@@ -58,6 +59,11 @@ jest.mock('../../src/hooks/useFoodVariants', () => ({
 
 jest.mock('../../src/services/mealBuilderSelection', () => ({
   setPendingMealIngredientSelection: jest.fn(),
+}));
+
+jest.mock('../../src/services/mealPlanSelection', () => ({
+  ...jest.requireActual('../../src/services/mealPlanSelection'),
+  setPendingMealPlanSelection: jest.fn(),
 }));
 
 // The edit path writes through foodsApi directly (not a hook), so without this
@@ -183,6 +189,8 @@ const mockUseFoodVariants =
   useFoodVariants as jest.MockedFunction<typeof useFoodVariants>;
 const mockSetPendingMealIngredientSelection =
   setPendingMealIngredientSelection as jest.MockedFunction<typeof setPendingMealIngredientSelection>;
+const mockSetPendingMealPlanSelection =
+  setPendingMealPlanSelection as jest.MockedFunction<typeof setPendingMealPlanSelection>;
 const mockToast = Toast as unknown as { show: jest.Mock };
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
@@ -354,6 +362,58 @@ describe('FoodFormScreen', () => {
       type: 'POP',
       payload: { count: 2 },
     });
+  });
+
+  it('saves a custom food and returns it to the meal-plan editor', async () => {
+    mockSaveFoodAsync.mockResolvedValue({
+      id: 'saved-food-1',
+      name: 'Custom Meal Food',
+      brand: 'Brand Co',
+      is_custom: true,
+      default_variant: {
+        id: 'saved-variant-1',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 200,
+        protein: 10,
+        carbs: 20,
+        fat: 5,
+      },
+    });
+    const screen = renderScreen({
+      mode: 'create-food',
+      pickerMode: 'meal-plan',
+      returnDepth: 2,
+      mealPlanTarget: {
+        dayOfWeek: 3,
+        mealTypeId: 'lunch',
+        mealTypeName: 'Lunch',
+        assignmentIndex: 2,
+      },
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => expect(mockSetPendingMealPlanSelection).toHaveBeenCalledWith({
+      assignmentIndex: 2,
+      assignment: expect.objectContaining({
+        item_type: 'food',
+        day_of_week: 3,
+        meal_type_id: 'lunch',
+        food_id: 'saved-food-1',
+        variant_id: 'saved-variant-1',
+        quantity: 100,
+        unit: 'g',
+        nutrition: {
+          servingSize: 100,
+          calories: 200,
+          protein: 10,
+          carbs: 20,
+          fat: 5,
+        },
+      }),
+    }));
+    expect(mockAddEntry).not.toHaveBeenCalled();
   });
 
   it('keeps the normal save-and-log flow outside meal-builder mode and pops to top on success', async () => {

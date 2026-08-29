@@ -1,4 +1,5 @@
 import type { Meal } from '../types/meals';
+import { mealToFoodInfo } from '../types/foodInfo';
 import type {
   MealPlanDraft,
   MealPlanDraftAssignment,
@@ -16,6 +17,7 @@ export function createMealAssignment(
   mealTypeId: string,
   dayOfWeek: number,
 ): MealPlanDraftAssignment {
+  const mealInfo = mealToFoodInfo(meal);
   return {
     item_type: 'meal',
     day_of_week: dayOfWeek,
@@ -25,7 +27,42 @@ export function createMealAssignment(
     quantity: meal.serving_size,
     quantityText: String(meal.serving_size),
     unit: meal.serving_unit,
+    nutrition: {
+      servingSize: mealInfo.servingSize,
+      calories: mealInfo.calories,
+      protein: mealInfo.protein,
+      carbs: mealInfo.carbs,
+      fat: mealInfo.fat,
+    },
   };
+}
+
+export interface MealPlanNutritionTotals {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+export function calculateMealPlanDayNutrition(
+  assignments: MealPlanDraftAssignment[],
+  dayOfWeek: number,
+): MealPlanNutritionTotals {
+  return assignments.reduce<MealPlanNutritionTotals>((totals, assignment) => {
+    if (assignment.day_of_week !== dayOfWeek || !assignment.nutrition) {
+      return totals;
+    }
+
+    const scale = assignment.nutrition.servingSize > 0
+      ? assignment.quantity / assignment.nutrition.servingSize
+      : 0;
+    return {
+      calories: totals.calories + assignment.nutrition.calories * scale,
+      protein: totals.protein + assignment.nutrition.protein * scale,
+      carbs: totals.carbs + assignment.nutrition.carbs * scale,
+      fat: totals.fat + assignment.nutrition.fat * scale,
+    };
+  }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
 }
 
 export function createMealPlanDraft(
@@ -101,6 +138,7 @@ export function buildMealPlanPayload(draft: MealPlanDraft): SaveMealPlanPayload 
     assignments: draft.assignments.map((assignment) => {
       const payload = { ...assignment };
       delete payload.quantityText;
+      delete payload.nutrition;
       return payload;
     }),
   };

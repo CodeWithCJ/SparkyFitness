@@ -1,5 +1,6 @@
 import {
   buildMealPlanPayload,
+  calculateMealPlanDayNutrition,
   createMealAssignment,
   createMealPlanDraft,
   validateMealPlanDraft,
@@ -17,7 +18,21 @@ const reusableMeal = {
   total_servings: 4,
   created_at: '2026-08-01T00:00:00.000Z',
   updated_at: '2026-08-01T00:00:00.000Z',
-  foods: [],
+  foods: [{
+    id: 'meal-food-1',
+    food_id: 'food-1',
+    variant_id: 'variant-1',
+    quantity: 400,
+    unit: 'g',
+    food_name: 'Chicken',
+    brand: null,
+    serving_size: 100,
+    serving_unit: 'g',
+    calories: 200,
+    protein: 30,
+    carbs: 10,
+    fat: 5,
+  }],
 };
 
 describe('mealPlanForm', () => {
@@ -31,6 +46,47 @@ describe('mealPlanForm', () => {
       quantity: 350,
       quantityText: '350',
       unit: 'g',
+      nutrition: {
+        servingSize: 350,
+        calories: 200,
+        protein: 30,
+        carbs: 10,
+        fat: 5,
+      },
+    });
+  });
+
+  test('calculates live nutrition for the selected day and scales edited quantities', () => {
+    const mealAssignment = createMealAssignment(reusableMeal, 'lunch', 1);
+    const foodAssignment = {
+      item_type: 'food' as const,
+      day_of_week: 1,
+      meal_type_id: 'breakfast',
+      food_id: 'food-2',
+      variant_id: 'variant-2',
+      food_name: 'Oats',
+      quantity: 80,
+      unit: 'g',
+      nutrition: {
+        servingSize: 40,
+        calories: 150,
+        protein: 5,
+        carbs: 27,
+        fat: 3,
+      },
+    };
+
+    expect(calculateMealPlanDayNutrition([mealAssignment, foodAssignment], 1)).toEqual({
+      calories: 500,
+      protein: 40,
+      carbs: 64,
+      fat: 11,
+    });
+    expect(calculateMealPlanDayNutrition([mealAssignment, foodAssignment], 2)).toEqual({
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
     });
   });
 
@@ -177,5 +233,21 @@ describe('mealPlanForm', () => {
         },
       ],
     });
+  });
+
+  test('removes mobile-only nutrition snapshots from the API payload', () => {
+    const assignment = createMealAssignment(reusableMeal, 'lunch', 1);
+
+    const payload = buildMealPlanPayload({
+      planName: 'Prep week',
+      description: '',
+      startDate: '2026-09-01',
+      endDate: '',
+      isActive: true,
+      assignments: [assignment],
+    });
+
+    expect(payload.assignments[0]).not.toHaveProperty('nutrition');
+    expect(payload.assignments[0]).not.toHaveProperty('quantityText');
   });
 });

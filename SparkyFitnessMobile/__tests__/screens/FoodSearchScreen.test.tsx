@@ -498,6 +498,39 @@ describe('FoodSearchScreen', () => {
     );
   });
 
+  it('keeps foods and meals unified and forwards the target in meal-plan mode', () => {
+    mockUseMealSearch.mockReturnValue({
+      searchResults: [buildMeal()],
+      isSearching: false,
+      isSearchActive: true,
+      isSearchError: false,
+      refetch: jest.fn(),
+    });
+    const mealPlanTarget = {
+      dayOfWeek: 3,
+      mealTypeId: 'lunch',
+      mealTypeName: 'Lunch',
+    };
+    const mealPlanRoute = {
+      key: 'FoodSearch-key',
+      name: 'FoodSearch' as const,
+      params: { pickerMode: 'meal-plan' as const, mealPlanTarget },
+    };
+
+    const screen = renderSearching(mealPlanRoute);
+
+    expect(screen.getByText('Your Meals')).toBeTruthy();
+    fireEvent.press(screen.getByText('Lunch Bowl'));
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      'FoodEntryAdd',
+      expect.objectContaining({
+        pickerMode: 'meal-plan',
+        returnDepth: 2,
+        mealPlanTarget,
+      }),
+    );
+  });
+
   // The Favorites section lives on the LANDING, so the meal-builder test below
   // (which types a query) never sees it — that gap is exactly how favorited
   // meals stayed visible in builder mode.

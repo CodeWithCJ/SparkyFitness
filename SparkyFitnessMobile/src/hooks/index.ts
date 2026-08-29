@@ -86,6 +86,7 @@ export {
   useDuplicateMealPlan,
   useDeleteMealPlan,
 } from './useMealPlans';
+export { useMealPlanNutrition } from './useMealPlanNutrition';
 export { useMealSearch } from './useMealSearch';
 export { useExternalProviders } from './useExternalProviders';
 export { useExternalFoodSearch } from './useExternalFoodSearch';
