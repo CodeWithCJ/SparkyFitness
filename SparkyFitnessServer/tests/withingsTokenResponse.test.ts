@@ -1,6 +1,7 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 import axios from 'axios';
 import { getClient, getSystemClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
 import { encrypt } from '../security/encryption.js';
 import {
   exchangeCodeForTokens,
@@ -154,6 +155,28 @@ describe('Withings token response validation', () => {
 
     expect(encrypt).not.toHaveBeenCalled();
     expect(client.query).toHaveBeenCalledTimes(1);
+  });
+
+  it('never writes token values to the log when rejecting a response', async () => {
+    mockClient();
+    // A refresh that returns an access_token but no refresh_token: the rejection
+    // path must not echo the live token into the logging sink (CWE-532).
+    vi.mocked(axios.post).mockResolvedValue({
+      data: {
+        status: 0,
+        body: { access_token: 'super-secret-access-token', expires_in: 10800 },
+      },
+    });
+
+    await expect(refreshAccessToken(USER_ID)).rejects.toThrow(
+      /Missing access_token or refresh_token/
+    );
+
+    const logged = vi
+      .mocked(log)
+      .mock.calls.map((call) => JSON.stringify(call))
+      .join(' ');
+    expect(logged).not.toContain('super-secret-access-token');
   });
 
   it('sends the token request as a form-encoded body', async () => {

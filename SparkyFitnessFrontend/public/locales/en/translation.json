@@ -1473,6 +1473,14 @@
         "clientSecretPlaceholder": "Enter YAZIO Client Secret",
         "allFieldsRequired": "All fields (Email/Username, Password, Client ID, and Client Secret) are required.",
         "languageSupportHelp": "YAZIO food searches automatically adjust to your active language preference in SparkyFitness (supporting English, German, French, Russian, Spanish, Italian, Dutch, Polish, Portuguese, Danish, Finnish, Swedish, Czech, Hungarian, Greek, Norwegian, Turkish, Chinese, Japanese, and Korean). Other languages default to standard international database parameters."
+      },
+      "oauthDashboards": {
+        "fallback": "provider's developer dashboard",
+        "withings": "Withings Developer Dashboard",
+        "fitbit": "Fitbit Developer Dashboard",
+        "oura": "Oura Developer Portal",
+        "googlehealth": "Google Cloud Console",
+        "polar": "Polar AccessLink Admin"
       }
     },
     "aiService": {

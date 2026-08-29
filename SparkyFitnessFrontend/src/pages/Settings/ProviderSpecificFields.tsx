@@ -8,28 +8,31 @@ import type { ExternalDataProvider } from './ExternalProviderSettings';
 
 // Developer dashboards where each OAuth provider's Client ID/Secret and callback
 // URL are configured. Kept in sync with the per-provider text in EditProviderForm.
+const OAUTH_DASHBOARD_LABELS =
+  'settings.foodExerciseDataProviders.oauthDashboards';
+
 const OAUTH_PROVIDER_DASHBOARDS: Record<
   string,
-  { label: string; url: string }
+  { labelKey: string; url: string }
 > = {
   withings: {
-    label: 'Withings Developer Dashboard',
+    labelKey: `${OAUTH_DASHBOARD_LABELS}.withings`,
     url: 'https://developer.withings.com/dashboard/',
   },
   fitbit: {
-    label: 'Fitbit Developer Dashboard',
+    labelKey: `${OAUTH_DASHBOARD_LABELS}.fitbit`,
     url: 'https://dev.fitbit.com/apps',
   },
   oura: {
-    label: 'Oura Developer Portal',
+    labelKey: `${OAUTH_DASHBOARD_LABELS}.oura`,
     url: 'https://developer.ouraring.com/applications',
   },
   googlehealth: {
-    label: 'Google Cloud Console',
+    labelKey: `${OAUTH_DASHBOARD_LABELS}.googlehealth`,
     url: 'https://console.cloud.google.com/apis/credentials',
   },
   polar: {
-    label: 'Polar AccessLink Admin',
+    labelKey: `${OAUTH_DASHBOARD_LABELS}.polar`,
     url: 'https://admin.polaraccesslink.com',
   },
 };
@@ -444,10 +447,10 @@ export const ProviderSpecificFields = ({
               rel="noopener noreferrer"
               className="text-blue-500 underline"
             >
-              {providerDashboard.label}
+              {t(providerDashboard.labelKey)}
             </a>
           ) : (
-            "provider's developer dashboard"
+            t(`${OAUTH_DASHBOARD_LABELS}.fallback`)
           )}
           , you must set your callback URL to:
           <strong className="flex items-center mt-1">

@@ -39,6 +39,16 @@ interface WithingsTokenEnvelope {
   body?: Partial<WithingsTokenBody>;
 }
 
+// A rejected response can still carry a live access_token (for example when only
+// the refresh_token is missing), so failures are described by status and error
+// alone. The raw payload must never reach the logs.
+function describeWithingsFailure(
+  data: WithingsTokenEnvelope | undefined
+): string {
+  const status = data?.status === undefined ? 'absent' : String(data.status);
+  return `status ${status}${data?.error ? `: ${data.error}` : ''}`;
+}
+
 // Withings wraps every response as { status, body } and only status 0 is success.
 // Their docs do not specify whether an error response omits `body` or sends an
 // empty one, so a truthy-body check alone is not a safe guard: check the status
@@ -49,25 +59,15 @@ function parseWithingsTokenResponse(
   data: WithingsTokenEnvelope | undefined,
   context: string
 ): WithingsTokenBody {
+  const failure = describeWithingsFailure(data);
   if (data?.status !== undefined && Number(data.status) !== 0) {
-    log(
-      'error',
-      `Withings ${context} error: status ${data.status}${
-        data.error ? ` (${data.error})` : ''
-      }.`,
-      JSON.stringify(data)
-    );
-    throw new Error(
-      `Withings ${context} failed with status ${data.status}${
-        data.error ? `: ${data.error}` : ''
-      }.`
-    );
+    log('error', `Withings ${context} error: ${failure}.`);
+    throw new Error(`Withings ${context} failed with ${failure}.`);
   }
   if (!data || !data.body) {
     log(
       'error',
-      `Withings ${context} error: Invalid response structure.`,
-      JSON.stringify(data)
+      `Withings ${context} error: invalid response structure (${failure}).`
     );
     throw new Error(`Invalid Withings API response structure (${context}).`);
   }
@@ -75,8 +75,7 @@ function parseWithingsTokenResponse(
   if (!access_token || !refresh_token) {
     log(
       'error',
-      `Withings ${context} error: response contained no tokens.`,
-      JSON.stringify(data)
+      `Withings ${context} error: response contained no usable tokens (${failure}).`
     );
     throw new Error(
       `Missing access_token or refresh_token in Withings ${context} response.`
