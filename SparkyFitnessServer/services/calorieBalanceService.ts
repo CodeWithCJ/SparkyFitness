@@ -14,7 +14,11 @@ import {
   computeSparkyfitnessBurned,
   computeCaloriesRemaining,
   computeCalorieProgress,
-  computeTdeeAdjustment,
+  getGoalModeAdjustment,
+  getRecommendedCalorieSafetyFloor,
+  MAX_HEALTH_TOTAL_CALORIES_PER_DAY,
+  MIN_CALORIE_SAFETY_FLOOR,
+  resolveCalorieSafetyFloor,
 } from '@workspace/shared';
 
 /**
@@ -43,6 +47,11 @@ export interface CalorieBalanceUserPreferences {
   calorie_goal_adjustment_mode?: CalorieGoalAdjustmentMode | string | null;
   exercise_calorie_percentage?: number | null;
   tdee_allow_negative_adjustment?: boolean | null;
+  goal_mode?: string | null;
+  goal_mode_calculation_method?: string | null;
+  goal_mode_custom_percentage?: number | null;
+  calorie_safety_floor_mode?: string | null;
+  calorie_safety_floor_value?: number | null;
 }
 
 export interface CalorieBalanceMeasurements {
@@ -77,6 +86,10 @@ export interface CalorieBalanceInputs {
   userPreferences: CalorieBalanceUserPreferences | null;
   /** Latest measurement on or before the day. Drives the BMR formula. */
   measurements: CalorieBalanceMeasurements | null;
+  /** Health Connect total (resting + active) calories accumulated for this day. */
+  deviceTotalCalories?: number | null;
+  /** Fraction of the day elapsed when the cumulative device total was captured. */
+  deviceTotalDayFraction?: number | null;
   /**
    * Fraction of the day elapsed, 0..1. Used only by the tdee/smart projection.
    * See `resolveDayFraction` -- pass 1 for a completed day.
@@ -172,6 +185,8 @@ export function computeCalorieBalance({
   userProfile,
   userPreferences,
   measurements,
+  deviceTotalCalories,
+  deviceTotalDayFraction,
   dayFraction,
 }: CalorieBalanceInputs): CalorieBalance {
   // 1. BMR
@@ -253,33 +268,84 @@ export function computeCalorieBalance({
     userPreferences?.tdee_allow_negative_adjustment ?? false;
 
   const sparkyfitnessBurned = computeSparkyfitnessBurned(bmr, activityLevel);
-  const goalCalories = adjustedGoalCalories;
+  let goalCalories = adjustedGoalCalories;
 
   let tdeeAdjustment = 0;
   let tdeeProjection: CalorieBalance['tdeeProjection'] = null;
   if (adjustmentMode === 'tdee' || adjustmentMode === 'smart') {
+    const deviceCaptureFraction = deviceTotalDayFraction ?? dayFraction;
+    const projectedDeviceTotal =
+      typeof deviceTotalCalories === 'number' &&
+      Number.isFinite(deviceTotalCalories) &&
+      deviceCaptureFraction >= MIN_DAY_FRACTION
+        ? Math.round(deviceTotalCalories / deviceCaptureFraction)
+        : null;
+    const validDeviceTotal =
+      typeof deviceTotalCalories === 'number' &&
+      Number.isFinite(deviceTotalCalories) &&
+      deviceTotalCalories > 0 &&
+      deviceTotalCalories <= MAX_HEALTH_TOTAL_CALORIES_PER_DAY &&
+      deviceTotalCalories >= exerciseCaloriesBurned &&
+      deviceCaptureFraction >= MIN_DAY_FRACTION &&
+      projectedDeviceTotal !== null &&
+      projectedDeviceTotal >= Math.max(bmr * 0.5, MIN_CALORIE_SAFETY_FLOOR) &&
+      projectedDeviceTotal <= MAX_HEALTH_TOTAL_CALORIES_PER_DAY;
     const projectedDeviceCalories =
       dayFraction >= MIN_DAY_FRACTION && exerciseCaloriesBurned > 0
         ? Math.round(exerciseCaloriesBurned / dayFraction)
         : exerciseCaloriesBurned;
 
-    const projectedBurn = bmr + projectedDeviceCalories;
-    tdeeAdjustment = computeTdeeAdjustment(
-      projectedBurn,
-      sparkyfitnessBurned,
-      allowNegativeAdjustment
+    const projectedBurn =
+      validDeviceTotal && projectedDeviceTotal !== null
+        ? projectedDeviceTotal
+        : bmr + projectedDeviceCalories;
+    const goalModeAdjustment = getGoalModeAdjustment(
+      userPreferences?.goal_mode || 'maintain',
+      userPreferences?.goal_mode_custom_percentage ?? 0
     );
+    let projectedTarget = Math.round(projectedBurn * (1 - goalModeAdjustment));
+    if (userPreferences?.goal_mode_calculation_method === 'adaptive') {
+      const safetyFloor = resolveCalorieSafetyFloor(
+        userPreferences.calorie_safety_floor_mode,
+        userPreferences.calorie_safety_floor_value,
+        getRecommendedCalorieSafetyFloor(
+          bmr,
+          userProfile?.gender === 'female' ? 'female' : 'male'
+        )
+      );
+      if (safetyFloor !== null) {
+        projectedTarget = Math.max(projectedTarget, Math.round(safetyFloor));
+      }
+    }
+    const projectedTargetAdjustment = projectedTarget - adjustedGoalCalories;
+
+    // A valid cumulative total is the direct TDEE baseline selected by Device
+    // Projection, so it is allowed to move the target in either direction. The
+    // legacy BMR + active fallback keeps the existing opt-in for downward moves.
+    tdeeAdjustment = validDeviceTotal
+      ? projectedTargetAdjustment
+      : allowNegativeAdjustment
+        ? projectedTargetAdjustment
+        : Math.max(0, projectedTargetAdjustment);
+    goalCalories = adjustedGoalCalories + tdeeAdjustment;
     tdeeProjection = {
       projectedBurn,
       baselineBurn: sparkyfitnessBurned,
       adjustment: tdeeAdjustment,
+      targetCalories: goalCalories,
+      source: validDeviceTotal ? 'health_connect_total' : 'active_plus_bmr',
     };
   }
 
   // 4. Remaining & progress
   const remaining = computeCaloriesRemaining({
     mode: adjustmentMode,
-    goalCalories,
+    // TDEE mode expresses its live target as base goal + adjustment. Passing
+    // the already-adjusted live goal here would apply the adjustment twice.
+    goalCalories:
+      adjustmentMode === 'tdee' || adjustmentMode === 'smart'
+        ? adjustedGoalCalories
+        : goalCalories,
     eatenCalories,
     netCalories,
     exerciseCaloriesBurned,

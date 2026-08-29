@@ -57,7 +57,7 @@ This setting determines **how physical activity changes your calorie budget** th
 - **Dynamic Goal:** Increases your budget as you burn active calories or take steps (adds exercise directly back to your budget).
 - **Fixed Goal:** Your calorie target remains completely static, ignoring daily exercise.
 - **Percentage Earn-Back:** Adds back a custom percentage (e.g., $50\%$) of active calories burned to create a buffer against device calorie over-estimations.
-- **Device Projection:** Projects your total full-day burn by extrapolating active steps and device data to midnight (MyFitnessPal style).
+- **Device Projection:** Uses the cumulative **Total Calories** value synced from Health Connect (resting plus active energy), projects it from the sync capture time to midnight, and treats that full-day projection as your live TDEE. Goal Mode is then applied directly: for example, a projected TDEE of $2{,}400$ kcal becomes $2{,}400$ kcal at Maintain, $2{,}160$ kcal at Body Recomposition ($-10\%$), or $2{,}640$ kcal at Lean Bulk ($+10\%$). Enable **Total Calories** in the Android Health Connect sync settings. When that value is unavailable, too early, or implausible for a complete daily total, SparkyFitness falls back to BMR plus projected active calories.
 
 > [!NOTE]
 > If you use [Nutrient Goal Direction](/features/goals)'s **Target range** for calories, note that Adaptive, Dynamic, Percentage Earn-Back, and Device Projection all recalculate your calorie goal value regularly — a manually entered target band won't move with it. Target range for calories works best paired with **Fixed Goal**.
@@ -92,6 +92,8 @@ Gain is deliberately much slower than loss. Muscle growth is limited by training
 - **Adaptive Method:** Applies the deficit to your Calculated Adaptive TDEE (falling back to BMR × activity multiplier if history is insufficient).
 - **Manual Method:** Applies the deficit to your manually entered calorie target.
 
+Device Projection always uses the projected device TDEE as the live baseline for the selected Goal Mode; the calculation-method selector controls the saved non-device baseline and previews used by the other modes.
+
 ---
 
 ## 5. Metabolic Safety Floors
@@ -112,7 +114,7 @@ SparkyFitness shows two recommended safety limits for calorie goals:
 Under the Adaptive method the floor applies whenever the calculated target falls below it. That is almost always a deficit, but a surplus can trip it too: if your entire maintenance sits below the clinical minimum, even a gain goal is raised to that minimum.
 
 > [!TIP]
-> If a goal mode appears to have no effect, the Standard floor is binding. That is usually about your **activity level**, not your body size. With the fallback estimate (TDEE = RMR × activity multiplier) and RMR as the binding half, the floor bites once your deficit exceeds roughly $1 - 1/\text{activityMultiplier}$ — about $17\%$ at **Sedentary** ($\times 1.2$), and $0\%$ at **None** ($\times 1.0$), where every deficit mode returns the same target. Once Adaptive has enough history it uses your *measured* TDEE, so the real limit is how far your expenditure sits above your RMR. A sedentary man and a sedentary woman of very different sizes hit the same ceiling.
+> If a goal mode appears to have no effect, the Standard floor is binding. That is usually about your **activity level**, not your body size. With the fallback estimate (TDEE = RMR × activity multiplier) and RMR as the binding half, the floor bites once your deficit exceeds roughly $1 - 1/\text{activityMultiplier}$ — about $17\%$ at **Sedentary** ($\times 1.2$), and $0\%$ at **None** ($\times 1.0$), where every deficit mode returns the same target. Once Adaptive has enough history it uses your _measured_ TDEE, so the real limit is how far your expenditure sits above your RMR. A sedentary man and a sedentary woman of very different sizes hit the same ceiling.
 >
 > If you are still on the fallback estimate, check your **Activity Level** and profile data first, since they set the ceiling there and are the most common things to have understated. Once Adaptive is using measured TDEE the setting no longer feeds the calculation, and the ceiling reflects your real expenditure instead. If your target has been agreed with a qualified clinician and still falls below the Standard floor, choose a **Custom minimum** or **Disabled**. Very small adults may find the clinical minimum sits above their own maintenance, in which case those two options are the only way to set a deficit at all. Very low calorie targets can carry health risks and may require medical supervision.
 

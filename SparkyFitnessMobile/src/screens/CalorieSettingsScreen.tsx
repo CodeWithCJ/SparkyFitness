@@ -22,9 +22,11 @@ import type { RootStackScreenProps } from '../types/navigation';
 import {
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   MAX_CALORIE_SAFETY_FLOOR,
+  MAX_GOAL_MODE_PERCENTAGE,
   MIN_CALORIE_SAFETY_FLOOR,
   convertEnergyValue,
   type CalorieSafetyFloorMode,
+  type GoalMode,
 } from '@workspace/shared';
 
 type CalorieSettingsScreenProps = RootStackScreenProps<'CalorieSettings'>;
@@ -38,6 +40,8 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
     exerciseCaloriePercentage: prefs?.exercise_calorie_percentage ?? 100,
     includeBmrInNetCalories: prefs?.include_bmr_in_net_calories ?? false,
     tdeeAllowNegativeAdjustment: prefs?.tdee_allow_negative_adjustment ?? false,
+    goalMode: prefs?.goal_mode ?? 'maintain',
+    goalModeCustomPercentage: prefs?.goal_mode_custom_percentage ?? 0,
     calorieSafetyFloorMode: prefs?.calorie_safety_floor_mode ?? 'standard',
     calorieSafetyFloorValue:
       prefs?.calorie_safety_floor_value ??
@@ -66,6 +70,15 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
     { label: t('calorieSettings.modes.percentage', { defaultValue: 'Percentage Earn-Back' }), value: 'percentage' },
     { label: t('calorieSettings.modes.tdee', { defaultValue: 'Device Projection' }), value: 'tdee' },
   ];
+  const goalModeOptions = [
+    { label: t('calorieSettings.goalMode.maintain', { defaultValue: 'Maintain (0%)' }), value: 'maintain' },
+    { label: t('calorieSettings.goalMode.recomp', { defaultValue: 'Body Recomposition (-10%)' }), value: 'recomp' },
+    { label: t('calorieSettings.goalMode.cut', { defaultValue: 'Cut (-15%)' }), value: 'cut' },
+    { label: t('calorieSettings.goalMode.highCut', { defaultValue: 'High Cut (-20%)' }), value: 'high_cut' },
+    { label: t('calorieSettings.goalMode.leanBulk', { defaultValue: 'Lean Bulk (+10%)' }), value: 'lean_bulk' },
+    { label: t('calorieSettings.goalMode.bulk', { defaultValue: 'Bulk (+20%)' }), value: 'bulk' },
+    { label: t('calorieSettings.goalMode.manual', { defaultValue: 'Manual (Custom %)' }), value: 'manual' },
+  ];
   const activityLevelOptions = [
     { label: t('calorieSettings.activity.none', { defaultValue: 'None (x1.0)' }), value: 'none' },
     { label: t('calorieSettings.activity.sedentary', { defaultValue: 'Sedentary (x1.2)' }), value: 'not_much' },
@@ -85,6 +98,9 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   const [percentageText, setPercentageText] = useState(
     () => String(normalized.exerciseCaloriePercentage),
   );
+  const [goalModePercentageText, setGoalModePercentageText] = useState(
+    () => String(normalized.goalModeCustomPercentage),
+  );
   const [safetyFloorText, setSafetyFloorText] = useState(() =>
     String(
       displayEnergy(normalized.calorieSafetyFloorValue, normalized.energyUnit),
@@ -100,6 +116,13 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   if (syncedPercentage !== normalized.exerciseCaloriePercentage) {
     setSyncedPercentage(normalized.exerciseCaloriePercentage);
     setPercentageText(String(normalized.exerciseCaloriePercentage));
+  }
+  const [syncedGoalModePercentage, setSyncedGoalModePercentage] = useState(
+    normalized.goalModeCustomPercentage,
+  );
+  if (syncedGoalModePercentage !== normalized.goalModeCustomPercentage) {
+    setSyncedGoalModePercentage(normalized.goalModeCustomPercentage);
+    setGoalModePercentageText(String(normalized.goalModeCustomPercentage));
   }
   const [syncedSafetyFloor, setSyncedSafetyFloor] = useState(
     `${normalized.calorieSafetyFloorValue}:${normalized.energyUnit}`,
@@ -143,6 +166,10 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
 
   const handleModeChange = useCallback((value: string) => {
     mutation.mutate({ calorie_goal_adjustment_mode: value });
+  }, [mutation]);
+
+  const handleGoalModeChange = useCallback((value: string) => {
+    mutation.mutate({ goal_mode: value as GoalMode });
   }, [mutation]);
 
   const handleActivityLevelChange = useCallback((value: string) => {
@@ -208,6 +235,22 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   }, [percentageText, normalized.exerciseCaloriePercentage, mutation]);
 
 
+  const handleGoalModePercentageBlur = useCallback(() => {
+    const trimmedValue = goalModePercentageText.trim();
+    if (trimmedValue === '' || trimmedValue === '-') {
+      setGoalModePercentageText(String(normalized.goalModeCustomPercentage));
+      return;
+    }
+    const parsed = Math.round(Number(trimmedValue));
+    const clamped = Number.isFinite(parsed)
+      ? Math.max(-MAX_GOAL_MODE_PERCENTAGE, Math.min(MAX_GOAL_MODE_PERCENTAGE, parsed))
+      : normalized.goalModeCustomPercentage;
+    setGoalModePercentageText(String(clamped));
+    if (clamped !== normalized.goalModeCustomPercentage) {
+      mutation.mutate({ goal_mode_custom_percentage: clamped });
+    }
+  }, [goalModePercentageText, mutation, normalized.goalModeCustomPercentage]);
+
   const optionsLayout = LinearTransition.delay(0).duration(250);
   const pipelineLayout = LinearTransition.delay(50).duration(250);
 
@@ -220,9 +263,11 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
     const bmr = normalized.includeBmrInNetCalories;
     const pct = normalized.exerciseCaloriePercentage;
 
-    const burned = bmr
-      ? t('calorieSettings.formulas.activityWithBmr', { defaultValue: 'Activity + BMR' })
-      : t('calorieSettings.formulas.activityOnly', { defaultValue: 'Activity only (exercise + steps)' });
+    const burned = mode === 'tdee'
+      ? t('calorieSettings.formulas.projectedTotal', { defaultValue: 'Health Connect total calories projected to midnight' })
+      : bmr
+        ? t('calorieSettings.formulas.activityWithBmr', { defaultValue: 'Activity + BMR' })
+        : t('calorieSettings.formulas.activityOnly', { defaultValue: 'Activity only (exercise + steps)' });
     const net = t('calorieSettings.formulas.eatenBurned', { defaultValue: 'Eaten − Burned' });
 
     let remainingFormula: string;
@@ -239,8 +284,8 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
         remainingNote = null;
         break;
       case 'tdee':
-        remainingFormula = t('calorieSettings.formulas.tdee', { defaultValue: 'Goal − Eaten + (Projection − TDEE)' });
-        remainingNote = t('calorieSettings.notes.tdee', { defaultValue: 'Projection converges at midnight' });
+        remainingFormula = t('calorieSettings.formulas.tdee', { defaultValue: 'Projected TDEE × Goal Mode − Eaten' });
+        remainingNote = t('calorieSettings.notes.tdee', { defaultValue: 'The projection converges with the device total at midnight' });
         break;
       case 'adaptive':
         remainingFormula = t('calorieSettings.formulas.adaptive', { defaultValue: 'Goal − Eaten' });
@@ -279,6 +324,11 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
           <Text className="text-text-secondary text-sm mt-3">
             {t('calorieSettings.modeDescription', { defaultValue: 'Controls how your daily calorie goal adjusts based on activity.' })}
           </Text>
+          {normalized.mode === 'tdee' && (
+            <Text className="text-text-secondary text-sm mt-3">
+              {t('calorieSettings.deviceProjectionDescription', { defaultValue: 'Health Connect total calories are projected to midnight, then Goal Mode is applied to that TDEE.' })}
+            </Text>
+          )}
         </View>
 
         {/* Options */}
@@ -319,7 +369,9 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
                 />
               </View>
               <Text className="text-text-secondary text-sm mt-1">
-                {t('calorieSettings.activityBaseline', { defaultValue: 'Used as a baseline for TDEE.' })}
+                {normalized.mode === 'tdee'
+                  ? t('calorieSettings.deviceProjectionFallback', { defaultValue: 'Only used for the BMR + active calories fallback when a device total is unavailable.' })
+                  : t('calorieSettings.activityBaseline', { defaultValue: 'Used as a baseline for TDEE.' })}
               </Text>
               {normalized.mode === 'adaptive' && (
                 <Text className="text-text-secondary text-sm mt-3">
@@ -334,15 +386,15 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
           {showNegativeAdjustment && (
             <Animated.View layout={optionsLayout}>
               <View className="flex-row justify-between items-center">
-                <Text className="text-base font-semibold text-text-primary">{t('calorieSettings.allowNegative', { defaultValue: 'Allow Negative Adjustment' })}</Text>
+                <Text className="text-base font-semibold text-text-primary">{t('calorieSettings.allowNegative', { defaultValue: 'Allow Lower Fallback Projection' })}</Text>
                 <Switch
                   onValueChange={handleNegativeAdjustmentToggle}
                   value={normalized.tdeeAllowNegativeAdjustment}
-                  accessibilityLabel={t('calorieSettings.allowNegative', { defaultValue: 'Allow Negative Adjustment' })}
+                  accessibilityLabel={t('calorieSettings.allowNegative', { defaultValue: 'Allow Lower Fallback Projection' })}
                 />
               </View>
               <Text className="text-text-secondary text-sm mt-3">
-                {t('calorieSettings.negativeDescription', { defaultValue: 'Lower your daily goal when you burn less than expected.' })}
+                {t('calorieSettings.negativeDescription', { defaultValue: 'When a device total is unavailable, let the BMR + active calories fallback lower your target.' })}
               </Text>
               <View className="border-t border-border-subtle my-3" />
             </Animated.View>
@@ -362,6 +414,46 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
               {t('calorieSettings.includeRestingDescription', { defaultValue: 'Include your baseline energy (BMR) in net calculations.' })}
             </Text>
           </Animated.View>
+        </Animated.View>
+
+        {/* Goal Mode */}
+        <Animated.View className="bg-surface rounded-xl p-4 mb-4 shadow-sm" layout={optionsLayout}>
+          <View className="flex-row items-center justify-between">
+            <Text className="text-base font-semibold text-text-primary">
+              {t('calorieSettings.goalMode.title', { defaultValue: 'Goal Mode' })}
+            </Text>
+            <BottomSheetPicker
+              value={normalized.goalMode}
+              options={goalModeOptions}
+              onSelect={handleGoalModeChange}
+              title={t('calorieSettings.goalMode.title', { defaultValue: 'Goal Mode' })}
+              containerStyle={{ flex: 1, maxWidth: 230, marginLeft: 16 }}
+            />
+          </View>
+          <Text className="text-text-secondary text-sm mt-3">
+            {normalized.mode === 'tdee'
+              ? t('calorieSettings.goalMode.deviceProjectionDescription', { defaultValue: 'This percentage is applied directly to the projected device TDEE.' })
+              : t('calorieSettings.goalMode.description', { defaultValue: 'Adjusts your calorie target for maintenance, a deficit, or a surplus.' })}
+          </Text>
+          {normalized.goalMode === 'manual' && (
+            <View className="mt-4">
+              <Text className="text-sm font-semibold text-text-primary mb-2">
+                {t('calorieSettings.goalMode.customPercentage', { defaultValue: 'Custom percentage' })}
+              </Text>
+              <FormInput
+                value={goalModePercentageText}
+                onChangeText={setGoalModePercentageText}
+                onBlur={handleGoalModePercentageBlur}
+                keyboardType="numbers-and-punctuation"
+                maxLength={3}
+                returnKeyType="done"
+                accessibilityLabel={t('calorieSettings.goalMode.customPercentage', { defaultValue: 'Custom percentage' })}
+              />
+              <Text className="text-text-secondary text-sm mt-3">
+                {t('calorieSettings.goalMode.customPercentageDescription', { defaultValue: 'Positive adds calories; negative creates a deficit. Limited to ±40%.' })}
+              </Text>
+            </View>
+          )}
         </Animated.View>
 
         <Animated.View

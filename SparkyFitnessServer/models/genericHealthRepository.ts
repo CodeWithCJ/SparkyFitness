@@ -362,3 +362,40 @@ export async function getDailyHealthMetrics(
     client.release();
   }
 }
+
+export interface HealthConnectTotalCaloriesRow {
+  entry_date: string;
+  total_calories: number;
+  captured_at?: Date | string | null;
+}
+
+/**
+ * Returns Health Connect's cumulative total-energy summary for each requested day.
+ * The Android client has already applied Health Connect's native source priority
+ * before upload, so this value must not be combined with other providers here.
+ */
+export async function getHealthConnectTotalCaloriesByDateRange(
+  userId: string,
+  actingUserId: string,
+  startDate: string,
+  endDate: string
+): Promise<HealthConnectTotalCaloriesRow[]> {
+  const client = await getClient(actingUserId);
+  try {
+    const res = await client.query(
+      `SELECT entry_date::text,
+              total_calories::float8,
+              COALESCE(updated_at, created_at) AS captured_at
+       FROM daily_health_metrics
+       WHERE user_id = $1
+         AND source_provider = 'health_connect'
+         AND total_calories IS NOT NULL
+         AND entry_date BETWEEN $2 AND $3
+       ORDER BY entry_date ASC`,
+      [userId, startDate, endDate]
+    );
+    return res.rows as HealthConnectTotalCaloriesRow[];
+  } finally {
+    client.release();
+  }
+}

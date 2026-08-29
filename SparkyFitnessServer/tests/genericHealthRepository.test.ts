@@ -113,6 +113,41 @@ describe('Generic Health & Workout Telemetry Repositories', () => {
     expect(result.body_battery_highest).toBe(95);
   });
 
+  it('gets Health Connect total calories for a date range', async () => {
+    const capturedAt = new Date('2026-07-29T12:00:00Z');
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          entry_date: '2026-07-29',
+          total_calories: 2400,
+          captured_at: capturedAt,
+        },
+      ],
+    });
+
+    const rows =
+      await genericHealthRepo.getHealthConnectTotalCaloriesByDateRange(
+        'user-1',
+        'actor-1',
+        '2026-07-29',
+        '2026-07-30'
+      );
+
+    expect(rows).toEqual([
+      {
+        entry_date: '2026-07-29',
+        total_calories: 2400,
+        captured_at: capturedAt,
+      },
+    ]);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /COALESCE\(updated_at, created_at\) AS captured_at[\s\S]*source_provider = 'health_connect'/
+      ),
+      ['user-1', '2026-07-29', '2026-07-30']
+    );
+  });
+
   it('bulkInsertExerciseEntryLaps should query exercise_entry_laps', async () => {
     mockQuery.mockResolvedValueOnce({
       rows: [

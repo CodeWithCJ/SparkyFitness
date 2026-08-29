@@ -9,6 +9,7 @@ import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import foodRepository from '../models/foodMisc.js';
+import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import bmrService from '../services/bmrService.js';
 
 vi.mock('../services/goalService.js', () => ({
@@ -52,6 +53,10 @@ vi.mock('../models/foodMisc.js', () => ({
   default: {
     getDailySupplementTotals: vi.fn(),
   },
+}));
+
+vi.mock('../models/genericHealthRepository.js', () => ({
+  getHealthConnectTotalCaloriesByDateRange: vi.fn(),
 }));
 
 vi.mock('../services/bmrService.js', () => ({
@@ -133,6 +138,9 @@ describe('dailySummaryService', () => {
       fat: 0,
       dietary_fiber: 0,
     });
+    vi.mocked(
+      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+    ).mockResolvedValue([]);
     vi.mocked(getExerciseEntriesByDateV2).mockResolvedValue([
       activeCaloriesSession,
     ]);
@@ -214,7 +222,21 @@ describe('dailySummaryService', () => {
     expect(result.calorieBalance.exerciseSource).toBe('active');
   });
 
-  test('returns the TDEE projection used for remaining calories', async () => {
+  test('uses Health Connect total burn as the Goal Mode TDEE baseline', async () => {
+    vi.mocked(
+      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+    ).mockResolvedValue([{ entry_date: date, total_calories: 1200 }]);
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+      bmr_algorithm: 'Mifflin-St Jeor',
+      activity_level: 'not_much',
+      calorie_goal_adjustment_mode: 'tdee',
+      include_bmr_in_net_calories: false,
+      tdee_allow_negative_adjustment: false,
+      timezone: 'UTC',
+      goal_mode: 'manual',
+      goal_mode_custom_percentage: -10,
+    });
+
     const result = await getDailySummary({
       actorUserId,
       targetUserId,
@@ -225,9 +247,46 @@ describe('dailySummaryService', () => {
     expect(result.calorieBalance.tdeeProjection).toEqual({
       projectedBurn: 2400,
       baselineBurn: 2160,
-      adjustment: 240,
+      adjustment: 160,
+      targetCalories: 2160,
+      source: 'health_connect_total',
     });
-    expect(result.calorieBalance.remaining).toBe(1740);
+    expect(result.calorieBalance.goal).toBe(2160);
+    expect(result.calorieBalance.remaining).toBe(1660);
+    expect(
+      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+    ).toHaveBeenCalledWith(targetUserId, actorUserId, date, date);
+  });
+
+  test('projects a stale view from the Health Connect capture time', async () => {
+    vi.setSystemTime(new Date('2024-06-15T20:00:00Z'));
+    vi.mocked(
+      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+    ).mockResolvedValue([
+      {
+        entry_date: date,
+        total_calories: 1200,
+        captured_at: new Date('2024-06-15T12:00:00Z'),
+      },
+    ]);
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+      bmr_algorithm: 'Mifflin-St Jeor',
+      activity_level: 'not_much',
+      calorie_goal_adjustment_mode: 'tdee',
+      include_bmr_in_net_calories: false,
+      tdee_allow_negative_adjustment: false,
+      timezone: 'UTC',
+      goal_mode: 'maintain',
+    });
+
+    const result = await getDailySummary({
+      actorUserId,
+      targetUserId,
+      date,
+      includeCheckin: true,
+    });
+
+    expect(result.calorieBalance.tdeeProjection?.projectedBurn).toBe(2400);
   });
 
   test('returns null projection outside TDEE-style modes', async () => {

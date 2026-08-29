@@ -4,10 +4,12 @@ import {
   customMeasurementHandler,
   HEALTH_TYPE_HANDLERS,
   type HealthBatchContext,
+  type HealthEntryContext,
   type PreparedHealthEntry,
 } from '../services/healthDataHandlers.js';
 import measurementRepository from '../models/measurementRepository.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
+import * as genericHealthRepository from '../models/genericHealthRepository.js';
 
 vi.mock('../models/measurementRepository.js', () => ({
   default: {
@@ -19,6 +21,9 @@ vi.mock('../models/waterContainerRepository.js', () => ({
   default: {
     getPrimaryWaterContainerByUserId: vi.fn(),
   },
+}));
+vi.mock('../models/genericHealthRepository.js', () => ({
+  upsertDailyHealthMetrics: vi.fn(),
 }));
 
 // Guards the registry against alias drift: every case label from the old
@@ -33,6 +38,8 @@ describe('health data handler registry', () => {
     ['Active Calories', 'active_calories'],
     ['active_calories', 'active_calories'],
     ['ActiveCaloriesBurned', 'active_calories'],
+    ['total_calories', 'total_calories'],
+    ['TotalCaloriesBurned', 'total_calories'],
     ['weight', 'weight'],
     ['body_fat_percentage', 'body_fat'],
     ['body_fat', 'body_fat'],
@@ -76,6 +83,86 @@ describe('health data handler registry', () => {
     expect(resolveHandler(undefined)).toBeUndefined();
     expect(customMeasurementHandler).toBeDefined();
   });
+});
+
+describe('totalCaloriesHandler', () => {
+  const totalCaloriesHandler = HEALTH_TYPE_HANDLERS['total_calories'];
+  const ctx = {
+    userId: 'user-1',
+    actingUserId: 'actor-1',
+    parsedDate: '2026-08-03',
+    entryTimestamp: '2026-08-03T12:00:00.000Z',
+    entryHour: 12,
+  } as unknown as HealthEntryContext;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(
+      genericHealthRepository.upsertDailyHealthMetrics
+    ).mockResolvedValue({
+      id: 'daily-1',
+      user_id: 'user-1',
+      entry_date: '2026-08-03',
+      source_provider: 'health_connect',
+      total_calories: 1234,
+    } as never);
+  });
+
+  it('persists Health Connect total burn as a daily wearable summary', async () => {
+    const outcome = await totalCaloriesHandler.handle(
+      { value: 1234, source: 'Health Connect' },
+      ctx
+    );
+
+    expect(
+      genericHealthRepository.upsertDailyHealthMetrics
+    ).toHaveBeenCalledWith('user-1', 'actor-1', {
+      user_id: 'user-1',
+      entry_date: '2026-08-03',
+      source_provider: 'health_connect',
+      total_calories: 1234,
+    });
+    expect(outcome.status).toBe('success');
+  });
+
+  it('normalizes the legacy HealthConnect source spelling', async () => {
+    await totalCaloriesHandler.handle(
+      { value: 1234, source: 'HealthConnect' },
+      ctx
+    );
+
+    expect(
+      genericHealthRepository.upsertDailyHealthMetrics
+    ).toHaveBeenCalledWith(
+      'user-1',
+      'actor-1',
+      expect.objectContaining({ source_provider: 'health_connect' })
+    );
+  });
+
+  it('rejects total calories above the daily ingestion limit', async () => {
+    const result = await totalCaloriesHandler.handle(
+      { value: 20_001, source: 'Health Connect' },
+      ctx
+    );
+
+    expect(result).toMatchObject({ status: 'error' });
+    expect(
+      genericHealthRepository.upsertDailyHealthMetrics
+    ).not.toHaveBeenCalled();
+  });
+
+  it.each(['', '1234kcal', -1, Number.NaN])(
+    'rejects invalid total burn %s',
+    async (value) => {
+      const outcome = await totalCaloriesHandler.handle(
+        { value, source: 'Health Connect' },
+        ctx
+      );
+
+      expect(outcome.status).toBe('error');
+    }
+  );
 });
 
 describe('waterHandler.handleBatch', () => {

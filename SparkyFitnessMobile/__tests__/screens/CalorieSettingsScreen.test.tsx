@@ -75,7 +75,7 @@ jest.mock('uniwind', () => ({
 const navigation = { goBack: jest.fn(), setOptions: jest.fn() } as never;
 const route = { params: {} } as never;
 
-describe('CalorieSettingsScreen safety floor', () => {
+describe('CalorieSettingsScreen', () => {
   beforeEach(async () => {
     await act(async () => {
       await initializeI18n('en');
@@ -84,9 +84,54 @@ describe('CalorieSettingsScreen safety floor', () => {
     jest.clearAllMocks();
     mockPreferences = {
       calorie_goal_adjustment_mode: 'adaptive',
+      goal_mode: 'maintain',
+      goal_mode_custom_percentage: 0,
       calorie_safety_floor_mode: 'standard',
       calorie_safety_floor_value: 1200,
     };
+  });
+
+  it('explains that Device Projection applies Goal Mode to Health Connect TDEE', () => {
+    mockPreferences.calorie_goal_adjustment_mode = 'tdee';
+    const { getByText } = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />,
+    );
+
+    expect(
+      getByText(
+        'Health Connect total calories are projected to midnight, then Goal Mode is applied to that TDEE.',
+      ),
+    ).toBeTruthy();
+    expect(getByText('Projected TDEE × Goal Mode − Eaten')).toBeTruthy();
+  });
+
+  it('offers and saves Goal Mode percentages on Android', () => {
+    const { getByText } = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />,
+    );
+
+    expect(getByText('Maintain (0%)')).toBeTruthy();
+    expect(getByText('Body Recomposition (-10%)')).toBeTruthy();
+    expect(getByText('Lean Bulk (+10%)')).toBeTruthy();
+
+    fireEvent.press(getByText('Body Recomposition (-10%)'));
+    expect(mockMutate).toHaveBeenCalledWith({ goal_mode: 'recomp' });
+  });
+
+  it('saves a bounded custom Goal Mode percentage', () => {
+    mockPreferences.goal_mode = 'manual';
+    mockPreferences.goal_mode_custom_percentage = -10;
+    const { getByDisplayValue } = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />,
+    );
+    const input = getByDisplayValue('-10');
+
+    fireEvent.changeText(input, '45');
+    fireEvent(input, 'blur');
+
+    expect(mockMutate).toHaveBeenCalledWith({
+      goal_mode_custom_percentage: 40,
+    });
   });
 
   it('offers standard, custom, and disabled safety floor modes', () => {
@@ -196,5 +241,4 @@ describe('CalorieSettingsScreen safety floor', () => {
     await i18n.changeLanguage('en'); });
     expect(screen.getByText('Safety Floor')).toBeTruthy();
   });
-
 });

@@ -1,4 +1,8 @@
-import type { CalorieSafetyFloorMode } from '@workspace/shared';
+import type {
+  CalorieSafetyFloorMode,
+  GoalMode,
+  GoalModeCalculationMethod,
+} from '@workspace/shared';
 
 export interface UserPreferences {
   bmr_algorithm?: string;
@@ -27,6 +31,9 @@ export interface UserPreferences {
   use_external_bmr?: boolean;
   show_net_carbs?: boolean;
   calorie_goal_adjustment_mode?: string;
+  goal_mode?: GoalMode;
+  goal_mode_calculation_method?: GoalModeCalculationMethod;
+  goal_mode_custom_percentage?: number;
   auto_scale_open_food_facts_imports?: boolean;
   auto_scale_online_imports?: boolean;
   barcode_fallback_open_food_facts?: boolean;

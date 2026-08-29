@@ -4,6 +4,7 @@ import exerciseEntryRepository from '../models/exerciseEntry.js';
 import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
+import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import { log } from '../config/logging.js';
 import { resolveBackgroundStepCalories } from '@workspace/shared';
 import {
@@ -37,6 +38,7 @@ async function getDashboardStats(
       measurements,
       checkInMeasurements,
       latestWeightHeight,
+      healthConnectTotalRows,
     ] = await Promise.all([
       // `adjust` is unconditionally true, matching `dailySummaryService` and
       // `dailySummaryRangeService`. It used to be tied to `includeCheckin`, which made
@@ -71,6 +73,23 @@ async function getDashboardStats(
       includeCheckin
         ? measurementRepository.getLatestWeightHeight(userId)
         : { weightKg: null, heightCm: null },
+      includeCheckin
+        ? genericHealthRepository
+            .getHealthConnectTotalCaloriesByDateRange(
+              userId,
+              userId,
+              date,
+              date
+            )
+            .catch((error: unknown) => {
+              log(
+                'warn',
+                `Health Connect total-calorie dashboard fetch failed for user ${userId} on ${date}:`,
+                error
+              );
+              return [];
+            })
+        : [],
     ]);
 
     const split = exerciseSplits[0];
@@ -90,6 +109,17 @@ async function getDashboardStats(
         })
       : 0;
 
+    const healthConnectTotal = healthConnectTotalRows[0];
+    const timezone = userPreferences?.timezone || 'UTC';
+    const dayFraction = resolveDayFraction(date, timezone);
+    const deviceTotalDayFraction = healthConnectTotal?.captured_at
+      ? resolveDayFraction(
+          date,
+          timezone,
+          new Date(healthConnectTotal.captured_at)
+        )
+      : dayFraction;
+
     const balance = computeCalorieBalance({
       eatenCalories:
         nutritionData.length > 0
@@ -102,7 +132,9 @@ async function getDashboardStats(
       userProfile,
       userPreferences,
       measurements,
-      dayFraction: resolveDayFraction(date, userPreferences?.timezone || 'UTC'),
+      deviceTotalCalories: Number(healthConnectTotal?.total_calories) || null,
+      deviceTotalDayFraction,
+      dayFraction,
     });
 
     return {
