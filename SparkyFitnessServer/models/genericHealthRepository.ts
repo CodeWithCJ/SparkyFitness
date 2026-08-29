@@ -255,8 +255,28 @@ export async function upsertDailyHealthMetrics(
          floors_descended = COALESCE(EXCLUDED.floors_descended, daily_health_metrics.floors_descended),
          active_calories = COALESCE(EXCLUDED.active_calories, daily_health_metrics.active_calories),
          bmr_calories = COALESCE(EXCLUDED.bmr_calories, daily_health_metrics.bmr_calories),
-         total_calories = COALESCE(EXCLUDED.total_calories, daily_health_metrics.total_calories),
-         total_calories_captured_at = COALESCE(EXCLUDED.total_calories_captured_at, daily_health_metrics.total_calories_captured_at),
+         -- Daily aggregate syncs can finish out of order. Advance the calorie
+         -- snapshot and its capture time together, never independently.
+         total_calories = CASE
+           WHEN EXCLUDED.total_calories IS NOT NULL
+             AND EXCLUDED.total_calories_captured_at IS NOT NULL
+             AND (
+               daily_health_metrics.total_calories_captured_at IS NULL
+               OR EXCLUDED.total_calories_captured_at > daily_health_metrics.total_calories_captured_at
+             )
+           THEN EXCLUDED.total_calories
+           ELSE daily_health_metrics.total_calories
+         END,
+         total_calories_captured_at = CASE
+           WHEN EXCLUDED.total_calories IS NOT NULL
+             AND EXCLUDED.total_calories_captured_at IS NOT NULL
+             AND (
+               daily_health_metrics.total_calories_captured_at IS NULL
+               OR EXCLUDED.total_calories_captured_at > daily_health_metrics.total_calories_captured_at
+             )
+           THEN EXCLUDED.total_calories_captured_at
+           ELSE daily_health_metrics.total_calories_captured_at
+         END,
          highly_active_seconds = COALESCE(EXCLUDED.highly_active_seconds, daily_health_metrics.highly_active_seconds),
          active_seconds = COALESCE(EXCLUDED.active_seconds, daily_health_metrics.active_seconds),
          sedentary_seconds = COALESCE(EXCLUDED.sedentary_seconds, daily_health_metrics.sedentary_seconds),

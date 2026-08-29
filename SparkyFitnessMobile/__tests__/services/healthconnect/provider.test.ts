@@ -71,6 +71,29 @@ describe('healthconnect provider', () => {
 
       expect(result).toEqual({ records: [], error: expect.stringContaining('native query failed') });
     });
+
+    test('stamps total-calorie aggregates with the sync-window capture time', async () => {
+      mockAggregateGroupByPeriod.mockResolvedValue([
+        {
+          startTime: new Date(2026, 6, 1, 0, 0, 0, 0).toISOString(),
+          result: { ENERGY_TOTAL: { inKilocalories: 1600 } },
+        },
+      ]);
+
+      const result = await readCumulativeByDay(
+        { recordType: 'TotalCaloriesBurned' },
+        start,
+        end,
+      );
+
+      expect(result?.records).toEqual([
+        expect.objectContaining({
+          type: 'total_calories',
+          value: 1600,
+          timestamp: end.toISOString(),
+        }),
+      ]);
+    });
   });
 
   test('readMinMaxAvgByDay always reports capability missing on Android', async () => {

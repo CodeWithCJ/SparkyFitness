@@ -116,12 +116,69 @@ describe('Generic Health & Workout Telemetry Repositories', () => {
     expect(result.body_battery_highest).toBe(95);
     expect(mockQuery).toHaveBeenCalledWith(
       expect.stringMatching(
-        /total_calories_captured_at[\s\S]*total_calories_captured_at = COALESCE\(EXCLUDED\.total_calories_captured_at, daily_health_metrics\.total_calories_captured_at\)/
+        /total_calories_captured_at[\s\S]*EXCLUDED\.total_calories_captured_at > daily_health_metrics\.total_calories_captured_at/
       ),
       expect.arrayContaining([totalCaloriesCapturedAt])
     );
     expect(mockQuery.mock.calls[0]?.[1]).toHaveLength(45);
     expect(mockQuery.mock.calls[0]?.[1]?.[12]).toEqual(totalCaloriesCapturedAt);
+  });
+
+  it('keeps a newer total-calorie sample when a delayed older sample is upserted', async () => {
+    const newerCapturedAt = new Date('2026-07-29T18:00:00Z');
+    const olderCapturedAt = new Date('2026-07-29T12:00:00Z');
+    mockQuery
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'daily-1',
+            total_calories: 2200,
+            total_calories_captured_at: newerCapturedAt,
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'daily-1',
+            total_calories: 2200,
+            total_calories_captured_at: newerCapturedAt,
+          },
+        ],
+      });
+
+    const baseMetric = {
+      user_id: 'user-1',
+      entry_date: '2026-07-29',
+      source_provider: 'health_connect',
+    } as const;
+
+    await genericHealthRepo.upsertDailyHealthMetrics('user-1', 'user-1', {
+      ...baseMetric,
+      total_calories: 2200,
+      total_calories_captured_at: newerCapturedAt,
+    });
+    const delayedResult = await genericHealthRepo.upsertDailyHealthMetrics(
+      'user-1',
+      'user-1',
+      {
+        ...baseMetric,
+        total_calories: 1400,
+        total_calories_captured_at: olderCapturedAt,
+      }
+    );
+
+    const delayedUpsertSql = String(mockQuery.mock.calls[1]?.[0]);
+    expect(delayedUpsertSql).toMatch(
+      /total_calories = CASE[\s\S]*EXCLUDED\.total_calories IS NOT NULL[\s\S]*EXCLUDED\.total_calories_captured_at IS NOT NULL[\s\S]*daily_health_metrics\.total_calories_captured_at IS NULL[\s\S]*EXCLUDED\.total_calories_captured_at > daily_health_metrics\.total_calories_captured_at[\s\S]*THEN EXCLUDED\.total_calories[\s\S]*ELSE daily_health_metrics\.total_calories[\s\S]*END/
+    );
+    expect(delayedUpsertSql).toMatch(
+      /total_calories_captured_at = CASE[\s\S]*THEN EXCLUDED\.total_calories_captured_at[\s\S]*ELSE daily_health_metrics\.total_calories_captured_at[\s\S]*END/
+    );
+    expect(delayedResult.total_calories).toBe(2200);
+    expect(delayedResult.total_calories_captured_at).toEqual(newerCapturedAt);
+    expect(mockQuery.mock.calls[1]?.[1]?.[11]).toBe(1400);
+    expect(mockQuery.mock.calls[1]?.[1]?.[12]).toEqual(olderCapturedAt);
   });
 
   it('gets Health Connect total calories for a date range', async () => {

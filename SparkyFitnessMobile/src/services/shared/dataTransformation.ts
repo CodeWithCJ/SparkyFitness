@@ -247,6 +247,9 @@ export const createTransformHealthRecords = (config: TransformHealthRecordsConfi
               unit,
               source,
             };
+            if (typeof rec.timestamp === 'string') {
+              transformedRecord.timestamp = rec.timestamp;
+            }
             // Forward timezone metadata from aggregation layer
             if (rec.record_timezone != null) {
               transformedRecord.record_timezone = rec.record_timezone as string;
