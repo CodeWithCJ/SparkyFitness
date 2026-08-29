@@ -19,27 +19,30 @@ const foodVariantsIdSchema = z.any();
 
 // Shared optional nutrition snapshot fields added to meal_foods.
 const mealFoodsNutritionSnapshotSchema = {
-  serving_size:         z.number().nullable().optional(),
-  serving_unit:         z.string().nullable().optional(),
-  calories:             z.number().nullable().optional(),
-  protein:              z.number().nullable().optional(),
-  carbs:                z.number().nullable().optional(),
-  fat:                  z.number().nullable().optional(),
-  saturated_fat:        z.number().nullable().optional(),
-  polyunsaturated_fat:  z.number().nullable().optional(),
-  monounsaturated_fat:  z.number().nullable().optional(),
-  trans_fat:            z.number().nullable().optional(),
-  cholesterol:          z.number().nullable().optional(),
-  sodium:               z.number().nullable().optional(),
-  potassium:            z.number().nullable().optional(),
-  dietary_fiber:        z.number().nullable().optional(),
-  sugars:               z.number().nullable().optional(),
-  vitamin_a:            z.number().nullable().optional(),
-  vitamin_c:            z.number().nullable().optional(),
-  calcium:              z.number().nullable().optional(),
-  iron:                 z.number().nullable().optional(),
-  glycemic_index:       z.string().nullable().optional(),
-  custom_nutrients:     z.record(z.string(), z.union([z.string(), z.number()])).nullable().optional(),
+  serving_size: z.number().nullable().optional(),
+  serving_unit: z.string().nullable().optional(),
+  calories: z.number().nullable().optional(),
+  protein: z.number().nullable().optional(),
+  carbs: z.number().nullable().optional(),
+  fat: z.number().nullable().optional(),
+  saturated_fat: z.number().nullable().optional(),
+  polyunsaturated_fat: z.number().nullable().optional(),
+  monounsaturated_fat: z.number().nullable().optional(),
+  trans_fat: z.number().nullable().optional(),
+  cholesterol: z.number().nullable().optional(),
+  sodium: z.number().nullable().optional(),
+  potassium: z.number().nullable().optional(),
+  dietary_fiber: z.number().nullable().optional(),
+  sugars: z.number().nullable().optional(),
+  vitamin_a: z.number().nullable().optional(),
+  vitamin_c: z.number().nullable().optional(),
+  calcium: z.number().nullable().optional(),
+  iron: z.number().nullable().optional(),
+  glycemic_index: z.string().nullable().optional(),
+  custom_nutrients: z
+    .record(z.string(), z.union([z.string(), z.number()]))
+    .nullable()
+    .optional(),
 };
 
 // Polymorphic component discriminator: a meal_foods row references either a

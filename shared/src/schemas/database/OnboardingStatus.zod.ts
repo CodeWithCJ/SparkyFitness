@@ -40,5 +40,9 @@ export const onboardingStatusMutatorSchema = z.object({
 });
 
 export type OnboardingStatus = z.infer<typeof onboardingStatusSchema>;
-export type OnboardingStatusInitializer = z.infer<typeof onboardingStatusInitializerSchema>;
-export type OnboardingStatusMutator = z.infer<typeof onboardingStatusMutatorSchema>;
+export type OnboardingStatusInitializer = z.infer<
+  typeof onboardingStatusInitializerSchema
+>;
+export type OnboardingStatusMutator = z.infer<
+  typeof onboardingStatusMutatorSchema
+>;
