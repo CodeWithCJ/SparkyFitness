@@ -361,7 +361,13 @@ describe('published (flat) chatbot tool schemas', () => {
     {
       name: 'AnalyzeFoodImageSchema',
       schema: AnalyzeFoodImageSchema,
-      properties: ['image_url', 'meal_type', 'entry_date'],
+      properties: [
+        'image_url',
+        'description',
+        'total_weight',
+        'meal_type',
+        'entry_date',
+      ],
     },
     {
       name: 'ScanLabelSchema',

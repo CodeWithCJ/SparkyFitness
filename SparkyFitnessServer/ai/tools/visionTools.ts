@@ -317,6 +317,12 @@ export function buildVisionTools(
             await foodPhotoEstimationService.estimateFoodPhotoNutrition({
               images: [{ base64: image.base64, mimeType: image.mimeType }],
               userId,
+              // The vision model is a separate call that never sees the chat
+              // transcript, so anything the user said about the dish reaches it
+              // only through here. Without it a re-analysis after a correction
+              // is a byte-identical request and returns the same wrong answer.
+              description: parsed.data.description,
+              weightSlot: parsed.data.total_weight,
               serviceConfigId: imageSource?.serviceConfigId ?? undefined,
             });
           if (!result.success) {

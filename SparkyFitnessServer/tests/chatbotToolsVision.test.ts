@@ -78,6 +78,33 @@ beforeEach(() => {
 });
 
 describe('sparky_analyze_food_image', () => {
+  it('forwards a correction as the description the vision model honours', async () => {
+    vi.mocked(
+      foodPhotoEstimationService.estimateFoodPhotoNutrition
+    ).mockResolvedValue({ success: true, estimate: ESTIMATE });
+
+    await tools.sparky_analyze_food_image.execute!(
+      {
+        image_url: `data:image/png;base64,${PNG_BASE64}`,
+        description: 'ghee roast dosa with chutney and sambar',
+        total_weight: '400 g',
+      },
+      opts
+    );
+
+    // The vision call is a separate request that never sees the chat
+    // transcript. If these do not ride along, re-analysing after a correction
+    // is a byte-identical request and returns the same wrong dish.
+    expect(
+      foodPhotoEstimationService.estimateFoodPhotoNutrition
+    ).toHaveBeenCalledWith({
+      images: [{ base64: PNG_BASE64, mimeType: 'image/png' }],
+      userId: 'user-1',
+      description: 'ghee roast dosa with chutney and sambar',
+      weightSlot: '400 g',
+    });
+  });
+
   it('parses a data: URL and renders the structured estimate', async () => {
     vi.mocked(
       foodPhotoEstimationService.estimateFoodPhotoNutrition
