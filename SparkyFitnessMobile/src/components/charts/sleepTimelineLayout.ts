@@ -107,12 +107,43 @@ export const toClockOffsetMinutes = (
 const durationMinutes = (segment: SleepTimelineSegment): number =>
   Math.max(0, (segment.endMs - segment.startMs) / MS_PER_MINUTE);
 
+/**
+ * How far around the clock face a segment travels, in wall-clock minutes.
+ *
+ * Not its elapsed duration. On a DST night the clock skips or repeats an hour, so a
+ * 23:00–07:00 sleep is seven or nine real hours but is eight hours of clock face either
+ * way — and the axis is a clock, so the block has to end where the sleeper's clock said
+ * they woke. Adding elapsed minutes to the bedtime instead draws the night an hour short
+ * in spring and an hour long in autumn.
+ *
+ * Two wall-clock readings cannot say how many whole revolutions passed between them, so
+ * the elapsed duration picks the revolution count. An offset shift is only ever an hour
+ * or two, which leaves the nearest whole day the only plausible answer.
+ */
+const clockSpanMinutes = (
+  segment: SleepTimelineSegment,
+  zone: RecordZone | null,
+): number => {
+  const elapsedMinutes = durationMinutes(segment);
+  if (elapsedMinutes <= 0) return 0;
+
+  const startMinutes = minutesOfDayInZone(segment.startMs, zone);
+  const endMinutes = minutesOfDayInZone(segment.endMs, zone);
+  const withinDay = (endMinutes - startMinutes + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+  const wholeDays = Math.max(
+    0,
+    Math.round((elapsedMinutes - withinDay) / MINUTES_PER_DAY),
+  );
+
+  return withinDay + wholeDays * MINUTES_PER_DAY;
+};
+
 const markCoveredHours = (
   segment: SleepTimelineSegment,
   covered: boolean[],
   zone: RecordZone | null,
 ): void => {
-  const spanMinutes = durationMinutes(segment);
+  const spanMinutes = clockSpanMinutes(segment, zone);
   if (spanMinutes >= MINUTES_PER_DAY) {
     covered.fill(true);
     return;
@@ -212,7 +243,7 @@ const toOffsetRanges = (
   zone: RecordZone | null,
 ): OffsetRange[] => {
   const { stage } = segment;
-  const spanMinutes = durationMinutes(segment);
+  const spanMinutes = clockSpanMinutes(segment, zone);
 
   if (spanMinutes >= MINUTES_PER_DAY) {
     return [{ startMinutes: 0, endMinutes: MINUTES_PER_DAY, stage }];

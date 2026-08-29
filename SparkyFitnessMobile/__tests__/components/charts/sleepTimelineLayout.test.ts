@@ -114,6 +114,43 @@ describe('buildSleepTimelineLayout', () => {
     );
   });
 
+  /**
+   * A DST night's elapsed duration is not its span on the clock face. Both nights below
+   * ran 23:00–07:00 on the sleeper's own clock — eight hours of axis — but Europe/Berlin
+   * skips an hour into 2026-03-29 and repeats one into 2026-10-25, so they are seven and
+   * nine hours of elapsed time. Laying the block out from the elapsed duration ends it at
+   * 06:00 and 08:00 respectively.
+   */
+  describe.each([
+    ['forward', '2026-03-28T22:00:00Z', '2026-03-29T05:00:00Z'],
+    ['backward', '2026-10-24T21:00:00Z', '2026-10-25T06:00:00Z'],
+  ])('across a %s DST transition', (_direction, bedtimeUtc, wakeUtc) => {
+    const startMs = Date.parse(bedtimeUtc);
+    const night: SleepTimelineDay = {
+      day: '2026-03-29',
+      timeInBedSeconds: (Date.parse(wakeUtc) - startMs) / 1000,
+      timeAsleepSeconds: null,
+      segments: [{ stage: 'other', startMs, endMs: Date.parse(wakeUtc) }],
+      zone: { kind: 'tz', tz: 'Europe/Berlin' },
+    };
+
+    test('ends the night where the sleeper’s clock said they woke', () => {
+      const layout = buildSleepTimelineLayout([night], {
+        width: 100,
+        // One pixel per minute of the 21:00–07:00 domain, so the block's geometry reads
+        // straight back as clock minutes.
+        height: 600 - 120,
+        anchorMinutes: 21 * 60,
+        innerPadding: 0,
+      });
+
+      // 22:00 through 07:00, as minutes past the 21:00 anchor.
+      expect(layout.domain).toEqual({ startMinutes: 120, endMinutes: 600 });
+      expect(layout.columns[0].blocks[0].y).toBeCloseTo(0);
+      expect(layout.columns[0].blocks[0].height).toBeCloseTo(8 * 60);
+    });
+  });
+
   test('returns empty geometry for the first frame, before onLayout reports a width', () => {
     const layout = buildSleepTimelineLayout([tokyoNight], {
       width: 0,
