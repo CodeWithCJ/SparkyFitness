@@ -1413,14 +1413,76 @@ describe('enrichExerciseSessions', () => {
       recordType: string;
       dataOriginFilter?: string[];
     });
-    expect(requests).toHaveLength(3);
-    expect(requests.every(request =>
-      request.dataOriginFilter?.[0] === 'com.ohealth',
+    expect(requests).toHaveLength(4);
+    expect(requests.find(request => request.recordType === 'BasalMetabolicRate'))
+      .not.toHaveProperty('dataOriginFilter');
+    expect(requests.filter(request => request.recordType !== 'BasalMetabolicRate').every(
+      request => request.dataOriginFilter?.[0] === 'com.ohealth',
     )).toBe(true);
     expect(result[0]).toMatchObject({
       energy: { inKilocalories: 300 },
       distance: { inMeters: 5000 },
     });
+  });
+
+  test('uses total minus basal calories when it exceeds a low Hevy active value', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({
+          ACTIVE_CALORIES_TOTAL: { inKilocalories: 71 },
+          dataOrigins: ['com.hevy'],
+        });
+      }
+      if (recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({
+          ENERGY_TOTAL: { inKilocalories: 180 },
+          dataOrigins: ['com.hevy'],
+        });
+      }
+      if (recordType === 'BasalMetabolicRate') {
+        return Promise.resolve({
+          BASAL_CALORIES_TOTAL: { inKilocalories: 60 },
+          dataOrigins: ['com.samsung.android.app.health'],
+        });
+      }
+      return Promise.resolve({ dataOrigins: [] });
+    });
+
+    const result = await enrichExerciseSessions([
+      makeSession({
+        startTime: '2024-01-15T10:00:00Z',
+        endTime: '2024-01-15T10:57:00Z',
+        metadata: { dataOrigin: 'com.hevy' },
+      }),
+    ], createTelemetryRunContext());
+
+    expect((result[0] as { energy: { inKilocalories: number } }).energy)
+      .toEqual({ inKilocalories: 120 });
+  });
+
+  test('keeps the legacy active selection when the optional basal read fails', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 71 } });
+      }
+      if (recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 180 } });
+      }
+      if (recordType === 'BasalMetabolicRate') {
+        return Promise.reject(new Error('Basal permission denied'));
+      }
+      return Promise.resolve({});
+    });
+
+    const result = await enrichExerciseSessions([
+      makeSession({
+        startTime: '2024-01-15T10:00:00Z',
+        endTime: '2024-01-15T10:57:00Z',
+      }),
+    ], createTelemetryRunContext());
+
+    expect((result[0] as { energy: { inKilocalories: number } }).energy)
+      .toEqual({ inKilocalories: 71 });
   });
 
   test('uses cross-origin calories when the Hevy-scoped pair is incomplete', async () => {
@@ -1447,7 +1509,10 @@ describe('enrichExerciseSessions', () => {
     expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 307 });
     const calorieRequests = mockAggregateRecord.mock.calls
       .map((call: unknown[]) => call[0] as { recordType: string; dataOriginFilter?: string[] })
-      .filter(request => request.recordType !== 'Distance');
+      .filter(request =>
+        request.recordType === 'ActiveCaloriesBurned' ||
+        request.recordType === 'TotalCaloriesBurned',
+      );
     expect(calorieRequests).toEqual([
       expect.objectContaining({
         recordType: 'ActiveCaloriesBurned',
@@ -1490,7 +1555,10 @@ describe('enrichExerciseSessions', () => {
     expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 307 });
     const calorieRequests = mockAggregateRecord.mock.calls
       .map((call: unknown[]) => call[0] as { recordType: string; dataOriginFilter?: string[] })
-      .filter(request => request.recordType !== 'Distance');
+      .filter(request =>
+        request.recordType === 'ActiveCaloriesBurned' ||
+        request.recordType === 'TotalCaloriesBurned',
+      );
     expect(calorieRequests).toHaveLength(4);
     expect(calorieRequests.slice(0, 2).every(
       request => request.dataOriginFilter?.[0] === 'app.hevy',
@@ -1522,17 +1590,23 @@ describe('enrichExerciseSessions', () => {
     expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 320 });
     const calorieRequests = mockAggregateRecord.mock.calls
       .map((call: unknown[]) => call[0] as { recordType: string; dataOriginFilter?: string[] })
-      .filter(request => request.recordType !== 'Distance');
+      .filter(request =>
+        request.recordType === 'ActiveCaloriesBurned' ||
+        request.recordType === 'TotalCaloriesBurned',
+      );
     expect(calorieRequests).toHaveLength(4);
   });
 
-  test('prefers TotalCaloriesBurned when ActiveCaloriesBurned is a tiny passive fragment (issue #1296: 41-min walk)', async () => {
+  test('subtracts basal energy when ActiveCaloriesBurned is a tiny passive fragment (issue #1296: 41-min walk)', async () => {
     mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
       if (recordType === 'ActiveCaloriesBurned') {
         return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 43.5 } });
       }
       if (recordType === 'TotalCaloriesBurned') {
         return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 265 } });
+      }
+      if (recordType === 'BasalMetabolicRate') {
+        return Promise.resolve({ BASAL_CALORIES_TOTAL: { inKilocalories: 45 } });
       }
       return Promise.resolve({});
     });
@@ -1542,7 +1616,7 @@ describe('enrichExerciseSessions', () => {
       makeSession({ startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T10:41:00Z' }),
     ], createTelemetryRunContext());
 
-    expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 265 });
+    expect((result[0] as { energy: { inKilocalories: number } }).energy).toEqual({ inKilocalories: 220 });
   });
 
   test('prefers TotalCaloriesBurned when ActiveCaloriesBurned is near-zero passive noise (issue #1296: indoor bike)', async () => {
@@ -1571,6 +1645,9 @@ describe('enrichExerciseSessions', () => {
       }
       if (recordType === 'TotalCaloriesBurned') {
         return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 385 } });
+      }
+      if (recordType === 'BasalMetabolicRate') {
+        return Promise.resolve({ BASAL_CALORIES_TOTAL: { inKilocalories: 48 } });
       }
       return Promise.resolve({});
     });
@@ -2060,9 +2137,9 @@ describe('enrichExerciseSessions bounded fan-out and reuse (#2191)', () => {
 
     await enrichExerciseSessions(tenSessions(), createTelemetryRunContext());
 
-    // AGGREGATE_CONCURRENCY (6) sessions × 3 scalar aggregates each. The point
-    // is that ten sessions do not become thirty concurrent calls.
-    expect(aggregates.peak).toBeLessThanOrEqual(18);
+    // AGGREGATE_CONCURRENCY (4) sessions × 4 scalar aggregates each. The point
+    // is that ten sessions do not become forty concurrent calls.
+    expect(aggregates.peak).toBeLessThanOrEqual(16);
   });
 
   test('telemetry stays capped at two sessions however wide the outer batch runs', async () => {
@@ -2073,7 +2150,7 @@ describe('enrichExerciseSessions bounded fan-out and reuse (#2191)', () => {
 
     // Only readRecords carries telemetry (route plus up to five sample series).
     // TELEMETRY_CONCURRENCY (2) sessions × 6 parallel reads = 12. Without the
-    // limiter the outer batch of 6 would put ~36 in flight — and the original
+    // limiter the outer batch of 4 would put ~24 in flight — and the original
     // unbounded version put all ten sessions' worth in flight at once, which is
     // what froze the UI in #2191.
     expect(telemetryReads.peak).toBeLessThanOrEqual(12);
