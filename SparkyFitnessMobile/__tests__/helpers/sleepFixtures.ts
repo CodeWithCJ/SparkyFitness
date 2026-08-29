@@ -25,6 +25,8 @@ export const buildSleepEntry = (overrides: Partial<SleepEntry> = {}): SleepEntry
   lowest_spo2_value: 89,
   highest_spo2_value: 99,
   resting_heart_rate: 52,
+  record_timezone: null,
+  record_utc_offset_minutes: null,
   stage_events: [],
   ...overrides,
 });

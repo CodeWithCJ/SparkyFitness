@@ -1,5 +1,11 @@
+import {
+  instantHourMinuteInZone,
+  resolveRecordZone,
+  type RecordZone,
+} from '@workspace/shared';
 import type { TFunction } from 'i18next';
 
+import type { SleepEntry } from '../types/sleep';
 import { formatTimeLabel, type EntryTimeFormat } from './entryTimeDisplay';
 
 /**
@@ -31,19 +37,49 @@ export const formatSleepDuration = (
 };
 
 /**
+ * The zone a session's clock times should be read in: the zone it was recorded in, else
+ * the account's profile timezone.
+ *
+ * A bedtime means the hour the user went to bed, not the hour that instant maps to on the
+ * phone's current clock — someone who flies to Tokyo must not find last week's nights
+ * shifted nine hours. Both fallbacks route through `resolveRecordZone`, so a profile
+ * timezone this runtime cannot resolve is rejected rather than handed to `Intl`, which
+ * would throw on it.
+ *
+ * Returns null when neither is usable, which leaves the caller rendering device-local —
+ * the same behaviour as before per-record zones were stored, and the only honest answer
+ * when nothing recorded where the user was.
+ */
+export const resolveSleepZone = (
+  entry: Pick<SleepEntry, 'record_timezone' | 'record_utc_offset_minutes'>,
+  profileTimezone?: string | null,
+): RecordZone | null =>
+  resolveRecordZone(entry.record_timezone, entry.record_utc_offset_minutes) ??
+  resolveRecordZone(profileTimezone, null);
+
+/**
  * Formats an ISO instant as a clock time, honouring the account's `time_format`
  * preference exactly as diary food entries do.
+ *
+ * `zone` is the wall clock to read the instant against — see {@link resolveSleepZone}.
+ * Omitting it falls back to the device's own clock, which is only right when nothing is
+ * known about where the record was made.
  */
 export const formatClockTime = (
   iso: string | null | undefined,
   timeFormat?: EntryTimeFormat | null,
+  zone?: RecordZone | null,
 ): string => {
   if (!iso) return VALUE_PLACEHOLDER;
 
   const instant = new Date(iso);
   if (Number.isNaN(instant.getTime())) return VALUE_PLACEHOLDER;
 
-  const hours = String(instant.getHours()).padStart(2, '0');
-  const minutes = String(instant.getMinutes()).padStart(2, '0');
+  const { hour, minute } = zone
+    ? instantHourMinuteInZone(instant, zone)
+    : { hour: instant.getHours(), minute: instant.getMinutes() };
+
+  const hours = String(hour).padStart(2, '0');
+  const minutes = String(minute).padStart(2, '0');
   return formatTimeLabel(`${hours}:${minutes}`, timeFormat) ?? VALUE_PLACEHOLDER;
 };

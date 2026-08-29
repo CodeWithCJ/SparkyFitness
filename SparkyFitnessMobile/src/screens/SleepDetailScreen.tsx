@@ -1,3 +1,4 @@
+import type { RecordZone } from '@workspace/shared';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, Text, View } from 'react-native';
@@ -15,12 +16,14 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { SleepEntry } from '../types/sleep';
 import { formatDateLabel } from '../utils/dateUtils';
-import { formatClockTime, formatSleepDuration } from '../utils/sleepDay';
+import { formatClockTime, formatSleepDuration, resolveSleepZone } from '../utils/sleepDay';
 
 type Props = RootStackScreenProps<'SleepDetail'>;
 
 interface SleepDetailHeaderProps {
   entry: SleepEntry;
+  /** The wall clock this session's times are read against; see `resolveSleepZone`. */
+  zone: RecordZone | null;
 }
 
 const SleepDetailTitle: React.FC<{ entryDate: string }> = ({ entryDate }) => {
@@ -38,7 +41,7 @@ const SleepDetailTitle: React.FC<{ entryDate: string }> = ({ entryDate }) => {
   );
 };
 
-const SleepDetailHeader: React.FC<SleepDetailHeaderProps> = ({ entry }) => {
+const SleepDetailHeader: React.FC<SleepDetailHeaderProps> = ({ entry, zone }) => {
   const { t } = useTranslation();
   const { preferences } = usePreferences();
 
@@ -77,8 +80,8 @@ const SleepDetailHeader: React.FC<SleepDetailHeaderProps> = ({ entry }) => {
       <Text className="text-sm text-text-secondary mt-2">
         {t('sleep.bedtimeToWake', {
           defaultValue: '{{bedtime}} – {{wakeTime}}',
-          bedtime: formatClockTime(entry.bedtime, preferences?.time_format),
-          wakeTime: formatClockTime(entry.wake_time, preferences?.time_format),
+          bedtime: formatClockTime(entry.bedtime, preferences?.time_format, zone),
+          wakeTime: formatClockTime(entry.wake_time, preferences?.time_format, zone),
         })}
       </Text>
     </View>
@@ -104,6 +107,11 @@ const SleepDetailScreen: React.FC<Props> = ({ route }) => {
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   const { entry, stages, isLoading, isError, refetch } = useSleepDetail(entryId, day);
+  const { preferences } = usePreferences();
+
+  // Resolved once for the whole screen so the header's bedtime-to-wake range and the
+  // hypnogram's axis labels can never disagree about which clock they are on.
+  const zone = entry ? resolveSleepZone(entry, preferences?.timezone) : null;
 
   const header = useScreenHeader({ left: { kind: 'back' } });
 
@@ -151,8 +159,8 @@ const SleepDetailScreen: React.FC<Props> = ({ route }) => {
         contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
       >
         <SleepDetailTitle entryDate={entry.entry_date} />
-        <SleepDetailHeader entry={entry} />
-        <Hypnogram stages={stages} />
+        <SleepDetailHeader entry={entry} zone={zone} />
+        <Hypnogram stages={stages} zone={zone} />
         <SleepStagesBreakdown entry={entry} />
         <SleepBiometrics entry={entry} />
       </ScrollView>

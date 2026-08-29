@@ -1,56 +1,58 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
-import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
-import { useCSSVariable } from 'uniwind';
-import { hasSupplementNutrition } from '@workspace/shared';
-import { useQueryClient } from '@tanstack/react-query';
-import Icon from '../components/Icon';
-import {
-  useServerConnection,
-  useDailySummary,
-  usePreferences,
-  useMeasurements,
-  useWaterIntakeMutation,
-  useHealthTrends,
-  useWidgetSync,
-  useCustomNutrients,
-  useNutrientDisplayPreferences,
-  fastingRootQueryKey,
-  medicationsRootQueryKey,
-} from '../hooks';
-import type { HealthTrendDateRange } from '../types/healthTrends';
-import CalorieRingCard from '../components/CalorieRingCard';
-import MacroCard from '../components/MacroCard';
-import DateNavigator from '../components/DateNavigator';
-import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
-import { useDiaryDateStore } from '../stores/diaryDateStore';
-import {
-  setNativeHeaderDatePickerOptions,
-  type NativeHeaderDatePickerNavigation,
-} from '../utils/nativeHeaderDatePicker';
-import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
-import { weightFromKg } from '../utils/unitConversions';
-import { getNetCarbsValue } from '../utils/nutrientUtils';
-import { formatDateLabel } from '../utils/dateUtils';
-import HydrationGauge from '../components/HydrationGauge';
-import SegmentedControl, { type Segment } from '../components/SegmentedControl';
-import HealthTrendsPager from '../components/HealthTrendsPager';
-import ExerciseProgressCard from '../components/ExerciseProgressCard';
-import StatusView from '../components/StatusView';
-import FastingCard from '../components/FastingCard';
-import CycleCard from '../components/CycleCard';
-import FastingGoalReconciler from '../components/FastingGoalReconciler';
-import MedicationsCard from '../components/MedicationsCard';
-import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useAppPreferencesStore } from '../stores/appPreferencesStore';
-import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList, TabParamList } from '../types/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import { hasSupplementNutrition } from '@workspace/shared';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCSSVariable } from 'uniwind';
+import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import CalorieRingCard from '../components/CalorieRingCard';
+import CycleCard from '../components/CycleCard';
+import DateNavigator from '../components/DateNavigator';
+import ExerciseProgressCard from '../components/ExerciseProgressCard';
+import FastingCard from '../components/FastingCard';
+import FastingGoalReconciler from '../components/FastingGoalReconciler';
+import HealthTrendsPager from '../components/HealthTrendsPager';
+import HydrationGauge from '../components/HydrationGauge';
+import Icon from '../components/Icon';
+import MacroCard from '../components/MacroCard';
+import MedicationsCard from '../components/MedicationsCard';
+import SegmentedControl, { type Segment } from '../components/SegmentedControl';
+import StatusView from '../components/StatusView';
 import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
+import
+  {
+    fastingRootQueryKey,
+    medicationsRootQueryKey,
+    useCustomNutrients,
+    useDailySummary,
+    useHealthTrends,
+    useMeasurements,
+    useNutrientDisplayPreferences,
+    usePreferences,
+    useServerConnection,
+    useWaterIntakeMutation,
+    useWidgetSync,
+  } from '../hooks';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import { useDiaryDateStore } from '../stores/diaryDateStore';
+import type { HealthTrendDateRange } from '../types/healthTrends';
+import type { RootStackParamList, TabParamList } from '../types/navigation';
+import { formatDateLabel } from '../utils/dateUtils';
+import
+  {
+    setNativeHeaderDatePickerOptions,
+    type NativeHeaderDatePickerNavigation,
+  } from '../utils/nativeHeaderDatePicker';
+import { getNetCarbsValue } from '../utils/nutrientUtils';
+import { weightFromKg } from '../utils/unitConversions';
 
 const RANGE_SEGMENTS = (t: (key: string, options: { defaultValue: string }) => string): Segment<HealthTrendDateRange>[] => [
   { key: '7d', label: t('ranges.7d', { defaultValue: '7d' }) },
@@ -147,7 +149,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     enabled: isConnected,
   });
 
-  const trends = useHealthTrends({
+  const { refetch: refetchTrends, ...trends } = useHealthTrends({
     range: trendsRange,
     enabled: isConnected,
   });
@@ -204,7 +206,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       refetch(),
       refetchPreferences(),
       refetchMeasurements(),
-      trends.refetch(),
+      refetchTrends(),
       refetchCustomNutrients(),
       refetchNutrientPrefs(),
       // FastingCard owns its own queries; nudge them on pull-to-refresh.
@@ -213,7 +215,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey }),
     ]);
     setRefreshing(false);
-  }, [refetch, refetchPreferences, refetchMeasurements, trends, refetchCustomNutrients, refetchNutrientPrefs, queryClient]);
+  }, [refetch, refetchPreferences, refetchMeasurements, refetchTrends, refetchCustomNutrients, refetchNutrientPrefs, queryClient]);
 
   // Render content based on state
   const renderContent = () => {

@@ -628,16 +628,38 @@ describe('DiaryScreen sleep cards', () => {
     expect(queryByTestId('bed-time-card')).toBeNull();
   });
 
-  test('waits for the sleep query before deciding the day is empty', () => {
-    // Summary already resolved, sleep still in flight, nothing else logged. Rendering
-    // now would show the empty-day illustration and then flip to the sleep cards.
+  test('shows the rest of the diary while the sleep query is still in flight', () => {
+    // Summary already resolved, sleep still in flight. The food and exercise that already
+    // arrived must not sit behind "Loading diary..." waiting on `/api/sleep`.
     configureSleep({ wakeUp: null, naps: [], bedTime: null, isLoading: true });
 
     const { getByTestId, queryByTestId } = renderScreen();
 
-    expect(getByTestId('status-view')).toBeTruthy();
+    expect(queryByTestId('status-view')).toBeNull();
+    expect(getByTestId('food-summary')).toBeTruthy();
+    expect(getByTestId('exercise-summary')).toBeTruthy();
+  });
+
+  test('holds the empty-day illustration until the sleep query settles', () => {
+    // Nothing else logged, so the day looks empty — but a night that is still loading
+    // could yet fill it. Showing the illustration now would flip to sleep cards a moment
+    // later; the sections stay up instead until sleep has actually answered.
+    configureSleep({ wakeUp: null, naps: [], bedTime: null, isLoading: true });
+
+    const { queryByTestId, rerender } = renderScreen();
+
     expect(queryByTestId('empty-day')).toBeNull();
     expect(queryByTestId('wake-up-card')).toBeNull();
+
+    // Sleep resolves with nothing: now the day really is empty.
+    configureSleep({ wakeUp: null, naps: [], bedTime: null });
+    rerender(
+      <SafeAreaProvider initialMetrics={{ frame, insets }}>
+        <DiaryScreen navigation={mockNavigation} route={diaryRoute} />
+      </SafeAreaProvider>,
+    );
+
+    expect(queryByTestId('empty-day')).toBeTruthy();
   });
 
   test('a bed time alone is enough to keep the day non-empty', () => {

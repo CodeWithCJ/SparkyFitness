@@ -105,6 +105,8 @@ describe('useSleepRange', () => {
         timeInBedSeconds: 0,
         timeAsleepSeconds: null,
         segments: [],
+        // No session, so no recording zone to take one from.
+        zone: null,
       });
       expect(second.segments).toEqual([]);
       expect(third.timeInBedSeconds).toBe(28800);
@@ -240,6 +242,56 @@ describe('useSleepRange', () => {
 
       expect(summary.nightsWithData).toBe(0);
       expect(summary.days.every((entry) => entry.segments.length === 0)).toBe(true);
+    });
+
+    describe('record zones', () => {
+      const dayIn = (
+        summary: ReturnType<typeof buildSleepTimelineSummary>,
+        day: string,
+      ) => summary.days.find((entry) => entry.day === day);
+
+      test("carries the night's own recording zone onto its column", () => {
+        const summary = buildSleepTimelineSummary(
+          [nightOn(DAY, { record_timezone: 'Asia/Tokyo' })],
+          DAY,
+          7,
+          'Europe/Berlin',
+        );
+
+        expect(dayIn(summary, DAY)?.zone).toEqual({ kind: 'tz', tz: 'Asia/Tokyo' });
+      });
+
+      test('falls back to the profile timezone when the session recorded no zone', () => {
+        const summary = buildSleepTimelineSummary([nightOn(DAY)], DAY, 7, 'Europe/Berlin');
+
+        expect(dayIn(summary, DAY)?.zone).toEqual({ kind: 'tz', tz: 'Europe/Berlin' });
+      });
+
+      test('gives each night its own zone, so a trip does not re-zone the window', () => {
+        // The chart draws a fortnight on one axis; a night slept in Berlin and a night
+        // slept in Tokyo each belong at the hour they were actually slept.
+        const previous = addDays(DAY, -1);
+        const summary = buildSleepTimelineSummary(
+          [
+            nightOn(DAY, { record_timezone: 'Europe/Berlin' }),
+            nightOn(previous, { record_utc_offset_minutes: 540 }),
+          ],
+          DAY,
+          7,
+          'America/New_York',
+        );
+
+        expect(dayIn(summary, DAY)?.zone).toEqual({ kind: 'tz', tz: 'Europe/Berlin' });
+        expect(dayIn(summary, previous)?.zone).toEqual({ kind: 'offset', minutes: 540 });
+      });
+
+      test('leaves the zone null when neither the record nor the profile has one', () => {
+        const summary = buildSleepTimelineSummary([nightOn(DAY)], DAY, 7);
+
+        expect(dayIn(summary, DAY)?.zone).toBeNull();
+        // A day with no session has nothing to take a zone from either.
+        expect(dayIn(summary, addDays(DAY, -1))?.zone).toBeNull();
+      });
     });
   });
 

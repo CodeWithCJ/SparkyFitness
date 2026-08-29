@@ -247,4 +247,55 @@ describe('SleepCards', () => {
       });
     });
   });
+
+  describe('record zones', () => {
+    // 22:45 UTC reads as 07:45 the next morning in Tokyo, a time no runner timezone can
+    // produce from this instant by accident.
+    const instant = '2026-08-22T22:45:00+00:00';
+
+    test('renders the hour the session was recorded at, not the phone’s current hour', () => {
+      const entry = buildSleepEntry({
+        wake_time: instant,
+        record_timezone: 'Asia/Tokyo',
+      });
+
+      const { getByText } = render(
+        <WakeUpCard entry={entry} day={DAY} navigation={mockNavigation} />,
+      );
+
+      expect(getByText('7:45 AM')).toBeTruthy();
+    });
+
+    test('falls back to the profile timezone when the session recorded no zone', () => {
+      (usePreferences as jest.Mock).mockReturnValue({
+        preferences: { time_format: 'h:mm A', timezone: 'Asia/Tokyo' },
+      });
+
+      const { getByText } = render(
+        <WakeUpCard
+          entry={buildSleepEntry({ wake_time: instant })}
+          day={DAY}
+          navigation={mockNavigation}
+        />,
+      );
+
+      expect(getByText('7:45 AM')).toBeTruthy();
+    });
+
+    test('reads a nap against its own recorded zone', () => {
+      const nap = buildSleepEntry({
+        id: 'nap-1',
+        bedtime: instant,
+        duration_in_seconds: 2400,
+        time_asleep_in_seconds: 2400,
+        record_utc_offset_minutes: 540,
+      });
+
+      const { getByText } = render(
+        <NapsCard naps={[nap]} day={DAY} navigation={mockNavigation} />,
+      );
+
+      expect(getByText('7:45 AM')).toBeTruthy();
+    });
+  });
 });

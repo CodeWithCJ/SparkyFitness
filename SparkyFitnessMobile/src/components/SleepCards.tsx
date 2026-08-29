@@ -9,7 +9,7 @@ import { useCSSVariable } from 'uniwind';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import type { SleepEntry } from '../types/sleep';
 import { usePreferences } from '../hooks/usePreferences';
-import { formatClockTime, formatSleepDuration } from '../utils/sleepDay';
+import { formatClockTime, formatSleepDuration, resolveSleepZone } from '../utils/sleepDay';
 import Icon, { type IconName } from './Icon';
 
 export type SleepCardNavigation = CompositeNavigationProp<
@@ -138,7 +138,11 @@ export const WakeUpCard: React.FC<WakeUpCardProps> = ({ entry, day, navigation }
     >
       <SleepSummary
         entry={entry}
-        clockValue={formatClockTime(entry.wake_time, preferences?.time_format)}
+        clockValue={formatClockTime(
+          entry.wake_time,
+          preferences?.time_format,
+          resolveSleepZone(entry, preferences?.timezone),
+        )}
       />
     </SleepCardShell>
   );
@@ -170,7 +174,11 @@ export const NapsCard: React.FC<NapsCardProps> = ({ naps, day, navigation }) => 
       </View>
 
       {naps.map((nap) => {
-        const napTime = formatClockTime(nap.bedtime, preferences?.time_format);
+        const napTime = formatClockTime(
+          nap.bedtime,
+          preferences?.time_format,
+          resolveSleepZone(nap, preferences?.timezone),
+        );
         const napDuration = formatSleepDuration(
           nap.time_asleep_in_seconds ?? nap.duration_in_seconds,
           t,
@@ -227,7 +235,11 @@ export const BedTimeCard: React.FC<BedTimeCardProps> = ({ entry, day, navigation
     >
       <SleepSummary
         entry={entry}
-        clockValue={formatClockTime(entry.bedtime, preferences?.time_format)}
+        clockValue={formatClockTime(
+          entry.bedtime,
+          preferences?.time_format,
+          resolveSleepZone(entry, preferences?.timezone),
+        )}
       />
     </SleepCardShell>
   );

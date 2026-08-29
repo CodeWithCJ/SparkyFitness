@@ -7,12 +7,13 @@ import { useCSSVariable } from 'uniwind';
 
 import { usePreferences } from '../hooks/usePreferences';
 import type { HealthTrendDateRange, HealthTrendSeries } from '../types/healthTrends';
-import {
-  SLEEP_STAGE_LANES,
-  type SleepStageLane,
-  type SleepTimelineDay,
-  type SleepTimelineSummary,
-} from '../types/sleep';
+import
+  {
+    SLEEP_STAGE_LANES,
+    type SleepStageLane,
+    type SleepTimelineDay,
+    type SleepTimelineSummary,
+  } from '../types/sleep';
 import { formatHourLabel, type EntryTimeFormat } from '../utils/entryTimeDisplay';
 import { formatClockTime, formatSleepDuration } from '../utils/sleepDay';
 import { localizeSleepStage } from '../utils/sleepLocalization';
@@ -20,12 +21,13 @@ import ChartTouchOverlay, {
   EMPTY_CHART_TOUCH_LAYOUT,
   type ChartTouchLayout,
 } from './ChartTouchOverlay';
-import {
-  buildSleepTimelineLayout,
-  chooseSleepClockAnchorMinutes,
-  MINUTES_PER_DAY,
-} from './charts/sleepTimelineLayout';
 import { formatTooltipDate, formatXLabel30d90d, formatXLabel7d } from './charts/chartFormatting';
+import
+  {
+    buildSleepTimelineLayout,
+    chooseSleepClockAnchorMinutes,
+    MINUTES_PER_DAY,
+  } from './charts/sleepTimelineLayout';
 
 type SleepTimelineAggregates = Omit<SleepTimelineSummary, 'days'>;
 
@@ -133,8 +135,8 @@ export const buildSelectedNightLabels = (
   return {
     stats,
     clockRange: t('sleep.bedtimeToWake', {
-      bedtime: formatClockTime(new Date(bedtimeMs).toISOString(), timeFormat),
-      wakeTime: formatClockTime(new Date(wakeTimeMs).toISOString(), timeFormat),
+      bedtime: formatClockTime(new Date(bedtimeMs).toISOString(), timeFormat, day.zone),
+      wakeTime: formatClockTime(new Date(wakeTimeMs).toISOString(), timeFormat, day.zone),
       defaultValue: '{{bedtime}} – {{wakeTime}}',
     }),
   };

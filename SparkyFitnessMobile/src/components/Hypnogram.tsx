@@ -1,4 +1,5 @@
 import { Canvas, RoundedRect } from '@shopify/react-native-skia';
+import type { RecordZone } from '@workspace/shared';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
@@ -151,6 +152,11 @@ const LANE_COLOR_VARIABLES: Record<HypnogramLane, string> = {
 
 interface HypnogramProps {
   stages: SleepStageEvent[];
+  /**
+   * The wall clock the axis labels are read against — the session's recording zone, from
+   * `resolveSleepZone`. Null renders them on the device's clock.
+   */
+  zone?: RecordZone | null;
 }
 
 /**
@@ -159,7 +165,7 @@ interface HypnogramProps {
  * A thin shell over `buildHypnogramSegments` — this component measures the available
  * width, picks theme colours, and draws. It contains no layout arithmetic.
  */
-const Hypnogram: React.FC<HypnogramProps> = ({ stages }) => {
+const Hypnogram: React.FC<HypnogramProps> = ({ stages, zone }) => {
   const { t } = useTranslation();
   const { preferences } = usePreferences();
   const [chartWidth, setChartWidth] = useState(0);
@@ -227,10 +233,18 @@ const Hypnogram: React.FC<HypnogramProps> = ({ stages }) => {
       {window ? (
         <View className="flex-row justify-between mt-1">
           <Text className="text-xs text-text-muted">
-            {formatClockTime(new Date(window.startMs).toISOString(), preferences?.time_format)}
+            {formatClockTime(
+              new Date(window.startMs).toISOString(),
+              preferences?.time_format,
+              zone,
+            )}
           </Text>
           <Text className="text-xs text-text-muted">
-            {formatClockTime(new Date(window.endMs).toISOString(), preferences?.time_format)}
+            {formatClockTime(
+              new Date(window.endMs).toISOString(),
+              preferences?.time_format,
+              zone,
+            )}
           </Text>
         </View>
       ) : null}

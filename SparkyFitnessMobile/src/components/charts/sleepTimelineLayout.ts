@@ -1,3 +1,5 @@
+import { instantHourMinuteInZone, type RecordZone } from '@workspace/shared';
+
 import type { SleepStageLane, SleepTimelineDay, SleepTimelineSegment } from '../../types/sleep';
 
 /**
@@ -69,7 +71,18 @@ export interface SleepTimelineLayoutOptions {
   innerPadding: number;
 }
 
-const localMinutesOfDay = (ms: number): number => {
+/**
+ * The wall-clock minute an instant fell on, in the zone the night was recorded in.
+ *
+ * A null zone means nothing recorded where the user was, so the device's own clock is the
+ * only reading available.
+ */
+const minutesOfDayInZone = (ms: number, zone: RecordZone | null): number => {
+  if (zone) {
+    const { hour, minute } = instantHourMinuteInZone(ms, zone);
+    return hour * MINUTES_PER_HOUR + minute;
+  }
+
   const instant = new Date(ms);
   return instant.getHours() * MINUTES_PER_HOUR + instant.getMinutes();
 };
@@ -77,25 +90,35 @@ const localMinutesOfDay = (ms: number): number => {
 /**
  * Where an instant sits on the axis, as minutes past the anchor.
  *
- * Local time, never UTC: the axis is a wall clock, so a 23:00 bedtime belongs at 23:00
- * wherever the user is. Mapping through the anchor is what keeps a night monotonic — with
- * a 21:00 anchor, 23:00 lands at 120 and the 01:00 that follows lands at 240, so the night
- * reads straight down the column instead of wrapping at midnight.
+ * Wall-clock time, never UTC: the axis is a clock face, so a 23:00 bedtime belongs at
+ * 23:00 — and specifically at the 23:00 the user went to bed at, which is why the zone
+ * travels with the night rather than being read off the device. Mapping through the anchor
+ * is what keeps a night monotonic: with a 21:00 anchor, 23:00 lands at 120 and the 01:00
+ * that follows lands at 240, so the night reads straight down the column instead of
+ * wrapping at midnight.
  */
-export const toClockOffsetMinutes = (ms: number, anchorMinutes: number): number =>
-  (localMinutesOfDay(ms) - anchorMinutes + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+export const toClockOffsetMinutes = (
+  ms: number,
+  anchorMinutes: number,
+  zone: RecordZone | null = null,
+): number =>
+  (minutesOfDayInZone(ms, zone) - anchorMinutes + MINUTES_PER_DAY) % MINUTES_PER_DAY;
 
 const durationMinutes = (segment: SleepTimelineSegment): number =>
   Math.max(0, (segment.endMs - segment.startMs) / MS_PER_MINUTE);
 
-const markCoveredHours = (segment: SleepTimelineSegment, covered: boolean[]): void => {
+const markCoveredHours = (
+  segment: SleepTimelineSegment,
+  covered: boolean[],
+  zone: RecordZone | null,
+): void => {
   const spanMinutes = durationMinutes(segment);
   if (spanMinutes >= MINUTES_PER_DAY) {
     covered.fill(true);
     return;
   }
 
-  const startMinutes = localMinutesOfDay(segment.startMs);
+  const startMinutes = minutesOfDayInZone(segment.startMs, zone);
   const firstHour = Math.floor(startMinutes / MINUTES_PER_HOUR);
   const lastHour = Math.floor((startMinutes + spanMinutes) / MINUTES_PER_HOUR);
 
@@ -155,7 +178,7 @@ export const chooseSleepClockAnchorMinutes = (days: SleepTimelineDay[]): number 
   const covered = new Array<boolean>(HOURS_PER_DAY).fill(false);
   for (const day of days) {
     for (const segment of day.segments) {
-      markCoveredHours(segment, covered);
+      markCoveredHours(segment, covered, day.zone);
     }
   }
 
@@ -186,6 +209,7 @@ interface OffsetRange {
 const toOffsetRanges = (
   segment: SleepTimelineSegment,
   anchorMinutes: number,
+  zone: RecordZone | null,
 ): OffsetRange[] => {
   const { stage } = segment;
   const spanMinutes = durationMinutes(segment);
@@ -194,7 +218,7 @@ const toOffsetRanges = (
     return [{ startMinutes: 0, endMinutes: MINUTES_PER_DAY, stage }];
   }
 
-  const startMinutes = toClockOffsetMinutes(segment.startMs, anchorMinutes);
+  const startMinutes = toClockOffsetMinutes(segment.startMs, anchorMinutes, zone);
   const endMinutes = startMinutes + spanMinutes;
 
   if (endMinutes <= MINUTES_PER_DAY) {
@@ -258,7 +282,7 @@ export const buildSleepTimelineLayout = (
   { width, height, anchorMinutes, innerPadding }: SleepTimelineLayoutOptions,
 ): SleepTimelineLayout => {
   const rangesByDay = days.map((day) =>
-    day.segments.flatMap((segment) => toOffsetRanges(segment, anchorMinutes)),
+    day.segments.flatMap((segment) => toOffsetRanges(segment, anchorMinutes, day.zone)),
   );
   const domain = buildDomain(rangesByDay.flat());
 

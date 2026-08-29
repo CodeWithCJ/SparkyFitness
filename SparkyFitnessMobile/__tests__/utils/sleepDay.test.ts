@@ -1,5 +1,10 @@
 import i18n, { initializeI18n } from '../../src/localization/i18n';
-import { formatClockTime, formatSleepDuration } from '../../src/utils/sleepDay';
+import {
+  formatClockTime,
+  formatSleepDuration,
+  resolveSleepZone,
+} from '../../src/utils/sleepDay';
+import { buildSleepEntry } from '../helpers/sleepFixtures';
 
 /**
  * Builds an ISO instant whose *local* wall-clock time is known, so clock-formatting
@@ -98,6 +103,89 @@ describe('formatClockTime', () => {
       const formatted = formatClockTime(input, 'HH:mm');
       expect(formatted).toBe('—');
       expect(formatted).not.toContain('Invalid Date');
+    }
+  });
+
+  describe('record zones', () => {
+    // 22:45 UTC is 07:45 the next morning in Tokyo and 17:45 the same evening at UTC-5,
+    // so neither reading can be produced by the runner's own clock by coincidence.
+    const instant = '2026-08-22T22:45:00+00:00';
+
+    test('renders the wall clock of the zone the session was recorded in', () => {
+      expect(formatClockTime(instant, 'HH:mm', { kind: 'tz', tz: 'Asia/Tokyo' })).toBe(
+        '07:45',
+      );
+      expect(formatClockTime(instant, 'HH:mm', { kind: 'tz', tz: 'UTC' })).toBe('22:45');
+    });
+
+    test('renders against a fixed UTC offset for sources that only report one', () => {
+      expect(formatClockTime(instant, 'HH:mm', { kind: 'offset', minutes: -300 })).toBe(
+        '17:45',
+      );
+      expect(formatClockTime(instant, 'HH:mm', { kind: 'offset', minutes: 330 })).toBe(
+        '04:15',
+      );
+    });
+
+    test('still honours the account time format inside a zone', () => {
+      expect(formatClockTime(instant, 'h:mm A', { kind: 'tz', tz: 'Asia/Tokyo' })).toBe(
+        '7:45 AM',
+      );
+    });
+
+    test('falls back to the device clock when no zone is known', () => {
+      const deviceClock = new Date(instant);
+      const expected = `${String(deviceClock.getHours()).padStart(2, '0')}:${String(
+        deviceClock.getMinutes(),
+      ).padStart(2, '0')}`;
+
+      expect(formatClockTime(instant, 'HH:mm', null)).toBe(expected);
+      expect(formatClockTime(instant, 'HH:mm')).toBe(expected);
+    });
+  });
+});
+
+describe('resolveSleepZone', () => {
+  test('prefers the recorded timezone over everything else', () => {
+    const entry = buildSleepEntry({
+      record_timezone: 'Asia/Tokyo',
+      record_utc_offset_minutes: -300,
+    });
+
+    expect(resolveSleepZone(entry, 'Europe/Berlin')).toEqual({
+      kind: 'tz',
+      tz: 'Asia/Tokyo',
+    });
+  });
+
+  test('falls back to the recorded offset when no timezone was captured', () => {
+    const entry = buildSleepEntry({ record_utc_offset_minutes: -300 });
+
+    expect(resolveSleepZone(entry, 'Europe/Berlin')).toEqual({
+      kind: 'offset',
+      minutes: -300,
+    });
+  });
+
+  test('falls back to the profile timezone when the record carries neither', () => {
+    expect(resolveSleepZone(buildSleepEntry(), 'Europe/Berlin')).toEqual({
+      kind: 'tz',
+      tz: 'Europe/Berlin',
+    });
+  });
+
+  test('rejects an unusable recorded timezone rather than passing it to Intl', () => {
+    const entry = buildSleepEntry({ record_timezone: 'Not/AZone' });
+
+    expect(resolveSleepZone(entry, 'Europe/Berlin')).toEqual({
+      kind: 'tz',
+      tz: 'Europe/Berlin',
+    });
+  });
+
+  test('returns null when nothing recorded where the user was', () => {
+    for (const profileTimezone of [null, undefined, '', 'Not/AZone']) {
+      expect(resolveSleepZone(buildSleepEntry(), profileTimezone)).toBeNull();
     }
   });
 });

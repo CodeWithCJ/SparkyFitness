@@ -58,7 +58,15 @@ const weightSeries = populated({ day: '2026-06-03', weight: 80 });
  * night count says whether any of it is real.
  */
 const sleepTrend = (overrides: Partial<SleepTrendSeries> = {}): SleepTrendSeries => ({
-  data: [{ day: '2026-06-03', timeInBedSeconds: 0, timeAsleepSeconds: null, segments: [] }],
+  data: [
+    {
+      day: '2026-06-03',
+      timeInBedSeconds: 0,
+      timeAsleepSeconds: null,
+      segments: [],
+      zone: null,
+    },
+  ],
   isLoading: false,
   isError: false,
   averageTimeInBedSeconds: null,
@@ -74,6 +82,7 @@ const sleepSeries = sleepTrend({
       timeInBedSeconds: 28800,
       timeAsleepSeconds: 27000,
       segments: [{ stage: 'other', startMs: 0, endMs: 28800000 }],
+      zone: null,
     },
   ],
   averageTimeInBedSeconds: 28800,

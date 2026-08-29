@@ -190,6 +190,20 @@ describe('useHealthTrends', () => {
     expect(mockFetchSleepEntries).toHaveBeenCalledTimes(2);
   });
 
+  test('keeps refetch stable across renders so callers can depend on it', async () => {
+    // The dashboard's pull-to-refresh callback lists this in its `useCallback` deps. The
+    // series objects around it are rebuilt every render, which is why the screen
+    // destructures `refetch` out rather than depending on the whole return value.
+    const { result, rerender } = renderTrends();
+
+    await waitFor(() => expect(result.current.steps.isLoading).toBe(false));
+
+    const firstRefetch = result.current.refetch;
+    rerender({});
+
+    expect(result.current.refetch).toBe(firstRefetch);
+  });
+
   test('makes no request when disabled', async () => {
     renderTrends('7d', false);
 

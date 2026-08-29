@@ -1,3 +1,5 @@
+import type { RecordZone } from '@workspace/shared';
+
 /**
  * One day's aggregated sleep, as returned by `GET /api/sleep/analytics`.
  *
@@ -83,6 +85,15 @@ export interface SleepTimelineDay {
   /** Null, not zero, when no session that day reported time asleep. */
   timeAsleepSeconds: number | null;
   segments: SleepTimelineSegment[];
+  /**
+   * The zone this night's segments are placed on the clock axis in — the session's
+   * recording zone, else the profile timezone. Null when neither is usable, which leaves
+   * the night on the device's clock.
+   *
+   * Per day rather than per chart because a window can span a flight: a night recorded in
+   * Tokyo and a night recorded in Berlin each belong at the hour they were slept.
+   */
+  zone: RecordZone | null;
 }
 
 /**
@@ -154,6 +165,17 @@ export interface SleepEntry {
   lowest_spo2_value: number | null;
   highest_spo2_value: number | null;
   resting_heart_rate: number | null;
+  /**
+   * IANA timezone the session was recorded in, when the source reported one. Null for
+   * rows written before the column existed and for sources that only report an offset.
+   */
+  record_timezone: string | null;
+  /**
+   * UTC offset the session was recorded at, for sources that report an offset rather than
+   * a zone. A fixed offset cannot follow DST, so a night spanning a transition can show up
+   * to an hour of skew on one endpoint.
+   */
+  record_utc_offset_minutes: number | null;
   /** Ordered by `start_time` server-side; defaults to `[]` when the session has no stages. */
   stage_events: SleepStageEvent[];
 }

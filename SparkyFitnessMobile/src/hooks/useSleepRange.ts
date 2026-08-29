@@ -12,6 +12,7 @@ import {
   type SleepTimelineSummary,
 } from '../types/sleep';
 import { addDays, getTodayDate } from '../utils/dateUtils';
+import { resolveSleepZone } from '../utils/sleepDay';
 import { selectMainSleep } from '../utils/sleepSessions';
 import { sleepRangeQueryKey } from './queryKeys';
 import { usePreferences } from './usePreferences';
@@ -139,6 +140,7 @@ export const buildSleepTimelineSummary = (
   entries: SleepEntry[],
   endDay: string,
   days: number,
+  profileTimezone?: string | null,
 ): SleepTimelineSummary => {
   const entriesByDay = groupEntriesByDay(entries);
 
@@ -150,7 +152,13 @@ export const buildSleepTimelineSummary = (
     const mainSleep = selectMainSleep(entriesByDay.get(day) ?? []);
 
     if (!mainSleep) {
-      timelineDays.push({ day, timeInBedSeconds: 0, timeAsleepSeconds: null, segments: [] });
+      timelineDays.push({
+        day,
+        timeInBedSeconds: 0,
+        timeAsleepSeconds: null,
+        segments: [],
+        zone: null,
+      });
       continue;
     }
 
@@ -161,6 +169,9 @@ export const buildSleepTimelineSummary = (
       // distinguishable from "slept no time at all".
       timeAsleepSeconds: mainSleep.time_asleep_in_seconds,
       segments: buildSessionSegments(mainSleep),
+      // The night is plotted on the clock it was slept on, not the one the phone is
+      // currently set to, so a trip does not shift a fortnight of nights up the axis.
+      zone: resolveSleepZone(mainSleep, profileTimezone),
     };
 
     timelineDays.push(timelineDay);
@@ -194,7 +205,8 @@ const resolveToday = (timezone: string | null | undefined): string =>
 
 export function useSleepRange({ range, enabled = true }: UseSleepRangeOptions) {
   const { preferences } = usePreferences({ enabled });
-  const today = resolveToday(preferences?.timezone);
+  const profileTimezone = preferences?.timezone;
+  const today = resolveToday(profileTimezone);
   const days = RANGE_DAYS[range];
   const startDate = addDays(today, -(days - 1));
 
@@ -202,7 +214,8 @@ export function useSleepRange({ range, enabled = true }: UseSleepRangeOptions) {
     queryKey: sleepRangeQueryKey(startDate, today),
     queryFn: () => fetchSleepEntries(startDate, today),
     enabled,
-    select: (entries) => buildSleepTimelineSummary(entries, today, days),
+    select: (entries) =>
+      buildSleepTimelineSummary(entries, today, days, profileTimezone),
   });
 
   useRefetchOnFocus(query.refetch, enabled);

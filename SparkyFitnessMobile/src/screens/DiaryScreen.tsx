@@ -22,14 +22,15 @@ import ServingAdjustSheet, { type ServingAdjustSheetRef } from '../components/Se
 import { BedTimeCard, NapsCard, WakeUpCard } from '../components/SleepCards';
 import StatusView from '../components/StatusView';
 import Button from '../components/ui/Button';
-import {
-  useCustomNutrients,
-  useDailySummary,
-  useFamilyUsers,
-  useMealTypes,
-  useNutrientDisplayPreferences,
-  useServerConnection,
-} from '../hooks';
+import
+  {
+    useCustomNutrients,
+    useDailySummary,
+    useFamilyUsers,
+    useMealTypes,
+    useNutrientDisplayPreferences,
+    useServerConnection,
+  } from '../hooks';
 import { useCustomMeasurementsByDate } from '../hooks/useCustomMeasurements';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
@@ -44,10 +45,11 @@ import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { isManualSource } from '../utils/customMeasurementsForm';
 import { formatDateLabel } from '../utils/dateUtils';
 import { getHistoricalMealTypeLabel, getMealTypeDisplayLabel } from '../utils/mealNutrition';
-import {
-  setNativeHeaderDatePickerOptions,
-  type NativeHeaderDatePickerNavigation,
-} from '../utils/nativeHeaderDatePicker';
+import
+  {
+    setNativeHeaderDatePickerOptions,
+    type NativeHeaderDatePickerNavigation,
+  } from '../utils/nativeHeaderDatePicker';
 
 type DiaryScreenProps = CompositeScreenProps<
   BottomTabScreenProps<TabParamList, 'Diary'>,
@@ -286,15 +288,16 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
   const isRefreshing = refreshing;
 
-  const isDayEmpty = useMemo(() => { 
-    return wakeUp === null &&
+  const isDayEmpty = useMemo(() => {
+    return !isSleepLoading &&
+        wakeUp === null &&
         summary?.foodEntries.length === 0 &&
         !hasSupplementNutrition(summary?.supplementTotals) && //A logged supplement is something the user recorded for this day, so the day is not empty even with no food, exercise or measurement.
         summary?.exerciseEntries.length === 0 &&
         !hasAnyMeasurement &&
         naps.length === 0 && 
         bedTime === null;
-  },[wakeUp, summary, hasAnyMeasurement, naps, bedTime]);
+  },[isSleepLoading, wakeUp, summary, hasAnyMeasurement, naps, bedTime]);
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
@@ -310,7 +313,10 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       );
     }
 
-    if (isLoading || isConnectionLoading || isSleepLoading) {
+    // Sleep is deliberately not part of this gate: the cards render nothing until their
+    // entries arrive, so a slow `/api/sleep` fills them in late instead of holding the
+    // food and exercise that already loaded behind "Loading diary...".
+    if (isLoading || isConnectionLoading) {
       return <StatusView loading title={t('diary.loading', { defaultValue: 'Loading diary...' })} />;
     }
 
