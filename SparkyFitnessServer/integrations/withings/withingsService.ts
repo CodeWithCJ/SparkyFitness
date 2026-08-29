@@ -25,6 +25,18 @@ function interpolateQuery(sql: any, params: any) {
 }
 const WITHINGS_API_BASE_URL = 'https://wbsapi.withings.net';
 const WITHINGS_ACCOUNT_BASE_URL = 'https://account.withings.com';
+// Withings expects token requests as form-encoded POST bodies on the v2/oauth2 endpoint.
+async function requestWithingsToken(params: Record<string, string>) {
+  return axios.post(
+    `${WITHINGS_API_BASE_URL}/v2/oauth2`,
+    new URLSearchParams({ action: 'requesttoken', ...params }),
+    {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    }
+  );
+}
 // Function to construct the Withings authorization URL
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getAuthorizationUrl(userId: any) {
@@ -94,22 +106,13 @@ async function exchangeCodeForTokens(userId: any, code: any, redirectUri: any) {
       throw new Error('Withings client ID or client secret is missing.');
     }
 
-    const response = await axios.post(
-      `${WITHINGS_API_BASE_URL}/v2/oauth2`,
-      new URLSearchParams({
-        action: 'requesttoken',
-        grant_type: 'authorization_code',
-        client_id: clientId,
-        client_secret: clientSecret,
-        code: code,
-        redirect_uri: redirectUri,
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }
-    );
+    const response = await requestWithingsToken({
+      grant_type: 'authorization_code',
+      client_id: clientId,
+      client_secret: clientSecret,
+      code: code,
+      redirect_uri: redirectUri,
+    });
     if (!response.data || !response.data.body) {
       log(
         'error',
@@ -250,21 +253,12 @@ async function refreshAccessToken(userId: any) {
         'Withings client ID, client secret, or refresh token is missing.'
       );
     }
-    const response = await axios.post(
-      `${WITHINGS_API_BASE_URL}/v2/oauth2`,
-      new URLSearchParams({
-        action: 'requesttoken',
-        grant_type: 'refresh_token',
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-      }),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }
-    );
+    const response = await requestWithingsToken({
+      grant_type: 'refresh_token',
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+    });
     if (!response.data || !response.data.body) {
       log(
         'error',
