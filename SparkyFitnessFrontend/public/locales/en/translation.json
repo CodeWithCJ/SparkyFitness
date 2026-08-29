@@ -742,7 +742,8 @@
       "activeCalories": "Active Calories: {{activeCaloriesFromExercise}} cal",
       "stepsCalories": "Steps: {{dailySteps}} = {{stepsCalories}} cal",
       "bmrCalories": "BMR: {{bmr}} cal",
-      "bmrSourceExternal": "Health App",
+      "bmrSourceMeasured": "Measured",
+      "bmrSourceAlgorithm": "Algorithm",
       "totalCaloriesBurned": "Total: {{totalCaloriesBurned}} cal",
       "goal": "goal",
       "caloriesBurnedBreakdownTitle": "Calories Burned Breakdown",
@@ -1472,6 +1473,14 @@
         "clientSecretPlaceholder": "Enter YAZIO Client Secret",
         "allFieldsRequired": "All fields (Email/Username, Password, Client ID, and Client Secret) are required.",
         "languageSupportHelp": "YAZIO food searches automatically adjust to your active language preference in SparkyFitness (supporting English, German, French, Russian, Spanish, Italian, Dutch, Polish, Portuguese, Danish, Finnish, Swedish, Czech, Hungarian, Greek, Norwegian, Turkish, Chinese, Japanese, and Korean). Other languages default to standard international database parameters."
+      },
+      "oauthDashboards": {
+        "fallback": "provider's developer dashboard",
+        "withings": "Withings Developer Dashboard",
+        "fitbit": "Fitbit Developer Dashboard",
+        "oura": "Oura Developer Portal",
+        "googlehealth": "Google Cloud Console",
+        "polar": "Polar AccessLink Admin"
       }
     },
     "aiService": {
@@ -2316,7 +2325,8 @@
     "view": "View details",
     "weight": "Weight",
     "workout": "Workout",
-    "caloriesUnit": "calories"
+    "caloriesUnit": "calories",
+    "mealSlot": "Meal Slot"
   },
   "diary": {
     "nutritionSummary": "Nutrition Summary",
@@ -2354,6 +2364,8 @@
     "addError": "Failed to add food.",
     "addSuccess": "Food added successfully.",
     "calculateExplanation": {
+      "bmrMeasured": "Measured",
+      "bmrMeasuredDesc": "Using your measured BMR. No formula applied.",
       "dialogDescription": "Step-by-step breakdown of how your daily energy target is calculated.",
       "todayTarget": "How today's target is calculated"
     },
@@ -2608,6 +2620,7 @@
       "deleteError": "Failed to remove photo",
       "calendarLegend": "Progress photos"
     },
+    "bmr": "BMR (kcal)",
     "bodyWater": "Body Water %",
     "boneMass": "Bone Mass",
     "couldNotLoadUserProfileOrPrefs": "Could not load user profile or preferences for calculation.",
@@ -2856,7 +2869,8 @@
     "mealUpdatedSuccessfully": "Meal updated successfully.",
     "meals": "meals",
     "name": "Name",
-    "removeFromFavorites": "Remove from favorites"
+    "removeFromFavorites": "Remove from favorites",
+    "createMeal": "Create Meal"
   },
   "mealBuilder": {
     "errorTitle": "Error",
@@ -2893,6 +2907,8 @@
     "invalidDefaultServingSize": "Default serving size must be greater than zero.",
     "perServingTab": "Per serving",
     "totalTab": "Total",
+    "loggedTab": "Logged",
+    "diaryConsumedQuantityHint": "How much of the dish goes in your diary",
     "addFoodToMealTitle": "Add Food to Meal",
     "addFoodButton": "Add Food",
     "addFoodToMealDialogTitle": "Add Food to Meal",
@@ -2913,7 +2929,24 @@
     "mealAddedToMeal": "{{name}} added to meal.",
     "updateEntryButton": "Update Entry",
     "updateLinkedMeal": "Update",
-    "mealImages": "Images"
+    "mealImages": "Images",
+    "invalidConsumedQuantity": "Quantity consumed must be greater than zero.",
+    "servingUnits": {
+      "serving": "serving",
+      "g": "grams (g)",
+      "ml": "milliliters (ml)",
+      "oz": "ounces (oz)",
+      "cup": "cup",
+      "tbsp": "tablespoon (tbsp)",
+      "tsp": "teaspoon (tsp)",
+      "piece": "piece"
+    },
+    "entryTimeOptional": "Time (optional)",
+    "clear": "Clear",
+    "clearTime": "Clear time",
+    "setToCurrentTime": "Set to current local time",
+    "ingredientResolveFailed": "Could not save the ingredient \"{{foodName}}\". Please try again.",
+    "now": "Now"
   },
   "mealPlanCalendar": {
     "title": "Meal Plan",
@@ -3460,6 +3493,12 @@
     "inches": "inches",
     "waist": "Waist",
     "hips": "Hips",
+    "height": "Height",
+    "bodyFatPercentage": "Body Fat %",
+    "muscleMass": "Muscle Mass",
+    "boneMass": "Bone Mass",
+    "bodyWaterPercentage": "Body Water %",
+    "bmr": "BMR",
     "dailySteps": "Daily Steps",
     "failedToLoadComparisonData": "Failed to load comparison data."
   },
@@ -3486,6 +3525,10 @@
     "steps": "Steps",
     "height": "Height",
     "bodyFatPercentage": "Body Fat %",
+    "muscleMass": "Muscle Mass",
+    "boneMass": "Bone Mass",
+    "bodyWaterPercentage": "Body Water %",
+    "bmr": "BMR",
     "meal": "Meal",
     "food": "Food",
     "quantity": "Quantity",
@@ -4549,6 +4592,7 @@
     "warning": "Warning!"
   },
   "measurements": {
+    "errorLoadingBmr": "Failed to load most recent BMR.",
     "errorLoadingBodyFat": "Failed to load most recent body fat.",
     "errorLoadingHeight": "Failed to load most recent height.",
     "errorLoadingWeight": "Failed to load most recent weight."
@@ -4771,5 +4815,83 @@
     "moveImageEarlier": "Move image left",
     "moveImageLater": "Move image right",
     "imagesReorderHint": "Drag to reorder. The first image is used as the thumbnail."
+  },
+  "foodPhoto": {
+    "title": "Estimate from a photo",
+    "captureDescription": "Add one or more photos of the meal. A second angle helps with stacked or mixed dishes.",
+    "reviewDescription": "Check each ingredient before logging. Editing the grams recalculates that row.",
+    "addPhotos": "Add photos",
+    "photoAlt": "Meal photo {{number}}",
+    "removePhoto": "Remove photo {{number}}",
+    "descriptionLabel": "Description (optional)",
+    "descriptionPlaceholder": "e.g. chicken thigh, no skin, cooked in olive oil",
+    "weightLabel": "Total weight in grams (optional)",
+    "weightHint": "Portion size is where photo estimates are least accurate. Weighing the plate makes the numbers far more reliable.",
+    "analyse": "Analyse photo",
+    "log": "Log to diary",
+    "logged": "Estimate logged",
+    "logFailedTitle": "Could not log the estimate",
+    "logFailedMessage": "Please try again.",
+    "noIngredients": "Keep at least one ingredient with a weight above zero.",
+    "emptyIngredients": "Every ingredient was removed. Switch to \"One food\" to log the plate as a single entry.",
+    "removeIngredient": "Remove {{name}}",
+    "recalcFromGrams": "Recalculate from grams",
+    "tooManyPhotosTitle": "Too many photos",
+    "tooManyPhotosMessage": "Up to {{count}} photos can be analysed together.",
+    "photosTooLargeTitle": "Photos too large",
+    "photosTooLargeMessage": "Remove a photo, or use smaller images.",
+    "columns": {
+      "ingredient": "Ingredient",
+      "grams": "Grams",
+      "gramsFor": "Grams for {{name}}",
+      "calories": "Calories",
+      "protein": "Protein",
+      "carbs": "Carbs",
+      "fat": "Fat",
+      "fiber": "Fiber",
+      "sugar": "Sugar",
+      "total": "Total"
+    },
+    "confidence": {
+      "high": "Likely",
+      "medium": "Possible",
+      "low": "Uncertain"
+    },
+    "match": {
+      "use": "Use {{name}} from your foods",
+      "using": "Using {{name}}",
+      "summary": "{{count}} ingredients matched to foods already in your library."
+    },
+    "mode": {
+      "label": "Save as",
+      "ingredientsAndMeal": "Ingredients + reusable meal",
+      "ingredientsOnly": "Ingredients only",
+      "oneFood": "One food",
+      "mealName": "Meal name",
+      "hintIngredientsAndMeal": "Each ingredient becomes its own food, and the meal is saved so you can log it again without a photo.",
+      "hintIngredientsOnly": "Each ingredient becomes its own food. No reusable meal is saved.",
+      "hintOneFood": "Saves the whole plate as a single food, with no breakdown."
+    },
+    "errors": {
+      "aiNotConfiguredTitle": "AI not configured",
+      "aiNotConfiguredMessage": "Configure an AI provider in Settings to use photo estimates.",
+      "providerNotAllowedTitle": "AI provider not allowed",
+      "providerNotAllowedMessage": "This AI provider points to a private network address. Ask an admin to configure it globally.",
+      "photoTooLargeTitle": "Photo too large",
+      "photoTooLargeMessage": "Use a smaller image.",
+      "unexpectedFormatTitle": "Unexpected image format",
+      "unexpectedFormatMessage": "Use a JPEG, PNG, or WebP image.",
+      "couldNotProcessTitle": "Could not process photo",
+      "couldNotProcessMessage": "The provider blocked this image. Try another shot.",
+      "timedOutTitle": "AI provider timed out",
+      "timedOutMessage": "The estimate took too long. Try again, or log this food manually.",
+      "unreachableTitle": "Couldn't reach AI provider",
+      "unreachableMessage": "Try again, or log this food manually."
+    },
+    "analyzing": "Analyzing meal photo...",
+    "analyzingHint": "Detecting ingredients, gram portions, and macros",
+    "editInMealBuilder": "Edit in Meal Builder",
+    "loggedSuccess": "Meal successfully logged to your diary.",
+    "openInMealBuilder": "Open in Meal Builder"
   }
 }

@@ -278,6 +278,8 @@ Calculated: ${bfp.toFixed(1)}%`;
       "How today's target is calculated"
     );
 
+  const isMeasuredBmr = bmrSource === 'measured';
+
   const body = (
     <div className="mt-3 space-y-4 pl-1 text-xs text-muted-foreground leading-relaxed border-l border-border/60 ml-1.5 text-left font-sans">
       {/* Step 1: BMR/RMR Calculation */}
@@ -285,20 +287,24 @@ Calculated: ${bfp.toFixed(1)}%`;
         <div className="flex items-center justify-between font-medium text-foreground">
           <span>1. Basal Metabolic Rate (BMR)</span>
           <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/40 rounded text-sm">
-            {bmrSource === 'external' ? 'Health App' : bmrAlgorithm}
+            {isMeasuredBmr
+              ? t('diary.calculateExplanation.bmrMeasured', 'Measured')
+              : bmrAlgorithm}
           </span>
         </div>
-        {bmrSource === 'external' ? (
+        {isMeasuredBmr ? (
           <div className="text-muted-foreground text-sm bg-muted/40 p-1.5 rounded border border-border/60">
-            BMR synced from your health app (Apple Health / Health Connect). No
-            formula applied.
+            {t(
+              'diary.calculateExplanation.bmrMeasuredDesc',
+              'Using your measured BMR. No formula applied.'
+            )}
           </div>
         ) : (
           <pre className="text-muted-foreground font-sans whitespace-pre-line text-sm bg-muted/40 p-1.5 rounded border border-border/60">
             {bmrMathText()}
           </pre>
         )}
-        {bmrSource !== 'external' && (
+        {!isMeasuredBmr && (
           <div className="flex justify-between items-center bg-muted/50 dark:bg-muted/40 p-1.5 rounded mt-1">
             <span>Resting Metabolism (RMR/BMR):</span>
             <span className="font-semibold text-foreground">

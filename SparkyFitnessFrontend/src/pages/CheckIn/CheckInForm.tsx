@@ -52,6 +52,7 @@ interface CheckInFormProps {
   muscleMassKg: string;
   boneMassKg: string;
   bodyWaterPercentage: string;
+  bmr: string;
   customCategories: CustomCategoriesResponse[];
   customNotes: Record<string, string>;
   customValues: Record<string, string>;
@@ -66,6 +67,7 @@ interface CheckInFormProps {
   setMuscleMassKg: (value: string) => void;
   setBoneMassKg: (value: string) => void;
   setBodyWaterPercentage: (value: string) => void;
+  setBmr: (value: string) => void;
   setCustomNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   setCustomValues: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   setHeight: (value: string) => void;
@@ -87,6 +89,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
   muscleMassKg,
   boneMassKg,
   bodyWaterPercentage,
+  bmr,
   customNotes,
   customCategories,
   customValues,
@@ -101,6 +104,7 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
   setMuscleMassKg,
   setBoneMassKg,
   setBodyWaterPercentage,
+  setBmr,
   setCustomNotes,
   setCustomValues,
   setHeight,
@@ -352,6 +356,22 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                 value={bodyWaterPercentage}
                 onChange={(e) => setBodyWaterPercentage(e.target.value)}
                 placeholder="0.0"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="bmr">{t('checkIn.bmr', 'BMR (kcal)')}</Label>
+              <Input
+                id="bmr"
+                type="number"
+                min="300"
+                max="10000"
+                step="1"
+                value={bmr}
+                onChange={(e) => setBmr(e.target.value)}
+                placeholder={
+                  placeholders.bmr ? placeholders.bmr.toString() : 'e.g. 1650'
+                }
               />
             </div>
             {/* Custom Categories */}

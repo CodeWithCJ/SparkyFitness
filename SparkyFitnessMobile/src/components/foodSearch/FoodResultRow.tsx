@@ -79,7 +79,7 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
         </View>
         <View className="items-end">
           <Text className="text-text-primary text-base font-semibold">
-            {item.default_variant.calories} {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
+            {Math.round(item.default_variant.calories)} {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
           </Text>
           <Text className="text-text-secondary text-xs">
 {/* i18n-audit-ignore-next-line hardcoded-ui-text -- quantity and unit are literal data values. */}

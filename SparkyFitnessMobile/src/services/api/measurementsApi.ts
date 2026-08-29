@@ -90,6 +90,10 @@ export const upsertCheckIn = async (params: {
   steps?: number | null;
   height?: number | null;
   bodyFatPercentage?: number | null;
+  muscleMassKg?: number | null;
+  boneMassKg?: number | null;
+  bodyWaterPercentage?: number | null;
+  bmr?: number | null;
 }): Promise<CheckInMeasurement> => {
   return apiFetch<CheckInMeasurement>({
     endpoint: '/api/measurements/check-in',
@@ -105,6 +109,10 @@ export const upsertCheckIn = async (params: {
       steps: params.steps,
       height: params.height,
       body_fat_percentage: params.bodyFatPercentage,
+      muscle_mass_kg: params.muscleMassKg,
+      bone_mass_kg: params.boneMassKg,
+      body_water_percentage: params.bodyWaterPercentage,
+      bmr: params.bmr,
     },
   });
 };

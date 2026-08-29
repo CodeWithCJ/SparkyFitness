@@ -270,6 +270,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     calculateBmrFn: calculateBmr,
     calorieSafetyFloorMode,
     calorieSafetyFloorValue,
+    measuredBmr: bmrSource === 'measured' ? bmr : undefined,
   });
 
   debug(loggingLevel, 'DailyProgress: Calculated values', {
@@ -438,8 +439,9 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                           energyUnit: getEnergyUnitString(energyUnit),
                         }
                       )}
-                      {bmrSource === 'external' &&
-                        ` (${t('exercise.dailyProgress.bmrSourceExternal', 'Health App')})`}
+                      {bmrSource === 'measured'
+                        ? ` (${t('exercise.dailyProgress.bmrSourceMeasured', 'Measured')})`
+                        : ` (${t('exercise.dailyProgress.bmrSourceAlgorithm', 'Algorithm')})`}
                     </p>
                   )}
 
@@ -531,8 +533,9 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                       energyUnit: getEnergyUnitString(energyUnit),
                     }
                   )}
-                  {bmrSource === 'external' &&
-                    ` (${t('exercise.dailyProgress.bmrSourceExternal', 'Health App')})`}
+                  {bmrSource === 'measured'
+                    ? ` (${t('exercise.dailyProgress.bmrSourceMeasured', 'Measured')})`
+                    : ` (${t('exercise.dailyProgress.bmrSourceAlgorithm', 'Algorithm')})`}
                 </div>
               )}
             </div>

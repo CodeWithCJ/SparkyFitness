@@ -622,13 +622,28 @@ function prepareCheckInMeasurement(
     case 'hips':
     case 'muscle_mass_kg':
     case 'bone_mass_kg': {
-      // The smart-scale masses (muscle/bone) are always stored in kg;
+      // The smart-scale masses (muscle/bone) are stored in check_in_measurements;
       // providers normalize before dispatch — Garmin via grams_to_kg in the
       // Python service, Withings via its kg-denominated measure types.
       const numericValue = parseFloat(entry.value);
       if (isNaN(numericValue) || numericValue <= 0) {
         return {
           error: `Invalid value for ${entry.type}. Must be a positive number.`,
+        };
+      }
+      return { measurements: { [canonical]: numericValue } };
+    }
+    case 'bmr': {
+      const trimmed = String(entry.value).trim();
+      const numericValue = Number(trimmed);
+      if (
+        trimmed === '' ||
+        !Number.isFinite(numericValue) ||
+        numericValue < 300 ||
+        numericValue > 10000
+      ) {
+        return {
+          error: `Invalid value for ${entry.type}. Must be between 300 and 10000 kcal.`,
         };
       }
       return { measurements: { [canonical]: numericValue } };
@@ -921,6 +936,11 @@ const boneMassHandler: HealthTypeHandler = {
 };
 
 const bodyWaterHandler: HealthTypeHandler = {
+  handle: handleCheckInEntry,
+  handleBatch: checkInHandleBatch,
+};
+
+const bmrHandler: HealthTypeHandler = {
   handle: handleCheckInEntry,
   handleBatch: checkInHandleBatch,
 };
@@ -1753,6 +1773,7 @@ export const HEALTH_TYPE_HANDLERS: Record<string, HealthTypeHandler> = {
   muscle_mass_kg: muscleMassHandler,
   bone_mass_kg: boneMassHandler,
   body_water_percentage: bodyWaterHandler,
+  bmr: bmrHandler,
   SleepSession: sleepSessionHandler,
   Stress: stressHandler,
   Workout: workoutHandler,
@@ -1776,6 +1797,9 @@ export const TYPE_ALIASES: Record<string, string> = {
   BoneMass: 'bone_mass_kg',
   muscle_mass: 'muscle_mass_kg',
   Height: 'height',
+  basal_metabolic_rate: 'bmr',
+  BasalMetabolicRate: 'bmr',
+  resting_energy: 'bmr',
   ExerciseSession: 'Workout',
   mood: 'Mood',
 };

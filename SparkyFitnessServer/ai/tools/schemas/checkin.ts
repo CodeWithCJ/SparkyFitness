@@ -53,6 +53,12 @@ const logBiometricsSchema = z
       .max(100)
       .optional()
       .describe('Body water percentage'),
+    bmr: z.coerce
+      .number()
+      .min(300)
+      .max(10000)
+      .optional()
+      .describe('Basal Metabolic Rate (BMR) in kcal'),
   })
   .strict();
 

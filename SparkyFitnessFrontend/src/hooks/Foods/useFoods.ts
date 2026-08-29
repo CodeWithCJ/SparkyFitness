@@ -5,6 +5,7 @@ import {
   loadMiniNutritionTrendData,
 } from '@/api/Diary/foodEntryService';
 import {
+  createFood,
   deleteFood,
   getFoodById,
   getFoodDeletionImpact,
@@ -171,6 +172,19 @@ export const useCreateFoodMutation = () => {
   });
 };
 
+export const useCreateFoodDatabaseItemMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: Parameters<typeof createFood>[0]) =>
+      createFood(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: foodKeys.all,
+      });
+    },
+  });
+};
+
 export const useUpdateFoodEntriesSnapshotMutation = () => {
   const queryClient = useQueryClient();
   const invalidate = useFoodEntryInvalidation();
@@ -245,6 +259,15 @@ export const useRecentAndTopFoodsQuery = (
   });
 };
 
+export const databaseFoodSearchOptions = (
+  term: string,
+  limit: number,
+  mealType?: string
+) => ({
+  queryKey: foodKeys.databaseSearch(term, limit, mealType),
+  queryFn: () => searchDatabaseFoods(term, limit, mealType),
+});
+
 export const useDatabaseFoodSearchQuery = (
   term: string,
   limit: number,
@@ -254,8 +277,7 @@ export const useDatabaseFoodSearchQuery = (
   const { t } = useTranslation();
 
   return useQuery({
-    queryKey: foodKeys.databaseSearch(term, limit, mealType),
-    queryFn: () => searchDatabaseFoods(term, limit, mealType),
+    ...databaseFoodSearchOptions(term, limit, mealType),
     enabled,
     meta: {
       errorMessage: t(

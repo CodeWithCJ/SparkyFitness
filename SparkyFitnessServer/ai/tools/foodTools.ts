@@ -7,17 +7,17 @@ import foodEntryService from '../../services/foodEntryService.js';
 import mealService from '../../services/mealService.js';
 import preferenceService from '../../services/preferenceService.js';
 import measurementService from '../../services/measurementService.js';
-import {
-  searchProviderFoods,
-  type ProviderType,
-} from '../../services/externalFoodSearchService.js';
-import { VALID_PROVIDER_TYPES } from '../../constants/foodProviders.js';
 import foodRepository from '../../models/foodRepository.js';
 import foodEntryMealRepository from '../../models/foodEntryMealRepository.js';
 import mealTypeRepository from '../../models/mealType.js';
 import measurementRepository from '../../models/measurementRepository.js';
 import reportRepository from '../../models/reportRepository.js';
-import externalProviderRepository from '../../models/externalProviderRepository.js';
+import {
+  resolveFoodProviderOrder,
+  lookupFoodFromProviders,
+  pickBestVariant,
+  IMPLAUSIBLE_SERVING_UNITS,
+} from '../../services/foodProviderLookupService.js';
 import { ERRORS, formatZodError } from './errors.js';
 import {
   compactRecord,
@@ -65,10 +65,6 @@ const VALID_ACTIONS = [
   'get_water_history',
 ];
 
-// Provider types the no-provider cascade may search (exercise/health
-// providers are excluded). Derived from VALID_PROVIDER_TYPES.
-const FOOD_PROVIDER_TYPES = [...VALID_PROVIDER_TYPES];
-
 // Quick Add only skips *saving* a new food. Actions that log a food already in
 // the user's list (log_food always, log_external_food on an internal match)
 // accept the flag but must never flip the existing row hidden — that would take
@@ -103,53 +99,18 @@ function isSet<T>(value: T | null | undefined): value is T {
 // serving (a food portion measured in milli/microgram is almost always
 // mislabeled branded data). Variants using them are demoted when picking the
 // one to show/log.
-const IMPLAUSIBLE_SERVING_UNITS = new Set(['mg', 'mcg', 'µg', 'ug']);
 
 // Picks the variant to surface for an external provider match. Providers
 // (USDA especially) sometimes mark a nonsensical variant as default — e.g. a
 // "28 mg" serving on a branded item — so prefer a variant with a plausible
 // serving unit and positive size, keeping the provider's default only as a
 // tiebreak within the sane set.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function pickBestVariant(food: any) {
-  const variants: any[] = (
-    food?.variants?.length ? food.variants : [food?.default_variant]
-  ).filter(Boolean);
-  if (variants.length === 0) return food?.default_variant ?? null;
-  const isPlausible = (v: any) =>
-    Number(v.serving_size) > 0 &&
-    !IMPLAUSIBLE_SERVING_UNITS.has(String(v.serving_unit || '').toLowerCase());
-  const pool = variants.filter(isPlausible);
-  const chosen = pool.length > 0 ? pool : variants;
-  return chosen.find((v) => v.is_default) ?? chosen[0];
-}
 
 // Re-ranks external provider matches so generic/whole foods win over branded
 // products. Providers return branded items ("EGG (SNICKERS)", "BANANA
 // (BETTER'N PEANUT BUTTER)") ahead of the plain whole food a user almost
 // always means, and small models just take the first result. Stable within
 // each tier so the provider's own relevance order is otherwise preserved.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rankProviderMatches(foods: any[], query: string): any[] {
-  const q = query.trim().toLowerCase();
-  const qStem = q.replace(/s$/, '');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const score = (f: any): number => {
-    const name = String(f?.name ?? '').toLowerCase();
-    const branded = Boolean(f?.brand && String(f.brand).trim());
-    const firstSegment = name.split(',')[0].trim();
-    let s = branded ? 0 : 100; // whole foods first
-    if (firstSegment === q || firstSegment === qStem) s += 20;
-    else if (firstSegment.startsWith(qStem)) s += 10;
-    else if (name.includes(q)) s += 5;
-    return s;
-  };
-  return foods
-    .map((f, i) => ({ f, i, s: score(f) }))
-    .sort((a, b) => b.s - a.s || a.i - b.i)
-    .map((x) => x.f);
-}
-
 // Provider nutrition values arrive as strings or numbers; absent/blank/NaN
 // all normalize to null so createFood stores them as empty, not 0.
 function toNutrientNumber(value: unknown): number | null {
@@ -765,95 +726,10 @@ async function lookupFoodNutrition(
     }
   }
 
-  let targetProviders: {
-    id?: string;
-    provider_type: string;
-    provider_name: string;
-  }[] = [];
-
-  if (providerType) {
-    if (providerType === 'openfoodfacts') {
-      targetProviders.push({
-        provider_type: 'openfoodfacts',
-        provider_name: 'OpenFoodFacts',
-      });
-    } else {
-      const rows = await externalProviderRepository.getActiveProvidersByTypes(
-        userId,
-        [providerType]
-      );
-      if (rows.length > 0) {
-        targetProviders.push(rows[0]);
-      } else {
-        // Explicitly requested but unconfigured: the per-provider search
-        // below fails (no credentials) and the cascade falls through to the
-        // AI-estimate response — MCP behavior, pinned by test.
-        targetProviders.push({
-          provider_type: providerType,
-          provider_name: providerType,
-        });
-      }
-    }
-  } else {
-    targetProviders =
-      await externalProviderRepository.getActiveProvidersByTypes(
-        userId,
-        FOOD_PROVIDER_TYPES
-      );
-    if (!targetProviders.some((p) => p.provider_type === 'openfoodfacts')) {
-      targetProviders.push({
-        provider_type: 'openfoodfacts',
-        provider_name: 'OpenFoodFacts',
-      });
-    }
-    // Honour the user's chosen default food provider. Without this the cascade
-    // order comes from sort_order, which is NULL for most installs and falls
-    // back to created_at DESC — so the most recently added provider silently
-    // won every lookup and the setting the user picked in the UI did nothing.
-    const defaultProviderId = (
-      await preferenceService.getUserPreferences(userId, userId)
-    )?.default_food_data_provider_id;
-    if (defaultProviderId) {
-      const defaultIndex = targetProviders.findIndex(
-        (p) => p.id === defaultProviderId
-      );
-      if (defaultIndex > 0) {
-        const [preferred] = targetProviders.splice(defaultIndex, 1);
-        targetProviders.unshift(preferred);
-      }
-    }
-  }
-
-  for (const provider of targetProviders) {
-    try {
-      log(
-        'debug',
-        `[Food Tool] Lookup cascade querying provider: ${provider.provider_name} (${provider.provider_type})`
-      );
-      const result = await searchProviderFoods(
-        userId,
-        provider.provider_type as ProviderType,
-        foodName,
-        { providerId: provider.id }
-      );
-      if (result.foods.length > 0) {
-        const ranked = rankProviderMatches(result.foods, foodName);
-        return {
-          source: provider.provider_type,
-          food: ranked[0],
-          alternatives: ranked.slice(1),
-        };
-      }
-    } catch (error) {
-      log(
-        'warn',
-        `[Food Tool] Lookup cascade provider ${provider.provider_name} failed:`,
-        error
-      );
-    }
-  }
-
-  return { source: 'ai_estimate', food: null };
+  // The provider half of the cascade lives in foodProviderLookupService so the
+  // food-photo matcher runs the identical order and ranking.
+  const targetProviders = await resolveFoodProviderOrder(userId, providerType);
+  return lookupFoodFromProviders(userId, foodName, targetProviders);
 }
 
 // Standalone domain tools.

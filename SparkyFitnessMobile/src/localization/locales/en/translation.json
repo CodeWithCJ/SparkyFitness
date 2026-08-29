@@ -61,8 +61,7 @@
     "selectOption": "Select an option",
     "requestTimedOut": "Request timed out. Check your server connection.",
     "nextStep": "Next step",
-    "notNow": "Not now",
-    "retry": "Retry"
+    "notNow": "Not now"
   },
   "settings": {
     "app": "App Settings",
@@ -1953,11 +1952,18 @@
       "waist": "Waist",
       "hips": "Hips",
       "steps": "Steps",
+      "muscleMass": "Muscle mass",
+      "boneMass": "Bone mass",
+      "bodyWaterPercentage": "Body water %",
+      "bmr": "BMR",
       "heightWithUnit": "Height ({{unit}})",
       "neckWithUnit": "Neck ({{unit}})",
       "waistWithUnit": "Waist ({{unit}})",
       "hipsWithUnit": "Hips ({{unit}})",
       "weightWithUnit": "Weight ({{unit}})",
+      "muscleMassWithUnit": "Muscle mass ({{unit}})",
+      "boneMassWithUnit": "Bone mass ({{unit}})",
+      "bmrWithUnit": "BMR (kcal)",
       "weightStones": "Weight in stones",
       "weightPounds": "Weight in pounds",
       "heightFeet": "Height in feet",
@@ -1967,13 +1973,16 @@
       "invalid": "Invalid {{label}}",
       "enterNumber": "Enter a number.",
       "wholeNumber": "{{label}} must be a whole number.",
+      "min": "Must be {{min}} or greater.",
       "max": "Must be {{max}} or less.",
       "invalidWeight": "Invalid weight",
       "stonesLbsNumber": "Enter a number for stones and lbs.",
       "nonNegative": "Values must be 0 or greater.",
       "invalidHeight": "Invalid height",
       "feetInchesNumber": "Enter a number for feet and inches.",
-      "bodyFatRange": "Body fat % must be between 0 and 100."
+      "bodyFatRange": "Body fat % must be between 0 and 100.",
+      "bodyWaterRange": "Body water % must be between 0 and 100.",
+      "bmrRange": "BMR must be between 300 and 10000 kcal."
     },
     "nothingToSave": "Nothing to save",
     "enterValue": "Enter or clear at least one value.",
@@ -3531,7 +3540,67 @@
       "invalidRequiredNutrition": "Calories, protein, carbs, and fat must be non-negative numbers.",
       "invalidOptionalNutrition": "All nutrition values must be non-negative numbers.",
       "invalidServingSize": "Invalid serving size",
-      "invalidServingSizeMessage": "Serving size must be a positive number."
+      "invalidServingSizeMessage": "Serving size must be a positive number.",
+      "noIngredients": "Keep at least one ingredient, or switch to One food.",
+      "invalidServings": "Invalid servings",
+      "positiveServings": "The dish total, the serving size and the amount eaten must all be greater than zero."
+    },
+    "ingredients": {
+      "editRow": "Edit {{name}}",
+      "remove": "Remove {{name}}",
+      "name": "Name",
+      "grams": "Weight (g)",
+      "calories": "Calories",
+      "protein": "Protein (g)",
+      "carbs": "Carbs (g)",
+      "fat": "Fat (g)",
+      "fiber": "Fiber (g)",
+      "sugar": "Sugar (g)",
+      "recalcFromGrams": "Nutrition was edited by hand, so it no longer follows the weight. Tap to recalculate from the weight.",
+      "heading": "Detected ingredients",
+      "empty": "Every ingredient was removed. Add one back, or switch to One food.",
+      "count_one": "{{count}} ingredient",
+      "count_other": "{{count}} ingredients",
+      "totals": "Total",
+      "rowSummary": "{{grams}} g · {{calories}} kcal",
+      "macroSummary": "{{calories}} kcal · {{protein}}P · {{carbs}}C · {{fat}}F",
+      "addFood": "Add Food",
+      "addedFood": "Food",
+      "pickedRowSummary": "{{quantity}} {{unit}} · {{calories}} kcal",
+      "pickedFoodNote": "Added from your foods. Remove it and add it again to change the amount."
+    },
+    "match": {
+      "useYourFood": "From your foods: {{name}} · tap to use it",
+      "usingYourFood": "Using your food: {{name}} · tap to use the AI estimate",
+      "matchedCount_one": "{{count}} ingredient matched to your foods",
+      "matchedCount_other": "{{count}} ingredients matched to your foods"
+    },
+    "mode": {
+      "ingredients": "Ingredients",
+      "combined": "One food",
+      "explainerIngredients": "Logs one meal you can expand to each ingredient.",
+      "explainerCombined": "Logs the whole plate as a single food.",
+      "label": "Save as",
+      "ingredientsAndMeal": "Ingredients + reusable meal",
+      "ingredientsOnly": "Ingredients only",
+      "oneFood": "One food",
+      "mealName": "Meal name",
+      "hintIngredientsAndMeal": "Each ingredient becomes its own food, and the meal is saved so you can log it again without a photo.",
+      "hintIngredientsOnly": "Each ingredient becomes its own food. No reusable meal is saved.",
+      "hintOneFood": "Saves the whole plate as a single food, with no breakdown."
+    },
+    "servings": {
+      "unit": "Unit",
+      "total": "Total servings",
+      "totalAmount": "Total amount ({{unit}})",
+      "servingSize": "One serving is ({{unit}})",
+      "eatenServings": "Servings eaten",
+      "eatenAmount": "You ate ({{unit}})",
+      "hint": "The ingredients above are the whole dish — say how it divides, and only what you ate goes in your diary.",
+      "derivedYield_one": "Makes about {{count}} serving",
+      "derivedYield_other": "Makes about {{count}} servings",
+      "perServing": "Per serving",
+      "logging": "Logging"
     }
   },
   "mealTypeForm": {
@@ -3728,7 +3797,10 @@
     "meal": "Meal",
     "selectMeal": "Select Meal",
     "date": "Date",
-    "servings": "Servings"
+    "servings": "Servings",
+    "groupedSummary_one": "{{count}} ingredient will be logged as one meal.",
+    "groupedSummary_other": "{{count}} ingredients will be logged as one meal.",
+    "failed": "Failed to log estimate"
   },
   "workoutAdd": {
     "addExercise": "Add an Exercise",
@@ -4626,5 +4698,9 @@
     "percentUnit": "%",
     "bpmUnit": "bpm",
     "quality": "Sleep Quality"
+  },
+  "foodProvenance": {
+    "aiEstimate": "AI estimate",
+    "aiEstimateAccessibility": "Nutrition estimated by AI"
   }
 }

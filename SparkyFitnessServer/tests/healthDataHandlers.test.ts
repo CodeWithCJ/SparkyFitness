@@ -12,6 +12,7 @@ import waterContainerRepository from '../models/waterContainerRepository.js';
 vi.mock('../models/measurementRepository.js', () => ({
   default: {
     upsertWaterIntakeSamples: vi.fn(),
+    bulkUpsertCheckInMeasurements: vi.fn(),
   },
 }));
 vi.mock('../models/waterContainerRepository.js', () => ({
@@ -55,6 +56,10 @@ describe('health data handler registry', () => {
     ['bone_mass', 'bone_mass_kg'],
     ['BoneMass', 'bone_mass_kg'],
     ['body_water_percentage', 'body_water_percentage'],
+    ['bmr', 'bmr'],
+    ['basal_metabolic_rate', 'bmr'],
+    ['BasalMetabolicRate', 'bmr'],
+    ['resting_energy', 'bmr'],
   ])("resolves '%s' to the '%s' handler", (rawType, canonicalKey) => {
     expect(resolveHandler(rawType)).toBe(HEALTH_TYPE_HANDLERS[canonicalKey]);
   });
@@ -196,5 +201,57 @@ describe('waterHandler.handleBatch', () => {
       containerId: null,
       containerName: 'Default',
     });
+  });
+});
+
+describe('bmrHandler.handleBatch', () => {
+  const bmrHandler = HEALTH_TYPE_HANDLERS['bmr'];
+  const ctx = {
+    userId: 'user-1',
+    actingUserId: 'actor-1',
+  } as unknown as HealthBatchContext;
+
+  const prepared = (
+    entry: Record<string, unknown>,
+    parsedDate = '2026-08-03'
+  ): PreparedHealthEntry => ({
+    entry,
+    parsedDate,
+    entryTimestamp: `${parsedDate}T12:00:00.000Z`,
+    entryHour: 12,
+  });
+
+  beforeEach(() => {
+    vi.mocked(
+      measurementRepository.bulkUpsertCheckInMeasurements
+    ).mockResolvedValue([{ id: 'row-1' } as never]);
+  });
+
+  it('accepts valid numeric values within 300 to 10000 kcal', async () => {
+    const outcomes = await bmrHandler.handleBatch!(
+      [prepared({ type: 'bmr', value: '1650' })],
+      ctx
+    );
+
+    expect(outcomes[0].status).toBe('success');
+  });
+
+  it('rejects values with non-numeric suffixes or out of bounds', async () => {
+    const outcomes = await bmrHandler.handleBatch!(
+      [
+        prepared({ type: 'bmr', value: '1650kcal' }),
+        prepared({ type: 'bmr', value: '300xyz' }),
+        prepared({ type: 'bmr', value: '299' }),
+        prepared({ type: 'bmr', value: '10001' }),
+        prepared({ type: 'bmr', value: '' }),
+      ],
+      ctx
+    );
+
+    expect(outcomes[0].status).toBe('error');
+    expect(outcomes[1].status).toBe('error');
+    expect(outcomes[2].status).toBe('error');
+    expect(outcomes[3].status).toBe('error');
+    expect(outcomes[4].status).toBe('error');
   });
 });

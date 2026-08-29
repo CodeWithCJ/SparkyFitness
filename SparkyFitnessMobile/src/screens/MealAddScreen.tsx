@@ -39,17 +39,20 @@ import {
   formatServingSizeDisplay,
 } from '../utils/foodDetails';
 import { buildMealIngredientDraftFromMealFood } from '../utils/mealBuilderDraft';
+import {
+  MEAL_SERVING_PRECISION,
+  MEAL_SERVING_UNITS,
+} from '@workspace/shared';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput, toFiniteNumber } from '../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 
 type MealAddScreenProps = RootStackScreenProps<'MealAdd'>;
 
-const MEAL_SERVING_PRECISION = 6;
-
-const SERVING_UNIT_OPTIONS = [
-  'serving', 'g', 'ml', 'oz', 'cup', 'tbsp', 'tsp', 'piece',
-].map((unit) => ({ label: unit, value: unit }));
+const SERVING_UNIT_OPTIONS = MEAL_SERVING_UNITS.map((unit) => ({
+  label: unit,
+  value: unit,
+}));
 
 function getServingUnitLabel(unit: string, t: (key: string, options?: Record<string, unknown>) => string): string {
   const labels: Record<string, string> = {

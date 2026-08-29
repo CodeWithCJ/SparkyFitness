@@ -49,6 +49,7 @@ export interface CalorieBalanceMeasurements {
   weight?: string | number | null;
   height?: string | number | null;
   body_fat_percentage?: string | number | null;
+  bmr?: string | number | null;
 }
 
 export interface ExerciseCalorieStats {
@@ -76,8 +77,6 @@ export interface CalorieBalanceInputs {
   userPreferences: CalorieBalanceUserPreferences | null;
   /** Latest measurement on or before the day. Drives the BMR formula. */
   measurements: CalorieBalanceMeasurements | null;
-  /** Synced resting/BMR for the day, or null. */
-  externalBmr: number | null;
   /**
    * Fraction of the day elapsed, 0..1. Used only by the tdee/smart projection.
    * See `resolveDayFraction` -- pass 1 for a completed day.
@@ -173,14 +172,12 @@ export function computeCalorieBalance({
   userProfile,
   userPreferences,
   measurements,
-  externalBmr,
   dayFraction,
 }: CalorieBalanceInputs): CalorieBalance {
   // 1. BMR
   let bmr = 0;
   const activityLevel = userPreferences?.activity_level || 'not_much';
   const includeInNet = userPreferences?.include_bmr_in_net_calories || false;
-  const useExternalBmr = userPreferences?.use_external_bmr || false;
 
   if (userProfile && userPreferences) {
     const tz = userPreferences.timezone || 'UTC';
@@ -214,18 +211,24 @@ export function computeCalorieBalance({
     }
   }
 
-  // 1b. External BMR override — when the user opts in and a synced resting/BMR value
-  // exists for the day, prefer it over the formula. Sanity-bounded so a bad sample
-  // can't zero out the target; otherwise we keep the formula.
-  let bmrSource: 'formula' | 'external' = 'formula';
-  if (
-    useExternalBmr &&
-    externalBmr !== null &&
-    externalBmr >= 600 &&
-    externalBmr <= 6000
-  ) {
-    bmr = externalBmr;
-    bmrSource = 'external';
+  // 1b. Measured BMR override — when a measured BMR is recorded on the day
+  // (from a smart scale, health provider sync, or manual check-in entry),
+  // prefer it over the formula. Sanity-bounded between 300 and 10000 kcal.
+  let bmrSource: 'formula' | 'measured' = 'formula';
+  const checkInBmr = measurements?.bmr
+    ? parseFloat(String(measurements.bmr))
+    : null;
+  const validCheckInBmr =
+    checkInBmr !== null &&
+    Number.isFinite(checkInBmr) &&
+    checkInBmr >= 300 &&
+    checkInBmr <= 10000
+      ? checkInBmr
+      : null;
+
+  if (validCheckInBmr !== null) {
+    bmr = validCheckInBmr;
+    bmrSource = 'measured';
   }
 
   // 2. Resolve exercise calories (3-tier fallback). max(active, logged + steps) —

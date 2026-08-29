@@ -73,21 +73,6 @@ async function getDashboardStats(
         : { weightKg: null, heightCm: null },
     ]);
 
-    // External BMR override — gated on includeCheckin, matching dailySummaryService.
-    const externalBmr =
-      userPreferences?.use_external_bmr && includeCheckin
-        ? await measurementRepository
-            .getExternalBmrForDate(userId, date)
-            .catch((error: unknown) => {
-              log(
-                'warn',
-                `DashboardService: external BMR fetch failed for user ${userId} on ${date}:`,
-                error
-              );
-              return null;
-            })
-        : null;
-
     const split = exerciseSplits[0];
     const exercise = {
       activeCalories: Number(split?.active_calories) || 0,
@@ -117,7 +102,6 @@ async function getDashboardStats(
       userProfile,
       userPreferences,
       measurements,
-      externalBmr,
       dayFraction: resolveDayFraction(date, userPreferences?.timezone || 'UTC'),
     });
 
