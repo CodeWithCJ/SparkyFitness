@@ -1062,7 +1062,7 @@ const CalculationSettings = () => {
                   {calorieGoalAdjustmentMode === 'tdee'
                     ? t(
                         'settings.calculationExplanation.burnedTdee',
-                        'Health Connect total calories projected to midnight'
+                        'Health Connect total calories (BMR + active calories fallback)'
                       )
                     : includeBmrInNetCalories
                       ? t(

@@ -933,6 +933,7 @@ const totalCaloriesHandler: HealthTypeHandler = {
         entry_date: ctx.parsedDate,
         source_provider: normalizeHealthSourceProvider(entry.source),
         total_calories: totalCaloriesValue,
+        total_calories_captured_at: new Date(ctx.entryTimestamp),
       }
     );
     return { status: 'success', data: result };

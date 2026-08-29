@@ -121,6 +121,7 @@ describe('totalCaloriesHandler', () => {
       entry_date: '2026-08-03',
       source_provider: 'health_connect',
       total_calories: 1234,
+      total_calories_captured_at: new Date('2026-08-03T12:00:00.000Z'),
     });
     expect(outcome.status).toBe('success');
   });

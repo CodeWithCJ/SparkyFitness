@@ -8,7 +8,7 @@ import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import { log } from '../config/logging.js';
 import {
   computeCalorieBalance,
-  resolveDayFraction,
+  resolveDeviceProjectionSnapshot,
   type CalorieBalanceMeasurements,
 } from './calorieBalanceService.js';
 import {
@@ -244,10 +244,12 @@ export async function getDailySummaryRange({
       date
     ];
     const healthConnectTotal = healthConnectTotalByDate.get(date);
-    const dayFraction = resolveDayFraction(date, tz, now);
-    const deviceTotalDayFraction = healthConnectTotal?.capturedAt
-      ? resolveDayFraction(date, tz, new Date(healthConnectTotal.capturedAt))
-      : dayFraction;
+    const deviceProjectionSnapshot = resolveDeviceProjectionSnapshot({
+      date,
+      timezone: tz,
+      deviceTotal: healthConnectTotal,
+      now,
+    });
 
     days.push({
       date,
@@ -260,9 +262,7 @@ export async function getDailySummaryRange({
         userProfile,
         userPreferences,
         measurements: carried,
-        deviceTotalCalories: healthConnectTotal?.totalCalories ?? null,
-        deviceTotalDayFraction,
-        dayFraction,
+        ...deviceProjectionSnapshot,
       }),
     });
   }

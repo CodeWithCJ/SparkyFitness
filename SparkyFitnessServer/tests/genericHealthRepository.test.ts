@@ -84,6 +84,7 @@ describe('Generic Health & Workout Telemetry Repositories', () => {
   });
 
   it('upsertDailyHealthMetrics should query daily_health_metrics', async () => {
+    const totalCaloriesCapturedAt = new Date('2026-07-29T12:00:00Z');
     mockQuery.mockResolvedValueOnce({
       rows: [
         {
@@ -106,11 +107,21 @@ describe('Generic Health & Workout Telemetry Repositories', () => {
         source_provider: 'garmin',
         total_steps: 10500,
         body_battery_highest: 95,
+        total_calories: 2400,
+        total_calories_captured_at: totalCaloriesCapturedAt,
       }
     );
 
     expect(result.total_steps).toBe(10500);
     expect(result.body_battery_highest).toBe(95);
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /total_calories_captured_at[\s\S]*total_calories_captured_at = COALESCE\(EXCLUDED\.total_calories_captured_at, daily_health_metrics\.total_calories_captured_at\)/
+      ),
+      expect.arrayContaining([totalCaloriesCapturedAt])
+    );
+    expect(mockQuery.mock.calls[0]?.[1]).toHaveLength(45);
+    expect(mockQuery.mock.calls[0]?.[1]?.[12]).toEqual(totalCaloriesCapturedAt);
   });
 
   it('gets Health Connect total calories for a date range', async () => {
@@ -142,7 +153,7 @@ describe('Generic Health & Workout Telemetry Repositories', () => {
     ]);
     expect(mockQuery).toHaveBeenCalledWith(
       expect.stringMatching(
-        /COALESCE\(updated_at, created_at\) AS captured_at[\s\S]*source_provider = 'health_connect'/
+        /COALESCE\(total_calories_captured_at, updated_at, created_at\) AS captured_at[\s\S]*source_provider = 'health_connect'/
       ),
       ['user-1', '2026-07-29', '2026-07-30']
     );

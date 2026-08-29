@@ -10,7 +10,7 @@ import { log } from '../config/logging.js';
 import {
   computeCalorieBalance,
   extractExerciseStats,
-  resolveDayFraction,
+  resolveDeviceProjectionSnapshot,
   sumFoodEntryCalories,
 } from './calorieBalanceService.js';
 import type { ExerciseSessionResponse } from '@workspace/shared';
@@ -132,14 +132,16 @@ export async function getDailySummary({
 
   const healthConnectTotal = healthConnectTotalRows[0];
   const timezone = userPreferences?.timezone || 'UTC';
-  const dayFraction = resolveDayFraction(date, timezone);
-  const deviceTotalDayFraction = healthConnectTotal?.captured_at
-    ? resolveDayFraction(
-        date,
-        timezone,
-        new Date(healthConnectTotal.captured_at)
-      )
-    : dayFraction;
+  const deviceProjectionSnapshot = resolveDeviceProjectionSnapshot({
+    date,
+    timezone,
+    deviceTotal: healthConnectTotal
+      ? {
+          totalCalories: healthConnectTotal.total_calories,
+          capturedAt: healthConnectTotal.captured_at,
+        }
+      : null,
+  });
 
   const calorieBalance = computeCalorieBalance({
     eatenCalories:
@@ -152,12 +154,7 @@ export async function getDailySummary({
     userProfile,
     userPreferences,
     measurements,
-    deviceTotalCalories: Number(healthConnectTotal?.total_calories) || null,
-    deviceTotalDayFraction,
-    // A past day is finished, so its burn needs no end-of-day projection. Reading the
-    // wall clock here (as this did before) made the same historical day report different
-    // numbers depending on when you opened it.
-    dayFraction,
+    ...deviceProjectionSnapshot,
   });
 
   const rawGoalData = goals as Record<string, unknown> | null;

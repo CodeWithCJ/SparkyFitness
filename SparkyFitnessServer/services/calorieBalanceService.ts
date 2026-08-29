@@ -125,6 +125,57 @@ export function resolveDayFraction(
   return (hour * 60 + minute) / (24 * 60);
 }
 
+export interface DeviceProjectionTotal {
+  totalCalories?: number | string | null;
+  capturedAt?: Date | string | null;
+}
+
+export interface DeviceProjectionSnapshotInputs {
+  date: string;
+  timezone: string;
+  deviceTotal?: DeviceProjectionTotal | null;
+  now?: Date;
+}
+
+/**
+ * Prepares the shared clock-sensitive inputs for Device Projection.
+ *
+ * The device total is cumulative, so today's value must be extrapolated from
+ * the instant at which that value was captured. Completed days are final and
+ * resolve to a fraction of 1 through `resolveDayFraction`.
+ */
+export function resolveDeviceProjectionSnapshot({
+  date,
+  timezone,
+  deviceTotal,
+  now = new Date(),
+}: DeviceProjectionSnapshotInputs): Pick<
+  CalorieBalanceInputs,
+  'deviceTotalCalories' | 'deviceTotalDayFraction' | 'dayFraction'
+> {
+  const dayFraction = resolveDayFraction(date, timezone, now);
+  const isCompletedDay = date < instantToDay(now, timezone);
+  const capturedAt = deviceTotal?.capturedAt
+    ? new Date(deviceTotal.capturedAt)
+    : null;
+  const hasValidCaptureTime =
+    capturedAt !== null && Number.isFinite(capturedAt.getTime());
+  const totalCalories = Number(deviceTotal?.totalCalories);
+
+  return {
+    deviceTotalCalories:
+      Number.isFinite(totalCalories) && totalCalories > 0
+        ? totalCalories
+        : null,
+    deviceTotalDayFraction: isCompletedDay
+      ? 1
+      : hasValidCaptureTime
+        ? resolveDayFraction(date, timezone, capturedAt)
+        : dayFraction,
+    dayFraction,
+  };
+}
+
 /**
  * Splits a day's exercise sessions into the three sums the balance needs.
  *

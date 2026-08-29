@@ -264,7 +264,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
     const pct = normalized.exerciseCaloriePercentage;
 
     const burned = mode === 'tdee'
-      ? t('calorieSettings.formulas.projectedTotal', { defaultValue: 'Health Connect total calories projected to midnight' })
+      ? t('calorieSettings.formulas.projectedTotal', { defaultValue: 'Health Connect total calories (BMR + active calories fallback)' })
       : bmr
         ? t('calorieSettings.formulas.activityWithBmr', { defaultValue: 'Activity + BMR' })
         : t('calorieSettings.formulas.activityOnly', { defaultValue: 'Activity only (exercise + steps)' });
@@ -326,7 +326,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
           </Text>
           {normalized.mode === 'tdee' && (
             <Text className="text-text-secondary text-sm mt-3">
-              {t('calorieSettings.deviceProjectionDescription', { defaultValue: 'Health Connect total calories are projected to midnight, then Goal Mode is applied to that TDEE.' })}
+              {t('calorieSettings.deviceProjectionDescription', { defaultValue: 'Current-day Health Connect total calories are projected to midnight; completed days use the recorded total. Goal Mode is applied to that TDEE, with BMR + active calories as a fallback.' })}
             </Text>
           )}
         </View>

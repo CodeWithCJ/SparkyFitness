@@ -99,9 +99,10 @@ describe('CalorieSettingsScreen', () => {
 
     expect(
       getByText(
-        'Health Connect total calories are projected to midnight, then Goal Mode is applied to that TDEE.',
+        'Current-day Health Connect total calories are projected to midnight; completed days use the recorded total. Goal Mode is applied to that TDEE, with BMR + active calories as a fallback.',
       ),
     ).toBeTruthy();
+    expect(getByText('Health Connect total calories (BMR + active calories fallback)')).toBeTruthy();
     expect(getByText('Projected TDEE × Goal Mode − Eaten')).toBeTruthy();
   });
 

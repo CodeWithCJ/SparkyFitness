@@ -9,7 +9,7 @@ import { log } from '../config/logging.js';
 import { resolveBackgroundStepCalories } from '@workspace/shared';
 import {
   computeCalorieBalance,
-  resolveDayFraction,
+  resolveDeviceProjectionSnapshot,
 } from './calorieBalanceService.js';
 
 /**
@@ -111,14 +111,16 @@ async function getDashboardStats(
 
     const healthConnectTotal = healthConnectTotalRows[0];
     const timezone = userPreferences?.timezone || 'UTC';
-    const dayFraction = resolveDayFraction(date, timezone);
-    const deviceTotalDayFraction = healthConnectTotal?.captured_at
-      ? resolveDayFraction(
-          date,
-          timezone,
-          new Date(healthConnectTotal.captured_at)
-        )
-      : dayFraction;
+    const deviceProjectionSnapshot = resolveDeviceProjectionSnapshot({
+      date,
+      timezone,
+      deviceTotal: healthConnectTotal
+        ? {
+            totalCalories: healthConnectTotal.total_calories,
+            capturedAt: healthConnectTotal.captured_at,
+          }
+        : null,
+    });
 
     const balance = computeCalorieBalance({
       eatenCalories:
@@ -132,9 +134,7 @@ async function getDashboardStats(
       userProfile,
       userPreferences,
       measurements,
-      deviceTotalCalories: Number(healthConnectTotal?.total_calories) || null,
-      deviceTotalDayFraction,
-      dayFraction,
+      ...deviceProjectionSnapshot,
     });
 
     return {

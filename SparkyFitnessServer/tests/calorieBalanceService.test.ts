@@ -3,6 +3,7 @@ import type { ExerciseSessionResponse } from '@workspace/shared';
 import {
   computeCalorieBalance,
   extractExerciseStats,
+  resolveDeviceProjectionSnapshot,
   resolveDayFraction,
   sumFoodEntryCalories,
   type CalorieBalanceInputs,
@@ -409,6 +410,44 @@ describe('resolveDayFraction', () => {
     const now = new Date('2026-08-20T23:00:00Z');
     expect(resolveDayFraction('2026-08-20', 'Asia/Tokyo', now)).toBe(1);
     expect(resolveDayFraction('2026-08-20', 'UTC', now)).toBeLessThan(1);
+  });
+});
+
+describe('resolveDeviceProjectionSnapshot', () => {
+  test('uses the device capture time for today without duplicating caller preparation', () => {
+    const snapshot = resolveDeviceProjectionSnapshot({
+      date: '2026-08-20',
+      timezone: 'UTC',
+      now: new Date('2026-08-20T18:00:00Z'),
+      deviceTotal: {
+        totalCalories: 1200,
+        capturedAt: new Date('2026-08-20T12:00:00Z'),
+      },
+    });
+
+    expect(snapshot).toEqual({
+      deviceTotalCalories: 1200,
+      deviceTotalDayFraction: 0.5,
+      dayFraction: 0.75,
+    });
+  });
+
+  test('treats a completed day and its recorded total as final', () => {
+    const snapshot = resolveDeviceProjectionSnapshot({
+      date: '2026-08-19',
+      timezone: 'UTC',
+      now: new Date('2026-08-20T18:00:00Z'),
+      deviceTotal: {
+        totalCalories: 2400,
+        capturedAt: new Date('2026-08-19T20:00:00Z'),
+      },
+    });
+
+    expect(snapshot).toEqual({
+      deviceTotalCalories: 2400,
+      deviceTotalDayFraction: 1,
+      dayFraction: 1,
+    });
   });
 });
 
