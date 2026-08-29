@@ -25,7 +25,13 @@ import FoodSearchDialog from './FoodSearch/FoodSearchDialog';
 import MealUnitSelector from '@/pages/Foods/MealUnitSelector';
 import LinkedMealPreviewDialog from './LinkedMealPreviewDialog';
 import { useQueryClient } from '@tanstack/react-query';
-import { toHourMinute, userHourMinute } from '@workspace/shared';
+import {
+  toHourMinute,
+  userHourMinute,
+  MEAL_SERVING_PRECISION,
+  MEAL_SERVING_UNITS,
+  type MealServingUnit,
+} from '@workspace/shared';
 import {
   mealViewOptions,
   useCreateMealMutation,
@@ -72,7 +78,17 @@ interface MealBuilderProps {
   initialEntryTime?: string | null;
 }
 
-const MEAL_SERVING_PRECISION = 6;
+/** Long-form labels for the shared meal unit list, which carries bare keys. */
+const MEAL_SERVING_UNIT_LABELS: Record<MealServingUnit, string> = {
+  serving: 'serving',
+  g: 'grams (g)',
+  ml: 'milliliters (ml)',
+  oz: 'ounces (oz)',
+  cup: 'cup',
+  tbsp: 'tablespoon (tbsp)',
+  tsp: 'teaspoon (tsp)',
+  piece: 'piece',
+};
 
 // Full nutrient snapshot key set (mirrors meal_foods columns), independent of
 // the user's visible-nutrient display preferences — used when aggregating a
@@ -165,6 +181,11 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   const [servingUnit, setServingUnit] = useState<string>(
     initialServingUnit || 'serving'
   );
+  // How much of the dish goes in the diary, in servingUnit. Only used when the
+  // builder describes a whole dish AND logs it (showDiaryYield): in the other
+  // diary modes servingSize itself carries the consumed quantity, and in
+  // meal-management nothing is logged at all.
+  const [consumedQuantity, setConsumedQuantity] = useState<string>('1');
   // total_servings = how many portions the recipe yields (denominator alongside
   // serving_size in the uniform multiplier: quantity / (serving_size × total_servings)).
   // For serving-unit meals, this is what the user types directly.
@@ -901,23 +922,73 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         return;
       }
 
-      // With an inline yield the ingredient rows describe the whole dish, so
-      // the yield has to be a positive number before anything is scaled by it.
-      let diaryTotalServings = 1;
+      // When the builder describes a whole dish, the ingredient rows are the
+      // dish and the serving model decides what fraction of it is logged. Every
+      // part of that model has to be a positive number before anything is
+      // scaled by it — `parseFloat(x) || 1` would quietly turn a typo into a
+      // full-dish log.
+      let dishServingSizeToSave = 1;
+      let dishYieldToSave = 1;
+      let consumedToSave = parseFloat(servingSize) || 1;
       if (showDiaryYield) {
-        const parsedYield = parseFloat(totalServings);
-        if (!Number.isFinite(parsedYield) || parsedYield <= 0) {
+        if (servingUnit === 'serving') {
+          const parsedYield = parseFloat(totalServings);
+          if (!Number.isFinite(parsedYield) || parsedYield <= 0) {
+            toast({
+              title: t('mealBuilder.errorTitle', 'Error'),
+              description: t(
+                'mealBuilder.invalidTotalServings',
+                'Total servings must be greater than zero.'
+              ),
+              variant: 'destructive',
+            });
+            return;
+          }
+          dishServingSizeToSave = 1;
+          dishYieldToSave = parsedYield;
+        } else {
+          const parsedSize = parseFloat(servingSize);
+          const parsedAmount = parseFloat(totalAmountText);
+          if (!Number.isFinite(parsedSize) || parsedSize <= 0) {
+            toast({
+              title: t('mealBuilder.errorTitle', 'Error'),
+              description: t(
+                'mealBuilder.invalidDefaultServingSize',
+                'Default serving size must be greater than zero.'
+              ),
+              variant: 'destructive',
+            });
+            return;
+          }
+          if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+            toast({
+              title: t('mealBuilder.errorTitle', 'Error'),
+              description: t(
+                'mealBuilder.invalidTotalAmount',
+                'Total amount must be greater than zero.'
+              ),
+              variant: 'destructive',
+            });
+            return;
+          }
+          dishServingSizeToSave = parsedSize;
+          dishYieldToSave = Number(
+            (parsedAmount / parsedSize).toFixed(MEAL_SERVING_PRECISION)
+          );
+        }
+        const parsedConsumed = parseFloat(consumedQuantity);
+        if (!Number.isFinite(parsedConsumed) || parsedConsumed <= 0) {
           toast({
             title: t('mealBuilder.errorTitle', 'Error'),
             description: t(
-              'mealBuilder.invalidTotalServings',
-              'Total servings must be greater than zero.'
+              'mealBuilder.invalidConsumedQuantity',
+              'Quantity consumed must be greater than zero.'
             ),
             variant: 'destructive',
           });
           return;
         }
-        diaryTotalServings = parsedYield;
+        consumedToSave = parsedConsumed;
       }
 
       let templateId = templateInfo.id;
@@ -928,9 +999,11 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             name: mealName.trim(),
             description: mealDescription,
             is_public: false,
-            serving_size: 1,
+            // The template holds the WHOLE dish, so re-logging one serving of
+            // it later reproduces the portion being logged here.
+            serving_size: dishServingSizeToSave,
             serving_unit: servingUnit || 'serving',
-            total_servings: diaryTotalServings,
+            total_servings: dishYieldToSave,
             images: [],
             foods: resolvedFoods.map((mf) => ({
               item_type: mf.item_type || 'food',
@@ -979,12 +1052,13 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       // quantity / (serving_size × total_servings) of the template. Without a
       // template (no meal name, so none was created) its multiplier is 1, so
       // apply the same portion factor here instead of logging the whole dish.
-      const consumedQuantity = parseFloat(servingSize) || 1;
       const entryFoods =
         showDiaryYield && !templateId
           ? resolvedFoods.map((mf) => ({
               ...mf,
-              quantity: mf.quantity * (consumedQuantity / diaryTotalServings),
+              quantity:
+                (mf.quantity * consumedToSave) /
+                (dishServingSizeToSave * dishYieldToSave),
             }))
           : resolvedFoods;
 
@@ -994,7 +1068,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         entry_date: foodEntryDate,
         name: mealName.trim() || 'Custom Meal',
         description: mealDescription,
-        quantity: consumedQuantity,
+        quantity: consumedToSave,
         unit: servingUnit,
         foods: entryFoods,
         entry_time: entryTime || null,
@@ -1085,30 +1159,158 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
 
   const mealTotals = calculateMealNutrition();
 
+  /** A positive number from a text input, else the given fallback. */
+  const positiveOr = (value: string, fallback: number) => {
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  };
+
+  // The dish's serving model, as the inputs currently describe it. For the
+  // 'serving' unit the user types the yield directly and a serving is
+  // tautologically 1; otherwise the yield is the batch divided by one serving.
+  const dishServingSize =
+    servingUnit === 'serving' ? 1 : positiveOr(servingSize, 1);
+  const dishYield =
+    servingUnit === 'serving'
+      ? positiveOr(totalServings, 1)
+      : positiveOr(totalAmountText, 1) / dishServingSize;
+
   // How the aggregated ingredient totals map onto the selected view.
   //   - meal-management: "Per serving" divides the full recipe by the yield.
-  //   - diary with an inline yield: the totals are the whole dish, so "Logged"
-  //     applies quantity / yield and "Per serving" applies 1 / yield.
+  //   - diary describing a whole dish: the totals ARE the whole dish, so
+  //     "Logged" applies the uniform multiplier
+  //     consumed / (serving_size x total_servings) and "Per serving" one
+  //     serving's share of it.
   //   - diary against a template: calculateMealNutrition already applied the
   //     per-log multiplier, so its values are shown as-is.
-  const parsedTotalServings = parseFloat(totalServings);
-  const yieldCount =
-    Number.isFinite(parsedTotalServings) && parsedTotalServings > 0
-      ? parsedTotalServings
-      : 1;
-  const parsedConsumed = parseFloat(servingSize);
-  const consumedServings =
-    Number.isFinite(parsedConsumed) && parsedConsumed > 0 ? parsedConsumed : 1;
   let displayScale = 1;
   if (showDiaryYield) {
     if (nutritionView === 'logged') {
-      displayScale = consumedServings / yieldCount;
+      displayScale =
+        positiveOr(consumedQuantity, 1) / (dishServingSize * dishYield);
     } else if (nutritionView === 'perServing') {
-      displayScale = 1 / yieldCount;
+      displayScale = 1 / dishYield;
     }
   } else if (source !== 'food-diary' && nutritionView === 'perServing') {
-    displayScale = 1 / yieldCount;
+    displayScale = 1 / positiveOr(totalServings, 1);
   }
+
+  const servingModelFields = (
+    // Meal-management serving model:
+    //   serving === 'serving' →
+    //     [ Total Servings ] [ Unit ]
+    //   other units →
+    //     [ Total Amount ]   [ Unit ]
+    //     [ Default Serving Size ]
+    //   Total Amount + Default Serving Size live alongside Unit, with the
+    //   unit suffix shown inside each input as light text. total_servings
+    //   is derived on save: totalAmount / defaultServingSize.
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          {servingUnit === 'serving' ? (
+            <>
+              <Label htmlFor="totalServings">
+                {t('mealBuilder.totalServings', 'Total Servings')}
+              </Label>
+              <Input
+                id="totalServings"
+                type="number"
+                step="any"
+                min="0"
+                value={totalServings}
+                onChange={(e) => setTotalServings(e.target.value)}
+                placeholder="1"
+              />
+            </>
+          ) : (
+            <>
+              <Label htmlFor="totalAmount">
+                {t('mealBuilder.totalAmount', 'Total Amount')} ({servingUnit})
+              </Label>
+              <Input
+                id="totalAmount"
+                type="number"
+                step="any"
+                min="0"
+                value={totalAmountText}
+                onChange={(e) => setTotalAmountText(e.target.value)}
+                placeholder="1"
+              />
+            </>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="servingUnit">
+            {t('mealBuilder.servingUnit', 'Unit')}
+          </Label>
+          <Select
+            value={servingUnit}
+            onValueChange={(value) => {
+              const previousUnit = servingUnit;
+              setServingUnit(value);
+              if (value === 'serving') {
+                // Switching INTO serving-unit.
+                // If coming from a quantity-based unit, derive
+                // total_servings from the current Total Amount /
+                // Default Serving Size so the user's recipe definition
+                // isn't silently lost when serving_size collapses to 1.
+                if (previousUnit !== 'serving') {
+                  const parsedAmount = parseFloat(totalAmountText);
+                  const parsedSize = parseFloat(servingSize);
+                  if (
+                    parsedAmount > 0 &&
+                    parsedSize > 0 &&
+                    Number.isFinite(parsedAmount) &&
+                    Number.isFinite(parsedSize)
+                  ) {
+                    setTotalServings(String(parsedAmount / parsedSize));
+                  }
+                }
+                setServingSize('1');
+              } else if (previousUnit === 'serving') {
+                // Switching OUT of serving-unit: serving_size now means
+                // per-serving quantity, default it to 1. Initialize
+                // Total Amount from current total_servings × 1 = totalServings.
+                setServingSize('1');
+                setTotalAmountText(totalServings || '1');
+              }
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Unit" />
+            </SelectTrigger>
+            <SelectContent>
+              {MEAL_SERVING_UNITS.map((unit) => (
+                <SelectItem key={unit} value={unit}>
+                  {MEAL_SERVING_UNIT_LABELS[unit]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      {servingUnit !== 'serving' && (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="servingSize">
+              {t('mealBuilder.defaultServingSize', 'Default Serving Size')} (
+              {servingUnit})
+            </Label>
+            <Input
+              id="servingSize"
+              type="number"
+              step="any"
+              value={servingSize}
+              onChange={(e) => setServingSize(e.target.value)}
+              placeholder="1"
+            />
+          </div>
+          <div />
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-6 pt-4">
@@ -1285,40 +1487,10 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           </div>
         )}
 
-        {source === 'food-diary' ? (
-          // Diary mode: "Quantity Consumed" + locked unit pair + time. A custom
-          // meal with no template behind it also gets "Total Servings" first,
-          // so the ingredient rows can describe the whole dish while only a
-          // portion of it is logged.
-          <div
-            className={
-              showDiaryYield
-                ? 'grid grid-cols-2 sm:grid-cols-4 gap-4'
-                : 'grid grid-cols-3 gap-4'
-            }
-          >
-            {showDiaryYield && (
-              <div className="space-y-2">
-                <Label htmlFor="diaryTotalServings">
-                  {t('mealBuilder.totalServings', 'Total Servings')}
-                </Label>
-                <Input
-                  id="diaryTotalServings"
-                  type="number"
-                  step="any"
-                  min="0"
-                  value={totalServings}
-                  onChange={(e) => setTotalServings(e.target.value)}
-                  placeholder="1"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {t(
-                    'mealBuilder.diaryTotalServingsHint',
-                    'Servings the whole dish makes'
-                  )}
-                </p>
-              </div>
-            )}
+        {source === 'food-diary' && !showDiaryYield ? (
+          // Logging an existing meal (or editing a logged one): the template
+          // owns the serving model, so this only asks how much was consumed.
+          <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="servingSize">
                 {t('mealBuilder.consumedQuantity', 'Quantity Consumed')}
@@ -1331,14 +1503,6 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                 onChange={(e) => setServingSize(e.target.value)}
                 placeholder="1"
               />
-              {showDiaryYield && (
-                <p className="text-xs text-muted-foreground">
-                  {t(
-                    'mealBuilder.diaryConsumedQuantityHint',
-                    'Servings you are logging'
-                  )}
-                </p>
-              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="servingUnit">
@@ -1353,14 +1517,11 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                   <SelectValue placeholder="Unit" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="serving">serving</SelectItem>
-                  <SelectItem value="g">grams (g)</SelectItem>
-                  <SelectItem value="ml">milliliters (ml)</SelectItem>
-                  <SelectItem value="oz">ounces (oz)</SelectItem>
-                  <SelectItem value="cup">cup</SelectItem>
-                  <SelectItem value="tbsp">tablespoon (tbsp)</SelectItem>
-                  <SelectItem value="tsp">teaspoon (tsp)</SelectItem>
-                  <SelectItem value="piece">piece</SelectItem>
+                  {MEAL_SERVING_UNITS.map((unit) => (
+                    <SelectItem key={unit} value={unit}>
+                      {MEAL_SERVING_UNIT_LABELS[unit]}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1402,128 +1563,75 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
               />
             </div>
           </div>
-        ) : (
-          // Meal-management mode:
-          //   serving === 'serving' →
-          //     [ Total Servings ] [ Unit ]
-          //   other units →
-          //     [ Total Amount ]   [ Unit ]
-          //     [ Default Serving Size ]
-          //   Total Amount + Default Serving Size live alongside Unit, with the
-          //   unit suffix shown inside each input as light text. total_servings
-          //   is derived on save: totalAmount / defaultServingSize.
+        ) : showDiaryYield ? (
+          // A new custom meal logged from a photo describes a whole dish,
+          // so it gets the same serving model as any other meal — unit plus
+          // either a yield or a total amount and serving size — and then
+          // says how much of that dish is being logged.
           <div className="space-y-4">
+            {servingModelFields}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                {servingUnit === 'serving' ? (
-                  <>
-                    <Label htmlFor="totalServings">
-                      {t('mealBuilder.totalServings', 'Total Servings')}
-                    </Label>
-                    <Input
-                      id="totalServings"
-                      type="number"
-                      step="any"
-                      min="0"
-                      value={totalServings}
-                      onChange={(e) => setTotalServings(e.target.value)}
-                      placeholder="1"
-                    />
-                  </>
-                ) : (
-                  <>
-                    <Label htmlFor="totalAmount">
-                      {t('mealBuilder.totalAmount', 'Total Amount')} (
-                      {servingUnit})
-                    </Label>
-                    <Input
-                      id="totalAmount"
-                      type="number"
-                      step="any"
-                      min="0"
-                      value={totalAmountText}
-                      onChange={(e) => setTotalAmountText(e.target.value)}
-                      placeholder="1"
-                    />
-                  </>
-                )}
+                <Label htmlFor="consumedQuantity">
+                  {t('mealBuilder.consumedQuantity', 'Quantity Consumed')} (
+                  {servingUnit})
+                </Label>
+                <Input
+                  id="consumedQuantity"
+                  type="number"
+                  step="any"
+                  value={consumedQuantity}
+                  onChange={(e) => setConsumedQuantity(e.target.value)}
+                  placeholder="1"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    'mealBuilder.diaryConsumedQuantityHint',
+                    'How much of the dish goes in your diary'
+                  )}
+                </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="servingUnit">
-                  {t('mealBuilder.servingUnit', 'Unit')}
-                </Label>
-                <Select
-                  value={servingUnit}
-                  onValueChange={(value) => {
-                    const previousUnit = servingUnit;
-                    setServingUnit(value);
-                    if (value === 'serving') {
-                      // Switching INTO serving-unit.
-                      // If coming from a quantity-based unit, derive
-                      // total_servings from the current Total Amount /
-                      // Default Serving Size so the user's recipe definition
-                      // isn't silently lost when serving_size collapses to 1.
-                      if (previousUnit !== 'serving') {
-                        const parsedAmount = parseFloat(totalAmountText);
-                        const parsedSize = parseFloat(servingSize);
-                        if (
-                          parsedAmount > 0 &&
-                          parsedSize > 0 &&
-                          Number.isFinite(parsedAmount) &&
-                          Number.isFinite(parsedSize)
-                        ) {
-                          setTotalServings(String(parsedAmount / parsedSize));
-                        }
-                      }
-                      setServingSize('1');
-                    } else if (previousUnit === 'serving') {
-                      // Switching OUT of serving-unit: serving_size now means
-                      // per-serving quantity, default it to 1. Initialize
-                      // Total Amount from current total_servings × 1 = totalServings.
-                      setServingSize('1');
-                      setTotalAmountText(totalServings || '1');
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Unit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="serving">serving</SelectItem>
-                    <SelectItem value="g">grams (g)</SelectItem>
-                    <SelectItem value="ml">milliliters (ml)</SelectItem>
-                    <SelectItem value="oz">ounces (oz)</SelectItem>
-                    <SelectItem value="cup">cup</SelectItem>
-                    <SelectItem value="tbsp">tablespoon (tbsp)</SelectItem>
-                    <SelectItem value="tsp">teaspoon (tsp)</SelectItem>
-                    <SelectItem value="piece">piece</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="entryTime">Time (optional)</Label>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setEntryTime('')}
+                      disabled={!entryTime}
+                      className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-muted-foreground shadow-sm hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                      title="Clear time"
+                    >
+                      <X className="h-4 w-4" />
+                      Clear
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const { hour, minute } = userHourMinute(timezone);
+                        setEntryTime(
+                          `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+                        );
+                      }}
+                      className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                      title="Set to current local time"
+                    >
+                      <Clock className="h-4 w-4" />
+                      Now
+                    </button>
+                  </div>
+                </div>
+                <Input
+                  id="entryTime"
+                  type="time"
+                  value={entryTime}
+                  onChange={(e) => setEntryTime(e.target.value)}
+                />
               </div>
             </div>
-            {servingUnit !== 'serving' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="servingSize">
-                    {t(
-                      'mealBuilder.defaultServingSize',
-                      'Default Serving Size'
-                    )}{' '}
-                    ({servingUnit})
-                  </Label>
-                  <Input
-                    id="servingSize"
-                    type="number"
-                    step="any"
-                    value={servingSize}
-                    onChange={(e) => setServingSize(e.target.value)}
-                    placeholder="1"
-                  />
-                </div>
-                <div />
-              </div>
-            )}
           </div>
+        ) : (
+          servingModelFields
         )}
         <div className="space-y-2">
           {source === 'food-diary' && !showDiaryYield ? (

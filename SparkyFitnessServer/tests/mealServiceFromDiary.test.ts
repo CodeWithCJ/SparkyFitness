@@ -137,5 +137,41 @@ describe('createMealFromDiaryEntries scoping', () => {
     expect(created.serving_size).toBe(1.0);
     expect(created.serving_unit).toBe('serving');
     expect(created.total_servings).toBe(1.0);
+    expect(created.foods[0].quantity).toBe(100);
+  });
+
+  it('restores the whole dish when only a portion was logged', async () => {
+    // The diary holds one 250 ml glass of a 2000 ml batch, so its entry is an
+    // eighth of the recipe: 100 g of rice went in as 12.5 g.
+    getFoodEntriesByDateAndMealTypeMock.mockResolvedValue([
+      { ...entry('rice', MEAL_A), quantity: 12.5 },
+    ]);
+
+    await mealService.createMealFromDiaryEntries(
+      'user-1',
+      '2026-08-27',
+      'lunch',
+      'Mango Lassi',
+      null,
+      false,
+      MEAL_A,
+      8,
+      8,
+      250,
+      'ml'
+    );
+
+    const created = createMealMock.mock.calls[0][0];
+    // The template holds the BATCH, not the glass.
+    expect(created.foods[0].quantity).toBe(100);
+    expect(created.serving_size).toBe(250);
+    expect(created.serving_unit).toBe('ml');
+    expect(created.total_servings).toBe(8);
+    // The round trip that matters: logging one serving_size of this template
+    // multiplies its components by 250 / (250 * 8), landing back on the 12.5 g
+    // the diary already holds. A mismatch here would rescale every future log.
+    const reLogFactor =
+      created.serving_size / (created.serving_size * created.total_servings);
+    expect(created.foods[0].quantity * reLogFactor).toBeCloseTo(12.5, 6);
   });
 });

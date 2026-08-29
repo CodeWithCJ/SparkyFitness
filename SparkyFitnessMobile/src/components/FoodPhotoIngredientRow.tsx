@@ -112,6 +112,11 @@ const FoodPhotoIngredientRow: React.FC<FoodPhotoIngredientRowProps> = ({
     '--color-text-danger-subtle',
   ]) as [string, string];
 
+  // A row the user picked from their foods is not a guess: it shows its own
+  // amount in its own unit and has no AI numbers to second-guess, so it skips
+  // the confidence chip and the estimate editors.
+  const isPickedFood = row.logAs !== undefined;
+
   const tone = CONFIDENCE_TONES[row.confidence];
   const confidenceLabel =
     row.confidence === 'high'
@@ -156,18 +161,29 @@ const FoodPhotoIngredientRow: React.FC<FoodPhotoIngredientRowProps> = ({
                 </Text>
               ) : null}
             </Text>
-            <View className={`px-2 py-0.5 rounded-full ${TONE_BG_CLASS[tone]}`}>
-              <Text className={`text-xs font-semibold ${TONE_TEXT_CLASS[tone]}`}>
-                {confidenceLabel}
-              </Text>
-            </View>
+            {isPickedFood ? null : (
+              <View className={`px-2 py-0.5 rounded-full ${TONE_BG_CLASS[tone]}`}>
+                <Text
+                  className={`text-xs font-semibold ${TONE_TEXT_CLASS[tone]}`}
+                >
+                  {confidenceLabel}
+                </Text>
+              </View>
+            )}
           </View>
           <Text className="text-text-secondary text-sm mt-0.5">
-            {t('foodPhotoEstimate.ingredients.rowSummary', {
-              defaultValue: '{{grams}} g · {{calories}} kcal',
-              grams: Math.round(row.grams),
-              calories: Math.round(row.macros.calories_kcal),
-            })}
+            {row.logAs
+              ? t('foodPhotoEstimate.ingredients.pickedRowSummary', {
+                  defaultValue: '{{quantity}} {{unit}} · {{calories}} kcal',
+                  quantity: row.logAs.quantity,
+                  unit: row.logAs.unit,
+                  calories: Math.round(row.macros.calories_kcal),
+                })
+              : t('foodPhotoEstimate.ingredients.rowSummary', {
+                  defaultValue: '{{grams}} g · {{calories}} kcal',
+                  grams: Math.round(row.grams),
+                  calories: Math.round(row.macros.calories_kcal),
+                })}
           </Text>
         </TouchableOpacity>
 
@@ -216,7 +232,21 @@ const FoodPhotoIngredientRow: React.FC<FoodPhotoIngredientRowProps> = ({
         </TouchableOpacity>
       ) : null}
 
-      {expanded ? (
+      {expanded && isPickedFood ? (
+        <View className="px-3 pb-3 border-t border-border-subtle pt-3">
+          {/* Nothing to edit: the numbers come from the saved food and the
+              amount was chosen in the picker. Editing them here would detach
+              the row from the food it logs against. */}
+          <Text className="text-text-secondary text-xs">
+            {t('foodPhotoEstimate.ingredients.pickedFoodNote', {
+              defaultValue:
+                'Added from your foods. Remove it and add it again to change the amount.',
+            })}
+          </Text>
+        </View>
+      ) : null}
+
+      {expanded && !isPickedFood ? (
         <View className="px-3 pb-3 border-t border-border-subtle pt-3">
           <Text className="text-text-secondary text-xs mb-1">
             {t('foodPhotoEstimate.ingredients.name', { defaultValue: 'Name' })}

@@ -205,9 +205,9 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     if (params.mode === 'grouped') {
-      // No servings multiplier here: each ingredient already carries the exact
-      // grams the user reviewed, and an ad-hoc parent meal does not scale its
-      // components anyway.
+      // The Servings row is hidden for a grouped log: the portion was already
+      // described on the review screen, in that dish's own unit, and travels
+      // with the payload for the server to apply.
       const selectedMealType = mealTypes.find((mt) => mt.id === selectedMealTypeId);
       try {
         await logEstimateAsync({
@@ -219,6 +219,10 @@ const FoodPhotoLogEntryScreen: React.FC<Props> = ({ navigation, route }) => {
           name: params.mealName,
           description: params.description ?? null,
           items: params.ingredients,
+          serving_size: params.servingSize,
+          serving_unit: params.servingUnit,
+          total_servings: params.totalServings,
+          consumed_quantity: params.consumedQuantity,
           // Only set when the user picked "Ingredients + reusable meal"; the
           // server rejects it outside grouped mode.
           ...(params.saveAsMeal

@@ -1,5 +1,6 @@
 import { splitDataUrl } from '@/utils/imageResize';
 import { describeEstimateError } from '@/utils/foodPhotoEstimate';
+import { estimateRowsToMealFoods } from '@/utils/foodPhotoEstimate';
 import {
   ingredientDraftReducer,
   initialiseIngredientDraft,
@@ -97,5 +98,55 @@ describe('web ingredient draft', () => {
     });
     const row = state.rows[0]!;
     expect(toPer100g(row.macros, row.grams)).toBeNull();
+  });
+});
+
+describe('estimateRowsToMealFoods', () => {
+  const match = {
+    food_id: '11111111-1111-4111-8111-111111111111',
+    variant_id: '22222222-2222-4222-8222-222222222222',
+    food_name: 'Frozen broccoli',
+    brand: null,
+    serving_size: 100,
+    serving_unit: 'g',
+    match_score: 0.95,
+    match_source: 'exact_name' as const,
+    is_own_food: true,
+    gram_convertible: true,
+    scaled: {
+      calories_kcal: 30,
+      protein_g: 2,
+      carbs_g: 5,
+      fat_g: 0.3,
+      fiber_g: 2,
+      sugar_g: 1,
+    },
+  };
+
+  it('carries the ids of a match the row is showing', () => {
+    const rows = initialiseIngredientDraft([
+      { ...item, match, preselect_match: true },
+    ]).rows;
+    expect(rows[0]!.matchApplied).toBe(true);
+
+    const food = estimateRowsToMealFoods(rows)[0]!;
+    expect(food.food_id).toBe('11111111-1111-4111-8111-111111111111');
+    expect(food.variant_id).toBe('22222222-2222-4222-8222-222222222222');
+  });
+
+  it('does NOT carry the ids of a match the user never accepted', () => {
+    // The Meal Builder logs any row with a food_id against that database food
+    // and lets the server snapshot its nutrition. Passing the ids of a mere
+    // suggestion therefore throws away the reviewed numbers — and a matched
+    // food with no nutrition recorded lands a 0 kcal row in the diary.
+    const rows = initialiseIngredientDraft([{ ...item, match }]).rows;
+    expect(rows[0]!.matchApplied).toBe(false);
+
+    const food = estimateRowsToMealFoods(rows)[0]!;
+    expect(food.food_id).toBeUndefined();
+    expect(food.variant_id).toBeUndefined();
+    // The row keeps the model's own numbers, per 100 g: 89 kcal for 85 g.
+    expect(food.calories).toBeCloseTo(104.71, 2);
+    expect(food.serving_size).toBe(100);
   });
 });

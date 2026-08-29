@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -10,10 +10,15 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   toPer100g,
   unbrandMacros,
   roundMacros,
+  getConversionFactor,
+  ingredientRowFromPickedFood,
+  MEAL_SERVING_UNITS,
+  MEAL_SERVING_UNIT_DEFAULT,
   type FoodPhotoLogItem,
 } from '@workspace/shared';
 import Button from '../components/ui/Button';
@@ -24,7 +29,8 @@ import FormInput from '../components/FormInput';
 import { FooterSaveBar } from '../components/FormScreenChrome';
 import FoodPhotoIngredientRow from '../components/FoodPhotoIngredientRow';
 import { useFoodPhotoIngredientDraft } from '../hooks/useFoodPhotoIngredientDraft';
-import { parseDecimalInput } from '../utils/numericInput';
+import { consumePendingMealIngredientSelection } from '../services/mealBuilderSelection';
+import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import {
   confidenceTones,
@@ -118,8 +124,161 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
   );
   const isCombined = saveMode === 'one_food';
   const mode: 'grouped' | 'combined' = isCombined ? 'combined' : 'grouped';
-  const { rows, isEdited, expandedId, totals, totalGrams, matchedCount, dispatch } =
-    useFoodPhotoIngredientDraft(estimate.items);
+  const {
+    rows,
+    isEdited,
+    expandedId,
+    totals,
+    totalGrams,
+    matchedCount,
+    hasCompleteGrams,
+    dispatch,
+  } = useFoodPhotoIngredientDraft(estimate.items);
+
+  // How the dish divides into portions, and how much of it is being logged.
+  // Same serving model as any other meal: 'serving' means the user states the
+  // yield directly, any other unit means they state a total amount and a
+  // serving size and the yield is derived from the two.
+  //
+  // These describe the DISH, not its nutrition. The ingredient rows carry the
+  // nutrition, and the amount only decides how it is divided — saying a soup
+  // makes 2000 ml adds portions, never calories.
+  const [servingUnit, setServingUnit] = useState<string>(
+    MEAL_SERVING_UNIT_DEFAULT,
+  );
+  const isServingUnit = servingUnit === MEAL_SERVING_UNIT_DEFAULT;
+  const [totalServingsText, setTotalServingsText] = useState('1');
+  const [totalAmountText, setTotalAmountText] = useState('');
+  const [servingSizeText, setServingSizeText] = useState('1');
+  const [consumedText, setConsumedText] = useState('1');
+  // Once the user edits the amount, stop seeding it: what they typed is the
+  // dish, and a later ingredient edit must not overwrite it.
+  const [amountTouched, setAmountTouched] = useState(false);
+
+  // Best guess at the dish's weight, in grams: what was typed on the Improve
+  // screen for the AI, else the ingredients' own sum. Only ever a starting
+  // point — water added and weight lost or gained in cooking make the real
+  // total something only the user knows.
+  const prefillGrams = useMemo(() => {
+    const requested = request?.totalWeight;
+    if (requested && requested > 0) {
+      const factor = getConversionFactor('g', request?.weightUnit ?? 'g');
+      if (factor) return requested * factor;
+    }
+    return hasCompleteGrams ? totalGrams : 0;
+  }, [request, hasCompleteGrams, totalGrams]);
+
+  /** The prefill expressed in `unit`, or '' when it cannot be converted. */
+  const prefillAmountFor = (unit: string): string => {
+    if (prefillGrams <= 0) return '';
+    // Null across families: there is no density to turn grams into millilitres,
+    // so a volume dish starts blank rather than with a fabricated number.
+    const factor = getConversionFactor('g', unit);
+    if (!factor) return '';
+    return String(Math.round(prefillGrams / factor));
+  };
+
+  const servingSize = isServingUnit ? 1 : parseDecimalInput(servingSizeText) || 0;
+  const totalAmount = parseDecimalInput(totalAmountText) || 0;
+  const totalServings = isServingUnit
+    ? parseDecimalInput(totalServingsText) || 0
+    : servingSize > 0
+      ? totalAmount / servingSize
+      : 0;
+  const consumedQuantity = parseDecimalInput(consumedText) || 0;
+  const servingsAreValid =
+    servingSize > 0 && totalServings > 0 && consumedQuantity > 0;
+  const showPerServing = servingsAreValid && totalServings > 1;
+  // Falls back to logging the plate as it stands while a field is mid-edit or
+  // blank, so a half-typed number never silently scales the diary.
+  const portionFactor = servingsAreValid
+    ? consumedQuantity / (servingSize * totalServings)
+    : 1;
+
+  const updateTotalServings = (value: string) => {
+    if (DECIMAL_INPUT_REGEX.test(value)) setTotalServingsText(value);
+  };
+
+  const updateTotalAmount = (value: string) => {
+    if (!DECIMAL_INPUT_REGEX.test(value)) return;
+    setAmountTouched(true);
+    setTotalAmountText(value);
+  };
+
+  const updateServingSize = (value: string) => {
+    if (DECIMAL_INPUT_REGEX.test(value)) setServingSizeText(value);
+  };
+
+  const updateConsumed = (value: string) => {
+    if (DECIMAL_INPUT_REGEX.test(value)) setConsumedText(value);
+  };
+
+  // Switching unit carries the dish over instead of resetting it, matching
+  // MealAddScreen: the yield the user already described survives the change.
+  const handleServingUnitChange = (nextUnit: string) => {
+    const previousUnit = servingUnit;
+    if (nextUnit === previousUnit) return;
+    setServingUnit(nextUnit);
+    if (nextUnit === MEAL_SERVING_UNIT_DEFAULT) {
+      // Into 'serving': keep the yield the amount and serving size implied.
+      if (totalServings > 0) setTotalServingsText(String(totalServings));
+      setServingSizeText('1');
+      setConsumedText('1');
+      return;
+    }
+    // Out of 'serving' (or between measured units): seed the amount from the
+    // dish weight where the units allow, and start from one serving eaten.
+    const seeded = amountTouched ? '' : prefillAmountFor(nextUnit);
+    if (seeded) setTotalAmountText(seeded);
+    if (previousUnit === MEAL_SERVING_UNIT_DEFAULT) setServingSizeText('');
+    setConsumedText('');
+  };
+
+  // A food added from the picker comes back through the same module-level
+  // handshake the meal builder uses: the picker screen stashes it and pops, and
+  // whichever screen regains focus claims it.
+  useFocusEffect(
+    useCallback(() => {
+      const selection = consumePendingMealIngredientSelection();
+      if (!selection) return;
+      const { ingredient } = selection;
+      if (!ingredient.food_id || !ingredient.variant_id) return;
+      dispatch({
+        type: 'ADD_ROW',
+        row: ingredientRowFromPickedFood({
+          foodId: ingredient.food_id,
+          variantId: ingredient.variant_id,
+          // food_name is optional on the payload type; the picker always sets
+          // it, so this only guards the shape.
+          name:
+            ingredient.food_name ||
+            t('foodPhotoEstimate.ingredients.addedFood', {
+              defaultValue: 'Food',
+            }),
+          quantity: ingredient.quantity,
+          unit:
+            ingredient.unit ||
+            ingredient.serving_unit ||
+            MEAL_SERVING_UNIT_DEFAULT,
+          servingSize: ingredient.serving_size,
+          macrosPerServing: {
+            calories_kcal: ingredient.calories,
+            protein_g: ingredient.protein,
+            carbs_g: ingredient.carbs,
+            fat_g: ingredient.fat,
+            fiber_g: ingredient.dietary_fiber,
+            sugar_g: ingredient.sugars,
+          },
+        }),
+      });
+    }, [dispatch, t]),
+  );
+
+  const openFoodPicker = () => {
+    navigation
+      .getParent<NativeStackNavigationProp<RootStackParamList>>()
+      ?.navigate('FoodSearch', { pickerMode: 'meal-builder', date });
+  };
 
   // Seeded from the CURRENT draft, not the original estimate, so switching to
   // "One food" after editing or removing ingredients carries those edits over
@@ -164,6 +323,21 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
   const buildGroupedItems = (): FoodPhotoLogItem[] => {
     const items: FoodPhotoLogItem[] = [];
     for (const row of rows) {
+      // A row the user added from the food picker already names a real food and
+      // a real amount, in that food's own unit. It is logged verbatim — going
+      // through grams would be impossible for a food measured in cups.
+      if (row.logAs) {
+        if (row.logAs.quantity <= 0) continue;
+        items.push({
+          source: 'existing',
+          food_id: row.logAs.foodId,
+          variant_id: row.logAs.variantId,
+          quantity: row.logAs.quantity,
+          unit: row.logAs.unit,
+        });
+        continue;
+      }
+
       if (row.grams <= 0) continue;
 
       // Only a match against a food that already exists locally can be logged
@@ -209,6 +383,20 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
   };
 
   const handleGroupedNext = () => {
+    if (!servingsAreValid) {
+      Toast.show({
+        type: 'error',
+        text1: t('foodPhotoEstimate.errors.invalidServings', {
+          defaultValue: 'Invalid servings',
+        }),
+        text2: t('foodPhotoEstimate.errors.positiveServings', {
+          defaultValue:
+            'The dish total, the serving size and the amount eaten must all be greater than zero.',
+        }),
+      });
+      return;
+    }
+
     const items = buildGroupedItems();
     if (items.length === 0) {
       Toast.show({
@@ -230,14 +418,21 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
       description: estimate.confidence_reason || undefined,
       ingredients: items,
       saveAsMeal: saveMode === 'ingredients_and_meal',
+      servingSize,
+      servingUnit,
+      totalServings,
+      consumedQuantity,
+      // The portion being logged, not the whole dish: the next screen only
+      // previews these numbers, and the server does the same scaling itself
+      // from the two serving counts.
       nutrition: {
-        grams: totalGrams,
-        calories: totals.calories_kcal,
-        protein: totals.protein_g,
-        carbs: totals.carbs_g,
-        fat: totals.fat_g,
-        fiber: totals.fiber_g,
-        sugars: totals.sugar_g,
+        grams: totalGrams * portionFactor,
+        calories: totals.calories_kcal * portionFactor,
+        protein: totals.protein_g * portionFactor,
+        carbs: totals.carbs_g * portionFactor,
+        fat: totals.fat_g * portionFactor,
+        fiber: totals.fiber_g * portionFactor,
+        sugars: totals.sugar_g * portionFactor,
       },
     });
   };
@@ -356,6 +551,164 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
     </View>
   );
 
+  /** The one-line "kcal · P · C · F" summary, optionally scaled. */
+  const macroSummary = (factor = 1) =>
+    t('foodPhotoEstimate.ingredients.macroSummary', {
+      defaultValue: '{{calories}} kcal · {{protein}}P · {{carbs}}C · {{fat}}F',
+      calories: Math.round(totals.calories_kcal * factor),
+      protein: Math.round(totals.protein_g * factor),
+      carbs: Math.round(totals.carbs_g * factor),
+      fat: Math.round(totals.fat_g * factor),
+    });
+
+  const servingsBlock = (
+    <View className="mt-4 gap-3">
+      <View className="flex-row gap-3">
+        <View className="flex-1 gap-1.5">
+          <Text className="text-text-secondary text-sm font-medium">
+            {t('foodPhotoEstimate.servings.unit', { defaultValue: 'Unit' })}
+          </Text>
+          <BottomSheetPicker
+            value={servingUnit}
+            options={MEAL_SERVING_UNITS.map((unit) => ({
+              label: unit,
+              value: unit,
+            }))}
+            onSelect={handleServingUnitChange}
+            title={t('foodPhotoEstimate.servings.unit', {
+              defaultValue: 'Unit',
+            })}
+            renderTrigger={({ onPress }) => (
+              <TouchableOpacity
+                onPress={onPress}
+                activeOpacity={0.7}
+                className="flex-row items-center justify-between rounded-lg bg-raised p-3"
+                accessibilityRole="button"
+                accessibilityLabel={t('foodPhotoEstimate.servings.unit', {
+                  defaultValue: 'Unit',
+                })}
+              >
+                <Text className="text-text-primary text-base font-medium flex-1 pr-2">
+                  {servingUnit}
+                </Text>
+                <Icon name="chevron-down" size={12} color={textPrimary} />
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+        <View className="flex-1 gap-1.5">
+          {isServingUnit ? (
+            <>
+              <Text className="text-text-secondary text-sm font-medium">
+                {t('foodPhotoEstimate.servings.total', {
+                  defaultValue: 'Total servings',
+                })}
+              </Text>
+              <FormInput
+                placeholder="1"
+                value={totalServingsText}
+                onChangeText={updateTotalServings}
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+                accessibilityLabel={t('foodPhotoEstimate.servings.total', {
+                  defaultValue: 'Total servings',
+                })}
+              />
+            </>
+          ) : (
+            <>
+              <Text className="text-text-secondary text-sm font-medium">
+                {t('foodPhotoEstimate.servings.totalAmount', {
+                  defaultValue: 'Total amount ({{unit}})',
+                  unit: servingUnit,
+                })}
+              </Text>
+              <FormInput
+                placeholder={prefillAmountFor(servingUnit) || '0'}
+                value={totalAmountText}
+                onChangeText={updateTotalAmount}
+                keyboardType="decimal-pad"
+                returnKeyType="done"
+                accessibilityLabel={t('foodPhotoEstimate.servings.totalAmount', {
+                  defaultValue: 'Total amount ({{unit}})',
+                  unit: servingUnit,
+                })}
+              />
+            </>
+          )}
+        </View>
+      </View>
+
+      <View className="flex-row gap-3">
+        {isServingUnit ? null : (
+          <View className="flex-1 gap-1.5">
+            <Text className="text-text-secondary text-sm font-medium">
+              {t('foodPhotoEstimate.servings.servingSize', {
+                defaultValue: 'One serving is ({{unit}})',
+                unit: servingUnit,
+              })}
+            </Text>
+            <FormInput
+              placeholder="0"
+              value={servingSizeText}
+              onChangeText={updateServingSize}
+              keyboardType="decimal-pad"
+              returnKeyType="done"
+              accessibilityLabel={t('foodPhotoEstimate.servings.servingSize', {
+                defaultValue: 'One serving is ({{unit}})',
+                unit: servingUnit,
+              })}
+            />
+          </View>
+        )}
+        <View className="flex-1 gap-1.5">
+          <Text className="text-text-secondary text-sm font-medium">
+            {isServingUnit
+              ? t('foodPhotoEstimate.servings.eatenServings', {
+                  defaultValue: 'Servings eaten',
+                })
+              : t('foodPhotoEstimate.servings.eatenAmount', {
+                  defaultValue: 'You ate ({{unit}})',
+                  unit: servingUnit,
+                })}
+          </Text>
+          <FormInput
+            placeholder="1"
+            value={consumedText}
+            onChangeText={updateConsumed}
+            keyboardType="decimal-pad"
+            returnKeyType="done"
+            accessibilityLabel={
+              isServingUnit
+                ? t('foodPhotoEstimate.servings.eatenServings', {
+                    defaultValue: 'Servings eaten',
+                  })
+                : t('foodPhotoEstimate.servings.eatenAmount', {
+                    defaultValue: 'You ate ({{unit}})',
+                    unit: servingUnit,
+                  })
+            }
+          />
+        </View>
+      </View>
+
+      <Text className="text-text-secondary text-xs px-1">
+        {t('foodPhotoEstimate.servings.hint', {
+          defaultValue:
+            'The ingredients above are the whole dish — say how it divides, and only what you ate goes in your diary.',
+        })}
+      </Text>
+      {!isServingUnit && totalServings > 0 ? (
+        <Text className="text-text-secondary text-xs px-1">
+          {t('foodPhotoEstimate.servings.derivedYield', {
+            defaultValue: 'Makes about {{count}} servings',
+            count: Math.round(totalServings * 10) / 10,
+          })}
+        </Text>
+      ) : null}
+    </View>
+  );
+
   const ingredientsSection =
     rows.length > 0 ? (
       <View>
@@ -394,20 +747,53 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
             }
           />
         ))}
+        <Button
+          variant="ghost"
+          onPress={openFoodPicker}
+          className="mt-2 self-start p-0"
+          accessibilityLabel={t('foodPhotoEstimate.ingredients.addFood', {
+            defaultValue: 'Add Food',
+          })}
+        >
+          <Text className="text-accent-primary text-sm font-semibold">
+            {t('foodPhotoEstimate.ingredients.addFood', {
+              defaultValue: 'Add Food',
+            })}
+          </Text>
+        </Button>
         <View className="flex-row justify-between mt-2 px-1">
           <Text className="text-text-primary text-sm font-semibold">
             {t('foodPhotoEstimate.ingredients.totals', { defaultValue: 'Total' })}
           </Text>
           <Text className="text-text-primary text-sm font-semibold">
-            {t('foodPhotoEstimate.ingredients.macroSummary', {
-              defaultValue: '{{calories}} kcal · {{protein}}P · {{carbs}}C · {{fat}}F',
-              calories: Math.round(totals.calories_kcal),
-              protein: Math.round(totals.protein_g),
-              carbs: Math.round(totals.carbs_g),
-              fat: Math.round(totals.fat_g),
-            })}
+            {macroSummary()}
           </Text>
         </View>
+        {showPerServing ? (
+          <>
+            <View className="flex-row justify-between mt-1 px-1">
+              <Text className="text-text-secondary text-sm">
+                {t('foodPhotoEstimate.servings.perServing', {
+                  defaultValue: 'Per serving',
+                })}
+              </Text>
+              <Text className="text-text-secondary text-sm">
+                {macroSummary(1 / totalServings)}
+              </Text>
+            </View>
+            <View className="flex-row justify-between mt-1 px-1">
+              <Text className="text-text-primary text-sm font-semibold">
+                {t('foodPhotoEstimate.servings.logging', {
+                  defaultValue: 'Logging',
+                })}
+              </Text>
+              <Text className="text-text-primary text-sm font-semibold">
+                {macroSummary(portionFactor)}
+              </Text>
+            </View>
+          </>
+        ) : null}
+        {servingsBlock}
       </View>
     ) : (
       <Text className="text-text-secondary text-sm">

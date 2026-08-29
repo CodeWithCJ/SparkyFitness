@@ -193,6 +193,16 @@ async function createPhotoLoggedMeal(
       }
     }
 
+    // `items` describes the whole dish. When the user says it makes 2000 ml in
+    // 250 ml servings and they had one, every component is logged at an eighth.
+    // This is the same uniform multiplier a template-backed meal uses
+    // (foodEntryService), and an ad-hoc parent applies no multiplier of its own
+    // (see the note below), so the portion has to be folded into the component
+    // quantities here. The fields default to the plate as shown, all eaten.
+    const portionFactor =
+      payload.consumed_quantity /
+      (payload.serving_size * payload.total_servings);
+
     let foodEntryMealId: string | null = null;
     if (payload.mode === 'grouped') {
       const parent = await createFoodEntryMealWithClient(
@@ -208,9 +218,10 @@ async function createPhotoLoggedMeal(
           description: payload.description,
           // Ad-hoc logged meals do not scale their components by the parent
           // quantity (only template-backed ones do), so the real amounts live
-          // on each component and the parent is a plain single serving.
-          quantity: 1,
-          unit: 'serving',
+          // on each component. The parent quantity is what was eaten purely so
+          // the diary row and the meal editor say so — nothing multiplies by it.
+          quantity: payload.consumed_quantity,
+          unit: payload.serving_unit,
           legacy_serving_unit_math: false,
         },
         actingUserId
@@ -228,7 +239,7 @@ async function createPhotoLoggedMeal(
           food_id: row.food_id,
           variant_id: row.variant_id,
           meal_type_id: mealTypeId,
-          quantity: item.quantity,
+          quantity: item.quantity * portionFactor,
           unit: item.unit,
           entry_date: payload.entry_date,
           entry_time: payload.entry_time,
@@ -252,7 +263,9 @@ async function createPhotoLoggedMeal(
         food_id: created.id,
         variant_id: created.default_variant.id,
         meal_type_id: mealTypeId,
-        quantity: item.quantity,
+        // The created food stores per-100 g nutrition and is the whole
+        // ingredient; only the amount eaten is a portion of it.
+        quantity: item.quantity * portionFactor,
         unit: item.unit,
         entry_date: payload.entry_date,
         entry_time: payload.entry_time,

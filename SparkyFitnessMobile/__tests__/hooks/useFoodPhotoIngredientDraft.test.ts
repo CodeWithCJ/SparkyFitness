@@ -105,6 +105,48 @@ describe('ingredientDraftReducer', () => {
       expect(state.rows[0].matchApplied).toBe(false);
       expect(state.rows[0].macros.calories_kcal).toBe(290);
     });
+
+    it('ignores a preselected match whose nutrition is all zeros', () => {
+      // A matched food with nothing recorded against it. Applying it would
+      // replace a real estimate with zeros, and once that row is logged and
+      // saved as a food the next photo matches THAT and the zeros spread.
+      const zeroed = {
+        ...match,
+        scaled: {
+          calories_kcal: 0,
+          protein_g: 0,
+          carbs_g: 0,
+          fat_g: 0,
+          fiber_g: 0,
+          sugar_g: 0,
+        },
+      };
+      const state = init([
+        { ...chicken, match: zeroed, preselect_match: true },
+      ]);
+      expect(state.rows[0].matchApplied).toBe(false);
+      expect(state.rows[0].macros.calories_kcal).toBe(290);
+    });
+
+    it('refuses to apply an all-zero match on demand either', () => {
+      const zeroed = {
+        ...match,
+        scaled: {
+          calories_kcal: 0,
+          protein_g: 0,
+          carbs_g: 0,
+          fat_g: 0,
+          fiber_g: 0,
+          sugar_g: 0,
+        },
+      };
+      const state = run(
+        [{ ...chicken, match: zeroed }],
+        [{ type: 'APPLY_MATCH', id: 'local-0' }],
+      );
+      expect(state.rows[0].matchApplied).toBe(false);
+      expect(state.rows[0].macros.calories_kcal).toBe(290);
+    });
   });
 
   describe('SET_GRAMS', () => {

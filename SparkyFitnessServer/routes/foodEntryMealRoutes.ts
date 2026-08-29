@@ -313,7 +313,16 @@ router.post(
             saveAsMeal.name,
             parsed.data.description,
             false,
-            result.food_entry_meal_id
+            result.food_entry_meal_id,
+            // The diary holds the portion that was eaten; the template should
+            // hold the whole dish, so scale the entries back up by the
+            // reciprocal of the multiplier the log applied, and record the
+            // serving model that reproduces that portion from the template.
+            (parsed.data.serving_size * parsed.data.total_servings) /
+              parsed.data.consumed_quantity,
+            parsed.data.total_servings,
+            parsed.data.serving_size,
+            parsed.data.serving_unit
           );
           mealTemplateId = meal?.id ?? null;
         } catch (mealError) {

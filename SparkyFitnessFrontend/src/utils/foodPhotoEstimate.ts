@@ -1,4 +1,11 @@
-import type { FoodPhotoEstimateErrorCode } from '@workspace/shared';
+import {
+  toPer100g,
+  unbrandMacros,
+  roundMacros,
+  type FoodPhotoEstimateErrorCode,
+  type IngredientDraftRow,
+} from '@workspace/shared';
+import type { MealFood } from '@/types/meal';
 
 /**
  * Mirrors the server's own caps (`foodCrudRoutes.ts`) so the browser rejects an
@@ -71,4 +78,41 @@ export function describeEstimateError(code: FoodPhotoEstimateErrorCode): {
         isConfiguration: false,
       };
   }
+}
+
+/**
+ * Turns reviewed estimate rows into `MealFood`s for the Meal Builder.
+ *
+ * The Meal Builder treats any row carrying a `food_id` as already resolved and
+ * logs the diary entry against that database food, which makes the server
+ * snapshot ITS nutrition. So a match's ids may only travel with a row that is
+ * actually showing that match: an unapplied suggestion would silently swap the
+ * reviewed numbers for a food the user never accepted.
+ */
+export function estimateRowsToMealFoods(
+  rows: IngredientDraftRow[]
+): MealFood[] {
+  return rows.map((row) => {
+    const per100g = toPer100g(row.macros, row.grams);
+    const rounded = per100g
+      ? unbrandMacros(roundMacros(per100g))
+      : unbrandMacros(roundMacros(row.macros));
+    const applied = row.matchApplied ? row.match : null;
+    return {
+      id: row.id,
+      food_id: applied?.food_id || undefined,
+      variant_id: applied?.variant_id || undefined,
+      food_name: row.name,
+      quantity: row.grams,
+      unit: 'g',
+      calories: rounded.calories_kcal,
+      protein: rounded.protein_g,
+      carbs: rounded.carbs_g,
+      fat: rounded.fat_g,
+      dietary_fiber: rounded.fiber_g,
+      sugars: rounded.sugar_g,
+      serving_size: 100,
+      serving_unit: 'g',
+    };
+  });
 }

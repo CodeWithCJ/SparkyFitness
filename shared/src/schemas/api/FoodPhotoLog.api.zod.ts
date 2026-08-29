@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { MEAL_SERVING_UNIT_DEFAULT } from "../../constants/mealServing.ts";
+
 /**
  * Contract for logging a reviewed food-photo estimate to the diary.
  *
@@ -122,6 +124,32 @@ export const foodPhotoLogRequestSchema = z
     items: z.array(foodPhotoLogItemSchema).min(1).max(FOOD_PHOTO_LOG_MAX_ITEMS),
 
     /**
+     * How the dish divides into portions, and how much of it goes in the diary.
+     *
+     * `items` always describes the WHOLE dish. The server logs
+     * `consumed_quantity / (serving_size * total_servings)` of it — the same
+     * uniform multiplier a template-backed meal uses — and keeps the full dish
+     * in the reusable meal, so re-logging one serving from the Meals library
+     * later reproduces the portion that was logged here.
+     *
+     * For `serving_unit: 'serving'` the client states `total_servings` directly
+     * and `serving_size` is 1. For any other unit the client asks for a total
+     * amount and a serving size, and sends the derived yield.
+     *
+     * Note these describe the dish, not its nutrition: the amount decides how
+     * the ingredients' fixed nutrition is divided, so stating that a soup makes
+     * 2000 ml adds portions, never calories.
+     *
+     * All four default to the previous behaviour — the plate as shown is one
+     * serving and all of it was eaten. Grouped mode only; in combined mode the
+     * single food's own serving size already expresses the portion.
+     */
+    serving_size: z.number().positive().default(1),
+    serving_unit: z.string().min(1).default(MEAL_SERVING_UNIT_DEFAULT),
+    total_servings: z.number().positive().default(1),
+    consumed_quantity: z.number().positive().default(1),
+
+    /**
      * Also save this plate as a reusable meal template, so it can be re-logged
      * from the Meals library without another photo. Grouped mode only — there
      * are no components to combine in combined mode.
@@ -143,6 +171,20 @@ export const foodPhotoLogRequestSchema = z
     }
 
     if (data.mode !== "combined") return;
+
+    if (
+      data.total_servings !== 1 ||
+      data.consumed_quantity !== 1 ||
+      data.serving_size !== 1 ||
+      data.serving_unit !== MEAL_SERVING_UNIT_DEFAULT
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "combined mode cannot split servings; scale the single food's serving size instead.",
+        path: ["total_servings"],
+      });
+    }
 
     // Combined mode is "one food for the whole plate". More than one item, or
     // an item pointing at an existing food, means the client built a grouped

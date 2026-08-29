@@ -38,7 +38,7 @@ export function useFoodPhotoIngredientDraft(items: FoodPhotoEstimateItem[]) {
     dispatch({ type: 'RESET', items });
   }
 
-  const { totals, totalGrams, matchedCount } = useMemo(
+  const { totals, totalGrams, matchedCount, hasCompleteGrams } = useMemo(
     () => ingredientDraftTotals(state.rows),
     [state.rows],
   );
@@ -55,6 +55,7 @@ export function useFoodPhotoIngredientDraft(items: FoodPhotoEstimateItem[]) {
     totals,
     totalGrams,
     matchedCount,
+    hasCompleteGrams,
     dispatch,
   };
 }

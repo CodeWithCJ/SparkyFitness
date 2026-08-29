@@ -3540,7 +3540,9 @@
       "invalidOptionalNutrition": "All nutrition values must be non-negative numbers.",
       "invalidServingSize": "Invalid serving size",
       "invalidServingSizeMessage": "Serving size must be a positive number.",
-      "noIngredients": "Keep at least one ingredient, or switch to One food."
+      "noIngredients": "Keep at least one ingredient, or switch to One food.",
+      "invalidServings": "Invalid servings",
+      "positiveServings": "The dish total, the serving size and the amount eaten must all be greater than zero."
     },
     "ingredients": {
       "editRow": "Edit {{name}}",
@@ -3560,7 +3562,11 @@
       "count_other": "{{count}} ingredients",
       "totals": "Total",
       "rowSummary": "{{grams}} g · {{calories}} kcal",
-      "macroSummary": "{{calories}} kcal · {{protein}}P · {{carbs}}C · {{fat}}F"
+      "macroSummary": "{{calories}} kcal · {{protein}}P · {{carbs}}C · {{fat}}F",
+      "addFood": "Add Food",
+      "addedFood": "Food",
+      "pickedRowSummary": "{{quantity}} {{unit}} · {{calories}} kcal",
+      "pickedFoodNote": "Added from your foods. Remove it and add it again to change the amount."
     },
     "match": {
       "useYourFood": "From your foods: {{name}} · tap to use it",
@@ -3581,6 +3587,19 @@
       "hintIngredientsAndMeal": "Each ingredient becomes its own food, and the meal is saved so you can log it again without a photo.",
       "hintIngredientsOnly": "Each ingredient becomes its own food. No reusable meal is saved.",
       "hintOneFood": "Saves the whole plate as a single food, with no breakdown."
+    },
+    "servings": {
+      "unit": "Unit",
+      "total": "Total servings",
+      "totalAmount": "Total amount ({{unit}})",
+      "servingSize": "One serving is ({{unit}})",
+      "eatenServings": "Servings eaten",
+      "eatenAmount": "You ate ({{unit}})",
+      "hint": "The ingredients above are the whole dish — say how it divides, and only what you ate goes in your diary.",
+      "derivedYield_one": "Makes about {{count}} serving",
+      "derivedYield_other": "Makes about {{count}} servings",
+      "perServing": "Per serving",
+      "logging": "Logging"
     }
   },
   "mealTypeForm": {

@@ -322,6 +322,16 @@ export type FoodPhotoFlowParamList = {
         /** Also save the plate as a reusable meal template. */
         saveAsMeal: boolean;
         /**
+         * How the dish divides and how much of it is being logged. `ingredients`
+         * always describes the WHOLE dish; the server logs
+         * `consumedQuantity / (servingSize * totalServings)` of it and keeps the
+         * whole dish in the reusable meal.
+         */
+        servingSize: number;
+        servingUnit: string;
+        totalServings: number;
+        consumedQuantity: number;
+        /**
          * Nutrition as reviewed, for the confirmation recap. Items matched to a
          * saved food carry no nutrition of their own (the server snapshots it
          * from the database), so the recap cannot be summed from `ingredients`.

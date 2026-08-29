@@ -19,6 +19,7 @@ import {
   defaultMealTypeForTime,
   todayInZone,
   userHourMinute,
+  MEAL_SERVING_UNIT_DEFAULT,
   type FoodPhotoEstimateResponse,
   type FoodPhotoLogItem,
   type FoodPhotoLogRequest,
@@ -43,6 +44,7 @@ import {
 } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { useLogFoodPhotoEstimate } from '@/hooks/Foods/useFoodPhotoEstimate';
+import { estimateRowsToMealFoods } from '@/utils/foodPhotoEstimate';
 import { useFoodPhotoIngredientDraft } from '@/pages/Diary/useFoodPhotoIngredientDraft';
 import { useDiaryInvalidation } from '@/hooks/useInvalidateKeys';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -335,6 +337,12 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
       name: mealName.trim() || 'Photo estimate',
       description: estimate.confidence_reason || null,
       items,
+      // The whole plate, all of it eaten. Splitting a dish into servings is
+      // done in the Meal Builder, which logs through its own path.
+      serving_size: 1,
+      serving_unit: MEAL_SERVING_UNIT_DEFAULT,
+      total_servings: 1,
+      consumed_quantity: 1,
       ...(saveMode === 'ingredients_and_meal'
         ? { save_as_meal: { name: mealName.trim() || 'Photo estimate' } }
         : {}),
@@ -357,30 +365,10 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
   ]);
 
   // Convert current draft rows to MealFood[] for MealBuilder modal
-  const mealBuilderFoods = useMemo<MealFood[]>(() => {
-    return rows.map((row) => {
-      const per100g = toPer100g(row.macros, row.grams);
-      const rounded = per100g
-        ? unbrandMacros(roundMacros(per100g))
-        : unbrandMacros(roundMacros(row.macros));
-      return {
-        id: row.id,
-        food_id: row.match?.food_id || undefined,
-        variant_id: row.match?.variant_id || undefined,
-        food_name: row.name,
-        quantity: row.grams,
-        unit: 'g',
-        calories: rounded.calories_kcal,
-        protein: rounded.protein_g,
-        carbs: rounded.carbs_g,
-        fat: rounded.fat_g,
-        dietary_fiber: rounded.fiber_g,
-        sugars: rounded.sugar_g,
-        serving_size: 100,
-        serving_unit: 'g',
-      };
-    });
-  }, [rows]);
+  const mealBuilderFoods = useMemo<MealFood[]>(
+    () => estimateRowsToMealFoods(rows),
+    [rows]
+  );
 
   if (status?.type === 'running' || (!result && !estimate)) {
     return (

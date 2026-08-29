@@ -311,8 +311,10 @@ describe('POST /food-entry-meals/from-photo-estimate', () => {
       expect(res.body.meal_template_id).toBe(
         '66666666-6666-4666-8666-666666666666'
       );
-      // The last argument scopes it to this logged meal; without it the
-      // template would absorb everything else logged at that meal type.
+      // The meal id scopes it to this logged meal; without it the template
+      // would absorb everything else logged at that meal type. The trailing
+      // arguments are the un-split defaults: the plate is one serving and the
+      // whole of it is the template.
       expect(createMealFromDiaryEntriesMock).toHaveBeenCalledWith(
         'user-123',
         '2026-08-27',
@@ -320,7 +322,72 @@ describe('POST /food-entry-meals/from-photo-estimate', () => {
         'Chicken Biryani',
         null,
         false,
-        successResult.food_entry_meal_id
+        successResult.food_entry_meal_id,
+        1,
+        1,
+        1,
+        'serving'
+      );
+    });
+
+    it('builds the template from the whole dish when only a portion was logged', async () => {
+      createMealFromDiaryEntriesMock.mockResolvedValue({
+        id: '66666666-6666-4666-8666-666666666666',
+      });
+
+      const res = await request(app)
+        .post('/food-entry-meals/from-photo-estimate')
+        .send({ ...withMeal, total_servings: 4, consumed_quantity: 1 });
+
+      expect(res.status).toBe(201);
+      // The diary keeps a quarter of the dish, so the template scales its
+      // entries back up by 4 and records that it yields 4 servings.
+      expect(createMealFromDiaryEntriesMock).toHaveBeenCalledWith(
+        'user-123',
+        '2026-08-27',
+        'lunch',
+        'Chicken Biryani',
+        null,
+        false,
+        successResult.food_entry_meal_id,
+        4,
+        4,
+        1,
+        'serving'
+      );
+    });
+
+    it('carries a measured serving model through to the template', async () => {
+      createMealFromDiaryEntriesMock.mockResolvedValue({
+        id: '66666666-6666-4666-8666-666666666666',
+      });
+
+      const res = await request(app)
+        .post('/food-entry-meals/from-photo-estimate')
+        .send({
+          ...withMeal,
+          serving_size: 250,
+          serving_unit: 'ml',
+          total_servings: 8,
+          consumed_quantity: 250,
+        });
+
+      expect(res.status).toBe(201);
+      // A 2000 ml batch logged one 250 ml glass at a time: the diary holds an
+      // eighth, so the template scales back up by 250 x 8 / 250 = 8 and stores
+      // the serving model that reproduces that glass.
+      expect(createMealFromDiaryEntriesMock).toHaveBeenCalledWith(
+        'user-123',
+        '2026-08-27',
+        'lunch',
+        'Chicken Biryani',
+        null,
+        false,
+        successResult.food_entry_meal_id,
+        8,
+        8,
+        250,
+        'ml'
       );
     });
 

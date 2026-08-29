@@ -25,6 +25,7 @@ import {
   toPer100g,
   unbrandMacros,
   roundMacros,
+  MEAL_SERVING_UNIT_DEFAULT,
   type FoodPhotoEstimateResponse,
   type FoodPhotoEstimateItem,
   type FoodPhotoLogItem,
@@ -343,6 +344,12 @@ const FoodPhotoEstimateDialog = ({
       name: mealName.trim() || estimate?.meal_summary || 'Photo estimate',
       description: estimate?.confidence_reason || null,
       items,
+      // The whole plate, all of it eaten. Splitting a dish into servings is
+      // done in the Meal Builder, which logs through its own path.
+      serving_size: 1,
+      serving_unit: MEAL_SERVING_UNIT_DEFAULT,
+      total_servings: 1,
+      consumed_quantity: 1,
       ...(saveMode === 'ingredients_and_meal'
         ? { save_as_meal: { name: mealName.trim() || 'Photo estimate' } }
         : {}),

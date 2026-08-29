@@ -2898,8 +2898,7 @@
     "perServingTab": "Per serving",
     "totalTab": "Total",
     "loggedTab": "Logged",
-    "diaryTotalServingsHint": "Servings the whole dish makes",
-    "diaryConsumedQuantityHint": "Servings you are logging",
+    "diaryConsumedQuantityHint": "How much of the dish goes in your diary",
     "addFoodToMealTitle": "Add Food to Meal",
     "addFoodButton": "Add Food",
     "addFoodToMealDialogTitle": "Add Food to Meal",
@@ -2920,7 +2919,8 @@
     "mealAddedToMeal": "{{name}} added to meal.",
     "updateEntryButton": "Update Entry",
     "updateLinkedMeal": "Update",
-    "mealImages": "Images"
+    "mealImages": "Images",
+    "invalidConsumedQuantity": "Quantity consumed must be greater than zero."
   },
   "mealPlanCalendar": {
     "title": "Meal Plan",

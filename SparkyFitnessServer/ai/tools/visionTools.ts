@@ -378,6 +378,13 @@ Only call this when the user explicitly asks to log the plate in a message AFTER
               name: mealName,
               description: captured.estimate.confidence_reason || null,
               items,
+              // The chat flow logs the analysed plate as one serving, all of it
+              // eaten. Splitting a dish into servings is done on the review
+              // card, which sends its own serving model here.
+              serving_size: 1,
+              serving_unit: 'serving',
+              total_servings: 1,
+              consumed_quantity: 1,
               ...(args.save_mode === 'ingredients_and_meal'
                 ? { save_as_meal: { name: mealName } }
                 : {}),

@@ -102,6 +102,10 @@ function payload(
       },
       { source: 'new', food: NEW_FOOD, quantity: 85, unit: 'g' },
     ],
+    serving_size: 1,
+    serving_unit: 'serving',
+    total_servings: 1,
+    consumed_quantity: 1,
     ...overrides,
   };
 }
@@ -225,6 +229,34 @@ describe('createPhotoLoggedMeal', () => {
     expect(parent.quantity).toBe(1);
     expect(parent.unit).toBe('serving');
     expect(parent.legacy_serving_unit_math).toBe(false);
+  });
+
+  it('scales every component to the portion eaten', async () => {
+    await createPhotoLoggedMeal(
+      'user-1',
+      'user-1',
+      payload({ total_servings: 4, consumed_quantity: 1 })
+    );
+    const entries = bulkCreateFoodEntriesWithClientMock.mock.calls[0][1];
+    // items describe the whole dish (145 g and 85 g); a quarter of it is
+    // logged, and that applies to a reused food and a created one alike.
+    expect(entries[0].quantity).toBeCloseTo(36.25, 6);
+    expect(entries[1].quantity).toBeCloseTo(21.25, 6);
+    // The parent says what was eaten but multiplies nothing.
+    const parent = createFoodEntryMealWithClientMock.mock.calls[0][1];
+    expect(parent.quantity).toBe(1);
+  });
+
+  it('logs the whole dish when the yield and the servings eaten agree', async () => {
+    await createPhotoLoggedMeal(
+      'user-1',
+      'user-1',
+      payload({ total_servings: 2, consumed_quantity: 2 })
+    );
+    const entries = bulkCreateFoodEntriesWithClientMock.mock.calls[0][1];
+    expect(entries[0].quantity).toBe(145);
+    expect(entries[1].quantity).toBe(85);
+    expect(createFoodEntryMealWithClientMock.mock.calls[0][1].quantity).toBe(2);
   });
 
   it('creates no parent meal in combined mode', async () => {
