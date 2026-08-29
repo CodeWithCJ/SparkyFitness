@@ -367,6 +367,124 @@ describe('ChatScreen thread', () => {
   });
 });
 
+describe('ChatScreen auto-scroll pinning', () => {
+  const scrollEvent = (offsetY: number, contentHeight: number, viewportHeight = 600) => ({
+    nativeEvent: {
+      contentOffset: { x: 0, y: offsetY },
+      contentSize: { width: 390, height: contentHeight },
+      layoutMeasurement: { width: 390, height: viewportHeight },
+    },
+  });
+
+  let scrollToEnd: jest.Mock;
+  let animationFrames: FrameRequestCallback[];
+  let requestAnimationFrameSpy: jest.SpyInstance;
+  let cancelAnimationFrameSpy: jest.SpyInstance;
+
+  const flushAnimationFrames = async () => {
+    await act(async () => {
+      while (animationFrames.length > 0) {
+        const callbacks = animationFrames.splice(0);
+        callbacks.forEach((callback) => callback(0));
+      }
+    });
+  };
+
+  beforeEach(() => {
+    scrollToEnd = jest.fn();
+    animationFrames = [];
+    (global as any).__mockChatIsEmpty = false;
+    (global as any).__mockMessagesScrollToEnd = scrollToEnd;
+    requestAnimationFrameSpy = jest
+      .spyOn(global, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        animationFrames.push(callback);
+        return animationFrames.length;
+      });
+    cancelAnimationFrameSpy = jest
+      .spyOn(global, 'cancelAnimationFrame')
+      .mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    requestAnimationFrameSpy.mockRestore();
+    cancelAnimationFrameSpy.mockRestore();
+  });
+
+  const tree = (queryClient: QueryClient) => (
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider initialMetrics={initialMetrics}>
+        <ChatScreen navigation={navigation} route={route} />
+      </SafeAreaProvider>
+    </QueryClientProvider>
+  );
+
+  async function renderThread() {
+    const queryClient = new QueryClient();
+    const screen = render(tree(queryClient));
+    const messages = await screen.findByTestId('thread-messages');
+    await flushAnimationFrames();
+    scrollToEnd.mockClear();
+    return { ...screen, messages, queryClient };
+  }
+
+  it('follows content growth while the user is at the bottom (streaming)', async () => {
+    const { messages } = await renderThread();
+
+    fireEvent(messages, 'scroll', scrollEvent(1400, 2000));
+    fireEvent(messages, 'contentSizeChange', 390, 2100);
+    await flushAnimationFrames();
+
+    expect(scrollToEnd).toHaveBeenCalledWith({ animated: false });
+  });
+
+  it('does not snap back to the bottom when content resizes while the user is scrolled up (#2276)', async () => {
+    const { messages } = await renderThread();
+
+    // Scroll well away from the bottom, then let the list re-measure — as it
+    // does while old messages mount during a scroll-back through history.
+    fireEvent(messages, 'scroll', scrollEvent(100, 2000));
+    fireEvent(messages, 'contentSizeChange', 390, 2100);
+    fireEvent(messages, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 600 } },
+    });
+    await flushAnimationFrames();
+
+    expect(scrollToEnd).not.toHaveBeenCalled();
+  });
+
+  it('resumes following once the user scrolls back to the bottom', async () => {
+    const { messages } = await renderThread();
+
+    fireEvent(messages, 'scroll', scrollEvent(100, 2000));
+    fireEvent(messages, 'scroll', scrollEvent(1400, 2000));
+    fireEvent(messages, 'contentSizeChange', 390, 2100);
+    await flushAnimationFrames();
+
+    expect(scrollToEnd).toHaveBeenCalledWith({ animated: false });
+  });
+
+  it('re-pins to the bottom when a new run starts, even if the user scrolled up', async () => {
+    const { messages, queryClient, rerender } = await renderThread();
+
+    fireEvent(messages, 'scroll', scrollEvent(100, 2000));
+
+    // Send and retry both append at the bottom, and both flip the thread to
+    // running — that is the signal the user wants to see the new reply.
+    (global as any).__mockChatIsRunning = true;
+    rerender(tree(queryClient));
+    await flushAnimationFrames();
+
+    expect(scrollToEnd).toHaveBeenCalledWith({ animated: false });
+
+    // And the pin is restored: subsequent content growth keeps following.
+    scrollToEnd.mockClear();
+    fireEvent(messages, 'contentSizeChange', 390, 2100);
+    await flushAnimationFrames();
+    expect(scrollToEnd).toHaveBeenCalledWith({ animated: false });
+  });
+});
+
 describe('ChatScreen history seeding', () => {
   it('seeds the runtime with the loaded history messages', async () => {
     const seed = [
