@@ -1238,7 +1238,9 @@ const selectBasalNormalizedSessionCalories = (
   durationMs: number,
 ): number | undefined => {
   const totalValid = isPositiveCalories(total) ? total : undefined;
-  const basalValid = isPositiveCalories(basal) ? basal : undefined;
+  const basalValid = basal != null && Number.isFinite(basal) && basal >= 0
+    ? basal
+    : undefined;
   if (totalValid == null || basalValid == null) {
     return selectSessionCalories(active, total, durationMs);
   }

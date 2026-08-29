@@ -1460,6 +1460,31 @@ describe('enrichExerciseSessions', () => {
       .toEqual({ inKilocalories: 120 });
   });
 
+  test('uses total calories as active energy when the basal aggregate is zero', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 100 } });
+      }
+      if (recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 180 } });
+      }
+      if (recordType === 'BasalMetabolicRate') {
+        return Promise.resolve({ BASAL_CALORIES_TOTAL: { inKilocalories: 0 } });
+      }
+      return Promise.resolve({});
+    });
+
+    const result = await enrichExerciseSessions([
+      makeSession({
+        startTime: '2024-01-15T10:00:00Z',
+        endTime: '2024-01-15T10:57:00Z',
+      }),
+    ], createTelemetryRunContext());
+
+    expect((result[0] as { energy: { inKilocalories: number } }).energy)
+      .toEqual({ inKilocalories: 180 });
+  });
+
   test('keeps the legacy active selection when the optional basal read fails', async () => {
     mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
       if (recordType === 'ActiveCaloriesBurned') {
