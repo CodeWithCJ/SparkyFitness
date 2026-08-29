@@ -212,6 +212,12 @@ describe('LibraryScreen', () => {
     expect(navigation.navigate).toHaveBeenCalledWith('MealsLibrary');
   });
 
+  it('navigates to MealPlans when the Meal plans row is pressed', () => {
+    const screen = renderScreen();
+    fireEvent.press(screen.getByText('Meal plans'));
+    expect(navigation.navigate).toHaveBeenCalledWith('MealPlans');
+  });
+
   it('navigates to FoodsLibrary when the Foods row is pressed', () => {
     const screen = renderScreen();
     fireEvent.press(screen.getByText('Foods'));

@@ -1,4 +1,14 @@
-import { isClosingToTabsTransition } from '../../src/components/ActiveWorkoutBar';
+import {
+  isClosingToTabsTransition,
+  shouldSuppressActiveWorkoutBar,
+} from '../../src/components/ActiveWorkoutBar';
+
+describe('shouldSuppressActiveWorkoutBar', () => {
+  it('keeps the HUD off meal-plan routes with sticky bottom actions', () => {
+    expect(shouldSuppressActiveWorkoutBar('MealPlans')).toBe(true);
+    expect(shouldSuppressActiveWorkoutBar('MealPlanForm')).toBe(true);
+  });
+});
 
 // Root stack [Tabs, ActiveWorkout]: the top route is suppressed and sits
 // directly above Tabs — the state where the suppression bypass can apply.

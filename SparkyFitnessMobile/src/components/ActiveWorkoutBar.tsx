@@ -145,10 +145,10 @@ export function useActiveWorkoutBarPadding(
 
 /**
  * Routes where the HUD should be hidden — either modal entry flows (food /
- * exercise search), full-screen editors with their own sticky bottom footers
- * (WorkoutAdd, ActivityAdd), the chat screen whose composer is pinned to the
- * bottom — all of which would collide with the bar — or the active-workout
- * screen itself, which is the surface the HUD opens.
+ * exercise search), full-screen editors and planning flows with sticky bottom
+ * controls (WorkoutAdd, ActivityAdd, MealPlans, MealPlanForm), the chat screen
+ * whose composer is pinned to the bottom — all of which would collide with the
+ * bar — or the active-workout screen itself, which is the surface the HUD opens.
  */
 const HIDDEN_ROUTES = new Set<string>([
   'FoodSearch',
@@ -161,10 +161,18 @@ const HIDDEN_ROUTES = new Set<string>([
   'ExerciseSearch',
   'WorkoutAdd',
   'ActivityAdd',
+  'MealPlans',
+  'MealPlanForm',
   'MeasurementsAdd',
   'Chat',
   'ActiveWorkout',
 ]);
+
+export function shouldSuppressActiveWorkoutBar(
+  routeName: string | null,
+): boolean {
+  return routeName != null && HIDDEN_ROUTES.has(routeName);
+}
 
 function computeNavInfo(state: NavigationState | undefined): {
   suppressed: boolean;
@@ -184,7 +192,7 @@ function computeNavInfo(state: NavigationState | undefined): {
   const name = state.routes[index]?.name ?? null;
   const previousName = index > 0 ? state.routes[index - 1]?.name : null;
   return {
-    suppressed: name != null && HIDDEN_ROUTES.has(name),
+    suppressed: shouldSuppressActiveWorkoutBar(name),
     isOnTabs: name === 'Tabs',
     tabsUnderTop: previousName === 'Tabs',
     topRouteKey: state.routes[index]?.key ?? null,

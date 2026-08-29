@@ -11,6 +11,7 @@ import type { FoodEntry } from './foodEntries';
 import type { FoodFormData } from '../components/FoodForm';
 import type { Exercise } from './exercise';
 import type { Meal, MealIngredientDraft } from './meals';
+import type { MealPlanTemplate } from './mealPlans';
 import type { FoodEntryMeal } from './foodEntryMeals';
 import type {
   EquivalentUnit,
@@ -61,6 +62,8 @@ export type RootStackParamList = {
   PregnancySetup: { pregnancy?: SharedPregnancy } | undefined;
   FoodsLibrary: undefined;
   MealsLibrary: undefined;
+  MealPlans: undefined;
+  MealPlanForm: { template?: MealPlanTemplate; initialMeal?: Meal } | undefined;
   ExercisesLibrary: undefined;
   WorkoutPresetsLibrary: undefined;
   WorkoutPresetDetail: { preset: WorkoutPreset; updatedPreset?: WorkoutPreset };

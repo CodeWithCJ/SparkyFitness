@@ -27,5 +27,6 @@ export function useMealTypes(options?: { enabled?: boolean }) {
     defaultMealTypeId: query.data?.defaultMealTypeId ?? null,
     isLoading: query.isLoading,
     isError: query.isError,
+    refetch: query.refetch,
   };
 }
