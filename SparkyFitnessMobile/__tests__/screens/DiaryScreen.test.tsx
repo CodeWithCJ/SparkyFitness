@@ -18,6 +18,9 @@ import { useSleepDay } from '../../src/hooks/useSleepDay';
 import { getTodayDate } from '../../src/utils/dateUtils';
 import { useNativeIOSTabsActive } from '../../src/services/nativeTabBarPreference';
 import { setNativeHeaderDatePickerOptions } from '../../src/utils/nativeHeaderDatePicker';
+import { EMPTY_SUPPLEMENT_TOTALS } from '@workspace/shared';
+import type { DailySummary, MacroSummary } from '../../src/types/dailySummary';
+import type { FoodEntry } from '../../src/types/foodEntries';
 import { buildSleepEntry } from '../helpers/sleepFixtures';
 
 type DiaryScreenProps = React.ComponentProps<typeof DiaryScreen>;
@@ -229,11 +232,46 @@ const mockSetNativeHeaderDatePickerOptions = setNativeHeaderDatePickerOptions as
   typeof setNativeHeaderDatePickerOptions
 >;
 
-const baseSummary = {
-  foodEntries: [],
-  exerciseEntries: [],
+const noMacro: MacroSummary = { consumed: 0, goal: 0 };
+
+const baseSummary: DailySummary = {
+  date: '2024-06-15',
   calorieGoal: 0,
+  caloriesConsumed: 0,
+  caloriesBurned: 0,
+  activeCalories: 0,
+  otherExerciseCalories: 0,
+  netCalories: 0,
+  remainingCalories: 0,
+  protein: noMacro,
+  carbs: noMacro,
+  fat: noMacro,
+  fiber: noMacro,
+  stepCalories: 0,
+  exerciseMinutes: 0,
+  exerciseMinutesGoal: 0,
+  exerciseCaloriesGoal: 0,
+  waterConsumed: 0,
+  waterGoal: 2500,
+  foodEntries: [],
+  supplementTotals: EMPTY_SUPPLEMENT_TOTALS,
+  exerciseEntries: [],
+  calorieBalance: { eaten: 0, burned: 0, remaining: 0, goal: 0 },
+  goals: { calories: 0, protein: 0, carbs: 0, fat: 0, dietary_fiber: 0 },
+  customNutrientTotals: {},
+  customNutrientGoals: {},
 };
+
+/** The minimum a food entry needs to make the day non-empty. */
+const buildFoodEntry = (id: string): FoodEntry => ({
+  id,
+  meal_type: 'breakfast',
+  quantity: 1,
+  unit: 'serving',
+  entry_date: baseSummary.date,
+  serving_size: 1,
+  calories: 100,
+});
 
 const refetchSummary = jest.fn();
 const refetchMeasurements = jest.fn();
@@ -533,7 +571,7 @@ describe('DiaryScreen sleep cards', () => {
     bedtime: '2024-06-15T14:00:00+00:00',
   });
 
-  const configureSleep = (overrides: Record<string, unknown> = {}) => {
+  const configureSleep = (overrides: Partial<ReturnType<typeof useSleepDay>> = {}) => {
     mockUseSleepDay.mockReturnValue({
       wakeUp: buildSleepEntry({ id: 'overnight' }),
       naps: [napEntry],
@@ -543,7 +581,7 @@ describe('DiaryScreen sleep cards', () => {
       isForbidden: false,
       refetch: refetchSleep,
       ...overrides,
-    } as any);
+    } as ReturnType<typeof useSleepDay>);
   };
 
   beforeEach(() => {
@@ -618,11 +656,11 @@ describe('DiaryScreen sleep cards', () => {
   test('orders the day chronologically, with Bed Time last before the measurements', () => {
     // A populated day so the food/exercise/measurements branch renders.
     mockUseDailySummary.mockReturnValue({
-      summary: { ...baseSummary, foodEntries: [{ id: 'f1' }] },
+      summary: { ...baseSummary, foodEntries: [buildFoodEntry('f1')] },
       isLoading: false,
       isError: false,
       refetch: refetchSummary,
-    } as any);
+    } as ReturnType<typeof useDailySummary>);
 
     const { getByTestId, UNSAFE_root } = renderScreen();
 
@@ -631,9 +669,9 @@ describe('DiaryScreen sleep cards', () => {
       const node = getByTestId(testID);
       // Index of each rendered node in a depth-first walk of the tree.
       const all: unknown[] = [];
-      const walk = (n: any) => {
-        all.push(n);
-        (n.children ?? []).forEach((child: any) => {
+      const walk = (node: typeof UNSAFE_root) => {
+        all.push(node);
+        node.children.forEach((child) => {
           if (typeof child !== 'string') walk(child);
         });
       };

@@ -103,7 +103,7 @@ const SleepDetailScreen: React.FC<Props> = ({ route }) => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
 
-  const { entry, stages, isLoading, isError } = useSleepDetail(entryId, day);
+  const { entry, stages, isLoading, isError, refetch } = useSleepDetail(entryId, day);
 
   const header = useScreenHeader({ left: { kind: 'back' } });
 
@@ -112,7 +112,24 @@ const SleepDetailScreen: React.FC<Props> = ({ route }) => {
       return <StatusView loading title={t('sleep.loading', { defaultValue: 'Loading sleep...' })} />;
     }
 
-    if (isError || !entry) {
+    if (isError) {
+      return (
+        <StatusView
+          icon="sleep-bedtime"
+          iconTone="danger"
+          iconSize={64}
+          title={t('sleep.loadFailed', { defaultValue: 'Could not load this sleep session' })}
+          subtitle={t('sleep.loadFailedSubtitle', { defaultValue: 'Please check your connection and try again.' })}
+          action={{
+            label: t('common.retry', { defaultValue: 'Retry' }),
+            onPress: () => void refetch(),
+            variant: 'primary',
+          }}
+        />
+      );
+    }
+
+    if (!entry) {
       return (
         <StatusView
           icon="sleep-bedtime"

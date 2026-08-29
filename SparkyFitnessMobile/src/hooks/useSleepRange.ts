@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
+import { isValidTimeZone, todayInZone } from '@workspace/shared';
 import { ApiError } from '../services/api/errors';
 import { fetchSleepAnalytics } from '../services/api/sleepApi';
 import { RANGE_DAYS, type HealthTrendDateRange } from '../types/healthTrends';
 import type { SleepAnalyticsDay, SleepDataPoint } from '../types/sleep';
 import { addDays, getTodayDate } from '../utils/dateUtils';
+import { usePreferences } from './usePreferences';
 import { sleepAnalyticsQueryKey } from './queryKeys';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 
@@ -39,8 +41,20 @@ const buildSleepDataPoints = (
   return points;
 };
 
+/**
+ * Today as the account sees it, not as the phone does.
+ *
+ * The server buckets sleep by `entry_date` in the profile timezone, so a device sitting in
+ * a different zone asks for — and labels the chart's last column with — a day the account
+ * has not reached (or has already left). Falls back to device-local while preferences are
+ * still loading or hold a timezone this runtime cannot resolve.
+ */
+const resolveToday = (timezone: string | null | undefined): string =>
+  timezone && isValidTimeZone(timezone) ? todayInZone(timezone) : getTodayDate();
+
 export function useSleepRange({ range, enabled = true }: UseSleepRangeOptions) {
-  const today = getTodayDate();
+  const { preferences } = usePreferences({ enabled });
+  const today = resolveToday(preferences?.timezone);
   const days = RANGE_DAYS[range];
   const startDate = addDays(today, -(days - 1));
 

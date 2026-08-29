@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import PagerView from 'react-native-pager-view';
 import HealthTrendsPager from '../../src/components/HealthTrendsPager';
 import type { HealthTrendSeries } from '../../src/types/healthTrends';
 
@@ -78,7 +79,14 @@ const dots = () => screen.queryAllByTestId(/^health-trends-dot-/);
 const selectedDotIndex = (): number =>
   dots().findIndex((dot) => dot.props.accessibilityState?.selected === true);
 
+// The global pager mock hangs its imperative handle off the component itself.
+const pagerMock = PagerView as unknown as { setPageWithoutAnimation: jest.Mock };
+
 describe('HealthTrendsPager', () => {
+  beforeEach(() => {
+    pagerMock.setPageWithoutAnimation.mockClear();
+  });
+
   test('renders steps alone when no other trend has data', () => {
     renderPager();
 
@@ -151,6 +159,48 @@ describe('HealthTrendsPager', () => {
     rerenderPager({ weight: weightSeries, activePage: 2 });
 
     expect(dots()).toHaveLength(2);
+    expect(selectedDotIndex()).toBe(1);
+  });
+
+  test('moves the pager and the dashboard off a page removed under them', () => {
+    // Clamping the dot is not enough on its own: the native pager and the dashboard's
+    // chartPage both have to land on a page that still exists.
+    const onPageSelected = jest.fn();
+    const { rerenderPager } = renderPager({
+      weight: weightSeries,
+      sleep: sleepSeries,
+      activePage: 2,
+      onPageSelected,
+    });
+    expect(pagerMock.setPageWithoutAnimation).not.toHaveBeenCalled();
+
+    rerenderPager({ weight: weightSeries, activePage: 2, onPageSelected });
+
+    expect(pagerMock.setPageWithoutAnimation).toHaveBeenCalledWith(1);
+    expect(onPageSelected).toHaveBeenCalledWith(1);
+  });
+
+  test('leaves the reconciled selection alone when the removed trend returns', () => {
+    const onPageSelected = jest.fn();
+    const { rerenderPager } = renderPager({
+      weight: weightSeries,
+      sleep: sleepSeries,
+      activePage: 2,
+      onPageSelected,
+    });
+
+    // Sleep drops out and the selection settles on weight.
+    rerenderPager({ weight: weightSeries, activePage: 2, onPageSelected });
+    expect(onPageSelected).toHaveBeenLastCalledWith(1);
+
+    // Sleep comes back. The user is on weight, which is still page 1, so nothing may move.
+    onPageSelected.mockClear();
+    pagerMock.setPageWithoutAnimation.mockClear();
+    rerenderPager({ weight: weightSeries, sleep: sleepSeries, activePage: 1, onPageSelected });
+
+    expect(onPageSelected).not.toHaveBeenCalled();
+    expect(pagerMock.setPageWithoutAnimation).not.toHaveBeenCalled();
+    expect(chartOrder()).toEqual(['steps-chart', 'weight-chart', 'sleep-chart']);
     expect(selectedDotIndex()).toBe(1);
   });
 

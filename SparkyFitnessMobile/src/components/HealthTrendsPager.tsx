@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import type { StepsDataPoint, WeightDataPoint } from '../hooks/useMeasurementsRange';
@@ -57,6 +57,8 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
     });
   }
 
+  const pagerRef = useRef<PagerView>(null);
+
   const handlePageSelected = useCallback(
     (e: { nativeEvent: { position: number } }) => {
       onPageSelected(e.nativeEvent.position);
@@ -67,6 +69,17 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
   // Clamp so the active dot stays in range when a page disappears
   const clampedPage = Math.min(activePage, pages.length - 1);
 
+  // Clamping the dot alone only fixes what the indicator draws. The native pager keeps the
+  // index it was on and the dashboard keeps its `chartPage`, so once the removed page comes
+  // back — a 403 that resolves, a weigh-in that lands — the restored selection is the stale
+  // one and the highlighted dot no longer matches the visible chart. Push the clamped index
+  // through both so the removal settles on a page that actually exists.
+  useEffect(() => {
+    if (clampedPage === activePage) return;
+    pagerRef.current?.setPageWithoutAnimation(clampedPage);
+    onPageSelected(clampedPage);
+  }, [activePage, clampedPage, onPageSelected]);
+
   if (pages.length === 1) {
     return <>{pages[0].content}</>;
   }
@@ -74,6 +87,7 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
   return (
     <>
       <PagerView
+        ref={pagerRef}
         style={styles.pager}
         initialPage={0}
         onPageSelected={handlePageSelected}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 
 import SleepDetailScreen from '../../src/screens/SleepDetailScreen';
 import { useSleepDetail } from '../../src/hooks/useSleepDetail';
@@ -46,12 +46,25 @@ jest.mock('../../src/components/Icon', () => {
 });
 
 jest.mock('../../src/components/StatusView', () => {
-  const { Text, View } = require('react-native');
+  const { Pressable, Text, View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ title, loading }: { title?: string; loading?: boolean }) => (
+    default: ({
+      title,
+      loading,
+      action,
+    }: {
+      title?: string;
+      loading?: boolean;
+      action?: { label: string; onPress: () => void };
+    }) => (
       <View testID={loading ? 'status-view-loading' : 'status-view'}>
         <Text>{title}</Text>
+        {action ? (
+          <Pressable testID="status-action" onPress={action.onPress}>
+            <Text>{action.label}</Text>
+          </Pressable>
+        ) : null}
       </View>
     ),
   };
@@ -197,6 +210,35 @@ describe('SleepDetailScreen', () => {
 
     expect(getByText('Sleep entry not found')).toBeTruthy();
     expect(queryByTestId('sleep-detail-header')).toBeNull();
+  });
+
+  test('separates a failed load from a missing entry, and offers a retry', () => {
+    // "May have been removed" is both wrong and a dead end when the request simply
+    // failed, so the error case gets its own copy plus the refetch as its action.
+    const refetch = jest.fn();
+    const { getByText, getByTestId, queryByText } = setupScreen({
+      entry: null,
+      stages: [],
+      isError: true,
+      refetch,
+    });
+
+    expect(getByText('Could not load this sleep session')).toBeTruthy();
+    expect(queryByText('Sleep entry not found')).toBeNull();
+
+    fireEvent.press(getByTestId('status-action'));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  test('offers no retry for a not-found entry, which refetching cannot fix', () => {
+    const { getByText, queryByTestId } = setupScreen({
+      entry: null,
+      stages: [],
+      isError: false,
+    });
+
+    expect(getByText('Sleep entry not found')).toBeTruthy();
+    expect(queryByTestId('status-action')).toBeNull();
   });
 
   test('omits the score from the header when sleep_score is null', () => {

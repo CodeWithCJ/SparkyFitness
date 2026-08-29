@@ -4,11 +4,18 @@ import { sleepAnalyticsQueryKey, measurementsRangeQueryKey } from '../../src/hoo
 import { fetchSleepAnalytics } from '../../src/services/api/sleepApi';
 import { ApiError } from '../../src/services/api/errors';
 import { getTodayDate, addDays } from '../../src/utils/dateUtils';
+import { usePreferences } from '../../src/hooks/usePreferences';
 import type { SleepAnalyticsDay } from '../../src/types/sleep';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/sleepApi', () => ({
   fetchSleepAnalytics: jest.fn(),
+}));
+
+// The window ends on the account's today, not the device's, so preferences are part of
+// this hook's input. Default to no timezone, which falls the hook back to device-local.
+jest.mock('../../src/hooks/usePreferences', () => ({
+  usePreferences: jest.fn(() => ({ preferences: undefined })),
 }));
 
 // Unlike the sibling measurements suite, the focus callback is captured rather than
@@ -25,6 +32,29 @@ jest.mock('@react-navigation/native', () => ({
 const mockFetchSleepAnalytics = fetchSleepAnalytics as jest.MockedFunction<
   typeof fetchSleepAnalytics
 >;
+
+const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
+
+const configureTimezone = (timezone: string | null | undefined) => {
+  mockUsePreferences.mockReturnValue({
+    preferences: { timezone },
+  } as ReturnType<typeof usePreferences>);
+};
+
+/**
+ * Today in `timezone`, derived independently of the hook's own helper. Assembled from
+ * named parts rather than a locale that happens to order them YYYY-MM-DD.
+ */
+const todayIn = (timezone: string): string => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date());
+  const part = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  return `${part('year')}-${part('month')}-${part('day')}`;
+};
 
 const makeSleepDay = (
   date: string,
@@ -50,6 +80,7 @@ describe('useSleepRange', () => {
     jest.clearAllMocks();
     mockFocusCallbacks.length = 0;
     queryClient = createTestQueryClient();
+    configureTimezone(undefined);
   });
 
   afterEach(() => {
@@ -253,6 +284,48 @@ describe('useSleepRange', () => {
       await waitFor(() => {
         expect(mockFetchSleepAnalytics).toHaveBeenCalledWith(addDays(today, -89), today);
       });
+    });
+
+    test("ends the window on the profile timezone's today, not the device's", async () => {
+      mockFetchSleepAnalytics.mockResolvedValue([]);
+      // Kiritimati is UTC+14 and Niue UTC-11, so on any given instant at most one of them
+      // can agree with the runner's clock — whichever the device is in, the other proves
+      // the hook read the timezone rather than the device.
+      for (const timezone of ['Pacific/Kiritimati', 'Pacific/Niue']) {
+        configureTimezone(timezone);
+        const expectedToday = todayIn(timezone);
+
+        const { result } = renderHook(() => useSleepRange({ range: '7d' }), {
+          wrapper: createQueryWrapper(queryClient),
+        });
+
+        await waitFor(() => {
+          expect(mockFetchSleepAnalytics).toHaveBeenCalledWith(
+            addDays(expectedToday, -6),
+            expectedToday,
+          );
+        });
+        await waitFor(() => expect(result.current.isLoading).toBe(false));
+        // The chart's last column is that same day.
+        expect(result.current.sleepData[6].day).toBe(expectedToday);
+      }
+    });
+
+    test('falls back to device-local today when the profile timezone is unusable', async () => {
+      mockFetchSleepAnalytics.mockResolvedValue([]);
+      const today = getTodayDate();
+
+      for (const timezone of [null, '', 'Not/AZone']) {
+        configureTimezone(timezone);
+
+        renderHook(() => useSleepRange({ range: '7d' }), {
+          wrapper: createQueryWrapper(queryClient),
+        });
+
+        await waitFor(() => {
+          expect(mockFetchSleepAnalytics).toHaveBeenCalledWith(addDays(today, -6), today);
+        });
+      }
     });
   });
 

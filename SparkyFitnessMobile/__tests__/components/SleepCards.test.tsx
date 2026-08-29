@@ -182,6 +182,17 @@ describe('SleepCards', () => {
       expect(double.getByText('2 naps')).toBeTruthy();
     });
 
+    test('gives each nap row a label carrying its own time and duration', () => {
+      // A shared "Open nap details" leaves a screen reader user unable to tell the rows
+      // apart, which is the one thing the visible column of times and durations does.
+      const { getByLabelText } = render(
+        <NapsCard naps={[napOne, napTwo]} day={DAY} navigation={mockNavigation} />,
+      );
+
+      expect(getByLabelText('Open nap details, 1:15 PM, 45m')).toBeTruthy();
+      expect(getByLabelText('Open nap details, 5:30 PM, 20m')).toBeTruthy();
+    });
+
     test('navigates with the tapped nap’s id, not the main sleep’s', () => {
       const { getByTestId } = render(
         <NapsCard naps={[napOne, napTwo]} day={DAY} navigation={mockNavigation} />,

@@ -4763,7 +4763,7 @@
     "napCount_few": "{{count}} drzemki",
     "napCount_many": "{{count}} drzemek",
     "napCount_other": "{{count}} drzemki",
-    "napA11y": "Otwórz szczegóły drzemki",
+    "napA11y": "Otwórz szczegóły drzemki, {{time}}, {{duration}}",
     "timeAsleep": "Czas snu",
     "timeInBed": "Czas w łóżku",
     "score": "Wynik",
