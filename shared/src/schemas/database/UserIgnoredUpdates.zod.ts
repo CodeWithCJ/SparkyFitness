@@ -28,5 +28,9 @@ export const userIgnoredUpdatesMutatorSchema = z.object({
 });
 
 export type UserIgnoredUpdates = z.infer<typeof userIgnoredUpdatesSchema>;
-export type UserIgnoredUpdatesInitializer = z.infer<typeof userIgnoredUpdatesInitializerSchema>;
-export type UserIgnoredUpdatesMutator = z.infer<typeof userIgnoredUpdatesMutatorSchema>;
+export type UserIgnoredUpdatesInitializer = z.infer<
+  typeof userIgnoredUpdatesInitializerSchema
+>;
+export type UserIgnoredUpdatesMutator = z.infer<
+  typeof userIgnoredUpdatesMutatorSchema
+>;

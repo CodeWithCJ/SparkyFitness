@@ -68,6 +68,9 @@ export const userPreferencesSchema = z.object({
   use_external_bmr: z.boolean(),
   active_ai_service_id: z.string().uuid().nullable().optional(),
   active_vision_ai_service_id: z.string().uuid().nullable().optional(),
+  auto_scale_online_imports: z.boolean().nullable().optional(),
+  barcode_fallback_open_food_facts: z.boolean().nullable().optional(),
+  add_exercise_water_to_goal: z.boolean().nullable().optional(),
 });
 
 export const userPreferencesInitializerSchema = z.object({
@@ -132,6 +135,9 @@ export const userPreferencesInitializerSchema = z.object({
   use_external_bmr: z.boolean().optional(),
   active_ai_service_id: z.string().uuid().nullable().optional(),
   active_vision_ai_service_id: z.string().uuid().nullable().optional(),
+  auto_scale_online_imports: z.boolean().optional().nullable(),
+  barcode_fallback_open_food_facts: z.boolean().optional().nullable(),
+  add_exercise_water_to_goal: z.boolean().optional().nullable(),
 });
 
 export const userPreferencesMutatorSchema = z.object({
@@ -196,6 +202,9 @@ export const userPreferencesMutatorSchema = z.object({
   use_external_bmr: z.boolean().optional(),
   active_ai_service_id: z.string().uuid().nullable().optional(),
   active_vision_ai_service_id: z.string().uuid().nullable().optional(),
+  auto_scale_online_imports: z.boolean().optional().nullable(),
+  barcode_fallback_open_food_facts: z.boolean().optional().nullable(),
+  add_exercise_water_to_goal: z.boolean().optional().nullable(),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;

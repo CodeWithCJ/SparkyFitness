@@ -109,5 +109,7 @@ export const foodVariantsMutatorSchema = z.object({
 });
 
 export type FoodVariants = z.infer<typeof foodVariantsSchema>;
-export type FoodVariantsInitializer = z.infer<typeof foodVariantsInitializerSchema>;
+export type FoodVariantsInitializer = z.infer<
+  typeof foodVariantsInitializerSchema
+>;
 export type FoodVariantsMutator = z.infer<typeof foodVariantsMutatorSchema>;

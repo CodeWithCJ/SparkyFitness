@@ -40,5 +40,9 @@ export const userCustomNutrientsMutatorSchema = z.object({
 });
 
 export type UserCustomNutrients = z.infer<typeof userCustomNutrientsSchema>;
-export type UserCustomNutrientsInitializer = z.infer<typeof userCustomNutrientsInitializerSchema>;
-export type UserCustomNutrientsMutator = z.infer<typeof userCustomNutrientsMutatorSchema>;
+export type UserCustomNutrientsInitializer = z.infer<
+  typeof userCustomNutrientsInitializerSchema
+>;
+export type UserCustomNutrientsMutator = z.infer<
+  typeof userCustomNutrientsMutatorSchema
+>;

@@ -104,8 +104,13 @@ export const dailyHealthMetricsInitializerSchema = z.object({
   updated_at: z.coerce.date().optional().nullable(),
 });
 
-export const dailyHealthMetricsMutatorSchema = dailyHealthMetricsInitializerSchema.partial();
+export const dailyHealthMetricsMutatorSchema =
+  dailyHealthMetricsInitializerSchema.partial();
 
 export type DailyHealthMetrics = z.infer<typeof dailyHealthMetricsSchema>;
-export type DailyHealthMetricsInitializer = z.infer<typeof dailyHealthMetricsInitializerSchema>;
-export type DailyHealthMetricsMutator = z.infer<typeof dailyHealthMetricsMutatorSchema>;
+export type DailyHealthMetricsInitializer = z.infer<
+  typeof dailyHealthMetricsInitializerSchema
+>;
+export type DailyHealthMetricsMutator = z.infer<
+  typeof dailyHealthMetricsMutatorSchema
+>;

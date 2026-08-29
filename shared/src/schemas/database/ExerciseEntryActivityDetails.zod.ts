@@ -52,6 +52,12 @@ export const exerciseEntryActivityDetailsMutatorSchema = z.object({
   exercise_preset_entry_id: exercisePresetEntriesIdSchema.optional().nullable(),
 });
 
-export type ExerciseEntryActivityDetails = z.infer<typeof exerciseEntryActivityDetailsSchema>;
-export type ExerciseEntryActivityDetailsInitializer = z.infer<typeof exerciseEntryActivityDetailsInitializerSchema>;
-export type ExerciseEntryActivityDetailsMutator = z.infer<typeof exerciseEntryActivityDetailsMutatorSchema>;
+export type ExerciseEntryActivityDetails = z.infer<
+  typeof exerciseEntryActivityDetailsSchema
+>;
+export type ExerciseEntryActivityDetailsInitializer = z.infer<
+  typeof exerciseEntryActivityDetailsInitializerSchema
+>;
+export type ExerciseEntryActivityDetailsMutator = z.infer<
+  typeof exerciseEntryActivityDetailsMutatorSchema
+>;

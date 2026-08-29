@@ -42,8 +42,15 @@ export const checkInMeasurementsInitializerSchema = z.object({
   bmr: z.number().optional().nullable(),
 });
 
-export const checkInMeasurementsMutatorSchema = checkInMeasurementsInitializerSchema.partial();
+export const checkInMeasurementsMutatorSchema =
+  checkInMeasurementsInitializerSchema.partial();
 
-export type DatabaseCheckInMeasurements = z.infer<typeof checkInMeasurementsSchema>;
-export type DatabaseCheckInMeasurementsInitializer = z.infer<typeof checkInMeasurementsInitializerSchema>;
-export type DatabaseCheckInMeasurementsMutator = z.infer<typeof checkInMeasurementsMutatorSchema>;
+export type DatabaseCheckInMeasurements = z.infer<
+  typeof checkInMeasurementsSchema
+>;
+export type DatabaseCheckInMeasurementsInitializer = z.infer<
+  typeof checkInMeasurementsInitializerSchema
+>;
+export type DatabaseCheckInMeasurementsMutator = z.infer<
+  typeof checkInMeasurementsMutatorSchema
+>;
