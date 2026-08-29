@@ -363,7 +363,11 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({ navigation, rou
           value={assignment.meal_type_id}
           options={mealTypeOptions}
           title={t('mealPlans.selectMealType', { defaultValue: 'Select meal type' })}
-          onSelect={(mealTypeId) => updateAssignment(index, { ...assignment, meal_type_id: mealTypeId })}
+          onSelect={(mealTypeId) => updateAssignment(index, {
+            ...assignment,
+            meal_type_id: mealTypeId,
+            meal_type: mealTypes.find((mealType) => mealType.id === mealTypeId)?.name ?? null,
+          })}
         />
 
         <Text className="text-sm font-medium text-text-secondary mt-4 mb-2">

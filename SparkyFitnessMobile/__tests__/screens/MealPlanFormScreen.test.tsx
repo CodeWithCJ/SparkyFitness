@@ -170,6 +170,53 @@ describe('MealPlanFormScreen', () => {
     });
   });
 
+  test('keeps the meal type label consistent when changing its id', async () => {
+    const dinnerType = { ...mealType, id: 'dinner', name: 'Dinner', sort_order: 3 };
+    mockUseMealTypes.mockReturnValue({
+      mealTypes: [mealType, dinnerType],
+      defaultMealTypeId: 'lunch',
+      isLoading: false,
+      isError: false,
+      refetch: refetchMealTypes,
+    });
+    const template: MealPlanTemplate = {
+      id: 'plan-1',
+      user_id: 'user-1',
+      plan_name: 'Existing plan',
+      description: null,
+      start_date: '2026-09-01',
+      end_date: null,
+      is_active: false,
+      assignments: [{
+        id: 'assignment-meal',
+        item_type: 'meal',
+        day_of_week: 2,
+        meal_type_id: 'lunch',
+        meal_type: 'Lunch',
+        meal_id: 'meal-1',
+        meal_name: 'Chicken and rice',
+        quantity: 350,
+        unit: 'g',
+      }],
+    };
+    const screen = renderScreen({ template });
+
+    fireEvent.press(screen.getByLabelText('Dinner'));
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(updateMealPlanAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assignments: [expect.objectContaining({
+            meal_type_id: 'dinner',
+            meal_type: 'Dinner',
+          })],
+        }),
+        expect.any(String),
+      );
+    });
+  });
+
   test('keeps a partial localized decimal amount editable and saves its numeric value', async () => {
     const screen = renderScreen({ initialMeal: meal });
 
