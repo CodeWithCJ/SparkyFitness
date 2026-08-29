@@ -1483,6 +1483,39 @@ describe('enrichExerciseSessions', () => {
 
     expect((result[0] as { energy: { inKilocalories: number } }).energy)
       .toEqual({ inKilocalories: 180 });
+    expect(mockAggregateRecord).toHaveBeenCalledWith(expect.objectContaining({
+      recordType: 'BasalMetabolicRate',
+      timeRangeFilter: {
+        operator: 'between',
+        startTime: '2024-01-15T10:00:00Z',
+        endTime: '2024-01-15T10:57:00Z',
+      },
+    }));
+  });
+
+  test('keeps the legacy total fallback when basal consumes the total', async () => {
+    mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
+      if (recordType === 'ActiveCaloriesBurned') {
+        return Promise.resolve({});
+      }
+      if (recordType === 'TotalCaloriesBurned') {
+        return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 180 } });
+      }
+      if (recordType === 'BasalMetabolicRate') {
+        return Promise.resolve({ BASAL_CALORIES_TOTAL: { inKilocalories: 180 } });
+      }
+      return Promise.resolve({});
+    });
+
+    const result = await enrichExerciseSessions([
+      makeSession({
+        startTime: '2024-01-15T10:00:00Z',
+        endTime: '2024-01-15T10:57:00Z',
+      }),
+    ], createTelemetryRunContext());
+
+    expect((result[0] as { energy: { inKilocalories: number } }).energy)
+      .toEqual({ inKilocalories: 180 });
   });
 
   test('keeps the legacy active selection when the optional basal read fails', async () => {

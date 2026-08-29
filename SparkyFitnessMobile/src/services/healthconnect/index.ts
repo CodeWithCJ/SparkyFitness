@@ -1253,8 +1253,10 @@ const selectBasalNormalizedSessionCalories = (
     ? derivedActive
     : undefined;
 
+  if (derivedPositive == null) {
+    return selectSessionCalories(active, total, durationMs);
+  }
   if (reportedActive == null) return derivedPositive;
-  if (derivedPositive == null) return reportedActive;
   return Math.max(reportedActive, derivedPositive);
 };
 
