@@ -1478,7 +1478,8 @@ CREATE TABLE public.daily_health_metrics (
     body_battery_highest integer,
     body_battery_lowest integer,
     created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now()
+    updated_at timestamp with time zone DEFAULT now(),
+    total_calories_captured_at timestamp with time zone
 );
 
 
