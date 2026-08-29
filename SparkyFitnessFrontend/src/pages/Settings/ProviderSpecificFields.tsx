@@ -6,6 +6,34 @@ import { Clipboard } from 'lucide-react';
 import { useTranslation, Trans } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 
+// Developer dashboards where each OAuth provider's Client ID/Secret and callback
+// URL are configured. Kept in sync with the per-provider text in EditProviderForm.
+const OAUTH_PROVIDER_DASHBOARDS: Record<
+  string,
+  { label: string; url: string }
+> = {
+  withings: {
+    label: 'Withings Developer Dashboard',
+    url: 'https://developer.withings.com/dashboard/',
+  },
+  fitbit: {
+    label: 'Fitbit Developer Dashboard',
+    url: 'https://dev.fitbit.com/apps',
+  },
+  oura: {
+    label: 'Oura Developer Portal',
+    url: 'https://developer.ouraring.com/applications',
+  },
+  googlehealth: {
+    label: 'Google Cloud Console',
+    url: 'https://console.cloud.google.com/apis/credentials',
+  },
+  polar: {
+    label: 'Polar AccessLink Admin',
+    url: 'https://admin.polaraccesslink.com',
+  },
+};
+
 interface ProviderSpecificFieldsProps {
   provider: Partial<ExternalDataProvider>;
   setProvider: React.Dispatch<
@@ -52,6 +80,9 @@ export const ProviderSpecificFields = ({
     'polar',
     'hevy',
   ].includes(provider.provider_type || '');
+
+  const providerDashboard =
+    OAUTH_PROVIDER_DASHBOARDS[provider.provider_type || ''];
 
   const getCallbackUrl = () => {
     if (provider.provider_type === 'strava') {
@@ -405,8 +436,20 @@ export const ProviderSpecificFields = ({
           This integration uses OAuth2. You will be redirected to the provider
           to authorize access after adding or updating the provider.
           <br />
-          In your provider's developer dashboard, you must set your callback URL
-          to:
+          In your{' '}
+          {providerDashboard ? (
+            <a
+              href={providerDashboard.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 underline"
+            >
+              {providerDashboard.label}
+            </a>
+          ) : (
+            "provider's developer dashboard"
+          )}
+          , you must set your callback URL to:
           <strong className="flex items-center mt-1">
             {getCallbackUrl()}
             <Button
