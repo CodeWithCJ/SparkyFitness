@@ -160,8 +160,6 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({ navigation, rou
     || isMealsError
     || isMealTypesLoading
     || isMealTypesError
-    || isNutritionLoading
-    || isNutritionError
     || mealTypes.length === 0;
   const resolvedAssignments = useMemo(
     () => draft.assignments.map((assignment) => ({
@@ -262,7 +260,7 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({ navigation, rou
     },
   });
 
-  if (isMealsLoading || isMealTypesLoading || isNutritionLoading) {
+  if (isMealsLoading || isMealTypesLoading) {
     return (
       <View className="flex-1 bg-background" style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}>
         {header}
@@ -271,7 +269,7 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({ navigation, rou
     );
   }
 
-  if (isMealsError || isMealTypesError || isNutritionError) {
+  if (isMealsError || isMealTypesError) {
     return (
       <View className="flex-1 bg-background" style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}>
         {header}
@@ -436,7 +434,13 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({ navigation, rou
                 className={isSelected ? 'min-w-24 rounded-xl bg-accent-primary px-3 py-2.5 items-center' : 'min-w-24 rounded-xl bg-raised px-3 py-2.5 items-center'}
               >
                 <Text className={isSelected ? 'text-sm font-semibold text-white' : 'text-sm font-semibold text-text-primary'}>{label}</Text>
-                <View className={hasAssignments ? 'w-1.5 h-1.5 rounded-full bg-white mt-1' : 'w-1.5 h-1.5 mt-1'} />
+                <View
+                  className={hasAssignments
+                    ? isSelected
+                      ? 'w-1.5 h-1.5 rounded-full bg-white mt-1'
+                      : 'w-1.5 h-1.5 rounded-full bg-accent-primary mt-1'
+                    : 'w-1.5 h-1.5 mt-1'}
+                />
               </Pressable>
             );
           })}
@@ -461,6 +465,28 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({ navigation, rou
             );
           })}
         </View>
+
+        {isNutritionLoading || isNutritionError ? (
+          <View
+            accessibilityLiveRegion="polite"
+            className="bg-raised rounded-xl px-4 py-3 mt-3 border border-border-subtle"
+          >
+            <Text className="text-sm text-text-secondary">
+              {isNutritionError
+                ? t('mealPlans.nutritionLoadFailed', { defaultValue: "Some nutrition details couldn't be loaded. Totals may be incomplete." })
+                : t('mealPlans.nutritionLoading', { defaultValue: 'Loading missing nutrition details. Totals may be incomplete.' })}
+            </Text>
+            {isNutritionError ? (
+              <Button
+                variant="secondary"
+                onPress={() => void refetchNutrition()}
+                className="mt-3"
+              >
+                {t('common.retry', { defaultValue: 'Retry' })}
+              </Button>
+            ) : null}
+          </View>
+        ) : null}
 
         {mealTypes.map((mealType) => {
           const mealTypeLabel = getMealTypeDisplayLabel(mealType, t);

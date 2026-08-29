@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import MealPlanFormScreen from '../../src/screens/MealPlanFormScreen';
@@ -272,6 +273,48 @@ describe('MealPlanFormScreen', () => {
     expect(screen.getByLabelText('Daily Calories 0 kcal')).toBeTruthy();
   });
 
+  test('keeps assignment markers visible on unselected days', () => {
+    const template: MealPlanTemplate = {
+      id: 'plan-1',
+      user_id: 'user-1',
+      plan_name: 'Existing plan',
+      description: null,
+      start_date: '2026-09-01',
+      end_date: null,
+      is_active: false,
+      assignments: [
+        {
+          item_type: 'food',
+          day_of_week: 2,
+          meal_type_id: 'lunch',
+          food_id: 'food-1',
+          food_name: 'Oats',
+          variant_id: 'variant-1',
+          quantity: 80,
+          unit: 'g',
+        },
+        {
+          item_type: 'meal',
+          day_of_week: 3,
+          meal_type_id: 'lunch',
+          meal_id: 'meal-1',
+          meal_name: 'Chicken and rice',
+          quantity: 350,
+          unit: 'g',
+        },
+      ],
+    };
+    const screen = renderScreen({ template });
+
+    const dayIndicators = screen.UNSAFE_getAllByType(View).filter(
+      (view) => typeof view.props.className === 'string'
+        && view.props.className.startsWith('w-1.5 h-1.5'),
+    );
+    expect(dayIndicators.some(
+      (indicator) => indicator.props.className.includes('bg-accent-primary'),
+    )).toBe(true);
+  });
+
   test('consumes a food or meal returned by unified search', () => {
     mockConsumePendingMealPlanSelection.mockReturnValueOnce({
       assignment: {
@@ -471,7 +514,24 @@ describe('MealPlanFormScreen', () => {
     });
   });
 
-  test('shows nutrition hydration errors and retries the failed variants', async () => {
+  test('keeps a newly selected assignment editable while nutrition hydration is loading', async () => {
+    mockUseMealPlanNutrition.mockImplementation(() => ({
+      resolveNutrition: (assignment) => assignment.nutrition,
+      isLoading: true,
+      isError: false,
+      refetch: refetchNutrition,
+    }));
+    const screen = renderScreen({ initialMeal: meal });
+
+    expect(screen.getByPlaceholderText('Meal plan name')).toBeTruthy();
+    expect(screen.getByText('Loading missing nutrition details. Totals may be incomplete.')).toBeTruthy();
+    expect(screen.queryByText('Loading planning options...')).toBeNull();
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => expect(createMealPlanAsync).toHaveBeenCalled());
+  });
+
+  test('keeps the editor available when nutrition hydration fails and retries inline', async () => {
     mockUseMealPlanNutrition.mockReturnValue({
       resolveNutrition: () => undefined,
       isLoading: false,
@@ -499,10 +559,16 @@ describe('MealPlanFormScreen', () => {
     };
     const screen = renderScreen({ template });
 
-    expect(screen.getByText('Failed to load planning options')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Meal plan name')).toBeTruthy();
+    expect(screen.getByText("Some nutrition details couldn't be loaded. Totals may be incomplete.")).toBeTruthy();
+    expect(screen.queryByText('Failed to load planning options')).toBeNull();
     fireEvent.press(screen.getByText('Retry'));
+    fireEvent.press(screen.getByText('Save'));
 
-    await waitFor(() => expect(refetchNutrition).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(refetchNutrition).toHaveBeenCalled();
+      expect(updateMealPlanAsync).toHaveBeenCalled();
+    });
   });
 
   test('shows validation errors instead of submitting an incomplete plan', () => {

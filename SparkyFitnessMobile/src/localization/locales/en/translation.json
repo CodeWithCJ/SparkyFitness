@@ -2905,6 +2905,8 @@
     "mealTypeNutritionAccessibility": "{{mealType}} total {{calories}} kcal, {{protein}} g protein, {{carbs}} g carbs, {{fat}} g fat",
     "mealTypeMacros": "{{protein}} g P · {{carbs}} g C · {{fat}} g F",
     "caloriesValue": "{{value}} kcal",
+    "nutritionLoading": "Loading missing nutrition details. Totals may be incomplete.",
+    "nutritionLoadFailed": "Some nutrition details couldn't be loaded. Totals may be incomplete.",
     "assignmentRequired": "Add at least one complete meal assignment.",
     "familyNotice": "You can schedule your own meals plus family or public meals already visible in your meal library. The plan stays private to this account and does not change meal sharing.",
     "weekdays": {

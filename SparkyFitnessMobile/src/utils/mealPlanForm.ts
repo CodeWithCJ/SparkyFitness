@@ -1,5 +1,5 @@
 import type { Meal } from '../types/meals';
-import { mealToFoodInfo } from '../types/foodInfo';
+import { mealToPerServingNutrition } from '../types/foodInfo';
 import type {
   MealPlanDraft,
   MealPlanDraftAssignment,
@@ -17,7 +17,6 @@ export function createMealAssignment(
   mealTypeId: string,
   dayOfWeek: number,
 ): MealPlanDraftAssignment {
-  const mealInfo = mealToFoodInfo(meal);
   return {
     item_type: 'meal',
     day_of_week: dayOfWeek,
@@ -27,13 +26,7 @@ export function createMealAssignment(
     quantity: meal.serving_size,
     quantityText: String(meal.serving_size),
     unit: meal.serving_unit,
-    nutrition: {
-      servingSize: mealInfo.servingSize,
-      calories: mealInfo.calories,
-      protein: mealInfo.protein,
-      carbs: mealInfo.carbs,
-      fat: mealInfo.fat,
-    },
+    nutrition: mealToPerServingNutrition(meal),
   };
 }
 

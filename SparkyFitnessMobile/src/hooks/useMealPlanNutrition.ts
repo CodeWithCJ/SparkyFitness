@@ -6,7 +6,7 @@ import type {
   MealPlanNutritionSnapshot,
 } from '../types/mealPlans';
 import type { Meal } from '../types/meals';
-import { mealToFoodInfo } from '../types/foodInfo';
+import { mealToPerServingNutrition } from '../types/foodInfo';
 import { foodVariantsQueryKey } from './queryKeys';
 
 export function useMealPlanNutrition(
@@ -16,7 +16,7 @@ export function useMealPlanNutrition(
   const foodIds = useMemo(
     () => Array.from(new Set(
       assignments
-        .filter((assignment) => assignment.item_type === 'food')
+        .filter((assignment) => assignment.item_type === 'food' && !assignment.nutrition)
         .map((assignment) => assignment.food_id)
         .filter((foodId): foodId is string => Boolean(foodId)),
     )),
@@ -42,14 +42,7 @@ export function useMealPlanNutrition(
     if (assignment.item_type === 'meal') {
       const meal = meals.find((candidate) => candidate.id === assignment.meal_id);
       if (!meal) return undefined;
-      const info = mealToFoodInfo(meal);
-      return {
-        servingSize: info.servingSize,
-        calories: info.calories,
-        protein: info.protein,
-        carbs: info.carbs,
-        fat: info.fat,
-      };
+      return mealToPerServingNutrition(meal);
     }
 
     const variants = assignment.food_id

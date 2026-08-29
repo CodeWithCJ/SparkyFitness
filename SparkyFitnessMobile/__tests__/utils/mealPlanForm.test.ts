@@ -56,6 +56,29 @@ describe('mealPlanForm', () => {
     });
   });
 
+  test('preserves fractional per-serving meal nutrition in a new assignment', () => {
+    const fractionalMeal = {
+      ...reusableMeal,
+      total_servings: 3,
+      foods: [{
+        ...reusableMeal.foods[0],
+        quantity: 100,
+        serving_size: 100,
+        calories: 100,
+        protein: 10,
+        carbs: 20,
+        fat: 5,
+      }],
+    };
+
+    const nutrition = createMealAssignment(fractionalMeal, 'lunch', 1).nutrition;
+
+    expect(nutrition?.calories).toBeCloseTo(33.333333);
+    expect(nutrition?.protein).toBeCloseTo(3.333333);
+    expect(nutrition?.carbs).toBeCloseTo(6.666667);
+    expect(nutrition?.fat).toBeCloseTo(1.666667);
+  });
+
   test('calculates live nutrition for the selected day and scales edited quantities', () => {
     const mealAssignment = createMealAssignment(reusableMeal, 'lunch', 1);
     const foodAssignment = {
