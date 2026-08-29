@@ -78,16 +78,46 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
   // Clamp so the active dot stays in range when a page disappears
   const clampedPage = Math.min(activePage, pages.length - 1);
 
-  // Clamping the dot alone only fixes what the indicator draws. The native pager keeps the
-  // index it was on and the dashboard keeps its `chartPage`, so once the removed page comes
-  // back — a 403 that resolves, a weigh-in that lands — the restored selection is the stale
-  // one and the highlighted dot no longer matches the visible chart. Push the clamped index
-  // through both so the removal settles on a page that actually exists.
+  const pageKeySignature = pages.map((page) => page.key).join('|');
+  const pageKeySignatureRef = useRef(pageKeySignature);
+  const selectedKeyRef = useRef<string | null>(null);
+
+  // Which trend the user is on has to be remembered by key, because an index does not
+  // survive the list changing shape underneath them.
+  //
+  // Two ways it changes: a trend disappears (a 403 arrives) and every later index shifts
+  // down, or a trend appears *earlier* in the fixed steps/weight/sleep order and every
+  // later index shifts up. The second is routine — weight hides itself until the window
+  // holds a weigh-in, so logging one turns [steps, sleep] into [steps, weight, sleep] on
+  // the next focus refetch. Index 1 was Sleep and is now Weight, so the chart under the
+  // user silently changes to one they did not ask for.
+  //
+  // Re-resolving the remembered key covers both: it finds the page's new home when it
+  // moved, and falls back to clamping only when the page is genuinely gone. The result
+  // goes to the native pager and to the dashboard's `chartPage`, since correcting the
+  // indicator alone would leave those two disagreeing with the visible chart.
   useEffect(() => {
-    if (clampedPage === activePage) return;
-    pagerRef.current?.setPageWithoutAnimation(clampedPage);
-    onPageSelected(clampedPage);
-  }, [activePage, clampedPage, onPageSelected]);
+    const pageKeys = pageKeySignature.split('|');
+
+    // Same pages as last time, so `activePage` is the user's own doing and defines the
+    // selection — this is also the mount case, and how a swipe is recorded.
+    if (pageKeySignatureRef.current === pageKeySignature) {
+      selectedKeyRef.current = pageKeys[activePage] ?? null;
+      return;
+    }
+    pageKeySignatureRef.current = pageKeySignature;
+
+    const rememberedKey = selectedKeyRef.current;
+    const rememberedIndex = rememberedKey === null ? -1 : pageKeys.indexOf(rememberedKey);
+    const nextPage =
+      rememberedIndex >= 0 ? rememberedIndex : Math.min(activePage, pageKeys.length - 1);
+
+    selectedKeyRef.current = pageKeys[nextPage] ?? null;
+    if (nextPage === activePage) return;
+
+    pagerRef.current?.setPageWithoutAnimation(nextPage);
+    onPageSelected(nextPage);
+  }, [activePage, pageKeySignature, onPageSelected]);
 
   if (pages.length === 1) {
     return <>{pages[0].content}</>;

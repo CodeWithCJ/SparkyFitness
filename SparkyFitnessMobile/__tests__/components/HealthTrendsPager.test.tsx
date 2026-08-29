@@ -191,6 +191,44 @@ describe('HealthTrendsPager', () => {
     expect(selectedDotIndex()).toBe(1);
   });
 
+  test('keeps the user on Sleep when Weight is inserted ahead of it', () => {
+    // Weight hides itself until the window holds a weigh-in, so logging one turns
+    // [steps, sleep] into [steps, weight, sleep] on the next focus refetch. Index 1 was
+    // Sleep and is now Weight — tracking the index alone swaps the chart under the user.
+    const onPageSelected = jest.fn();
+    const { rerenderPager } = renderPager({
+      sleep: sleepSeries,
+      activePage: 1,
+      onPageSelected,
+    });
+    expect(chartOrder()).toEqual(['steps-chart', 'sleep-chart']);
+
+    rerenderPager({
+      weight: weightSeries,
+      sleep: sleepSeries,
+      activePage: 1,
+      onPageSelected,
+    });
+
+    expect(chartOrder()).toEqual(['steps-chart', 'weight-chart', 'sleep-chart']);
+    expect(pagerMock.setPageWithoutAnimation).toHaveBeenCalledWith(2);
+    expect(onPageSelected).toHaveBeenCalledWith(2);
+
+    // Once the dashboard applies it, Sleep is the highlighted page again.
+    onPageSelected.mockClear();
+    pagerMock.setPageWithoutAnimation.mockClear();
+    rerenderPager({
+      weight: weightSeries,
+      sleep: sleepSeries,
+      activePage: 2,
+      onPageSelected,
+    });
+
+    expect(selectedDotIndex()).toBe(2);
+    expect(onPageSelected).not.toHaveBeenCalled();
+    expect(pagerMock.setPageWithoutAnimation).not.toHaveBeenCalled();
+  });
+
   test('moves the pager and the dashboard off a page removed under them', () => {
     // Clamping the dot is not enough on its own: the native pager and the dashboard's
     // chartPage both have to land on a page that still exists.
