@@ -6,6 +6,37 @@ import { Clipboard } from 'lucide-react';
 import { useTranslation, Trans } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 
+// Developer dashboards where each OAuth provider's Client ID/Secret and callback
+// URL are configured. Kept in sync with the per-provider text in EditProviderForm.
+const OAUTH_DASHBOARD_LABELS =
+  'settings.foodExerciseDataProviders.oauthDashboards';
+
+const OAUTH_PROVIDER_DASHBOARDS: Record<
+  string,
+  { labelKey: string; url: string }
+> = {
+  withings: {
+    labelKey: `${OAUTH_DASHBOARD_LABELS}.withings`,
+    url: 'https://developer.withings.com/dashboard/',
+  },
+  fitbit: {
+    labelKey: `${OAUTH_DASHBOARD_LABELS}.fitbit`,
+    url: 'https://dev.fitbit.com/apps',
+  },
+  oura: {
+    labelKey: `${OAUTH_DASHBOARD_LABELS}.oura`,
+    url: 'https://developer.ouraring.com/applications',
+  },
+  googlehealth: {
+    labelKey: `${OAUTH_DASHBOARD_LABELS}.googlehealth`,
+    url: 'https://console.cloud.google.com/apis/credentials',
+  },
+  polar: {
+    labelKey: `${OAUTH_DASHBOARD_LABELS}.polar`,
+    url: 'https://admin.polaraccesslink.com',
+  },
+};
+
 interface ProviderSpecificFieldsProps {
   provider: Partial<ExternalDataProvider>;
   setProvider: React.Dispatch<
@@ -52,6 +83,9 @@ export const ProviderSpecificFields = ({
     'polar',
     'hevy',
   ].includes(provider.provider_type || '');
+
+  const providerDashboard =
+    OAUTH_PROVIDER_DASHBOARDS[provider.provider_type || ''];
 
   const getCallbackUrl = () => {
     if (provider.provider_type === 'strava') {
@@ -405,8 +439,20 @@ export const ProviderSpecificFields = ({
           This integration uses OAuth2. You will be redirected to the provider
           to authorize access after adding or updating the provider.
           <br />
-          In your provider's developer dashboard, you must set your callback URL
-          to:
+          In your{' '}
+          {providerDashboard ? (
+            <a
+              href={providerDashboard.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 underline"
+            >
+              {t(providerDashboard.labelKey)}
+            </a>
+          ) : (
+            t(`${OAUTH_DASHBOARD_LABELS}.fallback`)
+          )}
+          , you must set your callback URL to:
           <strong className="flex items-center mt-1">
             {getCallbackUrl()}
             <Button
