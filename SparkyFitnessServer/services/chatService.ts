@@ -1348,15 +1348,22 @@ function extractMessageText(msg: ChatMessage): string {
 // True when a message carries an image part. Deterministic signal (unlike
 // text keywords or the LLM fallback, an attached image is unambiguous), so
 // it's applied directly rather than routed through classification.
-function hasImageParts(msg: ChatMessage): boolean {
+export function hasImageParts(msg: ChatMessage): boolean {
   const partsSource = Array.isArray(msg.parts)
     ? msg.parts
     : Array.isArray(msg.content)
       ? (msg.content as ChatMessagePart[])
       : null;
   return (
-    partsSource?.some((p) => p.type === 'image' || p.type === 'image_url') ??
-    false
+    partsSource?.some(
+      (p) =>
+        p.type === 'image' ||
+        p.type === 'image_url' ||
+        (p.type === 'file' &&
+          (p.mimeType?.startsWith('image/') ||
+            p.mediaType?.startsWith('image/') ||
+            p.url?.startsWith('data:image/')))
+    ) ?? false
   );
 }
 

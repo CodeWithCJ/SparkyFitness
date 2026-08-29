@@ -3,6 +3,7 @@ import {
   buildEscalationPrepareStep,
   classifyByKeywords,
   getSystemPrompt,
+  hasImageParts,
 } from '../services/chatService.js';
 
 describe('classifyByKeywords', () => {
@@ -53,6 +54,92 @@ describe('classifyByKeywords', () => {
     // recall. This case is expected to still match (run stem is high-value)
     // — asserted here so a future edit doesn't silently change the tradeoff.
     expect(classifyByKeywords('I ran out of milk')).toContain('exercise');
+  });
+});
+
+describe('hasImageParts', () => {
+  it('returns true for image part type', () => {
+    expect(
+      hasImageParts({
+        role: 'user',
+        parts: [{ type: 'image', image: 'data:image/png;base64,abc' }],
+      })
+    ).toBe(true);
+  });
+
+  it('returns true for image_url part type', () => {
+    expect(
+      hasImageParts({
+        role: 'user',
+        parts: [
+          {
+            type: 'image_url',
+            image_url: { url: 'https://example.com/a.jpg' },
+          },
+        ],
+      })
+    ).toBe(true);
+  });
+
+  it('returns true for file part with image mediaType or mimeType (web chat attachment)', () => {
+    expect(
+      hasImageParts({
+        role: 'user',
+        parts: [
+          { type: 'text', text: 'i had this breakfast' },
+          {
+            type: 'file',
+            mediaType: 'image/jpeg',
+            url: 'data:image/jpeg;base64,...',
+          },
+        ],
+      })
+    ).toBe(true);
+
+    expect(
+      hasImageParts({
+        role: 'user',
+        parts: [
+          {
+            type: 'file',
+            mimeType: 'image/png',
+            url: 'https://example.com/photo.png',
+          },
+        ],
+      })
+    ).toBe(true);
+  });
+
+  it('returns true for file part with data:image URL even if mimeType is missing', () => {
+    expect(
+      hasImageParts({
+        role: 'user',
+        parts: [{ type: 'file', url: 'data:image/webp;base64,123' }],
+      })
+    ).toBe(true);
+  });
+
+  it('returns false for text-only messages or non-image files', () => {
+    expect(
+      hasImageParts({
+        role: 'user',
+        content: 'i had this breakfast',
+      })
+    ).toBe(false);
+
+    expect(
+      hasImageParts({
+        role: 'user',
+        parts: [
+          { type: 'text', text: 'hello' },
+          {
+            type: 'file',
+            mediaType: 'application/pdf',
+            url: 'data:application/pdf;base64,...',
+          },
+        ],
+      })
+    ).toBe(false);
   });
 });
 

@@ -2317,7 +2317,8 @@
     "view": "View details",
     "weight": "Weight",
     "workout": "Workout",
-    "caloriesUnit": "calories"
+    "caloriesUnit": "calories",
+    "mealSlot": "Meal Slot"
   },
   "diary": {
     "nutritionSummary": "Nutrition Summary",
@@ -2860,7 +2861,8 @@
     "mealUpdatedSuccessfully": "Meal updated successfully.",
     "meals": "meals",
     "name": "Name",
-    "removeFromFavorites": "Remove from favorites"
+    "removeFromFavorites": "Remove from favorites",
+    "createMeal": "Create Meal"
   },
   "mealBuilder": {
     "errorTitle": "Error",
@@ -4861,6 +4863,11 @@
       "timedOutMessage": "The estimate took too long. Try again, or log this food manually.",
       "unreachableTitle": "Couldn't reach AI provider",
       "unreachableMessage": "Try again, or log this food manually."
-    }
+    },
+    "analyzing": "Analyzing meal photo...",
+    "analyzingHint": "Detecting ingredients, gram portions, and macros",
+    "editInMealBuilder": "Edit in Meal Builder",
+    "loggedSuccess": "Meal successfully logged to your diary.",
+    "openInMealBuilder": "Open in Meal Builder"
   }
 }

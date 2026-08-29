@@ -36,13 +36,20 @@ const BASE64_MIME_PREFIXES: [string, string][] = [
 
 type ParsedImage =
   | { ok: true; base64: string; mimeType: string }
-  | { ok: false; reason: 'remote_url' | 'invalid' };
+  | { ok: false; reason: 'remote_url' | 'invalid' | 'missing' };
 
 // Accepts data: URLs and bare base64 only. Remote http(s) URLs are rejected
 // rather than fetched server-side (MCP passed them through to the AI
 // provider; named drift).
 function parseImageInput(imageUrl: string): ParsedImage {
   const value = imageUrl.trim();
+  // `image_url` is optional — the image normally rides on the attached message
+  // — so an empty string means the turn carried no image at all. Without this
+  // the empty value falls through as "bare base64" and an empty payload is
+  // sent to the provider.
+  if (!value) {
+    return { ok: false, reason: 'missing' };
+  }
   if (/^https?:\/\//i.test(value)) {
     return { ok: false, reason: 'remote_url' };
   }
@@ -59,10 +66,15 @@ function parseImageInput(imageUrl: string): ParsedImage {
   return { ok: true, base64: value, mimeType: mime ? mime[1] : 'image/jpeg' };
 }
 
-function imageInputError(reason: 'remote_url' | 'invalid'): string {
-  return reason === 'remote_url'
-    ? 'Remote image URLs are not supported. Please attach the image directly to the chat.'
-    : 'The provided data: URL is not a valid base64-encoded image.';
+function imageInputError(reason: 'remote_url' | 'invalid' | 'missing'): string {
+  switch (reason) {
+    case 'remote_url':
+      return 'Remote image URLs are not supported. Please attach the image directly to the chat.';
+    case 'missing':
+      return 'No image was provided. Attach the photo to your message and try again.';
+    default:
+      return 'The provided data: URL is not a valid base64-encoded image.';
+  }
 }
 
 function renderFoodPhotoEstimate(estimate: FoodPhotoEstimateResponse): string {

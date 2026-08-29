@@ -1,5 +1,4 @@
 import { splitDataUrl } from '@/utils/imageResize';
-import { describeEstimateError } from '@/utils/foodPhotoEstimate';
 import { estimateRowsToMealFoods } from '@/utils/foodPhotoEstimate';
 import {
   ingredientDraftReducer,
@@ -38,23 +37,6 @@ describe('splitDataUrl', () => {
 
   it('returns null for a data URL that is not base64 encoded', () => {
     expect(splitDataUrl('data:image/svg+xml,<svg/>')).toBeNull();
-  });
-});
-
-describe('describeEstimateError', () => {
-  it('flags provider-configuration problems so the UI can link to Settings', () => {
-    expect(describeEstimateError('NO_AI_CONFIGURED').isConfiguration).toBe(
-      true
-    );
-    expect(describeEstimateError('API_KEY_MISSING').isConfiguration).toBe(true);
-    expect(
-      describeEstimateError('PRIVATE_NETWORK_FORBIDDEN').isConfiguration
-    ).toBe(true);
-  });
-
-  it('does not flag transient failures as configuration problems', () => {
-    expect(describeEstimateError('TIMEOUT').isConfiguration).toBe(false);
-    expect(describeEstimateError('UPSTREAM_ERROR').isConfiguration).toBe(false);
   });
 });
 

@@ -461,6 +461,47 @@ describe('provider cascade fallback', () => {
     expect(result.items[0].preselect_match).toBe(true);
   });
 
+  it('does not preselect a provider hit whose name is unrelated', async () => {
+    // A provider search for "chicken thigh" can return anything its index
+    // liked. Auto-applying it overwrites the estimate the user is reviewing,
+    // so an unrelated name stays a suggestion they have to tap.
+    lookupFoodFromProvidersMock.mockResolvedValue({
+      source: 'openfoodfacts',
+      food: providerFood({ name: 'Rock Hopper Energy Bar' }),
+    });
+
+    const result = await attachFoodMatches(USER, estimate);
+    expect(result.items[0].match!.food_name).toBe('Rock Hopper Energy Bar');
+    expect(result.items[0].preselect_match).toBe(false);
+    // The model's own numbers are what the client keeps showing.
+    expect(result.items[0].calories_kcal).toBe(290);
+  });
+
+  it('does not preselect a provider hit with no nutrition recorded', async () => {
+    // Scaled-but-empty is worse than no match: it replaces a real estimate
+    // with zeros, and a food saved from that row poisons the next photo.
+    lookupFoodFromProvidersMock.mockResolvedValue({
+      source: 'openfoodfacts',
+      food: providerFood({
+        variants: [
+          {
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+          },
+        ],
+      }),
+    });
+
+    const result = await attachFoodMatches(USER, estimate);
+    expect(result.items[0].match!.scaled!.calories_kcal).toBe(0);
+    expect(result.items[0].preselect_match).toBe(false);
+    expect(result.items[0].calories_kcal).toBe(290);
+  });
+
   it('leaves the AI numbers untouched even when a provider matches', async () => {
     lookupFoodFromProvidersMock.mockResolvedValue({
       source: 'openfoodfacts',

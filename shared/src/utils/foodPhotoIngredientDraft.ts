@@ -104,8 +104,13 @@ export type IngredientDraftAction =
  * matches THAT and the zeros spread. Treat it as no nutrition instead: keep
  * the model's estimate and leave the match as a suggestion the user can still
  * read.
+ *
+ * Exported because the server has to make the same judgement one step earlier,
+ * when it decides whether to preselect a match at all.
  */
-function hasUsableMacros(scaled: EstimateMacros | null | undefined): boolean {
+export function hasUsableMacros(
+  scaled: EstimateMacros | null | undefined,
+): boolean {
   if (!scaled) return false;
   return ESTIMATE_MACRO_KEYS.some((key) => {
     const value = scaled[key];

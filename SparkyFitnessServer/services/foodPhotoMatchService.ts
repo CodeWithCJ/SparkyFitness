@@ -14,6 +14,7 @@ import { boundedMap } from '../utils/boundedMap.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import {
   scoreFoodMatch,
+  hasUsableMacros,
   scaleVariantToGrams,
   unbrandMacros,
   roundMacros,
@@ -266,7 +267,11 @@ async function matchItems(
         best.source === 'exact_name' &&
         // A variant measured in cups or slices has no gram-scaled nutrition,
         // so preselecting it would apply a match the client cannot render.
-        bestMatch?.gram_convertible
+        bestMatch?.gram_convertible &&
+        // Scaled-but-empty is worse than no match: applying it replaces the
+        // model's estimate with zeros, and a food saved from that row then
+        // matches the next photo, spreading the zeros.
+        hasUsableMacros(bestMatch.scaled)
       ),
     });
   }
@@ -297,9 +302,24 @@ async function matchItems(
           const existing = results.get(item.resolvedId);
           if (existing) {
             existing.match = match;
-            // Verified provider nutrition is applied on open; the user can
-            // still revert to the AI estimate with one tap.
-            existing.preselect_match = true;
+            // Verified provider nutrition is applied on open — but only when it
+            // is actually about this food and actually carries numbers.
+            //
+            // `match_score` stays 1 because provider data outranks an AI guess
+            // for ORDERING (prompts/chatbot-full-food.md). Preselecting is a
+            // different question: it overwrites what the user is reviewing, so
+            // it needs the same name-similarity bar a local match must clear.
+            // Without it a search for "idiyappam (string hoppers)" auto-applies
+            // a product called "Rock Hopper" and zeroes a correct estimate.
+            const { score: nameScore } = scoreFoodMatch({
+              candidateName: match.food_name,
+              candidateBrand: match.brand,
+              queryName: item.term,
+              isOwnFood: false,
+            });
+            existing.preselect_match =
+              nameScore >= MATCH_PRESELECT_SCORE &&
+              hasUsableMacros(match.scaled);
           }
         } catch (error) {
           // One bad provider must not cost the user the whole estimate.

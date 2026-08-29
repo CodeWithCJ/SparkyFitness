@@ -88,7 +88,10 @@ describe('sparky_analyze_food_image', () => {
       opts
     );
 
-    expect(result).toBe(
+    // The tool returns a structured result now: the model reads `text`, while
+    // `estimate` rides along for the client to render the interactive card.
+    expect(result).toMatchObject({ estimate: ESTIMATE });
+    expect((result as { text: string }).text).toBe(
       '🔬 Food Image Analysis Result:\n\n' +
         '**Grilled chicken with rice and broccoli** (confidence: medium)\n' +
         'Confidence notes: portion depth not visible\n' +
@@ -130,7 +133,7 @@ describe('sparky_analyze_food_image', () => {
       opts
     );
 
-    expect(result).toBe(
+    expect((result as { text: string }).text).toBe(
       '🔬 Food Image Analysis Result:\n\n' +
         '**Grilled chicken with rice and broccoli** (confidence: medium)\n' +
         '\n' +
@@ -222,16 +225,37 @@ describe('sparky_analyze_food_image', () => {
     expect(result).toBe('❌ Error analyzing image: boom');
   });
 
-  it('returns a validation error when image_url is missing', async () => {
+  it('reports a missing image instead of calling the provider with nothing', async () => {
+    // image_url is optional: the photo normally arrives on the attached
+    // message. With neither, the turn carried no image at all.
+    const result = await tools.sparky_analyze_food_image.execute!({}, opts);
+
+    expect(result).toBe(
+      '❌ Error analyzing image: No image was provided. Attach the photo to your message and try again.'
+    );
+    expect(
+      foodPhotoEstimationService.estimateFoodPhotoNutrition
+    ).not.toHaveBeenCalled();
+  });
+
+  it('passes the meal slot and day the user named through to the card', async () => {
+    vi.mocked(
+      foodPhotoEstimationService.estimateFoodPhotoNutrition
+    ).mockResolvedValue({ success: true, estimate: ESTIMATE });
+
     const result = await tools.sparky_analyze_food_image.execute!(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      {} as any,
+      {
+        image_url: `data:image/png;base64,${PNG_BASE64}`,
+        meal_type: 'snacks',
+        entry_date: '2026-08-27',
+      },
       opts
     );
 
-    expect(result).toBe(
-      'Error [VALIDATION]: image_url: Invalid input: expected string, received undefined'
-    );
+    expect(result).toMatchObject({
+      meal_type: 'snacks',
+      entry_date: '2026-08-27',
+    });
   });
 });
 

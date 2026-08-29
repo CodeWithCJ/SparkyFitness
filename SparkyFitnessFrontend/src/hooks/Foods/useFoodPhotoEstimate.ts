@@ -1,28 +1,17 @@
 import { useMutation } from '@tanstack/react-query';
 import type {
-  FoodPhotoEstimateResponse,
   FoodPhotoLogRequest,
   FoodPhotoLogResponse,
 } from '@workspace/shared';
-import {
-  estimateFoodPhoto,
-  type EstimateFoodPhotoInput,
-} from '@/api/Foods/foodPhotoEstimate';
-import { FoodPhotoEstimateError } from '@/utils/foodPhotoEstimate';
 import { createPhotoLoggedMeal } from '@/api/Diary/foodEntryService';
 import { useDiaryInvalidation } from '@/hooks/useInvalidateKeys';
 
-/** Runs the AI photo estimate. Errors keep their typed `code`. */
-export function useEstimateFoodPhoto(options?: {
-  onSuccess?: (estimate: FoodPhotoEstimateResponse) => void;
-  onError?: (error: FoodPhotoEstimateError | Error) => void;
-}) {
-  return useMutation({
-    mutationFn: (input: EstimateFoodPhotoInput) => estimateFoodPhoto(input),
-    onSuccess: options?.onSuccess,
-    onError: options?.onError,
-  });
-}
+/**
+ * Web runs the estimate itself only from the chat, where the estimate arrives
+ * on the `sparky_analyze_food_image` tool result rather than from a REST call —
+ * so there is no `useEstimateFoodPhoto` here. The mobile app owns the direct
+ * `POST /foods/estimate-food-photo` path.
+ */
 
 /**
  * Logs a reviewed estimate. The diary reads through TanStack Query, so the
