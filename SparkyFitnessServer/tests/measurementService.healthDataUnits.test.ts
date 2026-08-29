@@ -96,6 +96,7 @@ describe('processHealthData default units (#567)', () => {
       entry_date: '2025-02-01',
       source_provider: 'health_connect',
       total_calories: 2100,
+      total_calories_captured_at: new Date('2025-02-01T00:00:00.000Z'),
     });
     expect(measurementRepository.createCustomCategory).not.toHaveBeenCalled();
   });
