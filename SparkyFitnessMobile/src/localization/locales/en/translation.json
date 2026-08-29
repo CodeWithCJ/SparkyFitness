@@ -3868,7 +3868,9 @@
       "title": "Sleep",
       "loadFailed": "Failed to load sleep data",
       "empty": "No sleep data for this period",
-      "tooltip": "{{formattedHours}} h"
+      "avgTimeInBed": "Avg time in bed",
+      "avgTimeAsleep": "Avg time asleep",
+      "rangeLabel": "{{startDate}} – {{endDate}}"
     },
     "loading": "Loading chart...",
     "weightLoadFailed": "Failed to load weight data",

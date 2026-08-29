@@ -4,15 +4,20 @@ import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 
-import type { SleepStageEvent } from '../types/sleep';
+import { laneForStageType, SLEEP_STAGE_LANES, type SleepStageEvent } from '../types/sleep';
 import { usePreferences } from '../hooks/usePreferences';
 import { formatClockTime } from '../utils/sleepDay';
 import { localizeSleepStage } from '../utils/sleepLocalization';
 
+/**
+ * The stage vocabulary now lives in `types/sleep`, shared with the Dashboard sleep
+ * timeline. Re-exported under the hypnogram's original names because here the stages are
+ * literally drawn as lanes, and `LANE_INDEX` below reads off this exact ordering.
+ */
+export { SLEEP_STAGE_LANES as HYPNOGRAM_LANES } from '../types/sleep';
+export type { SleepStageLane as HypnogramLane } from '../types/sleep';
 
-export const HYPNOGRAM_LANES = ['awake', 'rem', 'light', 'deep', 'other'] as const;
-
-export type HypnogramLane = (typeof HYPNOGRAM_LANES)[number];
+type HypnogramLane = (typeof SLEEP_STAGE_LANES)[number];
 
 const LANE_INDEX: Record<HypnogramLane, number> = {
   awake: 0,
@@ -21,8 +26,6 @@ const LANE_INDEX: Record<HypnogramLane, number> = {
   deep: 3,
   other: 4,
 };
-
-const FALLBACK_LANE: HypnogramLane = 'other';
 
 /**
  * A stage shorter than this would render as an invisible sliver or, at exactly zero
@@ -41,13 +44,6 @@ export interface HypnogramSegment {
   lane: HypnogramLane;
   stageType: string;
 }
-
-const laneForStageType = (stageType: string): HypnogramLane => {
-  const normalized = stageType.toLowerCase();
-  return (HYPNOGRAM_LANES as readonly string[]).includes(normalized) && normalized !== FALLBACK_LANE
-    ? (normalized as HypnogramLane)
-    : FALLBACK_LANE;
-};
 
 interface TimedStage {
   startMs: number;
@@ -139,7 +135,7 @@ export const getHypnogramWindow = (
 const LANE_HEIGHT = 22;
 const LANE_GAP = 4;
 const SEGMENT_RADIUS = 3;
-const CHART_HEIGHT = HYPNOGRAM_LANES.length * (LANE_HEIGHT + LANE_GAP);
+const CHART_HEIGHT = SLEEP_STAGE_LANES.length * (LANE_HEIGHT + LANE_GAP);
 
 /**
  * Drawn from the existing categorical palette rather than new `--color-sleep-*` tokens,
@@ -169,7 +165,7 @@ const Hypnogram: React.FC<HypnogramProps> = ({ stages }) => {
   const [chartWidth, setChartWidth] = useState(0);
 
   const laneColors = useCSSVariable(
-    HYPNOGRAM_LANES.map((lane) => LANE_COLOR_VARIABLES[lane]),
+    SLEEP_STAGE_LANES.map((lane) => LANE_COLOR_VARIABLES[lane]),
   ) as string[];
 
   const segments = useMemo(
@@ -200,7 +196,7 @@ const Hypnogram: React.FC<HypnogramProps> = ({ stages }) => {
 
       <View className="flex-row">
         <View style={{ height: CHART_HEIGHT }} className="justify-around mr-2">
-          {HYPNOGRAM_LANES.map((lane) => (
+          {SLEEP_STAGE_LANES.map((lane) => (
             <Text key={lane} className="text-xs text-text-muted" style={{ height: LANE_HEIGHT }}>
               {localizeSleepStage(t, lane)}
             </Text>

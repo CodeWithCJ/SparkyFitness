@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import PagerView from 'react-native-pager-view';
 import HealthTrendsPager from '../../src/components/HealthTrendsPager';
+import type { SleepTrendSeries } from '../../src/hooks/useHealthTrends';
 import type { HealthTrendSeries } from '../../src/types/healthTrends';
 
 // The three charts are replaced by bare testID stubs so this suite asserts page
@@ -25,7 +26,7 @@ jest.mock('../../src/components/WeightLineChart', () => {
   };
 });
 
-jest.mock('../../src/components/SleepBarChart', () => {
+jest.mock('../../src/components/SleepTimelineChart', () => {
   const ReactModule = require('react');
   const { View } = require('react-native');
   return {
@@ -50,12 +51,40 @@ const populated = <TPoint,>(point: TPoint): HealthTrendSeries<TPoint> => ({
 
 const stepsSeries = populated({ day: '2026-06-03', steps: 5000 });
 const weightSeries = populated({ day: '2026-06-03', weight: 80 });
-const sleepSeries = populated({ day: '2026-06-03', hours: 7.5 });
+
+/**
+ * Sleep is padded to one entry per day, so `data` is never empty and the pager gates its
+ * page on `nightsWithData` instead. Both fixtures below carry a full window; only the
+ * night count says whether any of it is real.
+ */
+const sleepTrend = (overrides: Partial<SleepTrendSeries> = {}): SleepTrendSeries => ({
+  data: [{ day: '2026-06-03', timeInBedSeconds: 0, timeAsleepSeconds: null, segments: [] }],
+  isLoading: false,
+  isError: false,
+  averageTimeInBedSeconds: null,
+  averageTimeAsleepSeconds: null,
+  nightsWithData: 0,
+  ...overrides,
+});
+
+const sleepSeries = sleepTrend({
+  data: [
+    {
+      day: '2026-06-03',
+      timeInBedSeconds: 28800,
+      timeAsleepSeconds: 27000,
+      segments: [{ stage: 'other', startMs: 0, endMs: 28800000 }],
+    },
+  ],
+  averageTimeInBedSeconds: 28800,
+  averageTimeAsleepSeconds: 27000,
+  nightsWithData: 1,
+});
 
 const baseProps = (): PagerProps => ({
   steps: stepsSeries,
   weight: emptySeries(),
-  sleep: emptySeries(),
+  sleep: sleepTrend(),
   range: '7d',
   weightUnit: 'kg',
   activePage: 0,
@@ -112,14 +141,14 @@ describe('HealthTrendsPager', () => {
   });
 
   test('gives a still-loading trend a page so its state is visible', () => {
-    renderPager({ sleep: { data: [], isLoading: true, isError: false } });
+    renderPager({ sleep: sleepTrend({ isLoading: true }) });
 
     expect(screen.getByTestId('sleep-chart')).toBeTruthy();
     expect(dots()).toHaveLength(2);
   });
 
   test('gives a failed trend a page so its error is visible', () => {
-    renderPager({ sleep: { data: [], isLoading: false, isError: true } });
+    renderPager({ sleep: sleepTrend({ isError: true }) });
 
     expect(screen.getByTestId('sleep-chart')).toBeTruthy();
     expect(dots()).toHaveLength(2);

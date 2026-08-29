@@ -24,18 +24,82 @@ export interface SleepAnalyticsDay {
 }
 
 /**
- * A single plotted bar on the Dashboard sleep trend.
+ * The sleep stages the app renders, ordered from lightest to deepest.
  *
- * Declared as a type alias rather than an interface because victory-native's
- * `CartesianChart` requires its row type to satisfy `Record<string, unknown>`. Object
- * literal type aliases get that implicit index signature; interfaces never do, so
- * converting this to an interface breaks the chart's generic inference.
+ * Lives here rather than in `Hypnogram.tsx` because both the Sleep Details hypnogram and
+ * the Dashboard sleep timeline lay stages out by name, and a chart importing its
+ * vocabulary from another chart is the wrong dependency direction. `Hypnogram` re-exports
+ * these under their original names so its own lane ordering keeps reading as lanes.
  */
-export type SleepDataPoint = {
+export const SLEEP_STAGE_LANES = ['awake', 'rem', 'light', 'deep', 'other'] as const;
+
+export type SleepStageLane = (typeof SLEEP_STAGE_LANES)[number];
+
+const FALLBACK_STAGE_LANE: SleepStageLane = 'other';
+
+/**
+ * Normalizes a server `stage_type` onto a lane.
+ *
+ * `stage_type` is an unconstrained `varchar(50)`, so anything outside the named stages
+ * (`in_bed`, `unknown`, whatever a future source invents) has to render as *something*
+ * rather than throw — that is what `other` is for. `other` is deliberately not accepted as
+ * an input value: a source naming a stage "other" means the same unknown thing.
+ */
+export const laneForStageType = (stageType: string): SleepStageLane => {
+  const normalized = stageType.toLowerCase();
+  const isNamedStage =
+    (SLEEP_STAGE_LANES as readonly string[]).includes(normalized) &&
+    normalized !== FALLBACK_STAGE_LANE;
+
+  return isNamedStage ? (normalized as SleepStageLane) : FALLBACK_STAGE_LANE;
+};
+
+/** One contiguous run of a single stage, as absolute instants. */
+export interface SleepTimelineSegment {
+  stage: SleepStageLane;
+  startMs: number;
+  endMs: number;
+}
+
+/**
+ * One plotted column on the Dashboard sleep timeline.
+ *
+ * Holds the day's **main sleep only** — naps are excluded, because a nap sits hours from
+ * the night on a shared clock axis and would stretch that axis far enough to squash every
+ * real night in the window.
+ *
+ * Present for every day in the window, including days with no sleep at all — the chart
+ * needs a slot per day so its x-axis labels stay aligned with the nights it drew.
+ *
+ * `day` comes straight from the server's `entry_date`, which files a session under the day
+ * the user *woke up*. A night therefore sits under the morning that ended it, and its
+ * segments legitimately begin before that day's midnight; the clock axis is what places
+ * them, so nothing here clamps them into the day.
+ */
+export interface SleepTimelineDay {
   /** Calendar day (`YYYY-MM-DD`). */
   day: string;
-  hours: number;
-};
+  timeInBedSeconds: number;
+  /** Null, not zero, when no session that day reported time asleep. */
+  timeAsleepSeconds: number | null;
+  segments: SleepTimelineSegment[];
+}
+
+/**
+ * A window of sleep, plus the headline averages drawn above the chart.
+ *
+ * The two averages have deliberately different denominators: time in bed is known for
+ * every session, but time asleep is nullable, so averaging both over the same days would
+ * drag the asleep figure down by every source that does not report it.
+ */
+export interface SleepTimelineSummary {
+  days: SleepTimelineDay[];
+  /** Averaged over days holding at least one session; null when the window has none. */
+  averageTimeInBedSeconds: number | null;
+  /** Averaged over days that reported time asleep; null when none did. */
+  averageTimeAsleepSeconds: number | null;
+  nightsWithData: number;
+}
 
 /**
  * One stage segment within a sleep session, from the `stage_events` aggregate on

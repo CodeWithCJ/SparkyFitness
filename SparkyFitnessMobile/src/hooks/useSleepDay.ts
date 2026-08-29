@@ -4,6 +4,7 @@ import { ApiError } from '../services/api/errors';
 import { fetchSleepEntries } from '../services/api/sleepApi';
 import type { SleepDayBuckets, SleepEntry } from '../types/sleep';
 import { addDays } from '../utils/dateUtils';
+import { compareByMainSleepRank } from '../utils/sleepSessions';
 import { sleepDayQueryKey } from './queryKeys';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 
@@ -17,23 +18,6 @@ export interface SleepDayClassification {
   mainSleep: SleepEntry | null;
   naps: SleepEntry[];
 }
-
-/**
- * Ranks two entries so the day's main sleep sorts first.
- *
- * Ranking is on `duration_in_seconds`, never `time_asleep_in_seconds`: the latter is
- * nullable, so ranking on it would push any entry whose source omits it to the bottom and
- * misclassify a full night as a nap.
- *
- * Equal durations tie-break on the earlier `bedtime`. The tie-break exists purely to make
- * the outcome deterministic — without it, two same-length entries would promote whichever
- * the server happened to return first.
- */
-const compareByMainSleepRank = (first: SleepEntry, second: SleepEntry): number => {
-  const durationDifference = second.duration_in_seconds - first.duration_in_seconds;
-  if (durationDifference !== 0) return durationDifference;
-  return first.bedtime.localeCompare(second.bedtime);
-};
 
 const compareByBedtime = (first: SleepEntry, second: SleepEntry): number =>
   first.bedtime.localeCompare(second.bedtime);

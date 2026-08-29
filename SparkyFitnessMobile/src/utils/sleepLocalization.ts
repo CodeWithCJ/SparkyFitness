@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next';
 
-import type { HypnogramLane } from '../components/Hypnogram';
+import type { SleepStageLane } from '../types/sleep';
 
 /**
  * Sleep stage names, keyed by lane.
@@ -9,8 +9,8 @@ import type { HypnogramLane } from '../components/Hypnogram';
  * audit rejects dynamic keys — a computed key cannot be statically verified against the
  * catalogs, so a missing translation would only surface at runtime.
  */
-export const localizeSleepStage = (t: TFunction, lane: HypnogramLane): string => {
-  const names: Record<HypnogramLane, string> = {
+export const localizeSleepStage = (t: TFunction, lane: SleepStageLane): string => {
+  const names: Record<SleepStageLane, string> = {
     awake: t('sleep.stage.awake', { defaultValue: 'Awake' }),
     rem: t('sleep.stage.rem', { defaultValue: 'REM' }),
     light: t('sleep.stage.light', { defaultValue: 'Light' }),

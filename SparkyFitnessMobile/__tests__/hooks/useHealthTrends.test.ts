@@ -1,9 +1,10 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { useHealthTrends } from '../../src/hooks/useHealthTrends';
 import { fetchMeasurementsRange } from '../../src/services/api/measurementsApi';
-import { fetchSleepAnalytics } from '../../src/services/api/sleepApi';
+import { fetchSleepEntries } from '../../src/services/api/sleepApi';
 import { ApiError } from '../../src/services/api/errors';
 import { getTodayDate } from '../../src/utils/dateUtils';
+import { buildSleepEntry } from '../helpers/sleepFixtures';
 import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/measurementsApi', () => ({
@@ -11,7 +12,14 @@ jest.mock('../../src/services/api/measurementsApi', () => ({
 }));
 
 jest.mock('../../src/services/api/sleepApi', () => ({
-  fetchSleepAnalytics: jest.fn(),
+  fetchSleepEntries: jest.fn(),
+}));
+
+// `useSleepRange` reads the profile timezone to decide which day the window ends on. With
+// none configured it falls back to device-local, which is what the sibling measurements
+// request uses, so both endpoints ask for the same window.
+jest.mock('../../src/hooks/usePreferences', () => ({
+  usePreferences: jest.fn(() => ({ preferences: undefined })),
 }));
 
 jest.mock('@react-navigation/native', () => ({
@@ -21,8 +29,8 @@ jest.mock('@react-navigation/native', () => ({
 const mockFetchMeasurementsRange = fetchMeasurementsRange as jest.MockedFunction<
   typeof fetchMeasurementsRange
 >;
-const mockFetchSleepAnalytics = fetchSleepAnalytics as jest.MockedFunction<
-  typeof fetchSleepAnalytics
+const mockFetchSleepEntries = fetchSleepEntries as jest.MockedFunction<
+  typeof fetchSleepEntries
 >;
 
 const today = getTodayDate();
@@ -36,19 +44,13 @@ const measurementRow = {
   updated_at: `${today}T10:00:00.000Z`,
 };
 
-const sleepRow = {
-  date: today,
-  totalSleepDuration: 28800,
-  timeAsleep: 27000,
-  sleepScore: 80,
-  earliestBedtime: null,
-  latestWakeTime: null,
-  sleepEfficiency: 93.75,
-  sleepDebt: 0.5,
-  stagePercentages: {},
-  awakePeriods: 1,
-  totalAwakeDuration: 1800,
-};
+const sleepEntry = buildSleepEntry({
+  entry_date: today,
+  bedtime: `${today}T00:00:00.000Z`,
+  wake_time: `${today}T08:00:00.000Z`,
+  duration_in_seconds: 28800,
+  time_asleep_in_seconds: 27000,
+});
 
 let queryClient: QueryClient;
 
@@ -61,7 +63,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   queryClient = createTestQueryClient();
   mockFetchMeasurementsRange.mockResolvedValue([]);
-  mockFetchSleepAnalytics.mockResolvedValue([]);
+  mockFetchSleepEntries.mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -72,17 +74,47 @@ describe('useHealthTrends', () => {
   test('returns all three series from one call', async () => {
     // @ts-expect-error partial row is enough for the fields the hook reads
     mockFetchMeasurementsRange.mockResolvedValue([measurementRow]);
-    mockFetchSleepAnalytics.mockResolvedValue([sleepRow]);
+    mockFetchSleepEntries.mockResolvedValue([sleepEntry]);
 
     const { result } = renderTrends();
 
     await waitFor(() => {
-      expect(result.current.sleep.data.length).toBeGreaterThan(0);
+      expect(result.current.sleep.nightsWithData).toBe(1);
     });
 
     expect(result.current.steps.data.at(-1)).toEqual({ day: today, steps: 5000 });
     expect(result.current.weight.data.at(-1)).toEqual({ day: today, weight: 80 });
-    expect(result.current.sleep.data.at(-1)).toEqual({ day: today, hours: 7.5 });
+    expect(result.current.sleep.data.at(-1)).toMatchObject({
+      day: today,
+      timeInBedSeconds: 28800,
+      timeAsleepSeconds: 27000,
+    });
+  });
+
+  test('carries the window averages the sleep card headlines', async () => {
+    mockFetchSleepEntries.mockResolvedValue([sleepEntry]);
+
+    const { result } = renderTrends();
+
+    await waitFor(() => {
+      expect(result.current.sleep.nightsWithData).toBe(1);
+    });
+
+    expect(result.current.sleep.averageTimeInBedSeconds).toBe(28800);
+    expect(result.current.sleep.averageTimeAsleepSeconds).toBe(27000);
+  });
+
+  test('pads the sleep series to one entry per day regardless of coverage', async () => {
+    // The pager gates the sleep page on `nightsWithData`, not on `data.length`, precisely
+    // because an all-empty window still fills every column.
+    const { result } = renderTrends();
+
+    await waitFor(() => {
+      expect(result.current.sleep.isLoading).toBe(false);
+    });
+
+    expect(result.current.sleep.data).toHaveLength(7);
+    expect(result.current.sleep.nightsWithData).toBe(0);
   });
 
   test('requests both endpoints for the same window', async () => {
@@ -90,18 +122,18 @@ describe('useHealthTrends', () => {
 
     await waitFor(() => {
       expect(mockFetchMeasurementsRange).toHaveBeenCalled();
-      expect(mockFetchSleepAnalytics).toHaveBeenCalled();
+      expect(mockFetchSleepEntries).toHaveBeenCalled();
     });
 
     expect(mockFetchMeasurementsRange.mock.calls[0]).toEqual(
-      mockFetchSleepAnalytics.mock.calls[0],
+      mockFetchSleepEntries.mock.calls[0],
     );
   });
 
   test('leaves steps and weight intact when sleep fails', async () => {
     // @ts-expect-error partial row is enough for the fields the hook reads
     mockFetchMeasurementsRange.mockResolvedValue([measurementRow]);
-    mockFetchSleepAnalytics.mockRejectedValue(new Error('sleep exploded'));
+    mockFetchSleepEntries.mockRejectedValue(new Error('sleep exploded'));
 
     const { result } = renderTrends();
 
@@ -112,21 +144,23 @@ describe('useHealthTrends', () => {
     expect(result.current.steps.isError).toBe(false);
     expect(result.current.steps.data.at(-1)).toEqual({ day: today, steps: 5000 });
     expect(result.current.sleep.data).toEqual([]);
+    expect(result.current.sleep.nightsWithData).toBe(0);
   });
 
   test('treats a sleep 403 as no data rather than an error', async () => {
-    mockFetchSleepAnalytics.mockRejectedValue(new ApiError('Forbidden', 403));
+    mockFetchSleepEntries.mockRejectedValue(new ApiError('Forbidden', 403));
 
     const { result } = renderTrends();
 
     await waitFor(() => {
-      expect(mockFetchSleepAnalytics).toHaveBeenCalled();
+      expect(mockFetchSleepEntries).toHaveBeenCalled();
     });
 
     await waitFor(() => {
       expect(result.current.sleep.isError).toBe(false);
     });
     expect(result.current.sleep.data).toEqual([]);
+    expect(result.current.sleep.nightsWithData).toBe(0);
   });
 
   test('shares one fetch state between steps and weight', async () => {
@@ -145,7 +179,7 @@ describe('useHealthTrends', () => {
 
     await waitFor(() => {
       expect(mockFetchMeasurementsRange).toHaveBeenCalledTimes(1);
-      expect(mockFetchSleepAnalytics).toHaveBeenCalledTimes(1);
+      expect(mockFetchSleepEntries).toHaveBeenCalledTimes(1);
     });
 
     await act(async () => {
@@ -153,7 +187,7 @@ describe('useHealthTrends', () => {
     });
 
     expect(mockFetchMeasurementsRange).toHaveBeenCalledTimes(2);
-    expect(mockFetchSleepAnalytics).toHaveBeenCalledTimes(2);
+    expect(mockFetchSleepEntries).toHaveBeenCalledTimes(2);
   });
 
   test('makes no request when disabled', async () => {
@@ -162,6 +196,6 @@ describe('useHealthTrends', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     expect(mockFetchMeasurementsRange).not.toHaveBeenCalled();
-    expect(mockFetchSleepAnalytics).not.toHaveBeenCalled();
+    expect(mockFetchSleepEntries).not.toHaveBeenCalled();
   });
 });

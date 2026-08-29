@@ -2,16 +2,16 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import type { StepsDataPoint, WeightDataPoint } from '../hooks/useMeasurementsRange';
+import type { SleepTrendSeries } from '../hooks/useHealthTrends';
 import type { HealthTrendDateRange, HealthTrendSeries } from '../types/healthTrends';
-import type { SleepDataPoint } from '../types/sleep';
-import SleepBarChart from './SleepBarChart';
+import SleepTimelineChart from './SleepTimelineChart';
 import StepsBarChart from './StepsBarChart';
 import WeightLineChart from './WeightLineChart';
 
 type HealthTrendsPagerProps = {
   steps: HealthTrendSeries<StepsDataPoint>;
   weight: HealthTrendSeries<WeightDataPoint>;
-  sleep: HealthTrendSeries<SleepDataPoint>;
+  sleep: SleepTrendSeries;
   range: HealthTrendDateRange;
   weightUnit: string;
   activePage: number;
@@ -23,7 +23,12 @@ type HealthTrendPage = {
   content: React.ReactElement;
 };
 
-const PAGER_HEIGHT = 290;
+/**
+ * Sized to the tallest page, which is Sleep: it stacks two stat tiles, a subtitle line, a
+ * 150px plot, an x-axis row, and a legend, where Steps and Weight carry a single tooltip
+ * line above their plot. The pager takes the max rather than letting the sleep card clip.
+ */
+const PAGER_HEIGHT = 350;
 
 const shouldShowTrend = <TPoint,>(series: HealthTrendSeries<TPoint>): boolean =>
   series.isLoading || series.isError || series.data.length > 0;
@@ -50,10 +55,14 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
     });
   }
 
-  if (shouldShowTrend(sleep)) {
+  // Sleep cannot use `shouldShowTrend`: its `data` is padded to one entry per day in the
+  // window, so it is never empty and the page would show for users with no sleep at all.
+  const shouldShowSleep = sleep.isLoading || sleep.isError || sleep.nightsWithData > 0;
+
+  if (shouldShowSleep) {
     pages.push({
       key: 'sleep',
-      content: <SleepBarChart {...sleep} range={range} />,
+      content: <SleepTimelineChart {...sleep} range={range} />,
     });
   }
 
