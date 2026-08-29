@@ -369,6 +369,9 @@ describe('Generic Health & Workout Zod Schemas', () => {
 
     const parsed = dailyHealthMetricsSchema.parse(validDaily);
     expect(parsed.total_steps).toBe(12450);
+    expect(parsed.total_calories_captured_at).toEqual(
+      new Date('2026-07-29T12:00:00Z')
+    );
     expect(parsed.body_battery_highest).toBe(95);
     expect(parsed.acwr_ratio).toBe(1.09);
   });
