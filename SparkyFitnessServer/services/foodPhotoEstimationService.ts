@@ -10,6 +10,9 @@ import { deriveAiNetworkPolicy } from '../utils/outboundUrlPolicy.js';
 import { attachFoodMatches } from './foodPhotoMatchService.js';
 import {
   foodPhotoEstimateResponseSchema,
+  asPortionMacros,
+  sumPortionMacros,
+  ESTIMATE_MACRO_KEYS,
   type FoodPhotoEstimateErrorCode,
   type FoodPhotoEstimateResponse,
 } from '@workspace/shared';
@@ -94,6 +97,56 @@ const RESPONSE_SCHEMA: JsonSchemaNode = {
             type: 'number',
             description: 'Estimated sugars in grams',
           },
+          saturated_fat_g: {
+            type: 'number',
+            description:
+              'Estimated saturated fat in grams. Estimate from the typical profile of this food (animal fat vs plant oil) rather than defaulting to 0.',
+          },
+          polyunsaturated_fat_g: {
+            type: 'number',
+            description:
+              'Estimated polyunsaturated fat in grams. Estimate from the typical fat profile rather than defaulting to 0.',
+          },
+          monounsaturated_fat_g: {
+            type: 'number',
+            description:
+              'Estimated monounsaturated fat in grams. Estimate from the typical fat profile rather than defaulting to 0.',
+          },
+          trans_fat_g: {
+            type: 'number',
+            description:
+              'Estimated trans fat in grams. Usually 0 for whole foods; estimate for fried and processed items.',
+          },
+          cholesterol_mg: {
+            type: 'number',
+            description:
+              'Estimated cholesterol in milligrams. 0 for plant foods; estimate for animal products.',
+          },
+          sodium_mg: {
+            type: 'number',
+            description:
+              'Estimated sodium in milligrams, accounting for added salt and processing. Do not default to 0 for a seasoned or restaurant dish.',
+          },
+          potassium_mg: {
+            type: 'number',
+            description: 'Estimated potassium in milligrams.',
+          },
+          calcium_mg: {
+            type: 'number',
+            description: 'Estimated calcium in milligrams.',
+          },
+          iron_mg: {
+            type: 'number',
+            description: 'Estimated iron in milligrams.',
+          },
+          vitamin_a_mcg: {
+            type: 'number',
+            description: 'Estimated vitamin A in micrograms (RAE).',
+          },
+          vitamin_c_mg: {
+            type: 'number',
+            description: 'Estimated vitamin C in milligrams.',
+          },
           item_confidence: {
             type: 'string',
             description:
@@ -119,6 +172,17 @@ const RESPONSE_SCHEMA: JsonSchemaNode = {
           'fat_g',
           'fiber_g',
           'sugar_g',
+          'saturated_fat_g',
+          'polyunsaturated_fat_g',
+          'monounsaturated_fat_g',
+          'trans_fat_g',
+          'cholesterol_mg',
+          'sodium_mg',
+          'potassium_mg',
+          'calcium_mg',
+          'iron_mg',
+          'vitamin_a_mcg',
+          'vitamin_c_mg',
           'item_confidence',
           'assumptions',
         ],
@@ -134,6 +198,17 @@ const RESPONSE_SCHEMA: JsonSchemaNode = {
           'fat_g',
           'fiber_g',
           'sugar_g',
+          'saturated_fat_g',
+          'polyunsaturated_fat_g',
+          'monounsaturated_fat_g',
+          'trans_fat_g',
+          'cholesterol_mg',
+          'sodium_mg',
+          'potassium_mg',
+          'calcium_mg',
+          'iron_mg',
+          'vitamin_a_mcg',
+          'vitamin_c_mg',
           'item_confidence',
           'assumptions',
         ],
@@ -258,6 +333,12 @@ Rules:
   - Give every item a canonical_name as well as its display name: the plain
     generic food noun, with preparation adjectives, brands, and quantities
     removed. It is used to look the item up in a food database.
+  - Populate the micronutrients (saturated/poly/mono/trans fat, cholesterol,
+    sodium, potassium, calcium, iron, vitamin A, vitamin C) from the typical
+    composition of each food. Estimate them; do not default them to 0 just
+    because they are not visible. 0 is only correct when it is actually true
+    (cholesterol in a plant food, trans fat in a whole food). Sodium in
+    particular is rarely 0 in a seasoned, restaurant or processed dish.
   - Be explicit about assumptions (oil used, milk type, skin on/off).
   - Lower your confidence when portions are ambiguous or ingredients hidden.
   - Only ask clarifying questions that would materially change the estimate.`;
@@ -459,6 +540,32 @@ export type EstimateFoodPhotoNutritionResult =
   | { success: true; estimate: FoodPhotoEstimateResponse }
   | { success: false; code: FoodPhotoEstimateErrorCode; error: string };
 
+/**
+ * Fills the totals' micronutrients by summing the items.
+ *
+ * The model is asked for micronutrients per ITEM but not in `totals` — adding
+ * eleven more numbers to sum by hand is a reliability liability on a call that
+ * already returns a lot of structure, and both clients derive their own totals
+ * from the rows anyway. `sparky_log_food_photo` reads `estimate.totals`
+ * directly, though, so the server sums them here instead of leaving that path
+ * with zeros. The core macros are left exactly as the model reported them.
+ */
+function withDerivedTotalMicros(
+  estimate: FoodPhotoEstimateResponse
+): FoodPhotoEstimateResponse {
+  const items = estimate.items ?? [];
+  if (items.length === 0) return estimate;
+  const summed = sumPortionMacros(
+    items.map((item) => ({ macros: asPortionMacros(item) }))
+  );
+  const totals = { ...estimate.totals };
+  for (const key of ESTIMATE_MACRO_KEYS) {
+    if (key in estimate.totals) continue;
+    totals[key] = summed[key];
+  }
+  return { ...estimate, totals };
+}
+
 async function estimateFoodPhotoNutrition(
   input: EstimateFoodPhotoNutritionInput
 ): Promise<EstimateFoodPhotoNutritionResult> {
@@ -543,7 +650,10 @@ async function estimateFoodPhotoNutrition(
   // therefore what an older client displays, are never touched. A matching
   // failure is swallowed inside the service so it can never cost the user an
   // estimate they already paid an AI call for.
-  const enriched = await attachFoodMatches(userId, parsed.data);
+  const enriched = await attachFoodMatches(
+    userId,
+    withDerivedTotalMicros(parsed.data)
+  );
   // After matching, so the search terms the matcher sees are the model's own.
   return { success: true, estimate: titleCaseItemNames(enriched) };
 }

@@ -7,7 +7,35 @@ export const foodPhotoEstimateConfidenceSchema = z.enum([
 ]);
 
 /**
- * The six macros every layer of this flow speaks in. Extracted so the item,
+ * The micronutrients the estimate carries alongside the core macros.
+ *
+ * Every one is optional — never `.default()`, which would make the PARSED type
+ * required and force every existing fixture and item literal to list all
+ * eleven. A model that ignores them, or an estimate produced before they
+ * existed, still parses, and `asPortionMacros` coerces a missing value to 0 on
+ * the way into the maths. They scale with
+ * the row's weight exactly like the macros do — see `ESTIMATE_ALL_MACRO_KEYS`
+ * in `foodPhotoEstimateMath.ts`, which is what the scaling maths iterates.
+ *
+ * Units follow the `food_variants` columns they end up in, not the estimate's
+ * gram-centric macro names: mg for minerals, mcg for vitamin A.
+ */
+export const foodPhotoEstimateMicrosShape = {
+  saturated_fat_g: z.number().optional(),
+  polyunsaturated_fat_g: z.number().optional(),
+  monounsaturated_fat_g: z.number().optional(),
+  trans_fat_g: z.number().optional(),
+  cholesterol_mg: z.number().optional(),
+  sodium_mg: z.number().optional(),
+  potassium_mg: z.number().optional(),
+  calcium_mg: z.number().optional(),
+  iron_mg: z.number().optional(),
+  vitamin_a_mcg: z.number().optional(),
+  vitamin_c_mg: z.number().optional(),
+};
+
+/**
+ * The nutrition every layer of this flow speaks in. Extracted so the item,
  * totals, and match schemas cannot drift apart.
  *
  * These numbers are always on the PORTION basis (they describe the estimated
@@ -22,6 +50,7 @@ export const foodPhotoEstimateMacrosSchema = z.object({
   fat_g: z.number(),
   fiber_g: z.number(),
   sugar_g: z.number(),
+  ...foodPhotoEstimateMicrosShape,
 });
 
 /**
@@ -95,6 +124,7 @@ export const foodPhotoEstimateItemSchema = z
     fat_g: z.number(),
     fiber_g: z.number(),
     sugar_g: z.number(),
+    ...foodPhotoEstimateMicrosShape,
     item_confidence: foodPhotoEstimateConfidenceSchema,
     assumptions: z.array(z.string()).default([]),
 

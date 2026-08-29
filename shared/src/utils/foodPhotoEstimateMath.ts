@@ -35,7 +35,7 @@ import { parseSearchTerms } from "./search.ts";
 
 declare const NUTRITION_BASIS: unique symbol;
 
-/** The six macros the photo estimator works in. Basis-agnostic on its own. */
+/** The nutrition the photo estimator works in. Basis-agnostic on its own. */
 export interface EstimateMacros {
   calories_kcal: number;
   protein_g: number;
@@ -43,6 +43,21 @@ export interface EstimateMacros {
   fat_g: number;
   fiber_g: number;
   sugar_g: number;
+
+  // Micronutrients. Always present on the type (zero when unknown) so the
+  // scaling maths can treat every nutrient identically; the wire schema is
+  // what makes them optional for old clients and forgetful models.
+  saturated_fat_g: number;
+  polyunsaturated_fat_g: number;
+  monounsaturated_fat_g: number;
+  trans_fat_g: number;
+  cholesterol_mg: number;
+  sodium_mg: number;
+  potassium_mg: number;
+  calcium_mg: number;
+  iron_mg: number;
+  vitamin_a_mcg: number;
+  vitamin_c_mg: number;
 }
 
 /** Macros describing one specific portion — what the vision model returns. */
@@ -55,6 +70,12 @@ export type Per100gMacros = EstimateMacros & {
   readonly [NUTRITION_BASIS]: "per100g";
 };
 
+/**
+ * Every nutrient the estimator carries, in one list. Scaling, summing and
+ * rounding all iterate this, so a nutrient added to `EstimateMacros` is
+ * automatically carried through the maths — a row rescaled from 145 g to 290 g
+ * whose sodium did not move would log twice the food with the same salt.
+ */
 export const ESTIMATE_MACRO_KEYS = [
   "calories_kcal",
   "protein_g",
@@ -62,6 +83,17 @@ export const ESTIMATE_MACRO_KEYS = [
   "fat_g",
   "fiber_g",
   "sugar_g",
+  "saturated_fat_g",
+  "polyunsaturated_fat_g",
+  "monounsaturated_fat_g",
+  "trans_fat_g",
+  "cholesterol_mg",
+  "sodium_mg",
+  "potassium_mg",
+  "calcium_mg",
+  "iron_mg",
+  "vitamin_a_mcg",
+  "vitamin_c_mg",
 ] as const satisfies readonly (keyof EstimateMacros)[];
 
 /** Reference weight every stored food variant this flow creates is based on. */
@@ -72,14 +104,11 @@ export const PER_100G_BASIS_GRAMS = 100;
 // --------------------------------------------------------------------------
 
 function pickMacros(source: Partial<EstimateMacros>): EstimateMacros {
-  return {
-    calories_kcal: finite(source.calories_kcal),
-    protein_g: finite(source.protein_g),
-    carbs_g: finite(source.carbs_g),
-    fat_g: finite(source.fat_g),
-    fiber_g: finite(source.fiber_g),
-    sugar_g: finite(source.sugar_g),
-  };
+  const picked = {} as EstimateMacros;
+  for (const key of ESTIMATE_MACRO_KEYS) {
+    picked[key] = finite(source[key]);
+  }
+  return picked;
 }
 
 function finite(value: number | undefined | null): number {
@@ -121,14 +150,11 @@ export function unbrandMacros(
 // --------------------------------------------------------------------------
 
 function scaleBy(macros: EstimateMacros, factor: number): EstimateMacros {
-  return {
-    calories_kcal: macros.calories_kcal * factor,
-    protein_g: macros.protein_g * factor,
-    carbs_g: macros.carbs_g * factor,
-    fat_g: macros.fat_g * factor,
-    fiber_g: macros.fiber_g * factor,
-    sugar_g: macros.sugar_g * factor,
-  };
+  const scaled = {} as EstimateMacros;
+  for (const key of ESTIMATE_MACRO_KEYS) {
+    scaled[key] = macros[key] * factor;
+  }
+  return scaled;
 }
 
 /**
@@ -185,7 +211,9 @@ export function scalePortionMacros(
  * rather than invent a number.
  */
 export function scaleVariantToGrams(
-  variantMacros: EstimateMacros,
+  // Partial because this is an entry point from a database row: a variant that
+  // records no sodium simply omits it, and `pickMacros` coerces it to 0.
+  variantMacros: Partial<EstimateMacros>,
   variantServingSize: number,
   variantServingUnit: string,
   targetGrams: number,
@@ -204,21 +232,17 @@ export function scaleVariantToGrams(
   const servingGrams = variantServingSize / factor;
   if (!Number.isFinite(servingGrams) || servingGrams <= 0) return null;
 
-  return scaleBy(variantMacros, targetGrams / servingGrams) as PortionMacros;
+  return scaleBy(
+    pickMacros(variantMacros),
+    targetGrams / servingGrams
+  ) as PortionMacros;
 }
 
 /** Sum portion macros across the ingredient rows. Totals are always derived. */
 export function sumPortionMacros(
   items: readonly { macros: PortionMacros }[],
 ): PortionMacros {
-  const total: EstimateMacros = {
-    calories_kcal: 0,
-    protein_g: 0,
-    carbs_g: 0,
-    fat_g: 0,
-    fiber_g: 0,
-    sugar_g: 0,
-  };
+  const total = pickMacros({});
   for (const item of items) {
     for (const key of ESTIMATE_MACRO_KEYS) {
       total[key] += item.macros[key];
@@ -267,6 +291,61 @@ export function roundedMacros(
   decimals = 2,
 ): EstimateMacros {
   return unbrandMacros(roundMacros(macros, decimals));
+}
+
+/**
+ * Nutrition in the column names `foods` / `food_variants` use.
+ *
+ * The estimate speaks in gram-suffixed names (`fiber_g`, `sodium_mg`); the
+ * database speaks in column names (`dietary_fiber`, `sodium`). Both clients
+ * build the same create-food payload, so the translation lives here rather
+ * than being written out twice and drifting the next time a nutrient is added.
+ */
+export interface FoodNutritionFields {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  dietary_fiber: number;
+  sugars: number;
+  saturated_fat: number;
+  polyunsaturated_fat: number;
+  monounsaturated_fat: number;
+  trans_fat: number;
+  cholesterol: number;
+  sodium: number;
+  potassium: number;
+  calcium: number;
+  iron: number;
+  vitamin_a: number;
+  vitamin_c: number;
+}
+
+/** Round for storage and rename onto the food columns in one step. */
+export function toFoodNutritionFields(
+  macros: PortionMacros | Per100gMacros,
+  decimals = 2,
+): FoodNutritionFields {
+  const m = roundedMacros(macros, decimals);
+  return {
+    calories: m.calories_kcal,
+    protein: m.protein_g,
+    carbs: m.carbs_g,
+    fat: m.fat_g,
+    dietary_fiber: m.fiber_g,
+    sugars: m.sugar_g,
+    saturated_fat: m.saturated_fat_g,
+    polyunsaturated_fat: m.polyunsaturated_fat_g,
+    monounsaturated_fat: m.monounsaturated_fat_g,
+    trans_fat: m.trans_fat_g,
+    cholesterol: m.cholesterol_mg,
+    sodium: m.sodium_mg,
+    potassium: m.potassium_mg,
+    calcium: m.calcium_mg,
+    iron: m.iron_mg,
+    vitamin_a: m.vitamin_a_mcg,
+    vitamin_c: m.vitamin_c_mg,
+  };
 }
 
 // --------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import {
   toPer100g,
-  roundedMacros,
+  toFoodNutritionFields,
   type IngredientDraftRow,
 } from '@workspace/shared';
 import type { MealFood } from '@/types/meal';
@@ -25,7 +25,6 @@ export function estimateRowsToMealFoods(
     // would carry that error for good. Drop the row instead.
     const per100g = toPer100g(row.macros, row.grams);
     if (!per100g) return [];
-    const rounded = roundedMacros(per100g);
     const applied = row.matchApplied ? row.match : null;
     return [
       {
@@ -35,12 +34,7 @@ export function estimateRowsToMealFoods(
         food_name: row.name,
         quantity: row.grams,
         unit: 'g',
-        calories: rounded.calories_kcal,
-        protein: rounded.protein_g,
-        carbs: rounded.carbs_g,
-        fat: rounded.fat_g,
-        dietary_fiber: rounded.fiber_g,
-        sugars: rounded.sugar_g,
+        ...toFoodNutritionFields(per100g),
         serving_size: 100,
         serving_unit: 'g',
       },

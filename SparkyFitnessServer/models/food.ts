@@ -408,6 +408,17 @@ export interface FoodMatchCandidateRow {
   fat: number | string | null;
   dietary_fiber: number | string | null;
   sugars: number | string | null;
+  saturated_fat: number | string | null;
+  polyunsaturated_fat: number | string | null;
+  monounsaturated_fat: number | string | null;
+  trans_fat: number | string | null;
+  cholesterol: number | string | null;
+  sodium: number | string | null;
+  potassium: number | string | null;
+  calcium: number | string | null;
+  iron: number | string | null;
+  vitamin_a: number | string | null;
+  vitamin_c: number | string | null;
   last_used: string | null;
 }
 
@@ -452,6 +463,13 @@ async function findFoodMatchCandidates(
                 fv.id AS variant_id, fv.serving_size, fv.serving_unit,
                 fv.calories, fv.protein, fv.carbs, fv.fat,
                 fv.dietary_fiber, fv.sugars,
+                -- Selected so applying a match carries the food's real
+                -- micronutrients. Omitting them would scale to 0 and blank
+                -- values the matched food actually records.
+                fv.saturated_fat, fv.polyunsaturated_fat,
+                fv.monounsaturated_fat, fv.trans_fat, fv.cholesterol,
+                fv.sodium, fv.potassium, fv.calcium, fv.iron,
+                fv.vitamin_a, fv.vitamin_c,
                 (SELECT MAX(fe.entry_date) FROM food_entries fe
                   WHERE fe.food_id = f.id AND fe.user_id = $1) AS last_used
          FROM foods f

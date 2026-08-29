@@ -14,7 +14,7 @@ import {
 import type { ToolCallMessagePartComponent } from '@assistant-ui/react';
 import {
   toPer100g,
-  roundedMacros,
+  toFoodNutritionFields,
   defaultMealTypeForTime,
   todayInZone,
   userHourMinute,
@@ -255,7 +255,6 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
         });
         return;
       }
-      const rounded = roundedMacros(per100g);
       items = [
         {
           source: 'new',
@@ -264,12 +263,7 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
             brand: null,
             serving_size: 100,
             serving_unit: 'g',
-            calories: rounded.calories_kcal,
-            protein: rounded.protein_g,
-            carbs: rounded.carbs_g,
-            fat: rounded.fat_g,
-            dietary_fiber: rounded.fiber_g,
-            sugars: rounded.sugar_g,
+            ...toFoodNutritionFields(per100g),
             ai_confidence: estimate.overall_confidence,
           },
           quantity: grams,
@@ -290,7 +284,6 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
         } else {
           const per100g = toPer100g(row.macros, row.grams);
           if (!per100g) continue;
-          const rounded = roundedMacros(per100g);
           items.push({
             source: 'new',
             food: {
@@ -298,12 +291,7 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
               brand: null,
               serving_size: 100,
               serving_unit: 'g',
-              calories: rounded.calories_kcal,
-              protein: rounded.protein_g,
-              carbs: rounded.carbs_g,
-              fat: rounded.fat_g,
-              dietary_fiber: rounded.fiber_g,
-              sugars: rounded.sugar_g,
+              ...toFoodNutritionFields(per100g),
               ai_confidence: row.confidence,
             },
             quantity: row.grams,

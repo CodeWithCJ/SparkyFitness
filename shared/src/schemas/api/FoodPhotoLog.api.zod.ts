@@ -56,6 +56,8 @@ export const foodPhotoLogNewFoodSchema = z
     dietary_fiber: z.number().nonnegative().optional(),
     sugars: z.number().nonnegative().optional(),
     saturated_fat: z.number().nonnegative().optional(),
+    polyunsaturated_fat: z.number().nonnegative().optional(),
+    monounsaturated_fat: z.number().nonnegative().optional(),
     trans_fat: z.number().nonnegative().optional(),
     cholesterol: z.number().nonnegative().optional(),
     sodium: z.number().nonnegative().optional(),

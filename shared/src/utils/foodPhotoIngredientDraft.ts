@@ -3,7 +3,6 @@ import {
   scalePortionMacros,
   sumPortionMacros,
   sumGrams,
-  ESTIMATE_MACRO_KEYS,
 } from "./foodPhotoEstimateMath.ts";
 import type { EstimateMacros, PortionMacros } from "./foodPhotoEstimateMath.ts";
 import type {
@@ -96,6 +95,24 @@ export type IngredientDraftAction =
   | { type: 'RESET'; items: FoodPhotoEstimateItem[] };
 
 /**
+ * The nutrients that decide whether a match is worth applying.
+ *
+ * Deliberately NOT `ESTIMATE_MACRO_KEYS`. A candidate whose calories, protein,
+ * carbs and fat are all zero but which lists 5 mg of sodium carries no usable
+ * nutrition — applying it would blank every number the user is looking at.
+ * Checking the full nutrient list would silently call that match usable, so
+ * this stays the four-plus-two the row actually displays.
+ */
+const MATCH_SIGNIFICANT_KEYS = [
+  "calories_kcal",
+  "protein_g",
+  "carbs_g",
+  "fat_g",
+  "fiber_g",
+  "sugar_g",
+] as const satisfies readonly (keyof EstimateMacros)[];
+
+/**
  * Whether a match's scaled nutrition says anything at all.
  *
  * A match can carry an all-zero `scaled` — the matched food itself has no
@@ -109,10 +126,12 @@ export type IngredientDraftAction =
  * when it decides whether to preselect a match at all.
  */
 export function hasUsableMacros(
-  scaled: EstimateMacros | null | undefined,
+  // Partial: `match.scaled` comes off the wire, where every micronutrient is
+  // optional. Only the core macros are inspected anyway.
+  scaled: Partial<EstimateMacros> | null | undefined,
 ): boolean {
   if (!scaled) return false;
-  return ESTIMATE_MACRO_KEYS.some((key) => {
+  return MATCH_SIGNIFICANT_KEYS.some((key) => {
     const value = scaled[key];
     return typeof value === "number" && Number.isFinite(value) && value > 0;
   });

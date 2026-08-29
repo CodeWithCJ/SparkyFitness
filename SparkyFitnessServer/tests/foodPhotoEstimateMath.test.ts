@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  toFoodNutritionFields,
   asPortionMacros,
   asPer100gMacros,
   toPer100g,
@@ -308,5 +309,47 @@ describe('scoreFoodMatch', () => {
     expect(
       scoreFoodMatch({ ...base, candidateName: 'Rice', queryName: '' }).score
     ).toBe(0);
+  });
+});
+
+describe('toFoodNutritionFields', () => {
+  it('renames every nutrient onto its food column and scales with the row', () => {
+    // 145 g of chicken thigh carrying micros, rescaled to 290 g.
+    const portion = asPortionMacros({
+      calories_kcal: 289,
+      protein_g: 38,
+      fat_g: 14.5,
+      saturated_fat_g: 4,
+      polyunsaturated_fat_g: 3,
+      monounsaturated_fat_g: 6,
+      trans_fat_g: 0.1,
+      cholesterol_mg: 130,
+      sodium_mg: 105,
+      potassium_mg: 320,
+      calcium_mg: 12,
+      iron_mg: 1.3,
+      vitamin_a_mcg: 18,
+      vitamin_c_mg: 0.5,
+    });
+    const doubled = scalePortionMacros(portion, 145, 290)!;
+    const fields = toFoodNutritionFields(doubled);
+
+    // Micros must scale with the weight like the macros do — a row logged at
+    // twice the weight with the same sodium is the bug this guards.
+    expect(fields.calories).toBeCloseTo(578, 6);
+    expect(fields.saturated_fat).toBeCloseTo(8, 6);
+    expect(fields.sodium).toBeCloseTo(210, 6);
+    expect(fields.cholesterol).toBeCloseTo(260, 6);
+    expect(fields.vitamin_a).toBeCloseTo(36, 6);
+    expect(fields.vitamin_c).toBeCloseTo(1, 6);
+    expect(fields.iron).toBeCloseTo(2.6, 6);
+  });
+
+  it('defaults a nutrient the model omitted to 0 rather than undefined', () => {
+    const fields = toFoodNutritionFields(
+      asPortionMacros({ calories_kcal: 100 })
+    );
+    expect(fields.sodium).toBe(0);
+    expect(fields.polyunsaturated_fat).toBe(0);
   });
 });

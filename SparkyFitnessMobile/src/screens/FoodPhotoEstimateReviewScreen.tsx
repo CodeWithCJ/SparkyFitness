@@ -13,7 +13,7 @@ import { useCSSVariable } from 'uniwind';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   toPer100g,
-  roundedMacros,
+  toFoodNutritionFields,
   getConversionFactor,
   ingredientRowFromPickedFood,
   MEAL_SERVING_UNITS,
@@ -355,7 +355,6 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
 
       const per100g = toPer100g(row.macros, row.grams);
       if (!per100g) continue;
-      const rounded = roundedMacros(per100g);
       items.push({
         source: 'new',
         food: {
@@ -363,12 +362,7 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
           brand: row.matchApplied ? (row.match?.brand ?? null) : null,
           serving_size: 100,
           serving_unit: 'g',
-          calories: rounded.calories_kcal,
-          protein: rounded.protein_g,
-          carbs: rounded.carbs_g,
-          fat: rounded.fat_g,
-          dietary_fiber: rounded.fiber_g,
-          sugars: rounded.sugar_g,
+          ...toFoodNutritionFields(per100g),
           // Marks the stored food as an AI estimate so it is not mistaken for
           // verified data later. A row showing a matched provider food is not
           // a guess, so it carries no confidence.
