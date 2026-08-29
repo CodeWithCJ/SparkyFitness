@@ -62,13 +62,20 @@ describe('transformHealthRecords', () => {
     });
 
     test('passes through TotalCaloriesBurned aggregated records', () => {
+      const capturedAt = '2024-01-15T12:34:56.000Z';
       const records = [
-        { date: '2024-01-15', value: 2000, type: 'total_calories' },
+        {
+          date: '2024-01-15',
+          value: 2000,
+          type: 'total_calories',
+          timestamp: capturedAt,
+        },
       ];
       const result = transformHealthRecords(records, { recordType: 'TotalCaloriesBurned', unit: 'kcal', type: 'total_calories' });
 
       expect(result).toHaveLength(1);
       expect(result[0].type).toBe('total_calories');
+      expect(result[0].timestamp).toBe(capturedAt);
     });
 
     test('preserves the original type field from aggregated records', () => {

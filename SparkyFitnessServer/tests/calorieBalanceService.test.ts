@@ -3,6 +3,7 @@ import type { ExerciseSessionResponse } from '@workspace/shared';
 import {
   computeCalorieBalance,
   extractExerciseStats,
+  resolveDeviceProjectionSnapshot,
   resolveDayFraction,
   sumFoodEntryCalories,
   type CalorieBalanceInputs,
@@ -246,6 +247,148 @@ describe('dayFraction / tdee projection', () => {
 
     expect(balance.tdeeProjection?.projectedBurn).toBe(BMR + 1000);
   });
+
+  test.each([
+    ['maintain', 0, 2400],
+    ['manual', -10, 2160],
+    ['manual', 10, 2640],
+  ])(
+    'uses Health Connect total burn as TDEE before applying %s (%s%%)',
+    (goalMode, customPercentage, expectedTarget) => {
+      const balance = computeCalorieBalance(
+        inputs({
+          adjustedGoalCalories: 1800,
+          deviceTotalCalories: 1200,
+          exercise: {
+            activeCalories: 500,
+            otherCalories: 0,
+            activitySteps: 0,
+          },
+          userPreferences: {
+            ...tdeePrefs,
+            goal_mode: goalMode,
+            goal_mode_custom_percentage: customPercentage,
+          },
+          dayFraction: 0.5,
+        })
+      );
+
+      expect(balance.tdeeProjection).toEqual({
+        projectedBurn: 2400,
+        baselineBurn: 2400,
+        adjustment: expectedTarget - 1800,
+        targetCalories: expectedTarget,
+        source: 'health_connect_total',
+      });
+      expect(balance.goal).toBe(expectedTarget);
+      expect(balance.remaining).toBe(expectedTarget - 2000);
+    }
+  );
+
+  test('uses a completed Health Connect day without extrapolating it', () => {
+    const balance = computeCalorieBalance(
+      inputs({
+        adjustedGoalCalories: 2000,
+        deviceTotalCalories: 2300,
+        userPreferences: {
+          ...tdeePrefs,
+          goal_mode: 'maintain',
+        },
+        dayFraction: 1,
+      })
+    );
+
+    expect(balance.tdeeProjection?.projectedBurn).toBe(2300);
+    expect(balance.tdeeProjection?.targetCalories).toBe(2300);
+    expect(balance.goal).toBe(2300);
+  });
+
+  test('projects from the device sample time instead of the later view time', () => {
+    const balance = computeCalorieBalance({
+      ...inputs({
+        adjustedGoalCalories: 2000,
+        deviceTotalCalories: 1200,
+        userPreferences: {
+          ...tdeePrefs,
+          goal_mode: 'maintain',
+        },
+        dayFraction: 0.8,
+      }),
+      deviceTotalDayFraction: 0.5,
+    } as CalorieBalanceInputs & { deviceTotalDayFraction: number });
+
+    expect(balance.tdeeProjection?.projectedBurn).toBe(2400);
+    expect(balance.tdeeProjection?.source).toBe('health_connect_total');
+  });
+
+  test('preserves the configured adaptive safety floor', () => {
+    const balance = computeCalorieBalance(
+      inputs({
+        adjustedGoalCalories: 2000,
+        deviceTotalCalories: 950,
+        userPreferences: {
+          ...tdeePrefs,
+          goal_mode: 'high_cut',
+          goal_mode_calculation_method: 'adaptive',
+          calorie_safety_floor_mode: 'standard',
+        },
+        dayFraction: 0.5,
+      })
+    );
+
+    // 1900 - 20% = 1520, but the male RMR/clinical floor is 2000 here.
+    expect(balance.tdeeProjection?.targetCalories).toBe(BMR);
+    expect(balance.goal).toBe(BMR);
+  });
+
+  test.each([
+    ['an implausibly low completed total', 500, 1],
+    ['an excessive projected total', 15_000, 0.5],
+  ])(
+    'falls back when Health Connect reports %s',
+    (_reason, total, fraction) => {
+      const balance = computeCalorieBalance(
+        inputs({
+          adjustedGoalCalories: 1800,
+          deviceTotalCalories: total,
+          userPreferences: {
+            ...tdeePrefs,
+            goal_mode: 'maintain',
+          },
+          dayFraction: fraction,
+        })
+      );
+
+      expect(balance.tdeeProjection?.source).toBe('active_plus_bmr');
+    }
+  );
+
+  test.each([
+    ['the day is too young', 100, 500, 0.04],
+    ['total burn is below active burn', 400, 500, 0.5],
+  ])(
+    'falls back to BMR plus active calories when %s',
+    (_reason, deviceTotalCalories, activeCalories, dayFraction) => {
+      const balance = computeCalorieBalance(
+        inputs({
+          adjustedGoalCalories: 1800,
+          deviceTotalCalories,
+          exercise: {
+            activeCalories,
+            otherCalories: 0,
+            activitySteps: 0,
+          },
+          userPreferences: {
+            ...tdeePrefs,
+            goal_mode: 'maintain',
+          },
+          dayFraction,
+        })
+      );
+
+      expect(balance.tdeeProjection?.source).toBe('active_plus_bmr');
+    }
+  );
 });
 
 describe('resolveDayFraction', () => {
@@ -267,6 +410,44 @@ describe('resolveDayFraction', () => {
     const now = new Date('2026-08-20T23:00:00Z');
     expect(resolveDayFraction('2026-08-20', 'Asia/Tokyo', now)).toBe(1);
     expect(resolveDayFraction('2026-08-20', 'UTC', now)).toBeLessThan(1);
+  });
+});
+
+describe('resolveDeviceProjectionSnapshot', () => {
+  test('uses the device capture time for today without duplicating caller preparation', () => {
+    const snapshot = resolveDeviceProjectionSnapshot({
+      date: '2026-08-20',
+      timezone: 'UTC',
+      now: new Date('2026-08-20T18:00:00Z'),
+      deviceTotal: {
+        totalCalories: 1200,
+        capturedAt: new Date('2026-08-20T12:00:00Z'),
+      },
+    });
+
+    expect(snapshot).toEqual({
+      deviceTotalCalories: 1200,
+      deviceTotalDayFraction: 0.5,
+      dayFraction: 0.75,
+    });
+  });
+
+  test('treats a completed day and its recorded total as final', () => {
+    const snapshot = resolveDeviceProjectionSnapshot({
+      date: '2026-08-19',
+      timezone: 'UTC',
+      now: new Date('2026-08-20T18:00:00Z'),
+      deviceTotal: {
+        totalCalories: 2400,
+        capturedAt: new Date('2026-08-19T20:00:00Z'),
+      },
+    });
+
+    expect(snapshot).toEqual({
+      deviceTotalCalories: 2400,
+      deviceTotalDayFraction: 1,
+      dayFraction: 1,
+    });
   });
 });
 

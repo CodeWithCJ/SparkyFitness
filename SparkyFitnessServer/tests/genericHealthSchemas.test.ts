@@ -330,6 +330,7 @@ describe('Generic Health & Workout Zod Schemas', () => {
       active_calories: 650.0,
       bmr_calories: 1750.0,
       total_calories: 2400.0,
+      total_calories_captured_at: new Date('2026-07-29T12:00:00Z'),
       highly_active_seconds: 3600,
       active_seconds: 7200,
       sedentary_seconds: 28800,
@@ -368,6 +369,9 @@ describe('Generic Health & Workout Zod Schemas', () => {
 
     const parsed = dailyHealthMetricsSchema.parse(validDaily);
     expect(parsed.total_steps).toBe(12450);
+    expect(parsed.total_calories_captured_at).toEqual(
+      new Date('2026-07-29T12:00:00Z')
+    );
     expect(parsed.body_battery_highest).toBe(95);
     expect(parsed.acwr_ratio).toBe(1.09);
   });
