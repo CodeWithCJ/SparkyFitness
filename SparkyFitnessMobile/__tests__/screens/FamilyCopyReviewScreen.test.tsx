@@ -90,7 +90,7 @@ jest.mock('../../src/components/CalendarSheet', () => {
         accessibilityLabel: 'Choose August 25',
         onPress: () => onSelectDate('2026-08-25'),
       });
-    },
+    }
   );
 });
 
@@ -98,11 +98,11 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (
       key: string,
-      options?: { defaultValue?: string; [name: string]: unknown },
+      options?: { defaultValue?: string; [name: string]: unknown }
     ) =>
       (options?.defaultValue ?? key).replace(
         /\{\{(\w+)\}\}/g,
-        (match, name: string) => String(options?.[name] ?? match),
+        (match, name: string) => String(options?.[name] ?? match)
       ),
   }),
 }));
@@ -158,7 +158,7 @@ function renderReview({
           },
         }}
       />
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
 }
 
@@ -173,7 +173,7 @@ describe('FamilyCopyReviewScreen', () => {
       selectedDate: '2026-08-23',
       lastKnownToday: '2026-08-24',
     });
-    mockCopyMutation.mockImplementation(options => {
+    mockCopyMutation.mockImplementation((options) => {
       onCopySuccess = options?.onSuccess as typeof onCopySuccess;
       onCopyStale = options?.onStale as typeof onCopyStale;
       return {
@@ -193,10 +193,10 @@ describe('FamilyCopyReviewScreen', () => {
     expect(screen.getByDisplayValue('50')).toBeTruthy();
     expect(screen.getByText('Mon, Aug 24')).toBeTruthy();
     expect(
-      screen.getByRole('button', { name: 'Copy date: Mon, Aug 24' }),
+      screen.getByRole('button', { name: 'Copy date: Mon, Aug 24' })
     ).toBeTruthy();
     expect(
-      screen.getByLabelText('Quantity for Family Pasta').props.style,
+      screen.getByLabelText('Quantity for Family Pasta').props.style
     ).toEqual({ minHeight: 44 });
     expect(screen.getByRole('button', { name: 'Dinner' }).props.style).toEqual({
       minHeight: 44,
@@ -208,24 +208,24 @@ describe('FamilyCopyReviewScreen', () => {
     const screen = renderReview();
     fireEvent.changeText(
       screen.getByLabelText('Quantity for Family Pasta'),
-      '0',
+      '0'
     );
 
     expect(screen.getByDisplayValue('0')).toBeTruthy();
     expect(
-      screen.getByText('Enter a quantity greater than zero.'),
+      screen.getByText('Enter a quantity greater than zero.')
     ).toBeTruthy();
     expect(
       screen.getByRole('button', { name: 'Copy to my diary' }).props
-        .accessibilityState,
+        .accessibilityState
     ).toEqual({ disabled: true });
     expect(
-      screen.getByLabelText('Quantity for Family Pasta').props['aria-invalid'],
+      screen.getByLabelText('Quantity for Family Pasta').props['aria-invalid']
     ).toBe(true);
     expect(
       screen.getByLabelText('Quantity for Family Pasta').props[
         'aria-describedby'
-      ],
+      ]
     ).toBe('family-copy-quantity-error-pasta-id');
     const error = screen.getByText('Enter a quantity greater than zero.');
     expect(error.props.nativeID).toBe('family-copy-quantity-error-pasta-id');
@@ -237,7 +237,7 @@ describe('FamilyCopyReviewScreen', () => {
     const screen = renderReview({ selectedEntryIds: [pasta.id] });
     fireEvent.changeText(
       screen.getByLabelText('Quantity for Family Pasta'),
-      '200',
+      '200'
     );
 
     expect(screen.getByText('360 kcal')).toBeTruthy();
@@ -251,7 +251,7 @@ describe('FamilyCopyReviewScreen', () => {
 
     fireEvent.changeText(
       screen.getByLabelText('Quantity for Family Pasta'),
-      '150,5',
+      '150,5'
     );
 
     expect(screen.getByText('270.9 kcal')).toBeTruthy();
@@ -287,8 +287,7 @@ describe('FamilyCopyReviewScreen', () => {
     });
 
     expect(
-      screen.getByRole('button', { name: 'Breakfast' }).props
-        .accessibilityState,
+      screen.getByRole('button', { name: 'Breakfast' }).props.accessibilityState
     ).toEqual({ selected: true });
   });
 
@@ -344,7 +343,7 @@ describe('FamilyCopyReviewScreen', () => {
     const screen = renderReview({ selectedEntryIds: [sauce.id, pasta.id] });
     fireEvent.changeText(
       screen.getByLabelText('Quantity for Family Pasta'),
-      '200',
+      '200'
     );
     fireEvent.press(screen.getByText('Copy to my diary'));
 
@@ -377,7 +376,7 @@ describe('FamilyCopyReviewScreen', () => {
     });
     expect(
       duplicateSelection.getByRole('button', { name: 'Copy to my diary' }).props
-        .accessibilityState,
+        .accessibilityState
     ).toEqual({ disabled: true });
 
     const missingSelection = renderReview({
@@ -385,7 +384,7 @@ describe('FamilyCopyReviewScreen', () => {
     });
     expect(
       missingSelection.getByRole('button', { name: 'Copy to my diary' }).props
-        .accessibilityState,
+        .accessibilityState
     ).toEqual({ disabled: true });
   });
 
@@ -393,7 +392,7 @@ describe('FamilyCopyReviewScreen', () => {
     const screen = renderReview({ selectedEntryIds: [pasta.id] });
     fireEvent.changeText(
       screen.getByLabelText('Quantity for Family Pasta'),
-      '200',
+      '200'
     );
     fireEvent.press(screen.getByText('Copy to my diary'));
     fireEvent.press(screen.getByText('Copy to my diary'));
@@ -417,7 +416,7 @@ describe('FamilyCopyReviewScreen', () => {
     const screen = renderReview({ selectedEntryIds: [pasta.id] });
     fireEvent.changeText(
       screen.getByLabelText('Quantity for Family Pasta'),
-      '200',
+      '200'
     );
 
     fireEvent.press(screen.getByText('Copy to my diary'));

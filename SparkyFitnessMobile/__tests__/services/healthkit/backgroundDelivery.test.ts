@@ -19,7 +19,8 @@ jest.mock('../../../src/services/LogService', () => ({
 
 const mockLoadHealthPreference = jest.fn();
 jest.mock('../../../src/services/healthkit/preferences', () => ({
-  loadHealthPreference: (...args: unknown[]) => mockLoadHealthPreference(...args),
+  loadHealthPreference: (...args: unknown[]) =>
+    mockLoadHealthPreference(...args),
 }));
 
 const mockEnableBgDelivery = hkEnableBackgroundDelivery as jest.Mock;
@@ -37,7 +38,7 @@ describe('enableBackgroundDeliveryForMetric', () => {
 
     expect(mockEnableBgDelivery).toHaveBeenCalledWith(
       'HKQuantityTypeIdentifierStepCount',
-      UpdateFrequency.hourly,
+      UpdateFrequency.hourly
     );
   });
 
@@ -46,7 +47,7 @@ describe('enableBackgroundDeliveryForMetric', () => {
 
     expect(mockEnableBgDelivery).toHaveBeenCalledWith(
       'HKQuantityTypeIdentifierBodyMass',
-      UpdateFrequency.daily,
+      UpdateFrequency.daily
     );
   });
 
@@ -62,7 +63,7 @@ describe('enableBackgroundDeliveryForMetric', () => {
 
     expect(mockEnableBgDelivery).toHaveBeenCalledWith(
       'HKQuantityTypeIdentifierBloodGlucose',
-      UpdateFrequency.daily,
+      UpdateFrequency.daily
     );
   });
 
@@ -76,7 +77,7 @@ describe('enableBackgroundDeliveryForMetric', () => {
 
     expect(mockEnableBgDelivery).toHaveBeenCalledWith(
       'HKQuantityTypeIdentifierBasalEnergyBurned',
-      UpdateFrequency.hourly,
+      UpdateFrequency.hourly
     );
   });
 });
@@ -94,11 +95,11 @@ describe('setupBackgroundDeliveryForEnabledMetrics', () => {
 
     expect(mockEnableBgDelivery).toHaveBeenCalledWith(
       'HKQuantityTypeIdentifierStepCount',
-      UpdateFrequency.hourly,
+      UpdateFrequency.hourly
     );
     expect(mockEnableBgDelivery).toHaveBeenCalledWith(
       'HKQuantityTypeIdentifierBodyMass',
-      UpdateFrequency.daily,
+      UpdateFrequency.daily
     );
   });
 
@@ -128,7 +129,7 @@ describe('setupBackgroundDeliveryForEnabledMetrics', () => {
     expect(mockEnableBgDelivery).toHaveBeenCalledTimes(1);
     expect(mockEnableBgDelivery).toHaveBeenCalledWith(
       'HKQuantityTypeIdentifierBasalEnergyBurned',
-      UpdateFrequency.hourly,
+      UpdateFrequency.hourly
     );
   });
 
@@ -149,7 +150,7 @@ describe('disableBackgroundDeliveryForMetric', () => {
     await disableBackgroundDeliveryForMetric('Steps');
 
     expect(mockDisableBgDelivery).toHaveBeenCalledWith(
-      'HKQuantityTypeIdentifierStepCount',
+      'HKQuantityTypeIdentifierStepCount'
     );
   });
 
@@ -165,7 +166,7 @@ describe('disableBackgroundDeliveryForMetric', () => {
     await disableBackgroundDeliveryForMetric('TotalCaloriesBurned');
 
     expect(mockDisableBgDelivery).toHaveBeenCalledWith(
-      'HKQuantityTypeIdentifierBasalEnergyBurned',
+      'HKQuantityTypeIdentifierBasalEnergyBurned'
     );
     expect(mockEnableBgDelivery).not.toHaveBeenCalled();
   });
@@ -187,7 +188,7 @@ describe('disableBackgroundDeliveryForMetric', () => {
     // CyclingCadence has 'none' frequency, so even though it's "enabled",
     // it shouldn't be in stillNeeded. The identifier should be disabled.
     expect(mockDisableBgDelivery).toHaveBeenCalledWith(
-      'HKQuantityTypeIdentifierCyclingCadence',
+      'HKQuantityTypeIdentifierCyclingCadence'
     );
   });
 });
@@ -196,7 +197,9 @@ describe('rebuildSubscriptions race condition', () => {
   it('discards a stale rebuild when a newer one is triggered', async () => {
     // First rebuild: slow — preferences resolve after a delay
     let resolveFirst!: () => void;
-    const firstPromise = new Promise<void>(r => { resolveFirst = r; });
+    const firstPromise = new Promise<void>((r) => {
+      resolveFirst = r;
+    });
 
     mockLoadHealthPreference.mockImplementation((key: string) => {
       if (key === 'syncStepsEnabled') {
@@ -224,7 +227,7 @@ describe('rebuildSubscriptions race condition', () => {
     resolveFirst();
     await Promise.resolve();
     // Flush microtask queue
-    await new Promise(r => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
 
     // The first rebuild should have been discarded — subscribeToChanges
     // should NOT have been called for the stale rebuild's Steps identifier.
@@ -245,12 +248,12 @@ describe('rebuildSubscriptions race condition', () => {
     subscribeToEnabledMetricChanges(callback);
 
     // Let the rebuild complete
-    await new Promise(r => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0));
 
     // Heart rate should be subscribed
     expect(mockSubscribeToChanges).toHaveBeenCalledWith(
       'HKQuantityTypeIdentifierHeartRate',
-      expect.any(Function),
+      expect.any(Function)
     );
   });
 });

@@ -1,6 +1,12 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  Platform,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
 import { toHourMinute } from '@workspace/shared';
@@ -53,8 +59,21 @@ interface MealTypeFormSheetProps {
  * Raw sort_order is never exposed; custom ordering happens on the settings
  * screen via drag-and-drop between the fixed system anchors.
  */
-const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProps>(
-  ({ isSystem = false, isSaving = false, onCreate, onEditSave, onDelete, timePickerRef }, ref) => {
+const MealTypeFormSheet = forwardRef<
+  MealTypeFormSheetRef,
+  MealTypeFormSheetProps
+>(
+  (
+    {
+      isSystem = false,
+      isSaving = false,
+      onCreate,
+      onEditSave,
+      onDelete,
+      timePickerRef,
+    },
+    ref
+  ) => {
     const { t } = useTranslation();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const [surfaceBg, textMuted, textSecondary, iconDanger] = useCSSVariable([
@@ -105,8 +124,13 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
         // backend name so persistence is never altered.
         setDisplayName(
           mealType.user_id == null
-            ? getLocalizedMealLabel(t, mealType.name.toLowerCase() === 'snack' ? 'snacks' : mealType.name.toLowerCase())
-            : mealType.name,
+            ? getLocalizedMealLabel(
+                t,
+                mealType.name.toLowerCase() === 'snack'
+                  ? 'snacks'
+                  : mealType.name.toLowerCase()
+              )
+            : mealType.name
         );
         bottomSheetRef.current?.present();
       },
@@ -145,25 +169,35 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
       >
         <BottomSheetScrollView contentContainerClassName="px-5 pb-safe-or-8">
           <Text className="text-text-primary text-lg font-semibold text-center mb-4">
-            {mode === 'create' ? t('mealTypeForm.createTitle', { defaultValue: 'Add Meal Type' }) : t('mealTypeForm.editTitle', { defaultValue: 'Edit Meal Type' })}
+            {mode === 'create'
+              ? t('mealTypeForm.createTitle', { defaultValue: 'Add Meal Type' })
+              : t('mealTypeForm.editTitle', { defaultValue: 'Edit Meal Type' })}
           </Text>
 
           {/* Name — editable for custom, display-only for system */}
-          <Text className="text-xs font-semibold uppercase text-text-muted mb-1">{t('mealTypeForm.name', { defaultValue: 'Name' })}</Text>
+          <Text className="text-xs font-semibold uppercase text-text-muted mb-1">
+            {t('mealTypeForm.name', { defaultValue: 'Name' })}
+          </Text>
           {isEditingSystem ? (
             <View className="bg-background border border-border rounded-lg px-3 py-2.5 mb-4">
-              <Text className="text-base text-text-primary">{displayName || values.name}</Text>
+              <Text className="text-base text-text-primary">
+                {displayName || values.name}
+              </Text>
             </View>
           ) : (
             <TextInput
               value={values.name}
               onChangeText={(name) => setValues((prev) => ({ ...prev, name }))}
-              placeholder={t('mealTypeForm.namePlaceholder', { defaultValue: 'e.g. Lunch 2.0' })}
+              placeholder={t('mealTypeForm.namePlaceholder', {
+                defaultValue: 'e.g. Lunch 2.0',
+              })}
               placeholderTextColor={textMuted}
               className="bg-background border border-border text-text-primary rounded-lg px-3 py-2.5 text-base mb-4"
               autoFocus={mode === 'create'}
               returnKeyType="done"
-              accessibilityLabel={t('mealTypeForm.accessibility.name', { defaultValue: 'Meal type name' })}
+              accessibilityLabel={t('mealTypeForm.accessibility.name', {
+                defaultValue: 'Meal type name',
+              })}
             />
           )}
 
@@ -177,7 +211,13 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
               onValueChange={(val) =>
                 setValues((prev) => ({ ...prev, showInQuickLog: val }))
               }
-              accessibilityLabel={t('mealTypeForm.accessibility.quickLog', { defaultValue: 'Quick log {{name}}', name: displayName || values.name || t('mealTypeForm.name', { defaultValue: "Name" }) })}
+              accessibilityLabel={t('mealTypeForm.accessibility.quickLog', {
+                defaultValue: 'Quick log {{name}}',
+                name:
+                  displayName ||
+                  values.name ||
+                  t('mealTypeForm.name', { defaultValue: 'Name' }),
+              })}
             />
           </View>
 
@@ -192,7 +232,9 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
                   The dominant element of the create flow. */}
               <MealTypeTimeWheel
                 value={values.defaultTime}
-                onChange={(hhmm) => setValues((prev) => ({ ...prev, defaultTime: hhmm }))}
+                onChange={(hhmm) =>
+                  setValues((prev) => ({ ...prev, defaultTime: hhmm }))
+                }
                 testID="create-time-wheel"
               />
             </>
@@ -204,17 +246,29 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
                   // survives reopen.
                   timePickerRef.current.present(
                     values.defaultTime || null,
-                    (time) => setValues((prev) => ({ ...prev, defaultTime: time ?? '' })),
+                    (time) =>
+                      setValues((prev) => ({
+                        ...prev,
+                        defaultTime: time ?? '',
+                      }))
                   );
                 }
               }}
               className="flex-row items-center justify-between rounded-lg border border-border-subtle bg-background px-3 py-3 mb-4"
               accessibilityRole="button"
-              accessibilityLabel={t('mealTypeForm.accessibility.defaultTime', { defaultValue: 'Default time for {{name}}{{time}}', name: displayName || values.name, time: hasDefaultTime ? `, ${values.defaultTime}` : `, ${t('mealTypeForm.notSet', { defaultValue: "Not set" })}` })}
+              accessibilityLabel={t('mealTypeForm.accessibility.defaultTime', {
+                defaultValue: 'Default time for {{name}}{{time}}',
+                name: displayName || values.name,
+                time: hasDefaultTime
+                  ? `, ${values.defaultTime}`
+                  : `, ${t('mealTypeForm.notSet', { defaultValue: 'Not set' })}`,
+              })}
               testID="edit-default-time-row"
             >
               <Text className="text-base text-text-primary">
-                {hasDefaultTime ? values.defaultTime : t('mealTypeForm.notSet', { defaultValue: 'Not set' })}
+                {hasDefaultTime
+                  ? values.defaultTime
+                  : t('mealTypeForm.notSet', { defaultValue: 'Not set' })}
               </Text>
               <Icon name="chevron-forward" size={18} color={textSecondary} />
             </TouchableOpacity>
@@ -226,7 +280,10 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
                 variant="secondary"
                 className="flex-1"
                 onPress={() => bottomSheetRef.current?.dismiss()}
-                accessibilityLabel={t('mealTypeForm.accessibility.cancelCreate', { defaultValue: 'Cancel create meal type' })}
+                accessibilityLabel={t(
+                  'mealTypeForm.accessibility.cancelCreate',
+                  { defaultValue: 'Cancel create meal type' }
+                )}
               >
                 {t('common.cancel', { defaultValue: 'Cancel' })}
               </Button>
@@ -235,9 +292,13 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
                 className="flex-1"
                 disabled={!canSave}
                 onPress={handleSave}
-                accessibilityLabel={t('mealTypeForm.accessibility.create', { defaultValue: 'Create meal type' })}
+                accessibilityLabel={t('mealTypeForm.accessibility.create', {
+                  defaultValue: 'Create meal type',
+                })}
               >
-                {isSaving ? t('common.saving', { defaultValue: 'Saving…' }) : t('mealTypeForm.create', { defaultValue: 'Create' })}
+                {isSaving
+                  ? t('common.saving', { defaultValue: 'Saving…' })
+                  : t('mealTypeForm.create', { defaultValue: 'Create' })}
               </Button>
             </View>
           ) : (
@@ -246,9 +307,13 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
               className="mt-2"
               disabled={!canSave}
               onPress={handleSave}
-              accessibilityLabel={t('mealTypeForm.accessibility.save', { defaultValue: 'Save meal type' })}
+              accessibilityLabel={t('mealTypeForm.accessibility.save', {
+                defaultValue: 'Save meal type',
+              })}
             >
-              {isSaving ? t('common.saving', { defaultValue: 'Saving…' }) : t('common.save', { defaultValue: 'Save' })}
+              {isSaving
+                ? t('common.saving', { defaultValue: 'Saving…' })
+                : t('common.save', { defaultValue: 'Save' })}
             </Button>
           )}
 
@@ -260,10 +325,15 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
               }}
               className="mt-6 py-3 border-t border-border-subtle items-center"
               accessibilityRole="button"
-              accessibilityLabel={t('mealTypeForm.accessibility.delete', { defaultValue: 'Delete Meal Type' })}
+              accessibilityLabel={t('mealTypeForm.accessibility.delete', {
+                defaultValue: 'Delete Meal Type',
+              })}
               testID="delete-meal-type-sheet"
             >
-              <Text className="text-base font-medium" style={{ color: iconDanger }}>
+              <Text
+                className="text-base font-medium"
+                style={{ color: iconDanger }}
+              >
                 {t('mealTypeForm.delete', { defaultValue: 'Delete Meal Type' })}
               </Text>
             </TouchableOpacity>
@@ -271,7 +341,7 @@ const MealTypeFormSheet = forwardRef<MealTypeFormSheetRef, MealTypeFormSheetProp
         </BottomSheetScrollView>
       </BottomSheetModal>
     );
-  },
+  }
 );
 
 MealTypeFormSheet.displayName = 'MealTypeFormSheet';

@@ -80,7 +80,7 @@ describe('useCopyFamilyFoodEntries', () => {
       });
 
       expect(expectedFn).toHaveBeenCalledWith(request.payload);
-    },
+    }
   );
 
   test('invalidates only the signed-in target day after success', async () => {
@@ -109,7 +109,7 @@ describe('useCopyFamilyFoodEntries', () => {
       () => useCopyFamilyFoodEntries({ onSuccess }),
       {
         wrapper: createQueryWrapper(queryClient),
-      },
+      }
     );
 
     await act(async () => {
@@ -121,7 +121,7 @@ describe('useCopyFamilyFoodEntries', () => {
 
   test('keeps review state usable and shows a stable error when the copy fails', async () => {
     (copySelectedFoodEntriesFromUser as jest.Mock).mockRejectedValue(
-      new Error('boom'),
+      new Error('boom')
     );
     const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
     const onSuccess = jest.fn();
@@ -129,13 +129,13 @@ describe('useCopyFamilyFoodEntries', () => {
       () => useCopyFamilyFoodEntries({ onSuccess }),
       {
         wrapper: createQueryWrapper(queryClient),
-      },
+      }
     );
 
     await expect(
       act(async () => {
         await result.current.copyFromFamilyAsync(selectedRequest);
-      }),
+      })
     ).rejects.toThrow('boom');
 
     await waitFor(() => expect(result.current.isPending).toBe(false));
@@ -150,7 +150,7 @@ describe('useCopyFamilyFoodEntries', () => {
 
   test('refreshes family capabilities and explains permission revocation after a 403', async () => {
     (copySelectedFoodEntriesFromUser as jest.Mock).mockRejectedValue(
-      new ApiError('Forbidden', 403),
+      new ApiError('Forbidden', 403)
     );
     const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
     const refetchSpy = jest.spyOn(queryClient, 'refetchQueries');
@@ -161,13 +161,13 @@ describe('useCopyFamilyFoodEntries', () => {
     await expect(
       act(async () => {
         await result.current.copyFromFamilyAsync(selectedRequest);
-      }),
+      })
     ).rejects.toThrow('Forbidden');
 
     await waitFor(() =>
       expect(invalidateSpy).toHaveBeenCalledWith({
         queryKey: ['familyDiaryUsers'],
-      }),
+      })
     );
     expect(refetchSpy).toHaveBeenCalledWith({ queryKey: ['familyDiaryUsers'] });
     expect(Toast.show).toHaveBeenCalledWith({
@@ -179,7 +179,7 @@ describe('useCopyFamilyFoodEntries', () => {
 
   test('refreshes and reopens the source diary after a stale 409 source', async () => {
     (copySelectedFoodEntriesFromUser as jest.Mock).mockRejectedValue(
-      new ApiError('Conflict', 409),
+      new ApiError('Conflict', 409)
     );
     const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
     const refetchSpy = jest.spyOn(queryClient, 'refetchQueries');
@@ -191,13 +191,13 @@ describe('useCopyFamilyFoodEntries', () => {
     await expect(
       act(async () => {
         await result.current.copyFromFamilyAsync(selectedRequest);
-      }),
+      })
     ).rejects.toThrow('Conflict');
 
     await waitFor(() =>
       expect(invalidateSpy).toHaveBeenCalledWith({
         queryKey: ['familyDailySummary', 'family-user', '2026-08-23'],
-      }),
+      })
     );
     expect(refetchSpy).toHaveBeenCalledWith({
       queryKey: ['familyDailySummary', 'family-user', '2026-08-23'],
@@ -208,7 +208,7 @@ describe('useCopyFamilyFoodEntries', () => {
         type: 'error',
         text1: 'Family diary changed',
         text2: 'The latest family diary is opening for review.',
-      }),
+      })
     );
   });
 });

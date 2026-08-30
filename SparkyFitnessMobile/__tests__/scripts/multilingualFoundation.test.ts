@@ -14,16 +14,29 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 const MOBILE_ROOT = path.resolve(__dirname, '../..');
-const generator = path.join(MOBILE_ROOT, 'scripts/generate-locale-resources.mjs');
-const nativeValidator = path.join(MOBILE_ROOT, 'scripts/validate-native-widget-locales.mjs');
+const generator = path.join(
+  MOBILE_ROOT,
+  'scripts/generate-locale-resources.mjs'
+);
+const nativeValidator = path.join(
+  MOBILE_ROOT,
+  'scripts/validate-native-widget-locales.mjs'
+);
 
 // Re-import the registry modules so we can test against the real production
 // registry and synthetic fixture registries.
-import { SHIPPED_LOCALES, SUPPORTED_LANGUAGES, normalizeLocaleFromRegistry } from '../../src/localization/localeRegistry';
+import {
+  SHIPPED_LOCALES,
+  SUPPORTED_LANGUAGES,
+  normalizeLocaleFromRegistry,
+} from '../../src/localization/localeRegistry';
 import { RESOURCE_MAP } from '../../src/localization/generatedLocaleResources';
 
 function run(script: string, args: string[]): string {
-  return execFileSync(process.execPath, [script, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  return execFileSync(process.execPath, [script, ...args], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -33,36 +46,68 @@ function run(script: string, args: string[]): string {
 interface FixtureRegistry {
   sourceLocale: string;
   fallbackLocale: string;
-  locales: Record<string, { languageCode: string; intlLocale: string; displayNameKey: string; defaultDisplayName: string }>;
+  locales: Record<
+    string,
+    {
+      languageCode: string;
+      intlLocale: string;
+      displayNameKey: string;
+      defaultDisplayName: string;
+    }
+  >;
 }
 
 function createFixtureRoot(registry: FixtureRegistry): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sparky-muf-'));
   fs.mkdirSync(path.join(root, 'src/localization'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'src/localization/localeRegistry.json'), JSON.stringify(registry));
+  fs.writeFileSync(
+    path.join(root, 'src/localization/localeRegistry.json'),
+    JSON.stringify(registry)
+  );
   return root;
 }
 
-function writeRuntimeCatalog(root: string, locale: string, content: object): void {
+function writeRuntimeCatalog(
+  root: string,
+  locale: string,
+  content: object
+): void {
   const dir = path.join(root, 'src/localization/locales', locale);
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'translation.json'), JSON.stringify(content));
 }
 
-function writeMetadataFile(root: string, locale: string, content: object): void {
+function writeMetadataFile(
+  root: string,
+  locale: string,
+  content: object
+): void {
   fs.mkdirSync(path.join(root, 'locales'), { recursive: true });
-  fs.writeFileSync(path.join(root, 'locales', `${locale}.json`), JSON.stringify(content));
+  fs.writeFileSync(
+    path.join(root, 'locales', `${locale}.json`),
+    JSON.stringify(content)
+  );
 }
 
 function writeAndroidWidget(root: string, locale: string, xml: string): void {
   const dir = locale === 'en' ? 'values' : `values-${locale}`;
-  fs.mkdirSync(path.join(root, 'targets/android-widget/res', dir), { recursive: true });
-  fs.writeFileSync(path.join(root, 'targets/android-widget/res', dir, 'widget_strings.xml'), xml);
+  fs.mkdirSync(path.join(root, 'targets/android-widget/res', dir), {
+    recursive: true,
+  });
+  fs.writeFileSync(
+    path.join(root, 'targets/android-widget/res', dir, 'widget_strings.xml'),
+    xml
+  );
 }
 
 function writeIosWidget(root: string, locale: string, strings: string): void {
-  fs.mkdirSync(path.join(root, 'targets/widget', `${locale}.lproj`), { recursive: true });
-  fs.writeFileSync(path.join(root, 'targets/widget', `${locale}.lproj`, 'Localizable.strings'), strings);
+  fs.mkdirSync(path.join(root, 'targets/widget', `${locale}.lproj`), {
+    recursive: true,
+  });
+  fs.writeFileSync(
+    path.join(root, 'targets/widget', `${locale}.lproj`, 'Localizable.strings'),
+    strings
+  );
 }
 
 function cleanup(root: string): void {
@@ -85,7 +130,9 @@ describe('language picker excludes unshipped Weblate locales', () => {
   });
 
   it('RESOURCE_MAP keys match SUPPORTED_LANGUAGES exactly (no unshipped locale sneaks in)', () => {
-    expect(Object.keys(RESOURCE_MAP).sort()).toEqual([...SUPPORTED_LANGUAGES].sort());
+    expect(Object.keys(RESOURCE_MAP).sort()).toEqual(
+      [...SUPPORTED_LANGUAGES].sort()
+    );
   });
 
   it('SHIPPED_LOCALES does not include de or fr', () => {
@@ -115,27 +162,41 @@ describe('no duplicate hardcoded shipped locale list', () => {
     /\[\s*['"]en['"]\s*,\s*['"]pl['"]\s*,/,
   ];
 
-  it.each(sourceFiles)('%s does not contain a hardcoded [en, pl] locale list', (relPath) => {
-    const source = fs.readFileSync(path.join(MOBILE_ROOT, relPath), 'utf8');
-    for (const pattern of hardcodedPatterns) {
-      expect(source).not.toMatch(pattern);
+  it.each(sourceFiles)(
+    '%s does not contain a hardcoded [en, pl] locale list',
+    (relPath) => {
+      const source = fs.readFileSync(path.join(MOBILE_ROOT, relPath), 'utf8');
+      for (const pattern of hardcodedPatterns) {
+        expect(source).not.toMatch(pattern);
+      }
     }
-  });
+  );
 
   it('app.config.ts derives locales from nativeLanguageTags()', () => {
-    const source = fs.readFileSync(path.join(MOBILE_ROOT, 'app.config.ts'), 'utf8');
+    const source = fs.readFileSync(
+      path.join(MOBILE_ROOT, 'app.config.ts'),
+      'utf8'
+    );
     expect(source).toContain('nativeLanguageTags()');
   });
 
   it('i18n.ts imports RESOURCE_MAP from generated file (not manual per-locale imports)', () => {
-    const source = fs.readFileSync(path.join(MOBILE_ROOT, 'src/localization/i18n.ts'), 'utf8');
+    const source = fs.readFileSync(
+      path.join(MOBILE_ROOT, 'src/localization/i18n.ts'),
+      'utf8'
+    );
     expect(source).toContain("from './generatedLocaleResources'");
     // No manual per-locale translation imports.
-    expect(source).not.toMatch(/import\s+\w+Translation\s+from\s+['"]\.\/locales\/\w+\/translation\.json['"]/);
+    expect(source).not.toMatch(
+      /import\s+\w+Translation\s+from\s+['"]\.\/locales\/\w+\/translation\.json['"]/
+    );
   });
 
   it('plugin files import SUPPORTED_LANGUAGES from localeRegistry', () => {
-    for (const relPath of ['plugins/withAppLanguage.ts', 'plugins/withCalorieWidget.ts']) {
+    for (const relPath of [
+      'plugins/withAppLanguage.ts',
+      'plugins/withCalorieWidget.ts',
+    ]) {
       const source = fs.readFileSync(path.join(MOBILE_ROOT, relPath), 'utf8');
       expect(source).toContain("from '../src/localization/localeRegistry'");
     }
@@ -152,8 +213,18 @@ describe('generated locale resources determinism', () => {
       sourceLocale: 'en',
       fallbackLocale: 'en',
       locales: {
-        en: { languageCode: 'en', intlLocale: 'en-US', displayNameKey: 'settings.language.english', defaultDisplayName: 'English' },
-        pl: { languageCode: 'pl', intlLocale: 'pl-PL', displayNameKey: 'settings.language.polish', defaultDisplayName: 'Polski' },
+        en: {
+          languageCode: 'en',
+          intlLocale: 'en-US',
+          displayNameKey: 'settings.language.english',
+          defaultDisplayName: 'English',
+        },
+        pl: {
+          languageCode: 'pl',
+          intlLocale: 'pl-PL',
+          displayNameKey: 'settings.language.polish',
+          defaultDisplayName: 'Polski',
+        },
       },
     };
     const root = createFixtureRoot(registry);
@@ -161,7 +232,10 @@ describe('generated locale resources determinism', () => {
       writeRuntimeCatalog(root, locale, {});
       writeMetadataFile(root, locale, {});
     }
-    const output = path.join(root, 'src/localization/generatedLocaleResources.ts');
+    const output = path.join(
+      root,
+      'src/localization/generatedLocaleResources.ts'
+    );
     run(generator, ['--root', root, '--output', output]);
     const first = fs.readFileSync(output, 'utf8');
     run(generator, ['--root', root, '--output', output]);
@@ -179,20 +253,38 @@ describe('generated locale resources determinism', () => {
       sourceLocale: 'en',
       fallbackLocale: 'en',
       locales: {
-        en: { languageCode: 'en', intlLocale: 'en-US', displayNameKey: 'x', defaultDisplayName: 'English' },
+        en: {
+          languageCode: 'en',
+          intlLocale: 'en-US',
+          displayNameKey: 'x',
+          defaultDisplayName: 'English',
+        },
       },
     };
     const root = createFixtureRoot(registry);
     writeRuntimeCatalog(root, 'en', {});
     writeMetadataFile(root, 'en', {});
-    const output = path.join(root, 'src/localization/generatedLocaleResources.ts');
+    const output = path.join(
+      root,
+      'src/localization/generatedLocaleResources.ts'
+    );
     run(generator, ['--root', root, '--output', output]);
     // Add a new locale to the registry but do NOT regenerate.
-    registry.locales.pl = { languageCode: 'pl', intlLocale: 'pl-PL', displayNameKey: 'x', defaultDisplayName: 'Polski' };
-    fs.writeFileSync(path.join(root, 'src/localization/localeRegistry.json'), JSON.stringify(registry));
+    registry.locales.pl = {
+      languageCode: 'pl',
+      intlLocale: 'pl-PL',
+      displayNameKey: 'x',
+      defaultDisplayName: 'Polski',
+    };
+    fs.writeFileSync(
+      path.join(root, 'src/localization/localeRegistry.json'),
+      JSON.stringify(registry)
+    );
     writeRuntimeCatalog(root, 'pl', {});
     writeMetadataFile(root, 'pl', {});
-    expect(() => run(generator, ['--root', root, '--output', output, '--check'])).toThrow('stale');
+    expect(() =>
+      run(generator, ['--root', root, '--output', output, '--check'])
+    ).toThrow('stale');
     cleanup(root);
   });
 });
@@ -207,8 +299,18 @@ describe('shipped locale completeness contract', () => {
       sourceLocale: 'en',
       fallbackLocale: 'en',
       locales: {
-        en: { languageCode: 'en', intlLocale: 'en-US', displayNameKey: 'x', defaultDisplayName: 'English' },
-        de: { languageCode: 'de', intlLocale: 'de-DE', displayNameKey: 'x', defaultDisplayName: 'Deutsch' },
+        en: {
+          languageCode: 'en',
+          intlLocale: 'en-US',
+          displayNameKey: 'x',
+          defaultDisplayName: 'English',
+        },
+        de: {
+          languageCode: 'de',
+          intlLocale: 'de-DE',
+          displayNameKey: 'x',
+          defaultDisplayName: 'Deutsch',
+        },
       },
     };
     const root = createFixtureRoot(registry);
@@ -216,7 +318,9 @@ describe('shipped locale completeness contract', () => {
     writeMetadataFile(root, 'en', {});
     writeMetadataFile(root, 'de', {});
     // Missing: src/localization/locales/de/translation.json
-    expect(() => run(generator, ['--root', root])).toThrow('Shipped locale "de" is missing src/localization/locales/de/translation.json');
+    expect(() => run(generator, ['--root', root])).toThrow(
+      'Shipped locale "de" is missing src/localization/locales/de/translation.json'
+    );
     cleanup(root);
   });
 
@@ -225,8 +329,18 @@ describe('shipped locale completeness contract', () => {
       sourceLocale: 'en',
       fallbackLocale: 'en',
       locales: {
-        en: { languageCode: 'en', intlLocale: 'en-US', displayNameKey: 'x', defaultDisplayName: 'English' },
-        de: { languageCode: 'de', intlLocale: 'de-DE', displayNameKey: 'x', defaultDisplayName: 'Deutsch' },
+        en: {
+          languageCode: 'en',
+          intlLocale: 'en-US',
+          displayNameKey: 'x',
+          defaultDisplayName: 'English',
+        },
+        de: {
+          languageCode: 'de',
+          intlLocale: 'de-DE',
+          displayNameKey: 'x',
+          defaultDisplayName: 'Deutsch',
+        },
       },
     };
     const root = createFixtureRoot(registry);
@@ -234,7 +348,9 @@ describe('shipped locale completeness contract', () => {
     writeRuntimeCatalog(root, 'de', {});
     writeMetadataFile(root, 'en', {});
     // Missing: locales/de.json
-    expect(() => run(generator, ['--root', root])).toThrow('Shipped locale "de" is missing locales/de.json');
+    expect(() => run(generator, ['--root', root])).toThrow(
+      'Shipped locale "de" is missing locales/de.json'
+    );
     cleanup(root);
   });
 
@@ -243,8 +359,18 @@ describe('shipped locale completeness contract', () => {
       sourceLocale: 'en',
       fallbackLocale: 'en',
       locales: {
-        en: { languageCode: 'en', intlLocale: 'en-US', displayNameKey: 'x', defaultDisplayName: 'English' },
-        de: { languageCode: 'de', intlLocale: 'de-DE', displayNameKey: 'x', defaultDisplayName: 'Deutsch' },
+        en: {
+          languageCode: 'en',
+          intlLocale: 'en-US',
+          displayNameKey: 'x',
+          defaultDisplayName: 'English',
+        },
+        de: {
+          languageCode: 'de',
+          intlLocale: 'de-DE',
+          displayNameKey: 'x',
+          defaultDisplayName: 'Deutsch',
+        },
       },
     };
     const root = createFixtureRoot(registry);
@@ -263,9 +389,24 @@ describe('shipped locale completeness contract', () => {
 
 describe('device language matching with a shipped DE fixture', () => {
   const fixtureRegistry = {
-    en: { languageCode: 'en', intlLocale: 'en-US', displayNameKey: 'x', defaultDisplayName: 'English' },
-    pl: { languageCode: 'pl', intlLocale: 'pl-PL', displayNameKey: 'x', defaultDisplayName: 'Polski' },
-    de: { languageCode: 'de', intlLocale: 'de-DE', displayNameKey: 'x', defaultDisplayName: 'Deutsch' },
+    en: {
+      languageCode: 'en',
+      intlLocale: 'en-US',
+      displayNameKey: 'x',
+      defaultDisplayName: 'English',
+    },
+    pl: {
+      languageCode: 'pl',
+      intlLocale: 'pl-PL',
+      displayNameKey: 'x',
+      defaultDisplayName: 'Polski',
+    },
+    de: {
+      languageCode: 'de',
+      intlLocale: 'de-DE',
+      displayNameKey: 'x',
+      defaultDisplayName: 'Deutsch',
+    },
   };
 
   it('maps de to de (language-only tag)', () => {
@@ -292,8 +433,18 @@ describe('device language matching with a shipped DE fixture', () => {
 
   it('does not ambiguously resolve a language-only tag when multiple regional locales exist', () => {
     const synthetic = {
-      'pt-BR': { languageCode: 'pt', intlLocale: 'pt-BR', displayNameKey: 'x', defaultDisplayName: 'Brasil' },
-      'pt-PT': { languageCode: 'pt', intlLocale: 'pt-PT', displayNameKey: 'x', defaultDisplayName: 'Portugal' },
+      'pt-BR': {
+        languageCode: 'pt',
+        intlLocale: 'pt-BR',
+        displayNameKey: 'x',
+        defaultDisplayName: 'Brasil',
+      },
+      'pt-PT': {
+        languageCode: 'pt',
+        intlLocale: 'pt-PT',
+        displayNameKey: 'x',
+        defaultDisplayName: 'Portugal',
+      },
     };
     expect(normalizeLocaleFromRegistry('pt', synthetic)).toBeNull();
     expect(normalizeLocaleFromRegistry('pt-BR', synthetic)).toBe('pt-BR');
@@ -310,9 +461,24 @@ describe('Weblate-incomplete multi-surface DE integration', () => {
       sourceLocale: 'en',
       fallbackLocale: 'en',
       locales: {
-        en: { languageCode: 'en', intlLocale: 'en-US', displayNameKey: 'x', defaultDisplayName: 'English' },
-        pl: { languageCode: 'pl', intlLocale: 'pl-PL', displayNameKey: 'x', defaultDisplayName: 'Polski' },
-        de: { languageCode: 'de', intlLocale: 'de-DE', displayNameKey: 'x', defaultDisplayName: 'Deutsch' },
+        en: {
+          languageCode: 'en',
+          intlLocale: 'en-US',
+          displayNameKey: 'x',
+          defaultDisplayName: 'English',
+        },
+        pl: {
+          languageCode: 'pl',
+          intlLocale: 'pl-PL',
+          displayNameKey: 'x',
+          defaultDisplayName: 'Polski',
+        },
+        de: {
+          languageCode: 'de',
+          intlLocale: 'de-DE',
+          displayNameKey: 'x',
+          defaultDisplayName: 'Deutsch',
+        },
       },
     };
     const root = createFixtureRoot(registry);
@@ -322,15 +488,25 @@ describe('Weblate-incomplete multi-surface DE integration', () => {
     }
 
     // Source (en): 2 keys
-    writeAndroidWidget(root, 'en',
-      '<resources><string name="title">Hello %1$s</string><string name="detail">Detail</string></resources>');
+    writeAndroidWidget(
+      root,
+      'en',
+      '<resources><string name="title">Hello %1$s</string><string name="detail">Detail</string></resources>'
+    );
     writeIosWidget(root, 'en', '"title" = "Hello %@";\n"detail" = "Detail";');
     // PL: complete (2/2)
-    writeAndroidWidget(root, 'pl',
-      '<resources><string name="title">Cześć %1$s</string><string name="detail">Szczegół</string></resources>');
+    writeAndroidWidget(
+      root,
+      'pl',
+      '<resources><string name="title">Cześć %1$s</string><string name="detail">Szczegół</string></resources>'
+    );
     writeIosWidget(root, 'pl', '"title" = "Cześć %@";\n"detail" = "Szczegół";');
     // DE: partial — 1 of 2 keys (50% Android, 50% iOS)
-    writeAndroidWidget(root, 'de', '<resources><string name="title">Hallo %1$s</string></resources>');
+    writeAndroidWidget(
+      root,
+      'de',
+      '<resources><string name="title">Hallo %1$s</string></resources>'
+    );
     writeIosWidget(root, 'de', '"title" = "Hallo %@";');
 
     const output = run(nativeValidator, ['--root', root]);
@@ -338,9 +514,16 @@ describe('Weblate-incomplete multi-surface DE integration', () => {
     expect(output).toContain('de: 1/2 (1 missing)');
 
     // Now add a broken placeholder to verify it still blocks.
-    fs.writeFileSync(path.join(root, 'targets/android-widget/res/values-de/widget_strings.xml'),
-      '<resources><string name="title">Hallo %1$d</string></resources>');
-    expect(() => run(nativeValidator, ['--root', root])).toThrow('Android widget de:title placeholder mismatch');
+    fs.writeFileSync(
+      path.join(
+        root,
+        'targets/android-widget/res/values-de/widget_strings.xml'
+      ),
+      '<resources><string name="title">Hallo %1$d</string></resources>'
+    );
+    expect(() => run(nativeValidator, ['--root', root])).toThrow(
+      'Android widget de:title placeholder mismatch'
+    );
 
     cleanup(root);
   });
@@ -351,25 +534,57 @@ describe('Weblate-incomplete multi-surface DE integration', () => {
 // ---------------------------------------------------------------------------
 
 describe('malformed DE runtime translation blocks CI', () => {
-  const validatorModule = require('../../scripts/i18n-audit/localeValidator.cjs') as {
-    LocaleValidator: new (enPath: string, plPath: string | null, options?: Record<string, unknown>) => {
-      validate(): { errors: { rule: string; locale?: string; key?: string; sourcePlaceholders?: string[]; translatedPlaceholders?: string[] }[];
-      coverage: Record<string, { translated: number; total: number; missing: number; percent: number }> };
+  const validatorModule =
+    require('../../scripts/i18n-audit/localeValidator.cjs') as {
+      LocaleValidator: new (
+        enPath: string,
+        plPath: string | null,
+        options?: Record<string, unknown>
+      ) => {
+        validate(): {
+          errors: {
+            rule: string;
+            locale?: string;
+            key?: string;
+            sourcePlaceholders?: string[];
+            translatedPlaceholders?: string[];
+          }[];
+          coverage: Record<
+            string,
+            {
+              translated: number;
+              total: number;
+              missing: number;
+              percent: number;
+            }
+          >;
+        };
+      };
     };
-  };
 
   it('DE with {{username}} instead of {{name}} is a placeholder mismatch', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sparky-malformed-'));
     const enPath = path.join(root, 'en.json');
     const dePath = path.join(root, 'de.json');
     fs.writeFileSync(enPath, JSON.stringify({ greeting: 'Hello {{name}}' }));
-    fs.writeFileSync(dePath, JSON.stringify({ greeting: 'Hallo {{username}}' }));
+    fs.writeFileSync(
+      dePath,
+      JSON.stringify({ greeting: 'Hallo {{username}}' })
+    );
     const result = new validatorModule.LocaleValidator(enPath, null, {
       localePaths: [{ locale: 'de', path: dePath, intlLocale: 'de-DE' }],
     }).validate();
-    expect(result.errors.some((e) => e.rule === 'placeholder-mismatch' && e.locale === 'de')).toBe(true);
-    expect(result.errors.some((e) => e.sourcePlaceholders?.includes('name'))).toBe(true);
-    expect(result.errors.some((e) => e.translatedPlaceholders?.includes('username'))).toBe(true);
+    expect(
+      result.errors.some(
+        (e) => e.rule === 'placeholder-mismatch' && e.locale === 'de'
+      )
+    ).toBe(true);
+    expect(
+      result.errors.some((e) => e.sourcePlaceholders?.includes('name'))
+    ).toBe(true);
+    expect(
+      result.errors.some((e) => e.translatedPlaceholders?.includes('username'))
+    ).toBe(true);
     cleanup(root);
   });
 
@@ -377,7 +592,10 @@ describe('malformed DE runtime translation blocks CI', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sparky-missing-key-'));
     const enPath = path.join(root, 'en.json');
     const dePath = path.join(root, 'de.json');
-    fs.writeFileSync(enPath, JSON.stringify({ greeting: 'Hello {{name}}', farewell: 'Bye {{name}}' }));
+    fs.writeFileSync(
+      enPath,
+      JSON.stringify({ greeting: 'Hello {{name}}', farewell: 'Bye {{name}}' })
+    );
     fs.writeFileSync(dePath, JSON.stringify({ farewell: 'Tschüss {{name}}' }));
     const result = new validatorModule.LocaleValidator(enPath, null, {
       localePaths: [{ locale: 'de', path: dePath, intlLocale: 'de-DE' }],
@@ -399,8 +617,18 @@ describe('malformed native widget placeholders block CI', () => {
       sourceLocale: 'en',
       fallbackLocale: 'en',
       locales: {
-        en: { languageCode: 'en', intlLocale: 'en-US', displayNameKey: 'x', defaultDisplayName: 'English' },
-        de: { languageCode: 'de', intlLocale: 'de-DE', displayNameKey: 'x', defaultDisplayName: 'Deutsch' },
+        en: {
+          languageCode: 'en',
+          intlLocale: 'en-US',
+          displayNameKey: 'x',
+          defaultDisplayName: 'English',
+        },
+        de: {
+          languageCode: 'de',
+          intlLocale: 'de-DE',
+          displayNameKey: 'x',
+          defaultDisplayName: 'Deutsch',
+        },
       },
     };
     const root = createFixtureRoot(registry);
@@ -408,11 +636,21 @@ describe('malformed native widget placeholders block CI', () => {
       writeRuntimeCatalog(root, locale, {});
       writeMetadataFile(root, locale, {});
     }
-    writeAndroidWidget(root, 'en', '<resources><string name="title">Hello %1$s</string></resources>');
+    writeAndroidWidget(
+      root,
+      'en',
+      '<resources><string name="title">Hello %1$s</string></resources>'
+    );
     writeIosWidget(root, 'en', '"title" = "Hello %@";');
-    writeAndroidWidget(root, 'de', '<resources><string name="title">Hallo %1$d</string></resources>');
+    writeAndroidWidget(
+      root,
+      'de',
+      '<resources><string name="title">Hallo %1$d</string></resources>'
+    );
     writeIosWidget(root, 'de', '"title" = "Hallo %@";');
-    expect(() => run(nativeValidator, ['--root', root])).toThrow('Android widget de:title placeholder mismatch');
+    expect(() => run(nativeValidator, ['--root', root])).toThrow(
+      'Android widget de:title placeholder mismatch'
+    );
     cleanup(root);
   });
 
@@ -421,8 +659,18 @@ describe('malformed native widget placeholders block CI', () => {
       sourceLocale: 'en',
       fallbackLocale: 'en',
       locales: {
-        en: { languageCode: 'en', intlLocale: 'en-US', displayNameKey: 'x', defaultDisplayName: 'English' },
-        de: { languageCode: 'de', intlLocale: 'de-DE', displayNameKey: 'x', defaultDisplayName: 'Deutsch' },
+        en: {
+          languageCode: 'en',
+          intlLocale: 'en-US',
+          displayNameKey: 'x',
+          defaultDisplayName: 'English',
+        },
+        de: {
+          languageCode: 'de',
+          intlLocale: 'de-DE',
+          displayNameKey: 'x',
+          defaultDisplayName: 'Deutsch',
+        },
       },
     };
     const root = createFixtureRoot(registry);
@@ -430,11 +678,21 @@ describe('malformed native widget placeholders block CI', () => {
       writeRuntimeCatalog(root, locale, {});
       writeMetadataFile(root, locale, {});
     }
-    writeAndroidWidget(root, 'en', '<resources><string name="title">Hello %1$s</string></resources>');
+    writeAndroidWidget(
+      root,
+      'en',
+      '<resources><string name="title">Hello %1$s</string></resources>'
+    );
     writeIosWidget(root, 'en', '"title" = "Hello %@";');
-    writeAndroidWidget(root, 'de', '<resources><string name="title">Hallo %1$s</string></resources>');
+    writeAndroidWidget(
+      root,
+      'de',
+      '<resources><string name="title">Hallo %1$s</string></resources>'
+    );
     writeIosWidget(root, 'de', '"title" = "Hallo %lld";');
-    expect(() => run(nativeValidator, ['--root', root])).toThrow('iOS widget de:title placeholder mismatch');
+    expect(() => run(nativeValidator, ['--root', root])).toThrow(
+      'iOS widget de:title placeholder mismatch'
+    );
     cleanup(root);
   });
 });
@@ -445,11 +703,27 @@ describe('malformed native widget placeholders block CI', () => {
 
 describe('target 20% coverage does NOT fail validation', () => {
   it('DE with 20% runtime coverage passes (5 keys, 1 translated)', () => {
-    const validatorModule = require('../../scripts/i18n-audit/localeValidator.cjs') as {
-      LocaleValidator: new (enPath: string, plPath: string | null, options?: Record<string, unknown>) => {
-        validate(): { errors: { locale?: string }[]; coverage: Record<string, { translated: number; total: number; missing: number; percent: number }> };
+    const validatorModule =
+      require('../../scripts/i18n-audit/localeValidator.cjs') as {
+        LocaleValidator: new (
+          enPath: string,
+          plPath: string | null,
+          options?: Record<string, unknown>
+        ) => {
+          validate(): {
+            errors: { locale?: string }[];
+            coverage: Record<
+              string,
+              {
+                translated: number;
+                total: number;
+                missing: number;
+                percent: number;
+              }
+            >;
+          };
+        };
       };
-    };
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sparky-20pct-'));
     const enPath = path.join(root, 'en.json');
     const dePath = path.join(root, 'de.json');
@@ -476,7 +750,10 @@ describe('target 20% coverage does NOT fail validation', () => {
 
 describe('EN is the only mandatory-100% source locale', () => {
   it('EN catalog exists and is non-empty', () => {
-    const enPath = path.join(MOBILE_ROOT, 'src/localization/locales/en/translation.json');
+    const enPath = path.join(
+      MOBILE_ROOT,
+      'src/localization/locales/en/translation.json'
+    );
     expect(fs.existsSync(enPath)).toBe(true);
     const en = JSON.parse(fs.readFileSync(enPath, 'utf8'));
     expect(Object.keys(en).length).toBeGreaterThan(0);
@@ -487,8 +764,19 @@ describe('EN is the only mandatory-100% source locale', () => {
   });
 
   it('EN widget resources exist (Android + iOS)', () => {
-    expect(fs.existsSync(path.join(MOBILE_ROOT, 'targets/android-widget/res/values/widget_strings.xml'))).toBe(true);
-    expect(fs.existsSync(path.join(MOBILE_ROOT, 'targets/widget/en.lproj/Localizable.strings'))).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(
+          MOBILE_ROOT,
+          'targets/android-widget/res/values/widget_strings.xml'
+        )
+      )
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(MOBILE_ROOT, 'targets/widget/en.lproj/Localizable.strings')
+      )
+    ).toBe(true);
   });
 });
 
@@ -502,9 +790,24 @@ describe('DE shipped → generated RESOURCE_MAP includes DE', () => {
       sourceLocale: 'en',
       fallbackLocale: 'en',
       locales: {
-        en: { languageCode: 'en', intlLocale: 'en-US', displayNameKey: 'x', defaultDisplayName: 'English' },
-        pl: { languageCode: 'pl', intlLocale: 'pl-PL', displayNameKey: 'x', defaultDisplayName: 'Polski' },
-        de: { languageCode: 'de', intlLocale: 'de-DE', displayNameKey: 'x', defaultDisplayName: 'Deutsch' },
+        en: {
+          languageCode: 'en',
+          intlLocale: 'en-US',
+          displayNameKey: 'x',
+          defaultDisplayName: 'English',
+        },
+        pl: {
+          languageCode: 'pl',
+          intlLocale: 'pl-PL',
+          displayNameKey: 'x',
+          defaultDisplayName: 'Polski',
+        },
+        de: {
+          languageCode: 'de',
+          intlLocale: 'de-DE',
+          displayNameKey: 'x',
+          defaultDisplayName: 'Deutsch',
+        },
       },
     };
     const root = createFixtureRoot(registry);
@@ -512,7 +815,10 @@ describe('DE shipped → generated RESOURCE_MAP includes DE', () => {
       writeRuntimeCatalog(root, locale, {});
       writeMetadataFile(root, locale, {});
     }
-    const output = path.join(root, 'src/localization/generatedLocaleResources.ts');
+    const output = path.join(
+      root,
+      'src/localization/generatedLocaleResources.ts'
+    );
     run(generator, ['--root', root, '--output', output]);
     const generated = fs.readFileSync(output, 'utf8');
     expect(generated).toContain("from './locales/de/translation.json'");
@@ -532,7 +838,8 @@ describe('DE shipped → generated RESOURCE_MAP includes DE', () => {
 describe('iOS widget .lproj inclusion is discovery-driven', () => {
   it('all shipped locales have corresponding .lproj directories', () => {
     const widgetRoot = path.join(MOBILE_ROOT, 'targets/widget');
-    const lprojDirs = fs.readdirSync(widgetRoot, { withFileTypes: true })
+    const lprojDirs = fs
+      .readdirSync(widgetRoot, { withFileTypes: true })
       .filter((e) => e.isDirectory() && e.name.endsWith('.lproj'))
       .map((e) => e.name.slice(0, -'.lproj'.length));
     for (const locale of Object.keys(SHIPPED_LOCALES)) {
@@ -543,7 +850,10 @@ describe('iOS widget .lproj inclusion is discovery-driven', () => {
   it('adding de.lproj fixture does not require Swift edits (contract is directory-based)', () => {
     // The expo-target.config.js / plugin copies all .lproj directories
     // without enumerating them. Verify the plugin does not hardcode en/pl lproj.
-    const pluginSource = fs.readFileSync(path.join(MOBILE_ROOT, 'plugins/withCalorieWidget.ts'), 'utf8');
+    const pluginSource = fs.readFileSync(
+      path.join(MOBILE_ROOT, 'plugins/withCalorieWidget.ts'),
+      'utf8'
+    );
     expect(pluginSource).not.toMatch(/en\.lproj|pl\.lproj/);
   });
 });
@@ -554,7 +864,10 @@ describe('iOS widget .lproj inclusion is discovery-driven', () => {
 
 describe('Android widget values-de can be added without Kotlin edits', () => {
   it('plugin copies the entire res tree without hardcoding values-pl', () => {
-    const pluginSource = fs.readFileSync(path.join(MOBILE_ROOT, 'plugins/withCalorieWidget.ts'), 'utf8');
+    const pluginSource = fs.readFileSync(
+      path.join(MOBILE_ROOT, 'plugins/withCalorieWidget.ts'),
+      'utf8'
+    );
     // The plugin copies resSrc → resDest via copyTree, not by enumerating
     // individual values-* directories.
     expect(pluginSource).not.toMatch(/values-pl/);
@@ -565,7 +878,7 @@ describe('Android widget values-de can be added without Kotlin edits', () => {
     // Verify the native validator's androidDirForLocale logic.
     const validatorSource = fs.readFileSync(
       path.join(MOBILE_ROOT, 'scripts/validate-native-widget-locales.mjs'),
-      'utf8',
+      'utf8'
     );
     expect(validatorSource).toContain('values-${locale}');
     expect(validatorSource).toContain('values-b+');

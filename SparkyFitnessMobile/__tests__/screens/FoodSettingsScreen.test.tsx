@@ -46,7 +46,11 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-const mockNavigation = { goBack: jest.fn(), setOptions: jest.fn(), navigate: jest.fn() } as any;
+const mockNavigation = {
+  goBack: jest.fn(),
+  setOptions: jest.fn(),
+  navigate: jest.fn(),
+} as any;
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => mockNavigation,
@@ -65,7 +69,7 @@ function renderScreen(initialPrefs: any) {
     ...render(
       <QueryClientProvider client={queryClient}>
         <FoodSettingsScreen navigation={navigation} route={route} />
-      </QueryClientProvider>,
+      </QueryClientProvider>
     ),
   };
 }
@@ -95,9 +99,7 @@ describe('FoodSettingsScreen', () => {
     const { getByText } = renderScreen({});
     expect(getByText('Show Net Carbs')).toBeTruthy();
     expect(
-      getByText(
-        /When enabled, carbohydrate summaries display net carbs/i,
-      ),
+      getByText(/When enabled, carbohydrate summaries display net carbs/i)
     ).toBeTruthy();
   });
 
@@ -130,7 +132,9 @@ describe('FoodSettingsScreen', () => {
     expect(navigation.navigate).toHaveBeenCalledWith('MealTypeSettings');
     // The duplicate editor is gone.
     expect(queryByText('Suggested Meal Times')).toBeNull();
-    expect(queryByText(/Set target start times for your meal categories/i)).toBeNull();
+    expect(
+      queryByText(/Set target start times for your meal categories/i)
+    ).toBeNull();
   });
 
   describe('default food provider: "All Providers"', () => {
@@ -152,7 +156,7 @@ describe('FoodSettingsScreen', () => {
       mockProviders = [twoProviders[0]];
       renderScreen({});
       expect(
-        foodProviderPicker()?.options.map((o: { value: string }) => o.value),
+        foodProviderPicker()?.options.map((o: { value: string }) => o.value)
       ).toEqual(['prov-usda']);
     });
 

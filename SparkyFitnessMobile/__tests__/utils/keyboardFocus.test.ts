@@ -1,5 +1,8 @@
 import { Platform, type TextInput } from 'react-native';
-import { KeyboardController, KeyboardEvents } from 'react-native-keyboard-controller';
+import {
+  KeyboardController,
+  KeyboardEvents,
+} from 'react-native-keyboard-controller';
 import Clipboard from '@react-native-clipboard/clipboard';
 import {
   focusWithAndroidImeRetry,
@@ -87,7 +90,10 @@ describe('keyboardFocus', () => {
 
       runAfterKeyboardSettles(action, 350);
 
-      expect(mockedAddListener).toHaveBeenCalledWith('keyboardDidHide', expect.any(Function));
+      expect(mockedAddListener).toHaveBeenCalledWith(
+        'keyboardDidHide',
+        expect.any(Function)
+      );
       jest.runAllTimers();
       expect(action).not.toHaveBeenCalled();
 

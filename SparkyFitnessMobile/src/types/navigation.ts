@@ -26,7 +26,8 @@ import type { CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
 import type { AssumedSetValues } from '../utils/workoutSession';
 import type { FamilyDiaryUser } from './familyDiary';
 
-export type FoodPickerMode = 'log-entry' | 'meal-builder' | 'meal-plan' | 'library';
+export type FoodPickerMode =
+  'log-entry' | 'meal-builder' | 'meal-plan' | 'library';
 
 export type TabParamList = {
   Dashboard: undefined;
@@ -69,8 +70,19 @@ export type RootStackParamList = {
   WorkoutPresetsLibrary: undefined;
   WorkoutPresetDetail: { preset: WorkoutPreset; updatedPreset?: WorkoutPreset };
   WorkoutPresetForm:
-    | { mode: 'create-preset'; sourceSession?: PresetSessionResponse; selectedExercise?: Exercise; selectionNonce?: number }
-    | { mode: 'edit-preset'; preset: WorkoutPreset; returnKey: string; selectedExercise?: Exercise; selectionNonce?: number };
+    | {
+        mode: 'create-preset';
+        sourceSession?: PresetSessionResponse;
+        selectedExercise?: Exercise;
+        selectionNonce?: number;
+      }
+    | {
+        mode: 'edit-preset';
+        preset: WorkoutPreset;
+        returnKey: string;
+        selectedExercise?: Exercise;
+        selectionNonce?: number;
+      };
   MealDetail: { mealId: string; initialMeal?: Meal };
   FoodDetail: {
     item: FoodInfoItem;
@@ -108,22 +120,21 @@ export type RootStackParamList = {
         mealPlanTarget?: MealPlanPickerTarget;
       }
     | undefined;
-  FoodEntryAdd:
-      | {
-        item: FoodInfoItem;
-        date?: string;
-        adjustedValues?: FoodFormData;
-        adjustedUnitSelection?: FoodUnitSelectionResult;
-        adjustedCustomNutrients?: Record<string, string | number> | null;
-        pendingEquivalents?: EquivalentUnit[];
-        selectedVariantOverride?: FoodUnitVariant;
-        pickerMode?: FoodPickerMode;
-        ingredientIndex?: number;
-        returnDepth?: number;
-        /** Optional canonical meal type id to pre-select when logging. */
-        mealTypeId?: string;
-        mealPlanTarget?: MealPlanPickerTarget;
-      };
+  FoodEntryAdd: {
+    item: FoodInfoItem;
+    date?: string;
+    adjustedValues?: FoodFormData;
+    adjustedUnitSelection?: FoodUnitSelectionResult;
+    adjustedCustomNutrients?: Record<string, string | number> | null;
+    pendingEquivalents?: EquivalentUnit[];
+    selectedVariantOverride?: FoodUnitVariant;
+    pickerMode?: FoodPickerMode;
+    ingredientIndex?: number;
+    returnDepth?: number;
+    /** Optional canonical meal type id to pre-select when logging. */
+    mealTypeId?: string;
+    mealPlanTarget?: MealPlanPickerTarget;
+  };
   EditLoggedMeal: { foodEntryMealId: string; initialMeal?: FoodEntryMeal };
   FoodEntryView: {
     entry: FoodEntry;
@@ -171,7 +182,15 @@ export type RootStackParamList = {
         availableUnitVariants?: FoodUnitVariant[];
         selectedUnitSelection?: FoodUnitSelectionResult;
       }
-    | { mode: 'edit-food'; item: FoodInfoItem; initialValues: Partial<FoodFormData>; returnKey: string; foodId: string; variantId: string; customNutrients?: Record<string, string | number> | null };
+    | {
+        mode: 'edit-food';
+        item: FoodInfoItem;
+        initialValues: Partial<FoodFormData>;
+        returnKey: string;
+        foodId: string;
+        variantId: string;
+        customNutrients?: Record<string, string | number> | null;
+      };
   ExerciseForm:
     | { mode: 'create-exercise' }
     | { mode: 'edit-exercise'; exercise: Exercise; returnKey: string };
@@ -207,19 +226,36 @@ export type RootStackParamList = {
       }
     | undefined;
   ExerciseSearch: { returnKey: string };
-  PresetSearch: { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
-  WorkoutAdd: {
-    session?: PresetSessionResponse;
-    preset?: WorkoutPreset;
-    date?: string;
-    popCount?: number;
+  PresetSearch:
+    { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
+  WorkoutAdd:
+    | {
+        session?: PresetSessionResponse;
+        preset?: WorkoutPreset;
+        date?: string;
+        popCount?: number;
+        selectedExercise?: Exercise;
+        selectionNonce?: number;
+        skipDraftLoad?: boolean;
+      }
+    | undefined;
+  ActivityAdd:
+    | {
+        entry?: IndividualSessionResponse;
+        date?: string;
+        popCount?: number;
+        selectedExercise?: Exercise;
+        selectionNonce?: number;
+        skipDraftLoad?: boolean;
+      }
+    | undefined;
+  WorkoutDetail: {
+    session: PresetSessionResponse;
     selectedExercise?: Exercise;
     selectionNonce?: number;
-    skipDraftLoad?: boolean;
-  } | undefined;
-  ActivityAdd: { entry?: IndividualSessionResponse; date?: string; popCount?: number; selectedExercise?: Exercise; selectionNonce?: number; skipDraftLoad?: boolean } | undefined;
-  WorkoutDetail: { session: PresetSessionResponse; selectedExercise?: Exercise; selectionNonce?: number };
-  ActiveWorkout: { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
+  };
+  ActiveWorkout:
+    { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
   // Post-save celebration for a finished live workout. Renders entirely from
   // the store snapshot captured before `clearWorkout()`; only calories arrive
   // via a post-save session refetch.
@@ -279,10 +315,7 @@ export type RootStackScreenProps<T extends keyof RootStackParamList> =
  * whether a reusable meal template is created, which is what lets the plate be
  * re-logged later without another photo.
  */
-export type SaveMode =
-  | 'ingredients_and_meal'
-  | 'ingredients_only'
-  | 'one_food';
+export type SaveMode = 'ingredients_and_meal' | 'ingredients_only' | 'one_food';
 
 export type FoodPhotoFlowParamList = {
   Improve: {

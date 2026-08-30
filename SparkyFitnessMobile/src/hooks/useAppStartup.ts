@@ -41,11 +41,11 @@ export function useAppStartup({ shouldYieldObserverSync }: AppStartupArgs) {
   useEffect(() => {
     let cancelled = false;
     const onLanguageChanged = () => {
-      void registerLocalizedNotificationPresentation().catch(error => {
+      void registerLocalizedNotificationPresentation().catch((error) => {
         const message = error instanceof Error ? error.message : String(error);
         addLog(
           `[App] Failed to refresh localized notification presentation: ${message}`,
-          'ERROR',
+          'ERROR'
         );
       });
     };
@@ -61,11 +61,11 @@ export function useAppStartup({ shouldYieldObserverSync }: AppStartupArgs) {
       await initNotifications();
     };
 
-    initializeApp().catch(error => {
+    initializeApp().catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
       addLog(
         `[App] Failed to initialize app startup state: ${message}`,
-        'ERROR',
+        'ERROR'
       );
     });
 
@@ -74,16 +74,16 @@ export function useAppStartup({ shouldYieldObserverSync }: AppStartupArgs) {
 
     // iOS-only (no-op on Android): keeps the workout Live Activity in sync
     // with the active-workout store.
-    initWorkoutLiveActivity().catch(error => {
+    initWorkoutLiveActivity().catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
       addLog(
         `[App] Failed to initialize workout Live Activity: ${message}`,
-        'ERROR',
+        'ERROR'
       );
     });
 
     // Initialize log service (warms cache, prunes old logs, registers AppState listener)
-    initLogService().catch(error => {
+    initLogService().catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[App] Failed to initialize log service: ${message}`, 'ERROR');
     });
@@ -95,7 +95,7 @@ export function useAppStartup({ shouldYieldObserverSync }: AppStartupArgs) {
       if (!timezone) {
         addLog(
           '[App] Timezone bootstrap did not resolve a timezone before sync setup.',
-          'WARNING',
+          'WARNING'
         );
       }
 
@@ -107,7 +107,7 @@ export function useAppStartup({ shouldYieldObserverSync }: AppStartupArgs) {
         const message = error instanceof Error ? error.message : String(error);
         addLog(
           `[App] Failed to configure background sync: ${message}`,
-          'ERROR',
+          'ERROR'
         );
       }
 
@@ -124,12 +124,12 @@ export function useAppStartup({ shouldYieldObserverSync }: AppStartupArgs) {
           if (!release) return;
 
           performBackgroundSync('healthkit-observer')
-            .catch(error => {
+            .catch((error) => {
               const message =
                 error instanceof Error ? error.message : String(error);
               addLog(
                 `[App] Observer-triggered sync failed: ${message}`,
-                'ERROR',
+                'ERROR'
               );
             })
             .finally(() => {
@@ -140,21 +140,21 @@ export function useAppStartup({ shouldYieldObserverSync }: AppStartupArgs) {
         const message = error instanceof Error ? error.message : String(error);
         addLog(
           `[App] Failed to configure HealthKit observers: ${message}`,
-          'ERROR',
+          'ERROR'
         );
       }
     };
 
-    initializeSyncServices().catch(error => {
+    initializeSyncServices().catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[App] Failed to initialize sync services: ${message}`, 'ERROR');
     });
 
-    flushPendingHealthSyncCacheRefresh().catch(error => {
+    flushPendingHealthSyncCacheRefresh().catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
       addLog(
         `[App] Failed to flush pending health sync refresh: ${message}`,
-        'ERROR',
+        'ERROR'
       );
     });
 

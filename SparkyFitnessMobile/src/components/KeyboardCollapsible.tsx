@@ -22,7 +22,11 @@ import Animated, {
  * collapse runs, so layout events are only trusted while the keyboard is
  * closed (`keyboardProgress` at 0).
  */
-export default function KeyboardCollapsible({ children }: { children: ReactNode }) {
+export default function KeyboardCollapsible({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const { progress: keyboardProgress } = useReanimatedKeyboardAnimation();
   const [height, setHeight] = useState(0);
 
@@ -40,7 +44,7 @@ export default function KeyboardCollapsible({ children }: { children: ReactNode 
         runOnJS(setKeyboardEngaged)(engaged);
       }
     },
-    [setKeyboardEngaged],
+    [setKeyboardEngaged]
   );
 
   const collapseStyle = useAnimatedStyle(() => {
@@ -48,7 +52,9 @@ export default function KeyboardCollapsible({ children }: { children: ReactNode 
     return {
       // Auto height until first layout measures the child, then collapse to 0.
       height:
-        height === 0 ? undefined : interpolate(p, [0, 1], [height, 0], Extrapolation.CLAMP),
+        height === 0
+          ? undefined
+          : interpolate(p, [0, 1], [height, 0], Extrapolation.CLAMP),
       opacity: interpolate(p, [0, 1], [1, 0], Extrapolation.CLAMP),
       overflow: 'hidden',
     };

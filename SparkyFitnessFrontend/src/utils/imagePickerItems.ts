@@ -7,8 +7,7 @@
  * save time.
  */
 export type PickerImage =
-  | { kind: 'saved'; path: string }
-  | { kind: 'new'; file: File; id: string };
+  { kind: 'saved'; path: string } | { kind: 'new'; file: File; id: string };
 
 let newImageCounter = 0;
 

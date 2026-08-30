@@ -1,4 +1,7 @@
-import { fetchHealthDisplayData, NO_DATA_DISPLAY } from '../../src/services/healthDataDisplay';
+import {
+  fetchHealthDisplayData,
+  NO_DATA_DISPLAY,
+} from '../../src/services/healthDataDisplay';
 import {
   readHealthRecords,
   getSyncStartDate,
@@ -10,13 +13,20 @@ import {
   getAggregatedBasalEnergyByDate,
 } from '../../src/services/healthConnectService';
 import { addLog } from '../../src/services/LogService';
-import i18n, { formatLocalizedNumber, initializeI18n } from '../../src/localization/i18n';
+import i18n, {
+  formatLocalizedNumber,
+  initializeI18n,
+} from '../../src/localization/i18n';
 import type { TimeRange } from '../../src/services/storage';
 
 // A single, controllable metric list — the real HEALTH_METRICS is platform
 // filtered and huge. We mutate this array per test so we can drive one record
 // type through `fetchHealthDisplayData` and assert the formatter output.
-const mockHealthMetrics: { id: string; defaultLabel: string; recordType: string }[] = [];
+const mockHealthMetrics: {
+  id: string;
+  defaultLabel: string;
+  recordType: string;
+}[] = [];
 
 jest.mock('../../src/HealthMetrics', () => ({
   get HEALTH_METRICS() {
@@ -39,9 +49,15 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
-const mockReadHealthRecords = readHealthRecords as jest.MockedFunction<typeof readHealthRecords>;
-const mockGetSyncStartDate = getSyncStartDate as jest.MockedFunction<typeof getSyncStartDate>;
-const mockSteps = getAggregatedStepsByDate as jest.MockedFunction<typeof getAggregatedStepsByDate>;
+const mockReadHealthRecords = readHealthRecords as jest.MockedFunction<
+  typeof readHealthRecords
+>;
+const mockGetSyncStartDate = getSyncStartDate as jest.MockedFunction<
+  typeof getSyncStartDate
+>;
+const mockSteps = getAggregatedStepsByDate as jest.MockedFunction<
+  typeof getAggregatedStepsByDate
+>;
 const mockActiveCals = getAggregatedActiveCaloriesByDate as jest.MockedFunction<
   typeof getAggregatedActiveCaloriesByDate
 >;
@@ -61,7 +77,11 @@ const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 
 function setMetric(recordType: string): void {
   mockHealthMetrics.length = 0;
-  mockHealthMetrics.push({ id: 'metric', defaultLabel: recordType, recordType });
+  mockHealthMetrics.push({
+    id: 'metric',
+    defaultLabel: recordType,
+    recordType,
+  });
 }
 
 const TIME_RANGE: TimeRange = '7d';
@@ -104,12 +124,16 @@ describe('fetchHealthDisplayData', () => {
 
     it('formats active calories as a localized total', async () => {
       mockActiveCals.mockResolvedValue([{ value: 300 }, { value: 200 }]);
-      expect(await displayFor('ActiveCaloriesBurned')).toBe(formatLocalizedNumber(500));
+      expect(await displayFor('ActiveCaloriesBurned')).toBe(
+        formatLocalizedNumber(500)
+      );
     });
 
     it('formats total calories as a localized total', async () => {
       mockTotalCals.mockResolvedValue([{ value: 1500 }, { value: 500 }]);
-      expect(await displayFor('TotalCaloriesBurned')).toBe(formatLocalizedNumber(2000));
+      expect(await displayFor('TotalCaloriesBurned')).toBe(
+        formatLocalizedNumber(2000)
+      );
     });
 
     it('converts distance from metres to kilometres', async () => {
@@ -127,7 +151,7 @@ describe('fetchHealthDisplayData', () => {
       await displayFor('Steps');
       expect(mockSteps).toHaveBeenCalledWith(
         new Date('2026-06-01T00:00:00Z'),
-        expect.any(Date),
+        expect.any(Date)
       );
     });
 
@@ -151,9 +175,18 @@ describe('fetchHealthDisplayData', () => {
       // Records are bucketed by their timestamp: the two sharing a timestamp are
       // summed/counted into one bucket (avg 1550), the third is its own (1700).
       mockReadHealthRecords.mockResolvedValue([
-        { time: '2026-06-01T10:00:00Z', basalMetabolicRate: { inKilocaloriesPerDay: 1500 } },
-        { time: '2026-06-01T10:00:00Z', basalMetabolicRate: { inKilocaloriesPerDay: 1600 } },
-        { time: '2026-06-02T10:00:00Z', basalMetabolicRate: { inKilocaloriesPerDay: 1700 } },
+        {
+          time: '2026-06-01T10:00:00Z',
+          basalMetabolicRate: { inKilocaloriesPerDay: 1500 },
+        },
+        {
+          time: '2026-06-01T10:00:00Z',
+          basalMetabolicRate: { inKilocaloriesPerDay: 1600 },
+        },
+        {
+          time: '2026-06-02T10:00:00Z',
+          basalMetabolicRate: { inKilocaloriesPerDay: 1700 },
+        },
       ] as unknown[]);
       // Bucket avgs = [1550, 1700], overall avg = 1625.
       expect(await displayFor('BasalMetabolicRate')).toBe('1,625 kcal');
@@ -168,10 +201,25 @@ describe('fetchHealthDisplayData', () => {
     // The raw fallback's value extractor absorbs several divergent payload shapes
     // (Health Connect quantity objects vs aggregated iOS records).
     it.each([
-      { label: 'inKilocaloriesPerDay', record: { time: 't', basalMetabolicRate: { inKilocaloriesPerDay: 1500 } } },
-      { label: 'inCalories', record: { time: 't', basalMetabolicRate: { inCalories: 1500 } } },
-      { label: 'inKilocalories', record: { time: 't', basalMetabolicRate: { inKilocalories: 1500 } } },
-      { label: 'energy.inCalories', record: { time: 't', energy: { inCalories: 1500 } } },
+      {
+        label: 'inKilocaloriesPerDay',
+        record: {
+          time: 't',
+          basalMetabolicRate: { inKilocaloriesPerDay: 1500 },
+        },
+      },
+      {
+        label: 'inCalories',
+        record: { time: 't', basalMetabolicRate: { inCalories: 1500 } },
+      },
+      {
+        label: 'inKilocalories',
+        record: { time: 't', basalMetabolicRate: { inKilocalories: 1500 } },
+      },
+      {
+        label: 'energy.inCalories',
+        record: { time: 't', energy: { inCalories: 1500 } },
+      },
       { label: 'aggregated value', record: { date: 't', value: 1500 } },
     ])('extracts a raw BMR value from a $label payload', async ({ record }) => {
       mockBasalEnergy.mockResolvedValue([]);
@@ -181,10 +229,16 @@ describe('fetchHealthDisplayData', () => {
   });
 
   describe('raw record formatters', () => {
-    const cases: { recordType: string; records: unknown[]; expected: string }[] = [
+    const cases: {
+      recordType: string;
+      records: unknown[];
+      expected: string;
+    }[] = [
       {
         recordType: 'HeartRate',
-        records: [{ samples: [{ beatsPerMinute: 60 }, { beatsPerMinute: 80 }] }],
+        records: [
+          { samples: [{ beatsPerMinute: 60 }, { beatsPerMinute: 80 }] },
+        ],
         expected: '70 bpm',
       },
       {
@@ -216,7 +270,12 @@ describe('fetchHealthDisplayData', () => {
       },
       {
         recordType: 'SleepSession',
-        records: [{ startTime: '2026-06-01T22:00:00Z', endTime: '2026-06-02T05:30:00Z' }],
+        records: [
+          {
+            startTime: '2026-06-01T22:00:00Z',
+            endTime: '2026-06-02T05:30:00Z',
+          },
+        ],
         expected: '7h 30m',
       },
       {
@@ -231,17 +290,29 @@ describe('fetchHealthDisplayData', () => {
       },
       {
         recordType: 'BodyTemperature',
-        records: [{ time: '2026-06-01T00:00:00Z', temperature: { inCelsius: 36.6 } }],
+        records: [
+          { time: '2026-06-01T00:00:00Z', temperature: { inCelsius: 36.6 } },
+        ],
         expected: '36.6°C',
       },
       {
         recordType: 'BloodGlucose',
-        records: [{ time: '2026-06-01T00:00:00Z', level: { inMillimolesPerLiter: 5.4 } }],
+        records: [
+          {
+            time: '2026-06-01T00:00:00Z',
+            level: { inMillimolesPerLiter: 5.4 },
+          },
+        ],
         expected: '5.4 mmol/L',
       },
       {
         recordType: 'BloodGlucose',
-        records: [{ time: '2026-06-01T00:00:00Z', level: { inMilligramsPerDeciliter: 90 } }],
+        records: [
+          {
+            time: '2026-06-01T00:00:00Z',
+            level: { inMilligramsPerDeciliter: 90 },
+          },
+        ],
         expected: '5.0 mmol/L',
       },
       {
@@ -290,12 +361,20 @@ describe('fetchHealthDisplayData', () => {
       },
       {
         recordType: 'ExerciseSession',
-        records: [{ startTime: '2026-06-01T10:00:00Z', endTime: '2026-06-01T10:45:00Z' }],
+        records: [
+          {
+            startTime: '2026-06-01T10:00:00Z',
+            endTime: '2026-06-01T10:45:00Z',
+          },
+        ],
         expected: '45 min',
       },
       {
         recordType: 'ElevationGained',
-        records: [{ elevation: { inMeters: 10 } }, { elevation: { inMeters: 5 } }],
+        records: [
+          { elevation: { inMeters: 10 } },
+          { elevation: { inMeters: 5 } },
+        ],
         expected: '15 m',
       },
       {
@@ -305,7 +384,10 @@ describe('fetchHealthDisplayData', () => {
       },
       {
         recordType: 'Speed',
-        records: [{ speed: { inMetersPerSecond: 2 } }, { speed: { inMetersPerSecond: 3 } }],
+        records: [
+          { speed: { inMetersPerSecond: 2 } },
+          { speed: { inMetersPerSecond: 3 } },
+        ],
         expected: '2.50 m/s',
       },
       {
@@ -315,7 +397,10 @@ describe('fetchHealthDisplayData', () => {
       },
       {
         recordType: 'Nutrition',
-        records: [{ energy: { inCalories: 1500000 } }, { energy: { inCalories: 500000 } }],
+        records: [
+          { energy: { inCalories: 1500000 } },
+          { energy: { inCalories: 500000 } },
+        ],
         expected: '2,000 kcal',
       },
       {
@@ -325,10 +410,13 @@ describe('fetchHealthDisplayData', () => {
       },
     ];
 
-    it.each(cases)('formats $recordType records', async ({ recordType, records, expected }) => {
-      mockReadHealthRecords.mockResolvedValue(records);
-      expect(await displayFor(recordType)).toBe(expected);
-    });
+    it.each(cases)(
+      'formats $recordType records',
+      async ({ recordType, records, expected }) => {
+        mockReadHealthRecords.mockResolvedValue(records);
+        expect(await displayFor(recordType)).toBe(expected);
+      }
+    );
 
     it('uses English plural fallback when a plural translation resolves to its raw key', async () => {
       await i18n.changeLanguage('en');
@@ -348,16 +436,23 @@ describe('fetchHealthDisplayData', () => {
     });
 
     it('formats zero-valued temperature, mass, height and glucose records', async () => {
-      mockReadHealthRecords.mockResolvedValue([{ time: '2026-06-01T00:00:00Z', temperature: { inCelsius: 0 } }]);
+      mockReadHealthRecords.mockResolvedValue([
+        { time: '2026-06-01T00:00:00Z', temperature: { inCelsius: 0 } },
+      ]);
       expect(await displayFor('BodyTemperature')).toBe('0.0°C');
-      mockReadHealthRecords.mockResolvedValue([{ time: '2026-06-01T00:00:00Z', weight: { inKilograms: 0 } }]);
+      mockReadHealthRecords.mockResolvedValue([
+        { time: '2026-06-01T00:00:00Z', weight: { inKilograms: 0 } },
+      ]);
       expect(await displayFor('Weight')).toBe('0.0 kg');
-      mockReadHealthRecords.mockResolvedValue([{ time: '2026-06-01T00:00:00Z', height: { inMeters: 0 } }]);
+      mockReadHealthRecords.mockResolvedValue([
+        { time: '2026-06-01T00:00:00Z', height: { inMeters: 0 } },
+      ]);
       expect(await displayFor('Height')).toBe('0.0 cm');
-      mockReadHealthRecords.mockResolvedValue([{ time: '2026-06-01T00:00:00Z', level: { inMillimolesPerLiter: 0 } }]);
+      mockReadHealthRecords.mockResolvedValue([
+        { time: '2026-06-01T00:00:00Z', level: { inMillimolesPerLiter: 0 } },
+      ]);
       expect(await displayFor('BloodGlucose')).toBe('0.0 mmol/L');
     });
-
 
     it('ignores oxygen-saturation readings outside the 0–100 range', async () => {
       // The latest reading (0%) is invalid, so the earlier valid 96% wins.
@@ -370,8 +465,14 @@ describe('fetchHealthDisplayData', () => {
 
     // Body-fat readings arrive in several shapes across platforms.
     it.each([
-      { label: 'bodyFatPercentage.inPercent', record: { time: 't', bodyFatPercentage: { inPercent: 22 } } },
-      { label: 'percentage.value', record: { time: 't', percentage: { value: 22 } } },
+      {
+        label: 'bodyFatPercentage.inPercent',
+        record: { time: 't', bodyFatPercentage: { inPercent: 22 } },
+      },
+      {
+        label: 'percentage.value',
+        record: { time: 't', percentage: { value: 22 } },
+      },
       { label: 'numeric percentage', record: { time: 't', percentage: 22 } },
       { label: 'value', record: { time: 't', value: 22 } },
       { label: 'bodyFat', record: { time: 't', bodyFat: 22 } },
@@ -383,12 +484,18 @@ describe('fetchHealthDisplayData', () => {
     it.each([
       { label: 'numeric percentage', record: { time: 't', percentage: 98 } },
       { label: 'value', record: { time: 't', value: 98 } },
-      { label: 'oxygenSaturation', record: { time: 't', oxygenSaturation: 98 } },
+      {
+        label: 'oxygenSaturation',
+        record: { time: 't', oxygenSaturation: 98 },
+      },
       { label: 'spo2', record: { time: 't', spo2: 98 } },
-    ])('formats oxygen saturation from a $label payload', async ({ record }) => {
-      mockReadHealthRecords.mockResolvedValue([record] as unknown[]);
-      expect(await displayFor('OxygenSaturation')).toBe('98.0%');
-    });
+    ])(
+      'formats oxygen saturation from a $label payload',
+      async ({ record }) => {
+        mockReadHealthRecords.mockResolvedValue([record] as unknown[]);
+        expect(await displayFor('OxygenSaturation')).toBe('98.0%');
+      }
+    );
 
     it('reads blood glucose from the bloodGlucose.* field path', async () => {
       mockReadHealthRecords.mockResolvedValue([
@@ -428,11 +535,13 @@ describe('fetchHealthDisplayData', () => {
     });
 
     it('returns "Error" and logs when a metric fetch throws', async () => {
-      mockReadHealthRecords.mockRejectedValue(new Error('HealthKit unavailable'));
+      mockReadHealthRecords.mockRejectedValue(
+        new Error('HealthKit unavailable')
+      );
       expect(await displayFor('Weight')).toBe('Error');
       expect(mockAddLog).toHaveBeenCalledWith(
         expect.stringContaining('HealthKit unavailable'),
-        'ERROR',
+        'ERROR'
       );
     });
 
@@ -440,7 +549,7 @@ describe('fetchHealthDisplayData', () => {
       mockHealthMetrics.length = 0;
       mockHealthMetrics.push(
         { id: 'good', defaultLabel: 'Weight', recordType: 'Weight' },
-        { id: 'bad', defaultLabel: 'Heart Rate', recordType: 'HeartRate' },
+        { id: 'bad', defaultLabel: 'Heart Rate', recordType: 'HeartRate' }
       );
       mockReadHealthRecords.mockImplementation(async (recordType: string) => {
         if (recordType === 'HeartRate') throw new Error('boom');

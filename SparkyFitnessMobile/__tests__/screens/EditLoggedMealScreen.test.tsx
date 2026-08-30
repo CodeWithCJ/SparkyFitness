@@ -266,7 +266,7 @@ const baseMeal: FoodEntryMeal = {
 };
 
 const buildIngredient = (
-  overrides: Partial<MealIngredientDraft> = {},
+  overrides: Partial<MealIngredientDraft> = {}
 ): MealIngredientDraft => ({
   food_id: 'food-9',
   variant_id: 'var-9',
@@ -349,7 +349,7 @@ describe('EditLoggedMealScreen', () => {
             } as RootStackScreenProps<'EditLoggedMeal'>['route']
           }
         />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
   it('saves merged payload (name, meal_type, meal_type_id, foods) on Save', () => {
@@ -357,7 +357,7 @@ describe('EditLoggedMealScreen', () => {
 
     fireEvent.changeText(
       screen.getByTestId('meal-name-input'),
-      'Updated Meal Name',
+      'Updated Meal Name'
     );
     fireEvent.changeText(screen.getByTestId('quantity-input'), '2');
     fireEvent.press(screen.getByTestId('mealtype-mt-lunch'));
@@ -453,7 +453,7 @@ describe('EditLoggedMealScreen', () => {
         variant_id: 'var-9',
         quantity: 50,
         unit: 'g',
-      }),
+      })
     );
   });
 
@@ -466,7 +466,7 @@ describe('EditLoggedMealScreen', () => {
         pickerMode: 'meal-builder',
         ingredientIndex: 0,
         returnDepth: 1,
-      }),
+      })
     );
   });
 
@@ -514,7 +514,7 @@ describe('EditLoggedMealScreen', () => {
 
     const payload = mockUpdateMeal.mock.calls[0][0];
     expect(payload.foods[1]).toEqual(
-      expect.objectContaining({ food_id: 'food-9', quantity: 100 }),
+      expect.objectContaining({ food_id: 'food-9', quantity: 100 })
     );
   });
 

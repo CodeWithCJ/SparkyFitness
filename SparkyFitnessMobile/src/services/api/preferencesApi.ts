@@ -14,7 +14,9 @@ export interface NutrientDisplayPreference {
  * Fetches all nutrient display preferences for the current user.
  * GET /api/preferences/nutrient-display
  */
-export const fetchNutrientDisplayPreferences = (): Promise<NutrientDisplayPreference[]> =>
+export const fetchNutrientDisplayPreferences = (): Promise<
+  NutrientDisplayPreference[]
+> =>
   apiFetch<NutrientDisplayPreference[]>({
     endpoint: '/api/preferences/nutrient-display',
     serviceName: 'Preferences API',
@@ -29,7 +31,7 @@ export const fetchNutrientDisplayPreferences = (): Promise<NutrientDisplayPrefer
 export const updateNutrientDisplayPreference = (
   viewGroup: string,
   platform: string,
-  visibleNutrients: string[],
+  visibleNutrients: string[]
 ): Promise<NutrientDisplayPreference> =>
   apiFetch<NutrientDisplayPreference>({
     endpoint: `/api/preferences/nutrient-display/${viewGroup}/${platform}`,
@@ -68,7 +70,7 @@ export const fetchPreferences = async (): Promise<UserPreferences> => {
  * to defaults on INSERT.
  */
 export const updatePreferences = async (
-  data: Partial<UserPreferences>,
+  data: Partial<UserPreferences>
 ): Promise<UserPreferences> => {
   return apiFetch<UserPreferences>({
     endpoint: '/api/user-preferences',
@@ -85,9 +87,9 @@ export const updatePreferences = async (
  * only fills timezone when it is currently NULL and otherwise returns the
  * existing explicit preference unchanged.
  */
-export async function ensureTimezoneBootstrapped(
-  { throwOnFailure = false }: EnsureTimezoneBootstrappedOptions = {},
-): Promise<string | undefined> {
+export async function ensureTimezoneBootstrapped({
+  throwOnFailure = false,
+}: EnsureTimezoneBootstrappedOptions = {}): Promise<string | undefined> {
   if (timezoneBootstrapPromise) {
     const result = await timezoneBootstrapPromise;
     if (result.error) {
@@ -100,7 +102,9 @@ export async function ensureTimezoneBootstrapped(
   timezoneBootstrapPromise = (async () => {
     const deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (!deviceTz || !isValidTimeZone(deviceTz)) {
-      const error = new Error(`Device timezone invalid or unavailable: ${deviceTz}`);
+      const error = new Error(
+        `Device timezone invalid or unavailable: ${deviceTz}`
+      );
       addLog(`[Preferences] ${error.message}`, 'WARNING');
       return { error };
     }
@@ -115,7 +119,9 @@ export async function ensureTimezoneBootstrapped(
       });
 
       if (!prefs.timezone) {
-        const error = new Error('Server did not return a timezone after bootstrap');
+        const error = new Error(
+          'Server did not return a timezone after bootstrap'
+        );
         addLog(`[Preferences] ${error.message}`, 'WARNING');
         return { error };
       }
@@ -125,7 +131,7 @@ export async function ensureTimezoneBootstrapped(
       const error = err instanceof Error ? err : new Error(String(err));
       addLog(
         `[Preferences] Timezone bootstrap failed: ${error.message}`,
-        'WARNING',
+        'WARNING'
       );
       return { error };
     }

@@ -1,4 +1,8 @@
-import { entryMatchesDose, isDoseLogged, doseSlotStatus } from '../../src/utils/medications';
+import {
+  entryMatchesDose,
+  isDoseLogged,
+  doseSlotStatus,
+} from '../../src/utils/medications';
 import type { MedicationEntry, MedicationEntryStatus } from '@workspace/shared';
 
 function buildEntry(overrides: Partial<MedicationEntry> = {}): MedicationEntry {
@@ -29,49 +33,76 @@ describe('entryMatchesDose', () => {
   });
 
   it('does not match an entry for a different schedule', () => {
-    expect(entryMatchesDose(buildEntry({ schedule_id: 'sched-other' }), 'med-1', 'sched-1')).toBe(
-      false,
-    );
+    expect(
+      entryMatchesDose(
+        buildEntry({ schedule_id: 'sched-other' }),
+        'med-1',
+        'sched-1'
+      )
+    ).toBe(false);
   });
 
   it('counts a schedule-less entry for the medication toward any scheduled slot', () => {
-    expect(entryMatchesDose(buildEntry({ schedule_id: null }), 'med-1', 'sched-1')).toBe(true);
+    expect(
+      entryMatchesDose(buildEntry({ schedule_id: null }), 'med-1', 'sched-1')
+    ).toBe(true);
   });
 
   it('never counts a PRN log toward a scheduled slot', () => {
     expect(
-      entryMatchesDose(buildEntry({ schedule_id: null, status: 'prn_taken' }), 'med-1', 'sched-1'),
+      entryMatchesDose(
+        buildEntry({ schedule_id: null, status: 'prn_taken' }),
+        'med-1',
+        'sched-1'
+      )
     ).toBe(false);
   });
 
   it('does not count a schedule-less entry of another medication', () => {
     expect(
-      entryMatchesDose(buildEntry({ schedule_id: null, medication_id: 'med-other' }), 'med-1', 'sched-1'),
+      entryMatchesDose(
+        buildEntry({ schedule_id: null, medication_id: 'med-other' }),
+        'med-1',
+        'sched-1'
+      )
     ).toBe(false);
   });
 
   it('matches only schedule-less entries of the medication when scheduleId is null', () => {
-    expect(entryMatchesDose(buildEntry({ schedule_id: null }), 'med-1', null)).toBe(true);
+    expect(
+      entryMatchesDose(buildEntry({ schedule_id: null }), 'med-1', null)
+    ).toBe(true);
     expect(entryMatchesDose(buildEntry(), 'med-1', null)).toBe(false);
   });
 });
 
 describe('isDoseLogged', () => {
-  it.each([['taken'], ['skipped']] as const)('treats a %s entry as logged', (status) => {
-    expect(isDoseLogged([buildEntry({ status })], 'med-1', 'sched-1')).toBe(true);
-  });
+  it.each([['taken'], ['skipped']] as const)(
+    'treats a %s entry as logged',
+    (status) => {
+      expect(isDoseLogged([buildEntry({ status })], 'med-1', 'sched-1')).toBe(
+        true
+      );
+    }
+  );
 
   it.each([['snoozed'], ['prn_taken']] as MedicationEntryStatus[][])(
     'does not treat a %s entry as logged',
     (status) => {
-      expect(isDoseLogged([buildEntry({ status })], 'med-1', 'sched-1')).toBe(false);
-    },
+      expect(isDoseLogged([buildEntry({ status })], 'med-1', 'sched-1')).toBe(
+        false
+      );
+    }
   );
 
   it('is false with no matching entries', () => {
-    expect(isDoseLogged([buildEntry({ schedule_id: 'sched-other' })], 'med-1', 'sched-1')).toBe(
-      false,
-    );
+    expect(
+      isDoseLogged(
+        [buildEntry({ schedule_id: 'sched-other' })],
+        'med-1',
+        'sched-1'
+      )
+    ).toBe(false);
   });
 });
 
@@ -81,9 +112,12 @@ describe('doseSlotStatus', () => {
     ['prn_taken', 'taken'],
     ['skipped', 'skipped'],
     ['snoozed', 'pending'],
-  ] as [MedicationEntryStatus, string][])('maps a %s entry to %s', (status, expected) => {
-    expect(doseSlotStatus(buildEntry({ status }))).toBe(expected);
-  });
+  ] as [MedicationEntryStatus, string][])(
+    'maps a %s entry to %s',
+    (status, expected) => {
+      expect(doseSlotStatus(buildEntry({ status }))).toBe(expected);
+    }
+  );
 
   it('maps no entry to pending', () => {
     expect(doseSlotStatus(undefined)).toBe('pending');

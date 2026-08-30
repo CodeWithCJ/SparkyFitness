@@ -265,8 +265,7 @@ function applyChatProviderTuning(tools: ToolMap): void {
       ...lastTool.providerOptions,
       anthropic: {
         ...(lastTool.providerOptions?.anthropic as
-          | Record<string, unknown>
-          | undefined),
+          Record<string, unknown> | undefined),
         cacheControl: { type: 'ephemeral' },
       },
     };

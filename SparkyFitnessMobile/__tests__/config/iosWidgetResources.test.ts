@@ -4,10 +4,7 @@ import path from 'path';
 const WIDGET_ROOT = path.join(__dirname, '../../targets/widget');
 
 function readStringsFile(relativePath: string): Map<string, string> {
-  const content = fs.readFileSync(
-    path.join(WIDGET_ROOT, relativePath),
-    'utf8',
-  );
+  const content = fs.readFileSync(path.join(WIDGET_ROOT, relativePath), 'utf8');
   const map = new Map<string, string>();
   const regex = /"([^"]+)"\s*=\s*"([^"]*)";/g;
   let match: RegExpExecArray | null;
@@ -47,9 +44,15 @@ describe('iOS WidgetKit localization resources', () => {
     });
 
     it('defines the same key set in English, Polish and Spanish', () => {
-      const en = [...readStringsFile('en.lproj/Localizable.strings').keys()].sort();
-      const pl = [...readStringsFile('pl.lproj/Localizable.strings').keys()].sort();
-      const es = [...readStringsFile('es.lproj/Localizable.strings').keys()].sort();
+      const en = [
+        ...readStringsFile('en.lproj/Localizable.strings').keys(),
+      ].sort();
+      const pl = [
+        ...readStringsFile('pl.lproj/Localizable.strings').keys(),
+      ].sort();
+      const es = [
+        ...readStringsFile('es.lproj/Localizable.strings').keys(),
+      ].sort();
 
       expect(pl).toEqual(en);
       expect(es).toEqual(en);
@@ -104,9 +107,15 @@ describe('iOS WidgetKit localization resources', () => {
       const pl = readStringsFile('pl.lproj/Localizable.strings');
       const es = readStringsFile('es.lproj/Localizable.strings');
 
-      expect(en.get('widget.calorie.name')).not.toBe(en.get('widget.macro.name'));
-      expect(pl.get('widget.calorie.name')).not.toBe(pl.get('widget.macro.name'));
-      expect(es.get('widget.calorie.name')).not.toBe(es.get('widget.macro.name'));
+      expect(en.get('widget.calorie.name')).not.toBe(
+        en.get('widget.macro.name')
+      );
+      expect(pl.get('widget.calorie.name')).not.toBe(
+        pl.get('widget.macro.name')
+      );
+      expect(es.get('widget.calorie.name')).not.toBe(
+        es.get('widget.macro.name')
+      );
     });
 
     it('does not use i18next placeholder syntax', () => {
@@ -124,7 +133,11 @@ describe('iOS WidgetKit localization resources', () => {
       const pl = readStringsFile('pl.lproj/Localizable.strings');
       const es = readStringsFile('es.lproj/Localizable.strings');
 
-      for (const key of ['widget.grams', 'widget.a11y.kcal_left', 'widget.a11y.kcal']) {
+      for (const key of [
+        'widget.grams',
+        'widget.a11y.kcal_left',
+        'widget.a11y.kcal',
+      ]) {
         const enCount = (en.get(key)?.match(/%\@/g) ?? []).length;
         const plCount = (pl.get(key)?.match(/%\@/g) ?? []).length;
         const esCount = (es.get(key)?.match(/%\@/g) ?? []).length;

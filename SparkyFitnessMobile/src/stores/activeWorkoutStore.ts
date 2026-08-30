@@ -30,7 +30,10 @@ import {
   supersetSessionExercises,
   ungroupSessionExercise,
 } from '../utils/workoutSession';
-import type { AssumedSetValues, PrBaselineEntry } from '../utils/workoutSession';
+import type {
+  AssumedSetValues,
+  PrBaselineEntry,
+} from '../utils/workoutSession';
 import { newUuid } from '../utils/ids';
 import {
   addNotificationResponseListener,
@@ -202,7 +205,7 @@ export interface ActiveWorkoutState {
       plannedSetValues?: AssumedSetValues[][];
       sourcePresetId?: number;
       sourceServerConfigId?: string;
-    },
+    }
   ) => void;
   startWorkoutAtSet: (session: PresetSessionResponse, setId: string) => void;
   /**
@@ -212,7 +215,10 @@ export interface ActiveWorkoutState {
    * if the stats query resolves twice. `baseline` is the server best (session
    * excluded) or `null` when the exercise has no history.
    */
-  capturePrBaseline: (exerciseId: string, baseline: PrBaselineEntry | null) => void;
+  capturePrBaseline: (
+    exerciseId: string,
+    baseline: PrBaselineEntry | null
+  ) => void;
   /**
    * Capture an exercise's most recent prior-session sets for placeholder
    * resolution, once. Same gating as {@link capturePrBaseline}: no-op unless a
@@ -221,7 +227,7 @@ export interface ActiveWorkoutState {
    */
   capturePreviousSessionSets: (
     exerciseId: string,
-    sets: ExerciseRecentSessionSet[],
+    sets: ExerciseRecentSessionSet[]
   ) => void;
   clearWorkout: () => void;
   /**
@@ -359,7 +365,7 @@ export interface ActiveWorkoutState {
   applyServerSession: (
     serverSession: PresetSessionResponse,
     sentRevision: number,
-    sentEntryIds: string[],
+    sentEntryIds: string[]
   ) => void;
 }
 
@@ -367,7 +373,14 @@ export interface ActiveWorkoutState {
 export type ActiveSetPatch = Partial<
   Pick<
     ExerciseEntrySetResponse,
-    'weight' | 'reps' | 'duration' | 'distance' | 'rpe' | 'set_type' | 'notes' | 'rest_time'
+    | 'weight'
+    | 'reps'
+    | 'duration'
+    | 'distance'
+    | 'rpe'
+    | 'set_type'
+    | 'notes'
+    | 'rest_time'
   >
 >;
 
@@ -425,10 +438,12 @@ const initialData: Pick<
  * happens after a full round, not between partners. Drop-set steps always
  * carry 0: a drop continues the previous set with no pause.
  */
-export function buildStepsFromSession(session: PresetSessionResponse): WorkoutStep[] {
+export function buildStepsFromSession(
+  session: PresetSessionResponse
+): WorkoutStep[] {
   const steps: WorkoutStep[] = [];
   const runByFirstEntryId = new Map(
-    getSupersetRuns(session.exercises).map((run) => [run.entryIds[0], run]),
+    getSupersetRuns(session.exercises).map((run) => [run.entryIds[0], run])
   );
   const byEntryId = new Map(session.exercises.map((e) => [e.id, e]));
   const consumed = new Set<string>();
@@ -436,12 +451,14 @@ export function buildStepsFromSession(session: PresetSessionResponse): WorkoutSt
   const pushStep = (
     exercise: ExerciseEntryResponse,
     set: ExerciseEntrySetResponse,
-    restSec: number,
+    restSec: number
   ) => {
     steps.push({
       exerciseId: exercise.id,
       setId: String(set.id),
-      exerciseName: exercise.exercise_snapshot?.name ?? i18n.t('workout.exercise', { defaultValue: 'Exercise' }),
+      exerciseName:
+        exercise.exercise_snapshot?.name ??
+        i18n.t('workout.exercise', { defaultValue: 'Exercise' }),
       exerciseImage: exercise.exercise_snapshot?.images?.[0] ?? null,
       restSec: isDropSetType(set.set_type) ? 0 : restSec,
     });
@@ -466,7 +483,8 @@ export function buildStepsFromSession(session: PresetSessionResponse): WorkoutSt
     // whole group, but different rounds may still carry different rest.
     const roundCount = Math.max(...members.map((m) => m.sets.length));
     for (let round = 0; round < roundCount; round++) {
-      const groupRest = members[0].sets[round]?.rest_time ?? getDefaultRestSec();
+      const groupRest =
+        members[0].sets[round]?.rest_time ?? getDefaultRestSec();
       let firstInRound = true;
       for (const member of members) {
         const set = member.sets[round];
@@ -494,10 +512,13 @@ export function buildStepsFromSession(session: PresetSessionResponse): WorkoutSt
  */
 export function buildPositionalSetIdMap(
   local: PresetSessionResponse,
-  server: PresetSessionResponse,
+  server: PresetSessionResponse
 ): Map<string, string> {
   const map = new Map<string, string>();
-  const exerciseCount = Math.min(local.exercises.length, server.exercises.length);
+  const exerciseCount = Math.min(
+    local.exercises.length,
+    server.exercises.length
+  );
   for (let i = 0; i < exerciseCount; i++) {
     const localSets = local.exercises[i].sets;
     const serverSets = server.exercises[i].sets;
@@ -517,7 +538,7 @@ export function buildPositionalSetIdMap(
  */
 export function graftServerSessionIds(
   local: PresetSessionResponse,
-  server: PresetSessionResponse,
+  server: PresetSessionResponse
 ): PresetSessionResponse {
   return {
     ...local,
@@ -548,7 +569,7 @@ export function graftServerSessionIds(
  */
 function nextTempSetId(
   session: PresetSessionResponse,
-  setRenderKeys: Record<string, string>,
+  setRenderKeys: Record<string, string>
 ): number {
   let min = 0;
   for (const exercise of session.exercises) {
@@ -566,7 +587,7 @@ function nextTempSetId(
 function makeDefaultSet(
   id: number,
   setNumber: number,
-  modality: ExerciseModality,
+  modality: ExerciseModality
 ): ExerciseEntrySetResponse {
   return {
     id,
@@ -593,7 +614,7 @@ function makeDefaultSet(
  */
 function locateSet(
   session: PresetSessionResponse,
-  setId: string,
+  setId: string
 ): { exercise: ExerciseEntryResponse; setIndex: number } | null {
   for (const exercise of session.exercises) {
     const setIndex = exercise.sets.findIndex((s) => String(s.id) === setId);
@@ -611,8 +632,11 @@ function locateSet(
  * notification is built so the next set's cascade sees the adopted values.
  */
 function adoptAssumedSetValues(
-  state: Pick<ActiveWorkoutState, 'session' | 'previousSessionSets' | 'plannedSetValues'>,
-  setId: string,
+  state: Pick<
+    ActiveWorkoutState,
+    'session' | 'previousSessionSets' | 'plannedSetValues'
+  >,
+  setId: string
 ): PresetSessionResponse | null {
   const session = state.session;
   if (!session) return session;
@@ -639,7 +663,7 @@ function adoptAssumedSetValues(
   const assumed = resolveAssumedSetValues(
     exercise.sets,
     state.previousSessionSets[exercise.exercise_id],
-    state.plannedSetValues,
+    state.plannedSetValues
   )[setIndex];
   const patch: ActiveSetPatch = cardio
     ? {
@@ -663,8 +687,10 @@ function adoptAssumedSetValues(
         ? e
         : {
             ...e,
-            sets: e.sets.map((s, i) => (i === setIndex ? { ...s, ...patch } : s)),
-          },
+            sets: e.sets.map((s, i) =>
+              i === setIndex ? { ...s, ...patch } : s
+            ),
+          }
     ),
   };
 }
@@ -686,18 +712,19 @@ function adoptAssumedSetValues(
 function restSecBeforeNextSet(
   session: PresetSessionResponse,
   completedSetId: string,
-  nextSetId: string,
+  nextSetId: string
 ): number {
   const to = locateSet(session, nextSetId);
   if (!to) return getDefaultRestSec();
   if (isDropSetType(to.exercise.sets[to.setIndex]?.set_type)) return 0;
 
   const from = locateSet(session, completedSetId);
-  if (!from) return to.exercise.sets[to.setIndex]?.rest_time ?? getDefaultRestSec();
+  if (!from)
+    return to.exercise.sets[to.setIndex]?.rest_time ?? getDefaultRestSec();
 
   // Back-to-back superset partners: same run, different member, same round.
   const toRun = getSupersetRuns(session.exercises).find((r) =>
-    r.entryIds.includes(to.exercise.id),
+    r.entryIds.includes(to.exercise.id)
   );
   if (
     toRun != null &&
@@ -716,7 +743,9 @@ function restSecBeforeNextSet(
  * off. Missing or unparseable timestamps count as not completed. Also used by
  * read-only session views to derive done/upcoming per set.
  */
-export function seedCompletionFromSession(session: PresetSessionResponse): CompletedSetMap {
+export function seedCompletionFromSession(
+  session: PresetSessionResponse
+): CompletedSetMap {
   const seeded: CompletedSetMap = {};
   for (const exercise of session.exercises) {
     for (const s of exercise.sets) {
@@ -740,7 +769,9 @@ export function seedCompletionFromSession(session: PresetSessionResponse): Compl
  * values before moving, so a drag reorder can't trigger that fusion; any future
  * insert-in-middle feature would need the same guard.
  */
-function normalizeSupersetGroups(session: PresetSessionResponse): PresetSessionResponse {
+function normalizeSupersetGroups(
+  session: PresetSessionResponse
+): PresetSessionResponse {
   const exercises = normalizeSessionSupersetGroups(session.exercises);
   if (exercises === session.exercises) return session;
   return { ...session, exercises };
@@ -757,7 +788,7 @@ function buildSessionEditState(
     ActiveWorkoutState,
     'completedSetIds' | 'prSetIds' | 'activeSetId' | 'rest' | 'sessionRevision'
   >,
-  editedSession: PresetSessionResponse,
+  editedSession: PresetSessionResponse
 ): Partial<ActiveWorkoutState> {
   const nextSession = normalizeSupersetGroups(editedSession);
   const newSteps = buildStepsFromSession(nextSession);
@@ -821,12 +852,18 @@ export function buildRestNotificationContent(
   t: TFunction,
   session: PresetSessionResponse | null,
   setId: string | null,
-  fallbackExerciseName: string,
+  fallbackExerciseName: string
 ): { title: string; body: string } {
   // Assumed-aware so an upcoming set with empty fields still announces its
   // placeholder rep target, matching what the row shows grayed-in.
-  const { previousSessionSets, plannedSetValues } = useActiveWorkoutStore.getState();
-  const desc = describeActiveSetAssumed(session, setId, previousSessionSets, plannedSetValues);
+  const { previousSessionSets, plannedSetValues } =
+    useActiveWorkoutStore.getState();
+  const desc = describeActiveSetAssumed(
+    session,
+    setId,
+    previousSessionSets,
+    plannedSetValues
+  );
   if (desc != null) {
     const name = desc.exerciseName ?? fallbackExerciseName;
     const setProgress = t('notifications.rest.bodySetProgress', {
@@ -849,14 +886,24 @@ export function buildRestNotificationContent(
         defaultValue_other: '{{setProgress}} · {{formattedCount}} reps target',
         setProgress,
         count: desc.reps,
-        formattedCount: formatLocalizedNumber(desc.reps, { maximumFractionDigits: 0 }),
+        formattedCount: formatLocalizedNumber(desc.reps, {
+          maximumFractionDigits: 0,
+        }),
       });
     } else {
       body = setProgress;
     }
-    return { title: t('notifications.rest.nextSetTitle', { defaultValue: 'Rest complete: next set up' }), body };
+    return {
+      title: t('notifications.rest.nextSetTitle', {
+        defaultValue: 'Rest complete: next set up',
+      }),
+      body,
+    };
   }
-  return { title: t('notifications.rest.title', { defaultValue: 'Rest complete' }), body: fallbackExerciseName };
+  return {
+    title: t('notifications.rest.title', { defaultValue: 'Rest complete' }),
+    body: fallbackExerciseName,
+  };
 }
 
 /**
@@ -869,23 +916,25 @@ function scheduleGuardedRestNotification(
   exerciseName: string,
   seconds: number,
   token: number,
-  content?: { title?: string; body?: string },
+  content?: { title?: string; body?: string }
 ): void {
-  void scheduleRestNotification(exerciseName, seconds, content).then((notifId) => {
-    if (!notifId) return;
-    const current = useActiveWorkoutStore.getState().rest;
-    if (
-      current.instanceToken === token &&
-      current.state === 'resting' &&
-      current.scheduledNotificationId === null
-    ) {
-      useActiveWorkoutStore.setState({
-        rest: { ...current, scheduledNotificationId: notifId },
-      });
-    } else {
-      void cancelScheduledNotification(notifId);
+  void scheduleRestNotification(exerciseName, seconds, content).then(
+    (notifId) => {
+      if (!notifId) return;
+      const current = useActiveWorkoutStore.getState().rest;
+      if (
+        current.instanceToken === token &&
+        current.state === 'resting' &&
+        current.scheduledNotificationId === null
+      ) {
+        useActiveWorkoutStore.setState({
+          rest: { ...current, scheduledNotificationId: notifId },
+        });
+      } else {
+        void cancelScheduledNotification(notifId);
+      }
     }
-  });
+  );
 }
 
 /**
@@ -897,10 +946,11 @@ function startRestForStep(
   steps: WorkoutStep[],
   setId: string,
   session: PresetSessionResponse | null,
-  durationSecOverride?: number,
+  durationSecOverride?: number
 ): Rest {
   const step = steps.find((s) => s.setId === setId);
-  const durationSec = durationSecOverride ?? step?.restSec ?? getDefaultRestSec();
+  const durationSec =
+    durationSecOverride ?? step?.restSec ?? getDefaultRestSec();
   const token = ++restInstanceCounter;
   const endsAt = Date.now() + durationSec * 1000;
 
@@ -914,7 +964,12 @@ function startRestForStep(
   };
 
   const exerciseName = step?.exerciseName ?? 'Rest';
-  const content = buildRestNotificationContent(i18n.getFixedT(i18n.language), session, setId, exerciseName);
+  const content = buildRestNotificationContent(
+    i18n.getFixedT(i18n.language),
+    session,
+    setId,
+    exerciseName
+  );
   scheduleGuardedRestNotification(exerciseName, durationSec, token, content);
 
   return rest;
@@ -956,7 +1011,8 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           startedAt: Date.now(),
           steps,
           completedSetIds,
-          activeSetId: steps.find((s) => completedSetIds[s.setId] == null)?.setId ?? null,
+          activeSetId:
+            steps.find((s) => completedSetIds[s.setId] == null)?.setId ?? null,
           rest: READY_REST,
           sessionRevision: 0,
           hasUnsavedChanges: false,
@@ -1041,7 +1097,12 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // exercise, not a session edit.
         if (state.sessionId == null) return;
         if (exerciseId in state.previousSessionSets) return;
-        set({ previousSessionSets: { ...state.previousSessionSets, [exerciseId]: sets } });
+        set({
+          previousSessionSets: {
+            ...state.previousSessionSets,
+            [exerciseId]: sets,
+          },
+        });
       },
 
       clearWorkout: () => {
@@ -1089,7 +1150,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // logging the last set with earlier holes circles back to them), else
         // null when every set is done.
         const nextStep =
-          state.steps.slice(targetIndex + 1).find((s) => completedSetIds[s.setId] == null) ??
+          state.steps
+            .slice(targetIndex + 1)
+            .find((s) => completedSetIds[s.setId] == null) ??
           state.steps.find((s) => completedSetIds[s.setId] == null) ??
           null;
 
@@ -1143,7 +1206,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // An expired rest can still read 'resting' here: the ready flip runs
         // on a JS timer, which Android pauses while the app is backgrounded.
         const restExpired =
-          rest.state === 'resting' && rest.endsAt != null && rest.endsAt <= Date.now();
+          rest.state === 'resting' &&
+          rest.endsAt != null &&
+          rest.endsAt <= Date.now();
         if (rest.state !== 'ready' && !restExpired) return false;
         get().completeSet(activeSetId);
         return true;
@@ -1199,7 +1264,8 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
 
         // Same cursor invariant as uncompleteSet: land on the earliest
         // uncompleted step, clearing a now-stale rest if the cursor moved.
-        const nextActiveSetId = state.steps.find((s) => next[s.setId] == null)?.setId ?? null;
+        const nextActiveSetId =
+          state.steps.find((s) => next[s.setId] == null)?.setId ?? null;
         let nextRest = state.rest;
         if (nextActiveSetId !== state.activeSetId) {
           cancelCurrentRestNotification(state.rest);
@@ -1266,10 +1332,18 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           },
         });
 
-        const step = activeSetId != null ? steps.find((s) => s.setId === activeSetId) : null;
+        const step =
+          activeSetId != null
+            ? steps.find((s) => s.setId === activeSetId)
+            : null;
         const exerciseName = step?.exerciseName ?? 'Rest';
         const seconds = Math.max(1, Math.ceil(remainingMs / 1000));
-        const content = buildRestNotificationContent(i18n.getFixedT(i18n.language), state.session, activeSetId, exerciseName);
+        const content = buildRestNotificationContent(
+          i18n.getFixedT(i18n.language),
+          state.session,
+          activeSetId,
+          exerciseName
+        );
         scheduleGuardedRestNotification(exerciseName, seconds, token, content);
       },
 
@@ -1300,11 +1374,27 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
             },
           });
 
-          const step = activeSetId != null ? steps.find((s) => s.setId === activeSetId) : null;
+          const step =
+            activeSetId != null
+              ? steps.find((s) => s.setId === activeSetId)
+              : null;
           const exerciseName = step?.exerciseName ?? 'Rest';
-          const seconds = Math.max(1, Math.ceil((newEndsAt - Date.now()) / 1000));
-          const content = buildRestNotificationContent(i18n.getFixedT(i18n.language), state.session, activeSetId, exerciseName);
-          scheduleGuardedRestNotification(exerciseName, seconds, token, content);
+          const seconds = Math.max(
+            1,
+            Math.ceil((newEndsAt - Date.now()) / 1000)
+          );
+          const content = buildRestNotificationContent(
+            i18n.getFixedT(i18n.language),
+            state.session,
+            activeSetId,
+            exerciseName
+          );
+          scheduleGuardedRestNotification(
+            exerciseName,
+            seconds,
+            token,
+            content
+          );
           return;
         }
 
@@ -1414,12 +1504,13 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const next: PresetSessionResponse = {
           ...session,
           exercises: session.exercises.map((exercise) => {
-            if (!exercise.sets.some((s) => String(s.id) === setId)) return exercise;
+            if (!exercise.sets.some((s) => String(s.id) === setId))
+              return exercise;
             changed = true;
             return {
               ...exercise,
               sets: exercise.sets.map((s) =>
-                String(s.id) === setId ? { ...s, ...patch } : s,
+                String(s.id) === setId ? { ...s, ...patch } : s
               ),
             };
           }),
@@ -1465,7 +1556,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const next: PresetSessionResponse = {
           ...session,
           exercises: session.exercises.map((e) =>
-            e.id === entryId ? { ...e, sets: [...e.sets, newSet] } : e,
+            e.id === entryId ? { ...e, sets: [...e.sets, newSet] } : e
           ),
         };
         set(buildSessionEditState(state, next));
@@ -1476,7 +1567,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const session = state.session;
         if (!session) return;
         const exercise = session.exercises.find((e) =>
-          e.sets.some((s) => String(s.id) === setId),
+          e.sets.some((s) => String(s.id) === setId)
         );
         if (!exercise) return;
 
@@ -1486,7 +1577,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           exercise.sets.length <= 1
             ? {
                 ...session,
-                exercises: session.exercises.filter((e) => e.id !== exercise.id),
+                exercises: session.exercises.filter(
+                  (e) => e.id !== exercise.id
+                ),
               }
             : {
                 ...session,
@@ -1498,7 +1591,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
                         sets: e.sets
                           .filter((s) => String(s.id) !== setId)
                           .map((s, idx) => ({ ...s, set_number: idx + 1 })),
-                      },
+                      }
                 ),
               };
         set(buildSessionEditState(state, next));
@@ -1512,7 +1605,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
 
         // Superset rest is per-round: a member's chip writes every member.
         const run = getSupersetRuns(session.exercises).find((r) =>
-          r.entryIds.includes(entryId),
+          r.entryIds.includes(entryId)
         );
         const targetIds = new Set(run ? run.entryIds : [entryId]);
 
@@ -1520,8 +1613,11 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           ...session,
           exercises: session.exercises.map((e) =>
             targetIds.has(e.id)
-              ? { ...e, sets: e.sets.map((s) => ({ ...s, rest_time: seconds })) }
-              : e,
+              ? {
+                  ...e,
+                  sets: e.sets.map((s) => ({ ...s, rest_time: seconds })),
+                }
+              : e
           ),
         };
         set(buildSessionEditState(state, next));
@@ -1536,7 +1632,8 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         }
         if (lastCompletedMs <= state.startedAt) return;
         set({
-          startedAt: lastCompletedMs - Math.max(1, Math.round(minutes)) * 60_000,
+          startedAt:
+            lastCompletedMs - Math.max(1, Math.round(minutes)) * 60_000,
           sessionRevision: state.sessionRevision + 1,
           hasUnsavedChanges: true,
         });
@@ -1566,9 +1663,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           buildSessionEditState(state, {
             ...session,
             exercises: session.exercises.map((e) =>
-              e.id === entryId ? { ...e, notes: nextNotes } : e,
+              e.id === entryId ? { ...e, notes: nextNotes } : e
             ),
-          }),
+          })
         );
       },
 
@@ -1613,7 +1710,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
             makeDefaultSet(
               nextTempSetId(session, state.setRenderKeys),
               1,
-              resolveSnapshotModality(snapshot),
+              resolveSnapshotModality(snapshot)
             ),
           ],
         };
@@ -1673,11 +1770,11 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
                     makeDefaultSet(
                       nextTempSetId(session, state.setRenderKeys),
                       1,
-                      resolveSnapshotModality(snapshot),
+                      resolveSnapshotModality(snapshot)
                     ),
                   ],
                 }
-              : e,
+              : e
           ),
         };
         set(buildSessionEditState(state, next));
@@ -1690,7 +1787,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const exercises = supersetSessionExercises(
           session.exercises,
           currentEntryId,
-          pickedEntryId,
+          pickedEntryId
         );
         // Identity return = invalid pick (unknown ids, already grouped):
         // leave state untouched so no spurious revision bump is triggered.
@@ -1715,7 +1812,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const moved = moveSessionExerciseItem(
           session.exercises,
           fromItemIndex,
-          toItemIndex,
+          toItemIndex
         );
         // Identity return = no-op / out-of-range move: leave state untouched so
         // no spurious revision bump or autosave is triggered.
@@ -1727,7 +1824,8 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const state = get();
         // The workout may have been cleared or replaced while the save was in
         // flight — a response for a different (or no) session is dropped.
-        if (state.sessionId == null || serverSession.id !== state.sessionId) return;
+        if (state.sessionId == null || serverSession.id !== state.sessionId)
+          return;
         const local = state.session;
         if (!local) return;
 
@@ -1741,7 +1839,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           // appears twice and gets swapped). Skipping leaves the session
           // dirty at the bumped revision; the pending debounce or trailing
           // save resends the current shape, whose response grafts cleanly.
-          const prefixLength = Math.min(local.exercises.length, sentEntryIds.length);
+          const prefixLength = Math.min(
+            local.exercises.length,
+            sentEntryIds.length
+          );
           for (let i = 0; i < prefixLength; i++) {
             if (local.exercises[i].id !== sentEntryIds[i]) return;
           }
@@ -1803,7 +1904,8 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const nextCompleted: CompletedSetMap = {};
         for (const id of Object.keys(state.completedSetIds)) {
           const mapped = setIdMap.get(id) ?? id;
-          if (newSetIds.has(mapped)) nextCompleted[mapped] = state.completedSetIds[id];
+          if (newSetIds.has(mapped))
+            nextCompleted[mapped] = state.completedSetIds[id];
         }
 
         const nextPr: PrSetMap = {};
@@ -1818,10 +1920,15 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const nextRenderKeys: Record<string, string> = {};
         for (const id of Object.keys(state.setRenderKeys)) {
           const mapped = setIdMap.get(id) ?? id;
-          if (newSetIds.has(mapped)) nextRenderKeys[mapped] = state.setRenderKeys[id];
+          if (newSetIds.has(mapped))
+            nextRenderKeys[mapped] = state.setRenderKeys[id];
         }
         for (const [oldId, newId] of setIdMap) {
-          if (oldId !== newId && newSetIds.has(newId) && !(newId in nextRenderKeys)) {
+          if (
+            oldId !== newId &&
+            newSetIds.has(newId) &&
+            !(newId in nextRenderKeys)
+          ) {
             nextRenderKeys[newId] = oldId;
           }
         }
@@ -1906,13 +2013,18 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // already fired or will never fire — no haptic here because the merge
         // path runs on cold start and a phantom buzz would be confusing.
         const r = merged.rest;
-        if (r && r.state === 'resting' && r.endsAt != null && r.endsAt < Date.now()) {
+        if (
+          r &&
+          r.state === 'resting' &&
+          r.endsAt != null &&
+          r.endsAt < Date.now()
+        ) {
           merged.rest = { ...READY_REST };
         }
         return merged;
       },
-    },
-  ),
+    }
+  )
 );
 
 let restDeadlineTimerId: ReturnType<typeof setTimeout> | null = null;
@@ -1930,16 +2042,19 @@ function syncRestDeadlineTimer(rest: Rest): void {
     restDeadlineTimerId = null;
   }
   if (rest.state !== 'resting' || rest.endsAt == null) return;
-  restDeadlineTimerId = setTimeout(() => {
-    restDeadlineTimerId = null;
-    const current = useActiveWorkoutStore.getState().rest;
-    if (current.state !== 'resting' || current.endsAt == null) return;
-    if (Date.now() < current.endsAt) {
-      syncRestDeadlineTimer(current);
-      return;
-    }
-    useActiveWorkoutStore.getState().markRestReady();
-  }, Math.max(0, rest.endsAt - Date.now()));
+  restDeadlineTimerId = setTimeout(
+    () => {
+      restDeadlineTimerId = null;
+      const current = useActiveWorkoutStore.getState().rest;
+      if (current.state !== 'resting' || current.endsAt == null) return;
+      if (Date.now() < current.endsAt) {
+        syncRestDeadlineTimer(current);
+        return;
+      }
+      useActiveWorkoutStore.getState().markRestReady();
+    },
+    Math.max(0, rest.endsAt - Date.now())
+  );
 }
 
 // Every rest transition replaces the `rest` object, so a reference check is
@@ -1956,8 +2071,9 @@ AppState.addEventListener('change', (status) => {
   }
 });
 
-let notificationActionsSubscription: ReturnType<typeof addNotificationResponseListener> | null =
-  null;
+let notificationActionsSubscription: ReturnType<
+  typeof addNotificationResponseListener
+> | null = null;
 
 /**
  * Wires the rest notification's "Complete Set" action to the store. The press
@@ -1967,12 +2083,21 @@ let notificationActionsSubscription: ReturnType<typeof addNotificationResponseLi
  */
 export function initWorkoutNotificationActions(): void {
   if (notificationActionsSubscription != null) return;
-  notificationActionsSubscription = addNotificationResponseListener((response) => {
-    if (response.actionIdentifier !== COMPLETE_SET_ACTION) return;
-    const completed = useActiveWorkoutStore.getState().completeActiveSetIfReady();
-    void addLog(`[WorkoutNotificationAction] complete-set handled=${completed}`, 'DEBUG');
-    void dismissDeliveredNotification(response.notification.request.identifier);
-  });
+  notificationActionsSubscription = addNotificationResponseListener(
+    (response) => {
+      if (response.actionIdentifier !== COMPLETE_SET_ACTION) return;
+      const completed = useActiveWorkoutStore
+        .getState()
+        .completeActiveSetIfReady();
+      void addLog(
+        `[WorkoutNotificationAction] complete-set handled=${completed}`,
+        'DEBUG'
+      );
+      void dismissDeliveredNotification(
+        response.notification.request.identifier
+      );
+    }
+  );
 }
 
 /**

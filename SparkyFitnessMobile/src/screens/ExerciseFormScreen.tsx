@@ -18,7 +18,10 @@ import type {
   RootStackParamList,
   RootStackScreenProps,
 } from '../types/navigation';
-import type { CreateExercisePayload, UpdateExercisePayload } from '../services/api/exerciseApi';
+import type {
+  CreateExercisePayload,
+  UpdateExercisePayload,
+} from '../services/api/exerciseApi';
 
 const CATEGORY_OPTIONS = [
   { value: 'general' },
@@ -57,18 +60,31 @@ const MECHANIC_OPTIONS = [
   { value: 'isolation' },
 ] as const;
 
-type EditParams = Extract<RootStackParamList['ExerciseForm'], { mode: 'edit-exercise' }>;
+type EditParams = Extract<
+  RootStackParamList['ExerciseForm'],
+  { mode: 'edit-exercise' }
+>;
 
 type ExerciseFormScreenProps = RootStackScreenProps<'ExerciseForm'>;
 type Navigation = ExerciseFormScreenProps['navigation'];
 
 const splitCsvList = (s: string): string[] =>
-  Array.from(new Set(s.split(',').map((v) => v.trim()).filter(Boolean)));
+  Array.from(
+    new Set(
+      s
+        .split(',')
+        .map((v) => v.trim())
+        .filter(Boolean)
+    )
+  );
 
 const joinCsvList = (xs?: string[] | null): string => (xs ?? []).join(', ');
 
 const splitLines = (s: string): string[] =>
-  s.split('\n').map((v) => v.trim()).filter(Boolean);
+  s
+    .split('\n')
+    .map((v) => v.trim())
+    .filter(Boolean);
 
 const joinLines = (xs?: string[] | null): string => (xs ?? []).join('\n');
 
@@ -109,12 +125,12 @@ interface ExerciseFormBodyProps {
 const hasAdvancedContent = (state: ExerciseFormState): boolean =>
   Boolean(
     state.equipment ||
-      state.primaryMuscles ||
-      state.secondaryMuscles ||
-      state.instructions ||
-      state.level ||
-      state.force ||
-      state.mechanic,
+    state.primaryMuscles ||
+    state.secondaryMuscles ||
+    state.instructions ||
+    state.level ||
+    state.force ||
+    state.mechanic
   );
 
 const SectionHeader: React.FC<{ children: string }> = ({ children }) => (
@@ -126,7 +142,7 @@ const SectionHeader: React.FC<{ children: string }> = ({ children }) => (
 const labelForOption = (
   options: readonly { label: string; value: string }[],
   value: string | null,
-  placeholder: string,
+  placeholder: string
 ): string => {
   if (!value) return placeholder;
   const match = options.find((opt) => opt.value === value);
@@ -140,12 +156,17 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
 }) => {
   const { t } = useTranslation();
   const textMuted = useCSSVariable('--color-text-muted') as string;
-  const [showAdvanced, setShowAdvanced] = useState(() => hasAdvancedContent(state));
+  const [showAdvanced, setShowAdvanced] = useState(() =>
+    hasAdvancedContent(state)
+  );
 
   const localizeOption = React.useCallback(
-    (kind: Parameters<typeof localizeExerciseTaxonomyValue>[1], value: string, fallback: string): string =>
-      localizeExerciseTaxonomyValue(t, kind, value) || fallback,
-    [t],
+    (
+      kind: Parameters<typeof localizeExerciseTaxonomyValue>[1],
+      value: string,
+      fallback: string
+    ): string => localizeExerciseTaxonomyValue(t, kind, value) || fallback,
+    [t]
   );
 
   const categoryOptions = useMemo(() => {
@@ -154,11 +175,17 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
       !CATEGORY_OPTIONS.some((opt) => opt.value === state.category)
     ) {
       return [
-        ...CATEGORY_OPTIONS.map((opt) => ({ label: localizeOption('category', opt.value, titleCase(opt.value)), value: opt.value })),
+        ...CATEGORY_OPTIONS.map((opt) => ({
+          label: localizeOption('category', opt.value, titleCase(opt.value)),
+          value: opt.value,
+        })),
         { label: state.category, value: state.category },
       ];
     }
-    return CATEGORY_OPTIONS.map((opt) => ({ label: localizeOption('category', opt.value, titleCase(opt.value)), value: opt.value }));
+    return CATEGORY_OPTIONS.map((opt) => ({
+      label: localizeOption('category', opt.value, titleCase(opt.value)),
+      value: opt.value,
+    }));
   }, [state.category, localizeOption]);
 
   const modalityOptions = useMemo(() => {
@@ -167,18 +194,24 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
       !MODALITY_OPTIONS.some((opt) => opt.value === state.modality)
     ) {
       return [
-        ...MODALITY_OPTIONS.map((opt) => ({ label: localizeOption('modality', opt.value, titleCase(opt.value)), value: opt.value })),
+        ...MODALITY_OPTIONS.map((opt) => ({
+          label: localizeOption('modality', opt.value, titleCase(opt.value)),
+          value: opt.value,
+        })),
         { label: state.modality, value: state.modality },
       ];
     }
-    return MODALITY_OPTIONS.map((opt) => ({ label: localizeOption('modality', opt.value, titleCase(opt.value)), value: opt.value }));
+    return MODALITY_OPTIONS.map((opt) => ({
+      label: localizeOption('modality', opt.value, titleCase(opt.value)),
+      value: opt.value,
+    }));
   }, [state.modality, localizeOption]);
 
   const renderPicker = (
     label: string,
     options: readonly { label: string; value: string }[],
     value: string | null,
-    onSelect: (next: string) => void,
+    onSelect: (next: string) => void
   ) => (
     <View className="gap-1.5">
       <Text className="text-text-secondary text-sm font-medium">{label}</Text>
@@ -195,7 +228,11 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
             style={{ height: 44 }}
           >
             <Text className="text-text-primary" style={{ fontSize: 16 }}>
-              {labelForOption(options, value, t('workout.selectValue', { defaultValue: 'Select…' }))}
+              {labelForOption(
+                options,
+                value,
+                t('workout.selectValue', { defaultValue: 'Select…' })
+              )}
             </Text>
             <Icon name="chevron-down" size={16} color={textMuted} />
           </TouchableOpacity>
@@ -207,9 +244,13 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
   return (
     <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
       <View className="gap-1.5">
-        <Text className="text-text-secondary text-sm font-medium">{t('workout.nameRequired', { defaultValue: 'Name *' })}</Text>
+        <Text className="text-text-secondary text-sm font-medium">
+          {t('workout.nameRequired', { defaultValue: 'Name *' })}
+        </Text>
         <FormInput
-          placeholder={t('workout.exerciseNamePlaceholder', { defaultValue: 'e.g. Bulgarian Split Squat' })}
+          placeholder={t('workout.exerciseNamePlaceholder', {
+            defaultValue: 'e.g. Bulgarian Split Squat',
+          })}
           value={state.name}
           onChangeText={(name) => setState((prev) => ({ ...prev, name }))}
           autoCapitalize="words"
@@ -220,19 +261,27 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
       </View>
 
       {showCategory
-        ? renderPicker(t('workout.category', { defaultValue: 'Category' }), categoryOptions, state.category, (category) =>
-            setState((prev) => ({
-              ...prev,
-              category,
-              ...(prev.modalityManuallySet
-                ? null
-                : { modality: deriveExerciseModality(category) }),
-            })),
+        ? renderPicker(
+            t('workout.category', { defaultValue: 'Category' }),
+            categoryOptions,
+            state.category,
+            (category) =>
+              setState((prev) => ({
+                ...prev,
+                category,
+                ...(prev.modalityManuallySet
+                  ? null
+                  : { modality: deriveExerciseModality(category) }),
+              }))
           )
         : null}
 
-      {renderPicker(t('workout.trackingType', { defaultValue: 'Tracking Type' }), modalityOptions, state.modality, (modality) =>
-        setState((prev) => ({ ...prev, modality, modalityManuallySet: true })),
+      {renderPicker(
+        t('workout.trackingType', { defaultValue: 'Tracking Type' }),
+        modalityOptions,
+        state.modality,
+        (modality) =>
+          setState((prev) => ({ ...prev, modality, modalityManuallySet: true }))
       )}
 
       <View className="gap-1.5">
@@ -253,9 +302,13 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
       </View>
 
       <View className="gap-1.5">
-        <Text className="text-text-secondary text-sm font-medium">{t('workout.description', { defaultValue: 'Description' })}</Text>
+        <Text className="text-text-secondary text-sm font-medium">
+          {t('workout.description', { defaultValue: 'Description' })}
+        </Text>
         <FormInput
-          placeholder={t('workout.optionalExerciseNotes', { defaultValue: 'Optional notes about the exercise' })}
+          placeholder={t('workout.optionalExerciseNotes', {
+            defaultValue: 'Optional notes about the exercise',
+          })}
           value={state.description}
           onChangeText={(description) =>
             setState((prev) => ({ ...prev, description }))
@@ -273,7 +326,10 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
         accessibilityState={{ expanded: showAdvanced }}
         className="flex-row items-center justify-between py-2"
       >
-        <Text className="text-text-primary font-medium" style={{ fontSize: 16 }}>
+        <Text
+          className="text-text-primary font-medium"
+          style={{ fontSize: 16 }}
+        >
           {t('workout.advanced', { defaultValue: 'Advanced' })}
         </Text>
         <Icon
@@ -285,14 +341,18 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
 
       {showAdvanced ? (
         <View className="gap-4">
-          <SectionHeader>{t('workout.muscles', { defaultValue: 'Muscles' })}</SectionHeader>
+          <SectionHeader>
+            {t('workout.muscles', { defaultValue: 'Muscles' })}
+          </SectionHeader>
 
           <View className="gap-1.5">
             <Text className="text-text-secondary text-sm font-medium">
               {t('workout.primaryMuscles', { defaultValue: 'Primary muscles' })}
             </Text>
             <FormInput
-              placeholder={t('workout.commaSeparatedMuscles', { defaultValue: 'Comma-separated (e.g. quadriceps, glutes)' })}
+              placeholder={t('workout.commaSeparatedMuscles', {
+                defaultValue: 'Comma-separated (e.g. quadriceps, glutes)',
+              })}
               value={state.primaryMuscles}
               onChangeText={(primaryMuscles) =>
                 setState((prev) => ({ ...prev, primaryMuscles }))
@@ -304,10 +364,14 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
 
           <View className="gap-1.5">
             <Text className="text-text-secondary text-sm font-medium">
-              {t('workout.secondaryMuscles', { defaultValue: 'Secondary muscles' })}
+              {t('workout.secondaryMuscles', {
+                defaultValue: 'Secondary muscles',
+              })}
             </Text>
             <FormInput
-              placeholder={t('workout.commaSeparated', { defaultValue: 'Comma-separated' })}
+              placeholder={t('workout.commaSeparated', {
+                defaultValue: 'Comma-separated',
+              })}
               value={state.secondaryMuscles}
               onChangeText={(secondaryMuscles) =>
                 setState((prev) => ({ ...prev, secondaryMuscles }))
@@ -317,26 +381,54 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
             />
           </View>
 
-          <SectionHeader>{t('workout.classification', { defaultValue: 'Classification' })}</SectionHeader>
+          <SectionHeader>
+            {t('workout.classification', { defaultValue: 'Classification' })}
+          </SectionHeader>
 
-          {renderPicker(t('workout.level', { defaultValue: 'Level' }), LEVEL_OPTIONS.map((opt) => ({ ...opt, label: localizeOption('level', opt.value, titleCase(opt.value)) })), state.level, (level) =>
-            setState((prev) => ({ ...prev, level })),
+          {renderPicker(
+            t('workout.level', { defaultValue: 'Level' }),
+            LEVEL_OPTIONS.map((opt) => ({
+              ...opt,
+              label: localizeOption('level', opt.value, titleCase(opt.value)),
+            })),
+            state.level,
+            (level) => setState((prev) => ({ ...prev, level }))
           )}
-          {renderPicker(t('workout.force', { defaultValue: 'Force' }), FORCE_OPTIONS.map((opt) => ({ ...opt, label: localizeOption('force', opt.value, titleCase(opt.value)) })), state.force, (force) =>
-            setState((prev) => ({ ...prev, force })),
+          {renderPicker(
+            t('workout.force', { defaultValue: 'Force' }),
+            FORCE_OPTIONS.map((opt) => ({
+              ...opt,
+              label: localizeOption('force', opt.value, titleCase(opt.value)),
+            })),
+            state.force,
+            (force) => setState((prev) => ({ ...prev, force }))
           )}
-          {renderPicker(t('workout.mechanic', { defaultValue: 'Mechanic' }), MECHANIC_OPTIONS.map((opt) => ({ ...opt, label: localizeOption('mechanic', opt.value, titleCase(opt.value)) })), state.mechanic, (mechanic) =>
-            setState((prev) => ({ ...prev, mechanic })),
+          {renderPicker(
+            t('workout.mechanic', { defaultValue: 'Mechanic' }),
+            MECHANIC_OPTIONS.map((opt) => ({
+              ...opt,
+              label: localizeOption(
+                'mechanic',
+                opt.value,
+                titleCase(opt.value)
+              ),
+            })),
+            state.mechanic,
+            (mechanic) => setState((prev) => ({ ...prev, mechanic }))
           )}
 
-          <SectionHeader>{t('workout.details', { defaultValue: 'Details' })}</SectionHeader>
+          <SectionHeader>
+            {t('workout.details', { defaultValue: 'Details' })}
+          </SectionHeader>
 
           <View className="gap-1.5">
             <Text className="text-text-secondary text-sm font-medium">
               {t('workout.equipment', { defaultValue: 'Equipment' })}
             </Text>
             <FormInput
-              placeholder={t('workout.commaSeparatedEquipment', { defaultValue: 'Comma-separated (e.g. dumbbell, bench)' })}
+              placeholder={t('workout.commaSeparatedEquipment', {
+                defaultValue: 'Comma-separated (e.g. dumbbell, bench)',
+              })}
               value={state.equipment}
               onChangeText={(equipment) =>
                 setState((prev) => ({ ...prev, equipment }))
@@ -351,7 +443,9 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
               {t('workout.instructions', { defaultValue: 'Instructions' })}
             </Text>
             <FormInput
-              placeholder={t('workout.oneStepPerLine', { defaultValue: 'One step per line' })}
+              placeholder={t('workout.oneStepPerLine', {
+                defaultValue: 'One step per line',
+              })}
               value={state.instructions}
               onChangeText={(instructions) =>
                 setState((prev) => ({ ...prev, instructions }))
@@ -369,7 +463,7 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
 
 const validateAndParseCalories = (
   text: string,
-  t: TFunction,
+  t: TFunction
 ): { ok: true; value?: number } | { ok: false } => {
   const trimmed = text.trim();
   if (trimmed.length === 0) return { ok: true, value: undefined };
@@ -377,8 +471,12 @@ const validateAndParseCalories = (
   if (Number.isNaN(parsed)) {
     Toast.show({
       type: 'error',
-      text1: t('workout.invalidCalories', { defaultValue: 'Invalid calories per hour' }),
-      text2: t('workout.invalidNumber', { defaultValue: 'Please enter a valid number.' }),
+      text1: t('workout.invalidCalories', {
+        defaultValue: 'Invalid calories per hour',
+      }),
+      text2: t('workout.invalidNumber', {
+        defaultValue: 'Please enter a valid number.',
+      }),
     });
     return { ok: false };
   }
@@ -388,7 +486,7 @@ const validateAndParseCalories = (
 const buildCreatePayload = (
   trimmedName: string,
   state: ExerciseFormState,
-  caloriesValue: number | undefined,
+  caloriesValue: number | undefined
 ): CreateExercisePayload => {
   const trimmedDescription = state.description.trim();
   const equipmentList = splitCsvList(state.equipment);
@@ -420,7 +518,9 @@ interface CreateExerciseModeProps {
   navigation: Navigation;
 }
 
-const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) => {
+const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({
+  navigation,
+}) => {
   const { t } = useTranslation();
   const [state, setState] = useState<ExerciseFormState>({
     name: '',
@@ -445,7 +545,9 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
       Toast.show({
         type: 'error',
         text1: t('workout.missingName', { defaultValue: 'Missing name' }),
-        text2: t('workout.exerciseNameRequired', { defaultValue: 'Please enter an exercise name.' }),
+        text2: t('workout.exerciseNameRequired', {
+          defaultValue: 'Please enter an exercise name.',
+        }),
       });
       return;
     }
@@ -457,7 +559,12 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({ navigation }) =
 
     try {
       const created = await createExerciseAsync(payload);
-      Toast.show({ type: 'success', text1: t('workout.exerciseCreated', { defaultValue: 'Exercise created' }) });
+      Toast.show({
+        type: 'success',
+        text1: t('workout.exerciseCreated', {
+          defaultValue: 'Exercise created',
+        }),
+      });
       navigation.replace('ExerciseDetail', { item: created });
     } catch {
       // Error toast handled in useCreateExercise.
@@ -488,7 +595,7 @@ interface EditExerciseModeProps {
 const buildEditPayload = (
   initial: Exercise,
   state: ExerciseFormState,
-  caloriesValue: number | undefined,
+  caloriesValue: number | undefined
 ): UpdateExercisePayload => {
   const payload: UpdateExercisePayload = {};
 
@@ -505,7 +612,10 @@ const buildEditPayload = (
   // modality choice (old servers would drop it anyway; new ones would pin it).
   const initialModality =
     initial.modality ?? deriveExerciseModality(initial.category);
-  if (isExerciseModality(state.modality) && state.modality !== initialModality) {
+  if (
+    isExerciseModality(state.modality) &&
+    state.modality !== initialModality
+  ) {
     payload.modality = state.modality;
   }
 
@@ -524,13 +634,16 @@ const buildEditPayload = (
   }
 
   const equipmentList = splitCsvList(state.equipment);
-  if (JSON.stringify(equipmentList) !== JSON.stringify(initial.equipment ?? [])) {
+  if (
+    JSON.stringify(equipmentList) !== JSON.stringify(initial.equipment ?? [])
+  ) {
     payload.equipment = equipmentList;
   }
 
   const primaryList = splitCsvList(state.primaryMuscles);
   if (
-    JSON.stringify(primaryList) !== JSON.stringify(initial.primary_muscles ?? [])
+    JSON.stringify(primaryList) !==
+    JSON.stringify(initial.primary_muscles ?? [])
   ) {
     payload.primary_muscles = primaryList;
   }
@@ -544,7 +657,9 @@ const buildEditPayload = (
   }
 
   const stepsList = splitLines(state.instructions);
-  if (JSON.stringify(stepsList) !== JSON.stringify(initial.instructions ?? [])) {
+  if (
+    JSON.stringify(stepsList) !== JSON.stringify(initial.instructions ?? [])
+  ) {
     payload.instructions = stepsList;
   }
 
@@ -591,7 +706,9 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
       Toast.show({
         type: 'error',
         text1: t('workout.missingName', { defaultValue: 'Missing name' }),
-        text2: t('workout.exerciseNameRequired', { defaultValue: 'Please enter an exercise name.' }),
+        text2: t('workout.exerciseNameRequired', {
+          defaultValue: 'Please enter an exercise name.',
+        }),
       });
       return;
     }
@@ -608,7 +725,12 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
 
     try {
       const updated = await updateExerciseAsync({ id: exercise.id, payload });
-      Toast.show({ type: 'success', text1: t('workout.exerciseUpdated', { defaultValue: 'Exercise updated' }) });
+      Toast.show({
+        type: 'success',
+        text1: t('workout.exerciseUpdated', {
+          defaultValue: 'Exercise updated',
+        }),
+      });
       navigation.dispatch({
         ...CommonActions.setParams({ updatedItem: updated }),
         source: returnKey,

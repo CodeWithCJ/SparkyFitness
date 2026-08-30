@@ -1,8 +1,11 @@
-import "tsx/cjs";
+import 'tsx/cjs';
 import { ExpoConfig, ConfigContext } from 'expo/config';
 import { nativeLanguageTags } from './src/localization/localeRegistry';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { getIosAppGroup, DEV_BUNDLE_IDENTIFIER } = require('./app.identifiers.js');
+const {
+  getIosAppGroup,
+  DEV_BUNDLE_IDENTIFIER,
+} = require('./app.identifiers.js');
 
 const APP_NAME = 'SparkyFitness';
 const APP_SLUG = 'sparkyfitnessmobile';
@@ -118,16 +121,19 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
   }
 
   // Plugins only included in production builds
-  const prodPlugins = [
-    './plugins/withNetworkSecurityConfig',
-  ];
+  const prodPlugins = ['./plugins/withNetworkSecurityConfig'];
 
   return {
     ...config,
     name: APP_NAME,
     slug: APP_SLUG,
     version: packageJson.version,
-    locales: Object.fromEntries(nativeLanguageTags().map((language) => [language, `./locales/${language}.json`])),
+    locales: Object.fromEntries(
+      nativeLanguageTags().map((language) => [
+        language,
+        `./locales/${language}.json`,
+      ])
+    ),
     ios: {
       bundleIdentifier: isDev
         ? DEV_BUNDLE_IDENTIFIER
@@ -162,14 +168,12 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       icon: './assets/icons/appicon.icon',
     },
     android: {
-      package: isDev
-        ? DEV_PACKAGE
-        : PROD_PACKAGE,
+      package: isDev ? DEV_PACKAGE : PROD_PACKAGE,
       permissions: androidPermissions,
       adaptiveIcon: {
         foregroundImage: './assets/icons/adaptiveicon.png',
         backgroundColor: '#FFFFFF',
-      }
+      },
     },
     plugins: [
       ...(config.plugins ?? []),
@@ -220,7 +224,7 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       APP_VARIANT: environment,
       iosAppGroup: getIosAppGroup(),
       eas: {
-        projectId: "498a86c5-344f-4d2c-9033-dfd720e4a383",
+        projectId: '498a86c5-344f-4d2c-9033-dfd720e4a383',
       },
     },
   };

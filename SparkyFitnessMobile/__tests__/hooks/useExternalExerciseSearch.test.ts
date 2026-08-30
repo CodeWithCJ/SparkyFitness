@@ -1,7 +1,11 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { useExternalExerciseSearch } from '../../src/hooks/useExternalExerciseSearch';
 import { searchExternalExercises } from '../../src/services/api/externalExerciseSearchApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/externalExerciseSearchApi', () => ({
   searchExternalExercises: jest.fn(),
@@ -33,8 +37,9 @@ describe('useExternalExerciseSearch', () => {
 
   it('does not fetch when enabled is false', () => {
     renderHook(
-      () => useExternalExerciseSearch('bench press', 'wger', { enabled: false }),
-      { wrapper: createQueryWrapper(queryClient) },
+      () =>
+        useExternalExerciseSearch('bench press', 'wger', { enabled: false }),
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     expect(mockSearchExternal).not.toHaveBeenCalled();
@@ -43,8 +48,11 @@ describe('useExternalExerciseSearch', () => {
   it('returns empty result when providerId is missing', async () => {
     // When no providerId is given, queryFn returns empty result without calling API
     const { result } = renderHook(
-      () => useExternalExerciseSearch('bench press', 'wger', { providerId: undefined }),
-      { wrapper: createQueryWrapper(queryClient) },
+      () =>
+        useExternalExerciseSearch('bench press', 'wger', {
+          providerId: undefined,
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     // Should not have called the actual API
@@ -65,7 +73,7 @@ describe('useExternalExerciseSearch', () => {
         useExternalExerciseSearch('bench press', 'wger', {
           providerId: 'provider-1',
         }),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
@@ -77,7 +85,7 @@ describe('useExternalExerciseSearch', () => {
   it('returns isSearchActive false when search text is too short', () => {
     const { result } = renderHook(
       () => useExternalExerciseSearch('be', 'wger'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     expect(result.current.isSearchActive).toBe(false);

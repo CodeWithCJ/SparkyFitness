@@ -19,7 +19,8 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(() => Promise.resolve()),
 }));
 
-const mockPrepareWidgetLocale = CalorieWidgetBridge.prepareWidgetLocale as jest.Mock;
+const mockPrepareWidgetLocale =
+  CalorieWidgetBridge.prepareWidgetLocale as jest.Mock;
 const mockReload = CalorieWidgetBridge.reloadWidget as jest.Mock;
 const mockReloadMacro = CalorieWidgetBridge.reloadMacroWidget as jest.Mock;
 const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
@@ -47,7 +48,10 @@ describe('useWidgetLanguageRefresh', () => {
     languageListeners = [];
     resolvedLanguage = 'en';
     useAppPreferencesStore.setState({ languagePreference: 'system' });
-    jest.spyOn(i18n, 'on').mockImplementation(((event: string, listener: I18nEventListener) => {
+    jest.spyOn(i18n, 'on').mockImplementation(((
+      event: string,
+      listener: I18nEventListener
+    ) => {
       if (event === 'languageChanged') languageListeners.push(listener);
       return i18n;
     }) as typeof i18n.on);
@@ -81,7 +85,7 @@ describe('useWidgetLanguageRefresh', () => {
     expect(mockReload).toHaveBeenCalledTimes(1);
     expect(mockReloadMacro).toHaveBeenCalledTimes(1);
     expect(mockPrepareWidgetLocale.mock.invocationCallOrder[0]).toBeLessThan(
-      mockReload.mock.invocationCallOrder[0],
+      mockReload.mock.invocationCallOrder[0]
     );
   });
 
@@ -129,7 +133,7 @@ describe('useWidgetLanguageRefresh', () => {
     setPreference('pl');
     resolvedLanguage = 'pl';
     mockPrepareWidgetLocale.mockRejectedValueOnce(
-      new Error('E_WRITE_FAILED: persist failed'),
+      new Error('E_WRITE_FAILED: persist failed')
     );
     renderHook(() => useWidgetLanguageRefresh());
     await flushSync();
@@ -137,7 +141,7 @@ describe('useWidgetLanguageRefresh', () => {
     expect(mockReload).not.toHaveBeenCalled();
     expect(mockAddLog).toHaveBeenCalledWith(
       '[useWidgetLanguageRefresh] Widget locale preparation failed: E_WRITE_FAILED: persist failed',
-      'ERROR',
+      'ERROR'
     );
 
     languageListeners[0]('pl');

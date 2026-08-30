@@ -15,7 +15,7 @@ describe('createConcurrencyLimiter', () => {
       limit(async () => {
         running++;
         maxRunning = Math.max(maxRunning, running);
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
         running--;
       });
 
@@ -75,7 +75,7 @@ describe('createConcurrencyLimiter', () => {
       limit(async () => {
         running++;
         maxRunning = Math.max(maxRunning, running);
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
         running--;
       });
 
@@ -91,16 +91,20 @@ describe('createConcurrencyLimiter', () => {
     const runPromise = runTasksInBatches(
       [1, 2, 3, 4],
       2,
-      async value => {
+      async (value) => {
         started.push(value);
         if (value === 2) {
-          return withTimeout(new Promise<never>(() => {}), 50, `Metric ${value}`);
+          return withTimeout(
+            new Promise<never>(() => {}),
+            50,
+            `Metric ${value}`
+          );
         }
         return value;
       },
       {
-        stopOnError: error => error instanceof TimeoutError,
-      },
+        stopOnError: (error) => error instanceof TimeoutError,
+      }
     );
 
     await jest.advanceTimersByTimeAsync(50);
@@ -121,7 +125,7 @@ describe('createConcurrencyLimiter', () => {
     const results = await runTasksInBatches(
       [1, 2, 3, 4],
       2,
-      async value => {
+      async (value) => {
         started.push(value);
         if (value === 2) {
           throw new Error('non-timeout failure');
@@ -129,8 +133,8 @@ describe('createConcurrencyLimiter', () => {
         return value;
       },
       {
-        stopOnError: error => error instanceof TimeoutError,
-      },
+        stopOnError: (error) => error instanceof TimeoutError,
+      }
     );
 
     expect(started).toEqual([1, 2, 3, 4]);

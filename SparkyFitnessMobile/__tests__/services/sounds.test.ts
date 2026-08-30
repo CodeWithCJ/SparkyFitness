@@ -10,8 +10,12 @@ import {
   useAppPreferencesStore,
 } from '../../src/stores/appPreferencesStore';
 
-const mockCreatePlayer = createAudioPlayer as jest.MockedFunction<typeof createAudioPlayer>;
-const mockSetAudioMode = setAudioModeAsync as jest.MockedFunction<typeof setAudioModeAsync>;
+const mockCreatePlayer = createAudioPlayer as jest.MockedFunction<
+  typeof createAudioPlayer
+>;
+const mockSetAudioMode = setAudioModeAsync as jest.MockedFunction<
+  typeof setAudioModeAsync
+>;
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -84,7 +88,9 @@ describe('sounds service', () => {
     });
 
     it('still plays and retries configuration when the audio mode call fails', async () => {
-      mockSetAudioMode.mockRejectedValueOnce(new Error('impossible audio mode'));
+      mockSetAudioMode.mockRejectedValueOnce(
+        new Error('impossible audio mode')
+      );
       playRestCompleteSound();
       await flush();
       const player = mockCreatePlayer.mock.results[0].value;

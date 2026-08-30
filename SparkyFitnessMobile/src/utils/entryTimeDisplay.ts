@@ -22,7 +22,7 @@ export type EntryTimeFormat = 'HH:mm' | 'h:mm A' | 'h:mm a';
  */
 export function formatTimeLabel(
   time: string | null | undefined,
-  timeFormat?: EntryTimeFormat | null,
+  timeFormat?: EntryTimeFormat | null
 ): string | null {
   const hourMinute = toHourMinute(time);
   if (!hourMinute) return null;
@@ -46,5 +46,8 @@ export function formatTimeLabel(
   const [hours, minutes] = hourMinute.split(':').map(Number);
   const date = new Date();
   date.setHours(hours, minutes, 0, 0);
-  return date.toLocaleTimeString(getAppLocale(), { hour: 'numeric', minute: '2-digit' });
+  return date.toLocaleTimeString(getAppLocale(), {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }

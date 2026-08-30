@@ -1,7 +1,10 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import Toast from 'react-native-toast-message';
 import { useToggleFavorite } from '../../src/hooks/useToggleFavorite';
-import { addFavorite, removeFavorite } from '../../src/services/api/favoritesApi';
+import {
+  addFavorite,
+  removeFavorite,
+} from '../../src/services/api/favoritesApi';
 import { favoritesQueryKey } from '../../src/hooks/queryKeys';
 import type { FavoritesResponse, FoodItem } from '../../src/types/foods';
 import type { Meal } from '../../src/types/meals';
@@ -114,14 +117,22 @@ describe('useToggleFavorite', () => {
       favoriteFoods: [],
       favoriteMeals: [makeMeal('m1', 'Breakfast')],
     });
-    mockRemove.mockResolvedValue({ type: 'meal', id: 'm1', is_favorite: false });
+    mockRemove.mockResolvedValue({
+      type: 'meal',
+      id: 'm1',
+      is_favorite: false,
+    });
 
     const { result } = renderHook(() => useToggleFavorite(), {
       wrapper: createQueryWrapper(queryClient),
     });
 
     act(() => {
-      result.current.toggleFavorite({ type: 'meal', id: 'm1', isFavorite: true });
+      result.current.toggleFavorite({
+        type: 'meal',
+        id: 'm1',
+        isFavorite: true,
+      });
     });
 
     await waitFor(() => {

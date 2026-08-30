@@ -14,7 +14,6 @@ import { formatLocalizedNumber } from '../localization';
  * application language with no second localization system).
  */
 
-
 /** Controlled group labels from FOOD_FORM_UNIT_GROUPS. */
 const GROUP_KEYS: Record<string, string> = {
   Weight: 'foodUnit.groups.weight',
@@ -76,9 +75,25 @@ const UNIT_KEYS: Record<string, string> = {
  * are NOT in this set and stay as plain `<qty> <symbol>`.
  */
 const COUNTABLE_UNITS: ReadonlySet<string> = new Set([
-  'cup', 'cups', 'tbsp', 'tsp', 'piece', 'slice', 'serving', 'portion',
-  'can', 'bottle', 'packet', 'bag', 'bowl', 'plate', 'handful', 'scoop',
-  'bar', 'stick', 'whole',
+  'cup',
+  'cups',
+  'tbsp',
+  'tsp',
+  'piece',
+  'slice',
+  'serving',
+  'portion',
+  'can',
+  'bottle',
+  'packet',
+  'bag',
+  'bowl',
+  'plate',
+  'handful',
+  'scoop',
+  'bar',
+  'stick',
+  'whole',
 ]);
 
 /**
@@ -87,7 +102,10 @@ const COUNTABLE_UNITS: ReadonlySet<string> = new Set([
  * units, or the original literal for unknown/custom/server-defined units. The
  * raw unit is never altered.
  */
-export function localizeFoodUnit(unit: string | null | undefined, t: TFunction): string {
+export function localizeFoodUnit(
+  unit: string | null | undefined,
+  t: TFunction
+): string {
   if (unit == null) return '';
   const translate = t;
   const normalized = unit.trim().toLowerCase();
@@ -112,7 +130,7 @@ export function localizeFoodUnit(unit: string | null | undefined, t: TFunction):
 export function formatLocalizedUnitQuantity(
   quantity: number,
   unit: string | null | undefined,
-  t: TFunction,
+  t: TFunction
 ): string {
   if (unit == null) return '';
   const translate = t;

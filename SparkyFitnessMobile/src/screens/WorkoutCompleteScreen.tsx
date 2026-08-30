@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
@@ -60,7 +67,6 @@ type Props = RootStackScreenProps<'WorkoutComplete'>;
 /** Keeps the update-preset alert off the confetti burst and success haptic. */
 const UPDATE_PRESET_PROMPT_DELAY_MS = 800;
 
-
 // --- Confetti (records variant only) ---
 
 const CONFETTI_COLOR_VARS = [...SUPERSET_PALETTE_VARS, '--color-pr'];
@@ -80,18 +86,114 @@ const CONFETTI_PIECES: {
   round?: boolean;
   delayMs: number;
 }[] = [
-  { leftPct: 14, topPct: 18, width: 7, height: 11, colorIndex: 2, rotateDeg: -24, delayMs: 0 },
-  { leftPct: 26, topPct: 56, width: 6, height: 6, colorIndex: 1, round: true, delayMs: 120 },
-  { leftPct: 8, topPct: 44, width: 9, height: 5, colorIndex: 5, rotateDeg: 40, delayMs: 60 },
-  { leftPct: 78, topPct: 14, width: 7, height: 11, colorIndex: 4, rotateDeg: 28, delayMs: 40 },
-  { leftPct: 90, topPct: 42, width: 6, height: 6, colorIndex: 0, round: true, delayMs: 160 },
-  { leftPct: 70, topPct: 58, width: 9, height: 5, colorIndex: 8, rotateDeg: -36, delayMs: 90 },
-  { leftPct: 37, topPct: 10, width: 5, height: 9, colorIndex: 3, rotateDeg: 12, delayMs: 140 },
-  { leftPct: 60, topPct: 6, width: 6, height: 6, colorIndex: 2, round: true, delayMs: 20 },
-  { leftPct: 48, topPct: 52, width: 7, height: 10, colorIndex: 8, rotateDeg: 52, delayMs: 180 },
-  { leftPct: 84, topPct: 62, width: 5, height: 9, colorIndex: 3, rotateDeg: -14, delayMs: 110 },
-  { leftPct: 20, topPct: 8, width: 6, height: 6, colorIndex: 6, round: true, delayMs: 200 },
-  { leftPct: 55, topPct: 30, width: 8, height: 5, colorIndex: 0, rotateDeg: 20, delayMs: 70 },
+  {
+    leftPct: 14,
+    topPct: 18,
+    width: 7,
+    height: 11,
+    colorIndex: 2,
+    rotateDeg: -24,
+    delayMs: 0,
+  },
+  {
+    leftPct: 26,
+    topPct: 56,
+    width: 6,
+    height: 6,
+    colorIndex: 1,
+    round: true,
+    delayMs: 120,
+  },
+  {
+    leftPct: 8,
+    topPct: 44,
+    width: 9,
+    height: 5,
+    colorIndex: 5,
+    rotateDeg: 40,
+    delayMs: 60,
+  },
+  {
+    leftPct: 78,
+    topPct: 14,
+    width: 7,
+    height: 11,
+    colorIndex: 4,
+    rotateDeg: 28,
+    delayMs: 40,
+  },
+  {
+    leftPct: 90,
+    topPct: 42,
+    width: 6,
+    height: 6,
+    colorIndex: 0,
+    round: true,
+    delayMs: 160,
+  },
+  {
+    leftPct: 70,
+    topPct: 58,
+    width: 9,
+    height: 5,
+    colorIndex: 8,
+    rotateDeg: -36,
+    delayMs: 90,
+  },
+  {
+    leftPct: 37,
+    topPct: 10,
+    width: 5,
+    height: 9,
+    colorIndex: 3,
+    rotateDeg: 12,
+    delayMs: 140,
+  },
+  {
+    leftPct: 60,
+    topPct: 6,
+    width: 6,
+    height: 6,
+    colorIndex: 2,
+    round: true,
+    delayMs: 20,
+  },
+  {
+    leftPct: 48,
+    topPct: 52,
+    width: 7,
+    height: 10,
+    colorIndex: 8,
+    rotateDeg: 52,
+    delayMs: 180,
+  },
+  {
+    leftPct: 84,
+    topPct: 62,
+    width: 5,
+    height: 9,
+    colorIndex: 3,
+    rotateDeg: -14,
+    delayMs: 110,
+  },
+  {
+    leftPct: 20,
+    topPct: 8,
+    width: 6,
+    height: 6,
+    colorIndex: 6,
+    round: true,
+    delayMs: 200,
+  },
+  {
+    leftPct: 55,
+    topPct: 30,
+    width: 8,
+    height: 5,
+    colorIndex: 0,
+    rotateDeg: 20,
+    delayMs: 70,
+  },
 ];
 
 function ConfettiPiece({
@@ -103,7 +205,10 @@ function ConfettiPiece({
 }) {
   const progress = useSharedValue(0);
   useEffect(() => {
-    progress.value = withDelay(piece.delayMs, withTiming(1, { duration: 1100 }));
+    progress.value = withDelay(
+      piece.delayMs,
+      withTiming(1, { duration: 1100 })
+    );
     return () => cancelAnimation(progress);
   }, [piece.delayMs, progress]);
 
@@ -141,7 +246,11 @@ function ConfettiBurst() {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {CONFETTI_PIECES.map((piece, index) => (
-        <ConfettiPiece key={index} piece={piece} color={String(palette[piece.colorIndex])} />
+        <ConfettiPiece
+          key={index}
+          piece={piece}
+          color={String(palette[piece.colorIndex])}
+        />
       ))}
     </View>
   );
@@ -176,15 +285,26 @@ function CaloriesShimmer() {
   useEffect(() => {
     if (reducedMotion) return;
     opacity.value = withRepeat(
-      withSequence(withTiming(0.45, { duration: 650 }), withTiming(1, { duration: 650 })),
-      -1,
+      withSequence(
+        withTiming(0.45, { duration: 650 }),
+        withTiming(1, { duration: 650 })
+      ),
+      -1
     );
     return () => cancelAnimation(opacity);
   }, [opacity, reducedMotion]);
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
   return (
-    <Animated.View style={animatedStyle} accessibilityLabel={t('workoutComplete.accessibility.calculating', { defaultValue: 'Calculating' })}>
-      <View className="bg-raised rounded-md mt-1" style={{ width: 58, height: 20 }} />
+    <Animated.View
+      style={animatedStyle}
+      accessibilityLabel={t('workoutComplete.accessibility.calculating', {
+        defaultValue: 'Calculating',
+      })}
+    >
+      <View
+        className="bg-raised rounded-md mt-1"
+        style={{ width: 58, height: 20 }}
+      />
     </Animated.View>
   );
 }
@@ -222,7 +342,12 @@ function StatValue({ value, unit }: { value: string; unit?: string }) {
       style={{ fontVariant: ['tabular-nums'] }}
     >
       {value}
-      {unit != null && <Text className="text-sm font-semibold text-text-secondary"> {unit}</Text>}
+      {unit != null && (
+        <Text className="text-sm font-semibold text-text-secondary">
+          {' '}
+          {unit}
+        </Text>
+      )}
     </Text>
   );
 }
@@ -267,7 +392,8 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
 
   const { preferences } = usePreferences();
   const weightUnit = normalizeWeightUnit(preferences?.default_weight_unit);
-  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
+  const distanceUnit =
+    (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   const { getImageSource } = useExerciseImageSource();
   const { runNavigationAction } = useNavigationActionGuard(navigation);
 
@@ -275,7 +401,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
 
   const summary = useMemo(
     () => buildWorkoutCompletionSummary(session, completedSetIds, prSetIds, t),
-    [session, completedSetIds, prSetIds, t],
+    [session, completedSetIds, prSetIds, t]
   );
   const hasRecords = summary.prRows.length > 0;
 
@@ -290,7 +416,11 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
     // A non-null split means this session priced itself (something completed
     // after start); null means it didn't, and the server-stamped durations
     // are the better truth.
-    const split = buildSessionDurationMinutes(session, completedSetIds, startedAt);
+    const split = buildSessionDurationMinutes(
+      session,
+      completedSetIds,
+      startedAt
+    );
     if (split != null) {
       const derived = session.exercises.reduce(
         (sum, e) =>
@@ -298,11 +428,14 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
           (isCardioModality(resolveSnapshotModality(e.exercise_snapshot))
             ? setsDurationMinutes(e.sets)
             : (split.get(e.id) ?? 0)),
-        0,
+        0
       );
       if (derived > 0) return derived;
     }
-    const stamped = session.exercises.reduce((sum, e) => sum + (e.duration_minutes ?? 0), 0);
+    const stamped = session.exercises.reduce(
+      (sum, e) => sum + (e.duration_minutes ?? 0),
+      0
+    );
     if (stamped > 0) return stamped;
     return summarizeWorkoutSpan(completedSetIds, startedAt)?.totalMinutes ?? 0;
   }, [session, completedSetIds, startedAt]);
@@ -365,8 +498,11 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
     () =>
       sourcePreset == null
         ? null
-        : buildPresetUpdateExercises(session, sourcePreset, { completedSetIds, plannedSetValues }),
-    [sourcePreset, session, completedSetIds, plannedSetValues],
+        : buildPresetUpdateExercises(session, sourcePreset, {
+            completedSetIds,
+            plannedSetValues,
+          }),
+    [sourcePreset, session, completedSetIds, plannedSetValues]
   );
 
   useEffect(() => {
@@ -382,38 +518,68 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
       // re-runs the effect and fires it then.
       promptedRef.current = true;
       Alert.alert(
-        t('workoutComplete.confirm.updatePresetTitle', { defaultValue: 'Update preset?' }),
-        t('workoutComplete.confirm.updatePresetMessage', { defaultValue: 'Today\'s workout differs from \"{{preset}}\". Update the preset to match?', preset: sourcePreset.name }),
+        t('workoutComplete.confirm.updatePresetTitle', {
+          defaultValue: 'Update preset?',
+        }),
+        t('workoutComplete.confirm.updatePresetMessage', {
+          defaultValue:
+            'Today\'s workout differs from \"{{preset}}\". Update the preset to match?',
+          preset: sourcePreset.name,
+        }),
         [
-          { text: t('workoutComplete.actions.keepPreset', { defaultValue: 'Keep Preset' }), style: 'cancel' },
           {
-            text: t('workoutComplete.actions.update', { defaultValue: 'Update' }),
+            text: t('workoutComplete.actions.keepPreset', {
+              defaultValue: 'Keep Preset',
+            }),
+            style: 'cancel',
+          },
+          {
+            text: t('workoutComplete.actions.update', {
+              defaultValue: 'Update',
+            }),
             onPress: () => {
               void (async () => {
                 try {
-                  await updatePresetAsync({ id: presetId, payload: { exercises } });
-                  Toast.show({ type: 'success', text1: t('workoutComplete.success.presetUpdated', { defaultValue: 'Preset updated' }) });
+                  await updatePresetAsync({
+                    id: presetId,
+                    payload: { exercises },
+                  });
+                  Toast.show({
+                    type: 'success',
+                    text1: t('workoutComplete.success.presetUpdated', {
+                      defaultValue: 'Preset updated',
+                    }),
+                  });
                 } catch {
                   // useUpdateWorkoutPreset already showed the failure toast.
                 }
               })();
             },
           },
-        ],
+        ]
       );
     }, UPDATE_PRESET_PROMPT_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [isFocused, sourcePreset, presetUpdateExercises, profile?.id, updatePresetAsync, t]);
+  }, [
+    isFocused,
+    sourcePreset,
+    presetUpdateExercises,
+    profile?.id,
+    updatePresetAsync,
+    t,
+  ]);
 
-  const rpeTone = summary.averageRpe != null ? getRpeTone(summary.averageRpe) : null;
-  const rpeToneColor = String(
-    useCSSVariable(RPE_TONE_VARS[rpeTone ?? 'easy']),
+  const rpeTone =
+    summary.averageRpe != null ? getRpeTone(summary.averageRpe) : null;
+  const rpeToneColor = String(useCSSVariable(RPE_TONE_VARS[rpeTone ?? 'easy']));
+
+  const finishedTimeText = new Date(finishedAt).toLocaleTimeString(
+    getAppLocale(),
+    {
+      hour: 'numeric',
+      minute: '2-digit',
+    }
   );
-
-  const finishedTimeText = new Date(finishedAt).toLocaleTimeString(getAppLocale(), {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
 
   const sessionForDetail = refreshedSession ?? session;
   const handleViewWorkout = () => {
@@ -437,17 +603,25 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 24 }}>
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 24 }}
+      >
         <View className="items-center px-6 pt-7 pb-5">
           {hasRecords && <ConfettiBurst />}
           <HeroCheck />
-          <Text className="text-2xl font-bold text-text-primary mt-3">{t('workoutComplete.title', { defaultValue: 'Workout Complete' })}</Text>
+          <Text className="text-2xl font-bold text-text-primary mt-3">
+            {t('workoutComplete.title', { defaultValue: 'Workout Complete' })}
+          </Text>
           <Text className="text-[15px] font-semibold text-text-secondary mt-1">
             {session.name}
           </Text>
           <Text className="text-sm font-medium text-text-muted mt-1">
             {allSetsLogged
-              ? t('workoutComplete.labels.allSets', { defaultValue: '{{count}} sets', count: summary.totalSetCount })
+              ? t('workoutComplete.labels.allSets', {
+                  defaultValue: '{{count}} sets',
+                  count: summary.totalSetCount,
+                })
               : t('workoutComplete.labels.partialSets', {
                   defaultValue: '{{completed}} of {{total}} sets',
                   completed: summary.completedSetCount,
@@ -455,20 +629,38 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                 })}
           </Text>
           <Text className="text-sm font-medium text-text-muted">
-            {t('workoutComplete.labels.todayAt', { defaultValue: ' · Today at ' })}
+            {t('workoutComplete.labels.todayAt', {
+              defaultValue: ' · Today at ',
+            })}
             {finishedTimeText}
           </Text>
         </View>
 
         <View className="px-4">
           <View className="flex-row gap-2">
-            <StatTile icon="timer" label={t('workoutComplete.stats.duration', { defaultValue: 'Duration' })}>
-              <StatValue value={durationMinutes > 0 ? formatDuration(durationMinutes) : '—'} />
+            <StatTile
+              icon="timer"
+              label={t('workoutComplete.stats.duration', {
+                defaultValue: 'Duration',
+              })}
+            >
+              <StatValue
+                value={
+                  durationMinutes > 0 ? formatDuration(durationMinutes) : '—'
+                }
+              />
             </StatTile>
-            <StatTile icon="exercise-weights" label={t('workoutComplete.stats.volume', { defaultValue: 'Volume' })}>
+            <StatTile
+              icon="exercise-weights"
+              label={t('workoutComplete.stats.volume', {
+                defaultValue: 'Volume',
+              })}
+            >
               {summary.volumeKg > 0 ? (
                 <StatValue
-                  value={formatLocalizedNumber(Math.round(weightFromKg(summary.volumeKg, weightUnit)))}
+                  value={formatLocalizedNumber(
+                    Math.round(weightFromKg(summary.volumeKg, weightUnit))
+                  )}
                   unit={weightUnit}
                 />
               ) : (
@@ -477,7 +669,10 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             </StatTile>
           </View>
           <View className="flex-row gap-2 mt-2">
-            <StatTile icon="checkmark-circle" label={t('workoutComplete.stats.sets', { defaultValue: 'Sets' })}>
+            <StatTile
+              icon="checkmark-circle"
+              label={t('workoutComplete.stats.sets', { defaultValue: 'Sets' })}
+            >
               <Text
                 className="text-xl font-bold text-text-primary mt-0.5"
                 style={{ fontVariant: ['tabular-nums'] }}
@@ -486,13 +681,29 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                 <Text className="text-sm font-semibold text-text-secondary">
                   {' '}
                   / {summary.totalSetCount}
-                  {summary.skippedSetCount > 0 && <> · {summary.skippedSetCount} {t('workoutComplete.labels.skipped', { defaultValue: 'skipped' })}</>}
+                  {summary.skippedSetCount > 0 && (
+                    <>
+                      {' '}
+                      · {summary.skippedSetCount}{' '}
+                      {t('workoutComplete.labels.skipped', {
+                        defaultValue: 'skipped',
+                      })}
+                    </>
+                  )}
                 </Text>
               </Text>
             </StatTile>
-            <StatTile icon="flame" label={t('workoutComplete.stats.calories', { defaultValue: 'Calories' })}>
+            <StatTile
+              icon="flame"
+              label={t('workoutComplete.stats.calories', {
+                defaultValue: 'Calories',
+              })}
+            >
               {caloriesValue != null ? (
-                <StatValue value={formatLocalizedNumber(Math.round(caloriesValue))} unit={t('nutrition.caloriesShort', { defaultValue: "kcal" })} />
+                <StatValue
+                  value={formatLocalizedNumber(Math.round(caloriesValue))}
+                  unit={t('nutrition.caloriesShort', { defaultValue: 'kcal' })}
+                />
               ) : caloriesFailed ? (
                 <StatValue value="—" />
               ) : (
@@ -503,9 +714,17 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
 
           {summary.totalDistanceKm > 0 && (
             <View className="flex-row gap-2 mt-2">
-              <StatTile icon="exercise-running" label={t('workoutComplete.stats.distance', { defaultValue: 'Distance' })}>
+              <StatTile
+                icon="exercise-running"
+                label={t('workoutComplete.stats.distance', {
+                  defaultValue: 'Distance',
+                })}
+              >
                 <StatValue
-                  value={formatLocalizedNumber(distanceFromKm(summary.totalDistanceKm, distanceUnit), { maximumFractionDigits: 2 })}
+                  value={formatLocalizedNumber(
+                    distanceFromKm(summary.totalDistanceKm, distanceUnit),
+                    { maximumFractionDigits: 2 }
+                  )}
                   unit={distanceUnit === 'miles' ? 'mi' : 'km'}
                 />
               </StatTile>
@@ -518,16 +737,38 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                 className="text-xs font-semibold uppercase text-text-muted"
                 style={{ letterSpacing: 0.6 }}
               >
-                {t('workoutComplete.stats.averageRpe', { defaultValue: 'Average RPE' })}
+                {t('workoutComplete.stats.averageRpe', {
+                  defaultValue: 'Average RPE',
+                })}
               </Text>
-              <Text className="text-xs font-semibold ml-auto" style={{ color: rpeToneColor }}>
-                {({ easy: t('workoutComplete.rpe.easy', { defaultValue: 'Easy' }), moderate: t('workoutComplete.rpe.moderate', { defaultValue: 'Moderate' }), hard: t('workoutComplete.rpe.hard', { defaultValue: 'Hard' }), max: t('workoutComplete.rpe.max', { defaultValue: 'Max effort' }) })[rpeTone]}
+              <Text
+                className="text-xs font-semibold ml-auto"
+                style={{ color: rpeToneColor }}
+              >
+                {
+                  {
+                    easy: t('workoutComplete.rpe.easy', {
+                      defaultValue: 'Easy',
+                    }),
+                    moderate: t('workoutComplete.rpe.moderate', {
+                      defaultValue: 'Moderate',
+                    }),
+                    hard: t('workoutComplete.rpe.hard', {
+                      defaultValue: 'Hard',
+                    }),
+                    max: t('workoutComplete.rpe.max', {
+                      defaultValue: 'Max effort',
+                    }),
+                  }[rpeTone]
+                }
               </Text>
               <Text
                 className="text-base font-bold ml-2"
                 style={{ color: rpeToneColor, fontVariant: ['tabular-nums'] }}
               >
-                {formatLocalizedNumber(summary.averageRpe, { maximumFractionDigits: 1 })}
+                {formatLocalizedNumber(summary.averageRpe, {
+                  maximumFractionDigits: 1,
+                })}
               </Text>
             </View>
           )}
@@ -544,7 +785,9 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                 <Text className="text-sm font-bold text-text-primary">
                   {t('workoutComplete.labels.personalRecordCount', {
                     count: summary.prRows.length,
-                    formattedCount: formatLocalizedNumber(summary.prRows.length),
+                    formattedCount: formatLocalizedNumber(
+                      summary.prRows.length
+                    ),
                     defaultValue: '{{formattedCount}} Personal Records',
                     defaultValue_one: '{{formattedCount}} Personal Record',
                     defaultValue_other: '{{formattedCount}} Personal Records',
@@ -567,9 +810,13 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                     style={{ color: prColor, fontVariant: ['tabular-nums'] }}
                   >
                     {formatSetLoad(
-                      { weightKg: pr.weightKg, reps: pr.reps, durationSec: pr.durationSec },
+                      {
+                        weightKg: pr.weightKg,
+                        reps: pr.reps,
+                        durationSec: pr.durationSec,
+                      },
                       weightUnit,
-                      t,
+                      t
                     ) ?? ''}
                   </Text>
                 </View>
@@ -583,7 +830,9 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             className="text-xs font-bold uppercase text-text-muted"
             style={{ letterSpacing: 1 }}
           >
-            {t('workoutComplete.sections.exercises', { defaultValue: 'Exercises' })}
+            {t('workoutComplete.sections.exercises', {
+              defaultValue: 'Exercises',
+            })}
           </Text>
           <Text
             className="ml-auto text-xs font-bold uppercase text-text-muted"
@@ -604,7 +853,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                       durationSec: row.topSet.durationSec,
                     },
                     weightUnit,
-                    t,
+                    t
                   )
                 : null;
             return (
@@ -613,7 +862,11 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                 className="flex-row items-center gap-3 px-4 py-3 border-b border-border-subtle"
               >
                 {entry != null && (
-                  <ExerciseThumb exercise={entry} getImageSource={getImageSource} size={38} />
+                  <ExerciseThumb
+                    exercise={entry}
+                    getImageSource={getImageSource}
+                    size={38}
+                  />
                 )}
                 <View className="flex-1">
                   <View className="flex-row items-center gap-1.5">
@@ -623,7 +876,9 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                     >
                       {row.name}
                     </Text>
-                    {row.hasPr && <Icon name="trophy" size={14} color={prColor} />}
+                    {row.hasPr && (
+                      <Icon name="trophy" size={14} color={prColor} />
+                    )}
                   </View>
                   <Text
                     className="text-xs font-medium text-text-secondary mt-0.5"
@@ -631,13 +886,24 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                   >
                     <Text className="font-semibold">
                       {row.completedSetCount === row.totalSetCount
-                        ? t('workoutComplete.labels.allSets', { defaultValue: '{{count}} sets', count: row.totalSetCount })
-                        : t('workoutComplete.labels.partialSets', { defaultValue: '{{completed}} of {{total}} sets', completed: row.completedSetCount, total: row.totalSetCount })}
+                        ? t('workoutComplete.labels.allSets', {
+                            defaultValue: '{{count}} sets',
+                            count: row.totalSetCount,
+                          })
+                        : t('workoutComplete.labels.partialSets', {
+                            defaultValue: '{{completed}} of {{total}} sets',
+                            completed: row.completedSetCount,
+                            total: row.totalSetCount,
+                          })}
                     </Text>
-                    {topText != null && ` · ${t('workoutComplete.labels.top', { defaultValue: 'top' })} ${topText}`}
+                    {topText != null &&
+                      ` · ${t('workoutComplete.labels.top', { defaultValue: 'top' })} ${topText}`}
                   </Text>
                   {row.notes != null && (
-                    <Text className="text-xs italic text-text-muted mt-0.5" numberOfLines={1}>
+                    <Text
+                      className="text-xs italic text-text-muted mt-0.5"
+                      numberOfLines={1}
+                    >
                       “{row.notes}”
                     </Text>
                   )}
@@ -646,7 +912,9 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
                   className="text-sm font-medium text-text-primary"
                   style={{ fontVariant: ['tabular-nums'] }}
                 >
-                  {row.volumeKg > 0 ? formatVolume(row.volumeKg, weightUnit) : '—'}
+                  {row.volumeKg > 0
+                    ? formatVolume(row.volumeKg, weightUnit)
+                    : '—'}
                 </Text>
               </View>
             );
@@ -659,8 +927,20 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
         style={{ paddingBottom: insets.bottom + 12 }}
       >
         <View className="flex-row gap-2 mb-2">
-          <DockedActionButton icon="bookmark" label={t('workoutComplete.actions.saveAsPreset', { defaultValue: 'Save as Preset' })} onPress={handleSaveAsPreset} />
-          <DockedActionButton icon="list" label={t('workoutComplete.actions.viewWorkout', { defaultValue: 'View Workout' })} onPress={handleViewWorkout} />
+          <DockedActionButton
+            icon="bookmark"
+            label={t('workoutComplete.actions.saveAsPreset', {
+              defaultValue: 'Save as Preset',
+            })}
+            onPress={handleSaveAsPreset}
+          />
+          <DockedActionButton
+            icon="list"
+            label={t('workoutComplete.actions.viewWorkout', {
+              defaultValue: 'View Workout',
+            })}
+            onPress={handleViewWorkout}
+          />
         </View>
         <Button variant="primary" onPress={handleDone}>
           {t('workoutComplete.actions.done', { defaultValue: 'Done' })}

@@ -40,7 +40,7 @@ export interface DailySummaryRawData {
 }
 
 export async function loadDailySummaryRawData(
-  date: string,
+  date: string
 ): Promise<DailySummaryRawData> {
   const data = await fetchDailySummary(date);
   const foodEntries = await resolveCollapsedFoodEntries(date, data.foodEntries);
@@ -59,7 +59,7 @@ export async function loadDailySummaryRawData(
 
 export function buildDailySummary(
   date: string,
-  raw: DailySummaryRawData,
+  raw: DailySummaryRawData
 ): DailySummary {
   const {
     goals,
@@ -138,14 +138,14 @@ export function buildDailySummary(
     goals,
     customNutrientTotals: addSupplementCustomNutrients(
       calculateCustomNutrientTotals(foodEntries),
-      supplements,
+      supplements
     ),
     customNutrientGoals: goals.custom_nutrients
       ? Object.fromEntries(
           Object.entries(goals.custom_nutrients).map(([name, value]) => [
             name,
             typeof value === 'number' ? value : parseFloat(String(value)) || 0,
-          ]),
+          ])
         )
       : {},
   };

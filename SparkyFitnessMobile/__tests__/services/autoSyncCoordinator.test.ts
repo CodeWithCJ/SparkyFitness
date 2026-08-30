@@ -155,42 +155,63 @@ describe('autoSyncCoordinator', () => {
 
   describe('shouldRunForegroundResumeAutoSync', () => {
     it('returns true when there is no recorded sync time', async () => {
-      await expect(shouldRunForegroundResumeAutoSync(CONFIG_ID)).resolves.toBe(true);
+      await expect(shouldRunForegroundResumeAutoSync(CONFIG_ID)).resolves.toBe(
+        true
+      );
     });
 
     it('returns true when the stored value is not a number', async () => {
       await AsyncStorage.setItem(STORAGE_KEY, 'not-a-timestamp');
-      await expect(shouldRunForegroundResumeAutoSync(CONFIG_ID)).resolves.toBe(true);
+      await expect(shouldRunForegroundResumeAutoSync(CONFIG_ID)).resolves.toBe(
+        true
+      );
     });
 
     it('returns false while still inside the cooldown window', async () => {
       await AsyncStorage.setItem(STORAGE_KEY, String(Date.now() - 1000));
-      await expect(shouldRunForegroundResumeAutoSync(CONFIG_ID)).resolves.toBe(false);
+      await expect(shouldRunForegroundResumeAutoSync(CONFIG_ID)).resolves.toBe(
+        false
+      );
     });
 
     it('returns true once the cooldown window has elapsed', async () => {
-      await AsyncStorage.setItem(STORAGE_KEY, String(Date.now() - COOLDOWN_MS - 1000));
-      await expect(shouldRunForegroundResumeAutoSync(CONFIG_ID)).resolves.toBe(true);
+      await AsyncStorage.setItem(
+        STORAGE_KEY,
+        String(Date.now() - COOLDOWN_MS - 1000)
+      );
+      await expect(shouldRunForegroundResumeAutoSync(CONFIG_ID)).resolves.toBe(
+        true
+      );
     });
 
     it('treats the exact cooldown boundary as elapsed (inclusive)', async () => {
       // Stored exactly COOLDOWN_MS ago; the real clock only advances, so the
       // gap is >= COOLDOWN_MS and the inclusive `>=` comparison passes.
       await AsyncStorage.setItem(STORAGE_KEY, String(Date.now() - COOLDOWN_MS));
-      await expect(shouldRunForegroundResumeAutoSync(CONFIG_ID)).resolves.toBe(true);
+      await expect(shouldRunForegroundResumeAutoSync(CONFIG_ID)).resolves.toBe(
+        true
+      );
     });
 
     it('keys the cooldown per config id', async () => {
       await AsyncStorage.setItem(STORAGE_KEY, String(Date.now() - 1000));
 
       // A different config has no recorded time, so it is not gated.
-      await expect(shouldRunForegroundResumeAutoSync('config-2')).resolves.toBe(true);
-      await expect(shouldRunForegroundResumeAutoSync(CONFIG_ID)).resolves.toBe(false);
+      await expect(shouldRunForegroundResumeAutoSync('config-2')).resolves.toBe(
+        true
+      );
+      await expect(shouldRunForegroundResumeAutoSync(CONFIG_ID)).resolves.toBe(
+        false
+      );
     });
 
     it('fails open (returns true) when reading storage throws', async () => {
-      jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce(new Error('boom'));
-      await expect(shouldRunForegroundResumeAutoSync(CONFIG_ID)).resolves.toBe(true);
+      jest
+        .spyOn(AsyncStorage, 'getItem')
+        .mockRejectedValueOnce(new Error('boom'));
+      await expect(shouldRunForegroundResumeAutoSync(CONFIG_ID)).resolves.toBe(
+        true
+      );
     });
   });
 
@@ -209,11 +230,15 @@ describe('autoSyncCoordinator', () => {
 
     it('a recorded time then gates the foreground resume sync', async () => {
       await recordAutoSyncTime(CONFIG_ID);
-      await expect(shouldRunForegroundResumeAutoSync(CONFIG_ID)).resolves.toBe(false);
+      await expect(shouldRunForegroundResumeAutoSync(CONFIG_ID)).resolves.toBe(
+        false
+      );
     });
 
     it('swallows storage write errors', async () => {
-      jest.spyOn(AsyncStorage, 'setItem').mockRejectedValueOnce(new Error('disk full'));
+      jest
+        .spyOn(AsyncStorage, 'setItem')
+        .mockRejectedValueOnce(new Error('disk full'));
       await expect(recordAutoSyncTime(CONFIG_ID)).resolves.toBeUndefined();
     });
   });

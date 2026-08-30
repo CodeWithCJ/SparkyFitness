@@ -10,7 +10,9 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
-const checkpoint = (overrides: Partial<BackfillCheckpoint> = {}): BackfillCheckpoint => ({
+const checkpoint = (
+  overrides: Partial<BackfillCheckpoint> = {}
+): BackfillCheckpoint => ({
   version: 1,
   status: 'in-progress',
   endEdge: '2026-08-03T04:00:00.000Z',
@@ -37,8 +39,14 @@ describe('backfillCheckpoint', () => {
   });
 
   test('keys checkpoints per server config', async () => {
-    await saveBackfillCheckpoint('server-1', checkpoint({ recordsUploaded: 1 }));
-    await saveBackfillCheckpoint('server-2', checkpoint({ recordsUploaded: 2 }));
+    await saveBackfillCheckpoint(
+      'server-1',
+      checkpoint({ recordsUploaded: 1 })
+    );
+    await saveBackfillCheckpoint(
+      'server-2',
+      checkpoint({ recordsUploaded: 2 })
+    );
 
     const first = await loadBackfillCheckpoint('server-1');
     const second = await loadBackfillCheckpoint('server-2');
@@ -58,13 +66,18 @@ describe('backfillCheckpoint', () => {
   });
 
   test('returns null for a blob missing the version marker', async () => {
-    await AsyncStorage.setItem('@Backfill:state:server-1', JSON.stringify({ cursor: 'x' }));
+    await AsyncStorage.setItem(
+      '@Backfill:state:server-1',
+      JSON.stringify({ cursor: 'x' })
+    );
 
     await expect(loadBackfillCheckpoint('server-1')).resolves.toBeNull();
   });
 
   test('clear swallows storage failures instead of rejecting', async () => {
-    jest.spyOn(AsyncStorage, 'removeItem').mockRejectedValueOnce(new Error('disk full'));
+    jest
+      .spyOn(AsyncStorage, 'removeItem')
+      .mockRejectedValueOnce(new Error('disk full'));
 
     await expect(clearBackfillCheckpoint('server-1')).resolves.toBeUndefined();
   });

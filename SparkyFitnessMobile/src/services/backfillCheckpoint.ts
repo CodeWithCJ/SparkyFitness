@@ -2,7 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addLog } from './LogService';
 import { getErrorMessage } from '../utils/errors';
 
-const backfillKeyForConfig = (configId: string): string => `@Backfill:state:${configId}`;
+const backfillKeyForConfig = (configId: string): string =>
+  `@Backfill:state:${configId}`;
 
 export interface BackfillCheckpoint {
   version: 1;
@@ -21,7 +22,9 @@ export interface BackfillCheckpoint {
   completedAt?: string;
 }
 
-export const loadBackfillCheckpoint = async (configId: string): Promise<BackfillCheckpoint | null> => {
+export const loadBackfillCheckpoint = async (
+  configId: string
+): Promise<BackfillCheckpoint | null> => {
   try {
     const raw = await AsyncStorage.getItem(backfillKeyForConfig(configId));
     if (!raw) return null;
@@ -35,19 +38,30 @@ export const loadBackfillCheckpoint = async (configId: string): Promise<Backfill
 
 export const saveBackfillCheckpoint = async (
   configId: string,
-  checkpoint: BackfillCheckpoint,
+  checkpoint: BackfillCheckpoint
 ): Promise<void> => {
   try {
-    await AsyncStorage.setItem(backfillKeyForConfig(configId), JSON.stringify(checkpoint));
+    await AsyncStorage.setItem(
+      backfillKeyForConfig(configId),
+      JSON.stringify(checkpoint)
+    );
   } catch (error) {
-    addLog(`[Backfill] Failed to save checkpoint: ${getErrorMessage(error)}`, 'ERROR');
+    addLog(
+      `[Backfill] Failed to save checkpoint: ${getErrorMessage(error)}`,
+      'ERROR'
+    );
   }
 };
 
-export const clearBackfillCheckpoint = async (configId: string): Promise<void> => {
+export const clearBackfillCheckpoint = async (
+  configId: string
+): Promise<void> => {
   try {
     await AsyncStorage.removeItem(backfillKeyForConfig(configId));
   } catch (error) {
-    addLog(`[Backfill] Failed to clear checkpoint: ${getErrorMessage(error)}`, 'ERROR');
+    addLog(
+      `[Backfill] Failed to clear checkpoint: ${getErrorMessage(error)}`,
+      'ERROR'
+    );
   }
 };

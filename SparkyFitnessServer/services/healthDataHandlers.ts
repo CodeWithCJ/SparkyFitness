@@ -581,7 +581,8 @@ export function createCategoryResolver(): HealthBatchContext['resolveCategory'] 
 function prepareCheckInMeasurement(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   entry: any
-): // eslint-disable-next-line @typescript-eslint/no-explicit-any
+):
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   { measurements: Record<string, any> } | { error: string } {
   const canonical = TYPE_ALIASES[entry.type] ?? entry.type;
   switch (canonical) {

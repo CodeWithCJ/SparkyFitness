@@ -41,7 +41,7 @@ export function useWidgetSync(summary: DailySummary | undefined): void {
         if (!iosAppGroup) {
           addLog(
             '[useWidgetSync] iOS app group unavailable; widget snapshots were not written',
-            'WARNING',
+            'WARNING'
           );
           return;
         }
@@ -73,7 +73,7 @@ export function useWidgetSync(summary: DailySummary | undefined): void {
         if (storage.get(MACRO_SNAPSHOT_KEY) === null) {
           addLog(
             '[useWidgetSync] ExtensionStorage unavailable; widget snapshots were not written',
-            'WARNING',
+            'WARNING'
           );
           return;
         }
@@ -85,7 +85,7 @@ export function useWidgetSync(summary: DailySummary | undefined): void {
       } catch (error) {
         addLog(
           `[useWidgetSync] Failed to push snapshot to widget: ${error}`,
-          'ERROR',
+          'ERROR'
         );
       }
       return;
@@ -110,7 +110,7 @@ export function useWidgetSync(summary: DailySummary | undefined): void {
               }
               addLog(
                 `[useWidgetSync] Android calorie widget push failed: ${error}`,
-                'ERROR',
+                'ERROR'
               );
             }
           })();
@@ -136,7 +136,7 @@ export function useWidgetSync(summary: DailySummary | undefined): void {
           }
           addLog(
             `[useWidgetSync] Android macro widget push failed: ${error}`,
-            'ERROR',
+            'ERROR'
           );
         }
       })();

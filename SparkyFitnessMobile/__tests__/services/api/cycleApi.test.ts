@@ -35,7 +35,11 @@ beforeEach(() => {
 
 describe('wire contract', () => {
   const cases: [string, () => Promise<unknown>, Record<string, unknown>][] = [
-    ['getSettings', () => getSettings(), { endpoint: '/api/v2/cycle/settings' }],
+    [
+      'getSettings',
+      () => getSettings(),
+      { endpoint: '/api/v2/cycle/settings' },
+    ],
     [
       'putSettings',
       () => putSettings({ mode: 'ttc', mark_onboarded: true }),
@@ -45,13 +49,23 @@ describe('wire contract', () => {
         body: { mode: 'ttc', mark_onboarded: true },
       },
     ],
-    ['getOverview without date', () => getOverview(), { endpoint: '/api/v2/cycle/overview' }],
+    [
+      'getOverview without date',
+      () => getOverview(),
+      { endpoint: '/api/v2/cycle/overview' },
+    ],
     [
       'listLogs',
       () => listLogs('2024-06-01', '2024-06-30'),
-      { endpoint: '/api/v2/cycle/logs?startDate=2024-06-01&endDate=2024-06-30' },
+      {
+        endpoint: '/api/v2/cycle/logs?startDate=2024-06-01&endDate=2024-06-30',
+      },
     ],
-    ['getLog', () => getLog('2024-06-15'), { endpoint: '/api/v2/cycle/logs/2024-06-15' }],
+    [
+      'getLog',
+      () => getLog('2024-06-15'),
+      { endpoint: '/api/v2/cycle/logs/2024-06-15' },
+    ],
     [
       'putLog',
       () => putLog('2024-06-15', { flow_level: 'medium' }),
@@ -66,8 +80,16 @@ describe('wire contract', () => {
       () => deleteLog('2024-06-15'),
       { endpoint: '/api/v2/cycle/logs/2024-06-15', method: 'DELETE' },
     ],
-    ['listCycles without limit', () => listCycles(), { endpoint: '/api/v2/cycle/cycles' }],
-    ['listCycles with limit', () => listCycles(6), { endpoint: '/api/v2/cycle/cycles?limit=6' }],
+    [
+      'listCycles without limit',
+      () => listCycles(),
+      { endpoint: '/api/v2/cycle/cycles' },
+    ],
+    [
+      'listCycles with limit',
+      () => listCycles(6),
+      { endpoint: '/api/v2/cycle/cycles?limit=6' },
+    ],
     [
       'bulkPutLogs',
       () => bulkPutLogs([{ date: '2024-06-15', flow_level: null }]),
@@ -80,27 +102,46 @@ describe('wire contract', () => {
     [
       'createManualCycle',
       () => createManualCycle({ start_date: '2024-06-01' }),
-      { endpoint: '/api/v2/cycle/cycles', method: 'POST', body: { start_date: '2024-06-01' } },
+      {
+        endpoint: '/api/v2/cycle/cycles',
+        method: 'POST',
+        body: { start_date: '2024-06-01' },
+      },
     ],
     [
       'updateCycle',
       () => updateCycle('cycle-1', { period_length: 5 }),
-      { endpoint: '/api/v2/cycle/cycles/cycle-1', method: 'PUT', body: { period_length: 5 } },
+      {
+        endpoint: '/api/v2/cycle/cycles/cycle-1',
+        method: 'PUT',
+        body: { period_length: 5 },
+      },
     ],
     [
       'deleteCycle',
       () => deleteCycle('cycle-1'),
       { endpoint: '/api/v2/cycle/cycles/cycle-1', method: 'DELETE' },
     ],
-    ['getInsights', () => getInsights(), { endpoint: '/api/v2/cycle/insights' }],
+    [
+      'getInsights',
+      () => getInsights(),
+      { endpoint: '/api/v2/cycle/insights' },
+    ],
     [
       'listTestEntries',
       () => listTestEntries('2024-06-01', '2024-06-30'),
-      { endpoint: '/api/v2/cycle/tests?startDate=2024-06-01&endDate=2024-06-30' },
+      {
+        endpoint: '/api/v2/cycle/tests?startDate=2024-06-01&endDate=2024-06-30',
+      },
     ],
     [
       'createTestEntry',
-      () => createTestEntry({ test_type: 'opk', result: 'peak', entry_date: '2024-06-15' }),
+      () =>
+        createTestEntry({
+          test_type: 'opk',
+          result: 'peak',
+          entry_date: '2024-06-15',
+        }),
       {
         endpoint: '/api/v2/cycle/tests',
         method: 'POST',
@@ -112,8 +153,16 @@ describe('wire contract', () => {
       () => deleteTestEntry('test-1'),
       { endpoint: '/api/v2/cycle/tests/test-1', method: 'DELETE' },
     ],
-    ['getFertility without date', () => getFertility(), { endpoint: '/api/v2/cycle/fertility' }],
-    ['getCorrelations', () => getCorrelations(), { endpoint: '/api/v2/cycle/correlations' }],
+    [
+      'getFertility without date',
+      () => getFertility(),
+      { endpoint: '/api/v2/cycle/fertility' },
+    ],
+    [
+      'getCorrelations',
+      () => getCorrelations(),
+      { endpoint: '/api/v2/cycle/correlations' },
+    ],
     ['getExport', () => getExport(), { endpoint: '/api/v2/cycle/export' }],
   ];
 
@@ -121,14 +170,18 @@ describe('wire contract', () => {
     await call();
 
     expect(mockApiFetch).toHaveBeenCalledTimes(1);
-    expect(mockApiFetch).toHaveBeenCalledWith(expect.objectContaining(expected));
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      expect.objectContaining(expected)
+    );
   });
 
   test('date query params are URI-encoded', async () => {
     await getOverview('2024-06-15T00:00');
 
     expect(mockApiFetch).toHaveBeenCalledWith(
-      expect.objectContaining({ endpoint: '/api/v2/cycle/overview?date=2024-06-15T00%3A00' }),
+      expect.objectContaining({
+        endpoint: '/api/v2/cycle/overview?date=2024-06-15T00%3A00',
+      })
     );
   });
 });
@@ -145,14 +198,17 @@ describe('upsertBbt', () => {
 
   test('reuses an existing category and posts the value as a string', async () => {
     mockApiFetch.mockImplementation(async (args) => {
-      if (args.endpoint === CATEGORIES_ENDPOINT && !args.method) return [BBT_CATEGORY];
+      if (args.endpoint === CATEGORIES_ENDPOINT && !args.method)
+        return [BBT_CATEGORY];
       return undefined;
     });
 
     await upsertBbt('2024-06-15', 36.7);
 
     expect(callsTo(CATEGORIES_ENDPOINT, 'POST')).toHaveLength(0);
-    expect(callsTo('/api/measurements/custom-entries', 'POST')[0]?.body).toEqual({
+    expect(
+      callsTo('/api/measurements/custom-entries', 'POST')[0]?.body
+    ).toEqual({
       category_id: 'cat-bbt',
       value: '36.7',
       entry_date: '2024-06-15',
@@ -163,7 +219,8 @@ describe('upsertBbt', () => {
   test('creates the category when it does not exist yet', async () => {
     mockApiFetch.mockImplementation(async (args) => {
       if (args.endpoint === CATEGORIES_ENDPOINT && !args.method) return [];
-      if (args.endpoint === CATEGORIES_ENDPOINT && args.method === 'POST') return BBT_CATEGORY;
+      if (args.endpoint === CATEGORIES_ENDPOINT && args.method === 'POST')
+        return BBT_CATEGORY;
       return undefined;
     });
 
@@ -172,7 +229,9 @@ describe('upsertBbt', () => {
     expect(callsTo(CATEGORIES_ENDPOINT, 'POST')[0]?.body).toMatchObject({
       name: 'basal_body_temperature',
     });
-    expect(callsTo('/api/measurements/custom-entries', 'POST')[0]?.body).toMatchObject({
+    expect(
+      callsTo('/api/measurements/custom-entries', 'POST')[0]?.body
+    ).toMatchObject({
       category_id: 'cat-bbt',
     });
   });
@@ -192,7 +251,9 @@ describe('upsertBbt', () => {
 
     await upsertBbt('2024-06-15', 36.7);
 
-    expect(callsTo('/api/measurements/custom-entries', 'POST')[0]?.body).toMatchObject({
+    expect(
+      callsTo('/api/measurements/custom-entries', 'POST')[0]?.body
+    ).toMatchObject({
       category_id: 'cat-bbt',
     });
   });
@@ -201,7 +262,8 @@ describe('upsertBbt', () => {
     const createError = new Error('server rejected category');
     mockApiFetch.mockImplementation(async (args) => {
       if (args.endpoint === CATEGORIES_ENDPOINT && !args.method) return [];
-      if (args.endpoint === CATEGORIES_ENDPOINT && args.method === 'POST') throw createError;
+      if (args.endpoint === CATEGORIES_ENDPOINT && args.method === 'POST')
+        throw createError;
       return undefined;
     });
 
@@ -211,10 +273,15 @@ describe('upsertBbt', () => {
 
   test('null value deletes the existing BBT entry for that day', async () => {
     mockApiFetch.mockImplementation(async (args) => {
-      if (args.endpoint === CATEGORIES_ENDPOINT && !args.method) return [BBT_CATEGORY];
+      if (args.endpoint === CATEGORIES_ENDPOINT && !args.method)
+        return [BBT_CATEGORY];
       if (args.endpoint === '/api/measurements/custom-entries/2024-06-15') {
         return [
-          { id: 'entry-other', category_id: 'cat-other', entry_date: '2024-06-15' },
+          {
+            id: 'entry-other',
+            category_id: 'cat-other',
+            entry_date: '2024-06-15',
+          },
           { id: 'entry-bbt', category_id: 'cat-bbt', entry_date: '2024-06-15' },
         ];
       }
@@ -223,21 +290,29 @@ describe('upsertBbt', () => {
 
     await upsertBbt('2024-06-15', null);
 
-    expect(callsTo('/api/measurements/custom-entries/entry-bbt', 'DELETE')).toHaveLength(1);
-    expect(callsTo('/api/measurements/custom-entries/entry-other', 'DELETE')).toHaveLength(0);
+    expect(
+      callsTo('/api/measurements/custom-entries/entry-bbt', 'DELETE')
+    ).toHaveLength(1);
+    expect(
+      callsTo('/api/measurements/custom-entries/entry-other', 'DELETE')
+    ).toHaveLength(0);
     expect(callsTo('/api/measurements/custom-entries', 'POST')).toHaveLength(0);
   });
 
   test('null value with no BBT entry for the day issues no delete', async () => {
     mockApiFetch.mockImplementation(async (args) => {
-      if (args.endpoint === CATEGORIES_ENDPOINT && !args.method) return [BBT_CATEGORY];
-      if (args.endpoint === '/api/measurements/custom-entries/2024-06-15') return [];
+      if (args.endpoint === CATEGORIES_ENDPOINT && !args.method)
+        return [BBT_CATEGORY];
+      if (args.endpoint === '/api/measurements/custom-entries/2024-06-15')
+        return [];
       return undefined;
     });
 
     await upsertBbt('2024-06-15', null);
 
-    const deletes = mockApiFetch.mock.calls.filter(([args]) => args.method === 'DELETE');
+    const deletes = mockApiFetch.mock.calls.filter(
+      ([args]) => args.method === 'DELETE'
+    );
     expect(deletes).toHaveLength(0);
   });
 });

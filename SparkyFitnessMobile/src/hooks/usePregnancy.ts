@@ -65,13 +65,19 @@ export function usePregnancyMutations() {
   };
 
   const createMutation = useMutation({
-    mutationFn: (body: Omit<SharedPregnancy, 'id' | 'user_id'>) => createPregnancy(body),
+    mutationFn: (body: Omit<SharedPregnancy, 'id' | 'user_id'>) =>
+      createPregnancy(body),
     onSuccess: invalidate,
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: Partial<SharedPregnancy> }) =>
-      updatePregnancy(id, body),
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: Partial<SharedPregnancy>;
+    }) => updatePregnancy(id, body),
     onSuccess: invalidate,
   });
 

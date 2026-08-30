@@ -1,6 +1,10 @@
 import React from 'react';
 import { act } from '@testing-library/react-native';
-import { QueryClient, QueryClientProvider, notifyManager } from '@tanstack/react-query';
+import {
+  QueryClient,
+  QueryClientProvider,
+  notifyManager,
+} from '@tanstack/react-query';
 import type { DefaultOptions } from '@tanstack/react-query';
 
 export type { QueryClient } from '@tanstack/react-query';

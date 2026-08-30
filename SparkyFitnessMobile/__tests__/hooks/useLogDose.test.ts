@@ -1,10 +1,18 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import Toast from 'react-native-toast-message';
 import { useLogDose } from '../../src/hooks/useMedications';
-import { createEntry, updateEntry, deleteEntry } from '../../src/services/api/medicationsApi';
+import {
+  createEntry,
+  updateEntry,
+  deleteEntry,
+} from '../../src/services/api/medicationsApi';
 import type { DueDose } from '../../src/utils/medications';
 import type { MedicationDetail, MedicationEntry } from '@workspace/shared';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/medicationsApi', () => ({
   listMedications: jest.fn(),
@@ -28,7 +36,9 @@ const mockDeleteEntry = deleteEntry as jest.MockedFunction<typeof deleteEntry>;
 
 const SELECTED_DATE = '2026-07-29';
 
-function buildMedication(overrides: Partial<MedicationDetail> = {}): MedicationDetail {
+function buildMedication(
+  overrides: Partial<MedicationDetail> = {}
+): MedicationDetail {
   return {
     id: 'med-1',
     user_id: 'user-1',
@@ -61,7 +71,11 @@ function buildMedication(overrides: Partial<MedicationDetail> = {}): MedicationD
 function buildDue(overrides: Partial<DueDose> = {}): DueDose {
   return {
     medication: buildMedication(),
-    schedule: { id: 'sched-1', schedule_type_id: 'daily', time_of_day: '08:00' },
+    schedule: {
+      id: 'sched-1',
+      schedule_type_id: 'daily',
+      time_of_day: '08:00',
+    },
     ...overrides,
   };
 }
@@ -124,7 +138,10 @@ describe('useLogDose', () => {
         taken_at: expect.any(String),
       });
     });
-    expect(Toast.show).toHaveBeenCalledWith({ type: 'success', text1: 'Lisinopril taken' });
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'success',
+      text1: 'Lisinopril taken',
+    });
   });
 
   test('skip on an empty slot creates a skipped entry without taken_at', async () => {
@@ -143,7 +160,10 @@ describe('useLogDose', () => {
         taken_at: undefined,
       });
     });
-    expect(Toast.show).toHaveBeenCalledWith({ type: 'info', text1: 'Lisinopril skipped' });
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'info',
+      text1: 'Lisinopril skipped',
+    });
   });
 
   test('repeating take undoes the log by deleting the entry', async () => {
@@ -157,7 +177,10 @@ describe('useLogDose', () => {
       expect(mockDeleteEntry).toHaveBeenCalledWith('entry-1');
     });
     expect(mockCreateEntry).not.toHaveBeenCalled();
-    expect(Toast.show).toHaveBeenCalledWith({ type: 'info', text1: 'Lisinopril unmarked' });
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'info',
+      text1: 'Lisinopril unmarked',
+    });
   });
 
   test('repeating skip undoes the log by deleting the entry', async () => {
@@ -170,7 +193,10 @@ describe('useLogDose', () => {
     await waitFor(() => {
       expect(mockDeleteEntry).toHaveBeenCalledWith('entry-1');
     });
-    expect(Toast.show).toHaveBeenCalledWith({ type: 'info', text1: 'Lisinopril unskipped' });
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'info',
+      text1: 'Lisinopril unskipped',
+    });
   });
 
   test('taking a skipped slot updates the entry status', async () => {
@@ -191,7 +217,9 @@ describe('useLogDose', () => {
   });
 
   test('taking a slot covered by a schedule-less entry re-attributes it', async () => {
-    const { result } = renderLogDose([buildEntry({ schedule_id: null, status: 'skipped' })]);
+    const { result } = renderLogDose([
+      buildEntry({ schedule_id: null, status: 'skipped' }),
+    ]);
 
     act(() => {
       result.current.logDose(buildDue(), 'taken');
@@ -222,7 +250,7 @@ describe('useLogDose', () => {
     });
     await waitFor(() => {
       expect(mockCreateEntry).toHaveBeenCalledWith(
-        expect.objectContaining({ schedule_id: 'sched-1', status: 'taken' }),
+        expect.objectContaining({ schedule_id: 'sched-1', status: 'taken' })
       );
     });
   });
@@ -259,14 +287,18 @@ describe('useLogDose', () => {
   };
 
   test('tapping the PRN toast deletes the created entry', async () => {
-    mockCreateEntry.mockResolvedValue(buildEntry({ id: 'prn-entry', schedule_id: null, status: 'prn_taken' }));
+    mockCreateEntry.mockResolvedValue(
+      buildEntry({ id: 'prn-entry', schedule_id: null, status: 'prn_taken' })
+    );
     const { result } = renderLogDose([]);
 
     act(() => {
       result.current.logPrn(buildMedication());
     });
     await waitFor(() => {
-      expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ text2: 'Tap to undo' }));
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({ text2: 'Tap to undo' })
+      );
     });
 
     undoFromLastToast();
@@ -276,7 +308,10 @@ describe('useLogDose', () => {
       expect(mockDeleteEntry).toHaveBeenCalledWith('prn-entry');
     });
     await waitFor(() => {
-      expect(Toast.show).toHaveBeenCalledWith({ type: 'info', text1: 'Lisinopril dose removed' });
+      expect(Toast.show).toHaveBeenCalledWith({
+        type: 'info',
+        text1: 'Lisinopril dose removed',
+      });
     });
   });
 
@@ -288,13 +323,18 @@ describe('useLogDose', () => {
       result.current.logPrn(buildMedication());
     });
     await waitFor(() => {
-      expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ text2: 'Tap to undo' }));
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({ text2: 'Tap to undo' })
+      );
     });
 
     undoFromLastToast();
 
     await waitFor(() => {
-      expect(Toast.show).toHaveBeenCalledWith({ type: 'error', text1: 'Failed to remove Lisinopril dose' });
+      expect(Toast.show).toHaveBeenCalledWith({
+        type: 'error',
+        text1: 'Failed to remove Lisinopril dose',
+      });
     });
   });
 
@@ -307,7 +347,10 @@ describe('useLogDose', () => {
     });
 
     await waitFor(() => {
-      expect(Toast.show).toHaveBeenCalledWith({ type: 'error', text1: 'Failed to log Lisinopril' });
+      expect(Toast.show).toHaveBeenCalledWith({
+        type: 'error',
+        text1: 'Failed to log Lisinopril',
+      });
     });
   });
 });

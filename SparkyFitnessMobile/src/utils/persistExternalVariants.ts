@@ -28,7 +28,7 @@ type SavedFoodWithDefaultVariant = {
  */
 export async function persistExternalVariants(
   savedFood: SavedFoodWithDefaultVariant,
-  externalVariants: ExternalFoodVariant[] | undefined,
+  externalVariants: ExternalFoodVariant[] | undefined
 ) {
   if (!externalVariants || externalVariants.length === 0) return;
 
@@ -37,13 +37,13 @@ export async function persistExternalVariants(
   let fetchedExistingVariants = false;
   try {
     const existing = await fetchFoodVariants(savedFood.id);
-    existing.forEach(variant => {
+    existing.forEach((variant) => {
       existingKeys.add(servingVariantKey(variant));
       if (!hasDistinctMetricServingContext(variant)) {
         const baseKey = baseServingVariantKey(variant);
         legacyExistingBaseKeyCounts.set(
           baseKey,
-          (legacyExistingBaseKeyCounts.get(baseKey) ?? 0) + 1,
+          (legacyExistingBaseKeyCounts.get(baseKey) ?? 0) + 1
         );
       }
     });
@@ -60,7 +60,7 @@ export async function persistExternalVariants(
     return counts;
   }, new Map<string, number>());
 
-  const variantsToCreate = externalVariants.filter(variant => {
+  const variantsToCreate = externalVariants.filter((variant) => {
     const key = servingVariantKey(variant);
     if (existingKeys.has(key)) return false;
     const baseKey = baseServingVariantKey(variant);
@@ -76,7 +76,7 @@ export async function persistExternalVariants(
   });
 
   await Promise.all(
-    variantsToCreate.map(async variant => {
+    variantsToCreate.map(async (variant) => {
       try {
         await createFoodVariant({
           food_id: savedFood.id,
@@ -101,6 +101,6 @@ export async function persistExternalVariants(
       } catch {
         // Non-blocking: one provider variant failing should not prevent logging.
       }
-    }),
+    })
   );
 }

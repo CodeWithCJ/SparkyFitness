@@ -19,16 +19,22 @@ export function useRowCollapse(onCollapsed: () => void) {
 
   const collapse = () => {
     isRemoving.value = true;
-    rowHeight.value = withTiming(0, { duration: ROW_COLLAPSE_DURATION }, (finished) => {
-      if (finished) {
-        runOnJS(onCollapsed)();
+    rowHeight.value = withTiming(
+      0,
+      { duration: ROW_COLLAPSE_DURATION },
+      (finished) => {
+        if (finished) {
+          runOnJS(onCollapsed)();
+        }
       }
-    });
+    );
   };
 
   // Declared before useAnimatedStyle so the rowHeight mutation here is not seen
   // as modifying a value already consumed by a hook (a React compiler bailout).
-  const handleLayout = (event: { nativeEvent: { layout: { height: number } } }) => {
+  const handleLayout = (event: {
+    nativeEvent: { layout: { height: number } };
+  }) => {
     if (rowHeight.value === null) {
       rowHeight.value = event.nativeEvent.layout.height;
     }

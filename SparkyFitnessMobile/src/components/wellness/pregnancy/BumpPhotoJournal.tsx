@@ -1,10 +1,20 @@
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, Text, Image, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  ActivityIndicator,
+  ScrollView,
+} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
-import { usePregnancyPhotos, usePregnancyPhotoMutations } from '../../../hooks/usePregnancyPhotos';
+import {
+  usePregnancyPhotos,
+  usePregnancyPhotoMutations,
+} from '../../../hooks/usePregnancyPhotos';
 import { useServerConfigs } from '../../../hooks/useServerConfigs';
 import { normalizeUrl } from '../../../services/api/apiClient';
 import { getApiErrorMessage } from '../../../services/api/errors';
@@ -18,11 +28,17 @@ interface BumpPhotoJournalProps {
   currentWeek: number;
 }
 
-const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, currentWeek }) => {
-  const { t , i18n: translationI18n } = useTranslation();
-  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
+const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({
+  pregnancyId,
+  currentWeek,
+}) => {
+  const { t, i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl')
+    ? 'pl-PL'
+    : 'en-US';
   const { photos, isLoading } = usePregnancyPhotos(pregnancyId);
-  const { uploadAsync, isUploading, deleteAsync } = usePregnancyPhotoMutations();
+  const { uploadAsync, isUploading, deleteAsync } =
+    usePregnancyPhotoMutations();
   const { activeConfig } = useServerConfigs();
   const [accentColor, dangerColor] = useCSSVariable([
     '--color-accent-primary',
@@ -34,7 +50,8 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
   const [selectedPhoto, setSelectedPhoto] = useState<BumpPhoto | null>(null);
 
   const baseUrl = activeConfig ? normalizeUrl(activeConfig.url) : null;
-  const photoUri = (filePath: string) => (baseUrl ? `${baseUrl}/${filePath}` : undefined);
+  const photoUri = (filePath: string) =>
+    baseUrl ? `${baseUrl}/${filePath}` : undefined;
 
   const pickAndUpload = async (source: 'camera' | 'library') => {
     if (pickerLock.current) return;
@@ -44,10 +61,18 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
       if (source === 'camera') {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
         if (!perm.granted) {
-          Toast.show({ type: 'error', text1: t('bumpPhotos.cameraPermission', { defaultValue: 'Camera permission required' }) });
+          Toast.show({
+            type: 'error',
+            text1: t('bumpPhotos.cameraPermission', {
+              defaultValue: 'Camera permission required',
+            }),
+          });
           return;
         }
-        result = await ImagePicker.launchCameraAsync({ mediaTypes: 'images', quality: 0.7 });
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: 'images',
+          quality: 0.7,
+        });
       } else {
         result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: 'images',
@@ -58,15 +83,25 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
       if (result.canceled) return;
       const uri = result.assets?.[0]?.uri;
       if (!uri) {
-        Toast.show({ type: 'error', text1: t('bumpPhotos.noPhoto', { defaultValue: 'No photo returned by picker.' }) });
+        Toast.show({
+          type: 'error',
+          text1: t('bumpPhotos.noPhoto', {
+            defaultValue: 'No photo returned by picker.',
+          }),
+        });
         return;
       }
       await uploadAsync({ pregnancyId, week: currentWeek, uri });
-      Toast.show({ type: 'success', text1: t('bumpPhotos.photoAdded', { defaultValue: 'Photo added' }) });
+      Toast.show({
+        type: 'success',
+        text1: t('bumpPhotos.photoAdded', { defaultValue: 'Photo added' }),
+      });
     } catch (err) {
       Toast.show({
         type: 'error',
-        text1: t('bumpPhotos.uploadFailed', { defaultValue: 'Could not upload photo' }),
+        text1: t('bumpPhotos.uploadFailed', {
+          defaultValue: 'Could not upload photo',
+        }),
         text2: getApiErrorMessage(err) ?? undefined,
       });
     } finally {
@@ -79,14 +114,21 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
       await deleteAsync(photo.id);
       setSelectedPhoto(null);
     } catch {
-      Toast.show({ type: 'error', text1: t('bumpPhotos.removeFailed', { defaultValue: 'Could not remove photo' }) });
+      Toast.show({
+        type: 'error',
+        text1: t('bumpPhotos.removeFailed', {
+          defaultValue: 'Could not remove photo',
+        }),
+      });
     }
   };
 
   return (
     <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
       <View className="flex-row items-center justify-between">
-        <Text className="text-base font-bold text-text-secondary">{t('bumpPhotos.title', { defaultValue: 'Bump Photos' })}</Text>
+        <Text className="text-base font-bold text-text-secondary">
+          {t('bumpPhotos.title', { defaultValue: 'Bump Photos' })}
+        </Text>
         <TouchableOpacity
           disabled={isUploading}
           onPress={() => actionSheetRef.current?.present()}
@@ -98,7 +140,10 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
           ) : (
             <>
               <Icon name="add" size={18} color={accentColor} />
-              <Text className="font-semibold text-sm ml-1" style={{ color: accentColor }}>
+              <Text
+                className="font-semibold text-sm ml-1"
+                style={{ color: accentColor }}
+              >
                 {t('bumpPhotos.add', { defaultValue: 'Add Photo' })}
               </Text>
             </>
@@ -110,7 +155,10 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
         <ActivityIndicator color={accentColor} />
       ) : photos.length === 0 ? (
         <Text className="text-text-secondary text-xs italic py-2">
-          {t('bumpPhotos.empty', { defaultValue: 'Capture your first bump photo to start a weekly journal.' })}
+          {t('bumpPhotos.empty', {
+            defaultValue:
+              'Capture your first bump photo to start a weekly journal.',
+          })}
         </Text>
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -118,7 +166,11 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
             {photos.map((photo) => (
               <TouchableOpacity
                 key={photo.id}
-                onPress={() => setSelectedPhoto(selectedPhoto?.id === photo.id ? null : photo)}
+                onPress={() =>
+                  setSelectedPhoto(
+                    selectedPhoto?.id === photo.id ? null : photo
+                  )
+                }
                 className="items-center"
               >
                 <Image
@@ -126,7 +178,12 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
                   className="w-24 h-24 rounded-xl bg-raised"
                   resizeMode="cover"
                 />
-                <Text className="text-text-secondary text-xs mt-1">{t('bumpPhotos.week', { defaultValue: 'Week {{week}}', week: photo.week })}</Text>
+                <Text className="text-text-secondary text-xs mt-1">
+                  {t('bumpPhotos.week', {
+                    defaultValue: 'Week {{week}}',
+                    week: photo.week,
+                  })}
+                </Text>
                 {selectedPhoto?.id === photo.id && (
                   <TouchableOpacity
                     onPress={() => handleDelete(photo)}
@@ -147,7 +204,10 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
 
       {selectedPhoto?.entry_date && (
         <Text className="text-text-secondary text-xs">
-          {t('bumpPhotos.taken', { defaultValue: 'Taken {{date}}', date: formatDate(selectedPhoto.entry_date, dateLocale) })}
+          {t('bumpPhotos.taken', {
+            defaultValue: 'Taken {{date}}',
+            date: formatDate(selectedPhoto.entry_date, dateLocale),
+          })}
         </Text>
       )}
 
@@ -155,8 +215,18 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({ pregnancyId, curren
         ref={actionSheetRef}
         title={t('bumpPhotos.addTitle', { defaultValue: 'Add Bump Photo' })}
         items={[
-          { key: 'camera', label: t('bumpPhotos.takePhoto', { defaultValue: 'Take Photo' }), onPress: () => pickAndUpload('camera') },
-          { key: 'library', label: t('bumpPhotos.chooseLibrary', { defaultValue: 'Choose from Library' }), onPress: () => pickAndUpload('library') },
+          {
+            key: 'camera',
+            label: t('bumpPhotos.takePhoto', { defaultValue: 'Take Photo' }),
+            onPress: () => pickAndUpload('camera'),
+          },
+          {
+            key: 'library',
+            label: t('bumpPhotos.chooseLibrary', {
+              defaultValue: 'Choose from Library',
+            }),
+            onPress: () => pickAndUpload('library'),
+          },
         ]}
       />
     </View>

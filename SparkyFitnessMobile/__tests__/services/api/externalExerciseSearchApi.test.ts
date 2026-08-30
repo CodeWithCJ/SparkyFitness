@@ -2,11 +2,15 @@ import {
   searchExternalExercises,
   importExercise,
 } from '../../../src/services/api/externalExerciseSearchApi';
-import { getActiveServerConfig, type ServerConfig } from '../../../src/services/storage';
+import {
+  getActiveServerConfig,
+  type ServerConfig,
+} from '../../../src/services/storage';
 
 jest.mock('../../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
-  proxyHeadersToRecord: jest.requireActual('../../../src/services/storage').proxyHeadersToRecord,
+  proxyHeadersToRecord: jest.requireActual('../../../src/services/storage')
+    .proxyHeadersToRecord,
 }));
 
 jest.mock('../../../src/services/LogService', () => ({
@@ -39,7 +43,10 @@ describe('externalExerciseSearchApi', () => {
 
   describe('searchExternalExercises', () => {
     it('sends GET request with correct query params', async () => {
-      const responseData = { items: [], pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false } };
+      const responseData = {
+        items: [],
+        pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false },
+      };
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
@@ -50,7 +57,7 @@ describe('externalExerciseSearchApi', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/exercises/search-external?'),
-        expect.objectContaining({ method: 'GET' }),
+        expect.objectContaining({ method: 'GET' })
       );
       const url = mockFetch.mock.calls[0][0] as string;
       expect(url).toContain('query=bench+press');
@@ -64,7 +71,16 @@ describe('externalExerciseSearchApi', () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ items: [], pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false } }),
+        json: () =>
+          Promise.resolve({
+            items: [],
+            pagination: {
+              page: 1,
+              pageSize: 20,
+              totalCount: 0,
+              hasMore: false,
+            },
+          }),
       });
 
       await searchExternalExercises('squat', 'wger', 'p-1');
@@ -106,7 +122,7 @@ describe('externalExerciseSearchApi', () => {
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ wgerExerciseId: 42 }),
-        }),
+        })
       );
     });
 
@@ -125,18 +141,22 @@ describe('externalExerciseSearchApi', () => {
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ exerciseId: 'abc-123' }),
-        }),
+        })
       );
     });
 
     it('throws for unsupported source', async () => {
       await expect(importExercise('unknown-source', '1')).rejects.toThrow(
-        'Unsupported exercise source: unknown-source',
+        'Unsupported exercise source: unknown-source'
       );
     });
 
     it('returns the imported exercise with id and name', async () => {
-      const responseData = { id: 'new-ex-1', name: 'Bench Press', category: 'Strength' };
+      const responseData = {
+        id: 'new-ex-1',
+        name: 'Bench Press',
+        category: 'Strength',
+      };
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
@@ -158,7 +178,8 @@ describe('externalExerciseSearchApi', () => {
         id: 'ex-1',
         name: 'One-Arm Kettlebell Clean',
         source: 'free-exercise-db',
-        images: '["One-Arm_Kettlebell_Clean/0.jpg","One-Arm_Kettlebell_Clean/1.jpg"]',
+        images:
+          '["One-Arm_Kettlebell_Clean/0.jpg","One-Arm_Kettlebell_Clean/1.jpg"]',
       };
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
@@ -166,7 +187,10 @@ describe('externalExerciseSearchApi', () => {
         json: () => Promise.resolve(responseData),
       });
 
-      const result = await importExercise('free-exercise-db', 'One-Arm_Kettlebell_Clean');
+      const result = await importExercise(
+        'free-exercise-db',
+        'One-Arm_Kettlebell_Clean'
+      );
 
       expect(result.images).toEqual([
         'One-Arm_Kettlebell_Clean/0.jpg',

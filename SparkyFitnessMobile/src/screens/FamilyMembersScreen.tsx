@@ -65,7 +65,7 @@ const FamilyMembersScreen: React.FC<FamilyMembersScreenProps> = ({
       ) : (
         <FlatList
           data={users}
-          keyExtractor={user => user.userId}
+          keyExtractor={(user) => user.userId}
           testID="family-members-list"
           contentContainerStyle={{
             padding: 16,
@@ -76,7 +76,7 @@ const FamilyMembersScreen: React.FC<FamilyMembersScreenProps> = ({
               item,
               t('familyDiary.unnamedMember', {
                 defaultValue: 'Family member',
-              }),
+              })
             );
             const capabilityLabel = item.canCopy
               ? t('familyDiary.canCopy', { defaultValue: 'Can copy' })

@@ -9,7 +9,11 @@ import { TimeoutError } from '../../src/utils/concurrency';
 // Mock navigation
 const mockReplace = jest.fn();
 const mockNavigation = { replace: mockReplace } as any;
-const mockRoute = { key: 'onboarding', name: 'Onboarding' as const, params: undefined };
+const mockRoute = {
+  key: 'onboarding',
+  name: 'Onboarding' as const,
+  params: undefined,
+};
 
 // Mock modules
 jest.mock('../../src/services/api/authService', () => ({
@@ -47,8 +51,12 @@ const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
 const mockLogin = login as jest.MockedFunction<typeof login>;
-const mockSaveServerConfig = saveServerConfig as jest.MockedFunction<typeof saveServerConfig>;
-const mockFetchAuthSettings = fetchAuthSettings as jest.MockedFunction<typeof fetchAuthSettings>;
+const mockSaveServerConfig = saveServerConfig as jest.MockedFunction<
+  typeof saveServerConfig
+>;
+const mockFetchAuthSettings = fetchAuthSettings as jest.MockedFunction<
+  typeof fetchAuthSettings
+>;
 
 describe('OnboardingScreen', () => {
   beforeEach(() => {
@@ -66,7 +74,7 @@ describe('OnboardingScreen', () => {
     render(
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
         <OnboardingScreen navigation={mockNavigation} route={mockRoute} />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
   // --- Page 1 tests ---
@@ -90,26 +98,22 @@ describe('OnboardingScreen', () => {
 
       fireEvent.changeText(
         getByPlaceholderText('https://your-sparky-app.com'),
-        'https://a-long-enough-server-url.example.com',
+        'https://a-long-enough-server-url.example.com'
       );
 
       expect(
-        getByText('https://a-long-enough-server-url.example.com'),
+        getByText('https://a-long-enough-server-url.example.com')
       ).toBeTruthy();
     });
 
     test('learn more section toggles on press', () => {
       const { getByText, queryByText } = renderScreen();
 
-      expect(
-        queryByText(/SparkyFitness helps you track/),
-      ).toBeNull();
+      expect(queryByText(/SparkyFitness helps you track/)).toBeNull();
 
       fireEvent.press(getByText('Learn more about SparkyFitness'));
 
-      expect(
-        getByText(/SparkyFitness helps you track/),
-      ).toBeTruthy();
+      expect(getByText(/SparkyFitness helps you track/)).toBeTruthy();
     });
 
     test('Next shows error when URL is empty', async () => {
@@ -130,7 +134,7 @@ describe('OnboardingScreen', () => {
 
       fireEvent.changeText(
         getByPlaceholderText('https://your-sparky-app.com'),
-        'https://example.com',
+        'https://example.com'
       );
 
       await act(async () => {
@@ -139,7 +143,7 @@ describe('OnboardingScreen', () => {
 
       await waitFor(() => {
         expect(
-          getByText('Could not reach server. Check the URL and try again.'),
+          getByText('Could not reach server. Check the URL and try again.')
         ).toBeTruthy();
       });
     });
@@ -151,7 +155,7 @@ describe('OnboardingScreen', () => {
 
       fireEvent.changeText(
         getByPlaceholderText('https://your-sparky-app.com'),
-        'https://example.com',
+        'https://example.com'
       );
 
       await act(async () => {
@@ -175,13 +179,15 @@ describe('OnboardingScreen', () => {
     });
 
     test('settings-fetch timeout skips the reachability fallback', async () => {
-      mockFetchAuthSettings.mockRejectedValueOnce(new TimeoutError('Request', 10_000));
+      mockFetchAuthSettings.mockRejectedValueOnce(
+        new TimeoutError('Request', 10_000)
+      );
 
       const { getByText, getByPlaceholderText } = renderScreen();
 
       fireEvent.changeText(
         getByPlaceholderText('https://your-sparky-app.com'),
-        'https://example.com',
+        'https://example.com'
       );
 
       await act(async () => {
@@ -190,7 +196,7 @@ describe('OnboardingScreen', () => {
 
       await waitFor(() => {
         expect(
-          getByText('Could not reach server. Check the URL and try again.'),
+          getByText('Could not reach server. Check the URL and try again.')
         ).toBeTruthy();
       });
       // The fallback would probe the same host that just spent the full
@@ -207,7 +213,7 @@ describe('OnboardingScreen', () => {
 
       fireEvent.changeText(
         result.getByPlaceholderText('https://your-sparky-app.com'),
-        'https://example.com',
+        'https://example.com'
       );
 
       await act(async () => {
@@ -239,7 +245,7 @@ describe('OnboardingScreen', () => {
 
       // Should be back on page 1 with URL preserved
       expect(
-        result.getByPlaceholderText('https://your-sparky-app.com').props.value,
+        result.getByPlaceholderText('https://your-sparky-app.com').props.value
       ).toBe('https://example.com');
     });
 
@@ -270,7 +276,7 @@ describe('OnboardingScreen', () => {
       // Enter API key
       fireEvent.changeText(
         result.getByPlaceholderText('Uds3d8i...'),
-        'my-api-key',
+        'my-api-key'
       );
 
       // Reset fetch mock for the API key verification call
@@ -289,9 +295,11 @@ describe('OnboardingScreen', () => {
             url: 'https://example.com',
             apiKey: 'my-api-key',
             authType: 'apiKey',
-          }),
+          })
         );
-        expect(mockReplace).toHaveBeenCalledWith('Tabs', { screen: 'Dashboard' });
+        expect(mockReplace).toHaveBeenCalledWith('Tabs', {
+          screen: 'Dashboard',
+        });
       });
     });
 
@@ -308,11 +316,11 @@ describe('OnboardingScreen', () => {
       // Fill in sign in fields
       fireEvent.changeText(
         result.getByPlaceholderText('email@example.com'),
-        'user@example.com',
+        'user@example.com'
       );
       fireEvent.changeText(
         result.getByPlaceholderText('Password'),
-        'password123',
+        'password123'
       );
 
       await act(async () => {
@@ -323,16 +331,18 @@ describe('OnboardingScreen', () => {
         expect(mockLogin).toHaveBeenCalledWith(
           'https://example.com',
           'user@example.com',
-          'password123',
+          'password123'
         );
         expect(mockSaveServerConfig).toHaveBeenCalledWith(
           expect.objectContaining({
             url: 'https://example.com',
             authType: 'session',
             sessionToken: 'tok-123',
-          }),
+          })
         );
-        expect(mockReplace).toHaveBeenCalledWith('Tabs', { screen: 'Dashboard' });
+        expect(mockReplace).toHaveBeenCalledWith('Tabs', {
+          screen: 'Dashboard',
+        });
       });
     });
 
@@ -344,11 +354,11 @@ describe('OnboardingScreen', () => {
 
       fireEvent.changeText(
         result.getByPlaceholderText('email@example.com'),
-        'user@example.com',
+        'user@example.com'
       );
       fireEvent.changeText(
         result.getByPlaceholderText('Password'),
-        'wrong-password',
+        'wrong-password'
       );
 
       await act(async () => {
@@ -358,8 +368,8 @@ describe('OnboardingScreen', () => {
       await waitFor(() => {
         expect(
           result.getByText(
-            'Could not connect to server. Check the URL and try again.',
-          ),
+            'Could not connect to server. Check the URL and try again.'
+          )
         ).toBeTruthy();
       });
 

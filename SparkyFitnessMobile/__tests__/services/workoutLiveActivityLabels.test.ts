@@ -84,7 +84,9 @@ describe('workoutLiveActivityLabels', () => {
 
     it('contains no i18next placeholder syntax', () => {
       for (const locale of ['en', 'pl', 'es']) {
-        const labels = buildWorkoutLiveActivityLabels(locale as 'en' | 'pl' | 'es');
+        const labels = buildWorkoutLiveActivityLabels(
+          locale as 'en' | 'pl' | 'es'
+        );
         for (const value of Object.values(labels)) {
           expect(value).not.toMatch(/\{\{/);
           expect(value).not.toMatch(/\}\}/);
@@ -94,7 +96,9 @@ describe('workoutLiveActivityLabels', () => {
 
     it('serializes to plain strings (no functions or objects)', () => {
       for (const locale of ['en', 'pl', 'es']) {
-        const labels = buildWorkoutLiveActivityLabels(locale as 'en' | 'pl' | 'es');
+        const labels = buildWorkoutLiveActivityLabels(
+          locale as 'en' | 'pl' | 'es'
+        );
         for (const value of Object.values(labels)) {
           expect(typeof value).toBe('string');
         }
@@ -106,7 +110,9 @@ describe('workoutLiveActivityLabels', () => {
 
     it('never leaks raw i18next key paths into the label object', () => {
       for (const locale of ['en', 'pl', 'es']) {
-        const labels = buildWorkoutLiveActivityLabels(locale as 'en' | 'pl' | 'es');
+        const labels = buildWorkoutLiveActivityLabels(
+          locale as 'en' | 'pl' | 'es'
+        );
         for (const value of Object.values(labels)) {
           expect(value).not.toContain('activeWorkout.liveActivity.');
         }
@@ -172,7 +178,9 @@ describe('workoutLiveActivityLabels', () => {
     });
 
     it('isWorkoutLiveActivityLocale returns false for the raw key path', () => {
-      expect(isWorkoutLiveActivityLocale('activeWorkout.liveActivity.rest')).toBe(false);
+      expect(
+        isWorkoutLiveActivityLocale('activeWorkout.liveActivity.rest')
+      ).toBe(false);
     });
   });
 });

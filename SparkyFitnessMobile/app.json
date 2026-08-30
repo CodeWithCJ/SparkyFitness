@@ -51,18 +51,14 @@
           }
         }
       ],
-      [
-        "expo-notifications"
-      ],
+      ["expo-notifications"],
       [
         "expo-navigation-bar",
         {
           "enforceContrast": false
         }
       ],
-      [
-        "@bacons/apple-targets"
-      ]
+      ["@bacons/apple-targets"]
     ],
     "experiments": {
       "reactCompiler": true,

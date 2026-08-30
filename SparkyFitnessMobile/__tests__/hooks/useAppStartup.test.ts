@@ -1,7 +1,10 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useAppStartup } from '../../src/hooks/useAppStartup';
 import { loadBackgroundSyncEnabled } from '../../src/services/storage';
-import { startObservers, stopObservers } from '../../src/services/healthConnectService';
+import {
+  startObservers,
+  stopObservers,
+} from '../../src/services/healthConnectService';
 import {
   configureBackgroundSync,
   performBackgroundSync,
@@ -10,7 +13,10 @@ import {
 import { tryClaimAutoSync } from '../../src/services/autoSyncCoordinator';
 import { ensureTimezoneBootstrapped } from '../../src/services/api/preferencesApi';
 import { initWorkoutNotificationActions } from '../../src/stores/activeWorkoutStore';
-import { initNotifications, registerLocalizedNotificationPresentation } from '../../src/services/notifications';
+import {
+  initNotifications,
+  registerLocalizedNotificationPresentation,
+} from '../../src/services/notifications';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 import { addLog } from '../../src/services/LogService';
 import { initMedicationNotificationActions } from '../../src/services/medicationNotificationHandler';
@@ -69,16 +75,39 @@ jest.mock('../../src/services/LogService', () => ({
   initLogService: jest.fn().mockResolvedValue(undefined),
 }));
 
-const mockLoadBackgroundSyncEnabled = loadBackgroundSyncEnabled as jest.MockedFunction<typeof loadBackgroundSyncEnabled>;
-const mockStartObservers = startObservers as jest.MockedFunction<typeof startObservers>;
-const mockStopObservers = stopObservers as jest.MockedFunction<typeof stopObservers>;
-const mockConfigureBackgroundSync = configureBackgroundSync as jest.MockedFunction<typeof configureBackgroundSync>;
-const mockPerformBackgroundSync = performBackgroundSync as jest.MockedFunction<typeof performBackgroundSync>;
-const mockFlushPendingRefresh = flushPendingHealthSyncCacheRefresh as jest.MockedFunction<typeof flushPendingHealthSyncCacheRefresh>;
-const mockTryClaimAutoSync = tryClaimAutoSync as jest.MockedFunction<typeof tryClaimAutoSync>;
-const mockRegisterLocalized = registerLocalizedNotificationPresentation as jest.MockedFunction<typeof registerLocalizedNotificationPresentation>;
+const mockLoadBackgroundSyncEnabled =
+  loadBackgroundSyncEnabled as jest.MockedFunction<
+    typeof loadBackgroundSyncEnabled
+  >;
+const mockStartObservers = startObservers as jest.MockedFunction<
+  typeof startObservers
+>;
+const mockStopObservers = stopObservers as jest.MockedFunction<
+  typeof stopObservers
+>;
+const mockConfigureBackgroundSync =
+  configureBackgroundSync as jest.MockedFunction<
+    typeof configureBackgroundSync
+  >;
+const mockPerformBackgroundSync = performBackgroundSync as jest.MockedFunction<
+  typeof performBackgroundSync
+>;
+const mockFlushPendingRefresh =
+  flushPendingHealthSyncCacheRefresh as jest.MockedFunction<
+    typeof flushPendingHealthSyncCacheRefresh
+  >;
+const mockTryClaimAutoSync = tryClaimAutoSync as jest.MockedFunction<
+  typeof tryClaimAutoSync
+>;
+const mockRegisterLocalized =
+  registerLocalizedNotificationPresentation as jest.MockedFunction<
+    typeof registerLocalizedNotificationPresentation
+  >;
 const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
-const mockEnsureTimezoneBootstrapped = ensureTimezoneBootstrapped as jest.MockedFunction<typeof ensureTimezoneBootstrapped>;
+const mockEnsureTimezoneBootstrapped =
+  ensureTimezoneBootstrapped as jest.MockedFunction<
+    typeof ensureTimezoneBootstrapped
+  >;
 
 beforeEach(async () => {
   await initializeI18n('en');
@@ -89,7 +118,9 @@ beforeEach(async () => {
   mockLoadBackgroundSyncEnabled.mockResolvedValue(true);
   mockFlushPendingRefresh.mockResolvedValue(undefined);
   mockRegisterLocalized.mockResolvedValue(undefined);
-  mockPerformBackgroundSync.mockResolvedValue(undefined as Awaited<ReturnType<typeof performBackgroundSync>>);
+  mockPerformBackgroundSync.mockResolvedValue(
+    undefined as Awaited<ReturnType<typeof performBackgroundSync>>
+  );
 });
 
 describe('useAppStartup', () => {
@@ -146,7 +177,9 @@ describe('useAppStartup', () => {
     await act(async () => {
       observerCallback?.();
     });
-    expect(mockPerformBackgroundSync).toHaveBeenCalledWith('healthkit-observer');
+    expect(mockPerformBackgroundSync).toHaveBeenCalledWith(
+      'healthkit-observer'
+    );
     await waitFor(() => expect(release).toHaveBeenCalled());
   });
 
@@ -155,36 +188,53 @@ describe('useAppStartup', () => {
     await waitFor(() => expect(initNotifications).toHaveBeenCalled());
     mockRegisterLocalized.mockClear();
 
-    await act(async () => { await i18n.changeLanguage('pl'); });
+    await act(async () => {
+      await i18n.changeLanguage('pl');
+    });
     await waitFor(() => expect(mockRegisterLocalized).toHaveBeenCalledTimes(1));
-    await act(async () => { await i18n.changeLanguage('en'); });
+    await act(async () => {
+      await i18n.changeLanguage('en');
+    });
     await waitFor(() => expect(mockRegisterLocalized).toHaveBeenCalledTimes(2));
   });
 
   it('removes the languageChanged listener on unmount', async () => {
-    const { unmount } = renderHook(() => useAppStartup({ shouldYieldObserverSync }));
+    const { unmount } = renderHook(() =>
+      useAppStartup({ shouldYieldObserverSync })
+    );
     await waitFor(() => expect(initNotifications).toHaveBeenCalled());
     unmount();
     mockRegisterLocalized.mockClear();
-    await act(async () => { await i18n.changeLanguage('pl'); });
+    await act(async () => {
+      await i18n.changeLanguage('pl');
+    });
     expect(mockRegisterLocalized).not.toHaveBeenCalled();
   });
 
   it('contains notification refresh rejection and logs an error while remaining mounted', async () => {
     const registrationError = new Error('registration failed');
     mockRegisterLocalized.mockRejectedValue(registrationError);
-    const { result } = renderHook(() => useAppStartup({ shouldYieldObserverSync }));
+    const { result } = renderHook(() =>
+      useAppStartup({ shouldYieldObserverSync })
+    );
     await waitFor(() => expect(initNotifications).toHaveBeenCalled());
     mockAddLog.mockClear();
-    await act(async () => { await i18n.changeLanguage('pl'); });
-    await waitFor(() => expect(mockAddLog).toHaveBeenCalledWith(
-      expect.stringContaining('registration failed'), 'ERROR',
-    ));
+    await act(async () => {
+      await i18n.changeLanguage('pl');
+    });
+    await waitFor(() =>
+      expect(mockAddLog).toHaveBeenCalledWith(
+        expect.stringContaining('registration failed'),
+        'ERROR'
+      )
+    );
     expect(result.current).toBeUndefined();
   });
 
   it('stops observers on unmount', async () => {
-    const { unmount } = renderHook(() => useAppStartup({ shouldYieldObserverSync }));
+    const { unmount } = renderHook(() =>
+      useAppStartup({ shouldYieldObserverSync })
+    );
     await waitFor(() => expect(mockConfigureBackgroundSync).toHaveBeenCalled());
 
     unmount();

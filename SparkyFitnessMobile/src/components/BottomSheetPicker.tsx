@@ -52,7 +52,10 @@ export function PickerTrigger({
       activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      accessibilityHint={accessibilityHint ?? t('common.openSelectionMenu', { defaultValue: 'Opens selection menu' })}
+      accessibilityHint={
+        accessibilityHint ??
+        t('common.openSelectionMenu', { defaultValue: 'Opens selection menu' })
+      }
     >
       <Text className="text-base flex-1 text-text-primary">{label}</Text>
       <Icon name="chevron-down" size={16} color={textMuted} />
@@ -74,7 +77,10 @@ interface BottomSheetPickerProps<T extends string | number> {
   title?: string;
   accessibilityHint?: string;
   containerStyle?: StyleProp<ViewStyle>;
-  renderTrigger?: (props: { onPress: () => void; selectedOption: PickerOption<T> | undefined }) => React.ReactNode;
+  renderTrigger?: (props: {
+    onPress: () => void;
+    selectedOption: PickerOption<T> | undefined;
+  }) => React.ReactNode;
 }
 
 function BottomSheetPicker<T extends string | number>({
@@ -105,11 +111,14 @@ function BottomSheetPicker<T extends string | number>({
 
   const flatOptions = useMemo(
     () => normalizedSections.flatMap((section) => section.options),
-    [normalizedSections],
+    [normalizedSections]
   );
 
   const selectedOption = flatOptions.find((opt) => opt.value === value);
-  const displayText = selectedOption?.label || placeholder || t('common.selectOption', { defaultValue: 'Select an option' });
+  const displayText =
+    selectedOption?.label ||
+    placeholder ||
+    t('common.selectOption', { defaultValue: 'Select an option' });
 
   // For long lists (>8 items), use a fixed max height with scrolling
   // For short lists, use dynamic sizing to fit content exactly
@@ -161,9 +170,7 @@ function BottomSheetPicker<T extends string | number>({
         >
           {item.label}
         </Text>
-        {isSelected && (
-          <Icon name="checkmark" size={20} color={primary} />
-        )}
+        {isSelected && <Icon name="checkmark" size={20} color={primary} />}
       </TouchableOpacity>
     );
   };
@@ -183,12 +190,13 @@ function BottomSheetPicker<T extends string | number>({
     );
   };
 
-  const renderSections = () => normalizedSections.map((section, index) => (
-    <React.Fragment key={`section-${section.title ?? 'default'}-${index}`}>
-      {renderSectionHeader(section, index)}
-      {section.options.map(renderOption)}
-    </React.Fragment>
-  ));
+  const renderSections = () =>
+    normalizedSections.map((section, index) => (
+      <React.Fragment key={`section-${section.title ?? 'default'}-${index}`}>
+        {renderSectionHeader(section, index)}
+        {section.options.map(renderOption)}
+      </React.Fragment>
+    ));
 
   return (
     <>

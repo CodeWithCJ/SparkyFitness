@@ -14,7 +14,7 @@ import type { FoodEntryMeal } from '../../types/foodEntryMeals';
 export const setFoodEntryImages = async (
   entryId: string,
   order: string[],
-  newUris: string[],
+  newUris: string[]
 ): Promise<FoodEntry> =>
   postImageMultipart<FoodEntry>({
     endpoint: `/api/food-entries/${entryId}/image`,
@@ -35,7 +35,7 @@ export const clearFoodEntryImage = async (entryId: string): Promise<void> =>
 export const setFoodEntryMealImages = async (
   entryId: string,
   order: string[],
-  newUris: string[],
+  newUris: string[]
 ): Promise<FoodEntryMeal> =>
   postImageMultipart<FoodEntryMeal>({
     endpoint: `/api/food-entry-meals/${entryId}/image`,
@@ -45,9 +45,7 @@ export const setFoodEntryMealImages = async (
     newUris,
   });
 
-export const clearFoodEntryMealImage = async (
-  entryId: string,
-): Promise<void> =>
+export const clearFoodEntryMealImage = async (entryId: string): Promise<void> =>
   apiFetch<void>({
     endpoint: `/api/food-entry-meals/${entryId}/image`,
     serviceName: 'Food Entry Meals API',

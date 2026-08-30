@@ -27,9 +27,15 @@ jest.mock('../../src/components/ActiveWorkoutBar', () => ({
 }));
 
 const mockUsePlans = useMealPlans as jest.MockedFunction<typeof useMealPlans>;
-const mockUseDuplicate = useDuplicateMealPlan as jest.MockedFunction<typeof useDuplicateMealPlan>;
-const mockUseDelete = useDeleteMealPlan as jest.MockedFunction<typeof useDeleteMealPlan>;
-const mockUseConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
+const mockUseDuplicate = useDuplicateMealPlan as jest.MockedFunction<
+  typeof useDuplicateMealPlan
+>;
+const mockUseDelete = useDeleteMealPlan as jest.MockedFunction<
+  typeof useDeleteMealPlan
+>;
+const mockUseConnection = useServerConnection as jest.MockedFunction<
+  typeof useServerConnection
+>;
 
 const duplicateMealPlanAsync = jest.fn();
 const deleteMealPlanAsync = jest.fn();
@@ -43,7 +49,11 @@ jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => mockNavigation,
 }));
-const route = { key: 'MealPlans-key', name: 'MealPlans' as const, params: undefined };
+const route = {
+  key: 'MealPlans-key',
+  name: 'MealPlans' as const,
+  params: undefined,
+};
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
@@ -74,7 +84,7 @@ function renderScreen() {
   return render(
     <SafeAreaProvider initialMetrics={{ insets, frame }}>
       <MealPlansScreen navigation={mockNavigation} route={route} />
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
 }
 
@@ -94,7 +104,10 @@ describe('MealPlansScreen', () => {
       isError: false,
       refetch,
     });
-    mockUseDuplicate.mockReturnValue({ duplicateMealPlanAsync, isPending: false });
+    mockUseDuplicate.mockReturnValue({
+      duplicateMealPlanAsync,
+      isPending: false,
+    });
     mockUseDelete.mockReturnValue({ deleteMealPlanAsync, isPending: false });
     duplicateMealPlanAsync.mockResolvedValue({ ...plan, id: 'plan-copy' });
     deleteMealPlanAsync.mockResolvedValue(undefined);
@@ -105,10 +118,14 @@ describe('MealPlansScreen', () => {
 
     expect(screen.getByText('Weekday prep')).toBeTruthy();
     expect(screen.getByText('Active')).toBeTruthy();
-    expect(screen.getByText('Mon · Lunch · Chicken and rice · 350 g')).toBeTruthy();
+    expect(
+      screen.getByText('Mon · Lunch · Chicken and rice · 350 g')
+    ).toBeTruthy();
 
     fireEvent.press(screen.getByText('Weekday prep'));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('MealPlanForm', { template: plan });
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('MealPlanForm', {
+      template: plan,
+    });
   });
 
   test('duplicates a plan', async () => {
@@ -119,20 +136,25 @@ describe('MealPlansScreen', () => {
     await waitFor(() => {
       expect(duplicateMealPlanAsync).toHaveBeenCalledWith(
         'plan-1',
-        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
       );
     });
   });
 
   test('uses the client day at action time when midnight passes on the list', async () => {
-    const day = jest.spyOn(dateUtils, 'toLocalDateString').mockReturnValue('2026-08-29');
+    const day = jest
+      .spyOn(dateUtils, 'toLocalDateString')
+      .mockReturnValue('2026-08-29');
     const screen = renderScreen();
 
     day.mockReturnValue('2026-08-30');
     fireEvent.press(screen.getByLabelText('Duplicate Weekday prep'));
 
     await waitFor(() => {
-      expect(duplicateMealPlanAsync).toHaveBeenCalledWith('plan-1', '2026-08-30');
+      expect(duplicateMealPlanAsync).toHaveBeenCalledWith(
+        'plan-1',
+        '2026-08-30'
+      );
     });
     day.mockRestore();
   });
@@ -148,7 +170,7 @@ describe('MealPlansScreen', () => {
     await waitFor(() => {
       expect(deleteMealPlanAsync).toHaveBeenCalledWith(
         'plan-1',
-        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
       );
     });
     expect(Toast.show).toHaveBeenCalledWith({

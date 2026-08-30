@@ -27,9 +27,11 @@ describe('CardioEffortForm', () => {
         exerciseName="Run"
         mode="live"
         distanceUnit="km"
-      />,
+      />
     );
-    expect(getByLabelText('Duration in minutes for Run').props.value).toBe('30');
+    expect(getByLabelText('Duration in minutes for Run').props.value).toBe(
+      '30'
+    );
     expect(getByLabelText('Distance in km for Run').props.value).toBe('5.2');
   });
 
@@ -41,10 +43,14 @@ describe('CardioEffortForm', () => {
         mode="live"
         distanceUnit="km"
         assumed={{ weight: null, reps: null, duration: 1500, distance: 5 }}
-      />,
+      />
     );
-    expect(getByLabelText('Duration in minutes for Run').props.placeholder).toBe('25');
-    expect(getByLabelText('Distance in km for Run').props.placeholder).toBe('5');
+    expect(
+      getByLabelText('Duration in minutes for Run').props.placeholder
+    ).toBe('25');
+    expect(getByLabelText('Distance in km for Run').props.placeholder).toBe(
+      '5'
+    );
     expect(getByLabelText('Duration in minutes for Run').props.value).toBe('');
   });
 
@@ -56,10 +62,10 @@ describe('CardioEffortForm', () => {
         mode="live"
         distanceUnit="km"
         assumed={{ weight: null, reps: null, duration: 1500, distance: 5 }}
-      />,
+      />
     );
     expect(
-      filled.getByLabelText('Duration in minutes for Run').props.placeholder,
+      filled.getByLabelText('Duration in minutes for Run').props.placeholder
     ).toBe('–');
 
     const editMode = render(
@@ -69,10 +75,10 @@ describe('CardioEffortForm', () => {
         mode="edit"
         distanceUnit="km"
         assumed={{ weight: null, reps: null, duration: 1500, distance: 5 }}
-      />,
+      />
     );
     expect(
-      editMode.getByLabelText('Duration in minutes for Run').props.placeholder,
+      editMode.getByLabelText('Duration in minutes for Run').props.placeholder
     ).toBe('–');
   });
 
@@ -83,10 +89,17 @@ describe('CardioEffortForm', () => {
         exerciseName="Run"
         mode="live"
         distanceUnit="miles"
-        assumed={{ weight: null, reps: null, duration: null, distance: 1.609344 }}
-      />,
+        assumed={{
+          weight: null,
+          reps: null,
+          duration: null,
+          distance: 1.609344,
+        }}
+      />
     );
-    expect(getByLabelText('Distance in mi for Run').props.placeholder).toBe('1');
+    expect(getByLabelText('Distance in mi for Run').props.placeholder).toBe(
+      '1'
+    );
   });
 
   it('converts the seeded distance into miles for a miles user', () => {
@@ -96,7 +109,7 @@ describe('CardioEffortForm', () => {
         exerciseName="Run"
         mode="live"
         distanceUnit="miles"
-      />,
+      />
     );
     expect(getByLabelText('Distance in mi for Run').props.value).toBe('1');
   });
@@ -110,7 +123,7 @@ describe('CardioEffortForm', () => {
         mode="live"
         distanceUnit="km"
         onCommitField={onCommitField}
-      />,
+      />
     );
 
     const duration = getByLabelText('Duration in minutes for Run');
@@ -134,7 +147,7 @@ describe('CardioEffortForm', () => {
         mode="live"
         distanceUnit="miles"
         onCommitField={onCommitField}
-      />,
+      />
     );
     const distance = getByLabelText('Distance in mi for Run');
     fireEvent.changeText(distance, '1');
@@ -151,7 +164,7 @@ describe('CardioEffortForm', () => {
         mode="live"
         distanceUnit="km"
         onCommitField={onCommitField}
-      />,
+      />
     );
     const distance = getByLabelText('Distance in km for Run');
     fireEvent.changeText(distance, '');
@@ -168,7 +181,7 @@ describe('CardioEffortForm', () => {
         mode="edit"
         distanceUnit="km"
         onCommitField={onCommitField}
-      />,
+      />
     );
     fireEvent.changeText(getByLabelText('Duration in minutes for Run'), '25');
     expect(onCommitField).toHaveBeenCalledWith('101', { duration: 1500 });
@@ -186,7 +199,7 @@ describe('CardioEffortForm', () => {
         onCommitField={onCommitField}
         onComplete={onComplete}
         onUncomplete={jest.fn()}
-      />,
+      />
     );
     fireEvent.changeText(getByLabelText('Duration in minutes for Run'), '30');
     fireEvent.press(getByLabelText('Complete Run'));
@@ -206,7 +219,7 @@ describe('CardioEffortForm', () => {
         onCommitField={jest.fn()}
         onComplete={jest.fn()}
         onUncomplete={onUncomplete}
-      />,
+      />
     );
     fireEvent.press(getByLabelText('Mark Run incomplete'));
     expect(onUncomplete).toHaveBeenCalledWith('101');
@@ -222,7 +235,7 @@ describe('CardioEffortForm', () => {
         distanceUnit="km"
         onCommitField={jest.fn()}
         onActivateSet={onActivateSet}
-      />,
+      />
     );
     fireEvent(getByLabelText('Duration in minutes for Run'), 'focus');
     expect(onActivateSet).toHaveBeenCalledWith('101', 'duration');
@@ -240,7 +253,7 @@ describe('CardioEffortForm', () => {
         distanceUnit="km"
         onCommitField={jest.fn()}
         onActivateSet={onActivateSet}
-      />,
+      />
     );
     fireEvent(getByLabelText('Duration in minutes for Run'), 'focus');
     expect(onActivateSet).not.toHaveBeenCalled();
@@ -248,7 +261,10 @@ describe('CardioEffortForm', () => {
 
   it('registers a live accessory handle whose log adopts drafts then completes', () => {
     const handles: Record<string, { log: () => void }> = {};
-    const onRegisterAccessoryHandle = (key: string, handle: { log: () => void } | null) => {
+    const onRegisterAccessoryHandle = (
+      key: string,
+      handle: { log: () => void } | null
+    ) => {
       if (handle == null) delete handles[key];
       else handles[key] = handle;
     };
@@ -264,7 +280,7 @@ describe('CardioEffortForm', () => {
         onCommitField={onCommitField}
         onComplete={onComplete}
         onRegisterAccessoryHandle={onRegisterAccessoryHandle}
-      />,
+      />
     );
 
     expect(handles['rk-101']).toBeDefined();
@@ -287,7 +303,7 @@ describe('CardioEffortForm', () => {
         distanceUnit="km"
         onCommitField={jest.fn()}
         onRegisterAccessoryHandle={onRegisterAccessoryHandle}
-      />,
+      />
     );
     expect(onRegisterAccessoryHandle).not.toHaveBeenCalled();
   });
@@ -304,7 +320,7 @@ describe('CardioEffortForm', () => {
           onCommitField={jest.fn()}
           onComplete={jest.fn()}
           onUncomplete={jest.fn()}
-        />,
+        />
       );
 
     const done = renderWithState('done');
@@ -322,7 +338,12 @@ describe('CardioEffortForm', () => {
 
   it('renders a labeled duration/distance table in view mode', () => {
     const { getByText, queryByLabelText } = render(
-      <CardioEffortForm set={makeSet()} exerciseName="Run" mode="view" distanceUnit="km" />,
+      <CardioEffortForm
+        set={makeSet()}
+        exerciseName="Run"
+        mode="view"
+        distanceUnit="km"
+      />
     );
     expect(getByText('Duration (min)')).toBeTruthy();
     expect(getByText('30')).toBeTruthy();
@@ -338,7 +359,7 @@ describe('CardioEffortForm', () => {
         exerciseName="Run"
         mode="view"
         distanceUnit="miles"
-      />,
+      />
     );
     expect(getByText('Distance (mi)')).toBeTruthy();
     expect(getByText('1')).toBeTruthy();
@@ -346,7 +367,12 @@ describe('CardioEffortForm', () => {
 
   it('view mode shows dashes for a legacy set-less entry', () => {
     const { getByText, getAllByText } = render(
-      <CardioEffortForm set={null} exerciseName="Run" mode="view" distanceUnit="km" />,
+      <CardioEffortForm
+        set={null}
+        exerciseName="Run"
+        mode="view"
+        distanceUnit="km"
+      />
     );
     expect(getByText('Duration (min)')).toBeTruthy();
     expect(getByText('Distance (km)')).toBeTruthy();

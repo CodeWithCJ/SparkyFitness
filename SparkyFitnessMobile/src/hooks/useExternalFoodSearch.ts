@@ -9,7 +9,7 @@ import { offRateLimiter } from '../utils/rateLimiter';
 export function useExternalFoodSearch(
   searchText: string,
   providerType: string,
-  options?: { enabled?: boolean; providerId?: string; autoScale?: boolean },
+  options?: { enabled?: boolean; providerId?: string; autoScale?: boolean }
 ) {
   const { enabled = true, providerId, autoScale } = options ?? {};
   const debouncedSearch = useDebounce(searchText.trim(), 600);
@@ -21,15 +21,33 @@ export function useExternalFoodSearch(
   const isProviderSupported = !!providerType;
 
   const query = useInfiniteQuery({
-    queryKey: externalFoodSearchQueryKey(providerType, debouncedSearch, providerId, autoScale),
+    queryKey: externalFoodSearchQueryKey(
+      providerType,
+      debouncedSearch,
+      providerId,
+      autoScale
+    ),
     queryFn: async ({ signal, pageParam }) => {
-      if (providerType !== 'openfoodfacts' && providerType !== 'swissfood' && !providerId) {
-        return { items: [], pagination: { page: 1, pageSize: 0, totalCount: 0, hasMore: false } };
+      if (
+        providerType !== 'openfoodfacts' &&
+        providerType !== 'swissfood' &&
+        !providerId
+      ) {
+        return {
+          items: [],
+          pagination: { page: 1, pageSize: 0, totalCount: 0, hasMore: false },
+        };
       }
       if (providerType === 'openfoodfacts') {
         await offRateLimiter.acquire(signal);
       }
-      return searchExternalFoods(providerType, debouncedSearch, pageParam, providerId, autoScale);
+      return searchExternalFoods(
+        providerType,
+        debouncedSearch,
+        pageParam,
+        providerId,
+        autoScale
+      );
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
@@ -45,19 +63,21 @@ export function useExternalFoodSearch(
   const searchResults = useMemo(
     () =>
       isSearchActive ? (query.data?.pages.flatMap((p) => p.items) ?? []) : [],
-    [isSearchActive, query.data?.pages],
+    [isSearchActive, query.data?.pages]
   );
   // When keepPreviousData is active, isPlaceholderData is true and data belongs
   // to the previous query key. Only treat the error as a load-more error when
   // the current query has real (non-placeholder) pages loaded.
-  const hasCurrentData = !query.isPlaceholderData && (query.data?.pages.length ?? 0) > 0;
+  const hasCurrentData =
+    !query.isPlaceholderData && (query.data?.pages.length ?? 0) > 0;
 
   return {
     searchResults,
     isSearching: query.isFetching && !query.isFetchingNextPage,
     isSearchActive,
     isSearchError: query.isError && !hasCurrentData,
-    searchErrorMessage: query.isError && !hasCurrentData ? getApiErrorMessage(query.error) : null,
+    searchErrorMessage:
+      query.isError && !hasCurrentData ? getApiErrorMessage(query.error) : null,
     isProviderSupported,
     fetchNextPage: query.fetchNextPage,
     hasNextPage: query.hasNextPage,

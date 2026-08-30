@@ -35,7 +35,7 @@ export interface EntryNutrition {
  */
 export function getMealTypeDisplayLabel(
   mealType: Pick<MealType, 'name' | 'user_id'>,
-  t: TFunction,
+  t: TFunction
 ): string {
   if (mealType.user_id != null) return mealType.name;
   const lower = mealType.name.toLowerCase();
@@ -52,7 +52,7 @@ export function getMealTypeDisplayLabel(
  */
 export function getHistoricalMealTypeLabel(
   name: string | null | undefined,
-  t: TFunction,
+  t: TFunction
 ): string {
   const trimmed = (name ?? '').trim();
   if (!trimmed) return t('mealTypes.other', { defaultValue: 'Other' });
@@ -69,7 +69,7 @@ export function getHistoricalMealTypeLabel(
 export function getFoodEntryMealTypeLabel(
   entry: { meal_type_id?: string | null; meal_type?: string | null },
   mealTypes: MealType[],
-  t: TFunction,
+  t: TFunction
 ): string {
   if (entry.meal_type_id) {
     const mt = mealTypes.find((m) => m.id === entry.meal_type_id);
@@ -88,14 +88,17 @@ export function getFoodEntryMealTypeLabel(
 
 export function groupFoodEntriesByMealType(
   entries: FoodEntry[],
-  mealTypes: MealType[],
+  mealTypes: MealType[]
 ): MealGroup[] {
   const typeMap = new Map<string, MealType>();
   for (const mt of mealTypes) {
     typeMap.set(mt.id, mt);
   }
 
-  const groupMap = new Map<string, { entries: FoodEntry[]; mt: MealType | null }>();
+  const groupMap = new Map<
+    string,
+    { entries: FoodEntry[]; mt: MealType | null }
+  >();
   // Unmatched entries (hidden/deleted/legacy types) are grouped by their own
   // id when present, else by their snapshotted name, so two different unknown
   // types never collapse into a single "Other" bucket. Only entries with no
@@ -182,10 +185,7 @@ export function groupFoodEntriesByMealType(
  * `isSystem` — never on the raw name — so a deleted custom type named
  * "breakfast" never renders as the translated system "Breakfast".
  */
-export function getMealGroupLabel(
-  group: MealGroup,
-  t: TFunction,
-): string {
+export function getMealGroupLabel(group: MealGroup, t: TFunction): string {
   if (group.isSystem) {
     const lower = group.name.toLowerCase();
     const key = lower === 'snack' ? 'snacks' : lower;
@@ -206,16 +206,26 @@ export function filterFoodEntriesByMealTypeId(
   entries: FoodEntry[],
   mealTypeId: string | null | undefined,
   mealTypeName: string,
-  mealTypes: MealType[],
+  mealTypes: MealType[]
 ): FoodEntry[] {
   const nameLower = mealTypeName.toLowerCase();
   return entries.filter((entry) => {
     if (entry.meal_type_id) {
       if (mealTypeId) return entry.meal_type_id === mealTypeId;
-      return ((entry.meal_type && entry.meal_type.trim() ? entry.meal_type : 'other') as string).toLowerCase() === nameLower;
+      return (
+        (
+          (entry.meal_type && entry.meal_type.trim()
+            ? entry.meal_type
+            : 'other') as string
+        ).toLowerCase() === nameLower
+      );
     }
     // Entry has no id: resolve its type by name against the active list first.
-    const entryName = ((entry.meal_type && entry.meal_type.trim() ? entry.meal_type : 'other') as string).toLowerCase();
+    const entryName = (
+      (entry.meal_type && entry.meal_type.trim()
+        ? entry.meal_type
+        : 'other') as string
+    ).toLowerCase();
     if (mealTypeId) {
       const mt = mealTypes.find((m) => m.name.toLowerCase() === entryName);
       return mt ? mt.id === mealTypeId : false;
@@ -224,7 +234,10 @@ export function filterFoodEntriesByMealTypeId(
   });
 }
 
-export function calculateEntryValue(value: number | undefined, entry: FoodEntry): number {
+export function calculateEntryValue(
+  value: number | undefined,
+  entry: FoodEntry
+): number {
   if (value === undefined || !entry.serving_size) return 0;
   return (value * entry.quantity) / entry.serving_size;
 }
@@ -247,7 +260,10 @@ function sumField(entries: FoodEntry[], field: keyof FoodEntry): number {
   }, 0);
 }
 
-function optionalSum(entries: FoodEntry[], field: keyof FoodEntry): number | undefined {
+function optionalSum(
+  entries: FoodEntry[],
+  field: keyof FoodEntry
+): number | undefined {
   const hasValue = entries.some((entry) => typeof entry[field] === 'number');
   return hasValue ? Math.round(sumField(entries, field)) : undefined;
 }
@@ -284,7 +300,10 @@ export function calculateMealNutrition(entries: FoodEntry[]): MealNutrition {
   };
 }
 
-export function getMealPercentage(mealName: string, goals?: DailyGoals): number {
+export function getMealPercentage(
+  mealName: string,
+  goals?: DailyGoals
+): number {
   if (!goals) return 0;
 
   const key = mealName.toLowerCase();
@@ -293,7 +312,9 @@ export function getMealPercentage(mealName: string, goals?: DailyGoals): number 
     if (key in goals.custom_meal_percentages) {
       return goals.custom_meal_percentages[key] ?? 0;
     }
-    const altKey = key.includes('_') ? key.replace(/_/g, ' ') : key.replace(/ /g, '_');
+    const altKey = key.includes('_')
+      ? key.replace(/_/g, ' ')
+      : key.replace(/ /g, '_');
     if (altKey in goals.custom_meal_percentages) {
       return goals.custom_meal_percentages[altKey] ?? 0;
     }
@@ -303,7 +324,8 @@ export function getMealPercentage(mealName: string, goals?: DailyGoals): number 
   if (legacyKey in goals && typeof goals[legacyKey] === 'number') {
     return (goals[legacyKey] as number) ?? 0;
   }
-  const altLegacyKey = `${key.replace(/ /g, '_')}_percentage` as keyof DailyGoals;
+  const altLegacyKey =
+    `${key.replace(/ /g, '_')}_percentage` as keyof DailyGoals;
   if (altLegacyKey in goals && typeof goals[altLegacyKey] === 'number') {
     return (goals[altLegacyKey] as number) ?? 0;
   }

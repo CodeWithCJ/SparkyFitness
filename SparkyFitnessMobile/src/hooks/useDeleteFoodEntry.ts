@@ -12,7 +12,11 @@ interface UseDeleteFoodEntryOptions {
   onSuccess?: () => void;
 }
 
-export function useDeleteFoodEntry({ entryId, entryDate, onSuccess }: UseDeleteFoodEntryOptions) {
+export function useDeleteFoodEntry({
+  entryId,
+  entryDate,
+  onSuccess,
+}: UseDeleteFoodEntryOptions) {
   const queryClient = useQueryClient();
   const normalizedDate = normalizeDate(entryDate);
 
@@ -22,21 +26,42 @@ export function useDeleteFoodEntry({ entryId, entryDate, onSuccess }: UseDeleteF
       onSuccess?.();
     },
     onError: () => {
-      Toast.show({ type: 'error', text1: i18n.t('foodEntryView.errors.deleteFailed', { defaultValue: 'Failed to delete' }), text2: i18n.t('common.tryAgain', { defaultValue: 'Please try again.' }) });
+      Toast.show({
+        type: 'error',
+        text1: i18n.t('foodEntryView.errors.deleteFailed', {
+          defaultValue: 'Failed to delete',
+        }),
+        text2: i18n.t('common.tryAgain', { defaultValue: 'Please try again.' }),
+      });
     },
   });
 
   const confirmAndDelete = () => {
-    Alert.alert(i18n.t('foodEntryView.deleteEntry', { defaultValue: 'Delete Entry' }), i18n.t('foodEntryView.deleteConfirm', { defaultValue: 'Are you sure you want to delete this food entry?' }), [
-      { text: i18n.t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
-      { text: i18n.t('common.delete', { defaultValue: 'Delete' }), style: 'destructive', onPress: () => mutation.mutate() },
-    ]);
+    Alert.alert(
+      i18n.t('foodEntryView.deleteEntry', { defaultValue: 'Delete Entry' }),
+      i18n.t('foodEntryView.deleteConfirm', {
+        defaultValue: 'Are you sure you want to delete this food entry?',
+      }),
+      [
+        {
+          text: i18n.t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+        },
+        {
+          text: i18n.t('common.delete', { defaultValue: 'Delete' }),
+          style: 'destructive',
+          onPress: () => mutation.mutate(),
+        },
+      ]
+    );
   };
 
   const deleteEntry = () => mutation.mutate();
 
   const invalidateCache = () => {
-    queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(normalizedDate) });
+    queryClient.invalidateQueries({
+      queryKey: dailySummaryQueryKey(normalizedDate),
+    });
   };
 
   return {
