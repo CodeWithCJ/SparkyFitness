@@ -74,6 +74,30 @@ const OFF_FIELDS = [
   'image_url',
 ];
 
+const OFF_CORE_NUTRIENT_100G_KEYS = [
+  'energy-kcal_100g',
+  'energy-kj_100g',
+  'energy_100g',
+  'proteins_100g',
+  'carbohydrates_100g',
+  'fat_100g',
+] as const;
+const OFF_CORE_NUTRIENT_SERVING_KEYS = [
+  'energy-kcal_serving',
+  'energy-kj_serving',
+  'energy_serving',
+  'proteins_serving',
+  'carbohydrates_serving',
+  'fat_serving',
+] as const;
+const OFF_CORE_NUTRIENT_100G_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_100G_KEYS.map(
+  (key) => `nutriments.${key}:*`
+).join(' OR ')})`;
+const OFF_CORE_NUTRIENT_SERVING_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_SERVING_KEYS.map(
+  (key) => `nutriments.${key}:*`
+).join(' OR ')})`;
+const OFF_CORE_NUTRITION_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_100G_SEARCH_CLAUSE} OR (serving_quantity:[0.000001 TO *] AND ${OFF_CORE_NUTRIENT_SERVING_SEARCH_CLAUSE}))`;
+
 interface OffProduct {
   product_name?: string;
   product_name_en?: string;
@@ -485,7 +509,7 @@ async function searchOpenFoodFacts(
       }
       const data = await parseSearchResponse(response, isLegacySearchResponse);
       return {
-        products: data.products || [],
+        products: data.products.filter(hasUsableOffCoreNutrition),
         pagination: {
           page: data.page || page,
           pageSize: data.page_size || pageSize,
@@ -514,7 +538,10 @@ async function searchOpenFoodFacts(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        q: query,
+        // Search-a-licious treats adjacent free-text and field clauses as
+        // required terms. Grouping the free text itself (or inserting AND
+        // after a multi-word phrase) currently yields an empty result set.
+        q: `${query} ${OFF_CORE_NUTRITION_SEARCH_CLAUSE}`,
         page,
         page_size: pageSize,
         boost_phrase: true,
@@ -531,12 +558,14 @@ async function searchOpenFoodFacts(
     }
     const data = await parseSearchResponse(response, isSearchALiciousResponse);
     const rankedHits = rankSearchHits(data.hits, query, language);
-    const products = await hydrateSearchHits(rankedHits, fields, language, {
-      authenticatedUserId,
-      providerId,
-      sessionCookie,
-      baseUrl,
-    });
+    const products = (
+      await hydrateSearchHits(rankedHits, fields, language, {
+        authenticatedUserId,
+        providerId,
+        sessionCookie,
+        baseUrl,
+      })
+    ).filter(hasUsableOffCoreNutrition);
     return {
       products,
       pagination: getSearchALiciousPagination(data, page, pageSize),
@@ -728,6 +757,28 @@ function parseOffNumber(val: unknown): number | null {
     if (Number.isFinite(parsed)) return parsed;
   }
   return null;
+}
+
+/** Returns true when OFF declares nutrition that the core mapper can use. */
+function hasUsableOffCoreNutrition(product: OffProduct): boolean {
+  if (!isRecord(product.nutriments)) return false;
+
+  if (
+    OFF_CORE_NUTRIENT_100G_KEYS.some(
+      (key) => parseOffNumber(product.nutriments?.[key]) !== null
+    )
+  ) {
+    return true;
+  }
+
+  const servingQuantity = parseOffNumber(product.serving_quantity);
+  return (
+    servingQuantity !== null &&
+    servingQuantity > 0 &&
+    OFF_CORE_NUTRIENT_SERVING_KEYS.some(
+      (key) => parseOffNumber(product.nutriments?.[key]) !== null
+    )
+  );
 }
 
 function getOffNutrient100g(
