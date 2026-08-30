@@ -1,22 +1,19 @@
 {
-  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   "entry": [
     "src/main.tsx",
-    "src/pages/**/*.{ts,tsx}",
-    "src/components/**/*.{ts,tsx}",
-    "src/hooks/**/*.{ts,tsx}",
-    "src/tests/**/*.{ts,tsx}",
+    "src/tests/**/*.{ts,tsx}"
   ],
   "project": ["src/**/*.{ts,tsx}"],
   "rules": {
     "exports": "error",
     "types": "off",
-    "files": "off",
+    "files": "error",
     "dependencies": "off",
     "unlisted": "off",
     "binaries": "off",
     "unresolved": "off",
-    "duplicates": "off",
+    "duplicates": "off"
   },
-  "ignoreExportsUsedInFile": true,
+  "ignoreExportsUsedInFile": true
 }
