@@ -131,6 +131,55 @@ describe('openFoodFactsService', () => {
       ]);
     });
 
+    it('retains qualified index nutrition when the hydrated product loses it', async () => {
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              hits: [
+                {
+                  code: 'stale-hydration',
+                  product_name: 'Indexed Banana',
+                  nutriments: { 'energy-kcal_100g': 89 },
+                },
+              ],
+              page: 1,
+              page_size: 20,
+              count: 1,
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              products: [
+                {
+                  code: 'stale-hydration',
+                  product_name: 'Current Banana',
+                  nutriments: { 'added-sugars_100g': 0 },
+                },
+              ],
+            }),
+        });
+
+      const result = await searchOpenFoodFacts('banana');
+
+      expect(result.products).toEqual([
+        expect.objectContaining({
+          code: 'stale-hydration',
+          product_name: 'Indexed Banana',
+          nutriments: { 'energy-kcal_100g': 89 },
+        }),
+      ]);
+      expect(result.pagination).toEqual({
+        page: 1,
+        pageSize: 20,
+        totalCount: 1,
+        hasMore: false,
+      });
+    });
+
     it('keeps products that explicitly declare zero core nutrition values', async () => {
       const zeroNutritionProduct = {
         code: 'zero',
@@ -1201,6 +1250,31 @@ describe('openFoodFactsService', () => {
         'explicit-zero',
         'usable-serving',
       ]);
+    });
+
+    it('requests self-hosted energy data before provider pagination', async () => {
+      // @ts-expect-error mocked provider resolver
+      resolveOpenFoodFactsProvider.mockResolvedValue({
+        session: null,
+        baseUrl: 'http://sparkyfitness-foodfacts:8080',
+      });
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            products: [],
+            page: 2,
+            page_size: 20,
+            count: 0,
+          }),
+      });
+
+      await searchOpenFoodFacts('banana', 2, 'en', 'user-A', 'prov-1');
+
+      const requestUrl = new URL(String(fetchMock.mock.calls[0][0]));
+      expect(requestUrl.searchParams.get('nutriment_0')).toBe('energy');
+      expect(requestUrl.searchParams.get('nutriment_compare_0')).toBe('gte');
+      expect(requestUrl.searchParams.get('nutriment_value_0')).toBe('0');
     });
 
     it('builds the search URL from a resolved custom base_url', async () => {

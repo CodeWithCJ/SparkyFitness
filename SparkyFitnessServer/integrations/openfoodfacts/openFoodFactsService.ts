@@ -97,6 +97,8 @@ const OFF_CORE_NUTRIENT_SERVING_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_SERVING_KE
   (key) => `nutriments.${key}:*`
 ).join(' OR ')})`;
 const OFF_CORE_NUTRITION_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_100G_SEARCH_CLAUSE} OR (serving_quantity:[0.000001 TO *] AND ${OFF_CORE_NUTRIENT_SERVING_SEARCH_CLAUSE}))`;
+const LEGACY_CORE_NUTRITION_QUERY =
+  'nutriment_0=energy&nutriment_compare_0=gte&nutriment_value_0=0';
 
 interface OffProduct {
   product_name?: string;
@@ -418,9 +420,15 @@ async function hydrateSearchHits(
       .find((product) => product !== undefined);
   return hits.map((hit) => {
     const code = String(hit.code || '').trim();
-    return (
-      (code ? lookupProduct(code) : undefined) ?? productFromSearchHit(hit)
-    );
+    const indexedProduct = productFromSearchHit(hit);
+    const currentProduct = code ? lookupProduct(code) : undefined;
+
+    // The full-text index can still hold nutrition while Product Opener is
+    // temporarily stale or incomplete. Keep the qualified ranked hit in that
+    // case so hydration cannot underfill an otherwise valid search page.
+    return currentProduct && hasUsableOffCoreNutrition(currentProduct)
+      ? currentProduct
+      : indexedProduct;
   });
 }
 
@@ -492,7 +500,9 @@ async function searchOpenFoodFacts(
     const isPublicOpenFoodFacts =
       baseUrl.replace(/\/+$/, '') === DEFAULT_OFF_BASE_URL.replace(/\/+$/, '');
     if (!isPublicOpenFoodFacts) {
-      const searchUrl = `${baseUrl}/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=${pageSize}&page=${page}&fields=${fields.join(',')}&lc=${language}`;
+      // Product Opener applies nutriment filters before its page boundary, so
+      // its count and has-more metadata describe products we can actually map.
+      const searchUrl = `${baseUrl}/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=${pageSize}&page=${page}&fields=${fields.join(',')}&lc=${language}&${LEGACY_CORE_NUTRITION_QUERY}`;
       const response = await fetchOpenFoodFacts(searchUrl, {
         authenticatedUserId,
         providerId,
