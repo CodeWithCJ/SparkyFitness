@@ -71,4 +71,3 @@ export {
   useSetFoodEntryMealImages,
   useClearFoodEntryMealImage,
 } from './useEntryImages';
-

@@ -13,4 +13,5 @@
     "duplicates": "off",
   },
   "ignoreExportsUsedInFile": true,
+  "ignore": ["src/components/ui/**"],
 }
