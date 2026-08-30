@@ -165,9 +165,24 @@ describe('registry-driven locale resource pipeline', () => {
     // Unless `%%` is consumed first, the second `%` starts a match that takes the
     // following space as a flag and the next letter as the conversion, inventing an
     // argument that differs per language ("% o" here, "% d" in the translations).
-    writeNative(root, 'en', '<resources><string name="goal">50%% of goal</string></resources>', '"goal" = "50%% of goal";');
-    writeNative(root, 'pl', '<resources><string name="goal">50%% do celu</string></resources>', '"goal" = "50%% do celu";');
-    writeNative(root, 'de', '<resources><string name="goal">50%% des Ziels</string></resources>', '"goal" = "50%% des Ziels";');
+    writeNative(
+      root,
+      'en',
+      '<resources><string name="goal">50%% of goal</string></resources>',
+      '"goal" = "50%% of goal";'
+    );
+    writeNative(
+      root,
+      'pl',
+      '<resources><string name="goal">50%% do celu</string></resources>',
+      '"goal" = "50%% do celu";'
+    );
+    writeNative(
+      root,
+      'de',
+      '<resources><string name="goal">50%% des Ziels</string></resources>',
+      '"goal" = "50%% des Ziels";'
+    );
     const output = run(nativeValidator, ['--root', root]);
     expect(output).toContain('pl: 1/1 (0 missing)');
     expect(output).toContain('de: 1/1 (0 missing)');
