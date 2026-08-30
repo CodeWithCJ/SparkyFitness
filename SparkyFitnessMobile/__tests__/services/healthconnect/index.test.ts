@@ -1270,6 +1270,58 @@ describe('enrichExerciseSessions', () => {
     });
   });
 
+  test('attaches only steps associated with the exercise session source', async () => {
+    mockAggregateRecord.mockImplementation(
+      (request: { recordType: string; dataOriginFilter?: string[] }) => {
+        if (request.recordType === 'Steps') {
+          return Promise.resolve({ COUNT_TOTAL: 6123 });
+        }
+        return Promise.resolve({});
+      },
+    );
+
+    const result = await enrichExerciseSessions(
+      [makeSession()],
+      createTelemetryRunContext(),
+    );
+
+    expect(result[0]).toMatchObject({ steps: 6123 });
+    expect(mockAggregateRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recordType: 'Steps',
+        dataOriginFilter: ['com.fitbit'],
+      }),
+    );
+  });
+
+  test('does not attach incidental steps when the workout source reports none', async () => {
+    mockAggregateRecord.mockImplementation(
+      (request: { recordType: string; dataOriginFilter?: string[] }) => {
+        if (request.recordType === 'Steps') {
+          return Promise.resolve({ COUNT_TOTAL: 0 });
+        }
+        return Promise.resolve({});
+      },
+    );
+
+    const hevySession = makeSession({
+      exerciseType: 70,
+      metadata: { dataOrigin: 'com.hevy' },
+    });
+    const result = await enrichExerciseSessions(
+      [hevySession],
+      createTelemetryRunContext(),
+    );
+
+    expect(result[0]).not.toHaveProperty('steps');
+    const stepRequests = mockAggregateRecord.mock.calls
+      .map(([request]) => request)
+      .filter((request) => request.recordType === 'Steps');
+    expect(stepRequests).toEqual([
+      expect.objectContaining({ dataOriginFilter: ['com.hevy'] }),
+    ]);
+  });
+
   test('falls back to TotalCaloriesBurned when ActiveCaloriesBurned returns 0 (Android bridge default)', async () => {
     mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
       if (recordType === 'ActiveCaloriesBurned') {
@@ -1393,7 +1445,7 @@ describe('enrichExerciseSessions', () => {
     expect(mockAggregateRecord).not.toHaveBeenCalled();
   });
 
-  test('keeps complete calorie and distance aggregates scoped to the session origin', async () => {
+  test('keeps complete calorie, distance, and step aggregates scoped to the session origin', async () => {
     mockAggregateRecord.mockImplementation(({ recordType }: { recordType: string }) => {
       if (recordType === 'ActiveCaloriesBurned') {
         return Promise.resolve({ ACTIVE_CALORIES_TOTAL: { inKilocalories: 300 } });
@@ -1413,7 +1465,7 @@ describe('enrichExerciseSessions', () => {
       recordType: string;
       dataOriginFilter?: string[];
     });
-    expect(requests).toHaveLength(4);
+    expect(requests).toHaveLength(5);
     expect(requests.find(request => request.recordType === 'BasalMetabolicRate'))
       .not.toHaveProperty('dataOriginFilter');
     expect(requests.filter(request => request.recordType !== 'BasalMetabolicRate').every(
@@ -2195,9 +2247,9 @@ describe('enrichExerciseSessions bounded fan-out and reuse (#2191)', () => {
 
     await enrichExerciseSessions(tenSessions(), createTelemetryRunContext());
 
-    // AGGREGATE_CONCURRENCY (4) sessions × 4 scalar aggregates each. The point
-    // is that ten sessions do not become forty concurrent calls.
-    expect(aggregates.peak).toBeLessThanOrEqual(16);
+    // AGGREGATE_CONCURRENCY (4) sessions × 5 scalar aggregates each. The point
+    // is that ten sessions do not become fifty concurrent calls.
+    expect(aggregates.peak).toBeLessThanOrEqual(20);
   });
 
   test('telemetry stays capped at two sessions however wide the outer batch runs', async () => {

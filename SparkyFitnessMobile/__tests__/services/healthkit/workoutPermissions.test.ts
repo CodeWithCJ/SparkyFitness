@@ -55,6 +55,7 @@ describe('workout read authorization', () => {
 
       expect(readTypes).toContain('HKWorkoutTypeIdentifier');
       expect(readTypes).toContain('HKWorkoutRouteTypeIdentifier');
+      expect(readTypes).toContain('HKQuantityTypeIdentifierStepCount');
       expect(readTypes).toContain('HKQuantityTypeIdentifierHeartRate');
       expect(readTypes).toContain('HKQuantityTypeIdentifierRunningSpeed');
       expect(readTypes).toContain('HKQuantityTypeIdentifierCyclingSpeed');
@@ -101,6 +102,7 @@ describe('exerciseSession metric permissions', () => {
         'HeartRate',
         'Speed',
         'Power',
+        'Steps',
         'StepsCadence',
         'CyclingPedalingCadence',
       ])

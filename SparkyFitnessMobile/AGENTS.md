@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-08-29*
+*Last updated: 2026-08-30*
 
 SparkyFitness Mobile is a React Native 0.85 + Expo SDK 56 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -131,7 +131,8 @@ npx expo prebuild --clean
 - On iOS, cumulative metrics should use HealthKit statistics queries, not raw sample summation.
 - On Android, cumulative metrics (`Steps`, `Distance`, `ActiveCaloriesBurned`, `TotalCaloriesBurned`, `FloorsClimbed`) use Health Connect `aggregateGroupByPeriod` once per range. Native source-priority dedup should match Health Connect UI; do not reintroduce JS `Math.max` or source allowlist dedup.
 - Android read helpers return `{ records, error }` via `readHealthRecordsDetailed` and `aggregateCumulativeMetricByDayDetailed`; legacy wrappers unwrap only records.
-- Android exercise sessions are enriched with `aggregateRecord` for active, total, and basal calories plus distance over the session window. Active/total calories start scoped to `dataOrigin`, while basal energy remains unfiltered; `total - basal` is compared as an active-energy candidate. Incomplete or implausible active/total pairs retry without the origin filter so Health Connect can apply source priority. Distance always stays origin-scoped.
+- Android exercise sessions are enriched with `aggregateRecord` for active, total, and basal calories plus distance and steps over the session window. Active/total calories start scoped to `dataOrigin`, while basal energy remains unfiltered; `total - basal` is compared as an active-energy candidate. Incomplete or implausible active/total pairs retry without the origin filter so Health Connect can apply source priority. Distance and steps always stay origin-scoped; never infer workout steps from an unfiltered clock-window query.
+- iOS exercise-session steps must come from statistics attached directly to the `HKWorkout`. Do not infer workout steps by querying all step samples in the workout's clock window.
 - iOS HealthKit locked-device failures surface as database-inaccessible warnings. Do not treat these as successful empty reads.
 - `app.config.ts` grants `android.permission.health.READ_HEALTH_DATA_HISTORY` so Android can read data older than 30 days.
 - Health Connect permission migrations belong in `services/shared/healthPermissionMigration.ts`, not UI-only state.
