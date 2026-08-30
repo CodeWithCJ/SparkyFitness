@@ -58,7 +58,7 @@ Features are organized by domain, and the same domain folder name appears in `sr
 - `src/contexts/` - `ActiveUserContext` (family-access acting-user switching), `PreferencesContext`, `ThemeContext`, `WaterContainerContext`, `ChatbotVisibilityContext`, `ChatToolCategoriesContext` (runtime chat tool-category selection, localStorage-backed).
 - `src/layouts/` - `MainLayout.tsx` and `AddComp.tsx`.
 - `src/lib/` - `auth-client.ts` (Better Auth React client), `utils.ts` (`cn`), scanner engines, sleep helpers.
-- `src/services/` - pure calculation helpers (BMR, body composition, nutrient calculation, preferences), not HTTP clients.
+- `src/services/` - pure calculation helpers (BMR, body composition, nutrient calculation), not HTTP clients.
 - `src/utils/` - logging, user preferences, date helpers, misc.
 - `src/tests/` - Jest suites mirroring `components`/`contexts`/`hooks`/`services`/`utils`, plus `test-utils.tsx`.
 - `public/locales/<lng>/translation.json` - i18next resources, loaded over HTTP at runtime.
