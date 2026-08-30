@@ -46,13 +46,6 @@ import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import type { ActiveSetPatch, CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
 import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
 
-export const METRIC_COLUMN_LABELS: Record<ActiveWorkoutMetricColumn, string> = {
-  rpe: 'RPE',
-  volume: 'Vol',
-  e1rm: '1RM',
-  tenrm: '10RM',
-};
-
 
 /** Working-set numbers per set index; warmup/drop/failure rows repeat the previous number (they render a letter instead). */
 function buildWorkingSetNumbers(sets: WorkoutCardSet[]): number[] {

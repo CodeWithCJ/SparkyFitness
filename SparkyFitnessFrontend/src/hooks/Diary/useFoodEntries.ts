@@ -21,9 +21,7 @@ import {
   copyFoodEntriesFromUser,
   copyFoodEntriesToUser,
   setFoodEntryImages,
-  clearFoodEntryImage,
   setFoodEntryMealImages,
-  clearFoodEntryMealImage,
   type CopyFoodEntriesFromUserPayload,
   type CopyFoodEntriesToUserPayload,
   importFoodDiaryEntriesFromCsv,
@@ -363,20 +361,6 @@ const useSetEntryImagesMutation = (
   });
 };
 
-/** Builds a mutation that clears a diary entry's override photos. */
-const useClearEntryImageMutation = (
-  request: (entryId: string) => Promise<FoodEntry | FoodEntryMeal>,
-  errorMessage: string
-) => {
-  const invalidate = useFoodEntryInvalidation();
-
-  return useMutation({
-    mutationFn: ({ entryId }: { entryId: string }) => request(entryId),
-    onSuccess: () => invalidate(),
-    meta: { errorMessage },
-  });
-};
-
 /**
  * Sets a food diary entry's override photos.
  *
@@ -394,18 +378,6 @@ export const useSetFoodEntryImagesMutation = () => {
   );
 };
 
-/** Clears a food diary entry's override photos, restoring the food fallback. */
-export const useClearFoodEntryImageMutation = () => {
-  const { t } = useTranslation();
-  return useClearEntryImageMutation(
-    clearFoodEntryImage,
-    t(
-      'diary.entryImageRemoveFailed',
-      'Could not remove the photo for this entry.'
-    )
-  );
-};
-
 /**
  * Sets a logged meal's override photos.
  *
@@ -419,18 +391,6 @@ export const useSetFoodEntryMealImagesMutation = () => {
     t(
       'diary.entryImageUploadFailed',
       'Could not save the photo for this entry.'
-    )
-  );
-};
-
-/** Clears a logged meal's override photos, restoring the template fallback. */
-export const useClearFoodEntryMealImageMutation = () => {
-  const { t } = useTranslation();
-  return useClearEntryImageMutation(
-    clearFoodEntryMealImage,
-    t(
-      'diary.entryImageRemoveFailed',
-      'Could not remove the photo for this entry.'
     )
   );
 };

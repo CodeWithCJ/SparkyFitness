@@ -22,7 +22,12 @@ import {
   type TelemetryGpsPoint,
 } from './workoutTelemetryDerivation.js';
 import { upsertSamplesByDay } from './healthMetricSampleWriter.js';
-import { BUILT_IN_MOODS, instantToDay } from '@workspace/shared';
+import * as genericHealthRepository from '../models/genericHealthRepository.js';
+import {
+  BUILT_IN_MOODS,
+  instantToDay,
+  MAX_HEALTH_TOTAL_CALORIES_PER_DAY,
+} from '@workspace/shared';
 
 /**
  * Per-type handlers for processHealthData. Each handler owns the validation
@@ -883,6 +888,53 @@ const activeCaloriesHandler: HealthTypeHandler = {
       activeCaloriesValue,
       ctx.parsedDate,
       exerciseSource
+    );
+    return { status: 'success', data: result };
+  },
+};
+
+const normalizeHealthSourceProvider = (source: unknown): string => {
+  if (typeof source !== 'string' || source.trim() === '') {
+    return 'health_connect';
+  }
+  const normalized = source
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+  return normalized === 'healthconnect' ? 'health_connect' : normalized;
+};
+
+const totalCaloriesHandler: HealthTypeHandler = {
+  async handle(entry, ctx) {
+    const rawValue: unknown = entry.value;
+    const totalCaloriesValue =
+      typeof rawValue === 'number'
+        ? rawValue
+        : typeof rawValue === 'string' && rawValue.trim() !== ''
+          ? Number(rawValue)
+          : Number.NaN;
+
+    if (
+      !Number.isFinite(totalCaloriesValue) ||
+      totalCaloriesValue < 0 ||
+      totalCaloriesValue > MAX_HEALTH_TOTAL_CALORIES_PER_DAY
+    ) {
+      return {
+        status: 'error',
+        error: `Invalid value for total_calories. Must be between 0 and ${MAX_HEALTH_TOTAL_CALORIES_PER_DAY}.`,
+      };
+    }
+
+    const result = await genericHealthRepository.upsertDailyHealthMetrics(
+      String(ctx.userId),
+      String(ctx.actingUserId),
+      {
+        user_id: String(ctx.userId),
+        entry_date: ctx.parsedDate,
+        source_provider: normalizeHealthSourceProvider(entry.source),
+        total_calories: totalCaloriesValue,
+        total_calories_captured_at: new Date(ctx.entryTimestamp),
+      }
     );
     return { status: 'success', data: result };
   },
@@ -1764,6 +1816,7 @@ export const HEALTH_TYPE_HANDLERS: Record<string, HealthTypeHandler> = {
   steps: stepsHandler,
   water: waterHandler,
   active_calories: activeCaloriesHandler,
+  total_calories: totalCaloriesHandler,
   weight: weightHandler,
   body_fat: bodyFatHandler,
   height: heightHandler,
@@ -1789,6 +1842,7 @@ export const TYPE_ALIASES: Record<string, string> = {
   step: 'steps',
   'Active Calories': 'active_calories',
   ActiveCaloriesBurned: 'active_calories',
+  TotalCaloriesBurned: 'total_calories',
   body_fat_percentage: 'body_fat',
   // Health Connect spellings for bone mass; both already arrive in kg.
   // LeanBodyMass is deliberately absent — it is not muscle mass and stays a

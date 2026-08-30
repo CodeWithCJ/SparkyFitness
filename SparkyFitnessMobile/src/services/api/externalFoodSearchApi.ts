@@ -33,7 +33,7 @@ interface OpenFoodFactsResponse {
   pagination: ExternalFoodSearchPagination;
 }
 
-export function transformOpenFoodFactsProduct(product: OpenFoodFactsProduct): ExternalFoodItem {
+export function _transformOpenFoodFactsProduct(product: OpenFoodFactsProduct): ExternalFoodItem {
   const n = product.nutriments;
   return {
     id: product.code,
@@ -57,7 +57,7 @@ export function transformOpenFoodFactsProduct(product: OpenFoodFactsProduct): Ex
 // NormalizedFood / NormalizedFoodVariant below (line ~520) since they reference
 // those types. Forward-declare the legacy lookup function here.
 
-export async function lookupBarcode(barcode: string): Promise<BarcodeLookupResult> {
+export async function _lookupBarcode(barcode: string): Promise<BarcodeLookupResult> {
   return apiFetch<BarcodeLookupResult>({
     endpoint: `/api/foods/barcode/${barcode}`,
     serviceName: 'External Food Search',
@@ -65,7 +65,7 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookupResul
   });
 }
 
-export async function searchOpenFoodFacts(query: string, page = 1): Promise<PaginatedExternalFoodSearchResult> {
+export async function _searchOpenFoodFacts(query: string, page = 1): Promise<PaginatedExternalFoodSearchResult> {
   const params = new URLSearchParams({ query, page: String(page) });
   const response = await apiFetch<OpenFoodFactsResponse>({
     endpoint: `/api/foods/openfoodfacts/search?${params.toString()}`,
@@ -76,7 +76,7 @@ export async function searchOpenFoodFacts(query: string, page = 1): Promise<Pagi
   return {
     items: response.products
       .filter((p) => p.product_name)
-      .map(transformOpenFoodFactsProduct),
+      .map(_transformOpenFoodFactsProduct),
     pagination: response.pagination,
   };
 }
@@ -127,7 +127,7 @@ function autoTitleCase(text: string): string {
     .replace(/(?:^|\s|[-/(])\S/g, (ch) => ch.toUpperCase());
 }
 
-export function transformUsdaFoodItem(item: UsdaFoodSearchItem): ExternalFoodItem {
+export function _transformUsdaFoodItem(item: UsdaFoodSearchItem): ExternalFoodItem {
   const n = item.foodNutrients;
   return {
     id: String(item.fdcId),
@@ -147,7 +147,7 @@ export function transformUsdaFoodItem(item: UsdaFoodSearchItem): ExternalFoodIte
   };
 }
 
-export async function searchUsda(query: string, providerId: string, page = 1): Promise<PaginatedExternalFoodSearchResult> {
+export async function _searchUsda(query: string, providerId: string, page = 1): Promise<PaginatedExternalFoodSearchResult> {
   const params = new URLSearchParams({ query, page: String(page) });
   const response = await apiFetch<UsdaFoodSearchResponse>({
     endpoint: `/api/foods/usda/search?${params.toString()}`,
@@ -159,7 +159,7 @@ export async function searchUsda(query: string, providerId: string, page = 1): P
   return {
     items: response.foods
       .filter((item) => item.description)
-      .map(transformUsdaFoodItem),
+      .map(_transformUsdaFoodItem),
     pagination: response.pagination,
   };
 }
@@ -201,7 +201,7 @@ interface FatSecretNutrientsResponse {
   };
 }
 
-export function parseFatSecretDescription(description: string): {
+export function _parseFatSecretDescription(description: string): {
   calories: number;
   fat: number;
   carbs: number;
@@ -225,8 +225,8 @@ export function parseFatSecretDescription(description: string): {
   };
 }
 
-export function transformFatSecretSearchItem(item: FatSecretSearchFood): ExternalFoodItem {
-  const parsed = parseFatSecretDescription(item.food_description);
+export function _transformFatSecretSearchItem(item: FatSecretSearchFood): ExternalFoodItem {
+  const parsed = _parseFatSecretDescription(item.food_description);
   return {
     id: item.food_id,
     name: item.food_name,
@@ -241,14 +241,14 @@ export function transformFatSecretSearchItem(item: FatSecretSearchFood): Externa
   };
 }
 
-export function selectFatSecretServing(servings: FatSecretServing[]): FatSecretServing {
+export function _selectFatSecretServing(servings: FatSecretServing[]): FatSecretServing {
   const preferred = servings.find((s) =>
     s.measurement_description.toLowerCase().includes('serving'),
   );
   return preferred ?? servings[0];
 }
 
-export async function searchFatSecret(query: string, providerId: string, page = 1): Promise<PaginatedExternalFoodSearchResult> {
+export async function _searchFatSecret(query: string, providerId: string, page = 1): Promise<PaginatedExternalFoodSearchResult> {
   const params = new URLSearchParams({ query, page: String(page) });
   const response = await apiFetch<FatSecretSearchResponse>({
     endpoint: `/api/foods/fatsecret/search?${params.toString()}`,
@@ -263,16 +263,16 @@ export async function searchFatSecret(query: string, providerId: string, page = 
   return {
     items: foods
       .filter((item) => item.food_name)
-      .map(transformFatSecretSearchItem),
+      .map(_transformFatSecretSearchItem),
     pagination: response.pagination,
   };
 }
 
-export function hasMetricServing(serving: FatSecretServing): boolean {
+export function _hasMetricServing(serving: FatSecretServing): boolean {
   return !!(serving.metric_serving_amount && serving.metric_serving_unit);
 }
 
-export function transformFatSecretServing(serving: FatSecretServing): ExternalFoodVariant {
+export function _transformFatSecretServing(serving: FatSecretServing): ExternalFoodVariant {
   return {
     serving_size: Math.round(parseFloat(serving.metric_serving_amount!)),
     serving_unit: serving.metric_serving_unit!,
@@ -288,7 +288,7 @@ export function transformFatSecretServing(serving: FatSecretServing): ExternalFo
   };
 }
 
-export async function fetchFatSecretNutrients(foodId: string, providerId: string): Promise<ExternalFoodItem> {
+export async function _fetchFatSecretNutrients(foodId: string, providerId: string): Promise<ExternalFoodItem> {
   const params = new URLSearchParams({ foodId });
   const response = await apiFetch<FatSecretNutrientsResponse>({
     endpoint: `/api/foods/fatsecret/nutrients?${params.toString()}`,
@@ -299,13 +299,13 @@ export async function fetchFatSecretNutrients(foodId: string, providerId: string
 
   const rawServings = response.food.servings.serving;
   const allServings = Array.isArray(rawServings) ? rawServings : [rawServings];
-  const metricServings = allServings.filter(hasMetricServing);
+  const metricServings = allServings.filter(_hasMetricServing);
   const servings = metricServings.length > 0 ? metricServings : allServings;
-  const preferred = selectFatSecretServing(servings);
+  const preferred = _selectFatSecretServing(servings);
 
   // Order variants with preferred serving first, skip non-metric servings
   const orderedServings = [preferred, ...servings.filter((s) => s !== preferred)];
-  const variants = orderedServings.filter(hasMetricServing).map(transformFatSecretServing);
+  const variants = orderedServings.filter(_hasMetricServing).map(_transformFatSecretServing);
 
   // Primary fields from first variant, or fall back to preferred serving raw values
   const primary = variants.length > 0
@@ -367,7 +367,7 @@ interface MealieSearchResponse {
   pagination: ExternalFoodSearchPagination;
 }
 
-export function transformMealieItem(item: MealieSearchItem): ExternalFoodItem {
+export function _transformMealieItem(item: MealieSearchItem): ExternalFoodItem {
   const v = item.default_variant;
   return {
     id: item.provider_external_id,
@@ -387,7 +387,7 @@ export function transformMealieItem(item: MealieSearchItem): ExternalFoodItem {
   };
 }
 
-export async function searchMealie(query: string, providerId: string, page = 1): Promise<PaginatedExternalFoodSearchResult> {
+export async function _searchMealie(query: string, providerId: string, page = 1): Promise<PaginatedExternalFoodSearchResult> {
   const params = new URLSearchParams({ query, page: String(page) });
   const response = await apiFetch<MealieSearchResponse>({
     endpoint: `/api/foods/mealie/search?${params.toString()}`,
@@ -399,7 +399,7 @@ export async function searchMealie(query: string, providerId: string, page = 1):
   return {
     items: response.items
       .filter((item) => item.name)
-      .map(transformMealieItem),
+      .map(_transformMealieItem),
     pagination: response.pagination,
   };
 }
@@ -477,7 +477,7 @@ export type BarcodeLookupResult =
   | { source: string; food: BarcodeFood }
   | { source: 'not_found'; food: null };
 
-export function transformNormalizedFood(
+export function _transformNormalizedFood(
   food: NormalizedFood,
   providerType: string,
   preferredServing?: ServingIdentity,
@@ -560,7 +560,7 @@ export async function searchExternalFoods(
   });
 
   return {
-    items: response.foods.map((f) => transformNormalizedFood(f, providerType)),
+    items: response.foods.map((f) => _transformNormalizedFood(f, providerType)),
     pagination: response.pagination,
   };
 }
@@ -581,7 +581,7 @@ export async function fetchExternalFoodDetails(
     operation: `fetch ${providerType} details (v2)`,
   });
 
-  return transformNormalizedFood(response, providerType, preferredServing);
+  return _transformNormalizedFood(response, providerType, preferredServing);
 }
 
 interface V2BarcodeResponse {

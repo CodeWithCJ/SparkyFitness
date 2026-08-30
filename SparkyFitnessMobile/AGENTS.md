@@ -48,6 +48,8 @@ pnpm run test:coverage -- --watchman=false --runInBand
 npx expo prebuild --clean
 ```
 
+- `pnpm run validate` runs i18n generate check, typecheck, lint, i18n audit, Knip (`pnpm run knip` for unused files and exports), and native locales check together.
+
 - `pnpm run validate` runs TypeScript typecheck, Expo lint, and the blocking mobile i18n audit.
 - Use Watchman-disabled Jest commands in agent/sandbox runs; bare Jest often fails on macOS.
 - `collectCoverage` is enabled in Jest config, so expect coverage output from normal test runs.
@@ -129,7 +131,7 @@ npx expo prebuild --clean
 - On iOS, cumulative metrics should use HealthKit statistics queries, not raw sample summation.
 - On Android, cumulative metrics (`Steps`, `Distance`, `ActiveCaloriesBurned`, `TotalCaloriesBurned`, `FloorsClimbed`) use Health Connect `aggregateGroupByPeriod` once per range. Native source-priority dedup should match Health Connect UI; do not reintroduce JS `Math.max` or source allowlist dedup.
 - Android read helpers return `{ records, error }` via `readHealthRecordsDetailed` and `aggregateCumulativeMetricByDayDetailed`; legacy wrappers unwrap only records.
-- Android exercise sessions are enriched with `aggregateRecord` for active/total calories and distance over the session window. Calories start scoped to `dataOrigin`; incomplete or implausible pairs retry without the origin filter so Health Connect can apply source priority. Distance always stays origin-scoped. Both are filtered for plausibility.
+- Android exercise sessions are enriched with `aggregateRecord` for active, total, and basal calories plus distance over the session window. Active/total calories start scoped to `dataOrigin`, while basal energy remains unfiltered; `total - basal` is compared as an active-energy candidate. Incomplete or implausible active/total pairs retry without the origin filter so Health Connect can apply source priority. Distance always stays origin-scoped.
 - iOS HealthKit locked-device failures surface as database-inaccessible warnings. Do not treat these as successful empty reads.
 - `app.config.ts` grants `android.permission.health.READ_HEALTH_DATA_HISTORY` so Android can read data older than 30 days.
 - Health Connect permission migrations belong in `services/shared/healthPermissionMigration.ts`, not UI-only state.

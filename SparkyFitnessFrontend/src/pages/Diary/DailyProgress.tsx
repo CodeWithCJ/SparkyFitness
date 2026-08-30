@@ -166,8 +166,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const netCalories = calorieBalance.net;
 
   const projectedBurn = tdeeProjection?.projectedBurn ?? 0;
-  const sparkyfitnessBurned = tdeeProjection?.baselineBurn ?? 0;
-  const tdeeAdjustment = tdeeProjection?.adjustment ?? 0;
+  const projectedTarget = tdeeProjection?.targetCalories ?? goalCalories;
 
   const caloriesRemaining = calorieBalance.remaining;
   const calorieProgress = calorieBalance.progress;
@@ -198,11 +197,8 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
       convertEnergy(exerciseCredited, 'kcal', energyUnit)
     ),
     projectedBurn: Math.round(convertEnergy(projectedBurn, 'kcal', energyUnit)),
-    sparkyfitnessBurned: Math.round(
-      convertEnergy(sparkyfitnessBurned, 'kcal', energyUnit)
-    ),
-    tdeeAdjustment: Math.round(
-      convertEnergy(tdeeAdjustment, 'kcal', energyUnit)
+    projectedTarget: Math.round(
+      convertEnergy(projectedTarget, 'kcal', energyUnit)
     ),
   };
 
@@ -674,20 +670,18 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
           )}
 
           {calorieGoalAdjustmentMode === 'tdee' && tdeeProjection ? (
-            /* TDEE mode: MFP-style Expected / Actual / Adjustment */
+            /* Device Projection: the projected burn is the TDEE baseline, and
+                Goal Mode is applied directly to it. */
             <div className="p-3 bg-orange-50 dark:bg-slate-700 rounded-lg space-y-1">
               <div className="flex items-center gap-1 mb-2">
                 <Activity className="w-3 h-3 text-orange-400 shrink-0" />
                 <span className="text-xs font-medium text-orange-600 dark:text-orange-400">
-                  {t('exercise.dailyProgress.dailyBurn', 'Daily Burn')}
+                  {t('exercise.dailyProgress.dailyBurn', 'Device Projection')}
                 </span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-gray-500 dark:text-slate-400">
-                  {t(
-                    'exercise.dailyProgress.projectedBurn',
-                    'Projected (Full Day)'
-                  )}
+                  {t('exercise.dailyProgress.projectedBurn', 'Projected TDEE')}
                 </span>
                 <span className="font-semibold text-gray-800 dark:text-slate-200">
                   {display.projectedBurn} {getEnergyUnitString(energyUnit)}
@@ -696,29 +690,29 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
               <div className="flex justify-between text-xs">
                 <span className="text-gray-500 dark:text-slate-400">
                   {t(
-                    'exercise.dailyProgress.sparkyfitnessBurned',
-                    'SparkyFitness Burned'
+                    'exercise.dailyProgress.goalModeTarget',
+                    'Goal Mode Target'
                   )}
                 </span>
                 <span className="font-semibold text-orange-600">
-                  {display.sparkyfitnessBurned}{' '}
-                  {getEnergyUnitString(energyUnit)}
+                  {display.projectedTarget} {getEnergyUnitString(energyUnit)}
                 </span>
               </div>
-              <div className="border-t border-orange-200 dark:border-slate-600 pt-1 flex justify-between text-xs">
-                <span className="text-gray-500 dark:text-slate-400">
-                  {t('exercise.dailyProgress.adjustment', 'Adjustment')}
-                </span>
-                <span
-                  className={`font-bold ${
-                    tdeeAdjustment >= 0
-                      ? 'text-green-600 dark:text-green-400'
-                      : 'text-red-600 dark:text-red-400'
-                  }`}
-                >
-                  {tdeeAdjustment >= 0 ? '+' : ''}
-                  {display.tdeeAdjustment} {getEnergyUnitString(energyUnit)}
-                </span>
+              <div className="border-t border-orange-200 dark:border-slate-600 pt-1 text-[10px] text-gray-500 dark:text-slate-400">
+                {tdeeProjection.source === 'health_connect_total'
+                  ? t(
+                      'exercise.dailyProgress.healthConnectProjectionSource',
+                      'Health Connect total calories'
+                    )
+                  : tdeeProjection.source === 'active_plus_bmr'
+                    ? t(
+                        'exercise.dailyProgress.fallbackProjectionSource',
+                        'BMR + active calories fallback'
+                      )
+                    : t(
+                        'exercise.dailyProgress.legacyProjectionSource',
+                        'Device projection'
+                      )}
               </div>
             </div>
           ) : (

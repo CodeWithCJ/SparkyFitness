@@ -46,5 +46,9 @@ export const waterIntakeEntriesMutatorSchema = z.object({
 });
 
 export type WaterIntakeEntries = z.infer<typeof waterIntakeEntriesSchema>;
-export type WaterIntakeEntriesInitializer = z.infer<typeof waterIntakeEntriesInitializerSchema>;
-export type WaterIntakeEntriesMutator = z.infer<typeof waterIntakeEntriesMutatorSchema>;
+export type WaterIntakeEntriesInitializer = z.infer<
+  typeof waterIntakeEntriesInitializerSchema
+>;
+export type WaterIntakeEntriesMutator = z.infer<
+  typeof waterIntakeEntriesMutatorSchema
+>;

@@ -13,6 +13,7 @@ import { MealFilter, MealPayload } from '@/types/meal';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import i18n from '@/i18n';
+import { useMealInvalidation } from '../useInvalidateKeys';
 
 export const mealSearchOptions = (filter: MealFilter, term?: string) => ({
   queryKey: mealKeys.filter(filter, term),
@@ -99,6 +100,7 @@ export const useMeal = (mealId?: string, enabled = true) => {
 
 export const useDeleteMealMutation = () => {
   const queryClient = useQueryClient();
+  const invalidateMeal = useMealInvalidation();
   const { t } = useTranslation();
   return useMutation({
     mutationFn: ({
@@ -112,9 +114,7 @@ export const useDeleteMealMutation = () => {
       // Favorites live under foodKeys (['foods','favorites']); a deleted meal is
       // cascade-removed server-side, so refetch favorites to drop it.
       queryClient.invalidateQueries({ queryKey: foodKeys.favorites() });
-      return queryClient.invalidateQueries({
-        queryKey: mealKeys.all,
-      });
+      invalidateMeal();
     },
     meta: {
       errorMessage: t(
@@ -130,6 +130,7 @@ export const useDeleteMealMutation = () => {
 };
 export const useUpdateMealMutation = () => {
   const queryClient = useQueryClient();
+  const invalidateMeal = useMealInvalidation();
   const { t } = useTranslation();
   return useMutation({
     mutationFn: ({
@@ -145,9 +146,7 @@ export const useUpdateMealMutation = () => {
     onSuccess: () => {
       // A favorited meal's cached name/nutrition would otherwise go stale.
       queryClient.invalidateQueries({ queryKey: foodKeys.favorites() });
-      return queryClient.invalidateQueries({
-        queryKey: mealKeys.all,
-      });
+      invalidateMeal();
     },
     meta: {
       errorMessage: t(
@@ -162,7 +161,7 @@ export const useUpdateMealMutation = () => {
   });
 };
 export const useCreateMealMutation = () => {
-  const queryClient = useQueryClient();
+  const invalidateMeal = useMealInvalidation();
   const { t } = useTranslation();
   return useMutation({
     mutationFn: ({
@@ -174,9 +173,7 @@ export const useCreateMealMutation = () => {
       imageFiles?: File[];
     }) => createMeal(mealPayload, imageFiles),
     onSuccess: () => {
-      return queryClient.invalidateQueries({
-        queryKey: mealKeys.all,
-      });
+      invalidateMeal();
     },
     meta: {
       errorMessage: t(

@@ -134,6 +134,7 @@ describe('FoodPhotoLogEntryScreen', () => {
               name: 'LogEntry' as const,
               params: {
                 date: '2026-05-18',
+                mode: 'combined' as const,
                 saveFoodPayload,
               },
             }}

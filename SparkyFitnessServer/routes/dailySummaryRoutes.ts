@@ -220,6 +220,7 @@ const rangeHandler: RequestHandler = async (req, res, next) => {
     }
 
     const result = await getDailySummaryRange({
+      actorUserId: access.actorUserId,
       targetUserId: access.targetUserId,
       startDate,
       endDate,

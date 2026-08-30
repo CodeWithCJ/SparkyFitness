@@ -61,8 +61,7 @@
     "selectOption": "Select an option",
     "requestTimedOut": "Request timed out. Check your server connection.",
     "nextStep": "Next step",
-    "notNow": "Not now",
-    "retry": "Retry"
+    "notNow": "Not now"
   },
   "settings": {
     "app": "App Settings",
@@ -793,13 +792,15 @@
     "modeLabel": "Calorie Mode",
     "adjustmentMode": "Adjustment Mode",
     "modeDescription": "Controls how your daily calorie goal adjusts based on activity.",
+    "deviceProjectionDescription": "Current-day Health Connect total calories are projected to midnight; completed days use the recorded total. Goal Mode is applied to that TDEE, with BMR + active calories as a fallback.",
+    "deviceProjectionFallback": "Only used for the BMR + active calories fallback when a device total is unavailable.",
     "exerciseCaloriesApplied": "Exercise Calories Applied",
     "exerciseCaloriesDescription": "How much of your exercise calories are added back to your daily goal.",
     "activityLevel": "Activity Level",
     "activityBaseline": "Used as a baseline for TDEE.",
     "adaptiveFallback": "Acts as a fallback until you have enough tracking data.",
-    "allowNegative": "Allow Negative Adjustment",
-    "negativeDescription": "Lower your daily goal when you burn less than expected.",
+    "allowNegative": "Allow Lower Fallback Projection",
+    "negativeDescription": "When a device total is unavailable, let the BMR + active calories fallback lower your target.",
     "includeResting": "Include Resting Calories",
     "includeRestingDescription": "Include your baseline energy (BMR) in net calculations.",
     "howThisWorks": "How this works",
@@ -829,20 +830,35 @@
       "activityWithBmr": "Activity + BMR",
       "activityOnly": "Activity only (exercise + steps)",
       "eatenBurned": "Eaten − Burned",
+      "projectedTotal": "Health Connect total calories (BMR + active calories fallback)",
       "dynamic": "Goal − Net Energy",
       "percentageWithBmr": "Goal − Eaten + BMR + {{percentage}}% of Exercise",
       "percentage": "Goal − Eaten + {{percentage}}% of Exercise",
-      "tdee": "Goal − Eaten + (Projection − TDEE)",
+      "tdee": "Projected TDEE × Goal Mode − Eaten",
       "adaptive": "Goal − Eaten",
       "fixed": "Goal − Eaten"
     },
     "notes": {
       "dynamic": "Goal grows as you move",
-      "tdee": "Projection converges at midnight",
+      "tdee": "The projection converges with the device total at midnight",
       "adaptive": "Goal = Adaptive TDEE",
       "fixed": "Activity does not change your budget"
     },
     "externalFormula": "formula",
+    "goalMode": {
+      "title": "Goal Mode",
+      "description": "Adjusts your calorie target for maintenance, a deficit, or a surplus.",
+      "deviceProjectionDescription": "This percentage is applied directly to the projected device TDEE.",
+      "maintain": "Maintain (0%)",
+      "recomp": "Body Recomposition (-10%)",
+      "cut": "Cut (-15%)",
+      "highCut": "High Cut (-20%)",
+      "leanBulk": "Lean Bulk (+10%)",
+      "bulk": "Bulk (+20%)",
+      "manual": "Manual (Custom %)",
+      "customPercentage": "Custom percentage",
+      "customPercentageDescription": "Positive adds calories; negative creates a deficit. Limited to ±40%."
+    },
     "safetyFloor": {
       "title": "Safety Floor",
       "standard": "Standard",
@@ -2314,6 +2330,11 @@
     "remaining": "remaining",
     "over": "over",
     "title": "Summary",
+    "projectedTdee": "Projected TDEE: {{value}} kcal",
+    "goalModeTarget": "Goal Mode target: {{value}} kcal",
+    "healthConnectProjectionSource": "Health Connect total calories",
+    "fallbackProjectionSource": "BMR + active calories fallback",
+    "legacyProjectionSource": "Device projection",
     "collapse": "Collapse this section",
     "expand": "Expand this section"
   },
@@ -3653,7 +3674,67 @@
       "invalidRequiredNutrition": "Calories, protein, carbs, and fat must be non-negative numbers.",
       "invalidOptionalNutrition": "All nutrition values must be non-negative numbers.",
       "invalidServingSize": "Invalid serving size",
-      "invalidServingSizeMessage": "Serving size must be a positive number."
+      "invalidServingSizeMessage": "Serving size must be a positive number.",
+      "noIngredients": "Keep at least one ingredient, or switch to One food.",
+      "invalidServings": "Invalid servings",
+      "positiveServings": "The dish total, the serving size and the amount eaten must all be greater than zero."
+    },
+    "ingredients": {
+      "editRow": "Edit {{name}}",
+      "remove": "Remove {{name}}",
+      "name": "Name",
+      "grams": "Weight (g)",
+      "calories": "Calories",
+      "protein": "Protein (g)",
+      "carbs": "Carbs (g)",
+      "fat": "Fat (g)",
+      "fiber": "Fiber (g)",
+      "sugar": "Sugar (g)",
+      "recalcFromGrams": "Nutrition was edited by hand, so it no longer follows the weight. Tap to recalculate from the weight.",
+      "heading": "Detected ingredients",
+      "empty": "Every ingredient was removed. Add one back, or switch to One food.",
+      "count_one": "{{count}} ingredient",
+      "count_other": "{{count}} ingredients",
+      "totals": "Total",
+      "rowSummary": "{{grams}} g · {{calories}} kcal",
+      "macroSummary": "{{calories}} kcal · {{protein}}P · {{carbs}}C · {{fat}}F",
+      "addFood": "Add Food",
+      "addedFood": "Food",
+      "pickedRowSummary": "{{quantity}} {{unit}} · {{calories}} kcal",
+      "pickedFoodNote": "Added from your foods. Remove it and add it again to change the amount."
+    },
+    "match": {
+      "useYourFood": "From your foods: {{name}} · tap to use it",
+      "usingYourFood": "Using your food: {{name}} · tap to use the AI estimate",
+      "matchedCount_one": "{{count}} ingredient matched to your foods",
+      "matchedCount_other": "{{count}} ingredients matched to your foods"
+    },
+    "mode": {
+      "ingredients": "Ingredients",
+      "combined": "One food",
+      "explainerIngredients": "Logs one meal you can expand to each ingredient.",
+      "explainerCombined": "Logs the whole plate as a single food.",
+      "label": "Save as",
+      "ingredientsAndMeal": "Ingredients + reusable meal",
+      "ingredientsOnly": "Ingredients only",
+      "oneFood": "One food",
+      "mealName": "Meal name",
+      "hintIngredientsAndMeal": "Each ingredient becomes its own food, and the meal is saved so you can log it again without a photo.",
+      "hintIngredientsOnly": "Each ingredient becomes its own food. No reusable meal is saved.",
+      "hintOneFood": "Saves the whole plate as a single food, with no breakdown."
+    },
+    "servings": {
+      "unit": "Unit",
+      "total": "Total servings",
+      "totalAmount": "Total amount ({{unit}})",
+      "servingSize": "One serving is ({{unit}})",
+      "eatenServings": "Servings eaten",
+      "eatenAmount": "You ate ({{unit}})",
+      "hint": "The ingredients above are the whole dish — say how it divides, and only what you ate goes in your diary.",
+      "derivedYield_one": "Makes about {{count}} serving",
+      "derivedYield_other": "Makes about {{count}} servings",
+      "perServing": "Per serving",
+      "logging": "Logging"
     }
   },
   "mealTypeForm": {
@@ -3850,7 +3931,10 @@
     "meal": "Meal",
     "selectMeal": "Select Meal",
     "date": "Date",
-    "servings": "Servings"
+    "servings": "Servings",
+    "groupedSummary_one": "{{count}} ingredient will be logged as one meal.",
+    "groupedSummary_other": "{{count}} ingredients will be logged as one meal.",
+    "failed": "Failed to log estimate"
   },
   "workoutAdd": {
     "addExercise": "Add an Exercise",
@@ -4700,5 +4784,9 @@
     "workouts_other": "{{count}} workouts",
     "records_one": "{{count}} record",
     "records_other": "{{count}} records"
+  },
+  "foodProvenance": {
+    "aiEstimate": "AI estimate",
+    "aiEstimateAccessibility": "Nutrition estimated by AI"
   }
 }

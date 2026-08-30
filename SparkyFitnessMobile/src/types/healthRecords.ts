@@ -85,6 +85,8 @@ export interface AggregatedHealthRecord extends RecordTimezoneMetadata {
   date: string;
   value: number;
   type: string;
+  /** Instant when this cumulative snapshot was read from the health provider. */
+  timestamp?: string;
 }
 
 /** Sleep session output (complex structure) */

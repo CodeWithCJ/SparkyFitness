@@ -64,7 +64,7 @@ Cheap ways to learn things:
 - Database table index: read `docs/content/8.developer/4.database.md` (quick reference of all ~120 tables with one-line purpose). For detailed schema, read `shared/src/schemas/database/<Table>.zod.ts` (one small Zod file per table).
 - Database security & permissions: `docs/content/8.developer/11.database-security-tiers.md` (security tier, permission type, and RLS rules for every table).
 - API request/response contract: `shared/src/schemas/api/<Name>.api.zod.ts`.
-- Definition of done: CI (`.github/workflows/ci-tests.yml`) runs `pnpm run validate` plus the package's CI test script for each changed package. Run those locally before declaring work complete.
+- Definition of done: CI (`.github/workflows/ci-tests.yml`) runs `pnpm run validate` (which includes Knip unused export & dead code checks in frontend and mobile) plus the package's CI test script for each changed package. Run those locally before declaring work complete.
 
 ## Cross-Package Rules
 

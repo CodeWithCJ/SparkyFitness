@@ -12,10 +12,13 @@ import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
 import Button from '../components/ui/Button';
 import Switch from '../components/ui/Switch';
-import { useMealPlanNutrition } from '../hooks/useMealPlanNutrition';
-import { useMealTypes } from '../hooks/useMealTypes';
-import { useCreateMealPlan, useUpdateMealPlan } from '../hooks/useMealPlans';
-import { useMeals } from '../hooks/useMeals';
+import {
+  useCreateMealPlan,
+  useMealPlanNutrition,
+  useMeals,
+  useMealTypes,
+  useUpdateMealPlan,
+} from '../hooks';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { consumePendingMealPlanSelection } from '../services/mealPlanSelection';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';

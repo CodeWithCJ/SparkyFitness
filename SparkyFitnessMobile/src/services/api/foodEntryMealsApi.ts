@@ -1,5 +1,9 @@
 import { apiFetch } from './apiClient';
 import type {
+  FoodPhotoLogRequest,
+  FoodPhotoLogResponse,
+} from '@workspace/shared';
+import type {
   FoodEntryMeal,
   FoodEntryMealCreateData,
   FoodEntryMealUpdateData,
@@ -68,5 +72,24 @@ export const deleteFoodEntryMeal = async (id: string): Promise<void> => {
     serviceName: 'FoodEntryMeals API',
     operation: 'delete food entry meal',
     method: 'DELETE',
+  });
+};
+
+/**
+ * Logs a reviewed AI photo estimate in one transactional request.
+ *
+ * `X-Meal-Model-Version: 2` marks this client as being on the current serving
+ * model, matching every other logged-meal write.
+ */
+export const createPhotoLoggedMeal = async (
+  payload: FoodPhotoLogRequest,
+): Promise<FoodPhotoLogResponse> => {
+  return apiFetch<FoodPhotoLogResponse>({
+    endpoint: '/api/food-entry-meals/from-photo-estimate',
+    serviceName: 'FoodEntryMeals API',
+    operation: 'log food photo estimate',
+    method: 'POST',
+    headers: { 'X-Meal-Model-Version': '2' },
+    body: payload,
   });
 };

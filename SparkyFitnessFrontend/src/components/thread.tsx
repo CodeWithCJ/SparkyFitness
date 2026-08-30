@@ -7,6 +7,7 @@ import { MarkdownText } from '@/components/markdown-text';
 import { Reasoning } from '@/components/reasoning';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
 import { AskUserToolUI } from '@/components/ai/AskUserToolUI';
+import { FoodPhotoEstimateToolUI } from '@/components/ai/FoodPhotoEstimateToolUI';
 import { ToolFallback } from '@/components/tool-fallback';
 import { TooltipIconButton } from '@/components/tooltip-icon-button';
 import { Button } from '@/components/ui/button';
@@ -343,6 +344,7 @@ const AssistantMessage: FC = () => {
             tools: {
               by_name: {
                 [ASK_USER_TOOL_NAME]: AskUserToolUI,
+                sparky_analyze_food_image: FoodPhotoEstimateToolUI,
               },
               Fallback: ToolFallback,
             },

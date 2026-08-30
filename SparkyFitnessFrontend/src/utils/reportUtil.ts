@@ -270,42 +270,6 @@ export const getSpO2Status = (
   }
 };
 
-export const getSpO2StatusInfo = (
-  value: number
-): { status: string; color: string; description: string } => {
-  if (value < 70) {
-    return {
-      status: 'Critical',
-      color: '#ef4444',
-      description: 'Dangerously low oxygen levels. Seek medical attention.',
-    };
-  } else if (value < 80) {
-    return {
-      status: 'Low',
-      color: '#f97316',
-      description: 'Below normal oxygen levels. Monitor closely.',
-    };
-  } else if (value < 90) {
-    return {
-      status: 'Moderate',
-      color: '#eab308',
-      description: 'Slightly below optimal levels.',
-    };
-  } else if (value < 95) {
-    return {
-      status: 'Normal',
-      color: '#22c55e',
-      description: 'Healthy oxygen saturation levels.',
-    };
-  } else {
-    return {
-      status: 'Excellent',
-      color: '#22c55e',
-      description: 'Optimal oxygen saturation.',
-    };
-  }
-};
-
 // Get color for a specific SpO2 value (for bar chart)
 
 export const getSpO2Color = (value: number): string => {

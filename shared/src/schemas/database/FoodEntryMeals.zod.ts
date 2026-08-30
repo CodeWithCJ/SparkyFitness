@@ -71,5 +71,7 @@ export const foodEntryMealsMutatorSchema = z.object({
 });
 
 export type FoodEntryMeals = z.infer<typeof foodEntryMealsSchema>;
-export type FoodEntryMealsInitializer = z.infer<typeof foodEntryMealsInitializerSchema>;
+export type FoodEntryMealsInitializer = z.infer<
+  typeof foodEntryMealsInitializerSchema
+>;
 export type FoodEntryMealsMutator = z.infer<typeof foodEntryMealsMutatorSchema>;

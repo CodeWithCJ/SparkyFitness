@@ -9,7 +9,6 @@ import { isExerciseModality } from '@workspace/shared';
 import type {
   ExerciseHistoryResponse,
   ExerciseModality,
-  ExerciseSessionResponse,
   ExerciseStatsResponse,
   CreatePresetSessionRequest,
   UpdatePresetSessionRequest,
@@ -17,14 +16,6 @@ import type {
   ExerciseEntryResponse,
   Pagination,
 } from '@workspace/shared';
-
-export const fetchExerciseEntries = async (date: string): Promise<ExerciseSessionResponse[]> => {
-  return apiFetch<ExerciseSessionResponse[]>({
-    endpoint: `/api/v2/exercise-entries/by-date?selectedDate=${encodeURIComponent(date)}`,
-    serviceName: 'Exercise API',
-    operation: 'fetch exercise entries',
-  });
-};
 
 export const fetchExerciseHistory = async (
   page: number = 1,

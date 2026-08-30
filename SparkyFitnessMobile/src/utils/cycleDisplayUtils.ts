@@ -59,5 +59,3 @@ export const CYCLE_SETTING_LIMITS = {
 export const PREGNANCY_SETTING_LIMITS = {
   fetusCount: { min: 1, max: 4 },
 } as const;
-
-export { useCyclePredictionData, type CyclePredictionData } from '../hooks/useCyclePredictionData';

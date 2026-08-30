@@ -6,6 +6,7 @@ import mealPlanTemplateService from './mealPlanTemplateService.js';
 import mealTypeRepository from '../models/mealType.js';
 import { log } from '../config/logging.js';
 import { ValidationError } from '../utils/errors.js';
+import { roundMealServingValue } from '@workspace/shared';
 import type { MealTypes } from '@workspace/shared';
 
 interface ServingFields {
@@ -944,22 +945,48 @@ async function updateMealEntriesSnapshot(
     throw error;
   }
 }
+/**
+ * Builds a reusable meal template from entries already in the diary.
+ *
+ * `foodEntryMealId` scopes it to a single logged meal. Without it the template
+ * absorbs EVERYTHING logged for that date and meal type — a coffee logged at
+ * lunch would end up inside a "Chicken Biryani" template. That was fine while
+ * the only caller was the web "convert this meal type to a meal" button, but it
+ * is wrong for any caller that means one specific grouped meal.
+ *
+ * The trailing serving arguments exist for a caller that logged only PART of a
+ * dish. The diary holds the portion, so scaling the read-back entries by
+ * `quantityScale` restores the whole dish, and the serving model is recorded on
+ * the template — logging `serving_size` of it then reproduces the portion. They
+ * default to the plain "this plate is the template" case.
+ */
 async function createMealFromDiaryEntries(
   userId: string,
   date: string,
   mealType: string,
   mealName: string | null,
   description: string | null = null,
-  isPublic = false
+  isPublic = false,
+  foodEntryMealId: string | null = null,
+  quantityScale = 1,
+  totalServings = 1,
+  servingSize = 1,
+  servingUnit = 'serving'
 ) {
   try {
     // 1. Retrieve food entries for the specified date and meal type
-    const foodEntries =
+    const allEntries =
       await foodEntryRepository.getFoodEntriesByDateAndMealType(
         userId,
         date,
         mealType
       );
+    const foodEntries = foodEntryMealId
+      ? allEntries.filter(
+          (entry: { food_entry_meal_id?: string | null }) =>
+            entry.food_entry_meal_id === foodEntryMealId
+        )
+      : allEntries;
     if (foodEntries.length === 0) {
       throw new Error(`No food entries found for ${mealType} on ${date}.`);
     }
@@ -1000,7 +1027,10 @@ async function createMealFromDiaryEntries(
       mealFoods.push({
         food_id: entry.food_id,
         variant_id: entry.variant_id || food.default_variant.id,
-        quantity: entry.quantity,
+        // Rounded because scaling a portion back up to the whole dish is a
+        // divide followed by a multiply, which leaves float dust that would
+        // otherwise be stored forever (0.30000000000000004 g of basil).
+        quantity: roundMealServingValue(entry.quantity * quantityScale),
         unit: entry.unit,
         serving_size: entry.serving_size,
         serving_unit: entry.serving_unit,
@@ -1036,9 +1066,16 @@ async function createMealFromDiaryEntries(
       name: mealName || defaultMealName,
       description: description,
       is_public: isPublic,
-      serving_size: 1.0,
-      serving_unit: 'serving',
-      total_servings: 1.0,
+      // A template-backed logged meal scales its components by
+      // consumed_quantity / (serving_size * total_servings). With the defaults
+      // (1 serving, yield 1) re-logging one serving reproduces the whole plate;
+      // a caller that logged part of a dish passes its own serving model here,
+      // and logging one serving_size of the template then reproduces the same
+      // portion. Do not "improve" these values after the fact — they rescale
+      // every future log of the template.
+      serving_size: servingSize,
+      serving_unit: servingUnit,
+      total_servings: totalServings,
       foods: mealFoods,
     };
     // Route through the service create path so serving-model normalization and

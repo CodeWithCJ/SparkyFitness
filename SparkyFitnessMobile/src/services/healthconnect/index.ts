@@ -34,7 +34,7 @@ export { sessionCacheKey };
 /**
  * Enrichment runs two very different costs per session, so they get two limits.
  *
- * The three calories/distance aggregates return a single scalar each — cheap to
+ * The four calorie/basal/distance aggregates return a single scalar each — cheap to
  * carry over the bridge. Throttling those as hard as telemetry is what would
  * push a large workout library toward the 60s per-metric timeout, so they run
  * at the wider limit.
@@ -47,7 +47,7 @@ export { sessionCacheKey };
  * Both are far below the unbounded fan-out that caused the bug, and well inside
  * the Health Connect API call quota (see shared/quotaError.ts).
  */
-const AGGREGATE_CONCURRENCY = 6;
+const AGGREGATE_CONCURRENCY = 4;
 const TELEMETRY_CONCURRENCY = 2;
 
 /**
@@ -984,15 +984,6 @@ export const aggregateCumulativeMetricByDayDetailed = async (
   }
 };
 
-export const aggregateCumulativeMetricByDay = async (
-  spec: CumulativeMetricSpec,
-  startDate: Date,
-  endDate: Date,
-): Promise<AggregatedHealthRecord[]> => {
-  const result = await aggregateCumulativeMetricByDayDetailed(spec, startDate, endDate);
-  return result.records;
-};
-
 export const getAggregatedStepsByDateDetailed = (
   startDate: Date,
   endDate: Date,
@@ -1231,6 +1222,35 @@ type SessionCaloriePair = {
   total?: number;
 };
 
+const selectBasalNormalizedSessionCalories = (
+  active: number | undefined,
+  total: number | undefined,
+  basal: number | undefined,
+  durationMs: number,
+): number | undefined => {
+  const totalValid = isPositiveCalories(total) ? total : undefined;
+  const basalValid = basal != null && Number.isFinite(basal) && basal >= 0
+    ? basal
+    : undefined;
+  if (totalValid == null || basalValid == null) {
+    return selectSessionCalories(active, total, durationMs);
+  }
+
+  const reportedActive = isPositiveCalories(active) && active <= totalValid
+    ? active
+    : undefined;
+  const derivedActive = deriveActiveCalories(totalValid, basalValid);
+  const derivedPositive = derivedActive != null && derivedActive > 0
+    ? derivedActive
+    : undefined;
+
+  if (derivedPositive == null) {
+    return selectSessionCalories(active, total, durationMs);
+  }
+  if (reportedActive == null) return derivedPositive;
+  return Math.max(reportedActive, derivedPositive);
+};
+
 const extractSessionCaloriePair = (
   activeResult: PromiseSettledResult<unknown>,
   totalResult: PromiseSettledResult<unknown>,
@@ -1255,8 +1275,10 @@ export const isPlausibleSessionDistance = (meters: number, durationMs: number): 
 /**
  * Enriches raw exercise session records with calories and distance data.
  * Health Connect stores these as separate record types, so we query
- * ActiveCaloriesBurned, TotalCaloriesBurned, and Distance aggregated over
- * each session's time range and apply plausibility checks (see #593, #1296).
+ * ActiveCaloriesBurned, TotalCaloriesBurned, BasalMetabolicRate, and Distance
+ * over each session's time range. Total minus basal is compared as an active-
+ * energy candidate before applying legacy plausibility fallbacks (see #593,
+ * #1296, #2295).
  */
 export const enrichExerciseSessions = async (
   records: unknown[],
@@ -1331,12 +1353,15 @@ export const enrichExerciseSessions = async (
       return record;
     }
 
-    // Start with the session origin, matching Health Connect's associated-session
-    // guidance and preventing another concurrent activity from donating energy or
-    // distance. If that origin has an incomplete or implausible calorie pair, retry
-    // calories without an origin filter so Health Connect can apply the user's
-    // Activity source priority (for example, Hevy session + Samsung calories).
-    const [activeCaloriesResult, totalCaloriesResult, distanceResult] = await Promise.allSettled([
+    // Start activity and total energy at the session origin, matching Health
+    // Connect's associated-session guidance and preventing another concurrent
+    // activity from donating energy or distance. Basal energy is intentionally
+    // unfiltered because it comes from the user's metabolism source, not the
+    // workout writer. If the origin has an incomplete or implausible calorie pair,
+    // retry activity and total energy without an origin filter so Health Connect
+    // can apply the user's Activity source priority (for example, Hevy session +
+    // Samsung calories).
+    const [activeCaloriesResult, totalCaloriesResult, basalCaloriesResult, distanceResult] = await Promise.allSettled([
       aggregateRecord({
         recordType: 'ActiveCaloriesBurned',
         timeRangeFilter,
@@ -1346,6 +1371,10 @@ export const enrichExerciseSessions = async (
         recordType: 'TotalCaloriesBurned',
         timeRangeFilter,
         dataOriginFilter,
+      }),
+      aggregateRecord({
+        recordType: 'BasalMetabolicRate',
+        timeRangeFilter,
       }),
       aggregateRecord({
         recordType: 'Distance',
@@ -1360,7 +1389,16 @@ export const enrichExerciseSessions = async (
     const enrichedFields: Record<string, unknown> = {};
 
     const scopedCalories = extractSessionCaloriePair(activeCaloriesResult, totalCaloriesResult);
-    let kcal = selectSessionCalories(scopedCalories.active, scopedCalories.total, durationMs);
+    const basalCalories = basalCaloriesResult.status === 'fulfilled'
+      ? (basalCaloriesResult.value as { BASAL_CALORIES_TOTAL?: { inKilocalories?: number } })
+        .BASAL_CALORIES_TOTAL?.inKilocalories
+      : undefined;
+    let kcal = selectBasalNormalizedSessionCalories(
+      scopedCalories.active,
+      scopedCalories.total,
+      basalCalories,
+      durationMs,
+    );
     if (dataOriginFilter && shouldTryCrossOriginCalories(
       scopedCalories.active,
       scopedCalories.total,
@@ -1380,9 +1418,10 @@ export const enrichExerciseSessions = async (
         unfilteredActiveResult,
         unfilteredTotalResult,
       );
-      const unfilteredKcal = selectSessionCalories(
+      const unfilteredKcal = selectBasalNormalizedSessionCalories(
         unfilteredCalories.active,
         unfilteredCalories.total,
+        basalCalories,
         durationMs,
       );
       if (unfilteredKcal != null && (kcal == null || unfilteredKcal > kcal)) {

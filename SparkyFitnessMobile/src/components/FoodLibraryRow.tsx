@@ -9,6 +9,7 @@ import { deriveShareStatus } from '../utils/shareStatus';
 import ShareStatusBadge from './ShareStatusBadge';
 import Icon from './Icon';
 import VerifiedBadge from './VerifiedBadge';
+import AiEstimateBadge from './AiEstimateBadge';
 import FoodThumbnail from './FoodThumbnail';
 import { useFoodImageSourceContext } from './FoodImageSourceProvider';
 import { primaryImageOf, usableFoodImages } from '../utils/foodImages';
@@ -67,6 +68,9 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
             <Text className="text-text-primary text-base font-medium flex-shrink" numberOfLines={1}>
               {food.name}
             </Text>
+            {food.default_variant?.source === 'ai_estimate' ? (
+              <AiEstimateBadge style={{ marginLeft: 4 }} />
+            ) : null}
             {food.provider_verified ? (
               <VerifiedBadge size="sm" style={{ marginLeft: 4 }} />
             ) : null}
@@ -91,7 +95,7 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
         </View>
         <View className="items-end">
           <Text className="text-text-primary text-base font-semibold">
-            {food.default_variant.calories} {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
+            {Math.round(food.default_variant.calories)} {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
           </Text>
           <Text className="text-text-secondary text-xs">
             {food.default_variant.serving_size} {formatServingUnit(food.default_variant.serving_unit)}

@@ -92,15 +92,6 @@ export function formatCaloriesForDisplay(value: number): string {
   return formatPreciseNumberForDisplay(value, 4);
 }
 
-export function formatMacroForDisplay(value: number): string {
-  if (!Number.isFinite(value)) return '0';
-  if (Math.abs(value) >= 1) {
-    return formatPreciseNumberForDisplay(value, 1);
-  }
-  return formatPreciseNumberForDisplay(value, 4);
-}
-
-
 export function convertEquivalentVariantQuantity(
   quantity: number,
   fromServingSize: number | undefined,

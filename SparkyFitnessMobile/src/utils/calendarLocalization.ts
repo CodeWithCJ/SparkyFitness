@@ -26,20 +26,6 @@ export interface CalendarPresentation {
 }
 
 /**
- * Localized full weekday names for the current app locale, indexed by JS
- * getDay() semantics (0 = Sunday ... 6 = Saturday) — matching the datepicker's
- * CalendarWeek.index. Driven by Intl so it reliably follows the app language.
- */
-export function getCalendarWeekdayNames(appLocale: string): string[] {
-  const base = new Date(2026, 0, 4); // a Sunday
-  return Array.from({ length: 7 }, (_, i) =>
-    new Intl.DateTimeFormat(appLocale, { weekday: 'long' }).format(
-      new Date(base.getFullYear(), base.getMonth(), base.getDate() + i),
-    ),
-  );
-}
-
-/**
  * Localized short weekday names (e.g. "Pn", "Wt", ...) for the current app
  * locale, indexed by JS getDay() semantics (0 = Sunday).
  */

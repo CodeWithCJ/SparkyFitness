@@ -44,13 +44,6 @@ export function getSupersetRuns(
   return runs;
 }
 
-/** Runs over form drafts, keyed by `clientId` instead of entry id. */
-export function getDraftSupersetRuns(exercises: WorkoutDraftExercise[]): SupersetRun[] {
-  return getSupersetRuns(
-    exercises.map(e => ({ id: e.clientId, superset_group: e.supersetGroup ?? null })),
-  );
-}
-
 /**
  * Field accessors that let one superset core serve both shapes: live-session
  * entries (`id`/`superset_group`, sets with `rest_time`) and form drafts

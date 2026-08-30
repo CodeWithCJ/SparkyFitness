@@ -7,13 +7,13 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
 import Button from '../components/ui/Button';
-import { useScreenHeader } from '../hooks/useScreenHeader';
 import {
   useDeleteMealPlan,
   useDuplicateMealPlan,
   useMealPlans,
-} from '../hooks/useMealPlans';
-import { useServerConnection } from '../hooks/useServerConnection';
+  useServerConnection,
+} from '../hooks';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { MealPlanAssignment, MealPlanTemplate } from '../types/mealPlans';
 import type { RootStackScreenProps } from '../types/navigation';

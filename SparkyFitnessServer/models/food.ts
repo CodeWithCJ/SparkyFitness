@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 import { normalizeBarcode } from '../utils/foodUtils.js';
@@ -215,71 +216,132 @@ async function searchFoods(
     client.release();
   }
 }
-async function createFood(foodData: FoodInput) {
-  const client = await getClient(foodData.user_id); // User-specific operation
-  try {
-    await client.query('BEGIN'); // Start transaction
-    // 1. Create the food entry
-    const foodResult = await client.query(
-      `INSERT INTO foods (
+/**
+ * Inserts a food and its default variant on a caller-supplied client, WITHOUT
+ * opening a transaction and WITHOUT localizing images.
+ *
+ * Split out of `createFood` so a caller that is already inside a transaction
+ * can create a food and then reference it in the same transaction. Going
+ * through `createFood` there would not work: it acquires its own client, so the
+ * new food would be invisible to the outer transaction's queries, and its
+ * COMMIT would defeat the outer rollback.
+ *
+ * The caller owns BEGIN/COMMIT/ROLLBACK and the client's lifetime.
+ *
+ * Deliberately does no image localization — that is network I/O and belongs
+ * after COMMIT (see `createFood`). Callers that create foods with remote image
+ * URLs must use `createFood`, not this.
+ */
+async function createFoodWithClient(client: PoolClient, foodData: FoodInput) {
+  // 1. Create the food entry
+  const foodResult = await client.query(
+    `INSERT INTO foods (
         name, is_custom, user_id, brand, barcode, provider_external_id, shared_with_public, provider_type, provider_verified, is_quick_food, images, created_at, updated_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, now(), now()) RETURNING id, name, brand, is_custom, user_id, shared_with_public, is_quick_food, provider_external_id, provider_type, provider_verified, images`,
-      [
-        foodData.name,
-        sanitizeBoolean(foodData.is_custom) ?? true,
-        foodData.user_id,
-        foodData.brand,
-        foodData.barcode
-          ? normalizeBarcode(foodData.barcode)
-          : foodData.barcode,
-        foodData.provider_external_id,
-        sanitizeBoolean(foodData.shared_with_public) ?? false,
-        foodData.provider_type,
-        sanitizeBoolean(foodData.provider_verified) ?? false,
-        sanitizeBoolean(foodData.is_quick_food) ?? false,
-        JSON.stringify(resolveImageInput(foodData)),
-      ]
-    );
-    const newFood = foodResult.rows[0];
-    // 2. Create the primary food variant and mark it as default
-    const variantResult = await client.query(
-      `INSERT INTO food_variants (
+    [
+      foodData.name,
+      sanitizeBoolean(foodData.is_custom) ?? true,
+      foodData.user_id,
+      foodData.brand,
+      foodData.barcode ? normalizeBarcode(foodData.barcode) : foodData.barcode,
+      foodData.provider_external_id,
+      sanitizeBoolean(foodData.shared_with_public) ?? false,
+      foodData.provider_type,
+      sanitizeBoolean(foodData.provider_verified) ?? false,
+      sanitizeBoolean(foodData.is_quick_food) ?? false,
+      JSON.stringify(resolveImageInput(foodData)),
+    ]
+  );
+  const newFood = foodResult.rows[0];
+  // 2. Create the primary food variant and mark it as default
+  const variantResult = await client.query(
+    `INSERT INTO food_variants (
         food_id, serving_size, serving_unit, calories, protein, carbs, fat,
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
         vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients,
         source, ai_confidence, allergens, traces, created_at, updated_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, TRUE, $21, $22, $23, $24, $25, $26, now(), now()) RETURNING id`,
-      [
-        newFood.id,
-        sanitizeNumeric(foodData.serving_size),
-        foodData.serving_unit,
-        sanitizeNumeric(foodData.calories),
-        sanitizeNumeric(foodData.protein),
-        sanitizeNumeric(foodData.carbs),
-        sanitizeNumeric(foodData.fat),
-        sanitizeNumeric(foodData.saturated_fat),
-        sanitizeNumeric(foodData.polyunsaturated_fat),
-        sanitizeNumeric(foodData.monounsaturated_fat),
-        sanitizeNumeric(foodData.trans_fat),
-        sanitizeNumeric(foodData.cholesterol),
-        sanitizeNumeric(foodData.sodium),
-        sanitizeNumeric(foodData.potassium),
-        sanitizeNumeric(foodData.dietary_fiber),
-        sanitizeNumeric(foodData.sugars),
-        sanitizeNumeric(foodData.vitamin_a),
-        sanitizeNumeric(foodData.vitamin_c),
-        sanitizeNumeric(foodData.calcium),
-        sanitizeNumeric(foodData.iron),
-        sanitizeGlycemicIndex(foodData.glycemic_index),
-        foodData.custom_nutrients ?? {},
-        foodData.source ?? 'manual',
-        foodData.ai_confidence ?? null,
-        foodData.allergens ?? null,
-        foodData.traces ?? null,
-      ]
-    );
-    const newVariantId = variantResult.rows[0].id;
+    [
+      newFood.id,
+      sanitizeNumeric(foodData.serving_size),
+      foodData.serving_unit,
+      sanitizeNumeric(foodData.calories),
+      sanitizeNumeric(foodData.protein),
+      sanitizeNumeric(foodData.carbs),
+      sanitizeNumeric(foodData.fat),
+      sanitizeNumeric(foodData.saturated_fat),
+      sanitizeNumeric(foodData.polyunsaturated_fat),
+      sanitizeNumeric(foodData.monounsaturated_fat),
+      sanitizeNumeric(foodData.trans_fat),
+      sanitizeNumeric(foodData.cholesterol),
+      sanitizeNumeric(foodData.sodium),
+      sanitizeNumeric(foodData.potassium),
+      sanitizeNumeric(foodData.dietary_fiber),
+      sanitizeNumeric(foodData.sugars),
+      sanitizeNumeric(foodData.vitamin_a),
+      sanitizeNumeric(foodData.vitamin_c),
+      sanitizeNumeric(foodData.calcium),
+      sanitizeNumeric(foodData.iron),
+      sanitizeGlycemicIndex(foodData.glycemic_index),
+      foodData.custom_nutrients ?? {},
+      foodData.source ?? 'manual',
+      foodData.ai_confidence ?? null,
+      foodData.allergens ?? null,
+      foodData.traces ?? null,
+    ]
+  );
+  const newVariantId = variantResult.rows[0].id;
+
+  // Return the new food with its default variant details
+  return {
+    ...newFood,
+    default_variant: buildDefaultVariantEcho(newVariantId, newFood, foodData),
+  };
+}
+
+function buildDefaultVariantEcho(
+  newVariantId: string,
+  newFood: { user_id: string },
+  foodData: FoodInput
+) {
+  return {
+    id: newVariantId,
+    serving_size: foodData.serving_size,
+    serving_unit: foodData.serving_unit,
+    calories: foodData.calories,
+    protein: foodData.protein,
+    carbs: foodData.carbs,
+    fat: foodData.fat,
+    saturated_fat: foodData.saturated_fat,
+    polyunsaturated_fat: foodData.polyunsaturated_fat,
+    monounsaturated_fat: foodData.monounsaturated_fat,
+    trans_fat: foodData.trans_fat,
+    cholesterol: foodData.cholesterol,
+    sodium: foodData.sodium,
+    potassium: foodData.potassium,
+    dietary_fiber: foodData.dietary_fiber,
+    sugars: foodData.sugars,
+    vitamin_a: foodData.vitamin_a,
+    vitamin_c: foodData.vitamin_c,
+    calcium: foodData.calcium,
+    iron: foodData.iron,
+    is_default: true,
+    user_id: newFood.user_id,
+    source: foodData.source ?? 'manual',
+    ai_confidence: foodData.ai_confidence ?? null,
+    custom_nutrients: foodData.custom_nutrients ?? {},
+    allergens: foodData.allergens ?? null,
+    traces: foodData.traces ?? null,
+  };
+}
+
+async function createFood(foodData: FoodInput) {
+  const client = await getClient(foodData.user_id); // User-specific operation
+  try {
+    await client.query('BEGIN'); // Start transaction
+    const created = await createFoodWithClient(client, foodData);
+    const newFood = created;
     await client.query('COMMIT'); // Commit transaction
 
     // Localize provider-hosted images after COMMIT so network latency never
@@ -321,42 +383,119 @@ async function createFood(foodData: FoodInput) {
       );
     }
 
-    // Return the new food with its default variant details
-    return {
-      ...newFood,
-      default_variant: {
-        id: newVariantId,
-        serving_size: foodData.serving_size,
-        serving_unit: foodData.serving_unit,
-        calories: foodData.calories,
-        protein: foodData.protein,
-        carbs: foodData.carbs,
-        fat: foodData.fat,
-        saturated_fat: foodData.saturated_fat,
-        polyunsaturated_fat: foodData.polyunsaturated_fat,
-        monounsaturated_fat: foodData.monounsaturated_fat,
-        trans_fat: foodData.trans_fat,
-        cholesterol: foodData.cholesterol,
-        sodium: foodData.sodium,
-        potassium: foodData.potassium,
-        dietary_fiber: foodData.dietary_fiber,
-        sugars: foodData.sugars,
-        vitamin_a: foodData.vitamin_a,
-        vitamin_c: foodData.vitamin_c,
-        calcium: foodData.calcium,
-        iron: foodData.iron,
-        is_default: true,
-        user_id: newFood.user_id,
-        source: foodData.source ?? 'manual',
-        ai_confidence: foodData.ai_confidence ?? null,
-        custom_nutrients: foodData.custom_nutrients ?? {},
-        allergens: foodData.allergens ?? null,
-        traces: foodData.traces ?? null,
-      },
-    };
+    // `created` already carries the default_variant echo; localization above
+    // mutates `newFood.images` in place, which is the same object.
+    return created;
   } catch (error) {
     await client.query('ROLLBACK'); // Rollback transaction on error
     throw error;
+  } finally {
+    client.release();
+  }
+}
+export interface FoodMatchCandidateRow {
+  query_key: string;
+  food_id: string;
+  food_name: string;
+  brand: string | null;
+  user_id: string | null;
+  variant_id: string;
+  serving_size: number | string;
+  serving_unit: string;
+  calories: number | string | null;
+  protein: number | string | null;
+  carbs: number | string | null;
+  fat: number | string | null;
+  dietary_fiber: number | string | null;
+  sugars: number | string | null;
+  saturated_fat: number | string | null;
+  polyunsaturated_fat: number | string | null;
+  monounsaturated_fat: number | string | null;
+  trans_fat: number | string | null;
+  cholesterol: number | string | null;
+  sodium: number | string | null;
+  potassium: number | string | null;
+  calcium: number | string | null;
+  iron: number | string | null;
+  vitamin_a: number | string | null;
+  vitamin_c: number | string | null;
+  last_used: string | null;
+}
+
+/**
+ * Retrieves food-match candidates for MANY ingredient names in one query.
+ *
+ * Two deliberate choices:
+ *
+ * 1. **ILIKE, not trigram.** `pg_trgm` is not installed and adding an extension
+ *    is a migration plus an ops burden on self-hosters. SQL does cheap
+ *    candidate *retrieval*; the ranking happens in TypeScript
+ *    (`scoreFoodMatch` in `@workspace/shared`), so it is unit-testable with no
+ *    database and can be tuned without touching a query.
+ * 2. **One round trip.** `unnest` + `LATERAL` fans every term out inside
+ *    Postgres. Calling `searchFoods` per ingredient would acquire and release a
+ *    client each time — six ingredients, six connections from a pool of ten.
+ *
+ * `is_quick_food = FALSE` mirrors every other food-discovery query: a quick add
+ * is a deliberate "log this once, do not keep it", so it must not be offered as
+ * a match. Photo-estimate ingredients are NOT quick foods — they are normal
+ * foods precisely so a later photo can match and reuse them.
+ */
+async function findFoodMatchCandidates(
+  userId: string,
+  queries: { key: string; term: string }[],
+  opts: { includePublic?: boolean; limitPerTerm?: number } = {}
+): Promise<Map<string, FoodMatchCandidateRow[]>> {
+  const grouped = new Map<string, FoodMatchCandidateRow[]>();
+  const usable = queries.filter((q) => q.term && q.term.trim().length > 0);
+  if (usable.length === 0) return grouped;
+
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `WITH q AS (
+         SELECT * FROM unnest($2::text[], $3::text[]) AS t(key, term)
+       )
+       SELECT q.key AS query_key, c.*
+       FROM q
+       CROSS JOIN LATERAL (
+         SELECT f.id AS food_id, f.name AS food_name, f.brand, f.user_id,
+                fv.id AS variant_id, fv.serving_size, fv.serving_unit,
+                fv.calories, fv.protein, fv.carbs, fv.fat,
+                fv.dietary_fiber, fv.sugars,
+                -- Selected so applying a match carries the food's real
+                -- micronutrients. Omitting them would scale to 0 and blank
+                -- values the matched food actually records.
+                fv.saturated_fat, fv.polyunsaturated_fat,
+                fv.monounsaturated_fat, fv.trans_fat, fv.cholesterol,
+                fv.sodium, fv.potassium, fv.calcium, fv.iron,
+                fv.vitamin_a, fv.vitamin_c,
+                (SELECT MAX(fe.entry_date) FROM food_entries fe
+                  WHERE fe.food_id = f.id AND fe.user_id = $1) AS last_used
+         FROM foods f
+         JOIN food_variants fv ON fv.food_id = f.id AND fv.is_default = TRUE
+         WHERE f.is_quick_food = FALSE
+           AND (f.user_id = $1 OR ($4 AND f.shared_with_public = TRUE))
+           AND (LOWER(f.name) = LOWER(q.term) OR f.name ILIKE '%' || q.term || '%')
+         ORDER BY (LOWER(f.name) = LOWER(q.term)) DESC,
+                  (f.user_id = $1) DESC,
+                  last_used DESC NULLS LAST
+         LIMIT $5
+       ) c`,
+      [
+        userId,
+        usable.map((q) => q.key),
+        usable.map((q) => q.term),
+        opts.includePublic ?? false,
+        opts.limitPerTerm ?? 5,
+      ]
+    );
+    for (const row of result.rows as FoodMatchCandidateRow[]) {
+      const list = grouped.get(row.query_key);
+      if (list) list.push(row);
+      else grouped.set(row.query_key, [row]);
+    }
+    return grouped;
   } finally {
     client.release();
   }
@@ -1450,11 +1589,15 @@ export { getFoodsWithPagination };
 export { countFoods };
 export { getFoodDeletionImpact };
 export { createFoodsInBulk };
+export { createFoodWithClient };
+export { findFoodMatchCandidates };
 export type { BulkImportFoodData };
 export { getFoodsNeedingReview };
 export { clearUserIgnoredUpdate };
 export { deleteFoodAndDependencies };
 export default {
+  createFoodWithClient,
+  findFoodMatchCandidates,
   sanitizeGlycemicIndex,
   sanitizeNumeric,
   sanitizeBoolean,

@@ -25,13 +25,6 @@ import type { MealType } from '../types/mealTypes';
 export const SYSTEM_ANCHOR_KEYS = ['breakfast', 'lunch', 'dinner', 'snacks'] as const;
 export type SystemAnchorKey = (typeof SYSTEM_ANCHOR_KEYS)[number];
 
-export const SYSTEM_SORT_ORDERS: Record<SystemAnchorKey, number> = {
-  breakfast: 10,
-  lunch: 20,
-  dinner: 30,
-  snacks: 40,
-};
-
 export type MealGapKey = 'b_l' | 'l_d' | 'd_s';
 
 /** Gap key for the gap AFTER a given system anchor (breakfast → b_l, etc.). */
@@ -40,13 +33,6 @@ export const GAP_AFTER_ANCHOR: Record<SystemAnchorKey, MealGapKey> = {
   lunch: 'l_d',
   dinner: 'd_s',
   snacks: 'd_s', // never used (no gap after the last anchor)
-};
-
-/** The anchor that ENDS each gap (b_l is ended by Lunch, etc.). */
-export const GAP_END_ANCHOR: Record<MealGapKey, SystemAnchorKey> = {
-  b_l: 'lunch',
-  l_d: 'dinner',
-  d_s: 'snacks',
 };
 
 /** Human label used in the "gap is full" toast (no database numbers). */

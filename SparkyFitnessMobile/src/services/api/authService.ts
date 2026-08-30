@@ -4,7 +4,7 @@ import { createAuthClient } from 'better-auth/client';
 import { expoClient } from '@better-auth/expo/client';
 import { ssoClient } from '@better-auth/sso/client';
 import * as WebBrowser from 'expo-web-browser';
-import { clearSessionToken, ServerConfig } from '../storage';
+import { ServerConfig } from '../storage';
 import { addLog } from '../LogService';
 import { normalizeUrl } from '../../utils/serverUrl';
 import { getErrorMessage } from '../../utils/errors';
@@ -406,15 +406,6 @@ export const verifyEmailOtp = async (
   };
 };
 
-/**
- * Clears the session token for the given config.
- */
-export const logout = async (configId: string): Promise<void> => {
-  await clearSessionToken(configId);
-  await clearAuthCookies();
-  addLog(`[AuthService] Session token cleared for config ${configId}`, 'INFO');
-};
-
 export interface OidcProvider {
   id: string;
   display_name: string;
@@ -713,7 +704,7 @@ export const getPasskeys = async (serverUrl: string, sessionToken: string): Prom
  * Throws `LoginError('SESSION_NOT_FRESH', 403)` when the server rejects the
  * session as stale — the caller should re-authenticate and retry.
  */
-export const requestPasskeyRegistrationTicket = async (
+export const _requestPasskeyRegistrationTicket = async (
   serverUrl: string,
   sessionToken: string
 ): Promise<string> => {
@@ -758,7 +749,7 @@ export const addPasskey = async (
   const baseUrl = normalizeUrl(serverUrl);
 
   addLog('[AuthService] Requesting passkey registration ticket', 'INFO');
-  const ticket = await requestPasskeyRegistrationTicket(baseUrl, sessionToken);
+  const ticket = await _requestPasskeyRegistrationTicket(baseUrl, sessionToken);
 
   addLog('[AuthService] Opening browser-based passkey registration flow', 'INFO');
   // Ticket rides in the fragment (never sent to the server) and is single-use,

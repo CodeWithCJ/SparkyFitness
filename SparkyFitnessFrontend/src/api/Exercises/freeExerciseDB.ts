@@ -6,7 +6,7 @@ let cachedSchema: unknown = null;
 const GITHUB_RAW_BASE_URL =
   'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main';
 
-export async function getFreeExerciseDBSchema() {
+async function getFreeExerciseDBSchema() {
   if (cachedSchema) {
     return cachedSchema;
   }

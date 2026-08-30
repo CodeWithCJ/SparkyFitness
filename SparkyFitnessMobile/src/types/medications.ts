@@ -11,14 +11,3 @@ export const MEDICATION_TYPES = [
 
 export type MedicationTypeId = (typeof MEDICATION_TYPES)[number];
 export type ScheduleTypeId = (typeof SCHEDULE_TYPES)[number];
-
-export const medicationTypeFallbacks: Record<string, string> = {
-  pill: 'Pill', tablet: 'Tablet', capsule: 'Capsule', liquid: 'Liquid', injection: 'Injection',
-  patch: 'Patch', inhaler: 'Inhaler', drops: 'Drops', nasal_spray: 'Nasal Spray', cream: 'Cream',
-  suppository: 'Suppository', other: 'Other',
-};
-
-export const scheduleTypeFallbacks: Record<string, string> = {
-  daily: 'Daily', weekly: 'Specific days', every_n_days: 'Every N days', monthly: 'Monthly',
-  cyclic: 'Cycle (on/off)', prn: 'As needed',
-};

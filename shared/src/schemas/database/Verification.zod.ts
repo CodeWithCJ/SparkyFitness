@@ -35,5 +35,7 @@ export const verificationMutatorSchema = z.object({
 });
 
 export type Verification = z.infer<typeof verificationSchema>;
-export type VerificationInitializer = z.infer<typeof verificationInitializerSchema>;
+export type VerificationInitializer = z.infer<
+  typeof verificationInitializerSchema
+>;
 export type VerificationMutator = z.infer<typeof verificationMutatorSchema>;

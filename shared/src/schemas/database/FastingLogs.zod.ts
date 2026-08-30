@@ -49,5 +49,7 @@ export const fastingLogsMutatorSchema = z.object({
 });
 
 export type FastingLogs = z.infer<typeof fastingLogsSchema>;
-export type FastingLogsInitializer = z.infer<typeof fastingLogsInitializerSchema>;
+export type FastingLogsInitializer = z.infer<
+  typeof fastingLogsInitializerSchema
+>;
 export type FastingLogsMutator = z.infer<typeof fastingLogsMutatorSchema>;
