@@ -2,7 +2,7 @@ import {
   syncHealthData,
   checkServerConnection,
   HealthDataPayload,
-  fetchWithRetry,
+  _fetchWithRetry as fetchWithRetry,
   CHUNK_SIZE,
   SESSION_CHUNK_SIZE,
 } from '../../src/services/api/healthDataApi';

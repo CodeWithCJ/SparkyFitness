@@ -234,20 +234,6 @@ export const getExerciseById = async (id: string): Promise<Exercise> => {
   };
 };
 
-export const importExercisesFromCSV = async (
-  formData: FormData
-): Promise<{
-  created: number;
-  updated: number;
-  failed: number;
-  failedRows: unknown[];
-}> => {
-  return apiCall('/exercises/import', {
-    method: 'POST',
-    body: formData,
-    isFormData: true,
-  });
-};
 export const importExercisesFromJson = async (
   exercises: Omit<ExerciseCSVData, 'id'>[]
 ): Promise<unknown> => {

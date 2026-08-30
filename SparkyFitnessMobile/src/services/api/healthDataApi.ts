@@ -106,7 +106,7 @@ interface RetryConfig {
  * Retries on network errors, timeouts, and 5xx responses.
  * Does NOT retry on 4xx (including 401 which triggers session expiry).
  */
-export const fetchWithRetry = async (
+export const _fetchWithRetry = async (
   url: string,
   options: RequestInit,
   { timeoutMs, maxRetries, baseDelayMs, serverConfig }: RetryConfig,
@@ -345,7 +345,7 @@ const sendHealthDataChunked = async (
     }
 
     try {
-      const response = await fetchWithRetry(
+      const response = await _fetchWithRetry(
         url,
         {
           method: 'POST',

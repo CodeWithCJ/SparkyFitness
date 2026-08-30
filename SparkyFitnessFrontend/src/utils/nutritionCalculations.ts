@@ -23,42 +23,6 @@ import { ExpandedGoals } from '@/types/goals';
 
 // Utility functions for nutrition calculations
 
-export const estimateStepsFromWalkingExercise = (
-  durationMinutes: number,
-  intensity: 'light' | 'moderate' | 'brisk' = 'moderate'
-): number => {
-  // Estimate steps based on walking duration and intensity
-  const stepsPerMinute = {
-    light: 80, // slow walk
-    moderate: 100, // normal pace
-    brisk: 120, // fast walk
-  };
-
-  return Math.round(durationMinutes * stepsPerMinute[intensity]);
-};
-
-export const calculateNutritionProgress = (
-  actual: number,
-  goal: number
-): number => {
-  return goal > 0 ? Math.round((actual / goal) * 100) : 0;
-};
-
-export const formatNutritionValue = (value: number, unit: string): string => {
-  if (value < 1 && value > 0) {
-    return `${value.toFixed(1)}${unit}`;
-  }
-  return `${Math.round(value)}${unit}`;
-};
-
-export const formatCalories = (calories: number): number => {
-  return Math.round(calories);
-};
-
-export const roundNutritionValue = (value: number): number => {
-  return Math.round(value);
-};
-
 export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
   // Prefer snapshotted data if available, otherwise calculate from variant/food
 

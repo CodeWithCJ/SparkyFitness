@@ -310,13 +310,3 @@ export function getMealPercentage(mealName: string, goals?: DailyGoals): number 
 
   return 0;
 }
-
-/** Localized fallback for a historical system group. Non-system groups keep literal name. */
-export function getLocalizedMealGroupLabel(
-  group: Pick<MealGroup, 'name' | 'isSystem'>,
-  t: TFunction,
-): string {
-  if (!group.isSystem) return getHistoricalMealTypeLabel(group.name, t);
-  const key = group.name.toLowerCase() === 'snack' ? 'snacks' : group.name.toLowerCase();
-  return getLocalizedMealLabel(t, key);
-}

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "App.tsx",
+    "src/screens/**/*.{ts,tsx}",
+    "src/components/**/*.{ts,tsx}",
+    "src/hooks/**/*.{ts,tsx}",
+    "src/localization/**/*.{ts,tsx}",
+    "src/services/healthConnectService.ts",
+    "plugins/**/*.ts",
+    "__tests__/**/*.{ts,tsx}"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "App.tsx"],
+  "rules": {
+    "exports": "error",
+    "types": "off",
+    "files": "off",
+    "dependencies": "off",
+    "unlisted": "off",
+    "binaries": "off",
+    "unresolved": "off",
+    "duplicates": "off"
+  },
+  "ignoreExportsUsedInFile": true
+}

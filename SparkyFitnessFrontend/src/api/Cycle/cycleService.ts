@@ -44,17 +44,11 @@ export const listLogs = (
 ): Promise<SharedCycleDailyLog[]> =>
   apiCall('/v2/cycle/logs', { method: 'GET', params: { startDate, endDate } });
 
-export const getLog = (date: string): Promise<SharedCycleDailyLog | null> =>
-  apiCall(`/v2/cycle/logs/${date}`, { method: 'GET' });
-
 export const putLog = (
   date: string,
   body: Partial<SharedCycleDailyLog>
 ): Promise<SharedCycleDailyLog> =>
   apiCall(`/v2/cycle/logs/${date}`, { method: 'PUT', body });
-
-export const deleteLog = (date: string): Promise<void> =>
-  apiCall(`/v2/cycle/logs/${date}`, { method: 'DELETE' });
 
 export const listCycles = (limit?: number): Promise<SharedCycle[]> =>
   apiCall('/v2/cycle/cycles', { method: 'GET', params: { limit } });

@@ -10,20 +10,15 @@ import {
   verifyTotp,
   sendEmailOtp,
   verifyEmailOtp,
-  logout,
   clearAuthCookies,
-  requestPasskeyRegistrationTicket,
+  _requestPasskeyRegistrationTicket,
   addPasskey,
   _clearTrustedOriginCache,
   _setTrustedOriginCache,
 } from '../../src/services/api/authService';
-import { clearSessionToken, ServerConfig } from '../../src/services/storage';
+import { ServerConfig } from '../../src/services/storage';
 import { TimeoutError } from '../../src/utils/concurrency';
 import * as WebBrowser from 'expo-web-browser';
-
-jest.mock('../../src/services/storage', () => ({
-  clearSessionToken: jest.fn(),
-}));
 
 jest.mock('expo-web-browser', () => ({
   openAuthSessionAsync: jest.fn(),
@@ -37,10 +32,6 @@ const mockGetCustomTabsBrowsers =
   WebBrowser.getCustomTabsSupportingBrowsersAsync as jest.MockedFunction<
     typeof WebBrowser.getCustomTabsSupportingBrowsersAsync
   >;
-
-const mockClearSessionToken = clearSessionToken as jest.MockedFunction<
-  typeof clearSessionToken
->;
 
 describe('authService', () => {
   const mockFetch = jest.fn();
@@ -642,18 +633,6 @@ describe('authService', () => {
     });
   });
 
-  // --- logout ---
-
-  describe('logout', () => {
-    test('clears session token and cookies for the given config ID', async () => {
-      mockClearSessionToken.mockResolvedValueOnce();
-
-      await logout('config-99');
-
-      expect(mockClearSessionToken).toHaveBeenCalledWith('config-99');
-    });
-  });
-
   // --- clearAuthCookies ---
 
   describe('clearAuthCookies', () => {
@@ -706,7 +685,7 @@ describe('authService', () => {
     });
   });
 
-  describe('requestPasskeyRegistrationTicket', () => {
+  describe('_requestPasskeyRegistrationTicket', () => {
     it('POSTs to register-ticket with Bearer and returns the ticket', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -714,7 +693,7 @@ describe('authService', () => {
         json: async () => ({ ticket: 'ticket-abc' }),
       });
 
-      const ticket = await requestPasskeyRegistrationTicket(
+      const ticket = await _requestPasskeyRegistrationTicket(
         'https://s.com',
         'sess-tok'
       );
@@ -734,7 +713,7 @@ describe('authService', () => {
       });
 
       await expect(
-        requestPasskeyRegistrationTicket('https://s.com', 'tok')
+        _requestPasskeyRegistrationTicket('https://s.com', 'tok')
       ).rejects.toMatchObject({ message: 'SESSION_NOT_FRESH', statusCode: 403 });
     });
 
@@ -745,7 +724,7 @@ describe('authService', () => {
         json: async () => ({ message: 'boom' }),
       });
       await expect(
-        requestPasskeyRegistrationTicket('https://s.com', 'tok')
+        _requestPasskeyRegistrationTicket('https://s.com', 'tok')
       ).rejects.toThrow('boom');
     });
   });
