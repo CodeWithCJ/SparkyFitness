@@ -1328,6 +1328,36 @@ describe('openFoodFactsService', () => {
       }
     });
 
+    it('bounds self-hosted candidate scans that cannot fill the requested page', async () => {
+      // @ts-expect-error mocked provider resolver
+      resolveOpenFoodFactsProvider.mockResolvedValue({
+        session: null,
+        baseUrl: 'http://sparkyfitness-foodfacts:8080',
+      });
+      const unusableProducts = Array.from({ length: 100 }, (_, index) => ({
+        code: `missing-${index}`,
+        product_name: 'Missing Nutrition',
+        nutriments: { fiber_100g: 3 },
+      }));
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            products: unusableProducts,
+            page_size: 100,
+            count: 2000,
+          }),
+      });
+
+      await expect(
+        searchOpenFoodFacts('banana', 1, 'en', 'user-A', 'prov-1', 20)
+      ).rejects.toMatchObject({
+        message: 'OpenFoodFacts legacy search scan limit reached',
+        status: 504,
+      });
+      expect(fetchMock).toHaveBeenCalledTimes(10);
+    });
+
     it('builds the search URL from a resolved custom base_url', async () => {
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
       resolveOpenFoodFactsProvider.mockResolvedValue({

@@ -98,6 +98,7 @@ const OFF_CORE_NUTRIENT_SERVING_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_SERVING_KE
 ).join(' OR ')})`;
 const OFF_CORE_NUTRITION_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_100G_SEARCH_CLAUSE} OR (serving_quantity:[0.000001 TO *] AND ${OFF_CORE_NUTRIENT_SERVING_SEARCH_CLAUSE}))`;
 const LEGACY_SEARCH_BATCH_SIZE = 100;
+const LEGACY_SEARCH_MAX_BATCHES = 10;
 
 interface OffProduct {
   product_name?: string;
@@ -507,15 +508,27 @@ async function searchOpenFoodFacts(
       const requestedStart = (page - 1) * pageSize;
       const requestedEnd = page * pageSize;
       const usableProducts: OffProduct[] = [];
+      const scanDeadline = Date.now() + OFF_FETCH_TIMEOUT_MS;
       let providerPage = 1;
       let hasMoreCandidates = true;
 
       while (hasMoreCandidates && usableProducts.length <= requestedEnd) {
+        const remainingTimeoutMs = scanDeadline - Date.now();
+        if (
+          providerPage > LEGACY_SEARCH_MAX_BATCHES ||
+          remainingTimeoutMs <= 0
+        ) {
+          throw Object.assign(
+            new Error('OpenFoodFacts legacy search scan limit reached'),
+            { status: 504, statusCode: 504 }
+          );
+        }
         const searchUrl = `${baseUrl}/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=${LEGACY_SEARCH_BATCH_SIZE}&page=${providerPage}&fields=${fields.join(',')}&lc=${language}`;
         const response = await fetchOpenFoodFacts(searchUrl, {
           authenticatedUserId,
           providerId,
           sessionCookie,
+          timeoutMs: remainingTimeoutMs,
         });
         if (!response.ok) {
           log(
