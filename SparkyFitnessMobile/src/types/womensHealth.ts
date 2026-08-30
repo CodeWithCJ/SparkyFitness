@@ -142,8 +142,18 @@ export interface PregnancyOverview {
     weightGainStatus: 'within_range' | 'below_range' | 'above_range' | null;
     gainRange: unknown;
     bpValue: unknown;
-    prenatalMedication: { id: string; name: string | null; entryId: string | null; loggedToday: boolean } | null;
-    supplementMedication: { id: string; name: string | null; entryId: string | null; loggedToday: boolean } | null;
+    prenatalMedication: {
+      id: string;
+      name: string | null;
+      entryId: string | null;
+      loggedToday: boolean;
+    } | null;
+    supplementMedication: {
+      id: string;
+      name: string | null;
+      entryId: string | null;
+      loggedToday: boolean;
+    } | null;
   };
 }
 
@@ -169,4 +179,3 @@ export interface HealthAppointment {
   notes: string | null;
   outcome: string | null;
 }
-

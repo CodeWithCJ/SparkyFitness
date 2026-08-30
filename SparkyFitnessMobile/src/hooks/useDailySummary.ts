@@ -21,7 +21,7 @@ export function useDailySummary({
   const query = useQuery({
     queryKey: dailySummaryQueryKey(date),
     queryFn: () => loadDailySummaryRawData(date),
-    select: raw => buildDailySummary(date, raw),
+    select: (raw) => buildDailySummary(date, raw),
     enabled,
   });
 

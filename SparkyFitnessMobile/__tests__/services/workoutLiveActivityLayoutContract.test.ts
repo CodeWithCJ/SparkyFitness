@@ -3,7 +3,7 @@ import path from 'path';
 
 const LAYOUT_PATH = path.join(
   __dirname,
-  '../../src/services/WorkoutLiveActivityLayout.tsx',
+  '../../src/services/WorkoutLiveActivityLayout.tsx'
 );
 const LAYOUT_SRC = fs.readFileSync(LAYOUT_PATH, 'utf8');
 

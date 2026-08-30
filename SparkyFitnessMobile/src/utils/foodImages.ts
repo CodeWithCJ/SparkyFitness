@@ -23,7 +23,7 @@ import type { ExternalFoodItem } from '../types/externalFoods';
  * A bare filename is a legacy upload stored without its directory prefix.
  */
 export function normalizeFoodImagePath(
-  image: string | null | undefined,
+  image: string | null | undefined
 ): string | null {
   if (!image) {
     return null;
@@ -38,7 +38,7 @@ export function normalizeFoodImagePath(
 
 /** Returns only the entries of `images` that resolve to a usable path. */
 export function usableFoodImages(
-  images: string[] | null | undefined,
+  images: string[] | null | undefined
 ): string[] {
   if (!Array.isArray(images)) {
     return [];
@@ -50,11 +50,7 @@ export function usableFoodImages(
 
 /** First usable image for a food or meal, or null when it has none. */
 export function primaryImageOf(
-  entity:
-    | Pick<FoodItem, 'images'>
-    | Pick<Meal, 'images'>
-    | null
-    | undefined,
+  entity: Pick<FoodItem, 'images'> | Pick<Meal, 'images'> | null | undefined
 ): string | null {
   return usableFoodImages(entity?.images)[0] ?? null;
 }
@@ -66,10 +62,10 @@ export function primaryImageOf(
  * wins, then the full-size `image_source_url`, then the search thumbnail.
  */
 export function externalFoodImage(
-  item: Pick<
-    ExternalFoodItem,
-    'images' | 'image_url' | 'image_source_url'
-  > | null | undefined,
+  item:
+    | Pick<ExternalFoodItem, 'images' | 'image_url' | 'image_source_url'>
+    | null
+    | undefined
 ): string | null {
   if (!item) {
     return null;
@@ -89,7 +85,7 @@ export function externalFoodImage(
  * makes an un-overridden entry still show a picture.
  */
 export function diaryEntryImages(
-  entry: Pick<FoodEntry, 'images' | 'food_images'> | null | undefined,
+  entry: Pick<FoodEntry, 'images' | 'food_images'> | null | undefined
 ): string[] {
   if (!entry) {
     return [];
@@ -100,7 +96,7 @@ export function diaryEntryImages(
 
 /** First image to show for a diary food entry, or null when it has none. */
 export function diaryEntryImage(
-  entry: Pick<FoodEntry, 'images' | 'food_images'> | null | undefined,
+  entry: Pick<FoodEntry, 'images' | 'food_images'> | null | undefined
 ): string | null {
   return diaryEntryImages(entry)[0] ?? null;
 }
@@ -110,7 +106,7 @@ export function diaryEntryImage(
  * precedence as `diaryEntryImages`.
  */
 export function loggedMealImages(
-  entry: Pick<FoodEntryMeal, 'images' | 'meal_images'> | null | undefined,
+  entry: Pick<FoodEntryMeal, 'images' | 'meal_images'> | null | undefined
 ): string[] {
   if (!entry) {
     return [];
@@ -121,7 +117,7 @@ export function loggedMealImages(
 
 /** First image to show for a logged meal, or null when it has none. */
 export function loggedMealImage(
-  entry: Pick<FoodEntryMeal, 'images' | 'meal_images'> | null | undefined,
+  entry: Pick<FoodEntryMeal, 'images' | 'meal_images'> | null | undefined
 ): string | null {
   return loggedMealImages(entry)[0] ?? null;
 }

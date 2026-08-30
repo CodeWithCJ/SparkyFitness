@@ -1,5 +1,8 @@
 import i18n from '../localization/i18n';
-import { resolveLanguage, type SupportedLanguage } from '../localization/localeRegistry';
+import {
+  resolveLanguage,
+  type SupportedLanguage,
+} from '../localization/localeRegistry';
 
 /** Live Activity labels follow the authoritative shipped-locale registry. */
 export type WorkoutLiveActivityLocale = SupportedLanguage;
@@ -59,14 +62,14 @@ const EN_FALLBACK: WorkoutLiveActivityLabels = {
 };
 
 export function isWorkoutLiveActivityLocale(
-  value: string | null | undefined,
+  value: string | null | undefined
 ): value is WorkoutLiveActivityLocale {
   return typeof value === 'string' && resolveLanguage(value) === value;
 }
 
 /** Normalizes any language tag to the supported locale, defaulting to English. */
 export function resolveWorkoutLiveActivityLocale(
-  language: string | null | undefined,
+  language: string | null | undefined
 ): WorkoutLiveActivityLocale {
   return resolveLanguage(language);
 }
@@ -77,7 +80,7 @@ export function resolveWorkoutLiveActivityLocale(
  * object is always complete and never contains i18next syntax.
  */
 export function buildWorkoutLiveActivityLabels(
-  locale: WorkoutLiveActivityLocale,
+  locale: WorkoutLiveActivityLocale
 ): WorkoutLiveActivityLabels {
   if (!i18n.isInitialized) {
     // English is the stable cold-start fallback: return the built-in map
@@ -97,7 +100,8 @@ export function buildWorkoutLiveActivityLabels(
     const value = fixedT(`activeWorkout.liveActivity.${key}`, {
       defaultValue: EN_FALLBACK[key],
     });
-    labels[key] = typeof value === 'string' && value.length > 0 ? value : EN_FALLBACK[key];
+    labels[key] =
+      typeof value === 'string' && value.length > 0 ? value : EN_FALLBACK[key];
   }
   return labels;
 }

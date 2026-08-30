@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -32,24 +38,36 @@ import {
   useAuiState,
   type MessageRole,
 } from '@assistant-ui/react-native';
-import { useChatRuntime, AssistantChatTransport } from '@assistant-ui/react-ai-sdk';
+import {
+  useChatRuntime,
+  AssistantChatTransport,
+} from '@assistant-ui/react-ai-sdk';
 import Icon from '../components/Icon';
 import ToolCallCard from '../components/chat/ToolCallCard';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import MarkdownMessage from '../components/chat/MarkdownMessage';
 import { CHAT_SUGGESTIONS } from '../constants/chat';
-import { getActiveServerConfig, proxyHeadersToRecord } from '../services/storage';
+import {
+  getActiveServerConfig,
+  proxyHeadersToRecord,
+} from '../services/storage';
 import { getAuthHeaders } from '../services/api/authService';
 import { normalizeUrl } from '../services/api/apiClient';
 import { clearAllChatHistory } from '../services/api/chatApi';
 import { addLog } from '../services/LogService';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useActiveAiServiceSetting, useChatHistory, chatHistoryQueryKey } from '../hooks';
+import {
+  useActiveAiServiceSetting,
+  useChatHistory,
+  chatHistoryQueryKey,
+} from '../hooks';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 
 /** Seed (initial) messages accepted by `useChatRuntime`. */
-type InitialMessages = NonNullable<Parameters<typeof useChatRuntime>[0]>['messages'];
+type InitialMessages = NonNullable<
+  Parameters<typeof useChatRuntime>[0]
+>['messages'];
 
 /**
  * `ThreadPrimitive.Messages` renders a plain FlatList and spreads any extra props
@@ -58,7 +76,9 @@ type InitialMessages = NonNullable<Parameters<typeof useChatRuntime>[0]>['messag
  * regular prop, so it rides the spread through to the inner FlatList.
  */
 const ThreadMessages = ThreadPrimitive.Messages as React.ComponentType<
-  React.ComponentProps<typeof ThreadPrimitive.Messages> & { ref?: React.Ref<FlatList> }
+  React.ComponentProps<typeof ThreadPrimitive.Messages> & {
+    ref?: React.Ref<FlatList>;
+  }
 >;
 
 const IOS_SMALL_NATIVE_HEADER_HEIGHT = 44;
@@ -66,7 +86,9 @@ const CHAT_KEYBOARD_EXTRA_SPACING = 12;
 // How close (px) to the bottom still counts as "at the bottom" for auto-scroll.
 const SCROLL_PIN_THRESHOLD = 40;
 
-function ChatKeyboardAvoidingView(props: React.ComponentProps<typeof RNKeyboardAvoidingView>) {
+function ChatKeyboardAvoidingView(
+  props: React.ComponentProps<typeof RNKeyboardAvoidingView>
+) {
   if (Platform.OS === 'ios') {
     return <RNKeyboardAvoidingView {...props} />;
   }
@@ -106,7 +128,10 @@ function useSparkyChatRuntime({
         headers: async () => {
           const config = await getActiveServerConfig();
           return config
-            ? { ...proxyHeadersToRecord(config.proxyHeaders), ...getAuthHeaders(config) }
+            ? {
+                ...proxyHeadersToRecord(config.proxyHeaders),
+                ...getAuthHeaders(config),
+              }
             : {};
         },
         // Merged into the request body alongside `messages`; the server reads it.
@@ -128,7 +153,11 @@ function useSparkyChatRuntime({
       Toast.show({
         type: 'error',
         text1: t('chat.error', { defaultValue: 'Chat error' }),
-        text2: error?.message || t('chat.errorRetry', { defaultValue: 'Something went wrong. Tap retry to try again.' }),
+        text2:
+          error?.message ||
+          t('chat.errorRetry', {
+            defaultValue: 'Something went wrong. Tap retry to try again.',
+          }),
       });
     },
   });
@@ -152,7 +181,7 @@ function MessageBubble({ role }: { role: MessageRole }) {
     const m = s.message;
     if (m.role !== 'assistant' || m.status?.type !== 'running') return false;
     return !m.content?.some(
-      (p) => (p.type === 'text' && p.text.length > 0) || p.type === 'tool-call',
+      (p) => (p.type === 'text' && p.text.length > 0) || p.type === 'tool-call'
     );
   });
 
@@ -161,7 +190,8 @@ function MessageBubble({ role }: { role: MessageRole }) {
   // animator — its post-render setSpan triggers checkForResize() and NPE-crashes
   // (Android) on a recycled FlatList cell whose layoutParams have gone null.
   const isStreaming = useAuiState(
-    (s) => s.message.role === 'assistant' && s.message.status?.type === 'running',
+    (s) =>
+      s.message.role === 'assistant' && s.message.status?.type === 'running'
   );
 
   return (
@@ -172,7 +202,9 @@ function MessageBubble({ role }: { role: MessageRole }) {
         marginBottom: 12,
       }}
     >
-      <View className={`rounded-2xl px-4 py-2 ${isUser ? 'bg-accent-primary' : 'bg-surface border border-border-subtle'}`}>
+      <View
+        className={`rounded-2xl px-4 py-2 ${isUser ? 'bg-accent-primary' : 'bg-surface border border-border-subtle'}`}
+      >
         {isThinking ? (
           <TypingIndicator />
         ) : (
@@ -207,7 +239,9 @@ function MessageBubble({ role }: { role: MessageRole }) {
           }}
         >
           <Icon name="alert-circle" size={16} color={dangerIcon} />
-          <ErrorPrimitive.Message style={{ flex: 1, color: dangerText, fontSize: 13 }} />
+          <ErrorPrimitive.Message
+            style={{ flex: 1, color: dangerText, fontSize: 13 }}
+          />
         </ErrorPrimitive.Root>
 
         {/* Actions appear under every settled (non-running) assistant message:
@@ -218,15 +252,27 @@ function MessageBubble({ role }: { role: MessageRole }) {
               <ActionBarPrimitive.Reload>
                 <View className="flex-row items-center gap-1">
                   <Icon name="sync" size={15} color={muted} />
-                  <Text className="text-text-secondary text-xs">{t('chat.retry', { defaultValue: 'Retry' })}</Text>
+                  <Text className="text-text-secondary text-xs">
+                    {t('chat.retry', { defaultValue: 'Retry' })}
+                  </Text>
                 </View>
               </ActionBarPrimitive.Reload>
             </MessagePrimitive.If>
-            <ActionBarPrimitive.Copy copyToClipboard={(text) => Clipboard.setString(text)}>
+            <ActionBarPrimitive.Copy
+              copyToClipboard={(text) => Clipboard.setString(text)}
+            >
               {({ isCopied }) => (
                 <View className="flex-row items-center gap-1">
-                  <Icon name={isCopied ? 'checkmark' : 'copy'} size={15} color={muted} />
-                  <Text className="text-text-secondary text-xs">{isCopied ? t('chat.copied', { defaultValue: 'Copied' }) : t('chat.copy', { defaultValue: 'Copy' })}</Text>
+                  <Icon
+                    name={isCopied ? 'checkmark' : 'copy'}
+                    size={15}
+                    color={muted}
+                  />
+                  <Text className="text-text-secondary text-xs">
+                    {isCopied
+                      ? t('chat.copied', { defaultValue: 'Copied' })
+                      : t('chat.copy', { defaultValue: 'Copy' })}
+                  </Text>
                 </View>
               )}
             </ActionBarPrimitive.Copy>
@@ -238,11 +284,21 @@ function MessageBubble({ role }: { role: MessageRole }) {
           button — right-aligned to sit under the right-aligned user bubble. */}
       <MessagePrimitive.If user>
         <View className="flex-row justify-end mt-1.5 mr-1">
-          <ActionBarPrimitive.Copy copyToClipboard={(text) => Clipboard.setString(text)}>
+          <ActionBarPrimitive.Copy
+            copyToClipboard={(text) => Clipboard.setString(text)}
+          >
             {({ isCopied }) => (
               <View className="flex-row items-center gap-1">
-                <Icon name={isCopied ? 'checkmark' : 'copy'} size={15} color={muted} />
-                <Text className="text-text-secondary text-xs">{isCopied ? t('chat.copied', { defaultValue: 'Copied' }) : t('chat.copy', { defaultValue: 'Copy' })}</Text>
+                <Icon
+                  name={isCopied ? 'checkmark' : 'copy'}
+                  size={15}
+                  color={muted}
+                />
+                <Text className="text-text-secondary text-xs">
+                  {isCopied
+                    ? t('chat.copied', { defaultValue: 'Copied' })
+                    : t('chat.copy', { defaultValue: 'Copy' })}
+                </Text>
               </View>
             )}
           </ActionBarPrimitive.Copy>
@@ -252,12 +308,18 @@ function MessageBubble({ role }: { role: MessageRole }) {
   );
 }
 
-type LocalComposerInputProps = Omit<TextInputProps, 'value' | 'onChangeText'> & {
+type LocalComposerInputProps = Omit<
+  TextInputProps,
+  'value' | 'onChangeText'
+> & {
   /** Focus the input once the screen's push transition has settled. */
   autoFocusReady: boolean;
 };
 
-function LocalComposerInput({ autoFocusReady, ...props }: LocalComposerInputProps) {
+function LocalComposerInput({
+  autoFocusReady,
+  ...props
+}: LocalComposerInputProps) {
   const aui = useAui();
   const inputRef = useRef<TextInput>(null);
   const composerText = useAuiState((s) => s.composer.text);
@@ -309,10 +371,17 @@ function LocalComposerInput({ autoFocusReady, ...props }: LocalComposerInputProp
       applyLocalText(value);
       aui.composer().setText(value);
     },
-    [applyLocalText, aui],
+    [applyLocalText, aui]
   );
 
-  return <TextInput ref={inputRef} {...props} value={localText} onChangeText={handleChangeText} />;
+  return (
+    <TextInput
+      ref={inputRef}
+      {...props}
+      value={localText}
+      onChangeText={handleChangeText}
+    />
+  );
 }
 
 /** The bottom input row. Send/Cancel stay on assistant-ui actions. */
@@ -326,7 +395,12 @@ function Composer({ autoFocusReady }: { autoFocusReady: boolean }) {
 
   return (
     <ComposerPrimitive.Root
-      style={{ flexDirection: 'row', alignItems: 'flex-end', padding: 12, gap: 8 }}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        padding: 12,
+        gap: 8,
+      }}
     >
       <LocalComposerInput
         autoFocusReady={autoFocusReady}
@@ -369,7 +443,11 @@ function Composer({ autoFocusReady }: { autoFocusReady: boolean }) {
  * header Clear button (outside the runtime provider) can disable while a stream
  * is in flight. Reads `isRunning` from assistant-ui state and pushes it up.
  */
-function RunningReporter({ onRunningChange }: { onRunningChange: (running: boolean) => void }) {
+function RunningReporter({
+  onRunningChange,
+}: {
+  onRunningChange: (running: boolean) => void;
+}) {
   const isRunning = useAuiState((s) => s.thread.isRunning);
   useEffect(() => {
     onRunningChange(!!isRunning);
@@ -381,17 +459,25 @@ function RunningReporter({ onRunningChange }: { onRunningChange: (running: boole
 function getLocalizedSuggestionLabel(
   t: (key: string, options?: Record<string, unknown>) => string,
   labelKey: string,
-  defaultLabel: string,
+  defaultLabel: string
 ): string {
   switch (labelKey) {
     case 'chat.suggestions.breakfast':
-      return t('chat.suggestions.breakfast', { defaultValue: 'Log two eggs and a banana for breakfast' });
+      return t('chat.suggestions.breakfast', {
+        defaultValue: 'Log two eggs and a banana for breakfast',
+      });
     case 'chat.suggestions.run':
-      return t('chat.suggestions.run', { defaultValue: 'Log a 30 minute run today' });
+      return t('chat.suggestions.run', {
+        defaultValue: 'Log a 30 minute run today',
+      });
     case 'chat.suggestions.calories':
-      return t('chat.suggestions.calories', { defaultValue: 'How many calories do I have left today?' });
+      return t('chat.suggestions.calories', {
+        defaultValue: 'How many calories do I have left today?',
+      });
     case 'chat.suggestions.snack':
-      return t('chat.suggestions.snack', { defaultValue: 'Suggest a high-protein snack' });
+      return t('chat.suggestions.snack', {
+        defaultValue: 'Suggest a high-protein snack',
+      });
     default:
       return defaultLabel;
   }
@@ -411,7 +497,11 @@ function ChatThread({
   autoFocusReady: boolean;
 }) {
   const { t } = useTranslation();
-  const runtime = useSparkyChatRuntime({ baseUrl, serviceConfigId, initialMessages });
+  const runtime = useSparkyChatRuntime({
+    baseUrl,
+    serviceConfigId,
+    initialMessages,
+  });
 
   // Keep the message list pinned to the bottom as content grows — but only
   // while the user is at the bottom: lands on the latest message on mount
@@ -451,11 +541,16 @@ function ChatThread({
     });
   }, [cancelScheduledScroll]);
 
-  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    pinnedToBottomRef.current =
-      contentOffset.y + layoutMeasurement.height >= contentSize.height - SCROLL_PIN_THRESHOLD;
-  }, []);
+  const handleScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { contentOffset, contentSize, layoutMeasurement } =
+        event.nativeEvent;
+      pinnedToBottomRef.current =
+        contentOffset.y + layoutMeasurement.height >=
+        contentSize.height - SCROLL_PIN_THRESHOLD;
+    },
+    []
+  );
 
   const scrollToBottomIfPinned = useCallback(() => {
     if (pinnedToBottomRef.current) scrollToBottom();
@@ -485,15 +580,29 @@ function ChatThread({
           <ThreadPrimitive.Empty>
             <View className="flex-1 items-center justify-center p-8">
               <Text className="text-text-muted text-center text-base mb-6">
-                {t('chat.emptyPrompt', { defaultValue: 'Ask Sparky anything about your nutrition, exercise, or goals.' })}
+                {t('chat.emptyPrompt', {
+                  defaultValue:
+                    'Ask Sparky anything about your nutrition, exercise, or goals.',
+                })}
               </Text>
               {/* ThreadPrimitive.Suggestion IS the Pressable, so its child must be a
                   non-touchable styled View (nested pressables swallow touches). */}
               <View className="w-full gap-2">
                 {CHAT_SUGGESTIONS.map((suggestion) => (
-                  <ThreadPrimitive.Suggestion key={suggestion.prompt} prompt={suggestion.prompt} send clearComposer>
+                  <ThreadPrimitive.Suggestion
+                    key={suggestion.prompt}
+                    prompt={suggestion.prompt}
+                    send
+                    clearComposer
+                  >
                     <View className="bg-surface border border-border-subtle rounded-2xl px-4 py-3">
-                      <Text className="text-text-primary text-sm text-center">{getLocalizedSuggestionLabel(t, suggestion.labelKey, suggestion.defaultLabel)}</Text>
+                      <Text className="text-text-primary text-sm text-center">
+                        {getLocalizedSuggestionLabel(
+                          t,
+                          suggestion.labelKey,
+                          suggestion.defaultLabel
+                        )}
+                      </Text>
                     </View>
                   </ThreadPrimitive.Suggestion>
                 ))}
@@ -528,7 +637,9 @@ function Centered({ text }: { text: string }) {
   );
 }
 
-export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>) {
+export default function ChatScreen({
+  navigation,
+}: RootStackScreenProps<'Chat'>) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const accent = useCSSVariable('--color-accent-primary') as string;
@@ -551,7 +662,8 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
   // Remounting ChatThread by key resets the in-memory runtime (it ignores
   // `messages` changes after mount), so bump this to clear the thread.
   const [threadKey, setThreadKey] = useState(0);
-  const { data: setting, isLoading: loadingSetting } = useActiveAiServiceSetting();
+  const { data: setting, isLoading: loadingSetting } =
+    useActiveAiServiceSetting();
 
   // Gate the composer's autofocus on the push transition finishing so the
   // keyboard doesn't animate in over the still-sliding screen (which renders it
@@ -588,7 +700,9 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
   }, []);
 
   // Clearing needs only an authenticated server, not an active AI provider.
-  const { data: historyData, isLoading: loadingHistory } = useChatHistory({ enabled: !!baseUrl });
+  const { data: historyData, isLoading: loadingHistory } = useChatHistory({
+    enabled: !!baseUrl,
+  });
   const initialMessages = historyData ?? [];
 
   const serviceConfigId = setting?.id ?? null;
@@ -596,9 +710,15 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
   const handleClear = useCallback(() => {
     Alert.alert(
       t('chat.clearTitle', { defaultValue: 'Clear chat' }),
-      t('chat.clearMessage', { defaultValue: 'This permanently deletes your Sparky chat history. This cannot be undone.' }),
+      t('chat.clearMessage', {
+        defaultValue:
+          'This permanently deletes your Sparky chat history. This cannot be undone.',
+      }),
       [
-        { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
+        {
+          text: t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+        },
         {
           text: t('common.clear', { defaultValue: 'Clear' }),
           style: 'destructive',
@@ -614,8 +734,12 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
               ]);
               Toast.show({
                 type: 'error',
-                text1: t('chat.clearFailed', { defaultValue: 'Could not clear chat' }),
-                text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+                text1: t('chat.clearFailed', {
+                  defaultValue: 'Could not clear chat',
+                }),
+                text2: t('common.tryAgain', {
+                  defaultValue: 'Please try again.',
+                }),
               });
             }
           },
@@ -637,7 +761,9 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
           role: 'secondary',
           disabled: running,
           onPress: handleClear,
-          accessibilityLabel: t('chat.clearAccessibility', { defaultValue: 'Clear chat' }),
+          accessibilityLabel: t('chat.clearAccessibility', {
+            defaultValue: 'Clear chat',
+          }),
           identifier: 'chat-clear',
         }
       : null,
@@ -669,9 +795,19 @@ export default function ChatScreen({ navigation }: RootStackScreenProps<'Chat'>)
             <ActivityIndicator color={accent} />
           </View>
         ) : !baseUrl ? (
-          <Centered text={t('chat.noServer', { defaultValue: 'No active server config. Set one up in Settings first.' })} />
+          <Centered
+            text={t('chat.noServer', {
+              defaultValue:
+                'No active server config. Set one up in Settings first.',
+            })}
+          />
         ) : !serviceConfigId ? (
-          <Centered text={t('chat.noProvider', { defaultValue: 'No active AI provider. Configure one in the web app first.' })} />
+          <Centered
+            text={t('chat.noProvider', {
+              defaultValue:
+                'No active AI provider. Configure one in the web app first.',
+            })}
+          />
         ) : (
           <ChatThread
             key={threadKey}

@@ -1,7 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
-import type { FoodPhotoLogRequest, FoodPhotoLogResponse } from '@workspace/shared';
+import type {
+  FoodPhotoLogRequest,
+  FoodPhotoLogResponse,
+} from '@workspace/shared';
 import { createPhotoLoggedMeal } from '../services/api/foodEntryMealsApi';
 import { dailySummaryQueryKey, foodsQueryKey } from './queryKeys';
 import { invalidateMealUsageCaches } from './useMeals';
@@ -11,13 +14,14 @@ interface UseCreatePhotoLoggedMealOptions {
 }
 
 export function useCreatePhotoLoggedMeal(
-  options?: UseCreatePhotoLoggedMealOptions,
+  options?: UseCreatePhotoLoggedMealOptions
 ) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (payload: FoodPhotoLogRequest) => createPhotoLoggedMeal(payload),
+    mutationFn: (payload: FoodPhotoLogRequest) =>
+      createPhotoLoggedMeal(payload),
     onSuccess: (result) => {
       invalidateMealUsageCaches(queryClient);
       options?.onSuccess?.(result);

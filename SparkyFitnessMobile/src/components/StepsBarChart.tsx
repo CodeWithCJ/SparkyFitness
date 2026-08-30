@@ -4,7 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { formatLocalizedNumber } from '../localization/i18n';
 import { CartesianChart, Bar } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
-import { makeChartFont, formatXLabel7d, formatXLabel30d90d, formatTooltipDate, formatChartYLabel } from './charts/chartFormatting';
+import {
+  makeChartFont,
+  formatXLabel7d,
+  formatXLabel30d90d,
+  formatTooltipDate,
+  formatChartYLabel,
+} from './charts/chartFormatting';
 import type { StepsDataPoint, StepsRange } from '../hooks/useMeasurementsRange';
 import ChartTouchOverlay, {
   ChartLayoutReporter,
@@ -52,7 +58,7 @@ const StepsTooltip: React.FC<{ text: string }> = ({ text }) => (
  */
 export const buildTooltipText = (
   point: StepsDataPoint | undefined,
-  t: ReturnType<typeof useTranslation>['t'],
+  t: ReturnType<typeof useTranslation>['t']
 ): string => {
   if (!point) return DEFAULT_TOOLTIP;
   const formattedCount = formatLocalizedNumber(point.steps);
@@ -78,10 +84,10 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
   ]) as [string, string];
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
-    EMPTY_CHART_TOUCH_LAYOUT,
+    EMPTY_CHART_TOUCH_LAYOUT
   );
 
-  const hasData = useMemo(() => data.some(d => d.steps > 0), [data]);
+  const hasData = useMemo(() => data.some((d) => d.steps > 0), [data]);
 
   const formatXLabel = range === '7d' ? formatXLabel7d : formatXLabel30d90d;
 
@@ -101,7 +107,7 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
 
   const handleTouchLayoutChange = useCallback(
     (nextLayout: ChartTouchLayout) => {
-      setTouchLayout(currentLayout => {
+      setTouchLayout((currentLayout) => {
         const currentSignature = createChartTouchLayoutSignature(currentLayout);
         const nextSignature = createChartTouchLayoutSignature(nextLayout);
 
@@ -112,7 +118,7 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
         return nextLayout;
       });
     },
-    [],
+    []
   );
 
   const handleSelectBar = useCallback(
@@ -125,7 +131,7 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
 
       setSelectedIndex(index);
     },
-    [data],
+    [data]
   );
 
   const handleClearSelection = useCallback(() => {
@@ -142,18 +148,24 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
 
       {isLoading ? (
         <View className="h-50 justify-center items-center">
-          <Text className="text-text-muted text-sm">{t('common.loading', { defaultValue: 'Loading...' })}</Text>
+          <Text className="text-text-muted text-sm">
+            {t('common.loading', { defaultValue: 'Loading...' })}
+          </Text>
         </View>
       ) : isError ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            {t('charts.steps.loadFailed', { defaultValue: 'Failed to load step data' })}
+            {t('charts.steps.loadFailed', {
+              defaultValue: 'Failed to load step data',
+            })}
           </Text>
         </View>
       ) : !hasData ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            {t('charts.steps.empty', { defaultValue: 'No step data for this period' })}
+            {t('charts.steps.empty', {
+              defaultValue: 'No step data for this period',
+            })}
           </Text>
         </View>
       ) : (

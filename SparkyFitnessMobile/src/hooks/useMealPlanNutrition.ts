@@ -11,16 +11,22 @@ import { foodVariantsQueryKey } from './queryKeys';
 
 export function useMealPlanNutrition(
   assignments: MealPlanDraftAssignment[],
-  meals: Meal[],
+  meals: Meal[]
 ) {
   const foodIds = useMemo(
-    () => Array.from(new Set(
-      assignments
-        .filter((assignment) => assignment.item_type === 'food' && !assignment.nutrition)
-        .map((assignment) => assignment.food_id)
-        .filter((foodId): foodId is string => Boolean(foodId)),
-    )),
-    [assignments],
+    () =>
+      Array.from(
+        new Set(
+          assignments
+            .filter(
+              (assignment) =>
+                assignment.item_type === 'food' && !assignment.nutrition
+            )
+            .map((assignment) => assignment.food_id)
+            .filter((foodId): foodId is string => Boolean(foodId))
+        )
+      ),
+    [assignments]
   );
   const variantQueries = useQueries({
     queries: foodIds.map((foodId) => ({
@@ -30,36 +36,47 @@ export function useMealPlanNutrition(
     })),
   });
   const variantsByFoodId = useMemo(
-    () => new Map(foodIds.map((foodId, index) => [foodId, variantQueries[index]?.data ?? []])),
-    [foodIds, variantQueries],
+    () =>
+      new Map(
+        foodIds.map((foodId, index) => [
+          foodId,
+          variantQueries[index]?.data ?? [],
+        ])
+      ),
+    [foodIds, variantQueries]
   );
 
-  const resolveNutrition = useCallback((
-    assignment: MealPlanDraftAssignment,
-  ): MealPlanNutritionSnapshot | undefined => {
-    if (assignment.nutrition) return assignment.nutrition;
+  const resolveNutrition = useCallback(
+    (
+      assignment: MealPlanDraftAssignment
+    ): MealPlanNutritionSnapshot | undefined => {
+      if (assignment.nutrition) return assignment.nutrition;
 
-    if (assignment.item_type === 'meal') {
-      const meal = meals.find((candidate) => candidate.id === assignment.meal_id);
-      if (!meal) return undefined;
-      return mealToPerServingNutrition(meal);
-    }
+      if (assignment.item_type === 'meal') {
+        const meal = meals.find(
+          (candidate) => candidate.id === assignment.meal_id
+        );
+        if (!meal) return undefined;
+        return mealToPerServingNutrition(meal);
+      }
 
-    const variants = assignment.food_id
-      ? variantsByFoodId.get(assignment.food_id) ?? []
-      : [];
-    const variant = assignment.variant_id
-      ? variants.find((candidate) => candidate.id === assignment.variant_id)
-      : variants.find((candidate) => candidate.is_default) ?? variants[0];
-    if (!variant) return undefined;
-    return {
-      servingSize: variant.serving_size,
-      calories: variant.calories,
-      protein: variant.protein,
-      carbs: variant.carbs,
-      fat: variant.fat,
-    };
-  }, [meals, variantsByFoodId]);
+      const variants = assignment.food_id
+        ? (variantsByFoodId.get(assignment.food_id) ?? [])
+        : [];
+      const variant = assignment.variant_id
+        ? variants.find((candidate) => candidate.id === assignment.variant_id)
+        : (variants.find((candidate) => candidate.is_default) ?? variants[0]);
+      if (!variant) return undefined;
+      return {
+        servingSize: variant.serving_size,
+        calories: variant.calories,
+        protein: variant.protein,
+        carbs: variant.carbs,
+        fat: variant.fat,
+      };
+    },
+    [meals, variantsByFoodId]
+  );
 
   return {
     resolveNutrition,

@@ -22,7 +22,7 @@ export function useFoodPhotoIngredientDraft(items: FoodPhotoEstimateItem[]) {
   const [state, dispatch] = useReducer(
     ingredientDraftReducer,
     items,
-    initialiseIngredientDraft,
+    initialiseIngredientDraft
   );
 
   // `useReducer`'s initializer runs only on mount. The dialog mounts this hook
@@ -39,7 +39,7 @@ export function useFoodPhotoIngredientDraft(items: FoodPhotoEstimateItem[]) {
 
   const { totals, totalGrams, matchedCount, hasCompleteGrams } = useMemo(
     () => ingredientDraftTotals(state.rows),
-    [state.rows],
+    [state.rows]
   );
 
   const isEdited = useMemo(

@@ -89,7 +89,7 @@ describe('mealBuilderDraft', () => {
         },
       },
       280,
-      'g',
+      'g'
     );
 
     expect(draft).toEqual({
@@ -136,8 +136,8 @@ describe('mealBuilderDraft', () => {
             fat: 3,
           },
         },
-        40,
-      ),
+        40
+      )
     ).toThrow('Server did not return a variant ID for the saved food');
   });
 });

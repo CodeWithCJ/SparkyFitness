@@ -21,17 +21,24 @@ export type ActiveWorkoutSaveOutcome = 'clean' | 'saved' | 'failed';
  * workout-complete dismiss paths after a cold start).
  */
 export async function saveActiveWorkoutSession(
-  queryClient: QueryClient,
+  queryClient: QueryClient
 ): Promise<ActiveWorkoutSaveOutcome> {
   const state = useActiveWorkoutStore.getState();
-  if (!state.hasUnsavedChanges || state.sessionId == null || state.session == null) {
+  if (
+    !state.hasUnsavedChanges ||
+    state.sessionId == null ||
+    state.session == null
+  ) {
     return 'clean';
   }
   if (state.session.exercises.length === 0) {
     // The update schema rejects an empty exercises array. Nothing sensible to
     // autosave — the user emptied the session; leave the server copy as is
     // rather than destructively deleting it from a background save.
-    addLog('Active workout autosave skipped: session has no exercises', 'WARNING');
+    addLog(
+      'Active workout autosave skipped: session has no exercises',
+      'WARNING'
+    );
     return 'clean';
   }
 
@@ -54,21 +61,20 @@ export async function saveActiveWorkoutSession(
         state.session,
         state.completedSetIds,
         state.prSetIds,
-        state.startedAt,
+        state.startedAt
       ),
     });
-    useActiveWorkoutStore.getState().applyServerSession(result, sentRevision, sentEntryIds);
+    useActiveWorkoutStore
+      .getState()
+      .applyServerSession(result, sentRevision, sentEntryIds);
     syncExerciseSessionInCache(queryClient, result);
     return 'saved';
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
 
-    const statusCode =
-      error instanceof ApiError ? error.statusCode : undefined;
+    const statusCode = error instanceof ApiError ? error.statusCode : undefined;
 
-    const responseBody =
-      error instanceof ApiError ? error.body : undefined;
+    const responseBody = error instanceof ApiError ? error.body : undefined;
 
     addLog('Active workout autosave failed', 'ERROR', [
       `sessionId: ${sessionId}`,
@@ -87,9 +93,10 @@ export async function saveActiveWorkoutSession(
  * success — clearing the workout is a flush point.
  */
 export async function flushActiveWorkoutBeforeClear(
-  queryClient: QueryClient,
+  queryClient: QueryClient
 ): Promise<boolean> {
-  const entryDate = useActiveWorkoutStore.getState().session?.entry_date ?? null;
+  const entryDate =
+    useActiveWorkoutStore.getState().session?.entry_date ?? null;
   const outcome = await saveActiveWorkoutSession(queryClient);
   if (outcome === 'saved' && entryDate) {
     invalidateExerciseCache(queryClient, normalizeDate(entryDate));
@@ -190,8 +197,12 @@ export function useActiveWorkoutAutosave(): {
       failureToastShownRef.current = true;
       Toast.show({
         type: 'error',
-        text1: t('activeWorkoutAutosave.failedTitle', { defaultValue: 'Workout not saved' }),
-        text2: t('activeWorkoutAutosave.failedMessage', { defaultValue: 'Changes are kept on this device and will retry.' }),
+        text1: t('activeWorkoutAutosave.failedTitle', {
+          defaultValue: 'Workout not saved',
+        }),
+        text2: t('activeWorkoutAutosave.failedMessage', {
+          defaultValue: 'Changes are kept on this device and will retry.',
+        }),
       });
     }
     return ok;

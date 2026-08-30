@@ -95,10 +95,7 @@ const SleepNeedBreakdown: React.FC<SleepNeedBreakdownProps> = ({ data }) => {
               }}
               formatter={(
                 value:
-                  | string
-                  | number
-                  | ReadonlyArray<string | number>
-                  | undefined
+                  string | number | ReadonlyArray<string | number> | undefined
               ) => {
                 const val = Number(Array.isArray(value) ? value[0] : value);
                 return [formatSecondsToHHMM((val || 0) * 3600)];

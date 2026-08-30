@@ -65,7 +65,9 @@ const FoodThumbnail: React.FC<FoodThumbnailProps> = ({
         ? {
             onPress,
             accessibilityRole: 'imagebutton' as const,
-            accessibilityLabel: t('foodSearch.accessibility.viewPhoto', { defaultValue: 'View photo' }),
+            accessibilityLabel: t('foodSearch.accessibility.viewPhoto', {
+              defaultValue: 'View photo',
+            }),
             // Sibling pressable, never nested inside the row's own — nesting
             // leaves the inner one live while the parent is disabled. Matches
             // the exercise thumbnail pattern.

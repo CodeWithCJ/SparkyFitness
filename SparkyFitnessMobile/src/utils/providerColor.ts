@@ -30,7 +30,7 @@ const PROVIDER_PALETTE_VARS = [
 // while the active providers fit the palette; wraps past that.
 export function buildProviderColorMap(
   providers: ExternalProvider[],
-  palette: string[],
+  palette: string[]
 ): Map<string, string> {
   const byId = new Map<string, string>();
   if (palette.length > 0) {
@@ -42,7 +42,7 @@ export function buildProviderColorMap(
 }
 
 export function useProviderColor(
-  providers: ExternalProvider[],
+  providers: ExternalProvider[]
 ): (providerId?: string | null) => string {
   const palette = useCSSVariable(PROVIDER_PALETTE_VARS) as string[];
   const fallback = String(useCSSVariable('--color-text-muted'));

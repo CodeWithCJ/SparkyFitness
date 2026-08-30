@@ -10,7 +10,7 @@ import { preferencesQueryKey } from '../../../src/hooks/queryKeys';
  * issuing a network request.
  */
 export function queryProviderForPreferences(
-  preferences: Partial<UserPreferences> = {},
+  preferences: Partial<UserPreferences> = {}
 ) {
   const queryClient = new QueryClient({
     defaultOptions: {

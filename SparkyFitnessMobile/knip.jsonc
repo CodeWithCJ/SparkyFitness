@@ -7,11 +7,9 @@
     "src/localization/index.ts",
     "src/services/healthConnectService.ts",
     "plugins/**/*.ts",
-    "__tests__/**/*.{ts,tsx}"
+    "__tests__/**/*.{ts,tsx}",
   ],
-  "project": [
-    "src/**/*.{ts,tsx}"
-  ],
+  "project": ["src/**/*.{ts,tsx}"],
   "rules": {
     "files": "error",
     "exports": "error",
@@ -20,7 +18,7 @@
     "unlisted": "off",
     "binaries": "off",
     "unresolved": "off",
-    "duplicates": "off"
+    "duplicates": "off",
   },
-  "ignoreExportsUsedInFile": true
+  "ignoreExportsUsedInFile": true,
 }

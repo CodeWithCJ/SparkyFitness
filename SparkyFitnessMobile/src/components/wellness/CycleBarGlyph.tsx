@@ -26,7 +26,10 @@ const CycleBarGlyph: React.FC<CycleBarGlyphProps> = ({
   return (
     // Full-width rail behind the bar: without it, near-equal cycle lengths
     // (27 vs 29 days) are indistinguishable because nothing marks 100%.
-    <View testID="cycle-bar-rail" className="h-2.5 rounded-full bg-progress-rail">
+    <View
+      testID="cycle-bar-rail"
+      className="h-2.5 rounded-full bg-progress-rail"
+    >
       <View
         testID="cycle-bar-track"
         className="h-full rounded-full bg-progress-track overflow-hidden"
@@ -36,7 +39,10 @@ const CycleBarGlyph: React.FC<CycleBarGlyphProps> = ({
         <View
           testID="cycle-bar-period"
           className="h-full rounded-full"
-          style={{ width: `${(pLen / len) * 100}%`, backgroundColor: tokens.phaseMenstrual }}
+          style={{
+            width: `${(pLen / len) * 100}%`,
+            backgroundColor: tokens.phaseMenstrual,
+          }}
         />
       </View>
     </View>

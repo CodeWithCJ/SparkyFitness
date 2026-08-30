@@ -30,7 +30,10 @@ export interface MealPlanAssignment {
   unit: string | null;
 }
 
-export interface MealPlanDraftAssignment extends Omit<MealPlanAssignment, 'quantity' | 'unit'> {
+export interface MealPlanDraftAssignment extends Omit<
+  MealPlanAssignment,
+  'quantity' | 'unit'
+> {
   quantity: number;
   quantityText?: string;
   unit: string;

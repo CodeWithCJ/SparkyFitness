@@ -51,13 +51,18 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
   };
 
   return (
-    <View className="gap-2 mt-1.5" pointerEvents={disabled ? 'none' : 'auto'} style={disabled ? { opacity: 0.5 } : undefined}>
+    <View
+      className="gap-2 mt-1.5"
+      pointerEvents={disabled ? 'none' : 'auto'}
+      style={disabled ? { opacity: 0.5 } : undefined}
+    >
       <Text className="text-text-secondary text-sm font-medium">
         {t('foodForm.equivalentSizes', { defaultValue: 'Equivalent sizes' })}
       </Text>
       {items.map((item, index) => {
         const sizeText =
-          item._sizeText ?? (item.serving_size > 0 ? String(item.serving_size) : '');
+          item._sizeText ??
+          (item.serving_size > 0 ? String(item.serving_size) : '');
         return (
           <View
             key={item.id ?? item._clientKey ?? `idx-${index}`}
@@ -83,7 +88,9 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
                 value={item.serving_unit}
                 sections={makeServingUnitSections(t)}
                 onSelect={(value) => updateRow(index, { serving_unit: value })}
-                title={t('foodForm.selectUnit', { defaultValue: 'Select Unit' })}
+                title={t('foodForm.selectUnit', {
+                  defaultValue: 'Select Unit',
+                })}
                 placeholder={t('foodForm.unit', { defaultValue: 'unit' })}
                 renderTrigger={({ onPress, selectedOption }) => (
                   <TouchableOpacity
@@ -93,10 +100,13 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
                     style={{ height: 44 }}
                   >
                     <Text
-                      className={selectedOption ? 'text-text-primary' : 'text-text-muted'}
+                      className={
+                        selectedOption ? 'text-text-primary' : 'text-text-muted'
+                      }
                       style={{ fontSize: 16 }}
                     >
-                      {selectedOption?.label ?? t('foodForm.unit', { defaultValue: 'unit' })}
+                      {selectedOption?.label ??
+                        t('foodForm.unit', { defaultValue: 'unit' })}
                     </Text>
                     <Icon
                       name="chevron-down"
@@ -111,7 +121,9 @@ const EquivalentsSection: React.FC<EquivalentsSectionProps> = ({
             <TouchableOpacity
               onPress={() => removeRow(index)}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityLabel={t('foodForm.removeEquivalent', { defaultValue: 'Remove equivalent' })}
+              accessibilityLabel={t('foodForm.removeEquivalent', {
+                defaultValue: 'Remove equivalent',
+              })}
             >
               <Icon name="remove-circle" size={22} color={textMuted} />
             </TouchableOpacity>

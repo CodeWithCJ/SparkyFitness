@@ -43,17 +43,21 @@ jest.mock('../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
 }));
 
-const mockCreateWorkout = createWorkout as jest.MockedFunction<typeof createWorkout>;
+const mockCreateWorkout = createWorkout as jest.MockedFunction<
+  typeof createWorkout
+>;
 const mockInvalidate = invalidateExerciseCache as jest.MockedFunction<
   typeof invalidateExerciseCache
 >;
-const mockEnsurePermission = ensureNotificationPermission as jest.MockedFunction<
-  typeof ensureNotificationPermission
->;
+const mockEnsurePermission =
+  ensureNotificationPermission as jest.MockedFunction<
+    typeof ensureNotificationPermission
+  >;
 const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
-const mockFlushBeforeClear = flushActiveWorkoutBeforeClear as jest.MockedFunction<
-  typeof flushActiveWorkoutBeforeClear
->;
+const mockFlushBeforeClear =
+  flushActiveWorkoutBeforeClear as jest.MockedFunction<
+    typeof flushActiveWorkoutBeforeClear
+  >;
 const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<
   typeof getActiveServerConfig
 >;
@@ -145,7 +149,10 @@ describe('useStartLiveWorkout', () => {
     const { result, navigation, queryClient } = setup();
 
     await act(async () => {
-      await result.current.startLiveWorkout({ name: 'Push Day', exercises: EXERCISES });
+      await result.current.startLiveWorkout({
+        name: 'Push Day',
+        exercises: EXERCISES,
+      });
     });
 
     expect(mockCreateWorkout).toHaveBeenCalledWith({
@@ -194,7 +201,7 @@ describe('useStartLiveWorkout', () => {
             ],
           }),
         ],
-      }),
+      })
     );
     // The plan lands keyed to the created session's set ids for placeholders.
     expect(useActiveWorkoutStore.getState().plannedSetValues).toEqual({
@@ -224,7 +231,7 @@ describe('useStartLiveWorkout', () => {
     // Also tags the created session server-side (recentSessions stats
     // scoping), independent of the client-supplied exercises.
     expect(mockCreateWorkout).toHaveBeenCalledWith(
-      expect.objectContaining({ workout_preset_id: 42 }),
+      expect.objectContaining({ workout_preset_id: 42 })
     );
   });
 
@@ -239,7 +246,7 @@ describe('useStartLiveWorkout', () => {
     expect(useActiveWorkoutStore.getState().sourcePresetId).toBeNull();
     expect(useActiveWorkoutStore.getState().sourceServerConfigId).toBeNull();
     expect(mockCreateWorkout).toHaveBeenCalledWith(
-      expect.not.objectContaining({ workout_preset_id: expect.anything() }),
+      expect.not.objectContaining({ workout_preset_id: expect.anything() })
     );
   });
 
@@ -251,7 +258,7 @@ describe('useStartLiveWorkout', () => {
     });
 
     expect(mockCreateWorkout).toHaveBeenCalledWith(
-      expect.objectContaining({ name: defaultWorkoutName(getTodayDate()) }),
+      expect.objectContaining({ name: defaultWorkoutName(getTodayDate()) })
     );
   });
 
@@ -276,7 +283,10 @@ describe('useStartLiveWorkout', () => {
       await result.current.startLiveWorkout({ exercises: EXERCISES });
     });
 
-    expect(alertSpy).toHaveBeenCalledWith('No Server Connected', expect.any(String));
+    expect(alertSpy).toHaveBeenCalledWith(
+      'No Server Connected',
+      expect.any(String)
+    );
     expect(mockCreateWorkout).not.toHaveBeenCalled();
     expect(navigation.replace).not.toHaveBeenCalled();
   });
@@ -297,7 +307,7 @@ describe('useStartLiveWorkout', () => {
       expect.arrayContaining([
         expect.objectContaining({ text: 'Go to Workout' }),
         expect.objectContaining({ text: 'Clear & Start' }),
-      ]),
+      ])
     );
     // Without confirming the prompt, nothing is created.
     expect(mockCreateWorkout).not.toHaveBeenCalled();
@@ -310,9 +320,9 @@ describe('useStartLiveWorkout', () => {
     });
 
     alertSpy.mockImplementation((_title, _message, buttons) => {
-      const goTo = (buttons as { text: string; onPress?: () => void }[] | undefined)?.find(
-        (b) => b.text === 'Go to Workout',
-      );
+      const goTo = (
+        buttons as { text: string; onPress?: () => void }[] | undefined
+      )?.find((b) => b.text === 'Go to Workout');
       goTo?.onPress?.();
       return undefined as never;
     });
@@ -336,15 +346,18 @@ describe('useStartLiveWorkout', () => {
 
     // Simulate tapping the destructive "Clear & Start" button.
     alertSpy.mockImplementation((_title, _message, buttons) => {
-      const confirm = (buttons as { text: string; onPress?: () => void }[] | undefined)?.find(
-        (b) => b.text === 'Clear & Start',
-      );
+      const confirm = (
+        buttons as { text: string; onPress?: () => void }[] | undefined
+      )?.find((b) => b.text === 'Clear & Start');
       confirm?.onPress?.();
       return undefined as never;
     });
 
     await act(async () => {
-      await result.current.startLiveWorkout({ name: 'Push Day', exercises: EXERCISES });
+      await result.current.startLiveWorkout({
+        name: 'Push Day',
+        exercises: EXERCISES,
+      });
     });
 
     await waitFor(() => expect(mockCreateWorkout).toHaveBeenCalled());
@@ -360,7 +373,7 @@ describe('useStartLiveWorkout', () => {
     });
 
     expect(mockToastShow).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'error', text1: 'Nothing to start' }),
+      expect.objectContaining({ type: 'error', text1: 'Nothing to start' })
     );
     expect(mockCreateWorkout).not.toHaveBeenCalled();
   });

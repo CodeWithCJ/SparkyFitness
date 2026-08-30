@@ -10,7 +10,10 @@ import { useFoodImageSourceContext } from '../FoodImageSourceProvider';
 import { externalFoodImage } from '../../utils/foodImages';
 import { useOpenLightbox } from '../LightboxProvider';
 import { landingKey } from '../../utils/landingLists';
-import { formatServingDescription, formatServingUnit } from '../../utils/foodDetails';
+import {
+  formatServingDescription,
+  formatServingUnit,
+} from '../../utils/foodDetails';
 import { mealToFoodInfo } from '../../types/foodInfo';
 import type { FoodInfoItem } from '../../types/foodInfo';
 import type { ExternalFoodItem } from '../../types/externalFoods';
@@ -43,77 +46,84 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
   const image = externalFoodImage(item);
   // Sibling thumbnail, not nested in the row's pressable — see FoodResultRow.
   return (
-  <View className="flex-row items-center border-b border-border-subtle">
-    <View className="pl-4 py-2">
-      <FoodThumbnail
-        image={image}
-        getImageSource={getImageSource}
-        size={40}
-        onPress={image ? () => openLightbox([image], 0, item.name) : undefined}
-      />
-    </View>
-    <TouchableOpacity
-      className="flex-1 flex-row justify-between items-center pr-4 py-2"
-      activeOpacity={0.7}
-      disabled={loadingFoodId !== null}
-      onPress={() => {
-        void onSelect(item, providerId);
-      }}
-    >
-      <View className="flex-1 mx-3">
-        <View className="flex-row items-start gap-1">
-          <Text className="text-text-primary text-base font-medium flex-shrink">
-            {item.name}
-          </Text>
-          {item.provider_verified ? <VerifiedBadge size="sm" style={{ marginTop: 2 }} /> : null}
-        </View>
-        {badge || item.brand ? (
-          <View className="flex-row items-center gap-1.5 mt-0.5">
-            {badge ? (
-              <View className="px-1.5 py-0.5 rounded overflow-hidden">
-                <View
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: getProviderColor(providerId),
-                    opacity: 0.07,
-                  }}
-                />
-                <Text
-                  className="text-xs font-semibold"
-                  style={{ color: getProviderColor(providerId) }}
-                >
-                  {badge}
-                </Text>
-              </View>
-            ) : null}
-            {item.brand ? (
-              <Text className="text-text-secondary text-sm">{item.brand}</Text>
+    <View className="flex-row items-center border-b border-border-subtle">
+      <View className="pl-4 py-2">
+        <FoodThumbnail
+          image={image}
+          getImageSource={getImageSource}
+          size={40}
+          onPress={
+            image ? () => openLightbox([image], 0, item.name) : undefined
+          }
+        />
+      </View>
+      <TouchableOpacity
+        className="flex-1 flex-row justify-between items-center pr-4 py-2"
+        activeOpacity={0.7}
+        disabled={loadingFoodId !== null}
+        onPress={() => {
+          void onSelect(item, providerId);
+        }}
+      >
+        <View className="flex-1 mx-3">
+          <View className="flex-row items-start gap-1">
+            <Text className="text-text-primary text-base font-medium flex-shrink">
+              {item.name}
+            </Text>
+            {item.provider_verified ? (
+              <VerifiedBadge size="sm" style={{ marginTop: 2 }} />
             ) : null}
           </View>
-        ) : null}
-      </View>
-      <View className="items-end">
-        {loadingFoodId === item.id ? (
-          <ActivityIndicator size="small" color={accentColor} />
-        ) : (
-          <>
-            <Text className="text-text-primary text-base font-semibold">
-              {Math.round(item.calories)} {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
-            </Text>
-            <Text className="text-text-secondary text-xs">
-              {item.serving_description
-                ? formatServingDescription(item.serving_description)
-                : `${item.serving_size} ${formatServingUnit(item.serving_unit)}`}
-            </Text>
-          </>
-        )}
-      </View>
-    </TouchableOpacity>
-  </View>
+          {badge || item.brand ? (
+            <View className="flex-row items-center gap-1.5 mt-0.5">
+              {badge ? (
+                <View className="px-1.5 py-0.5 rounded overflow-hidden">
+                  <View
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: getProviderColor(providerId),
+                      opacity: 0.07,
+                    }}
+                  />
+                  <Text
+                    className="text-xs font-semibold"
+                    style={{ color: getProviderColor(providerId) }}
+                  >
+                    {badge}
+                  </Text>
+                </View>
+              ) : null}
+              {item.brand ? (
+                <Text className="text-text-secondary text-sm">
+                  {item.brand}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+        <View className="items-end">
+          {loadingFoodId === item.id ? (
+            <ActivityIndicator size="small" color={accentColor} />
+          ) : (
+            <>
+              <Text className="text-text-primary text-base font-semibold">
+                {Math.round(item.calories)}{' '}
+                {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
+              </Text>
+              <Text className="text-text-secondary text-xs">
+                {item.serving_description
+                  ? formatServingDescription(item.serving_description)
+                  : `${item.serving_size} ${formatServingUnit(item.serving_unit)}`}
+              </Text>
+            </>
+          )}
+        </View>
+      </TouchableOpacity>
+    </View>
   );
 };
 
@@ -134,15 +144,19 @@ const ShowAllProviderRow: React.FC<ShowAllProviderRowProps> = ({
 }) => {
   const { t } = useTranslation();
   return (
-  <TouchableOpacity
-    className="px-4 py-3 border-b border-border-subtle"
-    activeOpacity={0.7}
-    onPress={() => onSelectProvider(provider.id)}
-  >
-    <Text className="text-sm font-medium" style={{ color: accentColor }}>
-      {t('foodSearch.actions.showAllProviderResults', { defaultValue: 'Show all {{count}} {{provider}} results', count, provider: provider.provider_name })}
-    </Text>
-  </TouchableOpacity>
+    <TouchableOpacity
+      className="px-4 py-3 border-b border-border-subtle"
+      activeOpacity={0.7}
+      onPress={() => onSelectProvider(provider.id)}
+    >
+      <Text className="text-sm font-medium" style={{ color: accentColor }}>
+        {t('foodSearch.actions.showAllProviderResults', {
+          defaultValue: 'Show all {{count}} {{provider}} results',
+          count,
+          provider: provider.provider_name,
+        })}
+      </Text>
+    </TouchableOpacity>
   );
 };
 
@@ -161,19 +175,28 @@ const ShowAllLocalRow: React.FC<ShowAllLocalRowProps> = ({
 }) => {
   const { t } = useTranslation();
   return (
-  <TouchableOpacity
-    className="px-4 py-3 border-b border-border-subtle"
-    activeOpacity={0.7}
-    onPress={() => onShowAll(section)}
-  >
-    <Text className="text-sm font-medium" style={{ color: accentColor }}>
-      {t('foodSearch.actions.showAllLocalResults', { defaultValue: 'Show all {{count}} {{itemType}}', count, itemType: section === 'foods' ? t('foodSearch.labels.foods', { defaultValue: 'foods' }) : t('foodSearch.labels.meals', { defaultValue: 'meals' }) })}
-    </Text>
-  </TouchableOpacity>
+    <TouchableOpacity
+      className="px-4 py-3 border-b border-border-subtle"
+      activeOpacity={0.7}
+      onPress={() => onShowAll(section)}
+    >
+      <Text className="text-sm font-medium" style={{ color: accentColor }}>
+        {t('foodSearch.actions.showAllLocalResults', {
+          defaultValue: 'Show all {{count}} {{itemType}}',
+          count,
+          itemType:
+            section === 'foods'
+              ? t('foodSearch.labels.foods', { defaultValue: 'foods' })
+              : t('foodSearch.labels.meals', { defaultValue: 'meals' }),
+        })}
+      </Text>
+    </TouchableOpacity>
   );
 };
 
-const ProviderSkeletonRow: React.FC<{ textMuted: string }> = ({ textMuted }) => (
+const ProviderSkeletonRow: React.FC<{ textMuted: string }> = ({
+  textMuted,
+}) => (
   <View className="px-4 py-3 gap-2">
     {[0.8, 0.6, 0.7].map((w, i) => (
       <View
@@ -213,12 +236,20 @@ const LocalStatusRow: React.FC<LocalStatusRowProps> = ({
   };
   const isFiltered = ownershipFilter !== 'all';
   const baseMessage = isMealBuilderMode
-    ? t('foodSearch.states.noSavedFoods', { defaultValue: 'No saved foods found' })
-    : t('foodSearch.states.noSavedFoodsMeals', { defaultValue: 'No saved foods or meals found' });
+    ? t('foodSearch.states.noSavedFoods', {
+        defaultValue: 'No saved foods found',
+      })
+    : t('foodSearch.states.noSavedFoodsMeals', {
+        defaultValue: 'No saved foods or meals found',
+      });
   // A persisted non-default filter can empty the local sections; naming the
   // filter and offering the reset keeps that from reading as missing data.
   const message = isFiltered
-    ? t('foodSearch.states.noFilteredSaved', { defaultValue: '{{message}} in {{filter}}', message: baseMessage, filter: filterLabels[ownershipFilter] })
+    ? t('foodSearch.states.noFilteredSaved', {
+        defaultValue: '{{message}} in {{filter}}',
+        message: baseMessage,
+        filter: filterLabels[ownershipFilter],
+      })
     : baseMessage;
   return (
     <View className="px-4 py-6 items-center justify-center">
@@ -249,8 +280,12 @@ const LocalStatusRow: React.FC<LocalStatusRowProps> = ({
           accessibilityRole="progressbar"
           accessibilityLabel={
             isMealBuilderMode
-              ? t('foodSearch.accessibility.searchingFoods', { defaultValue: 'Searching saved foods' })
-              : t('foodSearch.accessibility.searchingFoodsMeals', { defaultValue: 'Searching saved foods and meals' })
+              ? t('foodSearch.accessibility.searchingFoods', {
+                  defaultValue: 'Searching saved foods',
+                })
+              : t('foodSearch.accessibility.searchingFoodsMeals', {
+                  defaultValue: 'Searching saved foods and meals',
+                })
           }
         >
           <ActivityIndicator size="small" color={accentColor} />
@@ -273,7 +308,10 @@ interface FoodSearchResultRowProps {
   onResetOwnershipFilter: () => void;
   getProviderColor: (providerId?: string | null) => string;
   onSelectFood: (item: FoodInfoItem) => void;
-  onSelectOnlineFood: (item: ExternalFoodItem, providerId?: string) => Promise<void>;
+  onSelectOnlineFood: (
+    item: ExternalFoodItem,
+    providerId?: string
+  ) => Promise<void>;
   onSelectProvider: (providerId: string) => void;
   onShowAllLocal: (section: 'foods' | 'meals') => void;
 }

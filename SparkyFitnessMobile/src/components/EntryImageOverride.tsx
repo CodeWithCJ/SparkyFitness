@@ -45,7 +45,9 @@ const EntryImageOverride: React.FC<EntryImageOverrideProps> = ({
 }) => {
   const { t } = useTranslation();
   const getImageSource = useFoodImageSourceContext();
-  const [items, setItems] = useState<PickerImage[]>(() => toSavedImages(images));
+  const [items, setItems] = useState<PickerImage[]>(() =>
+    toSavedImages(images)
+  );
 
   // Re-seed when the saved override changes underneath (after a save settles,
   // or when the screen is reused for a different entry). Synced during render
@@ -132,7 +134,9 @@ const EntryImageOverride: React.FC<EntryImageOverrideProps> = ({
             items={items}
             onItemsChange={handleChange}
             label=""
-            helpText={t('entryImage.addHelp', { defaultValue: 'Add a photo to set one for this entry.' })}
+            helpText={t('entryImage.addHelp', {
+              defaultValue: 'Add a photo to set one for this entry.',
+            })}
             disabled={isPending}
           />
         </View>
@@ -145,7 +149,13 @@ const EntryImageOverride: React.FC<EntryImageOverrideProps> = ({
       items={items}
       onItemsChange={handleChange}
       label={t('entryImage.photo', { defaultValue: 'Photo' })}
-      helpText={hasOverride ? t('entryImage.entryOnly', { defaultValue: 'This photo applies to this entry only.' }) : undefined}
+      helpText={
+        hasOverride
+          ? t('entryImage.entryOnly', {
+              defaultValue: 'This photo applies to this entry only.',
+            })
+          : undefined
+      }
       disabled={isPending}
     />
   );

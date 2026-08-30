@@ -2,7 +2,12 @@ import { buildProviderColorMap } from '../../src/utils/providerColor';
 import type { ExternalProvider } from '../../src/types/externalProviders';
 
 const provider = (id: string): ExternalProvider =>
-  ({ id, provider_name: id, provider_type: id, is_active: true }) as ExternalProvider;
+  ({
+    id,
+    provider_name: id,
+    provider_type: id,
+    is_active: true,
+  }) as ExternalProvider;
 
 const PALETTE = ['c0', 'c1', 'c2', 'c3'];
 
@@ -10,7 +15,7 @@ describe('buildProviderColorMap', () => {
   it('assigns colours by list position', () => {
     const map = buildProviderColorMap(
       [provider('a'), provider('b'), provider('c')],
-      PALETTE,
+      PALETTE
     );
     expect(map.get('a')).toBe('c0');
     expect(map.get('b')).toBe('c1');
@@ -26,8 +31,14 @@ describe('buildProviderColorMap', () => {
 
   it('wraps around once providers exceed the palette', () => {
     const map = buildProviderColorMap(
-      [provider('a'), provider('b'), provider('c'), provider('d'), provider('e')],
-      PALETTE,
+      [
+        provider('a'),
+        provider('b'),
+        provider('c'),
+        provider('d'),
+        provider('e'),
+      ],
+      PALETTE
     );
     // 5th provider wraps back to the first colour.
     expect(map.get('e')).toBe('c0');

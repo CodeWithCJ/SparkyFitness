@@ -1,6 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -12,7 +19,15 @@ import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import StatusView from '../components/StatusView';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useDeleteFood, useFavorites, useFoodVariants, useProfile, useServerConnection, usePreferences, useToggleFavorite } from '../hooks';
+import {
+  useDeleteFood,
+  useFavorites,
+  useFoodVariants,
+  useProfile,
+  useServerConnection,
+  usePreferences,
+  useToggleFavorite,
+} from '../hooks';
 import { foodsQueryKey } from '../hooks/queryKeys';
 import { updateFood } from '../services/api/foodsApi';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
@@ -28,12 +43,18 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 type FoodDetailScreenProps = RootStackScreenProps<'FoodDetail'>;
 
-const buildSelectedVariantId = (hasExternalVariants: boolean, variantId?: string) =>
-  hasExternalVariants ? (variantId ?? 'ext-0') : variantId;
+const buildSelectedVariantId = (
+  hasExternalVariants: boolean,
+  variantId?: string
+) => (hasExternalVariants ? (variantId ?? 'ext-0') : variantId);
 
-const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }) => {
+const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
+  navigation,
+  route,
+}) => {
   const { t } = useTranslation();
-  const { item, updatedItem, updatedSelectedVariantId, updatedBarcode } = route.params;
+  const { item, updatedItem, updatedSelectedVariantId, updatedBarcode } =
+    route.params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -48,38 +69,68 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
   const [food, setFood] = useState(item);
 
   const isLocalFood = food.source === 'local';
-  const hasExternalVariants = !!(food.externalVariants && food.externalVariants.length > 1);
-  const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(
-    buildSelectedVariantId(hasExternalVariants, item.variantId),
+  const hasExternalVariants = !!(
+    food.externalVariants && food.externalVariants.length > 1
   );
-  const { variants, isLoading: isVariantsLoading, isError: isVariantsError } = useFoodVariants(food.id, {
+  const [selectedVariantId, setSelectedVariantId] = useState<
+    string | undefined
+  >(buildSelectedVariantId(hasExternalVariants, item.variantId));
+  const {
+    variants,
+    isLoading: isVariantsLoading,
+    isError: isVariantsError,
+  } = useFoodVariants(food.id, {
     enabled: isLocalFood && isConnected,
   });
-  const canManageFood = !!(isLocalFood && isConnected && food.userId && profile?.id === food.userId);
+  const canManageFood = !!(
+    isLocalFood &&
+    isConnected &&
+    food.userId &&
+    profile?.id === food.userId
+  );
 
   const queryClient = useQueryClient();
   const isPublic = !!food.sharedWithPublic;
 
   const updateShareMutation = useMutation({
-    mutationFn: (next: boolean) => updateFood(food.id, { shared_with_public: next }),
+    mutationFn: (next: boolean) =>
+      updateFood(food.id, { shared_with_public: next }),
     onSuccess: (updated) => {
-      queryClient.invalidateQueries({ queryKey: foodsQueryKey, refetchType: 'all' });
-      queryClient.invalidateQueries({ queryKey: ['foodsLibrary'], refetchType: 'all' });
-      queryClient.invalidateQueries({ queryKey: ['foodSearch'], refetchType: 'all' });
+      queryClient.invalidateQueries({
+        queryKey: foodsQueryKey,
+        refetchType: 'all',
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['foodsLibrary'],
+        refetchType: 'all',
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['foodSearch'],
+        refetchType: 'all',
+      });
       setFood((prev) => ({
         ...prev,
         sharedWithPublic: updated.shared_with_public,
       }));
       Toast.show({
         type: 'success',
-        text1: updated.shared_with_public ? t('foodDetail.sharedPublicly', { defaultValue: 'Food shared publicly' }) : t('foodDetail.madePrivate', { defaultValue: 'Food made private' }),
+        text1: updated.shared_with_public
+          ? t('foodDetail.sharedPublicly', {
+              defaultValue: 'Food shared publicly',
+            })
+          : t('foodDetail.madePrivate', { defaultValue: 'Food made private' }),
       });
     },
     onError: (error) => {
       Toast.show({
         type: 'error',
-        text1: t('foodDetail.shareFailed', { defaultValue: 'Failed to update sharing' }),
-        text2: error instanceof Error ? error.message : t('common.tryAgain', { defaultValue: 'Please try again.' }),
+        text1: t('foodDetail.shareFailed', {
+          defaultValue: 'Failed to update sharing',
+        }),
+        text2:
+          error instanceof Error
+            ? error.message
+            : t('common.tryAgain', { defaultValue: 'Please try again.' }),
       });
     },
   });
@@ -90,9 +141,15 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
     } else {
       Alert.alert(
         t('foodDetail.makePublicTitle', { defaultValue: 'Make public?' }),
-        t('foodDetail.makePublicMessage', { defaultValue: 'This food will become visible to all users on this server.' }),
+        t('foodDetail.makePublicMessage', {
+          defaultValue:
+            'This food will become visible to all users on this server.',
+        }),
         [
-          { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
+          {
+            text: t('common.cancel', { defaultValue: 'Cancel' }),
+            style: 'cancel',
+          },
           {
             text: t('foodDetail.makePublic', { defaultValue: 'Make Public' }),
             onPress: () => updateShareMutation.mutate(true),
@@ -110,7 +167,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
   const { favoriteFoods } = useFavorites({ enabled: canFavorite });
   const isFavorite = useMemo(
     () => favoriteFoods.some((f) => f.id === food.id),
-    [favoriteFoods, food.id],
+    [favoriteFoods, food.id]
   );
   const { toggleFavorite, isPending: isFavoritePending } = useToggleFavorite();
   const handleToggleFavorite = useCallback(() => {
@@ -122,29 +179,34 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
 
   const localVariantOptions = useMemo(
     () => buildLocalVariantOptions(variants),
-    [variants],
+    [variants]
   );
   const externalVariantOptions = useMemo(
     () => buildExternalVariantOptions(food.externalVariants),
-    [food.externalVariants],
+    [food.externalVariants]
   );
-  const variantOptions = localVariantOptions.length > 0
-    ? localVariantOptions
-    : externalVariantOptions;
+  const variantOptions =
+    localVariantOptions.length > 0
+      ? localVariantOptions
+      : externalVariantOptions;
   const displayValues = useMemo(
-    () => resolveFoodDisplayValues({
-      item: food,
-      selectedVariantId,
-      localVariantOptions,
-      externalVariantOptions,
-    }),
-    [food, selectedVariantId, localVariantOptions, externalVariantOptions],
+    () =>
+      resolveFoodDisplayValues({
+        item: food,
+        selectedVariantId,
+        localVariantOptions,
+        externalVariantOptions,
+      }),
+    [food, selectedVariantId, localVariantOptions, externalVariantOptions]
   );
 
-  const selectedVariantLabel = variantOptions.find((option) => option.id === selectedVariantId)?.label
-    ?? formatVariantLabel(displayValues);
+  const selectedVariantLabel =
+    variantOptions.find((option) => option.id === selectedVariantId)?.label ??
+    formatVariantLabel(displayValues);
   const selectedCustomNutrients = useMemo(() => {
-    const selectedVariant = variants?.find((variant) => variant.id === selectedVariantId);
+    const selectedVariant = variants?.find(
+      (variant) => variant.id === selectedVariantId
+    );
     if (selectedVariant) {
       return selectedVariant.custom_nutrients ?? null;
     }
@@ -184,7 +246,11 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
     }
   }, [selectedVariantId, localVariantOptions]);
 
-  const { confirmAndDelete, isPending: isDeletePending, invalidateCaches } = useDeleteFood({
+  const {
+    confirmAndDelete,
+    isPending: isDeletePending,
+    invalidateCaches,
+  } = useDeleteFood({
     foodId: food.id,
     onSuccess: () => {
       invalidateCaches();
@@ -199,7 +265,11 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
 
     navigation.navigate('FoodForm', {
       mode: 'edit-food',
-      item: applyDisplayValuesToFoodInfo(food, displayValues, selectedVariantId),
+      item: applyDisplayValuesToFoodInfo(
+        food,
+        displayValues,
+        selectedVariantId
+      ),
       returnKey: route.key,
       foodId: food.id,
       variantId: selectedVariantId,
@@ -214,16 +284,31 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
         carbs: String(displayValues.carbs),
         fat: String(displayValues.fat),
         fiber: displayValues.fiber != null ? String(displayValues.fiber) : '',
-        saturatedFat: displayValues.saturatedFat != null ? String(displayValues.saturatedFat) : '',
-        sodium: displayValues.sodium != null ? String(displayValues.sodium) : '',
-        sugars: displayValues.sugars != null ? String(displayValues.sugars) : '',
-        transFat: displayValues.transFat != null ? String(displayValues.transFat) : '',
-        potassium: displayValues.potassium != null ? String(displayValues.potassium) : '',
-        calcium: displayValues.calcium != null ? String(displayValues.calcium) : '',
+        saturatedFat:
+          displayValues.saturatedFat != null
+            ? String(displayValues.saturatedFat)
+            : '',
+        sodium:
+          displayValues.sodium != null ? String(displayValues.sodium) : '',
+        sugars:
+          displayValues.sugars != null ? String(displayValues.sugars) : '',
+        transFat:
+          displayValues.transFat != null ? String(displayValues.transFat) : '',
+        potassium:
+          displayValues.potassium != null
+            ? String(displayValues.potassium)
+            : '',
+        calcium:
+          displayValues.calcium != null ? String(displayValues.calcium) : '',
         iron: displayValues.iron != null ? String(displayValues.iron) : '',
-        cholesterol: displayValues.cholesterol != null ? String(displayValues.cholesterol) : '',
-        vitaminA: displayValues.vitaminA != null ? String(displayValues.vitaminA) : '',
-        vitaminC: displayValues.vitaminC != null ? String(displayValues.vitaminC) : '',
+        cholesterol:
+          displayValues.cholesterol != null
+            ? String(displayValues.cholesterol)
+            : '',
+        vitaminA:
+          displayValues.vitaminA != null ? String(displayValues.vitaminA) : '',
+        vitaminC:
+          displayValues.vitaminC != null ? String(displayValues.vitaminC) : '',
       },
     });
   };
@@ -244,8 +329,12 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
             disabled: isFavoritePending,
             onPress: handleToggleFavorite,
             accessibilityLabel: isFavorite
-              ? t('common.removeFromFavorites', { defaultValue: 'Remove from favorites' })
-              : t('common.addToFavorites', { defaultValue: 'Add to favorites' }),
+              ? t('common.removeFromFavorites', {
+                  defaultValue: 'Remove from favorites',
+                })
+              : t('common.addToFavorites', {
+                  defaultValue: 'Add to favorites',
+                }),
             identifier: 'food-detail-favorite',
           } as const,
         ]
@@ -260,7 +349,11 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
             useIoniconOnIOS: !isPublic,
             disabled: updateShareMutation.isPending,
             onPress: handleToggleShare,
-            accessibilityLabel: isPublic ? t('foodDetail.makePrivate', { defaultValue: 'Make private' }) : t('foodDetail.sharePublic', { defaultValue: 'Share with public' }),
+            accessibilityLabel: isPublic
+              ? t('foodDetail.makePrivate', { defaultValue: 'Make private' })
+              : t('foodDetail.sharePublic', {
+                  defaultValue: 'Share with public',
+                }),
             identifier: 'food-detail-share',
           } as const,
           {
@@ -269,7 +362,9 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
             role: 'secondary',
             disabled: !selectedVariantId,
             onPress: handleEdit,
-            accessibilityLabel: t('foodDetail.editFood', { defaultValue: 'Edit food' }),
+            accessibilityLabel: t('foodDetail.editFood', {
+              defaultValue: 'Edit food',
+            }),
             identifier: 'food-detail-edit',
           } as const,
         ]
@@ -288,9 +383,18 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
           icon="cloud-offline"
           iconTone="muted"
           iconSize={64}
-          title={t('foodDetail.noServer', { defaultValue: 'No server configured' })}
-          subtitle={t('foodDetail.configureServer', { defaultValue: 'Configure your server connection in Settings to view food details.' })}
-          action={{ label: t('common.goToSettings', { defaultValue: 'Go to Settings' }), onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
+          title={t('foodDetail.noServer', {
+            defaultValue: 'No server configured',
+          })}
+          subtitle={t('foodDetail.configureServer', {
+            defaultValue:
+              'Configure your server connection in Settings to view food details.',
+          })}
+          action={{
+            label: t('common.goToSettings', { defaultValue: 'Go to Settings' }),
+            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
+            variant: 'primary',
+          }}
         />
       );
     }
@@ -315,20 +419,29 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
         />
 
         <View className="bg-surface rounded-xl p-4">
-          <Text className="text-text-secondary text-sm mb-2">{t('foodDetail.serving', { defaultValue: 'Serving' })}</Text>
+          <Text className="text-text-secondary text-sm mb-2">
+            {t('foodDetail.serving', { defaultValue: 'Serving' })}
+          </Text>
           {variantOptions.length > 1 ? (
             <BottomSheetPicker
               value={selectedVariantId ?? variantOptions[0].id}
-              options={variantOptions.map((option) => ({ label: option.label, value: option.id }))}
+              options={variantOptions.map((option) => ({
+                label: option.label,
+                value: option.id,
+              }))}
               onSelect={setSelectedVariantId}
-              title={t('foodDetail.selectServing', { defaultValue: 'Select Serving' })}
+              title={t('foodDetail.selectServing', {
+                defaultValue: 'Select Serving',
+              })}
               renderTrigger={({ onPress }) => (
                 <TouchableOpacity
                   onPress={onPress}
                   activeOpacity={0.7}
                   className="flex-row items-center justify-between"
                   accessibilityRole="button"
-                  accessibilityLabel={t('foodDetail.servingOptions', { defaultValue: 'Serving options' })}
+                  accessibilityLabel={t('foodDetail.servingOptions', {
+                    defaultValue: 'Serving options',
+                  })}
                 >
                   <Text className="text-text-primary text-base font-medium flex-1 mr-3">
                     {selectedVariantLabel}
@@ -347,14 +460,19 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
             <View className="flex-row items-center mt-3">
               <ActivityIndicator size="small" color={accentColor} />
               <Text className="text-text-secondary text-sm ml-2">
-                {t('foodDetail.loadingServingOptions', { defaultValue: 'Loading serving options...' })}
+                {t('foodDetail.loadingServingOptions', {
+                  defaultValue: 'Loading serving options...',
+                })}
               </Text>
             </View>
           ) : null}
 
           {isVariantsError ? (
             <Text className="text-text-secondary text-sm mt-3">
-              {t('foodDetail.servingOptionsError', { defaultValue: 'Some serving options could not be loaded right now.' })}
+              {t('foodDetail.servingOptionsError', {
+                defaultValue:
+                  'Some serving options could not be loaded right now.',
+              })}
             </Text>
           ) : null}
         </View>
@@ -368,7 +486,9 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
                 food.barcode ? (
                   food.barcode
                 ) : (
-                  <Text className="text-sm text-text-secondary mt-0.5">{t('common.notSet', { defaultValue: 'Not set' })}</Text>
+                  <Text className="text-sm text-text-secondary mt-0.5">
+                    {t('common.notSet', { defaultValue: 'Not set' })}
+                  </Text>
                 )
               }
               onPress={() =>
@@ -385,11 +505,19 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
 
         <Button
           variant="primary"
-          onPress={() => navigation.navigate('FoodEntryAdd', {
-            item: applyDisplayValuesToFoodInfo(food, displayValues, selectedVariantId),
-          })}
+          onPress={() =>
+            navigation.navigate('FoodEntryAdd', {
+              item: applyDisplayValuesToFoodInfo(
+                food,
+                displayValues,
+                selectedVariantId
+              ),
+            })
+          }
         >
-          <Text className="text-white text-base font-semibold">{t('foodDetail.logFood', { defaultValue: 'Log Food' })}</Text>
+          <Text className="text-white text-base font-semibold">
+            {t('foodDetail.logFood', { defaultValue: 'Log Food' })}
+          </Text>
         </Button>
 
         {canManageFood && (
@@ -398,7 +526,9 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
             onPress={confirmAndDelete}
             disabled={isDeletePending}
           >
-            {isDeletePending ? t('common.deleting', { defaultValue: 'Deleting...' }) : t('foodDetail.deleteFood', { defaultValue: 'Delete Food' })}
+            {isDeletePending
+              ? t('common.deleting', { defaultValue: 'Deleting...' })
+              : t('foodDetail.deleteFood', { defaultValue: 'Delete Food' })}
           </Button>
         )}
       </ScrollView>
@@ -406,7 +536,10 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({ navigation, route }
   };
 
   return (
-    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       {renderContent()}
     </View>

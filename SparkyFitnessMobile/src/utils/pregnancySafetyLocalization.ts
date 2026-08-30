@@ -1,7 +1,6 @@
 import type { TFunction } from 'i18next';
 import type { SafetyItem } from '@workspace/shared';
 
-
 /**
  * Localized Polish search aliases per controlled safety item. Kept here (not in
  * the translation JSON) so EN and PL catalogs stay structurally mirror-symmetric.
@@ -15,10 +14,22 @@ const PL_ALIASES: Record<string, string[]> = {
   swordfish: ['miecznik', 'rekin', 'makrela królewska', 'marlin'],
   sushi_raw: ['sushi', 'sashimi', 'surowa ryba', 'sushi raw'],
   shrimp_cooked: ['krewetki'],
-  soft_cheese_unpasteurized: ['ser miękki', 'brie', 'feta', 'camembert', 'ser pleśniowy'],
+  soft_cheese_unpasteurized: [
+    'ser miękki',
+    'brie',
+    'feta',
+    'camembert',
+    'ser pleśniowy',
+  ],
   hard_cheese: ['ser twardy', 'cheddar', 'parmezan'],
   pasteurized_milk: ['mleko pasteryzowane'],
-  deli_meat_cold: ['wędliny', 'wędlina', 'szynka', 'wędliny na zimno', 'mięso na zimno'],
+  deli_meat_cold: [
+    'wędliny',
+    'wędlina',
+    'szynka',
+    'wędliny na zimno',
+    'mięso na zimno',
+  ],
   undercooked_meat: ['surowa wołowina', 'niedogotowane mięso'],
   cooked_chicken: ['kurczak', 'drób'],
   runny_raw_eggs: ['jajka', 'jajko', 'surowe jajka'],
@@ -26,14 +37,23 @@ const PL_ALIASES: Record<string, string[]> = {
   alcohol: ['alkohol', 'wino', 'piwo', 'mocny alkohol'],
   herbal_tea: ['herbata ziołowa', 'herbatka'],
   cooked_leafy_greens: ['szpinak', 'jarmuż', 'zielone warzywa'],
-  unwashed_produce: ['kiełki', 'niemyte owoce', 'niemyte warzywa', 'surowe kiełki'],
+  unwashed_produce: [
+    'kiełki',
+    'niemyte owoce',
+    'niemyte warzywa',
+    'surowe kiełki',
+  ],
   liver_pate: ['wątróbka', 'pasztet'],
   peanuts: ['orzeszki', 'arachidowe'],
   honey: ['miód'],
   acetaminophen: ['paracetamol', 'tylenol', 'acetaminofen'],
   ibuprofen: ['ibuprofen', 'advil', 'motrin'],
   aspirin: ['aspiryna', 'kwas acetylosalicylowy'],
-  prenatal_vitamin: ['witamina prenatalna', 'kwas foliowy', 'witamina dla ciężarnych'],
+  prenatal_vitamin: [
+    'witamina prenatalna',
+    'kwas foliowy',
+    'witamina dla ciężarnych',
+  ],
   antacids_tums: ['tums', 'węglan wapnia', 'lek zobojętniający'],
   diphenhydramine: ['benadryl', 'difenhydramina'],
   ibuprofen_gel: ['ibuprofen żel', 'żel przeciwzapalny'],
@@ -48,14 +68,22 @@ function safetyKey(item: SafetyItem, list: 'food' | 'med'): string {
 }
 
 /** Localized presentation name for a controlled safety item. */
-export function localizeSafetyName(item: SafetyItem, list: 'food' | 'med', t: TFunction): string {
+export function localizeSafetyName(
+  item: SafetyItem,
+  list: 'food' | 'med',
+  t: TFunction
+): string {
   const translate = t;
   const key = safetyKey(item, list);
   return translate(`${key}.name`, { defaultValue: item.name });
 }
 
 /** Localized explanatory note for a controlled safety item. */
-export function localizeSafetyNote(item: SafetyItem, list: 'food' | 'med', t: TFunction): string {
+export function localizeSafetyNote(
+  item: SafetyItem,
+  list: 'food' | 'med',
+  t: TFunction
+): string {
   const translate = t;
   const key = safetyKey(item, list);
   return translate(`${key}.note`, { defaultValue: item.note });
@@ -76,9 +104,37 @@ export function localizeSafetyNote(item: SafetyItem, list: 'food' | 'med', t: TF
 function stemPolish(word: string): string {
   let w = word.toLowerCase().trim();
   if (w.length <= 3) return w;
-  const suffixes = ['iami', 'owej', 'owych', 'owie', 'ami', 'ach', 'emu', 'ego',
-    'ymi', 'iem', 'yck', 'ego', 'ości', 'cie', 'ną', 'em', 'ów', 'om', 'mi',
-    'ie', 'ej', 'ą', 'ę', 'a', 'u', 'y', 'i', 'o', 'e'];
+  const suffixes = [
+    'iami',
+    'owej',
+    'owych',
+    'owie',
+    'ami',
+    'ach',
+    'emu',
+    'ego',
+    'ymi',
+    'iem',
+    'yck',
+    'ego',
+    'ości',
+    'cie',
+    'ną',
+    'em',
+    'ów',
+    'om',
+    'mi',
+    'ie',
+    'ej',
+    'ą',
+    'ę',
+    'a',
+    'u',
+    'y',
+    'i',
+    'o',
+    'e',
+  ];
   for (const suf of suffixes) {
     if (w.endsWith(suf) && w.length - suf.length >= 3) {
       return w.slice(0, w.length - suf.length);
@@ -130,7 +186,7 @@ export function lookupSafetyLocalized(
   query: string,
   list: readonly SafetyItem[],
   group: 'food' | 'med',
-  t: TFunction,
+  t: TFunction
 ): SafetyItem[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];

@@ -6,7 +6,10 @@ import type { FastingLog, FastingStats } from '../types/fasting';
 const MS_PER_HOUR = 1000 * 60 * 60;
 /** Formats an ISO timestamp's local time of day, e.g. "6:32 PM". */
 export function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(getAppLocale(), { hour: 'numeric', minute: '2-digit' });
+  return new Date(iso).toLocaleTimeString(getAppLocale(), {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 /** Formats a Date as a short weekday + date + time label, e.g. "Mon, Jun 3, 6:32 PM". */
 export function formatDateTime(date: Date): string {
@@ -33,8 +36,16 @@ export function formatHoursMinutes(ms: number, t: TFunction): string {
   const totalMinutes = Math.max(0, Math.floor(ms / 60000));
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  if (hours <= 0) return translate('fastingCard.duration.minutes', { defaultValue: '{{minutes}}m', minutes });
-  return translate('fastingCard.duration.hours', { defaultValue: '{{hours}}h {{minutes}}m', hours, minutes });
+  if (hours <= 0)
+    return translate('fastingCard.duration.minutes', {
+      defaultValue: '{{minutes}}m',
+      minutes,
+    });
+  return translate('fastingCard.duration.hours', {
+    defaultValue: '{{hours}}h {{minutes}}m',
+    hours,
+    minutes,
+  });
 }
 /**
  * Derived timer values for a fast. Goal hours and progress derive solely from
@@ -60,7 +71,7 @@ export function computeFastTimerValues(
   startTime: string,
   targetEndTime: string | null | undefined,
   now: number,
-  t: TFunction,
+  t: TFunction
 ): FastTimerValues {
   const startMs = new Date(startTime).getTime();
   const safeStart = Number.isNaN(startMs) ? now : startMs;
@@ -112,12 +123,19 @@ export function relativeDayLabel(dateString: string, t: TFunction): string {
  * history row. Returns null when there is no usable completed fast (e.g. a row
  * with `duration_minutes = null`), so the caller can omit the line entirely.
  */
-export function formatLastFast(log: FastingLog | null | undefined, t: TFunction): string | null {
+export function formatLastFast(
+  log: FastingLog | null | undefined,
+  t: TFunction
+): string | null {
   if (!log || log.duration_minutes == null) return null;
   const translate = t;
   const duration = formatHoursMinutes(log.duration_minutes * 60000, translate);
   const refDate = log.end_time ?? log.start_time;
-  if (!refDate) return translate('fastingCard.lastFast', { defaultValue: 'Last fast {{duration}}', duration });
+  if (!refDate)
+    return translate('fastingCard.lastFast', {
+      defaultValue: 'Last fast {{duration}}',
+      duration,
+    });
   return translate('fastingCard.lastFastWithDate', {
     defaultValue: 'Last fast {{duration}} · {{date}}',
     duration,
@@ -134,7 +152,9 @@ export interface FastingStatsDisplay {
   totalValue: string;
   totalUnit: string;
 }
-function toFiniteNumber(value: string | number | null | undefined): number | null {
+function toFiniteNumber(
+  value: string | number | null | undefined
+): number | null {
   if (value == null) return null;
   const n = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(n) ? n : null;
@@ -146,7 +166,7 @@ function toFiniteNumber(value: string | number | null | undefined): number | nul
  */
 export function formatFastingStats(
   stats: FastingStats | null | undefined,
-  t: TFunction,
+  t: TFunction
 ): FastingStatsDisplay {
   const translate = t;
   const hoursUnit = translate('time.hoursShort', { defaultValue: 'h' });
@@ -154,10 +174,17 @@ export function formatFastingStats(
   const totalMin = toFiniteNumber(stats?.total_minutes_fasted);
   const count = toFiniteNumber(stats?.total_completed_fasts);
   return {
-    avgFastValue: avgMin != null ? formatLocalizedNumber(avgMin / 60, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '-',
+    avgFastValue:
+      avgMin != null
+        ? formatLocalizedNumber(avgMin / 60, {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1,
+          })
+        : '-',
     avgFastUnit: avgMin != null ? hoursUnit : '',
     fastsCount: count != null ? formatLocalizedNumber(Math.round(count)) : '0',
-    totalValue: totalMin != null ? formatLocalizedNumber(Math.round(totalMin / 60)) : '-',
+    totalValue:
+      totalMin != null ? formatLocalizedNumber(Math.round(totalMin / 60)) : '-',
     totalUnit: totalMin != null ? hoursUnit : '',
   };
 }

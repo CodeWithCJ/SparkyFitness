@@ -66,27 +66,27 @@ export function buildAndroidWidgetSnapshots(summary: DailySummary): {
 
 function serializeWidgetPayload<T extends object>(
   snapshot: T,
-  lastUpdated: number,
+  lastUpdated: number
 ): string {
   return JSON.stringify({ ...snapshot, lastUpdated });
 }
 
 export async function pushAndroidCalorieSnapshot(
   snapshot: AndroidCalorieSnapshot,
-  lastUpdated = Math.floor(Date.now() / 1000),
+  lastUpdated = Math.floor(Date.now() / 1000)
 ): Promise<void> {
   await CalorieWidgetBridge.setCalorieSnapshot(
-    serializeWidgetPayload(snapshot, lastUpdated),
+    serializeWidgetPayload(snapshot, lastUpdated)
   );
   await CalorieWidgetBridge.reloadWidget();
 }
 
 export async function pushAndroidMacroSnapshot(
   snapshot: AndroidMacroSnapshot,
-  lastUpdated = Math.floor(Date.now() / 1000),
+  lastUpdated = Math.floor(Date.now() / 1000)
 ): Promise<void> {
   await CalorieWidgetBridge.setMacroSnapshot(
-    serializeWidgetPayload(snapshot, lastUpdated),
+    serializeWidgetPayload(snapshot, lastUpdated)
   );
   await CalorieWidgetBridge.reloadMacroWidget();
 }
@@ -110,7 +110,7 @@ export async function refreshAndroidWidgetsFromServer(): Promise<void> {
 
   const results = await Promise.allSettled(updates);
   const firstFailure = results.find(
-    (result): result is PromiseRejectedResult => result.status === 'rejected',
+    (result): result is PromiseRejectedResult => result.status === 'rejected'
   );
   if (firstFailure) {
     throw firstFailure.reason;

@@ -176,10 +176,7 @@ const SleepRespirationCard = ({ data }: SleepRespirationCardProps) => {
                 }}
                 formatter={(
                   value:
-                    | string
-                    | number
-                    | ReadonlyArray<string | number>
-                    | undefined
+                    string | number | ReadonlyArray<string | number> | undefined
                 ) => [
                   `${Number((Array.isArray(value) ? value[0] : value) ?? 0)} brpm`,
                 ]}

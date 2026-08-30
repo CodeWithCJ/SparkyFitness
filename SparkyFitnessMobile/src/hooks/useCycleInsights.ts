@@ -1,8 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
-import { getOverview, getInsights, getCorrelations, getFertility } from '../services/api/cycleApi';
-import { cycleOverviewQueryKey, cycleInsightsQueryKey, cycleCorrelationsQueryKey, cycleFertilityQueryKey } from './queryKeys';
+import {
+  getOverview,
+  getInsights,
+  getCorrelations,
+  getFertility,
+} from '../services/api/cycleApi';
+import {
+  cycleOverviewQueryKey,
+  cycleInsightsQueryKey,
+  cycleCorrelationsQueryKey,
+  cycleFertilityQueryKey,
+} from './queryKeys';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
-import type { CycleOverview, CycleInsightsOverview, CycleCorrelations, FertilityDetails } from '../types/womensHealth';
+import type {
+  CycleOverview,
+  CycleInsightsOverview,
+  CycleCorrelations,
+  FertilityDetails,
+} from '../types/womensHealth';
 
 export function useCycleOverview(date?: string) {
   const query = useQuery<CycleOverview>({

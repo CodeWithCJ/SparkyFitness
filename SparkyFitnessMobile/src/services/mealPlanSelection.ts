@@ -13,7 +13,7 @@ interface PendingMealPlanSelection {
 let pendingSelection: PendingMealPlanSelection | null = null;
 
 export function setPendingMealPlanSelection(
-  selection: PendingMealPlanSelection,
+  selection: PendingMealPlanSelection
 ) {
   pendingSelection = selection;
 }
@@ -27,7 +27,7 @@ export function consumePendingMealPlanSelection() {
 export function buildMealPlanFoodAssignment(
   ingredient: MealIngredientDraft,
   target: MealPlanPickerTarget,
-  quantityText = String(ingredient.quantity),
+  quantityText = String(ingredient.quantity)
 ): MealPlanDraftAssignment {
   return {
     item_type: 'food',
@@ -54,7 +54,7 @@ export function buildMealPlanMealAssignment(
   item: FoodInfoItem,
   target: MealPlanPickerTarget,
   quantity: number,
-  quantityText: string,
+  quantityText: string
 ): MealPlanDraftAssignment {
   return {
     item_type: 'meal',

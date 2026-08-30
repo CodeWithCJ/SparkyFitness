@@ -1085,8 +1085,7 @@ const ASK_USER_PART_TYPE = `tool-${ASK_USER_TOOL_NAME}`;
 // the call into text keeps the transcript valid AND keeps the context intact.
 function askUserPartToText(part: ChatMessagePart): string | null {
   const input = part.input as
-    | { question?: unknown; options?: unknown }
-    | undefined;
+    { question?: unknown; options?: unknown } | undefined;
   const question = typeof input?.question === 'string' ? input.question : '';
   const options = Array.isArray(input?.options)
     ? input.options.filter((o): o is string => typeof o === 'string')
@@ -1782,8 +1781,7 @@ const FOOD_OPTIONS_TEMPERATURE = 0.7;
 // dispatch failure passes its category through unchanged for the route's
 // HTTP-status map.
 export type FoodOptionsErrorCategory =
-  | DispatchErrorCategory
-  | 'no_ai_configured';
+  DispatchErrorCategory | 'no_ai_configured';
 
 export type FoodOptionsResult =
   | { success: true; content: string }
@@ -1868,8 +1866,7 @@ const NO_PRESET_SERVICE_TYPES = new Set([
 ]);
 
 export type TestConnectionResult =
-  | { ok: true }
-  | { ok: false; category: DispatchErrorCategory; detail: string };
+  { ok: true } | { ok: false; category: DispatchErrorCategory; detail: string };
 
 function statusError(message: string, statusCode: number): Error {
   const err = new Error(message) as Error & { statusCode?: number };

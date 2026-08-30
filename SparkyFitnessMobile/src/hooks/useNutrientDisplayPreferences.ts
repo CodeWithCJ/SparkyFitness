@@ -36,7 +36,7 @@ export function useNutrientDisplayPreferences({
   const preferences = query.data ?? [];
 
   const summaryPref = preferences.find(
-    (p) => p.view_group === 'summary' && p.platform === 'mobile',
+    (p) => p.view_group === 'summary' && p.platform === 'mobile'
   );
 
   // Exclude 'calories' from the macro grid — it's already shown in CalorieRingCard.

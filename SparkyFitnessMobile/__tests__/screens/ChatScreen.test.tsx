@@ -20,7 +20,10 @@ jest.mock('expo/fetch', () => ({ fetch: jest.fn() }));
 jest.mock('@assistant-ui/react-ai-sdk', () => ({
   __esModule: true,
   AssistantChatTransport: class AssistantChatTransport {},
-  useChatRuntime: (options: { onError?: (error: Error) => void; messages?: unknown }) => {
+  useChatRuntime: (options: {
+    onError?: (error: Error) => void;
+    messages?: unknown;
+  }) => {
     (global as any).__mockCapturedOnError = options?.onError;
     (global as any).__mockCapturedMessages = options?.messages;
     return {};
@@ -30,7 +33,8 @@ jest.mock('@assistant-ui/react-ai-sdk', () => ({
 jest.mock('@assistant-ui/react-native', () => {
   const React = require('react');
   const { View, Text, Pressable } = require('react-native');
-  const Box = ({ children, style }: any) => React.createElement(View, { style }, children);
+  const Box = ({ children, style }: any) =>
+    React.createElement(View, { style }, children);
   return {
     __esModule: true,
     AssistantRuntimeProvider: ({ children }: any) =>
@@ -60,28 +64,43 @@ jest.mock('@assistant-ui/react-native', () => {
         (global as any).__mockChatIsEmpty === false
           ? null
           : React.createElement(React.Fragment, null, children),
-      Messages: React.forwardRef(({ children: _children, ...props }: any, ref: any) => {
-        React.useImperativeHandle(ref, () => ({
-          scrollToEnd: (options: unknown) => (global as any).__mockMessagesScrollToEnd?.(options),
-        }));
-        return React.createElement(View, { testID: 'thread-messages', ...props });
-      }),
+      Messages: React.forwardRef(
+        ({ children: _children, ...props }: any, ref: any) => {
+          React.useImperativeHandle(ref, () => ({
+            scrollToEnd: (options: unknown) =>
+              (global as any).__mockMessagesScrollToEnd?.(options),
+          }));
+          return React.createElement(View, {
+            testID: 'thread-messages',
+            ...props,
+          });
+        }
+      ),
       If: ({ children, running, empty }: any) => {
         if (running !== undefined) {
-          return running === !!(global as any).__mockChatIsRunning ? children : null;
+          return running === !!(global as any).__mockChatIsRunning
+            ? children
+            : null;
         }
         if (empty !== undefined) {
-          return empty === ((global as any).__mockChatIsEmpty !== false) ? children : null;
+          return empty === ((global as any).__mockChatIsEmpty !== false)
+            ? children
+            : null;
         }
         return children;
       },
       Suggestion: ({ children, prompt }: any) =>
-        React.createElement(Pressable, { testID: `suggestion-${prompt}` }, children),
+        React.createElement(
+          Pressable,
+          { testID: `suggestion-${prompt}` },
+          children
+        ),
     },
     ComposerPrimitive: {
       Root: Box,
       Input: () => React.createElement(View, { testID: 'composer-input' }),
-      Send: ({ children }: any) => React.createElement(View, { testID: 'composer-send' }, children),
+      Send: ({ children }: any) =>
+        React.createElement(View, { testID: 'composer-send' }, children),
       Cancel: ({ children }: any) =>
         React.createElement(View, { testID: 'composer-cancel' }, children),
     },
@@ -100,7 +119,9 @@ jest.mock('@assistant-ui/react-native', () => {
         React.createElement(
           View,
           null,
-          typeof children === 'function' ? children({ isCopied: false }) : children
+          typeof children === 'function'
+            ? children({ isCopied: false })
+            : children
         ),
     },
   };
@@ -142,10 +163,13 @@ jest.mock('../../src/components/Icon', () => {
 const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<
   typeof getActiveServerConfig
 >;
-const mockUseActiveAiServiceSetting = useActiveAiServiceSetting as jest.MockedFunction<
-  typeof useActiveAiServiceSetting
+const mockUseActiveAiServiceSetting =
+  useActiveAiServiceSetting as jest.MockedFunction<
+    typeof useActiveAiServiceSetting
+  >;
+const mockUseChatHistory = useChatHistory as jest.MockedFunction<
+  typeof useChatHistory
 >;
-const mockUseChatHistory = useChatHistory as jest.MockedFunction<typeof useChatHistory>;
 
 const mockNavigation = {
   goBack: jest.fn(),
@@ -180,7 +204,11 @@ function renderScreen() {
   );
 }
 
-const SERVER_CONFIG = { id: 'srv-1', url: 'https://sparky.example', proxyHeaders: [] } as any;
+const SERVER_CONFIG = {
+  id: 'srv-1',
+  url: 'https://sparky.example',
+  proxyHeaders: [],
+} as any;
 const ACTIVE_SETTING = { id: 'svc-1', service_type: 'openai' } as any;
 
 beforeEach(() => {
@@ -194,7 +222,10 @@ beforeEach(() => {
   (global as any).__mockComposerSetText = jest.fn();
   (global as any).__mockComposerDeferEchoes = false;
   mockGetActiveServerConfig.mockResolvedValue(SERVER_CONFIG);
-  mockUseActiveAiServiceSetting.mockReturnValue({ data: ACTIVE_SETTING, isLoading: false } as any);
+  mockUseActiveAiServiceSetting.mockReturnValue({
+    data: ACTIVE_SETTING,
+    isLoading: false,
+  } as any);
   mockUseChatHistory.mockReturnValue({ data: [], isLoading: false } as any);
 });
 
@@ -216,7 +247,10 @@ describe('ChatScreen config gating', () => {
   });
 
   it('prompts to configure an AI provider when none is active', async () => {
-    mockUseActiveAiServiceSetting.mockReturnValue({ data: undefined, isLoading: false } as any);
+    mockUseActiveAiServiceSetting.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+    } as any);
     const { findByText } = renderScreen();
     expect(await findByText(/No active AI provider/i)).toBeTruthy();
   });
@@ -226,14 +260,17 @@ describe('ChatScreen thread', () => {
   it('renders the empty state with the configured starter suggestions', async () => {
     const { findByText, getByText } = renderScreen();
     expect(
-      await findByText('Ask Sparky anything about your nutrition, exercise, or goals.')
+      await findByText(
+        'Ask Sparky anything about your nutrition, exercise, or goals.'
+      )
     ).toBeTruthy();
     expect(getByText('Log two eggs and a banana for breakfast')).toBeTruthy();
     expect(getByText('Suggest a high-protein snack')).toBeTruthy();
   });
 
   it('shows the up-arrow send button while idle and swaps to a Stop button while running', async () => {
-    const { findByTestId, getByTestId, queryByTestId, rerender } = renderScreen();
+    const { findByTestId, getByTestId, queryByTestId, rerender } =
+      renderScreen();
     await findByTestId('composer-send');
 
     // Idle: send button (up arrow) visible, Stop hidden.
@@ -258,14 +295,19 @@ describe('ChatScreen thread', () => {
     const { findByTestId } = renderScreen();
     await findByTestId('composer-send');
 
-    const onError = (global as any).__mockCapturedOnError as ((e: Error) => void) | undefined;
+    const onError = (global as any).__mockCapturedOnError as
+      ((e: Error) => void) | undefined;
     expect(onError).toBeDefined();
     act(() => {
       onError?.(new Error('bad config'));
     });
 
     expect(Toast.show).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'error', text1: 'Chat error', text2: 'bad config' })
+      expect.objectContaining({
+        type: 'error',
+        text1: 'Chat error',
+        text2: 'bad config',
+      })
     );
   });
 
@@ -289,7 +331,8 @@ describe('ChatScreen thread', () => {
         </SafeAreaProvider>
       </QueryClientProvider>
     );
-    const { findByPlaceholderText, getByPlaceholderText, rerender } = render(makeTree());
+    const { findByPlaceholderText, getByPlaceholderText, rerender } =
+      render(makeTree());
     const input = await findByPlaceholderText('Message Sparky…');
 
     // Type "a" -> "ab" -> "abc", then backspace to "ab". Echoes are deferred, so
@@ -299,12 +342,11 @@ describe('ChatScreen thread', () => {
     fireEvent.changeText(input, 'abc');
     fireEvent.changeText(input, 'ab');
 
-    expect((global as any).__mockComposerSetText.mock.calls.map((c: string[]) => c[0])).toEqual([
-      'a',
-      'ab',
-      'abc',
-      'ab',
-    ]);
+    expect(
+      (global as any).__mockComposerSetText.mock.calls.map(
+        (c: string[]) => c[0]
+      )
+    ).toEqual(['a', 'ab', 'abc', 'ab']);
     expect(getByPlaceholderText('Message Sparky…').props.value).toBe('ab');
 
     // Now let the deferred echoes arrive in order, one render at a time. The
@@ -362,13 +404,19 @@ describe('ChatScreen thread', () => {
     expect(input.props.autoFocus).toBeFalsy();
     // ...it focuses on the screen's entering transitionEnd instead.
     expect(
-      mockNavigation.addListener.mock.calls.some(([event]: [string]) => event === 'transitionEnd')
+      mockNavigation.addListener.mock.calls.some(
+        ([event]: [string]) => event === 'transitionEnd'
+      )
     ).toBe(true);
   });
 });
 
 describe('ChatScreen auto-scroll pinning', () => {
-  const scrollEvent = (offsetY: number, contentHeight: number, viewportHeight = 600) => ({
+  const scrollEvent = (
+    offsetY: number,
+    contentHeight: number,
+    viewportHeight = 600
+  ) => ({
     nativeEvent: {
       contentOffset: { x: 0, y: offsetY },
       contentSize: { width: 390, height: contentHeight },
@@ -488,8 +536,18 @@ describe('ChatScreen auto-scroll pinning', () => {
 describe('ChatScreen history seeding', () => {
   it('seeds the runtime with the loaded history messages', async () => {
     const seed = [
-      { id: 'm1', role: 'user', content: 'hi', parts: [{ type: 'text', text: 'hi' }] },
-      { id: 'm2', role: 'assistant', content: 'hey', parts: [{ type: 'text', text: 'hey' }] },
+      {
+        id: 'm1',
+        role: 'user',
+        content: 'hi',
+        parts: [{ type: 'text', text: 'hi' }],
+      },
+      {
+        id: 'm2',
+        role: 'assistant',
+        content: 'hey',
+        parts: [{ type: 'text', text: 'hey' }],
+      },
     ];
     mockUseChatHistory.mockReturnValue({ data: seed, isLoading: false } as any);
 
@@ -500,7 +558,10 @@ describe('ChatScreen history seeding', () => {
   });
 
   it('holds the loading gate (no thread) while history is loading', async () => {
-    mockUseChatHistory.mockReturnValue({ data: undefined, isLoading: true } as any);
+    mockUseChatHistory.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+    } as any);
 
     const { queryByText, queryByTestId } = renderScreen();
     // Flush the async server-config load so only the history gate remains.
@@ -510,7 +571,9 @@ describe('ChatScreen history seeding', () => {
 
     expect(queryByTestId('composer-send')).toBeNull();
     expect(
-      queryByText('Ask Sparky anything about your nutrition, exercise, or goals.')
+      queryByText(
+        'Ask Sparky anything about your nutrition, exercise, or goals.'
+      )
     ).toBeNull();
   });
 });

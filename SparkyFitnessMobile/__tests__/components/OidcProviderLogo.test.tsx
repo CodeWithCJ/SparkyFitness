@@ -16,7 +16,7 @@ const SERVER_URL = 'https://sparky.example.com';
 describe('OidcProviderLogo', () => {
   it('renders the globe fallback when no logo is configured', () => {
     const { getByTestId } = render(
-      <OidcProviderLogo logoUrl={undefined} serverUrl={SERVER_URL} />,
+      <OidcProviderLogo logoUrl={undefined} serverUrl={SERVER_URL} />
     );
 
     expect(getByTestId('icon-globe')).toBeTruthy();
@@ -24,39 +24,50 @@ describe('OidcProviderLogo', () => {
 
   it('resolves a server-relative logo path against the server URL', () => {
     const { UNSAFE_getByType } = render(
-      <OidcProviderLogo logoUrl="/uploads/logo.png" serverUrl={SERVER_URL} />,
+      <OidcProviderLogo logoUrl="/uploads/logo.png" serverUrl={SERVER_URL} />
     );
 
     expect(UNSAFE_getByType(Image).props.source.uri).toBe(
-      `${SERVER_URL}/uploads/logo.png`,
+      `${SERVER_URL}/uploads/logo.png`
     );
   });
 
   it('resolves a relative logo path missing its leading slash', () => {
     const { UNSAFE_getByType } = render(
-      <OidcProviderLogo logoUrl="uploads/logo.png" serverUrl={SERVER_URL} />,
+      <OidcProviderLogo logoUrl="uploads/logo.png" serverUrl={SERVER_URL} />
     );
 
     expect(UNSAFE_getByType(Image).props.source.uri).toBe(
-      `${SERVER_URL}/uploads/logo.png`,
+      `${SERVER_URL}/uploads/logo.png`
     );
   });
 
   it('uses an absolute logo URL as-is', () => {
     const { UNSAFE_getByType } = render(
-      <OidcProviderLogo logoUrl="https://cdn.example.com/logo.png" serverUrl={SERVER_URL} />,
+      <OidcProviderLogo
+        logoUrl="https://cdn.example.com/logo.png"
+        serverUrl={SERVER_URL}
+      />
     );
 
     expect(UNSAFE_getByType(Image).props.source.uri).toBe(
-      'https://cdn.example.com/logo.png',
+      'https://cdn.example.com/logo.png'
     );
   });
 
   it('shows the globe underlay for a slow load and keeps it when the logo fails', () => {
     jest.useFakeTimers();
     try {
-      const { UNSAFE_getByType, UNSAFE_queryByType, getByTestId, queryByTestId } = render(
-        <OidcProviderLogo logoUrl="/uploads/broken.png" serverUrl={SERVER_URL} />,
+      const {
+        UNSAFE_getByType,
+        UNSAFE_queryByType,
+        getByTestId,
+        queryByTestId,
+      } = render(
+        <OidcProviderLogo
+          logoUrl="/uploads/broken.png"
+          serverUrl={SERVER_URL}
+        />
       );
 
       // The underlay is held back for a grace period so cached loads never
@@ -84,7 +95,7 @@ describe('OidcProviderLogo', () => {
     jest.useFakeTimers();
     try {
       const { UNSAFE_getByType, queryByTestId } = render(
-        <OidcProviderLogo logoUrl="/uploads/logo.png" serverUrl={SERVER_URL} />,
+        <OidcProviderLogo logoUrl="/uploads/logo.png" serverUrl={SERVER_URL} />
       );
 
       fireEvent(UNSAFE_getByType(Image), 'load');
@@ -100,7 +111,7 @@ describe('OidcProviderLogo', () => {
     jest.useFakeTimers();
     try {
       const { UNSAFE_getByType, getByTestId, queryByTestId } = render(
-        <OidcProviderLogo logoUrl="/uploads/logo.png" serverUrl={SERVER_URL} />,
+        <OidcProviderLogo logoUrl="/uploads/logo.png" serverUrl={SERVER_URL} />
       );
 
       act(() => jest.advanceTimersByTime(200));

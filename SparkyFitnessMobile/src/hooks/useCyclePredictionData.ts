@@ -28,13 +28,16 @@ export interface CyclePredictionData {
  * Shared hook providing derived cycle statistics and next-cycle predictions
  * for both Dashboard (CycleCard) and Hub (CycleHubScreen) to prevent code drift.
  */
-export function useCyclePredictionData(dateString?: string): CyclePredictionData | null {
+export function useCyclePredictionData(
+  dateString?: string
+): CyclePredictionData | null {
   const { settings } = useCycleSettings();
   const { cycles } = useCycleHistory();
   const date = dateString ?? getTodayDate();
 
   return useMemo(() => {
-    if (!settings || settings.mode === 'pregnant' || cycles.length === 0) return null;
+    if (!settings || settings.mode === 'pregnant' || cycles.length === 0)
+      return null;
 
     const completed = cycles.filter((c) => c.cycle_length && c.period_length);
     const cycleLengths = completed.map((c) => c.cycle_length!);
@@ -43,12 +46,16 @@ export function useCyclePredictionData(dateString?: string): CyclePredictionData
     const avgCycleLength =
       settings.avg_cycle_length_override ??
       (cycleLengths.length
-        ? Math.round(cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length)
+        ? Math.round(
+            cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length
+          )
         : 28);
     const avgPeriodLength =
       settings.avg_period_length_override ??
       (periodLengths.length
-        ? Math.round(periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length)
+        ? Math.round(
+            periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length
+          )
         : 5);
 
     const stats = {
@@ -81,10 +88,15 @@ export function useCyclePredictionData(dateString?: string): CyclePredictionData
 
     const next = prediction.cycles[0];
     const toDay = (d: string | null | undefined): number | null =>
-      !suppressFertility && d && lastCycle.start_date ? daysBetween(lastCycle.start_date, d) + 1 : null;
+      !suppressFertility && d && lastCycle.start_date
+        ? daysBetween(lastCycle.start_date, d) + 1
+        : null;
 
     const nextPeriodStart = next?.periodStart;
-    const daysLate = nextPeriodStart && date > nextPeriodStart ? daysBetween(nextPeriodStart, date) : 0;
+    const daysLate =
+      nextPeriodStart && date > nextPeriodStart
+        ? daysBetween(nextPeriodStart, date)
+        : 0;
 
     return {
       day: dayNumber,

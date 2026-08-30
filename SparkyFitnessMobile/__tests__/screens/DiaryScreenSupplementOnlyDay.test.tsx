@@ -3,7 +3,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import DiaryScreen from '../../src/screens/DiaryScreen';
 import { useDailySummary } from '../../src/hooks';
 import { EMPTY_SUPPLEMENT_TOTALS } from '@workspace/shared';
-import { createTestQueryClient, createQueryWrapper } from '../hooks/queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+} from '../hooks/queryTestUtils';
 
 jest.mock('../../src/hooks', () => ({
   useServerConnection: () => ({ isConnected: true }),
@@ -120,14 +123,14 @@ const renderDiary = () => {
   const Wrapper = createQueryWrapper(createTestQueryClient());
   return render(
     <Wrapper>
-    <SafeAreaProvider
-      initialMetrics={{
-        frame: { x: 0, y: 0, width: 390, height: 844 },
-        insets: { top: 0, left: 0, right: 0, bottom: 0 },
-      }}
-    >
-      <DiaryScreen navigation={mockNavigation} route={{} as never} />
-    </SafeAreaProvider>
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: { x: 0, y: 0, width: 390, height: 844 },
+          insets: { top: 0, left: 0, right: 0, bottom: 0 },
+        }}
+      >
+        <DiaryScreen navigation={mockNavigation} route={{} as never} />
+      </SafeAreaProvider>
     </Wrapper>
   );
 };

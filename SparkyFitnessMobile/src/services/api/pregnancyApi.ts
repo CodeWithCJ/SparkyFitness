@@ -1,5 +1,9 @@
 import { apiFetch } from './apiClient';
-import type { SharedPregnancy, PregnancyOverview, PregnancyChecklistItem } from '../../types/womensHealth';
+import type {
+  SharedPregnancy,
+  PregnancyOverview,
+  PregnancyChecklistItem,
+} from '../../types/womensHealth';
 
 export const getCurrent = async (): Promise<SharedPregnancy | null> => {
   return apiFetch<SharedPregnancy | null>({
@@ -9,7 +13,9 @@ export const getCurrent = async (): Promise<SharedPregnancy | null> => {
   });
 };
 
-export const getOverview = async (date?: string): Promise<PregnancyOverview> => {
+export const getOverview = async (
+  date?: string
+): Promise<PregnancyOverview> => {
   const queryParams = date ? `?date=${encodeURIComponent(date)}` : '';
   return apiFetch<PregnancyOverview>({
     endpoint: `/api/v2/pregnancy/overview${queryParams}`,
@@ -54,7 +60,9 @@ export const deletePregnancy = async (id: string): Promise<void> => {
 
 // --- Checklist ---
 
-export const getChecklist = async (pregnancyId: string): Promise<PregnancyChecklistItem[]> => {
+export const getChecklist = async (
+  pregnancyId: string
+): Promise<PregnancyChecklistItem[]> => {
   return apiFetch<PregnancyChecklistItem[]>({
     endpoint: `/api/v2/pregnancy/checklist?pregnancy_id=${encodeURIComponent(pregnancyId)}`,
     serviceName: 'Pregnancy API',
@@ -73,7 +81,7 @@ export interface UpsertChecklistItemBody {
 }
 
 export const upsertChecklistItem = async (
-  body: UpsertChecklistItemBody,
+  body: UpsertChecklistItemBody
 ): Promise<PregnancyChecklistItem> => {
   return apiFetch<PregnancyChecklistItem>({
     endpoint: '/api/v2/pregnancy/checklist',

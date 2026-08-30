@@ -20,7 +20,7 @@ describe('MeasurementsSummary', () => {
 
   test('renders null when measurements object has no values and no custom measurements', () => {
     const { toJSON } = render(
-      <MeasurementsSummary measurements={{ entry_date: '2024-06-15' }} />,
+      <MeasurementsSummary measurements={{ entry_date: '2024-06-15' }} />
     );
     expect(toJSON()).toBeNull();
   });
@@ -33,7 +33,7 @@ describe('MeasurementsSummary', () => {
           weight: 75,
           steps: 10000,
         }}
-      />,
+      />
     );
     expect(getByText('Weight')).toBeTruthy();
     expect(getByText('Steps')).toBeTruthy();
@@ -72,7 +72,7 @@ describe('MeasurementsSummary', () => {
             },
           },
         ]}
-      />,
+      />
     );
     expect(getByText('Blood Pressure')).toBeTruthy();
     expect(getByText('120 mmHg')).toBeTruthy();
@@ -102,7 +102,7 @@ describe('MeasurementsSummary', () => {
             },
           },
         ]}
-      />,
+      />
     );
     expect(getByText('Weight')).toBeTruthy();
     expect(getByText('Blood Pressure')).toBeTruthy();
@@ -114,7 +114,7 @@ describe('MeasurementsSummary', () => {
       <MeasurementsSummary
         measurements={{ entry_date: '2024-06-15', weight: 75 }}
         customMeasurements={[]}
-      />,
+      />
     );
     expect(getByText('Measurements')).toBeTruthy();
   });
@@ -130,7 +130,13 @@ describe('MeasurementsSummary', () => {
             value: '1.23456789',
             entry_date: '2024-06-15',
             source: 'manual',
-            custom_categories: { name: 'Glucose', display_name: null, measurement_type: 'mg/dL', frequency: 'Daily', data_type: 'numeric' },
+            custom_categories: {
+              name: 'Glucose',
+              display_name: null,
+              measurement_type: 'mg/dL',
+              frequency: 'Daily',
+              data_type: 'numeric',
+            },
           },
           {
             id: 'boolean',
@@ -138,7 +144,13 @@ describe('MeasurementsSummary', () => {
             value: '   ',
             entry_date: '2024-06-15',
             source: 'manual',
-            custom_categories: { name: 'Blank', display_name: null, measurement_type: 'm', frequency: 'Daily', data_type: 'numeric' },
+            custom_categories: {
+              name: 'Blank',
+              display_name: null,
+              measurement_type: 'm',
+              frequency: 'Daily',
+              data_type: 'numeric',
+            },
           },
           {
             id: 'invalid',
@@ -146,10 +158,16 @@ describe('MeasurementsSummary', () => {
             value: 'not-a-number',
             entry_date: '2024-06-15',
             source: 'manual',
-            custom_categories: { name: 'Note', display_name: null, measurement_type: '', frequency: 'Daily', data_type: 'numeric' },
+            custom_categories: {
+              name: 'Note',
+              display_name: null,
+              measurement_type: '',
+              frequency: 'Daily',
+              data_type: 'numeric',
+            },
           },
         ]}
-      />,
+      />
     );
     expect(getByText('1.23456789 mg/dL')).toBeTruthy();
     expect(getByText('Blank')).toBeTruthy();
@@ -168,7 +186,13 @@ describe('MeasurementsSummary', () => {
             value: '',
             entry_date: '2024-06-15',
             source: 'manual',
-            custom_categories: { name: 'Empty', display_name: null, measurement_type: 'm', frequency: 'Daily', data_type: 'numeric' },
+            custom_categories: {
+              name: 'Empty',
+              display_name: null,
+              measurement_type: 'm',
+              frequency: 'Daily',
+              data_type: 'numeric',
+            },
           },
           {
             id: 'spaces',
@@ -176,10 +200,16 @@ describe('MeasurementsSummary', () => {
             value: '   ',
             entry_date: '2024-06-15',
             source: 'manual',
-            custom_categories: { name: 'Spaces', display_name: null, measurement_type: 'm', frequency: 'Daily', data_type: 'numeric' },
+            custom_categories: {
+              name: 'Spaces',
+              display_name: null,
+              measurement_type: 'm',
+              frequency: 'Daily',
+              data_type: 'numeric',
+            },
           },
         ]}
-      />,
+      />
     );
     expect(queryByText('0 m')).toBeNull();
   });
@@ -215,7 +245,7 @@ describe('MeasurementsSummary', () => {
       <MeasurementsSummary
         measurements={undefined}
         customMeasurements={[manualEntry, syncedEntry]}
-      />,
+      />
     );
     // Manual entry appears.
     expect(getByText('Blood Pressure')).toBeTruthy();
@@ -235,10 +265,14 @@ describe('MeasurementsSummary', () => {
             value: '75',
             entry_date: '2024-06-15',
             source: 'garmin',
-            custom_categories: { name: 'Heart Rate', measurement_type: 'bpm', frequency: 'Daily' },
+            custom_categories: {
+              name: 'Heart Rate',
+              measurement_type: 'bpm',
+              frequency: 'Daily',
+            },
           },
         ]}
-      />,
+      />
     );
     expect(toJSON()).toBeNull();
   });
@@ -254,10 +288,15 @@ describe('MeasurementsSummary', () => {
             value: '0',
             entry_date: '2024-06-15',
             source: 'manual',
-            custom_categories: { name: 'Zero', measurement_type: '', frequency: 'Daily', data_type: 'numeric' },
+            custom_categories: {
+              name: 'Zero',
+              measurement_type: '',
+              frequency: 'Daily',
+              data_type: 'numeric',
+            },
           },
         ]}
-      />,
+      />
     );
     // The rendered value text must show the literal 0 (not empty) so a real
     // zero cannot be silently dropped by formatting.
@@ -276,10 +315,15 @@ describe('MeasurementsSummary', () => {
             value: 'false',
             entry_date: '2024-06-15',
             source: 'manual',
-            custom_categories: { name: 'Flag', measurement_type: '', frequency: 'Daily', data_type: 'boolean' },
+            custom_categories: {
+              name: 'Flag',
+              measurement_type: '',
+              frequency: 'Daily',
+              data_type: 'boolean',
+            },
           },
         ]}
-      />,
+      />
     );
     // Boolean false is a real value: the tile renders 'false' text.
     expect(getByText('false')).toBeTruthy();
@@ -297,7 +341,11 @@ describe('MeasurementsSummary', () => {
             value: '50',
             entry_date: '2024-06-15',
             source: 'manual',
-            custom_categories: { name: 'Manual A', measurement_type: '', frequency: 'Daily' },
+            custom_categories: {
+              name: 'Manual A',
+              measurement_type: '',
+              frequency: 'Daily',
+            },
           },
           {
             id: 'e2',
@@ -305,7 +353,11 @@ describe('MeasurementsSummary', () => {
             value: '60',
             entry_date: '2024-06-15',
             source: 'oura',
-            custom_categories: { name: 'Oura Metric', measurement_type: '', frequency: 'Daily' },
+            custom_categories: {
+              name: 'Oura Metric',
+              measurement_type: '',
+              frequency: 'Daily',
+            },
           },
           {
             id: 'e3',
@@ -313,10 +365,14 @@ describe('MeasurementsSummary', () => {
             value: '70',
             entry_date: '2024-06-15',
             source: 'withings',
-            custom_categories: { name: 'Withings Metric', measurement_type: '', frequency: 'Daily' },
+            custom_categories: {
+              name: 'Withings Metric',
+              measurement_type: '',
+              frequency: 'Daily',
+            },
           },
         ]}
-      />,
+      />
     );
     expect(getByText('Weight')).toBeTruthy();
     expect(getByText('Manual A')).toBeTruthy();
@@ -335,13 +391,16 @@ describe('MeasurementsSummary', () => {
             value: '75',
             entry_date: '2024-06-15',
             source: null,
-            custom_categories: { name: 'Null Source', measurement_type: '', frequency: 'Daily' },
+            custom_categories: {
+              name: 'Null Source',
+              measurement_type: '',
+              frequency: 'Daily',
+            },
           },
         ]}
-      />,
+      />
     );
     // Strict contract: only literal 'manual' creates a tile.
     expect(toJSON()).toBeNull();
   });
-
 });

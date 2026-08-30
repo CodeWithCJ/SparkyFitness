@@ -1,4 +1,8 @@
-import type { MedicationDetail, MedicationEntry, SharedScheduleRule } from '@workspace/shared';
+import type {
+  MedicationDetail,
+  MedicationEntry,
+  SharedScheduleRule,
+} from '@workspace/shared';
 
 /** A scheduled dose slot on a given day, as produced by getDueDosesForDate. */
 export interface DueDose {
@@ -17,12 +21,14 @@ export interface DueDose {
 export function entryMatchesDose(
   entry: MedicationEntry,
   medicationId: string,
-  scheduleId: string | null,
+  scheduleId: string | null
 ): boolean {
   if (scheduleId) {
     if (entry.schedule_id === scheduleId) return true;
     return (
-      entry.medication_id === medicationId && !entry.schedule_id && entry.status !== 'prn_taken'
+      entry.medication_id === medicationId &&
+      !entry.schedule_id &&
+      entry.status !== 'prn_taken'
     );
   }
   return entry.medication_id === medicationId && !entry.schedule_id;
@@ -31,8 +37,11 @@ export function entryMatchesDose(
 export type DoseSlotStatus = 'pending' | 'taken' | 'skipped';
 
 /** Maps a slot's matched entry (if any) to its display status. */
-export function doseSlotStatus(entry: MedicationEntry | undefined): DoseSlotStatus {
-  if (entry?.status === 'taken' || entry?.status === 'prn_taken') return 'taken';
+export function doseSlotStatus(
+  entry: MedicationEntry | undefined
+): DoseSlotStatus {
+  if (entry?.status === 'taken' || entry?.status === 'prn_taken')
+    return 'taken';
   if (entry?.status === 'skipped') return 'skipped';
   return 'pending';
 }
@@ -41,11 +50,11 @@ export function doseSlotStatus(entry: MedicationEntry | undefined): DoseSlotStat
 export function isDoseLogged(
   entries: MedicationEntry[],
   medicationId: string,
-  scheduleId: string | null,
+  scheduleId: string | null
 ): boolean {
   return entries.some(
     (e) =>
       entryMatchesDose(e, medicationId, scheduleId) &&
-      (e.status === 'taken' || e.status === 'skipped'),
+      (e.status === 'taken' || e.status === 'skipped')
   );
 }

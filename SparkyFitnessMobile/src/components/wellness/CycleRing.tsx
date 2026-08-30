@@ -1,7 +1,17 @@
 import React, { useEffect, useMemo } from 'react';
 import { View, Text } from 'react-native';
-import { Canvas, Circle as SkiaCircle, Path, Skia } from '@shopify/react-native-skia';
-import { Easing, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
+import {
+  Canvas,
+  Circle as SkiaCircle,
+  Path,
+  Skia,
+} from '@shopify/react-native-skia';
+import {
+  Easing,
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useWellnessTokens } from './theme/wellnessTokens';
 import { getPhaseColor } from '../../utils/cycleDisplayUtils';
 
@@ -51,8 +61,13 @@ const CycleRing: React.FC<CycleRingProps> = ({
   const len = Math.max(cycleLength, periodLength + 1, 14);
 
   const oval = useMemo(
-    () => ({ x: center - radius, y: center - radius, width: radius * 2, height: radius * 2 }),
-    [center, radius],
+    () => ({
+      x: center - radius,
+      y: center - radius,
+      width: radius * 2,
+      height: radius * 2,
+    }),
+    [center, radius]
   );
 
   const progress = useSharedValue(0);
@@ -80,7 +95,8 @@ const CycleRing: React.FC<CycleRingProps> = ({
     const builder = Skia.PathBuilder.Make();
     if (fertileStartDay && fertileEndDay) {
       const startAngle = -90 + ((fertileStartDay - 1) / len) * 360;
-      const sweep = ((fertileEndDay - fertileStartDay + 1) / len) * 360 * progress.value;
+      const sweep =
+        ((fertileEndDay - fertileStartDay + 1) / len) * 360 * progress.value;
       if (sweep > 0) {
         builder.addArc(oval, startAngle, sweep);
       }
@@ -95,8 +111,14 @@ const CycleRing: React.FC<CycleRingProps> = ({
       const angle = ((-90 + ((ovulationDay - 1) / len) * 360) * Math.PI) / 180;
       const rInner = radius - strokeWidth / 2 - TICK_OVERHANG;
       const rOuter = radius + strokeWidth / 2 + TICK_OVERHANG;
-      builder.moveTo(center + rInner * Math.cos(angle), center + rInner * Math.sin(angle));
-      builder.lineTo(center + rOuter * Math.cos(angle), center + rOuter * Math.sin(angle));
+      builder.moveTo(
+        center + rInner * Math.cos(angle),
+        center + rInner * Math.sin(angle)
+      );
+      builder.lineTo(
+        center + rOuter * Math.cos(angle),
+        center + rOuter * Math.sin(angle)
+      );
     }
     return builder.build();
   }, [ovulationDay, len, radius, strokeWidth, center]);
@@ -119,7 +141,14 @@ const CycleRing: React.FC<CycleRingProps> = ({
   });
 
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+    <View
+      style={{
+        width: size,
+        height: size,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
       <Canvas style={{ width: size, height: size, position: 'absolute' }}>
         {/* Track */}
         <SkiaCircle

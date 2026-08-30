@@ -2,8 +2,6 @@ import React from 'react';
 import { render, fireEvent, screen } from '@testing-library/react-native';
 import { useScreenHeader } from '../../src/hooks/useScreenHeader';
 
-
-
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({
     setOptions: jest.fn(),
@@ -13,7 +11,9 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string, defaultValue?: string) => defaultValue ?? key }),
+  useTranslation: () => ({
+    t: (key: string, defaultValue?: string) => defaultValue ?? key,
+  }),
 }));
 
 // Custom (non-native) path, so the header renders as Pressables we can press.
@@ -39,7 +39,14 @@ describe('useScreenHeader duplicate-press guard', () => {
     const header = useScreenHeader({
       title: 'Test',
       ...(kind === 'left-primary'
-        ? { left: { kind: 'primary' as const, label: 'Back', onPress, identifier: 'back' } }
+        ? {
+            left: {
+              kind: 'primary' as const,
+              label: 'Back',
+              onPress,
+              identifier: 'back',
+            },
+          }
         : {}),
       right:
         kind === 'left-primary'

@@ -30,7 +30,7 @@ export function useUpsertCheckIn(options?: { showErrorToast?: boolean }) {
     onSuccess: (data, vars) => {
       queryClient.setQueryData<CheckInMeasurement>(
         measurementsQueryKey(vars.entryDate),
-        data,
+        data
       );
       refreshHealthSyncCache(queryClient);
     },
@@ -43,7 +43,9 @@ export function useUpsertCheckIn(options?: { showErrorToast?: boolean }) {
         Toast.show({
           type: 'error',
           text1: t('checkIn.saveFailed', { defaultValue: 'Save failed' }),
-          text2: t('checkIn.saveMessage', { defaultValue: 'Could not save measurements. Please try again.' }),
+          text2: t('checkIn.saveMessage', {
+            defaultValue: 'Could not save measurements. Please try again.',
+          }),
         });
       }
     },
