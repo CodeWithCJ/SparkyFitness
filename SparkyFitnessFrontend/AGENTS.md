@@ -33,7 +33,7 @@ pnpm run test:ci
 pnpm run build
 ```
 
-- `pnpm run validate` runs typecheck, lint (`--max-warnings 0`), and Prettier check together.
+- `pnpm run validate` runs typecheck, lint (`--max-warnings 0`), Prettier check, and Knip (`pnpm run knip` for unused files and exports) together.
 - `pnpm test` runs Jest (`ts-jest`, `jsdom`); config is inline in `package.json`, setup in `src/tests/setupTests.ts`.
 - `pnpm run build` runs `validate` first, then `vite build`.
 - CI (`.github/workflows/ci-tests.yml`) runs `pnpm run validate` and `pnpm run test:ci` for this package when its files change; matching those locally means a green PR.

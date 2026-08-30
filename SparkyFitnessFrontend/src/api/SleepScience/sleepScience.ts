@@ -3,8 +3,6 @@ import {
   sleepDebtDataSchema,
   BaselineResult,
   baselineResultSchema,
-  MCTQStatsData,
-  mctqStatsDataSchema,
   DailyNeedData,
   dailyNeedResponseSchema,
   EnergyCurveData,
@@ -33,15 +31,6 @@ export const calculateBaseline = async (
     body: JSON.stringify({ windowDays }),
   });
   return baselineResultSchema.parse(response);
-};
-
-export const getMCTQStats = async (
-  targetUserId?: string
-): Promise<MCTQStatsData> => {
-  const response = await apiCall('/sleep-science/mctq-stats', {
-    params: { targetUserId },
-  });
-  return mctqStatsDataSchema.parse(response);
 };
 
 export const getDailyNeed = async (

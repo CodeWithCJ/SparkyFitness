@@ -154,17 +154,6 @@ export const copySelectedFoodEntriesFromUser = async (payload: CopySelectedFoodE
 };
 
 /**
- * Fetches food entries for a given date.
- */
-export const fetchFoodEntries = async (date: string): Promise<FoodEntry[]> => {
-  return apiFetch<FoodEntry[]>({
-    endpoint: `/api/food-entries/by-date/${date}`,
-    serviceName: 'Food Entries API',
-    operation: 'fetch food entries',
-  });
-};
-
-/**
  * Calculates total calories consumed from food entries.
  * Formula: sum((entry.calories * quantity) / serving_size)
  */

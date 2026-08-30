@@ -5,7 +5,7 @@ import {
 } from '../shared/preferences';
 
 // Re-export types for backward compatibility
-export { SyncDuration, SyncInterval };
+export type { SyncDuration, SyncInterval };
 
 // AsyncStorage key prefix for all HealthKit preferences. Exported so cleanup code
 // can enumerate/remove writeback tracking keys directly.

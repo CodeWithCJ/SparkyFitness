@@ -5,7 +5,6 @@ import {
   ingredientDraftTotals,
   isIngredientDraftEdited,
   shouldResetIngredientDraft,
-  ESTIMATE_MACRO_KEYS,
   type FoodPhotoEstimateItem,
 } from '@workspace/shared';
 
@@ -59,5 +58,3 @@ export function useFoodPhotoIngredientDraft(items: FoodPhotoEstimateItem[]) {
     dispatch,
   };
 }
-
-export { ESTIMATE_MACRO_KEYS };

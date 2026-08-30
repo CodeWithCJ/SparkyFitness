@@ -53,7 +53,6 @@ jest.mock('../../src/components/ActiveWorkoutBar', () => ({
 jest.mock('../../src/components/HealthSourceLabel', () => ({
   __esModule: true,
   default: () => null,
-  healthSourceName: 'Health Connect',
 }));
 
 jest.mock('../../src/services/nativeTabBarPreference', () => ({

@@ -50,12 +50,6 @@ export async function getGoalPresets(): Promise<GoalPreset[]> {
   return (data || []).map(flattenCustomNutrients);
 }
 
-export async function getGoalPresetById(id: string): Promise<GoalPreset> {
-  return apiCall(`/goal-presets/${id}`, {
-    method: 'GET',
-  }).then(flattenCustomNutrients);
-}
-
 export async function updateGoalPreset(
   id: string,
   presetData: GoalPreset
@@ -85,14 +79,6 @@ export async function createWeeklyGoalPlan(
 
 export async function getWeeklyGoalPlans(): Promise<WeeklyGoalPlan[]> {
   return apiCall('/weekly-goal-plans', {
-    method: 'GET',
-  });
-}
-
-export async function getActiveWeeklyGoalPlan(
-  date: string
-): Promise<WeeklyGoalPlan | null> {
-  return apiCall(`/weekly-goal-plans/active?date=${date}`, {
     method: 'GET',
   });
 }

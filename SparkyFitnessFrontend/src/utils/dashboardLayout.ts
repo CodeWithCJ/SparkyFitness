@@ -271,9 +271,6 @@ export const mealWidgetKey = (mealTypeId: string) =>
 
 export const isMealWidgetKey = (key: string) => key.startsWith(MEAL_KEY_PREFIX);
 
-export const mealTypeIdFromKey = (key: string) =>
-  key.slice(MEAL_KEY_PREFIX.length);
-
 /**
  * Build the ordered list of widget keys for the current user state:
  * fixed top widgets, then one per visible meal type, then exercise.

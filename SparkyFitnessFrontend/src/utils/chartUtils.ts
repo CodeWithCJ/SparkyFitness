@@ -100,35 +100,6 @@ export function excludeIncompleteDay<T extends ChartDataPoint>(
 }
 
 /**
- * Check if data represents nutrition/calorie metrics that should exclude incomplete days
- * @param dataKey The metric key being displayed
- * @returns true if this metric should exclude incomplete days
- */
-export function shouldExcludeIncompleteDay(dataKey: string): boolean {
-  const nutritionMetrics = [
-    'calories',
-    'protein',
-    'carbs',
-    'fat',
-    'saturated_fat',
-    'polyunsaturated_fat',
-    'monounsaturated_fat',
-    'trans_fat',
-    'cholesterol',
-    'sodium',
-    'potassium',
-    'dietary_fiber',
-    'sugars',
-    'vitamin_a',
-    'vitamin_c',
-    'calcium',
-    'iron',
-  ];
-
-  return nutritionMetrics.includes(dataKey.toLowerCase());
-}
-
-/**
  * Get chart configuration for different metric types
  * @param dataKey The metric key
  * @returns Configuration object with scaling preferences

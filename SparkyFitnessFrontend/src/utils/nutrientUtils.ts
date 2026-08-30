@@ -107,18 +107,6 @@ export const formatNutrientValue = (
   return numValue.toFixed(decimals);
 };
 
-/**
- * Returns a rounded number instead of a string.
- */
-export const getRoundedNutrientValue = (
-  key: string,
-  value: string | number | null | undefined,
-  customNutrients: UserCustomNutrient[] = []
-): number => {
-  const formatted = formatNutrientValue(key, value, customNutrients);
-  return formatted === '' ? 0 : parseFloat(formatted);
-};
-
 export const getNetCarbsValue = (
   carbs: string | number | null | undefined,
   dietaryFiber: string | number | null | undefined

@@ -7,7 +7,6 @@ import {
   requiredHeaders,
 } from '@/constants/exercises';
 import { ExerciseCSVData } from '@/pages/Exercises/ExerciseImportCSV';
-import { DailyExerciseEntry } from '@/types/reports';
 import {
   readNumberCell,
   parseCsv,
@@ -115,15 +114,4 @@ export function filterValidExerciseImages(
     const trimmed = img.trim();
     return trimmed !== '' && trimmed !== '[]';
   });
-}
-
-export function calcExerciseStatsFlat(entries: DailyExerciseEntry[]) {
-  return {
-    otherCalories: entries.reduce(
-      (acc, e) => acc + Number(e.calories_burned || 0),
-      0
-    ),
-    activeCalories: 0,
-    activitySteps: entries.reduce((acc, e) => acc + Number(e['steps'] || 0), 0),
-  };
 }

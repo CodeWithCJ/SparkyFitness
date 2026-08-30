@@ -4,9 +4,6 @@ import {
   saveMoodEntry,
   getMoodEntries,
   getMoodEntryByDate,
-  getMoodEntryById,
-  updateMoodEntry,
-  deleteMoodEntry,
   listCustomMoods,
   createCustomMood,
   deleteCustomMood,
@@ -45,19 +42,6 @@ export const useMoodEntryByDate = (entryDate: string) => {
   });
 };
 
-export const useMoodEntryById = (id: string) => {
-  return useQuery({
-    queryKey: moodKeys.detail(id),
-    queryFn: () => getMoodEntryById(id),
-    meta: {
-      errorMessage: i18n.t(
-        'mood.failedToLoadEntry',
-        'Failed to load mood entry.'
-      ),
-    },
-  });
-};
-
 export const useSaveMoodEntryMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -80,56 +64,6 @@ export const useSaveMoodEntryMutation = () => {
       successMessage: i18n.t(
         'mood.savedSuccessfully',
         'Mood entry saved successfully.'
-      ),
-    },
-  });
-};
-
-export const useUpdateMoodEntryMutation = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      id,
-      moodValue,
-      notes,
-      entryDate,
-    }: {
-      id: string;
-      moodValue: number | null;
-      notes: string;
-      entryDate: string;
-    }) => updateMoodEntry(id, moodValue, notes, entryDate),
-    onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: moodKeys.all });
-    },
-    meta: {
-      errorMessage: i18n.t(
-        'mood.failedToUpdate',
-        'Failed to update mood entry.'
-      ),
-      successMessage: i18n.t(
-        'mood.updatedSuccessfully',
-        'Mood entry updated successfully.'
-      ),
-    },
-  });
-};
-
-export const useDeleteMoodEntryMutation = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => deleteMoodEntry(id),
-    onSuccess: () => {
-      return queryClient.invalidateQueries({ queryKey: moodKeys.all });
-    },
-    meta: {
-      errorMessage: i18n.t(
-        'mood.failedToDelete',
-        'Failed to delete mood entry.'
-      ),
-      successMessage: i18n.t(
-        'mood.deletedSuccessfully',
-        'Mood entry deleted successfully.'
       ),
     },
   });

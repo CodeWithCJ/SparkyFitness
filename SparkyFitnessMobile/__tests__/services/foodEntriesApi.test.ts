@@ -1,5 +1,4 @@
 import {
-  fetchFoodEntries,
   createFoodEntry,
   updateFoodEntry,
   deleteFoodEntry,
@@ -41,90 +40,6 @@ describe('foodEntriesApi', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
-  });
-
-  describe('fetchFoodEntries', () => {
-    const testConfig: ServerConfig = {
-      id: 'test-id',
-      url: 'https://example.com',
-      apiKey: 'test-api-key-12345',
-    };
-
-    const testDate = '2024-06-15';
-
-    test('throws error when no server config exists', async () => {
-      mockGetActiveServerConfig.mockResolvedValue(null);
-
-      await expect(fetchFoodEntries(testDate)).rejects.toThrow(
-        'Server configuration not found.'
-      );
-    });
-
-    test('sends GET request to /api/food-entries/by-date/:date', async () => {
-      mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
-
-      await fetchFoodEntries(testDate);
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com/api/food-entries/by-date/2024-06-15',
-        expect.objectContaining({
-          method: 'GET',
-          headers: {
-            Authorization: 'Bearer test-api-key-12345',
-
-            'X-Meal-Model-Version': '2',
-          },
-        })
-      );
-    });
-
-    test('removes trailing slash from URL before making request', async () => {
-      mockGetActiveServerConfig.mockResolvedValue({
-        ...testConfig,
-        url: 'https://example.com/',
-      });
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([]),
-      });
-
-      await fetchFoodEntries(testDate);
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com/api/food-entries/by-date/2024-06-15',
-        expect.anything()
-      );
-    });
-
-    test('returns parsed JSON response on success', async () => {
-      const responseData = [{ id: '1', calories: 500, quantity: 1, serving_size: 1 }];
-      mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(responseData),
-      });
-
-      const result = await fetchFoodEntries(testDate);
-
-      expect(result).toEqual(responseData);
-    });
-
-    test('throws error on non-OK response', async () => {
-      mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 404,
-        text: () => Promise.resolve('Not Found'),
-      });
-
-      await expect(fetchFoodEntries(testDate)).rejects.toThrow(
-        'Server error: 404 - Not Found'
-      );
-    });
   });
 
   describe('createFoodEntry', () => {

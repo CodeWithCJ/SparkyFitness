@@ -112,20 +112,6 @@ export const testAIServiceConnection = async (
   return testAiServiceConnectionResponseSchema.parse(response);
 };
 
-export const updateAIServiceStatus = async (
-  serviceId: string,
-  isActive: boolean
-): Promise<AiServiceSettingsPostResponse> => {
-  const response = await apiCall('/chat', {
-    method: 'POST',
-    body: {
-      action: 'save_ai_service_settings',
-      service_data: { id: serviceId, is_active: isActive },
-    },
-  });
-  return aiServiceSettingsPostResponseSchema.parse(response);
-};
-
 export const updateUserPreferences = async (
   preferences: UserPreferencesChat
 ): Promise<UserPreferencesChat> => {

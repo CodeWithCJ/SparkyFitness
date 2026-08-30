@@ -984,15 +984,6 @@ export const aggregateCumulativeMetricByDayDetailed = async (
   }
 };
 
-export const aggregateCumulativeMetricByDay = async (
-  spec: CumulativeMetricSpec,
-  startDate: Date,
-  endDate: Date,
-): Promise<AggregatedHealthRecord[]> => {
-  const result = await aggregateCumulativeMetricByDayDetailed(spec, startDate, endDate);
-  return result.records;
-};
-
 export const getAggregatedStepsByDateDetailed = (
   startDate: Date,
   endDate: Date,
