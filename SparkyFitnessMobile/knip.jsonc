@@ -2,11 +2,8 @@
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   "entry": [
     "App.tsx",
-    "index.js",
-    "src/screens/**/*.{ts,tsx}",
-    "src/components/**/*.{ts,tsx}",
-    "src/hooks/**/*.{ts,tsx}",
-    "src/localization/**/*.{ts,tsx}",
+    "src/hooks/index.ts",
+    "src/localization/index.ts",
     "src/services/healthConnectService.ts",
     "plugins/**/*.ts",
     "__tests__/**/*.{ts,tsx}"

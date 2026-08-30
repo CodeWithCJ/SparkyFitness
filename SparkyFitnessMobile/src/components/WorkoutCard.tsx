@@ -16,8 +16,6 @@ interface WorkoutCardProps {
   distanceUnit?: 'km' | 'miles';
 }
 
-export { getSourceLabel, getWorkoutSummary } from '../utils/workoutSession';
-
 const WorkoutCard = React.memo<WorkoutCardProps>(({ session, getImageSource, weightUnit = 'kg', distanceUnit = 'km' }) => {
   const { t } = useTranslation();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;

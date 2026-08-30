@@ -15,7 +15,7 @@ import {
 } from './localeRegistry';
 
 export { RESOURCE_MAP } from './generatedLocaleResources';
-export { FALLBACK_LOCALE, SHIPPED_LOCALES, SUPPORTED_LANGUAGES } from './localeRegistry';
+export { SUPPORTED_LANGUAGES } from './localeRegistry';
 export type { SupportedLanguage } from './localeRegistry';
 export type LanguagePreference = 'system' | SupportedLanguage;
 

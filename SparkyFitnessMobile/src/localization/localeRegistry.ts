@@ -25,7 +25,6 @@ export const SHIPPED_LOCALES = manifestLocales;
 export type CanonicalLocaleRegistry = Record<string, LocaleMetadata>;
 export type SupportedLanguage = keyof typeof manifestLocales;
 export const SUPPORTED_LANGUAGES = Object.keys(manifestLocales) as SupportedLanguage[];
-export const SHIPPED_INTL_LOCALES = SUPPORTED_LANGUAGES.map((language) => SHIPPED_LOCALES[language].intlLocale);
 
 export function canonicalizeLocaleTag(value: string): string {
   return value.trim().replaceAll('_', '-').toLowerCase();
