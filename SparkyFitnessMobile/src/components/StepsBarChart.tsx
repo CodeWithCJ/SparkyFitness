@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { formatLocalizedNumber } from '../localization/i18n';
 import { CartesianChart, Bar } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
-import { makeChartFont, formatXLabel7d, formatXLabel30d90d, formatTooltipDate, formatChartYLabel } from './charts/chartFormatting';
+import { makeChartFont, CHART_LABEL_FONT_SIZE, formatXLabel7d, formatXLabel30d90d, formatTooltipDate, formatChartYLabel } from './charts/chartFormatting';
 import type { StepsDataPoint } from '../hooks/useMeasurementsRange';
 import type { HealthTrendDateRange } from '../types/healthTrends';
 import ChartTouchOverlay, {
@@ -33,7 +33,7 @@ const X_TICK_COUNT: Record<HealthTrendDateRange, number> = {
   '90d': 5,
 };
 
-const font = makeChartFont(12);
+const font = makeChartFont(CHART_LABEL_FONT_SIZE);
 
 const formatYLabel = (value: number) => formatChartYLabel(value);
 

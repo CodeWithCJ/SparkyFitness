@@ -21,7 +21,12 @@ import ChartTouchOverlay, {
   EMPTY_CHART_TOUCH_LAYOUT,
   type ChartTouchLayout,
 } from './ChartTouchOverlay';
-import { formatTooltipDate, formatXLabel30d90d, formatXLabel7d } from './charts/chartFormatting';
+import {
+  CHART_LABEL_FONT_SIZE,
+  formatTooltipDate,
+  formatXLabel30d90d,
+  formatXLabel7d,
+} from './charts/chartFormatting';
 import
   {
     buildSleepTimelineLayout,
@@ -384,10 +389,11 @@ const SleepTimelineChart: React.FC<SleepTimelineChartProps> = ({
               {layout.ticks.map((tick) => (
                 <Text
                   key={tick.minutes}
-                  className="text-text-muted text-xs absolute right-0"
+                  className="text-text-muted absolute right-0"
                   numberOfLines={1}
+                  allowFontScaling={false}
                   // Nudged up by half a line so the label reads as centred on its gridline.
-                  style={{ top: tick.y - 7 }}
+                  style={{ top: tick.y - 7, fontSize: CHART_LABEL_FONT_SIZE }}
                 >
                   {formatAxisClockLabel(tick.minutes, anchorMinutes, preferences?.time_format)}
                 </Text>
@@ -403,12 +409,14 @@ const SleepTimelineChart: React.FC<SleepTimelineChartProps> = ({
               return (
                 <Text
                   key={data[dayIndex].day}
-                  className="text-text-muted text-xs absolute"
+                  className="text-text-muted absolute"
                   numberOfLines={1}
+                  allowFontScaling={false}
                   style={{
                     left: column.x + column.width / 2 - X_LABEL_WIDTH / 2,
                     width: X_LABEL_WIDTH,
                     textAlign: 'center',
+                    fontSize: CHART_LABEL_FONT_SIZE,
                   }}
                 >
                   {formatXLabel(data[dayIndex].day)}

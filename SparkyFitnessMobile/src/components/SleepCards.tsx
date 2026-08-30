@@ -17,6 +17,26 @@ export type SleepCardNavigation = CompositeNavigationProp<
   NativeStackNavigationProp<RootStackParamList>
 >;
 
+/**
+ * Formats one of a session's instants the way every card here wants it: in the account's
+ * 12/24-hour preference, and in the zone the session was *recorded* in rather than
+ * wherever the device happens to be now — so a night slept in another timezone still
+ * reads back as the clock the sleeper saw.
+ */
+const useEntryClockTime = () => {
+  const { preferences } = usePreferences();
+
+  return React.useCallback(
+    (iso: string | null | undefined, entry: SleepEntry) =>
+      formatClockTime(
+        iso,
+        preferences?.time_format,
+        resolveSleepZone(entry, preferences?.timezone),
+      ),
+    [preferences?.time_format, preferences?.timezone],
+  );
+};
+
 const SleepCardIconTitle: React.FC<{ icon: IconName; title: string }> = ({ icon, title }) => {
   const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [string];
   return (
@@ -123,7 +143,7 @@ interface WakeUpCardProps {
  */
 export const WakeUpCard: React.FC<WakeUpCardProps> = ({ entry, day, navigation }) => {
   const { t } = useTranslation();
-  const { preferences } = usePreferences();
+  const entryClockTime = useEntryClockTime();
   const title = t('sleep.wakeUp', { defaultValue: 'Wake Up' });
 
   if (!entry) return null;
@@ -136,14 +156,7 @@ export const WakeUpCard: React.FC<WakeUpCardProps> = ({ entry, day, navigation }
       accessibilityLabel={t('sleep.wakeUpA11y', { defaultValue: 'Open wake up sleep details' })}
       onPress={() => navigation.navigate('SleepDetail', { entryId: entry.id, day })}
     >
-      <SleepSummary
-        entry={entry}
-        clockValue={formatClockTime(
-          entry.wake_time,
-          preferences?.time_format,
-          resolveSleepZone(entry, preferences?.timezone),
-        )}
-      />
+      <SleepSummary entry={entry} clockValue={entryClockTime(entry.wake_time, entry)} />
     </SleepCardShell>
   );
 };
@@ -156,7 +169,7 @@ interface NapsCardProps {
 
 export const NapsCard: React.FC<NapsCardProps> = ({ naps, day, navigation }) => {
   const { t } = useTranslation();
-  const { preferences } = usePreferences();
+  const entryClockTime = useEntryClockTime();
 
   if (naps.length === 0) return null;
 
@@ -174,11 +187,7 @@ export const NapsCard: React.FC<NapsCardProps> = ({ naps, day, navigation }) => 
       </View>
 
       {naps.map((nap) => {
-        const napTime = formatClockTime(
-          nap.bedtime,
-          preferences?.time_format,
-          resolveSleepZone(nap, preferences?.timezone),
-        );
+        const napTime = entryClockTime(nap.bedtime, nap);
         const napDuration = formatSleepDuration(
           nap.time_asleep_in_seconds ?? nap.duration_in_seconds,
           t,
@@ -220,7 +229,7 @@ interface BedTimeCardProps {
  */
 export const BedTimeCard: React.FC<BedTimeCardProps> = ({ entry, day, navigation }) => {
   const { t } = useTranslation();
-  const { preferences } = usePreferences();
+  const entryClockTime = useEntryClockTime();
   const title = t('sleep.bedTime', { defaultValue: 'Bedtime' });
 
   if (!entry) return null;
@@ -233,14 +242,7 @@ export const BedTimeCard: React.FC<BedTimeCardProps> = ({ entry, day, navigation
       accessibilityLabel={t('sleep.bedTimeA11y', { defaultValue: 'Open bedtime sleep details' })}
       onPress={() => navigation.navigate('SleepDetail', { entryId: entry.id, day })}
     >
-      <SleepSummary
-        entry={entry}
-        clockValue={formatClockTime(
-          entry.bedtime,
-          preferences?.time_format,
-          resolveSleepZone(entry, preferences?.timezone),
-        )}
-      />
+      <SleepSummary entry={entry} clockValue={entryClockTime(entry.bedtime, entry)} />
     </SleepCardShell>
   );
 };
