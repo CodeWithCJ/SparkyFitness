@@ -20,6 +20,11 @@ import BottomSheetPicker from '../components/BottomSheetPicker';
 import { FoodNutritionHeader, FoodNutrientBreakdown } from '../components/FoodNutritionSummary';
 import { fetchDailyGoals } from '../services/api/goalsApi';
 import { setPendingMealIngredientSelection } from '../services/mealBuilderSelection';
+import {
+  buildMealPlanFoodAssignment,
+  buildMealPlanMealAssignment,
+  setPendingMealPlanSelection,
+} from '../services/mealPlanSelection';
 import { CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import { addDays, getTodayDate, getDeviceTimezone } from '../utils/dateUtils';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
@@ -190,6 +195,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const returnDepth = route.params?.returnDepth ?? 1;
   const ingredientIndex = route.params?.ingredientIndex;
   const isMealBuilderMode = pickerMode === 'meal-builder';
+  const isMealPlanMode = pickerMode === 'meal-plan';
+  const isSelectionMode = isMealBuilderMode || isMealPlanMode;
+  const mealPlanTarget = route.params?.mealPlanTarget;
   const [selectedDate, setSelectedDateState] = useState(
     initialDate ?? useDiaryDateStore.getState().selectedDate,
   );
@@ -934,20 +942,37 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       values: displayValues,
     });
 
-  const finishMealBuilderSelection = (ingredient: MealIngredientDraft) => {
-    setPendingMealIngredientSelection({
-      ingredient,
-      ingredientIndex,
-    });
+  const finishFoodSelection = (ingredient: MealIngredientDraft) => {
+    if (isMealPlanMode && mealPlanTarget) {
+      setPendingMealPlanSelection({
+        ...(mealPlanTarget.assignmentIndex === undefined
+          ? {}
+          : { assignmentIndex: mealPlanTarget.assignmentIndex }),
+        assignment: buildMealPlanFoodAssignment(ingredient, mealPlanTarget, quantityText),
+      });
+    } else {
+      setPendingMealIngredientSelection({
+        ingredient,
+        ingredientIndex,
+      });
+    }
     navigation.dispatch(StackActions.pop(returnDepth));
   };
 
-  const handleMealBuilderAdd = async () => {
+  const handleSelectionAdd = async () => {
     if (quantity <= 0) {
       Toast.show({
         type: 'error',
         text1: t('foodEntryAdd.errors.invalidAmount', { defaultValue: 'Invalid amount' }),
         text2: t('foodEntryAdd.errors.amountGreaterThanZero', { defaultValue: 'Amount must be greater than zero.' }),
+      });
+      return;
+    }
+    if (isMealPlanMode && !mealPlanTarget) {
+      Toast.show({
+        type: 'error',
+        text1: t('foodEntryAdd.errors.failedToAddFood', { defaultValue: 'Failed to add food' }),
+        text2: t('foodEntryAdd.errors.tryAgain', { defaultValue: 'Please try again.' }),
       });
       return;
     }
@@ -960,7 +985,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             throw new Error('Missing variant ID for local food');
           }
 
-          finishMealBuilderSelection(
+          finishFoodSelection(
             buildDraftFromCurrentValues(
               activeItem.id,
               variantId,
@@ -1002,7 +1027,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
             await persistExternalVariants(savedFood, activeItem.externalVariants);
 
-            finishMealBuilderSelection(
+            finishFoodSelection(
               buildMealIngredientDraft({
                 foodId: savedFood.id,
                 variantId: createdVariantId,
@@ -1022,7 +1047,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
           await persistExternalVariants(savedFood, activeItem.externalVariants);
 
-          finishMealBuilderSelection(
+          finishFoodSelection(
             buildMealIngredientDraft({
               foodId: savedFood.id,
               variantId: savedFood.default_variant.id,
@@ -1043,6 +1068,30 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         return;
       }
       case 'meal':
+        if (isMealPlanMode && mealPlanTarget) {
+          setPendingMealPlanSelection({
+            ...(mealPlanTarget.assignmentIndex === undefined
+              ? {}
+              : { assignmentIndex: mealPlanTarget.assignmentIndex }),
+            assignment: buildMealPlanMealAssignment(
+              {
+                ...activeItem,
+                name: adjustedValues?.name || activeItem.name,
+                servingSize: displayValues.servingSize,
+                servingUnit: displayValues.servingUnit,
+                calories: displayValues.calories,
+                protein: displayValues.protein,
+                carbs: displayValues.carbs,
+                fat: displayValues.fat,
+              },
+              mealPlanTarget,
+              quantity,
+              quantityText,
+            ),
+          });
+          navigation.dispatch(StackActions.pop(returnDepth));
+          return;
+        }
         Toast.show({
           type: 'error',
           text1: t('foodEntryAdd.errors.mealsNotSupported', { defaultValue: 'Meals not supported here' }),
@@ -1427,7 +1476,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           </View>
         </View>
 
-        {!isMealBuilderMode ? (
+        {!isSelectionMode ? (
           <>
             <View className="flex-row items-center mt-2">
               <DateSelectRow
@@ -1537,12 +1586,12 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         busy={isActionPending}
         disabled={
           isActionPending ||
-          (!isMealBuilderMode && !effectiveMealId) ||
+          (!isSelectionMode && !effectiveMealId) ||
           quantity <= 0
         }
         onPress={() => {
-            if (isMealBuilderMode) {
-              void handleMealBuilderAdd();
+            if (isSelectionMode) {
+              void handleSelectionAdd();
               return;
             }
 

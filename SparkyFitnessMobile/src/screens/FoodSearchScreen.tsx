@@ -97,7 +97,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const date = route.params?.date;
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
   const mealTypeId = route.params?.mealTypeId;
+  const mealPlanTarget = route.params?.mealPlanTarget;
   const isMealBuilderMode = pickerMode === 'meal-builder';
+  const isMealPlanMode = pickerMode === 'meal-plan';
+  const selectionPickerMode = isMealBuilderMode || isMealPlanMode
+    ? pickerMode
+    : undefined;
   const insets = useSafeAreaInsets();
   const [accentColor, textMuted, textSecondary, favoriteGold] = useCSSVariable([
     '--color-accent-primary',
@@ -341,22 +346,24 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       navigation.navigate('FoodEntryAdd', {
         item,
         date,
-        pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
-        returnDepth: isMealBuilderMode ? 2 : undefined,
+        pickerMode: selectionPickerMode,
+        returnDepth: selectionPickerMode ? 2 : undefined,
         mealTypeId,
+        mealPlanTarget,
       });
     },
-    [navigation, date, isMealBuilderMode, mealTypeId],
+    [navigation, date, mealPlanTarget, mealTypeId, selectionPickerMode],
   );
 
   const openCreateFood = useCallback(() => {
     navigation.navigate('FoodForm', {
       mode: 'create-food',
       date,
-      pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
-      returnDepth: isMealBuilderMode ? 2 : undefined,
+      pickerMode: selectionPickerMode,
+      returnDepth: selectionPickerMode ? 2 : undefined,
+      mealPlanTarget,
     });
-  }, [navigation, date, isMealBuilderMode]);
+  }, [navigation, date, mealPlanTarget, selectionPickerMode]);
 
   const openMealAdd = useCallback(() => {
     navigation.navigate('MealAdd');
@@ -365,10 +372,11 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
   const openFoodScan = useCallback(() => {
     navigation.navigate('FoodScan', {
       date,
-      pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
-      returnDepth: isMealBuilderMode ? 2 : undefined,
+      pickerMode: selectionPickerMode,
+      returnDepth: selectionPickerMode ? 2 : undefined,
       // Preserve the originating meal type (MealTypeDetail → FoodSearch → scan).
       mealTypeId: mealTypeId ?? undefined,
+      mealPlanTarget,
       // Never forward the All Providers sentinel as a real provider; the scanner
       // should fall back to its default provider in that mode.
       providerId:
@@ -376,7 +384,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
           ? undefined
           : (selectedProvider ?? undefined),
     });
-  }, [navigation, date, isMealBuilderMode, selectedProvider, mealTypeId]);
+  }, [navigation, date, mealPlanTarget, mealTypeId, selectedProvider, selectionPickerMode]);
 
   // Only the custom-header path opens the JS menu; on the native path the
   // system presents a UIMenu from the header item directly.
@@ -403,7 +411,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
     const items: AnchoredMenuItem[] = [
       { key: 'food', label: t('foodSearch.menu.newFood', { defaultValue: 'New Food' }), icon: 'food', onPress: openCreateFood },
     ];
-    if (!isMealBuilderMode) {
+    if (!isMealBuilderMode && !isMealPlanMode) {
       items.push({ key: 'meal', label: t('foodSearch.menu.newMeal', { defaultValue: 'New Meal' }), icon: 'meal', onPress: openMealAdd });
     }
     items.push({ key: 'show-label', label: t('foodSearch.menu.show', { defaultValue: 'Show' }), isGroupLabel: true });
@@ -416,7 +424,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       });
     }
     return items;
-  }, [isMealBuilderMode, openCreateFood, openMealAdd, ownershipFilter, setOwnershipFilter, localizedFilterLabels, t]);
+  }, [isMealBuilderMode, isMealPlanMode, openCreateFood, openMealAdd, ownershipFilter, setOwnershipFilter, localizedFilterLabels, t]);
 
   const nativeMenuItems = useMemo<NativeStackHeaderItemMenu['menu']['items']>(() => {
     const items: NativeStackHeaderItemMenu['menu']['items'] = [
@@ -427,7 +435,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
         onPress: openCreateFood,
       },
     ];
-    if (!isMealBuilderMode) {
+    if (!isMealBuilderMode && !isMealPlanMode) {
       items.push({
         type: 'action',
         label: t('foodSearch.menu.newMeal', { defaultValue: 'New Meal' }),
@@ -450,7 +458,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({ navigation, route }
       })),
     });
     return items;
-  }, [isMealBuilderMode, openCreateFood, openMealAdd, ownershipFilter, setOwnershipFilter, localizedFilterLabels, t]);
+  }, [isMealBuilderMode, isMealPlanMode, openCreateFood, openMealAdd, ownershipFilter, setOwnershipFilter, localizedFilterLabels, t]);
 
   useLayoutEffect(() => {
     if (!usesNativeHeader) return;

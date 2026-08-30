@@ -138,6 +138,33 @@ describe('FoodScanScreen', () => {
     );
   });
 
+  it('preserves meal-plan selection context after a barcode lookup', async () => {
+    mockLookupBarcodeV2.mockResolvedValue(existingFoodResult);
+    const mealPlanTarget = {
+      dayOfWeek: 5,
+      mealTypeId: 'dinner',
+      mealTypeName: 'Dinner',
+    };
+    const screen = renderScreenWithRoute({
+      pickerMode: 'meal-plan',
+      returnDepth: 2,
+      mealPlanTarget,
+    });
+
+    fireEvent(screen.getByTestId('camera-view'), 'onBarcodeScanned', {
+      data: '012345678905',
+    });
+
+    await waitFor(() => expect(mockNavigation.replace).toHaveBeenCalledWith(
+      'FoodEntryAdd',
+      expect.objectContaining({
+        pickerMode: 'meal-plan',
+        returnDepth: 2,
+        mealPlanTarget,
+      }),
+    ));
+  });
+
   it('does not fire a success haptic when barcode lookup finds no match', async () => {
     mockLookupBarcodeV2.mockResolvedValue({ source: 'remote', food: null } as any);
     const screen = renderScreen();
@@ -426,6 +453,14 @@ describe('FoodScanScreen', () => {
       const screen = renderScreenWithRoute({ pickerMode: 'meal-builder' });
       // Barcode + Label remain available; Photo is removed so meal-builder
       // scans can't accidentally drop into the diary-logging flow.
+      expect(screen.getByText('Barcode')).toBeTruthy();
+      expect(screen.getByText('Label')).toBeTruthy();
+      expect(screen.queryByText('Photo')).toBeNull();
+    });
+
+    it('hides the diary-only Photo segment in meal-plan mode', () => {
+      const screen = renderScreenWithRoute({ pickerMode: 'meal-plan' });
+
       expect(screen.getByText('Barcode')).toBeTruthy();
       expect(screen.getByText('Label')).toBeTruthy();
       expect(screen.queryByText('Photo')).toBeNull();

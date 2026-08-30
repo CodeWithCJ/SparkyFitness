@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-08-26*
+*Last updated: 2026-08-29*
 
 SparkyFitness Mobile is a React Native 0.85 + Expo SDK 56 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -80,7 +80,7 @@ npx expo prebuild --clean
 - Screens intentionally off the hook (e.g. `FoodSearchScreen`'s bespoke anchored-menu bar) must mirror custom actions with `unstable_header{Left,Right}Items` themselves, hide the screen-owned React header behind `useNativeIOSHeadersActive()` with a guard such as `{!usesNativeHeader && <Header />}`, and gate the `useLayoutEffect` that sets native header items on the same flag; otherwise iOS renders both headers.
 - When adding a tab, update `TabParamList`, `NativeTab.Screen`, and `FallbackTab.Screen`; for content tabs also add a tab-local native stack screen using `createIOSNativeHeaderOptions(...)`.
 - `__tests__/navigation/nativeHeaderContract.test.ts` enforces this native-header wiring. If it fails, fix the route/type/navigator alignment instead of weakening the test.
-- Current stack screens include onboarding/tabs, library/detail/form flows for foods/meals/exercises/presets, food entry view/edit, meal type detail and copy, the family diary flows (`FamilyMembers`, `FamilyDiary`, `FamilyMealDetail`, and `FamilyCopyReview`), `EditBarcode`, food search/entry/scan/photo flow, workout/activity add/detail, exercise/preset search, settings subscreens, logs, sync, measurements, fasting, and `WhatsNew`.
+- Current stack screens include onboarding/tabs, library/detail/form flows for foods/meals/meal plans/exercises/presets, food entry view/edit, meal type detail and copy, the family diary flows (`FamilyMembers`, `FamilyDiary`, `FamilyMealDetail`, and `FamilyCopyReview`), `EditBarcode`, food search/entry/scan/photo flow, workout/activity add/detail, exercise/preset search, settings subscreens, logs, sync, measurements, fasting, and `WhatsNew`.
 - `AddSheet` offers Food, Workout, Activity, Preset, Measurements, Scan Food, Ask Sparky, and Sync Health Data. Keep its present/dismiss refs intact to avoid Android re-present loops.
 - `useNavigationActionGuard` locks navigation-triggering actions while a native-stack transition is running (idle-callback unlock on re-focus, 5s safety release) so double-taps cannot queue duplicate screens; Library create actions use it.
 - `ActiveWorkoutBar` is mounted outside normal screen trees, uses the root navigation ref, and hides itself on modal/editor routes such as food search/forms/scan/photo, exercise search, workout/activity add, measurements, and barcode edit.
@@ -161,11 +161,12 @@ npx expo prebuild --clean
 ## Food, Meals, Units, And Photo Estimates
 
 - Food search spans local foods, online providers, meals, barcode scan, label scan, and AI photo estimates. Keep `FoodSearchScreen`, `FoodScanScreen`, `FoodEntryAddScreen`, `FoodFormScreen`, `FoodPhotoFlow`, and route params aligned.
-- `LibraryScreen` is the hub for saved Foods, Meals, Exercises, and Workout Presets. Full lists live in `FoodsLibraryScreen`, `MealsLibraryScreen`, `ExercisesLibraryScreen`, and `WorkoutPresetsLibraryScreen`.
+- `LibraryScreen` is the hub for saved Foods, Meals, recurring Meal Plans, Exercises, and Workout Presets. Full lists live in `FoodsLibraryScreen`, `MealsLibraryScreen`, `MealPlansScreen`, `ExercisesLibraryScreen`, and `WorkoutPresetsLibraryScreen`.
 - Food detail/edit flow: `FoodDetailScreen`, `FoodFormScreen`, `FoodForm`, `FoodUnitSelectorSheet`, `useFoodVariants`, `useFoodsLibrary`, `useDeleteFood`, `foodsApi`, and `utils/foodDetails.ts`.
 - `FoodForm` supports equivalent serving sizes grouped by nutrient signature, auto-scale nutrition, compatible unit conversion via `convertServingSizeOnUnitChange`, optional AI cross-category unit conversion, custom nutrients, and caller-provided `headerChildren`.
 - `EditBarcodeScreen` lets users add or remove extra barcodes for a saved food. Keep `FoodDetailScreen`, `EditBarcodeScreen`, `foodsApi`, and the `EditBarcode` route params aligned.
 - Meal templates use `MealAddScreen`, `MealDetailScreen`, `FoodSearch` / `FoodEntryAdd` with `pickerMode: 'meal-builder'`, and `services/mealBuilderSelection.ts` for pending ingredient handoff.
+- Recurring meal plans use `MealPlansScreen`, `MealPlanFormScreen`, `useMealPlans`, `mealPlansApi`, and `utils/mealPlanForm.ts`. Plans can schedule any meal already visible in the user's meal library, including family/public meals, but the plan itself remains private to its owner.
 - Logged-meal grouped diary entries use `foodEntryMealsApi`, `FoodEntryViewScreen`, and `EditLoggedMealScreen`. Preserve stored component nutrition snapshots when editing.
 - `MealTypeDetailScreen` owns single-meal-type day views and copy-to-another-day via `useCopyFoodEntries`; be careful with custom meal types and synthetic buckets.
 - External food providers use provider-agnostic v2 endpoints where possible. Provider categories and barcode support come from server config; do not hardcode provider type allowlists unless preserving an explicit fallback.
@@ -267,7 +268,7 @@ All endpoints require auth headers, and proxy headers are injected before auth h
 
 - `healthDataApi.ts` - `POST /api/health-data`, identity checks, chunking, timeout, retry, session-expiry handling.
 - `dailySummaryApi.ts`, `goalsApi.ts`, `measurementsApi.ts`, `preferencesApi.ts` - daily summary, goals, check-ins, water, timezone bootstrap, nutrient display preferences.
-- `foodEntriesApi.ts`, `foodEntryMealsApi.ts`, `foodsApi.ts`, `mealsApi.ts`, `mealTypesApi.ts` - diary food entries, grouped logged meals, saved foods/variants/barcodes, saved meals, meal types.
+- `foodEntriesApi.ts`, `foodEntryMealsApi.ts`, `foodsApi.ts`, `mealsApi.ts`, `mealTypesApi.ts`, `mealPlansApi.ts` - diary food entries, grouped logged meals, saved foods/variants/barcodes, saved meals, meal types, and recurring meal plans.
 - `externalFoodSearchApi.ts`, `aiSettingsApi.ts`, `aiConversionApi.ts` - provider-agnostic food search/details/barcode, label/photo estimate, AI availability, unit conversion.
 - `exerciseApi.ts`, `externalExerciseSearchApi.ts`, `workoutPresetsApi.ts` - exercise history, suggested/search/import flows, preset/individual exercise sessions, workout presets.
 - `fastingApi.ts` - `POST /api/fasting/start`, `POST /api/fasting/end`, and current/stats/history reads.
@@ -313,7 +314,7 @@ const androidService = require('../../src/services/healthConnectService.ts');
 - Health sync bug: start at `healthConnectService.ts` or `.ios.ts`, then `services/healthconnect/` or `services/healthkit/`, `backgroundSyncService.ts`, `autoSyncCoordinator.ts`, `useSyncHealthData.ts`, `SyncScreen.tsx`, and `healthDataApi.ts`.
 - Health writeback bug: inspect `HealthDataWriteback`, `services/writeback.ts` / `.ios.ts`, platform writeback modules, mapper files, tracking storage, app permissions, and inbound source filters.
 - Food library/edit bug: inspect `LibraryScreen`, food library/detail/form/barcode screens, `FoodForm`, unit selector, food hooks, `foodsApi`, food unit types, and `foodDetails.ts`.
-- Meal bug: inspect meals library/detail/add/edit screens, `MealTypeDetailScreen`, food picker routes, meal hooks/API, selection service, logged-meal API, and meal nutrition utils.
+- Meal bug: inspect meals library/detail/add/edit screens, meal plan list/form screens, `MealTypeDetailScreen`, food picker routes, meal and meal-plan hooks/APIs, selection service, logged-meal API, and meal nutrition/form utils.
 - Family diary bug: inspect `FamilyMembersScreen`, `FamilyDiaryScreen`, `FamilyMealDetailScreen`, `FamilyCopyReviewScreen`, family hooks/API, navigation params, and the server family/food-entry routes and models.
 - Exercise/preset bug: inspect library/detail/form/search screens, related hooks/API, selected-exercise handoff, rest-period controls, and workout session helpers.
 - Workout/activity/HUD bug: inspect `AddSheet`, workout/activity screens, workout form hooks, `workoutDraftService`, `activeWorkoutStore`, `ActiveWorkoutBar`, rest notifications, and detail screen set interactions.

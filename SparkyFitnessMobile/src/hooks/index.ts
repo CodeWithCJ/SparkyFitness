@@ -22,6 +22,14 @@ export { useDebounce } from './useDebounce';
 export { useFoodSearch } from './useFoodSearch';
 export { useFoodsLibrary } from './useFoodsLibrary';
 export { useMeals, useRecentMeals, useTopMeals, useMeal, useCreateMeal, useUpdateMeal, useDeleteMeal } from './useMeals';
+export {
+  useMealPlans,
+  useCreateMealPlan,
+  useUpdateMealPlan,
+  useDuplicateMealPlan,
+  useDeleteMealPlan,
+} from './useMealPlans';
+export { useMealPlanNutrition } from './useMealPlanNutrition';
 export { useMealSearch } from './useMealSearch';
 export { useExternalProviders } from './useExternalProviders';
 export { useExternalFoodSearch } from './useExternalFoodSearch';
