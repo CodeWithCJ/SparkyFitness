@@ -13,8 +13,8 @@ import type { CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
 import type { MealTypeKey } from '../utils/mealNutrition';
 import type { AssumedSetValues } from '../utils/workoutSession';
 import type { Exercise } from './exercise';
-import type { FamilyDiaryUser } from './familyDiary';
-import type { FoodEntry } from './foodEntries';
+import type { Meal, MealIngredientDraft } from './meals';
+import type { MealPlanPickerTarget, MealPlanTemplate } from './mealPlans';
 import type { FoodEntryMeal } from './foodEntryMeals';
 import type { FoodInfoItem } from './foodInfo';
 import type {
@@ -25,7 +25,7 @@ import type {
 import type { Meal, MealIngredientDraft } from './meals';
 import type { WorkoutPreset } from './workoutPresets';
 
-export type FoodPickerMode = 'log-entry' | 'meal-builder' | 'library';
+export type FoodPickerMode = 'log-entry' | 'meal-builder' | 'meal-plan' | 'library';
 
 export type TabParamList = {
   Dashboard: undefined;
@@ -62,6 +62,8 @@ export type RootStackParamList = {
   PregnancySetup: { pregnancy?: SharedPregnancy } | undefined;
   FoodsLibrary: undefined;
   MealsLibrary: undefined;
+  MealPlans: undefined;
+  MealPlanForm: { template?: MealPlanTemplate; initialMeal?: Meal } | undefined;
   ExercisesLibrary: undefined;
   WorkoutPresetsLibrary: undefined;
   WorkoutPresetDetail: { preset: WorkoutPreset; updatedPreset?: WorkoutPreset };
@@ -102,6 +104,7 @@ export type RootStackParamList = {
         pickerMode?: FoodPickerMode;
         /** Optional canonical meal type id to pre-select when logging. */
         mealTypeId?: string;
+        mealPlanTarget?: MealPlanPickerTarget;
       }
     | undefined;
   FoodEntryAdd:
@@ -118,6 +121,7 @@ export type RootStackParamList = {
         returnDepth?: number;
         /** Optional canonical meal type id to pre-select when logging. */
         mealTypeId?: string;
+        mealPlanTarget?: MealPlanPickerTarget;
       };
   EditLoggedMeal: { foodEntryMealId: string; initialMeal?: FoodEntryMeal };
   FoodEntryView: {
@@ -153,6 +157,7 @@ export type RootStackParamList = {
         returnDepth?: number;
         pendingScannedBarcode?: string;
         scannedBarcodeNonce?: number;
+        mealPlanTarget?: MealPlanPickerTarget;
       }
     | {
         mode: 'adjust-entry-nutrition';
@@ -179,6 +184,7 @@ export type RootStackParamList = {
         providerId?: string;
         /** Preserved when the scan was started from a meal detail screen. */
         mealTypeId?: string;
+        mealPlanTarget?: MealPlanPickerTarget;
       }
     | {
         mode: 'capture-barcode';

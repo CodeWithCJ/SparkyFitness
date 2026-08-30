@@ -9,6 +9,8 @@ import {
   KeyboardAvoidingView as RNKeyboardAvoidingView,
   Platform,
   TextInput,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   type TextInputProps,
 } from 'react-native';
 import { fetch as expoFetch } from 'expo/fetch';
@@ -61,6 +63,8 @@ const ThreadMessages = ThreadPrimitive.Messages as React.ComponentType<
 
 const IOS_SMALL_NATIVE_HEADER_HEIGHT = 44;
 const CHAT_KEYBOARD_EXTRA_SPACING = 12;
+// How close (px) to the bottom still counts as "at the bottom" for auto-scroll.
+const SCROLL_PIN_THRESHOLD = 40;
 
 function ChatKeyboardAvoidingView(props: React.ComponentProps<typeof RNKeyboardAvoidingView>) {
   if (Platform.OS === 'ios') {
@@ -409,9 +413,16 @@ function ChatThread({
   const { t } = useTranslation();
   const runtime = useSparkyChatRuntime({ baseUrl, serviceConfigId, initialMessages });
 
-  // Keep the message list pinned to the bottom as content grows: lands on the
-  // latest message on mount (seeded history) and follows the stream.
+  // Keep the message list pinned to the bottom as content grows — but only
+  // while the user is at the bottom: lands on the latest message on mount
+  // (seeded history) and follows the stream. While the user scrolls back
+  // through history, the FlatList keeps re-measuring rows (variable-height
+  // markdown), firing onContentSizeChange; scrolling unconditionally on it
+  // snapped the list back to the newest message and made history unreadable
+  // (#2276). Starting a new run re-pins, since send and retry both append at
+  // the bottom and the user is asking to see that reply.
   const messagesRef = useRef<FlatList>(null);
+  const pinnedToBottomRef = useRef(true);
   const scrollFrameRef = useRef<number | null>(null);
   const scrollSettledFrameRef = useRef<number | null>(null);
 
@@ -440,6 +451,27 @@ function ChatThread({
     });
   }, [cancelScheduledScroll]);
 
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    pinnedToBottomRef.current =
+      contentOffset.y + layoutMeasurement.height >= contentSize.height - SCROLL_PIN_THRESHOLD;
+  }, []);
+
+  const scrollToBottomIfPinned = useCallback(() => {
+    if (pinnedToBottomRef.current) scrollToBottom();
+  }, [scrollToBottom]);
+
+  const handleRunningChange = useCallback(
+    (running: boolean) => {
+      if (running) {
+        pinnedToBottomRef.current = true;
+        scrollToBottom();
+      }
+      onRunningChange(running);
+    },
+    [onRunningChange, scrollToBottom]
+  );
+
   useEffect(() => {
     scrollToBottom();
     return cancelScheduledScroll;
@@ -447,7 +479,7 @@ function ChatThread({
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <RunningReporter onRunningChange={onRunningChange} />
+      <RunningReporter onRunningChange={handleRunningChange} />
       <ThreadPrimitive.Root style={{ flex: 1 }}>
         <View style={{ flex: 1 }}>
           <ThreadPrimitive.Empty>
@@ -473,8 +505,10 @@ function ChatThread({
             ref={messagesRef}
             style={{ flex: 1 }}
             contentContainerStyle={{ padding: 16 }}
-            onContentSizeChange={scrollToBottom}
-            onLayout={scrollToBottom}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            onContentSizeChange={scrollToBottomIfPinned}
+            onLayout={scrollToBottomIfPinned}
           >
             {({ message }) => <MessageBubble role={message.role} />}
           </ThreadMessages>

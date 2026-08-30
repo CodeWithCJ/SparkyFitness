@@ -120,6 +120,50 @@ describe('DiaryCalorieMacroSummary', () => {
     expect(queryByText(/1,500/)).toBeNull();
   });
 
+  it('shows the projected Health Connect TDEE and Goal Mode target', () => {
+    useAppPreferencesStore.setState({ diarySummaryVisible: true, diarySummaryExpanded: false });
+    const { getByText } = renderWidget({
+      summary: buildSummary({
+        calorieBalance: {
+          ...buildSummary().calorieBalance,
+          goal: 2160,
+          remaining: 1660,
+          tdeeProjection: {
+            projectedBurn: 2400,
+            baselineBurn: 2400,
+            adjustment: 160,
+            targetCalories: 2160,
+            source: 'health_connect_total',
+          },
+        },
+      }),
+    });
+
+    expect(getByText('Projected TDEE: 2,400 kcal')).toBeTruthy();
+    expect(getByText('Goal Mode target: 2,160 kcal')).toBeTruthy();
+    expect(getByText('Health Connect total calories')).toBeTruthy();
+  });
+
+  it('supports the prior-server projection shape during rolling upgrades', () => {
+    useAppPreferencesStore.setState({ diarySummaryVisible: true, diarySummaryExpanded: false });
+    const { getByText } = renderWidget({
+      summary: buildSummary({
+        calorieBalance: {
+          ...buildSummary().calorieBalance,
+          goal: 2160,
+          tdeeProjection: {
+            projectedBurn: 2400,
+            baselineBurn: 2200,
+            adjustment: 160,
+          } as unknown as NonNullable<DailySummary['calorieBalance']['tdeeProjection']>,
+        },
+      }),
+    });
+
+    expect(getByText('Goal Mode target: 2,160 kcal')).toBeTruthy();
+    expect(getByText('Device projection')).toBeTruthy();
+  });
+
   it('still renders the calorie row (without a goal bar/suffix) when no goal is configured', () => {
     useAppPreferencesStore.setState({ diarySummaryVisible: true, diarySummaryExpanded: false });
     const { getByText, queryByText, toJSON } = renderWidget({

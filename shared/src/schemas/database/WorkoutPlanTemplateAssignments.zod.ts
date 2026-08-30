@@ -46,6 +46,12 @@ export const workoutPlanTemplateAssignmentsMutatorSchema = z.object({
   sort_order: z.number().optional().nullable(),
 });
 
-export type WorkoutPlanTemplateAssignments = z.infer<typeof workoutPlanTemplateAssignmentsSchema>;
-export type WorkoutPlanTemplateAssignmentsInitializer = z.infer<typeof workoutPlanTemplateAssignmentsInitializerSchema>;
-export type WorkoutPlanTemplateAssignmentsMutator = z.infer<typeof workoutPlanTemplateAssignmentsMutatorSchema>;
+export type WorkoutPlanTemplateAssignments = z.infer<
+  typeof workoutPlanTemplateAssignmentsSchema
+>;
+export type WorkoutPlanTemplateAssignmentsInitializer = z.infer<
+  typeof workoutPlanTemplateAssignmentsInitializerSchema
+>;
+export type WorkoutPlanTemplateAssignmentsMutator = z.infer<
+  typeof workoutPlanTemplateAssignmentsMutatorSchema
+>;

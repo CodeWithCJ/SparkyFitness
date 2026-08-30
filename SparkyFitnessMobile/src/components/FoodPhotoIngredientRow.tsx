@@ -5,7 +5,6 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import {
   CONFIDENCE_TONES,
-  ESTIMATE_MACRO_KEYS,
   type ConfidenceTone,
   type EstimateMacros,
 } from '@workspace/shared';
@@ -307,5 +306,4 @@ const FoodPhotoIngredientRow: React.FC<FoodPhotoIngredientRowProps> = ({
   );
 };
 
-export { MACRO_FIELDS, ESTIMATE_MACRO_KEYS };
 export default FoodPhotoIngredientRow;

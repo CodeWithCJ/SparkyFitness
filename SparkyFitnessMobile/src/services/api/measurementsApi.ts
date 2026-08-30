@@ -19,7 +19,7 @@ export const fetchMeasurements = async (date: string): Promise<CheckInMeasuremen
 /**
  * Fetches water intake for a given date.
  */
-export const fetchWaterIntake = async (date: string): Promise<WaterIntake> => {
+const fetchWaterIntake = async (date: string): Promise<WaterIntake> => {
   return apiFetch<WaterIntake>({
     endpoint: `/api/measurements/water-intake/${date}`,
     serviceName: 'Measurements API',

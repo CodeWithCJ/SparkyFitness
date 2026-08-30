@@ -88,7 +88,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     const requested = lookupParams?.initialMode ?? 'barcode';
     // Meal-builder scans never use the photo flow (it always logs to the
     // diary). Coerce to barcode if a caller deep-links 'photo' here.
-    if (requested === 'photo' && lookupParams?.pickerMode === 'meal-builder') {
+    if (requested === 'photo' && (lookupParams?.pickerMode === 'meal-builder' || lookupParams?.pickerMode === 'meal-plan')) {
       return 'barcode';
     }
     return requested;
@@ -107,6 +107,10 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   const returnDepth = lookupParams?.returnDepth;
   const providerId = lookupParams?.providerId;
   const isMealBuilderMode = pickerMode === 'meal-builder';
+  const isMealPlanMode = pickerMode === 'meal-plan';
+  const isSelectionMode = isMealBuilderMode || isMealPlanMode;
+  const selectionPickerMode = isSelectionMode ? pickerMode : undefined;
+  const mealPlanTarget = lookupParams?.mealPlanTarget;
 
   // Photo estimation always logs to the diary; hide it for meal-builder
   // scans so we don't drop the user into a flow that ignores pickerMode.
@@ -115,8 +119,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
     if (isCaptureBarcodeMode) {
       return SCAN_SEGMENTS.filter((key) => key === 'barcode').map((key) => ({ key, label: t('foodScan.segment.barcode', { defaultValue: 'Barcode' }) }));
     }
-    return (isMealBuilderMode ? SCAN_SEGMENTS.filter((key) => key !== 'photo') : SCAN_SEGMENTS).map((key) => ({ key, label: key === 'barcode' ? t('foodScan.segment.barcode', { defaultValue: 'Barcode' }) : key === 'label' ? t('foodScan.segment.label', { defaultValue: 'Label' }) : t('foodScan.segment.photo', { defaultValue: 'Photo' }) }));
-  }, [isCaptureBarcodeMode, isMealBuilderMode, t]);
+    return (isSelectionMode ? SCAN_SEGMENTS.filter((key) => key !== 'photo') : SCAN_SEGMENTS).map((key) => ({ key, label: key === 'barcode' ? t('foodScan.segment.barcode', { defaultValue: 'Barcode' }) : key === 'label' ? t('foodScan.segment.label', { defaultValue: 'Label' }) : t('foodScan.segment.photo', { defaultValue: 'Photo' }) }));
+  }, [isCaptureBarcodeMode, isSelectionMode, t]);
 
   const aiSettingQuery = useActiveAiServiceSetting({
     // Skip the AI gating fetch in capture-barcode mode — Photo segment is
@@ -135,8 +139,9 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
   ): Extract<RootStackScreenProps<'FoodForm'>['route']['params'], { mode: 'create-food' }> => ({
     mode: 'create-food',
     date,
-    pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
+    pickerMode: selectionPickerMode,
     returnDepth,
+    mealPlanTarget,
     ...extra,
   });
 
@@ -195,9 +200,10 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         navigation.replace('FoodEntryAdd', {
           item,
           date,
-          pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
+          pickerMode: selectionPickerMode,
           returnDepth,
           mealTypeId,
+          mealPlanTarget,
         });
       } else {
         if (shouldFireSuccessHaptic) {
@@ -265,9 +271,10 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({ navigation, route }) =>
         navigation.replace('FoodEntryAdd', {
           item,
           date,
-          pickerMode: isMealBuilderMode ? 'meal-builder' : undefined,
+          pickerMode: selectionPickerMode,
           returnDepth,
           mealTypeId,
+          mealPlanTarget,
         });
       }
     } catch (error) {

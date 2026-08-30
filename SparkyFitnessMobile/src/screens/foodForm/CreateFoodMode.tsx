@@ -18,6 +18,10 @@ import BottomSheetPicker from '../../components/BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../../components/CalendarSheet';
 import Switch from '../../components/ui/Switch';
 import { setPendingMealIngredientSelection } from '../../services/mealBuilderSelection';
+import {
+  buildMealPlanFoodAssignment,
+  setPendingMealPlanSelection,
+} from '../../services/mealPlanSelection';
 import { useMealTypes, usePreferences } from '../../hooks';
 import { useSaveFood } from '../../hooks/useSaveFood';
 import { useAddFoodEntry } from '../../hooks/useAddFoodEntry';
@@ -60,12 +64,14 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
   const pickerMode = params.pickerMode ?? 'log-entry';
   const returnDepth = params.returnDepth ?? 1;
   const isMealBuilderMode = pickerMode === 'meal-builder';
+  const isMealPlanMode = pickerMode === 'meal-plan';
+  const isSelectionMode = isMealBuilderMode || isMealPlanMode;
   const isLibraryMode = pickerMode === 'library';
-  const isLogEntryMode = !isMealBuilderMode && !isLibraryMode;
+  const isLogEntryMode = !isSelectionMode && !isLibraryMode;
   const showBarcodeField = !isMealBuilderMode;
   const initialFood = params.initialFood;
   const hasImportedInitialFood = !!initialFood;
-  const showAutoScaleNutrition = isMealBuilderMode || hasImportedInitialFood;
+  const showAutoScaleNutrition = isSelectionMode || hasImportedInitialFood;
   const { preferences } = usePreferences({ enabled: showAutoScaleNutrition });
   const initialAutoScaleNutritionEnabled =
     preferences?.auto_scale_online_imports ?? false;
@@ -298,18 +304,38 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
       });
     };
 
-    if (isMealBuilderMode) {
+    if (isSelectionMode) {
+      if (isMealPlanMode && !params.mealPlanTarget) {
+        Toast.show({
+          type: 'error',
+          text1: t('createFood.errors.foodSaveFailed', { defaultValue: 'Failed to save food' }),
+          text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+        });
+        return;
+      }
       try {
         const savedFood = await saveFoodAsync(saveFoodPayload, imageArgs);
         isSavingRef.current = true;
         saveEquivalentsAsync(savedFood.id);
-        setPendingMealIngredientSelection({
-          ingredient: buildMealIngredientDraftFromSavedFood(
-            savedFood,
-            parseDecimalInput(data.servingSize) || 0,
-            data.servingUnit || 'serving',
-          ),
-        });
+        const ingredient = buildMealIngredientDraftFromSavedFood(
+          savedFood,
+          parseDecimalInput(data.servingSize) || 0,
+          data.servingUnit || 'serving',
+        );
+        if (isMealPlanMode && params.mealPlanTarget) {
+          setPendingMealPlanSelection({
+            ...(params.mealPlanTarget.assignmentIndex === undefined
+              ? {}
+              : { assignmentIndex: params.mealPlanTarget.assignmentIndex }),
+            assignment: buildMealPlanFoodAssignment(
+              ingredient,
+              params.mealPlanTarget,
+              data.servingSize,
+            ),
+          });
+        } else {
+          setPendingMealIngredientSelection({ ingredient });
+        }
         navigation.dispatch(StackActions.pop(returnDepth));
       } catch {
         // Error toast is handled in the save hook.

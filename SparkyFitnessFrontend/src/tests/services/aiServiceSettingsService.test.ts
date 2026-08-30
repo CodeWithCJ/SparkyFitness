@@ -232,36 +232,6 @@ describe('aiServiceSettingsService', () => {
     });
   });
 
-  describe('updateAIServiceStatus', () => {
-    it('updates service active status', async () => {
-      const serviceId = '1';
-      const isActive = true;
-      const mockResponse = {
-        message: 'AI service status updated successfully',
-        setting: {
-          ...completeMockService,
-          id: serviceId,
-          is_active: isActive,
-        },
-      };
-      mockApiCall.mockResolvedValue(mockResponse);
-
-      const result = await aiServiceSettingsService.updateAIServiceStatus(
-        serviceId,
-        isActive
-      );
-
-      expect(mockApiCall).toHaveBeenCalledWith('/chat', {
-        method: 'POST',
-        body: {
-          action: 'save_ai_service_settings',
-          service_data: { id: serviceId, is_active: isActive },
-        },
-      });
-      expect(result).toEqual(mockResponse);
-    });
-  });
-
   describe('updateUserPreferences', () => {
     it('updates user preferences', async () => {
       const preferences = {

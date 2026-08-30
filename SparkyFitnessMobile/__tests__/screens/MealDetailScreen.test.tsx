@@ -226,6 +226,16 @@ describe('MealDetailScreen', () => {
     );
   });
 
+  it('opens a prefilled meal plan form from the detail screen', () => {
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByText('Plan Meal'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith('MealPlanForm', {
+      initialMeal: meal,
+    });
+  });
+
   it('opens MealAdd in edit mode for owners', () => {
     renderScreen();
 
@@ -258,6 +268,7 @@ describe('MealDetailScreen', () => {
     ]);
     expect(screen.queryByText('Delete Meal')).toBeNull();
     expect(screen.getByText('Log Meal')).toBeTruthy();
+    expect(screen.getByText('Plan Meal')).toBeTruthy();
   });
 
   it('triggers delete confirmation from the delete action', () => {

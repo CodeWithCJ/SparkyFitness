@@ -161,6 +161,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
   }
 
   const { eaten, goal, remaining, progress } = summary.calorieBalance;
+  const projection = summary.calorieBalance.tdeeProjection;
 
   const handleToggleExpanded = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -204,6 +205,29 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
         </View>
         <CalorieBar eaten={eaten} goal={goal} remaining={remaining} progressPercent={progress / 100} />
       </TouchableOpacity>
+      {projection && (
+        <View className="mt-2 rounded-lg bg-surface px-3 py-2">
+          <Text className="text-xs font-semibold text-text-primary">
+            {t('diarySummary.projectedTdee', {
+              defaultValue: 'Projected TDEE: {{value}} kcal',
+              value: formatLocalizedNumber(Math.round(projection.projectedBurn)),
+            })}
+          </Text>
+          <Text className="text-xs text-text-secondary mt-0.5">
+            {t('diarySummary.goalModeTarget', {
+              defaultValue: 'Goal Mode target: {{value}} kcal',
+              value: formatLocalizedNumber(Math.round(projection.targetCalories ?? goal)),
+            })}
+          </Text>
+          <Text className="text-xs text-text-muted mt-0.5">
+            {projection.source === 'health_connect_total'
+              ? t('diarySummary.healthConnectProjectionSource', { defaultValue: 'Health Connect total calories' })
+              : projection.source === 'active_plus_bmr'
+                ? t('diarySummary.fallbackProjectionSource', { defaultValue: 'BMR + active calories fallback' })
+                : t('diarySummary.legacyProjectionSource', { defaultValue: 'Device projection' })}
+          </Text>
+        </View>
+      )}
       {diarySummaryExpanded && (
         <View className="flex-row flex-wrap justify-between gap-y-2 mt-3">
           {CORE_MACROS.map((key) => {

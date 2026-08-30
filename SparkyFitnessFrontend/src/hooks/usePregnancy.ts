@@ -57,13 +57,6 @@ export const usePregnancyOverview = (date?: string) =>
     meta: { errorMessage: 'Failed to load pregnancy overview.' },
   });
 
-export const useKickSessions = () =>
-  useQuery({
-    queryKey: pregnancyKeys.kicks(),
-    queryFn: () => pregnancyService.listKickSessions(),
-    meta: { errorMessage: 'Failed to load kick sessions.' },
-  });
-
 export const useContractions = (enabled = true) =>
   useQuery({
     queryKey: pregnancyKeys.contractions(),
@@ -86,24 +79,6 @@ export const useCreatePregnancyMutation = () => {
       errorMessage: 'Could not start pregnancy tracking.',
       successMessage: 'Pregnancy tracking started.',
     },
-  });
-};
-
-export const useUpdatePregnancyMutation = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      id,
-      body,
-    }: {
-      id: string;
-      body: Partial<SharedPregnancy>;
-    }) => pregnancyService.updatePregnancy(id, body),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pregnancy-overview'] });
-      queryClient.invalidateQueries({ queryKey: pregnancyKeys.current() });
-    },
-    meta: { errorMessage: 'Could not update pregnancy.' },
   });
 };
 

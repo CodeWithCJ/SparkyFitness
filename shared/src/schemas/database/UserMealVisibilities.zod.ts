@@ -33,5 +33,9 @@ export const userMealVisibilitiesMutatorSchema = z.object({
 });
 
 export type UserMealVisibilities = z.infer<typeof userMealVisibilitiesSchema>;
-export type UserMealVisibilitiesInitializer = z.infer<typeof userMealVisibilitiesInitializerSchema>;
-export type UserMealVisibilitiesMutator = z.infer<typeof userMealVisibilitiesMutatorSchema>;
+export type UserMealVisibilitiesInitializer = z.infer<
+  typeof userMealVisibilitiesInitializerSchema
+>;
+export type UserMealVisibilitiesMutator = z.infer<
+  typeof userMealVisibilitiesMutatorSchema
+>;

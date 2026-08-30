@@ -74,5 +74,7 @@ export const oidcProvidersMutatorSchema = z.object({
 });
 
 export type OidcProviders = z.infer<typeof oidcProvidersSchema>;
-export type OidcProvidersInitializer = z.infer<typeof oidcProvidersInitializerSchema>;
+export type OidcProvidersInitializer = z.infer<
+  typeof oidcProvidersInitializerSchema
+>;
 export type OidcProvidersMutator = z.infer<typeof oidcProvidersMutatorSchema>;

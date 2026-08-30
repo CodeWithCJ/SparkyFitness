@@ -36,8 +36,11 @@ export const vitalsEntriesInitializerSchema = z.object({
   updated_at: z.coerce.date().optional().nullable(),
 });
 
-export const vitalsEntriesMutatorSchema = vitalsEntriesInitializerSchema.partial();
+export const vitalsEntriesMutatorSchema =
+  vitalsEntriesInitializerSchema.partial();
 
 export type VitalsEntries = z.infer<typeof vitalsEntriesSchema>;
-export type VitalsEntriesInitializer = z.infer<typeof vitalsEntriesInitializerSchema>;
+export type VitalsEntriesInitializer = z.infer<
+  typeof vitalsEntriesInitializerSchema
+>;
 export type VitalsEntriesMutator = z.infer<typeof vitalsEntriesMutatorSchema>;

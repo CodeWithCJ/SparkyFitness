@@ -16,6 +16,7 @@ import { useSaveFood } from '../../src/hooks/useSaveFood';
 import { useAddFoodEntry } from '../../src/hooks/useAddFoodEntry';
 import { useAddFoodEntryMeal } from '../../src/hooks/useAddFoodEntryMeal';
 import { setPendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
+import { setPendingMealPlanSelection } from '../../src/services/mealPlanSelection';
 import { buildMealIngredientDraft } from '../../src/utils/mealBuilderDraft';
 
 const mockPop = jest.fn((count: number) => ({ type: 'POP', payload: { count } }));
@@ -72,6 +73,11 @@ jest.mock('../../src/hooks/useAddFoodEntryMeal', () => ({
 
 jest.mock('../../src/services/mealBuilderSelection', () => ({
   setPendingMealIngredientSelection: jest.fn(),
+}));
+
+jest.mock('../../src/services/mealPlanSelection', () => ({
+  ...jest.requireActual('../../src/services/mealPlanSelection'),
+  setPendingMealPlanSelection: jest.fn(),
 }));
 
 jest.mock('../../src/components/Icon', () => {
@@ -246,6 +252,8 @@ const mockUseAddFoodEntryMeal =
   useAddFoodEntryMeal as jest.MockedFunction<typeof useAddFoodEntryMeal>;
 const mockSetPendingMealIngredientSelection =
   setPendingMealIngredientSelection as jest.MockedFunction<typeof setPendingMealIngredientSelection>;
+const mockSetPendingMealPlanSelection =
+  setPendingMealPlanSelection as jest.MockedFunction<typeof setPendingMealPlanSelection>;
 const mockBuildMealIngredientDraft =
   buildMealIngredientDraft as jest.MockedFunction<typeof buildMealIngredientDraft>;
 const mockToast = Toast as unknown as { show: jest.Mock };
@@ -645,10 +653,109 @@ describe('FoodEntryAddScreen', () => {
     });
   });
 
+  it('returns a local food assignment to the meal-plan editor', async () => {
+    const screen = renderScreen({
+      item: baseLocalItem,
+      pickerMode: 'meal-plan',
+      returnDepth: 2,
+      mealPlanTarget: {
+        dayOfWeek: 2,
+        mealTypeId: 'lunch',
+        mealTypeName: 'Lunch',
+        assignmentIndex: 0,
+      },
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockSetPendingMealPlanSelection).toHaveBeenCalledWith({
+        assignmentIndex: 0,
+        assignment: expect.objectContaining({
+          item_type: 'food',
+          day_of_week: 2,
+          meal_type_id: 'lunch',
+          meal_type: 'Lunch',
+          food_id: 'food-1',
+          variant_id: 'variant-1',
+          quantity: 1,
+          unit: 'cup',
+          nutrition: {
+            servingSize: 1,
+            calories: 100,
+            protein: 15,
+            carbs: 6,
+            fat: 0,
+          },
+        }),
+      });
+    });
+    expect(navigation.dispatch).toHaveBeenCalledWith({
+      type: 'POP',
+      payload: { count: 2 },
+    });
+    expect(mockAddEntry).not.toHaveBeenCalled();
+  });
+
+  it('returns a reusable meal assignment to the meal-plan editor', () => {
+    const screen = renderScreen({
+      item: baseMealItem,
+      pickerMode: 'meal-plan',
+      returnDepth: 2,
+      mealPlanTarget: {
+        dayOfWeek: 4,
+        mealTypeId: 'dinner',
+        mealTypeName: 'Dinner',
+        assignmentIndex: 1,
+      },
+    });
+
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(mockSetPendingMealPlanSelection).toHaveBeenCalledWith({
+      assignmentIndex: 1,
+      assignment: expect.objectContaining({
+        item_type: 'meal',
+        day_of_week: 4,
+        meal_type_id: 'dinner',
+        meal_type: 'Dinner',
+        meal_id: 'meal-1',
+        meal_name: 'Breakfast Meal',
+        quantity: 1,
+        unit: 'serving',
+        nutrition: {
+          servingSize: 1,
+          calories: 450,
+          protein: 25,
+          carbs: 40,
+          fat: 18,
+        },
+      }),
+    });
+    expect(mockToast.show).not.toHaveBeenCalledWith(
+      expect.objectContaining({ text1: 'Meals not supported here' }),
+    );
+  });
+
   it('hides diary-only controls in meal-builder mode', () => {
     const screen = renderScreen({
       item: baseLocalItem,
       pickerMode: 'meal-builder',
+    });
+
+    expect(screen.queryByText('Date')).toBeNull();
+    expect(screen.queryByText('Meal')).toBeNull();
+  });
+
+  it('hides diary-only controls in meal-plan mode', () => {
+    const screen = renderScreen({
+      item: baseLocalItem,
+      pickerMode: 'meal-plan',
+      mealPlanTarget: {
+        dayOfWeek: 1,
+        mealTypeId: 'meal-1',
+        mealTypeName: 'Breakfast',
+      },
     });
 
     expect(screen.queryByText('Date')).toBeNull();

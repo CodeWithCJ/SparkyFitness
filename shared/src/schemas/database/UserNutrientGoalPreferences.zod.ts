@@ -45,6 +45,12 @@ export const userNutrientGoalPreferencesMutatorSchema = z.object({
 });
 
 export type NutrientGoalType = z.infer<typeof nutrientGoalTypeSchema>;
-export type UserNutrientGoalPreferences = z.infer<typeof userNutrientGoalPreferencesSchema>;
-export type UserNutrientGoalPreferencesInitializer = z.infer<typeof userNutrientGoalPreferencesInitializerSchema>;
-export type UserNutrientGoalPreferencesMutator = z.infer<typeof userNutrientGoalPreferencesMutatorSchema>;
+export type UserNutrientGoalPreferences = z.infer<
+  typeof userNutrientGoalPreferencesSchema
+>;
+export type UserNutrientGoalPreferencesInitializer = z.infer<
+  typeof userNutrientGoalPreferencesInitializerSchema
+>;
+export type UserNutrientGoalPreferencesMutator = z.infer<
+  typeof userNutrientGoalPreferencesMutatorSchema
+>;

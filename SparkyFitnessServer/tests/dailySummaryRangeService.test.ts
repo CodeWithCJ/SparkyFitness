@@ -16,6 +16,7 @@ import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import foodRepository from '../models/foodMisc.js';
+import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import bmrService from '../services/bmrService.js';
 
 vi.mock('../services/goalService.js', () => ({
@@ -52,6 +53,9 @@ vi.mock('../models/preferenceRepository.js', () => ({
 }));
 vi.mock('../models/foodMisc.js', () => ({
   default: { getDailySupplementTotals: vi.fn() },
+}));
+vi.mock('../models/genericHealthRepository.js', () => ({
+  getHealthConnectTotalCaloriesByDateRange: vi.fn(),
 }));
 vi.mock('../services/bmrService.js', () => ({
   default: { calculateBmr: vi.fn() },
@@ -163,6 +167,9 @@ beforeEach(() => {
   vi.mocked(measurementRepository.getExternalBmrByDateRange).mockResolvedValue(
     new Map()
   );
+  vi.mocked(
+    genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+  ).mockResolvedValue([]);
 
   // ── per-date path ──
   vi.mocked(goalService.getUserGoals).mockResolvedValue({ calories: GOAL });
@@ -186,6 +193,7 @@ beforeEach(() => {
 
 const runRange = () =>
   getDailySummaryRange({
+    actorUserId: USER,
     targetUserId: USER,
     startDate: '2026-08-08',
     endDate: '2026-08-11',
@@ -274,6 +282,24 @@ describe('parity with the per-date Diary path', () => {
 });
 
 describe('range mechanics', () => {
+  test('uses the matching Health Connect total for each completed day', async () => {
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+      ...PREFERENCES,
+      calorie_goal_adjustment_mode: 'tdee',
+      goal_mode: 'maintain',
+    });
+    vi.mocked(
+      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+    ).mockResolvedValue([{ entry_date: '2026-08-08', total_calories: 2300 }]);
+
+    const { days } = await runRange();
+    const day = days.find((entry) => entry.date === '2026-08-08');
+
+    expect(day?.tdeeProjection?.source).toBe('health_connect_total');
+    expect(day?.tdeeProjection?.projectedBurn).toBe(2300);
+    expect(day?.goal).toBe(2300);
+  });
+
   test('emits one row per calendar day, including days with nothing logged', async () => {
     const { days } = await runRange();
 
@@ -298,6 +324,7 @@ describe('range mechanics', () => {
    */
   test('issues a fixed number of queries regardless of range length', async () => {
     await getDailySummaryRange({
+      actorUserId: USER,
       targetUserId: USER,
       startDate: '2026-01-01',
       endDate: '2026-03-31', // 90 days
@@ -317,12 +344,16 @@ describe('range mechanics', () => {
     );
     expect(userRepository.getUserProfile).toHaveBeenCalledTimes(1);
     expect(preferenceRepository.getUserPreferences).toHaveBeenCalledTimes(1);
+    expect(
+      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+    ).toHaveBeenCalledTimes(1);
     // The per-date step query must never be reached from the ranged path.
     expect(measurementRepository.getStepCaloriesForDate).not.toHaveBeenCalled();
   });
 
   test('withholds check-in derived data when the caller lacks permission', async () => {
     const { days } = await getDailySummaryRange({
+      actorUserId: USER,
       targetUserId: USER,
       startDate: '2026-08-08',
       endDate: '2026-08-11',
@@ -336,6 +367,9 @@ describe('range mechanics', () => {
     expect(
       measurementRepository.getExternalBmrByDateRange
     ).not.toHaveBeenCalled();
+    expect(
+      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+    ).not.toHaveBeenCalled();
     // The Aug 8 day was steps-only, so with no checkin access it credits nothing.
     expect(days.find((day) => day.date === '2026-08-08')?.burned).toBe(0);
   });
@@ -347,6 +381,7 @@ describe('range mechanics', () => {
     });
 
     const { days } = await getDailySummaryRange({
+      actorUserId: USER,
       targetUserId: USER,
       startDate: '2026-08-08',
       endDate: '2026-08-09',
@@ -378,6 +413,7 @@ describe('range mechanics', () => {
     ]);
 
     await getDailySummaryRange({
+      actorUserId: USER,
       targetUserId: USER,
       startDate: '2026-08-08',
       endDate: '2026-08-11',

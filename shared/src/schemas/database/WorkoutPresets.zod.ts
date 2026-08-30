@@ -40,5 +40,7 @@ export const workoutPresetsMutatorSchema = z.object({
 });
 
 export type WorkoutPresets = z.infer<typeof workoutPresetsSchema>;
-export type WorkoutPresetsInitializer = z.infer<typeof workoutPresetsInitializerSchema>;
+export type WorkoutPresetsInitializer = z.infer<
+  typeof workoutPresetsInitializerSchema
+>;
 export type WorkoutPresetsMutator = z.infer<typeof workoutPresetsMutatorSchema>;

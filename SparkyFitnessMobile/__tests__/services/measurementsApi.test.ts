@@ -1,6 +1,5 @@
 import {
   fetchMeasurements,
-  fetchWaterIntake,
   fetchWaterContainers,
   changeWaterIntake,
   upsertCheckIn,
@@ -156,72 +155,6 @@ describe('measurementsApi', () => {
 
       await expect(fetchMeasurements(testDate)).rejects.toThrow(
         'Network request failed'
-      );
-    });
-  });
-
-  describe('fetchWaterIntake', () => {
-    const testConfig: ServerConfig = {
-      id: 'test-id',
-      url: 'https://example.com',
-      apiKey: 'test-api-key-12345',
-    };
-
-    const testDate = '2024-06-15';
-
-    test('throws error when no server config exists', async () => {
-      mockGetActiveServerConfig.mockResolvedValue(null);
-
-      await expect(fetchWaterIntake(testDate)).rejects.toThrow(
-        'Server configuration not found.'
-      );
-    });
-
-    test('sends GET request to /api/measurements/water-intake/:date', async () => {
-      mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ water_ml: 750 }),
-      });
-
-      await fetchWaterIntake(testDate);
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com/api/measurements/water-intake/2024-06-15',
-        expect.objectContaining({
-          method: 'GET',
-          headers: {
-            Authorization: 'Bearer test-api-key-12345',
-
-            'X-Meal-Model-Version': '2',
-          },
-        })
-      );
-    });
-
-    test('returns parsed JSON response on success', async () => {
-      const responseData = { water_ml: 1500 };
-      mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(responseData),
-      });
-
-      const result = await fetchWaterIntake(testDate);
-
-      expect(result).toEqual(responseData);
-    });
-
-    test('throws error on non-OK response', async () => {
-      mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status: 404,
-        text: () => Promise.resolve('Not Found'),
-      });
-
-      await expect(fetchWaterIntake(testDate)).rejects.toThrow(
-        'Server error: 404 - Not Found'
       );
     });
   });

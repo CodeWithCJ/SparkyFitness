@@ -45,7 +45,19 @@ export const readCumulativeByDay = async (
   endDate: Date,
 ): Promise<ReadResult<AggregatedHealthRecord> | null> => {
   const reader = CUMULATIVE_READERS[metric.recordType];
-  return reader ? reader(startDate, endDate) : null;
+  if (!reader) return null;
+
+  const result = await reader(startDate, endDate);
+  if (metric.recordType !== 'TotalCaloriesBurned') return result;
+
+  // The aggregate itself is day-bucketed, but today's value is a snapshot. Its
+  // read-window end is the source capture time the server needs to project that
+  // partial-day total to midnight and reject delayed, older sync results.
+  const capturedAt = endDate.toISOString();
+  return {
+    ...result,
+    records: result.records.map(record => ({ ...record, timestamp: capturedAt })),
+  };
 };
 
 /**
