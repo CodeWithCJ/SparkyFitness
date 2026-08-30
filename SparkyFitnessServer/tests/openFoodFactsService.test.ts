@@ -1252,29 +1252,80 @@ describe('openFoodFactsService', () => {
       ]);
     });
 
-    it('requests self-hosted energy data before provider pagination', async () => {
+    it('fills self-hosted pages without excluding protein-only nutrition', async () => {
       // @ts-expect-error mocked provider resolver
       resolveOpenFoodFactsProvider.mockResolvedValue({
         session: null,
         baseUrl: 'http://sparkyfitness-foodfacts:8080',
       });
-      fetchMock.mockResolvedValue({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            products: [],
-            page: 2,
-            page_size: 20,
-            count: 0,
-          }),
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              products: [
+                {
+                  code: 'missing-first',
+                  product_name: 'Missing Nutrition',
+                  nutriments: { 'added-sugars_100g': 0 },
+                },
+                {
+                  code: 'protein-only',
+                  product_name: 'Protein Only',
+                  nutriments: { proteins_100g: 12 },
+                },
+              ],
+              page: 1,
+              page_size: 2,
+              count: 4,
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              products: [
+                {
+                  code: 'missing-second',
+                  product_name: 'Still Missing Nutrition',
+                  nutriments: { fiber_100g: 3 },
+                },
+                {
+                  code: 'energy',
+                  product_name: 'Energy Product',
+                  nutriments: { 'energy-kcal_100g': 42 },
+                },
+              ],
+              page: 2,
+              page_size: 2,
+              count: 4,
+            }),
+        });
+
+      const result = await searchOpenFoodFacts(
+        'banana',
+        1,
+        'en',
+        'user-A',
+        'prov-1',
+        2
+      );
+
+      expect(result.products.map((product) => product.code)).toEqual([
+        'protein-only',
+        'energy',
+      ]);
+      expect(result.pagination).toEqual({
+        page: 1,
+        pageSize: 2,
+        totalCount: 2,
+        hasMore: false,
       });
-
-      await searchOpenFoodFacts('banana', 2, 'en', 'user-A', 'prov-1');
-
-      const requestUrl = new URL(String(fetchMock.mock.calls[0][0]));
-      expect(requestUrl.searchParams.get('nutriment_0')).toBe('energy');
-      expect(requestUrl.searchParams.get('nutriment_compare_0')).toBe('gte');
-      expect(requestUrl.searchParams.get('nutriment_value_0')).toBe('0');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      for (const [request] of fetchMock.mock.calls) {
+        const requestUrl = new URL(String(request));
+        expect(requestUrl.searchParams.has('nutriment_0')).toBe(false);
+      }
     });
 
     it('builds the search URL from a resolved custom base_url', async () => {
@@ -1299,7 +1350,7 @@ describe('openFoodFactsService', () => {
       );
     });
 
-    it('does not apply the public result-window limit to a custom provider', async () => {
+    it('does not apply the public result-window limit while scanning a custom provider', async () => {
       // @ts-expect-error mocked provider resolver
       resolveOpenFoodFactsProvider.mockResolvedValue({
         session: null,
@@ -1310,10 +1361,15 @@ describe('openFoodFactsService', () => {
         json: () => Promise.resolve({ products: [], count: 0 }),
       });
 
-      await searchOpenFoodFacts('pizza', 501, 'en', 'user-A', 'prov-1', 20);
+      await expect(
+        searchOpenFoodFacts('pizza', 501, 'en', 'user-A', 'prov-1', 20)
+      ).resolves.toMatchObject({
+        products: [],
+        pagination: { page: 501, pageSize: 20, hasMore: false },
+      });
 
       expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('page=501'),
+        expect.stringContaining('page=1'),
         expect.any(Object)
       );
     });

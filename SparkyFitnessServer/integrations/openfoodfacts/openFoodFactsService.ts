@@ -97,8 +97,7 @@ const OFF_CORE_NUTRIENT_SERVING_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_SERVING_KE
   (key) => `nutriments.${key}:*`
 ).join(' OR ')})`;
 const OFF_CORE_NUTRITION_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_100G_SEARCH_CLAUSE} OR (serving_quantity:[0.000001 TO *] AND ${OFF_CORE_NUTRIENT_SERVING_SEARCH_CLAUSE}))`;
-const LEGACY_CORE_NUTRITION_QUERY =
-  'nutriment_0=energy&nutriment_compare_0=gte&nutriment_value_0=0';
+const LEGACY_SEARCH_BATCH_SIZE = 100;
 
 interface OffProduct {
   product_name?: string;
@@ -500,33 +499,61 @@ async function searchOpenFoodFacts(
     const isPublicOpenFoodFacts =
       baseUrl.replace(/\/+$/, '') === DEFAULT_OFF_BASE_URL.replace(/\/+$/, '');
     if (!isPublicOpenFoodFacts) {
-      // Product Opener applies nutriment filters before its page boundary, so
-      // its count and has-more metadata describe products we can actually map.
-      const searchUrl = `${baseUrl}/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=${pageSize}&page=${page}&fields=${fields.join(',')}&lc=${language}&${LEGACY_CORE_NUTRITION_QUERY}`;
-      const response = await fetchOpenFoodFacts(searchUrl, {
-        authenticatedUserId,
-        providerId,
-        sessionCookie,
-      });
-      if (!response.ok) {
-        log(
-          'error',
-          `OpenFoodFacts legacy search failed with HTTP ${response.status}`
+      // Legacy Product Opener combines multiple nutriment filters with AND, so
+      // it cannot express the same energy-or-macro rule as
+      // hasUsableOffCoreNutrition. Scan provider pages in larger batches and
+      // apply the rule before slicing the requested page. The one-item
+      // lookahead keeps hasMore truthful without scanning an entire catalogue.
+      const requestedStart = (page - 1) * pageSize;
+      const requestedEnd = page * pageSize;
+      const usableProducts: OffProduct[] = [];
+      let providerPage = 1;
+      let hasMoreCandidates = true;
+
+      while (hasMoreCandidates && usableProducts.length <= requestedEnd) {
+        const searchUrl = `${baseUrl}/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1&page_size=${LEGACY_SEARCH_BATCH_SIZE}&page=${providerPage}&fields=${fields.join(',')}&lc=${language}`;
+        const response = await fetchOpenFoodFacts(searchUrl, {
+          authenticatedUserId,
+          providerId,
+          sessionCookie,
+        });
+        if (!response.ok) {
+          log(
+            'error',
+            `OpenFoodFacts legacy search failed with HTTP ${response.status}`
+          );
+          throw new Error(
+            `OpenFoodFacts search failed (HTTP ${response.status})`
+          );
+        }
+        const data = await parseSearchResponse(
+          response,
+          isLegacySearchResponse
         );
-        throw new Error(
-          `OpenFoodFacts search failed (HTTP ${response.status})`
-        );
+        usableProducts.push(...data.products.filter(hasUsableOffCoreNutrition));
+
+        const providerPageSize =
+          typeof data.page_size === 'number' && data.page_size > 0
+            ? data.page_size
+            : LEGACY_SEARCH_BATCH_SIZE;
+        const providerCount =
+          typeof data.count === 'number' && data.count >= 0 ? data.count : null;
+        hasMoreCandidates =
+          data.products.length > 0 &&
+          (providerCount !== null
+            ? providerPage * providerPageSize < providerCount
+            : data.products.length === providerPageSize);
+        providerPage += 1;
       }
-      const data = await parseSearchResponse(response, isLegacySearchResponse);
+
+      const hasMore = usableProducts.length > requestedEnd;
       return {
-        products: data.products.filter(hasUsableOffCoreNutrition),
+        products: usableProducts.slice(requestedStart, requestedEnd),
         pagination: {
-          page: data.page || page,
-          pageSize: data.page_size || pageSize,
-          totalCount: data.count || 0,
-          hasMore:
-            (data.page || page) * (data.page_size || pageSize) <
-            (data.count || 0),
+          page,
+          pageSize,
+          totalCount: usableProducts.length,
+          hasMore,
         },
       };
     }
