@@ -2465,7 +2465,8 @@
       "save": "Speichern",
       "reset": "Zurücksetzen",
       "custom": "Benutzerdefiniert",
-      "logging": "Protokollieren…"
+      "logging": "Protokollieren…",
+      "clear": "Löschen"
     },
     "today": {
       "noIntake": "Heute noch keine Einträge.",
@@ -2486,7 +2487,11 @@
       "loadingChecklist": "Checkliste wird geladen…",
       "dueToday": "Fällig heute",
       "asNeeded": "Bei Bedarf",
-      "logIntake": "Einnahme protokollieren"
+      "logIntake": "Einnahme protokollieren",
+      "medicationsTitle": "Heutige Medikamente",
+      "medicationsDescription": "Geplante Dosen erfassen und Bedarfsmedikamente dokumentieren",
+      "noMedicationDoses": "Heute keine geplanten Dosen – erfasse unten alle Bedarfsmedikamente.",
+      "supplementsTitle": "Heutige Nahrungsergänzungsmittel"
     },
     "insights": {
       "title": "Nebenwirkungen Einsichten & Hinweise",
@@ -2562,7 +2567,8 @@
       "monthTotal": "{{count}} Einnahmen im {{month}} erfasst",
       "snoozedOnly": "Nur zurückgestellte",
       "tooltipPrn": "{{count}} Bedarfsdosen eingenommen",
-      "skipped": "übersprungen"
+      "skipped": "übersprungen",
+      "tooltipSnoozed": "{{count}} pausiert"
     },
     "gi": {
       "subtitle": "Rate pro Woche in den letzten 30 Tagen",
