@@ -55,12 +55,6 @@ export const createPregnancy = (
 ): Promise<SharedPregnancy> =>
   apiCall('/v2/pregnancy', { method: 'POST', body });
 
-export const updatePregnancy = (
-  id: string,
-  body: Partial<SharedPregnancy>
-): Promise<SharedPregnancy> =>
-  apiCall(`/v2/pregnancy/${id}`, { method: 'PUT', body });
-
 // Kicks
 export const startKickSession = (
   pregnancyId: string
@@ -75,9 +69,6 @@ export const updateKickSession = (
   body: { kick_count?: number; kick_times?: string[]; ended?: boolean }
 ): Promise<SharedKickSession> =>
   apiCall(`/v2/pregnancy/kicks/${id}`, { method: 'PUT', body });
-
-export const listKickSessions = (): Promise<SharedKickSession[]> =>
-  apiCall('/v2/pregnancy/kicks', { method: 'GET' });
 
 // Contractions
 export const createContraction = (

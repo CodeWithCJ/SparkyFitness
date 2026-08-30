@@ -202,14 +202,6 @@ export const getExerciseDeletionImpact = async (
   } as ExerciseDeletionImpact;
 };
 
-export const getSuggestedExercises = async (
-  limit: number
-): Promise<{ recentExercises: Exercise[]; topExercises: Exercise[] }> => {
-  return apiCall(`/exercises/suggested?limit=${limit}`, {
-    method: 'GET',
-  });
-};
-
 export const updateExerciseEntriesSnapshot = async (
   exerciseId: string
 ): Promise<void> => {

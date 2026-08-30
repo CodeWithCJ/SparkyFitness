@@ -303,13 +303,6 @@ export const setFoodEntryImages = async (
   });
 };
 
-/** Clears a diary entry's override photo, restoring the food/meal fallback. */
-export const clearFoodEntryImage = async (
-  entryId: string
-): Promise<FoodEntry> => {
-  return await apiCall(`/food-entries/${entryId}/image`, { method: 'DELETE' });
-};
-
 /**
  * Sets the per-entry override photo for a logged meal.
  *
@@ -325,15 +318,6 @@ export const setFoodEntryMealImages = async (
     method: 'POST',
     body: buildImageFormData(images, newFiles),
     isFormData: true,
-  });
-};
-
-/** Clears a logged meal's override photo, restoring the template fallback. */
-export const clearFoodEntryMealImage = async (
-  entryId: string
-): Promise<FoodEntryMeal> => {
-  return await apiCall(`/food-entry-meals/${entryId}/image`, {
-    method: 'DELETE',
   });
 };
 

@@ -1,9 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
-  "entry": [
-    "src/main.tsx",
-    "src/tests/**/*.{ts,tsx}"
-  ],
+  "entry": ["src/main.tsx", "src/tests/**/*.{ts,tsx}"],
   "project": ["src/**/*.{ts,tsx}"],
   "rules": {
     "exports": "error",
@@ -13,7 +10,7 @@
     "unlisted": "off",
     "binaries": "off",
     "unresolved": "off",
-    "duplicates": "off"
+    "duplicates": "off",
   },
-  "ignoreExportsUsedInFile": true
+  "ignoreExportsUsedInFile": true,
 }

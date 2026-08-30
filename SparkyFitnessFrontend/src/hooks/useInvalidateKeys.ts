@@ -64,16 +64,6 @@ export const useFoodEntryInvalidation = () => {
   }, [queryClient]);
 };
 
-export const useExerciseInvalidation = () => {
-  const queryClient = useQueryClient();
-
-  return useCallback(() => {
-    queryClient.invalidateQueries({
-      queryKey: exerciseKeys.lists(),
-    });
-  }, [queryClient]);
-};
-
 export const useMealInvalidation = () => {
   const queryClient = useQueryClient();
 

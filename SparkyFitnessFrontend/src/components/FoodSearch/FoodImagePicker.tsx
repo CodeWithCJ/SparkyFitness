@@ -230,5 +230,3 @@ export function FoodImagePicker({
     </div>
   );
 }
-
-export default FoodImagePicker;
