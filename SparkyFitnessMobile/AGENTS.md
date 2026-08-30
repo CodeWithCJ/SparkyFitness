@@ -48,6 +48,8 @@ pnpm run test:coverage -- --watchman=false --runInBand
 npx expo prebuild --clean
 ```
 
+- `pnpm run validate` runs i18n generate check, typecheck, lint, i18n audit, Knip (`pnpm run knip` for unused files and exports), and native locales check together.
+
 - `pnpm run validate` runs TypeScript typecheck, Expo lint, and the blocking mobile i18n audit.
 - Use Watchman-disabled Jest commands in agent/sandbox runs; bare Jest often fails on macOS.
 - `collectCoverage` is enabled in Jest config, so expect coverage output from normal test runs.

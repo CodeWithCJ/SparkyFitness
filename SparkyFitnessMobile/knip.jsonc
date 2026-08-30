@@ -2,17 +2,20 @@
   "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
   "entry": [
     "App.tsx",
-    "src/hooks/index.ts",
+    "index.js",
+    "app.config.ts",
     "src/localization/index.ts",
     "src/services/healthConnectService.ts",
     "plugins/**/*.ts",
     "__tests__/**/*.{ts,tsx}"
   ],
-  "project": ["src/**/*.{ts,tsx}"],
+  "project": [
+    "src/**/*.{ts,tsx}"
+  ],
   "rules": {
+    "files": "error",
     "exports": "error",
     "types": "off",
-    "files": "off",
     "dependencies": "off",
     "unlisted": "off",
     "binaries": "off",
