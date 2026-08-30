@@ -59,6 +59,7 @@ interface AuditReport {
   dynamicI18nFindings: AuditError[];
   hardcodedUiFindings: AuditFinding[];
   unsafeNumberFormatFindings: AuditFinding[];
+  unregisteredLocaleFindings: AuditError[];
   summary: Record<string, number>;
   translationCoverage: Record<string, LocaleCoverage>;
 }
@@ -1820,5 +1821,78 @@ describe('Multilingual source-first regressions', () => {
       enLocalePath: path.join(tmpDir, 'nonexistent', 'en', 'translation.json'),
     });
     expect(result.hasErrors).toBe(true);
+  });
+});
+
+describe('unregistered locale catalogs', () => {
+  const BROKEN = JSON.stringify({ greeting: 'Hola {{wrong}}' });
+  const SOURCE = JSON.stringify({ greeting: 'Hello {{name}}' });
+
+  interface FixtureRegistry {
+    locales: Record<string, unknown>;
+  }
+
+  /** Leaves the locale directory on disk, only the registry entry goes. */
+  function unregister(tmpDir: string, locale: string): void {
+    const registryPath = path.join(
+      tmpDir,
+      'src/localization/localeRegistry.json'
+    );
+    const registry = JSON.parse(
+      fs.readFileSync(registryPath, 'utf8')
+    ) as unknown as FixtureRegistry;
+    delete registry.locales[locale];
+    fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2));
+  }
+
+  it('does not block on a placeholder mismatch in a catalog that is not registered', () => {
+    const tmpDir = createFixtureStructure({ en: SOURCE, pl: BROKEN });
+    unregister(tmpDir, 'pl');
+
+    const { report, hasErrors } = auditRun(tmpDir);
+
+    expect(hasErrors).toBe(false);
+    expect(report.placeholderErrors).toHaveLength(0);
+    const finding = report.unregisteredLocaleFindings.find(
+      (e) => e.rule === 'placeholder-mismatch'
+    );
+    expect(finding?.locale).toBe('pl');
+    expect(report.summary.unregisteredLocaleFindings).toBe(
+      report.unregisteredLocaleFindings.length
+    );
+  });
+
+  it('still blocks on the same defect once the locale is registered', () => {
+    const tmpDir = createFixtureStructure({ en: SOURCE, pl: BROKEN });
+
+    const { report, hasErrors } = auditRun(tmpDir);
+
+    expect(hasErrors).toBe(true);
+    expect(report.placeholderErrors.map((e) => e.locale)).toContain('pl');
+    expect(report.unregisteredLocaleFindings).toHaveLength(0);
+  });
+
+  it('reports coverage for an unregistered catalog rather than ignoring it', () => {
+    const tmpDir = createFixtureStructure({ en: SOURCE, pl: BROKEN });
+    unregister(tmpDir, 'pl');
+
+    const { report } = auditRun(tmpDir);
+
+    expect(Object.keys(report.translationCoverage)).toContain('pl');
+  });
+
+  it('does not block on an unregistered directory whose name is not a valid locale tag', () => {
+    const tmpDir = createFixtureStructure({ en: SOURCE, pl: SOURCE });
+    const strayDir = path.join(tmpDir, 'src/localization/locales/not a locale');
+    fs.mkdirSync(strayDir, { recursive: true });
+    fs.writeFileSync(path.join(strayDir, 'translation.json'), SOURCE);
+
+    const { report, hasErrors } = auditRun(tmpDir);
+
+    expect(hasErrors).toBe(false);
+    expect(report.localeStructuralErrors).toHaveLength(0);
+    expect(report.unregisteredLocaleFindings.map((e) => e.rule)).toContain(
+      'invalid-locale-tag'
+    );
   });
 });
