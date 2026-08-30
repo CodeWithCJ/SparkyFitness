@@ -37,12 +37,22 @@ widget locale bridge.
    `targets/widget/en.lproj/Localizable.strings`; mask
    `targets/widget/*.lproj/Localizable.strings`.
 
-These may be separate Weblate components. EN is the canonical source and
-fallback. Only EN requires complete, non-empty source coverage. Target missing
+These are four separate Weblate components, synced both ways by
+`.github/workflows/sync-translations.yml` alongside the web catalog: the English
+source of each is pushed to `mobile/…` in
+[SparkyFitnessTranslations](https://github.com/CodeWithCJ/SparkyFitnessTranslations),
+and every other language is pulled back. Translators edit the real native files,
+so no format conversion sits between Weblate and the app. EN is the canonical
+source and fallback. Only EN requires complete, non-empty source coverage. Target missing
 or empty values are coverage diagnostics and fall back to EN/default native
 resources; malformed JSON/XML/strings, incompatible type/array shape,
 placeholder mismatch, plural collision, and invalid CLDR plural category remain
 blocking.
+
+A catalog that arrives without a registry entry is a translation candidate: it
+is not bundled, and the i18n audit reports its defects as non-blocking
+`unregisteredLocaleFindings` so an unshipped language cannot redden CI.
+Registered locales stay fully blocking.
 
 `pnpm run i18n:generate` deterministically emits
 `src/localization/generatedLocaleResources.ts` with Metro-safe static imports
@@ -55,7 +65,8 @@ native resource resolution falls back to default/source resources.
 ### Adding `de`
 
 1. Let Weblate create/sync runtime, metadata, Android-widget and iOS-widget
-   translations. They can be incomplete throughout translation work.
+   translations; the sync workflow brings them into the repo. They can be
+   incomplete throughout translation work.
 2. When ready to ship, add `de` metadata to `localeRegistry.json`, provide its
    runtime and metadata files plus (possibly partial) native widget files, and
    run `pnpm run i18n:generate`.
