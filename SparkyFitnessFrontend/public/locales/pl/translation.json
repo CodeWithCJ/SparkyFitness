@@ -9,7 +9,9 @@
     "foods": "Produkty",
     "cycle": "Cykl",
     "pregnancy": "Ciąża",
-    "medications": "Leki"
+    "medications": "Leki",
+    "foodLog": "Dziennik posiłków",
+    "wellness": "Samopoczucie"
   },
   "aboutDialog": {
     "title": "O SparkyFitness",
@@ -29,7 +31,9 @@
     "fatsecretApi": "FatSecret API",
     "openFoodFactsApi": "Open Food Facts API",
     "gotIt": "Rozumiem",
-    "close": "Zamknij"
+    "close": "Zamknij",
+    "swissFoodApi": "Interfejs API szwajcarskiej bazy danych o żywności",
+    "usdaApi": "Interfejs API bazy danych żywności USDA"
   },
   "exercise": {
     "title": "Ćwiczenia",
@@ -103,7 +107,8 @@
         "mine": "Moje zestawy",
         "family": "Rodzinne",
         "public": "Publiczne"
-      }
+      },
+      "searching": "Wyszukiwanie..."
     },
     "dailyProgress": {
       "dailyCalorieGoal": "Dzienny cel kalorii",
@@ -122,7 +127,29 @@
       "dailyProgress": "Dzienny postęp",
       "activeCalories": "Aktywne kalorie: {{activeCaloriesFromExercise}} kcal",
       "bmrSourceExternal": "Aplikacja zdrowotna",
-      "targetBand": "cel: {{min}}–{{max}}"
+      "targetBand": "cel: {{min}}–{{max}}",
+      "adaptiveTdee": "Adaptacyjne TDEE",
+      "adjustment": "Korekta",
+      "burnedEnergyBreakdown": "Podział spalonych kalorii:",
+      "dailyBurn": "Dzienne spalanie",
+      "dailyEnergyGoal": "Dzienny cel energetyczny",
+      "dataPoints": "Punkty danych",
+      "days": "dni",
+      "energyBurnedBreakdownTitle": "Podział spalonych kalorii",
+      "fallbackReason": "Szacowanie: {{reason}}",
+      "enterMeasurements": "Wprowadź pomiary",
+      "expenditure": "Wydatek energetyczny",
+      "katchCunninghamMissingDesc": "Brakuje masy ciała i procentowej zawartości tkanki tłuszczowej. Cele kaloryczne mogą być niedokładne.",
+      "netEnergy": "Energia netto: {{netCalories}}",
+      "netEnergyBreakdown": "{{dailyIntakeCalories}} spożytych – {{finalTotalCaloriesBurned}} spalonych",
+      "profileIncompleteDesc": "Brakuje masy ciała, wzrostu i wieku. Cele kaloryczne mogą być niedokładne.",
+      "profileIncompleteTitle": "Niekompletny profil",
+      "projectedBurn": "Prognoza (cały dzień)",
+      "sparkyfitnessBurned": "Spalone kalorie według SparkyFitness",
+      "summaryUnavailableDesc": "Nie udało się wczytać dziennego podsumowania energii. Spróbuj odświeżyć stronę.",
+      "summaryUnavailableTitle": "Dzienne podsumowanie niedostępne",
+      "updateProfile": "Zaktualizuj profil",
+      "weightTrend": "Trend masy ciała"
     },
     "editExerciseEntryDialog": {
       "repsLabel": "Powtórzenia",
@@ -146,11 +173,13 @@
       "title": "Edytuj wpis ćwiczenia",
       "description": "Wprowadź zmiany w swoim wpisie. Kliknij zapisz, gdy skończysz.",
       "addSetButton": "Dodaj serię",
-      "customActivityDetailsLabel": "Szczegóły aktywności",
+      "customActivityDetailsLabel": "Szczegóły niestandardowej aktywności",
       "notesPlaceholder": "Dodaj notatki do ćwiczenia...",
       "updateSuccess": "Wpis zaktualizowany pomyślnie.",
       "updateError": "Nie udało się zaktualizować wpisu.",
-      "setLabel": "Seria"
+      "setLabel": "Seria",
+      "syncedProviderBackup": "Kopia zapasowa zsynchronizowana z dostawcą (chroniona)",
+      "telemetryHeader": "Metryki telemetrii i aktywności"
     },
     "activityDetailsEditor": {
       "fieldNamePlaceholder": "np. 'Pogoda', 'Samopoczucie'",
@@ -223,7 +252,14 @@
       "searchPlaceholder": "Szukaj ćwiczeń...",
       "workoutPresetsCardTitle": "Szablony treningowe",
       "deleteUsedByOthersWarning": "To ćwiczenie jest używane w treningach innych osób. Zostanie ukryte zamiast całkowitego usunięcia.",
-      "syncConfirmationTitle": "Zsynchronizować stare wpisy?"
+      "syncConfirmationTitle": "Zsynchronizować stare wpisy?",
+      "category": "Kategoria",
+      "details": "Szczegóły",
+      "energy": "Energia",
+      "exercises": "ćwiczenia",
+      "name": "Nazwa",
+      "deleteConfirmationDescription": "Czy na pewno chcesz usunąć to ćwiczenie? Tej czynności nie można cofnąć.",
+      "deleteImpactDescription": "To ćwiczenie jest używane w innych wpisach lub planach treningowych. Jego usunięcie może wpłynąć na te dane."
     },
     "exerciseImportCSV": {
       "levelLabel": "Poziom:",
@@ -254,7 +290,12 @@
       "validationError": "Błąd walidacji",
       "nameEmptyError": "Pole 'nazwa' nie może być puste.",
       "copiedToClipboard": "'{{value}}' skopiowane do schowka.",
-      "fileTooLarge": "Wybrany plik jest zbyt duży. Prześlij plik mniejszy niż 25 MB."
+      "fileTooLarge": "Wybrany plik jest zbyt duży. Prześlij plik mniejszy niż 25 MB.",
+      "dataParsedSuccessfully": "Dane CSV zostały pomyślnie przeanalizowane i załadowane.",
+      "headersMapped": "Nagłówki zostały przypisane",
+      "mapRequiredFields": "Nagłówki CSV nie pasują do wymaganego formatu. Zmapuj pola, aby kontynuować.",
+      "parseSuccessful": "Pomyślnie przeanalizowano",
+      "readError": "Nie udało się odczytać wybranego pliku."
     },
     "playbackModal": {
       "voiceLabel": "Głos:",
@@ -287,13 +328,115 @@
       "parseText": "Parsuj tekst",
       "pasteFirst": "Najpierw wklej dane CSV.",
       "pastePlaceholder": "Lub wklej zawartość CSV tutaj...",
-      "rowsRejected": "Nie można było zaimportować {{failed}} z {{total}} wierszy — szczegóły poniżej."
+      "rowsRejected": "Nie można było zaimportować {{failed}} z {{total}} wierszy — szczegóły poniżej.",
+      "standardValuesDescription": "Podczas importowania definicji ćwiczeń upewnij się, że wartości „Poziom”, „Siła” i „Mechanika” odpowiadają standardowym opcjom.",
+      "standardValuesForDropdowns": "Standardowe wartości list rozwijanych definicji ćwiczeń",
+      "table": {
+        "activityDetails": "Szczegóły aktywności",
+        "date": "Data",
+        "exercise": "Ćwiczenie",
+        "notes": "Notatki",
+        "preset": "Szablon",
+        "sets": "Serie"
+      },
+      "title": "Import historycznych wpisów ćwiczeń",
+      "unitsHint": "Oczekiwane jednostki w pliku CSV: masa: {{weightUnit}}; dystans: {{distanceUnit}}; czas trwania: minuty; czas odpoczynku: sekundy; spalone kalorie: kalorie",
+      "validationError": "Wiersz {{rowNum}}: Brak wymaganego ",
+      "copiedToClipboard": "Skopiowano „{{value}}” do schowka.",
+      "importError": "Nie udało się zaimportować historii ćwiczeń. Spróbuj ponownie.",
+      "partialImportError": "Niektórych wpisów nie udało się zaimportować: {{details}}",
+      "addEmptyEntry": "Dodaj pusty wpis",
+      "clearData": "Wyczyść dane",
+      "confirmImport": "Potwierdź i zaimportuj {{count}} wpisów",
+      "copied": "Skopiowano!",
+      "copyTooltip": "Kopiuj ",
+      "customFieldsInfo": "Pole aktywności i wartość to pola niestandardowe, które możesz dodać do każdego wpisu ćwiczenia.",
+      "dataCleared": "Wszystkie przeanalizowane dane wyczyszczono.",
+      "description": "Prześlij plik CSV zawierający historyczne wpisy ćwiczeń. System utworzy nowe ćwiczenia lub szablony, jeśli jeszcze nie istnieją, i zaimportuje wpisy, serie oraz szczegóły aktywności.",
+      "downloadTemplate": "Pobierz szablon",
+      "emptyEntryAdded": "Dodano pusty wpis. Uzupełnij szczegóły.",
+      "emptyFile": "Wybrany plik jest pusty.",
+      "importSuccess": "Historyczne wpisy ćwiczeń zaimportowano pomyślnie.",
+      "invalidDate": "Wiersz {{rowNum}}: Nieprawidłowy format daty „{{date}}”. Oczekiwany format: {{format}}.",
+      "invalidSetNumber": "Wiersz {{rowNum}}: Nieprawidłowy numer serii ",
+      "noDataToImport": "Brak prawidłowych danych do zaimportowania.",
+      "noFile": "Wybierz plik CSV do zaimportowania.",
+      "parseError": "Nie udało się przeanalizować pliku CSV: {{error}}",
+      "preview": "Podgląd wpisów do zaimportowania",
+      "processFile": "Przetwórz plik"
     },
     "modality": {
       "duration": "Czas trwania",
       "durationDistance": "Czas trwania i dystans",
       "repsOnly": "Powtórzenia",
       "weightReps": "Ciężar i powtórzenia"
+    },
+    "exerciseSearch": {
+      "add": "Dodaj",
+      "noResults": "Nie znaleziono ćwiczeń.",
+      "placeholder": "Szukaj ćwiczeń…",
+      "popular": "Najczęściej używane",
+      "recent": "Najnowsze",
+      "searching": "Wyszukiwanie…",
+      "selectButton": "Wybierz"
+    },
+    "failedToFetchById": "Nie udało się załadować szczegółów ćwiczenia.",
+    "failedToFetchDetails": "Nie udało się pobrać szczegółów ćwiczenia. Spróbuj ponownie.",
+    "failedToFetchSuggested": "Nie udało się załadować sugerowanych ćwiczeń.",
+    "lastEntries": "Ostatnie {{limit}} wpisów",
+    "logExerciseEntryDialog": {
+      "addSet": "Dodaj serię",
+      "avgHeartRateLabel": "Średnie tętno (uderzenia/min)",
+      "caloriesAutoHint": "Obliczane automatycznie, jeśli pozostawisz puste",
+      "cancel": "Anuluj",
+      "customActivityDetails": "Szczegóły niestandardowej aktywności",
+      "enterDetails": "Wprowadź szczegóły sesji ćwiczeń z dnia {{selectedDate}}.",
+      "imagePreviewAlt": "Podgląd",
+      "logExercise": "Zapisz ćwiczenie: {{exerciseName}}",
+      "notesPlaceholder": "Uwagi dotyczące tej sesji…",
+      "saveEntry": "Zapisz wpis",
+      "saving": "Zapisywanie…",
+      "sessionNotes": "Uwagi",
+      "uploadImage": "Zdjęcie",
+      "caloriesBurnedOptional": "Spalone kalorie (opcjonalnie)"
+    },
+    "progress": {
+      "loadError": "Nie udało się załadować danych o postępach ćwiczenia."
+    },
+    "suggestions": {
+      "recentLoadError": "Nie udało się załadować ostatnich ćwiczeń.",
+      "topLoadError": "Nie udało się załadować najpopularniejszych ćwiczeń."
+    },
+    "workoutPlaybackDialog": {
+      "closeKeepDraft": "Zamknij",
+      "completeAtLeastOneSet": "Przed zakończeniem ukończ co najmniej jedną serię.",
+      "discard": "Odrzuć",
+      "discardConfirm": "Odrzucić ten trwający trening? Tej czynności nie można cofnąć.",
+      "finish": "Zakończ trening",
+      "finishError": "Nie udało się zapisać treningu. Twój lokalny postęp został zachowany i możesz spróbować ponownie.",
+      "finishing": "Zapisywanie…",
+      "noDraft": "Nie znaleziono wersji roboczej aktywnego treningu dla tego dnia.",
+      "setRow": "Seria {{setNumber}}",
+      "sets": "serie",
+      "title": "Trening na żywo"
+    },
+    "workoutPlaybackPage": {
+      "addSet": "Dodaj serię",
+      "columnReps": "Powtórzenia",
+      "columnRest": "Przerwa",
+      "columnSet": "Seria",
+      "columnType": "Typ",
+      "columnWeight": "Ciężar",
+      "completed": "Ukończono",
+      "customRest": "Niestandardowy czas (w sekundach)",
+      "description": "Śledź serie na żywo, korzystaj z odliczania przerw i zapisz trening po jego zakończeniu.",
+      "elapsedTime": "Czas trwania",
+      "inProgress": "W toku",
+      "progress": "Serie",
+      "restEditorDescription": "Wybierz czas trwania przerwy dla tej serii.",
+      "restEditorTitle": "Edytuj przerwę",
+      "restTimer": "Przerwa",
+      "volume": "Objętość"
     }
   },
   "documentationViewer": {
@@ -337,7 +480,13 @@
     "deleteSuccess": "Szablon usunięty pomyślnie.",
     "deleteError": "Nie udało się usunąć szablonu.",
     "logSuccess": "Trening „{{presetName}}” zapisany w dzienniku.",
-    "logError": "Nie udało się zapisać treningu „{{presetName}}”."
+    "logError": "Nie udało się zapisać treningu „{{presetName}}”.",
+    "exercises": "Ćwiczenia",
+    "logToDiary": "Zapisz w dzienniku",
+    "name": "Nazwa",
+    "presets": "szablony",
+    "startWorkout": "Rozpocznij trening",
+    "stats": "Statystyki"
   },
   "exerciseCard": {
     "title": "Ćwiczenie",
@@ -374,7 +523,7 @@
     "mechanicIsolation": "Izolowane",
     "mechanicCompound": "Wielostawowe",
     "equipment": "Sprzęt (oddzielony przecinkami)",
-    "primaryMuscles": "Główne mięśnie",
+    "primaryMuscles": "Główne mięśnie (oddzielone przecinkami)",
     "secondaryMuscles": "Mięśnie pomocnicze",
     "instructions": "Instrukcje",
     "images": "Zdjęcia",
@@ -411,7 +560,12 @@
     "exerciseEntryAddedSuccessfully": "Wpis dodany pomyślnie.",
     "failedToDeleteExerciseEntry": "Nie udało się usunąć wpisu.",
     "exerciseEntryDeletedSuccessfully": "Wpis usunięty pomyślnie.",
-    "loadingExercises": "Ładowanie ćwiczeń..."
+    "loadingExercises": "Ładowanie ćwiczeń...",
+    "deletePresetEntry": "Usuń wpis z szablonu",
+    "editExerciseDescription": "Edytuj poniższe szczegóły.",
+    "noExercisesInPreset": "Brak ćwiczeń w tym szablonie.",
+    "startWorkout": "Rozpocznij trening",
+    "workoutPreset": "Szablon treningu"
   },
   "reports": {
     "activityReport": {
@@ -463,13 +617,23 @@
       "lapTableLapHeader": "Okrążenie",
       "lapTableDurationMinHeader": "Czas (min)",
       "lapTableAvgPaceMinPerKmHeader": "Śr. tempo",
-      "lapTableAvgHRBpmHeader": "Śr. tętno",
+      "lapTableAvgHRBpmHeader": "Średnie tętno (uderz./min)",
       "lapTableMaxHRBpmHeader": "Maks. tętno",
       "lapTableCaloriesHeader": "Kalorie",
       "heartRateTimeInZonesTitle": "Czas w strefach tętna",
       "timeInZoneSLabel": "Czas w strefie (s)",
       "cadence": "Kadencja",
-      "waterLoss": "Utrata wody"
+      "waterLoss": "Utrata wody",
+      "elapsedTime": "Czas, który upłynął",
+      "movingTime": "Czas w ruchu",
+      "provider": {
+        "appleHealth": "Apple Health"
+      },
+      "hrZonesEstimatedFromAge": "Strefy są szacowane na podstawie wieku — Apple Health i Health Connect nie udostępniają aplikacjom skonfigurowanego maksymalnego tętna.",
+      "caloriesBreakdown": "Aktywność / spoczynkowe",
+      "elevationRange": "Min. / maks. wysokość",
+      "weather": "Pogoda",
+      "avgMovingSpeed": "Średnia prędkość ruchu"
     },
     "errorToastTitle": "Błąd",
     "signInMessage": "Zaloguj się, aby zobaczyć raporty.",
@@ -632,7 +796,66 @@
     "respirationRate": "Częstotliwość oddechów",
     "respirationDescElevated": "Twoja częstotliwość oddechów jest podwyższona.",
     "restingHeartRate": "Tętno spoczynkowe",
-    "breathsPerMin": "wdechy/min"
+    "breathsPerMin": "wdechy/min",
+    "average": "Średnia",
+    "avgDailyVariance": "Średnia dzienna różnica",
+    "avgVarianceDescription": "Średnie dzienne odchylenie od celu",
+    "awakeAvg": "Średnia liczba wybudzeń",
+    "cumulativeBalanceTitle": "Skumulowany bilans",
+    "customMeasurementChartTitle": "{{categoryName}} ({{measurementType}})",
+    "dailyAverages": "Średnie dzienne",
+    "dailySteps": "Dzienne kroki",
+    "failedToLoadCoreData": "Nie udało się wczytać danych raportów głównych.",
+    "failedToLoadExerciseDashboard": "Nie udało się wczytać danych panelu ćwiczeń.",
+    "failedToLoadStress": "Nie udało się wczytać danych dotyczących stresu.",
+    "fasting": {
+      "consistencyGrid": "Mapa postępów postu (ostatnie 90 dni)",
+      "endDate": "Data zakończenia",
+      "history": "Historia postów",
+      "avgDuration": "Średni czas trwania (godz.)",
+      "avgHours": "Średnia liczba godzin",
+      "dailyDuration": "Dzienny czas postu",
+      "duration": "Czas trwania",
+      "hours": "Godziny",
+      "insightsTab": "Post",
+      "longestFast": "Najdłuższy post (godz.)",
+      "protocol": "Protokół",
+      "startDate": "Data rozpoczęcia",
+      "totalFasts": "Łączna liczba postów",
+      "totalHours": "Łączna liczba godzin",
+      "trends": "Trendy postu",
+      "zoneDistribution": "Strefy postu"
+    },
+    "supplementShare": "{{percent}}% z suplementów",
+    "setPerformanceAnalysis": {
+      "avgWeight": "Śr. masa ciała",
+      "avgWeightHeader": "Śr. masa ciała ({{weightUnit}})",
+      "avgReps": "Śr. liczba powtórzeń",
+      "title": "Analiza wykonania serii",
+      "titleWithExercise": "Analiza wykonania serii — {{exerciseName}}"
+    },
+    "exerciseVarietyScore": "Wynik różnorodności ćwiczeń",
+    "foodDiaryExportTotals": {
+      "total": "Łącznie"
+    },
+    "goal": "Cel",
+    "measurementsTab": "Zakładka pomiarów",
+    "medicationsTab": "Leki",
+    "miniNutritionTrendsError": "Nie udało się wczytać danych dotyczących trendów żywieniowych.",
+    "moodChartTitle": "Dzienny nastrój",
+    "netEnergyBalance": "Bilans netto",
+    "noMoodData": "Brak dostępnych danych dotyczących dziennego nastroju.",
+    "noStressData": "Brak dostępnych surowych danych dotyczących stresu.",
+    "normalRange": "Typowy zakres tętna spoczynkowego u dorosłych",
+    "notApplicable": "Nie dotyczy",
+    "notes": "Uwagi: ",
+    "nutrientsTab": "Składniki odżywcze",
+    "sleepAvg": "Śr. sen",
+    "stressChartTitle": "Poziomy surowego stresu",
+    "stressTab": "Stres",
+    "totalEaten": "Łącznie spożyto",
+    "totalGoal": "Łączny cel",
+    "uniqueExercises": "Unikalne ćwiczenia"
   },
   "exerciseReportsDashboard": {
     "compareTo": "Porównaj z",
@@ -712,7 +935,8 @@
     "inches": "cale",
     "waist": "Talia",
     "hips": "Biodra",
-    "dailySteps": "Kroki"
+    "dailySteps": "Kroki",
+    "failedToLoadComparisonData": "Nie udało się wczytać danych porównawczych."
   },
   "reportsTables": {
     "date": "Data",
@@ -741,7 +965,9 @@
     "food": "Produkt",
     "quantity": "Ilość",
     "total": "Suma",
-    "durationSec": "Czas (s)"
+    "durationSec": "Czas (s)",
+    "allTables": "Wszystkie tabele",
+    "showTable": "Pokaż tabelę"
   },
   "moodReports": {
     "loading": "Ładowanie...",
@@ -873,7 +1099,13 @@
     "deleteError": "Nie udało się usunąć planu.",
     "updateStatusError": "Nie znaleziono planu do aktualizacji.",
     "toggleStatusSuccess": "Status planu {{status}} zmieniony pomyślnie.",
-    "toggleStatusError": "Nie udało się zmienić statusu planu."
+    "toggleStatusError": "Nie udało się zmienić statusu planu.",
+    "activate": "Aktywuj",
+    "deactivate": "Dezaktywuj",
+    "duration": "Czas trwania",
+    "planName": "Nazwa planu",
+    "plans": "plany",
+    "status": "Status"
   },
   "foodSearchDialog": {
     "title": "Szukaj i dodaj jedzenie",
@@ -933,7 +1165,9 @@
     "addToFavorites": "Dodaj do ulubionych",
     "removeFromFavorites": "Usuń z ulubionych",
     "failedToLoadFavorites": "Nie udało się wczytać ulubionych.",
-    "failedToUpdateFavorite": "Nie udało się zaktualizować ulubionego elementu."
+    "failedToUpdateFavorite": "Nie udało się zaktualizować ulubionego elementu.",
+    "provider": "Dostawca danych",
+    "selectBarcodeProvider": "Wybierz dostawcę"
   },
   "settings": {
     "profileInformation": {
@@ -955,7 +1189,10 @@
       "bio": "O mnie",
       "tellAboutYourself": "Napisz coś o sobie",
       "saveProfile": "Zapisz profil",
-      "saving": "Zapisywanie..."
+      "saving": "Zapisywanie...",
+      "enterHeight": "Wprowadź wzrost",
+      "height": "Wzrost",
+      "uploading": "Przesyłanie…"
     },
     "preferences": {
       "title": "Preferencje",
@@ -982,7 +1219,27 @@
       "english": "Angielski",
       "tamil": "Tamilski",
       "savePreferences": "Zapisz preferencje",
-      "measurementDecimalPlaces": "Miejsca dziesiętne w pomiarach"
+      "measurementDecimalPlaces": "Miejsca dziesiętne w pomiarach",
+      "autoScaleOnlineImports": "Domyślnie automatycznie skaluj produkty",
+      "autoScaleOnlineImportsHint": "Po włączeniu pole wyboru automatycznego skalowania jest zaznaczone podczas edycji produktu, a jego wartości odżywcze są automatycznie przeliczane po zmianie wielkości porcji.",
+      "autoScaleOpenFoodFacts": "Automatycznie skaluj importy z OpenFoodFacts",
+      "autoScaleOpenFoodFactsHint": "Po włączeniu wartości odżywcze z OpenFoodFacts zostaną automatycznie przeliczone ze 100 g na wielkość porcji produktu.",
+      "calories": "Kalorie (kcal)",
+      "energyUnit": "Jednostka energii",
+      "feetInches": "Stopy i cale (ft/in)",
+      "firstDayOfWeek": "Pierwszy dzień tygodnia",
+      "joules": "Dżule (kJ)",
+      "noTimezoneFound": "Nie znaleziono strefy czasowej.",
+      "searchTimezones": "Szukaj stref czasowych…",
+      "selectTimezone": "Wybierz strefę czasową…",
+      "stonesLbs": "Kamienie i funty (st/lb)",
+      "successDescription": "Preferencje zostały zapisane.",
+      "successTitle": "Sukces",
+      "timeFormat": "Format czasu",
+      "timeFormat12Lower": "12-godzinny am/pm (2:30 pm)",
+      "timeFormat12Upper": "12-godzinny AM/PM (2:30 PM)",
+      "timeFormat24": "24-godzinny (14:30)",
+      "timezone": "Strefa czasowa"
     },
     "waterTracking": {
       "title": "Śledzenie wody",
@@ -993,7 +1250,8 @@
       "cups": "Szklanki",
       "saveWaterDisplayUnit": "Zapisz jednostkę wody",
       "addExerciseWater": "Dodawaj utratę wody podczas ćwiczeń do dziennego celu",
-      "addExerciseWaterHint": "Zwiększa dzienny cel spożycia wody o szacowaną ilość utraconą z potem podczas aktywności."
+      "addExerciseWaterHint": "Zwiększa dzienny cel spożycia wody o szacowaną ilość utraconą z potem podczas aktywności.",
+      "liters": "Litry"
     },
     "nutrientDisplay": {
       "title": "Wyświetlanie składników",
@@ -1018,6 +1276,21 @@
       "openFoodFacts": {
         "baseUrlLabel": "Bazowy adres URL (opcjonalnie)",
         "baseUrlHelp": "Pozostaw puste, aby korzystać z publicznego serwera Open Food Facts, albo podaj adres własnej instancji."
+      },
+      "yazio": {
+        "unofficialApiTitle": "⚠️ Nieoficjalne API — korzystasz na własne ryzyko",
+        "unofficialApiWarning": "Integracja z YAZIO korzysta z nieoficjalnego, nieudokumentowanego interfejsu API, który nie jest udostępniany ani wspierany przez YAZIO. Korzystanie z niego może wiązać się z ryzykiem zablokowania konta YAZIO. Interfejs API może również przestać działać w dowolnym momencie i bez ostrzeżenia, jeśli YAZIO zmieni swój backend.",
+        "moreInfoLink": "Więcej informacji i dane uwierzytelniające klienta znajdziesz na stronie",
+        "emailUsernameLabel": "Adres e-mail / nazwa użytkownika YAZIO",
+        "emailUsernamePlaceholder": "Wpisz adres e-mail lub nazwę użytkownika YAZIO",
+        "passwordLabel": "Hasło YAZIO",
+        "passwordPlaceholder": "Wpisz hasło YAZIO",
+        "clientIdLabel": "Identyfikator klienta YAZIO",
+        "clientIdPlaceholder": "Wprowadź identyfikator klienta YAZIO",
+        "clientSecretLabel": "Sekret klienta YAZIO",
+        "clientSecretPlaceholder": "Wprowadź sekret klienta YAZIO",
+        "allFieldsRequired": "Wszystkie pola (e-mail/nazwa użytkownika, hasło, identyfikator klienta i sekret klienta) są wymagane.",
+        "languageSupportHelp": "Wyszukiwanie żywności w YAZIO automatycznie dostosowuje się do aktywnego języka w SparkyFitness (obsługiwane są: angielski, niemiecki, francuski, rosyjski, hiszpański, włoski, niderlandzki, polski, portugalski, duński, fiński, szwedzki, czeski, węgierski, grecki, norweski, turecki, chiński, japoński i koreański). W przypadku innych języków używane są standardowe międzynarodowe parametry bazy danych."
       }
     },
     "aiService": {
@@ -1086,7 +1359,9 @@
         "ollamaContextTitle": "Ważne: zwiększ okno kontekstu Ollama",
         "ollamaContextHint": "Ollama domyślnie używa kontekstu o długości 4096 tokenów i bez ostrzeżenia obcina dłuższe dane. Powoduje to uszkodzenie definicji narzędzi i nieprawidłowe działanie czatbota. Ustaw OLLAMA_CONTEXT_LENGTH=16384 na serwerze Ollama (albo dodaj PARAMETER num_ctx 16384 do pliku Modelfile modelu), a następnie uruchom Ollama ponownie. Na komputerze z 8 GB pamięci zacznij od wartości 8192.",
         "ollamaFullProfileWarningTitle": "Możliwy spadek wydajności modeli lokalnych",
-        "ollamaFullProfileWarningHint": "Uruchamianie modelu lokalnego z pełnym zestawem narzędzi może powodować znaczne opóźnienia lub błędy, jeśli komputer nie ma bardzo dużej wydajności (np. karty graficznej z dużą ilością VRAM). Jeśli działanie jest wolne lub model się gubi, wybierz podstawowy zestaw narzędzi."
+        "ollamaFullProfileWarningHint": "Uruchamianie modelu lokalnego z pełnym zestawem narzędzi może powodować znaczne opóźnienia lub błędy, jeśli komputer nie ma bardzo dużej wydajności (np. karty graficznej z dużą ilością VRAM). Jeśli działanie jest wolne lub model się gubi, wybierz podstawowy zestaw narzędzi.",
+        "visionNone": "Brak",
+        "visionService": "Globalna usługa AI do analizy obrazu"
       },
       "userSettings": {
         "title": "Usługi AI",
@@ -1186,7 +1461,9 @@
         "ollamaContextTitle": "Ważne: zwiększ okno kontekstu Ollama",
         "ollamaContextHint": "Ollama domyślnie używa kontekstu o długości 4096 tokenów i bez ostrzeżenia obcina dłuższe dane. Powoduje to uszkodzenie definicji narzędzi i nieprawidłowe działanie czatbota. Ustaw OLLAMA_CONTEXT_LENGTH=16384 na serwerze Ollama (albo dodaj PARAMETER num_ctx 16384 do pliku Modelfile modelu), a następnie uruchom Ollama ponownie. Na komputerze z 8 GB pamięci zacznij od wartości 8192.",
         "ollamaFullProfileWarningTitle": "Możliwy spadek wydajności modeli lokalnych",
-        "ollamaFullProfileWarningHint": "Uruchamianie modelu lokalnego z pełnym zestawem narzędzi może powodować znaczne opóźnienia lub błędy, jeśli komputer nie ma bardzo dużej wydajności (np. karty graficznej z dużą ilością VRAM). Jeśli działanie jest wolne lub model się gubi, wybierz podstawowy zestaw narzędzi."
+        "ollamaFullProfileWarningHint": "Uruchamianie modelu lokalnego z pełnym zestawem narzędzi może powodować znaczne opóźnienia lub błędy, jeśli komputer nie ma bardzo dużej wydajności (np. karty graficznej z dużą ilością VRAM). Jeśli działanie jest wolne lub model się gubi, wybierz podstawowy zestaw narzędzi.",
+        "activeVisionProvider": "Aktywny dostawca AI do analizy obrazu",
+        "sameAsDefault": "Taki sam jak domyślny"
       },
       "serviceTypes": {
         "openai": "OpenAI",
@@ -1228,7 +1505,31 @@
       "apiKeyCopied": "Klucz API skopiowany do schowka.",
       "created": "Utworzono:",
       "lastUsed": "Ostatnio użyto:",
-      "deleteApiKeyConfirm": "Czy na pewno chcesz usunąć ten klucz? Tego działania nie można cofnąć."
+      "deleteApiKeyConfirm": "Czy na pewno chcesz usunąć ten klucz? Tego działania nie można cofnąć.",
+      "1year": "1 rok",
+      "30days": "30 dni",
+      "7days": "7 dni",
+      "90days": "90 dni",
+      "cleanupError": "Nie udało się usunąć kluczy",
+      "cleanupExpired": "Usuń wygasłe klucze",
+      "cleanupSuccess": "Wszystkie wygasłe klucze zostały usunięte.",
+      "copyWarning": "Skopiuj ten klucz teraz. Ze względów bezpieczeństwa nie zostanie wyświetlony ponownie.",
+      "createError": "Nie udało się wygenerować klucza API",
+      "createSuccess": "Nowy klucz API został pomyślnie wygenerowany! Skopiuj go teraz, ponieważ nie zostanie wyświetlony ponownie.",
+      "deleteError": "Nie udało się usunąć klucza API",
+      "deleteSuccess": "Klucz API został pomyślnie usunięty!",
+      "descriptionLabel": "Opis (np. „Mój klucz”) ",
+      "disabled": "Wyłączony",
+      "expires": "Wygasa:",
+      "expiresIn": "Wygasa za",
+      "generate": "Wygeneruj nowy klucz",
+      "idOnlyInfo": "Ze względów bezpieczeństwa wyświetlany jest tylko identyfikator klucza.",
+      "loadError": "Nie udało się załadować kluczy API",
+      "never": "Nigdy",
+      "newKeyGenerated": "Wygenerowano nowy klucz API!",
+      "placeholder": "Opis (np. „Mój klucz”) ",
+      "updateError": "Nie udało się zaktualizować klucza API",
+      "updateSuccess": "Status klucza API został pomyślnie zaktualizowany!"
     },
     "accountSecurity": {
       "title": "Bezpieczeństwo konta",
@@ -1250,11 +1551,14 @@
       "emailUpdateSuccess": "Email został zaktualizowany poprawnie.",
       "emailUpdateError": "Nie udało się zaktualizować adresu Email",
       "currentPassword": "Aktualne hasło",
-      "enterCurrentPassword": "Wprowadź aktualne hasło"
+      "enterCurrentPassword": "Wprowadź aktualne hasło",
+      "passwordUpdateError": "Nie udało się zaktualizować hasła",
+      "passwordUpdateSuccess": "Hasło zostało pomyślnie zaktualizowane"
     },
     "customNutrients": {
       "title": "Własne składniki odżywcze",
-      "subtitle": "Zarządzaj własnymi składnikami odżywczymi"
+      "subtitle": "Zarządzaj własnymi składnikami odżywczymi",
+      "failedToAddNutrient": "Nie udało się dodać składnika odżywczego."
     },
     "customMeals": {
       "title": "Własne posiłki",
@@ -1317,11 +1621,167 @@
       "successTitle": "Gotowe",
       "successDesc": "Zaktualizowano ustawienia cyklu.",
       "errorTitle": "Błąd",
-      "errorDesc": "Nie udało się zapisać ustawień cyklu. Spróbuj ponownie."
+      "errorDesc": "Nie udało się zapisać ustawień cyklu. Spróbuj ponownie.",
+      "customizeProducts": "Dostosuj produkty menstruacyjne",
+      "customizeProductsDesc": "Wybierz, które produkty menstruacyjne mają pojawiać się w codziennych wpisach, lub dodaj własne.",
+      "customizeSymptoms": "Dostosuj objawy",
+      "customizeSymptomsDesc": "Pokazuj lub ukrywaj objawy w dzienniku cyklu albo dodaj nowe.",
+      "discreetMode": "Tryb dyskretny",
+      "discreetModeHint": "Używaj w nawigacji neutralnej etykiety „Dobre samopoczucie” i ikony.",
+      "export": "Eksportuj",
+      "exportData": "Eksportuj swoje dane",
+      "exportError": "Nie udało się wyeksportować danych.",
+      "exportHint": "Pobierz wszystkie dane dotyczące cyklu w formacie JSON. Dane nigdy nie opuszczają Twojego serwera.",
+      "exporting": "Eksportowanie…",
+      "lutealConstHelp": "Faza lutealna jest stała i trwa 14 dni. Faza folikularna automatycznie dostosowuje się do długości Twojego cyklu.",
+      "resetConfirm": "Czy na pewno chcesz zresetować profil śledzenia cyklu? Umożliwi to ponowne przejście konfiguracji początkowej od zera. Zapisana historia cyklu nie zostanie usunięta.",
+      "resetError": "Nie udało się zresetować konfiguracji początkowej. Spróbuj ponownie.",
+      "resetOnboarding": "Zresetuj i uruchom ponownie konfigurację początkową",
+      "resetSuccessDesc": "Konfiguracja początkowa została zresetowana. Odwiedź kartę Centrum cyklu, aby rozpocząć konfigurację.",
+      "resetSuccessTitle": "Reset profilu"
     },
     "nutrientGoalDirection": {
       "title": "Sposób interpretacji celu dla składników odżywczych",
       "description": "Określ, czy cel dla każdego składnika odżywczego jest wartością minimalną, maksymalną czy docelowym zakresem"
+    },
+    "allergenPreferences": {
+      "description": "Śledź alergeny, przed którymi chcesz otrzymywać ostrzeżenia w produktach spożywczych",
+      "title": "Preferencje dotyczące alergenów"
+    },
+    "calculationExplanation": {
+      "adaptiveFootnote": "* Dynamicznie dostosowuje dzienny cel do rzeczywistego metabolizmu. Do uzyskania wysokiej dokładności wymagane jest regularne śledzenie spożycia i masy ciała.",
+      "burnedActivity": "Aktywność (tylko ćwiczenia i kroki)",
+      "burnedBmr": "Aktywność + PPM (podstawowa przemiana materii)",
+      "burnedTitle": "Spalone kalorie",
+      "dynamicFootnote": "* Idealne do zasilania treningów i aktywnej regeneracji.",
+      "fixedFootnote": "* Idealne przy ścisłym deficycie kalorycznym i kontroli masy ciała.",
+      "netFormula": "Spożyte − łącznie spalone",
+      "netTitle": "Energia netto",
+      "percentageFootnote": "* Tworzy margines bezpieczeństwa, aby uniknąć przejadania się z powodu zawyżonego szacowania spalonych kalorii.",
+      "remainingAdaptive": "Dzienny cel − spożyte (celem jest skorygowany adaptacyjny TDEE)",
+      "remainingDynamic": "Dzienny cel − energia netto (cel rośnie wraz z aktywnością)",
+      "remainingFixed": "Dzienny cel − spożyte (aktywność nie zmienia limitu)",
+      "remainingPercentage": "Dzienny cel − (spożyte − {{pct}}% spalonych podczas ćwiczeń)",
+      "remainingTdee": "Dzienny cel − spożyte + (prognoza na cały dzień − TDEE)",
+      "remainingTitle": "Pozostałe kalorie",
+      "tdeeFootnote": "* Prognoza zbiega się z rzeczywistą wartością o północy. Wymaga możliwości obliczenia PPM oraz urządzenia synchronizującego kroki lub aktywne kalorie.",
+      "title": "Jak będą obliczane Twoje kalorie"
+    },
+    "calorieGoalAdjustment": {
+      "activityHeavy": "Bardzo aktywny (×1,725)",
+      "activityLevel": "Poziom aktywności:",
+      "activityLight": "Lekko aktywny (×1,375)",
+      "activityModerate": "Umiarkowanie aktywny (×1,55)",
+      "activityNone": "Brak aktywności (×1,0)",
+      "activityNotMuch": "Siedzący tryb życia (×1,2)",
+      "adaptiveActivityHint": "W trybie adaptacyjnym to ustawienie działa jako rozwiązanie zastępcze do czasu zebrania wystarczającej ilości danych.",
+      "adaptiveGoal": "Cel adaptacyjny",
+      "adaptiveGoalDescription": "Wartość ",
+      "allowNegativeAdjustment": "Zezwalaj na ujemną korektę (uwzględniaj spalenie mniejszej liczby kalorii niż TDEE)",
+      "dynamicGoal": "Cel dynamiczny",
+      "dynamicGoalDescription": "Twój cel kaloryczny będzie dynamicznie dostosowywany do dziennego poziomu aktywności (np. ćwiczeń i kroków). To rozwiązanie jest idealne dla osób aktywnych lub takich, których poziom aktywności zmienia się z dnia na dzień.",
+      "fixedGoal": "Cel stały",
+      "fixedGoalDescription": "Twój cel kaloryczny pozostanie stały niezależnie od dziennej aktywności. To rozwiązanie jest odpowiednie dla osób o regularnym poziomie aktywności lub preferujących niezmienny cel.",
+      "percentageGoal": "Procent odzyskiwanych kalorii",
+      "percentageGoalDescription": "Odzyskuj tylko określony procent kalorii spalonych podczas ćwiczeń. Na przykład 50% tworzy margines bezpieczeństwa, aby uniknąć przejadania się z powodu zawyżonego szacowania spalonych kalorii.",
+      "percentageLabel": "Procent odzyskiwanych kalorii:",
+      "tdeeGoal": "Prognoza z urządzenia",
+      "tdeeGoalDescription": "Podobnie jak MyFitnessPal z Apple Watchem. SparkyFitness prognozuje spalanie z całego dnia, ekstrapolując bieżące dane z urządzenia do północy. Korekta = prognoza − TDEE.",
+      "title": "Korekta dziennego celu kalorycznego"
+    },
+    "dataImport": {
+      "checkin": {
+        "description": "Importuj pomiary ciała, sen, parametry życiowe, aktywność, nawodnienie i nastrój.",
+        "title": "Dane kontrolne i dane zdrowotne (CSV)"
+      },
+      "description": "Importuj zbiorczo dane z plików CSV. Te narzędzia służą do jednorazowej migracji i okresowego uzupełniania danych, dlatego znajdują się tutaj, a nie na ekranach dziennych.",
+      "diary": {
+        "description": "Zapisuj wcześniejsze posiłki w dzienniku żywieniowym według daty i typu posiłku, dopasowując lub tworząc produkty w razie potrzeby.",
+        "title": "Dziennik żywieniowy (CSV)"
+      },
+      "exercise": {
+        "description": "Dodawaj wielokrotnego użytku ćwiczenia do bazy ćwiczeń.",
+        "title": "Baza ćwiczeń (CSV)"
+      },
+      "exerciseHistory": {
+        "description": "Importuj wcześniejsze treningi, serie, powtórzenia i ciężary.",
+        "title": "Historia treningów (CSV)"
+      },
+      "food": {
+        "description": "Dodawaj wielokrotnego użytku produkty spożywcze wraz z porcjami i wartościami odżywczymi do swojej biblioteki produktów.",
+        "title": "Baza produktów spożywczych (CSV)"
+      },
+      "garminFit": {
+        "description": "Importuj treningi i dane aktywności z binarnych plików .fit.",
+        "title": "Aktywności treningowe (FIT)"
+      },
+      "importButton": "Importuj",
+      "title": "Import danych"
+    },
+    "developerResources": {
+      "description": "Uzyskaj dostęp do dokumentacji i zasobów API",
+      "title": "Zasoby dla deweloperów"
+    },
+    "goalMode": {
+      "baselineAdaptiveGoal": "Wartość bazowa (cel adaptacyjny)",
+      "baselineAdaptiveTdee": "Adaptacyjny TDEE (wydatek energetyczny)",
+      "baselineEstimatedTdee": "Szacowany TDEE",
+      "baselineManualGoal": "Wartość bazowa (cel ręczny)",
+      "calculationMethodLabel": "Metoda obliczania",
+      "customPercentageLabel": "Niestandardowy procent deficytu:",
+      "goalModeLabel": "Tryb celu",
+      "livePreview": "Podgląd obliczeń na żywo",
+      "measuredAdaptiveTdee": "Zmierzony adaptacyjny TDEE",
+      "measuredAdaptiveTdeeHint": "(nie zmienia się wraz z trybem celu)",
+      "methodAdaptive": "Adaptacyjny",
+      "methodManual": "Ręczny",
+      "modeCut": "Redukcja (−15%)",
+      "modeHighCut": "Duża redukcja (−20%)",
+      "modeMaintain": "Utrzymanie (0%)",
+      "modeManual": "Ręczny (niestandardowy %)",
+      "modeRecomp": "Rekompozycja sylwetki (−10%)",
+      "subtitle": "Dostosuj dzienny cel kaloryczny do celu dotyczącego składu ciała.",
+      "title": "Tryb celu"
+    },
+    "mfa": {
+      "confirmPassword": "Potwierdź hasło, aby kontynuować",
+      "disable": "Wyłącz",
+      "emailCode": "MFA kodem e-mail",
+      "emailDisabled": "MFA kodem e-mail jest obecnie wyłączone.",
+      "emailEnabled": "MFA kodem e-mail jest obecnie włączone.",
+      "enable": "Włącz",
+      "enterCode": "Wprowadź 6-cyfrowy kod",
+      "enterPassword": "Wprowadź hasło",
+      "generateNewCodes": "Wygeneruj nowe kody odzyskiwania",
+      "passwordRequired": "Wprowadź hasło do konta, aby zmienić ustawienia zabezpieczeń.",
+      "recoveryCodesInfo": "Kodów odzyskiwania można użyć do uzyskania dostępu do konta w przypadku utraty dostępu do głównych metod MFA.",
+      "recoveryCodesTitle": "Kody odzyskiwania",
+      "saveCodesWarning": "WAŻNE: Zapisz te kody w bezpiecznym miejscu. Nie zostaną wyświetlone ponownie.",
+      "scanQr": "Zeskanuj kod QR za pomocą aplikacji uwierzytelniającej i wprowadź wygenerowany kod, aby go zweryfikować.",
+      "title": "Uwierzytelnianie wieloskładnikowe (MFA)",
+      "totp": "Aplikacja uwierzytelniająca (TOTP)",
+      "totpDisabled": "Aplikacja uwierzytelniająca jest obecnie wyłączona.",
+      "totpEnabled": "Aplikacja uwierzytelniająca jest obecnie włączona.",
+      "verificationCode": "Kod weryfikacyjny",
+      "verify": "Zweryfikuj i włącz",
+      "yourRecoveryCodes": "Twoje kody odzyskiwania"
+    },
+    "passkey": {
+      "add": "Dodaj klucz dostępu",
+      "addedOn": "Dodano dnia",
+      "description": "Klucze dostępu zapewniają bezpieczne logowanie bez hasła za pomocą urządzenia.",
+      "namePlaceholder": "np. mój MacBook, telefon służbowy",
+      "newName": "Nazwa klucza dostępu (opcjonalnie)",
+      "noPasskeys": "Nie zarejestrowano jeszcze żadnych kluczy dostępu.",
+      "title": "Klucze dostępu",
+      "unnamed": "Klucz dostępu bez nazwy",
+      "yourPasskeys": "Zarejestrowane klucze dostępu"
+    },
+    "tabs": {
+      "developerIntegrations": "Deweloperzy i integracje",
+      "nutritionDiet": "Odżywianie i dieta",
+      "profileAccount": "Profil i konto",
+      "wellness": "Zdrowie"
     }
   },
   "admin": {
@@ -1335,12 +1795,20 @@
         "enableOidcLoginGlobal": "Włącz logowanie OIDC (Globalnie)",
         "emergencyFailSafe": "Zabezpieczenie awaryjne:",
         "emergencyFailSafeDescription": "Jeśli zostaniesz zablokowany, możesz wymusić logowanie hasłem, ustawiając następującą zmienną środowiskową na serwerze i restartując go:",
-        "envVarCopied": "Zmienna środowiskowa skopiowana."
+        "envVarCopied": "Zmienna środowiskowa skopiowana.",
+        "enforceMfaForAllUsers": "Wymuś MFA dla wszystkich użytkowników"
       },
       "oidcProviderManagement": {
         "title": "Zarządzanie OIDC",
         "description": "Konfiguracja dostawców OpenID Connect."
-      }
+      },
+      "error": "Błąd",
+      "errorLoadingSettings": "Błąd",
+      "errorLoadingSettingsDescription": "Nie udało się wczytać ustawień uwierzytelniania.",
+      "failedToSaveLoginSettings": "Nie udało się zapisać ustawień logowania.",
+      "loadingSettings": "Ładowanie ustawień…",
+      "loginSettingUpdated": "Ustawienie logowania zaktualizowano pomyślnie.",
+      "settingsSaved": "Ustawienia zapisano"
     },
     "backupSettings": {
       "title": "Kopie zapasowe",
@@ -1385,7 +1853,11 @@
       "error": "Błąd",
       "failedToDownloadBackup": "Nie udało się pobrać kopii zapasowej.",
       "failedToFetchBackups": "Nie udało się pobrać listy kopii zapasowych.",
-      "noBackupsFound": "Nie znaleziono plików kopii zapasowych."
+      "noBackupsFound": "Nie znaleziono plików kopii zapasowych.",
+      "backupSettingsSaved": "Zapisano",
+      "invalidTimeDescription": "Przed zapisaniem wprowadź prawidłową godzinę w formacie HH:MM.",
+      "invalidTimeTitle": "Nieprawidłowa godzina kopii zapasowej",
+      "saveWarningSchedulerFailed": "Ustawienia zapisano, ale nie udało się zaktualizować aktywnego harmonogramu. Zmiany zaczną obowiązywać po ponownym uruchomieniu serwera."
     },
     "oidcSettings": {
       "title": "Dostawcy OIDC",
@@ -1437,7 +1909,12 @@
       "providerIdInfo": "Wartość ta wejdzie w skład URI przekierowania: /api/auth/sso/callback/YOUR_ID",
       "domain": "Domena organizacji",
       "domainInfo": "Identyfikacja tego dostawcy jest wymagana przez Better Auth.",
-      "callbackUrlCopied": "Callback URL skopiowano do schowka"
+      "callbackUrlCopied": "Callback URL skopiowano do schowka",
+      "envConfigured": "Zarządzane przez zmienne środowiskowe",
+      "envManagedNotice": "Ten dostawca jest konfigurowany za pomocą zmiennych środowiskowych. Niektóre pola są tylko do odczytu.",
+      "envManagedSecret": "Sekret jest zarządzany przez zmienne środowiskowe",
+      "error": "Błąd",
+      "logoUploadFailed": "Dostawcę utworzono, ale przesyłanie logo nie powiodło się."
     },
     "userManagement": {
       "title": "Zarządzanie użytkownikami",
@@ -1467,7 +1944,14 @@
       "failedToUpdateUserStatus": "Nie udało się wykonać działania „{{action}}” dla użytkownika.",
       "toggleUserRoleConfirm": "Zmienić rolę {{userName}} na {{newRole}}?",
       "userRoleUpdated": "Rola użytkownika {{userName}} zmieniona na {{newRole}}.",
-      "failedToUpdateUserRole": "Nie udało się zaktualizować roli użytkownika {{userName}}."
+      "failedToUpdateUserRole": "Nie udało się zaktualizować roli użytkownika {{userName}}.",
+      "deleteUser": "Usuń",
+      "deleteUserConfirm": "Czy na pewno chcesz usunąć tego użytkownika?",
+      "error": "Błąd podczas ładowania użytkowników",
+      "resetMfa": "Zresetuj MFA",
+      "resetMfaSuccess": "MFA zresetowano pomyślnie dla użytkownika {{userName}}.",
+      "resetPassword": "Zresetuj hasło",
+      "resetMfaConfirm": "Zresetować MFA dla użytkownika {{userName}}?"
     }
   },
   "goals": {
@@ -1579,15 +2063,26 @@
       "editGoalsFor": "Edytuj cele dla {{date}}",
       "changesApplyToDate": "Zmiany zostaną zastosowane tylko do tej daty.",
       "applyPreset": "Zastosuj szablon",
-      "selectGoalPreset": "Wybierz szablon celów"
+      "selectGoalPreset": "Wybierz szablon celów",
+      "errorLoading": "Nie udało się załadować celów żywieniowych. Spróbuj ponownie później."
     },
     "mealDistribution": {
       "selectTemplate": "Wybierz szablon rozkładu",
       "custom": "Własny",
       "distributeRemaining": "Rozdziel resztę równomiernie",
       "total": "Suma",
-      "mustBe100": "Musi wynosić 100%, aby zapisać"
-    }
+      "mustBe100": "Musi wynosić 100%, aby zapisać",
+      "title": "Rozkład kalorii w posiłkach"
+    },
+    "errorSavingPreset": "Nie udało się zapisać gotowego celu.",
+    "presetCreatedSuccess": "Gotowy cel został utworzony pomyślnie!",
+    "presetName": "Nazwa gotowego celu",
+    "presetNamePlaceholder": "np. Faza redukcji 1",
+    "presetNameRequired": "Wpisz nazwę swojego zestawu.",
+    "saveAndStart": "Zapisz i rozpocznij plan",
+    "saveAsPreset": "Zapisz zestaw i rozpocznij 6-miesięczny cel kaskadowy",
+    "savePresetDescription": "Nadaj nazwę zestawowi celów. Zostanie w nim zapisana bieżąca konfiguracja do wykorzystania w przyszłości, a plan zacznie obowiązywać od dzisiaj.",
+    "startCascadingPlan": "Rozpocznij 6-miesięczny plan kaskadowy"
   },
   "common": {
     "add": "Dodaj",
@@ -1624,7 +2119,52 @@
     "confirm": "Potwierdź",
     "notApplicable": "Nie dotyczy",
     "kJ": "kJ",
-    "totalSets": "Całkowita liczba serii"
+    "totalSets": "Całkowita liczba serii",
+    "actions": "Działania",
+    "advanced": "Zaawansowane",
+    "avgHrUnit": "Śr. tętno",
+    "back": "Wstecz",
+    "bulkDeleteDescription": "Czy na pewno chcesz usunąć te {{selectedCount}} elementów? Tej operacji nie można cofnąć.",
+    "bulkDeleteTitle": "Usunąć {{selectedCount}}: {{entityName}}?",
+    "calculating": "Obliczanie...",
+    "close": "Zamknij",
+    "collapse": "Zwiń",
+    "copied": "Skopiowano!",
+    "copyRawJson": "Kopiuj surowy JSON",
+    "copying": "Kopiowanie...",
+    "create": "Utwórz",
+    "creating": "Tworzenie...",
+    "date": "Data",
+    "delete": "Usuń",
+    "error": "Błąd",
+    "expand": "Rozwiń",
+    "favorite": "Ulubione",
+    "favorited": "Dodano do ulubionych",
+    "info": "Informacje",
+    "items": "elementów",
+    "kJUnit": "kJ",
+    "pause": "Wstrzymaj",
+    "duplicate": "Duplikuj",
+    "edit": "Edytuj",
+    "kcalUnit": "kcal",
+    "loading": "Ładowanie...",
+    "next": "Dalej",
+    "save": "Zapisz",
+    "select": "Wybierz",
+    "success": "Sukces",
+    "min": "min",
+    "reps": "powt.",
+    "weight": "Masa",
+    "workout": "Trening",
+    "caloriesUnit": "kalorie",
+    "savePreferences": "Zapisz preferencje",
+    "outOfTotal": "z {{totalCount}} elementów",
+    "selectedCount": "Wybrano: {{selectedCount}}",
+    "processing": "Przetwarzanie...",
+    "resume": "Wznów",
+    "skip": "Pomiń",
+    "view": "Wyświetl szczegóły",
+    "minutesUnit": "minuty"
   },
   "diary": {
     "nutritionSummary": "Podsumowanie odżywiania",
@@ -1658,7 +2198,80 @@
       "hide": "Ukryj",
       "layoutErrorNotice": "Wystąpił błąd konfigurowalnego układu, dlatego wyświetlono widok uproszczony. Zapisany układ został zachowany."
     },
-    "over": "ponad cel"
+    "over": "ponad cel",
+    "replaceEntryPhoto": "Zastąp zdjęcie",
+    "entryPhotoOverrideHint": "Te zdjęcia dotyczą tylko tego wpisu. Przeciągnij, aby zmienić ich kolejność.",
+    "entryPhotoInheritedHint": "Wyświetlane są własne zdjęcia produktu. Dodaj zdjęcie, aby zastąpić je w tym wpisie.",
+    "entryImageUploadFailedTitle": "Nie udało się przesłać",
+    "entryPhoto": "Zdjęcia dla tego wpisu",
+    "entryPhotoAlt": "Zdjęcie wpisu w dzienniku",
+    "addEntryPhoto": "Dodaj zdjęcie",
+    "removeEntryPhoto": "Usuń zdjęcie",
+    "entryImageUploadFailed": "Nie udało się zapisać zdjęcia dla tego wpisu.",
+    "entryImageRemoveFailedTitle": "Usuwanie nie powiodło się",
+    "entryImageRemoveFailed": "Nie udało się usunąć zdjęcia dla tego wpisu.",
+    "inheritedPhotoAlt": "Odziedziczone zdjęcie {{number}}",
+    "savingPhotos": "Zapisywanie zdjęć…",
+    "addError": "Nie udało się dodać produktu.",
+    "addSuccess": "Produkt został pomyślnie dodany.",
+    "calculateExplanation": {
+      "dialogDescription": "Szczegółowe wyjaśnienie sposobu obliczania dziennego celu energetycznego.",
+      "todayTarget": "Dzisiejszy cel"
+    },
+    "copyAllError": "Nie udało się skopiować całego dnia.",
+    "copyAllFromYesterday": "Skopiuj wszystko z wczoraj",
+    "copyAllSuccess": "Cały dzień został pomyślnie skopiowany.",
+    "copyAllToDate": "Skopiuj cały dzień do wybranej daty",
+    "copyError": "Nie udało się skopiować wpisów.",
+    "copyFamilyDesc": "Kopiuj wpisy w dzienniku między swoim dziennikiem a dziennikami członków rodziny.",
+    "copyFamilyFromError": "Nie udało się skopiować wpisów od członka rodziny.",
+    "copyFamilyFromSuccess": "Wpisy od członka rodziny zostały pomyślnie skopiowane.",
+    "copyFamilyMealType": "Typ posiłku",
+    "copyFamilyMemberLabel": "Członek rodziny",
+    "copyFamilyMemberPlaceholder": "Wybierz członka rodziny",
+    "copyFamilyNoConnections": "Nie znaleziono autoryzowanych połączeń rodzinnych.",
+    "copyFamilyNoConnectionsHelp": "Członkowie rodziny muszą przyznać Ci oboje ",
+    "copyFamilyNoDate": "Wybierz prawidłowe daty początkową i docelową.",
+    "copyFamilyNoMember": "Wybierz członka rodziny.",
+    "copyTargetTitleFamily": "Cel (rodzina)",
+    "copyTargetTitleSelf": "Cel (Ty)",
+    "copyFamilyTabFrom": "Kopiuj z rodziny",
+    "copyFamilyTabTo": "Kopiuj do rodziny",
+    "copyFamilyTitle": "Kopiuj produkt z rodziną",
+    "copyFamilyToError": "Nie udało się skopiować wpisów do rodziny.",
+    "copyFamilyToSuccess": "Wpisy skopiowano do rodziny.",
+    "copySourceTitleFamily": "Źródło (rodzina)",
+    "copySourceTitleSelf": "Źródło (Ty)",
+    "copySuccess": "Wpisy skopiowano pomyślnie.",
+    "deleteError": "Nie udało się usunąć wpisu.",
+    "deleteSuccess": "Wpis usunięto.",
+    "exerciseEntry": {
+      "createError": "Nie udało się zapisać ćwiczenia.",
+      "createPresetSessionError": "Nie udało się zapisać treningu.",
+      "createPresetSessionSuccess": "Trening zapisano pomyślnie.",
+      "createSuccess": "Ćwiczenie zapisano pomyślnie.",
+      "deleteError": "Nie udało się usunąć wpisu ćwiczenia.",
+      "deletePresetError": "Nie udało się usunąć wpisu treningu.",
+      "deletePresetSuccess": "Wpis treningu usunięto pomyślnie.",
+      "deleteSuccess": "Wpis ćwiczenia usunięto pomyślnie.",
+      "logPresetError": "Nie udało się zapisać gotowego treningu.",
+      "logPresetSuccess": "Gotowy trening zapisano pomyślnie.",
+      "updateError": "Nie udało się zaktualizować wpisu ćwiczenia.",
+      "updateSuccess": "Wpis ćwiczenia zaktualizowano pomyślnie."
+    },
+    "goalsLoadError": "Nie udało się wczytać dziennych celów.",
+    "loadError": "Nie udało się wczytać wpisów żywieniowych.",
+    "mealAddError": "Nie udało się dodać posiłku.",
+    "mealAddSuccess": "Posiłek dodano pomyślnie.",
+    "mealDeleteError": "Nie udało się usunąć posiłku.",
+    "mealDeleteSuccess": "Posiłek usunięto.",
+    "mealDetailsLoadError": "Nie udało się wczytać szczegółów posiłku.",
+    "mealUpdateError": "Nie udało się zaktualizować posiłku.",
+    "mealUpdateSuccess": "Posiłek zaktualizowano pomyślnie.",
+    "mealsLoadError": "Nie udało się wczytać wpisów posiłków.",
+    "updateError": "Nie udało się zaktualizować wpisu.",
+    "updateSuccess": "Wpis zaktualizowano.",
+    "wearableHealthSummary": "Dzienne podsumowanie zdrowia z urządzenia ubieralnego"
   },
   "foodDiary": {
     "title": "Dziennik posiłków",
@@ -1689,7 +2302,8 @@
       "deleteConfirm": "Czy wpis {{volume}} {{unit}}?",
       "deletedSuccess": "Napój usunięty",
       "deletedError": "Nie udało się usunąć napoju",
-      "editTime": "Naciśnij aby zmienić czas"
+      "editTime": "Naciśnij aby zmienić czas",
+      "noManualToRemove": "Można tutaj usuwać tylko ręcznie dodaną wodę"
     },
     "copyFoodEntryDialog": {
       "title": "Kopiuj wpisy",
@@ -1701,7 +2315,8 @@
     },
     "selectMealType": "Wybierz typ posiłku",
     "pastDateWarning": "Uwaga: dodajesz wpisy żywieniowe dla daty z przeszłości.",
-    "futureDateWarning": "Uwaga: dodajesz wpisy żywieniowe dla daty w przyszłości."
+    "futureDateWarning": "Uwaga: dodajesz wpisy żywieniowe dla daty w przyszłości.",
+    "userNotFound": "Nie znaleziono użytkownika, nie można edytować wpisu."
   },
   "mealCard": {
     "addFoodToMeal": "Dodaj jedzenie do: {{mealName}}",
@@ -1774,9 +2389,40 @@
       "uploadError": "Przesyłanie nie powiodło się",
       "tooLarge": "Obraz jest za duży (maks. 10 MB).",
       "deleteSuccess": "Zdjęcie usunięte",
-      "deleteError": "Nie udało się usunąć zdjęcia"
+      "deleteError": "Nie udało się usunąć zdjęcia",
+      "calendarLegend": "Zdjęcia postępów"
     },
-    "useLast": "Użyj ostatniej wartości"
+    "useLast": "Użyj ostatniej wartości",
+    "failedToLoadRecentStandard": "Nie udało się wczytać ostatnich standardowych pomiarów.",
+    "failedToSaveCustomMeasurement": "Nie udało się zapisać własnego pomiaru.",
+    "failedToSaveMood": "Nie udało się zapisać nastroju.",
+    "level": "poziom",
+    "stressLevel": "Poziom stresu",
+    "bodyWater": "Nawodnienie organizmu (%)",
+    "boneMass": "Masa kości",
+    "couldNotLoadUserProfileOrPrefs": "Nie udało się wczytać profilu użytkownika ani preferencji do obliczeń.",
+    "exercise": "Ćwiczenia",
+    "failedToCreateCategory": "Nie udało się utworzyć kategorii.",
+    "failedToLoadCategories": "Nie udało się wczytać niestandardowych kategorii.",
+    "failedToLoadExistingCheckIn": "Nie udało się wczytać istniejących danych kontroli.",
+    "failedToLoadExistingCustom": "Nie udało się wczytać istniejących niestandardowych pomiarów.",
+    "failedToLoadMostRecent": "Nie udało się wczytać najnowszego pomiaru.",
+    "failedToLoadRecentCustom": "Nie udało się wczytać ostatnich niestandardowych pomiarów.",
+    "failedToUpdateMeasurement": "Nie udało się zaktualizować pomiaru.",
+    "measurementUpdatedSuccessfully": "Pomiar zaktualizowano pomyślnie.",
+    "moodSaved": "Zapisano nastrój",
+    "moodSavedSuccessfully": "Nastrój zapisano pomyślnie.",
+    "muscleMass": "Masa mięśniowa",
+    "recentFasts": "Ostatnie posty",
+    "recentFastsDescription": "Twoje najnowsze posty i ich status.",
+    "recentMeasurementsDescription": "Twoje najnowsze wpisy obejmujące pomiary, zakończone posty i zsynchronizowane dane zdrowotne.",
+    "saveMood": "Zapisz nastrój",
+    "tabs": {
+      "fasting": "Post i nastrój",
+      "measurements": "Pomiary",
+      "photos": "Zdjęcia",
+      "sleep": "Sen"
+    }
   },
   "sleepTimelineEditor": {
     "sleepTimeline": "Oś czasu snu",
@@ -1785,11 +2431,12 @@
     "light": "Płytki",
     "deep": "Głęboki",
     "clear": "Wyczyść",
-    "bedtime": "Sen",
+    "bedtime": "Pora snu",
     "wakeTime": "Pobudka",
     "duration": "Czas trwania",
     "sleepScore": "Wynik snu",
-    "source": "Źródło"
+    "source": "Źródło",
+    "timeAsleep": "Czas snu"
   },
   "moodMeter": {
     "howAreYouFeelingToday": "Jak się dziś czujesz?",
@@ -1802,7 +2449,18 @@
     "calm": "Spokój",
     "confident": "Pewność siebie",
     "happy": "Szczęście",
-    "excited": "Ekscytacja"
+    "excited": "Ekscytacja",
+    "addCustom": "Dodaj niestandardowy nastrój",
+    "addMood": "Dodaj nastrój",
+    "deleteAllHistory": "Usuń go również ze wszystkich wcześniejszych wpisów",
+    "deleteDesc": "Nie będzie już wyświetlany w selektorze. Wcześniejsze wpisy zachowają go, chyba że zdecydujesz się usunąć go wszędzie.",
+    "deleteTitle": "Usunąć ten nastrój?",
+    "intensity": "Ogólny nastrój",
+    "manage": "Zarządzaj",
+    "manageMoods": "Zarządzaj nastrojami",
+    "moodName": "Nazwa nastroju",
+    "moods": "Nastroje",
+    "showHide": "Pokaż lub ukryj nastroje"
   },
   "sleepEntrySection": {
     "sleepTracking": "Monitorowanie snu",
@@ -1826,7 +2484,17 @@
     "stagesUpdatedSuccessfully": "Fazy i godziny snu zaktualizowane!",
     "failedToUpdateSleepStages": "Nie udało się zaktualizować faz snu",
     "sleepEntryDeletedSuccessfully": "Wpis usunięty!",
-    "failedToDeleteSleepEntry": "Błąd usuwania wpisu"
+    "failedToDeleteSleepEntry": "Błąd usuwania wpisu",
+    "restingHR": "Tętno spoczynkowe",
+    "sleepEntriesSavedSuccessfully": "Wpisy dotyczące snu zapisano pomyślnie!",
+    "avgOvernightHrv": "Średnie HRV",
+    "avgSleepStress": "Średni poziom stresu",
+    "avgSpO2": "Średnie SpO2",
+    "awake": "Czuwanie",
+    "deepSleep": "Sen głęboki",
+    "failedToLoadSleepEntries": "Nie udało się wczytać wpisów snu",
+    "lightSleep": "Sen płytki",
+    "remSleep": "Sen REM"
   },
   "foodDatabaseManager": {
     "foodSharedWithPublic": "Produkt udostępniony publicznie",
@@ -1895,7 +2563,21 @@
     "duplicateFoodDialogTitle": "Duplikowanie produktu",
     "duplicateFoodDialogDescription": "Dostosuj szczegóły i zapisz jako nowy produkt. Oryginał nie zostanie zmieniony.",
     "copySuffix": "(kopia)",
-    "duplicateFailed": "Nie udało się zduplikować produktu."
+    "duplicateFailed": "Nie udało się zduplikować produktu.",
+    "addToFavorites": "Dodaj do ulubionych",
+    "failedToAddFood": "Nie udało się dodać produktu.",
+    "failedToImportFoodData": "Nie udało się zaimportować danych produktu. Spróbuj ponownie.",
+    "failedToLoadFoodDetails": "Nie udało się wczytać szczegółów produktu.",
+    "failedToLoadRecentAndTopFoods": "Nie udało się wczytać ostatnio używanych i najpopularniejszych produktów.",
+    "failedToSearchFoods": "Nie udało się wyszukać produktów.",
+    "failedToUpdateFoodSnapshot": "Nie udało się zaktualizować migawki wpisów żywieniowych.",
+    "failedToUpdateSharing": "Nie udało się zaktualizować stanu udostępniania.",
+    "foodAddedSuccessfully": "Pomyślnie dodano produkt.",
+    "foodDataImportedSuccessfully": "Dane produktów zaimportowano pomyślnie.",
+    "foodSnapshotUpdatedSuccessfully": "Migawka wpisów żywieniowych została pomyślnie zaktualizowana.",
+    "foods": "Produkty",
+    "name": "Nazwa",
+    "removeFromFavorites": "Usuń z ulubionych"
   },
   "mealManagement": {
     "failedToLoadMeals": "Błąd ładowania posiłków.",
@@ -1940,7 +2622,26 @@
     "copySuffix": "(kopia)",
     "duplicateMealDialogDescription": "Dostosuj szczegóły i zapisz jako nowy posiłek. Oryginał nie zostanie zmieniony.",
     "failedToLoadRecentMeals": "Nie udało się wczytać ostatnich posiłków.",
-    "failedToLoadTopMeals": "Nie udało się wczytać najczęściej wybieranych posiłków."
+    "failedToLoadTopMeals": "Nie udało się wczytać najczęściej wybieranych posiłków.",
+    "mealUpdatedSuccessfully": "Pomyślnie zaktualizowano posiłek.",
+    "mealDeletedSuccessfully": "Pomyślnie usunięto posiłek.",
+    "mealPlanCreatedSuccessfully": "Pomyślnie utworzono plan posiłków.",
+    "mealPlanDeletedSuccessfully": "Pomyślnie usunięto plan posiłków.",
+    "mealPlanDuplicatedSuccessfully": "Pomyślnie zduplikowano plan posiłków.",
+    "mealPlanUpdatedSuccessfully": "Pomyślnie zaktualizowano plan posiłków.",
+    "meals": "posiłki",
+    "name": "Nazwa",
+    "removeFromFavorites": "Usuń z ulubionych",
+    "addToFavorites": "Dodaj do ulubionych",
+    "failedToCreateMeal": "Nie udało się utworzyć posiłku.",
+    "failedToCreateMealPlan": "Nie udało się utworzyć planu posiłków.",
+    "failedToDeleteMealPlan": "Nie udało się usunąć planu posiłków.",
+    "failedToDuplicateMealPlan": "Nie udało się zduplikować planu posiłków.",
+    "failedToLoadDeletionImpact": "Nie udało się wczytać skutków usunięcia posiłku.",
+    "failedToLoadMealDetails": "Nie udało się wczytać szczegółów posiłku.",
+    "failedToUpdateMeal": "Nie udało się zaktualizować posiłku.",
+    "failedToUpdateMealPlan": "Nie udało się zaktualizować planu posiłków.",
+    "mealCreatedSuccessfully": "Posiłek został pomyślnie utworzony."
   },
   "mealBuilder": {
     "errorTitle": "Błąd",
@@ -1981,7 +2682,23 @@
     "invalidTotalAmount": "Całkowita ilość musi być większa niż zero.",
     "invalidDefaultServingSize": "Standardowa porcja musi być większa niż zero.",
     "perServingTab": "Na porcję",
-    "totalTab": "Suma"
+    "totalTab": "Suma",
+    "editLinkedMealTitle": "Edytuj {{name}}",
+    "foodDiarySaveError": "Nie można zapisać wpisu w dzienniku żywności: brakuje kontekstu.",
+    "foodUpdatedInMeal": "{{name}} zaktualizowano w posiłku.",
+    "linkedMealBadge": "Powiązany posiłek",
+    "linkedMealPreviewDescription": "Podgląd tego podposiłku tylko do odczytu.",
+    "linkedMealPreviewTitle": "Powiązany posiłek",
+    "mealAddedToMeal": "{{name}} dodano do posiłku.",
+    "addFoodOrMealToMealTitle": "Dodaj produkt lub posiłek do posiłku",
+    "addLinkedMeal": "Dodaj do posiłku",
+    "cannotAddSelfAsIngredient": "Posiłek nie może zawierać samego siebie.",
+    "linkedMealServingInfo": "Daje {{totalServings}} × {{servingSize}} {{servingUnit}}",
+    "updateEntryButton": "Aktualizuj wpis",
+    "updateLinkedMeal": "Aktualizuj",
+    "addLinkedMealDescription": "Wybierz ilość tego podposiłku, którą chcesz dodać jako składnik.",
+    "addLinkedMealTitle": "Dodaj {{name}} do posiłku",
+    "mealImages": "Zdjęcia"
   },
   "mealPlanCalendar": {
     "title": "Plany posiłków",
@@ -2002,7 +2719,17 @@
     "deleteTemplateError": "Błąd usuwania szablonu.",
     "updateStatusError": "Nie znaleziono planu do aktualizacji.",
     "toggleStatusSuccess": "Status planu {{status}} zmieniony.",
-    "toggleStatusError": "Błąd zmiany statusu planu."
+    "toggleStatusError": "Błąd zmiany statusu planu.",
+    "activate": "Aktywuj",
+    "activeStatus": "Aktywny",
+    "duration": "Czas trwania",
+    "inactiveStatus": "Nieaktywne",
+    "mealsHeader": "Posiłki",
+    "ongoingStatus": "Bezterminowy",
+    "status": "Status",
+    "planName": "Nazwa planu",
+    "deactivate": "Dezaktywuj",
+    "templates": "szablony planów posiłków"
   },
   "mealPlanTemplateForm": {
     "createTitle": "Stwórz szablon planu posiłków",
@@ -2021,7 +2748,8 @@
     "addFoodToMealPlanDescription": "Szukaj jedzenia, które chcesz dodać do tego dnia.",
     "planNameEmptyError": "Nazwa planu nie może być pusta.",
     "endDateError": "Data zakończenia nie może być przed datą rozpoczęcia.",
-    "removeButton": "X"
+    "removeButton": "X",
+    "multipleActiveHint": "Jednocześnie może być aktywnych wiele planów posiłków. Aktywne plany automatycznie uzupełniają wpisy w dzienniku."
   },
   "workoutPresetForm": {
     "createTitle": "Stwórz nowy szablon treningu",
@@ -2084,7 +2812,9 @@
     "pastedToastTitle": "Wklejono!",
     "pastedToastDescription": "Wklejono {{itemName}} do nowego dnia.",
     "errorToastTitle": "Błąd",
-    "errorToastDescription": "Nie udało się załadować szablonów lub ćwiczeń."
+    "errorToastDescription": "Nie udało się załadować szablonów lub ćwiczeń.",
+    "addExerciseButtonInDay": "Dodaj ćwiczenie",
+    "pasteButton": "Wklej"
   },
   "muscleGroupRecovery": {
     "title": "Regeneracja partii mięśniowych",
@@ -2124,7 +2854,14 @@
     "sleepDebtDisclaimer": "*Deficyt snu liczony względem zalecanych 8 godzin snu. Ta opcja będzie konfigurowalna w przyszłej wersji.",
     "sleepEfficiency": "Wydajność snu",
     "hoursShort": "h ",
-    "minutesShort": "m"
+    "minutesShort": "m",
+    "healthMetrics": "Wskaźniki zdrowotne",
+    "nightlyDetails": "Szczegóły nocy",
+    "showLess": "Pokaż mniej",
+    "sleepTrends": "Trendy snu",
+    "total": "Łącznie",
+    "showAll": "Pokaż wszystkie ({{count}})",
+    "sleepDebtDisclaimerPersonalized": "*Dług snu jest obliczany na podstawie Twojego spersonalizowanego zapotrzebowania na sen wynoszącego {{time}}."
   },
   "sleepAnalyticsTable": {
     "exportToCSV": "Eksportuj do CSV",
@@ -2171,7 +2908,10 @@
     "noSleepStageDataAvailable": "Brak danych o fazach dla tego wpisu.",
     "csvHeadersDebt": "Niedobór snu",
     "csvHeadersWeight": "Waga (%)",
-    "highDebt": "Wysoki dług"
+    "highDebt": "Wysoki dług",
+    "csvHeadersTimeAsleep": "Czas snu",
+    "csvHeadersDuration": "Czas trwania",
+    "sleepHistoryTableTitle": "Historia i analiza snu"
   },
   "workoutReport": {
     "workoutStats": "Statystyki treningu",
@@ -2190,7 +2930,17 @@
     "estimated1RM": "Szacowany 1RM",
     "maxWeight": "Maks. ciężar",
     "maxReps": "Maks. powtórzeń",
-    "setPerformanceAnalysis": "Analiza wydajności serii"
+    "setPerformanceAnalysis": "Analiza wydajności serii",
+    "set": "Seria",
+    "sets": "Serie",
+    "time": "Czas",
+    "totalTime": "Czas",
+    "exerciseName": "Nazwa ćwiczenia",
+    "exercises": "Ćwiczenia",
+    "primaryMuscles": "Główne mięśnie",
+    "reps": "Powtórzenia",
+    "rest": "Odpoczynek",
+    "volume": "Objętość"
   },
   "exerciseHistoryDisplay": {
     "loadingHistory": "Ładowanie historii...",
@@ -2209,7 +2959,7 @@
     "typeLabel": "Typ",
     "repsLabel": "Powt.",
     "weightLabel": "Ciężar",
-    "durationLabel": "Czas",
+    "durationLabel": "Czas trwania",
     "restLabel": "Odpoczynek (s)",
     "notesLabel": "Notatki",
     "addSet": "Dodaj serię",
@@ -2219,7 +2969,7 @@
     "enterDistance": "Wpisz dystans w {{distanceUnit}}",
     "avgHeartRateLabel": "Średnie tętno (bpm)",
     "enterAvgHeartRate": "Wpisz średnie tętno",
-    "customActivityDetails": "Szczegóły aktywności",
+    "customActivityDetails": "Szczegóły niestandardowej aktywności",
     "sessionNotes": "Notatki z sesji",
     "uploadImage": "Wgraj zdjęcie",
     "imagePreviewAlt": "Podgląd",
@@ -2262,7 +3012,10 @@
       "mine": "Moje ćwiczenia",
       "family": "Rodzinne",
       "public": "Publiczne"
-    }
+    },
+    "failedToLoadEquipment": "Nie udało się wczytać sprzętu.",
+    "failedToLoadExercises": "Nie udało się wczytać ćwiczeń.",
+    "failedToLoadMuscles": "Nie udało się wczytać grup mięśniowych."
   },
   "addComp": {
     "addNew": "Dodaj nowe"
@@ -2300,7 +3053,14 @@
       "switchToContinuousScanMode": "Tryb ciągłego skanowania",
       "forceScan": "Wymuś skanowanie",
       "turnOffFlashlight": "Wyłącz latarkę",
-      "turnOnFlashlight": "Włącz latarkę"
+      "turnOnFlashlight": "Włącz latarkę",
+      "camera": "Aparat",
+      "continuous": "Ciągłe",
+      "flashOff": "Lampa wyłączona",
+      "flashOn": "Lampa włączona",
+      "manual": "Wprowadź kod skanowania",
+      "refresh": "Odśwież skupienie",
+      "single": "Skanowanie pojedyncze"
     }
   },
   "customCategoryManager": {
@@ -2334,7 +3094,12 @@
     "deleteCategorySuccess": "Kategoria usunięta",
     "deleteCategoryError": "Błąd usuwania kategorii",
     "invalidIdError": "Błąd: Nieprawidłowe ID.",
-    "userNotAuthenticatedError": "Błąd: Użytkownik niezalogowany."
+    "userNotAuthenticatedError": "Błąd: Użytkownik niezalogowany.",
+    "displayNameHelp": "Opcjonalna nazwa niestandardowa wyświetlana w aplikacji",
+    "displayNameLabel": "Nazwa wyświetlana (opcjonalnie, maks. 100 znaków)",
+    "displayNamePlaceholder": "np. Poziom cukru we krwi rano",
+    "nameHelp": "Wewnętrzny identyfikator używany do synchronizacji",
+    "unitPrecisionNote": "Używanie standardowych jednostek (takich jak kcal, mmHg, BPM) automatycznie optymalizuje precyzję wykresu."
   },
   "customMeasurements": {
     "title": "Pomiary własne - {{date}}",
@@ -2391,7 +3156,28 @@
   },
   "calculationSettings": {
     "showNetCarbs": "Pokaż wartość netto węglowodanów (węglowodany minus błonnik)",
-    "showNetCarbsHint": "Jeśli opcja jest włączona, podsumowanie węglowodanów wyświetla sumę węglowodanów minus błonnik pokarmowy."
+    "showNetCarbsHint": "Jeśli opcja jest włączona, podsumowanie węglowodanów wyświetla sumę węglowodanów minus błonnik pokarmowy.",
+    "bmrAlgorithm": "Algorytm obliczania podstawowej przemiany materii",
+    "bmrAlgorithmHint": "Wybierz wzór używany do obliczania podstawowej przemiany materii.",
+    "bodyFatAlgorithm": "Algorytm obliczania zawartości tkanki tłuszczowej",
+    "bodyFatAlgorithmHint": "Wybierz wzór używany do szacowania procentowej zawartości tkanki tłuszczowej na podstawie pomiarów.",
+    "calories": "Kalorie",
+    "energyUnitHint": "Wybierz preferowaną jednostkę wyświetlania wartości energetycznych (np. kalorie, kilodżule).",
+    "energyUnitLabel": "Jednostka energii",
+    "energyUnitSaveError": "Błąd",
+    "energyUnitSaveErrorDesc": "Nie udało się zaktualizować jednostki energii.",
+    "energyUnitSaveSuccess": "Sukces",
+    "energyUnitSaveSuccessDesc": "Jednostka energii została pomyślnie zaktualizowana.",
+    "saveError": "Błąd",
+    "saveErrorDesc": "Nie udało się zapisać ustawień obliczeń.",
+    "includeBmrInNetCalories": "Uwzględniaj BMR w bilansie kalorii netto",
+    "saveSuccess": "Sukces",
+    "includeBmrInNetCaloriesHint": "Po włączeniu BMR zostanie odjęta od dziennego bilansu kalorii netto.",
+    "joules": "Dżule",
+    "saveSuccessDesc": "Ustawienia obliczeń zostały pomyślnie zapisane!",
+    "selectBmrAlgorithm": "Wybierz algorytm obliczania podstawowej przemiany materii",
+    "selectBodyFatAlgorithm": "Wybierz algorytm obliczania zawartości tkanki tłuszczowej",
+    "selectEnergyUnitPlaceholder": "Wybierz jednostkę energii"
   },
   "sync": {
     "syncAll": "Synchronizuj dane wszystkich aktywnych dostawców",
@@ -2421,7 +3207,19 @@
     "respirationHighest": "Najwyższy",
     "heartRate": "Tętno",
     "restingHeartRate": "Tętno spoczynkowe",
-    "spo2": "Poziom tlenu we krwi"
+    "spo2": "Poziom tlenu we krwi",
+    "avgHR": "Śr.",
+    "avgHRV": "Śr.",
+    "avgResp": "Śr.",
+    "avgSpO2": "Średnia",
+    "baseline": "Wartość bazowa",
+    "hrvDisclaimer": "*Wartość bazowa na podstawie Twoich danych (średnia ± odchylenie standardowe)",
+    "lowestResp": "Najniższa wartość",
+    "lowestSpO2": "Najniższa wartość",
+    "normalRHR": "Norma dla dorosłych: 60–100 uderzeń/min",
+    "normalRange": "Norma: 12–20 oddechów/min",
+    "pulseOx": "Pulsoksymetr (SpO2)",
+    "range": "Zakres"
   },
   "sleepSummary": {
     "title": "Podsumowanie ostatniej nocy",
@@ -2436,8 +3234,16 @@
     "noData": "Brak dostępnych danych o śnie",
     "duration": "Długość",
     "efficiency": "Wydajność",
-    "bedtime": "Czas snu",
-    "score": "Wynik snu"
+    "bedtime": "Pora snu",
+    "score": "Wynik snu",
+    "avgHRV": "Śr. HRV",
+    "avgResp": "Śr. oddechów/min",
+    "avgSpO2": "Śr. SpO2",
+    "batteryChange": "Zmiana poziomu baterii",
+    "lastNight": "Ostatnia noc",
+    "restingHR": "Tętno spoczynkowe",
+    "restless": "Niespokojne momenty",
+    "sleepScore": "Wynik snu"
   },
   "sleepScience": {
     "title": "Nauka o śnie",
@@ -2507,7 +3313,8 @@
       "saving": "Zapisywanie…",
       "save": "Zapisz",
       "reset": "Resetuj",
-      "custom": "Niestandardowe"
+      "custom": "Niestandardowe",
+      "clear": "Wyczyść"
     },
     "today": {
       "noIntake": "Nie zarejestrowano jeszcze żadnych wpisów na dziś.",
@@ -2524,7 +3331,25 @@
       "snooze": "Odłóż",
       "snoozed": "Odłożono",
       "skip": "Pomiń",
-      "take": "Przyjmij"
+      "take": "Przyjmij",
+      "medicationsTitle": "Dzisiejsze leki",
+      "medicationsDescription": "Śledź zaplanowane dawki i rejestruj leki przyjmowane w razie potrzeby",
+      "noMedicationDoses": "Dziś nie ma zaplanowanych dawek — poniżej możesz doraźnie zarejestrować przyjęcie leku.",
+      "supplementsTitle": "Dzisiejsze suplementy",
+      "supplementsDescription": "Śledź zaplanowane dawki i rejestruj doraźne przyjęcie suplementów",
+      "noSupplementDoses": "Dziś nie ma zaplanowanych dawek — poniżej możesz doraźnie zarejestrować przyjęcie suplementu.",
+      "noPrnMedications": "Nie skonfigurowano żadnych leków doraźnych ani leków bez harmonogramu.",
+      "adherenceTitle": "Przegląd przestrzegania zaleceń",
+      "noPrnSupplements": "Brak skonfigurowanych suplementów stosowanych doraźnie lub poza harmonogramem.",
+      "loadingMedications": "Ładowanie aktywnych leków…",
+      "loadingSupplements": "Ładowanie aktywnych suplementów…",
+      "loadingChecklist": "Ładowanie listy kontrolnej…",
+      "dueToday": "Do zrobienia dzisiaj",
+      "asNeeded": "W razie potrzeby",
+      "asNeededHint": "Dotknij, aby teraz zarejestrować dawkę (brak stałego harmonogramu lub termin nie przypada dzisiaj).",
+      "logIntake": "Zarejestruj przyjęcie",
+      "editLogged": "Edytuj zarejestrowaną dawkę",
+      "takenAt": "Przyjęto o"
     },
     "insights": {
       "title": "Analizy i wskazówki dotyczące działań niepożądanych",
@@ -2593,7 +3418,16 @@
       "tooltipSymptoms": "Objawy: {{names}}",
       "tooltipTaken": "Przyjęto: {{count}}",
       "tue": "Wt",
-      "wed": "Śr"
+      "wed": "Śr",
+      "titleSupplements": "Kalendarz rejestru suplementów",
+      "noEntries": "Dodaj lek lub suplement, aby zobaczyć tutaj jego kalendarz rejestru.",
+      "selectEntry": "Wybierz element",
+      "allEntries": "Wszystkie",
+      "noSupplements": "Dodaj suplement, aby zobaczyć tutaj jego kalendarz rejestru.",
+      "selectSupplement": "Wybierz suplement",
+      "allSupplements": "Wszystkie suplementy",
+      "titleAll": "Kalendarz rejestrowania",
+      "skipped": "Pominięto"
     },
     "gi": {
       "title": "Monitor objawów żołądkowo-jelitowych",
@@ -2645,7 +3479,9 @@
         "food_noise": "Natrętne myśli o jedzeniu",
         "fullness": "Uczucie sytości",
         "energy": "Energia"
-      }
+      },
+      "noAccessTitle": "Codzienna kontrola GLP-1 wymaga dostępu do kontroli",
+      "noAccessBody": "Poproś użytkownika {{name}}, aby udostępnił dostęp do rejestrowania kontroli, by śledzić tutaj głód, natrętne myśli o jedzeniu, sytość i poziom energii."
     },
     "sites": {
       "customize": "Dostosuj miejsca",
@@ -2698,7 +3534,14 @@
       "noInjections": "Nie zarejestrowano jeszcze żadnych wstrzyknięć.",
       "pkAxisDates": "Daty",
       "pkAxisDays": "Dni",
-      "pkDayLabel": "Dzień {{day}}"
+      "pkDayLabel": "Dzień {{day}}",
+      "addInventory": "Dodaj zapasy",
+      "editInjection": "Edytuj zastrzyk",
+      "notes": "Notatki",
+      "notesPlaceholder": "np. lekkie pieczenie, wszystko w porządku",
+      "quickLogHint": "{{name}} — dawka zostanie automatycznie odjęta od zapasu aktywnego pena. Zielony kolor oznacza sugerowane miejsce rotacji.",
+      "quickLogTitle": "Gdzie wykonano zastrzyk?",
+      "skipSite": "Pomiń miejsce"
     },
     "types": {
       "pill": "pigułka",
@@ -2740,7 +3583,67 @@
       "doseFollowsStrength": "Zgodna z mocą, dopóki jej nie zmienisz.",
       "dosePerInjection": "Dawka na wstrzyknięcie",
       "doseUnit": "Jednostka dawki",
-      "strengthUnit": "Jednostka mocy"
+      "strengthUnit": "Jednostka mocy",
+      "customCadence": "Kadencja",
+      "nutritionHelpLabel": "Jak czytać etykietę",
+      "macroLabel_calories": "Kalorie",
+      "notes": "Notatki",
+      "notesPlaceholder": "Przyjmować z wodą przed śniadaniem. Unikać alkoholu.",
+      "photoPath": "Adres URL zdjęcia tabletki / etykiety (opcjonalnie)",
+      "showAdvanced": "Pokaż opcje zaawansowane",
+      "addSupplement": "Dodaj suplement",
+      "editSupplement": "Edytuj suplement",
+      "supplementNamePlaceholder": "np. witamina D3",
+      "doseForm": "Postać",
+      "nutritionPerDose": "Wartości odżywcze na porcję",
+      "searchNutrients": "Wyszukaj składniki odżywcze…",
+      "noNutrientMatches": "Brak wyników. Utwórz składnik poniżej.",
+      "clearNutrients": "Usuń wszystko",
+      "nutrientsNeedDiaryAccess": "Do obliczania wartości odżywczych na dawkę ten profil musi mieć dostęp do dziennika żywieniowego. Nadal możesz zapisać suplement oraz śledzić jego harmonogram, przypomnienia i dawki.",
+      "addNutrient": "Dodaj składnik odżywczy",
+      "nutrientGroupCatalog": "Witaminy i minerały",
+      "nutrientGroupCustom": "Twoje własne składniki odżywcze",
+      "createNutrient": "Nie ma na liście? Utwórz własny",
+      "nutrientNamePlaceholder": "np. ashwagandha",
+      "nutrientUnit": "Jednostka",
+      "nutrientExists": "Ten składnik odżywczy już istnieje — wybierz go z listy.",
+      "createAndAddShort": "Dodaj",
+      "multivitaminPanel": "Panel multiwitaminy",
+      "nutrientCount_one": "{{count}} składnik odżywczy",
+      "nutrientCount_few": "{{count}} składniki odżywcze",
+      "nutrientCount_many": "{{count}} składników odżywczych",
+      "empty": "Nie dodano jeszcze żadnych leków. Dodaj pierwszy, aby rozpocząć.",
+      "emptyMeds": "Nie dodano jeszcze żadnych leków. Dodaj pierwszy, aby rozpocząć.",
+      "emptySupplements": "Nie dodano jeszcze żadnych suplementów. Dodaj pierwszy, aby rozpocząć.",
+      "nutritionHelpSubGram": "Etykieta „mniej niż 1 g” nie podaje dokładnej ilości. Wpisz 0,5 jako wartość pośrednią albo 0, aby jej nie zawyżać.",
+      "macroLabel_protein": "Białko",
+      "macroLabel_carbs": "Węglowodany",
+      "macroLabel_fat": "Tłuszcz",
+      "macroLabel_dietary_fiber": "Błonnik",
+      "includeMacros": "Uwzględnij makroskładniki",
+      "servingUnit_tablet_one": "tabletka",
+      "servingUnit_tablet_few": "tabletki",
+      "servingUnit_tablet_many": "tabletek",
+      "servingUnit_capsule_one": "kapsułka",
+      "servingUnit_capsule_few": "kapsułki",
+      "servingUnit_capsule_many": "kapsułek",
+      "servingUnit_softgel_one": "kapsułka żelowa",
+      "servingUnit_softgel_few": "kapsułki żelowe",
+      "servingUnit_softgel_many": "kapsułek żelowych",
+      "servingUnit_gummy_one": "żelek",
+      "servingUnit_gummy_few": "żelki",
+      "servingUnit_gummy_many": "żelków",
+      "servingUnit_pill_one": "tabletka",
+      "servingUnit_pill_few": "tabletki",
+      "servingUnit_pill_many": "tabletek",
+      "servingEquals": "1 porcja =",
+      "customGlp1": "Niestandardowy lek GLP-1 / inny…",
+      "customGlpName": "Niestandardowa nazwa leku (opcjonalnie)",
+      "customHalfLife": "Okres półtrwania (dni)",
+      "customIsOral": "Podanie doustne",
+      "customTMax": "Czas do szczytu działania (dni)",
+      "effectiveness": "Ocena skuteczności",
+      "hideAdvanced": "Ukryj opcje zaawansowane"
     },
     "schedule": {
       "heading": "Harmonogramy i przypomnienia",
@@ -2770,7 +3673,17 @@
       "withMealOpt": "Z posiłkiem",
       "afterMeal": "Po posiłku",
       "startDate": "Data rozpoczęcia (opcjonalnie)",
-      "endDate": "Data zakończenia (opcjonalnie)"
+      "endDate": "Data zakończenia (opcjonalnie)",
+      "supplementDoseScalingCalories": "Każdy wpis obejmuje {{dose}} porcji: {{dose}} × {{perDose}} kcal = {{total}} kcal.",
+      "supplementDoseScaling": "Każdy wpis obejmuje {{dose}} porcji, czyli {{dose}} razy wartości odżywcze podane na porcję.",
+      "servingUnit": "porcja",
+      "servingsPerLog": "Liczba porcji na wpis",
+      "cycleOn": "Dni przyjmowania",
+      "cycleOff": "Dni przerwy",
+      "doseAmount": "Dawka (zastąpienie)",
+      "startDateRequired": "Data rozpoczęcia (wymagana)",
+      "time": "Pora dnia",
+      "weekdays": "Wybierz dni"
     },
     "reports": {
       "logTableTitle": "Tabela przyjmowania leków",
@@ -2780,7 +3693,84 @@
       "dosesTaken": "Przyjęte dawki",
       "times": "Godziny",
       "symptomsColumn": "Objawy",
-      "injectionAbbrev": "wstrz."
+      "injectionAbbrev": "wstrz.",
+      "exportDesc": "Pobierz spójny raport zawierający informacje o lekach, rejestrach, harmonogramach, objawach i danych dotyczących masy ciała, aby przekazać go lekarzowi.",
+      "glp1CheckinTrends": "Trendy codziennych kontroli GLP-1",
+      "kpiAdherenceDetail": "Odsetek zaplanowanych dawek, których przyjęcie zostało pomyślnie odnotowane.",
+      "kpiGlp1": "Zastrzyki GLP-1",
+      "kpiGlp1Detail": "Łączna liczba odnotowanych aktywnych dawek GLP-1 w tym okresie.",
+      "kpiSymptomCount": "Zgłoszone działania niepożądane",
+      "kpiSymptomCountDetail": "Liczba zarejestrowanych unikalnych objawów wbudowanych lub niestandardowych.",
+      "nauseaVsDose": "Nasilenie nudności a dawka leku GLP-1",
+      "weightVsGoalDesc": "Przedstawia codzienne pomiary masy ciała w porównaniu z docelową masą ciała.",
+      "configDesc": "Przełącz widoczność wybranych wykresów i widżetów korelacji.",
+      "configTitle": "Włączanie/wyłączanie wizualizacji",
+      "corrDose": "Dawka GLP-1 a nasilenie nudności",
+      "corrHydration": "Nawodnienie a zaparcia",
+      "corrProtein": "Spożycie białka a nudności",
+      "corrSleep": "Czas snu a zmęczenie",
+      "correlationsDisclaimer": "Uwaga: korelacje są wyłącznie opisowymi obliczeniami dla wybranego zakresu dat i nie oznaczają związku przyczynowego o charakterze klinicznym.",
+      "correlationsTitle": "Informacyjne korelacje objawów i działań niepożądanych",
+      "customize": "Dostosuj wykresy",
+      "adherenceTrend": "Dzienny trend regularności przyjmowania (%)",
+      "adherenceTrendDesc": "Przedstawia dzienny odsetek przyjętych dawek (odsetek zaplanowanych dawek, które przyjęto).",
+      "downloadCSV": "Pobierz dane CSV",
+      "exportTitle": "Eksport danych gotowy do przekazania lekarzowi",
+      "failedToLoadPrefs": "Nie udało się wczytać preferencji wyświetlania leków.",
+      "glp1CheckinTrendsDesc": "Śledzi subiektywny poziom głodu, natrętne myśli o jedzeniu, sytość i poziom energii (0–10) w połączeniu z dawkami GLP-1.",
+      "kpiAdherence": "Średnia regularność przyjmowania",
+      "nauseaVsDoseDesc": "Przedstawia maksymalne nasilenie nudności (słupki) względem terminów podania dawki w zastrzyku (linia).",
+      "printPDF": "Drukuj / zapisz raport PDF",
+      "subtitle": "Analizuj zależności między dawkami, działaniami niepożądanymi i trendami regularności przyjmowania.",
+      "title": "Raport leków",
+      "weightVsGoal": "Trend masy ciała względem masy docelowej ({{weightUnit}})"
+    },
+    "disclaimer": {
+      "text1": "Ta funkcja śledzenia przyjmowanych leków służy wyłącznie do osobistego prowadzenia zapisów i celów informacyjnych. Nie zastępuje profesjonalnej porady medycznej, diagnozy ani leczenia.",
+      "accept": "Zgadzam się i kontynuuj",
+      "acknowledge": "Rozumiem, że ten rejestrator nie jest wyrobem medycznym i nie udziela porad medycznych. W sprawie wszystkich decyzji dotyczących leków skonsultuję się z lekarzem lub innym pracownikiem ochrony zdrowia.",
+      "badge": "Rejestr leków",
+      "healthTitle": "Ważne zastrzeżenie dotyczące zdrowia",
+      "reminderTitle": "Przypomnienia nie są alertami medycznymi",
+      "subtitle": "Przed użyciem rejestru leków przeczytaj poniższe informacje i potwierdź ich zrozumienie.",
+      "text2": "Przed rozpoczęciem, przerwaniem lub zmianą przyjmowania jakiegokolwiek leku zawsze skonsultuj się z lekarzem, farmaceutą lub innym wykwalifikowanym pracownikiem ochrony zdrowia. Nigdy nie lekceważ profesjonalnej porady medycznej ani nie zwlekaj z jej uzyskaniem z powodu informacji przedstawionych w tym rejestrze.",
+      "text3": "Przypomnienia o harmonogramie i śledzenie regularności przyjmowania leków to funkcje pomocnicze. Mogą one nie uwzględniać interakcji między lekami, przeciwwskazań ani zmian dawkowania wymaganych przez zespół medyczny. Wyłącznie Ty odpowiadasz za przyjmowanie leków zgodnie z zaleceniami.",
+      "title": "Zanim zaczniesz"
+    },
+    "mealRelation": {
+      "after": "Po posiłku",
+      "before": "Przed posiłkiem",
+      "none": "Bez określonej zależności od posiłku",
+      "with": "Z posiłkiem"
+    },
+    "print": {
+      "header": "Raport leków dla lekarza przepisującego",
+      "dates": "Okres raportowania:"
+    },
+    "forms": {
+      "softgel": "Kapsułka żelowa",
+      "gummy": "Żelek",
+      "powder": "Proszek",
+      "tablet": "Tabletka",
+      "capsule": "Kapsułka",
+      "liquid": "Płyn"
+    },
+    "subtype": {
+      "all": "Wszystkie",
+      "meds": "Leki",
+      "supplements": "Suplementy"
+    },
+    "scheduleTypes": {
+      "daily": "Codziennie",
+      "everyNDays": "Co N dni",
+      "monthly": "Co miesiąc",
+      "prn": "W razie potrzeby (doraźnie)",
+      "weekly": "Wybrane dni tygodnia",
+      "cyclic": "Cykliczne (włączone/wyłączone)"
+    },
+    "beta": {
+      "description": "Spodziewaj się pewnych niedociągnięć. Jeśli zauważysz błędy lub problemy, zgłoś je na GitHubie, aby pomóc nam ulepszać aplikację!",
+      "title": "Pierwsze wydanie beta"
     }
   },
   "cycle": {
@@ -2791,7 +3781,8 @@
       "today": "Dzisiaj",
       "calendar": "Kalendarz",
       "insights": "Analizy",
-      "care": "Zdrowie"
+      "care": "Opieka",
+      "log": "Dziennik"
     },
     "comingSoon": {
       "calendarTitle": "Kalendarz cyklu",
@@ -2835,7 +3826,9 @@
       "ttc": "Starania o ciążę (TTC)",
       "ttcDesc": "Monitoruj okno płodności, owulację i wskaźniki fazy lutealnej.",
       "pregnant": "Monitorowanie ciąży",
-      "pregnantDesc": "Monitoruj etapy rozwoju płodu, czas skurczów i opiekę prenatalną."
+      "pregnantDesc": "Monitoruj etapy rozwoju płodu, czas skurczów i opiekę prenatalną.",
+      "menopause": "Uwzględniający menopauzę",
+      "postpartum": "Okres poporodowy"
     },
     "today": {
       "cycleDay": "Dzień cyklu",
@@ -2844,17 +3837,43 @@
       "nextPeriod": "Następna miesiączka",
       "ovulation": "Owulacja",
       "cycleLength": "Długość cyklu",
-      "lateBanner": "Miesiączka spóźnia się o {{n}} dni. Zarejestruj ją, gdy się rozpocznie, lub skoryguj długość cyklu w ustawieniach."
+      "lateBanner": "Miesiączka spóźnia się o {{n}} dni. Zarejestruj ją, gdy się rozpocznie, lub skoryguj długość cyklu w ustawieniach.",
+      "adjustSettingsTitle": "Dostosuj długości cyklu",
+      "avgCycleHint": "Standardowo cykl trwa 28 dni. Dostosuj tę wartość, aby dopasować prognozy do swojego organizmu.",
+      "avgCycleLabel": "Typowa długość cyklu (dni)",
+      "avgPeriodLabel": "Typowa długość miesiączki (dni)",
+      "guide": {
+        "day": "dzień",
+        "days": "dni",
+        "fertileDesc": "7-dniowy okres od 5 dni przed owulacją do 1 dnia po owulacji, oznaczający największe prawdopodobieństwo poczęcia.",
+        "fertileDescDynamic": "Obliczone jako:",
+        "fertileTitle": "Okno płodności",
+        "follicularDesc": "Faza przed owulacją. Automatycznie wydłuża się lub skraca, aby dopasować się do całkowitej długości cyklu (np. 16 dni w cyklu 30-dniowym).",
+        "follicularDescDynamic": "Obliczone jako:",
+        "follicularTitle": "Faza folikularna (zmienna)",
+        "intro": "Prognozy są obliczane dynamicznie na podstawie ustawień cyklu i zapisów:",
+        "note": "Uwaga: W standardowych cyklach faza lutealna trwa 14 dni. Ustawienia cyklu możesz zmienić za pomocą ołówka edycji na karcie Długość cyklu.",
+        "ovulationDesc": "Początek następnej miesiączki – długość fazy lutealnej (np. 12 lipca – 14 dni = 28 czerwca).",
+        "ovulationDescDynamic": "Obliczone jako:",
+        "ovulationTitle": "Dzień owulacji",
+        "periodDesc": "Początek ostatniej miesiączki + typowa długość cyklu (np. 12 czerwca + 30 dni = 12 lipca).",
+        "periodDescDynamic": "Obliczone jako:",
+        "periodTitle": "Początek następnej miesiączki",
+        "title": "Jak obliczane są prognozy?"
+      },
+      "ttcModeActive": "Tryb planowania ciąży aktywny"
     },
     "legend": {
       "period": "Miesiączka",
       "fertile": "Dni płodne",
-      "ovulation": "Owulacja"
+      "ovulation": "Owulacja",
+      "predicted": "Przewidywana miesiączka"
     },
     "stats": {
       "cycleAvg": "Śr. długość cyklu",
       "periodAvg": "Śr. długość miesiączki",
-      "lastBbt": "Ostatnia PTC"
+      "lastBbt": "Ostatnia PTC",
+      "confidence": "Prognoza"
     },
     "regularity": {
       "regular": "Regularny",
@@ -2883,11 +3902,194 @@
       "moods": "Nastrój",
       "energy": "Energia",
       "notes": "Notatki",
-      "notesPlaceholder": "Inne informacje…"
+      "notesPlaceholder": "Inne informacje…",
+      "glance": {
+        "weight": "Masa ciała",
+        "sleep": "Sen",
+        "water": "Woda"
+      },
+      "cervicalPositionFirmness": "Twardość",
+      "cervicalPositionHeight": "Wysokość",
+      "cervicalPositionOpening": "Rozwarcie",
+      "cervicalPositionTitle": "Położenie szyjki macicy",
+      "customizeProducts": "Dostosuj produkty",
+      "customizeSymptoms": "Dostosuj objawy",
+      "intercourse": "Współżycie",
+      "intercourseLogged": "Zarejestrowano",
+      "intercourseNotLogged": "Nie zarejestrowano",
+      "intercourseSection": "Współżycie",
+      "protectedIntercourse": "Współżycie zabezpieczone (prezerwatywa/bariera)",
+      "severity": "Nasilenie nowych objawów",
+      "symptoms": "Objawy"
+    },
+    "calendar": {
+      "addLog": "Dodaj wpis",
+      "editLog": "Edytuj wpis",
+      "editPeriods": "Edytuj miesiączki",
+      "fri": "Pt",
+      "logDialogDesc": "Zapisuj parametry cyklu, objawy, nastrój i temperaturę.",
+      "logDialogTitle": "Dzienny wpis — {{date}}",
+      "mon": "Pn",
+      "noLogs": "Brak wpisów z tego dnia.",
+      "normalDay": "Dzień bez krwawienia",
+      "paintModeHint": "Dotknij dat, aby oznaczać lub odznaczać dni miesiączki. Prognozy zostaną ponownie obliczone po zapisaniu.",
+      "sat": "Sob",
+      "saveSuccess": "Zaktualizowano miesiączkę",
+      "saveSuccessDesc": "Pomyślnie zaktualizowano rejestry miesiączki.",
+      "sun": "Nd",
+      "thu": "Czw",
+      "tue": "Wt",
+      "wed": "Śr"
+    },
+    "care": {
+      "add": "Dodaj",
+      "appointment": "Wizyta",
+      "appointments": "Wizyty",
+      "apptLocation": "Miejsce (opcjonalnie)",
+      "apptTitle": "Tytuł (opcjonalnie)",
+      "avgCycle": "Średnia długość cyklu",
+      "avgPeriod": "Średnia długość miesiączki",
+      "birthPlan": "Plan porodu",
+      "cyclesTracked": "Przeanalizowane cykle",
+      "delete": "Usuń",
+      "doctorReport": "Raport dla lekarza",
+      "hospitalBag": "Torba do szpitala",
+      "intro": "Artykuły, wizyty i przygotowania — wszystko przechowywane na Twoim własnym serwerze.",
+      "library": "Biblioteka zdrowia",
+      "noAppointments": "Brak wizyt.",
+      "print": "Drukuj",
+      "regularity": "Regularność",
+      "reportEmpty": "Zaloguj kilka cykli, aby wygenerować podsumowanie, które możesz udostępnić.",
+      "reportNote": "Na podstawie danych zgłoszonych przez Ciebie. Wygenerowano lokalnie, aby udostępnić je lekarzowi.",
+      "save": "Zapisz wizytę"
+    },
+    "history": {
+      "title": "Historia cykli",
+      "periodLength": "Długość miesiączki (dni)",
+      "startDate": "Data rozpoczęcia",
+      "updateSuccess": "Cykl zaktualizowano",
+      "updateSuccessDesc": "Pomyślnie zaktualizowano ręczne daty cyklu.",
+      "addSuccess": "Dodano cykl",
+      "addSuccessDesc": "Pomyślnie zapisano ręczną historię cyklu.",
+      "confirmDelete": "Czy na pewno chcesz usunąć ten zapis cyklu?",
+      "cycleLength": "Długość cyklu (dni)",
+      "deleteSuccess": "Usunięto cykl",
+      "derived": "Automatycznie",
+      "desc": "Wyświetlaj i dostosowuj daty oraz statystyki minionych miesiączek.",
+      "editDesc": "Edytuj daty rozpoczęcia/zakończenia cyklu lub parametry.",
+      "editTitle": "Edytuj zapis cyklu",
+      "exclude": "Wyklucz ze statystyk",
+      "excludeHelp": "Użyj dla nieregularnych wartości odstających",
+      "excludeToggle": "Przełącz wykluczenie",
+      "excluded": "Wykluczono",
+      "logPrevious": "Zarejestruj poprzednią miesiączkę",
+      "logPreviousDesc": "Wprowadź daty minionych miesiączek, aby rozpocząć obliczenia.",
+      "logPreviousTitle": "Zarejestruj poprzednią miesiączkę",
+      "manual": "Ręcznie",
+      "noCycles": "Nie zarejestrowano jeszcze żadnych cykli. Spróbuj zapisać miesiączkę."
+    },
+    "bbt": {
+      "missing": "Śledź podstawową temperaturę ciała, aby potwierdzić owulację. Znajdziesz ją w sekcji Pomiary; może też synchronizować się z telefonu.",
+      "stale": "Ostatni pomiar podstawowej temperatury ciała wykonano {{n}} dni temu. Potwierdzanie owulacji na podstawie temperatury jest wstrzymane do czasu zapisania nowego pomiaru — prognozy kalendarza i testów owulacyjnych nadal działają.",
+      "create": "Utwórz i śledź w sekcji Meldunek",
+      "creating": "Konfigurowanie…"
+    },
+    "beta": {
+      "description": "Spodziewaj się jeszcze pewnych niedoskonałości. Jeśli zauważysz błędy lub problemy, zgłoś je na GitHubie, aby pomóc nam ulepszać aplikację!",
+      "title": "Początkowa wersja beta"
+    },
+    "insights": {
+      "clinicalAlertsDesc": "Obserwacje oparte na heurystykach, które warto omówić z lekarzem.",
+      "hormones": "Symulacja wahań hormonów",
+      "hormonesDesc": "Typowe krzywe dla standardowego 28-dniowego cyklu.",
+      "locked": "Wglądy zablokowane",
+      "lockedDesc": "Zaloguj co najmniej 2 ukończone cykle, aby odblokować wykresy regularności, krzywe BBT i szczegóły macierzy objawów.",
+      "needed": "wymagane",
+      "nextForecast": "Prognoza zapotrzebowania na produkty na następną miesiączkę",
+      "noBbt": "Rejestruj codzienną temperaturę, aby wyświetlić wykres BBT.",
+      "noData": "Brak dostępnych danych analitycznych.",
+      "noSymptoms": "Zapisuj objawy w codziennym rejestrze, aby wyświetlić korelacje z fazami.",
+      "productsPerPeriod": "średnia liczba produktów",
+      "progress": "Postęp: {{count}}/2 cykle",
+      "regularityDesc": "Czas trwania ostatnich cykli w porównaniu ze średnią.",
+      "spendDesc": "Podpaski: {{pads}} · Tampony: {{tampons}}",
+      "supply": "Prognoza zużycia produktów i zapasów",
+      "supplyDesc": "Średnie i prognozy dotyczące następnej miesiączki.",
+      "symptoms": "Częstotliwość objawów według fazy",
+      "symptomsDesc": "Liczba wystąpień zsumowana dla śledzonych cykli.",
+      "yearlySpend": "Szacunkowe wydatki roczne",
+      "avgVolume": "Śr. objętość krwawienia",
+      "bbt": "Temperatura podstawowa ciała (BBT)",
+      "bbtDesc": "Zarejestrowane temperatury wskazują na cykl dwufazowy.",
+      "bcSuppressed": "Wyrównana krzywa hormonów (aktywna antykoncepcja)",
+      "clinicalAlerts": "Kliniczne alerty zdrowotne",
+      "regularity": "Regularność cyklu"
+    },
+    "ttc": {
+      "chartLegend": "Wyższe słupki oznaczają dni bliższe owulacji, z większym prawdopodobieństwem zajścia w ciążę.",
+      "conceptionChance": "Szansa na poczęcie",
+      "conceptionProbability": "Prawdopodobieństwo poczęcia",
+      "congratsDesc": "W tym cyklu zapisano pozytywny test ciążowy. Życzymy zdrowej i szczęśliwej ciąży!",
+      "noOvulationEstimate": "Nie ma jeszcze dostępnej prognozy owulacji. Kontynuuj rejestrowanie danych, aby ją przewidzieć.",
+      "opkTestTitle": "Test owulacyjny (OPK / wyrzut LH)",
+      "ovulationEstimateBasis": " na podstawie ",
+      "ovulationEstimateDetail": "Owulacja jest przewidywana na ",
+      "pregnancyModeStubDesc": "Tryb ciąży pojawi się wkrótce w fazie 4! Wtedy przeniesiemy Twoje statystyki.",
+      "pregnancyModeStubTitle": "Tryb ciąży",
+      "startPregnancyMode": "Uruchom tryb ciąży",
+      "testCountdown": "Testowanie jest najdokładniejsze od 10. dnia po owulacji (za {{n}} dni). Spróbuj poczekać, aby uniknąć rozczarowania lub pomyłki z bladą kreską.",
+      "testDeleted": "Test usunięto",
+      "testDeletedDesc": "Usunięto wpis testu.",
+      "testLogged": "Test zapisano",
+      "testLoggedDesc": "Wynik testu został pomyślnie zapisany.",
+      "testLoggingTitle": "Testy owulacyjne i ciążowe",
+      "testLogsHistory": "Ten cykl",
+      "testReady": "Osiągnięto {{dpo}}. dzień po owulacji! Zapisany teraz test ciążowy jest bardzo dokładny. Użyj pierwszego porannego moczu, aby uzyskać najwyższe stężenie.",
+      "twoWeekWaitTitle": "Dwutygodniowe oczekiwanie (TWW)",
+      "congratsTitle": "Gratulacje! 🎉",
+      "dpo": "Dni po owulacji (DPO)",
+      "fertileWindowChart": "Szansa na poczęcie w oknie płodności",
+      "hptTestTitle": "Test ciążowy (HPT)",
+      "implantationDesc": "Zapłodniona komórka jajowa zwykle zagnieżdża się 6–12 dni po owulacji. W tym okresie często nie odczuwa się żadnych objawów albo pojawiają się łagodne skurcze i plamienie. Mogą one być nie do odróżnienia od typowych objawów PMS.",
+      "implantationTitle": "Okno implantacji",
+      "irregularCaveatDesc": "Prognozy mogą być mniej dokładne z powodu zmienności cyklu. Codzienne rejestrowanie podstawowej temperatury ciała (BBT) i testów owulacyjnych (OPK) zapewni najdokładniejsze określenie okna płodności.",
+      "irregularCaveatTitle": "Wykryto nieregularny cykl",
+      "logNegativeHpt": "Zarejestruj negatywny wynik HPT",
+      "logPositiveHpt": "Zarejestruj pozytywny wynik HPT",
+      "logTestError": "Nie udało się zarejestrować testu. Spróbuj ponownie."
+    },
+    "hormone": {
+      "estrogen": "Estrogen",
+      "fsh": "FSH",
+      "lh": "LH",
+      "progesterone": "Progesteron"
+    },
+    "disclaimerFooter": "Prognozy mają charakter informacyjny i nie stanowią porady medycznej ani antykoncepcji.",
+    "correlation": {
+      "byPhase": "według fazy cyklu",
+      "emptyDesc": "Rejestruj wagę, nastrój, sen i energię przez kilka cykli, aby zobaczyć, jak zmieniają się wraz z fazami.",
+      "emptyTitle": "Korelacje odblokują się po zebraniu większej ilości danych",
+      "higher": "wyższa",
+      "insight": "{{metric}} ma tendencję do przyjmowania wartości {{dir}} w fazie {{phase}} ({{delta}}{{unit}} względem średniej).",
+      "lower": "niższa"
     }
   },
   "onboarding": {
-    "completeSetup": "Zakończ konfigurację"
+    "completeSetup": "Zakończ konfigurację",
+    "activityHeavy": "Duża (6–7 dni w tygodniu)",
+    "activityHeavyDesc": "Intensywne ćwiczenia lub uprawianie sportu.",
+    "activityLevelTitle": "Jak często ćwiczysz?",
+    "activityLight": "Lekka (1–2 dni w tygodniu)",
+    "activityLightDesc": "Lekkie ćwiczenia lub uprawianie sportu.",
+    "activityModerate": "Umiarkowana (3–5 dni w tygodniu)",
+    "activityModerateDesc": "Umiarkowane ćwiczenia lub uprawianie sportu.",
+    "activityNotMuch": "Niewielka",
+    "activityNotMuchDesc": "Siedzący tryb życia, niewiele lub brak ćwiczeń.",
+    "addBurnedCaloriesDesc": "Jeśli ćwiczysz, czy dodać spalone kalorie do Twojego dziennego limitu?",
+    "addBurnedCaloriesTitle": "Dodać spalone kalorie z ćwiczeń?",
+    "planReady": "Twój spersonalizowany plan jest gotowy.",
+    "skipFailed": "Nie udało się pominąć konfiguracji początkowej. Spróbuj ponownie.",
+    "submissionFailed": "Nie udało się zapisać Twojego planu. Spróbuj ponownie."
   },
   "chat": {
     "toolCategories": {
@@ -2954,7 +4156,8 @@
     "upfrontNote": "Uwaga: każdy produkt musi mieć co najmniej jeden wariant ustawiony jako jednostka domyślna (Is Default = True)."
   },
   "foods": {
-    "providerVerified": "Zweryfikowany produkt"
+    "providerVerified": "Zweryfikowany produkt",
+    "removeNutrient": "Usuń {{nutrient}}"
   },
   "nutrientGoalDirection": {
     "min": "Min.",
@@ -3056,23 +4259,439 @@
     "summary": {
       "auto": "Auto-wykrywanie",
       "autoDecimal": "Auto: przecinek dziesiętny",
-      "autoDelimiter": "Auto-wykrywanie ({{label}})"
+      "autoDelimiter": "Auto-wykrywanie ({{label}})",
+      "autoDecimalEu": "Automatyczne liczby dziesiętne (1.234,56)",
+      "autoDecimalUs": "Automatyczne liczby dziesiętne (1,234.56)"
     },
     "viewErrors": "Pokaż nieudane wiersze"
   },
   "diaryCsvImport": {
     "fileTooLarge": "Wybrany plik jest zbyt duży. Prześlij plik mniejszy niż 25 MB.",
-    "headersMismatch": "W pliku CSV brakuje wymaganych kolumn. Przyporządkuj pola, aby kontynuować."
+    "headersMismatch": "W pliku CSV brakuje wymaganych kolumn. Przyporządkuj pola, aby kontynuować.",
+    "clearData": "Wyczyść dane",
+    "addRow": "Dodaj wiersz",
+    "parseText": "Przetwórz tekst",
+    "pasteFirst": "Najpierw wklej dane CSV.",
+    "pastePlaceholder": "Lub wklej tutaj zawartość CSV…",
+    "pickDate": "Wybierz datę",
+    "recordsLoaded": "Wczytano {{length}} wierszy.",
+    "scopeFamily": "Rodzina",
+    "scopeMine": "Moje elementy",
+    "scopePublic": "Publiczne",
+    "title": "Importuj dziennik (CSV)",
+    "uploadCsv": "Prześlij CSV",
+    "validationErrorTitle": "Błąd walidacji",
+    "actions": "Działania",
+    "dateMealTypeRequired": "Każdy wiersz wymaga ",
+    "deleteRow": "Usuń wiersz",
+    "downloadTemplate": "Pobierz szablon",
+    "emptyFile": "Wybrany plik jest pusty.",
+    "importComplete": "Import zakończony",
+    "importData": "Importuj dane",
+    "importErrorTitle": "Błąd importu",
+    "importFailed": "Nie udało się zaimportować danych dziennika.",
+    "importSummary": "Zaimportowano {{processed}} wpisów, niepowodzenie: {{errors}}.",
+    "importing": "Importowanie…",
+    "invalidFormatTitle": "Nieprawidłowy format CSV",
+    "matchScope": "Dopasowuj nazwy produktów do",
+    "matchScopeDescription": "Dopasowanie nazwy produktu poza zaznaczonymi zakresami zostanie zignorowane, a zamiast tego zostanie utworzony nowy produkt na podstawie kolumn z wartościami odżywczymi wiersza.",
+    "mealType": "Posiłek",
+    "overrideDescription": "Gdy wiersz pasuje do jednego z Twoich produktów, zastąp wariant tego produktu",
+    "overrideLabel": "Zastąp wartości odżywcze istniejącego produktu zaimportowanymi wartościami"
   },
   "healthDataImport": {
-    "fileTooLarge": "Wybrany plik jest zbyt duży. Prześlij plik mniejszy niż 25 MB."
+    "fileTooLarge": "Wybrany plik jest zbyt duży. Prześlij plik mniejszy niż 25 MB.",
+    "clearData": "Wyczyść",
+    "addRow": "Dodaj wiersz",
+    "category": "Kategoria danych",
+    "copied": "Skopiowano!",
+    "downloadTemplate": "Pobierz szablon",
+    "emptyFile": "Wybrany plik jest pusty.",
+    "import": "Importuj",
+    "importComplete": "Import zakończony",
+    "importError": "Błąd importu",
+    "importFailed": "Nie udało się zaimportować danych zdrowotnych.",
+    "importSummary": "Zaimportowano {{processed}} rekordów, pominięto {{skipped}}, niepowodzenie: {{errors}}.",
+    "importing": "Importowanie…",
+    "loadedRecords": "Wczytano {{count}} wierszy.",
+    "noItems": "Nie znaleziono wartości możliwych do zaimportowania. Sprawdź puste wiersze lub brakujące daty.",
+    "title": "Importuj dane zdrowotne",
+    "uploadCSV": "Prześlij CSV",
+    "validationError": "Brak danych do zaimportowania"
   },
   "workoutLaps": {
     "lap": "Okrążenie",
     "distance": "Dystans",
-    "time": "Czas"
+    "time": "Czas",
+    "title": "Interwały i okrążenia podziału treningu",
+    "lapsCount": "{{count}} okrążeń",
+    "pace": "Tempo (/{{unit}})",
+    "avgMaxHr": "Śr. / maks. tętno",
+    "resp": "Oddechy (oddechów/min)",
+    "cadence": "Kadencja",
+    "power": "Moc"
   },
   "layout": {
     "welcome": "Witaj {{activeUserName}}"
+  },
+  "food": {
+    "imagesLabel": "Obrazy",
+    "imagesLimitReached": "Osiągnięto maksymalną liczbę obrazów: {{count}}.",
+    "imagePreviewAlt": "Obraz produktu {{number}}",
+    "newImagePreviewAlt": "Nowy obraz {{number}}",
+    "removeImage": "Usuń obraz",
+    "viewImages": "Wyświetl obrazy",
+    "imageViewer": "Przeglądarka obrazów",
+    "previousImage": "Poprzedni obraz",
+    "nextImage": "Następne zdjęcie",
+    "playSlideshow": "Odtwórz pokaz slajdów",
+    "pauseSlideshow": "Wstrzymaj pokaz slajdów",
+    "mainImage": "Główne",
+    "moveImageEarlier": "Przenieś zdjęcie w lewo",
+    "moveImageLater": "Przenieś obraz w prawo",
+    "imagesReorderHint": "Przeciągnij, aby zmienić kolejność. Pierwszy obraz jest używany jako miniatura."
+  },
+  "dailyHealthMetrics": {
+    "title": "Podsumowanie dziennego stanu zdrowia z urządzenia ubieralnego",
+    "bodyBattery": "Bateria organizmu",
+    "avgStress": "Śr. stres",
+    "max": "Maks.: {{val}}",
+    "restingHr": "Tętno spoczynkowe",
+    "recovery": "Regeneracja: {{val}}",
+    "vo2Max": "Maks. VO2",
+    "fitnessAge": "Wiek sprawności: {{val}}",
+    "peak": "Szczyt",
+    "readiness": "Gotowość",
+    "recHours": "Regeneracja: {{val}}",
+    "low": "niski: {{val}}"
+  },
+  "auth": {
+    "registerSuccess": "Konto zostało pomyślnie utworzone!",
+    "emailExists": "Użytkownik z tym adresem e-mail już istnieje.",
+    "invalidOrigin": "Odmowa dostępu: to połączenie",
+    "loginError": "Logowanie nie powiodło się. Sprawdź dane logowania.",
+    "loginSuccess": "Zalogowano pomyślnie!",
+    "magicLinkError": "Nie udało się poprosić o magiczny link.",
+    "magicLinkSent": "Wysłano magiczny link! Sprawdź skrzynkę odbiorczą.",
+    "oidcError": "Nie udało się rozpocząć logowania przez dostawcę.",
+    "passkeyErrorTitle": "Błąd klucza dostępu",
+    "passkeyGenericError": "Nie udało się zalogować za pomocą klucza dostępu. Upewnij się, że Twoje urządzenie go obsługuje.",
+    "passkeySecureContextError": "Uwierzytelnianie za pomocą klucza dostępu wymaga bezpiecznego kontekstu (HTTPS lub localhost). Zaloguj się za pomocą adresu e-mail i hasła.",
+    "passkeySuccess": "Zalogowano za pomocą klucza dostępu!",
+    "passwordResetError": "Nie udało się zresetować hasła. Link mógł wygasnąć.",
+    "passwordResetSuccess": "Hasło zresetowano pomyślnie. Możesz się teraz zalogować.",
+    "registerError": "Podczas rejestracji wystąpił nieoczekiwany błąd.",
+    "resetEmailError": "Nie udało się poprosić o reset hasła.",
+    "resetEmailSent": "Jeśli konto istnieje, wysłano wiadomość e-mail z linkiem do resetowania hasła.",
+    "successTitle": "Sukces"
+  },
+  "pregnancy": {
+    "vitals": {
+      "meds": {
+        "notTaken": "Zaloguj dawkę",
+        "taken": "Przyjęto dzisiaj"
+      },
+      "noPrenatalsLinked": "Nie powiązano leków prenatalnych. Powiąż leki w ustawieniach, aby śledzić przyjmowanie.",
+      "prenatalSupplements": "Suplementy prenatalne",
+      "title": "Parametry życiowe matki",
+      "weight": {
+        "aboveRange": "Powyżej typowego zakresu",
+        "sinceStart": "od początku",
+        "withinRange": "W typowym zakresie",
+        "belowRange": "Poniżej typowego zakresu",
+        "iomRange": "Zakres IOM (tydz. {{wk}}):",
+        "title": "Masa ciała matki"
+      },
+      "save": "Zapisz",
+      "bp": {
+        "title": "Ciśnienie krwi"
+      },
+      "cancel": "Anuluj",
+      "edit": "Edytuj",
+      "log": "Zarejestruj"
+    },
+    "banner": {
+      "daysUntil": "Do terminu pozostało {{n}} dni · {{date}}",
+      "due": "Termin",
+      "dueNow": "Nadszedł termin porodu!",
+      "week": "Tydzień {{n}}"
+    },
+    "checklist": {
+      "title": "Ten tydzień",
+      "week": "Tydzień {{n}}"
+    },
+    "contractions": {
+      "apart": "odstępu",
+      "count": "w ciągu ostatniej godziny",
+      "dur": "Czas trwania",
+      "fiveOneOne": "Twoje skurcze przypominają schemat 5-1-1 (występują mniej więcej co 5 minut, trwają około 1 minuty i utrzymują się przez godzinę). Rozważ skontaktowanie się z lekarzem lub położną. To nie jest porada medyczna.",
+      "int": "Odstęp",
+      "long": "długi",
+      "start": "Rozpocznij skurcz",
+      "stop": "Zatrzymaj",
+      "title": "Minutnik skurczów"
+    },
+    "disclaimer": "Informacje dotyczące ciąży mają charakter edukacyjny i nie zastępują opieki medycznej.",
+    "growth": {
+      "baby": "Twoje dziecko",
+      "chart": "Rozwój w czasie ciąży",
+      "jumpToCurrent": "Przejdź do tego tygodnia ({{n}})",
+      "nextWeek": "Następny tydzień",
+      "prevWeek": "Poprzedni tydzień",
+      "sizeThisWeek": "Rozmiar dziecka w tym tygodniu",
+      "week": "Tydzień",
+      "weekScrubber": "Przewijanie tygodni",
+      "you": "Twoje ciało"
+    },
+    "kicks": {
+      "goal": "Cel: {{n}} ruchów",
+      "movements": "ruchów",
+      "recent": "Ostatnie sesje",
+      "start": "Rozpocznij liczenie",
+      "stop": "Zakończ sesję",
+      "tap": "Dotknij, aby policzyć ruch",
+      "title": "Licznik ruchów"
+    },
+    "photos": {
+      "add": "Dodaj tydzień {{n}}",
+      "delete": "Usuń zdjęcie",
+      "empty": "Rób zdjęcie brzucha co tydzień, aby śledzić tę podróż.",
+      "title": "Dziennik zdjęć brzucha",
+      "uploading": "Przesyłanie…",
+      "week": "Tydz. {{n}}",
+      "weekAlt": "Zdjęcie brzucha z tygodnia {{n}}"
+    },
+    "safety": {
+      "disclaimer": "To tylko ogólne wskazówki — zawsze potwierdź je u swojego lekarza lub położnej.",
+      "food": "Produkty spożywcze",
+      "foodPlaceholder": "Czy mogę jeść… (np. tuńczyka, brie)",
+      "medPlaceholder": "Czy mogę przyjmować… (np. ibuprofen)",
+      "meds": "Leki",
+      "noResults": "Brak wyników. Spróbuj innego terminu.",
+      "title": "Bezpieczeństwo żywności i leków"
+    },
+    "setup": {
+      "babies": "Liczba dzieci",
+      "conception": "Poczęcie",
+      "conceptionLabel": "Data poczęcia / owulacji",
+      "disclaimer": "Szacunki mają charakter informacyjny i nie zastępują opieki medycznej.",
+      "dueDate": "Termin porodu",
+      "dueDateLabel": "Termin porodu",
+      "estimatedDue": "Przewidywany termin porodu: {{date}}",
+      "lmp": "Ostatnia miesiączka",
+      "lmpLabel": "Pierwszy dzień ostatniej miesiączki",
+      "more": "3+",
+      "single": "Jedno",
+      "start": "Rozpocznij śledzenie",
+      "subtitle": "Powiedz nam, jak oszacować termin porodu — później możesz go zmienić.",
+      "title": "Rozpocznij śledzenie ciąży",
+      "twins": "Bliźnięta"
+    },
+    "today": {
+      "babyThisWeek": "Dziecko w tym tygodniu"
+    }
+  },
+  "providers": {
+    "createError": "Nie udało się dodać zewnętrznego dostawcy danych.",
+    "deleteError": "Nie udało się usunąć zewnętrznego dostawcy danych.",
+    "updateSuccess": "Zewnętrzny dostawca danych został pomyślnie zaktualizowany.",
+    "deleteSuccess": "Zewnętrzny dostawca danych został pomyślnie usunięty.",
+    "statusUpdateError": "Nie udało się zaktualizować stanu zewnętrznego dostawcy danych.",
+    "updateError": "Nie udało się zaktualizować zewnętrznego dostawcy danych.",
+    "createSuccess": "Zewnętrzny dostawca danych został pomyślnie dodany.",
+    "statusUpdateSuccess": "Stan zewnętrznego dostawcy danych został pomyślnie zaktualizowany."
+  },
+  "review": {
+    "errorLoadingCount": "Nie udało się wczytać liczby elementów do przeglądu.",
+    "errorLoadingItems": "Nie udało się wczytać elementów do przeglądu."
+  },
+  "syncRangeDialog": {
+    "last365Days": "Ostatnie 365 dni",
+    "last7Days": "Ostatnie 7 dni",
+    "last90Days": "Ostatnie 90 dni",
+    "polarWarning": "Uwaga: Polar umożliwia synchronizowanie wyłącznie danych zarejestrowanych po połączeniu konta z SparkyFitness.",
+    "syncNow": "Rozpocznij synchronizację",
+    "title": "Synchronizuj dane {{provider}}",
+    "last180Days": "Ostatnie 180 dni",
+    "last30Days": "Ostatnie 30 dni",
+    "description": "Wybierz zakres dat, który chcesz zsynchronizować z {{provider}}.",
+    "endDate": "Data końcowa",
+    "startDate": "Data początkowa",
+    "timeoutWarning": "W przypadku dużych zakresów dat przeglądarka może przekroczyć limit czasu, ale serwer będzie kontynuować synchronizację w tle."
+  },
+  "warning": "Ostrzeżenie",
+  "workout": {
+    "caloriesAuto": "Automatycznie",
+    "distance": "Dystans",
+    "durationMin": "Czas trwania (min)",
+    "avgHr": "Śr. tętno (uderz./min)",
+    "durationSec": "Czas trwania (s)",
+    "reps": "Powtórzenia",
+    "restSec": "Odpoczynek (s)",
+    "type": "Typ",
+    "weight": "masa",
+    "calories": "Kalorie",
+    "durationSet": "Czas trwania — seria {{setNumber}}",
+    "notesPlaceholder": "Dodaj notatkę do tej serii...",
+    "rpe": "RPE"
+  },
+  "success": "Sukces",
+  "mood": {
+    "mostCommon": "Najczęstsze nastroje",
+    "moodValue": "Wartość nastroju",
+    "dailyMood": "Dzienny nastrój",
+    "date": "Data",
+    "deletedSuccessfully": "Wpis nastroju usunięto pomyślnie.",
+    "failedAddCustom": "Nie udało się dodać nastroju.",
+    "failedDeleteCustom": "Nie udało się usunąć nastroju.",
+    "failedLoadPrefs": "Nie udało się wczytać ustawień nastrojów.",
+    "failedSavePrefs": "Nie udało się zaktualizować nastrojów.",
+    "failedToDelete": "Nie udało się usunąć wpisu nastroju.",
+    "failedToLoadCustom": "Nie udało się wczytać nastrojów.",
+    "failedToLoadEntries": "Nie udało się wczytać wpisów nastroju.",
+    "failedToLoadEntry": "Nie udało się wczytać wpisu nastroju.",
+    "failedToSave": "Nie udało się zapisać wpisu nastroju.",
+    "failedToUpdate": "Nie udało się zaktualizować wpisu nastroju.",
+    "intensityTrend": "Ogólny nastrój w czasie",
+    "mood": "Nastrój",
+    "noMoodData": "Brak danych o nastroju dla tego okresu.",
+    "notes": "Uwagi: ",
+    "savedSuccessfully": "Wpis nastroju zapisano pomyślnie.",
+    "updatedSuccessfully": "Wpis nastroju zaktualizowano pomyślnie."
+  },
+  "fasting": {
+    "startTime": "Godzina rozpoczęcia",
+    "endTime": "Godzina zakończenia",
+    "targetEndTime": "Docelowa godzina zakończenia",
+    "failedToLoadHistory": "Nie udało się wczytać historii postów.",
+    "checklistTitle": "Licznik postu",
+    "deletedSuccessfully": "Post został pomyślnie usunięty.",
+    "editFastDesc": "Poniżej zmodyfikuj szczegóły wpisu postu.",
+    "editFastTitle": "Edytuj post",
+    "endedSuccessfully": "Post został pomyślnie zakończony.",
+    "errorStartAfterEnd": "Godzina rozpoczęcia musi przypadać przed godziną zakończenia.",
+    "failedToDelete": "Nie udało się usunąć postu.",
+    "failedToEnd": "Nie udało się zakończyć postu.",
+    "failedToLoadCurrent": "Nie udało się wczytać bieżącego postu.",
+    "failedToLoadRange": "Nie udało się wczytać danych postu dla wybranego zakresu.",
+    "failedToLoadStats": "Nie udało się wczytać statystyk postu.",
+    "failedToStart": "Nie udało się rozpocząć postu.",
+    "failedToUpdate": "Nie udało się zaktualizować postu.",
+    "protocol": "Protokół",
+    "protocolName": "Nazwa protokołu",
+    "protocolNamePlaceholder": "Wpisz własną nazwę protokołu",
+    "selectProtocol": "Wybierz protokół",
+    "updatedSuccessfully": "Pomyślnie zaktualizowano post.",
+    "startedSuccessfully": "Post został pomyślnie rozpoczęty."
+  },
+  "copyFoodEntryDialog": {
+    "targetDate": "Data docelowa",
+    "copyButton": "Kopiuj",
+    "description": "Wybierz datę docelową i typ posiłku, aby skopiować wpisy żywieniowe.",
+    "descriptionAll": "Wybierz datę docelową, aby skopiować wszystkie wpisy żywieniowe z tego dnia.",
+    "mealType": "Typ posiłku",
+    "selectMealTypePlaceholder": "Wybierz typ posiłku",
+    "title": "Kopiuj wpisy żywieniowe",
+    "titleAll": "Kopiuj cały dzień"
+  },
+  "copied": "Skopiowano!",
+  "customNutrients": {
+    "failedToAddNutrient": "Nie udało się dodać składnika odżywczego.",
+    "failedToLoadNutrients": "Nie udało się wczytać własnych składników odżywczych."
+  },
+  "dailyProgress": {
+    "exerciseLoadError": "Nie udało się wczytać wpisów ćwiczeń.",
+    "foodLoadError": "Nie udało się wczytać wpisów żywieniowych.",
+    "summaryLoadError": "Nie udało się wczytać dziennego podsumowania."
+  },
+  "error": "Błąd",
+  "familyAccess": {
+    "createError": "Nie udało się przyznać dostępu rodzinnego.",
+    "createSuccess": "Dostęp rodzinny przyznano pomyślnie.",
+    "deleteError": "Nie udało się usunąć dostępu rodzinnego.",
+    "deleteSuccess": "Dostęp rodzinny usunięto pomyślnie.",
+    "toggleError": "Nie udało się zaktualizować stanu dostępu.",
+    "toggleSuccess": "Stan dostępu zaktualizowano.",
+    "updateError": "Nie udało się zaktualizować dostępu rodzinnego.",
+    "updateSuccess": "Dostęp rodzinny zaktualizowano pomyślnie."
+  },
+  "integrations": {
+    "fitbitLinkSuccess": "Konto Fitbit połączono pomyślnie!",
+    "garminLoginError": "Nie udało się połączyć z Garminem.",
+    "garminLoginSuccess": "Pomyślnie połączono z Garminem.",
+    "googleHealthLinkSuccess": "Konto Google Health połączono pomyślnie!",
+    "ouraLinkError": "Nie udało się połączyć konta Oura.",
+    "ouraLinkSuccess": "Konto Oura połączono pomyślnie.",
+    "polarError": "Nie udało się połączyć konta Polar. Spróbuj ponownie.",
+    "stravaError": "Nie udało się połączyć konta Strava. Spróbuj ponownie.",
+    "fitbitLinkError": "Nie udało się połączyć konta Fitbit.",
+    "googleHealthLinkError": "Nie udało się połączyć konta Google Health.",
+    "hevySyncError": "Synchronizacja Hevy nie powiodła się. Sprawdź klucz API w ustawieniach.",
+    "hevySyncSuccess": "Dane Hevy zsynchronizowano pomyślnie.",
+    "polarSuccess": "Konto Polar połączono pomyślnie.",
+    "stravaSuccess": "Konto Strava połączono pomyślnie.",
+    "withingsError": "Nie udało się połączyć konta Withings.",
+    "withingsSuccess": "Konto Withings połączono pomyślnie."
+  },
+  "key": "tekst",
+  "mealCreation": {
+    "convertToMeal": "Utwórz posiłek z dziennika",
+    "description": "Opis",
+    "enterDetails": "Wprowadź szczegóły nowego szablonu posiłku.",
+    "failedToCreateMeal": "Nie udało się utworzyć posiłku na podstawie wpisów z dziennika.",
+    "mealCreatedSuccessfully": "Pomyślnie utworzono posiłek na podstawie wpisów z dziennika.",
+    "mealName": "Nazwa posiłku",
+    "makePublic": "Ustaw jako publiczny"
+  },
+  "mealTypeManager": {
+    "add": "Dodaj kategorię",
+    "addDesc": "Utwórz nową kategorię posiłku (np. przed treningiem).",
+    "addSuccess": "Dodano kategorię posiłku.",
+    "addTitle": "Dodaj kategorię posiłku",
+    "deleteSuccess": "Kategoria posiłku została usunięta.",
+    "description": "Dostosuj kategorie posiłków i domyślne godziny rozpoczęcia. Sugerowane typy posiłków dynamicznie dopasowują się do Twojego harmonogramu podczas rejestrowania jedzenia.",
+    "editTitle": "Edytuj posiłki",
+    "loadError": "Nie udało się wczytać kategorii posiłków.",
+    "nameLabel": "Nazwa",
+    "sortHelp": "Niższe liczby pojawiają się wcześniej. (Śniadanie=10, Obiad=20, Kolacja=40)",
+    "sortOrderLabel": "Kolejność sortowania",
+    "title": "Kategorie posiłków",
+    "updateSuccess": "Kategoria posiłku została zaktualizowana."
+  },
+  "i18n": {
+    "locale": "en-US"
+  },
+  "mfaChallenge": {
+    "recoveryCodeLabel": "Kod odzyskiwania",
+    "recoveryTab": "Kod odzyskiwania",
+    "sendCode": "Wyślij kod",
+    "setupRequired": "Konfiguracja MFA jest wymagana dla Twojego konta. Ukończ konfigurację.",
+    "totpCodeLabel": "Kod aplikacji uwierzytelniającej",
+    "totpTab": "Kod aplikacji",
+    "verify": "Zweryfikuj",
+    "verifyLogin": "Zweryfikuj logowanie za pomocą jednej z metod uwierzytelniania wieloskładnikowego.",
+    "verifyRecovery": "Zweryfikuj kod odzyskiwania",
+    "challengeTitle": "Wyzwanie MFA",
+    "emailCodeLabel": "Kod weryfikacyjny z e-maila",
+    "emailTab": "Kod z e-maila",
+    "enterAppCode": "Wprowadź kod z aplikacji uwierzytelniającej",
+    "enterEmailCode": "Wprowadź kod z e-maila",
+    "enterRecoveryCode": "Wprowadź kod odzyskiwania",
+    "error": {
+      "missingAuthInfo": "Brak informacji uwierzytelniających.",
+      "missingInfo": "Błąd",
+      "recoveryCodeInvalid": "Nieprawidłowy kod odzyskiwania.",
+      "totpInvalid": "Nieprawidłowy kod TOTP.",
+      "verificationFailed": "Weryfikacja nie powiodła się"
+    },
+    "loggedInAs": "Zalogowano jako:"
+  },
+  "measurements": {
+    "errorLoadingBodyFat": "Nie udało się wczytać najnowszej zawartości tkanki tłuszczowej.",
+    "errorLoadingHeight": "Nie udało się wczytać najnowszego wzrostu.",
+    "errorLoadingWeight": "Nie udało się wczytać najnowszej masy ciała."
+  },
+  "preferences": {
+    "resetError": "Nie udało się zresetować preferencji"
   }
 }
