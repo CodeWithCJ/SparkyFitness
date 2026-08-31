@@ -5,11 +5,16 @@ import { exerciseStatsQueryKey } from './queryKeys';
 export function useExerciseStats(
   exerciseId: string | null | undefined,
   excludePresetEntryId?: string,
-  presetId?: number,
+  presetId?: number
 ) {
   return useQuery({
-    queryKey: exerciseStatsQueryKey(exerciseId ?? '', excludePresetEntryId, presetId),
-    queryFn: () => fetchExerciseStats(exerciseId!, excludePresetEntryId, presetId),
+    queryKey: exerciseStatsQueryKey(
+      exerciseId ?? '',
+      excludePresetEntryId,
+      presetId
+    ),
+    queryFn: () =>
+      fetchExerciseStats(exerciseId!, excludePresetEntryId, presetId),
     enabled: !!exerciseId,
   });
 }

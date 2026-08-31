@@ -1064,6 +1064,13 @@ const options = {
             muscle_mass_kg: { type: 'number', nullable: true },
             bone_mass_kg: { type: 'number', nullable: true },
             body_water_percentage: { type: 'number', nullable: true },
+            bmr: {
+              type: 'number',
+              nullable: true,
+              minimum: 300,
+              maximum: 10000,
+              description: 'Basal Metabolic Rate in kcal',
+            },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
           },
@@ -1170,6 +1177,11 @@ const options = {
               maximum: MAX_CALORIE_SAFETY_FLOOR,
               description:
                 'Custom calorie safety floor in kcal/day. Used when calorie_safety_floor_mode is custom.',
+            },
+            food_search_all_providers_default: {
+              type: 'boolean',
+              description:
+                'When true, food search defaults to the aggregated "All Providers" mode rather than a single provider. Held separately from default_food_data_provider_id, which is a uuid and cannot store the aggregated sentinel, so the single-provider choice survives turning this off. Ignored while fewer than two food providers are active.',
             },
           },
         },

@@ -112,5 +112,7 @@ export const sleepEntriesMutatorSchema = z.object({
 });
 
 export type SleepEntries = z.infer<typeof sleepEntriesSchema>;
-export type SleepEntriesInitializer = z.infer<typeof sleepEntriesInitializerSchema>;
+export type SleepEntriesInitializer = z.infer<
+  typeof sleepEntriesInitializerSchema
+>;
 export type SleepEntriesMutator = z.infer<typeof sleepEntriesMutatorSchema>;

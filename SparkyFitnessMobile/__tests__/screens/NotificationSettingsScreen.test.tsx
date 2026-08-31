@@ -45,23 +45,29 @@ jest.mock('@react-navigation/native', () => ({
   useNavigation: () => mockNavigation,
 }));
 
-const mockRequestPermission = requestNotificationPermission as jest.MockedFunction<
-  typeof requestNotificationPermission
->;
-const mockSetNotificationsEnabled = setNotificationsEnabled as jest.MockedFunction<
-  typeof setNotificationsEnabled
->;
-const mockSetRestTimerEnabled = setRestTimerNotificationsEnabled as jest.MockedFunction<
-  typeof setRestTimerNotificationsEnabled
->;
-const mockMaybePrompt = maybePromptForExactAlarmPermission as jest.MockedFunction<
-  typeof maybePromptForExactAlarmPermission
->;
+const mockRequestPermission =
+  requestNotificationPermission as jest.MockedFunction<
+    typeof requestNotificationPermission
+  >;
+const mockSetNotificationsEnabled =
+  setNotificationsEnabled as jest.MockedFunction<
+    typeof setNotificationsEnabled
+  >;
+const mockSetRestTimerEnabled =
+  setRestTimerNotificationsEnabled as jest.MockedFunction<
+    typeof setRestTimerNotificationsEnabled
+  >;
+const mockMaybePrompt =
+  maybePromptForExactAlarmPermission as jest.MockedFunction<
+    typeof maybePromptForExactAlarmPermission
+  >;
 
 const route = { params: {} } as never;
 
 function renderScreen() {
-  return render(<NotificationSettingsScreen navigation={mockNavigation} route={route} />);
+  return render(
+    <NotificationSettingsScreen navigation={mockNavigation} route={route} />
+  );
 }
 
 // Switch order with everything enabled and the banner mocked out:
@@ -102,7 +108,11 @@ describe('NotificationSettingsScreen', () => {
   it('turning the master toggle off skips the OS permission request', async () => {
     const { getAllByRole } = renderScreen();
 
-    fireEvent(getAllByRole('switch')[MASTER_SWITCH_INDEX], 'valueChange', false);
+    fireEvent(
+      getAllByRole('switch')[MASTER_SWITCH_INDEX],
+      'valueChange',
+      false
+    );
 
     await waitFor(() => {
       expect(mockSetNotificationsEnabled).toHaveBeenCalledWith(false);
@@ -113,7 +123,11 @@ describe('NotificationSettingsScreen', () => {
   it('routes the rest-timer toggle through the service so pending pings are cancelled', () => {
     const { getAllByRole } = renderScreen();
 
-    fireEvent(getAllByRole('switch')[REST_TIMER_SWITCH_INDEX], 'valueChange', false);
+    fireEvent(
+      getAllByRole('switch')[REST_TIMER_SWITCH_INDEX],
+      'valueChange',
+      false
+    );
 
     expect(mockSetRestTimerEnabled).toHaveBeenCalledWith(false);
   });
@@ -121,9 +135,15 @@ describe('NotificationSettingsScreen', () => {
   it('flips the fasting-goal preference directly', () => {
     const { getAllByRole } = renderScreen();
 
-    fireEvent(getAllByRole('switch')[FASTING_SWITCH_INDEX], 'valueChange', false);
+    fireEvent(
+      getAllByRole('switch')[FASTING_SWITCH_INDEX],
+      'valueChange',
+      false
+    );
 
-    expect(useAppPreferencesStore.getState().fastingGoalNotificationsEnabled).toBe(false);
+    expect(
+      useAppPreferencesStore.getState().fastingGoalNotificationsEnabled
+    ).toBe(false);
   });
 
   describe('medication reminders toggle', () => {
@@ -131,10 +151,16 @@ describe('NotificationSettingsScreen', () => {
       useAppPreferencesStore.setState({ medicationRemindersEnabled: false });
       const { getAllByRole } = renderScreen();
 
-      fireEvent(getAllByRole('switch')[MEDICATION_SWITCH_INDEX], 'valueChange', true);
+      fireEvent(
+        getAllByRole('switch')[MEDICATION_SWITCH_INDEX],
+        'valueChange',
+        true
+      );
 
       await waitFor(() => {
-        expect(useAppPreferencesStore.getState().medicationRemindersEnabled).toBe(true);
+        expect(
+          useAppPreferencesStore.getState().medicationRemindersEnabled
+        ).toBe(true);
       });
       expect(mockMaybePrompt).toHaveBeenCalledTimes(1);
     });
@@ -144,27 +170,39 @@ describe('NotificationSettingsScreen', () => {
       mockRequestPermission.mockResolvedValue('denied');
       const { getAllByRole } = renderScreen();
 
-      fireEvent(getAllByRole('switch')[MEDICATION_SWITCH_INDEX], 'valueChange', true);
+      fireEvent(
+        getAllByRole('switch')[MEDICATION_SWITCH_INDEX],
+        'valueChange',
+        true
+      );
 
       await waitFor(() => {
         expect(mockRequestPermission).toHaveBeenCalled();
       });
-      expect(useAppPreferencesStore.getState().medicationRemindersEnabled).toBe(false);
+      expect(useAppPreferencesStore.getState().medicationRemindersEnabled).toBe(
+        false
+      );
       expect(mockMaybePrompt).not.toHaveBeenCalled();
     });
 
     it('disables the pref without requesting permission or prompting', async () => {
       const { getAllByRole } = renderScreen();
 
-      fireEvent(getAllByRole('switch')[MEDICATION_SWITCH_INDEX], 'valueChange', false);
+      fireEvent(
+        getAllByRole('switch')[MEDICATION_SWITCH_INDEX],
+        'valueChange',
+        false
+      );
 
       await waitFor(() => {
-        expect(useAppPreferencesStore.getState().medicationRemindersEnabled).toBe(false);
+        expect(
+          useAppPreferencesStore.getState().medicationRemindersEnabled
+        ).toBe(false);
       });
       expect(mockRequestPermission).not.toHaveBeenCalled();
       expect(mockMaybePrompt).not.toHaveBeenCalled();
     });
-    });
+  });
 
   it('provides contextual accessibility labels for notification switches', () => {
     const { getAllByRole } = renderScreen();

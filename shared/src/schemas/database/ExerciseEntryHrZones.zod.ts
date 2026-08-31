@@ -28,8 +28,13 @@ export const exerciseEntryHrZonesInitializerSchema = z.object({
   updated_at: z.coerce.date().optional().nullable(),
 });
 
-export const exerciseEntryHrZonesMutatorSchema = exerciseEntryHrZonesInitializerSchema.partial();
+export const exerciseEntryHrZonesMutatorSchema =
+  exerciseEntryHrZonesInitializerSchema.partial();
 
 export type ExerciseEntryHrZones = z.infer<typeof exerciseEntryHrZonesSchema>;
-export type ExerciseEntryHrZonesInitializer = z.infer<typeof exerciseEntryHrZonesInitializerSchema>;
-export type ExerciseEntryHrZonesMutator = z.infer<typeof exerciseEntryHrZonesMutatorSchema>;
+export type ExerciseEntryHrZonesInitializer = z.infer<
+  typeof exerciseEntryHrZonesInitializerSchema
+>;
+export type ExerciseEntryHrZonesMutator = z.infer<
+  typeof exerciseEntryHrZonesMutatorSchema
+>;

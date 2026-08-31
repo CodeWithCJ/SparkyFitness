@@ -55,8 +55,12 @@ describe('formatHoursMinutes', () => {
   });
 
   test('uses the supplied translator for localized duration labels', () => {
-    const pl = ((key: string, options: { defaultValue: string; minutes?: number; hours?: number }) => {
-      if (key === 'fastingCard.duration.minutes') return `${options.minutes ?? 0} min`;
+    const pl = ((
+      key: string,
+      options: { defaultValue: string; minutes?: number; hours?: number }
+    ) => {
+      if (key === 'fastingCard.duration.minutes')
+        return `${options.minutes ?? 0} min`;
       return `${options.hours ?? 0} godz. ${options.minutes ?? 0} min`;
     }) as never;
 
@@ -76,8 +80,12 @@ describe('computeFastTimerValues', () => {
     // 14:12:38 elapsed
     const now = (14 * 3600 + 12 * 60 + 38) * 1000;
 
-    const pl = ((key: string, options: { defaultValue: string; minutes?: number; hours?: number }) => {
-      if (key === 'fastingCard.duration.minutes') return `${options.minutes ?? 0} min`;
+    const pl = ((
+      key: string,
+      options: { defaultValue: string; minutes?: number; hours?: number }
+    ) => {
+      if (key === 'fastingCard.duration.minutes')
+        return `${options.minutes ?? 0} min`;
       return `${options.hours ?? 0} godz. ${options.minutes ?? 0} min`;
     }) as never;
     const v = computeFastTimerValues(start, target, now, pl);
@@ -123,11 +131,14 @@ describe('computeFastTimerValues', () => {
 
 describe('formatFastingStats', () => {
   test('null-safe when there are no completed fasts (SUM/AVG null, count "0")', () => {
-    const display = formatFastingStats({
-      total_completed_fasts: '0',
-      total_minutes_fasted: null,
-      average_duration_minutes: null,
-    }, i18n.t);
+    const display = formatFastingStats(
+      {
+        total_completed_fasts: '0',
+        total_minutes_fasted: null,
+        average_duration_minutes: null,
+      },
+      i18n.t
+    );
     expect(display.fastsCount).toBe('0');
     expect(display.avgFastValue).toBe('-');
     expect(display.avgFastUnit).toBe('');
@@ -145,11 +156,14 @@ describe('formatFastingStats', () => {
   test('formats populated stats with the active locale unit', async () => {
     await initializeI18n('en');
     await i18n.changeLanguage('en');
-    const english = formatFastingStats({
-      total_completed_fasts: '47',
-      total_minutes_fasted: 44520,
-      average_duration_minutes: 948,
-    }, i18n.t);
+    const english = formatFastingStats(
+      {
+        total_completed_fasts: '47',
+        total_minutes_fasted: 44520,
+        average_duration_minutes: 948,
+      },
+      i18n.t
+    );
     expect(english.fastsCount).toBe('47');
     expect(english.avgFastValue).toBe('15.8');
     expect(english.avgFastUnit).toBe('h');
@@ -157,11 +171,14 @@ describe('formatFastingStats', () => {
     expect(english.totalUnit).toBe('h');
 
     await i18n.changeLanguage('pl');
-    const polish = formatFastingStats({
-      total_completed_fasts: '47',
-      total_minutes_fasted: 44520,
-      average_duration_minutes: 948,
-    }, i18n.t);
+    const polish = formatFastingStats(
+      {
+        total_completed_fasts: '47',
+        total_minutes_fasted: 44520,
+        average_duration_minutes: 948,
+      },
+      i18n.t
+    );
     expect(polish.avgFastUnit).toBe('godz.');
     expect(polish.totalUnit).toBe('godz.');
     // The locale-aware formatter must render a decimal comma in Polish, not
@@ -172,19 +189,25 @@ describe('formatFastingStats', () => {
   test('formats populated stats with locale-aware decimal separators', async () => {
     await initializeI18n('en');
     await i18n.changeLanguage('en');
-    const english = formatFastingStats({
-      total_completed_fasts: '47',
-      total_minutes_fasted: 44520,
-      average_duration_minutes: 948,
-    }, i18n.t);
+    const english = formatFastingStats(
+      {
+        total_completed_fasts: '47',
+        total_minutes_fasted: 44520,
+        average_duration_minutes: 948,
+      },
+      i18n.t
+    );
     expect(english.avgFastValue).toBe('15.8');
 
     await i18n.changeLanguage('pl');
-    const polish = formatFastingStats({
-      total_completed_fasts: '47',
-      total_minutes_fasted: 44520,
-      average_duration_minutes: 948,
-    }, i18n.t);
+    const polish = formatFastingStats(
+      {
+        total_completed_fasts: '47',
+        total_minutes_fasted: 44520,
+        average_duration_minutes: 948,
+      },
+      i18n.t
+    );
     expect(polish.avgFastValue).toBe('15,8');
 
     await i18n.changeLanguage('en');
@@ -198,7 +221,9 @@ describe('formatLastFast', () => {
   });
 
   test('returns null when the newest row has a null duration', () => {
-    expect(formatLastFast(buildFast({ duration_minutes: null }), i18n.t)).toBeNull();
+    expect(
+      formatLastFast(buildFast({ duration_minutes: null }), i18n.t)
+    ).toBeNull();
   });
 
   test('formats a completed fast that ended yesterday', async () => {
@@ -206,7 +231,7 @@ describe('formatLastFast', () => {
     const yesterday = new Date(Date.now() - 24 * HOUR).toISOString();
     const result = formatLastFast(
       buildFast({ duration_minutes: 964, end_time: yesterday }),
-      i18n.t,
+      i18n.t
     );
     expect(result).toBe('Last fast 16h 4m · yesterday');
   });
@@ -216,7 +241,7 @@ describe('formatLastFast', () => {
     const now = new Date().toISOString();
     const result = formatLastFast(
       buildFast({ duration_minutes: 120, end_time: now }),
-      i18n.t,
+      i18n.t
     );
     expect(result).toBe('Last fast 2h 0m · today');
   });
@@ -226,7 +251,7 @@ describe('formatLastFast', () => {
     const now = new Date().toISOString();
     const result = formatLastFast(
       buildFast({ duration_minutes: 120, end_time: now }),
-      polishT,
+      polishT
     );
     expect(result).toBe('Ostatni post: 2 godz. 0 min · dzisiaj');
   });

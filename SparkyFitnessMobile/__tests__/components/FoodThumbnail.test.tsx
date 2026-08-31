@@ -14,7 +14,7 @@ describe('FoodThumbnail', () => {
       <FoodThumbnail
         image="/uploads/foods/abc/1.jpg"
         getImageSource={getImageSource}
-      />,
+      />
     );
 
     expect(UNSAFE_getByType(Image).props.source).toEqual({
@@ -25,7 +25,7 @@ describe('FoodThumbnail', () => {
 
   it('renders a placeholder box when there is no image', () => {
     const { queryByTestId } = render(
-      <FoodThumbnail image={null} getImageSource={getImageSource} />,
+      <FoodThumbnail image={null} getImageSource={getImageSource} />
     );
 
     expect(queryByTestId('food-thumbnail')).not.toBeNull();
@@ -39,7 +39,7 @@ describe('FoodThumbnail', () => {
         image={null}
         getImageSource={getImageSource}
         showFallback={false}
-      />,
+      />
     );
 
     expect(queryByTestId('food-thumbnail')).toBeNull();
@@ -51,7 +51,7 @@ describe('FoodThumbnail', () => {
         image="/uploads/foods/abc/1.jpg"
         getImageSource={getImageSource}
         showFallback={false}
-      />,
+      />
     );
 
     expect(queryByTestId('food-thumbnail')).not.toBeNull();
@@ -66,7 +66,7 @@ describe('FoodThumbnail interactivity', () => {
         image="/uploads/foods/abc/1.jpg"
         getImageSource={getImageSource}
         onPress={onPress}
-      />,
+      />
     );
 
     fireEvent.press(getByTestId('food-thumbnail'));
@@ -79,9 +79,11 @@ describe('FoodThumbnail interactivity', () => {
       <FoodThumbnail
         image="/uploads/foods/abc/1.jpg"
         getImageSource={getImageSource}
-      />,
+      />
     );
 
-    expect(getByTestId('food-thumbnail').props.accessibilityRole).toBeUndefined();
+    expect(
+      getByTestId('food-thumbnail').props.accessibilityRole
+    ).toBeUndefined();
   });
 });

@@ -16,6 +16,7 @@ import goalRepository from '../models/goalRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import reportRepository from '../models/reportRepository.js';
 import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
+import { buildFoodEntrySnapshot } from '../utils/foodEntrySnapshot.js';
 import Papa from 'papaparse';
 import {
   type CopyReviewedFoodEntriesFromUserBody,
@@ -1966,31 +1967,7 @@ async function buildLeafFoodEntries(
       );
       continue;
     }
-    const snapshot = {
-      food_name: food.name,
-      brand_name: food.brand,
-      serving_size: variant.serving_size,
-      serving_unit: variant.serving_unit,
-      calories: variant.calories,
-      protein: variant.protein,
-      carbs: variant.carbs,
-      fat: variant.fat,
-      saturated_fat: variant.saturated_fat,
-      polyunsaturated_fat: variant.polyunsaturated_fat,
-      monounsaturated_fat: variant.monounsaturated_fat,
-      trans_fat: variant.trans_fat,
-      cholesterol: variant.cholesterol,
-      sodium: variant.sodium,
-      potassium: variant.potassium,
-      dietary_fiber: variant.dietary_fiber,
-      sugars: variant.sugars,
-      vitamin_a: variant.vitamin_a,
-      vitamin_c: variant.vitamin_c,
-      calcium: variant.calcium,
-      iron: variant.iron,
-      glycemic_index: variant.glycemic_index,
-      custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
-    };
+    const snapshot = buildFoodEntrySnapshot(food, variant);
     entries.push({
       user_id: ctx.targetUserId,
       created_by_user_id: ctx.actingUserId,

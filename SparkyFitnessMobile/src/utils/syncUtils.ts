@@ -1,4 +1,5 @@
-export type SyncDuration = 'today' | '24h' | '3d' | '7d' | '30d' | '90d' | '180d' | '365d';
+export type SyncDuration =
+  'today' | '24h' | '3d' | '7d' | '30d' | '90d' | '180d' | '365d';
 
 // SyncInterval represents how often to sync (background sync frequency)
 // Note: '24h' appears in both types - SyncDuration for data range, SyncInterval for frequency
@@ -24,7 +25,9 @@ export const alignToLocalDayStart = (date: Date): Date => {
  */
 export const ceilToLocalDayStart = (date: Date): Date => {
   const aligned = alignToLocalDayStart(date);
-  return aligned.getTime() === date.getTime() ? aligned : addLocalDays(aligned, 1);
+  return aligned.getTime() === date.getTime()
+    ? aligned
+    : addLocalDays(aligned, 1);
 };
 
 /**
@@ -98,7 +101,7 @@ export const buildBackfillWindows = (start: Date, end: Date): SyncWindows => ({
 export const enumerateDayAlignedWindows = (
   floor: Date,
   endEdge: Date,
-  maxDays: number,
+  maxDays: number
 ): { start: Date; end: Date }[] => {
   const windows: { start: Date; end: Date }[] = [];
   const floorAligned = alignToLocalDayStart(floor);
@@ -132,13 +135,16 @@ export const SESSION_OVERLAP_MS = 6 * 60 * 60 * 1000; // 6 hours
  */
 export const MAX_BACKGROUND_LOOKBACK_DAYS = 14;
 
-export const buildBackgroundWindows = (lastSyncedTime: string | null, now: Date = new Date()): SyncWindows => {
+export const buildBackgroundWindows = (
+  lastSyncedTime: string | null,
+  now: Date = new Date()
+): SyncWindows => {
   const lastSynced = lastSyncedTime
     ? new Date(lastSyncedTime)
     : new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const requestedStart = new Date(lastSynced.getTime() - SESSION_OVERLAP_MS);
   const floor = new Date(
-    now.getTime() - MAX_BACKGROUND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
+    now.getTime() - MAX_BACKGROUND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
   );
   // An unparseable cursor would make every comparison false and leave an
   // Invalid Date in the window, so fall back to the floor. Validity is tracked
@@ -155,7 +161,9 @@ export const buildBackgroundWindows = (lastSyncedTime: string | null, now: Date 
     // Set only when the clamp actually shortened the window, so the caller can
     // tell the user which span the background task will not cover. Reported as
     // data rather than logged here to keep these date helpers side-effect free.
-    ...(hasValidRequestedStart && !withinFloor ? { clampedFrom: requestedStart } : {}),
+    ...(hasValidRequestedStart && !withinFloor
+      ? { clampedFrom: requestedStart }
+      : {}),
   };
 };
 

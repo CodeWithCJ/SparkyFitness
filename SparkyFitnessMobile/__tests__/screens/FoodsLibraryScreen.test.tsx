@@ -48,9 +48,15 @@ jest.mock('@react-navigation/native', () => ({
   useNavigation: () => mockNavigation,
 }));
 
-const mockUseFoodsLibrary = useFoodsLibrary as jest.MockedFunction<typeof useFoodsLibrary>;
-const mockUseFavorites = useFavorites as jest.MockedFunction<typeof useFavorites>;
-const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
+const mockUseFoodsLibrary = useFoodsLibrary as jest.MockedFunction<
+  typeof useFoodsLibrary
+>;
+const mockUseFavorites = useFavorites as jest.MockedFunction<
+  typeof useFavorites
+>;
+const mockUseServerConnection = useServerConnection as jest.MockedFunction<
+  typeof useServerConnection
+>;
 const mockUseProfile = useProfile as jest.MockedFunction<typeof useProfile>;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
@@ -88,7 +94,7 @@ describe('FoodsLibraryScreen', () => {
     render(
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
         <FoodsLibraryScreen navigation={navigation} route={route} />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
   function mockFoods(foods: FoodItem[]) {
@@ -113,8 +119,14 @@ describe('FoodsLibraryScreen', () => {
       isConnected: true,
       isLoading: false,
     } as any);
-    mockUseProfile.mockReturnValue({ profile: { id: 'user-1' }, isLoading: false } as any);
-    mockUseFavorites.mockReturnValue({ favoriteFoods: [], favoriteMeals: [] } as any);
+    mockUseProfile.mockReturnValue({
+      profile: { id: 'user-1' },
+      isLoading: false,
+    } as any);
+    mockUseFavorites.mockReturnValue({
+      favoriteFoods: [],
+      favoriteMeals: [],
+    } as any);
     mockFoods([]);
   });
 
@@ -132,14 +144,20 @@ describe('FoodsLibraryScreen', () => {
     fireEvent.press(screen.getByText('Grilled Chicken'));
     expect(navigation.navigate).toHaveBeenCalledWith(
       'FoodDetail',
-      expect.objectContaining({ item: expect.objectContaining({ id: 'food-1' }) }),
+      expect.objectContaining({
+        item: expect.objectContaining({ id: 'food-1' }),
+      })
     );
   });
 
   it('persists an ownership filter chosen from the native menu and filters the list', () => {
     mockFoods([
       createFood(),
-      createFood({ id: 'food-2', name: 'Family Stew', user_id: 'user-2' } as Partial<FoodItem>),
+      createFood({
+        id: 'food-2',
+        name: 'Family Stew',
+        user_id: 'user-2',
+      } as Partial<FoodItem>),
     ]);
 
     const screen = renderScreen();
@@ -147,7 +165,9 @@ describe('FoodsLibraryScreen', () => {
 
     pressHeaderMenuAction(navigation, 'Mine');
 
-    expect(useAppPreferencesStore.getState().foodsLibraryOwnershipFilter).toBe('mine');
+    expect(useAppPreferencesStore.getState().foodsLibraryOwnershipFilter).toBe(
+      'mine'
+    );
     expect(screen.getByText('Grilled Chicken')).toBeTruthy();
     expect(screen.queryByText('Family Stew')).toBeNull();
   });
@@ -161,7 +181,7 @@ describe('FoodsLibraryScreen', () => {
     expect(findHeaderMenuAction(navigation, 'All')?.state).toBe('off');
     const button = findHeaderItemByAccessibilityLabel(
       navigation,
-      'Filter foods, filtered to Mine',
+      'Filter foods, filtered to Mine'
     );
     // Dot badge: bullet glyph with foreground matched to background.
     expect(button?.badge?.value).toBe('•');
@@ -177,7 +197,9 @@ describe('FoodsLibraryScreen', () => {
 
     fireEvent.press(screen.getByText('Show All'));
 
-    expect(useAppPreferencesStore.getState().foodsLibraryOwnershipFilter).toBe('all');
+    expect(useAppPreferencesStore.getState().foodsLibraryOwnershipFilter).toBe(
+      'all'
+    );
     expect(screen.getByText('Grilled Chicken')).toBeTruthy();
   });
 
@@ -185,7 +207,11 @@ describe('FoodsLibraryScreen', () => {
     mockNativeHeadersActive = false;
     mockFoods([
       createFood(),
-      createFood({ id: 'food-2', name: 'Family Stew', user_id: 'user-2' } as Partial<FoodItem>),
+      createFood({
+        id: 'food-2',
+        name: 'Family Stew',
+        user_id: 'user-2',
+      } as Partial<FoodItem>),
     ]);
 
     const screen = renderScreen();
@@ -196,7 +222,9 @@ describe('FoodsLibraryScreen', () => {
 
     fireEvent.press(screen.getByText('Mine'));
 
-    expect(useAppPreferencesStore.getState().foodsLibraryOwnershipFilter).toBe('mine');
+    expect(useAppPreferencesStore.getState().foodsLibraryOwnershipFilter).toBe(
+      'mine'
+    );
     expect(screen.queryByText('Family Stew')).toBeNull();
     // Selecting an option closed the menu.
     expect(screen.queryByText('Show')).toBeNull();

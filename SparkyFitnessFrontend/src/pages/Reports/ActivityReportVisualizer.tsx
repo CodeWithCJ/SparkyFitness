@@ -142,22 +142,18 @@ const ActivityReportVisualizer = ({
 
   const exerciseCount = useMemo(() => {
     const activityObj = activityData?.['activity'] as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const exerciseSetsObj = activityObj?.['exercise_sets'] as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const rawSets = exerciseSetsObj?.['exerciseSets'] as
-      | Array<Record<string, unknown>>
-      | undefined;
+      Array<Record<string, unknown>> | undefined;
 
     if (Array.isArray(rawSets) && rawSets.length > 0) {
       const names = new Set<string>();
       rawSets.forEach((s: Record<string, unknown>) => {
         if (s['setType'] === 'REST') return;
         const exList = s['exercises'] as
-          | Array<Record<string, unknown>>
-          | undefined;
+          Array<Record<string, unknown>> | undefined;
         if (exList && exList[0]) {
           names.add(
             (exList[0]['name'] as string) ||
@@ -201,8 +197,7 @@ const ActivityReportVisualizer = ({
   // Prefer the relational hr_zones table; only fall back to the raw provider blob for
   // activities synced before this table existed / before the backfill has run.
   let hrInTimezonesData:
-    | Array<{ name: string; [key: string]: string | number }>
-    | undefined;
+    Array<{ name: string; [key: string]: string | number }> | undefined;
   if (dbHrZones && dbHrZones.length > 0) {
     hrInTimezonesData = dbHrZones.map((zone) => ({
       name: `Zone ${zone.zone_index} (${zone.zone_lower_bpm ?? 0} bpm)`,

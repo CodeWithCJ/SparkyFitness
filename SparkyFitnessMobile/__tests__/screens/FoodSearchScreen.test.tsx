@@ -55,6 +55,9 @@ jest.mock('../../src/services/api/externalFoodSearchApi', () => ({
 jest.mock('uniwind', () => ({
   useCSSVariable: (keys: string | string[]) =>
     Array.isArray(keys) ? keys.map(() => '#111827') : '#111827',
+  // Reached only above one provider, where the online section header becomes a
+  // BottomSheetPicker trigger and the sheet chrome asks for the theme.
+  useUniwind: () => ({ theme: 'light' }),
 }));
 
 jest.mock('../../src/components/Icon', () => {
@@ -67,19 +70,40 @@ jest.mock('../../src/components/Icon', () => {
   };
 });
 
-const mockFetchExternalFoodDetails = fetchExternalFoodDetails as jest.MockedFunction<typeof fetchExternalFoodDetails>;
+const mockFetchExternalFoodDetails =
+  fetchExternalFoodDetails as jest.MockedFunction<
+    typeof fetchExternalFoodDetails
+  >;
 const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
-const mockUseExternalFoodSearch = useExternalFoodSearch as jest.MockedFunction<typeof useExternalFoodSearch>;
-const mockUseExternalProviders = useExternalProviders as jest.MockedFunction<typeof useExternalProviders>;
-const mockUseAllProvidersSearch = useAllProvidersSearch as jest.MockedFunction<typeof useAllProvidersSearch>;
-const mockUseFoodSearch = useFoodSearch as jest.MockedFunction<typeof useFoodSearch>;
+const mockUseExternalFoodSearch = useExternalFoodSearch as jest.MockedFunction<
+  typeof useExternalFoodSearch
+>;
+const mockUseExternalProviders = useExternalProviders as jest.MockedFunction<
+  typeof useExternalProviders
+>;
+const mockUseAllProvidersSearch = useAllProvidersSearch as jest.MockedFunction<
+  typeof useAllProvidersSearch
+>;
+const mockUseFoodSearch = useFoodSearch as jest.MockedFunction<
+  typeof useFoodSearch
+>;
 const mockUseFoods = useFoods as jest.MockedFunction<typeof useFoods>;
-const mockUseFavorites = useFavorites as jest.MockedFunction<typeof useFavorites>;
-const mockUseMealSearch = useMealSearch as jest.MockedFunction<typeof useMealSearch>;
+const mockUseFavorites = useFavorites as jest.MockedFunction<
+  typeof useFavorites
+>;
+const mockUseMealSearch = useMealSearch as jest.MockedFunction<
+  typeof useMealSearch
+>;
 const mockUseMeals = useMeals as jest.MockedFunction<typeof useMeals>;
-const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
-const mockUseRecentMeals = useRecentMeals as jest.MockedFunction<typeof useRecentMeals>;
-const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
+const mockUsePreferences = usePreferences as jest.MockedFunction<
+  typeof usePreferences
+>;
+const mockUseRecentMeals = useRecentMeals as jest.MockedFunction<
+  typeof useRecentMeals
+>;
+const mockUseServerConnection = useServerConnection as jest.MockedFunction<
+  typeof useServerConnection
+>;
 const mockUseTopMeals = useTopMeals as jest.MockedFunction<typeof useTopMeals>;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
@@ -148,7 +172,9 @@ const externalItem = {
 } as any;
 
 const fatSecretProvider = {
-  providers: [{ id: 'p1', provider_type: 'fatsecret', provider_name: 'FatSecret' }],
+  providers: [
+    { id: 'p1', provider_type: 'fatsecret', provider_name: 'FatSecret' },
+  ],
   isLoading: false,
   isError: false,
   refetch: jest.fn(),
@@ -247,11 +273,14 @@ describe('FoodSearchScreen', () => {
   });
 
   // Type a query so the screen enters search mode and renders the result sections.
-  function renderSearching(routeOverride: typeof route = route, term = 'chicken') {
+  function renderSearching(
+    routeOverride: typeof route = route,
+    term = 'chicken'
+  ) {
     const screen = render(
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
         <FoodSearchScreen navigation={navigation} route={routeOverride} />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
     fireEvent.changeText(screen.getByPlaceholderText('Search foods...'), term);
     return screen;
@@ -273,7 +302,7 @@ describe('FoodSearchScreen', () => {
     });
     mockUseExternalProviders.mockReturnValue(fatSecretProvider);
     mockUseExternalFoodSearch.mockReturnValue(
-      activeExternalSearch({ searchResults: [externalItem] }),
+      activeExternalSearch({ searchResults: [externalItem] })
     );
 
     const screen = renderSearching();
@@ -295,7 +324,7 @@ describe('FoodSearchScreen', () => {
     // Ordering has to happen before the slice: order after it and the favorite,
     // sitting outside the cap, could never float up at all.
     const foods = Array.from({ length: 8 }, (_, i) =>
-      buildFood({ id: `food-${i + 1}`, name: `Result ${i + 1} Food` }),
+      buildFood({ id: `food-${i + 1}`, name: `Result ${i + 1} Food` })
     );
     const favorite = foods[7];
 
@@ -306,7 +335,9 @@ describe('FoodSearchScreen', () => {
       isSearchError: false,
     } as any);
     mockUseFavorites.mockReturnValue({
-      favoriteFoods: [{ ...favorite, favorited_at: '2026-07-01T00:00:00.000Z' }],
+      favoriteFoods: [
+        { ...favorite, favorited_at: '2026-07-01T00:00:00.000Z' },
+      ],
       favoriteMeals: [],
       isLoading: false,
       isError: false,
@@ -314,7 +345,7 @@ describe('FoodSearchScreen', () => {
     } as any);
     mockUseExternalProviders.mockReturnValue(fatSecretProvider);
     mockUseExternalFoodSearch.mockReturnValue(
-      activeExternalSearch({ searchResults: [externalItem] }),
+      activeExternalSearch({ searchResults: [externalItem] })
     );
 
     const screen = renderSearching();
@@ -348,7 +379,9 @@ describe('FoodSearchScreen', () => {
     });
     mockUseFavorites.mockReturnValue({
       favoriteFoods: [],
-      favoriteMeals: [{ ...favorite, favorited_at: '2026-07-01T00:00:00.000Z' }],
+      favoriteMeals: [
+        { ...favorite, favorited_at: '2026-07-01T00:00:00.000Z' },
+      ],
       isLoading: false,
       isError: false,
       refetch: jest.fn(),
@@ -466,7 +499,7 @@ describe('FoodSearchScreen', () => {
       'FoodEntryAdd',
       expect.objectContaining({
         mealTypeId: 'custom-pw',
-      }),
+      })
     );
   });
 
@@ -491,7 +524,40 @@ describe('FoodSearchScreen', () => {
           name: 'Lunch Bowl',
           source: 'meal',
         }),
-      }),
+      })
+    );
+  });
+
+  it('keeps foods and meals unified and forwards the target in meal-plan mode', () => {
+    mockUseMealSearch.mockReturnValue({
+      searchResults: [buildMeal()],
+      isSearching: false,
+      isSearchActive: true,
+      isSearchError: false,
+      refetch: jest.fn(),
+    });
+    const mealPlanTarget = {
+      dayOfWeek: 3,
+      mealTypeId: 'lunch',
+      mealTypeName: 'Lunch',
+    };
+    const mealPlanRoute = {
+      key: 'FoodSearch-key',
+      name: 'FoodSearch' as const,
+      params: { pickerMode: 'meal-plan' as const, mealPlanTarget },
+    };
+
+    const screen = renderSearching(mealPlanRoute);
+
+    expect(screen.getByText('Your Meals')).toBeTruthy();
+    fireEvent.press(screen.getByText('Lunch Bowl'));
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      'FoodEntryAdd',
+      expect.objectContaining({
+        pickerMode: 'meal-plan',
+        returnDepth: 2,
+        mealPlanTarget,
+      })
     );
   });
 
@@ -502,7 +568,7 @@ describe('FoodSearchScreen', () => {
     return render(
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
         <FoodSearchScreen navigation={navigation} route={routeOverride} />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
   }
 
@@ -515,10 +581,18 @@ describe('FoodSearchScreen', () => {
   function favoriteOneFoodAndOneMeal() {
     mockUseFavorites.mockReturnValue({
       favoriteFoods: [
-        { ...buildFood({ id: 'food-1', name: 'Starred Food' }), favorited_at: '2026-07-01T00:00:00.000Z' },
+        {
+          ...buildFood({ id: 'food-1', name: 'Starred Food' }),
+          favorited_at: '2026-07-01T00:00:00.000Z',
+        },
       ],
       favoriteMeals: [
-        { ...buildMeal(), id: 'meal-1', name: 'Starred Meal', favorited_at: '2026-07-02T00:00:00.000Z' },
+        {
+          ...buildMeal(),
+          id: 'meal-1',
+          name: 'Starred Meal',
+          favorited_at: '2026-07-02T00:00:00.000Z',
+        },
       ],
       isLoading: false,
       isError: false,
@@ -573,7 +647,7 @@ describe('FoodSearchScreen', () => {
   it('forwards the tapped row serving to the detail fetch so the preview keeps it', async () => {
     mockUseExternalProviders.mockReturnValue(fatSecretProvider);
     mockUseExternalFoodSearch.mockReturnValue(
-      activeExternalSearch({ searchResults: [externalItem] }),
+      activeExternalSearch({ searchResults: [externalItem] })
     );
     mockFetchExternalFoodDetails.mockResolvedValue(externalItem);
 
@@ -586,7 +660,7 @@ describe('FoodSearchScreen', () => {
         'fatsecret',
         'ext-1',
         'p1',
-        expect.objectContaining({ serving_size: 100, serving_unit: 'g' }),
+        expect.objectContaining({ serving_size: 100, serving_unit: 'g' })
       );
     });
   });
@@ -596,7 +670,9 @@ describe('FoodSearchScreen', () => {
 
     pressHeaderMenuAction(navigation, 'Mine');
 
-    expect(useAppPreferencesStore.getState().foodSearchOwnershipFilter).toBe('mine');
+    expect(useAppPreferencesStore.getState().foodSearchOwnershipFilter).toBe(
+      'mine'
+    );
   });
 
   it('checkmarks the active filter and badges the native menu button', () => {
@@ -608,7 +684,7 @@ describe('FoodSearchScreen', () => {
     expect(findHeaderMenuAction(navigation, 'All')?.state).toBe('off');
     const button = findHeaderItemByAccessibilityLabel(
       navigation,
-      'More options, filtered to Mine',
+      'More options, filtered to Mine'
     );
     // Dot badge: bullet glyph with foreground matched to background.
     expect(button?.badge?.value).toBe('•');
@@ -626,11 +702,15 @@ describe('FoodSearchScreen', () => {
 
     const screen = renderSearching();
 
-    expect(screen.getByText('No saved foods or meals found in Mine')).toBeTruthy();
+    expect(
+      screen.getByText('No saved foods or meals found in Mine')
+    ).toBeTruthy();
 
     fireEvent.press(screen.getByText('Show All'));
 
-    expect(useAppPreferencesStore.getState().foodSearchOwnershipFilter).toBe('all');
+    expect(useAppPreferencesStore.getState().foodSearchOwnershipFilter).toBe(
+      'all'
+    );
     expect(screen.getByText('Grilled Chicken')).toBeTruthy();
   });
 
@@ -638,7 +718,7 @@ describe('FoodSearchScreen', () => {
     useAppPreferencesStore.setState({ foodSearchOwnershipFilter: 'mine' });
     mockUseExternalProviders.mockReturnValue(fatSecretProvider);
     mockUseExternalFoodSearch.mockReturnValue(
-      activeExternalSearch({ searchResults: [externalItem] }),
+      activeExternalSearch({ searchResults: [externalItem] })
     );
 
     const screen = renderSearching();
@@ -652,12 +732,12 @@ describe('FoodSearchScreen', () => {
     expect(mockUseExternalFoodSearch).toHaveBeenLastCalledWith(
       'chicken',
       'fatsecret',
-      expect.objectContaining({ enabled: false }),
+      expect.objectContaining({ enabled: false })
     );
     expect(mockUseAllProvidersSearch).toHaveBeenLastCalledWith(
       'chicken',
       expect.anything(),
-      expect.objectContaining({ enabled: false }),
+      expect.objectContaining({ enabled: false })
     );
   });
 
@@ -665,7 +745,7 @@ describe('FoodSearchScreen', () => {
     useAppPreferencesStore.setState({ foodSearchOwnershipFilter: 'public' });
     mockUseExternalProviders.mockReturnValue(fatSecretProvider);
     mockUseExternalFoodSearch.mockReturnValue(
-      activeExternalSearch({ searchResults: [externalItem] }),
+      activeExternalSearch({ searchResults: [externalItem] })
     );
 
     const screen = renderSearching();
@@ -683,17 +763,23 @@ describe('FoodSearchScreen', () => {
 
     fireEvent.press(screen.getByText('Show All'));
 
-    expect(useAppPreferencesStore.getState().foodSearchOwnershipFilter).toBe('all');
+    expect(useAppPreferencesStore.getState().foodSearchOwnershipFilter).toBe(
+      'all'
+    );
     expect(screen.getByText('Search for a food or meal to log')).toBeTruthy();
   });
 
   it('toasts the error but still opens partial info when an online detail fetch fails', async () => {
     mockUseExternalProviders.mockReturnValue(fatSecretProvider);
     mockUseExternalFoodSearch.mockReturnValue(
-      activeExternalSearch({ searchResults: [externalItem] }),
+      activeExternalSearch({ searchResults: [externalItem] })
     );
     mockFetchExternalFoodDetails.mockRejectedValue(
-      new ApiError('Bad Gateway', 502, JSON.stringify({ error: 'FatSecret down' })),
+      new ApiError(
+        'Bad Gateway',
+        502,
+        JSON.stringify({ error: 'FatSecret down' })
+      )
     );
 
     const screen = renderSearching();
@@ -702,14 +788,14 @@ describe('FoodSearchScreen', () => {
 
     await waitFor(() => {
       expect(mockToastShow).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'error', text2: 'FatSecret down' }),
+        expect.objectContaining({ type: 'error', text2: 'FatSecret down' })
       );
     });
     expect(navigation.navigate).toHaveBeenCalledWith(
       'FoodEntryAdd',
       expect.objectContaining({
         item: expect.objectContaining({ id: 'ext-1', source: 'external' }),
-      }),
+      })
     );
   });
 
@@ -742,7 +828,7 @@ describe('FoodSearchScreen', () => {
     const screen = render(
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
         <FoodSearchScreen navigation={navigation} route={route} />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
     fireEvent.press(screen.getByText('Retry'));
@@ -762,7 +848,7 @@ describe('FoodSearchScreen', () => {
     const screen = render(
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
         <FoodSearchScreen navigation={navigation} route={withMealTypeRoute} />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
     const scanButton = screen.getByLabelText('Scan Food');
     fireEvent.press(scanButton);
@@ -771,8 +857,103 @@ describe('FoodSearchScreen', () => {
       expect.objectContaining({
         date: '2026-01-01',
         mealTypeId: 'custom-pw',
-      }),
+      })
     );
   });
 
+  describe('persisted "All Providers" default', () => {
+    const twoProviders = {
+      providers: [
+        { id: 'p1', provider_type: 'fatsecret', provider_name: 'FatSecret' },
+        {
+          id: 'p2',
+          provider_type: 'openfoodfacts',
+          provider_name: 'OpenFoodFacts',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any;
+
+    function activeAllProvidersSearch() {
+      return {
+        providerResults: [
+          {
+            provider: twoProviders.providers[0],
+            items: [externalItem],
+            totalCount: 1,
+            isLoading: false,
+            isError: false,
+            refetch: jest.fn(),
+          },
+        ],
+        isSearchActive: true,
+        anyLoading: false,
+      } as any;
+    }
+
+    it('opens search in All Providers when the preference is on', () => {
+      mockUsePreferences.mockReturnValue({
+        preferences: {
+          food_search_all_providers_default: true,
+          default_food_data_provider_id: 'p1',
+        },
+      } as any);
+      mockUseExternalProviders.mockReturnValue(twoProviders);
+      mockUseAllProvidersSearch.mockReturnValue(activeAllProvidersSearch());
+
+      const screen = renderSearching();
+
+      // The online section header names the active source. Asserted through the
+      // trigger's accessibility label rather than the bare text, which also
+      // appears as an option inside the provider sheet.
+      expect(
+        screen.getByLabelText('Provider All Providers, tap to change')
+      ).toBeTruthy();
+    });
+
+    it('opens on the stored single provider when the preference is off', () => {
+      mockUsePreferences.mockReturnValue({
+        preferences: {
+          food_search_all_providers_default: false,
+          default_food_data_provider_id: 'p2',
+        },
+      } as any);
+      mockUseExternalProviders.mockReturnValue(twoProviders);
+      mockUseExternalFoodSearch.mockReturnValue(
+        activeExternalSearch({ searchResults: [externalItem] })
+      );
+
+      const screen = renderSearching();
+
+      expect(
+        screen.queryByLabelText('Provider All Providers, tap to change')
+      ).toBeNull();
+      expect(
+        screen.getByLabelText('Provider OpenFoodFacts, tap to change')
+      ).toBeTruthy();
+    });
+
+    it('degrades to the single provider when only one is active', () => {
+      // "All Providers" is not offered below two providers, so the stored
+      // preference must fall through instead of stranding the selector on a
+      // sentinel with no matching option.
+      mockUsePreferences.mockReturnValue({
+        preferences: {
+          food_search_all_providers_default: true,
+          default_food_data_provider_id: 'p1',
+        },
+      } as any);
+      mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+      mockUseExternalFoodSearch.mockReturnValue(
+        activeExternalSearch({ searchResults: [externalItem] })
+      );
+
+      const screen = renderSearching();
+
+      expect(screen.queryByText('All Providers')).toBeNull();
+      expect(screen.getByText('FatSecret')).toBeTruthy();
+    });
+  });
 });

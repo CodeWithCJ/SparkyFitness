@@ -26,7 +26,13 @@ export async function saveDraft(draft: FormDraft): Promise<void> {
     await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
   } catch (error) {
     addLog(`Failed to save draft: ${error}`, 'ERROR');
-    Toast.show({ type: 'error', text1: i18n.t('workoutDraft.saveFailed', { defaultValue: 'Failed to save draft' }), text2: i18n.t('common.tryAgain', { defaultValue: 'Please try again.' }) });
+    Toast.show({
+      type: 'error',
+      text1: i18n.t('workoutDraft.saveFailed', {
+        defaultValue: 'Failed to save draft',
+      }),
+      text2: i18n.t('common.tryAgain', { defaultValue: 'Please try again.' }),
+    });
   }
 }
 

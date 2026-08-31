@@ -137,13 +137,6 @@ export const resetPassword = async (
   if (error) throw error;
 };
 
-export const logoutUser = async (): Promise<void> => {
-  await authClient.signOut();
-  localStorage.removeItem('authToken');
-  localStorage.removeItem('refreshToken');
-  window.location.href = '/';
-};
-
 export interface OidcLoginParams {
   providerId: string;
   requestSignUp?: boolean;

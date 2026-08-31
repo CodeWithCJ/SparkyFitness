@@ -8,7 +8,10 @@ interface UseMeasurementsOptions {
   enabled?: boolean;
 }
 
-export function useMeasurements({ date, enabled = true }: UseMeasurementsOptions) {
+export function useMeasurements({
+  date,
+  enabled = true,
+}: UseMeasurementsOptions) {
   const query = useQuery({
     queryKey: measurementsQueryKey(date),
     queryFn: () => fetchMeasurements(date),

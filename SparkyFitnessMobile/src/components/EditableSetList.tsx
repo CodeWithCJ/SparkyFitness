@@ -3,7 +3,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, TouchableOpacity, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+} from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import EditableSetRow from './EditableSetRow';
@@ -20,13 +24,16 @@ interface EditableSetListProps {
   /** The owning exercise's resolved modality; decides the column set. */
   modality?: ExerciseModality;
   weightUnit: string;
-  onActivateSet: (setKey: string, field: 'weight' | 'reps' | 'duration') => void;
+  onActivateSet: (
+    setKey: string,
+    field: 'weight' | 'reps' | 'duration'
+  ) => void;
   onDeactivateSet: () => void;
   onUpdateSetField: (
     exerciseClientId: string,
     setClientId: string,
     field: 'weight' | 'reps' | 'duration',
-    value: string,
+    value: string
   ) => void;
   onRemoveSet: (exerciseClientId: string, setClientId: string) => void;
   onAddSet: (exerciseClientId: string) => void;
@@ -46,7 +53,9 @@ function EditableSetList({
   onAddSet,
 }: EditableSetListProps) {
   const { t } = useTranslation();
-  const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [string];
+  const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [
+    string,
+  ];
   const durationLike = isDurationModality(modality);
 
   return (
@@ -54,15 +63,25 @@ function EditableSetList({
       {sets.length > 0 && (
         <Animated.View className="mt-2" layout={LinearTransition.duration(300)}>
           <View className="flex-row items-center py-1 mb-1">
-            <Text className="text-xs font-semibold text-text-muted w-10 text-center">{t('activeWorkout.columns.set', { defaultValue: 'Set' })}</Text>
+            <Text className="text-xs font-semibold text-text-muted w-10 text-center">
+              {t('activeWorkout.columns.set', { defaultValue: 'Set' })}
+            </Text>
             {durationLike ? (
-              <Text className="text-xs font-semibold text-text-muted flex-1 text-center">{t('activeWorkout.columns.seconds', { defaultValue: 'Sec' })}</Text>
+              <Text className="text-xs font-semibold text-text-muted flex-1 text-center">
+                {t('activeWorkout.columns.seconds', { defaultValue: 'Sec' })}
+              </Text>
             ) : (
               <>
                 {modality !== 'reps_only' && (
-                  <Text className="text-xs font-semibold text-text-muted flex-1 text-center">{t('activeWorkout.setRow.weight', { defaultValue: 'Weight' })}</Text>
+                  <Text className="text-xs font-semibold text-text-muted flex-1 text-center">
+                    {t('activeWorkout.setRow.weight', {
+                      defaultValue: 'Weight',
+                    })}
+                  </Text>
                 )}
-                <Text className="text-xs font-semibold text-text-muted flex-1 text-center">{t('activeWorkout.setRow.reps', { defaultValue: 'Reps' })}</Text>
+                <Text className="text-xs font-semibold text-text-muted flex-1 text-center">
+                  {t('activeWorkout.setRow.reps', { defaultValue: 'Reps' })}
+                </Text>
               </>
             )}
             <View style={{ width: 18 }} />
@@ -85,10 +104,14 @@ function EditableSetList({
                   duration={set.duration != null ? String(set.duration) : ''}
                   setNumber={index + 1}
                   isActive={activeSetKey === setKey}
-                  activeField={activeSetKey === setKey ? activeSetField : undefined}
+                  activeField={
+                    activeSetKey === setKey ? activeSetField : undefined
+                  }
                   modality={modality}
                   weightUnit={weightUnit}
-                  nextSetKey={nextSet ? `${exerciseClientId}:${nextSet.clientId}` : null}
+                  nextSetKey={
+                    nextSet ? `${exerciseClientId}:${nextSet.clientId}` : null
+                  }
                   onActivateSet={onActivateSet}
                   onDeactivate={onDeactivateSet}
                   onUpdateSetField={onUpdateSetField}
@@ -107,7 +130,10 @@ function EditableSetList({
         activeOpacity={0.6}
       >
         <Icon name="add" size={18} color={accentPrimary} />
-        <Text className="text-base font-medium ml-1" style={{ color: accentPrimary }}>
+        <Text
+          className="text-base font-medium ml-1"
+          style={{ color: accentPrimary }}
+        >
           {t('activeWorkout.exerciseCard.addSet', { defaultValue: 'Add Set' })}
         </Text>
       </TouchableOpacity>

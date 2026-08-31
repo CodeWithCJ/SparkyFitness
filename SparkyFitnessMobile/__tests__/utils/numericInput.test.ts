@@ -1,4 +1,7 @@
-import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../../src/utils/numericInput';
+import {
+  DECIMAL_INPUT_REGEX,
+  parseDecimalInput,
+} from '../../src/utils/numericInput';
 
 describe('parseDecimalInput', () => {
   describe('empty / nullish', () => {
@@ -140,16 +143,16 @@ describe('parseDecimalInput', () => {
     });
 
     it('rejects invalid thousand groupings', () => {
-      expect(parseDecimalInput('1,2,3')).toBeNaN();       // groups too short
-      expect(parseDecimalInput('12,34,567')).toBeNaN();   // 2-digit middle group
-      expect(parseDecimalInput('1,23,456')).toBeNaN();    // 2-digit middle group
+      expect(parseDecimalInput('1,2,3')).toBeNaN(); // groups too short
+      expect(parseDecimalInput('12,34,567')).toBeNaN(); // 2-digit middle group
+      expect(parseDecimalInput('1,23,456')).toBeNaN(); // 2-digit middle group
       expect(parseDecimalInput('1.2.3')).toBeNaN();
     });
 
     it('rejects mixed-separator garbage', () => {
       expect(parseDecimalInput('1.234,56,7')).toBeNaN();
       expect(parseDecimalInput('1,234.56.78')).toBeNaN();
-      expect(parseDecimalInput('1,234,56')).toBeNaN();    // mis-grouped thousands
+      expect(parseDecimalInput('1,234,56')).toBeNaN(); // mis-grouped thousands
     });
 
     it('rejects lone separators', () => {
@@ -163,9 +166,9 @@ describe('parseDecimalInput', () => {
       expect(parseDecimalInput('1 23,4')).toBeNaN();
       expect(parseDecimalInput('12 34')).toBeNaN();
       expect(parseDecimalInput('1 2 3')).toBeNaN();
-      expect(parseDecimalInput('1 234 56')).toBeNaN();      // trailing 2-digit group
-      expect(parseDecimalInput('1234 567')).toBeNaN();      // 4-digit leading group
-      expect(parseDecimalInput('1  234')).toBeNaN();        // double space
+      expect(parseDecimalInput('1 234 56')).toBeNaN(); // trailing 2-digit group
+      expect(parseDecimalInput('1234 567')).toBeNaN(); // 4-digit leading group
+      expect(parseDecimalInput('1  234')).toBeNaN(); // double space
     });
 
     it('accepts outer whitespace around otherwise-valid values', () => {

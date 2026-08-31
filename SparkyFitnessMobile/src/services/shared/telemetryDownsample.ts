@@ -1,4 +1,7 @@
-import type { WorkoutGpsPoint, WorkoutHrSample } from '../../types/healthRecords';
+import type {
+  WorkoutGpsPoint,
+  WorkoutHrSample,
+} from '../../types/healthRecords';
 
 /**
  * Payload reduction for workout telemetry, shared by the HealthKit and Health
@@ -45,7 +48,8 @@ function perpendicularDistance(
   start: WorkoutGpsPoint,
   end: WorkoutGpsPoint
 ): number {
-  const lonScale = Math.cos((start.lat * Math.PI) / 180) * METERS_PER_DEGREE_LAT;
+  const lonScale =
+    Math.cos((start.lat * Math.PI) / 180) * METERS_PER_DEGREE_LAT;
   const toXY = (p: WorkoutGpsPoint): [number, number] => [
     p.lon * lonScale,
     p.lat * METERS_PER_DEGREE_LAT,
@@ -94,7 +98,11 @@ function simplify(
     let maxDistance = 0;
     let index = first;
     for (let i = first + 1; i < last; i += 1) {
-      const distance = perpendicularDistance(points[i], points[first], points[last]);
+      const distance = perpendicularDistance(
+        points[i],
+        points[first],
+        points[last]
+      );
       if (distance > maxDistance) {
         maxDistance = distance;
         index = i;

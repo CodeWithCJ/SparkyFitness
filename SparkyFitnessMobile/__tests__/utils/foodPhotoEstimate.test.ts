@@ -28,7 +28,11 @@ describe('foodPhotoEstimate', () => {
 
   describe('mapEstimateError', () => {
     test('AI not configured family invalidates settings and bounces out', () => {
-      for (const code of ['NO_AI_CONFIGURED', 'UNSUPPORTED_PROVIDER', 'API_KEY_MISSING'] as const) {
+      for (const code of [
+        'NO_AI_CONFIGURED',
+        'UNSUPPORTED_PROVIDER',
+        'API_KEY_MISSING',
+      ] as const) {
         const copy = mapEstimateError(code);
         expect(copy.invalidateAiSettings).toBe(true);
         expect(copy.stayOnForm).toBe(false);

@@ -18,7 +18,9 @@ import {
  * somewhere a plain service can reach it. Prefix keys throughout, since a caller does not
  * necessarily know which date it moved.
  */
-export function invalidateMedicationEntryCaches(queryClient: QueryClient): void {
+export function invalidateMedicationEntryCaches(
+  queryClient: QueryClient
+): void {
   void queryClient.invalidateQueries({ queryKey: medicationEntriesQueryKey() });
   void queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
   void queryClient.invalidateQueries({ queryKey: dailySummaryRootQueryKey });

@@ -11,20 +11,31 @@ export type ThemePreference = 'System' | 'Light' | 'Dark' | 'Amoled';
 /**
  * Convert user-facing theme preference to Uniwind theme string
  */
-function toUniwindTheme(pref: ThemePreference): 'system' | 'light' | 'dark' | 'amoled' {
-  return pref === 'System' ? 'system' : (pref.toLowerCase() as 'light' | 'dark' | 'amoled');
+function toUniwindTheme(
+  pref: ThemePreference
+): 'system' | 'light' | 'dark' | 'amoled' {
+  return pref === 'System'
+    ? 'system'
+    : (pref.toLowerCase() as 'light' | 'dark' | 'amoled');
 }
 
 /**
  * Convert Uniwind theme string to user-facing theme preference
  */
-function fromUniwindTheme(theme: string, hasAdaptiveThemes: boolean): ThemePreference {
+function fromUniwindTheme(
+  theme: string,
+  hasAdaptiveThemes: boolean
+): ThemePreference {
   if (hasAdaptiveThemes) return 'System';
   switch (theme) {
-    case 'light': return 'Light';
-    case 'dark': return 'Dark';
-    case 'amoled': return 'Amoled';
-    default: return 'System';
+    case 'light':
+      return 'Light';
+    case 'dark':
+      return 'Dark';
+    case 'amoled':
+      return 'Amoled';
+    default:
+      return 'System';
   }
 }
 
@@ -38,7 +49,10 @@ export async function initializeTheme(): Promise<void> {
     const preference = savedTheme ? (savedTheme as ThemePreference) : 'System';
     Uniwind.setTheme(toUniwindTheme(preference));
   } catch (error) {
-    addLog(`Failed to load theme preference: ${getErrorMessage(error)}`, 'ERROR');
+    addLog(
+      `Failed to load theme preference: ${getErrorMessage(error)}`,
+      'ERROR'
+    );
     Uniwind.setTheme('system');
   }
 }
@@ -46,12 +60,17 @@ export async function initializeTheme(): Promise<void> {
 /**
  * Set theme preference - saves to storage and updates Uniwind
  */
-export async function setThemePreference(preference: ThemePreference): Promise<void> {
+export async function setThemePreference(
+  preference: ThemePreference
+): Promise<void> {
   try {
     await AsyncStorage.setItem(THEME_KEY, preference);
     Uniwind.setTheme(toUniwindTheme(preference));
   } catch (error) {
-    addLog(`Failed to save theme preference: ${getErrorMessage(error)}`, 'ERROR');
+    addLog(
+      `Failed to save theme preference: ${getErrorMessage(error)}`,
+      'ERROR'
+    );
   }
 }
 

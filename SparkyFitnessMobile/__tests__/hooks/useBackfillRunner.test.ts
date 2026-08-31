@@ -1,6 +1,9 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { useBackfillRunner } from '../../src/hooks/useBackfillRunner';
-import { runBackfill, type BackfillProgress } from '../../src/services/backfillService';
+import {
+  runBackfill,
+  type BackfillProgress,
+} from '../../src/services/backfillService';
 import {
   loadBackfillCheckpoint,
   clearBackfillCheckpoint,
@@ -28,8 +31,18 @@ jest.mock('../../src/services/healthConnectService', () => ({
 
 jest.mock('../../src/HealthMetrics', () => ({
   HEALTH_METRICS: [
-    { id: 'steps', recordType: 'Steps', preferenceKey: 'syncStepsEnabled', label: 'Steps' },
-    { id: 'weight', recordType: 'Weight', preferenceKey: 'syncWeightEnabled', label: 'Weight' },
+    {
+      id: 'steps',
+      recordType: 'Steps',
+      preferenceKey: 'syncStepsEnabled',
+      label: 'Steps',
+    },
+    {
+      id: 'weight',
+      recordType: 'Weight',
+      preferenceKey: 'syncWeightEnabled',
+      label: 'Weight',
+    },
   ],
 }));
 
@@ -39,7 +52,9 @@ const mockClearCheckpoint = clearBackfillCheckpoint as jest.Mock;
 const mockGetActiveServerConfig = getActiveServerConfig as jest.Mock;
 const mockLoadHealthPreference = loadHealthPreference as jest.Mock;
 
-const checkpoint = (overrides: Partial<BackfillCheckpoint> = {}): BackfillCheckpoint => ({
+const checkpoint = (
+  overrides: Partial<BackfillCheckpoint> = {}
+): BackfillCheckpoint => ({
   version: 1,
   status: 'in-progress',
   endEdge: '2026-08-03T04:00:00.000Z',
@@ -59,9 +74,12 @@ describe('useBackfillRunner', () => {
     mockGetActiveServerConfig.mockResolvedValue({ id: 'server-1' });
     mockLoadCheckpoint.mockResolvedValue(null);
     mockLoadHealthPreference.mockImplementation((key: string) =>
-      Promise.resolve(key === 'syncStepsEnabled'),
+      Promise.resolve(key === 'syncStepsEnabled')
     );
-    mockRunBackfill.mockResolvedValue({ outcome: 'completed', recordsUploaded: 3 });
+    mockRunBackfill.mockResolvedValue({
+      outcome: 'completed',
+      recordsUploaded: 3,
+    });
   });
 
   test('mounts to idle when no checkpoint exists', async () => {
@@ -80,7 +98,9 @@ describe('useBackfillRunner', () => {
   test('mounts to interrupted for an in-progress checkpoint and to done for a finished one', async () => {
     mockLoadCheckpoint.mockResolvedValue(checkpoint());
     const interrupted = renderHook(() => useBackfillRunner());
-    await waitFor(() => expect(interrupted.result.current.status).toBe('interrupted'));
+    await waitFor(() =>
+      expect(interrupted.result.current.status).toBe('interrupted')
+    );
     interrupted.unmount();
 
     mockLoadCheckpoint.mockResolvedValue(checkpoint({ status: 'done' }));
@@ -89,15 +109,21 @@ describe('useBackfillRunner', () => {
   });
 
   test('flags a frozen metric set that differs from current toggles', async () => {
-    mockLoadCheckpoint.mockResolvedValue(checkpoint({ enabledRecordTypes: ['Steps', 'Weight'] }));
+    mockLoadCheckpoint.mockResolvedValue(
+      checkpoint({ enabledRecordTypes: ['Steps', 'Weight'] })
+    );
 
     const { result } = renderHook(() => useBackfillRunner());
 
-    await waitFor(() => expect(result.current.frozenSelectionDiffers).toBe(true));
+    await waitFor(() =>
+      expect(result.current.frozenSelectionDiffers).toBe(true)
+    );
   });
 
   test('does not flag a matching frozen set', async () => {
-    mockLoadCheckpoint.mockResolvedValue(checkpoint({ enabledRecordTypes: ['Steps'] }));
+    mockLoadCheckpoint.mockResolvedValue(
+      checkpoint({ enabledRecordTypes: ['Steps'] })
+    );
 
     const { result } = renderHook(() => useBackfillRunner());
 
@@ -109,7 +135,9 @@ describe('useBackfillRunner', () => {
     const { result } = renderHook(() => useBackfillRunner());
     await waitFor(() => expect(result.current.status).toBe('idle'));
 
-    mockLoadCheckpoint.mockResolvedValue(checkpoint({ status: 'done', recordsUploaded: 3 }));
+    mockLoadCheckpoint.mockResolvedValue(
+      checkpoint({ status: 'done', recordsUploaded: 3 })
+    );
     act(() => result.current.start());
 
     expect(result.current.status).toBe('running');
@@ -122,7 +150,11 @@ describe('useBackfillRunner', () => {
     const { result } = renderHook(() => useBackfillRunner());
     await waitFor(() => expect(result.current.status).toBe('idle'));
 
-    mockRunBackfill.mockResolvedValue({ outcome: 'quota', error: 'quota exceeded', recordsUploaded: 2 });
+    mockRunBackfill.mockResolvedValue({
+      outcome: 'quota',
+      error: 'quota exceeded',
+      recordsUploaded: 2,
+    });
     mockLoadCheckpoint.mockResolvedValue(checkpoint());
     act(() => result.current.start());
 
@@ -131,16 +163,19 @@ describe('useBackfillRunner', () => {
     expect(result.current.lastError).toBe('quota exceeded');
   });
 
-  test('estimates time remaining from this run\'s importing pace', async () => {
+  test("estimates time remaining from this run's importing pace", async () => {
     let onProgress: ((update: BackfillProgress) => void) | null = null;
-    let finishRun: (value: { outcome: string; recordsUploaded: number }) => void = () => {};
+    let finishRun: (value: {
+      outcome: string;
+      recordsUploaded: number;
+    }) => void = () => {};
     mockRunBackfill.mockImplementation(
       (opts: { onProgress: (update: BackfillProgress) => void }) => {
         onProgress = opts.onProgress;
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
           finishRun = resolve;
         });
-      },
+      }
     );
 
     const { result } = renderHook(() => useBackfillRunner());
@@ -181,14 +216,17 @@ describe('useBackfillRunner', () => {
 
   test('cancel flips the shouldCancel signal the running backfill polls', async () => {
     let observedShouldCancel: (() => boolean) | null = null;
-    let finishRun: (value: { outcome: string; recordsUploaded: number }) => void = () => {};
+    let finishRun: (value: {
+      outcome: string;
+      recordsUploaded: number;
+    }) => void = () => {};
     mockRunBackfill.mockImplementation(
       (opts: { shouldCancel: () => boolean }) => {
         observedShouldCancel = opts.shouldCancel;
-        return new Promise(resolve => {
+        return new Promise((resolve) => {
           finishRun = resolve;
         });
-      },
+      }
     );
 
     const { result } = renderHook(() => useBackfillRunner());
@@ -212,7 +250,7 @@ describe('useBackfillRunner', () => {
       (opts: { shouldCancel: () => boolean }) => {
         observedShouldCancel = opts.shouldCancel;
         return new Promise(() => {});
-      },
+      }
     );
 
     const { result, unmount } = renderHook(() => useBackfillRunner());

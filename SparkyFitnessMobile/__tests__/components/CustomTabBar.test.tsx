@@ -27,22 +27,23 @@ describe('CustomTabBar', () => {
         type: 'tab',
         key: 'tab-state',
         index: 0,
-        routeNames: routes.map(route => route.name),
+        routeNames: routes.map((route) => route.name),
         history: [],
         routes,
       },
       descriptors: Object.fromEntries(
-        routes.map(route => [
+        routes.map((route) => [
           route.key,
           {
             navigation: {} as never,
             route,
-            options: route.name === 'Add'
-              ? { tabBarAccessibilityLabel: 'Add' }
-              : { title: route.name },
+            options:
+              route.name === 'Add'
+                ? { tabBarAccessibilityLabel: 'Add' }
+                : { title: route.name },
             render: jest.fn(),
           },
-        ]),
+        ])
       ) as BottomTabBarProps['descriptors'],
       navigation: {
         emit,
@@ -61,7 +62,7 @@ describe('CustomTabBar', () => {
     const screen = render(
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
         <CustomTabBar {...props} />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
     fireEvent.press(screen.getByLabelText('Add'));

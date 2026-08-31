@@ -382,7 +382,12 @@ const CalculationSettings = () => {
   };
 
   // Live Preview Math
-  const { bmr, weight: weightKg, height: heightCm } = useCalculatedBMR();
+  const {
+    bmr,
+    measuredBmr,
+    weight: weightKg,
+    height: heightCm,
+  } = useCalculatedBMR();
   const todayStr = todayInZone(timezone || 'UTC');
   const { data: adaptiveTdeeData } = useAdaptiveTdee(todayStr);
   const { data: goalsData } = useDiaryGoals(todayStr, false);
@@ -457,6 +462,7 @@ const CalculationSettings = () => {
     calculateBmrFn: calculateBmr,
     calorieSafetyFloorMode,
     calorieSafetyFloorValue,
+    measuredBmr,
   });
 
   // The safety floor clamps silently, so a goal mode that cannot be reached at
@@ -927,7 +933,7 @@ const CalculationSettings = () => {
               </span>{' '}
               {t(
                 'settings.calorieGoalAdjustment.tdeeGoalDescription',
-                'Like MyFitnessPal with Apple Watch. SparkyFitness projects your full-day burn by extrapolating your current device data to midnight. The adjustment = projection − TDEE.'
+                'Uses Health Connect total calories when available, projects the current burn to midnight, and applies Goal Mode directly to that TDEE. Falls back to BMR plus active calories when no device total is available.'
               )}
             </Label>
           </div>
@@ -997,24 +1003,32 @@ const CalculationSettings = () => {
                 </p>
               )}
               {calorieGoalAdjustmentMode === 'tdee' && (
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="tdee-allow-negative"
-                    checked={tdeeAllowNegativeAdjustment}
-                    onCheckedChange={(checked) =>
-                      setTdeeAllowNegativeAdjustment(Boolean(checked))
-                    }
-                  />
-                  <Label
-                    htmlFor="tdee-allow-negative"
-                    className="text-sm cursor-pointer"
-                  >
+                <>
+                  <p className="text-sm text-muted-foreground italic mt-[-4px]">
                     {t(
-                      'settings.calorieGoalAdjustment.allowNegativeAdjustment',
-                      'Allow negative adjustment (penalise for burning less than TDEE)'
+                      'settings.calorieGoalAdjustment.tdeeActivityHint',
+                      'Activity level is only used by the BMR + active calories fallback when a device total is unavailable.'
                     )}
-                  </Label>
-                </div>
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="tdee-allow-negative"
+                      checked={tdeeAllowNegativeAdjustment}
+                      onCheckedChange={(checked) =>
+                        setTdeeAllowNegativeAdjustment(Boolean(checked))
+                      }
+                    />
+                    <Label
+                      htmlFor="tdee-allow-negative"
+                      className="text-sm cursor-pointer"
+                    >
+                      {t(
+                        'settings.calorieGoalAdjustment.allowNegativeAdjustment',
+                        'Allow the fallback projection to lower the target'
+                      )}
+                    </Label>
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -1045,15 +1059,20 @@ const CalculationSettings = () => {
                   )}
                 </p>
                 <p className="text-gray-600 dark:text-gray-400">
-                  {includeBmrInNetCalories
+                  {calorieGoalAdjustmentMode === 'tdee'
                     ? t(
-                        'settings.calculationExplanation.burnedBmr',
-                        'Activity + BMR (Your base metabolism)'
+                        'settings.calculationExplanation.burnedTdee',
+                        'Health Connect total calories (BMR + active calories fallback)'
                       )
-                    : t(
-                        'settings.calculationExplanation.burnedActivity',
-                        'Activity (Exercise & Steps only)'
-                      )}
+                    : includeBmrInNetCalories
+                      ? t(
+                          'settings.calculationExplanation.burnedBmr',
+                          'Activity + BMR (Your base metabolism)'
+                        )
+                      : t(
+                          'settings.calculationExplanation.burnedActivity',
+                          'Activity (Exercise & Steps only)'
+                        )}
                 </p>
               </div>
             </div>
@@ -1101,7 +1120,7 @@ const CalculationSettings = () => {
                       : calorieGoalAdjustmentMode === 'tdee'
                         ? t(
                             'settings.calculationExplanation.remainingTdee',
-                            'Daily Goal − Eaten + (Projected Full Day − TDEE)'
+                            'Projected TDEE × Goal Mode − Eaten'
                           )
                         : calorieGoalAdjustmentMode === 'adaptive'
                           ? t(
@@ -1131,7 +1150,7 @@ const CalculationSettings = () => {
                 : calorieGoalAdjustmentMode === 'tdee'
                   ? t(
                       'settings.calculationExplanation.tdeeFootnote',
-                      '* Projection converges with actual at midnight. Requires BMR to be calculable and a device syncing steps or active calories.'
+                      '* Enable Total Calories in Health Connect sync. The projection converges with the device total at midnight; BMR plus active calories is used as a fallback.'
                     )
                   : calorieGoalAdjustmentMode === 'adaptive'
                     ? t(
@@ -1155,6 +1174,14 @@ const CalculationSettings = () => {
           {t(
             'settings.goalMode.subtitle',
             'Adjust your daily calorie target based on your body composition goal.'
+          )}
+          {calorieGoalAdjustmentMode === 'tdee' && (
+            <span className="block mt-1">
+              {t(
+                'settings.goalMode.deviceProjectionHint',
+                'In Device Projection mode, this percentage is applied directly to the projected device TDEE.'
+              )}
+            </span>
           )}
         </p>
 
@@ -1595,6 +1622,7 @@ const CalculationSettings = () => {
                 rawManualGoal={rawManualGoal}
                 adjustedManualGoal={currentGoalBase}
                 activityMultiplier={activityMultiplier}
+                bmrSource={measuredBmr != null ? 'measured' : undefined}
               />
             </div>
           </div>

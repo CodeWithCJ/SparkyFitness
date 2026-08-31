@@ -15,18 +15,22 @@ import type {
 const mockGetPerms = Notifications.getPermissionsAsync as jest.MockedFunction<
   typeof Notifications.getPermissionsAsync
 >;
-const mockSchedule = Notifications.scheduleNotificationAsync as jest.MockedFunction<
-  typeof Notifications.scheduleNotificationAsync
->;
-const mockCancel = Notifications.cancelScheduledNotificationAsync as jest.MockedFunction<
-  typeof Notifications.cancelScheduledNotificationAsync
->;
-const mockGetAllScheduled = Notifications.getAllScheduledNotificationsAsync as jest.MockedFunction<
-  typeof Notifications.getAllScheduledNotificationsAsync
->;
-const mockSetChannel = Notifications.setNotificationChannelAsync as jest.MockedFunction<
-  typeof Notifications.setNotificationChannelAsync
->;
+const mockSchedule =
+  Notifications.scheduleNotificationAsync as jest.MockedFunction<
+    typeof Notifications.scheduleNotificationAsync
+  >;
+const mockCancel =
+  Notifications.cancelScheduledNotificationAsync as jest.MockedFunction<
+    typeof Notifications.cancelScheduledNotificationAsync
+  >;
+const mockGetAllScheduled =
+  Notifications.getAllScheduledNotificationsAsync as jest.MockedFunction<
+    typeof Notifications.getAllScheduledNotificationsAsync
+  >;
+const mockSetChannel =
+  Notifications.setNotificationChannelAsync as jest.MockedFunction<
+    typeof Notifications.setNotificationChannelAsync
+  >;
 
 // Fixed "now": 2026-07-28 08:00 local. getTodayDate() and the past-dose
 // cutoff in the service both derive from this.
@@ -47,7 +51,9 @@ const WINDOW_DATES = [
 
 const baseKeyFor = (date: string) => `med_${date}_med-1_sched-1_09:00`;
 
-function buildSchedule(overrides: Partial<MedicationSchedule> = {}): MedicationSchedule {
+function buildSchedule(
+  overrides: Partial<MedicationSchedule> = {}
+): MedicationSchedule {
   return {
     id: 'sched-1',
     medication_id: 'med-1',
@@ -71,7 +77,9 @@ function buildSchedule(overrides: Partial<MedicationSchedule> = {}): MedicationS
   };
 }
 
-function buildMedication(overrides: Partial<MedicationDetail> = {}): MedicationDetail {
+function buildMedication(
+  overrides: Partial<MedicationDetail> = {}
+): MedicationDetail {
   return {
     id: 'med-1',
     user_id: 'user-1',
@@ -125,7 +133,7 @@ function buildEntry(overrides: Partial<MedicationEntry> = {}): MedicationEntry {
 
 function pendingRequest(
   identifier: string,
-  data?: Record<string, string>,
+  data?: Record<string, string>
 ): Notifications.NotificationRequest {
   return {
     identifier,
@@ -136,7 +144,7 @@ function pendingRequest(
 
 function scheduledKeys(): string[] {
   return (Notifications.scheduleNotificationAsync as jest.Mock).mock.calls.map(
-    (c) => c[0].content.data?.key as string,
+    (c) => c[0].content.data?.key as string
   );
 }
 
@@ -149,7 +157,10 @@ describe('reconcileMedicationReminders', () => {
     mockCancel.mockReset().mockResolvedValue(undefined);
     mockGetAllScheduled.mockReset().mockResolvedValue([]);
     mockSetChannel.mockClear();
-    Object.defineProperty(Platform, 'OS', { get: () => 'ios', configurable: true });
+    Object.defineProperty(Platform, 'OS', {
+      get: () => 'ios',
+      configurable: true,
+    });
   });
 
   afterEach(() => {
@@ -160,19 +171,22 @@ describe('reconcileMedicationReminders', () => {
     it.each([
       ['medication reminders pref', { medicationRemindersEnabled: false }],
       ['app notifications toggle', { notificationsEnabled: false }],
-    ])('cancels pending medication reminders when the %s is off', async (_label, prefs) => {
-      useAppPreferencesStore.setState(prefs);
-      mockGetAllScheduled.mockResolvedValue([
-        pendingRequest('n1', { medicationId: 'med-1', key: BASE_KEY }),
-        pendingRequest('n2', undefined),
-      ]);
+    ])(
+      'cancels pending medication reminders when the %s is off',
+      async (_label, prefs) => {
+        useAppPreferencesStore.setState(prefs);
+        mockGetAllScheduled.mockResolvedValue([
+          pendingRequest('n1', { medicationId: 'med-1', key: BASE_KEY }),
+          pendingRequest('n2', undefined),
+        ]);
 
-      await reconcileMedicationReminders([buildMedication()], []);
+        await reconcileMedicationReminders([buildMedication()], []);
 
-      expect(mockCancel).toHaveBeenCalledTimes(1);
-      expect(mockCancel).toHaveBeenCalledWith('n1');
-      expect(mockSchedule).not.toHaveBeenCalled();
-    });
+        expect(mockCancel).toHaveBeenCalledTimes(1);
+        expect(mockCancel).toHaveBeenCalledWith('n1');
+        expect(mockSchedule).not.toHaveBeenCalled();
+      }
+    );
 
     it('cancels pending medication reminders when the OS permission is not granted', async () => {
       mockGetPerms.mockResolvedValue({ status: 'denied' } as never);
@@ -233,7 +247,7 @@ describe('reconcileMedicationReminders', () => {
         `${BASE_KEY}_30`,
       ]);
       expect(
-        repeatCalls.map((c) => (c[0].trigger as { date: Date }).date),
+        repeatCalls.map((c) => (c[0].trigger as { date: Date }).date)
       ).toEqual([
         new Date(2026, 6, 28, 9, 10, 0, 0),
         new Date(2026, 6, 28, 9, 20, 0, 0),
@@ -241,7 +255,9 @@ describe('reconcileMedicationReminders', () => {
       ]);
       // Repeats keep pointing at the base dose so a "taken" response can
       // sweep the whole chain.
-      expect(repeatCalls.every((c) => c[0].content.data?.baseKey === BASE_KEY)).toBe(true);
+      expect(
+        repeatCalls.every((c) => c[0].content.data?.baseKey === BASE_KEY)
+      ).toBe(true);
     });
 
     it('schedules base reminders for the whole 7-day window, with repeats only today', async () => {
@@ -252,18 +268,20 @@ describe('reconcileMedicationReminders', () => {
       for (const date of WINDOW_DATES) {
         expect(keys).toContain(baseKeyFor(date));
       }
-      expect(keys.filter((k) => k.endsWith('_10') || k.endsWith('_20') || k.endsWith('_30'))).toEqual([
-        `${BASE_KEY}_10`,
-        `${BASE_KEY}_20`,
-        `${BASE_KEY}_30`,
-      ]);
+      expect(
+        keys.filter(
+          (k) => k.endsWith('_10') || k.endsWith('_20') || k.endsWith('_30')
+        )
+      ).toEqual([`${BASE_KEY}_10`, `${BASE_KEY}_20`, `${BASE_KEY}_30`]);
 
       // Future reminders log the dose against their own day, not today.
       const day3 = mockSchedule.mock.calls.find(
-        (c) => c[0].content.data?.key === baseKeyFor('2026-07-31'),
+        (c) => c[0].content.data?.key === baseKeyFor('2026-07-31')
       );
       expect(day3?.[0].content.data?.entryDate).toBe('2026-07-31');
-      expect((day3?.[0].trigger as { date: Date }).date).toEqual(new Date(2026, 6, 31, 9, 0, 0, 0));
+      expect((day3?.[0].trigger as { date: Date }).date).toEqual(
+        new Date(2026, 6, 31, 9, 0, 0, 0)
+      );
     });
 
     it('schedules only base reminders when repeats are disabled', async () => {
@@ -277,10 +295,12 @@ describe('reconcileMedicationReminders', () => {
     it('omits the dose suffix from the body when the medication has no dose amount', async () => {
       await reconcileMedicationReminders(
         [buildMedication({ dose_amount: null, dose_unit: null })],
-        [],
+        []
       );
 
-      expect(mockSchedule.mock.calls[0][0].content.body).toBe('Scheduled dose: Metformin');
+      expect(mockSchedule.mock.calls[0][0].content.body).toBe(
+        'Scheduled dose: Metformin'
+      );
     });
 
     it.each([['taken'], ['skipped']] as const)(
@@ -288,22 +308,28 @@ describe('reconcileMedicationReminders', () => {
       async (status) => {
         mockGetAllScheduled.mockResolvedValue([
           pendingRequest('n1', { medicationId: 'med-1', key: BASE_KEY }),
-          pendingRequest('n2', { medicationId: 'med-1', key: `${BASE_KEY}_10` }),
+          pendingRequest('n2', {
+            medicationId: 'med-1',
+            key: `${BASE_KEY}_10`,
+          }),
         ]);
 
-        await reconcileMedicationReminders([buildMedication()], [buildEntry({ status })]);
+        await reconcileMedicationReminders(
+          [buildMedication()],
+          [buildEntry({ status })]
+        );
 
         expect(scheduledKeys()).toEqual(WINDOW_DATES.slice(1).map(baseKeyFor));
         expect(mockCancel).toHaveBeenCalledTimes(2);
         expect(mockCancel).toHaveBeenCalledWith('n1');
         expect(mockCancel).toHaveBeenCalledWith('n2');
-      },
+      }
     );
 
     it('still schedules when the only entry is snoozed', async () => {
       await reconcileMedicationReminders(
         [buildMedication()],
-        [buildEntry({ status: 'snoozed' })],
+        [buildEntry({ status: 'snoozed' })]
       );
 
       expect(mockSchedule).toHaveBeenCalledTimes(10);
@@ -312,7 +338,7 @@ describe('reconcileMedicationReminders', () => {
     it('still schedules when the logged entry belongs to a different schedule', async () => {
       await reconcileMedicationReminders(
         [buildMedication()],
-        [buildEntry({ schedule_id: 'sched-other' })],
+        [buildEntry({ schedule_id: 'sched-other' })]
       );
 
       expect(mockSchedule).toHaveBeenCalledTimes(10);
@@ -321,7 +347,7 @@ describe('reconcileMedicationReminders', () => {
     it('treats a schedule-less entry for the medication as logging today, like the dashboard card', async () => {
       await reconcileMedicationReminders(
         [buildMedication()],
-        [buildEntry({ schedule_id: null })],
+        [buildEntry({ schedule_id: null })]
       );
 
       expect(scheduledKeys()).toEqual(WINDOW_DATES.slice(1).map(baseKeyFor));
@@ -329,23 +355,34 @@ describe('reconcileMedicationReminders', () => {
 
     it('skips schedules with no time of day', async () => {
       await reconcileMedicationReminders(
-        [buildMedication({ schedules: [buildSchedule({ time_of_day: null })] })],
-        [],
+        [
+          buildMedication({
+            schedules: [buildSchedule({ time_of_day: null })],
+          }),
+        ],
+        []
       );
 
       expect(mockSchedule).not.toHaveBeenCalled();
     });
 
     it('skips inactive medications', async () => {
-      await reconcileMedicationReminders([buildMedication({ is_active: false })], []);
+      await reconcileMedicationReminders(
+        [buildMedication({ is_active: false })],
+        []
+      );
 
       expect(mockSchedule).not.toHaveBeenCalled();
     });
 
     it('skips today entirely when the dose time and all repeats are in the past', async () => {
       await reconcileMedicationReminders(
-        [buildMedication({ schedules: [buildSchedule({ time_of_day: '07:00' })] })],
-        [],
+        [
+          buildMedication({
+            schedules: [buildSchedule({ time_of_day: '07:00' })],
+          }),
+        ],
+        []
       );
 
       expect(mockSchedule).toHaveBeenCalledTimes(6);
@@ -355,8 +392,12 @@ describe('reconcileMedicationReminders', () => {
     it('schedules only the still-future repeats when the base time just passed', async () => {
       // Dose at 07:55, now 08:00: base is past, repeats land at 08:05/08:15/08:25.
       await reconcileMedicationReminders(
-        [buildMedication({ schedules: [buildSchedule({ time_of_day: '07:55' })] })],
-        [],
+        [
+          buildMedication({
+            schedules: [buildSchedule({ time_of_day: '07:55' })],
+          }),
+        ],
+        []
       );
 
       expect(mockSchedule).toHaveBeenCalledTimes(9);
@@ -371,7 +412,12 @@ describe('reconcileMedicationReminders', () => {
     it('replaces pending reminders when the effective app language changes', async () => {
       useAppPreferencesStore.setState({ medicationReminderRepeats: false });
       mockGetAllScheduled.mockResolvedValue([
-        pendingRequest('english', { medicationId: 'med-1', key: BASE_KEY, hideNames: 'false', locale: 'pl' }),
+        pendingRequest('english', {
+          medicationId: 'med-1',
+          key: BASE_KEY,
+          hideNames: 'false',
+          locale: 'pl',
+        }),
       ]);
 
       await reconcileMedicationReminders([buildMedication()], []);
@@ -403,7 +449,11 @@ describe('reconcileMedicationReminders', () => {
       const keys = scheduledKeys();
       expect(keys).not.toContain(BASE_KEY);
       expect(keys).toEqual(
-        expect.arrayContaining([`${BASE_KEY}_10`, `${BASE_KEY}_20`, `${BASE_KEY}_30`]),
+        expect.arrayContaining([
+          `${BASE_KEY}_10`,
+          `${BASE_KEY}_20`,
+          `${BASE_KEY}_30`,
+        ])
       );
     });
 
@@ -435,8 +485,12 @@ describe('reconcileMedicationReminders', () => {
       useAppPreferencesStore.setState({ medicationReminderRepeats: false });
 
       await reconcileMedicationReminders(
-        [buildMedication({ schedules: [buildSchedule({ end_date: '2026-07-30' })] })],
-        [],
+        [
+          buildMedication({
+            schedules: [buildSchedule({ end_date: '2026-07-30' })],
+          }),
+        ],
+        []
       );
 
       expect(scheduledKeys()).toEqual([
@@ -464,7 +518,11 @@ describe('reconcileMedicationReminders', () => {
     it('cancels pending named reminders and reschedules them censored when the preference turns on', async () => {
       useAppPreferencesStore.setState({ medicationReminderRepeats: false });
       mockGetAllScheduled.mockResolvedValue([
-        pendingRequest('named', { medicationId: 'med-1', key: BASE_KEY, hideNames: 'false' }),
+        pendingRequest('named', {
+          medicationId: 'med-1',
+          key: BASE_KEY,
+          hideNames: 'false',
+        }),
       ]);
 
       await reconcileMedicationReminders([buildMedication()], []);
@@ -476,7 +534,10 @@ describe('reconcileMedicationReminders', () => {
     it('treats unstamped pending reminders as named and replaces them', async () => {
       useAppPreferencesStore.setState({ medicationReminderRepeats: false });
       mockGetAllScheduled.mockResolvedValue([
-        pendingRequest('legacy-named', { medicationId: 'med-1', key: BASE_KEY }),
+        pendingRequest('legacy-named', {
+          medicationId: 'med-1',
+          key: BASE_KEY,
+        }),
       ]);
 
       await reconcileMedicationReminders([buildMedication()], []);
@@ -491,26 +552,37 @@ describe('reconcileMedicationReminders', () => {
         medicationReminderRepeats: false,
       });
       mockGetAllScheduled.mockResolvedValue([
-        pendingRequest('censored', { medicationId: 'med-1', key: BASE_KEY, hideNames: 'true' }),
+        pendingRequest('censored', {
+          medicationId: 'med-1',
+          key: BASE_KEY,
+          hideNames: 'true',
+        }),
       ]);
 
       await reconcileMedicationReminders([buildMedication()], []);
 
       expect(mockCancel).toHaveBeenCalledWith('censored');
-      const base = mockSchedule.mock.calls.find((c) => c[0].content.data?.key === BASE_KEY);
+      const base = mockSchedule.mock.calls.find(
+        (c) => c[0].content.data?.key === BASE_KEY
+      );
       expect(base?.[0].content.body).toBe('Scheduled dose: Metformin (500 mg)');
     });
   });
 
   describe('platform channel', () => {
     it('ensures the Android medication channel before scheduling', async () => {
-      Object.defineProperty(Platform, 'OS', { get: () => 'android', configurable: true });
+      Object.defineProperty(Platform, 'OS', {
+        get: () => 'android',
+        configurable: true,
+      });
 
       await reconcileMedicationReminders([buildMedication()], []);
 
       expect(mockSetChannel).toHaveBeenCalledWith(
         'medication-reminders',
-        expect.objectContaining({ importance: Notifications.AndroidImportance.HIGH }),
+        expect.objectContaining({
+          importance: Notifications.AndroidImportance.HIGH,
+        })
       );
     });
   });

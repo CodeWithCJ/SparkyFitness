@@ -53,7 +53,7 @@ export const MAX_ENRICHED_SESSION_KEYS = 500;
  */
 export const sessionTelemetryKey = (
   id: string | undefined | null,
-  changeMarker: string | undefined | null,
+  changeMarker: string | undefined | null
 ): string | null => {
   if (!id) return null;
   return `${id}:${changeMarker ?? ''}`;
@@ -135,7 +135,9 @@ const load = async (): Promise<string[]> => {
 };
 
 /** Whether this session's telemetry was already collected and uploaded. */
-export const hasEnrichedSession = async (key: string | null): Promise<boolean> => {
+export const hasEnrichedSession = async (
+  key: string | null
+): Promise<boolean> => {
   if (!key) return false;
   await load();
   return cacheIndex.has(key);
@@ -151,7 +153,7 @@ const commit = async (fresh: string[]): Promise<void> => {
   const existing = await load();
   // Re-adding an existing key moves it to the newest end, so sessions that keep
   // appearing in the sync window are not evicted by a one-off backfill burst.
-  const merged = [...existing.filter(k => !fresh.includes(k)), ...fresh];
+  const merged = [...existing.filter((k) => !fresh.includes(k)), ...fresh];
   const trimmed = merged.slice(-MAX_ENRICHED_SESSION_KEYS);
   const scope = cacheScope ?? (await activeScope());
   cache = trimmed;
@@ -159,7 +161,10 @@ const commit = async (fresh: string[]): Promise<void> => {
   cacheScope = scope;
 
   try {
-    await AsyncStorage.setItem(storageKeyForScope(scope), JSON.stringify(trimmed));
+    await AsyncStorage.setItem(
+      storageKeyForScope(scope),
+      JSON.stringify(trimmed)
+    );
   } catch {
     // In-memory state still holds for the rest of this process; the worst case
     // is re-collecting after a restart. Never fail a sync over the cache.
@@ -184,7 +189,9 @@ const commit = async (fresh: string[]): Promise<void> => {
  * it is. Rejections are real: see PR #2136, where the server rejected
  * fractional telemetry values outright.
  */
-export const markEnrichedSessions = async (keys: (string | null)[]): Promise<void> => {
+export const markEnrichedSessions = async (
+  keys: (string | null)[]
+): Promise<void> => {
   const fresh = keys.filter((k): k is string => Boolean(k));
   if (fresh.length === 0) return;
 

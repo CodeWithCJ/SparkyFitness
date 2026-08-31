@@ -1,4 +1,4 @@
-import { getWorkoutSummary } from '../../src/components/WorkoutCard';
+import { getWorkoutSummary } from '../../src/utils/workoutSession';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import i18n from '../../src/localization/i18n';
 

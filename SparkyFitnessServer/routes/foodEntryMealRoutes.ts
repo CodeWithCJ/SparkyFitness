@@ -4,7 +4,16 @@ import { authenticate } from '../middleware/authMiddleware.js';
 import { log } from '../config/logging.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
-import { isEntryTimeString } from '@workspace/shared';
+import {
+  isEntryTimeString,
+  foodPhotoLogRequestSchema,
+  foodPhotoLogResponseSchema,
+} from '@workspace/shared';
+import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
+import foodPhotoLogService, {
+  PhotoLogError,
+} from '../services/foodPhotoLogService.js';
+import mealService from '../services/mealService.js';
 import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
 import {
   uploadImages,
@@ -110,6 +119,243 @@ router.post('/', async (req, res, next) => {
     next(err);
   }
 });
+/**
+ * @swagger
+ * /food-entry-meals/from-photo-estimate:
+ *   post:
+ *     summary: Log a reviewed AI food-photo estimate
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Creates the diary rows for a reviewed photo estimate in one
+ *       transaction. In `grouped` mode this is an ad-hoc food_entry_meals
+ *       parent plus one component food_entries row per ingredient; in
+ *       `combined` mode it is a single food and a single entry. Ingredients
+ *       that matched an existing food reuse it; the rest are created as normal
+ *       reusable foods.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [mode, entry_date, meal_type, name, items]
+ *             properties:
+ *               mode:
+ *                 type: string
+ *                 enum: [grouped, combined]
+ *                 description: >
+ *                   `grouped` creates an ad-hoc food_entry_meals parent with one
+ *                   component entry per ingredient. `combined` logs a single
+ *                   food and requires exactly one `new` item.
+ *               user_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Log on behalf of another user; requires `diary` permission.
+ *               entry_date:
+ *                 type: string
+ *                 format: date
+ *                 description: Calendar day (YYYY-MM-DD).
+ *               entry_time:
+ *                 type: string
+ *                 nullable: true
+ *               meal_type:
+ *                 type: string
+ *               meal_type_id:
+ *                 type: string
+ *                 format: uuid
+ *                 nullable: true
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *                 nullable: true
+ *               save_as_meal:
+ *                 type: object
+ *                 description: Also save this plate as a reusable meal template (grouped mode only).
+ *                 required: [name]
+ *                 properties:
+ *                   name: { type: string }
+ *               items:
+ *                 type: array
+ *                 minItems: 1
+ *                 maxItems: 25
+ *                 items:
+ *                   oneOf:
+ *                     - type: object
+ *                       required: [source, food_id, variant_id, quantity, unit]
+ *                       properties:
+ *                         source: { type: string, enum: [existing] }
+ *                         food_id: { type: string, format: uuid }
+ *                         variant_id: { type: string, format: uuid }
+ *                         quantity: { type: number }
+ *                         unit: { type: string }
+ *                     - type: object
+ *                       required: [source, food, quantity, unit]
+ *                       properties:
+ *                         source: { type: string, enum: [new] }
+ *                         quantity:
+ *                           type: number
+ *                           description: Amount eaten, in `unit` (grams).
+ *                         unit: { type: string }
+ *                         food:
+ *                           type: object
+ *                           description: >
+ *                             Nutrition is always per 100 g (serving_size 100,
+ *                             serving_unit "g"); the amount eaten travels on
+ *                             `quantity`. The server owns provider_type and
+ *                             shared_with_public. Ingredients are created as
+ *                             normal reusable foods, so a later photo can
+ *                             match them.
+ *                           required: [name, serving_size, serving_unit, calories, protein, carbs, fat]
+ *                           properties:
+ *                             name: { type: string }
+ *                             brand: { type: string, nullable: true }
+ *                             serving_size: { type: number }
+ *                             serving_unit: { type: string }
+ *                             calories: { type: number }
+ *                             protein: { type: number }
+ *                             carbs: { type: number }
+ *                             fat: { type: number }
+ *                             dietary_fiber: { type: number }
+ *                             sugars: { type: number }
+ *     responses:
+ *       201:
+ *         description: The estimate was logged.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [mode, food_entry_meal_id, food_entry_ids, created_food_ids]
+ *               properties:
+ *                 mode:
+ *                   type: string
+ *                   enum: [grouped, combined]
+ *                 food_entry_meal_id:
+ *                   type: string
+ *                   format: uuid
+ *                   nullable: true
+ *                   description: Null in combined mode; there is no parent meal.
+ *                 meal_template_id:
+ *                   type: string
+ *                   format: uuid
+ *                   nullable: true
+ *                   description: The created meal template id, or null if not requested or creation failed.
+ *                 food_entry_ids:
+ *                   type: array
+ *                   items: { type: string, format: uuid }
+ *                 created_food_ids:
+ *                   type: array
+ *                   items: { type: string, format: uuid }
+ *                   description: Only foods this request created; matched foods are not listed.
+ *       400:
+ *         description: Invalid payload or meal type.
+ *       403:
+ *         description: User does not have permission to log for this user.
+ *       404:
+ *         description: A referenced food or variant was not found.
+ */
+router.post(
+  '/from-photo-estimate',
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    // The router mounts `authenticate` but not the diary permission check, so
+    // this route asks for it explicitly.
+    const parsed = foodPhotoLogRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Invalid food photo log payload.',
+        code: 'INVALID_REQUEST',
+        issues: parsed.error.issues,
+      });
+    }
+
+    const userId = req.userId;
+    const targetUserId = req.body?.user_id || userId;
+    if (targetUserId !== userId) {
+      const hasPermission = await canAccessUserData(
+        targetUserId,
+        'diary',
+        userId
+      );
+      if (!hasPermission) {
+        return res.status(403).json({ error: 'Forbidden', code: 'FORBIDDEN' });
+      }
+    }
+
+    try {
+      const result = await foodPhotoLogService.createPhotoLoggedMeal(
+        targetUserId,
+        userId,
+        parsed.data
+      );
+      log(
+        'info',
+        `User ${userId} logged a ${parsed.data.mode} photo estimate with ${parsed.data.items.length} item(s)`
+      );
+      clearUserTdeeCache(targetUserId);
+
+      // The reusable template is built AFTER the log commits, deliberately.
+      //
+      // It reads the entries back out of the diary, so it cannot see them while
+      // they are still uncommitted. More importantly the diary rows are the
+      // thing the user asked for and the template is a convenience on top: if
+      // template creation fails, losing a correctly logged meal to roll it back
+      // would be the worse outcome. The response reports meal_template_id as
+      // null instead, and "convert to meal" remains available.
+      let mealTemplateId: string | null = null;
+      const saveAsMeal = parsed.data.save_as_meal;
+      if (saveAsMeal && result.food_entry_meal_id) {
+        try {
+          const meal = await mealService.createMealFromDiaryEntries(
+            targetUserId,
+            parsed.data.entry_date,
+            parsed.data.meal_type,
+            saveAsMeal.name,
+            parsed.data.description,
+            false,
+            result.food_entry_meal_id,
+            // The diary holds the portion that was eaten; the template should
+            // hold the whole dish, so scale the entries back up by the
+            // reciprocal of the multiplier the log applied, and record the
+            // serving model that reproduces that portion from the template.
+            (parsed.data.serving_size * parsed.data.total_servings) /
+              parsed.data.consumed_quantity,
+            parsed.data.total_servings,
+            parsed.data.serving_size,
+            parsed.data.serving_unit
+          );
+          mealTemplateId = meal?.id ?? null;
+        } catch (mealError) {
+          log(
+            'warn',
+            `Photo estimate logged for user ${userId} but the meal template could not be saved: ${
+              mealError instanceof Error ? mealError.message : String(mealError)
+            }`
+          );
+        }
+      }
+
+      return res.status(201).json(
+        foodPhotoLogResponseSchema.parse({
+          ...result,
+          meal_template_id: mealTemplateId,
+        })
+      );
+    } catch (err) {
+      if (err instanceof PhotoLogError) {
+        const status =
+          err.code === 'FOOD_NOT_FOUND' || err.code === 'VARIANT_NOT_FOUND'
+            ? 404
+            : err.code === 'FORBIDDEN'
+              ? 403
+              : 400;
+        return res.status(status).json({ error: err.message, code: err.code });
+      }
+      return next(err);
+    }
+  }
+);
+
 /**
  * @swagger
  * /food-entry-meals/by-date/{date}:

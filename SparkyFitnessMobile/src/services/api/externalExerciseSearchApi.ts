@@ -8,7 +8,7 @@ export async function searchExternalExercises(
   providerType: string,
   providerId: string,
   page = 1,
-  pageSize = 20,
+  pageSize = 20
 ): Promise<PaginatedExternalExerciseSearchResult> {
   const params = new URLSearchParams({
     query,
@@ -36,7 +36,7 @@ export function isImportableExerciseSource(source: string): boolean {
 
 export async function importExercise(
   source: string,
-  externalId: string,
+  externalId: string
 ): Promise<Exercise> {
   // Server stores `images` as a JSON-stringified array; transformExerciseRow
   // parses it back so callers can index it as string[] (#1353 follow-up).

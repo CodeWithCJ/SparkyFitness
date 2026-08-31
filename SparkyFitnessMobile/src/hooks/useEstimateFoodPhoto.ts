@@ -7,7 +7,11 @@ import {
 } from '../services/api/externalFoodSearchApi';
 
 export function useEstimateFoodPhoto() {
-  return useMutation<FoodPhotoEstimateResponse, FoodPhotoEstimateError, EstimateFoodPhotoInput>({
+  return useMutation<
+    FoodPhotoEstimateResponse,
+    FoodPhotoEstimateError,
+    EstimateFoodPhotoInput
+  >({
     mutationFn: estimateFoodPhoto,
   });
 }

@@ -486,8 +486,7 @@ function filterByDateRange(
     // Interval-based payloads: use civilStartTime.date
     const interval = payload.interval as Record<string, unknown> | undefined;
     const civilStart = interval?.civilStartTime as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const csd = civilStart?.date as Record<string, number> | undefined;
     if (csd?.year) {
       const s = `${csd.year}-${String(csd.month).padStart(2, '0')}-${String(csd.day).padStart(2, '0')}`;

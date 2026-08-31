@@ -3,7 +3,10 @@ import { AppState } from 'react-native';
 import { act, render } from '@testing-library/react-native';
 
 import MedicationReminderReconciler from '../../src/components/MedicationReminderReconciler';
-import { useMedications, useMedicationEntries } from '../../src/hooks/useMedications';
+import {
+  useMedications,
+  useMedicationEntries,
+} from '../../src/hooks/useMedications';
 import { reconcileMedicationReminders } from '../../src/services/medicationReminderService';
 import { maybePromptForExactAlarmPermission } from '../../src/services/notifications';
 import {
@@ -25,20 +28,27 @@ jest.mock('../../src/services/notifications', () => ({
   maybePromptForExactAlarmPermission: jest.fn(async () => undefined),
 }));
 
-const mockUseMedications = useMedications as jest.MockedFunction<typeof useMedications>;
+const mockUseMedications = useMedications as jest.MockedFunction<
+  typeof useMedications
+>;
 const mockUseMedicationEntries = useMedicationEntries as jest.MockedFunction<
   typeof useMedicationEntries
 >;
 const mockReconcile = reconcileMedicationReminders as jest.MockedFunction<
   typeof reconcileMedicationReminders
 >;
-const mockMaybePrompt = maybePromptForExactAlarmPermission as jest.MockedFunction<
-  typeof maybePromptForExactAlarmPermission
->;
+const mockMaybePrompt =
+  maybePromptForExactAlarmPermission as jest.MockedFunction<
+    typeof maybePromptForExactAlarmPermission
+  >;
 
 const medications = [{ id: 'med-1', name: 'Metformin' }] as never;
 const timedMedications = [
-  { id: 'med-1', name: 'Metformin', schedules: [{ id: 'sched-1', time_of_day: '09:00' }] },
+  {
+    id: 'med-1',
+    name: 'Metformin',
+    schedules: [{ id: 'sched-1', time_of_day: '09:00' }],
+  },
 ] as never;
 const entries = [{ id: 'entry-1', medication_id: 'med-1' }] as never;
 
@@ -95,7 +105,10 @@ describe('MedicationReminderReconciler', () => {
     render(<MedicationReminderReconciler />);
 
     const today = getTodayDate();
-    expect(mockUseMedications).toHaveBeenCalledWith({ activeOnly: true, enabled: true });
+    expect(mockUseMedications).toHaveBeenCalledWith({
+      activeOnly: true,
+      enabled: true,
+    });
     expect(mockUseMedicationEntries).toHaveBeenCalledWith({
       fromDate: today,
       toDate: today,
@@ -126,13 +139,13 @@ describe('MedicationReminderReconciler', () => {
       // reminders; it must run even though the queries never load.
       expect(mockReconcile).toHaveBeenCalledWith([], []);
       expect(mockUseMedications).toHaveBeenCalledWith(
-        expect.objectContaining({ enabled: false }),
+        expect.objectContaining({ enabled: false })
       );
       expect(mockUseMedicationEntries).toHaveBeenCalledWith(
-        expect.objectContaining({ enabled: false }),
+        expect.objectContaining({ enabled: false })
       );
       expect(appStateSpy).not.toHaveBeenCalled();
-    },
+    }
   );
 
   it('nudges for the exact-alarm permission once timed schedules load', () => {

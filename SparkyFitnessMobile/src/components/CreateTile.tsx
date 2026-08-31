@@ -33,7 +33,10 @@ const CreateTile: React.FC<CreateTileProps> = ({
     >
       <Icon name={icon} size={24} color={accentPrimary} />
       <View className="flex-1 ml-4">
-        <Text className="text-text-primary text-sm font-medium" numberOfLines={1}>
+        <Text
+          className="text-text-primary text-sm font-medium"
+          numberOfLines={1}
+        >
           {title}
         </Text>
         <Text className="text-text-secondary text-xs" numberOfLines={1}>

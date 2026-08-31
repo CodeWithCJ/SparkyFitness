@@ -100,7 +100,9 @@ describe('preferences', () => {
     });
 
     test('logs error and returns null on load error', async () => {
-      mockAsyncStorage.getItem.mockRejectedValueOnce(new Error('Storage error'));
+      mockAsyncStorage.getItem.mockRejectedValueOnce(
+        new Error('Storage error')
+      );
 
       const result = await loadHealthPreference('testKey');
 
@@ -128,7 +130,9 @@ describe('preferences', () => {
       const result = await loadStringPreference('serverUrl');
 
       expect(result).toBe('https://example.com');
-      expect(mockAsyncStorage.getItem).toHaveBeenCalledWith('@HealthConnect:serverUrl');
+      expect(mockAsyncStorage.getItem).toHaveBeenCalledWith(
+        '@HealthConnect:serverUrl'
+      );
     });
 
     test('returns null when key does not exist', async () => {
@@ -142,7 +146,10 @@ describe('preferences', () => {
     test('logs error and returns undefined on save error', async () => {
       mockAsyncStorage.setItem.mockRejectedValueOnce(new Error('Storage full'));
 
-      const result = await saveStringPreference('serverUrl', 'https://example.com');
+      const result = await saveStringPreference(
+        'serverUrl',
+        'https://example.com'
+      );
 
       expect(result).toBeUndefined();
       expect(mockAddLog).toHaveBeenCalledWith(
@@ -152,7 +159,9 @@ describe('preferences', () => {
     });
 
     test('logs error and returns null on load error', async () => {
-      mockAsyncStorage.getItem.mockRejectedValueOnce(new Error('Storage error'));
+      mockAsyncStorage.getItem.mockRejectedValueOnce(
+        new Error('Storage error')
+      );
 
       const result = await loadStringPreference('serverUrl');
 
@@ -180,7 +189,9 @@ describe('preferences', () => {
       const result = await loadSyncDuration();
 
       expect(result).toBe('7d');
-      expect(mockAsyncStorage.getItem).toHaveBeenCalledWith('@HealthConnect:syncDuration');
+      expect(mockAsyncStorage.getItem).toHaveBeenCalledWith(
+        '@HealthConnect:syncDuration'
+      );
     });
 
     test("returns '24h' as default when no value stored", async () => {
@@ -192,7 +203,9 @@ describe('preferences', () => {
     });
 
     test("logs error and returns '24h' on load error", async () => {
-      mockAsyncStorage.getItem.mockRejectedValueOnce(new Error('Storage error'));
+      mockAsyncStorage.getItem.mockRejectedValueOnce(
+        new Error('Storage error')
+      );
 
       const result = await loadSyncDuration();
 
@@ -216,7 +229,14 @@ describe('preferences', () => {
     });
 
     test('stores various duration values correctly', async () => {
-      const durations: SyncDuration[] = ['today', '24h', '3d', '7d', '30d', '90d'];
+      const durations: SyncDuration[] = [
+        'today',
+        '24h',
+        '3d',
+        '7d',
+        '30d',
+        '90d',
+      ];
 
       for (const duration of durations) {
         jest.clearAllMocks();

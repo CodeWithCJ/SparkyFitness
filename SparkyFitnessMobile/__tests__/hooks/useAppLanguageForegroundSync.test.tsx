@@ -17,7 +17,9 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(() => Promise.resolve()),
 }));
 
-const mockSync = syncAppLanguageFromSystem as jest.MockedFunction<typeof syncAppLanguageFromSystem>;
+const mockSync = syncAppLanguageFromSystem as jest.MockedFunction<
+  typeof syncAppLanguageFromSystem
+>;
 const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 
 describe('useAppLanguageForegroundSync', () => {
@@ -30,10 +32,12 @@ describe('useAppLanguageForegroundSync', () => {
     __resetAppPreferencesStoreForTests();
     listeners = [];
     removeSubscription = jest.fn();
-    jest.spyOn(AppState, 'addEventListener').mockImplementation((_type, handler) => {
-      listeners.push(handler as (state: string) => void);
-      return { remove: removeSubscription } as never;
-    });
+    jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation((_type, handler) => {
+        listeners.push(handler as (state: string) => void);
+        return { remove: removeSubscription } as never;
+      });
     osSpy = jest.replaceProperty(Platform, 'OS', 'android');
   });
 
@@ -86,7 +90,7 @@ describe('useAppLanguageForegroundSync', () => {
     await waitFor(() => {
       expect(mockAddLog).toHaveBeenCalledWith(
         expect.stringContaining('Foreground resync failed'),
-        'ERROR',
+        'ERROR'
       );
     });
   });

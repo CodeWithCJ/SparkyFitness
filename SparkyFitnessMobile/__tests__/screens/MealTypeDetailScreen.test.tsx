@@ -1,7 +1,11 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import MealTypeDetailScreen from '../../src/screens/MealTypeDetailScreen';
-import { useDailySummary, useServerConnection, useMealTypes } from '../../src/hooks';
+import {
+  useDailySummary,
+  useServerConnection,
+  useMealTypes,
+} from '../../src/hooks';
 import { usePreferences } from '../../src/hooks/usePreferences';
 import { useCopyFoodEntries } from '../../src/hooks/useCopyFoodEntries';
 import type { FoodEntry } from '../../src/types/foodEntries';
@@ -41,7 +45,9 @@ jest.mock('../../src/hooks/useScreenHeader', () => {
   const { Pressable } = require('react-native');
   return {
     useScreenHeader: (config: {
-      right?: { accessibilityLabel?: string; onPress?: () => void } | { accessibilityLabel?: string; onPress?: () => void }[];
+      right?:
+        | { accessibilityLabel?: string; onPress?: () => void }
+        | { accessibilityLabel?: string; onPress?: () => void }[];
     }) => {
       const items = Array.isArray(config.right)
         ? config.right
@@ -56,8 +62,8 @@ jest.mock('../../src/hooks/useScreenHeader', () => {
             key: i,
             accessibilityLabel: item.accessibilityLabel,
             onPress: item.onPress,
-          }),
-        ),
+          })
+        )
       );
     },
   };
@@ -89,10 +95,15 @@ jest.mock('../../src/components/CopyMealSheet', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: ReactModule.forwardRef((_props: unknown, ref: React.Ref<unknown>) => {
-      ReactModule.useImperativeHandle(ref, () => ({ present: jest.fn(), dismiss: jest.fn() }));
-      return <View testID="copy-sheet" />;
-    }),
+    default: ReactModule.forwardRef(
+      (_props: unknown, ref: React.Ref<unknown>) => {
+        ReactModule.useImperativeHandle(ref, () => ({
+          present: jest.fn(),
+          dismiss: jest.fn(),
+        }));
+        return <View testID="copy-sheet" />;
+      }
+    ),
   };
 });
 
@@ -118,21 +129,58 @@ jest.mock('../../src/components/Icon', () => {
   return { __esModule: true, default: () => <View testID="icon" /> };
 });
 
-const mockUseDailySummary = useDailySummary as jest.MockedFunction<typeof useDailySummary>;
-const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
-const mockUseMealTypes = useMealTypes as jest.MockedFunction<typeof useMealTypes>;
-const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
-const mockUseCopyFoodEntries = useCopyFoodEntries as jest.MockedFunction<typeof useCopyFoodEntries>;
+const mockUseDailySummary = useDailySummary as jest.MockedFunction<
+  typeof useDailySummary
+>;
+const mockUseServerConnection = useServerConnection as jest.MockedFunction<
+  typeof useServerConnection
+>;
+const mockUseMealTypes = useMealTypes as jest.MockedFunction<
+  typeof useMealTypes
+>;
+const mockUsePreferences = usePreferences as jest.MockedFunction<
+  typeof usePreferences
+>;
+const mockUseCopyFoodEntries = useCopyFoodEntries as jest.MockedFunction<
+  typeof useCopyFoodEntries
+>;
 
 const mealTypes: MealType[] = [
-  { id: 'sys-b', name: 'breakfast', sort_order: 0, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
-  { id: 'custom-pw', name: 'Pre-Workout', sort_order: 0, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
+  {
+    id: 'sys-b',
+    name: 'breakfast',
+    sort_order: 0,
+    user_id: null,
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+  },
+  {
+    id: 'custom-pw',
+    name: 'Pre-Workout',
+    sort_order: 0,
+    user_id: 'user1',
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+  },
   // A CUSTOM category deliberately named like a system type.
-  { id: 'custom-d', name: 'dinner', sort_order: 2, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
+  {
+    id: 'custom-d',
+    name: 'dinner',
+    sort_order: 2,
+    user_id: 'user1',
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+  },
 ];
 
-const entry = (id: string, meal_type_id: string, meal_type: string): FoodEntry =>
-  ({ id, meal_type_id, meal_type } as FoodEntry);
+const entry = (
+  id: string,
+  meal_type_id: string,
+  meal_type: string
+): FoodEntry => ({ id, meal_type_id, meal_type }) as FoodEntry;
 
 const setSummary = (foodEntries: FoodEntry[]) => {
   mockUseDailySummary.mockReturnValue({
@@ -149,33 +197,56 @@ const setSummary = (foodEntries: FoodEntry[]) => {
 };
 
 const renderScreen = (params: ScreenProps['route']['params']) => {
-  mockUseMealTypes.mockReturnValue({ mealTypes, defaultMealTypeId: 'sys-b' } as never);
-  mockUseServerConnection.mockReturnValue({ isConnected: true, isLoading: false } as never);
-  mockUsePreferences.mockReturnValue({ preferences: {}, isLoading: false } as never);
-  mockUseCopyFoodEntries.mockReturnValue({ copyMeal: jest.fn(), isPending: false } as never);
+  mockUseMealTypes.mockReturnValue({
+    mealTypes,
+    defaultMealTypeId: 'sys-b',
+  } as never);
+  mockUseServerConnection.mockReturnValue({
+    isConnected: true,
+    isLoading: false,
+  } as never);
+  mockUsePreferences.mockReturnValue({
+    preferences: {},
+    isLoading: false,
+  } as never);
+  mockUseCopyFoodEntries.mockReturnValue({
+    copyMeal: jest.fn(),
+    isPending: false,
+  } as never);
   return render(
     <MealTypeDetailScreen
       navigation={mockNavigation}
       route={{ key: 'MealTypeDetail-key', name: 'MealTypeDetail', params }}
-    />,
+    />
   );
 };
 
 describe('MealTypeDetailScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    setSummary([entry('1', 'custom-pw', 'Pre-Workout'), entry('2', 'sys-b', 'breakfast')]);
+    setSummary([
+      entry('1', 'custom-pw', 'Pre-Workout'),
+      entry('2', 'sys-b', 'breakfast'),
+    ]);
   });
 
   it('filters entries by canonical meal type id and renders the literal custom label', () => {
-    const view = renderScreen({ date: '2026-01-01', mealTypeId: 'custom-pw', mealType: 'Pre-Workout' });
+    const view = renderScreen({
+      date: '2026-01-01',
+      mealTypeId: 'custom-pw',
+      mealType: 'Pre-Workout',
+    });
 
     expect(view.getByText('Pre-Workout')).toBeTruthy();
     expect(view.getAllByTestId('food-row')).toHaveLength(1);
   });
 
   it('renders the localized system label when filtering a system type by id', () => {
-    const view = renderScreen({ date: '2026-01-01', mealTypeId: 'sys-b', mealType: 'breakfast' });
+    const view = renderScreen({
+      date: '2026-01-01',
+      mealTypeId: 'sys-b',
+      mealType: 'breakfast',
+    });
 
     expect(view.getByText('Breakfast')).toBeTruthy();
     expect(view.getAllByTestId('food-row')).toHaveLength(1);
@@ -205,7 +276,11 @@ describe('MealTypeDetailScreen', () => {
       entry('1', 'custom-d', 'dinner'),
       entry('2', 'sys-b', 'breakfast'),
     ]);
-    const view = renderScreen({ date: '2026-01-01', mealTypeId: 'custom-d', mealType: 'dinner' });
+    const view = renderScreen({
+      date: '2026-01-01',
+      mealTypeId: 'custom-d',
+      mealType: 'dinner',
+    });
 
     // Literal custom name — never the localized system "Kolacja"/"Dinner".
     expect(view.getByText('dinner')).toBeTruthy();
@@ -214,7 +289,11 @@ describe('MealTypeDetailScreen', () => {
   });
 
   it('Add Food header action navigates to FoodSearch preserving the canonical mealTypeId', () => {
-    const view = renderScreen({ date: '2026-01-01', mealTypeId: 'custom-pw', mealType: 'Pre-Workout' });
+    const view = renderScreen({
+      date: '2026-01-01',
+      mealTypeId: 'custom-pw',
+      mealType: 'Pre-Workout',
+    });
     fireEvent.press(view.getByLabelText('Add Food'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('FoodSearch', {
       date: '2026-01-01',
@@ -223,12 +302,15 @@ describe('MealTypeDetailScreen', () => {
   });
 
   it('Add Food never passes a stale hidden/deleted id (resolvedType missing -> no id)', () => {
-    const view = renderScreen({ date: '2026-01-01', mealTypeId: 'gone-id', mealType: 'Old Custom' });
+    const view = renderScreen({
+      date: '2026-01-01',
+      mealTypeId: 'gone-id',
+      mealType: 'Old Custom',
+    });
     fireEvent.press(view.getByLabelText('Add Food'));
     expect(mockNavigation.navigate).toHaveBeenCalledWith('FoodSearch', {
       date: '2026-01-01',
       mealTypeId: undefined,
     });
   });
-
 });

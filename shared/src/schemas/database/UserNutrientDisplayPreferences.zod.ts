@@ -39,6 +39,12 @@ export const userNutrientDisplayPreferencesMutatorSchema = z.object({
   updated_at: z.date().optional(),
 });
 
-export type UserNutrientDisplayPreferences = z.infer<typeof userNutrientDisplayPreferencesSchema>;
-export type UserNutrientDisplayPreferencesInitializer = z.infer<typeof userNutrientDisplayPreferencesInitializerSchema>;
-export type UserNutrientDisplayPreferencesMutator = z.infer<typeof userNutrientDisplayPreferencesMutatorSchema>;
+export type UserNutrientDisplayPreferences = z.infer<
+  typeof userNutrientDisplayPreferencesSchema
+>;
+export type UserNutrientDisplayPreferencesInitializer = z.infer<
+  typeof userNutrientDisplayPreferencesInitializerSchema
+>;
+export type UserNutrientDisplayPreferencesMutator = z.infer<
+  typeof userNutrientDisplayPreferencesMutatorSchema
+>;

@@ -5,7 +5,8 @@ import { AppState } from 'react-native';
 export type LogStatus = 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR';
 
 // Threshold used by both the capture-level and view-filter settings.
-export type LogThreshold = 'all' | 'no_debug' | 'warnings_errors' | 'errors_only';
+export type LogThreshold =
+  'all' | 'no_debug' | 'warnings_errors' | 'errors_only';
 
 export interface LogEntry {
   timestamp: string;
@@ -94,14 +95,17 @@ let persistedLoadPromise: Promise<LogEntry[]> | null = null;
 // level→status). The mirror hands out already-normalized entries, so pruneLogs
 // can no longer detect that by re-inspecting them and relies on this instead.
 let persistedNeedsRewrite = false;
-let appStateSubscription: ReturnType<typeof AppState.addEventListener> | null = null;
+let appStateSubscription: ReturnType<typeof AppState.addEventListener> | null =
+  null;
 
 /**
  * Normalizes a stored log entry to the current on-disk shape. Returns
  * `changed: true` when the input required rewriting (legacy `level` field
  * or `status: 'SUCCESS'`) so callers can decide whether to write back.
  */
-const migrateLogEntry = (entry: StoredLogEntry): { entry: LogEntry; changed: boolean } => {
+const migrateLogEntry = (
+  entry: StoredLogEntry
+): { entry: LogEntry; changed: boolean } => {
   let changed = false;
   let status: LogStatus;
 
@@ -141,9 +145,11 @@ const loadPersistedLogs = async (): Promise<LogEntry[]> => {
     persistedLoadPromise = (async () => {
       const raw = await AsyncStorage.getItem(LOG_KEY);
       const parsed: StoredLogEntry[] = raw ? JSON.parse(raw) : [];
-      const migrated = (Array.isArray(parsed) ? parsed : []).map(migrateLogEntry);
-      persistedNeedsRewrite = migrated.some(m => m.changed);
-      persistedLogs = migrated.map(m => m.entry);
+      const migrated = (Array.isArray(parsed) ? parsed : []).map(
+        migrateLogEntry
+      );
+      persistedNeedsRewrite = migrated.some((m) => m.changed);
+      persistedLogs = migrated.map((m) => m.entry);
       return persistedLogs;
     })().finally(() => {
       persistedLoadPromise = null;
@@ -179,7 +185,10 @@ const flushBuffer = async (): Promise<void> => {
   const doFlush = async (): Promise<void> => {
     try {
       const existingLogs = await loadPersistedLogs();
-      const merged = [...entriesToFlush, ...existingLogs].slice(0, MAX_LOG_ENTRIES);
+      const merged = [...entriesToFlush, ...existingLogs].slice(
+        0,
+        MAX_LOG_ENTRIES
+      );
       // Kept in memory so the next flush does not re-read and re-parse the
       // whole store. A burst of sync errors used to flush every 20 entries,
       // each flush parsing and re-serializing the full ~240 KB of logs on the
@@ -198,7 +207,10 @@ const flushBuffer = async (): Promise<void> => {
         // Restore entries to buffer for retry
         writeBuffer = [...entriesToFlush, ...writeBuffer];
       } else {
-        console.error('[LogService] Dropping buffered entries after repeated flush failures', error);
+        console.error(
+          '[LogService] Dropping buffered entries after repeated flush failures',
+          error
+        );
       }
     }
   };
@@ -215,7 +227,7 @@ const scheduleFlush = (): void => {
   if (flushTimer === null) {
     flushTimer = setTimeout(() => {
       flushTimer = null;
-      flushBuffer().catch(error => {
+      flushBuffer().catch((error) => {
         console.error('[LogService] Scheduled flush failed:', error);
       });
     }, FLUSH_INTERVAL_MS);
@@ -279,7 +291,7 @@ export const pruneLogs = async (daysToKeep: number = 3): Promise<void> => {
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
     cutoffDate.setHours(0, 0, 0, 0); // Set to beginning of the day
 
-    const filteredLogs = logs.filter(log => {
+    const filteredLogs = logs.filter((log) => {
       const logDate = new Date(log.timestamp);
       return logDate >= cutoffDate;
     });
@@ -289,7 +301,9 @@ export const pruneLogs = async (daysToKeep: number = 3): Promise<void> => {
       persistedLogs = filteredLogs;
       persistedNeedsRewrite = false;
       await AsyncStorage.setItem(LOG_KEY, JSON.stringify(filteredLogs));
-      console.log(`[LogService] Pruned logs: removed ${removedCount} old entries${didNormalize ? ' and normalized legacy entries' : ''}.`);
+      console.log(
+        `[LogService] Pruned logs: removed ${removedCount} old entries${didNormalize ? ' and normalized legacy entries' : ''}.`
+      );
     }
   } catch (error) {
     console.error('[LogService] Failed to prune logs', error);
@@ -310,11 +324,12 @@ export const getLogs = async (
 
     let logs: LogEntry[] = await loadPersistedLogs();
 
-    const viewFilter = filter || await getViewFilter();
+    const viewFilter = filter || (await getViewFilter());
     const viewThreshold = THRESHOLD_LEVEL[viewFilter];
 
-    logs = logs.filter(log => {
-      const statusSeverity = STATUS_SEVERITY[log.status] ?? STATUS_SEVERITY['INFO'];
+    logs = logs.filter((log) => {
+      const statusSeverity =
+        STATUS_SEVERITY[log.status] ?? STATUS_SEVERITY['INFO'];
       return statusSeverity <= viewThreshold;
     });
 
@@ -429,7 +444,10 @@ export const getViewFilter = async (): Promise<LogThreshold> => {
       // 2) Old combined `log_filter` — users set this expecting it to
       // control what they *saw*, so it migrates into the view filter.
       const oldFilter = await AsyncStorage.getItem(OLD_LOG_FILTER_KEY);
-      if (oldFilter && THRESHOLD_LEVEL[oldFilter as LogThreshold] !== undefined) {
+      if (
+        oldFilter &&
+        THRESHOLD_LEVEL[oldFilter as LogThreshold] !== undefined
+      ) {
         await AsyncStorage.setItem(LOG_VIEW_FILTER_KEY, oldFilter);
         await AsyncStorage.removeItem(OLD_LOG_FILTER_KEY);
         cachedViewFilter = oldFilter as LogThreshold;
@@ -488,13 +506,20 @@ export const getViewSelectedStatuses = async (): Promise<LogStatus[]> => {
     const stored = await AsyncStorage.getItem(LOG_VIEW_SELECTED_STATUSES_KEY);
     if (stored) {
       const parsed: unknown = JSON.parse(stored);
-      cachedSelectedStatuses = Array.isArray(parsed) ? parsed.filter(isLogStatus) : [];
+      cachedSelectedStatuses = Array.isArray(parsed)
+        ? parsed.filter(isLogStatus)
+        : [];
       return cachedSelectedStatuses;
     }
 
     const legacyThreshold = await AsyncStorage.getItem(LOG_VIEW_FILTER_KEY);
-    if (legacyThreshold && THRESHOLD_LEVEL[legacyThreshold as LogThreshold] !== undefined) {
-      cachedSelectedStatuses = [...THRESHOLD_TO_STATUSES[legacyThreshold as LogThreshold]];
+    if (
+      legacyThreshold &&
+      THRESHOLD_LEVEL[legacyThreshold as LogThreshold] !== undefined
+    ) {
+      cachedSelectedStatuses = [
+        ...THRESHOLD_TO_STATUSES[legacyThreshold as LogThreshold],
+      ];
       return cachedSelectedStatuses;
     }
 
@@ -519,7 +544,7 @@ export const setViewSelectedStatuses = async (
     const sanitized = statuses.filter(isLogStatus);
     await AsyncStorage.setItem(
       LOG_VIEW_SELECTED_STATUSES_KEY,
-      JSON.stringify(sanitized),
+      JSON.stringify(sanitized)
     );
     cachedSelectedStatuses = sanitized;
   } catch (error) {
@@ -547,15 +572,16 @@ export const getLogSummary = async (
       ERROR: 0,
     };
 
-    const viewFilter = filter || await getViewFilter();
+    const viewFilter = filter || (await getViewFilter());
     const viewThreshold = THRESHOLD_LEVEL[viewFilter];
 
     // Filter logs for today
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    logs.forEach(log => {
-      const statusSeverity = STATUS_SEVERITY[log.status] ?? STATUS_SEVERITY['INFO'];
+    logs.forEach((log) => {
+      const statusSeverity =
+        STATUS_SEVERITY[log.status] ?? STATUS_SEVERITY['INFO'];
       if (statusSeverity > viewThreshold) {
         return;
       }
@@ -587,7 +613,7 @@ export const initLogService = async (): Promise<void> => {
   appStateSubscription?.remove();
   appStateSubscription = AppState.addEventListener('change', (nextState) => {
     if (nextState === 'background' || nextState === 'inactive') {
-      flushBuffer().catch(error => {
+      flushBuffer().catch((error) => {
         console.error('[LogService] Background flush failed:', error);
       });
     }

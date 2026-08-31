@@ -1,12 +1,7 @@
 import { FormFoodVariant } from '@/utils/foodForm';
 
 export type GlycemicIndex =
-  | 'None'
-  | 'Very Low'
-  | 'Low'
-  | 'Medium'
-  | 'High'
-  | 'Very High';
+  'None' | 'Very Low' | 'Low' | 'Medium' | 'High' | 'Very High';
 
 export interface FoodVariant {
   id?: string;

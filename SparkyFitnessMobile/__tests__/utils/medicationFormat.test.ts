@@ -31,7 +31,7 @@ describe('formatDose', () => {
 
   it('falls back to strength when no dose is set', () => {
     expect(formatDose({ strength_value: 10, strength_unit: 'mg' })).toBe(
-      '10 mg',
+      '10 mg'
     );
   });
 
@@ -78,13 +78,13 @@ describe('formatStrengthPerUnit', () => {
 
   it('returns null when there is no strength', () => {
     expect(
-      formatStrengthPerUnit({ dose_amount: 1, dose_unit: 'tablet' }),
+      formatStrengthPerUnit({ dose_amount: 1, dose_unit: 'tablet' })
     ).toBeNull();
   });
 
   it('returns null when strength is already the primary dose display', () => {
     expect(
-      formatStrengthPerUnit({ strength_value: 10, strength_unit: 'mg' }),
+      formatStrengthPerUnit({ strength_value: 10, strength_unit: 'mg' })
     ).toBeNull();
   });
 
@@ -132,7 +132,7 @@ describe('formatWithMeal', () => {
 describe('describeSchedule', () => {
   it('describes a daily schedule with its time', () => {
     expect(
-      describeSchedule({ schedule_type_id: 'daily', time_of_day: '08:00' }),
+      describeSchedule({ schedule_type_id: 'daily', time_of_day: '08:00' })
     ).toBe('Daily at 8:00 AM');
   });
 
@@ -146,28 +146,28 @@ describe('describeSchedule', () => {
         schedule_type_id: 'specific_days',
         days_of_week: [5, 1, 3],
         time_of_day: '21:00',
-      }),
+      })
     ).toBe('Mon, Wed, Fri at 9:00 PM');
   });
 
   it('falls back to Weekly when day data is missing', () => {
     expect(
-      describeSchedule({ schedule_type_id: 'weekly', days_of_week: [] }),
+      describeSchedule({ schedule_type_id: 'weekly', days_of_week: [] })
     ).toBe('Weekly');
   });
 
   it('describes every-n-days intervals', () => {
     expect(
-      describeSchedule({ schedule_type_id: 'every_n_days', interval_days: 3 }),
+      describeSchedule({ schedule_type_id: 'every_n_days', interval_days: 3 })
     ).toBe('Every 3 days');
     expect(
-      describeSchedule({ schedule_type_id: 'every_n_days', interval_days: 1 }),
+      describeSchedule({ schedule_type_id: 'every_n_days', interval_days: 1 })
     ).toBe('Daily');
   });
 
   it('describes monthly schedules', () => {
     expect(
-      describeSchedule({ schedule_type_id: 'monthly', day_of_month: 15 }),
+      describeSchedule({ schedule_type_id: 'monthly', day_of_month: 15 })
     ).toBe('Monthly on day 15');
     expect(describeSchedule({ schedule_type_id: 'monthly' })).toBe('Monthly');
   });
@@ -178,19 +178,19 @@ describe('describeSchedule', () => {
         schedule_type_id: 'cyclic',
         cycle_on_days: 21,
         cycle_off_days: 7,
-      }),
+      })
     ).toBe('21 days on, 7 days off');
   });
 
   it('labels PRN as-needed and ignores any time', () => {
     expect(
-      describeSchedule({ schedule_type_id: 'prn', time_of_day: '08:00' }),
+      describeSchedule({ schedule_type_id: 'prn', time_of_day: '08:00' })
     ).toBe('As needed');
   });
 
   it('title-cases unknown schedule types', () => {
     expect(describeSchedule({ schedule_type_id: 'twice_daily' })).toBe(
-      'Twice daily',
+      'Twice daily'
     );
   });
 });
@@ -202,7 +202,7 @@ describe('describeSchedules', () => {
 
   it('summarizes a single schedule', () => {
     expect(
-      describeSchedules([{ schedule_type_id: 'daily', time_of_day: '08:00' }]),
+      describeSchedules([{ schedule_type_id: 'daily', time_of_day: '08:00' }])
     ).toBe('Daily at 8:00 AM');
   });
 
@@ -211,7 +211,7 @@ describe('describeSchedules', () => {
       describeSchedules([
         { schedule_type_id: 'daily', time_of_day: '20:00' },
         { schedule_type_id: 'daily', time_of_day: '08:00' },
-      ]),
+      ])
     ).toBe('Daily at 8:00 AM & 8:00 PM');
   });
 
@@ -224,7 +224,7 @@ describe('describeSchedules', () => {
           days_of_week: [1, 3],
           time_of_day: '21:00',
         },
-      ]),
+      ])
     ).toBe('Daily at 8:00 AM; Mon, Wed at 9:00 PM');
   });
 
@@ -233,7 +233,7 @@ describe('describeSchedules', () => {
       describeSchedules([
         { schedule_type_id: 'daily', time_of_day: '08:00' },
         { schedule_type_id: 'prn' },
-      ]),
+      ])
     ).toBe('Daily at 8:00 AM; As needed');
   });
 
@@ -242,13 +242,13 @@ describe('describeSchedules', () => {
       describeSchedules([
         { schedule_type_id: 'daily', time_of_day: '08:00' },
         { schedule_type_id: 'daily', time_of_day: '20:00', active: false },
-      ]),
+      ])
     ).toBe('Daily at 8:00 AM');
   });
 
   it('returns an empty summary when every schedule is inactive', () => {
     expect(
-      describeSchedules([{ schedule_type_id: 'daily', active: false }]),
+      describeSchedules([{ schedule_type_id: 'daily', active: false }])
     ).toBe('');
   });
 });
@@ -274,7 +274,7 @@ describe('formatDose for supplements', () => {
 
   it('pluralises', () => {
     expect(formatDose(supplement({ dose_amount: 2, dose_unit: 'dose' }))).toBe(
-      '2 servings',
+      '2 servings'
     );
     expect(formatDose(supplement({ dose_amount: 2 }))).toBe('2 servings');
   });
@@ -286,7 +286,7 @@ describe('formatDose for supplements', () => {
   it('keeps a real unit set through the API', () => {
     // Only the placeholders get rewritten; "5 ml" is information, not a sentinel.
     expect(formatDose(supplement({ dose_amount: 5, dose_unit: 'ml' }))).toBe(
-      '5 ml',
+      '5 ml'
     );
   });
 
@@ -296,7 +296,7 @@ describe('formatDose for supplements', () => {
         dose_amount: 2,
         dose_unit: 'tablet',
         is_supplement: false,
-      }),
+      })
     ).toBe('2 tablet');
   });
 });

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
+  "entry": ["src/main.tsx", "src/tests/**/*.{ts,tsx}"],
+  "project": ["src/**/*.{ts,tsx}"],
+  "rules": {
+    "exports": "error",
+    "types": "off",
+    "files": "error",
+    "dependencies": "off",
+    "unlisted": "off",
+    "binaries": "off",
+    "unresolved": "off",
+    "duplicates": "off",
+  },
+  "ignoreExportsUsedInFile": true,
+  "ignore": ["src/components/ui/**"],
+}

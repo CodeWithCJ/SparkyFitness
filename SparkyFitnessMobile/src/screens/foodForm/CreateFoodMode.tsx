@@ -10,19 +10,26 @@ import Icon from '../../components/Icon';
 import StepperInput from '../../components/StepperInput';
 import FoodForm, { type FoodFormData } from '../../components/FoodForm';
 import FoodImagePicker from '../../components/FoodImagePicker';
-import {
-  splitPickerImages,
-  type PickerImage,
-} from '../../utils/pickerImages';
+import { splitPickerImages, type PickerImage } from '../../utils/pickerImages';
 import BottomSheetPicker from '../../components/BottomSheetPicker';
-import CalendarSheet, { type CalendarSheetRef } from '../../components/CalendarSheet';
+import CalendarSheet, {
+  type CalendarSheetRef,
+} from '../../components/CalendarSheet';
 import Switch from '../../components/ui/Switch';
 import { setPendingMealIngredientSelection } from '../../services/mealBuilderSelection';
+import {
+  buildMealPlanFoodAssignment,
+  setPendingMealPlanSelection,
+} from '../../services/mealPlanSelection';
 import { useMealTypes, usePreferences } from '../../hooks';
 import { useSaveFood } from '../../hooks/useSaveFood';
 import { useAddFoodEntry } from '../../hooks/useAddFoodEntry';
 import { getLocalizedMealLabel } from '../../constants/meals';
-import { getTodayDate, normalizeDate, formatDateLabel } from '../../utils/dateUtils';
+import {
+  getTodayDate,
+  normalizeDate,
+  formatDateLabel,
+} from '../../utils/dateUtils';
 import { parseOptional } from '../../types/foodInfo';
 import { createFoodVariant } from '../../services/api/foodsApi';
 import type { FoodFormScreenProps } from '../FoodFormScreen';
@@ -35,7 +42,10 @@ import {
   formatServingUnit,
 } from '../../utils/foodDetails';
 import { buildMealIngredientDraftFromSavedFood } from '../../utils/mealBuilderDraft';
-import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../../utils/numericInput';
+import {
+  DECIMAL_INPUT_REGEX,
+  parseDecimalInput,
+} from '../../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../../services/nativeTabBarPreference';
 import { useScreenHeader } from '../../hooks/useScreenHeader';
 import { BarcodeField, BARCODE_REGEX } from './BarcodeField';
@@ -47,25 +57,43 @@ import {
   isBlankEquivalent,
 } from './persistence';
 
-type CreateFoodParams = Extract<FoodFormScreenProps['route']['params'], { mode: 'create-food' }>;
+type CreateFoodParams = Extract<
+  FoodFormScreenProps['route']['params'],
+  { mode: 'create-food' }
+>;
 
 const CREATE_FORM_SOURCE_VARIANT_ID = '__create-form-source-variant__';
 
-export function CreateFoodMode({ params, navigation, routeKey }: { params: CreateFoodParams; navigation: FoodFormScreenProps['navigation']; routeKey: string }) {
-  const { t , i18n: translationI18n } = useTranslation();
-  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
+export function CreateFoodMode({
+  params,
+  navigation,
+  routeKey,
+}: {
+  params: CreateFoodParams;
+  navigation: FoodFormScreenProps['navigation'];
+  routeKey: string;
+}) {
+  const { t, i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl')
+    ? 'pl-PL'
+    : 'en-US';
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
-  const [textPrimary, textSecondary] = useCSSVariable(['--color-text-primary', '--color-text-secondary']) as [string, string];
+  const [textPrimary, textSecondary] = useCSSVariable([
+    '--color-text-primary',
+    '--color-text-secondary',
+  ]) as [string, string];
   const pickerMode = params.pickerMode ?? 'log-entry';
   const returnDepth = params.returnDepth ?? 1;
   const isMealBuilderMode = pickerMode === 'meal-builder';
+  const isMealPlanMode = pickerMode === 'meal-plan';
+  const isSelectionMode = isMealBuilderMode || isMealPlanMode;
   const isLibraryMode = pickerMode === 'library';
-  const isLogEntryMode = !isMealBuilderMode && !isLibraryMode;
+  const isLogEntryMode = !isSelectionMode && !isLibraryMode;
   const showBarcodeField = !isMealBuilderMode;
   const initialFood = params.initialFood;
   const hasImportedInitialFood = !!initialFood;
-  const showAutoScaleNutrition = isMealBuilderMode || hasImportedInitialFood;
+  const showAutoScaleNutrition = isSelectionMode || hasImportedInitialFood;
   const { preferences } = usePreferences({ enabled: showAutoScaleNutrition });
   const initialAutoScaleNutritionEnabled =
     preferences?.auto_scale_online_imports ?? false;
@@ -86,8 +114,9 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
     });
   }, [scannedBarcodeNonce, pendingScannedBarcode, navigation]);
   const importedSourceVariant = useMemo(
-    () => buildVariantFromInitialValues(initialFood, CREATE_FORM_SOURCE_VARIANT_ID),
-    [initialFood],
+    () =>
+      buildVariantFromInitialValues(initialFood, CREATE_FORM_SOURCE_VARIANT_ID),
+    [initialFood]
   );
   const [pendingUnitSelection, setPendingUnitSelection] =
     useState<FoodUnitSelectionResult | null>(() =>
@@ -96,7 +125,7 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
             kind: 'existing',
             variant: importedSourceVariant,
           }
-        : null,
+        : null
     );
 
   const [equivalentDraft, setEquivalentDraft] = useState<EquivalentUnit[]>([]);
@@ -111,7 +140,8 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
   useEffect(() => {
     const unsub = navigation.addListener('beforeRemove', (e) => {
       if (isSavingRef.current) return;
-      if (!equivalentsDiffer(equivalentDraft, equivalentBaselineRef.current)) return;
+      if (!equivalentsDiffer(equivalentDraft, equivalentBaselineRef.current))
+        return;
       e.preventDefault();
       void confirmDiscardEquivalents().then((ok) => {
         if (ok) navigation.dispatch(e.data.action);
@@ -120,7 +150,9 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
     return unsub;
   }, [navigation, equivalentDraft]);
 
-  const [selectedDate, setSelectedDate] = useState(params.date ?? getTodayDate());
+  const [selectedDate, setSelectedDate] = useState(
+    params.date ?? getTodayDate()
+  );
   const calendarRef = useRef<CalendarSheetRef>(null);
   const { mealTypes, defaultMealTypeId } = useMealTypes();
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>();
@@ -128,13 +160,21 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
   const mealTypeLabel = (mealType: (typeof mealTypes)[number]) =>
     mealType.user_id == null
-      ? getLocalizedMealLabel(t, mealType.name.toLowerCase() === 'snack' ? 'snacks' : mealType.name.toLowerCase())
+      ? getLocalizedMealLabel(
+          t,
+          mealType.name.toLowerCase() === 'snack'
+            ? 'snacks'
+            : mealType.name.toLowerCase()
+        )
       : mealType.name;
 
   const [saveToDatabase, setSaveToDatabase] = useState(true);
-  const initialServingSize = parseDecimalInput(initialFood?.servingSize ?? '') || 100;
+  const initialServingSize =
+    parseDecimalInput(initialFood?.servingSize ?? '') || 100;
   const [formServingSize, setFormServingSize] = useState(initialServingSize);
-  const [formServingUnit, setFormServingUnit] = useState(initialFood?.servingUnit ?? 'g');
+  const [formServingUnit, setFormServingUnit] = useState(
+    initialFood?.servingUnit ?? 'g'
+  );
   const [quantityText, setQuantityText] = useState(String(initialServingSize));
   const [quantityTouched, setQuantityTouched] = useState(false);
   const quantity = parseDecimalInput(quantityText) || 0;
@@ -148,11 +188,13 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
   };
 
   const handleImportedUnitSelectionChange = useCallback(
-    async (selection: FoodUnitSelectionResult): Promise<FoodUnitSelectionResult> => {
+    async (
+      selection: FoodUnitSelectionResult
+    ): Promise<FoodUnitSelectionResult> => {
       setPendingUnitSelection(selection);
       return selection;
     },
-    [],
+    []
   );
 
   const updateQuantityText = (text: string) => {
@@ -185,14 +227,20 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
       delta > 0
         ? Math.ceil(quantity / increment) * increment
         : Math.floor(quantity / increment) * increment;
-    const next = boundary !== quantity ? boundary : quantity + delta * increment;
+    const next =
+      boundary !== quantity ? boundary : quantity + delta * increment;
     setQuantityText(String(Math.max(minQuantity, next)));
     setQuantityTouched(true);
   };
 
-  const mealPickerOptions = mealTypes.map((mt) => ({ label: mealTypeLabel(mt), value: mt.id }));
+  const mealPickerOptions = mealTypes.map((mt) => ({
+    label: mealTypeLabel(mt),
+    value: mt.id,
+  }));
 
-  const [customNutrientValues, setCustomNutrientValues] = useState<Record<string, number>>({});
+  const [customNutrientValues, setCustomNutrientValues] = useState<
+    Record<string, number>
+  >({});
 
   const [pickerImages, setPickerImages] = useState<PickerImage[]>([]);
   const imageArgs =
@@ -201,8 +249,14 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
   const { saveFoodAsync, isPending: isSavePending } = useSaveFood();
   // Holds the equivalent-save function for the current submit so onSuccess can
   // fire it after the food+entry are both confirmed, without a separate pre-save.
-  const pendingEquivalentSaveRef = useRef<((foodId: string) => void) | null>(null);
-  const { addEntry, isPending: isAddPending, invalidateCache } = useAddFoodEntry({
+  const pendingEquivalentSaveRef = useRef<((foodId: string) => void) | null>(
+    null
+  );
+  const {
+    addEntry,
+    isPending: isAddPending,
+    invalidateCache,
+  } = useAddFoodEntry({
     onSuccess: (entry) => {
       isSavingRef.current = true;
       if (entry.food_id && pendingEquivalentSaveRef.current) {
@@ -218,21 +272,49 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
 
   const handleSubmit = async (data: FoodFormData) => {
     if (!data.name.trim()) {
-      Toast.show({ type: 'error', text1: t('createFood.errors.missingName', { defaultValue: 'Missing name' }), text2: t('createFood.errors.nameRequired', { defaultValue: 'Please enter a food name.' }) });
+      Toast.show({
+        type: 'error',
+        text1: t('createFood.errors.missingName', {
+          defaultValue: 'Missing name',
+        }),
+        text2: t('createFood.errors.nameRequired', {
+          defaultValue: 'Please enter a food name.',
+        }),
+      });
       return;
     }
     if (!parseDecimalInput(data.servingSize)) {
-      Toast.show({ type: 'error', text1: t('createFood.errors.invalidServingSize', { defaultValue: 'Invalid serving size' }), text2: t('createFood.errors.servingSizeRequired', { defaultValue: 'Serving size must be greater than zero.' }) });
+      Toast.show({
+        type: 'error',
+        text1: t('createFood.errors.invalidServingSize', {
+          defaultValue: 'Invalid serving size',
+        }),
+        text2: t('createFood.errors.servingSizeRequired', {
+          defaultValue: 'Serving size must be greater than zero.',
+        }),
+      });
       return;
     }
     const trimmedBarcode = barcodeInput.trim();
-    if (showBarcodeField && trimmedBarcode !== '' && !BARCODE_REGEX.test(trimmedBarcode)) {
-      Toast.show({ type: 'error', text1: t('createFood.errors.invalidBarcode', { defaultValue: 'Invalid barcode' }), text2: t('createFood.errors.barcodeRequired', { defaultValue: 'Barcode must be 8-14 digits.' }) });
+    if (
+      showBarcodeField &&
+      trimmedBarcode !== '' &&
+      !BARCODE_REGEX.test(trimmedBarcode)
+    ) {
+      Toast.show({
+        type: 'error',
+        text1: t('createFood.errors.invalidBarcode', {
+          defaultValue: 'Invalid barcode',
+        }),
+        text2: t('createFood.errors.barcodeRequired', {
+          defaultValue: 'Barcode must be 8-14 digits.',
+        }),
+      });
       return;
     }
     const resolvedBarcode = showBarcodeField
       ? trimmedBarcode || null
-      : params.barcode ?? null;
+      : (params.barcode ?? null);
     const saveFoodPayload = {
       name: data.name,
       brand: data.brand || null,
@@ -258,10 +340,15 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
       is_default: true,
       barcode: resolvedBarcode,
       provider_type: providerType ?? null,
-      custom_nutrients: Object.keys(customNutrientValues).length > 0 ? customNutrientValues : undefined,
+      custom_nutrients:
+        Object.keys(customNutrientValues).length > 0
+          ? customNutrientValues
+          : undefined,
     };
 
-    const cleanEquivalents = equivalentDraft.filter((eq) => !isBlankEquivalent(eq));
+    const cleanEquivalents = equivalentDraft.filter(
+      (eq) => !isBlankEquivalent(eq)
+    );
 
     // Schedules equivalent-variant creation after the food is saved. Fires
     // and forgets — navigation has already occurred. Any failures are shown
@@ -291,25 +378,52 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
             cholesterol: groupNutrition.cholesterol,
             vitamin_a: groupNutrition.vitamin_a,
             vitamin_c: groupNutrition.vitamin_c,
-          }),
-        ),
+          })
+        )
       ).catch(() => {
-        Toast.show({ type: 'error', text1: t('createFood.errors.equivalentsSaveFailed', { defaultValue: 'Some equivalent units could not be saved' }) });
+        Toast.show({
+          type: 'error',
+          text1: t('createFood.errors.equivalentsSaveFailed', {
+            defaultValue: 'Some equivalent units could not be saved',
+          }),
+        });
       });
     };
 
-    if (isMealBuilderMode) {
+    if (isSelectionMode) {
+      if (isMealPlanMode && !params.mealPlanTarget) {
+        Toast.show({
+          type: 'error',
+          text1: t('createFood.errors.foodSaveFailed', {
+            defaultValue: 'Failed to save food',
+          }),
+          text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+        });
+        return;
+      }
       try {
         const savedFood = await saveFoodAsync(saveFoodPayload, imageArgs);
         isSavingRef.current = true;
         saveEquivalentsAsync(savedFood.id);
-        setPendingMealIngredientSelection({
-          ingredient: buildMealIngredientDraftFromSavedFood(
-            savedFood,
-            parseDecimalInput(data.servingSize) || 0,
-            data.servingUnit || 'serving',
-          ),
-        });
+        const ingredient = buildMealIngredientDraftFromSavedFood(
+          savedFood,
+          parseDecimalInput(data.servingSize) || 0,
+          data.servingUnit || 'serving'
+        );
+        if (isMealPlanMode && params.mealPlanTarget) {
+          setPendingMealPlanSelection({
+            ...(params.mealPlanTarget.assignmentIndex === undefined
+              ? {}
+              : { assignmentIndex: params.mealPlanTarget.assignmentIndex }),
+            assignment: buildMealPlanFoodAssignment(
+              ingredient,
+              params.mealPlanTarget,
+              data.servingSize
+            ),
+          });
+        } else {
+          setPendingMealIngredientSelection({ ingredient });
+        }
         navigation.dispatch(StackActions.pop(returnDepth));
       } catch {
         // Error toast is handled in the save hook.
@@ -322,7 +436,12 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
         const savedFood = await saveFoodAsync(saveFoodPayload, imageArgs);
         isSavingRef.current = true;
         saveEquivalentsAsync(savedFood.id);
-        Toast.show({ type: 'success', text1: t('createFood.success.foodSaved', { defaultValue: 'Food saved' }) });
+        Toast.show({
+          type: 'success',
+          text1: t('createFood.success.foodSaved', {
+            defaultValue: 'Food saved',
+          }),
+        });
         navigation.dispatch(StackActions.pop(returnDepth));
       } catch {
         // Error toast is handled in the save hook.
@@ -331,17 +450,35 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
     }
 
     if (!quantity) {
-      Toast.show({ type: 'error', text1: t('createFood.errors.invalidAmount', { defaultValue: 'Invalid amount' }), text2: t('createFood.errors.amountRequired', { defaultValue: 'Amount must be greater than zero.' }) });
+      Toast.show({
+        type: 'error',
+        text1: t('createFood.errors.invalidAmount', {
+          defaultValue: 'Invalid amount',
+        }),
+        text2: t('createFood.errors.amountRequired', {
+          defaultValue: 'Amount must be greater than zero.',
+        }),
+      });
       return;
     }
     if (!effectiveMealId) {
-      Toast.show({ type: 'error', text1: t('createFood.errors.noMealType', { defaultValue: 'No meal type' }), text2: t('createFood.errors.noMealTypesAvailable', { defaultValue: 'No meal types are available. Please check your account settings.' }) });
+      Toast.show({
+        type: 'error',
+        text1: t('createFood.errors.noMealType', {
+          defaultValue: 'No meal type',
+        }),
+        text2: t('createFood.errors.noMealTypesAvailable', {
+          defaultValue:
+            'No meal types are available. Please check your account settings.',
+        }),
+      });
       return;
     }
 
     // Always overwrite the ref so a stale callback from a previous failed
     // attempt can never fire on this retry with the wrong equivalents.
-    pendingEquivalentSaveRef.current = cleanEquivalents.length > 0 ? saveEquivalentsAsync : null;
+    pendingEquivalentSaveRef.current =
+      cleanEquivalents.length > 0 ? saveEquivalentsAsync : null;
     // isSavingRef is set in onSuccess so it stays false if addEntry fails.
     addEntry({
       saveFoodPayload,
@@ -357,7 +494,9 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
 
   // Library mode saves a food record (a form Save); the diary/meal-builder
   // modes commit the food to the diary, so keep the "Add Food" verb there.
-  const primaryLabel = isLibraryMode ? t('common.save', { defaultValue: 'Save' }) : t('createFood.actions.addFood', { defaultValue: 'Add Food' });
+  const primaryLabel = isLibraryMode
+    ? t('common.save', { defaultValue: 'Save' })
+    : t('createFood.actions.addFood', { defaultValue: 'Add Food' });
 
   const header = useScreenHeader({
     title: t('createFood.title', { defaultValue: 'New Food' }),
@@ -380,7 +519,10 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
   });
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
+    <View
+      className="flex-1 bg-background"
+      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+    >
       {header}
 
       <FoodForm
@@ -418,75 +560,109 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
       >
         {isLogEntryMode ? (
           <View className="gap-4 bg-surface rounded-xl p-4 shadow-sm">
-
-          <View className="flex-row items-start">
-            {/* Date */}
-            <TouchableOpacity
-              onPress={() => calendarRef.current?.present()}
-              activeOpacity={0.7}
-              className="flex-1 flex-row items-center"
-            >
-              <Text className="text-text-secondary text-base mr-3">{t('common.date', { defaultValue: 'Date' })}</Text>
-              <Text className="text-text-primary text-base font-medium mx-1.5">
-                {formatDateLabel(selectedDate, t, dateLocale)}
-              </Text>
-              <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
-            </TouchableOpacity>
-
-            {/* Meal */}
-            {selectedMealType ? (
-              <View className="flex-1 flex-row items-center">
-                <Text className="text-text-secondary text-base mx-3">{t('createFood.meal', { defaultValue: 'Meal' })}</Text>
-                <BottomSheetPicker
-                  value={effectiveMealId!}
-                  options={mealPickerOptions}
-                  onSelect={setSelectedMealId}
-                  title={t('createFood.selectMeal', { defaultValue: 'Select Meal' })}
-                  renderTrigger={({ onPress }) => (
-                    <TouchableOpacity
-                      onPress={onPress}
-                      activeOpacity={0.7}
-                      className="flex-row items-center"
-                    >
-                      <Text className="text-text-primary text-base font-medium mx-1.5">
-                        {mealTypeLabel(selectedMealType)}
-                      </Text>
-                      <Icon name="chevron-down" size={12} color={textPrimary} weight="medium" />
-                    </TouchableOpacity>
-                  )}
+            <View className="flex-row items-start">
+              {/* Date */}
+              <TouchableOpacity
+                onPress={() => calendarRef.current?.present()}
+                activeOpacity={0.7}
+                className="flex-1 flex-row items-center"
+              >
+                <Text className="text-text-secondary text-base mr-3">
+                  {t('common.date', { defaultValue: 'Date' })}
+                </Text>
+                <Text className="text-text-primary text-base font-medium mx-1.5">
+                  {formatDateLabel(selectedDate, t, dateLocale)}
+                </Text>
+                <Icon
+                  name="chevron-down"
+                  size={12}
+                  color={textPrimary}
+                  weight="medium"
                 />
+              </TouchableOpacity>
+
+              {/* Meal */}
+              {selectedMealType ? (
+                <View className="flex-1 flex-row items-center">
+                  <Text className="text-text-secondary text-base mx-3">
+                    {t('createFood.meal', { defaultValue: 'Meal' })}
+                  </Text>
+                  <BottomSheetPicker
+                    value={effectiveMealId!}
+                    options={mealPickerOptions}
+                    onSelect={setSelectedMealId}
+                    title={t('createFood.selectMeal', {
+                      defaultValue: 'Select Meal',
+                    })}
+                    renderTrigger={({ onPress }) => (
+                      <TouchableOpacity
+                        onPress={onPress}
+                        activeOpacity={0.7}
+                        className="flex-row items-center"
+                      >
+                        <Text className="text-text-primary text-base font-medium mx-1.5">
+                          {mealTypeLabel(selectedMealType)}
+                        </Text>
+                        <Icon
+                          name="chevron-down"
+                          size={12}
+                          color={textPrimary}
+                          weight="medium"
+                        />
+                      </TouchableOpacity>
+                    )}
+                  />
+                </View>
+              ) : null}
+            </View>
+            {/* Amount */}
+            <View>
+              <View className="flex-row items-center">
+                <StepperInput
+                  value={quantityText}
+                  onChangeText={updateQuantityText}
+                  onBlur={clampQuantity}
+                  onDecrement={() => adjustQuantity(-1)}
+                  onIncrement={() => adjustQuantity(1)}
+                />
+                <Text className="text-text-primary text-base font-medium ml-2">
+                  {formServingUnit}
+                </Text>
               </View>
-            ) : null}
-          </View>
-          {/* Amount */}
-          <View>
-            <View className="flex-row items-center">
-              <StepperInput
-                value={quantityText}
-                onChangeText={updateQuantityText}
-                onBlur={clampQuantity}
-                onDecrement={() => adjustQuantity(-1)}
-                onIncrement={() => adjustQuantity(1)}
-              />
-              <Text className="text-text-primary text-base font-medium ml-2">
-                {formServingUnit}
+              <Text className="text-text-secondary text-sm mt-2">
+                {t('foodEntryAdd.labels.mealMakes', {
+                  defaultValue: 'meal makes {{formattedCount}} servings',
+                  defaultValue_one: 'meal makes {{formattedCount}} serving',
+                  defaultValue_other: 'meal makes {{formattedCount}} servings',
+                  count: servings,
+                  formattedCount: formatLocalizedNumber(servings, {
+                    maximumFractionDigits: 1,
+                  }),
+                })}
+                {' \u00b7 '}
+                {formatServingSizeDisplay(formServingSize)}{' '}
+                {formatServingUnit(formServingUnit)}{' '}
+                {t('foodEntryAdd.labels.perServing', {
+                  defaultValue: 'per serving',
+                })}
               </Text>
             </View>
-            <Text className="text-text-secondary text-sm mt-2">
-              {t('foodEntryAdd.labels.mealMakes', { defaultValue: 'meal makes {{formattedCount}} servings', defaultValue_one: 'meal makes {{formattedCount}} serving', defaultValue_other: 'meal makes {{formattedCount}} servings', count: servings, formattedCount: formatLocalizedNumber(servings, { maximumFractionDigits: 1 }) })}
-              {' \u00b7 '}{formatServingSizeDisplay(formServingSize)} {formatServingUnit(formServingUnit)} {t('foodEntryAdd.labels.perServing', { defaultValue: 'per serving' })}
-            </Text>
+            {/* Save to Database */}
+            <View className="flex-row items-center justify-between">
+              <Text className="text-text-secondary text-base">
+                {t('createFood.saveToDatabase', {
+                  defaultValue: 'Save to Database',
+                })}
+              </Text>
+              <Switch
+                accessibilityLabel={t('createFood.saveToDatabase', {
+                  defaultValue: 'Save to Database',
+                })}
+                value={saveToDatabase}
+                onValueChange={setSaveToDatabase}
+              />
+            </View>
           </View>
-          {/* Save to Database */}
-          <View className="flex-row items-center justify-between">
-            <Text className="text-text-secondary text-base">{t('createFood.saveToDatabase', { defaultValue: 'Save to Database' })}</Text>
-            <Switch
-              accessibilityLabel={t('createFood.saveToDatabase', { defaultValue: 'Save to Database' })}
-              value={saveToDatabase}
-              onValueChange={setSaveToDatabase}
-            />
-          </View>
-        </View>
         ) : null}
         {showBarcodeField ? (
           <BarcodeField
@@ -504,7 +680,11 @@ export function CreateFoodMode({ params, navigation, routeKey }: { params: Creat
       </FoodForm>
 
       {isLogEntryMode ? (
-        <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={setSelectedDate} />
+        <CalendarSheet
+          ref={calendarRef}
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+        />
       ) : null}
     </View>
   );

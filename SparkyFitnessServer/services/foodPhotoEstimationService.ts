@@ -7,8 +7,12 @@ import {
   type ProviderConfig,
 } from '../ai/providerDispatch.js';
 import { deriveAiNetworkPolicy } from '../utils/outboundUrlPolicy.js';
+import { attachFoodMatches } from './foodPhotoMatchService.js';
 import {
   foodPhotoEstimateResponseSchema,
+  asPortionMacros,
+  sumPortionMacros,
+  ESTIMATE_MACRO_KEYS,
   type FoodPhotoEstimateErrorCode,
   type FoodPhotoEstimateResponse,
 } from '@workspace/shared';
@@ -50,6 +54,11 @@ const RESPONSE_SCHEMA: JsonSchemaNode = {
             description:
               "Specific food name, e.g. 'grilled chicken thigh', 'white jasmine rice', 'steamed broccoli'",
           },
+          canonical_name: {
+            type: 'string',
+            description:
+              "The same food as a plain, generic, searchable name: drop preparation adjectives, brands, and quantities. 'grilled chicken thigh' -> 'chicken thigh'; '1 cup white jasmine rice' -> 'jasmine rice'; 'steamed broccoli florets' -> 'broccoli'. This is used to look the item up in a food database, so keep it to the noun the food would be filed under.",
+          },
           estimated_grams: {
             type: 'number',
             description: 'Estimated weight of this item in grams',
@@ -88,6 +97,56 @@ const RESPONSE_SCHEMA: JsonSchemaNode = {
             type: 'number',
             description: 'Estimated sugars in grams',
           },
+          saturated_fat_g: {
+            type: 'number',
+            description:
+              'Estimated saturated fat in grams. Estimate from the typical profile of this food (animal fat vs plant oil) rather than defaulting to 0.',
+          },
+          polyunsaturated_fat_g: {
+            type: 'number',
+            description:
+              'Estimated polyunsaturated fat in grams. Estimate from the typical fat profile rather than defaulting to 0.',
+          },
+          monounsaturated_fat_g: {
+            type: 'number',
+            description:
+              'Estimated monounsaturated fat in grams. Estimate from the typical fat profile rather than defaulting to 0.',
+          },
+          trans_fat_g: {
+            type: 'number',
+            description:
+              'Estimated trans fat in grams. Usually 0 for whole foods; estimate for fried and processed items.',
+          },
+          cholesterol_mg: {
+            type: 'number',
+            description:
+              'Estimated cholesterol in milligrams. 0 for plant foods; estimate for animal products.',
+          },
+          sodium_mg: {
+            type: 'number',
+            description:
+              'Estimated sodium in milligrams, accounting for added salt and processing. Do not default to 0 for a seasoned or restaurant dish.',
+          },
+          potassium_mg: {
+            type: 'number',
+            description: 'Estimated potassium in milligrams.',
+          },
+          calcium_mg: {
+            type: 'number',
+            description: 'Estimated calcium in milligrams.',
+          },
+          iron_mg: {
+            type: 'number',
+            description: 'Estimated iron in milligrams.',
+          },
+          vitamin_a_mcg: {
+            type: 'number',
+            description: 'Estimated vitamin A in micrograms (RAE).',
+          },
+          vitamin_c_mg: {
+            type: 'number',
+            description: 'Estimated vitamin C in milligrams.',
+          },
           item_confidence: {
             type: 'string',
             description:
@@ -103,6 +162,7 @@ const RESPONSE_SCHEMA: JsonSchemaNode = {
         },
         required: [
           'name',
+          'canonical_name',
           'estimated_grams',
           'portion_description',
           'preparation',
@@ -112,11 +172,23 @@ const RESPONSE_SCHEMA: JsonSchemaNode = {
           'fat_g',
           'fiber_g',
           'sugar_g',
+          'saturated_fat_g',
+          'polyunsaturated_fat_g',
+          'monounsaturated_fat_g',
+          'trans_fat_g',
+          'cholesterol_mg',
+          'sodium_mg',
+          'potassium_mg',
+          'calcium_mg',
+          'iron_mg',
+          'vitamin_a_mcg',
+          'vitamin_c_mg',
           'item_confidence',
           'assumptions',
         ],
         propertyOrdering: [
           'name',
+          'canonical_name',
           'estimated_grams',
           'portion_description',
           'preparation',
@@ -126,6 +198,17 @@ const RESPONSE_SCHEMA: JsonSchemaNode = {
           'fat_g',
           'fiber_g',
           'sugar_g',
+          'saturated_fat_g',
+          'polyunsaturated_fat_g',
+          'monounsaturated_fat_g',
+          'trans_fat_g',
+          'cholesterol_mg',
+          'sodium_mg',
+          'potassium_mg',
+          'calcium_mg',
+          'iron_mg',
+          'vitamin_a_mcg',
+          'vitamin_c_mg',
           'item_confidence',
           'assumptions',
         ],
@@ -247,6 +330,15 @@ Rules:
     proportionally to your visual estimate, then recalculate nutrition.
   - Break mixed dishes into component ingredients when reasonable (e.g. a
     burrito → tortilla, rice, beans, meat, cheese, salsa).
+  - Give every item a canonical_name as well as its display name: the plain
+    generic food noun, with preparation adjectives, brands, and quantities
+    removed. It is used to look the item up in a food database.
+  - Populate the micronutrients (saturated/poly/mono/trans fat, cholesterol,
+    sodium, potassium, calcium, iron, vitamin A, vitamin C) from the typical
+    composition of each food. Estimate them; do not default them to 0 just
+    because they are not visible. 0 is only correct when it is actually true
+    (cholesterol in a plant food, trans fat in a whole food). Sodium in
+    particular is rarely 0 in a seasoned, restaurant or processed dish.
   - Be explicit about assumptions (oil used, milk type, skin on/off).
   - Lower your confidence when portions are ambiguous or ingredients hidden.
   - Only ask clarifying questions that would materially change the estimate.`;
@@ -265,6 +357,7 @@ export interface EstimateFoodPhotoNutritionInput {
   /** Legacy single-image field; use images[]. Still accepted for backward compatibility. */
   mimeType?: string;
   userId: string;
+  serviceConfigId?: string;
   description?: string;
   weightSlot?: string;
   actorIsAdmin?: boolean;
@@ -287,9 +380,191 @@ function resolveImages(input: EstimateFoodPhotoNutritionInput): PhotoImage[] {
   );
 }
 
+function ensureTotals(obj: Record<string, unknown>): Record<string, unknown> {
+  if (Array.isArray(obj.items)) {
+    const items = obj.items as Array<Record<string, unknown>>;
+    if (!obj.totals || typeof obj.totals !== 'object') {
+      let calories = 0;
+      let protein = 0;
+      let carbs = 0;
+      let fat = 0;
+      let fiber = 0;
+      let sugar = 0;
+      let totalGrams = 0;
+      for (const item of items) {
+        calories += Number(item.calories_kcal) || 0;
+        protein += Number(item.protein_g) || 0;
+        carbs += Number(item.carbs_g) || 0;
+        fat += Number(item.fat_g) || 0;
+        fiber += Number(item.fiber_g) || 0;
+        sugar += Number(item.sugar_g) || 0;
+        totalGrams += Number(item.estimated_grams) || 0;
+      }
+      obj.totals = {
+        calories_kcal: Math.round(calories * 10) / 10,
+        protein_g: Math.round(protein * 10) / 10,
+        carbs_g: Math.round(carbs * 10) / 10,
+        fat_g: Math.round(fat * 10) / 10,
+        fiber_g: Math.round(fiber * 10) / 10,
+        sugar_g: Math.round(sugar * 10) / 10,
+        total_grams: Math.round(totalGrams * 10) / 10,
+      };
+    }
+    if (obj.user_weight_reconciliation === undefined) {
+      obj.user_weight_reconciliation = '';
+    }
+    if (!Array.isArray(obj.clarifying_questions)) {
+      obj.clarifying_questions = [];
+    }
+    if (!obj.overall_confidence) {
+      obj.overall_confidence = 'medium';
+    }
+    if (obj.confidence_reason === undefined) {
+      obj.confidence_reason = '';
+    }
+    if (typeof obj.meal_summary !== 'string' && items.length > 0) {
+      obj.meal_summary =
+        items
+          .map((i) => String(i.name || ''))
+          .filter(Boolean)
+          .join(', ') || 'Meal';
+    }
+  }
+  return obj;
+}
+
+function normalizeEstimatePayload(raw: unknown): unknown {
+  if (typeof raw !== 'object' || raw === null) return raw;
+  if (Array.isArray(raw)) {
+    if (raw.length === 1 && typeof raw[0] === 'object' && raw[0] !== null) {
+      return normalizeEstimatePayload(raw[0]);
+    }
+    if (
+      raw.every(
+        (item) => typeof item === 'object' && item !== null && 'name' in item
+      )
+    ) {
+      return ensureTotals({ items: raw });
+    }
+    return raw;
+  }
+  const obj = { ...(raw as Record<string, unknown>) };
+  if ('meal_summary' in obj || 'items' in obj) {
+    return ensureTotals(obj);
+  }
+  const wrapperKeys = [
+    'food_photo_estimate',
+    'response',
+    'data',
+    'result',
+    'estimate',
+    'output',
+  ];
+  for (const key of wrapperKeys) {
+    if (obj[key] && typeof obj[key] === 'object') {
+      return normalizeEstimatePayload(obj[key]);
+    }
+  }
+  const keys = Object.keys(obj);
+  if (
+    keys.length === 1 &&
+    typeof obj[keys[0]] === 'object' &&
+    obj[keys[0]] !== null
+  ) {
+    return normalizeEstimatePayload(obj[keys[0]]);
+  }
+  return ensureTotals(obj);
+}
+
+// The vision model writes ingredient names in lower case ("penne pasta").
+// That name is what the review card, the meal builder, and every food created
+// from the estimate end up showing, so title-case it once here instead of in
+// each client. `canonical_name` is deliberately left alone — it is the
+// food-database search term, not display text.
+const TITLE_CASE_MINOR_WORDS = new Set([
+  'a',
+  'an',
+  'and',
+  'at',
+  'de',
+  'in',
+  'of',
+  'on',
+  'or',
+  'the',
+  'to',
+  'with',
+  'without',
+]);
+
+function titleCaseFoodName(value: string): string {
+  let wordIndex = 0;
+  return value
+    .split(/(\s+)/)
+    .map((part) => {
+      if (part === '' || /^\s+$/.test(part)) return part;
+      const isFirstWord = wordIndex === 0;
+      wordIndex += 1;
+      // A word the model already capitalised (a brand, an acronym) is left
+      // exactly as written.
+      if (/[A-Z]/.test(part)) return part;
+      if (
+        !isFirstWord &&
+        TITLE_CASE_MINOR_WORDS.has(part.replace(/[^a-z]/g, ''))
+      ) {
+        return part;
+      }
+      // Capitalise after a hyphen or slash too: "sun-dried" -> "Sun-Dried".
+      return part.replace(
+        /(^|[-/])([a-z])/g,
+        (_match, separator: string, letter: string) =>
+          separator + letter.toUpperCase()
+      );
+    })
+    .join('');
+}
+
+function titleCaseItemNames(
+  estimate: FoodPhotoEstimateResponse
+): FoodPhotoEstimateResponse {
+  return {
+    ...estimate,
+    items: estimate.items.map((item) => ({
+      ...item,
+      name: titleCaseFoodName(item.name),
+    })),
+  };
+}
+
 export type EstimateFoodPhotoNutritionResult =
   | { success: true; estimate: FoodPhotoEstimateResponse }
   | { success: false; code: FoodPhotoEstimateErrorCode; error: string };
+
+/**
+ * Fills the totals' micronutrients by summing the items.
+ *
+ * The model is asked for micronutrients per ITEM but not in `totals` — adding
+ * eleven more numbers to sum by hand is a reliability liability on a call that
+ * already returns a lot of structure, and both clients derive their own totals
+ * from the rows anyway. `sparky_log_food_photo` reads `estimate.totals`
+ * directly, though, so the server sums them here instead of leaving that path
+ * with zeros. The core macros are left exactly as the model reported them.
+ */
+function withDerivedTotalMicros(
+  estimate: FoodPhotoEstimateResponse
+): FoodPhotoEstimateResponse {
+  const items = estimate.items ?? [];
+  if (items.length === 0) return estimate;
+  const summed = sumPortionMacros(
+    items.map((item) => ({ macros: asPortionMacros(item) }))
+  );
+  const totals = { ...estimate.totals };
+  for (const key of ESTIMATE_MACRO_KEYS) {
+    if (key in estimate.totals) continue;
+    totals[key] = summed[key];
+  }
+  return { ...estimate, totals };
+}
 
 async function estimateFoodPhotoNutrition(
   input: EstimateFoodPhotoNutritionInput
@@ -304,18 +579,19 @@ async function estimateFoodPhotoNutrition(
     };
   }
 
-  const setting = await chatRepository.getActiveVisionAiServiceSetting(userId);
-  if (!setting) {
-    return {
-      success: false,
-      code: 'NO_AI_CONFIGURED',
-      error: 'No AI service configured.',
-    };
-  }
-  const aiService = await chatRepository.getAiServiceSettingForBackend(
-    setting.id,
-    userId
-  );
+  const aiService = input.serviceConfigId
+    ? await chatRepository.getAiServiceSettingForBackend(
+        input.serviceConfigId,
+        userId
+      )
+    : await (async () => {
+        const setting =
+          await chatRepository.getActiveVisionAiServiceSetting(userId);
+        return setting
+          ? chatRepository.getAiServiceSettingForBackend(setting.id, userId)
+          : null;
+      })();
+
   if (!aiService) {
     return {
       success: false,
@@ -355,19 +631,13 @@ async function estimateFoodPhotoNutrition(
     return { success: false, code, error: result.detail };
   }
 
-  const parsed = foodPhotoEstimateResponseSchema.safeParse(result.json);
+  const normalized = normalizeEstimatePayload(result.json);
+  const parsed = foodPhotoEstimateResponseSchema.safeParse(normalized);
   if (!parsed.success) {
     log(
       'error',
-      `Food-photo estimation: ${provider.service_type} JSON failed schema validation for user ${userId}`,
+      `Food-photo estimation: ${provider.service_type} JSON failed schema validation for user ${userId}. Raw response: ${result.text.slice(0, 2000)}`,
       parsed.error.issues
-    );
-    // The issues above describe what was *missing* against the expected shape;
-    // logging the raw payload shows what the provider *actually* returned, which
-    // is what you need to tell "wrong shape" from "truncated/garbage".
-    log(
-      'debug',
-      `Food-photo estimation: ${provider.service_type} raw response that failed validation for user ${userId}: ${result.text.slice(0, 4000)}`
     );
     return {
       success: false,
@@ -376,7 +646,16 @@ async function estimateFoodPhotoNutrition(
     };
   }
 
-  return { success: true, estimate: parsed.data };
+  // Enrich with food-database matches. Additive only: existing fields, and
+  // therefore what an older client displays, are never touched. A matching
+  // failure is swallowed inside the service so it can never cost the user an
+  // estimate they already paid an AI call for.
+  const enriched = await attachFoodMatches(
+    userId,
+    withDerivedTotalMicros(parsed.data)
+  );
+  // After matching, so the search terms the matcher sees are the model's own.
+  return { success: true, estimate: titleCaseItemNames(enriched) };
 }
 
 export { estimateFoodPhotoNutrition };

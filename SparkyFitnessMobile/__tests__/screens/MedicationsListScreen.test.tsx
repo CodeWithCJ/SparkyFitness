@@ -36,9 +36,13 @@ jest.mock('@react-navigation/native', () => ({
   useNavigation: () => mockNavigation,
 }));
 
-const mockUseMedications = useMedications as jest.MockedFunction<typeof useMedications>;
+const mockUseMedications = useMedications as jest.MockedFunction<
+  typeof useMedications
+>;
 
-function buildSchedule(overrides: Partial<MedicationSchedule> = {}): MedicationSchedule {
+function buildSchedule(
+  overrides: Partial<MedicationSchedule> = {}
+): MedicationSchedule {
   return {
     id: 'sched-1',
     medication_id: 'med-1',
@@ -62,7 +66,9 @@ function buildSchedule(overrides: Partial<MedicationSchedule> = {}): MedicationS
   };
 }
 
-function buildMedication(overrides: Partial<MedicationDetail> = {}): MedicationDetail {
+function buildMedication(
+  overrides: Partial<MedicationDetail> = {}
+): MedicationDetail {
   return {
     id: 'med-1',
     user_id: 'user-1',
@@ -111,7 +117,7 @@ function setupScreen(medications: MedicationDetail[]) {
   return render(
     <SafeAreaProvider initialMetrics={{ insets, frame }}>
       <MedicationsListScreen route={route} navigation={mockNavigation} />
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
 }
 
@@ -132,7 +138,9 @@ describe('MedicationsListScreen', () => {
     const screen = setupScreen([buildMedication()]);
 
     fireEvent.press(screen.getByText('Lisinopril'));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('MedicationDetail', { medicationId: 'med-1' });
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('MedicationDetail', {
+      medicationId: 'med-1',
+    });
   });
 
   it('collapses inactive medications behind a disclosure row', () => {
@@ -186,9 +194,14 @@ describe('MedicationsListScreen', () => {
       params: undefined,
     } as ScreenProps['route'];
     const screen = render(
-      <SafeAreaProvider initialMetrics={{ insets: { top: 0, left: 0, right: 0, bottom: 0 }, frame: { x: 0, y: 0, width: 390, height: 844 } }}>
+      <SafeAreaProvider
+        initialMetrics={{
+          insets: { top: 0, left: 0, right: 0, bottom: 0 },
+          frame: { x: 0, y: 0, width: 390, height: 844 },
+        }}
+      >
         <MedicationsListScreen route={route} navigation={mockNavigation} />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
     expect(screen.getByText('Failed to load medications.')).toBeTruthy();

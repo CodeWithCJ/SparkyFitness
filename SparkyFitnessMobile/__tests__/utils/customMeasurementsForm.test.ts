@@ -21,7 +21,7 @@ const entry = (
   id: string,
   categoryId: string,
   value: string,
-  extra: Partial<CustomMeasurementEntry> = {},
+  extra: Partial<CustomMeasurementEntry> = {}
 ): CustomMeasurementEntry => ({
   id,
   category_id: categoryId,
@@ -50,7 +50,16 @@ describe('isManualSource', () => {
   });
 
   it('treats every health-sync source as non-manual', () => {
-    for (const source of ['healthkit', 'health_connect', 'garmin', 'oura', 'fitbit', 'polar', 'withings', 'google']) {
+    for (const source of [
+      'healthkit',
+      'health_connect',
+      'garmin',
+      'oura',
+      'fitbit',
+      'polar',
+      'withings',
+      'google',
+    ]) {
       expect(isManualSource(source)).toBe(false);
     }
   });
@@ -127,7 +136,10 @@ describe('syncCustomForm', () => {
 
   it('drops non-dirty rows whose server entry disappeared', () => {
     const current: CustomFormState = {
-      'cat-daily': { rows: [row({ key: 'k1', entryId: 'e1', value: '50' })], deleted: [] },
+      'cat-daily': {
+        rows: [row({ key: 'k1', entryId: 'e1', value: '50' })],
+        deleted: [],
+      },
     };
 
     const { form } = syncCustomForm({
@@ -142,7 +154,10 @@ describe('syncCustomForm', () => {
 
   it('keeps dirty rows whose server entry disappeared as new rows', () => {
     const current: CustomFormState = {
-      'cat-daily': { rows: [row({ key: 'k1', entryId: 'e1', value: '99' })], deleted: [] },
+      'cat-daily': {
+        rows: [row({ key: 'k1', entryId: 'e1', value: '99' })],
+        deleted: [],
+      },
     };
 
     const { form } = syncCustomForm({
@@ -256,7 +271,10 @@ describe('syncCustomForm - tombstone resurrection guard', () => {
 describe('buildCustomOps', () => {
   it('never re-sends unchanged rows', () => {
     const form: CustomFormState = {
-      'cat-daily': { rows: [row({ key: 'k1', entryId: 'e1', value: '50' })], deleted: [] },
+      'cat-daily': {
+        rows: [row({ key: 'k1', entryId: 'e1', value: '50' })],
+        deleted: [],
+      },
     };
 
     const result = buildCustomOps({
@@ -271,7 +289,10 @@ describe('buildCustomOps', () => {
 
   it('emits a POST with manual source for a changed existing row', () => {
     const form: CustomFormState = {
-      'cat-daily': { rows: [row({ key: 'k1', entryId: 'e1', value: '60' })], deleted: [] },
+      'cat-daily': {
+        rows: [row({ key: 'k1', entryId: 'e1', value: '60' })],
+        deleted: [],
+      },
     };
 
     const result = buildCustomOps({
@@ -283,7 +304,13 @@ describe('buildCustomOps', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.operations).toEqual([
-        { kind: 'save', categoryId: 'cat-daily', value: 60, source: 'manual', rowKey: 'k1' },
+        {
+          kind: 'save',
+          categoryId: 'cat-daily',
+          value: 60,
+          source: 'manual',
+          rowKey: 'k1',
+        },
       ]);
     }
   });
@@ -302,14 +329,23 @@ describe('buildCustomOps', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.operations).toEqual([
-        { kind: 'save', categoryId: 'cat-daily', value: 10, source: 'manual', rowKey: 'new-1' },
+        {
+          kind: 'save',
+          categoryId: 'cat-daily',
+          value: 10,
+          source: 'manual',
+          rowKey: 'new-1',
+        },
       ]);
     }
   });
 
   it('keeps zero and false as real values in the save op', () => {
     const form: CustomFormState = {
-      'cat-num': { rows: [row({ key: 'k0', entryId: 'e0', value: '0' })], deleted: [] },
+      'cat-num': {
+        rows: [row({ key: 'k0', entryId: 'e0', value: '0' })],
+        deleted: [],
+      },
       'cat-bool': {
         rows: [row({ key: 'kf', entryId: 'e1', value: 'false' })],
         deleted: [],
@@ -325,8 +361,20 @@ describe('buildCustomOps', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.operations).toEqual([
-        { kind: 'save', categoryId: 'cat-num', value: 0, source: 'manual', rowKey: 'k0' },
-        { kind: 'save', categoryId: 'cat-bool', value: 'false', source: 'manual', rowKey: 'kf' },
+        {
+          kind: 'save',
+          categoryId: 'cat-num',
+          value: 0,
+          source: 'manual',
+          rowKey: 'k0',
+        },
+        {
+          kind: 'save',
+          categoryId: 'cat-bool',
+          value: 'false',
+          source: 'manual',
+          rowKey: 'kf',
+        },
       ]);
     }
   });
@@ -345,14 +393,17 @@ describe('buildCustomOps', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.operations[0]).toEqual(
-        expect.objectContaining({ value: 1.5, source: 'manual' }),
+        expect.objectContaining({ value: 1.5, source: 'manual' })
       );
     }
   });
 
   it('turns a cleared existing row into a delete-by-id operation', () => {
     const form: CustomFormState = {
-      'cat-daily': { rows: [row({ key: 'k1', entryId: 'e1', value: '' })], deleted: [] },
+      'cat-daily': {
+        rows: [row({ key: 'k1', entryId: 'e1', value: '' })],
+        deleted: [],
+      },
     };
 
     const result = buildCustomOps({
@@ -364,7 +415,12 @@ describe('buildCustomOps', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.operations).toEqual([
-        { kind: 'delete', entryId: 'e1', categoryId: 'cat-daily', rowKey: 'k1' },
+        {
+          kind: 'delete',
+          entryId: 'e1',
+          categoryId: 'cat-daily',
+          rowKey: 'k1',
+        },
       ]);
     }
   });
@@ -383,7 +439,12 @@ describe('buildCustomOps', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.operations).toEqual([
-        { kind: 'delete', entryId: 'e1', categoryId: 'cat-daily', rowKey: 'e1' },
+        {
+          kind: 'delete',
+          entryId: 'e1',
+          categoryId: 'cat-daily',
+          rowKey: 'e1',
+        },
       ]);
     }
   });
@@ -402,7 +463,7 @@ describe('buildCustomOps', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.operations[0]).toEqual(
-        expect.objectContaining({ value: 'true', source: 'manual' }),
+        expect.objectContaining({ value: 'true', source: 'manual' })
       );
     }
   });
@@ -426,7 +487,10 @@ describe('buildCustomOps', () => {
 
   it('does not validate unchanged rows, so a bad historical value cannot block a save', () => {
     const form: CustomFormState = {
-      'cat-daily': { rows: [row({ key: 'k1', entryId: 'e1', value: 'not-a-number' })], deleted: [] },
+      'cat-daily': {
+        rows: [row({ key: 'k1', entryId: 'e1', value: 'not-a-number' })],
+        deleted: [],
+      },
     };
 
     const result = buildCustomOps({
@@ -469,8 +533,19 @@ describe('buildCustomOps - tombstone deletes', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.operations).toEqual([
-        { kind: 'delete', entryId: 'e-del', categoryId: 'cat-daily', rowKey: 'e-del' },
-        { kind: 'save', categoryId: 'cat-daily', value: 60, source: 'manual', rowKey: 'k1' },
+        {
+          kind: 'delete',
+          entryId: 'e-del',
+          categoryId: 'cat-daily',
+          rowKey: 'e-del',
+        },
+        {
+          kind: 'save',
+          categoryId: 'cat-daily',
+          value: 60,
+          source: 'manual',
+          rowKey: 'k1',
+        },
       ]);
     }
   });
@@ -504,7 +579,12 @@ describe('buildCustomOps - tombstone deletes', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.operations).toEqual([
-        { kind: 'delete', entryId: 'e1', categoryId: 'cat-daily', rowKey: 'e1' },
+        {
+          kind: 'delete',
+          entryId: 'e1',
+          categoryId: 'cat-daily',
+          rowKey: 'e1',
+        },
       ]);
     }
   });

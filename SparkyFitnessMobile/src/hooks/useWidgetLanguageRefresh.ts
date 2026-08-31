@@ -26,7 +26,9 @@ type WidgetSyncState = {
  * partial reload failure leaves the state unapplied so a later signal retries.
  */
 export function useWidgetLanguageRefresh(): void {
-  const languagePreference = useAppPreferencesStore((s) => s.languagePreference);
+  const languagePreference = useAppPreferencesStore(
+    (s) => s.languagePreference
+  );
   const lastAppliedRef = useRef<WidgetSyncState | null>(null);
   const inFlightRef = useRef<Promise<void>>(Promise.resolve());
 
@@ -50,13 +52,13 @@ export function useWidgetLanguageRefresh(): void {
       try {
         await CalorieWidgetBridge.prepareWidgetLocale(
           desired.preference,
-          desired.effectiveLanguage,
+          desired.effectiveLanguage
         );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         void addLog(
           `[useWidgetLanguageRefresh] Widget locale preparation failed: ${message}`,
-          'ERROR',
+          'ERROR'
         );
         return;
       }
@@ -69,11 +71,17 @@ export function useWidgetLanguageRefresh(): void {
       const [calorieResult, macroResult] = results;
       let fullyApplied = true;
       if (calorieResult.status === 'rejected') {
-        void addLog('[useWidgetLanguageRefresh] Calorie widget reload failed', 'ERROR');
+        void addLog(
+          '[useWidgetLanguageRefresh] Calorie widget reload failed',
+          'ERROR'
+        );
         fullyApplied = false;
       }
       if (macroResult.status === 'rejected') {
-        void addLog('[useWidgetLanguageRefresh] Macro widget reload failed', 'ERROR');
+        void addLog(
+          '[useWidgetLanguageRefresh] Macro widget reload failed',
+          'ERROR'
+        );
         fullyApplied = false;
       }
       if (!fullyApplied) return;

@@ -7,7 +7,10 @@ import {
   getActiveServerConfig,
   loadSyncOnOpenEnabled,
 } from '../../src/services/storage';
-import { initHealthConnect, loadHealthPreference } from '../../src/services/healthConnectService';
+import {
+  initHealthConnect,
+  loadHealthPreference,
+} from '../../src/services/healthConnectService';
 import { HEALTH_METRICS } from '../../src/HealthMetrics';
 import { flushPendingHealthSyncCacheRefresh } from '../../src/services/backgroundSyncService';
 import {
@@ -45,21 +48,48 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
-const mockLoadTimeRange = loadTimeRange as jest.MockedFunction<typeof loadTimeRange>;
-const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<typeof getActiveServerConfig>;
-const mockLoadSyncOnOpenEnabled = loadSyncOnOpenEnabled as jest.MockedFunction<typeof loadSyncOnOpenEnabled>;
-const mockInitHealthConnect = initHealthConnect as jest.MockedFunction<typeof initHealthConnect>;
-const mockLoadHealthPreference = loadHealthPreference as jest.MockedFunction<typeof loadHealthPreference>;
-const mockFlushPendingRefresh = flushPendingHealthSyncCacheRefresh as jest.MockedFunction<typeof flushPendingHealthSyncCacheRefresh>;
-const mockTryClaimAutoSync = tryClaimAutoSync as jest.MockedFunction<typeof tryClaimAutoSync>;
-const mockIsWindowOpen = isForegroundAutoSyncWindowOpen as jest.MockedFunction<typeof isForegroundAutoSyncWindowOpen>;
-const mockSetWindowOpen = setForegroundAutoSyncWindowOpen as jest.MockedFunction<typeof setForegroundAutoSyncWindowOpen>;
-const mockShouldRunResume = shouldRunForegroundResumeAutoSync as jest.MockedFunction<typeof shouldRunForegroundResumeAutoSync>;
-const mockRecordAutoSyncTime = recordAutoSyncTime as jest.MockedFunction<typeof recordAutoSyncTime>;
+const mockLoadTimeRange = loadTimeRange as jest.MockedFunction<
+  typeof loadTimeRange
+>;
+const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<
+  typeof getActiveServerConfig
+>;
+const mockLoadSyncOnOpenEnabled = loadSyncOnOpenEnabled as jest.MockedFunction<
+  typeof loadSyncOnOpenEnabled
+>;
+const mockInitHealthConnect = initHealthConnect as jest.MockedFunction<
+  typeof initHealthConnect
+>;
+const mockLoadHealthPreference = loadHealthPreference as jest.MockedFunction<
+  typeof loadHealthPreference
+>;
+const mockFlushPendingRefresh =
+  flushPendingHealthSyncCacheRefresh as jest.MockedFunction<
+    typeof flushPendingHealthSyncCacheRefresh
+  >;
+const mockTryClaimAutoSync = tryClaimAutoSync as jest.MockedFunction<
+  typeof tryClaimAutoSync
+>;
+const mockIsWindowOpen = isForegroundAutoSyncWindowOpen as jest.MockedFunction<
+  typeof isForegroundAutoSyncWindowOpen
+>;
+const mockSetWindowOpen =
+  setForegroundAutoSyncWindowOpen as jest.MockedFunction<
+    typeof setForegroundAutoSyncWindowOpen
+  >;
+const mockShouldRunResume =
+  shouldRunForegroundResumeAutoSync as jest.MockedFunction<
+    typeof shouldRunForegroundResumeAutoSync
+  >;
+const mockRecordAutoSyncTime = recordAutoSyncTime as jest.MockedFunction<
+  typeof recordAutoSyncTime
+>;
 
 type SyncMutation = ReturnType<typeof useSyncHealthData>;
 
-function buildSyncMutation(overrides: Partial<{ isPending: boolean }> = {}): SyncMutation {
+function buildSyncMutation(
+  overrides: Partial<{ isPending: boolean }> = {}
+): SyncMutation {
   return {
     isPending: overrides.isPending === true,
     mutate: jest.fn(),
@@ -67,12 +97,14 @@ function buildSyncMutation(overrides: Partial<{ isPending: boolean }> = {}): Syn
 }
 
 const ALL_METRICS_ENABLED = Object.fromEntries(
-  HEALTH_METRICS.map((metric) => [metric.stateKey, true]),
+  HEALTH_METRICS.map((metric) => [metric.stateKey, true])
 );
 
 function mockHappyPathServices() {
   mockLoadSyncOnOpenEnabled.mockResolvedValue(true);
-  mockGetActiveServerConfig.mockResolvedValue({ id: 'cfg-1' } as Awaited<ReturnType<typeof getActiveServerConfig>>);
+  mockGetActiveServerConfig.mockResolvedValue({ id: 'cfg-1' } as Awaited<
+    ReturnType<typeof getActiveServerConfig>
+  >);
   mockInitHealthConnect.mockResolvedValue(true);
   mockLoadTimeRange.mockResolvedValue('7d');
   mockLoadHealthPreference.mockResolvedValue(true);
@@ -87,11 +119,17 @@ const removeSubscription = jest.fn();
 beforeEach(() => {
   jest.clearAllMocks();
   appStateHandler = null;
-  jest.spyOn(AppState, 'addEventListener').mockImplementation(((_type: string, handler: (state: string) => void) => {
+  jest.spyOn(AppState, 'addEventListener').mockImplementation(((
+    _type: string,
+    handler: (state: string) => void
+  ) => {
     appStateHandler = handler;
     return { remove: removeSubscription };
   }) as unknown as typeof AppState.addEventListener);
-  Object.defineProperty(AppState, 'currentState', { value: 'active', configurable: true });
+  Object.defineProperty(AppState, 'currentState', {
+    value: 'active',
+    configurable: true,
+  });
 });
 
 // Fake-timer tests restore real timers inside the test body: react-native
@@ -123,7 +161,10 @@ describe('useAutoSyncOnOpen cold-start sync', () => {
     expect(mockSetWindowOpen).toHaveBeenCalledWith(true);
     expect(syncMutation.mutate).toHaveBeenCalledWith(
       { timeRange: '7d', healthMetricStates: ALL_METRICS_ENABLED },
-      expect.objectContaining({ onSettled: expect.any(Function), onSuccess: expect.any(Function) }),
+      expect.objectContaining({
+        onSettled: expect.any(Function),
+        onSuccess: expect.any(Function),
+      })
     );
 
     const options = (syncMutation.mutate as jest.Mock).mock.calls[0][1];
@@ -140,7 +181,9 @@ describe('useAutoSyncOnOpen cold-start sync', () => {
     mockHappyPathServices();
     const syncMutation = buildSyncMutation();
 
-    renderHook(() => useAutoSyncOnOpen({ initialRoute: 'Onboarding', syncMutation }));
+    renderHook(() =>
+      useAutoSyncOnOpen({ initialRoute: 'Onboarding', syncMutation })
+    );
     await flushAsync();
 
     expect(mockLoadSyncOnOpenEnabled).not.toHaveBeenCalled();
@@ -203,7 +246,9 @@ describe('useAutoSyncOnOpen foreground-return sync', () => {
     mockTryClaimAutoSync.mockReturnValue(jest.fn());
     const syncMutation = buildSyncMutation();
 
-    renderHook(() => useAutoSyncOnOpen({ initialRoute: 'Onboarding', syncMutation }));
+    renderHook(() =>
+      useAutoSyncOnOpen({ initialRoute: 'Onboarding', syncMutation })
+    );
     expect(appStateHandler).not.toBeNull();
 
     await act(async () => {
@@ -228,7 +273,9 @@ describe('useAutoSyncOnOpen foreground-return sync', () => {
     mockTryClaimAutoSync.mockReturnValue(release);
     const syncMutation = buildSyncMutation();
 
-    renderHook(() => useAutoSyncOnOpen({ initialRoute: 'Onboarding', syncMutation }));
+    renderHook(() =>
+      useAutoSyncOnOpen({ initialRoute: 'Onboarding', syncMutation })
+    );
 
     await act(async () => {
       await appStateHandler?.('background');
@@ -242,7 +289,7 @@ describe('useAutoSyncOnOpen foreground-return sync', () => {
     expect(mockSetWindowOpen).toHaveBeenCalledWith(true);
     expect(syncMutation.mutate).toHaveBeenCalledWith(
       { timeRange: '7d', healthMetricStates: ALL_METRICS_ENABLED },
-      expect.objectContaining({ onSettled: expect.any(Function) }),
+      expect.objectContaining({ onSettled: expect.any(Function) })
     );
     jest.useRealTimers();
   });
@@ -250,7 +297,10 @@ describe('useAutoSyncOnOpen foreground-return sync', () => {
   it('removes the AppState subscription on unmount', () => {
     mockHappyPathServices();
     const { unmount } = renderHook(() =>
-      useAutoSyncOnOpen({ initialRoute: 'Onboarding', syncMutation: buildSyncMutation() }),
+      useAutoSyncOnOpen({
+        initialRoute: 'Onboarding',
+        syncMutation: buildSyncMutation(),
+      })
     );
 
     unmount();
@@ -265,7 +315,9 @@ describe('shouldYieldObserverSync', () => {
     mockIsWindowOpen.mockReturnValue(true);
     const syncMutation = buildSyncMutation();
 
-    const { result } = renderHook(() => useAutoSyncOnOpen({ initialRoute: 'Tabs', syncMutation }));
+    const { result } = renderHook(() =>
+      useAutoSyncOnOpen({ initialRoute: 'Tabs', syncMutation })
+    );
 
     await waitFor(() => expect(syncMutation.mutate).toHaveBeenCalled());
     expect(result.current.shouldYieldObserverSync()).toBe(true);

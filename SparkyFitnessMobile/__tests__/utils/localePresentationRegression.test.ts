@@ -28,11 +28,17 @@ describe('repository-wide locale-aware presentation regression', () => {
     test('applies decimal-precision rules applied by HydrationGauge', async () => {
       await i18n.changeLanguage('pl');
       // liter → max 2 decimals (comma separator)
-      expect(formatLocalizedNumber(1.25, { maximumFractionDigits: 2 })).toBe('1,25');
+      expect(formatLocalizedNumber(1.25, { maximumFractionDigits: 2 })).toBe(
+        '1,25'
+      );
       // ml → integer
-      expect(formatLocalizedNumber(1500, { maximumFractionDigits: 0 })).toBe('1500');
+      expect(formatLocalizedNumber(1500, { maximumFractionDigits: 0 })).toBe(
+        '1500'
+      );
       // oz → max 1 decimal
-      expect(formatLocalizedNumber(1234.5, { maximumFractionDigits: 1 })).toBe('1234,5');
+      expect(formatLocalizedNumber(1234.5, { maximumFractionDigits: 1 })).toBe(
+        '1234,5'
+      );
     });
   });
 
@@ -84,7 +90,9 @@ describe('repository-wide locale-aware presentation regression', () => {
 
     test('switches the fallback text with the app language', async () => {
       await i18n.changeLanguage('en');
-      expect(buildBBTTooltipText(undefined, i18n.t)).toContain('Press the line');
+      expect(buildBBTTooltipText(undefined, i18n.t)).toContain(
+        'Press the line'
+      );
 
       await i18n.changeLanguage('pl');
       const plFallback = buildBBTTooltipText(undefined, i18n.t);

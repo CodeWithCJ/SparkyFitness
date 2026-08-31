@@ -51,7 +51,9 @@ describe('workout read authorization', () => {
   it.each([['ExerciseSession'], ['Workout']])(
     'authorizes route and telemetry types for a %s read',
     async (recordType) => {
-      const readTypes = await readTypesFor([{ accessType: 'read', recordType }]);
+      const readTypes = await readTypesFor([
+        { accessType: 'read', recordType },
+      ]);
 
       expect(readTypes).toContain('HKWorkoutTypeIdentifier');
       expect(readTypes).toContain('HKWorkoutRouteTypeIdentifier');
@@ -67,7 +69,9 @@ describe('workout read authorization', () => {
       expect(readTypes).toContain(
         'HKQuantityTypeIdentifierRunningVerticalOscillation'
       );
-      expect(readTypes).toContain('HKQuantityTypeIdentifierRunningStrideLength');
+      expect(readTypes).toContain(
+        'HKQuantityTypeIdentifierRunningStrideLength'
+      );
     }
   );
 
@@ -130,19 +134,23 @@ describe('read/write direction independence', () => {
   it.each(['Nutrition', 'Hydration'])(
     'requests %s write without touching read',
     async (recordType) => {
-      const { toRead, toShare } = await authorizeWith([{ accessType: 'write', recordType }]);
+      const { toRead, toShare } = await authorizeWith([
+        { accessType: 'write', recordType },
+      ]);
       expect(toRead).toEqual([]);
       expect(toShare.length).toBeGreaterThan(0);
-    },
+    }
   );
 
   it.each(['Nutrition', 'Hydration'])(
     'requests %s read without touching write',
     async (recordType) => {
-      const { toRead, toShare } = await authorizeWith([{ accessType: 'read', recordType }]);
+      const { toRead, toShare } = await authorizeWith([
+        { accessType: 'read', recordType },
+      ]);
       expect(toShare).toEqual([]);
       expect(toRead.length).toBeGreaterThan(0);
-    },
+    }
   );
 
   it.each(['Nutrition', 'Hydration'])(
@@ -154,7 +162,7 @@ describe('read/write direction independence', () => {
       ]);
       expect(toRead.length).toBeGreaterThan(0);
       expect(toShare).toEqual(toRead);
-    },
+    }
   );
 });
 
@@ -166,7 +174,7 @@ describe('authorization request logging', () => {
     await authorizeWith([{ accessType: 'write', recordType: 'Hydration' }]);
 
     const [message, , details] = (addLog as jest.Mock).mock.calls.find(
-      ([m]: [string]) => m.includes('Requesting HealthKit authorization'),
+      ([m]: [string]) => m.includes('Requesting HealthKit authorization')
     );
     expect(message).toBeTruthy();
     expect(details).toEqual([
@@ -187,7 +195,7 @@ describe('authorization request logging', () => {
     expect(addLog).toHaveBeenCalledWith(
       expect.stringContaining('expanded to zero HealthKit types'),
       'WARNING',
-      ['unmapped: write NotARealRecordType'],
+      ['unmapped: write NotARealRecordType']
     );
   });
 });

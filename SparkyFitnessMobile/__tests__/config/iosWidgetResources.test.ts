@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { SHIPPED_LOCALES, SOURCE_LOCALE } from '../../src/localization/localeRegistry';
+import {
+  SHIPPED_LOCALES,
+  SOURCE_LOCALE,
+} from '../../src/localization/localeRegistry';
 import { parseIosStrings } from '../../scripts/validate-native-widget-locales.mjs';
 import { galleryKeyUsages, helperKeyUsages } from './helpers/widgetSwiftKeys';
 
@@ -10,12 +13,17 @@ const SHIPPED = Object.keys(SHIPPED_LOCALES);
 /** The validator's reader understands escaped quotes; a naive regex silently drops them. */
 function readStringsFile(locale: string): Map<string, string> {
   return parseIosStrings(
-    fs.readFileSync(path.join(WIDGET_ROOT, `${locale}.lproj/Localizable.strings`), 'utf8'),
+    fs.readFileSync(
+      path.join(WIDGET_ROOT, `${locale}.lproj/Localizable.strings`),
+      'utf8'
+    )
   );
 }
 
 const REQUIRED_KEYS = [
-  ...new Set([...helperKeyUsages(), ...galleryKeyUsages()].map((usage) => usage.key)),
+  ...new Set(
+    [...helperKeyUsages(), ...galleryKeyUsages()].map((usage) => usage.key)
+  ),
 ].sort();
 
 describe('iOS WidgetKit localization resources', () => {
@@ -31,7 +39,11 @@ describe('iOS WidgetKit localization resources', () => {
 
     it('ships a Localizable.strings for every registered locale', () => {
       for (const locale of SHIPPED) {
-        expect(fs.existsSync(path.join(WIDGET_ROOT, `${locale}.lproj/Localizable.strings`))).toBe(true);
+        expect(
+          fs.existsSync(
+            path.join(WIDGET_ROOT, `${locale}.lproj/Localizable.strings`)
+          )
+        ).toBe(true);
       }
     });
 
@@ -57,7 +69,9 @@ describe('iOS WidgetKit localization resources', () => {
     it('keeps the two widget names distinct in every shipped locale', () => {
       for (const locale of SHIPPED) {
         const strings = readStringsFile(locale);
-        expect(strings.get('widget.calorie.name')).not.toBe(strings.get('widget.macro.name'));
+        expect(strings.get('widget.calorie.name')).not.toBe(
+          strings.get('widget.macro.name')
+        );
       }
     });
 
@@ -72,7 +86,11 @@ describe('iOS WidgetKit localization resources', () => {
 
     it('keeps format placeholder compatibility across every shipped locale', () => {
       const en = readStringsFile(SOURCE_LOCALE);
-      const placeholderKeys = ['widget.grams', 'widget.a11y.kcal_left', 'widget.a11y.kcal'];
+      const placeholderKeys = [
+        'widget.grams',
+        'widget.a11y.kcal_left',
+        'widget.a11y.kcal',
+      ];
       for (const locale of SHIPPED) {
         const target = readStringsFile(locale);
         for (const key of placeholderKeys) {

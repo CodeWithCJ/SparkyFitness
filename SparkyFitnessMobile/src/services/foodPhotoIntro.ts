@@ -9,7 +9,10 @@ export async function hasSeenFoodPhotoIntro(): Promise<boolean> {
     return value === 'true';
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[Food Photo Intro] Failed to read intro flag: ${message}`, 'WARNING');
+    addLog(
+      `[Food Photo Intro] Failed to read intro flag: ${message}`,
+      'WARNING'
+    );
     return false;
   }
 }
@@ -19,6 +22,9 @@ export async function markFoodPhotoIntroSeen(): Promise<void> {
     await AsyncStorage.setItem(FOOD_PHOTO_INTRO_KEY, 'true');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[Food Photo Intro] Failed to persist intro flag: ${message}`, 'WARNING');
+    addLog(
+      `[Food Photo Intro] Failed to persist intro flag: ${message}`,
+      'WARNING'
+    );
   }
 }

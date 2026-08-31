@@ -7,7 +7,9 @@
     "integrations",
     "config",
     "db",
-    "security"
+    "security",
+    "ai",
+    "prompts"
   ],
   "ignore": [
     "mock_data",

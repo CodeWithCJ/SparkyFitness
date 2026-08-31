@@ -1,4 +1,5 @@
 # Sparky Fitness Mobile
+
 Sparky Fitness Mobile is a React Native application built with Expo, designed to help users track their fitness activities and health data seamlessly across devices.
 
 ## Development
@@ -21,6 +22,7 @@ pnpm start
 ```
 
 ### Advanced iOS Runs
+
 ```bash
 # Run on a physical iOS device
 npx expo run:ios --device
@@ -30,12 +32,13 @@ npx expo run:ios --configuration Release --device
 ```
 
 ### Production Build
+
 ```bash
 APP_VARIANT=production eas build -p ios --profile production --auto-submit
 ```
 
-
 ### Configure Xcode
+
 ```bash
 open ios/SparkyFitness.xcworkspace
 
@@ -50,3 +53,4 @@ EXPO_USE_PRECOMPILED_MODULES=0 npx expo prebuild --clean
 
 # 3. Run the iOS build with the variable set to 0
 EXPO_USE_PRECOMPILED_MODULES=0 pnpm ios
+```

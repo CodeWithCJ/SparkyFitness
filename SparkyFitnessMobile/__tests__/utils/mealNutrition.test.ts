@@ -18,25 +18,89 @@ import i18n from '../../src/localization/i18n';
 const t = i18n.t;
 
 const systemMealTypes: MealType[] = [
-  { id: 'sys-b', name: 'breakfast', sort_order: 0, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
-  { id: 'sys-l', name: 'lunch', sort_order: 1, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
-  { id: 'sys-d', name: 'dinner', sort_order: 2, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
-  { id: 'sys-s', name: 'snacks', sort_order: 3, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
+  {
+    id: 'sys-b',
+    name: 'breakfast',
+    sort_order: 0,
+    user_id: null,
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+  },
+  {
+    id: 'sys-l',
+    name: 'lunch',
+    sort_order: 1,
+    user_id: null,
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+  },
+  {
+    id: 'sys-d',
+    name: 'dinner',
+    sort_order: 2,
+    user_id: null,
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+  },
+  {
+    id: 'sys-s',
+    name: 'snacks',
+    sort_order: 3,
+    user_id: null,
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+  },
 ];
 
 const customMealTypes: MealType[] = [
   ...systemMealTypes,
-  { id: 'custom-pw', name: 'Pre-Workout', sort_order: 0, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
-  { id: 'custom-ps', name: 'Post-Workout', sort_order: 5, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
-  { id: 'custom-sn', name: 'Drugie śniadanie', sort_order: 0, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
+  {
+    id: 'custom-pw',
+    name: 'Pre-Workout',
+    sort_order: 0,
+    user_id: 'user1',
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+  },
+  {
+    id: 'custom-ps',
+    name: 'Post-Workout',
+    sort_order: 5,
+    user_id: 'user1',
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+  },
+  {
+    id: 'custom-sn',
+    name: 'Drugie śniadanie',
+    sort_order: 0,
+    user_id: 'user1',
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+  },
 ];
 
 describe('groupFoodEntriesByMealType', () => {
   it('groups entries by meal_type_id and uses server sort_order', () => {
     const entries: FoodEntry[] = [
-      { id: '1', meal_type_id: 'custom-pw', meal_type: 'Pre-Workout' } as FoodEntry,
+      {
+        id: '1',
+        meal_type_id: 'custom-pw',
+        meal_type: 'Pre-Workout',
+      } as FoodEntry,
       { id: '2', meal_type_id: 'sys-l', meal_type: 'lunch' } as FoodEntry,
-      { id: '3', meal_type_id: 'custom-ps', meal_type: 'Post-Workout' } as FoodEntry,
+      {
+        id: '3',
+        meal_type_id: 'custom-ps',
+        meal_type: 'Post-Workout',
+      } as FoodEntry,
     ];
     const groups = groupFoodEntriesByMealType(entries, customMealTypes);
     expect(groups[0].name).toBe('Pre-Workout');
@@ -46,7 +110,11 @@ describe('groupFoodEntriesByMealType', () => {
 
   it('custom type does not go to Other', () => {
     const entries: FoodEntry[] = [
-      { id: '1', meal_type_id: 'custom-pw', meal_type: 'Pre-Workout' } as FoodEntry,
+      {
+        id: '1',
+        meal_type_id: 'custom-pw',
+        meal_type: 'Pre-Workout',
+      } as FoodEntry,
     ];
     const groups = groupFoodEntriesByMealType(entries, customMealTypes);
     const otherGroup = groups.find((g) => g.name === 'other');
@@ -97,36 +165,71 @@ describe('groupFoodEntriesByMealType', () => {
       { id: '4', meal_type_id: 'sys-s', meal_type: 'snacks' } as FoodEntry,
     ];
     const groups = groupFoodEntriesByMealType(entries, systemMealTypes);
-    expect(groups.map((g) => g.name)).toEqual(['breakfast', 'lunch', 'dinner', 'snacks']);
+    expect(groups.map((g) => g.name)).toEqual([
+      'breakfast',
+      'lunch',
+      'dinner',
+      'snacks',
+    ]);
   });
 });
 
 describe('getMealTypeDisplayLabel', () => {
   it('renders system meal types by ownership with canonical English labels', () => {
-    expect(getMealTypeDisplayLabel({ name: 'breakfast', user_id: null }, t)).toBe('Breakfast');
-    expect(getMealTypeDisplayLabel({ name: 'LUNCH', user_id: null }, t)).toBe('Lunch');
-    expect(getMealTypeDisplayLabel({ name: 'snacks', user_id: null }, t)).toBe('Snacks');
-    expect(getMealTypeDisplayLabel({ name: 'other', user_id: null }, t)).toBe('Other');
+    expect(
+      getMealTypeDisplayLabel({ name: 'breakfast', user_id: null }, t)
+    ).toBe('Breakfast');
+    expect(getMealTypeDisplayLabel({ name: 'LUNCH', user_id: null }, t)).toBe(
+      'Lunch'
+    );
+    expect(getMealTypeDisplayLabel({ name: 'snacks', user_id: null }, t)).toBe(
+      'Snacks'
+    );
+    expect(getMealTypeDisplayLabel({ name: 'other', user_id: null }, t)).toBe(
+      'Other'
+    );
   });
 
   it('keeps a CUSTOM type named breakfast literal', () => {
-    expect(getMealTypeDisplayLabel({ name: 'breakfast', user_id: 'user-1' }, t)).toBe('breakfast');
+    expect(
+      getMealTypeDisplayLabel({ name: 'breakfast', user_id: 'user-1' }, t)
+    ).toBe('breakfast');
   });
 
   it('keeps custom types named lunch/dinner/snack/other literal', () => {
-    expect(getMealTypeDisplayLabel({ name: 'Lunch', user_id: 'user-1' }, t)).toBe('Lunch');
-    expect(getMealTypeDisplayLabel({ name: 'DINNER', user_id: 'user-1' }, t)).toBe('DINNER');
-    expect(getMealTypeDisplayLabel({ name: 'snack', user_id: 'user-1' }, t)).toBe('snack');
-    expect(getMealTypeDisplayLabel({ name: 'other', user_id: 'user-1' }, t)).toBe('other');
+    expect(
+      getMealTypeDisplayLabel({ name: 'Lunch', user_id: 'user-1' }, t)
+    ).toBe('Lunch');
+    expect(
+      getMealTypeDisplayLabel({ name: 'DINNER', user_id: 'user-1' }, t)
+    ).toBe('DINNER');
+    expect(
+      getMealTypeDisplayLabel({ name: 'snack', user_id: 'user-1' }, t)
+    ).toBe('snack');
+    expect(
+      getMealTypeDisplayLabel({ name: 'other', user_id: 'user-1' }, t)
+    ).toBe('other');
   });
 
   it('keeps custom meal type names literal', () => {
-    expect(getMealTypeDisplayLabel({ name: 'Brunch', user_id: 'user-1' }, t)).toBe('Brunch');
-    expect(getMealTypeDisplayLabel({ name: 'Drugie śniadanie', user_id: 'user-1' }, t)).toBe('Drugie śniadanie');
+    expect(
+      getMealTypeDisplayLabel({ name: 'Brunch', user_id: 'user-1' }, t)
+    ).toBe('Brunch');
+    expect(
+      getMealTypeDisplayLabel(
+        { name: 'Drugie śniadanie', user_id: 'user-1' },
+        t
+      )
+    ).toBe('Drugie śniadanie');
   });
 
   it('keeps a custom name that looks like a system key literal (never a static map)', () => {
-    expect(getMealTypeDisplayLabel({ name: 'mealTypes.breakfast', user_id: 'user-1' }, t)).toBe('mealTypes.breakfast');
+    expect(
+      getMealTypeDisplayLabel(
+        { name: 'mealTypes.breakfast', user_id: 'user-1' },
+        t
+      )
+    ).toBe('mealTypes.breakfast');
   });
 });
 
@@ -148,10 +251,19 @@ describe('getHistoricalMealTypeLabel', () => {
 describe('filterFoodEntriesByMealTypeId', () => {
   it('matches entries by canonical id first', () => {
     const entries: FoodEntry[] = [
-      { id: '1', meal_type_id: 'custom-pw', meal_type: 'Pre-Workout' } as FoodEntry,
+      {
+        id: '1',
+        meal_type_id: 'custom-pw',
+        meal_type: 'Pre-Workout',
+      } as FoodEntry,
       { id: '2', meal_type_id: 'sys-l', meal_type: 'lunch' } as FoodEntry,
     ];
-    const filtered = filterFoodEntriesByMealTypeId(entries, 'custom-pw', 'Pre-Workout', customMealTypes);
+    const filtered = filterFoodEntriesByMealTypeId(
+      entries,
+      'custom-pw',
+      'Pre-Workout',
+      customMealTypes
+    );
     expect(filtered.map((e) => e.id)).toEqual(['1']);
   });
 
@@ -160,16 +272,30 @@ describe('filterFoodEntriesByMealTypeId', () => {
       { id: '1', meal_type_id: 'dup-a', meal_type: 'Fasting' } as FoodEntry,
       { id: '2', meal_type_id: 'dup-b', meal_type: 'Fasting' } as FoodEntry,
     ];
-    const filtered = filterFoodEntriesByMealTypeId(entries, 'dup-a', 'Fasting', []);
+    const filtered = filterFoodEntriesByMealTypeId(
+      entries,
+      'dup-a',
+      'Fasting',
+      []
+    );
     expect(filtered.map((e) => e.id)).toEqual(['1']);
   });
 
   it('falls back to the snapshotted name for a deleted/hidden type', () => {
     const entries: FoodEntry[] = [
-      { id: '1', meal_type_id: 'deleted-id', meal_type: 'Old Meal' } as FoodEntry,
+      {
+        id: '1',
+        meal_type_id: 'deleted-id',
+        meal_type: 'Old Meal',
+      } as FoodEntry,
     ];
     // No matching type in the list (deleted): filter by name.
-    const filtered = filterFoodEntriesByMealTypeId(entries, undefined, 'Old Meal', []);
+    const filtered = filterFoodEntriesByMealTypeId(
+      entries,
+      undefined,
+      'Old Meal',
+      []
+    );
     expect(filtered.map((e) => e.id)).toEqual(['1']);
   });
 
@@ -178,7 +304,12 @@ describe('filterFoodEntriesByMealTypeId', () => {
       { id: '1', meal_type: 'Pre-Workout' } as FoodEntry,
       { id: '2', meal_type: 'lunch' } as FoodEntry,
     ];
-    const filtered = filterFoodEntriesByMealTypeId(entries, 'custom-pw', 'Pre-Workout', customMealTypes);
+    const filtered = filterFoodEntriesByMealTypeId(
+      entries,
+      'custom-pw',
+      'Pre-Workout',
+      customMealTypes
+    );
     expect(filtered.map((e) => e.id)).toEqual(['1']);
   });
 });
@@ -186,8 +317,16 @@ describe('filterFoodEntriesByMealTypeId', () => {
 describe('groupFoodEntriesByMealType — unknown types', () => {
   it('keeps two different unknown ids in separate groups, not one Other', () => {
     const entries: FoodEntry[] = [
-      { id: '1', meal_type_id: 'deleted-a', meal_type: 'Old Meal A' } as FoodEntry,
-      { id: '2', meal_type_id: 'deleted-b', meal_type: 'Old Meal B' } as FoodEntry,
+      {
+        id: '1',
+        meal_type_id: 'deleted-a',
+        meal_type: 'Old Meal A',
+      } as FoodEntry,
+      {
+        id: '2',
+        meal_type_id: 'deleted-b',
+        meal_type: 'Old Meal B',
+      } as FoodEntry,
     ];
     const groups = groupFoodEntriesByMealType(entries, systemMealTypes);
     const names = groups.map((g) => g.name);
@@ -198,7 +337,11 @@ describe('groupFoodEntriesByMealType — unknown types', () => {
 
   it('keeps a hidden type entry visible in its own group by id', () => {
     const entries: FoodEntry[] = [
-      { id: '1', meal_type_id: 'hidden-id', meal_type: 'Hidden Meal' } as FoodEntry,
+      {
+        id: '1',
+        meal_type_id: 'hidden-id',
+        meal_type: 'Hidden Meal',
+      } as FoodEntry,
     ];
     const groups = groupFoodEntriesByMealType(entries, systemMealTypes);
     const hidden = groups.find((g) => g.name === 'Hidden Meal');
@@ -208,9 +351,7 @@ describe('groupFoodEntriesByMealType — unknown types', () => {
   });
 
   it('groups nameless unknown entries into the synthetic other group', () => {
-    const entries: FoodEntry[] = [
-      { id: '1' } as FoodEntry,
-    ];
+    const entries: FoodEntry[] = [{ id: '1' } as FoodEntry];
     const groups = groupFoodEntriesByMealType(entries, systemMealTypes);
     const other = groups.find((g) => g.name.toLowerCase() === 'other');
     expect(other).toBeDefined();
@@ -231,14 +372,16 @@ const entry = (overrides: Partial<FoodEntry>): FoodEntry => ({
 
 describe('calculateEntryNutrition / calculateMealNutrition', () => {
   it('scales entry nutrition by quantity and serving size', () => {
-    const nutrition = calculateEntryNutrition(entry({
-      calories: 200,
-      protein: 10,
-      carbs: 20,
-      fat: 5,
-      quantity: 3,
-      serving_size: 2,
-    }));
+    const nutrition = calculateEntryNutrition(
+      entry({
+        calories: 200,
+        protein: 10,
+        carbs: 20,
+        fat: 5,
+        quantity: 3,
+        serving_size: 2,
+      })
+    );
 
     expect(nutrition).toEqual({
       calories: 300,
@@ -286,7 +429,10 @@ describe('calculateEntryNutrition / calculateMealNutrition', () => {
 
 describe('getMealPercentage', () => {
   it('uses legacy percentage fields for system meal types', () => {
-    const goals: DailyGoals = { breakfast_percentage: 25, lunch_percentage: 30 } as DailyGoals;
+    const goals: DailyGoals = {
+      breakfast_percentage: 25,
+      lunch_percentage: 30,
+    } as DailyGoals;
     expect(getMealPercentage('breakfast', goals)).toBe(25);
     expect(getMealPercentage('lunch', goals)).toBe(30);
   });
@@ -322,7 +468,15 @@ describe('getMealPercentage', () => {
 describe('groupFoodEntriesByMealType — canonical ID contract', () => {
   it('keeps a deleted custom type separate from an active system type with the same name', () => {
     const types: MealType[] = [
-      { id: 'system-breakfast', name: 'breakfast', sort_order: 10, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
+      {
+        id: 'system-breakfast',
+        name: 'breakfast',
+        sort_order: 10,
+        user_id: null,
+        created_at: '',
+        is_visible: true,
+        show_in_quick_log: true,
+      },
     ];
     const entries = [
       // Historical entry whose custom type was deleted — id no longer resolves.
@@ -344,11 +498,19 @@ describe('groupFoodEntriesByMealType — canonical ID contract', () => {
 
   it('matches by name only when the entry has no meal_type_id', () => {
     const types: MealType[] = [
-      { id: 'system-breakfast', name: 'breakfast', sort_order: 10, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
+      {
+        id: 'system-breakfast',
+        name: 'breakfast',
+        sort_order: 10,
+        user_id: null,
+        created_at: '',
+        is_visible: true,
+        show_in_quick_log: true,
+      },
     ];
     const groups = groupFoodEntriesByMealType(
       [{ id: 'e1', meal_type_id: null, meal_type: 'breakfast' }] as FoodEntry[],
-      types,
+      types
     );
     expect(groups).toHaveLength(1);
     expect(groups[0].mealTypeId).toBe('system-breakfast');
@@ -389,28 +551,57 @@ describe('groupFoodEntriesByMealType — distinct historical fallback groups', (
         { id: 'e1', meal_type_id: null, meal_type: 'Morning Snack' },
         { id: 'e2', meal_type_id: null, meal_type: 'Night Snack' },
       ] as FoodEntry[],
-      [],
+      []
     );
 
     expect(groups).toHaveLength(2);
-    expect(groups.map((g) => g.name).sort()).toEqual(['Morning Snack', 'Night Snack']);
+    expect(groups.map((g) => g.name).sort()).toEqual([
+      'Morning Snack',
+      'Night Snack',
+    ]);
     // Both are fallback groups: never system, and each keeps its own id-less key.
-    expect(groups.every((g) => g.isSystem === false && g.mealTypeId === null)).toBe(true);
+    expect(
+      groups.every((g) => g.isSystem === false && g.mealTypeId === null)
+    ).toBe(true);
   });
 });
 
 describe('getFoodEntryMealTypeLabel — id-first label resolution', () => {
   const types: MealType[] = [
-    { id: 'system-breakfast', name: 'breakfast', sort_order: 10, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
-    { id: 'custom-b', name: 'breakfast', sort_order: 20, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
+    {
+      id: 'system-breakfast',
+      name: 'breakfast',
+      sort_order: 10,
+      user_id: null,
+      created_at: '',
+      is_visible: true,
+      show_in_quick_log: true,
+    },
+    {
+      id: 'custom-b',
+      name: 'breakfast',
+      sort_order: 20,
+      user_id: 'user1',
+      created_at: '',
+      is_visible: true,
+      show_in_quick_log: true,
+    },
   ];
 
   it('resolves an active definition by id with ownership-aware display', () => {
     expect(
-      getFoodEntryMealTypeLabel({ meal_type_id: 'custom-b', meal_type: 'breakfast' }, types, t),
+      getFoodEntryMealTypeLabel(
+        { meal_type_id: 'custom-b', meal_type: 'breakfast' },
+        types,
+        t
+      )
     ).toBe('breakfast');
     expect(
-      getFoodEntryMealTypeLabel({ meal_type_id: 'system-breakfast', meal_type: 'breakfast' }, types, t),
+      getFoodEntryMealTypeLabel(
+        { meal_type_id: 'system-breakfast', meal_type: 'breakfast' },
+        types,
+        t
+      )
     ).toBe('Breakfast');
   });
 
@@ -418,7 +609,11 @@ describe('getFoodEntryMealTypeLabel — id-first label resolution', () => {
     // custom-old-1 no longer resolves; even though an active system "breakfast"
     // exists, the literal historical label wins.
     expect(
-      getFoodEntryMealTypeLabel({ meal_type_id: 'custom-old-1', meal_type: 'breakfast' }, types, t),
+      getFoodEntryMealTypeLabel(
+        { meal_type_id: 'custom-old-1', meal_type: 'breakfast' },
+        types,
+        t
+      )
     ).toBe('breakfast');
   });
 
@@ -427,30 +622,44 @@ describe('getFoodEntryMealTypeLabel — id-first label resolution', () => {
     // to the canonical English label.
     const onlySystem: MealType[] = [types[0]];
     expect(
-      getFoodEntryMealTypeLabel({ meal_type_id: null, meal_type: 'breakfast' }, onlySystem, t),
+      getFoodEntryMealTypeLabel(
+        { meal_type_id: null, meal_type: 'breakfast' },
+        onlySystem,
+        t
+      )
     ).toBe('Breakfast');
   });
 
-describe('blank historical meal type compatibility', () => {
-  it('groups a blank-name entry into the synthetic Other bucket', () => {
-    const { getMealGroupLabel, groupFoodEntriesByMealType } = require('../../src/utils/mealNutrition');
-    const groups = groupFoodEntriesByMealType(
-      [{ id: 'e1', meal_type_id: null, meal_type: '' } as FoodEntry],
-      [],
-    );
-    expect(groups).toHaveLength(1);
-    expect(groups[0].name).toBe('Other');
-    expect(groups[0].isSystem).toBe(false);
-    expect(getMealGroupLabel(groups[0], t)).toBe('Other');
-  });
+  describe('blank historical meal type compatibility', () => {
+    it('groups a blank-name entry into the synthetic Other bucket', () => {
+      const {
+        getMealGroupLabel,
+        groupFoodEntriesByMealType,
+      } = require('../../src/utils/mealNutrition');
+      const groups = groupFoodEntriesByMealType(
+        [{ id: 'e1', meal_type_id: null, meal_type: '' } as FoodEntry],
+        []
+      );
+      expect(groups).toHaveLength(1);
+      expect(groups[0].name).toBe('Other');
+      expect(groups[0].isSystem).toBe(false);
+      expect(getMealGroupLabel(groups[0], t)).toBe('Other');
+    });
 
-  it('detail filter matches a blank-name entry under the other bucket', () => {
-    const { filterFoodEntriesByMealTypeId } = require('../../src/utils/mealNutrition');
-    const entries = [{ id: 'e1', meal_type_id: null, meal_type: '' } as FoodEntry];
-    // Opening "Other" from the summary must show the blank-name entry.
-    expect(filterFoodEntriesByMealTypeId(entries, null, 'other', [])).toHaveLength(1);
-    expect(filterFoodEntriesByMealTypeId(entries, null, 'Other', [])).toHaveLength(1);
+    it('detail filter matches a blank-name entry under the other bucket', () => {
+      const {
+        filterFoodEntriesByMealTypeId,
+      } = require('../../src/utils/mealNutrition');
+      const entries = [
+        { id: 'e1', meal_type_id: null, meal_type: '' } as FoodEntry,
+      ];
+      // Opening "Other" from the summary must show the blank-name entry.
+      expect(
+        filterFoodEntriesByMealTypeId(entries, null, 'other', [])
+      ).toHaveLength(1);
+      expect(
+        filterFoodEntriesByMealTypeId(entries, null, 'Other', [])
+      ).toHaveLength(1);
+    });
   });
-});
-
 });

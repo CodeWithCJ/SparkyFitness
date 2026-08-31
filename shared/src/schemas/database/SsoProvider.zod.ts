@@ -65,5 +65,7 @@ export const ssoProviderMutatorSchema = z.object({
 });
 
 export type SsoProvider = z.infer<typeof ssoProviderSchema>;
-export type SsoProviderInitializer = z.infer<typeof ssoProviderInitializerSchema>;
+export type SsoProviderInitializer = z.infer<
+  typeof ssoProviderInitializerSchema
+>;
 export type SsoProviderMutator = z.infer<typeof ssoProviderMutatorSchema>;

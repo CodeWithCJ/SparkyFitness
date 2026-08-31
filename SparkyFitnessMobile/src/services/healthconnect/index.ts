@@ -16,12 +16,16 @@ import {
   type ReadResult,
 } from '../../types/healthRecords';
 import { ceilToLocalDayStart, getSyncStartDate } from '../../utils/syncUtils';
-import { isClientUnavailableError, isQuotaExceededError } from '../shared/quotaError';
-import { type TelemetryRunContext } from '../shared/telemetryBudget';
 import {
-  hasEnrichedSession,
-} from '../shared/enrichedSessionCache';
-import { createConcurrencyLimiter, runTasksInBatches } from '../../utils/concurrency';
+  isClientUnavailableError,
+  isQuotaExceededError,
+} from '../shared/quotaError';
+import { type TelemetryRunContext } from '../shared/telemetryBudget';
+import { hasEnrichedSession } from '../shared/enrichedSessionCache';
+import {
+  createConcurrencyLimiter,
+  runTasksInBatches,
+} from '../../utils/concurrency';
 import { getErrorMessage } from '../../utils/errors';
 import { collectSessionTelemetry, sessionCacheKey } from './workoutTelemetry';
 import { deriveActiveCalories } from '@workspace/shared';
@@ -34,7 +38,7 @@ export { sessionCacheKey };
 /**
  * Enrichment runs two very different costs per session, so they get two limits.
  *
- * The three calories/distance aggregates return a single scalar each — cheap to
+ * The four calorie/basal/distance aggregates return a single scalar each — cheap to
  * carry over the bridge. Throttling those as hard as telemetry is what would
  * push a large workout library toward the 60s per-metric timeout, so they run
  * at the wider limit.
@@ -47,7 +51,7 @@ export { sessionCacheKey };
  * Both are far below the unbounded fan-out that caused the bug, and well inside
  * the Health Connect API call quota (see shared/quotaError.ts).
  */
-const AGGREGATE_CONCURRENCY = 6;
+const AGGREGATE_CONCURRENCY = 4;
 const TELEMETRY_CONCURRENCY = 2;
 
 /**
@@ -63,7 +67,9 @@ export const initHealthConnect = async (): Promise<boolean> => {
     return isInitialized;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthConnectService] Failed to initialize Health Connect: ${message}`);
+    addLog(
+      `[HealthConnectService] Failed to initialize Health Connect: ${message}`
+    );
     return false;
   }
 };
@@ -72,38 +78,51 @@ export const requestHealthPermissions = async (
   permissionsToRequest: PermissionRequest[]
 ): Promise<boolean> => {
   try {
-    const uniquePermissions = permissionsToRequest.filter((permission, index, allPermissions) =>
-      allPermissions.findIndex(candidate =>
-        candidate.recordType === permission.recordType &&
-        candidate.accessType === permission.accessType
-      ) === index
+    const uniquePermissions = permissionsToRequest.filter(
+      (permission, index, allPermissions) =>
+        allPermissions.findIndex(
+          (candidate) =>
+            candidate.recordType === permission.recordType &&
+            candidate.accessType === permission.accessType
+        ) === index
     );
 
     // Cast to library's Permission type - our PermissionRequest interface is compatible
-    const grantedPermissions = await requestPermission(
+    const grantedPermissions = (await requestPermission(
       uniquePermissions as Parameters<typeof requestPermission>[0]
-    ) as GrantedPermission[];
+    )) as GrantedPermission[];
 
-    const allGranted = uniquePermissions.every(requestedPerm =>
-      grantedPermissions.some(grantedPerm =>
-        grantedPerm.recordType === requestedPerm.recordType &&
-        grantedPerm.accessType === requestedPerm.accessType
+    const allGranted = uniquePermissions.every((requestedPerm) =>
+      grantedPermissions.some(
+        (grantedPerm) =>
+          grantedPerm.recordType === requestedPerm.recordType &&
+          grantedPerm.accessType === requestedPerm.accessType
       )
     );
 
     if (allGranted) {
-      addLog('[HealthConnectService] All requested permissions granted.', 'INFO');
+      addLog(
+        '[HealthConnectService] All requested permissions granted.',
+        'INFO'
+      );
       return true;
     } else {
-      addLog('[HealthConnectService] Not all requested permissions granted.', 'WARNING', [
-        `requested: ${JSON.stringify(permissionsToRequest)}`,
-        `granted: ${JSON.stringify(grantedPermissions)}`,
-      ]);
+      addLog(
+        '[HealthConnectService] Not all requested permissions granted.',
+        'WARNING',
+        [
+          `requested: ${JSON.stringify(permissionsToRequest)}`,
+          `granted: ${JSON.stringify(grantedPermissions)}`,
+        ]
+      );
       return false;
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthConnectService] Failed to request health permissions: ${message}`, 'ERROR');
+    addLog(
+      `[HealthConnectService] Failed to request health permissions: ${message}`,
+      'ERROR'
+    );
     throw error;
   }
 };
@@ -111,10 +130,17 @@ export const requestHealthPermissions = async (
 // Health Connect's history read permission ("Allow access to all past data"). The
 // runtime grant is required to read records older than 30 days; without it reads
 // silently cap at the 30-day window, which the history-import probes then reflect.
-const HISTORY_READ_PERMISSION = { accessType: 'read', recordType: 'ReadHealthDataHistory' } as const;
+const HISTORY_READ_PERMISSION = {
+  accessType: 'read',
+  recordType: 'ReadHealthDataHistory',
+} as const;
 
-const isHistoryReadGrant = (permission: { accessType: string; recordType: string }): boolean =>
-  permission.accessType === 'read' && permission.recordType === 'ReadHealthDataHistory';
+const isHistoryReadGrant = (permission: {
+  accessType: string;
+  recordType: string;
+}): boolean =>
+  permission.accessType === 'read' &&
+  permission.recordType === 'ReadHealthDataHistory';
 
 /**
  * Ensures the history read permission is granted, requesting it if not. Returns
@@ -131,7 +157,10 @@ export const ensureHistoryReadPermission = async (): Promise<boolean> => {
     return result.some(isHistoryReadGrant);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthConnectService] History read permission check failed: ${message}`, 'WARNING');
+    addLog(
+      `[HealthConnectService] History read permission check failed: ${message}`,
+      'WARNING'
+    );
     return false;
   }
 };
@@ -166,7 +195,7 @@ const formatDateForLog = (date: Date): string => {
 const getWindowError = (
   operation: string,
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): string | undefined => {
   const startMs = startDate.getTime();
   const endMs = endDate.getTime();
@@ -185,7 +214,7 @@ const getWindowError = (
 const buildFallbackWindows = (
   startDate: Date,
   endDate: Date,
-  windowMs: number,
+  windowMs: number
 ): { start: Date; end: Date }[] => {
   const windows: { start: Date; end: Date }[] = [];
   let cursorMs = startDate.getTime();
@@ -216,7 +245,11 @@ const readHealthRecordsOnce = async (
   const allRecords: unknown[] = [];
   let pageToken: string | undefined;
   let page = 0;
-  const windowError = getWindowError(`read for ${recordType}`, startDate, endDate);
+  const windowError = getWindowError(
+    `read for ${recordType}`,
+    startDate,
+    endDate
+  );
   if (windowError) {
     addLog(`[HealthConnectService] ${windowError}`, 'WARNING');
     return { records: [], error: windowError, failedOnFirstPage: true };
@@ -248,7 +281,9 @@ const readHealthRecordsOnce = async (
     } while (pageToken && page < MAX_PAGES);
 
     if (page > 1) {
-      addLog(`[HealthConnectService] Read ${allRecords.length} ${recordType} records across ${page} pages`);
+      addLog(
+        `[HealthConnectService] Read ${allRecords.length} ${recordType} records across ${page} pages`
+      );
     }
     if (pageToken && page >= MAX_PAGES) {
       const error = `Hit max page limit (${MAX_PAGES}) for ${recordType}; returning ${allRecords.length} records collected so far.`;
@@ -278,19 +313,27 @@ const readHealthRecordsOnce = async (
 const readHealthRecordsFallback = async (
   recordType: string,
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): Promise<HealthConnectReadResult> => {
   const records: unknown[] = [];
   const errors: string[] = [];
-  const dayWindows = buildFallbackWindows(startDate, endDate, FALLBACK_DAY_WINDOW_MS);
+  const dayWindows = buildFallbackWindows(
+    startDate,
+    endDate,
+    FALLBACK_DAY_WINDOW_MS
+  );
 
   addLog(
     `[HealthConnectService] Retrying ${recordType} read in ${dayWindows.length} day window(s) after a page-1 failure.`,
-    'WARNING',
+    'WARNING'
   );
 
   for (const dayWindow of dayWindows) {
-    const dayResult = await readHealthRecordsOnce(recordType, dayWindow.start, dayWindow.end);
+    const dayResult = await readHealthRecordsOnce(
+      recordType,
+      dayWindow.start,
+      dayWindow.end
+    );
     if (!dayResult.error) {
       records.push(...dayResult.records);
       continue;
@@ -298,13 +341,21 @@ const readHealthRecordsFallback = async (
 
     const durationMs = dayWindow.end.getTime() - dayWindow.start.getTime();
     if (dayResult.failedOnFirstPage && durationMs > FALLBACK_HOUR_WINDOW_MS) {
-      const hourWindows = buildFallbackWindows(dayWindow.start, dayWindow.end, FALLBACK_HOUR_WINDOW_MS);
+      const hourWindows = buildFallbackWindows(
+        dayWindow.start,
+        dayWindow.end,
+        FALLBACK_HOUR_WINDOW_MS
+      );
       for (const hourWindow of hourWindows) {
-        const hourResult = await readHealthRecordsOnce(recordType, hourWindow.start, hourWindow.end);
+        const hourResult = await readHealthRecordsOnce(
+          recordType,
+          hourWindow.start,
+          hourWindow.end
+        );
         records.push(...hourResult.records);
         if (hourResult.error) {
           errors.push(
-            `${formatDateForLog(hourWindow.start)}-${formatDateForLog(hourWindow.end)}: ${hourResult.error}`,
+            `${formatDateForLog(hourWindow.start)}-${formatDateForLog(hourWindow.end)}: ${hourResult.error}`
           );
         }
       }
@@ -313,12 +364,15 @@ const readHealthRecordsFallback = async (
 
     records.push(...dayResult.records);
     errors.push(
-      `${formatDateForLog(dayWindow.start)}-${formatDateForLog(dayWindow.end)}: ${dayResult.error}`,
+      `${formatDateForLog(dayWindow.start)}-${formatDateForLog(dayWindow.end)}: ${dayResult.error}`
     );
   }
 
   if (errors.length === 0) {
-    addLog(`[HealthConnectService] Recovered ${records.length} ${recordType} records using fallback windows.`, 'WARNING');
+    addLog(
+      `[HealthConnectService] Recovered ${records.length} ${recordType} records using fallback windows.`,
+      'WARNING'
+    );
     return { records };
   }
 
@@ -360,7 +414,7 @@ const tryReconnectOnce = async (): Promise<boolean> => {
 
   addLog(
     '[HealthConnectService] Health Connect client is unavailable — reconnecting once before giving up.',
-    'WARNING',
+    'WARNING'
   );
   return initHealthConnect();
 };
@@ -382,7 +436,7 @@ export const readHealthRecordsDetailed = async (
       if (!result.clientUnavailable) {
         addLog(
           `[HealthConnectService] Reconnected to Health Connect; ${recordType} read resumed.`,
-          'INFO',
+          'INFO'
         );
       }
     }
@@ -397,7 +451,7 @@ export const readHealthRecordsDetailed = async (
   if (result.quotaExceeded) {
     addLog(
       `[HealthConnectService] Skipping fallback split for ${recordType}: Health Connect quota exceeded.`,
-      'WARNING',
+      'WARNING'
     );
     return { records: result.records, error: result.error };
   }
@@ -410,7 +464,7 @@ export const readHealthRecordsDetailed = async (
   if (result.clientUnavailable) {
     addLog(
       `[HealthConnectService] Skipping fallback split for ${recordType}: Health Connect client is unavailable.`,
-      'WARNING',
+      'WARNING'
     );
     return { records: result.records, error: result.error };
   }
@@ -428,7 +482,11 @@ export const readHealthRecords = async (
   startDate: Date,
   endDate: Date
 ): Promise<unknown[]> => {
-  const result = await readHealthRecordsDetailed(recordType, startDate, endDate);
+  const result = await readHealthRecordsDetailed(
+    recordType,
+    startDate,
+    endDate
+  );
   return result.records;
 };
 
@@ -443,7 +501,7 @@ const PROBE_EPOCH_ISO = '1970-01-01T00:00:00.000Z';
  * error } (quota errors stay string-detectable via isQuotaExceededError).
  */
 export const readEarliestRecordDetailed = async (
-  recordType: string,
+  recordType: string
 ): Promise<ReadResult<{ startTime: string }>> => {
   try {
     const result = await readRecords(
@@ -456,14 +514,19 @@ export const readEarliestRecordDetailed = async (
         },
         pageSize: 1,
         ascendingOrder: true,
-      } as unknown as Parameters<typeof readRecords>[1],
+      } as unknown as Parameters<typeof readRecords>[1]
     );
-    const record = (result.records as { startTime?: string; time?: string }[])[0];
+    const record = (
+      result.records as { startTime?: string; time?: string }[]
+    )[0];
     const startTime = record?.startTime ?? record?.time;
     return startTime ? { records: [{ startTime }] } : { records: [] };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthConnectService] Earliest-record probe for ${recordType} failed: ${message}`, 'ERROR');
+    addLog(
+      `[HealthConnectService] Earliest-record probe for ${recordType} failed: ${message}`,
+      'ERROR'
+    );
     return { records: [], error: message };
   }
 };
@@ -539,7 +602,7 @@ const readEdgeRecord = async (
   recordType: CumulativeMetricRecordType,
   startDate: Date,
   endDate: Date,
-  ascending: boolean,
+  ascending: boolean
 ): Promise<EdgeProbeResult> => {
   try {
     if (getWindowError(`offset probe for ${recordType}`, startDate, endDate)) {
@@ -555,7 +618,7 @@ const readEdgeRecord = async (
         },
         pageSize: 1,
         ascendingOrder: ascending,
-      } as unknown as Parameters<typeof readRecords>[1],
+      } as unknown as Parameters<typeof readRecords>[1]
     );
     type EdgeRecord = {
       startTime?: string;
@@ -567,9 +630,14 @@ const readEdgeRecord = async (
     if (!record) {
       return { outcome: 'empty' };
     }
-    const startMs = record.startTime ? new Date(record.startTime).getTime() : NaN;
+    const startMs = record.startTime
+      ? new Date(record.startTime).getTime()
+      : NaN;
     const endMs = record.endTime ? new Date(record.endTime).getTime() : NaN;
-    if (record.startZoneOffset?.totalSeconds != null && Number.isFinite(startMs)) {
+    if (
+      record.startZoneOffset?.totalSeconds != null &&
+      Number.isFinite(startMs)
+    ) {
       return {
         outcome: 'record',
         instantMs: startMs,
@@ -626,7 +694,7 @@ const wallClockParts = (date: Date): WallClockParts => ({
 const instantAtOffset = (
   parts: WallClockParts,
   dayShift: number,
-  offsetMinutes: number,
+  offsetMinutes: number
 ): number =>
   Date.UTC(
     parts.year,
@@ -635,13 +703,15 @@ const instantAtOffset = (
     parts.hour,
     parts.minute,
     parts.second,
-    parts.ms,
+    parts.ms
   ) -
   offsetMinutes * 60_000;
 
 /** YYYY-MM-DD label of the wall clock shifted by dayShift days. */
 const dayLabelAt = (parts: WallClockParts, dayShift: number): string => {
-  const shifted = new Date(Date.UTC(parts.year, parts.month, parts.day + dayShift));
+  const shifted = new Date(
+    Date.UTC(parts.year, parts.month, parts.day + dayShift)
+  );
   const y = shifted.getUTCFullYear();
   const m = String(shifted.getUTCMonth() + 1).padStart(2, '0');
   const d = String(shifted.getUTCDate()).padStart(2, '0');
@@ -654,8 +724,9 @@ const dayIndexSpan = (parts: WallClockParts, endDate: Date): number => {
   // keeps an end already at midnight from opening a bucket for the next day.
   const end = wallClockParts(new Date(endDate.getTime() - 1));
   return Math.round(
-    (Date.UTC(end.year, end.month, end.day) - Date.UTC(parts.year, parts.month, parts.day)) /
-      DAY_MS,
+    (Date.UTC(end.year, end.month, end.day) -
+      Date.UTC(parts.year, parts.month, parts.day)) /
+      DAY_MS
   );
 };
 
@@ -688,7 +759,7 @@ const findSwitchDayIndex = async (
   lastDayIndex: number,
   off0: number,
   off1: number,
-  endDate: Date,
+  endDate: Date
 ): Promise<number | undefined> => {
   let lo = 1;
   let hi = lastDayIndex + 1;
@@ -696,9 +767,14 @@ const findSwitchDayIndex = async (
     const mid = (lo + hi) >> 1;
     const probeStart = Math.min(
       instantAtOffset(parts, mid, off0),
-      instantAtOffset(parts, mid, off1),
+      instantAtOffset(parts, mid, off1)
     );
-    const probe = await readEdgeRecord(recordType, new Date(probeStart), endDate, true);
+    const probe = await readEdgeRecord(
+      recordType,
+      new Date(probeStart),
+      endDate,
+      true
+    );
     if (probe.outcome === 'empty') {
       // No records at or after this midnight; its boundary offset is moot.
       hi = mid;
@@ -728,7 +804,7 @@ const buildOffsetSegments = async (
   recordType: CumulativeMetricRecordType,
   startDate: Date,
   endDate: Date,
-  firstOffsetMinutes: number,
+  firstOffsetMinutes: number
 ): Promise<AggregationSegment[] | undefined> => {
   const lastProbe = await readEdgeRecord(recordType, startDate, endDate, false);
   if (lastProbe.outcome !== 'record' || lastProbe.offsetMinutes == null) {
@@ -771,7 +847,7 @@ const buildOffsetSegments = async (
     lastDayIndex,
     off0,
     off1,
-    endDate,
+    endDate
   );
   if (switchDay == null) {
     return undefined;
@@ -810,13 +886,15 @@ const aggregateByDeviceZone = async (
   spec: CumulativeMetricSpec,
   startDate: Date,
   endDate: Date,
-  rangeOffsetMinutes: number | undefined,
+  rangeOffsetMinutes: number | undefined
 ): Promise<HealthConnectAggregateResult> => {
   type PeriodBucket = { result: unknown; startTime: string; endTime: string };
   let buckets: PeriodBucket[];
   try {
     buckets = (await aggregateGroupByPeriod({
-      recordType: spec.recordType as Parameters<typeof aggregateGroupByPeriod>[0]['recordType'],
+      recordType: spec.recordType as Parameters<
+        typeof aggregateGroupByPeriod
+      >[0]['recordType'],
       timeRangeFilter: {
         operator: 'between',
         startTime: startDate.toISOString(),
@@ -828,7 +906,7 @@ const aggregateByDeviceZone = async (
     const message = error instanceof Error ? error.message : String(error);
     addLog(
       `[HealthConnectService] aggregateGroupByPeriod(${spec.recordType}) failed: ${message}`,
-      'ERROR',
+      'ERROR'
     );
     return { records: [], error: message };
   }
@@ -849,7 +927,10 @@ const aggregateByDeviceZone = async (
     results.push(rec);
   }
 
-  addLog(`[HealthConnectService] ${spec.recordType} aggregation: ${results.length} days`, 'DEBUG');
+  addLog(
+    `[HealthConnectService] ${spec.recordType} aggregation: ${results.length} days`,
+    'DEBUG'
+  );
   return { records: results };
 };
 
@@ -862,13 +943,17 @@ const aggregateByDeviceZone = async (
 const aggregateByRecordOffsets = async (
   spec: CumulativeMetricSpec,
   startDate: Date,
-  segments: AggregationSegment[],
+  segments: AggregationSegment[]
 ): Promise<HealthConnectAggregateResult> => {
   const parts = wallClockParts(startDate);
   const days = new Map<number, { value: number; offsetMinutes: number }>();
 
   for (const segment of segments) {
-    type DurationBucket = { result: unknown; startTime: string; endTime: string };
+    type DurationBucket = {
+      result: unknown;
+      startTime: string;
+      endTime: string;
+    };
     let buckets: DurationBucket[];
     try {
       buckets = (await aggregateGroupByDuration({
@@ -886,7 +971,7 @@ const aggregateByRecordOffsets = async (
       const message = error instanceof Error ? error.message : String(error);
       addLog(
         `[HealthConnectService] aggregateGroupByDuration(${spec.recordType}) failed: ${message}`,
-        'ERROR',
+        'ERROR'
       );
       return { records: [], error: message };
     }
@@ -896,10 +981,11 @@ const aggregateByRecordOffsets = async (
       if (!Number.isFinite(value) || value <= 0) continue;
 
       const bucketIndex = Math.round(
-        (new Date(bucket.startTime).getTime() - segment.startMs) / DAY_MS,
+        (new Date(bucket.startTime).getTime() - segment.startMs) / DAY_MS
       );
       const dayIndex = segment.firstDayIndex + bucketIndex;
-      if (dayIndex > segment.lastDayIndex && segment.overflow === 'drop') continue;
+      if (dayIndex > segment.lastDayIndex && segment.overflow === 'drop')
+        continue;
 
       const boundedIndex = Math.min(dayIndex, segment.lastDayIndex);
       const existing = days.get(boundedIndex);
@@ -921,7 +1007,7 @@ const aggregateByRecordOffsets = async (
 
   addLog(
     `[HealthConnectService] ${spec.recordType} aggregation: ${results.length} days across ${segments.length} offset segment(s)`,
-    'DEBUG',
+    'DEBUG'
   );
   return { records: results };
 };
@@ -931,10 +1017,14 @@ const aggregateByRecordOffsets = async (
 export const aggregateCumulativeMetricByDayDetailed = async (
   spec: CumulativeMetricSpec,
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): Promise<HealthConnectAggregateResult> => {
   try {
-    const rangeError = getWindowError(`aggregate for ${spec.recordType}`, startDate, endDate);
+    const rangeError = getWindowError(
+      `aggregate for ${spec.recordType}`,
+      startDate,
+      endDate
+    );
     if (rangeError) {
       addLog(`[HealthConnectService] ${rangeError}`, 'WARNING');
       return { records: [], error: rangeError };
@@ -945,11 +1035,16 @@ export const aggregateCumulativeMetricByDayDetailed = async (
     // "now" returns a partial value. An existing midnight remains unchanged.
     const queryEndDate = ceilToLocalDayStart(endDate);
 
-    const firstProbe = await readEdgeRecord(spec.recordType, startDate, queryEndDate, true);
+    const firstProbe = await readEdgeRecord(
+      spec.recordType,
+      startDate,
+      queryEndDate,
+      true
+    );
     if (firstProbe.outcome === 'empty') {
       addLog(
         `[HealthConnectService] ${spec.recordType} aggregation: no records in range`,
-        'DEBUG',
+        'DEBUG'
       );
       return { records: [] };
     }
@@ -963,39 +1058,38 @@ export const aggregateCumulativeMetricByDayDetailed = async (
         spec.recordType,
         startDate,
         queryEndDate,
-        firstProbe.offsetMinutes,
+        firstProbe.offsetMinutes
       );
       if (segments) {
         return await aggregateByRecordOffsets(spec, startDate, segments);
       }
       addLog(
         `[HealthConnectService] ${spec.recordType}: record offsets diverge from the device zone but don't form a clean transition; using device-zone buckets`,
-        'WARNING',
+        'WARNING'
       );
     }
 
     const rangeOffsetMinutes =
       firstProbe.outcome === 'record' ? firstProbe.offsetMinutes : undefined;
-    return await aggregateByDeviceZone(spec, startDate, queryEndDate, rangeOffsetMinutes);
+    return await aggregateByDeviceZone(
+      spec,
+      startDate,
+      queryEndDate,
+      rangeOffsetMinutes
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[HealthConnectService] Error aggregating ${spec.recordType}: ${message}`, 'ERROR');
+    addLog(
+      `[HealthConnectService] Error aggregating ${spec.recordType}: ${message}`,
+      'ERROR'
+    );
     return { records: [], error: message };
   }
 };
 
-export const aggregateCumulativeMetricByDay = async (
-  spec: CumulativeMetricSpec,
-  startDate: Date,
-  endDate: Date,
-): Promise<AggregatedHealthRecord[]> => {
-  const result = await aggregateCumulativeMetricByDayDetailed(spec, startDate, endDate);
-  return result.records;
-};
-
 export const getAggregatedStepsByDateDetailed = (
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): Promise<HealthConnectAggregateResult> =>
   aggregateCumulativeMetricByDayDetailed(
     {
@@ -1004,160 +1098,196 @@ export const getAggregatedStepsByDateDetailed = (
       extractValue: (r) => (r as { COUNT_TOTAL?: number }).COUNT_TOTAL ?? 0,
     },
     startDate,
-    endDate,
+    endDate
   );
 
 export const getAggregatedStepsByDate = (
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): Promise<AggregatedHealthRecord[]> =>
-  getAggregatedStepsByDateDetailed(startDate, endDate).then(result => result.records);
+  getAggregatedStepsByDateDetailed(startDate, endDate).then(
+    (result) => result.records
+  );
 
 const getNativeActiveCaloriesByDateDetailed = (
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): Promise<HealthConnectAggregateResult> =>
   aggregateCumulativeMetricByDayDetailed(
     {
       recordType: 'ActiveCaloriesBurned',
       outputType: 'active_calories',
-      extractValue: (r) => (r as { ACTIVE_CALORIES_TOTAL?: { inKilocalories?: number } }).ACTIVE_CALORIES_TOTAL?.inKilocalories ?? 0,
+      extractValue: (r) =>
+        (r as { ACTIVE_CALORIES_TOTAL?: { inKilocalories?: number } })
+          .ACTIVE_CALORIES_TOTAL?.inKilocalories ?? 0,
       round: true,
     },
     startDate,
-    endDate,
+    endDate
   );
 
 const getAggregatedBasalCaloriesByDateDetailed = (
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): Promise<HealthConnectAggregateResult> =>
   aggregateCumulativeMetricByDayDetailed(
     {
       recordType: 'BasalMetabolicRate',
       outputType: 'basal_calories',
-      extractValue: (r) => (r as { BASAL_CALORIES_TOTAL?: { inKilocalories?: number } }).BASAL_CALORIES_TOTAL?.inKilocalories ?? 0,
+      extractValue: (r) =>
+        (r as { BASAL_CALORIES_TOTAL?: { inKilocalories?: number } })
+          .BASAL_CALORIES_TOTAL?.inKilocalories ?? 0,
       round: true,
     },
     startDate,
-    endDate,
+    endDate
   );
 
 /** Prefer reported active energy per day; derive total minus basal only for missing days. */
 export const getAggregatedActiveCaloriesByDateDetailed = async (
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): Promise<HealthConnectAggregateResult> => {
   const [activeResult, totalResult] = await Promise.all([
     getNativeActiveCaloriesByDateDetailed(startDate, endDate),
     getAggregatedTotalCaloriesByDateDetailed(startDate, endDate),
   ]);
 
-  const activeDates = new Set(activeResult.records.map(record => record.date));
-  const fallbackTotals = totalResult.records.filter(record => !activeDates.has(record.date));
+  const activeDates = new Set(
+    activeResult.records.map((record) => record.date)
+  );
+  const fallbackTotals = totalResult.records.filter(
+    (record) => !activeDates.has(record.date)
+  );
   let derivedRecords: AggregatedHealthRecord[] = [];
   let basalError: string | undefined;
   if (fallbackTotals.length > 0) {
-    const basalResult = await getAggregatedBasalCaloriesByDateDetailed(startDate, endDate);
+    const basalResult = await getAggregatedBasalCaloriesByDateDetailed(
+      startDate,
+      endDate
+    );
     basalError = basalResult.error;
-    const basalByDate = new Map(basalResult.records.map(record => [record.date, record.value]));
-    derivedRecords = fallbackTotals.flatMap(totalRecord => {
+    const basalByDate = new Map(
+      basalResult.records.map((record) => [record.date, record.value])
+    );
+    derivedRecords = fallbackTotals.flatMap((totalRecord) => {
       const basal = basalByDate.get(totalRecord.date);
       if (basal == null) return [];
       const derived = deriveActiveCalories(totalRecord.value, basal);
       if (derived == null) return [];
-      return [{
-        ...totalRecord,
-        value: Math.round(derived),
-        type: 'active_calories',
-      }];
+      return [
+        {
+          ...totalRecord,
+          value: Math.round(derived),
+          type: 'active_calories',
+        },
+      ];
     });
   }
 
   if (derivedRecords.length > 0) {
-    addLog('[HealthConnectService] Derived missing active-calorie days from total minus basal calories', 'DEBUG');
+    addLog(
+      '[HealthConnectService] Derived missing active-calorie days from total minus basal calories',
+      'DEBUG'
+    );
   }
   const expectedDayCount = Math.max(
     0,
-    dayIndexSpan(wallClockParts(startDate), endDate) + 1,
+    dayIndexSpan(wallClockParts(startDate), endDate) + 1
   );
-  const activeDayCount = new Set(activeResult.records.map(record => record.date)).size;
+  const activeDayCount = new Set(
+    activeResult.records.map((record) => record.date)
+  ).size;
   const activeCoversFullRange = activeDayCount >= expectedDayCount;
-  const fallbackDependedOnTotal = !activeCoversFullRange || fallbackTotals.length > 0;
+  const fallbackDependedOnTotal =
+    !activeCoversFullRange || fallbackTotals.length > 0;
   const totalError = fallbackDependedOnTotal ? totalResult.error : undefined;
   const error = activeResult.error ?? totalError ?? basalError;
-  const records = [...activeResult.records, ...derivedRecords]
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const records = [...activeResult.records, ...derivedRecords].sort((a, b) =>
+    a.date.localeCompare(b.date)
+  );
   return { records, ...(error ? { error } : {}) };
 };
 
 export const getAggregatedActiveCaloriesByDate = (
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): Promise<AggregatedHealthRecord[]> =>
-  getAggregatedActiveCaloriesByDateDetailed(startDate, endDate).then(result => result.records);
+  getAggregatedActiveCaloriesByDateDetailed(startDate, endDate).then(
+    (result) => result.records
+  );
 
 export const getAggregatedTotalCaloriesByDateDetailed = (
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): Promise<HealthConnectAggregateResult> =>
   aggregateCumulativeMetricByDayDetailed(
     {
       recordType: 'TotalCaloriesBurned',
       outputType: 'total_calories',
-      extractValue: (r) => (r as { ENERGY_TOTAL?: { inKilocalories?: number } }).ENERGY_TOTAL?.inKilocalories ?? 0,
+      extractValue: (r) =>
+        (r as { ENERGY_TOTAL?: { inKilocalories?: number } }).ENERGY_TOTAL
+          ?.inKilocalories ?? 0,
       round: true,
     },
     startDate,
-    endDate,
+    endDate
   );
 
 export const getAggregatedTotalCaloriesByDate = (
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): Promise<AggregatedHealthRecord[]> =>
-  getAggregatedTotalCaloriesByDateDetailed(startDate, endDate).then(result => result.records);
+  getAggregatedTotalCaloriesByDateDetailed(startDate, endDate).then(
+    (result) => result.records
+  );
 
 export const getAggregatedDistanceByDateDetailed = (
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): Promise<HealthConnectAggregateResult> =>
   aggregateCumulativeMetricByDayDetailed(
     {
       recordType: 'Distance',
       outputType: 'distance',
-      extractValue: (r) => (r as { DISTANCE?: { inMeters?: number } }).DISTANCE?.inMeters ?? 0,
+      extractValue: (r) =>
+        (r as { DISTANCE?: { inMeters?: number } }).DISTANCE?.inMeters ?? 0,
       round: true,
     },
     startDate,
-    endDate,
+    endDate
   );
 
 export const getAggregatedDistanceByDate = (
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): Promise<AggregatedHealthRecord[]> =>
-  getAggregatedDistanceByDateDetailed(startDate, endDate).then(result => result.records);
+  getAggregatedDistanceByDateDetailed(startDate, endDate).then(
+    (result) => result.records
+  );
 
 export const getAggregatedFloorsClimbedByDateDetailed = (
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): Promise<HealthConnectAggregateResult> =>
   aggregateCumulativeMetricByDayDetailed(
     {
       recordType: 'FloorsClimbed',
       outputType: 'floors_climbed',
-      extractValue: (r) => (r as { FLOORS_CLIMBED_TOTAL?: number }).FLOORS_CLIMBED_TOTAL ?? 0,
+      extractValue: (r) =>
+        (r as { FLOORS_CLIMBED_TOTAL?: number }).FLOORS_CLIMBED_TOTAL ?? 0,
     },
     startDate,
-    endDate,
+    endDate
   );
 
 export const getAggregatedFloorsClimbedByDate = (
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): Promise<AggregatedHealthRecord[]> =>
-  getAggregatedFloorsClimbedByDateDetailed(startDate, endDate).then(result => result.records);
+  getAggregatedFloorsClimbedByDateDetailed(startDate, endDate).then(
+    (result) => result.records
+  );
 
 // Distance plausibility floor: drop tiny distance aggregates on long sessions —
 // Health Sync writes a few dozen meters of passive step-distance over the
@@ -1179,7 +1309,7 @@ const isPositiveCalories = (value: number | undefined): value is number =>
 const activeCaloriesPassSessionCheck = (
   active: number,
   total: number,
-  durationMs: number,
+  durationMs: number
 ): boolean => {
   if (active > total) return false;
   const ratio = active / total;
@@ -1202,7 +1332,7 @@ const activeCaloriesPassSessionCheck = (
 export const selectSessionCalories = (
   active: number | undefined,
   total: number | undefined,
-  durationMs: number,
+  durationMs: number
 ): number | undefined => {
   const activeValid = isPositiveCalories(active) ? active : undefined;
   const totalValid = isPositiveCalories(total) ? total : undefined;
@@ -1220,7 +1350,7 @@ export const selectSessionCalories = (
 const shouldTryCrossOriginCalories = (
   active: number | undefined,
   total: number | undefined,
-  durationMs: number,
+  durationMs: number
 ): boolean => {
   if (!isPositiveCalories(active) || !isPositiveCalories(total)) return true;
   return !activeCaloriesPassSessionCheck(active, total, durationMs);
@@ -1231,23 +1361,59 @@ type SessionCaloriePair = {
   total?: number;
 };
 
+const selectBasalNormalizedSessionCalories = (
+  active: number | undefined,
+  total: number | undefined,
+  basal: number | undefined,
+  durationMs: number
+): number | undefined => {
+  const totalValid = isPositiveCalories(total) ? total : undefined;
+  const basalValid =
+    basal != null && Number.isFinite(basal) && basal >= 0 ? basal : undefined;
+  if (totalValid == null || basalValid == null) {
+    return selectSessionCalories(active, total, durationMs);
+  }
+
+  const reportedActive =
+    isPositiveCalories(active) && active <= totalValid ? active : undefined;
+  const derivedActive = deriveActiveCalories(totalValid, basalValid);
+  const derivedPositive =
+    derivedActive != null && derivedActive > 0 ? derivedActive : undefined;
+
+  if (derivedPositive == null) {
+    return selectSessionCalories(active, total, durationMs);
+  }
+  if (reportedActive == null) return derivedPositive;
+  return Math.max(reportedActive, derivedPositive);
+};
+
 const extractSessionCaloriePair = (
   activeResult: PromiseSettledResult<unknown>,
-  totalResult: PromiseSettledResult<unknown>,
+  totalResult: PromiseSettledResult<unknown>
 ): SessionCaloriePair => ({
-  active: activeResult.status === 'fulfilled'
-    ? (activeResult.value as { ACTIVE_CALORIES_TOTAL?: { inKilocalories?: number } }).ACTIVE_CALORIES_TOTAL?.inKilocalories
-    : undefined,
-  total: totalResult.status === 'fulfilled'
-    ? (totalResult.value as { ENERGY_TOTAL?: { inKilocalories?: number } }).ENERGY_TOTAL?.inKilocalories
-    : undefined,
+  active:
+    activeResult.status === 'fulfilled'
+      ? (
+          activeResult.value as {
+            ACTIVE_CALORIES_TOTAL?: { inKilocalories?: number };
+          }
+        ).ACTIVE_CALORIES_TOTAL?.inKilocalories
+      : undefined,
+  total:
+    totalResult.status === 'fulfilled'
+      ? (totalResult.value as { ENERGY_TOTAL?: { inKilocalories?: number } })
+          .ENERGY_TOTAL?.inKilocalories
+      : undefined,
 });
 
 /**
  * Distance is plausible unless the session is long enough that a real workout
  * would have covered more than a token amount.
  */
-export const isPlausibleSessionDistance = (meters: number, durationMs: number): boolean => {
+export const isPlausibleSessionDistance = (
+  meters: number,
+  durationMs: number
+): boolean => {
   if (durationMs <= MIN_DURATION_FOR_DISTANCE_CHECK_MS) return true;
   return meters >= MIN_DISTANCE_FOR_LONG_SESSION_M;
 };
@@ -1255,16 +1421,21 @@ export const isPlausibleSessionDistance = (meters: number, durationMs: number): 
 /**
  * Enriches raw exercise session records with calories and distance data.
  * Health Connect stores these as separate record types, so we query
- * ActiveCaloriesBurned, TotalCaloriesBurned, and Distance aggregated over
- * each session's time range and apply plausibility checks (see #593, #1296).
+ * ActiveCaloriesBurned, TotalCaloriesBurned, BasalMetabolicRate, and Distance
+ * over each session's time range. Total minus basal is compared as an active-
+ * energy candidate before applying legacy plausibility fallbacks (see #593,
+ * #1296, #2295).
  */
 export const enrichExerciseSessions = async (
   records: unknown[],
-  telemetry: TelemetryRunContext,
+  telemetry: TelemetryRunContext
 ): Promise<unknown[]> => {
   if (records.length === 0) return records;
 
-  addLog(`[HealthConnectService] Enriching ${records.length} exercise session(s) with calories/distance`, 'DEBUG');
+  addLog(
+    `[HealthConnectService] Enriching ${records.length} exercise session(s) with calories/distance`,
+    'DEBUG'
+  );
 
   const ctx = telemetry;
 
@@ -1292,7 +1463,11 @@ export const enrichExerciseSessions = async (
     // would reject for an invalid window must not consume one.
     const startMs = Date.parse(rec.startTime);
     const endMs = Date.parse(rec.endTime);
-    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
+    if (
+      !Number.isFinite(startMs) ||
+      !Number.isFinite(endMs) ||
+      endMs <= startMs
+    ) {
       skippedInvalid++;
       continue;
     }
@@ -1311,151 +1486,195 @@ export const enrichExerciseSessions = async (
   // over a hundred concurrent native calls, whose results are deserialized and
   // sorted on the JS thread, which starves the UI until they drain (#2191).
   // The expensive half is capped separately by limitTelemetry below.
-  const settled = await runTasksInBatches(records, AGGREGATE_CONCURRENCY, async (record) => {
-    const rec = record as Record<string, unknown>;
-    const startTime = rec.startTime as string | undefined;
-    const endTime = rec.endTime as string | undefined;
-    if (!startTime || !endTime) return record;
+  const settled = await runTasksInBatches(
+    records,
+    AGGREGATE_CONCURRENCY,
+    async (record) => {
+      const rec = record as Record<string, unknown>;
+      const startTime = rec.startTime as string | undefined;
+      const endTime = rec.endTime as string | undefined;
+      if (!startTime || !endTime) return record;
 
-    const metadata = rec.metadata as { dataOrigin?: string } | undefined;
-    const dataOriginFilter = metadata?.dataOrigin ? [metadata.dataOrigin] : undefined;
+      const metadata = rec.metadata as { dataOrigin?: string } | undefined;
+      const dataOriginFilter = metadata?.dataOrigin
+        ? [metadata.dataOrigin]
+        : undefined;
 
-    const timeRangeFilter = {
-      operator: 'between' as const,
-      startTime,
-      endTime,
-    };
+      const timeRangeFilter = {
+        operator: 'between' as const,
+        startTime,
+        endTime,
+      };
 
-    const durationMs = new Date(endTime).getTime() - new Date(startTime).getTime();
-    if (!Number.isFinite(durationMs) || durationMs <= 0) {
-      return record;
-    }
+      const durationMs =
+        new Date(endTime).getTime() - new Date(startTime).getTime();
+      if (!Number.isFinite(durationMs) || durationMs <= 0) {
+        return record;
+      }
 
-    // Start with the session origin, matching Health Connect's associated-session
-    // guidance and preventing another concurrent activity from donating energy or
-    // distance. If that origin has an incomplete or implausible calorie pair, retry
-    // calories without an origin filter so Health Connect can apply the user's
-    // Activity source priority (for example, Hevy session + Samsung calories).
-    const [activeCaloriesResult, totalCaloriesResult, distanceResult] = await Promise.allSettled([
-      aggregateRecord({
-        recordType: 'ActiveCaloriesBurned',
-        timeRangeFilter,
-        dataOriginFilter,
-      }),
-      aggregateRecord({
-        recordType: 'TotalCaloriesBurned',
-        timeRangeFilter,
-        dataOriginFilter,
-      }),
-      aggregateRecord({
-        recordType: 'Distance',
-        timeRangeFilter,
-        dataOriginFilter,
-      }),
-    ]);
-
-    // Only attach enriched values when an aggregate call succeeded and returned
-    // a plausible value. Leave the record untouched otherwise so we don't
-    // overwrite potentially valid data with a synthetic zero.
-    const enrichedFields: Record<string, unknown> = {};
-
-    const scopedCalories = extractSessionCaloriePair(activeCaloriesResult, totalCaloriesResult);
-    let kcal = selectSessionCalories(scopedCalories.active, scopedCalories.total, durationMs);
-    if (dataOriginFilter && shouldTryCrossOriginCalories(
-      scopedCalories.active,
-      scopedCalories.total,
-      durationMs,
-    )) {
-      const [unfilteredActiveResult, unfilteredTotalResult] = await Promise.allSettled([
+      // Start activity and total energy at the session origin, matching Health
+      // Connect's associated-session guidance and preventing another concurrent
+      // activity from donating energy or distance. Basal energy is intentionally
+      // unfiltered because it comes from the user's metabolism source, not the
+      // workout writer. If the origin has an incomplete or implausible calorie pair,
+      // retry activity and total energy without an origin filter so Health Connect
+      // can apply the user's Activity source priority (for example, Hevy session +
+      // Samsung calories).
+      const [
+        activeCaloriesResult,
+        totalCaloriesResult,
+        basalCaloriesResult,
+        distanceResult,
+      ] = await Promise.allSettled([
         aggregateRecord({
           recordType: 'ActiveCaloriesBurned',
           timeRangeFilter,
+          dataOriginFilter,
         }),
         aggregateRecord({
           recordType: 'TotalCaloriesBurned',
           timeRangeFilter,
+          dataOriginFilter,
+        }),
+        aggregateRecord({
+          recordType: 'BasalMetabolicRate',
+          timeRangeFilter,
+        }),
+        aggregateRecord({
+          recordType: 'Distance',
+          timeRangeFilter,
+          dataOriginFilter,
         }),
       ]);
-      const unfilteredCalories = extractSessionCaloriePair(
-        unfilteredActiveResult,
-        unfilteredTotalResult,
+
+      // Only attach enriched values when an aggregate call succeeded and returned
+      // a plausible value. Leave the record untouched otherwise so we don't
+      // overwrite potentially valid data with a synthetic zero.
+      const enrichedFields: Record<string, unknown> = {};
+
+      const scopedCalories = extractSessionCaloriePair(
+        activeCaloriesResult,
+        totalCaloriesResult
       );
-      const unfilteredKcal = selectSessionCalories(
-        unfilteredCalories.active,
-        unfilteredCalories.total,
-        durationMs,
+      const basalCalories =
+        basalCaloriesResult.status === 'fulfilled'
+          ? (
+              basalCaloriesResult.value as {
+                BASAL_CALORIES_TOTAL?: { inKilocalories?: number };
+              }
+            ).BASAL_CALORIES_TOTAL?.inKilocalories
+          : undefined;
+      let kcal = selectBasalNormalizedSessionCalories(
+        scopedCalories.active,
+        scopedCalories.total,
+        basalCalories,
+        durationMs
       );
-      if (unfilteredKcal != null && (kcal == null || unfilteredKcal > kcal)) {
-        kcal = unfilteredKcal;
+      if (
+        dataOriginFilter &&
+        shouldTryCrossOriginCalories(
+          scopedCalories.active,
+          scopedCalories.total,
+          durationMs
+        )
+      ) {
+        const [unfilteredActiveResult, unfilteredTotalResult] =
+          await Promise.allSettled([
+            aggregateRecord({
+              recordType: 'ActiveCaloriesBurned',
+              timeRangeFilter,
+            }),
+            aggregateRecord({
+              recordType: 'TotalCaloriesBurned',
+              timeRangeFilter,
+            }),
+          ]);
+        const unfilteredCalories = extractSessionCaloriePair(
+          unfilteredActiveResult,
+          unfilteredTotalResult
+        );
+        const unfilteredKcal = selectBasalNormalizedSessionCalories(
+          unfilteredCalories.active,
+          unfilteredCalories.total,
+          basalCalories,
+          durationMs
+        );
+        if (unfilteredKcal != null && (kcal == null || unfilteredKcal > kcal)) {
+          kcal = unfilteredKcal;
+        }
       }
-    }
 
-    if (kcal != null) {
-      enrichedFields.energy = { inKilocalories: kcal };
-    }
-
-    if (distanceResult.status === 'fulfilled') {
-      const result = distanceResult.value as { DISTANCE?: { inMeters?: number } };
-      const meters = result.DISTANCE?.inMeters;
-      if (meters != null && isPlausibleSessionDistance(meters, durationMs)) {
-        enrichedFields.distance = { inMeters: meters };
+      if (kcal != null) {
+        enrichedFields.energy = { inKilocalories: kcal };
       }
-    }
 
-    // Route + series collection. Interactive only when a user is present:
-    // reading a route can prompt for per-session consent, which a headless
-    // background task cannot present. Sessions skipped here are re-sent with
-    // telemetry on a later interactive sync (while they remain inside the 6h
-    // overlap window) and upserted in place server-side.
-    if (telemetryAllowed.has(record)) {
-      const bundle = await limitTelemetry(() => collectSessionTelemetry(rec, {
-        interactive: ctx.interactive,
-      }));
-      if (bundle.gps_points) enrichedFields.gps_points = bundle.gps_points;
-      if (bundle.hr_samples) enrichedFields.hr_samples = bundle.hr_samples;
-      if (bundle.laps) enrichedFields.laps = bundle.laps;
-      if (bundle.telemetry) {
-        const telemetry: Record<string, unknown> = { ...bundle.telemetry };
-        if (kcal != null) telemetry.active_calories = kcal;
-        enrichedFields.telemetry = telemetry;
+      if (distanceResult.status === 'fulfilled') {
+        const result = distanceResult.value as {
+          DISTANCE?: { inMeters?: number };
+        };
+        const meters = result.DISTANCE?.inMeters;
+        if (meters != null && isPlausibleSessionDistance(meters, durationMs)) {
+          enrichedFields.distance = { inMeters: meters };
+        }
       }
-      // Recorded even when the session turned out to have nothing beyond its
-      // summary: the reads that established that are exactly what we must not
-      // repeat every sync. A later edit to the record changes its cache key.
-      //
-      // Not recorded when the bundle came back `incomplete` — a failed read is
-      // not the same answer as an empty one, and this cache has no expiry, so
-      // caching a transient failure strands the session's telemetry for good.
-      //
-      // Interactive runs only. A headless run cannot present the per-session
-      // route-consent dialog, so collectSessionRoute returns no route for a
-      // session awaiting consent — caching that would make the next foreground
-      // sync skip it and the route would never be collected at all.
-      if (ctx.interactive && !bundle.incomplete) {
-        ctx.stageCollected(sessionCacheKey(record));
-      }
-    }
 
-    return Object.keys(enrichedFields).length > 0
-      ? { ...rec, ...enrichedFields }
-      : record;
-  });
+      // Route + series collection. Interactive only when a user is present:
+      // reading a route can prompt for per-session consent, which a headless
+      // background task cannot present. Sessions skipped here are re-sent with
+      // telemetry on a later interactive sync (while they remain inside the 6h
+      // overlap window) and upserted in place server-side.
+      if (telemetryAllowed.has(record)) {
+        const bundle = await limitTelemetry(() =>
+          collectSessionTelemetry(rec, {
+            interactive: ctx.interactive,
+          })
+        );
+        if (bundle.gps_points) enrichedFields.gps_points = bundle.gps_points;
+        if (bundle.hr_samples) enrichedFields.hr_samples = bundle.hr_samples;
+        if (bundle.laps) enrichedFields.laps = bundle.laps;
+        if (bundle.telemetry) {
+          const telemetry: Record<string, unknown> = { ...bundle.telemetry };
+          if (kcal != null) telemetry.active_calories = kcal;
+          enrichedFields.telemetry = telemetry;
+        }
+        // Recorded even when the session turned out to have nothing beyond its
+        // summary: the reads that established that are exactly what we must not
+        // repeat every sync. A later edit to the record changes its cache key.
+        //
+        // Not recorded when the bundle came back `incomplete` — a failed read is
+        // not the same answer as an empty one, and this cache has no expiry, so
+        // caching a transient failure strands the session's telemetry for good.
+        //
+        // Interactive runs only. A headless run cannot present the per-session
+        // route-consent dialog, so collectSessionRoute returns no route for a
+        // session awaiting consent — caching that would make the next foreground
+        // sync skip it and the route would never be collected at all.
+        if (ctx.interactive && !bundle.incomplete) {
+          ctx.stageCollected(sessionCacheKey(record));
+        }
+      }
+
+      return Object.keys(enrichedFields).length > 0
+        ? { ...rec, ...enrichedFields }
+        : record;
+    }
+  );
 
   // Index-aligned with `records`; a rejected task keeps the original record so
   // a telemetry failure never drops a session from the sync.
   const enriched = settled.map((result, index) =>
-    result.status === 'fulfilled' ? result.value : records[index],
+    result.status === 'fulfilled' ? result.value : records[index]
   );
 
   // Batching must not change failure semantics: Promise.all rejected the whole
   // read before, which surfaced as a metric error and held the sync cursor so
   // the window is retried. Swallowing the rejection here would advance the
   // cursor past a session we never actually read.
-  const failure = settled.find(result => result.status === 'rejected');
+  const failure = settled.find((result) => result.status === 'rejected');
   if (failure && failure.status === 'rejected') {
     addLog(
       `[HealthConnectService] Exercise session enrichment failed: ${getErrorMessage(failure.reason)}`,
-      'ERROR',
+      'ERROR'
     );
     throw failure.reason;
   }
@@ -1465,12 +1684,15 @@ export const enrichExerciseSessions = async (
   // signal for #2191: on a healthy run the telemetry count is bounded and the
   // "already collected" count carries the rest.
   const overBudget =
-    records.length - skippedInvalid - skippedAlreadyCollected - telemetryAllowed.size;
+    records.length -
+    skippedInvalid -
+    skippedAlreadyCollected -
+    telemetryAllowed.size;
   addLog(
     `[HealthConnectService] Enriched ${records.length} session(s) in ${Date.now() - startedAtMs}ms ` +
       `(telemetry: ${telemetryAllowed.size}, already collected: ${skippedAlreadyCollected}, ` +
       `over budget: ${Math.max(overBudget, 0)}, invalid: ${skippedInvalid})`,
-    'INFO',
+    'INFO'
   );
 
   return enriched;

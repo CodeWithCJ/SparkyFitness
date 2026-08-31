@@ -30,7 +30,9 @@ describe('calculations', () => {
       const today = new Date();
       const pastMonth = today.getMonth() === 0 ? 11 : today.getMonth() - 1;
       const birthYear =
-        today.getMonth() === 0 ? today.getFullYear() - 26 : today.getFullYear() - 25;
+        today.getMonth() === 0
+          ? today.getFullYear() - 26
+          : today.getFullYear() - 25;
       const birthday = new Date(birthYear, pastMonth, 1);
       expect(calculateAge(birthday.toISOString())).toBe(25);
     });

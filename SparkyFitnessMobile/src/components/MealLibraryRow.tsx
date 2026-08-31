@@ -72,50 +72,61 @@ const MealLibraryRow: React.FC<MealLibraryRowProps> = ({
         className="flex-1 pr-4 py-3"
         style={({ pressed }) => (pressed && onPress ? { opacity: 0.7 } : null)}
       >
-      <View className="flex-row justify-between items-center">
-        <View className="flex-1 mr-3">
-          <View className="flex-row items-center gap-1.5">
-            <Text
-              className="text-text-primary text-base font-medium flex-shrink"
-              numberOfLines={1}
-            >
-              {meal.name}
-            </Text>
-            {showBadge ? (
-              <View className="px-1 py-0.5 rounded border border-border-subtle flex-shrink-0">
-                <Text className="text-text-muted text-xs">
-                  {t('foodSearch.labels.meal', { defaultValue: 'Meal' })}
-                </Text>
-              </View>
-            ) : null}
-            {/* Icons center on the text's full line box (descender included),
+        <View className="flex-row justify-between items-center">
+          <View className="flex-1 mr-3">
+            <View className="flex-row items-center gap-1.5">
+              <Text
+                className="text-text-primary text-base font-medium flex-shrink"
+                numberOfLines={1}
+              >
+                {meal.name}
+              </Text>
+              {showBadge ? (
+                <View className="px-1 py-0.5 rounded border border-border-subtle flex-shrink-0">
+                  <Text className="text-text-muted text-xs">
+                    {t('foodSearch.labels.meal', { defaultValue: 'Meal' })}
+                  </Text>
+                </View>
+              ) : null}
+              {/* Icons center on the text's full line box (descender included),
                 which reads ~1pt low against the visible letters; lift them. */}
-            <ShareStatusBadge status={status} style={{ marginTop: -1 }} />
-            {isFavorite && (
-              <Icon
-                name="star"
-                size={16}
-                color={goldColor}
-                style={{ marginTop: -1 }}
-                accessibilityLabel={t('foodSearch.accessibility.favorite', { defaultValue: 'Favorite' })}
-              />
-            )}
+              <ShareStatusBadge status={status} style={{ marginTop: -1 }} />
+              {isFavorite && (
+                <Icon
+                  name="star"
+                  size={16}
+                  color={goldColor}
+                  style={{ marginTop: -1 }}
+                  accessibilityLabel={t('foodSearch.accessibility.favorite', {
+                    defaultValue: 'Favorite',
+                  })}
+                />
+              )}
+            </View>
+            {meal.description ? (
+              <Text
+                className="text-text-secondary text-sm mt-0.5"
+                numberOfLines={1}
+              >
+                {meal.description}
+              </Text>
+            ) : null}
           </View>
-          {meal.description ? (
-            <Text className="text-text-secondary text-sm mt-0.5" numberOfLines={1}>
-              {meal.description}
+          <View className="items-end">
+            <Text className="text-text-primary text-base font-semibold">
+              {Math.round(foodInfo.calories)}{' '}
+              {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
             </Text>
-          ) : null}
+            <Text className="text-text-secondary text-xs">
+              {t('foodSearch.labels.itemCount', {
+                defaultValue: '{{count}} items',
+                defaultValue_one: '{{count}} item',
+                defaultValue_other: '{{count}} items',
+                count: itemCount,
+              })}
+            </Text>
+          </View>
         </View>
-        <View className="items-end">
-          <Text className="text-text-primary text-base font-semibold">
-            {foodInfo.calories} {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
-          </Text>
-          <Text className="text-text-secondary text-xs">
-            {t('foodSearch.labels.itemCount', { defaultValue: "{{count}} items", defaultValue_one: "{{count}} item", defaultValue_other: "{{count}} items", count: itemCount })}
-          </Text>
-        </View>
-      </View>
       </Pressable>
     </View>
   );

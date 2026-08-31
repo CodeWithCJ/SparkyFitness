@@ -26,7 +26,9 @@ export function useRestCountdown(opts?: { selfTick?: boolean }): RestCountdown {
   const selfTick = opts?.selfTick ?? true;
   const state = useActiveWorkoutStore((s) => s.rest.state);
   const endsAt = useActiveWorkoutStore((s) => s.rest.endsAt);
-  const pausedRemainingMs = useActiveWorkoutStore((s) => s.rest.pausedRemainingMs);
+  const pausedRemainingMs = useActiveWorkoutStore(
+    (s) => s.rest.pausedRemainingMs
+  );
   const durationSec = useActiveWorkoutStore((s) => s.rest.durationSec);
 
   const [, setTick] = useState(0);
@@ -45,7 +47,9 @@ export function useRestCountdown(opts?: { selfTick?: boolean }): RestCountdown {
         ? pausedRemainingMs
         : 0;
   const progress =
-    durationSec > 0 ? Math.max(0, Math.min(1, remainingMs / (durationSec * 1000))) : 0;
+    durationSec > 0
+      ? Math.max(0, Math.min(1, remainingMs / (durationSec * 1000)))
+      : 0;
 
   return { state, remainingMs, progress };
 }

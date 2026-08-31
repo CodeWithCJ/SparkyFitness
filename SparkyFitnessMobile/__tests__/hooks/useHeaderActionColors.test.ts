@@ -12,14 +12,18 @@ describe('resolveHeaderActionColors', () => {
   });
 
   it('uses text-colored actions inside native glass controls', () => {
-    expect(resolveHeaderActionColors('ios', '26.0', accent, text, true)).toEqual({
+    expect(
+      resolveHeaderActionColors('ios', '26.0', accent, text, true)
+    ).toEqual({
       defaultColor: text,
       saveColor: text,
     });
   });
 
   it('uses a neutral default and an accent save on iOS 26 when the glass tab bar is disabled', () => {
-    expect(resolveHeaderActionColors('ios', '26.0', accent, text, false)).toEqual({
+    expect(
+      resolveHeaderActionColors('ios', '26.0', accent, text, false)
+    ).toEqual({
       defaultColor: text,
       saveColor: accent,
     });

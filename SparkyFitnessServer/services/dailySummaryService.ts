@@ -5,11 +5,12 @@ import measurementRepository from '../models/measurementRepository.js';
 import foodRepository from '../models/foodMisc.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
+import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import { log } from '../config/logging.js';
 import {
   computeCalorieBalance,
   extractExerciseStats,
-  resolveDayFraction,
+  resolveDeviceProjectionSnapshot,
   sumFoodEntryCalories,
 } from './calorieBalanceService.js';
 import type { ExerciseSessionResponse } from '@workspace/shared';
@@ -39,6 +40,7 @@ export async function getDailySummary({
     userPreferences,
     measurements,
     supplementTotals,
+    healthConnectTotalRows,
   ] = await Promise.all([
     goalService.getUserGoals(targetUserId, date, undefined, false),
     goalService.getUserGoals(targetUserId, date, undefined, true),
@@ -94,6 +96,23 @@ export async function getDailySummary({
         // still alias.
         return resolveSupplementTotals(null);
       }),
+    includeCheckin
+      ? genericHealthRepository
+          .getHealthConnectTotalCaloriesByDateRange(
+            targetUserId,
+            actorUserId,
+            date,
+            date
+          )
+          .catch((error: unknown) => {
+            log(
+              'warn',
+              `Health Connect total-calorie fetch failed for user ${targetUserId} on ${date}:`,
+              error
+            );
+            return [];
+          })
+      : [],
   ]);
 
   // Split once and reuse: the step-calorie query needs `activitySteps` to work out which
@@ -111,21 +130,18 @@ export async function getDailySummary({
       )
     : 0;
 
-  // External BMR override — only when opted in AND checkin data is permitted
-  // (includeCheckin is the route's permission gate; the override must not bypass it).
-  const externalBmr =
-    userPreferences?.use_external_bmr && includeCheckin
-      ? await measurementRepository
-          .getExternalBmrForDate(targetUserId, date)
-          .catch((error: unknown) => {
-            log(
-              'warn',
-              `External BMR fetch failed for user ${targetUserId} on ${date}:`,
-              error
-            );
-            return null;
-          })
-      : null;
+  const healthConnectTotal = healthConnectTotalRows[0];
+  const timezone = userPreferences?.timezone || 'UTC';
+  const deviceProjectionSnapshot = resolveDeviceProjectionSnapshot({
+    date,
+    timezone,
+    deviceTotal: healthConnectTotal
+      ? {
+          totalCalories: healthConnectTotal.total_calories,
+          capturedAt: healthConnectTotal.captured_at,
+        }
+      : null,
+  });
 
   const calorieBalance = computeCalorieBalance({
     eatenCalories:
@@ -138,11 +154,7 @@ export async function getDailySummary({
     userProfile,
     userPreferences,
     measurements,
-    externalBmr,
-    // A past day is finished, so its burn needs no end-of-day projection. Reading the
-    // wall clock here (as this did before) made the same historical day report different
-    // numbers depending on when you opened it.
-    dayFraction: resolveDayFraction(date, userPreferences?.timezone || 'UTC'),
+    ...deviceProjectionSnapshot,
   });
 
   const rawGoalData = goals as Record<string, unknown> | null;

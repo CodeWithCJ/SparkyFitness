@@ -8,7 +8,7 @@ interface PendingMealIngredientSelection {
 let pendingSelection: PendingMealIngredientSelection | null = null;
 
 export function setPendingMealIngredientSelection(
-  selection: PendingMealIngredientSelection,
+  selection: PendingMealIngredientSelection
 ) {
   pendingSelection = selection;
 }

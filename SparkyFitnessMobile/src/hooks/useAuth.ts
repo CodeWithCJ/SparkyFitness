@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { setOnSessionExpired, setOnNoConfigs, suppressSessionExpired } from '../services/api/authService';
+import {
+  setOnSessionExpired,
+  setOnNoConfigs,
+  suppressSessionExpired,
+} from '../services/api/authService';
 import { clearServerConfigCache } from '../services/storage';
 import type { ServerConfig } from '../services/storage';
 
@@ -8,7 +12,8 @@ export type AuthModalReason = 'session_expired' | 'no_configs' | null;
 export function useAuth() {
   const [authModalReason, setAuthModalReason] = useState<AuthModalReason>(null);
   const [expiredConfigId, setExpiredConfigId] = useState<string | null>(null);
-  const [switchToApiKeyConfig, setSwitchToApiKeyConfig] = useState<ServerConfig | null>(null);
+  const [switchToApiKeyConfig, setSwitchToApiKeyConfig] =
+    useState<ServerConfig | null>(null);
 
   useEffect(() => {
     setOnSessionExpired((configId) => {

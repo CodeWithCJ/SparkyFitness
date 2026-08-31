@@ -33,7 +33,7 @@ pnpm run test:ci
 pnpm run build
 ```
 
-- `pnpm run validate` runs typecheck, lint (`--max-warnings 0`), and Prettier check together.
+- `pnpm run validate` runs typecheck, lint (`--max-warnings 0`), Prettier check, and Knip (`pnpm run knip` for unused files and exports) together.
 - `pnpm test` runs Jest (`ts-jest`, `jsdom`); config is inline in `package.json`, setup in `src/tests/setupTests.ts`.
 - `pnpm run build` runs `validate` first, then `vite build`.
 - CI (`.github/workflows/ci-tests.yml`) runs `pnpm run validate` and `pnpm run test:ci` for this package when its files change; matching those locally means a green PR.
@@ -58,7 +58,7 @@ Features are organized by domain, and the same domain folder name appears in `sr
 - `src/contexts/` - `ActiveUserContext` (family-access acting-user switching), `PreferencesContext`, `ThemeContext`, `WaterContainerContext`, `ChatbotVisibilityContext`, `ChatToolCategoriesContext` (runtime chat tool-category selection, localStorage-backed).
 - `src/layouts/` - `MainLayout.tsx` and `AddComp.tsx`.
 - `src/lib/` - `auth-client.ts` (Better Auth React client), `utils.ts` (`cn`), scanner engines, sleep helpers.
-- `src/services/` - pure calculation helpers (BMR, body composition, nutrient calculation, preferences), not HTTP clients.
+- `src/services/` - pure calculation helpers (BMR, body composition, nutrient calculation), not HTTP clients.
 - `src/utils/` - logging, user preferences, date helpers, misc.
 - `src/tests/` - Jest suites mirroring `components`/`contexts`/`hooks`/`services`/`utils`, plus `test-utils.tsx`.
 - `public/locales/<lng>/translation.json` - i18next resources, loaded over HTTP at runtime.
@@ -95,7 +95,7 @@ When searching, ignore `node_modules/`, `dist/`, and every locale except `public
 - Auth/session issue: `src/lib/auth-client.ts`, `src/hooks/useAuth.tsx`, `src/pages/Auth/`, and the server's `auth.ts` if it crosses packages.
 - Family-access/acting-user issue: `src/contexts/ActiveUserContext.tsx` and the hooks consuming it.
 - Chat (Sparky) issue: `src/pages/Chat/`, `src/components/ai/`, `src/api/Chatbot/`.
-- Theme/preferences issue: `src/contexts/ThemeContext.tsx`, `src/contexts/PreferencesContext.tsx`, `src/services/preferenceService.ts`, `src/utils/userPreferences.ts`.
+- Theme/preferences issue: `src/contexts/ThemeContext.tsx`, `src/contexts/PreferencesContext.tsx`, `src/api/Settings/preferences.ts`, `src/utils/userPreferences.ts`.
 - Missing/wrong UI text: the i18n key in `public/locales/en/translation.json` and the `t('...')` call site.
 - Chart issue: Recharts usage in the domain page plus `src/components/ExerciseCharts/` or `ZoomableChart.tsx`.
 

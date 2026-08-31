@@ -1,5 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { listTestEntries, createTestEntry, deleteTestEntry } from '../services/api/cycleApi';
+import {
+  listTestEntries,
+  createTestEntry,
+  deleteTestEntry,
+} from '../services/api/cycleApi';
 import { cycleTestsQueryKey, cycleFertilityQueryKey } from './queryKeys';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import type { SharedCycleTestEntry } from '@workspace/shared';
@@ -27,7 +31,9 @@ export function useCycleTestMutations() {
   const createMutation = useMutation<
     SharedCycleTestEntry,
     Error,
-    Omit<SharedCycleTestEntry, 'id' | 'user_id' | 'tested_at'> & { tested_at?: string }
+    Omit<SharedCycleTestEntry, 'id' | 'user_id' | 'tested_at'> & {
+      tested_at?: string;
+    }
   >({
     mutationFn: (body) => createTestEntry(body),
     onSuccess: () => {

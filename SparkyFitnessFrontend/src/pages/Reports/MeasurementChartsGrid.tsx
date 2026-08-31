@@ -11,7 +11,7 @@ import {
   BarChart,
   Bar,
 } from 'recharts';
-import { Scale, Ruler, Percent, Activity } from 'lucide-react';
+import { Scale, Ruler, Percent, Activity, Flame, Droplet } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import ZoomableChart from '@/components/ZoomableChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -42,6 +42,10 @@ const METRIC_WIDGET_KEYS = [
   'hips',
   'height',
   'body_fat_percentage',
+  'muscle_mass_kg',
+  'bone_mass_kg',
+  'body_water_percentage',
+  'bmr',
 ] as const;
 
 /**
@@ -115,8 +119,11 @@ export function useMeasurementChartWidgets({
     formatDateInUserTimezone,
     weightUnit,
     measurementUnit,
+    energyUnit,
     convertWeight,
     convertMeasurement,
+    convertEnergy,
+    getEnergyUnitString,
   } = usePreferences();
 
   const chartData = React.useMemo(() => {
@@ -165,13 +172,37 @@ export function useMeasurementChartWidgets({
         : 0,
       rawBodyFat: d.body_fat_percentage,
       body_fat_percentage: d.body_fat_percentage || 0,
+      rawMuscleMass: d.muscle_mass_kg,
+      muscle_mass_kg: d.muscle_mass_kg
+        ? convertWeight(
+            d.muscle_mass_kg,
+            'kg',
+            weightUnit === 'st_lbs' ? 'lbs' : weightUnit
+          )
+        : 0,
+      rawBoneMass: d.bone_mass_kg,
+      bone_mass_kg: d.bone_mass_kg
+        ? convertWeight(
+            d.bone_mass_kg,
+            'kg',
+            weightUnit === 'st_lbs' ? 'lbs' : weightUnit
+          )
+        : 0,
+      rawBodyWater: d.body_water_percentage,
+      body_water_percentage: d.body_water_percentage || 0,
+      rawBmr: d.bmr,
+      bmr: d.bmr
+        ? Math.round(convertEnergy(Number(d.bmr), 'kcal', energyUnit))
+        : 0,
     }));
   }, [
     measurementData,
     weightUnit,
     measurementUnit,
+    energyUnit,
     convertWeight,
     convertMeasurement,
+    convertEnergy,
   ]);
 
   info(loggingLevel, 'MeasurementChartsGrid: Rendering component.');
@@ -298,8 +329,69 @@ export function useMeasurementChartWidgets({
         formatValue: (val: number) => `${val.toFixed(1)}%`,
         axisTickFormat: (value: number) => value.toFixed(1),
       },
+      {
+        key: METRIC_WIDGET_KEYS[6],
+        titleKey: 'reports.muscleMass',
+        defaultTitle: 'Muscle Mass',
+        dataKey: 'muscle_mass_kg',
+        rawKey: 'rawMuscleMass',
+        unit: weightUnit === 'st_lbs' ? 'lbs' : weightUnit,
+        stroke: '#e67e22',
+        icon: Activity,
+        showHeaderIcon: false,
+        formatValue: (val: number) =>
+          formatWeight(val, weightUnit === 'st_lbs' ? 'lbs' : weightUnit),
+        axisTickFormat: (value: number) =>
+          value.toFixed(
+            getPrecision('weight', weightUnit === 'st_lbs' ? 'lbs' : weightUnit)
+          ),
+      },
+      {
+        key: METRIC_WIDGET_KEYS[7],
+        titleKey: 'reports.boneMass',
+        defaultTitle: 'Bone Mass',
+        dataKey: 'bone_mass_kg',
+        rawKey: 'rawBoneMass',
+        unit: weightUnit === 'st_lbs' ? 'lbs' : weightUnit,
+        stroke: '#95a5a6',
+        icon: Activity,
+        showHeaderIcon: false,
+        formatValue: (val: number) =>
+          formatWeight(val, weightUnit === 'st_lbs' ? 'lbs' : weightUnit),
+        axisTickFormat: (value: number) =>
+          value.toFixed(
+            getPrecision('weight', weightUnit === 'st_lbs' ? 'lbs' : weightUnit)
+          ),
+      },
+      {
+        key: METRIC_WIDGET_KEYS[8],
+        titleKey: 'reports.bodyWaterPercentage',
+        defaultTitle: 'Body Water %',
+        dataKey: 'body_water_percentage',
+        rawKey: 'rawBodyWater',
+        unit: '%',
+        stroke: '#3498db',
+        icon: Droplet,
+        showHeaderIcon: false,
+        formatValue: (val: number) => `${val.toFixed(1)}%`,
+        axisTickFormat: (value: number) => value.toFixed(1),
+      },
+      {
+        key: METRIC_WIDGET_KEYS[9],
+        titleKey: 'reports.bmr',
+        defaultTitle: 'BMR',
+        dataKey: 'bmr',
+        rawKey: 'rawBmr',
+        unit: getEnergyUnitString(energyUnit),
+        stroke: '#8e44ad',
+        icon: Flame,
+        showHeaderIcon: false,
+        formatValue: (val: number) =>
+          `${val} ${getEnergyUnitString(energyUnit)}`,
+        axisTickFormat: (value: number) => value.toFixed(0),
+      },
     ],
-    [weightUnit, measurementUnit]
+    [weightUnit, measurementUnit, energyUnit, getEnergyUnitString]
   );
 
   return React.useMemo<Widget[]>(() => {

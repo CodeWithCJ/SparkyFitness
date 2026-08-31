@@ -66,18 +66,26 @@ describe('foodDetails: INPUT vs DISPLAY formatting split', () => {
 
     test('formatVariantServingLabel localizes the serving quantity', async () => {
       await i18n.changeLanguage('en');
-      expect(formatVariantServingLabel(fractionalServingValues)).toBe('1.5 cups');
+      expect(formatVariantServingLabel(fractionalServingValues)).toBe(
+        '1.5 cups'
+      );
 
       await i18n.changeLanguage('pl');
-      expect(formatVariantServingLabel(fractionalServingValues)).toBe('1,5 szklanki');
+      expect(formatVariantServingLabel(fractionalServingValues)).toBe(
+        '1,5 szklanki'
+      );
     });
 
     test('formatVariantLabel localizes the serving quantity and calories', async () => {
       await i18n.changeLanguage('en');
-      expect(formatVariantLabel(fractionalServingValues)).toBe('1.5 cups (0.5 cal)');
+      expect(formatVariantLabel(fractionalServingValues)).toBe(
+        '1.5 cups (0.5 cal)'
+      );
 
       await i18n.changeLanguage('pl');
-      expect(formatVariantLabel(fractionalServingValues)).toBe('1,5 szklanki (0,5 cal)');
+      expect(formatVariantLabel(fractionalServingValues)).toBe(
+        '1,5 szklanki (0,5 cal)'
+      );
     });
   });
 

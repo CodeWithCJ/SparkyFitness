@@ -54,6 +54,12 @@ export const workoutPlanAssignmentSetsMutatorSchema = z.object({
   updated_at: z.date().optional().nullable(),
 });
 
-export type WorkoutPlanAssignmentSets = z.infer<typeof workoutPlanAssignmentSetsSchema>;
-export type WorkoutPlanAssignmentSetsInitializer = z.infer<typeof workoutPlanAssignmentSetsInitializerSchema>;
-export type WorkoutPlanAssignmentSetsMutator = z.infer<typeof workoutPlanAssignmentSetsMutatorSchema>;
+export type WorkoutPlanAssignmentSets = z.infer<
+  typeof workoutPlanAssignmentSetsSchema
+>;
+export type WorkoutPlanAssignmentSetsInitializer = z.infer<
+  typeof workoutPlanAssignmentSetsInitializerSchema
+>;
+export type WorkoutPlanAssignmentSetsMutator = z.infer<
+  typeof workoutPlanAssignmentSetsMutatorSchema
+>;

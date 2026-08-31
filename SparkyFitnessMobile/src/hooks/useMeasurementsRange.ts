@@ -27,7 +27,10 @@ interface UseMeasurementsRangeOptions {
   enabled?: boolean;
 }
 
-export function useMeasurementsRange({ range, enabled = true }: UseMeasurementsRangeOptions) {
+export function useMeasurementsRange({
+  range,
+  enabled = true,
+}: UseMeasurementsRangeOptions) {
   const today = getTodayDate();
   const days = RANGE_DAYS[range];
   const startDate = addDays(today, -(days - 1));
@@ -45,7 +48,11 @@ export function useMeasurementsRange({ range, enabled = true }: UseMeasurementsR
         if (!stepsMap.has(entry.entry_date)) {
           stepsMap.set(entry.entry_date, entry.steps ?? 0);
         }
-        if (!weightMap.has(entry.entry_date) && entry.weight != null && entry.weight > 0) {
+        if (
+          !weightMap.has(entry.entry_date) &&
+          entry.weight != null &&
+          entry.weight > 0
+        ) {
           weightMap.set(entry.entry_date, entry.weight);
         }
       }

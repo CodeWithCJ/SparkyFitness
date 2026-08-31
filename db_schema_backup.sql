@@ -1264,8 +1264,17 @@ CREATE TABLE public.check_in_measurements (
     updated_by_user_id uuid,
     muscle_mass_kg numeric(5,2),
     bone_mass_kg numeric(5,2),
-    body_water_percentage numeric(5,2)
+    body_water_percentage numeric(5,2),
+    bmr numeric(6,1),
+    CONSTRAINT check_in_measurements_bmr_check CHECK (((bmr IS NULL) OR ((bmr >= (300)::numeric) AND (bmr <= (10000)::numeric))))
 );
+
+
+--
+-- Name: COLUMN check_in_measurements.bmr; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.check_in_measurements.bmr IS 'Basal Metabolic Rate (BMR) in kcal, measured from smart weight scale or synced from health provider.';
 
 
 --
@@ -1469,7 +1478,8 @@ CREATE TABLE public.daily_health_metrics (
     body_battery_highest integer,
     body_battery_lowest integer,
     created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now()
+    updated_at timestamp with time zone DEFAULT now(),
+    total_calories_captured_at timestamp with time zone
 );
 
 
@@ -3540,6 +3550,7 @@ CREATE TABLE public.user_preferences (
     active_vision_ai_service_id uuid,
     added_sugar_algorithm text DEFAULT 'WHO_IDEAL'::text NOT NULL,
     time_format text DEFAULT 'h:mm A'::text NOT NULL,
+    food_search_all_providers_default boolean DEFAULT false NOT NULL,
     calorie_safety_floor_mode text DEFAULT 'standard'::text NOT NULL,
     calorie_safety_floor_value integer DEFAULT 1200 NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
