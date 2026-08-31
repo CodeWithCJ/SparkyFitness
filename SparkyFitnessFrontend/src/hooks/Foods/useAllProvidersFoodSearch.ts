@@ -80,11 +80,16 @@ const noop = () => {};
 // Kept distinct from v2FoodKeys.search / nutritionixKeys.search because those
 // cache the providers' raw response shapes; reusing them here with a different
 // (normalised) shape would corrupt the shared cache.
+// itemDisplayLimit belongs in the key because it is the pageSize for the
+// providers in PAGE_SIZE_PROVIDERS. Omitting it serves results fetched under
+// the previous limit once the preference changes. That was harmless while the
+// limit was a dead constant; it is a live preference now.
 const allProvidersFoodSearchKey = (
   providerType: string,
   query: string,
   providerId?: string,
-  autoScale?: boolean
+  autoScale?: boolean,
+  itemDisplayLimit?: number
 ) =>
   [
     'v2',
@@ -94,6 +99,7 @@ const allProvidersFoodSearchKey = (
     query,
     providerId,
     autoScale,
+    itemDisplayLimit,
   ] as const;
 
 // Providers whose single-provider search caps results at the food display
@@ -216,7 +222,8 @@ export function useAllProvidersFoodSearch(
         provider.provider_type,
         debouncedSearch,
         provider.id,
-        autoScale
+        autoScale,
+        itemDisplayLimit
       ),
       queryFn: () =>
         fetchProviderResults(provider, debouncedSearch, {
