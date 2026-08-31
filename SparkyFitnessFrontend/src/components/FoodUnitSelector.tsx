@@ -34,6 +34,7 @@ import { useActiveAIService } from '@/hooks/AI/useAIServiceSettings';
 import { useUserAiConfigAllowed } from '@/hooks/AI/useUserAiConfigAllowed';
 import {
   CONFIDENCE_TONES,
+  aiConfidenceSchema,
   shouldOfferAiConversion,
   userHourMinute,
   defaultMealTypeForTime,
@@ -63,6 +64,14 @@ const AI_ESTIMATE_BADGE_TONE_CLASSES: Record<ConfidenceTone, string> = {
   warning: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
   error: 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
 };
+
+const getValidAiConfidence = (
+  confidence: FoodVariant['ai_confidence']
+): AiConfidence | null => {
+  const result = aiConfidenceSchema.safeParse(confidence);
+  return result.success ? result.data : null;
+};
+
 import { AiEstimateSection } from '@/components/FoodUnitSelector/AiEstimateSection';
 import FavoriteStarButton from '@/components/FavoriteStarButton';
 import { useTranslation } from 'react-i18next';
@@ -225,6 +234,9 @@ const FoodUnitSelector = ({
       setQuantity(variant.serving_size);
     },
   });
+  const selectedAiConfidence = getValidAiConfidence(
+    selectedVariant?.ai_confidence
+  );
 
   const loadVariantsData = useCallback(async () => {
     debug(loggingLevel, 'Loading food variants for food ID:', food?.id);
@@ -591,27 +603,32 @@ const FoodUnitSelector = ({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {variants.map(
-                          (variant) =>
+                        {variants.map((variant) => {
+                          const aiConfidence = getValidAiConfidence(
+                            variant.ai_confidence
+                          );
+
+                          return (
                             variant.id && (
                               <SelectItem key={variant.id} value={variant.id}>
                                 <span className="flex items-center gap-1.5">
                                   {formatServingLabel(variant)}
                                   {variant.source === 'ai_estimate' &&
-                                    variant.ai_confidence && (
+                                    aiConfidence && (
                                       <Sparkles
-                                        className={`h-3 w-3 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[variant.ai_confidence as AiConfidence]]}`}
+                                        className={`h-3 w-3 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[aiConfidence]]}`}
                                         aria-label={getAiEstimateLabel(
                                           t,
                                           'foodUnitSelector',
-                                          variant.ai_confidence as AiConfidence
+                                          aiConfidence
                                         )}
                                       />
                                     )}
                                 </span>
                               </SelectItem>
                             )
-                        )}
+                          );
+                        })}
                         {convertibleUnits.length > 0 && (
                           <>
                             <SelectSeparator />
@@ -641,13 +658,13 @@ const FoodUnitSelector = ({
                       </SelectContent>
                     </Select>
                     {selectedVariant?.source === 'ai_estimate' &&
-                      selectedVariant.ai_confidence && (
+                      selectedAiConfidence && (
                         <Sparkles
-                          className={`h-4 w-4 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[selectedVariant.ai_confidence as AiConfidence]]}`}
+                          className={`h-4 w-4 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[selectedAiConfidence]]}`}
                           aria-label={getAiEstimateLabel(
                             t,
                             'foodUnitSelector',
-                            selectedVariant.ai_confidence as AiConfidence
+                            selectedAiConfidence
                           )}
                         />
                       )}

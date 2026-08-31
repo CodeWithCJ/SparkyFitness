@@ -172,7 +172,10 @@ const WaterContainerManager: React.FC = () => {
                 <p className="font-semibold">
                   {c.name} -{' '}
                   {convertMlToSelectedUnit(c.volume, c.unit).toFixed(2)}{' '}
-                  {c.unit} (
+                  {c.unit === 'liter'
+                    ? t('waterContainerManager.liter', 'liter')
+                    : c.unit}{' '}
+                  (
                   {t('waterContainerManager.servingsCount', {
                     count: c.servings_per_container,
                     defaultValue_one: '{{count}} serving',
