@@ -103,7 +103,7 @@ const PAGE_SIZE_PROVIDERS = ['usda', 'yazio'];
 async function fetchProviderResults(
   provider: DataProvider,
   query: string,
-  options: { autoScale?: boolean; foodDisplayLimit?: number }
+  options: { autoScale?: boolean; itemDisplayLimit?: number }
 ): Promise<NormalisedProviderResult> {
   if (provider.provider_type === 'nutritionix') {
     const data: NutritionixItem[] = await searchNutritionixFoods(
@@ -123,7 +123,7 @@ async function fetchProviderResults(
   }
 
   const pageSize = PAGE_SIZE_PROVIDERS.includes(provider.provider_type)
-    ? options.foodDisplayLimit
+    ? options.itemDisplayLimit
     : undefined;
   const data = await searchFoodsV2(
     provider.provider_type,
@@ -159,7 +159,7 @@ export function useAllProvidersFoodSearch(
   options?: {
     enabled?: boolean;
     autoScale?: boolean;
-    foodDisplayLimit?: number;
+    itemDisplayLimit?: number;
   }
 ): {
   providerResults: ProviderFoodSearchResult[];
@@ -170,7 +170,7 @@ export function useAllProvidersFoodSearch(
   // step with the aggregated results rather than a faster local debounce.
   debouncedSearch: string;
 } {
-  const { enabled = true, autoScale, foodDisplayLimit } = options ?? {};
+  const { enabled = true, autoScale, itemDisplayLimit } = options ?? {};
   const debouncedSearch = useDebounce(searchTerm.trim(), DEBOUNCE_MS);
   // Require both the live and the debounced term to clear the threshold. The
   // debounced check gates the queries; the live check makes backspacing below
@@ -221,7 +221,7 @@ export function useAllProvidersFoodSearch(
       queryFn: () =>
         fetchProviderResults(provider, debouncedSearch, {
           autoScale,
-          foodDisplayLimit,
+          itemDisplayLimit,
         }),
       enabled: isSearchActive && enabled,
       staleTime: STALE_TIME,
