@@ -57,6 +57,10 @@ import { useDiaryGoals } from '@/hooks/Diary/useFoodEntries';
 import { useMostRecentMeasurement } from '@/hooks/CheckIn/useCheckIn';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 import {
+  getBmrAlgorithmLabel,
+  getBodyFatAlgorithmLabel,
+} from '@/utils/calculationLabels';
+import {
   computeCalorieTarget,
   isAdaptiveTdeeMature,
   todayInZone,
@@ -681,7 +685,7 @@ const CalculationSettings = () => {
             <SelectContent>
               {Object.values(BmrAlgorithm).map((alg) => (
                 <SelectItem key={alg} value={alg}>
-                  {alg}
+                  {getBmrAlgorithmLabel(t, alg)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -715,7 +719,7 @@ const CalculationSettings = () => {
             <SelectContent>
               {Object.values(BodyFatAlgorithm).map((alg) => (
                 <SelectItem key={alg} value={alg}>
-                  {alg}
+                  {getBodyFatAlgorithmLabel(t, alg)}
                 </SelectItem>
               ))}
             </SelectContent>

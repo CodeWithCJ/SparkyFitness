@@ -95,7 +95,9 @@ export const CardioVolumeIntervalChart = ({
           </CardTitle>
           <p className="text-xs text-muted-foreground mt-1">
             {t('exerciseAnalytics.volume.summary', {
-              defaultValue:
+              defaultValue_one:
+                'Grouped by {{interval}} • Total {{distance}} {{unit}} across {{count}} workout',
+              defaultValue_other:
                 'Grouped by {{interval}} • Total {{distance}} {{unit}} across {{count}} workouts',
               interval: t(
                 `exerciseAnalytics.intervals.${summaryData.interval}`,

@@ -34,7 +34,6 @@ import { useActiveAIService } from '@/hooks/AI/useAIServiceSettings';
 import { useUserAiConfigAllowed } from '@/hooks/AI/useUserAiConfigAllowed';
 import {
   CONFIDENCE_TONES,
-  OVERALL_CONFIDENCE_LABELS,
   shouldOfferAiConversion,
   userHourMinute,
   defaultMealTypeForTime,
@@ -46,6 +45,10 @@ import {
   formatQuantityServingLabel,
   formatServingLabel,
 } from '@/utils/foodServing';
+import {
+  getAiConfidenceLabel,
+  getAiEstimateLabel,
+} from '@/utils/aiConfidenceLabels';
 
 // Confidence tone classes for the saved-AI-variant indicator in the picker dropdown.
 const AI_PICKER_ICON_TONE_CLASSES: Record<ConfidenceTone, string> = {
@@ -107,16 +110,6 @@ const FoodUnitSelector = ({
   availableMealTypes,
 }: FoodUnitSelectorProps) => {
   const { t } = useTranslation();
-  const confidenceLabel = (confidence: AiConfidence) =>
-    t(
-      `foodUnitSelector.confidence.${confidence}`,
-      OVERALL_CONFIDENCE_LABELS[confidence]
-    );
-  const aiEstimateLabel = (confidence: AiConfidence) =>
-    t('foodUnitSelector.aiEstimateConfidence', {
-      defaultValue: 'AI estimate ({{confidence}} confidence)',
-      confidence: confidenceLabel(confidence),
-    });
   const {
     loggingLevel,
     energyUnit,
@@ -608,7 +601,9 @@ const FoodUnitSelector = ({
                                     variant.ai_confidence && (
                                       <Sparkles
                                         className={`h-3 w-3 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[variant.ai_confidence as AiConfidence]]}`}
-                                        aria-label={aiEstimateLabel(
+                                        aria-label={getAiEstimateLabel(
+                                          t,
+                                          'foodUnitSelector',
                                           variant.ai_confidence as AiConfidence
                                         )}
                                       />
@@ -649,7 +644,9 @@ const FoodUnitSelector = ({
                       selectedVariant.ai_confidence && (
                         <Sparkles
                           className={`h-4 w-4 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[selectedVariant.ai_confidence as AiConfidence]]}`}
-                          aria-label={aiEstimateLabel(
+                          aria-label={getAiEstimateLabel(
+                            t,
+                            'foodUnitSelector',
                             selectedVariant.ai_confidence as AiConfidence
                           )}
                         />
@@ -857,13 +854,17 @@ const FoodUnitSelector = ({
                         {aiEstimateData !== null && (
                           <span
                             className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${AI_ESTIMATE_BADGE_TONE_CLASSES[CONFIDENCE_TONES[aiEstimateData.confidence]]}`}
-                            aria-label={aiEstimateLabel(
+                            aria-label={getAiEstimateLabel(
+                              t,
+                              'foodUnitSelector',
                               aiEstimateData.confidence
                             )}
                           >
                             {t('foodUnitSelector.confidenceEstimate', {
                               defaultValue: '{{confidence}} estimate',
-                              confidence: confidenceLabel(
+                              confidence: getAiConfidenceLabel(
+                                t,
+                                'foodUnitSelector',
                                 aiEstimateData.confidence
                               ),
                             })}

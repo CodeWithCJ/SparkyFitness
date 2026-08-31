@@ -716,8 +716,19 @@
     "showNetCarbs": "Show net carbs (carbs minus fiber)",
     "showNetCarbsHint": "When enabled, carbohydrate summaries display total carbs minus dietary fiber.",
     "bmrAlgorithm": "BMR Algorithm",
+    "bmrAlgorithmOptions": {
+      "mifflinStJeor": "Mifflin-St Jeor",
+      "revisedHarrisBenedict": "Revised Harris-Benedict",
+      "katchMcArdle": "Katch-McArdle",
+      "cunningham": "Cunningham",
+      "oxford": "Oxford"
+    },
     "bmrAlgorithmHint": "Select the formula used to calculate your Basal Metabolic Rate.",
     "bodyFatAlgorithm": "Body Fat Algorithm",
+    "bodyFatAlgorithmOptions": {
+      "usNavy": "U.S. Navy",
+      "bmiMethod": "BMI Method"
+    },
     "bodyFatAlgorithmHint": "Select the formula used to estimate body fat percentage from measurements.",
     "calories": "Calories",
     "energyUnitHint": "Choose your preferred unit for displaying energy values (e.g., calories, kilojoules).",
@@ -2072,6 +2083,15 @@
       "modeMaintain": "Maintain (0%)",
       "modeManual": "Manual (Custom %)",
       "modeRecomp": "Body Recomposition (-10%)",
+      "modeNames": {
+        "maintain": "Maintain",
+        "recomp": "Body Recomposition",
+        "cut": "Cut",
+        "highCut": "High Cut",
+        "leanBulk": "Lean Bulk",
+        "bulk": "Bulk",
+        "manual": "Manual"
+      },
       "subtitle": "Adjust your daily calorie target based on your body composition goal.",
       "title": "Goal Mode",
       "coaching": {
@@ -5393,7 +5413,8 @@
     "add": "Add Container",
     "primary": "Primary",
     "setPrimary": "Set as Primary",
-    "servingsCount": "{{count}} servings",
+    "servingsCount_one": "{{count}} serving",
+    "servingsCount_other": "{{count}} servings",
     "deleted": "Water container deleted.",
     "primaryUpdated": "Primary container updated."
   },
@@ -5498,12 +5519,12 @@
     "floorsClimbed": "Floors Climbed",
     "hrv": "HRV",
     "hrvSdnn": "HRV SDNN",
-    "hrvSdnnAvg": "Hrv Sdnn Avg",
-    "hrvSdnnMax": "Hrv Sdnn Max",
-    "hrvSdnnMin": "Hrv Sdnn Min",
-    "hrvAvg": "Hrv Avg",
-    "hrvMax": "Hrv Max",
-    "hrvMin": "Hrv Min",
+    "hrvSdnnAvg": "HRV SDNN Avg",
+    "hrvSdnnMax": "HRV SDNN Max",
+    "hrvSdnnMin": "HRV SDNN Min",
+    "hrvAvg": "HRV Avg",
+    "hrvMax": "HRV Max",
+    "hrvMin": "HRV Min",
     "heartRate": "Heart Rate",
     "height": "Height",
     "hydration": "Hydration",
@@ -5631,7 +5652,8 @@
     "matchedCourses": {
       "title": "Matched Courses & Route History (\"Matched Runs\")",
       "description": "Activities on recurring route loops grouped together to compare pace over time.",
-      "runs": "{{count}} runs",
+      "runs_one": "{{count}} run",
+      "runs_other": "{{count}} runs",
       "average": "Avg:",
       "bestPace": "Best Pace:"
     },
@@ -5639,7 +5661,8 @@
       "emptyTitle": "Exercise Volume & Time Totals",
       "noData": "No exercise distance or duration logged for this date range.",
       "title": "Exercise Volume & Interval Totals",
-      "summary": "Grouped by {{interval}} • Total {{distance}} {{unit}} across {{count}} workouts",
+      "summary_one": "Grouped by {{interval}} • Total {{distance}} {{unit}} across {{count}} workout",
+      "summary_other": "Grouped by {{interval}} • Total {{distance}} {{unit}} across {{count}} workouts",
       "distance": "Distance",
       "duration": "Duration",
       "calories": "Calories"

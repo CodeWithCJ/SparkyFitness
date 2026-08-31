@@ -57,7 +57,8 @@ export const MatchedCoursesList = ({
                 </span>
                 <span className="bg-indigo-100 text-indigo-800 text-[10px] px-2 py-0.5 rounded-full font-medium">
                   {t('exerciseAnalytics.matchedCourses.runs', {
-                    defaultValue: '{{count}} runs',
+                    defaultValue_one: '{{count}} run',
+                    defaultValue_other: '{{count}} runs',
                     count: course.activityCount,
                   })}
                 </span>

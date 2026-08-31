@@ -12,6 +12,11 @@ import {
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import {
+  getBmrAlgorithmLabel,
+  getBodyFatAlgorithmLabel,
+  getGoalModeLabel,
+} from '@/utils/calculationLabels';
+import {
   ADAPTIVE_TDEE_GOAL_MIN_DAYS,
   getGoalModeAdjustment,
   ENERGY_DENSITY_KCAL_PER_KG,
@@ -80,6 +85,9 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
 }) => {
   const { t } = useTranslation();
   const { energyUnit, convertEnergy } = usePreferences();
+  const bmrAlgorithmLabel = getBmrAlgorithmLabel(t, bmrAlgorithm);
+  const bodyFatAlgorithmLabel = getBodyFatAlgorithmLabel(t, bodyFatAlgorithm);
+  const goalModeLabel = getGoalModeLabel(t, goalMode);
 
   const isAdaptiveMethod = goalModeCalculationMethod === 'adaptive';
   // Same label matrix as the CalculationSettings Live Preview (shared t() keys):
@@ -405,7 +413,7 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
           <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/40 rounded text-sm">
             {isMeasuredBmr
               ? t('diary.calculateExplanation.bmrMeasured', 'Measured')
-              : bmrAlgorithm}
+              : bmrAlgorithmLabel}
           </span>
         </div>
         {isMeasuredBmr ? (
@@ -445,7 +453,7 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
             )}
           </span>
           <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/40 rounded text-sm">
-            {bodyFatAlgorithm}
+            {bodyFatAlgorithmLabel}
           </span>
         </div>
         <pre className="text-muted-foreground font-sans whitespace-pre-line text-sm bg-muted/40 p-1.5 rounded border border-border/60">
@@ -479,12 +487,12 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
               ? t(
                   'settings.calorieBreakdown.bodyFatMissing',
                   '{{algorithm}} uses body fat, but no measurement is logged — log one for an accurate target.',
-                  { algorithm: bmrAlgorithm }
+                  { algorithm: bmrAlgorithmLabel }
                 )
               : t(
                   'settings.calorieBreakdown.bodyFatUnused',
                   'Shown for reference only — {{algorithm}} does not take body fat as an input.',
-                  { algorithm: bmrAlgorithm }
+                  { algorithm: bmrAlgorithmLabel }
                 )}
         </p>
       </div>
@@ -860,7 +868,7 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                  signed, so formatting them raw double-prints the sign for gain
                  modes ("Deficit (--10%) = --200 kcal"). */
               <span>
-                {goalMode} {adjustmentLabel} ({adjustmentSign}
+                {goalModeLabel} {adjustmentLabel} ({adjustmentSign}
                 {Math.abs(Math.round(deficitPct * 100))}%) = {adjustmentSign}
                 {Math.abs(
                   Math.round(

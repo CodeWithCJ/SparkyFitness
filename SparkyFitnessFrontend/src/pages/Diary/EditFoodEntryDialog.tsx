@@ -39,7 +39,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { DEFAULT_NUTRIENTS } from '@/constants/nutrients';
 import {
   CONFIDENCE_TONES,
-  OVERALL_CONFIDENCE_LABELS,
   type AiConfidence,
   type ConfidenceTone,
   toHourMinute,
@@ -49,6 +48,7 @@ import { formatServingLabel } from '@/utils/foodServing';
 import FoodEntryImageOverride from './FoodEntryImageOverride';
 import { useEntryImageDraft } from '@/hooks/Diary/useEntryImageDraft';
 import { useTranslation } from 'react-i18next';
+import { getAiEstimateLabel } from '@/utils/aiConfidenceLabels';
 
 const AI_PICKER_ICON_TONE_CLASSES: Record<ConfidenceTone, string> = {
   success: 'text-emerald-600 dark:text-emerald-400',
@@ -70,16 +70,6 @@ const EditFoodEntryDialog = ({
   availableMealTypes,
 }: EditFoodEntryDialogProps) => {
   const { t } = useTranslation();
-  const confidenceLabel = (confidence: AiConfidence) =>
-    t(
-      `editFoodEntry.confidence.${confidence}`,
-      OVERALL_CONFIDENCE_LABELS[confidence]
-    );
-  const aiEstimateLabel = (confidence: AiConfidence) =>
-    t('editFoodEntry.aiEstimateConfidence', {
-      defaultValue: 'AI estimate ({{confidence}} confidence)',
-      confidence: confidenceLabel(confidence),
-    });
   const {
     loggingLevel,
     energyUnit,
@@ -389,7 +379,9 @@ const EditFoodEntryDialog = ({
                                     variant.ai_confidence && (
                                       <Sparkles
                                         className={`h-3 w-3 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[variant.ai_confidence as AiConfidence]]}`}
-                                        aria-label={aiEstimateLabel(
+                                        aria-label={getAiEstimateLabel(
+                                          t,
+                                          'editFoodEntry',
                                           variant.ai_confidence as AiConfidence
                                         )}
                                       />
@@ -430,7 +422,9 @@ const EditFoodEntryDialog = ({
                       selectedVariant.ai_confidence && (
                         <Sparkles
                           className={`h-4 w-4 ${AI_PICKER_ICON_TONE_CLASSES[CONFIDENCE_TONES[selectedVariant.ai_confidence as AiConfidence]]}`}
-                          aria-label={aiEstimateLabel(
+                          aria-label={getAiEstimateLabel(
+                            t,
+                            'editFoodEntry',
                             selectedVariant.ai_confidence as AiConfidence
                           )}
                         />

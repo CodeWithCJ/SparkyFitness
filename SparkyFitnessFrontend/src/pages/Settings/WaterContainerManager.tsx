@@ -175,7 +175,8 @@ const WaterContainerManager: React.FC = () => {
                   {c.unit} (
                   {t('waterContainerManager.servingsCount', {
                     count: c.servings_per_container,
-                    defaultValue: `${c.servings_per_container} servings`,
+                    defaultValue_one: '{{count}} serving',
+                    defaultValue_other: '{{count}} servings',
                   })}
                   )
                 </p>
