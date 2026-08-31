@@ -51,10 +51,9 @@ describe('native app locale resources', () => {
 
   it('has non-empty permission copy in every shipped locale', () => {
     for (const locale of SHIPPED) {
-      for (const [key, value] of Object.entries(
-        readMetadata(locale).ios ?? {}
-      )) {
-        expect(`${locale}:${key}:${value}`).not.toBe(`${locale}:${key}:`);
+      for (const value of Object.values(readMetadata(locale).ios ?? {})) {
+        expect(value).toEqual(expect.any(String));
+        expect(value).not.toBe('');
       }
     }
   });

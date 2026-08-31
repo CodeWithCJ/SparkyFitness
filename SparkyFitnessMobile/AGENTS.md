@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-08-29_
+_Last updated: 2026-08-31_
 
 SparkyFitness Mobile is a React Native 0.85 + Expo SDK 56 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -321,6 +321,7 @@ const androidService = require('../../src/services/healthConnectService.ts');
 - Measurements/hydration bug: inspect dashboard/diary/measurements screens, summaries/gauges, measurement/water/check-in hooks, API, date helpers, widget sync, writeback, and unit conversions.
 - Scan/photo bug: inspect food scan/search, `FoodPhotoFlow`, photo screens, AI setting hook/API, estimate hook/API, intro persistence, haptics, icon usage, and route params.
 - Widget/deep-link bug: inspect `useWidgetSync`, `CalorieWidgetBridge`, widget targets, widget plugins, `app.config.ts`, `app.identifiers.js`, `App.tsx`, and dashboard.
+- Widget string shows as a raw key: inspect `targets/widget/en.lproj/Localizable.strings`, the `fallbackWidgetString` map in `SharedHelpers.swift`, and the derived-key contract in `__tests__/config/helpers/widgetSwiftKeys.ts`.
 - Settings/diagnostics bug: inspect settings screens, `SettingsRow`, haptics/theme/sounds/notification services, diagnostics services, `DevTools`, and screen error boundaries.
 
 ## Priority Rule
