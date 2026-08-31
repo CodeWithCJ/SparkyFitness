@@ -22,7 +22,12 @@
 
 import type { MealType } from '../types/mealTypes';
 
-export const SYSTEM_ANCHOR_KEYS = ['breakfast', 'lunch', 'dinner', 'snacks'] as const;
+export const SYSTEM_ANCHOR_KEYS = [
+  'breakfast',
+  'lunch',
+  'dinner',
+  'snacks',
+] as const;
 export type SystemAnchorKey = (typeof SYSTEM_ANCHOR_KEYS)[number];
 
 export type MealGapKey = 'b_l' | 'l_d' | 'd_s';
@@ -52,7 +57,9 @@ export const GAP_SLOT_RANGE: Record<MealGapKey, [number, number]> = {
 };
 
 /** Gap key for a custom type's sort_order, mapping legacy values into a gap. */
-export function gapKeyForSortOrder(sortOrder: number | null | undefined): MealGapKey {
+export function gapKeyForSortOrder(
+  sortOrder: number | null | undefined
+): MealGapKey {
   const v = sortOrder ?? 0;
   if (v > 10 && v < 20) return 'b_l';
   if (v > 20 && v < 30) return 'l_d';
@@ -75,7 +82,9 @@ export interface GapAssignment {
  * Orders every custom meal type into its gap. Within a gap, types sort by
  * sort_order (stable). Returns a map gapKey → ordered custom types.
  */
-export function assignCustomTypesToGaps(customTypes: MealType[]): Record<MealGapKey, MealType[]> {
+export function assignCustomTypesToGaps(
+  customTypes: MealType[]
+): Record<MealGapKey, MealType[]> {
   const gaps: Record<MealGapKey, MealType[]> = { b_l: [], l_d: [], d_s: [] };
   for (const mt of customTypes) {
     gaps[gapKeyForSortOrder(mt.sort_order)].push(mt);
@@ -111,7 +120,7 @@ export function moveCustomTypeBetweenGaps(
   fromGap: MealGapKey,
   fromIndex: number,
   toGap: MealGapKey,
-  toIndex: number,
+  toIndex: number
 ): Record<MealGapKey, MealType[]> | null {
   // Copy the input arrays first — this helper is PURE and must never mutate
   // the caller's gap assignment.
@@ -141,7 +150,7 @@ export function moveCustomTypeBetweenGaps(
  * written; only custom records whose value actually changed are included.
  */
 export function buildSortOrderWrites(
-  gaps: Record<MealGapKey, MealType[]>,
+  gaps: Record<MealGapKey, MealType[]>
 ): { id: string; sort_order: number }[] {
   const writes: { id: string; sort_order: number }[] = [];
   for (const key of Object.keys(gaps) as MealGapKey[]) {
@@ -164,7 +173,7 @@ export function buildSortOrderWrites(
  */
 export function buildUnifiedList(
   systemTypes: MealType[],
-  gaps: Record<MealGapKey, MealType[]>,
+  gaps: Record<MealGapKey, MealType[]>
 ): { isSystem: boolean; mt: MealType }[] {
   const byKey: Record<string, MealType> = {};
   for (const st of systemTypes) {
@@ -194,7 +203,7 @@ export function buildUnifiedList(
  * present it maps to the nearest gap for safety.
  */
 export function deriveGapsFromUnified(
-  unified: { isSystem: boolean; mt: MealType }[],
+  unified: { isSystem: boolean; mt: MealType }[]
 ): Record<MealGapKey, MealType[]> {
   const gaps: Record<MealGapKey, MealType[]> = { b_l: [], l_d: [], d_s: [] };
   let currentGap: MealGapKey = 'b_l';
@@ -202,7 +211,8 @@ export function deriveGapsFromUnified(
     if (row.isSystem) {
       const key = row.mt.name.toLowerCase();
       if (key === 'lunch') currentGap = 'l_d';
-      else if (key === 'dinner' || key === 'snacks' || key === 'snack') currentGap = 'd_s';
+      else if (key === 'dinner' || key === 'snacks' || key === 'snack')
+        currentGap = 'd_s';
       continue;
     }
     gaps[currentGap].push(row.mt);

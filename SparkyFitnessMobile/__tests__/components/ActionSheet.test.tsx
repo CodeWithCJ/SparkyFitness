@@ -13,7 +13,10 @@ import ActionSheet, {
 const mockModal: {
   present: jest.Mock;
   dismiss: jest.Mock;
-  props: { onAnimate?: (from: number, to: number) => void; onDismiss?: () => void } | null;
+  props: {
+    onAnimate?: (from: number, to: number) => void;
+    onDismiss?: () => void;
+  } | null;
 } = { present: jest.fn(), dismiss: jest.fn(), props: null };
 
 jest.mock('@gorhom/bottom-sheet', () => {
@@ -30,7 +33,8 @@ jest.mock('@gorhom/bottom-sheet', () => {
       }));
       return React.createElement(View, null, props.children);
     }),
-    BottomSheetScrollView: ({ children }: any) => React.createElement(ScrollView, null, children),
+    BottomSheetScrollView: ({ children }: any) =>
+      React.createElement(ScrollView, null, children),
     BottomSheetBackdrop: () => null,
   };
 });
@@ -73,7 +77,7 @@ function renderSheet(overrides?: {
       items={items}
       onBack={overrides?.onBack}
       onDismiss={onDismiss}
-    />,
+    />
   );
   return { ...utils, ref, onDismiss, handlers };
 }
@@ -115,7 +119,9 @@ describe('ActionSheet', () => {
     const { getByText, getByLabelText, getByTestId } = renderSheet();
     expect(getByText('Bench Press')).toBeTruthy();
     expect(getByTestId('action-sheet-item-view')).toBeTruthy();
-    expect(getByLabelText('View exercise').props.accessibilityRole).toBe('button');
+    expect(getByLabelText('View exercise').props.accessibilityRole).toBe(
+      'button'
+    );
     expect(getByLabelText('Remove exercise')).toBeTruthy();
   });
 
@@ -222,7 +228,7 @@ describe('ActionSheet', () => {
     const remove = jest.fn();
     jest.spyOn(BackHandler, 'addEventListener').mockImplementation(((
       _event: string,
-      handler: () => boolean,
+      handler: () => boolean
     ) => {
       listeners.push(handler);
       return { remove };

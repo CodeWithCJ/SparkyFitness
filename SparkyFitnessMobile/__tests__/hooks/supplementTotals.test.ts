@@ -62,9 +62,9 @@ describe('resolveSupplementTotals', () => {
     // Callers iterate this without checking. A server predating the custom arm, or a day
     // with no doses, has to read as "contributed nothing" rather than throwing.
     expect(resolveSupplementTotals(undefined).custom_nutrients).toEqual({});
-    expect(
-      resolveSupplementTotals({ calories: 15 }).custom_nutrients
-    ).toEqual({});
+    expect(resolveSupplementTotals({ calories: 15 }).custom_nutrients).toEqual(
+      {}
+    );
   });
 
   it('carries custom nutrient values through', () => {
@@ -189,9 +189,11 @@ describe('addSupplementCustomNutrients', () => {
   });
 
   it('is a no-op for an absent or empty supplement arm', () => {
-    expect(addSupplementCustomNutrients({ Magnesium: 120 }, undefined)).toEqual({
-      Magnesium: 120,
-    });
+    expect(addSupplementCustomNutrients({ Magnesium: 120 }, undefined)).toEqual(
+      {
+        Magnesium: 120,
+      }
+    );
     expect(
       addSupplementCustomNutrients({ Magnesium: 120 }, EMPTY_SUPPLEMENT_TOTALS)
     ).toEqual({ Magnesium: 120 });

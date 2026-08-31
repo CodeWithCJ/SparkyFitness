@@ -8,7 +8,9 @@ jest.mock('../../src/services/api/foodsApi', () => ({
   fetchFoodVariants: jest.fn(),
 }));
 
-const mockFetchFoodVariants = fetchFoodVariants as jest.MockedFunction<typeof fetchFoodVariants>;
+const mockFetchFoodVariants = fetchFoodVariants as jest.MockedFunction<
+  typeof fetchFoodVariants
+>;
 
 const fractionalMeal = {
   id: 'meal-1',
@@ -21,21 +23,23 @@ const fractionalMeal = {
   total_servings: 3,
   created_at: '2026-08-01T00:00:00.000Z',
   updated_at: '2026-08-01T00:00:00.000Z',
-  foods: [{
-    id: 'meal-food-1',
-    food_id: 'food-1',
-    variant_id: 'variant-1',
-    quantity: 100,
-    unit: 'g',
-    food_name: 'Ingredient',
-    brand: null,
-    serving_size: 100,
-    serving_unit: 'g',
-    calories: 100,
-    protein: 10,
-    carbs: 20,
-    fat: 5,
-  }],
+  foods: [
+    {
+      id: 'meal-food-1',
+      food_id: 'food-1',
+      variant_id: 'variant-1',
+      quantity: 100,
+      unit: 'g',
+      food_name: 'Ingredient',
+      brand: null,
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 100,
+      protein: 10,
+      carbs: 20,
+      fat: 5,
+    },
+  ],
 };
 
 describe('useMealPlanNutrition', () => {
@@ -79,7 +83,7 @@ describe('useMealPlanNutrition', () => {
     const queryClient = createTestQueryClient();
     const { result } = renderHook(
       () => useMealPlanNutrition([assignment], []),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -94,17 +98,19 @@ describe('useMealPlanNutrition', () => {
   });
 
   test('does not substitute a default variant when the requested variant is missing', async () => {
-    mockFetchFoodVariants.mockResolvedValue([{
-      id: 'variant-default',
-      food_id: 'food-1',
-      serving_size: 100,
-      serving_unit: 'g',
-      calories: 100,
-      protein: 1,
-      carbs: 20,
-      fat: 1,
-      is_default: true,
-    }]);
+    mockFetchFoodVariants.mockResolvedValue([
+      {
+        id: 'variant-default',
+        food_id: 'food-1',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 100,
+        protein: 1,
+        carbs: 20,
+        fat: 1,
+        is_default: true,
+      },
+    ]);
     const assignment: MealPlanDraftAssignment = {
       item_type: 'food',
       day_of_week: 1,
@@ -117,7 +123,7 @@ describe('useMealPlanNutrition', () => {
     const queryClient = createTestQueryClient();
     const { result } = renderHook(
       () => useMealPlanNutrition([assignment], []),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -126,7 +132,9 @@ describe('useMealPlanNutrition', () => {
 
   test('does not enter a hydration state for food assignments that already have a nutrition snapshot', () => {
     mockFetchFoodVariants.mockReturnValue(
-      new Promise<Awaited<ReturnType<typeof fetchFoodVariants>>>(() => undefined),
+      new Promise<Awaited<ReturnType<typeof fetchFoodVariants>>>(
+        () => undefined
+      )
     );
     const assignment: MealPlanDraftAssignment = {
       item_type: 'food',
@@ -147,11 +155,13 @@ describe('useMealPlanNutrition', () => {
     const queryClient = createTestQueryClient();
     const { result } = renderHook(
       () => useMealPlanNutrition([assignment], []),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     expect(result.current.isLoading).toBe(false);
-    expect(result.current.resolveNutrition(assignment)).toEqual(assignment.nutrition);
+    expect(result.current.resolveNutrition(assignment)).toEqual(
+      assignment.nutrition
+    );
   });
 
   test('preserves fractional per-serving nutrition when hydrating a saved meal assignment', () => {
@@ -166,7 +176,7 @@ describe('useMealPlanNutrition', () => {
     const queryClient = createTestQueryClient();
     const { result } = renderHook(
       () => useMealPlanNutrition([assignment], [fractionalMeal]),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     const nutrition = result.current.resolveNutrition(assignment);
@@ -192,7 +202,7 @@ describe('useMealPlanNutrition', () => {
     const queryClient = createTestQueryClient();
     const { result } = renderHook(
       () => useMealPlanNutrition([assignment], []),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => expect(result.current.isError).toBe(true));

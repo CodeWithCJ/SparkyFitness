@@ -1,6 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, View, Text, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  Alert,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from './BottomSheetPicker';
 import Button from './ui/Button';
@@ -71,11 +81,9 @@ export interface FoodFormProps {
     variants: FoodUnitVariant[];
     selectedSelection?: FoodUnitSelectionResult | null;
     onUnitSelectionChange?: (
-      selection: FoodUnitSelectionResult,
+      selection: FoodUnitSelectionResult
     ) =>
-      | Promise<FoodUnitSelectionResult | void>
-      | FoodUnitSelectionResult
-      | void;
+      Promise<FoodUnitSelectionResult | void> | FoodUnitSelectionResult | void;
     /** Food id for the inline AI estimate path. Omit (or pass undefined) for
      *  unsaved foods — the sheet will then skip the persistent variant POST
      *  and emit the AI variant inline as a draft selection so the parent form
@@ -138,14 +146,18 @@ const FoodForm: React.FC<FoodFormProps> = ({
         ? t('common.save', 'Save')
         : t('foodForm.addFood', { defaultValue: 'Add Food' });
   const [form, setForm] = useState<FoodFormData>(() =>
-    buildDisplayFormState(initialValues),
+    buildDisplayFormState(initialValues)
   );
   const [showMoreNutrients, setShowMoreNutrients] = useState(false);
 
   const { isConnected } = useServerConnection();
-  const { customNutrients: customNutrientDefs } = useCustomNutrients({ enabled: isConnected });
+  const { customNutrients: customNutrientDefs } = useCustomNutrients({
+    enabled: isConnected,
+  });
 
-  const [customNutrientForm, setCustomNutrientForm] = useState<Record<string, string>>(() => {
+  const [customNutrientForm, setCustomNutrientForm] = useState<
+    Record<string, string>
+  >(() => {
     if (!customNutrientsProp) return {};
     const initial: Record<string, string> = {};
     for (const [name, value] of Object.entries(customNutrientsProp)) {
@@ -209,16 +221,18 @@ const FoodForm: React.FC<FoodFormProps> = ({
     !!activeAiServiceSetting &&
     userPreferences?.ai_assisted_conversions !== false;
   const [autoScaleNutrition, setAutoScaleNutrition] = useState(
-    initialAutoScaleNutritionEnabled,
+    initialAutoScaleNutritionEnabled
   );
   const [selectedUnitSelection, setSelectedUnitSelection] =
     useState<FoodUnitSelectionResult | null>(() =>
-      normalizeSelectedUnitSelection(unitSelector?.selectedSelection),
+      normalizeSelectedUnitSelection(unitSelector?.selectedSelection)
     );
   const [showManualUpdateBanner, setShowManualUpdateBanner] = useState(() => {
-    const initial = normalizeSelectedUnitSelection(unitSelector?.selectedSelection);
+    const initial = normalizeSelectedUnitSelection(
+      unitSelector?.selectedSelection
+    );
     return Boolean(
-      initial?.kind === 'draft' && initial.requiresNutritionUpdate,
+      initial?.kind === 'draft' && initial.requiresNutritionUpdate
     );
   });
   const [selectedSavedVariantId, setSelectedSavedVariantId] = useState<
@@ -226,19 +240,22 @@ const FoodForm: React.FC<FoodFormProps> = ({
   >(
     unitSelector?.selectedSelection?.kind === 'existing'
       ? unitSelector.selectedSelection.variant.id
-      : unitSelector?.variants[0]?.id,
+      : unitSelector?.variants[0]?.id
   );
-  const [textMuted, textPrimary, accentColor, infoBg, infoText] = useCSSVariable([
-    '--color-text-muted',
-    '--color-text-primary',
-    '--color-accent-primary',
-    '--color-bg-info',
-    '--color-text-info',
-  ]) as [string, string, string, string, string];
+  const [textMuted, textPrimary, accentColor, infoBg, infoText] =
+    useCSSVariable([
+      '--color-text-muted',
+      '--color-text-primary',
+      '--color-accent-primary',
+      '--color-bg-info',
+      '--color-text-info',
+    ]) as [string, string, string, string, string];
   const preciseNumericValuesRef = useRef<
     Partial<Record<NumericFoodFormField, number>>
   >(buildPreciseNumericValues(initialValues));
-  const lastServingSizeRef = useRef(parseDecimalInput(initialValues?.servingSize ?? ''));
+  const lastServingSizeRef = useRef(
+    parseDecimalInput(initialValues?.servingSize ?? '')
+  );
   const hasTouchedAutoScaleRef = useRef(false);
 
   // Captured at the moment of an incompatible unit swap (the one that opens
@@ -311,24 +328,20 @@ const FoodForm: React.FC<FoodFormProps> = ({
         : variant.serving_size;
       const scaledVariant = scaleCompatibleDraftVariant(
         variant,
-        nextServingSize,
+        nextServingSize
       );
       NUTRITION_FIELDS.forEach((field) => {
         preciseNumericValuesRef.current[field as NumericFoodFormField] =
           getScaledVariantNumericValue(
             field as Exclude<NumericFoodFormField, 'servingSize'>,
-            scaledVariant,
+            scaledVariant
           );
       });
       preciseNumericValuesRef.current.servingSize = nextServingSize;
       if (isPositiveNumber(nextServingSize)) {
         lastServingSizeRef.current = nextServingSize;
       }
-      return applyCompatibleDraftToFormState(
-        previous,
-        variant,
-        scaledVariant,
-      );
+      return applyCompatibleDraftToFormState(previous, variant, scaledVariant);
     });
   };
 
@@ -410,7 +423,10 @@ const FoodForm: React.FC<FoodFormProps> = ({
         ? currentServingSize
         : lastServingSizeRef.current;
 
-      if (!isPositiveNumber(nextServingSize) || !isPositiveNumber(previousServingSize)) {
+      if (
+        !isPositiveNumber(nextServingSize) ||
+        !isPositiveNumber(previousServingSize)
+      ) {
         return { ...prev, servingSize: value };
       }
 
@@ -454,14 +470,14 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
   useEffect(() => {
     const normalizedSelection = normalizeSelectedUnitSelection(
-      unitSelector?.selectedSelection,
+      unitSelector?.selectedSelection
     );
     setSelectedUnitSelection(normalizedSelection);
     setShowManualUpdateBanner(
       Boolean(
         normalizedSelection?.kind === 'draft' &&
-          normalizedSelection.requiresNutritionUpdate,
-      ),
+        normalizedSelection.requiresNutritionUpdate
+      )
     );
     setSelectedSavedVariantId((previous) => {
       if (normalizedSelection?.kind === 'existing') {
@@ -471,8 +487,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
       if (normalizedSelection?.kind === 'draft') {
         const backingSavedVariant = unitSelector?.variants.find(
           (variant) =>
-            Boolean(variant.id) &&
-            variant.id === normalizedSelection.variant.id,
+            Boolean(variant.id) && variant.id === normalizedSelection.variant.id
         );
         return backingSavedVariant?.id;
       }
@@ -491,7 +506,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
       setForm((prev) =>
         prev.servingUnit === selection.variant.serving_unit
           ? prev
-          : { ...prev, servingUnit: selection.variant.serving_unit },
+          : { ...prev, servingUnit: selection.variant.serving_unit }
       );
       return;
     }
@@ -521,9 +536,10 @@ const FoodForm: React.FC<FoodFormProps> = ({
     }
 
     setSelectedSavedVariantId((previous) =>
-      previous && unitSelector.variants.some((variant) => variant.id === previous)
+      previous &&
+      unitSelector.variants.some((variant) => variant.id === previous)
         ? previous
-        : unitSelector.variants[0]?.id,
+        : unitSelector.variants[0]?.id
     );
 
     // Refresh the trusted anchor whenever the variant list changes. Prefer
@@ -533,7 +549,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
     const variants = unitSelector.variants;
     trustedAnchorRef.current =
       variants.find(
-        (v) => v.is_default === true && v.source !== 'ai_estimate',
+        (v) => v.is_default === true && v.source !== 'ai_estimate'
       ) ??
       variants.find((v) => v.source !== 'ai_estimate') ??
       variants.find((v) => v.is_default === true) ??
@@ -554,7 +570,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
   }, [initialAutoScaleNutritionEnabled, showAutoScaleNutrition]);
 
   const handleUnitSelectorSelection = async (
-    selection: FoodUnitSelectionResult,
+    selection: FoodUnitSelectionResult
   ) => {
     // For incompatible swaps that surface the manual-update banner, capture
     // the unit so the inline AI button knows what it's converting FROM. The
@@ -576,9 +592,8 @@ const FoodForm: React.FC<FoodFormProps> = ({
       swapContextRef.current = null;
     }
 
-
     const nextSelection = normalizeSelectedUnitSelection(
-      (await unitSelector?.onUnitSelectionChange?.(selection)) ?? selection,
+      (await unitSelector?.onUnitSelectionChange?.(selection)) ?? selection
     );
 
     if (!nextSelection) return;
@@ -586,9 +601,8 @@ const FoodForm: React.FC<FoodFormProps> = ({
     setSelectedUnitSelection(nextSelection);
     setShowManualUpdateBanner(
       Boolean(
-        nextSelection.kind === 'draft' &&
-          nextSelection.requiresNutritionUpdate,
-      ),
+        nextSelection.kind === 'draft' && nextSelection.requiresNutritionUpdate
+      )
     );
     if (nextSelection.kind === 'existing') {
       setSelectedSavedVariantId(nextSelection.variant.id);
@@ -607,7 +621,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
         // form state. Keeps auto-scale ON only when AI has a real path forward.
         const canAiConvert = shouldOfferAiConversion(
           trustedAnchorRef.current?.serving_unit ?? '',
-          nextSelection.variant.serving_unit,
+          nextSelection.variant.serving_unit
         );
 
         if (!canAiConvert) {
@@ -616,7 +630,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
         }
 
         setForm((previous) =>
-          applyVariantUnitToFormState(previous, nextSelection.variant),
+          applyVariantUnitToFormState(previous, nextSelection.variant)
         );
         return;
       }
@@ -626,7 +640,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
     }
 
     setForm((previous) =>
-      applyVariantToFormState(previous, nextSelection.variant),
+      applyVariantToFormState(previous, nextSelection.variant)
     );
   };
 
@@ -651,8 +665,12 @@ const FoodForm: React.FC<FoodFormProps> = ({
     if (!(Number.isFinite(anchor.serving_size) && anchor.serving_size > 0)) {
       Toast.show({
         type: 'error',
-        text1: t('foodForm.ai.couldNotEstimate', { defaultValue: "Couldn't estimate" }),
-        text2: t('foodForm.ai.noTrustedDefault', { defaultValue: 'The food has no trusted default to scale from.' }),
+        text1: t('foodForm.ai.couldNotEstimate', {
+          defaultValue: "Couldn't estimate",
+        }),
+        text2: t('foodForm.ai.noTrustedDefault', {
+          defaultValue: 'The food has no trusted default to scale from.',
+        }),
       });
       return;
     }
@@ -662,7 +680,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
     if (!Number.isFinite(fromAmount) || fromAmount <= 0) {
       Toast.show({
         type: 'error',
-        text1: t('foodForm.ai.servingSizeRequired', { defaultValue: 'Set a serving size first' }),
+        text1: t('foodForm.ai.servingSizeRequired', {
+          defaultValue: 'Set a serving size first',
+        }),
       });
       return;
     }
@@ -691,8 +711,12 @@ const FoodForm: React.FC<FoodFormProps> = ({
       // earlier AI values.
       const ratio = result.estimatedAmount / anchor.serving_size;
       const scaledNutrition: Partial<FoodFormData> = {};
-      const scaledPreciseUpdates: Partial<Record<NumericFoodFormField, number>> = {};
-      const anchorNutritionByField: Partial<Record<NumericFoodFormField, number>> = {
+      const scaledPreciseUpdates: Partial<
+        Record<NumericFoodFormField, number>
+      > = {};
+      const anchorNutritionByField: Partial<
+        Record<NumericFoodFormField, number>
+      > = {
         calories: anchor.calories,
         protein: anchor.protein,
         carbs: anchor.carbs,
@@ -767,11 +791,14 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
       swapContextRef.current = null;
     } catch {
-      const message =
-        t('foodForm.ai.estimateFailed', { defaultValue: 'AI estimate failed.' });
+      const message = t('foodForm.ai.estimateFailed', {
+        defaultValue: 'AI estimate failed.',
+      });
       Toast.show({
         type: 'error',
-        text1: t('foodForm.ai.couldNotEstimate', { defaultValue: "Couldn't estimate" }),
+        text1: t('foodForm.ai.couldNotEstimate', {
+          defaultValue: "Couldn't estimate",
+        }),
         text2: message,
       });
     } finally {
@@ -784,11 +811,12 @@ const FoodForm: React.FC<FoodFormProps> = ({
     field: keyof FoodFormData,
     placeholder: string,
     required?: boolean,
-    nextField?: keyof typeof fieldRefs,
+    nextField?: keyof typeof fieldRefs
   ) => (
     <View className="gap-1.5">
       <Text className="text-text-secondary text-sm font-medium">
-        {label}{required ? ' *' : ''}
+        {label}
+        {required ? ' *' : ''}
       </Text>
       <FormInput
         ref={fieldRefs[field as keyof typeof fieldRefs]}
@@ -808,11 +836,13 @@ const FoodForm: React.FC<FoodFormProps> = ({
     field: keyof FoodFormData,
     unit?: string,
     required?: boolean,
-    nextField?: keyof typeof fieldRefs,
+    nextField?: keyof typeof fieldRefs
   ) => (
     <View className="gap-1.5 flex-1">
       <Text className="text-text-secondary text-sm font-medium">
-        {label}{unit ? ` (${unit})` : ''}{required ? ' *' : ''}
+        {label}
+        {unit ? ` (${unit})` : ''}
+        {required ? ' *' : ''}
       </Text>
       <FormInput
         ref={fieldRefs[field as keyof typeof fieldRefs]}
@@ -835,7 +865,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
           preciseNumericValuesRef.current[field] != null
             ? toPreciseFormString(preciseNumericValuesRef.current[field])
             : form[field],
-        ]),
+        ])
       ),
     });
 
@@ -846,18 +876,25 @@ const FoodForm: React.FC<FoodFormProps> = ({
     }
 
     Alert.alert(
-      t('foodForm.manualUpdate.title', { defaultValue: 'Manual Nutrition Update' }),
-      t('foodForm.manualUpdate.message', { defaultValue: "Can't convert between units. Update nutrition values manually before saving." }),
+      t('foodForm.manualUpdate.title', {
+        defaultValue: 'Manual Nutrition Update',
+      }),
+      t('foodForm.manualUpdate.message', {
+        defaultValue:
+          "Can't convert between units. Update nutrition values manually before saving.",
+      }),
       [
         {
           text: t('common.cancel', { defaultValue: 'Cancel' }),
           style: 'cancel',
         },
         {
-          text: t('foodForm.manualUpdate.saveAnyway', { defaultValue: 'Save Anyway' }),
+          text: t('foodForm.manualUpdate.saveAnyway', {
+            defaultValue: 'Save Anyway',
+          }),
           onPress: submitForm,
         },
-      ],
+      ]
     );
   };
 
@@ -870,7 +907,10 @@ const FoodForm: React.FC<FoodFormProps> = ({
   });
 
   return (
-    <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}>
+    <KeyboardAvoidingView
+      className="flex-1"
+      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+    >
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-4 pt-4 pb-20 gap-4"
@@ -879,20 +919,44 @@ const FoodForm: React.FC<FoodFormProps> = ({
         {headerChildren}
         <View className="bg-surface rounded-xl p-4 gap-4 shadow-sm">
           {/* Food info */}
-          {renderTextField(t('foodForm.foodName', { defaultValue: 'Food Name' }), 'name', t('foodForm.foodNamePlaceholder', { defaultValue: 'e.g. Chicken Breast' }), true, 'brand')}
-          {renderTextField(t('foodForm.brand', { defaultValue: 'Brand' }), 'brand', t('foodForm.optional', { defaultValue: 'Optional' }), false, 'servingSize')}
+          {renderTextField(
+            t('foodForm.foodName', { defaultValue: 'Food Name' }),
+            'name',
+            t('foodForm.foodNamePlaceholder', {
+              defaultValue: 'e.g. Chicken Breast',
+            }),
+            true,
+            'brand'
+          )}
+          {renderTextField(
+            t('foodForm.brand', { defaultValue: 'Brand' }),
+            'brand',
+            t('foodForm.optional', { defaultValue: 'Optional' }),
+            false,
+            'servingSize'
+          )}
 
           {/* Serving */}
           <View className="flex-row gap-3">
-            {renderNumericField(t('foodForm.servingSize', { defaultValue: 'Serving Size' }), 'servingSize', undefined, false, 'calories')}
+            {renderNumericField(
+              t('foodForm.servingSize', { defaultValue: 'Serving Size' }),
+              'servingSize',
+              undefined,
+              false,
+              'calories'
+            )}
             <View className="gap-1.5 flex-1">
-              <Text className="text-text-secondary text-sm font-medium">{t('foodForm.servingUnit', { defaultValue: 'Serving Unit' })}</Text>
+              <Text className="text-text-secondary text-sm font-medium">
+                {t('foodForm.servingUnit', { defaultValue: 'Serving Unit' })}
+              </Text>
               {unitSelector ? (
                 <FoodUnitSelectorSheet
                   variants={unitSelector.variants}
                   selectedVariantId={selectedSavedVariantId}
                   selectedSelection={selectedUnitSelection}
-                  title={t('foodForm.selectUnit', { defaultValue: 'Select Unit' })}
+                  title={t('foodForm.selectUnit', {
+                    defaultValue: 'Select Unit',
+                  })}
                   onSelect={handleUnitSelectorSelection}
                   renderTrigger={({ onPress }) => (
                     <TouchableOpacity
@@ -906,7 +970,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
                         style={{ fontSize: 16 }}
                         numberOfLines={1}
                       >
-                        {form.servingUnit ? localizeFoodUnit(form.servingUnit, t) : t('foodForm.unit', { defaultValue: 'unit' })}
+                        {form.servingUnit
+                          ? localizeFoodUnit(form.servingUnit, t)
+                          : t('foodForm.unit', { defaultValue: 'unit' })}
                       </Text>
                       <Icon
                         name="chevron-down"
@@ -922,7 +988,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
                   value={form.servingUnit}
                   sections={makeServingUnitSections(t)}
                   onSelect={(v) => update('servingUnit', v)}
-                  title={t('foodForm.selectUnit', { defaultValue: 'Select Unit' })}
+                  title={t('foodForm.selectUnit', {
+                    defaultValue: 'Select Unit',
+                  })}
                   placeholder={t('foodForm.unit', { defaultValue: 'unit' })}
                   renderTrigger={({ onPress, selectedOption }) => (
                     <TouchableOpacity
@@ -932,10 +1000,15 @@ const FoodForm: React.FC<FoodFormProps> = ({
                       style={{ height: 44 }}
                     >
                       <Text
-                        className={selectedOption ? 'text-text-primary' : 'text-text-muted'}
+                        className={
+                          selectedOption
+                            ? 'text-text-primary'
+                            : 'text-text-muted'
+                        }
                         style={{ fontSize: 16 }}
                       >
-                        {selectedOption?.label ?? t('foodForm.unit', { defaultValue: 'unit' })}
+                        {selectedOption?.label ??
+                          t('foodForm.unit', { defaultValue: 'unit' })}
                       </Text>
                       <Icon
                         name="chevron-down"
@@ -962,9 +1035,15 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
           {showAutoScaleNutrition ? (
             <View className="flex-row items-center justify-between mt-1.5">
-              <Text className="text-text-secondary text-base">{t('foodForm.autoScaleNutrition', { defaultValue: 'Auto Scale Nutrition' })}</Text>
+              <Text className="text-text-secondary text-base">
+                {t('foodForm.autoScaleNutrition', {
+                  defaultValue: 'Auto Scale Nutrition',
+                })}
+              </Text>
               <Switch
-                accessibilityLabel={t('foodForm.autoScaleNutrition', { defaultValue: 'Auto Scale Nutrition' })}
+                accessibilityLabel={t('foodForm.autoScaleNutrition', {
+                  defaultValue: 'Auto Scale Nutrition',
+                })}
                 value={autoScaleNutrition}
                 onValueChange={(value) => {
                   hasTouchedAutoScaleRef.current = true;
@@ -974,64 +1053,76 @@ const FoodForm: React.FC<FoodFormProps> = ({
             </View>
           ) : null}
 
-          {showManualUpdateBanner ? (() => {
-            // AI eligibility for this swap. When true, the Convert with AI
-            // button appears below the banner. The banner text itself is
-            // unconditional now — the button is the affordance.
-            const canAiConvert =
-              aiEstimatesAvailable &&
-              swapContextRef.current != null &&
-              trustedAnchorRef.current != null &&
-              shouldOfferAiConversion(
-                trustedAnchorRef.current.serving_unit,
-                form.servingUnit,
-              );
-            return (
-            <View className="mt-1.5 gap-2">
-              <View
-                className="rounded-lg px-3 py-3 flex-row items-center gap-2.5"
-                style={{ backgroundColor: infoBg }}
-              >
-                <Icon name="info-circle" size={18} color={infoText} />
-                <Text
-                  className="text-sm font-medium flex-1"
-                  style={{ color: infoText }}
-                >
-                  {t('foodForm.manualUpdate.banner', { defaultValue: "Can't convert between units. Update nutrition values manually." })}
-                </Text>
-              </View>
-              {canAiConvert ? (
-                <TouchableOpacity
-                  onPress={handleAiEstimate}
-                  disabled={isEstimatingAi}
-                  activeOpacity={0.7}
-                  className={`bg-raised rounded-xl py-3 items-center justify-center ${isEstimatingAi ? 'opacity-50' : ''}`}
-                >
-                  {isEstimatingAi ? (
-                    <View className="flex-row items-center gap-2">
-                      <ActivityIndicator size="small" color={textPrimary} />
-                      <Text className="text-text-primary font-semibold">
-                        {t('foodForm.ai.estimating', { defaultValue: 'Estimating…' })}
+          {showManualUpdateBanner
+            ? (() => {
+                // AI eligibility for this swap. When true, the Convert with AI
+                // button appears below the banner. The banner text itself is
+                // unconditional now — the button is the affordance.
+                const canAiConvert =
+                  aiEstimatesAvailable &&
+                  swapContextRef.current != null &&
+                  trustedAnchorRef.current != null &&
+                  shouldOfferAiConversion(
+                    trustedAnchorRef.current.serving_unit,
+                    form.servingUnit
+                  );
+                return (
+                  <View className="mt-1.5 gap-2">
+                    <View
+                      className="rounded-lg px-3 py-3 flex-row items-center gap-2.5"
+                      style={{ backgroundColor: infoBg }}
+                    >
+                      <Icon name="info-circle" size={18} color={infoText} />
+                      <Text
+                        className="text-sm font-medium flex-1"
+                        style={{ color: infoText }}
+                      >
+                        {t('foodForm.manualUpdate.banner', {
+                          defaultValue:
+                            "Can't convert between units. Update nutrition values manually.",
+                        })}
                       </Text>
                     </View>
-                  ) : (
-                    <View className="flex-row items-center gap-2">
-                      <Icon
-                        name="sparkles"
-                        size={16}
-                        color={textPrimary}
-                        style={androidSparkleStyle}
-                      />
-                      <Text className="text-text-primary font-semibold">
-                        {t('foodForm.ai.convertWithAI', { defaultValue: 'Convert with AI' })}
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ) : null}
-            </View>
-            );
-          })() : null}
+                    {canAiConvert ? (
+                      <TouchableOpacity
+                        onPress={handleAiEstimate}
+                        disabled={isEstimatingAi}
+                        activeOpacity={0.7}
+                        className={`bg-raised rounded-xl py-3 items-center justify-center ${isEstimatingAi ? 'opacity-50' : ''}`}
+                      >
+                        {isEstimatingAi ? (
+                          <View className="flex-row items-center gap-2">
+                            <ActivityIndicator
+                              size="small"
+                              color={textPrimary}
+                            />
+                            <Text className="text-text-primary font-semibold">
+                              {t('foodForm.ai.estimating', {
+                                defaultValue: 'Estimating…',
+                              })}
+                            </Text>
+                          </View>
+                        ) : (
+                          <View className="flex-row items-center gap-2">
+                            <Icon
+                              name="sparkles"
+                              size={16}
+                              color={textPrimary}
+                              style={androidSparkleStyle}
+                            />
+                            <Text className="text-text-primary font-semibold">
+                              {t('foodForm.ai.convertWithAI', {
+                                defaultValue: 'Convert with AI',
+                              })}
+                            </Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                );
+              })()
+            : null}
 
           {selectedUnitSelection?.variant.source === 'ai_estimate' &&
           selectedUnitSelection.variant.ai_confidence ? (
@@ -1039,8 +1130,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
               className={`mt-1.5 rounded-lg p-3 ${
                 aiBadgeBgClassByTone[
                   CONFIDENCE_TONES[
-                    selectedUnitSelection.variant
-                      .ai_confidence as AiConfidence
+                    selectedUnitSelection.variant.ai_confidence as AiConfidence
                   ]
                 ]
               }`}
@@ -1057,20 +1147,19 @@ const FoodForm: React.FC<FoodFormProps> = ({
                     ],
                 }}
               >
-                {
-                  localizeAiEstimateQuality(
-                    t,
-                    selectedUnitSelection.variant
-                      .ai_confidence as AiConfidence,
-                  )
-                }
+                {localizeAiEstimateQuality(
+                  t,
+                  selectedUnitSelection.variant.ai_confidence as AiConfidence
+                )}
               </Text>
             </View>
           ) : null}
 
           <View className="gap-1.5 mt-1.5">
             <Text className="text-text-primary text-sm font-bold">
-              {t('foodForm.caloriesRequired', { defaultValue: 'Calories (kcal) *' })}
+              {t('foodForm.caloriesRequired', {
+                defaultValue: 'Calories (kcal) *',
+              })}
             </Text>
             <FormInput
               ref={fieldRefs.calories}
@@ -1083,12 +1172,36 @@ const FoodForm: React.FC<FoodFormProps> = ({
             />
           </View>
           <View className="flex-row gap-3">
-            {renderNumericField(t('nutrients.fat', { defaultValue: 'Fat' } ), 'fat', 'g', false, 'carbs')}
-            {renderNumericField(t('nutrients.carbs', { defaultValue: 'Carbs' } ), 'carbs', 'g', false, 'protein')}
+            {renderNumericField(
+              t('nutrients.fat', { defaultValue: 'Fat' }),
+              'fat',
+              'g',
+              false,
+              'carbs'
+            )}
+            {renderNumericField(
+              t('nutrients.carbs', { defaultValue: 'Carbs' }),
+              'carbs',
+              'g',
+              false,
+              'protein'
+            )}
           </View>
           <View className="flex-row gap-3">
-            {renderNumericField(t('nutrients.protein', { defaultValue: 'Protein' } ), 'protein', 'g', false, 'fiber')}
-            {renderNumericField(t('nutrients.fiber', { defaultValue: 'Fiber' } ), 'fiber', 'g', false, showMoreNutrients ? 'saturatedFat' : undefined)}
+            {renderNumericField(
+              t('nutrients.protein', { defaultValue: 'Protein' }),
+              'protein',
+              'g',
+              false,
+              'fiber'
+            )}
+            {renderNumericField(
+              t('nutrients.fiber', { defaultValue: 'Fiber' }),
+              'fiber',
+              'g',
+              false,
+              showMoreNutrients ? 'saturatedFat' : undefined
+            )}
           </View>
           <Button
             variant="ghost"
@@ -1097,65 +1210,145 @@ const FoodForm: React.FC<FoodFormProps> = ({
             className="self-start py-0 px-0"
             textClassName="text-sm"
           >
-            <Text style={{ color: accentColor }} className="text-sm font-medium">
-              {showMoreNutrients ? t('foodNutrition.hideExtra', { defaultValue: 'Hide extra nutrients ▴' }) : t('foodNutrition.showMore', { defaultValue: 'Show more nutrients ▾' })}
+            <Text
+              style={{ color: accentColor }}
+              className="text-sm font-medium"
+            >
+              {showMoreNutrients
+                ? t('foodNutrition.hideExtra', {
+                    defaultValue: 'Hide extra nutrients ▴',
+                  })
+                : t('foodNutrition.showMore', {
+                    defaultValue: 'Show more nutrients ▾',
+                  })}
             </Text>
           </Button>
 
           {showMoreNutrients && (
             <>
               <View className="flex-row gap-3">
-                {renderNumericField(t('nutrients.saturatedFatLabel', { defaultValue: "Saturated Fat" } ), 'saturatedFat', 'g', false, 'transFat')}
-                {renderNumericField(t('nutrients.transFat', { defaultValue: 'Trans Fat' } ), 'transFat', 'g', false, 'cholesterol')}
+                {renderNumericField(
+                  t('nutrients.saturatedFatLabel', {
+                    defaultValue: 'Saturated Fat',
+                  }),
+                  'saturatedFat',
+                  'g',
+                  false,
+                  'transFat'
+                )}
+                {renderNumericField(
+                  t('nutrients.transFat', { defaultValue: 'Trans Fat' }),
+                  'transFat',
+                  'g',
+                  false,
+                  'cholesterol'
+                )}
               </View>
               <View className="flex-row gap-3">
-                {renderNumericField(t('nutrients.cholesterol', { defaultValue: 'Cholesterol' } ), 'cholesterol', 'mg', false, 'sodium')}
-                {renderNumericField(t('nutrients.sodium', { defaultValue: 'Sodium' } ), 'sodium', 'mg', false, 'sugars')}
+                {renderNumericField(
+                  t('nutrients.cholesterol', { defaultValue: 'Cholesterol' }),
+                  'cholesterol',
+                  'mg',
+                  false,
+                  'sodium'
+                )}
+                {renderNumericField(
+                  t('nutrients.sodium', { defaultValue: 'Sodium' }),
+                  'sodium',
+                  'mg',
+                  false,
+                  'sugars'
+                )}
               </View>
               <View className="flex-row gap-3">
-                {renderNumericField(t('nutrients.sugars', { defaultValue: 'Sugars' } ), 'sugars', 'g', false, 'calcium')}
-                {renderNumericField(t('nutrients.calcium', { defaultValue: 'Calcium' } ), 'calcium', 'mg', false, 'iron')}
+                {renderNumericField(
+                  t('nutrients.sugars', { defaultValue: 'Sugars' }),
+                  'sugars',
+                  'g',
+                  false,
+                  'calcium'
+                )}
+                {renderNumericField(
+                  t('nutrients.calcium', { defaultValue: 'Calcium' }),
+                  'calcium',
+                  'mg',
+                  false,
+                  'iron'
+                )}
               </View>
               <View className="flex-row gap-3">
-                {renderNumericField(t('nutrients.iron', { defaultValue: 'Iron' } ), 'iron', 'mg', false, 'vitaminA')}
-                {renderNumericField(t('nutrients.vitaminA', { defaultValue: 'Vitamin A' } ), 'vitaminA', 'mcg', false, 'vitaminC')}
+                {renderNumericField(
+                  t('nutrients.iron', { defaultValue: 'Iron' }),
+                  'iron',
+                  'mg',
+                  false,
+                  'vitaminA'
+                )}
+                {renderNumericField(
+                  t('nutrients.vitaminA', { defaultValue: 'Vitamin A' }),
+                  'vitaminA',
+                  'mcg',
+                  false,
+                  'vitaminC'
+                )}
               </View>
               <View className="flex-row gap-3">
-                {renderNumericField(t('nutrients.vitaminC', { defaultValue: 'Vitamin C' } ), 'vitaminC', 'mg', false, 'potassium')}
-                {renderNumericField(t('nutrients.potassium', { defaultValue: 'Potassium' } ), 'potassium', 'mg')}
+                {renderNumericField(
+                  t('nutrients.vitaminC', { defaultValue: 'Vitamin C' }),
+                  'vitaminC',
+                  'mg',
+                  false,
+                  'potassium'
+                )}
+                {renderNumericField(
+                  t('nutrients.potassium', { defaultValue: 'Potassium' }),
+                  'potassium',
+                  'mg'
+                )}
               </View>
-              {Array.from({ length: Math.ceil(customNutrientDefs.length / 2) }, (_, rowIndex) => {
-                const first = customNutrientDefs[rowIndex * 2];
-                const second = customNutrientDefs[rowIndex * 2 + 1];
-                return (
-                  <View key={first.name} className="flex-row gap-3">
-                    <View className="gap-1.5 flex-1">
-                      <Text className="text-text-secondary text-sm font-medium">
-                        {first.name}{first.unit ? ` (${first.unit})` : ''}
-                      </Text>
-                      <FormInput
-                        placeholder="0"
-                        value={customNutrientForm[first.name] ?? ''}
-                        onChangeText={(v) => updateCustomNutrient(first.name, v)}
-                        keyboardType="decimal-pad"
-                      />
-                    </View>
-                    {second ? (
+              {Array.from(
+                { length: Math.ceil(customNutrientDefs.length / 2) },
+                (_, rowIndex) => {
+                  const first = customNutrientDefs[rowIndex * 2];
+                  const second = customNutrientDefs[rowIndex * 2 + 1];
+                  return (
+                    <View key={first.name} className="flex-row gap-3">
                       <View className="gap-1.5 flex-1">
                         <Text className="text-text-secondary text-sm font-medium">
-                          {second.name}{second.unit ? ` (${second.unit})` : ''}
+                          {first.name}
+                          {first.unit ? ` (${first.unit})` : ''}
                         </Text>
                         <FormInput
                           placeholder="0"
-                          value={customNutrientForm[second.name] ?? ''}
-                          onChangeText={(v) => updateCustomNutrient(second.name, v)}
+                          value={customNutrientForm[first.name] ?? ''}
+                          onChangeText={(v) =>
+                            updateCustomNutrient(first.name, v)
+                          }
                           keyboardType="decimal-pad"
                         />
                       </View>
-                    ) : <View className="flex-1" />}
-                  </View>
-                );
-              })}
+                      {second ? (
+                        <View className="gap-1.5 flex-1">
+                          <Text className="text-text-secondary text-sm font-medium">
+                            {second.name}
+                            {second.unit ? ` (${second.unit})` : ''}
+                          </Text>
+                          <FormInput
+                            placeholder="0"
+                            value={customNutrientForm[second.name] ?? ''}
+                            onChangeText={(v) =>
+                              updateCustomNutrient(second.name, v)
+                            }
+                            keyboardType="decimal-pad"
+                          />
+                        </View>
+                      ) : (
+                        <View className="flex-1" />
+                      )}
+                    </View>
+                  );
+                }
+              )}
             </>
           )}
         </View>
@@ -1164,14 +1357,14 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
         {/* Submit */}
         {!hideSubmitButton && (
-        <Button
-          variant="primary"
-          className="mt-2"
-          loading={isSubmitting}
-          onPress={handleSubmitPress}
-        >
-          {resolvedSubmitLabel}
-        </Button>
+          <Button
+            variant="primary"
+            className="mt-2"
+            loading={isSubmitting}
+            onPress={handleSubmitPress}
+          >
+            {resolvedSubmitLabel}
+          </Button>
         )}
       </ScrollView>
     </KeyboardAvoidingView>

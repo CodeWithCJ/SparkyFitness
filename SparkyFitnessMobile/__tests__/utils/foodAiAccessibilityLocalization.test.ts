@@ -63,9 +63,13 @@ describe('AI badge/confidence localization', () => {
 
   test('dedicated confidence-level keys do not collide with estimate-quality keys', async () => {
     await i18n.changeLanguage('pl');
-    expect(i18n.t('foodUnit.confidence.high', { defaultValue: 'High' })).toBe('wysoka');
+    expect(i18n.t('foodUnit.confidence.high', { defaultValue: 'High' })).toBe(
+      'wysoka'
+    );
     expect(
-      i18n.t('foodForm.ai.estimateQuality.high', { defaultValue: 'Good estimate' }),
+      i18n.t('foodForm.ai.estimateQuality.high', {
+        defaultValue: 'Good estimate',
+      })
     ).toBe('Dobre oszacowanie');
   });
 
@@ -103,9 +107,13 @@ describe('AI badge/confidence localization', () => {
 
   test('the confidence-less fallback is localized', async () => {
     await i18n.changeLanguage('en');
-    expect(i18n.t('foodUnit.aiEstimate', { defaultValue: 'AI estimate' })).toBe('AI estimate');
+    expect(i18n.t('foodUnit.aiEstimate', { defaultValue: 'AI estimate' })).toBe(
+      'AI estimate'
+    );
 
     await i18n.changeLanguage('pl');
-    expect(i18n.t('foodUnit.aiEstimate', { defaultValue: 'AI estimate' })).toBe('Oszacowanie AI');
+    expect(i18n.t('foodUnit.aiEstimate', { defaultValue: 'AI estimate' })).toBe(
+      'Oszacowanie AI'
+    );
   });
 });

@@ -16,7 +16,7 @@ const GLANCE_MATERIAL3_DEP =
 async function resolveKotlinVersion(projectRoot: string): Promise<string> {
   const catalogPath = path.join(
     projectRoot,
-    'node_modules/react-native/gradle/libs.versions.toml',
+    'node_modules/react-native/gradle/libs.versions.toml'
   );
   try {
     const catalog = await fs.promises.readFile(catalogPath, 'utf8');
@@ -33,31 +33,31 @@ function composeCompilerClasspath(kotlinVersion: string): string {
 
 function addComposeCompilerClasspath(
   src: string,
-  kotlinVersion: string,
+  kotlinVersion: string
 ): string {
   const existingComposeCompiler = src.match(
-    /classpath\(['"]org\.jetbrains\.kotlin:compose-compiler-gradle-plugin:[^'"]+['"]\)/,
+    /classpath\(['"]org\.jetbrains\.kotlin:compose-compiler-gradle-plugin:[^'"]+['"]\)/
   );
   if (existingComposeCompiler) {
     return src.replace(
       existingComposeCompiler[0],
-      composeCompilerClasspath(kotlinVersion),
+      composeCompilerClasspath(kotlinVersion)
     );
   }
 
   const anchor = src.match(
-    /(classpath\(['"]org\.jetbrains\.kotlin:kotlin-gradle-plugin['"]\))/,
+    /(classpath\(['"]org\.jetbrains\.kotlin:kotlin-gradle-plugin['"]\))/
   );
   if (!anchor || anchor.index === undefined) {
     throw new Error(
-      '[withGlanceAndroidSupport] Could not find kotlin-gradle-plugin classpath in root android/build.gradle.',
+      '[withGlanceAndroidSupport] Could not find kotlin-gradle-plugin classpath in root android/build.gradle.'
     );
   }
   const lineStart = src.lastIndexOf('\n', anchor.index) + 1;
   const indent = src.slice(lineStart, anchor.index);
   const insertAt = anchor.index + anchor[0].length;
   return `${src.slice(0, insertAt)}\n${indent}${composeCompilerClasspath(
-    kotlinVersion,
+    kotlinVersion
   )}${src.slice(insertAt)}`;
 }
 
@@ -66,7 +66,7 @@ function applyKotlinComposePlugin(src: string): string {
   const anchor = `${KOTLIN_ANDROID_PLUGIN}\n`;
   if (!src.includes(anchor)) {
     throw new Error(
-      '[withGlanceAndroidSupport] Could not find kotlin-android plugin line in app/build.gradle.',
+      '[withGlanceAndroidSupport] Could not find kotlin-android plugin line in app/build.gradle.'
     );
   }
   return src.replace(anchor, `${anchor}${KOTLIN_COMPOSE_PLUGIN}\n`);
@@ -80,20 +80,20 @@ function enableComposeBuildFeature(src: string): string {
     const indent = existingBuildFeatures[1];
     return src.replace(
       existingBuildFeatures[0],
-      `${existingBuildFeatures[0]}${indent}    compose true\n`,
+      `${existingBuildFeatures[0]}${indent}    compose true\n`
     );
   }
 
   const androidBlock = src.match(/(^|\n)android\s*\{\s*\n/);
   if (!androidBlock || androidBlock.index === undefined) {
     throw new Error(
-      '[withGlanceAndroidSupport] Could not find android { } block in app/build.gradle.',
+      '[withGlanceAndroidSupport] Could not find android { } block in app/build.gradle.'
     );
   }
   const insertAt = androidBlock.index + androidBlock[0].length;
   return `${src.slice(
     0,
-    insertAt,
+    insertAt
   )}    buildFeatures {\n        compose true\n    }\n${src.slice(insertAt)}`;
 }
 
@@ -105,7 +105,7 @@ function injectGlanceDependencies(src: string): string {
   const depsMatch = src.match(/\ndependencies\s*\{\s*\n/);
   if (!depsMatch || depsMatch.index === undefined) {
     throw new Error(
-      '[withGlanceAndroidSupport] Could not find top-level dependencies { } block in app/build.gradle.',
+      '[withGlanceAndroidSupport] Could not find top-level dependencies { } block in app/build.gradle.'
     );
   }
   const insertAt = depsMatch.index + depsMatch[0].length;
@@ -115,10 +115,10 @@ function injectGlanceDependencies(src: string): string {
   return `${src.slice(0, insertAt)}${lines.join('\n')}\n${src.slice(insertAt)}`;
 }
 
-const withGlanceAndroidSupport: ConfigPlugin = config => {
+const withGlanceAndroidSupport: ConfigPlugin = (config) => {
   return withDangerousMod(config, [
     'android',
-    async config => {
+    async (config) => {
       const projectRoot = config.modRequest.projectRoot;
       const platformRoot = config.modRequest.platformProjectRoot;
       const kotlinVersion = await resolveKotlinVersion(projectRoot);

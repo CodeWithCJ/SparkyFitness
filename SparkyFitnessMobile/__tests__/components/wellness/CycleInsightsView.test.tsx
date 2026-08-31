@@ -15,7 +15,10 @@ jest.mock('../../../src/components/wellness/BBTLineChart', () => {
 
 jest.mock('../../../src/components/wellness/CorrelationCards', () => {
   const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="correlation-cards" /> };
+  return {
+    __esModule: true,
+    default: () => <View testID="correlation-cards" />,
+  };
 });
 
 jest.mock('../../../src/hooks/useCycleInsights', () => ({
@@ -26,9 +29,7 @@ jest.mock('../../../src/hooks/useCycleInsights', () => ({
       forecast: {
         '2099-01-01': ['Cramps'],
       },
-      anomalies: [
-        { message: 'Potential irregular cycle pattern detected.' },
-      ],
+      anomalies: [{ message: 'Potential irregular cycle pattern detected.' }],
       bbtSeries: [],
     },
     isLoading: false,
@@ -63,7 +64,7 @@ function renderComponent() {
   return render(
     <QueryClientProvider client={queryClient}>
       <CycleInsightsView />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 }
 
@@ -73,7 +74,9 @@ describe('CycleInsightsView', () => {
 
     expect(getByText('Cycle Summary')).toBeTruthy();
     expect(getByText('Patterns to Watch')).toBeTruthy();
-    expect(getByText('Potential irregular cycle pattern detected.')).toBeTruthy();
+    expect(
+      getByText('Potential irregular cycle pattern detected.')
+    ).toBeTruthy();
     expect(getByText('Symptom Forecast')).toBeTruthy();
     expect(getByText('Cramps')).toBeTruthy();
     expect(getByTestId('bbt-chart')).toBeTruthy();

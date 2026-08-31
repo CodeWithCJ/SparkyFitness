@@ -1,4 +1,8 @@
-import { transformHealthRecords, extractTimezoneMetadata, setOwnPackageName } from '../../../src/services/healthconnect/dataTransformation';
+import {
+  transformHealthRecords,
+  extractTimezoneMetadata,
+  setOwnPackageName,
+} from '../../../src/services/healthconnect/dataTransformation';
 import { toLocalDateString } from '../../../src/services/healthconnect/dataAggregation';
 import type {
   TransformedRecord,
@@ -14,7 +18,13 @@ jest.mock('../../../src/services/LogService', () => ({
 describe('transformHealthRecords', () => {
   describe('basic validation', () => {
     test('returns empty array for empty array input', () => {
-      expect(transformHealthRecords([], { recordType: 'Steps', unit: 'count', type: 'step' })).toEqual([]);
+      expect(
+        transformHealthRecords([], {
+          recordType: 'Steps',
+          unit: 'count',
+          type: 'step',
+        })
+      ).toEqual([]);
     });
   });
 
@@ -24,38 +34,73 @@ describe('transformHealthRecords', () => {
         { date: '2024-01-15', value: 5000, type: 'step' },
         { date: '2024-01-16', value: 6000, type: 'step' },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Steps', unit: 'count', type: 'step' });
+      const result = transformHealthRecords(records, {
+        recordType: 'Steps',
+        unit: 'count',
+        type: 'step',
+      });
 
       expect(result).toHaveLength(2);
-      expect(result[0]).toMatchObject({ date: '2024-01-15', value: 5000, type: 'step' });
-      expect(result[1]).toMatchObject({ date: '2024-01-16', value: 6000, type: 'step' });
+      expect(result[0]).toMatchObject({
+        date: '2024-01-15',
+        value: 5000,
+        type: 'step',
+      });
+      expect(result[1]).toMatchObject({
+        date: '2024-01-16',
+        value: 6000,
+        type: 'step',
+      });
     });
 
     test('transforms raw HeartRate records via value transformer', () => {
       const records = [
-        { startTime: '2024-01-15T08:00:00Z', samples: [{ beatsPerMinute: 72 }] },
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          samples: [{ beatsPerMinute: 72 }],
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'HeartRate', unit: 'bpm', type: 'heart_rate' });
+      const result = transformHealthRecords(records, {
+        recordType: 'HeartRate',
+        unit: 'bpm',
+        type: 'heart_rate',
+      });
 
       expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({ date: '2024-01-15', value: 72, type: 'heart_rate' });
+      expect(result[0]).toMatchObject({
+        date: '2024-01-15',
+        value: 72,
+        type: 'heart_rate',
+      });
     });
 
     test('transforms raw HeartRateVariabilityRmssd records via value transformer', () => {
       const records = [
         { time: '2024-01-15T08:00:00Z', heartRateVariabilityMillis: 48 },
       ];
-      const result = transformHealthRecords(records, { recordType: 'HeartRateVariabilityRmssd', unit: 'ms', type: 'HRV' });
+      const result = transformHealthRecords(records, {
+        recordType: 'HeartRateVariabilityRmssd',
+        unit: 'ms',
+        type: 'HRV',
+      });
 
       expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({ date: '2024-01-15', value: 48, type: 'HRV' });
+      expect(result[0]).toMatchObject({
+        date: '2024-01-15',
+        value: 48,
+        type: 'HRV',
+      });
     });
 
     test('passes through ActiveCaloriesBurned aggregated records', () => {
       const records = [
         { date: '2024-01-15', value: 500, type: 'Active Calories' },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ActiveCaloriesBurned', unit: 'kcal', type: 'active_calories' });
+      const result = transformHealthRecords(records, {
+        recordType: 'ActiveCaloriesBurned',
+        unit: 'kcal',
+        type: 'active_calories',
+      });
 
       expect(result).toHaveLength(1);
       expect(result[0].type).toBe('Active Calories'); // Preserves original type
@@ -71,7 +116,11 @@ describe('transformHealthRecords', () => {
           timestamp: capturedAt,
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'TotalCaloriesBurned', unit: 'kcal', type: 'total_calories' });
+      const result = transformHealthRecords(records, {
+        recordType: 'TotalCaloriesBurned',
+        unit: 'kcal',
+        type: 'total_calories',
+      });
 
       expect(result).toHaveLength(1);
       expect(result[0].type).toBe('total_calories');
@@ -80,7 +129,11 @@ describe('transformHealthRecords', () => {
 
     test('preserves the original type field from aggregated records', () => {
       const records = [{ date: '2024-01-15', value: 500, type: 'custom_type' }];
-      const result = transformHealthRecords(records, { recordType: 'Steps', unit: 'count', type: 'step' });
+      const result = transformHealthRecords(records, {
+        recordType: 'Steps',
+        unit: 'count',
+        type: 'step',
+      });
 
       expect(result[0].type).toBe('custom_type');
     });
@@ -91,7 +144,11 @@ describe('transformHealthRecords', () => {
       const records = [
         { time: '2024-01-15T08:00:00Z', weight: { inKilograms: 75.5 } },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Weight',
+        unit: 'kg',
+        type: 'weight',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(75.5);
@@ -104,7 +161,11 @@ describe('transformHealthRecords', () => {
         { time: '2024-01-15T08:00:00Z', weight: null },
         { time: '2024-01-15T08:00:00Z' },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' });
+      const result = transformHealthRecords(records, {
+        recordType: 'Weight',
+        unit: 'kg',
+        type: 'weight',
+      });
 
       expect(result).toHaveLength(0);
     });
@@ -113,7 +174,11 @@ describe('transformHealthRecords', () => {
       const records = [
         { time: '2024-01-15T08:00:00Z', weight: { inKilograms: 75.5678 } },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Weight',
+        unit: 'kg',
+        type: 'weight',
+      }) as TransformedRecord[];
 
       expect(result[0].value).toBe(75.57);
     });
@@ -124,7 +189,11 @@ describe('transformHealthRecords', () => {
       const records = [
         { time: '2024-01-15T08:00:00Z', height: { inMeters: 1.75 } },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Height', unit: 'm', type: 'height' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Height',
+        unit: 'm',
+        type: 'height',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(1.75);
@@ -132,10 +201,12 @@ describe('transformHealthRecords', () => {
     });
 
     test('skips when height data is missing', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z' },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'Height', unit: 'm', type: 'height' });
+      const records = [{ time: '2024-01-15T08:00:00Z' }];
+      const result = transformHealthRecords(records, {
+        recordType: 'Height',
+        unit: 'm',
+        type: 'height',
+      });
 
       expect(result).toHaveLength(0);
     });
@@ -146,7 +217,11 @@ describe('transformHealthRecords', () => {
       const records = [
         { startTime: '2024-01-15T08:00:00Z', distance: { inMeters: 5000 } },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Distance', unit: 'm', type: 'distance' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Distance',
+        unit: 'm',
+        type: 'distance',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(5000);
@@ -154,10 +229,12 @@ describe('transformHealthRecords', () => {
     });
 
     test('skips when distance data is missing', () => {
-      const records = [
-        { startTime: '2024-01-15T08:00:00Z' },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'Distance', unit: 'm', type: 'distance' });
+      const records = [{ startTime: '2024-01-15T08:00:00Z' }];
+      const result = transformHealthRecords(records, {
+        recordType: 'Distance',
+        unit: 'm',
+        type: 'distance',
+      });
 
       expect(result).toHaveLength(0);
     });
@@ -165,10 +242,12 @@ describe('transformHealthRecords', () => {
 
   describe('FloorsClimbed records', () => {
     test('extracts value from record.floors', () => {
-      const records = [
-        { startTime: '2024-01-15T08:00:00Z', floors: 10 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'FloorsClimbed', unit: 'floors', type: 'floors' }) as TransformedRecord[];
+      const records = [{ startTime: '2024-01-15T08:00:00Z', floors: 10 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'FloorsClimbed',
+        unit: 'floors',
+        type: 'floors',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(10);
@@ -179,7 +258,11 @@ describe('transformHealthRecords', () => {
       const records = [
         { startTime: '2024-01-15T08:00:00Z', floors: 'not a number' },
       ];
-      const result = transformHealthRecords(records, { recordType: 'FloorsClimbed', unit: 'floors', type: 'floors' });
+      const result = transformHealthRecords(records, {
+        recordType: 'FloorsClimbed',
+        unit: 'floors',
+        type: 'floors',
+      });
 
       expect(result).toHaveLength(0);
     });
@@ -194,11 +277,23 @@ describe('transformHealthRecords', () => {
           diastolic: { inMillimetersOfMercury: 80.3 },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'BloodPressure', unit: 'mmHg', type: 'blood_pressure' });
+      const result = transformHealthRecords(records, {
+        recordType: 'BloodPressure',
+        unit: 'mmHg',
+        type: 'blood_pressure',
+      });
 
       expect(result).toHaveLength(2);
-      expect(result[0]).toMatchObject({ value: 120.5, type: 'blood_pressure_systolic', date: '2024-01-15' });
-      expect(result[1]).toMatchObject({ value: 80.3, type: 'blood_pressure_diastolic', date: '2024-01-15' });
+      expect(result[0]).toMatchObject({
+        value: 120.5,
+        type: 'blood_pressure_systolic',
+        date: '2024-01-15',
+      });
+      expect(result[1]).toMatchObject({
+        value: 80.3,
+        type: 'blood_pressure_diastolic',
+        date: '2024-01-15',
+      });
     });
 
     test('creates only systolic when diastolic missing', () => {
@@ -208,7 +303,11 @@ describe('transformHealthRecords', () => {
           systolic: { inMillimetersOfMercury: 120 },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'BloodPressure', unit: 'mmHg', type: 'blood_pressure' });
+      const result = transformHealthRecords(records, {
+        recordType: 'BloodPressure',
+        unit: 'mmHg',
+        type: 'blood_pressure',
+      });
 
       expect(result).toHaveLength(1);
       expect(result[0].type).toBe('blood_pressure_systolic');
@@ -221,7 +320,11 @@ describe('transformHealthRecords', () => {
           diastolic: { inMillimetersOfMercury: 80 },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'BloodPressure', unit: 'mmHg', type: 'blood_pressure' });
+      const result = transformHealthRecords(records, {
+        recordType: 'BloodPressure',
+        unit: 'mmHg',
+        type: 'blood_pressure',
+      });
 
       expect(result).toHaveLength(1);
       expect(result[0].type).toBe('blood_pressure_diastolic');
@@ -234,7 +337,11 @@ describe('transformHealthRecords', () => {
           diastolic: { inMillimetersOfMercury: 80 },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'BloodPressure', unit: 'mmHg', type: 'blood_pressure' });
+      const result = transformHealthRecords(records, {
+        recordType: 'BloodPressure',
+        unit: 'mmHg',
+        type: 'blood_pressure',
+      });
 
       expect(result).toHaveLength(0);
     });
@@ -248,7 +355,11 @@ describe('transformHealthRecords', () => {
           endTime: '2024-01-16T06:00:00Z',
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'SleepSession',
+        unit: '',
+        type: 'sleep',
+      }) as AggregatedSleepSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
@@ -269,7 +380,11 @@ describe('transformHealthRecords', () => {
           endTime: '2024-01-15T23:30:00Z', // 1.5 hours
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'SleepSession',
+        unit: '',
+        type: 'sleep',
+      }) as AggregatedSleepSession[];
 
       expect(result[0].duration_in_seconds).toBe(5400); // 1.5 hours in seconds
     });
@@ -279,7 +394,11 @@ describe('transformHealthRecords', () => {
         { startTime: '2024-01-15T22:00:00Z' },
         { endTime: '2024-01-16T06:00:00Z' },
       ];
-      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' });
+      const result = transformHealthRecords(records, {
+        recordType: 'SleepSession',
+        unit: '',
+        type: 'sleep',
+      });
 
       expect(result).toHaveLength(0);
     });
@@ -288,7 +407,11 @@ describe('transformHealthRecords', () => {
       const records = [
         { startTime: 'invalid', endTime: '2024-01-16T06:00:00Z' },
       ];
-      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' });
+      const result = transformHealthRecords(records, {
+        recordType: 'SleepSession',
+        unit: '',
+        type: 'sleep',
+      });
 
       expect(result).toHaveLength(0);
     });
@@ -297,7 +420,11 @@ describe('transformHealthRecords', () => {
       const records = [
         { startTime: '2024-01-16T06:00:00Z', endTime: '2024-01-15T22:00:00Z' },
       ];
-      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' });
+      const result = transformHealthRecords(records, {
+        recordType: 'SleepSession',
+        unit: '',
+        type: 'sleep',
+      });
 
       expect(result).toHaveLength(0);
     });
@@ -308,15 +435,39 @@ describe('transformHealthRecords', () => {
           startTime: '2024-01-15T22:00:00Z',
           endTime: '2024-01-16T06:00:00Z',
           stages: [
-            { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-15T22:30:00Z', stage: 4 },  // LIGHT - 30min
-            { startTime: '2024-01-15T22:30:00Z', endTime: '2024-01-15T23:30:00Z', stage: 5 },  // DEEP - 60min
-            { startTime: '2024-01-15T23:30:00Z', endTime: '2024-01-16T00:00:00Z', stage: 6 },  // REM - 30min
-            { startTime: '2024-01-16T00:00:00Z', endTime: '2024-01-16T00:15:00Z', stage: 1 },  // AWAKE - 15min
-            { startTime: '2024-01-16T00:15:00Z', endTime: '2024-01-16T06:00:00Z', stage: 4 },  // LIGHT - 5h45m
+            {
+              startTime: '2024-01-15T22:00:00Z',
+              endTime: '2024-01-15T22:30:00Z',
+              stage: 4,
+            }, // LIGHT - 30min
+            {
+              startTime: '2024-01-15T22:30:00Z',
+              endTime: '2024-01-15T23:30:00Z',
+              stage: 5,
+            }, // DEEP - 60min
+            {
+              startTime: '2024-01-15T23:30:00Z',
+              endTime: '2024-01-16T00:00:00Z',
+              stage: 6,
+            }, // REM - 30min
+            {
+              startTime: '2024-01-16T00:00:00Z',
+              endTime: '2024-01-16T00:15:00Z',
+              stage: 1,
+            }, // AWAKE - 15min
+            {
+              startTime: '2024-01-16T00:15:00Z',
+              endTime: '2024-01-16T06:00:00Z',
+              stage: 4,
+            }, // LIGHT - 5h45m
           ],
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'SleepSession',
+        unit: '',
+        type: 'sleep',
+      }) as AggregatedSleepSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].stage_events).toEqual([
@@ -351,12 +502,12 @@ describe('transformHealthRecords', () => {
           duration_in_seconds: 20700,
         },
       ]);
-      expect(result[0].deep_sleep_seconds).toBe(3600);     // 60min
-      expect(result[0].light_sleep_seconds).toBe(22500);   // 30min + 5h45m
-      expect(result[0].rem_sleep_seconds).toBe(1800);      // 30min
-      expect(result[0].awake_sleep_seconds).toBe(900);     // 15min
+      expect(result[0].deep_sleep_seconds).toBe(3600); // 60min
+      expect(result[0].light_sleep_seconds).toBe(22500); // 30min + 5h45m
+      expect(result[0].rem_sleep_seconds).toBe(1800); // 30min
+      expect(result[0].awake_sleep_seconds).toBe(900); // 15min
       expect(result[0].time_asleep_in_seconds).toBe(27900); // total minus awake
-      expect(result[0].duration_in_seconds).toBe(28800);    // full 8 hours
+      expect(result[0].duration_in_seconds).toBe(28800); // full 8 hours
     });
 
     test('maps generic sleeping and out-of-bed stages into duration totals', () => {
@@ -365,13 +516,29 @@ describe('transformHealthRecords', () => {
           startTime: '2024-01-15T22:00:00Z',
           endTime: '2024-01-16T01:00:00Z',
           stages: [
-            { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-15T23:00:00Z', stage: 1 },  // AWAKE
-            { startTime: '2024-01-15T23:00:00Z', endTime: '2024-01-16T00:00:00Z', stage: 2 },  // SLEEPING (generic)
-            { startTime: '2024-01-16T00:00:00Z', endTime: '2024-01-16T01:00:00Z', stage: 3 },  // OUT_OF_BED
+            {
+              startTime: '2024-01-15T22:00:00Z',
+              endTime: '2024-01-15T23:00:00Z',
+              stage: 1,
+            }, // AWAKE
+            {
+              startTime: '2024-01-15T23:00:00Z',
+              endTime: '2024-01-16T00:00:00Z',
+              stage: 2,
+            }, // SLEEPING (generic)
+            {
+              startTime: '2024-01-16T00:00:00Z',
+              endTime: '2024-01-16T01:00:00Z',
+              stage: 3,
+            }, // OUT_OF_BED
           ],
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'SleepSession',
+        unit: '',
+        type: 'sleep',
+      }) as AggregatedSleepSession[];
 
       expect(result[0].stage_events).toEqual([
         {
@@ -405,7 +572,11 @@ describe('transformHealthRecords', () => {
           endTime: '2024-01-16T06:00:00Z',
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'SleepSession',
+        unit: '',
+        type: 'sleep',
+      }) as AggregatedSleepSession[];
 
       expect(result[0].stage_events).toHaveLength(0);
       expect(result[0].light_sleep_seconds).toBe(28800);
@@ -421,12 +592,20 @@ describe('transformHealthRecords', () => {
           startTime: '2024-01-15T22:00:00Z',
           endTime: '2024-01-16T06:00:00Z',
           stages: [
-            { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-15T23:00:00Z', stage: 5 },  // valid DEEP
-            { startTime: 'invalid', endTime: '2024-01-16T01:00:00Z', stage: 4 },                // invalid
+            {
+              startTime: '2024-01-15T22:00:00Z',
+              endTime: '2024-01-15T23:00:00Z',
+              stage: 5,
+            }, // valid DEEP
+            { startTime: 'invalid', endTime: '2024-01-16T01:00:00Z', stage: 4 }, // invalid
           ],
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'SleepSession',
+        unit: '',
+        type: 'sleep',
+      }) as AggregatedSleepSession[];
 
       expect(result[0].stage_events).toEqual([
         {
@@ -446,11 +625,19 @@ describe('transformHealthRecords', () => {
           startTime: '2024-01-15T22:00:00Z',
           endTime: '2024-01-16T06:00:00Z',
           stages: [
-            { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-16T06:00:00Z', stage: 0 },
+            {
+              startTime: '2024-01-15T22:00:00Z',
+              endTime: '2024-01-16T06:00:00Z',
+              stage: 0,
+            },
           ],
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'SleepSession',
+        unit: '',
+        type: 'sleep',
+      }) as AggregatedSleepSession[];
 
       expect(result[0].stage_events).toHaveLength(0);
       expect(result[0].light_sleep_seconds).toBe(28800);
@@ -472,7 +659,11 @@ describe('transformHealthRecords', () => {
           notes: 'Felt great!',
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
@@ -499,18 +690,34 @@ describe('transformHealthRecords', () => {
 
       exerciseTypes.forEach(({ code, name }) => {
         const records = [
-          { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', exerciseType: code },
+          {
+            startTime: '2024-01-15T08:00:00Z',
+            endTime: '2024-01-15T09:00:00Z',
+            exerciseType: code,
+          },
         ];
-        const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+        const result = transformHealthRecords(records, {
+          recordType: 'ExerciseSession',
+          unit: '',
+          type: 'exercise',
+        }) as TransformedExerciseSession[];
         expect(result[0].activityType).toBe(name);
       });
     });
 
     test('falls back to "Exercise Type {code}" for unknown codes', () => {
       const records = [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', exerciseType: 999 },
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 999,
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result[0].activityType).toBe('Exercise Type 999');
     });
@@ -519,7 +726,11 @@ describe('transformHealthRecords', () => {
       const records = [
         { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z' },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result[0].activityType).toBe('Exercise Session');
     });
@@ -528,9 +739,18 @@ describe('transformHealthRecords', () => {
     // EXERCISE_TYPE_OTHER_WORKOUT (0) and name the sport in the title.
     test('uses the source title when the type is OTHER_WORKOUT', () => {
       const records = [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', exerciseType: 0, title: 'Bowling' },
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 0,
+          title: 'Bowling',
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result[0].activityType).toBe('Bowling');
       expect(result[0].title).toBe('Bowling');
@@ -539,27 +759,52 @@ describe('transformHealthRecords', () => {
     // 0 is falsy: the old truthiness check skipped EXERCISE_MAP entirely.
     test('maps OTHER_WORKOUT to "Other Workout" when the record has no title', () => {
       const records = [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', exerciseType: 0 },
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 0,
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result[0].activityType).toBe('Other Workout');
     });
 
     test('uses the source title for codes newer than the map', () => {
       const records = [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', exerciseType: 999, title: 'Padel' },
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 999,
+          title: 'Padel',
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result[0].activityType).toBe('Padel');
     });
 
     test('uses the source title when the record has no exerciseType at all', () => {
       const records = [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', title: 'Bowling' },
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          title: 'Bowling',
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result[0].activityType).toBe('Bowling');
     });
@@ -568,10 +813,24 @@ describe('transformHealthRecords', () => {
     // nickname must never displace a recognized code.
     test('keeps the mapped name when a specific code carries a nickname title', () => {
       const records = [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', exerciseType: 56, title: 'Morning Run' },
-        { startTime: '2024-01-15T10:00:00Z', endTime: '2024-01-15T11:00:00Z', exerciseType: 9, title: 'Hometrainer' },
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 56,
+          title: 'Morning Run',
+        },
+        {
+          startTime: '2024-01-15T10:00:00Z',
+          endTime: '2024-01-15T11:00:00Z',
+          exerciseType: 9,
+          title: 'Hometrainer',
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result[0].activityType).toBe('Running');
       expect(result[1].activityType).toBe('Biking (Stationary)');
@@ -579,18 +838,35 @@ describe('transformHealthRecords', () => {
 
     test('ignores a blank title', () => {
       const records = [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', exerciseType: 0, title: '   ' },
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 0,
+          title: '   ',
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result[0].activityType).toBe('Other Workout');
     });
 
     test('uses activityType as title when no explicit title', () => {
       const records = [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T09:00:00Z', exerciseType: 56 },
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T09:00:00Z',
+          exerciseType: 56,
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result[0].title).toBe('Running');
     });
@@ -600,16 +876,28 @@ describe('transformHealthRecords', () => {
         { startTime: '2024-01-15T08:00:00Z', exerciseType: 8 },
         { endTime: '2024-01-15T09:00:00Z', exerciseType: 8 },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' });
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      });
 
       expect(result).toHaveLength(0);
     });
 
     test('skips when endTime is before startTime', () => {
       const records = [
-        { startTime: '2024-01-15T09:00:00Z', endTime: '2024-01-15T08:00:00Z', exerciseType: 8 },
+        {
+          startTime: '2024-01-15T09:00:00Z',
+          endTime: '2024-01-15T08:00:00Z',
+          exerciseType: 8,
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' });
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      });
 
       expect(result).toHaveLength(0);
     });
@@ -623,7 +911,11 @@ describe('transformHealthRecords', () => {
           energy: { inKilocalories: 350.5 },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].caloriesBurned).toBe(350.5);
@@ -638,7 +930,11 @@ describe('transformHealthRecords', () => {
           energy: { inCalories: 250000 }, // 250 kcal
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].caloriesBurned).toBe(250);
@@ -652,7 +948,11 @@ describe('transformHealthRecords', () => {
           exerciseType: 8,
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].caloriesBurned).toBe(0);
@@ -667,7 +967,11 @@ describe('transformHealthRecords', () => {
           energy: { inKilocalories: null, inCalories: null },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].caloriesBurned).toBe(0);
@@ -682,7 +986,11 @@ describe('transformHealthRecords', () => {
           energy: { inKilocalories: NaN },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].caloriesBurned).toBe(0);
@@ -697,7 +1005,11 @@ describe('transformHealthRecords', () => {
           distance: { inMeters: 5000.75 },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].distance).toBe(5);
@@ -711,7 +1023,11 @@ describe('transformHealthRecords', () => {
           exerciseType: 8,
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].distance).toBe(0);
@@ -726,7 +1042,11 @@ describe('transformHealthRecords', () => {
           distance: { inMeters: null },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].distance).toBe(0);
@@ -741,7 +1061,11 @@ describe('transformHealthRecords', () => {
           distance: { inMeters: NaN },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].distance).toBe(0);
@@ -757,7 +1081,11 @@ describe('transformHealthRecords', () => {
           distance: { inMeters: 5234.1234 },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].caloriesBurned).toBe(350.57);
@@ -777,7 +1105,11 @@ describe('transformHealthRecords', () => {
           notes: 'Great pace today',
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
@@ -801,7 +1133,11 @@ describe('transformHealthRecords', () => {
           energy: { inKilocalories: 300, inCalories: 500000 },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].caloriesBurned).toBe(300);
@@ -818,7 +1154,11 @@ describe('transformHealthRecords', () => {
           distance: { inMeters: -100 },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].caloriesBurned).toBe(-50);
@@ -833,9 +1173,15 @@ describe('transformHealthRecords', () => {
           exerciseType: 8,
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
-      expect(result[0].sets).toEqual([{ set_number: 1, set_type: 'Working Set', duration_seconds: 3600 }]);
+      expect(result[0].sets).toEqual([
+        { set_number: 1, set_type: 'Working Set', duration_seconds: 3600 },
+      ]);
     });
 
     test('rounds fractional duration to whole seconds in sets', () => {
@@ -846,18 +1192,31 @@ describe('transformHealthRecords', () => {
           exerciseType: 8,
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
-      expect(result[0].sets).toEqual([{ set_number: 1, set_type: 'Working Set', duration_seconds: 91 }]);
+      expect(result[0].sets).toEqual([
+        { set_number: 1, set_type: 'Working Set', duration_seconds: 91 },
+      ]);
     });
   });
 
   describe('BasalMetabolicRate records (complex extraction)', () => {
     test('extracts from basalMetabolicRate.inKilocaloriesPerDay', () => {
       const records = [
-        { time: '2024-01-15T08:00:00Z', basalMetabolicRate: { inKilocaloriesPerDay: 1800 } },
+        {
+          time: '2024-01-15T08:00:00Z',
+          basalMetabolicRate: { inKilocaloriesPerDay: 1800 },
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'BasalMetabolicRate', unit: 'kcal', type: 'bmr' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'BasalMetabolicRate',
+        unit: 'kcal',
+        type: 'bmr',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(1800);
@@ -865,9 +1224,16 @@ describe('transformHealthRecords', () => {
 
     test('extracts from basalMetabolicRate.inCalories', () => {
       const records = [
-        { time: '2024-01-15T08:00:00Z', basalMetabolicRate: { inCalories: 1700 } },
+        {
+          time: '2024-01-15T08:00:00Z',
+          basalMetabolicRate: { inCalories: 1700 },
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'BasalMetabolicRate', unit: 'kcal', type: 'bmr' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'BasalMetabolicRate',
+        unit: 'kcal',
+        type: 'bmr',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(1700);
@@ -875,9 +1241,16 @@ describe('transformHealthRecords', () => {
 
     test('extracts from basalMetabolicRate.inKilocalories', () => {
       const records = [
-        { time: '2024-01-15T08:00:00Z', basalMetabolicRate: { inKilocalories: 1600 } },
+        {
+          time: '2024-01-15T08:00:00Z',
+          basalMetabolicRate: { inKilocalories: 1600 },
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'BasalMetabolicRate', unit: 'kcal', type: 'bmr' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'BasalMetabolicRate',
+        unit: 'kcal',
+        type: 'bmr',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(1600);
@@ -887,27 +1260,35 @@ describe('transformHealthRecords', () => {
       const records = [
         { time: '2024-01-15T08:00:00Z', basalMetabolicRate: 1500 },
       ];
-      const result = transformHealthRecords(records, { recordType: 'BasalMetabolicRate', unit: 'kcal', type: 'bmr' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'BasalMetabolicRate',
+        unit: 'kcal',
+        type: 'bmr',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(1500);
     });
 
     test('extracts from record.bmr field', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', bmr: 1400 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'BasalMetabolicRate', unit: 'kcal', type: 'bmr' }) as TransformedRecord[];
+      const records = [{ time: '2024-01-15T08:00:00Z', bmr: 1400 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'BasalMetabolicRate',
+        unit: 'kcal',
+        type: 'bmr',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(1400);
     });
 
     test('extracts from record.value field', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', value: 1300 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'BasalMetabolicRate', unit: 'kcal', type: 'bmr' }) as TransformedRecord[];
+      const records = [{ time: '2024-01-15T08:00:00Z', value: 1300 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'BasalMetabolicRate',
+        unit: 'kcal',
+        type: 'bmr',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(1300);
@@ -915,10 +1296,20 @@ describe('transformHealthRecords', () => {
 
     test('validates BMR is within reasonable range (0-10000)', () => {
       const records = [
-        { time: '2024-01-15T08:00:00Z', basalMetabolicRate: { inKilocaloriesPerDay: 0 } },
-        { time: '2024-01-16T08:00:00Z', basalMetabolicRate: { inKilocaloriesPerDay: 15000 } },
+        {
+          time: '2024-01-15T08:00:00Z',
+          basalMetabolicRate: { inKilocaloriesPerDay: 0 },
+        },
+        {
+          time: '2024-01-16T08:00:00Z',
+          basalMetabolicRate: { inKilocaloriesPerDay: 15000 },
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'BasalMetabolicRate', unit: 'kcal', type: 'bmr' });
+      const result = transformHealthRecords(records, {
+        recordType: 'BasalMetabolicRate',
+        unit: 'kcal',
+        type: 'bmr',
+      });
 
       expect(result).toHaveLength(0); // Both invalid (0 is not > 0, 15000 is not < 10000)
     });
@@ -935,7 +1326,11 @@ describe('transformHealthRecords', () => {
       ];
 
       testCases.forEach((record, index) => {
-        const result = transformHealthRecords([record], { recordType: 'BasalMetabolicRate', unit: 'kcal', type: 'bmr' }) as TransformedRecord[];
+        const result = transformHealthRecords([record], {
+          recordType: 'BasalMetabolicRate',
+          unit: 'kcal',
+          type: 'bmr',
+        }) as TransformedRecord[];
         expect(result).toHaveLength(1);
         expect(result[0].date).toBe(`2024-01-${15 + index}`);
       });
@@ -947,7 +1342,11 @@ describe('transformHealthRecords', () => {
       const records = [
         { time: '2024-01-15T08:00:00Z', level: { inMillimolesPerLiter: 5.5 } },
       ];
-      const result = transformHealthRecords(records, { recordType: 'BloodGlucose', unit: 'mmol/L', type: 'blood_glucose' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'BloodGlucose',
+        unit: 'mmol/L',
+        type: 'blood_glucose',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(5.5);
@@ -955,9 +1354,16 @@ describe('transformHealthRecords', () => {
 
     test('converts mg/dL to mmol/L (divides by 18.018)', () => {
       const records = [
-        { time: '2024-01-15T08:00:00Z', level: { inMilligramsPerDeciliter: 100 } },
+        {
+          time: '2024-01-15T08:00:00Z',
+          level: { inMilligramsPerDeciliter: 100 },
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'BloodGlucose', unit: 'mmol/L', type: 'blood_glucose' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'BloodGlucose',
+        unit: 'mmol/L',
+        type: 'blood_glucose',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBeCloseTo(5.55, 1); // 100 / 18.018 ≈ 5.55
@@ -965,19 +1371,28 @@ describe('transformHealthRecords', () => {
 
     test('extracts from bloodGlucose.inMillimolesPerLiter', () => {
       const records = [
-        { time: '2024-01-15T08:00:00Z', bloodGlucose: { inMillimolesPerLiter: 6.0 } },
+        {
+          time: '2024-01-15T08:00:00Z',
+          bloodGlucose: { inMillimolesPerLiter: 6.0 },
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'BloodGlucose', unit: 'mmol/L', type: 'blood_glucose' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'BloodGlucose',
+        unit: 'mmol/L',
+        type: 'blood_glucose',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(6.0);
     });
 
     test('extracts from numeric level field', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', level: 5.0 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'BloodGlucose', unit: 'mmol/L', type: 'blood_glucose' }) as TransformedRecord[];
+      const records = [{ time: '2024-01-15T08:00:00Z', level: 5.0 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'BloodGlucose',
+        unit: 'mmol/L',
+        type: 'blood_glucose',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(5.0);
@@ -986,30 +1401,36 @@ describe('transformHealthRecords', () => {
 
   describe('Vo2Max records (multiple extraction strategies)', () => {
     test('extracts from record.vo2Max', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', vo2Max: 45.5 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'Vo2Max', unit: 'ml/min/kg', type: 'vo2max' }) as TransformedRecord[];
+      const records = [{ time: '2024-01-15T08:00:00Z', vo2Max: 45.5 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'Vo2Max',
+        unit: 'ml/min/kg',
+        type: 'vo2max',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(45.5);
     });
 
     test('extracts from record.vo2', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', vo2: 42.0 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'Vo2Max', unit: 'ml/min/kg', type: 'vo2max' }) as TransformedRecord[];
+      const records = [{ time: '2024-01-15T08:00:00Z', vo2: 42.0 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'Vo2Max',
+        unit: 'ml/min/kg',
+        type: 'vo2max',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(42.0);
     });
 
     test('extracts from record.value', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', value: 40.0 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'Vo2Max', unit: 'ml/min/kg', type: 'vo2max' }) as TransformedRecord[];
+      const records = [{ time: '2024-01-15T08:00:00Z', value: 40.0 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'Vo2Max',
+        unit: 'ml/min/kg',
+        type: 'vo2max',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(40.0);
@@ -1019,7 +1440,11 @@ describe('transformHealthRecords', () => {
       const records = [
         { time: '2024-01-15T08:00:00Z', vo2MillilitersPerMinuteKilogram: 38.0 },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Vo2Max', unit: 'ml/min/kg', type: 'vo2max' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Vo2Max',
+        unit: 'ml/min/kg',
+        type: 'vo2max',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(38.0);
@@ -1027,19 +1452,28 @@ describe('transformHealthRecords', () => {
 
     test('handles string values with comma decimal separator', () => {
       const records = [
-        { time: '2024-01-15T08:00:00Z', vo2MillilitersPerMinuteKilogram: '49,51' },
+        {
+          time: '2024-01-15T08:00:00Z',
+          vo2MillilitersPerMinuteKilogram: '49,51',
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Vo2Max', unit: 'ml/min/kg', type: 'vo2max' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Vo2Max',
+        unit: 'ml/min/kg',
+        type: 'vo2max',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBeCloseTo(49.51);
     });
 
     test('handles string values with dot decimal separator', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', vo2Max: '45.5' },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'Vo2Max', unit: 'ml/min/kg', type: 'vo2max' }) as TransformedRecord[];
+      const records = [{ time: '2024-01-15T08:00:00Z', vo2Max: '45.5' }];
+      const result = transformHealthRecords(records, {
+        recordType: 'Vo2Max',
+        unit: 'ml/min/kg',
+        type: 'vo2max',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBeCloseTo(45.5);
@@ -1050,7 +1484,11 @@ describe('transformHealthRecords', () => {
         { time: '2024-01-15T08:00:00Z', vo2Max: 0 },
         { time: '2024-01-16T08:00:00Z', vo2Max: 150 },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Vo2Max', unit: 'ml/min/kg', type: 'vo2max' });
+      const result = transformHealthRecords(records, {
+        recordType: 'Vo2Max',
+        unit: 'ml/min/kg',
+        type: 'vo2max',
+      });
 
       expect(result).toHaveLength(0); // Both invalid
     });
@@ -1061,27 +1499,35 @@ describe('transformHealthRecords', () => {
       const records = [
         { time: '2024-01-15T08:00:00Z', percentage: { inPercent: 98.5 } },
       ];
-      const result = transformHealthRecords(records, { recordType: 'OxygenSaturation', unit: '%', type: 'oxygen_saturation' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'OxygenSaturation',
+        unit: '%',
+        type: 'oxygen_saturation',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(98.5);
     });
 
     test('extracts from numeric percentage', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', percentage: 97.0 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'OxygenSaturation', unit: '%', type: 'oxygen_saturation' }) as TransformedRecord[];
+      const records = [{ time: '2024-01-15T08:00:00Z', percentage: 97.0 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'OxygenSaturation',
+        unit: '%',
+        type: 'oxygen_saturation',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(97.0);
     });
 
     test('extracts from record.value', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', value: 96.0 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'OxygenSaturation', unit: '%', type: 'oxygen_saturation' }) as TransformedRecord[];
+      const records = [{ time: '2024-01-15T08:00:00Z', value: 96.0 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'OxygenSaturation',
+        unit: '%',
+        type: 'oxygen_saturation',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(96.0);
@@ -1091,17 +1537,23 @@ describe('transformHealthRecords', () => {
       const records = [
         { time: '2024-01-15T08:00:00Z', oxygenSaturation: 95.0 },
       ];
-      const result = transformHealthRecords(records, { recordType: 'OxygenSaturation', unit: '%', type: 'oxygen_saturation' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'OxygenSaturation',
+        unit: '%',
+        type: 'oxygen_saturation',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(95.0);
     });
 
     test('extracts from record.spo2', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', spo2: 94.0 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'OxygenSaturation', unit: '%', type: 'oxygen_saturation' }) as TransformedRecord[];
+      const records = [{ time: '2024-01-15T08:00:00Z', spo2: 94.0 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'OxygenSaturation',
+        unit: '%',
+        type: 'oxygen_saturation',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(94.0);
@@ -1112,7 +1564,11 @@ describe('transformHealthRecords', () => {
         { time: '2024-01-15T08:00:00Z', percentage: { inPercent: 0 } },
         { time: '2024-01-16T08:00:00Z', percentage: { inPercent: 150 } },
       ];
-      const result = transformHealthRecords(records, { recordType: 'OxygenSaturation', unit: '%', type: 'oxygen_saturation' });
+      const result = transformHealthRecords(records, {
+        recordType: 'OxygenSaturation',
+        unit: '%',
+        type: 'oxygen_saturation',
+      });
 
       expect(result).toHaveLength(0); // Both invalid
     });
@@ -1123,37 +1579,47 @@ describe('transformHealthRecords', () => {
       const records = [
         { time: '2024-01-15T08:00:00Z', percentage: { inPercent: 15.5 } },
       ];
-      const result = transformHealthRecords(records, { recordType: 'BodyFat', unit: '%', type: 'body_fat' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'BodyFat',
+        unit: '%',
+        type: 'body_fat',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(15.5);
     });
 
     test('extracts from numeric percentage', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', percentage: 18.0 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'BodyFat', unit: '%', type: 'body_fat' }) as TransformedRecord[];
+      const records = [{ time: '2024-01-15T08:00:00Z', percentage: 18.0 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'BodyFat',
+        unit: '%',
+        type: 'body_fat',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(18.0);
     });
 
     test('extracts from record.value', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', value: 20.0 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'BodyFat', unit: '%', type: 'body_fat' }) as TransformedRecord[];
+      const records = [{ time: '2024-01-15T08:00:00Z', value: 20.0 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'BodyFat',
+        unit: '%',
+        type: 'body_fat',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(20.0);
     });
 
     test('extracts from record.bodyFat', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', bodyFat: 22.0 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'BodyFat', unit: '%', type: 'body_fat' }) as TransformedRecord[];
+      const records = [{ time: '2024-01-15T08:00:00Z', bodyFat: 22.0 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'BodyFat',
+        unit: '%',
+        type: 'body_fat',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(22.0);
@@ -1161,9 +1627,16 @@ describe('transformHealthRecords', () => {
 
     test('extracts from bodyFatPercentage.inPercent', () => {
       const records = [
-        { time: '2024-01-15T08:00:00Z', bodyFatPercentage: { inPercent: 25.0 } },
+        {
+          time: '2024-01-15T08:00:00Z',
+          bodyFatPercentage: { inPercent: 25.0 },
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'BodyFat', unit: '%', type: 'body_fat' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'BodyFat',
+        unit: '%',
+        type: 'body_fat',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(25.0);
@@ -1174,7 +1647,11 @@ describe('transformHealthRecords', () => {
         { time: '2024-01-15T08:00:00Z', percentage: { inPercent: -5 } },
         { time: '2024-01-16T08:00:00Z', percentage: { inPercent: 150 } },
       ];
-      const result = transformHealthRecords(records, { recordType: 'BodyFat', unit: '%', type: 'body_fat' });
+      const result = transformHealthRecords(records, {
+        recordType: 'BodyFat',
+        unit: '%',
+        type: 'body_fat',
+      });
 
       expect(result).toHaveLength(0); // Both invalid
     });
@@ -1184,7 +1661,7 @@ describe('transformHealthRecords', () => {
     test('expands single record to multiple days', () => {
       // Use local dates to ensure consistent behavior across timezones
       const startDate = new Date(2024, 0, 15, 12, 0, 0); // Jan 15, noon local
-      const endDate = new Date(2024, 0, 17, 12, 0, 0);   // Jan 17, noon local
+      const endDate = new Date(2024, 0, 17, 12, 0, 0); // Jan 17, noon local
 
       const records = [
         {
@@ -1192,18 +1669,24 @@ describe('transformHealthRecords', () => {
           endTime: endDate.toISOString(),
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'MenstruationPeriod', unit: '', type: 'menstruation' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'MenstruationPeriod',
+        unit: '',
+        type: 'menstruation',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(3);
       expect(result[0].date).toBe(toLocalDateString(startDate));
-      expect(result[1].date).toBe(toLocalDateString(new Date(2024, 0, 16, 12, 0, 0)));
+      expect(result[1].date).toBe(
+        toLocalDateString(new Date(2024, 0, 16, 12, 0, 0))
+      );
       expect(result[2].date).toBe(toLocalDateString(endDate));
-      expect(result.every(r => r.value === 1)).toBe(true);
+      expect(result.every((r) => r.value === 1)).toBe(true);
     });
 
     test('creates single record for same-day period', () => {
       // Use local dates
-      const startDate = new Date(2024, 0, 15, 8, 0, 0);  // Jan 15, 8am local
+      const startDate = new Date(2024, 0, 15, 8, 0, 0); // Jan 15, 8am local
       const endDate = new Date(2024, 0, 15, 23, 59, 59); // Jan 15, 11:59pm local
 
       const records = [
@@ -1212,7 +1695,11 @@ describe('transformHealthRecords', () => {
           endTime: endDate.toISOString(),
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'MenstruationPeriod', unit: '', type: 'menstruation' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'MenstruationPeriod',
+        unit: '',
+        type: 'menstruation',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].date).toBe(toLocalDateString(startDate));
@@ -1230,7 +1717,11 @@ describe('transformHealthRecords', () => {
           endTime: endDate.toISOString(),
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'MenstruationPeriod', unit: '', type: 'menstruation' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'MenstruationPeriod',
+        unit: '',
+        type: 'menstruation',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(2);
       expect(result[0].date).toBe(toLocalDateString(startDate));
@@ -1240,37 +1731,45 @@ describe('transformHealthRecords', () => {
 
   describe('qualitative record types (skip processing)', () => {
     test('CervicalMucus returns empty array', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', value: 3 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'CervicalMucus', unit: '', type: 'cervical_mucus' });
+      const records = [{ time: '2024-01-15T08:00:00Z', value: 3 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'CervicalMucus',
+        unit: '',
+        type: 'cervical_mucus',
+      });
 
       expect(result).toHaveLength(0);
     });
 
     test('MenstruationFlow returns empty array', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', value: 2 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'MenstruationFlow', unit: '', type: 'menstruation_flow' });
+      const records = [{ time: '2024-01-15T08:00:00Z', value: 2 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'MenstruationFlow',
+        unit: '',
+        type: 'menstruation_flow',
+      });
 
       expect(result).toHaveLength(0);
     });
 
     test('OvulationTest returns empty array', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', value: 1 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'OvulationTest', unit: '', type: 'ovulation_test' });
+      const records = [{ time: '2024-01-15T08:00:00Z', value: 1 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'OvulationTest',
+        unit: '',
+        type: 'ovulation_test',
+      });
 
       expect(result).toHaveLength(0);
     });
 
     test('SexualActivity returns empty array', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', value: 1 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'SexualActivity', unit: '', type: 'sexual_activity' });
+      const records = [{ time: '2024-01-15T08:00:00Z', value: 1 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'SexualActivity',
+        unit: '',
+        type: 'sexual_activity',
+      });
 
       expect(result).toHaveLength(0);
     });
@@ -1288,26 +1787,31 @@ describe('transformHealthRecords', () => {
           ],
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'CyclingPedalingCadence', unit: 'rpm', type: 'cycling_cadence' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'CyclingPedalingCadence',
+        unit: 'rpm',
+        type: 'cycling_cadence',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(3);
       expect(result[0].value).toBe(80);
       expect(result[1].value).toBe(85);
       expect(result[2].value).toBe(90);
-      expect(result.every(r => r.date === '2024-01-15')).toBe(true);
+      expect(result.every((r) => r.date === '2024-01-15')).toBe(true);
     });
 
     test('StepsCadence creates record for each sample', () => {
       const records = [
         {
           startTime: '2024-01-15T08:00:00Z',
-          samples: [
-            { rate: 100 },
-            { rate: 110 },
-          ],
+          samples: [{ rate: 100 }, { rate: 110 }],
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'StepsCadence', unit: 'spm', type: 'steps_cadence' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'StepsCadence',
+        unit: 'spm',
+        type: 'steps_cadence',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(2);
       expect(result[0].value).toBe(100);
@@ -1318,9 +1822,19 @@ describe('transformHealthRecords', () => {
   describe('other simple records', () => {
     test('Nutrition extracts energy as kcal into a food entry', () => {
       const records = [
-        { startTime: '2024-01-15T08:00:00Z', endTime: '2024-01-15T08:00:00Z', energy: { inCalories: 500000 }, mealType: 1, metadata: { id: 'hc-1' } },
+        {
+          startTime: '2024-01-15T08:00:00Z',
+          endTime: '2024-01-15T08:00:00Z',
+          energy: { inCalories: 500000 },
+          mealType: 1,
+          metadata: { id: 'hc-1' },
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Nutrition', unit: 'kcal', type: 'nutrition' }) as TransformedNutritionEntry[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Nutrition',
+        unit: 'kcal',
+        type: 'nutrition',
+      }) as TransformedNutritionEntry[];
 
       expect(result).toHaveLength(1);
       expect(result[0].type).toBe('Nutrition');
@@ -1345,7 +1859,11 @@ describe('transformHealthRecords', () => {
           sodium: { inGrams: 0.00015 }, // 0.00015 g → 0.15 mg
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Nutrition', unit: 'kcal', type: 'nutrition' }) as TransformedNutritionEntry[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Nutrition',
+        unit: 'kcal',
+        type: 'nutrition',
+      }) as TransformedNutritionEntry[];
 
       expect(result[0].protein).toBe(4.95); // grams, rounded, no float noise
       expect(result[0].fat).toBe(5.25); // grams
@@ -1376,7 +1894,11 @@ describe('transformHealthRecords', () => {
           magnesium: { inGrams: 0.4 },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Nutrition', unit: 'kcal', type: 'nutrition' }) as TransformedNutritionEntry[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Nutrition',
+        unit: 'kcal',
+        type: 'nutrition',
+      }) as TransformedNutritionEntry[];
 
       expect(result[0].protein).toBe(12); // grams
       expect(result[0].cholesterol).toBe(20); // mg
@@ -1388,7 +1910,8 @@ describe('transformHealthRecords', () => {
       expect(result[0].vitamin_a).toBe(900); // mcg
       // Nutrients without a dedicated column are not forwarded at all:
       expect(
-        (result[0] as unknown as { custom_nutrients?: unknown }).custom_nutrients
+        (result[0] as unknown as { custom_nutrients?: unknown })
+          .custom_nutrients
       ).toBeUndefined();
     });
 
@@ -1401,7 +1924,11 @@ describe('transformHealthRecords', () => {
           metadata: { id: 'hc-uuid-123', clientRecordId: 'app-local-1' },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Nutrition', unit: 'kcal', type: 'nutrition' }) as TransformedNutritionEntry[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Nutrition',
+        unit: 'kcal',
+        type: 'nutrition',
+      }) as TransformedNutritionEntry[];
 
       expect(result[0].source_id).toBe('hc-uuid-123');
     });
@@ -1416,7 +1943,11 @@ describe('transformHealthRecords', () => {
           metadata: { id: 'hc-1' },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Nutrition', unit: 'kcal', type: 'nutrition' }) as TransformedNutritionEntry[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Nutrition',
+        unit: 'kcal',
+        type: 'nutrition',
+      }) as TransformedNutritionEntry[];
 
       // Only the record with a stable id is emitted.
       expect(result).toHaveLength(1);
@@ -1424,20 +1955,24 @@ describe('transformHealthRecords', () => {
     });
 
     test('RestingHeartRate extracts beatsPerMinute', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', beatsPerMinute: 62 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'RestingHeartRate', unit: 'bpm', type: 'resting_hr' }) as TransformedRecord[];
+      const records = [{ time: '2024-01-15T08:00:00Z', beatsPerMinute: 62 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'RestingHeartRate',
+        unit: 'bpm',
+        type: 'resting_hr',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(62);
     });
 
     test('RespiratoryRate extracts rate', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', rate: 16 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'RespiratoryRate', unit: 'brpm', type: 'respiratory_rate' }) as TransformedRecord[];
+      const records = [{ time: '2024-01-15T08:00:00Z', rate: 16 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'RespiratoryRate',
+        unit: 'brpm',
+        type: 'respiratory_rate',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(16);
@@ -1447,7 +1982,11 @@ describe('transformHealthRecords', () => {
       const records = [
         { startTime: '2024-01-15T08:00:00Z', volume: { inLiters: 0.5 } },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Hydration', unit: 'ml', type: 'water' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Hydration',
+        unit: 'ml',
+        type: 'water',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(500);
@@ -1455,10 +1994,12 @@ describe('transformHealthRecords', () => {
     });
 
     test('IntermenstrualBleeding returns value 1', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z' },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'IntermenstrualBleeding', unit: '', type: 'intermenstrual_bleeding' }) as TransformedRecord[];
+      const records = [{ time: '2024-01-15T08:00:00Z' }];
+      const result = transformHealthRecords(records, {
+        recordType: 'IntermenstrualBleeding',
+        unit: '',
+        type: 'intermenstrual_bleeding',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].value).toBe(1);
@@ -1468,10 +2009,12 @@ describe('transformHealthRecords', () => {
 
   describe('unhandled record types', () => {
     test('returns empty for completely unknown record type', () => {
-      const records = [
-        { time: '2024-01-15T08:00:00Z', value: 123 },
-      ];
-      const result = transformHealthRecords(records, { recordType: 'UnknownType', unit: '', type: 'unknown' });
+      const records = [{ time: '2024-01-15T08:00:00Z', value: 123 }];
+      const result = transformHealthRecords(records, {
+        recordType: 'UnknownType',
+        unit: '',
+        type: 'unknown',
+      });
 
       expect(result).toHaveLength(0);
     });
@@ -1482,7 +2025,11 @@ describe('transformHealthRecords', () => {
       const records = [
         { time: '2024-01-15T08:00:00Z', weight: { inKilograms: null } },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' });
+      const result = transformHealthRecords(records, {
+        recordType: 'Weight',
+        unit: 'kg',
+        type: 'weight',
+      });
 
       expect(result).toHaveLength(0);
     });
@@ -1491,7 +2038,11 @@ describe('transformHealthRecords', () => {
       const records = [
         { time: '2024-01-15T08:00:00Z', weight: { inKilograms: NaN } },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' });
+      const result = transformHealthRecords(records, {
+        recordType: 'Weight',
+        unit: 'kg',
+        type: 'weight',
+      });
 
       expect(result).toHaveLength(0);
     });
@@ -1500,7 +2051,11 @@ describe('transformHealthRecords', () => {
       const records = [
         { weight: { inKilograms: 75 } }, // No time field
       ];
-      const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' });
+      const result = transformHealthRecords(records, {
+        recordType: 'Weight',
+        unit: 'kg',
+        type: 'weight',
+      });
 
       expect(result).toHaveLength(0);
     });
@@ -1510,11 +2065,24 @@ describe('transformHealthRecords', () => {
     test('continues processing when one record throws', () => {
       const badRecord = {
         time: '2024-01-15T08:00:00Z',
-        weight: { inKilograms: { toFixed: () => { throw new Error('boom'); } } },
+        weight: {
+          inKilograms: {
+            toFixed: () => {
+              throw new Error('boom');
+            },
+          },
+        },
       };
-      const goodRecord = { time: '2024-01-16T08:00:00Z', weight: { inKilograms: 75 } };
+      const goodRecord = {
+        time: '2024-01-16T08:00:00Z',
+        weight: { inKilograms: 75 },
+      };
 
-      const result = transformHealthRecords([badRecord, goodRecord], { recordType: 'Weight', unit: 'kg', type: 'weight' }) as TransformedRecord[];
+      const result = transformHealthRecords([badRecord, goodRecord], {
+        recordType: 'Weight',
+        unit: 'kg',
+        type: 'weight',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].date).toBe('2024-01-16');
@@ -1530,7 +2098,11 @@ describe('transformHealthRecords', () => {
           startZoneOffset: { totalSeconds: 32400 }, // UTC+9 (540 min)
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Weight',
+        unit: 'kg',
+        type: 'weight',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].record_utc_offset_minutes).toBe(540);
@@ -1541,7 +2113,11 @@ describe('transformHealthRecords', () => {
       const records = [
         { time: '2024-01-15T08:00:00Z', weight: { inKilograms: 75.5 } },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Weight',
+        unit: 'kg',
+        type: 'weight',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       expect(result[0].record_utc_offset_minutes).toBeUndefined();
@@ -1556,7 +2132,11 @@ describe('transformHealthRecords', () => {
           startZoneOffset: { totalSeconds: -18000 }, // UTC-5 (-300 min)
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Weight',
+        unit: 'kg',
+        type: 'weight',
+      }) as TransformedRecord[];
 
       expect(result[0].record_utc_offset_minutes).toBe(-300);
     });
@@ -1569,16 +2149,29 @@ describe('transformHealthRecords', () => {
           startZoneOffset: { totalSeconds: 0 },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Weight', unit: 'kg', type: 'weight' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Weight',
+        unit: 'kg',
+        type: 'weight',
+      }) as TransformedRecord[];
 
       expect(result[0].record_utc_offset_minutes).toBe(0);
     });
 
     test('pre-aggregated records do not extract timezone from platform fields', () => {
       const records = [
-        { date: '2024-01-15', value: 5000, type: 'step', startZoneOffset: { totalSeconds: 32400 } },
+        {
+          date: '2024-01-15',
+          value: 5000,
+          type: 'step',
+          startZoneOffset: { totalSeconds: 32400 },
+        },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Steps', unit: 'count', type: 'step' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Steps',
+        unit: 'count',
+        type: 'step',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(1);
       // Pre-aggregated records bypass value transformers, platform zone offset fields are not extracted
@@ -1587,11 +2180,25 @@ describe('transformHealthRecords', () => {
 
     test('pre-aggregated records forward record_timezone when present', () => {
       const records = [
-        { value: 5000, date: '2024-01-15', type: 'step', record_timezone: 'America/New_York' },
-        { value: 2500, date: '2024-01-16', type: 'step', record_utc_offset_minutes: 540 },
+        {
+          value: 5000,
+          date: '2024-01-15',
+          type: 'step',
+          record_timezone: 'America/New_York',
+        },
+        {
+          value: 2500,
+          date: '2024-01-16',
+          type: 'step',
+          record_utc_offset_minutes: 540,
+        },
         { value: 1000, date: '2024-01-17', type: 'step' },
       ];
-      const result = transformHealthRecords(records, { recordType: 'Steps', unit: 'count', type: 'step' }) as TransformedRecord[];
+      const result = transformHealthRecords(records, {
+        recordType: 'Steps',
+        unit: 'count',
+        type: 'step',
+      }) as TransformedRecord[];
 
       expect(result).toHaveLength(3);
       expect(result[0].record_timezone).toBe('America/New_York');
@@ -1612,7 +2219,11 @@ describe('transformHealthRecords', () => {
           endZoneOffset: { totalSeconds: 32400 },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].record_utc_offset_minutes).toBe(540);
@@ -1627,7 +2238,11 @@ describe('transformHealthRecords', () => {
           exerciseType: 56,
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].record_utc_offset_minutes).toBeUndefined();
@@ -1639,13 +2254,17 @@ describe('transformHealthRecords', () => {
       const records = [
         {
           startTime: '2024-01-15T23:00:00Z', // Jan 16 08:00 JST
-          endTime: '2024-01-16T00:00:00Z',   // Jan 16 09:00 JST
+          endTime: '2024-01-16T00:00:00Z', // Jan 16 09:00 JST
           exerciseType: 56,
           startZoneOffset: { totalSeconds: 32400 }, // UTC+9 (Tokyo)
           endZoneOffset: { totalSeconds: 32400 },
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'ExerciseSession', unit: '', type: 'exercise' }) as TransformedExerciseSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'ExerciseSession',
+        unit: '',
+        type: 'exercise',
+      }) as TransformedExerciseSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].record_utc_offset_minutes).toBe(540);
@@ -1657,10 +2276,14 @@ describe('transformHealthRecords', () => {
           startTime: '2024-01-15T22:00:00Z',
           endTime: '2024-01-16T06:00:00Z',
           startZoneOffset: { totalSeconds: 32400 }, // UTC+9
-          endZoneOffset: { totalSeconds: -18000 },  // UTC-5
+          endZoneOffset: { totalSeconds: -18000 }, // UTC-5
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'SleepSession',
+        unit: '',
+        type: 'sleep',
+      }) as AggregatedSleepSession[];
 
       expect(result).toHaveLength(1);
       // Sleep uses endZoneOffset (wake-based) when available
@@ -1675,7 +2298,11 @@ describe('transformHealthRecords', () => {
           startZoneOffset: { totalSeconds: 32400 }, // UTC+9
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'SleepSession',
+        unit: '',
+        type: 'sleep',
+      }) as AggregatedSleepSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].record_utc_offset_minutes).toBe(540);
@@ -1688,7 +2315,11 @@ describe('transformHealthRecords', () => {
           endTime: '2024-01-16T06:00:00Z',
         },
       ];
-      const result = transformHealthRecords(records, { recordType: 'SleepSession', unit: '', type: 'sleep' }) as AggregatedSleepSession[];
+      const result = transformHealthRecords(records, {
+        recordType: 'SleepSession',
+        unit: '',
+        type: 'sleep',
+      }) as AggregatedSleepSession[];
 
       expect(result).toHaveLength(1);
       expect(result[0].record_utc_offset_minutes).toBeUndefined();
@@ -1699,7 +2330,9 @@ describe('transformHealthRecords', () => {
 describe('extractTimezoneMetadata', () => {
   test('extracts offset from startZoneOffset by default', () => {
     const rec = { startZoneOffset: { totalSeconds: 32400 } }; // UTC+9
-    expect(extractTimezoneMetadata(rec)).toEqual({ record_utc_offset_minutes: 540 });
+    expect(extractTimezoneMetadata(rec)).toEqual({
+      record_utc_offset_minutes: 540,
+    });
   });
 
   test('extracts offset from endZoneOffset when preferEnd is true', () => {
@@ -1707,17 +2340,23 @@ describe('extractTimezoneMetadata', () => {
       startZoneOffset: { totalSeconds: 32400 },
       endZoneOffset: { totalSeconds: -18000 },
     };
-    expect(extractTimezoneMetadata(rec, true)).toEqual({ record_utc_offset_minutes: -300 });
+    expect(extractTimezoneMetadata(rec, true)).toEqual({
+      record_utc_offset_minutes: -300,
+    });
   });
 
   test('falls back to endZoneOffset when startZoneOffset missing', () => {
     const rec = { endZoneOffset: { totalSeconds: 3600 } }; // UTC+1
-    expect(extractTimezoneMetadata(rec)).toEqual({ record_utc_offset_minutes: 60 });
+    expect(extractTimezoneMetadata(rec)).toEqual({
+      record_utc_offset_minutes: 60,
+    });
   });
 
   test('falls back to startZoneOffset when preferEnd and endZoneOffset missing', () => {
     const rec = { startZoneOffset: { totalSeconds: 3600 } };
-    expect(extractTimezoneMetadata(rec, true)).toEqual({ record_utc_offset_minutes: 60 });
+    expect(extractTimezoneMetadata(rec, true)).toEqual({
+      record_utc_offset_minutes: 60,
+    });
   });
 
   test('returns empty object when no zone offset fields present', () => {
@@ -1727,7 +2366,9 @@ describe('extractTimezoneMetadata', () => {
   test('rounds non-integer offset minutes', () => {
     // Some zones have 30/45-minute offsets (e.g., India UTC+5:30 = 19800s)
     const rec = { startZoneOffset: { totalSeconds: 19800 } };
-    expect(extractTimezoneMetadata(rec)).toEqual({ record_utc_offset_minutes: 330 });
+    expect(extractTimezoneMetadata(rec)).toEqual({
+      record_utc_offset_minutes: 330,
+    });
   });
 });
 
@@ -1738,10 +2379,24 @@ describe('own-app exclusion (writeback feedback-loop guard)', () => {
   test('Nutrition: records written by our own app are dropped, others pass', () => {
     setOwnPackageName(OWN);
     const records = [
-      { startTime: '2024-01-15T08:00:00Z', name: 'Ours', mealType: 1, metadata: { id: 'a', dataOrigin: OWN } },
-      { startTime: '2024-01-15T09:00:00Z', name: 'Theirs', mealType: 1, metadata: { id: 'b', dataOrigin: 'com.other.app' } },
+      {
+        startTime: '2024-01-15T08:00:00Z',
+        name: 'Ours',
+        mealType: 1,
+        metadata: { id: 'a', dataOrigin: OWN },
+      },
+      {
+        startTime: '2024-01-15T09:00:00Z',
+        name: 'Theirs',
+        mealType: 1,
+        metadata: { id: 'b', dataOrigin: 'com.other.app' },
+      },
     ];
-    const result = transformHealthRecords(records, { recordType: 'Nutrition', unit: 'kcal', type: 'nutrition' }) as TransformedNutritionEntry[];
+    const result = transformHealthRecords(records, {
+      recordType: 'Nutrition',
+      unit: 'kcal',
+      type: 'nutrition',
+    }) as TransformedNutritionEntry[];
     expect(result).toHaveLength(1);
     expect(result[0].food_name).toBe('Theirs');
   });
@@ -1749,19 +2404,40 @@ describe('own-app exclusion (writeback feedback-loop guard)', () => {
   test('Hydration: records written by our own app are dropped, others pass', () => {
     setOwnPackageName(OWN);
     const records = [
-      { startTime: '2024-01-15T08:00:00Z', volume: { inLiters: 0.5 }, metadata: { dataOrigin: OWN } },
-      { startTime: '2024-01-15T09:00:00Z', volume: { inLiters: 0.3 }, metadata: { dataOrigin: 'com.other.app' } },
+      {
+        startTime: '2024-01-15T08:00:00Z',
+        volume: { inLiters: 0.5 },
+        metadata: { dataOrigin: OWN },
+      },
+      {
+        startTime: '2024-01-15T09:00:00Z',
+        volume: { inLiters: 0.3 },
+        metadata: { dataOrigin: 'com.other.app' },
+      },
     ];
-    const result = transformHealthRecords(records, { recordType: 'Hydration', unit: 'ml', type: 'water' }) as TransformedRecord[];
+    const result = transformHealthRecords(records, {
+      recordType: 'Hydration',
+      unit: 'ml',
+      type: 'water',
+    }) as TransformedRecord[];
     expect(result).toHaveLength(1);
     expect(result[0].value).toBe(300);
   });
 
   test('with no own package set, nothing is excluded', () => {
     const records = [
-      { startTime: '2024-01-15T08:00:00Z', name: 'X', mealType: 1, metadata: { id: 'a', dataOrigin: OWN } },
+      {
+        startTime: '2024-01-15T08:00:00Z',
+        name: 'X',
+        mealType: 1,
+        metadata: { id: 'a', dataOrigin: OWN },
+      },
     ];
-    const result = transformHealthRecords(records, { recordType: 'Nutrition', unit: 'kcal', type: 'nutrition' }) as TransformedNutritionEntry[];
+    const result = transformHealthRecords(records, {
+      recordType: 'Nutrition',
+      unit: 'kcal',
+      type: 'nutrition',
+    }) as TransformedNutritionEntry[];
     expect(result).toHaveLength(1);
   });
 });

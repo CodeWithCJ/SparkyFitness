@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   BackHandler,
@@ -112,10 +118,11 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
       modalRef.current?.dismiss();
     }, [clearScheduledPresent]);
 
-    useImperativeHandle(ref, () => ({ present: presentSheet, dismiss: dismissSheet }), [
-      presentSheet,
-      dismissSheet,
-    ]);
+    useImperativeHandle(
+      ref,
+      () => ({ present: presentSheet, dismiss: dismissSheet }),
+      [presentSheet, dismissSheet]
+    );
 
     useEffect(() => {
       const modal = modalRef.current;
@@ -129,10 +136,13 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
       if (!isOpen || Platform.OS !== 'android') return;
       // Registered while open (after any screen handlers), so the sheet wins
       // Back and the press can't fall through and pop the screen.
-      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-        dismissSheet();
-        return true;
-      });
+      const subscription = BackHandler.addEventListener(
+        'hardwareBackPress',
+        () => {
+          dismissSheet();
+          return true;
+        }
+      );
       return () => subscription.remove();
     }, [isOpen, dismissSheet]);
 
@@ -154,7 +164,7 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
           setIsOpen(true);
         }
       },
-      [clearScheduledPresent],
+      [clearScheduledPresent]
     );
 
     const handleDismiss = useCallback(() => {
@@ -228,7 +238,10 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
           {sections.map((section, sectionIndex) => (
             <React.Fragment key={section[0].key}>
               {sectionIndex > 0 && (
-                <View testID="action-sheet-group-spacer" className="h-3 bg-background" />
+                <View
+                  testID="action-sheet-group-spacer"
+                  className="h-3 bg-background"
+                />
               )}
               {section.map((item) => (
                 <Pressable
@@ -242,7 +255,9 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
                 >
                   <Text
                     className={`text-base font-medium ${
-                      item.destructive ? 'text-text-danger-subtle' : 'text-text-primary'
+                      item.destructive
+                        ? 'text-text-danger-subtle'
+                        : 'text-text-primary'
                     }`}
                   >
                     {item.label}
@@ -254,7 +269,7 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
         </BottomSheetScrollView>
       </BottomSheetModal>
     );
-  },
+  }
 );
 
 ActionSheet.displayName = 'ActionSheet';

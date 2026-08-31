@@ -22,7 +22,10 @@ describe('useSelectedExercise', () => {
     const exercise = makeExercise();
 
     renderHook(() =>
-      useSelectedExercise({ selectedExercise: exercise, selectionNonce: 1 }, onSelect),
+      useSelectedExercise(
+        { selectedExercise: exercise, selectionNonce: 1 },
+        onSelect
+      )
     );
 
     expect(onSelect).toHaveBeenCalledTimes(1);
@@ -41,7 +44,10 @@ describe('useSelectedExercise', () => {
     const onSelect = jest.fn();
 
     renderHook(() =>
-      useSelectedExercise({ selectedExercise: undefined, selectionNonce: 1 }, onSelect),
+      useSelectedExercise(
+        { selectedExercise: undefined, selectionNonce: 1 },
+        onSelect
+      )
     );
 
     expect(onSelect).not.toHaveBeenCalled();
@@ -52,7 +58,10 @@ describe('useSelectedExercise', () => {
     const exercise = makeExercise();
 
     renderHook(() =>
-      useSelectedExercise({ selectedExercise: exercise, selectionNonce: undefined }, onSelect),
+      useSelectedExercise(
+        { selectedExercise: exercise, selectionNonce: undefined },
+        onSelect
+      )
     );
 
     expect(onSelect).not.toHaveBeenCalled();
@@ -69,7 +78,7 @@ describe('useSelectedExercise', () => {
           params: { selectedExercise: exercise, selectionNonce: 1 },
           onSelectFn: onSelect,
         },
-      },
+      }
     );
 
     expect(onSelect).toHaveBeenCalledTimes(1);
@@ -95,7 +104,7 @@ describe('useSelectedExercise', () => {
           params: { selectedExercise: exercise1, selectionNonce: 1 },
           onSelectFn: onSelect,
         },
-      },
+      }
     );
 
     expect(onSelect).toHaveBeenCalledTimes(1);

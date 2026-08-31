@@ -824,8 +824,7 @@ function extractResponse(
 // `DispatchResult` is unchanged, so nothing extra reaches the API surface.
 type DispatchFailure = Extract<DispatchResult, { ok: false }>;
 type HttpOutcome =
-  | { data: unknown }
-  | { error: DispatchFailure; rawBody?: string };
+  { data: unknown } | { error: DispatchFailure; rawBody?: string };
 
 function timeoutError(): DispatchFailure {
   return {

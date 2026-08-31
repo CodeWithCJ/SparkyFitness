@@ -19,7 +19,11 @@ import {
   fetchMealPlans,
   updateMealPlan,
 } from '../../src/services/api/mealPlansApi';
-import { createQueryWrapper, createTestQueryClient, type QueryClient } from './queryTestUtils';
+import {
+  createQueryWrapper,
+  createTestQueryClient,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/mealPlansApi', () => ({
   createMealPlan: jest.fn(),
@@ -31,7 +35,9 @@ jest.mock('../../src/services/api/mealPlansApi', () => ({
 
 const mockCreate = createMealPlan as jest.MockedFunction<typeof createMealPlan>;
 const mockDelete = deleteMealPlan as jest.MockedFunction<typeof deleteMealPlan>;
-const mockDuplicate = duplicateMealPlan as jest.MockedFunction<typeof duplicateMealPlan>;
+const mockDuplicate = duplicateMealPlan as jest.MockedFunction<
+  typeof duplicateMealPlan
+>;
 const mockFetch = fetchMealPlans as jest.MockedFunction<typeof fetchMealPlans>;
 const mockUpdate = updateMealPlan as jest.MockedFunction<typeof updateMealPlan>;
 
@@ -86,7 +92,11 @@ describe('useMealPlans', () => {
     const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
     mockCreate.mockResolvedValue(plan);
     mockUpdate.mockResolvedValue(plan);
-    mockDuplicate.mockResolvedValue({ ...plan, id: 'plan-2', is_active: false });
+    mockDuplicate.mockResolvedValue({
+      ...plan,
+      id: 'plan-2',
+      is_active: false,
+    });
     mockDelete.mockResolvedValue(undefined);
 
     const createHook = renderHook(() => useCreateMealPlan(), {
@@ -103,10 +113,22 @@ describe('useMealPlans', () => {
     });
 
     await act(async () => {
-      await createHook.result.current.createMealPlanAsync(payload, '2026-08-29');
-      await updateHook.result.current.updateMealPlanAsync(payload, '2026-08-29');
-      await duplicateHook.result.current.duplicateMealPlanAsync('plan-1', '2026-08-29');
-      await deleteHook.result.current.deleteMealPlanAsync('plan-1', '2026-08-29');
+      await createHook.result.current.createMealPlanAsync(
+        payload,
+        '2026-08-29'
+      );
+      await updateHook.result.current.updateMealPlanAsync(
+        payload,
+        '2026-08-29'
+      );
+      await duplicateHook.result.current.duplicateMealPlanAsync(
+        'plan-1',
+        '2026-08-29'
+      );
+      await deleteHook.result.current.deleteMealPlanAsync(
+        'plan-1',
+        '2026-08-29'
+      );
     });
 
     expect(mockCreate).toHaveBeenCalledWith(payload, '2026-08-29');
@@ -115,8 +137,16 @@ describe('useMealPlans', () => {
     expect(mockDelete).toHaveBeenCalledWith('plan-1', '2026-08-29');
     expect(invalidate).toHaveBeenCalledTimes(16);
     expect(invalidate).toHaveBeenCalledWith({ queryKey: mealPlansQueryKey });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: dailySummaryRootQueryKey });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: recentMealsQueryKeyRoot, refetchType: 'all' });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: topMealsQueryKeyRoot, refetchType: 'all' });
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: dailySummaryRootQueryKey,
+    });
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: recentMealsQueryKeyRoot,
+      refetchType: 'all',
+    });
+    expect(invalidate).toHaveBeenCalledWith({
+      queryKey: topMealsQueryKeyRoot,
+      refetchType: 'all',
+    });
   });
 });

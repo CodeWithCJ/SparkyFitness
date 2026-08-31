@@ -44,7 +44,11 @@ export const normalizeDate = (dateString: string): string =>
 export const formatDate = (dateString: string, locale: string): string => {
   const [year, month, day] = dateString.split('-').map(Number);
   const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(locale, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  });
 };
 
 // Format a YYYY-MM-DD date for short display ("Jun 30")
@@ -58,12 +62,13 @@ export const formatShortDate = (dateString: string, locale: string): string => {
 export const formatDateLabel = (
   dateString: string,
   t: TFunction,
-  locale: string,
+  locale: string
 ): string => {
   const normalized = normalizeDate(dateString);
   const today = getTodayDate();
   if (normalized === today) return t('date.today', { defaultValue: 'Today' });
-  if (normalized === addDays(today, -1)) return t('date.yesterday', { defaultValue: 'Yesterday' });
+  if (normalized === addDays(today, -1))
+    return t('date.yesterday', { defaultValue: 'Yesterday' });
   return formatDate(normalized, locale);
 };
 
@@ -72,30 +77,52 @@ export interface RelativeTimeTranslator {
   (key: string, options: Record<string, unknown>): string;
 }
 
-export const formatRelativeTime = (timestamp: Date | null, translate: RelativeTimeTranslator, locale: string): string => {
-  if (!timestamp) return translate('date.neverSynced', { defaultValue: 'Never synced' });
+export const formatRelativeTime = (
+  timestamp: Date | null,
+  translate: RelativeTimeTranslator,
+  locale: string
+): string => {
+  if (!timestamp)
+    return translate('date.neverSynced', { defaultValue: 'Never synced' });
 
   const now = new Date();
   const diffSeconds = Math.floor((now.getTime() - timestamp.getTime()) / 1000);
   const diffMinutes = Math.floor(diffSeconds / 60);
   const diffHours = Math.floor(diffMinutes / 60);
   const diffDays = Math.floor(diffHours / 24);
-  const time = timestamp.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
+  const time = timestamp.toLocaleTimeString(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 
-  if (diffSeconds < 60) return translate('date.justNow', { defaultValue: 'Just now' });
-  if (diffMinutes < 60) return translate('date.minutesAgo', {
-    count: diffMinutes,
-    defaultValue: '{{count}} minute ago',
-    defaultValue_one: '{{count}} minute ago',
-    defaultValue_other: '{{count}} minutes ago',
+  if (diffSeconds < 60)
+    return translate('date.justNow', { defaultValue: 'Just now' });
+  if (diffMinutes < 60)
+    return translate('date.minutesAgo', {
+      count: diffMinutes,
+      defaultValue: '{{count}} minute ago',
+      defaultValue_one: '{{count}} minute ago',
+      defaultValue_other: '{{count}} minutes ago',
+    });
+  if (diffHours < 24)
+    return translate('date.hoursAgo', {
+      count: diffHours,
+      defaultValue: '{{count}} hour ago',
+      defaultValue_one: '{{count}} hour ago',
+      defaultValue_other: '{{count}} hours ago',
+    });
+  if (diffDays === 1)
+    return translate('date.yesterdayAt', {
+      time,
+      defaultValue: 'Yesterday at {{time}}',
+    });
+  const date = timestamp.toLocaleDateString(locale, {
+    month: 'short',
+    day: 'numeric',
   });
-  if (diffHours < 24) return translate('date.hoursAgo', {
-    count: diffHours,
-    defaultValue: '{{count}} hour ago',
-    defaultValue_one: '{{count}} hour ago',
-    defaultValue_other: '{{count}} hours ago',
+  return translate('date.onDateAt', {
+    date,
+    time,
+    defaultValue: '{{date}} at {{time}}',
   });
-  if (diffDays === 1) return translate('date.yesterdayAt', { time, defaultValue: 'Yesterday at {{time}}' });
-  const date = timestamp.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
-  return translate('date.onDateAt', { date, time, defaultValue: '{{date}} at {{time}}' });
 };

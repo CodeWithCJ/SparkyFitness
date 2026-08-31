@@ -9,7 +9,11 @@ import {
 import { addLog } from '../LogService';
 import { fetchDailySummary } from '../api/dailySummaryApi';
 import { resolveCollapsedFoodEntries } from '../../utils/loggedMealCollapse';
-import { loadHealthPreference, saveHealthPreference, HEALTH_PREFERENCE_PREFIX } from './preferences';
+import {
+  loadHealthPreference,
+  saveHealthPreference,
+  HEALTH_PREFERENCE_PREFIX,
+} from './preferences';
 import { isQuotaExceededError } from './index';
 import { loadLastWritebackTime, saveLastWritebackTime } from '../storage';
 import {
@@ -39,14 +43,20 @@ const message = (error: unknown): string =>
 const writtenIdsKey = (recordType: string, date: string): string =>
   `writeback${recordType}Ids:${date}`;
 
-const loadWrittenIds = async (recordType: string, date: string): Promise<string[]> =>
+const loadWrittenIds = async (
+  recordType: string,
+  date: string
+): Promise<string[]> =>
   (await loadHealthPreference<string[]>(writtenIdsKey(recordType, date))) ?? [];
 
 // Persisted AFTER the insert resolves. A crash in that gap orphans the just-written
 // records (the next run can't find them to delete) — a rare, self-correcting-on-edit
 // tradeoff we accept rather than a write-ahead log.
-const saveWrittenIds = (recordType: string, date: string, ids: string[]): Promise<void> =>
-  saveHealthPreference(writtenIdsKey(recordType, date), ids);
+const saveWrittenIds = (
+  recordType: string,
+  date: string,
+  ids: string[]
+): Promise<void> => saveHealthPreference(writtenIdsKey(recordType, date), ids);
 
 // Content signature of the last successful write for a date, so an unchanged day can
 // be skipped entirely (no delete/insert) — Health Connect rate-limits writes, and
@@ -54,10 +64,17 @@ const saveWrittenIds = (recordType: string, date: string, ids: string[]): Promis
 const writtenSignatureKey = (recordType: string, date: string): string =>
   `writeback${recordType}Sig:${date}`;
 
-const loadWrittenSignature = (recordType: string, date: string): Promise<string | null> =>
+const loadWrittenSignature = (
+  recordType: string,
+  date: string
+): Promise<string | null> =>
   loadHealthPreference<string>(writtenSignatureKey(recordType, date));
 
-const saveWrittenSignature = (recordType: string, date: string, signature: string): Promise<void> =>
+const saveWrittenSignature = (
+  recordType: string,
+  date: string,
+  signature: string
+): Promise<void> =>
   saveHealthPreference(writtenSignatureKey(recordType, date), signature);
 
 // Deterministic replace: delete the exact ids we wrote last run, then insert this
@@ -69,7 +86,7 @@ const saveWrittenSignature = (recordType: string, date: string, signature: strin
 const replaceTrackedRecords = async (
   previousIds: string[],
   recordType: 'Nutrition' | 'Hydration',
-  records: HealthConnectRecord[],
+  records: HealthConnectRecord[]
 ): Promise<void> => {
   if (previousIds.length > 0) {
     await deleteRecordsByUuids(recordType, [], previousIds);
@@ -80,7 +97,9 @@ const replaceTrackedRecords = async (
 };
 
 const recordIds = (records: HealthConnectRecord[]): string[] =>
-  records.map((r) => r.metadata?.clientRecordId).filter((id): id is string => id != null);
+  records
+    .map((r) => r.metadata?.clientRecordId)
+    .filter((id): id is string => id != null);
 
 // Order-independent content signature for a run's records, excluding metadata: the
 // clientRecordId carries a per-run version suffix and clientRecordVersion changes
@@ -88,7 +107,8 @@ const recordIds = (records: HealthConnectRecord[]): string[] =>
 // changes, not the version stamp.
 const hashString = (value: string): string => {
   let h = 5381;
-  for (let i = 0; i < value.length; i += 1) h = ((h << 5) + h + value.charCodeAt(i)) | 0;
+  for (let i = 0; i < value.length; i += 1)
+    h = ((h << 5) + h + value.charCodeAt(i)) | 0;
   return (h >>> 0).toString(36);
 };
 
@@ -105,7 +125,9 @@ const recordsSignature = (records: HealthConnectRecord[]): string => {
 
 // Active metrics that also hold a granted write permission. getGrantedPermissions is
 // queried once per run, not per metric/date.
-const writableMetrics = async (metrics: WritebackMetric[]): Promise<WritebackMetric[]> => {
+const writableMetrics = async (
+  metrics: WritebackMetric[]
+): Promise<WritebackMetric[]> => {
   let granted: { recordType?: string; accessType?: string }[];
   try {
     granted = await getGrantedPermissions();
@@ -113,8 +135,14 @@ const writableMetrics = async (metrics: WritebackMetric[]): Promise<WritebackMet
     return [];
   }
   return metrics.filter((m) => {
-    const ok = granted.some((p) => p.recordType === m.recordType && p.accessType === 'write');
-    if (!ok) addLog(`[Writeback] Skipping ${m.defaultLabel}: write permission not granted`, 'WARNING');
+    const ok = granted.some(
+      (p) => p.recordType === m.recordType && p.accessType === 'write'
+    );
+    if (!ok)
+      addLog(
+        `[Writeback] Skipping ${m.defaultLabel}: write permission not granted`,
+        'WARNING'
+      );
     return ok;
   });
 };
@@ -122,7 +150,7 @@ const writableMetrics = async (metrics: WritebackMetric[]): Promise<WritebackMet
 const writeNutritionForDate = async (
   date: string,
   summary: DailySummary,
-  version: number,
+  version: number
 ): Promise<void> => {
   const entries = await resolveCollapsedFoodEntries(date, summary.foodEntries);
 
@@ -140,16 +168,23 @@ const writeNutritionForDate = async (
     return;
   }
 
-  await replaceTrackedRecords(await loadWrittenIds('Nutrition', date), 'Nutrition', records);
+  await replaceTrackedRecords(
+    await loadWrittenIds('Nutrition', date),
+    'Nutrition',
+    records
+  );
   await saveWrittenIds('Nutrition', date, recordIds(records));
   await saveWrittenSignature('Nutrition', date, signature);
-  addLog(`[Writeback] Nutrition ${date}: wrote ${records.length} record(s)`, 'INFO');
+  addLog(
+    `[Writeback] Nutrition ${date}: wrote ${records.length} record(s)`,
+    'INFO'
+  );
 };
 
 const writeHydrationForDate = async (
   date: string,
   summary: DailySummary,
-  version: number,
+  version: number
 ): Promise<void> => {
   const ml = summary.waterIntake ?? 0;
   const record = waterMlToHydrationRecord(date, ml, version);
@@ -160,7 +195,10 @@ const writeHydrationForDate = async (
   // check: storing the empty signature here would make every later pre-noon
   // run report "unchanged" no matter how much the total moves.
   if (ml > 0 && !record) {
-    addLog(`[Writeback] Hydration ${date}: deferred — noon anchor still in the future`, 'DEBUG');
+    addLog(
+      `[Writeback] Hydration ${date}: deferred — noon anchor still in the future`,
+      'DEBUG'
+    );
     return;
   }
 
@@ -170,10 +208,17 @@ const writeHydrationForDate = async (
     return;
   }
 
-  await replaceTrackedRecords(await loadWrittenIds('Hydration', date), 'Hydration', records);
+  await replaceTrackedRecords(
+    await loadWrittenIds('Hydration', date),
+    'Hydration',
+    records
+  );
   await saveWrittenIds('Hydration', date, recordIds(records));
   await saveWrittenSignature('Hydration', date, signature);
-  addLog(`[Writeback] Hydration ${date}: ${ml} ml -> wrote ${records.length} record(s)`, 'INFO');
+  addLog(
+    `[Writeback] Hydration ${date}: ${ml} ml -> wrote ${records.length} record(s)`,
+    'INFO'
+  );
 };
 
 /**
@@ -187,7 +232,7 @@ const writeHydrationForDate = async (
  */
 export const writebackPhase = async (dates: string[]): Promise<boolean> => {
   const enabled = await Promise.all(
-    WRITEBACK_METRICS.map((m) => loadHealthPreference<boolean>(m.preferenceKey)),
+    WRITEBACK_METRICS.map((m) => loadHealthPreference<boolean>(m.preferenceKey))
   );
   const active = WRITEBACK_METRICS.filter((_, i) => enabled[i] === true);
   if (active.length === 0) return true;
@@ -203,7 +248,10 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
     try {
       summary = await fetchDailySummary(date); // once per date, shared by both metrics
     } catch (error) {
-      addLog(`[Writeback] Failed to load summary for ${date}: ${message(error)}`, 'ERROR');
+      addLog(
+        `[Writeback] Failed to load summary for ${date}: ${message(error)}`,
+        'ERROR'
+      );
       continue;
     }
     for (const metric of writable) {
@@ -215,10 +263,16 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
         }
       } catch (error) {
         if (isQuotaExceededError(error)) {
-          addLog('[Writeback] Health Connect quota exceeded — stopping; resumes next sync', 'WARNING');
+          addLog(
+            '[Writeback] Health Connect quota exceeded — stopping; resumes next sync',
+            'WARNING'
+          );
           return false;
         }
-        addLog(`[Writeback] Failed ${metric.defaultLabel} for ${date}: ${message(error)}`, 'ERROR');
+        addLog(
+          `[Writeback] Failed ${metric.defaultLabel} for ${date}: ${message(error)}`,
+          'ERROR'
+        );
       }
     }
   }
@@ -249,7 +303,10 @@ const dayEndInstant = (day: string): string => {
 
 // Our per-date tracking keys (writeback{Type}Ids/Sig:{YYYY-MM-DD}), optionally
 // restricted to a date range by the key's trailing day.
-const trackingKeysToClear = (keys: readonly string[], range: WritebackDateRange | null): string[] =>
+const trackingKeysToClear = (
+  keys: readonly string[],
+  range: WritebackDateRange | null
+): string[] =>
   keys.filter((k) => {
     if (!k.startsWith(`${HEALTH_PREFERENCE_PREFIX}:writeback`)) return false;
     if (!k.includes('Ids:') && !k.includes('Sig:')) return false;
@@ -268,11 +325,17 @@ const trackingKeysToClear = (keys: readonly string[], range: WritebackDateRange 
  * Best-effort per record type; returns ok=false if any delete failed (partial).
  */
 export const removeWrittenData = async (
-  range: WritebackDateRange | null,
+  range: WritebackDateRange | null
 ): Promise<WritebackRemovalResult> => {
-  const recordTypes = Array.from(new Set(WRITEBACK_METRICS.map((m) => m.recordType)));
+  const recordTypes = Array.from(
+    new Set(WRITEBACK_METRICS.map((m) => m.recordType))
+  );
   const filter = range
-    ? { operator: 'between' as const, startTime: dayStartInstant(range.from), endTime: dayEndInstant(range.to) }
+    ? {
+        operator: 'between' as const,
+        startTime: dayStartInstant(range.from),
+        endTime: dayEndInstant(range.to),
+      }
     : { operator: 'before' as const, endTime: new Date().toISOString() };
 
   let ok = true;
@@ -281,7 +344,10 @@ export const removeWrittenData = async (
       await deleteRecordsByTimeRange(recordType, filter);
     } catch (error) {
       ok = false;
-      addLog(`[Writeback] Failed to delete ${recordType} records: ${message(error)}`, 'ERROR');
+      addLog(
+        `[Writeback] Failed to delete ${recordType} records: ${message(error)}`,
+        'ERROR'
+      );
     }
   }
 
@@ -290,12 +356,14 @@ export const removeWrittenData = async (
   if (toClear.length > 0) await AsyncStorage.multiRemove(toClear);
 
   if (!range) {
-    await Promise.all(WRITEBACK_METRICS.map((m) => saveHealthPreference(m.preferenceKey, false)));
+    await Promise.all(
+      WRITEBACK_METRICS.map((m) => saveHealthPreference(m.preferenceKey, false))
+    );
   }
 
   addLog(
     `[Writeback] Removed SparkyFitness data from Health Connect (${range ? `${range.from}..${range.to}` : 'all time'})`,
-    'INFO',
+    'INFO'
   );
   return { ok };
 };

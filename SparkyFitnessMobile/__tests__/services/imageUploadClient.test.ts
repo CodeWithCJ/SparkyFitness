@@ -2,7 +2,10 @@ import {
   postImageMultipart,
   postPayloadWithImages,
 } from '../../src/services/api/imageUploadClient';
-import { getActiveServerConfig, proxyHeadersToRecord } from '../../src/services/storage';
+import {
+  getActiveServerConfig,
+  proxyHeadersToRecord,
+} from '../../src/services/storage';
 import { getAuthHeaders } from '../../src/services/api/authService';
 import { fetchWithTimeout } from '../../src/utils/concurrency';
 
@@ -42,7 +45,9 @@ jest.mock('expo-file-system', () => ({
   },
 }));
 
-const mockFetch = fetchWithTimeout as jest.MockedFunction<typeof fetchWithTimeout>;
+const mockFetch = fetchWithTimeout as jest.MockedFunction<
+  typeof fetchWithTimeout
+>;
 
 function okResponse(body: unknown) {
   return {
@@ -61,7 +66,9 @@ describe('postImageMultipart', () => {
       apiKey: 'k',
     });
     (proxyHeadersToRecord as jest.Mock).mockReturnValue({ 'X-Proxy': 'p' });
-    (getAuthHeaders as jest.Mock).mockReturnValue({ Authorization: 'Bearer k' });
+    (getAuthHeaders as jest.Mock).mockReturnValue({
+      Authorization: 'Bearer k',
+    });
     mockFetch.mockResolvedValue(okResponse({ id: 'entry-1' }));
   });
 
@@ -80,7 +87,7 @@ describe('postImageMultipart', () => {
     const form = (init as RequestInit).body as FormData;
     expect(form.getAll('images')).toHaveLength(2);
     expect(form.getAll('images')[0]).toBe(
-      JSON.stringify(['/uploads/foods/a/1.jpg', '__new__0']),
+      JSON.stringify(['/uploads/foods/a/1.jpg', '__new__0'])
     );
     // The file part must serialize as a Blob. An RN {uri, name, type} object
     // would land here as the string "[object Object]" — the same silent
@@ -98,12 +105,10 @@ describe('postImageMultipart', () => {
       newUris: [],
     });
 
-    const headers = (mockFetch.mock.calls[0][1] as RequestInit).headers as Record<
-      string,
-      string
-    >;
+    const headers = (mockFetch.mock.calls[0][1] as RequestInit)
+      .headers as Record<string, string>;
     expect(Object.keys(headers).map((k) => k.toLowerCase())).not.toContain(
-      'content-type',
+      'content-type'
     );
   });
 
@@ -116,10 +121,8 @@ describe('postImageMultipart', () => {
       newUris: [],
     });
 
-    const headers = (mockFetch.mock.calls[0][1] as RequestInit).headers as Record<
-      string,
-      string
-    >;
+    const headers = (mockFetch.mock.calls[0][1] as RequestInit)
+      .headers as Record<string, string>;
     expect(headers['X-Proxy']).toBe('p');
     expect(headers.Authorization).toBe('Bearer k');
   });
@@ -144,7 +147,7 @@ describe('postImageMultipart', () => {
       JSON.stringify({
         name: 'Nutella',
         images: ['/uploads/foods/a/1.jpg', '__new__0'],
-      }),
+      })
     );
     // Only the file part remains under `images`; no stray text field.
     const imageParts = form.getAll('images');

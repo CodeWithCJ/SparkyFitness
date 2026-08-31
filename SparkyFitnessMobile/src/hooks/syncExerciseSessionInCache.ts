@@ -1,14 +1,17 @@
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
-import type { ExerciseHistoryResponse, ExerciseSessionResponse } from '@workspace/shared';
+import type {
+  ExerciseHistoryResponse,
+  ExerciseSessionResponse,
+} from '@workspace/shared';
 import { exerciseHistoryQueryKey } from './queryKeys';
 
 function replaceSession(
   sessions: ExerciseSessionResponse[],
-  updatedSession: ExerciseSessionResponse,
+  updatedSession: ExerciseSessionResponse
 ): ExerciseSessionResponse[] {
   let didUpdate = false;
 
-  const nextSessions = sessions.map(session => {
+  const nextSessions = sessions.map((session) => {
     if (session.id !== updatedSession.id) {
       return session;
     }
@@ -22,15 +25,15 @@ function replaceSession(
 
 export function syncExerciseSessionInCache(
   queryClient: QueryClient,
-  updatedSession: ExerciseSessionResponse,
+  updatedSession: ExerciseSessionResponse
 ) {
   queryClient.setQueriesData<InfiniteData<ExerciseHistoryResponse>>(
     { queryKey: exerciseHistoryQueryKey },
-    existing => {
+    (existing) => {
       if (!existing) return existing;
 
       let didUpdate = false;
-      const nextPages = existing.pages.map(page => {
+      const nextPages = existing.pages.map((page) => {
         const nextSessions = replaceSession(page.sessions, updatedSession);
         if (nextSessions === page.sessions) {
           return page;
@@ -51,6 +54,6 @@ export function syncExerciseSessionInCache(
         ...existing,
         pages: nextPages,
       };
-    },
+    }
   );
 }

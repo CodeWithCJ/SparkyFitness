@@ -8,7 +8,12 @@ export function useExternalProviders(options?: {
   supportsBarcode?: boolean;
   filterSet?: Set<string>;
 }) {
-  const { enabled = true, category = 'food', supportsBarcode, filterSet } = options ?? {};
+  const {
+    enabled = true,
+    category = 'food',
+    supportsBarcode,
+    filterSet,
+  } = options ?? {};
 
   const query = useQuery({
     queryKey: externalProvidersQueryKey,

@@ -23,11 +23,7 @@ const baseUploadsDir = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
 // Domains that may own a downloaded-image subdirectory under the uploads root.
 // Kept as a closed union so a caller can never steer writes outside the base dir.
 type ImageDomain =
-  | 'exercises'
-  | 'foods'
-  | 'meals'
-  | 'food_entries'
-  | 'food_entry_meals';
+  'exercises' | 'foods' | 'meals' | 'food_entries' | 'food_entry_meals';
 
 function domainUploadsDir(domain: ImageDomain): string {
   return path.join(baseUploadsDir, domain);

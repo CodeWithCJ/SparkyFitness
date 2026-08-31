@@ -1,11 +1,19 @@
-import AnchoredMenu, { type AnchorRect, type AnchoredMenuItem } from './AnchoredMenu';
+import AnchoredMenu, {
+  type AnchorRect,
+  type AnchoredMenuItem,
+} from './AnchoredMenu';
 import { useTranslation } from 'react-i18next';
 import { SET_TYPE_OPTIONS } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
 
 /** Options and labels for the metric-column picker menu the header opens. */
-const METRIC_OPTIONS: ActiveWorkoutMetricColumn[] = ['rpe', 'volume', 'e1rm', 'tenrm'];
+const METRIC_OPTIONS: ActiveWorkoutMetricColumn[] = [
+  'rpe',
+  'volume',
+  'e1rm',
+  'tenrm',
+];
 
 /**
  * The anchored menus shared by every workout card surface (live screen,
@@ -35,10 +43,14 @@ export function MetricColumnMenu({
   includeWeightMetrics?: boolean;
 }) {
   const { t } = useTranslation();
-  const metricColumn = useAppPreferencesStore((s) => s.activeWorkoutMetricColumn);
-  const setMetricColumn = useAppPreferencesStore((s) => s.setActiveWorkoutMetricColumn);
+  const metricColumn = useAppPreferencesStore(
+    (s) => s.activeWorkoutMetricColumn
+  );
+  const setMetricColumn = useAppPreferencesStore(
+    (s) => s.setActiveWorkoutMetricColumn
+  );
   const options = METRIC_OPTIONS.filter(
-    (o) => (includeRpe || o !== 'rpe') && (includeWeightMetrics || o === 'rpe'),
+    (o) => (includeRpe || o !== 'rpe') && (includeWeightMetrics || o === 'rpe')
   );
   const effectiveColumn = !includeWeightMetrics
     ? 'rpe'
@@ -47,10 +59,14 @@ export function MetricColumnMenu({
       : metricColumn;
   const metricLabel = (option: ActiveWorkoutMetricColumn): string => {
     switch (option) {
-      case 'rpe': return t('workout.metricRpe', { defaultValue: 'RPE' });
-      case 'volume': return t('workout.metricVolume', { defaultValue: 'Volume' });
-      case 'e1rm': return t('workout.metricE1rm', { defaultValue: 'Est. 1RM' });
-      case 'tenrm': return t('workout.metricTenrm', { defaultValue: 'Est. 10RM' });
+      case 'rpe':
+        return t('workout.metricRpe', { defaultValue: 'RPE' });
+      case 'volume':
+        return t('workout.metricVolume', { defaultValue: 'Volume' });
+      case 'e1rm':
+        return t('workout.metricE1rm', { defaultValue: 'Est. 1RM' });
+      case 'tenrm':
+        return t('workout.metricTenrm', { defaultValue: 'Est. 10RM' });
     }
   };
   if (options.length === 0) return null;
@@ -107,7 +123,12 @@ export function SetTypeMenu({
     onPress: () => onSelect(type),
   }));
   if (onDelete) {
-    items.push({ key: 'delete', label: t('workout.deleteSet', { defaultValue: 'Delete set' }), icon: 'trash', onPress: onDelete });
+    items.push({
+      key: 'delete',
+      label: t('workout.deleteSet', { defaultValue: 'Delete set' }),
+      icon: 'trash',
+      onPress: onDelete,
+    });
   }
   return (
     <AnchoredMenu

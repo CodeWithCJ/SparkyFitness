@@ -31,7 +31,10 @@ jest.mock('../../src/hooks/useExerciseMutations', () => {
   const updateSession = jest.fn();
   return {
     __mockUpdateSession: updateSession,
-    useDeleteWorkout: jest.fn(() => ({ confirmAndDelete: mockConfirmAndDelete, isPending: mockDeletePending })),
+    useDeleteWorkout: jest.fn(() => ({
+      confirmAndDelete: mockConfirmAndDelete,
+      isPending: mockDeletePending,
+    })),
     useUpdateWorkout: jest.fn(() => ({
       updateSession,
       isPending: false,
@@ -40,8 +43,9 @@ jest.mock('../../src/hooks/useExerciseMutations', () => {
   };
 });
 
-const mockUpdateSession = jest.requireMock('../../src/hooks/useExerciseMutations')
-  .__mockUpdateSession as jest.Mock;
+const mockUpdateSession = jest.requireMock(
+  '../../src/hooks/useExerciseMutations'
+).__mockUpdateSession as jest.Mock;
 
 // Force the screen-owned (custom) header so the Edit/Save header actions are
 // in the tree — on the native path useScreenHeader mirrors them into
@@ -56,7 +60,9 @@ jest.mock('../../src/components/ActiveWorkoutBar', () => ({
 }));
 
 jest.mock('../../src/hooks/useExerciseImageSource', () => ({
-  useExerciseImageSource: jest.fn(() => ({ getImageSource: jest.fn(() => null) })),
+  useExerciseImageSource: jest.fn(() => ({
+    getImageSource: jest.fn(() => null),
+  })),
 }));
 
 // Stub the stats query so no fetch is attempted and the exclusion plumbing
@@ -64,8 +70,9 @@ jest.mock('../../src/hooks/useExerciseImageSource', () => ({
 jest.mock('../../src/hooks/useExerciseStats', () => ({
   useExerciseStats: jest.fn(() => ({ data: null })),
 }));
-const mockUseExerciseStats = jest.requireMock('../../src/hooks/useExerciseStats')
-  .useExerciseStats as jest.Mock;
+const mockUseExerciseStats = jest.requireMock(
+  '../../src/hooks/useExerciseStats'
+).useExerciseStats as jest.Mock;
 
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
@@ -132,12 +139,16 @@ jest.mock('@react-navigation/native', () => ({
   useFocusEffect: jest.fn(),
 }));
 
-const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
+const mockUsePreferences = usePreferences as jest.MockedFunction<
+  typeof usePreferences
+>;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
-function buildSet(overrides: Partial<ExerciseEntrySetResponse> = {}): ExerciseEntrySetResponse {
+function buildSet(
+  overrides: Partial<ExerciseEntrySetResponse> = {}
+): ExerciseEntrySetResponse {
   return {
     id: 101,
     set_number: 1,
@@ -154,7 +165,7 @@ function buildSet(overrides: Partial<ExerciseEntrySetResponse> = {}): ExerciseEn
 }
 
 function buildExercise(
-  overrides: Partial<ExerciseEntryResponse> = {},
+  overrides: Partial<ExerciseEntryResponse> = {}
 ): ExerciseEntryResponse {
   return {
     id: 'entry-1',
@@ -188,7 +199,7 @@ function buildExercise(
 }
 
 function buildSession(
-  overrides: Partial<PresetSessionResponse> = {},
+  overrides: Partial<PresetSessionResponse> = {}
 ): PresetSessionResponse {
   return {
     type: 'preset',
@@ -219,9 +230,12 @@ describe('WorkoutDetailScreen', () => {
     return render(
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider initialMetrics={{ insets, frame }}>
-          <WorkoutDetailScreen navigation={mockNavigation} route={route as any} />
+          <WorkoutDetailScreen
+            navigation={mockNavigation}
+            route={route as any}
+          />
         </SafeAreaProvider>
-      </QueryClientProvider>,
+      </QueryClientProvider>
     );
   };
 
@@ -262,7 +276,11 @@ describe('WorkoutDetailScreen', () => {
       exercises: [
         buildExercise({
           sets: [
-            buildSet({ id: 101, set_number: 1, completed_at: '2026-07-01T10:00:00.000Z' }),
+            buildSet({
+              id: 101,
+              set_number: 1,
+              completed_at: '2026-07-01T10:00:00.000Z',
+            }),
             buildSet({ id: 102, set_number: 2, completed_at: null }),
           ],
         }),
@@ -286,7 +304,9 @@ describe('WorkoutDetailScreen', () => {
     fireEvent.press(screen.getByLabelText('Change metric column'));
     fireEvent.press(screen.getByLabelText('Volume'));
 
-    expect(useAppPreferencesStore.getState().activeWorkoutMetricColumn).toBe('volume');
+    expect(useAppPreferencesStore.getState().activeWorkoutMetricColumn).toBe(
+      'volume'
+    );
   });
 
   it('hides the rest chip on imported (non-Sparky) workouts', () => {
@@ -307,10 +327,13 @@ describe('WorkoutDetailScreen', () => {
 
       fireEvent.press(screen.getByLabelText('Save as preset'));
 
-      expect(mockNavigation.navigate).toHaveBeenCalledWith('WorkoutPresetForm', {
-        mode: 'create-preset',
-        sourceSession: session,
-      });
+      expect(mockNavigation.navigate).toHaveBeenCalledWith(
+        'WorkoutPresetForm',
+        {
+          mode: 'create-preset',
+          sourceSession: session,
+        }
+      );
     });
 
     it('stays available for imported (non-Sparky) workouts', () => {
@@ -319,10 +342,13 @@ describe('WorkoutDetailScreen', () => {
 
       fireEvent.press(screen.getByLabelText('Save as preset'));
 
-      expect(mockNavigation.navigate).toHaveBeenCalledWith('WorkoutPresetForm', {
-        mode: 'create-preset',
-        sourceSession: session,
-      });
+      expect(mockNavigation.navigate).toHaveBeenCalledWith(
+        'WorkoutPresetForm',
+        {
+          mode: 'create-preset',
+          sourceSession: session,
+        }
+      );
     });
   });
 
@@ -338,7 +364,7 @@ describe('WorkoutDetailScreen', () => {
 
       expect(mockSheet.present).toHaveBeenCalled();
       expect(mockSheet.props?.title).toBe('Push Day');
-      expect(mockSheet.props?.items.map(i => i.label)).toEqual([
+      expect(mockSheet.props?.items.map((i) => i.label)).toEqual([
         'Edit',
         'Start workout here',
       ]);
@@ -348,7 +374,7 @@ describe('WorkoutDetailScreen', () => {
       const screen = renderScreen(buildSession());
       expandAndLongPressSet(screen);
 
-      const edit = mockSheet.props?.items.find(i => i.key === 'edit');
+      const edit = mockSheet.props?.items.find((i) => i.key === 'edit');
       expect(edit).toBeDefined();
       act(() => edit!.onPress());
 
@@ -359,7 +385,7 @@ describe('WorkoutDetailScreen', () => {
       const screen = renderScreen(buildSession());
       expandAndLongPressSet(screen);
 
-      const start = mockSheet.props?.items.find(i => i.key === 'start-here');
+      const start = mockSheet.props?.items.find((i) => i.key === 'start-here');
       expect(start).toBeDefined();
       act(() => start!.onPress());
 
@@ -374,7 +400,7 @@ describe('WorkoutDetailScreen', () => {
       const screen = renderScreen(session);
       expandAndLongPressSet(screen);
 
-      expect(mockSheet.props?.items.map(i => i.key)).toEqual(['edit']);
+      expect(mockSheet.props?.items.map((i) => i.key)).toEqual(['edit']);
     });
 
     it('does not open for imported workouts', () => {
@@ -391,7 +417,11 @@ describe('WorkoutDetailScreen', () => {
 
       // View mode: session.id reaches the stats layer so the workout being
       // viewed can't surface as its own Best.
-      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1', undefined);
+      expect(mockUseExerciseStats).toHaveBeenCalledWith(
+        'ex-1',
+        'session-1',
+        undefined
+      );
       expect(mockUseExerciseStats).not.toHaveBeenCalledWith(null, undefined);
       mockUseExerciseStats.mockClear();
 
@@ -399,7 +429,11 @@ describe('WorkoutDetailScreen', () => {
 
       // Edit mode: same exclusion, so the workout being edited can't pollute
       // its own Last/Best/recent-sessions baseline.
-      expect(mockUseExerciseStats).toHaveBeenCalledWith('ex-1', 'session-1', undefined);
+      expect(mockUseExerciseStats).toHaveBeenCalledWith(
+        'ex-1',
+        'session-1',
+        undefined
+      );
     });
 
     it('renders edit cards and saves set_type/rpe edits through the payload', async () => {
@@ -411,7 +445,9 @@ describe('WorkoutDetailScreen', () => {
       // The form list renders the shared card in edit mode with its form
       // affordances.
       expect(screen.getByLabelText('Add set to Bench Press')).toBeTruthy();
-      expect(screen.getByLabelText('More options for Bench Press')).toBeTruthy();
+      expect(
+        screen.getByLabelText('More options for Bench Press')
+      ).toBeTruthy();
 
       // Tap the set number → set-type menu → Warmup.
       fireEvent.press(screen.getByLabelText('Change type for set 1'));
@@ -439,7 +475,7 @@ describe('WorkoutDetailScreen', () => {
               sets: [buildSet({ completed_at: '2026-07-01T10:00:00.000Z' })],
             }),
           ],
-        }),
+        })
       );
 
       fireEvent.press(screen.getByLabelText('Edit workout'));
@@ -461,7 +497,7 @@ describe('WorkoutDetailScreen', () => {
               sets: [buildSet({ completed_at: '2026-07-01T10:00:00.000Z' })],
             }),
           ],
-        }),
+        })
       );
 
       fireEvent.press(screen.getByLabelText('Edit workout'));
@@ -509,7 +545,9 @@ describe('WorkoutDetailScreen', () => {
     const screen = renderScreen(buildSession());
     fireEvent.press(screen.getByLabelText('Edit workout'));
     expect(screen.getByText('Delete Workout')).toBeTruthy();
-    await act(async () => { await i18n.changeLanguage('pl'); });
+    await act(async () => {
+      await i18n.changeLanguage('pl');
+    });
     expect(screen.getByText('Usuń trening')).toBeTruthy();
     expect(screen.queryByText('Delete Workout')).toBeNull();
     screen.unmount();
@@ -519,5 +557,4 @@ describe('WorkoutDetailScreen', () => {
     expect(pending.getByText('Usuwanie…')).toBeTruthy();
     expect(pending.queryByText('Deleting...')).toBeNull();
   });
-
 });

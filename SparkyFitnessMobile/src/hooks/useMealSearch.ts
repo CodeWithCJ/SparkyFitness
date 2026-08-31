@@ -3,7 +3,10 @@ import { searchMeals } from '../services/api/mealsApi';
 import { mealSearchQueryKey } from './queryKeys';
 import { useDebounce } from './useDebounce';
 
-export function useMealSearch(searchText: string, options?: { enabled?: boolean }) {
+export function useMealSearch(
+  searchText: string,
+  options?: { enabled?: boolean }
+) {
   const { enabled = true } = options ?? {};
   const debouncedSearch = useDebounce(searchText.trim(), 300);
   const isSearchActive = debouncedSearch.length >= 2;

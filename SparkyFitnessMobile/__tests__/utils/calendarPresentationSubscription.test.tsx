@@ -22,7 +22,7 @@ function CalendarPresentationProbe() {
   const weekdays = getCalendarWeekdayShortNames(appLocale);
   const orderedWeekdays = Array.from(
     { length: 7 },
-    (_, index) => weekdays[(presentation.firstDayOfWeek + index) % 7],
+    (_, index) => weekdays[(presentation.firstDayOfWeek + index) % 7]
   );
 
   return (
@@ -54,8 +54,12 @@ describe('mounted calendar presentation language subscription', () => {
     const screen = render(<CalendarPresentationProbe />, { wrapper: Wrapper });
 
     expect(screen.getByTestId('locale').props.children).toBe('pl-PL');
-    expect(screen.getByTestId('caption').props.children).toMatch(/^sierpień 2026$/i);
-    expect(screen.getByTestId('weekdays').props.children.split('|')[0]).toMatch(/^pon/i);
+    expect(screen.getByTestId('caption').props.children).toMatch(
+      /^sierpień 2026$/i
+    );
+    expect(screen.getByTestId('weekdays').props.children.split('|')[0]).toMatch(
+      /^pon/i
+    );
     expect(screen.getByTestId('first-day').props.children).toBe('1');
     expect(screen.getByTestId('visible-month').props.children).toBe('7');
 
@@ -65,7 +69,9 @@ describe('mounted calendar presentation language subscription', () => {
     await waitFor(() => {
       expect(screen.getByTestId('locale').props.children).toBe('en-US');
       expect(screen.getByTestId('caption').props.children).toBe('August 2026');
-      expect(screen.getByTestId('weekdays').props.children.split('|')[0]).toBe('Mon');
+      expect(screen.getByTestId('weekdays').props.children.split('|')[0]).toBe(
+        'Mon'
+      );
     });
     // Locale changes labels only: account week-start and user-viewed month stay.
     expect(screen.getByTestId('first-day').props.children).toBe('1');
@@ -76,8 +82,12 @@ describe('mounted calendar presentation language subscription', () => {
     });
     await waitFor(() => {
       expect(screen.getByTestId('locale').props.children).toBe('pl-PL');
-      expect(screen.getByTestId('caption').props.children).toMatch(/^sierpień 2026$/i);
-      expect(screen.getByTestId('weekdays').props.children.split('|')[0]).toMatch(/^pon/i);
+      expect(screen.getByTestId('caption').props.children).toMatch(
+        /^sierpień 2026$/i
+      );
+      expect(
+        screen.getByTestId('weekdays').props.children.split('|')[0]
+      ).toMatch(/^pon/i);
     });
     expect(screen.getByTestId('first-day').props.children).toBe('1');
     expect(screen.getByTestId('visible-month').props.children).toBe('7');

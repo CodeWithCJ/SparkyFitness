@@ -2,9 +2,10 @@ import { HEALTH_METRICS, metricReadKind } from '../../src/HealthMetrics';
 
 describe('metricReadKind', () => {
   test('exactly the six day-aggregated metrics declare readKind cumulative-day', () => {
-    const cumulative = HEALTH_METRICS
-      .filter(metric => metricReadKind(metric) === 'cumulative-day')
-      .map(metric => metric.recordType)
+    const cumulative = HEALTH_METRICS.filter(
+      (metric) => metricReadKind(metric) === 'cumulative-day'
+    )
+      .map((metric) => metric.recordType)
       .sort();
 
     expect(cumulative).toEqual([
@@ -18,8 +19,12 @@ describe('metricReadKind', () => {
   });
 
   test('derives min-max-avg-day from the aggregation strategy', () => {
-    expect(metricReadKind({ aggregationStrategy: 'min-max-avg' })).toBe('min-max-avg-day');
-    const heartRate = HEALTH_METRICS.find(metric => metric.recordType === 'HeartRate');
+    expect(metricReadKind({ aggregationStrategy: 'min-max-avg' })).toBe(
+      'min-max-avg-day'
+    );
+    const heartRate = HEALTH_METRICS.find(
+      (metric) => metric.recordType === 'HeartRate'
+    );
     expect(metricReadKind(heartRate!)).toBe('min-max-avg-day');
   });
 
@@ -30,7 +35,9 @@ describe('metricReadKind', () => {
   });
 
   test('an explicit readKind wins over the derived default', () => {
-    expect(metricReadKind({ readKind: 'raw', aggregationStrategy: 'min-max-avg' })).toBe('raw');
+    expect(
+      metricReadKind({ readKind: 'raw', aggregationStrategy: 'min-max-avg' })
+    ).toBe('raw');
   });
 
   test('no metric carries the retired iosAggregatedSync flag', () => {
@@ -43,7 +50,7 @@ describe('metricReadKind', () => {
 describe('HEALTH_METRICS', () => {
   test('Active Calories requests permissions needed for its total-minus-basal fallback', () => {
     const activeCaloriesMetric = HEALTH_METRICS.find(
-      metric => metric.recordType === 'ActiveCaloriesBurned'
+      (metric) => metric.recordType === 'ActiveCaloriesBurned'
     );
 
     expect(activeCaloriesMetric?.permissions).toEqual(
@@ -57,7 +64,7 @@ describe('HEALTH_METRICS', () => {
 
   test('Exercise Session requests dependent permissions needed for workout enrichment', () => {
     const exerciseSessionMetric = HEALTH_METRICS.find(
-      metric => metric.recordType === 'ExerciseSession'
+      (metric) => metric.recordType === 'ExerciseSession'
     );
 
     expect(exerciseSessionMetric).toBeDefined();

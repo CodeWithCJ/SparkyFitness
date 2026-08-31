@@ -82,11 +82,7 @@ const formatTonnage = (
 };
 
 export type TableFilterValue =
-  | 'all'
-  | 'food'
-  | 'exercise'
-  | 'measurements'
-  | `category:${string}`;
+  'all' | 'food' | 'exercise' | 'measurements' | `category:${string}`;
 
 interface ReportsTablesProps {
   tabularData: DailyFoodEntry[];

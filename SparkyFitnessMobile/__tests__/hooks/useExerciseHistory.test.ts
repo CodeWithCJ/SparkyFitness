@@ -6,7 +6,11 @@ import {
   exerciseHistoryResetQueryKey,
 } from '../../src/hooks/queryKeys';
 import { fetchExerciseHistory } from '../../src/services/api/exerciseApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 import type { InfiniteData } from '@tanstack/react-query';
 import type { ExerciseHistoryResponse } from '@workspace/shared';
 
@@ -26,10 +30,15 @@ const makePage = (
   sessions: ExerciseHistoryResponse['sessions'],
   page: number,
   hasMore: boolean,
-  totalCount?: number,
+  totalCount?: number
 ): ExerciseHistoryResponse => ({
   sessions,
-  pagination: { page, pageSize: 20, totalCount: totalCount ?? sessions.length, hasMore },
+  pagination: {
+    page,
+    pageSize: 20,
+    totalCount: totalCount ?? sessions.length,
+    hasMore,
+  },
 });
 
 const makeIndividualSession = (id: string, name: string) => ({
@@ -84,7 +93,7 @@ describe('useExerciseHistory', () => {
     });
 
     expect(
-      queryClient.getQueryData(exerciseHistoryForExerciseQueryKey('ex-123')),
+      queryClient.getQueryData(exerciseHistoryForExerciseQueryKey('ex-123'))
     ).toBeDefined();
     // The unfiltered key stays untouched, so full-history screens keep their own cache.
     expect(queryClient.getQueryData(exerciseHistoryQueryKey)).toBeUndefined();
@@ -92,11 +101,13 @@ describe('useExerciseHistory', () => {
 
   test('external history reset also resets a filtered instance', async () => {
     const page1Session = makeIndividualSession('1', 'Bench Press');
-    mockFetchExerciseHistory.mockResolvedValue(makePage([page1Session], 1, false));
+    mockFetchExerciseHistory.mockResolvedValue(
+      makePage([page1Session], 1, false)
+    );
 
     const { result } = renderHook(
       () => useExerciseHistory({ exerciseId: 'ex-123' }),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
@@ -104,7 +115,9 @@ describe('useExerciseHistory', () => {
     });
 
     const freshSession = makeIndividualSession('3', 'Overhead Press');
-    mockFetchExerciseHistory.mockResolvedValue(makePage([freshSession], 1, false));
+    mockFetchExerciseHistory.mockResolvedValue(
+      makePage([freshSession], 1, false)
+    );
 
     await act(async () => {
       queryClient.removeQueries({ queryKey: exerciseHistoryQueryKey });
@@ -120,9 +133,12 @@ describe('useExerciseHistory', () => {
   });
 
   test('does not fetch when enabled is false', async () => {
-    const { result } = renderHook(() => useExerciseHistory({ enabled: false }), {
-      wrapper: createQueryWrapper(queryClient),
-    });
+    const { result } = renderHook(
+      () => useExerciseHistory({ enabled: false }),
+      {
+        wrapper: createQueryWrapper(queryClient),
+      }
+    );
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -149,7 +165,9 @@ describe('useExerciseHistory', () => {
   test('returns sessions from page 1', async () => {
     const session1 = makeIndividualSession('1', 'Bench Press');
     const session2 = makeIndividualSession('2', 'Squat');
-    mockFetchExerciseHistory.mockResolvedValue(makePage([session1, session2], 1, true, 40));
+    mockFetchExerciseHistory.mockResolvedValue(
+      makePage([session1, session2], 1, true, 40)
+    );
 
     const { result } = renderHook(() => useExerciseHistory(), {
       wrapper: createQueryWrapper(queryClient),
@@ -168,7 +186,9 @@ describe('useExerciseHistory', () => {
     const page1Session = makeIndividualSession('1', 'Bench Press');
     const page2Session = makeIndividualSession('2', 'Deadlift');
 
-    mockFetchExerciseHistory.mockResolvedValueOnce(makePage([page1Session], 1, true, 2));
+    mockFetchExerciseHistory.mockResolvedValueOnce(
+      makePage([page1Session], 1, true, 2)
+    );
 
     const { result } = renderHook(() => useExerciseHistory(), {
       wrapper: createQueryWrapper(queryClient),
@@ -178,7 +198,9 @@ describe('useExerciseHistory', () => {
       expect(result.current.sessions).toHaveLength(1);
     });
 
-    mockFetchExerciseHistory.mockResolvedValueOnce(makePage([page2Session], 2, false, 2));
+    mockFetchExerciseHistory.mockResolvedValueOnce(
+      makePage([page2Session], 2, false, 2)
+    );
 
     act(() => {
       result.current.loadMore();
@@ -195,7 +217,9 @@ describe('useExerciseHistory', () => {
 
   test('refetch resets to page 1', async () => {
     const page1Session = makeIndividualSession('1', 'Bench Press');
-    mockFetchExerciseHistory.mockResolvedValue(makePage([page1Session], 1, false));
+    mockFetchExerciseHistory.mockResolvedValue(
+      makePage([page1Session], 1, false)
+    );
 
     const { result } = renderHook(() => useExerciseHistory(), {
       wrapper: createQueryWrapper(queryClient),
@@ -206,7 +230,9 @@ describe('useExerciseHistory', () => {
     });
 
     const freshSession = makeIndividualSession('3', 'Overhead Press');
-    mockFetchExerciseHistory.mockResolvedValue(makePage([freshSession], 1, false));
+    mockFetchExerciseHistory.mockResolvedValue(
+      makePage([freshSession], 1, false)
+    );
 
     await act(async () => {
       await result.current.refetch();
@@ -274,7 +300,9 @@ describe('useExerciseHistory', () => {
     const page1Session = makeIndividualSession('1', 'Bench Press');
     const page2Session = makeIndividualSession('2', 'Deadlift');
 
-    mockFetchExerciseHistory.mockResolvedValueOnce(makePage([page1Session], 1, true, 2));
+    mockFetchExerciseHistory.mockResolvedValueOnce(
+      makePage([page1Session], 1, true, 2)
+    );
 
     const { result } = renderHook(() => useExerciseHistory(), {
       wrapper: createQueryWrapper(queryClient),
@@ -284,7 +312,9 @@ describe('useExerciseHistory', () => {
       expect(result.current.sessions).toHaveLength(1);
     });
 
-    mockFetchExerciseHistory.mockResolvedValueOnce(makePage([page2Session], 2, false, 2));
+    mockFetchExerciseHistory.mockResolvedValueOnce(
+      makePage([page2Session], 2, false, 2)
+    );
 
     act(() => {
       result.current.loadMore();
@@ -296,7 +326,9 @@ describe('useExerciseHistory', () => {
 
     // Now refetch — should reset to only fresh page 1 data
     const freshSession = makeIndividualSession('3', 'Overhead Press');
-    mockFetchExerciseHistory.mockResolvedValue(makePage([freshSession], 1, false));
+    mockFetchExerciseHistory.mockResolvedValue(
+      makePage([freshSession], 1, false)
+    );
 
     await act(async () => {
       await result.current.refetch();
@@ -314,7 +346,9 @@ describe('useExerciseHistory', () => {
     const page1Session = makeIndividualSession('1', 'Bench Press');
     const page2Session = makeIndividualSession('2', 'Deadlift');
 
-    mockFetchExerciseHistory.mockResolvedValueOnce(makePage([page1Session], 1, true, 2));
+    mockFetchExerciseHistory.mockResolvedValueOnce(
+      makePage([page1Session], 1, true, 2)
+    );
 
     const { result } = renderHook(() => useExerciseHistory(), {
       wrapper: createQueryWrapper(queryClient),
@@ -324,7 +358,9 @@ describe('useExerciseHistory', () => {
       expect(result.current.sessions).toHaveLength(1);
     });
 
-    mockFetchExerciseHistory.mockResolvedValueOnce(makePage([page2Session], 2, false, 2));
+    mockFetchExerciseHistory.mockResolvedValueOnce(
+      makePage([page2Session], 2, false, 2)
+    );
 
     act(() => {
       result.current.loadMore();
@@ -335,7 +371,9 @@ describe('useExerciseHistory', () => {
     });
 
     const freshSession = makeIndividualSession('3', 'Overhead Press');
-    mockFetchExerciseHistory.mockResolvedValue(makePage([freshSession], 1, false));
+    mockFetchExerciseHistory.mockResolvedValue(
+      makePage([freshSession], 1, false)
+    );
 
     await act(async () => {
       queryClient.removeQueries({ queryKey: exerciseHistoryQueryKey });
@@ -354,7 +392,9 @@ describe('useExerciseHistory', () => {
     const page1Session = makeIndividualSession('1', 'Bench Press');
     const page2Session = makeIndividualSession('2', 'Deadlift');
 
-    mockFetchExerciseHistory.mockResolvedValueOnce(makePage([page1Session], 1, true, 2));
+    mockFetchExerciseHistory.mockResolvedValueOnce(
+      makePage([page1Session], 1, true, 2)
+    );
 
     const { result } = renderHook(() => useExerciseHistory(), {
       wrapper: createQueryWrapper(queryClient),
@@ -364,7 +404,9 @@ describe('useExerciseHistory', () => {
       expect(result.current.sessions).toHaveLength(1);
     });
 
-    mockFetchExerciseHistory.mockResolvedValueOnce(makePage([page2Session], 2, false, 2));
+    mockFetchExerciseHistory.mockResolvedValueOnce(
+      makePage([page2Session], 2, false, 2)
+    );
 
     act(() => {
       result.current.loadMore();
@@ -377,20 +419,20 @@ describe('useExerciseHistory', () => {
     act(() => {
       queryClient.setQueryData<InfiniteData<ExerciseHistoryResponse>>(
         exerciseHistoryQueryKey,
-        existing => {
+        (existing) => {
           expect(existing).toBeDefined();
           return {
             ...existing!,
-            pages: existing!.pages.map(page =>
+            pages: existing!.pages.map((page) =>
               page.pagination.page === 2
                 ? {
                     ...page,
                     sessions: [{ ...page2Session, name: 'Updated Deadlift' }],
                   }
-                : page,
+                : page
             ),
           };
-        },
+        }
       );
     });
 
@@ -404,7 +446,9 @@ describe('useExerciseHistory', () => {
     const page1Session = makeIndividualSession('1', 'Bench Press');
     const page2Session = makeIndividualSession('2', 'Deadlift');
 
-    mockFetchExerciseHistory.mockResolvedValueOnce(makePage([page1Session], 1, true, 2));
+    mockFetchExerciseHistory.mockResolvedValueOnce(
+      makePage([page1Session], 1, true, 2)
+    );
 
     const { result } = renderHook(() => useExerciseHistory(), {
       wrapper: createQueryWrapper(queryClient),
@@ -414,7 +458,9 @@ describe('useExerciseHistory', () => {
       expect(result.current.sessions).toHaveLength(1);
     });
 
-    mockFetchExerciseHistory.mockResolvedValueOnce(makePage([page2Session], 2, false, 2));
+    mockFetchExerciseHistory.mockResolvedValueOnce(
+      makePage([page2Session], 2, false, 2)
+    );
 
     act(() => {
       result.current.loadMore();
@@ -427,20 +473,22 @@ describe('useExerciseHistory', () => {
     act(() => {
       queryClient.setQueryData<InfiniteData<ExerciseHistoryResponse>>(
         exerciseHistoryQueryKey,
-        existing => {
+        (existing) => {
           expect(existing).toBeDefined();
           return {
             ...existing!,
-            pages: existing!.pages.map(page =>
+            pages: existing!.pages.map((page) =>
               page.pagination.page === 1
                 ? {
                     ...page,
-                    sessions: [{ ...page1Session, name: 'Updated Bench Press' }],
+                    sessions: [
+                      { ...page1Session, name: 'Updated Bench Press' },
+                    ],
                   }
-                : page,
+                : page
             ),
           };
-        },
+        }
       );
     });
 

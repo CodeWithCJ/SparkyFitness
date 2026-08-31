@@ -40,10 +40,10 @@ export type AnchoredMenuItem = {
 export function measureAnchoredMenuTrigger(
   node: {
     measureInWindow: (
-      callback: (x: number, y: number, width: number, height: number) => void,
+      callback: (x: number, y: number, width: number, height: number) => void
     ) => void;
   } | null,
-  onAnchor: (anchor: AnchorRect) => void,
+  onAnchor: (anchor: AnchorRect) => void
 ): void {
   let fired = false;
   node?.measureInWindow((x, y, width, height) => {
@@ -88,12 +88,16 @@ const AnchoredMenu: React.FC<Props> = ({
   // under the trigger instead of riding up and clipping it. iOS reports no
   // StatusBar.currentHeight, so it stays 0 there (already correct).
   const statusBarOffset =
-    Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
+    Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
   const top = anchor.y + anchor.height + 6 + statusBarOffset;
   const isLeftHalf = anchor.x + anchor.width / 2 < screenWidth / 2;
   const menuStyle = isLeftHalf
     ? { top, left: Math.max(8, anchor.x), minWidth }
-    : { top, right: Math.max(8, screenWidth - (anchor.x + anchor.width)), minWidth };
+    : {
+        top,
+        right: Math.max(8, screenWidth - (anchor.x + anchor.width)),
+        minWidth,
+      };
 
   return (
     <Modal
@@ -106,7 +110,13 @@ const AnchoredMenu: React.FC<Props> = ({
       animationType="none"
       onRequestClose={onClose}
     >
-      <Pressable className="flex-1" onPress={onClose} accessibilityLabel={t('common.dismissMenu', { defaultValue: 'Dismiss menu' })}>
+      <Pressable
+        className="flex-1"
+        onPress={onClose}
+        accessibilityLabel={t('common.dismissMenu', {
+          defaultValue: 'Dismiss menu',
+        })}
+      >
         {/* Entrance-only animation: dismissal must stay instant (see the
             animationType note above), so only the content animates in. */}
         <Animated.View
@@ -121,51 +131,56 @@ const AnchoredMenu: React.FC<Props> = ({
             className="bg-surface rounded-xl border border-border-subtle shadow-lg py-1"
             style={{ transformOrigin: isLeftHalf ? 'top left' : 'top right' }}
           >
-          {items.map((item, index) =>
-            item.isGroupLabel ? (
-              <View
-                key={item.key}
-                className={`px-4 pt-2.5 pb-1 ${
-                  index > 0 ? 'border-t border-border-subtle' : ''
-                }`}
-              >
-                <Text
-                  className="text-xs font-bold uppercase tracking-wider"
-                  style={{ color: textMuted }}
+            {items.map((item, index) =>
+              item.isGroupLabel ? (
+                <View
+                  key={item.key}
+                  className={`px-4 pt-2.5 pb-1 ${
+                    index > 0 ? 'border-t border-border-subtle' : ''
+                  }`}
                 >
-                  {item.label}
-                </Text>
-              </View>
-            ) : (
-              <Pressable
-                key={item.key}
-                onPress={() => {
-                  onClose();
-                  item.onPress?.();
-                }}
-                className={`flex-row items-center gap-3 px-4 py-3 ${
-                  index > 0 && !items[index - 1]?.isGroupLabel
-                    ? 'border-t border-border-subtle'
-                    : ''
-                }`}
-                accessibilityRole="button"
-                accessibilityLabel={item.label}
-                accessibilityState={
-                  item.selected !== undefined ? { selected: item.selected } : undefined
-                }
-              >
-                {item.icon ? (
-                  <Icon name={item.icon} size={20} color={accentColor} />
-                ) : null}
-                <Text className="text-base font-medium flex-1" style={{ color: textPrimary }}>
-                  {item.label}
-                </Text>
-                {item.selected ? (
-                  <Icon name="checkmark" size={18} color={accentColor} />
-                ) : null}
-              </Pressable>
-            ),
-          )}
+                  <Text
+                    className="text-xs font-bold uppercase tracking-wider"
+                    style={{ color: textMuted }}
+                  >
+                    {item.label}
+                  </Text>
+                </View>
+              ) : (
+                <Pressable
+                  key={item.key}
+                  onPress={() => {
+                    onClose();
+                    item.onPress?.();
+                  }}
+                  className={`flex-row items-center gap-3 px-4 py-3 ${
+                    index > 0 && !items[index - 1]?.isGroupLabel
+                      ? 'border-t border-border-subtle'
+                      : ''
+                  }`}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.label}
+                  accessibilityState={
+                    item.selected !== undefined
+                      ? { selected: item.selected }
+                      : undefined
+                  }
+                >
+                  {item.icon ? (
+                    <Icon name={item.icon} size={20} color={accentColor} />
+                  ) : null}
+                  <Text
+                    className="text-base font-medium flex-1"
+                    style={{ color: textPrimary }}
+                  >
+                    {item.label}
+                  </Text>
+                  {item.selected ? (
+                    <Icon name="checkmark" size={18} color={accentColor} />
+                  ) : null}
+                </Pressable>
+              )
+            )}
           </Animated.View>
         </Animated.View>
       </Pressable>

@@ -64,7 +64,9 @@ describe('preferences', () => {
     });
 
     test('logs error and returns undefined on save error', async () => {
-      jest.spyOn(AsyncStorage, 'setItem').mockRejectedValueOnce(new Error('Storage full'));
+      jest
+        .spyOn(AsyncStorage, 'setItem')
+        .mockRejectedValueOnce(new Error('Storage full'));
 
       const result = await saveHealthPreference('testKey', 'value');
 
@@ -76,7 +78,9 @@ describe('preferences', () => {
     });
 
     test('logs error and returns null on load error', async () => {
-      jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce(new Error('Storage error'));
+      jest
+        .spyOn(AsyncStorage, 'getItem')
+        .mockRejectedValueOnce(new Error('Storage error'));
 
       const result = await loadHealthPreference('testKey');
 
@@ -104,9 +108,14 @@ describe('preferences', () => {
     });
 
     test('logs error and returns undefined on save error', async () => {
-      jest.spyOn(AsyncStorage, 'setItem').mockRejectedValueOnce(new Error('Storage full'));
+      jest
+        .spyOn(AsyncStorage, 'setItem')
+        .mockRejectedValueOnce(new Error('Storage full'));
 
-      const result = await saveStringPreference('serverUrl', 'https://example.com');
+      const result = await saveStringPreference(
+        'serverUrl',
+        'https://example.com'
+      );
 
       expect(result).toBeUndefined();
       expect(mockAddLog).toHaveBeenCalledWith(
@@ -116,7 +125,9 @@ describe('preferences', () => {
     });
 
     test('logs error and returns null on load error', async () => {
-      jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce(new Error('Storage error'));
+      jest
+        .spyOn(AsyncStorage, 'getItem')
+        .mockRejectedValueOnce(new Error('Storage error'));
 
       const result = await loadStringPreference('serverUrl');
 
@@ -144,7 +155,9 @@ describe('preferences', () => {
     });
 
     test("logs error and returns '24h' on load error", async () => {
-      jest.spyOn(AsyncStorage, 'getItem').mockRejectedValueOnce(new Error('Storage error'));
+      jest
+        .spyOn(AsyncStorage, 'getItem')
+        .mockRejectedValueOnce(new Error('Storage error'));
 
       const result = await loadSyncDuration();
 
@@ -156,7 +169,9 @@ describe('preferences', () => {
     });
 
     test('logs error and returns undefined on save error', async () => {
-      jest.spyOn(AsyncStorage, 'setItem').mockRejectedValueOnce(new Error('Storage full'));
+      jest
+        .spyOn(AsyncStorage, 'setItem')
+        .mockRejectedValueOnce(new Error('Storage full'));
 
       const result = await saveSyncDuration('30d');
 
@@ -168,7 +183,14 @@ describe('preferences', () => {
     });
 
     test('stores and retrieves various duration values correctly', async () => {
-      const durations: SyncDuration[] = ['today', '24h', '3d', '7d', '30d', '90d'];
+      const durations: SyncDuration[] = [
+        'today',
+        '24h',
+        '3d',
+        '7d',
+        '30d',
+        '90d',
+      ];
 
       for (const duration of durations) {
         await saveSyncDuration(duration);

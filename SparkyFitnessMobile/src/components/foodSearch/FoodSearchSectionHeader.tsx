@@ -1,6 +1,12 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, Text, Pressable, ActivityIndicator, Keyboard } from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  ActivityIndicator,
+  Keyboard,
+} from 'react-native';
 import Icon from '../Icon';
 import BottomSheetPicker from '../BottomSheetPicker';
 import type { PickerOption } from '../BottomSheetPicker';
@@ -55,8 +61,14 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
   if (section.kind === 'online' || section.kind === 'online-top') {
     const canSwitch = providerOptions.length > 1;
     const label =
-      section.kind === 'online-top' ? t('foodSearch.sections.topMatches', { defaultValue: 'Top Matches' }) : t('foodSearch.sections.onlineResults', { defaultValue: 'Online Results' });
-    const value = isAllProviders ? t('foodSearch.menu.allProviders', { defaultValue: 'All Providers' }) : selectedProviderName;
+      section.kind === 'online-top'
+        ? t('foodSearch.sections.topMatches', { defaultValue: 'Top Matches' })
+        : t('foodSearch.sections.onlineResults', {
+            defaultValue: 'Online Results',
+          });
+    const value = isAllProviders
+      ? t('foodSearch.menu.allProviders', { defaultValue: 'All Providers' })
+      : selectedProviderName;
     const loading = isAllProviders ? anyProviderLoading : isOnlineSearching;
     const header = (
       <View className="px-4 py-1 bg-background flex-row items-center justify-between">
@@ -84,7 +96,9 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
         value={selectedProvider ?? ''}
         options={providerOptions}
         onSelect={onSelectProvider}
-        title={t('foodSearch.pickers.onlineProvider', { defaultValue: 'Online provider' })}
+        title={t('foodSearch.pickers.onlineProvider', {
+          defaultValue: 'Online provider',
+        })}
         renderTrigger={({ onPress }) => (
           <Pressable
             onPress={() => {
@@ -94,7 +108,10 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
               onPress();
             }}
             accessibilityRole="button"
-            accessibilityLabel={t('foodSearch.accessibility.providerChange', { defaultValue: 'Provider {{provider}}, tap to change', provider: value })}
+            accessibilityLabel={t('foodSearch.accessibility.providerChange', {
+              defaultValue: 'Provider {{provider}}, tap to change',
+              provider: value,
+            })}
           >
             {header}
           </Pressable>
@@ -127,11 +144,25 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
         accessibilityRole="button"
         accessibilityLabel={
           errored
-            ? t('foodSearch.accessibility.providerError', { defaultValue: '{{provider}}, could not load, tap to retry', provider: provider.provider_name })
+            ? t('foodSearch.accessibility.providerError', {
+                defaultValue: '{{provider}}, could not load, tap to retry',
+                provider: provider.provider_name,
+              })
             : empty
-              ? t('foodSearch.accessibility.providerNoResults', { defaultValue: '{{provider}}, no results', provider: provider.provider_name })
+              ? t('foodSearch.accessibility.providerNoResults', {
+                  defaultValue: '{{provider}}, no results',
+                  provider: provider.provider_name,
+                })
               : expandable
-                ? t('foodSearch.accessibility.providerExpand', { defaultValue: '{{provider}}, {{count}} results, tap to {{action}}', provider: provider.provider_name, count, action: expanded ? t('common.collapse', { defaultValue: 'collapse' }) : t('common.expand', { defaultValue: 'expand' }) })
+                ? t('foodSearch.accessibility.providerExpand', {
+                    defaultValue:
+                      '{{provider}}, {{count}} results, tap to {{action}}',
+                    provider: provider.provider_name,
+                    count,
+                    action: expanded
+                      ? t('common.collapse', { defaultValue: 'collapse' })
+                      : t('common.expand', { defaultValue: 'expand' }),
+                  })
                 : provider.provider_name
         }
       >
@@ -153,11 +184,17 @@ const FoodSearchSectionHeader: React.FC<FoodSearchSectionHeaderProps> = ({
           <ActivityIndicator size="small" color={textMuted} />
         ) : errored ? (
           <View className="flex-row items-center gap-1">
-            <Text className="text-text-muted text-xs">{t('foodSearch.states.couldNotLoad', { defaultValue: "Couldn't load" })}</Text>
+            <Text className="text-text-muted text-xs">
+              {t('foodSearch.states.couldNotLoad', {
+                defaultValue: "Couldn't load",
+              })}
+            </Text>
             <Icon name="sync" size={14} color={textMuted} />
           </View>
         ) : empty ? (
-          <Text className="text-text-muted text-xs">{t('foodSearch.states.noResults', { defaultValue: 'No results' })}</Text>
+          <Text className="text-text-muted text-xs">
+            {t('foodSearch.states.noResults', { defaultValue: 'No results' })}
+          </Text>
         ) : (
           <Icon
             name={expanded ? 'chevron-down' : 'chevron-forward'}

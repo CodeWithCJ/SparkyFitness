@@ -4,11 +4,15 @@ import {
   changeWaterIntake,
   upsertCheckIn,
 } from '../../src/services/api/measurementsApi';
-import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
+import {
+  getActiveServerConfig,
+  ServerConfig,
+} from '../../src/services/storage';
 
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
-  proxyHeadersToRecord: jest.requireActual('../../src/services/storage').proxyHeadersToRecord,
+  proxyHeadersToRecord: jest.requireActual('../../src/services/storage')
+    .proxyHeadersToRecord,
 }));
 
 jest.mock('../../src/services/LogService', () => ({
@@ -198,8 +202,22 @@ describe('measurementsApi', () => {
 
     test('returns parsed JSON response on success', async () => {
       const responseData = [
-        { id: 1, name: 'Glass', volume: 250, unit: 'ml', is_primary: true, servings_per_container: 1 },
-        { id: 2, name: 'Bottle', volume: 500, unit: 'ml', is_primary: false, servings_per_container: 1 },
+        {
+          id: 1,
+          name: 'Glass',
+          volume: 250,
+          unit: 'ml',
+          is_primary: true,
+          servings_per_container: 1,
+        },
+        {
+          id: 2,
+          name: 'Bottle',
+          volume: 500,
+          unit: 'ml',
+          is_primary: false,
+          servings_per_container: 1,
+        },
       ];
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
@@ -224,7 +242,11 @@ describe('measurementsApi', () => {
       mockGetActiveServerConfig.mockResolvedValue(null);
 
       await expect(
-        changeWaterIntake({ entryDate: '2024-06-15', changeDrinks: 1, containerId: 1 })
+        changeWaterIntake({
+          entryDate: '2024-06-15',
+          changeDrinks: 1,
+          containerId: 1,
+        })
       ).rejects.toThrow('Server configuration not found.');
     });
 
@@ -232,10 +254,19 @@ describe('measurementsApi', () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ id: '123', water_ml: 500, entry_date: '2024-06-15' }),
+        json: () =>
+          Promise.resolve({
+            id: '123',
+            water_ml: 500,
+            entry_date: '2024-06-15',
+          }),
       });
 
-      await changeWaterIntake({ entryDate: '2024-06-15', changeDrinks: 1, containerId: 5 });
+      await changeWaterIntake({
+        entryDate: '2024-06-15',
+        changeDrinks: 1,
+        containerId: 5,
+      });
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://example.com/api/measurements/water-intake',
@@ -257,14 +288,22 @@ describe('measurementsApi', () => {
     });
 
     test('returns parsed JSON response on success', async () => {
-      const responseData = { id: '123', water_ml: 750, entry_date: '2024-06-15' };
+      const responseData = {
+        id: '123',
+        water_ml: 750,
+        entry_date: '2024-06-15',
+      };
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(responseData),
       });
 
-      const result = await changeWaterIntake({ entryDate: '2024-06-15', changeDrinks: -1, containerId: 1 });
+      const result = await changeWaterIntake({
+        entryDate: '2024-06-15',
+        changeDrinks: -1,
+        containerId: 1,
+      });
 
       expect(result).toEqual(responseData);
     });
@@ -278,7 +317,11 @@ describe('measurementsApi', () => {
       });
 
       await expect(
-        changeWaterIntake({ entryDate: '2024-06-15', changeDrinks: 1, containerId: 1 })
+        changeWaterIntake({
+          entryDate: '2024-06-15',
+          changeDrinks: 1,
+          containerId: 1,
+        })
       ).rejects.toThrow('Server error: 500 - Internal Server Error');
     });
   });

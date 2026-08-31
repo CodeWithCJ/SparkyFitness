@@ -31,7 +31,7 @@ export interface ProviderSearchResult {
 export function useAllProvidersSearch(
   searchText: string,
   providers: ExternalProvider[],
-  options?: { enabled?: boolean; autoScale?: boolean },
+  options?: { enabled?: boolean; autoScale?: boolean }
 ) {
   const { enabled = true, autoScale } = options ?? {};
   const debouncedSearch = useDebounce(searchText.trim(), 600);
@@ -55,7 +55,7 @@ export function useAllProvidersSearch(
   // built from the same `providers.map` order.
   const combine = useCallback(
     (
-      results: UseQueryResult<PaginatedExternalFoodSearchResult>[],
+      results: UseQueryResult<PaginatedExternalFoodSearchResult>[]
     ): ProviderSearchResult[] =>
       providers.map((provider, i) => {
         const q = results[i];
@@ -73,7 +73,7 @@ export function useAllProvidersSearch(
           refetch: q?.refetch ?? noop,
         };
       }),
-    [providers],
+    [providers]
   );
 
   const providerResults = useQueries({
@@ -82,7 +82,7 @@ export function useAllProvidersSearch(
         p.provider_type,
         debouncedSearch,
         p.id,
-        autoScale,
+        autoScale
       ),
       queryFn: async ({ signal }: { signal: AbortSignal }) => {
         if (p.provider_type === 'openfoodfacts') {
@@ -93,7 +93,7 @@ export function useAllProvidersSearch(
           debouncedSearch,
           1,
           p.id,
-          autoScale,
+          autoScale
         );
       },
       enabled: isSearchActive && enabled,

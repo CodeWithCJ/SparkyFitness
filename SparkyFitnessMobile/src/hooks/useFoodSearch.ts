@@ -3,7 +3,10 @@ import { searchFoods } from '../services/api/foodsApi';
 import { foodSearchQueryKey } from './queryKeys';
 import { useDebounce } from './useDebounce';
 
-export function useFoodSearch(searchText: string, options?: { enabled?: boolean }) {
+export function useFoodSearch(
+  searchText: string,
+  options?: { enabled?: boolean }
+) {
   const { enabled = true } = options ?? {};
   const debouncedSearch = useDebounce(searchText.trim(), 300);
   const isSearchActive = debouncedSearch.length >= 2;

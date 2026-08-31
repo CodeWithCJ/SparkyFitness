@@ -155,7 +155,11 @@ describe('healthDiagnosticService', () => {
     });
 
     it('preserves null and undefined values', () => {
-      const obj = { inCalories: null, inKilocalories: undefined, label: 'test' };
+      const obj = {
+        inCalories: null,
+        inKilocalories: undefined,
+        label: 'test',
+      };
       const rounded = roundAllNumericUnits(obj as Record<string, unknown>);
       expect(rounded.inCalories).toBeNull();
       expect(rounded.inKilocalories).toBeUndefined();
@@ -168,20 +172,28 @@ describe('healthDiagnosticService', () => {
     const end = new Date('2026-03-23T14:00:00Z');
 
     it('returns rounded records when data exists', async () => {
-      mockReadRecords.mockResolvedValueOnce({ records: [
-        {
-          startTime: '2026-03-23T11:00:00Z',
-          endTime: '2026-03-23T11:30:00Z',
-          energy: { inCalories: 347.5, inKilocalories: 0.3475 },
-          metadata: { dataOrigin: 'com.garmin.android.apps.connectmobile' },
-        },
-      ] });
+      mockReadRecords.mockResolvedValueOnce({
+        records: [
+          {
+            startTime: '2026-03-23T11:00:00Z',
+            endTime: '2026-03-23T11:30:00Z',
+            energy: { inCalories: 347.5, inKilocalories: 0.3475 },
+            metadata: { dataOrigin: 'com.garmin.android.apps.connectmobile' },
+          },
+        ],
+      });
 
-      const section = await collectMetricSection('ActiveCaloriesBurned', start, end);
+      const section = await collectMetricSection(
+        'ActiveCaloriesBurned',
+        start,
+        end
+      );
       expect(section.metricType).toBe('ActiveCaloriesBurned');
       expect(section.recordCount).toBe(1);
       expect(section.error).toBeNull();
-      expect(section.records[0].dataOrigin).toBe('com.garmin.android.apps.connectmobile');
+      expect(section.records[0].dataOrigin).toBe(
+        'com.garmin.android.apps.connectmobile'
+      );
       // Verify calorie values are rounded
       const energy = section.records[0].energy as Record<string, unknown>;
       expect(energy.inCalories).toBe(350);
@@ -197,7 +209,9 @@ describe('healthDiagnosticService', () => {
     });
 
     it('captures error when readRecords throws (e.g., permission denied)', async () => {
-      mockReadRecords.mockRejectedValueOnce(new Error('Permission denied for Vo2Max'));
+      mockReadRecords.mockRejectedValueOnce(
+        new Error('Permission denied for Vo2Max')
+      );
 
       const section = await collectMetricSection('Vo2Max', start, end);
       expect(section.recordCount).toBe(0);
@@ -208,29 +222,51 @@ describe('healthDiagnosticService', () => {
     it('paginates through multiple pages and forwards pageToken', async () => {
       mockReadRecords
         .mockResolvedValueOnce({
-          records: [{ startTime: '2026-03-23T11:00:00Z', endTime: '2026-03-23T11:30:00Z', energy: { inKilocalories: 100 }, metadata: {} }],
+          records: [
+            {
+              startTime: '2026-03-23T11:00:00Z',
+              endTime: '2026-03-23T11:30:00Z',
+              energy: { inKilocalories: 100 },
+              metadata: {},
+            },
+          ],
           pageToken: 'page2',
         })
         .mockResolvedValueOnce({
-          records: [{ startTime: '2026-03-23T12:00:00Z', endTime: '2026-03-23T12:30:00Z', energy: { inKilocalories: 200 }, metadata: {} }],
+          records: [
+            {
+              startTime: '2026-03-23T12:00:00Z',
+              endTime: '2026-03-23T12:30:00Z',
+              energy: { inKilocalories: 200 },
+              metadata: {},
+            },
+          ],
           pageToken: undefined,
         });
 
-      const section = await collectMetricSection('ActiveCaloriesBurned', start, end);
+      const section = await collectMetricSection(
+        'ActiveCaloriesBurned',
+        start,
+        end
+      );
       expect(section.recordCount).toBe(2);
       expect(mockReadRecords).toHaveBeenCalledTimes(2);
       // Verify pageToken from first response is forwarded to second call
       expect(mockReadRecords.mock.calls[1][1]).toEqual(
-        expect.objectContaining({ pageToken: 'page2' }),
+        expect.objectContaining({ pageToken: 'page2' })
       );
     });
 
     it('stops paginating after max pages to prevent infinite loops', async () => {
       mockReadRecords.mockImplementation(() =>
-        Promise.resolve({ records: [{ metadata: {} }], pageToken: 'next' }),
+        Promise.resolve({ records: [{ metadata: {} }], pageToken: 'next' })
       );
 
-      const section = await collectMetricSection('ActiveCaloriesBurned', start, end);
+      const section = await collectMetricSection(
+        'ActiveCaloriesBurned',
+        start,
+        end
+      );
       // DIAGNOSTIC_MAX_PAGES = 20
       expect(mockReadRecords).toHaveBeenCalledTimes(20);
       expect(section.recordCount).toBe(20);
@@ -242,7 +278,7 @@ describe('healthDiagnosticService', () => {
         'SleepSession',
         expect.objectContaining({
           timeRangeFilter: expect.objectContaining({ operator: 'between' }),
-        }),
+        })
       );
     });
   });
@@ -253,24 +289,29 @@ describe('healthDiagnosticService', () => {
     const end = new Date('2026-03-23T14:00:00Z');
 
     it('strips GPS route data and preserves point count', async () => {
-      mockReadRecords.mockResolvedValueOnce({ records: [
-        {
-          startTime: '2026-03-23T11:00:00Z',
-          endTime: '2026-03-23T11:45:00Z',
-          exerciseType: 79,
-          title: 'Morning Run',
-          metadata: { id: 'abc-123', dataOrigin: 'com.garmin.android.apps.connectmobile' },
-          energy: { inKilocalories: 347 },
-          distance: { inMeters: 5234 },
-          exerciseRoute: {
-            route: [
-              { latitude: 37.7749, longitude: -122.4194, altitude: 10.5 },
-              { latitude: 37.7750, longitude: -122.4195, altitude: 11.0 },
-              { latitude: 37.7751, longitude: -122.4196, altitude: 11.5 },
-            ],
+      mockReadRecords.mockResolvedValueOnce({
+        records: [
+          {
+            startTime: '2026-03-23T11:00:00Z',
+            endTime: '2026-03-23T11:45:00Z',
+            exerciseType: 79,
+            title: 'Morning Run',
+            metadata: {
+              id: 'abc-123',
+              dataOrigin: 'com.garmin.android.apps.connectmobile',
+            },
+            energy: { inKilocalories: 347 },
+            distance: { inMeters: 5234 },
+            exerciseRoute: {
+              route: [
+                { latitude: 37.7749, longitude: -122.4194, altitude: 10.5 },
+                { latitude: 37.775, longitude: -122.4195, altitude: 11.0 },
+                { latitude: 37.7751, longitude: -122.4196, altitude: 11.5 },
+              ],
+            },
           },
-        },
-      ] });
+        ],
+      });
 
       const section = await collectMetricSection('ExerciseSession', start, end);
       const record = section.records[0];
@@ -285,15 +326,20 @@ describe('healthDiagnosticService', () => {
     });
 
     it('drops title and metadata.id for privacy', async () => {
-      mockReadRecords.mockResolvedValueOnce({ records: [
-        {
-          startTime: '2026-03-23T11:00:00Z',
-          endTime: '2026-03-23T11:45:00Z',
-          exerciseType: 79,
-          title: 'Morning Run with Bob',
-          metadata: { id: 'abc-123', dataOrigin: 'com.garmin.android.apps.connectmobile' },
-        },
-      ] });
+      mockReadRecords.mockResolvedValueOnce({
+        records: [
+          {
+            startTime: '2026-03-23T11:00:00Z',
+            endTime: '2026-03-23T11:45:00Z',
+            exerciseType: 79,
+            title: 'Morning Run with Bob',
+            metadata: {
+              id: 'abc-123',
+              dataOrigin: 'com.garmin.android.apps.connectmobile',
+            },
+          },
+        ],
+      });
 
       const section = await collectMetricSection('ExerciseSession', start, end);
       const record = section.records[0];
@@ -306,26 +352,32 @@ describe('healthDiagnosticService', () => {
     });
 
     it('preserves metadata.dataOrigin as source identifier', async () => {
-      mockReadRecords.mockResolvedValueOnce({ records: [
-        {
-          startTime: '2026-03-23T11:00:00Z',
-          endTime: '2026-03-23T11:45:00Z',
-          exerciseType: 79,
-          metadata: { dataOrigin: 'com.samsung.health' },
-        },
-      ] });
+      mockReadRecords.mockResolvedValueOnce({
+        records: [
+          {
+            startTime: '2026-03-23T11:00:00Z',
+            endTime: '2026-03-23T11:45:00Z',
+            exerciseType: 79,
+            metadata: { dataOrigin: 'com.samsung.health' },
+          },
+        ],
+      });
 
       const section = await collectMetricSection('ExerciseSession', start, end);
       expect(section.records[0].dataOrigin).toBe('com.samsung.health');
     });
 
     it('handles exercise session with no optional fields', async () => {
-      mockReadRecords.mockResolvedValueOnce({ records: [{
-        startTime: '2026-03-23T11:00:00Z',
-        endTime: '2026-03-23T11:30:00Z',
-        exerciseType: 1,
-        metadata: {},
-      }] });
+      mockReadRecords.mockResolvedValueOnce({
+        records: [
+          {
+            startTime: '2026-03-23T11:00:00Z',
+            endTime: '2026-03-23T11:30:00Z',
+            exerciseType: 1,
+            metadata: {},
+          },
+        ],
+      });
 
       const section = await collectMetricSection('ExerciseSession', start, end);
       expect(section.recordCount).toBe(1);
@@ -336,16 +388,18 @@ describe('healthDiagnosticService', () => {
     });
 
     it('rounds duration, energy, and distance', async () => {
-      mockReadRecords.mockResolvedValueOnce({ records: [
-        {
-          startTime: '2026-03-23T11:00:00Z',
-          endTime: '2026-03-23T11:42:30Z', // 42.5 minutes
-          exerciseType: 79,
-          energy: { inKilocalories: 347 },
-          distance: { inMeters: 5234 },
-          metadata: {},
-        },
-      ] });
+      mockReadRecords.mockResolvedValueOnce({
+        records: [
+          {
+            startTime: '2026-03-23T11:00:00Z',
+            endTime: '2026-03-23T11:42:30Z', // 42.5 minutes
+            exerciseType: 79,
+            energy: { inKilocalories: 347 },
+            distance: { inMeters: 5234 },
+            metadata: {},
+          },
+        ],
+      });
 
       const section = await collectMetricSection('ExerciseSession', start, end);
       const record = section.records[0];
@@ -362,14 +416,16 @@ describe('healthDiagnosticService', () => {
     const end = new Date('2026-03-23T14:00:00Z');
 
     it('rounds systolic and diastolic to nearest 5', async () => {
-      mockReadRecords.mockResolvedValueOnce({ records: [
-        {
-          systolic: { inMillimetersOfMercury: 122 },
-          diastolic: { inMillimetersOfMercury: 78 },
-          time: '2026-03-23T12:00:00Z',
-          metadata: { dataOrigin: 'com.withings.wiscale' },
-        },
-      ] });
+      mockReadRecords.mockResolvedValueOnce({
+        records: [
+          {
+            systolic: { inMillimetersOfMercury: 122 },
+            diastolic: { inMillimetersOfMercury: 78 },
+            time: '2026-03-23T12:00:00Z',
+            metadata: { dataOrigin: 'com.withings.wiscale' },
+          },
+        ],
+      });
 
       const section = await collectMetricSection('BloodPressure', start, end);
       const record = section.records[0];
@@ -386,13 +442,15 @@ describe('healthDiagnosticService', () => {
     const end = new Date('2026-03-23T14:00:00Z');
 
     it('rounds vo2 values to nearest 10', async () => {
-      mockReadRecords.mockResolvedValueOnce({ records: [
-        {
-          vo2MillilitersPerMinuteKilogram: 43.7,
-          time: '2026-03-23T12:00:00Z',
-          metadata: { dataOrigin: 'com.garmin.android.apps.connectmobile' },
-        },
-      ] });
+      mockReadRecords.mockResolvedValueOnce({
+        records: [
+          {
+            vo2MillilitersPerMinuteKilogram: 43.7,
+            time: '2026-03-23T12:00:00Z',
+            metadata: { dataOrigin: 'com.garmin.android.apps.connectmobile' },
+          },
+        ],
+      });
 
       const section = await collectMetricSection('Vo2Max', start, end);
       const record = section.records[0];
@@ -401,9 +459,9 @@ describe('healthDiagnosticService', () => {
     });
 
     it('handles vo2Max field name variant', async () => {
-      mockReadRecords.mockResolvedValueOnce({ records: [
-        { vo2Max: 47.2, time: '2026-03-23T12:00:00Z', metadata: {} },
-      ] });
+      mockReadRecords.mockResolvedValueOnce({
+        records: [{ vo2Max: 47.2, time: '2026-03-23T12:00:00Z', metadata: {} }],
+      });
 
       const section = await collectMetricSection('Vo2Max', start, end);
       expect(section.records[0].vo2Max).toBe(50);
@@ -415,18 +473,30 @@ describe('healthDiagnosticService', () => {
     const end = new Date('2026-03-23T14:00:00Z');
 
     it('rounds duration and preserves stage structure', async () => {
-      mockReadRecords.mockResolvedValueOnce({ records: [
-        {
-          startTime: '2026-03-22T23:00:00Z',
-          endTime: '2026-03-23T06:30:00Z', // 7.5 hours = 450 min
-          title: 'Sleep',
-          stages: [
-            { stage: 1, startTime: '2026-03-22T23:00:00Z', endTime: '2026-03-22T23:30:00Z', duration: 30 },
-            { stage: 4, startTime: '2026-03-22T23:30:00Z', endTime: '2026-03-23T01:00:00Z', duration: 90 },
-          ],
-          metadata: { dataOrigin: 'com.samsung.health' },
-        },
-      ] });
+      mockReadRecords.mockResolvedValueOnce({
+        records: [
+          {
+            startTime: '2026-03-22T23:00:00Z',
+            endTime: '2026-03-23T06:30:00Z', // 7.5 hours = 450 min
+            title: 'Sleep',
+            stages: [
+              {
+                stage: 1,
+                startTime: '2026-03-22T23:00:00Z',
+                endTime: '2026-03-22T23:30:00Z',
+                duration: 30,
+              },
+              {
+                stage: 4,
+                startTime: '2026-03-22T23:30:00Z',
+                endTime: '2026-03-23T01:00:00Z',
+                duration: 90,
+              },
+            ],
+            metadata: { dataOrigin: 'com.samsung.health' },
+          },
+        ],
+      });
 
       const section = await collectMetricSection('SleepSession', start, end);
       const record = section.records[0];
@@ -450,7 +520,9 @@ describe('healthDiagnosticService', () => {
     it('builds a report with correct metadata', async () => {
       const report = await buildHealthDiagnosticReport();
 
-      expect(report.metadata.reportFormatVersion).toBe(HEALTH_DIAGNOSTIC_REPORT_VERSION);
+      expect(report.metadata.reportFormatVersion).toBe(
+        HEALTH_DIAGNOSTIC_REPORT_VERSION
+      );
       expect(report.metadata.platform).toBe('android');
       expect(report.metadata.lookbackHours).toBe(4);
       expect(report.metadata.note).toContain('rounded for privacy');
@@ -461,7 +533,7 @@ describe('healthDiagnosticService', () => {
       const report = await buildHealthDiagnosticReport();
       expect(report.metrics).toHaveLength(6);
 
-      const types = report.metrics.map(m => m.metricType);
+      const types = report.metrics.map((m) => m.metricType);
       expect(types).toContain('TotalCaloriesBurned');
       expect(types).toContain('ActiveCaloriesBurned');
       expect(types).toContain('ExerciseSession');
@@ -488,7 +560,12 @@ describe('healthDiagnosticService', () => {
 
   // ---- shareHealthDiagnosticReport ----
   describe('shareHealthDiagnosticReport', () => {
-    let mockFileInstance: { uri: string; create: jest.Mock; write: jest.Mock; delete: jest.Mock };
+    let mockFileInstance: {
+      uri: string;
+      create: jest.Mock;
+      write: jest.Mock;
+      delete: jest.Mock;
+    };
 
     beforeEach(() => {
       mockFileInstance = {
@@ -508,12 +585,14 @@ describe('healthDiagnosticService', () => {
 
       const writtenContent = mockFileInstance.write.mock.calls[0][0];
       const parsed = JSON.parse(writtenContent);
-      expect(parsed.metadata.reportFormatVersion).toBe(HEALTH_DIAGNOSTIC_REPORT_VERSION);
+      expect(parsed.metadata.reportFormatVersion).toBe(
+        HEALTH_DIAGNOSTIC_REPORT_VERSION
+      );
       expect(parsed.metadata.platform).toBe('android');
 
       expect(Sharing.shareAsync).toHaveBeenCalledWith(
         mockFileInstance.uri,
-        expect.objectContaining({ mimeType: 'application/json' }),
+        expect.objectContaining({ mimeType: 'application/json' })
       );
     });
 
@@ -529,14 +608,18 @@ describe('healthDiagnosticService', () => {
     });
 
     it('cleans up temp file on share failure', async () => {
-      (Sharing.shareAsync as jest.Mock).mockRejectedValueOnce(new Error('Share failed'));
-      await expect(shareHealthDiagnosticReport()).rejects.toThrow('Share failed');
+      (Sharing.shareAsync as jest.Mock).mockRejectedValueOnce(
+        new Error('Share failed')
+      );
+      await expect(shareHealthDiagnosticReport()).rejects.toThrow(
+        'Share failed'
+      );
       expect(mockFileInstance.delete).toHaveBeenCalledTimes(1);
     });
 
     it('handles user cancellation gracefully', async () => {
       (Sharing.shareAsync as jest.Mock).mockRejectedValueOnce(
-        new Error('User did cancel sharing'),
+        new Error('User did cancel sharing')
       );
       await shareHealthDiagnosticReport();
       expect(mockFileInstance.delete).toHaveBeenCalledTimes(1);

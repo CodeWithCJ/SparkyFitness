@@ -7,9 +7,7 @@ import { useUpdateFoodEntriesSnapshotMutation } from '@/hooks/Foods/useFoods';
 
 /** The three outcomes of the "Sync Past Entries?" prompt. */
 export type SyncPastEntriesChoice =
-  | 'none'
-  | 'nutrition'
-  | 'nutrition-and-photos';
+  'none' | 'nutrition' | 'nutrition-and-photos';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import {
   pickerImagesDiffer,

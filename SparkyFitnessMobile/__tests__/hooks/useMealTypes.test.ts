@@ -2,13 +2,19 @@ import { renderHook, waitFor } from '@testing-library/react-native';
 import { useMealTypes } from '../../src/hooks/useMealTypes';
 import { mealTypesQueryKey } from '../../src/hooks/queryKeys';
 import { fetchMealTypes } from '../../src/services/api/mealTypesApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/mealTypesApi', () => ({
   fetchMealTypes: jest.fn(),
 }));
 
-const mockFetchMealTypes = fetchMealTypes as jest.MockedFunction<typeof fetchMealTypes>;
+const mockFetchMealTypes = fetchMealTypes as jest.MockedFunction<
+  typeof fetchMealTypes
+>;
 
 // Full set of meal types used in tests that require all four to be present so
 // getDefaultMealTypeId always finds a name match regardless of the current hour.
@@ -61,13 +67,20 @@ describe('useMealTypes', () => {
 
     expect(result.current.mealTypes).toHaveLength(2);
     expect(result.current.mealTypes.every((mt) => mt.is_visible)).toBe(true);
-    expect(result.current.mealTypes.find((mt) => mt.name === 'Hidden Snack')).toBeUndefined();
+    expect(
+      result.current.mealTypes.find((mt) => mt.name === 'Hidden Snack')
+    ).toBeUndefined();
   });
 
   test('sorts meal types by sort_order ascending', async () => {
     const unsortedMealTypes = [
       { id: 'mt-dinner', name: 'Dinner', is_visible: true, sort_order: 3 },
-      { id: 'mt-breakfast', name: 'Breakfast', is_visible: true, sort_order: 1 },
+      {
+        id: 'mt-breakfast',
+        name: 'Breakfast',
+        is_visible: true,
+        sort_order: 1,
+      },
       { id: 'mt-lunch', name: 'Lunch', is_visible: true, sort_order: 2 },
     ];
     mockFetchMealTypes.mockResolvedValue(unsortedMealTypes);
@@ -107,8 +120,18 @@ describe('useMealTypes', () => {
   test('defaultMealTypeId falls back to first meal type when no name matches', async () => {
     // Use a meal type list whose names do not match any of the four default names
     const customMealTypes = [
-      { id: 'mt-custom-1', name: 'Pre-Workout', is_visible: true, sort_order: 1 },
-      { id: 'mt-custom-2', name: 'Post-Workout', is_visible: true, sort_order: 2 },
+      {
+        id: 'mt-custom-1',
+        name: 'Pre-Workout',
+        is_visible: true,
+        sort_order: 1,
+      },
+      {
+        id: 'mt-custom-2',
+        name: 'Post-Workout',
+        is_visible: true,
+        sort_order: 2,
+      },
     ];
     mockFetchMealTypes.mockResolvedValue(customMealTypes);
 

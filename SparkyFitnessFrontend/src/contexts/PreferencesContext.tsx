@@ -56,11 +56,7 @@ import { todayInZone } from '@workspace/shared';
 
 export type EnergyUnit = 'kcal' | 'kJ';
 export type ActivityLevel =
-  | 'none'
-  | 'not_much'
-  | 'light'
-  | 'moderate'
-  | 'heavy';
+  'none' | 'not_much' | 'light' | 'moderate' | 'heavy';
 export type WeightUnit = 'kg' | 'lbs' | 'st_lbs';
 export type MeasurementUnit = 'cm' | 'inches' | 'ft_in';
 export type DistanceUnit = 'km' | 'miles';
@@ -1168,8 +1164,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           'measurementUnit'
         ) as MeasurementUnit;
         const savedDistanceUnit = localStorage.getItem('distanceUnit') as
-          | 'km'
-          | 'miles';
+          'km' | 'miles';
         const savedDateFormat = localStorage.getItem('dateFormat');
         const savedTimeFormat = localStorage.getItem('timeFormat');
         const savedLanguage = localStorage.getItem('language');

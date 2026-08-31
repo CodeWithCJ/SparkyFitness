@@ -31,7 +31,10 @@ const formatXLabel = (day: string): string => {
   if (parts.length < 3) return day;
   const [, month, d] = parts.map(Number);
   const date = new Date(1970, (month || 1) - 1, d || 1);
-  return date.toLocaleDateString(getAppLocale(), { month: 'numeric', day: 'numeric' });
+  return date.toLocaleDateString(getAppLocale(), {
+    month: 'numeric',
+    day: 'numeric',
+  });
 };
 
 /**
@@ -42,9 +45,11 @@ const formatXLabel = (day: string): string => {
  */
 export const buildBBTTooltipText = (
   point: BBTDataPoint | undefined,
-  t: ReturnType<typeof useTranslation>['t'],
+  t: ReturnType<typeof useTranslation>['t']
 ): string => {
-  const fallback = t('charts.bbt.tooltip', { defaultValue: 'Press the line for details' });
+  const fallback = t('charts.bbt.tooltip', {
+    defaultValue: 'Press the line for details',
+  });
   if (!point) return fallback;
   const formatted = formatLocalizedNumber(point.bbt, {
     minimumFractionDigits: 2,
@@ -61,7 +66,7 @@ const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
   ]) as [string, string];
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
-    EMPTY_CHART_TOUCH_LAYOUT,
+    EMPTY_CHART_TOUCH_LAYOUT
   );
 
   const hasData = useMemo(() => data.length > 0, [data]);
@@ -88,24 +93,27 @@ const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
     }));
   }, [data]);
 
-  const onTouch = useCallback((index: number) => {
-    if (data[index]) {
-      setSelectedIndex(index);
-    } else {
-      setSelectedIndex(null);
-    }
-  }, [data]);
+  const onTouch = useCallback(
+    (index: number) => {
+      if (data[index]) {
+        setSelectedIndex(index);
+      } else {
+        setSelectedIndex(null);
+      }
+    },
+    [data]
+  );
 
   const onTouchEnd = useCallback(() => {
     setSelectedIndex(null);
   }, []);
 
-
-
   if (isLoading) {
     return (
       <View className="h-44 justify-center items-center">
-        <Text className="text-text-secondary text-sm">{t('charts.loading', { defaultValue: 'Loading chart...' })}</Text>
+        <Text className="text-text-secondary text-sm">
+          {t('charts.loading', { defaultValue: 'Loading chart...' })}
+        </Text>
       </View>
     );
   }
@@ -114,7 +122,9 @@ const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
     return (
       <View className="h-44 justify-center items-center bg-raised rounded-2xl border border-dashed border-border-subtle p-4">
         <Text className="text-text-secondary text-xs text-center italic">
-          {t('charts.bbt.empty', { defaultValue: 'Log daily temperature logs to view your BBT chart.' })}
+          {t('charts.bbt.empty', {
+            defaultValue: 'Log daily temperature logs to view your BBT chart.',
+          })}
         </Text>
       </View>
     );
@@ -123,7 +133,9 @@ const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
   return (
     <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-2">
       <View className="h-6 justify-center mt-1 mb-2">
-        <Text className="text-text-secondary text-xs text-center">{tooltipText}</Text>
+        <Text className="text-text-secondary text-xs text-center">
+          {tooltipText}
+        </Text>
       </View>
 
       <View className="h-44 w-full relative">

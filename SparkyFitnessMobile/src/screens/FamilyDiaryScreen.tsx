@@ -41,7 +41,7 @@ const FamilyDiaryScreen: React.FC<FamilyDiaryScreenProps> = ({
   const locale = i18n?.resolvedLanguage ?? i18n?.language ?? 'en-US';
   const displayName = familyDiaryUserName(
     familyUser,
-    t('familyDiary.unnamedMember', { defaultValue: 'Family member' }),
+    t('familyDiary.unnamedMember', { defaultValue: 'Family member' })
   );
   const { data, error, isError, isLoading, refetch } = useFamilyDailySummary({
     familyUserId: familyUser.userId,
@@ -112,9 +112,9 @@ const FamilyDiaryScreen: React.FC<FamilyDiaryScreenProps> = ({
           defaultValue: 'Family diary · {{date}}',
         })}
       </Text>
-      {groups.map(group => {
+      {groups.map((group) => {
         const totals = calculateFamilyCopyTotals(
-          group.entries.map(entry => ({ entry, quantity: entry.quantity })),
+          group.entries.map((entry) => ({ entry, quantity: entry.quantity }))
         );
 
         return (
@@ -151,7 +151,7 @@ const FamilyDiaryScreen: React.FC<FamilyDiaryScreenProps> = ({
               <Icon name="chevron-forward" size={20} color="#6B7280" />
             </View>
             <View className="mt-3 gap-1">
-              {group.entries.map(entry => (
+              {group.entries.map((entry) => (
                 <View key={entry.id} className="flex-row justify-between gap-3">
                   <Text className="flex-1 text-text-primary">
                     {entry.food_name ??
@@ -180,8 +180,8 @@ const FamilyDiaryScreen: React.FC<FamilyDiaryScreenProps> = ({
       <DateNavigator
         title={t('familyDiary.diary', { defaultValue: 'Family diary' })}
         selectedDate={selectedDate}
-        onPreviousDay={() => setSelectedDate(date => addDays(date, -1))}
-        onNextDay={() => setSelectedDate(date => addDays(date, 1))}
+        onPreviousDay={() => setSelectedDate((date) => addDays(date, -1))}
+        onNextDay={() => setSelectedDate((date) => addDays(date, 1))}
         onToday={() => setSelectedDate(getTodayDate())}
         onDatePress={() => calendarRef.current?.present()}
         dateControls={{

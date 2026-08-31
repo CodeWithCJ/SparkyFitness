@@ -40,7 +40,9 @@ const OnlineSectionFooter: React.FC<OnlineSectionFooterProps> = ({
         className="py-3"
         textClassName="text-sm"
       >
-        {t('foodSearch.actions.loadMoreFailed', { defaultValue: 'Failed to load more. Tap to retry' })}
+        {t('foodSearch.actions.loadMoreFailed', {
+          defaultValue: 'Failed to load more. Tap to retry',
+        })}
       </Button>
     );
   }
@@ -67,7 +69,10 @@ const OnlineSectionFooter: React.FC<OnlineSectionFooterProps> = ({
     return (
       <View className="px-4 py-4">
         <Text className="text-text-secondary text-sm text-center">
-          {t('foodSearch.states.noOnlineResultsFrom', { defaultValue: 'No online results from {{provider}}', provider: selectedProviderName })}
+          {t('foodSearch.states.noOnlineResultsFrom', {
+            defaultValue: 'No online results from {{provider}}',
+            provider: selectedProviderName,
+          })}
         </Text>
       </View>
     );

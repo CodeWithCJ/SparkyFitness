@@ -167,7 +167,7 @@ const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 
 function makeSet(
   id: number,
-  overrides?: Partial<ExerciseEntrySetResponse>,
+  overrides?: Partial<ExerciseEntrySetResponse>
 ): ExerciseEntrySetResponse {
   return {
     id,
@@ -261,7 +261,7 @@ function renderScreen() {
       <QueryClientProvider client={queryClient}>
         <ActiveWorkoutScreen navigation={navigation} route={route} />
       </QueryClientProvider>
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
 }
 
@@ -271,7 +271,7 @@ describe('ActiveWorkoutScreen workout-plan end-to-end save', () => {
   function lastAlertButton(label: string): { onPress?: () => void } {
     const call = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
     const button = (call?.[2] ?? []).find(
-      (b: { text?: string }) => b.text === label,
+      (b: { text?: string }) => b.text === label
     );
     expect(button).toBeDefined();
     return button;
@@ -331,7 +331,7 @@ describe('ActiveWorkoutScreen workout-plan end-to-end save', () => {
       // the completed set — mirroring what the real backend persists.
       mockUpdateWorkout.mockImplementation(async (_sessionId, payload) => {
         const serverSession = JSON.parse(
-          JSON.stringify(getStore().session),
+          JSON.stringify(getStore().session)
         ) as PresetSessionResponse;
         const sentSet = (
           payload as {
@@ -367,7 +367,7 @@ describe('ActiveWorkoutScreen workout-plan end-to-end save', () => {
               ],
             }),
           ],
-        }),
+        })
       );
       expect(mockSyncCache).toHaveBeenCalled();
 
@@ -389,14 +389,14 @@ describe('ActiveWorkoutScreen workout-plan end-to-end save', () => {
           ],
         }),
         expect.any(Number),
-        expect.any(Array),
+        expect.any(Array)
       );
 
       // No failure warning, and the celebration screen replaced the stack.
       expect(
         alertSpy.mock.calls.some(
-          call => call[0] === 'Could not save your workout',
-        ),
+          (call) => call[0] === 'Could not save your workout'
+        )
       ).toBe(false);
       expect(mockReplace).toHaveBeenCalledTimes(1);
       const [routeName, params] = mockReplace.mock.calls[0];
@@ -408,7 +408,7 @@ describe('ActiveWorkoutScreen workout-plan end-to-end save', () => {
       // The completed_at that the store sent in the PUT payload survived the
       // server echo → applyServerSession → WorkoutComplete params round-trip.
       expect(params.session.exercises[0].sets[0].completed_at).toBe(
-        sentCompletedAt,
+        sentCompletedAt
       );
 
       // The store is neither dirty nor still holding the session.
@@ -433,8 +433,8 @@ describe('ActiveWorkoutScreen workout-plan end-to-end save', () => {
         JSON.stringify({
           message:
             'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.',
-        }),
-      ),
+        })
+      )
     );
 
     const { getByText } = renderScreen();
@@ -460,9 +460,9 @@ describe('ActiveWorkoutScreen workout-plan end-to-end save', () => {
         'session source: Workout Plan',
         'status: 409',
         expect.stringContaining(
-          'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.',
+          'Nested exercise editing is only supported for manual, sparky, or workout plan sessions.'
         ),
-      ],
+      ]
     );
     expect(mockInvalidate).not.toHaveBeenCalled();
   });

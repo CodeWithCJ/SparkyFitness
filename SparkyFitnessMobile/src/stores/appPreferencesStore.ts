@@ -137,10 +137,12 @@ const legacyAwareStorage = {
 
     // No combined key yet — check whether any legacy per-key values exist.
     const entries = await Promise.all(
-      (Object.entries(LEGACY_KEYS) as [LegacyKey, string][]).map(async ([field, key]) => {
-        const val = await AsyncStorage.getItem(key);
-        return [field, val] as const;
-      }),
+      (Object.entries(LEGACY_KEYS) as [LegacyKey, string][]).map(
+        async ([field, key]) => {
+          const val = await AsyncStorage.getItem(key);
+          return [field, val] as const;
+        }
+      )
     );
 
     const hasAnyLegacy = entries.some(([, val]) => val !== null);
@@ -167,31 +169,48 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setHapticsEnabled: (value) => set({ hapticsEnabled: value }),
       setSoundsEnabled: (value) => set({ soundsEnabled: value }),
       setNotificationsEnabled: (value) => set({ notificationsEnabled: value }),
-      setRestTimerNotificationsEnabled: (value) => set({ restTimerNotificationsEnabled: value }),
-      setFastingGoalNotificationsEnabled: (value) => set({ fastingGoalNotificationsEnabled: value }),
+      setRestTimerNotificationsEnabled: (value) =>
+        set({ restTimerNotificationsEnabled: value }),
+      setFastingGoalNotificationsEnabled: (value) =>
+        set({ fastingGoalNotificationsEnabled: value }),
       setHydrationCardVisible: (value) => set({ hydrationCardVisible: value }),
       setFastingCardVisible: (value) => set({ fastingCardVisible: value }),
       setCycleCardVisible: (value) => set({ cycleCardVisible: value }),
       setAskSparkyVisible: (value) => set({ askSparkyVisible: value }),
-      setMedicationsCardVisible: (value) => set({ medicationsCardVisible: value }),
-      setMedicationRemindersEnabled: (value) => set({ medicationRemindersEnabled: value }),
-      setMedicationReminderRepeats: (value) => set({ medicationReminderRepeats: value }),
-      setMedicationReminderHideNames: (value) => set({ medicationReminderHideNames: value }),
-      setLiquidGlassTabBarEnabled: (value) => set({ liquidGlassTabBarEnabled: value }),
-      setActiveWorkoutMetricColumn: (value) => set({ activeWorkoutMetricColumn: value }),
+      setMedicationsCardVisible: (value) =>
+        set({ medicationsCardVisible: value }),
+      setMedicationRemindersEnabled: (value) =>
+        set({ medicationRemindersEnabled: value }),
+      setMedicationReminderRepeats: (value) =>
+        set({ medicationReminderRepeats: value }),
+      setMedicationReminderHideNames: (value) =>
+        set({ medicationReminderHideNames: value }),
+      setLiquidGlassTabBarEnabled: (value) =>
+        set({ liquidGlassTabBarEnabled: value }),
+      setActiveWorkoutMetricColumn: (value) =>
+        set({ activeWorkoutMetricColumn: value }),
       setDiarySummaryVisible: (value) => set({ diarySummaryVisible: value }),
       setDiarySummaryExpanded: (value) => set({ diarySummaryExpanded: value }),
       setDefaultRestSec: (value) => set({ defaultRestSec: value }),
-      setRestTimerSoundEnabled: (value) => set({ restTimerSoundEnabled: value }),
-      setWorkoutKeepAwakeEnabled: (value) => set({ workoutKeepAwakeEnabled: value }),
+      setRestTimerSoundEnabled: (value) =>
+        set({ restTimerSoundEnabled: value }),
+      setWorkoutKeepAwakeEnabled: (value) =>
+        set({ workoutKeepAwakeEnabled: value }),
       setLanguagePreference: (value) => set({ languagePreference: value }),
-      setFoodSearchOwnershipFilter: (value) => set({ foodSearchOwnershipFilter: value }),
-      setFoodsLibraryOwnershipFilter: (value) => set({ foodsLibraryOwnershipFilter: value }),
-      setMealsLibraryOwnershipFilter: (value) => set({ mealsLibraryOwnershipFilter: value }),
-      setExercisesLibraryOwnershipFilter: (value) => set({ exercisesLibraryOwnershipFilter: value }),
-      setWorkoutPresetsLibraryOwnershipFilter: (value) => set({ workoutPresetsLibraryOwnershipFilter: value }),
-      setExerciseSearchOwnershipFilter: (value) => set({ exerciseSearchOwnershipFilter: value }),
-      setPresetSearchOwnershipFilter: (value) => set({ presetSearchOwnershipFilter: value }),
+      setFoodSearchOwnershipFilter: (value) =>
+        set({ foodSearchOwnershipFilter: value }),
+      setFoodsLibraryOwnershipFilter: (value) =>
+        set({ foodsLibraryOwnershipFilter: value }),
+      setMealsLibraryOwnershipFilter: (value) =>
+        set({ mealsLibraryOwnershipFilter: value }),
+      setExercisesLibraryOwnershipFilter: (value) =>
+        set({ exercisesLibraryOwnershipFilter: value }),
+      setWorkoutPresetsLibraryOwnershipFilter: (value) =>
+        set({ workoutPresetsLibraryOwnershipFilter: value }),
+      setExerciseSearchOwnershipFilter: (value) =>
+        set({ exerciseSearchOwnershipFilter: value }),
+      setPresetSearchOwnershipFilter: (value) =>
+        set({ presetSearchOwnershipFilter: value }),
     }),
     {
       name: STORE_KEY,
@@ -225,7 +244,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         foodsLibraryOwnershipFilter: state.foodsLibraryOwnershipFilter,
         mealsLibraryOwnershipFilter: state.mealsLibraryOwnershipFilter,
         exercisesLibraryOwnershipFilter: state.exercisesLibraryOwnershipFilter,
-        workoutPresetsLibraryOwnershipFilter: state.workoutPresetsLibraryOwnershipFilter,
+        workoutPresetsLibraryOwnershipFilter:
+          state.workoutPresetsLibraryOwnershipFilter,
         exerciseSearchOwnershipFilter: state.exerciseSearchOwnershipFilter,
         presetSearchOwnershipFilter: state.presetSearchOwnershipFilter,
       }),
@@ -244,8 +264,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
           ...(persistedState as Partial<AppPreferencesData>),
         } as AppPreferencesState;
       },
-    },
-  ),
+    }
+  )
 );
 
 /**

@@ -7,7 +7,7 @@ import { getConversionFactor } from '@workspace/shared';
 import type { FoodUnitVariant } from '../../src/types/foodUnitVariants';
 
 const createVariant = (
-  overrides: Partial<FoodUnitVariant>,
+  overrides: Partial<FoodUnitVariant>
 ): FoodUnitVariant => ({
   id: 'variant-id',
   serving_size: 1,
@@ -37,7 +37,7 @@ describe('useUnitConversion', () => {
       useUnitConversion({
         variants: [gramsVariant, tbspVariant],
         selectedVariant: gramsVariant,
-      }),
+      })
     );
 
     expect(result.current.buildConvertedVariant('tsp')).toMatchObject({
@@ -45,7 +45,11 @@ describe('useUnitConversion', () => {
       serving_unit: 'tsp',
     });
     expect(
-      resolveAutoConversionSource([gramsVariant, tbspVariant], gramsVariant, 'tsp'),
+      resolveAutoConversionSource(
+        [gramsVariant, tbspVariant],
+        gramsVariant,
+        'tsp'
+      )
     ).toEqual({
       baseVariant: tbspVariant,
       factor: getConversionFactor('tbsp', 'tsp'),
@@ -67,7 +71,7 @@ describe('useUnitConversion', () => {
       useUnitConversion({
         variants: [gramsVariant],
         selectedVariant: gramsVariant,
-      }),
+      })
     );
 
     const convertedVariant = result.current.buildConvertedVariant('oz');
@@ -78,11 +82,11 @@ describe('useUnitConversion', () => {
     });
     expect(convertedVariant?.calories).toBeCloseTo(
       250 * ((getConversionFactor('g', 'oz') ?? 0) / 100),
-      5,
+      5
     );
     expect(convertedVariant?.protein).toBeCloseTo(
       20 * ((getConversionFactor('g', 'oz') ?? 0) / 100),
-      5,
+      5
     );
   });
 
@@ -101,7 +105,7 @@ describe('useUnitConversion', () => {
       useUnitConversion({
         variants: [millilitersVariant],
         selectedVariant: millilitersVariant,
-      }),
+      })
     );
 
     const convertedVariant = result.current.buildConvertedVariant('cup');
@@ -112,11 +116,11 @@ describe('useUnitConversion', () => {
     });
     expect(convertedVariant?.calories).toBeCloseTo(
       60 * ((getConversionFactor('ml', 'cup') ?? 0) / 100),
-      5,
+      5
     );
     expect(convertedVariant?.carbs).toBeCloseTo(
       9 * ((getConversionFactor('ml', 'cup') ?? 0) / 100),
-      5,
+      5
     );
   });
 
@@ -142,7 +146,7 @@ describe('useUnitConversion', () => {
       useUnitConversion({
         variants: [gramsVariant, cupVariant, tbspVariant],
         selectedVariant: tbspVariant,
-      }),
+      })
     );
 
     const convertedVariant = result.current.buildConvertedVariant('tsp');
@@ -169,7 +173,7 @@ describe('useUnitConversion', () => {
       useUnitConversion({
         variants: [gramsVariant, pieceVariant],
         selectedVariant: gramsVariant,
-      }),
+      })
     );
 
     expect(result.current.buildConvertedVariant('tsp')).toBeNull();
@@ -193,11 +197,15 @@ describe('useUnitConversion', () => {
       useUnitConversion({
         variants: [gramsVariant, aiTbspVariant],
         selectedVariant: gramsVariant,
-      }),
+      })
     );
 
     expect(
-      resolveAutoConversionSource([gramsVariant, aiTbspVariant], gramsVariant, 'tsp'),
+      resolveAutoConversionSource(
+        [gramsVariant, aiTbspVariant],
+        gramsVariant,
+        'tsp'
+      )
     ).toBeNull();
     expect(result.current.buildConvertedVariant('tsp')).toBeNull();
   });
@@ -226,13 +234,13 @@ describe('useUnitConversion', () => {
       useUnitConversion({
         variants: [aiCupVariant, tbspVariant],
         selectedVariant: aiCupVariant,
-      }),
+      })
     );
 
     const resolved = resolveAutoConversionSource(
       [aiCupVariant, tbspVariant],
       aiCupVariant,
-      'tsp',
+      'tsp'
     );
     expect(resolved?.baseVariant.id).toBe('tbsp');
     expect(result.current.buildConvertedVariant('tsp')).not.toBeNull();
@@ -251,11 +259,11 @@ describe('useUnitConversion', () => {
       useUnitConversion({
         variants: [aiCupVariant],
         selectedVariant: aiCupVariant,
-      }),
+      })
     );
 
     expect(
-      resolveAutoConversionSource([aiCupVariant], aiCupVariant, 'tsp'),
+      resolveAutoConversionSource([aiCupVariant], aiCupVariant, 'tsp')
     ).toBeNull();
     expect(result.current.buildConvertedVariant('tsp')).toBeNull();
   });
@@ -276,7 +284,7 @@ describe('useUnitConversion', () => {
       useUnitConversion({
         variants: [gramsVariant],
         selectedVariant: gramsVariant,
-      }),
+      })
     );
 
     expect(result.current.buildManualVariant('cup')).toEqual({
@@ -320,7 +328,7 @@ describe('useUnitConversion', () => {
       useUnitConversion({
         variants: [gramsVariant, ouncesVariant],
         selectedVariant: gramsVariant,
-      }),
+      })
     );
 
     expect(result.current.convertibleUnits).not.toContain('g');

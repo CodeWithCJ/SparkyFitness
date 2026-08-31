@@ -44,7 +44,10 @@ export function useAppBootstrap(): AppBootstrapResult {
       } catch (error) {
         if (cancelled) return;
         const message = error instanceof Error ? error.message : String(error);
-        addLog(`[App] Failed to load active server config on startup: ${message}`, 'ERROR');
+        addLog(
+          `[App] Failed to load active server config on startup: ${message}`,
+          'ERROR'
+        );
         setInitialRoute('Onboarding');
       }
 

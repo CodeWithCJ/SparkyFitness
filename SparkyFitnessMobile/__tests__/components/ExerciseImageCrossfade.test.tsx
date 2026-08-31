@@ -10,18 +10,26 @@ jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: (props: { name: string }) => <View testID={`icon-${props.name}`} />,
+    default: (props: { name: string }) => (
+      <View testID={`icon-${props.name}`} />
+    ),
   };
 });
 
-const frameA = { uri: 'https://server/images/a.png', headers: { Authorization: 'Bearer t' } };
-const frameB = { uri: 'https://server/images/b.png', headers: { Authorization: 'Bearer t' } };
+const frameA = {
+  uri: 'https://server/images/a.png',
+  headers: { Authorization: 'Bearer t' },
+};
+const frameB = {
+  uri: 'https://server/images/b.png',
+  headers: { Authorization: 'Bearer t' },
+};
 
 describe('ExerciseImageCrossfade', () => {
   it('renders both frames stacked so the dissolve has both images loaded', () => {
     const fallback = <></>;
     const { UNSAFE_getAllByType } = render(
-      <ExerciseImageCrossfade sources={[frameA, frameB]} fallback={fallback} />,
+      <ExerciseImageCrossfade sources={[frameA, frameB]} fallback={fallback} />
     );
 
     const images = UNSAFE_getAllByType(SafeImage);
@@ -43,14 +51,15 @@ describe('ExerciseImageCrossfade', () => {
           { uri: 'https://server/images/a.png', headers: {} },
           { uri: 'https://server/images/b.png', headers: {} },
         ]}
-      />,
+      />
     );
     for (const image of pngPair.UNSAFE_getAllByType(SafeImage)) {
       expect(image.props.contentFit).toBe('contain');
     }
     expect(
-      StyleSheet.flatten(pngPair.getByTestId('exercise-image-crossfade').props.style)
-        .backgroundColor,
+      StyleSheet.flatten(
+        pngPair.getByTestId('exercise-image-crossfade').props.style
+      ).backgroundColor
     ).toBe('#ffffff');
 
     const jpgPair = render(
@@ -59,20 +68,21 @@ describe('ExerciseImageCrossfade', () => {
           { uri: 'https://server/images/a.jpg', headers: {} },
           { uri: 'https://server/images/b.jpg', headers: {} },
         ]}
-      />,
+      />
     );
     for (const image of jpgPair.UNSAFE_getAllByType(SafeImage)) {
       expect(image.props.contentFit).toBe('cover');
     }
     expect(
-      StyleSheet.flatten(jpgPair.getByTestId('exercise-image-crossfade').props.style)
-        .backgroundColor,
+      StyleSheet.flatten(
+        jpgPair.getByTestId('exercise-image-crossfade').props.style
+      ).backgroundColor
     ).toBeUndefined();
   });
 
   it('toggles pause on tap and resumes on a second tap', () => {
     const { getByTestId, queryByTestId } = render(
-      <ExerciseImageCrossfade sources={[frameA, frameB]} />,
+      <ExerciseImageCrossfade sources={[frameA, frameB]} />
     );
 
     expect(queryByTestId('exercise-image-crossfade-paused')).toBeNull();
@@ -87,16 +97,26 @@ describe('ExerciseImageCrossfade', () => {
 
 describe('sourceMayHaveTransparency', () => {
   it('treats JPEGs as opaque regardless of case or query string', () => {
-    expect(sourceMayHaveTransparency('https://server/uploads/0.jpg')).toBe(false);
-    expect(sourceMayHaveTransparency('https://server/uploads/0.JPEG')).toBe(false);
-    expect(sourceMayHaveTransparency('https://server/uploads/0.jpg?token=abc')).toBe(
-      false,
+    expect(sourceMayHaveTransparency('https://server/uploads/0.jpg')).toBe(
+      false
     );
+    expect(sourceMayHaveTransparency('https://server/uploads/0.JPEG')).toBe(
+      false
+    );
+    expect(
+      sourceMayHaveTransparency('https://server/uploads/0.jpg?token=abc')
+    ).toBe(false);
   });
 
   it('treats alpha-capable and unknown formats as possibly transparent', () => {
-    expect(sourceMayHaveTransparency('https://server/uploads/0.png')).toBe(true);
-    expect(sourceMayHaveTransparency('https://server/uploads/0.webp')).toBe(true);
-    expect(sourceMayHaveTransparency('https://cdn.example/image/12345')).toBe(true);
+    expect(sourceMayHaveTransparency('https://server/uploads/0.png')).toBe(
+      true
+    );
+    expect(sourceMayHaveTransparency('https://server/uploads/0.webp')).toBe(
+      true
+    );
+    expect(sourceMayHaveTransparency('https://cdn.example/image/12345')).toBe(
+      true
+    );
   });
 });

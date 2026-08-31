@@ -1,17 +1,27 @@
-import { normalizeUrl, isPrivateOrLocalHost, getInsecureUrlError } from '../../src/utils/serverUrl';
+import {
+  normalizeUrl,
+  isPrivateOrLocalHost,
+  getInsecureUrlError,
+} from '../../src/utils/serverUrl';
 
 describe('normalizeUrl', () => {
   test('trims whitespace and trailing slashes', () => {
-    expect(normalizeUrl('  https://example.com/  ')).toBe('https://example.com');
+    expect(normalizeUrl('  https://example.com/  ')).toBe(
+      'https://example.com'
+    );
     expect(normalizeUrl('https://example.com///')).toBe('https://example.com');
   });
 
   test('leaves a clean URL unchanged', () => {
-    expect(normalizeUrl('https://example.com:3010')).toBe('https://example.com:3010');
+    expect(normalizeUrl('https://example.com:3010')).toBe(
+      'https://example.com:3010'
+    );
   });
 
   test('does not strip non-trailing slashes', () => {
-    expect(normalizeUrl('https://example.com/api/')).toBe('https://example.com/api');
+    expect(normalizeUrl('https://example.com/api/')).toBe(
+      'https://example.com/api'
+    );
   });
 });
 
@@ -80,7 +90,9 @@ describe('isPrivateOrLocalHost', () => {
 
   describe('host extraction', () => {
     test('ignores scheme, port, path, query, fragment, and userinfo', () => {
-      expect(isPrivateOrLocalHost('https://user:pass@192.168.0.2:8443/path?q=1#frag')).toBe(true);
+      expect(
+        isPrivateOrLocalHost('https://user:pass@192.168.0.2:8443/path?q=1#frag')
+      ).toBe(true);
       expect(isPrivateOrLocalHost('user:pass@example.com/path')).toBe(false);
     });
 

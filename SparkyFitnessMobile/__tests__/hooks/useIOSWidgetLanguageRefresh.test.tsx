@@ -72,7 +72,10 @@ describe('useIOSWidgetLanguageRefresh', () => {
     initializedListeners = [];
     isInitialized = true;
     resolvedLanguage = 'en';
-    jest.spyOn(i18n, 'on').mockImplementation(((event: string, listener: I18nEventListener) => {
+    jest.spyOn(i18n, 'on').mockImplementation(((
+      event: string,
+      listener: I18nEventListener
+    ) => {
       if (event === 'languageChanged') {
         languageListeners.push(listener);
       }

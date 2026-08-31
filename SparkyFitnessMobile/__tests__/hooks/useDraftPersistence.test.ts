@@ -9,11 +9,15 @@ jest.mock('../../src/services/workoutDraftService', () => ({
   clearDraft: jest.fn(),
 }));
 
-const { loadDraft: mockLoadDraft, saveDraft: mockSaveDraft, clearDraft: mockClearDraft } = jest.requireMock(
-  '../../src/services/workoutDraftService',
-);
+const {
+  loadDraft: mockLoadDraft,
+  saveDraft: mockSaveDraft,
+  clearDraft: mockClearDraft,
+} = jest.requireMock('../../src/services/workoutDraftService');
 
-const makeActivityDraft = (overrides?: Partial<ActivityDraft>): ActivityDraft => ({
+const makeActivityDraft = (
+  overrides?: Partial<ActivityDraft>
+): ActivityDraft => ({
   type: 'activity',
   name: '',
   exerciseId: null,
@@ -65,7 +69,7 @@ function renderDraftPersistence({
         onDraftLoaded,
         onInitialDate,
       }),
-    { initialProps: { state } },
+    { initialProps: { state } }
   );
 }
 
@@ -77,10 +81,12 @@ describe('useDraftPersistence', () => {
     jest.useFakeTimers();
     mockLoadDraft.mockResolvedValue(null);
     appStateCallbacks = [];
-    jest.spyOn(AppState, 'addEventListener').mockImplementation((_, handler) => {
-      appStateCallbacks.push(handler as (state: string) => void);
-      return { remove: jest.fn() } as any;
-    });
+    jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation((_, handler) => {
+        appStateCallbacks.push(handler as (state: string) => void);
+        return { remove: jest.fn() } as any;
+      });
   });
 
   afterEach(() => {
@@ -90,7 +96,10 @@ describe('useDraftPersistence', () => {
 
   describe('draft loading', () => {
     it('loads draft and calls onDraftLoaded when matching type exists', async () => {
-      const savedDraft = makeActivityDraft({ exerciseId: 'ex-1', duration: '30' });
+      const savedDraft = makeActivityDraft({
+        exerciseId: 'ex-1',
+        duration: '30',
+      });
       mockLoadDraft.mockResolvedValue(savedDraft);
       const onDraftLoaded = jest.fn();
       const onInitialDate = jest.fn();
@@ -219,7 +228,10 @@ describe('useDraftPersistence', () => {
     });
 
     it('does not re-save immediately after restoring a loaded draft', async () => {
-      const savedDraft = makeActivityDraft({ exerciseId: 'ex-1', duration: '30' });
+      const savedDraft = makeActivityDraft({
+        exerciseId: 'ex-1',
+        duration: '30',
+      });
       mockLoadDraft.mockResolvedValue(savedDraft);
 
       const state1 = makeActivityDraft();
@@ -322,7 +334,9 @@ describe('useDraftPersistence', () => {
 
     it('does not save on unmount after explicitly clearing the persisted draft', async () => {
       const state1 = makeActivityDraft();
-      const { result, rerender, unmount } = renderDraftPersistence({ state: state1 });
+      const { result, rerender, unmount } = renderDraftPersistence({
+        state: state1,
+      });
 
       await act(async () => {});
 

@@ -25,14 +25,18 @@ const VerifiedBadge: React.FC<VerifiedBadgeProps> = ({
   style,
 }) => {
   const { t } = useTranslation();
-  const caloriesColor = String(useCSSVariable('--color-calories') || FALLBACK_CALORIES_COLOR);
+  const caloriesColor = String(
+    useCSSVariable('--color-calories') || FALLBACK_CALORIES_COLOR
+  );
   const badgeSize = SIZE_MAP[size];
 
   return (
     <View
       testID={testID}
       accessibilityRole="image"
-      accessibilityLabel={t('foodSearch.accessibility.verifiedFood', { defaultValue: 'Verified food' })}
+      accessibilityLabel={t('foodSearch.accessibility.verifiedFood', {
+        defaultValue: 'Verified food',
+      })}
       style={style}
     >
       <Icon

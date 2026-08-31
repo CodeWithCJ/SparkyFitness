@@ -43,7 +43,7 @@ describe('mergeRecent', () => {
     const out = mergeRecent(
       [meal('m1', { last_used_date: '2026-07-09' })],
       [food('f1', { last_used_date: '2026-07-08' })],
-      10,
+      10
     );
     expect(out[0]).toMatchObject({ kind: 'meal', key: 'meal-m1' });
     expect(out[1]).toMatchObject({ kind: 'food', key: 'food-f1' });
@@ -78,7 +78,7 @@ describe('mergeRecent', () => {
       food('f3', { last_used_date: '2026-07-07' }),
     ];
     expect(
-      mergeRecent([], foods, 2, new Set(['food-f1'])).map((e) => e.key),
+      mergeRecent([], foods, 2, new Set(['food-f1'])).map((e) => e.key)
     ).toEqual(['food-f2', 'food-f3']);
   });
 });

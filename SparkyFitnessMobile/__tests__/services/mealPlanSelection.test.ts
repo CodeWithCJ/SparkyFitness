@@ -29,7 +29,10 @@ describe('mealPlanSelection', () => {
 
     setPendingMealPlanSelection({ ...selection, assignmentIndex: 2 });
 
-    expect(consumePendingMealPlanSelection()).toEqual({ ...selection, assignmentIndex: 2 });
+    expect(consumePendingMealPlanSelection()).toEqual({
+      ...selection,
+      assignmentIndex: 2,
+    });
     expect(consumePendingMealPlanSelection()).toBeNull();
   });
 });

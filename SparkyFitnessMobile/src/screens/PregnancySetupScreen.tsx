@@ -39,7 +39,13 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleSave = async () => {
     const error = form.validate();
     if (error) {
-      Toast.show({ type: 'error', text1: t('pregnancySetup.checkDates', { defaultValue: 'Check the dates' }), text2: error });
+      Toast.show({
+        type: 'error',
+        text1: t('pregnancySetup.checkDates', {
+          defaultValue: 'Check the dates',
+        }),
+        text2: error,
+      });
       return;
     }
     const body = {
@@ -50,19 +56,36 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
     try {
       if (isEdit && existing?.id) {
         await updatePregnancyAsync({ id: existing.id, body });
-        Toast.show({ type: 'success', text1: t('pregnancySetup.updated', { defaultValue: 'Pregnancy updated' }) });
+        Toast.show({
+          type: 'success',
+          text1: t('pregnancySetup.updated', {
+            defaultValue: 'Pregnancy updated',
+          }),
+        });
       } else {
         await createPregnancyAsync(body);
-        Toast.show({ type: 'success', text1: t('pregnancySetup.created', { defaultValue: 'Pregnancy set up' }) });
+        Toast.show({
+          type: 'success',
+          text1: t('pregnancySetup.created', {
+            defaultValue: 'Pregnancy set up',
+          }),
+        });
       }
       navigation.goBack();
     } catch {
-      Toast.show({ type: 'error', text1: t('pregnancySetup.saveFailed', { defaultValue: 'Could not save pregnancy' }) });
+      Toast.show({
+        type: 'error',
+        text1: t('pregnancySetup.saveFailed', {
+          defaultValue: 'Could not save pregnancy',
+        }),
+      });
     }
   };
 
   const header = useScreenHeader({
-    title: isEdit ? t('pregnancySetup.editTitle', { defaultValue: 'Edit Pregnancy' }) : t('pregnancySetup.title', { defaultValue: 'Pregnancy Setup' }),
+    title: isEdit
+      ? t('pregnancySetup.editTitle', { defaultValue: 'Edit Pregnancy' })
+      : t('pregnancySetup.title', { defaultValue: 'Pregnancy Setup' }),
     left: { kind: 'back' },
   });
 
@@ -74,16 +97,30 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
       {header}
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 96 }}>
+      <ScrollView
+        contentContainerStyle={{
+          padding: 16,
+          paddingBottom: insets.bottom + 96,
+        }}
+      >
         <Text className="text-text-secondary text-sm mb-4">
-          {t('pregnancySetup.description', { defaultValue: 'Tell us how to estimate your due date. You can change this later.' })}
+          {t('pregnancySetup.description', {
+            defaultValue:
+              'Tell us how to estimate your due date. You can change this later.',
+          })}
         </Text>
 
         <PregnancyDueDateForm form={form}>
           <SettingsRow
-            title={t('pregnancySetup.numberOfBabies', { defaultValue: 'Number of babies' })}
+            title={t('pregnancySetup.numberOfBabies', {
+              defaultValue: 'Number of babies',
+            })}
             rightAccessory={
-              <StepperInput {...fetusCountProps} keyboardType="number-pad" compact />
+              <StepperInput
+                {...fetusCountProps}
+                keyboardType="number-pad"
+                compact
+              />
             }
           />
         </PregnancyDueDateForm>
@@ -100,7 +137,9 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
         }}
       >
         <Button variant="primary" disabled={isSaving} onPress={handleSave}>
-          {isSaving ? t('common.saving', { defaultValue: 'Saving…' }) : t('common.save', { defaultValue: 'Save' })}
+          {isSaving
+            ? t('common.saving', { defaultValue: 'Saving…' })
+            : t('common.save', { defaultValue: 'Save' })}
         </Button>
       </View>
     </View>

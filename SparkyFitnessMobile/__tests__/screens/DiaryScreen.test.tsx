@@ -53,7 +53,11 @@ jest.mock('../../src/hooks', () => ({
   useCustomNutrients: jest.fn(),
   useFamilyUsers: jest.fn(),
   useNutrientDisplayPreferences: jest.fn(),
-  useMealTypes: jest.fn(() => ({ mealTypes: [], isLoading: false, isError: false })),
+  useMealTypes: jest.fn(() => ({
+    mealTypes: [],
+    isLoading: false,
+    isError: false,
+  })),
 }));
 
 jest.mock('../../src/hooks/useMeasurements', () => ({
@@ -85,7 +89,8 @@ jest.mock('../../src/hooks/useHeaderActionColors', () => ({
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => key === 'familyDiary.openFamilyDiaries' ? 'Open family diaries' : key,
+    t: (key: string) =>
+      key === 'familyDiary.openFamilyDiaries' ? 'Open family diaries' : key,
     i18n: { language: 'en-US' },
   }),
 }));
@@ -129,7 +134,10 @@ jest.mock('../../src/components/DateNavigator', () => {
       <View testID="date-navigator">
         <Text>{title}</Text>
         {action ? (
-          <Pressable accessibilityLabel={action.accessibilityLabel} onPress={action.onPress}>
+          <Pressable
+            accessibilityLabel={action.accessibilityLabel}
+            onPress={action.onPress}
+          >
             <Text>{action.accessibilityLabel}</Text>
           </Pressable>
         ) : null}
@@ -171,12 +179,18 @@ jest.mock('../../src/components/FoodSummary', () => {
 
 jest.mock('../../src/components/ExerciseSummary', () => {
   const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="exercise-summary" /> };
+  return {
+    __esModule: true,
+    default: () => <View testID="exercise-summary" />,
+  };
 });
 
 jest.mock('../../src/components/MeasurementsSummary', () => {
   const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="measurements-summary" /> };
+  return {
+    __esModule: true,
+    default: () => <View testID="measurements-summary" />,
+  };
 });
 
 jest.mock('../../src/components/DiaryCalorieMacroSummary', () => {
@@ -197,21 +211,35 @@ jest.mock('../../src/components/Icon', () => {
   };
 });
 
-const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
-const mockUseDailySummary = useDailySummary as jest.MockedFunction<typeof useDailySummary>;
-const mockUseCustomNutrients = useCustomNutrients as jest.MockedFunction<typeof useCustomNutrients>;
-const mockUseFamilyUsers = useFamilyUsers as jest.MockedFunction<typeof useFamilyUsers>;
-const mockUseNutrientDisplayPreferences = useNutrientDisplayPreferences as jest.MockedFunction<
-  typeof useNutrientDisplayPreferences
+const mockUseServerConnection = useServerConnection as jest.MockedFunction<
+  typeof useServerConnection
 >;
-const mockUseMeasurements = useMeasurements as jest.MockedFunction<typeof useMeasurements>;
-const mockUseCustomMeasurementsByDate = useCustomMeasurementsByDate as jest.MockedFunction<
-  typeof useCustomMeasurementsByDate
+const mockUseDailySummary = useDailySummary as jest.MockedFunction<
+  typeof useDailySummary
 >;
-const mockUseNativeIOSTabsActive = useNativeIOSTabsActive as jest.MockedFunction<typeof useNativeIOSTabsActive>;
-const mockSetNativeHeaderDatePickerOptions = setNativeHeaderDatePickerOptions as jest.MockedFunction<
-  typeof setNativeHeaderDatePickerOptions
+const mockUseCustomNutrients = useCustomNutrients as jest.MockedFunction<
+  typeof useCustomNutrients
 >;
+const mockUseFamilyUsers = useFamilyUsers as jest.MockedFunction<
+  typeof useFamilyUsers
+>;
+const mockUseNutrientDisplayPreferences =
+  useNutrientDisplayPreferences as jest.MockedFunction<
+    typeof useNutrientDisplayPreferences
+  >;
+const mockUseMeasurements = useMeasurements as jest.MockedFunction<
+  typeof useMeasurements
+>;
+const mockUseCustomMeasurementsByDate =
+  useCustomMeasurementsByDate as jest.MockedFunction<
+    typeof useCustomMeasurementsByDate
+  >;
+const mockUseNativeIOSTabsActive =
+  useNativeIOSTabsActive as jest.MockedFunction<typeof useNativeIOSTabsActive>;
+const mockSetNativeHeaderDatePickerOptions =
+  setNativeHeaderDatePickerOptions as jest.MockedFunction<
+    typeof setNativeHeaderDatePickerOptions
+  >;
 
 const baseSummary = {
   foodEntries: [],
@@ -234,25 +262,29 @@ const configureConnection = (isConnected: boolean, isLoading = false) => {
   } as ReturnType<typeof useServerConnection>);
 };
 
-const configureFamilyUsers = (users: {
-  userId: string;
-  displayName: string;
-  email: string | null;
-  canCopy: boolean;
-  accessEndDate: string | null;
-}[]) => {
+const configureFamilyUsers = (
+  users: {
+    userId: string;
+    displayName: string;
+    email: string | null;
+    canCopy: boolean;
+    accessEndDate: string | null;
+  }[]
+) => {
   mockUseFamilyUsers.mockReturnValue({
     data: users,
   } as ReturnType<typeof useFamilyUsers>);
 };
 
-const configureOnlineData = (overrides: {
-  customMeasurementsRefetching?: boolean;
-  summaryRefetching?: boolean;
-  measurementsRefetching?: boolean;
-  customNutrientsRefetching?: boolean;
-  nutrientPrefsRefetching?: boolean;
-} = {}) => {
+const configureOnlineData = (
+  overrides: {
+    customMeasurementsRefetching?: boolean;
+    summaryRefetching?: boolean;
+    measurementsRefetching?: boolean;
+    customNutrientsRefetching?: boolean;
+    nutrientPrefsRefetching?: boolean;
+  } = {}
+) => {
   // The hooks no longer expose isRefetching (removed with the aggregate
   // spinner); the override fields below intentionally simulate a background
   // refetch to prove the RefreshControl ignores it.
@@ -290,7 +322,7 @@ const renderScreen = () =>
   render(
     <SafeAreaProvider initialMetrics={{ frame, insets }}>
       <DiaryScreen navigation={mockNavigation} route={diaryRoute} />
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
 
 describe('DiaryScreen custom queries', () => {
@@ -321,7 +353,7 @@ describe('DiaryScreen custom queries', () => {
 
     expect(mockUseCustomMeasurementsByDate).toHaveBeenCalledWith(
       '2024-06-15',
-      expect.objectContaining({ enabled: false }),
+      expect.objectContaining({ enabled: false })
     );
   });
 
@@ -330,7 +362,7 @@ describe('DiaryScreen custom queries', () => {
 
     expect(mockUseCustomMeasurementsByDate).toHaveBeenCalledWith(
       '2024-06-15',
-      expect.objectContaining({ enabled: true }),
+      expect.objectContaining({ enabled: true })
     );
   });
 
@@ -382,14 +414,17 @@ describe('DiaryScreen custom queries', () => {
     refetchSummary.mockReturnValue(
       new Promise<void>((resolve) => {
         resolveSummary = resolve;
-      }),
+      })
     );
     const { UNSAFE_getByType } = renderScreen();
     const refreshControl = UNSAFE_getByType(RefreshControl);
 
     let refreshPromise!: Promise<void>;
     act(() => {
-      refreshPromise = fireEvent(refreshControl, 'refresh') as unknown as Promise<void>;
+      refreshPromise = fireEvent(
+        refreshControl,
+        'refresh'
+      ) as unknown as Promise<void>;
     });
     // The local user-initiated refreshing state is on while the queries are
     // still pending.
@@ -407,7 +442,7 @@ describe('DiaryScreen custom queries', () => {
 
     expect(mockUseCustomMeasurementsByDate).toHaveBeenLastCalledWith(
       '2024-06-15',
-      expect.objectContaining({ enabled: true }),
+      expect.objectContaining({ enabled: true })
     );
 
     act(() => {
@@ -416,7 +451,7 @@ describe('DiaryScreen custom queries', () => {
 
     expect(mockUseCustomMeasurementsByDate).toHaveBeenLastCalledWith(
       '2024-06-16',
-      expect.objectContaining({ enabled: true }),
+      expect.objectContaining({ enabled: true })
     );
     expect(getByTestId('date-navigator')).toBeTruthy();
   });
@@ -461,13 +496,16 @@ describe('DiaryScreen custom queries', () => {
 
     renderScreen();
 
-    const options = mockSetNativeHeaderDatePickerOptions.mock.calls[
-      mockSetNativeHeaderDatePickerOptions.mock.calls.length - 1
-    ]?.[1];
-    expect(options?.leadingAction).toEqual(expect.objectContaining({
-      sfSymbol: 'person.2.fill',
-      accessibilityLabel: 'Open family diaries',
-    }));
+    const options =
+      mockSetNativeHeaderDatePickerOptions.mock.calls[
+        mockSetNativeHeaderDatePickerOptions.mock.calls.length - 1
+      ]?.[1];
+    expect(options?.leadingAction).toEqual(
+      expect.objectContaining({
+        sfSymbol: 'person.2.fill',
+        accessibilityLabel: 'Open family diaries',
+      })
+    );
     options?.leadingAction?.onPress();
 
     expect(mockNavigation.navigate).toHaveBeenCalledWith('FamilyMembers');
@@ -479,9 +517,10 @@ describe('DiaryScreen custom queries', () => {
 
     renderScreen();
 
-    const options = mockSetNativeHeaderDatePickerOptions.mock.calls[
-      mockSetNativeHeaderDatePickerOptions.mock.calls.length - 1
-    ]?.[1];
+    const options =
+      mockSetNativeHeaderDatePickerOptions.mock.calls[
+        mockSetNativeHeaderDatePickerOptions.mock.calls.length - 1
+      ]?.[1];
     expect(options?.leadingAction).toBeUndefined();
   });
 
@@ -499,10 +538,10 @@ describe('DiaryScreen custom queries', () => {
 
     renderScreen();
 
-    const options = mockSetNativeHeaderDatePickerOptions.mock.calls[
-      mockSetNativeHeaderDatePickerOptions.mock.calls.length - 1
-    ]?.[1];
+    const options =
+      mockSetNativeHeaderDatePickerOptions.mock.calls[
+        mockSetNativeHeaderDatePickerOptions.mock.calls.length - 1
+      ]?.[1];
     expect(options?.leadingAction).toBeUndefined();
   });
-
 });

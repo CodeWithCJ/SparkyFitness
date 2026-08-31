@@ -17,16 +17,27 @@ interface ScreenErrorBoundaryState {
   retryKey: number;
 }
 
-function ScreenErrorFallback({ onGoBack, onRetry }: { onGoBack?: () => void; onRetry: () => void }) {
+function ScreenErrorFallback({
+  onGoBack,
+  onRetry,
+}: {
+  onGoBack?: () => void;
+  onRetry: () => void;
+}) {
   const { t } = useTranslation();
   return (
     <View className="flex-1 justify-center items-center px-6">
       <Icon name="alert-circle" size={64} color="#EF4444" />
       <Text className="text-text-secondary text-base mt-4 text-center">
-        {t('errorBoundary.somethingWentWrong', { defaultValue: 'Something went wrong' })}
+        {t('errorBoundary.somethingWentWrong', {
+          defaultValue: 'Something went wrong',
+        })}
       </Text>
       <Text className="text-text-secondary text-sm mt-2 text-center">
-        {t('errorBoundary.serverMayNeedUpdate', { defaultValue: 'An unexpected error occurred. Your server may need to be updated.' })}
+        {t('errorBoundary.serverMayNeedUpdate', {
+          defaultValue:
+            'An unexpected error occurred. Your server may need to be updated.',
+        })}
       </Text>
       <Button variant="primary" onPress={onRetry} className="mt-4 px-6">
         {t('errorBoundary.tryAgain', { defaultValue: 'Try Again' })}
@@ -40,19 +51,38 @@ function ScreenErrorFallback({ onGoBack, onRetry }: { onGoBack?: () => void; onR
   );
 }
 
-class ScreenErrorBoundary extends React.Component<ScreenErrorBoundaryProps, ScreenErrorBoundaryState> {
+class ScreenErrorBoundary extends React.Component<
+  ScreenErrorBoundaryProps,
+  ScreenErrorBoundaryState
+> {
   state: ScreenErrorBoundaryState = { hasError: false, retryKey: 0 };
-  static getDerivedStateFromError(): Partial<ScreenErrorBoundaryState> { return { hasError: true }; }
+  static getDerivedStateFromError(): Partial<ScreenErrorBoundaryState> {
+    return { hasError: true };
+  }
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    addLog(`[${this.props.screenName}] Screen crashed`, 'ERROR', [error.message, error.stack ?? '', info.componentStack ?? '']);
+    addLog(`[${this.props.screenName}] Screen crashed`, 'ERROR', [
+      error.message,
+      error.stack ?? '',
+      info.componentStack ?? '',
+    ]);
   }
   handleRetry = () => {
     queryClient.resetQueries();
     this.setState((prev) => ({ hasError: false, retryKey: prev.retryKey + 1 }));
   };
   render() {
-    if (this.state.hasError) return <ScreenErrorFallback onGoBack={this.props.onGoBack} onRetry={this.handleRetry} />;
-    return <React.Fragment key={this.state.retryKey}>{this.props.children}</React.Fragment>;
+    if (this.state.hasError)
+      return (
+        <ScreenErrorFallback
+          onGoBack={this.props.onGoBack}
+          onRetry={this.handleRetry}
+        />
+      );
+    return (
+      <React.Fragment key={this.state.retryKey}>
+        {this.props.children}
+      </React.Fragment>
+    );
   }
 }
 
@@ -72,7 +102,9 @@ function SectionErrorFallback({ onRetry }: { onRetry: () => void }) {
     <View className="items-center py-6 px-4">
       <Icon name="alert-circle" size={32} color="#EF4444" />
       <Text className="text-text-secondary text-sm mt-2 text-center">
-        {t('errorBoundary.sectionFailed', { defaultValue: 'This section failed to load.' })}
+        {t('errorBoundary.sectionFailed', {
+          defaultValue: 'This section failed to load.',
+        })}
       </Text>
       <Button variant="ghost" onPress={onRetry} className="mt-2 px-4">
         {t('errorBoundary.tryAgain', { defaultValue: 'Try Again' })}
@@ -81,7 +113,10 @@ function SectionErrorFallback({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-export class SectionErrorBoundary extends React.Component<SectionErrorBoundaryProps, SectionErrorBoundaryState> {
+export class SectionErrorBoundary extends React.Component<
+  SectionErrorBoundaryProps,
+  SectionErrorBoundaryState
+> {
   state: SectionErrorBoundaryState = { hasError: false, retryKey: 0 };
 
   static getDerivedStateFromError(): Partial<SectionErrorBoundaryState> {
@@ -89,11 +124,11 @@ export class SectionErrorBoundary extends React.Component<SectionErrorBoundaryPr
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    addLog(
-      `[${this.props.sectionName}] Section crashed`,
-      'ERROR',
-      [error.message, error.stack ?? '', info.componentStack ?? ''],
-    );
+    addLog(`[${this.props.sectionName}] Section crashed`, 'ERROR', [
+      error.message,
+      error.stack ?? '',
+      info.componentStack ?? '',
+    ]);
   }
 
   handleRetry = () => {
@@ -121,7 +156,7 @@ interface ErrorBoundaryOptions {
 export function withErrorBoundary<P extends object>(
   Component: React.ComponentType<P>,
   screenName: string,
-  options?: ErrorBoundaryOptions,
+  options?: ErrorBoundaryOptions
 ) {
   const Wrapped = (props: P) => {
     const onGoBack = options?.canGoBack

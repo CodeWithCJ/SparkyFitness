@@ -27,9 +27,16 @@ const BabyGrowthView: React.FC<BabyGrowthViewProps> = ({ week }) => {
   if (discreetMode) {
     return (
       <View className="bg-surface rounded-xl p-4 shadow-sm gap-2">
-        <Text className="text-base font-bold text-text-secondary">{t('babyGrowth.weeklyMilestone', { defaultValue: 'Weekly Milestone' })}</Text>
+        <Text className="text-base font-bold text-text-secondary">
+          {t('babyGrowth.weeklyMilestone', {
+            defaultValue: 'Weekly Milestone',
+          })}
+        </Text>
         <Text className="text-text-secondary text-xs leading-5">
-          {t('babyGrowth.weekActive', { defaultValue: 'Week {{week}} active tracking.', week })}
+          {t('babyGrowth.weekActive', {
+            defaultValue: 'Week {{week}} active tracking.',
+            week,
+          })}
         </Text>
       </View>
     );
@@ -40,9 +47,14 @@ const BabyGrowthView: React.FC<BabyGrowthViewProps> = ({ week }) => {
   if (!info) {
     return (
       <View className="bg-surface rounded-xl p-4 shadow-sm gap-2">
-        <Text className="text-base font-bold text-text-secondary">{t('babyGrowth.title', { defaultValue: 'Baby this week' })}</Text>
+        <Text className="text-base font-bold text-text-secondary">
+          {t('babyGrowth.title', { defaultValue: 'Baby this week' })}
+        </Text>
         <Text className="text-text-secondary text-xs leading-5">
-          {t('babyGrowth.noData', { defaultValue: 'Week-by-week baby development starts around week 4. Check back soon!' })}
+          {t('babyGrowth.noData', {
+            defaultValue:
+              'Week-by-week baby development starts around week 4. Check back soon!',
+          })}
         </Text>
       </View>
     );
@@ -50,24 +62,42 @@ const BabyGrowthView: React.FC<BabyGrowthViewProps> = ({ week }) => {
 
   return (
     <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
-      <Text className="text-base font-bold text-text-secondary">{t('babyGrowth.title', { defaultValue: 'Baby this week' })}</Text>
+      <Text className="text-base font-bold text-text-secondary">
+        {t('babyGrowth.title', { defaultValue: 'Baby this week' })}
+      </Text>
       <View className="flex-row items-center justify-evenly gap-4">
         <WombScene scene={info.wombScene} size={96} />
         <View className="shrink gap-1">
-          <Text className="text-sm font-semibold" style={{ color: tokens.phasePregnant }}>
-            {t('babyGrowth.sizeOf', { defaultValue: 'Size of {{comparison}}', comparison: (localized?.comparison ?? info.comparison).toLowerCase() })}
+          <Text
+            className="text-sm font-semibold"
+            style={{ color: tokens.phasePregnant }}
+          >
+            {t('babyGrowth.sizeOf', {
+              defaultValue: 'Size of {{comparison}}',
+              comparison: (
+                localized?.comparison ?? info.comparison
+              ).toLowerCase(),
+            })}
           </Text>
           <View className="flex-row gap-4 mt-1">
             {info.lengthCm != null && (
               <View>
-                <Text className="text-text-secondary text-xs">{t('babyGrowth.length', { defaultValue: 'Length' })}</Text>
-                <Text className="text-text-primary text-base font-bold">{formatBabyLength(info.lengthCm)}</Text>
+                <Text className="text-text-secondary text-xs">
+                  {t('babyGrowth.length', { defaultValue: 'Length' })}
+                </Text>
+                <Text className="text-text-primary text-base font-bold">
+                  {formatBabyLength(info.lengthCm)}
+                </Text>
               </View>
             )}
             {info.weightG != null && (
               <View>
-                <Text className="text-text-secondary text-xs">{t('babyGrowth.weight', { defaultValue: 'Weight' })}</Text>
-                <Text className="text-text-primary text-base font-bold">{formatBabyWeight(info.weightG)}</Text>
+                <Text className="text-text-secondary text-xs">
+                  {t('babyGrowth.weight', { defaultValue: 'Weight' })}
+                </Text>
+                <Text className="text-text-primary text-base font-bold">
+                  {formatBabyWeight(info.weightG)}
+                </Text>
               </View>
             )}
           </View>
@@ -79,8 +109,12 @@ const BabyGrowthView: React.FC<BabyGrowthViewProps> = ({ week }) => {
       )}
       {localized?.mom && (
         <View className="gap-0.5">
-          <Text className="text-text-secondary text-sm font-semibold">{t('babyGrowth.forYou', { defaultValue: 'For you' })}</Text>
-          <Text className="text-text-primary text-sm leading-5">{localized.mom}</Text>
+          <Text className="text-text-secondary text-sm font-semibold">
+            {t('babyGrowth.forYou', { defaultValue: 'For you' })}
+          </Text>
+          <Text className="text-text-primary text-sm leading-5">
+            {localized.mom}
+          </Text>
         </View>
       )}
     </View>

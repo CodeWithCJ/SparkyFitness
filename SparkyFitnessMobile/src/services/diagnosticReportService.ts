@@ -6,9 +6,18 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { getLogs, getLogSummary, getCaptureLevel, getViewFilter } from './LogService';
+import {
+  getLogs,
+  getLogSummary,
+  getCaptureLevel,
+  getViewFilter,
+} from './LogService';
 import type { LogEntry } from './LogService';
-import { loadLastSyncedTime, loadBackgroundSyncEnabled, loadTimeRange } from './storage';
+import {
+  loadLastSyncedTime,
+  loadBackgroundSyncEnabled,
+  loadTimeRange,
+} from './storage';
 import { loadHealthPreference } from './healthConnectService';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import type { UserPreferences } from '../types/preferences';
@@ -33,16 +42,25 @@ const sanitizeString = (value: string): string => {
 };
 
 /** Query key prefixes whose trailing arguments contain user search text. */
-const SEARCH_QUERY_KEY_PREFIXES = ['foodSearch', 'mealSearch', 'externalFoodSearch'];
+const SEARCH_QUERY_KEY_PREFIXES = [
+  'foodSearch',
+  'mealSearch',
+  'externalFoodSearch',
+];
 
 /**
  * Redacts user search terms from query key arrays.
  * Keeps the key prefix(es) for diagnostic value but replaces trailing search arguments.
  */
-export const sanitizeQueryKey = (queryKey: readonly unknown[]): readonly unknown[] => {
+export const sanitizeQueryKey = (
+  queryKey: readonly unknown[]
+): readonly unknown[] => {
   if (queryKey.length < 2) return queryKey;
   const prefix = queryKey[0];
-  if (typeof prefix === 'string' && SEARCH_QUERY_KEY_PREFIXES.includes(prefix)) {
+  if (
+    typeof prefix === 'string' &&
+    SEARCH_QUERY_KEY_PREFIXES.includes(prefix)
+  ) {
     return [prefix, ...queryKey.slice(1).map(() => '[REDACTED]')];
   }
   return queryKey;
@@ -62,7 +80,9 @@ export const sanitizeLogEntry = (entry: LogEntry): LogEntry => ({
  * Picks only known safe fields from UserPreferences (units + algorithm selections).
  * Defense against the server adding PII fields in the future.
  */
-export const pickSafePreferences = (prefs: UserPreferences): Partial<UserPreferences> => {
+export const pickSafePreferences = (
+  prefs: UserPreferences
+): Partial<UserPreferences> => {
   const safeKeys: (keyof UserPreferences)[] = [
     'bmr_algorithm',
     'body_fat_algorithm',
@@ -104,21 +124,23 @@ export const collectDeviceInfo = (): DiagnosticDeviceInfo => ({
 });
 
 export const collectSyncStatus = async (): Promise<DiagnosticSyncStatus> => {
-  const [lastSyncedTime, backgroundSyncEnabled, configuredTimeRange] = await Promise.all([
-    loadLastSyncedTime(),
-    loadBackgroundSyncEnabled(),
-    loadTimeRange(),
-  ]);
+  const [lastSyncedTime, backgroundSyncEnabled, configuredTimeRange] =
+    await Promise.all([
+      loadLastSyncedTime(),
+      loadBackgroundSyncEnabled(),
+      loadTimeRange(),
+    ]);
   return { lastSyncedTime, backgroundSyncEnabled, configuredTimeRange };
 };
 
 export const collectLogInfo = async (): Promise<DiagnosticLogInfo> => {
-  const [captureLevel, viewFilter, todaySummary, recentLogs] = await Promise.all([
-    getCaptureLevel(),
-    getViewFilter(),
-    getLogSummary('all'),
-    getLogs(0, 1000, 'all'),
-  ]);
+  const [captureLevel, viewFilter, todaySummary, recentLogs] =
+    await Promise.all([
+      getCaptureLevel(),
+      getViewFilter(),
+      getLogSummary('all'),
+      getLogs(0, 1000, 'all'),
+    ]);
   return {
     captureLevel,
     viewFilter,
@@ -189,10 +211,7 @@ export const shareDiagnosticReport = async (
     });
   } catch (error: unknown) {
     // Silently handle user cancellation (iOS returns ERR_SHARING_CANCELLED)
-    if (
-      error instanceof Error &&
-      error.message?.includes('cancel')
-    ) {
+    if (error instanceof Error && error.message?.includes('cancel')) {
       return;
     }
     throw error;

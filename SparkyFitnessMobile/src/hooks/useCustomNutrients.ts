@@ -1,5 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchCustomNutrients, type UserCustomNutrient } from '../services/api/customNutrientsApi';
+import {
+  fetchCustomNutrients,
+  type UserCustomNutrient,
+} from '../services/api/customNutrientsApi';
 import { customNutrientsQueryKey } from './queryKeys';
 
 export type { UserCustomNutrient };
@@ -13,7 +16,9 @@ interface UseCustomNutrientsOptions {
  * These are the user-created nutrients (name + unit) stored in user_custom_nutrients.
  * Used to look up labels and units for custom nutrient values in food entries.
  */
-export function useCustomNutrients({ enabled = true }: UseCustomNutrientsOptions = {}) {
+export function useCustomNutrients({
+  enabled = true,
+}: UseCustomNutrientsOptions = {}) {
   const query = useQuery({
     queryKey: customNutrientsQueryKey,
     queryFn: fetchCustomNutrients,

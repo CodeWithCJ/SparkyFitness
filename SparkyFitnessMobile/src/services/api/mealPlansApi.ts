@@ -1,4 +1,7 @@
-import type { MealPlanTemplate, SaveMealPlanPayload } from '../../types/mealPlans';
+import type {
+  MealPlanTemplate,
+  SaveMealPlanPayload,
+} from '../../types/mealPlans';
 import { apiFetch } from './apiClient';
 
 const SERVICE_NAME = 'Meal Plans API';
@@ -13,7 +16,7 @@ export async function fetchMealPlans(): Promise<MealPlanTemplate[]> {
 
 export async function createMealPlan(
   payload: SaveMealPlanPayload,
-  currentClientDate: string,
+  currentClientDate: string
 ): Promise<MealPlanTemplate> {
   return apiFetch<MealPlanTemplate>({
     endpoint: '/api/meal-plan-templates',
@@ -27,7 +30,7 @@ export async function createMealPlan(
 export async function updateMealPlan(
   id: string,
   payload: SaveMealPlanPayload,
-  currentClientDate: string,
+  currentClientDate: string
 ): Promise<MealPlanTemplate> {
   return apiFetch<MealPlanTemplate>({
     endpoint: `/api/meal-plan-templates/${id}`,
@@ -40,7 +43,7 @@ export async function updateMealPlan(
 
 export async function duplicateMealPlan(
   id: string,
-  currentClientDate: string,
+  currentClientDate: string
 ): Promise<MealPlanTemplate> {
   return apiFetch<MealPlanTemplate>({
     endpoint: `/api/meal-plan-templates/${id}/duplicate`,
@@ -51,7 +54,10 @@ export async function duplicateMealPlan(
   });
 }
 
-export async function deleteMealPlan(id: string, currentClientDate: string): Promise<void> {
+export async function deleteMealPlan(
+  id: string,
+  currentClientDate: string
+): Promise<void> {
   const params = new URLSearchParams({ currentClientDate });
   return apiFetch<void>({
     endpoint: `/api/meal-plan-templates/${id}?${params.toString()}`,

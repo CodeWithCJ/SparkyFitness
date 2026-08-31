@@ -4,7 +4,11 @@ import { measurementsRangeQueryKey } from '../../src/hooks/queryKeys';
 import { fetchMeasurementsRange } from '../../src/services/api/measurementsApi';
 import { getTodayDate, addDays } from '../../src/utils/dateUtils';
 import type { CheckInMeasurementRange } from '../../src/types/measurements';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/measurementsApi', () => ({
   fetchMeasurementsRange: jest.fn(),
@@ -16,9 +20,13 @@ jest.mock('@react-navigation/native', () => ({
   }),
 }));
 
-const mockFetchMeasurementsRange = fetchMeasurementsRange as jest.MockedFunction<typeof fetchMeasurementsRange>;
+const mockFetchMeasurementsRange =
+  fetchMeasurementsRange as jest.MockedFunction<typeof fetchMeasurementsRange>;
 
-const makeMeasurement = (entry_date: string, steps?: number): CheckInMeasurementRange => ({
+const makeMeasurement = (
+  entry_date: string,
+  steps?: number
+): CheckInMeasurementRange => ({
   id: `id-${entry_date}`,
   user_id: 'user-1',
   entry_date,
@@ -44,7 +52,7 @@ describe('useMeasurementsRange', () => {
 
       const { result } = renderHook(
         () => useMeasurementsRange({ range: '7d' }),
-        { wrapper: createQueryWrapper(queryClient) },
+        { wrapper: createQueryWrapper(queryClient) }
       );
 
       await waitFor(() => {
@@ -59,7 +67,7 @@ describe('useMeasurementsRange', () => {
 
       const { result } = renderHook(
         () => useMeasurementsRange({ range: '30d' }),
-        { wrapper: createQueryWrapper(queryClient) },
+        { wrapper: createQueryWrapper(queryClient) }
       );
 
       await waitFor(() => {
@@ -74,7 +82,7 @@ describe('useMeasurementsRange', () => {
 
       const { result } = renderHook(
         () => useMeasurementsRange({ range: '90d' }),
-        { wrapper: createQueryWrapper(queryClient) },
+        { wrapper: createQueryWrapper(queryClient) }
       );
 
       await waitFor(() => {
@@ -92,7 +100,7 @@ describe('useMeasurementsRange', () => {
 
       const { result } = renderHook(
         () => useMeasurementsRange({ range: '7d' }),
-        { wrapper: createQueryWrapper(queryClient) },
+        { wrapper: createQueryWrapper(queryClient) }
       );
 
       await waitFor(() => {
@@ -118,7 +126,7 @@ describe('useMeasurementsRange', () => {
 
       const { result } = renderHook(
         () => useMeasurementsRange({ range: '7d' }),
-        { wrapper: createQueryWrapper(queryClient) },
+        { wrapper: createQueryWrapper(queryClient) }
       );
 
       await waitFor(() => {
@@ -139,7 +147,7 @@ describe('useMeasurementsRange', () => {
 
       const { result } = renderHook(
         () => useMeasurementsRange({ range: '7d' }),
-        { wrapper: createQueryWrapper(queryClient) },
+        { wrapper: createQueryWrapper(queryClient) }
       );
 
       await waitFor(() => {
@@ -165,7 +173,7 @@ describe('useMeasurementsRange', () => {
 
       const { result } = renderHook(
         () => useMeasurementsRange({ range: '7d' }),
-        { wrapper: createQueryWrapper(queryClient) },
+        { wrapper: createQueryWrapper(queryClient) }
       );
 
       await waitFor(() => {
@@ -183,13 +191,15 @@ describe('useMeasurementsRange', () => {
       const today = getTodayDate();
       const startDate = addDays(today, -6);
 
-      renderHook(
-        () => useMeasurementsRange({ range: '7d' }),
-        { wrapper: createQueryWrapper(queryClient) },
-      );
+      renderHook(() => useMeasurementsRange({ range: '7d' }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
 
       await waitFor(() => {
-        expect(mockFetchMeasurementsRange).toHaveBeenCalledWith(startDate, today);
+        expect(mockFetchMeasurementsRange).toHaveBeenCalledWith(
+          startDate,
+          today
+        );
       });
     });
 
@@ -198,13 +208,15 @@ describe('useMeasurementsRange', () => {
       const today = getTodayDate();
       const startDate = addDays(today, -29);
 
-      renderHook(
-        () => useMeasurementsRange({ range: '30d' }),
-        { wrapper: createQueryWrapper(queryClient) },
-      );
+      renderHook(() => useMeasurementsRange({ range: '30d' }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
 
       await waitFor(() => {
-        expect(mockFetchMeasurementsRange).toHaveBeenCalledWith(startDate, today);
+        expect(mockFetchMeasurementsRange).toHaveBeenCalledWith(
+          startDate,
+          today
+        );
       });
     });
   });
@@ -213,10 +225,9 @@ describe('useMeasurementsRange', () => {
     test('respects enabled=false', async () => {
       mockFetchMeasurementsRange.mockResolvedValue([]);
 
-      renderHook(
-        () => useMeasurementsRange({ range: '7d', enabled: false }),
-        { wrapper: createQueryWrapper(queryClient) },
-      );
+      renderHook(() => useMeasurementsRange({ range: '7d', enabled: false }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
 
       await new Promise((resolve) => setTimeout(resolve, 50));
 
@@ -226,10 +237,9 @@ describe('useMeasurementsRange', () => {
     test('enabled defaults to true', async () => {
       mockFetchMeasurementsRange.mockResolvedValue([]);
 
-      renderHook(
-        () => useMeasurementsRange({ range: '7d' }),
-        { wrapper: createQueryWrapper(queryClient) },
-      );
+      renderHook(() => useMeasurementsRange({ range: '7d' }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
 
       await waitFor(() => {
         expect(mockFetchMeasurementsRange).toHaveBeenCalled();
@@ -248,7 +258,7 @@ describe('useMeasurementsRange', () => {
 
     test('query key changes with dates', () => {
       expect(measurementsRangeQueryKey('2024-06-01', '2024-06-07')).not.toEqual(
-        measurementsRangeQueryKey('2024-06-01', '2024-06-08'),
+        measurementsRangeQueryKey('2024-06-01', '2024-06-08')
       );
     });
   });

@@ -39,7 +39,9 @@ jest.mock('../../src/services/LogService', () => ({
 }));
 
 const mockUpdateFood = updateFood as jest.MockedFunction<typeof updateFood>;
-const mockLookupBarcodeV2 = lookupBarcodeV2 as jest.MockedFunction<typeof lookupBarcodeV2>;
+const mockLookupBarcodeV2 = lookupBarcodeV2 as jest.MockedFunction<
+  typeof lookupBarcodeV2
+>;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -85,7 +87,7 @@ const renderScreen = (paramsOverrides: Record<string, unknown> = {}) => {
           route={buildRoute(paramsOverrides) as any}
         />
       </SafeAreaProvider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 };
 
@@ -95,7 +97,10 @@ describe('EditBarcodeScreen', () => {
   });
 
   it('saves a new barcode after a clean conflict check and dispatches the normalized value back', async () => {
-    mockLookupBarcodeV2.mockResolvedValue({ source: 'not_found', food: null } as any);
+    mockLookupBarcodeV2.mockResolvedValue({
+      source: 'not_found',
+      food: null,
+    } as any);
     mockUpdateFood.mockResolvedValue({
       id: 'food-1',
       name: 'Greek Yogurt',
@@ -107,11 +112,16 @@ describe('EditBarcodeScreen', () => {
 
     const screen = renderScreen();
 
-    fireEvent.changeText(screen.getByPlaceholderText('012345678905'), '012345678905');
+    fireEvent.changeText(
+      screen.getByPlaceholderText('012345678905'),
+      '012345678905'
+    );
     pressAction(screen, navigation, 'Save');
 
     await waitFor(() => {
-      expect(mockUpdateFood).toHaveBeenCalledWith('food-1', { barcode: '012345678905' });
+      expect(mockUpdateFood).toHaveBeenCalledWith('food-1', {
+        barcode: '012345678905',
+      });
     });
     expect(navigation.dispatch).toHaveBeenCalledTimes(1);
     const dispatched = navigation.dispatch.mock.calls[0][0];
@@ -119,7 +129,7 @@ describe('EditBarcodeScreen', () => {
     // Server normalized 12-digit UPC-A to 13-digit EAN-13 — that's what we echo.
     expect(dispatched.payload.params.updatedBarcode).toBe('0012345678905');
     expect(Toast.show).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'success', text1: 'Barcode saved' }),
+      expect.objectContaining({ type: 'success', text1: 'Barcode saved' })
     );
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
   });
@@ -130,14 +140,15 @@ describe('EditBarcodeScreen', () => {
       food: { id: 'food-2', name: 'Other Yogurt' },
     } as any);
 
-    const alertSpy = jest
-      .spyOn(Alert, 'alert')
-      .mockImplementation(() => {
-        // simulate user pressing Cancel
-      });
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {
+      // simulate user pressing Cancel
+    });
 
     const screen = renderScreen();
-    fireEvent.changeText(screen.getByPlaceholderText('012345678905'), '012345678905');
+    fireEvent.changeText(
+      screen.getByPlaceholderText('012345678905'),
+      '012345678905'
+    );
 
     await act(async () => {
       pressAction(screen, navigation, 'Save');
@@ -147,7 +158,7 @@ describe('EditBarcodeScreen', () => {
       'Barcode already in use',
       expect.stringContaining('Other Yogurt'),
       expect.any(Array),
-      expect.any(Object),
+      expect.any(Object)
     );
     expect(mockUpdateFood).not.toHaveBeenCalled();
 
@@ -207,7 +218,10 @@ describe('EditBarcodeScreen', () => {
 
   it('short-circuits when value matches the stored normalized form (12 vs 13 digit UPC-A)', async () => {
     const screen = renderScreen({ currentBarcode: '0012345678905' });
-    fireEvent.changeText(screen.getByPlaceholderText('012345678905'), '012345678905');
+    fireEvent.changeText(
+      screen.getByPlaceholderText('012345678905'),
+      '012345678905'
+    );
 
     pressAction(screen, navigation, 'Save');
     // Save is disabled because the normalized value matches; nothing happens.

@@ -25,7 +25,9 @@
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
     "typecheck": "tsc --noEmit",
-    "validate": "pnpm run i18n:generate:check && pnpm run typecheck && pnpm run lint && pnpm run i18n:audit && pnpm run knip && pnpm run native-locales:check",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "validate": "pnpm run i18n:generate:check && pnpm run typecheck && pnpm run lint && pnpm run i18n:audit && pnpm run knip && pnpm run native-locales:check && pnpm run format:check",
     "i18n:generate": "node scripts/generate-locale-resources.mjs",
     "i18n:generate:check": "node scripts/generate-locale-resources.mjs --check",
     "native-locales:check": "node scripts/validate-native-widget-locales.mjs"
@@ -126,7 +128,7 @@
     "jest-environment-jsdom": "29.7.0",
     "jest-expo": "~56.0.5",
     "knip": "^6.32.3",
-    "prettier": "2.8.8",
+    "prettier": "3.9.6",
     "radon-ide": "^0.0.1",
     "tsx": "^4.21.0",
     "typescript": "^6.0.3"
@@ -171,7 +173,6 @@
       "!**/node_modules/**",
       "!**/babel.config.js",
       "!**/metro.config.js",
-      "!**/.prettierrc.js",
       "!**/eslint.config.js",
       "!**/expo-env.d.ts",
       "!**/.expo/**",

@@ -21,8 +21,13 @@ jest.mock('../../src/components/ActiveWorkoutBar', () => ({
   useActiveWorkoutBarPadding: jest.fn(() => 0),
 }));
 
-const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
-const mockUseWorkoutPresetsLibrary = useWorkoutPresetsLibrary as jest.MockedFunction<typeof useWorkoutPresetsLibrary>;
+const mockUseServerConnection = useServerConnection as jest.MockedFunction<
+  typeof useServerConnection
+>;
+const mockUseWorkoutPresetsLibrary =
+  useWorkoutPresetsLibrary as jest.MockedFunction<
+    typeof useWorkoutPresetsLibrary
+  >;
 
 const mockNavigation = {
   navigate: jest.fn(),
@@ -37,7 +42,11 @@ jest.mock('@react-navigation/native', () => ({
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
-function createPreset(id: string, name: string, exerciseCount = 0): WorkoutPreset {
+function createPreset(
+  id: string,
+  name: string,
+  exerciseCount = 0
+): WorkoutPreset {
   return {
     id,
     user_id: 'user-1',
@@ -58,7 +67,9 @@ function createPreset(id: string, name: string, exerciseCount = 0): WorkoutPrese
 
 type LibraryHookReturn = ReturnType<typeof useWorkoutPresetsLibrary>;
 
-const buildHookReturn = (overrides: Partial<LibraryHookReturn> = {}): LibraryHookReturn => ({
+const buildHookReturn = (
+  overrides: Partial<LibraryHookReturn> = {}
+): LibraryHookReturn => ({
   presets: [],
   isLoading: false,
   isSearching: false,
@@ -89,7 +100,7 @@ describe('WorkoutPresetsLibraryScreen', () => {
         <SafeAreaProvider initialMetrics={{ insets, frame }}>
           <WorkoutPresetsLibraryScreen navigation={navigation} route={route} />
         </SafeAreaProvider>
-      </QueryClientProvider>,
+      </QueryClientProvider>
     );
   };
 
@@ -109,8 +120,11 @@ describe('WorkoutPresetsLibraryScreen', () => {
   it('lists presets from the hook with their exercise counts', async () => {
     mockUseWorkoutPresetsLibrary.mockReturnValue(
       buildHookReturn({
-        presets: [createPreset('p-1', 'Push Day', 3), createPreset('p-2', 'Leg Day', 1)],
-      }),
+        presets: [
+          createPreset('p-1', 'Push Day', 3),
+          createPreset('p-2', 'Leg Day', 1),
+        ],
+      })
     );
 
     const screen = renderScreen();
@@ -124,38 +138,52 @@ describe('WorkoutPresetsLibraryScreen', () => {
   it('navigates to WorkoutPresetDetail with the preset on row tap', async () => {
     const preset = createPreset('p-1', 'Push Day', 2);
     mockUseWorkoutPresetsLibrary.mockReturnValue(
-      buildHookReturn({ presets: [preset] }),
+      buildHookReturn({ presets: [preset] })
     );
 
     const screen = renderScreen();
     await waitFor(() => expect(screen.getByText('Push Day')).toBeTruthy());
 
     fireEvent.press(screen.getByText('Push Day'));
-    expect(navigation.navigate).toHaveBeenCalledWith('WorkoutPresetDetail', { preset });
+    expect(navigation.navigate).toHaveBeenCalledWith('WorkoutPresetDetail', {
+      preset,
+    });
   });
 
   it('passes the typed term through to useWorkoutPresetsLibrary', async () => {
     const screen = renderScreen();
 
     await act(async () => {
-      fireEvent.changeText(screen.getByPlaceholderText('Search workout presets...'), 'pu');
+      fireEvent.changeText(
+        screen.getByPlaceholderText('Search workout presets...'),
+        'pu'
+      );
     });
 
-    expect(mockUseWorkoutPresetsLibrary).toHaveBeenLastCalledWith('pu', { enabled: true });
+    expect(mockUseWorkoutPresetsLibrary).toHaveBeenLastCalledWith('pu', {
+      enabled: true,
+    });
   });
 
   it('renders search results as the hook returns them in search mode', async () => {
     mockUseWorkoutPresetsLibrary.mockReturnValue(
-      buildHookReturn({ presets: [createPreset('p-search', 'Push Day Search Result', 2)] }),
+      buildHookReturn({
+        presets: [createPreset('p-search', 'Push Day Search Result', 2)],
+      })
     );
 
     const screen = renderScreen();
 
     await act(async () => {
-      fireEvent.changeText(screen.getByPlaceholderText('Search workout presets...'), 'pu');
+      fireEvent.changeText(
+        screen.getByPlaceholderText('Search workout presets...'),
+        'pu'
+      );
     });
 
-    await waitFor(() => expect(screen.getByText('Push Day Search Result')).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByText('Push Day Search Result')).toBeTruthy()
+    );
     expect(screen.getByText('2 exercises')).toBeTruthy();
   });
 
@@ -166,7 +194,7 @@ describe('WorkoutPresetsLibraryScreen', () => {
           createPreset('p-1', 'Push Day', 3),
           { ...createPreset('p-2', 'Community Pull', 2), is_public: true },
         ],
-      }),
+      })
     );
 
     const screen = renderScreen();
@@ -174,7 +202,9 @@ describe('WorkoutPresetsLibraryScreen', () => {
 
     pressHeaderMenuAction(navigation, 'Public');
 
-    expect(useAppPreferencesStore.getState().workoutPresetsLibraryOwnershipFilter).toBe('public');
+    expect(
+      useAppPreferencesStore.getState().workoutPresetsLibraryOwnershipFilter
+    ).toBe('public');
     expect(screen.getByText('Community Pull')).toBeTruthy();
     expect(screen.queryByText('Push Day')).toBeNull();
   });
@@ -192,13 +222,15 @@ describe('WorkoutPresetsLibraryScreen', () => {
 
     expect(screen.getByText('No server configured')).toBeTruthy();
     fireEvent.press(screen.getByText('Go to Settings'));
-    expect(navigation.navigate).toHaveBeenCalledWith('Tabs', { screen: 'Settings' });
+    expect(navigation.navigate).toHaveBeenCalledWith('Tabs', {
+      screen: 'Settings',
+    });
   });
 
   it('renders an error state with a working Retry button', () => {
     const refetch = jest.fn();
     mockUseWorkoutPresetsLibrary.mockReturnValue(
-      buildHookReturn({ isError: true, refetch }),
+      buildHookReturn({ isError: true, refetch })
     );
 
     const screen = renderScreen();

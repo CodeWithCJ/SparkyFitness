@@ -22,7 +22,9 @@ describe('MfaForm localization-safe behavior', () => {
     const view = render(<MfaForm {...props} />);
     expect(view.getByText('Authenticator App')).toBeTruthy();
     expect(view.getByText('Email Code')).toBeTruthy();
-    expect(view.getByText('Enter the code from your authenticator app.')).toBeTruthy();
+    expect(
+      view.getByText('Enter the code from your authenticator app.')
+    ).toBeTruthy();
     fireEvent.changeText(view.getByPlaceholderText('000000'), '12a34567');
     expect(props.onMfaCodeChange).toHaveBeenCalledWith('123456');
   });

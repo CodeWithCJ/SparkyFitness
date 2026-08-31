@@ -2,7 +2,10 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { pressAction, skipDuplicatePressWindow } from './helpers/nativeHeaderTestUtils';
+import {
+  pressAction,
+  skipDuplicatePressWindow,
+} from './helpers/nativeHeaderTestUtils';
 import MedicationScheduleFormScreen from '../../src/screens/MedicationScheduleFormScreen';
 import {
   useMedicationDetail,
@@ -51,7 +54,11 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
       onPress: () => void;
       accessibilityLabel: string;
     }) => (
-      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+      >
         <Text>{label}</Text>
       </Pressable>
     ),
@@ -65,7 +72,9 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
       value: string;
     }) => (
       <View>
-        <Text>{options.find((option) => option.value === value)?.label ?? ''}</Text>
+        <Text>
+          {options.find((option) => option.value === value)?.label ?? ''}
+        </Text>
         {options.map((option) => (
           <Pressable key={option.value} onPress={() => onSelect(option.value)}>
             <Text>{`opt-${option.value}`}</Text>
@@ -82,11 +91,14 @@ jest.mock('../../src/components/TimeSheet', () => {
   const React = require('react');
   const { Pressable, Text } = require('react-native');
   const MockTimeSheet = React.forwardRef(
-    ({ onSelectTime }: { onSelectTime: (time: string) => void }, _ref: unknown) => (
+    (
+      { onSelectTime }: { onSelectTime: (time: string) => void },
+      _ref: unknown
+    ) => (
       <Pressable onPress={() => onSelectTime('08:00')}>
         <Text>mock-time-sheet</Text>
       </Pressable>
-    ),
+    )
   );
   MockTimeSheet.displayName = 'MockTimeSheet';
   return {
@@ -99,7 +111,10 @@ jest.mock('../../src/components/CalendarSheet', () => {
   const React = require('react');
   const { Pressable, Text, View } = require('react-native');
   const MockCalendarSheet = React.forwardRef(
-    ({ onSelectDate }: { onSelectDate: (date: string) => void }, _ref: unknown) => (
+    (
+      { onSelectDate }: { onSelectDate: (date: string) => void },
+      _ref: unknown
+    ) => (
       <View>
         <Pressable onPress={() => onSelectDate('2026-08-15')}>
           <Text>cal-mid</Text>
@@ -108,7 +123,7 @@ jest.mock('../../src/components/CalendarSheet', () => {
           <Text>cal-early</Text>
         </Pressable>
       </View>
-    ),
+    )
   );
   MockCalendarSheet.displayName = 'MockCalendarSheet';
   return {
@@ -134,20 +149,25 @@ jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 const mockUseMedicationDetail = useMedicationDetail as jest.MockedFunction<
   typeof useMedicationDetail
 >;
-const mockUseCreateSchedule = useCreateMedicationSchedule as jest.MockedFunction<
-  typeof useCreateMedicationSchedule
->;
-const mockUseUpdateSchedule = useUpdateMedicationSchedule as jest.MockedFunction<
-  typeof useUpdateMedicationSchedule
->;
-const mockUseDeleteSchedule = useDeleteMedicationSchedule as jest.MockedFunction<
-  typeof useDeleteMedicationSchedule
->;
+const mockUseCreateSchedule =
+  useCreateMedicationSchedule as jest.MockedFunction<
+    typeof useCreateMedicationSchedule
+  >;
+const mockUseUpdateSchedule =
+  useUpdateMedicationSchedule as jest.MockedFunction<
+    typeof useUpdateMedicationSchedule
+  >;
+const mockUseDeleteSchedule =
+  useDeleteMedicationSchedule as jest.MockedFunction<
+    typeof useDeleteMedicationSchedule
+  >;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
-function buildSchedule(overrides: Partial<MedicationSchedule> = {}): MedicationSchedule {
+function buildSchedule(
+  overrides: Partial<MedicationSchedule> = {}
+): MedicationSchedule {
   return {
     id: 'sched-1',
     medication_id: 'med-1',
@@ -171,7 +191,9 @@ function buildSchedule(overrides: Partial<MedicationSchedule> = {}): MedicationS
   };
 }
 
-function buildMedication(overrides: Partial<MedicationDetail> = {}): MedicationDetail {
+function buildMedication(
+  overrides: Partial<MedicationDetail> = {}
+): MedicationDetail {
   return {
     id: 'med-1',
     user_id: 'user-1',
@@ -224,7 +246,7 @@ function renderScreen(params: { medicationId: string; scheduleId?: string }) {
   return render(
     <SafeAreaProvider initialMetrics={{ insets, frame }}>
       <MedicationScheduleFormScreen navigation={mockNavigation} route={route} />
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
 }
 
@@ -239,21 +261,18 @@ describe('MedicationScheduleFormScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     setDetail(buildMedication());
-    mockUseCreateSchedule.mockReturnValue(
-      { mutate: createMutate, isPending: false } as unknown as ReturnType<
-        typeof useCreateMedicationSchedule
-      >,
-    );
-    mockUseUpdateSchedule.mockReturnValue(
-      { mutate: updateMutate, isPending: false } as unknown as ReturnType<
-        typeof useUpdateMedicationSchedule
-      >,
-    );
-    mockUseDeleteSchedule.mockReturnValue(
-      { mutate: deleteMutate, isPending: false } as unknown as ReturnType<
-        typeof useDeleteMedicationSchedule
-      >,
-    );
+    mockUseCreateSchedule.mockReturnValue({
+      mutate: createMutate,
+      isPending: false,
+    } as unknown as ReturnType<typeof useCreateMedicationSchedule>);
+    mockUseUpdateSchedule.mockReturnValue({
+      mutate: updateMutate,
+      isPending: false,
+    } as unknown as ReturnType<typeof useUpdateMedicationSchedule>);
+    mockUseDeleteSchedule.mockReturnValue({
+      mutate: deleteMutate,
+      isPending: false,
+    } as unknown as ReturnType<typeof useDeleteMedicationSchedule>);
   });
 
   it('creates a daily schedule with a full explicit payload and goes back on success', () => {
@@ -279,7 +298,7 @@ describe('MedicationScheduleFormScreen', () => {
           ...NULL_DISCRIMINATORS,
         },
       },
-      expect.anything(),
+      expect.anything()
     );
 
     const options = createMutate.mock.calls[0][1];
@@ -292,7 +311,10 @@ describe('MedicationScheduleFormScreen', () => {
 
     fireEvent.press(screen.getByText('opt-weekly'));
     pressAction(screen, mockNavigation, 'Save');
-    expect(Alert.alert).toHaveBeenCalledWith('Required', 'Select at least one day of the week.');
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Required',
+      'Select at least one day of the week.'
+    );
     expect(createMutate).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByLabelText('Wednesday, not selected'));
@@ -305,9 +327,12 @@ describe('MedicationScheduleFormScreen', () => {
     expect(createMutate).toHaveBeenCalledWith(
       {
         medicationId: 'med-1',
-        body: expect.objectContaining({ schedule_type_id: 'weekly', days_of_week: [1, 3] }),
+        body: expect.objectContaining({
+          schedule_type_id: 'weekly',
+          days_of_week: [1, 3],
+        }),
       },
-      expect.anything(),
+      expect.anything()
     );
   });
 
@@ -326,7 +351,7 @@ describe('MedicationScheduleFormScreen', () => {
           start_date: getTodayDate(),
         }),
       },
-      expect.anything(),
+      expect.anything()
     );
   });
 
@@ -343,9 +368,12 @@ describe('MedicationScheduleFormScreen', () => {
     expect(createMutate).toHaveBeenCalledWith(
       {
         medicationId: 'med-1',
-        body: expect.objectContaining({ schedule_type_id: 'prn', time_of_day: null }),
+        body: expect.objectContaining({
+          schedule_type_id: 'prn',
+          time_of_day: null,
+        }),
       },
-      expect.anything(),
+      expect.anything()
     );
   });
 
@@ -363,12 +391,20 @@ describe('MedicationScheduleFormScreen', () => {
   it('clears stale weekly discriminators when the type changes to daily on edit', () => {
     setDetail(
       buildMedication({
-        schedules: [buildSchedule({ schedule_type_id: 'weekly', days_of_week: [1, 3] })],
-      }),
+        schedules: [
+          buildSchedule({ schedule_type_id: 'weekly', days_of_week: [1, 3] }),
+        ],
+      })
     );
-    const screen = renderScreen({ medicationId: 'med-1', scheduleId: 'sched-1' });
+    const screen = renderScreen({
+      medicationId: 'med-1',
+      scheduleId: 'sched-1',
+    });
 
-    expect(screen.getByLabelText('Wednesday, selected').props.accessibilityState.selected).toBe(true);
+    expect(
+      screen.getByLabelText('Wednesday, selected').props.accessibilityState
+        .selected
+    ).toBe(true);
 
     fireEvent.press(screen.getByText('opt-daily'));
 
@@ -392,13 +428,20 @@ describe('MedicationScheduleFormScreen', () => {
           ...NULL_DISCRIMINATORS,
         },
       },
-      expect.anything(),
+      expect.anything()
     );
   });
 
   it('normalizes a stored HH:MM:SS time to HH:MM', () => {
-    setDetail(buildMedication({ schedules: [buildSchedule({ time_of_day: '08:30:00' })] }));
-    const screen = renderScreen({ medicationId: 'med-1', scheduleId: 'sched-1' });
+    setDetail(
+      buildMedication({
+        schedules: [buildSchedule({ time_of_day: '08:30:00' })],
+      })
+    );
+    const screen = renderScreen({
+      medicationId: 'med-1',
+      scheduleId: 'sched-1',
+    });
 
     expect(screen.getByText('8:30 AM')).toBeTruthy();
 
@@ -408,7 +451,7 @@ describe('MedicationScheduleFormScreen', () => {
       expect.objectContaining({
         body: expect.objectContaining({ time_of_day: '08:30' }),
       }),
-      expect.anything(),
+      expect.anything()
     );
   });
 
@@ -421,14 +464,17 @@ describe('MedicationScheduleFormScreen', () => {
 
     expect(Alert.alert).toHaveBeenCalledWith(
       'Invalid dates',
-      'End date must be on or after the start date.',
+      'End date must be on or after the start date.'
     );
     expect(createMutate).not.toHaveBeenCalled();
   });
 
   it('deletes after confirmation and goes back', () => {
     setDetail(buildMedication({ schedules: [buildSchedule()] }));
-    const screen = renderScreen({ medicationId: 'med-1', scheduleId: 'sched-1' });
+    const screen = renderScreen({
+      medicationId: 'med-1',
+      scheduleId: 'sched-1',
+    });
 
     fireEvent.press(screen.getByText('Delete Schedule'));
 
@@ -436,13 +482,13 @@ describe('MedicationScheduleFormScreen', () => {
     const call = alertMock.mock.calls.find((c) => c[0] === 'Delete Schedule');
     expect(call).toBeTruthy();
     const destructive = call![2].find(
-      (button: { style?: string }) => button.style === 'destructive',
+      (button: { style?: string }) => button.style === 'destructive'
     );
     act(() => destructive.onPress());
 
     expect(deleteMutate).toHaveBeenCalledWith(
       { id: 'sched-1', medicationId: 'med-1' },
-      expect.anything(),
+      expect.anything()
     );
     const options = deleteMutate.mock.calls[0][1];
     act(() => options.onSuccess());
@@ -451,7 +497,10 @@ describe('MedicationScheduleFormScreen', () => {
 
   it('shows a loading view while editing an uncached schedule and blocks Save', () => {
     setDetail(undefined, true);
-    const screen = renderScreen({ medicationId: 'med-1', scheduleId: 'sched-1' });
+    const screen = renderScreen({
+      medicationId: 'med-1',
+      scheduleId: 'sched-1',
+    });
 
     expect(screen.getByText('Loading...')).toBeTruthy();
 
@@ -463,7 +512,10 @@ describe('MedicationScheduleFormScreen', () => {
 
   it('shows a not-found view when the schedule id is absent from a loaded medication', () => {
     setDetail(buildMedication({ schedules: [] }));
-    const screen = renderScreen({ medicationId: 'med-1', scheduleId: 'sched-gone' });
+    const screen = renderScreen({
+      medicationId: 'med-1',
+      scheduleId: 'sched-gone',
+    });
 
     expect(screen.getByText('Schedule not found')).toBeTruthy();
 
@@ -474,10 +526,18 @@ describe('MedicationScheduleFormScreen', () => {
   it('round-trips specific_days and treats taper as the daily family', () => {
     setDetail(
       buildMedication({
-        schedules: [buildSchedule({ schedule_type_id: 'specific_days', days_of_week: [2, 4] })],
-      }),
+        schedules: [
+          buildSchedule({
+            schedule_type_id: 'specific_days',
+            days_of_week: [2, 4],
+          }),
+        ],
+      })
     );
-    const screen = renderScreen({ medicationId: 'med-1', scheduleId: 'sched-1' });
+    const screen = renderScreen({
+      medicationId: 'med-1',
+      scheduleId: 'sched-1',
+    });
 
     expect(screen.getByText('opt-specific_days')).toBeTruthy();
     pressAction(screen, mockNavigation, 'Save');
@@ -489,15 +549,20 @@ describe('MedicationScheduleFormScreen', () => {
           days_of_week: [2, 4],
         }),
       }),
-      expect.anything(),
+      expect.anything()
     );
 
     screen.unmount();
     jest.clearAllMocks();
     setDetail(
-      buildMedication({ schedules: [buildSchedule({ schedule_type_id: 'taper' })] }),
+      buildMedication({
+        schedules: [buildSchedule({ schedule_type_id: 'taper' })],
+      })
     );
-    const taperScreen = renderScreen({ medicationId: 'med-1', scheduleId: 'sched-1' });
+    const taperScreen = renderScreen({
+      medicationId: 'med-1',
+      scheduleId: 'sched-1',
+    });
     pressAction(taperScreen, mockNavigation, 'Save');
 
     expect(updateMutate).toHaveBeenCalledWith(
@@ -507,7 +572,7 @@ describe('MedicationScheduleFormScreen', () => {
           ...NULL_DISCRIMINATORS,
         }),
       }),
-      expect.anything(),
+      expect.anything()
     );
   });
 
@@ -523,9 +588,12 @@ describe('MedicationScheduleFormScreen', () => {
             prn_reason: 'as advised',
           }),
         ],
-      }),
+      })
     );
-    const screen = renderScreen({ medicationId: 'med-1', scheduleId: 'sched-1' });
+    const screen = renderScreen({
+      medicationId: 'med-1',
+      scheduleId: 'sched-1',
+    });
 
     fireEvent.press(screen.getByText('mock-time-sheet'));
     pressAction(screen, mockNavigation, 'Save');
@@ -551,7 +619,7 @@ describe('MedicationScheduleFormScreen', () => {
           prn_max_per_day: null,
         },
       },
-      expect.anything(),
+      expect.anything()
     );
   });
 });

@@ -1,7 +1,10 @@
 import React from 'react';
 import { Alert } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
-import { createQueryWrapper, createTestQueryClient } from '../hooks/queryTestUtils';
+import {
+  createQueryWrapper,
+  createTestQueryClient,
+} from '../hooks/queryTestUtils';
 import SwipeableFoodRow from '../../src/components/SwipeableFoodRow';
 import type { FoodEntry } from '../../src/types/foodEntries';
 
@@ -48,7 +51,7 @@ describe('SwipeableFoodRow', () => {
         entry={entry}
         nutrition={{ calories: 120, protein: 15, carbs: 8, fat: 2 }}
         onAdjustServing={onAdjustServing}
-      />,
+      />
     );
 
     fireEvent.press(screen.getByText(/120 Cal/));
@@ -64,7 +67,7 @@ describe('SwipeableFoodRow', () => {
         entry={entry}
         nutrition={{ calories: 120, protein: 15, carbs: 8, fat: 2 }}
         onAdjustServing={jest.fn()}
-      />,
+      />
     );
 
     fireEvent.press(screen.getByText(/Greek Yogurt/));
@@ -80,12 +83,14 @@ describe('SwipeableFoodRow', () => {
         entry={entry}
         nutrition={{ calories: 120, protein: 15, carbs: 8, fat: 2 }}
         onAdjustServing={jest.fn()}
-      />,
+      />
     );
 
     fireEvent.press(screen.getByText(/Greek Yogurt/));
 
-    expect(mockNavigate).toHaveBeenCalledWith('EditLoggedMeal', { foodEntryMealId: 'fem-1' });
+    expect(mockNavigate).toHaveBeenCalledWith('EditLoggedMeal', {
+      foodEntryMealId: 'fem-1',
+    });
   });
 
   it('does not surface the quick-adjust affordance for meal components', () => {
@@ -97,7 +102,7 @@ describe('SwipeableFoodRow', () => {
         entry={entry}
         nutrition={{ calories: 120, protein: 15, carbs: 8, fat: 2 }}
         onAdjustServing={onAdjustServing}
-      />,
+      />
     );
 
     // Just text — no button.
@@ -114,7 +119,7 @@ describe('SwipeableFoodRow', () => {
         entry={entry}
         nutrition={{ calories: 120, protein: 15, carbs: 8, fat: 2 }}
         onAdjustServing={jest.fn()}
-      />,
+      />
     );
 
     fireEvent(screen.getByText(/Greek Yogurt/), 'longPress');
