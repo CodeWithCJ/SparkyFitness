@@ -16,6 +16,7 @@ import BottomSheetPicker from './BottomSheetPicker';
 import Button from './ui/Button';
 import EquivalentsSection from './EquivalentsSection';
 import FormInput from './FormInput';
+import MarkdownNotesField from './MarkdownNotesField';
 import Icon from './Icon';
 import FoodUnitSelectorSheet from './FoodUnitSelectorSheet';
 import Switch from './ui/Switch';
@@ -75,6 +76,12 @@ export interface FoodFormProps {
   submitLabel?: string;
   isSubmitting?: boolean;
   hideSubmitButton?: boolean;
+  /**
+   * Show the markdown notes field. Only the food create/edit modes own the
+   * food's note; the adjust-entry-nutrition mode edits one diary entry's
+   * numbers and must not present the food's note as if it were editable there.
+   */
+  showNotes?: boolean;
   showAutoScaleNutrition?: boolean;
   initialAutoScaleNutritionEnabled?: boolean;
   unitSelector?: {
@@ -126,6 +133,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
   submitLabel,
   isSubmitting = false,
   hideSubmitButton = false,
+  showNotes = false,
   showAutoScaleNutrition = false,
   initialAutoScaleNutritionEnabled = false,
   unitSelector,
@@ -935,6 +943,17 @@ const FoodForm: React.FC<FoodFormProps> = ({
             false,
             'servingSize'
           )}
+          {showNotes ? (
+            <MarkdownNotesField
+              value={form.notes}
+              onCommit={(text) => update('notes', text)}
+              label={t('foodForm.notes', { defaultValue: 'Notes' })}
+              placeholder={t('foodForm.notesPlaceholder', {
+                defaultValue:
+                  'e.g. White rice, double chicken, no beans (supports markdown)',
+              })}
+            />
+          ) : null}
 
           {/* Serving */}
           <View className="flex-row gap-3">

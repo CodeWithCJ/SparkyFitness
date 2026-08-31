@@ -318,6 +318,7 @@ export function CreateFoodMode({
     const saveFoodPayload = {
       name: data.name,
       brand: data.brand || null,
+      notes: (data.notes ?? '').trim() || null,
       serving_size: parseDecimalInput(data.servingSize) || 0,
       serving_unit: data.servingUnit || 'serving',
       calories: parseDecimalInput(data.calories) || 0,
@@ -533,6 +534,7 @@ export function CreateFoodMode({
         submitRequestRef={submitRequestRef}
         isSubmitting={isSubmitting}
         initialValues={initialFood}
+        showNotes
         submitLabel={primaryLabel}
         hideSubmitButton={usesNativeHeader}
         headerChildren={

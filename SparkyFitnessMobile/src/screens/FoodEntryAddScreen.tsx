@@ -22,6 +22,8 @@ import { useCSSVariable } from 'uniwind';
 import { useQuery } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
+import MarkdownNotesField from '../components/MarkdownNotesField';
+import MarkdownMessage from '../components/chat/MarkdownMessage';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import {
   FoodNutritionHeader,
@@ -236,6 +238,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       return {
         name: item.name,
         brand: item.brand ?? '',
+        // A meal ingredient carries a nutrition snapshot, not a note; the note
+        // belongs to the food and to the diary entry, not to this row.
+        notes: '',
         servingSize: item.servingSize != null ? String(item.servingSize) : '',
         servingUnit: item.servingUnit,
         calories: item.calories != null ? String(item.calories) : '',
@@ -272,6 +277,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
 
   const [entryTime, setEntryTime] = useState('');
+  // The note for THIS diary entry. The food's own note is shown read-only
+  // beside it and is never copied in.
+  const [entryNotes, setEntryNotes] = useState('');
   const entryTimeTouched = useRef(false);
   useEffect(() => {
     if (entryTimeTouched.current) return;
@@ -864,6 +872,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       unit: displayValues.servingUnit,
       entry_date: selectedDate,
       entry_time: entryTime || null,
+      notes: entryNotes.trim() || null,
     };
 
     switch (activeItem.source) {
@@ -1733,6 +1742,36 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                 />
               </View>
             ) : null}
+
+            {activeItem.notes ? (
+              <View className="mt-3">
+                <Text className="text-xs font-semibold uppercase text-text-muted mb-1">
+                  {t('foodEntryAdd.labels.aboutThisFood', {
+                    defaultValue: 'About this food',
+                  })}
+                </Text>
+                <View className="rounded-lg border border-border-subtle bg-raised px-3 py-2">
+                  <MarkdownMessage
+                    text={activeItem.notes}
+                    streaming={false}
+                    fontSize={14}
+                  />
+                </View>
+              </View>
+            ) : null}
+
+            <View className="mt-3">
+              <MarkdownNotesField
+                value={entryNotes}
+                onCommit={setEntryNotes}
+                label={t('foodEntryAdd.labels.entryNotes', {
+                  defaultValue: 'Note for this entry',
+                })}
+                placeholder={t('foodEntryAdd.labels.entryNotesPlaceholder', {
+                  defaultValue: 'Anything specific about this time you ate it',
+                })}
+              />
+            </View>
           </>
         ) : null}
 

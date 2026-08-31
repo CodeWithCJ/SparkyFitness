@@ -8,6 +8,7 @@ import { toImageArray } from '../utils/imageLocalizer.js';
 import type { FoodEntryInput, FoodEntrySnapshot } from '../types/nutrition.js';
 import {
   hasExactReviewedFoodEntrySnapshot,
+  sanitizeNotes,
   type ReviewedFoodEntryFingerprint,
 } from '@workspace/shared';
 
@@ -33,6 +34,7 @@ interface SourceMealContainer {
   entry_time: string | null;
   name: string;
   description: string | null;
+  notes: string | null;
   quantity: number | null;
   unit: string | null;
   legacy_serving_unit_math: boolean;
@@ -278,10 +280,10 @@ async function createFoodEntry(
          created_by_user_id, food_name, brand_name, serving_size, serving_unit, calories, protein, carbs, fat,
          saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium,
          potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients, allergens, traces, updated_by_user_id,
-         source, source_id, entry_time, images
+         source, source_id, entry_time, images, notes
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41::jsonb
+         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41::jsonb, $42
        )
        -- Idempotent re-sync for provider-sourced entries (e.g. Health Connect):
        -- re-ingesting the same record updates it in place. Manual/web entries
@@ -323,6 +325,8 @@ async function createFoodEntry(
            traces = EXCLUDED.traces,
            updated_by_user_id = EXCLUDED.updated_by_user_id,
            entry_time = EXCLUDED.entry_time
+           -- notes is deliberately absent: it is user-authored, so a provider
+           -- re-sync must never overwrite what the user wrote on this entry.
        RETURNING *`,
       [
         entryData.user_id,
@@ -371,6 +375,9 @@ async function createFoodEntry(
         // per-entry photo the user chose), and meal-component entries have no
         // parent food row to read from, so they fall back to an empty array.
         JSON.stringify(toImageArray(entryData.images ?? snapshot.food_images)),
+        // Per-occurrence note. Never seeded from the parent food's notes: the
+        // food's note is shown alongside this one, not copied into it.
+        sanitizeNotes(entryData.notes) ?? null,
       ]
     );
     await client.query('COMMIT');
@@ -397,6 +404,7 @@ async function getFoodEntryById(entryId: string, userId: string) {
         fe.variant_id,
         fe.entry_date,
         fe.entry_time,
+        fe.notes,
         fe.meal_plan_template_id,
         fe.food_entry_meal_id, 
         fe.food_name, 
@@ -513,7 +521,11 @@ async function updateFoodEntry(
         entry_time = $34,
         -- NULL means "key omitted": keep whatever override is already stored.
         -- Clearing the override is done by sending an empty array.
-        images = COALESCE($35::jsonb, images)
+        images = COALESCE($35::jsonb, images),
+        -- Plain assignment like entry_time: the service has already resolved
+        -- "key omitted => keep existing" against the stored row, so whatever
+        -- arrives here is the value the entry should end up with.
+        notes = $36
       WHERE id = $30
       RETURNING *`,
       [
@@ -554,6 +566,7 @@ async function updateFoodEntry(
         entryData.images === undefined
           ? null
           : JSON.stringify(toImageArray(entryData.images)),
+        sanitizeNotes(entryData.notes) ?? null,
       ]
     );
     return result.rows[0];
@@ -576,6 +589,7 @@ async function getFoodEntriesByDate(userId: string, selectedDate: string) {
         fe.variant_id,
         fe.entry_date,
         fe.entry_time,
+        fe.notes,
         fe.meal_plan_template_id,
         fe.food_entry_meal_id,
         fe.food_name,
@@ -642,6 +656,7 @@ async function getFoodEntriesByDateAndMealType(
         fe.variant_id,
         fe.entry_date,
         fe.entry_time,
+        fe.notes,
         fe.meal_plan_template_id,
         fe.food_entry_meal_id,
         fe.food_name,
@@ -709,6 +724,7 @@ async function getFoodEntriesByDateRange(
         fe.variant_id,
         fe.entry_date,
         fe.entry_time,
+        fe.notes,
         fe.meal_plan_template_id,
         fe.food_entry_meal_id,
         fe.food_name,
@@ -813,6 +829,7 @@ async function copyReviewedFoodEntriesFromUser({
         fe.unit,
         fe.entry_date,
         fe.entry_time,
+        fe.notes,
         fe.variant_id,
         fe.meal_plan_template_id,
         fe.food_entry_meal_id,
@@ -888,6 +905,7 @@ async function copyReviewedFoodEntriesFromUser({
               entry_time,
               name,
               description,
+              notes,
               quantity,
               unit,
               legacy_serving_unit_math
@@ -908,6 +926,7 @@ async function copyReviewedFoodEntriesFromUser({
               entry_time,
               name,
               description,
+              notes,
               quantity,
               unit,
               legacy_serving_unit_math,
@@ -915,7 +934,7 @@ async function copyReviewedFoodEntriesFromUser({
               updated_by_user_id,
               images
             ) VALUES (
-              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
               COALESCE((SELECT images FROM meals WHERE id = $2), '[]'::jsonb)
             )
             RETURNING id`,
@@ -927,6 +946,7 @@ async function copyReviewedFoodEntriesFromUser({
               sourceMeal.entry_time,
               sourceMeal.name,
               sourceMeal.description,
+              sourceMeal.notes,
               sourceMeal.quantity,
               sourceMeal.unit,
               sourceMeal.legacy_serving_unit_math,
@@ -961,11 +981,11 @@ async function copyReviewedFoodEntriesFromUser({
           serving_size, serving_unit, calories, protein, carbs, fat,
           saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
           cholesterol, sodium, potassium, dietary_fiber, sugars, vitamin_a,
-          vitamin_c, calcium, iron, glycemic_index, custom_nutrients
+          vitamin_c, calcium, iron, glycemic_index, custom_nutrients, notes
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
           $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-          $27, $28, $29, $30, $31, $32, $33, $34, $35
+          $27, $28, $29, $30, $31, $32, $33, $34, $35, $36
         ) RETURNING *`,
         [
           targetUserId,
@@ -1003,6 +1023,7 @@ async function copyReviewedFoodEntriesFromUser({
           entry.iron,
           entry.glycemic_index,
           sanitizeCustomNutrients(entry.custom_nutrients),
+          sanitizeNotes(entry.notes) ?? null,
         ]
       );
       copiedEntries.push(...inserted.rows);
@@ -1072,8 +1093,9 @@ async function bulkCreateFoodEntriesWithClient(
         vitamin_c, 
         calcium, 
         iron, 
-        glycemic_index, 
-        custom_nutrients
+        glycemic_index,
+        custom_nutrients,
+        notes
       )
       VALUES %L RETURNING *`;
   const values = entriesData.map((entry: FoodEntryInput) => [
@@ -1113,6 +1135,7 @@ async function bulkCreateFoodEntriesWithClient(
     entry.iron,
     entry.glycemic_index,
     entry.custom_nutrients || {},
+    sanitizeNotes(entry.notes) ?? null,
   ]);
   const formattedQuery = format(query, values);
   const result = await client.query(formattedQuery);
@@ -1156,6 +1179,7 @@ async function getFoodEntryComponentsByFoodEntryMealId(
         fe.variant_id,
         fe.entry_date,
         fe.entry_time,
+        fe.notes,
         fe.food_entry_meal_id,
         fe.food_name, 
         fe.brand_name, 
@@ -1227,6 +1251,7 @@ async function getFoodEntriesBatch(
         fe.unit,
         fe.entry_date,
         fe.entry_time,
+        fe.notes,
         fe.food_name,
         fe.brand_name, 
         fe.serving_size, 

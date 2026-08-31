@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Check, Sparkles, Clock, CalendarDays, X } from 'lucide-react';
 import {
@@ -62,6 +63,8 @@ const AI_ESTIMATE_BADGE_TONE_CLASSES: Record<ConfidenceTone, string> = {
 };
 import { AiEstimateSection } from '@/components/FoodUnitSelector/AiEstimateSection';
 import FavoriteStarButton from '@/components/FavoriteStarButton';
+import { MarkdownView } from '@/components/ui/MarkdownView';
+import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
 
 interface FoodUnitSelectorProps {
   food: Food;
@@ -73,7 +76,8 @@ interface FoodUnitSelectorProps {
     unit: string,
     selectedVariant: FoodVariant,
     entryTime?: string | null,
-    mealType?: string | null
+    mealType?: string | null,
+    notes?: string | null
   ) => void;
   showUnitSelector?: boolean;
   initialQuantity?: number;
@@ -105,6 +109,7 @@ const FoodUnitSelector = ({
   showMealTypeSelect,
   availableMealTypes,
 }: FoodUnitSelectorProps) => {
+  const { t } = useTranslation();
   const {
     loggingLevel,
     energyUnit,
@@ -133,6 +138,9 @@ const FoodUnitSelector = ({
   );
   const [quantity, setQuantity] = useState(1);
   const [entryTime, setEntryTime] = useState('');
+  // The note for THIS diary entry. Separate from the food's own note, which is
+  // shown read-only above and never copied into the entry.
+  const [entryNotes, setEntryNotes] = useState('');
   const [mealType, setMealType] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -440,7 +448,8 @@ const FoodUnitSelector = ({
           variantWithId.serving_unit,
           variantWithId,
           entryTime || null,
-          showMealTypeSelect ? mealType : null
+          showMealTypeSelect ? mealType : null,
+          entryNotes.trim() || null
         );
         onOpenChange(false);
         setQuantity(1);
@@ -464,7 +473,8 @@ const FoodUnitSelector = ({
         selectedVariant.serving_unit,
         selectedVariant,
         entryTime || null,
-        showMealTypeSelect ? mealType : null
+        showMealTypeSelect ? mealType : null,
+        entryNotes.trim() || null
       );
       onOpenChange(false);
       setQuantity(1);
@@ -688,6 +698,38 @@ const FoodUnitSelector = ({
                     type="time"
                     value={entryTime}
                     onChange={(e) => setEntryTime(e.target.value)}
+                  />
+                </div>
+              )}
+
+              {food?.notes ? (
+                <div className="space-y-1">
+                  <Label>
+                    {t('foodUnitSelector.foodNotes', 'About this food')}
+                  </Label>
+                  <div className="rounded-md border bg-muted/40 px-3 py-2 max-h-48 overflow-y-auto">
+                    <MarkdownView>{food.notes}</MarkdownView>
+                  </div>
+                </div>
+              ) : null}
+
+              {showTimeInput && (
+                <div className="space-y-1">
+                  <Label htmlFor="entryNotes">
+                    {t(
+                      'foodUnitSelector.entryNotes',
+                      'Note for this entry (optional)'
+                    )}
+                  </Label>
+                  <MarkdownEditor
+                    id="entryNotes"
+                    value={entryNotes}
+                    onChange={setEntryNotes}
+                    rows={3}
+                    placeholder={t(
+                      'foodUnitSelector.entryNotesPlaceholder',
+                      'Anything specific about this time you ate it'
+                    )}
                   />
                 </div>
               )}

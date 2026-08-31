@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
+import MarkdownNotesField from '../components/MarkdownNotesField';
+import MarkdownMessage from '../components/chat/MarkdownMessage';
 import EntryImageOverride from '../components/EntryImageOverride';
 import Icon from '../components/Icon';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -123,6 +125,8 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
   const showNetCarbs = preferences?.show_net_carbs === true;
 
   const [name, setName] = useState<string | null>(null);
+  // null means "untouched", matching the other fields on this screen.
+  const [notes, setNotes] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [entryTime, setEntryTime] = useState<string | null>(null);
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>(
@@ -186,6 +190,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
   );
 
   const effectiveName = name ?? meal?.name ?? '';
+  const effectiveNotes = notes ?? meal?.notes ?? '';
   const effectiveDate =
     selectedDate ?? (meal ? normalizeDate(meal.entry_date) : null);
   const effectiveEntryTime =
@@ -366,6 +371,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
       meal_type_id: effectiveMealId,
       entry_date: effectiveDate,
       entry_time: effectiveEntryTime || null,
+      notes: effectiveNotes.trim() || null,
       quantity,
       unit: meal.unit,
       meal_template_id: meal.meal_template_id,
@@ -458,6 +464,31 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
             autoCapitalize="sentences"
           />
         </View>
+
+        {meal?.meal_notes ? (
+          <View>
+            <Text className="text-xs font-semibold uppercase text-text-muted mb-1">
+              {t('editLoggedMeal.fields.aboutThisMeal', {
+                defaultValue: 'About this meal',
+              })}
+            </Text>
+            <View className="rounded-lg border border-border-subtle bg-raised px-3 py-2">
+              <MarkdownMessage
+                text={meal.meal_notes}
+                streaming={false}
+                fontSize={14}
+              />
+            </View>
+          </View>
+        ) : null}
+
+        <MarkdownNotesField
+          value={effectiveNotes}
+          onCommit={setNotes}
+          label={t('editLoggedMeal.fields.notes', {
+            defaultValue: 'Note for this entry',
+          })}
+        />
 
         <EntryImageOverride
           images={meal?.images}

@@ -51,6 +51,8 @@ import {
   useUpdateFoodEntryMealMutation,
 } from '@/hooks/Diary/useFoodEntries';
 import { Textarea } from '@/components/ui/textarea';
+import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
+import { MarkdownView } from '@/components/ui/MarkdownView';
 import { FoodImagePicker } from './FoodSearch/FoodImagePicker';
 import {
   splitPickerImages,
@@ -66,6 +68,7 @@ interface MealBuilderProps {
   initialFoods?: MealFood[]; // New prop for food diary entries
   initialMealName?: string;
   initialDescription?: string;
+  initialNotes?: string;
   source?: 'meal-management' | 'food-diary'; // New prop to differentiate context
   foodEntryId?: string; // ID of the FoodEntryMeal when editing a logged meal
   foodEntryDate?: string; // New prop for food diary editing
@@ -123,6 +126,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   initialFoods,
   initialMealName,
   initialDescription,
+  initialNotes,
   source = 'meal-management', // Default to meal-management
   foodEntryId, // Using foodEntryId here as the actual ID of the FoodEntryMeal
   foodEntryDate,
@@ -174,6 +178,11 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   const [mealDescription, setMealDescription] = useState(
     initialDescription || ''
   );
+  const [mealNotes, setMealNotes] = useState(initialNotes || '');
+  // The parent template's own note, shown read-only while logging it. Kept
+  // apart from `mealNotes` on purpose: copying a recipe into every logged
+  // occasion duplicates it and lets the two drift.
+  const [templateNotes, setTemplateNotes] = useState<string | null>(null);
   const [entryTime, setEntryTime] = useState<string>(
     toHourMinute(initialEntryTime) || ''
   );
@@ -280,6 +289,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             setMealName(isDuplicate ? `${meal.name} ${copySuffix}` : meal.name);
             setMealImageItems(toSavedImages(meal.images));
             setMealDescription(meal.description || '');
+            setMealNotes(meal.notes || '');
             // A duplicate is always a fresh private meal owned by the current
             // user, even when cloning a Public, Family, or System meal.
             setIsPublic(isDuplicate ? false : meal.is_public || false);
@@ -312,6 +322,8 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             const quantity = loggedMeal.quantity || 1;
             setMealName(loggedMeal.name);
             setMealDescription(loggedMeal.description || '');
+            setMealNotes(loggedMeal.notes || '');
+            setTemplateNotes(loggedMeal.meal_notes || null);
             setServingSize(quantity.toString());
             setServingUnit(loggedMeal.unit || 'serving');
 
@@ -390,6 +402,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             setMealName(meal.name);
             setMealImageItems(toSavedImages(meal.images));
             setMealDescription(meal.description || '');
+            setTemplateNotes(meal.notes || null);
             setIsPublic(false); // Logged meals are personal copies
             // Prefill Quantity Consumed with one serving's worth (meal.serving_size).
             // This is the key UX fix: an 8-serving meal now defaults to logging 1
@@ -419,6 +432,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         setMealFoods(initialFoods);
         setMealName(initialMealName || foodEntryMealType || 'Logged Meal');
         setMealDescription(initialDescription || '');
+        setMealNotes(initialNotes || '');
         // Set template info based on props for scaling logic, defaults to 1 serving otherwise
         const initialSize = initialServingSize || 1;
         const initialUnit = initialServingUnit || 'serving';
@@ -458,6 +472,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     initialFoods,
     initialMealName,
     initialDescription,
+    initialNotes,
     foodEntryId,
     foodEntryMealType,
     initialServingSize,
@@ -868,6 +883,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       const mealData: MealPayload = {
         name: mealName,
         description: mealDescription,
+        // Always send the key: an omitted `notes` means "leave unchanged"
+        // server-side, so clearing a note has to send null.
+        notes: mealNotes.trim() || null,
         is_public: isPublic,
         serving_size: persistedServingSize,
         serving_unit: servingUnit,
@@ -1012,6 +1030,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           const mealTemplateData: MealPayload = {
             name: mealName.trim(),
             description: mealDescription,
+            notes: mealNotes.trim() || null,
             is_public: false,
             // The template holds the WHOLE dish, so re-logging one serving of
             // it later reproduces the portion being logged here.
@@ -1082,6 +1101,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         entry_date: foodEntryDate,
         name: mealName.trim() || 'Custom Meal',
         description: mealDescription,
+        notes: mealNotes.trim() || null,
         quantity: consumedToSave,
         unit: servingUnit,
         foods: entryFoods,
@@ -1355,6 +1375,28 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           placeholder={t(
             'mealBuilder.mealDescriptionPlaceholder',
             'e.g., My go-to morning meal'
+          )}
+        />
+      </div>
+      {templateNotes ? (
+        <div className="space-y-2">
+          <Label>{t('mealBuilder.templateNotes', 'About this meal')}</Label>
+          <div className="rounded-md border bg-muted/40 px-3 py-2 max-h-48 overflow-y-auto">
+            <MarkdownView>{templateNotes}</MarkdownView>
+          </div>
+        </div>
+      ) : null}
+      <div className="space-y-2">
+        <Label htmlFor="mealNotes">
+          {t('mealBuilder.mealNotes', 'Notes (Optional)')}
+        </Label>
+        <MarkdownEditor
+          id="mealNotes"
+          value={mealNotes}
+          onChange={setMealNotes}
+          placeholder={t(
+            'mealBuilder.mealNotesPlaceholder',
+            'e.g., the recipe, or how you prepare this'
           )}
         />
       </div>

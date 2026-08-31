@@ -26,6 +26,7 @@ import {
   updateFoodEntriesSnapshot,
   type CreateFoodVariantPayload,
   type UpdateFoodVariantPayload,
+  type UpdateFoodPayload,
 } from '../../services/api/foodsApi';
 import type { FoodFormScreenProps } from '../FoodFormScreen';
 import type { FoodInfoItem } from '../../types/foodInfo';
@@ -318,10 +319,14 @@ export function EditFoodMode({
       let nextVariantBaselineValues = variantBaselineValues;
       let nextCustomNutrients = currentCustomNutrients;
 
-      const foodPayload: { name?: string; brand?: string } = {};
+      const foodPayload: UpdateFoodPayload = {};
       if (data.name !== initialValues.name) foodPayload.name = data.name;
       if (data.brand !== initialValues.brand)
         foodPayload.brand = data.brand || '';
+      // Key presence is the update signal, so only set `notes` when it really
+      // changed; an unchanged save must leave the stored note untouched.
+      if ((data.notes ?? '') !== (initialValues.notes ?? ''))
+        foodPayload.notes = (data.notes ?? '').trim() || null;
       // Only send images when they actually changed: the server treats a
       // supplied `images` array as authoritative and deletes anything omitted,
       // so an unchanged round-trip is wasted work at best.
@@ -631,6 +636,7 @@ export function EditFoodMode({
         submitRequestRef={submitRequestRef}
         initialValues={initialValues}
         submitLabel={SAVE_LABEL}
+        showNotes
         isSubmitting={isSubmitting}
         hideSubmitButton={usesNativeHeader}
         headerChildren={

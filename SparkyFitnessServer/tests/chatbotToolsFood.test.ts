@@ -2032,6 +2032,7 @@ describe('create_food', () => {
       user_id: 'user-1',
       name: 'Protein Bar',
       brand: 'BrandX',
+      notes: null,
       serving_size: 1,
       serving_unit: 'serving',
       calories: 220,
@@ -3765,6 +3766,13 @@ describe('save_as_meal_template', () => {
       '2026-06-10',
       MEAL_TYPE_ID,
       'My Second Breakfast',
+      null,
+      false,
+      null,
+      1,
+      1,
+      1,
+      'serving',
       null
     );
     expect(foodEntryService.createFoodEntryMeal).not.toHaveBeenCalled();
@@ -3798,6 +3806,13 @@ describe('save_as_meal_template', () => {
       '2026-06-10',
       'lunch-id',
       'My Lunch',
+      null,
+      false,
+      null,
+      1,
+      1,
+      1,
+      'serving',
       null
     );
   });
@@ -3837,6 +3852,13 @@ describe('save_as_meal_template', () => {
       '2026-06-10',
       MEAL_TYPE_ID,
       'My Second Breakfast',
+      null,
+      false,
+      null,
+      1,
+      1,
+      1,
+      'serving',
       null
     );
   });

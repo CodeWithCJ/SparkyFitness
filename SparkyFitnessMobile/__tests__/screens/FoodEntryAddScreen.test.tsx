@@ -963,6 +963,7 @@ describe('FoodEntryAddScreen', () => {
         unit: 'cup',
         entry_date: '2026-04-23',
         entry_time: null,
+        notes: null,
         food_id: 'food-1',
         variant_id: 'variant-1',
       },
@@ -1256,6 +1257,7 @@ describe('FoodEntryAddScreen', () => {
           unit: 'oz',
           entry_date: '2026-04-23',
           entry_time: null,
+          notes: null,
           food_id: 'saved-food-1',
           variant_id: 'saved-variant-oz',
         },
@@ -1338,6 +1340,7 @@ describe('FoodEntryAddScreen', () => {
           unit: 'oz',
           entry_date: '2026-04-23',
           entry_time: null,
+          notes: null,
         },
       });
     });

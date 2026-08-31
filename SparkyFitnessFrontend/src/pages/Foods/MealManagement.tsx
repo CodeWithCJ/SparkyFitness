@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { MarkdownView } from '@/components/ui/MarkdownView';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -283,6 +284,8 @@ const MealManagement: React.FC = () => {
         const mealPayload: MealPayload = {
           name: mealToUpdate.name,
           description: mealToUpdate.description,
+          // Carried through so a share toggle can never strand the note.
+          notes: mealToUpdate.notes ?? null,
           is_public: true,
           foods:
             mealToUpdate.foods?.map((food) => ({
@@ -319,6 +322,8 @@ const MealManagement: React.FC = () => {
         const mealPayload: MealPayload = {
           name: mealToUpdate.name,
           description: mealToUpdate.description,
+          // Carried through so a share toggle can never strand the note.
+          notes: mealToUpdate.notes ?? null,
           is_public: false,
           foods:
             mealToUpdate.foods?.map((food) => ({
@@ -817,6 +822,14 @@ const MealManagement: React.FC = () => {
                 )}
             </DialogDescription>
           </DialogHeader>
+          {viewingMeal?.notes ? (
+            <div className="rounded-md border bg-muted/40 px-3 py-2">
+              <h4 className="font-semibold mb-1 text-sm">
+                {t('mealManagement.notes', 'Notes')}
+              </h4>
+              <MarkdownView>{viewingMeal.notes}</MarkdownView>
+            </div>
+          ) : null}
           <div>
             <h4 className="font-semibold mb-2">
               {t('mealManagement.foodsInThisMeal', 'Foods in this Meal:')}

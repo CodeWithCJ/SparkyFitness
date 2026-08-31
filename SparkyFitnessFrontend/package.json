@@ -32,7 +32,9 @@
       "^@workspace/shared/(.*)$": "<rootDir>/../shared/src/$1",
       "^better-auth$": "<rootDir>/src/tests/stubs/betterAuth.ts",
       "^better-auth/(.*)$": "<rootDir>/src/tests/stubs/betterAuth.ts",
-      "^@better-auth/(.*)$": "<rootDir>/src/tests/stubs/betterAuth.ts"
+      "^@better-auth/(.*)$": "<rootDir>/src/tests/stubs/betterAuth.ts",
+      "^react-markdown$": "<rootDir>/src/tests/stubs/reactMarkdown.tsx",
+      "^remark-gfm$": "<rootDir>/src/tests/stubs/remarkGfm.ts"
     },
     "transform": {
       "^.+\\.tsx?$": [

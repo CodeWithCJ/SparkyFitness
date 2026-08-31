@@ -251,7 +251,9 @@ const Diary = () => {
     quantity: number,
     unit: string,
     selectedVariant: FoodVariant,
-    entryTime?: string | null
+    entryTime?: string | null,
+    _mealType?: string | null,
+    notes?: string | null
   ) => {
     if (!currentUserId) {
       return;
@@ -274,6 +276,7 @@ const Diary = () => {
         variant_id: selectedVariant.id,
         entry_date: selectedDate,
         entry_time: entryTime || null,
+        notes: notes || null,
       });
       info(loggingLevel, 'Food entry added successfully.');
     } catch (err) {

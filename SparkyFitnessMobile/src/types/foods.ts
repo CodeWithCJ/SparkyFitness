@@ -49,6 +49,11 @@ export interface FoodItem {
   // server-relative (`/uploads/foods/<id>/...`); provider images that could not
   // be downloaded stay absolute and are hotlinked.
   images?: string[] | null;
+  /**
+   * Owner-authored markdown reference note. Shown read-only when logging this
+   * food; only the owner can edit it.
+   */
+  notes?: string | null;
   default_variant: FoodDefaultVariant;
 }
 

@@ -88,6 +88,7 @@ interface LoggedMealInput {
   entry_time?: string | null;
   name?: string;
   description?: string | null;
+  notes?: string | null;
   quantity?: unknown;
   unit?: string | null;
   legacy_serving_unit_math?: boolean;
@@ -892,6 +893,10 @@ async function updateFoodEntry(
           entryData.entry_time !== undefined
             ? entryData.entry_time
             : existingEntry.entry_time,
+        // Same contract as entry_time. Partial updates (the image-only route,
+        // a quantity tweak) omit the key and must not wipe the user's note.
+        notes:
+          entryData.notes !== undefined ? entryData.notes : existingEntry.notes,
       }, // Ensure meal_type_id and correct variant_id are passed
       newSnapshotData // Pass the new snapshot data
     );
@@ -1083,6 +1088,8 @@ async function copyFoodEntries(
                 entry_time: originalMeal.entry_time ?? null,
                 name: originalMeal.name,
                 description: originalMeal.description,
+                // The note travels with the meal container it describes.
+                notes: originalMeal.notes ?? null,
                 quantity: originalMeal.quantity,
                 unit: originalMeal.unit,
               },
@@ -1142,6 +1149,8 @@ async function copyFoodEntries(
           iron: entry.iron,
           glycemic_index: entry.glycemic_index,
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
+          // The note travels with the entry it describes.
+          notes: entry.notes ?? null,
         });
         log(
           'debug',
@@ -1251,6 +1260,8 @@ async function copyFoodEntriesFromUser(
                 entry_time: originalMeal.entry_time ?? null,
                 name: originalMeal.name,
                 description: originalMeal.description,
+                // The note travels with the meal container it describes.
+                notes: originalMeal.notes ?? null,
                 quantity: originalMeal.quantity,
                 unit: originalMeal.unit,
               },
@@ -1305,6 +1316,8 @@ async function copyFoodEntriesFromUser(
           iron: entry.iron,
           glycemic_index: entry.glycemic_index,
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
+          // The note travels with the entry it describes.
+          notes: entry.notes ?? null,
         });
       }
     }
@@ -1440,6 +1453,8 @@ async function copySelectedFoodEntriesFromUser(
       iron: entry.iron,
       glycemic_index: entry.glycemic_index,
       custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
+      // The note travels with the entry it describes.
+      notes: entry.notes ?? null,
     });
   }
 
@@ -1587,6 +1602,8 @@ async function copyFoodEntriesToUser(
                 entry_time: originalMeal.entry_time ?? null,
                 name: originalMeal.name,
                 description: originalMeal.description,
+                // The note travels with the meal container it describes.
+                notes: originalMeal.notes ?? null,
                 quantity: originalMeal.quantity,
                 unit: originalMeal.unit,
               },
@@ -1641,6 +1658,8 @@ async function copyFoodEntriesToUser(
           iron: entry.iron,
           glycemic_index: entry.glycemic_index,
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
+          // The note travels with the entry it describes.
+          notes: entry.notes ?? null,
         });
       }
     }
@@ -2065,6 +2084,9 @@ async function createFoodEntryMeal(
         entry_time: mealData.entry_time ?? null,
         name: name ?? '',
         description: description,
+        // No meal-template fallback, unlike description: a note is authored
+        // for this occasion. The template's own note is shown beside it.
+        notes: mealData.notes ?? null,
         quantity: Number(mealData.quantity) || 1.0, // Default to 1.0
         unit: mealData.unit || 'serving', // Default to 'serving'
         legacy_serving_unit_math: useLegacyServingMath,
@@ -2204,6 +2226,7 @@ async function updateFoodEntryMeal(
         {
           name: updatedMealData.name,
           description: updatedMealData.description,
+          notes: updatedMealData.notes, // undefined preserves, null clears
           meal_type: updatedMealData.meal_type, // Also allow updating meal type
           meal_type_id: updatedMealData.meal_type_id, // Update meal type id so component entries inherit it
           entry_date: updatedMealData.entry_date, // And entry date

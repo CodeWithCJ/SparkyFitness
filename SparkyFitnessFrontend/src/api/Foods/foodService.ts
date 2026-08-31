@@ -10,6 +10,7 @@ import { MealFilter } from '@/types/meal';
 interface FoodPayload {
   name: string;
   brand?: string;
+  notes?: string | null;
   calories: number;
   protein: number;
   carbs: number;

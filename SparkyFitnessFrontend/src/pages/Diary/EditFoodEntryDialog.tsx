@@ -10,6 +10,8 @@ import { Check, Sparkles, Clock, CalendarDays, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MarkdownView } from '@/components/ui/MarkdownView';
+import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
 import {
   Select,
   SelectContent,
@@ -86,6 +88,7 @@ const EditFoodEntryDialog = ({
   const [entryTime, setEntryTime] = useState<string>(
     toHourMinute(entry?.entry_time) || ''
   );
+  const [entryNotes, setEntryNotes] = useState<string>(entry?.notes || '');
 
   const { data: customNutrients } = useCustomNutrients();
   const { data: foodData, isLoading: isLoadingFood } = useFoodView(
@@ -235,6 +238,7 @@ const EditFoodEntryDialog = ({
           variant_id: variantWithId.id || null,
           meal_type_id: mealId,
           entry_time: entryTime || null,
+          notes: entryNotes.trim() || null,
         };
         await updateFoodEntry({
           id: entry.id,
@@ -269,6 +273,7 @@ const EditFoodEntryDialog = ({
         variant_id:
           selectedVariant.id === 'default-variant' ? null : selectedVariant.id,
         entry_time: entryTime || null,
+        notes: entryNotes.trim() || null,
       };
 
       await updateFoodEntry({ id: entry.id, data: updateData });
@@ -482,6 +487,27 @@ const EditFoodEntryDialog = ({
                     onChange={(e) => setEntryTime(e.target.value)}
                   />
                 </div>
+              </div>
+
+              {foodData?.notes ? (
+                <div className="space-y-1">
+                  <Label>About this food</Label>
+                  <div className="rounded-md border bg-muted/40 px-3 py-2 max-h-48 overflow-y-auto">
+                    <MarkdownView>{foodData.notes}</MarkdownView>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="space-y-1">
+                <Label htmlFor="entryNotes">
+                  Note for this entry (optional)
+                </Label>
+                <MarkdownEditor
+                  id="entryNotes"
+                  value={entryNotes}
+                  onChange={setEntryNotes}
+                  rows={3}
+                />
               </div>
 
               {/* Custom unit name input */}

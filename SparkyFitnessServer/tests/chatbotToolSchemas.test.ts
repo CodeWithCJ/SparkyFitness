@@ -111,6 +111,7 @@ describe('published (flat) chatbot tool schemas', () => {
         'entry_id',
         'entry_type',
         'description',
+        'notes',
         'target_date',
         'source_date',
         'amount_ml',

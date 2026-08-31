@@ -135,6 +135,25 @@ jest.mock('../../src/components/FormInput', () => {
   };
 });
 
+// The FormInput mock above hardcodes one testID, so any second FormInput on
+// the screen would collide with the meal-name field. The notes editor has its
+// own behaviour and its own coverage; this suite only cares that the screen
+// forwards a note into the save payload.
+jest.mock('../../src/components/MarkdownNotesField', () => {
+  const React = require('react');
+  const { TextInput } = require('react-native');
+  return {
+    __esModule: true,
+    default: (props: any) => (
+      <TextInput
+        testID="meal-notes-input"
+        value={props.value}
+        onChangeText={props.onCommit}
+      />
+    ),
+  };
+});
+
 jest.mock('../../src/components/StepperInput', () => {
   const React = require('react');
   const { TextInput } = require('react-native');

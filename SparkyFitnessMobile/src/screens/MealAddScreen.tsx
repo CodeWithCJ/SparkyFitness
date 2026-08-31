@@ -17,6 +17,7 @@ import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
+import MarkdownNotesField from '../components/MarkdownNotesField';
 import StatusView from '../components/StatusView';
 import { FooterSaveBar } from '../components/FormScreenChrome';
 import Icon from '../components/Icon';
@@ -150,6 +151,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
   const [mealName, setMealName] = useState('');
   const [description, setDescription] = useState('');
+  const [notes, setNotes] = useState('');
   // serving_size = quantity of ONE serving in serving_unit (e.g. 250 for 250 ml,
   // or 1 when unit is 'serving'). total_servings = yield count.
   const [servingSizeText, setServingSizeText] = useState('1');
@@ -184,6 +186,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMealName(editMeal.name);
     setDescription(editMeal.description ?? '');
+    setNotes(editMeal.notes ?? '');
     const loadedServingSize = editMeal.serving_size ?? 1;
     const loadedTotalServings = editMeal.total_servings ?? 1;
     setServingSizeText(String(loadedServingSize));
@@ -459,6 +462,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
       const payload = {
         name: trimmedMealName,
         description: description.trim() || null,
+        notes: notes.trim() || null,
         serving_size: parsedServingSize,
         serving_unit: servingUnit,
         total_servings: parsedTotalServings,
@@ -610,6 +614,15 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
               multiline
             />
           </View>
+
+          <MarkdownNotesField
+            value={notes}
+            onCommit={setNotes}
+            label={t('mealBuilder.notes', { defaultValue: 'Notes (optional)' })}
+            placeholder={t('mealBuilder.notesPlaceholder', {
+              defaultValue: 'e.g. the recipe, or how you prepare this',
+            })}
+          />
 
           {/* Top row: count-or-amount + unit selector */}
           <View className="flex-row gap-3">
