@@ -131,7 +131,8 @@ const FoodUnitSelector = ({
   const [selectedVariant, setSelectedVariant] = useState<FoodVariant | null>(
     null
   );
-  const [quantity, setQuantity] = useState(1);
+  const [quantityInput, setQuantityInput] = useState('1');
+  const quantity = quantityInput === '' ? 0 : Number(quantityInput);
   const [entryTime, setEntryTime] = useState('');
   const [mealType, setMealType] = useState('');
   const [loading, setLoading] = useState(false);
@@ -217,7 +218,7 @@ const FoodUnitSelector = ({
     selectedVariant,
     onVariantSelect: (_variantId, variant) => {
       setSelectedVariant(variant);
-      setQuantity(variant.serving_size);
+      setQuantityInput(String(variant.serving_size));
     },
   });
 
@@ -392,10 +393,12 @@ const FoodUnitSelector = ({
           null;
         setSelectedVariant(selected);
       }
-      setQuantity(
-        initialQuantity !== undefined
-          ? initialQuantity
-          : food.default_variant?.serving_size || 1
+      setQuantityInput(
+        String(
+          initialQuantity !== undefined
+            ? initialQuantity
+            : food.default_variant?.serving_size || 1
+        )
       );
       resetConversionState();
     }
@@ -443,7 +446,7 @@ const FoodUnitSelector = ({
           showMealTypeSelect ? mealType : null
         );
         onOpenChange(false);
-        setQuantity(1);
+        setQuantityInput('1');
       } catch (err) {
         error(loggingLevel, 'Error creating converted variant:', err);
         setConversionError('Failed to save the new unit. Please try again.');
@@ -467,7 +470,7 @@ const FoodUnitSelector = ({
         showMealTypeSelect ? mealType : null
       );
       onOpenChange(false);
-      setQuantity(1);
+      setQuantityInput('1');
     } else {
       warn(loggingLevel, 'Submit called with no selected variant.');
     }
@@ -551,11 +554,12 @@ const FoodUnitSelector = ({
                     type="number"
                     step="any"
                     min="0.01"
-                    value={quantity}
+                    required
+                    value={quantityInput}
                     onChange={(e) => {
-                      const newQuantity = Number(e.target.value);
+                      const newQuantity = e.target.value;
                       debug(loggingLevel, 'Quantity changed:', newQuantity);
-                      setQuantity(newQuantity);
+                      setQuantityInput(newQuantity);
                     }}
                   />
                 </div>

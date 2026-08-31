@@ -285,6 +285,48 @@ describe('FoodUnitSelector', () => {
     ).toBeInTheDocument();
   });
 
+  it('allows clearing and replacing the quantity without forcing zero', async () => {
+    const food = createFood(
+      createVariant({
+        id: 'default-variant',
+        serving_size: 3,
+        serving_unit: 'g',
+      })
+    );
+
+    mockFetchQuery.mockResolvedValue([]);
+
+    await renderSelector(food);
+
+    const quantityInput = screen.getByLabelText(/^Quantity$/i);
+    expect(quantityInput).toHaveValue(3);
+
+    fireEvent.change(quantityInput, { target: { value: '' } });
+    expect(quantityInput).toHaveValue(null);
+
+    fireEvent.change(quantityInput, { target: { value: '1' } });
+    expect(quantityInput).toHaveValue(1);
+  });
+
+  it('keeps fractional quantities editable', async () => {
+    const food = createFood(
+      createVariant({
+        id: 'default-variant',
+        serving_size: 1,
+        serving_unit: 'g',
+      })
+    );
+
+    mockFetchQuery.mockResolvedValue([]);
+
+    await renderSelector(food);
+
+    const quantityInput = screen.getByLabelText(/^Quantity$/i);
+    fireEvent.change(quantityInput, { target: { value: '0.25' } });
+
+    expect(quantityInput).toHaveValue(0.25);
+  });
+
   it('does not show compatible-unit checks when the selected saved variant is AI-estimated', async () => {
     const food = createFood(
       createVariant({
