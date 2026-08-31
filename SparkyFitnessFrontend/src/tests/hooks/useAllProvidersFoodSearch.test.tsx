@@ -57,13 +57,32 @@ describe('useAllProvidersFoodSearch cache key', () => {
       { wrapper, initialProps: { limit: 10 } }
     );
 
+    // Assert the exact call, not that the number appears somewhere in it:
+    // pageSize is the 5th argument of searchFoodsV2, and `page` sits next to it,
+    // so a containment check would pass on a limit that landed in the wrong slot.
     await waitFor(() => expect(mockSearch).toHaveBeenCalledTimes(1));
-    expect(mockSearch.mock.calls[0]).toEqual(expect.arrayContaining([10]));
+    expect(mockSearch).toHaveBeenNthCalledWith(
+      1,
+      'usda',
+      'bread',
+      'provider-usda',
+      undefined,
+      10,
+      undefined
+    );
 
     rerender({ limit: 25 });
 
     await waitFor(() => expect(mockSearch).toHaveBeenCalledTimes(2));
-    expect(mockSearch.mock.calls[1]).toEqual(expect.arrayContaining([25]));
+    expect(mockSearch).toHaveBeenNthCalledWith(
+      2,
+      'usda',
+      'bread',
+      'provider-usda',
+      undefined,
+      25,
+      undefined
+    );
   });
 
   it('serves the cache when the display limit is unchanged', async () => {
