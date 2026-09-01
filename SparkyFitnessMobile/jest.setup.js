@@ -646,20 +646,27 @@ jest.mock('react-native-toast-message', () => {
   return { __esModule: true, default: MockToast };
 });
 
-// Mock react-native-pager-view
+// Mock react-native-pager-view. The imperative handle is exposed on the component itself so
+// suites can assert programmatic page changes (`PagerView.setPageWithoutAnimation`).
 jest.mock('react-native-pager-view', () => {
   const React = require('react');
   const { View } = require('react-native');
-  return {
-    __esModule: true,
-    default: React.forwardRef(({ children, ...props }, ref) =>
-      React.createElement(
-        View,
-        { testID: 'pager-view', ref, ...props },
-        children
-      )
-    ),
-  };
+  const setPage = jest.fn();
+  const setPageWithoutAnimation = jest.fn();
+  const MockPagerView = React.forwardRef(({ children, ...props }, ref) => {
+    React.useImperativeHandle(ref, () => ({
+      setPage,
+      setPageWithoutAnimation,
+    }));
+    return React.createElement(
+      View,
+      { testID: 'pager-view', ...props },
+      children
+    );
+  });
+  MockPagerView.setPage = setPage;
+  MockPagerView.setPageWithoutAnimation = setPageWithoutAnimation;
+  return { __esModule: true, default: MockPagerView };
 });
 
 // Mock @gorhom/bottom-sheet

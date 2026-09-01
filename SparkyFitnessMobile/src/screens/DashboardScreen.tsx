@@ -1,75 +1,75 @@
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { CompositeScreenProps } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useQueryClient } from '@tanstack/react-query';
+import { hasSupplementNutrition } from '@workspace/shared';
 import React, {
-  useState,
   useCallback,
-  useRef,
-  useMemo,
   useEffect,
   useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  RefreshControl,
-  Pressable,
-} from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
-import { useCSSVariable } from 'uniwind';
-import { hasSupplementNutrition } from '@workspace/shared';
-import { useQueryClient } from '@tanstack/react-query';
-import Icon from '../components/Icon';
 import {
-  useServerConnection,
-  useDailySummary,
-  usePreferences,
-  useMeasurements,
-  useWaterIntakeMutation,
-  useMeasurementsRange,
-  useWidgetSync,
-  useCustomNutrients,
-  useNutrientDisplayPreferences,
-  fastingRootQueryKey,
-  medicationsRootQueryKey,
-} from '../hooks';
-import type { StepsRange } from '../hooks';
-import CalorieRingCard from '../components/CalorieRingCard';
-import MacroCard from '../components/MacroCard';
-import DateNavigator from '../components/DateNavigator';
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCSSVariable } from 'uniwind';
+import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import CalendarSheet, {
   type CalendarSheetRef,
 } from '../components/CalendarSheet';
+import CalorieRingCard from '../components/CalorieRingCard';
+import CycleCard from '../components/CycleCard';
+import DateNavigator from '../components/DateNavigator';
+import ExerciseProgressCard from '../components/ExerciseProgressCard';
+import FastingCard from '../components/FastingCard';
+import FastingGoalReconciler from '../components/FastingGoalReconciler';
+import HealthTrendsPager from '../components/HealthTrendsPager';
+import HydrationGauge from '../components/HydrationGauge';
+import Icon from '../components/Icon';
+import MacroCard from '../components/MacroCard';
+import MedicationsCard from '../components/MedicationsCard';
+import SegmentedControl, { type Segment } from '../components/SegmentedControl';
+import StatusView from '../components/StatusView';
+import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
+import {
+  fastingRootQueryKey,
+  medicationsRootQueryKey,
+  useCustomNutrients,
+  useDailySummary,
+  useHealthTrends,
+  useMeasurements,
+  useNutrientDisplayPreferences,
+  usePreferences,
+  useServerConnection,
+  useWaterIntakeMutation,
+  useWidgetSync,
+} from '../hooks';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
+import type { HealthTrendDateRange } from '../types/healthTrends';
+import type { RootStackParamList, TabParamList } from '../types/navigation';
+import { formatDateLabel } from '../utils/dateUtils';
 import {
   setNativeHeaderDatePickerOptions,
   type NativeHeaderDatePickerNavigation,
 } from '../utils/nativeHeaderDatePicker';
-import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
-import { weightFromKg } from '../utils/unitConversions';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
-import { formatDateLabel } from '../utils/dateUtils';
-import HydrationGauge from '../components/HydrationGauge';
-import SegmentedControl, { type Segment } from '../components/SegmentedControl';
-import HealthTrendsPager from '../components/HealthTrendsPager';
-import ExerciseProgressCard from '../components/ExerciseProgressCard';
-import StatusView from '../components/StatusView';
-import FastingCard from '../components/FastingCard';
-import CycleCard from '../components/CycleCard';
-import FastingGoalReconciler from '../components/FastingGoalReconciler';
-import MedicationsCard from '../components/MedicationsCard';
-import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useAppPreferencesStore } from '../stores/appPreferencesStore';
-import type { CompositeScreenProps } from '@react-navigation/native';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList, TabParamList } from '../types/navigation';
-import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { weightFromKg } from '../utils/unitConversions';
 
 const RANGE_SEGMENTS = (
   t: (key: string, options: { defaultValue: string }) => string
-): Segment<StepsRange>[] => [
+): Segment<HealthTrendDateRange>[] => [
   { key: '7d', label: t('ranges.7d', { defaultValue: '7d' }) },
   { key: '30d', label: t('ranges.30d', { defaultValue: '30d' }) },
   { key: '90d', label: t('ranges.90d', { defaultValue: '90d' }) },
@@ -92,7 +92,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const goToNextDay = useDiaryDateStore((s) => s.goToNextDay);
   const goToToday = useDiaryDateStore((s) => s.goToToday);
   const syncTodayRollover = useDiaryDateStore((s) => s.syncTodayRollover);
-  const [stepsRange, setStepsRange] = useState<StepsRange>('7d');
+  const [trendsRange, setTrendsRange] = useState<HealthTrendDateRange>('7d');
   const scrollViewRef = useRef<ScrollView>(null);
   const calendarRef = useRef<CalendarSheetRef>(null);
 
@@ -191,14 +191,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     enabled: isConnected,
   });
 
-  const {
-    stepsData,
-    weightData: rawWeightData,
-    isLoading: isStepsLoading,
-    isError: isStepsError,
-    refetch: refetchSteps,
-  } = useMeasurementsRange({
-    range: stepsRange,
+  const { refetch: refetchTrends, ...trends } = useHealthTrends({
+    range: trendsRange,
     enabled: isConnected,
   });
 
@@ -212,13 +206,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   // The chart is a single-axis line graph; if the user picked stones+lbs, plot lbs.
   const weightUnit: 'kg' | 'lbs' =
     (preferences?.default_weight_unit ?? 'kg') === 'kg' ? 'kg' : 'lbs';
-  const weightData = useMemo(() => {
-    if (weightUnit === 'kg') return rawWeightData;
-    return rawWeightData.map((p) => ({
-      ...p,
-      weight: weightFromKg(p.weight, weightUnit),
-    }));
-  }, [rawWeightData, weightUnit]);
+  const weightSeries = useMemo(() => {
+    if (weightUnit === 'kg') return trends.weight;
+    return {
+      ...trends.weight,
+      data: trends.weight.data.map((p) => ({
+        ...p,
+        weight: weightFromKg(p.weight, weightUnit),
+      })),
+    };
+  }, [trends.weight, weightUnit]);
 
   // CSS variable macro colors are theme-aware (lower saturation than hardcoded hex)
   const [
@@ -268,7 +265,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       refetch(),
       refetchPreferences(),
       refetchMeasurements(),
-      refetchSteps(),
+      refetchTrends(),
       refetchCustomNutrients(),
       refetchNutrientPrefs(),
       // FastingCard owns its own queries; nudge them on pull-to-refresh.
@@ -281,7 +278,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     refetch,
     refetchPreferences,
     refetchMeasurements,
-    refetchSteps,
+    refetchTrends,
     refetchCustomNutrients,
     refetchNutrientPrefs,
     queryClient,
@@ -617,16 +614,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         </Text>
         <SegmentedControl
           segments={RANGE_SEGMENTS(t)}
-          activeKey={stepsRange}
-          onSelect={setStepsRange}
+          activeKey={trendsRange}
+          onSelect={setTrendsRange}
         />
 
         <HealthTrendsPager
-          stepsData={stepsData}
-          weightData={weightData}
-          isLoading={isStepsLoading}
-          isError={isStepsError}
-          range={stepsRange}
+          steps={trends.steps}
+          weight={weightSeries}
+          sleep={trends.sleep}
+          range={trendsRange}
           weightUnit={weightUnit}
           activePage={chartPage}
           onPageSelected={setChartPage}

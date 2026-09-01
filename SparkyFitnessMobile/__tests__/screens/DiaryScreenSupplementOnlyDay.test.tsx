@@ -21,6 +21,21 @@ jest.mock('../../src/hooks/useMeasurements', () => ({
   useMeasurements: () => ({ measurements: null, customMeasurements: [] }),
 }));
 
+// This suite is about supplement-driven emptiness, so sleep is settled and empty. Without
+// the mock the real query stays pending against the test client, and the screen's loading
+// gate would hide the day these cases are asserting on.
+jest.mock('../../src/hooks/useSleepDay', () => ({
+  useSleepDay: () => ({
+    wakeUp: null,
+    naps: [],
+    bedTime: null,
+    isLoading: false,
+    isError: false,
+    isForbidden: false,
+    refetch: jest.fn(),
+  }),
+}));
+
 jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: () => ({ preferences: null }),
 }));

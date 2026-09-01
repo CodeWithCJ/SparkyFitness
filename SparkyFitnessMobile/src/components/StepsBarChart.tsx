@@ -6,12 +6,14 @@ import { CartesianChart, Bar } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
 import {
   makeChartFont,
+  CHART_LABEL_FONT_SIZE,
   formatXLabel7d,
   formatXLabel30d90d,
   formatTooltipDate,
   formatChartYLabel,
 } from './charts/chartFormatting';
-import type { StepsDataPoint, StepsRange } from '../hooks/useMeasurementsRange';
+import type { StepsDataPoint } from '../hooks/useMeasurementsRange';
+import type { HealthTrendDateRange } from '../types/healthTrends';
 import ChartTouchOverlay, {
   ChartLayoutReporter,
   EMPTY_CHART_TOUCH_LAYOUT,
@@ -23,22 +25,22 @@ type StepsBarChartProps = {
   data: StepsDataPoint[];
   isLoading: boolean;
   isError: boolean;
-  range: StepsRange;
+  range: HealthTrendDateRange;
 };
 
-const INNER_PADDING: Record<StepsRange, number> = {
+const INNER_PADDING: Record<HealthTrendDateRange, number> = {
   '7d': 0.3,
   '30d': 0.2,
   '90d': 0.1,
 };
 
-const X_TICK_COUNT: Record<StepsRange, number> = {
+const X_TICK_COUNT: Record<HealthTrendDateRange, number> = {
   '7d': 7,
   '30d': 6,
   '90d': 5,
 };
 
-const font = makeChartFont(12);
+const font = makeChartFont(CHART_LABEL_FONT_SIZE);
 
 const formatYLabel = (value: number) => formatChartYLabel(value);
 

@@ -1,7 +1,7 @@
-import React from 'react';
-import { Platform, StyleProp, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SymbolView, SymbolViewProps } from 'expo-symbols';
+import React from 'react';
+import { Platform, StyleProp, ViewStyle } from 'react-native';
 
 /**
  * Icon mapping from semantic names to platform-specific icons.
@@ -167,6 +167,14 @@ const ICON_MAP = {
   'wellness-filled': { sf: 'leaf.fill', ion: 'leaf' },
   medication: { sf: 'pills', ion: 'medkit-outline' },
   calendar: { sf: 'calendar', ion: 'calendar-outline' },
+
+  // Sleep
+  'sleep-wake-up': { sf: 'alarm.fill', ion: 'alarm' },
+  'sleep-nap': { sf: 'zzz', ion: 'moon-outline' },
+  'sleep-bedtime': { sf: 'bed.double.fill', ion: 'bed' },
+  'sleep-score': { sf: 'star.fill', ion: 'star' },
+  spo2: { sf: 'lungs.fill', ion: 'pulse' },
+  'heart-rate': { sf: 'heart.fill', ion: 'heart' },
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;
