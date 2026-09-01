@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/NumericInput';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -131,7 +132,7 @@ const FoodUnitSelector = ({
   const [selectedVariant, setSelectedVariant] = useState<FoodVariant | null>(
     null
   );
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<number | undefined>(1);
   const [entryTime, setEntryTime] = useState('');
   const [mealType, setMealType] = useState('');
   const [loading, setLoading] = useState(false);
@@ -415,6 +416,8 @@ const FoodUnitSelector = ({
     event.preventDefault();
     debug(loggingLevel, 'Handling submit.');
 
+    if (quantity === undefined) return;
+
     if (isConverting) {
       const convertedVariant = buildConvertedVariant();
       if (!convertedVariant) {
@@ -479,7 +482,7 @@ const FoodUnitSelector = ({
     : selectedVariant;
 
   const nutrition = (() => {
-    if (!activeVariant) return null;
+    if (!activeVariant || quantity === undefined) return null;
     const ratio = quantity / (activeVariant.serving_size || 1);
     return {
       calories: (activeVariant.calories || 0) * ratio,
@@ -504,11 +507,14 @@ const FoodUnitSelector = ({
   const displayUnit = isConverting
     ? pendingUnit.trim() || '?'
     : selectedVariant?.serving_unit || '';
-  const displayServing = isConverting
-    ? `${quantity} ${displayUnit}`.trim()
-    : selectedVariant
-      ? formatQuantityServingLabel(quantity, selectedVariant)
-      : `${quantity} ${displayUnit}`.trim();
+  const displayServing =
+    quantity === undefined
+      ? ''
+      : isConverting
+        ? `${quantity} ${displayUnit}`.trim()
+        : selectedVariant
+          ? formatQuantityServingLabel(quantity, selectedVariant)
+          : `${quantity} ${displayUnit}`.trim();
 
   return (
     <Dialog
@@ -545,15 +551,15 @@ const FoodUnitSelector = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="quantity">Quantity</Label>
-                  <Input
+                  <NumericInput
                     ref={quantityInputRef}
                     id="quantity"
-                    type="number"
                     step="any"
                     min="0.01"
+                    decimals={3}
+                    required
                     value={quantity}
-                    onChange={(e) => {
-                      const newQuantity = Number(e.target.value);
+                    onValueChange={(newQuantity) => {
                       debug(loggingLevel, 'Quantity changed:', newQuantity);
                       setQuantity(newQuantity);
                     }}
