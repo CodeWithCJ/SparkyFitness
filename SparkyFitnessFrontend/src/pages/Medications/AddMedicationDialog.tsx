@@ -193,9 +193,7 @@ export default function AddMedicationDialog({
   );
   const [customCadence, setCustomCadence] = useState(
     (editMed?.custom_fields?.['custom_cadence'] as
-      | 'weekly'
-      | 'daily'
-      | undefined) ?? 'weekly'
+      'weekly' | 'daily' | undefined) ?? 'weekly'
   );
   const [customIsOral, setCustomIsOral] = useState(
     (editMed?.custom_fields?.['custom_is_oral'] as boolean | undefined) ?? false

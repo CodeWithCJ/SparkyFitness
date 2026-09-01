@@ -1,14 +1,14 @@
 import fs from 'fs';
 import path from 'path';
+import {
+  fallbackMapKeys,
+  helperKeyUsages,
+  widgetSwiftFiles,
+} from './helpers/widgetSwiftKeys';
 
 const WIDGET_ROOT = path.join(__dirname, '../../targets/widget');
 
-const SWIFT_FILES = [
-  'index.swift',
-  'widgets.swift',
-  'macroWidget.swift',
-  'SharedHelpers.swift',
-];
+const SWIFT_FILES = widgetSwiftFiles();
 
 function readSwift(relativePath: string): string {
   return fs.readFileSync(path.join(WIDGET_ROOT, relativePath), 'utf8');
@@ -213,6 +213,26 @@ describe('iOS WidgetKit Swift contract', () => {
       expect(shared).toContain(
         'case "widget.scan_barcode": return "Scan barcode"'
       );
+    });
+  });
+
+  describe('source-derived key coverage', () => {
+    it('discovers the Swift sources instead of tracking a fixed list', () => {
+      expect(SWIFT_FILES).toContain('SharedHelpers.swift');
+      expect(SWIFT_FILES).toContain('widgets.swift');
+      expect(SWIFT_FILES).toContain('macroWidget.swift');
+    });
+
+    it('covers every helper-consumed key in the stable fallback map', () => {
+      const fallback = fallbackMapKeys();
+      // Null once fallbackWidgetString is gone, which retires this guard with it.
+      const missing =
+        fallback === null
+          ? []
+          : helperKeyUsages()
+              .filter((usage) => !fallback.has(usage.key))
+              .map((usage) => `${usage.file}: ${usage.key}`);
+      expect(missing).toEqual([]);
     });
   });
 

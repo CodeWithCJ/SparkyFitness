@@ -495,11 +495,9 @@ describe('collectHealthData', () => {
 
   test('outcomes preserve the input metric order', async () => {
     const provider = fakeProvider({
-      readRaw: jest
-        .fn()
-        .mockImplementation(async (recordType: string) => ({
-          records: [{ recordType }],
-        })),
+      readRaw: jest.fn().mockImplementation(async (recordType: string) => ({
+        records: [{ recordType }],
+      })),
     });
     const metrics = ['A', 'B', 'C', 'D', 'E'].map((recordType) =>
       metric({ recordType, id: recordType })
@@ -703,11 +701,9 @@ describe('runForegroundSync', () => {
 
   test('an upload failure returns success false with the error and syncErrors intact', async () => {
     const provider = fakeProvider({
-      readCumulativeByDay: jest
-        .fn()
-        .mockResolvedValue({
-          records: [{ date: '2026-07-02', value: 1, type: 'step' }],
-        }),
+      readCumulativeByDay: jest.fn().mockResolvedValue({
+        records: [{ date: '2026-07-02', value: 1, type: 'step' }],
+      }),
     });
     api.syncHealthData.mockRejectedValue(new Error('Network error'));
 
@@ -727,11 +723,9 @@ describe('runForegroundSync', () => {
 
   test('a writeback failure never affects the inbound result', async () => {
     const provider = fakeProvider({
-      readCumulativeByDay: jest
-        .fn()
-        .mockResolvedValue({
-          records: [{ date: '2026-07-02', value: 1, type: 'step' }],
-        }),
+      readCumulativeByDay: jest.fn().mockResolvedValue({
+        records: [{ date: '2026-07-02', value: 1, type: 'step' }],
+      }),
     });
     writeback.runWriteback.mockRejectedValue(new Error('writeback exploded'));
     api.syncHealthData.mockResolvedValue({ processed: 1 });

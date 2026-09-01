@@ -157,9 +157,10 @@ preview(<Button variant="link">Link Button</Button>);
 preview(<Button variant="destructive">Destructive Button</Button>);
 
 // i18n-audit-ignore-next-line hardcoded-ui-text -- Storybook preview label, not shipped UI
+const loadingPreviewLabel = 'Loading Button';
 preview(
   <Button variant="primary" loading>
-    Loading Button
+    {loadingPreviewLabel}
   </Button>
 );
 

@@ -6,12 +6,8 @@ import type { ExpandedGoals } from '@/types/goals';
 import type { DailyCalorieBalanceRow } from '@workspace/shared';
 
 let mockAdjustmentMode:
-  | 'dynamic'
-  | 'adaptive'
-  | 'fixed'
-  | 'percentage'
-  | 'tdee'
-  | 'smart' = 'dynamic';
+  'dynamic' | 'adaptive' | 'fixed' | 'percentage' | 'tdee' | 'smart' =
+  'dynamic';
 
 jest.mock('@/i18n', () => ({
   __esModule: true,

@@ -198,8 +198,8 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // callback mutates nextSetIdRef to generate unique client ids. The useCallback
   // is still honored at runtime; the compiler just skips optimizing this
   // component. Suppress the bailout rather than rewrite the working id counter.
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const addDraftSet = useCallback(
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
     (_exerciseId?: string) => {
       const id = `set-${nextSetIdRef.current++}`;
       setDraftSets((prev) => {

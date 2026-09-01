@@ -1332,17 +1332,15 @@ describe('activeWorkoutStore', () => {
 
       it('leaves a typed duration alone on completion', () => {
         useActiveWorkoutStore.getState().startWorkout(makeDurationSession());
-        useActiveWorkoutStore
-          .getState()
-          .capturePreviousSessionSets('ex-1', [
-            {
-              setNumber: 1,
-              setType: 'working',
-              weight: null,
-              reps: null,
-              duration: 45,
-            },
-          ]);
+        useActiveWorkoutStore.getState().capturePreviousSessionSets('ex-1', [
+          {
+            setNumber: 1,
+            setType: 'working',
+            weight: null,
+            reps: null,
+            duration: 45,
+          },
+        ]);
         useActiveWorkoutStore
           .getState()
           .updateSetField('101', { duration: 75 });
@@ -2308,14 +2306,12 @@ describe('activeWorkoutStore', () => {
       it('seeds a cardio exercise with zero rest instead of the default', () => {
         useAppPreferencesStore.getState().setDefaultRestSec(150);
         try {
-          useActiveWorkoutStore
-            .getState()
-            .addExercise({
-              ...rowExercise,
-              id: 'ex-run',
-              name: 'Run',
-              modality: 'duration_distance',
-            });
+          useActiveWorkoutStore.getState().addExercise({
+            ...rowExercise,
+            id: 'ex-run',
+            name: 'Run',
+            modality: 'duration_distance',
+          });
           const entries = useActiveWorkoutStore.getState().session!.exercises;
           const added = entries[entries.length - 1];
           expect(added.sets[0].rest_time).toBe(0);

@@ -108,8 +108,9 @@ export const searchNutritionixFoods = async (
         externalApi: true,
       }
     );
-    const commonFoods = (data.common || []).slice(0, 10).map(
-      (item): NutritionixMappedItem => ({
+    const commonFoods = (data.common || [])
+      .slice(0, 10)
+      .map((item): NutritionixMappedItem => ({
         id: item.food_name, // Use food_name as a temporary ID for common foods
         name: item.food_name,
         brand: null,
@@ -122,8 +123,7 @@ export const searchNutritionixFoods = async (
         protein: 0,
         carbs: 0,
         fat: 0,
-      })
-    );
+      }));
 
     const brandedFoods = (data.branded || []).slice(0, 10).map((item) => ({
       id: item.nix_item_id,

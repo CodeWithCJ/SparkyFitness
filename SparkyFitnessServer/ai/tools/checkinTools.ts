@@ -605,17 +605,15 @@ Actions:
                 created_at?: string | Date;
               }
               const customs = [...customRows]
-                .map(
-                  (row: CustomMeasurementEntryRow): MappedCustomMetric => ({
-                    id: row.id,
-                    category_name: row.custom_categories?.name,
-                    value: row.value,
-                    measurement_type: row.custom_categories?.measurement_type,
-                    notes: row.notes,
-                    entry_date: row.entry_date,
-                    created_at: row.created_at,
-                  })
-                )
+                .map((row: CustomMeasurementEntryRow): MappedCustomMetric => ({
+                  id: row.id,
+                  category_name: row.custom_categories?.name,
+                  value: row.value,
+                  measurement_type: row.custom_categories?.measurement_type,
+                  notes: row.notes,
+                  entry_date: row.entry_date,
+                  created_at: row.created_at,
+                }))
                 .sort(
                   (a: MappedCustomMetric, b: MappedCustomMetric) =>
                     String(a.category_name).localeCompare(

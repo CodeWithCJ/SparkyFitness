@@ -68,8 +68,8 @@ export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
       // earlier action can't fire on a later transitionEnd.
       pendingActivationRef.current =
         setClientId != null ? `${exerciseClientId}:${setClientId}` : null;
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-properties; spreading `actions` would break memoization
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-properties; spreading `actions` would break memoization
     [actions.addExercise, actions.replaceExercise]
   );
 
@@ -116,8 +116,8 @@ export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
       if (newSetId) {
         setActiveSetKey(`${exerciseClientId}:${newSetId}`);
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-property
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-property
     [actions.addSet]
   );
 

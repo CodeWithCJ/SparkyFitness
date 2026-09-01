@@ -13,8 +13,8 @@ import type { CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
 import type { MealTypeKey } from '../utils/mealNutrition';
 import type { AssumedSetValues } from '../utils/workoutSession';
 import type { Exercise } from './exercise';
-import type { Meal, MealIngredientDraft } from './meals';
-import type { MealPlanPickerTarget, MealPlanTemplate } from './mealPlans';
+import type { FamilyDiaryUser } from './familyDiary';
+import type { FoodEntry } from './foodEntries';
 import type { FoodEntryMeal } from './foodEntryMeals';
 import type { FoodInfoItem } from './foodInfo';
 import type {
@@ -23,6 +23,7 @@ import type {
   FoodUnitVariant,
 } from './foodUnitVariants';
 import type { Meal, MealIngredientDraft } from './meals';
+import type { MealPlanPickerTarget, MealPlanTemplate } from './mealPlans';
 import type { WorkoutPreset } from './workoutPresets';
 
 export type FoodPickerMode =

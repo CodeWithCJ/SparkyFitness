@@ -16,11 +16,9 @@ import { localizeSleepStage } from '../utils/sleepLocalization';
 
 /**
  * The stage vocabulary now lives in `types/sleep`, shared with the Dashboard sleep
- * timeline. Re-exported under the hypnogram's original names because here the stages are
+ * timeline. Aliased to the hypnogram's original name because here the stages are
  * literally drawn as lanes, and `LANE_INDEX` below reads off this exact ordering.
  */
-export { SLEEP_STAGE_LANES as HYPNOGRAM_LANES } from '../types/sleep';
-export type { SleepStageLane as HypnogramLane } from '../types/sleep';
 
 type HypnogramLane = (typeof SLEEP_STAGE_LANES)[number];
 

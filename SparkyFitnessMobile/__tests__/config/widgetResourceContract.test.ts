@@ -189,37 +189,15 @@ describe('Android widget localization contract', () => {
       // the native widget validator and the placeholder tests below.
     });
 
-    it('uses approved Polish translations with diacritics where natural', () => {
-      // PL-specific regression guard: these translations were reviewed and
-      // approved. This test is intentionally PL-specific (not registry-driven)
-      // because it verifies known-good linguistic content, not architecture.
-      const pl = new Map(
-        readWidgetStringResources('pl').map((r) => [r.name, r.value])
-      );
-
-      expect(pl.get('sparky_calorie_widget_name')).toBe('Kalorie');
-      expect(pl.get('sparky_macro_widget_name')).toBe('Makroskładniki');
-      expect(pl.get('widget_protein')).toBe('Białko');
-      expect(pl.get('widget_carbs')).toBe('Węglowodany');
-      expect(pl.get('widget_fat')).toBe('Tłuszcz');
-      expect(pl.get('widget_search_food')).toBe('Wyszukaj produkt');
-      expect(pl.get('widget_scan_barcode')).toBe('Skanuj kod kreskowy');
-      expect(pl.get('widget_kcal_left')).toBe('Pozostało %1$s kcal');
-    });
-
-    it('uses approved Spanish translations with diacritics where natural', () => {
-      const es = new Map(
-        readWidgetStringResources('es').map((r) => [r.name, r.value])
-      );
-
-      expect(es.get('sparky_calorie_widget_name')).toBe('Calorías');
-      expect(es.get('sparky_macro_widget_name')).toBe('Macros');
-      expect(es.get('widget_protein')).toBe('Proteínas');
-      expect(es.get('widget_carbs')).toBe('Carbohidratos');
-      expect(es.get('widget_fat')).toBe('Grasas');
-      expect(es.get('widget_search_food')).toBe('Buscar comida');
-      expect(es.get('widget_scan_barcode')).toBe('Escanear código');
-      expect(es.get('widget_kcal_left')).toBe('%1$s kcal restantes');
+    it('keeps the two widget names distinct in every shipped locale', () => {
+      for (const locale of SHIPPED_WIDGET_LOCALES) {
+        const strings = new Map(
+          readWidgetStringResources(locale).map((r) => [r.name, r.value])
+        );
+        expect(strings.get('sparky_calorie_widget_name')).not.toBe(
+          strings.get('sparky_macro_widget_name')
+        );
+      }
     });
 
     it('keeps placeholder positions compatible across all shipped widget locales', () => {

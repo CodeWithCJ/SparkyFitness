@@ -497,12 +497,7 @@ interface ActionButtonProps {
   onClick: () => void;
   tooltip: string;
   variant?:
-    | 'default'
-    | 'destructive'
-    | 'outline'
-    | 'secondary'
-    | 'ghost'
-    | 'link';
+    'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
 }
 
 const ActionButton = ({
