@@ -198,7 +198,7 @@ export const DailyGoals = ({
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Macros By</Label>
+              <Label>{t('goals.goalsSettings.macrosBy', 'Macros By')}</Label>
               <RadioGroup
                 value={macroInputType}
                 onValueChange={(v: 'grams' | 'percentages') =>
@@ -209,13 +209,13 @@ export const DailyGoals = ({
                 <div className="flex items-center gap-1.5">
                   <RadioGroupItem value="grams" id="m-g" />
                   <Label htmlFor="m-g" className="text-xs cursor-pointer">
-                    Grams
+                    {t('goals.goalsSettings.grams', 'Grams')}
                   </Label>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <RadioGroupItem value="percentages" id="m-p" />
                   <Label htmlFor="m-p" className="text-xs cursor-pointer">
-                    Percentages
+                    {t('goals.goalsSettings.percentages', 'Percentages')}
                   </Label>
                 </div>
               </RadioGroup>
@@ -258,11 +258,14 @@ export const DailyGoals = ({
               <div
                 className={`text-sm font-medium text-right ${isMacroValid ? 'text-green-600' : 'text-destructive'}`}
               >
-                Total: {currentMacroTotal}% {!isMacroValid && '(Must be 100%)'}
+                {t('goals.mealDistribution.total', 'Total')}:{' '}
+                {currentMacroTotal}%{' '}
+                {!isMacroValid &&
+                  `(${t('goals.mealDistribution.mustBe100', 'Must be 100% to save')})`}
               </div>
               <div className="p-3 bg-muted/50 rounded-md text-xs text-muted-foreground grid grid-cols-3 gap-2">
                 <span>
-                  Protein:{' '}
+                  {t('goals.mealDistribution.protein', 'Protein:')}{' '}
                   {calculateGrams(
                     goals.calories,
                     goals.protein_percentage || 0,
@@ -272,7 +275,7 @@ export const DailyGoals = ({
                   g
                 </span>
                 <span>
-                  Carbs:{' '}
+                  {t('goals.mealDistribution.carbs', 'Carbs:')}{' '}
                   {calculateGrams(
                     goals.calories,
                     goals.carbs_percentage || 0,
@@ -282,7 +285,7 @@ export const DailyGoals = ({
                   g
                 </span>
                 <span>
-                  Fat:{' '}
+                  {t('goals.mealDistribution.fat', 'Fat:')}{' '}
                   {calculateGrams(
                     goals.calories,
                     goals.fat_percentage || 0,

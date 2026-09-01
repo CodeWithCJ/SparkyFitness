@@ -17,6 +17,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { CombinedMeasurement } from '@/types/checkin';
 import { formatWeight, formatHeight } from '@/utils/numberFormatting';
+import { healthMetricLabel } from '@/utils/healthMetricLabels';
 
 interface RecentActivityProps {
   convertMeasurement: (
@@ -76,7 +77,7 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
           <div className="divide-y divide-border">
             {recentMeasurements.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground">
-                No recent activity found.
+                {t('checkIn.noRecentActivity', 'No recent activity found.')}
               </div>
             ) : (
               recentMeasurements.map((measurement) => {
@@ -87,6 +88,11 @@ export const RecentActivity: React.FC<RecentActivityProps> = ({
                   measurement.type === 'custom' &&
                   measurement.custom_categories
                 ) {
+                  measurementName = healthMetricLabel(
+                    measurement.custom_categories.name,
+                    measurement.custom_categories.display_name,
+                    t
+                  );
                   const isConvertible = shouldConvertCustomMeasurement(
                     measurement.custom_categories.measurement_type
                   );

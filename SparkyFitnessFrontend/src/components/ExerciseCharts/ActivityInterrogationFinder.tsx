@@ -16,6 +16,8 @@ import type {
   ExerciseActivityQueryResponse,
   ExerciseActivityQueryItem,
 } from '@workspace/shared';
+import { useTranslation } from 'react-i18next';
+import { exerciseDisplayLabel } from '@/utils/exerciseDisplayLabels';
 
 interface ActivityInterrogationFinderProps {
   onQueryFetch?: (params: {
@@ -29,6 +31,7 @@ export const ActivityInterrogationFinder = ({
   onQueryFetch,
 }: ActivityInterrogationFinderProps) => {
   const { distanceUnit, loggingLevel } = usePreferences();
+  const { t } = useTranslation();
   const isMiles = distanceUnit === 'miles';
 
   const [distancePreset, setDistancePreset] = useState<string>('half_marathon');
@@ -51,13 +54,18 @@ export const ActivityInterrogationFinder = ({
         setQueryError(null);
       } catch (err) {
         error(loggingLevel, 'Failed to query activities:', err);
-        setQueryError('Failed to load activities. Please try again.');
+        setQueryError(
+          t(
+            'exerciseAnalytics.finder.loadError',
+            'Failed to load activities. Please try again.'
+          )
+        );
         setQueryResult(null);
       } finally {
         setLoading(false);
       }
     },
-    [onQueryFetch, loggingLevel]
+    [onQueryFetch, loggingLevel, t]
   );
 
   useEffect(() => {
@@ -70,12 +78,17 @@ export const ActivityInterrogationFinder = ({
         <CardTitle className="text-lg font-semibold flex items-center justify-between">
           <span className="flex items-center gap-2">
             <Search className="w-5 h-5 text-blue-600" />
-            Activity Interrogation & Distance Search
+            {t(
+              'exerciseAnalytics.finder.title',
+              'Activity Interrogation & Distance Search'
+            )}
           </span>
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Query and compare past activities by distance milestones, routes, or
-          keywords (e.g. Half Marathons, 10ks, 5ks).
+          {t(
+            'exerciseAnalytics.finder.description',
+            'Query and compare past activities by distance milestones, routes, or keywords (e.g. Half Marathons, 10ks, 5ks).'
+          )}
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -90,26 +103,56 @@ export const ActivityInterrogationFinder = ({
               }}
             >
               <SelectTrigger className="text-xs h-9">
-                <SelectValue placeholder="Distance Milestone" />
+                <SelectValue
+                  placeholder={t(
+                    'exerciseAnalytics.finder.distanceMilestone',
+                    'Distance Milestone'
+                  )}
+                />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Distances</SelectItem>
+                <SelectItem value="all">
+                  {t('exerciseAnalytics.finder.allDistances', 'All Distances')}
+                </SelectItem>
                 <SelectItem value="5k">
-                  {isMiles ? '5K (3.1 mi)' : '5 km'}
+                  {isMiles
+                    ? t('exerciseAnalytics.finder.fiveKMiles', '5K (3.1 mi)')
+                    : t('exerciseAnalytics.finder.fiveKKm', '5 km')}
                 </SelectItem>
                 <SelectItem value="10k">
-                  {isMiles ? '10K (6.2 mi)' : '10 km'}
+                  {isMiles
+                    ? t('exerciseAnalytics.finder.tenKMiles', '10K (6.2 mi)')
+                    : t('exerciseAnalytics.finder.tenKKm', '10 km')}
                 </SelectItem>
                 <SelectItem value="15k">
-                  {isMiles ? '15K (9.3 mi)' : '15 km'}
+                  {isMiles
+                    ? t(
+                        'exerciseAnalytics.finder.fifteenKMiles',
+                        '15K (9.3 mi)'
+                      )
+                    : t('exerciseAnalytics.finder.fifteenKKm', '15 km')}
                 </SelectItem>
                 <SelectItem value="half_marathon">
                   {isMiles
-                    ? 'Half Marathon (13.1 mi)'
-                    : 'Half Marathon (21.1 km)'}
+                    ? t(
+                        'exerciseAnalytics.finder.halfMarathonMiles',
+                        'Half Marathon (13.1 mi)'
+                      )
+                    : t(
+                        'exerciseAnalytics.finder.halfMarathonKm',
+                        'Half Marathon (21.1 km)'
+                      )}
                 </SelectItem>
                 <SelectItem value="marathon">
-                  {isMiles ? 'Marathon (26.2 mi)' : 'Marathon (42.2 km)'}
+                  {isMiles
+                    ? t(
+                        'exerciseAnalytics.finder.marathonMiles',
+                        'Marathon (26.2 mi)'
+                      )
+                    : t(
+                        'exerciseAnalytics.finder.marathonKm',
+                        'Marathon (42.2 km)'
+                      )}
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -118,7 +161,10 @@ export const ActivityInterrogationFinder = ({
           <div className="relative flex-1 w-full">
             <Input
               type="text"
-              placeholder="Search by notes or workout title..."
+              placeholder={t(
+                'exerciseAnalytics.finder.searchPlaceholder',
+                'Search by notes or workout title...'
+              )}
               className="text-xs h-9 pl-8"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
@@ -135,7 +181,9 @@ export const ActivityInterrogationFinder = ({
             disabled={loading}
             onClick={() => executeSearch(distancePreset, keyword)}
           >
-            {loading ? 'Querying...' : 'Search'}
+            {loading
+              ? t('exerciseAnalytics.finder.querying', 'Querying...')
+              : t('exerciseAnalytics.finder.search', 'Search')}
           </Button>
         </div>
 
@@ -147,7 +195,10 @@ export const ActivityInterrogationFinder = ({
             </div>
           ) : loading ? (
             <div className="text-center py-8 text-xs text-muted-foreground border rounded-lg bg-muted/20">
-              Searching activity database...
+              {t(
+                'exerciseAnalytics.finder.searching',
+                'Searching activity database...'
+              )}
             </div>
           ) : queryResult && queryResult.items.length > 0 ? (
             queryResult.items.map((item: ExerciseActivityQueryItem) => (
@@ -158,11 +209,11 @@ export const ActivityInterrogationFinder = ({
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-sm">
-                      {item.exerciseName}
+                      {exerciseDisplayLabel(item.exerciseName, t, false)}
                     </span>
                     {item.category && (
                       <span className="bg-blue-100 text-blue-800 text-[10px] px-2 py-0.5 rounded-full font-medium capitalize">
-                        {item.category}
+                        {exerciseDisplayLabel(item.category, t)}
                       </span>
                     )}
                   </div>
@@ -182,7 +233,7 @@ export const ActivityInterrogationFinder = ({
                       {item.durationMinutes >= 10
                         ? Math.round(item.durationMinutes)
                         : Math.round(item.durationMinutes * 10) / 10}{' '}
-                      mins
+                      {t('common.min', 'min')}
                     </span>
                   </div>
                 </div>
@@ -191,7 +242,7 @@ export const ActivityInterrogationFinder = ({
                   {item.formattedPace && (
                     <div>
                       <div className="text-[10px] text-muted-foreground">
-                        Avg Pace
+                        {t('exerciseAnalytics.finder.avgPace', 'Avg Pace')}
                       </div>
                       <div className="font-semibold">{item.formattedPace}</div>
                     </div>
@@ -199,7 +250,7 @@ export const ActivityInterrogationFinder = ({
                   {item.avgHeartRate && (
                     <div>
                       <div className="text-[10px] text-muted-foreground">
-                        Avg HR
+                        {t('exerciseAnalytics.finder.avgHeartRate', 'Avg HR')}
                       </div>
                       <div className="font-semibold text-red-500">
                         {item.avgHeartRate} bpm
@@ -209,7 +260,7 @@ export const ActivityInterrogationFinder = ({
                   {item.caloriesBurned > 0 && (
                     <div>
                       <div className="text-[10px] text-muted-foreground">
-                        Calories
+                        {t('exerciseAnalytics.volume.calories', 'Calories')}
                       </div>
                       <div className="font-semibold text-amber-600">
                         {Math.round(item.caloriesBurned)} kcal
@@ -221,7 +272,10 @@ export const ActivityInterrogationFinder = ({
             ))
           ) : (
             <div className="text-center py-8 text-xs text-muted-foreground border rounded-lg bg-muted/20">
-              No activities matched the query filters.
+              {t(
+                'exerciseAnalytics.finder.noMatches',
+                'No activities matched the query filters.'
+              )}
             </div>
           )}
         </div>

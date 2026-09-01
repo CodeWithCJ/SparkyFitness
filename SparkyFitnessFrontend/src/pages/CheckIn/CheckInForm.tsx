@@ -15,6 +15,10 @@ import { UnitInput } from '@/components/ui/UnitInput';
 import { CustomCategoriesResponse } from '@workspace/shared';
 import { CheckInPlaceholders } from '@/types/checkin';
 import { History } from 'lucide-react';
+import {
+  healthMetricLabel,
+  healthMetricUnitLabel,
+} from '@/utils/healthMetricLabels';
 
 interface UseLastButtonProps {
   value: string;
@@ -378,6 +382,11 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
 
             {/* Custom Categories */}
             {customCategories.map((category) => {
+              const categoryLabel = healthMetricLabel(
+                category.name,
+                category.display_name,
+                t
+              );
               const isConvertible = shouldConvertCustomMeasurement(
                 category.measurement_type
               );
@@ -388,11 +397,12 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                   ? defaultWeightUnit
                   : defaultMeasurementUnit
                 : category.measurement_type;
+              const displayUnit = healthMetricUnitLabel(unitToUse, t);
 
               return (
                 <div key={category.id}>
                   <Label htmlFor={`custom-${category.id}`}>
-                    {category.display_name || category.name} ({unitToUse})
+                    {categoryLabel} ({displayUnit})
                   </Label>
                   {isConvertible && category.data_type === 'numeric' ? (
                     <UnitInput
@@ -430,10 +440,8 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
                         }));
                       }}
                       placeholder={t('checkIn.enterCustomCategory', {
-                        categoryName: (
-                          category.display_name || category.name
-                        ).toLowerCase(),
-                        defaultValue: `Enter ${(category.display_name || category.name).toLowerCase()}`,
+                        categoryName: categoryLabel.toLowerCase(),
+                        defaultValue: `Enter ${categoryLabel.toLowerCase()}`,
                       })}
                     />
                   )}

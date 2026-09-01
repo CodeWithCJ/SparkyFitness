@@ -4,6 +4,10 @@ import '@testing-library/jest-dom';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
 import type { Food, FoodVariant } from '@/types/food';
 
+jest.mock('react-i18next', () =>
+  jest.requireActual('@/tests/mocks/reactI18next')
+);
+
 const mockFetchQuery = jest.fn();
 const mockMutateAsync = jest.fn();
 const mockQueryClient = {
@@ -430,5 +434,31 @@ describe('FoodUnitSelector', () => {
     const tbspItem = screen.getByRole('button', { name: /^tbsp$/i });
 
     expect(tbspItem.querySelector('svg.text-green-500')).toBeNull();
+  });
+
+  it('hides an AI badge when a saved variant has an unrecognized confidence', async () => {
+    const food = createFood(
+      createVariant({
+        id: 'default-variant',
+        serving_size: 10,
+        serving_unit: 'g',
+      })
+    );
+
+    mockFetchQuery.mockResolvedValue([
+      createVariant({
+        id: 'cup-ai',
+        serving_size: 1,
+        serving_unit: 'cup',
+        calories: 30,
+        source: 'ai_estimate',
+        // API data can be malformed despite the TypeScript type at this boundary.
+        ai_confidence: 'unknown' as FoodVariant['ai_confidence'],
+      }),
+    ]);
+
+    await renderSelector(food);
+
+    expect(screen.queryByLabelText(/AI estimate/i)).not.toBeInTheDocument();
   });
 });

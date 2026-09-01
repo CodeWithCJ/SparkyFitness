@@ -80,7 +80,7 @@ describe('MealPlanCalendar', () => {
     renderWithClient(<MealPlanCalendar />);
 
     await waitFor(() => {
-      expect(screen.getByText('No results.')).toBeInTheDocument();
+      expect(screen.getAllByText('No results found.')).toHaveLength(2);
     });
   });
 });

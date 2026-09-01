@@ -399,7 +399,9 @@ export function useMeasurementChartWidgets({
       const loadingCard = (heightClass: string) => (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Loading...</CardTitle>
+            <CardTitle className="text-sm">
+              {t('common.loading', 'Loading...')}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div

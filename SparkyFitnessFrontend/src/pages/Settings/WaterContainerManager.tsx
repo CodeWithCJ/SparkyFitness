@@ -19,9 +19,11 @@ import {
   useSetPrimaryWaterContainerMutation,
 } from '@/hooks/Settings/useWaterContainers';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslation } from 'react-i18next';
 
 const WaterContainerManager: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [volume, setVolume] = useState<number | ''>('');
   const [unit, setUnit] = useState<'ml' | 'oz' | 'liter'>('ml');
@@ -54,18 +56,32 @@ const WaterContainerManager: React.FC = () => {
 
   const handleDeleteContainer = async (id: number) => {
     await deleteWaterContainer(id);
-    toast({ title: 'Success', description: 'Water container deleted.' });
+    toast({
+      title: t('foodDiary.success', 'Success'),
+      description: t(
+        'waterContainerManager.deleted',
+        'Water container deleted.'
+      ),
+    });
   };
 
   const handleSetPrimary = async (id: number) => {
     await setPrimaryWaterContainer(id);
-    toast({ title: 'Success', description: 'Primary container updated.' });
+    toast({
+      title: t('foodDiary.success', 'Success'),
+      description: t(
+        'waterContainerManager.primaryUpdated',
+        'Primary container updated.'
+      ),
+    });
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Manage Water Containers</CardTitle>
+        <CardTitle>
+          {t('waterContainerManager.title', 'Manage Water Containers')}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <form
@@ -73,17 +89,24 @@ const WaterContainerManager: React.FC = () => {
           className="flex items-end gap-2 mb-4"
         >
           <div className="grid gap-1.5">
-            <label htmlFor="name">Container Name</label>
+            <label htmlFor="name">
+              {t('waterContainerManager.name', 'Container Name')}
+            </label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., My Water Bottle"
+              placeholder={t(
+                'waterContainerManager.namePlaceholder',
+                'e.g., My Water Bottle'
+              )}
               required
             />
           </div>
           <div className="grid gap-1.5">
-            <label htmlFor="volume">Volume</label>
+            <label htmlFor="volume">
+              {t('waterContainerManager.volume', 'Volume')}
+            </label>
             <Input
               id="volume"
               type="number"
@@ -91,39 +114,53 @@ const WaterContainerManager: React.FC = () => {
               step="any"
               value={volume}
               onChange={(e) => setVolume(Number(e.target.value))}
-              placeholder="e.g., 500"
+              placeholder={t(
+                'waterContainerManager.volumePlaceholder',
+                'e.g., 500'
+              )}
               required
             />
           </div>
           <div className="grid gap-1.5">
-            <label htmlFor="servingsPerContainer">Servings per Container</label>
+            <label htmlFor="servingsPerContainer">
+              {t('waterContainerManager.servings', 'Servings per Container')}
+            </label>
             <Input
               id="servingsPerContainer"
               type="number"
               min="1"
               value={servingsPerContainer}
               onChange={(e) => setServingsPerContainer(Number(e.target.value))}
-              placeholder="e.g., 4"
+              placeholder={t(
+                'waterContainerManager.servingsPlaceholder',
+                'e.g., 4'
+              )}
               required
             />
           </div>
           <div className="grid gap-1.5">
-            <label>Unit</label>
+            <label>{t('waterContainerManager.unit', 'Unit')}</label>
             <Select
               onValueChange={(value: 'ml' | 'oz' | 'liter') => setUnit(value)}
               defaultValue={unit}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Unit" />
+                <SelectValue
+                  placeholder={t('waterContainerManager.unit', 'Unit')}
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ml">ml</SelectItem>
                 <SelectItem value="oz">oz</SelectItem>
-                <SelectItem value="liter">liter</SelectItem>
+                <SelectItem value="liter">
+                  {t('waterContainerManager.liter', 'liter')}
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
-          <Button type="submit">Add Container</Button>
+          <Button type="submit">
+            {t('waterContainerManager.add', 'Add Container')}
+          </Button>
         </form>
         <div className="space-y-2">
           {containers.map((c) => (
@@ -135,10 +172,21 @@ const WaterContainerManager: React.FC = () => {
                 <p className="font-semibold">
                   {c.name} -{' '}
                   {convertMlToSelectedUnit(c.volume, c.unit).toFixed(2)}{' '}
-                  {c.unit} ({c.servings_per_container} servings)
+                  {c.unit === 'liter'
+                    ? t('waterContainerManager.liter', 'liter')
+                    : c.unit}{' '}
+                  (
+                  {t('waterContainerManager.servingsCount', {
+                    count: c.servings_per_container,
+                    defaultValue_one: '{{count}} serving',
+                    defaultValue_other: '{{count}} servings',
+                  })}
+                  )
                 </p>
                 {c.is_primary && (
-                  <p className="text-sm text-blue-500">Primary</p>
+                  <p className="text-sm text-blue-500">
+                    {t('waterContainerManager.primary', 'Primary')}
+                  </p>
                 )}
               </div>
               <div className="flex gap-2">
@@ -148,7 +196,7 @@ const WaterContainerManager: React.FC = () => {
                     size="sm"
                     onClick={() => handleSetPrimary(c.id)}
                   >
-                    Set as Primary
+                    {t('waterContainerManager.setPrimary', 'Set as Primary')}
                   </Button>
                 )}
                 <Button
@@ -156,7 +204,7 @@ const WaterContainerManager: React.FC = () => {
                   size="sm"
                   onClick={() => handleDeleteContainer(c.id)}
                 >
-                  Delete
+                  {t('common.delete', 'Delete')}
                 </Button>
               </div>
             </div>

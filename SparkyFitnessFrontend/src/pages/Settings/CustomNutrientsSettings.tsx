@@ -34,8 +34,10 @@ import {
 } from '@/hooks/Foods/useCustomNutrients';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { AliasChipInput } from '@/components/Foods/AliasChipInput';
+import { useTranslation } from 'react-i18next';
 
 const CustomNutrientsSettings: React.FC = () => {
+  const { t } = useTranslation();
   const { loadNutrientDisplayPreferences } = usePreferences();
   const [newNutrientName, setNewNutrientName] = useState('');
   const [newNutrientUnit, setNewNutrientUnit] = useState('');
@@ -56,8 +58,11 @@ const CustomNutrientsSettings: React.FC = () => {
   const handleAddNutrient = async () => {
     if (!newNutrientName || !newNutrientUnit) {
       toast({
-        title: 'Error',
-        description: 'Nutrient name and unit are required.',
+        title: t('common.error', 'Error'),
+        description: t(
+          'settings.customNutrients.required',
+          'Nutrient name and unit are required.'
+        ),
         variant: 'destructive',
       });
       return;
@@ -77,8 +82,11 @@ const CustomNutrientsSettings: React.FC = () => {
   const handleEditNutrient = async () => {
     if (!editingNutrient || !editingNutrient.name || !editingNutrient.unit) {
       toast({
-        title: 'Error',
-        description: 'Nutrient name and unit are required.',
+        title: t('common.error', 'Error'),
+        description: t(
+          'settings.customNutrients.required',
+          'Nutrient name and unit are required.'
+        ),
         variant: 'destructive',
       });
       return;
@@ -105,64 +113,101 @@ const CustomNutrientsSettings: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Custom Nutrients Management</h2>
+      <h2 className="text-2xl font-bold">
+        {t('settings.customNutrients.title', 'Custom Nutrients Management')}
+      </h2>
 
       <div className="p-4 border rounded-md shadow-sm">
-        <h3 className="text-xl font-semibold mb-4">Add New Custom Nutrient</h3>
+        <h3 className="text-xl font-semibold mb-4">
+          {t('settings.customNutrients.addTitle', 'Add New Custom Nutrient')}
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <Label htmlFor="newNutrientName">Nutrient Name</Label>
+            <Label htmlFor="newNutrientName">
+              {t('settings.customNutrients.name', 'Nutrient Name')}
+            </Label>
             <Input
               id="newNutrientName"
               value={newNutrientName}
               onChange={(e) => setNewNutrientName(e.target.value)}
-              placeholder="e.g., Added Sugars"
+              placeholder={t(
+                'settings.customNutrients.namePlaceholder',
+                'e.g., Added Sugars'
+              )}
             />
           </div>
           <div>
-            <Label htmlFor="newNutrientUnit">Unit</Label>
+            <Label htmlFor="newNutrientUnit">
+              {t('settings.customNutrients.unit', 'Unit')}
+            </Label>
             <Input
               id="newNutrientUnit"
               value={newNutrientUnit}
               onChange={(e) => setNewNutrientUnit(e.target.value)}
-              placeholder="e.g., g, mg, IU"
+              placeholder={t(
+                'settings.customNutrients.unitPlaceholder',
+                'e.g., g, mg, IU'
+              )}
             />
           </div>
           <div>
-            <Label htmlFor="newNutrientAliases">Provider aliases</Label>
+            <Label htmlFor="newNutrientAliases">
+              {t(
+                'settings.customNutrients.providerAliases',
+                'Provider aliases'
+              )}
+            </Label>
             <AliasChipInput
               value={newNutrientAliases}
               onChange={setNewNutrientAliases}
-              placeholder="Type a name, press Enter"
+              placeholder={t(
+                'settings.customNutrients.aliasPlaceholder',
+                'Type a name, press Enter'
+              )}
             />
           </div>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
-          Aliases are the exact names online food databases use for this
-          nutrient (press Enter to add each). On import, provider nutrient
-          fields are matched (case-insensitively) against the name and these
-          aliases. Tip: use the "Nutrient fields reported by…" panel when
-          importing a food to add a provider's exact name in one click.
+          {t(
+            'settings.customNutrients.aliasesHelp',
+            'Aliases are the exact names online food databases use for this nutrient (press Enter to add each). On import, provider nutrient fields are matched (case-insensitively) against the name and these aliases. Tip: use the "Nutrient fields reported by…" panel when importing a food to add a provider\'s exact name in one click.'
+          )}
         </p>
         <Button onClick={handleAddNutrient} className="mt-4">
-          Add Custom Nutrient
+          {t('settings.customNutrients.add', 'Add Custom Nutrient')}
         </Button>
       </div>
 
       <div className="p-4 border rounded-md shadow-sm">
         <h3 className="text-xl font-semibold mb-4">
-          Existing Custom Nutrients
+          {t('settings.customNutrients.existing', 'Existing Custom Nutrients')}
         </h3>
         {customNutrients && customNutrients.length === 0 ? (
-          <p>No custom nutrients defined yet.</p>
+          <p>
+            {t(
+              'settings.customNutrients.empty',
+              'No custom nutrients defined yet.'
+            )}
+          </p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Unit</TableHead>
-                <TableHead>Provider aliases</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>
+                  {t('settings.customNutrients.name', 'Name')}
+                </TableHead>
+                <TableHead>
+                  {t('settings.customNutrients.unit', 'Unit')}
+                </TableHead>
+                <TableHead>
+                  {t(
+                    'settings.customNutrients.providerAliases',
+                    'Provider aliases'
+                  )}
+                </TableHead>
+                <TableHead className="text-right">
+                  {t('common.actions', 'Actions')}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -204,7 +249,10 @@ const CustomNutrientsSettings: React.FC = () => {
                         <AliasChipInput
                           value={editingAliases}
                           onChange={setEditingAliases}
-                          placeholder="Type a name, press Enter"
+                          placeholder={t(
+                            'settings.customNutrients.aliasPlaceholder',
+                            'Type a name, press Enter'
+                          )}
                         />
                       ) : (
                         (nutrient.aliases ?? []).join(', ')
@@ -214,7 +262,7 @@ const CustomNutrientsSettings: React.FC = () => {
                       {editingNutrient?.id === nutrient.id ? (
                         <>
                           <Button variant="ghost" onClick={handleEditNutrient}>
-                            Save
+                            {t('common.save', 'Save')}
                           </Button>
                           <Button
                             variant="ghost"
@@ -223,7 +271,7 @@ const CustomNutrientsSettings: React.FC = () => {
                               setEditingAliases([]);
                             }}
                           >
-                            Cancel
+                            {t('common.cancel', 'Cancel')}
                           </Button>
                         </>
                       ) : (
@@ -232,7 +280,7 @@ const CustomNutrientsSettings: React.FC = () => {
                             variant="ghost"
                             size="icon"
                             onClick={() => startEditing(nutrient)}
-                            title="Edit"
+                            title={t('common.edit', 'Edit')}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -242,7 +290,7 @@ const CustomNutrientsSettings: React.FC = () => {
                                 variant="ghost"
                                 size="icon"
                                 className="text-red-500"
-                                title="Delete"
+                                title={t('common.delete', 'Delete')}
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -250,12 +298,16 @@ const CustomNutrientsSettings: React.FC = () => {
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>
-                                  Are you absolutely sure?
+                                  {t(
+                                    'settings.customNutrients.deleteTitle',
+                                    'Are you absolutely sure?'
+                                  )}
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  This action cannot be undone. This will
-                                  permanently delete your custom nutrient
-                                  definition.
+                                  {t(
+                                    'settings.customNutrients.deleteDescription',
+                                    'This action cannot be undone. This will permanently delete your custom nutrient definition.'
+                                  )}
                                 </AlertDialogDescription>
                                 <div className="flex items-start space-x-3 pt-4">
                                   <Checkbox
@@ -270,13 +322,16 @@ const CustomNutrientsSettings: React.FC = () => {
                                       htmlFor={`delete-history-${nutrient.id}`}
                                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                     >
-                                      Also remove from past goals and diary
-                                      entries?
+                                      {t(
+                                        'settings.customNutrients.deleteHistory',
+                                        'Also remove from past goals and diary entries?'
+                                      )}
                                     </label>
                                     <p className="text-sm text-muted-foreground">
-                                      If unchecked, old values remain in your
-                                      history but the nutrient will be hidden
-                                      from UI.
+                                      {t(
+                                        'settings.customNutrients.deleteHistoryHelp',
+                                        'If unchecked, old values remain in your history but the nutrient will be hidden from the interface.'
+                                      )}
                                     </p>
                                   </div>
                                 </div>
@@ -285,14 +340,14 @@ const CustomNutrientsSettings: React.FC = () => {
                                 <AlertDialogCancel
                                   onClick={() => setDeleteAllHistory(false)}
                                 >
-                                  Cancel
+                                  {t('common.cancel', 'Cancel')}
                                 </AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() =>
                                     handleDeleteNutrient(nutrient.id)
                                   }
                                 >
-                                  Delete
+                                  {t('common.delete', 'Delete')}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>

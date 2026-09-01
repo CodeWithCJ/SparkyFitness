@@ -57,6 +57,10 @@ import { useDiaryGoals } from '@/hooks/Diary/useFoodEntries';
 import { useMostRecentMeasurement } from '@/hooks/CheckIn/useCheckIn';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 import {
+  getBmrAlgorithmLabel,
+  getBodyFatAlgorithmLabel,
+} from '@/utils/calculationLabels';
+import {
   computeCalorieTarget,
   isAdaptiveTdeeMature,
   todayInZone,
@@ -75,6 +79,7 @@ import {
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   shouldShowCalorieSafetyWarning,
   normalizeCalorieGoalAdjustmentMode,
+  ADAPTIVE_TDEE_GOAL_MIN_DAYS,
 } from '@workspace/shared';
 
 /**
@@ -680,7 +685,7 @@ const CalculationSettings = () => {
             <SelectContent>
               {Object.values(BmrAlgorithm).map((alg) => (
                 <SelectItem key={alg} value={alg}>
-                  {alg}
+                  {getBmrAlgorithmLabel(t, alg)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -714,7 +719,7 @@ const CalculationSettings = () => {
             <SelectContent>
               {Object.values(BodyFatAlgorithm).map((alg) => (
                 <SelectItem key={alg} value={alg}>
-                  {alg}
+                  {getBodyFatAlgorithmLabel(t, alg)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -1527,7 +1532,10 @@ const CalculationSettings = () => {
               <div className="hidden md:block text-muted-foreground">→</div>
               <div>
                 <span className="text-muted-foreground">
-                  Daily Calorie Target:
+                  {t(
+                    'settings.goalMode.dailyCalorieTarget',
+                    'Daily Calorie Target:'
+                  )}
                 </span>{' '}
                 <span className="font-bold text-base text-primary">
                   {Math.round(
@@ -1580,10 +1588,14 @@ const CalculationSettings = () => {
                       Math.abs(previewResult.projectedWeeklyChangeKg)
                     )}
                   </span>
-                  <span className="text-muted-foreground">/ week</span>
+                  <span className="text-muted-foreground">
+                    {t('settings.goalMode.perWeek', '/ week')}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-muted-foreground">Rate:</span>
+                  <span className="text-muted-foreground">
+                    {t('settings.goalMode.rate', 'Rate:')}
+                  </span>
                   <span
                     className={`font-semibold px-2 py-0.5 rounded-full text-xs ${
                       previewResult.safetyZone === 'green'
@@ -1593,8 +1605,11 @@ const CalculationSettings = () => {
                           : 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300'
                     }`}
                   >
-                    {previewResult.projectedWeeklyChangePercent.toFixed(2)}% of
-                    body weight / week
+                    {t('settings.goalMode.bodyWeightRate', {
+                      defaultValue: '{{percent}}% of body weight / week',
+                      percent:
+                        previewResult.projectedWeeklyChangePercent.toFixed(2),
+                    })}
                   </span>
                 </div>
               </div>
@@ -1644,10 +1659,11 @@ const CalculationSettings = () => {
                   <p className="mt-2 text-sm opacity-80 border-t border-current/20 pt-2 flex items-start gap-1">
                     <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                     <span>
-                      Note: This target is currently based on an estimated
-                      activity level. After 14+ days of weight and calorie data,
-                      SparkyFitness will calculate a more personalized adaptive
-                      TDEE.
+                      {t('settings.goalMode.estimatedTargetNote', {
+                        defaultValue:
+                          'Note: This target is currently based on an estimated activity level. After {{required}}+ days of weight and calorie data, SparkyFitness will calculate a more personalized adaptive TDEE.',
+                        required: ADAPTIVE_TDEE_GOAL_MIN_DAYS,
+                      })}
                     </span>
                   </p>
                 )}
@@ -1662,13 +1678,16 @@ const CalculationSettings = () => {
                 <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <p className="font-semibold">
-                    Safety Alert: Calorie target below minimum metabolism
+                    {t(
+                      'settings.goalMode.minimumMetabolismWarningTitle',
+                      'Safety Alert: Calorie target below minimum metabolism'
+                    )}
                   </p>
                   <p className="text-sm text-amber-700 dark:text-amber-400/80 leading-relaxed">
-                    Your calorie target is below your estimated minimum
-                    metabolism (RMR). This may not be sustainable long-term.
-                    Consider selecting a less aggressive Goal Mode or enabling a
-                    Standard or Custom safety floor.
+                    {t(
+                      'settings.goalMode.minimumMetabolismWarningText',
+                      'Your calorie target is below your estimated minimum metabolism (RMR). This may not be sustainable long-term. Consider selecting a less aggressive Goal Mode or enabling a Standard or Custom safety floor.'
+                    )}
                   </p>
                 </div>
               </div>
@@ -1681,16 +1700,26 @@ const CalculationSettings = () => {
                 <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <p className="font-semibold">
-                    Critical Health Alert: Calorie target below absolute floor
+                    {t(
+                      'settings.goalMode.absoluteFloorWarningTitle',
+                      'Critical Health Alert: Calorie target below absolute floor'
+                    )}
                   </p>
                   <p className="text-sm text-red-700 dark:text-red-400/80 leading-relaxed">
-                    Your calorie target is below the clinical absolute safety
-                    floor of{' '}
-                    {energyUnit === 'kcal'
-                      ? `${previewResult.absoluteFloorValue} kcal`
-                      : `${Math.round(convertEnergy(previewResult.absoluteFloorValue, 'kcal', 'kJ'))} kJ`}
-                    /day. Deficits below this level are generally not
-                    recommended without direct medical supervision.
+                    {t('settings.goalMode.absoluteFloorWarningText', {
+                      defaultValue:
+                        'Your calorie target is below the clinical absolute safety floor of {{floor}}/day. Deficits below this level are generally not recommended without direct medical supervision.',
+                      floor:
+                        energyUnit === 'kcal'
+                          ? `${previewResult.absoluteFloorValue} kcal`
+                          : `${Math.round(
+                              convertEnergy(
+                                previewResult.absoluteFloorValue,
+                                'kcal',
+                                'kJ'
+                              )
+                            )} kJ`,
+                    })}
                   </p>
                 </div>
               </div>
@@ -1708,32 +1737,45 @@ const CalculationSettings = () => {
                   )}
                 </p>
                 <p className="text-sm text-amber-700 dark:text-amber-400/80 leading-relaxed">
-                  The deficit you selected works out to{' '}
-                  {Math.round(
-                    convertEnergy(previewResult.target, 'kcal', energyUnit)
-                  )}{' '}
-                  {getEnergyUnitString(energyUnit)}, which is below your{' '}
-                  {previewResult.clampedFloorSource === 'rmr'
-                    ? 'estimated resting metabolism (RMR)'
-                    : previewResult.clampedFloorSource === 'custom'
-                      ? t(
-                          'settings.calorieBreakdown.customFloorDescription',
-                          'configured custom safety floor'
-                        )
-                      : 'absolute safety floor'}{' '}
-                  of{' '}
-                  {Math.round(
-                    convertEnergy(previewResult.finalTarget, 'kcal', energyUnit)
-                  )}{' '}
-                  {getEnergyUnitString(energyUnit)}, so your target has been
-                  raised to that minimum.
+                  {t('settings.goalMode.clampExplanation', {
+                    defaultValue:
+                      'The deficit you selected works out to {{target}} {{unit}}, which is below your {{floorDescription}} of {{floor}} {{unit}}, so your target has been raised to that minimum.',
+                    target: Math.round(
+                      convertEnergy(previewResult.target, 'kcal', energyUnit)
+                    ),
+                    unit: getEnergyUnitString(energyUnit),
+                    floorDescription:
+                      previewResult.clampedFloorSource === 'rmr'
+                        ? t(
+                            'settings.goalMode.estimatedRmrDescription',
+                            'estimated resting metabolism (RMR)'
+                          )
+                        : previewResult.clampedFloorSource === 'custom'
+                          ? t(
+                              'settings.calorieBreakdown.customFloorDescription',
+                              'configured custom safety floor'
+                            )
+                          : t(
+                              'settings.goalMode.absoluteFloorDescription',
+                              'absolute safety floor'
+                            ),
+                    floor: Math.round(
+                      convertEnergy(
+                        previewResult.finalTarget,
+                        'kcal',
+                        energyUnit
+                      )
+                    ),
+                  })}
                   {previewResult.maxFeasibleDeficitPercent != null && (
                     <>
                       {' '}
-                      The largest deficit that fits above your minimum is about{' '}
-                      <span className="font-semibold">
-                        {previewResult.maxFeasibleDeficitPercent.toFixed(0)}%
-                      </span>
+                      {t('settings.goalMode.largestFeasibleDeficit', {
+                        defaultValue:
+                          'The largest deficit that fits above your minimum is about {{percent}}%',
+                        percent:
+                          previewResult.maxFeasibleDeficitPercent.toFixed(0),
+                      })}
                       {previewResult.insufficientHistory
                         ? t(
                             'settings.goalMode.clampAdviceEstimated',
@@ -1747,8 +1789,10 @@ const CalculationSettings = () => {
                   )}
                 </p>
                 <p className="text-sm text-amber-700/80 dark:text-amber-400/70 leading-relaxed">
-                  The Manual calculation method does not apply this floor — it
-                  warns instead of overriding.
+                  {t(
+                    'settings.goalMode.manualFloorWarning',
+                    'The Manual calculation method does not apply this floor — it warns instead of overriding.'
+                  )}
                 </p>
               </div>
             </div>
@@ -1761,23 +1805,32 @@ const CalculationSettings = () => {
               <div className="space-y-1">
                 {previewResult.isGainGoal ? (
                   <>
-                    <p className="font-semibold">Unsafe Weight Gain Rate</p>
+                    <p className="font-semibold">
+                      {t(
+                        'settings.goalMode.unsafeGainTitle',
+                        'Unsafe Weight Gain Rate'
+                      )}
+                    </p>
                     <p className="text-sm text-red-700 dark:text-red-400/80 leading-relaxed">
-                      Gaining more than 0.5% of body weight per week means most
-                      of the added weight will be fat rather than muscle. A
-                      slower surplus builds a similar amount of muscle with far
-                      less fat gain.
+                      {t(
+                        'settings.goalMode.unsafeGainText',
+                        'Gaining more than 0.5% of body weight per week means most of the added weight will be fat rather than muscle. A slower surplus builds a similar amount of muscle with far less fat gain.'
+                      )}
                     </p>
                   </>
                 ) : (
                   <>
-                    <p className="font-semibold">Unsafe Weight Loss Rate</p>
+                    <p className="font-semibold">
+                      {t(
+                        'settings.goalMode.unsafeLossTitle',
+                        'Unsafe Weight Loss Rate'
+                      )}
+                    </p>
                     <p className="text-sm text-red-700 dark:text-red-400/80 leading-relaxed">
-                      Losing more than 1.5% of body weight per week is
-                      considered excessive. This rate dramatically increases
-                      risks of severe muscle loss, lethargy, hormonal
-                      imbalances, and nutritional deficiencies. Please choose a
-                      less aggressive goal mode.
+                      {t(
+                        'settings.goalMode.unsafeLossText',
+                        'Losing more than 1.5% of body weight per week is considered excessive. This rate dramatically increases risks of severe muscle loss, lethargy, hormonal imbalances, and nutritional deficiencies. Please choose a less aggressive goal mode.'
+                      )}
                     </p>
                   </>
                 )}
@@ -1798,14 +1851,25 @@ const CalculationSettings = () => {
                     )}
                   </p>
                   <p className="text-sm text-blue-700/90 dark:text-blue-400/80 leading-relaxed">
-                    Sparky's Adaptive TDEE engine requires at least 14 days of
-                    consistent tracking to calculate your metabolism accurately
-                    (currently using fallback estimates). To speed up
-                    calibration:
+                    {t('settings.goalMode.calibrationDescription', {
+                      defaultValue:
+                        "Sparky's Adaptive TDEE engine requires at least {{required}} days of consistent tracking to calculate your metabolism accurately (currently using fallback estimates). To speed up calibration:",
+                      required: ADAPTIVE_TDEE_GOAL_MIN_DAYS,
+                    })}
                   </p>
                   <ul className="list-disc pl-4 text-sm text-blue-700/80 dark:text-blue-400/70 space-y-0.5 mt-1">
-                    <li>Log weight at least 3-4 times per week.</li>
-                    <li>Log food intake daily (&gt;200 kcal/day).</li>
+                    <li>
+                      {t(
+                        'settings.goalMode.calibrationWeightTip',
+                        'Log weight at least 3-4 times per week.'
+                      )}
+                    </li>
+                    <li>
+                      {t(
+                        'settings.goalMode.calibrationFoodTip',
+                        'Log food intake daily (>200 kcal/day).'
+                      )}
+                    </li>
                   </ul>
                 </div>
               </div>
@@ -1816,12 +1880,18 @@ const CalculationSettings = () => {
       {/* Nutrient Calculation Algorithms */}
       <div className="border-t pt-4 mt-4">
         <h3 className="text-lg font-semibold mb-4">
-          Nutrient Calculation Algorithms
+          {t(
+            'settings.nutrientAlgorithms.title',
+            'Nutrient Calculation Algorithms'
+          )}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="fat-breakdown-algorithm">
-              Fat Breakdown Algorithm
+              {t(
+                'settings.nutrientAlgorithms.fatTitle',
+                'Fat Breakdown Algorithm'
+              )}
             </Label>
             <Select
               value={fatBreakdownAlgorithm}
@@ -1830,25 +1900,38 @@ const CalculationSettings = () => {
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select Fat Breakdown Algorithm" />
+                <SelectValue
+                  placeholder={t(
+                    'settings.nutrientAlgorithms.selectFat',
+                    'Select Fat Breakdown Algorithm'
+                  )}
+                />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(FatBreakdownAlgorithm).map((alg) => (
                   <SelectItem key={alg} value={alg}>
-                    {FatBreakdownAlgorithmLabels[alg]}
+                    {t(
+                      `settings.nutrientAlgorithms.labels.${alg}`,
+                      FatBreakdownAlgorithmLabels[alg]
+                    )}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground mt-1">
-              How to distribute dietary fat into saturated, poly, mono, and
-              trans fats.
+              {t(
+                'settings.nutrientAlgorithms.fatHint',
+                'How to distribute dietary fat into saturated, poly, mono, and trans fats.'
+              )}
             </p>
           </div>
 
           <div>
             <Label htmlFor="mineral-calculation-algorithm">
-              Mineral Calculation Algorithm
+              {t(
+                'settings.nutrientAlgorithms.mineralTitle',
+                'Mineral Calculation Algorithm'
+              )}
             </Label>
             <Select
               value={mineralCalculationAlgorithm}
@@ -1857,25 +1940,38 @@ const CalculationSettings = () => {
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select Mineral Algorithm" />
+                <SelectValue
+                  placeholder={t(
+                    'settings.nutrientAlgorithms.selectMineral',
+                    'Select Mineral Algorithm'
+                  )}
+                />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(MineralCalculationAlgorithm).map((alg) => (
                   <SelectItem key={alg} value={alg}>
-                    {MineralCalculationAlgorithmLabels[alg]}
+                    {t(
+                      `settings.nutrientAlgorithms.labels.${alg}`,
+                      MineralCalculationAlgorithmLabels[alg]
+                    )}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground mt-1">
-              Algorithm for calculating sodium, potassium, calcium, iron, and
-              cholesterol targets.
+              {t(
+                'settings.nutrientAlgorithms.mineralHint',
+                'Algorithm for calculating sodium, potassium, calcium, iron, and cholesterol targets.'
+              )}
             </p>
           </div>
 
           <div>
             <Label htmlFor="vitamin-calculation-algorithm">
-              Vitamin Calculation Algorithm
+              {t(
+                'settings.nutrientAlgorithms.vitaminTitle',
+                'Vitamin Calculation Algorithm'
+              )}
             </Label>
             <Select
               value={vitaminCalculationAlgorithm}
@@ -1884,24 +1980,38 @@ const CalculationSettings = () => {
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select Vitamin Algorithm" />
+                <SelectValue
+                  placeholder={t(
+                    'settings.nutrientAlgorithms.selectVitamin',
+                    'Select Vitamin Algorithm'
+                  )}
+                />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(VitaminCalculationAlgorithm).map((alg) => (
                   <SelectItem key={alg} value={alg}>
-                    {VitaminCalculationAlgorithmLabels[alg]}
+                    {t(
+                      `settings.nutrientAlgorithms.labels.${alg}`,
+                      VitaminCalculationAlgorithmLabels[alg]
+                    )}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground mt-1">
-              Algorithm for calculating Vitamin A and C targets.
+              {t(
+                'settings.nutrientAlgorithms.vitaminHint',
+                'Algorithm for calculating Vitamin A and C targets.'
+              )}
             </p>
           </div>
 
           <div>
             <Label htmlFor="sugar-calculation-algorithm">
-              Sugar Calculation Algorithm
+              {t(
+                'settings.nutrientAlgorithms.sugarTitle',
+                'Sugar Calculation Algorithm'
+              )}
             </Label>
             <Select
               value={sugarCalculationAlgorithm}
@@ -1910,23 +2020,39 @@ const CalculationSettings = () => {
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select Sugar Algorithm" />
+                <SelectValue
+                  placeholder={t(
+                    'settings.nutrientAlgorithms.selectSugar',
+                    'Select Sugar Algorithm'
+                  )}
+                />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(SugarCalculationAlgorithm).map((alg) => (
                   <SelectItem key={alg} value={alg}>
-                    {SugarCalculationAlgorithmLabels[alg]}
+                    {t(
+                      `settings.nutrientAlgorithms.labels.${alg}`,
+                      SugarCalculationAlgorithmLabels[alg]
+                    )}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground mt-1">
-              Maximum sugar intake as a percentage of total calories.
+              {t(
+                'settings.nutrientAlgorithms.sugarHint',
+                'Maximum sugar intake as a percentage of total calories.'
+              )}
             </p>
           </div>
 
           <div>
-            <Label htmlFor="added-sugar-algorithm">Added Sugar Algorithm</Label>
+            <Label htmlFor="added-sugar-algorithm">
+              {t(
+                'settings.nutrientAlgorithms.addedSugarTitle',
+                'Added Sugar Algorithm'
+              )}
+            </Label>
             <Select
               value={addedSugarAlgorithm}
               onValueChange={(value: AddedSugarAlgorithm) =>
@@ -1934,24 +2060,35 @@ const CalculationSettings = () => {
               }
             >
               <SelectTrigger>
-                <SelectValue placeholder="Select Added Sugar Algorithm" />
+                <SelectValue
+                  placeholder={t(
+                    'settings.nutrientAlgorithms.selectAddedSugar',
+                    'Select Added Sugar Algorithm'
+                  )}
+                />
               </SelectTrigger>
               <SelectContent>
                 {Object.values(AddedSugarAlgorithm).map((alg) => (
                   <SelectItem key={alg} value={alg}>
-                    {AddedSugarAlgorithmLabels[alg]}
+                    {t(
+                      `settings.nutrientAlgorithms.labels.${alg}`,
+                      AddedSugarAlgorithmLabels[alg]
+                    )}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground mt-1">
-              Recommended limit for a custom "Added Sugars" nutrient tracked as
-              a maximum goal (WHO or AHA guidelines).
+              {t(
+                'settings.nutrientAlgorithms.addedSugarHint',
+                'Recommended limit for a custom "Added Sugars" nutrient tracked as a maximum goal (WHO or AHA guidelines).'
+              )}
             </p>
-            <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
-              Requires a custom nutrient named "Added Sugar(s)" (Settings →
-              Custom Nutrients), set to a Maximum goal direction — this
-              algorithm has no effect until one exists.
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+              {t(
+                'settings.nutrientAlgorithms.addedSugarRequirement',
+                'Requires a custom nutrient named "Added Sugar(s)" (Settings → Custom Nutrients), set to a Maximum goal direction — this algorithm has no effect until one exists.'
+              )}
             </p>
           </div>
         </div>

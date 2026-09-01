@@ -241,7 +241,10 @@ const SleepReport = ({ startDate, endDate }: SleepReportProps) => {
           awake_count: analyticsData.awakePeriods,
           source:
             entries.length > 1
-              ? `${entries.length} Sessions`
+              ? t('sleepReport.sessionCount', {
+                  defaultValue: '{{count}} Sessions',
+                  count: entries.length,
+                })
               : mainEntry.source,
           stage_events: allStageEvents,
           is_aggregated: entries.length > 1,

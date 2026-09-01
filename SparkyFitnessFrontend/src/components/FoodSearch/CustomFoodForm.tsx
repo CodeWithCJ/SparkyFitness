@@ -186,7 +186,9 @@ const CustomFoodForm = ({
         <CardHeader>
           <div className="flex flex-wrap items-center gap-2">
             <CardTitle>
-              {food && food.id ? 'Edit Food' : 'Add Custom Food'}
+              {food && food.id
+                ? t('customFoodForm.titleEdit', 'Edit Food')
+                : t('customFoodForm.titleAdd', 'Add Custom Food')}
             </CardTitle>
             {food?.provider_verified ? <ProviderVerifiedBadge /> : null}
           </div>
@@ -195,7 +197,9 @@ const CustomFoodForm = ({
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="name">Food Name *</Label>
+                <Label htmlFor="name">
+                  {t('customFoodForm.foodNameLabel', 'Food Name *')}
+                </Label>
                 <Input
                   id="name"
                   value={formData.name}
@@ -204,7 +208,9 @@ const CustomFoodForm = ({
                 />
               </div>
               <div>
-                <Label htmlFor="brand">Brand</Label>
+                <Label htmlFor="brand">
+                  {t('customFoodForm.brand', 'Brand')}
+                </Label>
                 <Input
                   id="brand"
                   value={formData.brand}
@@ -215,11 +221,16 @@ const CustomFoodForm = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <div>
-                <Label htmlFor="barcode">Barcode</Label>
+                <Label htmlFor="barcode">
+                  {t('customFoodForm.barcode', 'Barcode')}
+                </Label>
                 <div className="flex gap-2 mt-1">
                   <Input
                     id="barcode"
-                    placeholder="e.g. 012345678905"
+                    placeholder={t(
+                      'customFoodForm.barcodePlaceholder',
+                      'e.g. 012345678905'
+                    )}
                     value={formData.barcode}
                     onChange={(e) => updateField('barcode', e.target.value)}
                     maxLength={14}
@@ -231,11 +242,14 @@ const CustomFoodForm = ({
                     className="flex items-center gap-1.5 shrink-0"
                   >
                     <Camera className="w-4 h-4" />
-                    <span>Scan</span>
+                    <span>{t('customFoodForm.scan', 'Scan')}</span>
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Standard barcodes are 8 to 14 digits.
+                  {t(
+                    'customFoodForm.barcodeHelp',
+                    'Standard barcodes are 8 to 14 digits.'
+                  )}
                 </p>
               </div>
             </div>
@@ -257,7 +271,10 @@ const CustomFoodForm = ({
                 }
               />
               <Label htmlFor="is_quick_food" className="text-sm font-medium">
-                Quick Add (don't save to my food list for future use)
+                {t(
+                  'customFoodForm.quickAddLabel',
+                  "Quick Add (don't save to my food list for future use)"
+                )}
               </Label>
             </div>
 
@@ -268,15 +285,19 @@ const CustomFoodForm = ({
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Unit Variants</h3>
+                <h3 className="text-lg font-semibold">
+                  {t('customFoodForm.unitVariants', 'Unit Variants')}
+                </h3>
                 <Button type="button" onClick={addVariant} size="sm">
                   <Plus className="w-4 h-4 mr-1" />
-                  Add Unit
+                  {t('customFoodForm.addUnit', 'Add Unit')}
                 </Button>
               </div>
               <p className="text-sm text-gray-600">
-                Add different unit measurements for this food with specific
-                nutrition values for each unit.
+                {t(
+                  'customFoodForm.unitVariantsHelp',
+                  'Add different unit measurements for this food with specific nutrition values for each unit.'
+                )}
               </p>
 
               <div className="space-y-6">
@@ -383,10 +404,10 @@ const CustomFoodForm = ({
 
             <Button type="submit" disabled={loading} className="w-full">
               {loading
-                ? 'Saving...'
+                ? t('customFoodForm.saving', 'Saving...')
                 : food && food.id
-                  ? 'Update Food'
-                  : 'Add Food'}
+                  ? t('customFoodForm.updateFood', 'Update Food')
+                  : t('customFoodForm.addFood', 'Add Food')}
             </Button>
           </form>
         </CardContent>
@@ -460,8 +481,15 @@ const CustomFoodForm = ({
             }
           }}
           onConfirm={handleBarcodeConflictConfirm}
-          title="Barcode already in use"
-          description={`This barcode is already attached to "${barcodeConflictFoodName}". Attach it to "${formData.name}" anyway?`}
+          title={t(
+            'customFoodForm.barcodeConflictTitle',
+            'Barcode already in use'
+          )}
+          description={t('customFoodForm.barcodeConflictDescription', {
+            existing: barcodeConflictFoodName,
+            current: formData.name,
+            defaultValue: `This barcode is already attached to "${barcodeConflictFoodName}". Attach it to "${formData.name}" anyway?`,
+          })}
         />
       )}
 

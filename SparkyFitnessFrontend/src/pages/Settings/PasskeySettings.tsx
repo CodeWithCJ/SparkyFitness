@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Fingerprint, Trash2, Plus, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { getDateLocale } from '@/utils/languageUtils';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import {
   useAddPasskeyMutation,
   useDeletePasskeyMutation,
@@ -20,6 +22,7 @@ import {
 
 const PasskeySettings = () => {
   const { t } = useTranslation();
+  const { language } = usePreferences();
   const [newPasskeyName, setNewPasskeyName] = useState('');
 
   const { data: passkeys = [], isLoading: loading } = usePasskeys();
@@ -113,7 +116,9 @@ const PasskeySettings = () => {
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {t('settings.passkey.addedOn', 'Added on')}{' '}
-                        {format(new Date(pk.createdAt), 'PPp')}
+                        {format(new Date(pk.createdAt), 'PPp', {
+                          locale: getDateLocale(language),
+                        })}
                       </p>
                     </div>
                     <Button

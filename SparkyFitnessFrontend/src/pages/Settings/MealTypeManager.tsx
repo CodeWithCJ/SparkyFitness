@@ -186,7 +186,10 @@ const MealTypeManager = () => {
                   <Input
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    placeholder="e.g. Midnight Snack"
+                    placeholder={t(
+                      'mealTypeManager.namePlaceholder',
+                      'e.g. Midnight Snack'
+                    )}
                   />
                 </div>
                 <div className="space-y-2">
@@ -206,15 +209,22 @@ const MealTypeManager = () => {
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Default Time (optional)</Label>
+                  <Label>
+                    {t(
+                      'mealTypeManager.defaultTimeOptional',
+                      'Default Time (optional)'
+                    )}
+                  </Label>
                   <Input
                     type="time"
                     value={newDefaultTime}
                     onChange={(e) => setNewDefaultTime(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Used to suggest this meal category automatically based on
-                    your local time of day when logging food.
+                    {t(
+                      'mealTypeManager.defaultTimeHelp',
+                      'Used to suggest this meal category automatically based on your local time of day when logging food.'
+                    )}
                   </p>
                 </div>
                 <Button onClick={handleAdd} className="w-full">
@@ -247,26 +257,24 @@ const MealTypeManager = () => {
                   <span className="font-medium">
                     {getDisplayName(item.name)}
                   </span>
-                  {isSystem && (
-                    <span className="text-xs text-muted-foreground">
-                      ({item.name})
-                    </span>
-                  )}
                 </div>
                 {isSystem && (
                   <Badge variant="secondary" className="text-xs">
-                    Default
+                    {t('mealTypeManager.default', 'Default')}
                   </Badge>
                 )}
               </div>
 
               <div className="flex items-center gap-4">
                 <span className="text-xs text-muted-foreground">
-                  Order: {item.sort_order}
+                  {t('mealTypeManager.order', {
+                    defaultValue: 'Order: {{order}}',
+                    order: item.sort_order,
+                  })}
                 </span>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs text-muted-foreground">
-                    Default Time:
+                    {t('mealTypeManager.defaultTime', 'Default Time:')}
                   </span>
                   <Input
                     type="time"
@@ -290,7 +298,9 @@ const MealTypeManager = () => {
                     size="sm"
                     onClick={() => toggleVisibility(item)}
                     title={
-                      item.is_visible ? 'Hide from Diary' : 'Show in Diary'
+                      item.is_visible
+                        ? t('mealTypeManager.hideFromDiary', 'Hide from Diary')
+                        : t('mealTypeManager.showInDiary', 'Show in Diary')
                     }
                   >
                     {item.is_visible ? (
@@ -305,8 +315,14 @@ const MealTypeManager = () => {
                     onClick={() => toggleQuickLog(item)}
                     title={
                       item.show_in_quick_log
-                        ? 'Hide from Quick Food Log'
-                        : 'Show in Quick Food Log'
+                        ? t(
+                            'mealTypeManager.hideFromQuickLog',
+                            'Hide from Quick Food Log'
+                          )
+                        : t(
+                            'mealTypeManager.showInQuickLog',
+                            'Show in Quick Food Log'
+                          )
                     }
                   >
                     {item.show_in_quick_log !== false ? (
@@ -374,7 +390,12 @@ const MealTypeManager = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label>Default Time (optional)</Label>
+              <Label>
+                {t(
+                  'mealTypeManager.defaultTimeOptional',
+                  'Default Time (optional)'
+                )}
+              </Label>
               <Input
                 type="time"
                 value={newDefaultTime}
