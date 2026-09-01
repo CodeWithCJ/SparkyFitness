@@ -4,7 +4,12 @@ import {
   type HydrationRecord,
 } from 'react-native-health-connect';
 import type { FoodEntry } from '../../types/foodEntries';
-import { HC_NUTRIENT_COLUMNS, G_TO_MG, G_TO_MCG, tidyNumber } from './dataTransformation';
+import {
+  HC_NUTRIENT_COLUMNS,
+  G_TO_MG,
+  G_TO_MCG,
+  tidyNumber,
+} from './dataTransformation';
 import { toLocalDateString, addDays } from '../../utils/dateUtils';
 
 // HC Mass units we emit (subset of the library's Mass['unit']).
@@ -28,12 +33,16 @@ export const SPARKY_CLIENT_RECORD_PREFIX = 'sparky-';
 // same delete-then-insert pattern the read/Garmin provider path uses.
 
 /** Per-food-entry id for one write run (entry id + version → unique per run). */
-export const nutritionClientRecordId = (entryId: string, version: number): string =>
-  `${SPARKY_CLIENT_RECORD_PREFIX}nutrition-${entryId}-${version}`;
+export const nutritionClientRecordId = (
+  entryId: string,
+  version: number
+): string => `${SPARKY_CLIENT_RECORD_PREFIX}nutrition-${entryId}-${version}`;
 
 /** One water record per day, scoped to the write run by version. */
-export const waterClientRecordId = (entryDate: string, version: number): string =>
-  `${SPARKY_CLIENT_RECORD_PREFIX}water-${entryDate}-${version}`;
+export const waterClientRecordId = (
+  entryDate: string,
+  version: number
+): string => `${SPARKY_CLIENT_RECORD_PREFIX}water-${entryDate}-${version}`;
 
 // factor (from HC_NUTRIENT_COLUMNS) → the HC Mass unit Sparky already stores that
 // column in, so we write the value verbatim with no conversion (and never drift
@@ -70,7 +79,7 @@ const MEAL_START_HM: Record<string, [number, number]> = {
 const scaleConsumed = (
   value: number | undefined,
   quantity: number,
-  servingSize: number,
+  servingSize: number
 ): number | undefined => {
   // Guard falsy serving sizes (0/null/undefined/NaN): the type says number, but the
   // daily-summary can return null, and `x / null` coerces to `x / 0` → Infinity.
@@ -96,7 +105,7 @@ const recordInterval = (
   date: string,
   hour: number,
   minute: number,
-  now: Date = new Date(),
+  now: Date = new Date()
 ): { start: string; end: string } | null => {
   const start = localDayInstant(date, hour, minute);
   const end = new Date(start.getTime() + MINUTE_MS);
@@ -111,7 +120,7 @@ const recordInterval = (
  */
 export const foodEntryToNutritionRecord = (
   entry: FoodEntry,
-  clientRecordVersion: number,
+  clientRecordVersion: number
 ): NutritionRecord | null => {
   if (!entry.serving_size) return null; // 0 / null / undefined — can't scale
 
@@ -133,7 +142,11 @@ export const foodEntryToNutritionRecord = (
     },
   };
 
-  const calories = scaleConsumed(entry.calories, entry.quantity, entry.serving_size);
+  const calories = scaleConsumed(
+    entry.calories,
+    entry.quantity,
+    entry.serving_size
+  );
   if (calories != null && calories > 0) {
     record.energy = { value: tidyNumber(calories), unit: 'kilocalories' };
   }
@@ -144,7 +157,7 @@ export const foodEntryToNutritionRecord = (
     const value = scaleConsumed(
       entry[column as keyof FoodEntry] as number | undefined,
       entry.quantity,
-      entry.serving_size,
+      entry.serving_size
     );
     if (value != null && value > 0) {
       record[hcField] = {
@@ -166,7 +179,7 @@ export const foodEntryToNutritionRecord = (
 export const waterMlToHydrationRecord = (
   entryDate: string,
   ml: number,
-  clientRecordVersion: number,
+  clientRecordVersion: number
 ): HydrationRecord | null => {
   if (ml <= 0) return null;
 
@@ -197,11 +210,13 @@ const MAX_WRITEBACK_DAYS = 7;
  */
 export const computeWritebackDates = (
   lastWritebackIso: string | null,
-  now: Date = new Date(),
+  now: Date = new Date()
 ): string[] => {
   let backDays = 1; // default: yesterday + today
   if (lastWritebackIso) {
-    const elapsed = Math.floor((now.getTime() - new Date(lastWritebackIso).getTime()) / DAY_MS);
+    const elapsed = Math.floor(
+      (now.getTime() - new Date(lastWritebackIso).getTime()) / DAY_MS
+    );
     backDays = Math.min(Math.max(elapsed + 1, 1), MAX_WRITEBACK_DAYS);
   }
   // Generate calendar days with addDays (local, DST-safe) rather than subtracting

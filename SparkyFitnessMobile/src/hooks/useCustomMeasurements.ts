@@ -6,7 +6,10 @@ import {
   saveCustomMeasurement,
   deleteCustomMeasurement,
 } from '../services/api/measurementsApi';
-import { customCategoriesQueryKey, customMeasurementsByDateQueryKey } from './queryKeys';
+import {
+  customCategoriesQueryKey,
+  customMeasurementsByDateQueryKey,
+} from './queryKeys';
 import { refreshHealthSyncCache } from './refreshHealthSyncCache';
 import { addLog } from '../services/LogService';
 import type { SaveCustomMeasurementPayload } from '../types/customMeasurements';
@@ -21,7 +24,7 @@ export function useCustomCategories() {
 
 export function useCustomMeasurementsByDate(
   date: string,
-  options?: { enabled?: boolean },
+  options?: { enabled?: boolean }
 ) {
   return useQuery({
     queryKey: customMeasurementsByDateQueryKey(date),
@@ -35,9 +38,12 @@ export function useSaveCustomMeasurement() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (payload: SaveCustomMeasurementPayload) => saveCustomMeasurement(payload),
+    mutationFn: (payload: SaveCustomMeasurementPayload) =>
+      saveCustomMeasurement(payload),
     onSuccess: (_data, vars) => {
-      queryClient.invalidateQueries({ queryKey: customMeasurementsByDateQueryKey(vars.entry_date) });
+      queryClient.invalidateQueries({
+        queryKey: customMeasurementsByDateQueryKey(vars.entry_date),
+      });
       refreshHealthSyncCache(queryClient);
     },
     onError: (err: Error) => {
@@ -50,9 +56,12 @@ export function useDeleteCustomMeasurement() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, entryDate }: { id: string; entryDate: string }) => deleteCustomMeasurement(id),
+    mutationFn: ({ id, entryDate }: { id: string; entryDate: string }) =>
+      deleteCustomMeasurement(id),
     onSuccess: (_data, vars) => {
-      queryClient.invalidateQueries({ queryKey: customMeasurementsByDateQueryKey(vars.entryDate) });
+      queryClient.invalidateQueries({
+        queryKey: customMeasurementsByDateQueryKey(vars.entryDate),
+      });
       refreshHealthSyncCache(queryClient);
     },
     onError: (err: Error) => {

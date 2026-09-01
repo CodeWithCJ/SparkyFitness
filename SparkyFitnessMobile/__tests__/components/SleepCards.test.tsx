@@ -1,7 +1,11 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 
-import { BedTimeCard, NapsCard, WakeUpCard } from '../../src/components/SleepCards';
+import {
+  BedTimeCard,
+  NapsCard,
+  WakeUpCard,
+} from '../../src/components/SleepCards';
 import { usePreferences } from '../../src/hooks/usePreferences';
 import { initializeI18n } from '../../src/localization/i18n';
 import { buildSleepEntry } from '../helpers/sleepFixtures';
@@ -27,9 +31,9 @@ jest.mock('uniwind', () => ({
 const DAY = '2026-08-23';
 
 const mockNavigate = jest.fn();
-const mockNavigation = { navigate: mockNavigate } as unknown as React.ComponentProps<
-  typeof WakeUpCard
->['navigation'];
+const mockNavigation = {
+  navigate: mockNavigate,
+} as unknown as React.ComponentProps<typeof WakeUpCard>['navigation'];
 
 /**
  * Builds an ISO instant with a known *local* wall-clock time, so clock assertions hold
@@ -59,7 +63,7 @@ describe('SleepCards', () => {
       });
 
       const { getByText, getByTestId } = render(
-        <WakeUpCard entry={entry} day={DAY} navigation={mockNavigation} />,
+        <WakeUpCard entry={entry} day={DAY} navigation={mockNavigation} />
       );
 
       expect(getByText('6:45 AM')).toBeTruthy();
@@ -72,7 +76,7 @@ describe('SleepCards', () => {
       const entry = buildSleepEntry({ sleep_score: null });
 
       const { queryByTestId, queryByText } = render(
-        <WakeUpCard entry={entry} day={DAY} navigation={mockNavigation} />,
+        <WakeUpCard entry={entry} day={DAY} navigation={mockNavigation} />
       );
 
       expect(queryByTestId('sleep-score')).toBeNull();
@@ -87,7 +91,7 @@ describe('SleepCards', () => {
       });
 
       const { getByText, queryByText } = render(
-        <WakeUpCard entry={entry} day={DAY} navigation={mockNavigation} />,
+        <WakeUpCard entry={entry} day={DAY} navigation={mockNavigation} />
       );
 
       expect(getByText('Time in bed')).toBeTruthy();
@@ -100,7 +104,7 @@ describe('SleepCards', () => {
       const entry = buildSleepEntry({ id: 'entry-main' });
 
       const { getByTestId } = render(
-        <WakeUpCard entry={entry} day={DAY} navigation={mockNavigation} />,
+        <WakeUpCard entry={entry} day={DAY} navigation={mockNavigation} />
       );
       fireEvent.press(getByTestId('wake-up-card'));
 
@@ -119,7 +123,7 @@ describe('SleepCards', () => {
       const entry = buildSleepEntry({ wake_time: localInstant(6, 45) });
 
       const { getByText, queryByText } = render(
-        <WakeUpCard entry={entry} day={DAY} navigation={mockNavigation} />,
+        <WakeUpCard entry={entry} day={DAY} navigation={mockNavigation} />
       );
 
       expect(getByText('06:45')).toBeTruthy();
@@ -128,7 +132,7 @@ describe('SleepCards', () => {
 
     test('hides the card entirely when the day has no main sleep', () => {
       const { queryByTestId } = render(
-        <WakeUpCard entry={null} day={DAY} navigation={mockNavigation} />,
+        <WakeUpCard entry={null} day={DAY} navigation={mockNavigation} />
       );
 
       expect(queryByTestId('wake-up-card')).toBeNull();
@@ -151,7 +155,11 @@ describe('SleepCards', () => {
 
     test('renders one row per nap with its clock time and duration', () => {
       const { getByTestId, getByText } = render(
-        <NapsCard naps={[napOne, napTwo]} day={DAY} navigation={mockNavigation} />,
+        <NapsCard
+          naps={[napOne, napTwo]}
+          day={DAY}
+          navigation={mockNavigation}
+        />
       );
 
       expect(getByTestId('nap-row-nap-1')).toBeTruthy();
@@ -164,7 +172,7 @@ describe('SleepCards', () => {
 
     test('hides the card entirely when there are no naps', () => {
       const { queryByTestId } = render(
-        <NapsCard naps={[]} day={DAY} navigation={mockNavigation} />,
+        <NapsCard naps={[]} day={DAY} navigation={mockNavigation} />
       );
 
       expect(queryByTestId('naps-card')).toBeNull();
@@ -172,12 +180,16 @@ describe('SleepCards', () => {
 
     test('uses a count plural family for the header', () => {
       const single = render(
-        <NapsCard naps={[napOne]} day={DAY} navigation={mockNavigation} />,
+        <NapsCard naps={[napOne]} day={DAY} navigation={mockNavigation} />
       );
       expect(single.getByText('1 nap')).toBeTruthy();
 
       const double = render(
-        <NapsCard naps={[napOne, napTwo]} day={DAY} navigation={mockNavigation} />,
+        <NapsCard
+          naps={[napOne, napTwo]}
+          day={DAY}
+          navigation={mockNavigation}
+        />
       );
       expect(double.getByText('2 naps')).toBeTruthy();
     });
@@ -186,7 +198,11 @@ describe('SleepCards', () => {
       // A shared "Open nap details" leaves a screen reader user unable to tell the rows
       // apart, which is the one thing the visible column of times and durations does.
       const { getByLabelText } = render(
-        <NapsCard naps={[napOne, napTwo]} day={DAY} navigation={mockNavigation} />,
+        <NapsCard
+          naps={[napOne, napTwo]}
+          day={DAY}
+          navigation={mockNavigation}
+        />
       );
 
       expect(getByLabelText('Open nap details, 1:15 PM, 45m')).toBeTruthy();
@@ -195,7 +211,11 @@ describe('SleepCards', () => {
 
     test('navigates with the tapped nap’s id, not the main sleep’s', () => {
       const { getByTestId } = render(
-        <NapsCard naps={[napOne, napTwo]} day={DAY} navigation={mockNavigation} />,
+        <NapsCard
+          naps={[napOne, napTwo]}
+          day={DAY}
+          navigation={mockNavigation}
+        />
       );
       fireEvent.press(getByTestId('nap-row-nap-2'));
 
@@ -219,7 +239,7 @@ describe('SleepCards', () => {
       });
 
       const { getByText } = render(
-        <BedTimeCard entry={tonight} day={DAY} navigation={mockNavigation} />,
+        <BedTimeCard entry={tonight} day={DAY} navigation={mockNavigation} />
       );
 
       expect(getByText('10:45 PM')).toBeTruthy();
@@ -227,17 +247,20 @@ describe('SleepCards', () => {
 
     test('hides the card entirely until tonight’s sleep has synced', () => {
       const { queryByTestId } = render(
-        <BedTimeCard entry={null} day={DAY} navigation={mockNavigation} />,
+        <BedTimeCard entry={null} day={DAY} navigation={mockNavigation} />
       );
 
       expect(queryByTestId('bed-time-card')).toBeNull();
     });
 
     test('navigates with the D+1 entry id', () => {
-      const tonight = buildSleepEntry({ id: 'tonight', entry_date: '2026-08-24' });
+      const tonight = buildSleepEntry({
+        id: 'tonight',
+        entry_date: '2026-08-24',
+      });
 
       const { getByTestId } = render(
-        <BedTimeCard entry={tonight} day={DAY} navigation={mockNavigation} />,
+        <BedTimeCard entry={tonight} day={DAY} navigation={mockNavigation} />
       );
       fireEvent.press(getByTestId('bed-time-card'));
 
@@ -260,7 +283,7 @@ describe('SleepCards', () => {
       });
 
       const { getByText } = render(
-        <WakeUpCard entry={entry} day={DAY} navigation={mockNavigation} />,
+        <WakeUpCard entry={entry} day={DAY} navigation={mockNavigation} />
       );
 
       expect(getByText('7:45 AM')).toBeTruthy();
@@ -276,7 +299,7 @@ describe('SleepCards', () => {
           entry={buildSleepEntry({ wake_time: instant })}
           day={DAY}
           navigation={mockNavigation}
-        />,
+        />
       );
 
       expect(getByText('7:45 AM')).toBeTruthy();
@@ -292,7 +315,7 @@ describe('SleepCards', () => {
       });
 
       const { getByText } = render(
-        <NapsCard naps={[nap]} day={DAY} navigation={mockNavigation} />,
+        <NapsCard naps={[nap]} day={DAY} navigation={mockNavigation} />
       );
 
       expect(getByText('7:45 AM')).toBeTruthy();

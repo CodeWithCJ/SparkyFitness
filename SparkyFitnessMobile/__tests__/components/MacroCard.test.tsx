@@ -34,7 +34,9 @@ describe('MacroCard', () => {
   });
 
   it('applies a custom widthClassName when provided', () => {
-    const { toJSON } = render(<MacroCard {...baseProps} widthClassName="w-[31%]" />);
+    const { toJSON } = render(
+      <MacroCard {...baseProps} widthClassName="w-[31%]" />
+    );
     const root = toJSON() as { props: { className: string } };
     expect(root.props.className).toContain('w-[31%]');
   });

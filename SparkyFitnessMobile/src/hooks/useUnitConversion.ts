@@ -33,7 +33,7 @@ interface ResolvedAutoConversion {
 export function resolveAutoConversionSource(
   variants: FoodUnitVariant[],
   selectedVariant: FoodUnitVariant | null,
-  targetUnit: string,
+  targetUnit: string
 ): ResolvedAutoConversion | null {
   // Iterate every variant on the food and use the FIRST non-AI math source
   // we find as the conversion donor. The currently-selected variant has no
@@ -65,7 +65,7 @@ export function resolveAutoConversionSource(
 export function canAutoConvertToUnit(
   variants: FoodUnitVariant[],
   selectedVariant: FoodUnitVariant | null,
-  targetUnit: string,
+  targetUnit: string
 ): boolean {
   return (
     resolveAutoConversionSource(variants, selectedVariant, targetUnit) !== null
@@ -78,11 +78,11 @@ export function useUnitConversion({
 }: UseUnitConversionOptions): UseUnitConversionResult {
   const convertibleUnits = useMemo(() => {
     const existingUnits = new Set(
-      variants.map((variant) => variant.serving_unit.toLowerCase()),
+      variants.map((variant) => variant.serving_unit.toLowerCase())
     );
 
     return ALL_CONVERSION_UNITS.filter(
-      (unit) => !existingUnits.has(unit.toLowerCase()),
+      (unit) => !existingUnits.has(unit.toLowerCase())
     );
   }, [variants]);
 
@@ -96,7 +96,7 @@ export function useUnitConversion({
       const autoConversion = resolveAutoConversionSource(
         variants,
         selectedVariant,
-        trimmedUnit,
+        trimmedUnit
       );
       if (!autoConversion) {
         return null;
@@ -104,9 +104,7 @@ export function useUnitConversion({
 
       const { baseVariant, factor } = autoConversion;
       const ratio =
-        baseVariant.serving_size > 0
-          ? factor / baseVariant.serving_size
-          : 0;
+        baseVariant.serving_size > 0 ? factor / baseVariant.serving_size : 0;
 
       return {
         serving_size: 1,
@@ -131,12 +129,12 @@ export function useUnitConversion({
         glycemic_index: baseVariant.glycemic_index,
         custom_nutrients: Object.fromEntries(
           Object.entries(baseVariant.custom_nutrients || {}).map(
-            ([key, value]) => [key, (Number(value) || 0) * ratio],
-          ),
+            ([key, value]) => [key, (Number(value) || 0) * ratio]
+          )
         ),
       };
     },
-    [selectedVariant, variants],
+    [selectedVariant, variants]
   );
 
   const buildManualVariant = useCallback(
@@ -177,7 +175,7 @@ export function useUnitConversion({
           : null,
       };
     },
-    [selectedVariant, variants],
+    [selectedVariant, variants]
   );
 
   return {

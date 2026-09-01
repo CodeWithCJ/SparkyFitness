@@ -28,7 +28,12 @@ jest.mock('../../src/hooks', () => ({
   useServerConnection: () => ({ isConnected: true, isLoading: false }),
 }));
 jest.mock('../../src/hooks/useCustomNutrients', () => ({
-  useCustomNutrients: () => ({ customNutrients: [], isLoading: false, isError: false, refetch: jest.fn() }),
+  useCustomNutrients: () => ({
+    customNutrients: [],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  }),
 }));
 
 // FoodForm (rendered inside this screen) gates its inline AI estimate flow on
@@ -51,16 +56,10 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
   const { Pressable, Text, View } = require('react-native');
   return {
     __esModule: true,
-    default: ({
-      options,
-      sections,
-      value,
-      onSelect,
-      renderTrigger,
-    }: any) => {
+    default: ({ options, sections, value, onSelect, renderTrigger }: any) => {
       const flat: { label: string; value: any }[] = sections
         ? sections.flatMap((s: any) => s.options)
-        : options ?? [];
+        : (options ?? []);
       return (
         <View>
           {renderTrigger?.({
@@ -68,7 +67,10 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
             selectedOption: flat.find((o) => o.value === value),
           })}
           {flat.map((option) => (
-            <Pressable key={option.value} onPress={() => onSelect(option.value)}>
+            <Pressable
+              key={option.value}
+              onPress={() => onSelect(option.value)}
+            >
               <Text>{option.label}</Text>
             </Pressable>
           ))}
@@ -154,7 +156,7 @@ describe('FoodPhotoEstimateReviewScreen', () => {
             },
           }}
         />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
   it('navigates to LogEntry with a saveFoodPayload reflecting the prefilled totals', () => {
@@ -181,7 +183,7 @@ describe('FoodPhotoEstimateReviewScreen', () => {
           sugars: 14,
           provider_type: 'food_photo_estimate',
         }),
-      }),
+      })
     );
   });
 
@@ -232,7 +234,9 @@ describe('FoodPhotoEstimateReviewScreen', () => {
   it('opens on the editable ingredient list, not the single-food form', () => {
     const screen = renderScreen();
     // Defaults to the option that also saves a reusable meal.
-    expect(screen.getAllByText('Ingredients + reusable meal').length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText('Ingredients + reusable meal').length
+    ).toBeGreaterThan(0);
     expect(screen.getByText('Ingredients only')).toBeTruthy();
     expect(screen.getByText('One food')).toBeTruthy();
   });
@@ -372,7 +376,7 @@ describe('FoodPhotoEstimateReviewScreen', () => {
     fireEvent.press(screen.getByText('Next'));
     const [, params] = navigation.navigate.mock.calls[0];
     const picked = params.ingredients.find(
-      (item: { source: string }) => item.source === 'existing',
+      (item: { source: string }) => item.source === 'existing'
     );
     // Logged against the real food at the amount picked, in its own unit — a
     // food measured in cups has no grams to convert to per-100 g.
@@ -416,6 +420,5 @@ describe('FoodPhotoEstimateReviewScreen', () => {
       expect(params.saveFoodPayload.calories).toBe(320);
       expect(params.saveFoodPayload.serving_size).toBe(250);
     });
-
   });
 });

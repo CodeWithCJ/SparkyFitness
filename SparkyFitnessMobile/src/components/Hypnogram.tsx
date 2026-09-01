@@ -5,7 +5,11 @@ import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 
-import { laneForStageType, SLEEP_STAGE_LANES, type SleepStageEvent } from '../types/sleep';
+import {
+  laneForStageType,
+  SLEEP_STAGE_LANES,
+  type SleepStageEvent,
+} from '../types/sleep';
 import { usePreferences } from '../hooks/usePreferences';
 import { formatClockTime } from '../utils/sleepDay';
 import { localizeSleepStage } from '../utils/sleepLocalization';
@@ -71,7 +75,7 @@ const toTimedStage = (stage: SleepStageEvent): TimedStage | null => {
  */
 export const buildHypnogramSegments = (
   stages: SleepStageEvent[],
-  bounds: HypnogramBounds,
+  bounds: HypnogramBounds
 ): HypnogramSegment[] => {
   if (stages.length === 0 || bounds.width <= 0) return [];
 
@@ -120,7 +124,7 @@ export const buildHypnogramSegments = (
  * for the same unsorted input `buildHypnogramSegments` already defends against.
  */
 export const getHypnogramWindow = (
-  stages: SleepStageEvent[],
+  stages: SleepStageEvent[]
 ): { startMs: number; endMs: number } | null => {
   const timedStages = stages
     .map(toTimedStage)
@@ -171,22 +175,27 @@ const Hypnogram: React.FC<HypnogramProps> = ({ stages, zone }) => {
   const [chartWidth, setChartWidth] = useState(0);
 
   const laneColors = useCSSVariable(
-    SLEEP_STAGE_LANES.map((lane) => LANE_COLOR_VARIABLES[lane]),
+    SLEEP_STAGE_LANES.map((lane) => LANE_COLOR_VARIABLES[lane])
   ) as string[];
 
   const segments = useMemo(
     () => buildHypnogramSegments(stages, { width: chartWidth }),
-    [stages, chartWidth],
+    [stages, chartWidth]
   );
 
   if (stages.length === 0) {
     return (
-      <View testID="hypnogram-empty" className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
+      <View
+        testID="hypnogram-empty"
+        className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
+      >
         <Text className="text-base font-semibold text-text-primary mb-2">
           {t('sleep.hypnogram', { defaultValue: 'Sleep Stages' })}
         </Text>
         <Text className="text-sm text-text-muted">
-          {t('sleep.hypnogramEmpty', { defaultValue: 'This source did not record sleep stages.' })}
+          {t('sleep.hypnogramEmpty', {
+            defaultValue: 'This source did not record sleep stages.',
+          })}
         </Text>
       </View>
     );
@@ -195,7 +204,10 @@ const Hypnogram: React.FC<HypnogramProps> = ({ stages, zone }) => {
   const window = getHypnogramWindow(stages);
 
   return (
-    <View testID="hypnogram" className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
+    <View
+      testID="hypnogram"
+      className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
+    >
       <Text className="text-base font-semibold text-text-primary mb-2">
         {t('sleep.hypnogram', { defaultValue: 'Sleep Stages' })}
       </Text>
@@ -203,7 +215,11 @@ const Hypnogram: React.FC<HypnogramProps> = ({ stages, zone }) => {
       <View className="flex-row">
         <View style={{ height: CHART_HEIGHT }} className="justify-around mr-2">
           {SLEEP_STAGE_LANES.map((lane) => (
-            <Text key={lane} className="text-xs text-text-muted" style={{ height: LANE_HEIGHT }}>
+            <Text
+              key={lane}
+              className="text-xs text-text-muted"
+              style={{ height: LANE_HEIGHT }}
+            >
               {localizeSleepStage(t, lane)}
             </Text>
           ))}
@@ -236,14 +252,14 @@ const Hypnogram: React.FC<HypnogramProps> = ({ stages, zone }) => {
             {formatClockTime(
               new Date(window.startMs).toISOString(),
               preferences?.time_format,
-              zone,
+              zone
             )}
           </Text>
           <Text className="text-xs text-text-muted">
             {formatClockTime(
               new Date(window.endMs).toISOString(),
               preferences?.time_format,
-              zone,
+              zone
             )}
           </Text>
         </View>

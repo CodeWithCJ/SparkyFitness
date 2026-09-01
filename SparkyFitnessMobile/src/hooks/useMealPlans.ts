@@ -56,8 +56,10 @@ export function useCreateMealPlan() {
   });
 
   return {
-    createMealPlanAsync: (payload: SaveMealPlanPayload, currentClientDate: string) =>
-      mutation.mutateAsync({ payload, currentClientDate }),
+    createMealPlanAsync: (
+      payload: SaveMealPlanPayload,
+      currentClientDate: string
+    ) => mutation.mutateAsync({ payload, currentClientDate }),
     isPending: mutation.isPending,
   };
 }
@@ -73,8 +75,10 @@ export function useUpdateMealPlan(id: string | undefined) {
   });
 
   return {
-    updateMealPlanAsync: (payload: SaveMealPlanPayload, currentClientDate: string) =>
-      mutation.mutateAsync({ payload, currentClientDate }),
+    updateMealPlanAsync: (
+      payload: SaveMealPlanPayload,
+      currentClientDate: string
+    ) => mutation.mutateAsync({ payload, currentClientDate }),
     isPending: mutation.isPending,
   };
 }
@@ -97,7 +101,8 @@ export function useDuplicateMealPlan() {
 export function useDeleteMealPlan() {
   const invalidate = useInvalidateMealPlans();
   const mutation = useMutation({
-    mutationFn: ({ id, currentClientDate }: IdVariables) => deleteMealPlan(id, currentClientDate),
+    mutationFn: ({ id, currentClientDate }: IdVariables) =>
+      deleteMealPlan(id, currentClientDate),
     onSuccess: invalidate,
   });
 

@@ -36,7 +36,10 @@ describe('buildHypnogramSegments', () => {
     const segments = buildHypnogramSegments(contiguousStages(), BOUNDS);
 
     expect(segments).toHaveLength(4);
-    const totalWidth = segments.reduce((sum, segment) => sum + segment.width, 0);
+    const totalWidth = segments.reduce(
+      (sum, segment) => sum + segment.width,
+      0
+    );
     expect(totalWidth).toBeCloseTo(BOUNDS.width, 5);
     expect(segments.map((segment) => segment.lane)).toEqual([
       'light',
@@ -160,7 +163,7 @@ describe('buildHypnogramSegments', () => {
     }));
 
     expect(buildHypnogramSegments(withZulu, BOUNDS)).toEqual(
-      buildHypnogramSegments(withOffset, BOUNDS),
+      buildHypnogramSegments(withOffset, BOUNDS)
     );
   });
 });

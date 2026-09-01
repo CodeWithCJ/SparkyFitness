@@ -32,7 +32,11 @@ export const G_TO_MCG = 1_000_000;
 // Exported so the writeback mappers (both platforms) reuse the exact same field/unit
 // mapping (read multiplies grams→column-unit; writeback writes the column value back
 // in that same unit via factor→HC-unit, so the two directions never drift).
-export const HC_NUTRIENT_COLUMNS: { hcField: string; column: string; factor: number }[] = [
+export const HC_NUTRIENT_COLUMNS: {
+  hcField: string;
+  column: string;
+  factor: number;
+}[] = [
   { hcField: 'protein', column: 'protein', factor: 1 },
   { hcField: 'totalCarbohydrate', column: 'carbs', factor: 1 },
   { hcField: 'totalFat', column: 'fat', factor: 1 },
@@ -54,7 +58,8 @@ export const HC_NUTRIENT_COLUMNS: { hcField: string; column: string; factor: num
 // Strip float noise (4.949999999999999 -> 4.95). Significant figures (not fixed
 // decimals) so small post-conversion values aren't truncated. Shared with the
 // writeback mappers so read and write rounding can never drift.
-export const tidyNumber = (value: number): number => Number(value.toPrecision(6));
+export const tidyNumber = (value: number): number =>
+  Number(value.toPrecision(6));
 
 // ============================================================================
 // Transformer types
@@ -88,12 +93,19 @@ export type DirectTransformer = (
 // Value Extractors - reusable functions for nested property extraction
 // ============================================================================
 
-export const extractNestedValue = (rec: Record<string, unknown>, key: string, nestedKey: string): number | null => {
+export const extractNestedValue = (
+  rec: Record<string, unknown>,
+  key: string,
+  nestedKey: string
+): number | null => {
   const nested = rec[key] as Record<string, number> | undefined;
   return nested?.[nestedKey] ?? null;
 };
 
-export const extractDirectValue = (rec: Record<string, unknown>, key: string): number | null => {
+export const extractDirectValue = (
+  rec: Record<string, unknown>,
+  key: string
+): number | null => {
   const val = rec[key];
   if (typeof val === 'number') return val;
   if (typeof val === 'string') {
@@ -106,80 +118,87 @@ export const extractDirectValue = (rec: Record<string, unknown>, key: string): n
 
 // Wrapper for toLocalDateString that handles unknown input and errors. Factory so
 // each platform's conversion warnings keep their own log tag.
-export const createGetDateString = (logTag: string) => (date: unknown): string | null => {
-  if (!date) return null;
-  try {
-    return toLocalDateString(new Date(date as string | number | Date));
-  } catch (e) {
-    addLog(`${logTag} Could not convert date: ${date}. ${e}`, 'WARNING');
-    return null;
-  }
-};
+export const createGetDateString =
+  (logTag: string) =>
+  (date: unknown): string | null => {
+    if (!date) return null;
+    try {
+      return toLocalDateString(new Date(date as string | number | Date));
+    } catch (e) {
+      addLog(`${logTag} Could not convert date: ${date}. ${e}`, 'WARNING');
+      return null;
+    }
+  };
 
 // ============================================================================
 // Shared transformer factories (bodies identical across platforms; only the
 // injected ownership predicate / date wrapper / source label differ)
 // ============================================================================
 
-export const createHydrationTransformer = (
-  isOwnRecord: (rec: Record<string, unknown>) => boolean,
-  getDateString: (date: unknown) => string | null,
-): ValueTransformer => (rec) => {
-  if (isOwnRecord(rec)) return null; // don't re-import water Sparky wrote
-  const liters = extractNestedValue(rec, 'volume', 'inLiters');
-  const date = getDateString(rec.startTime);
-  const timestamp = (rec.startTime as string) || (rec.time as string) || undefined;
-  // iOS HealthKit samples carry a top-level `uuid`; Android Health Connect
-  // records carry their stable id under `metadata.id` instead (there is no
-  // top-level `id`/`uuid` on Health Connect records).
-  const sourceId =
-    (rec.uuid as string) ||
-    (rec.id as string) ||
-    ((rec.metadata as { id?: string } | undefined)?.id) ||
-    undefined;
-  // Convert L -> integer ml: synced as water intake (type 'water') which the server stores in ml.
-  return liters !== null && date
-    ? {
-        value: Math.round(liters * 1000),
+export const createHydrationTransformer =
+  (
+    isOwnRecord: (rec: Record<string, unknown>) => boolean,
+    getDateString: (date: unknown) => string | null
+  ): ValueTransformer =>
+  (rec) => {
+    if (isOwnRecord(rec)) return null; // don't re-import water Sparky wrote
+    const liters = extractNestedValue(rec, 'volume', 'inLiters');
+    const date = getDateString(rec.startTime);
+    const timestamp =
+      (rec.startTime as string) || (rec.time as string) || undefined;
+    // iOS HealthKit samples carry a top-level `uuid`; Android Health Connect
+    // records carry their stable id under `metadata.id` instead (there is no
+    // top-level `id`/`uuid` on Health Connect records).
+    const sourceId =
+      (rec.uuid as string) ||
+      (rec.id as string) ||
+      (rec.metadata as { id?: string } | undefined)?.id ||
+      undefined;
+    // Convert L -> integer ml: synced as water intake (type 'water') which the server stores in ml.
+    return liters !== null && date
+      ? {
+          value: Math.round(liters * 1000),
+          date,
+          ...(timestamp ? { timestamp } : {}),
+          ...(sourceId ? { source_id: sourceId } : {}),
+        }
+      : null;
+  };
+
+export const createBloodPressureTransformer =
+  (
+    source: string,
+    getDateString: (date: unknown) => string | null
+  ): DirectTransformer =>
+  (rec, _record, metricConfig, output) => {
+    const { unit, type } = metricConfig;
+    if (!rec.time) return;
+
+    const date = getDateString(rec.time);
+    if (!date) return;
+
+    const systolic = rec.systolic as Record<string, number> | undefined;
+    const diastolic = rec.diastolic as Record<string, number> | undefined;
+
+    if (systolic?.inMillimetersOfMercury) {
+      output.push({
+        value: parseFloat(systolic.inMillimetersOfMercury.toFixed(2)),
+        unit,
         date,
-        ...(timestamp ? { timestamp } : {}),
-        ...(sourceId ? { source_id: sourceId } : {}),
-      }
-    : null;
-};
-
-export const createBloodPressureTransformer = (
-  source: string,
-  getDateString: (date: unknown) => string | null,
-): DirectTransformer => (rec, _record, metricConfig, output) => {
-  const { unit, type } = metricConfig;
-  if (!rec.time) return;
-
-  const date = getDateString(rec.time);
-  if (!date) return;
-
-  const systolic = rec.systolic as Record<string, number> | undefined;
-  const diastolic = rec.diastolic as Record<string, number> | undefined;
-
-  if (systolic?.inMillimetersOfMercury) {
-    output.push({
-      value: parseFloat(systolic.inMillimetersOfMercury.toFixed(2)),
-      unit,
-      date,
-      type: `${type}_systolic`,
-      source,
-    });
-  }
-  if (diastolic?.inMillimetersOfMercury) {
-    output.push({
-      value: parseFloat(diastolic.inMillimetersOfMercury.toFixed(2)),
-      unit,
-      date,
-      type: `${type}_diastolic`,
-      source,
-    });
-  }
-};
+        type: `${type}_systolic`,
+        source,
+      });
+    }
+    if (diastolic?.inMillimetersOfMercury) {
+      output.push({
+        value: parseFloat(diastolic.inMillimetersOfMercury.toFixed(2)),
+        unit,
+        date,
+        type: `${type}_diastolic`,
+        source,
+      });
+    }
+  };
 
 // ============================================================================
 // Transform driver
@@ -195,15 +214,28 @@ export interface TransformHealthRecordsConfig {
   valueTransformers: Record<string, ValueTransformer>;
   directTransformers: Record<string, DirectTransformer>;
   /** Platform timezone extractor (HKTimeZone vs zoneOffset) applied to value-transformed records. */
-  extractTimezoneMetadata: (rec: Record<string, unknown>) => RecordTimezoneMetadata;
+  extractTimezoneMetadata: (
+    rec: Record<string, unknown>
+  ) => RecordTimezoneMetadata;
 }
 
-export const createTransformHealthRecords = (config: TransformHealthRecordsConfig) =>
+export const createTransformHealthRecords =
+  (config: TransformHealthRecordsConfig) =>
   (records: unknown[], metricConfig: MetricConfig): TransformOutput[] => {
-    const { source, logTag, skipTypes, valueTransformers, directTransformers, extractTimezoneMetadata } = config;
+    const {
+      source,
+      logTag,
+      skipTypes,
+      valueTransformers,
+      directTransformers,
+      extractTimezoneMetadata,
+    } = config;
 
     if (!Array.isArray(records)) {
-      addLog(`${logTag} transformHealthRecords received non-array records for ${metricConfig.recordType}`, 'WARNING');
+      addLog(
+        `${logTag} transformHealthRecords received non-array records for ${metricConfig.recordType}`,
+        'WARNING'
+      );
       return [];
     }
 
@@ -255,7 +287,8 @@ export const createTransformHealthRecords = (config: TransformHealthRecordsConfi
               transformedRecord.record_timezone = rec.record_timezone as string;
             }
             if (rec.record_utc_offset_minutes != null) {
-              transformedRecord.record_utc_offset_minutes = rec.record_utc_offset_minutes as number;
+              transformedRecord.record_utc_offset_minutes =
+                rec.record_utc_offset_minutes as number;
             }
             transformedData.push(transformedRecord);
             successCount++;
@@ -300,18 +333,27 @@ export const createTransformHealthRecords = (config: TransformHealthRecordsConfi
         // Unhandled record type (a top-level value/date record without a transformer
         // was already consumed by the pre-aggregated branch above)
         if (index === 0) {
-          addLog(`${logTag} No transformer found for record type: ${recordType}`, 'WARNING');
+          addLog(
+            `${logTag} No transformer found for record type: ${recordType}`,
+            'WARNING'
+          );
         }
         skipCount++;
       } catch (error) {
         skipCount++;
-        addLog(`${logTag} Error transforming ${recordType} record at index ${index}: ${(error as Error).message}`, 'WARNING');
+        addLog(
+          `${logTag} Error transforming ${recordType} record at index ${index}: ${(error as Error).message}`,
+          'WARNING'
+        );
       }
     });
 
     // Log transformation summary for debugging
     if (skipCount > 0) {
-      addLog(`${logTag} ${recordType} transformation: ${successCount} succeeded, ${skipCount} skipped (of ${records.length} total)`, 'DEBUG');
+      addLog(
+        `${logTag} ${recordType} transformation: ${successCount} succeeded, ${skipCount} skipped (of ${records.length} total)`,
+        'DEBUG'
+      );
     }
 
     return transformedData;

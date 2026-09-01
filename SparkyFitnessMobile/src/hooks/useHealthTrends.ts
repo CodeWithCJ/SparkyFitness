@@ -1,7 +1,14 @@
 import { useCallback } from 'react';
-import type { HealthTrendDateRange, HealthTrendSeries } from '../types/healthTrends';
+import type {
+  HealthTrendDateRange,
+  HealthTrendSeries,
+} from '../types/healthTrends';
 import type { SleepTimelineDay, SleepTimelineSummary } from '../types/sleep';
-import { useMeasurementsRange, type StepsDataPoint, type WeightDataPoint } from './useMeasurementsRange';
+import {
+  useMeasurementsRange,
+  type StepsDataPoint,
+  type WeightDataPoint,
+} from './useMeasurementsRange';
 import { useSleepRange } from './useSleepRange';
 
 interface UseHealthTrendsOptions {
@@ -27,7 +34,10 @@ interface HealthTrends {
 /**
  * Every series behind the dashboard's Health Trends pager, from one call.
  */
-export function useHealthTrends({ range, enabled = true }: UseHealthTrendsOptions): HealthTrends {
+export function useHealthTrends({
+  range,
+  enabled = true,
+}: UseHealthTrendsOptions): HealthTrends {
   const {
     stepsData,
     weightData,
@@ -49,8 +59,16 @@ export function useHealthTrends({ range, enabled = true }: UseHealthTrendsOption
 
   return {
     // Steps and weight share one request, so they necessarily share its fetch state.
-    steps: { data: stepsData, isLoading: isMeasurementsLoading, isError: isMeasurementsError },
-    weight: { data: weightData, isLoading: isMeasurementsLoading, isError: isMeasurementsError },
+    steps: {
+      data: stepsData,
+      isLoading: isMeasurementsLoading,
+      isError: isMeasurementsError,
+    },
+    weight: {
+      data: weightData,
+      isLoading: isMeasurementsLoading,
+      isError: isMeasurementsError,
+    },
     sleep: {
       data: sleep.days,
       averageTimeInBedSeconds: sleep.averageTimeInBedSeconds,

@@ -70,7 +70,9 @@ jest.mock('../../src/components/StatusView', () => {
   };
 });
 
-const mockUseSleepDetail = useSleepDetail as jest.MockedFunction<typeof useSleepDetail>;
+const mockUseSleepDetail = useSleepDetail as jest.MockedFunction<
+  typeof useSleepDetail
+>;
 
 const DAY = '2026-08-23';
 const ENTRY_ID = 'entry-main';
@@ -92,7 +94,7 @@ const setupScreen = (overrides: Partial<DetailResult> = {}) => {
   return render(
     <SleepDetailScreen
       {...({ route, navigation: { navigate: jest.fn() } } as never)}
-    />,
+    />
   );
 };
 
@@ -165,10 +167,14 @@ describe('SleepDetailScreen', () => {
     const { getByTestId } = setupScreen();
 
     const card = getByTestId('sleep-detail-header');
-    const collectTestIDs = (node: { props?: Record<string, unknown>; children?: unknown[] }): string[] => {
-      const own = typeof node?.props?.testID === 'string' ? [node.props.testID] : [];
+    const collectTestIDs = (node: {
+      props?: Record<string, unknown>;
+      children?: unknown[];
+    }): string[] => {
+      const own =
+        typeof node?.props?.testID === 'string' ? [node.props.testID] : [];
       const kids = (node?.children ?? []).flatMap((child) =>
-        typeof child === 'string' ? [] : collectTestIDs(child as never),
+        typeof child === 'string' ? [] : collectTestIDs(child as never)
       );
       return [...own, ...kids];
     };
@@ -183,12 +189,16 @@ describe('SleepDetailScreen', () => {
     const todayScreen = setupScreen({
       entry: buildSleepEntry({ id: ENTRY_ID, entry_date: today }),
     });
-    expect(todayScreen.getByTestId('sleep-detail-date').props.children).toBe('Today');
+    expect(todayScreen.getByTestId('sleep-detail-date').props.children).toBe(
+      'Today'
+    );
 
     const yesterdayScreen = setupScreen({
       entry: buildSleepEntry({ id: ENTRY_ID, entry_date: addDays(today, -1) }),
     });
-    expect(yesterdayScreen.getByTestId('sleep-detail-date').props.children).toBe('Yesterday');
+    expect(
+      yesterdayScreen.getByTestId('sleep-detail-date').props.children
+    ).toBe('Yesterday');
   });
 
   test('shows the loading status view without crashing on a null entry', () => {

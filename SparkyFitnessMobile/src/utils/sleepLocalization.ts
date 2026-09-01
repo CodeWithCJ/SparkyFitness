@@ -9,7 +9,10 @@ import type { SleepStageLane } from '../types/sleep';
  * audit rejects dynamic keys — a computed key cannot be statically verified against the
  * catalogs, so a missing translation would only surface at runtime.
  */
-export const localizeSleepStage = (t: TFunction, lane: SleepStageLane): string => {
+export const localizeSleepStage = (
+  t: TFunction,
+  lane: SleepStageLane
+): string => {
   const names: Record<SleepStageLane, string> = {
     awake: t('sleep.stage.awake', { defaultValue: 'Awake' }),
     rem: t('sleep.stage.rem', { defaultValue: 'REM' }),

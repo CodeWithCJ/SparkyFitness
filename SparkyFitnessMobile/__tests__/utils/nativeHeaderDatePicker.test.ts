@@ -28,12 +28,12 @@ describe('nativeHeaderDatePicker', () => {
     const items = createNativeHeaderDatePickerItems(options);
 
     expect(items).toHaveLength(3);
-    expect(items.map(item => item.identifier)).toEqual([
+    expect(items.map((item) => item.identifier)).toEqual([
       'date-picker-previous',
       'date-picker',
       'date-picker-next',
     ]);
-    expect(items.every(item => item.tintColor === '#0A84FF')).toBe(true);
+    expect(items.every((item) => item.tintColor === '#0A84FF')).toBe(true);
     expect(items[1]?.label).toContain('Jan 15');
 
     items[0]?.onPress();
@@ -73,7 +73,7 @@ describe('nativeHeaderDatePicker', () => {
           accessibilityLabel: 'Open family diaries',
           identifier: 'family-diaries',
         },
-      },
+      }
     );
 
     const configuredOptions = setOptions.mock.calls[0]?.[0];
@@ -105,10 +105,10 @@ describe('nativeHeaderDatePicker', () => {
           accessibilityLabel: 'Open family diaries',
           identifier: 'family-diaries',
         },
-      },
+      }
     );
     expect(configuredOptions.unstable_headerLeftItems).toEqual(
-      expect.any(Function),
+      expect.any(Function)
     );
 
     setNativeHeaderDatePickerOptions({ setOptions }, options);

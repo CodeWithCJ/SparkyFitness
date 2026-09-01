@@ -2,13 +2,19 @@ import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { useProfile } from '../../src/hooks/useProfile';
 import { profileQueryKey } from '../../src/hooks/queryKeys';
 import { fetchProfile } from '../../src/services/api/profileApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/profileApi', () => ({
   fetchProfile: jest.fn(),
 }));
 
-const mockFetchProfile = fetchProfile as jest.MockedFunction<typeof fetchProfile>;
+const mockFetchProfile = fetchProfile as jest.MockedFunction<
+  typeof fetchProfile
+>;
 
 describe('useProfile', () => {
   let queryClient: QueryClient;

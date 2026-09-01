@@ -5,11 +5,15 @@ import {
   fetchMealPlans,
   updateMealPlan,
 } from '../../../src/services/api/mealPlansApi';
-import { getActiveServerConfig, type ServerConfig } from '../../../src/services/storage';
+import {
+  getActiveServerConfig,
+  type ServerConfig,
+} from '../../../src/services/storage';
 
 jest.mock('../../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
-  proxyHeadersToRecord: jest.requireActual('../../../src/services/storage').proxyHeadersToRecord,
+  proxyHeadersToRecord: jest.requireActual('../../../src/services/storage')
+    .proxyHeadersToRecord,
 }));
 
 jest.mock('../../../src/services/LogService', () => ({ addLog: jest.fn() }));
@@ -61,12 +65,15 @@ describe('mealPlansApi', () => {
 
     expect(mockFetch).toHaveBeenCalledWith(
       'https://example.com/api/meal-plan-templates',
-      expect.objectContaining({ method: 'GET' }),
+      expect.objectContaining({ method: 'GET' })
     );
   });
 
   test('creates a plan with the client calendar day', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: 'plan-1' }) });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: 'plan-1' }),
+    });
 
     await createMealPlan(payload, '2026-08-29');
 
@@ -75,12 +82,15 @@ describe('mealPlansApi', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ ...payload, currentClientDate: '2026-08-29' }),
-      }),
+      })
     );
   });
 
   test('updates a plan with the client calendar day', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: 'plan-1' }) });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: 'plan-1' }),
+    });
 
     await updateMealPlan('plan-1', payload, '2026-08-29');
 
@@ -89,12 +99,15 @@ describe('mealPlansApi', () => {
       expect.objectContaining({
         method: 'PUT',
         body: JSON.stringify({ ...payload, currentClientDate: '2026-08-29' }),
-      }),
+      })
     );
   });
 
   test('duplicates a plan as inactive using the client calendar day', async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ id: 'plan-2' }) });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: 'plan-2' }),
+    });
 
     await duplicateMealPlan('plan-1', '2026-08-29');
 
@@ -103,7 +116,7 @@ describe('mealPlansApi', () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({ currentClientDate: '2026-08-29' }),
-      }),
+      })
     );
   });
 
@@ -118,7 +131,7 @@ describe('mealPlansApi', () => {
 
     expect(mockFetch).toHaveBeenCalledWith(
       'https://example.com/api/meal-plan-templates/plan-1?currentClientDate=2026-08-29',
-      expect.objectContaining({ method: 'DELETE' }),
+      expect.objectContaining({ method: 'DELETE' })
     );
   });
 });

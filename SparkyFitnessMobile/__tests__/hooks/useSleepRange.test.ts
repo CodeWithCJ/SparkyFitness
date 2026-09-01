@@ -1,13 +1,23 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
-import { useSleepRange, buildSleepTimelineSummary } from '../../src/hooks/useSleepRange';
-import { sleepRangeQueryKey, measurementsRangeQueryKey } from '../../src/hooks/queryKeys';
+import {
+  useSleepRange,
+  buildSleepTimelineSummary,
+} from '../../src/hooks/useSleepRange';
+import {
+  sleepRangeQueryKey,
+  measurementsRangeQueryKey,
+} from '../../src/hooks/queryKeys';
 import { fetchSleepEntries } from '../../src/services/api/sleepApi';
 import { ApiError } from '../../src/services/api/errors';
 import { getTodayDate, addDays } from '../../src/utils/dateUtils';
 import { usePreferences } from '../../src/hooks/usePreferences';
 import type { SleepEntry } from '../../src/types/sleep';
 import { buildSleepEntry, buildStageEvent } from '../helpers/sleepFixtures';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/sleepApi', () => ({
   fetchSleepEntries: jest.fn(),
@@ -34,7 +44,9 @@ const mockFetchSleepEntries = fetchSleepEntries as jest.MockedFunction<
   typeof fetchSleepEntries
 >;
 
-const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
+const mockUsePreferences = usePreferences as jest.MockedFunction<
+  typeof usePreferences
+>;
 
 const configureTimezone = (timezone: string | null | undefined) => {
   mockUsePreferences.mockReturnValue({
@@ -53,12 +65,16 @@ const todayIn = (timezone: string): string => {
     month: '2-digit',
     day: '2-digit',
   }).formatToParts(new Date());
-  const part = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  const part = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? '';
   return `${part('year')}-${part('month')}-${part('day')}`;
 };
 
 /** A night on `day`, running 23:00 the previous evening to 07:00 that morning. */
-const nightOn = (day: string, overrides: Partial<SleepEntry> = {}): SleepEntry =>
+const nightOn = (
+  day: string,
+  overrides: Partial<SleepEntry> = {}
+): SleepEntry =>
   buildSleepEntry({
     id: `night-${day}`,
     entry_date: day,
@@ -92,7 +108,7 @@ describe('useSleepRange', () => {
       const summary = buildSleepTimelineSummary([], DAY, 7);
 
       expect(summary.days.map((entry) => entry.day)).toEqual(
-        Array.from({ length: 7 }, (_, index) => addDays(DAY, -(6 - index))),
+        Array.from({ length: 7 }, (_, index) => addDays(DAY, -(6 - index)))
       );
     });
 
@@ -129,7 +145,9 @@ describe('useSleepRange', () => {
 
       expect(summary.days[0].timeInBedSeconds).toBe(28800);
       expect(summary.days[0].segments).toHaveLength(1);
-      expect(summary.days[0].segments[0].startMs).toBe(msOf(`${addDays(DAY, -1)}T23:00:00.000Z`));
+      expect(summary.days[0].segments[0].startMs).toBe(
+        msOf(`${addDays(DAY, -1)}T23:00:00.000Z`)
+      );
     });
 
     test('collapses a source that reports no stages into one block', () => {
@@ -212,7 +230,10 @@ describe('useSleepRange', () => {
     test('averages time in bed and time asleep over different denominators', () => {
       // Time in bed is known for every session; time asleep is nullable, so averaging both
       // over the same days would drag the asleep figure down by every silent source.
-      const reported = nightOn(DAY, { duration_in_seconds: 28800, time_asleep_in_seconds: 27000 });
+      const reported = nightOn(DAY, {
+        duration_in_seconds: 28800,
+        time_asleep_in_seconds: 27000,
+      });
       const silent = nightOn(addDays(DAY, -1), {
         duration_in_seconds: 21600,
         time_asleep_in_seconds: null,
@@ -237,17 +258,19 @@ describe('useSleepRange', () => {
       const summary = buildSleepTimelineSummary(
         [nightOn(addDays(DAY, 1)), nightOn(addDays(DAY, -100))],
         DAY,
-        7,
+        7
       );
 
       expect(summary.nightsWithData).toBe(0);
-      expect(summary.days.every((entry) => entry.segments.length === 0)).toBe(true);
+      expect(summary.days.every((entry) => entry.segments.length === 0)).toBe(
+        true
+      );
     });
 
     describe('record zones', () => {
       const dayIn = (
         summary: ReturnType<typeof buildSleepTimelineSummary>,
-        day: string,
+        day: string
       ) => summary.days.find((entry) => entry.day === day);
 
       test("carries the night's own recording zone onto its column", () => {
@@ -255,16 +278,27 @@ describe('useSleepRange', () => {
           [nightOn(DAY, { record_timezone: 'Asia/Tokyo' })],
           DAY,
           7,
-          'Europe/Berlin',
+          'Europe/Berlin'
         );
 
-        expect(dayIn(summary, DAY)?.zone).toEqual({ kind: 'tz', tz: 'Asia/Tokyo' });
+        expect(dayIn(summary, DAY)?.zone).toEqual({
+          kind: 'tz',
+          tz: 'Asia/Tokyo',
+        });
       });
 
       test('falls back to the profile timezone when the session recorded no zone', () => {
-        const summary = buildSleepTimelineSummary([nightOn(DAY)], DAY, 7, 'Europe/Berlin');
+        const summary = buildSleepTimelineSummary(
+          [nightOn(DAY)],
+          DAY,
+          7,
+          'Europe/Berlin'
+        );
 
-        expect(dayIn(summary, DAY)?.zone).toEqual({ kind: 'tz', tz: 'Europe/Berlin' });
+        expect(dayIn(summary, DAY)?.zone).toEqual({
+          kind: 'tz',
+          tz: 'Europe/Berlin',
+        });
       });
 
       test('gives each night its own zone, so a trip does not re-zone the window', () => {
@@ -278,11 +312,17 @@ describe('useSleepRange', () => {
           ],
           DAY,
           7,
-          'America/New_York',
+          'America/New_York'
         );
 
-        expect(dayIn(summary, DAY)?.zone).toEqual({ kind: 'tz', tz: 'Europe/Berlin' });
-        expect(dayIn(summary, previous)?.zone).toEqual({ kind: 'offset', minutes: 540 });
+        expect(dayIn(summary, DAY)?.zone).toEqual({
+          kind: 'tz',
+          tz: 'Europe/Berlin',
+        });
+        expect(dayIn(summary, previous)?.zone).toEqual({
+          kind: 'offset',
+          minutes: 540,
+        });
       });
 
       test('leaves the zone null when neither the record nor the profile has one', () => {
@@ -300,15 +340,21 @@ describe('useSleepRange', () => {
       mockFetchSleepEntries.mockResolvedValue([]);
       const wrapper = createQueryWrapper(queryClient);
 
-      const seven = renderHook(() => useSleepRange({ range: '7d' }), { wrapper });
+      const seven = renderHook(() => useSleepRange({ range: '7d' }), {
+        wrapper,
+      });
       await waitFor(() => expect(seven.result.current.isLoading).toBe(false));
       expect(seven.result.current.sleep.days).toHaveLength(7);
 
-      const thirty = renderHook(() => useSleepRange({ range: '30d' }), { wrapper });
+      const thirty = renderHook(() => useSleepRange({ range: '30d' }), {
+        wrapper,
+      });
       await waitFor(() => expect(thirty.result.current.isLoading).toBe(false));
       expect(thirty.result.current.sleep.days).toHaveLength(30);
 
-      const ninety = renderHook(() => useSleepRange({ range: '90d' }), { wrapper });
+      const ninety = renderHook(() => useSleepRange({ range: '90d' }), {
+        wrapper,
+      });
       await waitFor(() => expect(ninety.result.current.isLoading).toBe(false));
       expect(ninety.result.current.sleep.days).toHaveLength(90);
     });
@@ -336,7 +382,7 @@ describe('useSleepRange', () => {
       mockFetchSleepEntries.mockReturnValue(
         new Promise<SleepEntry[]>((resolve) => {
           resolveFetch = resolve;
-        }),
+        })
       );
 
       const { result } = renderHook(() => useSleepRange({ range: '7d' }), {
@@ -363,7 +409,10 @@ describe('useSleepRange', () => {
       });
 
       await waitFor(() => {
-        expect(mockFetchSleepEntries).toHaveBeenCalledWith(addDays(today, -6), today);
+        expect(mockFetchSleepEntries).toHaveBeenCalledWith(
+          addDays(today, -6),
+          today
+        );
       });
     });
 
@@ -374,12 +423,18 @@ describe('useSleepRange', () => {
 
       renderHook(() => useSleepRange({ range: '30d' }), { wrapper });
       await waitFor(() => {
-        expect(mockFetchSleepEntries).toHaveBeenCalledWith(addDays(today, -29), today);
+        expect(mockFetchSleepEntries).toHaveBeenCalledWith(
+          addDays(today, -29),
+          today
+        );
       });
 
       renderHook(() => useSleepRange({ range: '90d' }), { wrapper });
       await waitFor(() => {
-        expect(mockFetchSleepEntries).toHaveBeenCalledWith(addDays(today, -89), today);
+        expect(mockFetchSleepEntries).toHaveBeenCalledWith(
+          addDays(today, -89),
+          today
+        );
       });
     });
 
@@ -399,7 +454,7 @@ describe('useSleepRange', () => {
         await waitFor(() => {
           expect(mockFetchSleepEntries).toHaveBeenCalledWith(
             addDays(expectedToday, -6),
-            expectedToday,
+            expectedToday
           );
         });
         await waitFor(() => expect(result.current.isLoading).toBe(false));
@@ -420,7 +475,10 @@ describe('useSleepRange', () => {
         });
 
         await waitFor(() => {
-          expect(mockFetchSleepEntries).toHaveBeenCalledWith(addDays(today, -6), today);
+          expect(mockFetchSleepEntries).toHaveBeenCalledWith(
+            addDays(today, -6),
+            today
+          );
         });
       }
     });
@@ -455,12 +513,16 @@ describe('useSleepRange', () => {
       const enabled = renderHook(() => useSleepRange({ range: '7d' }), {
         wrapper: createQueryWrapper(queryClient),
       });
-      await waitFor(() => expect(mockFetchSleepEntries).toHaveBeenCalledTimes(1));
+      await waitFor(() =>
+        expect(mockFetchSleepEntries).toHaveBeenCalledTimes(1)
+      );
 
       await act(async () => {
         mockFocusCallbacks[mockFocusCallbacks.length - 1]();
       });
-      await waitFor(() => expect(mockFetchSleepEntries).toHaveBeenCalledTimes(2));
+      await waitFor(() =>
+        expect(mockFetchSleepEntries).toHaveBeenCalledTimes(2)
+      );
       enabled.unmount();
 
       // Disabled: focusing must not reach the network at all.
@@ -484,7 +546,9 @@ describe('useSleepRange', () => {
 
   describe('permissions and errors', () => {
     test('surfaces isError when the API rejects', async () => {
-      mockFetchSleepEntries.mockRejectedValue(new Error('Network request failed'));
+      mockFetchSleepEntries.mockRejectedValue(
+        new Error('Network request failed')
+      );
 
       const { result } = renderHook(() => useSleepRange({ range: '7d' }), {
         wrapper: createQueryWrapper(queryClient),
@@ -496,7 +560,7 @@ describe('useSleepRange', () => {
 
     test('treats a 403 as no data rather than an error', async () => {
       mockFetchSleepEntries.mockRejectedValue(
-        new ApiError('Server error: 403 - Forbidden', 403, 'Forbidden'),
+        new ApiError('Server error: 403 - Forbidden', 403, 'Forbidden')
       );
 
       const { result } = renderHook(() => useSleepRange({ range: '7d' }), {
@@ -533,7 +597,9 @@ describe('useSleepRange', () => {
       expect(sevenDay).not.toEqual(ninetyDay);
 
       // Identical dates must not collide with the measurements range cache entry.
-      expect(sevenDay).not.toEqual(measurementsRangeQueryKey(addDays(today, -6), today));
+      expect(sevenDay).not.toEqual(
+        measurementsRangeQueryKey(addDays(today, -6), today)
+      );
     });
   });
 });

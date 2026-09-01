@@ -8,7 +8,13 @@ import type { RecordZone } from '@workspace/shared';
  * vocabulary from another chart is the wrong dependency direction. `Hypnogram` re-exports
  * these under their original names so its own lane ordering keeps reading as lanes.
  */
-export const SLEEP_STAGE_LANES = ['awake', 'rem', 'light', 'deep', 'other'] as const;
+export const SLEEP_STAGE_LANES = [
+  'awake',
+  'rem',
+  'light',
+  'deep',
+  'other',
+] as const;
 
 export type SleepStageLane = (typeof SLEEP_STAGE_LANES)[number];
 

@@ -1,5 +1,12 @@
 import React from 'react';
-import Svg, { Path, Circle, Ellipse, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, {
+  Path,
+  Circle,
+  Ellipse,
+  Defs,
+  LinearGradient,
+  Stop,
+} from 'react-native-svg';
 import { useCSSVariable } from 'uniwind';
 import { useWellnessTokens } from '../theme/wellnessTokens';
 
@@ -11,7 +18,10 @@ interface WombSceneProps {
 
 // Per-stage baby scale + vertical offset within the 100x100 womb viewBox. The
 // baby grows and settles lower (head-down) as the pregnancy progresses.
-const STAGE: Record<8 | 20 | 36, { babyR: number; cx: number; cy: number; curl: number }> = {
+const STAGE: Record<
+  8 | 20 | 36,
+  { babyR: number; cx: number; cy: number; curl: number }
+> = {
   8: { babyR: 9, cx: 50, cy: 46, curl: 0.55 },
   20: { babyR: 15, cx: 50, cy: 50, curl: 0.7 },
   36: { babyR: 22, cx: 50, cy: 54, curl: 0.85 },
@@ -39,8 +49,16 @@ const WombScene: React.FC<WombSceneProps> = ({ scene, size = 120 }) => {
     <Svg width={size} height={size} viewBox="0 0 100 100">
       <Defs>
         <LinearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={tokens.phasePregnant} stopOpacity="0.30" />
-          <Stop offset="1" stopColor={tokens.phasePregnant} stopOpacity="0.65" />
+          <Stop
+            offset="0"
+            stopColor={tokens.phasePregnant}
+            stopOpacity="0.30"
+          />
+          <Stop
+            offset="1"
+            stopColor={tokens.phasePregnant}
+            stopOpacity="0.65"
+          />
         </LinearGradient>
       </Defs>
 
@@ -57,7 +75,13 @@ const WombScene: React.FC<WombSceneProps> = ({ scene, size = 120 }) => {
       <Ellipse cx="50" cy="52" rx="28" ry="30" fill={surface} opacity={0.35} />
 
       {/* Baby: body + tucked head. */}
-      <Circle cx={stage.cx} cy={stage.cy} r={bodyR} fill={tokens.phasePregnant} opacity={0.95} />
+      <Circle
+        cx={stage.cx}
+        cy={stage.cy}
+        r={bodyR}
+        fill={tokens.phasePregnant}
+        opacity={0.95}
+      />
       <Circle cx={headCx} cy={headCy} r={headR} fill={tokens.phasePregnant} />
     </Svg>
   );

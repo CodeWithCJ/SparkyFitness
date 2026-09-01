@@ -1,11 +1,15 @@
 import { fetchSleepEntries } from '../../../src/services/api/sleepApi';
 import { ApiError } from '../../../src/services/api/errors';
-import { getActiveServerConfig, ServerConfig } from '../../../src/services/storage';
+import {
+  getActiveServerConfig,
+  ServerConfig,
+} from '../../../src/services/storage';
 import { buildSleepEntry, buildStageEvent } from '../../helpers/sleepFixtures';
 
 jest.mock('../../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
-  proxyHeadersToRecord: jest.requireActual('../../../src/services/storage').proxyHeadersToRecord,
+  proxyHeadersToRecord: jest.requireActual('../../../src/services/storage')
+    .proxyHeadersToRecord,
 }));
 
 jest.mock('../../../src/services/LogService', () => ({
@@ -41,18 +45,24 @@ describe('sleepApi', () => {
 
     test('requests /api/sleep with startDate and endDate query params', async () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
 
       await fetchSleepEntries('2026-08-23', '2026-08-24');
 
       expect(requestUrl()).toContain(
-        'https://example.com/api/sleep?startDate=2026-08-23&endDate=2026-08-24',
+        'https://example.com/api/sleep?startDate=2026-08-23&endDate=2026-08-24'
       );
     });
 
     test('percent-encodes date params rather than injecting them raw', async () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
 
       await fetchSleepEntries('2026/08/23', '2026-08-24');
 
@@ -63,7 +73,10 @@ describe('sleepApi', () => {
     test('returns the resolved rows verbatim, including stage_events', async () => {
       const rows = [buildSleepEntry({ stage_events: [buildStageEvent()] })];
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(rows) });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(rows),
+      });
 
       const result = await fetchSleepEntries('2026-08-23', '2026-08-24');
 
@@ -82,7 +95,7 @@ describe('sleepApi', () => {
       });
 
       const error = await fetchSleepEntries('2026-08-23', '2026-08-24').catch(
-        (e: unknown) => e,
+        (e: unknown) => e
       );
 
       expect(error).toBeInstanceOf(ApiError);
@@ -91,7 +104,10 @@ describe('sleepApi', () => {
 
     test('issues a GET (no request body)', async () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
 
       await fetchSleepEntries('2026-08-23', '2026-08-24');
 
@@ -105,27 +121,30 @@ describe('sleepApi', () => {
         ...testConfig,
         proxyHeaders: [{ name: 'X-Proxy-Auth', value: 'proxy-secret' }],
       });
-      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
 
       await fetchSleepEntries('2026-08-23', '2026-08-24');
 
-      const headers = (mockFetch.mock.calls[0][1] as RequestInit).headers as Record<
-        string,
-        string
-      >;
+      const headers = (mockFetch.mock.calls[0][1] as RequestInit)
+        .headers as Record<string, string>;
       expect(headers['X-Proxy-Auth']).toBe('proxy-secret');
       expect(headers.Authorization).toBe('Bearer test-api-key-12345');
       // Proxy headers are spread first so an auth header always wins a name collision.
       const keys = Object.keys(headers);
-      expect(keys.indexOf('X-Proxy-Auth')).toBeLessThan(keys.indexOf('Authorization'));
+      expect(keys.indexOf('X-Proxy-Auth')).toBeLessThan(
+        keys.indexOf('Authorization')
+      );
     });
 
     test('throws when no active server config exists', async () => {
       mockGetActiveServerConfig.mockResolvedValue(null);
 
-      await expect(fetchSleepEntries('2026-08-23', '2026-08-24')).rejects.toThrow(
-        'Server configuration not found.',
-      );
+      await expect(
+        fetchSleepEntries('2026-08-23', '2026-08-24')
+      ).rejects.toThrow('Server configuration not found.');
       expect(mockFetch).not.toHaveBeenCalled();
     });
   });

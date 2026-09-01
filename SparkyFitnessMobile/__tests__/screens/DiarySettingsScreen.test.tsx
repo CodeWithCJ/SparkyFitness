@@ -9,8 +9,14 @@ import { initializeI18n } from '../../src/localization/i18n';
 
 jest.mock('../../src/hooks', () => ({
   useServerConnection: jest.fn(() => ({ isConnected: true, isLoading: false })),
-  useCustomNutrients: jest.fn(() => ({ customNutrients: [], isLoading: false })),
-  useNutrientDisplayPreferences: jest.fn(() => ({ preferences: [], isLoading: false })),
+  useCustomNutrients: jest.fn(() => ({
+    customNutrients: [],
+    isLoading: false,
+  })),
+  useNutrientDisplayPreferences: jest.fn(() => ({
+    preferences: [],
+    isLoading: false,
+  })),
 }));
 
 jest.mock('../../src/hooks/useScreenHeader', () => ({
@@ -42,7 +48,7 @@ const renderScreen = () => {
       <SafeAreaProvider initialMetrics={{ frame, insets }}>
         <DiarySettingsScreen {...({ navigation: {}, route: {} } as never)} />
       </SafeAreaProvider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 };
 
@@ -62,7 +68,9 @@ describe('DiarySettingsScreen', () => {
     expect(getByLabelText('Diary Summary').props.value).toBe(false);
 
     useAppPreferencesStore.setState({ diarySummaryVisible: true });
-    expect(renderScreen().getByLabelText('Diary Summary').props.value).toBe(true);
+    expect(renderScreen().getByLabelText('Diary Summary').props.value).toBe(
+      true
+    );
   });
 
   test('toggling the Diary Summary switch writes the new value to the store', () => {

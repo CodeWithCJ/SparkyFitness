@@ -42,7 +42,7 @@ export function mergeRecent(
   meals: RecentMeal[] = [],
   foods: RecentFood[] = [],
   limit: number,
-  excludeKeys: Set<string> = new Set(),
+  excludeKeys: Set<string> = new Set()
 ): LandingEntry[] {
   const tagged: { entry: LandingEntry; sort: string }[] = [
     ...meals.map((m) => ({
@@ -67,7 +67,7 @@ export function mergeFrequent(
   meals: FrequentMeal[] = [],
   foods: FrequentFood[] = [],
   limit: number,
-  excludeKeys: Set<string> = new Set(),
+  excludeKeys: Set<string> = new Set()
 ): LandingEntry[] {
   // Coerce, and never let a bad value become NaN: NaN in a subtraction
   // comparator breaks sort transitivity and scrambles order.

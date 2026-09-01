@@ -13,7 +13,11 @@ import Button from '../components/ui/Button';
 import SafeImage from '../components/SafeImage';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import {
+  useScreenHeader,
+  SAVE_LABEL,
+  SAVING_LABEL,
+} from '../hooks/useScreenHeader';
 import {
   buildActivitySetsPayload,
   effectiveSetDurationSec,
@@ -30,8 +34,13 @@ import {
 import { usePreferences } from '../hooks/usePreferences';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { syncExerciseSessionInCache } from '../hooks/syncExerciseSessionInCache';
-import { useActivityForm, getActivityDraftSubmission } from '../hooks/useActivityForm';
-import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import {
+  useActivityForm,
+  getActivityDraftSubmission,
+} from '../hooks/useActivityForm';
+import CalendarSheet, {
+  type CalendarSheetRef,
+} from '../components/CalendarSheet';
 import { normalizeDate, formatDate, formatDateLabel } from '../utils/dateUtils';
 import { distanceFromKm, weightFromKg } from '../utils/unitConversions';
 import { formatLocalizedNumber } from '../localization';
@@ -44,17 +53,21 @@ import { canEditGroupedWorkout } from '@workspace/shared';
 
 type Props = RootStackScreenProps<'ActivityDetail'>;
 
-type EditableField = 'name' | 'duration' | 'calories' | 'distance' | 'avgHeartRate' | 'notes';
+type EditableField =
+  'name' | 'duration' | 'calories' | 'distance' | 'avgHeartRate' | 'notes';
 
 const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { t , i18n: translationI18n } = useTranslation();
-  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
+  const { t, i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl')
+    ? 'pl-PL'
+    : 'en-US';
   const [session, setSession] = useState(route.params.session);
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const { preferences } = usePreferences();
-  const distanceUnit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
+  const distanceUnit =
+    (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   const weightUnit = (preferences?.default_weight_unit as 'kg' | 'lbs') ?? 'kg';
 
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
@@ -86,7 +99,11 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const isDeleting = deleteActivity.isPending;
 
-  const { updateEntry, isPending: isSaving, invalidateCache: invalidateEntryCache } = useUpdateExerciseEntry();
+  const {
+    updateEntry,
+    isPending: isSaving,
+    invalidateCache: invalidateEntryCache,
+  } = useUpdateExerciseEntry();
 
   // --- Edit mode state ---
   const [isEditing, setIsEditing] = useState(false);
@@ -98,20 +115,29 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // merge edited weight/reps back in without losing fields like rest_time, rpe, etc.
   const SET_CLIENT_ID_PREFIX = 'activity';
   const nextSetIdRef = useRef(0);
-  const originalSetsRef = useRef<Map<string, ExerciseEntrySetResponse>>(new Map());
+  const originalSetsRef = useRef<Map<string, ExerciseEntrySetResponse>>(
+    new Map()
+  );
   const [draftSets, setDraftSets] = useState<WorkoutDraftSet[]>([]);
   const [activeSetKey, setActiveSetKey] = useState<string | null>(null);
-  const [activeSetField, setActiveSetField] = useState<'weight' | 'reps' | 'duration'>('weight');
+  const [activeSetField, setActiveSetField] = useState<
+    'weight' | 'reps' | 'duration'
+  >('weight');
   const modality = resolveSnapshotModality(session.exercise_snapshot);
   const durationLike = isDurationModality(modality);
-  const setFirstField = durationLike ? ('duration' as const) : ('weight' as const);
+  const setFirstField = durationLike
+    ? ('duration' as const)
+    : ('weight' as const);
   // A ≤1-set cardio entry is edited through the entry-level Duration/Distance
   // form; its single backing set is written from those values at save. Only
   // multi-set cardio (imports, future intervals) surfaces a set table.
   const cardioEffort = isCardioModality(modality) && session.sets.length <= 1;
-  const hasSets = session.sets.length > 1
-    || (!cardioEffort
-      && session.sets.some(s => s.weight != null || s.reps != null || s.duration != null));
+  const hasSets =
+    session.sets.length > 1 ||
+    (!cardioEffort &&
+      session.sets.some(
+        (s) => s.weight != null || s.reps != null || s.duration != null
+      ));
 
   const {
     state: formState,
@@ -135,14 +161,22 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       originals.set(clientId, set);
       return {
         clientId,
-        weight: set.weight != null
-          ? String(parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1)))
-          : '',
+        weight:
+          set.weight != null
+            ? String(
+                parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1))
+              )
+            : '',
         reps: set.reps != null ? String(set.reps) : '',
         duration: set.duration,
-        distance: set.distance != null
-          ? String(parseFloat(distanceFromKm(set.distance, distanceUnit).toFixed(2)))
-          : '',
+        distance:
+          set.distance != null
+            ? String(
+                parseFloat(
+                  distanceFromKm(set.distance, distanceUnit).toFixed(2)
+                )
+              )
+            : '',
       };
     });
     originalSetsRef.current = originals;
@@ -165,47 +199,66 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // is still honored at runtime; the compiler just skips optimizing this
   // component. Suppress the bailout rather than rewrite the working id counter.
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
-  const addDraftSet = useCallback((_exerciseId?: string) => {
-    const id = `set-${nextSetIdRef.current++}`;
-    setDraftSets(prev => {
-      const lastSet = prev[prev.length - 1];
-      return [
-        ...prev,
-        {
-          clientId: id,
-          weight: lastSet?.weight ?? '',
-          reps: lastSet?.reps ?? '',
-          duration: lastSet?.duration ?? null,
-          // A distance is a recorded result, never structure to clone.
-          distance: '',
-        },
-      ];
-    });
-    setActiveSetKey(`${SET_CLIENT_ID_PREFIX}:${id}`);
-    setActiveSetField(setFirstField);
-  }, [setFirstField]);
+  const addDraftSet = useCallback(
+    (_exerciseId?: string) => {
+      const id = `set-${nextSetIdRef.current++}`;
+      setDraftSets((prev) => {
+        const lastSet = prev[prev.length - 1];
+        return [
+          ...prev,
+          {
+            clientId: id,
+            weight: lastSet?.weight ?? '',
+            reps: lastSet?.reps ?? '',
+            duration: lastSet?.duration ?? null,
+            // A distance is a recorded result, never structure to clone.
+            distance: '',
+          },
+        ];
+      });
+      setActiveSetKey(`${SET_CLIENT_ID_PREFIX}:${id}`);
+      setActiveSetField(setFirstField);
+    },
+    [setFirstField]
+  );
 
-  const removeDraftSet = useCallback((_exerciseId: string, setClientId: string) => {
-    setDraftSets(prev => prev.filter(s => s.clientId !== setClientId));
-    setActiveSetKey(null);
-  }, []);
+  const removeDraftSet = useCallback(
+    (_exerciseId: string, setClientId: string) => {
+      setDraftSets((prev) => prev.filter((s) => s.clientId !== setClientId));
+      setActiveSetKey(null);
+    },
+    []
+  );
 
-  const updateDraftSetField = useCallback((_exerciseId: string, setClientId: string, field: 'weight' | 'reps' | 'duration', value: string) => {
-    setDraftSets(prev => prev.map(s => {
-      if (s.clientId !== setClientId) return s;
-      // Drafts hold duration as `number | null`, mirroring the workout slice.
-      if (field === 'duration') {
-        const parsed = parseInt(value, 10);
-        return { ...s, duration: Number.isNaN(parsed) ? null : parsed };
-      }
-      return { ...s, [field]: value };
-    }));
-  }, []);
+  const updateDraftSetField = useCallback(
+    (
+      _exerciseId: string,
+      setClientId: string,
+      field: 'weight' | 'reps' | 'duration',
+      value: string
+    ) => {
+      setDraftSets((prev) =>
+        prev.map((s) => {
+          if (s.clientId !== setClientId) return s;
+          // Drafts hold duration as `number | null`, mirroring the workout slice.
+          if (field === 'duration') {
+            const parsed = parseInt(value, 10);
+            return { ...s, duration: Number.isNaN(parsed) ? null : parsed };
+          }
+          return { ...s, [field]: value };
+        })
+      );
+    },
+    []
+  );
 
-  const activateSet = useCallback((key: string, field: 'weight' | 'reps' | 'duration') => {
-    setActiveSetKey(key);
-    setActiveSetField(field);
-  }, []);
+  const activateSet = useCallback(
+    (key: string, field: 'weight' | 'reps' | 'duration') => {
+      setActiveSetKey(key);
+      setActiveSetField(field);
+    },
+    []
+  );
 
   const deactivateSet = useCallback(() => {
     setActiveSetKey(null);
@@ -228,7 +281,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               : null,
             distanceKm: submission.distanceKm,
           }
-        : undefined,
+        : undefined
     );
 
     const payload = {
@@ -267,13 +320,22 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       originalSetsRef.current.clear();
     } catch (error) {
       addLog(`Failed to save activity: ${error}`, 'ERROR');
-      Toast.show({ type: 'error', text1: t('activityDetail.errors.saveFailed', { defaultValue: 'Failed to save activity' }), text2: t('common.tryAgain', { defaultValue: 'Please try again.' }) });
+      Toast.show({
+        type: 'error',
+        text1: t('activityDetail.errors.saveFailed', {
+          defaultValue: 'Failed to save activity',
+        }),
+        text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+      });
     }
   };
 
   // --- Formatting helpers ---
 
-  const formatPace = (durationMin: number, distanceKm: number): string | null => {
+  const formatPace = (
+    durationMin: number,
+    distanceKm: number
+  ): string | null => {
     if (durationMin <= 0 || distanceKm <= 0) return null;
     const distanceInUnit = distanceFromKm(distanceKm, distanceUnit);
     const paceMinPerUnit = durationMin / distanceInUnit;
@@ -302,10 +364,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     if (isEditing || duration > 0) {
       stats.push({
         value: isEditing
-          ? (formState.duration || '-')
-          : (duration > 0
-              ? formatLocalizedNumber(duration, { maximumFractionDigits: 2 })
-              : '-'),
+          ? formState.duration || '-'
+          : duration > 0
+            ? formatLocalizedNumber(duration, { maximumFractionDigits: 2 })
+            : '-',
         label: t('activityDetail.stats.duration', { defaultValue: 'Duration' }),
         editKey: 'duration',
         editSuffix: 'min',
@@ -315,10 +377,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     if (isEditing || calories > 0) {
       stats.push({
         value: isEditing
-          ? (formState.calories || '-')
-          : (calories > 0
-              ? formatLocalizedNumber(calories, { maximumFractionDigits: 1 })
-              : '-'),
+          ? formState.calories || '-'
+          : calories > 0
+            ? formatLocalizedNumber(calories, { maximumFractionDigits: 1 })
+            : '-',
         label: t('activityDetail.stats.calories', { defaultValue: 'Calories' }),
         editKey: 'calories',
         editSuffix: 'cal',
@@ -328,10 +390,13 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     if (isEditing || (session.distance != null && session.distance > 0)) {
       stats.push({
         value: isEditing
-          ? (formState.distance || '-')
-          : (session.distance != null && session.distance > 0
-              ? formatLocalizedNumber(distanceFromKm(session.distance, distanceUnit), { minimumFractionDigits: 1, maximumFractionDigits: 1 })
-              : '-'),
+          ? formState.distance || '-'
+          : session.distance != null && session.distance > 0
+            ? formatLocalizedNumber(
+                distanceFromKm(session.distance, distanceUnit),
+                { minimumFractionDigits: 1, maximumFractionDigits: 1 }
+              )
+            : '-',
         label: t('activityDetail.stats.distance', { defaultValue: 'Distance' }),
         editKey: 'distance',
         editSuffix: distLabel,
@@ -341,20 +406,31 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     if (isEditing || session.avg_heart_rate != null) {
       stats.push({
         value: isEditing
-          ? (formState.avgHeartRate || '-')
-          : (session.avg_heart_rate != null ? formatLocalizedNumber(session.avg_heart_rate) : '-'),
-        label: t('activityDetail.stats.avgHeartRate', { defaultValue: 'Avg Heart Rate' }),
+          ? formState.avgHeartRate || '-'
+          : session.avg_heart_rate != null
+            ? formatLocalizedNumber(session.avg_heart_rate)
+            : '-',
+        label: t('activityDetail.stats.avgHeartRate', {
+          defaultValue: 'Avg Heart Rate',
+        }),
         editKey: 'avgHeartRate',
         editSuffix: 'bpm',
         keyboardType: 'numeric',
       });
     }
     if (session.steps != null && session.steps > 0) {
-      stats.push({ value: formatLocalizedNumber(session.steps), label: t('activityDetail.stats.steps', { defaultValue: 'Steps' }) });
+      stats.push({
+        value: formatLocalizedNumber(session.steps),
+        label: t('activityDetail.stats.steps', { defaultValue: 'Steps' }),
+      });
     }
     if (paceDistanceKm != null && paceDistanceKm > 0 && paceDuration > 0) {
       const pace = formatPace(paceDuration, paceDistanceKm);
-      if (pace) stats.push({ value: pace, label: t('activityDetail.stats.pace', { defaultValue: 'Pace' }) });
+      if (pace)
+        stats.push({
+          value: pace,
+          label: t('activityDetail.stats.pace', { defaultValue: 'Pace' }),
+        });
     }
     return stats;
   };
@@ -404,7 +480,14 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     const canEdit = isEditing && stat.editKey;
 
     const content = (
-      <View className={`bg-surface rounded-xl p-3 ${canEdit ? 'border' : ''}`} style={canEdit ? { borderColor: isActive ? accentPrimary : borderSubtle } : undefined}>
+      <View
+        className={`bg-surface rounded-xl p-3 ${canEdit ? 'border' : ''}`}
+        style={
+          canEdit
+            ? { borderColor: isActive ? accentPrimary : borderSubtle }
+            : undefined
+        }
+      >
         <View style={{ minHeight: 24 }}>
           {isActive && stat.editKey ? (
             <FadeView key="stat-edit">
@@ -428,7 +511,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </FadeView>
           ) : (
             <FadeView key="stat-view">
-              <Text className="text-lg font-semibold text-text-primary">{stat.value}</Text>
+              <Text className="text-lg font-semibold text-text-primary">
+                {stat.value}
+              </Text>
             </FadeView>
           )}
           {stat.editSuffix && (
@@ -457,7 +542,11 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       );
     }
 
-    return <View key={stat.label} className="flex-1">{content}</View>;
+    return (
+      <View key={stat.label} className="flex-1">
+        {content}
+      </View>
+    );
   };
 
   const renderStatsGrid = () => {
@@ -487,7 +576,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     nativeTitle: isEditing ? 'Edit Activity' : name,
     animateKey: isEditing ? 'edit' : 'view',
     borderless: true,
-    nativeOptions: { gestureEnabled: !isEditing, headerBackVisible: !isEditing },
+    nativeOptions: {
+      gestureEnabled: !isEditing,
+      headerBackVisible: !isEditing,
+    },
     left: isEditing
       ? {
           kind: 'dismiss',
@@ -505,7 +597,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           busy: isSaving,
           disabled: isSaving,
           onPress: handleSave,
-          accessibilityLabel: t('activityDetail.accessibility.save', { defaultValue: 'Save' }),
+          accessibilityLabel: t('activityDetail.accessibility.save', {
+            defaultValue: 'Save',
+          }),
           identifier: 'activity-detail-save',
         }
       : canEditSource
@@ -514,19 +608,26 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             label: t('common.edit', { defaultValue: 'Edit' }),
             role: 'secondary',
             onPress: startEditing,
-            accessibilityLabel: t('activityDetail.accessibility.edit', { defaultValue: 'Edit activity' }),
+            accessibilityLabel: t('activityDetail.accessibility.edit', {
+              defaultValue: 'Edit activity',
+            }),
             identifier: 'activity-detail-edit',
           }
         : null,
   });
 
   return (
-    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
 
       <KeyboardAwareScrollView
         contentContainerClassName="px-4"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 32 + activeWorkoutBarPadding }}
+        contentContainerStyle={{
+          paddingBottom: insets.bottom + 32 + activeWorkoutBarPadding,
+        }}
         bottomOffset={20}
         keyboardShouldPersistTaps="handled"
       >
@@ -535,21 +636,40 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           {firstImageSource && (
             <SafeImage
               source={firstImageSource}
-              style={{ width: 48, height: 48, borderRadius: 10, marginRight: 12 }}
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 10,
+                marginRight: 12,
+              }}
             />
           )}
           <View className="flex-1">
             {isEditing ? (
               <FadeView key="edit-title">
-                <TouchableOpacity onPress={() => setActiveField('name')} activeOpacity={0.6}>
+                <TouchableOpacity
+                  onPress={() => setActiveField('name')}
+                  activeOpacity={0.6}
+                >
                   {activeField === 'name' ? (
                     <FormInput
                       value={formState.name}
                       onChangeText={setName}
                       onBlur={() => setActiveField(null)}
-                      placeholder={t('activityDetail.placeholders.activityName', { defaultValue: 'Activity Name' })}
+                      placeholder={t(
+                        'activityDetail.placeholders.activityName',
+                        { defaultValue: 'Activity Name' }
+                      )}
                       autoFocus
-                      style={{ borderWidth: 0, backgroundColor: 'transparent', paddingLeft: 0, paddingTop: 8, paddingBottom: 8, fontSize: 20, fontWeight: '700' }}
+                      style={{
+                        borderWidth: 0,
+                        backgroundColor: 'transparent',
+                        paddingLeft: 0,
+                        paddingTop: 8,
+                        paddingBottom: 8,
+                        fontSize: 20,
+                        fontWeight: '700',
+                      }}
                     />
                   ) : (
                     <Text className="text-xl font-bold text-text-primary mb-0.5">
@@ -560,7 +680,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               </FadeView>
             ) : (
               <FadeView key="view-title">
-                <Text className="text-xl font-bold text-text-primary mb-0.5">{name}</Text>
+                <Text className="text-xl font-bold text-text-primary mb-0.5">
+                  {name}
+                </Text>
               </FadeView>
             )}
             <View className="flex-row items-center">
@@ -575,15 +697,21 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                   <Text className="text-sm" style={{ color: accentPrimary }}>
                     {formatDateLabel(formState.entryDate, t, dateLocale)}
                   </Text>
-                  <Icon name="chevron-down" size={14} color={accentPrimary} style={{ marginLeft: 2 }} />
+                  <Icon
+                    name="chevron-down"
+                    size={14}
+                    color={accentPrimary}
+                    style={{ marginLeft: 2 }}
+                  />
                 </TouchableOpacity>
               ) : entryDate ? (
-                <Text className="text-sm text-text-muted">{formatDate(entryDate, dateLocale)}</Text>
+                <Text className="text-sm text-text-muted">
+                  {formatDate(entryDate, dateLocale)}
+                </Text>
               ) : null}
             </View>
           </View>
         </View>
-
 
         {/* Stats grid */}
         {renderStatsGrid()}
@@ -592,7 +720,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {isEditing ? (
           !cardioEffort && (draftSets.length > 0 || hasSets) ? (
             <View className="py-4">
-              <Text className="text-sm font-medium text-text-secondary mb-2">{t('activityDetail.labels.sets', { defaultValue: 'Sets' })}</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-2">
+                {t('activityDetail.labels.sets', { defaultValue: 'Sets' })}
+              </Text>
               <EditableSetList
                 exerciseClientId={SET_CLIENT_ID_PREFIX}
                 sets={draftSets}
@@ -611,38 +741,63 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         ) : hasSets ? (
           <>
             <View className="py-4">
-              <Text className="text-sm font-medium text-text-secondary mb-2">{t('activityDetail.labels.sets', { defaultValue: 'Sets' })}</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-2">
+                {t('activityDetail.labels.sets', { defaultValue: 'Sets' })}
+              </Text>
               <View className="flex-row py-1 mb-1">
-                <Text className="text-xs font-semibold text-text-muted w-10 text-center">{t('activityDetail.labels.set', { defaultValue: 'Set' })}</Text>
+                <Text className="text-xs font-semibold text-text-muted w-10 text-center">
+                  {t('activityDetail.labels.set', { defaultValue: 'Set' })}
+                </Text>
                 {durationLike ? (
-                  <Text className="text-xs font-semibold text-text-muted flex-1 text-center">{t('activityDetail.labels.secondsShort', { defaultValue: 'Sec' })}</Text>
+                  <Text className="text-xs font-semibold text-text-muted flex-1 text-center">
+                    {t('activityDetail.labels.secondsShort', {
+                      defaultValue: 'Sec',
+                    })}
+                  </Text>
                 ) : (
                   <>
                     {modality !== 'reps_only' && (
-                      <Text className="text-xs font-semibold text-text-muted flex-1 text-center">{t('activityDetail.labels.weight', { defaultValue: 'Weight' })}</Text>
+                      <Text className="text-xs font-semibold text-text-muted flex-1 text-center">
+                        {t('activityDetail.labels.weight', {
+                          defaultValue: 'Weight',
+                        })}
+                      </Text>
                     )}
-                    <Text className="text-xs font-semibold text-text-muted flex-1 text-center">{t('activityDetail.labels.reps', { defaultValue: 'Reps' })}</Text>
+                    <Text className="text-xs font-semibold text-text-muted flex-1 text-center">
+                      {t('activityDetail.labels.reps', {
+                        defaultValue: 'Reps',
+                      })}
+                    </Text>
                   </>
                 )}
               </View>
-              {session.sets.map(set => {
-                const displayWeight = set.weight != null
-                  ? `${parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1))} ${weightUnit}`
-                  : '-';
+              {session.sets.map((set) => {
+                const displayWeight =
+                  set.weight != null
+                    ? `${parseFloat(weightFromKg(set.weight, weightUnit).toFixed(1))} ${weightUnit}`
+                    : '-';
                 const displayReps = set.reps != null ? String(set.reps) : '-';
                 const seconds = effectiveSetDurationSec(set, modality);
                 const displayDuration = seconds != null ? String(seconds) : '-';
                 return (
                   <View key={set.id} className="flex-row py-1.5">
-                    <Text className="text-sm text-text-muted w-10 text-center">{set.set_number}</Text>
+                    <Text className="text-sm text-text-muted w-10 text-center">
+                      {set.set_number}
+                    </Text>
                     {durationLike ? (
-                      <Text className="text-sm text-text-primary flex-1 text-center">{displayDuration}</Text>
+                      <Text className="text-sm text-text-primary flex-1 text-center">
+                        {displayDuration}
+                      </Text>
                     ) : (
                       <>
                         {modality !== 'reps_only' && (
-                          <Text className="text-sm text-text-primary flex-1 text-center">{displayWeight}</Text>
+                          <Text className="text-sm text-text-primary flex-1 text-center">
+                            {displayWeight}
+                          </Text>
                         )}
-                        <Text className="text-sm text-text-primary flex-1 text-center">{displayReps}</Text>
+                        <Text className="text-sm text-text-primary flex-1 text-center">
+                          {displayReps}
+                        </Text>
                       </>
                     )}
                   </View>
@@ -656,27 +811,39 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         {(isEditing || session.notes) && (
           <>
             <View className="py-4">
-              <Text className="text-sm font-medium text-text-secondary mb-2">{t('activityDetail.labels.notes', { defaultValue: 'Notes' })}</Text>
+              <Text className="text-sm font-medium text-text-secondary mb-2">
+                {t('activityDetail.labels.notes', { defaultValue: 'Notes' })}
+              </Text>
               {isEditing ? (
                 activeField === 'notes' ? (
                   <FormInput
                     value={formState.notes}
                     onChangeText={setNotes}
                     onBlur={() => setActiveField(null)}
-                    placeholder={t('activityDetail.placeholders.notes', { defaultValue: 'Add notes...' })}
+                    placeholder={t('activityDetail.placeholders.notes', {
+                      defaultValue: 'Add notes...',
+                    })}
                     multiline
                     autoFocus
                     style={{ minHeight: 60 }}
                   />
                 ) : (
-                  <TouchableOpacity onPress={() => setActiveField('notes')} activeOpacity={0.6}>
+                  <TouchableOpacity
+                    onPress={() => setActiveField('notes')}
+                    activeOpacity={0.6}
+                  >
                     <Text className="text-sm text-text-primary">
-                      {formState.notes || t('activityDetail.placeholders.notes', { defaultValue: 'Add notes...' })}
+                      {formState.notes ||
+                        t('activityDetail.placeholders.notes', {
+                          defaultValue: 'Add notes...',
+                        })}
                     </Text>
                   </TouchableOpacity>
                 )
               ) : (
-                <Text className="text-sm text-text-primary">{session.notes}</Text>
+                <Text className="text-sm text-text-primary">
+                  {session.notes}
+                </Text>
               )}
             </View>
           </>
@@ -691,7 +858,11 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               disabled={isDeleting}
               className="mt-4"
             >
-              {isDeleting ? t('common.deleting', { defaultValue: 'Deleting...' }) : t('workout.deleteActivity', { defaultValue: 'Delete Activity' })}
+              {isDeleting
+                ? t('common.deleting', { defaultValue: 'Deleting...' })
+                : t('workout.deleteActivity', {
+                    defaultValue: 'Delete Activity',
+                  })}
             </Button>
           </FadeView>
         )}

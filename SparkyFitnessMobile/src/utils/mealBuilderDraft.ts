@@ -20,7 +20,7 @@ function toFiniteString(value: unknown, fallback: string): string {
 }
 
 function normalizeMealIngredientDraft(
-  draft: MealIngredientDraft,
+  draft: MealIngredientDraft
 ): MealIngredientDraft {
   return {
     ...draft,
@@ -33,9 +33,13 @@ function normalizeMealIngredientDraft(
     carbs: toFiniteNumber(draft.carbs),
     fat: toFiniteNumber(draft.fat),
     dietary_fiber:
-      draft.dietary_fiber == null ? undefined : toFiniteNumber(draft.dietary_fiber),
+      draft.dietary_fiber == null
+        ? undefined
+        : toFiniteNumber(draft.dietary_fiber),
     saturated_fat:
-      draft.saturated_fat == null ? undefined : toFiniteNumber(draft.saturated_fat),
+      draft.saturated_fat == null
+        ? undefined
+        : toFiniteNumber(draft.saturated_fat),
     sodium: draft.sodium == null ? undefined : toFiniteNumber(draft.sodium),
     sugars: draft.sugars == null ? undefined : toFiniteNumber(draft.sugars),
     trans_fat:
@@ -92,7 +96,7 @@ export function buildMealIngredientDraft({
 export function buildMealIngredientDraftFromSavedFood(
   food: FoodItem,
   quantity: number,
-  unit?: string,
+  unit?: string
 ): MealIngredientDraft {
   if (!food.default_variant.id) {
     throw new Error('Server did not return a variant ID for the saved food');
@@ -131,7 +135,7 @@ export function buildMealIngredientDraftFromSavedFood(
 // snapshot (poly/mono fat, glycemic index, custom nutrients) survives a round
 // trip rather than being dropped.
 export function buildMealIngredientDraftFromEntryMealFood(
-  food: FoodEntryMealFood,
+  food: FoodEntryMealFood
 ): MealIngredientDraft {
   return normalizeMealIngredientDraft({
     ...food,
@@ -143,7 +147,9 @@ export function buildMealIngredientDraftFromEntryMealFood(
   });
 }
 
-export function buildMealIngredientDraftFromMealFood(food: MealFood): MealIngredientDraft {
+export function buildMealIngredientDraftFromMealFood(
+  food: MealFood
+): MealIngredientDraft {
   return normalizeMealIngredientDraft({
     item_type: food.item_type,
     food_id: food.food_id,
@@ -152,7 +158,9 @@ export function buildMealIngredientDraftFromMealFood(food: MealFood): MealIngred
     quantity: food.quantity,
     unit: food.unit,
     food_name:
-      food.item_type === 'meal' ? food.child_meal_name || food.food_name : food.food_name,
+      food.item_type === 'meal'
+        ? food.child_meal_name || food.food_name
+        : food.food_name,
     brand: food.brand,
     serving_size: food.serving_size,
     serving_unit: food.serving_unit,

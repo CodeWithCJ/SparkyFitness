@@ -29,7 +29,9 @@ describe('SwipeableIngredientRow', () => {
     expect(title).toBe('Chicken');
     expect(message).toBeUndefined();
     const labels = (buttons as AlertButton[]).map((b) => b.text);
-    expect(labels).toEqual(expect.arrayContaining(['Edit', 'Delete', 'Cancel']));
+    expect(labels).toEqual(
+      expect.arrayContaining(['Edit', 'Delete', 'Cancel'])
+    );
 
     alertSpy.mockRestore();
   });
@@ -45,7 +47,11 @@ describe('SwipeableIngredientRow', () => {
       });
 
     const screen = render(
-      <SwipeableIngredientRow {...baseProps} onPress={onPress} onConfirmDelete={onConfirmDelete} />,
+      <SwipeableIngredientRow
+        {...baseProps}
+        onPress={onPress}
+        onConfirmDelete={onConfirmDelete}
+      />
     );
     fireEvent(screen.getByText('Chicken'), 'longPress');
 
@@ -60,7 +66,9 @@ describe('SwipeableIngredientRow', () => {
 
   it('warns when removing the last ingredient that another is needed to save', () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    const screen = render(<SwipeableIngredientRow {...baseProps} isLastIngredient />);
+    const screen = render(
+      <SwipeableIngredientRow {...baseProps} isLastIngredient />
+    );
 
     fireEvent(screen.getByText('Chicken'), 'longPress');
 

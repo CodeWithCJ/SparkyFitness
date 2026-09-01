@@ -3,7 +3,11 @@ import { useSleepDetail } from '../../src/hooks/useSleepDetail';
 import { sleepDayQueryKey } from '../../src/hooks/queryKeys';
 import { fetchSleepEntries } from '../../src/services/api/sleepApi';
 import { buildSleepEntry, buildStageEvent } from '../helpers/sleepFixtures';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/sleepApi', () => ({
   fetchSleepEntries: jest.fn(),
@@ -52,7 +56,9 @@ describe('useSleepDetail', () => {
   });
 
   test('a failing entry fetch surfaces isError', async () => {
-    mockFetchSleepEntries.mockRejectedValue(new Error('Network request failed'));
+    mockFetchSleepEntries.mockRejectedValue(
+      new Error('Network request failed')
+    );
 
     const { result } = renderDetail();
 
@@ -61,7 +67,9 @@ describe('useSleepDetail', () => {
   });
 
   test('an entryId absent from the range resolves to null rather than throwing', async () => {
-    mockFetchSleepEntries.mockResolvedValue([buildSleepEntry({ id: 'someone-else' })]);
+    mockFetchSleepEntries.mockResolvedValue([
+      buildSleepEntry({ id: 'someone-else' }),
+    ]);
 
     const { result } = renderDetail('missing-entry');
 
@@ -74,7 +82,9 @@ describe('useSleepDetail', () => {
   test('a row without stage_events defaults stages to []', async () => {
     const withoutStages = buildSleepEntry({ id: ENTRY_ID });
     delete (withoutStages as Partial<typeof withoutStages>).stage_events;
-    mockFetchSleepEntries.mockResolvedValue([withoutStages as typeof withoutStages]);
+    mockFetchSleepEntries.mockResolvedValue([
+      withoutStages as typeof withoutStages,
+    ]);
 
     const { result } = renderDetail();
 
@@ -90,7 +100,9 @@ describe('useSleepDetail', () => {
       queries: { retry: false, staleTime: Infinity },
       mutations: { retry: false },
     });
-    queryClient.setQueryData(sleepDayQueryKey(DAY), [buildSleepEntry({ id: ENTRY_ID })]);
+    queryClient.setQueryData(sleepDayQueryKey(DAY), [
+      buildSleepEntry({ id: ENTRY_ID }),
+    ]);
 
     const { result } = renderDetail();
 

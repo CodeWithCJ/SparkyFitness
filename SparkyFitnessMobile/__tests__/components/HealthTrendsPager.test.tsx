@@ -57,7 +57,9 @@ const weightSeries = populated({ day: '2026-06-03', weight: 80 });
  * page on `nightsWithData` instead. Both fixtures below carry a full window; only the
  * night count says whether any of it is real.
  */
-const sleepTrend = (overrides: Partial<SleepTrendSeries> = {}): SleepTrendSeries => ({
+const sleepTrend = (
+  overrides: Partial<SleepTrendSeries> = {}
+): SleepTrendSeries => ({
   data: [
     {
       day: '2026-06-03',
@@ -118,7 +120,9 @@ const selectedDotIndex = (): number =>
   dots().findIndex((dot) => dot.props.accessibilityState?.selected === true);
 
 // The global pager mock hangs its imperative handle off the component itself.
-const pagerMock = PagerView as unknown as { setPageWithoutAnimation: jest.Mock };
+const pagerMock = PagerView as unknown as {
+  setPageWithoutAnimation: jest.Mock;
+};
 
 describe('HealthTrendsPager', () => {
   beforeEach(() => {
@@ -138,7 +142,11 @@ describe('HealthTrendsPager', () => {
   test('orders the pages steps, weight, sleep', () => {
     renderPager({ weight: weightSeries, sleep: sleepSeries });
 
-    expect(chartOrder()).toEqual(['steps-chart', 'weight-chart', 'sleep-chart']);
+    expect(chartOrder()).toEqual([
+      'steps-chart',
+      'weight-chart',
+      'sleep-chart',
+    ]);
     expect(dots()).toHaveLength(3);
   });
 
@@ -177,7 +185,10 @@ describe('HealthTrendsPager', () => {
   });
 
   test('keeps the highlighted dot stable when a trend arrives late', () => {
-    const { rerenderPager } = renderPager({ weight: weightSeries, activePage: 1 });
+    const { rerenderPager } = renderPager({
+      weight: weightSeries,
+      activePage: 1,
+    });
     expect(dots()).toHaveLength(2);
 
     rerenderPager({ weight: weightSeries, sleep: sleepSeries, activePage: 1 });
@@ -219,7 +230,11 @@ describe('HealthTrendsPager', () => {
       onPageSelected,
     });
 
-    expect(chartOrder()).toEqual(['steps-chart', 'weight-chart', 'sleep-chart']);
+    expect(chartOrder()).toEqual([
+      'steps-chart',
+      'weight-chart',
+      'sleep-chart',
+    ]);
     expect(pagerMock.setPageWithoutAnimation).toHaveBeenCalledWith(2);
     expect(onPageSelected).toHaveBeenCalledWith(2);
 
@@ -272,11 +287,20 @@ describe('HealthTrendsPager', () => {
     // Sleep comes back. The user is on weight, which is still page 1, so nothing may move.
     onPageSelected.mockClear();
     pagerMock.setPageWithoutAnimation.mockClear();
-    rerenderPager({ weight: weightSeries, sleep: sleepSeries, activePage: 1, onPageSelected });
+    rerenderPager({
+      weight: weightSeries,
+      sleep: sleepSeries,
+      activePage: 1,
+      onPageSelected,
+    });
 
     expect(onPageSelected).not.toHaveBeenCalled();
     expect(pagerMock.setPageWithoutAnimation).not.toHaveBeenCalled();
-    expect(chartOrder()).toEqual(['steps-chart', 'weight-chart', 'sleep-chart']);
+    expect(chartOrder()).toEqual([
+      'steps-chart',
+      'weight-chart',
+      'sleep-chart',
+    ]);
     expect(selectedDotIndex()).toBe(1);
   });
 

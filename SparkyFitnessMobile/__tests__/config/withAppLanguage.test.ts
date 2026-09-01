@@ -45,27 +45,37 @@ describe('withAppLanguage plugin transforms', () => {
 
     expect(once).toContain(LANGUAGE_IMPORT);
     expect(once).toContain(LANGUAGE_ADD_LINE);
-    expect(once.indexOf(LANGUAGE_IMPORT)).toBeLessThan(once.indexOf('PackageList(this)'));
+    expect(once.indexOf(LANGUAGE_IMPORT)).toBeLessThan(
+      once.indexOf('PackageList(this)')
+    );
     expect(twice).toBe(once);
   });
 
   it('does not duplicate the package import or registration on repeat application', () => {
     const once = installAppLanguagePackage(mainApplicationFixture());
 
-    expect(once.split('\n').filter((l) => l.includes(LANGUAGE_IMPORT))).toHaveLength(1);
-    expect(once.split('\n').filter((l) => l.includes(LANGUAGE_ADD_LINE))).toHaveLength(1);
+    expect(
+      once.split('\n').filter((l) => l.includes(LANGUAGE_IMPORT))
+    ).toHaveLength(1);
+    expect(
+      once.split('\n').filter((l) => l.includes(LANGUAGE_ADD_LINE))
+    ).toHaveLength(1);
   });
 
   it('adds the package line inside the PackageList packages block', () => {
     const result = installAppLanguagePackage(mainApplicationFixture());
-    const packageListLine = result.match(/PackageList\(this\)\.packages\.apply\s*\{\s*\n\s*add\(AppLanguagePackage\(\)\)\n/);
+    const packageListLine = result.match(
+      /PackageList\(this\)\.packages\.apply\s*\{\s*\n\s*add\(AppLanguagePackage\(\)\)\n/
+    );
 
     expect(packageListLine).not.toBeNull();
   });
 
   it('throws when PackageList packages block is missing', () => {
     expect(() =>
-      installAppLanguagePackage('package com.sparkyapps.sparkyfitness;\npublic class MainApplication {}\n'),
+      installAppLanguagePackage(
+        'package com.sparkyapps.sparkyfitness;\npublic class MainApplication {}\n'
+      )
     ).toThrow('Could not locate PackageList packages block');
   });
 });

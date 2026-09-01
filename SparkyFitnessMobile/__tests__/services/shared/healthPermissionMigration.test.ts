@@ -62,7 +62,10 @@ describe('migrateEnabledMetricPermissionsIfNeeded', () => {
 
     expect(result).toBe(true);
     expect(requestHealthPermissions).not.toHaveBeenCalled();
-    expect(saveHealthPreference).toHaveBeenCalledWith('healthPermissionsVersion', 4);
+    expect(saveHealthPreference).toHaveBeenCalledWith(
+      'healthPermissionsVersion',
+      4
+    );
   });
 
   test('persists the new version after all enabled permissions are granted', async () => {
@@ -82,8 +85,13 @@ describe('migrateEnabledMetricPermissionsIfNeeded', () => {
     });
 
     expect(result).toBe(true);
-    expect(requestHealthPermissions).toHaveBeenCalledWith(metrics[0].permissions);
-    expect(saveHealthPreference).toHaveBeenCalledWith('healthPermissionsVersion', 4);
+    expect(requestHealthPermissions).toHaveBeenCalledWith(
+      metrics[0].permissions
+    );
+    expect(saveHealthPreference).toHaveBeenCalledWith(
+      'healthPermissionsVersion',
+      4
+    );
   });
 
   test('does not persist the new version when permissions are only partially granted', async () => {
@@ -100,13 +108,17 @@ describe('migrateEnabledMetricPermissionsIfNeeded', () => {
     });
 
     expect(result).toBe(false);
-    expect(requestHealthPermissions).toHaveBeenCalledWith(metrics[0].permissions);
+    expect(requestHealthPermissions).toHaveBeenCalledWith(
+      metrics[0].permissions
+    );
     expect(saveHealthPreference).not.toHaveBeenCalled();
   });
 
   test('does not persist the new version when requesting permissions throws', async () => {
     loadHealthPreference.mockResolvedValue(1);
-    requestHealthPermissions.mockRejectedValue(new Error('Permission request failed'));
+    requestHealthPermissions.mockRejectedValue(
+      new Error('Permission request failed')
+    );
 
     const result = await migrateEnabledMetricPermissionsIfNeeded({
       healthMetricStates: { isExerciseSessionSyncEnabled: true },

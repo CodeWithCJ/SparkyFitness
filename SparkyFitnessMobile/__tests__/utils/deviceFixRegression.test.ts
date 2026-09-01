@@ -3,7 +3,10 @@ import {
   resolveCalendarPresentation,
   appLocaleToDatepickerLocale,
 } from '../../src/utils/calendarLocalization';
-import { getMealTypeDisplayLabel, getMealGroupLabel } from '../../src/utils/mealNutrition';
+import {
+  getMealTypeDisplayLabel,
+  getMealGroupLabel,
+} from '../../src/utils/mealNutrition';
 import type { MealType } from '../../src/types/mealTypes';
 
 describe('device-testing fix regression (calendar + meal types)', () => {
@@ -55,7 +58,10 @@ describe('device-testing fix regression (calendar + meal types)', () => {
     test('fallback when preference is unavailable defaults to Sunday (0)', () => {
       const p = resolveCalendarPresentation('pl-PL', undefined);
       expect(p.firstDayOfWeek).toBe(0);
-      expect(resolveCalendarPresentation('pl-PL', null as unknown as number).firstDayOfWeek).toBe(0);
+      expect(
+        resolveCalendarPresentation('pl-PL', null as unknown as number)
+          .firstDayOfWeek
+      ).toBe(0);
       expect(resolveCalendarPresentation('pl-PL', 7).firstDayOfWeek).toBe(0);
       expect(resolveCalendarPresentation('pl-PL', -1).firstDayOfWeek).toBe(0);
     });
@@ -84,7 +90,18 @@ describe('device-testing fix regression (calendar + meal types)', () => {
       ];
       for (const [raw, expected] of systemTypes) {
         expect(getMealTypeDisplayLabel(system(raw), i18n.t)).toBe(expected);
-        expect(getMealGroupLabel({ name: raw, isSystem: true, mealTypeId: null, sortOrder: 0, entries: [] }, i18n.t)).toBe(expected);
+        expect(
+          getMealGroupLabel(
+            {
+              name: raw,
+              isSystem: true,
+              mealTypeId: null,
+              sortOrder: 0,
+              entries: [],
+            },
+            i18n.t
+          )
+        ).toBe(expected);
       }
     });
 
@@ -100,7 +117,18 @@ describe('device-testing fix regression (calendar + meal types)', () => {
       ];
       for (const [raw, expected] of systemTypes) {
         expect(getMealTypeDisplayLabel(system(raw), i18n.t)).toBe(expected);
-        expect(getMealGroupLabel({ name: raw, isSystem: true, mealTypeId: null, sortOrder: 0, entries: [] }, i18n.t)).toBe(expected);
+        expect(
+          getMealGroupLabel(
+            {
+              name: raw,
+              isSystem: true,
+              mealTypeId: null,
+              sortOrder: 0,
+              entries: [],
+            },
+            i18n.t
+          )
+        ).toBe(expected);
       }
     });
 
@@ -115,10 +143,14 @@ describe('device-testing fix regression (calendar + meal types)', () => {
         is_visible: true,
         show_in_quick_log: true,
       };
-      expect(getMealTypeDisplayLabel(custom, i18n.t)).toBe('Posiłek po treningu');
+      expect(getMealTypeDisplayLabel(custom, i18n.t)).toBe(
+        'Posiłek po treningu'
+      );
       // A custom type named like a system key must stay literal.
       const customBreakfast: MealType = { ...custom, name: 'breakfast' };
-      expect(getMealTypeDisplayLabel(customBreakfast, i18n.t)).toBe('breakfast');
+      expect(getMealTypeDisplayLabel(customBreakfast, i18n.t)).toBe(
+        'breakfast'
+      );
     });
 
     test('raw canonical value is not mutated', async () => {

@@ -33,16 +33,45 @@ const SleepBiometrics: React.FC<SleepBiometricsProps> = ({ entry }) => {
   const bpmUnit = t('sleep.bpmUnit', { defaultValue: 'bpm' });
 
   const rows: BiometricRow[] = [
-    { key: 'averageSpo2', icon: 'spo2', label: t('sleep.averageSpo2', { defaultValue: 'Average SpO2' }), value: entry.average_spo2_value, unit: percentUnit },
-    { key: 'lowestSpo2', icon: 'spo2', label: t('sleep.lowestSpo2', { defaultValue: 'Lowest SpO2' }), value: entry.lowest_spo2_value, unit: percentUnit },
-    { key: 'highestSpo2', icon: 'spo2', label: t('sleep.highestSpo2', { defaultValue: 'Highest SpO2' }), value: entry.highest_spo2_value, unit: percentUnit },
-    { key: 'restingHeartRate', icon: 'heart-rate', label: t('sleep.restingHeartRate', { defaultValue: 'Resting heart rate' }), value: entry.resting_heart_rate, unit: bpmUnit },
+    {
+      key: 'averageSpo2',
+      icon: 'spo2',
+      label: t('sleep.averageSpo2', { defaultValue: 'Average SpO2' }),
+      value: entry.average_spo2_value,
+      unit: percentUnit,
+    },
+    {
+      key: 'lowestSpo2',
+      icon: 'spo2',
+      label: t('sleep.lowestSpo2', { defaultValue: 'Lowest SpO2' }),
+      value: entry.lowest_spo2_value,
+      unit: percentUnit,
+    },
+    {
+      key: 'highestSpo2',
+      icon: 'spo2',
+      label: t('sleep.highestSpo2', { defaultValue: 'Highest SpO2' }),
+      value: entry.highest_spo2_value,
+      unit: percentUnit,
+    },
+    {
+      key: 'restingHeartRate',
+      icon: 'heart-rate',
+      label: t('sleep.restingHeartRate', {
+        defaultValue: 'Resting heart rate',
+      }),
+      value: entry.resting_heart_rate,
+      unit: bpmUnit,
+    },
   ].filter((row): row is BiometricRow => row.value != null);
 
   if (rows.length === 0) return null;
 
   return (
-    <View testID="sleep-biometrics" className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
+    <View
+      testID="sleep-biometrics"
+      className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
+    >
       <Text className="text-base font-semibold text-text-primary mb-2">
         {t('sleep.biometrics', { defaultValue: 'Overnight Biometrics' })}
       </Text>

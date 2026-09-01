@@ -14,11 +14,19 @@ import {
 } from 'react-native';
 import Button from './ui/Button';
 import { useCSSVariable } from 'uniwind';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
 import Icon from './Icon';
 import FormInput, { UnfocusedInputEcho } from './FormInput';
 import SegmentedControl from './SegmentedControl';
-import MfaForm, { ErrorBanner, OidcProviderLogo, PrimaryButton } from './MfaForm';
+import MfaForm, {
+  ErrorBanner,
+  OidcProviderLogo,
+  PrimaryButton,
+} from './MfaForm';
 import {
   login,
   LoginError,
@@ -45,7 +53,10 @@ import {
 import { addLog } from '../services/LogService';
 import { normalizeUrl, getInsecureUrlError } from '../utils/serverUrl';
 import { pasteFromClipboard } from '../utils/keyboardFocus';
-import { CONNECTION_CHECK_TIMEOUT_MS, fetchWithTimeout } from '../utils/concurrency';
+import {
+  CONNECTION_CHECK_TIMEOUT_MS,
+  fetchWithTimeout,
+} from '../utils/concurrency';
 
 type AuthTab = 'signIn' | 'apiKey';
 
@@ -96,7 +107,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   const [showHeaders, setShowHeaders] = useState<Record<number, boolean>>({});
 
   const toggleShowHeader = (index: number) => {
-    setShowHeaders(prev => ({ ...prev, [index]: !prev[index] }));
+    setShowHeaders((prev) => ({ ...prev, [index]: !prev[index] }));
   };
   const [loading, setLoading] = useState(false);
 
@@ -104,7 +115,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   // MFA state
   const [step, setStep] = useState<'form' | 'mfa'>('form');
-  const [mfaFactors, setMfaFactors] = useState<MfaFactors>({ mfaTotpEnabled: false, mfaEmailEnabled: false });
+  const [mfaFactors, setMfaFactors] = useState<MfaFactors>({
+    mfaTotpEnabled: false,
+    mfaEmailEnabled: false,
+  });
   const [mfaMethod, setMfaMethod] = useState<'totp' | 'email'>('totp');
   const [mfaCode, setMfaCode] = useState('');
   const [emailOtpSent, setEmailOtpSent] = useState(false);
@@ -139,9 +153,13 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
     if (editingConfig) {
       setServerUrl(editingConfig.url);
-      setApiKey(editingConfig.authType === 'apiKey' ? editingConfig.apiKey : '');
+      setApiKey(
+        editingConfig.authType === 'apiKey' ? editingConfig.apiKey : ''
+      );
       setProxyHeaders(editingConfig.proxyHeaders ?? []);
-      const tab = defaultAuthTab ?? (editingConfig.authType === 'apiKey' ? 'apiKey' : 'signIn');
+      const tab =
+        defaultAuthTab ??
+        (editingConfig.authType === 'apiKey' ? 'apiKey' : 'signIn');
       setAuthTab(tab);
     } else {
       setServerUrl('');
@@ -163,13 +181,18 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     const url = normalizeUrl(serverUrl);
     const lowerUrl = url.toLowerCase();
     if (lowerUrl.startsWith('http://') || lowerUrl.startsWith('https://')) {
-      const validationError = getInsecureUrlError(url, t('auth.errors.httpsRequired', { defaultValue: "HTTPS is required for server connections." }));
+      const validationError = getInsecureUrlError(
+        url,
+        t('auth.errors.httpsRequired', {
+          defaultValue: 'HTTPS is required for server connections.',
+        })
+      );
       if (validationError) {
         setError(validationError);
         setAuthSettings(null);
         return;
       }
-      
+
       // Clear HTTP warning if URL is now secure/valid
       setError('');
     } else {
@@ -180,7 +203,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     let isMounted = true;
     const fetchSettings = async () => {
       try {
-        const settings = await fetchAuthSettings(url, proxyHeadersToRecord(cleanedHeaders()));
+        const settings = await fetchAuthSettings(
+          url,
+          proxyHeadersToRecord(cleanedHeaders())
+        );
         if (isMounted) {
           setAuthSettings(settings);
         }
@@ -232,12 +258,19 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     setProxyHeaders(proxyHeaders.filter((_, i) => i !== index));
   };
 
-  const handleChangeHeader = (index: number, field: 'name' | 'value', text: string) => {
-    setProxyHeaders(proxyHeaders.map((h, i) => (i === index ? { ...h, [field]: text } : h)));
+  const handleChangeHeader = (
+    index: number,
+    field: 'name' | 'value',
+    text: string
+  ) => {
+    setProxyHeaders(
+      proxyHeaders.map((h, i) => (i === index ? { ...h, [field]: text } : h))
+    );
   };
 
   /** Strip empty rows so we only persist real headers. */
-  const cleanedHeaders = () => proxyHeaders.filter(h => h.name.trim() && h.value.trim());
+  const cleanedHeaders = () =>
+    proxyHeaders.filter((h) => h.name.trim() && h.value.trim());
 
   const getConfigId = () => editingConfig?.id ?? Date.now().toString();
 
@@ -255,11 +288,37 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   const handleSignIn = async () => {
     const url = normalizeUrl(serverUrl);
-    if (!url) { setError(t('onboarding.errors.validFrontendUrl', { defaultValue: 'Enter a valid Frontend URL' })); return; }
-    if (!email.trim()) { setError(t('auth.errors.emailRequired', { defaultValue: 'Please enter your email.' })); return; }
-    if (!password) { setError(t('auth.errors.passwordRequired', { defaultValue: 'Please enter your password.' })); return; }
-    
-    const validationError = getInsecureUrlError(url, t('auth.errors.httpsRequired', { defaultValue: "HTTPS is required for server connections." }));
+    if (!url) {
+      setError(
+        t('onboarding.errors.validFrontendUrl', {
+          defaultValue: 'Enter a valid Frontend URL',
+        })
+      );
+      return;
+    }
+    if (!email.trim()) {
+      setError(
+        t('auth.errors.emailRequired', {
+          defaultValue: 'Please enter your email.',
+        })
+      );
+      return;
+    }
+    if (!password) {
+      setError(
+        t('auth.errors.passwordRequired', {
+          defaultValue: 'Please enter your password.',
+        })
+      );
+      return;
+    }
+
+    const validationError = getInsecureUrlError(
+      url,
+      t('auth.errors.httpsRequired', {
+        defaultValue: 'HTTPS is required for server connections.',
+      })
+    );
     if (validationError) {
       setError(validationError);
       return;
@@ -273,13 +332,19 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       const result = await login(url, email.trim(), password);
 
       if (result.type === 'mfa_required') {
-        let factors: MfaFactors = { mfaTotpEnabled: true, mfaEmailEnabled: false };
+        let factors: MfaFactors = {
+          mfaTotpEnabled: true,
+          mfaEmailEnabled: false,
+        };
         try {
           factors = await fetchMfaFactors(url, email.trim());
         } catch (err) {
           // Fallback: assume TOTP only
           const message = err instanceof Error ? err.message : String(err);
-          addLog(`[ServerConfigModal] Failed to fetch MFA factors, falling back to TOTP: ${message}`, 'WARNING');
+          addLog(
+            `[ServerConfigModal] Failed to fetch MFA factors, falling back to TOTP: ${message}`,
+            'WARNING'
+          );
         }
         setMfaFactors(factors);
         setMfaMethod(factors.mfaTotpEnabled ? 'totp' : 'email');
@@ -299,7 +364,12 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       if (err instanceof LoginError) {
         setError(err.message);
       } else {
-        setError(t('auth.errors.connectionFailed', { defaultValue: 'Could not connect to server. Check the URL and try again.' }));
+        setError(
+          t('auth.errors.connectionFailed', {
+            defaultValue:
+              'Could not connect to server. Check the URL and try again.',
+          })
+        );
       }
     } finally {
       setLoading(false);
@@ -309,11 +379,20 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   const handleOidcLogin = async (providerId: string) => {
     const url = normalizeUrl(serverUrl);
     if (!url) {
-      setError(t('auth.errors.frontendUrlRequired', { defaultValue: 'Please enter your Frontend URL first.' }));
+      setError(
+        t('auth.errors.frontendUrlRequired', {
+          defaultValue: 'Please enter your Frontend URL first.',
+        })
+      );
       return;
     }
 
-    const validationError = getInsecureUrlError(url, t('auth.errors.httpsRequired', { defaultValue: "HTTPS is required for server connections." }));
+    const validationError = getInsecureUrlError(
+      url,
+      t('auth.errors.httpsRequired', {
+        defaultValue: 'HTTPS is required for server connections.',
+      })
+    );
     if (validationError) {
       setError(validationError);
       return;
@@ -336,9 +415,17 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       }
     } catch (err) {
       if (err instanceof Error) {
-        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
+        setError(
+          t('auth.errors.generic', {
+            defaultValue: 'Authentication failed. Please try again.',
+          })
+        );
       } else {
-        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
+        setError(
+          t('auth.errors.generic', {
+            defaultValue: 'Authentication failed. Please try again.',
+          })
+        );
       }
     } finally {
       setLoading(false);
@@ -348,11 +435,20 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   const handlePasskeyLogin = async () => {
     const url = normalizeUrl(serverUrl);
     if (!url) {
-      setError(t('auth.errors.frontendUrlRequired', { defaultValue: 'Please enter your Frontend URL first.' }));
+      setError(
+        t('auth.errors.frontendUrlRequired', {
+          defaultValue: 'Please enter your Frontend URL first.',
+        })
+      );
       return;
     }
-    
-    const validationError = getInsecureUrlError(url, t('auth.errors.httpsRequired', { defaultValue: "HTTPS is required for server connections." }));
+
+    const validationError = getInsecureUrlError(
+      url,
+      t('auth.errors.httpsRequired', {
+        defaultValue: 'HTTPS is required for server connections.',
+      })
+    );
     if (validationError) {
       setError(validationError);
       return;
@@ -375,9 +471,17 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       }
     } catch (err) {
       if (err instanceof Error) {
-        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
+        setError(
+          t('auth.errors.generic', {
+            defaultValue: 'Authentication failed. Please try again.',
+          })
+        );
       } else {
-        setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
+        setError(
+          t('auth.errors.generic', {
+            defaultValue: 'Authentication failed. Please try again.',
+          })
+        );
       }
     } finally {
       setLoading(false);
@@ -388,7 +492,14 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   const handleVerifyMfa = async () => {
     const code = mfaCode.trim();
-    if (!code) { setError(t('auth.errors.verificationCodeRequired', { defaultValue: 'Please enter the verification code.' })); return; }
+    if (!code) {
+      setError(
+        t('auth.errors.verificationCodeRequired', {
+          defaultValue: 'Please enter the verification code.',
+        })
+      );
+      return;
+    }
 
     const url = normalizeUrl(serverUrl);
     setLoading(true);
@@ -409,24 +520,49 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     } catch (err) {
       if (err instanceof LoginError) {
         if (err.statusCode === 429) {
-          setError(t('auth.errors.tooManyAttempts', { defaultValue: 'Too many attempts. Please wait a moment and try again.' }));
+          setError(
+            t('auth.errors.tooManyAttempts', {
+              defaultValue:
+                'Too many attempts. Please wait a moment and try again.',
+            })
+          );
         } else if (err.message.toLowerCase().includes('invalid code')) {
-          setError(t('auth.errors.invalidVerificationCode', { defaultValue: 'Invalid verification code. Please try again.' }));
+          setError(
+            t('auth.errors.invalidVerificationCode', {
+              defaultValue: 'Invalid verification code. Please try again.',
+            })
+          );
         } else if (err.statusCode === undefined) {
-          setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
+          setError(
+            t('auth.errors.generic', {
+              defaultValue: 'Authentication failed. Please try again.',
+            })
+          );
         } else if (
           err.message.includes('INVALID_TWO_FACTOR_COOKIE') ||
           err.message.toLowerCase().includes('invalid two factor cookie') ||
           err.message.includes('expired')
         ) {
           await clearAuthCookies();
-          setError(t('auth.errors.sessionExpired', { defaultValue: 'Your session has expired. Please sign in again.' }));
+          setError(
+            t('auth.errors.sessionExpired', {
+              defaultValue: 'Your session has expired. Please sign in again.',
+            })
+          );
           setStep('form');
         } else {
-          setError(t('auth.errors.generic', { defaultValue: 'Authentication failed. Please try again.' }));
+          setError(
+            t('auth.errors.generic', {
+              defaultValue: 'Authentication failed. Please try again.',
+            })
+          );
         }
       } else {
-        setError(t('auth.errors.verificationFailed', { defaultValue: 'Verification failed. Please try again.' }));
+        setError(
+          t('auth.errors.verificationFailed', {
+            defaultValue: 'Verification failed. Please try again.',
+          })
+        );
       }
     } finally {
       setLoading(false);
@@ -445,7 +581,11 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       if (err instanceof LoginError) {
         setError(err.message);
       } else {
-        setError(t('auth.errors.sendEmailCodeFailed', { defaultValue: 'Failed to send email code. Please try again.' }));
+        setError(
+          t('auth.errors.sendEmailCodeFailed', {
+            defaultValue: 'Failed to send email code. Please try again.',
+          })
+        );
       }
     } finally {
       setLoading(false);
@@ -470,10 +610,29 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   const handleConnectApiKey = async () => {
     const url = normalizeUrl(serverUrl);
-    if (!url) { setError(t('onboarding.errors.validFrontendUrl', { defaultValue: 'Enter a valid Frontend URL' })); return; }
-    if (!apiKey.trim()) { setError(t('auth.errors.apiKeyRequired', { defaultValue: 'Please enter an API key.' })); return; }
-    
-    const validationError = getInsecureUrlError(url, t('auth.errors.httpsRequired', { defaultValue: "HTTPS is required for server connections." }));
+    if (!url) {
+      setError(
+        t('onboarding.errors.validFrontendUrl', {
+          defaultValue: 'Enter a valid Frontend URL',
+        })
+      );
+      return;
+    }
+    if (!apiKey.trim()) {
+      setError(
+        t('auth.errors.apiKeyRequired', {
+          defaultValue: 'Please enter an API key.',
+        })
+      );
+      return;
+    }
+
+    const validationError = getInsecureUrlError(
+      url,
+      t('auth.errors.httpsRequired', {
+        defaultValue: 'HTTPS is required for server connections.',
+      })
+    );
     if (validationError) {
       setError(validationError);
       return;
@@ -483,21 +642,37 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     setError('');
 
     try {
-      const response = await fetchWithTimeout(`${url}/api/identity/user`, {
-        method: 'GET',
-        cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
-        headers: {
-          ...proxyHeadersToRecord(cleanedHeaders()),
-          Authorization: `Bearer ${apiKey.trim()}`,
+      const response = await fetchWithTimeout(
+        `${url}/api/identity/user`,
+        {
+          method: 'GET',
+          cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
+          headers: {
+            ...proxyHeadersToRecord(cleanedHeaders()),
+            Authorization: `Bearer ${apiKey.trim()}`,
+          },
         },
-      }, CONNECTION_CHECK_TIMEOUT_MS);
+        CONNECTION_CHECK_TIMEOUT_MS
+      );
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => '');
         if (response.status === 401) {
-          setError(t('auth.errors.invalidApiKey', { defaultValue: 'Invalid API key. Please check and try again.' }));
+          setError(
+            t('auth.errors.invalidApiKey', {
+              defaultValue: 'Invalid API key. Please check and try again.',
+            })
+          );
         } else {
-          setError(t('auth.errors.connectionStatus', { defaultValue: 'Connection failed ({{status}}): {{message}}', status: response.status, message: errorText || t('auth.errors.unknown', { defaultValue: 'Unknown error' }) }));
+          setError(
+            t('auth.errors.connectionStatus', {
+              defaultValue: 'Connection failed ({{status}}): {{message}}',
+              status: response.status,
+              message:
+                errorText ||
+                t('auth.errors.unknown', { defaultValue: 'Unknown error' }),
+            })
+          );
         }
         return;
       }
@@ -511,7 +686,14 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       onSuccess();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      setError(t('auth.errors.connectionWithMessage', { defaultValue: 'Could not connect to server: {{message}}', message: message || t('auth.errors.unknown', { defaultValue: 'Unknown error' }) }));
+      setError(
+        t('auth.errors.connectionWithMessage', {
+          defaultValue: 'Could not connect to server: {{message}}',
+          message:
+            message ||
+            t('auth.errors.unknown', { defaultValue: 'Unknown error' }),
+        })
+      );
     } finally {
       setLoading(false);
     }
@@ -521,9 +703,21 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   const handleSaveWithoutAuth = async () => {
     const url = normalizeUrl(serverUrl);
-    if (!url) { setError(t('onboarding.errors.validFrontendUrl', { defaultValue: 'Enter a valid Frontend URL' })); return; }
-    
-    const validationError = getInsecureUrlError(url, t('auth.errors.httpsRequired', { defaultValue: "HTTPS is required for server connections." }));
+    if (!url) {
+      setError(
+        t('onboarding.errors.validFrontendUrl', {
+          defaultValue: 'Enter a valid Frontend URL',
+        })
+      );
+      return;
+    }
+
+    const validationError = getInsecureUrlError(
+      url,
+      t('auth.errors.httpsRequired', {
+        defaultValue: 'HTTPS is required for server connections.',
+      })
+    );
     if (validationError) {
       setError(validationError);
       return;
@@ -537,7 +731,11 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       // Otherwise preserve the existing auth fields.
       const authFields =
         authTab === 'apiKey' && apiKey.trim()
-          ? { authType: 'apiKey' as const, apiKey: apiKey.trim(), sessionToken: '' }
+          ? {
+              authType: 'apiKey' as const,
+              apiKey: apiKey.trim(),
+              sessionToken: '',
+            }
           : {
               authType: editingConfig!.authType,
               apiKey: editingConfig!.apiKey,
@@ -554,7 +752,12 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       onSuccess();
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      setError(t('auth.errors.saveFailed', { defaultValue: 'Failed to save: {{message}}', message }));
+      setError(
+        t('auth.errors.saveFailed', {
+          defaultValue: 'Failed to save: {{message}}',
+          message,
+        })
+      );
     } finally {
       setLoading(false);
     }
@@ -564,15 +767,27 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
   const withReservedHeaderCheck = (action: () => void) => {
     const conflicting = cleanedHeaders().find(
-      h => h.name.toLowerCase() === 'authorization' || h.name.toLowerCase() === 'content-type'
+      (h) =>
+        h.name.toLowerCase() === 'authorization' ||
+        h.name.toLowerCase() === 'content-type'
     );
     if (conflicting) {
       Alert.alert(
         t('auth.reservedHeader', { defaultValue: 'Reserved Header' }),
-        t('auth.reservedHeaderMessage', { defaultValue: '"{{name}}" may conflict with headers set by the app. Continue anyway?', name: conflicting.name }),
+        t('auth.reservedHeaderMessage', {
+          defaultValue:
+            '"{{name}}" may conflict with headers set by the app. Continue anyway?',
+          name: conflicting.name,
+        }),
         [
-          { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
-          { text: t('common.continue', { defaultValue: 'Continue' }), onPress: action },
+          {
+            text: t('common.cancel', { defaultValue: 'Cancel' }),
+            style: 'cancel',
+          },
+          {
+            text: t('common.continue', { defaultValue: 'Continue' }),
+            onPress: action,
+          },
         ]
       );
       return;
@@ -602,29 +817,45 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   const getSegments = () => {
     const segments = [];
     const hasEmail = authSettings?.email.enabled ?? false;
-    const hasOidc = authSettings?.oidc.enabled && authSettings.oidc.providers.length > 0;
-    
+    const hasOidc =
+      authSettings?.oidc.enabled && authSettings.oidc.providers.length > 0;
+
     if (hasEmail) {
-      segments.push({ key: 'signIn' as const, label: t('auth.signIn', { defaultValue: 'Sign In' }) });
+      segments.push({
+        key: 'signIn' as const,
+        label: t('auth.signIn', { defaultValue: 'Sign In' }),
+      });
     } else if (hasOidc) {
-      segments.push({ key: 'signIn' as const, label: t('auth.sso', { defaultValue: 'SSO' }) });
+      segments.push({
+        key: 'signIn' as const,
+        label: t('auth.sso', { defaultValue: 'SSO' }),
+      });
     } else {
-      segments.push({ key: 'signIn' as const, label: t('auth.passkey', { defaultValue: 'Passkey' }) });
+      segments.push({
+        key: 'signIn' as const,
+        label: t('auth.passkey', { defaultValue: 'Passkey' }),
+      });
     }
-    
-    segments.push({ key: 'apiKey' as const, label: t('auth.apiKey', { defaultValue: 'API Key' }) });
+
+    segments.push({
+      key: 'apiKey' as const,
+      label: t('auth.apiKey', { defaultValue: 'API Key' }),
+    });
     return segments;
   };
 
   const renderForm = () => {
     const hasEmail = authSettings?.email.enabled ?? false;
-    const hasOidc = authSettings?.oidc.enabled && authSettings.oidc.providers.length > 0;
+    const hasOidc =
+      authSettings?.oidc.enabled && authSettings.oidc.providers.length > 0;
 
     return (
       <>
         {/* Frontend URL — always visible */}
         <View className="mb-3">
-          <Text className="text-sm mb-2 text-text-secondary">{t('auth.frontendUrl', { defaultValue: 'Frontend URL' })}</Text>
+          <Text className="text-sm mb-2 text-text-secondary">
+            {t('auth.frontendUrl', { defaultValue: 'Frontend URL' })}
+          </Text>
           <View className="flex-row items-center">
             {/* While unfocused, the input's own text is transparent and
                 UnfocusedInputEcho renders the value on top; see FormInput.tsx. */}
@@ -651,8 +882,12 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
             />
             <Button
               variant="ghost"
-              onPress={() => pasteFromClipboard(serverUrlInputRef, setServerUrl)}
-              accessibilityLabel={t('auth.pasteUrl', { defaultValue: 'Paste URL from clipboard' })}
+              onPress={() =>
+                pasteFromClipboard(serverUrlInputRef, setServerUrl)
+              }
+              accessibilityLabel={t('auth.pasteUrl', {
+                defaultValue: 'Paste URL from clipboard',
+              })}
               className="absolute right-1 p-2 py-2 px-2 rounded-lg"
             >
               <Icon name="paste" size={20} color={textSecondary} />
@@ -678,7 +913,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                 {hasEmail && (
                   <>
                     <View className="mb-3">
-                      <Text className="text-sm mb-2 text-text-secondary">{t('auth.email', { defaultValue: 'Email' })}</Text>
+                      <Text className="text-sm mb-2 text-text-secondary">
+                        {t('auth.email', { defaultValue: 'Email' })}
+                      </Text>
                       <FormInput
                         // i18n-audit-ignore-next-line hardcoded-ui-text -- email format example is language-neutral technical input guidance.
                         placeholder="email@example.com"
@@ -690,11 +927,15 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                       />
                     </View>
                     <View className="mb-4">
-                      <Text className="text-sm mb-2 text-text-secondary">{t('auth.password', { defaultValue: 'Password' })}</Text>
+                      <Text className="text-sm mb-2 text-text-secondary">
+                        {t('auth.password', { defaultValue: 'Password' })}
+                      </Text>
                       <View className="flex-row items-center">
                         <FormInput
                           className="flex-1 rounded-lg"
-                          placeholder={t('auth.passwordPlaceholder', { defaultValue: 'Password' })}
+                          placeholder={t('auth.passwordPlaceholder', {
+                            defaultValue: 'Password',
+                          })}
                           value={password}
                           onChangeText={setPassword}
                           secureTextEntry={!showPassword}
@@ -704,10 +945,22 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                         <Button
                           variant="ghost"
                           onPress={() => setShowPassword(!showPassword)}
-                          accessibilityLabel={showPassword ? t('auth.hidePassword', { defaultValue: 'Hide password' }) : t('auth.showPassword', { defaultValue: 'Show password' })}
+                          accessibilityLabel={
+                            showPassword
+                              ? t('auth.hidePassword', {
+                                  defaultValue: 'Hide password',
+                                })
+                              : t('auth.showPassword', {
+                                  defaultValue: 'Show password',
+                                })
+                          }
                           className="absolute right-1 p-2 py-2 px-2 rounded-lg"
                         >
-                          <Icon name={showPassword ? 'eye-off' : 'eye'} size={20} color={textSecondary} />
+                          <Icon
+                            name={showPassword ? 'eye-off' : 'eye'}
+                            size={20}
+                            color={textSecondary}
+                          />
                         </Button>
                       </View>
                     </View>
@@ -717,29 +970,42 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                 {hasOidc && hasEmail && (
                   <View className="flex-row items-center mb-4">
                     <View className="flex-1 h-px bg-border-subtle" />
-                    <Text className="mx-3 text-xs text-text-muted uppercase">{t('auth.orSignInWith', { defaultValue: 'Or sign in with' })}</Text>
+                    <Text className="mx-3 text-xs text-text-muted uppercase">
+                      {t('auth.orSignInWith', {
+                        defaultValue: 'Or sign in with',
+                      })}
+                    </Text>
                     <View className="flex-1 h-px bg-border-subtle" />
                   </View>
                 )}
 
                 <View className="gap-4 mb-4">
                   {hasOidc &&
-                    authSettings.oidc.providers.map((provider: OidcProvider) => (
-                      <Button
-                        key={provider.id}
-                        variant="outline"
-                        onPress={() => handleOidcLogin(provider.id)}
-                        disabled={loading}
-                        className="w-full flex-row items-center justify-center p-2.5 rounded-lg border border-border-subtle bg-raised"
-                      >
-                        <View className="flex-row items-center">
-                          <OidcProviderLogo logoUrl={provider.logo_url} serverUrl={serverUrl} />
-                          <Text className="text-base font-semibold text-text-primary">
-                            {provider.display_name || t('auth.signInWithProvider', { defaultValue: 'Sign in with {{provider}}', provider: provider.id })}
-                          </Text>
-                        </View>
-                      </Button>
-                    ))}
+                    authSettings.oidc.providers.map(
+                      (provider: OidcProvider) => (
+                        <Button
+                          key={provider.id}
+                          variant="outline"
+                          onPress={() => handleOidcLogin(provider.id)}
+                          disabled={loading}
+                          className="w-full flex-row items-center justify-center p-2.5 rounded-lg border border-border-subtle bg-raised"
+                        >
+                          <View className="flex-row items-center">
+                            <OidcProviderLogo
+                              logoUrl={provider.logo_url}
+                              serverUrl={serverUrl}
+                            />
+                            <Text className="text-base font-semibold text-text-primary">
+                              {provider.display_name ||
+                                t('auth.signInWithProvider', {
+                                  defaultValue: 'Sign in with {{provider}}',
+                                  provider: provider.id,
+                                })}
+                            </Text>
+                          </View>
+                        </Button>
+                      )
+                    )}
                   <Button
                     variant="outline"
                     onPress={handlePasskeyLogin}
@@ -748,10 +1014,16 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                   >
                     <View className="flex-row items-center">
                       <View className="mr-2">
-                        <Icon name="fingerprint" size={20} color={accentPrimary} />
+                        <Icon
+                          name="fingerprint"
+                          size={20}
+                          color={accentPrimary}
+                        />
                       </View>
                       <Text className="text-base font-semibold text-text-primary">
-                        {t('auth.signInWithPasskey', { defaultValue: 'Sign in with Passkey' })}
+                        {t('auth.signInWithPasskey', {
+                          defaultValue: 'Sign in with Passkey',
+                        })}
                       </Text>
                     </View>
                   </Button>
@@ -760,7 +1032,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                 {!hasEmail && !hasOidc && (
                   <View className="py-6 px-4 items-center bg-raised rounded-lg border border-border-subtle mb-4">
                     <Text className="text-center text-sm text-text-secondary">
-                      {t('auth.noStandardMethods', { defaultValue: 'No standard sign-in methods are currently enabled on this server. Please use an API Key or contact an administrator.' })}
+                      {t('auth.noStandardMethods', {
+                        defaultValue:
+                          'No standard sign-in methods are currently enabled on this server. Please use an API Key or contact an administrator.',
+                      })}
                     </Text>
                   </View>
                 )}
@@ -770,7 +1045,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
             {/* API Key field */}
             {authTab === 'apiKey' && (
               <View className="mb-4">
-                <Text className="text-sm mb-2 text-text-secondary">{t('auth.apiKey', { defaultValue: 'API Key' })}</Text>
+                <Text className="text-sm mb-2 text-text-secondary">
+                  {t('auth.apiKey', { defaultValue: 'API Key' })}
+                </Text>
                 <View className="flex-row items-center">
                   <FormInput
                     ref={apiKeyInputRef}
@@ -784,8 +1061,12 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                   />
                   <Button
                     variant="ghost"
-                    onPress={() => pasteFromClipboard(apiKeyInputRef, setApiKey)}
-                    accessibilityLabel={t('auth.pasteApiKey', { defaultValue: 'Paste API key from clipboard' })}
+                    onPress={() =>
+                      pasteFromClipboard(apiKeyInputRef, setApiKey)
+                    }
+                    accessibilityLabel={t('auth.pasteApiKey', {
+                      defaultValue: 'Paste API key from clipboard',
+                    })}
                     className="absolute right-9 p-2 py-2 px-2 rounded-lg"
                   >
                     <Icon name="paste" size={20} color={textSecondary} />
@@ -793,10 +1074,18 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                   <Button
                     variant="ghost"
                     onPress={() => setShowApiKey(!showApiKey)}
-                    accessibilityLabel={showApiKey ? t('auth.hideApiKey', { defaultValue: 'Hide API key' }) : t('auth.showApiKey', { defaultValue: 'Show API key' })}
+                    accessibilityLabel={
+                      showApiKey
+                        ? t('auth.hideApiKey', { defaultValue: 'Hide API key' })
+                        : t('auth.showApiKey', { defaultValue: 'Show API key' })
+                    }
                     className="absolute right-1 p-2 py-2 px-2 rounded-lg"
                   >
-                    <Icon name={showApiKey ? 'eye-off' : 'eye'} size={20} color={textSecondary} />
+                    <Icon
+                      name={showApiKey ? 'eye-off' : 'eye'}
+                      size={20}
+                      color={textSecondary}
+                    />
                   </Button>
                 </View>
               </View>
@@ -831,7 +1120,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
             <View className="items-center mb-5">
               <Text className="text-[22px] font-bold text-center text-text-primary">
                 {step === 'mfa'
-                  ? t('auth.twoFactorTitle', { defaultValue: 'Two-Factor Authentication' })
+                  ? t('auth.twoFactorTitle', {
+                      defaultValue: 'Two-Factor Authentication',
+                    })
                   : isEditing
                     ? t('auth.editServer', { defaultValue: 'Edit Server' })
                     : t('auth.addServer', { defaultValue: 'Add Server' })}
@@ -839,7 +1130,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
               <Button
                 variant="ghost"
                 onPress={handleDismiss}
-                accessibilityLabel={t('common.close', { defaultValue: 'Close' })}
+                accessibilityLabel={t('common.close', {
+                  defaultValue: 'Close',
+                })}
                 className="absolute p-2 py-2 px-2 rounded-lg"
                 // Sits in the card's corner padding, clear of long titles.
                 style={{ right: -12, top: -12 }}
@@ -862,8 +1155,12 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                     <Icon name="chevron-down" size={14} color={textMuted} />
                   </Animated.View>
                   <Text className="text-sm text-text-muted">
-                    {t('auth.advancedOptions', { defaultValue: 'Advanced options' })}{proxyHeaders.filter(h => h.name.trim() && h.value.trim()).length > 0
-                      ? ` (${proxyHeaders.filter(h => h.name.trim() && h.value.trim()).length})`
+                    {t('auth.advancedOptions', {
+                      defaultValue: 'Advanced options',
+                    })}
+                    {proxyHeaders.filter((h) => h.name.trim() && h.value.trim())
+                      .length > 0
+                      ? ` (${proxyHeaders.filter((h) => h.name.trim() && h.value.trim()).length})`
                       : ''}
                   </Text>
                 </TouchableOpacity>
@@ -871,20 +1168,33 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                 {advancedExpanded && (
                   <View className="mt-3">
                     <View className="flex-row justify-start items-center mb-2">
-                      <Text className="text-sm font-medium text-text-secondary mr-1">{t('auth.proxyHeaders', { defaultValue: 'Proxy Headers' })}</Text>
+                      <Text className="text-sm font-medium text-text-secondary mr-1">
+                        {t('auth.proxyHeaders', {
+                          defaultValue: 'Proxy Headers',
+                        })}
+                      </Text>
                       <Button
                         variant="ghost"
                         onPress={handleAddHeader}
-                        accessibilityLabel={t('auth.addHeader', { defaultValue: 'Add header' })}
+                        accessibilityLabel={t('auth.addHeader', {
+                          defaultValue: 'Add header',
+                        })}
                         className="py-0 px-0"
                       >
-                        <Icon name="add-circle" size={22} color={accentPrimary} />
+                        <Icon
+                          name="add-circle"
+                          size={22}
+                          color={accentPrimary}
+                        />
                       </Button>
                     </View>
 
                     {proxyHeaders.length === 0 && (
                       <Text className="text-xs text-text-muted mb-2">
-                        {t('auth.proxyHeadersHelp', { defaultValue: 'Used when running behind certain reverse proxies' })}
+                        {t('auth.proxyHeadersHelp', {
+                          defaultValue:
+                            'Used when running behind certain reverse proxies',
+                        })}
                       </Text>
                     )}
 
@@ -893,9 +1203,13 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                         <View className="flex-row items-center mb-1.5">
                           <FormInput
                             className="flex-1 rounded-lg"
-                            placeholder={t('auth.headerNamePlaceholder', { defaultValue: 'Name (e.g. X-Access-Token)' })}
+                            placeholder={t('auth.headerNamePlaceholder', {
+                              defaultValue: 'Name (e.g. X-Access-Token)',
+                            })}
                             value={header.name}
-                            onChangeText={(text) => handleChangeHeader(index, 'name', text)}
+                            onChangeText={(text) =>
+                              handleChangeHeader(index, 'name', text)
+                            }
                             autoCapitalize="none"
                             autoCorrect={false}
                             style={{ fontSize: 14, paddingRight: 36 }}
@@ -903,18 +1217,29 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                           <Button
                             variant="ghost"
                             onPress={() => handleRemoveHeader(index)}
-                            accessibilityLabel={t('auth.removeHeader', { defaultValue: 'Remove header {{number}}', number: index + 1 })}
+                            accessibilityLabel={t('auth.removeHeader', {
+                              defaultValue: 'Remove header {{number}}',
+                              number: index + 1,
+                            })}
                             className="absolute right-1 py-0 px-1.5"
                           >
-                            <Icon name="remove-circle" size={18} color="#ef4444" />
+                            <Icon
+                              name="remove-circle"
+                              size={18}
+                              color="#ef4444"
+                            />
                           </Button>
                         </View>
                         <View className="flex-row items-center">
                           <FormInput
                             className="flex-1 rounded-lg"
-                            placeholder={t('auth.headerValuePlaceholder', { defaultValue: 'Value' })}
+                            placeholder={t('auth.headerValuePlaceholder', {
+                              defaultValue: 'Value',
+                            })}
                             value={header.value}
-                            onChangeText={(text) => handleChangeHeader(index, 'value', text)}
+                            onChangeText={(text) =>
+                              handleChangeHeader(index, 'value', text)
+                            }
                             autoCapitalize="none"
                             autoCorrect={false}
                             secureTextEntry={!showHeaders[index]}
@@ -923,10 +1248,22 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                           <Button
                             variant="ghost"
                             onPress={() => toggleShowHeader(index)}
-                            accessibilityLabel={showHeaders[index] ? t('auth.hideHeaderValue', { defaultValue: 'Hide header value' }) : t('auth.showHeaderValue', { defaultValue: 'Show header value' })}
+                            accessibilityLabel={
+                              showHeaders[index]
+                                ? t('auth.hideHeaderValue', {
+                                    defaultValue: 'Hide header value',
+                                  })
+                                : t('auth.showHeaderValue', {
+                                    defaultValue: 'Show header value',
+                                  })
+                            }
                             className="absolute right-1 p-2 py-2 px-2 rounded-lg"
                           >
-                            <Icon name={showHeaders[index] ? 'eye-off' : 'eye'} size={18} color={textSecondary} />
+                            <Icon
+                              name={showHeaders[index] ? 'eye-off' : 'eye'}
+                              size={18}
+                              color={textSecondary}
+                            />
                           </Button>
                         </View>
                       </View>
@@ -934,23 +1271,25 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                   </View>
                 )}
 
-
                 {/* Actions */}
                 <View className="mt-4">
                   {/* ErrorBanner's own mb-4 is the banner→button gap. */}
                   <ErrorBanner message={error} />
                   <View className="gap-2">
-                    {authSettings && (authTab === 'apiKey' || authSettings.email.enabled) && (
-                      <PrimaryButton
-                        label={t('auth.connect', { defaultValue: 'Connect' })}
-                        onPress={handleConnect}
-                        loading={loading}
-                      />
-                    )}
+                    {authSettings &&
+                      (authTab === 'apiKey' || authSettings.email.enabled) && (
+                        <PrimaryButton
+                          label={t('auth.connect', { defaultValue: 'Connect' })}
+                          onPress={handleConnect}
+                          loading={loading}
+                        />
+                      )}
                     {isEditing && (
                       <Button
                         variant="ghost"
-                        onPress={() => withReservedHeaderCheck(handleSaveWithoutAuth)}
+                        onPress={() =>
+                          withReservedHeaderCheck(handleSaveWithoutAuth)
+                        }
                         disabled={loading}
                         className="py-2.5"
                       >
@@ -979,7 +1318,6 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
     </Modal>
   );
 };

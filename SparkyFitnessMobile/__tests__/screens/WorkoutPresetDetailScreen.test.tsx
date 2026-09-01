@@ -12,7 +12,10 @@ import {
   useAppPreferencesStore,
   __resetAppPreferencesStoreForTests,
 } from '../../src/stores/appPreferencesStore';
-import type { WorkoutPreset, WorkoutPresetSet } from '../../src/types/workoutPresets';
+import type {
+  WorkoutPreset,
+  WorkoutPresetSet,
+} from '../../src/types/workoutPresets';
 import type { RootStackScreenProps } from '../../src/types/navigation';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 
@@ -20,11 +23,25 @@ type ScreenProps = RootStackScreenProps<'WorkoutPresetDetail'>;
 
 jest.mock('../../src/hooks', () => ({
   usePreferences: jest.fn(),
-  useProfile: jest.fn(() => ({ profile: undefined, isLoading: false, isError: false, refetch: jest.fn() })),
+  useProfile: jest.fn(() => ({
+    profile: undefined,
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  })),
   useServerConnection: jest.fn(() => ({ isConnected: true, isLoading: false })),
-  useDeleteWorkoutPreset: jest.fn(() => ({ confirmAndDelete: jest.fn(), isPending: false })),
-  useUpdateWorkoutPreset: jest.fn(() => ({ updateWorkoutPreset: jest.fn(), isPending: false })),
-  useCreateWorkoutPreset: jest.fn(() => ({ createPresetAsync: jest.fn(), isPending: false })),
+  useDeleteWorkoutPreset: jest.fn(() => ({
+    confirmAndDelete: jest.fn(),
+    isPending: false,
+  })),
+  useUpdateWorkoutPreset: jest.fn(() => ({
+    updateWorkoutPreset: jest.fn(),
+    isPending: false,
+  })),
+  useCreateWorkoutPreset: jest.fn(() => ({
+    createPresetAsync: jest.fn(),
+    isPending: false,
+  })),
 }));
 
 jest.mock('../../src/hooks/useStartLiveWorkout', () => ({
@@ -62,14 +79,17 @@ jest.mock('@react-navigation/native', () => ({
   useFocusEffect: jest.fn(),
 }));
 
-const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
-const mockLoadActiveDraft = loadActiveDraft as jest.MockedFunction<typeof loadActiveDraft>;
+const mockUsePreferences = usePreferences as jest.MockedFunction<
+  typeof usePreferences
+>;
+const mockLoadActiveDraft = loadActiveDraft as jest.MockedFunction<
+  typeof loadActiveDraft
+>;
 const mockUseStartLiveWorkout = useStartLiveWorkout as jest.MockedFunction<
   typeof useStartLiveWorkout
 >;
-const mockUseCreateWorkoutPreset = useCreateWorkoutPreset as jest.MockedFunction<
-  typeof useCreateWorkoutPreset
->;
+const mockUseCreateWorkoutPreset =
+  useCreateWorkoutPreset as jest.MockedFunction<typeof useCreateWorkoutPreset>;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -120,7 +140,7 @@ describe('WorkoutPresetDetailScreen', () => {
         <SafeAreaProvider initialMetrics={{ insets, frame }}>
           <WorkoutPresetDetailScreen navigation={navigation} route={route} />
         </SafeAreaProvider>
-      </QueryClientProvider>,
+      </QueryClientProvider>
     );
   };
 
@@ -136,7 +156,10 @@ describe('WorkoutPresetDetailScreen', () => {
       refetch: jest.fn(),
     } as any);
     mockLoadActiveDraft.mockResolvedValue(null);
-    mockUseStartLiveWorkout.mockReturnValue({ startLiveWorkout, isStarting: false });
+    mockUseStartLiveWorkout.mockReturnValue({
+      startLiveWorkout,
+      isStarting: false,
+    });
     mockUseCreateWorkoutPreset.mockReturnValue({
       createPresetAsync: jest.fn(),
       isPending: false,
@@ -145,7 +168,17 @@ describe('WorkoutPresetDetailScreen', () => {
 
   it('renders application-owned strings in Polish while preserving literal user content', async () => {
     await i18n.changeLanguage('pl');
-    const preset = buildPreset({ exercises: [{ id: 'pe-1', exercise_id: 'ex-1', exercise_name: 'Bench Press', image_url: null, sets: [buildSet()] }] });
+    const preset = buildPreset({
+      exercises: [
+        {
+          id: 'pe-1',
+          exercise_id: 'ex-1',
+          exercise_name: 'Bench Press',
+          image_url: null,
+          sets: [buildSet()],
+        },
+      ],
+    });
     const screen = renderScreen(preset);
     expect(screen.getByText('Rozpocznij trening')).toBeTruthy();
     expect(screen.getByText('Zapisz wcześniejszy trening')).toBeTruthy();
@@ -156,10 +189,24 @@ describe('WorkoutPresetDetailScreen', () => {
   });
 
   it('updates visible strings on an EN to PL runtime language switch without remounting', async () => {
-    const screen = renderScreen(buildPreset({ exercises: [{ id: 'pe-1', exercise_id: 'ex-1', exercise_name: 'Bench Press', image_url: null, sets: [buildSet()] }] }));
+    const screen = renderScreen(
+      buildPreset({
+        exercises: [
+          {
+            id: 'pe-1',
+            exercise_id: 'ex-1',
+            exercise_name: 'Bench Press',
+            image_url: null,
+            sets: [buildSet()],
+          },
+        ],
+      })
+    );
     expect(screen.getByText('Start workout')).toBeTruthy();
     expect(screen.getByText('Duplicate preset')).toBeTruthy();
-    await act(async () => { await i18n.changeLanguage('pl'); });
+    await act(async () => {
+      await i18n.changeLanguage('pl');
+    });
     expect(screen.getByText('Rozpocznij trening')).toBeTruthy();
     expect(screen.getByText('Powiel szablon')).toBeTruthy();
     expect(screen.getByText('Push Day')).toBeTruthy();
@@ -167,12 +214,21 @@ describe('WorkoutPresetDetailScreen', () => {
   });
 
   it('uses the localized Polish copy-name contract and success presentation when duplicating', async () => {
-    const createPresetAsync = jest.fn().mockResolvedValue(buildPreset({ id: 8, name: 'Push Day (kopia)' }));
-    mockUseCreateWorkoutPreset.mockReturnValue({ createPresetAsync, isPending: false });
+    const createPresetAsync = jest
+      .fn()
+      .mockResolvedValue(buildPreset({ id: 8, name: 'Push Day (kopia)' }));
+    mockUseCreateWorkoutPreset.mockReturnValue({
+      createPresetAsync,
+      isPending: false,
+    });
     await i18n.changeLanguage('pl');
     const screen = renderScreen(buildPreset());
     fireEvent.press(screen.getByLabelText('Powiel szablon treningu'));
-    await waitFor(() => expect(createPresetAsync).toHaveBeenCalledWith(expect.objectContaining({ name: 'Push Day (kopia)' })));
+    await waitFor(() =>
+      expect(createPresetAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'Push Day (kopia)' })
+      )
+    );
     expect(createPresetAsync.mock.calls[0][0].name).toContain('Push Day');
   });
 
@@ -203,7 +259,10 @@ describe('WorkoutPresetDetailScreen', () => {
   it('duplicates the preset (available even though the fixture profile does not own it) into a private copy with the original exercises/sets', async () => {
     const created = buildPreset({ id: 8, name: 'Push Day (Copy)' });
     const createPresetAsync = jest.fn().mockResolvedValue(created);
-    mockUseCreateWorkoutPreset.mockReturnValue({ createPresetAsync, isPending: false });
+    mockUseCreateWorkoutPreset.mockReturnValue({
+      createPresetAsync,
+      isPending: false,
+    });
 
     const preset = buildPreset({
       exercises: [
@@ -259,8 +318,13 @@ describe('WorkoutPresetDetailScreen', () => {
   });
 
   it('re-indexes sort_order from array position on duplicate (the read query never returns it)', async () => {
-    const createPresetAsync = jest.fn().mockResolvedValue(buildPreset({ id: 8 }));
-    mockUseCreateWorkoutPreset.mockReturnValue({ createPresetAsync, isPending: false });
+    const createPresetAsync = jest
+      .fn()
+      .mockResolvedValue(buildPreset({ id: 8 }));
+    mockUseCreateWorkoutPreset.mockReturnValue({
+      createPresetAsync,
+      isPending: false,
+    });
 
     const preset = buildPreset({
       exercises: [
@@ -286,7 +350,9 @@ describe('WorkoutPresetDetailScreen', () => {
 
     await waitFor(() => expect(createPresetAsync).toHaveBeenCalledTimes(1));
     const sentExercises = createPresetAsync.mock.calls[0][0].exercises;
-    expect(sentExercises.map((e: { sort_order: number }) => e.sort_order)).toEqual([0, 1]);
+    expect(
+      sentExercises.map((e: { sort_order: number }) => e.sort_order)
+    ).toEqual([0, 1]);
   });
 
   it('navigates to WorkoutAdd with the preset and popCount=2 on Log past workout', async () => {
@@ -338,13 +404,16 @@ describe('WorkoutPresetDetailScreen', () => {
       expect(alertSpy).toHaveBeenCalledWith(
         'Niezapisany szkic',
         expect.any(String),
-        expect.any(Array),
+        expect.any(Array)
       );
     });
 
-    const buttons = alertSpy.mock.calls[0][2] as { text: string; onPress?: () => void }[];
+    const buttons = alertSpy.mock.calls[0][2] as {
+      text: string;
+      onPress?: () => void;
+    }[];
     expect(buttons.map((button) => button.text)).toEqual(
-      expect.arrayContaining(['Wznów szkic', 'Odrzuć i kontynuuj']),
+      expect.arrayContaining(['Wznów szkic', 'Odrzuć i kontynuuj'])
     );
     buttons.find((button) => button.text === 'Wznów szkic')?.onPress?.();
     expect(navigation.navigate).toHaveBeenCalledWith('WorkoutAdd');
@@ -356,20 +425,23 @@ describe('WorkoutPresetDetailScreen', () => {
     [5, '5 ćwiczeń'],
     [22, '22 ćwiczenia'],
     [25, '25 ćwiczeń'],
-  ])('renders the Polish exercise count for %i exercises', async (count, expected) => {
-    await i18n.changeLanguage('pl');
-    const preset = buildPreset({
-      exercises: Array.from({ length: count as number }, (_, index) => ({
-        id: `pe-${index + 1}`,
-        exercise_id: `ex-${index + 1}`,
-        exercise_name: `Exercise ${index + 1}`,
-        image_url: null,
-        sets: [buildSet()],
-      })),
-    });
-    const screen = renderScreen(preset);
-    expect(screen.getByText(expected as string)).toBeTruthy();
-  });
+  ])(
+    'renders the Polish exercise count for %i exercises',
+    async (count, expected) => {
+      await i18n.changeLanguage('pl');
+      const preset = buildPreset({
+        exercises: Array.from({ length: count as number }, (_, index) => ({
+          id: `pe-${index + 1}`,
+          exercise_id: `ex-${index + 1}`,
+          exercise_name: `Exercise ${index + 1}`,
+          image_url: null,
+          sets: [buildSet()],
+        })),
+      });
+      const screen = renderScreen(preset);
+      expect(screen.getByText(expected as string)).toBeTruthy();
+    }
+  );
 
   it('renders preset name, description, and exercise count', () => {
     const preset = buildPreset({
@@ -496,9 +568,27 @@ describe('WorkoutPresetDetailScreen', () => {
           exercise_name: 'Bench Press',
           image_url: null,
           sets: [
-            buildSet({ id: 's-1', set_number: 1, reps: 5, weight: 100, rest_time: 45 }),
-            buildSet({ id: 's-2', set_number: 2, reps: 5, weight: 100, rest_time: 90 }),
-            buildSet({ id: 's-3', set_number: 3, reps: 5, weight: 100, rest_time: 120 }),
+            buildSet({
+              id: 's-1',
+              set_number: 1,
+              reps: 5,
+              weight: 100,
+              rest_time: 45,
+            }),
+            buildSet({
+              id: 's-2',
+              set_number: 2,
+              reps: 5,
+              weight: 100,
+              rest_time: 90,
+            }),
+            buildSet({
+              id: 's-3',
+              set_number: 3,
+              reps: 5,
+              weight: 100,
+              rest_time: 120,
+            }),
           ],
         },
       ],
@@ -569,5 +659,4 @@ describe('WorkoutPresetDetailScreen', () => {
     expect(screen.getByText('45')).toBeTruthy();
     expect(screen.getByText('90')).toBeTruthy();
   });
-
 });

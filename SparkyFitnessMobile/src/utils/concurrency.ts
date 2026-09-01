@@ -26,13 +26,16 @@ export const AI_TIMEOUT_MS = 120_000;
 export const fetchWithTimeout = async (
   url: string,
   options: Omit<RequestInit, 'signal'>,
-  timeoutMs: number,
+  timeoutMs: number
 ): Promise<Response> => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(url, { ...options, signal: controller.signal });
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
     return response;
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
@@ -48,12 +51,16 @@ export const fetchWithTimeout = async (
  * Wraps a promise with a timeout. Rejects with a TimeoutError if the
  * promise doesn't settle within `ms` milliseconds.
  */
-export function withTimeout<T>(promise: Promise<T>, ms: number, label?: string): Promise<T> {
+export function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number,
+  label?: string
+): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(
       () => reject(new TimeoutError(label ?? 'Operation', ms)),
-      ms,
+      ms
     );
   });
 
@@ -77,23 +84,26 @@ export async function runTasksInBatches<TInput, TResult>(
   worker: (item: TInput) => Promise<TResult>,
   options: {
     stopOnError?: (error: unknown) => boolean;
-  } = {},
+  } = {}
 ): Promise<BatchedTaskResult<TResult>[]> {
   const results: BatchedTaskResult<TResult>[] = Array.from(
     { length: items.length },
-    () => ({ status: 'skipped' }),
+    () => ({ status: 'skipped' })
   );
 
   for (let start = 0; start < items.length; start += batchSize) {
     const batchResults = await Promise.allSettled(
-      items.slice(start, start + batchSize).map(worker),
+      items.slice(start, start + batchSize).map(worker)
     );
 
     let shouldStop = false;
     for (let index = 0; index < batchResults.length; index++) {
       const result = batchResults[index];
       results[start + index] = result;
-      if (result.status === 'rejected' && options.stopOnError?.(result.reason)) {
+      if (
+        result.status === 'rejected' &&
+        options.stopOnError?.(result.reason)
+      ) {
         shouldStop = true;
       }
     }
@@ -124,10 +134,12 @@ export function createConcurrencyLimiter(concurrency: number) {
   return <T>(fn: () => Promise<T>): Promise<T> => {
     return new Promise<T>((resolve, reject) => {
       const run = () => {
-        fn().then(resolve, reject).finally(() => {
-          active--;
-          next();
-        });
+        fn()
+          .then(resolve, reject)
+          .finally(() => {
+            active--;
+            next();
+          });
       };
       queue.push(run);
       next();

@@ -5,7 +5,8 @@ import { matchFont } from '@shopify/react-native-skia';
 const fontFamily = Platform.select({ ios: 'Helvetica', default: 'sans-serif' });
 
 /** Skia label font shared by the dashboard/wellness charts. */
-export const makeChartFont = (fontSize: number) => matchFont({ fontFamily, fontSize });
+export const makeChartFont = (fontSize: number) =>
+  matchFont({ fontFamily, fontSize });
 
 /**
  * Axis label size for the dashboard trend charts. Skia text ignores the OS font-size
@@ -26,7 +27,10 @@ export const formatXLabel30d90d = (day: string): string => {
   if (typeof day !== 'string') return '';
   const [year, month, d] = day.split('-').map(Number);
   const date = new Date(year, month - 1, d);
-  return date.toLocaleDateString(getAppLocale(), { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(getAppLocale(), {
+    month: 'short',
+    day: 'numeric',
+  });
 };
 
 export const formatTooltipDate = (day: string): string => {
@@ -44,5 +48,8 @@ export const formatTooltipDate = (day: string): string => {
 /** Formats chart tick values according to the active application locale. */
 export const formatChartYLabel = (value: number): string =>
   value >= 1000
-    ? new Intl.NumberFormat(getAppLocale(), { notation: 'compact', maximumFractionDigits: 0 }).format(value)
+    ? new Intl.NumberFormat(getAppLocale(), {
+        notation: 'compact',
+        maximumFractionDigits: 0,
+      }).format(value)
     : formatLocalizedNumber(value);

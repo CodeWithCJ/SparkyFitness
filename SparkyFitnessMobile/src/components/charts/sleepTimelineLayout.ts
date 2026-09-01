@@ -1,6 +1,10 @@
 import { instantHourMinuteInZone, type RecordZone } from '@workspace/shared';
 
-import type { SleepStageLane, SleepTimelineDay, SleepTimelineSegment } from '../../types/sleep';
+import type {
+  SleepStageLane,
+  SleepTimelineDay,
+  SleepTimelineSegment,
+} from '../../types/sleep';
 
 /**
  * The clock-axis arithmetic behind the Dashboard sleep timeline.
@@ -100,9 +104,10 @@ const minutesOfDayInZone = (ms: number, zone: RecordZone | null): number => {
 export const toClockOffsetMinutes = (
   ms: number,
   anchorMinutes: number,
-  zone: RecordZone | null = null,
+  zone: RecordZone | null = null
 ): number =>
-  (minutesOfDayInZone(ms, zone) - anchorMinutes + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+  (minutesOfDayInZone(ms, zone) - anchorMinutes + MINUTES_PER_DAY) %
+  MINUTES_PER_DAY;
 
 const durationMinutes = (segment: SleepTimelineSegment): number =>
   Math.max(0, (segment.endMs - segment.startMs) / MS_PER_MINUTE);
@@ -122,17 +127,18 @@ const durationMinutes = (segment: SleepTimelineSegment): number =>
  */
 const clockSpanMinutes = (
   segment: SleepTimelineSegment,
-  zone: RecordZone | null,
+  zone: RecordZone | null
 ): number => {
   const elapsedMinutes = durationMinutes(segment);
   if (elapsedMinutes <= 0) return 0;
 
   const startMinutes = minutesOfDayInZone(segment.startMs, zone);
   const endMinutes = minutesOfDayInZone(segment.endMs, zone);
-  const withinDay = (endMinutes - startMinutes + MINUTES_PER_DAY) % MINUTES_PER_DAY;
+  const withinDay =
+    (endMinutes - startMinutes + MINUTES_PER_DAY) % MINUTES_PER_DAY;
   const wholeDays = Math.max(
     0,
-    Math.round((elapsedMinutes - withinDay) / MINUTES_PER_DAY),
+    Math.round((elapsedMinutes - withinDay) / MINUTES_PER_DAY)
   );
 
   return withinDay + wholeDays * MINUTES_PER_DAY;
@@ -141,7 +147,7 @@ const clockSpanMinutes = (
 const markCoveredHours = (
   segment: SleepTimelineSegment,
   covered: boolean[],
-  zone: RecordZone | null,
+  zone: RecordZone | null
 ): void => {
   const spanMinutes = clockSpanMinutes(segment, zone);
   if (spanMinutes >= MINUTES_PER_DAY) {
@@ -205,7 +211,9 @@ const findFirstCoveredHour = (covered: boolean[]): number | null => {
  * conventional sleeper gets roughly 9 PM, close to the Apple Health look, and an unusual
  * one still gets a readable chart.
  */
-export const chooseSleepClockAnchorMinutes = (days: SleepTimelineDay[]): number => {
+export const chooseSleepClockAnchorMinutes = (
+  days: SleepTimelineDay[]
+): number => {
   const covered = new Array<boolean>(HOURS_PER_DAY).fill(false);
   for (const day of days) {
     for (const segment of day.segments) {
@@ -240,7 +248,7 @@ interface OffsetRange {
 const toOffsetRanges = (
   segment: SleepTimelineSegment,
   anchorMinutes: number,
-  zone: RecordZone | null,
+  zone: RecordZone | null
 ): OffsetRange[] => {
   const { stage } = segment;
   const spanMinutes = clockSpanMinutes(segment, zone);
@@ -249,7 +257,11 @@ const toOffsetRanges = (
     return [{ startMinutes: 0, endMinutes: MINUTES_PER_DAY, stage }];
   }
 
-  const startMinutes = toClockOffsetMinutes(segment.startMs, anchorMinutes, zone);
+  const startMinutes = toClockOffsetMinutes(
+    segment.startMs,
+    anchorMinutes,
+    zone
+  );
   const endMinutes = startMinutes + spanMinutes;
 
   if (endMinutes <= MINUTES_PER_DAY) {
@@ -270,23 +282,33 @@ const buildDomain = (ranges: OffsetRange[]): SleepTimelineDomain => {
   const earliest = Math.min(...ranges.map((range) => range.startMinutes));
   const latest = Math.max(...ranges.map((range) => range.endMinutes));
 
-  const startMinutes = Math.floor(earliest / MINUTES_PER_HOUR) * MINUTES_PER_HOUR;
-  const paddedEndMinutes = Math.ceil(latest / MINUTES_PER_HOUR) * MINUTES_PER_HOUR;
+  const startMinutes =
+    Math.floor(earliest / MINUTES_PER_HOUR) * MINUTES_PER_HOUR;
+  const paddedEndMinutes =
+    Math.ceil(latest / MINUTES_PER_HOUR) * MINUTES_PER_HOUR;
 
   return {
     startMinutes,
-    endMinutes: Math.max(paddedEndMinutes, startMinutes + MIN_DOMAIN_SPAN_MINUTES),
+    endMinutes: Math.max(
+      paddedEndMinutes,
+      startMinutes + MIN_DOMAIN_SPAN_MINUTES
+    ),
   };
 };
 
-const buildTicks = (domain: SleepTimelineDomain, height: number): SleepTimelineTick[] => {
+const buildTicks = (
+  domain: SleepTimelineDomain,
+  height: number
+): SleepTimelineTick[] => {
   const spanMinutes = domain.endMinutes - domain.startMinutes;
   const stepMinutes =
-    TICK_STEP_CHOICES_MINUTES.find((step) => spanMinutes / step <= TARGET_TICK_COUNT) ??
-    TICK_STEP_CHOICES_MINUTES[TICK_STEP_CHOICES_MINUTES.length - 1];
+    TICK_STEP_CHOICES_MINUTES.find(
+      (step) => spanMinutes / step <= TARGET_TICK_COUNT
+    ) ?? TICK_STEP_CHOICES_MINUTES[TICK_STEP_CHOICES_MINUTES.length - 1];
 
   const ticks: SleepTimelineTick[] = [];
-  const firstTickMinutes = Math.ceil(domain.startMinutes / stepMinutes) * stepMinutes;
+  const firstTickMinutes =
+    Math.ceil(domain.startMinutes / stepMinutes) * stepMinutes;
 
   for (
     let minutes = firstTickMinutes;
@@ -310,10 +332,12 @@ const buildTicks = (domain: SleepTimelineDomain, height: number): SleepTimelineT
  */
 export const buildSleepTimelineLayout = (
   days: SleepTimelineDay[],
-  { width, height, anchorMinutes, innerPadding }: SleepTimelineLayoutOptions,
+  { width, height, anchorMinutes, innerPadding }: SleepTimelineLayoutOptions
 ): SleepTimelineLayout => {
   const rangesByDay = days.map((day) =>
-    day.segments.flatMap((segment) => toOffsetRanges(segment, anchorMinutes, day.zone)),
+    day.segments.flatMap((segment) =>
+      toOffsetRanges(segment, anchorMinutes, day.zone)
+    )
   );
   const domain = buildDomain(rangesByDay.flat());
 
@@ -325,7 +349,10 @@ export const buildSleepTimelineLayout = (
 
   const spanMinutes = domain.endMinutes - domain.startMinutes;
   const slotWidth = width / days.length;
-  const columnWidth = Math.max(MIN_COLUMN_WIDTH, slotWidth * (1 - innerPadding));
+  const columnWidth = Math.max(
+    MIN_COLUMN_WIDTH,
+    slotWidth * (1 - innerPadding)
+  );
   const columnInset = (slotWidth - columnWidth) / 2;
 
   const toY = (minutes: number): number =>
@@ -336,7 +363,10 @@ export const buildSleepTimelineLayout = (
     x: dayIndex * slotWidth + columnInset,
     width: columnWidth,
     blocks: ranges.map((range) => {
-      const blockHeight = Math.max(MIN_BLOCK_HEIGHT, toY(range.endMinutes) - toY(range.startMinutes));
+      const blockHeight = Math.max(
+        MIN_BLOCK_HEIGHT,
+        toY(range.endMinutes) - toY(range.startMinutes)
+      );
 
       return {
         // Clamped so a block sitting on the axis floor, widened to the minimum height,

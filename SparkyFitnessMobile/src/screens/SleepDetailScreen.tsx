@@ -16,7 +16,11 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { SleepEntry } from '../types/sleep';
 import { formatDateLabel } from '../utils/dateUtils';
-import { formatClockTime, formatSleepDuration, resolveSleepZone } from '../utils/sleepDay';
+import {
+  formatClockTime,
+  formatSleepDuration,
+  resolveSleepZone,
+} from '../utils/sleepDay';
 
 type Props = RootStackScreenProps<'SleepDetail'>;
 
@@ -34,14 +38,20 @@ const SleepDetailTitle: React.FC<{ entryDate: string }> = ({ entryDate }) => {
       <Text className="text-text-primary text-3xl font-bold">
         {t('sleep.detailTitle', { defaultValue: 'Sleep' })}
       </Text>
-      <Text testID="sleep-detail-date" className="text-text-secondary text-base mt-1">
+      <Text
+        testID="sleep-detail-date"
+        className="text-text-secondary text-base mt-1"
+      >
         {formatDateLabel(entryDate, t, getAppLocale())}
       </Text>
     </View>
   );
 };
 
-const SleepDetailHeader: React.FC<SleepDetailHeaderProps> = ({ entry, zone }) => {
+const SleepDetailHeader: React.FC<SleepDetailHeaderProps> = ({
+  entry,
+  zone,
+}) => {
   const { t } = useTranslation();
   const { preferences } = usePreferences();
 
@@ -54,7 +64,10 @@ const SleepDetailHeader: React.FC<SleepDetailHeaderProps> = ({ entry, zone }) =>
     : t('sleep.timeInBed', { defaultValue: 'Time in bed' });
 
   return (
-    <View testID="sleep-detail-header" className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
+    <View
+      testID="sleep-detail-header"
+      className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
+    >
       <Text className="text-base font-semibold text-text-primary mb-2">
         {t('sleep.quality', { defaultValue: 'Sleep Quality' })}
       </Text>
@@ -80,8 +93,16 @@ const SleepDetailHeader: React.FC<SleepDetailHeaderProps> = ({ entry, zone }) =>
       <Text className="text-sm text-text-secondary mt-2">
         {t('sleep.bedtimeToWake', {
           defaultValue: '{{bedtime}} – {{wakeTime}}',
-          bedtime: formatClockTime(entry.bedtime, preferences?.time_format, zone),
-          wakeTime: formatClockTime(entry.wake_time, preferences?.time_format, zone),
+          bedtime: formatClockTime(
+            entry.bedtime,
+            preferences?.time_format,
+            zone
+          ),
+          wakeTime: formatClockTime(
+            entry.wake_time,
+            preferences?.time_format,
+            zone
+          ),
         })}
       </Text>
     </View>
@@ -106,7 +127,10 @@ const SleepDetailScreen: React.FC<Props> = ({ route }) => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
 
-  const { entry, stages, isLoading, isError, refetch } = useSleepDetail(entryId, day);
+  const { entry, stages, isLoading, isError, refetch } = useSleepDetail(
+    entryId,
+    day
+  );
   const { preferences } = usePreferences();
 
   // Resolved once for the whole screen so the header's bedtime-to-wake range and the
@@ -117,7 +141,12 @@ const SleepDetailScreen: React.FC<Props> = ({ route }) => {
 
   const renderContent = () => {
     if (isLoading) {
-      return <StatusView loading title={t('sleep.loading', { defaultValue: 'Loading sleep...' })} />;
+      return (
+        <StatusView
+          loading
+          title={t('sleep.loading', { defaultValue: 'Loading sleep...' })}
+        />
+      );
     }
 
     if (isError) {
@@ -126,8 +155,12 @@ const SleepDetailScreen: React.FC<Props> = ({ route }) => {
           icon="sleep-bedtime"
           iconTone="danger"
           iconSize={64}
-          title={t('sleep.loadFailed', { defaultValue: 'Could not load this sleep session' })}
-          subtitle={t('sleep.loadFailedSubtitle', { defaultValue: 'Please check your connection and try again.' })}
+          title={t('sleep.loadFailed', {
+            defaultValue: 'Could not load this sleep session',
+          })}
+          subtitle={t('sleep.loadFailedSubtitle', {
+            defaultValue: 'Please check your connection and try again.',
+          })}
           action={{
             label: t('common.retry', { defaultValue: 'Retry' }),
             onPress: () => void refetch(),
@@ -144,7 +177,10 @@ const SleepDetailScreen: React.FC<Props> = ({ route }) => {
           iconTone="muted"
           iconSize={64}
           title={t('sleep.notFound', { defaultValue: 'Sleep entry not found' })}
-          subtitle={t('sleep.notFoundSubtitle', { defaultValue: 'This sleep session may have been removed or is no longer synced.' })}
+          subtitle={t('sleep.notFoundSubtitle', {
+            defaultValue:
+              'This sleep session may have been removed or is no longer synced.',
+          })}
         />
       );
     }
@@ -156,7 +192,9 @@ const SleepDetailScreen: React.FC<Props> = ({ route }) => {
           paddingTop: 8,
           paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding,
         }}
-        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
+        contentInsetAdjustmentBehavior={
+          usesNativeHeader ? 'automatic' : 'never'
+        }
       >
         <SleepDetailTitle entryDate={entry.entry_date} />
         <SleepDetailHeader entry={entry} zone={zone} />

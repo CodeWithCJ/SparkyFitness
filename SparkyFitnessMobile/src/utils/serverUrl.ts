@@ -2,7 +2,8 @@ import ipaddr from 'ipaddr.js';
 import { Platform } from 'react-native';
 
 /** Trims whitespace and any trailing slashes from a server URL. */
-export const normalizeUrl = (url: string): string => url.trim().replace(/\/+$/, '');
+export const normalizeUrl = (url: string): string =>
+  url.trim().replace(/\/+$/, '');
 
 /**
  * Extracts the lowercased hostname from a URL string without relying on RN's
@@ -49,7 +50,10 @@ export const isPrivateOrLocalHost = (url: string): boolean => {
     // IPv4-mapped IPv6 (e.g. ::ffff:192.168.1.1) → check the embedded IPv4.
     if (addr.kind() === 'ipv6') {
       const v6 = addr as ipaddr.IPv6;
-      if (v6.isIPv4MappedAddress() && PRIVATE_IP_RANGES.includes(v6.toIPv4Address().range())) {
+      if (
+        v6.isIPv4MappedAddress() &&
+        PRIVATE_IP_RANGES.includes(v6.toIPv4Address().range())
+      ) {
         return true;
       }
     }
@@ -65,12 +69,19 @@ export const isPrivateOrLocalHost = (url: string): boolean => {
  * certs). Plain HTTP is accepted only for private/LAN hosts during development;
  * production always requires HTTPS.
  */
-export const getInsecureUrlError = (url: string, localizedMessage?: string): string | null => {
+export const getInsecureUrlError = (
+  url: string,
+  localizedMessage?: string
+): string | null => {
   const normalized = normalizeUrl(url).toLowerCase();
   if (normalized.startsWith('https://')) return null;
 
   if (__DEV__ && isPrivateOrLocalHost(url)) return null;
 
-  const healthPolicy = Platform.OS === 'ios' ? 'Apple Health' : 'Health Connect';
-  return localizedMessage ?? `HTTPS is required to securely register passkeys, access your camera, and sync health data in compliance with ${healthPolicy} security policies.`;
+  const healthPolicy =
+    Platform.OS === 'ios' ? 'Apple Health' : 'Health Connect';
+  return (
+    localizedMessage ??
+    `HTTPS is required to securely register passkeys, access your camera, and sync health data in compliance with ${healthPolicy} security policies.`
+  );
 };

@@ -52,14 +52,15 @@ export default function MarkdownMessage({
   /** Fade in appended characters. Leave off for already-complete text. */
   streaming?: boolean;
 }) {
-  const [textPrimary, muted, accent, raised, background, border] = useCSSVariable([
-    '--color-text-primary',
-    '--color-text-muted',
-    '--color-accent-primary',
-    '--color-raised',
-    '--color-background',
-    '--color-border-subtle',
-  ]) as [string, string, string, string, string, string];
+  const [textPrimary, muted, accent, raised, background, border] =
+    useCSSVariable([
+      '--color-text-primary',
+      '--color-text-muted',
+      '--color-accent-primary',
+      '--color-raised',
+      '--color-background',
+      '--color-border-subtle',
+    ]) as [string, string, string, string, string, string];
 
   const body = color ?? textPrimary;
 
@@ -82,7 +83,11 @@ export default function MarkdownMessage({
       blockquote: { color: muted, borderColor: border },
       link: { color: accent, underline: true },
       code: { color: body, backgroundColor: raised },
-      codeBlock: { color: body, backgroundColor: background, borderColor: border },
+      codeBlock: {
+        color: body,
+        backgroundColor: background,
+        borderColor: border,
+      },
       thematicBreak: { color: border },
     }),
     [body, muted, accent, raised, background, border, fontSize]

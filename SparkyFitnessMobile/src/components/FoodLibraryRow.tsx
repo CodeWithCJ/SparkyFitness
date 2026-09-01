@@ -32,7 +32,11 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
 }) => {
   const { t } = useTranslation();
   const { profile } = useProfile();
-  const status = deriveShareStatus(food.user_id, food.shared_with_public, profile?.id);
+  const status = deriveShareStatus(
+    food.user_id,
+    food.shared_with_public,
+    profile?.id
+  );
   // Gold, not accent: a passive indicator, not a tap target. See MealLibraryRow.
   const [goldColor] = useCSSVariable(['--color-cat-amber']) as [string];
   const getImageSource = useFoodImageSourceContext();
@@ -62,46 +66,56 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
         className="flex-1 pr-4 py-3"
         style={({ pressed }) => (pressed && onPress ? { opacity: 0.7 } : null)}
       >
-      <View className="flex-row justify-between items-center">
-        <View className="flex-1 mr-3">
-          <View className="flex-row items-center gap-1.5">
-            <Text className="text-text-primary text-base font-medium flex-shrink" numberOfLines={1}>
-              {food.name}
-            </Text>
-            {food.default_variant?.source === 'ai_estimate' ? (
-              <AiEstimateBadge style={{ marginLeft: 4 }} />
-            ) : null}
-            {food.provider_verified ? (
-              <VerifiedBadge size="sm" style={{ marginLeft: 4 }} />
-            ) : null}
-            {/* Icons center on the text's full line box (descender included),
+        <View className="flex-row justify-between items-center">
+          <View className="flex-1 mr-3">
+            <View className="flex-row items-center gap-1.5">
+              <Text
+                className="text-text-primary text-base font-medium flex-shrink"
+                numberOfLines={1}
+              >
+                {food.name}
+              </Text>
+              {food.default_variant?.source === 'ai_estimate' ? (
+                <AiEstimateBadge style={{ marginLeft: 4 }} />
+              ) : null}
+              {food.provider_verified ? (
+                <VerifiedBadge size="sm" style={{ marginLeft: 4 }} />
+              ) : null}
+              {/* Icons center on the text's full line box (descender included),
                 which reads ~1pt low against the visible letters; lift them. */}
-            <ShareStatusBadge status={status} style={{ marginTop: -1 }} />
-            {isFavorite && (
-              <Icon
-                name="star"
-                size={16}
-                color={goldColor}
-                style={{ marginTop: -1 }}
-                accessibilityLabel={t('foodSearch.accessibility.favorite', { defaultValue: 'Favorite' })}
-              />
-            )}
+              <ShareStatusBadge status={status} style={{ marginTop: -1 }} />
+              {isFavorite && (
+                <Icon
+                  name="star"
+                  size={16}
+                  color={goldColor}
+                  style={{ marginTop: -1 }}
+                  accessibilityLabel={t('foodSearch.accessibility.favorite', {
+                    defaultValue: 'Favorite',
+                  })}
+                />
+              )}
+            </View>
+            {food.brand ? (
+              <Text
+                className="text-text-secondary text-sm mt-0.5"
+                numberOfLines={1}
+              >
+                {food.brand}
+              </Text>
+            ) : null}
           </View>
-          {food.brand ? (
-            <Text className="text-text-secondary text-sm mt-0.5" numberOfLines={1}>
-              {food.brand}
+          <View className="items-end">
+            <Text className="text-text-primary text-base font-semibold">
+              {Math.round(food.default_variant.calories)}{' '}
+              {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
             </Text>
-          ) : null}
+            <Text className="text-text-secondary text-xs">
+              {food.default_variant.serving_size}{' '}
+              {formatServingUnit(food.default_variant.serving_unit)}
+            </Text>
+          </View>
         </View>
-        <View className="items-end">
-          <Text className="text-text-primary text-base font-semibold">
-            {Math.round(food.default_variant.calories)} {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
-          </Text>
-          <Text className="text-text-secondary text-xs">
-            {food.default_variant.serving_size} {formatServingUnit(food.default_variant.serving_unit)}
-          </Text>
-        </View>
-      </View>
       </Pressable>
     </View>
   );

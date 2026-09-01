@@ -1,7 +1,17 @@
 import { apiFetch } from './apiClient';
 import { getTodayDate } from '../../utils/dateUtils';
-import type { CheckInMeasurement, CheckInMeasurementRange, WaterIntake, WaterContainer, WaterIntakeResponse } from '../../types/measurements';
-import type { CustomCategory, CustomMeasurementEntry, SaveCustomMeasurementPayload } from '../../types/customMeasurements';
+import type {
+  CheckInMeasurement,
+  CheckInMeasurementRange,
+  WaterIntake,
+  WaterContainer,
+  WaterIntakeResponse,
+} from '../../types/measurements';
+import type {
+  CustomCategory,
+  CustomMeasurementEntry,
+  SaveCustomMeasurementPayload,
+} from '../../types/customMeasurements';
 
 /**
  * Fetches measurements for a given date.
@@ -11,7 +21,9 @@ import type { CustomCategory, CustomMeasurementEntry, SaveCustomMeasurementPaylo
  * need exactly what was recorded on this day, so query the range endpoint for
  * a single day — a plain `WHERE entry_date = date` with no carry-forward.
  */
-export const fetchMeasurements = async (date: string): Promise<CheckInMeasurement> => {
+export const fetchMeasurements = async (
+  date: string
+): Promise<CheckInMeasurement> => {
   const rows = await fetchMeasurementsRange(date, date);
   return (rows?.[0] ?? {}) as CheckInMeasurement;
 };
@@ -67,7 +79,10 @@ export const fetchWaterContainers = async (): Promise<WaterContainer[]> => {
 /**
  * Fetches measurements for a date range.
  */
-export const fetchMeasurementsRange = async (startDate: string, endDate: string): Promise<CheckInMeasurementRange[]> => {
+export const fetchMeasurementsRange = async (
+  startDate: string,
+  endDate: string
+): Promise<CheckInMeasurementRange[]> => {
   return apiFetch<CheckInMeasurementRange[]>({
     endpoint: `/api/measurements/check-in-measurements-range/${startDate}/${endDate}`,
     serviceName: 'Measurements API',
@@ -125,7 +140,9 @@ export const fetchCustomCategories = async (): Promise<CustomCategory[]> => {
   });
 };
 
-export const fetchCustomMeasurementsByDate = async (date: string): Promise<CustomMeasurementEntry[]> => {
+export const fetchCustomMeasurementsByDate = async (
+  date: string
+): Promise<CustomMeasurementEntry[]> => {
   return apiFetch<CustomMeasurementEntry[]>({
     endpoint: `/api/measurements/custom-entries/${date}`,
     serviceName: 'Measurements API',
@@ -133,7 +150,9 @@ export const fetchCustomMeasurementsByDate = async (date: string): Promise<Custo
   });
 };
 
-export const saveCustomMeasurement = async (payload: SaveCustomMeasurementPayload): Promise<CustomMeasurementEntry> => {
+export const saveCustomMeasurement = async (
+  payload: SaveCustomMeasurementPayload
+): Promise<CustomMeasurementEntry> => {
   return apiFetch<CustomMeasurementEntry>({
     endpoint: '/api/measurements/custom-entries',
     serviceName: 'Measurements API',

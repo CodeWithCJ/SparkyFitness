@@ -1,4 +1,12 @@
-import { Button, HStack, Image, ProgressView, Spacer, Text, VStack } from '@expo/ui/swift-ui';
+import {
+  Button,
+  HStack,
+  Image,
+  ProgressView,
+  Spacer,
+  Text,
+  VStack,
+} from '@expo/ui/swift-ui';
 import {
   accessibilityLabel,
   buttonBorderShape,
@@ -69,11 +77,17 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
   // The bundler serializes only this function body into the widget runtime, so
   // every helper and constant must live inside it; only `@expo/ui/swift-ui`
   // imports resolve there.
-  const secondaryText = () => foregroundStyle({ type: 'hierarchical', style: 'secondary' });
+  const secondaryText = () =>
+    foregroundStyle({ type: 'hierarchical', style: 'secondary' });
 
   const restInterval =
-    props.phase === 'resting' && props.restStartedAt != null && props.restEndsAt != null
-      ? { lower: new Date(props.restStartedAt), upper: new Date(props.restEndsAt) }
+    props.phase === 'resting' &&
+    props.restStartedAt != null &&
+    props.restEndsAt != null
+      ? {
+          lower: new Date(props.restStartedAt),
+          upper: new Date(props.restEndsAt),
+        }
       : null;
 
   // OS-ticked timer Texts report an unbounded ideal width, which inflates
@@ -81,7 +95,9 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
   // cap that must fit "H:MM:SS" from the start — the format can grow between
   // repaints, and a too-small cap truncates the digits.
   const timerModifiers = (maxWidth?: number) =>
-    maxWidth != null ? [monospacedDigit(), frame({ maxWidth })] : [monospacedDigit()];
+    maxWidth != null
+      ? [monospacedDigit(), frame({ maxWidth })]
+      : [monospacedDigit()];
 
   // Count-up workout clock; frozen to a static label once the workout is
   // complete so it doesn't read as "still going".
@@ -89,12 +105,20 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
     props.phase === 'complete' ? (
       <Text modifiers={[monospacedDigit()]}>{props.elapsedLabel ?? ''}</Text>
     ) : (
-      <Text date={new Date(props.startedAt)} dateStyle="timer" modifiers={timerModifiers(maxWidth)} />
+      <Text
+        date={new Date(props.startedAt)}
+        dateStyle="timer"
+        modifiers={timerModifiers(maxWidth)}
+      />
     );
 
   const restCountdown = (maxWidth?: number) =>
     restInterval ? (
-      <Text timerInterval={restInterval} countsDown modifiers={timerModifiers(maxWidth)} />
+      <Text
+        timerInterval={restInterval}
+        countsDown
+        modifiers={timerModifiers(maxWidth)}
+      />
     ) : null;
 
   // The single labeled timer slot: rest countdown while resting (the frozen
@@ -109,14 +133,20 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
   // renderer rebuilds children as WidgetsDynamicView, which TextView's `+`
   // reduce silently drops, rendering nothing at all.
   const labeledTimer = () => {
-    const valueFont = [font({ weight: 'semibold', size: 16 }), monospacedDigit()];
+    const valueFont = [
+      font({ weight: 'semibold', size: 16 }),
+      monospacedDigit(),
+    ];
     const labelStyle = [secondaryText(), font({ size: 16 })];
     if (restInterval) {
       // Cap sized from the rest length at push time: the countdown only
       // shrinks between repaints, so the format can't outgrow it. The scale
       // factor is a parachute for font-metric drift — slightly smaller digits
       // beat a truncated "…".
-      const restCap = (props.restEndsAt ?? 0) - (props.restStartedAt ?? 0) >= 600_000 ? 50 : 40;
+      const restCap =
+        (props.restEndsAt ?? 0) - (props.restStartedAt ?? 0) >= 600_000
+          ? 50
+          : 40;
       return (
         <HStack spacing={5} modifiers={[layoutPriority(1)]}>
           <Text modifiers={labelStyle}>{props.labels.rest}</Text>
@@ -137,10 +167,14 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
       return (
         <HStack spacing={5} modifiers={[layoutPriority(1)]}>
           <Text modifiers={labelStyle}>
-            {props.phase === 'paused' ? props.labels.paused : props.labels.elapsed}
+            {props.phase === 'paused'
+              ? props.labels.paused
+              : props.labels.elapsed}
           </Text>
           <Text modifiers={valueFont}>
-            {(props.phase === 'paused' ? props.pausedRemainingLabel : props.elapsedLabel) ?? ''}
+            {(props.phase === 'paused'
+              ? props.pausedRemainingLabel
+              : props.elapsedLabel) ?? ''}
           </Text>
         </HStack>
       );
@@ -151,7 +185,9 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
     // leaves a floating gap after the label.
     return (
       <VStack alignment="trailing" spacing={1} modifiers={[layoutPriority(1)]}>
-        <Text modifiers={[secondaryText(), font({ size: 12 })]}>{props.labels.elapsed}</Text>
+        <Text modifiers={[secondaryText(), font({ size: 12 })]}>
+          {props.labels.elapsed}
+        </Text>
         <Text
           date={new Date(props.startedAt)}
           dateStyle="timer"
@@ -199,7 +235,11 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
     props.appIconUri != null ? (
       <Image
         uiImage={props.appIconUri}
-        modifiers={[resizable(), frame({ width: size, height: size }), clipShape('circle')]}
+        modifiers={[
+          resizable(),
+          frame({ width: size, height: size }),
+          clipShape('circle'),
+        ]}
       />
     ) : null;
 
@@ -218,15 +258,32 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
       frame({ maxWidth }),
     ];
     if (restInterval) {
-      const cap = (props.restEndsAt ?? 0) - (props.restStartedAt ?? 0) >= 600_000 ? 48 : 38;
-      return <Text timerInterval={restInterval} countsDown modifiers={tickingModifiers(cap)} />;
+      const cap =
+        (props.restEndsAt ?? 0) - (props.restStartedAt ?? 0) >= 600_000
+          ? 48
+          : 38;
+      return (
+        <Text
+          timerInterval={restInterval}
+          countsDown
+          modifiers={tickingModifiers(cap)}
+        />
+      );
     }
     if (props.phase === 'complete') {
-      return <Text modifiers={[monospacedDigit()]}>{props.elapsedLabel ?? ''}</Text>;
+      return (
+        <Text modifiers={[monospacedDigit()]}>{props.elapsedLabel ?? ''}</Text>
+      );
     }
     const elapsedMs = Date.now() - props.startedAt;
     const cap = elapsedMs >= 3_300_000 ? 64 : elapsedMs >= 570_000 ? 48 : 38;
-    return <Text date={new Date(props.startedAt)} dateStyle="timer" modifiers={tickingModifiers(cap)} />;
+    return (
+      <Text
+        date={new Date(props.startedAt)}
+        dateStyle="timer"
+        modifiers={tickingModifiers(cap)}
+      />
+    );
   };
 
   // Phase controls (iOS 17+). A press runs a LiveActivityIntent in the app
@@ -255,7 +312,10 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
               {props.labels.addFifteenSecondsShort}
             </Text>
           </Button>
-          <Button target="rest-skip" modifiers={restButtonModifiers(props.labels.skipRest)}>
+          <Button
+            target="rest-skip"
+            modifiers={restButtonModifiers(props.labels.skipRest)}
+          >
             <Image systemName="forward.end.fill" modifiers={[restButtonFont]} />
           </Button>
         </HStack>
@@ -267,7 +327,11 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
           label={props.labels.complete}
           systemImage="checkmark"
           target="complete-set"
-          modifiers={[buttonStyle('bordered'), buttonBorderShape('capsule'), controlSize('regular')]}
+          modifiers={[
+            buttonStyle('bordered'),
+            buttonBorderShape('capsule'),
+            controlSize('regular'),
+          ]}
         />
       );
     }
@@ -276,7 +340,11 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
 
   return {
     banner: (
-      <VStack alignment="leading" spacing={6} modifiers={[padding({ all: 16 })]}>
+      <VStack
+        alignment="leading"
+        spacing={6}
+        modifiers={[padding({ all: 16 })]}
+      >
         <HStack>
           <Text modifiers={[font({ weight: 'bold', size: 16 }), lineLimit(1)]}>
             {props.workoutName}
@@ -334,5 +402,5 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
 
 export default createLiveActivity<WorkoutLiveActivityProps>(
   'WorkoutLiveActivity',
-  WorkoutLiveActivity,
+  WorkoutLiveActivity
 );

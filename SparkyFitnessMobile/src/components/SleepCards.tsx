@@ -9,7 +9,11 @@ import { useCSSVariable } from 'uniwind';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import type { SleepEntry } from '../types/sleep';
 import { usePreferences } from '../hooks/usePreferences';
-import { formatClockTime, formatSleepDuration, resolveSleepZone } from '../utils/sleepDay';
+import {
+  formatClockTime,
+  formatSleepDuration,
+  resolveSleepZone,
+} from '../utils/sleepDay';
 import Icon, { type IconName } from './Icon';
 
 export type SleepCardNavigation = CompositeNavigationProp<
@@ -31,17 +35,27 @@ const useEntryClockTime = () => {
       formatClockTime(
         iso,
         preferences?.time_format,
-        resolveSleepZone(entry, preferences?.timezone),
+        resolveSleepZone(entry, preferences?.timezone)
       ),
-    [preferences?.time_format, preferences?.timezone],
+    [preferences?.time_format, preferences?.timezone]
   );
 };
 
-const SleepCardIconTitle: React.FC<{ icon: IconName; title: string }> = ({ icon, title }) => {
-  const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [string];
+const SleepCardIconTitle: React.FC<{ icon: IconName; title: string }> = ({
+  icon,
+  title,
+}) => {
+  const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [
+    string,
+  ];
   return (
     <>
-      <Icon name={icon} size={16} color={accentPrimary} style={{ marginRight: 6 }} />
+      <Icon
+        name={icon}
+        size={16}
+        color={accentPrimary}
+        style={{ marginRight: 6 }}
+      />
       <Text className="font-bold text-text-secondary">{title}</Text>
     </>
   );
@@ -64,7 +78,9 @@ const SleepCardShell: React.FC<SleepCardShellProps> = ({
   onPress,
   children,
 }) => {
-  const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [string];
+  const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [
+    string,
+  ];
 
   return (
     <Pressable
@@ -108,7 +124,9 @@ const SleepSummary: React.FC<SleepSummaryProps> = ({ entry, clockValue }) => {
   return (
     <View className="flex-row items-end justify-between">
       <View>
-        <Text className="text-2xl font-bold text-text-primary">{clockValue}</Text>
+        <Text className="text-2xl font-bold text-text-primary">
+          {clockValue}
+        </Text>
       </View>
 
       <View className="items-end">
@@ -141,7 +159,11 @@ interface WakeUpCardProps {
 /**
  * The day's main sleep, framed as the morning it ended.
  */
-export const WakeUpCard: React.FC<WakeUpCardProps> = ({ entry, day, navigation }) => {
+export const WakeUpCard: React.FC<WakeUpCardProps> = ({
+  entry,
+  day,
+  navigation,
+}) => {
   const { t } = useTranslation();
   const entryClockTime = useEntryClockTime();
   const title = t('sleep.wakeUp', { defaultValue: 'Wake Up' });
@@ -153,10 +175,17 @@ export const WakeUpCard: React.FC<WakeUpCardProps> = ({ entry, day, navigation }
       testID="wake-up-card"
       icon="sleep-wake-up"
       title={title}
-      accessibilityLabel={t('sleep.wakeUpA11y', { defaultValue: 'Open wake up sleep details' })}
-      onPress={() => navigation.navigate('SleepDetail', { entryId: entry.id, day })}
+      accessibilityLabel={t('sleep.wakeUpA11y', {
+        defaultValue: 'Open wake up sleep details',
+      })}
+      onPress={() =>
+        navigation.navigate('SleepDetail', { entryId: entry.id, day })
+      }
     >
-      <SleepSummary entry={entry} clockValue={entryClockTime(entry.wake_time, entry)} />
+      <SleepSummary
+        entry={entry}
+        clockValue={entryClockTime(entry.wake_time, entry)}
+      />
     </SleepCardShell>
   );
 };
@@ -167,7 +196,11 @@ interface NapsCardProps {
   navigation: SleepCardNavigation;
 }
 
-export const NapsCard: React.FC<NapsCardProps> = ({ naps, day, navigation }) => {
+export const NapsCard: React.FC<NapsCardProps> = ({
+  naps,
+  day,
+  navigation,
+}) => {
   const { t } = useTranslation();
   const entryClockTime = useEntryClockTime();
 
@@ -181,7 +214,10 @@ export const NapsCard: React.FC<NapsCardProps> = ({ naps, day, navigation }) => 
   });
 
   return (
-    <View testID="naps-card" className="bg-surface rounded-xl p-4 mb-2 shadow-sm">
+    <View
+      testID="naps-card"
+      className="bg-surface rounded-xl p-4 mb-2 shadow-sm"
+    >
       <View className="flex-row items-center mb-2">
         <SleepCardIconTitle icon="sleep-nap" title={title} />
       </View>
@@ -190,7 +226,7 @@ export const NapsCard: React.FC<NapsCardProps> = ({ naps, day, navigation }) => 
         const napTime = entryClockTime(nap.bedtime, nap);
         const napDuration = formatSleepDuration(
           nap.time_asleep_in_seconds ?? nap.duration_in_seconds,
-          t,
+          t
         );
 
         return (
@@ -198,7 +234,9 @@ export const NapsCard: React.FC<NapsCardProps> = ({ naps, day, navigation }) => 
             key={nap.id}
             testID={`nap-row-${nap.id}`}
             className="flex-row items-center justify-between py-2"
-            onPress={() => navigation.navigate('SleepDetail', { entryId: nap.id, day })}
+            onPress={() =>
+              navigation.navigate('SleepDetail', { entryId: nap.id, day })
+            }
             accessibilityRole="button"
             // Every row would otherwise announce the same "Open nap details", leaving a
             // screen reader user no way to tell one afternoon's nap from another.
@@ -209,7 +247,9 @@ export const NapsCard: React.FC<NapsCardProps> = ({ naps, day, navigation }) => 
             })}
           >
             <Text className="text-base text-text-primary">{napTime}</Text>
-            <Text className="text-base font-semibold text-text-primary">{napDuration}</Text>
+            <Text className="text-base font-semibold text-text-primary">
+              {napDuration}
+            </Text>
           </Pressable>
         );
       })}
@@ -227,7 +267,11 @@ interface BedTimeCardProps {
  * The sleep begun on this day, which lives in the *next* day's record because synced
  * sessions are filed under the day the user woke up.
  */
-export const BedTimeCard: React.FC<BedTimeCardProps> = ({ entry, day, navigation }) => {
+export const BedTimeCard: React.FC<BedTimeCardProps> = ({
+  entry,
+  day,
+  navigation,
+}) => {
   const { t } = useTranslation();
   const entryClockTime = useEntryClockTime();
   const title = t('sleep.bedTime', { defaultValue: 'Bedtime' });
@@ -239,10 +283,17 @@ export const BedTimeCard: React.FC<BedTimeCardProps> = ({ entry, day, navigation
       testID="bed-time-card"
       icon="sleep-bedtime"
       title={title}
-      accessibilityLabel={t('sleep.bedTimeA11y', { defaultValue: 'Open bedtime sleep details' })}
-      onPress={() => navigation.navigate('SleepDetail', { entryId: entry.id, day })}
+      accessibilityLabel={t('sleep.bedTimeA11y', {
+        defaultValue: 'Open bedtime sleep details',
+      })}
+      onPress={() =>
+        navigation.navigate('SleepDetail', { entryId: entry.id, day })
+      }
     >
-      <SleepSummary entry={entry} clockValue={entryClockTime(entry.bedtime, entry)} />
+      <SleepSummary
+        entry={entry}
+        clockValue={entryClockTime(entry.bedtime, entry)}
+      />
     </SleepCardShell>
   );
 };

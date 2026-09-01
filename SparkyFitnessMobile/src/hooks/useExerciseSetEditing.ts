@@ -8,7 +8,10 @@ import type { SetInputField } from '../components/SetRowChrome';
 import type { Exercise } from '../types/exercise';
 
 interface ExerciseSetEditingActions {
-  addExercise: (exercise: Exercise) => { exerciseClientId: string; setClientId: string };
+  addExercise: (exercise: Exercise) => {
+    exerciseClientId: string;
+    setClientId: string;
+  };
   removeExercise: (clientId: string) => void;
   addSet: (exerciseClientId: string) => string;
   /** Enables replace routing: while a replace target is set, the next selected
@@ -16,7 +19,7 @@ interface ExerciseSetEditingActions {
    *  the replace preserved the existing sets, so there's nothing new to focus. */
   replaceExercise?: (
     clientId: string,
-    exercise: Exercise,
+    exercise: Exercise
   ) => { exerciseClientId: string; setClientId: string | null };
 }
 
@@ -52,49 +55,71 @@ export function useExerciseSetEditing(actions: ExerciseSetEditingActions) {
     replaceTargetClientIdRef.current = clientId;
   }, []);
 
-  const handleAddExercise = useCallback((exercise: Exercise) => {
-    const replaceTarget = replaceTargetClientIdRef.current;
-    replaceTargetClientIdRef.current = null;
-    const { exerciseClientId, setClientId } =
-      replaceTarget != null && actions.replaceExercise
-        ? actions.replaceExercise(replaceTarget, exercise)
-        : actions.addExercise(exercise);
-    // null means a replace preserved the existing sets — nothing new to
-    // focus. Clear (not just skip) so a stale pending activation from an
-    // earlier action can't fire on a later transitionEnd.
-    pendingActivationRef.current =
-      setClientId != null ? `${exerciseClientId}:${setClientId}` : null;
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-properties; spreading `actions` would break memoization
-  }, [actions.addExercise, actions.replaceExercise]);
+  const handleAddExercise = useCallback(
+    (exercise: Exercise) => {
+      const replaceTarget = replaceTargetClientIdRef.current;
+      replaceTargetClientIdRef.current = null;
+      const { exerciseClientId, setClientId } =
+        replaceTarget != null && actions.replaceExercise
+          ? actions.replaceExercise(replaceTarget, exercise)
+          : actions.addExercise(exercise);
+      // null means a replace preserved the existing sets — nothing new to
+      // focus. Clear (not just skip) so a stale pending activation from an
+      // earlier action can't fire on a later transitionEnd.
+      pendingActivationRef.current =
+        setClientId != null ? `${exerciseClientId}:${setClientId}` : null;
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-properties; spreading `actions` would break memoization
+    },
+    [actions.addExercise, actions.replaceExercise]
+  );
 
   const handleRemoveExercise = useCallback(
-    (exercise: { clientId: string; exerciseName: string; sets: { weight: string; reps: string }[] }) => {
-      const hasData = exercise.sets.some(s => s.weight || s.reps);
+    (exercise: {
+      clientId: string;
+      exerciseName: string;
+      sets: { weight: string; reps: string }[];
+    }) => {
+      const hasData = exercise.sets.some((s) => s.weight || s.reps);
       const doRemove = () => actions.removeExercise(exercise.clientId);
       if (hasData) {
         Alert.alert(
-          t('exerciseEditing.removeTitle', { defaultValue: 'Remove Exercise?' }),
-          t('exerciseEditing.removeMessage', { defaultValue: 'Remove "{{name}}" and all its sets?', name: exercise.exerciseName }),
+          t('exerciseEditing.removeTitle', {
+            defaultValue: 'Remove Exercise?',
+          }),
+          t('exerciseEditing.removeMessage', {
+            defaultValue: 'Remove "{{name}}" and all its sets?',
+            name: exercise.exerciseName,
+          }),
           [
-            { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
-            { text: t('common.remove', { defaultValue: 'Remove' }), style: 'destructive', onPress: doRemove },
-          ],
+            {
+              text: t('common.cancel', { defaultValue: 'Cancel' }),
+              style: 'cancel',
+            },
+            {
+              text: t('common.remove', { defaultValue: 'Remove' }),
+              style: 'destructive',
+              onPress: doRemove,
+            },
+          ]
         );
       } else {
         doRemove();
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-property
-    [actions.removeExercise, t],
+    [actions.removeExercise, t]
   );
 
-  const handleAddSet = useCallback((exerciseClientId: string) => {
-    const newSetId = actions.addSet(exerciseClientId);
-    if (newSetId) {
-      setActiveSetKey(`${exerciseClientId}:${newSetId}`);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-property
-  }, [actions.addSet]);
+  const handleAddSet = useCallback(
+    (exerciseClientId: string) => {
+      const newSetId = actions.addSet(exerciseClientId);
+      if (newSetId) {
+        setActiveSetKey(`${exerciseClientId}:${newSetId}`);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- using stable sub-property
+    },
+    [actions.addSet]
+  );
 
   const activateSet = useCallback((setKey: string, field: SetInputField) => {
     setActiveSetField(field);

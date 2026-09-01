@@ -58,7 +58,7 @@ describe('persistExternalVariants', () => {
           carbs: 32,
           fat: 4,
         },
-      ],
+      ]
     );
 
     expect(mockedCreateFoodVariant).toHaveBeenCalledTimes(1);
@@ -67,7 +67,7 @@ describe('persistExternalVariants', () => {
         food_id: 'food-1',
         serving_size: 100,
         serving_unit: 'g',
-      }),
+      })
     );
   });
 
@@ -139,7 +139,7 @@ describe('persistExternalVariants', () => {
           carbs: 24,
           fat: 4,
         },
-      ],
+      ]
     );
 
     expect(mockedCreateFoodVariant).toHaveBeenCalledTimes(4);
@@ -149,7 +149,7 @@ describe('persistExternalVariants', () => {
         serving_size: 1,
         serving_unit: 'package (200 g)',
         calories: 100,
-      }),
+      })
     );
     expect(mockedCreateFoodVariant).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -157,7 +157,7 @@ describe('persistExternalVariants', () => {
         serving_size: 1,
         serving_unit: 'package (400 g)',
         calories: 200,
-      }),
+      })
     );
     expect(mockedCreateFoodVariant).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -165,7 +165,7 @@ describe('persistExternalVariants', () => {
         serving_size: 200,
         serving_unit: 'g',
         calories: 100,
-      }),
+      })
     );
     expect(mockedCreateFoodVariant).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -173,7 +173,7 @@ describe('persistExternalVariants', () => {
         serving_size: 400,
         serving_unit: 'g',
         calories: 200,
-      }),
+      })
     );
   });
 
@@ -206,7 +206,7 @@ describe('persistExternalVariants', () => {
           carbs: 10,
           fat: 1,
         },
-      ],
+      ]
     );
 
     expect(mockedCreateFoodVariant).not.toHaveBeenCalled();
@@ -251,14 +251,14 @@ describe('persistExternalVariants', () => {
           carbs: 30,
           fat: 3,
         },
-      ],
+      ]
     );
 
     expect(mockedCreateFoodVariant).toHaveBeenCalledWith(
       expect.objectContaining({
         serving_size: 1,
         serving_unit: 'package (300 g)',
-      }),
+      })
     );
   });
 
@@ -289,7 +289,7 @@ describe('persistExternalVariants', () => {
           carbs: 32,
           fat: 4,
         },
-      ],
+      ]
     );
 
     expect(mockedCreateFoodVariant).toHaveBeenCalledTimes(1);
@@ -297,7 +297,7 @@ describe('persistExternalVariants', () => {
       expect.objectContaining({
         serving_size: 1,
         serving_unit: 'serving (80 g)',
-      }),
+      })
     );
   });
 });

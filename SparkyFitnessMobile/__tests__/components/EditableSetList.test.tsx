@@ -37,7 +37,7 @@ function renderList(props?: {
       modality={props?.modality}
       weightUnit="kg"
       {...callbacks}
-    />,
+    />
   );
   return { ...utils, callbacks };
 }
@@ -68,7 +68,7 @@ describe('EditableSetList', () => {
       expect(queryByText('Reps')).toBeNull();
       // The row shows the draft's stored seconds.
       expect(getByText('45')).toBeTruthy();
-    },
+    }
   );
 
   it('adds a set through the Add Set action', () => {

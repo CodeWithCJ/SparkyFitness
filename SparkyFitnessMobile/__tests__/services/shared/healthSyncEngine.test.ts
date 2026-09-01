@@ -28,9 +28,16 @@ jest.mock('../../../src/services/api/measurementsApi', () => ({
   serverSupportsPerRecordWater: jest.fn().mockResolvedValue(true),
 }));
 
-const api = require('../../../src/services/api/healthDataApi') as { syncHealthData: jest.Mock };
-const measurementsApi = require('../../../src/services/api/measurementsApi') as { serverSupportsPerRecordWater: jest.Mock };
-const writeback = require('../../../src/services/writeback') as { runWriteback: jest.Mock };
+const api = require('../../../src/services/api/healthDataApi') as {
+  syncHealthData: jest.Mock;
+};
+const measurementsApi =
+  require('../../../src/services/api/measurementsApi') as {
+    serverSupportsPerRecordWater: jest.Mock;
+  };
+const writeback = require('../../../src/services/writeback') as {
+  runWriteback: jest.Mock;
+};
 
 const metric = (overrides: Partial<HealthMetric>): HealthMetric => ({
   id: 'test-metric',
@@ -51,7 +58,9 @@ const fakeProvider = (overrides: Partial<FakeProvider> = {}): FakeProvider => ({
   readCumulativeByDay: jest.fn().mockResolvedValue(null),
   readMinMaxAvgByDay: jest.fn().mockResolvedValue(null),
   readRaw: jest.fn().mockResolvedValue({ records: [] }),
-  postProcessRaw: jest.fn(async (_metric: HealthMetric, records: unknown[]) => records),
+  postProcessRaw: jest.fn(
+    async (_metric: HealthMetric, records: unknown[]) => records
+  ),
   transform: jest.fn((records: unknown[]) => records),
   ...overrides,
 });
@@ -72,11 +81,22 @@ describe('collectHealthData', () => {
     const provider = fakeProvider({
       readCumulativeByDay: jest.fn().mockResolvedValue({ records }),
     });
-    const steps = metric({ recordType: 'Steps', type: 'step', readKind: 'cumulative-day' });
+    const steps = metric({
+      recordType: 'Steps',
+      type: 'step',
+      readKind: 'cumulative-day',
+    });
 
-    const outcomes = await collectHealthData(provider, [steps], windows, { timeoutLabelPrefix: 'Test query', telemetry: createTelemetryRunContext() });
+    const outcomes = await collectHealthData(provider, [steps], windows, {
+      timeoutLabelPrefix: 'Test query',
+      telemetry: createTelemetryRunContext(),
+    });
 
-    expect(provider.readCumulativeByDay).toHaveBeenCalledWith(steps, windows.aggregatedStart, windows.end);
+    expect(provider.readCumulativeByDay).toHaveBeenCalledWith(
+      steps,
+      windows.aggregatedStart,
+      windows.end
+    );
     expect(provider.readRaw).not.toHaveBeenCalled();
     expect(provider.transform).toHaveBeenCalledWith(records, steps);
     expect(outcomes).toEqual([
@@ -89,25 +109,50 @@ describe('collectHealthData', () => {
     const provider = fakeProvider({
       readRaw: jest.fn().mockResolvedValue({ records: rawRecords }),
     });
-    const bmr = metric({ recordType: 'BasalMetabolicRate', type: 'basal_metabolic_rate', readKind: 'cumulative-day' });
+    const bmr = metric({
+      recordType: 'BasalMetabolicRate',
+      type: 'basal_metabolic_rate',
+      readKind: 'cumulative-day',
+    });
 
-    const outcomes = await collectHealthData(provider, [bmr], windows, { timeoutLabelPrefix: 'Test query', telemetry: createTelemetryRunContext() });
+    const outcomes = await collectHealthData(provider, [bmr], windows, {
+      timeoutLabelPrefix: 'Test query',
+      telemetry: createTelemetryRunContext(),
+    });
 
     expect(provider.readCumulativeByDay).toHaveBeenCalled();
-    expect(provider.readRaw).toHaveBeenCalledWith('BasalMetabolicRate', windows.sessionStart, windows.end, expect.anything());
+    expect(provider.readRaw).toHaveBeenCalledWith(
+      'BasalMetabolicRate',
+      windows.sessionStart,
+      windows.end,
+      expect.anything()
+    );
     expect(outcomes[0].data).toEqual(rawRecords);
   });
 
   test('cumulative-day error envelope propagates WITHOUT a raw fallback (null-vs-error contract)', async () => {
     const provider = fakeProvider({
-      readCumulativeByDay: jest.fn().mockResolvedValue({ records: [], error: 'query failed' }),
+      readCumulativeByDay: jest
+        .fn()
+        .mockResolvedValue({ records: [], error: 'query failed' }),
     });
-    const steps = metric({ recordType: 'Steps', type: 'step', readKind: 'cumulative-day' });
+    const steps = metric({
+      recordType: 'Steps',
+      type: 'step',
+      readKind: 'cumulative-day',
+    });
 
-    const outcomes = await collectHealthData(provider, [steps], windows, { timeoutLabelPrefix: 'Test query', telemetry: createTelemetryRunContext() });
+    const outcomes = await collectHealthData(provider, [steps], windows, {
+      timeoutLabelPrefix: 'Test query',
+      telemetry: createTelemetryRunContext(),
+    });
 
     expect(provider.readRaw).not.toHaveBeenCalled();
-    expect(outcomes[0]).toMatchObject({ status: 'fulfilled', data: [], error: 'query failed' });
+    expect(outcomes[0]).toMatchObject({
+      status: 'fulfilled',
+      data: [],
+      error: 'query failed',
+    });
   });
 
   test('preserves pre-aggregated record types instead of stamping the metric config type', async () => {
@@ -137,7 +182,15 @@ describe('collectHealthData', () => {
       readKind: 'cumulative-day',
     });
 
-    const outcomes = await collectHealthData(provider, [totalCalories], windows, { timeoutLabelPrefix: 'Test query', telemetry: createTelemetryRunContext() });
+    const outcomes = await collectHealthData(
+      provider,
+      [totalCalories],
+      windows,
+      {
+        timeoutLabelPrefix: 'Test query',
+        telemetry: createTelemetryRunContext(),
+      }
+    );
 
     expect(outcomes[0].data).toEqual([
       expect.objectContaining({ value: 2000, type: 'total_calories' }),
@@ -147,18 +200,48 @@ describe('collectHealthData', () => {
 
   test('min-max-avg-day native path bypasses transform and the aggregateByDay tail', async () => {
     const dayStats = [
-      { value: 48, type: 'heart_rate_min', date: '2026-07-02', unit: 'bpm', source: 'HealthKit' },
-      { value: 120, type: 'heart_rate_max', date: '2026-07-02', unit: 'bpm', source: 'HealthKit' },
-      { value: 72, type: 'heart_rate_avg', date: '2026-07-02', unit: 'bpm', source: 'HealthKit' },
+      {
+        value: 48,
+        type: 'heart_rate_min',
+        date: '2026-07-02',
+        unit: 'bpm',
+        source: 'HealthKit',
+      },
+      {
+        value: 120,
+        type: 'heart_rate_max',
+        date: '2026-07-02',
+        unit: 'bpm',
+        source: 'HealthKit',
+      },
+      {
+        value: 72,
+        type: 'heart_rate_avg',
+        date: '2026-07-02',
+        unit: 'bpm',
+        source: 'HealthKit',
+      },
     ];
     const provider = fakeProvider({
       readMinMaxAvgByDay: jest.fn().mockResolvedValue({ records: dayStats }),
     });
-    const heartRate = metric({ recordType: 'HeartRate', type: 'heart_rate', unit: 'bpm', aggregationStrategy: 'min-max-avg' });
+    const heartRate = metric({
+      recordType: 'HeartRate',
+      type: 'heart_rate',
+      unit: 'bpm',
+      aggregationStrategy: 'min-max-avg',
+    });
 
-    const outcomes = await collectHealthData(provider, [heartRate], windows, { timeoutLabelPrefix: 'Test query', telemetry: createTelemetryRunContext() });
+    const outcomes = await collectHealthData(provider, [heartRate], windows, {
+      timeoutLabelPrefix: 'Test query',
+      telemetry: createTelemetryRunContext(),
+    });
 
-    expect(provider.readMinMaxAvgByDay).toHaveBeenCalledWith(heartRate, windows.aggregatedStart, windows.end);
+    expect(provider.readMinMaxAvgByDay).toHaveBeenCalledWith(
+      heartRate,
+      windows.aggregatedStart,
+      windows.end
+    );
     expect(provider.readRaw).not.toHaveBeenCalled();
     // Already transformed and day-aggregated: re-running either stage would
     // re-aggregate min-of-{min,max,avg} under the same type names.
@@ -174,15 +257,33 @@ describe('collectHealthData', () => {
     const provider = fakeProvider({
       readRaw: jest.fn().mockResolvedValue({ records: rawSamples }),
     });
-    const runningSpeed = metric({ recordType: 'RunningSpeed', type: 'running_speed', unit: 'm/s', aggregationStrategy: 'min-max-avg' });
+    const runningSpeed = metric({
+      recordType: 'RunningSpeed',
+      type: 'running_speed',
+      unit: 'm/s',
+      aggregationStrategy: 'min-max-avg',
+    });
 
-    const outcomes = await collectHealthData(provider, [runningSpeed], windows, { timeoutLabelPrefix: 'Test query', telemetry: createTelemetryRunContext() });
+    const outcomes = await collectHealthData(
+      provider,
+      [runningSpeed],
+      windows,
+      {
+        timeoutLabelPrefix: 'Test query',
+        telemetry: createTelemetryRunContext(),
+      }
+    );
 
     // Day-aligned, not sessionStart: the aggregates land as full-day SETs on
     // the server, so a mid-day window start would clobber the stored day
     // values with partial-window ones (issue #1978 — heart_rate_min losing
     // the overnight low to an afternoon sync).
-    expect(provider.readRaw).toHaveBeenCalledWith('RunningSpeed', windows.aggregatedStart, windows.end, expect.anything());
+    expect(provider.readRaw).toHaveBeenCalledWith(
+      'RunningSpeed',
+      windows.aggregatedStart,
+      windows.end,
+      expect.anything()
+    );
     expect(provider.transform).toHaveBeenCalledWith(rawSamples, runningSpeed);
     // The aggregateByDay tail runs: exactly 3 records per day.
     expect(outcomes[0].data.map((r: { type: string }) => r.type)).toEqual([
@@ -194,56 +295,113 @@ describe('collectHealthData', () => {
 
   test('sum-strategy metrics also read from the day-aligned window on the raw path', async () => {
     const provider = fakeProvider();
-    const standTime = metric({ recordType: 'AppleStandTime', type: 'apple_stand_time', unit: 'seconds', aggregationStrategy: 'sum' });
+    const standTime = metric({
+      recordType: 'AppleStandTime',
+      type: 'apple_stand_time',
+      unit: 'seconds',
+      aggregationStrategy: 'sum',
+    });
 
-    await collectHealthData(provider, [standTime], windows, { timeoutLabelPrefix: 'Test query', telemetry: createTelemetryRunContext() });
+    await collectHealthData(provider, [standTime], windows, {
+      timeoutLabelPrefix: 'Test query',
+      telemetry: createTelemetryRunContext(),
+    });
 
-    expect(provider.readRaw).toHaveBeenCalledWith('AppleStandTime', windows.aggregatedStart, windows.end, expect.anything());
+    expect(provider.readRaw).toHaveBeenCalledWith(
+      'AppleStandTime',
+      windows.aggregatedStart,
+      windows.end,
+      expect.anything()
+    );
   });
 
   test('rollingLookbackDays widens the raw window to the day-aligned lookback', async () => {
     const provider = fakeProvider();
-    const nutrition = metric({ recordType: 'Nutrition', type: 'nutrition', rollingLookbackDays: 2 });
+    const nutrition = metric({
+      recordType: 'Nutrition',
+      type: 'nutrition',
+      rollingLookbackDays: 2,
+    });
 
-    await collectHealthData(provider, [nutrition], windows, { timeoutLabelPrefix: 'Test query', telemetry: createTelemetryRunContext() });
+    await collectHealthData(provider, [nutrition], windows, {
+      timeoutLabelPrefix: 'Test query',
+      telemetry: createTelemetryRunContext(),
+    });
 
     // Lookback: midnight of (end − 2 days) = 2026-07-01 00:00, earlier than the
     // session start (2026-07-02 15:30) — the wider window wins.
-    expect(provider.readRaw).toHaveBeenCalledWith('Nutrition', new Date(2026, 6, 1, 0, 0, 0, 0), windows.end, expect.anything());
+    expect(provider.readRaw).toHaveBeenCalledWith(
+      'Nutrition',
+      new Date(2026, 6, 1, 0, 0, 0, 0),
+      windows.end,
+      expect.anything()
+    );
   });
 
   test('rollingLookbackDays keeps the session window when it already reaches further back', async () => {
     const provider = fakeProvider();
-    const nutrition = metric({ recordType: 'Nutrition', type: 'nutrition', rollingLookbackDays: 2 });
+    const nutrition = metric({
+      recordType: 'Nutrition',
+      type: 'nutrition',
+      rollingLookbackDays: 2,
+    });
     const wideWindows: SyncWindows = {
       sessionStart: new Date(2026, 5, 1, 0, 0, 0, 0), // June 1 — far earlier than the lookback
       aggregatedStart: new Date(2026, 5, 1, 0, 0, 0, 0),
       end: windows.end,
     };
 
-    await collectHealthData(provider, [nutrition], wideWindows, { timeoutLabelPrefix: 'Test query', telemetry: createTelemetryRunContext() });
+    await collectHealthData(provider, [nutrition], wideWindows, {
+      timeoutLabelPrefix: 'Test query',
+      telemetry: createTelemetryRunContext(),
+    });
 
-    expect(provider.readRaw).toHaveBeenCalledWith('Nutrition', wideWindows.sessionStart, wideWindows.end, expect.anything());
+    expect(provider.readRaw).toHaveBeenCalledWith(
+      'Nutrition',
+      wideWindows.sessionStart,
+      wideWindows.end,
+      expect.anything()
+    );
   });
 
   test('postProcessRaw runs only on non-empty raw reads', async () => {
     const provider = fakeProvider();
-    const exercise = metric({ recordType: 'ExerciseSession', type: 'exercise_session' });
+    const exercise = metric({
+      recordType: 'ExerciseSession',
+      type: 'exercise_session',
+    });
 
-    const outcomes = await collectHealthData(provider, [exercise], windows, { timeoutLabelPrefix: 'Test query', telemetry: createTelemetryRunContext() });
+    const outcomes = await collectHealthData(provider, [exercise], windows, {
+      timeoutLabelPrefix: 'Test query',
+      telemetry: createTelemetryRunContext(),
+    });
 
     expect(provider.postProcessRaw).not.toHaveBeenCalled();
     expect(provider.transform).not.toHaveBeenCalled();
     expect(outcomes[0]).toMatchObject({ status: 'fulfilled', data: [] });
 
     const rawSessions = [{ exerciseType: 56 }];
-    const enriched = [{ exerciseType: 56, ENERGY_TOTAL: { inKilocalories: 320 } }];
+    const enriched = [
+      { exerciseType: 56, ENERGY_TOTAL: { inKilocalories: 320 } },
+    ];
     provider.readRaw.mockResolvedValue({ records: rawSessions });
     provider.postProcessRaw.mockResolvedValue(enriched);
 
-    const secondOutcomes = await collectHealthData(provider, [exercise], windows, { timeoutLabelPrefix: 'Test query', telemetry: createTelemetryRunContext() });
+    const secondOutcomes = await collectHealthData(
+      provider,
+      [exercise],
+      windows,
+      {
+        timeoutLabelPrefix: 'Test query',
+        telemetry: createTelemetryRunContext(),
+      }
+    );
 
-    expect(provider.postProcessRaw).toHaveBeenCalledWith(exercise, rawSessions, expect.anything());
+    expect(provider.postProcessRaw).toHaveBeenCalledWith(
+      exercise,
+      rawSessions,
+      expect.anything()
+    );
     expect(provider.transform).toHaveBeenCalledWith(enriched, exercise);
     expect(secondOutcomes[0].data).toEqual(enriched);
   });
@@ -251,11 +409,16 @@ describe('collectHealthData', () => {
   test('partial raw records ride along with the read error', async () => {
     const partial = [{ value: 75.5 }];
     const provider = fakeProvider({
-      readRaw: jest.fn().mockResolvedValue({ records: partial, error: 'read interrupted' }),
+      readRaw: jest
+        .fn()
+        .mockResolvedValue({ records: partial, error: 'read interrupted' }),
     });
     const weight = metric({ recordType: 'Weight', type: 'weight' });
 
-    const outcomes = await collectHealthData(provider, [weight], windows, { timeoutLabelPrefix: 'Test query', telemetry: createTelemetryRunContext() });
+    const outcomes = await collectHealthData(provider, [weight], windows, {
+      timeoutLabelPrefix: 'Test query',
+      telemetry: createTelemetryRunContext(),
+    });
 
     expect(outcomes[0]).toMatchObject({
       status: 'fulfilled',
@@ -271,15 +434,27 @@ describe('collectHealthData', () => {
         // First batch (3 metrics) never resolves; the timeout fires for all three.
         readRaw: jest.fn(() => new Promise(() => {})),
       });
-      const metrics = ['A', 'B', 'C', 'D'].map(recordType => metric({ recordType, id: recordType }));
+      const metrics = ['A', 'B', 'C', 'D'].map((recordType) =>
+        metric({ recordType, id: recordType })
+      );
 
-      const pending = collectHealthData(provider, metrics, windows, { timeoutLabelPrefix: 'Test query', telemetry: createTelemetryRunContext() });
+      const pending = collectHealthData(provider, metrics, windows, {
+        timeoutLabelPrefix: 'Test query',
+        telemetry: createTelemetryRunContext(),
+      });
       await jest.advanceTimersByTimeAsync(60_001);
       const outcomes = await pending;
 
-      expect(outcomes.map(o => o.status)).toEqual(['rejected', 'rejected', 'rejected', 'skipped']);
+      expect(outcomes.map((o) => o.status)).toEqual([
+        'rejected',
+        'rejected',
+        'rejected',
+        'skipped',
+      ]);
       expect(outcomes[0].error).toContain('Test query for A timed out');
-      expect(outcomes[3].error).toBe('Skipped because an earlier metric query timed out.');
+      expect(outcomes[3].error).toBe(
+        'Skipped because an earlier metric query timed out.'
+      );
     } finally {
       jest.useRealTimers();
     }
@@ -299,7 +474,9 @@ describe('collectHealthData', () => {
         timeoutMs: 120_000,
       });
       let settled = false;
-      pending.then(() => { settled = true; });
+      pending.then(() => {
+        settled = true;
+      });
 
       // The default 60s deadline passes without firing under the wider budget.
       await jest.advanceTimersByTimeAsync(60_001);
@@ -318,22 +495,55 @@ describe('collectHealthData', () => {
 
   test('outcomes preserve the input metric order', async () => {
     const provider = fakeProvider({
-      readRaw: jest.fn().mockImplementation(async (recordType: string) => ({ records: [{ recordType }] })),
+      readRaw: jest
+        .fn()
+        .mockImplementation(async (recordType: string) => ({
+          records: [{ recordType }],
+        })),
     });
-    const metrics = ['A', 'B', 'C', 'D', 'E'].map(recordType => metric({ recordType, id: recordType }));
+    const metrics = ['A', 'B', 'C', 'D', 'E'].map((recordType) =>
+      metric({ recordType, id: recordType })
+    );
 
-    const outcomes = await collectHealthData(provider, metrics, windows, { timeoutLabelPrefix: 'Test query', telemetry: createTelemetryRunContext() });
+    const outcomes = await collectHealthData(provider, metrics, windows, {
+      timeoutLabelPrefix: 'Test query',
+      telemetry: createTelemetryRunContext(),
+    });
 
-    expect(outcomes.map(o => o.metric.recordType)).toEqual(['A', 'B', 'C', 'D', 'E']);
+    expect(outcomes.map((o) => o.metric.recordType)).toEqual([
+      'A',
+      'B',
+      'C',
+      'D',
+      'E',
+    ]);
   });
 
   // Older servers SET the day total per incoming water record (last drink
   // wins), so per-record hydration is gated on the server capability probe.
   describe('per-record water server gate', () => {
-    const hydration = metric({ recordType: 'Hydration', type: 'water', unit: 'ml' });
+    const hydration = metric({
+      recordType: 'Hydration',
+      type: 'water',
+      unit: 'ml',
+    });
     const drinkRecords = [
-      { value: 250, date: '2026-07-02', unit: 'ml', source: 'healthkit', type: 'water', source_id: 'hk-1' },
-      { value: 500, date: '2026-07-02', unit: 'ml', source: 'healthkit', type: 'water', source_id: 'hk-2' },
+      {
+        value: 250,
+        date: '2026-07-02',
+        unit: 'ml',
+        source: 'healthkit',
+        type: 'water',
+        source_id: 'hk-1',
+      },
+      {
+        value: 500,
+        date: '2026-07-02',
+        unit: 'ml',
+        source: 'healthkit',
+        type: 'water',
+        source_id: 'hk-2',
+      },
     ];
 
     test('sends individual records when the server supports per-record water', async () => {
@@ -343,11 +553,19 @@ describe('collectHealthData', () => {
         transform: jest.fn(() => drinkRecords),
       });
 
-      const outcomes = await collectHealthData(provider, [hydration], windows, { timeoutLabelPrefix: 'Test query', telemetry: createTelemetryRunContext() });
+      const outcomes = await collectHealthData(provider, [hydration], windows, {
+        timeoutLabelPrefix: 'Test query',
+        telemetry: createTelemetryRunContext(),
+      });
 
       expect(outcomes[0].data).toEqual(drinkRecords);
       // Per-record upsert tolerates partial-day windows — the session window is fine.
-      expect(provider.readRaw).toHaveBeenCalledWith('Hydration', windows.sessionStart, windows.end, expect.anything());
+      expect(provider.readRaw).toHaveBeenCalledWith(
+        'Hydration',
+        windows.sessionStart,
+        windows.end,
+        expect.anything()
+      );
     });
 
     test('falls back to one day-aggregate record against an older server', async () => {
@@ -357,25 +575,48 @@ describe('collectHealthData', () => {
         transform: jest.fn(() => drinkRecords),
       });
 
-      const outcomes = await collectHealthData(provider, [hydration], windows, { timeoutLabelPrefix: 'Test query', telemetry: createTelemetryRunContext() });
+      const outcomes = await collectHealthData(provider, [hydration], windows, {
+        timeoutLabelPrefix: 'Test query',
+        telemetry: createTelemetryRunContext(),
+      });
 
       // Summed per day, with no source_id/timestamp leaking onto the aggregate.
       expect(outcomes[0].data).toEqual([
-        { value: 750, type: 'water', date: '2026-07-02', unit: 'ml', source: 'healthkit' },
+        {
+          value: 750,
+          type: 'water',
+          date: '2026-07-02',
+          unit: 'ml',
+          source: 'healthkit',
+        },
       ]);
       // The aggregate is a full-day SET on the old server, so the read must
       // start at a local day boundary — a mid-day session window (background
       // sync: lastSynced − 6h) would sum only a slice of the day.
-      expect(provider.readRaw).toHaveBeenCalledWith('Hydration', windows.aggregatedStart, windows.end, expect.anything());
+      expect(provider.readRaw).toHaveBeenCalledWith(
+        'Hydration',
+        windows.aggregatedStart,
+        windows.end,
+        expect.anything()
+      );
     });
 
     test('does not probe the server when no per-record water metric is enabled', async () => {
       const provider = fakeProvider();
-      const steps = metric({ recordType: 'Steps', type: 'step', readKind: 'cumulative-day' });
+      const steps = metric({
+        recordType: 'Steps',
+        type: 'step',
+        readKind: 'cumulative-day',
+      });
 
-      await collectHealthData(provider, [steps], windows, { timeoutLabelPrefix: 'Test query', telemetry: createTelemetryRunContext() });
+      await collectHealthData(provider, [steps], windows, {
+        timeoutLabelPrefix: 'Test query',
+        telemetry: createTelemetryRunContext(),
+      });
 
-      expect(measurementsApi.serverSupportsPerRecordWater).not.toHaveBeenCalled();
+      expect(
+        measurementsApi.serverSupportsPerRecordWater
+      ).not.toHaveBeenCalled();
     });
   });
 });
@@ -397,7 +638,11 @@ describe('runForegroundSync', () => {
 
     const result = await runForegroundSync(provider, 'today', {}, opts);
 
-    expect(result).toEqual({ success: true, message: 'Nothing to sync.', syncErrors: [] });
+    expect(result).toEqual({
+      success: true,
+      message: 'Nothing to sync.',
+      syncErrors: [],
+    });
     expect(api.syncHealthData).not.toHaveBeenCalled();
   });
 
@@ -410,7 +655,12 @@ describe('runForegroundSync', () => {
     api.syncHealthData.mockResolvedValue({ processed: 1, recordErrors });
 
     // Real HEALTH_METRICS: Steps is enabled via its stateKey.
-    const result = await runForegroundSync(provider, 'today', { isStepsSyncEnabled: true }, opts);
+    const result = await runForegroundSync(
+      provider,
+      'today',
+      { isStepsSyncEnabled: true },
+      opts
+    );
 
     expect(api.syncHealthData).toHaveBeenCalledWith(records);
     expect(result.success).toBe(true);
@@ -421,11 +671,17 @@ describe('runForegroundSync', () => {
 
   test('read errors land in syncErrors while other metrics still sync', async () => {
     const provider = fakeProvider({
-      readCumulativeByDay: jest.fn().mockImplementation(async (m: HealthMetric) =>
-        m.recordType === 'Steps'
-          ? { records: [], error: 'query failed' }
-          : { records: [{ date: '2026-07-02', value: 300, type: 'Active Calories' }] },
-      ),
+      readCumulativeByDay: jest
+        .fn()
+        .mockImplementation(async (m: HealthMetric) =>
+          m.recordType === 'Steps'
+            ? { records: [], error: 'query failed' }
+            : {
+                records: [
+                  { date: '2026-07-02', value: 300, type: 'Active Calories' },
+                ],
+              }
+        ),
     });
     api.syncHealthData.mockResolvedValue({ processed: 1 });
 
@@ -433,11 +689,13 @@ describe('runForegroundSync', () => {
       provider,
       'today',
       { isStepsSyncEnabled: true, isCaloriesSyncEnabled: true },
-      opts,
+      opts
     );
 
     expect(result.success).toBe(true);
-    expect(result.syncErrors).toEqual([{ type: 'Steps', error: 'query failed' }]);
+    expect(result.syncErrors).toEqual([
+      { type: 'Steps', error: 'query failed' },
+    ]);
     expect(api.syncHealthData).toHaveBeenCalledWith([
       expect.objectContaining({ value: 300 }),
     ]);
@@ -445,23 +703,45 @@ describe('runForegroundSync', () => {
 
   test('an upload failure returns success false with the error and syncErrors intact', async () => {
     const provider = fakeProvider({
-      readCumulativeByDay: jest.fn().mockResolvedValue({ records: [{ date: '2026-07-02', value: 1, type: 'step' }] }),
+      readCumulativeByDay: jest
+        .fn()
+        .mockResolvedValue({
+          records: [{ date: '2026-07-02', value: 1, type: 'step' }],
+        }),
     });
     api.syncHealthData.mockRejectedValue(new Error('Network error'));
 
-    const result = await runForegroundSync(provider, 'today', { isStepsSyncEnabled: true }, opts);
+    const result = await runForegroundSync(
+      provider,
+      'today',
+      { isStepsSyncEnabled: true },
+      opts
+    );
 
-    expect(result).toEqual({ success: false, error: 'Network error', syncErrors: [] });
+    expect(result).toEqual({
+      success: false,
+      error: 'Network error',
+      syncErrors: [],
+    });
   });
 
   test('a writeback failure never affects the inbound result', async () => {
     const provider = fakeProvider({
-      readCumulativeByDay: jest.fn().mockResolvedValue({ records: [{ date: '2026-07-02', value: 1, type: 'step' }] }),
+      readCumulativeByDay: jest
+        .fn()
+        .mockResolvedValue({
+          records: [{ date: '2026-07-02', value: 1, type: 'step' }],
+        }),
     });
     writeback.runWriteback.mockRejectedValue(new Error('writeback exploded'));
     api.syncHealthData.mockResolvedValue({ processed: 1 });
 
-    const result = await runForegroundSync(provider, 'today', { isStepsSyncEnabled: true }, opts);
+    const result = await runForegroundSync(
+      provider,
+      'today',
+      { isStepsSyncEnabled: true },
+      opts
+    );
 
     expect(writeback.runWriteback).toHaveBeenCalled();
     expect(result.success).toBe(true);
@@ -481,7 +761,12 @@ describe('runForegroundSync telemetry budget (#2191)', () => {
   });
 
   const runWithExerciseSession = async (provider: FakeProvider) =>
-    runForegroundSync(provider, '7d', { isExerciseSessionSyncEnabled: true }, opts);
+    runForegroundSync(
+      provider,
+      '7d',
+      { isExerciseSessionSyncEnabled: true },
+      opts
+    );
 
   test('hands the provider a BOUNDED context — the omission that caused #2191', async () => {
     const provider = fakeProvider({
@@ -518,7 +803,7 @@ describe('runForegroundSync telemetry budget (#2191)', () => {
     await runWithExerciseSession(provider);
 
     expect(provider.readRaw.mock.calls[0][3]).toBe(
-      provider.postProcessRaw.mock.calls[0][2],
+      provider.postProcessRaw.mock.calls[0][2]
     );
   });
 
@@ -555,7 +840,9 @@ describe('telemetry reuse cache commits only on a fully accepted upload', () => 
   beforeEach(() => {
     jest.clearAllMocks();
     writeback.runWriteback.mockResolvedValue(undefined);
-    markSpy = jest.spyOn(cache, 'markEnrichedSessions').mockResolvedValue(undefined);
+    markSpy = jest
+      .spyOn(cache, 'markEnrichedSessions')
+      .mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -566,7 +853,12 @@ describe('telemetry reuse cache commits only on a fully accepted upload', () => 
     const provider = fakeProvider({
       readRaw: jest.fn().mockResolvedValue({ records: [{ id: 'session-1' }] }),
     });
-    return runForegroundSync(provider, '7d', { isExerciseSessionSyncEnabled: true }, opts);
+    return runForegroundSync(
+      provider,
+      '7d',
+      { isExerciseSessionSyncEnabled: true },
+      opts
+    );
   };
 
   test('a fully accepted upload commits', async () => {
@@ -609,7 +901,8 @@ describe('telemetry reuse cache commits only on a fully accepted upload', () => 
 
     const provider = fakeProvider({
       readRaw: jest.fn(async (recordType: string) => {
-        if (recordType === 'ExerciseSession') throw new Error('Health Connect read failed');
+        if (recordType === 'ExerciseSession')
+          throw new Error('Health Connect read failed');
         return { records: [{ id: 'step-1' }] };
       }),
     });
@@ -618,7 +911,7 @@ describe('telemetry reuse cache commits only on a fully accepted upload', () => 
       provider,
       '7d',
       { isExerciseSessionSyncEnabled: true, isStepsSyncEnabled: true },
-      opts,
+      opts
     );
 
     expect(api.syncHealthData).toHaveBeenCalled();
@@ -627,14 +920,16 @@ describe('telemetry reuse cache commits only on a fully accepted upload', () => 
 
   test('a rejected session read does not commit on the empty-payload path either', async () => {
     const provider = fakeProvider({
-      readRaw: jest.fn().mockRejectedValue(new Error('Health Connect read failed')),
+      readRaw: jest
+        .fn()
+        .mockRejectedValue(new Error('Health Connect read failed')),
     });
 
     const result = await runForegroundSync(
       provider,
       '7d',
       { isExerciseSessionSyncEnabled: true },
-      opts,
+      opts
     );
 
     expect(api.syncHealthData).not.toHaveBeenCalled();
@@ -647,7 +942,12 @@ describe('telemetry reuse cache commits only on a fully accepted upload', () => 
       readRaw: jest.fn().mockResolvedValue({ records: [] }),
     });
 
-    await runForegroundSync(provider, '7d', { isExerciseSessionSyncEnabled: true }, opts);
+    await runForegroundSync(
+      provider,
+      '7d',
+      { isExerciseSessionSyncEnabled: true },
+      opts
+    );
 
     expect(api.syncHealthData).not.toHaveBeenCalled();
     expect(markSpy).toHaveBeenCalled();
@@ -655,24 +955,32 @@ describe('telemetry reuse cache commits only on a fully accepted upload', () => 
 });
 
 describe('sessionTelemetryOutcomesUsable', () => {
-  const outcome = (recordType: string, status: 'fulfilled' | 'rejected' | 'skipped') =>
-    ({ metric: { recordType }, status, data: [] }) as never;
+  const outcome = (
+    recordType: string,
+    status: 'fulfilled' | 'rejected' | 'skipped'
+  ) => ({ metric: { recordType }, status, data: [] }) as never;
 
   test('fulfilled session reads are usable', () => {
     expect(
       sessionTelemetryOutcomesUsable([
         outcome('ExerciseSession', 'fulfilled'),
         outcome('Steps', 'rejected'),
-      ]),
+      ])
     ).toBe(true);
   });
 
   test('a rejected or skipped session read is not', () => {
-    expect(sessionTelemetryOutcomesUsable([outcome('ExerciseSession', 'rejected')])).toBe(false);
-    expect(sessionTelemetryOutcomesUsable([outcome('Workout', 'skipped')])).toBe(false);
+    expect(
+      sessionTelemetryOutcomesUsable([outcome('ExerciseSession', 'rejected')])
+    ).toBe(false);
+    expect(
+      sessionTelemetryOutcomesUsable([outcome('Workout', 'skipped')])
+    ).toBe(false);
   });
 
   test('a run with no session metric has nothing staged to withhold', () => {
-    expect(sessionTelemetryOutcomesUsable([outcome('Steps', 'rejected')])).toBe(true);
+    expect(sessionTelemetryOutcomesUsable([outcome('Steps', 'rejected')])).toBe(
+      true
+    );
   });
 });

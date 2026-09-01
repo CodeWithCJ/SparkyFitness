@@ -20,12 +20,16 @@ import {
   calculateOtherExerciseCalories,
   calculateExerciseDuration,
 } from '../../../src/utils/workoutSession';
-import { getActiveServerConfig, ServerConfig } from '../../../src/services/storage';
+import {
+  getActiveServerConfig,
+  ServerConfig,
+} from '../../../src/services/storage';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 
 jest.mock('../../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
-  proxyHeadersToRecord: jest.requireActual('../../../src/services/storage').proxyHeadersToRecord,
+  proxyHeadersToRecord: jest.requireActual('../../../src/services/storage')
+    .proxyHeadersToRecord,
 }));
 
 jest.mock('../../../src/services/LogService', () => ({
@@ -37,7 +41,9 @@ const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<
 >;
 
 /** Helper to build an individual session with sensible defaults */
-function individual(overrides: Partial<ExerciseSessionResponse & { type: 'individual' }> = {}): ExerciseSessionResponse {
+function individual(
+  overrides: Partial<ExerciseSessionResponse & { type: 'individual' }> = {}
+): ExerciseSessionResponse {
   return {
     type: 'individual',
     id: 'i-1',
@@ -57,7 +63,9 @@ function individual(overrides: Partial<ExerciseSessionResponse & { type: 'indivi
 }
 
 /** Helper to build a preset session with sensible defaults */
-function preset(overrides: Partial<ExerciseSessionResponse & { type: 'preset' }> = {}): ExerciseSessionResponse {
+function preset(
+  overrides: Partial<ExerciseSessionResponse & { type: 'preset' }> = {}
+): ExerciseSessionResponse {
   return {
     type: 'preset',
     id: 'p-1',
@@ -236,7 +244,7 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://example.com/api/exercises/suggested?limit=5',
-        expect.objectContaining({ method: 'GET' }),
+        expect.objectContaining({ method: 'GET' })
       );
     });
 
@@ -432,17 +440,23 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
           }),
       });
 
-      const result = await updateExercise('ex-1', { name: 'Updated Bench Press' });
+      const result = await updateExercise('ex-1', {
+        name: 'Updated Bench Press',
+      });
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://example.com/api/exercises/ex-1',
-        expect.objectContaining({ method: 'PUT' }),
+        expect.objectContaining({ method: 'PUT' })
       );
       const init = mockFetch.mock.calls[0][1] as RequestInit;
       expect((init.body as FormData).get('exerciseData')).toEqual(
-        JSON.stringify({ name: 'Updated Bench Press' }),
+        JSON.stringify({ name: 'Updated Bench Press' })
       );
-      expect(result).toMatchObject({ id: 'ex-1', userId: 'user-1', isCustom: true });
+      expect(result).toMatchObject({
+        id: 'ex-1',
+        userId: 'user-1',
+        isCustom: true,
+      });
     });
 
     it('throws on non-OK response', async () => {
@@ -454,7 +468,7 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
       });
 
       await expect(updateExercise('ex-1', { name: 'X' })).rejects.toThrow(
-        'Server error: 403 - Forbidden',
+        'Server error: 403 - Forbidden'
       );
     });
   });
@@ -471,7 +485,7 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://example.com/api/exercises/ex-1',
-        expect.objectContaining({ method: 'DELETE' }),
+        expect.objectContaining({ method: 'DELETE' })
       );
     });
 
@@ -484,7 +498,7 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
       });
 
       await expect(deleteExerciseFromLibrary('ex-1')).rejects.toThrow(
-        'Server error: 403 - Forbidden',
+        'Server error: 403 - Forbidden'
       );
     });
   });
@@ -496,7 +510,11 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
         entry_date: '2026-03-20',
         exercises: [],
       };
-      const responseData = { id: 'session-1', type: 'preset', name: 'Push Day' };
+      const responseData = {
+        id: 'session-1',
+        type: 'preset',
+        name: 'Push Day',
+      };
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
@@ -510,7 +528,7 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify(payload),
-        }),
+        })
       );
       expect(result).toEqual(responseData);
     });
@@ -519,7 +537,11 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
   describe('updateWorkout', () => {
     it('sends PUT request to /api/exercise-preset-entries/:id', async () => {
       const payload = { name: 'Updated Push Day', exercises: [] };
-      const responseData = { id: 'session-1', type: 'preset', name: 'Updated Push Day' };
+      const responseData = {
+        id: 'session-1',
+        type: 'preset',
+        name: 'Updated Push Day',
+      };
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
@@ -533,7 +555,7 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
         expect.objectContaining({
           method: 'PUT',
           body: JSON.stringify(payload),
-        }),
+        })
       );
       expect(result).toEqual(responseData);
     });
@@ -551,7 +573,7 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://example.com/api/exercise-preset-entries/session-1',
-        expect.objectContaining({ method: 'DELETE' }),
+        expect.objectContaining({ method: 'DELETE' })
       );
     });
 
@@ -563,7 +585,9 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
         text: () => Promise.resolve('Not Found'),
       });
 
-      await expect(deleteWorkout('nonexistent')).rejects.toThrow('Server error: 404 - Not Found');
+      await expect(deleteWorkout('nonexistent')).rejects.toThrow(
+        'Server error: 404 - Not Found'
+      );
     });
   });
 
@@ -579,7 +603,7 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://example.com/api/exercise-entries/entry-1',
-        expect.objectContaining({ method: 'DELETE' }),
+        expect.objectContaining({ method: 'DELETE' })
       );
     });
 
@@ -592,7 +616,7 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
       });
 
       await expect(deleteExerciseEntry('entry-1')).rejects.toThrow(
-        'Server error: 500 - Internal Server Error',
+        'Server error: 500 - Internal Server Error'
       );
     });
   });
@@ -616,9 +640,9 @@ describe('exerciseApi', () => {
     const baseRow = { id: 'ex-1', name: 'Plank', category: 'isometric' };
 
     it('passes a valid modality through', () => {
-      expect(transformExerciseRow({ ...baseRow, modality: 'duration' }).modality).toBe(
-        'duration',
-      );
+      expect(
+        transformExerciseRow({ ...baseRow, modality: 'duration' }).modality
+      ).toBe('duration');
     });
 
     it('maps an absent modality (pre-modality server) to null', () => {
@@ -626,8 +650,12 @@ describe('exerciseApi', () => {
     });
 
     it('sanitizes a garbage modality value to null', () => {
-      expect(transformExerciseRow({ ...baseRow, modality: 'cardio!!' }).modality).toBeNull();
-      expect(transformExerciseRow({ ...baseRow, modality: 42 }).modality).toBeNull();
+      expect(
+        transformExerciseRow({ ...baseRow, modality: 'cardio!!' }).modality
+      ).toBeNull();
+      expect(
+        transformExerciseRow({ ...baseRow, modality: 42 }).modality
+      ).toBeNull();
     });
   });
 
@@ -663,8 +691,34 @@ describe('exerciseApi', () => {
       const entries: ExerciseSessionResponse[] = [
         preset({
           exercises: [
-            { id: 'e1', exercise_id: 'ex-1', duration_minutes: 10, calories_burned: 100, entry_date: null, notes: null, distance: null, avg_heart_rate: null, source: null, sets: [], exercise_snapshot: null, activity_details: [] },
-            { id: 'e2', exercise_id: 'ex-2', duration_minutes: 15, calories_burned: 200, entry_date: null, notes: null, distance: null, avg_heart_rate: null, source: null, sets: [], exercise_snapshot: null, activity_details: [] },
+            {
+              id: 'e1',
+              exercise_id: 'ex-1',
+              duration_minutes: 10,
+              calories_burned: 100,
+              entry_date: null,
+              notes: null,
+              distance: null,
+              avg_heart_rate: null,
+              source: null,
+              sets: [],
+              exercise_snapshot: null,
+              activity_details: [],
+            },
+            {
+              id: 'e2',
+              exercise_id: 'ex-2',
+              duration_minutes: 15,
+              calories_burned: 200,
+              entry_date: null,
+              notes: null,
+              distance: null,
+              avg_heart_rate: null,
+              source: null,
+              sets: [],
+              exercise_snapshot: null,
+              activity_details: [],
+            },
           ],
         }),
       ];
@@ -676,7 +730,20 @@ describe('exerciseApi', () => {
         individual({ id: '1', calories_burned: 100 }),
         preset({
           exercises: [
-            { id: 'e1', exercise_id: 'ex-1', duration_minutes: 10, calories_burned: 150, entry_date: null, notes: null, distance: null, avg_heart_rate: null, source: null, sets: [], exercise_snapshot: null, activity_details: [] },
+            {
+              id: 'e1',
+              exercise_id: 'ex-1',
+              duration_minutes: 10,
+              calories_burned: 150,
+              entry_date: null,
+              notes: null,
+              distance: null,
+              avg_heart_rate: null,
+              source: null,
+              sets: [],
+              exercise_snapshot: null,
+              activity_details: [],
+            },
           ],
         }),
       ];
@@ -691,17 +758,45 @@ describe('exerciseApi', () => {
 
     test('returns 0 when no Active Calories exercises exist', () => {
       const entries: ExerciseSessionResponse[] = [
-        individual({ id: '1', calories_burned: 200, exercise_snapshot: { id: 'e1', name: 'Running', category: 'Cardio' } }),
-        individual({ id: '2', calories_burned: 150, exercise_snapshot: { id: 'e2', name: 'Cycling', category: 'Cardio' } }),
+        individual({
+          id: '1',
+          calories_burned: 200,
+          exercise_snapshot: { id: 'e1', name: 'Running', category: 'Cardio' },
+        }),
+        individual({
+          id: '2',
+          calories_burned: 150,
+          exercise_snapshot: { id: 'e2', name: 'Cycling', category: 'Cardio' },
+        }),
       ];
       expect(calculateActiveCalories(entries)).toBe(0);
     });
 
     test('sums only Active Calories exercises', () => {
       const entries: ExerciseSessionResponse[] = [
-        individual({ id: '1', calories_burned: 200, exercise_snapshot: { id: 'e1', name: 'Running', category: 'Cardio' } }),
-        individual({ id: '2', calories_burned: 450, exercise_snapshot: { id: 'e2', name: 'Active Calories', category: 'Tracking' } }),
-        individual({ id: '3', calories_burned: 100, exercise_snapshot: { id: 'e3', name: 'Active Calories', category: 'Tracking' } }),
+        individual({
+          id: '1',
+          calories_burned: 200,
+          exercise_snapshot: { id: 'e1', name: 'Running', category: 'Cardio' },
+        }),
+        individual({
+          id: '2',
+          calories_burned: 450,
+          exercise_snapshot: {
+            id: 'e2',
+            name: 'Active Calories',
+            category: 'Tracking',
+          },
+        }),
+        individual({
+          id: '3',
+          calories_burned: 100,
+          exercise_snapshot: {
+            id: 'e3',
+            name: 'Active Calories',
+            category: 'Tracking',
+          },
+        }),
       ];
       expect(calculateActiveCalories(entries)).toBe(550);
     });
@@ -709,7 +804,15 @@ describe('exerciseApi', () => {
     test('handles entries without exercise_snapshot', () => {
       const entries: ExerciseSessionResponse[] = [
         individual({ id: '1', calories_burned: 200 }),
-        individual({ id: '2', calories_burned: 300, exercise_snapshot: { id: 'e2', name: 'Active Calories', category: 'Tracking' } }),
+        individual({
+          id: '2',
+          calories_burned: 300,
+          exercise_snapshot: {
+            id: 'e2',
+            name: 'Active Calories',
+            category: 'Tracking',
+          },
+        }),
       ];
       expect(calculateActiveCalories(entries)).toBe(300);
     });
@@ -718,7 +821,20 @@ describe('exerciseApi', () => {
       const entries: ExerciseSessionResponse[] = [
         preset({
           exercises: [
-            { id: 'e1', exercise_id: 'ex-1', duration_minutes: 10, calories_burned: 500, entry_date: null, notes: null, distance: null, avg_heart_rate: null, source: null, sets: [], exercise_snapshot: null, activity_details: [] },
+            {
+              id: 'e1',
+              exercise_id: 'ex-1',
+              duration_minutes: 10,
+              calories_burned: 500,
+              entry_date: null,
+              notes: null,
+              distance: null,
+              avg_heart_rate: null,
+              source: null,
+              sets: [],
+              exercise_snapshot: null,
+              activity_details: [],
+            },
           ],
         }),
       ];
@@ -745,7 +861,16 @@ describe('exerciseApi', () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ sessions: [], pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false } }),
+        json: () =>
+          Promise.resolve({
+            sessions: [],
+            pagination: {
+              page: 1,
+              pageSize: 20,
+              totalCount: 0,
+              hasMore: false,
+            },
+          }),
       });
 
       await fetchExerciseHistory();
@@ -767,7 +892,16 @@ describe('exerciseApi', () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ sessions: [], pagination: { page: 3, pageSize: 10, totalCount: 50, hasMore: true } }),
+        json: () =>
+          Promise.resolve({
+            sessions: [],
+            pagination: {
+              page: 3,
+              pageSize: 10,
+              totalCount: 50,
+              hasMore: true,
+            },
+          }),
       });
 
       await fetchExerciseHistory(3, 10);
@@ -782,7 +916,16 @@ describe('exerciseApi', () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ sessions: [], pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false } }),
+        json: () =>
+          Promise.resolve({
+            sessions: [],
+            pagination: {
+              page: 1,
+              pageSize: 20,
+              totalCount: 0,
+              hasMore: false,
+            },
+          }),
       });
 
       await fetchExerciseHistory(1, 20, 'exercise-uuid-1');
@@ -839,17 +982,41 @@ describe('exerciseApi', () => {
 
     test('returns all calories when no Active Calories exercises exist', () => {
       const entries: ExerciseSessionResponse[] = [
-        individual({ id: '1', calories_burned: 200, exercise_snapshot: { id: 'e1', name: 'Running', category: 'Cardio' } }),
-        individual({ id: '2', calories_burned: 150, exercise_snapshot: { id: 'e2', name: 'Cycling', category: 'Cardio' } }),
+        individual({
+          id: '1',
+          calories_burned: 200,
+          exercise_snapshot: { id: 'e1', name: 'Running', category: 'Cardio' },
+        }),
+        individual({
+          id: '2',
+          calories_burned: 150,
+          exercise_snapshot: { id: 'e2', name: 'Cycling', category: 'Cardio' },
+        }),
       ];
       expect(calculateOtherExerciseCalories(entries)).toBe(350);
     });
 
     test('excludes Active Calories exercises', () => {
       const entries: ExerciseSessionResponse[] = [
-        individual({ id: '1', calories_burned: 200, exercise_snapshot: { id: 'e1', name: 'Running', category: 'Cardio' } }),
-        individual({ id: '2', calories_burned: 450, exercise_snapshot: { id: 'e2', name: 'Active Calories', category: 'Tracking' } }),
-        individual({ id: '3', calories_burned: 150, exercise_snapshot: { id: 'e3', name: 'Cycling', category: 'Cardio' } }),
+        individual({
+          id: '1',
+          calories_burned: 200,
+          exercise_snapshot: { id: 'e1', name: 'Running', category: 'Cardio' },
+        }),
+        individual({
+          id: '2',
+          calories_burned: 450,
+          exercise_snapshot: {
+            id: 'e2',
+            name: 'Active Calories',
+            category: 'Tracking',
+          },
+        }),
+        individual({
+          id: '3',
+          calories_burned: 150,
+          exercise_snapshot: { id: 'e3', name: 'Cycling', category: 'Cardio' },
+        }),
       ];
       expect(calculateOtherExerciseCalories(entries)).toBe(350);
     });
@@ -857,7 +1024,15 @@ describe('exerciseApi', () => {
     test('includes entries without exercise_snapshot', () => {
       const entries: ExerciseSessionResponse[] = [
         individual({ id: '1', calories_burned: 200 }),
-        individual({ id: '2', calories_burned: 300, exercise_snapshot: { id: 'e2', name: 'Active Calories', category: 'Tracking' } }),
+        individual({
+          id: '2',
+          calories_burned: 300,
+          exercise_snapshot: {
+            id: 'e2',
+            name: 'Active Calories',
+            category: 'Tracking',
+          },
+        }),
       ];
       expect(calculateOtherExerciseCalories(entries)).toBe(200);
     });
@@ -866,8 +1041,34 @@ describe('exerciseApi', () => {
       const entries: ExerciseSessionResponse[] = [
         preset({
           exercises: [
-            { id: 'e1', exercise_id: 'ex-1', duration_minutes: 10, calories_burned: 100, entry_date: null, notes: null, distance: null, avg_heart_rate: null, source: null, sets: [], exercise_snapshot: null, activity_details: [] },
-            { id: 'e2', exercise_id: 'ex-2', duration_minutes: 15, calories_burned: 200, entry_date: null, notes: null, distance: null, avg_heart_rate: null, source: null, sets: [], exercise_snapshot: null, activity_details: [] },
+            {
+              id: 'e1',
+              exercise_id: 'ex-1',
+              duration_minutes: 10,
+              calories_burned: 100,
+              entry_date: null,
+              notes: null,
+              distance: null,
+              avg_heart_rate: null,
+              source: null,
+              sets: [],
+              exercise_snapshot: null,
+              activity_details: [],
+            },
+            {
+              id: 'e2',
+              exercise_id: 'ex-2',
+              duration_minutes: 15,
+              calories_burned: 200,
+              entry_date: null,
+              notes: null,
+              distance: null,
+              avg_heart_rate: null,
+              source: null,
+              sets: [],
+              exercise_snapshot: null,
+              activity_details: [],
+            },
           ],
         }),
       ];
@@ -882,9 +1083,25 @@ describe('exerciseApi', () => {
 
     test('sums duration from individual entries, excluding Active Calories', () => {
       const entries: ExerciseSessionResponse[] = [
-        individual({ id: '1', duration_minutes: 30, exercise_snapshot: { id: 'e1', name: 'Running', category: 'Cardio' } }),
-        individual({ id: '2', duration_minutes: 45, exercise_snapshot: { id: 'e2', name: 'Active Calories', category: 'Tracking' } }),
-        individual({ id: '3', duration_minutes: 20, exercise_snapshot: { id: 'e3', name: 'Cycling', category: 'Cardio' } }),
+        individual({
+          id: '1',
+          duration_minutes: 30,
+          exercise_snapshot: { id: 'e1', name: 'Running', category: 'Cardio' },
+        }),
+        individual({
+          id: '2',
+          duration_minutes: 45,
+          exercise_snapshot: {
+            id: 'e2',
+            name: 'Active Calories',
+            category: 'Tracking',
+          },
+        }),
+        individual({
+          id: '3',
+          duration_minutes: 20,
+          exercise_snapshot: { id: 'e3', name: 'Cycling', category: 'Cardio' },
+        }),
       ];
       expect(calculateExerciseDuration(entries)).toBe(50);
     });
@@ -898,7 +1115,11 @@ describe('exerciseApi', () => {
 
     test('sums both individual and preset durations', () => {
       const entries: ExerciseSessionResponse[] = [
-        individual({ id: '1', duration_minutes: 30, exercise_snapshot: { id: 'e1', name: 'Running', category: 'Cardio' } }),
+        individual({
+          id: '1',
+          duration_minutes: 30,
+          exercise_snapshot: { id: 'e1', name: 'Running', category: 'Cardio' },
+        }),
         preset({ total_duration_minutes: 45 }),
       ];
       expect(calculateExerciseDuration(entries)).toBe(75);

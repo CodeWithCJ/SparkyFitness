@@ -5,7 +5,11 @@ import { sleepDayQueryKey } from '../../src/hooks/queryKeys';
 import { fetchSleepEntries } from '../../src/services/api/sleepApi';
 import { ApiError } from '../../src/services/api/errors';
 import { buildSleepEntry } from '../helpers/sleepFixtures';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/sleepApi', () => ({
   fetchSleepEntries: jest.fn(),
@@ -108,7 +112,9 @@ describe('useSleepDay', () => {
   });
 
   test('D populated and D+1 empty leaves bedTime null', async () => {
-    mockFetchSleepEntries.mockResolvedValue([buildSleepEntry({ entry_date: DAY })]);
+    mockFetchSleepEntries.mockResolvedValue([
+      buildSleepEntry({ entry_date: DAY }),
+    ]);
 
     const { result } = renderSleepDay();
 
@@ -169,7 +175,9 @@ describe('useSleepDay', () => {
   });
 
   test('a rejection surfaces isError with empty fields and no throw', async () => {
-    mockFetchSleepEntries.mockRejectedValue(new Error('Network request failed'));
+    mockFetchSleepEntries.mockRejectedValue(
+      new Error('Network request failed')
+    );
 
     const { result } = renderSleepDay();
 
@@ -181,7 +189,7 @@ describe('useSleepDay', () => {
 
   test('reports a 403 as isForbidden so the Diary can hide the cards outright', async () => {
     mockFetchSleepEntries.mockRejectedValue(
-      new ApiError('Server error: 403 - Forbidden', 403, 'Forbidden'),
+      new ApiError('Server error: 403 - Forbidden', 403, 'Forbidden')
     );
 
     const { result } = renderSleepDay();
@@ -210,7 +218,10 @@ describe('useSleepDay', () => {
 
 describe('classifySleepDay', () => {
   test('promotes the longest entry to main sleep and demotes the rest to naps', () => {
-    const overnight = buildSleepEntry({ id: 'overnight', duration_in_seconds: 28800 });
+    const overnight = buildSleepEntry({
+      id: 'overnight',
+      duration_in_seconds: 28800,
+    });
     const longNap = buildSleepEntry({
       id: 'long-nap',
       duration_in_seconds: 2700,
@@ -231,7 +242,10 @@ describe('classifySleepDay', () => {
   test('a lone entry is the main sleep with no naps', () => {
     const only = buildSleepEntry({ id: 'only' });
 
-    expect(classifySleepDay([only], DAY)).toEqual({ mainSleep: only, naps: [] });
+    expect(classifySleepDay([only], DAY)).toEqual({
+      mainSleep: only,
+      naps: [],
+    });
   });
 
   test('an empty day yields no main sleep and no naps', () => {
@@ -251,8 +265,12 @@ describe('classifySleepDay', () => {
       bedtime: '2026-08-23T15:00:00+00:00',
     });
 
-    expect(classifySleepDay([earlier, later], DAY).mainSleep?.id).toBe('earlier');
-    expect(classifySleepDay([later, earlier], DAY).mainSleep?.id).toBe('earlier');
+    expect(classifySleepDay([earlier, later], DAY).mainSleep?.id).toBe(
+      'earlier'
+    );
+    expect(classifySleepDay([later, earlier], DAY).mainSleep?.id).toBe(
+      'earlier'
+    );
   });
 
   test('excludes D+1 entries from day D', () => {
@@ -266,9 +284,9 @@ describe('classifySleepDay', () => {
     const result = classifySleepDay([today, tomorrow], DAY);
 
     expect(result.mainSleep?.id).toBe('today');
-    expect([result.mainSleep, ...result.naps].some((e) => e?.entry_date === NEXT_DAY)).toBe(
-      false,
-    );
+    expect(
+      [result.mainSleep, ...result.naps].some((e) => e?.entry_date === NEXT_DAY)
+    ).toBe(false);
   });
 
   test('returns naps in chronological bedtime order', () => {
@@ -291,7 +309,11 @@ describe('classifySleepDay', () => {
 
     const result = classifySleepDay([evening, main, morning, afternoon], DAY);
 
-    expect(result.naps.map((nap) => nap.id)).toEqual(['morning', 'afternoon', 'evening']);
+    expect(result.naps.map((nap) => nap.id)).toEqual([
+      'morning',
+      'afternoon',
+      'evening',
+    ]);
   });
 
   test('ranks on duration_in_seconds, not the nullable time_asleep_in_seconds', () => {

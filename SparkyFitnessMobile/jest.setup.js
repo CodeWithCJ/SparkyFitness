@@ -1,8 +1,10 @@
 // jsdom doesn't expose TextEncoder/TextDecoder globally, but Expo SDK 55's "winter"
 // runtime lazily installs URL/URLSearchParams via whatwg-url-minimum, which requires them.
 const { TextEncoder, TextDecoder } = require('util');
-if (typeof globalThis.TextEncoder === 'undefined') globalThis.TextEncoder = TextEncoder;
-if (typeof globalThis.TextDecoder === 'undefined') globalThis.TextDecoder = TextDecoder;
+if (typeof globalThis.TextEncoder === 'undefined')
+  globalThis.TextEncoder = TextEncoder;
+if (typeof globalThis.TextDecoder === 'undefined')
+  globalThis.TextDecoder = TextDecoder;
 
 // Deterministic expo-localization: tests read the device language through
 // getLocales(). The localization suite overrides the return value per test;
@@ -70,15 +72,27 @@ jest.mock('@kingstinct/react-native-healthkit', () => ({
   saveCategorySample: jest.fn().mockResolvedValue({ uuid: 'hk-category-uuid' }),
   saveCorrelationSample: jest.fn().mockResolvedValue({
     uuid: 'hk-correlation-uuid',
-    objects: [{ uuid: 'hk-object-uuid', quantityType: 'HKQuantityTypeIdentifierDietaryEnergyConsumed' }],
+    objects: [
+      {
+        uuid: 'hk-object-uuid',
+        quantityType: 'HKQuantityTypeIdentifierDietaryEnergyConsumed',
+      },
+    ],
   }),
   saveWorkoutSample: jest.fn().mockResolvedValue({}),
   deleteObjects: jest.fn().mockResolvedValue(0),
   // Default sharingAuthorized (2) so unrelated suites touching the healthkit module
   // don't change behavior; the writeback partial-auth test overrides per-type.
   authorizationStatusFor: jest.fn(() => 2),
-  currentAppSource: jest.fn(() => ({ bundleIdentifier: 'com.sparkyfitness.mobile', name: 'SparkyFitness' })),
-  AuthorizationStatus: { notDetermined: 0, sharingDenied: 1, sharingAuthorized: 2 },
+  currentAppSource: jest.fn(() => ({
+    bundleIdentifier: 'com.sparkyfitness.mobile',
+    name: 'SparkyFitness',
+  })),
+  AuthorizationStatus: {
+    notDetermined: 0,
+    sharingDenied: 1,
+    sharingAuthorized: 2,
+  },
   HKQuantityTypeIdentifier: {
     stepCount: 'HKQuantityTypeIdentifierStepCount',
     activeEnergyBurned: 'HKQuantityTypeIdentifierActiveEnergyBurned',
@@ -141,12 +155,16 @@ jest.mock('expo-notifications', () => {
     requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
     scheduleNotificationAsync: jest.fn(async () => `mock-notif-${nextId++}`),
     cancelScheduledNotificationAsync: jest.fn().mockResolvedValue(undefined),
-    cancelAllScheduledNotificationsAsync: jest.fn().mockResolvedValue(undefined),
+    cancelAllScheduledNotificationsAsync: jest
+      .fn()
+      .mockResolvedValue(undefined),
     getAllScheduledNotificationsAsync: jest.fn().mockResolvedValue([]),
     setNotificationCategoryAsync: jest.fn().mockResolvedValue(undefined),
     getPresentedNotificationsAsync: jest.fn().mockResolvedValue([]),
     dismissNotificationAsync: jest.fn().mockResolvedValue(undefined),
-    addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+    addNotificationResponseReceivedListener: jest.fn(() => ({
+      remove: jest.fn(),
+    })),
     AndroidImportance: { HIGH: 4, DEFAULT: 3, LOW: 2, MIN: 1, NONE: 0 },
     SchedulableTriggerInputTypes: {
       CALENDAR: 'calendar',
@@ -163,10 +181,20 @@ jest.mock('expo-notifications', () => {
 // Mock expo-haptics
 jest.mock('expo-haptics', () => ({
   notificationAsync: jest.fn().mockResolvedValue(undefined),
-  NotificationFeedbackType: { Success: 'success', Warning: 'warning', Error: 'error' },
+  NotificationFeedbackType: {
+    Success: 'success',
+    Warning: 'warning',
+    Error: 'error',
+  },
   selectionAsync: jest.fn().mockResolvedValue(undefined),
   impactAsync: jest.fn().mockResolvedValue(undefined),
-  ImpactFeedbackStyle: { Light: 'light', Medium: 'medium', Heavy: 'heavy', Soft: 'soft', Rigid: 'rigid' },
+  ImpactFeedbackStyle: {
+    Light: 'light',
+    Medium: 'medium',
+    Heavy: 'heavy',
+    Soft: 'soft',
+    Rigid: 'rigid',
+  },
 }));
 
 // Mock expo-audio
@@ -190,7 +218,11 @@ jest.mock('expo-camera', () => {
       React.useImperativeHandle(ref, () => ({
         takePictureAsync: jest.fn(),
       }));
-      return React.createElement(View, { testID: 'camera-view', ...props }, children);
+      return React.createElement(
+        View,
+        { testID: 'camera-view', ...props },
+        children
+      );
     }),
     useCameraPermissions: jest.fn(() => [{ granted: true }, jest.fn()]),
   };
@@ -206,11 +238,17 @@ jest.mock('expo-secure-store', () => {
   const store = {};
   return {
     AFTER_FIRST_UNLOCK: 'AFTER_FIRST_UNLOCK',
-    setItemAsync: jest.fn(async (key, value) => { store[key] = value; }),
+    setItemAsync: jest.fn(async (key, value) => {
+      store[key] = value;
+    }),
     getItemAsync: jest.fn(async (key) => store[key] ?? null),
-    deleteItemAsync: jest.fn(async (key) => { delete store[key]; }),
+    deleteItemAsync: jest.fn(async (key) => {
+      delete store[key];
+    }),
     __store: store,
-    __clear: () => { Object.keys(store).forEach(k => delete store[k]); },
+    __clear: () => {
+      Object.keys(store).forEach((k) => delete store[k]);
+    },
   };
 });
 
@@ -280,16 +318,26 @@ jest.mock('react-native-gesture-handler/ReanimatedSwipeable', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: React.forwardRef(({ children, renderRightActions, ...props }, ref) => {
-      React.useImperativeHandle(ref, () => ({
-        close: jest.fn(),
-        reset: jest.fn(),
-      }));
-      return React.createElement(View, { testID: 'reanimated-swipeable', ...props },
-        children,
-        renderRightActions ? React.createElement(View, { testID: 'swipeable-right-actions' }, renderRightActions()) : null,
-      );
-    }),
+    default: React.forwardRef(
+      ({ children, renderRightActions, ...props }, ref) => {
+        React.useImperativeHandle(ref, () => ({
+          close: jest.fn(),
+          reset: jest.fn(),
+        }));
+        return React.createElement(
+          View,
+          { testID: 'reanimated-swipeable', ...props },
+          children,
+          renderRightActions
+            ? React.createElement(
+                View,
+                { testID: 'swipeable-right-actions' },
+                renderRightActions()
+              )
+            : null
+        );
+      }
+    ),
   };
 });
 
@@ -313,7 +361,11 @@ jest.mock('react-native-reanimated', () => {
   };
   return {
     __esModule: true,
-    default: { View, ScrollView, createAnimatedComponent: (Component) => Component },
+    default: {
+      View,
+      ScrollView,
+      createAnimatedComponent: (Component) => Component,
+    },
     useSharedValue: (init) => React.useRef({ value: init }).current,
     useAnimatedStyle: (fn) => fn(),
     useDerivedValue: (fn) => ({ value: fn() }),
@@ -372,18 +424,24 @@ jest.mock('react-native-keyboard-controller', () => {
   const { ScrollView, View } = require('react-native');
 
   return {
-    KeyboardProvider: ({ children }) => React.createElement(React.Fragment, null, children),
-    KeyboardAvoidingView: React.forwardRef(({ children, behavior: _behavior, ...props }, ref) =>
-      React.createElement(View, { ...props, ref }, children),
+    KeyboardProvider: ({ children }) =>
+      React.createElement(React.Fragment, null, children),
+    KeyboardAvoidingView: React.forwardRef(
+      ({ children, behavior: _behavior, ...props }, ref) =>
+        React.createElement(View, { ...props, ref }, children)
     ),
     KeyboardAwareScrollView: React.forwardRef(({ children, ...props }, ref) =>
-      React.createElement(ScrollView, { ...props, ref }, children),
+      React.createElement(ScrollView, { ...props, ref }, children)
     ),
-    KeyboardStickyView: React.forwardRef(({ children, offset: _offset, enabled: _enabled, ...props }, ref) =>
-      React.createElement(View, { ...props, ref }, children),
+    KeyboardStickyView: React.forwardRef(
+      ({ children, offset: _offset, enabled: _enabled, ...props }, ref) =>
+        React.createElement(View, { ...props, ref }, children)
     ),
     // Keyboard-closed shared values; tests render with the rail expanded.
-    useReanimatedKeyboardAnimation: () => ({ height: { value: 0 }, progress: { value: 0 } }),
+    useReanimatedKeyboardAnimation: () => ({
+      height: { value: 0 },
+      progress: { value: 0 },
+    }),
     // isVisible defaults to true so the Android IME-retry path in
     // focusSetCellInput stays quiet unless a test opts in.
     KeyboardController: {
@@ -473,7 +531,8 @@ jest.mock('@shopify/react-native-skia', () => {
   const React = require('react');
   const { View } = require('react-native');
   return {
-    Canvas: ({ children, style }) => React.createElement(View, { style, testID: 'skia-canvas' }, children),
+    Canvas: ({ children, style }) =>
+      React.createElement(View, { style, testID: 'skia-canvas' }, children),
     Circle: () => null,
     Rect: () => null,
     RoundedRect: () => null,
@@ -509,7 +568,8 @@ jest.mock('victory-native', () => {
   const React = require('react');
   const { View } = require('react-native');
   return {
-    CartesianChart: ({ children, ...props }) => React.createElement(View, { testID: 'cartesian-chart', ...props }),
+    CartesianChart: ({ children, ...props }) =>
+      React.createElement(View, { testID: 'cartesian-chart', ...props }),
     Bar: () => null,
     useChartPressState: jest.fn(() => ({
       state: {
@@ -530,7 +590,8 @@ jest.mock('react-native-ui-datepicker', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: (props) => React.createElement(View, { testID: 'date-picker', ...props }),
+    default: (props) =>
+      React.createElement(View, { testID: 'date-picker', ...props }),
   };
 });
 
@@ -551,20 +612,35 @@ jest.mock('uniwind', () => ({
 jest.mock('react-native-enriched-markdown', () => {
   const React = require('react');
   const { Text } = require('react-native');
-  const Markdown = ({ markdown, onLinkPress, selectable, streamingAnimation }) =>
+  const Markdown = ({
+    markdown,
+    onLinkPress,
+    selectable,
+    streamingAnimation,
+  }) =>
     React.createElement(
       Text,
-      { testID: 'enriched-markdown', onLinkPress, selectable, streamingAnimation },
-      markdown,
+      {
+        testID: 'enriched-markdown',
+        onLinkPress,
+        selectable,
+        streamingAnimation,
+      },
+      markdown
     );
-  return { __esModule: true, EnrichedMarkdownText: Markdown, default: Markdown };
+  return {
+    __esModule: true,
+    EnrichedMarkdownText: Markdown,
+    default: Markdown,
+  };
 });
 
 // Mock react-native-toast-message
 jest.mock('react-native-toast-message', () => {
   const React = require('react');
   const { View } = require('react-native');
-  const MockToast = (props) => React.createElement(View, { testID: 'toast', ...props });
+  const MockToast = (props) =>
+    React.createElement(View, { testID: 'toast', ...props });
   MockToast.show = jest.fn();
   MockToast.hide = jest.fn();
   return { __esModule: true, default: MockToast };
@@ -578,8 +654,15 @@ jest.mock('react-native-pager-view', () => {
   const setPage = jest.fn();
   const setPageWithoutAnimation = jest.fn();
   const MockPagerView = React.forwardRef(({ children, ...props }, ref) => {
-    React.useImperativeHandle(ref, () => ({ setPage, setPageWithoutAnimation }));
-    return React.createElement(View, { testID: 'pager-view', ...props }, children);
+    React.useImperativeHandle(ref, () => ({
+      setPage,
+      setPageWithoutAnimation,
+    }));
+    return React.createElement(
+      View,
+      { testID: 'pager-view', ...props },
+      children
+    );
   });
   MockPagerView.setPage = setPage;
   MockPagerView.setPageWithoutAnimation = setPageWithoutAnimation;
@@ -598,8 +681,10 @@ jest.mock('@gorhom/bottom-sheet', () => {
       }));
       return React.createElement(View, null, children);
     }),
-    BottomSheetModalProvider: ({ children }) => React.createElement(View, null, children),
-    BottomSheetView: ({ children, style }) => React.createElement(View, { style }, children),
+    BottomSheetModalProvider: ({ children }) =>
+      React.createElement(View, null, children),
+    BottomSheetView: ({ children, style }) =>
+      React.createElement(View, { style }, children),
     BottomSheetScrollView: ({ children, contentContainerStyle }) =>
       React.createElement(ScrollView, { contentContainerStyle }, children),
     BottomSheetBackdrop: () => null,

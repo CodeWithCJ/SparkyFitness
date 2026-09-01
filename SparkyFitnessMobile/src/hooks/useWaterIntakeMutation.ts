@@ -3,7 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
-import { fetchWaterContainers, changeWaterIntake } from '../services/api/measurementsApi';
+import {
+  fetchWaterContainers,
+  changeWaterIntake,
+} from '../services/api/measurementsApi';
 import { getServingVolume } from '../utils/unitConversions';
 import type { DailySummaryRawData } from './useDailySummary';
 import { dailySummaryQueryKey, waterContainersQueryKey } from './queryKeys';
@@ -15,10 +18,15 @@ interface UseWaterIntakeMutationOptions {
   enabled?: boolean;
 }
 
-export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeMutationOptions) {
+export function useWaterIntakeMutation({
+  date,
+  enabled = true,
+}: UseWaterIntakeMutationOptions) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [selectedContainerId, setSelectedContainerId] = useState<number | null>(null);
+  const [selectedContainerId, setSelectedContainerId] = useState<number | null>(
+    null
+  );
 
   useEffect(() => {
     AsyncStorage.getItem(SELECTED_CONTAINER_KEY).then((val) => {
@@ -38,9 +46,11 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
 
   // Resolve active container: user selection → primary → single fallback
   const activeContainer =
-    (selectedContainerId != null ? containers?.find(c => c.id === selectedContainerId) : undefined)
-    ?? containers?.find(c => c.is_primary)
-    ?? (containers?.length === 1 ? containers[0] : undefined);
+    (selectedContainerId != null
+      ? containers?.find((c) => c.id === selectedContainerId)
+      : undefined) ??
+    containers?.find((c) => c.is_primary) ??
+    (containers?.length === 1 ? containers[0] : undefined);
 
   const selectContainer = (id: number) => {
     setSelectedContainerId(id);
@@ -63,27 +73,43 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
 
       await queryClient.cancelQueries({ queryKey: dailySummaryQueryKey(date) });
 
-      queryClient.setQueryData<DailySummaryRawData>(dailySummaryQueryKey(date), (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          waterIntake: {
-            water_ml: Math.max(0, (old.waterIntake.water_ml || 0) + changeDrinks * getServingVolume(activeContainer)),
-          },
-        };
-      });
+      queryClient.setQueryData<DailySummaryRawData>(
+        dailySummaryQueryKey(date),
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            waterIntake: {
+              water_ml: Math.max(
+                0,
+                (old.waterIntake.water_ml || 0) +
+                  changeDrinks * getServingVolume(activeContainer)
+              ),
+            },
+          };
+        }
+      );
     },
     onSuccess: (response) => {
-      queryClient.setQueryData<DailySummaryRawData>(dailySummaryQueryKey(date), (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          waterIntake: { water_ml: response.water_ml },
-        };
-      });
+      queryClient.setQueryData<DailySummaryRawData>(
+        dailySummaryQueryKey(date),
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            waterIntake: { water_ml: response.water_ml },
+          };
+        }
+      );
     },
     onError: () => {
-      Toast.show({ type: 'error', text1: t('waterIntake.updateFailed', { defaultValue: 'Error' }), text2: t('waterIntake.updateMessage', { defaultValue: 'Failed to update water intake. Please try again.' }) });
+      Toast.show({
+        type: 'error',
+        text1: t('waterIntake.updateFailed', { defaultValue: 'Error' }),
+        text2: t('waterIntake.updateMessage', {
+          defaultValue: 'Failed to update water intake. Please try again.',
+        }),
+      });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(date) });
@@ -94,21 +120,37 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
     const hasMultiple = containers && containers.length > 1;
     Toast.show({
       type: 'info',
-      text1: hasMultiple ? t('waterIntake.noPrimary', { defaultValue: 'No Primary Container' }) : t('waterIntake.noContainers', { defaultValue: 'No Water Containers' }),
+      text1: hasMultiple
+        ? t('waterIntake.noPrimary', { defaultValue: 'No Primary Container' })
+        : t('waterIntake.noContainers', {
+            defaultValue: 'No Water Containers',
+          }),
       text2: hasMultiple
-        ? t('waterIntake.multipleNoPrimary', { defaultValue: 'You have multiple water containers but none is marked as primary. Please set one as primary on the server.' })
-        : t('waterIntake.configure', { defaultValue: 'Please configure a water container on the server to track hydration.' }),
+        ? t('waterIntake.multipleNoPrimary', {
+            defaultValue:
+              'You have multiple water containers but none is marked as primary. Please set one as primary on the server.',
+          })
+        : t('waterIntake.configure', {
+            defaultValue:
+              'Please configure a water container on the server to track hydration.',
+          }),
       visibilityTime: 4000,
     });
   };
 
   const increment = () => {
-    if (!activeContainer) { noContainerAlert(); return; }
+    if (!activeContainer) {
+      noContainerAlert();
+      return;
+    }
     mutation.mutate(1);
   };
 
   const decrement = () => {
-    if (!activeContainer) { noContainerAlert(); return; }
+    if (!activeContainer) {
+      noContainerAlert();
+      return;
+    }
     mutation.mutate(-1);
   };
 
@@ -118,7 +160,9 @@ export function useWaterIntakeMutation({ date, enabled = true }: UseWaterIntakeM
     isReady: !!activeContainer,
     isContainersLoaded,
     unit: activeContainer?.unit,
-    servingVolume: activeContainer ? getServingVolume(activeContainer) : undefined,
+    servingVolume: activeContainer
+      ? getServingVolume(activeContainer)
+      : undefined,
     containers,
     activeContainer,
     selectContainer,

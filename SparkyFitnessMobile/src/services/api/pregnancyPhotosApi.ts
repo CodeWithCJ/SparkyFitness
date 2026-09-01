@@ -53,20 +53,28 @@ export async function uploadPhoto(params: {
 
   let response: Response;
   try {
-    response = await fetchWithTimeout(`${baseUrl}/api/v2/pregnancy/photos`, {
-      method: 'POST',
-      headers: {
-        ...proxyHeadersToRecord(config.proxyHeaders),
-        ...getAuthHeaders(config),
-        // Note: Multer needs to set the boundary, so do NOT set Content-Type header manually.
+    response = await fetchWithTimeout(
+      `${baseUrl}/api/v2/pregnancy/photos`,
+      {
+        method: 'POST',
+        headers: {
+          ...proxyHeadersToRecord(config.proxyHeaders),
+          ...getAuthHeaders(config),
+          // Note: Multer needs to set the boundary, so do NOT set Content-Type header manually.
+        },
+        body: form,
       },
-      body: form,
-    }, UPLOAD_TIMEOUT_MS);
+      UPLOAD_TIMEOUT_MS
+    );
   } catch (err) {
     // A throw here means no response ever arrived (connection dropped,
     // timeout, or a proxy rejecting the multipart body before the app server
     // saw it), so log it; the response-error path below can't.
-    addLog('[Pregnancy Photos API] Photo upload failed without a response', 'ERROR', [String(err)]);
+    addLog(
+      '[Pregnancy Photos API] Photo upload failed without a response',
+      'ERROR',
+      [String(err)]
+    );
     throw err;
   }
 
@@ -76,7 +84,11 @@ export async function uploadPhoto(params: {
     }
     const text = await response.text();
     addLog('[Pregnancy Photos API] Failed to upload photo', 'ERROR', [text]);
-    throw new ApiError(`Server error: ${response.status} - ${text}`, response.status, text);
+    throw new ApiError(
+      `Server error: ${response.status} - ${text}`,
+      response.status,
+      text
+    );
   }
 
   return response.json();

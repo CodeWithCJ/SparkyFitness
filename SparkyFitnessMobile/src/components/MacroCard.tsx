@@ -1,6 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text } from 'react-native';
-import Animated, { useSharedValue, useDerivedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
+import Animated, {
+  useSharedValue,
+  useDerivedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { useIsFocused } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 
@@ -32,9 +38,7 @@ const MacroCard: React.FC<MacroCardProps> = ({
   const progress = hasGoal ? consumed / (goal as number) : 0;
   const barHeight = compact ? 6 : 8;
   const borderRadius = compact ? 3 : 4;
-  const [trackColor] = useCSSVariable([
-    '--color-progress-track',
-  ]) as [string];
+  const [trackColor] = useCSSVariable(['--color-progress-track']) as [string];
 
   const animatedProgress = useSharedValue(0);
 
@@ -83,10 +87,22 @@ const MacroCard: React.FC<MacroCardProps> = ({
   return (
     <View className={`${widthClassName} p-1`}>
       <View className="flex-row justify-between items-center mb-2">
-        <Text className={compact ? 'text-xs font-medium text-text-primary' : 'text-sm font-medium text-text-primary'}>
+        <Text
+          className={
+            compact
+              ? 'text-xs font-medium text-text-primary'
+              : 'text-sm font-medium text-text-primary'
+          }
+        >
           {label}
         </Text>
-        <Text className={compact ? 'text-[11px] text-text-secondary' : 'text-xs text-text-secondary'}>
+        <Text
+          className={
+            compact
+              ? 'text-[11px] text-text-secondary'
+              : 'text-xs text-text-secondary'
+          }
+        >
           {goal && goal > 0
             ? `${Math.round(consumed)}${unit} / ${Math.round(goal)}${unit}`
             : `${Math.round(consumed)}${unit}`}
@@ -110,13 +126,25 @@ const MacroCard: React.FC<MacroCardProps> = ({
               >
                 <Animated.View
                   style={[
-                    { position: 'absolute', left: 0, top: 0, height: barHeight, backgroundColor: color },
+                    {
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      height: barHeight,
+                      backgroundColor: color,
+                    },
                     fillStyle,
                   ]}
                 />
                 <Animated.View
                   style={[
-                    { position: 'absolute', top: 0, height: barHeight, backgroundColor: color, opacity: 0.65 },
+                    {
+                      position: 'absolute',
+                      top: 0,
+                      height: barHeight,
+                      backgroundColor: color,
+                      opacity: 0.65,
+                    },
                     overflowStyle,
                   ]}
                 />
@@ -125,9 +153,14 @@ const MacroCard: React.FC<MacroCardProps> = ({
           </View>
           {barWidth > 0 && (
             <Text className="text-[10px] text-text-muted mt-1">
-              {Math.round(progress * 100)}% · {(() => {
+              {Math.round(progress * 100)}% ·{' '}
+              {(() => {
                 const diff = goal - consumed;
-                return diff > 0 ? `${Math.round(diff)}${unit} left` : diff < 0 ? `${Math.round(Math.abs(diff))}${unit} over` : 'met';
+                return diff > 0
+                  ? `${Math.round(diff)}${unit} left`
+                  : diff < 0
+                    ? `${Math.round(Math.abs(diff))}${unit} over`
+                    : 'met';
               })()}
             </Text>
           )}

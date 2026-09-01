@@ -1,11 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Platform,
-} from 'react-native';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -83,30 +78,49 @@ const positiveOrUndefined = (v: number | undefined | null) =>
 function confidenceLabel(
   t: (key: string, options?: Record<string, unknown>) => string,
   confidence: keyof typeof overallConfidenceLabels,
-  scope: 'overall' | 'item',
+  scope: 'overall' | 'item'
 ): string {
   if (scope === 'overall') {
     switch (confidence) {
-      case 'high': return t('foodPhotoEstimate.confidence.good', { defaultValue: 'Good' });
-      case 'medium': return t('foodPhotoEstimate.confidence.fair', { defaultValue: 'Fair' });
-      case 'low': return t('foodPhotoEstimate.confidence.rough', { defaultValue: 'Rough' });
+      case 'high':
+        return t('foodPhotoEstimate.confidence.good', { defaultValue: 'Good' });
+      case 'medium':
+        return t('foodPhotoEstimate.confidence.fair', { defaultValue: 'Fair' });
+      case 'low':
+        return t('foodPhotoEstimate.confidence.rough', {
+          defaultValue: 'Rough',
+        });
     }
   }
   switch (confidence) {
-    case 'high': return t('foodPhotoEstimate.confidence.likely', { defaultValue: 'Likely' });
-    case 'medium': return t('foodPhotoEstimate.confidence.possible', { defaultValue: 'Possible' });
-    case 'low': return t('foodPhotoEstimate.confidence.uncertain', { defaultValue: 'Uncertain' });
+    case 'high':
+      return t('foodPhotoEstimate.confidence.likely', {
+        defaultValue: 'Likely',
+      });
+    case 'medium':
+      return t('foodPhotoEstimate.confidence.possible', {
+        defaultValue: 'Possible',
+      });
+    case 'low':
+      return t('foodPhotoEstimate.confidence.uncertain', {
+        defaultValue: 'Uncertain',
+      });
   }
 }
 
-const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) => {
+const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({
+  navigation,
+  route,
+}) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const textPrimary = useCSSVariable('--color-text-primary') as string;
   const { backColor } = useHeaderActionColors();
 
   const dismissFlow = () =>
-    navigation.getParent<NativeStackNavigationProp<RootStackParamList>>()?.popToTop();
+    navigation
+      .getParent<NativeStackNavigationProp<RootStackParamList>>()
+      ?.popToTop();
 
   const { date, estimate, request } = route.params;
 
@@ -119,7 +133,7 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
    */
   const [saveMode, setSaveMode] = useState<SaveMode>('ingredients_and_meal');
   const [mealName, setMealName] = useState(
-    estimate.meal_summary || 'Photo estimate',
+    estimate.meal_summary || 'Photo estimate'
   );
   const isCombined = saveMode === 'one_food';
   const mode: 'grouped' | 'combined' = isCombined ? 'combined' : 'grouped';
@@ -143,7 +157,7 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
   // nutrition, and the amount only decides how it is divided — saying a soup
   // makes 2000 ml adds portions, never calories.
   const [servingUnit, setServingUnit] = useState<string>(
-    MEAL_SERVING_UNIT_DEFAULT,
+    MEAL_SERVING_UNIT_DEFAULT
   );
   const isServingUnit = servingUnit === MEAL_SERVING_UNIT_DEFAULT;
   const [totalServingsText, setTotalServingsText] = useState('1');
@@ -177,7 +191,9 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
     return String(Math.round(prefillGrams / factor));
   };
 
-  const servingSize = isServingUnit ? 1 : parseDecimalInput(servingSizeText) || 0;
+  const servingSize = isServingUnit
+    ? 1
+    : parseDecimalInput(servingSizeText) || 0;
   const totalAmount = parseDecimalInput(totalAmountText) || 0;
   const totalServings = isServingUnit
     ? parseDecimalInput(totalServingsText) || 0
@@ -270,7 +286,7 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
           },
         }),
       });
-    }, [dispatch, t]),
+    }, [dispatch, t])
   );
 
   const openFoodPicker = () => {
@@ -308,8 +324,11 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
   const [showConfidenceReason, setShowConfidenceReason] = useState(false);
 
   const overallTone = confidenceTones[estimate.overall_confidence];
-  const overallLabel = confidenceLabel(t, estimate.overall_confidence, 'overall');
-
+  const overallLabel = confidenceLabel(
+    t,
+    estimate.overall_confidence,
+    'overall'
+  );
 
   /**
    * Turn the edited rows into the log payload.
@@ -432,7 +451,15 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
 
   const handleSubmit = (data: FoodFormData) => {
     if (!data.name.trim()) {
-      Toast.show({ type: 'error', text1: t('foodPhotoEstimate.errors.nameRequired', { defaultValue: 'Name required' }), text2: t('foodPhotoEstimate.errors.nameRequiredMessage', { defaultValue: 'Give this food a name.' }) });
+      Toast.show({
+        type: 'error',
+        text1: t('foodPhotoEstimate.errors.nameRequired', {
+          defaultValue: 'Name required',
+        }),
+        text2: t('foodPhotoEstimate.errors.nameRequiredMessage', {
+          defaultValue: 'Give this food a name.',
+        }),
+      });
       return;
     }
 
@@ -448,8 +475,13 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
     ) {
       Toast.show({
         type: 'error',
-        text1: t('foodPhotoEstimate.errors.invalidNutrition', { defaultValue: 'Invalid nutrition' }),
-        text2: t('foodPhotoEstimate.errors.invalidRequiredNutrition', { defaultValue: 'Calories, protein, carbs, and fat must be non-negative numbers.' }),
+        text1: t('foodPhotoEstimate.errors.invalidNutrition', {
+          defaultValue: 'Invalid nutrition',
+        }),
+        text2: t('foodPhotoEstimate.errors.invalidRequiredNutrition', {
+          defaultValue:
+            'Calories, protein, carbs, and fat must be non-negative numbers.',
+        }),
       });
       return;
     }
@@ -470,8 +502,12 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
     if (Object.values(optionalNutrients).some((v) => v === null)) {
       Toast.show({
         type: 'error',
-        text1: t('foodPhotoEstimate.errors.invalidNutrition', { defaultValue: 'Invalid nutrition' }),
-        text2: t('foodPhotoEstimate.errors.invalidOptionalNutrition', { defaultValue: 'All nutrition values must be non-negative numbers.' }),
+        text1: t('foodPhotoEstimate.errors.invalidNutrition', {
+          defaultValue: 'Invalid nutrition',
+        }),
+        text2: t('foodPhotoEstimate.errors.invalidOptionalNutrition', {
+          defaultValue: 'All nutrition values must be non-negative numbers.',
+        }),
       });
       return;
     }
@@ -480,8 +516,12 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
     if (!Number.isFinite(servingSizeValue) || servingSizeValue <= 0) {
       Toast.show({
         type: 'error',
-        text1: t('foodPhotoEstimate.errors.invalidServingSize', { defaultValue: 'Invalid serving size' }),
-        text2: t('foodPhotoEstimate.errors.invalidServingSizeMessage', { defaultValue: 'Serving size must be a positive number.' }),
+        text1: t('foodPhotoEstimate.errors.invalidServingSize', {
+          defaultValue: 'Invalid serving size',
+        }),
+        text2: t('foodPhotoEstimate.errors.invalidServingSizeMessage', {
+          defaultValue: 'Serving size must be a positive number.',
+        }),
       });
       return;
     }
@@ -522,8 +562,13 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
         onPress={() => setShowConfidenceReason((v) => !v)}
         className={`flex-row items-center justify-between rounded-lg p-3 ${TONE_BG_CLASS[overallTone]}`}
       >
-        <Text className={`text-sm font-semibold ${TONE_TEXT_CLASS[overallTone]}`}>
-          {t('foodPhotoEstimate.labels.overallEstimate', { defaultValue: '{{confidence}} estimate', confidence: overallLabel })}
+        <Text
+          className={`text-sm font-semibold ${TONE_TEXT_CLASS[overallTone]}`}
+        >
+          {t('foodPhotoEstimate.labels.overallEstimate', {
+            defaultValue: '{{confidence}} estimate',
+            confidence: overallLabel,
+          })}
         </Text>
         <Icon
           name={showConfidenceReason ? 'chevron-down' : 'chevron-forward'}
@@ -622,10 +667,13 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
                 onChangeText={updateTotalAmount}
                 keyboardType="decimal-pad"
                 returnKeyType="done"
-                accessibilityLabel={t('foodPhotoEstimate.servings.totalAmount', {
-                  defaultValue: 'Total amount ({{unit}})',
-                  unit: servingUnit,
-                })}
+                accessibilityLabel={t(
+                  'foodPhotoEstimate.servings.totalAmount',
+                  {
+                    defaultValue: 'Total amount ({{unit}})',
+                    unit: servingUnit,
+                  }
+                )}
               />
             </>
           )}
@@ -729,7 +777,9 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
             onChangeGrams={(grams) =>
               dispatch({ type: 'SET_GRAMS', id: row.id, grams })
             }
-            onChangeName={(name) => dispatch({ type: 'SET_NAME', id: row.id, name })}
+            onChangeName={(name) =>
+              dispatch({ type: 'SET_NAME', id: row.id, name })
+            }
             onChangeMacro={(key, value) =>
               dispatch({ type: 'SET_MACRO', id: row.id, key, value })
             }
@@ -756,7 +806,9 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
         </Button>
         <View className="flex-row justify-between mt-2 px-1">
           <Text className="text-text-primary text-sm font-semibold">
-            {t('foodPhotoEstimate.ingredients.totals', { defaultValue: 'Total' })}
+            {t('foodPhotoEstimate.ingredients.totals', {
+              defaultValue: 'Total',
+            })}
           </Text>
           <Text className="text-text-primary text-sm font-semibold">
             {macroSummary()}
@@ -797,37 +849,39 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
       </Text>
     );
 
-  const SAVE_MODE_OPTIONS: { value: SaveMode; label: string; hint: string }[] = [
-    {
-      value: 'ingredients_and_meal',
-      label: t('foodPhotoEstimate.mode.ingredientsAndMeal', {
-        defaultValue: 'Ingredients + reusable meal',
-      }),
-      hint: t('foodPhotoEstimate.mode.hintIngredientsAndMeal', {
-        defaultValue:
-          'Each ingredient becomes its own food, and the meal is saved so you can log it again without a photo.',
-      }),
-    },
-    {
-      value: 'ingredients_only',
-      label: t('foodPhotoEstimate.mode.ingredientsOnly', {
-        defaultValue: 'Ingredients only',
-      }),
-      hint: t('foodPhotoEstimate.mode.hintIngredientsOnly', {
-        defaultValue:
-          'Each ingredient becomes its own food. No reusable meal is saved.',
-      }),
-    },
-    {
-      value: 'one_food',
-      label: t('foodPhotoEstimate.mode.oneFood', {
-        defaultValue: 'One food',
-      }),
-      hint: t('foodPhotoEstimate.mode.hintOneFood', {
-        defaultValue: 'Saves the whole plate as a single food, with no breakdown.',
-      }),
-    },
-  ];
+  const SAVE_MODE_OPTIONS: { value: SaveMode; label: string; hint: string }[] =
+    [
+      {
+        value: 'ingredients_and_meal',
+        label: t('foodPhotoEstimate.mode.ingredientsAndMeal', {
+          defaultValue: 'Ingredients + reusable meal',
+        }),
+        hint: t('foodPhotoEstimate.mode.hintIngredientsAndMeal', {
+          defaultValue:
+            'Each ingredient becomes its own food, and the meal is saved so you can log it again without a photo.',
+        }),
+      },
+      {
+        value: 'ingredients_only',
+        label: t('foodPhotoEstimate.mode.ingredientsOnly', {
+          defaultValue: 'Ingredients only',
+        }),
+        hint: t('foodPhotoEstimate.mode.hintIngredientsOnly', {
+          defaultValue:
+            'Each ingredient becomes its own food. No reusable meal is saved.',
+        }),
+      },
+      {
+        value: 'one_food',
+        label: t('foodPhotoEstimate.mode.oneFood', {
+          defaultValue: 'One food',
+        }),
+        hint: t('foodPhotoEstimate.mode.hintOneFood', {
+          defaultValue:
+            'Saves the whole plate as a single food, with no breakdown.',
+        }),
+      },
+    ];
 
   const activeOption =
     SAVE_MODE_OPTIONS.find((option) => option.value === saveMode) ??
@@ -869,7 +923,9 @@ const FoodPhotoEstimateReviewScreen: React.FC<Props> = ({ navigation, route }) =
       {saveMode === 'ingredients_and_meal' ? (
         <View className="mt-3">
           <Text className="text-text-secondary text-xs mb-1">
-            {t('foodPhotoEstimate.mode.mealName', { defaultValue: 'Meal name' })}
+            {t('foodPhotoEstimate.mode.mealName', {
+              defaultValue: 'Meal name',
+            })}
           </Text>
           <FormInput value={mealName} onChangeText={setMealName} />
         </View>

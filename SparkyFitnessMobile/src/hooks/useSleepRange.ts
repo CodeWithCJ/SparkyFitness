@@ -53,7 +53,7 @@ const toSegment = (stage: SleepStageEvent): SleepTimelineSegment | null => {
 };
 
 const mergeAdjacentSegments = (
-  segments: SleepTimelineSegment[],
+  segments: SleepTimelineSegment[]
 ): SleepTimelineSegment[] => {
   const merged: SleepTimelineSegment[] = [];
 
@@ -106,7 +106,9 @@ const average = (values: number[]): number | null => {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 };
 
-const groupEntriesByDay = (entries: SleepEntry[]): Map<string, SleepEntry[]> => {
+const groupEntriesByDay = (
+  entries: SleepEntry[]
+): Map<string, SleepEntry[]> => {
   const entriesByDay = new Map<string, SleepEntry[]>();
 
   for (const entry of entries) {
@@ -140,7 +142,7 @@ export const buildSleepTimelineSummary = (
   entries: SleepEntry[],
   endDay: string,
   days: number,
-  profileTimezone?: string | null,
+  profileTimezone?: string | null
 ): SleepTimelineSummary => {
   const entriesByDay = groupEntriesByDay(entries);
 
@@ -185,7 +187,7 @@ export const buildSleepTimelineSummary = (
   return {
     days: timelineDays,
     averageTimeInBedSeconds: average(
-      nightsWithSleep.map((night) => night.timeInBedSeconds),
+      nightsWithSleep.map((night) => night.timeInBedSeconds)
     ),
     averageTimeAsleepSeconds: average(reportedAsleepSeconds),
     nightsWithData: nightsWithSleep.length,
@@ -201,7 +203,9 @@ export const buildSleepTimelineSummary = (
  * still loading or hold a timezone this runtime cannot resolve.
  */
 const resolveToday = (timezone: string | null | undefined): string =>
-  timezone && isValidTimeZone(timezone) ? todayInZone(timezone) : getTodayDate();
+  timezone && isValidTimeZone(timezone)
+    ? todayInZone(timezone)
+    : getTodayDate();
 
 export function useSleepRange({ range, enabled = true }: UseSleepRangeOptions) {
   const { preferences } = usePreferences({ enabled });

@@ -1,6 +1,11 @@
 import React, { useEffect, useState, useContext, createContext } from 'react';
 import { Text, View, TouchableOpacity } from 'react-native';
-import { render, renderHook, waitFor, fireEvent } from '@testing-library/react-native';
+import {
+  render,
+  renderHook,
+  waitFor,
+  fireEvent,
+} from '@testing-library/react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAppBootstrap } from '../../src/hooks/useAppBootstrap';
@@ -27,16 +32,29 @@ import { getActiveServerConfig } from '../../src/services/storage';
 import { addLog } from '../../src/services/LogService';
 import * as SplashScreen from 'expo-splash-screen';
 
-const mockInitializeAppLanguage = initializeAppLanguage as jest.MockedFunction<typeof initializeAppLanguage>;
-const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<typeof getActiveServerConfig>;
+const mockInitializeAppLanguage = initializeAppLanguage as jest.MockedFunction<
+  typeof initializeAppLanguage
+>;
+const mockGetActiveServerConfig = getActiveServerConfig as jest.MockedFunction<
+  typeof getActiveServerConfig
+>;
 const mockSplashScreen = SplashScreen as jest.Mocked<typeof SplashScreen>;
 const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 
 const LangContext = createContext('en');
 
 const translations = {
-  en: { common: { back: 'Back', close: 'Close', save: 'Save', saving: 'Saving…' } },
-  pl: { common: { back: 'Cofnij', close: 'Zamknij', save: 'Zapisz', saving: 'Zapisywanie…' } },
+  en: {
+    common: { back: 'Back', close: 'Close', save: 'Save', saving: 'Saving…' },
+  },
+  pl: {
+    common: {
+      back: 'Cofnij',
+      close: 'Zamknij',
+      save: 'Zapisz',
+      saving: 'Zapisywanie…',
+    },
+  },
 };
 
 function t(key: string, lang: string): string {
@@ -96,7 +114,9 @@ describe('useAppBootstrap', () => {
   });
 
   it('routes to Tabs even when language initialization rejects (broken locale never changes the route)', async () => {
-    mockInitializeAppLanguage.mockRejectedValue(new Error('language init failed'));
+    mockInitializeAppLanguage.mockRejectedValue(
+      new Error('language init failed')
+    );
     mockGetActiveServerConfig.mockResolvedValue({
       id: 'srv-1',
       url: 'https://example.com',
@@ -112,12 +132,14 @@ describe('useAppBootstrap', () => {
     expect(result.current.linkingEnabled).toBe(true);
     expect(mockAddLog).toHaveBeenCalledWith(
       expect.stringContaining('Failed to initialize app language'),
-      'ERROR',
+      'ERROR'
     );
   });
 
   it('still routes to Onboarding from a missing config when language init rejects', async () => {
-    mockInitializeAppLanguage.mockRejectedValue(new Error('language init failed'));
+    mockInitializeAppLanguage.mockRejectedValue(
+      new Error('language init failed')
+    );
     mockGetActiveServerConfig.mockResolvedValue(null);
 
     const { result } = renderHook(() => useAppBootstrap());
@@ -128,7 +150,9 @@ describe('useAppBootstrap', () => {
   });
 
   it('falls back to Onboarding and logs when config loading throws', async () => {
-    mockGetActiveServerConfig.mockRejectedValue(new Error('storage unavailable'));
+    mockGetActiveServerConfig.mockRejectedValue(
+      new Error('storage unavailable')
+    );
 
     const { result } = renderHook(() => useAppBootstrap());
 
@@ -138,7 +162,7 @@ describe('useAppBootstrap', () => {
     expect(result.current.linkingEnabled).toBe(false);
     expect(mockAddLog).toHaveBeenCalledWith(
       expect.stringContaining('Failed to load active server config'),
-      'ERROR',
+      'ERROR'
     );
   });
 
@@ -161,7 +185,9 @@ describe('useAppBootstrap', () => {
   });
 
   it('hides splash screen even when initialization is rejected', async () => {
-    mockInitializeAppLanguage.mockRejectedValue(new Error('language init failed'));
+    mockInitializeAppLanguage.mockRejectedValue(
+      new Error('language init failed')
+    );
 
     renderHook(() => useAppBootstrap());
 
@@ -182,7 +208,7 @@ describe('useAppBootstrap', () => {
     await waitFor(() => {
       expect(mockAddLog).toHaveBeenCalledWith(
         expect.stringContaining('Failed to hide splash screen'),
-        'ERROR',
+        'ERROR'
       );
     });
     expect(result.current.initialRoute).toBe('Onboarding');
@@ -201,7 +227,9 @@ describe('useAppBootstrap', () => {
 
     rerender({});
 
-    expect(mockInitializeAppLanguage).toHaveBeenCalledTimes(callsAfterFirstComplete);
+    expect(mockInitializeAppLanguage).toHaveBeenCalledTimes(
+      callsAfterFirstComplete
+    );
   });
 
   it('language change does not remount the navigator (real NavigationContainer)', async () => {
@@ -219,7 +247,10 @@ describe('useAppBootstrap', () => {
         <View>
           <Text testID="save-label">{t('common.save', lang)}</Text>
           <Text testID="counter">{counter}</Text>
-          <TouchableOpacity testID="increment" onPress={() => setCounter(c => c + 1)}>
+          <TouchableOpacity
+            testID="increment"
+            onPress={() => setCounter((c) => c + 1)}
+          >
             <Text>+</Text>
           </TouchableOpacity>
         </View>

@@ -18,21 +18,23 @@ const reusableMeal = {
   total_servings: 4,
   created_at: '2026-08-01T00:00:00.000Z',
   updated_at: '2026-08-01T00:00:00.000Z',
-  foods: [{
-    id: 'meal-food-1',
-    food_id: 'food-1',
-    variant_id: 'variant-1',
-    quantity: 400,
-    unit: 'g',
-    food_name: 'Chicken',
-    brand: null,
-    serving_size: 100,
-    serving_unit: 'g',
-    calories: 200,
-    protein: 30,
-    carbs: 10,
-    fat: 5,
-  }],
+  foods: [
+    {
+      id: 'meal-food-1',
+      food_id: 'food-1',
+      variant_id: 'variant-1',
+      quantity: 400,
+      unit: 'g',
+      food_name: 'Chicken',
+      brand: null,
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 200,
+      protein: 30,
+      carbs: 10,
+      fat: 5,
+    },
+  ],
 };
 
 describe('mealPlanForm', () => {
@@ -60,18 +62,24 @@ describe('mealPlanForm', () => {
     const fractionalMeal = {
       ...reusableMeal,
       total_servings: 3,
-      foods: [{
-        ...reusableMeal.foods[0],
-        quantity: 100,
-        serving_size: 100,
-        calories: 100,
-        protein: 10,
-        carbs: 20,
-        fat: 5,
-      }],
+      foods: [
+        {
+          ...reusableMeal.foods[0],
+          quantity: 100,
+          serving_size: 100,
+          calories: 100,
+          protein: 10,
+          carbs: 20,
+          fat: 5,
+        },
+      ],
     };
 
-    const nutrition = createMealAssignment(fractionalMeal, 'lunch', 1).nutrition;
+    const nutrition = createMealAssignment(
+      fractionalMeal,
+      'lunch',
+      1
+    ).nutrition;
 
     expect(nutrition?.calories).toBeCloseTo(33.333333);
     expect(nutrition?.protein).toBeCloseTo(3.333333);
@@ -99,13 +107,17 @@ describe('mealPlanForm', () => {
       },
     };
 
-    expect(calculateMealPlanDayNutrition([mealAssignment, foodAssignment], 1)).toEqual({
+    expect(
+      calculateMealPlanDayNutrition([mealAssignment, foodAssignment], 1)
+    ).toEqual({
       calories: 500,
       protein: 40,
       carbs: 64,
       fat: 11,
     });
-    expect(calculateMealPlanDayNutrition([mealAssignment, foodAssignment], 2)).toEqual({
+    expect(
+      calculateMealPlanDayNutrition([mealAssignment, foodAssignment], 2)
+    ).toEqual({
       calories: 0,
       protein: 0,
       carbs: 0,
@@ -142,17 +154,21 @@ describe('mealPlanForm', () => {
       start_date: '2026-09-01',
       end_date: null,
       is_active: false,
-      assignments: [{
-        item_type: 'food',
-        day_of_week: 0,
-        meal_type_id: 'breakfast',
-        food_id: 'food-1',
-        quantity: null,
-        unit: null,
-      }],
+      assignments: [
+        {
+          item_type: 'food',
+          day_of_week: 0,
+          meal_type_id: 'breakfast',
+          food_id: 'food-1',
+          quantity: null,
+          unit: null,
+        },
+      ],
     };
 
-    expect(createMealPlanDraft('2026-08-29', template).assignments[0]).toMatchObject({
+    expect(
+      createMealPlanDraft('2026-08-29', template).assignments[0]
+    ).toMatchObject({
       quantity: 1,
       unit: 'serving',
     });
@@ -161,31 +177,38 @@ describe('mealPlanForm', () => {
   test.each([
     { quantity: 350, unit: null },
     { quantity: null, unit: 'g' },
-  ])('normalizes a half-null legacy amount as one coherent serving', ({ quantity, unit }) => {
-    const template: MealPlanTemplate = {
-      id: 'plan-half-null',
-      user_id: 'user-1',
-      plan_name: 'Legacy plan',
-      description: null,
-      start_date: '2026-09-01',
-      end_date: null,
-      is_active: false,
-      assignments: [{
-        item_type: 'food',
-        day_of_week: 0,
-        meal_type_id: 'breakfast',
-        food_id: 'food-1',
-        quantity,
-        unit,
-      }],
-    };
+  ])(
+    'normalizes a half-null legacy amount as one coherent serving',
+    ({ quantity, unit }) => {
+      const template: MealPlanTemplate = {
+        id: 'plan-half-null',
+        user_id: 'user-1',
+        plan_name: 'Legacy plan',
+        description: null,
+        start_date: '2026-09-01',
+        end_date: null,
+        is_active: false,
+        assignments: [
+          {
+            item_type: 'food',
+            day_of_week: 0,
+            meal_type_id: 'breakfast',
+            food_id: 'food-1',
+            quantity,
+            unit,
+          },
+        ],
+      };
 
-    expect(createMealPlanDraft('2026-08-29', template).assignments[0]).toMatchObject({
-      quantity: 1,
-      quantityText: '1',
-      unit: 'serving',
-    });
-  });
+      expect(
+        createMealPlanDraft('2026-08-29', template).assignments[0]
+      ).toMatchObject({
+        quantity: 1,
+        quantityText: '1',
+        unit: 'serving',
+      });
+    }
+  );
 
   test('rejects missing fields, invalid quantities, and backwards date ranges', () => {
     expect(
@@ -205,7 +228,7 @@ describe('mealPlanForm', () => {
             unit: '',
           },
         ],
-      }),
+      })
     ).toEqual({
       planName: 'required',
       endDate: 'beforeStart',
@@ -236,7 +259,7 @@ describe('mealPlanForm', () => {
         endDate: '',
         isActive: true,
         assignments: [foodAssignment, mealAssignment],
-      }),
+      })
     ).toEqual({
       plan_name: 'Prep week',
       description: 'Batch cooking',

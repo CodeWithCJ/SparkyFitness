@@ -56,7 +56,7 @@ export function promptForActiveWorkoutConflict(
     /** "Clear & Start": runs after the flush and store clear. */
     onClearAndStart: () => void | Promise<void>;
   },
-  t: TFunction,
+  t: TFunction
 ): boolean {
   if (useActiveWorkoutStore.getState().sessionId === null) return false;
   Alert.alert(
@@ -82,7 +82,7 @@ export function promptForActiveWorkoutConflict(
           })();
         },
       },
-    ],
+    ]
   );
   return true;
 }
@@ -157,7 +157,7 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
         // Chained so the exact-alarm prompt never stacks on top of the OS
         // notification-permission dialog.
         void ensureNotificationPermission().then(() =>
-          maybePromptForExactAlarmPermission(),
+          maybePromptForExactAlarmPermission()
         );
         useActiveWorkoutStore.getState().startWorkout(session, {
           createdByLiveStart: true,
@@ -181,7 +181,7 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
         setIsStarting(false);
       }
     },
-    [createSession, invalidateCache, navigation, t],
+    [createSession, invalidateCache, navigation, t]
   );
 
   const startLiveWorkout = useCallback(
@@ -194,7 +194,7 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
           t('liveWorkout.noServerMessage', {
             defaultValue:
               'Configure your server connection in Settings to start a workout.',
-          }),
+          })
         );
         return;
       }
@@ -204,12 +204,12 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
           onGoToWorkout: () => navigation.navigate('ActiveWorkout'),
           onClearAndStart: () => runStart(args),
         },
-        t,
+        t
       );
       if (prompted) return;
       await runStart(args);
     },
-    [queryClient, navigation, runStart, t],
+    [queryClient, navigation, runStart, t]
   );
 
   return { startLiveWorkout, isStarting };

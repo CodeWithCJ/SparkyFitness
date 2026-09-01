@@ -8,7 +8,7 @@
  */
 export const getNetCarbsValue = (
   carbs: number | null | undefined,
-  dietaryFiber: number | null | undefined,
+  dietaryFiber: number | null | undefined
 ): number => {
   const carbsValue = Number(carbs) || 0;
   const fiberValue = Number(dietaryFiber) || 0;
@@ -19,8 +19,10 @@ export const getNetCarbsValue = (
 export const toggleNutrientVisibility = (
   current: string[],
   name: string,
-  enabled: boolean,
+  enabled: boolean
 ): string[] =>
   enabled
-    ? current.includes(name) ? current : [...current, name]
+    ? current.includes(name)
+      ? current
+      : [...current, name]
     : current.filter((n) => n !== name);

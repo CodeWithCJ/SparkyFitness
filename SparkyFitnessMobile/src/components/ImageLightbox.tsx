@@ -95,14 +95,14 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
       const first = viewableItems[0];
       if (first?.index != null) setIndex(first.index);
     },
-    [],
+    []
   );
 
   const stopAutoplay = useCallback(() => setAutoplay(false), []);
 
   const getItemLayout = useCallback(
     (_: unknown, i: number) => ({ length: width, offset: width * i, index: i }),
-    [width],
+    [width]
   );
 
   if (images.length === 0) return null;
@@ -129,7 +129,10 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
           renderItem={({ item }) => (
-            <View style={{ width, height }} className="items-center justify-center">
+            <View
+              style={{ width, height }}
+              className="items-center justify-center"
+            >
               <SafeImage
                 source={getImageSource(item)}
                 style={{ width, height: height * 0.8 }}
@@ -159,7 +162,10 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
           pointerEvents="none"
         >
           {title ? (
-            <Text className="text-white text-base font-medium" numberOfLines={1}>
+            <Text
+              className="text-white text-base font-medium"
+              numberOfLines={1}
+            >
               {title}
             </Text>
           ) : null}

@@ -43,7 +43,9 @@ const MACRO_FIELDS: {
   {
     key: 'protein_g',
     label: (t) =>
-      t('foodPhotoEstimate.ingredients.protein', { defaultValue: 'Protein (g)' }),
+      t('foodPhotoEstimate.ingredients.protein', {
+        defaultValue: 'Protein (g)',
+      }),
   },
   {
     key: 'carbs_g',
@@ -121,8 +123,12 @@ const FoodPhotoIngredientRow: React.FC<FoodPhotoIngredientRowProps> = ({
     row.confidence === 'high'
       ? t('foodPhotoEstimate.confidence.likely', { defaultValue: 'Likely' })
       : row.confidence === 'medium'
-        ? t('foodPhotoEstimate.confidence.possible', { defaultValue: 'Possible' })
-        : t('foodPhotoEstimate.confidence.uncertain', { defaultValue: 'Uncertain' });
+        ? t('foodPhotoEstimate.confidence.possible', {
+            defaultValue: 'Possible',
+          })
+        : t('foodPhotoEstimate.confidence.uncertain', {
+            defaultValue: 'Uncertain',
+          });
 
   // Only offer the swap when the matched variant actually has gram-scaled
   // nutrition; a variant measured in cups has nothing to apply.
@@ -161,7 +167,9 @@ const FoodPhotoIngredientRow: React.FC<FoodPhotoIngredientRowProps> = ({
               ) : null}
             </Text>
             {isPickedFood ? null : (
-              <View className={`px-2 py-0.5 rounded-full ${TONE_BG_CLASS[tone]}`}>
+              <View
+                className={`px-2 py-0.5 rounded-full ${TONE_BG_CLASS[tone]}`}
+              >
                 <Text
                   className={`text-xs font-semibold ${TONE_TEXT_CLASS[tone]}`}
                 >
@@ -220,7 +228,8 @@ const FoodPhotoIngredientRow: React.FC<FoodPhotoIngredientRowProps> = ({
           <Text className="text-text-secondary text-xs ml-1.5 flex-1">
             {row.matchApplied
               ? t('foodPhotoEstimate.match.usingYourFood', {
-                  defaultValue: 'Using your food: {{name}} · tap to use the AI estimate',
+                  defaultValue:
+                    'Using your food: {{name}} · tap to use the AI estimate',
                   name: row.match?.food_name ?? '',
                 })
               : t('foodPhotoEstimate.match.useYourFood', {
@@ -250,10 +259,16 @@ const FoodPhotoIngredientRow: React.FC<FoodPhotoIngredientRowProps> = ({
           <Text className="text-text-secondary text-xs mb-1">
             {t('foodPhotoEstimate.ingredients.name', { defaultValue: 'Name' })}
           </Text>
-          <FormInput value={row.name} onChangeText={onChangeName} className="mb-3" />
+          <FormInput
+            value={row.name}
+            onChangeText={onChangeName}
+            className="mb-3"
+          />
 
           <Text className="text-text-secondary text-xs mb-1">
-            {t('foodPhotoEstimate.ingredients.grams', { defaultValue: 'Weight (g)' })}
+            {t('foodPhotoEstimate.ingredients.grams', {
+              defaultValue: 'Weight (g)',
+            })}
           </Text>
           <FormInput
             value={display(row.grams)}
@@ -287,7 +302,9 @@ const FoodPhotoIngredientRow: React.FC<FoodPhotoIngredientRowProps> = ({
                 <FormInput
                   value={display(row.macros[field.key])}
                   onChangeText={(text) =>
-                    handleNumeric(text, (value) => onChangeMacro(field.key, value))
+                    handleNumeric(text, (value) =>
+                      onChangeMacro(field.key, value)
+                    )
                   }
                   keyboardType="decimal-pad"
                 />

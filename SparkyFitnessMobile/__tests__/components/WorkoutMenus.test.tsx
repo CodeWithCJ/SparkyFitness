@@ -23,7 +23,7 @@ function renderMenu(props?: Partial<React.ComponentProps<typeof SetTypeMenu>>) {
       onClose={onClose}
       onSelect={onSelect}
       {...props}
-    />,
+    />
   );
   return { ...utils, onSelect, onClose };
 }

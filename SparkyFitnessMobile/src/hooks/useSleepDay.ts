@@ -8,7 +8,11 @@ import { compareByMainSleepRank } from '../utils/sleepSessions';
 import { sleepDayQueryKey } from './queryKeys';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 
-const EMPTY_BUCKETS: SleepDayBuckets = { wakeUp: null, naps: [], bedTime: null };
+const EMPTY_BUCKETS: SleepDayBuckets = {
+  wakeUp: null,
+  naps: [],
+  bedTime: null,
+};
 
 interface UseSleepDayOptions {
   enabled?: boolean;
@@ -36,7 +40,7 @@ const compareByBedtime = (first: SleepEntry, second: SleepEntry): number =>
  */
 export const classifySleepDay = (
   entries: SleepEntry[],
-  day: string,
+  day: string
 ): SleepDayClassification => {
   const entriesForDay = entries.filter((entry) => entry.entry_date === day);
   if (entriesForDay.length === 0) return { mainSleep: null, naps: [] };
@@ -51,7 +55,10 @@ export const classifySleepDay = (
  * Wake Up and Naps come from D. Bed Time comes from D+1's main sleep, because a synced
  * session is filed under the day the user woke up — the sleep begun on D is D+1's record.
  */
-const buildSleepDayBuckets = (entries: SleepEntry[], day: string): SleepDayBuckets => {
+const buildSleepDayBuckets = (
+  entries: SleepEntry[],
+  day: string
+): SleepDayBuckets => {
   const { mainSleep, naps } = classifySleepDay(entries, day);
   const { mainSleep: bedTime } = classifySleepDay(entries, addDays(day, 1));
   return { wakeUp: mainSleep, naps, bedTime };
@@ -65,7 +72,10 @@ const buildSleepDayBuckets = (entries: SleepEntry[], day: string): SleepDayBucke
  * outright instead of showing "no sleep synced" empty states, which would misrepresent
  * unshared data as missing data.
  */
-export function useSleepDay(day: string, { enabled = true }: UseSleepDayOptions = {}) {
+export function useSleepDay(
+  day: string,
+  { enabled = true }: UseSleepDayOptions = {}
+) {
   const windowEnd = addDays(day, 1);
 
   const query = useQuery({
@@ -78,7 +88,8 @@ export function useSleepDay(day: string, { enabled = true }: UseSleepDayOptions 
   useRefetchOnFocus(query.refetch, enabled);
 
   const buckets = query.data ?? EMPTY_BUCKETS;
-  const isForbidden = query.error instanceof ApiError && query.error.statusCode === 403;
+  const isForbidden =
+    query.error instanceof ApiError && query.error.statusCode === 403;
 
   return {
     wakeUp: buckets.wakeUp,

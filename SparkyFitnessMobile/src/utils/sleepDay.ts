@@ -22,7 +22,7 @@ const SECONDS_PER_MINUTE = 60;
  */
 export const formatSleepDuration = (
   seconds: number | null | undefined,
-  t: TFunction,
+  t: TFunction
 ): string => {
   if (seconds == null || !Number.isFinite(seconds) || seconds < 0) {
     return t('sleep.valueUnavailable', { defaultValue: '—' });
@@ -52,7 +52,7 @@ export const formatSleepDuration = (
  */
 export const resolveSleepZone = (
   entry: Pick<SleepEntry, 'record_timezone' | 'record_utc_offset_minutes'>,
-  profileTimezone?: string | null,
+  profileTimezone?: string | null
 ): RecordZone | null =>
   resolveRecordZone(entry.record_timezone, entry.record_utc_offset_minutes) ??
   resolveRecordZone(profileTimezone, null);
@@ -68,7 +68,7 @@ export const resolveSleepZone = (
 export const formatClockTime = (
   iso: string | null | undefined,
   timeFormat?: EntryTimeFormat | null,
-  zone?: RecordZone | null,
+  zone?: RecordZone | null
 ): string => {
   if (!iso) return VALUE_PLACEHOLDER;
 
@@ -81,5 +81,7 @@ export const formatClockTime = (
 
   const hours = String(hour).padStart(2, '0');
   const minutes = String(minute).padStart(2, '0');
-  return formatTimeLabel(`${hours}:${minutes}`, timeFormat) ?? VALUE_PLACEHOLDER;
+  return (
+    formatTimeLabel(`${hours}:${minutes}`, timeFormat) ?? VALUE_PLACEHOLDER
+  );
 };

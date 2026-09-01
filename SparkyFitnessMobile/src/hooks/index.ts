@@ -21,7 +21,15 @@ export { useToggleFavorite } from './useToggleFavorite';
 export { useDebounce } from './useDebounce';
 export { useFoodSearch } from './useFoodSearch';
 export { useFoodsLibrary } from './useFoodsLibrary';
-export { useMeals, useRecentMeals, useTopMeals, useMeal, useCreateMeal, useUpdateMeal, useDeleteMeal } from './useMeals';
+export {
+  useMeals,
+  useRecentMeals,
+  useTopMeals,
+  useMeal,
+  useCreateMeal,
+  useUpdateMeal,
+  useDeleteMeal,
+} from './useMeals';
 export {
   useMealPlans,
   useCreateMealPlan,
@@ -39,7 +47,11 @@ export { useMealTypes } from './useMealTypes';
 export { useDeleteFood } from './useDeleteFood';
 export { useFoodVariants } from './useFoodVariants';
 export { useMeasurementsRange } from './useMeasurementsRange';
-export type { StepsDataPoint, StepsRange, WeightDataPoint } from './useMeasurementsRange';
+export type {
+  StepsDataPoint,
+  StepsRange,
+  WeightDataPoint,
+} from './useMeasurementsRange';
 export { useSleepRange } from './useSleepRange';
 export { useHealthTrends } from './useHealthTrends';
 export { useExerciseHistory } from './useExerciseHistory';
@@ -74,4 +86,3 @@ export {
   useSetFoodEntryMealImages,
   useClearFoodEntryMealImage,
 } from './useEntryImages';
-

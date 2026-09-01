@@ -26,7 +26,7 @@ describe('enrichedSessionCache', () => {
   describe('sessionTelemetryKey', () => {
     it('folds the change marker in, so an edited record is re-collected', () => {
       expect(sessionTelemetryKey('rec-1', '2026-08-01T00:00:00Z')).not.toBe(
-        sessionTelemetryKey('rec-1', '2026-08-02T00:00:00Z'),
+        sessionTelemetryKey('rec-1', '2026-08-02T00:00:00Z')
       );
     });
 
@@ -37,7 +37,7 @@ describe('enrichedSessionCache', () => {
   });
 
   describe('per-server scoping', () => {
-    it('does not let one server\'s keys suppress collection for another', async () => {
+    it("does not let one server's keys suppress collection for another", async () => {
       await markEnrichedSessions(['rec-1:m']);
       expect(await hasEnrichedSession('rec-1:m')).toBe(true);
 
@@ -54,19 +54,23 @@ describe('enrichedSessionCache', () => {
 
     it('writes under the active config key', async () => {
       await markEnrichedSessions(['rec-1:m']);
-      expect(await AsyncStorage.getItem(keyFor('server-a'))).toContain('rec-1:m');
+      expect(await AsyncStorage.getItem(keyFor('server-a'))).toContain(
+        'rec-1:m'
+      );
     });
 
     it('never reads the unscoped key this cache first shipped with', async () => {
       await AsyncStorage.setItem(
         '@SparkyFitness/enrichedSessions',
-        JSON.stringify(['legacy:m']),
+        JSON.stringify(['legacy:m'])
       );
 
       // A legacy entry means "some server has it", which is exactly the
       // ambiguity scoping removes — re-collecting is the safe direction.
       expect(await hasEnrichedSession('legacy:m')).toBe(false);
-      expect(await AsyncStorage.getItem('@SparkyFitness/enrichedSessions')).toBeNull();
+      expect(
+        await AsyncStorage.getItem('@SparkyFitness/enrichedSessions')
+      ).toBeNull();
     });
 
     it('falls back to an unscoped bucket when no server is configured', async () => {
@@ -75,7 +79,7 @@ describe('enrichedSessionCache', () => {
       expect(await AsyncStorage.getItem(keyFor('none'))).toContain('rec-1:m');
     });
 
-    it('treats a failed config lookup as a miss rather than another server\'s hit', async () => {
+    it("treats a failed config lookup as a miss rather than another server's hit", async () => {
       await markEnrichedSessions(['rec-1:m']);
       _resetEnrichedSessionCacheForTests();
       mockActiveConfig.mockRejectedValue(new Error('storage unavailable'));
@@ -85,7 +89,7 @@ describe('enrichedSessionCache', () => {
   });
 
   describe('concurrent commits', () => {
-    it('does not lose a run\'s keys to an overlapping run', async () => {
+    it("does not lose a run's keys to an overlapping run", async () => {
       // Foreground and background runs are not mutually exclusive. Both read
       // the cache, then both write — an unserialised merge computes from a
       // stale base and discards the other run's keys.
@@ -117,17 +121,25 @@ describe('enrichedSessionCache', () => {
 
   describe('eviction', () => {
     it('keeps the most recently confirmed keys', async () => {
-      const keys = Array.from({ length: MAX_ENRICHED_SESSION_KEYS + 10 }, (_, i) => `rec-${i}:m`);
+      const keys = Array.from(
+        { length: MAX_ENRICHED_SESSION_KEYS + 10 },
+        (_, i) => `rec-${i}:m`
+      );
       await markEnrichedSessions(keys);
 
       expect(await hasEnrichedSession('rec-0:m')).toBe(false);
-      expect(await hasEnrichedSession(`rec-${MAX_ENRICHED_SESSION_KEYS + 9}:m`)).toBe(true);
+      expect(
+        await hasEnrichedSession(`rec-${MAX_ENRICHED_SESSION_KEYS + 9}:m`)
+      ).toBe(true);
     });
 
     it('re-adding an existing key moves it to the newest end', async () => {
       await markEnrichedSessions(['keep:m']);
       await markEnrichedSessions(
-        Array.from({ length: MAX_ENRICHED_SESSION_KEYS - 1 }, (_, i) => `rec-${i}:m`),
+        Array.from(
+          { length: MAX_ENRICHED_SESSION_KEYS - 1 },
+          (_, i) => `rec-${i}:m`
+        )
       );
       await markEnrichedSessions(['keep:m']);
       await markEnrichedSessions(['newest:m']);

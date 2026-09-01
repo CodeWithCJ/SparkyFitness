@@ -1,5 +1,11 @@
 import React from 'react';
-import { ActivityIndicator, Pressable, Text, type PressableProps, type ViewStyle } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  Text,
+  type PressableProps,
+  type ViewStyle,
+} from 'react-native';
 import { preview } from 'radon-ide';
 
 type ButtonVariant =
@@ -40,7 +46,10 @@ const neutralToneText: Partial<Record<ButtonVariant, string>> = {
   ghost: 'text-text-primary font-semibold',
 };
 
-const variantClasses: Record<ButtonVariant, { container: string; text: string; pressed: string }> = {
+const variantClasses: Record<
+  ButtonVariant,
+  { container: string; text: string; pressed: string }
+> = {
   primary: {
     container: 'bg-accent-primary rounded-xl',
     text: 'text-white font-semibold',
@@ -94,7 +103,9 @@ const Button: React.FC<ButtonProps> = ({
 }) => {
   const styles = variantClasses[variant];
   const textClass =
-    tone === 'neutral' && neutralToneText[variant] ? neutralToneText[variant]! : styles.text;
+    tone === 'neutral' && neutralToneText[variant]
+      ? neutralToneText[variant]!
+      : styles.text;
 
   const basePadding = variant === 'header' ? '' : 'py-3.5 px-4';
   const isDisabled = Boolean(disabled) || loading;
@@ -103,17 +114,23 @@ const Button: React.FC<ButtonProps> = ({
     <Pressable
       className={`${basePadding} items-center justify-center ${styles.container} ${isDisabled ? 'opacity-50' : ''} ${className}`}
       disabled={isDisabled}
-      {...(variant === 'header' && !rest.hitSlop ? { hitSlop: { top: 10, bottom: 10, left: 10, right: 10 } } : {})}
+      {...(variant === 'header' && !rest.hitSlop
+        ? { hitSlop: { top: 10, bottom: 10, left: 10, right: 10 } }
+        : {})}
       {...rest}
       style={({ pressed }) => [
         pressed && !isDisabled ? { opacity: 0.8 } : {},
-        typeof rest.style === 'function' ? rest.style({ pressed }) : (rest.style as ViewStyle),
+        typeof rest.style === 'function'
+          ? rest.style({ pressed })
+          : (rest.style as ViewStyle),
       ]}
     >
       {loading ? (
         <ActivityIndicator size="small" color="#fff" />
       ) : typeof children === 'string' ? (
-        <Text className={`text-base ${textClass} ${textClassName}`}>{children}</Text>
+        <Text className={`text-base ${textClass} ${textClassName}`}>
+          {children}
+        </Text>
       ) : (
         children
       )}
@@ -140,6 +157,10 @@ preview(<Button variant="link">Link Button</Button>);
 preview(<Button variant="destructive">Destructive Button</Button>);
 
 // i18n-audit-ignore-next-line hardcoded-ui-text -- Storybook preview label, not shipped UI
-preview(<Button variant="primary" loading>Loading Button</Button>);
+preview(
+  <Button variant="primary" loading>
+    Loading Button
+  </Button>
+);
 
 export default Button;

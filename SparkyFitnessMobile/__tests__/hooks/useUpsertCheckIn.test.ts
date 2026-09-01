@@ -6,7 +6,11 @@ import { refreshHealthSyncCache } from '../../src/hooks/refreshHealthSyncCache';
 import { addLog } from '../../src/services/LogService';
 import { measurementsQueryKey } from '../../src/hooks/queryKeys';
 import type { CheckInMeasurement } from '../../src/types/measurements';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/measurementsApi', () => ({
   upsertCheckIn: jest.fn(),
@@ -20,10 +24,11 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
-const mockUpsertCheckIn = upsertCheckIn as jest.MockedFunction<typeof upsertCheckIn>;
-const mockRefreshHealthSyncCache = refreshHealthSyncCache as jest.MockedFunction<
-  typeof refreshHealthSyncCache
+const mockUpsertCheckIn = upsertCheckIn as jest.MockedFunction<
+  typeof upsertCheckIn
 >;
+const mockRefreshHealthSyncCache =
+  refreshHealthSyncCache as jest.MockedFunction<typeof refreshHealthSyncCache>;
 const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 
 describe('useUpsertCheckIn', () => {
@@ -51,7 +56,11 @@ describe('useUpsertCheckIn', () => {
     });
 
     await waitFor(() => {
-      expect(mockUpsertCheckIn).toHaveBeenCalledWith({ entryDate, weight: 80.5, neck: null });
+      expect(mockUpsertCheckIn).toHaveBeenCalledWith({
+        entryDate,
+        weight: 80.5,
+        neck: null,
+      });
     });
     const vars = mockUpsertCheckIn.mock.calls[0][0];
     expect('waist' in vars).toBe(false);
@@ -59,7 +68,10 @@ describe('useUpsertCheckIn', () => {
   });
 
   test('success writes the server response into the date cache and refreshes health sync caches', async () => {
-    const serverResponse = { entry_date: entryDate, weight: 80.5 } as unknown as CheckInMeasurement;
+    const serverResponse = {
+      entry_date: entryDate,
+      weight: 80.5,
+    } as unknown as CheckInMeasurement;
     mockUpsertCheckIn.mockResolvedValue(serverResponse);
 
     const { result } = renderHook(() => useUpsertCheckIn(), {
@@ -71,7 +83,9 @@ describe('useUpsertCheckIn', () => {
     });
 
     await waitFor(() => {
-      expect(queryClient.getQueryData(measurementsQueryKey(entryDate))).toBe(serverResponse);
+      expect(queryClient.getQueryData(measurementsQueryKey(entryDate))).toBe(
+        serverResponse
+      );
     });
     expect(mockRefreshHealthSyncCache).toHaveBeenCalledWith(queryClient);
   });
@@ -90,9 +104,16 @@ describe('useUpsertCheckIn', () => {
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
     });
-    expect(mockAddLog).toHaveBeenCalledWith(expect.stringContaining('server unavailable'), 'ERROR');
-    expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
-    expect(queryClient.getQueryData(measurementsQueryKey(entryDate))).toBeUndefined();
+    expect(mockAddLog).toHaveBeenCalledWith(
+      expect.stringContaining('server unavailable'),
+      'ERROR'
+    );
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' })
+    );
+    expect(
+      queryClient.getQueryData(measurementsQueryKey(entryDate))
+    ).toBeUndefined();
     expect(mockRefreshHealthSyncCache).not.toHaveBeenCalled();
   });
 });

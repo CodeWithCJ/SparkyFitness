@@ -2,8 +2,17 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useCSSVariable } from 'uniwind';
-import { buildMonthGrid, addDays, compareDays, isHormonalBc } from '@workspace/shared';
-import type { SharedCycle, SharedCycleDailyLog, SharedCycleSettings } from '@workspace/shared';
+import {
+  buildMonthGrid,
+  addDays,
+  compareDays,
+  isHormonalBc,
+} from '@workspace/shared';
+import type {
+  SharedCycle,
+  SharedCycleDailyLog,
+  SharedCycleSettings,
+} from '@workspace/shared';
 import Icon from '../Icon';
 import { useWellnessTokens } from './theme/wellnessTokens';
 import { getPhaseColor } from '../../utils/cycleDisplayUtils';
@@ -18,7 +27,6 @@ interface CycleCalendarGridProps {
   /** Fires with the visible YYYY-MM on mount and after month navigation. */
   onMonthChange?: (month: string) => void;
 }
-
 
 const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
   initialDate,
@@ -41,7 +49,9 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
     '--color-text-primary',
     '--color-text-muted',
   ]) as [string, string];
-  const [currentMonth, setCurrentMonth] = useState(() => initialDate.slice(0, 7)); // YYYY-MM
+  const [currentMonth, setCurrentMonth] = useState(() =>
+    initialDate.slice(0, 7)
+  ); // YYYY-MM
 
   useEffect(() => {
     onMonthChange?.(currentMonth);
@@ -64,12 +74,20 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
     const periodLengths = completed.map((c) => c.period_length!);
 
     return {
-      avgCycleLength: settings?.avg_cycle_length_override ?? (cycleLengths.length
-        ? Math.round(cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length)
-        : 28),
-      avgPeriodLength: settings?.avg_period_length_override ?? (periodLengths.length
-        ? Math.round(periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length)
-        : 5),
+      avgCycleLength:
+        settings?.avg_cycle_length_override ??
+        (cycleLengths.length
+          ? Math.round(
+              cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length
+            )
+          : 28),
+      avgPeriodLength:
+        settings?.avg_period_length_override ??
+        (periodLengths.length
+          ? Math.round(
+              periodLengths.reduce((a, b) => a + b, 0) / periodLengths.length
+            )
+          : 5),
     };
   }, [cycles, settings]);
 
@@ -126,7 +144,10 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
 
   // Decoration mapping for grid rendering
   const decoratedDaysMap = useMemo(() => {
-    const map: Record<string, 'period' | 'predicted-period' | 'fertile' | 'ovulation' | 'none'> = {};
+    const map: Record<
+      string,
+      'period' | 'predicted-period' | 'fertile' | 'ovulation' | 'none'
+    > = {};
 
     // 1. Predicted days
     if (predictions) {
@@ -165,7 +186,10 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
     return map;
   }, [logs, predictions]);
 
-  const loggedDays = useMemo(() => new Set(logs.map((log) => log.entry_date)), [logs]);
+  const loggedDays = useMemo(
+    () => new Set(logs.map((log) => log.entry_date)),
+    [logs]
+  );
 
   const handlePrevMonth = () => {
     let nextMonth = monthVal - 1;
@@ -189,7 +213,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
 
   const monthName = new Date(year, monthVal - 1, 1).toLocaleString(
     i18n.language.toLowerCase().startsWith('pl') ? 'pl-PL' : 'en-US',
-    { month: 'long', year: 'numeric' },
+    { month: 'long', year: 'numeric' }
   );
   const baseWeekdays = [
     t('cycleCalendar.weekdays.sunday', { defaultValue: 'S' }),
@@ -201,7 +225,10 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
     t('cycleCalendar.weekdays.saturday', { defaultValue: 'S' }),
   ];
   // Rotate weekday headers so they start on the account-configured first day.
-  const weekdays = Array.from({ length: 7 }, (_, i) => baseWeekdays[(i + firstDayOfWeek) % 7]);
+  const weekdays = Array.from(
+    { length: 7 },
+    (_, i) => baseWeekdays[(i + firstDayOfWeek) % 7]
+  );
 
   return (
     <View className="bg-surface rounded-xl p-4 shadow-sm border-0">
@@ -209,16 +236,22 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
       <View className="flex-row justify-between items-center mb-4">
         <TouchableOpacity
           onPress={handlePrevMonth}
-          accessibilityLabel={t('cycleCalendar.previousMonth', { defaultValue: 'Previous month' })}
+          accessibilityLabel={t('cycleCalendar.previousMonth', {
+            defaultValue: 'Previous month',
+          })}
           className="p-2"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Icon name="chevron-back" size={20} color={textPrimary} />
         </TouchableOpacity>
-        <Text className="text-text-primary text-base font-bold">{monthName}</Text>
+        <Text className="text-text-primary text-base font-bold">
+          {monthName}
+        </Text>
         <TouchableOpacity
           onPress={handleNextMonth}
-          accessibilityLabel={t('cycleCalendar.nextMonth', { defaultValue: 'Next month' })}
+          accessibilityLabel={t('cycleCalendar.nextMonth', {
+            defaultValue: 'Next month',
+          })}
           className="p-2"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
@@ -229,7 +262,10 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
       {/* Weekdays Headers */}
       <View className="flex-row mb-2">
         {weekdays.map((day, idx) => (
-          <Text key={idx} className="flex-1 text-center text-text-secondary text-xs font-semibold py-1">
+          <Text
+            key={idx}
+            className="flex-1 text-center text-text-secondary text-xs font-semibold py-1"
+          >
             {day}
           </Text>
         ))}
@@ -240,7 +276,7 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
         {gridDates.map((dateStr) => {
           const hasLog = loggedDays.has(dateStr);
           const phase = decoratedDaysMap[dateStr] || 'none';
-          const [,, dayNum] = dateStr.split('-').map(Number);
+          const [, , dayNum] = dateStr.split('-').map(Number);
           const isCurrentMonth = dateStr.startsWith(currentMonth);
 
           // Class/Style mappings
@@ -342,7 +378,9 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
               backgroundColor: getPhaseColor('menstrual', tokens) + '35',
             }}
           />
-          <Text className="text-text-secondary text-xs">{t('cycleCalendar.legend.period', { defaultValue: 'Period' })}</Text>
+          <Text className="text-text-secondary text-xs">
+            {t('cycleCalendar.legend.period', { defaultValue: 'Period' })}
+          </Text>
         </View>
 
         {!suppressPredictions && (
@@ -358,7 +396,11 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
                 borderStyle: 'dashed',
               }}
             />
-            <Text className="text-text-secondary text-xs">{t('cycleCalendar.legend.predictedPeriod', { defaultValue: 'Predicted Period' })}</Text>
+            <Text className="text-text-secondary text-xs">
+              {t('cycleCalendar.legend.predictedPeriod', {
+                defaultValue: 'Predicted Period',
+              })}
+            </Text>
           </View>
         )}
 
@@ -373,7 +415,11 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
                   backgroundColor: getPhaseColor('fertile', tokens) + '35',
                 }}
               />
-              <Text className="text-text-secondary text-xs">{t('cycleCalendar.legend.fertileWindow', { defaultValue: 'Fertile Window' })}</Text>
+              <Text className="text-text-secondary text-xs">
+                {t('cycleCalendar.legend.fertileWindow', {
+                  defaultValue: 'Fertile Window',
+                })}
+              </Text>
             </View>
 
             <View className="flex-row items-center gap-1.5">
@@ -387,7 +433,11 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
                   borderColor: getPhaseColor('ovulation', tokens),
                 }}
               />
-              <Text className="text-text-secondary text-xs">{t('cycleCalendar.legend.estimatedOvulation', { defaultValue: 'Est. Ovulation' })}</Text>
+              <Text className="text-text-secondary text-xs">
+                {t('cycleCalendar.legend.estimatedOvulation', {
+                  defaultValue: 'Est. Ovulation',
+                })}
+              </Text>
             </View>
           </>
         )}
@@ -401,7 +451,9 @@ const CycleCalendarGrid: React.FC<CycleCalendarGridProps> = ({
               backgroundColor: textPrimary,
             }}
           />
-          <Text className="text-text-secondary text-xs">{t('cycleCalendar.legend.logged', { defaultValue: 'Logged' })}</Text>
+          <Text className="text-text-secondary text-xs">
+            {t('cycleCalendar.legend.logged', { defaultValue: 'Logged' })}
+          </Text>
         </View>
       </View>
     </View>

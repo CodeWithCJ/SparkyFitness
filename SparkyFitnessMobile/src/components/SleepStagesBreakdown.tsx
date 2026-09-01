@@ -12,17 +12,36 @@ interface StageDefinition {
   key: 'deep' | 'light' | 'rem' | 'awake';
   field: keyof Pick<
     SleepEntry,
-    'deep_sleep_seconds' | 'light_sleep_seconds' | 'rem_sleep_seconds' | 'awake_sleep_seconds'
+    | 'deep_sleep_seconds'
+    | 'light_sleep_seconds'
+    | 'rem_sleep_seconds'
+    | 'awake_sleep_seconds'
   >;
   colorVariable: string;
 }
 
 /** Ordered deepest-first, which is how the stage breakdown is conventionally read. */
 const STAGES: StageDefinition[] = [
-  { key: 'deep', field: 'deep_sleep_seconds', colorVariable: '--color-cat-teal' },
-  { key: 'light', field: 'light_sleep_seconds', colorVariable: '--color-cat-blue' },
-  { key: 'rem', field: 'rem_sleep_seconds', colorVariable: '--color-cat-violet' },
-  { key: 'awake', field: 'awake_sleep_seconds', colorVariable: '--color-cat-orange' },
+  {
+    key: 'deep',
+    field: 'deep_sleep_seconds',
+    colorVariable: '--color-cat-teal',
+  },
+  {
+    key: 'light',
+    field: 'light_sleep_seconds',
+    colorVariable: '--color-cat-blue',
+  },
+  {
+    key: 'rem',
+    field: 'rem_sleep_seconds',
+    colorVariable: '--color-cat-violet',
+  },
+  {
+    key: 'awake',
+    field: 'awake_sleep_seconds',
+    colorVariable: '--color-cat-orange',
+  },
 ];
 
 interface StageShare {
@@ -47,12 +66,15 @@ export const buildStageShares = (entry: SleepEntry): StageShare[] => {
     seconds: entry[definition.field],
   })).filter(
     (stage): stage is { definition: StageDefinition; seconds: number } =>
-      stage.seconds != null,
+      stage.seconds != null
   );
 
   if (presentStages.length === 0) return [];
 
-  const totalSeconds = presentStages.reduce((sum, stage) => sum + stage.seconds, 0);
+  const totalSeconds = presentStages.reduce(
+    (sum, stage) => sum + stage.seconds,
+    0
+  );
 
   // An all-zero day is real (a session recorded with stage columns but no time in any of
   // them). Report 0% rather than dividing by zero into NaN.
@@ -75,7 +97,8 @@ export const buildStageShares = (entry: SleepEntry): StageShare[] => {
     .map((stage, index) => ({ index, remainder: stage.exactPercent % 1 }))
     .sort((first, second) => second.remainder - first.remainder);
 
-  let pointsToDistribute = 100 - shares.reduce((sum, stage) => sum + stage.percent, 0);
+  let pointsToDistribute =
+    100 - shares.reduce((sum, stage) => sum + stage.percent, 0);
   for (const { index } of remainderOrder) {
     if (pointsToDistribute <= 0) break;
     shares[index].percent += 1;
@@ -95,15 +118,22 @@ interface SleepStagesBreakdownProps {
 /**
  * Deep / light / REM / awake totals for one session, with each stage's share of the whole.
  */
-const SleepStagesBreakdown: React.FC<SleepStagesBreakdownProps> = ({ entry }) => {
+const SleepStagesBreakdown: React.FC<SleepStagesBreakdownProps> = ({
+  entry,
+}) => {
   const { t } = useTranslation();
-  const stageColors = useCSSVariable(STAGES.map((stage) => stage.colorVariable)) as string[];
+  const stageColors = useCSSVariable(
+    STAGES.map((stage) => stage.colorVariable)
+  ) as string[];
 
   const shares = buildStageShares(entry);
   if (shares.length === 0) return null;
 
   return (
-    <View testID="sleep-stages-breakdown" className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
+    <View
+      testID="sleep-stages-breakdown"
+      className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
+    >
       <Text className="text-base font-semibold text-text-primary mb-2">
         {t('sleep.stageBreakdown', { defaultValue: 'Stage Breakdown' })}
       </Text>
@@ -119,7 +149,11 @@ const SleepStagesBreakdown: React.FC<SleepStagesBreakdownProps> = ({ entry }) =>
               className="w-2.5 h-2.5 rounded-full mr-2"
               style={{
                 backgroundColor:
-                  stageColors[STAGES.findIndex((stage) => stage.key === share.definition.key)],
+                  stageColors[
+                    STAGES.findIndex(
+                      (stage) => stage.key === share.definition.key
+                    )
+                  ],
               }}
             />
             <Text className="text-base text-text-primary">

@@ -63,7 +63,10 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
   const itemsRef = useRef(items);
   itemsRef.current = items;
 
-  const resolvedLabel = label === 'Photos' ? t('foodImagePicker.photos', { defaultValue: 'Photos' }) : label;
+  const resolvedLabel =
+    label === 'Photos'
+      ? t('foodImagePicker.photos', { defaultValue: 'Photos' })
+      : label;
 
   const remaining = Math.max(0, maxImages - items.length);
   const canAdd = !disabled && remaining > 0;
@@ -85,7 +88,12 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[Food Image Picker] Picking failed: ${message}`, 'ERROR');
-      Toast.show({ type: 'error', text1: t('foodImagePicker.errors.addFailed', { defaultValue: 'Could not add photo' }) });
+      Toast.show({
+        type: 'error',
+        text1: t('foodImagePicker.errors.addFailed', {
+          defaultValue: 'Could not add photo',
+        }),
+      });
     } finally {
       pickerLock.current = false;
       setBusy(false);
@@ -100,8 +108,12 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
         // rather than letting the tap look like it did nothing.
         Toast.show({
           type: 'error',
-          text1: t('foodImagePicker.errors.cameraPermission', { defaultValue: 'Camera permission needed' }),
-          text2: t('foodImagePicker.errors.cameraPermissionBody', { defaultValue: 'Enable camera access to add a photo.' }),
+          text1: t('foodImagePicker.errors.cameraPermission', {
+            defaultValue: 'Camera permission needed',
+          }),
+          text2: t('foodImagePicker.errors.cameraPermissionBody', {
+            defaultValue: 'Enable camera access to add a photo.',
+          }),
         });
         return [];
       }
@@ -111,11 +123,28 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
   const addFromLibrary = () => runPick(() => pickImagesFromLibrary(remaining));
 
   const promptAdd = () => {
-    Alert.alert(t('foodImagePicker.actions.addPhoto', { defaultValue: 'Add photo' }), undefined, [
-      { text: t('foodImagePicker.actions.takePhoto', { defaultValue: 'Take Photo' }), onPress: () => void addFromCamera() },
-      { text: t('foodImagePicker.actions.chooseFromLibrary', { defaultValue: 'Choose from Library' }), onPress: () => void addFromLibrary() },
-      { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
-    ]);
+    Alert.alert(
+      t('foodImagePicker.actions.addPhoto', { defaultValue: 'Add photo' }),
+      undefined,
+      [
+        {
+          text: t('foodImagePicker.actions.takePhoto', {
+            defaultValue: 'Take Photo',
+          }),
+          onPress: () => void addFromCamera(),
+        },
+        {
+          text: t('foodImagePicker.actions.chooseFromLibrary', {
+            defaultValue: 'Choose from Library',
+          }),
+          onPress: () => void addFromLibrary(),
+        },
+        {
+          text: t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+        },
+      ]
+    );
   };
 
   const promptTileActions = (index: number) => {
@@ -127,7 +156,9 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
     }[] = [];
     if (index > 0) {
       buttons.push({
-        text: t('foodImagePicker.actions.setAsMain', { defaultValue: 'Set as main' }),
+        text: t('foodImagePicker.actions.setAsMain', {
+          defaultValue: 'Set as main',
+        }),
         onPress: () => onItemsChange(setAsMain(items, index)),
       });
     }
@@ -136,8 +167,15 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
       style: 'destructive',
       onPress: () => onItemsChange(removeImageAt(items, index)),
     });
-    buttons.push({ text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' });
-    Alert.alert(t('foodImagePicker.actions.photo', { defaultValue: 'Photo' }), undefined, buttons);
+    buttons.push({
+      text: t('common.cancel', { defaultValue: 'Cancel' }),
+      style: 'cancel',
+    });
+    Alert.alert(
+      t('foodImagePicker.actions.photo', { defaultValue: 'Photo' }),
+      undefined,
+      buttons
+    );
   };
 
   return (
@@ -159,8 +197,13 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
             testID={`food-image-tile-${index}`}
             accessibilityLabel={
               index === 0
-                ? t('foodImagePicker.accessibility.mainPhotoEdit', { defaultValue: 'Main photo, edit' })
-                : t('foodImagePicker.accessibility.photoEdit', { defaultValue: 'Photo {{number}}, edit', number: index + 1 })
+                ? t('foodImagePicker.accessibility.mainPhotoEdit', {
+                    defaultValue: 'Main photo, edit',
+                  })
+                : t('foodImagePicker.accessibility.photoEdit', {
+                    defaultValue: 'Photo {{number}}, edit',
+                    number: index + 1,
+                  })
             }
             style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
           >
@@ -188,7 +231,9 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
             onPress={promptAdd}
             disabled={busy}
             testID="food-image-add"
-            accessibilityLabel={t('foodImagePicker.accessibility.addPhoto', { defaultValue: 'Add photo' })}
+            accessibilityLabel={t('foodImagePicker.accessibility.addPhoto', {
+              defaultValue: 'Add photo',
+            })}
             className="items-center justify-center bg-raised"
             style={{
               width: TILE,

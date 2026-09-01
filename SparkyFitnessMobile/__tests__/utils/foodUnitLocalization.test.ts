@@ -148,7 +148,9 @@ describe('food unit presentation localization', () => {
       expect(formatLocalizedUnitQuantity(5, 'cup', i18n.t)).toBe('5 cups');
 
       await i18n.changeLanguage('pl');
-      expect(formatLocalizedUnitQuantity(1.5, 'cup', i18n.t)).toBe('1,5 szklanki');
+      expect(formatLocalizedUnitQuantity(1.5, 'cup', i18n.t)).toBe(
+        '1,5 szklanki'
+      );
       expect(formatLocalizedUnitQuantity(1, 'cup', i18n.t)).toBe('1 szklanka');
       expect(formatLocalizedUnitQuantity(2, 'cup', i18n.t)).toBe('2 szklanki');
       expect(formatLocalizedUnitQuantity(5, 'cup', i18n.t)).toBe('5 szklanek');
@@ -156,22 +158,32 @@ describe('food unit presentation localization', () => {
 
     test('another countable unit (bottle) declines in PL', async () => {
       await i18n.changeLanguage('en');
-      expect(formatLocalizedUnitQuantity(2, 'bottle', i18n.t)).toBe('2 bottles');
+      expect(formatLocalizedUnitQuantity(2, 'bottle', i18n.t)).toBe(
+        '2 bottles'
+      );
       expect(formatLocalizedUnitQuantity(1, 'bottle', i18n.t)).toBe('1 bottle');
 
       await i18n.changeLanguage('pl');
-      expect(formatLocalizedUnitQuantity(1, 'bottle', i18n.t)).toBe('1 butelka');
-      expect(formatLocalizedUnitQuantity(2, 'bottle', i18n.t)).toBe('2 butelki');
-      expect(formatLocalizedUnitQuantity(5, 'bottle', i18n.t)).toBe('5 butelek');
+      expect(formatLocalizedUnitQuantity(1, 'bottle', i18n.t)).toBe(
+        '1 butelka'
+      );
+      expect(formatLocalizedUnitQuantity(2, 'bottle', i18n.t)).toBe(
+        '2 butelki'
+      );
+      expect(formatLocalizedUnitQuantity(5, 'bottle', i18n.t)).toBe(
+        '5 butelek'
+      );
     });
 
     test('unknown/custom unit falls back to literal with the quantity', async () => {
       await i18n.changeLanguage('pl');
       expect(formatLocalizedUnitQuantity(2, 'my custom scoop', i18n.t)).toBe(
-        '2 my custom scoop',
+        '2 my custom scoop'
       );
       await i18n.changeLanguage('en');
-      expect(formatLocalizedUnitQuantity(1.5, 'mini box', i18n.t)).toBe('1.5 mini box');
+      expect(formatLocalizedUnitQuantity(1.5, 'mini box', i18n.t)).toBe(
+        '1.5 mini box'
+      );
     });
   });
 

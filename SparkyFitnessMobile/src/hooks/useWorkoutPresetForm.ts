@@ -24,7 +24,10 @@ function createEmptyDraft(): PresetDraft {
   };
 }
 
-export type PresetClientIds = { exerciseClientId: string; setClientIds: string[] }[];
+export type PresetClientIds = {
+  exerciseClientId: string;
+  setClientIds: string[];
+}[];
 
 type PresetFormAction =
   | DraftExercisesAction
@@ -45,7 +48,10 @@ type PresetFormAction =
       clientIds: PresetClientIds;
     };
 
-export function presetFormReducer(state: PresetDraft, action: PresetFormAction): PresetDraft {
+export function presetFormReducer(
+  state: PresetDraft,
+  action: PresetFormAction
+): PresetDraft {
   switch (action.type) {
     case 'SET_NAME':
       return { ...state, name: action.name };
@@ -70,12 +76,22 @@ export function presetFormReducer(state: PresetDraft, action: PresetFormAction):
             restTime: set.rest_time,
             weight:
               set.weight != null
-                ? String(parseFloat(weightFromKg(set.weight, action.weightUnit).toFixed(1)))
+                ? String(
+                    parseFloat(
+                      weightFromKg(set.weight, action.weightUnit).toFixed(1)
+                    )
+                  )
                 : '',
             reps: set.reps != null ? String(set.reps) : '',
             distance:
               set.distance != null
-                ? String(parseFloat(distanceFromKm(set.distance, action.distanceUnit).toFixed(2)))
+                ? String(
+                    parseFloat(
+                      distanceFromKm(set.distance, action.distanceUnit).toFixed(
+                        2
+                      )
+                    )
+                  )
                 : '',
             setType: set.set_type ?? undefined,
             duration: set.duration,
@@ -108,12 +124,22 @@ export function presetFormReducer(state: PresetDraft, action: PresetFormAction):
             notes: set.notes,
             weight:
               set.weight != null
-                ? String(parseFloat(weightFromKg(set.weight, action.weightUnit).toFixed(1)))
+                ? String(
+                    parseFloat(
+                      weightFromKg(set.weight, action.weightUnit).toFixed(1)
+                    )
+                  )
                 : '',
             reps: set.reps != null ? String(set.reps) : '',
             distance:
               set.distance != null
-                ? String(parseFloat(distanceFromKm(set.distance, action.distanceUnit).toFixed(2)))
+                ? String(
+                    parseFloat(
+                      distanceFromKm(set.distance, action.distanceUnit).toFixed(
+                        2
+                      )
+                    )
+                  )
                 : '',
           })),
         })),
@@ -129,7 +155,11 @@ export function presetFormReducer(state: PresetDraft, action: PresetFormAction):
 }
 
 export function useWorkoutPresetForm() {
-  const [state, dispatch] = useReducer(presetFormReducer, undefined, createEmptyDraft);
+  const [state, dispatch] = useReducer(
+    presetFormReducer,
+    undefined,
+    createEmptyDraft
+  );
   const initialDescriptionRef = useRef('');
 
   const {
@@ -146,7 +176,9 @@ export function useWorkoutPresetForm() {
     supersetWith,
     ungroupExercise,
     reorderExercises,
-  } = useDraftExerciseActions(dispatch, state.exercises, { preserveSetsOnReplace: true });
+  } = useDraftExerciseActions(dispatch, state.exercises, {
+    preserveSetsOnReplace: true,
+  });
 
   const setName = useCallback((name: string) => {
     dispatch({ type: 'SET_NAME', name });
@@ -160,34 +192,46 @@ export function useWorkoutPresetForm() {
     (
       preset: WorkoutPreset,
       weightUnit: 'kg' | 'lbs',
-      distanceUnit: 'km' | 'miles',
+      distanceUnit: 'km' | 'miles'
     ): string[] => {
-      const clientIds: PresetClientIds = preset.exercises.map(e => ({
+      const clientIds: PresetClientIds = preset.exercises.map((e) => ({
         exerciseClientId: generateClientId(),
         setClientIds: e.sets.map(() => generateClientId()),
       }));
       exercisesModifiedRef.current = false;
       initialDescriptionRef.current = preset.description ?? '';
-      dispatch({ type: 'POPULATE_FROM_PRESET', preset, weightUnit, distanceUnit, clientIds });
-      return clientIds.map(c => c.exerciseClientId);
+      dispatch({
+        type: 'POPULATE_FROM_PRESET',
+        preset,
+        weightUnit,
+        distanceUnit,
+        clientIds,
+      });
+      return clientIds.map((c) => c.exerciseClientId);
     },
-    [exercisesModifiedRef],
+    [exercisesModifiedRef]
   );
 
   const populateFromSession = useCallback(
     (
       session: PresetSessionResponse,
       weightUnit: 'kg' | 'lbs',
-      distanceUnit: 'km' | 'miles',
+      distanceUnit: 'km' | 'miles'
     ) => {
-      const clientIds: PresetClientIds = session.exercises.map(e => ({
+      const clientIds: PresetClientIds = session.exercises.map((e) => ({
         exerciseClientId: generateClientId(),
         setClientIds: e.sets.map(() => generateClientId()),
       }));
       exercisesModifiedRef.current = false;
-      dispatch({ type: 'POPULATE_FROM_SESSION', session, weightUnit, distanceUnit, clientIds });
+      dispatch({
+        type: 'POPULATE_FROM_SESSION',
+        session,
+        weightUnit,
+        distanceUnit,
+        clientIds,
+      });
     },
-    [exercisesModifiedRef],
+    [exercisesModifiedRef]
   );
 
   return {

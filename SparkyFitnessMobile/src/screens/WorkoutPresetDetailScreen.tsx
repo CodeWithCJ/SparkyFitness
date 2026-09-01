@@ -58,21 +58,21 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   const { getImageSource } = useExerciseImageSource();
   const cardExercises = useMemo(
     () => (preset.exercises ?? []).map(presetExerciseToCardExercise),
-    [preset.exercises],
+    [preset.exercises]
   );
 
   // Preset templates read best fully laid out (the old static table showed
   // every set): cards default expanded, collapsing allowed.
   const [collapsedIds, setCollapsedIds] = useState<Record<string, boolean>>({});
   const toggleExpanded = useCallback((entryId: string) => {
-    setCollapsedIds(prev => ({ ...prev, [entryId]: !prev[entryId] }));
+    setCollapsedIds((prev) => ({ ...prev, [entryId]: !prev[entryId] }));
   }, []);
 
   // Tap an exercise thumbnail → its library detail. Preset rows carry only a
   // sparse snapshot, so the detail screen hydrates the full record by id.
   const handleViewExercise = useCallback(
     (entryId: string) => {
-      const card = cardExercises.find(c => c.id === entryId);
+      const card = cardExercises.find((c) => c.id === entryId);
       if (!card) return;
       navigation.navigate('ExerciseDetail', {
         item: makeSparseExercise(
@@ -82,18 +82,20 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
             category: card.exercise_snapshot?.category,
             images: card.exercise_snapshot?.images,
           },
-          t,
+          t
         ),
         hideWorkoutActions: true,
       });
     },
-    [cardExercises, navigation, t],
+    [cardExercises, navigation, t]
   );
 
   // Metric column is shared with the workout screens (intended). Preset sets
   // store no RPE, so an 'rpe' selection falls back to volume for display and
   // the picker hides the RPE option — same as the preset form.
-  const metricColumn = useAppPreferencesStore(s => s.activeWorkoutMetricColumn);
+  const metricColumn = useAppPreferencesStore(
+    (s) => s.activeWorkoutMetricColumn
+  );
   const effectiveMetricColumn =
     metricColumn === 'rpe' ? 'volume' : metricColumn;
   const [metricMenu, setMetricMenu] = useState<{
@@ -104,7 +106,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
     (anchor: AnchorRect, clampedToRpe: boolean) => {
       setMetricMenu({ anchor, clampedToRpe });
     },
-    [],
+    []
   );
 
   // Superset rails, matching the workout detail presentation.
@@ -164,7 +166,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
             }),
             onPress: () => void runUpdate(),
           },
-        ],
+        ]
       );
     } else {
       void runUpdate();
@@ -239,7 +241,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           }),
           onPress: () => {
             navigation.navigate(
-              draft.type === 'workout' ? 'WorkoutAdd' : 'ActivityAdd',
+              draft.type === 'workout' ? 'WorkoutAdd' : 'ActivityAdd'
             );
           },
         },
@@ -253,7 +255,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
             navigateToPresetWorkout();
           },
         },
-      ],
+      ]
     );
   }, [navigateToPresetWorkout, navigation, t]);
 
@@ -290,7 +292,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           image_url: exercise.image_url,
           sort_order: index,
           superset_group: exercise.superset_group,
-          sets: exercise.sets.map(set => ({
+          sets: exercise.sets.map((set) => ({
             set_number: set.set_number,
             set_type: set.set_type,
             reps: set.reps,
@@ -390,7 +392,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
         {/* Pull back part of the scroll container's 16px inset so the cards
             sit at the same 12px inset as the active workout screen (px-3). */}
         <View className="-mx-1">
-          {cardExercises.map(cardExercise => {
+          {cardExercises.map((cardExercise) => {
             const isExpanded = !collapsedIds[cardExercise.id];
             const supersetBorder = supersetBorders.get(cardExercise.id) ?? null;
             return (

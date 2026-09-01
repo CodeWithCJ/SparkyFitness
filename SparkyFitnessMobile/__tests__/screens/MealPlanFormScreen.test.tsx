@@ -4,7 +4,10 @@ import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import MealPlanFormScreen from '../../src/screens/MealPlanFormScreen';
-import { useCreateMealPlan, useUpdateMealPlan } from '../../src/hooks/useMealPlans';
+import {
+  useCreateMealPlan,
+  useUpdateMealPlan,
+} from '../../src/hooks/useMealPlans';
 import { useMeals } from '../../src/hooks/useMeals';
 import { useMealTypes } from '../../src/hooks/useMealTypes';
 import { useMealPlanNutrition } from '../../src/hooks/useMealPlanNutrition';
@@ -18,7 +21,9 @@ jest.mock('../../src/hooks/useMealPlans', () => ({
 }));
 jest.mock('../../src/hooks/useMeals', () => ({ useMeals: jest.fn() }));
 jest.mock('../../src/hooks/useMealTypes', () => ({ useMealTypes: jest.fn() }));
-jest.mock('../../src/hooks/useMealPlanNutrition', () => ({ useMealPlanNutrition: jest.fn() }));
+jest.mock('../../src/hooks/useMealPlanNutrition', () => ({
+  useMealPlanNutrition: jest.fn(),
+}));
 jest.mock('../../src/services/mealPlanSelection', () => ({
   consumePendingMealPlanSelection: jest.fn(),
 }));
@@ -35,19 +40,33 @@ jest.mock('../../src/services/nativeTabBarPreference', () => ({
   useNativeIOSTabsActive: jest.fn(() => false),
 }));
 
-const mockUseCreate = useCreateMealPlan as jest.MockedFunction<typeof useCreateMealPlan>;
-const mockUseUpdate = useUpdateMealPlan as jest.MockedFunction<typeof useUpdateMealPlan>;
+const mockUseCreate = useCreateMealPlan as jest.MockedFunction<
+  typeof useCreateMealPlan
+>;
+const mockUseUpdate = useUpdateMealPlan as jest.MockedFunction<
+  typeof useUpdateMealPlan
+>;
 const mockUseMeals = useMeals as jest.MockedFunction<typeof useMeals>;
-const mockUseMealTypes = useMealTypes as jest.MockedFunction<typeof useMealTypes>;
-const mockUseMealPlanNutrition = useMealPlanNutrition as jest.MockedFunction<typeof useMealPlanNutrition>;
+const mockUseMealTypes = useMealTypes as jest.MockedFunction<
+  typeof useMealTypes
+>;
+const mockUseMealPlanNutrition = useMealPlanNutrition as jest.MockedFunction<
+  typeof useMealPlanNutrition
+>;
 const mockConsumePendingMealPlanSelection =
-  consumePendingMealPlanSelection as jest.MockedFunction<typeof consumePendingMealPlanSelection>;
+  consumePendingMealPlanSelection as jest.MockedFunction<
+    typeof consumePendingMealPlanSelection
+  >;
 const createMealPlanAsync = jest.fn();
 const updateMealPlanAsync = jest.fn();
 const refetchMeals = jest.fn();
 const refetchMealTypes = jest.fn();
 const refetchNutrition = jest.fn();
-const mockNavigation = { navigate: jest.fn(), goBack: jest.fn(), setOptions: jest.fn() };
+const mockNavigation = {
+  navigate: jest.fn(),
+  goBack: jest.fn(),
+  setOptions: jest.fn(),
+};
 
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
@@ -68,21 +87,23 @@ const meal = {
   total_servings: 4,
   created_at: '2026-08-01T00:00:00.000Z',
   updated_at: '2026-08-01T00:00:00.000Z',
-  foods: [{
-    id: 'meal-food-1',
-    food_id: 'food-1',
-    variant_id: 'variant-1',
-    quantity: 400,
-    unit: 'g',
-    food_name: 'Chicken',
-    brand: null,
-    serving_size: 100,
-    serving_unit: 'g',
-    calories: 200,
-    protein: 30,
-    carbs: 10,
-    fat: 5,
-  }],
+  foods: [
+    {
+      id: 'meal-food-1',
+      food_id: 'food-1',
+      variant_id: 'variant-1',
+      quantity: 400,
+      unit: 'g',
+      food_name: 'Chicken',
+      brand: null,
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 200,
+      protein: 30,
+      carbs: 10,
+      fat: 5,
+    },
+  ],
 };
 const mealType = {
   id: 'lunch',
@@ -94,15 +115,24 @@ const mealType = {
   show_in_quick_log: true,
 };
 
-function renderScreen(params?: { template?: MealPlanTemplate; initialMeal?: typeof meal }) {
-  const route = { key: 'MealPlanForm-key', name: 'MealPlanForm' as const, params };
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function renderScreen(params?: {
+  template?: MealPlanTemplate;
+  initialMeal?: typeof meal;
+}) {
+  const route = {
+    key: 'MealPlanForm-key',
+    name: 'MealPlanForm' as const,
+    params,
+  };
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
         <MealPlanFormScreen navigation={mockNavigation} route={route} />
       </SafeAreaProvider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 }
 
@@ -125,11 +155,11 @@ describe('MealPlanFormScreen', () => {
       refetch: refetchMealTypes,
     });
     mockUseMealPlanNutrition.mockImplementation((assignments) => ({
-      resolveNutrition: (assignment) => assignment.nutrition ?? (
-        assignment.item_type === 'food'
+      resolveNutrition: (assignment) =>
+        assignment.nutrition ??
+        (assignment.item_type === 'food'
           ? { servingSize: 40, calories: 150, protein: 5, carbs: 27, fat: 3 }
-          : undefined
-      ),
+          : undefined),
       isLoading: false,
       isError: false,
       refetch: refetchNutrition,
@@ -146,7 +176,10 @@ describe('MealPlanFormScreen', () => {
     expect(screen.getAllByText('Chicken and rice').length).toBeGreaterThan(0);
     expect(screen.getByText('g')).toBeTruthy();
 
-    fireEvent.changeText(screen.getByPlaceholderText('Meal plan name'), 'September prep');
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Meal plan name'),
+      'September prep'
+    );
     fireEvent.changeText(screen.getByDisplayValue('350'), '700');
     fireEvent.press(screen.getByText('Save'));
 
@@ -164,7 +197,7 @@ describe('MealPlanFormScreen', () => {
             }),
           ],
         }),
-        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
       );
     });
     expect(mockNavigation.goBack).toHaveBeenCalled();
@@ -203,18 +236,25 @@ describe('MealPlanFormScreen', () => {
     await waitFor(() => {
       expect(updateMealPlanAsync).toHaveBeenCalledWith(
         expect.objectContaining({
-          assignments: [expect.objectContaining({
-            ...foodAssignment,
-            quantity: 100,
-          })],
+          assignments: [
+            expect.objectContaining({
+              ...foodAssignment,
+              quantity: 100,
+            }),
+          ],
         }),
-        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
       );
     });
   });
 
   test('uses the selected day and meal type as the unified-search target', () => {
-    const dinnerType = { ...mealType, id: 'dinner', name: 'Dinner', sort_order: 3 };
+    const dinnerType = {
+      ...mealType,
+      id: 'dinner',
+      name: 'Dinner',
+      sort_order: 3,
+    };
     mockUseMealTypes.mockReturnValue({
       mealTypes: [mealType, dinnerType],
       defaultMealTypeId: 'lunch',
@@ -246,24 +286,30 @@ describe('MealPlanFormScreen', () => {
       start_date: '2026-09-01',
       end_date: '2026-09-30',
       is_active: false,
-      assignments: [{
-        id: 'assignment-food',
-        item_type: 'food',
-        day_of_week: 2,
-        meal_type_id: 'lunch',
-        meal_type: 'Lunch',
-        food_id: 'food-1',
-        food_name: 'Oats',
-        variant_id: 'variant-1',
-        quantity: 80,
-        unit: 'g',
-      }],
+      assignments: [
+        {
+          id: 'assignment-food',
+          item_type: 'food',
+          day_of_week: 2,
+          meal_type_id: 'lunch',
+          meal_type: 'Lunch',
+          food_id: 'food-1',
+          food_name: 'Oats',
+          variant_id: 'variant-1',
+          quantity: 80,
+          unit: 'g',
+        },
+      ],
     };
     const screen = renderScreen({ template });
 
     expect(screen.getByLabelText('Daily Calories 300 kcal')).toBeTruthy();
     expect(screen.getByLabelText('Daily Protein 10 g')).toBeTruthy();
-    expect(screen.getByLabelText('Lunch total 300 kcal, 10 g protein, 54 g carbs, 6 g fat')).toBeTruthy();
+    expect(
+      screen.getByLabelText(
+        'Lunch total 300 kcal, 10 g protein, 54 g carbs, 6 g fat'
+      )
+    ).toBeTruthy();
     expect(screen.getByText('Oats')).toBeTruthy();
     expect(screen.queryByText('Start date')).toBeNull();
     expect(screen.queryByText('End date')).toBeNull();
@@ -306,13 +352,18 @@ describe('MealPlanFormScreen', () => {
     };
     const screen = renderScreen({ template });
 
-    const dayIndicators = screen.UNSAFE_getAllByType(View).filter(
-      (view) => typeof view.props.className === 'string'
-        && view.props.className.startsWith('w-1.5 h-1.5'),
-    );
-    expect(dayIndicators.some(
-      (indicator) => indicator.props.className.includes('bg-accent-primary'),
-    )).toBe(true);
+    const dayIndicators = screen
+      .UNSAFE_getAllByType(View)
+      .filter(
+        (view) =>
+          typeof view.props.className === 'string' &&
+          view.props.className.startsWith('w-1.5 h-1.5')
+      );
+    expect(
+      dayIndicators.some((indicator) =>
+        indicator.props.className.includes('bg-accent-primary')
+      )
+    ).toBe(true);
   });
 
   test('consumes a food or meal returned by unified search', () => {
@@ -328,7 +379,13 @@ describe('MealPlanFormScreen', () => {
         quantity: 200,
         quantityText: '200',
         unit: 'g',
-        nutrition: { servingSize: 100, calories: 60, protein: 10, carbs: 4, fat: 0 },
+        nutrition: {
+          servingSize: 100,
+          calories: 60,
+          protein: 10,
+          carbs: 4,
+          fat: 0,
+        },
       },
     });
 
@@ -352,7 +409,13 @@ describe('MealPlanFormScreen', () => {
         quantity: 200,
         quantityText: '200',
         unit: 'g',
-        nutrition: { servingSize: 100, calories: 60, protein: 10, carbs: 4, fat: 0 },
+        nutrition: {
+          servingSize: 100,
+          calories: 60,
+          protein: 10,
+          carbs: 4,
+          fat: 0,
+        },
       },
       expectedName: 'Greek yogurt',
       expectedIdentity: { food_id: 'food-2', variant_id: 'variant-exact' },
@@ -369,51 +432,62 @@ describe('MealPlanFormScreen', () => {
         quantity: 1,
         quantityText: '1',
         unit: 'serving',
-        nutrition: { servingSize: 1, calories: 420, protein: 24, carbs: 50, fat: 12 },
+        nutrition: {
+          servingSize: 1,
+          calories: 420,
+          protein: 24,
+          carbs: 50,
+          fat: 12,
+        },
       },
       expectedName: 'Bean bowl',
       expectedIdentity: { meal_id: 'meal-2' },
     },
-  ])('replaces an existing assignment with an exact $label selection', async ({ replacement, expectedName, expectedIdentity }) => {
-    mockConsumePendingMealPlanSelection.mockReturnValueOnce({
-      assignment: replacement,
-      assignmentIndex: 0,
-    });
-    const template: MealPlanTemplate = {
-      id: 'plan-1',
-      user_id: 'user-1',
-      plan_name: 'Existing plan',
-      description: null,
-      start_date: '2026-09-01',
-      end_date: null,
-      is_active: false,
-      assignments: [{
-        item_type: 'food',
-        day_of_week: 2,
-        meal_type_id: 'lunch',
-        meal_type: 'Lunch',
-        food_id: 'food-1',
-        food_name: 'Oats',
-        variant_id: 'variant-old',
-        quantity: 80,
-        unit: 'g',
-      }],
-    };
-    const screen = renderScreen({ template });
+  ])(
+    'replaces an existing assignment with an exact $label selection',
+    async ({ replacement, expectedName, expectedIdentity }) => {
+      mockConsumePendingMealPlanSelection.mockReturnValueOnce({
+        assignment: replacement,
+        assignmentIndex: 0,
+      });
+      const template: MealPlanTemplate = {
+        id: 'plan-1',
+        user_id: 'user-1',
+        plan_name: 'Existing plan',
+        description: null,
+        start_date: '2026-09-01',
+        end_date: null,
+        is_active: false,
+        assignments: [
+          {
+            item_type: 'food',
+            day_of_week: 2,
+            meal_type_id: 'lunch',
+            meal_type: 'Lunch',
+            food_id: 'food-1',
+            food_name: 'Oats',
+            variant_id: 'variant-old',
+            quantity: 80,
+            unit: 'g',
+          },
+        ],
+      };
+      const screen = renderScreen({ template });
 
-    expect(screen.queryByText('Oats')).toBeNull();
-    expect(screen.getByText(expectedName)).toBeTruthy();
-    fireEvent.press(screen.getByText('Save'));
+      expect(screen.queryByText('Oats')).toBeNull();
+      expect(screen.getByText(expectedName)).toBeTruthy();
+      fireEvent.press(screen.getByText('Save'));
 
-    await waitFor(() => {
-      expect(updateMealPlanAsync).toHaveBeenCalledWith(
-        expect.objectContaining({
-          assignments: [expect.objectContaining(expectedIdentity)],
-        }),
-        expect.any(String),
-      );
-    });
-  });
+      await waitFor(() => {
+        expect(updateMealPlanAsync).toHaveBeenCalledWith(
+          expect.objectContaining({
+            assignments: [expect.objectContaining(expectedIdentity)],
+          }),
+          expect.any(String)
+        );
+      });
+    }
+  );
 
   test('opens unified search in replacement mode for an existing assignment', () => {
     const template: MealPlanTemplate = {
@@ -424,17 +498,19 @@ describe('MealPlanFormScreen', () => {
       start_date: '2026-09-01',
       end_date: null,
       is_active: false,
-      assignments: [{
-        item_type: 'food',
-        day_of_week: 2,
-        meal_type_id: 'lunch',
-        meal_type: 'Lunch',
-        food_id: 'food-1',
-        food_name: 'Oats',
-        variant_id: 'variant-old',
-        quantity: 80,
-        unit: 'g',
-      }],
+      assignments: [
+        {
+          item_type: 'food',
+          day_of_week: 2,
+          meal_type_id: 'lunch',
+          meal_type: 'Lunch',
+          food_id: 'food-1',
+          food_name: 'Oats',
+          variant_id: 'variant-old',
+          quantity: 80,
+          unit: 'g',
+        },
+      ],
     };
     const screen = renderScreen({ template });
 
@@ -455,7 +531,10 @@ describe('MealPlanFormScreen', () => {
     const screen = renderScreen({ initialMeal: meal });
 
     await waitFor(() => expect(screen.getByDisplayValue('350')).toBeTruthy());
-    fireEvent.changeText(screen.getByPlaceholderText('Meal plan name'), 'Half portion');
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Meal plan name'),
+      'Half portion'
+    );
     fireEvent.changeText(screen.getByDisplayValue('350'), '0,');
     expect(screen.getByDisplayValue('0,')).toBeTruthy();
     fireEvent.changeText(screen.getByDisplayValue('0,'), '0,5');
@@ -466,14 +545,18 @@ describe('MealPlanFormScreen', () => {
         expect.objectContaining({
           assignments: [expect.objectContaining({ quantity: 0.5 })],
         }),
-        expect.any(String),
+        expect.any(String)
       );
     });
-    expect(createMealPlanAsync.mock.calls[0][0].assignments[0]).not.toHaveProperty('quantityText');
+    expect(
+      createMealPlanAsync.mock.calls[0][0].assignments[0]
+    ).not.toHaveProperty('quantityText');
   });
 
   test('uses the client day at save time when midnight passes while the form is open', async () => {
-    const day = jest.spyOn(dateUtils, 'toLocalDateString').mockReturnValue('2026-08-29');
+    const day = jest
+      .spyOn(dateUtils, 'toLocalDateString')
+      .mockReturnValue('2026-08-29');
     const screen = renderScreen({ initialMeal: meal });
 
     await waitFor(() => expect(screen.getByDisplayValue('350')).toBeTruthy());
@@ -483,7 +566,7 @@ describe('MealPlanFormScreen', () => {
     await waitFor(() => {
       expect(createMealPlanAsync).toHaveBeenCalledWith(
         expect.objectContaining({ start_date: '2026-08-30' }),
-        '2026-08-30',
+        '2026-08-30'
       );
     });
     day.mockRestore();
@@ -524,7 +607,11 @@ describe('MealPlanFormScreen', () => {
     const screen = renderScreen({ initialMeal: meal });
 
     expect(screen.getByPlaceholderText('Meal plan name')).toBeTruthy();
-    expect(screen.getByText('Loading missing nutrition details. Totals may be incomplete.')).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Loading missing nutrition details. Totals may be incomplete.'
+      )
+    ).toBeTruthy();
     expect(screen.queryByText('Loading planning options...')).toBeNull();
     fireEvent.press(screen.getByText('Save'));
 
@@ -546,21 +633,27 @@ describe('MealPlanFormScreen', () => {
       start_date: '2026-09-01',
       end_date: null,
       is_active: false,
-      assignments: [{
-        item_type: 'food',
-        day_of_week: 2,
-        meal_type_id: 'lunch',
-        food_id: 'food-1',
-        food_name: 'Oats',
-        variant_id: 'variant-1',
-        quantity: 80,
-        unit: 'g',
-      }],
+      assignments: [
+        {
+          item_type: 'food',
+          day_of_week: 2,
+          meal_type_id: 'lunch',
+          food_id: 'food-1',
+          food_name: 'Oats',
+          variant_id: 'variant-1',
+          quantity: 80,
+          unit: 'g',
+        },
+      ],
     };
     const screen = renderScreen({ template });
 
     expect(screen.getByPlaceholderText('Meal plan name')).toBeTruthy();
-    expect(screen.getByText("Some nutrition details couldn't be loaded. Totals may be incomplete.")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Some nutrition details couldn't be loaded. Totals may be incomplete."
+      )
+    ).toBeTruthy();
     expect(screen.queryByText('Failed to load planning options')).toBeNull();
     fireEvent.press(screen.getByText('Retry'));
     fireEvent.press(screen.getByText('Save'));
@@ -577,7 +670,9 @@ describe('MealPlanFormScreen', () => {
     fireEvent.press(screen.getByText('Save'));
 
     expect(screen.getByText('Plan name is required.')).toBeTruthy();
-    expect(screen.getByText('Add at least one complete meal assignment.')).toBeTruthy();
+    expect(
+      screen.getByText('Add at least one complete meal assignment.')
+    ).toBeTruthy();
     expect(createMealPlanAsync).not.toHaveBeenCalled();
   });
 

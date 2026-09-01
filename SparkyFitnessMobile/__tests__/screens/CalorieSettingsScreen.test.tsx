@@ -39,9 +39,9 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
           ReactModule.createElement(
             MockPressable,
             { key: option.value, onPress: () => onSelect(option.value) },
-            ReactModule.createElement(MockText, null, option.label),
-          ),
-        ),
+            ReactModule.createElement(MockText, null, option.label)
+          )
+        )
       ),
   };
 });
@@ -78,7 +78,7 @@ describe('CalorieSettingsScreen', () => {
   beforeEach(async () => {
     await act(async () => {
       await initializeI18n('en');
-    await i18n.changeLanguage('en');
+      await i18n.changeLanguage('en');
     });
     jest.clearAllMocks();
     mockPreferences = {
@@ -93,21 +93,25 @@ describe('CalorieSettingsScreen', () => {
   it('explains that Device Projection applies Goal Mode to Health Connect TDEE', () => {
     mockPreferences.calorie_goal_adjustment_mode = 'tdee';
     const { getByText } = render(
-      <CalorieSettingsScreen navigation={navigation} route={route} />,
+      <CalorieSettingsScreen navigation={navigation} route={route} />
     );
 
     expect(
       getByText(
-        'Current-day Health Connect total calories are projected to midnight; completed days use the recorded total. Goal Mode is applied to that TDEE, with BMR + active calories as a fallback.',
-      ),
+        'Current-day Health Connect total calories are projected to midnight; completed days use the recorded total. Goal Mode is applied to that TDEE, with BMR + active calories as a fallback.'
+      )
     ).toBeTruthy();
-    expect(getByText('Health Connect total calories (BMR + active calories fallback)')).toBeTruthy();
+    expect(
+      getByText(
+        'Health Connect total calories (BMR + active calories fallback)'
+      )
+    ).toBeTruthy();
     expect(getByText('Projected TDEE × Goal Mode − Eaten')).toBeTruthy();
   });
 
   it('offers and saves Goal Mode percentages on Android', () => {
     const { getByText } = render(
-      <CalorieSettingsScreen navigation={navigation} route={route} />,
+      <CalorieSettingsScreen navigation={navigation} route={route} />
     );
 
     expect(getByText('Maintain (0%)')).toBeTruthy();
@@ -122,7 +126,7 @@ describe('CalorieSettingsScreen', () => {
     mockPreferences.goal_mode = 'manual';
     mockPreferences.goal_mode_custom_percentage = -10;
     const { getByDisplayValue } = render(
-      <CalorieSettingsScreen navigation={navigation} route={route} />,
+      <CalorieSettingsScreen navigation={navigation} route={route} />
     );
     const input = getByDisplayValue('-10');
 
@@ -136,7 +140,7 @@ describe('CalorieSettingsScreen', () => {
 
   it('offers standard, custom, and disabled safety floor modes', () => {
     const { getByText } = render(
-      <CalorieSettingsScreen navigation={navigation} route={route} />,
+      <CalorieSettingsScreen navigation={navigation} route={route} />
     );
 
     expect(getByText('Safety Floor')).toBeTruthy();
@@ -147,7 +151,7 @@ describe('CalorieSettingsScreen', () => {
 
   it('saves a selected safety floor mode', () => {
     const { getByText } = render(
-      <CalorieSettingsScreen navigation={navigation} route={route} />,
+      <CalorieSettingsScreen navigation={navigation} route={route} />
     );
 
     fireEvent.press(getByText('Disabled'));
@@ -159,7 +163,7 @@ describe('CalorieSettingsScreen', () => {
   it('saves a custom safety floor value', () => {
     mockPreferences.calorie_safety_floor_mode = 'custom';
     const { getByDisplayValue } = render(
-      <CalorieSettingsScreen navigation={navigation} route={route} />,
+      <CalorieSettingsScreen navigation={navigation} route={route} />
     );
     const input = getByDisplayValue('1200');
 
@@ -174,7 +178,7 @@ describe('CalorieSettingsScreen', () => {
   it('restores the saved value without persisting when the custom input is blank', () => {
     mockPreferences.calorie_safety_floor_mode = 'custom';
     const { getByDisplayValue } = render(
-      <CalorieSettingsScreen navigation={navigation} route={route} />,
+      <CalorieSettingsScreen navigation={navigation} route={route} />
     );
     const input = getByDisplayValue('1200');
 
@@ -191,7 +195,7 @@ describe('CalorieSettingsScreen', () => {
   ])('clamps custom floor %s to %s kcal', (inputValue, expectedValue) => {
     mockPreferences.calorie_safety_floor_mode = 'custom';
     const { getByDisplayValue } = render(
-      <CalorieSettingsScreen navigation={navigation} route={route} />,
+      <CalorieSettingsScreen navigation={navigation} route={route} />
     );
     const input = getByDisplayValue('1200');
 
@@ -207,18 +211,31 @@ describe('CalorieSettingsScreen', () => {
       await i18n.changeLanguage('pl');
     });
     const cases = [
-      ['standard', 'Używa wyższej z wartości: szacowane PPM lub minimum kliniczne.'],
-      ['custom', 'Zastępuje standardowe minimum wybraną przez Ciebie wartością. Zalecenia zdrowotne pozostają widoczne.'],
-      ['disabled', 'Wyłącza automatyczne ograniczanie celu. Ostrzeżenia zdrowotne pozostają widoczne.'],
+      [
+        'standard',
+        'Używa wyższej z wartości: szacowane PPM lub minimum kliniczne.',
+      ],
+      [
+        'custom',
+        'Zastępuje standardowe minimum wybraną przez Ciebie wartością. Zalecenia zdrowotne pozostają widoczne.',
+      ],
+      [
+        'disabled',
+        'Wyłącza automatyczne ograniczanie celu. Ostrzeżenia zdrowotne pozostają widoczne.',
+      ],
     ] as const;
-    const screen = render(<CalorieSettingsScreen navigation={navigation} route={route} />);
+    const screen = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
     expect(screen.getByText('Bezpieczne minimum')).toBeTruthy();
     expect(screen.getByText('Standardowe')).toBeTruthy();
     expect(screen.getByText('Własne')).toBeTruthy();
     expect(screen.getByText('Wyłączone')).toBeTruthy();
     for (const [mode, description] of cases) {
       mockPreferences.calorie_safety_floor_mode = mode;
-      screen.rerender(<CalorieSettingsScreen navigation={navigation} route={route} />);
+      screen.rerender(
+        <CalorieSettingsScreen navigation={navigation} route={route} />
+      );
       expect(screen.getByText(description)).toBeTruthy();
       if (mode === 'custom') {
         expect(screen.getByText('Własne minimum (kcal)')).toBeTruthy();
@@ -227,18 +244,30 @@ describe('CalorieSettingsScreen', () => {
     fireEvent.press(screen.getByText('Standardowe'));
     fireEvent.press(screen.getByText('Własne'));
     fireEvent.press(screen.getByText('Wyłączone'));
-    expect(mockMutate).toHaveBeenNthCalledWith(1, { calorie_safety_floor_mode: 'standard' });
-    expect(mockMutate).toHaveBeenNthCalledWith(2, { calorie_safety_floor_mode: 'custom' });
-    expect(mockMutate).toHaveBeenNthCalledWith(3, { calorie_safety_floor_mode: 'disabled' });
+    expect(mockMutate).toHaveBeenNthCalledWith(1, {
+      calorie_safety_floor_mode: 'standard',
+    });
+    expect(mockMutate).toHaveBeenNthCalledWith(2, {
+      calorie_safety_floor_mode: 'custom',
+    });
+    expect(mockMutate).toHaveBeenNthCalledWith(3, {
+      calorie_safety_floor_mode: 'disabled',
+    });
   });
 
   it('updates labels on the same mounted instance when language changes', async () => {
-    const screen = render(<CalorieSettingsScreen navigation={navigation} route={route} />);
+    const screen = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
     expect(screen.getByText('Safety Floor')).toBeTruthy();
-    await act(async () => { await i18n.changeLanguage('pl'); });
+    await act(async () => {
+      await i18n.changeLanguage('pl');
+    });
     expect(screen.getByText('Bezpieczne minimum')).toBeTruthy();
-    await act(async () => { await initializeI18n('en');
-    await i18n.changeLanguage('en'); });
+    await act(async () => {
+      await initializeI18n('en');
+      await i18n.changeLanguage('en');
+    });
     expect(screen.getByText('Safety Floor')).toBeTruthy();
   });
 });

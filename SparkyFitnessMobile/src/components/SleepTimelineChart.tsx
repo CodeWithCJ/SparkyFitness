@@ -6,15 +6,20 @@ import { Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 
 import { usePreferences } from '../hooks/usePreferences';
-import type { HealthTrendDateRange, HealthTrendSeries } from '../types/healthTrends';
-import
-  {
-    SLEEP_STAGE_LANES,
-    type SleepStageLane,
-    type SleepTimelineDay,
-    type SleepTimelineSummary,
-  } from '../types/sleep';
-import { formatHourLabel, type EntryTimeFormat } from '../utils/entryTimeDisplay';
+import type {
+  HealthTrendDateRange,
+  HealthTrendSeries,
+} from '../types/healthTrends';
+import {
+  SLEEP_STAGE_LANES,
+  type SleepStageLane,
+  type SleepTimelineDay,
+  type SleepTimelineSummary,
+} from '../types/sleep';
+import {
+  formatHourLabel,
+  type EntryTimeFormat,
+} from '../utils/entryTimeDisplay';
 import { formatClockTime, formatSleepDuration } from '../utils/sleepDay';
 import { localizeSleepStage } from '../utils/sleepLocalization';
 import ChartTouchOverlay, {
@@ -27,12 +32,11 @@ import {
   formatXLabel30d90d,
   formatXLabel7d,
 } from './charts/chartFormatting';
-import
-  {
-    buildSleepTimelineLayout,
-    chooseSleepClockAnchorMinutes,
-    MINUTES_PER_DAY,
-  } from './charts/sleepTimelineLayout';
+import {
+  buildSleepTimelineLayout,
+  chooseSleepClockAnchorMinutes,
+  MINUTES_PER_DAY,
+} from './charts/sleepTimelineLayout';
 
 type SleepTimelineAggregates = Omit<SleepTimelineSummary, 'days'>;
 
@@ -103,7 +107,7 @@ export interface SelectedNightLabels {
  */
 export const buildSleepAverageLabels = (
   aggregates: SleepTimelineAggregates,
-  t: TFunction,
+  t: TFunction
 ): [SleepStatLabel, SleepStatLabel] => [
   {
     title: t('charts.sleep.avgTimeInBed', { defaultValue: 'Avg time in bed' }),
@@ -119,7 +123,7 @@ export const buildSleepAverageLabels = (
 export const buildSelectedNightLabels = (
   day: SleepTimelineDay,
   t: TFunction,
-  timeFormat?: EntryTimeFormat | null,
+  timeFormat?: EntryTimeFormat | null
 ): SelectedNightLabels => {
   const stats: [SleepStatLabel, SleepStatLabel] = [
     {
@@ -140,8 +144,16 @@ export const buildSelectedNightLabels = (
   return {
     stats,
     clockRange: t('sleep.bedtimeToWake', {
-      bedtime: formatClockTime(new Date(bedtimeMs).toISOString(), timeFormat, day.zone),
-      wakeTime: formatClockTime(new Date(wakeTimeMs).toISOString(), timeFormat, day.zone),
+      bedtime: formatClockTime(
+        new Date(bedtimeMs).toISOString(),
+        timeFormat,
+        day.zone
+      ),
+      wakeTime: formatClockTime(
+        new Date(wakeTimeMs).toISOString(),
+        timeFormat,
+        day.zone
+      ),
       defaultValue: '{{bedtime}} – {{wakeTime}}',
     }),
   };
@@ -156,11 +168,14 @@ export const buildSelectedNightLabels = (
 const formatAxisClockLabel = (
   offsetMinutes: number,
   anchorMinutes: number,
-  timeFormat?: EntryTimeFormat | null,
+  timeFormat?: EntryTimeFormat | null
 ): string => {
   const clockMinutes = (anchorMinutes + offsetMinutes) % MINUTES_PER_DAY;
 
-  return formatHourLabel(Math.floor(clockMinutes / MINUTES_PER_HOUR), timeFormat);
+  return formatHourLabel(
+    Math.floor(clockMinutes / MINUTES_PER_HOUR),
+    timeFormat
+  );
 };
 
 /** Evenly spaced day indices, so 90 columns do not print 90 overlapping labels. */
@@ -170,7 +185,9 @@ const buildXLabelIndices = (dayCount: number, tickCount: number): number[] => {
   }
 
   const step = (dayCount - 1) / (tickCount - 1);
-  return Array.from({ length: tickCount }, (_, index) => Math.round(index * step));
+  return Array.from({ length: tickCount }, (_, index) =>
+    Math.round(index * step)
+  );
 };
 
 const SleepStatTile: React.FC<{ label: SleepStatLabel; testID: string }> = ({
@@ -179,7 +196,9 @@ const SleepStatTile: React.FC<{ label: SleepStatLabel; testID: string }> = ({
 }) => (
   <View className="flex-1" testID={testID}>
     <Text className="text-text-muted text-xs uppercase">{label.title}</Text>
-    <Text className="text-text-primary text-xl font-semibold">{label.value}</Text>
+    <Text className="text-text-primary text-xl font-semibold">
+      {label.value}
+    </Text>
   </View>
 );
 
@@ -190,14 +209,21 @@ const SleepStageLegend: React.FC<{
   const { t } = useTranslation();
 
   return (
-    <View className="flex-row justify-center items-center mt-1" testID="sleep-stage-legend">
+    <View
+      className="flex-row justify-center items-center mt-1"
+      testID="sleep-stage-legend"
+    >
       {visibleStages.map((stage) => (
         <View key={stage} className="flex-row items-center mx-2">
           <View
             className="w-2 h-2 rounded-full mr-1"
-            style={{ backgroundColor: colors[SLEEP_STAGE_LANES.indexOf(stage)] }}
+            style={{
+              backgroundColor: colors[SLEEP_STAGE_LANES.indexOf(stage)],
+            }}
           />
-          <Text className="text-text-muted text-xs">{localizeSleepStage(t, stage)}</Text>
+          <Text className="text-text-muted text-xs">
+            {localizeSleepStage(t, stage)}
+          </Text>
         </View>
       ))}
     </View>
@@ -226,10 +252,13 @@ const SleepTimelineChart: React.FC<SleepTimelineChartProps> = ({
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const stageColors = useCSSVariable(
-    SLEEP_STAGE_LANES.map((stage) => STAGE_COLOR_VARIABLES[stage]),
+    SLEEP_STAGE_LANES.map((stage) => STAGE_COLOR_VARIABLES[stage])
   ) as string[];
 
-  const anchorMinutes = useMemo(() => chooseSleepClockAnchorMinutes(data), [data]);
+  const anchorMinutes = useMemo(
+    () => chooseSleepClockAnchorMinutes(data),
+    [data]
+  );
 
   const layout = useMemo(
     () =>
@@ -239,7 +268,7 @@ const SleepTimelineChart: React.FC<SleepTimelineChartProps> = ({
         anchorMinutes,
         innerPadding: INNER_PADDING[range],
       }),
-    [data, plotWidth, anchorMinutes, range],
+    [data, plotWidth, anchorMinutes, range]
   );
 
   const legendStages = useMemo(
@@ -247,9 +276,11 @@ const SleepTimelineChart: React.FC<SleepTimelineChartProps> = ({
       SLEEP_STAGE_LANES.filter(
         (stage) =>
           stage !== 'other' &&
-          data.some((day) => day.segments.some((segment) => segment.stage === stage)),
+          data.some((day) =>
+            day.segments.some((segment) => segment.stage === stage)
+          )
       ),
-    [data],
+    [data]
   );
 
   // Clear a lingering selection when the dataset or range changes. Done during render so
@@ -261,7 +292,8 @@ const SleepTimelineChart: React.FC<SleepTimelineChartProps> = ({
   }
 
   const touchLayout: ChartTouchLayout = useMemo(() => {
-    if (plotWidth <= 0 || layout.columns.length === 0) return EMPTY_CHART_TOUCH_LAYOUT;
+    if (plotWidth <= 0 || layout.columns.length === 0)
+      return EMPTY_CHART_TOUCH_LAYOUT;
 
     return {
       chartBounds: { left: 0, right: plotWidth, top: 0, bottom: PLOT_HEIGHT },
@@ -283,7 +315,7 @@ const SleepTimelineChart: React.FC<SleepTimelineChartProps> = ({
 
       setSelectedIndex(index);
     },
-    [data],
+    [data]
   );
 
   const handleClearSelection = useCallback(() => {
@@ -298,7 +330,7 @@ const SleepTimelineChart: React.FC<SleepTimelineChartProps> = ({
     selectedLabels?.stats ??
     buildSleepAverageLabels(
       { averageTimeInBedSeconds, averageTimeAsleepSeconds, nightsWithData },
-      t,
+      t
     );
 
   const rangeLabel =
@@ -332,7 +364,10 @@ const SleepTimelineChart: React.FC<SleepTimelineChartProps> = ({
 
       {/* Fixed height so selecting a night swaps the copy without reflowing the plot. */}
       <View className="h-5 justify-center mb-1">
-        <Text className="text-text-muted text-xs" testID="sleep-timeline-subtitle">
+        <Text
+          className="text-text-muted text-xs"
+          testID="sleep-timeline-subtitle"
+        >
           {selectedLabels?.clockRange ?? rangeLabel}
         </Text>
       </View>
@@ -341,11 +376,15 @@ const SleepTimelineChart: React.FC<SleepTimelineChartProps> = ({
         renderPlaceholder(t('common.loading', { defaultValue: 'Loading...' }))
       ) : isError ? (
         renderPlaceholder(
-          t('charts.sleep.loadFailed', { defaultValue: 'Failed to load sleep data' }),
+          t('charts.sleep.loadFailed', {
+            defaultValue: 'Failed to load sleep data',
+          })
         )
       ) : nightsWithData === 0 ? (
         renderPlaceholder(
-          t('charts.sleep.empty', { defaultValue: 'No sleep data for this period' }),
+          t('charts.sleep.empty', {
+            defaultValue: 'No sleep data for this period',
+          })
         )
       ) : (
         <>
@@ -371,9 +410,11 @@ const SleepTimelineChart: React.FC<SleepTimelineChartProps> = ({
                       y={block.y}
                       width={column.width}
                       height={block.height}
-                      color={stageColors[SLEEP_STAGE_LANES.indexOf(block.stage)]}
+                      color={
+                        stageColors[SLEEP_STAGE_LANES.indexOf(block.stage)]
+                      }
                     />
-                  )),
+                  ))
                 )}
               </Canvas>
 
@@ -395,13 +436,20 @@ const SleepTimelineChart: React.FC<SleepTimelineChartProps> = ({
                   // Nudged up by half a line so the label reads as centred on its gridline.
                   style={{ top: tick.y - 7, fontSize: CHART_LABEL_FONT_SIZE }}
                 >
-                  {formatAxisClockLabel(tick.minutes, anchorMinutes, preferences?.time_format)}
+                  {formatAxisClockLabel(
+                    tick.minutes,
+                    anchorMinutes,
+                    preferences?.time_format
+                  )}
                 </Text>
               ))}
             </View>
           </View>
 
-          <View className="flex-row" style={{ marginRight: TICK_LABEL_WIDTH, height: 16 }}>
+          <View
+            className="flex-row"
+            style={{ marginRight: TICK_LABEL_WIDTH, height: 16 }}
+          >
             {xLabelIndices.map((dayIndex) => {
               const column = layout.columns[dayIndex];
               if (!column) return null;
@@ -426,7 +474,10 @@ const SleepTimelineChart: React.FC<SleepTimelineChartProps> = ({
           </View>
 
           {legendStages.length > 0 ? (
-            <SleepStageLegend colors={stageColors} visibleStages={legendStages} />
+            <SleepStageLegend
+              colors={stageColors}
+              visibleStages={legendStages}
+            />
           ) : null}
         </>
       )}

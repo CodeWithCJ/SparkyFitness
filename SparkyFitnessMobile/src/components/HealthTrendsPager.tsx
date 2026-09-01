@@ -1,9 +1,15 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import PagerView from 'react-native-pager-view';
-import type { StepsDataPoint, WeightDataPoint } from '../hooks/useMeasurementsRange';
+import type {
+  StepsDataPoint,
+  WeightDataPoint,
+} from '../hooks/useMeasurementsRange';
 import type { SleepTrendSeries } from '../hooks/useHealthTrends';
-import type { HealthTrendDateRange, HealthTrendSeries } from '../types/healthTrends';
+import type {
+  HealthTrendDateRange,
+  HealthTrendSeries,
+} from '../types/healthTrends';
 import SleepTimelineChart from './SleepTimelineChart';
 import StepsBarChart from './StepsBarChart';
 import WeightLineChart from './WeightLineChart';
@@ -43,7 +49,7 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
   onPageSelected,
 }) => {
   const pages: HealthTrendPage[] = [
-    // Steps is the default page and is always shown, so the pager can never end up with nothing to render. 
+    // Steps is the default page and is always shown, so the pager can never end up with nothing to render.
     // Every other trend hides itself until it has data.
     { key: 'steps', content: <StepsBarChart {...steps} range={range} /> },
   ];
@@ -57,7 +63,8 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
 
   // Sleep cannot use `shouldShowTrend`: its `data` is padded to one entry per day in the
   // window, so it is never empty and the page would show for users with no sleep at all.
-  const shouldShowSleep = sleep.isLoading || sleep.isError || sleep.nightsWithData > 0;
+  const shouldShowSleep =
+    sleep.isLoading || sleep.isError || sleep.nightsWithData > 0;
 
   if (shouldShowSleep) {
     pages.push({
@@ -72,7 +79,7 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
     (e: { nativeEvent: { position: number } }) => {
       onPageSelected(e.nativeEvent.position);
     },
-    [onPageSelected],
+    [onPageSelected]
   );
 
   // Clamp so the active dot stays in range when a page disappears
@@ -108,9 +115,12 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
     pageKeySignatureRef.current = pageKeySignature;
 
     const rememberedKey = selectedKeyRef.current;
-    const rememberedIndex = rememberedKey === null ? -1 : pageKeys.indexOf(rememberedKey);
+    const rememberedIndex =
+      rememberedKey === null ? -1 : pageKeys.indexOf(rememberedKey);
     const nextPage =
-      rememberedIndex >= 0 ? rememberedIndex : Math.min(activePage, pageKeys.length - 1);
+      rememberedIndex >= 0
+        ? rememberedIndex
+        : Math.min(activePage, pageKeys.length - 1);
 
     selectedKeyRef.current = pageKeys[nextPage] ?? null;
     if (nextPage === activePage) return;

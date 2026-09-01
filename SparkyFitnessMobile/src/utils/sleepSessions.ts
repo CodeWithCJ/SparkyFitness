@@ -11,8 +11,12 @@ import type { SleepEntry } from '../types/sleep';
  * the outcome deterministic — without it, two same-length entries would promote whichever
  * the server happened to return first.
  */
-export const compareByMainSleepRank = (first: SleepEntry, second: SleepEntry): number => {
-  const durationDifference = second.duration_in_seconds - first.duration_in_seconds;
+export const compareByMainSleepRank = (
+  first: SleepEntry,
+  second: SleepEntry
+): number => {
+  const durationDifference =
+    second.duration_in_seconds - first.duration_in_seconds;
   if (durationDifference !== 0) return durationDifference;
 
   return first.bedtime.localeCompare(second.bedtime);
@@ -29,7 +33,9 @@ export const compareByMainSleepRank = (first: SleepEntry, second: SleepEntry): n
  * Shared with the Diary's `classifySleepDay` so "which session is the night" has exactly
  * one definition — the trend chart and the Diary cards must never disagree about it.
  */
-export const selectMainSleep = (entriesForDay: SleepEntry[]): SleepEntry | null => {
+export const selectMainSleep = (
+  entriesForDay: SleepEntry[]
+): SleepEntry | null => {
   if (entriesForDay.length === 0) return null;
 
   return [...entriesForDay].sort(compareByMainSleepRank)[0];

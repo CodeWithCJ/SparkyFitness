@@ -5,7 +5,11 @@ import { fetchSleepEntries } from '../../src/services/api/sleepApi';
 import { ApiError } from '../../src/services/api/errors';
 import { getTodayDate } from '../../src/utils/dateUtils';
 import { buildSleepEntry } from '../helpers/sleepFixtures';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/measurementsApi', () => ({
   fetchMeasurementsRange: jest.fn(),
@@ -26,9 +30,8 @@ jest.mock('@react-navigation/native', () => ({
   useFocusEffect: jest.fn(),
 }));
 
-const mockFetchMeasurementsRange = fetchMeasurementsRange as jest.MockedFunction<
-  typeof fetchMeasurementsRange
->;
+const mockFetchMeasurementsRange =
+  fetchMeasurementsRange as jest.MockedFunction<typeof fetchMeasurementsRange>;
 const mockFetchSleepEntries = fetchSleepEntries as jest.MockedFunction<
   typeof fetchSleepEntries
 >;
@@ -82,8 +85,14 @@ describe('useHealthTrends', () => {
       expect(result.current.sleep.nightsWithData).toBe(1);
     });
 
-    expect(result.current.steps.data.at(-1)).toEqual({ day: today, steps: 5000 });
-    expect(result.current.weight.data.at(-1)).toEqual({ day: today, weight: 80 });
+    expect(result.current.steps.data.at(-1)).toEqual({
+      day: today,
+      steps: 5000,
+    });
+    expect(result.current.weight.data.at(-1)).toEqual({
+      day: today,
+      weight: 80,
+    });
     expect(result.current.sleep.data.at(-1)).toMatchObject({
       day: today,
       timeInBedSeconds: 28800,
@@ -126,7 +135,7 @@ describe('useHealthTrends', () => {
     });
 
     expect(mockFetchMeasurementsRange.mock.calls[0]).toEqual(
-      mockFetchSleepEntries.mock.calls[0],
+      mockFetchSleepEntries.mock.calls[0]
     );
   });
 
@@ -142,7 +151,10 @@ describe('useHealthTrends', () => {
     });
 
     expect(result.current.steps.isError).toBe(false);
-    expect(result.current.steps.data.at(-1)).toEqual({ day: today, steps: 5000 });
+    expect(result.current.steps.data.at(-1)).toEqual({
+      day: today,
+      steps: 5000,
+    });
     expect(result.current.sleep.data).toEqual([]);
     expect(result.current.sleep.nightsWithData).toBe(0);
   });
@@ -170,7 +182,9 @@ describe('useHealthTrends', () => {
       expect(result.current.steps.isLoading).toBe(false);
     });
 
-    expect(result.current.weight.isLoading).toBe(result.current.steps.isLoading);
+    expect(result.current.weight.isLoading).toBe(
+      result.current.steps.isLoading
+    );
     expect(result.current.weight.isError).toBe(result.current.steps.isError);
   });
 

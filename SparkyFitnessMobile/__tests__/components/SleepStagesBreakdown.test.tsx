@@ -11,8 +11,12 @@ jest.mock('uniwind', () => ({
 }));
 
 /** Reads every rendered percentage back out as a number, for sum assertions. */
-const renderedPercents = (queryAllByText: (m: RegExp) => { children: unknown[] }[]): number[] =>
-  queryAllByText(/^\d+%$/).map((node) => parseInt(String(node.children[0]), 10));
+const renderedPercents = (
+  queryAllByText: (m: RegExp) => { children: unknown[] }[]
+): number[] =>
+  queryAllByText(/^\d+%$/).map((node) =>
+    parseInt(String(node.children[0]), 10)
+  );
 
 describe('SleepStagesBreakdown', () => {
   beforeAll(async () => {
@@ -27,14 +31,18 @@ describe('SleepStagesBreakdown', () => {
       awake_sleep_seconds: 1800,
     });
 
-    const { getByTestId, queryAllByText } = render(<SleepStagesBreakdown entry={entry} />);
+    const { getByTestId, queryAllByText } = render(
+      <SleepStagesBreakdown entry={entry} />
+    );
 
     expect(getByTestId('sleep-stage-deep')).toBeTruthy();
     expect(getByTestId('sleep-stage-light')).toBeTruthy();
     expect(getByTestId('sleep-stage-rem')).toBeTruthy();
     expect(getByTestId('sleep-stage-awake')).toBeTruthy();
     expect(renderedPercents(queryAllByText)).toHaveLength(4);
-    expect(queryAllByText(/^\d+h \d+m$|^\d+m$/).length).toBeGreaterThanOrEqual(4);
+    expect(queryAllByText(/^\d+h \d+m$|^\d+m$/).length).toBeGreaterThanOrEqual(
+      4
+    );
   });
 
   test('percentages sum to exactly 100 after rounding', () => {
@@ -75,7 +83,7 @@ describe('SleepStagesBreakdown', () => {
     });
 
     const { queryByTestId, queryAllByText } = render(
-      <SleepStagesBreakdown entry={entry} />,
+      <SleepStagesBreakdown entry={entry} />
     );
 
     expect(queryByTestId('sleep-stage-awake')).toBeNull();
@@ -92,7 +100,9 @@ describe('SleepStagesBreakdown', () => {
       awake_sleep_seconds: 0,
     });
 
-    const { queryAllByText, queryByText } = render(<SleepStagesBreakdown entry={entry} />);
+    const { queryAllByText, queryByText } = render(
+      <SleepStagesBreakdown entry={entry} />
+    );
 
     expect(queryByText('NaN')).toBeNull();
     expect(queryByText(/NaN/)).toBeNull();

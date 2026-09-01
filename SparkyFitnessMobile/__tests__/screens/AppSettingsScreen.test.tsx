@@ -73,7 +73,9 @@ jest.mock('@react-navigation/native', () => ({
 const route = { params: {} } as never;
 
 function renderScreen() {
-  return render(<AppSettingsScreen navigation={mockNavigation} route={route} />);
+  return render(
+    <AppSettingsScreen navigation={mockNavigation} route={route} />
+  );
 }
 
 function picker() {
@@ -81,7 +83,7 @@ function picker() {
   // language one is the only one carrying an accessibilityHint prop.
   const pickers = screen.getAllByTestId('bottom-sheet-picker');
   const languagePicker = pickers.find(
-    (p) => p.props.accessibilityHint !== undefined,
+    (p) => p.props.accessibilityHint !== undefined
   );
   if (!languagePicker) {
     throw new Error('Language BottomSheetPicker not found');
@@ -114,7 +116,9 @@ describe('AppSettingsScreen', () => {
 
     expect(getByText('Language')).toBeTruthy();
     expect(
-      getByText('Use your device language or choose a language for SparkyFitness.'),
+      getByText(
+        'Use your device language or choose a language for SparkyFitness.'
+      )
     ).toBeTruthy();
   });
 
@@ -132,7 +136,6 @@ describe('AppSettingsScreen', () => {
     expect(picker().accessibilityHint).toBe('Otwiera menu wyboru języka');
   });
 
-
   it('renders the native iOS language and opens Settings without changing language state', async () => {
     jest.replaceProperty(Platform, 'OS', 'ios');
     (getLocales as jest.Mock).mockReturnValue([{ languageCode: 'pl' }]);
@@ -142,9 +145,9 @@ describe('AppSettingsScreen', () => {
     renderScreen();
 
     expect(screen.getByText('Polski · Managed by iOS')).toBeTruthy();
-    const languagePickers = screen.getAllByTestId('bottom-sheet-picker').filter(
-      (node) => node.props.accessibilityHint !== undefined,
-    );
+    const languagePickers = screen
+      .getAllByTestId('bottom-sheet-picker')
+      .filter((node) => node.props.accessibilityHint !== undefined);
     expect(languagePickers).toHaveLength(0);
 
     await act(async () => {
@@ -159,7 +162,9 @@ describe('AppSettingsScreen', () => {
   it('keeps iOS language state unchanged when Settings cannot be opened', async () => {
     jest.replaceProperty(Platform, 'OS', 'ios');
     (getLocales as jest.Mock).mockReturnValue([{ languageCode: 'pl' }]);
-    (Linking.openSettings as jest.Mock).mockRejectedValueOnce(new Error('not available'));
+    (Linking.openSettings as jest.Mock).mockRejectedValueOnce(
+      new Error('not available')
+    );
     useAppPreferencesStore.setState({ languagePreference: 'en' });
     await i18n.changeLanguage('en');
 
@@ -174,7 +179,9 @@ describe('AppSettingsScreen', () => {
 
   it('shows an error toast and preserves the previous language when the selection fails', async () => {
     mockNative.supportsNativePerAppLanguage = true;
-    mockNative.setApplicationLanguage.mockRejectedValue(new Error('native unavailable'));
+    mockNative.setApplicationLanguage.mockRejectedValue(
+      new Error('native unavailable')
+    );
     useAppPreferencesStore.setState({ languagePreference: 'en' });
 
     renderScreen();
@@ -187,7 +194,7 @@ describe('AppSettingsScreen', () => {
       expect.objectContaining({
         type: 'error',
         text1: "Couldn't change the language",
-      }),
+      })
     );
     expect(useAppPreferencesStore.getState().languagePreference).toBe('en');
     expect(i18n.resolvedLanguage).toBe('en');
@@ -198,9 +205,9 @@ describe('AppSettingsScreen', () => {
 
     fireEvent.press(getByText('Notifications'));
 
-    expect((mockNavigation as { navigate: jest.Mock }).navigate).toHaveBeenCalledWith(
-      'NotificationSettings',
-    );
+    expect(
+      (mockNavigation as { navigate: jest.Mock }).navigate
+    ).toHaveBeenCalledWith('NotificationSettings');
   });
 
   it('flips the haptics preference from its switch', () => {

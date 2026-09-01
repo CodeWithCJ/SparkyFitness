@@ -4,8 +4,12 @@ import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
-import ServingAdjustSheet, { type ServingAdjustSheetRef } from '../components/ServingAdjustSheet';
-import CopyMealSheet, { type CopyMealSheetRef } from '../components/CopyMealSheet';
+import ServingAdjustSheet, {
+  type ServingAdjustSheetRef,
+} from '../components/ServingAdjustSheet';
+import CopyMealSheet, {
+  type CopyMealSheetRef,
+} from '../components/CopyMealSheet';
 import SwipeableFoodRow from '../components/SwipeableFoodRow';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
@@ -27,9 +31,14 @@ import { getLocalizedMealLabel } from '../constants/meals';
 
 type MealTypeDetailScreenProps = RootStackScreenProps<'MealTypeDetail'>;
 
-const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation, route }) => {
-  const { t , i18n: translationI18n } = useTranslation();
-  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
+const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
+  navigation,
+  route,
+}) => {
+  const { t, i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl')
+    ? 'pl-PL'
+    : 'en-US';
   const { date, mealType, mealTypeId, mealLabel } = route.params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -64,7 +73,12 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
     mealLabel ??
     (resolvedType
       ? resolvedType.user_id == null
-        ? getLocalizedMealLabel(t, resolvedType.name.toLowerCase() === 'snack' ? 'snacks' : resolvedType.name.toLowerCase())
+        ? getLocalizedMealLabel(
+            t,
+            resolvedType.name.toLowerCase() === 'snack'
+              ? 'snacks'
+              : resolvedType.name.toLowerCase()
+          )
         : resolvedType.name
       : getHistoricalMealTypeLabel(mealTypeName, t));
 
@@ -74,9 +88,9 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
         summary?.foodEntries ?? [],
         mealTypeId,
         mealTypeName,
-        mealTypes,
+        mealTypes
       ),
-    [summary?.foodEntries, mealTypeId, mealTypeName, mealTypes],
+    [summary?.foodEntries, mealTypeId, mealTypeName, mealTypes]
   );
   const nutrition = useMemo(() => calculateMealNutrition(entries), [entries]);
   const isSystemMealType = resolvedType ? resolvedType.user_id === null : false;
@@ -95,7 +109,8 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
   // "other" is a synthetic bucket that aggregates every non-standard meal type,
   // so it has no single real meal type to copy from (the server would match
   // nothing). Only offer copy for concrete meal types.
-  const canCopy = isConnected && entries.length > 0 && mealTypeName.toLowerCase() !== 'other';
+  const canCopy =
+    isConnected && entries.length > 0 && mealTypeName.toLowerCase() !== 'other';
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -110,15 +125,31 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
           icon="cloud-offline"
           iconTone="muted"
           iconSize={64}
-          title={t('mealTypeDetail.states.noServer', { defaultValue: 'No server configured' })}
-          subtitle={t('mealTypeDetail.states.noServerHint', { defaultValue: 'Configure your server connection in Settings to view meal nutrition.' })}
-          action={{ label: t('common.goToSettings', { defaultValue: 'Go to Settings' }), onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
+          title={t('mealTypeDetail.states.noServer', {
+            defaultValue: 'No server configured',
+          })}
+          subtitle={t('mealTypeDetail.states.noServerHint', {
+            defaultValue:
+              'Configure your server connection in Settings to view meal nutrition.',
+          })}
+          action={{
+            label: t('common.goToSettings', { defaultValue: 'Go to Settings' }),
+            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
+            variant: 'primary',
+          }}
         />
       );
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title={t('mealTypeDetail.states.loading', { defaultValue: 'Loading meal…' })} />;
+      return (
+        <StatusView
+          loading
+          title={t('mealTypeDetail.states.loading', {
+            defaultValue: 'Loading meal…',
+          })}
+        />
+      );
     }
 
     if (isError) {
@@ -127,9 +158,17 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
           icon="alert-circle"
           iconTone="danger"
           iconSize={64}
-          title={t('mealTypeDetail.states.loadFailed', { defaultValue: 'Failed to load meal' })}
-          subtitle={t('common.connectionRetry', { defaultValue: 'Please check your connection and try again.' })}
-          action={{ label: t('common.retry', { defaultValue: 'Retry' }), onPress: () => refetch(), variant: 'primary' }}
+          title={t('mealTypeDetail.states.loadFailed', {
+            defaultValue: 'Failed to load meal',
+          })}
+          subtitle={t('common.connectionRetry', {
+            defaultValue: 'Please check your connection and try again.',
+          })}
+          action={{
+            label: t('common.retry', { defaultValue: 'Retry' }),
+            onPress: () => refetch(),
+            variant: 'primary',
+          }}
         />
       );
     }
@@ -140,8 +179,14 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
           icon="food"
           iconTone="muted"
           iconSize={64}
-          title={t('mealTypeDetail.states.noFoods', { defaultValue: 'No {{meal}} foods', meal: label.toLowerCase() })}
-          subtitle={t('mealTypeDetail.states.noFoodsHint', { defaultValue: '{{date}} has no foods logged for this meal.', date: formatDateLabel(date, t, dateLocale) })}
+          title={t('mealTypeDetail.states.noFoods', {
+            defaultValue: 'No {{meal}} foods',
+            meal: label.toLowerCase(),
+          })}
+          subtitle={t('mealTypeDetail.states.noFoodsHint', {
+            defaultValue: '{{date}} has no foods logged for this meal.',
+            date: formatDateLabel(date, t, dateLocale),
+          })}
         />
       );
     }
@@ -150,26 +195,45 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-4 py-4 gap-5"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 16 + activeWorkoutBarPadding }}
+        contentContainerStyle={{
+          paddingBottom: insets.bottom + 16 + activeWorkoutBarPadding,
+        }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={accentColor}
+          />
         }
       >
         <FoodNutritionSummary
           name={label}
-          brand={targetCalories > 0 ? `${formatDateLabel(date, t, dateLocale)} · ${t('mealTypeDetail.targetCalories', { defaultValue: 'Target: {{calories}} kcal', calories: targetCalories })}` : formatDateLabel(date, t, dateLocale)}
+          brand={
+            targetCalories > 0
+              ? `${formatDateLabel(date, t, dateLocale)} · ${t('mealTypeDetail.targetCalories', { defaultValue: 'Target: {{calories}} kcal', calories: targetCalories })}`
+              : formatDateLabel(date, t, dateLocale)
+          }
           values={nutrition.values}
           showNetCarbs={showNetCarbs}
-          customNutrients={Object.keys(nutrition.customNutrients).length > 0 ? nutrition.customNutrients : null}
+          customNutrients={
+            Object.keys(nutrition.customNutrients).length > 0
+              ? nutrition.customNutrients
+              : null
+          }
           calorieGoal={targetCalories > 0 ? targetCalories : undefined}
         />
 
         <View className="bg-surface rounded-xl p-4 shadow-sm">
           <View className="flex-row items-center mb-3">
-            <Text className="text-base font-bold text-text-secondary flex-1">{t('mealTypeDetail.labels.foods', { defaultValue: 'Foods' })}</Text>
+            <Text className="text-base font-bold text-text-secondary flex-1">
+              {t('mealTypeDetail.labels.foods', { defaultValue: 'Foods' })}
+            </Text>
             <Text className="text-xs text-text-muted font-medium">
-              {t('common.itemCount', { defaultValue: '{{count}} items', count: entries.length })}
+              {t('common.itemCount', {
+                defaultValue: '{{count}} items',
+                count: entries.length,
+              })}
             </Text>
           </View>
           {entries.map((entry, index) => (
@@ -177,7 +241,9 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
               key={entry.id || index}
               entry={entry}
               nutrition={calculateEntryNutrition(entry)}
-              onAdjustServing={(foodEntry) => servingSheetRef.current?.present(foodEntry)}
+              onAdjustServing={(foodEntry) =>
+                servingSheetRef.current?.present(foodEntry)
+              }
             />
           ))}
         </View>
@@ -198,7 +264,9 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
             date,
             mealTypeId: resolvedType?.id,
           }),
-        accessibilityLabel: t('mealTypeDetail.accessibility.addFood', { defaultValue: 'Add Food' }),
+        accessibilityLabel: t('mealTypeDetail.accessibility.addFood', {
+          defaultValue: 'Add Food',
+        }),
         identifier: 'meal-type-detail-add',
       },
       ...(canCopy
@@ -208,8 +276,15 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
               sfSymbol: 'doc.on.doc',
               ionicon: 'copy-outline',
               role: 'secondary' as const,
-              onPress: () => copySheetRef.current?.present(date, mealTypeId ?? null, mealTypeName),
-              accessibilityLabel: t('mealTypeDetail.accessibility.copyMeal', { defaultValue: 'Copy meal to another day' }),
+              onPress: () =>
+                copySheetRef.current?.present(
+                  date,
+                  mealTypeId ?? null,
+                  mealTypeName
+                ),
+              accessibilityLabel: t('mealTypeDetail.accessibility.copyMeal', {
+                defaultValue: 'Copy meal to another day',
+              }),
               identifier: 'meal-type-detail-copy',
             },
           ]
@@ -218,14 +293,24 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({ navigation,
   });
 
   return (
-      <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
-        {header}
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
+      {header}
 
-        {renderContent()}
+      {renderContent()}
 
-        <ServingAdjustSheet ref={servingSheetRef} onViewEntry={(entry) => navigation.navigate('FoodEntryView', { entry })} />
-        <CopyMealSheet ref={copySheetRef} isPending={isCopying} onCopy={copyMeal} />
-      </View>
+      <ServingAdjustSheet
+        ref={servingSheetRef}
+        onViewEntry={(entry) => navigation.navigate('FoodEntryView', { entry })}
+      />
+      <CopyMealSheet
+        ref={copySheetRef}
+        isPending={isCopying}
+        onCopy={copyMeal}
+      />
+    </View>
   );
 };
 

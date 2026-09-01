@@ -26,9 +26,12 @@ describe('KeyboardCollapsible', () => {
     // keyboard-engaged mirror tracks mockProgress (the global reanimated mock
     // leaves useAnimatedReaction inert and makes runOnJS an identity).
     mockedUseAnimatedReaction.mockImplementation(
-      (prepare: () => unknown, react: (value: unknown, previous: unknown) => void) => {
+      (
+        prepare: () => unknown,
+        react: (value: unknown, previous: unknown) => void
+      ) => {
         react(prepare(), null);
-      },
+      }
     );
   });
 
@@ -40,22 +43,26 @@ describe('KeyboardCollapsible', () => {
     const { getByTestId } = render(
       <KeyboardCollapsible>
         <Text>content</Text>
-      </KeyboardCollapsible>,
+      </KeyboardCollapsible>
     );
 
-    expect(getByTestId('keyboard-collapsible-clip').props.style.height).toBeUndefined();
+    expect(
+      getByTestId('keyboard-collapsible-clip').props.style.height
+    ).toBeUndefined();
   });
 
   it('clips to the measured height once the child lays out', () => {
     const { getByTestId } = render(
       <KeyboardCollapsible>
         <Text>content</Text>
-      </KeyboardCollapsible>,
+      </KeyboardCollapsible>
     );
 
     fireLayout(getByTestId('keyboard-collapsible-content'), 20);
 
-    expect(getByTestId('keyboard-collapsible-clip').props.style.height).toBe(20);
+    expect(getByTestId('keyboard-collapsible-clip').props.style.height).toBe(
+      20
+    );
   });
 
   it('ignores partial-height layouts while the keyboard is up', () => {
@@ -80,6 +87,8 @@ describe('KeyboardCollapsible', () => {
     mockProgress.value = 0;
     rerender(ui());
 
-    expect(getByTestId('keyboard-collapsible-clip').props.style.height).toBe(20);
+    expect(getByTestId('keyboard-collapsible-clip').props.style.height).toBe(
+      20
+    );
   });
 });

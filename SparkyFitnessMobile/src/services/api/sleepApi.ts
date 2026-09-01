@@ -11,7 +11,7 @@ import { apiFetch } from './apiClient';
  */
 export const fetchSleepEntries = async (
   startDate: string,
-  endDate: string,
+  endDate: string
 ): Promise<SleepEntry[]> => {
   return apiFetch<SleepEntry[]>({
     endpoint: `/api/sleep?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,

@@ -21,11 +21,15 @@ import {
   estimateFoodPhoto,
   FoodPhotoEstimateError,
 } from '../../src/services/api/externalFoodSearchApi';
-import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
+import {
+  getActiveServerConfig,
+  ServerConfig,
+} from '../../src/services/storage';
 
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
-  proxyHeadersToRecord: jest.requireActual('../../src/services/storage').proxyHeadersToRecord,
+  proxyHeadersToRecord: jest.requireActual('../../src/services/storage')
+    .proxyHeadersToRecord,
 }));
 
 jest.mock('../../src/services/LogService', () => ({
@@ -148,15 +152,22 @@ describe('externalFoodSearchApi', () => {
         json: () =>
           Promise.resolve({
             products: [],
-            pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false },
+            pagination: {
+              page: 1,
+              pageSize: 20,
+              totalCount: 0,
+              hasMore: false,
+            },
           }),
       });
 
       await searchOpenFoodFacts('peanut butter');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/foods/openfoodfacts/search?query=peanut+butter&page=1'),
-        expect.anything(),
+        expect.stringContaining(
+          '/api/foods/openfoodfacts/search?query=peanut+butter&page=1'
+        ),
+        expect.anything()
       );
     });
 
@@ -167,7 +178,12 @@ describe('externalFoodSearchApi', () => {
         json: () =>
           Promise.resolve({
             products: [],
-            pagination: { page: 3, pageSize: 20, totalCount: 50, hasMore: false },
+            pagination: {
+              page: 3,
+              pageSize: 20,
+              totalCount: 50,
+              hasMore: false,
+            },
           }),
       });
 
@@ -175,7 +191,7 @@ describe('externalFoodSearchApi', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('page=3'),
-        expect.anything(),
+        expect.anything()
       );
     });
 
@@ -193,7 +209,12 @@ describe('externalFoodSearchApi', () => {
                 nutriments: { 'energy-kcal_100g': 89 },
               },
             ],
-            pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+            pagination: {
+              page: 1,
+              pageSize: 20,
+              totalCount: 1,
+              hasMore: false,
+            },
           }),
       });
 
@@ -204,7 +225,12 @@ describe('externalFoodSearchApi', () => {
       expect(result.items[0].brand).toBe('Chiquita');
       expect(result.items[0].calories).toBe(89);
       expect(result.items[0].source).toBe('openfoodfacts');
-      expect(result.pagination).toEqual({ page: 1, pageSize: 20, totalCount: 1, hasMore: false });
+      expect(result.pagination).toEqual({
+        page: 1,
+        pageSize: 20,
+        totalCount: 1,
+        hasMore: false,
+      });
     });
 
     test('filters out products with falsy product_name', async () => {
@@ -218,7 +244,12 @@ describe('externalFoodSearchApi', () => {
               { product_name: '', code: '2', nutriments: {} },
               { product_name: 'Also Good', code: '3', nutriments: {} },
             ],
-            pagination: { page: 1, pageSize: 20, totalCount: 3, hasMore: false },
+            pagination: {
+              page: 1,
+              pageSize: 20,
+              totalCount: 3,
+              hasMore: false,
+            },
           }),
       });
 
@@ -237,7 +268,9 @@ describe('externalFoodSearchApi', () => {
         text: () => Promise.resolve('Internal Server Error'),
       });
 
-      await expect(searchOpenFoodFacts('test')).rejects.toThrow('Server error: 500');
+      await expect(searchOpenFoodFacts('test')).rejects.toThrow(
+        'Server error: 500'
+      );
     });
   });
 
@@ -255,14 +288,54 @@ describe('externalFoodSearchApi', () => {
           description: 'Blueberries, raw',
           brandOwner: 'Nature Brand',
           foodNutrients: [
-            { nutrientId: 1008, nutrientName: 'Energy', unitName: 'KCAL', value: 57.2 },
-            { nutrientId: 1003, nutrientName: 'Protein', unitName: 'G', value: 0.74 },
-            { nutrientId: 1004, nutrientName: 'Total lipid (fat)', unitName: 'G', value: 0.33 },
-            { nutrientId: 1005, nutrientName: 'Carbohydrate', unitName: 'G', value: 14.49 },
-            { nutrientId: 2000, nutrientName: 'Sugars', unitName: 'G', value: 9.96 },
-            { nutrientId: 1093, nutrientName: 'Sodium', unitName: 'MG', value: 1.0 },
-            { nutrientId: 1079, nutrientName: 'Fiber', unitName: 'G', value: 2.4 },
-            { nutrientId: 1258, nutrientName: 'Saturated fatty acids', unitName: 'G', value: 0.028 },
+            {
+              nutrientId: 1008,
+              nutrientName: 'Energy',
+              unitName: 'KCAL',
+              value: 57.2,
+            },
+            {
+              nutrientId: 1003,
+              nutrientName: 'Protein',
+              unitName: 'G',
+              value: 0.74,
+            },
+            {
+              nutrientId: 1004,
+              nutrientName: 'Total lipid (fat)',
+              unitName: 'G',
+              value: 0.33,
+            },
+            {
+              nutrientId: 1005,
+              nutrientName: 'Carbohydrate',
+              unitName: 'G',
+              value: 14.49,
+            },
+            {
+              nutrientId: 2000,
+              nutrientName: 'Sugars',
+              unitName: 'G',
+              value: 9.96,
+            },
+            {
+              nutrientId: 1093,
+              nutrientName: 'Sodium',
+              unitName: 'MG',
+              value: 1.0,
+            },
+            {
+              nutrientId: 1079,
+              nutrientName: 'Fiber',
+              unitName: 'G',
+              value: 2.4,
+            },
+            {
+              nutrientId: 1258,
+              nutrientName: 'Saturated fatty acids',
+              unitName: 'G',
+              value: 0.028,
+            },
           ],
         };
 
@@ -307,8 +380,18 @@ describe('externalFoodSearchApi', () => {
           fdcId: 1,
           description: 'Test',
           foodNutrients: [
-            { nutrientId: 1008, nutrientName: 'Energy', unitName: 'KCAL', value: 123.456 },
-            { nutrientId: 1003, nutrientName: 'Protein', unitName: 'G', value: 7.89 },
+            {
+              nutrientId: 1008,
+              nutrientName: 'Energy',
+              unitName: 'KCAL',
+              value: 123.456,
+            },
+            {
+              nutrientId: 1003,
+              nutrientName: 'Protein',
+              unitName: 'G',
+              value: 7.89,
+            },
           ],
         };
 
@@ -362,18 +445,29 @@ describe('externalFoodSearchApi', () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({ foods: [], pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false } }),
+          json: () =>
+            Promise.resolve({
+              foods: [],
+              pagination: {
+                page: 1,
+                pageSize: 20,
+                totalCount: 0,
+                hasMore: false,
+              },
+            }),
         });
 
         await searchUsda('blueberry', 'provider-abc');
 
         expect(mockFetch).toHaveBeenCalledWith(
-          expect.stringContaining('/api/foods/usda/search?query=blueberry&page=1'),
+          expect.stringContaining(
+            '/api/foods/usda/search?query=blueberry&page=1'
+          ),
           expect.objectContaining({
             headers: expect.objectContaining({
               'x-provider-id': 'provider-abc',
             }),
-          }),
+          })
         );
       });
 
@@ -389,11 +483,21 @@ describe('externalFoodSearchApi', () => {
                   description: 'Banana, raw',
                   brandOwner: 'Fresh Farms',
                   foodNutrients: [
-                    { nutrientId: 1008, nutrientName: 'Energy', unitName: 'KCAL', value: 89 },
+                    {
+                      nutrientId: 1008,
+                      nutrientName: 'Energy',
+                      unitName: 'KCAL',
+                      value: 89,
+                    },
                   ],
                 },
               ],
-              pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+              pagination: {
+                page: 1,
+                pageSize: 20,
+                totalCount: 1,
+                hasMore: false,
+              },
             }),
         });
 
@@ -404,7 +508,12 @@ describe('externalFoodSearchApi', () => {
         expect(result.items[0].brand).toBe('Fresh Farms');
         expect(result.items[0].calories).toBe(89);
         expect(result.items[0].source).toBe('usda');
-        expect(result.pagination).toEqual({ page: 1, pageSize: 20, totalCount: 1, hasMore: false });
+        expect(result.pagination).toEqual({
+          page: 1,
+          pageSize: 20,
+          totalCount: 1,
+          hasMore: false,
+        });
       });
 
       test('filters out items with empty description', async () => {
@@ -418,7 +527,12 @@ describe('externalFoodSearchApi', () => {
                 { fdcId: 2, description: '', foodNutrients: [] },
                 { fdcId: 3, description: 'Also Good', foodNutrients: [] },
               ],
-              pagination: { page: 1, pageSize: 20, totalCount: 3, hasMore: false },
+              pagination: {
+                page: 1,
+                pageSize: 20,
+                totalCount: 3,
+                hasMore: false,
+              },
             }),
         });
 
@@ -437,7 +551,9 @@ describe('externalFoodSearchApi', () => {
           text: () => Promise.resolve('Internal Server Error'),
         });
 
-        await expect(searchUsda('test', 'provider-1')).rejects.toThrow('Server error: 500');
+        await expect(searchUsda('test', 'provider-1')).rejects.toThrow(
+          'Server error: 500'
+        );
       });
     });
   });
@@ -452,7 +568,7 @@ describe('externalFoodSearchApi', () => {
     describe('parseFatSecretDescription', () => {
       test('parses a standard description string', () => {
         const result = parseFatSecretDescription(
-          'Per 246g - Calories: 627kcal | Fat: 24.67g | Carbs: 101.62g | Protein: 4.53g',
+          'Per 246g - Calories: 627kcal | Fat: 24.67g | Carbs: 101.62g | Protein: 4.53g'
         );
 
         expect(result).toEqual({
@@ -467,7 +583,7 @@ describe('externalFoodSearchApi', () => {
 
       test('parses small values', () => {
         const result = parseFatSecretDescription(
-          'Per 10g - Calories: 5kcal | Fat: 0.1g | Carbs: 0.9g | Protein: 0.2g',
+          'Per 10g - Calories: 5kcal | Fat: 0.1g | Carbs: 0.9g | Protein: 0.2g'
         );
 
         expect(result.calories).toBe(5);
@@ -491,7 +607,9 @@ describe('externalFoodSearchApi', () => {
       });
 
       test('handles missing fields with partial match', () => {
-        const result = parseFatSecretDescription('Per 50g - Calories: 100kcal | Fat: 5g');
+        const result = parseFatSecretDescription(
+          'Per 50g - Calories: 100kcal | Fat: 5g'
+        );
 
         expect(result.calories).toBe(100);
         expect(result.fat).toBe(5);
@@ -502,7 +620,7 @@ describe('externalFoodSearchApi', () => {
 
       test('handles non-gram units', () => {
         const result = parseFatSecretDescription(
-          'Per 250ml - Calories: 120kcal | Fat: 3g | Carbs: 20g | Protein: 5g',
+          'Per 250ml - Calories: 120kcal | Fat: 3g | Carbs: 20g | Protein: 5g'
         );
 
         expect(result.servingSize).toBe(250);
@@ -515,7 +633,8 @@ describe('externalFoodSearchApi', () => {
         const item = {
           food_id: '12345',
           food_name: 'Fried Rice',
-          food_description: 'Per 246g - Calories: 627kcal | Fat: 24.67g | Carbs: 101.62g | Protein: 4.53g',
+          food_description:
+            'Per 246g - Calories: 627kcal | Fat: 24.67g | Carbs: 101.62g | Protein: 4.53g',
         };
 
         const result = transformFatSecretSearchItem(item);
@@ -533,8 +652,24 @@ describe('externalFoodSearchApi', () => {
     describe('selectFatSecretServing', () => {
       test('prefers serving with "serving" in measurement_description', () => {
         const servings = [
-          { serving_id: '1', serving_description: '100g', measurement_description: '100 g', calories: '100', protein: '5', carbohydrate: '10', fat: '3' },
-          { serving_id: '2', serving_description: '1 serving (200g)', measurement_description: '1 serving', calories: '200', protein: '10', carbohydrate: '20', fat: '6' },
+          {
+            serving_id: '1',
+            serving_description: '100g',
+            measurement_description: '100 g',
+            calories: '100',
+            protein: '5',
+            carbohydrate: '10',
+            fat: '3',
+          },
+          {
+            serving_id: '2',
+            serving_description: '1 serving (200g)',
+            measurement_description: '1 serving',
+            calories: '200',
+            protein: '10',
+            carbohydrate: '20',
+            fat: '6',
+          },
         ];
 
         const result = selectFatSecretServing(servings as any);
@@ -543,8 +678,24 @@ describe('externalFoodSearchApi', () => {
 
       test('falls back to first serving when no "serving" match', () => {
         const servings = [
-          { serving_id: '1', serving_description: '100g', measurement_description: '100 g', calories: '100', protein: '5', carbohydrate: '10', fat: '3' },
-          { serving_id: '2', serving_description: '1 cup', measurement_description: 'cup', calories: '250', protein: '12', carbohydrate: '25', fat: '8' },
+          {
+            serving_id: '1',
+            serving_description: '100g',
+            measurement_description: '100 g',
+            calories: '100',
+            protein: '5',
+            carbohydrate: '10',
+            fat: '3',
+          },
+          {
+            serving_id: '2',
+            serving_description: '1 cup',
+            measurement_description: 'cup',
+            calories: '250',
+            protein: '12',
+            carbohydrate: '25',
+            fat: '8',
+          },
         ];
 
         const result = selectFatSecretServing(servings as any);
@@ -557,18 +708,29 @@ describe('externalFoodSearchApi', () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({ foods: { food: [] }, pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false } }),
+          json: () =>
+            Promise.resolve({
+              foods: { food: [] },
+              pagination: {
+                page: 1,
+                pageSize: 20,
+                totalCount: 0,
+                hasMore: false,
+              },
+            }),
         });
 
         await searchFatSecret('rice', 'provider-fs');
 
         expect(mockFetch).toHaveBeenCalledWith(
-          expect.stringContaining('/api/foods/fatsecret/search?query=rice&page=1'),
+          expect.stringContaining(
+            '/api/foods/fatsecret/search?query=rice&page=1'
+          ),
           expect.objectContaining({
             headers: expect.objectContaining({
               'x-provider-id': 'provider-fs',
             }),
-          }),
+          })
         );
       });
 
@@ -583,7 +745,8 @@ describe('externalFoodSearchApi', () => {
                   {
                     food_id: '1',
                     food_name: 'Fried Rice',
-                    food_description: 'Per 246g - Calories: 627kcal | Fat: 24.67g | Carbs: 101.62g | Protein: 4.53g',
+                    food_description:
+                      'Per 246g - Calories: 627kcal | Fat: 24.67g | Carbs: 101.62g | Protein: 4.53g',
                   },
                   {
                     food_id: '2',
@@ -592,7 +755,12 @@ describe('externalFoodSearchApi', () => {
                   },
                 ],
               },
-              pagination: { page: 1, pageSize: 20, totalCount: 2, hasMore: false },
+              pagination: {
+                page: 1,
+                pageSize: 20,
+                totalCount: 2,
+                hasMore: false,
+              },
             }),
         });
 
@@ -602,7 +770,12 @@ describe('externalFoodSearchApi', () => {
         expect(result.items[0].name).toBe('Fried Rice');
         expect(result.items[0].source).toBe('fatsecret');
         expect(result.items[0].calories).toBe(627);
-        expect(result.pagination).toEqual({ page: 1, pageSize: 20, totalCount: 2, hasMore: false });
+        expect(result.pagination).toEqual({
+          page: 1,
+          pageSize: 20,
+          totalCount: 2,
+          hasMore: false,
+        });
       });
 
       test('handles single food object (not array)', async () => {
@@ -615,10 +788,16 @@ describe('externalFoodSearchApi', () => {
                 food: {
                   food_id: '1',
                   food_name: 'Solo Result',
-                  food_description: 'Per 100g - Calories: 200kcal | Fat: 10g | Carbs: 20g | Protein: 15g',
+                  food_description:
+                    'Per 100g - Calories: 200kcal | Fat: 10g | Carbs: 20g | Protein: 15g',
                 },
               },
-              pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+              pagination: {
+                page: 1,
+                pageSize: 20,
+                totalCount: 1,
+                hasMore: false,
+              },
             }),
         });
 
@@ -632,7 +811,16 @@ describe('externalFoodSearchApi', () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({ foods: {}, pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false } }),
+          json: () =>
+            Promise.resolve({
+              foods: {},
+              pagination: {
+                page: 1,
+                pageSize: 20,
+                totalCount: 0,
+                hasMore: false,
+              },
+            }),
         });
 
         const result = await searchFatSecret('nonexistent', 'provider-fs');
@@ -644,7 +832,15 @@ describe('externalFoodSearchApi', () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({ pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false } }),
+          json: () =>
+            Promise.resolve({
+              pagination: {
+                page: 1,
+                pageSize: 20,
+                totalCount: 0,
+                hasMore: false,
+              },
+            }),
         });
 
         const result = await searchFatSecret('nonexistent', 'provider-fs');
@@ -1015,7 +1211,7 @@ describe('externalFoodSearchApi', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/foods/barcode/1234567890'),
-        expect.anything(),
+        expect.anything()
       );
     });
 
@@ -1067,7 +1263,9 @@ describe('externalFoodSearchApi', () => {
         text: () => Promise.resolve('Not Found'),
       });
 
-      await expect(lookupBarcode('1234567890')).rejects.toThrow('Server error: 404');
+      await expect(lookupBarcode('1234567890')).rejects.toThrow(
+        'Server error: 404'
+      );
     });
   });
 
@@ -1197,7 +1395,12 @@ describe('externalFoodSearchApi', () => {
           json: () =>
             Promise.resolve({
               items: [],
-              pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false },
+              pagination: {
+                page: 1,
+                pageSize: 20,
+                totalCount: 0,
+                hasMore: false,
+              },
             }),
         });
 
@@ -1209,7 +1412,7 @@ describe('externalFoodSearchApi', () => {
             headers: expect.objectContaining({
               'x-provider-id': 'provider-mealie',
             }),
-          }),
+          })
         );
       });
 
@@ -1234,7 +1437,12 @@ describe('externalFoodSearchApi', () => {
                   },
                 },
               ],
-              pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+              pagination: {
+                page: 1,
+                pageSize: 20,
+                totalCount: 1,
+                hasMore: false,
+              },
             }),
         });
 
@@ -1243,7 +1451,12 @@ describe('externalFoodSearchApi', () => {
         expect(result.items).toHaveLength(1);
         expect(result.items[0].name).toBe('Tomato Soup');
         expect(result.items[0].source).toBe('mealie');
-        expect(result.pagination).toEqual({ page: 1, pageSize: 20, totalCount: 1, hasMore: false });
+        expect(result.pagination).toEqual({
+          page: 1,
+          pageSize: 20,
+          totalCount: 1,
+          hasMore: false,
+        });
       });
 
       test('filters out items with empty name', async () => {
@@ -1257,16 +1470,35 @@ describe('externalFoodSearchApi', () => {
                   provider_external_id: 'mealie-1',
                   name: 'Good Item',
                   brand: null,
-                  default_variant: { serving_size: 100, serving_unit: 'g', calories: 100, protein: 5, carbs: 10, fat: 3 },
+                  default_variant: {
+                    serving_size: 100,
+                    serving_unit: 'g',
+                    calories: 100,
+                    protein: 5,
+                    carbs: 10,
+                    fat: 3,
+                  },
                 },
                 {
                   provider_external_id: 'mealie-2',
                   name: '',
                   brand: null,
-                  default_variant: { serving_size: 100, serving_unit: 'g', calories: 50, protein: 2, carbs: 5, fat: 1 },
+                  default_variant: {
+                    serving_size: 100,
+                    serving_unit: 'g',
+                    calories: 50,
+                    protein: 2,
+                    carbs: 5,
+                    fat: 1,
+                  },
                 },
               ],
-              pagination: { page: 1, pageSize: 20, totalCount: 2, hasMore: false },
+              pagination: {
+                page: 1,
+                pageSize: 20,
+                totalCount: 2,
+                hasMore: false,
+              },
             }),
         });
 
@@ -1284,7 +1516,9 @@ describe('externalFoodSearchApi', () => {
           text: () => Promise.resolve('Internal Server Error'),
         });
 
-        await expect(searchMealie('soup', 'provider-mealie')).rejects.toThrow('Server error: 500');
+        await expect(searchMealie('soup', 'provider-mealie')).rejects.toThrow(
+          'Server error: 500'
+        );
       });
     });
   });
@@ -1321,10 +1555,10 @@ describe('externalFoodSearchApi', () => {
         const result = transformNormalizedFood(food, 'openfoodfacts');
 
         expect(result.image_url).toBe(
-          'https://images.openfoodfacts.org/thumb.jpg',
+          'https://images.openfoodfacts.org/thumb.jpg'
         );
         expect(result.image_source_url).toBe(
-          'https://images.openfoodfacts.org/full.jpg',
+          'https://images.openfoodfacts.org/full.jpg'
         );
       });
 
@@ -1425,8 +1659,13 @@ describe('externalFoodSearchApi', () => {
           provider_external_id: 'ext-id',
           is_custom: false,
           default_variant: {
-            serving_size: 100, serving_unit: 'g', calories: 100,
-            protein: 5, carbs: 10, fat: 3, is_default: true,
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 100,
+            protein: 5,
+            carbs: 10,
+            fat: 3,
+            is_default: true,
           },
         };
 
@@ -1440,8 +1679,13 @@ describe('externalFoodSearchApi', () => {
           brand: null,
           is_custom: false,
           default_variant: {
-            serving_size: 100, serving_unit: 'g', calories: 100,
-            protein: 5, carbs: 10, fat: 3, is_default: true,
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 100,
+            protein: 5,
+            carbs: 10,
+            fat: 3,
+            is_default: true,
           },
         };
 
@@ -1454,8 +1698,13 @@ describe('externalFoodSearchApi', () => {
           brand: null,
           is_custom: false,
           default_variant: {
-            serving_size: 100, serving_unit: 'g', calories: 100,
-            protein: 5, carbs: 10, fat: 3, is_default: true,
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 100,
+            protein: 5,
+            carbs: 10,
+            fat: 3,
+            is_default: true,
           },
         };
 
@@ -1469,12 +1718,19 @@ describe('externalFoodSearchApi', () => {
           provider_type: 'openfoodfacts',
           is_custom: false,
           default_variant: {
-            serving_size: 100, serving_unit: 'g', calories: 100,
-            protein: 5, carbs: 10, fat: 3, is_default: true,
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 100,
+            protein: 5,
+            carbs: 10,
+            fat: 3,
+            is_default: true,
           },
         };
 
-        expect(transformNormalizedFood(food, 'fallback').source).toBe('openfoodfacts');
+        expect(transformNormalizedFood(food, 'fallback').source).toBe(
+          'openfoodfacts'
+        );
       });
 
       test('falls back to providerType argument when provider_type is absent', () => {
@@ -1483,8 +1739,13 @@ describe('externalFoodSearchApi', () => {
           brand: null,
           is_custom: false,
           default_variant: {
-            serving_size: 100, serving_unit: 'g', calories: 100,
-            protein: 5, carbs: 10, fat: 3, is_default: true,
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 100,
+            protein: 5,
+            carbs: 10,
+            fat: 3,
+            is_default: true,
           },
         };
 
@@ -1498,14 +1759,25 @@ describe('externalFoodSearchApi', () => {
           provider_external_id: 'ext-1',
           is_custom: false,
           default_variant: {
-            serving_size: 100, serving_unit: 'g', calories: 150,
-            protein: 5, carbs: 30, fat: 1, is_default: true,
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 150,
+            protein: 5,
+            carbs: 30,
+            fat: 1,
+            is_default: true,
           },
           variants: [
             {
-              serving_size: 200, serving_unit: 'g', calories: 300,
-              protein: 10, carbs: 60, fat: 2, dietary_fiber: 3,
-              trans_fat: 0, is_default: false,
+              serving_size: 200,
+              serving_unit: 'g',
+              calories: 300,
+              protein: 10,
+              carbs: 60,
+              fat: 2,
+              dietary_fiber: 3,
+              trans_fat: 0,
+              is_default: false,
             },
           ],
         };
@@ -1594,7 +1866,9 @@ describe('externalFoodSearchApi', () => {
 
         const result = transformNormalizedFood(food, 'yazio');
 
-        expect(result.variants?.map(variant => variant.serving_description)).toEqual([
+        expect(
+          result.variants?.map((variant) => variant.serving_description)
+        ).toEqual([
           '1 serving (200 g)',
           '100 g',
           '200 g',
@@ -1612,21 +1886,41 @@ describe('externalFoodSearchApi', () => {
           provider_external_id: 'fs-1',
           is_custom: false,
           default_variant: {
-            serving_size: 1, serving_unit: 'small', calories: 118,
-            protein: 13, carbs: 0, fat: 7, is_default: true,
+            serving_size: 1,
+            serving_unit: 'small',
+            calories: 118,
+            protein: 13,
+            carbs: 0,
+            fat: 7,
+            is_default: true,
           },
           variants: [
             {
-              serving_size: 1, serving_unit: 'small', calories: 118,
-              protein: 13, carbs: 0, fat: 7, is_default: true,
+              serving_size: 1,
+              serving_unit: 'small',
+              calories: 118,
+              protein: 13,
+              carbs: 0,
+              fat: 7,
+              is_default: true,
             },
             {
-              serving_size: 1, serving_unit: 'medium', calories: 197,
-              protein: 22, carbs: 0, fat: 11, is_default: false,
+              serving_size: 1,
+              serving_unit: 'medium',
+              calories: 197,
+              protein: 22,
+              carbs: 0,
+              fat: 11,
+              is_default: false,
             },
             {
-              serving_size: 100, serving_unit: 'g', calories: 231,
-              protein: 26, carbs: 0, fat: 13, is_default: false,
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 231,
+              protein: 26,
+              carbs: 0,
+              fat: 13,
+              is_default: false,
             },
           ],
         };
@@ -1651,20 +1945,32 @@ describe('externalFoodSearchApi', () => {
           provider_external_id: 'fs-1',
           is_custom: false,
           default_variant: {
-            serving_size: 100, serving_unit: 'g', calories: 231,
-            protein: 26, carbs: 0, fat: 13, is_default: true,
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 231,
+            protein: 26,
+            carbs: 0,
+            fat: 13,
+            is_default: true,
           },
           variants: [
             {
-              serving_size: 1, serving_unit: 'small', calories: 118,
-              protein: 13, carbs: 0, fat: 7, is_default: false,
+              serving_size: 1,
+              serving_unit: 'small',
+              calories: 118,
+              protein: 13,
+              carbs: 0,
+              fat: 7,
+              is_default: false,
             },
           ],
         };
 
         // Without a preferred serving the named-serving heuristic swaps
         // display to the household size; the caller's serving pins it back.
-        expect(transformNormalizedFood(food, 'fatsecret').serving_unit).toBe('small');
+        expect(transformNormalizedFood(food, 'fatsecret').serving_unit).toBe(
+          'small'
+        );
 
         const pinned = transformNormalizedFood(food, 'fatsecret', {
           serving_size: 100,
@@ -1677,12 +1983,22 @@ describe('externalFoodSearchApi', () => {
 
       test('puts default_variant first in variants array', () => {
         const defaultVariant = {
-          serving_size: 140, serving_unit: 'g', calories: 220,
-          protein: 8, carbs: 43, fat: 1, is_default: true,
+          serving_size: 140,
+          serving_unit: 'g',
+          calories: 220,
+          protein: 8,
+          carbs: 43,
+          fat: 1,
+          is_default: true,
         };
         const otherVariant = {
-          serving_size: 56, serving_unit: 'g', calories: 200,
-          protein: 7, carbs: 42, fat: 1, is_default: false,
+          serving_size: 56,
+          serving_unit: 'g',
+          calories: 200,
+          protein: 7,
+          carbs: 42,
+          fat: 1,
+          is_default: false,
         };
         const food = {
           name: 'Pasta',
@@ -1708,8 +2024,13 @@ describe('externalFoodSearchApi', () => {
           brand: null,
           is_custom: false,
           default_variant: {
-            serving_size: 100, serving_unit: 'g', calories: 100,
-            protein: 5, carbs: 10, fat: 3, is_default: true,
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 100,
+            protein: 5,
+            carbs: 10,
+            fat: 3,
+            is_default: true,
           },
           variants: [],
         };
@@ -1725,8 +2046,13 @@ describe('externalFoodSearchApi', () => {
           brand: null,
           is_custom: false,
           default_variant: {
-            serving_size: 100, serving_unit: 'g', calories: 100,
-            protein: 5, carbs: 10, fat: 3, is_default: true,
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 100,
+            protein: 5,
+            carbs: 10,
+            fat: 3,
+            is_default: true,
           },
         };
 
@@ -1771,17 +2097,25 @@ describe('externalFoodSearchApi', () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({
-            foods: [],
-            pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false },
-          }),
+          json: () =>
+            Promise.resolve({
+              foods: [],
+              pagination: {
+                page: 1,
+                pageSize: 20,
+                totalCount: 0,
+                hasMore: false,
+              },
+            }),
         });
 
         await searchExternalFoods('openfoodfacts', 'chicken', 2);
 
         expect(mockFetch).toHaveBeenCalledWith(
-          expect.stringContaining('/api/v2/foods/search/openfoodfacts?query=chicken&page=2'),
-          expect.anything(),
+          expect.stringContaining(
+            '/api/v2/foods/search/openfoodfacts?query=chicken&page=2'
+          ),
+          expect.anything()
         );
       });
 
@@ -1789,17 +2123,23 @@ describe('externalFoodSearchApi', () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({
-            foods: [],
-            pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false },
-          }),
+          json: () =>
+            Promise.resolve({
+              foods: [],
+              pagination: {
+                page: 1,
+                pageSize: 20,
+                totalCount: 0,
+                hasMore: false,
+              },
+            }),
         });
 
         await searchExternalFoods('usda', 'rice', 1, 'provider-abc');
 
         expect(mockFetch).toHaveBeenCalledWith(
           expect.stringContaining('providerId=provider-abc'),
-          expect.anything(),
+          expect.anything()
         );
       });
 
@@ -1807,10 +2147,16 @@ describe('externalFoodSearchApi', () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({
-            foods: [],
-            pagination: { page: 1, pageSize: 20, totalCount: 0, hasMore: false },
-          }),
+          json: () =>
+            Promise.resolve({
+              foods: [],
+              pagination: {
+                page: 1,
+                pageSize: 20,
+                totalCount: 0,
+                hasMore: false,
+              },
+            }),
         });
 
         await searchExternalFoods('openfoodfacts', 'rice', 1);
@@ -1823,26 +2169,34 @@ describe('externalFoodSearchApi', () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({
-            foods: [{
-              name: 'Rice',
-              brand: null,
-              provider_external_id: 'rice-1',
-              provider_type: 'usda',
-              is_custom: false,
-              default_variant: {
-                serving_size: 45,
-                serving_unit: 'g',
-                calories: 160,
-                protein: 3,
-                carbs: 36,
-                fat: 0,
-                dietary_fiber: 1,
-                is_default: true,
+          json: () =>
+            Promise.resolve({
+              foods: [
+                {
+                  name: 'Rice',
+                  brand: null,
+                  provider_external_id: 'rice-1',
+                  provider_type: 'usda',
+                  is_custom: false,
+                  default_variant: {
+                    serving_size: 45,
+                    serving_unit: 'g',
+                    calories: 160,
+                    protein: 3,
+                    carbs: 36,
+                    fat: 0,
+                    dietary_fiber: 1,
+                    is_default: true,
+                  },
+                },
+              ],
+              pagination: {
+                page: 1,
+                pageSize: 20,
+                totalCount: 1,
+                hasMore: false,
               },
-            }],
-            pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
-          }),
+            }),
         });
 
         const result = await searchExternalFoods('usda', 'rice', 1, 'prov-1');
@@ -1860,28 +2214,31 @@ describe('externalFoodSearchApi', () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({
-            name: 'Pasta',
-            brand: null,
-            provider_external_id: '42',
-            is_custom: false,
-            default_variant: {
-              serving_size: 140,
-              serving_unit: 'g',
-              calories: 220,
-              protein: 8,
-              carbs: 43,
-              fat: 1,
-              is_default: true,
-            },
-          }),
+          json: () =>
+            Promise.resolve({
+              name: 'Pasta',
+              brand: null,
+              provider_external_id: '42',
+              is_custom: false,
+              default_variant: {
+                serving_size: 140,
+                serving_unit: 'g',
+                calories: 220,
+                protein: 8,
+                carbs: 43,
+                fat: 1,
+                is_default: true,
+              },
+            }),
         });
 
         await fetchExternalFoodDetails('fatsecret', '42', 'prov-fs');
 
         expect(mockFetch).toHaveBeenCalledWith(
-          expect.stringContaining('/api/v2/foods/details/fatsecret/42?providerId=prov-fs'),
-          expect.anything(),
+          expect.stringContaining(
+            '/api/v2/foods/details/fatsecret/42?providerId=prov-fs'
+          ),
+          expect.anything()
         );
       });
 
@@ -1889,21 +2246,22 @@ describe('externalFoodSearchApi', () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({
-            name: 'Banana',
-            brand: null,
-            provider_external_id: 'abc',
-            is_custom: false,
-            default_variant: {
-              serving_size: 118,
-              serving_unit: 'g',
-              calories: 105,
-              protein: 1,
-              carbs: 27,
-              fat: 0,
-              is_default: true,
-            },
-          }),
+          json: () =>
+            Promise.resolve({
+              name: 'Banana',
+              brand: null,
+              provider_external_id: 'abc',
+              is_custom: false,
+              default_variant: {
+                serving_size: 118,
+                serving_unit: 'g',
+                calories: 105,
+                protein: 1,
+                carbs: 27,
+                fat: 0,
+                is_default: true,
+              },
+            }),
         });
 
         await fetchExternalFoodDetails('openfoodfacts', 'abc');
@@ -1917,38 +2275,43 @@ describe('externalFoodSearchApi', () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({
-            name: 'Pasta',
-            brand: 'Barilla',
-            provider_external_id: '42',
-            provider_type: 'fatsecret',
-            is_custom: false,
-            default_variant: {
-              serving_size: 140,
-              serving_unit: 'g',
-              calories: 220,
-              protein: 8,
-              carbs: 43,
-              fat: 1,
-              trans_fat: 0,
-              cholesterol: 0,
-              is_default: true,
-            },
-            variants: [
-              {
-                serving_size: 56,
+          json: () =>
+            Promise.resolve({
+              name: 'Pasta',
+              brand: 'Barilla',
+              provider_external_id: '42',
+              provider_type: 'fatsecret',
+              is_custom: false,
+              default_variant: {
+                serving_size: 140,
                 serving_unit: 'g',
-                calories: 200,
-                protein: 7,
-                carbs: 42,
+                calories: 220,
+                protein: 8,
+                carbs: 43,
                 fat: 1,
-                is_default: false,
+                trans_fat: 0,
+                cholesterol: 0,
+                is_default: true,
               },
-            ],
-          }),
+              variants: [
+                {
+                  serving_size: 56,
+                  serving_unit: 'g',
+                  calories: 200,
+                  protein: 7,
+                  carbs: 42,
+                  fat: 1,
+                  is_default: false,
+                },
+              ],
+            }),
         });
 
-        const result = await fetchExternalFoodDetails('fatsecret', '42', 'prov-fs');
+        const result = await fetchExternalFoodDetails(
+          'fatsecret',
+          '42',
+          'prov-fs'
+        );
 
         expect(result.id).toBe('42');
         expect(result.name).toBe('Pasta');
@@ -1974,7 +2337,7 @@ describe('externalFoodSearchApi', () => {
 
         expect(mockFetch).toHaveBeenCalledWith(
           expect.stringContaining('/api/v2/foods/barcode/1234567890'),
-          expect.anything(),
+          expect.anything()
         );
       });
 
@@ -1995,27 +2358,28 @@ describe('externalFoodSearchApi', () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({
-            source: 'local',
-            food: {
-              id: 'food-42',
-              name: 'Local Food',
-              brand: 'Brand X',
-              barcode: '1234567890',
-              is_custom: false,
-              default_variant: {
-                serving_size: 100,
-                serving_unit: 'g',
-                calories: 250,
-                protein: 12,
-                carbs: 30,
-                fat: 8,
-                trans_fat: 0.5,
-                cholesterol: 20,
-                is_default: true,
+          json: () =>
+            Promise.resolve({
+              source: 'local',
+              food: {
+                id: 'food-42',
+                name: 'Local Food',
+                brand: 'Brand X',
+                barcode: '1234567890',
+                is_custom: false,
+                default_variant: {
+                  serving_size: 100,
+                  serving_unit: 'g',
+                  calories: 250,
+                  protein: 12,
+                  carbs: 30,
+                  fat: 8,
+                  trans_fat: 0.5,
+                  cholesterol: 20,
+                  is_default: true,
+                },
               },
-            },
-          }),
+            }),
         });
 
         const result = await lookupBarcodeV2('1234567890');
@@ -2030,28 +2394,29 @@ describe('externalFoodSearchApi', () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({
           ok: true,
-          json: () => Promise.resolve({
-            source: 'openfoodfacts',
-            food: {
-              name: 'External Food',
-              brand: null,
-              barcode: '9999999999',
-              provider_external_id: 'off-abc',
-              provider_type: 'openfoodfacts',
-              is_custom: false,
-              default_variant: {
-                serving_size: 30,
-                serving_unit: 'g',
-                calories: 120,
-                protein: 3,
-                carbs: 20,
-                fat: 4,
-                potassium: 80,
-                calcium: 15,
-                is_default: true,
+          json: () =>
+            Promise.resolve({
+              source: 'openfoodfacts',
+              food: {
+                name: 'External Food',
+                brand: null,
+                barcode: '9999999999',
+                provider_external_id: 'off-abc',
+                provider_type: 'openfoodfacts',
+                is_custom: false,
+                default_variant: {
+                  serving_size: 30,
+                  serving_unit: 'g',
+                  calories: 120,
+                  protein: 3,
+                  carbs: 20,
+                  fat: 4,
+                  potassium: 80,
+                  calcium: 15,
+                  is_default: true,
+                },
               },
-            },
-          }),
+            }),
         });
 
         const result = await lookupBarcodeV2('9999999999');
@@ -2099,8 +2464,11 @@ describe('externalFoodSearchApi', () => {
         expect.stringContaining('/api/foods/scan-label'),
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ image: 'base64encodedimage==', mime_type: 'image/jpeg' }),
-        }),
+          body: JSON.stringify({
+            image: 'base64encodedimage==',
+            mime_type: 'image/jpeg',
+          }),
+        })
       );
     });
 
@@ -2132,7 +2500,10 @@ describe('externalFoodSearchApi', () => {
         json: () => Promise.resolve(scanResult),
       });
 
-      const result = await scanNutritionLabel('base64encodedimage==', 'image/png');
+      const result = await scanNutritionLabel(
+        'base64encodedimage==',
+        'image/png'
+      );
 
       expect(result).toEqual(scanResult);
     });
@@ -2145,7 +2516,9 @@ describe('externalFoodSearchApi', () => {
         text: () => Promise.resolve('Unprocessable Entity'),
       });
 
-      await expect(scanNutritionLabel('bad_image', 'image/jpeg')).rejects.toThrow('Server error: 422');
+      await expect(
+        scanNutritionLabel('bad_image', 'image/jpeg')
+      ).rejects.toThrow('Server error: 422');
     });
   });
 
@@ -2201,7 +2574,7 @@ describe('externalFoodSearchApi', () => {
             total_weight: 250,
             weight_unit: 'g',
           }),
-        }),
+        })
       );
     });
 
@@ -2221,7 +2594,7 @@ describe('externalFoodSearchApi', () => {
           body: JSON.stringify({
             images: [{ image: 'AAAA', mime_type: 'image/jpeg' }],
           }),
-        }),
+        })
       );
     });
 
@@ -2249,7 +2622,7 @@ describe('externalFoodSearchApi', () => {
               { image: 'BBBB', mime_type: 'image/png' },
             ],
           }),
-        }),
+        })
       );
     });
 
@@ -2265,25 +2638,31 @@ describe('externalFoodSearchApi', () => {
       ['PRIVATE_NETWORK_FORBIDDEN', 403],
       ['TIMEOUT', 504],
       ['INVALID_REQUEST', 400],
-    ] as const)('maps server %s to FoodPhotoEstimateError', async (code, status) => {
-      mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({
-        ok: false,
-        status,
-        text: () => Promise.resolve(JSON.stringify({ error: 'msg', code })),
-      });
+    ] as const)(
+      'maps server %s to FoodPhotoEstimateError',
+      async (code, status) => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: false,
+          status,
+          text: () => Promise.resolve(JSON.stringify({ error: 'msg', code })),
+        });
 
-      let caught: unknown;
-      try {
-        await estimateFoodPhoto({ base64Image: 'AAAA', mimeType: 'image/jpeg' });
-      } catch (error) {
-        caught = error;
+        let caught: unknown;
+        try {
+          await estimateFoodPhoto({
+            base64Image: 'AAAA',
+            mimeType: 'image/jpeg',
+          });
+        } catch (error) {
+          caught = error;
+        }
+
+        expect(caught).toBeInstanceOf(FoodPhotoEstimateError);
+        expect((caught as FoodPhotoEstimateError).code).toBe(code);
+        expect((caught as FoodPhotoEstimateError).message).toBe('msg');
       }
-
-      expect(caught).toBeInstanceOf(FoodPhotoEstimateError);
-      expect((caught as FoodPhotoEstimateError).code).toBe(code);
-      expect((caught as FoodPhotoEstimateError).message).toBe('msg');
-    });
+    );
 
     test('non-JSON 500 body falls back to UPSTREAM_ERROR with raw text', async () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
@@ -2295,14 +2674,19 @@ describe('externalFoodSearchApi', () => {
 
       let caught: unknown;
       try {
-        await estimateFoodPhoto({ base64Image: 'AAAA', mimeType: 'image/jpeg' });
+        await estimateFoodPhoto({
+          base64Image: 'AAAA',
+          mimeType: 'image/jpeg',
+        });
       } catch (error) {
         caught = error;
       }
 
       expect(caught).toBeInstanceOf(FoodPhotoEstimateError);
       expect((caught as FoodPhotoEstimateError).code).toBe('UPSTREAM_ERROR');
-      expect((caught as FoodPhotoEstimateError).message).toContain('upstream barf');
+      expect((caught as FoodPhotoEstimateError).message).toContain(
+        'upstream barf'
+      );
     });
 
     test('network error throws FoodPhotoEstimateError UPSTREAM_ERROR', async () => {
@@ -2311,7 +2695,10 @@ describe('externalFoodSearchApi', () => {
 
       let caught: unknown;
       try {
-        await estimateFoodPhoto({ base64Image: 'AAAA', mimeType: 'image/jpeg' });
+        await estimateFoodPhoto({
+          base64Image: 'AAAA',
+          mimeType: 'image/jpeg',
+        });
       } catch (error) {
         caught = error;
       }

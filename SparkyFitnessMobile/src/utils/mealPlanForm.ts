@@ -15,7 +15,7 @@ function calendarDay(value: string | null | undefined): string {
 export function createMealAssignment(
   meal: Meal,
   mealTypeId: string,
-  dayOfWeek: number,
+  dayOfWeek: number
 ): MealPlanDraftAssignment {
   return {
     item_type: 'meal',
@@ -39,28 +39,32 @@ export interface MealPlanNutritionTotals {
 
 export function calculateMealPlanDayNutrition(
   assignments: MealPlanDraftAssignment[],
-  dayOfWeek: number,
+  dayOfWeek: number
 ): MealPlanNutritionTotals {
-  return assignments.reduce<MealPlanNutritionTotals>((totals, assignment) => {
-    if (assignment.day_of_week !== dayOfWeek || !assignment.nutrition) {
-      return totals;
-    }
+  return assignments.reduce<MealPlanNutritionTotals>(
+    (totals, assignment) => {
+      if (assignment.day_of_week !== dayOfWeek || !assignment.nutrition) {
+        return totals;
+      }
 
-    const scale = assignment.nutrition.servingSize > 0
-      ? assignment.quantity / assignment.nutrition.servingSize
-      : 0;
-    return {
-      calories: totals.calories + assignment.nutrition.calories * scale,
-      protein: totals.protein + assignment.nutrition.protein * scale,
-      carbs: totals.carbs + assignment.nutrition.carbs * scale,
-      fat: totals.fat + assignment.nutrition.fat * scale,
-    };
-  }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
+      const scale =
+        assignment.nutrition.servingSize > 0
+          ? assignment.quantity / assignment.nutrition.servingSize
+          : 0;
+      return {
+        calories: totals.calories + assignment.nutrition.calories * scale,
+        protein: totals.protein + assignment.nutrition.protein * scale,
+        carbs: totals.carbs + assignment.nutrition.carbs * scale,
+        fat: totals.fat + assignment.nutrition.fat * scale,
+      };
+    },
+    { calories: 0, protein: 0, carbs: 0, fat: 0 }
+  );
 }
 
 export function createMealPlanDraft(
   today: string,
-  template?: MealPlanTemplate,
+  template?: MealPlanTemplate
 ): MealPlanDraft {
   if (!template) {
     return {
@@ -94,7 +98,8 @@ export function createMealPlanDraft(
 }
 
 function assignmentIsValid(assignment: MealPlanDraftAssignment): boolean {
-  const itemId = assignment.item_type === 'meal' ? assignment.meal_id : assignment.food_id;
+  const itemId =
+    assignment.item_type === 'meal' ? assignment.meal_id : assignment.food_id;
   return (
     Number.isInteger(assignment.day_of_week) &&
     assignment.day_of_week >= 0 &&
@@ -108,20 +113,27 @@ function assignmentIsValid(assignment: MealPlanDraftAssignment): boolean {
   );
 }
 
-export function validateMealPlanDraft(draft: MealPlanDraft): MealPlanValidationErrors {
+export function validateMealPlanDraft(
+  draft: MealPlanDraft
+): MealPlanValidationErrors {
   const errors: MealPlanValidationErrors = {};
   if (!draft.planName.trim()) errors.planName = 'required';
   if (!draft.startDate) errors.startDate = 'required';
   if (draft.endDate && draft.startDate && draft.endDate < draft.startDate) {
     errors.endDate = 'beforeStart';
   }
-  if (draft.assignments.length === 0 || draft.assignments.some((item) => !assignmentIsValid(item))) {
+  if (
+    draft.assignments.length === 0 ||
+    draft.assignments.some((item) => !assignmentIsValid(item))
+  ) {
     errors.assignments = 'invalid';
   }
   return errors;
 }
 
-export function buildMealPlanPayload(draft: MealPlanDraft): SaveMealPlanPayload {
+export function buildMealPlanPayload(
+  draft: MealPlanDraft
+): SaveMealPlanPayload {
   return {
     plan_name: draft.planName.trim(),
     description: draft.description.trim() || null,

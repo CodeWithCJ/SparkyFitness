@@ -11,11 +11,21 @@ import { createTestQueryClient } from '../hooks/queryTestUtils';
 
 jest.mock('../../src/hooks', () => ({
   useServerConnection: jest.fn(() => ({ isConnected: true, isLoading: false })),
-  useCustomNutrients: jest.fn(() => ({ customNutrients: [], isLoading: false, isError: false, refetch: jest.fn() })),
+  useCustomNutrients: jest.fn(() => ({
+    customNutrients: [],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  })),
   usePreferences: jest.fn(() => ({ preferences: undefined, isLoading: false })),
 }));
 jest.mock('../../src/hooks/useCustomNutrients', () => ({
-  useCustomNutrients: jest.fn(() => ({ customNutrients: [], isLoading: false, isError: false, refetch: jest.fn() })),
+  useCustomNutrients: jest.fn(() => ({
+    customNutrients: [],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  })),
 }));
 jest.mock('../../src/hooks/useAddFoodEntry', () => ({
   useAddFoodEntry: jest.fn(),
@@ -72,7 +82,9 @@ jest.mock('../../src/components/MacroCompositionRing', () => {
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
-function buildSaveFoodPayload(overrides?: Partial<SaveFoodPayload>): SaveFoodPayload {
+function buildSaveFoodPayload(
+  overrides?: Partial<SaveFoodPayload>
+): SaveFoodPayload {
   return {
     name: 'Bowl of yogurt and berries',
     brand: null,
@@ -140,7 +152,7 @@ describe('FoodPhotoLogEntryScreen', () => {
             }}
           />
         </SafeAreaProvider>
-      </QueryClientProvider>,
+      </QueryClientProvider>
     );
 
   it('builds entry quantity from servings × serving_size at the default 1 serving', async () => {
@@ -157,7 +169,7 @@ describe('FoodPhotoLogEntryScreen', () => {
       expect.objectContaining({
         serving_size: 250,
         serving_unit: 'g',
-      }),
+      })
     );
     expect(input.createEntryPayload).toEqual({
       quantity: 250,
@@ -169,7 +181,7 @@ describe('FoodPhotoLogEntryScreen', () => {
 
   it('renders the recap from saveFoodPayload (not from estimate)', () => {
     const screen = renderScreen(
-      buildSaveFoodPayload({ name: 'Edited name', calories: 400 }),
+      buildSaveFoodPayload({ name: 'Edited name', calories: 400 })
     );
     expect(screen.getByText('Edited name')).toBeTruthy();
     expect(screen.getByText('400')).toBeTruthy();

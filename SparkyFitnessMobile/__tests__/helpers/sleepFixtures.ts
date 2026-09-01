@@ -8,7 +8,9 @@ import type { SleepEntry, SleepStageEvent } from '../../src/types/sleep';
  * `DATE -> identity` and `NUMERIC -> parseFloat`), `duration_in_seconds` is never null,
  * and `stage_events` defaults to `[]`.
  */
-export const buildSleepEntry = (overrides: Partial<SleepEntry> = {}): SleepEntry => ({
+export const buildSleepEntry = (
+  overrides: Partial<SleepEntry> = {}
+): SleepEntry => ({
   id: 'entry-main',
   entry_date: '2026-08-23',
   bedtime: '2026-08-22T22:45:00+00:00',
@@ -33,7 +35,7 @@ export const buildSleepEntry = (overrides: Partial<SleepEntry> = {}): SleepEntry
 
 /** Postgres JSON aggregation emits `+00:00` offsets, so that is the default here. */
 export const buildStageEvent = (
-  overrides: Partial<SleepStageEvent> = {},
+  overrides: Partial<SleepStageEvent> = {}
 ): SleepStageEvent => ({
   id: 'stage-1',
   entry_id: 'entry-main',

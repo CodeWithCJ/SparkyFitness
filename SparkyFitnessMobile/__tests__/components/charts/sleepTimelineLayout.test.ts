@@ -17,7 +17,7 @@ const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
 const nightAt = (
   day: string,
   bedtimeUtc: string,
-  zone: SleepTimelineDay['zone'],
+  zone: SleepTimelineDay['zone']
 ): SleepTimelineDay => {
   const startMs = Date.parse(bedtimeUtc);
 
@@ -48,26 +48,35 @@ describe('toClockOffsetMinutes', () => {
     const bedtime = Date.parse('2026-08-22T13:45:00Z');
 
     // 22:45 in Tokyo is 105 minutes past a 21:00 anchor.
-    expect(toClockOffsetMinutes(bedtime, anchorMinutes, { kind: 'tz', tz: 'Asia/Tokyo' })).toBe(
-      105,
-    );
+    expect(
+      toClockOffsetMinutes(bedtime, anchorMinutes, {
+        kind: 'tz',
+        tz: 'Asia/Tokyo',
+      })
+    ).toBe(105);
     // The same instant read in UTC is 13:45, which is most of a day past the anchor.
-    expect(toClockOffsetMinutes(bedtime, anchorMinutes, { kind: 'tz', tz: 'UTC' })).toBe(1005);
+    expect(
+      toClockOffsetMinutes(bedtime, anchorMinutes, { kind: 'tz', tz: 'UTC' })
+    ).toBe(1005);
   });
 
   test('accepts a fixed offset for sources that report no zone', () => {
     const bedtime = Date.parse('2026-08-22T13:45:00Z');
 
-    expect(toClockOffsetMinutes(bedtime, anchorMinutes, { kind: 'offset', minutes: 540 })).toBe(
-      105,
-    );
+    expect(
+      toClockOffsetMinutes(bedtime, anchorMinutes, {
+        kind: 'offset',
+        minutes: 540,
+      })
+    ).toBe(105);
   });
 
   test('falls back to the device clock when the night has no zone', () => {
     const bedtime = Date.parse('2026-08-22T13:45:00Z');
     const local = new Date(bedtime);
     const expected =
-      (local.getHours() * 60 + local.getMinutes() - anchorMinutes + 1440) % 1440;
+      (local.getHours() * 60 + local.getMinutes() - anchorMinutes + 1440) %
+      1440;
 
     expect(toClockOffsetMinutes(bedtime, anchorMinutes, null)).toBe(expected);
     expect(toClockOffsetMinutes(bedtime, anchorMinutes)).toBe(expected);
@@ -78,7 +87,9 @@ describe('chooseSleepClockAnchorMinutes', () => {
   test('finds the quiet stretch on each night’s own clock', () => {
     // Both nights run 22:45–06:45 locally, so the anchor is an hour before the earliest
     // covered hour (22:00) regardless of the instants involved.
-    expect(chooseSleepClockAnchorMinutes([tokyoNight, berlinNight])).toBe(21 * 60);
+    expect(chooseSleepClockAnchorMinutes([tokyoNight, berlinNight])).toBe(
+      21 * 60
+    );
   });
 
   test('falls back to the default evening anchor for a window with no sleep', () => {
@@ -108,9 +119,11 @@ describe('buildSleepTimelineLayout', () => {
     });
 
     expect(layout.columns).toHaveLength(2);
-    expect(layout.columns[0].blocks[0].y).toBeCloseTo(layout.columns[1].blocks[0].y);
+    expect(layout.columns[0].blocks[0].y).toBeCloseTo(
+      layout.columns[1].blocks[0].y
+    );
     expect(layout.columns[0].blocks[0].height).toBeCloseTo(
-      layout.columns[1].blocks[0].height,
+      layout.columns[1].blocks[0].height
     );
   });
 

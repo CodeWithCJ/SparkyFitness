@@ -16,7 +16,9 @@ describe('FOREGROUND_TELEMETRY_BUDGET', () => {
   });
 
   it('is more generous than the background budget but still capped', () => {
-    expect(FOREGROUND_TELEMETRY_BUDGET).toBeGreaterThan(BACKGROUND_TELEMETRY_BUDGET);
+    expect(FOREGROUND_TELEMETRY_BUDGET).toBeGreaterThan(
+      BACKGROUND_TELEMETRY_BUDGET
+    );
   });
 });
 

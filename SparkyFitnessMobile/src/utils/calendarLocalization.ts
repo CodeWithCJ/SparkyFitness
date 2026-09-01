@@ -33,8 +33,8 @@ export function getCalendarWeekdayShortNames(appLocale: string): string[] {
   const base = new Date(2026, 0, 4); // a Sunday
   return Array.from({ length: 7 }, (_, i) =>
     new Intl.DateTimeFormat(appLocale, { weekday: 'short' }).format(
-      new Date(base.getFullYear(), base.getMonth(), base.getDate() + i),
-    ),
+      new Date(base.getFullYear(), base.getMonth(), base.getDate() + i)
+    )
   );
 }
 
@@ -44,8 +44,8 @@ export function getCalendarWeekdayShortNames(appLocale: string): string[] {
 export function getCalendarMonthNames(appLocale: string): string[] {
   return Array.from({ length: 12 }, (_, i) =>
     new Intl.DateTimeFormat(appLocale, { month: 'long' }).format(
-      new Date(2026, i, 1),
-    ),
+      new Date(2026, i, 1)
+    )
   );
 }
 
@@ -57,7 +57,7 @@ export function getCalendarMonthNames(appLocale: string): string[] {
  */
 export function resolveCalendarPresentation(
   appLocale: string,
-  firstDayOfWeekPreference?: number,
+  firstDayOfWeekPreference?: number
 ): CalendarPresentation {
   const fdow = firstDayOfWeekPreference;
   return {
@@ -84,7 +84,7 @@ export function useCalendarPresentation(): {
     appLocale,
     presentation: resolveCalendarPresentation(
       appLocale,
-      preferences?.first_day_of_week,
+      preferences?.first_day_of_week
     ),
     isLoadingPreferences: isLoading,
   };

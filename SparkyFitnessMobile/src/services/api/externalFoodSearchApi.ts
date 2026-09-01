@@ -7,7 +7,12 @@ import type {
 import { addLog } from '../LogService';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
 import { getAuthHeaders, notifySessionExpired } from './authService';
-import type { ExternalFoodItem, ExternalFoodVariant, ExternalFoodSearchPagination, PaginatedExternalFoodSearchResult } from '../../types/externalFoods';
+import type {
+  ExternalFoodItem,
+  ExternalFoodVariant,
+  ExternalFoodSearchPagination,
+  PaginatedExternalFoodSearchResult,
+} from '../../types/externalFoods';
 import { selectDisplayVariant } from '../../utils/foodDetails';
 import type { ServingIdentity } from '../../utils/foodDetails';
 
@@ -33,7 +38,9 @@ interface OpenFoodFactsResponse {
   pagination: ExternalFoodSearchPagination;
 }
 
-export function _transformOpenFoodFactsProduct(product: OpenFoodFactsProduct): ExternalFoodItem {
+export function _transformOpenFoodFactsProduct(
+  product: OpenFoodFactsProduct
+): ExternalFoodItem {
   const n = product.nutriments;
   return {
     id: product.code,
@@ -57,7 +64,9 @@ export function _transformOpenFoodFactsProduct(product: OpenFoodFactsProduct): E
 // NormalizedFood / NormalizedFoodVariant below (line ~520) since they reference
 // those types. Forward-declare the legacy lookup function here.
 
-export async function _lookupBarcode(barcode: string): Promise<BarcodeLookupResult> {
+export async function _lookupBarcode(
+  barcode: string
+): Promise<BarcodeLookupResult> {
   return apiFetch<BarcodeLookupResult>({
     endpoint: `/api/foods/barcode/${barcode}`,
     serviceName: 'External Food Search',
@@ -65,7 +74,10 @@ export async function _lookupBarcode(barcode: string): Promise<BarcodeLookupResu
   });
 }
 
-export async function _searchOpenFoodFacts(query: string, page = 1): Promise<PaginatedExternalFoodSearchResult> {
+export async function _searchOpenFoodFacts(
+  query: string,
+  page = 1
+): Promise<PaginatedExternalFoodSearchResult> {
   const params = new URLSearchParams({ query, page: String(page) });
   const response = await apiFetch<OpenFoodFactsResponse>({
     endpoint: `/api/foods/openfoodfacts/search?${params.toString()}`,
@@ -115,7 +127,10 @@ const USDA_NUTRIENT_IDS = {
   SATURATED_FAT: 1258,
 } as const;
 
-function getUsdaNutrientValue(nutrients: UsdaFoodNutrient[], nutrientId: number): number {
+function getUsdaNutrientValue(
+  nutrients: UsdaFoodNutrient[],
+  nutrientId: number
+): number {
   return nutrients.find((n) => n.nutrientId === nutrientId)?.value ?? 0;
 }
 
@@ -127,7 +142,9 @@ function autoTitleCase(text: string): string {
     .replace(/(?:^|\s|[-/(])\S/g, (ch) => ch.toUpperCase());
 }
 
-export function _transformUsdaFoodItem(item: UsdaFoodSearchItem): ExternalFoodItem {
+export function _transformUsdaFoodItem(
+  item: UsdaFoodSearchItem
+): ExternalFoodItem {
   const n = item.foodNutrients;
   return {
     id: String(item.fdcId),
@@ -137,7 +154,9 @@ export function _transformUsdaFoodItem(item: UsdaFoodSearchItem): ExternalFoodIt
     protein: Math.round(getUsdaNutrientValue(n, USDA_NUTRIENT_IDS.PROTEIN)),
     carbs: Math.round(getUsdaNutrientValue(n, USDA_NUTRIENT_IDS.CARBS)),
     fat: Math.round(getUsdaNutrientValue(n, USDA_NUTRIENT_IDS.FAT)),
-    saturated_fat: Math.round(getUsdaNutrientValue(n, USDA_NUTRIENT_IDS.SATURATED_FAT)),
+    saturated_fat: Math.round(
+      getUsdaNutrientValue(n, USDA_NUTRIENT_IDS.SATURATED_FAT)
+    ),
     sodium: Math.round(getUsdaNutrientValue(n, USDA_NUTRIENT_IDS.SODIUM)),
     fiber: Math.round(getUsdaNutrientValue(n, USDA_NUTRIENT_IDS.FIBER)),
     sugars: Math.round(getUsdaNutrientValue(n, USDA_NUTRIENT_IDS.SUGARS)),
@@ -147,7 +166,11 @@ export function _transformUsdaFoodItem(item: UsdaFoodSearchItem): ExternalFoodIt
   };
 }
 
-export async function _searchUsda(query: string, providerId: string, page = 1): Promise<PaginatedExternalFoodSearchResult> {
+export async function _searchUsda(
+  query: string,
+  providerId: string,
+  page = 1
+): Promise<PaginatedExternalFoodSearchResult> {
   const params = new URLSearchParams({ query, page: String(page) });
   const response = await apiFetch<UsdaFoodSearchResponse>({
     endpoint: `/api/foods/usda/search?${params.toString()}`,
@@ -225,7 +248,9 @@ export function _parseFatSecretDescription(description: string): {
   };
 }
 
-export function _transformFatSecretSearchItem(item: FatSecretSearchFood): ExternalFoodItem {
+export function _transformFatSecretSearchItem(
+  item: FatSecretSearchFood
+): ExternalFoodItem {
   const parsed = _parseFatSecretDescription(item.food_description);
   return {
     id: item.food_id,
@@ -241,14 +266,20 @@ export function _transformFatSecretSearchItem(item: FatSecretSearchFood): Extern
   };
 }
 
-export function _selectFatSecretServing(servings: FatSecretServing[]): FatSecretServing {
+export function _selectFatSecretServing(
+  servings: FatSecretServing[]
+): FatSecretServing {
   const preferred = servings.find((s) =>
-    s.measurement_description.toLowerCase().includes('serving'),
+    s.measurement_description.toLowerCase().includes('serving')
   );
   return preferred ?? servings[0];
 }
 
-export async function _searchFatSecret(query: string, providerId: string, page = 1): Promise<PaginatedExternalFoodSearchResult> {
+export async function _searchFatSecret(
+  query: string,
+  providerId: string,
+  page = 1
+): Promise<PaginatedExternalFoodSearchResult> {
   const params = new URLSearchParams({ query, page: String(page) });
   const response = await apiFetch<FatSecretSearchResponse>({
     endpoint: `/api/foods/fatsecret/search?${params.toString()}`,
@@ -258,7 +289,8 @@ export async function _searchFatSecret(query: string, providerId: string, page =
   });
 
   const rawFood = response.foods?.food;
-  const foods = rawFood == null ? [] : Array.isArray(rawFood) ? rawFood : [rawFood];
+  const foods =
+    rawFood == null ? [] : Array.isArray(rawFood) ? rawFood : [rawFood];
 
   return {
     items: foods
@@ -272,7 +304,9 @@ export function _hasMetricServing(serving: FatSecretServing): boolean {
   return !!(serving.metric_serving_amount && serving.metric_serving_unit);
 }
 
-export function _transformFatSecretServing(serving: FatSecretServing): ExternalFoodVariant {
+export function _transformFatSecretServing(
+  serving: FatSecretServing
+): ExternalFoodVariant {
   return {
     serving_size: Math.round(parseFloat(serving.metric_serving_amount!)),
     serving_unit: serving.metric_serving_unit!,
@@ -288,7 +322,10 @@ export function _transformFatSecretServing(serving: FatSecretServing): ExternalF
   };
 }
 
-export async function _fetchFatSecretNutrients(foodId: string, providerId: string): Promise<ExternalFoodItem> {
+export async function _fetchFatSecretNutrients(
+  foodId: string,
+  providerId: string
+): Promise<ExternalFoodItem> {
   const params = new URLSearchParams({ foodId });
   const response = await apiFetch<FatSecretNutrientsResponse>({
     endpoint: `/api/foods/fatsecret/nutrients?${params.toString()}`,
@@ -304,24 +341,30 @@ export async function _fetchFatSecretNutrients(foodId: string, providerId: strin
   const preferred = _selectFatSecretServing(servings);
 
   // Order variants with preferred serving first, skip non-metric servings
-  const orderedServings = [preferred, ...servings.filter((s) => s !== preferred)];
-  const variants = orderedServings.filter(_hasMetricServing).map(_transformFatSecretServing);
+  const orderedServings = [
+    preferred,
+    ...servings.filter((s) => s !== preferred),
+  ];
+  const variants = orderedServings
+    .filter(_hasMetricServing)
+    .map(_transformFatSecretServing);
 
   // Primary fields from first variant, or fall back to preferred serving raw values
-  const primary = variants.length > 0
-    ? variants[0]
-    : {
-        serving_size: 1,
-        serving_unit: 'serving',
-        calories: Math.round(parseFloat(preferred.calories)),
-        protein: Math.round(parseFloat(preferred.protein)),
-        carbs: Math.round(parseFloat(preferred.carbohydrate)),
-        fat: Math.round(parseFloat(preferred.fat)),
-        saturated_fat: Math.round(parseFloat(preferred.saturated_fat ?? '0')),
-        sodium: Math.round(parseFloat(preferred.sodium ?? '0')),
-        fiber: Math.round(parseFloat(preferred.fiber ?? '0')),
-        sugars: Math.round(parseFloat(preferred.sugar ?? '0')),
-      };
+  const primary =
+    variants.length > 0
+      ? variants[0]
+      : {
+          serving_size: 1,
+          serving_unit: 'serving',
+          calories: Math.round(parseFloat(preferred.calories)),
+          protein: Math.round(parseFloat(preferred.protein)),
+          carbs: Math.round(parseFloat(preferred.carbohydrate)),
+          fat: Math.round(parseFloat(preferred.fat)),
+          saturated_fat: Math.round(parseFloat(preferred.saturated_fat ?? '0')),
+          sodium: Math.round(parseFloat(preferred.sodium ?? '0')),
+          fiber: Math.round(parseFloat(preferred.fiber ?? '0')),
+          sugars: Math.round(parseFloat(preferred.sugar ?? '0')),
+        };
 
   return {
     id: response.food.food_id,
@@ -377,7 +420,8 @@ export function _transformMealieItem(item: MealieSearchItem): ExternalFoodItem {
     protein: Math.round(v.protein),
     carbs: Math.round(v.carbs),
     fat: Math.round(v.fat),
-    saturated_fat: v.saturated_fat != null ? Math.round(v.saturated_fat) : undefined,
+    saturated_fat:
+      v.saturated_fat != null ? Math.round(v.saturated_fat) : undefined,
     sodium: v.sodium != null ? Math.round(v.sodium) : undefined,
     fiber: v.dietary_fiber != null ? Math.round(v.dietary_fiber) : undefined,
     sugars: v.sugars != null ? Math.round(v.sugars) : undefined,
@@ -387,7 +431,11 @@ export function _transformMealieItem(item: MealieSearchItem): ExternalFoodItem {
   };
 }
 
-export async function _searchMealie(query: string, providerId: string, page = 1): Promise<PaginatedExternalFoodSearchResult> {
+export async function _searchMealie(
+  query: string,
+  providerId: string,
+  page = 1
+): Promise<PaginatedExternalFoodSearchResult> {
   const params = new URLSearchParams({ query, page: String(page) });
   const response = await apiFetch<MealieSearchResponse>({
     endpoint: `/api/foods/mealie/search?${params.toString()}`,
@@ -397,9 +445,7 @@ export async function _searchMealie(query: string, providerId: string, page = 1)
   });
 
   return {
-    items: response.items
-      .filter((item) => item.name)
-      .map(_transformMealieItem),
+    items: response.items.filter((item) => item.name).map(_transformMealieItem),
     pagination: response.pagination,
   };
 }
@@ -480,14 +526,15 @@ export type BarcodeLookupResult =
 export function _transformNormalizedFood(
   food: NormalizedFood,
   providerType: string,
-  preferredServing?: ServingIdentity,
+  preferredServing?: ServingIdentity
 ): ExternalFoodItem {
   const dv = food.default_variant;
 
   const mapVariant = (v: NormalizedFoodVariant): ExternalFoodVariant => ({
     serving_size: v.serving_size,
     serving_unit: v.serving_unit,
-    serving_description: v.serving_description ?? `${v.serving_size} ${v.serving_unit}`,
+    serving_description:
+      v.serving_description ?? `${v.serving_size} ${v.serving_unit}`,
     calories: v.calories,
     protein: v.protein,
     carbs: v.carbs,
@@ -512,7 +559,7 @@ export function _transformNormalizedFood(
   const { displayVariant, orderedVariants } = selectDisplayVariant(
     dv,
     food.variants,
-    preferredServing,
+    preferredServing
   );
   const variants = orderedVariants?.map(mapVariant);
 
@@ -525,7 +572,9 @@ export function _transformNormalizedFood(
     provider_external_id: food.provider_external_id,
     is_custom: food.is_custom,
     ...mapVariant(displayVariant),
-    serving_description: displayVariant.serving_description ?? `${displayVariant.serving_size} ${displayVariant.serving_unit}`,
+    serving_description:
+      displayVariant.serving_description ??
+      `${displayVariant.serving_size} ${displayVariant.serving_unit}`,
     source: food.provider_type ?? providerType,
     variants: variants && variants.length > 0 ? variants : undefined,
     provider_verified: food.provider_verified === true,
@@ -547,7 +596,7 @@ export async function searchExternalFoods(
   query: string,
   page: number,
   providerId?: string,
-  autoScale?: boolean,
+  autoScale?: boolean
 ): Promise<PaginatedExternalFoodSearchResult> {
   const params = new URLSearchParams({ query, page: String(page) });
   if (providerId) params.set('providerId', providerId);
@@ -569,7 +618,7 @@ export async function fetchExternalFoodDetails(
   providerType: string,
   externalId: string,
   providerId?: string,
-  preferredServing?: ServingIdentity,
+  preferredServing?: ServingIdentity
 ): Promise<ExternalFoodItem> {
   const params = new URLSearchParams();
   if (providerId) params.set('providerId', providerId);
@@ -589,7 +638,10 @@ interface V2BarcodeResponse {
   food: NormalizedFood | null;
 }
 
-export async function lookupBarcodeV2(barcode: string, providerId?: string): Promise<BarcodeLookupResult> {
+export async function lookupBarcodeV2(
+  barcode: string,
+  providerId?: string
+): Promise<BarcodeLookupResult> {
   const params = new URLSearchParams();
   if (providerId) params.set('providerId', providerId);
   const qs = params.toString();
@@ -627,7 +679,10 @@ export async function lookupBarcodeV2(barcode: string, providerId?: string): Pro
   };
 
   if (response.source === 'local') {
-    return { source: 'local', food: barcodeFood as BarcodeFood & { id: string } };
+    return {
+      source: 'local',
+      food: barcodeFood as BarcodeFood & { id: string },
+    };
   }
   return { source: response.source, food: barcodeFood };
 }
@@ -656,7 +711,10 @@ export interface LabelScanResult {
   vitamin_c: number | null;
 }
 
-export async function scanNutritionLabel(base64Image: string, mimeType: string): Promise<LabelScanResult> {
+export async function scanNutritionLabel(
+  base64Image: string,
+  mimeType: string
+): Promise<LabelScanResult> {
   return apiFetch<LabelScanResult>({
     endpoint: '/api/foods/scan-label',
     serviceName: 'Label Scan',
@@ -698,18 +756,21 @@ export class FoodPhotoEstimateError extends Error {
 const FOOD_PHOTO_ESTIMATE_ENDPOINT = '/api/foods/estimate-food-photo';
 
 export async function estimateFoodPhoto(
-  input: EstimateFoodPhotoInput,
+  input: EstimateFoodPhotoInput
 ): Promise<FoodPhotoEstimateResponse> {
   const config = await getActiveServerConfig();
   if (!config) {
-    throw new FoodPhotoEstimateError('UPSTREAM_ERROR', 'Server configuration not found.');
+    throw new FoodPhotoEstimateError(
+      'UPSTREAM_ERROR',
+      'Server configuration not found.'
+    );
   }
 
   const baseUrl = normalizeUrl(config.url);
   if (!__DEV__ && baseUrl.toLowerCase().startsWith('http://')) {
     throw new FoodPhotoEstimateError(
       'UPSTREAM_ERROR',
-      'HTTPS is required for server connections. Please update your server URL in Settings.',
+      'HTTPS is required for server connections. Please update your server URL in Settings.'
     );
   }
 
@@ -720,7 +781,10 @@ export async function estimateFoodPhoto(
         ? [{ base64Image: input.base64Image, mimeType: input.mimeType }]
         : [];
   if (images.length === 0) {
-    throw new FoodPhotoEstimateError('INVALID_REQUEST', 'At least one image is required.');
+    throw new FoodPhotoEstimateError(
+      'INVALID_REQUEST',
+      'At least one image is required.'
+    );
   }
 
   const body: Record<string, unknown> = {
@@ -775,6 +839,9 @@ export async function estimateFoodPhoto(
   } catch {
     // Non-JSON error body — fall through with UPSTREAM_ERROR + raw text.
   }
-  addLog(`[Food Photo Estimate] Failed (${response.status} / ${code}): ${message}`, 'ERROR');
+  addLog(
+    `[Food Photo Estimate] Failed (${response.status} / ${code}): ${message}`,
+    'ERROR'
+  );
   throw new FoodPhotoEstimateError(code, message);
 }

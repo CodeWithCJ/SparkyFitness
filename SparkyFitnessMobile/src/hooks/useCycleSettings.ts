@@ -29,32 +29,50 @@ export function useCycleSettings() {
       await queryClient.cancelQueries({ queryKey: cycleSettingsQueryKey });
 
       // Snapshot previous value
-      const previousSettings = queryClient.getQueryData<SharedCycleSettings | null>(cycleSettingsQueryKey);
+      const previousSettings =
+        queryClient.getQueryData<SharedCycleSettings | null>(
+          cycleSettingsQueryKey
+        );
 
       // Optimistically update to new value immediately
       if (previousSettings) {
-        queryClient.setQueryData<SharedCycleSettings | null>(cycleSettingsQueryKey, {
-          ...previousSettings,
-          ...newVars,
-          onboarded_at: newVars.mark_onboarded ? new Date().toISOString() : previousSettings.onboarded_at,
-        });
+        queryClient.setQueryData<SharedCycleSettings | null>(
+          cycleSettingsQueryKey,
+          {
+            ...previousSettings,
+            ...newVars,
+            onboarded_at: newVars.mark_onboarded
+              ? new Date().toISOString()
+              : previousSettings.onboarded_at,
+          }
+        );
       }
 
       return { previousSettings };
     },
     onSuccess: (data) => {
-      queryClient.setQueryData<SharedCycleSettings | null>(cycleSettingsQueryKey, data);
+      queryClient.setQueryData<SharedCycleSettings | null>(
+        cycleSettingsQueryKey,
+        data
+      );
     },
     onError: (error, _variables, context) => {
       // Rollback to previous settings on error
       if (context?.previousSettings) {
-        queryClient.setQueryData<SharedCycleSettings | null>(cycleSettingsQueryKey, context.previousSettings);
+        queryClient.setQueryData<SharedCycleSettings | null>(
+          cycleSettingsQueryKey,
+          context.previousSettings
+        );
       }
       addLog(`Failed to update cycle settings: ${error}`, 'ERROR');
       Toast.show({
         type: 'error',
-        text1: t('cycleSettings.updateFailed', { defaultValue: 'Update failed' }),
-        text2: t('cycleSettings.saveFailed', { defaultValue: 'Could not save cycle settings. Please try again.' }),
+        text1: t('cycleSettings.updateFailed', {
+          defaultValue: 'Update failed',
+        }),
+        text2: t('cycleSettings.saveFailed', {
+          defaultValue: 'Could not save cycle settings. Please try again.',
+        }),
       });
     },
   });

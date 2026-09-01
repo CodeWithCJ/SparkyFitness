@@ -26,7 +26,12 @@ import {
 
 // Moved to the shared transformer module; re-exported for existing importers
 // (the writeback mappers on both platforms).
-export { G_TO_MG, G_TO_MCG, tidyNumber, HC_NUTRIENT_COLUMNS } from '../shared/dataTransformation';
+export {
+  G_TO_MG,
+  G_TO_MCG,
+  tidyNumber,
+  HC_NUTRIENT_COLUMNS,
+} from '../shared/dataTransformation';
 
 // ============================================================================
 // Own-app exclusion (read/write feedback-loop guard)
@@ -44,7 +49,8 @@ export const setOwnPackageName = (pkg: string | null): void => {
 
 const isOwnRecord = (rec: Record<string, unknown>): boolean => {
   if (!ownPackageName) return false;
-  const dataOrigin = (rec.metadata as { dataOrigin?: string } | undefined)?.dataOrigin;
+  const dataOrigin = (rec.metadata as { dataOrigin?: string } | undefined)
+    ?.dataOrigin;
   return dataOrigin === ownPackageName;
 };
 
@@ -56,7 +62,10 @@ const isOwnRecord = (rec: Record<string, unknown>): boolean => {
 const getDateString = createGetDateString('[HealthConnectService]');
 
 // Try multiple date fields in order of preference
-const extractDate = (rec: Record<string, unknown>, ...fields: string[]): string | null => {
+const extractDate = (
+  rec: Record<string, unknown>,
+  ...fields: string[]
+): string | null => {
   for (const field of fields) {
     const date = getDateString(rec[field]);
     if (date) return date;
@@ -76,7 +85,7 @@ const extractDate = (rec: Record<string, unknown>, ...fields: string[]): string 
  */
 export const extractTimezoneMetadata = (
   rec: Record<string, unknown>,
-  preferEnd = false,
+  preferEnd = false
 ): RecordTimezoneMetadata => {
   const preferred = preferEnd ? 'endZoneOffset' : 'startZoneOffset';
   const fallback = preferEnd ? 'startZoneOffset' : 'endZoneOffset';
@@ -88,7 +97,9 @@ export const extractTimezoneMetadata = (
 
   const fallbackOffset = rec[fallback] as { totalSeconds?: number } | undefined;
   if (fallbackOffset?.totalSeconds != null) {
-    return { record_utc_offset_minutes: Math.round(fallbackOffset.totalSeconds / 60) };
+    return {
+      record_utc_offset_minutes: Math.round(fallbackOffset.totalSeconds / 60),
+    };
   }
 
   return {};
@@ -109,11 +120,16 @@ interface RobustExtractorConfig {
   logLabel: string;
 }
 
-const createRobustTransformer = (config: RobustExtractorConfig): ValueTransformer => {
+const createRobustTransformer = (
+  config: RobustExtractorConfig
+): ValueTransformer => {
   return (rec, _metricConfig, index) => {
     // Log sample record for debugging on first record
     if (index === 0) {
-      addLog(`[Transform] ${config.logLabel} sample keys: ${Object.keys(rec).join(', ')}`, 'DEBUG');
+      addLog(
+        `[Transform] ${config.logLabel} sample keys: ${Object.keys(rec).join(', ')}`,
+        'DEBUG'
+      );
     }
 
     // Try value extraction strategies in order
@@ -127,7 +143,10 @@ const createRobustTransformer = (config: RobustExtractorConfig): ValueTransforme
     const date = extractDate(rec, ...config.dateFields);
 
     // Validate
-    const isValidValue = value !== null && !isNaN(value) && (!config.validateValue || config.validateValue(value));
+    const isValidValue =
+      value !== null &&
+      !isNaN(value) &&
+      (!config.validateValue || config.validateValue(value));
     const isValidDate = date !== null && date.length > 0;
 
     if (isValidValue && isValidDate) {
@@ -141,7 +160,10 @@ const createRobustTransformer = (config: RobustExtractorConfig): ValueTransforme
       const issues: string[] = [];
       if (!isValidValue) issues.push('invalid value');
       if (!isValidDate) issues.push('invalid date');
-      addLog(`[Transform] ${config.logLabel} FAILED: ${issues.join(', ')}`, 'WARNING');
+      addLog(
+        `[Transform] ${config.logLabel} FAILED: ${issues.join(', ')}`,
+        'WARNING'
+      );
     }
     return null;
   };
@@ -274,7 +296,8 @@ VALUE_TRANSFORMERS['BasalMetabolicRate'] = createRobustTransformer({
   dateFields: ['time', 'startTime', 'timestamp', 'date'],
   validateValue: (v) => v > 0 && v < 10000,
   valueStrategies: [
-    (rec) => extractNestedValue(rec, 'basalMetabolicRate', 'inKilocaloriesPerDay'),
+    (rec) =>
+      extractNestedValue(rec, 'basalMetabolicRate', 'inKilocaloriesPerDay'),
     (rec) => extractNestedValue(rec, 'basalMetabolicRate', 'inCalories'),
     (rec) => extractNestedValue(rec, 'basalMetabolicRate', 'inKilocalories'),
     (rec) => {
@@ -298,7 +321,11 @@ VALUE_TRANSFORMERS['BloodGlucose'] = createRobustTransformer({
       return mgDl !== null ? mgDl / BLOOD_GLUCOSE_MG_DL_PER_MMOL_L : null;
     },
     (rec) => {
-      const mgDl = extractNestedValue(rec, 'bloodGlucose', 'inMilligramsPerDeciliter');
+      const mgDl = extractNestedValue(
+        rec,
+        'bloodGlucose',
+        'inMilligramsPerDeciliter'
+      );
       return mgDl !== null ? mgDl / BLOOD_GLUCOSE_MG_DL_PER_MMOL_L : null;
     },
     (rec) => {
@@ -456,17 +483,26 @@ const EXERCISE_TYPE_OTHER_WORKOUT = 0;
 // We skip UNKNOWN values so they do not distort asleep-time totals downstream.
 const mapHealthConnectSleepStage = (stage: number): SleepStageType | null => {
   switch (stage) {
-    case 1: return 'awake';
-    case 2: return 'light';   // SLEEPING (generic) → light
-    case 3: return 'awake';   // OUT_OF_BED → awake
-    case 4: return 'light';
-    case 5: return 'deep';
-    case 6: return 'rem';
+    case 1:
+      return 'awake';
+    case 2:
+      return 'light'; // SLEEPING (generic) → light
+    case 3:
+      return 'awake'; // OUT_OF_BED → awake
+    case 4:
+      return 'light';
+    case 5:
+      return 'deep';
+    case 6:
+      return 'rem';
     case 0:
       addLog('[HealthConnect] Skipping UNKNOWN sleep stage value', 'WARNING');
       return null;
     default:
-      addLog(`[HealthConnect] Skipping unsupported sleep stage value: ${stage}`, 'WARNING');
+      addLog(
+        `[HealthConnect] Skipping unsupported sleep stage value: ${stage}`,
+        'WARNING'
+      );
       return null;
   }
 };
@@ -475,11 +511,16 @@ const mapHealthConnectSleepStage = (stage: number): SleepStageType | null => {
 // HC: BREAKFAST=1, LUNCH=2, DINNER=3, SNACK=4, UNKNOWN=0.
 const mapHealthConnectMealType = (mealType: unknown): SparkyMealType => {
   switch (mealType) {
-    case 1: return 'breakfast';
-    case 2: return 'lunch';
-    case 3: return 'dinner';
-    case 4: return 'snacks';
-    default: return 'snacks'; // UNKNOWN/0 → snacks (no neutral bucket in Sparky)
+    case 1:
+      return 'breakfast';
+    case 2:
+      return 'lunch';
+    case 3:
+      return 'dinner';
+    case 4:
+      return 'snacks';
+    default:
+      return 'snacks'; // UNKNOWN/0 → snacks (no neutral bucket in Sparky)
   }
 };
 
@@ -494,18 +535,28 @@ const mapHealthConnectMealType = (mealType: unknown): SparkyMealType => {
 // treat 0 (and NaN) as "not provided" and omit it, rather than writing a wall of
 // phantom zeros to the food entry. A genuinely-zero nutrient is reported as
 // "unknown" rather than a misleading 0, which is the honest representation.
-const extractMassGrams = (rec: Record<string, unknown>, field: string): number | undefined => {
+const extractMassGrams = (
+  rec: Record<string, unknown>,
+  field: string
+): number | undefined => {
   const grams = (rec[field] as { inGrams?: number } | undefined)?.inGrams;
   return grams != null && !isNaN(grams) && grams > 0 ? grams : undefined;
 };
 
 // Convert grams to the target unit and strip float noise.
-const convertMass = (grams: number | undefined, factor: number): number | undefined =>
+const convertMass = (
+  grams: number | undefined,
+  factor: number
+): number | undefined =>
   grams != null ? tidyNumber(grams * factor) : undefined;
 
 // Energy carries inKilocalories; some sources only populate inCalories.
-const extractEnergyKcal = (rec: Record<string, unknown>, field: string): number | undefined => {
-  const energy = rec[field] as { inKilocalories?: number; inCalories?: number } | undefined;
+const extractEnergyKcal = (
+  rec: Record<string, unknown>,
+  field: string
+): number | undefined => {
+  const energy = rec[field] as
+    { inKilocalories?: number; inCalories?: number } | undefined;
   const kcal =
     energy?.inKilocalories != null && !isNaN(energy.inKilocalories)
       ? energy.inKilocalories
@@ -556,7 +607,8 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
   },
 
   HeartRate: (rec, _record, metricConfig, output) => {
-    const samples = rec.samples as { time?: string; beatsPerMinute: number }[] | undefined;
+    const samples = rec.samples as
+      { time?: string; beatsPerMinute: number }[] | undefined;
     if (!rec.startTime || !samples) return;
 
     const { unit, type } = metricConfig;
@@ -567,12 +619,21 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
         // its own day rather than the record's start day.
         const date = getDateString(sample.time ?? rec.startTime);
         if (!date) continue;
-        output.push({ value: sample.beatsPerMinute, type, date, unit, source: HEALTH_CONNECT_SOURCE });
+        output.push({
+          value: sample.beatsPerMinute,
+          type,
+          date,
+          unit,
+          source: HEALTH_CONNECT_SOURCE,
+        });
       }
     }
   },
 
-  BloodPressure: createBloodPressureTransformer(HEALTH_CONNECT_SOURCE, getDateString),
+  BloodPressure: createBloodPressureTransformer(
+    HEALTH_CONNECT_SOURCE,
+    getDateString
+  ),
 
   SleepSession: (rec, _record, _metricConfig, output) => {
     if (!rec.startTime || !rec.endTime) return;
@@ -585,7 +646,8 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
     if (durationInSeconds <= 0) return;
     const recordDate = toLocalDateString(rec.endTime as string);
 
-    const stages = rec.stages as { startTime: string; endTime: string; stage: number }[] | undefined;
+    const stages = rec.stages as
+      { startTime: string; endTime: string; stage: number }[] | undefined;
 
     let deepSeconds = 0;
     let lightSeconds = 0;
@@ -615,10 +677,18 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
         });
 
         switch (stageType) {
-          case 'deep': deepSeconds += stageDuration; break;
-          case 'light': lightSeconds += stageDuration; break;
-          case 'rem': remSeconds += stageDuration; break;
-          case 'awake': awakeSeconds += stageDuration; break;
+          case 'deep':
+            deepSeconds += stageDuration;
+            break;
+          case 'light':
+            lightSeconds += stageDuration;
+            break;
+          case 'rem':
+            remSeconds += stageDuration;
+            break;
+          case 'awake':
+            awakeSeconds += stageDuration;
+            break;
         }
       }
     }
@@ -639,7 +709,9 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       stage_events: stageEvents,
       sleep_score: 0,
       deep_sleep_seconds: deepSeconds,
-      light_sleep_seconds: hasRecognizedStages ? lightSeconds : durationInSeconds,
+      light_sleep_seconds: hasRecognizedStages
+        ? lightSeconds
+        : durationInSeconds,
       rem_sleep_seconds: remSeconds,
       awake_sleep_seconds: awakeSeconds,
       ...extractTimezoneMetadata(rec, true),
@@ -659,7 +731,8 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
     const recordDate = toLocalDateString(rec.startTime as string);
     const exerciseType = rec.exerciseType as number | undefined;
     const sourceTitle = typeof rec.title === 'string' ? rec.title.trim() : '';
-    const mappedName = exerciseType == null ? undefined : EXERCISE_MAP[exerciseType];
+    const mappedName =
+      exerciseType == null ? undefined : EXERCISE_MAP[exerciseType];
 
     // A recognized, specific code is authoritative: it names the same activity
     // every session, which keeps the server's exercise-library row stable. The
@@ -674,7 +747,9 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
     // and it beats a generic fallback that would drop the activity entirely.
     const genericName =
       mappedName ??
-      (exerciseType == null ? 'Exercise Session' : `Exercise Type ${exerciseType}`);
+      (exerciseType == null
+        ? 'Exercise Session'
+        : `Exercise Type ${exerciseType}`);
 
     const activityTypeName = isSpecificType
       ? mappedName
@@ -717,7 +792,13 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       raw_data: record,
       // duration_seconds instead of duration: servers without the seconds-based
       // set model drop the unknown field rather than misreading it as minutes.
-      sets: [{ set_number: 1, set_type: 'Working Set', duration_seconds: Math.round(durationInSeconds) }],
+      sets: [
+        {
+          set_number: 1,
+          set_type: 'Working Set',
+          duration_seconds: Math.round(durationInSeconds),
+        },
+      ],
       source_id: metadata?.id,
       ...extractTimezoneMetadata(rec),
     };
@@ -734,7 +815,11 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
 
     // Normalize to local midnight so a record like day1 20:00 → day2 08:00 still
     // emits both calendar days (the loop otherwise terminates after day 1).
-    const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const startDay = new Date(
+      start.getFullYear(),
+      start.getMonth(),
+      start.getDate()
+    );
     const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
     for (let d = startDay; d <= endDay; d.setDate(d.getDate() + 1)) {
       output.push({
@@ -748,12 +833,13 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
   },
 
   CyclingPedalingCadence: (rec, _record, metricConfig, output) => {
-    const samples = rec.samples as { time?: string; revolutionsPerMinute: number }[] | undefined;
+    const samples = rec.samples as
+      { time?: string; revolutionsPerMinute: number }[] | undefined;
     if (!rec.startTime || !samples) return;
 
     const { unit, type } = metricConfig;
 
-    samples.forEach(sample => {
+    samples.forEach((sample) => {
       const date = getDateString(sample.time ?? rec.startTime);
       if (!date) return;
       output.push({
@@ -767,12 +853,13 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
   },
 
   StepsCadence: (rec, _record, metricConfig, output) => {
-    const samples = rec.samples as { time?: string; rate: number }[] | undefined;
+    const samples = rec.samples as
+      { time?: string; rate: number }[] | undefined;
     if (!rec.startTime || !samples) return;
 
     const { unit, type } = metricConfig;
 
-    samples.forEach(sample => {
+    samples.forEach((sample) => {
       const date = getDateString(sample.time ?? rec.startTime);
       if (!date) return;
       output.push({
@@ -790,10 +877,14 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
 // Calorie Transformers - special handling for aggregated vs raw records
 // ============================================================================
 
-const createCalorieTransformer = (aggregatedType: string, logLabel: string): ValueTransformer => {
+const createCalorieTransformer = (
+  aggregatedType: string,
+  logLabel: string
+): ValueTransformer => {
   return (rec, _metricConfig, index) => {
     // Check if this is an aggregated record (handles both naming conventions from different aggregation functions)
-    const isAggregatedCalories = rec.type === aggregatedType ||
+    const isAggregatedCalories =
+      rec.type === aggregatedType ||
       rec.type === 'total_calories' ||
       rec.type === 'Active Calories' ||
       rec.type === 'active_calories';
@@ -801,7 +892,10 @@ const createCalorieTransformer = (aggregatedType: string, logLabel: string): Val
       const value = rec.value as number;
       const recordDate = rec.date as string;
       if (index === 0) {
-        addLog(`[Transform] ${logLabel} (aggregated as ${rec.type}) on ${recordDate}`, 'DEBUG');
+        addLog(
+          `[Transform] ${logLabel} (aggregated as ${rec.type}) on ${recordDate}`,
+          'DEBUG'
+        );
       }
       // Preserve the original type from aggregated records
       return { value, date: recordDate, type: rec.type as string };
@@ -827,20 +921,34 @@ const createCalorieTransformer = (aggregatedType: string, logLabel: string): Val
     }
 
     if (index === 0) {
-      addLog(`[Transform] ${logLabel} FAILED: missing ${value === null ? 'value' : 'date'}`, 'WARNING');
+      addLog(
+        `[Transform] ${logLabel} FAILED: missing ${value === null ? 'value' : 'date'}`,
+        'WARNING'
+      );
     }
     return null;
   };
 };
 
-VALUE_TRANSFORMERS['ActiveCaloriesBurned'] = createCalorieTransformer('Active Calories', 'ActiveCalories');
-VALUE_TRANSFORMERS['TotalCaloriesBurned'] = createCalorieTransformer('total_calories', 'TotalCalories');
+VALUE_TRANSFORMERS['ActiveCaloriesBurned'] = createCalorieTransformer(
+  'Active Calories',
+  'ActiveCalories'
+);
+VALUE_TRANSFORMERS['TotalCaloriesBurned'] = createCalorieTransformer(
+  'total_calories',
+  'TotalCalories'
+);
 
 // ============================================================================
 // Skip Types - qualitative records that should be skipped
 // ============================================================================
 
-const SKIP_TYPES = new Set(['CervicalMucus', 'MenstruationFlow', 'OvulationTest', 'SexualActivity']);
+const SKIP_TYPES = new Set([
+  'CervicalMucus',
+  'MenstruationFlow',
+  'OvulationTest',
+  'SexualActivity',
+]);
 
 // ============================================================================
 // Main Transform Function

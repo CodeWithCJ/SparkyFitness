@@ -33,7 +33,7 @@ export function useImageLightbox(): {
         title,
       });
     },
-    [],
+    []
   );
 
   const onClose = useCallback(() => {

@@ -29,7 +29,7 @@ export const DUPLICATE_PRESS_WINDOW_MS = 700;
  * Returns true when the press should run, false when it is a duplicate.
  */
 export const createDuplicatePressGuard = (
-  windowMs: number = DUPLICATE_PRESS_WINDOW_MS,
+  windowMs: number = DUPLICATE_PRESS_WINDOW_MS
 ): ((key: string) => boolean) => {
   const lastPressAt = new Map<string, number>();
   return (key: string): boolean => {
@@ -39,7 +39,11 @@ export const createDuplicatePressGuard = (
     // or the user changing the device time). Without the lower bound the
     // negative elapsed time reads as "too soon" and the button stays dead until
     // wall time catches up — potentially hours.
-    if (previous !== undefined && now >= previous && now - previous < windowMs) {
+    if (
+      previous !== undefined &&
+      now >= previous &&
+      now - previous < windowMs
+    ) {
       return false;
     }
     lastPressAt.set(key, now);

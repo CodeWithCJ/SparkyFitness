@@ -18,8 +18,12 @@ export function useAppLanguageForegroundSync(): void {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         void syncAppLanguageFromSystem().catch((error) => {
-          const message = error instanceof Error ? error.message : String(error);
-          void addLog(`[AppLanguage] Foreground resync failed: ${message}`, 'ERROR');
+          const message =
+            error instanceof Error ? error.message : String(error);
+          void addLog(
+            `[AppLanguage] Foreground resync failed: ${message}`,
+            'ERROR'
+          );
         });
       }
     });

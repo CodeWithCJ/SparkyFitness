@@ -112,31 +112,33 @@ describe('formatClockTime', () => {
     const instant = '2026-08-22T22:45:00+00:00';
 
     test('renders the wall clock of the zone the session was recorded in', () => {
-      expect(formatClockTime(instant, 'HH:mm', { kind: 'tz', tz: 'Asia/Tokyo' })).toBe(
-        '07:45',
+      expect(
+        formatClockTime(instant, 'HH:mm', { kind: 'tz', tz: 'Asia/Tokyo' })
+      ).toBe('07:45');
+      expect(formatClockTime(instant, 'HH:mm', { kind: 'tz', tz: 'UTC' })).toBe(
+        '22:45'
       );
-      expect(formatClockTime(instant, 'HH:mm', { kind: 'tz', tz: 'UTC' })).toBe('22:45');
     });
 
     test('renders against a fixed UTC offset for sources that only report one', () => {
-      expect(formatClockTime(instant, 'HH:mm', { kind: 'offset', minutes: -300 })).toBe(
-        '17:45',
-      );
-      expect(formatClockTime(instant, 'HH:mm', { kind: 'offset', minutes: 330 })).toBe(
-        '04:15',
-      );
+      expect(
+        formatClockTime(instant, 'HH:mm', { kind: 'offset', minutes: -300 })
+      ).toBe('17:45');
+      expect(
+        formatClockTime(instant, 'HH:mm', { kind: 'offset', minutes: 330 })
+      ).toBe('04:15');
     });
 
     test('still honours the account time format inside a zone', () => {
-      expect(formatClockTime(instant, 'h:mm A', { kind: 'tz', tz: 'Asia/Tokyo' })).toBe(
-        '7:45 AM',
-      );
+      expect(
+        formatClockTime(instant, 'h:mm A', { kind: 'tz', tz: 'Asia/Tokyo' })
+      ).toBe('7:45 AM');
     });
 
     test('falls back to the device clock when no zone is known', () => {
       const deviceClock = new Date(instant);
       const expected = `${String(deviceClock.getHours()).padStart(2, '0')}:${String(
-        deviceClock.getMinutes(),
+        deviceClock.getMinutes()
       ).padStart(2, '0')}`;
 
       expect(formatClockTime(instant, 'HH:mm', null)).toBe(expected);

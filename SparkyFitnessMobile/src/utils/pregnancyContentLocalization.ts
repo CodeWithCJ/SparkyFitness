@@ -2,7 +2,6 @@ import type { TFunction } from 'i18next';
 import { formatLocalizedNumber } from '../localization';
 import { babyWeek } from '@workspace/shared';
 
-
 /** Controlled pregnancy week range (4–40). closed and bounded. */
 export const PREGNANCY_WEEK_MIN = 4;
 export const PREGNANCY_WEEK_MAX = 40;
@@ -16,7 +15,7 @@ export const PREGNANCY_WEEK_MAX = 40;
  */
 export function localizeBabyWeek(
   week: number,
-  t: TFunction,
+  t: TFunction
 ): { comparison: string; baby: string; mom: string } | null {
   if (
     !Number.isInteger(week) ||

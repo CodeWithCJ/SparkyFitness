@@ -4,7 +4,13 @@ import { View, Text } from 'react-native';
 import { CartesianChart, Line } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
 import { formatLocalizedNumber } from '../localization/i18n';
-import { makeChartFont, CHART_LABEL_FONT_SIZE, formatXLabel7d, formatXLabel30d90d, formatTooltipDate } from './charts/chartFormatting';
+import {
+  makeChartFont,
+  CHART_LABEL_FONT_SIZE,
+  formatXLabel7d,
+  formatXLabel30d90d,
+  formatTooltipDate,
+} from './charts/chartFormatting';
 import type { WeightDataPoint } from '../hooks/useMeasurementsRange';
 import type { HealthTrendDateRange } from '../types/healthTrends';
 import ChartTouchOverlay, {
@@ -46,7 +52,7 @@ const WeightTooltip: React.FC<{ text: string }> = ({ text }) => (
  */
 export const buildWeightTooltipText = (
   point: { weight: number; day: string } | undefined,
-  unit: string,
+  unit: string
 ): string => {
   if (!point) return DEFAULT_TOOLTIP;
   const formattedWeight = formatLocalizedNumber(point.weight, {
@@ -70,7 +76,7 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
   ]) as [string, string];
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
-    EMPTY_CHART_TOUCH_LAYOUT,
+    EMPTY_CHART_TOUCH_LAYOUT
   );
 
   const hasData = useMemo(() => data.length > 0, [data]);
@@ -97,7 +103,7 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
 
   const handleTouchLayoutChange = useCallback(
     (nextLayout: ChartTouchLayout) => {
-      setTouchLayout(currentLayout => {
+      setTouchLayout((currentLayout) => {
         const currentSignature = createChartTouchLayoutSignature(currentLayout);
         const nextSignature = createChartTouchLayoutSignature(nextLayout);
 
@@ -108,7 +114,7 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
         return nextLayout;
       });
     },
-    [],
+    []
   );
 
   const handleSelectPoint = useCallback(
@@ -121,7 +127,7 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
 
       setSelectedIndex(index);
     },
-    [data],
+    [data]
   );
 
   const handleClearSelection = useCallback(() => {
@@ -142,12 +148,16 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
 
       {isLoading ? (
         <View className="h-50 justify-center items-center">
-          <Text className="text-text-muted text-sm">{t('common.loading', { defaultValue: 'Loading...' })}</Text>
+          <Text className="text-text-muted text-sm">
+            {t('common.loading', { defaultValue: 'Loading...' })}
+          </Text>
         </View>
       ) : isError ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            {t('charts.weight.loadFailed', { defaultValue: 'Failed to load weight data' })}
+            {t('charts.weight.loadFailed', {
+              defaultValue: 'Failed to load weight data',
+            })}
           </Text>
         </View>
       ) : (
