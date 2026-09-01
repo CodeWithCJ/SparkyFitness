@@ -229,5 +229,30 @@ describe('notes on foods, meals, and diary entries', () => {
 
       expect(deleteSpy).not.toHaveBeenCalled();
     });
+
+    it('refuses a component-affecting update that omits foods', async () => {
+      // Components carry the meal's date, meal type and scaled nutrition, so
+      // silently keeping the old ones would desync them from the parent.
+      const foodEntryMealRepository = (
+        await import('../models/foodEntryMealRepository.js')
+      ).default;
+      vi.spyOn(
+        foodEntryMealRepository,
+        'updateFoodEntryMeal'
+      ).mockResolvedValue({
+        id: 'fem-1',
+        meal_type_id: 'mt-1',
+        legacy_serving_unit_math: false,
+      });
+
+      const foodEntryService = (await import('../services/foodEntryService.js'))
+        .default;
+
+      await expect(
+        foodEntryService.updateFoodEntryMeal('user-1', 'user-1', 'fem-1', {
+          entry_date: '2026-02-02',
+        })
+      ).rejects.toThrow(/'foods' is required/);
+    });
   });
 });

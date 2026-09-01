@@ -210,9 +210,14 @@ describe('FoodUnitSelector', () => {
       );
 
     reopen(false, food);
-    const otherFood = createFood(
-      createVariant({ id: 'v2', serving_size: 10, serving_unit: 'g' })
-    );
+    const otherFood = {
+      // A distinct id, so this really is a different food and not the same one
+      // reopened — the fixture factory hardcodes 'food-1'.
+      ...createFood(
+        createVariant({ id: 'v2', serving_size: 10, serving_unit: 'g' })
+      ),
+      id: 'food-2',
+    };
     reopen(true, otherFood);
 
     await waitFor(() =>

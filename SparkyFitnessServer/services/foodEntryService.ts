@@ -2246,9 +2246,23 @@ async function updateFoodEntryMeal(
     // would otherwise delete every component and recreate none, silently
     // emptying the logged meal.
     if (!updatedMealData.foods) {
+      // The component rows carry the meal's date, meal type, and scaled
+      // nutrition, so anything that changes those has to rebuild them — and
+      // rebuilding needs the foods. Rather than silently leaving components
+      // pointing at the old date or portion, say what is missing.
+      const componentAffecting = (
+        ['quantity', 'unit', 'entry_date', 'meal_type_id', 'meal_type'] as const
+      ).filter((field) => updatedMealData[field] !== undefined);
+      if (componentAffecting.length > 0) {
+        const error: Error & { statusCode?: number } = new Error(
+          `Updating ${componentAffecting.join(', ')} on a logged meal also rebuilds its components, so 'foods' is required.`
+        );
+        error.statusCode = 400;
+        throw error;
+      }
       log(
         'debug',
-        `updateFoodEntryMeal: no foods supplied for ${foodEntryMealId}; leaving components untouched.`
+        `updateFoodEntryMeal: metadata-only update for ${foodEntryMealId}; leaving components untouched.`
       );
       return updatedFoodEntryMeal;
     }
