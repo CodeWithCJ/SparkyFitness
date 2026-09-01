@@ -74,6 +74,7 @@ describe('HEALTH_METRICS', () => {
         { accessType: 'read', recordType: 'ActiveCaloriesBurned' },
         { accessType: 'read', recordType: 'TotalCaloriesBurned' },
         { accessType: 'read', recordType: 'Distance' },
+        { accessType: 'read', recordType: 'Steps' },
       ])
     );
   });

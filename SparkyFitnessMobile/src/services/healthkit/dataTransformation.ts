@@ -621,6 +621,11 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       title: activityTypeName,
       caloriesBurned: (rec.totalEnergyBurned as number) || 0,
       distance: parseFloat((totalDistanceMeters / 1000).toFixed(2)),
+      ...(typeof rec.totalSteps === 'number' &&
+      Number.isFinite(rec.totalSteps) &&
+      rec.totalSteps > 0
+        ? { steps: Math.round(rec.totalSteps) }
+        : {}),
       notes: 'Source: HealthKit',
       raw_data: record,
       // duration_seconds instead of duration: servers without the seconds-based

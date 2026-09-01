@@ -290,6 +290,7 @@ const ALL_HEALTH_METRICS: HealthMetric[] = [
       { accessType: 'read', recordType: 'ActiveCaloriesBurned' },
       { accessType: 'read', recordType: 'TotalCaloriesBurned' },
       { accessType: 'read', recordType: 'Distance' },
+      { accessType: 'read', recordType: 'Steps' },
       { accessType: 'read', recordType: 'HeartRate' },
       { accessType: 'read', recordType: 'Speed' },
       { accessType: 'read', recordType: 'Power' },

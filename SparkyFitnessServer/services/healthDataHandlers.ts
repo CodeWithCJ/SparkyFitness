@@ -1534,6 +1534,7 @@ const workoutHandler: HealthTypeHandler = {
         duration,
         raw_data,
         source_id,
+        steps,
       } = entry;
       const exerciseName = activityType || `${source} Exercise`;
       const { category, modality } = resolveActivityMapping(
@@ -1603,6 +1604,9 @@ const workoutHandler: HealthTypeHandler = {
           distance: distance,
           sets, // Pass sets if present for mobile workout sync
           source_id: source_id || null,
+          ...(typeof steps === 'number' && Number.isFinite(steps) && steps > 0
+            ? { steps: Math.round(steps) }
+            : {}),
           ...telemetry,
         },
         ctx.actingUserId,

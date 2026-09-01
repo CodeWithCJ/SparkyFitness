@@ -1101,6 +1101,7 @@ describe('transformHealthRecords', () => {
           title: 'Morning Run',
           energy: { inKilocalories: 450 },
           distance: { inMeters: 7500 },
+          steps: 8123,
           notes: 'Great pace today',
         },
       ];
@@ -1118,6 +1119,7 @@ describe('transformHealthRecords', () => {
         duration: 3600,
         caloriesBurned: 450,
         distance: 7.5,
+        steps: 8123,
         notes: 'Great pace today',
       });
     });

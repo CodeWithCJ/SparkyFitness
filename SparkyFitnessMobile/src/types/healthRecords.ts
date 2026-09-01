@@ -131,6 +131,8 @@ export interface TransformedExerciseSession extends RecordTimezoneMetadata {
   caloriesBurned?: number;
   /** Stored in kilometers to match exercise entry API/storage. */
   distance?: number;
+  /** Steps explicitly associated with this workout by the health provider. */
+  steps?: number;
   notes?: string;
   raw_data?: unknown;
   sets?: ExerciseSet[];

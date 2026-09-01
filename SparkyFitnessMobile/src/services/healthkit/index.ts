@@ -191,6 +191,7 @@ const SUPPORTED_HK_TYPES = new Set<string>([
  */
 const WORKOUT_TELEMETRY_READ_IDENTIFIERS: readonly string[] = [
   'HKWorkoutRouteTypeIdentifier',
+  'HKQuantityTypeIdentifierStepCount',
   'HKQuantityTypeIdentifierHeartRate',
   'HKQuantityTypeIdentifierRunningSpeed',
   'HKQuantityTypeIdentifierCyclingSpeed',
@@ -1136,6 +1137,7 @@ const handleWorkout: RecordHandler = async (
         typeof workoutAny.totalDistance === 'object'
           ? (workoutAny.totalDistance?.quantity ?? 0)
           : (workoutAny.totalDistance ?? 0);
+      let totalSteps: number | undefined;
 
       // Pin units explicitly on each getStatistic call. getAllStatistics returns
       // values in the user's HealthKit-preferred unit (often miles / kJ), but the
@@ -1164,6 +1166,23 @@ const handleWorkout: RecordHandler = async (
             break;
           }
         }
+
+        // statistics(for:) only includes samples HealthKit associates with this
+        // HKWorkout. Do not replace this with a general query over the same clock
+        // window: that would turn incidental steps during strength training into
+        // workout steps and incorrectly remove their background calorie credit.
+        const stepStats = await w.getStatistic(
+          'HKQuantityTypeIdentifierStepCount',
+          'count'
+        );
+        const associatedSteps = stepStats?.sumQuantity?.quantity;
+        if (
+          typeof associatedSteps === 'number' &&
+          Number.isFinite(associatedSteps) &&
+          associatedSteps > 0
+        ) {
+          totalSteps = Math.round(associatedSteps);
+        }
       } catch {
         // Stats fetch failed - keep using direct properties from workout
       }
@@ -1177,6 +1196,7 @@ const handleWorkout: RecordHandler = async (
         totalDistance,
         uuid: (w as unknown as { uuid?: string }).uuid,
       };
+      if (totalSteps !== undefined) record.totalSteps = totalSteps;
       // Forward timezone metadata so the transform layer can attach it to output records
       const tz = (w as unknown as { metadataTimeZone?: string })
         .metadataTimeZone;

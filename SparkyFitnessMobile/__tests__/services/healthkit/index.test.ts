@@ -975,6 +975,9 @@ describe('readHealthRecords', () => {
           if (identifier === 'HKQuantityTypeIdentifierDistanceWalkingRunning') {
             return Promise.resolve({ sumQuantity: { quantity: 6000 } });
           }
+          if (identifier === 'HKQuantityTypeIdentifierStepCount') {
+            return Promise.resolve({ sumQuantity: { quantity: 6543 } });
+          }
           return Promise.resolve(undefined);
         });
 
@@ -1000,6 +1003,31 @@ describe('readHealthRecords', () => {
         (result[0] as { totalEnergyBurned: number }).totalEnergyBurned
       ).toBe(600);
       expect((result[0] as { totalDistance: number }).totalDistance).toBe(6000);
+      expect((result[0] as { totalSteps: number }).totalSteps).toBe(6543);
+    });
+
+    test('does not invent workout steps when HealthKit has no associated step statistic', async () => {
+      await initHealthConnect();
+
+      const mockGetStatistic = jest.fn().mockResolvedValue(undefined);
+      mockQueryWorkoutSamples.mockResolvedValue([
+        {
+          startDate: '2024-01-15T08:00:00Z',
+          endDate: '2024-01-15T09:00:00Z',
+          workoutActivityType: 50,
+          duration: 3600,
+          totalEnergyBurned: 300,
+          getStatistic: mockGetStatistic,
+        },
+      ]);
+
+      const result = await readHealthRecords(
+        'Workout',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result[0]).not.toHaveProperty('totalSteps');
     });
 
     test('pins units to kcal and meters on getStatistic calls (regression: user-preferred units leaked through)', async () => {
