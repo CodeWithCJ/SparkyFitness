@@ -1,8 +1,11 @@
 import React from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
+import type { TFunction } from 'i18next';
 import remarkGfm from 'remark-gfm';
 import { ImageOff } from 'lucide-react';
 import { resolveNoteImage } from '@workspace/shared';
+
+import { useTranslation } from 'react-i18next';
 
 import { cn } from '@/lib/utils';
 
@@ -38,15 +41,21 @@ export function embeddableImageSrc(
   candidates: readonly string[] = []
 ): string | null {
   if (!src) return null;
-  // A note references a photo by file name; resolving it against the owning
-  // entity's own images is what keeps a note from pointing anywhere else.
+  // A note may only point at a photo of its own food, meal, or entry. There is
+  // deliberately no fallback for an unmatched path: an image reference that
+  // resolves to nothing renders as a placeholder rather than being fetched.
   const matched = resolveNoteImage(src, candidates);
-  if (matched) return matched;
-  // Notes written before short references stored the whole path. Keep those
-  // working, but only when they address this app's uploads.
-  const trimmed = src.trim();
-  if (trimmed.startsWith('/uploads/')) return trimmed;
-  return null;
+  if (!matched) return null;
+  // A stored image is usually a server-relative upload path, but an entry can
+  // also hold an absolute provider URL when localizing that image failed. Those
+  // are fine to keep in `images` and hotlink from a product thumbnail, but not
+  // to render inside a note: a shared note is fetched by everyone the library
+  // is shared with, which would report each of them to the provider.
+  if (!matched.startsWith('/uploads/')) return null;
+  // `/uploads/../..` normalizes out of the uploads tree in the browser, so the
+  // prefix alone is not enough.
+  if (matched.split('/').includes('..')) return null;
+  return matched;
 }
 
 /** Host shown in the placeholder chip, when the blocked src parses as a URL. */
@@ -58,7 +67,10 @@ function blockedImageLabel(src: string | undefined): string | null {
     return null;
   }
 }
-const buildMarkdownComponents = (images: readonly string[]): Components => ({
+const buildMarkdownComponents = (
+  images: readonly string[],
+  t: TFunction
+): Components => ({
   h1: ({ ...props }) => (
     <h1
       className="text-base font-bold mt-3 mb-2 first:mt-0 text-foreground"
@@ -169,11 +181,27 @@ const buildMarkdownComponents = (images: readonly string[]): Components => ({
       <span
         className="inline-flex items-center gap-1 rounded border border-dashed px-1.5 py-0.5 my-1 text-xs text-muted-foreground align-middle"
         title={
-          host ? `External image blocked: ${host}` : 'External image blocked'
+          host
+            ? t('markdownView.imageBlockedFrom', {
+                defaultValue: 'External image blocked: {{host}}',
+                host,
+              })
+            : t('markdownView.imageBlocked', {
+                defaultValue: 'External image blocked',
+              })
         }
       >
         <ImageOff className="h-3 w-3" aria-hidden="true" />
-        {alt?.trim() ? alt : host ? `image from ${host}` : 'external image'}
+        {alt?.trim()
+          ? alt
+          : host
+            ? t('markdownView.imageFromHost', {
+                defaultValue: 'image from {{host}}',
+                host,
+              })
+            : t('markdownView.externalImage', {
+                defaultValue: 'external image',
+              })}
       </span>
     );
   },
@@ -195,9 +223,10 @@ export const MarkdownView: React.FC<MarkdownViewProps> = ({
   className,
   images,
 }) => {
+  const { t } = useTranslation();
   const components = React.useMemo(
-    () => buildMarkdownComponents(images ?? []),
-    [images]
+    () => buildMarkdownComponents(images ?? [], t),
+    [images, t]
   );
   return (
     <div className={cn('text-sm text-foreground leading-relaxed', className)}>

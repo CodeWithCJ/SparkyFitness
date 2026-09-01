@@ -444,6 +444,22 @@ describe('EditLoggedMealScreen', () => {
     expect(mockUpdateMeal).not.toHaveBeenCalled();
   });
 
+  it('enables Save for a note-only change', () => {
+    // `dirty` did not include the note, so editing only the note left Save
+    // disabled and the edit could not be saved at all.
+    const screen = renderScreen();
+
+    fireEvent.changeText(
+      screen.getByTestId('meal-notes-input'),
+      'reheated at work'
+    );
+    pressAction(screen, navigation, 'Save');
+
+    expect(mockUpdateMeal).toHaveBeenCalledWith(
+      expect.objectContaining({ notes: 'reheated at work' })
+    );
+  });
+
   it('opens the meal-builder picker when Add Food is pressed', () => {
     const screen = renderScreen();
     fireEvent.press(screen.getByText('Add Food'));

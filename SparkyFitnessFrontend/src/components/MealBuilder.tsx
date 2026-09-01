@@ -53,6 +53,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
 import { MarkdownView } from '@/components/ui/MarkdownView';
+import { usableFoodImages } from '@/utils/foodImages';
 import { resolveFoodImageSrc } from '@/utils/foodImages';
 import { FoodImagePicker } from './FoodSearch/FoodImagePicker';
 import {
@@ -184,6 +185,10 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   // apart from `mealNotes` on purpose: copying a recipe into every logged
   // occasion duplicates it and lets the two drift.
   const [templateNotes, setTemplateNotes] = useState<string | null>(null);
+  // The template's own photos, so image references inside `templateNotes`
+  // resolve. Separate from `mealImageItems`, which is the editable set and is
+  // not populated at all when editing a logged meal.
+  const [templateImages, setTemplateImages] = useState<readonly string[]>([]);
   // Saved photos only — a staged file has no server path for a note to link to.
   const savedMealImageOptions = useMemo(
     () =>
@@ -195,10 +200,6 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     [mealImageItems]
   );
 
-  const mealImagePaths = useMemo(
-    () => savedMealImageOptions.map((image) => image.path),
-    [savedMealImageOptions]
-  );
   const [entryTime, setEntryTime] = useState<string>(
     toHourMinute(initialEntryTime) || ''
   );
@@ -340,6 +341,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             setMealDescription(loggedMeal.description || '');
             setMealNotes(loggedMeal.notes || '');
             setTemplateNotes(loggedMeal.meal_notes || null);
+            setTemplateImages(usableFoodImages(loggedMeal.meal_images));
             setServingSize(quantity.toString());
             setServingUnit(loggedMeal.unit || 'serving');
 
@@ -419,6 +421,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             setMealImageItems(toSavedImages(meal.images));
             setMealDescription(meal.description || '');
             setTemplateNotes(meal.notes || null);
+            setTemplateImages(usableFoodImages(meal.images));
             setIsPublic(false); // Logged meals are personal copies
             // Prefill Quantity Consumed with one serving's worth (meal.serving_size).
             // This is the key UX fix: an 8-serving meal now defaults to logging 1
@@ -739,6 +742,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   };
 
   const handleSaveMeal = async () => {
+    // One normalization for every payload built below: an empty or
+    // whitespace-only note is the absence of a note, not an empty string.
+    const normalizedMealNotes = mealNotes.trim() || null;
     if (mealFoods.length === 0) {
       toast({
         title: t('mealBuilder.errorTitle', 'Error'),
@@ -901,7 +907,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         description: mealDescription,
         // Always send the key: an omitted `notes` means "leave unchanged"
         // server-side, so clearing a note has to send null.
-        notes: mealNotes.trim() || null,
+        notes: normalizedMealNotes,
         is_public: isPublic,
         serving_size: persistedServingSize,
         serving_unit: servingUnit,
@@ -1046,7 +1052,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           const mealTemplateData: MealPayload = {
             name: mealName.trim(),
             description: mealDescription,
-            notes: mealNotes.trim() || null,
+            notes: normalizedMealNotes,
             is_public: false,
             // The template holds the WHOLE dish, so re-logging one serving of
             // it later reproduces the portion being logged here.
@@ -1117,7 +1123,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         entry_date: foodEntryDate,
         name: mealName.trim() || 'Custom Meal',
         description: mealDescription,
-        notes: mealNotes.trim() || null,
+        notes: normalizedMealNotes,
         quantity: consumedToSave,
         unit: servingUnit,
         foods: entryFoods,
@@ -1871,7 +1877,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         <div className="space-y-2">
           <Label>{t('mealBuilder.templateNotes', 'About this meal')}</Label>
           <div className="rounded-md border bg-muted/40 px-3 py-2 max-h-48 overflow-y-auto">
-            <MarkdownView images={mealImagePaths}>{templateNotes}</MarkdownView>
+            <MarkdownView images={templateImages}>{templateNotes}</MarkdownView>
           </div>
         </div>
       ) : null}

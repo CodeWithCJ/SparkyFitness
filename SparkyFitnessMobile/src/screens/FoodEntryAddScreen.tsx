@@ -934,6 +934,10 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       entry_date: selectedDate,
       entry_time: entryTime || null,
       name: item.name,
+      // The note field is shown for meals too, so it has to travel with the
+      // meal payload — this builder is used instead of buildFoodEntryPayload
+      // when the item is a meal.
+      notes: entryNotes.trim() || null,
       quantity,
       unit: displayValues.servingUnit,
     };

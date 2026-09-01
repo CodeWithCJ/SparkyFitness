@@ -2481,8 +2481,10 @@ Actions:
           );
           const { default_variant: _defaultVariant, ...rest } = food;
           const compacted = compactRecord(rest, CATALOG_FOOD_DROP);
-          const notePreview = truncateNote(compacted.notes);
-          if (notePreview) compacted.notes = notePreview;
+          // The note is returned in full here, unlike the catalog listings.
+          // set_food_notes replaces the stored note outright, so appending to
+          // one means reading it first — and reading a truncated preview would
+          // write back a note with its tail cut off.
           const data = {
             ...compacted,
             variants: variants.map((v: Record<string, unknown>) =>

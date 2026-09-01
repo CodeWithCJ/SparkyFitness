@@ -22,9 +22,14 @@ vi.mock('../db/poolManager', () => ({
  *      snapshot resync, meal-plan template application, and provider re-sync
  *      all rewrite an entry's nutrition; none of them may touch its note.
  */
+/** The subset of a pg client these repositories touch. */
+interface MockClient {
+  query: ReturnType<typeof vi.fn>;
+  release: ReturnType<typeof vi.fn>;
+}
+
 describe('notes on foods, meals, and diary entries', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockClient: any;
+  let mockClient: MockClient;
 
   /** SQL text of the call whose statement contains `fragment`. */
   const sqlFor = (fragment: string): string => {
@@ -191,6 +196,38 @@ describe('notes on foods, meals, and diary entries', () => {
       const conflictClause = insert.slice(insert.indexOf('ON CONFLICT'));
       // Re-ingesting the same provider record refreshes nutrition, not prose.
       expect(conflictClause).not.toContain('notes = EXCLUDED.notes');
+    });
+  });
+
+  describe('updateFoodEntryMeal component safety', () => {
+    it('leaves components alone when the update supplies no foods', async () => {
+      // A note-only edit must not empty the logged meal: the rebuild deletes
+      // every component first, so an absent `foods` used to wipe them.
+      const foodEntryMealRepository = (
+        await import('../models/foodEntryMealRepository.js')
+      ).default;
+      const foodRepository = (await import('../models/foodRepository.js'))
+        .default;
+      vi.spyOn(
+        foodEntryMealRepository,
+        'updateFoodEntryMeal'
+      ).mockResolvedValue({
+        id: 'fem-1',
+        meal_type_id: 'mt-1',
+        legacy_serving_unit_math: false,
+      });
+      const deleteSpy = vi.spyOn(
+        foodRepository,
+        'deleteFoodEntryComponentsByFoodEntryMealId'
+      );
+
+      const foodEntryService = (await import('../services/foodEntryService.js'))
+        .default;
+      await foodEntryService.updateFoodEntryMeal('user-1', 'user-1', 'fem-1', {
+        notes: 'just the note',
+      });
+
+      expect(deleteSpy).not.toHaveBeenCalled();
     });
   });
 });

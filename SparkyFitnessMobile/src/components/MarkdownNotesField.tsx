@@ -166,11 +166,11 @@ const BUTTONS: {
  * The toolbar runs the same `applyToolbarAction` the web editor uses, so both
  * platforms write identical markdown from one tested implementation.
  *
- * The draft/commit lifecycle is deliberately identical to
- * `WorkoutNotesField`: commit on blur, flush again on unmount (RN may tear the
- * field down before delivering a native blur to JS), and re-seed the draft when
- * the incoming `value` changes. Commits never fire mid-edit, so a re-seed
- * cannot clobber text the user is typing.
+ * Unlike `WorkoutNotesField`, this commits on every keystroke rather than on
+ * blur alone. These forms save from a header button, which does not reliably
+ * blur the field first, so a blur-only commit could drop the last thing typed.
+ * The blur and unmount commits are kept as a backstop, and the draft is
+ * re-seeded when the incoming `value` changes.
  */
 function MarkdownNotesField({
   value,
@@ -221,6 +221,15 @@ function MarkdownNotesField({
     };
   }, []);
 
+  // Commits on every keystroke, not only on blur. A header Save button does
+  // not reliably blur the field first (the form ScrollViews use
+  // `keyboardShouldPersistTaps`), so a blur-only commit could save the note as
+  // it was before the last thing the user typed.
+  const commitDraft = (text: string) => {
+    setDraft(text);
+    onCommit(text);
+  };
+
   const togglePreview = () => {
     // Switching to Preview unmounts the input without a reliable blur, so
     // commit here rather than trusting the teardown flush to be enough.
@@ -240,7 +249,7 @@ function MarkdownNotesField({
     const { start, end } = selectionRef.current;
     const result = applyToolbarAction(action, draft, start, end);
     if (result.text.length > NOTES_MAX_LENGTH) return;
-    setDraft(result.text);
+    commitDraft(result.text);
     selectionRef.current = {
       start: result.selectionStart,
       end: result.selectionEnd,
@@ -383,7 +392,7 @@ function MarkdownNotesField({
           <FormInput
             ref={inputRef}
             value={draft}
-            onChangeText={setDraft}
+            onChangeText={commitDraft}
             onSelectionChange={onSelectionChange}
             selection={pendingSelection ?? undefined}
             onBlur={() => onCommit(draft)}

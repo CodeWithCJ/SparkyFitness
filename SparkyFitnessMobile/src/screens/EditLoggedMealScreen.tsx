@@ -242,6 +242,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
         entryTime !== (toHourMinute(meal.entry_time) ?? '')) ||
       (selectedMealId !== undefined && selectedMealId !== meal.meal_type_id) ||
       (quantityText !== null && quantity !== meal.quantity) ||
+      (notes !== null && notes !== (meal.notes ?? '')) ||
       foodsTouched);
 
   const {

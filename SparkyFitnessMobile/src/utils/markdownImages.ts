@@ -45,11 +45,10 @@ export function splitNoteSegments(
   for (const match of markdown.matchAll(MARKDOWN_IMAGE)) {
     const [full, alt, target] = match;
     const index = match.index ?? 0;
-    const stored =
-      resolveNoteImage(target, candidates) ??
-      (target.startsWith('/uploads/') && candidates.length === 0
-        ? target
-        : null);
+    // Only a photo of this entity may be rendered; there is deliberately no
+    // fallback for an unmatched `/uploads/` path, which would otherwise let a
+    // note display an unrelated upload.
+    const stored = resolveNoteImage(target, candidates);
 
     // Not one of this entity's photos — leave it in the text untouched.
     if (!stored) continue;

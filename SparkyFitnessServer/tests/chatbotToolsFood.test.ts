@@ -4125,6 +4125,27 @@ describe('sparky_list_foods', () => {
 });
 
 describe('sparky_get_food_details', () => {
+  it('returns a long note in full, not a preview', async () => {
+    // set_food_notes replaces the note outright, so an append means reading it
+    // back first. Returning a truncated preview here would write the note back
+    // with its tail cut off.
+    const longNote = 'a'.repeat(1200);
+    vi.mocked(foodCoreService.getFoodById).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Eggs',
+      notes: longNote,
+      default_variant: { id: VARIANT_ID },
+    });
+    vi.mocked(foodRepository.getFoodVariantsByFoodId).mockResolvedValue([]);
+
+    const result = await tools.sparky_get_food_details.execute!(
+      { food_id: FOOD_ID },
+      opts
+    );
+
+    expect(JSON.parse(result as string).notes).toBe(longNote);
+  });
+
   it('returns the food with all variants', async () => {
     vi.mocked(foodCoreService.getFoodById).mockResolvedValue({
       id: FOOD_ID,

@@ -2241,7 +2241,17 @@ async function updateFoodEntryMeal(
     if (!updatedFoodEntryMeal) {
       throw new Error('Food entry meal not found or not authorized to update.');
     }
-    // 2. Delete existing component food_entries
+    // 2. Rebuild the component food_entries — but only when the caller sent
+    // them. `foods` is optional, and a metadata-only update (a note, say)
+    // would otherwise delete every component and recreate none, silently
+    // emptying the logged meal.
+    if (!updatedMealData.foods) {
+      log(
+        'debug',
+        `updateFoodEntryMeal: no foods supplied for ${foodEntryMealId}; leaving components untouched.`
+      );
+      return updatedFoodEntryMeal;
+    }
     await foodRepository.deleteFoodEntryComponentsByFoodEntryMealId(
       foodEntryMealId,
       authenticatedUserId

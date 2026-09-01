@@ -4939,5 +4939,11 @@
   "editFoodEntry": {
     "aboutThisFood": "About this food",
     "entryNotes": "Note for this entry (optional)"
+  },
+  "markdownView": {
+    "imageBlocked": "External image blocked",
+    "imageBlockedFrom": "External image blocked: {{host}}",
+    "imageFromHost": "image from {{host}}",
+    "externalImage": "external image"
   }
 }

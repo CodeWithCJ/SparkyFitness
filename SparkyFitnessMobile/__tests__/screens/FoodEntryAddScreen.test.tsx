@@ -921,6 +921,31 @@ describe('FoodEntryAddScreen', () => {
     expect(mockAddEntry).not.toHaveBeenCalled();
   });
 
+  it('sends the entry note when logging a meal item', () => {
+    // Meals build their payload through buildFoodEntryMealPayload, which used
+    // to have no notes field — so the note field was editable but discarded.
+    mockUseFoodVariants.mockReturnValueOnce({
+      variants: [],
+      isLoading: false,
+      isError: false,
+    } as any);
+
+    const screen = renderScreen({
+      item: baseMealItem,
+      date: '2026-05-15',
+    });
+
+    fireEvent.changeText(
+      screen.getByLabelText('Note for this entry'),
+      'half portion'
+    );
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(mockAddMeal).toHaveBeenCalledWith(
+      expect.objectContaining({ notes: 'half portion' })
+    );
+  });
+
   it('preserves numeric-string meal quantities and serving units when reopening an ingredient draft', () => {
     const screen = renderScreen({
       item: {

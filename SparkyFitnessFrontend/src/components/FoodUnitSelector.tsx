@@ -158,6 +158,11 @@ const FoodUnitSelector = ({
         );
       }
 
+      // The dialog is not unmounted between foods (Diary only toggles `open`
+      // and never clears `selectedFood`), so a note typed for one food would
+      // otherwise still be in the box when the next one is logged.
+      setEntryNotes('');
+
       if (
         showMealTypeSelect &&
         availableMealTypes &&
