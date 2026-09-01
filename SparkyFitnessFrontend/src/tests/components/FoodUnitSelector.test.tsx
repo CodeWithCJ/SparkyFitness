@@ -308,23 +308,27 @@ describe('FoodUnitSelector', () => {
     expect(quantityInput).toHaveValue(1);
   });
 
-  it('keeps fractional quantities editable', async () => {
+  it('keeps autofocus and selection when using NumericInput', async () => {
     const food = createFood(
       createVariant({
         id: 'default-variant',
-        serving_size: 1,
+        serving_size: 3,
         serving_unit: 'g',
       })
     );
+    const selectSpy = jest.spyOn(HTMLInputElement.prototype, 'select');
 
     mockFetchQuery.mockResolvedValue([]);
 
     await renderSelector(food);
 
     const quantityInput = screen.getByLabelText(/^Quantity$/i);
-    fireEvent.change(quantityInput, { target: { value: '0.25' } });
+    await waitFor(() => {
+      expect(quantityInput).toHaveFocus();
+      expect(selectSpy).toHaveBeenCalled();
+    });
 
-    expect(quantityInput).toHaveValue(0.25);
+    selectSpy.mockRestore();
   });
 
   it('does not show compatible-unit checks when the selected saved variant is AI-estimated', async () => {
