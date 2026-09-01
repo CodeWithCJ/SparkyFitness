@@ -308,6 +308,32 @@ describe('FoodUnitSelector', () => {
     expect(quantityInput).toHaveValue(1);
   });
 
+  it('submits fractional quantities through the selector', async () => {
+    const food = createFood(
+      createVariant({
+        id: 'default-variant',
+        serving_size: 1,
+        serving_unit: 'g',
+      })
+    );
+    const onSelect = jest.fn();
+
+    mockFetchQuery.mockResolvedValue([]);
+
+    await renderSelector(food, { onSelect });
+
+    const quantityInput = screen.getByLabelText(/^Quantity$/i);
+    fireEvent.change(quantityInput, { target: { value: '0.25' } });
+    expect(quantityInput).toHaveValue(0.25);
+
+    fireEvent.click(screen.getByRole('button', { name: /Add to Meal/i }));
+
+    await waitFor(() => {
+      expect(onSelect).toHaveBeenCalledTimes(1);
+    });
+    expect(onSelect.mock.calls[0]?.[1]).toBe(0.25);
+  });
+
   it('keeps autofocus and selection when using NumericInput', async () => {
     const food = createFood(
       createVariant({
