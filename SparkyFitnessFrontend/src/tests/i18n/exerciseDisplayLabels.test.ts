@@ -1,7 +1,9 @@
+import type { TFunction } from 'i18next';
 import {
   exerciseDisplayLabel,
   personalRecordLabel,
 } from '@/utils/exerciseDisplayLabels';
+import { translateForTest } from '@/tests/mocks/reactI18next';
 
 const translations: Record<string, string> = {
   'exerciseDisplayNames.mixedCardio': 'Mixed cardio translated',
@@ -10,7 +12,24 @@ const translations: Record<string, string> = {
   'exerciseAnalytics.records.distanceBest': 'Best {{distance}} time',
   'exerciseDistances.1Mile': '1 translated mile',
 };
-const t = (key: string, fallback: string) => translations[key] ?? fallback;
+
+// Resolves against the catalog above, then defers to the shared mock so
+// interpolation behaves the same way it does in every other suite.
+const t = ((
+  key: string,
+  defaultValueOrOptions: string | Record<string, unknown>
+) => {
+  const catalogValue = translations[key];
+  const options =
+    typeof defaultValueOrOptions === 'string'
+      ? { defaultValue: defaultValueOrOptions }
+      : defaultValueOrOptions;
+
+  return translateForTest(key, {
+    ...options,
+    defaultValue: catalogValue ?? options['defaultValue'],
+  });
+}) as unknown as TFunction;
 
 describe('exercise display labels', () => {
   it.each([

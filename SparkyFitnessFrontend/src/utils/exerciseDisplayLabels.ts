@@ -1,4 +1,4 @@
-type Translate = (key: string, defaultValue: string) => string;
+import type { TFunction } from 'i18next';
 
 const keyFor = (name: string) =>
   name
@@ -11,17 +11,17 @@ const keyFor = (name: string) =>
 
 export const exerciseDisplayLabel = (
   name: string,
-  t: Translate,
+  t: TFunction,
   translateBuiltIn = true
 ): string =>
   translateBuiltIn ? t(`exerciseDisplayNames.${keyFor(name)}`, name) : name;
 
-export const personalRecordLabel = (label: string, t: Translate): string => {
+export const personalRecordLabel = (label: string, t: TFunction): string => {
   const match = label.match(/^(.*?)\s+Best$/i);
   if (!match?.[1]) return exerciseDisplayLabel(label, t);
   const distance = t(`exerciseDistances.${keyFor(match[1])}`, match[1]);
-  return t(
-    'exerciseAnalytics.records.distanceBest',
-    '{{distance}} Best'
-  ).replace('{{distance}}', distance);
+  return t('exerciseAnalytics.records.distanceBest', {
+    defaultValue: '{{distance}} Best',
+    distance,
+  });
 };
