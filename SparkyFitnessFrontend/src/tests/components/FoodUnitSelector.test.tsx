@@ -177,6 +177,54 @@ describe('FoodUnitSelector', () => {
     jest.clearAllMocks();
   });
 
+  it('clears the entry note when reopened for another food', async () => {
+    // Diary never clears `selectedFood`, so this dialog stays mounted between
+    // foods. A note typed for one food must not be sitting there for the next.
+    const food = createFood(
+      createVariant({ id: 'v1', serving_size: 10, serving_unit: 'g' })
+    );
+    mockFetchQuery.mockResolvedValue([]);
+
+    const { rerender } = render(
+      <FoodUnitSelector
+        food={food}
+        open={true}
+        onOpenChange={jest.fn()}
+        onSelect={jest.fn()}
+      />
+    );
+    await waitFor(() => expect(mockFetchQuery).toHaveBeenCalled());
+
+    const noteBox = screen.getByLabelText(/note for this entry/i);
+    fireEvent.change(noteBox, { target: { value: 'ate half of it' } });
+    expect(noteBox).toHaveValue('ate half of it');
+
+    const reopen = (open: boolean, nextFood: Food) =>
+      rerender(
+        <FoodUnitSelector
+          food={nextFood}
+          open={open}
+          onOpenChange={jest.fn()}
+          onSelect={jest.fn()}
+        />
+      );
+
+    reopen(false, food);
+    const otherFood = {
+      // A distinct id, so this really is a different food and not the same one
+      // reopened — the fixture factory hardcodes 'food-1'.
+      ...createFood(
+        createVariant({ id: 'v2', serving_size: 10, serving_unit: 'g' })
+      ),
+      id: 'food-2',
+    };
+    reopen(true, otherFood);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/note for this entry/i)).toHaveValue('')
+    );
+  });
+
   it('shows the manual warning, hides preview, and disables save for unresolved incompatible units', async () => {
     const food = createFood(
       createVariant({

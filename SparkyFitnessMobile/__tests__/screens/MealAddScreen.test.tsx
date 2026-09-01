@@ -312,6 +312,8 @@ describe('MealAddScreen', () => {
     expect(payload).toEqual({
       name: 'My Meal',
       description: 'Tasty',
+      // No note entered, so the key is sent as an explicit null.
+      notes: null,
       is_public: false,
       // serving_unit defaults to 'serving' so serving_size is forced to 1.
       // The '2' the user typed goes into total_servings (the only input
@@ -471,6 +473,7 @@ describe('MealAddScreen', () => {
     expect(payload).toEqual({
       name: 'Edited Meal',
       description: 'Tasty',
+      notes: null,
       // Meal fixture is serving_size=1, total_servings=2 under the new model.
       serving_size: 1,
       serving_unit: 'serving',

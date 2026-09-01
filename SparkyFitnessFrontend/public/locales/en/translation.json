@@ -2812,7 +2812,8 @@
     "foodSnapshotUpdatedSuccessfully": "Food entries snapshot updated successfully.",
     "foods": "foods",
     "name": "Name",
-    "removeFromFavorites": "Remove from favorites"
+    "removeFromFavorites": "Remove from favorites",
+    "notes": "Notes"
   },
   "mealManagement": {
     "failedToLoadMeals": "Failed to load meals.",
@@ -2877,7 +2878,8 @@
     "meals": "meals",
     "name": "Name",
     "removeFromFavorites": "Remove from favorites",
-    "createMeal": "Create Meal"
+    "createMeal": "Create Meal",
+    "notes": "Notes"
   },
   "mealBuilder": {
     "errorTitle": "Error",
@@ -2953,7 +2955,10 @@
     "clearTime": "Clear time",
     "setToCurrentTime": "Set to current local time",
     "ingredientResolveFailed": "Could not save the ingredient \"{{foodName}}\". Please try again.",
-    "now": "Now"
+    "now": "Now",
+    "mealNotes": "Notes (Optional)",
+    "mealNotesPlaceholder": "e.g., the recipe, or how you prepare this",
+    "templateNotes": "About this meal"
   },
   "mealPlanCalendar": {
     "title": "Meal Plan",
@@ -3904,7 +3909,10 @@
     "syncConfirmationDescriptionWithPhotos": "Do you want to update all your past diary entries for this food with the new nutrition and photos? Updating photos replaces photos you set on individual diary entries, and can't be undone.",
     "syncConfirmationConfirm": "Update",
     "syncConfirmationConfirmWithPhotos": "Update nutrition & photos",
-    "syncConfirmationNutritionOnly": "Update nutrition only"
+    "syncConfirmationNutritionOnly": "Update nutrition only",
+    "notesLabel": "Notes",
+    "notesHelp": "Details you want to remember every time you log this — how you order it, or a recipe. Supports markdown.",
+    "notesPlaceholder": "e.g. White rice, double chicken, mild salsa, no beans"
   },
   "customMeasurements": {
     "title": "Custom Measurements - {{date}}",
@@ -4900,5 +4908,42 @@
     "editInMealBuilder": "Edit in Meal Builder",
     "loggedSuccess": "Meal successfully logged to your diary.",
     "openInMealBuilder": "Open in Meal Builder"
+  },
+  "markdownEditor": {
+    "write": "Write",
+    "preview": "Preview",
+    "bold": "Bold",
+    "italic": "Italic",
+    "code": "Code",
+    "link": "Link",
+    "bulletList": "Bulleted list",
+    "numberedList": "Numbered list",
+    "nothingToPreview": "Nothing to preview yet.",
+    "charactersRemaining": "{{count}} characters left",
+    "heading": "Heading",
+    "strikethrough": "Strikethrough",
+    "quote": "Quote",
+    "taskList": "Checklist (display only)",
+    "table": "Table",
+    "insertImage": "Insert photo",
+    "chooseImage": "Insert one of this item’s photos",
+    "imageAlt": "photo {{number}}",
+    "expand": "Expand editor",
+    "collapse": "Shrink editor"
+  },
+  "foodUnitSelector": {
+    "foodNotes": "About this food",
+    "entryNotes": "Note for this entry (optional)",
+    "entryNotesPlaceholder": "Anything specific about this time you ate it"
+  },
+  "editFoodEntry": {
+    "aboutThisFood": "About this food",
+    "entryNotes": "Note for this entry (optional)"
+  },
+  "markdownView": {
+    "imageBlocked": "External image blocked",
+    "imageBlockedFrom": "External image blocked: {{host}}",
+    "imageFromHost": "image from {{host}}",
+    "externalImage": "external image"
   }
 }

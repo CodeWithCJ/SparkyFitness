@@ -124,6 +124,11 @@ export interface FoodInfoItem {
   name: string;
   brand: string | null;
   barcode?: string | null;
+  /**
+   * Owner-authored markdown reference note. Only local foods have one;
+   * provider results and meals arrive without it.
+   */
+  notes?: string | null;
   provider_type?: string;
   provider_external_id?: string;
   is_custom?: boolean;
@@ -179,6 +184,7 @@ export const foodItemToFoodInfo = (
   name: item.name,
   brand: item.brand,
   barcode: item.barcode ?? null,
+  notes: item.notes ?? null,
   userId: item.user_id,
   sharedWithPublic: item.shared_with_public,
   provider_type: item.provider_type ?? undefined,

@@ -11,6 +11,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import { BarcodeScannerDialog } from './BarcodeScannerDialog';
+import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
 import { ProviderNutrientViewer } from './ProviderNutrientViewer';
 import ProviderVerifiedBadge from './ProviderVerifiedBadge';
 import type { Food, FoodVariant } from '@/types/food';
@@ -24,6 +25,7 @@ import { UNIT_GROUPS } from '@/constants/foodForm';
 import { deriveSavedAiUnits } from '@/utils/foodAiUnits';
 import { getConversionFactor } from '@workspace/shared';
 import { FoodImagePicker } from './FoodImagePicker';
+import { resolveFoodImageSrc } from '@/utils/foodImages';
 
 interface CustomFoodFormProps {
   onSave: (foodData: Food) => void;
@@ -93,6 +95,18 @@ const CustomFoodForm = ({
     onSave,
     aiEstimatesAvailable,
   });
+
+  // Only already-saved photos can be embedded in a note: a staged file exists
+  // solely in the browser until the food is saved, so it has no path to link.
+  const savedImageOptions = useMemo(
+    () =>
+      imageItems.flatMap((item) => {
+        if (item.kind !== 'saved') return [];
+        const src = resolveFoodImageSrc(item.path);
+        return src ? [{ path: src, src }] : [];
+      }),
+    [imageItems]
+  );
 
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
 
@@ -338,6 +352,33 @@ const CustomFoodForm = ({
                   );
                 })}
               </div>
+            </div>
+
+            {/*
+              Last before the save button: the nutrition rows above are the
+              point of this form, and a long recipe ahead of them would push
+              them off-screen.
+            */}
+            <div className="pt-2 space-y-1.5">
+              <Label htmlFor="food-notes">
+                {t('customFoodForm.notesLabel', 'Notes')}
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {t(
+                  'customFoodForm.notesHelp',
+                  'Details you want to remember every time you log this — how you order it, or a recipe. Supports markdown.'
+                )}
+              </p>
+              <MarkdownEditor
+                id="food-notes"
+                value={formData.notes}
+                onChange={(next) => updateField('notes', next)}
+                placeholder={t(
+                  'customFoodForm.notesPlaceholder',
+                  'e.g. White rice, double chicken, mild salsa, no beans'
+                )}
+                imageOptions={savedImageOptions}
+              />
             </div>
 
             <Button type="submit" disabled={loading} className="w-full">

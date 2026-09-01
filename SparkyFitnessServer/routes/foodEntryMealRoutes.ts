@@ -61,6 +61,7 @@ router.post('/', async (req, res, next) => {
       entry_time,
       name,
       description,
+      notes,
       foods,
       quantity,
       unit,
@@ -104,6 +105,7 @@ router.post('/', async (req, res, next) => {
         entry_time,
         name,
         description,
+        notes,
         foods,
         quantity,
         unit,
@@ -501,6 +503,7 @@ router.put('/:id', async (req, res, next) => {
     const {
       name,
       description,
+      notes,
       meal_type,
       meal_type_id,
       entry_date,
@@ -564,6 +567,7 @@ router.put('/:id', async (req, res, next) => {
       {
         name,
         description,
+        notes,
         meal_type,
         meal_type_id,
         entry_date,

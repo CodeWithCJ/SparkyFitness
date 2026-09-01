@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, SubmitEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +11,9 @@ import { Check, Sparkles, Clock, CalendarDays, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MarkdownView } from '@/components/ui/MarkdownView';
+import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
+import { diaryEntryImages, usableFoodImages } from '@/utils/foodImages';
 import {
   Select,
   SelectContent,
@@ -86,6 +90,16 @@ const EditFoodEntryDialog = ({
   const [entryTime, setEntryTime] = useState<string>(
     toHourMinute(entry?.entry_time) || ''
   );
+  const [entryNotes, setEntryNotes] = useState<string>(entry?.notes || '');
+  const { t } = useTranslation();
+
+  // Photos a note may embed: this entry's own override if it has one, else the
+  // parent food's. `diaryEntryImages` already resolves each to a usable src,
+  // and that resolved form is the one to write into the markdown.
+  const entryImageOptions = useMemo(
+    () => diaryEntryImages(entry).map((src) => ({ path: src, src })),
+    [entry]
+  );
 
   const { data: customNutrients } = useCustomNutrients();
   const { data: foodData, isLoading: isLoadingFood } = useFoodView(
@@ -99,6 +113,20 @@ const EditFoodEntryDialog = ({
   // without saving discards them.
   const imageDraft = useEntryImageDraft(entry?.id ?? '', entry?.images, 'food');
   const createFoodVariantMutation = useCreateFoodVariantMutation();
+
+  // The food's own note can reference the food's photos, which
+  // `diaryEntryImages` hides once the entry has an override of its own — so
+  // resolve note references against both sets.
+  const notePhotoCandidates = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...usableFoodImages(entry?.images),
+          ...usableFoodImages(foodData?.images),
+        ])
+      ),
+    [entry?.images, foodData?.images]
+  );
 
   const loading = isLoadingFood || isLoadingVariants;
   const isEditingAllowed = open && !!entry && !entry.meal_id;
@@ -235,6 +263,7 @@ const EditFoodEntryDialog = ({
           variant_id: variantWithId.id || null,
           meal_type_id: mealId,
           entry_time: entryTime || null,
+          notes: entryNotes.trim() || null,
         };
         await updateFoodEntry({
           id: entry.id,
@@ -269,6 +298,7 @@ const EditFoodEntryDialog = ({
         variant_id:
           selectedVariant.id === 'default-variant' ? null : selectedVariant.id,
         entry_time: entryTime || null,
+        notes: entryNotes.trim() || null,
       };
 
       await updateFoodEntry({ id: entry.id, data: updateData });
@@ -595,6 +625,40 @@ const EditFoodEntryDialog = ({
                   />
                 </div>
               )}
+
+              {/*
+                Notes sit below the nutrition figures on purpose: the numbers are
+                what someone opens this dialog to check, and a long recipe above
+                them would push them off-screen.
+              */}
+              {foodData?.notes ? (
+                <div className="space-y-1">
+                  <Label>
+                    {t('editFoodEntry.aboutThisFood', 'About this food')}
+                  </Label>
+                  <div className="rounded-md border bg-muted/40 px-3 py-2 max-h-48 overflow-y-auto">
+                    <MarkdownView images={notePhotoCandidates}>
+                      {foodData.notes}
+                    </MarkdownView>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="space-y-1">
+                <Label htmlFor="entryNotes">
+                  {t(
+                    'editFoodEntry.entryNotes',
+                    'Note for this entry (optional)'
+                  )}
+                </Label>
+                <MarkdownEditor
+                  id="entryNotes"
+                  value={entryNotes}
+                  onChange={setEntryNotes}
+                  rows={3}
+                  imageOptions={entryImageOptions}
+                />
+              </div>
 
               <div className="flex justify-end space-x-2 mt-6">
                 <Button

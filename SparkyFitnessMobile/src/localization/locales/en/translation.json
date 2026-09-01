@@ -1835,7 +1835,9 @@
       "tsp": "tsp",
       "piece": "piece"
     },
-    "unitPickerLabel": "Unit, {{unit}}"
+    "unitPickerLabel": "Unit, {{unit}}",
+    "notes": "Notes (optional)",
+    "notesPlaceholder": "e.g. the recipe, or how you prepare this"
   },
   "nutrition": {
     "protein": "protein",
@@ -2401,7 +2403,9 @@
     "addFood": "Add Food",
     "saved": "Saved",
     "equivalentUnitsUpdated_one": "Saved · {{formattedCount}} equivalent unit updated",
-    "equivalentUnitsUpdated_other": "Saved · {{formattedCount}} equivalent units updated"
+    "equivalentUnitsUpdated_other": "Saved · {{formattedCount}} equivalent units updated",
+    "notes": "Notes",
+    "notesPlaceholder": "e.g. White rice, double chicken, no beans (supports markdown)"
   },
   "exerciseHistory": {
     "noSetData": "No set data",
@@ -2985,7 +2989,8 @@
     "makesSummary_one": "Makes {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}",
     "makesSummary_other": "Makes {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}",
     "items_one": "{{formattedCount}} item",
-    "items_other": "{{formattedCount}} items"
+    "items_other": "{{formattedCount}} items",
+    "notes": "Notes"
   },
   "dailyNutritionDetails": {
     "title": "Nutrition Details",
@@ -3038,7 +3043,10 @@
       "serving_one": "serving",
       "serving_other": "servings",
       "mealMakes_one": "meal makes {{formattedCount}} serving",
-      "mealMakes_other": "meal makes {{formattedCount}} servings"
+      "mealMakes_other": "meal makes {{formattedCount}} servings",
+      "aboutThisFood": "About this food",
+      "entryNotes": "Note for this entry",
+      "entryNotesPlaceholder": "Anything specific about this time you ate it"
     },
     "pickers": {
       "selectServing": "Select Serving",
@@ -3408,7 +3416,8 @@
     "servingOptionsError": "Some serving options could not be loaded right now.",
     "barcode": "Barcode",
     "logFood": "Log Food",
-    "deleteFood": "Delete Food"
+    "deleteFood": "Delete Food",
+    "notes": "Notes"
   },
   "foodEntryView": {
     "saveChanges": "Save food entry changes",
@@ -3434,7 +3443,8 @@
       "saveFailed": "Failed to save changes",
       "deleteFailed": "Failed to delete"
     },
-    "deleteConfirm": "Are you sure you want to delete this food entry?"
+    "deleteConfirm": "Are you sure you want to delete this food entry?",
+    "entryNotes": "Note for this entry"
   },
   "presetSearch": {
     "title": "Start Workout",
@@ -3604,7 +3614,9 @@
       "meal": "Meal",
       "selectMeal": "Select Meal",
       "time": "Time",
-      "foodsInMeal": "Foods in this meal"
+      "foodsInMeal": "Foods in this meal",
+      "notes": "Note for this entry",
+      "aboutThisMeal": "About this meal"
     },
     "states": {
       "noFoods": "No foods in this meal yet."
@@ -4837,5 +4849,28 @@
   "foodProvenance": {
     "aiEstimate": "AI estimate",
     "aiEstimateAccessibility": "Nutrition estimated by AI"
+  },
+  "notes": {
+    "label": "Notes",
+    "placeholder": "Add a note… (supports markdown)",
+    "write": "Write",
+    "preview": "Preview",
+    "nothingToPreview": "Nothing to preview yet.",
+    "toolbar": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "strikethrough": "Strikethrough",
+      "heading": "Heading",
+      "bulletList": "Bulleted list",
+      "numberedList": "Numbered list",
+      "taskList": "Checklist (display only)",
+      "quote": "Quote",
+      "code": "Code",
+      "link": "Link",
+      "table": "Table",
+      "insertImage": "Insert photo",
+      "photoNumber": "Photo {{number}}"
+    },
+    "photoUnavailable": "Photo unavailable"
   }
 }

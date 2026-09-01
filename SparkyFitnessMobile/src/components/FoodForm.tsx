@@ -16,6 +16,7 @@ import BottomSheetPicker from './BottomSheetPicker';
 import Button from './ui/Button';
 import EquivalentsSection from './EquivalentsSection';
 import FormInput from './FormInput';
+import MarkdownNotesField from './MarkdownNotesField';
 import Icon from './Icon';
 import FoodUnitSelectorSheet from './FoodUnitSelectorSheet';
 import Switch from './ui/Switch';
@@ -75,6 +76,12 @@ export interface FoodFormProps {
   submitLabel?: string;
   isSubmitting?: boolean;
   hideSubmitButton?: boolean;
+  /**
+   * Show the markdown notes field. Only the food create/edit modes own the
+   * food's note; the adjust-entry-nutrition mode edits one diary entry's
+   * numbers and must not present the food's note as if it were editable there.
+   */
+  showNotes?: boolean;
   showAutoScaleNutrition?: boolean;
   initialAutoScaleNutritionEnabled?: boolean;
   unitSelector?: {
@@ -102,6 +109,8 @@ export interface FoodFormProps {
     onChange: (next: EquivalentUnit[]) => void;
     disabled?: boolean;
   };
+  /** Saved photos of the food, offered by the notes toolbar's insert-photo picker. */
+  noteImages?: readonly string[];
   headerChildren?: React.ReactNode;
   children?: React.ReactNode;
   /** Initial custom nutrient values (key = nutrient name, value = amount). */
@@ -126,11 +135,13 @@ const FoodForm: React.FC<FoodFormProps> = ({
   submitLabel,
   isSubmitting = false,
   hideSubmitButton = false,
+  showNotes = false,
   showAutoScaleNutrition = false,
   initialAutoScaleNutritionEnabled = false,
   unitSelector,
   convertServingSizeOnUnitChange = false,
   equivalents,
+  noteImages,
   headerChildren,
   children,
   customNutrients: customNutrientsProp,
@@ -935,7 +946,6 @@ const FoodForm: React.FC<FoodFormProps> = ({
             false,
             'servingSize'
           )}
-
           {/* Serving */}
           <View className="flex-row gap-3">
             {renderNumericField(
@@ -1352,6 +1362,25 @@ const FoodForm: React.FC<FoodFormProps> = ({
             </>
           )}
         </View>
+
+        {/*
+          After the nutrition fields, not before them: those are the point of
+          this form, and a long recipe ahead of them would push them off-screen.
+        */}
+        {showNotes ? (
+          <View className="mt-4">
+            <MarkdownNotesField
+              images={noteImages}
+              value={form.notes}
+              onCommit={(text) => update('notes', text)}
+              label={t('foodForm.notes', { defaultValue: 'Notes' })}
+              placeholder={t('foodForm.notesPlaceholder', {
+                defaultValue:
+                  'e.g. White rice, double chicken, no beans (supports markdown)',
+              })}
+            />
+          </View>
+        ) : null}
 
         {children}
 

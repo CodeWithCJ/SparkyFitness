@@ -19,6 +19,7 @@ interface ServingFields {
 interface CreateMealData {
   name: string;
   description?: string | null;
+  notes?: string | null;
   is_public?: boolean;
   serving_size?: unknown;
   serving_unit?: string;
@@ -40,6 +41,7 @@ interface CreateMealData {
 interface UpdateMealData {
   name?: string;
   description?: string | null;
+  notes?: string | null;
   is_public?: boolean;
   serving_size?: unknown;
   serving_unit?: string;
@@ -971,7 +973,8 @@ async function createMealFromDiaryEntries(
   quantityScale = 1,
   totalServings = 1,
   servingSize = 1,
-  servingUnit = 'serving'
+  servingUnit = 'serving',
+  notes: string | null = null
 ) {
   try {
     // 1. Retrieve food entries for the specified date and meal type
@@ -1065,6 +1068,7 @@ async function createMealFromDiaryEntries(
       user_id: userId,
       name: mealName || defaultMealName,
       description: description,
+      notes: notes,
       is_public: isPublic,
       // A template-backed logged meal scales its components by
       // consumed_quantity / (serving_size * total_servings). With the defaults
