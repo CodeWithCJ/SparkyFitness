@@ -3,12 +3,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 
-const ANDROID_FORMAT = /%(?:\d+\$)?(?:[-#+ 0,(<]*\d*(?:\.\d+)?)?[a-zA-Z]/g;
+// `%%` must be consumed first: otherwise in "50%% goal" the second `%` starts a
+// match, takes the space as a flag and `g` as the conversion, inventing a "% g"
+// argument that differs per language.
+const ANDROID_FORMAT = /%%|%(?:\d+\$)?(?:[-#+ 0,(<]*\d*(?:\.\d+)?)?[a-zA-Z]/g;
 const IOS_FORMAT =
-  /%(?:\d+\$)?(?:[-+ #0]*\d*(?:\.\d+)?)?(?:lld|llu|ld|lu|@|d|D|i|u|U|o|x|X|f|F|e|E|g|G|c|C|s|S|p)/g;
+  /%%|%(?:\d+\$)?(?:[-+ #0]*\d*(?:\.\d+)?)?(?:lld|llu|ld|lu|@|d|D|i|u|U|o|x|X|f|F|e|E|g|G|c|C|s|S|p)/g;
 const isBlank = (value) => value.trim() === '';
 const formats = (value, regex) =>
-  [...value.matchAll(regex)].map((match) => match[0]).sort();
+  [...value.matchAll(regex)]
+    .map((match) => match[0])
+    .filter((match) => match !== '%%')
+    .sort();
 const equal = (left, right) =>
   left.length === right.length &&
   left.every((value, index) => value === right[index]);
@@ -177,6 +183,6 @@ function main() {
 }
 if (
   process.argv[1] &&
-  import.meta.url === new URL(`file://${process.argv[1]}`).href
+  import.meta?.url === new URL(`file://${process.argv[1]}`).href
 )
   main();
