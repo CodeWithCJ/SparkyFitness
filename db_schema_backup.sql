@@ -2004,6 +2004,7 @@ CREATE TABLE public.food_entries (
     source_id character varying(255),
     entry_time time without time zone,
     images jsonb DEFAULT '[]'::jsonb NOT NULL,
+    notes text,
     CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL)))),
     CONSTRAINT food_entries_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text)),
     CONSTRAINT food_entries_serving_size_positive CHECK ((serving_size > (0)::numeric))
@@ -2032,6 +2033,13 @@ COMMENT ON COLUMN public.food_entries.entry_time IS 'Optional wall-clock local t
 
 
 --
+-- Name: COLUMN food_entries.notes; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entries.notes IS 'Per-occurrence markdown note for a single diary entry. Never derived from foods.notes.';
+
+
+--
 -- Name: food_entry_meals; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2052,6 +2060,7 @@ CREATE TABLE public.food_entry_meals (
     legacy_serving_unit_math boolean DEFAULT false NOT NULL,
     entry_time time without time zone,
     images jsonb DEFAULT '[]'::jsonb NOT NULL,
+    notes text,
     CONSTRAINT food_entry_meals_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text))
 );
 
@@ -2082,6 +2091,13 @@ COMMENT ON COLUMN public.food_entry_meals.legacy_serving_unit_math IS 'TRUE for 
 --
 
 COMMENT ON COLUMN public.food_entry_meals.entry_time IS 'Optional wall-clock local time of day the logged meal was eaten (no timezone). NULL = not recorded.';
+
+
+--
+-- Name: COLUMN food_entry_meals.notes; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entry_meals.notes IS 'Per-occurrence markdown note for a single logged meal. Never derived from meals.notes.';
 
 
 --
@@ -2159,8 +2175,16 @@ CREATE TABLE public.foods (
     is_quick_food boolean DEFAULT false NOT NULL,
     provider_verified boolean DEFAULT false NOT NULL,
     images jsonb DEFAULT '[]'::jsonb NOT NULL,
+    notes text,
     CONSTRAINT foods_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text))
 );
+
+
+--
+-- Name: COLUMN foods.notes; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.foods.notes IS 'Owner-authored markdown reference note for this food (e.g. how it is ordered or prepared).';
 
 
 --
@@ -2418,6 +2442,7 @@ CREATE TABLE public.meals (
     serving_unit text DEFAULT 'serving'::text NOT NULL,
     total_servings numeric DEFAULT 1.0 NOT NULL,
     images jsonb DEFAULT '[]'::jsonb NOT NULL,
+    notes text,
     CONSTRAINT meals_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text))
 );
 
@@ -2441,6 +2466,13 @@ COMMENT ON COLUMN public.meals.serving_unit IS 'Unit of measurement for the serv
 --
 
 COMMENT ON COLUMN public.meals.total_servings IS 'How many servings the recipe yields. Full recipe quantity = serving_size × total_servings.';
+
+
+--
+-- Name: COLUMN meals.notes; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.meals.notes IS 'Owner-authored markdown reference note for this meal (e.g. a recipe).';
 
 
 --
