@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Check, Sparkles, Clock, CalendarDays, X } from 'lucide-react';
 import {
   Dialog,
@@ -9,6 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/NumericInput';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -74,7 +76,9 @@ const getValidAiConfidence = (
 
 import { AiEstimateSection } from '@/components/FoodUnitSelector/AiEstimateSection';
 import FavoriteStarButton from '@/components/FavoriteStarButton';
-import { useTranslation } from 'react-i18next';
+import { MarkdownView } from '@/components/ui/MarkdownView';
+import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
+import { usableFoodImages } from '@/utils/foodImages';
 
 interface FoodUnitSelectorProps {
   food: Food;
@@ -86,7 +90,8 @@ interface FoodUnitSelectorProps {
     unit: string,
     selectedVariant: FoodVariant,
     entryTime?: string | null,
-    mealType?: string | null
+    mealType?: string | null,
+    notes?: string | null
   ) => void;
   showUnitSelector?: boolean;
   initialQuantity?: number;
@@ -145,8 +150,11 @@ const FoodUnitSelector = ({
   const [selectedVariant, setSelectedVariant] = useState<FoodVariant | null>(
     null
   );
-  const [quantity, setQuantity] = useState(1);
+  const [quantity, setQuantity] = useState<number | undefined>(1);
   const [entryTime, setEntryTime] = useState('');
+  // The note for THIS diary entry. Separate from the food's own note, which is
+  // shown read-only above and never copied into the entry.
+  const [entryNotes, setEntryNotes] = useState('');
   const [mealType, setMealType] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -162,6 +170,11 @@ const FoodUnitSelector = ({
           `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
         );
       }
+
+      // The dialog is not unmounted between foods (Diary only toggles `open`
+      // and never clears `selectedFood`), so a note typed for one food would
+      // otherwise still be in the box when the next one is logged.
+      setEntryNotes('');
 
       if (
         showMealTypeSelect &&
@@ -432,6 +445,8 @@ const FoodUnitSelector = ({
     event.preventDefault();
     debug(loggingLevel, 'Handling submit.');
 
+    if (quantity === undefined) return;
+
     if (isConverting) {
       const convertedVariant = buildConvertedVariant();
       if (!convertedVariant) {
@@ -457,7 +472,8 @@ const FoodUnitSelector = ({
           variantWithId.serving_unit,
           variantWithId,
           entryTime || null,
-          showMealTypeSelect ? mealType : null
+          showMealTypeSelect ? mealType : null,
+          entryNotes.trim() || null
         );
         onOpenChange(false);
         setQuantity(1);
@@ -481,7 +497,8 @@ const FoodUnitSelector = ({
         selectedVariant.serving_unit,
         selectedVariant,
         entryTime || null,
-        showMealTypeSelect ? mealType : null
+        showMealTypeSelect ? mealType : null,
+        entryNotes.trim() || null
       );
       onOpenChange(false);
       setQuantity(1);
@@ -495,8 +512,19 @@ const FoodUnitSelector = ({
     ? buildConvertedVariant()
     : selectedVariant;
 
+  // Photos of the food being logged, offered to the note editor. Already
+  // resolved to a usable src, which is the form written into the markdown.
+  const foodImagePaths = useMemo(
+    () => usableFoodImages(food?.images),
+    [food?.images]
+  );
+  const foodImageOptions = useMemo(
+    () => foodImagePaths.map((src) => ({ path: src, src })),
+    [foodImagePaths]
+  );
+
   const nutrition = (() => {
-    if (!activeVariant) return null;
+    if (!activeVariant || quantity === undefined) return null;
     const ratio = quantity / (activeVariant.serving_size || 1);
     return {
       calories: (activeVariant.calories || 0) * ratio,
@@ -521,11 +549,14 @@ const FoodUnitSelector = ({
   const displayUnit = isConverting
     ? pendingUnit.trim() || '?'
     : selectedVariant?.serving_unit || '';
-  const displayServing = isConverting
-    ? `${quantity} ${displayUnit}`.trim()
-    : selectedVariant
-      ? formatQuantityServingLabel(quantity, selectedVariant)
-      : `${quantity} ${displayUnit}`.trim();
+  const displayServing =
+    quantity === undefined
+      ? ''
+      : isConverting
+        ? `${quantity} ${displayUnit}`.trim()
+        : selectedVariant
+          ? formatQuantityServingLabel(quantity, selectedVariant)
+          : `${quantity} ${displayUnit}`.trim();
 
   return (
     <Dialog
@@ -576,15 +607,15 @@ const FoodUnitSelector = ({
                   <Label htmlFor="quantity">
                     {t('foodUnitSelector.quantity', 'Quantity')}
                   </Label>
-                  <Input
+                  <NumericInput
                     ref={quantityInputRef}
                     id="quantity"
-                    type="number"
                     step="any"
                     min="0.01"
+                    decimals={3}
+                    required
                     value={quantity}
-                    onChange={(e) => {
-                      const newQuantity = Number(e.target.value);
+                    onValueChange={(newQuantity) => {
                       debug(loggingLevel, 'Quantity changed:', newQuantity);
                       setQuantity(newQuantity);
                     }}
@@ -962,6 +993,48 @@ const FoodUnitSelector = ({
                   </div>
                 </div>
               )}
+
+              {/*
+                Below the nutrition panel on purpose: the figures are what this
+                dialog is opened to check, and a long note above them would push
+                them off-screen.
+              */}
+              {food?.notes ? (
+                <div className="space-y-1">
+                  <Label>
+                    {t('foodUnitSelector.foodNotes', 'About this food')}
+                  </Label>
+                  <div className="rounded-md border bg-muted/40 px-3 py-2 max-h-48 overflow-y-auto">
+                    <MarkdownView images={foodImagePaths}>
+                      {food.notes}
+                    </MarkdownView>
+                  </div>
+                </div>
+              ) : null}
+
+              {/*
+                Not gated on `showTimeInput`: a per-occasion note has nothing to
+                do with whether the time picker is shown.
+              */}
+              <div className="space-y-1">
+                <Label htmlFor="entryNotes">
+                  {t(
+                    'foodUnitSelector.entryNotes',
+                    'Note for this entry (optional)'
+                  )}
+                </Label>
+                <MarkdownEditor
+                  id="entryNotes"
+                  value={entryNotes}
+                  onChange={setEntryNotes}
+                  rows={3}
+                  placeholder={t(
+                    'foodUnitSelector.entryNotesPlaceholder',
+                    'Anything specific about this time you ate it'
+                  )}
+                  imageOptions={foodImageOptions}
+                />
+              </div>
 
               <div className="flex justify-end space-x-2">
                 <Button

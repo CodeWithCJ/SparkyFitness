@@ -30,6 +30,7 @@ import ActiveWorkoutScreen from '../screens/ActiveWorkoutScreen';
 import WorkoutCompleteScreen from '../screens/WorkoutCompleteScreen';
 import ActivityDetailScreen from '../screens/ActivityDetailScreen';
 import FastingDetailScreen from '../screens/FastingDetailScreen';
+import SleepDetailScreen from '../screens/SleepDetailScreen';
 import ExerciseSearchScreen from '../screens/ExerciseSearchScreen';
 import PresetSearchScreen from '../screens/PresetSearchScreen';
 import CalorieSettingsScreen from '../screens/CalorieSettingsScreen';
@@ -99,6 +100,7 @@ export const SafeActiveWorkout = withErrorBoundary(ActiveWorkoutScreen, 'ActiveW
 export const SafeWorkoutComplete = withErrorBoundary(WorkoutCompleteScreen, 'WorkoutComplete', { canGoBack: true });
 export const SafeActivityDetail = withErrorBoundary(ActivityDetailScreen, 'ActivityDetail', { canGoBack: true });
 export const SafeFastingDetail = withErrorBoundary(FastingDetailScreen, 'FastingDetail', { canGoBack: true });
+export const SafeSleepDetail = withErrorBoundary(SleepDetailScreen, 'SleepDetail', { canGoBack: true });
 export const SafeLogs = withErrorBoundary(LogScreen, 'Logs', { canGoBack: true });
 export const SafeSync = withErrorBoundary(SyncScreen, 'Sync', { canGoBack: true });
 export const SafeImportHistory = withErrorBoundary(ImportHistoryScreen, 'ImportHistory', { canGoBack: true });

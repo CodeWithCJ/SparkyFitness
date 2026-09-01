@@ -14,6 +14,8 @@ import type { TFunction } from 'i18next';
 export interface FoodFormData {
   name: string;
   brand: string;
+  /** Markdown reference note. Non-numeric, so it stays out of NUMERIC_FOOD_FORM_FIELDS. */
+  notes: string;
   servingSize: string;
   servingUnit: string;
   calories: string;
@@ -113,6 +115,7 @@ export const NUTRITION_FIELDS: (keyof FoodFormData)[] = [
 const EMPTY_FORM: FoodFormData = {
   name: '',
   brand: '',
+  notes: '',
   servingSize: '',
   servingUnit: '',
   calories: '',

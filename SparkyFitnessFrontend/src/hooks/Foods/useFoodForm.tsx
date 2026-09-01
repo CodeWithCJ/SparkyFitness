@@ -379,6 +379,7 @@ export function useCustomFoodForm({
     brand: '',
     is_quick_food: false,
     barcode: '',
+    notes: '',
   });
 
   // Provider nutrient values the user mapped onto this food (custom nutrient
@@ -456,7 +457,13 @@ export function useCustomFoodForm({
   );
 
   const resetForm = useCallback(() => {
-    setFormData({ name: '', brand: '', is_quick_food: false, barcode: '' });
+    setFormData({
+      name: '',
+      brand: '',
+      is_quick_food: false,
+      barcode: '',
+      notes: '',
+    });
     setImageItems([]);
     const defaultVariant = createDefaultFormVariant(customNutrients);
     const grouped = groupEquivalentVariants([defaultVariant]);
@@ -545,6 +552,7 @@ export function useCustomFoodForm({
         brand: food.brand || '',
         is_quick_food: food.is_quick_food || false,
         barcode: food.barcode || '',
+        notes: food.notes || '',
       });
       // A provider search result has no `images` array yet — its photo is the
       // single upstream `image_url`. Seed the picker with it so importing
@@ -579,7 +587,13 @@ export function useCustomFoodForm({
         loadExistingVariants();
       }
     } else if (initialVariants && initialVariants.length > 0) {
-      setFormData({ name: '', brand: '', is_quick_food: false, barcode: '' });
+      setFormData({
+        name: '',
+        brand: '',
+        is_quick_food: false,
+        barcode: '',
+        notes: '',
+      });
       const mapped = initialVariants.map((variant) =>
         foodVariantToFormVariant({
           ...variant,
@@ -1168,6 +1182,9 @@ export function useCustomFoodForm({
         is_quick_food: formData.is_quick_food,
         is_custom: true,
         barcode: formData.barcode.trim() || null,
+        // Always send the key, even when empty: the server treats an omitted
+        // `notes` as "leave unchanged", so clearing a note must send null.
+        notes: formData.notes.trim() || null,
         provider_external_id: food?.provider_external_id,
         provider_type: food?.provider_type,
         provider_verified: food?.provider_verified,

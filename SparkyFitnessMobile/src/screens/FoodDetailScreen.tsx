@@ -16,6 +16,8 @@ import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
+import { NoteMarkdown } from '../components/NoteMarkdown';
+import { usableFoodImages } from '../utils/foodImages';
 import StatusView from '../components/StatusView';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
@@ -277,6 +279,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
       initialValues: {
         name: food.name,
         brand: food.brand ?? '',
+        notes: food.notes ?? '',
         servingSize: String(displayValues.servingSize),
         servingUnit: displayValues.servingUnit,
         calories: String(displayValues.calories),
@@ -417,6 +420,19 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
           provider_verified={food.provider_verified}
           customNutrients={selectedCustomNutrients}
         />
+
+        {food.notes ? (
+          <View className="bg-surface rounded-xl p-4">
+            <Text className="text-text-secondary text-sm mb-2">
+              {t('foodDetail.notes', { defaultValue: 'Notes' })}
+            </Text>
+            <NoteMarkdown
+              text={food.notes}
+              fontSize={14}
+              images={usableFoodImages(food.images)}
+            />
+          </View>
+        ) : null}
 
         <View className="bg-surface rounded-xl p-4">
           <Text className="text-text-secondary text-sm mb-2">

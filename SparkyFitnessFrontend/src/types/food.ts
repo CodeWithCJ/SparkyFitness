@@ -85,6 +85,12 @@ export interface Food {
   is_quick_food?: boolean;
   glycemic_index?: GlycemicIndex;
   custom_nutrients?: Record<string, string | number>; // New field for custom nutrients
+  /**
+   * Owner-authored markdown reference note (how the user orders or prepares
+   * this food, a recipe). Shown read-only when logging the food; only the
+   * owner can edit it.
+   */
+  notes?: string | null;
   // ISO timestamp of when the current user starred this food. Present only on
   // items returned by the favorites endpoint; used to order the Favorites list.
   favorited_at?: string;
@@ -132,6 +138,11 @@ export interface FoodEntry {
   images?: string[] | null;
   /** The parent food's own images, used as the fallback when no override. */
   food_images?: string[] | null;
+  /**
+   * Per-occurrence markdown note. Independent of the parent food's `notes`,
+   * which is shown alongside it rather than copied into it.
+   */
+  notes?: string | null;
   // Add water_ml to FoodEntry if it's a water entry
   water_ml?: number;
 

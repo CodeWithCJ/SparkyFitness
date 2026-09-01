@@ -76,6 +76,7 @@ export interface MealFoodPayload {
 export interface CreateMealPayload {
   name: string;
   description?: string | null;
+  notes?: string | null;
   is_public?: boolean;
   serving_size?: number;
   serving_unit?: string;
@@ -86,6 +87,7 @@ export interface CreateMealPayload {
 export interface UpdateMealPayload {
   name?: string;
   description?: string | null;
+  notes?: string | null;
   is_public?: boolean;
   serving_size?: number;
   serving_unit?: string;
@@ -113,6 +115,8 @@ export interface Meal {
   user_id: string;
   name: string;
   description: string | null;
+  /** Owner-authored markdown reference note, e.g. a recipe. */
+  notes: string | null;
   is_public: boolean;
   serving_size: number;
   serving_unit: string;

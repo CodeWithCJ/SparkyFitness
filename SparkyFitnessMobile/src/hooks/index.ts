@@ -46,12 +46,8 @@ export type { ProviderSearchResult } from './useAllProvidersSearch';
 export { useMealTypes } from './useMealTypes';
 export { useDeleteFood } from './useDeleteFood';
 export { useFoodVariants } from './useFoodVariants';
-export { useMeasurementsRange } from './useMeasurementsRange';
-export type {
-  StepsDataPoint,
-  StepsRange,
-  WeightDataPoint,
-} from './useMeasurementsRange';
+export type { StepsDataPoint, WeightDataPoint } from './useMeasurementsRange';
+export { useHealthTrends } from './useHealthTrends';
 export { useSuggestedExercises } from './useSuggestedExercises';
 export { useExerciseSearch } from './useExerciseSearch';
 export { useExercisesLibrary } from './useExercisesLibrary';

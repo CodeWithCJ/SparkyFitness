@@ -51,3 +51,28 @@ export function formatTimeLabel(
     minute: '2-digit',
   });
 }
+
+/**
+ * Formats a whole hour for a compact chart axis: "10 PM" or "22", never "10:00 PM".
+ *
+ * Axis ticks always land on the hour, so the ":00" carries no information while costing
+ * horizontal space the plot could use instead. Follows the same account `time_format`
+ * preference as `formatTimeLabel`, which is why it lives beside it rather than in the
+ * chart — the two must never disagree about 12h vs 24h.
+ */
+export function formatHourLabel(
+  hour24: number,
+  timeFormat?: EntryTimeFormat | null
+): string {
+  // 24-hour account preference: zero-padded so a column of hours stays aligned.
+  if (timeFormat === 'HH:mm') return String(hour24).padStart(2, '0');
+
+  const date = new Date();
+  date.setHours(hour24, 0, 0, 0);
+
+  const usesMeridiem = timeFormat === 'h:mm A' || timeFormat === 'h:mm a';
+  return date.toLocaleTimeString(getAppLocale(), {
+    hour: 'numeric',
+    ...(usesMeridiem ? { hour12: true } : {}),
+  });
+}

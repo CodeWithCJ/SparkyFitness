@@ -534,6 +534,7 @@ describe('transformHealthRecords', () => {
           duration: 3600,
           totalEnergyBurned: 500,
           totalDistance: 5000,
+          totalSteps: 6234,
         },
       ];
       const result = transformHealthRecords(records, {
@@ -545,6 +546,7 @@ describe('transformHealthRecords', () => {
       const exerciseResult = result[0] as TransformedExerciseSession;
       expect(exerciseResult.caloriesBurned).toBe(500);
       expect(exerciseResult.distance).toBe(5);
+      expect(exerciseResult.steps).toBe(6234);
       expect(exerciseResult.type).toBe('ExerciseSession');
       expect(exerciseResult.source).toBe('HealthKit');
     });

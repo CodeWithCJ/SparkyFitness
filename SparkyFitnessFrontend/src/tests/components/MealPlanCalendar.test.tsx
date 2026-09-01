@@ -25,7 +25,7 @@ jest.mock('@/contexts/ActiveUserContext', () => ({
   useActiveUser: () => ({ activeUserId: 'test-user-id' }),
 }));
 jest.mock('@/contexts/PreferencesContext', () => ({
-  usePreferences: () => ({ loggingLevel: 'debug', foodDisplayLimit: 100 }),
+  usePreferences: () => ({ loggingLevel: 'debug', itemDisplayLimit: 100 }),
 }));
 
 // Mock toast

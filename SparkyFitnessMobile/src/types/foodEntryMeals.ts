@@ -39,6 +39,8 @@ export interface FoodEntryMeal {
   entry_time?: string | null;
   name: string;
   description: string | null;
+  /** Per-occurrence markdown note; independent of the template's notes. */
+  notes: string | null;
   quantity: number;
   unit: string;
   // TRUE for entries logged before the serving-model migration, where unit
@@ -71,6 +73,8 @@ export interface FoodEntryMeal {
   images?: string[] | null;
   // The parent meal template's own images, returned alongside the entry.
   meal_images?: string[] | null;
+  /** The meal template's own note, shown read-only beside this entry's note. */
+  meal_notes?: string | null;
 }
 
 export interface FoodEntryMealCreateData {
@@ -81,6 +85,7 @@ export interface FoodEntryMealCreateData {
   entry_time?: string | null;
   name: string;
   description?: string;
+  notes?: string | null;
   quantity: number;
   unit: string;
   foods?: MealFoodPayload[];
@@ -89,6 +94,8 @@ export interface FoodEntryMealCreateData {
 export interface FoodEntryMealUpdateData {
   name?: string;
   description?: string | null;
+  /** Omit to leave the stored note alone; null clears it. */
+  notes?: string | null;
   meal_type?: string;
   meal_type_id?: string;
   entry_date?: string;

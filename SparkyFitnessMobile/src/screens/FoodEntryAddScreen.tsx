@@ -22,6 +22,9 @@ import { useCSSVariable } from 'uniwind';
 import { useQuery } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
+import MarkdownNotesField from '../components/MarkdownNotesField';
+import { NoteMarkdown } from '../components/NoteMarkdown';
+import { usableFoodImages } from '../utils/foodImages';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import {
   FoodNutritionHeader,
@@ -236,6 +239,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       return {
         name: item.name,
         brand: item.brand ?? '',
+        // A meal ingredient carries a nutrition snapshot, not a note; the note
+        // belongs to the food and to the diary entry, not to this row.
+        notes: '',
         servingSize: item.servingSize != null ? String(item.servingSize) : '',
         servingUnit: item.servingUnit,
         calories: item.calories != null ? String(item.calories) : '',
@@ -272,6 +278,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
 
   const [entryTime, setEntryTime] = useState('');
+  // The note for THIS diary entry. The food's own note is shown read-only
+  // beside it and is never copied in.
+  const [entryNotes, setEntryNotes] = useState('');
   const entryTimeTouched = useRef(false);
   useEffect(() => {
     if (entryTimeTouched.current) return;
@@ -864,6 +873,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       unit: displayValues.servingUnit,
       entry_date: selectedDate,
       entry_time: entryTime || null,
+      notes: entryNotes.trim() || null,
     };
 
     switch (activeItem.source) {
@@ -924,6 +934,10 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       entry_date: selectedDate,
       entry_time: entryTime || null,
       name: item.name,
+      // The note field is shown for meals too, so it has to travel with the
+      // meal payload — this builder is used instead of buildFoodEntryPayload
+      // when the item is a meal.
+      notes: entryNotes.trim() || null,
       quantity,
       unit: displayValues.servingUnit,
     };
@@ -1742,6 +1756,46 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           showNetCarbs={showNetCarbs}
           customNutrients={selectedCustomNutrients}
         />
+
+        {/*
+          Notes sit below the nutrient breakdown on purpose: the numbers are
+          what this screen is opened to check, and a long recipe above them
+          would push them off-screen.
+        */}
+        {!isSelectionMode ? (
+          <>
+            {activeItem.notes ? (
+              <View className="mt-3">
+                <Text className="text-xs font-semibold uppercase text-text-muted mb-1">
+                  {t('foodEntryAdd.labels.aboutThisFood', {
+                    defaultValue: 'About this food',
+                  })}
+                </Text>
+                <View className="rounded-lg border border-border-subtle bg-raised px-3 py-2">
+                  <NoteMarkdown
+                    text={activeItem.notes}
+                    fontSize={14}
+                    images={usableFoodImages(activeItem.images)}
+                  />
+                </View>
+              </View>
+            ) : null}
+
+            <View className="mt-3">
+              <MarkdownNotesField
+                images={usableFoodImages(activeItem.images)}
+                value={entryNotes}
+                onCommit={setEntryNotes}
+                label={t('foodEntryAdd.labels.entryNotes', {
+                  defaultValue: 'Note for this entry',
+                })}
+                placeholder={t('foodEntryAdd.labels.entryNotesPlaceholder', {
+                  defaultValue: 'Anything specific about this time you ate it',
+                })}
+              />
+            </View>
+          </>
+        ) : null}
       </ScrollView>
 
       {/* Sticky footer */}

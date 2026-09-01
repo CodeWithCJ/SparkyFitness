@@ -11,6 +11,7 @@ import {
   toImageArray,
   resolveImageInput,
 } from '../utils/imageLocalizer.js';
+import { sanitizeNotes } from '@workspace/shared';
 import type {
   NutrientValue,
   NutrientFields,
@@ -48,6 +49,8 @@ export interface FoodInput extends NutrientFields {
   images?: string[] | null;
   image_url?: string | null;
   image_source_url?: string | null;
+  /** Owner-authored markdown reference note. */
+  notes?: string | null;
   serving_size?: NutrientValue;
   serving_unit?: string | null;
   source?: string | null;
@@ -172,7 +175,7 @@ async function searchFoods(
   try {
     let query = `
       SELECT
-        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images,
+        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -236,8 +239,8 @@ async function createFoodWithClient(client: PoolClient, foodData: FoodInput) {
   // 1. Create the food entry
   const foodResult = await client.query(
     `INSERT INTO foods (
-        name, is_custom, user_id, brand, barcode, provider_external_id, shared_with_public, provider_type, provider_verified, is_quick_food, images, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, now(), now()) RETURNING id, name, brand, is_custom, user_id, shared_with_public, is_quick_food, provider_external_id, provider_type, provider_verified, images`,
+        name, is_custom, user_id, brand, barcode, provider_external_id, shared_with_public, provider_type, provider_verified, is_quick_food, images, notes, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, now(), now()) RETURNING id, name, brand, is_custom, user_id, shared_with_public, is_quick_food, provider_external_id, provider_type, provider_verified, images, notes`,
     [
       foodData.name,
       sanitizeBoolean(foodData.is_custom) ?? true,
@@ -250,6 +253,7 @@ async function createFoodWithClient(client: PoolClient, foodData: FoodInput) {
       sanitizeBoolean(foodData.provider_verified) ?? false,
       sanitizeBoolean(foodData.is_quick_food) ?? false,
       JSON.stringify(resolveImageInput(foodData)),
+      sanitizeNotes(foodData.notes) ?? null,
     ]
   );
   const newFood = foodResult.rows[0];
@@ -506,7 +510,7 @@ async function findFoodByBarcode(barcode: string, userId: string) {
   try {
     const result = await client.query(
       `SELECT
-        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images,
+        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -524,7 +528,7 @@ async function getFoodById(foodId: string, userId: string) {
   try {
     const result = await client.query(
       `SELECT
-        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images,
+        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -564,6 +568,15 @@ async function updateFood(id: string, userId: string, foodData: FoodUpdate) {
         ? normalizeBarcode(foodData.barcode)
         : null
       : null;
+    // Same distinction as barcode: a user clearing their note sends
+    // `notes: null`, which COALESCE would silently ignore.
+    const notesKeyPresent = Object.prototype.hasOwnProperty.call(
+      foodData,
+      'notes'
+    );
+    const notesValue = notesKeyPresent
+      ? (sanitizeNotes(foodData.notes) ?? null)
+      : null;
     const result = await client.query(
       `UPDATE foods SET
         name = COALESCE($1, name),
@@ -576,8 +589,9 @@ async function updateFood(id: string, userId: string, foodData: FoodUpdate) {
         provider_verified = COALESCE($9, provider_verified),
         is_quick_food = COALESCE($10, is_quick_food),
         images = COALESCE($11::jsonb, images),
+        notes = CASE WHEN $12::boolean THEN $13 ELSE notes END,
         updated_at = now()
-      WHERE id = $12
+      WHERE id = $14
       RETURNING *`,
       [
         foodData.name,
@@ -594,6 +608,8 @@ async function updateFood(id: string, userId: string, foodData: FoodUpdate) {
         foodData.images === undefined
           ? null
           : JSON.stringify(toImageArray(foodData.images)),
+        notesKeyPresent,
+        notesValue,
         id,
       ]
     );
@@ -696,7 +712,7 @@ async function getFoodsWithPagination(
 
     let query = `
       SELECT
-        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images,
+        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -1491,7 +1507,7 @@ async function findFoodByProviderExternalId(
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      `SELECT f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images,
+      `SELECT f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
               fv.id AS default_variant_id, fv.serving_size, fv.serving_unit,
               ${DEFAULT_VARIANT_JSON_SQL}
        FROM foods f

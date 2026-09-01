@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
+import MarkdownNotesField from '../components/MarkdownNotesField';
+import { NoteMarkdown } from '../components/NoteMarkdown';
 import EntryImageOverride from '../components/EntryImageOverride';
 import Icon from '../components/Icon';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -26,6 +28,7 @@ import CalendarSheet, {
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import { toHourMinute } from '@workspace/shared';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
+import { usableFoodImages } from '../utils/foodImages';
 import NutritionMacroCard from '../components/NutritionMacroCard';
 import StatusView from '../components/StatusView';
 import SwipeableIngredientRow from '../components/SwipeableIngredientRow';
@@ -123,6 +126,8 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
   const showNetCarbs = preferences?.show_net_carbs === true;
 
   const [name, setName] = useState<string | null>(null);
+  // null means "untouched", matching the other fields on this screen.
+  const [notes, setNotes] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [entryTime, setEntryTime] = useState<string | null>(null);
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>(
@@ -186,6 +191,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
   );
 
   const effectiveName = name ?? meal?.name ?? '';
+  const effectiveNotes = notes ?? meal?.notes ?? '';
   const effectiveDate =
     selectedDate ?? (meal ? normalizeDate(meal.entry_date) : null);
   const effectiveEntryTime =
@@ -236,6 +242,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
         entryTime !== (toHourMinute(meal.entry_time) ?? '')) ||
       (selectedMealId !== undefined && selectedMealId !== meal.meal_type_id) ||
       (quantityText !== null && quantity !== meal.quantity) ||
+      (notes !== null && notes !== (meal.notes ?? '')) ||
       foodsTouched);
 
   const {
@@ -366,6 +373,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
       meal_type_id: effectiveMealId,
       entry_date: effectiveDate,
       entry_time: effectiveEntryTime || null,
+      notes: effectiveNotes.trim() || null,
       quantity,
       unit: meal.unit,
       meal_template_id: meal.meal_template_id,
@@ -458,6 +466,35 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
             autoCapitalize="sentences"
           />
         </View>
+
+        {meal?.meal_notes ? (
+          <View>
+            <Text className="text-xs font-semibold uppercase text-text-muted mb-1">
+              {t('editLoggedMeal.fields.aboutThisMeal', {
+                defaultValue: 'About this meal',
+              })}
+            </Text>
+            <View className="rounded-lg border border-border-subtle bg-raised px-3 py-2">
+              <NoteMarkdown
+                text={meal.meal_notes}
+                fontSize={14}
+                images={usableFoodImages(meal.meal_images)}
+              />
+            </View>
+          </View>
+        ) : null}
+
+        <MarkdownNotesField
+          images={[
+            ...usableFoodImages(meal?.images),
+            ...usableFoodImages(meal?.meal_images),
+          ]}
+          value={effectiveNotes}
+          onCommit={setNotes}
+          label={t('editLoggedMeal.fields.notes', {
+            defaultValue: 'Note for this entry',
+          })}
+        />
 
         <EntryImageOverride
           images={meal?.images}

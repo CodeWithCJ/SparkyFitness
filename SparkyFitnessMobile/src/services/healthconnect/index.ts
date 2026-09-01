@@ -1525,6 +1525,7 @@ export const enrichExerciseSessions = async (
         totalCaloriesResult,
         basalCaloriesResult,
         distanceResult,
+        stepsResult,
       ] = await Promise.allSettled([
         aggregateRecord({
           recordType: 'ActiveCaloriesBurned',
@@ -1545,6 +1546,16 @@ export const enrichExerciseSessions = async (
           timeRangeFilter,
           dataOriginFilter,
         }),
+        // Only the session writer's steps belong to this workout. An unfiltered
+        // time-window query would misclassify incidental steps during a Hevy
+        // strength session as workout steps and suppress valid step calories.
+        dataOriginFilter
+          ? aggregateRecord({
+              recordType: 'Steps',
+              timeRangeFilter,
+              dataOriginFilter,
+            })
+          : Promise.resolve(null),
       ]);
 
       // Only attach enriched values when an aggregate call succeeded and returned
@@ -1615,6 +1626,14 @@ export const enrichExerciseSessions = async (
         const meters = result.DISTANCE?.inMeters;
         if (meters != null && isPlausibleSessionDistance(meters, durationMs)) {
           enrichedFields.distance = { inMeters: meters };
+        }
+      }
+
+      if (stepsResult.status === 'fulfilled' && stepsResult.value !== null) {
+        const steps = (stepsResult.value as { COUNT_TOTAL?: number })
+          .COUNT_TOTAL;
+        if (typeof steps === 'number' && Number.isFinite(steps) && steps > 0) {
+          enrichedFields.steps = Math.round(steps);
         }
       }
 

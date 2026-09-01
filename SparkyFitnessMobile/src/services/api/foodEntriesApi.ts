@@ -11,6 +11,8 @@ export interface CreateFoodEntryPayload {
   unit: string;
   entry_date: string;
   entry_time?: string | null;
+  /** Per-occurrence markdown note; never derived from the food's own note. */
+  notes?: string | null;
   // Linked food entry
   food_id?: string;
   variant_id?: string;
@@ -61,6 +63,8 @@ export interface UpdateFoodEntryPayload {
   variant_id?: string;
   entry_date?: string;
   entry_time?: string | null;
+  /** Omit to leave the stored note alone; send null to clear it. */
+  notes?: string | null;
   // Nutrition snapshot overrides (server applies to entry snapshot)
   food_name?: string;
   brand_name?: string;

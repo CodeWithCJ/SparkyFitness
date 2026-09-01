@@ -476,7 +476,8 @@
       "failedRecentItems": "Nie udało się załadować ostatnich elementów.",
       "noRecentItems": "Brak ostatnich elementów",
       "recentItemsHint": "Zapisane produkty, posiłki i ćwiczenia pojawią się tutaj, aby ułatwić dostęp."
-    }
+    },
+    "sleep": "Sen"
   },
   "healthMetrics": {
     "steps": "Kroki",
@@ -4015,6 +4016,12 @@
       "tooltip_many": "{{formattedCount}} kroków",
       "tooltip_other": "{{formattedCount}} kroków"
     },
+    "sleep": {
+      "title": "Sen",
+      "loadFailed": "Nie udało się wczytać danych o śnie",
+      "empty": "Brak danych o śnie w tym okresie",
+      "tooltip": "{{formattedHours}} h"
+    },
     "loading": "Wczytywanie wykresu...",
     "weightLoadFailed": "Nie udało się wczytać danych masy ciała",
     "stepsLoadFailed": "Nie udało się wczytać danych kroków",
@@ -4695,7 +4702,8 @@
     "configure": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby wyświetlić szablony treningów."
   },
   "time": {
-    "hoursShort": "godz."
+    "hoursShort": "godz.",
+    "minutesShort": "min"
   },
   "exerciseImage": {
     "playAnimation": "Odtwórz animację ćwiczenia",
@@ -4745,5 +4753,44 @@
     "records_many": "{{count}} rekordów",
     "records_other": "{{count}} rekordów",
     "error": "Błąd"
+  },
+  "sleep": {
+    "wakeUp": "Pobudka",
+    "wakeUpA11y": "Otwórz szczegóły snu porannego",
+    "bedTime": "Pójście spać",
+    "bedTimeA11y": "Otwórz szczegóły snu nocnego",
+    "napCount_one": "{{count}} drzemka",
+    "napCount_few": "{{count}} drzemki",
+    "napCount_many": "{{count}} drzemek",
+    "napCount_other": "{{count}} drzemki",
+    "napA11y": "Otwórz szczegóły drzemki, {{time}}, {{duration}}",
+    "timeAsleep": "Czas snu",
+    "timeInBed": "Czas w łóżku",
+    "score": "Wynik",
+    "valueUnavailable": "—",
+    "detailTitle": "Sen",
+    "loading": "Wczytywanie snu...",
+    "notFound": "Nie znaleziono wpisu snu",
+    "notFoundSubtitle": "Ta sesja snu mogła zostać usunięta lub nie jest już zsynchronizowana.",
+    "bedtimeToWake": "{{bedtime}} – {{wakeTime}}",
+    "hypnogram": "Fazy snu",
+    "hypnogramEmpty": "To źródło nie zarejestrowało faz snu.",
+    "stageBreakdown": "Podział na fazy",
+    "percentValue": "{{percent}}%",
+    "stage": {
+      "awake": "Czuwanie",
+      "rem": "REM",
+      "light": "Lekki",
+      "deep": "Głęboki",
+      "other": "Inne"
+    },
+    "biometrics": "Biometria nocna",
+    "averageSpo2": "Średnie SpO2",
+    "lowestSpo2": "Najniższe SpO2",
+    "highestSpo2": "Najwyższe SpO2",
+    "restingHeartRate": "Tętno spoczynkowe",
+    "percentUnit": "%",
+    "bpmUnit": "bpm",
+    "quality": "Jakość snu"
   }
 }

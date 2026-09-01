@@ -8,6 +8,14 @@ const fontFamily = Platform.select({ ios: 'Helvetica', default: 'sans-serif' });
 export const makeChartFont = (fontSize: number) =>
   matchFont({ fontFamily, fontSize });
 
+/**
+ * Axis label size for the dashboard trend charts. Skia text ignores the OS font-size
+ * setting, so any chart drawing its axis with React Native `<Text>` instead has to pin
+ * this size and pass `allowFontScaling={false}` — otherwise its labels grow past the
+ * ones beside them in the pager and truncate.
+ */
+export const CHART_LABEL_FONT_SIZE = 12;
+
 export const formatXLabel7d = (day: string): string => {
   if (typeof day !== 'string') return '';
   const [year, month, d] = day.split('-').map(Number);

@@ -135,6 +135,25 @@ jest.mock('../../src/components/FormInput', () => {
   };
 });
 
+// The FormInput mock above hardcodes one testID, so any second FormInput on
+// the screen would collide with the meal-name field. The notes editor has its
+// own behaviour and its own coverage; this suite only cares that the screen
+// forwards a note into the save payload.
+jest.mock('../../src/components/MarkdownNotesField', () => {
+  const React = require('react');
+  const { TextInput } = require('react-native');
+  return {
+    __esModule: true,
+    default: (props: any) => (
+      <TextInput
+        testID="meal-notes-input"
+        value={props.value}
+        onChangeText={props.onCommit}
+      />
+    ),
+  };
+});
+
 jest.mock('../../src/components/StepperInput', () => {
   const React = require('react');
   const { TextInput } = require('react-native');
@@ -423,6 +442,22 @@ describe('EditLoggedMealScreen', () => {
     const screen = renderScreen();
     pressAction(screen, navigation, 'Save');
     expect(mockUpdateMeal).not.toHaveBeenCalled();
+  });
+
+  it('enables Save for a note-only change', () => {
+    // `dirty` did not include the note, so editing only the note left Save
+    // disabled and the edit could not be saved at all.
+    const screen = renderScreen();
+
+    fireEvent.changeText(
+      screen.getByTestId('meal-notes-input'),
+      'reheated at work'
+    );
+    pressAction(screen, navigation, 'Save');
+
+    expect(mockUpdateMeal).toHaveBeenCalledWith(
+      expect.objectContaining({ notes: 'reheated at work' })
+    );
   });
 
   it('opens the meal-builder picker when Add Food is pressed', () => {

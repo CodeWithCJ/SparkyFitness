@@ -132,6 +132,22 @@ describe('workoutHandler — backward compatibility', () => {
       .calls[0][1];
     expect(payload.source_id).toBe('hk-workout-1');
   });
+
+  it('persists provider-associated workout steps for calorie deduplication', async () => {
+    await workoutHandler.handle(baseEntry({ steps: 6123 }), makeCtx());
+
+    const payload = (exerciseEntryDb.createExerciseEntry as Mock).mock
+      .calls[0][1];
+    expect(payload.steps).toBe(6123);
+  });
+
+  it('does not invent workout steps when the provider sends none', async () => {
+    await workoutHandler.handle(baseEntry(), makeCtx());
+
+    const payload = (exerciseEntryDb.createExerciseEntry as Mock).mock
+      .calls[0][1];
+    expect(payload.steps).toBeUndefined();
+  });
 });
 
 describe('workoutHandler — exercise modality', () => {

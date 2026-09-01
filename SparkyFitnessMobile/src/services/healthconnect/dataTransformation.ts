@@ -788,6 +788,11 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
       title: title,
       caloriesBurned: parseFloat(caloriesBurned.toFixed(2)),
       distance: parseFloat(distanceKm.toFixed(2)),
+      ...(typeof rec.steps === 'number' &&
+      Number.isFinite(rec.steps) &&
+      rec.steps > 0
+        ? { steps: Math.round(rec.steps) }
+        : {}),
       notes: rec.notes as string | undefined,
       raw_data: record,
       // duration_seconds instead of duration: servers without the seconds-based

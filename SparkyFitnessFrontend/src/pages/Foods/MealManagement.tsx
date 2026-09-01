@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { MarkdownView } from '@/components/ui/MarkdownView';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -71,7 +72,7 @@ import {
   useToggleFavoriteMutation,
 } from '@/hooks/Foods/useFavorites';
 import { DataTable } from '@/components/ui/DataTable';
-import { primaryImageOf } from '@/utils/foodImages';
+import { primaryImageOf, usableFoodImages } from '@/utils/foodImages';
 import {
   ColumnDef,
   RowSelectionState,
@@ -283,6 +284,8 @@ const MealManagement: React.FC = () => {
         const mealPayload: MealPayload = {
           name: mealToUpdate.name,
           description: mealToUpdate.description,
+          // Carried through so a share toggle can never strand the note.
+          notes: mealToUpdate.notes ?? null,
           is_public: true,
           foods:
             mealToUpdate.foods?.map((food) => ({
@@ -319,6 +322,8 @@ const MealManagement: React.FC = () => {
         const mealPayload: MealPayload = {
           name: mealToUpdate.name,
           description: mealToUpdate.description,
+          // Carried through so a share toggle can never strand the note.
+          notes: mealToUpdate.notes ?? null,
           is_public: false,
           foods:
             mealToUpdate.foods?.map((food) => ({
@@ -838,6 +843,19 @@ const MealManagement: React.FC = () => {
               </p>
             )}
           </div>
+
+          {/* After the ingredient list: the foods are what this dialog is
+              opened to check, and a full recipe above them pushes them down. */}
+          {viewingMeal?.notes ? (
+            <div className="rounded-md border bg-muted/40 px-3 py-2">
+              <h4 className="font-semibold mb-1 text-sm">
+                {t('mealManagement.notes', 'Notes')}
+              </h4>
+              <MarkdownView images={usableFoodImages(viewingMeal.images)}>
+                {viewingMeal.notes}
+              </MarkdownView>
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
 

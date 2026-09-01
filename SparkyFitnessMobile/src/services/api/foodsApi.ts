@@ -135,6 +135,7 @@ export const createFoodVariant = async (
 export interface SaveFoodPayload {
   name: string;
   brand: string | null;
+  notes?: string | null;
   serving_size: number;
   serving_unit: string;
   calories: number;
@@ -275,6 +276,11 @@ export interface UpdateFoodPayload {
   brand?: string;
   barcode?: string | null;
   shared_with_public?: boolean;
+  /**
+   * Key presence is the update signal (see the note above): omit it to leave
+   * the stored note alone, send null to clear it.
+   */
+  notes?: string | null;
 }
 
 export interface DeleteFoodResponse {

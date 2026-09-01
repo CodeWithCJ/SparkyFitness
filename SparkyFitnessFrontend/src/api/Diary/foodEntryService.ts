@@ -26,6 +26,8 @@ export interface FoodEntryCreateData {
   entry_date: string;
   entry_time?: string | null;
   variant_id?: string | null;
+  /** Per-occurrence markdown note; independent of the food's own `notes`. */
+  notes?: string | null;
 }
 export const updateFoodEntry = async (
   id: string,

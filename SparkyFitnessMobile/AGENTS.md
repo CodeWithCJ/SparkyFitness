@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-08-29_
+_Last updated: 2026-08-31_
 
 SparkyFitness Mobile is a React Native 0.85 + Expo SDK 56 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -31,7 +31,7 @@ English (`en`) is the canonical source locale and the deterministic fallback. Fe
 
 Feature developers do not need to know or translate Polish or any future language, and do not need to wait for Weblate. Translators/Weblate own Polish and future translations and linguistic QA. Missing translation content is non-blocking and falls back to English; existing translated content remains structurally validated.
 
-The shipped locale registry is `src/localization/localeRegistry.ts`. Adding a catalog to Weblate does not ship it. Shipping requires explicit registry enablement plus native/platform support verification. RN catalogs and native resources are separate surfaces (Expo metadata, Android widget resources, and iOS widget/Live Activity `.lproj` resources).
+The shipped locale registry is `src/localization/localeRegistry.json`, read through the typed accessors in `src/localization/localeRegistry.ts`. Adding a catalog to Weblate does not ship it. Shipping requires explicit registry enablement plus native/platform support verification. RN catalogs and native resources are separate surfaces (Expo metadata, Android widget resources, and iOS widget/Live Activity `.lproj` resources).
 
 ## Commands
 
@@ -129,7 +129,8 @@ npx expo prebuild --clean
 - On iOS, cumulative metrics should use HealthKit statistics queries, not raw sample summation.
 - On Android, cumulative metrics (`Steps`, `Distance`, `ActiveCaloriesBurned`, `TotalCaloriesBurned`, `FloorsClimbed`) use Health Connect `aggregateGroupByPeriod` once per range. Native source-priority dedup should match Health Connect UI; do not reintroduce JS `Math.max` or source allowlist dedup.
 - Android read helpers return `{ records, error }` via `readHealthRecordsDetailed` and `aggregateCumulativeMetricByDayDetailed`; legacy wrappers unwrap only records.
-- Android exercise sessions are enriched with `aggregateRecord` for active, total, and basal calories plus distance over the session window. Active/total calories start scoped to `dataOrigin`, while basal energy remains unfiltered; `total - basal` is compared as an active-energy candidate. Incomplete or implausible active/total pairs retry without the origin filter so Health Connect can apply source priority. Distance always stays origin-scoped.
+- Android exercise sessions are enriched with `aggregateRecord` for active, total, and basal calories plus distance and steps over the session window. Active/total calories start scoped to `dataOrigin`, while basal energy remains unfiltered; `total - basal` is compared as an active-energy candidate. Incomplete or implausible active/total pairs retry without the origin filter so Health Connect can apply source priority. Distance and steps always stay origin-scoped; never infer workout steps from an unfiltered clock-window query.
+- iOS exercise-session steps must come from statistics attached directly to the `HKWorkout`. Do not infer workout steps by querying all step samples in the workout's clock window.
 - iOS HealthKit locked-device failures surface as database-inaccessible warnings. Do not treat these as successful empty reads.
 - `app.config.ts` grants `android.permission.health.READ_HEALTH_DATA_HISTORY` so Android can read data older than 30 days.
 - Health Connect permission migrations belong in `services/shared/healthPermissionMigration.ts`, not UI-only state.
@@ -243,6 +244,7 @@ npx expo prebuild --clean
 
 - iOS widgets live under `targets/widget/`, share data through the app group from `app.identifiers.js`, and reload through `ExtensionStorage` in `useWidgetSync`.
 - Current iOS widgets are calorie and macro widgets. When changing display, update Swift views, shared helpers, TS snapshot shape, and reload kind handling together.
+- Widget string keys are derived from the Swift sources, not tracked by hand: `__tests__/config/helpers/widgetSwiftKeys.ts` discovers every `.swift` file under `targets/widget/` (recursively) and extracts the literal keys passed to `localizedWidgetString`, `configurationDisplayName` and `.description`. A new key must therefore be added to `targets/widget/en.lproj/Localizable.strings`, and — for `localizedWidgetString` keys — to the `fallbackWidgetString` map, or the contract tests fail. Target-language files stay optional and fall back to EN.
 - Android widgets live under `targets/android-widget/`. `plugins/withCalorieWidget.ts` copies Kotlin/templates/resources, registers receivers, wires the native module package, and documents the pattern for adding another widget.
 - `src/services/CalorieWidgetBridge.ts` is the JS bridge for Android widget snapshot writes and Glance reloads.
 - The scheduled "Rest complete" alert fires exactly only with the `SCHEDULE_EXACT_ALARM` special access ("Alarms & reminders", user-granted, denied by default on Android 13+) — without it expo-notifications falls back to inexact alarms the OS batches ~15s late. The `targets/android-exact-alarm/` Kotlin module (registered by `plugins/withExactAlarmModule.ts`) exposes `canScheduleExactAlarms`/`openExactAlarmSettings` through `src/services/ExactAlarmBridge.ts`; `maybePromptForExactAlarmPermission` in `notifications.ts` owns the one-time grant prompt at workout start.
@@ -320,6 +322,7 @@ const androidService = require('../../src/services/healthConnectService.ts');
 - Measurements/hydration bug: inspect dashboard/diary/measurements screens, summaries/gauges, measurement/water/check-in hooks, API, date helpers, widget sync, writeback, and unit conversions.
 - Scan/photo bug: inspect food scan/search, `FoodPhotoFlow`, photo screens, AI setting hook/API, estimate hook/API, intro persistence, haptics, icon usage, and route params.
 - Widget/deep-link bug: inspect `useWidgetSync`, `CalorieWidgetBridge`, widget targets, widget plugins, `app.config.ts`, `app.identifiers.js`, `App.tsx`, and dashboard.
+- Widget string shows as a raw key: inspect `targets/widget/en.lproj/Localizable.strings`, the `fallbackWidgetString` map in `SharedHelpers.swift`, and the derived-key contract in `__tests__/config/helpers/widgetSwiftKeys.ts`.
 - Settings/diagnostics bug: inspect settings screens, `SettingsRow`, haptics/theme/sounds/notification services, diagnostics services, `DevTools`, and screen error boundaries.
 
 ## Priority Rule

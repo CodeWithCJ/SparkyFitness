@@ -61,6 +61,7 @@ import {
   SafeWorkoutComplete,
   SafeActivityDetail,
   SafeFastingDetail,
+  SafeSleepDetail,
   SafeLogs,
   SafeSync,
   SafeImportHistory,
@@ -619,6 +620,11 @@ function AppContent() {
               headerShown: false,
               gestureEnabled: true,
             }}
+          />
+          <Stack.Screen
+            name="SleepDetail"
+            component={SafeSleepDetail}
+            options={createStackScreenOptions(t('screens.sleep', { defaultValue: 'Sleep' }), { headerBackTitle: t('navigation.diary', { defaultValue: 'Diary' }) })}
           />
           <Stack.Screen
             name="Logs"

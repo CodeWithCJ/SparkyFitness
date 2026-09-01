@@ -37,7 +37,7 @@ jest.mock('@/contexts/ActiveUserContext', () => ({
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
     loggingLevel: 'debug',
-    foodDisplayLimit: 100,
+    itemDisplayLimit: 100,
     nutrientDisplayPreferences: [
       {
         view_group: 'quick_info',

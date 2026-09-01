@@ -32,8 +32,11 @@ import CalendarSheet, {
   type CalendarSheetRef,
 } from '../components/CalendarSheet';
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
+import MarkdownNotesField from '../components/MarkdownNotesField';
+import { NoteMarkdown } from '../components/NoteMarkdown';
 import { toHourMinute } from '@workspace/shared';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
+import { usableFoodImages } from '../utils/foodImages';
 import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
 import { getLocalizedMealLabel } from '../constants/meals';
 import {
@@ -187,6 +190,8 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     isEditing: boolean;
     selectedDate: string;
     entryTime: string;
+    /** Per-occurrence note draft; independent of the food's own note. */
+    entryNotes: string;
     selectedMealId: string | undefined;
     selectedVariantId: string | undefined;
     quantityText: string;
@@ -202,6 +207,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     isEditing: false,
     selectedDate: initialDate,
     entryTime: initialEntryTime,
+    entryNotes: entry.notes ?? '',
     selectedMealId: entry.meal_type_id,
     selectedVariantId: entry.variant_id,
     quantityText: String(entry.quantity),
@@ -213,6 +219,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     isEditing,
     selectedDate,
     entryTime,
+    entryNotes,
     selectedMealId,
     selectedVariantId,
     quantityText,
@@ -729,6 +736,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         isEditing: false,
         selectedDate: normalizeDate(mergedEntry.entry_date),
         entryTime: toHourMinute(mergedEntry.entry_time) || '',
+        entryNotes: mergedEntry.notes ?? '',
         selectedMealId: mergedEntry.meal_type_id,
         selectedVariantId: mergedEntry.variant_id,
         quantityText: String(mergedEntry.quantity),
@@ -745,6 +753,11 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       payload.unit = displayValues.servingUnit;
     if ((entryTime || null) !== (toHourMinute(entry.entry_time) || null)) {
       payload.entry_time = entryTime || null;
+    }
+    // Key presence is the update signal: send `notes` only when it changed, so
+    // an unrelated edit can never wipe the note.
+    if (entryNotes.trim() !== (entry.notes ?? '').trim()) {
+      payload.notes = entryNotes.trim() || null;
     }
     if (selectedVariantId !== entry.variant_id) {
       payload.variant_id = selectedVariantId;
@@ -1461,6 +1474,40 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                 t('common.none', { defaultValue: 'None' })}
             </Text>
           )}
+        </Animated.View>
+
+        <Animated.View layout={LinearTransition.duration(300)} className="mt-3">
+          {isEditing ? (
+            <MarkdownNotesField
+              images={[
+                ...usableFoodImages(entry.images),
+                ...usableFoodImages(entry.food_images),
+              ]}
+              value={entryNotes}
+              onCommit={(text) => updateEdit({ entryNotes: text })}
+              label={t('foodEntryView.entryNotes', {
+                defaultValue: 'Note for this entry',
+              })}
+            />
+          ) : entry.notes ? (
+            <>
+              <Text className="text-xs font-semibold uppercase text-text-muted mb-1">
+                {t('foodEntryView.entryNotes', {
+                  defaultValue: 'Note for this entry',
+                })}
+              </Text>
+              <View className="rounded-lg border border-border-subtle bg-raised px-3 py-2">
+                <NoteMarkdown
+                  text={entry.notes}
+                  fontSize={14}
+                  images={[
+                    ...usableFoodImages(entry.images),
+                    ...usableFoodImages(entry.food_images),
+                  ]}
+                />
+              </View>
+            </>
+          ) : null}
         </Animated.View>
 
         <Animated.View layout={LinearTransition.duration(300)}>

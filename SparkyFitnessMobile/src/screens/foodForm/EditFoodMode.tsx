@@ -7,6 +7,7 @@ import { CommonActions } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import FoodForm, { type FoodFormData } from '../../components/FoodForm';
 import FoodImagePicker from '../../components/FoodImagePicker';
+import { usableFoodImages } from '../../utils/foodImages';
 import {
   pickerImagesDiffer,
   splitPickerImages,
@@ -26,6 +27,7 @@ import {
   updateFoodEntriesSnapshot,
   type CreateFoodVariantPayload,
   type UpdateFoodVariantPayload,
+  type UpdateFoodPayload,
 } from '../../services/api/foodsApi';
 import type { FoodFormScreenProps } from '../FoodFormScreen';
 import type { FoodInfoItem } from '../../types/foodInfo';
@@ -117,6 +119,18 @@ export function EditFoodMode({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pickerImages, setPickerImages] = useState<PickerImage[]>(() =>
     toSavedImages(item?.images)
+  );
+
+  // Only already-saved photos can be embedded in a note: a staged file exists
+  // solely on the device until the food is saved, so it has no path to link to.
+  const savedNoteImages = useMemo(
+    () =>
+      usableFoodImages(
+        pickerImages
+          .filter((image) => image.kind === 'saved')
+          .map((image) => image.path)
+      ),
+    [pickerImages]
   );
   const imagesChanged = pickerImagesDiffer(pickerImages, item?.images);
   const { createVariant } = useCreateFoodVariant();
@@ -318,10 +332,14 @@ export function EditFoodMode({
       let nextVariantBaselineValues = variantBaselineValues;
       let nextCustomNutrients = currentCustomNutrients;
 
-      const foodPayload: { name?: string; brand?: string } = {};
+      const foodPayload: UpdateFoodPayload = {};
       if (data.name !== initialValues.name) foodPayload.name = data.name;
       if (data.brand !== initialValues.brand)
         foodPayload.brand = data.brand || '';
+      // Key presence is the update signal, so only set `notes` when it really
+      // changed; an unchanged save must leave the stored note untouched.
+      if ((data.notes ?? '') !== (initialValues.notes ?? ''))
+        foodPayload.notes = (data.notes ?? '').trim() || null;
       // Only send images when they actually changed: the server treats a
       // supplied `images` array as authoritative and deletes anything omitted,
       // so an unchanged round-trip is wasted work at best.
@@ -631,6 +649,8 @@ export function EditFoodMode({
         submitRequestRef={submitRequestRef}
         initialValues={initialValues}
         submitLabel={SAVE_LABEL}
+        showNotes
+        noteImages={savedNoteImages}
         isSubmitting={isSubmitting}
         hideSubmitButton={usesNativeHeader}
         headerChildren={
