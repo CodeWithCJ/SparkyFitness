@@ -790,6 +790,7 @@ Actions:
 - update_entry(entry_id?|food_name?, entry_type?, entry_date?, quantity?, unit?, meal_type_id?, meal_type?) — changes quantity/unit and/or moves the entry to another meal type (meal_type/meal_type_id is the NEW meal). Provide entry_id when you have it; otherwise food_name is resolved against the diary for entry_date (defaults to today). Ambiguous names return the candidates with their ids instead of updating.
 - update_food_variant(food_id?|variant_id?, serving_size?, serving_unit?, calories?, protein?, carbs?, fat?, saturated_fat?, fiber?, sugar?, sodium?, ..., update_existing_entries?) — updates an existing food variant without deleting the food. Defaults to leaving existing diary entries unchanged.
 - copy_from_yesterday(target_date?, source_date?, meal_type_id?|meal_type?)
+- set_food_notes(food_id?|food_name?, notes) — Sets the markdown reference note on a saved food (how the user orders or prepares it, a recipe). Pass an empty string to clear it. It REPLACES the existing note, so when the user is adding to one, read the food first and send the merged text. Owner-only: it fails on someone else's shared or public food. Never write a note the user did not ask for.
 - save_as_meal_template(entry_date, meal_type_id?|meal_type?, meal_name, description?, notes?) — REQUIRES EXPLICIT action field. Saves diary entries for a given date and meal type as a reusable meal template. notes is an optional markdown reference note (e.g. a recipe) and is only set when the user supplied one.
 - log_water(amount_ml, entry_date)
 - get_nutritional_summary(start_date, end_date) — returns macro breakdown for a range of dates
@@ -1891,6 +1892,64 @@ Actions:
                 throw error;
               }
               return formatConfirmation('Entry deleted.');
+            }
+
+            case 'set_food_notes': {
+              if (!args.food_id && !args.food_name) {
+                return ERRORS.VALIDATION(
+                  'Either food_id or food_name must be provided'
+                );
+              }
+              let notesFoodId = args.food_id;
+              let notesFoodName = args.food_name;
+              if (!notesFoodId) {
+                const row = await findFoodByExactName(
+                  userId,
+                  args.food_name ?? ''
+                );
+                if (!row) {
+                  return ERRORS.VALIDATION(
+                    `Food "${args.food_name}" not found.`
+                  );
+                }
+                notesFoodId = row.id;
+                notesFoodName = row.name;
+              } else {
+                const row = await foodRepository.getFoodById(
+                  notesFoodId,
+                  userId
+                );
+                if (!row) {
+                  return ERRORS.NOT_FOUND(
+                    'Food',
+                    args.food_id || args.food_name || 'unknown'
+                  );
+                }
+                notesFoodName = row.name;
+              }
+              try {
+                // The service rejects a food the user does not own, so a
+                // shared or public food cannot be edited through here.
+                // sanitizeNotes turns an empty string into NULL, which is how
+                // clearing is expressed: the tool layer strips null arguments
+                // before validation, so null can never reach here.
+                await foodCoreService.updateFood(userId, notesFoodId!, {
+                  notes: args.notes ?? '',
+                });
+              } catch (err) {
+                // updateFood throws Forbidden for a food the user does not
+                // own, which is a normal outcome for a shared or public food.
+                const message =
+                  err instanceof Error ? err.message : String(err);
+                return message.toLowerCase().includes('forbidden')
+                  ? ERRORS.FORBIDDEN(
+                      `You can only edit notes on your own foods (${notesFoodName}).`
+                    )
+                  : ERRORS.DB_ERROR(err);
+              }
+              return args.notes?.trim()
+                ? `Saved the note on ${notesFoodName}.`
+                : `Cleared the note on ${notesFoodName}.`;
             }
 
             case 'delete_food': {

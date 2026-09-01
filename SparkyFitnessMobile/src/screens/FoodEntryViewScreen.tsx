@@ -33,9 +33,10 @@ import CalendarSheet, {
 } from '../components/CalendarSheet';
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import MarkdownNotesField from '../components/MarkdownNotesField';
-import MarkdownMessage from '../components/chat/MarkdownMessage';
+import { NoteMarkdown } from '../components/NoteMarkdown';
 import { toHourMinute } from '@workspace/shared';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
+import { usableFoodImages } from '../utils/foodImages';
 import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
 import { getLocalizedMealLabel } from '../constants/meals';
 import {
@@ -1478,6 +1479,10 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         <Animated.View layout={LinearTransition.duration(300)} className="mt-3">
           {isEditing ? (
             <MarkdownNotesField
+              images={[
+                ...usableFoodImages(entry.images),
+                ...usableFoodImages(entry.food_images),
+              ]}
               value={entryNotes}
               onCommit={(text) => updateEdit({ entryNotes: text })}
               label={t('foodEntryView.entryNotes', {
@@ -1492,10 +1497,13 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                 })}
               </Text>
               <View className="rounded-lg border border-border-subtle bg-raised px-3 py-2">
-                <MarkdownMessage
+                <NoteMarkdown
                   text={entry.notes}
-                  streaming={false}
                   fontSize={14}
+                  images={[
+                    ...usableFoodImages(entry.images),
+                    ...usableFoodImages(entry.food_images),
+                  ]}
                 />
               </View>
             </>

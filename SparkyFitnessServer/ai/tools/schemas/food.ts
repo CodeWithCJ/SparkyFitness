@@ -590,6 +590,27 @@ const saveAsMealTemplateSchema = z
   })
   .strict();
 
+const setFoodNotesSchema = z
+  .object({
+    action: z.literal('set_food_notes'),
+    food_id: uuidSchema
+      .optional()
+      .describe('UUID of the food whose note is being set'),
+    food_name: z
+      .string()
+      .min(1)
+      .max(200)
+      .optional()
+      .describe('Name of the food (alternative to food_id)'),
+    notes: z
+      .string()
+      .max(NOTES_MAX_LENGTH)
+      .describe(
+        'The markdown note to store; pass an empty string to clear it. Replaces any existing note outright, so include the parts the user wants to keep.'
+      ),
+  })
+  .strict();
+
 const deleteFoodSchema = z
   .object({
     action: z.literal('delete_food'),
@@ -643,6 +664,7 @@ export const manageFoodSchema = z.discriminatedUnion('action', [
   logMealSchema,
   listDiarySchema,
   deleteEntrySchema,
+  setFoodNotesSchema,
   deleteFoodSchema,
   updateEntrySchema,
   updateFoodVariantSchema,
@@ -674,6 +696,7 @@ export const manageFoodInput = z.object({
       'delete_entry',
       'delete_food',
       'update_entry',
+      'set_food_notes',
       'update_food_variant',
       'copy_from_yesterday',
       'save_as_meal_template',
@@ -839,7 +862,7 @@ export const manageFoodInput = z.object({
     .optional()
     .describe('Description (for save_as_meal_template)'),
   notes: notesSchema.describe(
-    'Markdown reference note (for create_food / save_as_meal_template)'
+    'Markdown reference note (for create_food / save_as_meal_template / set_food_notes; empty string clears it)'
   ),
   // copy_from_yesterday
   target_date: optionalDateSchema.describe('Target date (defaults to today)'),

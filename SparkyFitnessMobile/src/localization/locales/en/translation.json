@@ -4806,6 +4806,22 @@
     "placeholder": "Add a note… (supports markdown)",
     "write": "Write",
     "preview": "Preview",
-    "nothingToPreview": "Nothing to preview yet."
+    "nothingToPreview": "Nothing to preview yet.",
+    "toolbar": {
+      "bold": "Bold",
+      "italic": "Italic",
+      "strikethrough": "Strikethrough",
+      "heading": "Heading",
+      "bulletList": "Bulleted list",
+      "numberedList": "Numbered list",
+      "taskList": "Checklist (display only)",
+      "quote": "Quote",
+      "code": "Code",
+      "link": "Link",
+      "table": "Table",
+      "insertImage": "Insert photo",
+      "photoNumber": "Photo {{number}}"
+    },
+    "photoUnavailable": "Photo unavailable"
   }
 }

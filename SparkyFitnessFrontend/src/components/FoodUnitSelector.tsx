@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Check, Sparkles, Clock, CalendarDays, X } from 'lucide-react';
 import {
   Dialog,
@@ -65,6 +65,7 @@ import { AiEstimateSection } from '@/components/FoodUnitSelector/AiEstimateSecti
 import FavoriteStarButton from '@/components/FavoriteStarButton';
 import { MarkdownView } from '@/components/ui/MarkdownView';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
+import { usableFoodImages } from '@/utils/foodImages';
 
 interface FoodUnitSelectorProps {
   food: Food;
@@ -488,6 +489,17 @@ const FoodUnitSelector = ({
     ? buildConvertedVariant()
     : selectedVariant;
 
+  // Photos of the food being logged, offered to the note editor. Already
+  // resolved to a usable src, which is the form written into the markdown.
+  const foodImagePaths = useMemo(
+    () => usableFoodImages(food?.images),
+    [food?.images]
+  );
+  const foodImageOptions = useMemo(
+    () => foodImagePaths.map((src) => ({ path: src, src })),
+    [foodImagePaths]
+  );
+
   const nutrition = (() => {
     if (!activeVariant) return null;
     const ratio = quantity / (activeVariant.serving_size || 1);
@@ -702,38 +714,6 @@ const FoodUnitSelector = ({
                 </div>
               )}
 
-              {food?.notes ? (
-                <div className="space-y-1">
-                  <Label>
-                    {t('foodUnitSelector.foodNotes', 'About this food')}
-                  </Label>
-                  <div className="rounded-md border bg-muted/40 px-3 py-2 max-h-48 overflow-y-auto">
-                    <MarkdownView>{food.notes}</MarkdownView>
-                  </div>
-                </div>
-              ) : null}
-
-              {showTimeInput && (
-                <div className="space-y-1">
-                  <Label htmlFor="entryNotes">
-                    {t(
-                      'foodUnitSelector.entryNotes',
-                      'Note for this entry (optional)'
-                    )}
-                  </Label>
-                  <MarkdownEditor
-                    id="entryNotes"
-                    value={entryNotes}
-                    onChange={setEntryNotes}
-                    rows={3}
-                    placeholder={t(
-                      'foodUnitSelector.entryNotesPlaceholder',
-                      'Anything specific about this time you ate it'
-                    )}
-                  />
-                </div>
-              )}
-
               {/* Custom unit name input */}
               {pendingUnitIsCustom && (
                 <div className="border rounded-lg p-3 space-y-3 bg-muted/50">
@@ -906,6 +886,48 @@ const FoodUnitSelector = ({
                   </div>
                 </div>
               )}
+
+              {/*
+                Below the nutrition panel on purpose: the figures are what this
+                dialog is opened to check, and a long note above them would push
+                them off-screen.
+              */}
+              {food?.notes ? (
+                <div className="space-y-1">
+                  <Label>
+                    {t('foodUnitSelector.foodNotes', 'About this food')}
+                  </Label>
+                  <div className="rounded-md border bg-muted/40 px-3 py-2 max-h-48 overflow-y-auto">
+                    <MarkdownView images={foodImagePaths}>
+                      {food.notes}
+                    </MarkdownView>
+                  </div>
+                </div>
+              ) : null}
+
+              {/*
+                Not gated on `showTimeInput`: a per-occasion note has nothing to
+                do with whether the time picker is shown.
+              */}
+              <div className="space-y-1">
+                <Label htmlFor="entryNotes">
+                  {t(
+                    'foodUnitSelector.entryNotes',
+                    'Note for this entry (optional)'
+                  )}
+                </Label>
+                <MarkdownEditor
+                  id="entryNotes"
+                  value={entryNotes}
+                  onChange={setEntryNotes}
+                  rows={3}
+                  placeholder={t(
+                    'foodUnitSelector.entryNotesPlaceholder',
+                    'Anything specific about this time you ate it'
+                  )}
+                  imageOptions={foodImageOptions}
+                />
+              </div>
 
               <div className="flex justify-end space-x-2">
                 <Button

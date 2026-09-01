@@ -23,7 +23,8 @@ import { useQuery } from '@tanstack/react-query';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
 import MarkdownNotesField from '../components/MarkdownNotesField';
-import MarkdownMessage from '../components/chat/MarkdownMessage';
+import { NoteMarkdown } from '../components/NoteMarkdown';
+import { usableFoodImages } from '../utils/foodImages';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import {
   FoodNutritionHeader,
@@ -1742,7 +1743,23 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                 />
               </View>
             ) : null}
+          </>
+        ) : null}
 
+        <FoodNutrientBreakdown
+          values={displayValues}
+          servings={servings}
+          showNetCarbs={showNetCarbs}
+          customNutrients={selectedCustomNutrients}
+        />
+
+        {/*
+          Notes sit below the nutrient breakdown on purpose: the numbers are
+          what this screen is opened to check, and a long recipe above them
+          would push them off-screen.
+        */}
+        {!isSelectionMode ? (
+          <>
             {activeItem.notes ? (
               <View className="mt-3">
                 <Text className="text-xs font-semibold uppercase text-text-muted mb-1">
@@ -1751,10 +1768,10 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                   })}
                 </Text>
                 <View className="rounded-lg border border-border-subtle bg-raised px-3 py-2">
-                  <MarkdownMessage
+                  <NoteMarkdown
                     text={activeItem.notes}
-                    streaming={false}
                     fontSize={14}
+                    images={usableFoodImages(activeItem.images)}
                   />
                 </View>
               </View>
@@ -1762,6 +1779,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
             <View className="mt-3">
               <MarkdownNotesField
+                images={usableFoodImages(activeItem.images)}
                 value={entryNotes}
                 onCommit={setEntryNotes}
                 label={t('foodEntryAdd.labels.entryNotes', {
@@ -1774,13 +1792,6 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             </View>
           </>
         ) : null}
-
-        <FoodNutrientBreakdown
-          values={displayValues}
-          servings={servings}
-          showNetCarbs={showNetCarbs}
-          customNutrients={selectedCustomNutrients}
-        />
       </ScrollView>
 
       {/* Sticky footer */}

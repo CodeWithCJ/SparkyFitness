@@ -18,6 +18,7 @@ import BottomSheetPicker from '../components/BottomSheetPicker';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import MarkdownNotesField from '../components/MarkdownNotesField';
+import { usableFoodImages } from '../utils/foodImages';
 import StatusView from '../components/StatusView';
 import { FooterSaveBar } from '../components/FormScreenChrome';
 import Icon from '../components/Icon';
@@ -615,15 +616,6 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
             />
           </View>
 
-          <MarkdownNotesField
-            value={notes}
-            onCommit={setNotes}
-            label={t('mealBuilder.notes', { defaultValue: 'Notes (optional)' })}
-            placeholder={t('mealBuilder.notesPlaceholder', {
-              defaultValue: 'e.g. the recipe, or how you prepare this',
-            })}
-          />
-
           {/* Top row: count-or-amount + unit selector */}
           <View className="flex-row gap-3">
             <View className="flex-1 gap-1.5">
@@ -968,6 +960,25 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
               ) : null}
             </View>
           ) : null}
+
+          {/*
+            Last, after the ingredients and nutrition totals: those are what
+            this screen is for, and a full recipe above them would push them
+            off-screen.
+          */}
+          <View className="mt-4">
+            <MarkdownNotesField
+              images={usableFoodImages(editMeal?.images)}
+              value={notes}
+              onCommit={setNotes}
+              label={t('mealBuilder.notes', {
+                defaultValue: 'Notes (optional)',
+              })}
+              placeholder={t('mealBuilder.notesPlaceholder', {
+                defaultValue: 'e.g. the recipe, or how you prepare this',
+              })}
+            />
+          </View>
         </View>
       </ScrollView>
 

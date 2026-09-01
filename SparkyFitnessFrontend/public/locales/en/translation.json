@@ -2812,7 +2812,8 @@
     "foodSnapshotUpdatedSuccessfully": "Food entries snapshot updated successfully.",
     "foods": "foods",
     "name": "Name",
-    "removeFromFavorites": "Remove from favorites"
+    "removeFromFavorites": "Remove from favorites",
+    "notes": "Notes"
   },
   "mealManagement": {
     "failedToLoadMeals": "Failed to load meals.",
@@ -4918,11 +4919,25 @@
     "bulletList": "Bulleted list",
     "numberedList": "Numbered list",
     "nothingToPreview": "Nothing to preview yet.",
-    "charactersRemaining": "{{count}} characters left"
+    "charactersRemaining": "{{count}} characters left",
+    "heading": "Heading",
+    "strikethrough": "Strikethrough",
+    "quote": "Quote",
+    "taskList": "Checklist (display only)",
+    "table": "Table",
+    "insertImage": "Insert photo",
+    "chooseImage": "Insert one of this item’s photos",
+    "imageAlt": "photo {{number}}",
+    "expand": "Expand editor",
+    "collapse": "Shrink editor"
   },
   "foodUnitSelector": {
     "foodNotes": "About this food",
     "entryNotes": "Note for this entry (optional)",
     "entryNotesPlaceholder": "Anything specific about this time you ate it"
+  },
+  "editFoodEntry": {
+    "aboutThisFood": "About this food",
+    "entryNotes": "Note for this entry (optional)"
   }
 }

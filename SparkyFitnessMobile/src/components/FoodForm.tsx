@@ -109,6 +109,8 @@ export interface FoodFormProps {
     onChange: (next: EquivalentUnit[]) => void;
     disabled?: boolean;
   };
+  /** Saved photos of the food, offered by the notes toolbar's insert-photo picker. */
+  noteImages?: readonly string[];
   headerChildren?: React.ReactNode;
   children?: React.ReactNode;
   /** Initial custom nutrient values (key = nutrient name, value = amount). */
@@ -139,6 +141,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
   unitSelector,
   convertServingSizeOnUnitChange = false,
   equivalents,
+  noteImages,
   headerChildren,
   children,
   customNutrients: customNutrientsProp,
@@ -943,18 +946,6 @@ const FoodForm: React.FC<FoodFormProps> = ({
             false,
             'servingSize'
           )}
-          {showNotes ? (
-            <MarkdownNotesField
-              value={form.notes}
-              onCommit={(text) => update('notes', text)}
-              label={t('foodForm.notes', { defaultValue: 'Notes' })}
-              placeholder={t('foodForm.notesPlaceholder', {
-                defaultValue:
-                  'e.g. White rice, double chicken, no beans (supports markdown)',
-              })}
-            />
-          ) : null}
-
           {/* Serving */}
           <View className="flex-row gap-3">
             {renderNumericField(
@@ -1371,6 +1362,25 @@ const FoodForm: React.FC<FoodFormProps> = ({
             </>
           )}
         </View>
+
+        {/*
+          After the nutrition fields, not before them: those are the point of
+          this form, and a long recipe ahead of them would push them off-screen.
+        */}
+        {showNotes ? (
+          <View className="mt-4">
+            <MarkdownNotesField
+              images={noteImages}
+              value={form.notes}
+              onCommit={(text) => update('notes', text)}
+              label={t('foodForm.notes', { defaultValue: 'Notes' })}
+              placeholder={t('foodForm.notesPlaceholder', {
+                defaultValue:
+                  'e.g. White rice, double chicken, no beans (supports markdown)',
+              })}
+            />
+          </View>
+        ) : null}
 
         {children}
 

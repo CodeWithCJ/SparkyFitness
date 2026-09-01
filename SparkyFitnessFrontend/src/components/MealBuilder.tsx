@@ -53,6 +53,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
 import { MarkdownView } from '@/components/ui/MarkdownView';
+import { resolveFoodImageSrc } from '@/utils/foodImages';
 import { FoodImagePicker } from './FoodSearch/FoodImagePicker';
 import {
   splitPickerImages,
@@ -183,6 +184,21 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   // apart from `mealNotes` on purpose: copying a recipe into every logged
   // occasion duplicates it and lets the two drift.
   const [templateNotes, setTemplateNotes] = useState<string | null>(null);
+  // Saved photos only — a staged file has no server path for a note to link to.
+  const savedMealImageOptions = useMemo(
+    () =>
+      mealImageItems.flatMap((item) => {
+        if (item.kind !== 'saved') return [];
+        const src = resolveFoodImageSrc(item.path);
+        return src ? [{ path: src, src }] : [];
+      }),
+    [mealImageItems]
+  );
+
+  const mealImagePaths = useMemo(
+    () => savedMealImageOptions.map((image) => image.path),
+    [savedMealImageOptions]
+  );
   const [entryTime, setEntryTime] = useState<string>(
     toHourMinute(initialEntryTime) || ''
   );
@@ -1378,28 +1394,6 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           )}
         />
       </div>
-      {templateNotes ? (
-        <div className="space-y-2">
-          <Label>{t('mealBuilder.templateNotes', 'About this meal')}</Label>
-          <div className="rounded-md border bg-muted/40 px-3 py-2 max-h-48 overflow-y-auto">
-            <MarkdownView>{templateNotes}</MarkdownView>
-          </div>
-        </div>
-      ) : null}
-      <div className="space-y-2">
-        <Label htmlFor="mealNotes">
-          {t('mealBuilder.mealNotes', 'Notes (Optional)')}
-        </Label>
-        <MarkdownEditor
-          id="mealNotes"
-          value={mealNotes}
-          onChange={setMealNotes}
-          placeholder={t(
-            'mealBuilder.mealNotesPlaceholder',
-            'e.g., the recipe, or how you prepare this'
-          )}
-        />
-      </div>
       {source !== 'food-diary' && (
         <FoodImagePicker
           idPrefix="meal"
@@ -1867,6 +1861,35 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           if (!open) setViewingLinkedMealId(null);
         }}
       />
+
+      {/*
+        Notes come last, after the ingredients and nutrition totals: those are
+        what this screen is for, and a full recipe above them would push them
+        off-screen.
+      */}
+      {templateNotes ? (
+        <div className="space-y-2">
+          <Label>{t('mealBuilder.templateNotes', 'About this meal')}</Label>
+          <div className="rounded-md border bg-muted/40 px-3 py-2 max-h-48 overflow-y-auto">
+            <MarkdownView images={mealImagePaths}>{templateNotes}</MarkdownView>
+          </div>
+        </div>
+      ) : null}
+      <div className="space-y-2">
+        <Label htmlFor="mealNotes">
+          {t('mealBuilder.mealNotes', 'Notes (Optional)')}
+        </Label>
+        <MarkdownEditor
+          id="mealNotes"
+          value={mealNotes}
+          onChange={setMealNotes}
+          placeholder={t(
+            'mealBuilder.mealNotesPlaceholder',
+            'e.g., the recipe, or how you prepare this'
+          )}
+          imageOptions={savedMealImageOptions}
+        />
+      </div>
 
       <div className="flex justify-end space-x-2">
         <Button variant="outline" onClick={onCancel}>

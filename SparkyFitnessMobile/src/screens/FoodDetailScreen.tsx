@@ -16,7 +16,8 @@ import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
-import MarkdownMessage from '../components/chat/MarkdownMessage';
+import { NoteMarkdown } from '../components/NoteMarkdown';
+import { usableFoodImages } from '../utils/foodImages';
 import StatusView from '../components/StatusView';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
@@ -425,10 +426,10 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
             <Text className="text-text-secondary text-sm mb-2">
               {t('foodDetail.notes', { defaultValue: 'Notes' })}
             </Text>
-            <MarkdownMessage
+            <NoteMarkdown
               text={food.notes}
-              streaming={false}
               fontSize={14}
+              images={usableFoodImages(food.images)}
             />
           </View>
         ) : null}

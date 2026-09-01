@@ -18,6 +18,7 @@ vi.mock('../services/foodCoreService', () => ({
   default: {
     createFood: vi.fn(),
     getFoodById: vi.fn(),
+    updateFood: vi.fn(),
     deleteFood: vi.fn(),
     updateFoodEntriesSnapshot: vi.fn(),
     bulkCreateFoodVariants: vi.fn(),
@@ -4409,5 +4410,78 @@ describe('sparky_get_food_usage', () => {
       20,
       0
     );
+  });
+});
+
+describe('sparky_manage_food set_food_notes', () => {
+  const FOOD_UUID = '11111111-2222-4333-8444-555555555555';
+
+  it('stores a note on a food found by name', async () => {
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
+      { id: FOOD_UUID, name: 'Chipotle bowl' },
+    ] as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'set_food_notes',
+        food_name: 'Chipotle bowl',
+        notes: '**White rice**, double chicken',
+      },
+      opts
+    );
+
+    expect(foodCoreService.updateFood).toHaveBeenCalledWith(
+      'user-1',
+      FOOD_UUID,
+      { notes: '**White rice**, double chicken' }
+    );
+    expect(result).toBe('Saved the note on Chipotle bowl.');
+  });
+
+  it('clears the note when passed an empty string', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: FOOD_UUID,
+      name: 'Chipotle bowl',
+    } as never);
+
+    const result = await tools.sparky_manage_food.execute!(
+      // Null cannot be used: the tool layer strips null arguments before
+      // validation, so an empty string is the clear signal.
+      { action: 'set_food_notes', food_id: FOOD_UUID, notes: '' },
+      opts
+    );
+
+    expect(foodCoreService.updateFood).toHaveBeenCalledWith(
+      'user-1',
+      FOOD_UUID,
+      { notes: '' }
+    );
+    expect(result).toBe('Cleared the note on Chipotle bowl.');
+  });
+
+  it('refuses a food the user does not own', async () => {
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: FOOD_UUID,
+      name: 'Shared food',
+    } as never);
+    vi.mocked(foodCoreService.updateFood).mockRejectedValue(
+      new Error('Forbidden: You do not own this food.')
+    );
+
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'set_food_notes', food_id: FOOD_UUID, notes: 'mine now' },
+      opts
+    );
+
+    expect(result).toContain('FORBIDDEN');
+  });
+
+  it('requires a food to act on', async () => {
+    const result = await tools.sparky_manage_food.execute!(
+      { action: 'set_food_notes', notes: 'orphan' },
+      opts
+    );
+
+    expect(result).toContain('food_id or food_name');
   });
 });

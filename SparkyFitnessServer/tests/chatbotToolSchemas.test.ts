@@ -132,6 +132,7 @@ describe('published (flat) chatbot tool schemas', () => {
         'delete_entry',
         'delete_food',
         'update_entry',
+        'set_food_notes',
         'update_food_variant',
         'copy_from_yesterday',
         'save_as_meal_template',

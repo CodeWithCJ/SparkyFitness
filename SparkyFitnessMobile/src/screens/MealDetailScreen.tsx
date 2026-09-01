@@ -7,7 +7,8 @@ import Toast from 'react-native-toast-message';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
-import MarkdownMessage from '../components/chat/MarkdownMessage';
+import { NoteMarkdown } from '../components/NoteMarkdown';
+import { usableFoodImages } from '../utils/foodImages';
 import SegmentedControl from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
@@ -383,19 +384,6 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
           showNetCarbs={showNetCarbs}
         />
 
-        {meal.notes ? (
-          <View className="bg-surface rounded-xl p-4 shadow-sm">
-            <Text className="text-text-secondary text-sm mb-2">
-              {t('mealDetail.notes', { defaultValue: 'Notes' })}
-            </Text>
-            <MarkdownMessage
-              text={meal.notes}
-              streaming={false}
-              fontSize={14}
-            />
-          </View>
-        ) : null}
-
         <View className="bg-surface rounded-xl p-4 shadow-sm">
           <View className="flex-row items-center mb-3">
             <Text className="text-base font-bold text-text-secondary flex-1">
@@ -496,6 +484,21 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
             return <View key={food.id}>{row}</View>;
           })}
         </View>
+
+        {/* After the ingredients: the nutrition and the food list are what this
+            screen is opened to check. */}
+        {meal.notes ? (
+          <View className="bg-surface rounded-xl p-4 shadow-sm">
+            <Text className="text-text-secondary text-sm mb-2">
+              {t('mealDetail.notes', { defaultValue: 'Notes' })}
+            </Text>
+            <NoteMarkdown
+              text={meal.notes}
+              fontSize={14}
+              images={usableFoodImages(meal.images)}
+            />
+          </View>
+        ) : null}
 
         <Button
           variant="primary"

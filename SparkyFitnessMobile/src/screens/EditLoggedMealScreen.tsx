@@ -16,7 +16,7 @@ import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import MarkdownNotesField from '../components/MarkdownNotesField';
-import MarkdownMessage from '../components/chat/MarkdownMessage';
+import { NoteMarkdown } from '../components/NoteMarkdown';
 import EntryImageOverride from '../components/EntryImageOverride';
 import Icon from '../components/Icon';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -28,6 +28,7 @@ import CalendarSheet, {
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import { toHourMinute } from '@workspace/shared';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
+import { usableFoodImages } from '../utils/foodImages';
 import NutritionMacroCard from '../components/NutritionMacroCard';
 import StatusView from '../components/StatusView';
 import SwipeableIngredientRow from '../components/SwipeableIngredientRow';
@@ -473,16 +474,20 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
               })}
             </Text>
             <View className="rounded-lg border border-border-subtle bg-raised px-3 py-2">
-              <MarkdownMessage
+              <NoteMarkdown
                 text={meal.meal_notes}
-                streaming={false}
                 fontSize={14}
+                images={usableFoodImages(meal.meal_images)}
               />
             </View>
           </View>
         ) : null}
 
         <MarkdownNotesField
+          images={[
+            ...usableFoodImages(meal?.images),
+            ...usableFoodImages(meal?.meal_images),
+          ]}
           value={effectiveNotes}
           onCommit={setNotes}
           label={t('editLoggedMeal.fields.notes', {

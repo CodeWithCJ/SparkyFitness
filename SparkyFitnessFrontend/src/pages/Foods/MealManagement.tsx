@@ -72,7 +72,7 @@ import {
   useToggleFavoriteMutation,
 } from '@/hooks/Foods/useFavorites';
 import { DataTable } from '@/components/ui/DataTable';
-import { primaryImageOf } from '@/utils/foodImages';
+import { primaryImageOf, usableFoodImages } from '@/utils/foodImages';
 import {
   ColumnDef,
   RowSelectionState,
@@ -822,14 +822,6 @@ const MealManagement: React.FC = () => {
                 )}
             </DialogDescription>
           </DialogHeader>
-          {viewingMeal?.notes ? (
-            <div className="rounded-md border bg-muted/40 px-3 py-2">
-              <h4 className="font-semibold mb-1 text-sm">
-                {t('mealManagement.notes', 'Notes')}
-              </h4>
-              <MarkdownView>{viewingMeal.notes}</MarkdownView>
-            </div>
-          ) : null}
           <div>
             <h4 className="font-semibold mb-2">
               {t('mealManagement.foodsInThisMeal', 'Foods in this Meal:')}
@@ -851,6 +843,19 @@ const MealManagement: React.FC = () => {
               </p>
             )}
           </div>
+
+          {/* After the ingredient list: the foods are what this dialog is
+              opened to check, and a full recipe above them pushes them down. */}
+          {viewingMeal?.notes ? (
+            <div className="rounded-md border bg-muted/40 px-3 py-2">
+              <h4 className="font-semibold mb-1 text-sm">
+                {t('mealManagement.notes', 'Notes')}
+              </h4>
+              <MarkdownView images={usableFoodImages(viewingMeal.images)}>
+                {viewingMeal.notes}
+              </MarkdownView>
+            </div>
+          ) : null}
         </DialogContent>
       </Dialog>
 

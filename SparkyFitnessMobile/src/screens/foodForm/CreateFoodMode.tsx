@@ -10,6 +10,7 @@ import Icon from '../../components/Icon';
 import StepperInput from '../../components/StepperInput';
 import FoodForm, { type FoodFormData } from '../../components/FoodForm';
 import FoodImagePicker from '../../components/FoodImagePicker';
+import { usableFoodImages } from '../../utils/foodImages';
 import { splitPickerImages, type PickerImage } from '../../utils/pickerImages';
 import BottomSheetPicker from '../../components/BottomSheetPicker';
 import CalendarSheet, {
@@ -251,6 +252,18 @@ export function CreateFoodMode({
   // fire it after the food+entry are both confirmed, without a separate pre-save.
   const pendingEquivalentSaveRef = useRef<((foodId: string) => void) | null>(
     null
+  );
+
+  // Only already-saved photos can be embedded in a note: a staged file exists
+  // solely on the device until the food is saved, so it has no path to link to.
+  const savedNoteImages = useMemo(
+    () =>
+      usableFoodImages(
+        pickerImages
+          .filter((image) => image.kind === 'saved')
+          .map((image) => image.path)
+      ),
+    [pickerImages]
   );
   const {
     addEntry,
@@ -535,6 +548,7 @@ export function CreateFoodMode({
         isSubmitting={isSubmitting}
         initialValues={initialFood}
         showNotes
+        noteImages={savedNoteImages}
         submitLabel={primaryLabel}
         hideSubmitButton={usesNativeHeader}
         headerChildren={
