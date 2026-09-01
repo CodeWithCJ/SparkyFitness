@@ -141,17 +141,17 @@ export const getRecentAndTopFoods = async (
   return apiCall(`/foods?${params.toString()}`);
 };
 
-export const searchDatabaseFoods = async (
-  term: string,
-  limit: number,
-  mealType?: string
-) => {
+/**
+ * Name lookup used to match an incoming meal food against an existing food
+ * before creating a duplicate. Not the dialog's user-facing search: that one
+ * paginates through `loadFoods`.
+ */
+export const lookupFoodsByName = async (term: string, limit: number) => {
   const params = new URLSearchParams({
     name: term,
     broadMatch: 'true',
     limit: limit.toString(),
   });
-  if (mealType) params.append('mealType', mealType);
 
   return apiCall(`/foods?${params.toString()}`);
 };

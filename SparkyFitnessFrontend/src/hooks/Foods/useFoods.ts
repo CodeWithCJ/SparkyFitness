@@ -12,12 +12,13 @@ import {
   getRecentAndTopFoods,
   importFoodsFromCsv,
   loadFoods,
-  searchDatabaseFoods,
+  lookupFoodsByName,
   togglePublicSharing,
   updateFoodEntriesSnapshot,
 } from '@/api/Foods/foodService';
 import {
   keepPreviousData,
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -259,25 +260,36 @@ export const useRecentAndTopFoodsQuery = (
   });
 };
 
-export const databaseFoodSearchOptions = (
-  term: string,
-  limit: number,
-  mealType?: string
-) => ({
-  queryKey: foodKeys.databaseSearch(term, limit, mealType),
-  queryFn: () => searchDatabaseFoods(term, limit, mealType),
+export const foodNameLookupOptions = (term: string, limit: number) => ({
+  queryKey: foodKeys.nameLookup(term, limit),
+  queryFn: () => lookupFoodsByName(term, limit),
 });
 
+/**
+ * Paginated local-food search for the food search dialog.
+ *
+ * Uses the same endpoint the Food library and the mobile app already use, so a
+ * match that sorts past the first page stays reachable through "Load more"
+ * instead of being silently dropped by a fixed LIMIT. `filter` is sent to the
+ * server so ownership narrows the result set before the page is cut, not after.
+ */
 export const useDatabaseFoodSearchQuery = (
   term: string,
-  limit: number,
-  mealType?: string,
+  pageSize: number,
+  filter: MealFilter = 'all',
   enabled: boolean = true
 ) => {
   const { t } = useTranslation();
 
-  return useQuery({
-    ...databaseFoodSearchOptions(term, limit, mealType),
+  return useInfiniteQuery({
+    queryKey: foodKeys.databaseSearch(term, pageSize, filter),
+    queryFn: ({ pageParam = 1 }) =>
+      loadFoods(term, filter, pageParam, pageSize, 'name:asc'),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) =>
+      allPages.length * pageSize < lastPage.totalCount
+        ? allPages.length + 1
+        : undefined,
     enabled,
     meta: {
       errorMessage: t(

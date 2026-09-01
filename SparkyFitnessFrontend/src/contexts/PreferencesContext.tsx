@@ -96,7 +96,6 @@ interface PreferencesContextType {
   // turning this off.
   foodSearchAllProvidersDefault: boolean;
   timezone: string;
-  foodDisplayLimit: number;
   itemDisplayLimit: number;
   calorieGoalAdjustmentMode: CalorieGoalAdjustmentMode;
   energyUnit: EnergyUnit;
@@ -210,7 +209,6 @@ export interface DefaultPreferences {
   logging_level: LoggingLevel;
   timezone: string;
   item_display_limit: number;
-  food_display_limit: number;
   water_display_unit: WaterDisplayUnit;
   add_exercise_water_to_goal: boolean;
   language: string;
@@ -293,7 +291,6 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
   const [itemDisplayLimit, setItemDisplayLimitState] = useState<number>(10);
-  const [foodDisplayLimit, setFoodDisplayLimitState] = useState<number>(10);
   const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentModeState] =
     useState<CalorieGoalAdjustmentMode>('dynamic');
   const [exerciseCaloriePercentage, setExerciseCaloriePercentageState] =
@@ -615,7 +612,6 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         logging_level: 'ERROR' as const,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         item_display_limit: 10,
-        food_display_limit: 10,
         water_display_unit: waterDisplayUnit,
         language: 'en',
         calorie_goal_adjustment_mode: 'dynamic' as const,
@@ -692,7 +688,6 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
         );
         setItemDisplayLimitState(data.item_display_limit || 10);
-        setFoodDisplayLimitState(data.food_display_limit || 10);
         setWaterDisplayUnitState(data.water_display_unit || 'ml');
         setLanguageState(data.language || 'en');
         setCalorieGoalAdjustmentModeState(
@@ -888,7 +883,6 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           foodSearchAllProvidersDefault,
         timezone: newPrefs?.timezone ?? timezone,
         item_display_limit: newPrefs?.itemDisplayLimit ?? itemDisplayLimit,
-        food_display_limit: foodDisplayLimit,
         water_display_unit: newPrefs?.water_display_unit ?? waterDisplayUnit,
         language: newPrefs?.language ?? language,
         calorie_goal_adjustment_mode:
@@ -968,7 +962,6 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       foodSearchAllProvidersDefault,
       timezone,
       itemDisplayLimit,
-      foodDisplayLimit,
       waterDisplayUnit,
       addExerciseWaterToGoal,
       language,
@@ -1222,7 +1215,6 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       foodSearchAllProvidersDefault,
       timezone,
       itemDisplayLimit,
-      foodDisplayLimit,
       calorieGoalAdjustmentMode,
       exerciseCaloriePercentage,
       activityLevel,
@@ -1319,7 +1311,6 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       foodSearchAllProvidersDefault,
       timezone,
       itemDisplayLimit,
-      foodDisplayLimit,
       calorieGoalAdjustmentMode,
       exerciseCaloriePercentage,
       activityLevel,

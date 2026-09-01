@@ -38,7 +38,7 @@ import {
   useUpdateMealMutation,
 } from '@/hooks/Foods/useMeals';
 import {
-  databaseFoodSearchOptions,
+  foodNameLookupOptions,
   useCreateFoodDatabaseItemMutation,
 } from '@/hooks/Foods/useFoods';
 import {
@@ -733,7 +733,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         if (cleanName) {
           try {
             const searchResults = (await queryClient.fetchQuery(
-              databaseFoodSearchOptions(mf.food_name || '', 5)
+              foodNameLookupOptions(mf.food_name || '', 5)
             )) as Food[];
             const found = (
               Array.isArray(searchResults) ? searchResults : []
