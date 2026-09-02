@@ -42,7 +42,9 @@ import {
   useChatRuntime,
   AssistantChatTransport,
 } from '@assistant-ui/react-ai-sdk';
+import { ASK_USER_TOOL_NAME } from '@workspace/shared';
 import Icon from '../components/Icon';
+import AskUserToolCard from '../components/chat/AskUserToolCard';
 import ToolCallCard from '../components/chat/ToolCallCard';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import MarkdownMessage from '../components/chat/MarkdownMessage';
@@ -218,7 +220,13 @@ function MessageBubble({ role }: { role: MessageRole }) {
                 <MarkdownMessage text={part.text} streaming={isStreaming} />
               )
             }
-            renderToolCall={({ part }) => <ToolCallCard part={part} />}
+            renderToolCall={({ part }) =>
+              part.toolName === ASK_USER_TOOL_NAME ? (
+                <AskUserToolCard part={part} />
+              ) : (
+                <ToolCallCard part={part} />
+              )
+            }
           />
         )}
       </View>
