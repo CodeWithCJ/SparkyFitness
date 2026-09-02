@@ -355,7 +355,12 @@ async function _updateExerciseEntryWithClient(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   updatedByUserId: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entrySource: any
+  entrySource: any,
+  // A caller that can recover from a vanished row (the sync path, which just
+  // inserts a replacement) passes returnNullIfMissing and gets null instead of
+  // an exception. Callers acting on a user-chosen entry leave it unset, because
+  // for them a missing row really is an error.
+  options: { returnNullIfMissing?: boolean } = {}
 ) {
   // Fetch existing entry to get current snapshot values if not provided in updateData
   const existingEntryResult = await client.query(
@@ -363,6 +368,9 @@ async function _updateExerciseEntryWithClient(
     [id, userId]
   );
   if (existingEntryResult.rows.length === 0) {
+    if (options.returnNullIfMissing) {
+      return null;
+    }
     throw new Error('Exercise entry not found for update.');
   }
   const currentEntry = existingEntryResult.rows[0];
@@ -481,7 +489,7 @@ async function _updateExerciseEntryWithClient(
   const telemetrySetClause = EXERCISE_ENTRY_TELEMETRY_COLUMNS.map(
     (column, index) => `${column} = $${32 + index}`
   ).join(',\n      ');
-  await client.query(
+  const updateResult = await client.query(
     `UPDATE exercise_entries SET
       exercise_id = $1,
       duration_minutes = $2,
@@ -551,6 +559,20 @@ async function _updateExerciseEntryWithClient(
       ...telemetryParams,
     ]
   );
+  // The row can be deleted by a competing writer between the existence check
+  // above and this UPDATE: a successful UPDATE would hold a row lock until
+  // commit, so the only interleaving that reaches here with no row is one where
+  // the delete committed first. Left unchecked the UPDATE affects zero rows
+  // without erroring, and the child writes below then run against an id that no
+  // longer exists. Because the sets and activity-detail RLS policies resolve
+  // their parent through an EXISTS subquery, that surfaces as a row-level
+  // security violation rather than the foreign-key error it really is.
+  if (updateResult.rowCount === 0) {
+    if (options.returnNullIfMissing) {
+      return null;
+    }
+    throw new Error('Exercise entry not found for update.');
+  }
   // Handle sets update
   if (updateData.sets !== undefined) {
     // Only modify sets if they are explicitly provided
@@ -645,21 +667,36 @@ async function _createExerciseEntryWithClient(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let newEntryId: any;
     let operation: 'created' | 'updated';
+    // The matched row can be gone by the time we update it. A provider sync
+    // range-deletes by source and day span before re-inserting, so an
+    // overlapping sync of the same source is enough. For delete-then-insert
+    // ingest a vanished parent means "insert", not "fail", so fall through to
+    // the create path below rather than writing children against a dead id.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let updatedEntry: any = null;
     if (existingEntryResult && existingEntryResult.rows.length > 0) {
-      // Entry exists, update it
       const existingEntryId = existingEntryResult.rows[0].id;
       log(
         'info',
         `Existing exercise entry found for user ${userId}, exercise ${entryData.exercise_id}, date ${entryData.entry_date}, source ${entrySource}. Updating entry ${existingEntryId}.`
       );
-      const updatedEntry = await _updateExerciseEntryWithClient(
+      updatedEntry = await _updateExerciseEntryWithClient(
         client,
         existingEntryId,
         userId,
         entryData,
         createdByUserId,
-        entrySource
+        entrySource,
+        { returnNullIfMissing: true }
       );
+      if (!updatedEntry) {
+        log(
+          'warn',
+          `Exercise entry ${existingEntryId} was deleted by a concurrent writer before it could be updated (user ${userId}, source ${entrySource}, date ${entryData.entry_date}). Inserting a replacement.`
+        );
+      }
+    }
+    if (updatedEntry) {
       newEntryId = updatedEntry.id;
       operation = 'updated';
     } else {
