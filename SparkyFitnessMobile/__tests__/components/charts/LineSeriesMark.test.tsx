@@ -7,8 +7,8 @@ import LineSeriesMark from '../../../src/components/charts/LineSeriesMark';
 // so both would be `undefined` here. Stub each as an identifiable View carrying its props
 // so the forwarded values can be read back off the rendered element.
 jest.mock('victory-native', () => {
-  const ReactModule = require('react');
-  const { View } = require('react-native');
+  const ReactModule: typeof import('react') = require('react');
+  const { View }: typeof import('react-native') = require('react-native');
   return {
     Line: (props: Record<string, unknown>) =>
       ReactModule.createElement(View, { testID: 'line-mark', ...props }),

@@ -9,8 +9,8 @@ import type { WeightDataPoint } from '../../src/hooks/useMeasurementsRange';
 // `LineSeriesMark` itself is deliberately left real, so these cases assert what the user
 // actually sees rather than only the prop wiring.
 jest.mock('victory-native', () => {
-  const ReactModule = require('react');
-  const { View } = require('react-native');
+  const ReactModule: typeof import('react') = require('react');
+  const { View }: typeof import('react-native') = require('react-native');
   return {
     CartesianChart: ({
       children,

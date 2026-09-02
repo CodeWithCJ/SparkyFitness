@@ -5,8 +5,8 @@ import BBTLineChart from '../../../src/components/wellness/BBTLineChart';
 // Same reason as `WeightLineChart.test.tsx`: the global `victory-native` mock renders no
 // chart children and exports no marks. Note the y-key here is `yValue`, not `weight`.
 jest.mock('victory-native', () => {
-  const ReactModule = require('react');
-  const { View } = require('react-native');
+  const ReactModule: typeof import('react') = require('react');
+  const { View }: typeof import('react-native') = require('react-native');
   return {
     CartesianChart: ({
       children,
