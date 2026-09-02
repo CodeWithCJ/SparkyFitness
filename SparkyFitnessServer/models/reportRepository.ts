@@ -141,20 +141,25 @@ async function getTabularFoodData(
   try {
     // Generate dynamic SQL parts for custom nutrients
     const customNutrientsSelectCTE = customNutrients
-      .map(
-        (cn) =>
-          // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
-          `(COALESCE(NULLIF(fe.custom_nutrients->>'${cn.name}', '')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`
-      )
+      .map((cn) => {
+        // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
+        const ident = cn.name.replace(/"/g, '""');
+        // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
+        const lit = cn.name.replace(/'/g, "''");
+        return `(COALESCE(NULLIF(fe.custom_nutrients->>'${lit}', '')::numeric, 0) * fe.quantity / fe.serving_size) AS "${ident}"`;
+      })
       .join(',\n          ');
     const customNutrientsSelectOuter = customNutrients
       // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
-      .map((cn) => `cfe."${cn.name}"`)
+      .map((cn) => `cfe."${cn.name.replace(/"/g, '""')}"`)
       .join(',\n        ');
     // Note: cfe_meal values already include scaled quantity, so do NOT multiply by fem.quantity
     const customNutrientsSelectMealAgg = customNutrients
-      // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
-      .map((cn) => `SUM(cfe_meal."${cn.name}") AS "${cn.name}"`)
+      .map((cn) => {
+        // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
+        const ident = cn.name.replace(/"/g, '""');
+        return `SUM(cfe_meal."${ident}") AS "${ident}"`;
+      })
       .join(',\n        ');
     const result = await client.query(
       `WITH CalculatedFoodEntries AS (
@@ -409,22 +414,27 @@ async function getMiniNutritionTrends(
     // Note: Standard nutrients use "total_" prefix in the outer select of the existing query.
     // For custom nutrients, I will use their name directly to match the service mapping.
     const customNutrientsSelectOuter = customNutrients
-      // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
-      .map((cn) => `SUM("${cn.name}") AS "${cn.name}"`)
+      .map((cn) => {
+        // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
+        const ident = cn.name.replace(/"/g, '""');
+        return `SUM("${ident}") AS "${ident}"`;
+      })
       .join(',\n         ');
     const customNutrientsSelectInner1 = customNutrients
-      .map(
-        (cn) =>
-          // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
-          `(COALESCE(NULLIF(fe.custom_nutrients->>'${cn.name}', '')::numeric, 0) * fe.quantity / fe.serving_size) AS "${cn.name}"`
-      )
+      .map((cn) => {
+        // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
+        const ident = cn.name.replace(/"/g, '""');
+        // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
+        const lit = cn.name.replace(/'/g, "''");
+        return `(COALESCE(NULLIF(fe.custom_nutrients->>'${lit}', '')::numeric, 0) * fe.quantity / fe.serving_size) AS "${ident}"`;
+      })
       .join(',\n           ');
     // Note: fe_meal.quantity is already scaled, so do NOT multiply by fem.quantity
     const customNutrientsSelectInner2 = customNutrients
       .map(
         (cn) =>
           // @ts-expect-error TS(2339): Property 'name' does not exist on type 'never'.
-          `SUM(COALESCE(NULLIF(fe_meal.custom_nutrients->>'${cn.name}', '')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${cn.name}"`
+          `SUM(COALESCE(NULLIF(fe_meal.custom_nutrients->>'${cn.name.replace(/'/g, "''")}', '')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${cn.name.replace(/"/g, '""')}"`
       )
       .join(',\n           ');
     const result = await client.query(
