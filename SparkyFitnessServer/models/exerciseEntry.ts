@@ -840,6 +840,20 @@ async function _createExerciseEntryWithClient(
     throw error;
   }
 }
+// The raw provider dump that belongs with the entry being written. A caller
+// that has one passes it here instead of storing it afterwards, so the pair is
+// written in a single transaction: exercise_entry_activity_details resolves its
+// parent through an EXISTS subquery in its RLS policy, so an insert against a
+// parent that is committed but has since been deleted fails as a row-level
+// security violation and the detail is silently lost.
+interface ExerciseEntryActivityDetail {
+  provider_name: string;
+  detail_type: string;
+  // Either the object itself or its JSON text; the repository normalises both.
+  detail_data: unknown;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+}
 async function createExerciseEntry(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -849,7 +863,10 @@ async function createExerciseEntry(
   createdByUserId: any,
   entrySource = 'Manual',
   exercisePresetEntryId: string | null = null,
-  options: { skipDuplicateCheck?: boolean } = {}
+  options: {
+    skipDuplicateCheck?: boolean;
+    activityDetail?: ExerciseEntryActivityDetail | null;
+  } = {}
 ) {
   const client = await getClient(userId);
   try {
@@ -863,6 +880,12 @@ async function createExerciseEntry(
       exercisePresetEntryId,
       options
     );
+    if (options.activityDetail) {
+      await activityDetailsRepository._createActivityDetailWithClient(client, {
+        ...options.activityDetail,
+        exercise_entry_id: entry.id,
+      });
+    }
     await client.query('COMMIT');
     return entry;
   } catch (error) {
