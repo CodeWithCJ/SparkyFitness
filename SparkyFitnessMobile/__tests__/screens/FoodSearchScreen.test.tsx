@@ -861,6 +861,36 @@ describe('FoodSearchScreen', () => {
     );
   });
 
+  it('does not forward the food-search provider to the barcode scanner', () => {
+    // A provider is actively selected in food search (no saved default, so the
+    // screen falls back to providers[0] — the "First Available" case). The
+    // barcode scanner must not inherit it: the server has to be left free to
+    // resolve default_barcode_provider_id, or an explicit Barcode Scanning
+    // preference gets silently overridden by Default Food Source.
+    mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+    const screen = render(
+      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+        <FoodSearchScreen navigation={navigation} route={route} />
+      </SafeAreaProvider>
+    );
+    fireEvent.press(screen.getByLabelText('Scan Food'));
+
+    // Positive control: the screen really has settled on FatSecret for online
+    // search. Without this the absence check below could pass simply because no
+    // provider was selected yet.
+    expect(mockUseExternalFoodSearch).toHaveBeenLastCalledWith(
+      expect.anything(),
+      'fatsecret',
+      expect.objectContaining({ providerId: 'p1' })
+    );
+
+    const scanCall = navigation.navigate.mock.calls.find(
+      ([screenName]: [string]) => screenName === 'FoodScan'
+    );
+    expect(scanCall).toBeDefined();
+    expect(scanCall[1]).not.toHaveProperty('providerId');
+  });
+
   describe('persisted "All Providers" default', () => {
     const twoProviders = {
       providers: [

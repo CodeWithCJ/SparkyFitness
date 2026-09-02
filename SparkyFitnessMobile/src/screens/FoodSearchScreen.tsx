@@ -385,21 +385,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
       // Preserve the originating meal type (MealTypeDetail → FoodSearch → scan).
       mealTypeId: mealTypeId ?? undefined,
       mealPlanTarget,
-      // Never forward the All Providers sentinel as a real provider; the scanner
-      // should fall back to its default provider in that mode.
-      providerId:
-        selectedProvider === ALL_PROVIDERS_VALUE
-          ? undefined
-          : (selectedProvider ?? undefined),
+      // Deliberately no providerId. The food-search provider is not the barcode
+      // provider, and the server treats an explicit providerId as winning over
+      // default_barcode_provider_id, so forwarding it here silently overrode the
+      // user's Barcode Scanning setting. Let the server resolve the preference,
+      // matching the "+" → Scan Food entry point.
     });
-  }, [
-    navigation,
-    date,
-    mealPlanTarget,
-    mealTypeId,
-    selectedProvider,
-    selectionPickerMode,
-  ]);
+  }, [navigation, date, mealPlanTarget, mealTypeId, selectionPickerMode]);
 
   // Only the custom-header path opens the JS menu; on the native path the
   // system presents a UIMenu from the header item directly.
