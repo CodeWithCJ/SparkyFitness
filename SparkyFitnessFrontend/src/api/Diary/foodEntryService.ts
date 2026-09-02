@@ -186,19 +186,23 @@ export interface FoodEntryMealCreateData {
   entry_time?: string | null;
   name: string;
   description?: string;
+  notes?: string | null;
   quantity: number;
   unit: string;
+  entry_total_servings?: number | null;
   foods: MealFood[];
 }
 
 export interface FoodEntryMealUpdateData {
   name?: string;
   description?: string;
+  notes?: string | null;
   meal_type?: string;
   entry_date?: string;
   entry_time?: string | null;
   quantity?: number;
   unit?: string;
+  entry_total_servings?: number | null;
   foods: MealFood[]; // Foods must be provided for update
 }
 

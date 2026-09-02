@@ -56,6 +56,17 @@ const EditMealFoodEntryDialog = ({
         />
         <MealBuilder
           initialFoods={initialMealFoods}
+          initialMealName={foodEntry.name}
+          initialDescription={foodEntry.description || ''}
+          initialNotes={foodEntry.notes || ''}
+          initialServingUnit={foodEntry.unit}
+          initialConsumedQuantity={foodEntry.quantity}
+          initialTotalServings={foodEntry.entry_total_servings}
+          initialTotalAmount={
+            foodEntry.unit !== 'serving'
+              ? (foodEntry.entry_total_servings ?? null)
+              : null
+          }
           onSave={handleSave}
           onCancel={() => onOpenChange(false)}
           source="food-diary"

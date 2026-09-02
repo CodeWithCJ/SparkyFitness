@@ -31,6 +31,7 @@ export const foodEntryMealsSchema = z.object({
   legacy_serving_unit_math: z.boolean(),
   images: z.array(z.string()),
   notes: z.string().nullable(),
+  entry_total_servings: z.number().nullable(),
 });
 
 export const foodEntryMealsInitializerSchema = z.object({
@@ -51,6 +52,7 @@ export const foodEntryMealsInitializerSchema = z.object({
   legacy_serving_unit_math: z.boolean().optional(),
   images: z.array(z.string()).optional(),
   notes: z.string().optional().nullable(),
+  entry_total_servings: z.number().optional().nullable(),
 });
 
 export const foodEntryMealsMutatorSchema = z.object({
@@ -71,6 +73,7 @@ export const foodEntryMealsMutatorSchema = z.object({
   legacy_serving_unit_math: z.boolean().optional(),
   images: z.array(z.string()).optional(),
   notes: z.string().optional().nullable(),
+  entry_total_servings: z.number().optional().nullable(),
 });
 
 export type FoodEntryMeals = z.infer<typeof foodEntryMealsSchema>;

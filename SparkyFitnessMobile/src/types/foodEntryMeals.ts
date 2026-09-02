@@ -47,6 +47,7 @@ export interface FoodEntryMeal {
   // === 'serving' had the special-case multiplier semantics. The server uses
   // this when recomputing/unscaling component nutrition on edit.
   legacy_serving_unit_math?: boolean;
+  entry_total_servings?: number | null;
   foods: FoodEntryMealFood[];
   calories?: number;
   protein?: number;
@@ -88,6 +89,7 @@ export interface FoodEntryMealCreateData {
   notes?: string | null;
   quantity: number;
   unit: string;
+  entry_total_servings?: number | null;
   foods?: MealFoodPayload[];
 }
 
@@ -103,5 +105,6 @@ export interface FoodEntryMealUpdateData {
   quantity?: number;
   unit?: string;
   meal_template_id?: string | null;
+  entry_total_servings?: number | null;
   foods: MealFoodPayload[];
 }

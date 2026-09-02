@@ -377,6 +377,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
       quantity,
       unit: meal.unit,
       meal_template_id: meal.meal_template_id,
+      entry_total_servings: meal.entry_total_servings,
       foods: ingredients.map(({ brand: _brand, ...food }) => ({
         ...food,
         // Non-template meals persist consumed (scaled) component quantities;

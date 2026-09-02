@@ -131,9 +131,10 @@ describe('MealBuilder', () => {
     expect(screen.getByRole('combobox')).toBeEnabled();
   });
 
-  it('keeps the unit locked when logging or editing a template-backed meal', async () => {
-    // Risk guard: these two dialogs share this component. The template owns the
-    // serving model, so they must keep asking only how much was consumed.
+  it('keeps the unit locked and shows whole dish yield when logging or editing a template-backed meal', async () => {
+    // Risk guard: these two dialogs share this component. In diary mode the unit
+    // is locked to preserve ingredient math, while the whole-dish yield and
+    // consumed quantity are both visible and editable.
     renderWithClient(
       <MealBuilder
         initialFoods={sampleFoods}
@@ -145,13 +146,12 @@ describe('MealBuilder', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Quantity Consumed')).toBeInTheDocument();
+      expect(
+        screen.getByLabelText('Quantity Consumed (serving)')
+      ).toBeInTheDocument();
     });
     expect(screen.getByRole('combobox')).toBeDisabled();
-    expect(screen.queryByLabelText('Total Servings')).not.toBeInTheDocument();
-    expect(
-      screen.queryByLabelText('Quantity Consumed (serving)')
-    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Total Servings')).toBeInTheDocument();
   });
 
   it('rounds derived total_servings for non-serving meals before saving', async () => {

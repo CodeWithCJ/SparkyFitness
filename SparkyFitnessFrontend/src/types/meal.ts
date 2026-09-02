@@ -147,6 +147,7 @@ export interface FoodEntryMeal {
   quantity?: number;
   unit?: string;
   legacy_serving_unit_math?: boolean;
+  entry_total_servings?: number | null;
   /** Images from the meal template this entry was logged from. */
   meal_images?: string[] | null;
   /** The meal template's own note, shown read-only beside this entry's note. */
