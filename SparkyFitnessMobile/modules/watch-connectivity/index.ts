@@ -24,8 +24,67 @@ export interface WatchHistoryPoint {
   bodyFatPercentage?: number | null;
 }
 
+/** A water container tap captured on the Apple Watch. */
+export interface WatchWaterIntakePayload {
+  /** Stable id generated on the watch. Not acknowledged back like a check-in
+   * is — see the comment on `containers` below — so this only guards against
+   * one queued transfer being delivered to this listener twice. */
+  clientId: string;
+  /** Calendar day (`yyyy-MM-dd`) in the wearer's local timezone. */
+  entryDate: string;
+  containerId: number;
+}
+
+/** A request from the watch to delete one logged drink. */
+export interface WatchWaterDeletePayload {
+  /** Stable id generated on the watch, to dedupe a re-delivered transfer. */
+  clientId: string;
+  /** The `water_intake_entries` row id, as relayed in `waterLog` below. */
+  entryId: string;
+}
+
+/**
+ * One logged drink relayed to the watch's water log view. Manual entries
+ * only — synced records (Apple Health and friends) carry no container and
+ * are filtered out phone-side rather than shown as nameless rows.
+ */
+export interface WatchWaterLogPayload {
+  /** The server row id, needed to delete this specific drink. */
+  id: string;
+  name: string;
+  volumeMl: number;
+  /** Wall-clock time this was logged, pre-formatted by the phone (see the
+   * comment on `waterLog` for why the watch doesn't format it itself). */
+  time: string;
+}
+
+/** One water container configured on the server, as relayed to the watch. */
+export interface WatchContainerPayload {
+  id: number;
+  name: string;
+  /**
+   * This container's per-tap amount in ml, servings already divided out
+   * (`getServingVolume`) — the watch adds exactly this much locally the
+   * instant a square is tapped, before the phone's write even lands.
+   */
+  servingVolumeMl: number;
+  /** Display only — `ml` | `oz` | `liter`. `servingVolumeMl` is always ml. */
+  unit: string;
+}
+
 /** Seed values, history and acknowledgements pushed to the watch. */
 export interface WatchContextPayload {
+  /**
+   * Milliseconds since the epoch at push time. Not read by the watch — it
+   * exists purely to guarantee two consecutive pushes are never byte-identical.
+   *
+   * `updateApplicationContext` will not redeliver a dictionary equal to the
+   * one already set, and every other field here is derived from data. So on a
+   * day with nothing logged, re-opening the phone app re-pushed exactly what
+   * was already there, the system dropped it, and a watch waiting on that
+   * push (a fresh install, say) never heard anything.
+   */
+  pushedAt: number;
   today: string;
   todayWeightKg?: number | null;
   todayBodyFatPercentage?: number | null;
@@ -75,12 +134,45 @@ export interface WatchContextPayload {
   carbsGoal?: number | null;
   fatConsumed?: number | null;
   fatGoal?: number | null;
+  /**
+   * Configured water containers, for the watch's Water page — one tappable
+   * square per entry. Sent in full on every push rather than fetched once by
+   * the watch itself: there's no path for the watch to call the server
+   * directly, the list rarely changes, and staying self-contained here means
+   * no separate "ask for the container list" round trip.
+   */
+  containers?: WatchContainerPayload[] | null;
+  /** Today's water totals in ml, for the same page's bottle fill. */
+  waterConsumedMl?: number | null;
+  waterGoalMl?: number | null;
+  /**
+   * The app's globally configured water display unit (Settings → water
+   * display unit) — independent of any one container's own `unit` — for the
+   * "11% * 0.31L" label above the bottle. Null/unset defaults to `ml` on the
+   * watch, same fallback the phone itself uses.
+   */
+  waterDisplayUnit?: 'ml' | 'oz' | 'liter' | null;
+  /**
+   * Today's individual logged drinks, newest first, for the watch's water log
+   * view. Rides the context push rather than being fetched on demand so the
+   * view opens instantly with no round trip — the phone is often out of
+   * reach, and a spinner that may never resolve is worse than a list that's
+   * at most one push stale.
+   *
+   * `time` is pre-formatted here rather than sent as a timestamp: the phone
+   * knows the user's configured time format (12h/24h) from preferences, and
+   * duplicating that resolution on the watch would be a second place to get
+   * it wrong.
+   */
+  waterLog?: WatchWaterLogPayload[] | null;
 }
 
 export type WatchConnectivityEvents = {
   onReachabilityChange: (payload: { isReachable: boolean }) => void;
   onCheckIn: (payload: WatchCheckInPayload) => void;
   onContextRequest: () => void;
+  onWaterIntake: (payload: WatchWaterIntakePayload) => void;
+  onWaterDelete: (payload: WatchWaterDeletePayload) => void;
 };
 
 declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivityEvents> {

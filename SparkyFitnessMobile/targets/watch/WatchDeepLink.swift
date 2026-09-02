@@ -15,13 +15,8 @@ import Foundation
 enum WatchDeepLink: String {
     /// Daily Energy Goal complication → the Goals summary page.
     case goals
-    /// Water intake complication → the water page.
-    ///
-    /// Neither the complication nor the page exists yet; the case is here so
-    /// the scheme registration, the widget-side link and the routing switch
-    /// are already in place when they land. Until then `ContentView` maps this
-    /// to no page, so a link arriving early does nothing rather than jumping
-    /// somewhere wrong.
+    /// Water intake complication → the Water page. `ContentView` maps this
+    /// to `.water`; `WaterGoalComplication` produces it.
     case water
 
     static let scheme = "sparkyfitness-watch"

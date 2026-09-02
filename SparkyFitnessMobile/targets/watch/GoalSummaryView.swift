@@ -1,13 +1,9 @@
 import SwiftUI
 
-/// Today's nutrition against the phone's goals — the middle page of the swipe
-/// deck (Entry ▸ Goals ▸ Trend).
+/// Today's nutrition against the phone's goals
 ///
 /// Read-only by design: everything here is logged on the phone, so this is a
 /// glance surface, not an input one. It deliberately mirrors the Daily Energy
-/// Goal complication's colours — green calories, orange carbs, yellow fat,
-/// blue protein — so that glancing at the watch face and opening the app tell
-/// the same story in the same language.
 ///
 /// Nothing here is computed locally. The fill fractions come from the phone
 /// already clamped, which is what keeps this page and the complication from
@@ -192,11 +188,10 @@ struct GoalSummaryView: View {
     }
 }
 
-/// Matches `ComplicationPalette` in targets/watch-widget. The two can't share
-/// a file — separate compiled targets — so if one changes, change both.
-private enum GoalPalette {
-    static let calories = Color.green
-    static let carbs = Color.orange
-    static let fat = Color.yellow
-    static let protein = Color.blue
+enum GoalPalette {
+    static let calories = Color(red: 0.537, green: 0.573, blue: 0.863)
+    static let carbs = Color(red: 0.592, green: 0.776, blue: 0.573)
+    static let fat = Color(red: 0.541, green: 0.761, blue: 0.855)
+    static let protein = Color(red: 0.859, green: 0.690, blue: 0.435)
+    static let water = Color.cyan
 }

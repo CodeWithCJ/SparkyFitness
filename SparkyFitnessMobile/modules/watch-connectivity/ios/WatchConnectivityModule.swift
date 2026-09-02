@@ -11,6 +11,10 @@ private class WatchSessionDelegateHandler: NSObject, WCSessionDelegate {
     var onCheckIn: (([String: Any]) -> Void)?
     /// The watch asking for fresh seed values + history.
     var onContextRequest: (() -> Void)?
+    /// A water container tap captured on the watch, awaiting a server write.
+    var onWaterIntake: (([String: Any]) -> Void)?
+    /// A request from the watch to delete one logged drink.
+    var onWaterDelete: (([String: Any]) -> Void)?
 
     func activate() {
         guard WCSession.isSupported() else { return }
@@ -25,6 +29,10 @@ private class WatchSessionDelegateHandler: NSObject, WCSessionDelegate {
             onCheckIn?(payload)
         case "requestContext":
             onContextRequest?()
+        case "waterIntake":
+            onWaterIntake?(payload)
+        case "waterDelete":
+            onWaterDelete?(payload)
         default:
             break
         }
@@ -81,7 +89,13 @@ public class WatchConnectivityModule: Module {
     public func definition() -> ModuleDefinition {
         Name("WatchConnectivity")
 
-        Events("onReachabilityChange", "onCheckIn", "onContextRequest")
+        Events(
+            "onReachabilityChange",
+            "onCheckIn",
+            "onContextRequest",
+            "onWaterIntake",
+            "onWaterDelete"
+        )
 
         OnCreate {
             self.delegateHandler.onReachabilityChange = { [weak self] isReachable in
@@ -100,6 +114,19 @@ public class WatchConnectivityModule: Module {
             }
             self.delegateHandler.onContextRequest = { [weak self] in
                 self?.sendEvent("onContextRequest", [:])
+            }
+            self.delegateHandler.onWaterIntake = { [weak self] payload in
+                self?.sendEvent("onWaterIntake", [
+                    "clientId": payload["clientId"] as? String ?? "",
+                    "entryDate": payload["entryDate"] as? String ?? "",
+                    "containerId": payload["containerId"] as? Int ?? 0,
+                ])
+            }
+            self.delegateHandler.onWaterDelete = { [weak self] payload in
+                self?.sendEvent("onWaterDelete", [
+                    "clientId": payload["clientId"] as? String ?? "",
+                    "entryId": payload["entryId"] as? String ?? "",
+                ])
             }
             self.delegateHandler.activate()
         }

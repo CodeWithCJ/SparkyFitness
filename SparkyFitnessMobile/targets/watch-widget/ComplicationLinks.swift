@@ -11,8 +11,7 @@ import Foundation
 enum ComplicationLink: String {
     /// Daily Energy Goal → the Goals summary page.
     case goals
-    /// Water intake → the water page. Both still to be built; the case exists
-    /// so a new water complication only has to reference it.
+    /// Water intake → the Water page. Used by `WaterGoalComplication`.
     case water
 
     static let scheme = "sparkyfitness-watch"

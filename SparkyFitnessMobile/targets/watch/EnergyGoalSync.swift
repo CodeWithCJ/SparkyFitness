@@ -15,7 +15,7 @@ enum EnergyGoalSync {
     /// Must match the `kind` string in targets/watch-widget's Widget.
     private static let complicationKind = "energyGoalComplication"
 
-    private struct Snapshot: Codable {
+    private struct Snapshot: Codable, Equatable {
         let date: String
         let calorieGoalProgress: Double
         let proteinGoalProgress: Double
@@ -26,7 +26,18 @@ enum EnergyGoalSync {
     /// Writes today's progress and asks WidgetKit to redraw the complication
     /// immediately, rather than waiting for its next scheduled timeline
     /// refresh (which on watchOS can lag well behind when the data actually
-    /// changed).
+    /// changed) — but only when the value actually moved.
+    ///
+    /// The guard matters: `handle(context:)` runs on every context push, and
+    /// the phone re-pushes on app launch, foreground, and every reachability
+    /// change, not just when food was logged. watchOS caps how many times an
+    /// app may force a complication redraw per day and silently ignores the
+    /// calls past that cap — no error, nothing in the build log, the
+    /// complication simply stops updating until its own scheduled refresh
+    /// comes around. Reloading on every identical push spends that budget on
+    /// nothing; comparing against what's already stored keeps the reloads
+    /// proportional to actual changes. Doubly load-bearing now that a second
+    /// complication (WaterGoalSync) draws on the same per-app budget.
     static func write(
         calorieGoalProgress: Double,
         proteinGoalProgress: Double,
@@ -46,6 +57,13 @@ enum EnergyGoalSync {
             carbsGoalProgress: carbsGoalProgress,
             fatGoalProgress: fatGoalProgress
         )
+
+        if let existing = defaults.data(forKey: snapshotKey),
+           let decoded = try? JSONDecoder().decode(Snapshot.self, from: existing),
+           decoded == snapshot {
+            return
+        }
+
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         defaults.set(data, forKey: snapshotKey)
 

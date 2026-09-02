@@ -1,15 +1,20 @@
 import SwiftUI
 
 /// Router for the watch app. First run is a one-time gate; after that, Entry,
-/// Goals and Trend are pages the wearer swipes between — swiping is the only
-/// way to move between them, there is no button.
+/// Goals, Water and Trend are pages the wearer swipes between — swiping is
+/// the only way to move between them, there is no button.
 struct ContentView: View {
-    /// Goals sits in the middle so it is one swipe from either neighbour.
     /// Declaration order here is also the swipe order.
-    private enum Page: Int { case entry, goals, trend }
+    private enum Page: Int { case goals, water, entry, trend }
 
     @EnvironmentObject private var store: CheckInStore
     @EnvironmentObject private var session: WatchSessionManager
+
+    /// Watched so the app can notice a day has ended while it was away. The
+    /// watch app commonly stays resident overnight, in which case nothing
+    /// else would prompt it to re-check — `onAppear` doesn't fire again on a
+    /// return to an app that never went away.
+    @Environment(\.scenePhase) private var scenePhase
 
     /// Latches true the moment first-run completes this session, so a
     /// mid-session context update from the phone can't flicker the gate back
@@ -29,11 +34,14 @@ struct ContentView: View {
                 }
             } else {
                 TabView(selection: Binding(get: { page ?? initialPage }, set: { page = $0 })) {
-                    GoalSummaryView()
-                      .tag(Page.goals)
-                  
                     CheckInEntryView { page = .trend }
                         .tag(Page.entry)
+
+                    GoalSummaryView()
+                        .tag(Page.goals)
+
+                    WaterIntakeView()
+                        .tag(Page.water)
 
                     TrendView()
                         .tag(Page.trend)
@@ -42,8 +50,31 @@ struct ContentView: View {
             }
         }
         .onAppear {
+            store.pruneStaleDayData()
+            // Cheap, local, and works with the phone out of range — unlike
+            // `requestContext()` below, which needs it reachable right now.
+            session.adoptReceivedContext()
             session.requestContext()
             session.retryPending()
+            // Publish what the watch already knows before waiting on the
+            // phone: `requestContext()` above only reaches a phone that's
+            // reachable right now, and until it answers the complications
+            // would otherwise have nothing to draw from — even though the
+            // app's own pages are happily showing the persisted context.
+            session.refreshComplications()
+        }
+        // The case `onAppear` misses: the app was never torn down, just put
+        // away for the night, so the only signal that a new day started is
+        // coming back to the foreground.
+        // Single-parameter form, per this target's deployment-target caution.
+        .onChange(of: scenePhase) { phase in
+            guard phase == .active else { return }
+            store.pruneStaleDayData()
+            // Cheap, local, and works with the phone out of range — unlike
+            // `requestContext()` below, which needs it reachable right now.
+            session.adoptReceivedContext()
+            session.requestContext()
+            session.refreshComplications()
         }
         .onOpenURL { url in
             guard let link = WatchDeepLink(url: url),
@@ -64,19 +95,14 @@ struct ContentView: View {
         case .goals:
             return .goals
         case .water:
-            // TODO(water): once the water page exists, add `case water` to
-            // `Page`, add the view to the TabView above with `.tag(Page.water)`,
-            // and return `.water` here. Those three edits are the whole wiring
-            // — the scheme, the widget-side link and the parsing are already
-            // done.
-            return nil
+            return .water
         }
     }
 
     /// Landing page on a normal (non-first-run) launch: Trend if today is
     /// already logged — nothing left to capture — otherwise Entry.
     private var initialPage: Page {
-        store.isReplacingToday ? .trend : .entry
+        store.isReplacingToday ? .goals : .entry
     }
 }
 

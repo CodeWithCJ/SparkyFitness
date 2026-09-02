@@ -109,11 +109,22 @@ struct EnergyGoalProvider: TimelineProvider {
     }
 }
 
+/// Mirror of `GoalPalette` in targets/watch — separate compiled targets can't
+/// share a constant, so if one changes, change both.
 private enum ComplicationPalette {
-    static let calories = Color.green
-    static let fat = Color.yellow
-    static let carbs = Color.orange
-    static let protein = Color.blue
+    /// #8992DC, sampled off the phone's calorie ring. Sitting outside the
+    /// macro hues entirely is deliberate: the inner calorie ring sits right
+    /// against the outer macro ring here, and the previous `.green` was a
+    /// near-neighbour of carbs once the macros took the app's colours.
+    static let calories = Color(red: 0.537, green: 0.573, blue: 0.863)
+    // Sampled straight off the phone's Nutrients card, so a macro is the same
+    // colour on the watch face as in the app: fat #8AC2DA, carbs #97C692,
+    // protein #DBB06F. Literal values rather than the system colours because
+    // these are deliberately muted — `.yellow`/`.orange`/`.blue` are far more
+    // saturated and wouldn't match.
+    static let fat = Color(red: 0.541, green: 0.761, blue: 0.855)
+    static let carbs = Color(red: 0.592, green: 0.776, blue: 0.573)
+    static let protein = Color(red: 0.859, green: 0.690, blue: 0.435)
 }
 
 /// Inner ring: a single full-circle progress trim for the calorie goal.
@@ -135,6 +146,12 @@ private struct CalorieRing: View {
                 )
                 .rotationEffect(.degrees(-90))
         }
+        // Half the stroke, because a stroke straddles its path — see the
+        // matching note in MacroGoalRing. Applied here too even though this
+        // ring sits well inside the container and was never clipped: once the
+        // outer ring is inset inward, an un-inset inner ring would collide
+        // with it.
+        .padding(strokeWidth / 2)
         .frame(width: size, height: size)
     }
 }
@@ -169,6 +186,14 @@ private struct MacroGoalRing: View {
             section(start: Self.third, filled: snapshot.carbsGoalProgress, color: ComplicationPalette.carbs)
             section(start: 2 * Self.third, filled: snapshot.proteinGoalProgress, color: ComplicationPalette.protein)
         }
+        // Inset by half the stroke, because a stroke straddles the path it's
+        // drawn on. This ring's frame is the full complication width, so
+        // without the inset its outer half fell outside the frame and
+        // accessoryCircular — which clips to a circle — cut it away: the ring
+        // was rendering at half its intended thickness with the round caps
+        // sliced lengthwise. The gap to the inner ring is unchanged, since
+        // CalorieRing is inset by the same amount.
+        .padding(strokeWidth / 2)
         .frame(width: size, height: size)
     }
 

@@ -77,6 +77,134 @@ struct NutritionSnapshot: Codable, Equatable {
     var isToday: Bool { day == CheckInDate.today() }
 }
 
+/// ml → "500ml" / "16.9oz" / "0.31L", matching the phone app's own
+/// conventions (`WATER_UNIT_LABELS`, `formatUnitVolume`): no space before the
+/// unit, and decimals that make sense for the unit's usual precision.
+/// Shared by `WaterContainer.displayVolume` and `WaterSnapshot.formattedAmount`
+/// — the only two places that turn a raw ml figure into user-facing text.
+private func formatWaterMl(_ ml: Double, unit: String) -> String {
+    let converted: Double
+    let decimals: Int
+    let label: String
+    switch unit {
+    case "oz":
+        converted = ml / 29.5735
+        decimals = 1
+        label = "oz"
+    case "liter":
+        converted = ml / 1000
+        decimals = 2
+        label = "L"
+    default:
+        converted = ml
+        decimals = 0
+        label = "ml"
+    }
+    return "\(String(format: "%.\(decimals)f", converted))\(label)"
+}
+
+/// One water container configured on the server — a tappable square on the
+/// Water page. There is no per-container image on the server side, only a
+/// name and a volume, which is why every square uses the same glyph and leans
+/// on the name (and `displayVolume`) to tell them apart.
+struct WaterContainer: Codable, Equatable, Identifiable {
+    let id: Int
+    let name: String
+    /// This container's per-tap amount, already in ml with servings divided
+    /// out on the phone (`getServingVolume`) — tapping the square adds
+    /// exactly this much, nothing left for the watch to compute.
+    let servingVolumeMl: Double
+    /// Display only — `ml` | `oz` | `liter`. `servingVolumeMl` above is
+    /// always ml regardless of this.
+    let unit: String
+
+    /// "500ml" / "16.9oz" / "0.31L" — `servingVolumeMl` converted into this
+    /// container's own configured unit.
+    var displayVolume: String { formatWaterMl(servingVolumeMl, unit: unit) }
+}
+
+/// One individual logged drink, for the water log view.
+///
+/// Manual entries only — the phone filters out synced records before sending,
+/// since those have no container behind them and nothing the wearer would
+/// recognize as theirs to delete.
+struct WaterLogEntry: Codable, Equatable, Identifiable {
+    /// The server row id. This is what a delete request names, so it has to
+    /// survive the round trip intact.
+    let id: String
+    let name: String
+    let volumeMl: Double
+    /// Already formatted by the phone in the account's configured 12/24-hour
+    /// convention — the watch renders it as given rather than re-deriving it.
+    let time: String
+}
+
+/// Today's water totals for the Water page — the bottle's fill and the goal
+/// it fills toward. Mirrored from the phone's Dashboard, same as
+/// `NutritionSnapshot`.
+/// Deliberately does NOT carry the container list. Containers are
+/// configuration, not a measurement: they don't stop being true at midnight,
+/// and bundling them in here meant the day rollover took them with it — see
+/// `WatchContext.waterContainers`.
+struct WaterSnapshot: Codable, Equatable {
+    let day: String
+    let consumedMl: Double
+    let goalMl: Double
+    /// Today's individual drinks, newest first. Empty is a real state (nothing
+    /// logged yet), distinct from the whole snapshot being nil.
+    let log: [WaterLogEntry]
+    /// The app's globally configured water display unit — independent of any
+    /// one container's own `unit` — for the label above the bottle. The watch
+    /// builds this whole struct itself, so it defaults to `ml` (the phone's
+    /// own fallback) rather than needing to be Optional.
+    let displayUnit: String
+
+    var progress: Double { goalMl > 0 ? max(0, min(1, consumedMl / goalMl)) : 0 }
+    var isToday: Bool { day == CheckInDate.today() }
+
+    /// `ml` formatted in `displayUnit` — used for a specific amount (which may
+    /// include a not-yet-confirmed tap) rather than always `consumedMl`
+    /// itself, so the label above the bottle can track the same optimistic
+    /// bump the fill does.
+    func formattedAmount(ml: Double) -> String {
+        formatWaterMl(ml, unit: displayUnit)
+    }
+}
+
+/// One container tap captured on the watch, sent straight to the phone. There
+/// is no queued/saved/failed state kept for these on the watch the way there
+/// is for `CheckIn` — see `WatchSessionManager.sendWaterTap`.
+struct WaterTap: Codable, Equatable {
+    let id: String
+    let entryDate: String
+    let containerId: Int
+
+    var payload: [String: Any] {
+        [
+            "type": "waterIntake",
+            "clientId": id,
+            "entryDate": entryDate,
+            "containerId": containerId,
+        ]
+    }
+}
+
+/// A request to delete one logged drink, sent to the phone (which owns the
+/// API call). Same fire-and-reconcile shape as `WaterTap`: the watch removes
+/// the row optimistically and the next context push is the authority.
+struct WaterDeleteRequest: Codable, Equatable {
+    let id: String
+    let entryId: String
+
+    var payload: [String: Any] {
+        [
+            "type": "waterDelete",
+            "clientId": id,
+            "entryId": entryId,
+        ]
+    }
+}
+
 /// Everything the phone relays to the watch: what to seed the crown with, and
 /// recent history to draw. Latest-value-only — delivered via
 /// `updateApplicationContext`, so a missed update is simply superseded.
@@ -112,6 +240,25 @@ struct WatchContext: Codable, Equatable {
     /// `EnergyGoalSync`, straight from the raw payload into shared App Group
     /// storage, because a widget extension can't see this app's own storage.
     var nutrition: NutritionSnapshot?
+    /// Today's water totals, for the Water page's bottle. Optional for the
+    /// same Codable reason as `nutrition` — nil means "the phone hasn't said
+    /// yet", rendered as an empty/dash state rather than a convincing-looking
+    /// zero. Expires at midnight, unlike `waterContainers` below.
+    var water: WaterSnapshot?
+
+    /// The containers configured on the server — the Water page's tappable
+    /// squares.
+    ///
+    /// Held here rather than inside `water` because it is configuration, not
+    /// a measurement: a container doesn't stop existing at midnight. It used
+    /// to live in the snapshot, which meant the day rollover deleted it and
+    /// the page came up with no squares at all until the phone was back in
+    /// range — exactly when logging from the wrist matters most.
+    ///
+    /// Three distinct states, so keep it Optional: nil = never synced, []
+    /// = synced and the server genuinely has none configured, non-empty =
+    /// usable. The page says something different for each.
+    var waterContainers: [WaterContainer]?
 
     static let empty = WatchContext(
         today: nil,
@@ -124,7 +271,9 @@ struct WatchContext: Codable, Equatable {
         ackedClientIds: [],
         updatedAt: nil,
         weightUnit: nil,
-        nutrition: nil
+        nutrition: nil,
+        water: nil,
+        waterContainers: nil
     )
 
     /// True when there is no value to anchor the Digital Crown to, which is the

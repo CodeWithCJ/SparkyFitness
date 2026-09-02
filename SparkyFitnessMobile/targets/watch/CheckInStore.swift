@@ -158,6 +158,42 @@ final class CheckInStore: ObservableObject {
         }
     }
 
+    // MARK: - Day rollover
+
+    /// Drops nutrition and water snapshots that describe a day now past.
+    ///
+    /// Both are already guarded where they're displayed (`isToday`), but that
+    /// guard is time-dependent while SwiftUI only re-evaluates a view when
+    /// observed state changes — and midnight changes nothing observable. With
+    /// the phone out of range no context arrives either, so a watch left
+    /// running overnight kept rendering yesterday's totals: the guard was
+    /// simply never asked again. The complication has no such problem, being
+    /// a separate process WidgetKit re-renders on its own timeline, which is
+    /// why it read zero while the page still showed yesterday.
+    ///
+    /// Clearing the data rather than merely forcing a redraw is deliberate:
+    /// it publishes a real change, so every dependent view recomputes, and it
+    /// stops the persisted context carrying numbers that are no longer true
+    /// into the next launch.
+    ///
+    /// Weight and body-fat history is deliberately left alone — unlike
+    /// today's totals, it doesn't expire at midnight.
+    func pruneStaleDayData() {
+        var changed = false
+
+        if let nutrition = context.nutrition, !nutrition.isToday {
+            context.nutrition = nil
+            changed = true
+        }
+        if let water = context.water, !water.isToday {
+            context.water = nil
+            changed = true
+        }
+
+        guard changed else { return }
+        persist()
+    }
+
     // MARK: - Persistence
 
     private func persist() {
@@ -184,5 +220,9 @@ final class CheckInStore: ObservableObject {
             lastCaptured = decoded
             lastCapturedState = pending.contains(where: { $0.id == decoded.id }) ? .queued : .saved
         }
+
+        // What was just restored may describe a day that has since ended —
+        // the app can be relaunched any number of days after it last ran.
+        pruneStaleDayData()
     }
 }

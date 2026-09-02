@@ -1,6 +1,6 @@
 import { apiFetch } from './apiClient';
 import { getTodayDate } from '../../utils/dateUtils';
-import type { CheckInMeasurement, CheckInMeasurementRange, WaterIntake, WaterContainer, WaterIntakeResponse } from '../../types/measurements';
+import type { CheckInMeasurement, CheckInMeasurementRange, WaterIntake, WaterContainer, WaterIntakeResponse, WaterIntakeLogEntry } from '../../types/measurements';
 import type { CustomCategory, CustomMeasurementEntry, SaveCustomMeasurementPayload } from '../../types/customMeasurements';
 
 /**
@@ -170,5 +170,33 @@ export const changeWaterIntake = async (params: {
       change_drinks: params.changeDrinks,
       container_id: params.containerId,
     },
+  });
+};
+
+/**
+ * Fetches the individual logged drinks for a date — the rows behind the day's
+ * total, each with its own container, amount and timestamp.
+ *
+ * v2 endpoint: the v1 water routes only expose the rolled-up total and can't
+ * address a single drink.
+ */
+export const fetchWaterIntakeLog = async (date: string): Promise<WaterIntakeLogEntry[]> => {
+  return apiFetch<WaterIntakeLogEntry[]>({
+    endpoint: `/api/v2/measurements/water-intake/${encodeURIComponent(date)}/log`,
+    serviceName: 'Measurements API',
+    operation: 'fetch water intake log',
+  });
+};
+
+/**
+ * Deletes one logged drink. The server also decrements the day's total, so
+ * callers only need to refresh — no separate total adjustment.
+ */
+export const deleteWaterIntakeLogEntry = async (id: string): Promise<void> => {
+  await apiFetch<unknown>({
+    endpoint: `/api/v2/measurements/water-intake/log/${encodeURIComponent(id)}`,
+    serviceName: 'Measurements API',
+    operation: 'delete water intake log entry',
+    method: 'DELETE',
   });
 };

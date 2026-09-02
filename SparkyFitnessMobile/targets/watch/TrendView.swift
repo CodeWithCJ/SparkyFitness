@@ -1,7 +1,8 @@
 import SwiftUI
 import Charts
+import WatchKit
 
-/// Post-save screen, and the app's home screen on later launches.
+/// Post-save screen,
 ///
 /// The point of the chart is that the wearer verifies the *shape* rather than
 /// re-reading digits: a correct entry visibly continues the corridor, a wrong
@@ -29,7 +30,6 @@ struct TrendView: View {
     }
 
     @EnvironmentObject private var store: CheckInStore
-    @EnvironmentObject private var session: WatchSessionManager
 
     /// Crown-driven page index. Kept as a Double (rounded to the nearest
     /// whole page) because `digitalCrownRotation` only binds to Double.
@@ -73,8 +73,19 @@ struct TrendView: View {
             by: 1,
             sensitivity: .medium,
             isContinuous: false,
-            isHapticFeedbackEnabled: true
+            // Off, because the haptic is driven from `currentMetric` below
+            // instead. The crown's own feedback fires on its detents, which
+            // are positions on `metricIndex` — a Double the view then rounds.
+            // Driving it off the rounded value ties the tap to the thing the
+            // wearer actually perceives: the chart changing. One tap per
+            // switch, at the moment it switches, rather than two sources
+            // firing near each other.
+            isHapticFeedbackEnabled: false
         )
+        // Single-parameter form, per this target's deployment-target caution.
+        .onChange(of: currentMetric) { _ in
+            WKInterfaceDevice.current().play(.click)
+        }
     }
 
     /// Status icon and the captured numbers share one row — the icon alone
@@ -82,34 +93,8 @@ struct TrendView: View {
     /// the chart below.
     private var summaryRow: some View {
         HStack(alignment: .center, spacing: 8) {
-            statusIcon
+            SyncStatusIcon()
             capturedSummary
-        }
-    }
-
-    /// Icon-only status indicator. "Queued" is framed as complete because it
-    /// is — the number is captured and delivery is the system's job, not the
-    /// wearer's problem. The label still exists for VoiceOver even though it
-    /// no longer renders.
-    private var statusIcon: some View {
-        let state = store.lastCapturedState
-        return Button {
-            if state == .failed { session.retryPending() }
-        } label: {
-            Image(systemName: state.symbol)
-                .font(.caption2)
-                .foregroundStyle(color(for: state))
-        }
-        .buttonStyle(.plain)
-        .disabled(state != .failed)
-        .accessibilityLabel(state.label)
-    }
-
-    private func color(for state: SyncState) -> Color {
-        switch state {
-        case .saved: return .green
-        case .queued: return .orange
-        case .failed: return .red
         }
     }
 

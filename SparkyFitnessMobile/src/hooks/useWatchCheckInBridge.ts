@@ -1,14 +1,34 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { AppState } from 'react-native';
 import WatchConnectivity, {
   type WatchCheckInPayload,
   type WatchContextPayload,
+  type WatchContainerPayload,
   type WatchHistoryPoint,
+  type WatchWaterIntakePayload,
+  type WatchWaterDeletePayload,
+  type WatchWaterLogPayload,
 } from '../../modules/watch-connectivity';
-import { upsertCheckIn, fetchMeasurementsRange } from '../services/api/measurementsApi';
-import { measurementsQueryKey, measurementsRangeQueryKey } from './queryKeys';
+import {
+  upsertCheckIn,
+  fetchMeasurementsRange,
+  changeWaterIntake,
+  fetchWaterContainers,
+  fetchWaterIntakeLog,
+  deleteWaterIntakeLogEntry,
+} from '../services/api/measurementsApi';
+import {
+  measurementsQueryKey,
+  measurementsRangeQueryKey,
+  dailySummaryQueryKey,
+  waterContainersQueryKey,
+  waterIntakeLogQueryKey,
+} from './queryKeys';
 import { refreshHealthSyncCache } from './refreshHealthSyncCache';
 import { getTodayDate, addDays } from '../utils/dateUtils';
+import { getServingVolume } from '../utils/unitConversions';
+import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { addLog } from '../services/LogService';
 import { queryClient } from './queryClient';
 import { usePreferences } from './usePreferences';
@@ -23,6 +43,22 @@ function goalProgress(consumed: number, goal: number): number {
 
 /** Days of history relayed to the watch — matches the watch's 14-day chart. */
 const HISTORY_DAYS = 14;
+
+/**
+ * Turns a `logged_at` timestamp into the 'HH:MM' shape `formatTimeLabel`
+ * expects, in the device's own timezone.
+ *
+ * Deliberately not `toISOString().slice(11, 16)`: that reads the time back in
+ * UTC, which shifts it by an hour or two for Adam (UTC+1/+2) — the same
+ * timezone anti-pattern this repo already avoids for calendar dates.
+ */
+function localHourMinute(timestamp: string): string | null {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return null;
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
 
 /**
  * Bridges Apple Watch check-ins to the SparkyFitness server.
@@ -43,6 +79,10 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // Guards against a queued transfer being delivered twice — WatchConnectivity
   // makes no once-only promise.
   const handledClientIdsRef = useRef<Set<string>>(new Set());
+  // Same guard for water taps. Kept as its own set (rather than sharing
+  // handledClientIdsRef) since check-in ids and water-tap ids are separate
+  // namespaces the watch generates independently.
+  const handledWaterClientIdsRef = useRef<Set<string>>(new Set());
 
   // Shared, already-cached query (30 min stale time) — reading it here adds no
   // extra fetch. 'st_lbs' collapses to 'lbs' for the watch: its crown dial only
@@ -99,6 +139,65 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   const fatConsumed = dailySummary?.fat.consumed ?? null;
   const fatGoal = dailySummary?.fat.goal ?? null;
 
+  // Today's water totals for the watch's Water page bottle — same
+  // `dailySummary` object as the phone's own hydration gauge reads, so the
+  // two never disagree.
+  const waterConsumedMl = dailySummary?.waterConsumed ?? null;
+  const waterGoalMl = dailySummary?.waterGoal ?? null;
+  // The app's globally configured display unit (independent of any one
+  // container's own unit) — same source and fallback as the phone's own
+  // hydration gauge (DashboardScreen).
+  const waterDisplayUnit = preferences?.water_display_unit ?? null;
+
+  // Configured containers, one square per entry on the watch. Long staleTime:
+  // these change only when Adam edits them in Settings, and this rides
+  // whatever's already cached rather than adding a fetch of its own if the
+  // Dashboard's own container UI is mounted too.
+  const { data: containers } = useQuery({
+    queryKey: waterContainersQueryKey,
+    queryFn: fetchWaterContainers,
+    staleTime: Infinity,
+    enabled,
+  });
+
+  // Today's individual logged drinks, for the watch's water log view. Keyed
+  // on today's date and invalidated by every tap/delete below, so it tracks
+  // the same truth the totals do.
+  const { data: waterLogEntries } = useQuery({
+    queryKey: waterIntakeLogQueryKey(getTodayDate()),
+    queryFn: () => fetchWaterIntakeLog(getTodayDate()),
+    enabled,
+  });
+
+  const timeFormat = preferences?.time_format ?? null;
+
+  const watchWaterLog: WatchWaterLogPayload[] = (waterLogEntries ?? [])
+    // Manual entries only, per the watch view's design: a synced record
+    // (Apple Health and friends) has no container behind it, so there's no
+    // honest name to bold and nothing the wearer would recognize as theirs
+    // to delete.
+    .filter((entry) => entry.source === 'manual' && entry.container_name)
+    // Newest first. The endpoint already orders logged_at DESC, but the watch
+    // view's whole premise is that the drink you just mis-tapped is the top
+    // row — too load-bearing to leave resting on the server's ORDER BY.
+    .slice()
+    .sort((a, b) => new Date(b.logged_at).getTime() - new Date(a.logged_at).getTime())
+    .map((entry) => ({
+      id: entry.id,
+      name: entry.container_name ?? '',
+      volumeMl: Number(entry.water_ml) || 0,
+      time: formatTimeLabel(localHourMinute(entry.logged_at), timeFormat) ?? '',
+    }));
+
+  const watchContainers: WatchContainerPayload[] = (containers ?? []).map((container) => ({
+    id: container.id,
+    name: container.name,
+    // Same formula the phone's own +/- buttons use (getServingVolume) — the
+    // watch must add exactly what a phone tap would, not its own guess.
+    servingVolumeMl: getServingVolume(container),
+    unit: container.unit,
+  }));
+
   const pushContext = useCallback(async (): Promise<void> => {
     if (!WatchConnectivity) return;
     try {
@@ -134,6 +233,10 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         ?? [...history].reverse()[0];
 
       const context: WatchContextPayload = {
+        // Keeps consecutive pushes distinct — see the field's own comment.
+        // Without it an unchanged day pushes an identical dictionary, which
+        // WatchConnectivity silently declines to redeliver.
+        pushedAt: Date.now(),
         today,
         todayWeightKg: todayRow?.weight ?? null,
         todayBodyFatPercentage: todayRow?.bodyFat ?? null,
@@ -156,6 +259,11 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         carbsGoal,
         fatConsumed,
         fatGoal,
+        containers: watchContainers,
+        waterConsumedMl,
+        waterGoalMl,
+        waterDisplayUnit,
+        waterLog: watchWaterLog,
       };
 
       await WatchConnectivity.updateContext(context);
@@ -169,7 +277,9 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     // below re-subscribes whenever pushContext's identity changes, which
     // includes calling it once on the way in. They're listed as individual
     // primitives rather than depending on the summary object, so an identical
-    // refetch doesn't churn the listeners.
+    // refetch doesn't churn the listeners. `containers` is the one exception —
+    // there's no cheaper primitive to key off, but react-query only hands back
+    // a new array reference when the container list itself actually changed.
   }, [
     weightUnit,
     calorieGoalProgress,
@@ -185,6 +295,12 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     carbsGoal,
     fatConsumed,
     fatGoal,
+    containers,
+    waterConsumedMl,
+    waterGoalMl,
+    waterDisplayUnit,
+    waterLogEntries,
+    timeFormat,
   ]);
 
   const handleCheckIn = useCallback(
@@ -238,11 +354,97 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     [pushContext],
   );
 
+  /**
+   * A container tap captured on the watch. Unlike `handleCheckIn`, this has no
+   * ack path back to the watch: the watch's own bottle fill is already
+   * showing an optimistic bump the instant it sent this, and the fresh
+   * `waterConsumedMl` in the next `pushContext` below is confirmation enough.
+   * A failed write here simply never shows up in that push, and the watch's
+   * bump quietly settles back on its own short timeout — see
+   * `WatchSessionManager.sendWaterTap`.
+   */
+  const handleWaterTap = useCallback(
+    async (payload: WatchWaterIntakePayload): Promise<void> => {
+      if (!WatchConnectivity) return;
+      if (payload.clientId && handledWaterClientIdsRef.current.has(payload.clientId)) {
+        return;
+      }
+
+      try {
+        await changeWaterIntake({
+          entryDate: payload.entryDate,
+          // One tap = one full serving of that container, same as the phone's
+          // own +/- button.
+          changeDrinks: 1,
+          containerId: payload.containerId,
+        });
+
+        handledWaterClientIdsRef.current.add(payload.clientId);
+        queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(payload.entryDate) });
+        // The tap also created a new log row, which the watch's log view
+        // reads — refetch so the next push carries it.
+        await queryClient.invalidateQueries({
+          queryKey: waterIntakeLogQueryKey(payload.entryDate),
+        });
+
+        addLog(
+          `Watch water tap logged for ${payload.entryDate}: container ${payload.containerId}`,
+          'INFO',
+        );
+        await pushContext();
+      } catch (error) {
+        addLog(`Watch water tap failed to save: ${String(error)}`, 'ERROR');
+      }
+    },
+    [pushContext],
+  );
+
+  /**
+   * A delete requested from the watch's water log view. The watch has already
+   * removed the row optimistically; the authoritative list arrives in the
+   * context push at the end, which restores it if this failed.
+   */
+  const handleWaterDelete = useCallback(
+    async (payload: WatchWaterDeletePayload): Promise<void> => {
+      if (!WatchConnectivity) return;
+      if (payload.clientId && handledWaterClientIdsRef.current.has(payload.clientId)) {
+        return;
+      }
+      if (!payload.entryId) return;
+
+      const today = getTodayDate();
+      try {
+        // The server decrements the day's total as part of this, so there's
+        // no separate total adjustment to make here.
+        await deleteWaterIntakeLogEntry(payload.entryId);
+
+        handledWaterClientIdsRef.current.add(payload.clientId);
+        queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(today) });
+        await queryClient.invalidateQueries({ queryKey: waterIntakeLogQueryKey(today) });
+
+        addLog(`Watch deleted water log entry ${payload.entryId}`, 'INFO');
+        await pushContext();
+      } catch (error) {
+        addLog(`Watch water delete failed: ${String(error)}`, 'ERROR');
+        // Re-push so the watch's optimistically-removed row comes back rather
+        // than staying gone on a screen that now disagrees with the server.
+        await pushContext();
+      }
+    },
+    [pushContext],
+  );
+
   useEffect(() => {
     if (!enabled || !WatchConnectivity || !WatchConnectivity.isSupported()) return;
 
     const checkInSub = WatchConnectivity.addListener('onCheckIn', (payload) => {
       void handleCheckIn(payload);
+    });
+    const waterIntakeSub = WatchConnectivity.addListener('onWaterIntake', (payload) => {
+      void handleWaterTap(payload);
+    });
+    const waterDeleteSub = WatchConnectivity.addListener('onWaterDelete', (payload) => {
+      void handleWaterDelete(payload);
     });
     const contextRequestSub = WatchConnectivity.addListener('onContextRequest', () => {
       void pushContext();
@@ -261,9 +463,11 @@ export function useWatchCheckInBridge(enabled: boolean): void {
 
     return () => {
       checkInSub.remove();
+      waterIntakeSub.remove();
+      waterDeleteSub.remove();
       contextRequestSub.remove();
       reachabilitySub.remove();
       appStateSub.remove();
     };
-  }, [enabled, handleCheckIn, pushContext]);
+  }, [enabled, handleCheckIn, handleWaterTap, handleWaterDelete, pushContext]);
 }
