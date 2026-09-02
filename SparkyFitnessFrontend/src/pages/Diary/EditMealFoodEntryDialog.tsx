@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,36 @@ const EditMealFoodEntryDialog = ({
   open,
   onOpenChange,
 }: EditMealFoodEntryDialogProps) => {
-  const initialMealFoods: MealFood[] = foodEntry.foods ?? [];
+  // Pre-unscale component quantities synchronously using the entry's snapshotted
+  // yield so MealBuilder mounts directly with the whole-dish recipe amounts
+  // (preventing visual flicker between consumed and whole-dish amounts while the
+  // async query is in flight).
+  const initialMealFoods: MealFood[] = useMemo(() => {
+    const rawFoods = foodEntry.foods ?? [];
+    if (
+      !foodEntry.entry_total_servings ||
+      foodEntry.entry_total_servings <= 0
+    ) {
+      return rawFoods;
+    }
+    const consumed = foodEntry.quantity ?? 1;
+    if (foodEntry.legacy_serving_unit_math && foodEntry.unit === 'serving') {
+      const multiplier = consumed;
+      return multiplier > 0
+        ? rawFoods.map((f) => ({
+            ...f,
+            quantity: f.quantity / multiplier,
+          }))
+        : rawFoods;
+    }
+    const multiplier = consumed / foodEntry.entry_total_servings;
+    return multiplier > 0
+      ? rawFoods.map((f) => ({
+          ...f,
+          quantity: f.quantity / multiplier,
+        }))
+      : rawFoods;
+  }, [foodEntry]);
 
   // Photos are staged here and applied when MealBuilder reports a successful
   // save, so closing the dialog without saving discards them.
