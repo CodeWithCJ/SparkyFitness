@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
-import { CartesianChart, Line } from 'victory-native';
+import { CartesianChart } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
 import { formatLocalizedNumber } from '../localization/i18n';
 import {
@@ -11,6 +11,7 @@ import {
   formatXLabel30d90d,
   formatTooltipDate,
 } from './charts/chartFormatting';
+import LineSeriesMark from './charts/LineSeriesMark';
 import type { WeightDataPoint } from '../hooks/useMeasurementsRange';
 import type { HealthTrendDateRange } from '../types/healthTrends';
 import ChartTouchOverlay, {
@@ -188,7 +189,7 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
                   points={points.weight}
                   onChange={handleTouchLayoutChange}
                 />
-                <Line
+                <LineSeriesMark
                   points={points.weight}
                   color={accentColor}
                   strokeWidth={2}

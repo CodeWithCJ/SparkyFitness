@@ -1,9 +1,10 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
-import { CartesianChart, Line } from 'victory-native';
+import { CartesianChart } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
 import { makeChartFont, formatTooltipDate } from '../charts/chartFormatting';
+import LineSeriesMark from '../charts/LineSeriesMark';
 import { formatLocalizedNumber, getAppLocale } from '../../localization';
 import ChartTouchOverlay, {
   ChartLayoutReporter,
@@ -153,7 +154,7 @@ const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
         >
           {({ points, chartBounds }) => (
             <>
-              <Line
+              <LineSeriesMark
                 points={points.yValue}
                 color={accentColor || '#3B82F6'}
                 strokeWidth={2}
