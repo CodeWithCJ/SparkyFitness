@@ -77,6 +77,11 @@ describe('createExerciseEntry when the matched parent is deleted mid-request', (
     });
   };
 
+  const queriesMatching = (pattern: RegExp) =>
+    mockClient.query.mock.calls.filter(
+      (c: unknown[]) => typeof c[0] === 'string' && pattern.test(c[0] as string)
+    );
+
   const setsInsertParents = () =>
     mockClient.query.mock.calls
       .filter(
@@ -111,6 +116,67 @@ describe('createExerciseEntry when the matched parent is deleted mid-request', (
     expect(insertedEntry, 'expected a replacement parent to be inserted').toBe(
       true
     );
+    // The recovery re-checks for a replacement row once before inserting. It
+    // must not keep retrying against a writer that deletes on every pass.
+    expect(
+      queriesMatching(/UPDATE exercise_entries/i).length
+    ).toBeLessThanOrEqual(2);
+  });
+
+  // The competing writer is a delete-then-insert sync, so by the time our stale
+  // UPDATE reports zero rows it may already have committed its own row for the
+  // same natural key. exercise_entries has no unique constraint on
+  // (user_id, source, source_id), so inserting blindly would store the workout
+  // twice with nothing to catch it.
+  it('updates the replacement row instead of storing the workout twice', async () => {
+    const REPLACEMENT_ID = 'entry-reinserted-by-the-concurrent-sync';
+    let dedupLookups = 0;
+    mockClient.query.mockImplementation((sql: string, params?: unknown[]) => {
+      if (/^\s*(BEGIN|COMMIT|ROLLBACK)/i.test(sql)) return { rows: [] };
+      if (/SELECT id FROM exercise_entries/i.test(sql)) {
+        dedupLookups += 1;
+        // The competitor's delete and re-insert both commit between our first
+        // lookup and the re-check, which is one pass of its normal sync.
+        return dedupLookups === 1
+          ? { rows: [{ id: STALE_ID }], rowCount: 1 }
+          : { rows: [{ id: REPLACEMENT_ID }], rowCount: 1 };
+      }
+      if (/SELECT \* FROM exercise_entries/i.test(sql)) {
+        return { rows: [existingEntry], rowCount: 1 };
+      }
+      if (/UPDATE exercise_entries/i.test(sql)) {
+        // Only the stale row is gone; the replacement updates normally.
+        return params?.includes(STALE_ID)
+          ? { rows: [], rowCount: 0 }
+          : { rows: [{ id: REPLACEMENT_ID }], rowCount: 1 };
+      }
+      if (/INSERT INTO exercise_entries/i.test(sql)) {
+        return { rows: [{ id: FRESH_ID }], rowCount: 1 };
+      }
+      return { rows: [{ id: REPLACEMENT_ID, ...entryData }], rowCount: 1 };
+    });
+
+    const entry = await exerciseEntryDb.createExerciseEntry(
+      'user-1',
+      entryData,
+      'user-1',
+      'Health Connect'
+    );
+
+    expect(entry.id).toBe(REPLACEMENT_ID);
+    expect(
+      queriesMatching(/INSERT INTO exercise_entries/i).length,
+      'the replacement row already exists, so a second parent must not be inserted'
+    ).toBe(0);
+    expect(dedupLookups).toBe(2);
+    for (const sql of setsInsertParents()) {
+      expect(sql).not.toContain(STALE_ID);
+      expect(sql).toContain(REPLACEMENT_ID);
+    }
+    // The sets of the row we are about to rewrite, never those of the dead id.
+    for (const call of queriesMatching(/DELETE FROM exercise_entry_sets/i)) {
+      expect(call[1]).not.toContain(STALE_ID);
+    }
   });
 
   // The regression itself. Sets written against the deleted id are what tripped
