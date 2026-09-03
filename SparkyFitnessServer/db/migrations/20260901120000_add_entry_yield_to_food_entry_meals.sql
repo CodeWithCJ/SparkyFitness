@@ -11,10 +11,6 @@
 ALTER TABLE public.food_entry_meals
   ADD COLUMN IF NOT EXISTS entry_total_servings NUMERIC;
 
--- Clean up entry_serving_size if previously added during dev testing
-ALTER TABLE public.food_entry_meals
-  DROP COLUMN IF EXISTS entry_serving_size;
-
 DO $$
 BEGIN
   IF NOT EXISTS (

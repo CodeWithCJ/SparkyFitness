@@ -378,7 +378,7 @@ describe('foodEntryMealService', () => {
 
   describe('snapshotted serving model', () => {
     it('snapshots entry_total_servings from template when logging', async () => {
-      (mealRepository.getMealById as any).mockResolvedValue({
+      vi.mocked(mealRepository.getMealById).mockResolvedValue({
         id: 'template-soup',
         name: 'Big Pot Soup',
         serving_size: 250,
@@ -394,18 +394,18 @@ describe('foodEntryMealService', () => {
         ],
       });
 
-      (foodRepository.getFoodById as any).mockResolvedValue({
+      vi.mocked(foodRepository.getFoodById).mockResolvedValue({
         id: 'broth',
         name: 'Broth',
       });
-      (foodRepository.getFoodVariantById as any).mockResolvedValue({
+      vi.mocked(foodRepository.getFoodVariantById).mockResolvedValue({
         id: 'broth-var',
         serving_size: 100,
         serving_unit: 'ml',
         calories: 20,
       });
 
-      (foodEntryMealRepository.createFoodEntryMeal as any).mockResolvedValue({
+      vi.mocked(foodEntryMealRepository.createFoodEntryMeal).mockResolvedValue({
         id: 'entry-soup-1',
         user_id: 'user-1',
         meal_type_id: 'lunch-id',
@@ -447,18 +447,20 @@ describe('foodEntryMealService', () => {
     });
 
     it('unscales component foods using snapshotted yield without querying mealRepository', async () => {
-      (foodEntryMealRepository.getFoodEntryMealById as any).mockResolvedValue({
-        id: 'entry-soup-1',
-        user_id: 'user-1',
-        meal_template_id: 'template-soup',
-        quantity: 500,
-        unit: 'ml',
-        entry_total_servings: 2000,
-        legacy_serving_unit_math: false,
-      });
+      vi.mocked(foodEntryMealRepository.getFoodEntryMealById).mockResolvedValue(
+        {
+          id: 'entry-soup-1',
+          user_id: 'user-1',
+          meal_template_id: 'template-soup',
+          quantity: 500,
+          unit: 'ml',
+          entry_total_servings: 2000,
+          legacy_serving_unit_math: false,
+        }
+      );
 
-      (
-        foodRepository.getFoodEntryComponentsByFoodEntryMealId as any
+      vi.mocked(
+        foodRepository.getFoodEntryComponentsByFoodEntryMealId
       ).mockResolvedValue([
         {
           id: 'comp-1',
@@ -487,18 +489,20 @@ describe('foodEntryMealService', () => {
     });
 
     it('unscales component foods correctly when original meal template was deleted', async () => {
-      (foodEntryMealRepository.getFoodEntryMealById as any).mockResolvedValue({
-        id: 'entry-chaat-1',
-        user_id: 'user-1',
-        meal_template_id: null, // template was deleted
-        quantity: 10,
-        unit: 'g',
-        entry_total_servings: 100,
-        legacy_serving_unit_math: false,
-      });
+      vi.mocked(foodEntryMealRepository.getFoodEntryMealById).mockResolvedValue(
+        {
+          id: 'entry-chaat-1',
+          user_id: 'user-1',
+          meal_template_id: null, // template was deleted
+          quantity: 10,
+          unit: 'g',
+          entry_total_servings: 100,
+          legacy_serving_unit_math: false,
+        }
+      );
 
-      (
-        foodRepository.getFoodEntryComponentsByFoodEntryMealId as any
+      vi.mocked(
+        foodRepository.getFoodEntryComponentsByFoodEntryMealId
       ).mockResolvedValue([
         {
           id: 'comp-sev',

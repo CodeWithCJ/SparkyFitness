@@ -62,6 +62,7 @@ router.post('/', async (req, res, next) => {
       name,
       description,
       notes,
+      foods,
       quantity,
       unit,
       entry_total_servings,
@@ -117,6 +118,7 @@ router.post('/', async (req, res, next) => {
         name,
         description,
         notes,
+        foods,
         quantity,
         unit,
         entry_total_servings:

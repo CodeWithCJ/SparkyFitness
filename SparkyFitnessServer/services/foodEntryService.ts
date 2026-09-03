@@ -2291,7 +2291,32 @@ async function updateFoodEntryMeal(
     `updateFoodEntryMeal in foodEntryService: foodEntryMealId: ${foodEntryMealId}, updatedMealData: ${JSON.stringify(updatedMealData)}, authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}`
   );
   try {
-    // 1. Update the parent food_entry_meals record's metadata
+    // 1. Reject a component-affecting update that cannot rebuild its
+    // components BEFORE touching the parent row. The component rows carry the
+    // meal's date, meal type, and scaled nutrition, so anything that changes
+    // those has to rebuild them — and rebuilding needs the foods. Persisting
+    // the parent first would leave, say, a new `entry_total_servings`
+    // denominator on a meal whose components are still scaled by the old one.
+    if (!updatedMealData.foods) {
+      const componentAffecting = (
+        [
+          'quantity',
+          'unit',
+          'entry_date',
+          'meal_type_id',
+          'meal_type',
+          'entry_total_servings',
+        ] as const
+      ).filter((field) => updatedMealData[field] !== undefined);
+      if (componentAffecting.length > 0) {
+        const error: Error & { statusCode?: number } = new Error(
+          `Updating ${componentAffecting.join(', ')} on a logged meal also rebuilds its components, so 'foods' is required.`
+        );
+        error.statusCode = 400;
+        throw error;
+      }
+    }
+    // 2. Update the parent food_entry_meals record's metadata
     const updatedFoodEntryMeal =
       await foodEntryMealRepository.updateFoodEntryMeal(
         foodEntryMealId,
@@ -2310,36 +2335,15 @@ async function updateFoodEntryMeal(
         },
         authenticatedUserId
       );
-    const resolvedMealTypeId = updatedFoodEntryMeal.meal_type_id;
     if (!updatedFoodEntryMeal) {
       throw new Error('Food entry meal not found or not authorized to update.');
     }
-    // 2. Rebuild the component food_entries — but only when the caller sent
+    const resolvedMealTypeId = updatedFoodEntryMeal.meal_type_id;
+    // 3. Rebuild the component food_entries — but only when the caller sent
     // them. `foods` is optional, and a metadata-only update (a note, say)
     // would otherwise delete every component and recreate none, silently
     // emptying the logged meal.
     if (!updatedMealData.foods) {
-      // The component rows carry the meal's date, meal type, and scaled
-      // nutrition, so anything that changes those has to rebuild them — and
-      // rebuilding needs the foods. Rather than silently leaving components
-      // pointing at the old date or portion, say what is missing.
-      const componentAffecting = (
-        [
-          'quantity',
-          'unit',
-          'entry_date',
-          'meal_type_id',
-          'meal_type',
-          'entry_total_servings',
-        ] as const
-      ).filter((field) => updatedMealData[field] !== undefined);
-      if (componentAffecting.length > 0) {
-        const error: Error & { statusCode?: number } = new Error(
-          `Updating ${componentAffecting.join(', ')} on a logged meal also rebuilds its components, so 'foods' is required.`
-        );
-        error.statusCode = 400;
-        throw error;
-      }
       log(
         'debug',
         `updateFoodEntryMeal: metadata-only update for ${foodEntryMealId}; leaving components untouched.`

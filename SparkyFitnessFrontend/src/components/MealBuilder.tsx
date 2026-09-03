@@ -352,7 +352,20 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             let effTotalServings = loggedMeal.entry_total_servings ?? null;
 
             // Fallback for pre-migration entries without snapshotted yield
-            if (effTotalServings === null && loggedMeal.meal_template_id) {
+            if (effTotalServings === null && !loggedMeal.meal_template_id) {
+              // Template-less entries (ad-hoc logs, grouped photo logs) have no
+              // whole-dish record at all: the server unscales them with a
+              // multiplier of 1, so the ingredient rows it just returned ARE
+              // the dish as recorded. Seeding the yield from the consumed
+              // amount keeps that identity — saving unchanged re-derives a
+              // multiplier of 1 — while still letting the user re-portion from
+              // here. Defaulting to 1 instead would rescale every ingredient by
+              // the consumed quantity on the next save.
+              effTotalServings = quantity;
+            } else if (
+              effTotalServings === null &&
+              loggedMeal.meal_template_id
+            ) {
               try {
                 const templateMeal = await queryClient.fetchQuery(
                   mealViewOptions(loggedMeal.meal_template_id)
@@ -1228,7 +1241,6 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           </Label>
           <Select
             value={servingUnit}
-            disabled={Boolean(foodEntryId || mealId)}
             onValueChange={(value) => {
               const previousUnit = servingUnit;
               setServingUnit(value);
