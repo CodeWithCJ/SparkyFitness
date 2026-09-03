@@ -290,6 +290,27 @@ describe('ProgressPhotoTimelapseScreen', () => {
     ).toBeTruthy();
   });
 
+  it('says it widened rather than claiming the history fits the preset', () => {
+    // One shoot inside the default window and older ones outside it. Playing
+    // only the one would be a dead screen, so the window widens - but the
+    // counter has to admit it, or it claims a year of photos is from the last
+    // three months.
+    setGallery([day(daysAgo(5)), day(daysAgo(200)), day(daysAgo(400))]);
+
+    const { getByText, queryByText } = renderScreen();
+
+    expect(getByText('1 of 3 · All time')).toBeTruthy();
+    expect(queryByText(/Last 3 months/)).toBeNull();
+  });
+
+  it('keeps the preset label when the window stands on its own', () => {
+    setGallery([day(daysAgo(5)), day(daysAgo(20))]);
+
+    const { getByText } = renderScreen();
+
+    expect(getByText('1 of 2 · Last 3 months')).toBeTruthy();
+  });
+
   it('says the same for a single photo rather than offering dead controls', () => {
     // One frame is already `atEnd`, so Play would set state and never schedule
     // a tick - a button that visibly does nothing.
