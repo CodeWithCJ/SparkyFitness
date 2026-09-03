@@ -69,7 +69,14 @@ export function formatWeightDisplay(
 ): string {
   if (mode === 'st_lbs') {
     const { stones, lbs } = kgToStonesLbs(kg);
-    return `${stones}st ${roundForDisplay(lbs)}lb`;
+    // Round the pounds before reading the stone off them. 63.5 kg sits 13.99 lb
+    // into its stone, which displays as "14lb" - by definition the next stone -
+    // so an unrounded split renders the impossible "9st 14lb" for "10st 0lb".
+    const roundedLbs = Math.round(lbs * 10) / 10;
+    if (roundedLbs === LBS_PER_STONE) {
+      return `${stones + 1}st 0lb`;
+    }
+    return `${stones}st ${roundForDisplay(roundedLbs)}lb`;
   }
   return `${roundForDisplay(weightFromKg(kg, mode))} ${mode}`;
 }

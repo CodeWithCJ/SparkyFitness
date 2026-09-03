@@ -15,6 +15,7 @@ import {
   feetInchesToCm,
   kgToStonesLbs,
   stonesLbsToKg,
+  formatWeightDisplay,
 } from '../../src/utils/unitConversions';
 
 describe('unitConversions', () => {
@@ -274,6 +275,31 @@ describe('unitConversions', () => {
       const { stones, lbs } = kgToStonesLbs(0);
       expect(stones).toBe(0);
       expect(lbs).toBe(0);
+    });
+  });
+
+  describe('formatWeightDisplay in st_lbs', () => {
+    // The split is exact but the display rounds to one decimal, so a weight
+    // just under a stone boundary rounds its remainder up to 14lb - which is by
+    // definition the next stone, not a pound count that can be shown.
+    it.each([
+      [63.48, '9st 13.9lb'],
+      [63.49, '10st 0lb'],
+      [63.5, '10st 0lb'],
+      [63.51, '10st 0lb'],
+      [6.35, '1st 0lb'],
+      [80, '12st 8.4lb'],
+      [0, '0st 0lb'],
+    ])('formats %d kg as %s', (kg, expected) => {
+      expect(formatWeightDisplay(kg, 'st_lbs')).toBe(expected);
+    });
+
+    it('never renders 14lb across the whole plausible range', () => {
+      for (let tenths = 0; tenths <= 3000; tenths++) {
+        expect(formatWeightDisplay(tenths / 10, 'st_lbs')).not.toMatch(
+          / 14lb$/
+        );
+      }
     });
   });
 

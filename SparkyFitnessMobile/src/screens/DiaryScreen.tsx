@@ -46,7 +46,10 @@ import {
   useNutrientDisplayPreferences,
   useServerConnection,
 } from '../hooks';
-import { useCheckInPhotoDates } from '../hooks/useCheckInPhotos';
+import {
+  useCheckInPhotoDates,
+  useCheckInPhotosByDate,
+} from '../hooks/useCheckInPhotos';
 import { useCustomMeasurementsByDate } from '../hooks/useCustomMeasurements';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
@@ -118,6 +121,11 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   // mount: a user who never opens the picker should not pay a request for it.
   const [calendarOpened, setCalendarOpened] = useState(false);
   const { dates: photoDates } = useCheckInPhotoDates(calendarOpened);
+  // Owned here rather than inside CheckInPhotosSummary: the empty-day predicate
+  // below needs the same answer, and one subscription keeps refetch-on-focus
+  // from firing twice for one query.
+  const { photos: dayPhotos, isLoading: isPhotosLoading } =
+    useCheckInPhotosByDate(selectedDate);
   const openCalendar = useCallback(() => {
     setCalendarOpened(true);
     calendarRef.current?.present();
@@ -334,10 +342,25 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       !hasSupplementNutrition(summary?.supplementTotals) && //A logged supplement is something the user recorded for this day, so the day is not empty even with no food, exercise or measurement.
       summary?.exerciseEntries.length === 0 &&
       !hasAnyMeasurement &&
+      // A progress photo is something the user recorded for this day, so it
+      // defeats the empty state exactly as a logged supplement does. Gated on
+      // the load like sleep above: ungated, a day with photos flashes the empty
+      // illustration until they arrive.
+      !isPhotosLoading &&
+      dayPhotos.length === 0 &&
       naps.length === 0 &&
       bedTime === null
     );
-  }, [isSleepLoading, wakeUp, summary, hasAnyMeasurement, naps, bedTime]);
+  }, [
+    isSleepLoading,
+    wakeUp,
+    summary,
+    hasAnyMeasurement,
+    isPhotosLoading,
+    dayPhotos,
+    naps,
+    bedTime,
+  ]);
 
   const renderContent = () => {
     if (!isConnectionLoading && !isConnected) {
@@ -508,6 +531,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
                 (user_id, entry_date) server-side. */}
             <CheckInPhotosSummary
               date={selectedDate}
+              photos={dayPhotos}
               onPress={() =>
                 navigation.navigate('ProgressPhotos', { date: selectedDate })
               }

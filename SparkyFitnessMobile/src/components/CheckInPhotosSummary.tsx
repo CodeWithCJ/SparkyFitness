@@ -7,7 +7,6 @@ import Icon from './Icon';
 import SafeImage from './SafeImage';
 import ProgressPhotoViewer from './ProgressPhotoViewer';
 import i18n from '../localization/i18n';
-import { useCheckInPhotosByDate } from '../hooks/useCheckInPhotos';
 import { useCheckInPhotoSource } from '../hooks/useCheckInPhotoSource';
 import { formatDateLabel } from '../utils/dateUtils';
 import {
@@ -19,6 +18,11 @@ import {
 interface CheckInPhotosSummaryProps {
   /** The diary day on show. */
   date: string;
+  /**
+   * That day's photos. Owned by the diary, which needs the same answer to
+   * decide whether the day is empty.
+   */
+  photos: CheckInPhoto[];
   /** Opens the full progress photo screen on this day. */
   onPress: () => void;
 }
@@ -39,6 +43,7 @@ const THUMB = { width: 44, height: 58, borderRadius: 8 };
  */
 const CheckInPhotosSummary: React.FC<CheckInPhotosSummaryProps> = ({
   date,
+  photos,
   onPress,
 }) => {
   const { t } = useTranslation();
@@ -48,7 +53,6 @@ const CheckInPhotosSummary: React.FC<CheckInPhotosSummaryProps> = ({
     '--color-icon-decorative',
   ]) as [string, string];
 
-  const { photos } = useCheckInPhotosByDate(date);
   const { getPhotoSource } = useCheckInPhotoSource();
   const [zoomed, setZoomed] = useState<CheckInPhoto | null>(null);
 

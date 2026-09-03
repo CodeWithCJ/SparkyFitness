@@ -1,13 +1,9 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import CheckInPhotosSummary from '../../src/components/CheckInPhotosSummary';
-import { useCheckInPhotosByDate } from '../../src/hooks/useCheckInPhotos';
 import { useCheckInPhotoSource } from '../../src/hooks/useCheckInPhotoSource';
-import type { PhotoType } from '../../src/types/checkInPhotos';
+import type { CheckInPhoto, PhotoType } from '../../src/types/checkInPhotos';
 
-jest.mock('../../src/hooks/useCheckInPhotos', () => ({
-  useCheckInPhotosByDate: jest.fn(),
-}));
 jest.mock('../../src/hooks/useCheckInPhotoSource', () => ({
   useCheckInPhotoSource: jest.fn(),
 }));
@@ -15,9 +11,6 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-const mockUseByDate = useCheckInPhotosByDate as jest.MockedFunction<
-  typeof useCheckInPhotosByDate
->;
 const mockUseSource = useCheckInPhotoSource as jest.MockedFunction<
   typeof useCheckInPhotoSource
 >;
@@ -25,23 +18,26 @@ const mockUseSource = useCheckInPhotoSource as jest.MockedFunction<
 const DATE = '2026-03-20';
 const onPress = jest.fn();
 
+// The diary owns the query and hands the day's photos down, so the fixture is a
+// plain prop rather than a mocked hook.
+let photos: CheckInPhoto[] = [];
+
 const setPhotos = (angles: PhotoType[]) => {
-  mockUseByDate.mockReturnValue({
-    photos: angles.map((angle) => ({
-      id: `${DATE}-${angle}`,
-      user_id: 'u1',
-      check_in_measurement_id: null,
-      entry_date: DATE,
-      photo_type: angle,
-      file_path: `uploads/${angle}.jpg`,
-      created_at: `${DATE}T00:00:00Z`,
-    })),
-    isLoading: false,
-  } as unknown as ReturnType<typeof useCheckInPhotosByDate>);
+  photos = angles.map((angle) => ({
+    id: `${DATE}-${angle}`,
+    user_id: 'u1',
+    check_in_measurement_id: null,
+    entry_date: DATE,
+    photo_type: angle,
+    file_path: `uploads/${angle}.jpg`,
+    created_at: `${DATE}T00:00:00Z`,
+  }));
 };
 
 const renderSummary = () =>
-  render(<CheckInPhotosSummary date={DATE} onPress={onPress} />);
+  render(
+    <CheckInPhotosSummary date={DATE} photos={photos} onPress={onPress} />
+  );
 
 describe('CheckInPhotosSummary', () => {
   beforeEach(() => {

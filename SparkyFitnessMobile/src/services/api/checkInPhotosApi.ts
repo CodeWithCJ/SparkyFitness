@@ -73,6 +73,13 @@ export async function uploadPhoto(params: {
   const config = await getActiveServerConfig();
   if (!config) throw new Error('Server configuration not found.');
   const baseUrl = normalizeUrl(config.url);
+  // Same transport guard `apiFetch` applies: these requests carry auth headers
+  // and user photos, so never send them over plaintext in a release build.
+  if (!__DEV__ && baseUrl.toLowerCase().startsWith('http://')) {
+    throw new Error(
+      'HTTPS is required for server connections. Please update your server URL in Settings.'
+    );
+  }
 
   const form = new FormData();
   // Global fetch is expo/fetch (WinterCG), which rejects React Native's

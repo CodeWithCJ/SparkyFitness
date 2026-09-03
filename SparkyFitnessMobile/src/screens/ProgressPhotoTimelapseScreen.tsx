@@ -134,10 +134,14 @@ const ProgressPhotoTimelapseScreen: React.FC<Props> = ({
   //
   // A custom range is exempt: the dates were chosen deliberately, and quietly
   // playing the whole history instead would misreport what is in them.
-  const windowed = framesIn(range);
+  // Memoized so the identity only changes with the frame set: the prefetch
+  // effect below lists `frames` as a dependency, and an inline filter would
+  // hand it a fresh array on every render.
   const keepsEmptyWindow = range === 'all' || range === 'custom';
-  const frames =
-    windowed.length >= 2 || keepsEmptyWindow ? windowed : allFrames;
+  const frames = useMemo(() => {
+    const windowed = framesIn(range);
+    return windowed.length >= 2 || keepsEmptyWindow ? windowed : allFrames;
+  }, [framesIn, range, keepsEmptyWindow, allFrames]);
 
   const [index, setIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);

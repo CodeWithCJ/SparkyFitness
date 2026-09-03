@@ -45,11 +45,17 @@ export function useCheckInPhotoSource() {
     (photoId: string): CheckInPhotoSource | null => {
       if (!photoId || !config) return null;
 
+      // Unlike the exercise and food image sources, these carry the session
+      // token, so a plaintext base URL would put it on the wire. Null renders
+      // SafeImage's fallback, which every caller here already handles.
+      const base = normalizeUrl(config.url);
+      if (!__DEV__ && base.toLowerCase().startsWith('http://')) return null;
+
       const cached = cacheRef.current.get(photoId);
       if (cached) return cached;
 
       const source: CheckInPhotoSource = {
-        uri: `${normalizeUrl(config.url)}/api/measurements/check-in-photos/file/${encodeURIComponent(photoId)}`,
+        uri: `${base}/api/measurements/check-in-photos/file/${encodeURIComponent(photoId)}`,
         headers: {
           ...proxyHeadersToRecord(config.proxyHeaders),
           ...getAuthHeaders(config),
