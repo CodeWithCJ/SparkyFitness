@@ -1,10 +1,15 @@
 import SwiftUI
 
-/// Router for the watch app. First run is a one-time gate; after that, Entry,
-/// Goals, Water and Trend are pages the wearer swipes between — swiping is
+/// Router for the watch app. First run is a one-time gate; after that, Goals,
+/// Water, Entry and Trend are pages the wearer swipes between — swiping is
 /// the only way to move between them, there is no button.
 struct ContentView: View {
-    /// Declaration order here is also the swipe order.
+    /// Identifies a page; the cases are `.tag` values, nothing more.
+    ///
+    /// Swipe order is set by the order the views appear in the `TabView`
+    /// below, NOT by the order of these cases — a `.page`-style TabView lays
+    /// its children out in body order. Reordering this enum alone changes
+    /// nothing on screen, so change both together or neither.
     private enum Page: Int { case goals, water, entry, trend }
 
     @EnvironmentObject private var store: CheckInStore
@@ -33,15 +38,16 @@ struct ContentView: View {
                     page = .trend
                 }
             } else {
+                // This order is the swipe order: Goals ▸ Water ▸ Entry ▸ Trend.
                 TabView(selection: Binding(get: { page ?? initialPage }, set: { page = $0 })) {
-                    CheckInEntryView { page = .trend }
-                        .tag(Page.entry)
-
                     GoalSummaryView()
                         .tag(Page.goals)
 
                     WaterIntakeView()
                         .tag(Page.water)
+
+                    CheckInEntryView { page = .trend }
+                        .tag(Page.entry)
 
                     TrendView()
                         .tag(Page.trend)
