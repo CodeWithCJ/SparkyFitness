@@ -27,7 +27,7 @@ private func appGroupIdentifier() -> String? {
     Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_IDENTIFIER") as? String
 }
 
-/// Mirrors the `Snapshot` type `EnergyGoalSync` (targets/watch) encodes —
+/// Mirrors the `EnergySnapshot` type `ComplicationPublisher` (targets/watch) encodes —
 /// four fractions, each already clamped to 0...1 by the phone.
 struct EnergyGoalSnapshot {
     let calorieGoalProgress: Double
@@ -275,7 +275,7 @@ struct EnergyGoalComplicationEntryView: View {
 }
 
 struct EnergyGoalComplication: Widget {
-    // Must match EnergyGoalSync.complicationKind (targets/watch).
+    // Must match ComplicationPublisher's Energy.kind (targets/watch).
     let kind: String = "energyGoalComplication"
 
     var body: some WidgetConfiguration {

@@ -28,7 +28,7 @@ private func waterAppGroupIdentifier() -> String? {
     Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_IDENTIFIER") as? String
 }
 
-/// Mirrors the `Snapshot` type `WaterGoalSync` (targets/watch) encodes — one
+/// Mirrors the `WaterSnapshotPayload` type `ComplicationPublisher` encodes — one
 /// fraction, already clamped to 0...1 by the watch app.
 struct WaterGoalSnapshot {
     let progress: Double
@@ -209,7 +209,7 @@ struct WaterGoalComplicationEntryView: View {
 }
 
 struct WaterGoalComplication: Widget {
-    // Must match WaterGoalSync.complicationKind (targets/watch).
+    // Must match ComplicationPublisher's Water.kind (targets/watch).
     let kind: String = "waterGoalComplication"
 
     var body: some WidgetConfiguration {

@@ -15,19 +15,6 @@ struct CheckIn: Codable, Equatable, Identifiable {
     let weightKg: Double
     let bodyFatPercentage: Double?
     let capturedAt: Date
-
-    var payload: [String: Any] {
-        var dict: [String: Any] = [
-            "type": "checkIn",
-            "clientId": id,
-            "entryDate": entryDate,
-            "weightKg": weightKg,
-        ]
-        if let bodyFatPercentage {
-            dict["bodyFatPercentage"] = bodyFatPercentage
-        }
-        return dict
-    }
 }
 
 /// A day on the trend chart. Body fat is optional for the same reason as above.
@@ -178,15 +165,6 @@ struct WaterTap: Codable, Equatable {
     let id: String
     let entryDate: String
     let containerId: Int
-
-    var payload: [String: Any] {
-        [
-            "type": "waterIntake",
-            "clientId": id,
-            "entryDate": entryDate,
-            "containerId": containerId,
-        ]
-    }
 }
 
 /// A request to delete one logged drink, sent to the phone (which owns the
@@ -195,14 +173,6 @@ struct WaterTap: Codable, Equatable {
 struct WaterDeleteRequest: Codable, Equatable {
     let id: String
     let entryId: String
-
-    var payload: [String: Any] {
-        [
-            "type": "waterDelete",
-            "clientId": id,
-            "entryId": entryId,
-        ]
-    }
 }
 
 /// Everything the phone relays to the watch: what to seed the crown with, and
@@ -237,8 +207,9 @@ struct WatchContext: Codable, Equatable {
     /// which the Goals page renders as dashes rather than zeros.
     ///
     /// The complication does not read this. It is fed separately by
-    /// `EnergyGoalSync`, straight from the raw payload into shared App Group
-    /// storage, because a widget extension can't see this app's own storage.
+    /// `ComplicationPublisher`, straight from the raw payload into shared App
+    /// Group storage, because a widget extension can't see this app's own
+    /// storage.
     var nutrition: NutritionSnapshot?
     /// Today's water totals, for the Water page's bottle. Optional for the
     /// same Codable reason as `nutrition` — nil means "the phone hasn't said

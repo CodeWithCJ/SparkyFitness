@@ -69,7 +69,7 @@ module.exports = (config) => {
     // a target as a watch-widget when WATCHOS_DEPLOYMENT_TARGET is present.
     deploymentTarget: '10.0',
     // Shares the phone/widget app group so a future version could read the
-    // same shared storage; today only EnergyGoalSync (targets/watch) writes
+    // same shared storage; today only ComplicationPublisher (targets/watch) writes
     // to it and this target only reads.
     entitlements: {
       'com.apple.security.application-groups': [appGroup],
