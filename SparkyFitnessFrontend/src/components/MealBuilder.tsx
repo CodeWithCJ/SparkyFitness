@@ -1176,7 +1176,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   const mealTotals = calculateMealNutrition();
 
   let displayScale = 1;
-  if (source === 'food-diary' || nutritionView === 'logged') {
+  if (nutritionView === 'logged') {
     const qty = positiveOr(consumedQuantity, 1);
     if (templateInfo.legacy_serving_unit_math && servingUnit === 'serving') {
       displayScale = qty;
@@ -1668,27 +1668,30 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           servingModelFields
         )}
         <div className="space-y-2">
-          {source === 'food-diary' ? (
-            <h4 className="text-sm font-medium text-foreground">
-              {t('mealBuilder.loggedNutritionLabel', 'Logged Nutrition:')}
-            </h4>
-          ) : (
-            <Tabs
-              value={nutritionView}
-              onValueChange={(value) =>
-                setNutritionView(value as 'perServing' | 'total')
-              }
-            >
-              <TabsList>
+          {/* Diary mode weighs the portion against the whole dish, so it
+              toggles Consumed vs Total. Meal management has no consumed
+              portion and toggles Per serving vs Total instead. */}
+          <Tabs
+            value={nutritionView}
+            onValueChange={(value) =>
+              setNutritionView(value as 'logged' | 'perServing' | 'total')
+            }
+          >
+            <TabsList>
+              {source === 'food-diary' ? (
+                <TabsTrigger value="logged">
+                  {t('mealBuilder.consumedTab', 'Consumed')}
+                </TabsTrigger>
+              ) : (
                 <TabsTrigger value="perServing">
                   {t('mealBuilder.perServingTab', 'Per serving')}
                 </TabsTrigger>
-                <TabsTrigger value="total">
-                  {t('mealBuilder.totalTab', 'Total')}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          )}
+              )}
+              <TabsTrigger value="total">
+                {t('mealBuilder.totalTab', 'Total')}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm text-muted-foreground">
             {visibleNutrients.map((key) => {
               const meta = getNutrientMetadata(key);

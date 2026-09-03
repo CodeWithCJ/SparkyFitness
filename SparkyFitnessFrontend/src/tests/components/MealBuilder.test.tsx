@@ -131,6 +131,52 @@ describe('MealBuilder', () => {
     expect(screen.getByRole('combobox')).toBeEnabled();
   });
 
+  it('toggles diary nutrition between the consumed portion and the whole dish', async () => {
+    // The diary dialog shows the portion by default, but the whole-dish totals
+    // have to stay reachable so the ingredient list above (which is always at
+    // dish scale) can be reconciled against a number.
+    renderWithClient(
+      <MealBuilder
+        initialFoods={sampleFoods}
+        source="food-diary"
+        foodEntryDate="2026-08-28"
+        foodEntryMealType="dinner"
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Total Servings')).toBeInTheDocument();
+    });
+
+    // The label and value are separate text nodes, so read the row's textContent.
+    const caloriesRow = () =>
+      screen
+        .getAllByText((_content, element) =>
+          /^Calories:/.test(element?.textContent ?? '')
+        )
+        .at(-1)?.textContent;
+
+    // Default: one serving of a dish that yields one, so the portion is all of it.
+    expect(screen.getByRole('tab', { name: 'Consumed' })).toBeInTheDocument();
+    expect(caloriesRow()).toMatch(/95/);
+
+    // Yield 4, still one serving consumed: the portion is a quarter (95/4,
+    // shown rounded)...
+    fireEvent.change(screen.getByLabelText('Total Servings'), {
+      target: { value: '4' },
+    });
+    await waitFor(() => {
+      expect(caloriesRow()).toMatch(/24/);
+    });
+
+    // ...while Total keeps showing the whole dish.
+    // Radix tabs activate on mousedown, not click.
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Total' }));
+    await waitFor(() => {
+      expect(caloriesRow()).toMatch(/95/);
+    });
+  });
+
   it('keeps the unit locked and shows whole dish yield when logging or editing a template-backed meal', async () => {
     // Risk guard: these two dialogs share this component. In diary mode the unit
     // is locked to preserve ingredient math, while the whole-dish yield and
