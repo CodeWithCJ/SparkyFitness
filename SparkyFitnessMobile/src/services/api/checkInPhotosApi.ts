@@ -50,6 +50,7 @@ export const fetchPhotosByDate = async (
   });
 };
 
+/** Removes one photo. Replacing an angle does not need this: the server upserts. */
 export const deletePhoto = async (id: string): Promise<void> => {
   return apiFetch<void>({
     endpoint: `/api/measurements/check-in-photos/photo/${encodeURIComponent(id)}`,

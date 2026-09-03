@@ -38,6 +38,14 @@ type Props = RootStackScreenProps<'ProgressPhotoCompare'>;
 /** Which of the two panes the date picker is currently assigning to. */
 type Side = 'before' | 'after';
 
+/**
+ * Two days of one angle side by side, with the weight change between them.
+ *
+ * Each pane picks its day through a `CalendarSheet` marked with the days that
+ * have that angle, rather than a scrollable thumbnail strip: the strip mounted
+ * one image per shoot, so opening the screen decoded the user's whole history.
+ * This way exactly the two photos on screen are ever loaded.
+ */
 const ProgressPhotoCompareScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();

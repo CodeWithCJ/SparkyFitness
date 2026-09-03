@@ -102,6 +102,13 @@ export function useCheckInPhotoDates(enabled = true) {
   };
 }
 
+/**
+ * Upload and delete, plus which angle is mid-upload so a slot can show it.
+ *
+ * `uploadingType` is read only while the mutation is pending: `variables` holds
+ * the last call's arguments until the mutation is reset, so an ungated read
+ * leaves the slot that just finished reporting itself as still uploading.
+ */
 export function useCheckInPhotoMutations() {
   const queryClient = useQueryClient();
 

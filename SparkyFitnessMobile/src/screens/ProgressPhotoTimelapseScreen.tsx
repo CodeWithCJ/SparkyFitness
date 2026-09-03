@@ -66,6 +66,15 @@ const SPEEDS: Record<Speed, { holdMs: number; fadeMs: number }> = {
 /** How many frames ahead to warm the image cache, so a fade never starts on a blank. */
 const PREFETCH_AHEAD = 3;
 
+/**
+ * Plays one angle's history back as a cross-faded sequence.
+ *
+ * Only the current frame is mounted, with `PREFETCH_AHEAD` warmed behind it, so
+ * playback costs the same whether the history is ten shoots or a thousand. The
+ * header menu windows it to 30 days, 3 months, all time, or a range picked by
+ * hand; every window is evaluated as absolute day bounds, presets included, so
+ * there is one filter rather than a relative and an absolute one.
+ */
 const ProgressPhotoTimelapseScreen: React.FC<Props> = ({
   navigation,
   route,

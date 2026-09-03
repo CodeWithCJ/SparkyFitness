@@ -99,6 +99,17 @@ interface TimelineRow {
   deltaKg: number | null;
 }
 
+/**
+ * The hub of the progress photo flow: the selected day's three angles on top,
+ * where a tap adds, replaces or removes one, over a history of that angle with
+ * each shoot's weight and its change since the one before. Compare and
+ * Time-lapse hang off it and read the whole history, not the preview.
+ *
+ * The screen carries two angle concepts, which is its one real ambiguity: the
+ * day block is angle-agnostic and always shows all three, while the segmented
+ * control under History scopes the timeline and what Compare / Time-lapse open
+ * with. They live in separate blocks so position tells them apart.
+ */
 const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
