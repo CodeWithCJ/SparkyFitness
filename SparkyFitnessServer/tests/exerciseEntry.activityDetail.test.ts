@@ -153,4 +153,75 @@ describe('createExerciseEntry with a provider activity detail', () => {
       indexOfStatement(/INSERT INTO exercise_entry_activity_details/i)
     ).toBe(-1);
   });
+
+  it('replaces the matching detail when the same source record is synced twice', async () => {
+    let parentExists = false;
+    let detailRows = 0;
+    mockClient.query.mockImplementation((sql: string) => {
+      if (/^\s*(BEGIN|COMMIT|ROLLBACK)/i.test(sql)) return { rows: [] };
+      if (/pg_advisory_xact_lock/i.test(sql)) return { rows: [] };
+      if (/DELETE FROM exercise_entry_activity_details/i.test(sql)) {
+        detailRows = 0;
+        return { rows: [], rowCount: 1 };
+      }
+      if (/SELECT id FROM exercise_entries/i.test(sql)) {
+        return {
+          rows: parentExists ? [{ id: ENTRY_ID }] : [],
+          rowCount: parentExists ? 1 : 0,
+        };
+      }
+      if (/SELECT \* FROM exercise_entries/i.test(sql)) {
+        return {
+          rows: [{ id: ENTRY_ID, user_id: 'user-1', ...entryData }],
+          rowCount: 1,
+        };
+      }
+      if (/UPDATE exercise_entries/i.test(sql)) {
+        return { rows: [{ id: ENTRY_ID }], rowCount: 1 };
+      }
+      if (/FROM exercises WHERE id/i.test(sql)) {
+        return { rows: [{ name: 'Calisthenics', modality: 'strength' }] };
+      }
+      if (/INSERT INTO exercise_entries/i.test(sql)) {
+        parentExists = true;
+        return { rows: [{ id: ENTRY_ID }], rowCount: 1 };
+      }
+      if (/INSERT INTO exercise_entry_activity_details/i.test(sql)) {
+        detailRows += 1;
+        return { rows: [{ id: `detail-${detailRows}` }], rowCount: 1 };
+      }
+      return { rows: [{ id: ENTRY_ID, ...entryData }], rowCount: 1 };
+    });
+
+    await exerciseEntryDb.createExerciseEntry(
+      'user-1',
+      entryData,
+      'user-1',
+      'Health Connect',
+      null,
+      { activityDetail }
+    );
+    await exerciseEntryDb.createExerciseEntry(
+      'user-1',
+      entryData,
+      'user-1',
+      'Health Connect',
+      null,
+      { activityDetail }
+    );
+
+    expect(detailRows).toBe(1);
+    const deleteCalls = mockClient.query.mock.calls.filter(
+      (call) =>
+        typeof call[0] === 'string' &&
+        /DELETE FROM exercise_entry_activity_details/i.test(call[0])
+    );
+    expect(deleteCalls).toHaveLength(1);
+    expect(deleteCalls[0][1]).toEqual([
+      ENTRY_ID,
+      'Health Connect',
+      'user-1',
+      'ExerciseSession_raw_data',
+    ]);
+  });
 });

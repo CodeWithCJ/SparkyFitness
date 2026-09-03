@@ -886,7 +886,7 @@ async function createExerciseEntry(
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
-    const { entry } = await _createExerciseEntryWithClient(
+    const { entry, operation } = await _createExerciseEntryWithClient(
       client,
       userId,
       entryData,
@@ -896,6 +896,15 @@ async function createExerciseEntry(
       options
     );
     if (options.activityDetail) {
+      if (operation === 'updated') {
+        await activityDetailsRepository._deleteActivityDetailsByEntryIdAndProviderWithClient(
+          client,
+          userId,
+          entry.id,
+          options.activityDetail.provider_name,
+          options.activityDetail.detail_type
+        );
+      }
       await activityDetailsRepository._createActivityDetailWithClient(client, {
         ...options.activityDetail,
         exercise_entry_id: entry.id,
