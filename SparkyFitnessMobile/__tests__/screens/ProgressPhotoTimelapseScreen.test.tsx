@@ -289,4 +289,18 @@ describe('ProgressPhotoTimelapseScreen', () => {
       getByText('Add at least two photos of this angle to play a time-lapse.')
     ).toBeTruthy();
   });
+
+  it('says the same for a single photo rather than offering dead controls', () => {
+    // One frame is already `atEnd`, so Play would set state and never schedule
+    // a tick - a button that visibly does nothing.
+    setGallery([day(daysAgo(1))]);
+
+    const { getByText, queryByLabelText } = renderScreen();
+
+    expect(
+      getByText('Add at least two photos of this angle to play a time-lapse.')
+    ).toBeTruthy();
+    expect(queryByLabelText('Play')).toBeNull();
+    expect(queryByLabelText('Pause')).toBeNull();
+  });
 });

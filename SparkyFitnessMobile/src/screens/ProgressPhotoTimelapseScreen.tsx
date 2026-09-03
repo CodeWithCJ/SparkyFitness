@@ -302,7 +302,10 @@ const ProgressPhotoTimelapseScreen: React.FC<Props> = ({
       );
     }
 
-    if (frames.length === 0 || !current || !currentPhoto) {
+    // Fewer than two frames is the empty state, not a playable one: a lone
+    // frame is already `atEnd`, so the controls would render with a Play button
+    // that sets state and never schedules a tick.
+    if (frames.length < 2 || !current || !currentPhoto) {
       return (
         <View className="py-16 items-center px-6">
           <Icon name="camera" size={40} color={mutedColor} />
