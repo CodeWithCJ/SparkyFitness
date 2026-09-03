@@ -14,6 +14,7 @@ import { toLocalDateString } from '../utils/dateUtils';
 import Icon from './Icon';
 import Button from './ui/Button';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
+import { useMarkedDayComponent } from './calendarMarkedDays';
 import { useCalendarPresentation } from '../utils/calendarLocalization';
 
 export interface DateRangeSheetRef {
@@ -28,6 +29,11 @@ interface DateRangeSheetProps {
   title?: string;
   /** Confirm button label. Defaults to the writeback removal wording. */
   confirmLabel?: string;
+  /**
+   * Calendar days (YYYY-MM-DD) to flag with a dot, e.g. the days that already
+   * have a photo for the angle being played back.
+   */
+  markedDates?: string[];
 }
 
 /**
@@ -37,7 +43,7 @@ interface DateRangeSheetProps {
  * opposite things - one removes the range, the other plays it back.
  */
 const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
-  ({ onConfirm, title, confirmLabel }, ref) => {
+  ({ onConfirm, title, confirmLabel, markedDates }, ref) => {
     const { t } = useTranslation();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const { presentation } = useCalendarPresentation();
@@ -52,6 +58,13 @@ const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
         '--color-text-primary',
         '--color-text-secondary',
       ]) as [string, string, string, string, string];
+
+    const markedDayComponent = useMarkedDayComponent({
+      markedDates,
+      textPrimary,
+      textMuted,
+      accentPrimary,
+    });
 
     useImperativeHandle(ref, () => ({
       present: () => {
@@ -114,6 +127,7 @@ const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
             locale={presentation.locale}
             firstDayOfWeek={presentation.firstDayOfWeek}
             components={{
+              ...markedDayComponent,
               IconPrev: (
                 <Icon name="chevron-back" size={18} color={textPrimary} />
               ),

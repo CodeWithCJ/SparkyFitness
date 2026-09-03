@@ -33,6 +33,7 @@ type SheetProps = {
   onConfirm: (from: string, to: string) => void;
   title?: string;
   confirmLabel?: string;
+  markedDates?: string[];
 };
 const mockSheetRender = jest.fn<void, [SheetProps]>();
 const mockPresentSheet = jest.fn();
@@ -288,6 +289,16 @@ describe('ProgressPhotoTimelapseScreen', () => {
     expect(
       getByText('Add at least two photos of this angle to play a time-lapse.')
     ).toBeTruthy();
+  });
+
+  it('dots the days with a photo in the range picker', () => {
+    // Without them the sheet asks the user to draw a range around photos it
+    // never shows, which is what the gallery's own picker already dots.
+    setGallery([day(daysAgo(1)), day(daysAgo(9))]);
+
+    renderScreen();
+
+    expect(sheetProps()?.markedDates).toEqual([daysAgo(9), daysAgo(1)]);
   });
 
   it('says it widened rather than claiming the history fits the preset', () => {

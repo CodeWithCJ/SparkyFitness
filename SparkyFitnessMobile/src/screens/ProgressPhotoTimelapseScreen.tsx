@@ -109,6 +109,11 @@ const ProgressPhotoTimelapseScreen: React.FC<Props> = ({
     [days, angle]
   );
 
+  const markedDays = useMemo(
+    () => allFrames.map((day) => day.entry_date),
+    [allFrames]
+  );
+
   // Every window is expressed as absolute bounds, presets included: a preset is
   // just "N days back from today", so one filter serves both and a custom range
   // needs no second code path.
@@ -439,6 +444,10 @@ const ProgressPhotoTimelapseScreen: React.FC<Props> = ({
 
       <DateRangeSheet
         ref={rangeSheetRef}
+        // The days that have this angle, so a range can be drawn around the
+        // photos rather than guessed at - the same dots the gallery's picker
+        // shows.
+        markedDates={markedDays}
         title={t('progressPhotos.rangeSheetTitle', {
           defaultValue: 'Play back a date range',
         })}

@@ -248,7 +248,7 @@ npx expo prebuild --clean
 - Animate Skia paths from Reanimated `useSharedValue` / `useDerivedValue`, not Skia's deprecated animation API.
 - `Icon.tsx` maps semantic names to SF Symbols on iOS and Ionicons on Android; verify identifiers before adding icons.
 - Use shared primitives where they fit: `FormInput`, `Button`, `SettingsRow`, `SettingsRowGroup`, `SegmentedControl`, `StepperInput`, `BottomSheetPicker`, `CalendarSheet`, `DateRangeSheet`, `AnchoredMenu`, and `FormScreenChrome`.
-- `DateRangeSheet` takes optional `title` and `confirmLabel`; they default to the writeback removal wording, so a consumer that is not removing anything (the time-lapse) must pass its own.
+- `DateRangeSheet` takes optional `title` and `confirmLabel`; they default to the writeback removal wording, so a consumer that is not removing anything (the time-lapse) must pass its own. It also takes `markedDates`, like `CalendarSheet`: both dot their days through the shared `useMarkedDayComponent` (`components/calendarMarkedDays.tsx`), which inverts the dot on a selected day and on either end of a range, and supplies no `Day` override at all when there is nothing to mark so every other caller keeps the library's own cell.
 - `BottomSheetPicker`, `CalendarSheet`, and sheets shown over native modals use `FullWindowOverlay` on iOS to avoid nested-provider inset bugs.
 - Keep button text and compact cards within their stable dimensions across mobile sizes. Avoid layout shifts from dynamic labels, loading states, or icon swaps.
 
