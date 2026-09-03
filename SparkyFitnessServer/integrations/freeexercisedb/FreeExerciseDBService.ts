@@ -28,14 +28,12 @@ interface DatasetHolder {
 
 function isExerciseDataset(value: unknown): value is FreeExercise[] {
   if (!Array.isArray(value)) return false;
-  if (value.length === 0) return true;
-
-  const firstExercise: unknown = value[0];
-  return (
-    typeof firstExercise === 'object' &&
-    firstExercise !== null &&
-    'name' in firstExercise &&
-    typeof firstExercise.name === 'string'
+  return value.every(
+    (exercise: unknown) =>
+      typeof exercise === 'object' &&
+      exercise !== null &&
+      'name' in exercise &&
+      typeof exercise.name === 'string'
   );
 }
 
