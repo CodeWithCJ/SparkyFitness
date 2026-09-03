@@ -376,6 +376,52 @@ describe('foodEntryMealService', () => {
     });
   });
 
+  describe('updateFoodEntryMeal component dates', () => {
+    // entry_date was the one inherited field with no fallback to the stored
+    // row. Omitting it sent undefined into the NOT NULL column, and because the
+    // delete had already run the entry was left with no components at all.
+    it('falls back to the stored entry_date when the update omits it', async () => {
+      vi.mocked(foodEntryMealRepository.updateFoodEntryMeal).mockResolvedValue({
+        id: 'meal-entry-1',
+        meal_type_id: 'breakfast-id',
+        entry_date: '2026-06-19',
+        quantity: 1,
+        unit: 'serving',
+        entry_total_servings: 1,
+        legacy_serving_unit_math: false,
+      });
+
+      vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+        id: 'food-1',
+        name: 'Food',
+        default_variant: { id: 'variant-1' },
+      });
+      vi.mocked(foodRepository.getFoodVariantById).mockResolvedValue({
+        id: 'variant-1',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 100,
+      });
+
+      await updateFoodEntryMeal('user-1', 'user-1', 'meal-entry-1', {
+        name: 'Renamed',
+        foods: [
+          {
+            food_id: 'food-1',
+            variant_id: 'variant-1',
+            quantity: 100,
+            unit: 'g',
+          },
+        ],
+      });
+
+      expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledWith(
+        [expect.objectContaining({ entry_date: '2026-06-19' })],
+        'user-1'
+      );
+    });
+  });
+
   describe('snapshotted serving model', () => {
     it('snapshots entry_total_servings from template when logging', async () => {
       vi.mocked(mealRepository.getMealById).mockResolvedValue({

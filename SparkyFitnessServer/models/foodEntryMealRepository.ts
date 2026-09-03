@@ -169,7 +169,13 @@ async function updateFoodEntryMeal(
     }
     const result = await client.query(
       `UPDATE food_entry_meals SET
-                meal_template_id = $1,
+                -- Key-presence flag, like entry_time and notes below: an
+                -- omitted key preserves the existing link, an explicit null
+                -- clears it. A bare assignment silently unlinked the entry
+                -- from its template on any partial update, after which the
+                -- portion resolver finds neither template nor snapshot and
+                -- writes the components at whole-dish scale.
+                meal_template_id = CASE WHEN $16::boolean THEN $1::uuid ELSE meal_template_id END,
                 meal_type_id = COALESCE($2, meal_type_id),
                 entry_date = COALESCE($3, entry_date),
                 name = COALESCE($4, name),
@@ -187,7 +193,7 @@ async function updateFoodEntryMeal(
             WHERE id = $9
             RETURNING *`,
       [
-        foodEntryMealData.meal_template_id,
+        foodEntryMealData.meal_template_id ?? null,
         mealTypeId,
         foodEntryMealData.entry_date,
         foodEntryMealData.name,
@@ -202,6 +208,7 @@ async function updateFoodEntryMeal(
         sanitizeNotes(foodEntryMealData.notes) ?? null,
         foodEntryMealData.entry_total_servings !== undefined,
         foodEntryMealData.entry_total_servings ?? null,
+        foodEntryMealData.meal_template_id !== undefined,
       ]
     );
     if (result.rows.length === 0) {

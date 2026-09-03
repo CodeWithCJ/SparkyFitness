@@ -2452,7 +2452,12 @@ async function updateFoodEntryMeal(
         quantity: scaledQuantity, // SCALED quantity
         unit: foodItem.unit,
         variant_id: variantId,
-        entry_date: updatedMealData.entry_date,
+        // Fall back to the stored date like every other inherited field. An
+        // omitted entry_date would otherwise reach the NOT NULL column and
+        // fail the insert — after the delete has already run, leaving the
+        // logged meal with no components and nothing to retry from.
+        entry_date:
+          updatedMealData.entry_date ?? updatedFoodEntryMeal.entry_date,
         entry_time: updatedFoodEntryMeal.entry_time ?? null,
         food_entry_meal_id: foodEntryMealId, // Link to the existing food_entry_meals ID
         ...snapshot,
