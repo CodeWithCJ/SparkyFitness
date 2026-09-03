@@ -2061,6 +2061,8 @@ CREATE TABLE public.food_entry_meals (
     entry_time time without time zone,
     images jsonb DEFAULT '[]'::jsonb NOT NULL,
     notes text,
+    entry_total_servings numeric,
+    CONSTRAINT food_entry_meals_entry_total_servings_positive CHECK (((entry_total_servings IS NULL) OR (entry_total_servings > (0)::numeric))),
     CONSTRAINT food_entry_meals_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text))
 );
 
@@ -2098,6 +2100,13 @@ COMMENT ON COLUMN public.food_entry_meals.entry_time IS 'Optional wall-clock loc
 --
 
 COMMENT ON COLUMN public.food_entry_meals.notes IS 'Per-occurrence markdown note for a single logged meal. Never derived from meals.notes.';
+
+
+--
+-- Name: COLUMN food_entry_meals.entry_total_servings; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entry_meals.entry_total_servings IS 'Snapshotted total dish yield of the meal in its unit when logged. NULL falls back to the live meal template.';
 
 
 --
