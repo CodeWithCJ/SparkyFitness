@@ -123,6 +123,32 @@ describe('createExerciseEntry when the matched parent is deleted mid-request', (
     ).toBeLessThanOrEqual(2);
   });
 
+  it('locks the provider source before the deduplication lookup', async () => {
+    arrange({ updateAffectsRows: 1 });
+
+    await exerciseEntryDb.createExerciseEntry(
+      'user-1',
+      entryData,
+      'user-1',
+      'Health Connect'
+    );
+
+    const statements = mockClient.query.mock.calls.map((call) =>
+      String(call[0])
+    );
+    const lockIndex = statements.findIndex((sql) =>
+      /pg_advisory_xact_lock/i.test(sql)
+    );
+    const lookupIndex = statements.findIndex((sql) =>
+      /SELECT id FROM exercise_entries/i.test(sql)
+    );
+    expect(lockIndex).toBeGreaterThan(statements.indexOf('BEGIN'));
+    expect(lockIndex).toBeLessThan(lookupIndex);
+    expect(mockClient.query.mock.calls[lockIndex][1]).toEqual([
+      'exercise-entry-sync:user-1:Health Connect',
+    ]);
+  });
+
   // The competing writer is a delete-then-insert sync, so by the time our stale
   // UPDATE reports zero rows it may already have committed its own row for the
   // same natural key. exercise_entries has no unique constraint on

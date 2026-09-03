@@ -354,8 +354,7 @@ async function _updateExerciseEntryWithClient(
   updateData: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   updatedByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entrySource: any,
+  entrySource: string | undefined,
   // A caller that can recover from a vanished row (the sync path, which just
   // inserts a replacement) passes returnNullIfMissing and gets null instead of
   // an exception. Callers acting on a user-chosen entry leave it unset, because
@@ -611,6 +610,20 @@ async function _updateExerciseEntryWithClient(
 interface MatchedExerciseEntry {
   id: string;
 }
+
+/**
+ * Serializes destructive range deletes and deduplicating writes for one
+ * user's provider source until the surrounding transaction ends.
+ */
+async function acquireExerciseEntrySyncLockWithClient(
+  client: PoolClient,
+  userId: string,
+  entrySource: string
+): Promise<void> {
+  const key = `exercise-entry-sync:${userId}:${entrySource}`;
+  await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [key]);
+}
+
 async function _createExerciseEntryWithClient(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
@@ -631,6 +644,9 @@ async function _createExerciseEntryWithClient(
     // Callers that must always insert (e.g. the chatbot, where logging the
     // same exercise twice in a day means two workouts) pass skipDuplicateCheck.
     const syncDuplicateCheck = entryData.source_id ? true : false;
+    if (syncDuplicateCheck) {
+      await acquireExerciseEntrySyncLockWithClient(client, userId, entrySource);
+    }
     const skipManualDuplicateCheck = [
       'HealthKit',
       'Health Connect',
@@ -676,8 +692,7 @@ async function _createExerciseEntryWithClient(
       }
       return existingEntryResult?.rows?.[0]?.id ?? null;
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let newEntryId: any;
+    let newEntryId: string;
     let operation: 'created' | 'updated';
     // The matched row can be gone by the time we update it. A provider sync
     // range-deletes by source and day span before re-inserting, so an
@@ -1584,6 +1599,7 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
   entrySource: string,
   excludedExerciseName?: string
 ) {
+  await acquireExerciseEntrySyncLockWithClient(client, userId, entrySource);
   // Get IDs of exercise entries to be deleted
   const entryIdsResult = await client.query(
     `SELECT id FROM exercise_entries
