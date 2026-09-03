@@ -278,21 +278,31 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
     [ingredients]
   );
 
-  // Template-linked meals come back with component foods at recipe BASE
-  // quantities but meal.calories as the CONSUMED total (server divides foods by
-  // the storage multiplier on read, foodEntryService.ts). Base totals alone
-  // would therefore understate the meal, so recover that multiplier (consumed /
-  // base) from the loaded snapshot and fold it into all display scaling.
-  // Non-template meals already store consumed amounts, so this is 1 for them.
+  // Whether the server applies a portion multiplier to this entry's components.
+  // This mirrors the gate in resolveLoggedMealPortion: a linked template OR a
+  // snapshotted yield is enough. Checking meal_template_id alone used to be
+  // equivalent, but an entry whose template was deleted keeps its snapshot and
+  // is still scaled, so the template check would both misrender it and
+  // double-scale it on save.
+  const serverScalesComponents = Boolean(
+    meal?.meal_template_id || meal?.entry_total_servings
+  );
+
+  // Scaled meals come back with component foods at recipe BASE quantities but
+  // meal.calories as the CONSUMED total (server divides foods by the storage
+  // multiplier on read, foodEntryService.ts). Base totals alone would therefore
+  // understate the meal, so recover that multiplier (consumed / base) from the
+  // loaded snapshot and fold it into all display scaling. Unscaled meals
+  // already store consumed amounts, so this is 1 for them.
   const templateScale = useMemo(() => {
-    // Guard null/zero calories: without it a template meal with no aggregate
+    // Guard null/zero calories: without it a scaled meal with no aggregate
     // calories would yield templateScale 0 and zero out the whole display.
-    if (!meal?.meal_template_id || !meal.calories) return 1;
+    if (!serverScalesComponents || !meal?.calories) return 1;
     const base = computeBaseTotals(
       meal.foods.map(buildMealIngredientDraftFromEntryMealFood)
     ).calories;
     return base > 0 ? meal.calories / base : 1;
-  }, [meal]);
+  }, [meal, serverScalesComponents]);
 
   // Keep displayScaleRef current so the deferred handlers (editIngredient and
   // the meal-builder focus effect) unscale consumed amounts using the latest
@@ -377,11 +387,13 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
       quantity,
       unit: meal.unit,
       meal_template_id: meal.meal_template_id,
+      entry_total_servings: meal.entry_total_servings,
       foods: ingredients.map(({ brand: _brand, ...food }) => ({
         ...food,
-        // Non-template meals persist consumed (scaled) component quantities;
-        // template-linked meals are rescaled server-side, so send base values.
-        quantity: meal.meal_template_id
+        // Unscaled meals persist consumed component quantities verbatim; meals
+        // the server rescales (linked template or snapshotted yield) take base
+        // values, because it applies the multiplier itself on write.
+        quantity: serverScalesComponents
           ? food.quantity
           : food.quantity * scaleFactor,
       })),

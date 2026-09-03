@@ -432,6 +432,40 @@ describe('EditLoggedMealScreen', () => {
     expect(payload.foods[0].quantity).toBe(200);
   });
 
+  // An entry whose template was deleted keeps its snapshotted yield, and the
+  // server still scales it by quantity / entry_total_servings. Treating it as
+  // unscaled (the old meal_template_id check) sent client-scaled quantities
+  // into a server that scales again, doubling the portion.
+  it('sends base quantities for an orphaned meal that kept its snapshot', () => {
+    mockMeal({
+      ...baseMeal,
+      meal_template_id: null,
+      entry_total_servings: 2,
+    });
+
+    const screen = renderScreen();
+    fireEvent.changeText(screen.getByTestId('quantity-input'), '2');
+    pressAction(screen, navigation, 'Save');
+
+    const payload = mockUpdateMeal.mock.calls[0][0];
+    expect(payload.quantity).toBe(2);
+    expect(payload.entry_total_servings).toBe(2);
+    // Base, not 200: the server applies the multiplier on write.
+    expect(payload.foods[0].quantity).toBe(100);
+  });
+
+  it('scales an orphaned snapshotted meal to the consumed total on the card', () => {
+    mockMeal({
+      ...baseMeal,
+      meal_template_id: null,
+      entry_total_servings: 2,
+    });
+
+    const screen = renderScreen();
+    // Foods sum to 165 base cal; meal.calories is the consumed total.
+    expect(screen.getByText('200 calories')).toBeTruthy();
+  });
+
   it('confirms deletion when the Delete Meal button is pressed', () => {
     const screen = renderScreen();
     fireEvent.press(screen.getByText('Delete Meal'));

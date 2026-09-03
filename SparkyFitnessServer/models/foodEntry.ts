@@ -38,6 +38,7 @@ interface SourceMealContainer {
   quantity: number | null;
   unit: string | null;
   legacy_serving_unit_math: boolean;
+  entry_total_servings: number | null;
 }
 
 function reviewedCopyConflict() {
@@ -908,7 +909,8 @@ async function copyReviewedFoodEntriesFromUser({
               notes,
               quantity,
               unit,
-              legacy_serving_unit_math
+              legacy_serving_unit_math,
+              entry_total_servings
              FROM food_entry_meals
              WHERE id = $1 AND user_id = $2
              FOR SHARE`,
@@ -932,10 +934,12 @@ async function copyReviewedFoodEntriesFromUser({
               legacy_serving_unit_math,
               created_by_user_id,
               updated_by_user_id,
-              images
+              images,
+              entry_total_servings
             ) VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
-              COALESCE((SELECT images FROM meals WHERE id = $2), '[]'::jsonb)
+              COALESCE((SELECT images FROM meals WHERE id = $2), '[]'::jsonb),
+              $14
             )
             RETURNING id`,
             [
@@ -952,6 +956,7 @@ async function copyReviewedFoodEntriesFromUser({
               sourceMeal.legacy_serving_unit_math,
               actingUserId,
               actingUserId,
+              sourceMeal.entry_total_servings,
             ]
           )) as { rows: Array<{ id: string }> };
           targetFoodEntryMealId = targetMealResult.rows[0]?.id ?? null;

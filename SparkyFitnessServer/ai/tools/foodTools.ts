@@ -426,6 +426,7 @@ const DIARY_MEAL_DROP = [
   'updated_by_user_id',
   'meal_template_id',
   'legacy_serving_unit_math',
+  'entry_total_servings',
 ] as const;
 
 interface ResolvedMealType {
