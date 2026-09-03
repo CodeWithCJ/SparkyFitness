@@ -51,6 +51,29 @@ export function stonesLbsToKg(stones: number, lbs: number): number {
   return lbsToKg(stones * LBS_PER_STONE + lbs);
 }
 
+/** How the user has chosen to see weights. Server storage is always kg. */
+export type WeightDisplayMode = 'kg' | 'lbs' | 'st_lbs';
+
+/** One decimal place, trailing zero dropped ("82.5", "82"). */
+const roundForDisplay = (value: number): string =>
+  String(Math.round(value * 10) / 10);
+
+/**
+ * Formats a stored (kg) weight in the user's display unit, with the unit
+ * suffix. Shared by the measurement tiles and the progress-photo screens so
+ * the same weight never reads differently in two places.
+ */
+export function formatWeightDisplay(
+  kg: number,
+  mode: WeightDisplayMode
+): string {
+  if (mode === 'st_lbs') {
+    const { stones, lbs } = kgToStonesLbs(kg);
+    return `${stones}st ${roundForDisplay(lbs)}lb`;
+  }
+  return `${roundForDisplay(weightFromKg(kg, mode))} ${mode}`;
+}
+
 export function kmToMiles(km: number): number {
   return km * KM_TO_MILES;
 }

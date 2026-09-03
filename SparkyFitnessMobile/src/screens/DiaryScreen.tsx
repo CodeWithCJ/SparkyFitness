@@ -25,6 +25,7 @@ import { addSheetRef } from '../components/AddSheet';
 import CalendarSheet, {
   type CalendarSheetRef,
 } from '../components/CalendarSheet';
+import CheckInPhotosSummary from '../components/CheckInPhotosSummary';
 import DateNavigator from '../components/DateNavigator';
 import DiaryCalorieMacroSummary from '../components/DiaryCalorieMacroSummary';
 import EmptyDayIllustration from '../components/EmptyDayIllustration';
@@ -45,6 +46,7 @@ import {
   useNutrientDisplayPreferences,
   useServerConnection,
 } from '../hooks';
+import { useCheckInPhotoDates } from '../hooks/useCheckInPhotos';
 import { useCustomMeasurementsByDate } from '../hooks/useCustomMeasurements';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
@@ -112,7 +114,14 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     navigation.setParams({ selectedDate });
   }, [navigation, selectedDate]);
 
-  const openCalendar = useCallback(() => calendarRef.current?.present(), []);
+  // The photo-day markers are fetched on first calendar open rather than at
+  // mount: a user who never opens the picker should not pay a request for it.
+  const [calendarOpened, setCalendarOpened] = useState(false);
+  const { dates: photoDates } = useCheckInPhotoDates(calendarOpened);
+  const openCalendar = useCallback(() => {
+    setCalendarOpened(true);
+    calendarRef.current?.present();
+  }, []);
   const openFamilyDiaries = useCallback(
     () => navigation.navigate('FamilyMembers'),
     [navigation]
@@ -495,6 +504,14 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
                 navigation.navigate('MeasurementsAdd', { date: selectedDate })
               }
             />
+            {/* Below the measurements: both are the same check-in, keyed on
+                (user_id, entry_date) server-side. */}
+            <CheckInPhotosSummary
+              date={selectedDate}
+              onPress={() =>
+                navigation.navigate('ProgressPhotos', { date: selectedDate })
+              }
+            />
           </>
         )}
       </ScrollView>
@@ -515,6 +532,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           ref={calendarRef}
           selectedDate={selectedDate}
           onSelectDate={handleCalendarSelect}
+          markedDates={photoDates}
         />
         <ServingAdjustSheet
           ref={servingSheetRef}
@@ -561,6 +579,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         ref={calendarRef}
         selectedDate={selectedDate}
         onSelectDate={handleCalendarSelect}
+        markedDates={photoDates}
       />
       <ServingAdjustSheet
         ref={servingSheetRef}

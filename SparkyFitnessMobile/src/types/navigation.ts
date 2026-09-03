@@ -12,6 +12,7 @@ import type { SaveFoodPayload } from '../services/api/foodsApi';
 import type { CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
 import type { MealTypeKey } from '../utils/mealNutrition';
 import type { AssumedSetValues } from '../utils/workoutSession';
+import type { PhotoType } from './checkInPhotos';
 import type { Exercise } from './exercise';
 import type { FamilyDiaryUser } from './familyDiary';
 import type { FoodEntry } from './foodEntries';
@@ -281,6 +282,16 @@ export type RootStackParamList = {
   Sync: undefined;
   ImportHistory: undefined;
   MeasurementsAdd: { date?: string } | undefined;
+  /**
+   * Progress photos: one day's three angles with their management, over a
+   * timeline of every check-in photo with that day's weight. `date` picks the
+   * day the screen opens on.
+   */
+  ProgressPhotos: { date?: string } | undefined;
+  /** Side-by-side comparison of two days for one angle. */
+  ProgressPhotoCompare: { angle?: PhotoType } | undefined;
+  /** Cross-fading time-lapse of every photo for one angle, oldest to newest. */
+  ProgressPhotoTimelapse: { angle?: PhotoType } | undefined;
   CalorieSettings: undefined;
   MealTypeSettings: undefined;
   FoodSettings: undefined;

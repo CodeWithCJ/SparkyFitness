@@ -9,7 +9,10 @@ import React, {
 import { Platform, Pressable, Text, View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
-import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
+import DateTimePicker, {
+  type CalendarDay,
+  type DateType,
+} from 'react-native-ui-datepicker';
 import { useTranslation } from 'react-i18next';
 import { toLocalDateString } from '../utils/dateUtils';
 import Icon from './Icon';
@@ -28,6 +31,12 @@ export interface CalendarSheetRef {
 interface CalendarSheetProps {
   selectedDate: string;
   onSelectDate: (date: string) => void;
+  /**
+   * Calendar days (YYYY-MM-DD) to flag with a dot, e.g. days that already have
+   * a progress photo. Optional: without it the picker renders the library's own
+   * day cell, so existing callers are untouched.
+   */
+  markedDates?: string[];
 }
 
 interface CalendarContentProps extends CalendarSheetProps {
@@ -53,6 +62,7 @@ const CalendarContent = ({
   textSecondary,
   textMuted,
   accentPrimary,
+  markedDates,
 }: CalendarContentProps) => {
   const { appLocale, presentation } = useCalendarPresentation();
   const { t } = useTranslation();
@@ -64,6 +74,56 @@ const CalendarContent = ({
     () => getCalendarMonthNames(appLocale),
     [appLocale]
   );
+  const markedSet = useMemo(() => new Set(markedDates ?? []), [markedDates]);
+
+  // The library keeps its own Pressable and container styling around an
+  // overridden Day, so selection, today and disabled backgrounds still come
+  // from the `styles` map below; only the label is ours to draw. Supplied only
+  // when there is something to mark, so every other caller keeps the stock cell.
+  const renderMarkedDay = useCallback(
+    (day: CalendarDay) => {
+      // CalendarDay.date is declared `string` by the library but actually
+      // arrives as its internal dayjs object, so it goes through the same
+      // `new Date(...)` + toLocalDateString conversion handleChange uses. That
+      // also keeps the comparison on the local calendar day rather than a UTC
+      // instant, which would mark the wrong cell either side of midnight.
+      const dayString = toLocalDateString(
+        new Date(day.date as unknown as string | number | Date)
+      );
+      const marked = markedSet.has(dayString);
+      return (
+        <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+          <Text
+            style={{
+              color: day.isSelected
+                ? '#FFFFFF'
+                : day.isDisabled
+                  ? textMuted
+                  : textPrimary,
+            }}
+          >
+            {day.text}
+          </Text>
+          <View
+            testID={marked ? 'calendar-day-marked' : 'calendar-day-unmarked'}
+            style={{
+              width: 4,
+              height: 4,
+              borderRadius: 2,
+              marginTop: 1,
+              backgroundColor: marked
+                ? day.isSelected
+                  ? '#FFFFFF'
+                  : accentPrimary
+                : 'transparent',
+            }}
+          />
+        </View>
+      );
+    },
+    [markedSet, textPrimary, textMuted, accentPrimary]
+  );
+
   const [initialYear, initialMonth] = selectedDate.split('-').map(Number);
   const [visible, setVisible] = useState({
     year: initialYear,
@@ -242,6 +302,7 @@ const CalendarContent = ({
         // stays the same, preventing a stale 'month'/'year' remount.
         key={`calendar-${presentation.locale}-${presentation.firstDayOfWeek}-${visible.month}-${visible.year}-${pickerMountVersion}`}
         components={{
+          ...(markedSet.size > 0 ? { Day: renderMarkedDay } : {}),
           Weekday: (weekday) => (
             <View style={{ minWidth: 30 }}>
               <Text
@@ -285,7 +346,7 @@ const CalendarContent = ({
 };
 
 const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
-  ({ selectedDate, onSelectDate }, ref) => {
+  ({ selectedDate, onSelectDate, markedDates }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary] =
       useCSSVariable([
@@ -327,6 +388,7 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
           textSecondary={textSecondary}
           textMuted={textMuted}
           accentPrimary={accentPrimary}
+          markedDates={markedDates}
         />
       </BottomSheetModal>
     );
