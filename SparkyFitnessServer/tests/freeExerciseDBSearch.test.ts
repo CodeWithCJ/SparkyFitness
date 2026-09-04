@@ -3,8 +3,10 @@ import axios from 'axios';
 import freeExerciseDBService, {
   resetFreeExerciseDBCache,
 } from '../integrations/freeexercisedb/FreeExerciseDBService.js';
+import { log } from '../config/logging.js';
 
 vi.mock('axios');
+vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
 describe('FreeExerciseDBService search', () => {
   beforeEach(() => {
@@ -184,6 +186,27 @@ describe('FreeExerciseDBService search', () => {
     expect(axios.get).toHaveBeenCalledTimes(2);
   });
 
+  it('rejects an empty dataset and retries after the interval', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+    vi.mocked(axios.get).mockResolvedValueOnce({ data: [] });
+
+    const firstResult = await freeExerciseDBService.searchExercises('lunge');
+    vi.advanceTimersByTime(300_001);
+    vi.mocked(axios.get).mockResolvedValue({
+      data: [{ name: 'Dumbbell Curl' }],
+    });
+
+    const retryResult = await freeExerciseDBService.searchExercises('curl');
+
+    expect(firstResult).toEqual({ exercises: [], totalCount: 0 });
+    expect(retryResult).toEqual({
+      exercises: [{ name: 'Dumbbell Curl' }],
+      totalCount: 1,
+    });
+    expect(axios.get).toHaveBeenCalledTimes(2);
+  });
+
   it('accepts searchable dataset entries with optional fields omitted', async () => {
     vi.mocked(axios.get).mockResolvedValue({
       data: [{ name: 'Lunge' }, { name: 'Dumbbell Curl' }],
@@ -289,6 +312,9 @@ describe('FreeExerciseDBService search', () => {
       totalCount: 1,
     });
     expect(axios.get).toHaveBeenCalledTimes(2);
+    expect(
+      vi.mocked(log).mock.calls.filter(([level]) => level === 'warn')
+    ).toHaveLength(1);
   });
 
   it('serves stale data after a timeout without retrying inside the interval', async () => {

@@ -27,7 +27,7 @@ interface DatasetHolder {
 }
 
 function isExerciseDataset(value: unknown): value is FreeExercise[] {
-  if (!Array.isArray(value)) return false;
+  if (!Array.isArray(value) || value.length === 0) return false;
   return value.every(
     (exercise: unknown) =>
       typeof exercise === 'object' &&
@@ -94,10 +94,6 @@ class FreeExerciseDBService {
       now - lastDatasetFetchFailureAt < STALE_RETRY_INTERVAL_MS
     ) {
       if (dataset) {
-        log(
-          'warn',
-          `[FreeExerciseDBService] Serving stale exercise dataset after a refresh failure; age: ${now - dataset.fetchedAt}ms`
-        );
         return dataset.data;
       }
       log(
@@ -132,13 +128,11 @@ class FreeExerciseDBService {
           }
           if (dataset) {
             const age = Date.now() - dataset.fetchedAt;
-            if (age >= DATASET_TTL_MS) {
-              log(
-                'warn',
-                `[FreeExerciseDBService] Serving stale exercise dataset after a refresh failure; age: ${age}ms`,
-                error instanceof Error ? error.message : error
-              );
-            }
+            log(
+              'warn',
+              `[FreeExerciseDBService] Serving stale exercise dataset after a refresh failure; age: ${age}ms`,
+              error instanceof Error ? error.message : error
+            );
             return dataset.data;
           }
           throw error;
