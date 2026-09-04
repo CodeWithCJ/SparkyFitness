@@ -53,14 +53,132 @@ jobs:
             exit 1
           fi
 
+          # Four surfaces with different formats and placeholder rules, so each is
+          # its own Weblate component rather than one shared with the others.
+          MOBILE=main-repo/SparkyFitnessMobile
+          MIRROR=translation-repo/mobile
+
+          # The runtime catalog and the Expo metadata are gated at build time, so an
+          # unregistered one costs nothing sitting in the repo. The widget resources
+          # are not: withCalorieWidget copies the whole res/ tree and the iOS widget
+          # target is a synchronized folder, so anything that lands there is compiled
+          # into the app. Pull only the registered locales for those two surfaces.
+          registry=$(node -e '
+            const fs = require("fs");
+            const path = require("path");
+            const root = process.argv[1];
+            const manifest = require(path.join(root, "src/localization/localeRegistry.json"));
+            const { androidDirForLocale, localeFromAndroidDir } = require(
+              path.join(root, "scripts/androidLocaleQualifiers.cjs")
+            );
+            const source = manifest.sourceLocale;
+            const locales = Object.keys(manifest.locales);
+            const android = locales.map((l) => androidDirForLocale(l, source));
+            const lproj = locales.map((l) => l + ".lproj");
+            // Dropping a locale from the registry has to unship its widget too, so
+            // list what is already here and no longer registered. localeFromAndroidDir
+            // returns null for values-night and the other non-locale qualifiers, which
+            // keeps them out of the removal list.
+            const stale = (dir, isUnit, keep) =>
+              fs
+                .readdirSync(path.join(root, dir))
+                .filter((name) => isUnit(name) && !keep.includes(name));
+            console.log(android.join(" "));
+            console.log(lproj.join(" "));
+            console.log(
+              stale(
+                "targets/android-widget/res",
+                (name) => localeFromAndroidDir(name, source) !== null,
+                android
+              ).join(" ")
+            );
+            console.log(
+              stale(
+                "targets/widget",
+                (name) => name.endsWith(".lproj"),
+                lproj
+              ).join(" ")
+            );
+          ' "$PWD/$MOBILE")
+          SHIPPED_ANDROID=$(echo "$registry" | sed -n 1p)
+          SHIPPED_LPROJ=$(echo "$registry" | sed -n 2p)
+          echo "Registered Android widget resources: $SHIPPED_ANDROID"
+          echo "Registered iOS widget resources: $SHIPPED_LPROJ"
+
+          prune_unregistered() {
+            dest="$1"
+            for unit in $2; do
+              echo "  removing $dest/$unit: no longer in localeRegistry.json"
+              rm -rf "${dest:?}/$unit"
+            done
+          }
+          prune_unregistered "$MOBILE/targets/android-widget/res" "$(echo "$registry" | sed -n 3p)"
+          prune_unregistered "$MOBILE/targets/widget" "$(echo "$registry" | sed -n 4p)"
+
+          echo "=== Copying non-English mobile translations from translation repo to main repo ==="
+          sync_dirs() {
+            src="$1"; dest="$2"; source_unit="$3"; pattern="${4:-*}"; allow="${5:-}"
+            if [ ! -d "$src" ]; then
+              echo "  $src not in the translations repo yet; skipping."
+              return
+            fi
+            # $pattern is deliberately unquoted so the shell expands it. res/ also
+            # holds drawable/, layout/ and xml/, which are not translation units.
+            for dir in "$src"/$pattern; do
+              [ -d "$dir" ] || continue
+              unit=$(basename "$dir")
+              [ "$unit" = "$source_unit" ] && continue
+              if [ -n "$allow" ]; then
+                case " $allow " in
+                  *" $unit "*) ;;
+                  *) echo "  skipping $unit: not in localeRegistry.json"; continue ;;
+                esac
+              fi
+              echo "  $dest/$unit"
+              rm -rf "${dest:?}/$unit"
+              cp -r "$dir" "$dest/"
+            done
+          }
+
+          sync_dirs "$MIRROR/src/localization/locales" "$MOBILE/src/localization/locales" en
+          sync_dirs "$MIRROR/targets/android-widget/res" "$MOBILE/targets/android-widget/res" values 'values-*' "$SHIPPED_ANDROID"
+          sync_dirs "$MIRROR/targets/widget" "$MOBILE/targets/widget" en.lproj '*.lproj' "$SHIPPED_LPROJ"
+
+          if [ -d "$MIRROR/locales" ]; then
+            for file in "$MIRROR"/locales/*.json; do
+              [ -f "$file" ] || continue
+              [ "$(basename "$file")" = "en.json" ] && continue
+              echo "  $MOBILE/locales/$(basename "$file")"
+              cp "$file" "$MOBILE/locales/"
+            done
+          else
+            echo "  $MIRROR/locales not in the translations repo yet; skipping."
+          fi
+
+          echo "=== Copying English mobile sources from main repo to translation repo ==="
+          # Unconditional: this seeds the four components on the first run.
+          mkdir -p "$MIRROR/src/localization/locales" "$MIRROR/locales" \
+                   "$MIRROR/targets/android-widget/res" "$MIRROR/targets/widget"
+          rm -rf "$MIRROR/src/localization/locales/en" "$MIRROR/targets/android-widget/res/values" \
+                 "$MIRROR/targets/widget/en.lproj"
+          cp -r "$MOBILE/src/localization/locales/en" "$MIRROR/src/localization/locales/"
+          cp -r "$MOBILE/targets/android-widget/res/values" "$MIRROR/targets/android-widget/res/"
+          cp -r "$MOBILE/targets/widget/en.lproj" "$MIRROR/targets/widget/"
+          cp "$MOBILE/locales/en.json" "$MIRROR/locales/"
+          echo "Copied English mobile sources successfully."
+
       # 3.5 Format the updated localization files with Prettier
       - name: Format localization files with Prettier
         run: |
           echo "=== Formatting synced files to match codebase styling ==="
           npx prettier --write "main-repo/SparkyFitnessFrontend/public/locales/**/*.json"
+          npx prettier --write "main-repo/SparkyFitnessMobile/src/localization/locales/**/*.json"
+          npx prettier --write "main-repo/SparkyFitnessMobile/locales/*.json"
           # Only format the English locale here; the other languages are owned by
           # Weblate and reformatting them would drag them into the English-only PR.
           npx prettier --write "translation-repo/locales/en/**/*.json"
+          npx prettier --write "translation-repo/mobile/src/localization/locales/en/**/*.json"
+          npx prettier --write "translation-repo/mobile/locales/en.json"
 
       # 4. Create a Pull Request in the translation repository for English locales
       - name: Create Pull Request in SparkyFitnessTranslations
@@ -70,6 +188,10 @@ jobs:
           path: translation-repo
           add-paths: |
             locales/en
+            mobile/src/localization/locales/en
+            mobile/locales/en.json
+            mobile/targets/android-widget/res/values
+            mobile/targets/widget/en.lproj
           commit-message: "chore(i18n): update English locales from main repo"
           branch: i18n/update-english-locales
           delete-branch: true
@@ -77,7 +199,15 @@ jobs:
           body: |
             This pull request was automatically created by the **Sync Translations** workflow.
 
-            It updates the English translation files (`locales/en`) with the latest keys from the main repository.
+            It updates the English source files with the latest keys from the main repository, one per Weblate component:
+
+            | Component | Path |
+            | --- | --- |
+            | Web | `locales/en` |
+            | Mobile runtime | `mobile/src/localization/locales/en` |
+            | Mobile Expo metadata | `mobile/locales/en.json` |
+            | Mobile Android widgets | `mobile/targets/android-widget/res/values` |
+            | Mobile iOS widgets | `mobile/targets/widget/en.lproj` |
 
       # 5. Create a Pull Request in the main repository for other language files
       - name: Create Pull Request in SparkyFitness
@@ -88,6 +218,13 @@ jobs:
           add-paths: |
             SparkyFitnessFrontend/public/locales
             :!SparkyFitnessFrontend/public/locales/en
+            SparkyFitnessMobile/src/localization/locales
+            :!SparkyFitnessMobile/src/localization/locales/en
+            SparkyFitnessMobile/locales
+            :!SparkyFitnessMobile/locales/en.json
+            SparkyFitnessMobile/targets/android-widget/res/values-*/widget_strings.xml
+            SparkyFitnessMobile/targets/widget/*.lproj/Localizable.strings
+            :!SparkyFitnessMobile/targets/widget/en.lproj
           commit-message: "chore(i18n): sync non-English translations from Weblate"
           branch: i18n/sync-weblate-translations
           delete-branch: true
@@ -95,7 +232,9 @@ jobs:
           body: |
             This pull request was automatically created by the **Sync Translations** workflow.
 
-            It copies all non-English translation files from the [SparkyFitnessTranslations](https://github.com/CodeWithCJ/SparkyFitnessTranslations) repository (connected to Weblate) to the main repository.
+            It copies all non-English translation files from the [SparkyFitnessTranslations](https://github.com/CodeWithCJ/SparkyFitnessTranslations) repository (connected to Weblate) to the main repository, across the web catalog and the four mobile surfaces (runtime catalog, Expo metadata, Android widget resources and iOS widget resources).
+
+            Only locales listed in `SparkyFitnessMobile/src/localization/localeRegistry.json` are shipped on mobile; the others sync in as translation candidates and are not bundled. The widget resources are pulled for registered locales only, because Android and iOS compile whatever resource directories they find, so a candidate's widget arrives on the sync after it is registered.
           labels: |
             i18n
             translations
