@@ -2,7 +2,16 @@ const fs = require('node:fs');
 const path = require('node:path');
 const ts = require('typescript');
 
-const EXCLUDE_DIRS = new Set(['__tests__', '__mocks__', 'node_modules', 'coverage', 'android', 'ios', 'scripts', '.tooling']);
+const EXCLUDE_DIRS = new Set([
+  '__tests__',
+  '__mocks__',
+  'node_modules',
+  'coverage',
+  'android',
+  'ios',
+  'scripts',
+  '.tooling',
+]);
 const CONTROLLED_DYNAMIC_I18N_RULES = new Set([
   'healthMetrics',
   'healthCategories',
@@ -13,17 +22,21 @@ function isApprovedControlledDynamicKey(node) {
   if (!ts.isTemplateExpression(node)) return false;
   const head = node.head.text;
   const prefixMatch = head.match(/^([A-Za-z0-9_.-]+)\.$/);
-  if (!prefixMatch || !CONTROLLED_DYNAMIC_I18N_RULES.has(prefixMatch[1])) return false;
+  if (!prefixMatch || !CONTROLLED_DYNAMIC_I18N_RULES.has(prefixMatch[1]))
+    return false;
   return node.templateSpans.length === 1;
 }
-
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx']);
 
 /** Blocking rule name for a source file that could not be scanned (fail-closed). */
 const SOURCE_SCAN_ERROR_RULE = 'source-scan-error';
 
-const CUSTOM_UI_ATTRIBUTE_NAMES = new Set(['errorMessage', 'successMessage', 'emptyMessage']);
+const CUSTOM_UI_ATTRIBUTE_NAMES = new Set([
+  'errorMessage',
+  'successMessage',
+  'emptyMessage',
+]);
 
 const LOCALIZED_ATTRIBUTE_NAMES = new Set([
   'accessibilityHint',
@@ -80,8 +93,13 @@ function literalText(node) {
 function collectLiteralTexts(node) {
   if (!node) return [];
 
-  if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isTypeAssertionExpression(node) ||
-      (typeof ts.isSatisfiesExpression === 'function' && ts.isSatisfiesExpression(node))) {
+  if (
+    ts.isParenthesizedExpression(node) ||
+    ts.isAsExpression(node) ||
+    ts.isTypeAssertionExpression(node) ||
+    (typeof ts.isSatisfiesExpression === 'function' &&
+      ts.isSatisfiesExpression(node))
+  ) {
     return collectLiteralTexts(node.expression);
   }
 
@@ -89,24 +107,36 @@ function collectLiteralTexts(node) {
   if (direct !== null) return [direct];
 
   if (ts.isConditionalExpression(node)) {
-    return [...collectLiteralTexts(node.whenTrue), ...collectLiteralTexts(node.whenFalse)];
+    return [
+      ...collectLiteralTexts(node.whenTrue),
+      ...collectLiteralTexts(node.whenFalse),
+    ];
   }
 
-  if (ts.isBinaryExpression(node) &&
-      (node.operatorToken.kind === ts.SyntaxKind.BarBarToken ||
-       node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken ||
-       node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken)) {
+  if (
+    ts.isBinaryExpression(node) &&
+    (node.operatorToken.kind === ts.SyntaxKind.BarBarToken ||
+      node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken ||
+      node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken)
+  ) {
     const values = collectLiteralTexts(node.right);
     // For && the left operand is always a condition; only the RHS can be
     // rendered. || and ?? may render a presentation expression on either side.
-    if (node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) return values;
+    if (node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken)
+      return values;
 
     // A nested presentation expression may itself be on the left. Do not
     // recurse into ordinary identifiers, comparisons, or other conditions.
     const left = node.left;
-    if (ts.isConditionalExpression(left) || ts.isBinaryExpression(left) ||
-        ts.isParenthesizedExpression(left) || ts.isAsExpression(left) || ts.isTypeAssertionExpression(left) ||
-        (typeof ts.isSatisfiesExpression === 'function' && ts.isSatisfiesExpression(left))) {
+    if (
+      ts.isConditionalExpression(left) ||
+      ts.isBinaryExpression(left) ||
+      ts.isParenthesizedExpression(left) ||
+      ts.isAsExpression(left) ||
+      ts.isTypeAssertionExpression(left) ||
+      (typeof ts.isSatisfiesExpression === 'function' &&
+        ts.isSatisfiesExpression(left))
+    ) {
       return [...collectLiteralTexts(left), ...values];
     }
     return values;
@@ -126,7 +156,8 @@ function isStaticTranslationKey(node) {
   if (!ts.isCallExpression(node)) return false;
   const expression = node.expression;
   const isTCall = ts.isIdentifier(expression) && expression.text === 't';
-  const isPropertyTCall = ts.isPropertyAccessExpression(expression) && expression.name.text === 't';
+  const isPropertyTCall =
+    ts.isPropertyAccessExpression(expression) && expression.name.text === 't';
   if (!isTCall && !isPropertyTCall) return false;
 
   const arg = node.arguments[0];
@@ -140,7 +171,8 @@ function isDynamicTranslationKey(node) {
   if (!ts.isCallExpression(node)) return false;
   const expression = node.expression;
   const isTCall = ts.isIdentifier(expression) && expression.text === 't';
-  const isPropertyTCall = ts.isPropertyAccessExpression(expression) && expression.name.text === 't';
+  const isPropertyTCall =
+    ts.isPropertyAccessExpression(expression) && expression.name.text === 't';
   if (!isTCall && !isPropertyTCall) return false;
 
   const arg = node.arguments[0];
@@ -183,7 +215,12 @@ function getExplicitFallbacks(node) {
   for (const prop of second.properties) {
     if (!ts.isPropertyAssignment(prop)) continue;
     const name = propertyNameText(prop.name);
-    if (!name || (name !== 'defaultValue' && !/^defaultValue_(?:zero|one|two|few|many|other)$/.test(name))) continue;
+    if (
+      !name ||
+      (name !== 'defaultValue' &&
+        !/^defaultValue_(?:zero|one|two|few|many|other)$/.test(name))
+    )
+      continue;
     const value = staticLiteralText(prop.initializer);
     if (value !== null) fallbacks[name] = value;
   }
@@ -197,9 +234,11 @@ function hasExplicitFallback(node) {
 function hasCountOption(node) {
   const second = node.arguments[1];
   if (!second || !ts.isObjectLiteralExpression(second)) return false;
-  return second.properties.some((prop) =>
-    (ts.isPropertyAssignment(prop) && propertyNameText(prop.name) === 'count') ||
-    (ts.isShorthandPropertyAssignment(prop) && prop.name.text === 'count'),
+  return second.properties.some(
+    (prop) =>
+      (ts.isPropertyAssignment(prop) &&
+        propertyNameText(prop.name) === 'count') ||
+      (ts.isShorthandPropertyAssignment(prop) && prop.name.text === 'count')
   );
 }
 
@@ -231,7 +270,10 @@ function resolveStaticTranslationKeyArg(arg) {
       node = node.expression;
       continue;
     }
-    if (typeof ts.isSatisfiesExpression === 'function' && ts.isSatisfiesExpression(node)) {
+    if (
+      typeof ts.isSatisfiesExpression === 'function' &&
+      ts.isSatisfiesExpression(node)
+    ) {
       node = node.expression;
       continue;
     }
@@ -246,12 +288,21 @@ function resolveStaticTranslationKeyArg(arg) {
 function containsCountOneComparison(node) {
   let found = false;
   function visit(n) {
-    if (ts.isBinaryExpression(n) &&
-      [ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken].includes(n.operatorToken.kind)) {
+    if (
+      ts.isBinaryExpression(n) &&
+      [
+        ts.SyntaxKind.EqualsEqualsEqualsToken,
+        ts.SyntaxKind.ExclamationEqualsEqualsToken,
+      ].includes(n.operatorToken.kind)
+    ) {
       const left = n.left.getText();
       const right = n.right.getText();
-      if ((/^(count|reps|items|sets|[A-Za-z]+Count)$/.test(left) && right === '1') ||
-          (/^(count|reps|items|sets|[A-Za-z]+Count)$/.test(right) && left === '1')) found = true;
+      if (
+        (/^(count|reps|items|sets|[A-Za-z]+Count)$/.test(left) &&
+          right === '1') ||
+        (/^(count|reps|items|sets|[A-Za-z]+Count)$/.test(right) && left === '1')
+      )
+        found = true;
     }
     ts.forEachChild(n, visit);
   }
@@ -274,7 +325,11 @@ function scanManualPluralization(node, sourceFile, relPath, context) {
   if (!containsCountOneComparison(node)) return;
   let finding = null;
   function visit(n) {
-    if (finding || !ts.isConditionalExpression(n) || !containsCountOneComparison(n.condition)) {
+    if (
+      finding ||
+      !ts.isConditionalExpression(n) ||
+      !containsCountOneComparison(n.condition)
+    ) {
       ts.forEachChild(n, visit);
       return;
     }
@@ -282,14 +337,23 @@ function scanManualPluralization(node, sourceFile, relPath, context) {
     const rightKey = staticTranslationKeyFromExpression(n.whenFalse);
     const leftText = literalText(n.whenTrue);
     const rightText = literalText(n.whenFalse);
-    if ((leftKey && rightKey && leftKey !== rightKey) ||
-        (leftText !== null && rightText !== null && leftText !== rightText)) {
+    if (
+      (leftKey && rightKey && leftKey !== rightKey) ||
+      (leftText !== null && rightText !== null && leftText !== rightText)
+    ) {
       finding = n.getText(sourceFile);
     }
     ts.forEachChild(n, visit);
   }
   visit(node);
-  if (finding) recordFinding(relPath, getLinePosition(node, sourceFile), finding, 'manual-pluralization', { context });
+  if (finding)
+    recordFinding(
+      relPath,
+      getLinePosition(node, sourceFile),
+      finding,
+      'manual-pluralization',
+      { context }
+    );
 }
 
 function isTextLikeElement(node) {
@@ -306,16 +370,32 @@ function isLikelyRoute(value) {
 
 function isLikelyCss(value) {
   const cssPatterns = [
-    /^flex-row/, /^flex-col/, /^items-/, /^justify-/, /^bg-/, /^text-/,
-    /^border-/, /^p-/, /^m-/, /^gap-/, /^w-/, /^h-/, /^rounded/,
-    /^shadow/, /^absolute/, /^relative/, /^z-/, /^overflow-/,
+    /^flex-row/,
+    /^flex-col/,
+    /^items-/,
+    /^justify-/,
+    /^bg-/,
+    /^text-/,
+    /^border-/,
+    /^p-/,
+    /^m-/,
+    /^gap-/,
+    /^w-/,
+    /^h-/,
+    /^rounded/,
+    /^shadow/,
+    /^absolute/,
+    /^relative/,
+    /^z-/,
+    /^overflow-/,
   ];
   return cssPatterns.some((p) => p.test(value));
 }
 
 function isLikelyTechnical(value) {
   const technicalPattern = /^[A-Z_][A-Z0-9_]+$/;
-  if (technicalPattern.test(value) && !/[a-z]/.test(value.slice(1))) return true;
+  if (technicalPattern.test(value) && !/[a-z]/.test(value.slice(1)))
+    return true;
   return false;
 }
 
@@ -331,7 +411,12 @@ function isLikelyFalsePositive(value) {
   if (!hasLetter(trimmed.replace(/\{\{dynamic\}\}/g, ''))) return true;
 
   // Numeric/unit-only presentation fragments are language-neutral, not UI copy.
-  if (/^[\s()\/·+\-]*?(?:\{\{dynamic\}\}\s*)+(?:g|kg|mg|mcg|kcal|kJ|ml|l)\s*$/.test(trimmed)) return true;
+  if (
+    /^[\s()\/·+\-]*?(?:\{\{dynamic\}\}\s*)+(?:g|kg|mg|mcg|kcal|kJ|ml|l)\s*$/.test(
+      trimmed
+    )
+  )
+    return true;
 
   if (isLikelyRoute(trimmed)) return true;
 
@@ -343,7 +428,8 @@ function isLikelyFalsePositive(value) {
 
   if (trimmed.length <= 1) return true;
 
-  if (/^[A-Z][A-Za-z]+$/.test(trimmed) && /[A-Z]/.test(trimmed.slice(1))) return true;
+  if (/^[A-Z][A-Za-z]+$/.test(trimmed) && /[A-Z]/.test(trimmed.slice(1)))
+    return true;
 
   const classNamePattern = /^(className|styleName|tailwind|testID|test-id)$/i;
   if (classNamePattern.test(trimmed)) return true;
@@ -352,7 +438,9 @@ function isLikelyFalsePositive(value) {
 }
 
 function getLinePosition(node, sourceFile) {
-  const pos = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+  const pos = sourceFile.getLineAndCharacterOfPosition(
+    node.getStart(sourceFile)
+  );
   return pos.line + 1;
 }
 
@@ -375,7 +463,8 @@ const ALLOWED_SUPPRESSION_RULES = new Set([
   'locale-unsafe-number-format',
 ]);
 
-const SUPPRESSION_REGEX = /^\s*\/\/\s*i18n-audit-ignore-next-line\s+(\S+)(?:\s*--\s*(.+))?$/;
+const SUPPRESSION_REGEX =
+  /^\s*\/\/\s*i18n-audit-ignore-next-line\s+(\S+)(?:\s*--\s*(.+))?$/;
 
 /**
  * Parses suppression directives. Returns an array of records:
@@ -421,38 +510,91 @@ function parseSuppressions(source, relPath) {
   return records;
 }
 
-const CHART_FORMATTER_NAMES = new Set(['tickFormat', 'labelFormat', 'valueFormat', 'formatX', 'formatY', 'tooltipFormat', 'formatTooltip']);
+const CHART_FORMATTER_NAMES = new Set([
+  'tickFormat',
+  'labelFormat',
+  'valueFormat',
+  'formatX',
+  'formatY',
+  'tooltipFormat',
+  'formatTooltip',
+]);
 
 function recordNumberFinding(relPath, line, expression, context) {
   const normalized = normalizeText(expression);
-  const idx = suppressionRecords.findIndex((r) => !r.consumed && r.rule === 'locale-unsafe-number-format' && r.targetLine === line);
-  if (idx !== -1) { suppressionRecords[idx].consumed = true; return; }
-  findings.push({ file: relPath, line, kind: 'locale-unsafe-number-format', value: normalized, context: context || {} });
+  const idx = suppressionRecords.findIndex(
+    (r) =>
+      !r.consumed &&
+      r.rule === 'locale-unsafe-number-format' &&
+      r.targetLine === line
+  );
+  if (idx !== -1) {
+    suppressionRecords[idx].consumed = true;
+    return;
+  }
+  findings.push({
+    file: relPath,
+    line,
+    kind: 'locale-unsafe-number-format',
+    value: normalized,
+    context: context || {},
+  });
 }
 
 function scanPresentationNumbers(node, sourceFile, relPath, context) {
   function walk(current, parent) {
-    if (ts.isCallExpression(current) && ts.isPropertyAccessExpression(current.expression)) {
+    if (
+      ts.isCallExpression(current) &&
+      ts.isPropertyAccessExpression(current.expression)
+    ) {
       const method = current.expression.name.text;
-      const parentIsSharedFormatter = parent && ts.isCallExpression(parent) &&
-        ts.isIdentifier(parent.expression) && parent.expression.text === 'formatLocalizedNumber';
-      if (!parentIsSharedFormatter && ['toFixed', 'toPrecision', 'toExponential'].includes(method)) {
-        recordNumberFinding(relPath, getLinePosition(current, sourceFile), current.getText(sourceFile), context);
+      const parentIsSharedFormatter =
+        parent &&
+        ts.isCallExpression(parent) &&
+        ts.isIdentifier(parent.expression) &&
+        parent.expression.text === 'formatLocalizedNumber';
+      if (
+        !parentIsSharedFormatter &&
+        ['toFixed', 'toPrecision', 'toExponential'].includes(method)
+      ) {
+        recordNumberFinding(
+          relPath,
+          getLinePosition(current, sourceFile),
+          current.getText(sourceFile),
+          context
+        );
       }
       // An explicit locale argument is considered safe; the audit targets the
       // silent device-locale form only.
-      if (method === 'toLocaleString' && (current.arguments.length === 0 ||
-          (current.arguments.length > 0 && ts.isStringLiteral(current.arguments[0])))) {
-        recordNumberFinding(relPath, getLinePosition(current, sourceFile), current.getText(sourceFile), context);
+      if (
+        method === 'toLocaleString' &&
+        (current.arguments.length === 0 ||
+          (current.arguments.length > 0 &&
+            ts.isStringLiteral(current.arguments[0])))
+      ) {
+        recordNumberFinding(
+          relPath,
+          getLinePosition(current, sourceFile),
+          current.getText(sourceFile),
+          context
+        );
       }
     }
-    if ((ts.isNewExpression(current) || ts.isCallExpression(current)) &&
-        current.expression.getText(sourceFile) === 'Intl.NumberFormat') {
+    if (
+      (ts.isNewExpression(current) || ts.isCallExpression(current)) &&
+      current.expression.getText(sourceFile) === 'Intl.NumberFormat'
+    ) {
       const localeArg = current.arguments?.[0];
-      const isImplicitLocale = localeArg === undefined ||
+      const isImplicitLocale =
+        localeArg === undefined ||
         (ts.isIdentifier(localeArg) && localeArg.text === 'undefined');
       if (isImplicitLocale || ts.isStringLiteral(localeArg)) {
-        recordNumberFinding(relPath, getLinePosition(current, sourceFile), current.getText(sourceFile), context);
+        recordNumberFinding(
+          relPath,
+          getLinePosition(current, sourceFile),
+          current.getText(sourceFile),
+          context
+        );
       }
     }
     ts.forEachChild(current, (child) => walk(child, current));
@@ -464,12 +606,21 @@ function recordFinding(relPath, line, value, kind, context) {
   const normalized = normalizeText(value);
   if (!normalized || !hasLetter(normalized)) return;
 
-  if (kind === 'hardcoded-ui-text' || kind === 'dynamic-t-key' || kind === 'missing-fallback-key') {
-    const rule = kind === 'hardcoded-ui-text' ? 'hardcoded-ui-text' : kind === 'dynamic-t-key' ? 'dynamic-i18n-key' : 'missing-fallback';
+  if (
+    kind === 'hardcoded-ui-text' ||
+    kind === 'dynamic-t-key' ||
+    kind === 'missing-fallback-key'
+  ) {
+    const rule =
+      kind === 'hardcoded-ui-text'
+        ? 'hardcoded-ui-text'
+        : kind === 'dynamic-t-key'
+          ? 'dynamic-i18n-key'
+          : 'missing-fallback';
     // Consume the nearest unconsumed suppression record for this exact rule on
     // this exact line. At most one finding per directive is suppressed.
     const idx = suppressionRecords.findIndex(
-      (r) => !r.consumed && r.rule === rule && r.targetLine === line,
+      (r) => !r.consumed && r.rule === rule && r.targetLine === line
     );
     if (idx !== -1) {
       suppressionRecords[idx].consumed = true;
@@ -488,17 +639,20 @@ function recordFinding(relPath, line, value, kind, context) {
 
 function visitSourceFile(filePath, rootDir) {
   const source = fs.readFileSync(filePath, 'utf8');
-  const scriptKind = filePath.endsWith('.tsx') ? ts.ScriptKind.TSX :
-    filePath.endsWith('.jsx') ? ts.ScriptKind.JSX :
-    filePath.endsWith('.ts') ? ts.ScriptKind.TS :
-    ts.ScriptKind.JS;
+  const scriptKind = filePath.endsWith('.tsx')
+    ? ts.ScriptKind.TSX
+    : filePath.endsWith('.jsx')
+      ? ts.ScriptKind.JSX
+      : filePath.endsWith('.ts')
+        ? ts.ScriptKind.TS
+        : ts.ScriptKind.JS;
 
   const sourceFile = ts.createSourceFile(
     filePath,
     source,
     ts.ScriptTarget.Latest,
     true,
-    scriptKind,
+    scriptKind
   );
 
   const relPath = getFileRelativePath(filePath, rootDir);
@@ -511,7 +665,9 @@ function visitSourceFile(filePath, rootDir) {
     if (ts.isCallExpression(node)) {
       const expression = node.expression;
       const isTCall = ts.isIdentifier(expression) && expression.text === 't';
-      const isPropertyTCall = ts.isPropertyAccessExpression(expression) && expression.name.text === 't';
+      const isPropertyTCall =
+        ts.isPropertyAccessExpression(expression) &&
+        expression.name.text === 't';
       if (isTCall || isPropertyTCall) {
         if (isStaticTranslationKey(node)) {
           const key = resolveStaticTranslationKeyArg(node.arguments[0]);
@@ -519,15 +675,23 @@ function visitSourceFile(filePath, rootDir) {
           if (key !== null) {
             const fallbacks = getExplicitFallbacks(node);
             const hasCount = hasCountOption(node);
-            recordFinding(relPath, line, key, 'static-t-key', { key, fallbacks, hasCount });
+            recordFinding(relPath, line, key, 'static-t-key', {
+              key,
+              fallbacks,
+              hasCount,
+            });
             if (!hasExplicitFallback(node)) {
-              recordFinding(relPath, line, key, 'missing-fallback-key', { key });
+              recordFinding(relPath, line, key, 'missing-fallback-key', {
+                key,
+              });
             }
           }
         } else if (isDynamicTranslationKey(node)) {
           const argText = node.arguments[0].getText(sourceFile);
           const line = getLinePosition(node, sourceFile);
-          recordFinding(relPath, line, argText, 'dynamic-t-key', { expression: argText });
+          recordFinding(relPath, line, argText, 'dynamic-t-key', {
+            expression: argText,
+          });
         }
       }
     }
@@ -543,16 +707,29 @@ function visitSourceFile(filePath, rootDir) {
           const trimmed = text.trim();
           if (trimmed && !isLikelyFalsePositive(trimmed)) {
             const childLine = getLinePosition(child, sourceFile);
-            recordFinding(relPath, childLine, trimmed, 'hardcoded-ui-text', { element: 'Text', form: 'text' });
+            recordFinding(relPath, childLine, trimmed, 'hardcoded-ui-text', {
+              element: 'Text',
+              form: 'text',
+            });
           }
         } else if (ts.isJsxExpression(child) && child.expression) {
-          scanPresentationNumbers(child.expression, sourceFile, relPath, { context: 'JSX presentation' });
-          scanManualPluralization(child.expression, sourceFile, relPath, 'JSX presentation');
+          scanPresentationNumbers(child.expression, sourceFile, relPath, {
+            context: 'JSX presentation',
+          });
+          scanManualPluralization(
+            child.expression,
+            sourceFile,
+            relPath,
+            'JSX presentation'
+          );
           const values = collectLiteralTexts(child.expression);
           const childLine = getLinePosition(child, sourceFile);
           for (const value of values) {
             if (!isLikelyFalsePositive(value)) {
-              recordFinding(relPath, childLine, value, 'hardcoded-ui-text', { element: 'Text', form: 'expression' });
+              recordFinding(relPath, childLine, value, 'hardcoded-ui-text', {
+                element: 'Text',
+                form: 'expression',
+              });
             }
           }
         }
@@ -564,12 +741,21 @@ function visitSourceFile(filePath, rootDir) {
     if (ts.isVariableDeclaration(node) && node.initializer) {
       const init = node.initializer;
       function scanForIntlNumberFormat(n) {
-        if ((ts.isNewExpression(n) || ts.isCallExpression(n)) && n.expression.getText(sourceFile) === 'Intl.NumberFormat') {
+        if (
+          (ts.isNewExpression(n) || ts.isCallExpression(n)) &&
+          n.expression.getText(sourceFile) === 'Intl.NumberFormat'
+        ) {
           const localeArg = n.arguments?.[0];
-          const isImplicitLocale = localeArg === undefined ||
+          const isImplicitLocale =
+            localeArg === undefined ||
             (ts.isIdentifier(localeArg) && localeArg.text === 'undefined');
           if (isImplicitLocale || ts.isStringLiteral(localeArg)) {
-            recordNumberFinding(relPath, getLinePosition(n, sourceFile), n.getText(sourceFile), { context: 'variable initializer' });
+            recordNumberFinding(
+              relPath,
+              getLinePosition(n, sourceFile),
+              n.getText(sourceFile),
+              { context: 'variable initializer' }
+            );
           }
         }
         ts.forEachChild(n, scanForIntlNumberFormat);
@@ -579,27 +765,64 @@ function visitSourceFile(filePath, rootDir) {
 
     if (ts.isPropertyAssignment(node)) {
       const propName = propertyNameText(node.name);
-      if (propName && CHART_FORMATTER_NAMES.has(propName)) scanPresentationNumbers(node.initializer, sourceFile, relPath, { context: `chart formatter ${propName}` });
+      if (propName && CHART_FORMATTER_NAMES.has(propName))
+        scanPresentationNumbers(node.initializer, sourceFile, relPath, {
+          context: `chart formatter ${propName}`,
+        });
     }
 
     if (ts.isJsxAttribute(node)) {
       const attrName = node.name.getText(sourceFile);
-      if (CHART_FORMATTER_NAMES.has(attrName) && node.initializer && ts.isJsxExpression(node.initializer) && node.initializer.expression) {
-        scanPresentationNumbers(node.initializer.expression, sourceFile, relPath, { context: `chart formatter ${attrName}` });
+      if (
+        CHART_FORMATTER_NAMES.has(attrName) &&
+        node.initializer &&
+        ts.isJsxExpression(node.initializer) &&
+        node.initializer.expression
+      ) {
+        scanPresentationNumbers(
+          node.initializer.expression,
+          sourceFile,
+          relPath,
+          { context: `chart formatter ${attrName}` }
+        );
       }
-      if ((LOCALIZED_ATTRIBUTE_NAMES.has(attrName) || CUSTOM_UI_ATTRIBUTE_NAMES.has(attrName)) && node.initializer) {
+      if (
+        (LOCALIZED_ATTRIBUTE_NAMES.has(attrName) ||
+          CUSTOM_UI_ATTRIBUTE_NAMES.has(attrName)) &&
+        node.initializer
+      ) {
         const line = getLinePosition(node, sourceFile);
         if (ts.isStringLiteral(node.initializer)) {
           const value = normalizeText(node.initializer.text);
           if (value && !isLikelyFalsePositive(value)) {
-            recordFinding(relPath, line, value, 'hardcoded-ui-text', { attr: attrName });
+            recordFinding(relPath, line, value, 'hardcoded-ui-text', {
+              attr: attrName,
+            });
           }
-        } else if (ts.isJsxExpression(node.initializer) && node.initializer.expression) {
-          scanPresentationNumbers(node.initializer.expression, sourceFile, relPath, { context: `presentation attribute ${attrName}` });
-          scanManualPluralization(node.initializer.expression, sourceFile, relPath, `presentation attribute ${attrName}`);
-          for (const value of collectLiteralTexts(node.initializer.expression)) {
+        } else if (
+          ts.isJsxExpression(node.initializer) &&
+          node.initializer.expression
+        ) {
+          scanPresentationNumbers(
+            node.initializer.expression,
+            sourceFile,
+            relPath,
+            { context: `presentation attribute ${attrName}` }
+          );
+          scanManualPluralization(
+            node.initializer.expression,
+            sourceFile,
+            relPath,
+            `presentation attribute ${attrName}`
+          );
+          for (const value of collectLiteralTexts(
+            node.initializer.expression
+          )) {
             if (!isLikelyFalsePositive(value)) {
-              recordFinding(relPath, line, value, 'hardcoded-ui-text', { attr: attrName, form: 'expression' });
+              recordFinding(relPath, line, value, 'hardcoded-ui-text', {
+                attr: attrName,
+                form: 'expression',
+              });
             }
           }
         }
@@ -617,12 +840,21 @@ function visitSourceFile(filePath, rootDir) {
       }
       const propName = propertyNameText(node.name);
       if (propName && LOCALIZED_ATTRIBUTE_NAMES.has(propName)) {
-        scanPresentationNumbers(node.initializer, sourceFile, relPath, { context: `presentation property ${propName}` });
-        scanManualPluralization(node.initializer, sourceFile, relPath, `presentation property ${propName}`);
+        scanPresentationNumbers(node.initializer, sourceFile, relPath, {
+          context: `presentation property ${propName}`,
+        });
+        scanManualPluralization(
+          node.initializer,
+          sourceFile,
+          relPath,
+          `presentation property ${propName}`
+        );
         const line = getLinePosition(node, sourceFile);
         for (const value of collectLiteralTexts(node.initializer)) {
           if (!isLikelyFalsePositive(value)) {
-            recordFinding(relPath, line, value, 'hardcoded-ui-text', { prop: propName });
+            recordFinding(relPath, line, value, 'hardcoded-ui-text', {
+              prop: propName,
+            });
           }
         }
       }
@@ -639,25 +871,44 @@ function visitSourceFile(filePath, rootDir) {
       const messageArg = node.arguments[1];
       const args = [titleArg, messageArg].filter((a) => a !== undefined);
       for (const arg of args) {
-        scanPresentationNumbers(arg, sourceFile, relPath, { context: 'Alert.alert' });
+        scanPresentationNumbers(arg, sourceFile, relPath, {
+          context: 'Alert.alert',
+        });
         scanManualPluralization(arg, sourceFile, relPath, 'Alert.alert');
       }
       for (let i = 0; i < args.length; i++) {
         for (const value of collectLiteralTexts(args[i])) {
           if (!isLikelyFalsePositive(value)) {
-            recordFinding(relPath, line, value, 'hardcoded-ui-text', { context: 'Alert.alert', argIndex: i });
+            recordFinding(relPath, line, value, 'hardcoded-ui-text', {
+              context: 'Alert.alert',
+              argIndex: i,
+            });
           }
         }
       }
       const buttonsArg = node.arguments[2];
       if (buttonsArg) {
         function visitAlertButtons(buttonNode) {
-          if (ts.isPropertyAssignment(buttonNode) && propertyNameText(buttonNode.name) === 'text') {
+          if (
+            ts.isPropertyAssignment(buttonNode) &&
+            propertyNameText(buttonNode.name) === 'text'
+          ) {
             alertButtonTextProps.add(buttonNode);
-            scanPresentationNumbers(buttonNode.initializer, sourceFile, relPath, { context: 'Alert.alert button' });
+            scanPresentationNumbers(
+              buttonNode.initializer,
+              sourceFile,
+              relPath,
+              { context: 'Alert.alert button' }
+            );
             for (const value of collectLiteralTexts(buttonNode.initializer)) {
               if (!isLikelyFalsePositive(value)) {
-                recordFinding(relPath, getLinePosition(buttonNode, sourceFile), value, 'hardcoded-ui-text', { context: 'Alert.alert:button' });
+                recordFinding(
+                  relPath,
+                  getLinePosition(buttonNode, sourceFile),
+                  value,
+                  'hardcoded-ui-text',
+                  { context: 'Alert.alert:button' }
+                );
               }
             }
           }
@@ -681,11 +932,21 @@ function visitSourceFile(filePath, rootDir) {
               const propName = propertyNameText(prop.name);
               if (propName === 'text1' || propName === 'text2') {
                 toastTextProps.add(prop);
-                scanPresentationNumbers(prop.initializer, sourceFile, relPath, { context: `Toast.show ${propName}` });
-                scanManualPluralization(prop.initializer, sourceFile, relPath, `Toast.show ${propName}`);
+                scanPresentationNumbers(prop.initializer, sourceFile, relPath, {
+                  context: `Toast.show ${propName}`,
+                });
+                scanManualPluralization(
+                  prop.initializer,
+                  sourceFile,
+                  relPath,
+                  `Toast.show ${propName}`
+                );
                 for (const value of collectLiteralTexts(prop.initializer)) {
                   if (!isLikelyFalsePositive(value)) {
-                    recordFinding(relPath, line, value, 'hardcoded-ui-text', { context: 'Toast.show', prop: propName });
+                    recordFinding(relPath, line, value, 'hardcoded-ui-text', {
+                      context: 'Toast.show',
+                      prop: propName,
+                    });
                   }
                 }
               }

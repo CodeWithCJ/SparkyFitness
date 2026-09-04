@@ -3,8 +3,16 @@ import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useDeleteFood } from '../../src/hooks/useDeleteFood';
 import { deleteFood } from '../../src/services/api/foodsApi';
-import { favoritesQueryKey, foodVariantsQueryKey, foodsQueryKey } from '../../src/hooks/queryKeys';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  favoritesQueryKey,
+  foodVariantsQueryKey,
+  foodsQueryKey,
+} from '../../src/hooks/queryKeys';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/foodsApi', () => ({
   deleteFood: jest.fn(),
@@ -33,10 +41,9 @@ describe('useDeleteFood', () => {
   test('calls deleteFood with the correct foodId', async () => {
     mockDeleteFood.mockResolvedValue({ message: 'Food deleted permanently.' });
 
-    const { result } = renderHook(
-      () => useDeleteFood({ foodId: 'food-123' }),
-      { wrapper: createQueryWrapper(queryClient) },
-    );
+    const { result } = renderHook(() => useDeleteFood({ foodId: 'food-123' }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
 
     act(() => {
       result.current.confirmAndDelete();
@@ -59,7 +66,7 @@ describe('useDeleteFood', () => {
 
     const { result } = renderHook(
       () => useDeleteFood({ foodId: 'food-123', onSuccess }),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     act(() => {
@@ -80,10 +87,9 @@ describe('useDeleteFood', () => {
   test('invalidateCaches invalidates food detail and list queries', () => {
     const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
 
-    const { result } = renderHook(
-      () => useDeleteFood({ foodId: 'food-123' }),
-      { wrapper: createQueryWrapper(queryClient) },
-    );
+    const { result } = renderHook(() => useDeleteFood({ foodId: 'food-123' }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
 
     act(() => {
       result.current.invalidateCaches();
@@ -114,12 +120,13 @@ describe('useDeleteFood', () => {
   });
 
   test('shows a permission toast on 403 errors', async () => {
-    mockDeleteFood.mockRejectedValue(new Error('Server error: 403 - Forbidden'));
-
-    const { result } = renderHook(
-      () => useDeleteFood({ foodId: 'food-123' }),
-      { wrapper: createQueryWrapper(queryClient) },
+    mockDeleteFood.mockRejectedValue(
+      new Error('Server error: 403 - Forbidden')
     );
+
+    const { result } = renderHook(() => useDeleteFood({ foodId: 'food-123' }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
 
     act(() => {
       result.current.confirmAndDelete();

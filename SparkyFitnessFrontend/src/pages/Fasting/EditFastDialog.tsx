@@ -249,5 +249,3 @@ export const EditFastDialog: React.FC<EditFastDialogProps> = ({
     </Dialog>
   );
 };
-
-export default EditFastDialog;

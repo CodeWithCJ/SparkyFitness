@@ -4,7 +4,10 @@ import {
   toLocalDateString,
 } from '../../../src/services/healthkit/dataAggregation';
 
-import type { HKSleepRecord, TransformedRecord } from '../../../src/types/healthRecords';
+import type {
+  HKSleepRecord,
+  TransformedRecord,
+} from '../../../src/types/healthRecords';
 
 jest.mock('../../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -111,7 +114,9 @@ describe('aggregateSleepSessions', () => {
 
   test('records exactly 4hr apart stay in same session (uses > not >=)', () => {
     const baseEnd = new Date('2024-01-16T02:00:00Z');
-    const exactlyFourHoursLater = new Date(baseEnd.getTime() + 4 * 60 * 60 * 1000);
+    const exactlyFourHoursLater = new Date(
+      baseEnd.getTime() + 4 * 60 * 60 * 1000
+    );
 
     const records: HKSleepRecord[] = [
       {
@@ -121,7 +126,9 @@ describe('aggregateSleepSessions', () => {
       },
       {
         startTime: exactlyFourHoursLater.toISOString(),
-        endTime: new Date(exactlyFourHoursLater.getTime() + 60 * 60 * 1000).toISOString(),
+        endTime: new Date(
+          exactlyFourHoursLater.getTime() + 60 * 60 * 1000
+        ).toISOString(),
         value: 'HKCategoryValueSleepAnalysisAsleep',
       },
     ];
@@ -131,40 +138,90 @@ describe('aggregateSleepSessions', () => {
 
   test('maps string stage values correctly', () => {
     const records: HKSleepRecord[] = [
-      { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-15T23:00:00Z', value: 'HKCategoryValueSleepAnalysisAsleepREM' },
-      { startTime: '2024-01-15T23:00:00Z', endTime: '2024-01-16T00:00:00Z', value: 'HKCategoryValueSleepAnalysisAsleepDeep' },
-      { startTime: '2024-01-16T00:00:00Z', endTime: '2024-01-16T01:00:00Z', value: 'HKCategoryValueSleepAnalysisAsleepCore' },
-      { startTime: '2024-01-16T01:00:00Z', endTime: '2024-01-16T02:00:00Z', value: 'HKCategoryValueSleepAnalysisAwake' },
-      { startTime: '2024-01-16T02:00:00Z', endTime: '2024-01-16T03:00:00Z', value: 'HKCategoryValueSleepAnalysisInBed' },
+      {
+        startTime: '2024-01-15T22:00:00Z',
+        endTime: '2024-01-15T23:00:00Z',
+        value: 'HKCategoryValueSleepAnalysisAsleepREM',
+      },
+      {
+        startTime: '2024-01-15T23:00:00Z',
+        endTime: '2024-01-16T00:00:00Z',
+        value: 'HKCategoryValueSleepAnalysisAsleepDeep',
+      },
+      {
+        startTime: '2024-01-16T00:00:00Z',
+        endTime: '2024-01-16T01:00:00Z',
+        value: 'HKCategoryValueSleepAnalysisAsleepCore',
+      },
+      {
+        startTime: '2024-01-16T01:00:00Z',
+        endTime: '2024-01-16T02:00:00Z',
+        value: 'HKCategoryValueSleepAnalysisAwake',
+      },
+      {
+        startTime: '2024-01-16T02:00:00Z',
+        endTime: '2024-01-16T03:00:00Z',
+        value: 'HKCategoryValueSleepAnalysisInBed',
+      },
     ];
     const result = aggregateSleepSessions(records);
-    const stages = result[0].stage_events.map(e => e.stage_type);
+    const stages = result[0].stage_events.map((e) => e.stage_type);
     expect(stages).toEqual(['rem', 'deep', 'light', 'awake', 'in_bed']);
   });
 
   test('maps numeric stage values correctly', () => {
     const records: HKSleepRecord[] = [
-      { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-15T23:00:00Z', value: 5 }, // REM
-      { startTime: '2024-01-15T23:00:00Z', endTime: '2024-01-16T00:00:00Z', value: 4 }, // Deep
-      { startTime: '2024-01-16T00:00:00Z', endTime: '2024-01-16T01:00:00Z', value: 3 }, // Light (Core)
-      { startTime: '2024-01-16T01:00:00Z', endTime: '2024-01-16T02:00:00Z', value: 2 }, // Awake
-      { startTime: '2024-01-16T02:00:00Z', endTime: '2024-01-16T03:00:00Z', value: 0 }, // InBed
+      {
+        startTime: '2024-01-15T22:00:00Z',
+        endTime: '2024-01-15T23:00:00Z',
+        value: 5,
+      }, // REM
+      {
+        startTime: '2024-01-15T23:00:00Z',
+        endTime: '2024-01-16T00:00:00Z',
+        value: 4,
+      }, // Deep
+      {
+        startTime: '2024-01-16T00:00:00Z',
+        endTime: '2024-01-16T01:00:00Z',
+        value: 3,
+      }, // Light (Core)
+      {
+        startTime: '2024-01-16T01:00:00Z',
+        endTime: '2024-01-16T02:00:00Z',
+        value: 2,
+      }, // Awake
+      {
+        startTime: '2024-01-16T02:00:00Z',
+        endTime: '2024-01-16T03:00:00Z',
+        value: 0,
+      }, // InBed
     ];
     const result = aggregateSleepSessions(records);
-    const stages = result[0].stage_events.map(e => e.stage_type);
+    const stages = result[0].stage_events.map((e) => e.stage_type);
     expect(stages).toEqual(['rem', 'deep', 'light', 'awake', 'in_bed']);
   });
 
   test('maps unknown stage values to unknown', () => {
     // Two contiguous unknown samples coalesce into one merged 'unknown' segment.
     const records: HKSleepRecord[] = [
-      { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-15T23:00:00Z', value: 999 },
-      { startTime: '2024-01-15T23:00:00Z', endTime: '2024-01-16T00:00:00Z', value: 'UnknownStageValue' },
+      {
+        startTime: '2024-01-15T22:00:00Z',
+        endTime: '2024-01-15T23:00:00Z',
+        value: 999,
+      },
+      {
+        startTime: '2024-01-15T23:00:00Z',
+        endTime: '2024-01-16T00:00:00Z',
+        value: 'UnknownStageValue',
+      },
     ];
     const result = aggregateSleepSessions(records);
-    const stages = result[0].stage_events.map(e => e.stage_type);
+    const stages = result[0].stage_events.map((e) => e.stage_type);
     expect(stages).toEqual(['unknown']);
-    expect(result[0].stage_events[0].start_time).toBe('2024-01-15T22:00:00.000Z');
+    expect(result[0].stage_events[0].start_time).toBe(
+      '2024-01-15T22:00:00.000Z'
+    );
     expect(result[0].stage_events[0].end_time).toBe('2024-01-16T00:00:00.000Z');
     // unknown is excluded from time asleep (matches the server's deep+light+rem definition).
     expect(result[0].time_asleep_in_seconds).toBe(0);
@@ -172,10 +229,26 @@ describe('aggregateSleepSessions', () => {
 
   test('calculates duration for each sleep stage correctly', () => {
     const records: HKSleepRecord[] = [
-      { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-16T00:00:00Z', value: 4 }, // Deep - 2hr
-      { startTime: '2024-01-16T00:00:00Z', endTime: '2024-01-16T03:00:00Z', value: 3 }, // Light - 3hr
-      { startTime: '2024-01-16T03:00:00Z', endTime: '2024-01-16T04:00:00Z', value: 5 }, // REM - 1hr
-      { startTime: '2024-01-16T04:00:00Z', endTime: '2024-01-16T04:30:00Z', value: 2 }, // Awake - 30min
+      {
+        startTime: '2024-01-15T22:00:00Z',
+        endTime: '2024-01-16T00:00:00Z',
+        value: 4,
+      }, // Deep - 2hr
+      {
+        startTime: '2024-01-16T00:00:00Z',
+        endTime: '2024-01-16T03:00:00Z',
+        value: 3,
+      }, // Light - 3hr
+      {
+        startTime: '2024-01-16T03:00:00Z',
+        endTime: '2024-01-16T04:00:00Z',
+        value: 5,
+      }, // REM - 1hr
+      {
+        startTime: '2024-01-16T04:00:00Z',
+        endTime: '2024-01-16T04:30:00Z',
+        value: 2,
+      }, // Awake - 30min
     ];
     const result = aggregateSleepSessions(records);
 
@@ -187,10 +260,26 @@ describe('aggregateSleepSessions', () => {
 
   test('total_time_asleep_in_seconds excludes awake and in_bed stages', () => {
     const records: HKSleepRecord[] = [
-      { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-16T00:00:00Z', value: 4 }, // Deep - 2hr
-      { startTime: '2024-01-16T00:00:00Z', endTime: '2024-01-16T02:00:00Z', value: 3 }, // Light - 2hr
-      { startTime: '2024-01-16T02:00:00Z', endTime: '2024-01-16T02:30:00Z', value: 2 }, // Awake - 30min (excluded)
-      { startTime: '2024-01-16T02:30:00Z', endTime: '2024-01-16T03:00:00Z', value: 0 }, // InBed - 30min (excluded)
+      {
+        startTime: '2024-01-15T22:00:00Z',
+        endTime: '2024-01-16T00:00:00Z',
+        value: 4,
+      }, // Deep - 2hr
+      {
+        startTime: '2024-01-16T00:00:00Z',
+        endTime: '2024-01-16T02:00:00Z',
+        value: 3,
+      }, // Light - 2hr
+      {
+        startTime: '2024-01-16T02:00:00Z',
+        endTime: '2024-01-16T02:30:00Z',
+        value: 2,
+      }, // Awake - 30min (excluded)
+      {
+        startTime: '2024-01-16T02:30:00Z',
+        endTime: '2024-01-16T03:00:00Z',
+        value: 0,
+      }, // InBed - 30min (excluded)
     ];
     const result = aggregateSleepSessions(records);
 
@@ -200,7 +289,11 @@ describe('aggregateSleepSessions', () => {
 
   test('calculates total_duration_in_seconds from bedtime to wake_time', () => {
     const records: HKSleepRecord[] = [
-      { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-16T06:00:00Z', value: 3 },
+      {
+        startTime: '2024-01-15T22:00:00Z',
+        endTime: '2024-01-16T06:00:00Z',
+        value: 3,
+      },
     ];
     const result = aggregateSleepSessions(records);
 
@@ -215,7 +308,11 @@ describe('aggregateSleepSessions', () => {
     const wakeTime = new Date(bedtime.getTime() + 8 * 60 * 60 * 1000); // 8 hours later
 
     const records: HKSleepRecord[] = [
-      { startTime: bedtime.toISOString(), endTime: wakeTime.toISOString(), value: 3 },
+      {
+        startTime: bedtime.toISOString(),
+        endTime: wakeTime.toISOString(),
+        value: 3,
+      },
     ];
     const result = aggregateSleepSessions(records);
 
@@ -265,7 +362,11 @@ describe('aggregateSleepSessions', () => {
 
   test('omits record_timezone when no metadata on any sleep record', () => {
     const records: HKSleepRecord[] = [
-      { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-16T06:00:00Z', value: 3 },
+      {
+        startTime: '2024-01-15T22:00:00Z',
+        endTime: '2024-01-16T06:00:00Z',
+        value: 3,
+      },
     ];
     const result = aggregateSleepSessions(records);
 
@@ -303,9 +404,12 @@ describe('aggregateSleepSessions overlapping sources (issue #1379)', () => {
   // period. Without de-overlapping, every overlapping minute is counted twice.
 
   // Primary invariant: the emitted stage_events form a non-overlapping timeline.
-  const expectNoOverlap = (events: { start_time: string; end_time: string }[]) => {
+  const expectNoOverlap = (
+    events: { start_time: string; end_time: string }[]
+  ) => {
     const sorted = [...events].sort(
-      (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+      (a, b) =>
+        new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
     );
     for (let i = 1; i < sorted.length; i++) {
       expect(new Date(sorted[i].start_time).getTime()).toBeGreaterThanOrEqual(
@@ -328,13 +432,37 @@ describe('aggregateSleepSessions overlapping sources (issue #1379)', () => {
     // the Watch), and an in-bed envelope extends wider (22:00–04:00).
     const records: HKSleepRecord[] = [
       // AutoSleep envelope (coarse), listed first — order must not matter.
-      { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-16T04:00:00Z', value: 0 }, // in_bed
-      { startTime: '2024-01-15T23:00:00Z', endTime: '2024-01-16T03:00:00Z', value: 1 }, // generic asleep
+      {
+        startTime: '2024-01-15T22:00:00Z',
+        endTime: '2024-01-16T04:00:00Z',
+        value: 0,
+      }, // in_bed
+      {
+        startTime: '2024-01-15T23:00:00Z',
+        endTime: '2024-01-16T03:00:00Z',
+        value: 1,
+      }, // generic asleep
       // Apple Watch detailed stages.
-      { startTime: '2024-01-15T23:00:00Z', endTime: '2024-01-16T00:00:00Z', value: 4 }, // deep 1h
-      { startTime: '2024-01-16T00:00:00Z', endTime: '2024-01-16T01:00:00Z', value: 5 }, // rem 1h
-      { startTime: '2024-01-16T01:00:00Z', endTime: '2024-01-16T01:30:00Z', value: 2 }, // awake 30m
-      { startTime: '2024-01-16T01:30:00Z', endTime: '2024-01-16T03:00:00Z', value: 3 }, // core 1.5h
+      {
+        startTime: '2024-01-15T23:00:00Z',
+        endTime: '2024-01-16T00:00:00Z',
+        value: 4,
+      }, // deep 1h
+      {
+        startTime: '2024-01-16T00:00:00Z',
+        endTime: '2024-01-16T01:00:00Z',
+        value: 5,
+      }, // rem 1h
+      {
+        startTime: '2024-01-16T01:00:00Z',
+        endTime: '2024-01-16T01:30:00Z',
+        value: 2,
+      }, // awake 30m
+      {
+        startTime: '2024-01-16T01:30:00Z',
+        endTime: '2024-01-16T03:00:00Z',
+        value: 3,
+      }, // core 1.5h
     ];
     const result = aggregateSleepSessions(records);
     expect(result).toHaveLength(1);
@@ -357,8 +485,16 @@ describe('aggregateSleepSessions overlapping sources (issue #1379)', () => {
 
   test('awake beats generic asleep on the same span', () => {
     const records: HKSleepRecord[] = [
-      { startTime: '2024-01-16T00:00:00Z', endTime: '2024-01-16T02:00:00Z', value: 1 }, // generic asleep
-      { startTime: '2024-01-16T00:30:00Z', endTime: '2024-01-16T01:00:00Z', value: 2 }, // awake
+      {
+        startTime: '2024-01-16T00:00:00Z',
+        endTime: '2024-01-16T02:00:00Z',
+        value: 1,
+      }, // generic asleep
+      {
+        startTime: '2024-01-16T00:30:00Z',
+        endTime: '2024-01-16T01:00:00Z',
+        value: 2,
+      }, // awake
     ];
     const result = aggregateSleepSessions(records);
     const events = result[0].stage_events;
@@ -375,8 +511,16 @@ describe('aggregateSleepSessions overlapping sources (issue #1379)', () => {
 
   test('deep beats generic asleep on overlap', () => {
     const records: HKSleepRecord[] = [
-      { startTime: '2024-01-16T00:00:00Z', endTime: '2024-01-16T02:00:00Z', value: 1 }, // generic asleep
-      { startTime: '2024-01-16T00:30:00Z', endTime: '2024-01-16T01:30:00Z', value: 4 }, // deep
+      {
+        startTime: '2024-01-16T00:00:00Z',
+        endTime: '2024-01-16T02:00:00Z',
+        value: 1,
+      }, // generic asleep
+      {
+        startTime: '2024-01-16T00:30:00Z',
+        endTime: '2024-01-16T01:30:00Z',
+        value: 4,
+      }, // deep
     ];
     const result = aggregateSleepSessions(records);
     const events = result[0].stage_events;
@@ -394,9 +538,21 @@ describe('aggregateSleepSessions overlapping sources (issue #1379)', () => {
     // AutoSleep in-bed envelope 22:00–06:00 extends past the Watch's detailed data,
     // which only covers 23:00–05:00.
     const records: HKSleepRecord[] = [
-      { startTime: '2024-01-15T22:00:00Z', endTime: '2024-01-16T06:00:00Z', value: 0 }, // in_bed envelope
-      { startTime: '2024-01-15T23:00:00Z', endTime: '2024-01-16T00:00:00Z', value: 4 }, // deep 1h
-      { startTime: '2024-01-16T00:00:00Z', endTime: '2024-01-16T05:00:00Z', value: 3 }, // core 5h
+      {
+        startTime: '2024-01-15T22:00:00Z',
+        endTime: '2024-01-16T06:00:00Z',
+        value: 0,
+      }, // in_bed envelope
+      {
+        startTime: '2024-01-15T23:00:00Z',
+        endTime: '2024-01-16T00:00:00Z',
+        value: 4,
+      }, // deep 1h
+      {
+        startTime: '2024-01-16T00:00:00Z',
+        endTime: '2024-01-16T05:00:00Z',
+        value: 3,
+      }, // core 5h
     ];
     const result = aggregateSleepSessions(records);
     const events = result[0].stage_events;
@@ -438,8 +594,22 @@ describe('iOS aggregate strategy: device-local bucketing', () => {
     // Simulates records that came through iOS getAggregatedStepsByDate,
     // which already sets record_timezone to the device timezone.
     const records: TransformedRecord[] = [
-      { value: 3000, type: 'step', date: '2024-01-15', unit: 'count', source: 'HealthKit', record_timezone: 'America/New_York' },
-      { value: 2000, type: 'step', date: '2024-01-15', unit: 'count', source: 'HealthKit', record_timezone: 'America/New_York' },
+      {
+        value: 3000,
+        type: 'step',
+        date: '2024-01-15',
+        unit: 'count',
+        source: 'HealthKit',
+        record_timezone: 'America/New_York',
+      },
+      {
+        value: 2000,
+        type: 'step',
+        date: '2024-01-15',
+        unit: 'count',
+        source: 'HealthKit',
+        record_timezone: 'America/New_York',
+      },
     ];
     const result = aggregateByDay(records, 'step', 'count', 'sum');
     expect(result).toHaveLength(1);

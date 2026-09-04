@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode, type Ref } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref,
+} from 'react';
 import {
   Keyboard,
   Platform,
@@ -7,12 +14,17 @@ import {
   View,
   type TextInput,
 } from 'react-native';
-import { KeyboardEvents, KeyboardStickyView } from 'react-native-keyboard-controller';
+import {
+  KeyboardEvents,
+  KeyboardStickyView,
+} from 'react-native-keyboard-controller';
 import { useCSSVariable } from 'uniwind';
 import { useTranslation } from 'react-i18next';
 
 import FormInput from './FormInput';
-import LiquidGlassSurface, { createLiquidGlassPillStyle } from './LiquidGlassSurface';
+import LiquidGlassSurface, {
+  createLiquidGlassPillStyle,
+} from './LiquidGlassSurface';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 
 /**
@@ -37,7 +49,9 @@ let accessoryEpochCounter = 0;
  */
 export function useAccessoryEpoch(active: boolean): number {
   // Discarded renders may burn counter values; only uniqueness matters.
-  const [epoch, setEpoch] = useState(() => (active ? ++accessoryEpochCounter : 0));
+  const [epoch, setEpoch] = useState(() =>
+    active ? ++accessoryEpochCounter : 0
+  );
   const [prevActive, setPrevActive] = useState(active);
   if (active !== prevActive) {
     setPrevActive(active);
@@ -163,7 +177,11 @@ export function SetCellInput({
       className="rounded-lg"
       style={{
         borderWidth: 1,
-        borderColor: chipVisible ? (focused ? accentPrimary : borderSubtle) : 'transparent',
+        borderColor: chipVisible
+          ? focused
+            ? accentPrimary
+            : borderSubtle
+          : 'transparent',
         backgroundColor: chipVisible ? raisedBg : 'transparent',
       }}
     >
@@ -210,7 +228,13 @@ function AccessoryPillButton({
         hitSlop={HIT_SLOP}
         style={{ paddingHorizontal: 16, paddingVertical: 8 }}
       >
-        <Text style={{ color: accentPrimary, fontWeight: bold ? '700' : '600', fontSize: 16 }}>
+        <Text
+          style={{
+            color: accentPrimary,
+            fontWeight: bold ? '700' : '600',
+            fontSize: 16,
+          }}
+        >
           {label}
         </Text>
       </TouchableOpacity>
@@ -292,7 +316,10 @@ const ANDROID_PHANTOM_HIDE_GRACE_MS = 150;
 export function useDeactivateOnKeyboardDismiss(onDeactivate: () => void): void {
   useEffect(() => {
     if (Platform.OS !== 'android') {
-      const subscription = KeyboardEvents.addListener('keyboardDidHide', onDeactivate);
+      const subscription = KeyboardEvents.addListener(
+        'keyboardDidHide',
+        onDeactivate
+      );
       return () => subscription.remove();
     }
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -362,7 +389,10 @@ export function useSetEditAccessoryBar({
   /** False when the form's sets store no RPE (the preset form). */
   rpeEnabled?: boolean;
 }): {
-  onRegisterAccessoryHandle: (key: string, handle: SetRowAccessoryHandle | null) => void;
+  onRegisterAccessoryHandle: (
+    key: string,
+    handle: SetRowAccessoryHandle | null
+  ) => void;
   accessoryBar: ReactNode;
 } {
   const { t } = useTranslation();
@@ -372,7 +402,7 @@ export function useSetEditAccessoryBar({
       if (handle == null) delete handlesRef.current[key];
       else handlesRef.current[key] = handle;
     },
-    [],
+    []
   );
 
   // The keyboard leaving — accessory Done, a tap outside the grid, the
@@ -387,14 +417,18 @@ export function useSetEditAccessoryBar({
 
   // Rows register by set clientId — the second half of the composite focus key.
   const focusedSetClientId =
-    activeSetKey == null ? null : activeSetKey.slice(activeSetKey.indexOf(':') + 1);
+    activeSetKey == null
+      ? null
+      : activeSetKey.slice(activeSetKey.indexOf(':') + 1);
 
   // The keyboard walk mirrors the live bar: weight → reps → RPE (when that
   // column is shown), then on to the next set. A duration cell is its row's
   // only value input, so it walks straight to RPE / Next Set like reps does.
   // In-row hops are native focusField moves through the handle; the
   // row-crossing hop is advance().
-  const metricColumn = useAppPreferencesStore((s) => s.activeWorkoutMetricColumn);
+  const metricColumn = useAppPreferencesStore(
+    (s) => s.activeWorkoutMetricColumn
+  );
   const nextField =
     activeSetField === 'weight'
       ? ('reps' as const)
@@ -406,7 +440,9 @@ export function useSetEditAccessoryBar({
 
   const accessoryBar: ReactNode =
     activeSetKey == null ? null : (
-      <KeyboardStickyView style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+      <KeyboardStickyView
+        style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}
+      >
         <SetInputAccessoryBar
           onDone={handleDone}
           actions={[
@@ -416,13 +452,17 @@ export function useSetEditAccessoryBar({
                   label: t('common.next', { defaultValue: 'Next' }),
                   onPress: () => {
                     if (focusedSetClientId != null) {
-                      handlesRef.current[focusedSetClientId]?.focusField(nextField);
+                      handlesRef.current[focusedSetClientId]?.focusField(
+                        nextField
+                      );
                     }
                   },
                 }
               : {
                   key: 'next-set',
-                  label: t('activeWorkout.nextSet', { defaultValue: 'Next Set' }),
+                  label: t('activeWorkout.nextSet', {
+                    defaultValue: 'Next Set',
+                  }),
                   onPress: () => {
                     if (focusedSetClientId != null) {
                       handlesRef.current[focusedSetClientId]?.advance();
@@ -452,9 +492,13 @@ export function SetSwipeDeleteAction({
       style={{ width: 72 }}
       onPress={onPress}
       activeOpacity={0.7}
-      accessibilityLabel={accessibilityLabel ?? t('common.delete', { defaultValue: 'Delete' })}
+      accessibilityLabel={
+        accessibilityLabel ?? t('common.delete', { defaultValue: 'Delete' })
+      }
     >
-      <Text className="text-text-danger font-semibold text-sm">{t('common.delete', { defaultValue: 'Delete' })}</Text>
+      <Text className="text-text-danger font-semibold text-sm">
+        {t('common.delete', { defaultValue: 'Delete' })}
+      </Text>
     </TouchableOpacity>
   );
 }

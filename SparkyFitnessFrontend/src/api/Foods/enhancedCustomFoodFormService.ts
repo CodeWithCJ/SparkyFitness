@@ -181,6 +181,9 @@ export const saveFood = async (
       is_custom: true,
       is_quick_food: foodData.is_quick_food || false,
       barcode: foodData.barcode,
+      // The update branch spreads foodData, but this object is explicit, so a
+      // new field has to be listed here or it is silently dropped on create.
+      notes: foodData.notes ?? null,
       provider_external_id: foodData.provider_external_id,
       provider_type: foodData.provider_type,
       provider_verified: foodData.provider_verified,

@@ -75,12 +75,18 @@ const deletePriorSeeds = async (tag: string): Promise<void> => {
       workoutTagFilter(tag)
     );
     if (deleted > 0) {
-      addLog(`[seedHealthDataIOS] Deleted ${deleted} prior "${tag}" seed workout(s) and their linked samples/routes.`, 'INFO');
+      addLog(
+        `[seedHealthDataIOS] Deleted ${deleted} prior "${tag}" seed workout(s) and their linked samples/routes.`,
+        'INFO'
+      );
     }
   } catch (error) {
     // Best-effort cleanup — a failure here must not block seeding a new one.
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[seedHealthDataIOS] Failed to delete prior "${tag}" seeds: ${message}`, 'WARNING');
+    addLog(
+      `[seedHealthDataIOS] Failed to delete prior "${tag}" seeds: ${message}`,
+      'WARNING'
+    );
   }
 };
 

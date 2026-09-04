@@ -13,10 +13,46 @@ import {
 import type { MealType } from '../../src/types/mealTypes';
 
 const systemMealTypes: MealType[] = [
-  { id: 'sys-b', name: 'breakfast', sort_order: 10, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
-  { id: 'sys-l', name: 'lunch', sort_order: 20, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
-  { id: 'sys-d', name: 'dinner', sort_order: 30, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
-  { id: 'sys-s', name: 'snacks', sort_order: 40, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true, default_time: null },
+  {
+    id: 'sys-b',
+    name: 'breakfast',
+    sort_order: 10,
+    user_id: null,
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+    default_time: null,
+  },
+  {
+    id: 'sys-l',
+    name: 'lunch',
+    sort_order: 20,
+    user_id: null,
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+    default_time: null,
+  },
+  {
+    id: 'sys-d',
+    name: 'dinner',
+    sort_order: 30,
+    user_id: null,
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+    default_time: null,
+  },
+  {
+    id: 'sys-s',
+    name: 'snacks',
+    sort_order: 40,
+    user_id: null,
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+    default_time: null,
+  },
 ];
 
 function custom(id: string, name: string, sort_order: number): MealType {
@@ -55,9 +91,15 @@ describe('mealTypeSlots — anchor model', () => {
   it('clamps slotsForGap so count > 9 can never produce an anchor value', () => {
     // A gap holds at most nine customs; count=12 must not spill into the next
     // system anchor (20/30/40).
-    expect(slotsForGap('b_l', 12)).toEqual([11, 12, 13, 14, 15, 16, 17, 18, 19]);
-    expect(slotsForGap('l_d', 99)).toEqual([21, 22, 23, 24, 25, 26, 27, 28, 29]);
-    expect(slotsForGap('d_s', 10)).toEqual([31, 32, 33, 34, 35, 36, 37, 38, 39]);
+    expect(slotsForGap('b_l', 12)).toEqual([
+      11, 12, 13, 14, 15, 16, 17, 18, 19,
+    ]);
+    expect(slotsForGap('l_d', 99)).toEqual([
+      21, 22, 23, 24, 25, 26, 27, 28, 29,
+    ]);
+    expect(slotsForGap('d_s', 10)).toEqual([
+      31, 32, 33, 34, 35, 36, 37, 38, 39,
+    ]);
     // Negative/zero never produce invalid slots either.
     expect(slotsForGap('b_l', 0)).toEqual([]);
     expect(slotsForGap('l_d', -1)).toEqual([]);
@@ -84,7 +126,13 @@ describe('mealTypeSlots — anchor model', () => {
     };
     const rows = buildUnifiedList(systemMealTypes, gaps);
     expect(rows.map((r) => (r.isSystem ? r.mt.name : r.mt.id))).toEqual([
-      'breakfast', 'brunch', 'lunch', 'l2', 'dinner', 'c', 'snacks',
+      'breakfast',
+      'brunch',
+      'lunch',
+      'l2',
+      'dinner',
+      'c',
+      'snacks',
     ]);
   });
 
@@ -116,7 +164,7 @@ describe('mealTypeSlots — anchor model', () => {
 
   it('rejects a move into a full gap (max 9) without mutating source', () => {
     const full = Array.from({ length: MAX_CUSTOM_PER_GAP }, (_, i) =>
-      custom(`l${i}`, `L${i}`, 21 + i),
+      custom(`l${i}`, `L${i}`, 21 + i)
     );
     const gaps = {
       b_l: [custom('brunch', 'Brunch', 11)],
@@ -161,8 +209,6 @@ describe('mealTypeSlots — anchor model', () => {
     expect(writes.map((w) => w.id)).not.toContain('sys-l');
   });
 
-
-
   it('default create gap is d_s (end of list) with a valid slot range', () => {
     expect(DEFAULT_CREATE_GAP).toBe('d_s');
     expect(GAP_SLOT_RANGE.d_s).toEqual([31, 39]);
@@ -171,61 +217,65 @@ describe('mealTypeSlots — anchor model', () => {
   it('unified list keeps the fixed anchor order regardless of gap contents', () => {
     const gaps = { b_l: [], l_d: [], d_s: [] };
     const rows = buildUnifiedList(systemMealTypes, gaps);
-    expect(rows.map((r) => r.mt.name)).toEqual(['breakfast', 'lunch', 'dinner', 'snacks']);
+    expect(rows.map((r) => r.mt.name)).toEqual([
+      'breakfast',
+      'lunch',
+      'dinner',
+      'snacks',
+    ]);
   });
 
-describe('drag geometry contract (real rendered stride)', () => {
-  it('uses ROW_HEIGHT as the stride — no fictitious 8px gap for continuous rows', () => {
-    // The settings list renders continuous border-b rows (ROW_GAP = 0), so the
-    // gesture stride is exactly the row height (64), NOT WorkoutReorderList's
-    // 72px (height + 8px gap).
-    const ROW_HEIGHT = 64;
-    const ROW_GAP = 0;
-    const stride = ROW_HEIGHT + ROW_GAP;
-    expect(stride).toBe(64);
+  describe('drag geometry contract (real rendered stride)', () => {
+    it('uses ROW_HEIGHT as the stride — no fictitious 8px gap for continuous rows', () => {
+      // The settings list renders continuous border-b rows (ROW_GAP = 0), so the
+      // gesture stride is exactly the row height (64), NOT WorkoutReorderList's
+      // 72px (height + 8px gap).
+      const ROW_HEIGHT = 64;
+      const ROW_GAP = 0;
+      const stride = ROW_HEIGHT + ROW_GAP;
+      expect(stride).toBe(64);
+    });
+
+    it('cross-anchor preview: only the active custom row floats; anchors never translate', () => {
+      // Unified: Breakfast(anchor), A(custom), Lunch(anchor), B(custom), Dinner(anchor).
+      // Dragging A below Lunch must keep every SYSTEM anchor stationary and must
+      // never give B a shift that would place it at Lunch's coordinate.
+      const anchors = new Set(['breakfast', 'lunch', 'dinner', 'snacks']);
+      const ROW_HEIGHT = 64;
+      const ROW_GAP = 0;
+      const stride = ROW_HEIGHT + ROW_GAP;
+
+      // Option A preview: non-active rows never move.
+      const shiftFor = (row: { name: string }, active: boolean): number =>
+        active ? 0 : 0;
+      expect(shiftFor({ name: 'breakfast' }, false)).toBe(0);
+      expect(shiftFor({ name: 'lunch' }, false)).toBe(0);
+      expect(shiftFor({ name: 'dinner' }, false)).toBe(0);
+      expect(shiftFor({ name: 'B' }, false)).toBe(0);
+      expect(shiftFor({ name: 'B' }, true)).toBe(0); // only the dragged row floats
+
+      // Anchor coordinates never move relative to their neighbours.
+      const lunchOffset = stride * 2; // Breakfast(0), A(64), Lunch(128)
+      const bOffset = stride * 3; // B at 192, below Lunch
+      expect(lunchOffset).toBe(128);
+      expect(bOffset).toBe(192);
+      expect(bOffset).not.toBe(lunchOffset);
+      // B never receives a shift of -stride (the old all-items animation would
+      // have shifted B into Lunch's slot when dragging A past Lunch).
+      const bShift = 0;
+      expect(lunchOffset + bShift).not.toBe(bOffset - 0);
+      expect(anchors.has('breakfast')).toBe(true);
+      expect(anchors.has('lunch')).toBe(true);
+    });
+
+    it('destination after a cross-anchor drop stays within the documented gaps', () => {
+      const { gapKeyForSortOrder } = require('../../src/utils/mealTypeSlots');
+      // Dragging A (b_l) below Lunch lands it in l_d.
+      expect(gapKeyForSortOrder(21)).toBe('l_d');
+      expect(gapKeyForSortOrder(25)).toBe('l_d');
+      expect(gapKeyForSortOrder(11)).toBe('b_l');
+      // No anchor value is ever produced as a custom slot.
+      expect([10, 20, 30, 40]).not.toContain(21);
+    });
   });
-
-  it('cross-anchor preview: only the active custom row floats; anchors never translate', () => {
-    // Unified: Breakfast(anchor), A(custom), Lunch(anchor), B(custom), Dinner(anchor).
-    // Dragging A below Lunch must keep every SYSTEM anchor stationary and must
-    // never give B a shift that would place it at Lunch's coordinate.
-    const anchors = new Set(['breakfast', 'lunch', 'dinner', 'snacks']);
-    const ROW_HEIGHT = 64;
-    const ROW_GAP = 0;
-    const stride = ROW_HEIGHT + ROW_GAP;
-
-    // Option A preview: non-active rows never move.
-    const shiftFor = (row: { name: string }, active: boolean): number =>
-      active ? 0 : 0;
-    expect(shiftFor({ name: 'breakfast' }, false)).toBe(0);
-    expect(shiftFor({ name: 'lunch' }, false)).toBe(0);
-    expect(shiftFor({ name: 'dinner' }, false)).toBe(0);
-    expect(shiftFor({ name: 'B' }, false)).toBe(0);
-    expect(shiftFor({ name: 'B' }, true)).toBe(0); // only the dragged row floats
-
-    // Anchor coordinates never move relative to their neighbours.
-    const lunchOffset = stride * 2; // Breakfast(0), A(64), Lunch(128)
-    const bOffset = stride * 3; // B at 192, below Lunch
-    expect(lunchOffset).toBe(128);
-    expect(bOffset).toBe(192);
-    expect(bOffset).not.toBe(lunchOffset);
-    // B never receives a shift of -stride (the old all-items animation would
-    // have shifted B into Lunch's slot when dragging A past Lunch).
-    const bShift = 0;
-    expect(lunchOffset + bShift).not.toBe(bOffset - 0);
-    expect(anchors.has('breakfast')).toBe(true);
-    expect(anchors.has('lunch')).toBe(true);
-  });
-
-  it('destination after a cross-anchor drop stays within the documented gaps', () => {
-    const { gapKeyForSortOrder } = require('../../src/utils/mealTypeSlots');
-    // Dragging A (b_l) below Lunch lands it in l_d.
-    expect(gapKeyForSortOrder(21)).toBe('l_d');
-    expect(gapKeyForSortOrder(25)).toBe('l_d');
-    expect(gapKeyForSortOrder(11)).toBe('b_l');
-    // No anchor value is ever produced as a custom slot.
-    expect([10, 20, 30, 40]).not.toContain(21);
-  });
-});
-
 });

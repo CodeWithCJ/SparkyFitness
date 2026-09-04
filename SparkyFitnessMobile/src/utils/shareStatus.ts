@@ -45,9 +45,14 @@ export function ownershipFilterHeaderMenu({
     accessibilityLabel: (() => {
       const base = filterAccessibilityLabel.replace('{{noun}}', noun);
       if (filter === 'all') return base;
-      return base.includes('{{filter}}') ? base.replace('{{filter}}', labels[filter]) : `${base}, ${labels[filter]}`;
+      return base.includes('{{filter}}')
+        ? base.replace('{{filter}}', labels[filter])
+        : `${base}, ${labels[filter]}`;
     })(),
-    customAccessibilityLabel: filterAccessibilityLabel.replace('{{noun}}', noun).replace(/,?\s*filtered to \{\{filter\}\}/, '').replace(/,?\s*wybrano: \{\{filter\}\}/, ''),
+    customAccessibilityLabel: filterAccessibilityLabel
+      .replace('{{noun}}', noun)
+      .replace(/,?\s*filtered to \{\{filter\}\}/, '')
+      .replace(/,?\s*wybrano: \{\{filter\}\}/, ''),
     nativeAccessibilityLabel: (() => {
       const base = filterAccessibilityLabel.replace('{{noun}}', noun);
       if (filter === 'all') return base;
@@ -94,7 +99,9 @@ export function ownershipFilterEmptyState({
   onReset: () => void;
 }) {
   return {
-    title: emptyTitle.replace('{{noun}}', noun).replace('{{filter}}', labels[filter]),
+    title: emptyTitle
+      .replace('{{noun}}', noun)
+      .replace('{{filter}}', labels[filter]),
     subtitle: emptySubtitle.replace('{{noun}}', noun),
     action: { label: showAllLabel, onPress: onReset },
   };
@@ -105,15 +112,30 @@ export function ownershipFilterEmptyState({
  * user, 'family' = another user's non-public item, 'public' = shared publicly.
  * Handles both snake_case and camelCase item shapes.
  */
-export const filterByOwnership = <T extends { user_id?: string | null; userId?: string | null; is_public?: boolean | null; shared_with_public?: boolean | null; sharedWithPublic?: boolean | null }>(
+export const filterByOwnership = <
+  T extends {
+    user_id?: string | null;
+    userId?: string | null;
+    is_public?: boolean | null;
+    shared_with_public?: boolean | null;
+    sharedWithPublic?: boolean | null;
+  },
+>(
   items: T[],
   filter: OwnershipFilter,
   currentUserId?: string
 ) => {
   if (filter === 'all') return items;
   return items.filter((item) => {
-    const isOwner = !!((item.user_id && item.user_id === currentUserId) || (item.userId && item.userId === currentUserId));
-    const isPublic = !!(item.is_public || item.shared_with_public || item.sharedWithPublic);
+    const isOwner = !!(
+      (item.user_id && item.user_id === currentUserId) ||
+      (item.userId && item.userId === currentUserId)
+    );
+    const isPublic = !!(
+      item.is_public ||
+      item.shared_with_public ||
+      item.sharedWithPublic
+    );
 
     if (filter === 'mine') {
       return isOwner;
@@ -121,7 +143,12 @@ export const filterByOwnership = <T extends { user_id?: string | null; userId?: 
     if (filter === 'family') {
       // Without a current user id, "not mine" cannot be proven — a private
       // item could belong to the current user, so show none rather than all.
-      return !!currentUserId && !isOwner && !isPublic && (item.user_id != null || item.userId != null);
+      return (
+        !!currentUserId &&
+        !isOwner &&
+        !isPublic &&
+        (item.user_id != null || item.userId != null)
+      );
     }
     if (filter === 'public') {
       return isPublic;
@@ -132,7 +159,7 @@ export const filterByOwnership = <T extends { user_id?: string | null; userId?: 
 
 /**
  * Derives the share status ('public', 'family', 'private', or null) for an entity.
- * 
+ *
  * @param itemUserId The user ID of the entity owner.
  * @param isPublic Whether the entity has been shared publicly.
  * @param currentUserId The user ID of the currently logged-in user.

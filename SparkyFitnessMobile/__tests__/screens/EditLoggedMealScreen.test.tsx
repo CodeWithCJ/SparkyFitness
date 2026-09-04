@@ -135,6 +135,25 @@ jest.mock('../../src/components/FormInput', () => {
   };
 });
 
+// The FormInput mock above hardcodes one testID, so any second FormInput on
+// the screen would collide with the meal-name field. The notes editor has its
+// own behaviour and its own coverage; this suite only cares that the screen
+// forwards a note into the save payload.
+jest.mock('../../src/components/MarkdownNotesField', () => {
+  const React = require('react');
+  const { TextInput } = require('react-native');
+  return {
+    __esModule: true,
+    default: (props: any) => (
+      <TextInput
+        testID="meal-notes-input"
+        value={props.value}
+        onChangeText={props.onCommit}
+      />
+    ),
+  };
+});
+
 jest.mock('../../src/components/StepperInput', () => {
   const React = require('react');
   const { TextInput } = require('react-native');
@@ -266,7 +285,7 @@ const baseMeal: FoodEntryMeal = {
 };
 
 const buildIngredient = (
-  overrides: Partial<MealIngredientDraft> = {},
+  overrides: Partial<MealIngredientDraft> = {}
 ): MealIngredientDraft => ({
   food_id: 'food-9',
   variant_id: 'var-9',
@@ -349,7 +368,7 @@ describe('EditLoggedMealScreen', () => {
             } as RootStackScreenProps<'EditLoggedMeal'>['route']
           }
         />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
   it('saves merged payload (name, meal_type, meal_type_id, foods) on Save', () => {
@@ -357,7 +376,7 @@ describe('EditLoggedMealScreen', () => {
 
     fireEvent.changeText(
       screen.getByTestId('meal-name-input'),
-      'Updated Meal Name',
+      'Updated Meal Name'
     );
     fireEvent.changeText(screen.getByTestId('quantity-input'), '2');
     fireEvent.press(screen.getByTestId('mealtype-mt-lunch'));
@@ -413,6 +432,40 @@ describe('EditLoggedMealScreen', () => {
     expect(payload.foods[0].quantity).toBe(200);
   });
 
+  // An entry whose template was deleted keeps its snapshotted yield, and the
+  // server still scales it by quantity / entry_total_servings. Treating it as
+  // unscaled (the old meal_template_id check) sent client-scaled quantities
+  // into a server that scales again, doubling the portion.
+  it('sends base quantities for an orphaned meal that kept its snapshot', () => {
+    mockMeal({
+      ...baseMeal,
+      meal_template_id: null,
+      entry_total_servings: 2,
+    });
+
+    const screen = renderScreen();
+    fireEvent.changeText(screen.getByTestId('quantity-input'), '2');
+    pressAction(screen, navigation, 'Save');
+
+    const payload = mockUpdateMeal.mock.calls[0][0];
+    expect(payload.quantity).toBe(2);
+    expect(payload.entry_total_servings).toBe(2);
+    // Base, not 200: the server applies the multiplier on write.
+    expect(payload.foods[0].quantity).toBe(100);
+  });
+
+  it('scales an orphaned snapshotted meal to the consumed total on the card', () => {
+    mockMeal({
+      ...baseMeal,
+      meal_template_id: null,
+      entry_total_servings: 2,
+    });
+
+    const screen = renderScreen();
+    // Foods sum to 165 base cal; meal.calories is the consumed total.
+    expect(screen.getByText('200 calories')).toBeTruthy();
+  });
+
   it('confirms deletion when the Delete Meal button is pressed', () => {
     const screen = renderScreen();
     fireEvent.press(screen.getByText('Delete Meal'));
@@ -423,6 +476,22 @@ describe('EditLoggedMealScreen', () => {
     const screen = renderScreen();
     pressAction(screen, navigation, 'Save');
     expect(mockUpdateMeal).not.toHaveBeenCalled();
+  });
+
+  it('enables Save for a note-only change', () => {
+    // `dirty` did not include the note, so editing only the note left Save
+    // disabled and the edit could not be saved at all.
+    const screen = renderScreen();
+
+    fireEvent.changeText(
+      screen.getByTestId('meal-notes-input'),
+      'reheated at work'
+    );
+    pressAction(screen, navigation, 'Save');
+
+    expect(mockUpdateMeal).toHaveBeenCalledWith(
+      expect.objectContaining({ notes: 'reheated at work' })
+    );
   });
 
   it('opens the meal-builder picker when Add Food is pressed', () => {
@@ -453,7 +522,7 @@ describe('EditLoggedMealScreen', () => {
         variant_id: 'var-9',
         quantity: 50,
         unit: 'g',
-      }),
+      })
     );
   });
 
@@ -466,7 +535,7 @@ describe('EditLoggedMealScreen', () => {
         pickerMode: 'meal-builder',
         ingredientIndex: 0,
         returnDepth: 1,
-      }),
+      })
     );
   });
 
@@ -514,7 +583,7 @@ describe('EditLoggedMealScreen', () => {
 
     const payload = mockUpdateMeal.mock.calls[0][0];
     expect(payload.foods[1]).toEqual(
-      expect.objectContaining({ food_id: 'food-9', quantity: 100 }),
+      expect.objectContaining({ food_id: 'food-9', quantity: 100 })
     );
   });
 

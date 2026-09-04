@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, View, Text } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
@@ -33,13 +39,14 @@ const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
     const [start, setStart] = useState<DateType>(undefined);
     const [end, setEnd] = useState<DateType>(undefined);
 
-    const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary] = useCSSVariable([
-      '--color-surface',
-      '--color-text-muted',
-      '--color-accent-primary',
-      '--color-text-primary',
-      '--color-text-secondary',
-    ]) as [string, string, string, string, string];
+    const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary] =
+      useCSSVariable([
+        '--color-surface',
+        '--color-text-muted',
+        '--color-accent-primary',
+        '--color-text-primary',
+        '--color-text-secondary',
+      ]) as [string, string, string, string, string];
 
     useImperativeHandle(ref, () => ({
       present: () => {
@@ -88,7 +95,9 @@ const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
       >
         <BottomSheetView className="pb-safe-or-5 px-2">
           <Text className="text-base font-semibold text-text-primary text-center mt-2 mb-1">
-            {t('dateRange.removeTitle', { defaultValue: 'Select a date range to remove' })}
+            {t('dateRange.removeTitle', {
+              defaultValue: 'Select a date range to remove',
+            })}
           </Text>
           <DateTimePicker
             mode="range"
@@ -99,8 +108,12 @@ const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
             locale={presentation.locale}
             firstDayOfWeek={presentation.firstDayOfWeek}
             components={{
-              IconPrev: <Icon name="chevron-back" size={18} color={textPrimary} />,
-              IconNext: <Icon name="chevron-forward" size={18} color={textPrimary} />,
+              IconPrev: (
+                <Icon name="chevron-back" size={18} color={textPrimary} />
+              ),
+              IconNext: (
+                <Icon name="chevron-forward" size={18} color={textPrimary} />
+              ),
             }}
             styles={{
               selected: { backgroundColor: accentPrimary },
@@ -125,8 +138,16 @@ const DateRangeSheet = React.forwardRef<DateRangeSheetRef, DateRangeSheetProps>(
             }}
           />
           <View className="px-2 mt-1">
-            <Button variant="primary" onPress={confirm} disabled={!start || !end}>
-              <Text className="text-base font-semibold text-white">{t('dateRange.removeAction', { defaultValue: 'Remove selected range' })}</Text>
+            <Button
+              variant="primary"
+              onPress={confirm}
+              disabled={!start || !end}
+            >
+              <Text className="text-base font-semibold text-white">
+                {t('dateRange.removeAction', {
+                  defaultValue: 'Remove selected range',
+                })}
+              </Text>
             </Button>
           </View>
         </BottomSheetView>

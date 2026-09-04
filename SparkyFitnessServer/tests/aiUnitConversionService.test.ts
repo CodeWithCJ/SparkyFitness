@@ -323,7 +323,7 @@ describe('estimateUnitConversion', () => {
     });
   });
 
-  it('sends temperature 0 via options and the schema as format to Ollama', async () => {
+  it('sends temperature 0 via options and asks Ollama for JSON', async () => {
     setProvider('ollama', {
       api_key: null,
       custom_url: 'http://localhost:11434',
@@ -333,7 +333,11 @@ describe('estimateUnitConversion', () => {
 
     const body = capturedBody(m);
     expect(body.options).toEqual({ num_ctx: 8192, temperature: 0 });
-    expect(body.format).toEqual(STRUCTURED_OUTPUT_SCHEMA);
+    // Ollama gets format: 'json' with the schema spelled out in the prompt,
+    // rather than the schema as `format` — see buildOllamaRequest.
+    expect(body.format).toBe('json');
+    const message = (body.messages as { content: string }[])[0];
+    expect(message.content).toContain('conforms to this JSON Schema');
   });
 
   it('throws ProviderResponseError when AI returns malformed JSON', async () => {

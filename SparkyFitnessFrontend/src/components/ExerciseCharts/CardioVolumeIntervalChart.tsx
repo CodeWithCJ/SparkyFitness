@@ -11,6 +11,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import type { ExerciseStatsSummaryResponse } from '@workspace/shared';
+import { useTranslation } from 'react-i18next';
 
 interface CardioVolumeIntervalChartProps {
   summaryData?: ExerciseStatsSummaryResponse;
@@ -21,6 +22,7 @@ export const CardioVolumeIntervalChart = ({
   summaryData,
   onIntervalChange,
 }: CardioVolumeIntervalChartProps) => {
+  const { t } = useTranslation();
   const [metric, setMetric] = useState<'distance' | 'duration' | 'calories'>(
     'distance'
   );
@@ -34,11 +36,19 @@ export const CardioVolumeIntervalChart = ({
       <Card className="shadow-sm border">
         <CardHeader>
           <CardTitle className="text-lg font-semibold flex items-center justify-between">
-            <span>Exercise Volume & Time Totals</span>
+            <span>
+              {t(
+                'exerciseAnalytics.volume.emptyTitle',
+                'Exercise Volume & Time Totals'
+              )}
+            </span>
           </CardTitle>
         </CardHeader>
         <CardContent className="h-64 flex items-center justify-center text-muted-foreground text-sm">
-          No exercise distance or duration logged for this date range.
+          {t(
+            'exerciseAnalytics.volume.noData',
+            'No exercise distance or duration logged for this date range.'
+          )}
         </CardContent>
       </Card>
     );
@@ -62,10 +72,10 @@ export const CardioVolumeIntervalChart = ({
         : 'calories';
   const metricLabel =
     metric === 'distance'
-      ? `Distance (${unitLabel})`
+      ? `${t('exerciseAnalytics.volume.distance', 'Distance')} (${unitLabel})`
       : metric === 'duration'
-        ? 'Duration (mins)'
-        : 'Calories (kcal)';
+        ? `${t('exerciseAnalytics.volume.duration', 'Duration')} (${t('common.min', 'min')})`
+        : `${t('exerciseAnalytics.volume.calories', 'Calories')} (kcal)`;
   const barColor =
     metric === 'distance'
       ? '#3b82f6'
@@ -78,12 +88,25 @@ export const CardioVolumeIntervalChart = ({
       <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-3 gap-2">
         <div>
           <CardTitle className="text-lg font-semibold">
-            Exercise Volume & Interval Totals
+            {t(
+              'exerciseAnalytics.volume.title',
+              'Exercise Volume & Interval Totals'
+            )}
           </CardTitle>
           <p className="text-xs text-muted-foreground mt-1">
-            Grouped by {summaryData.interval} • Total{' '}
-            {summaryData.totals.totalDistanceFormatted} {unitLabel} across{' '}
-            {summaryData.totals.workoutCount} workouts
+            {t('exerciseAnalytics.volume.summary', {
+              defaultValue_one:
+                'Grouped by {{interval}} • Total {{distance}} {{unit}} across {{count}} workout',
+              defaultValue_other:
+                'Grouped by {{interval}} • Total {{distance}} {{unit}} across {{count}} workouts',
+              interval: t(
+                `exerciseAnalytics.intervals.${summaryData.interval}`,
+                summaryData.interval
+              ),
+              distance: summaryData.totals.totalDistanceFormatted,
+              unit: unitLabel,
+              count: summaryData.totals.workoutCount,
+            })}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -95,7 +118,7 @@ export const CardioVolumeIntervalChart = ({
               className="h-7 px-2 text-xs"
               onClick={() => setMetric('distance')}
             >
-              Distance
+              {t('exerciseAnalytics.volume.distance', 'Distance')}
             </Button>
             <Button
               variant={metric === 'duration' ? 'default' : 'ghost'}
@@ -103,7 +126,7 @@ export const CardioVolumeIntervalChart = ({
               className="h-7 px-2 text-xs"
               onClick={() => setMetric('duration')}
             >
-              Duration
+              {t('exerciseAnalytics.volume.duration', 'Duration')}
             </Button>
             <Button
               variant={metric === 'calories' ? 'default' : 'ghost'}
@@ -111,7 +134,7 @@ export const CardioVolumeIntervalChart = ({
               className="h-7 px-2 text-xs"
               onClick={() => setMetric('calories')}
             >
-              Calories
+              {t('exerciseAnalytics.volume.calories', 'Calories')}
             </Button>
           </div>
 
@@ -124,7 +147,7 @@ export const CardioVolumeIntervalChart = ({
                 className="h-7 px-2 text-xs"
                 onClick={() => onIntervalChange('week')}
               >
-                Week
+                {t('exerciseAnalytics.intervals.week', 'Week')}
               </Button>
               <Button
                 variant={summaryData.interval === 'month' ? 'default' : 'ghost'}
@@ -132,7 +155,7 @@ export const CardioVolumeIntervalChart = ({
                 className="h-7 px-2 text-xs"
                 onClick={() => onIntervalChange('month')}
               >
-                Month
+                {t('exerciseAnalytics.intervals.month', 'Month')}
               </Button>
               <Button
                 variant={summaryData.interval === 'year' ? 'default' : 'ghost'}
@@ -140,7 +163,7 @@ export const CardioVolumeIntervalChart = ({
                 className="h-7 px-2 text-xs"
                 onClick={() => onIntervalChange('year')}
               >
-                Year
+                {t('exerciseAnalytics.intervals.year', 'Year')}
               </Button>
             </div>
           )}
@@ -166,7 +189,7 @@ export const CardioVolumeIntervalChart = ({
             <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11 }} />
             <Tooltip
               formatter={(val: unknown) => [
-                `${String(val ?? 0)} ${metric === 'distance' ? unitLabel : metric === 'duration' ? 'mins' : 'kcal'}`,
+                `${String(val ?? 0)} ${metric === 'distance' ? unitLabel : metric === 'duration' ? t('common.min', 'min') : 'kcal'}`,
                 metricLabel,
               ]}
               contentStyle={{ borderRadius: '8px', fontSize: '12px' }}

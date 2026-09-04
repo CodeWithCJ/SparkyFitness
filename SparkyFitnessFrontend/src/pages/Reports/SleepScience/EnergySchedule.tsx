@@ -146,10 +146,7 @@ const EnergySchedule: React.FC<EnergyScheduleProps> = ({ data }) => {
               }}
               formatter={(
                 value:
-                  | string
-                  | number
-                  | ReadonlyArray<string | number>
-                  | undefined,
+                  string | number | ReadonlyArray<string | number> | undefined,
                 _name: string | number | undefined,
                 props: { payload?: { zone?: string } }
               ) => {

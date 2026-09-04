@@ -260,7 +260,7 @@ const MealCard = ({
                         `MealCard: Add Food button clicked for ${meal.name}.`
                       )
                     }
-                    title="Add a new food item"
+                    title={t('mealCard.addFoodTo', 'Add Food to')}
                   >
                     <Utensils className="w-4 h-4" />
                   </Button>
@@ -329,28 +329,34 @@ const MealCard = ({
               <Button
                 size="default"
                 onClick={() => onCopyClick(meal.type)}
-                title="Copy to another date"
+                title={t('diary.copyAllToDate', 'Copy entire day to date')}
               >
                 <ClipboardCopy className="w-4 h-4" />
               </Button>
               <Button
                 size="default"
                 onClick={() => onCopyFamilyClick(meal.type)}
-                title="Copy with Family"
+                title={t('diary.copyFamilyTitle', 'Copy Food with Family')}
               >
                 <Users className="w-4 h-4" />
               </Button>
               <Button
                 size="default"
                 onClick={handleCopyFromYesterday}
-                title="Copy food entries from yesterday's meal"
+                title={t(
+                  'diary.copyAllFromYesterday',
+                  'Copy all from yesterday'
+                )}
               >
                 <History className="w-4 h-4" />
               </Button>
               <Button
                 size="default"
                 onClick={() => onConvertToMealClick(meal.type)}
-                title="Save as a new Meal"
+                title={t(
+                  'mealCreation.convertToMeal',
+                  'Create Meal from Diary'
+                )}
               >
                 <PlusCircle className="w-4 h-4" />
               </Button>
@@ -360,7 +366,7 @@ const MealCard = ({
         <CardContent>
           {meal.entries.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              No foods added yet
+              {t('foodDiary.noFoodsAddedYet', 'No foods added yet')}
             </div>
           ) : (
             <div className="space-y-3">
@@ -495,7 +501,7 @@ const MealCard = ({
                             )}
                             {isFromMealPlan && (
                               <Badge variant="outline" className="text-[10px]">
-                                From Plan
+                                {t('mealCard.fromPlan', 'From Plan')}
                               </Badge>
                             )}
                             {giValue &&
@@ -586,7 +592,7 @@ const MealCard = ({
                             );
                             onEditEntry(item);
                           }}
-                          title="Edit entry"
+                          title={t('common.edit', 'Edit')}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -605,7 +611,7 @@ const MealCard = ({
                               isFoodEntryMeal ? 'foodEntryMeal' : 'foodEntry'
                             );
                           }}
-                          title="Remove entry"
+                          title={t('common.delete', 'Delete')}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -661,7 +667,7 @@ const MealCard = ({
                         )}
                         {isFromMealPlan && (
                           <Badge variant="outline" className="text-xs w-fit">
-                            From Plan
+                            {t('mealCard.fromPlan', 'From Plan')}
                           </Badge>
                         )}
                         {giValue &&
@@ -719,7 +725,7 @@ const MealCard = ({
                           );
                           onEditEntry(item); // Pass the item directly
                         }}
-                        title="Edit entry"
+                        title={t('common.edit', 'Edit')}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -749,7 +755,10 @@ const MealCard = ({
 
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-2 gap-4">
                 <span className="font-semibold dark:text-slate-300">
-                  {meal.name} Total:
+                  {t('mealCard.mealTotal', {
+                    mealName: t(`common.${meal.type}`, meal.name),
+                    defaultValue: `${meal.name} Total:`,
+                  })}
                 </span>
                 <div
                   className="grid gap-x-2 gap-y-2 text-xs sm:text-sm w-full sm:w-[35%] sm:ml-auto"
@@ -806,14 +815,21 @@ const MealCard = ({
         >
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Edit Food Database</DialogTitle>
+              <DialogTitle>
+                {t('mealCard.editFoodDatabase', 'Edit Food Database')}
+              </DialogTitle>
               <DialogDescription>
-                Edit the nutritional information for this food in your database.
+                {t(
+                  'mealCard.editFoodDatabaseDescription',
+                  'Edit the nutritional information for this food in your database.'
+                )}
               </DialogDescription>
             </DialogHeader>
             <p className="text-red-500">
-              Editing food details is temporarily unavailable due to schema
-              changes.
+              {t(
+                'mealCard.editingTemporarilyUnavailable',
+                'Editing food details is temporarily unavailable due to schema changes.'
+              )}
             </p>
           </DialogContent>
         </Dialog>

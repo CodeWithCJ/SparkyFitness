@@ -1,9 +1,4 @@
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  useInfiniteQuery,
-} from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   fetchExerciseEntries,
@@ -14,7 +9,6 @@ import {
   logWorkoutPreset,
   deleteExercisePresetEntry,
   fetchExerciseDetails,
-  fetchExerciseEntryHistoryV2,
   getExerciseHistory,
 } from '@/api/Exercises/exerciseEntryService';
 import { exerciseEntryKeys, exerciseKeys } from '@/api/keys/exercises';
@@ -40,20 +34,6 @@ export const useExerciseHistory = (exerciseId: string, limit: number = 5) => {
     queryKey: exerciseEntryKeys.history(exerciseId, limit),
     queryFn: () => getExerciseHistory(exerciseId, limit),
     enabled: !!exerciseId,
-  });
-};
-
-export const useInfiniteExerciseHistoryV2 = (
-  userId?: string,
-  pageSize: number = 20
-) => {
-  return useInfiniteQuery({
-    queryKey: exerciseEntryKeys.historyV2(userId, pageSize),
-    queryFn: ({ pageParam = 1 }) =>
-      fetchExerciseEntryHistoryV2(pageParam as number, pageSize, userId),
-    getNextPageParam: (lastPage) =>
-      lastPage.pagination.hasMore ? lastPage.pagination.page + 1 : undefined,
-    initialPageParam: 1,
   });
 };
 

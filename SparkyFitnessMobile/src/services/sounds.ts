@@ -1,5 +1,9 @@
 import { AppState } from 'react-native';
-import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
+import {
+  createAudioPlayer,
+  setAudioModeAsync,
+  type AudioPlayer,
+} from 'expo-audio';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { addLog } from './LogService';
 
@@ -39,16 +43,24 @@ export function playRestCompleteSound(): void {
           audioModeConfigured = true;
         } catch (err) {
           // Retry on the next chime; a config failure must not mute the cue.
-          addLog(`rest chime audio mode config failed: ${(err as Error).message}`, 'WARNING');
+          addLog(
+            `rest chime audio mode config failed: ${(err as Error).message}`,
+            'WARNING'
+          );
         }
       }
       if (restChimePlayer == null) {
-        restChimePlayer = createAudioPlayer(require('../../assets/sounds/rest-chime.wav'));
+        restChimePlayer = createAudioPlayer(
+          require('../../assets/sounds/rest-chime.wav')
+        );
       }
       await restChimePlayer.seekTo(0);
       restChimePlayer.play();
     } catch (err) {
-      addLog(`playRestCompleteSound failed: ${(err as Error).message}`, 'ERROR');
+      addLog(
+        `playRestCompleteSound failed: ${(err as Error).message}`,
+        'ERROR'
+      );
     }
   })();
 }

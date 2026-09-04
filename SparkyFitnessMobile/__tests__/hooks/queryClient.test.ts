@@ -10,6 +10,7 @@ describe('queryClient default retry predicate', () => {
   test('does not retry on ApiError 4xx (incl. 429)', () => {
     expect(retry(0, new ApiError('x', 400))).toBe(false);
     expect(retry(0, new ApiError('x', 401))).toBe(false);
+    expect(retry(0, new ApiError('x', 403))).toBe(false);
     expect(retry(0, new ApiError('x', 404))).toBe(false);
     expect(retry(0, new ApiError('x', 429))).toBe(false);
     expect(retry(0, new ApiError('x', 499))).toBe(false);

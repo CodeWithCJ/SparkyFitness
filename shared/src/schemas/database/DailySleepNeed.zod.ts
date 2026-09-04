@@ -58,5 +58,7 @@ export const dailySleepNeedMutatorSchema = z.object({
 });
 
 export type DailySleepNeed = z.infer<typeof dailySleepNeedSchema>;
-export type DailySleepNeedInitializer = z.infer<typeof dailySleepNeedInitializerSchema>;
+export type DailySleepNeedInitializer = z.infer<
+  typeof dailySleepNeedInitializerSchema
+>;
 export type DailySleepNeedMutator = z.infer<typeof dailySleepNeedMutatorSchema>;

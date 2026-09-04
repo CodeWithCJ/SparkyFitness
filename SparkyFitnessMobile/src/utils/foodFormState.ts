@@ -4,13 +4,18 @@ import type {
 } from '../types/foodUnitVariants';
 import { formatFoodFormNumber } from './foodDetails';
 import { parseDecimalInput } from './numericInput';
-import { localizeFoodUnit, localizeFoodUnitGroup } from './foodUnitLocalization';
+import {
+  localizeFoodUnit,
+  localizeFoodUnitGroup,
+} from './foodUnitLocalization';
 import { FOOD_FORM_UNIT_GROUPS } from '@workspace/shared';
 import type { TFunction } from 'i18next';
 
 export interface FoodFormData {
   name: string;
   brand: string;
+  /** Markdown reference note. Non-numeric, so it stays out of NUMERIC_FOOD_FORM_FIELDS. */
+  notes: string;
   servingSize: string;
   servingUnit: string;
   calories: string;
@@ -68,7 +73,7 @@ export const NUMERIC_FOOD_FORM_FIELDS: NumericFoodFormField[] = [
 ];
 
 export const NUMERIC_FOOD_FORM_FIELD_SET = new Set<keyof FoodFormData>(
-  NUMERIC_FOOD_FORM_FIELDS,
+  NUMERIC_FOOD_FORM_FIELDS
 );
 
 /**
@@ -78,7 +83,7 @@ export const NUMERIC_FOOD_FORM_FIELD_SET = new Set<keyof FoodFormData>(
  * is preserved unchanged. Unknown/custom units fall back to their literal.
  */
 export function makeServingUnitSections(
-  t: TFunction,
+  t: TFunction
 ): { title: string; options: { label: string; value: string }[] }[] {
   return FOOD_FORM_UNIT_GROUPS.map((group) => ({
     title: localizeFoodUnitGroup(group.label, t),
@@ -110,6 +115,7 @@ export const NUTRITION_FIELDS: (keyof FoodFormData)[] = [
 const EMPTY_FORM: FoodFormData = {
   name: '',
   brand: '',
+  notes: '',
   servingSize: '',
   servingUnit: '',
   calories: '',
@@ -132,12 +138,12 @@ const EMPTY_FORM: FoodFormData = {
 export const FORM_DRAFT_UNIT_ID = '__food-form-draft-unit__';
 
 export function buildDisplayFormState(
-  initialValues?: Partial<FoodFormData>,
+  initialValues?: Partial<FoodFormData>
 ): FoodFormData {
   const merged = { ...EMPTY_FORM, ...initialValues };
   const formatInitialNumericValue = (
     rawValue: string | undefined,
-    kind: 'servingSize' | 'calories' | 'nutrient',
+    kind: 'servingSize' | 'calories' | 'nutrient'
   ) => {
     const parsedValue = parseDecimalInput(rawValue ?? '');
     return Number.isFinite(parsedValue)
@@ -149,7 +155,7 @@ export function buildDisplayFormState(
     ...merged,
     servingSize: formatInitialNumericValue(
       initialValues?.servingSize,
-      'servingSize',
+      'servingSize'
     ),
     calories: formatInitialNumericValue(initialValues?.calories, 'calories'),
     protein: formatInitialNumericValue(initialValues?.protein, 'nutrient'),
@@ -158,7 +164,7 @@ export function buildDisplayFormState(
     fiber: formatInitialNumericValue(initialValues?.fiber, 'nutrient'),
     saturatedFat: formatInitialNumericValue(
       initialValues?.saturatedFat,
-      'nutrient',
+      'nutrient'
     ),
     transFat: formatInitialNumericValue(initialValues?.transFat, 'nutrient'),
     sodium: formatInitialNumericValue(initialValues?.sodium, 'nutrient'),
@@ -166,7 +172,7 @@ export function buildDisplayFormState(
     potassium: formatInitialNumericValue(initialValues?.potassium, 'nutrient'),
     cholesterol: formatInitialNumericValue(
       initialValues?.cholesterol,
-      'nutrient',
+      'nutrient'
     ),
     calcium: formatInitialNumericValue(initialValues?.calcium, 'nutrient'),
     iron: formatInitialNumericValue(initialValues?.iron, 'nutrient'),
@@ -176,7 +182,7 @@ export function buildDisplayFormState(
 }
 
 export function buildPreciseNumericValues(
-  initialValues?: Partial<FoodFormData>,
+  initialValues?: Partial<FoodFormData>
 ): Partial<Record<NumericFoodFormField, number>> {
   const preciseValues: Partial<Record<NumericFoodFormField, number>> = {};
 
@@ -197,7 +203,7 @@ export function toPreciseFormString(value: number | undefined): string {
 }
 
 export function normalizeSelectedUnitSelection(
-  selection?: FoodUnitSelectionResult | null,
+  selection?: FoodUnitSelectionResult | null
 ): FoodUnitSelectionResult | null {
   if (!selection) return null;
   if (selection.kind === 'existing' || selection.variant.id) {
@@ -215,7 +221,7 @@ export function normalizeSelectedUnitSelection(
 
 export function applyVariantToFormState(
   previous: FoodFormData,
-  variant: FoodUnitVariant,
+  variant: FoodUnitVariant
 ): FoodFormData {
   return {
     ...previous,
@@ -241,7 +247,7 @@ export function applyVariantToFormState(
 
 export function applyVariantUnitToFormState(
   previous: FoodFormData,
-  variant: FoodUnitVariant,
+  variant: FoodUnitVariant
 ): FoodFormData {
   return {
     ...previous,
@@ -252,7 +258,7 @@ export function applyVariantUnitToFormState(
 export function applyCompatibleDraftToFormState(
   previous: FoodFormData,
   variant: FoodUnitVariant,
-  scaledVariant: FoodUnitVariant,
+  scaledVariant: FoodUnitVariant
 ): FoodFormData {
   return {
     ...previous,
@@ -276,7 +282,7 @@ export function applyCompatibleDraftToFormState(
 }
 
 export function buildPreciseNumericValuesFromVariant(
-  variant: FoodUnitVariant,
+  variant: FoodUnitVariant
 ): Partial<Record<NumericFoodFormField, number>> {
   return buildPreciseNumericValues({
     servingSize: toPreciseFormString(variant.serving_size),
@@ -304,7 +310,7 @@ export function isPositiveNumber(value: number): boolean {
 
 export function scaleCompatibleDraftVariant(
   variant: FoodUnitVariant,
-  servingSize: number,
+  servingSize: number
 ): FoodUnitVariant {
   const ratio =
     variant.serving_size > 0 && Number.isFinite(servingSize)
@@ -335,14 +341,14 @@ export function scaleCompatibleDraftVariant(
       Object.entries(variant.custom_nutrients || {}).map(([key, value]) => [
         key,
         (Number(value) || 0) * ratio,
-      ]),
+      ])
     ),
   };
 }
 
 export function getScaledVariantNumericValue(
   field: Exclude<NumericFoodFormField, 'servingSize'>,
-  variant: FoodUnitVariant,
+  variant: FoodUnitVariant
 ): number {
   switch (field) {
     case 'calories':

@@ -5,7 +5,10 @@ import {
 } from 'expo/config-plugins';
 import fs from 'fs';
 import path from 'path';
-import { FALLBACK_LOCALE, SUPPORTED_LANGUAGES } from '../src/localization/localeRegistry';
+import {
+  FALLBACK_LOCALE,
+  SUPPORTED_LANGUAGES,
+} from '../src/localization/localeRegistry';
 
 const LANGUAGE_PACKAGE = 'com.sparkyapps.sparkyfitness.language';
 export const LANGUAGE_IMPORT = `import ${LANGUAGE_PACKAGE}.AppLanguagePackage`;
@@ -22,9 +25,13 @@ export function installAppLanguagePackage(source: string): string {
   }
 
   if (!next.includes(LANGUAGE_ADD_LINE)) {
-    const packageList = next.match(/PackageList\(this\)\.packages\.apply\s*\{\s*\n/);
+    const packageList = next.match(
+      /PackageList\(this\)\.packages\.apply\s*\{\s*\n/
+    );
     if (!packageList || packageList.index === undefined) {
-      throw new Error('[withAppLanguage] Could not locate PackageList packages block.');
+      throw new Error(
+        '[withAppLanguage] Could not locate PackageList packages block.'
+      );
     }
     const insertAt = packageList.index + packageList[0].length;
     next = `${next.slice(0, insertAt)}              ${LANGUAGE_ADD_LINE}\n${next.slice(insertAt)}`;
@@ -64,18 +71,31 @@ const withAppLanguage: ConfigPlugin = (config) => {
       const sourceRoot = path.join(config.modRequest.projectRoot, SOURCE_DIR);
       const destinationRoot = path.join(
         config.modRequest.platformProjectRoot,
-        'app/src/main/java',
+        'app/src/main/java'
       );
       await copyTree(sourceRoot, destinationRoot);
-      const modulePath = path.join(destinationRoot, 'com/sparkyapps/sparkyfitness/language/AppLanguageModule.kt');
+      const modulePath = path.join(
+        destinationRoot,
+        'com/sparkyapps/sparkyfitness/language/AppLanguageModule.kt'
+      );
       const moduleSource = await fs.promises.readFile(modulePath, 'utf8');
-      await fs.promises.writeFile(modulePath, moduleSource.replace(/\{\{SUPPORTED_LOCALES\}\}/g, SUPPORTED_LANGUAGES.map((language) => `"${language}"`).join(', ')).replace(/\{\{FALLBACK_LOCALE\}\}/g, FALLBACK_LOCALE));
+      await fs.promises.writeFile(
+        modulePath,
+        moduleSource
+          .replace(
+            /\{\{SUPPORTED_LOCALES\}\}/g,
+            SUPPORTED_LANGUAGES.map((language) => `"${language}"`).join(', ')
+          )
+          .replace(/\{\{FALLBACK_LOCALE\}\}/g, FALLBACK_LOCALE)
+      );
       return config;
     },
   ]);
 
   config = withMainApplication(config, (config) => {
-    config.modResults.contents = installAppLanguagePackage(config.modResults.contents);
+    config.modResults.contents = installAppLanguagePackage(
+      config.modResults.contents
+    );
     return config;
   });
 

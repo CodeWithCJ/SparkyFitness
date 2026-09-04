@@ -1,5 +1,8 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
-import { moveFoodEntryMealToMealType } from '../models/foodEntryMealRepository.js';
+import {
+  moveFoodEntryMealToMealType,
+  updateFoodEntryMeal,
+} from '../models/foodEntryMealRepository.js';
 import { getClient } from '../db/poolManager.js';
 
 vi.mock('../db/poolManager', () => ({
@@ -156,5 +159,63 @@ describe('foodEntryMealRepository.moveFoodEntryMealToMealType', () => {
     expect(calls).toContain('ROLLBACK');
     expect(calls).not.toContain('COMMIT');
     expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('foodEntryMealRepository.updateFoodEntryMeal', () => {
+  let mockClient: MockDbClient;
+  const MEAL_ENTRY_ID = 'meal-entry-1';
+  const ACTOR_ID = 'actor-1';
+
+  beforeEach(() => {
+    mockClient = {
+      query: vi.fn().mockResolvedValue({ rows: [{ id: MEAL_ENTRY_ID }] }),
+      release: vi.fn(),
+    };
+    vi.clearAllMocks();
+    vi.mocked(getClient).mockResolvedValue(mockClient);
+  });
+
+  /** The params array of the UPDATE food_entry_meals call. */
+  const updateParams = () =>
+    mockClient.query.mock.calls.find(
+      ([sql]) =>
+        typeof sql === 'string' &&
+        sql.trim().startsWith('UPDATE food_entry_meals')
+    )?.[1] as unknown[];
+
+  // meal_template_id used to be assigned bare while every other column was
+  // guarded, so a partial update that omitted the key wrote NULL and silently
+  // unlinked the entry from its template.
+  it('preserves meal_template_id when the key is omitted', async () => {
+    await updateFoodEntryMeal(MEAL_ENTRY_ID, { name: 'Renamed' }, ACTOR_ID);
+
+    const params = updateParams();
+    // $16 is the key-presence flag; false leaves the stored link alone.
+    expect(params[15]).toBe(false);
+  });
+
+  it('clears meal_template_id when the key is explicitly null', async () => {
+    await updateFoodEntryMeal(
+      MEAL_ENTRY_ID,
+      { meal_template_id: null },
+      ACTOR_ID
+    );
+
+    const params = updateParams();
+    expect(params[15]).toBe(true);
+    expect(params[0]).toBeNull();
+  });
+
+  it('writes a supplied meal_template_id', async () => {
+    await updateFoodEntryMeal(
+      MEAL_ENTRY_ID,
+      { meal_template_id: 'template-1' },
+      ACTOR_ID
+    );
+
+    const params = updateParams();
+    expect(params[15]).toBe(true);
+    expect(params[0]).toBe('template-1');
   });
 });

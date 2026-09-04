@@ -21,7 +21,10 @@ import plTranslation from '../../src/localization/locales/pl/translation.json';
 beforeAll(() => {
   if (!i18n.isInitialized) {
     i18n.use(initReactI18next).init({
-      resources: { en: { translation: enTranslation }, pl: { translation: plTranslation } },
+      resources: {
+        en: { translation: enTranslation },
+        pl: { translation: plTranslation },
+      },
       lng: 'en',
       fallbackLng: 'en',
       initImmediate: false,
@@ -59,10 +62,16 @@ jest.mock('../../src/services/haptics', () => ({
   fireSelectionHaptic: jest.fn(),
 }));
 
-jest.mock('../../src/utils/ids', () => ({ newUuid: jest.fn(() => 'uuid-test') }));
+jest.mock('../../src/utils/ids', () => ({
+  newUuid: jest.fn(() => 'uuid-test'),
+}));
 
-const { scheduleRestNotification } = require('../../src/services/notifications');
-const mockSchedule = scheduleRestNotification as jest.MockedFunction<typeof scheduleRestNotification>;
+const {
+  scheduleRestNotification,
+} = require('../../src/services/notifications');
+const mockSchedule = scheduleRestNotification as jest.MockedFunction<
+  typeof scheduleRestNotification
+>;
 
 function buildSessionWithSet(opts: {
   exerciseName?: string;
@@ -105,19 +114,28 @@ describe('buildRestNotificationContent — localization', () => {
     i18n.changeLanguage('en');
   });
 
-  function captureNotificationContent(session: PresetSessionResponse, setId: string): { title?: string; body?: string } {
+  function captureNotificationContent(
+    session: PresetSessionResponse,
+    setId: string
+  ): { title?: string; body?: string } {
     const store = useActiveWorkoutStore.getState();
     store.startWorkout(session);
     // Complete the set to trigger rest -> notification scheduling
     act(() => store.completeSet(setId));
-    const lastCall = mockSchedule.mock.calls[mockSchedule.mock.calls.length - 1];
+    const lastCall =
+      mockSchedule.mock.calls[mockSchedule.mock.calls.length - 1];
     if (!lastCall) return { title: undefined, body: undefined };
     return (lastCall[2] as { title?: string; body?: string }) ?? {};
   }
 
   it('EN: body contains localized set progress from catalog', () => {
     i18n.changeLanguage('en');
-    const session = buildSessionWithSet({ exerciseName: 'Bench Press', setNumber: 2, setCount: 3, reps: 5 });
+    const session = buildSessionWithSet({
+      exerciseName: 'Bench Press',
+      setNumber: 2,
+      setCount: 3,
+      reps: 5,
+    });
     const content = captureNotificationContent(session, 'set-1');
     expect(content.body).toBeTruthy();
     // Body comes from the i18n catalog, not a hardcoded template literal.
@@ -130,7 +148,12 @@ describe('buildRestNotificationContent — localization', () => {
 
   it('EN: body uses i18next plural for 1 rep (singular)', () => {
     i18n.changeLanguage('en');
-    const session = buildSessionWithSet({ exerciseName: 'Squat', setNumber: 2, setCount: 4, reps: 1 });
+    const session = buildSessionWithSet({
+      exerciseName: 'Squat',
+      setNumber: 2,
+      setCount: 4,
+      reps: 1,
+    });
     const content = captureNotificationContent(session, 'set-1');
     expect(content.body).toContain('1 rep target');
     expect(content.body).not.toContain('1 reps');
@@ -138,14 +161,24 @@ describe('buildRestNotificationContent — localization', () => {
 
   it('EN: body uses i18next plural for 2 reps (plural)', () => {
     i18n.changeLanguage('en');
-    const session = buildSessionWithSet({ exerciseName: 'Deadlift', setNumber: 1, setCount: 3, reps: 2 });
+    const session = buildSessionWithSet({
+      exerciseName: 'Deadlift',
+      setNumber: 1,
+      setCount: 3,
+      reps: 2,
+    });
     const content = captureNotificationContent(session, 'set-1');
     expect(content.body).toContain('2 reps target');
   });
 
   it('PL: body does not contain raw English "Set ... of ..." or "target" or "rep"', () => {
     i18n.changeLanguage('pl');
-    const session = buildSessionWithSet({ exerciseName: 'Wyciskanie', setNumber: 1, setCount: 3, reps: 5 });
+    const session = buildSessionWithSet({
+      exerciseName: 'Wyciskanie',
+      setNumber: 1,
+      setCount: 3,
+      reps: 5,
+    });
     const content = captureNotificationContent(session, 'set-1');
     expect(content.body).toBeTruthy();
     // Must not contain raw English fragments in PL
@@ -161,7 +194,12 @@ describe('buildRestNotificationContent — localization', () => {
 
   it('PL: body uses correct plural form for 1 powtórzenie (one)', () => {
     i18n.changeLanguage('pl');
-    const session = buildSessionWithSet({ exerciseName: 'Przysiad', setNumber: 1, setCount: 3, reps: 1 });
+    const session = buildSessionWithSet({
+      exerciseName: 'Przysiad',
+      setNumber: 1,
+      setCount: 3,
+      reps: 1,
+    });
     const content = captureNotificationContent(session, 'set-1');
     expect(content.body).toContain('powtórzenie');
     expect(content.body).not.toContain('powtórzenia');
@@ -170,7 +208,12 @@ describe('buildRestNotificationContent — localization', () => {
 
   it('PL: body uses correct plural form for 2 powtórzenia (few)', () => {
     i18n.changeLanguage('pl');
-    const session = buildSessionWithSet({ exerciseName: 'Przysiad', setNumber: 1, setCount: 3, reps: 2 });
+    const session = buildSessionWithSet({
+      exerciseName: 'Przysiad',
+      setNumber: 1,
+      setCount: 3,
+      reps: 2,
+    });
     const content = captureNotificationContent(session, 'set-1');
     expect(content.body).toContain('powtórzenia');
     expect(content.body).not.toContain('powtórzenie');
@@ -179,7 +222,12 @@ describe('buildRestNotificationContent — localization', () => {
 
   it('PL: body uses correct plural form for 5 powtórzeń (many)', () => {
     i18n.changeLanguage('pl');
-    const session = buildSessionWithSet({ exerciseName: 'Przysiad', setNumber: 1, setCount: 3, reps: 5 });
+    const session = buildSessionWithSet({
+      exerciseName: 'Przysiad',
+      setNumber: 1,
+      setCount: 3,
+      reps: 5,
+    });
     const content = captureNotificationContent(session, 'set-1');
     expect(content.body).toContain('powtórzeń');
     expect(content.body).not.toContain('powtórzenie');
@@ -225,7 +273,12 @@ describe('buildRestNotificationContent — dependency injection', () => {
     await i18n.changeLanguage('en');
     // Get a PL translator via getFixedT.
     const plT = i18n.getFixedT('pl');
-    const content = buildRestNotificationContent(plT, session, 'set-di', 'Rest');
+    const content = buildRestNotificationContent(
+      plT,
+      session,
+      'set-di',
+      'Rest'
+    );
     // PL title should be Polish, not English.
     expect(content.title).not.toBe('Rest complete: next set up');
     // PL body should contain Polish content (e.g. "Seria").
@@ -237,7 +290,12 @@ describe('buildRestNotificationContent — dependency injection', () => {
     await i18n.changeLanguage('pl');
     // Get an EN translator via getFixedT.
     const enT = i18n.getFixedT('en');
-    const content = buildRestNotificationContent(enT, session, 'set-di', 'Rest');
+    const content = buildRestNotificationContent(
+      enT,
+      session,
+      'set-di',
+      'Rest'
+    );
     // EN title should be English.
     expect(content.title).toBe('Rest complete: next set up');
     // EN body should contain English content (e.g. "Set").
@@ -252,7 +310,14 @@ describe('buildRestNotificationContent — dependency injection', () => {
         {
           id: 'ex-reps-pl-1',
           exercise_snapshot: { name: 'Push-ups' },
-          sets: [{ id: 'set-reps-pl-1', set_type: 'reps', target_reps: 1, rest_time: 30 }],
+          sets: [
+            {
+              id: 'set-reps-pl-1',
+              set_type: 'reps',
+              target_reps: 1,
+              rest_time: 30,
+            },
+          ],
         },
       ],
     } as unknown as PresetSessionResponse;
@@ -260,7 +325,12 @@ describe('buildRestNotificationContent — dependency injection', () => {
       previousSessionSets: [],
       plannedSetValues: { 'set-reps-pl-1': { reps: 1 } },
     });
-    const content = buildRestNotificationContent(plT, repsSession, 'set-reps-pl-1', 'Rest');
+    const content = buildRestNotificationContent(
+      plT,
+      repsSession,
+      'set-reps-pl-1',
+      'Rest'
+    );
     // PL singular (_one): 1 powtórzenie
     expect(content.body).toContain('1 powtórzenie');
     expect(content.body).not.toContain('1 powtórzenia');
@@ -275,7 +345,14 @@ describe('buildRestNotificationContent — dependency injection', () => {
         {
           id: 'ex-reps-pl-2',
           exercise_snapshot: { name: 'Push-ups' },
-          sets: [{ id: 'set-reps-pl-2', set_type: 'reps', target_reps: 2, rest_time: 30 }],
+          sets: [
+            {
+              id: 'set-reps-pl-2',
+              set_type: 'reps',
+              target_reps: 2,
+              rest_time: 30,
+            },
+          ],
         },
       ],
     } as unknown as PresetSessionResponse;
@@ -283,7 +360,12 @@ describe('buildRestNotificationContent — dependency injection', () => {
       previousSessionSets: [],
       plannedSetValues: { 'set-reps-pl-2': { reps: 2 } },
     });
-    const content = buildRestNotificationContent(plT, repsSession, 'set-reps-pl-2', 'Rest');
+    const content = buildRestNotificationContent(
+      plT,
+      repsSession,
+      'set-reps-pl-2',
+      'Rest'
+    );
     // PL _few: 2 powtórzenia
     expect(content.body).toContain('2 powtórzenia');
     expect(content.body).not.toContain('2 powtórzenie');
@@ -298,7 +380,14 @@ describe('buildRestNotificationContent — dependency injection', () => {
         {
           id: 'ex-reps-pl-5',
           exercise_snapshot: { name: 'Push-ups' },
-          sets: [{ id: 'set-reps-pl-5', set_type: 'reps', target_reps: 5, rest_time: 30 }],
+          sets: [
+            {
+              id: 'set-reps-pl-5',
+              set_type: 'reps',
+              target_reps: 5,
+              rest_time: 30,
+            },
+          ],
         },
       ],
     } as unknown as PresetSessionResponse;
@@ -306,7 +395,12 @@ describe('buildRestNotificationContent — dependency injection', () => {
       previousSessionSets: [],
       plannedSetValues: { 'set-reps-pl-5': { reps: 5 } },
     });
-    const content = buildRestNotificationContent(plT, repsSession, 'set-reps-pl-5', 'Rest');
+    const content = buildRestNotificationContent(
+      plT,
+      repsSession,
+      'set-reps-pl-5',
+      'Rest'
+    );
     // PL _many: 5 powtórzeń
     expect(content.body).toContain('5 powtórzeń');
     expect(content.body).not.toContain('5 powtórzenie');

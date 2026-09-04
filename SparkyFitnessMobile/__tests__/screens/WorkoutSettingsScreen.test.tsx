@@ -14,11 +14,16 @@ jest.mock('../../src/components/RestPeriodSheet', () => {
   const ReactModule = require('react');
   return {
     __esModule: true,
-    default: ReactModule.forwardRef((props: { onChange: (seconds: number) => void }, ref: unknown) => {
-      ReactModule.useImperativeHandle(ref, () => ({ present: mockPresent, dismiss: jest.fn() }));
-      sheetOnChange = props.onChange;
-      return null;
-    }),
+    default: ReactModule.forwardRef(
+      (props: { onChange: (seconds: number) => void }, ref: unknown) => {
+        ReactModule.useImperativeHandle(ref, () => ({
+          present: mockPresent,
+          dismiss: jest.fn(),
+        }));
+        sheetOnChange = props.onChange;
+        return null;
+      }
+    ),
   };
 });
 
@@ -40,7 +45,9 @@ const navigation = mockNavigation;
 const route = { params: {} } as any;
 
 function renderScreen() {
-  return render(<WorkoutSettingsScreen navigation={navigation} route={route} />);
+  return render(
+    <WorkoutSettingsScreen navigation={navigation} route={route} />
+  );
 }
 
 describe('WorkoutSettingsScreen', () => {
@@ -98,20 +105,29 @@ describe('WorkoutSettingsScreen', () => {
     expect(keepAwakeToggle.props.value).toBe(false);
 
     fireEvent(keepAwakeToggle, 'valueChange', true);
-    expect(useAppPreferencesStore.getState().workoutKeepAwakeEnabled).toBe(true);
+    expect(useAppPreferencesStore.getState().workoutKeepAwakeEnabled).toBe(
+      true
+    );
   });
 
   it('localizes the Polish labels and rest accessibility fallback', async () => {
-    const { default: i18n, initializeI18n } = require('../../src/localization/i18n');
+    const {
+      default: i18n,
+      initializeI18n,
+    } = require('../../src/localization/i18n');
     await initializeI18n('pl');
     const { getByText, getAllByRole } = renderScreen();
 
     expect(getByText('Domyślny okres odpoczynku')).toBeTruthy();
     expect(getByText('Dźwięk timera odpoczynku')).toBeTruthy();
-    expect(getAllByRole('switch')[0].props.accessibilityLabel).toBe('Dźwięk timera odpoczynku');
-    expect(i18n.t('workoutSettings.defaultRestAccessibility', {
-      defaultValue: 'Default rest period, {{duration}}',
-      duration: '1:30',
-    })).toBe('Domyślny odpoczynek: 1:30');
+    expect(getAllByRole('switch')[0].props.accessibilityLabel).toBe(
+      'Dźwięk timera odpoczynku'
+    );
+    expect(
+      i18n.t('workoutSettings.defaultRestAccessibility', {
+        defaultValue: 'Default rest period, {{duration}}',
+        duration: '1:30',
+      })
+    ).toBe('Domyślny odpoczynek: 1:30');
   });
 });

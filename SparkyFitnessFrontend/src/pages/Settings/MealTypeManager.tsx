@@ -25,12 +25,17 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
+  mealTypeDeletionImpactOptions,
   useCreateMealTypeMutation,
   useDeleteMealTypeMutation,
   useMealTypes,
   useUpdateMealTypeMutation,
 } from '@/hooks/Diary/useMealTypes';
+import type { DeleteMealTypeOptions } from '@/hooks/Diary/useMealTypes';
 import { MealTypeDefinition } from '@/types/diary';
+import { useQueryClient } from '@tanstack/react-query';
+import DeleteMealTypeDialog from './DeleteMealTypeDialog';
+import type { PendingMealTypeDeletion } from './DeleteMealTypeDialog';
 
 const MealTypeManager = () => {
   const { t } = useTranslation();
@@ -45,10 +50,14 @@ const MealTypeManager = () => {
   const [newSortOrder, setNewSortOrder] = useState(100);
   const [newDefaultTime, setNewDefaultTime] = useState<string>('');
 
+  const [pendingDeletion, setPendingDeletion] =
+    useState<PendingMealTypeDeletion | null>(null);
+
+  const queryClient = useQueryClient();
   const { data: mealTypes = [] } = useMealTypes();
   const { mutateAsync: createMealType } = useCreateMealTypeMutation();
   const { mutateAsync: updateMealType } = useUpdateMealTypeMutation();
-  const { mutate: deleteMealType } = useDeleteMealTypeMutation();
+  const { mutateAsync: deleteMealType } = useDeleteMealTypeMutation();
 
   const handleAdd = async () => {
     if (!newName.trim()) return;
@@ -80,8 +89,36 @@ const MealTypeManager = () => {
     setEditingMealType(null);
   };
 
-  const handleDelete = (id: string) => {
-    deleteMealType(id);
+  // Fetch what references the meal type first, so the dialog can show exact
+  // counts instead of deleting silently on a single click.
+  const handleDeleteRequest = async (item: MealTypeDefinition) => {
+    try {
+      const impact = await queryClient.fetchQuery(
+        mealTypeDeletionImpactOptions(
+          item.id,
+          t(
+            'mealTypeManager.impactLoadError',
+            'Could not check what uses this meal category. Please try again.'
+          )
+        )
+      );
+      setPendingDeletion({ mealType: item, impact });
+    } catch {
+      // The failure is already surfaced by the global query error handler;
+      // caught here only so the click handler does not reject unhandled.
+    }
+  };
+
+  const handleConfirmDelete = async (options: DeleteMealTypeOptions) => {
+    if (!pendingDeletion) return;
+    try {
+      await deleteMealType({ id: pendingDeletion.mealType.id, ...options });
+      setPendingDeletion(null);
+    } catch {
+      // Toasted by the global mutation error handler. The dialog stays open so
+      // the user can pick a different option — a delete can still be refused
+      // when another user's entries reference this meal type.
+    }
   };
 
   const toggleVisibility = async (item: MealTypeDefinition) => {
@@ -149,7 +186,10 @@ const MealTypeManager = () => {
                   <Input
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
-                    placeholder="e.g. Midnight Snack"
+                    placeholder={t(
+                      'mealTypeManager.namePlaceholder',
+                      'e.g. Midnight Snack'
+                    )}
                   />
                 </div>
                 <div className="space-y-2">
@@ -169,15 +209,22 @@ const MealTypeManager = () => {
                   </p>
                 </div>
                 <div className="space-y-2">
-                  <Label>Default Time (optional)</Label>
+                  <Label>
+                    {t(
+                      'mealTypeManager.defaultTimeOptional',
+                      'Default Time (optional)'
+                    )}
+                  </Label>
                   <Input
                     type="time"
                     value={newDefaultTime}
                     onChange={(e) => setNewDefaultTime(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Used to suggest this meal category automatically based on
-                    your local time of day when logging food.
+                    {t(
+                      'mealTypeManager.defaultTimeHelp',
+                      'Used to suggest this meal category automatically based on your local time of day when logging food.'
+                    )}
                   </p>
                 </div>
                 <Button onClick={handleAdd} className="w-full">
@@ -210,26 +257,24 @@ const MealTypeManager = () => {
                   <span className="font-medium">
                     {getDisplayName(item.name)}
                   </span>
-                  {isSystem && (
-                    <span className="text-xs text-muted-foreground">
-                      ({item.name})
-                    </span>
-                  )}
                 </div>
                 {isSystem && (
                   <Badge variant="secondary" className="text-xs">
-                    Default
+                    {t('mealTypeManager.default', 'Default')}
                   </Badge>
                 )}
               </div>
 
               <div className="flex items-center gap-4">
                 <span className="text-xs text-muted-foreground">
-                  Order: {item.sort_order}
+                  {t('mealTypeManager.order', {
+                    defaultValue: 'Order: {{order}}',
+                    order: item.sort_order,
+                  })}
                 </span>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs text-muted-foreground">
-                    Default Time:
+                    {t('mealTypeManager.defaultTime', 'Default Time:')}
                   </span>
                   <Input
                     type="time"
@@ -253,7 +298,9 @@ const MealTypeManager = () => {
                     size="sm"
                     onClick={() => toggleVisibility(item)}
                     title={
-                      item.is_visible ? 'Hide from Diary' : 'Show in Diary'
+                      item.is_visible
+                        ? t('mealTypeManager.hideFromDiary', 'Hide from Diary')
+                        : t('mealTypeManager.showInDiary', 'Show in Diary')
                     }
                   >
                     {item.is_visible ? (
@@ -268,8 +315,14 @@ const MealTypeManager = () => {
                     onClick={() => toggleQuickLog(item)}
                     title={
                       item.show_in_quick_log
-                        ? 'Hide from Quick Food Log'
-                        : 'Show in Quick Food Log'
+                        ? t(
+                            'mealTypeManager.hideFromQuickLog',
+                            'Hide from Quick Food Log'
+                          )
+                        : t(
+                            'mealTypeManager.showInQuickLog',
+                            'Show in Quick Food Log'
+                          )
                     }
                   >
                     {item.show_in_quick_log !== false ? (
@@ -299,7 +352,7 @@ const MealTypeManager = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => handleDeleteRequest(item)}
                       >
                         <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
@@ -337,7 +390,12 @@ const MealTypeManager = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label>Default Time (optional)</Label>
+              <Label>
+                {t(
+                  'mealTypeManager.defaultTimeOptional',
+                  'Default Time (optional)'
+                )}
+              </Label>
               <Input
                 type="time"
                 value={newDefaultTime}
@@ -358,6 +416,18 @@ const MealTypeManager = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Rendered only while open: returning null from the dialog would keep
+          it mounted, and its chosen reassign target would then carry over into
+          the next meal category's delete. */}
+      {pendingDeletion && (
+        <DeleteMealTypeDialog
+          pendingDeletion={pendingDeletion}
+          mealTypes={mealTypes}
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setPendingDeletion(null)}
+        />
+      )}
     </div>
   );
 };

@@ -1,6 +1,12 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, Text, Pressable, TouchableOpacity, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  TouchableOpacity,
+  Platform,
+} from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../Icon';
 
@@ -35,19 +41,27 @@ export type DoseRowProps = (ScheduledDoseRowProps | PrnDoseRowProps) & {
  * Take/Skip pair (same labels, padding, and font), so every actions
  * column keeps that width and rows don't shift between states.
  */
-const SizedActionColumn: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const SizedActionColumn: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const { t } = useTranslation();
   return (
     <View className="items-center justify-center">
       <View className="flex-row items-center opacity-0" aria-hidden>
         <View className="rounded-full px-3 py-1">
-          <Text className="text-sm font-semibold">{t('medications.dose.log', { defaultValue: 'Log' })}</Text>
+          <Text className="text-sm font-semibold">
+            {t('medications.dose.log', { defaultValue: 'Log' })}
+          </Text>
         </View>
         <View className="rounded-full px-3 py-1 ml-1">
-          <Text className="text-sm font-semibold">{t('medications.dose.skip', { defaultValue: 'Skip' })}</Text>
+          <Text className="text-sm font-semibold">
+            {t('medications.dose.skip', { defaultValue: 'Skip' })}
+          </Text>
         </View>
       </View>
-      <View className="absolute inset-0 items-center justify-center">{children}</View>
+      <View className="absolute inset-0 items-center justify-center">
+        {children}
+      </View>
     </View>
   );
 };
@@ -62,12 +76,13 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
   const { t } = useTranslation();
   const { title, time, subtitle, onPress } = props;
 
-  const [iconSuccess, iconDecorative, iconDanger, accentPrimary] = useCSSVariable([
-    '--color-icon-success',
-    '--color-icon-decorative',
-    '--color-icon-danger',
-    '--color-accent-primary',
-  ]) as [string, string, string, string];
+  const [iconSuccess, iconDecorative, iconDanger, accentPrimary] =
+    useCSSVariable([
+      '--color-icon-success',
+      '--color-icon-decorative',
+      '--color-icon-danger',
+      '--color-accent-primary',
+    ]) as [string, string, string, string];
 
   const completed = props.kind === 'scheduled' && props.status !== 'pending';
   const showTime = time != null && time !== '';
@@ -89,13 +104,23 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
       : props.count > 0
         ? iconSuccess
         : iconDecorative;
-  const onCirclePress = props.kind === 'scheduled' ? props.onToggle : props.onLog;
+  const onCirclePress =
+    props.kind === 'scheduled' ? props.onToggle : props.onLog;
   const circleAccessibilityLabel =
     props.kind === 'scheduled'
       ? props.status === 'pending'
-        ? t('medications.dose.markTaken', { defaultValue: 'Mark {{title}} taken', title })
-        : t('medications.dose.unmark', { defaultValue: 'Unmark {{title}}', title })
-      : t('medications.dose.logTitle', { defaultValue: 'Log {{title}}', title });
+        ? t('medications.dose.markTaken', {
+            defaultValue: 'Mark {{title}} taken',
+            title,
+          })
+        : t('medications.dose.unmark', {
+            defaultValue: 'Unmark {{title}}',
+            title,
+          })
+      : t('medications.dose.logTitle', {
+          defaultValue: 'Log {{title}}',
+          title,
+        });
 
   const renderActions = () => {
     if (props.kind === 'prn') {
@@ -108,7 +133,12 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
             accessibilityRole="button"
             className="rounded-full px-3 py-1 bg-raised"
           >
-            <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>{t('medications.dose.log', { defaultValue: 'Log' })}</Text>
+            <Text
+              className="text-sm font-semibold"
+              style={{ color: accentPrimary }}
+            >
+              {t('medications.dose.log', { defaultValue: 'Log' })}
+            </Text>
           </TouchableOpacity>
         </SizedActionColumn>
       );
@@ -121,20 +151,33 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             activeOpacity={0.6}
             accessibilityRole="button"
-            accessibilityLabel={t('medications.dose.logTaken', { defaultValue: 'Log {{title}} as taken', title })}
+            accessibilityLabel={t('medications.dose.logTaken', {
+              defaultValue: 'Log {{title}} as taken',
+              title,
+            })}
             className="rounded-full px-3 py-1 bg-raised"
           >
-            <Text className="text-sm font-semibold" style={{ color: accentPrimary }}>{t('medications.dose.log', { defaultValue: 'Log' })}</Text>
+            <Text
+              className="text-sm font-semibold"
+              style={{ color: accentPrimary }}
+            >
+              {t('medications.dose.log', { defaultValue: 'Log' })}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={props.onSkip}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             activeOpacity={0.6}
             accessibilityRole="button"
-            accessibilityLabel={t('medications.dose.skipTitle', { defaultValue: 'Skip {{title}}', title })}
+            accessibilityLabel={t('medications.dose.skipTitle', {
+              defaultValue: 'Skip {{title}}',
+              title,
+            })}
             className="rounded-full px-3 py-1 ml-1 bg-raised"
           >
-            <Text className="text-sm font-semibold text-accent-primary">{t('medications.dose.skip', { defaultValue: 'Skip' })}</Text>
+            <Text className="text-sm font-semibold text-accent-primary">
+              {t('medications.dose.skip', { defaultValue: 'Skip' })}
+            </Text>
           </TouchableOpacity>
         </View>
       );
@@ -142,7 +185,9 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
     return (
       <SizedActionColumn>
         <Text className="text-sm text-text-secondary">
-          {props.status === 'taken' ? t('medications.dose.taken', { defaultValue: 'Taken' }) : t('medications.dose.skipped', { defaultValue: 'Skipped' })}
+          {props.status === 'taken'
+            ? t('medications.dose.taken', { defaultValue: 'Taken' })
+            : t('medications.dose.skipped', { defaultValue: 'Skipped' })}
         </Text>
       </SizedActionColumn>
     );
@@ -160,26 +205,48 @@ const DoseRow: React.FC<DoseRowProps> = (props) => {
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         accessibilityRole="button"
         accessibilityLabel={circleAccessibilityLabel}
-        style={{ backgroundColor: 'transparent', borderWidth: 1.5, borderColor: circleBorderColor }}
+        style={{
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
+          borderColor: circleBorderColor,
+        }}
       >
         {props.kind === 'scheduled' && props.status === 'taken' && (
-          <Icon name="checkmark" size={Platform.OS === 'ios' ? 12 : 16} color={iconSuccess} />
+          <Icon
+            name="checkmark"
+            size={Platform.OS === 'ios' ? 12 : 16}
+            color={iconSuccess}
+          />
         )}
         {props.kind === 'scheduled' && props.status === 'skipped' && (
-          <Icon name="close" size={Platform.OS === 'ios' ? 12 : 16} color={iconDanger} />
+          <Icon
+            name="close"
+            size={Platform.OS === 'ios' ? 12 : 16}
+            color={iconDanger}
+          />
         )}
         {props.kind === 'prn' && props.count > 0 && (
-          <Text className="text-xs font-bold" style={{ color: iconSuccess }}>{props.count}</Text>
+          <Text className="text-xs font-bold" style={{ color: iconSuccess }}>
+            {props.count}
+          </Text>
         )}
       </Pressable>
       <View className="flex-1">
-        <Text className={`text-base font-semibold ${titleClass}`} numberOfLines={1}>
+        <Text
+          className={`text-base font-semibold ${titleClass}`}
+          numberOfLines={1}
+        >
           {title}
         </Text>
         {(showTime || showSubtitle) && (
-          <Text className={`text-sm ${completed ? 'text-text-muted' : 'text-text-secondary'} mt-0.5`} numberOfLines={1}>
+          <Text
+            className={`text-sm ${completed ? 'text-text-muted' : 'text-text-secondary'} mt-0.5`}
+            numberOfLines={1}
+          >
             {showTime && (
-              <Text className={`${completed ? 'text-text-muted' : 'text-text-primary'}`}>
+              <Text
+                className={`${completed ? 'text-text-muted' : 'text-text-primary'}`}
+              >
                 {time}
               </Text>
             )}

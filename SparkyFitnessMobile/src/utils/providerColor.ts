@@ -3,7 +3,7 @@ import { ExternalProvider } from '../types/externalProviders';
 
 // Per-provider signature colours used to tell sources apart at a glance in the
 // All Providers search: a tinted badge behind Top Matches rows and a dot before
-// each By Source provider. Colours are drawn from the theme's category palette
+// each By Provider entry. Colours are drawn from the theme's category palette
 // in global.css (the same contrast-tuned vars used for the settings icons)
 // rather than hardcoded hex, so they stay consistent with the rest of the app
 // and adapt to light/dark/amoled themes.
@@ -30,7 +30,7 @@ const PROVIDER_PALETTE_VARS = [
 // while the active providers fit the palette; wraps past that.
 export function buildProviderColorMap(
   providers: ExternalProvider[],
-  palette: string[],
+  palette: string[]
 ): Map<string, string> {
   const byId = new Map<string, string>();
   if (palette.length > 0) {
@@ -42,7 +42,7 @@ export function buildProviderColorMap(
 }
 
 export function useProviderColor(
-  providers: ExternalProvider[],
+  providers: ExternalProvider[]
 ): (providerId?: string | null) => string {
   const palette = useCSSVariable(PROVIDER_PALETTE_VARS) as string[];
   const fallback = String(useCSSVariable('--color-text-muted'));

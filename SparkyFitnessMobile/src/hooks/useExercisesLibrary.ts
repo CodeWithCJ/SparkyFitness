@@ -11,7 +11,7 @@ interface UseExercisesLibraryOptions {
 
 export function useExercisesLibrary(
   searchText: string,
-  options?: UseExercisesLibraryOptions,
+  options?: UseExercisesLibraryOptions
 ) {
   const { enabled = true } = options ?? {};
   const queryClient = useQueryClient();
@@ -35,7 +35,7 @@ export function useExercisesLibrary(
 
   const exercises = useMemo(
     () => query.data?.pages.flatMap((page) => page.exercises) ?? [],
-    [query.data?.pages],
+    [query.data?.pages]
   );
 
   // Reset rather than refetch: query.refetch() on an infinite query re-fetches

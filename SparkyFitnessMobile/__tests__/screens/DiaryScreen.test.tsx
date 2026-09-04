@@ -14,9 +14,14 @@ import {
 import { useMeasurements } from '../../src/hooks/useMeasurements';
 import { useCustomMeasurementsByDate } from '../../src/hooks/useCustomMeasurements';
 import { useDiaryDateStore } from '../../src/stores/diaryDateStore';
+import { useSleepDay } from '../../src/hooks/useSleepDay';
 import { getTodayDate } from '../../src/utils/dateUtils';
 import { useNativeIOSTabsActive } from '../../src/services/nativeTabBarPreference';
 import { setNativeHeaderDatePickerOptions } from '../../src/utils/nativeHeaderDatePicker';
+import { EMPTY_SUPPLEMENT_TOTALS } from '@workspace/shared';
+import type { DailySummary, MacroSummary } from '../../src/types/dailySummary';
+import type { FoodEntry } from '../../src/types/foodEntries';
+import { buildSleepEntry } from '../helpers/sleepFixtures';
 
 type DiaryScreenProps = React.ComponentProps<typeof DiaryScreen>;
 type DateNavigatorProps = React.ComponentProps<typeof DateNavigatorComponent>;
@@ -53,7 +58,11 @@ jest.mock('../../src/hooks', () => ({
   useCustomNutrients: jest.fn(),
   useFamilyUsers: jest.fn(),
   useNutrientDisplayPreferences: jest.fn(),
-  useMealTypes: jest.fn(() => ({ mealTypes: [], isLoading: false, isError: false })),
+  useMealTypes: jest.fn(() => ({
+    mealTypes: [],
+    isLoading: false,
+    isError: false,
+  })),
 }));
 
 jest.mock('../../src/hooks/useMeasurements', () => ({
@@ -62,6 +71,20 @@ jest.mock('../../src/hooks/useMeasurements', () => ({
 
 jest.mock('../../src/hooks/useCustomMeasurements', () => ({
   useCustomMeasurementsByDate: jest.fn(),
+}));
+
+// This suite renders DiaryScreen without a QueryClientProvider, so the sleep hook's real
+// useQuery would throw. Mocked to an empty day by default.
+jest.mock('../../src/hooks/useSleepDay', () => ({
+  useSleepDay: jest.fn(() => ({
+    wakeUp: null,
+    naps: [],
+    bedTime: null,
+    isLoading: false,
+    isError: false,
+    isForbidden: false,
+    refetch: jest.fn().mockResolvedValue(undefined),
+  })),
 }));
 
 jest.mock('../../src/hooks/usePreferences', () => ({
@@ -85,7 +108,8 @@ jest.mock('../../src/hooks/useHeaderActionColors', () => ({
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => key === 'familyDiary.openFamilyDiaries' ? 'Open family diaries' : key,
+    t: (key: string) =>
+      key === 'familyDiary.openFamilyDiaries' ? 'Open family diaries' : key,
     i18n: { language: 'en-US' },
   }),
 }));
@@ -129,7 +153,10 @@ jest.mock('../../src/components/DateNavigator', () => {
       <View testID="date-navigator">
         <Text>{title}</Text>
         {action ? (
-          <Pressable accessibilityLabel={action.accessibilityLabel} onPress={action.onPress}>
+          <Pressable
+            accessibilityLabel={action.accessibilityLabel}
+            onPress={action.onPress}
+          >
             <Text>{action.accessibilityLabel}</Text>
           </Pressable>
         ) : null}
@@ -171,12 +198,18 @@ jest.mock('../../src/components/FoodSummary', () => {
 
 jest.mock('../../src/components/ExerciseSummary', () => {
   const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="exercise-summary" /> };
+  return {
+    __esModule: true,
+    default: () => <View testID="exercise-summary" />,
+  };
 });
 
 jest.mock('../../src/components/MeasurementsSummary', () => {
   const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="measurements-summary" /> };
+  return {
+    __esModule: true,
+    default: () => <View testID="measurements-summary" />,
+  };
 });
 
 jest.mock('../../src/components/DiaryCalorieMacroSummary', () => {
@@ -197,33 +230,85 @@ jest.mock('../../src/components/Icon', () => {
   };
 });
 
-const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
-const mockUseDailySummary = useDailySummary as jest.MockedFunction<typeof useDailySummary>;
-const mockUseCustomNutrients = useCustomNutrients as jest.MockedFunction<typeof useCustomNutrients>;
-const mockUseFamilyUsers = useFamilyUsers as jest.MockedFunction<typeof useFamilyUsers>;
-const mockUseNutrientDisplayPreferences = useNutrientDisplayPreferences as jest.MockedFunction<
-  typeof useNutrientDisplayPreferences
+const mockUseServerConnection = useServerConnection as jest.MockedFunction<
+  typeof useServerConnection
 >;
-const mockUseMeasurements = useMeasurements as jest.MockedFunction<typeof useMeasurements>;
-const mockUseCustomMeasurementsByDate = useCustomMeasurementsByDate as jest.MockedFunction<
-  typeof useCustomMeasurementsByDate
+const mockUseDailySummary = useDailySummary as jest.MockedFunction<
+  typeof useDailySummary
 >;
-const mockUseNativeIOSTabsActive = useNativeIOSTabsActive as jest.MockedFunction<typeof useNativeIOSTabsActive>;
-const mockSetNativeHeaderDatePickerOptions = setNativeHeaderDatePickerOptions as jest.MockedFunction<
-  typeof setNativeHeaderDatePickerOptions
+const mockUseCustomNutrients = useCustomNutrients as jest.MockedFunction<
+  typeof useCustomNutrients
 >;
+const mockUseFamilyUsers = useFamilyUsers as jest.MockedFunction<
+  typeof useFamilyUsers
+>;
+const mockUseNutrientDisplayPreferences =
+  useNutrientDisplayPreferences as jest.MockedFunction<
+    typeof useNutrientDisplayPreferences
+  >;
+const mockUseMeasurements = useMeasurements as jest.MockedFunction<
+  typeof useMeasurements
+>;
+const mockUseCustomMeasurementsByDate =
+  useCustomMeasurementsByDate as jest.MockedFunction<
+    typeof useCustomMeasurementsByDate
+  >;
+const mockUseNativeIOSTabsActive =
+  useNativeIOSTabsActive as jest.MockedFunction<typeof useNativeIOSTabsActive>;
+const mockSetNativeHeaderDatePickerOptions =
+  setNativeHeaderDatePickerOptions as jest.MockedFunction<
+    typeof setNativeHeaderDatePickerOptions
+  >;
 
-const baseSummary = {
-  foodEntries: [],
-  exerciseEntries: [],
+const noMacro: MacroSummary = { consumed: 0, goal: 0 };
+
+const baseSummary: DailySummary = {
+  date: '2024-06-15',
   calorieGoal: 0,
+  caloriesConsumed: 0,
+  caloriesBurned: 0,
+  activeCalories: 0,
+  otherExerciseCalories: 0,
+  netCalories: 0,
+  remainingCalories: 0,
+  protein: noMacro,
+  carbs: noMacro,
+  fat: noMacro,
+  fiber: noMacro,
+  stepCalories: 0,
+  exerciseMinutes: 0,
+  exerciseMinutesGoal: 0,
+  exerciseCaloriesGoal: 0,
+  waterConsumed: 0,
+  waterGoal: 2500,
+  foodEntries: [],
+  supplementTotals: EMPTY_SUPPLEMENT_TOTALS,
+  exerciseEntries: [],
+  calorieBalance: { eaten: 0, burned: 0, remaining: 0, goal: 0 },
+  goals: { calories: 0, protein: 0, carbs: 0, fat: 0, dietary_fiber: 0 },
+  customNutrientTotals: {},
+  customNutrientGoals: {},
 };
+
+/** The minimum a food entry needs to make the day non-empty. */
+const buildFoodEntry = (id: string): FoodEntry => ({
+  id,
+  meal_type: 'breakfast',
+  quantity: 1,
+  unit: 'serving',
+  entry_date: baseSummary.date,
+  serving_size: 1,
+  calories: 100,
+});
 
 const refetchSummary = jest.fn();
 const refetchMeasurements = jest.fn();
 const refetchCustomMeasurements = jest.fn();
 const refetchCustomNutrients = jest.fn();
 const refetchNutrientPrefs = jest.fn();
+const refetchSleep = jest.fn();
+
+const mockUseSleepDay = useSleepDay as jest.MockedFunction<typeof useSleepDay>;
 
 const configureConnection = (isConnected: boolean, isLoading = false) => {
   mockUseServerConnection.mockReturnValue({
@@ -234,25 +319,29 @@ const configureConnection = (isConnected: boolean, isLoading = false) => {
   } as ReturnType<typeof useServerConnection>);
 };
 
-const configureFamilyUsers = (users: {
-  userId: string;
-  displayName: string;
-  email: string | null;
-  canCopy: boolean;
-  accessEndDate: string | null;
-}[]) => {
+const configureFamilyUsers = (
+  users: {
+    userId: string;
+    displayName: string;
+    email: string | null;
+    canCopy: boolean;
+    accessEndDate: string | null;
+  }[]
+) => {
   mockUseFamilyUsers.mockReturnValue({
     data: users,
   } as ReturnType<typeof useFamilyUsers>);
 };
 
-const configureOnlineData = (overrides: {
-  customMeasurementsRefetching?: boolean;
-  summaryRefetching?: boolean;
-  measurementsRefetching?: boolean;
-  customNutrientsRefetching?: boolean;
-  nutrientPrefsRefetching?: boolean;
-} = {}) => {
+const configureOnlineData = (
+  overrides: {
+    customMeasurementsRefetching?: boolean;
+    summaryRefetching?: boolean;
+    measurementsRefetching?: boolean;
+    customNutrientsRefetching?: boolean;
+    nutrientPrefsRefetching?: boolean;
+  } = {}
+) => {
   // The hooks no longer expose isRefetching (removed with the aggregate
   // spinner); the override fields below intentionally simulate a background
   // refetch to prove the RefreshControl ignores it.
@@ -290,7 +379,7 @@ const renderScreen = () =>
   render(
     <SafeAreaProvider initialMetrics={{ frame, insets }}>
       <DiaryScreen navigation={mockNavigation} route={diaryRoute} />
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
 
 describe('DiaryScreen custom queries', () => {
@@ -321,7 +410,7 @@ describe('DiaryScreen custom queries', () => {
 
     expect(mockUseCustomMeasurementsByDate).toHaveBeenCalledWith(
       '2024-06-15',
-      expect.objectContaining({ enabled: false }),
+      expect.objectContaining({ enabled: false })
     );
   });
 
@@ -330,7 +419,7 @@ describe('DiaryScreen custom queries', () => {
 
     expect(mockUseCustomMeasurementsByDate).toHaveBeenCalledWith(
       '2024-06-15',
-      expect.objectContaining({ enabled: true }),
+      expect.objectContaining({ enabled: true })
     );
   });
 
@@ -382,14 +471,17 @@ describe('DiaryScreen custom queries', () => {
     refetchSummary.mockReturnValue(
       new Promise<void>((resolve) => {
         resolveSummary = resolve;
-      }),
+      })
     );
     const { UNSAFE_getByType } = renderScreen();
     const refreshControl = UNSAFE_getByType(RefreshControl);
 
     let refreshPromise!: Promise<void>;
     act(() => {
-      refreshPromise = fireEvent(refreshControl, 'refresh') as unknown as Promise<void>;
+      refreshPromise = fireEvent(
+        refreshControl,
+        'refresh'
+      ) as unknown as Promise<void>;
     });
     // The local user-initiated refreshing state is on while the queries are
     // still pending.
@@ -407,7 +499,7 @@ describe('DiaryScreen custom queries', () => {
 
     expect(mockUseCustomMeasurementsByDate).toHaveBeenLastCalledWith(
       '2024-06-15',
-      expect.objectContaining({ enabled: true }),
+      expect.objectContaining({ enabled: true })
     );
 
     act(() => {
@@ -416,7 +508,7 @@ describe('DiaryScreen custom queries', () => {
 
     expect(mockUseCustomMeasurementsByDate).toHaveBeenLastCalledWith(
       '2024-06-16',
-      expect.objectContaining({ enabled: true }),
+      expect.objectContaining({ enabled: true })
     );
     expect(getByTestId('date-navigator')).toBeTruthy();
   });
@@ -461,13 +553,16 @@ describe('DiaryScreen custom queries', () => {
 
     renderScreen();
 
-    const options = mockSetNativeHeaderDatePickerOptions.mock.calls[
-      mockSetNativeHeaderDatePickerOptions.mock.calls.length - 1
-    ]?.[1];
-    expect(options?.leadingAction).toEqual(expect.objectContaining({
-      sfSymbol: 'person.2.fill',
-      accessibilityLabel: 'Open family diaries',
-    }));
+    const options =
+      mockSetNativeHeaderDatePickerOptions.mock.calls[
+        mockSetNativeHeaderDatePickerOptions.mock.calls.length - 1
+      ]?.[1];
+    expect(options?.leadingAction).toEqual(
+      expect.objectContaining({
+        sfSymbol: 'person.2.fill',
+        accessibilityLabel: 'Open family diaries',
+      })
+    );
     options?.leadingAction?.onPress();
 
     expect(mockNavigation.navigate).toHaveBeenCalledWith('FamilyMembers');
@@ -479,9 +574,10 @@ describe('DiaryScreen custom queries', () => {
 
     renderScreen();
 
-    const options = mockSetNativeHeaderDatePickerOptions.mock.calls[
-      mockSetNativeHeaderDatePickerOptions.mock.calls.length - 1
-    ]?.[1];
+    const options =
+      mockSetNativeHeaderDatePickerOptions.mock.calls[
+        mockSetNativeHeaderDatePickerOptions.mock.calls.length - 1
+      ]?.[1];
     expect(options?.leadingAction).toBeUndefined();
   });
 
@@ -499,10 +595,233 @@ describe('DiaryScreen custom queries', () => {
 
     renderScreen();
 
-    const options = mockSetNativeHeaderDatePickerOptions.mock.calls[
-      mockSetNativeHeaderDatePickerOptions.mock.calls.length - 1
-    ]?.[1];
+    const options =
+      mockSetNativeHeaderDatePickerOptions.mock.calls[
+        mockSetNativeHeaderDatePickerOptions.mock.calls.length - 1
+      ]?.[1];
     expect(options?.leadingAction).toBeUndefined();
   });
+});
 
+describe('DiaryScreen sleep cards', () => {
+  const napEntry = buildSleepEntry({
+    id: 'nap-1',
+    duration_in_seconds: 1800,
+    bedtime: '2024-06-15T14:00:00+00:00',
+  });
+
+  const configureSleep = (
+    overrides: Partial<ReturnType<typeof useSleepDay>> = {}
+  ) => {
+    mockUseSleepDay.mockReturnValue({
+      wakeUp: buildSleepEntry({ id: 'overnight' }),
+      naps: [napEntry],
+      bedTime: buildSleepEntry({ id: 'tonight', entry_date: '2024-06-16' }),
+      isLoading: false,
+      isError: false,
+      isForbidden: false,
+      refetch: refetchSleep,
+      ...overrides,
+    } as ReturnType<typeof useSleepDay>);
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    useDiaryDateStore.setState({
+      selectedDate: '2024-06-15',
+      lastKnownToday: getTodayDate(),
+    });
+    configureConnection(true);
+    configureOnlineData();
+    configureSleep();
+  });
+
+  test('renders all three cards when the day has sleep data', () => {
+    const { getByTestId } = renderScreen();
+
+    expect(getByTestId('wake-up-card')).toBeTruthy();
+    expect(getByTestId('naps-card')).toBeTruthy();
+    expect(getByTestId('bed-time-card')).toBeTruthy();
+  });
+
+  test('sleep alone keeps the day non-empty, suppressing the illustration', () => {
+    // baseSummary has no food, exercise or measurements — sleep is the only thing
+    // recorded. A day the user slept through is not an empty day.
+    const { getByTestId, queryByTestId } = renderScreen();
+
+    expect(queryByTestId('empty-day')).toBeNull();
+    expect(getByTestId('wake-up-card')).toBeTruthy();
+    // The food and exercise sections still render, empty, as the day's scaffolding.
+    expect(getByTestId('food-summary')).toBeTruthy();
+    expect(getByTestId('exercise-summary')).toBeTruthy();
+  });
+
+  test('a nap alone is enough to keep the day non-empty', () => {
+    // Each sleep field independently suppresses the illustration, so a day holding
+    // only an afternoon nap still renders as a real day.
+    configureSleep({ wakeUp: null, naps: [napEntry], bedTime: null });
+
+    const { getByTestId, queryByTestId } = renderScreen();
+
+    expect(queryByTestId('empty-day')).toBeNull();
+    expect(getByTestId('naps-card')).toBeTruthy();
+    expect(queryByTestId('wake-up-card')).toBeNull();
+    expect(queryByTestId('bed-time-card')).toBeNull();
+  });
+
+  test('shows the rest of the diary while the sleep query is still in flight', () => {
+    // Summary already resolved, sleep still in flight. The food and exercise that already
+    // arrived must not sit behind "Loading diary..." waiting on `/api/sleep`.
+    configureSleep({ wakeUp: null, naps: [], bedTime: null, isLoading: true });
+
+    const { getByTestId, queryByTestId } = renderScreen();
+
+    expect(queryByTestId('status-view')).toBeNull();
+    expect(getByTestId('food-summary')).toBeTruthy();
+    expect(getByTestId('exercise-summary')).toBeTruthy();
+  });
+
+  test('holds the empty-day illustration until the sleep query settles', () => {
+    // Nothing else logged, so the day looks empty — but a night that is still loading
+    // could yet fill it. Showing the illustration now would flip to sleep cards a moment
+    // later; the sections stay up instead until sleep has actually answered.
+    configureSleep({ wakeUp: null, naps: [], bedTime: null, isLoading: true });
+
+    const { queryByTestId, rerender } = renderScreen();
+
+    expect(queryByTestId('empty-day')).toBeNull();
+    expect(queryByTestId('wake-up-card')).toBeNull();
+
+    // Sleep resolves with nothing: now the day really is empty.
+    configureSleep({ wakeUp: null, naps: [], bedTime: null });
+    rerender(
+      <SafeAreaProvider initialMetrics={{ frame, insets }}>
+        <DiaryScreen navigation={mockNavigation} route={diaryRoute} />
+      </SafeAreaProvider>
+    );
+
+    expect(queryByTestId('empty-day')).toBeTruthy();
+  });
+
+  test('a bed time alone is enough to keep the day non-empty', () => {
+    configureSleep({
+      wakeUp: null,
+      naps: [],
+      bedTime: buildSleepEntry({ id: 'tonight', entry_date: '2024-06-16' }),
+    });
+
+    const { getByTestId, queryByTestId } = renderScreen();
+
+    expect(queryByTestId('empty-day')).toBeNull();
+    expect(getByTestId('bed-time-card')).toBeTruthy();
+  });
+
+  test('orders the day chronologically, with Bed Time last before the measurements', () => {
+    // A populated day so the food/exercise/measurements branch renders.
+    mockUseDailySummary.mockReturnValue({
+      summary: { ...baseSummary, foodEntries: [buildFoodEntry('f1')] },
+      isLoading: false,
+      isError: false,
+      refetch: refetchSummary,
+    } as ReturnType<typeof useDailySummary>);
+
+    const { getByTestId, UNSAFE_root } = renderScreen();
+
+    const order = [
+      'wake-up-card',
+      'food-summary',
+      'exercise-summary',
+      'naps-card',
+      'bed-time-card',
+      'measurements-summary',
+    ];
+    const positions = order.map((testID) => {
+      const node = getByTestId(testID);
+      // Index of each rendered node in a depth-first walk of the tree.
+      const all: unknown[] = [];
+      const walk = (node: typeof UNSAFE_root) => {
+        all.push(node);
+        node.children.forEach((child) => {
+          if (typeof child !== 'string') walk(child);
+        });
+      };
+      walk(UNSAFE_root);
+      return all.indexOf(node);
+    });
+
+    expect(positions.every((position) => position >= 0)).toBe(true);
+    // Strictly increasing => rendered in exactly this order.
+    for (let index = 1; index < positions.length; index++) {
+      expect(positions[index]).toBeGreaterThan(positions[index - 1]);
+    }
+  });
+
+  test('skips the sleep request entirely while offline', () => {
+    configureConnection(false);
+
+    renderScreen();
+
+    expect(mockUseSleepDay).toHaveBeenCalledWith(
+      '2024-06-15',
+      expect.objectContaining({ enabled: false })
+    );
+  });
+
+  test('requests the Diary’s selected date, and re-requests when it changes', () => {
+    renderScreen();
+    expect(mockUseSleepDay).toHaveBeenCalledWith(
+      '2024-06-15',
+      expect.objectContaining({ enabled: true })
+    );
+
+    mockUseSleepDay.mockClear();
+    useDiaryDateStore.setState({ selectedDate: '2024-06-16' });
+    renderScreen();
+
+    expect(mockUseSleepDay).toHaveBeenCalledWith(
+      '2024-06-16',
+      expect.objectContaining({ enabled: true })
+    );
+  });
+
+  test('a day with no sleep data renders no sleep cards at all', () => {
+    configureSleep({ wakeUp: null, naps: [], bedTime: null });
+
+    const { getByTestId, queryByTestId } = renderScreen();
+
+    // All three hide rather than showing empty states, so a user with no sleep source
+    // sees no sleep section on the Diary.
+    expect(queryByTestId('wake-up-card')).toBeNull();
+    expect(queryByTestId('naps-card')).toBeNull();
+    expect(queryByTestId('bed-time-card')).toBeNull();
+    // The pre-existing empty-day behaviour is untouched.
+    expect(getByTestId('empty-day')).toBeTruthy();
+  });
+
+  test('hides the cards entirely on a 403 rather than showing empty states', () => {
+    configureSleep({
+      wakeUp: null,
+      naps: [],
+      bedTime: null,
+      isForbidden: true,
+    });
+
+    const { queryByTestId, getByTestId } = renderScreen();
+
+    expect(queryByTestId('wake-up-card')).toBeNull();
+    expect(queryByTestId('bed-time-card')).toBeNull();
+    // The rest of the Diary is unaffected.
+    expect(getByTestId('empty-day')).toBeTruthy();
+  });
+
+  test('pull-to-refresh refetches the sleep query alongside the others', async () => {
+    const { UNSAFE_getByType } = renderScreen();
+
+    const onRefresh = UNSAFE_getByType(RefreshControl).props
+      .onRefresh as () => Promise<void>;
+    await onRefresh();
+
+    expect(refetchSleep).toHaveBeenCalled();
+    expect(refetchSummary).toHaveBeenCalled();
+  });
 });

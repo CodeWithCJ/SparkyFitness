@@ -12,7 +12,7 @@ export const toFormString = (v: number | null | undefined): string =>
 
 /** Parse an optional form string to a number. Returns undefined for empty strings. */
 export const parseOptional = (s: string): number | undefined =>
-  s === '' ? undefined : (parseDecimalInput(s) || 0);
+  s === '' ? undefined : parseDecimalInput(s) || 0;
 
 function toOptionalFiniteNumber(value: unknown): number | undefined {
   if (value == null || value === '') {
@@ -26,7 +26,6 @@ function toOptionalFiniteNumber(value: unknown): number | undefined {
 function toTrimmedString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
-
 
 /** Ordered list of extra nutrient fields for display and form conversion. */
 export const EXTRA_NUTRIENT_FIELDS = [
@@ -54,7 +53,7 @@ export const EXTRA_NUTRIENT_FIELDS = [
   { key: 'vitaminC', label: 'Vitamin C', unit: 'mg', additional: true },
 ] as const;
 
-type ExtraNutrientKey = typeof EXTRA_NUTRIENT_FIELDS[number]['key'];
+type ExtraNutrientKey = (typeof EXTRA_NUTRIENT_FIELDS)[number]['key'];
 
 export interface NutrientDisplayItem {
   /** Application-owned key; custom nutrient names may remain literal. */
@@ -75,14 +74,20 @@ export interface BuildNutrientDisplayListOptions {
 /** Build primary + additional display lists from a camelCase nutrient source. */
 export function buildNutrientDisplayList(
   source: Partial<Record<ExtraNutrientKey, number>>,
-  options: BuildNutrientDisplayListOptions & { t?: TFunction } = {},
+  options: BuildNutrientDisplayListOptions & { t?: TFunction } = {}
 ) {
   const primary: NutrientDisplayItem[] = [];
   const additional: NutrientDisplayItem[] = [];
   for (const field of EXTRA_NUTRIENT_FIELDS) {
     const value = source[field.key];
     if (value == null) continue;
-    const item: NutrientDisplayItem = { label: options.t ? localizeNutrientKey(options.t, field.key) : field.label, value, unit: field.unit };
+    const item: NutrientDisplayItem = {
+      label: options.t
+        ? localizeNutrientKey(options.t, field.key)
+        : field.label,
+      value,
+      unit: field.unit,
+    };
     if ('additional' in field && field.additional) {
       additional.push(item);
     } else {
@@ -91,7 +96,10 @@ export function buildNutrientDisplayList(
   }
 
   if (options.showNetCarbs && options.carbs !== undefined) {
-    const carbClusterLabels = new Set([options.t ? localizeNutrientKey(options.t, 'fiber') : 'Fiber', options.t ? localizeNutrientKey(options.t, 'sugars') : 'Sugars']);
+    const carbClusterLabels = new Set([
+      options.t ? localizeNutrientKey(options.t, 'fiber') : 'Fiber',
+      options.t ? localizeNutrientKey(options.t, 'sugars') : 'Sugars',
+    ]);
     let insertIdx = 0;
     for (let i = 0; i < primary.length; i++) {
       if (carbClusterLabels.has(primary[i].label)) {
@@ -100,7 +108,9 @@ export function buildNutrientDisplayList(
     }
     primary.splice(insertIdx, 0, {
       // i18n-audit-ignore-next-line hardcoded-ui-text -- canonical nutrient metadata; presentation localizes this label when a translator is available.
-      label: options.t ? localizeNutrientKey(options.t, 'totalCarbs') : 'Total Carbs',
+      label: options.t
+        ? localizeNutrientKey(options.t, 'totalCarbs')
+        : 'Total Carbs',
       value: options.carbs,
       unit: 'g',
     });
@@ -114,6 +124,11 @@ export interface FoodInfoItem {
   name: string;
   brand: string | null;
   barcode?: string | null;
+  /**
+   * Owner-authored markdown reference note. Only local foods have one;
+   * provider results and meals arrive without it.
+   */
+  notes?: string | null;
   provider_type?: string;
   provider_external_id?: string;
   is_custom?: boolean;
@@ -162,11 +177,14 @@ export interface FoodInfoItem {
     | BarcodeFood;
 }
 
-export const foodItemToFoodInfo = (item: FoodItem | TopFoodItem ): FoodInfoItem => ({
+export const foodItemToFoodInfo = (
+  item: FoodItem | TopFoodItem
+): FoodInfoItem => ({
   id: item.id,
   name: item.name,
   brand: item.brand,
   barcode: item.barcode ?? null,
+  notes: item.notes ?? null,
   userId: item.user_id,
   sharedWithPublic: item.shared_with_public,
   provider_type: item.provider_type ?? undefined,
@@ -196,7 +214,9 @@ export const foodItemToFoodInfo = (item: FoodItem | TopFoodItem ): FoodInfoItem 
   originalItem: item,
 });
 
-export const externalFoodItemToFoodInfo = (item: ExternalFoodItem): FoodInfoItem => ({
+export const externalFoodItemToFoodInfo = (
+  item: ExternalFoodItem
+): FoodInfoItem => ({
   id: item.id,
   name: item.name,
   brand: item.brand,
@@ -231,29 +251,43 @@ export const externalFoodItemToFoodInfo = (item: ExternalFoodItem): FoodInfoItem
   originalItem: item,
 });
 
-export const mealToFoodInfo = (meal: Meal): FoodInfoItem => {
-  const scale = (food: Meal['foods'][number]) =>
-    food.serving_size === 0 ? 0 : food.quantity / food.serving_size;
+export type MealPerServingNutrition = Pick<
+  FoodInfoItem,
+  'servingSize' | 'calories' | 'protein' | 'carbs' | 'fat'
+>;
 
+function mealNutrientPerServing(
+  meal: Meal,
+  field: keyof Meal['foods'][number]
+): number {
+  const totalServings = meal.total_servings || 1;
+  const total = meal.foods.reduce((sum, food) => {
+    const value = food[field];
+    const scale =
+      food.serving_size === 0 ? 0 : food.quantity / food.serving_size;
+    return typeof value === 'number' ? sum + value * scale : sum;
+  }, 0);
+  return totalServings > 0 ? total / totalServings : total;
+}
+
+/** Return one serving's unrounded nutrition so consumers can scale it accurately. */
+export const mealToPerServingNutrition = (
+  meal: Meal
+): MealPerServingNutrition => ({
+  servingSize: meal.serving_size,
+  calories: mealNutrientPerServing(meal, 'calories'),
+  protein: mealNutrientPerServing(meal, 'protein'),
+  carbs: mealNutrientPerServing(meal, 'carbs'),
+  fat: mealNutrientPerServing(meal, 'fat'),
+});
+
+export const mealToFoodInfo = (meal: Meal): FoodInfoItem => {
   // Expose ONE serving's nutrition (full recipe ÷ total_servings) so the
   // diary-add screen's quantity/serving_size math produces correct values.
   // Default quantity = serving_size (one serving) ⇒ scale = 1 ⇒ exactly one
   // serving's nutrition logged. Bumping quantity scales linearly.
+  const nutrition = mealToPerServingNutrition(meal);
   const totalServings = meal.total_servings || 1;
-  const perServing = (value: number) =>
-    totalServings > 0 ? value / totalServings : value;
-
-  const sumField = (field: keyof Meal['foods'][number]) =>
-    meal.foods.reduce((sum, f) => {
-      const v = f[field];
-      return typeof v === 'number' ? sum + v * scale(f) : sum;
-    }, 0);
-
-  const calories = perServing(sumField('calories'));
-  const protein = perServing(sumField('protein'));
-  const carbs = perServing(sumField('carbs'));
-  const fat = perServing(sumField('fat'));
-
   const hasField = (field: keyof Meal['foods'][number]) =>
     meal.foods.some((f) => f[field] != null);
 
@@ -263,21 +297,43 @@ export const mealToFoodInfo = (meal: Meal): FoodInfoItem => {
     brand: null,
     servingSize: meal.serving_size,
     servingUnit: meal.serving_unit,
-    calories: Math.round(calories),
-    protein: Math.round(protein),
-    carbs: Math.round(carbs),
-    fat: Math.round(fat),
-    fiber: hasField('dietary_fiber') ? Math.round(perServing(sumField('dietary_fiber'))) : undefined,
-    saturatedFat: hasField('saturated_fat') ? Math.round(perServing(sumField('saturated_fat'))) : undefined,
-    sodium: hasField('sodium') ? Math.round(perServing(sumField('sodium'))) : undefined,
-    sugars: hasField('sugars') ? Math.round(perServing(sumField('sugars'))) : undefined,
-    transFat: hasField('trans_fat') ? Math.round(perServing(sumField('trans_fat'))) : undefined,
-    potassium: hasField('potassium') ? Math.round(perServing(sumField('potassium'))) : undefined,
-    calcium: hasField('calcium') ? Math.round(perServing(sumField('calcium'))) : undefined,
-    iron: hasField('iron') ? Math.round(perServing(sumField('iron'))) : undefined,
-    cholesterol: hasField('cholesterol') ? Math.round(perServing(sumField('cholesterol'))) : undefined,
-    vitaminA: hasField('vitamin_a') ? Math.round(perServing(sumField('vitamin_a'))) : undefined,
-    vitaminC: hasField('vitamin_c') ? Math.round(perServing(sumField('vitamin_c'))) : undefined,
+    calories: Math.round(nutrition.calories),
+    protein: Math.round(nutrition.protein),
+    carbs: Math.round(nutrition.carbs),
+    fat: Math.round(nutrition.fat),
+    fiber: hasField('dietary_fiber')
+      ? Math.round(mealNutrientPerServing(meal, 'dietary_fiber'))
+      : undefined,
+    saturatedFat: hasField('saturated_fat')
+      ? Math.round(mealNutrientPerServing(meal, 'saturated_fat'))
+      : undefined,
+    sodium: hasField('sodium')
+      ? Math.round(mealNutrientPerServing(meal, 'sodium'))
+      : undefined,
+    sugars: hasField('sugars')
+      ? Math.round(mealNutrientPerServing(meal, 'sugars'))
+      : undefined,
+    transFat: hasField('trans_fat')
+      ? Math.round(mealNutrientPerServing(meal, 'trans_fat'))
+      : undefined,
+    potassium: hasField('potassium')
+      ? Math.round(mealNutrientPerServing(meal, 'potassium'))
+      : undefined,
+    calcium: hasField('calcium')
+      ? Math.round(mealNutrientPerServing(meal, 'calcium'))
+      : undefined,
+    iron: hasField('iron')
+      ? Math.round(mealNutrientPerServing(meal, 'iron'))
+      : undefined,
+    cholesterol: hasField('cholesterol')
+      ? Math.round(mealNutrientPerServing(meal, 'cholesterol'))
+      : undefined,
+    vitaminA: hasField('vitamin_a')
+      ? Math.round(mealNutrientPerServing(meal, 'vitamin_a'))
+      : undefined,
+    vitaminC: hasField('vitamin_c')
+      ? Math.round(mealNutrientPerServing(meal, 'vitamin_c'))
+      : undefined,
     mealTotalServings: totalServings,
     images: meal.images ?? null,
     source: 'meal',
@@ -286,7 +342,7 @@ export const mealToFoodInfo = (meal: Meal): FoodInfoItem => {
 };
 
 export const mealIngredientDraftToFoodInfo = (
-  ingredient: MealIngredientDraft,
+  ingredient: MealIngredientDraft
 ): FoodInfoItem => {
   const servingUnit =
     toTrimmedString(ingredient.unit) ||

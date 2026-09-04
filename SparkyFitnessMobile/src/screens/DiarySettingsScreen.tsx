@@ -9,7 +9,11 @@ import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import Switch from '../components/ui/Switch';
-import { useServerConnection, useCustomNutrients, useNutrientDisplayPreferences } from '../hooks';
+import {
+  useServerConnection,
+  useCustomNutrients,
+  useNutrientDisplayPreferences,
+} from '../hooks';
 import {
   updateNutrientDisplayPreference,
   type NutrientDisplayPreference,
@@ -38,38 +42,53 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
 
-  const diarySummaryVisible = useAppPreferencesStore((s) => s.diarySummaryVisible);
-  const setDiarySummaryVisible = useAppPreferencesStore((s) => s.setDiarySummaryVisible);
+  const diarySummaryVisible = useAppPreferencesStore(
+    (s) => s.diarySummaryVisible
+  );
+  const setDiarySummaryVisible = useAppPreferencesStore(
+    (s) => s.setDiarySummaryVisible
+  );
 
   const queryClient = useQueryClient();
   const { isConnected } = useServerConnection();
-  const { customNutrients, isLoading: isCustomLoading } = useCustomNutrients({ enabled: isConnected });
-  const { preferences, isLoading: isPrefsLoading } = useNutrientDisplayPreferences({ enabled: isConnected });
+  const { customNutrients, isLoading: isCustomLoading } = useCustomNutrients({
+    enabled: isConnected,
+  });
+  const { preferences, isLoading: isPrefsLoading } =
+    useNutrientDisplayPreferences({ enabled: isConnected });
 
   const isLoading = isConnected && (isCustomLoading || isPrefsLoading);
 
   const diaryRow = preferences.find(
-    (p) => p.view_group === DIARY_VIEW_GROUP && p.platform === MOBILE_PLATFORM,
+    (p) => p.view_group === DIARY_VIEW_GROUP && p.platform === MOBILE_PLATFORM
   );
   const base = diaryRow?.visible_nutrients ?? SERVER_DEFAULT_DIARY_NUTRIENTS;
 
   const mutation = useMutation({
     mutationFn: (visibleNutrients: string[]) =>
-      updateNutrientDisplayPreference(DIARY_VIEW_GROUP, MOBILE_PLATFORM, visibleNutrients),
+      updateNutrientDisplayPreference(
+        DIARY_VIEW_GROUP,
+        MOBILE_PLATFORM,
+        visibleNutrients
+      ),
     onMutate: async (visibleNutrients) => {
-      await queryClient.cancelQueries({ queryKey: nutrientDisplayPreferencesQueryKey });
+      await queryClient.cancelQueries({
+        queryKey: nutrientDisplayPreferencesQueryKey,
+      });
       const previous = queryClient.getQueryData<NutrientDisplayPreference[]>(
-        nutrientDisplayPreferencesQueryKey,
+        nutrientDisplayPreferencesQueryKey
       );
       queryClient.setQueryData<NutrientDisplayPreference[]>(
         nutrientDisplayPreferencesQueryKey,
         (old = []) => {
           const idx = old.findIndex(
-            (p) => p.view_group === DIARY_VIEW_GROUP && p.platform === MOBILE_PLATFORM,
+            (p) =>
+              p.view_group === DIARY_VIEW_GROUP &&
+              p.platform === MOBILE_PLATFORM
           );
           if (idx >= 0) {
             return old.map((p, i) =>
-              i === idx ? { ...p, visible_nutrients: visibleNutrients } : p,
+              i === idx ? { ...p, visible_nutrients: visibleNutrients } : p
             );
           }
           return [
@@ -80,18 +99,29 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
               visible_nutrients: visibleNutrients,
             },
           ];
-        },
+        }
       );
       return { previous };
     },
     onError: (_err, _vars, context) => {
       if (context?.previous) {
-        queryClient.setQueryData(nutrientDisplayPreferencesQueryKey, context.previous);
+        queryClient.setQueryData(
+          nutrientDisplayPreferencesQueryKey,
+          context.previous
+        );
       }
-      Toast.show({ type: 'error', text1: t('common.error', { defaultValue: 'Error' }), text2: t('diarySettings.updateFailed', { defaultValue: 'Failed to update setting.' }) });
+      Toast.show({
+        type: 'error',
+        text1: t('common.error', { defaultValue: 'Error' }),
+        text2: t('diarySettings.updateFailed', {
+          defaultValue: 'Failed to update setting.',
+        }),
+      });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: nutrientDisplayPreferencesQueryKey });
+      queryClient.invalidateQueries({
+        queryKey: nutrientDisplayPreferencesQueryKey,
+      });
     },
   });
 
@@ -100,14 +130,19 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
       if (value && base.length >= MAX_DIARY_CUSTOM_NUTRIENTS) {
         Toast.show({
           type: 'info',
-          text1: t('diarySettings.limitReached', { defaultValue: 'Limit reached' }),
-          text2: t('diarySettings.limitDescription', { defaultValue: 'Up to {{count}} custom nutrients can be shown here.', count: MAX_DIARY_CUSTOM_NUTRIENTS }),
+          text1: t('diarySettings.limitReached', {
+            defaultValue: 'Limit reached',
+          }),
+          text2: t('diarySettings.limitDescription', {
+            defaultValue: 'Up to {{count}} custom nutrients can be shown here.',
+            count: MAX_DIARY_CUSTOM_NUTRIENTS,
+          }),
         });
         return;
       }
       mutation.mutate(toggleNutrientVisibility(base, name, value));
     },
-    [base, mutation, t],
+    [base, mutation, t]
   );
 
   const renderContent = () => {
@@ -119,10 +154,15 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
       return (
         <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
           <Text className="text-base font-semibold text-text-primary mb-2">
-            {t('diarySettings.noCustomNutrients', { defaultValue: 'No custom nutrients' })}
+            {t('diarySettings.noCustomNutrients', {
+              defaultValue: 'No custom nutrients',
+            })}
           </Text>
           <Text className="text-text-secondary text-sm">
-            {t('diarySettings.customNutrientsDescription', { defaultValue: 'Custom nutrients are created in the SparkyFitness web app. Once you add some, they will appear here so you can choose which show on your Diary.' })}
+            {t('diarySettings.customNutrientsDescription', {
+              defaultValue:
+                'Custom nutrients are created in the SparkyFitness web app. Once you add some, they will appear here so you can choose which show on your Diary.',
+            })}
           </Text>
         </View>
       );
@@ -148,7 +188,10 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
     );
   };
 
-  const header = useScreenHeader({ title: t('diarySettings.title', { defaultValue: 'Diary Settings' }), left: { kind: 'back' } });
+  const header = useScreenHeader({
+    title: t('diarySettings.title', { defaultValue: 'Diary Settings' }),
+    left: { kind: 'back' },
+  });
 
   return (
     <View
@@ -162,15 +205,23 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
           paddingTop: 16,
           paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding,
         }}
-        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
+        contentInsetAdjustmentBehavior={
+          usesNativeHeader ? 'automatic' : 'never'
+        }
       >
         <SettingsRowGroup>
           <SettingsRow
-            title={t('diarySettings.summary', { defaultValue: 'Diary Summary' })}
-            subtitle={t('diarySettings.summarySubtitle', { defaultValue: 'Show calories and macronutrients' })}
+            title={t('diarySettings.summary', {
+              defaultValue: 'Diary Summary',
+            })}
+            subtitle={t('diarySettings.summarySubtitle', {
+              defaultValue: 'Show calories and macronutrients',
+            })}
             rightAccessory={
               <Switch
-                accessibilityLabel={t('diarySettings.summary', { defaultValue: 'Diary Summary' })}
+                accessibilityLabel={t('diarySettings.summary', {
+                  defaultValue: 'Diary Summary',
+                })}
                 value={diarySummaryVisible}
                 onValueChange={setDiarySummaryVisible}
               />
@@ -179,7 +230,9 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
         </SettingsRowGroup>
 
         <Text className="text-base font-semibold text-text-primary mb-4">
-          {t('diarySettings.customNutrientDisplay', { defaultValue: 'Custom Nutrient Display' })}
+          {t('diarySettings.customNutrientDisplay', {
+            defaultValue: 'Custom Nutrient Display',
+          })}
         </Text>
 
         {renderContent()}

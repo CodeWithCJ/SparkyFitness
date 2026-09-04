@@ -66,8 +66,7 @@ export type GarminSessionData = {
 export type GarminSimpleActivityData = {
   activity: GarminActivityDto;
   exercise_sets?:
-    | { exerciseSets?: GarminExerciseSetDto[] }
-    | GarminExerciseSetDto[];
+    { exerciseSets?: GarminExerciseSetDto[] } | GarminExerciseSetDto[];
   exerciseSets?: GarminExerciseSetDto[];
 };
 
@@ -397,8 +396,7 @@ export async function processGarminWorkoutSession(
           garminCategory;
         const setSubCategory =
           ((garminSet as Record<string, unknown>).subCategory as
-            | string
-            | undefined) ||
+            string | undefined) ||
           (garminSet.exercises?.[0]?.name as string | undefined);
 
         const matchingSumSet =

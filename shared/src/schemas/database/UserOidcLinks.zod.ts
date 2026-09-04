@@ -39,5 +39,7 @@ export const userOidcLinksMutatorSchema = z.object({
 });
 
 export type UserOidcLinks = z.infer<typeof userOidcLinksSchema>;
-export type UserOidcLinksInitializer = z.infer<typeof userOidcLinksInitializerSchema>;
+export type UserOidcLinksInitializer = z.infer<
+  typeof userOidcLinksInitializerSchema
+>;
 export type UserOidcLinksMutator = z.infer<typeof userOidcLinksMutatorSchema>;

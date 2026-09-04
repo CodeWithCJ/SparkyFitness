@@ -1,12 +1,16 @@
 import { normalizeUrl, apiFetch } from '../../../src/services/api/apiClient';
 import { ApiError } from '../../../src/services/api/errors';
-import { getActiveServerConfig, ServerConfig } from '../../../src/services/storage';
+import {
+  getActiveServerConfig,
+  ServerConfig,
+} from '../../../src/services/storage';
 import { notifySessionExpired } from '../../../src/services/api/authService';
 import { TimeoutError, fetchWithTimeout } from '../../../src/utils/concurrency';
 
 jest.mock('../../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
-  proxyHeadersToRecord: jest.requireActual('../../../src/services/storage').proxyHeadersToRecord,
+  proxyHeadersToRecord: jest.requireActual('../../../src/services/storage')
+    .proxyHeadersToRecord,
 }));
 
 jest.mock('../../../src/services/api/authService', () => ({
@@ -69,7 +73,7 @@ describe('apiClient', () => {
       const result = await fetchWithTimeout(
         'https://example.com',
         { method: 'GET' },
-        5000,
+        5000
       );
 
       expect(result).toBe(mockResponse);
@@ -92,7 +96,9 @@ describe('apiClient', () => {
       mockFetchThatNeverResponds();
 
       const promise = fetchWithTimeout('https://example.com', {}, 5000);
-      const assertion = expect(promise).rejects.toThrow('Request timed out after 5000ms');
+      const assertion = expect(promise).rejects.toThrow(
+        'Request timed out after 5000ms'
+      );
 
       await jest.advanceTimersByTimeAsync(5000);
 
@@ -106,12 +112,12 @@ describe('apiClient', () => {
       await fetchWithTimeout(
         'https://example.com',
         { method: 'POST', headers, body: '{}' },
-        5000,
+        5000
       );
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://example.com',
-        expect.objectContaining({ method: 'POST', headers, body: '{}' }),
+        expect.objectContaining({ method: 'POST', headers, body: '{}' })
       );
     });
   });
@@ -126,11 +132,15 @@ describe('apiClient', () => {
     });
 
     test('handles URL with path and trailing slash', () => {
-      expect(normalizeUrl('https://example.com/api/')).toBe('https://example.com/api');
+      expect(normalizeUrl('https://example.com/api/')).toBe(
+        'https://example.com/api'
+      );
     });
 
     test('handles URL with path and no trailing slash', () => {
-      expect(normalizeUrl('https://example.com/api')).toBe('https://example.com/api');
+      expect(normalizeUrl('https://example.com/api')).toBe(
+        'https://example.com/api'
+      );
     });
   });
 
@@ -233,7 +243,9 @@ describe('apiClient', () => {
           operation: 'fetch test',
           timeoutMs: 120_000,
         });
-        const assertion = expect(promise).rejects.toThrow('Request timed out after 120000ms');
+        const assertion = expect(promise).rejects.toThrow(
+          'Request timed out after 120000ms'
+        );
 
         // Still pending after the default budget…
         await jest.advanceTimersByTimeAsync(30_000);
@@ -401,7 +413,9 @@ describe('apiClient', () => {
           })
         ).rejects.toThrow();
 
-        expect(mockNotifySessionExpired).toHaveBeenCalledWith('session-config-id');
+        expect(mockNotifySessionExpired).toHaveBeenCalledWith(
+          'session-config-id'
+        );
       });
 
       test('401 with API key config does NOT call notifySessionExpired', async () => {

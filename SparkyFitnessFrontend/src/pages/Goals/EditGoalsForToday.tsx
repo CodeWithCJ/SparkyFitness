@@ -40,6 +40,7 @@ import { buildGoalsPayload, getMealPercentage } from '@/utils/goals';
 import { useNutrientAutoCalculate } from '@/hooks/Goals/useNutrientAutoCalculate';
 import { NutrientAutoCalculate } from '@/pages/Goals/NutrientAutoCalculate';
 import { AutoCalculateToolbar } from '@/pages/Goals/AutoCalculateToolbar';
+import { useTranslation } from 'react-i18next';
 
 interface EditGoalsProps {
   selectedDate: string;
@@ -79,6 +80,7 @@ const EditGoalsForm = ({
     getEnergyUnitString,
     nutrientDisplayPreferences,
   } = usePreferences();
+  const { t } = useTranslation();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
 
@@ -186,7 +188,7 @@ const EditGoalsForm = ({
     <div className="space-y-6 py-4">
       <div className="flex flex-col sm:flex-row gap-4 items-end bg-muted/30 p-4 rounded-lg">
         <div className="flex-1 space-y-1.5 w-full">
-          <Label>Apply Preset</Label>
+          <Label>{t('goals.goalsSettings.applyPreset', 'Apply Preset')}</Label>
           <Select
             value={selectedPresetId}
             onValueChange={(v) => {
@@ -195,7 +197,12 @@ const EditGoalsForm = ({
             }}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select a preset" />
+              <SelectValue
+                placeholder={t(
+                  'goals.goalsSettings.selectGoalPreset',
+                  'Select a goal preset to apply'
+                )}
+              />
             </SelectTrigger>
             <SelectContent>
               {goalPresets.map((p) => (
@@ -211,13 +218,16 @@ const EditGoalsForm = ({
           onClick={() => onSave(DEFAULT_GOALS, true)}
           className="text-destructive"
         >
-          Reset to Default
+          {t('nutrientGoalDirection.resetToDefault', 'Reset to default')}
         </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
         <div className="space-y-1.5">
-          <Label>Calories ({getEnergyUnitString(energyUnit)})</Label>
+          <Label>
+            {t('goals.goalsSettings.calories', 'Calories')} (
+            {getEnergyUnitString(energyUnit)})
+          </Label>
           <NumericInput
             id="calories"
             step={1}
@@ -233,7 +243,7 @@ const EditGoalsForm = ({
           />
         </div>
         <div className="space-y-1.5">
-          <Label>Macros By</Label>
+          <Label>{t('goals.goalsSettings.macrosBy', 'Macros By')}</Label>
           <RadioGroup
             value={macroInputType}
             onValueChange={(v: 'grams' | 'percentages') => setMacroInputType(v)}
@@ -242,13 +252,13 @@ const EditGoalsForm = ({
             <div className="flex items-center gap-1.5">
               <RadioGroupItem value="grams" id="m-g" />
               <Label htmlFor="m-g" className="text-xs">
-                Grams
+                {t('goals.goalsSettings.grams', 'Grams')}
               </Label>
             </div>
             <div className="flex items-center gap-1.5">
               <RadioGroupItem value="percentages" id="m-p" />
               <Label htmlFor="m-p" className="text-xs">
-                Percentages
+                {t('goals.goalsSettings.percentages', 'Percentages')}
               </Label>
             </div>
           </RadioGroup>
@@ -288,11 +298,13 @@ const EditGoalsForm = ({
           <div
             className={`text-sm font-medium text-right ${isMacroValid ? 'text-green-600' : 'text-destructive'}`}
           >
-            Total: {currentMacroTotal}% {!isMacroValid && '(Must be 100%)'}
+            {t('goals.mealDistribution.total', 'Total')}: {currentMacroTotal}%{' '}
+            {!isMacroValid &&
+              `(${t('goals.mealDistribution.mustBe100', 'Must be 100% to save')})`}
           </div>
           <div className="p-3 bg-muted/50 rounded-md text-xs text-muted-foreground grid grid-cols-3 gap-2">
             <span>
-              Protein:{' '}
+              {t('goals.mealDistribution.protein', 'Protein:')}{' '}
               {calculateGrams(
                 goals.calories,
                 goals.protein_percentage || 0,
@@ -302,7 +314,7 @@ const EditGoalsForm = ({
               g
             </span>
             <span>
-              Carbs:{' '}
+              {t('goals.mealDistribution.carbs', 'Carbs:')}{' '}
               {calculateGrams(
                 goals.calories,
                 goals.carbs_percentage || 0,
@@ -312,7 +324,7 @@ const EditGoalsForm = ({
               g
             </span>
             <span>
-              Fat:{' '}
+              {t('goals.mealDistribution.fat', 'Fat:')}{' '}
               {calculateGrams(
                 goals.calories,
                 goals.fat_percentage || 0,
@@ -393,7 +405,9 @@ const EditGoalsForm = ({
       <Separator />
 
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold">Meal Distribution</h3>
+        <h3 className="text-sm font-semibold">
+          {t('goals.mealDistribution.title', 'Meal Calorie Distribution')}
+        </h3>
         <MealPercentageManager
           initialPercentages={memoizedGoalsPercentages}
           totalCalories={goals.calories}
@@ -420,7 +434,9 @@ const EditGoalsForm = ({
           disabled={isSaving || !isMacroValid || !isTotalPercentageValid}
           className="w-full"
         >
-          {isSaving ? 'Saving...' : 'Save for this Date'}
+          {isSaving
+            ? t('common.saving', 'Saving...')
+            : t('goals.goalsSettings.saveForDate', 'Save for this Date')}
         </Button>
       </DialogFooter>
     </div>
@@ -428,6 +444,7 @@ const EditGoalsForm = ({
 };
 
 const EditGoalsForToday = ({ selectedDate }: EditGoalsProps) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { formatDate } = usePreferences();
   const [open, setOpen] = useState(false);
@@ -479,17 +496,25 @@ const EditGoalsForToday = ({ selectedDate }: EditGoalsProps) => {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="dark:text-slate-300">
           <Settings className="w-4 h-4 mr-2" />
-          Edit Goals
+          {t('goals.goalsSettings.editGoals', 'Edit Goals')}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Goals for {formatDate(selectedDate)}</DialogTitle>
+          <DialogTitle>
+            {t('goals.goalsSettings.editGoalsFor', {
+              defaultValue: 'Edit Goals for {{date}}',
+              date: formatDate(selectedDate),
+            })}
+          </DialogTitle>
         </DialogHeader>
 
         {isLoading ? (
           <div className="py-10 text-center text-muted-foreground animate-pulse">
-            Loading daily goals...
+            {t(
+              'goals.goalsSettings.loadingDailyGoals',
+              'Loading daily goals...'
+            )}
           </div>
         ) : (
           serverGoals && (

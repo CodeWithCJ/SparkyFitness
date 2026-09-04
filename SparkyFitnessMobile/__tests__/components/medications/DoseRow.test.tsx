@@ -20,7 +20,7 @@ describe('DoseRow', () => {
           onSkip={onSkip}
           title="8:00 AM"
           subtitle="1 tablet"
-        />,
+        />
       );
 
       expect(screen.getByText('8:00 AM')).toBeTruthy();
@@ -41,7 +41,7 @@ describe('DoseRow', () => {
           onTake={jest.fn()}
           onSkip={jest.fn()}
           title="8:00 AM"
-        />,
+        />
       );
 
       fireEvent.press(screen.getByLabelText('Mark 8:00 AM taken'));
@@ -57,17 +57,25 @@ describe('DoseRow', () => {
           onTake={jest.fn()}
           onSkip={jest.fn()}
           title="8:00 AM"
-        />,
+        />
       );
 
       expect(screen.getByText('Taken')).toBeTruthy();
       expect(screen.queryByText('Log')).toBeNull();
       expect(screen.queryByText('Skip')).toBeNull();
       // Hidden sizer keeps the actions column at the Log/Skip pair width.
-      expect(screen.getByText('Log', { includeHiddenElements: true })).toBeTruthy();
-      expect(screen.getByText('Skip', { includeHiddenElements: true })).toBeTruthy();
-      expect(screen.getByText('8:00 AM').props.className).toContain('text-text-secondary');
-      expect(screen.getByText('8:00 AM').props.className).toContain('line-through');
+      expect(
+        screen.getByText('Log', { includeHiddenElements: true })
+      ).toBeTruthy();
+      expect(
+        screen.getByText('Skip', { includeHiddenElements: true })
+      ).toBeTruthy();
+      expect(screen.getByText('8:00 AM').props.className).toContain(
+        'text-text-secondary'
+      );
+      expect(screen.getByText('8:00 AM').props.className).toContain(
+        'line-through'
+      );
     });
 
     it('emphasizes the time ahead of the subtitle', () => {
@@ -81,12 +89,14 @@ describe('DoseRow', () => {
           title="Metformin"
           time="8:00 AM"
           subtitle="Tablet · 500 mg"
-        />,
+        />
       );
 
       const time = screen.getByText('8:00 AM');
       expect(time.props.className).toContain('text-text-primary');
-      expect(screen.getByText('8:00 AM · Tablet · 500 mg', { exact: false })).toBeTruthy();
+      expect(
+        screen.getByText('8:00 AM · Tablet · 500 mg', { exact: false })
+      ).toBeTruthy();
     });
 
     it('mutes the time once the dose is logged', () => {
@@ -100,7 +110,7 @@ describe('DoseRow', () => {
           title="Metformin"
           time="8:00 AM"
           subtitle="Tablet · 500 mg"
-        />,
+        />
       );
 
       const time = screen.getByText('8:00 AM');
@@ -117,11 +127,13 @@ describe('DoseRow', () => {
           onTake={jest.fn()}
           onSkip={jest.fn()}
           title="8:00 AM"
-        />,
+        />
       );
 
       expect(screen.getByText('Skipped')).toBeTruthy();
-      expect(screen.getByText('8:00 AM').props.className).not.toContain('line-through');
+      expect(screen.getByText('8:00 AM').props.className).not.toContain(
+        'line-through'
+      );
     });
   });
 
@@ -129,7 +141,13 @@ describe('DoseRow', () => {
     it('logs from the circle and shows the day count', () => {
       const onLog = jest.fn();
       const screen = render(
-        <DoseRow kind="prn" count={2} onLog={onLog} title="Ibuprofen" subtitle="As needed" />,
+        <DoseRow
+          kind="prn"
+          count={2}
+          onLog={onLog}
+          title="Ibuprofen"
+          subtitle="As needed"
+        />
       );
 
       expect(screen.getByText('2')).toBeTruthy();
@@ -139,7 +157,9 @@ describe('DoseRow', () => {
 
     it('logs from the Log button', () => {
       const onLog = jest.fn();
-      const screen = render(<DoseRow kind="prn" count={0} onLog={onLog} title="Ibuprofen" />);
+      const screen = render(
+        <DoseRow kind="prn" count={0} onLog={onLog} title="Ibuprofen" />
+      );
 
       fireEvent.press(screen.getByText('Log'));
       expect(onLog).toHaveBeenCalled();
@@ -147,7 +167,13 @@ describe('DoseRow', () => {
 
     it('keeps the title and subtitle unmuted after doses have been taken', () => {
       const screen = render(
-        <DoseRow kind="prn" count={1} onLog={jest.fn()} title="Ibuprofen" subtitle="As needed" />,
+        <DoseRow
+          kind="prn"
+          count={1}
+          onLog={jest.fn()}
+          title="Ibuprofen"
+          subtitle="As needed"
+        />
       );
 
       const title = screen.getByText('Ibuprofen');
@@ -159,11 +185,15 @@ describe('DoseRow', () => {
     });
 
     it('centers the Take button in the pair-width actions column', () => {
-      const screen = render(<DoseRow kind="prn" count={0} onLog={jest.fn()} title="Ibuprofen" />);
+      const screen = render(
+        <DoseRow kind="prn" count={0} onLog={jest.fn()} title="Ibuprofen" />
+      );
 
       // Hidden sizer keeps the column at the Take/Skip pair width.
       expect(screen.queryByText('Skip')).toBeNull();
-      expect(screen.getByText('Skip', { includeHiddenElements: true })).toBeTruthy();
+      expect(
+        screen.getByText('Skip', { includeHiddenElements: true })
+      ).toBeTruthy();
     });
   });
 
@@ -178,7 +208,7 @@ describe('DoseRow', () => {
         onSkip={jest.fn()}
         title="Lisinopril"
         onPress={onPress}
-      />,
+      />
     );
 
     fireEvent.press(screen.getByText('Lisinopril'));

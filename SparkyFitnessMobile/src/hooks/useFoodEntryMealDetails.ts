@@ -10,7 +10,7 @@ interface UseFoodEntryMealDetailsOptions {
 
 export function useFoodEntryMealDetails(
   foodEntryMealId: string | undefined,
-  options?: UseFoodEntryMealDetailsOptions,
+  options?: UseFoodEntryMealDetailsOptions
 ) {
   const { enabled = true, initialMeal } = options ?? {};
 

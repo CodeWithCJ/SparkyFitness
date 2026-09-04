@@ -7,7 +7,10 @@ import type { MealType } from '../../src/types/mealTypes';
 
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
-  return { __esModule: true, default: ({ name }: { name: string }) => <View testID={`icon-${name}`} /> };
+  return {
+    __esModule: true,
+    default: ({ name }: { name: string }) => <View testID={`icon-${name}`} />,
+  };
 });
 
 jest.mock('../../src/components/SwipeableFoodRow', () => {
@@ -16,16 +19,59 @@ jest.mock('../../src/components/SwipeableFoodRow', () => {
 });
 
 const mealTypes: MealType[] = [
-  { id: 'sys-b', name: 'breakfast', sort_order: 0, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
-  { id: 'sys-l', name: 'lunch', sort_order: 1, user_id: null, created_at: '', is_visible: true, show_in_quick_log: true },
-  { id: 'custom-pw', name: 'Pre-Workout', sort_order: 0, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
-  { id: 'custom-ps', name: 'Post-Workout', sort_order: 5, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
+  {
+    id: 'sys-b',
+    name: 'breakfast',
+    sort_order: 0,
+    user_id: null,
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+  },
+  {
+    id: 'sys-l',
+    name: 'lunch',
+    sort_order: 1,
+    user_id: null,
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+  },
+  {
+    id: 'custom-pw',
+    name: 'Pre-Workout',
+    sort_order: 0,
+    user_id: 'user1',
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+  },
+  {
+    id: 'custom-ps',
+    name: 'Post-Workout',
+    sort_order: 5,
+    user_id: 'user1',
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+  },
   // A CUSTOM category deliberately named like the system type.
-  { id: 'custom-b', name: 'breakfast', sort_order: 0, user_id: 'user1', created_at: '', is_visible: true, show_in_quick_log: true },
+  {
+    id: 'custom-b',
+    name: 'breakfast',
+    sort_order: 0,
+    user_id: 'user1',
+    created_at: '',
+    is_visible: true,
+    show_in_quick_log: true,
+  },
 ];
 
-const entry = (id: string, meal_type_id: string, meal_type: string): FoodEntry =>
-  ({ id, meal_type_id, meal_type } as FoodEntry);
+const entry = (
+  id: string,
+  meal_type_id: string,
+  meal_type: string
+): FoodEntry => ({ id, meal_type_id, meal_type }) as FoodEntry;
 
 describe('FoodSummary', () => {
   it('renders custom meal types as their own sections (not merged into Other)', () => {
@@ -36,7 +82,7 @@ describe('FoodSummary', () => {
           entry('2', 'custom-ps', 'Post-Workout'),
         ]}
         mealTypes={mealTypes}
-      />,
+      />
     );
 
     expect(view.getByText('Pre-Workout')).toBeTruthy();
@@ -53,12 +99,14 @@ describe('FoodSummary', () => {
           entry('3', 'custom-ps', 'Post-Workout'),
         ]}
         mealTypes={mealTypes}
-      />,
+      />
     );
 
     // breakfast (0), Pre-Workout (0), lunch (1), Post-Workout (5) — but only
     // sections with entries render; stable sort keeps breakfast before lunch.
-    const texts = view.getAllByText(/Breakfast|Lunch|Post-Workout/).map((n) => n.props.children);
+    const texts = view
+      .getAllByText(/Breakfast|Lunch|Post-Workout/)
+      .map((n) => n.props.children);
     expect(texts).toEqual(['Breakfast', 'Lunch', 'Post-Workout']);
   });
 
@@ -67,7 +115,7 @@ describe('FoodSummary', () => {
       <FoodSummary
         foodEntries={[entry('1', 'gone-id', 'Deleted Meal')]}
         mealTypes={mealTypes}
-      />,
+      />
     );
 
     expect(view.getByText('Deleted Meal')).toBeTruthy();
@@ -81,11 +129,15 @@ describe('FoodSummary', () => {
         foodEntries={[entry('1', 'custom-pw', 'Pre-Workout')]}
         mealTypes={mealTypes}
         onPressMealType={onPressMealType}
-      />,
+      />
     );
 
     fireEvent.press(view.getByText('Pre-Workout'));
-    expect(onPressMealType).toHaveBeenCalledWith('custom-pw', 'Pre-Workout', expect.any(Array));
+    expect(onPressMealType).toHaveBeenCalledWith(
+      'custom-pw',
+      'Pre-Workout',
+      expect.any(Array)
+    );
   });
 
   it('renders a custom category named breakfast literally (not the canonical Breakfast)', () => {
@@ -93,7 +145,7 @@ describe('FoodSummary', () => {
       <FoodSummary
         foodEntries={[entry('1', 'custom-b', 'breakfast')]}
         mealTypes={mealTypes}
-      />,
+      />
     );
 
     expect(view.getByText('breakfast')).toBeTruthy();
@@ -105,7 +157,7 @@ describe('FoodSummary', () => {
       <FoodSummary
         foodEntries={[entry('1', 'custom-b', 'breakfast')]}
         mealTypes={mealTypes}
-      />,
+      />
     );
 
     // The custom group renders the neutral snack icon, not the system
@@ -122,7 +174,7 @@ describe('FoodSummary', () => {
         mealTypes={mealTypes}
         goals={goals}
         calorieGoal={2000}
-      />,
+      />
     );
     // 25% of 2000 = 500 Cal target shown alongside the meal calories.
     expect(getByText(/\/ 500/)).toBeTruthy();
@@ -136,7 +188,7 @@ describe('FoodSummary', () => {
         mealTypes={mealTypes}
         goals={goals}
         calorieGoal={2000}
-      />,
+      />
     );
     // No target chip at all — the custom category must not receive the system
     // Breakfast target.
@@ -150,13 +202,18 @@ describe('FoodSummary', () => {
       <FoodSummary
         // A deleted/unknown custom name with no id: falls into its own literal
         // historical group (isSystem=false) and must not receive any target.
-        foodEntries={[{ id: 'e3', meal_type_id: null, meal_type: 'my deleted custom' } as FoodEntry]}
+        foodEntries={[
+          {
+            id: 'e3',
+            meal_type_id: null,
+            meal_type: 'my deleted custom',
+          } as FoodEntry,
+        ]}
         mealTypes={mealTypes}
         goals={goals}
         calorieGoal={2000}
-      />,
+      />
     );
     expect(queryByText(/\/ 500/)).toBeNull();
   });
-
 });

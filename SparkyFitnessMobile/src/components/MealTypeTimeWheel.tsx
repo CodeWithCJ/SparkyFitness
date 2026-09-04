@@ -2,7 +2,11 @@ import { useMemo, type FC } from 'react';
 import { View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
-import { dateTypeToDate, timeStringToDate, dateToTimeString } from './TimeSheet';
+import {
+  dateTypeToDate,
+  timeStringToDate,
+  dateToTimeString,
+} from './TimeSheet';
 
 /**
  * Shared large time wheel used by BOTH the dedicated time sheet and the
@@ -76,10 +80,17 @@ const MealTypeTimeWheel: FC<MealTypeTimeWheelProps> = ({
   const pickerStyles = useMemo(
     () => ({
       time_selector_label: { color: textPrimary, fontWeight: '600' as const },
-      time_label: { color: textPrimary, fontSize: 28, fontWeight: '500' as const },
-      time_selected_indicator: { backgroundColor: borderSubtle, borderRadius: 10 },
+      time_label: {
+        color: textPrimary,
+        fontSize: 28,
+        fontWeight: '500' as const,
+      },
+      time_selected_indicator: {
+        backgroundColor: borderSubtle,
+        borderRadius: 10,
+      },
     }),
-    [textPrimary, borderSubtle],
+    [textPrimary, borderSubtle]
   );
 
   return (

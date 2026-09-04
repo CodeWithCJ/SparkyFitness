@@ -101,7 +101,7 @@ function makeExercise(
   id: string,
   name: string,
   sets: ReturnType<typeof makeSet>[],
-  overrides?: Record<string, unknown>,
+  overrides?: Record<string, unknown>
 ) {
   return {
     id,
@@ -197,7 +197,7 @@ function renderScreen(paramOverrides?: Partial<typeof baseParams>) {
       <QueryClientProvider client={queryClient}>
         <WorkoutCompleteScreen navigation={navigation} route={route} />
       </QueryClientProvider>
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
 }
 
@@ -305,7 +305,7 @@ describe('WorkoutCompleteScreen', () => {
         {
           duration_minutes: 25,
           exercise_snapshot: cardioSnapshot('x-ex-c', 'Run'),
-        },
+        }
       ),
       makeExercise(
         'ex-d',
@@ -322,7 +322,7 @@ describe('WorkoutCompleteScreen', () => {
         {
           duration_minutes: 5,
           exercise_snapshot: cardioSnapshot('x-ex-d', 'Walk'),
-        },
+        }
       ),
     ];
 
@@ -345,7 +345,9 @@ describe('WorkoutCompleteScreen', () => {
   });
 
   it('localizes the English personal record count for multiple records', () => {
-    const { getByText } = renderScreen({ prSetIds: { '101': true as const, '201': true as const } });
+    const { getByText } = renderScreen({
+      prSetIds: { '101': true as const, '201': true as const },
+    });
 
     expect(getByText('2 Personal Records')).toBeTruthy();
   });
@@ -356,20 +358,31 @@ describe('WorkoutCompleteScreen', () => {
     [5, '5 rekordów osobistych'],
     [22, '22 rekordy osobiste'],
     [25, '25 rekordów osobistych'],
-  ])('renders the Polish personal record plural for %s', async (count, expected) => {
-    await i18n.changeLanguage('pl');
-    const prSetIds: Record<string, true> = {};
-    const session = makeSession();
-    const sets = Array.from({ length: count as number }, (_, index) =>
-      makeSet(10_000 + index, { weight: 100 + index }),
-    );
-    session.exercises = [makeExercise('ex-pr', 'Bench Press', sets)];
-    const completedSetIdsForCase = Object.fromEntries(sets.map(set => [String(set.id), set.id]));
-    Object.keys(completedSetIdsForCase).forEach(id => { prSetIds[id] = true; });
-    const { getByText } = renderScreen({ session, completedSetIds: completedSetIdsForCase, prSetIds });
+  ])(
+    'renders the Polish personal record plural for %s',
+    async (count, expected) => {
+      await i18n.changeLanguage('pl');
+      const prSetIds: Record<string, true> = {};
+      const session = makeSession();
+      const sets = Array.from({ length: count as number }, (_, index) =>
+        makeSet(10_000 + index, { weight: 100 + index })
+      );
+      session.exercises = [makeExercise('ex-pr', 'Bench Press', sets)];
+      const completedSetIdsForCase = Object.fromEntries(
+        sets.map((set) => [String(set.id), set.id])
+      );
+      Object.keys(completedSetIdsForCase).forEach((id) => {
+        prSetIds[id] = true;
+      });
+      const { getByText } = renderScreen({
+        session,
+        completedSetIds: completedSetIdsForCase,
+        prSetIds,
+      });
 
-    expect(getByText(expected as string)).toBeTruthy();
-  });
+      expect(getByText(expected as string)).toBeTruthy();
+    }
+  );
 
   it('hides the records card entirely and skips the haptic without PRs', () => {
     const { queryByText } = renderScreen({ prSetIds: {} });
@@ -400,14 +413,14 @@ describe('WorkoutCompleteScreen', () => {
   it('shimmers the calories tile until the post-save refetch lands', async () => {
     let resolve: (value: PresetSessionResponse) => void;
     (getWorkout as jest.Mock).mockImplementation(
-      () => new Promise(res => (resolve = res)),
+      () => new Promise((res) => (resolve = res))
     );
     const { getByLabelText, findByText } = renderScreen();
 
     expect(getByLabelText('Calculating')).toBeTruthy();
 
     const refreshed = makeSession();
-    refreshed.exercises = refreshed.exercises.map(e => ({
+    refreshed.exercises = refreshed.exercises.map((e) => ({
       ...e,
       calories_burned: 171,
     }));
@@ -418,7 +431,7 @@ describe('WorkoutCompleteScreen', () => {
 
   it('shows snapshot calories immediately when the flush already carried them', () => {
     const session = makeSession();
-    session.exercises = session.exercises.map(e => ({
+    session.exercises = session.exercises.map((e) => ({
       ...e,
       calories_burned: 150,
     }));
@@ -451,7 +464,7 @@ describe('WorkoutCompleteScreen', () => {
 
   it('View Workout opens the workout detail, preferring the refetched session', async () => {
     const refreshed = makeSession();
-    refreshed.exercises = refreshed.exercises.map(e => ({
+    refreshed.exercises = refreshed.exercises.map((e) => ({
       ...e,
       calories_burned: 171,
     }));
@@ -474,7 +487,7 @@ describe('WorkoutCompleteScreen', () => {
     function makePresetSet(
       id: number,
       setNumber: number,
-      overrides: Partial<WorkoutPresetSet> = {},
+      overrides: Partial<WorkoutPresetSet> = {}
     ): WorkoutPresetSet {
       return {
         id,
@@ -491,7 +504,7 @@ describe('WorkoutCompleteScreen', () => {
 
     /** Mirrors makeSession() exactly, so the canonicalized sides are equal. */
     function makeMatchingPreset(
-      overrides: Partial<WorkoutPreset> = {},
+      overrides: Partial<WorkoutPreset> = {}
     ): WorkoutPreset {
       return {
         id: 42,
@@ -529,7 +542,7 @@ describe('WorkoutCompleteScreen', () => {
 
     /** The matching preset with one weight off — the session deviates from it. */
     function makeDeviatingPreset(
-      overrides: Partial<WorkoutPreset> = {},
+      overrides: Partial<WorkoutPreset> = {}
     ): WorkoutPreset {
       const preset = makeMatchingPreset(overrides);
       preset.exercises[0].sets[0].weight = 95;
@@ -559,7 +572,7 @@ describe('WorkoutCompleteScreen', () => {
     function alertButton(label: string): { onPress?: () => void } {
       const call = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
       const button = (call?.[2] ?? []).find(
-        (b: { text?: string }) => b.text === label,
+        (b: { text?: string }) => b.text === label
       );
       expect(button).toBeDefined();
       return button;
@@ -589,7 +602,7 @@ describe('WorkoutCompleteScreen', () => {
         expect.arrayContaining([
           expect.objectContaining({ text: 'Keep Preset' }),
           expect.objectContaining({ text: 'Update' }),
-        ]),
+        ])
       );
       // One shot: nothing re-fires after the first alert.
       firePromptTimer();
@@ -644,7 +657,7 @@ describe('WorkoutCompleteScreen', () => {
 
       expect(updatePresetAsync).toHaveBeenCalled();
       expect(Toast.show).not.toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'success' }),
+        expect.objectContaining({ type: 'success' })
       );
     });
 
@@ -659,7 +672,7 @@ describe('WorkoutCompleteScreen', () => {
 
     it('does not prompt for a preset the user does not own', async () => {
       mockGetPresetById.mockResolvedValue(
-        makeDeviatingPreset({ user_id: 'someone-else' }),
+        makeDeviatingPreset({ user_id: 'someone-else' })
       );
       renderScreen(promptParams);
       await flushFetch();
@@ -731,7 +744,7 @@ describe('WorkoutCompleteScreen', () => {
               }
             />
           </QueryClientProvider>
-        </SafeAreaProvider>,
+        </SafeAreaProvider>
       );
       firePromptTimer();
 

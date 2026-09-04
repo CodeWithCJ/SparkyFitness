@@ -1,14 +1,14 @@
 import fs from 'fs';
 import path from 'path';
+import {
+  fallbackMapKeys,
+  helperKeyUsages,
+  widgetSwiftFiles,
+} from './helpers/widgetSwiftKeys';
 
 const WIDGET_ROOT = path.join(__dirname, '../../targets/widget');
 
-const SWIFT_FILES = [
-  'index.swift',
-  'widgets.swift',
-  'macroWidget.swift',
-  'SharedHelpers.swift',
-];
+const SWIFT_FILES = widgetSwiftFiles();
 
 function readSwift(relativePath: string): string {
   return fs.readFileSync(path.join(WIDGET_ROOT, relativePath), 'utf8');
@@ -41,7 +41,7 @@ describe('iOS WidgetKit Swift contract', () => {
         for (const literal of FORBIDDEN_LITERALS) {
           expect(src).not.toContain(literal);
         }
-      },
+      }
     );
 
     it('resolves calorie labels through the localization helper', () => {
@@ -65,11 +65,17 @@ describe('iOS WidgetKit Swift contract', () => {
 
     it('localizes gallery metadata through LocalizedStringKey keys', () => {
       const calorie = readSwift('widgets.swift');
-      expect(calorie).toMatch(/configurationDisplayName\("widget\.calorie\.name"\)/);
-      expect(calorie).toMatch(/\.description\("widget\.calorie\.description"\)/);
+      expect(calorie).toMatch(
+        /configurationDisplayName\("widget\.calorie\.name"\)/
+      );
+      expect(calorie).toMatch(
+        /\.description\("widget\.calorie\.description"\)/
+      );
 
       const macro = readSwift('macroWidget.swift');
-      expect(macro).toMatch(/configurationDisplayName\("widget\.macro\.name"\)/);
+      expect(macro).toMatch(
+        /configurationDisplayName\("widget\.macro\.name"\)/
+      );
       expect(macro).toMatch(/\.description\("widget\.macro\.description"\)/);
     });
   });
@@ -84,7 +90,11 @@ describe('iOS WidgetKit Swift contract', () => {
     });
 
     it('does not manually assemble thousands separators', () => {
-      for (const file of ['widgets.swift', 'macroWidget.swift', 'SharedHelpers.swift']) {
+      for (const file of [
+        'widgets.swift',
+        'macroWidget.swift',
+        'SharedHelpers.swift',
+      ]) {
         const src = readSwift(file);
         expect(src).not.toContain('NumberFormatter.GroupingSeparator');
       }
@@ -98,21 +108,25 @@ describe('iOS WidgetKit Swift contract', () => {
 
   describe('widget identity and timeline reload', () => {
     it('keeps the widget kinds unchanged', () => {
-      expect(readSwift('widgets.swift')).toContain('let kind: String = "widget"');
-      expect(readSwift('macroWidget.swift')).toContain('let kind: String = "macroWidget"');
+      expect(readSwift('widgets.swift')).toContain(
+        'let kind: String = "widget"'
+      );
+      expect(readSwift('macroWidget.swift')).toContain(
+        'let kind: String = "macroWidget"'
+      );
     });
 
     it('reloads both kinds by the same identifiers used by the JS bridge', () => {
       const js = fs.readFileSync(
         path.join(__dirname, '../../src/hooks/useIOSWidgetLanguageRefresh.ts'),
-        'utf8',
+        'utf8'
       );
       expect(js).toContain("const WIDGET_KIND = 'widget'");
       expect(js).toContain("const MACRO_WIDGET_KIND = 'macroWidget'");
 
       const sync = fs.readFileSync(
         path.join(__dirname, '../../src/hooks/useWidgetSync.ts'),
-        'utf8',
+        'utf8'
       );
       expect(sync).toContain("const WIDGET_KIND = 'widget'");
       expect(sync).toContain("const MACRO_WIDGET_KIND = 'macroWidget'");
@@ -122,7 +136,9 @@ describe('iOS WidgetKit Swift contract', () => {
       for (const file of ['widgets.swift', 'macroWidget.swift']) {
         const src = readSwift(file);
         expect(src).toContain('byAdding: .minute, value: 15');
-        expect(src).toContain('matching: DateComponents(hour: 0, minute: 0, second: 0)');
+        expect(src).toContain(
+          'matching: DateComponents(hour: 0, minute: 0, second: 0)'
+        );
       }
     });
   });
@@ -140,7 +156,9 @@ describe('iOS WidgetKit Swift contract', () => {
 
     it('resolves the widget locale from the native .current locale', () => {
       const shared = readSwift('SharedHelpers.swift');
-      expect(shared).toMatch(/func widgetLocale\(\) -> Locale \{\s*return \.current\s*\}/);
+      expect(shared).toMatch(
+        /func widgetLocale\(\) -> Locale \{\s*return \.current\s*\}/
+      );
     });
 
     it('still shares widget data through the app group identifier', () => {
@@ -154,8 +172,12 @@ describe('iOS WidgetKit Swift contract', () => {
     it('exposes localized accessibility labels on both icon-only action buttons', () => {
       for (const file of ['widgets.swift', 'macroWidget.swift']) {
         const src = readSwift(file);
-        expect(src).toMatch(/accessibilityLabel: localizedWidgetString\("widget\.search_food"\)/);
-        expect(src).toMatch(/accessibilityLabel: localizedWidgetString\("widget\.scan_barcode"\)/);
+        expect(src).toMatch(
+          /accessibilityLabel: localizedWidgetString\("widget\.search_food"\)/
+        );
+        expect(src).toMatch(
+          /accessibilityLabel: localizedWidgetString\("widget\.scan_barcode"\)/
+        );
       }
     });
 
@@ -185,8 +207,32 @@ describe('iOS WidgetKit Swift contract', () => {
 
     it('covers the search/scan keys in the stable fallback map', () => {
       const shared = readSwift('SharedHelpers.swift');
-      expect(shared).toContain('case "widget.search_food": return "Search food"');
-      expect(shared).toContain('case "widget.scan_barcode": return "Scan barcode"');
+      expect(shared).toContain(
+        'case "widget.search_food": return "Search food"'
+      );
+      expect(shared).toContain(
+        'case "widget.scan_barcode": return "Scan barcode"'
+      );
+    });
+  });
+
+  describe('source-derived key coverage', () => {
+    it('discovers the Swift sources instead of tracking a fixed list', () => {
+      expect(SWIFT_FILES).toContain('SharedHelpers.swift');
+      expect(SWIFT_FILES).toContain('widgets.swift');
+      expect(SWIFT_FILES).toContain('macroWidget.swift');
+    });
+
+    it('covers every helper-consumed key in the stable fallback map', () => {
+      const fallback = fallbackMapKeys();
+      // Null once fallbackWidgetString is gone, which retires this guard with it.
+      const missing =
+        fallback === null
+          ? []
+          : helperKeyUsages()
+              .filter((usage) => !fallback.has(usage.key))
+              .map((usage) => `${usage.file}: ${usage.key}`);
+      expect(missing).toEqual([]);
     });
   });
 
@@ -194,7 +240,7 @@ describe('iOS WidgetKit Swift contract', () => {
     it('keeps the widget target on @bacons/apple-targets, not expo-widgets', () => {
       const config = fs.readFileSync(
         path.join(WIDGET_ROOT, 'expo-target.config.js'),
-        'utf8',
+        'utf8'
       );
       expect(config).toContain("type: 'widget'");
       expect(config).toContain('name:');
@@ -203,7 +249,7 @@ describe('iOS WidgetKit Swift contract', () => {
     it('keeps the widget bundle in the widget extension', () => {
       const config = fs.readFileSync(
         path.join(WIDGET_ROOT, 'expo-target.config.js'),
-        'utf8',
+        'utf8'
       );
       expect(config).toMatch(/bundleIdentifier/);
     });

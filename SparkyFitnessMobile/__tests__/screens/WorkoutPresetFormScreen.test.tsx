@@ -67,7 +67,7 @@ describe('WorkoutPresetFormScreen — buildPresetEditPayload', () => {
         exercisesModified: false,
         weightUnit: 'kg',
         distanceUnit: 'km',
-      }),
+      })
     ).toEqual({});
   });
 
@@ -186,7 +186,11 @@ describe('WorkoutPresetFormScreen — buildPresetEditPayload', () => {
       weightUnit: 'kg',
       distanceUnit: 'km',
     });
-    expect(payload.exercises?.map(e => e.superset_group)).toEqual([1, 1, null]);
+    expect(payload.exercises?.map((e) => e.superset_group)).toEqual([
+      1,
+      1,
+      null,
+    ]);
   });
 
   it('round-trips set_type, duration, and notes via exercises payload', () => {
@@ -249,7 +253,10 @@ describe('WorkoutPresetFormScreen — buildPresetEditPayload', () => {
   });
 
   it('handles a preset with null initial description', () => {
-    const presetWithoutDesc: WorkoutPreset = { ...basePreset, description: null };
+    const presetWithoutDesc: WorkoutPreset = {
+      ...basePreset,
+      description: null,
+    };
     const state = { ...baseDraft, description: '' };
     const payload = buildPresetEditPayload({
       state,

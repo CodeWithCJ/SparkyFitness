@@ -6,7 +6,10 @@ import {
   type HealthDataSyncSummary,
 } from './api/healthDataApi';
 import { addLog } from './LogService';
-import { collectHealthData, type MetricSyncOutcome } from './shared/healthSyncEngine';
+import {
+  collectHealthData,
+  type MetricSyncOutcome,
+} from './shared/healthSyncEngine';
 import { createTelemetryRunContext } from './shared/telemetryBudget';
 import { markEnrichedSessions } from './shared/enrichedSessionCache';
 import { isQuotaExceededError } from './shared/quotaError';
@@ -19,7 +22,11 @@ import {
   requestHealthPermissions,
 } from './healthConnectService';
 import { getActiveServerConfig } from './storage';
-import { tryClaimAutoSync, setBackfillRunning, isSyncInFlight } from './autoSyncCoordinator';
+import {
+  tryClaimAutoSync,
+  setBackfillRunning,
+  isSyncInFlight,
+} from './autoSyncCoordinator';
 import { queryClient } from '../hooks/queryClient';
 import { refreshHealthSyncCache } from '../hooks/refreshHealthSyncCache';
 import {
@@ -40,10 +47,18 @@ export const BACKFILL_WINDOW_DAYS = 30;
 export const BACKFILL_METRIC_TIMEOUT_MS = 120_000;
 
 export type BackfillOutcome =
-  | 'completed' | 'no-history' | 'cancelled'
-  | 'quota' | 'device-locked' | 'app-inactive' | 'server-changed'
-  | 'window-failed' | 'upload-failed'
-  | 'no-server' | 'no-metrics' | 'already-running';
+  | 'completed'
+  | 'no-history'
+  | 'cancelled'
+  | 'quota'
+  | 'device-locked'
+  | 'app-inactive'
+  | 'server-changed'
+  | 'window-failed'
+  | 'upload-failed'
+  | 'no-server'
+  | 'no-metrics'
+  | 'already-running';
 
 export interface BackfillProgress {
   phase: 'probing' | 'importing';
@@ -68,7 +83,7 @@ interface RunBackfillOptions {
 
 const dedupeByRecordType = (metrics: HealthMetric[]): HealthMetric[] => {
   const seen = new Set<string>();
-  return metrics.filter(metric => {
+  return metrics.filter((metric) => {
     if (seen.has(metric.recordType)) return false;
     seen.add(metric.recordType);
     return true;
@@ -77,15 +92,19 @@ const dedupeByRecordType = (metrics: HealthMetric[]): HealthMetric[] => {
 
 /** First triage-relevant problem in a window's outcomes: quota beats everything. */
 const classifyOutcomes = (
-  outcomes: MetricSyncOutcome[],
+  outcomes: MetricSyncOutcome[]
 ): { kind: 'quota' | 'error'; error: string } | null => {
   for (const outcome of outcomes) {
     if (outcome.error && isQuotaExceededError(outcome.error)) {
       return { kind: 'quota', error: outcome.error };
     }
   }
-  const failed = outcomes.find(outcome => outcome.status !== 'fulfilled' || outcome.error);
-  return failed ? { kind: 'error', error: failed.error ?? 'Unknown error' } : null;
+  const failed = outcomes.find(
+    (outcome) => outcome.status !== 'fulfilled' || outcome.error
+  );
+  return failed
+    ? { kind: 'error', error: failed.error ?? 'Unknown error' }
+    : null;
 };
 
 /**
@@ -95,7 +114,9 @@ const classifyOutcomes = (
  * — this is a third shell over collectHealthData, beside foreground/background
  * sync, with its own resumable per-server checkpoint.
  */
-export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillResult> => {
+export const runBackfill = async (
+  opts: RunBackfillOptions
+): Promise<BackfillResult> => {
   const config = await getActiveServerConfig();
   if (!config) {
     return { outcome: 'no-server', recordsUploaded: 0 };
@@ -118,7 +139,7 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
   // the inaccessible counter alone cannot be trusted. Any app-inactive transition
   // during a window discards that window's results without advancing.
   let appBecameInactive = false;
-  const appStateSubscription = AppState.addEventListener('change', state => {
+  const appStateSubscription = AppState.addEventListener('change', (state) => {
     if (state !== 'active') {
       appBecameInactive = true;
     }
@@ -129,7 +150,10 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
   try {
     const historyAccessGranted = await ensureHistoryReadPermission();
     if (!historyAccessGranted) {
-      addLog('[Backfill] History read permission not granted — import will reach ~30 days back', 'WARNING');
+      addLog(
+        '[Backfill] History read permission not granted — import will reach ~30 days back',
+        'WARNING'
+      );
     }
 
     let checkpoint = await loadBackfillCheckpoint(configId);
@@ -140,12 +164,16 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
     const emitProgress = (
       phase: BackfillProgress['phase'],
       cp: BackfillCheckpoint | null,
-      currentWindow: { start: Date; end: Date } | null,
+      currentWindow: { start: Date; end: Date } | null
     ): void => {
       opts.onProgress({
         phase,
-        totalDays: cp ? countLocalDays(new Date(cp.floor), new Date(cp.endEdge)) : 0,
-        importedDays: cp ? countLocalDays(new Date(cp.cursor), new Date(cp.endEdge)) : 0,
+        totalDays: cp
+          ? countLocalDays(new Date(cp.floor), new Date(cp.endEdge))
+          : 0,
+        importedDays: cp
+          ? countLocalDays(new Date(cp.cursor), new Date(cp.endEdge))
+          : 0,
         currentWindow,
         recordsUploaded,
         historyAccessGranted,
@@ -160,9 +188,15 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
       // so it rounds UP: the seam day gets re-imported, which is safe
       // (delete-then-insert / upsert semantics server-side), whereas rounding it
       // down would mark never-imported hours as covered and silently skip them.
-      checkpoint.endEdge = alignToLocalDayStart(new Date(checkpoint.endEdge)).toISOString();
-      checkpoint.cursor = ceilToLocalDayStart(new Date(checkpoint.cursor)).toISOString();
-      checkpoint.floor = alignToLocalDayStart(new Date(checkpoint.floor)).toISOString();
+      checkpoint.endEdge = alignToLocalDayStart(
+        new Date(checkpoint.endEdge)
+      ).toISOString();
+      checkpoint.cursor = ceilToLocalDayStart(
+        new Date(checkpoint.cursor)
+      ).toISOString();
+      checkpoint.floor = alignToLocalDayStart(
+        new Date(checkpoint.floor)
+      ).toISOString();
       recordsUploaded = checkpoint.recordsUploaded;
     }
 
@@ -172,7 +206,9 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
     let metrics: HealthMetric[];
     if (checkpoint) {
       const frozen = new Set(checkpoint.enabledRecordTypes);
-      metrics = dedupeByRecordType(HEALTH_METRICS.filter(m => frozen.has(m.recordType)));
+      metrics = dedupeByRecordType(
+        HEALTH_METRICS.filter((m) => frozen.has(m.recordType))
+      );
     } else {
       const enabled: HealthMetric[] = [];
       for (const metric of HEALTH_METRICS) {
@@ -193,7 +229,9 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
       // preferences), so re-request before reading — the permission sheet only
       // appears for types still undetermined. Android instead surfaces missing
       // grants per-read, and its history grant is handled above.
-      const granted = await requestHealthPermissions(metrics.flatMap(metric => metric.permissions));
+      const granted = await requestHealthPermissions(
+        metrics.flatMap((metric) => metric.permissions)
+      );
       if (!granted) {
         return {
           outcome: 'window-failed',
@@ -213,7 +251,11 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
 
       const probe = healthReadProvider.readEarliestRecord;
       if (!probe) {
-        return { outcome: 'window-failed', error: 'Earliest-record probe unavailable', recordsUploaded: 0 };
+        return {
+          outcome: 'window-failed',
+          error: 'Earliest-record probe unavailable',
+          recordsUploaded: 0,
+        };
       }
 
       const earliestByRecordType: Record<string, string | null> = {};
@@ -227,18 +269,35 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
         }
         if (result.error) {
           if (isQuotaExceededError(result.error)) {
-            return { outcome: 'quota', error: result.error, recordsUploaded: 0 };
+            return {
+              outcome: 'quota',
+              error: result.error,
+              recordsUploaded: 0,
+            };
           }
           if (getDatabaseInaccessibleCount() > 0) {
-            return { outcome: 'device-locked', error: result.error, recordsUploaded: 0 };
+            return {
+              outcome: 'device-locked',
+              error: result.error,
+              recordsUploaded: 0,
+            };
           }
           if (appBecameInactive) {
-            return { outcome: 'app-inactive', error: result.error, recordsUploaded: 0 };
+            return {
+              outcome: 'app-inactive',
+              error: result.error,
+              recordsUploaded: 0,
+            };
           }
           // Never guess a fallback floor — it would silently truncate history.
-          return { outcome: 'window-failed', error: result.error, recordsUploaded: 0 };
+          return {
+            outcome: 'window-failed',
+            error: result.error,
+            recordsUploaded: 0,
+          };
         }
-        earliestByRecordType[metric.recordType] = result.records[0]?.startTime ?? null;
+        earliestByRecordType[metric.recordType] =
+          result.records[0]?.startTime ?? null;
       }
 
       if (getDatabaseInaccessibleCount() > 0) {
@@ -251,7 +310,7 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
 
       const earliestInstants = Object.values(earliestByRecordType)
         .filter((iso): iso is string => iso !== null)
-        .map(iso => new Date(iso).getTime())
+        .map((iso) => new Date(iso).getTime())
         .filter(Number.isFinite);
       if (earliestInstants.length === 0) {
         return { outcome: 'no-history', recordsUploaded: 0 };
@@ -264,9 +323,11 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
         status: 'in-progress',
         endEdge: edge,
         cursor: edge,
-        floor: alignToLocalDayStart(new Date(Math.min(...earliestInstants))).toISOString(),
+        floor: alignToLocalDayStart(
+          new Date(Math.min(...earliestInstants))
+        ).toISOString(),
         earliestByRecordType,
-        enabledRecordTypes: metrics.map(m => m.recordType),
+        enabledRecordTypes: metrics.map((m) => m.recordType),
         recordsUploaded: 0,
         startedAt: nowIso,
         updatedAt: nowIso,
@@ -279,7 +340,7 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
 
     const advance = async (
       newCursor: Date,
-      currentWindow: { start: Date; end: Date } | null,
+      currentWindow: { start: Date; end: Date } | null
     ): Promise<void> => {
       cp.cursor = newCursor.toISOString();
       cp.recordsUploaded = recordsUploaded;
@@ -288,8 +349,15 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
       emitProgress('importing', cp, currentWindow);
     };
 
-    const windows = enumerateDayAlignedWindows(floor, new Date(cp.cursor), BACKFILL_WINDOW_DAYS);
-    addLog(`[Backfill] Importing ${windows.length} window(s) from ${cp.cursor} down to ${cp.floor}`, 'INFO');
+    const windows = enumerateDayAlignedWindows(
+      floor,
+      new Date(cp.cursor),
+      BACKFILL_WINDOW_DAYS
+    );
+    addLog(
+      `[Backfill] Importing ${windows.length} window(s) from ${cp.cursor} down to ${cp.floor}`,
+      'INFO'
+    );
 
     for (const window of windows) {
       if (opts.shouldCancel()) {
@@ -299,7 +367,7 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
         return { outcome: 'server-changed', recordsUploaded };
       }
 
-      const windowMetrics = metrics.filter(metric => {
+      const windowMetrics = metrics.filter((metric) => {
         const earliest = cp.earliestByRecordType[metric.recordType];
         return earliest != null && new Date(earliest) < window.end;
       });
@@ -330,14 +398,18 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
             // workout. Routes that need consent are skipped, not lost — a
             // normal foreground sync can still collect any inside its window.
             telemetry,
-          },
+          }
         );
       };
 
       let outcomes = await collectWindow();
       let issue = classifyOutcomes(outcomes);
-      if (issue && issue.kind !== 'quota'
-        && getDatabaseInaccessibleCount() === 0 && !appBecameInactive) {
+      if (
+        issue &&
+        issue.kind !== 'quota' &&
+        getDatabaseInaccessibleCount() === 0 &&
+        !appBecameInactive
+      ) {
         outcomes = await collectWindow();
         issue = classifyOutcomes(outcomes);
       }
@@ -346,14 +418,22 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
         return { outcome: 'quota', error: issue.error, recordsUploaded };
       }
       if (getDatabaseInaccessibleCount() > 0) {
-        return { outcome: 'device-locked', error: issue?.error, recordsUploaded };
+        return {
+          outcome: 'device-locked',
+          error: issue?.error,
+          recordsUploaded,
+        };
       }
       if (appBecameInactive) {
         // Results may include silent-empty locked reads — discard without advancing.
         return { outcome: 'app-inactive', recordsUploaded };
       }
       if (issue) {
-        return { outcome: 'window-failed', error: issue.error, recordsUploaded };
+        return {
+          outcome: 'window-failed',
+          error: issue.error,
+          recordsUploaded,
+        };
       }
 
       // Per-record push: spreading a 30-day window of per-sample records (e.g.
@@ -383,14 +463,18 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
             await markEnrichedSessions(telemetry.drainCollected());
           }
         } catch (error) {
-          return { outcome: 'upload-failed', error: getErrorMessage(error), recordsUploaded };
+          return {
+            outcome: 'upload-failed',
+            error: getErrorMessage(error),
+            recordsUploaded,
+          };
         }
         const recordErrors = uploadSummary?.recordErrors ?? [];
         if (recordErrors.length > 0) {
           addLog(
             `[Backfill] Server rejected ${recordErrors.length} of ${payload.length} record(s) in this window`,
             'WARNING',
-            recordErrors.slice(0, 5).map(recordError => recordError.error),
+            recordErrors.slice(0, 5).map((recordError) => recordError.error)
           );
         }
         recordsUploaded += payload.length - recordErrors.length;
@@ -406,11 +490,17 @@ export const runBackfill = async (opts: RunBackfillOptions): Promise<BackfillRes
     cp.recordsUploaded = recordsUploaded;
     cp.updatedAt = cp.completedAt;
     await saveBackfillCheckpoint(configId, cp);
-    addLog(`[Backfill] History import complete: ${recordsUploaded} record(s) uploaded`, 'INFO');
+    addLog(
+      `[Backfill] History import complete: ${recordsUploaded} record(s) uploaded`,
+      'INFO'
+    );
     return { outcome: 'completed', recordsUploaded };
   } catch (error) {
     const message = getErrorMessage(error);
-    addLog(`[Backfill] History import failed unexpectedly: ${message}`, 'ERROR');
+    addLog(
+      `[Backfill] History import failed unexpectedly: ${message}`,
+      'ERROR'
+    );
     return { outcome: 'window-failed', error: message, recordsUploaded };
   } finally {
     appStateSubscription.remove();

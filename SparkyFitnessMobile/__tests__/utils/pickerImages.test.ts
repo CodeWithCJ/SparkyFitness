@@ -27,7 +27,11 @@ describe('toSavedImages', () => {
 
 describe('splitPickerImages', () => {
   it('emits stored paths as-is and placeholders for uploads', () => {
-    const items = [saved('/a.jpg'), toNewImage('file:///new1'), saved('/b.jpg')];
+    const items = [
+      saved('/a.jpg'),
+      toNewImage('file:///new1'),
+      saved('/b.jpg'),
+    ];
 
     expect(splitPickerImages(items)).toEqual({
       order: ['/a.jpg', '__new__0', '/b.jpg'],
@@ -53,7 +57,7 @@ describe('splitPickerImages', () => {
 
   it('truncates to the server MAX_IMAGE_COUNT', () => {
     const items = Array.from({ length: MAX_IMAGES + 3 }, (_, i) =>
-      saved(`/img-${i}.jpg`),
+      saved(`/img-${i}.jpg`)
     );
 
     const { order } = splitPickerImages(items);
@@ -68,13 +72,16 @@ describe('pickerImagesDiffer', () => {
 
   it('is false when nothing changed', () => {
     expect(
-      pickerImagesDiffer([saved('/a.jpg'), saved('/b.jpg')], ['/a.jpg', '/b.jpg']),
+      pickerImagesDiffer(
+        [saved('/a.jpg'), saved('/b.jpg')],
+        ['/a.jpg', '/b.jpg']
+      )
     ).toBe(false);
   });
 
   it('is true when an image was removed', () => {
     expect(pickerImagesDiffer([saved('/a.jpg')], ['/a.jpg', '/b.jpg'])).toBe(
-      true,
+      true
     );
   });
 
@@ -82,7 +89,10 @@ describe('pickerImagesDiffer', () => {
     // Order is not cosmetic: index 0 is the thumbnail, so a reorder alone is a
     // real change that must be saved.
     expect(
-      pickerImagesDiffer([saved('/b.jpg'), saved('/a.jpg')], ['/a.jpg', '/b.jpg']),
+      pickerImagesDiffer(
+        [saved('/b.jpg'), saved('/a.jpg')],
+        ['/a.jpg', '/b.jpg']
+      )
     ).toBe(true);
   });
 });

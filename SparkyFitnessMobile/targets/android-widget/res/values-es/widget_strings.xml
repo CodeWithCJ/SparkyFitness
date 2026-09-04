@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sparky_calorie_widget_name">Calorías</string>
+    <string name="sparky_widget_description">Resumen diario de calorías con accesos rápidos</string>
+    <string name="sparky_macro_widget_name">Macros</string>
+    <string name="sparky_macro_widget_description">Proteínas, carbohidratos y grasas de hoy con accesos rápidos</string>
+    <string name="widget_kcal_left">%1$s kcal restantes</string>
+    <string name="widget_kcal_left_empty">- kcal restantes</string>
+    <string name="widget_grams">%1$s g</string>
+    <string name="widget_protein">Proteínas</string>
+    <string name="widget_carbs">Carbohidratos</string>
+    <string name="widget_fat">Grasas</string>
+    <string name="widget_search_food">Buscar comida</string>
+    <string name="widget_scan_barcode">Escanear código</string>
+    <string name="widget_preview_calories_left">1650 kcal restantes</string>
+    <string name="widget_preview_macros_left">1024 kcal restantes</string>
+    <string name="widget_preview_grams_protein">51 g</string>
+    <string name="widget_preview_grams_carbs">136 g</string>
+    <string name="widget_preview_grams_fat">32 g</string>
+</resources>

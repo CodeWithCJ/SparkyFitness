@@ -31,22 +31,47 @@ export function useDeleteFoodEntryMeal({
       onSuccess?.();
     },
     onError: () => {
-      Toast.show({ type: 'error', text1: i18n.t('editLoggedMeal.errors.deleteFailed', { defaultValue: 'Failed to delete meal' }), text2: i18n.t('common.tryAgain', { defaultValue: 'Please try again.' }) });
+      Toast.show({
+        type: 'error',
+        text1: i18n.t('editLoggedMeal.errors.deleteFailed', {
+          defaultValue: 'Failed to delete meal',
+        }),
+        text2: i18n.t('common.tryAgain', { defaultValue: 'Please try again.' }),
+      });
     },
   });
 
   const confirmAndDelete = () => {
-    Alert.alert(i18n.t('editLoggedMeal.actions.deleteMeal', { defaultValue: 'Delete Meal' }), i18n.t('editLoggedMeal.deleteConfirm', { defaultValue: 'Delete this meal?' }), [
-      { text: i18n.t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
-      { text: i18n.t('common.delete', { defaultValue: 'Delete' }), style: 'destructive', onPress: () => mutation.mutate() },
-    ]);
+    Alert.alert(
+      i18n.t('editLoggedMeal.actions.deleteMeal', {
+        defaultValue: 'Delete Meal',
+      }),
+      i18n.t('editLoggedMeal.deleteConfirm', {
+        defaultValue: 'Delete this meal?',
+      }),
+      [
+        {
+          text: i18n.t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+        },
+        {
+          text: i18n.t('common.delete', { defaultValue: 'Delete' }),
+          style: 'destructive',
+          onPress: () => mutation.mutate(),
+        },
+      ]
+    );
   };
 
   const deleteEntry = () => mutation.mutate();
 
   const invalidateCache = () => {
-    queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(normalizedDate) });
-    queryClient.invalidateQueries({ queryKey: foodEntryMealDetailQueryKey(mealId) });
+    queryClient.invalidateQueries({
+      queryKey: dailySummaryQueryKey(normalizedDate),
+    });
+    queryClient.invalidateQueries({
+      queryKey: foodEntryMealDetailQueryKey(mealId),
+    });
     invalidateMealUsageCaches(queryClient);
     queryClient.invalidateQueries({ queryKey: [...foodsQueryKey] });
   };

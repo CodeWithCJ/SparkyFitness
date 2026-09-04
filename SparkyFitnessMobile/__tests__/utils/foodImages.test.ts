@@ -12,10 +12,10 @@ import {
 describe('normalizeFoodImagePath', () => {
   it('keeps server-relative and absolute paths as-is', () => {
     expect(normalizeFoodImagePath('/uploads/foods/abc/0.jpg')).toBe(
-      '/uploads/foods/abc/0.jpg',
+      '/uploads/foods/abc/0.jpg'
     );
     expect(normalizeFoodImagePath('https://cdn.example/x.jpg')).toBe(
-      'https://cdn.example/x.jpg',
+      'https://cdn.example/x.jpg'
     );
   });
 
@@ -34,7 +34,7 @@ describe('normalizeFoodImagePath', () => {
 
   it('trims surrounding whitespace', () => {
     expect(normalizeFoodImagePath('  /uploads/foods/a/1.png  ')).toBe(
-      '/uploads/foods/a/1.png',
+      '/uploads/foods/a/1.png'
     );
   });
 });
@@ -42,7 +42,7 @@ describe('normalizeFoodImagePath', () => {
 describe('usableFoodImages', () => {
   it('drops unusable entries but keeps order', () => {
     expect(
-      usableFoodImages(['', '/uploads/foods/a/1.jpg', '[]', 'https://x/2.jpg']),
+      usableFoodImages(['', '/uploads/foods/a/1.jpg', '[]', 'https://x/2.jpg'])
     ).toEqual(['/uploads/foods/a/1.jpg', 'https://x/2.jpg']);
   });
 
@@ -55,7 +55,7 @@ describe('usableFoodImages', () => {
 describe('primaryImageOf', () => {
   it('returns the first usable image', () => {
     expect(primaryImageOf({ images: ['[]', '/uploads/foods/a/2.jpg'] })).toBe(
-      '/uploads/foods/a/2.jpg',
+      '/uploads/foods/a/2.jpg'
     );
   });
 
@@ -72,7 +72,7 @@ describe('externalFoodImage', () => {
         images: ['/uploads/foods/a/1.jpg'],
         image_source_url: 'https://x/full.jpg',
         image_url: 'https://x/thumb.jpg',
-      }),
+      })
     ).toBe('/uploads/foods/a/1.jpg');
   });
 
@@ -81,13 +81,13 @@ describe('externalFoodImage', () => {
       externalFoodImage({
         image_source_url: 'https://x/full.jpg',
         image_url: 'https://x/thumb.jpg',
-      }),
+      })
     ).toBe('https://x/full.jpg');
   });
 
   it('falls back to the thumbnail when there is no full-size variant', () => {
     expect(externalFoodImage({ image_url: 'https://x/thumb.jpg' })).toBe(
-      'https://x/thumb.jpg',
+      'https://x/thumb.jpg'
     );
   });
 
@@ -103,7 +103,7 @@ describe('diaryEntryImages', () => {
       diaryEntryImages({
         images: ['/uploads/food_entries/e/1.jpg'],
         food_images: ['/uploads/foods/f/1.jpg'],
-      }),
+      })
     ).toEqual(['/uploads/food_entries/e/1.jpg']);
   });
 
@@ -111,7 +111,7 @@ describe('diaryEntryImages', () => {
     // The override is never written back to the parent, so this fallback is
     // what makes an un-overridden entry still show a picture.
     expect(
-      diaryEntryImages({ images: [], food_images: ['/uploads/foods/f/1.jpg'] }),
+      diaryEntryImages({ images: [], food_images: ['/uploads/foods/f/1.jpg'] })
     ).toEqual(['/uploads/foods/f/1.jpg']);
   });
 
@@ -120,7 +120,7 @@ describe('diaryEntryImages', () => {
       diaryEntryImages({
         images: ['[]'],
         food_images: ['/uploads/foods/f/1.jpg'],
-      }),
+      })
     ).toEqual(['/uploads/foods/f/1.jpg']);
   });
 
@@ -136,13 +136,13 @@ describe('loggedMealImages', () => {
       loggedMealImages({
         images: ['/uploads/food_entry_meals/e/1.jpg'],
         meal_images: ['/uploads/meals/m/1.jpg'],
-      }),
+      })
     ).toEqual(['/uploads/food_entry_meals/e/1.jpg']);
   });
 
   it('falls back to the meal template', () => {
     expect(
-      loggedMealImage({ images: [], meal_images: ['/uploads/meals/m/1.jpg'] }),
+      loggedMealImage({ images: [], meal_images: ['/uploads/meals/m/1.jpg'] })
     ).toBe('/uploads/meals/m/1.jpg');
   });
 });

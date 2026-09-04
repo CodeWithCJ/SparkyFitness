@@ -89,9 +89,13 @@ jest.mock('../../src/components/NutritionMacroCard', () => {
   };
 });
 
-const mockUseCreateMeal = useCreateMeal as jest.MockedFunction<typeof useCreateMeal>;
+const mockUseCreateMeal = useCreateMeal as jest.MockedFunction<
+  typeof useCreateMeal
+>;
 const mockUseMeal = useMeal as jest.MockedFunction<typeof useMeal>;
-const mockUseUpdateMeal = useUpdateMeal as jest.MockedFunction<typeof useUpdateMeal>;
+const mockUseUpdateMeal = useUpdateMeal as jest.MockedFunction<
+  typeof useUpdateMeal
+>;
 const mockConsumePendingMealIngredientSelection =
   consumePendingMealIngredientSelection as jest.MockedFunction<
     typeof consumePendingMealIngredientSelection
@@ -102,7 +106,7 @@ const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
 function buildIngredient(
-  overrides: Partial<MealIngredientDraft> = {},
+  overrides: Partial<MealIngredientDraft> = {}
 ): MealIngredientDraft {
   return {
     food_id: 'food-1',
@@ -163,7 +167,6 @@ describe('MealAddScreen', () => {
     params: undefined,
   };
 
-
   let focusCallback: (() => void) | undefined;
   const mockCreateMealAsync = jest.fn();
   const mockUpdateMealAsync = jest.fn();
@@ -172,7 +175,7 @@ describe('MealAddScreen', () => {
     render(
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
         <MealAddScreen navigation={navigation} route={routeOverride} />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
   beforeEach(() => {
@@ -218,7 +221,10 @@ describe('MealAddScreen', () => {
   it('shows an error when the total servings is invalid and does not submit', () => {
     const screen = renderScreen();
 
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), 'Lunch');
+    fireEvent.changeText(
+      screen.getByPlaceholderText('e.g. Chicken Rice Bowl'),
+      'Lunch'
+    );
     // Default unit is 'serving', which hides the Serving Size input, so the
     // single placeholder="1" field on screen is Total Servings. Typing 0 here
     // trips total_servings validation.
@@ -236,7 +242,10 @@ describe('MealAddScreen', () => {
   it('shows an error when there are no ingredients and does not submit', () => {
     const screen = renderScreen();
 
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), 'Lunch');
+    fireEvent.changeText(
+      screen.getByPlaceholderText('e.g. Chicken Rice Bowl'),
+      'Lunch'
+    );
     pressAction(screen, navigation, 'Save');
 
     expect(mockToast.show).toHaveBeenCalledWith({
@@ -251,19 +260,25 @@ describe('MealAddScreen', () => {
     const screen = renderScreen();
 
     mockConsumePendingMealIngredientSelection.mockReturnValueOnce({
-      ingredient: buildIngredient({ variant_id: undefined as unknown as string }),
+      ingredient: buildIngredient({
+        variant_id: undefined as unknown as string,
+      }),
     } as any);
     act(() => {
       focusCallback?.();
     });
 
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), 'Lunch');
+    fireEvent.changeText(
+      screen.getByPlaceholderText('e.g. Chicken Rice Bowl'),
+      'Lunch'
+    );
     pressAction(screen, navigation, 'Save');
 
     expect(mockToast.show).toHaveBeenCalledWith({
       type: 'error',
       text1: 'Missing ingredient data',
-      text2: 'One of the selected foods is missing a serving variant. Please re-add it.',
+      text2:
+        'One of the selected foods is missing a serving variant. Please re-add it.',
     });
     expect(mockCreateMealAsync).not.toHaveBeenCalled();
   });
@@ -278,8 +293,14 @@ describe('MealAddScreen', () => {
       focusCallback?.();
     });
 
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), '  My Meal  ');
-    fireEvent.changeText(screen.getByPlaceholderText('Notes about this meal'), '  Tasty  ');
+    fireEvent.changeText(
+      screen.getByPlaceholderText('e.g. Chicken Rice Bowl'),
+      '  My Meal  '
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Notes about this meal'),
+      '  Tasty  '
+    );
     fireEvent.changeText(screen.getByPlaceholderText('1'), '2');
     pressAction(screen, navigation, 'Save');
 
@@ -291,6 +312,8 @@ describe('MealAddScreen', () => {
     expect(payload).toEqual({
       name: 'My Meal',
       description: 'Tasty',
+      // No note entered, so the key is sent as an explicit null.
+      notes: null,
       is_public: false,
       // serving_unit defaults to 'serving' so serving_size is forced to 1.
       // The '2' the user typed goes into total_servings (the only input
@@ -328,7 +351,10 @@ describe('MealAddScreen', () => {
       focusCallback?.();
     });
 
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), 'My Meal');
+    fireEvent.changeText(
+      screen.getByPlaceholderText('e.g. Chicken Rice Bowl'),
+      'My Meal'
+    );
     fireEvent.press(screen.getByText('ml'));
 
     await waitFor(() => {
@@ -433,7 +459,10 @@ describe('MealAddScreen', () => {
       params: { mode: 'edit', mealId: meal.id, initialMeal: meal },
     });
 
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), '  Edited Meal  ');
+    fireEvent.changeText(
+      screen.getByPlaceholderText('e.g. Chicken Rice Bowl'),
+      '  Edited Meal  '
+    );
     pressAction(screen, navigation, 'Save');
 
     await waitFor(() => {
@@ -444,6 +473,7 @@ describe('MealAddScreen', () => {
     expect(payload).toEqual({
       name: 'Edited Meal',
       description: 'Tasty',
+      notes: null,
       // Meal fixture is serving_size=1, total_servings=2 under the new model.
       serving_size: 1,
       serving_unit: 'serving',
@@ -482,7 +512,10 @@ describe('MealAddScreen', () => {
       params: { mode: 'edit', mealId: meal.id, initialMeal: meal },
     });
 
-    fireEvent.changeText(screen.getByPlaceholderText('e.g. Chicken Rice Bowl'), 'Changed Name');
+    fireEvent.changeText(
+      screen.getByPlaceholderText('e.g. Chicken Rice Bowl'),
+      'Changed Name'
+    );
     mockConsumePendingMealIngredientSelection.mockReturnValueOnce({
       ingredient: buildIngredient({
         food_id: 'food-2',
@@ -542,7 +575,9 @@ describe('MealAddScreen', () => {
 
     expect(screen.queryByText(/NaN/)).toBeNull();
     expect(screen.getAllByText('0.0024 cal').length).toBeGreaterThan(0);
-    expect(screen.getByText('0.001g protein · 0.0016g carbs · 0.0004g fat')).toBeTruthy();
+    expect(
+      screen.getByText('0.001g protein · 0.0016g carbs · 0.0004g fat')
+    ).toBeTruthy();
   });
 
   it('coerces numeric-string converted drafts and falls back to serving_unit when unit is blank', () => {

@@ -2,17 +2,21 @@ import {
   syncHealthData,
   checkServerConnection,
   HealthDataPayload,
-  fetchWithRetry,
+  _fetchWithRetry as fetchWithRetry,
   CHUNK_SIZE,
   SESSION_CHUNK_SIZE,
 } from '../../src/services/api/healthDataApi';
-import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
+import {
+  getActiveServerConfig,
+  ServerConfig,
+} from '../../src/services/storage';
 import { notifySessionExpired } from '../../src/services/api/authService';
 import { ensureTimezoneBootstrapped } from '../../src/services/api/preferencesApi';
 
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
-  proxyHeadersToRecord: jest.requireActual('../../src/services/storage').proxyHeadersToRecord,
+  proxyHeadersToRecord: jest.requireActual('../../src/services/storage')
+    .proxyHeadersToRecord,
 }));
 
 jest.mock('../../src/services/api/authService', () => {
@@ -66,7 +70,11 @@ describe('healthDataApi', () => {
       const mockResponse = { ok: true, status: 200 };
       mockFetch.mockResolvedValue(mockResponse);
 
-      const result = await fetchWithRetry('https://example.com', {}, retryConfig);
+      const result = await fetchWithRetry(
+        'https://example.com',
+        {},
+        retryConfig
+      );
 
       expect(result).toBe(mockResponse);
       expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -104,7 +112,7 @@ describe('healthDataApi', () => {
       });
 
       await expect(
-        fetchWithRetry('https://example.com', {}, retryConfig),
+        fetchWithRetry('https://example.com', {}, retryConfig)
       ).rejects.toThrow('Server error: 401 - Unauthorized');
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -118,7 +126,7 @@ describe('healthDataApi', () => {
       });
 
       await expect(
-        fetchWithRetry('https://example.com', {}, retryConfig),
+        fetchWithRetry('https://example.com', {}, retryConfig)
       ).rejects.toThrow('Server error: 400 - Bad Request');
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
@@ -167,10 +175,14 @@ describe('healthDataApi', () => {
       };
 
       await expect(
-        fetchWithRetry('https://example.com', {}, {
-          ...retryConfig,
-          serverConfig: sessionConfig,
-        }),
+        fetchWithRetry(
+          'https://example.com',
+          {},
+          {
+            ...retryConfig,
+            serverConfig: sessionConfig,
+          }
+        )
       ).rejects.toThrow('Server error: 401');
 
       expect(mockNotifySessionExpired).toHaveBeenCalledWith('session-server');
@@ -179,11 +191,15 @@ describe('healthDataApi', () => {
     test('uses exponential backoff between retries', async () => {
       mockFetch.mockRejectedValue(new Error('fail'));
 
-      const promise = fetchWithRetry('https://example.com', {}, {
-        timeoutMs: 30_000,
-        maxRetries: 3,
-        baseDelayMs: 1_000,
-      });
+      const promise = fetchWithRetry(
+        'https://example.com',
+        {},
+        {
+          timeoutMs: 30_000,
+          maxRetries: 3,
+          baseDelayMs: 1_000,
+        }
+      );
       const assertion = expect(promise).rejects.toThrow('fail');
 
       // After first failure, sleep(1000) is pending
@@ -221,7 +237,7 @@ describe('healthDataApi', () => {
       mockGetActiveServerConfig.mockResolvedValue(null);
 
       await expect(syncHealthData(testData)).rejects.toThrow(
-        'Server configuration not found.',
+        'Server configuration not found.'
       );
     });
 
@@ -243,7 +259,7 @@ describe('healthDataApi', () => {
             'X-Workout-Model-Version': '3',
             Authorization: 'Bearer test-api-key-12345',
           },
-        }),
+        })
       );
     });
 
@@ -267,7 +283,7 @@ describe('healthDataApi', () => {
       expect(mockFetch).toHaveBeenCalledTimes(2);
       for (const call of mockFetch.mock.calls) {
         expect(call[1].headers).toEqual(
-          expect.objectContaining({ 'X-Workout-Model-Version': '3' }),
+          expect.objectContaining({ 'X-Workout-Model-Version': '3' })
         );
       }
     });
@@ -282,7 +298,9 @@ describe('healthDataApi', () => {
       await syncHealthData(testData);
 
       expect(mockEnsureTimezoneBootstrapped).toHaveBeenCalledTimes(1);
-      expect(mockEnsureTimezoneBootstrapped).toHaveBeenCalledWith({ throwOnFailure: true });
+      expect(mockEnsureTimezoneBootstrapped).toHaveBeenCalledWith({
+        throwOnFailure: true,
+      });
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
@@ -300,7 +318,7 @@ describe('healthDataApi', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://example.com/api/health-data',
-        expect.anything(),
+        expect.anything()
       );
     });
 
@@ -319,7 +337,7 @@ describe('healthDataApi', () => {
           headers: expect.objectContaining({
             Authorization: 'Bearer test-api-key-12345',
           }),
-        }),
+        })
       );
     });
 
@@ -336,7 +354,7 @@ describe('healthDataApi', () => {
         expect.anything(),
         expect.objectContaining({
           body: JSON.stringify(testData),
-        }),
+        })
       );
     });
 
@@ -352,11 +370,11 @@ describe('healthDataApi', () => {
     test('does not send health data when timezone bootstrap fails', async () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockEnsureTimezoneBootstrapped.mockRejectedValueOnce(
-        new Error('Timezone bootstrap failed'),
+        new Error('Timezone bootstrap failed')
       );
 
       await expect(syncHealthData(testData)).rejects.toThrow(
-        'Timezone bootstrap failed',
+        'Timezone bootstrap failed'
       );
 
       expect(mockFetch).not.toHaveBeenCalled();
@@ -396,7 +414,7 @@ describe('healthDataApi', () => {
 
       const promise = syncHealthData(testData);
       const assertion = expect(promise).rejects.toThrow(
-        'Server error: 500 - Internal Server Error',
+        'Server error: 500 - Internal Server Error'
       );
 
       // 500 is retryable — advance past retry delays
@@ -411,7 +429,9 @@ describe('healthDataApi', () => {
       mockFetch.mockRejectedValue(new Error('Network request failed'));
 
       const promise = syncHealthData(testData);
-      const assertion = expect(promise).rejects.toThrow('Network request failed');
+      const assertion = expect(promise).rejects.toThrow(
+        'Network request failed'
+      );
 
       // Network errors are retryable — advance past retry delays
       await jest.advanceTimersByTimeAsync(1_000);
@@ -435,7 +455,7 @@ describe('healthDataApi', () => {
         });
 
         await expect(syncHealthData(testData)).rejects.toThrow(
-          'HTTPS is required',
+          'HTTPS is required'
         );
 
         expect(mockFetch).not.toHaveBeenCalled();
@@ -449,7 +469,7 @@ describe('healthDataApi', () => {
         });
 
         await expect(syncHealthData(testData)).rejects.toThrow(
-          'HTTPS is required',
+          'HTTPS is required'
         );
 
         expect(mockFetch).not.toHaveBeenCalled();
@@ -565,7 +585,7 @@ describe('healthDataApi', () => {
         });
 
         await expect(syncHealthData(testData)).rejects.toThrow(
-          'rejected in full by server',
+          'rejected in full by server'
         );
       });
 
@@ -574,7 +594,9 @@ describe('healthDataApi', () => {
         const legacyBody = JSON.stringify({
           message: 'Some health data entries could not be processed.',
           processed: [{ type: 'steps', status: 'success', data: {} }],
-          errors: [{ error: 'Invalid value for step.', entry: { type: 'steps' } }],
+          errors: [
+            { error: 'Invalid value for step.', entry: { type: 'steps' } },
+          ],
         });
         mockFetch.mockResolvedValue({
           ok: false,
@@ -606,7 +628,7 @@ describe('healthDataApi', () => {
         });
 
         await expect(syncHealthData(testData)).rejects.toThrow(
-          'Server error: 400',
+          'Server error: 400'
         );
       });
 
@@ -617,12 +639,12 @@ describe('healthDataApi', () => {
           status: 400,
           text: () =>
             Promise.resolve(
-              JSON.stringify({ error: 'Invalid request body format.' }),
+              JSON.stringify({ error: 'Invalid request body format.' })
             ),
         });
 
         await expect(syncHealthData(testData)).rejects.toThrow(
-          'Server error: 400',
+          'Server error: 400'
         );
       });
 
@@ -718,11 +740,26 @@ describe('healthDataApi', () => {
         });
 
         const data = [
-          { type: 'SleepSession', date: '2024-01-01', value: 1, source: 'healthkit' },
+          {
+            type: 'SleepSession',
+            date: '2024-01-01',
+            value: 1,
+            source: 'healthkit',
+          },
           { type: 'steps', date: '2024-01-01', value: 100 },
-          { type: 'ExerciseSession', date: '2024-01-02', value: 2, source: 'healthkit' },
+          {
+            type: 'ExerciseSession',
+            date: '2024-01-02',
+            value: 2,
+            source: 'healthkit',
+          },
           { type: 'calories', date: '2024-01-01', value: 200 },
-          { type: 'Workout', date: '2024-01-03', value: 3, source: 'healthkit' },
+          {
+            type: 'Workout',
+            date: '2024-01-03',
+            value: 3,
+            source: 'healthkit',
+          },
         ] as HealthDataPayload;
 
         await syncHealthData(data);
@@ -740,7 +777,10 @@ describe('healthDataApi', () => {
         // Sleep is split out from exercise/workout.
         expect(bodies[1].map((r: any) => r.type)).toEqual(['SleepSession']);
         // Simple records last.
-        expect(bodies[2].map((r: any) => r.type)).toEqual(['steps', 'calories']);
+        expect(bodies[2].map((r: any) => r.type)).toEqual([
+          'steps',
+          'calories',
+        ]);
       });
 
       test('separates exercise/workout by source but pools sleep across sources', async () => {
@@ -751,10 +791,25 @@ describe('healthDataApi', () => {
         });
 
         const data = [
-          { type: 'ExerciseSession', date: '2024-01-01', value: 1, source: 'healthkit' },
+          {
+            type: 'ExerciseSession',
+            date: '2024-01-01',
+            value: 1,
+            source: 'healthkit',
+          },
           { type: 'Workout', date: '2024-01-01', value: 2, source: 'garmin' },
-          { type: 'SleepSession', date: '2024-01-01', value: 3, source: 'healthkit' },
-          { type: 'SleepSession', date: '2024-01-02', value: 4, source: 'garmin' },
+          {
+            type: 'SleepSession',
+            date: '2024-01-01',
+            value: 3,
+            source: 'healthkit',
+          },
+          {
+            type: 'SleepSession',
+            date: '2024-01-02',
+            value: 4,
+            source: 'garmin',
+          },
         ] as HealthDataPayload;
 
         await syncHealthData(data);
@@ -796,16 +851,18 @@ describe('healthDataApi', () => {
             date: `2024-01-${String((i % 28) + 1).padStart(2, '0')}`,
             value: i,
             source: 'healthkit',
-          }),
+          })
         ) as HealthDataPayload;
 
         await syncHealthData(data);
 
         expect(mockFetch).toHaveBeenCalledTimes(2);
         expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toHaveLength(
-          SESSION_CHUNK_SIZE,
+          SESSION_CHUNK_SIZE
         );
-        expect(JSON.parse(mockFetch.mock.calls[1][1].body)).toHaveLength(overflow);
+        expect(JSON.parse(mockFetch.mock.calls[1][1].body)).toHaveLength(
+          overflow
+        );
       });
 
       test('never splits exercise/workout for same source across chunks', async () => {
@@ -857,9 +914,9 @@ describe('healthDataApi', () => {
 
         expect(mockFetch.mock.calls.length).toBeGreaterThan(1);
 
-        const daysPerChunk: string[][] = mockFetch.mock.calls.map(call => {
+        const daysPerChunk: string[][] = mockFetch.mock.calls.map((call) => {
           const body = JSON.parse(call[1].body) as { date: string }[];
-          return [...new Set(body.map(record => record.date))].sort();
+          return [...new Set(body.map((record) => record.date))].sort();
         });
 
         // Every day appears in exactly one chunk, and each chunk covers a
@@ -938,10 +995,10 @@ describe('healthDataApi', () => {
 
         expect(mockFetch.mock.calls.length).toBe(2);
         const chunkFor = (value: number): number =>
-          mockFetch.mock.calls.findIndex(call =>
+          mockFetch.mock.calls.findIndex((call) =>
             (JSON.parse(call[1].body) as { value: number }[]).some(
-              record => record.value === value,
-            ),
+              (record) => record.value === value
+            )
           );
 
         // Both Jan-15 (UTC-8) workouts travel together; Jan 16 ships alone.
@@ -990,10 +1047,10 @@ describe('healthDataApi', () => {
 
         expect(mockFetch.mock.calls.length).toBe(2);
         const chunkFor = (value: number): number =>
-          mockFetch.mock.calls.findIndex(call =>
+          mockFetch.mock.calls.findIndex((call) =>
             (JSON.parse(call[1].body) as { value: number }[]).some(
-              record => record.value === value,
-            ),
+              (record) => record.value === value
+            )
           );
 
         expect(chunkFor(1)).toBe(chunkFor(2));
@@ -1081,7 +1138,9 @@ describe('healthDataApi', () => {
         const error = await assertion;
         expect(error).toBeInstanceOf(Error);
         expect((error as Error).message).toMatch(/Sync partially completed/);
-        expect((error as Error).message).toContain(`${CHUNK_SIZE} of ${totalRecords}`);
+        expect((error as Error).message).toContain(
+          `${CHUNK_SIZE} of ${totalRecords}`
+        );
       });
 
       test('includes auth headers on every chunk', async () => {
@@ -1105,7 +1164,7 @@ describe('healthDataApi', () => {
             expect.objectContaining({
               Authorization: 'Bearer test-api-key-12345',
               'Content-Type': 'application/json',
-            }),
+            })
           );
         }
       });
@@ -1151,7 +1210,7 @@ describe('healthDataApi', () => {
         expect.anything(),
         expect.objectContaining({
           headers: { Authorization: 'Bearer ' },
-        }),
+        })
       );
     });
 
@@ -1165,7 +1224,7 @@ describe('healthDataApi', () => {
         'https://example.com/api/identity/user',
         expect.objectContaining({
           method: 'GET',
-        }),
+        })
       );
     });
 
@@ -1244,7 +1303,7 @@ describe('healthDataApi', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://example.com/api/identity/user',
-        expect.anything(),
+        expect.anything()
       );
     });
 

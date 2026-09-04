@@ -86,7 +86,10 @@ async function searchFoods(
         authenticatedUserId,
         authenticatedUserId
       );
-      const limit = userPreferences?.food_display_limit || limitFromRequest; // Use food_display_limit for search results
+      // item_display_limit, not food_display_limit: the column was renamed by
+      // migration 20250720201800 and this read was never updated, so it
+      // resolved to undefined and the preference silently did nothing.
+      const limit = userPreferences?.item_display_limit || limitFromRequest;
       const foods = await foodRepository.searchFoods(
         name,
         targetUserId || authenticatedUserId,

@@ -65,14 +65,14 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
     c.metric === 'weight'
       ? t('cycleCorrelations.metrics.weight', { defaultValue: 'Weight' })
       : c.metric === 'mood'
-      ? t('cycleCorrelations.metrics.mood', { defaultValue: 'Mood' })
-      : c.metric === 'sleep'
-      ? t('cycleCorrelations.metrics.sleep', { defaultValue: 'Sleep' })
-      : c.metric === 'energy'
-      ? t('cycleCorrelations.metrics.energy', { defaultValue: 'Energy' })
-      : c.metric;
+        ? t('cycleCorrelations.metrics.mood', { defaultValue: 'Mood' })
+        : c.metric === 'sleep'
+          ? t('cycleCorrelations.metrics.sleep', { defaultValue: 'Sleep' })
+          : c.metric === 'energy'
+            ? t('cycleCorrelations.metrics.energy', { defaultValue: 'Energy' })
+            : c.metric;
   const unit = METRIC_UNITS[c.metric] || '';
-  const max = Math.max(...c.byPhase.map(p => p.mean), 1);
+  const max = Math.max(...c.byPhase.map((p) => p.mean), 1);
 
   return (
     <View className="bg-surface rounded-xl p-4 border-0 shadow-sm gap-3 mb-3">
@@ -86,7 +86,7 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
         </Text>
       </View>
       <View className="gap-2">
-        {c.byPhase.map(p => {
+        {c.byPhase.map((p) => {
           const percentage = p.count ? Math.round((p.mean / max) * 100) : 0;
           return (
             <View key={p.phase} className="flex-row items-center gap-2">
@@ -96,22 +96,22 @@ const CorrelationCard: React.FC<CorrelationCardProps> = ({ c }) => {
                       defaultValue: 'Menstrual',
                     })
                   : p.phase === 'follicular'
-                  ? t('cycleCorrelations.phases.follicular', {
-                      defaultValue: 'Follicular',
-                    })
-                  : p.phase === 'fertile'
-                  ? t('cycleCorrelations.phases.fertile', {
-                      defaultValue: 'Fertile',
-                    })
-                  : p.phase === 'ovulation'
-                  ? t('cycleCorrelations.phases.ovulation', {
-                      defaultValue: 'Ovulation',
-                    })
-                  : p.phase === 'luteal'
-                  ? t('cycleCorrelations.phases.luteal', {
-                      defaultValue: 'Luteal',
-                    })
-                  : p.phase}
+                    ? t('cycleCorrelations.phases.follicular', {
+                        defaultValue: 'Follicular',
+                      })
+                    : p.phase === 'fertile'
+                      ? t('cycleCorrelations.phases.fertile', {
+                          defaultValue: 'Fertile',
+                        })
+                      : p.phase === 'ovulation'
+                        ? t('cycleCorrelations.phases.ovulation', {
+                            defaultValue: 'Ovulation',
+                          })
+                        : p.phase === 'luteal'
+                          ? t('cycleCorrelations.phases.luteal', {
+                              defaultValue: 'Luteal',
+                            })
+                          : p.phase}
               </Text>
               <View className="flex-1 h-2 rounded-full bg-progress-rail overflow-hidden">
                 <View
@@ -159,7 +159,7 @@ const CorrelationCards: React.FC = () => {
   if (!correlations) return null;
 
   const flags = correlations.conditionFlags;
-  const usable = correlations.correlations.filter(c => c.hasEnoughData);
+  const usable = correlations.correlations.filter((c) => c.hasEnoughData);
 
   if (usable.length === 0 && flags.length === 0) {
     return (
@@ -182,7 +182,7 @@ const CorrelationCards: React.FC = () => {
 
   return (
     <View className="gap-3">
-      {flags.map(f => (
+      {flags.map((f) => (
         <View
           key={f.key}
           className="flex-row items-start p-3 bg-surface rounded-xl border-none shadow-sm"
@@ -197,20 +197,20 @@ const CorrelationCards: React.FC = () => {
                     'Your cycles average over 35 days. If this is new for you, it may be worth discussing with a clinician.',
                 })
               : f.key === 'irregular_cycles'
-              ? t('cycleCorrelations.conditions.irregularCycles', {
-                  defaultValue:
-                    'Your cycles vary quite a bit. Tracking a few more will sharpen your picture; consider mentioning it to a clinician.',
-                })
-              : f.key === 'short_cycles'
-              ? t('cycleCorrelations.conditions.shortCycles', {
-                  defaultValue:
-                    'Your cycles are shorter than typical. If this is new, it may be worth a clinician’s input.',
-                })
-              : f.key}
+                ? t('cycleCorrelations.conditions.irregularCycles', {
+                    defaultValue:
+                      'Your cycles vary quite a bit. Tracking a few more will sharpen your picture; consider mentioning it to a clinician.',
+                  })
+                : f.key === 'short_cycles'
+                  ? t('cycleCorrelations.conditions.shortCycles', {
+                      defaultValue:
+                        'Your cycles are shorter than typical. If this is new, it may be worth a clinician’s input.',
+                    })
+                  : f.key}
           </Text>
         </View>
       ))}
-      {usable.map(c => (
+      {usable.map((c) => (
         <CorrelationCard key={c.metric} c={c} />
       ))}
     </View>

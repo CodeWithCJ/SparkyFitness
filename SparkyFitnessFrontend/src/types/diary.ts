@@ -44,6 +44,8 @@ export interface FoodEntryUpdateData {
   variant_id?: string | null;
   meal_type_id?: string;
   entry_time?: string | null;
+  /** undefined leaves the stored note alone; null clears it. */
+  notes?: string | null;
 }
 
 export interface FoodDiaryImportRow {

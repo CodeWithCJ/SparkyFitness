@@ -4,8 +4,16 @@ import { useTranslation } from 'react-i18next';
 import { formatLocalizedNumber } from '../localization/i18n';
 import { CartesianChart, Bar } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
-import { makeChartFont, formatXLabel7d, formatXLabel30d90d, formatTooltipDate, formatChartYLabel } from './charts/chartFormatting';
-import type { StepsDataPoint, StepsRange } from '../hooks/useMeasurementsRange';
+import {
+  makeChartFont,
+  CHART_LABEL_FONT_SIZE,
+  formatXLabel7d,
+  formatXLabel30d90d,
+  formatTooltipDate,
+  formatChartYLabel,
+} from './charts/chartFormatting';
+import type { StepsDataPoint } from '../hooks/useMeasurementsRange';
+import type { HealthTrendDateRange } from '../types/healthTrends';
 import ChartTouchOverlay, {
   ChartLayoutReporter,
   EMPTY_CHART_TOUCH_LAYOUT,
@@ -17,22 +25,22 @@ type StepsBarChartProps = {
   data: StepsDataPoint[];
   isLoading: boolean;
   isError: boolean;
-  range: StepsRange;
+  range: HealthTrendDateRange;
 };
 
-const INNER_PADDING: Record<StepsRange, number> = {
+const INNER_PADDING: Record<HealthTrendDateRange, number> = {
   '7d': 0.3,
   '30d': 0.2,
   '90d': 0.1,
 };
 
-const X_TICK_COUNT: Record<StepsRange, number> = {
+const X_TICK_COUNT: Record<HealthTrendDateRange, number> = {
   '7d': 7,
   '30d': 6,
   '90d': 5,
 };
 
-const font = makeChartFont(12);
+const font = makeChartFont(CHART_LABEL_FONT_SIZE);
 
 const formatYLabel = (value: number) => formatChartYLabel(value);
 
@@ -52,7 +60,7 @@ const StepsTooltip: React.FC<{ text: string }> = ({ text }) => (
  */
 export const buildTooltipText = (
   point: StepsDataPoint | undefined,
-  t: ReturnType<typeof useTranslation>['t'],
+  t: ReturnType<typeof useTranslation>['t']
 ): string => {
   if (!point) return DEFAULT_TOOLTIP;
   const formattedCount = formatLocalizedNumber(point.steps);
@@ -78,10 +86,10 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
   ]) as [string, string];
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
-    EMPTY_CHART_TOUCH_LAYOUT,
+    EMPTY_CHART_TOUCH_LAYOUT
   );
 
-  const hasData = useMemo(() => data.some(d => d.steps > 0), [data]);
+  const hasData = useMemo(() => data.some((d) => d.steps > 0), [data]);
 
   const formatXLabel = range === '7d' ? formatXLabel7d : formatXLabel30d90d;
 
@@ -101,7 +109,7 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
 
   const handleTouchLayoutChange = useCallback(
     (nextLayout: ChartTouchLayout) => {
-      setTouchLayout(currentLayout => {
+      setTouchLayout((currentLayout) => {
         const currentSignature = createChartTouchLayoutSignature(currentLayout);
         const nextSignature = createChartTouchLayoutSignature(nextLayout);
 
@@ -112,7 +120,7 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
         return nextLayout;
       });
     },
-    [],
+    []
   );
 
   const handleSelectBar = useCallback(
@@ -125,7 +133,7 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
 
       setSelectedIndex(index);
     },
-    [data],
+    [data]
   );
 
   const handleClearSelection = useCallback(() => {
@@ -142,18 +150,24 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
 
       {isLoading ? (
         <View className="h-50 justify-center items-center">
-          <Text className="text-text-muted text-sm">{t('common.loading', { defaultValue: 'Loading...' })}</Text>
+          <Text className="text-text-muted text-sm">
+            {t('common.loading', { defaultValue: 'Loading...' })}
+          </Text>
         </View>
       ) : isError ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            {t('charts.steps.loadFailed', { defaultValue: 'Failed to load step data' })}
+            {t('charts.steps.loadFailed', {
+              defaultValue: 'Failed to load step data',
+            })}
           </Text>
         </View>
       ) : !hasData ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            {t('charts.steps.empty', { defaultValue: 'No step data for this period' })}
+            {t('charts.steps.empty', {
+              defaultValue: 'No step data for this period',
+            })}
           </Text>
         </View>
       ) : (

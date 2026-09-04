@@ -2,29 +2,32 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type {
   FoodPhotoEstimateResponse,
+  FoodPhotoLogItem,
   IndividualSessionResponse,
   PresetSessionResponse,
   SharedPregnancy,
 } from '@workspace/shared';
-import type { FoodInfoItem } from './foodInfo';
-import type { FoodEntry } from './foodEntries';
 import type { FoodFormData } from '../components/FoodForm';
+import type { SaveFoodPayload } from '../services/api/foodsApi';
+import type { CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
+import type { MealTypeKey } from '../utils/mealNutrition';
+import type { AssumedSetValues } from '../utils/workoutSession';
 import type { Exercise } from './exercise';
-import type { Meal, MealIngredientDraft } from './meals';
+import type { FamilyDiaryUser } from './familyDiary';
+import type { FoodEntry } from './foodEntries';
 import type { FoodEntryMeal } from './foodEntryMeals';
+import type { FoodInfoItem } from './foodInfo';
 import type {
   EquivalentUnit,
   FoodUnitSelectionResult,
   FoodUnitVariant,
 } from './foodUnitVariants';
+import type { Meal, MealIngredientDraft } from './meals';
+import type { MealPlanPickerTarget, MealPlanTemplate } from './mealPlans';
 import type { WorkoutPreset } from './workoutPresets';
-import type { MealTypeKey } from '../utils/mealNutrition';
-import type { SaveFoodPayload } from '../services/api/foodsApi';
-import type { CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
-import type { AssumedSetValues } from '../utils/workoutSession';
-import type { FamilyDiaryUser } from './familyDiary';
 
-export type FoodPickerMode = 'log-entry' | 'meal-builder' | 'library';
+export type FoodPickerMode =
+  'log-entry' | 'meal-builder' | 'meal-plan' | 'library';
 
 export type TabParamList = {
   Dashboard: undefined;
@@ -61,12 +64,25 @@ export type RootStackParamList = {
   PregnancySetup: { pregnancy?: SharedPregnancy } | undefined;
   FoodsLibrary: undefined;
   MealsLibrary: undefined;
+  MealPlans: undefined;
+  MealPlanForm: { template?: MealPlanTemplate; initialMeal?: Meal } | undefined;
   ExercisesLibrary: undefined;
   WorkoutPresetsLibrary: undefined;
   WorkoutPresetDetail: { preset: WorkoutPreset; updatedPreset?: WorkoutPreset };
   WorkoutPresetForm:
-    | { mode: 'create-preset'; sourceSession?: PresetSessionResponse; selectedExercise?: Exercise; selectionNonce?: number }
-    | { mode: 'edit-preset'; preset: WorkoutPreset; returnKey: string; selectedExercise?: Exercise; selectionNonce?: number };
+    | {
+        mode: 'create-preset';
+        sourceSession?: PresetSessionResponse;
+        selectedExercise?: Exercise;
+        selectionNonce?: number;
+      }
+    | {
+        mode: 'edit-preset';
+        preset: WorkoutPreset;
+        returnKey: string;
+        selectedExercise?: Exercise;
+        selectionNonce?: number;
+      };
   MealDetail: { mealId: string; initialMeal?: Meal };
   FoodDetail: {
     item: FoodInfoItem;
@@ -101,23 +117,24 @@ export type RootStackParamList = {
         pickerMode?: FoodPickerMode;
         /** Optional canonical meal type id to pre-select when logging. */
         mealTypeId?: string;
+        mealPlanTarget?: MealPlanPickerTarget;
       }
     | undefined;
-  FoodEntryAdd:
-      | {
-        item: FoodInfoItem;
-        date?: string;
-        adjustedValues?: FoodFormData;
-        adjustedUnitSelection?: FoodUnitSelectionResult;
-        adjustedCustomNutrients?: Record<string, string | number> | null;
-        pendingEquivalents?: EquivalentUnit[];
-        selectedVariantOverride?: FoodUnitVariant;
-        pickerMode?: FoodPickerMode;
-        ingredientIndex?: number;
-        returnDepth?: number;
-        /** Optional canonical meal type id to pre-select when logging. */
-        mealTypeId?: string;
-      };
+  FoodEntryAdd: {
+    item: FoodInfoItem;
+    date?: string;
+    adjustedValues?: FoodFormData;
+    adjustedUnitSelection?: FoodUnitSelectionResult;
+    adjustedCustomNutrients?: Record<string, string | number> | null;
+    pendingEquivalents?: EquivalentUnit[];
+    selectedVariantOverride?: FoodUnitVariant;
+    pickerMode?: FoodPickerMode;
+    ingredientIndex?: number;
+    returnDepth?: number;
+    /** Optional canonical meal type id to pre-select when logging. */
+    mealTypeId?: string;
+    mealPlanTarget?: MealPlanPickerTarget;
+  };
   EditLoggedMeal: { foodEntryMealId: string; initialMeal?: FoodEntryMeal };
   FoodEntryView: {
     entry: FoodEntry;
@@ -152,6 +169,7 @@ export type RootStackParamList = {
         returnDepth?: number;
         pendingScannedBarcode?: string;
         scannedBarcodeNonce?: number;
+        mealPlanTarget?: MealPlanPickerTarget;
       }
     | {
         mode: 'adjust-entry-nutrition';
@@ -164,7 +182,15 @@ export type RootStackParamList = {
         availableUnitVariants?: FoodUnitVariant[];
         selectedUnitSelection?: FoodUnitSelectionResult;
       }
-    | { mode: 'edit-food'; item: FoodInfoItem; initialValues: Partial<FoodFormData>; returnKey: string; foodId: string; variantId: string; customNutrients?: Record<string, string | number> | null };
+    | {
+        mode: 'edit-food';
+        item: FoodInfoItem;
+        initialValues: Partial<FoodFormData>;
+        returnKey: string;
+        foodId: string;
+        variantId: string;
+        customNutrients?: Record<string, string | number> | null;
+      };
   ExerciseForm:
     | { mode: 'create-exercise' }
     | { mode: 'edit-exercise'; exercise: Exercise; returnKey: string };
@@ -178,6 +204,7 @@ export type RootStackParamList = {
         providerId?: string;
         /** Preserved when the scan was started from a meal detail screen. */
         mealTypeId?: string;
+        mealPlanTarget?: MealPlanPickerTarget;
       }
     | {
         mode: 'capture-barcode';
@@ -199,19 +226,36 @@ export type RootStackParamList = {
       }
     | undefined;
   ExerciseSearch: { returnKey: string };
-  PresetSearch: { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
-  WorkoutAdd: {
-    session?: PresetSessionResponse;
-    preset?: WorkoutPreset;
-    date?: string;
-    popCount?: number;
+  PresetSearch:
+    { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
+  WorkoutAdd:
+    | {
+        session?: PresetSessionResponse;
+        preset?: WorkoutPreset;
+        date?: string;
+        popCount?: number;
+        selectedExercise?: Exercise;
+        selectionNonce?: number;
+        skipDraftLoad?: boolean;
+      }
+    | undefined;
+  ActivityAdd:
+    | {
+        entry?: IndividualSessionResponse;
+        date?: string;
+        popCount?: number;
+        selectedExercise?: Exercise;
+        selectionNonce?: number;
+        skipDraftLoad?: boolean;
+      }
+    | undefined;
+  WorkoutDetail: {
+    session: PresetSessionResponse;
     selectedExercise?: Exercise;
     selectionNonce?: number;
-    skipDraftLoad?: boolean;
-  } | undefined;
-  ActivityAdd: { entry?: IndividualSessionResponse; date?: string; popCount?: number; selectedExercise?: Exercise; selectionNonce?: number; skipDraftLoad?: boolean } | undefined;
-  WorkoutDetail: { session: PresetSessionResponse; selectedExercise?: Exercise; selectionNonce?: number };
-  ActiveWorkout: { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
+  };
+  ActiveWorkout:
+    { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
   // Post-save celebration for a finished live workout. Renders entirely from
   // the store snapshot captured before `clearWorkout()`; only calories arrive
   // via a post-save session refetch.
@@ -231,6 +275,7 @@ export type RootStackParamList = {
   };
   ActivityDetail: { session: IndividualSessionResponse };
   FastingDetail: undefined;
+  SleepDetail: { entryId: string; day: string };
   Chat: undefined;
   Logs: undefined;
   Sync: undefined;
@@ -264,6 +309,15 @@ declare global {
 export type RootStackScreenProps<T extends keyof RootStackParamList> =
   NativeStackScreenProps<RootStackParamList, T>;
 
+/**
+ * How a reviewed photo estimate is saved.
+ *
+ * The two ingredient options render an identical diary row; they differ only in
+ * whether a reusable meal template is created, which is what lets the plate be
+ * re-logged later without another photo.
+ */
+export type SaveMode = 'ingredients_and_meal' | 'ingredients_only' | 'one_food';
+
 export type FoodPhotoFlowParamList = {
   Improve: {
     date?: string;
@@ -285,12 +339,54 @@ export type FoodPhotoFlowParamList = {
     /** Preserved when the photo flow was started from a meal detail screen. */
     mealTypeId?: string;
   };
-  LogEntry: {
-    date?: string;
-    saveFoodPayload: SaveFoodPayload;
-    /** Preselected meal type when the flow was started from a meal detail. */
-    mealTypeId?: string;
-  };
+  /**
+   * Discriminated on `mode`, because the two log shapes carry genuinely
+   * different data: `combined` is the original single-food path, `grouped`
+   * carries the reviewed ingredient rows straight to the batch log endpoint.
+   */
+  LogEntry:
+    | {
+        date?: string;
+        /** Preselected meal type when the flow was started from a meal detail. */
+        mealTypeId?: string;
+        mode: 'combined';
+        saveFoodPayload: SaveFoodPayload;
+      }
+    | {
+        date?: string;
+        mealTypeId?: string;
+        mode: 'grouped';
+        /** Meal name for the ad-hoc food_entry_meals parent. */
+        mealName: string;
+        description?: string;
+        ingredients: FoodPhotoLogItem[];
+        /** Also save the plate as a reusable meal template. */
+        saveAsMeal: boolean;
+        /**
+         * How the dish divides and how much of it is being logged. `ingredients`
+         * always describes the WHOLE dish; the server logs
+         * `consumedQuantity / (servingSize * totalServings)` of it and keeps the
+         * whole dish in the reusable meal.
+         */
+        servingSize: number;
+        servingUnit: string;
+        totalServings: number;
+        consumedQuantity: number;
+        /**
+         * Nutrition as reviewed, for the confirmation recap. Items matched to a
+         * saved food carry no nutrition of their own (the server snapshots it
+         * from the database), so the recap cannot be summed from `ingredients`.
+         */
+        nutrition: {
+          grams: number;
+          calories: number;
+          protein: number;
+          carbs: number;
+          fat: number;
+          fiber: number;
+          sugars: number;
+        };
+      };
 };
 
 export type FoodPhotoFlowScreenProps<T extends keyof FoodPhotoFlowParamList> =

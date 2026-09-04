@@ -5,9 +5,18 @@ import {
   getMealTypeById,
   updateMealType,
   deleteMealType,
+  getMealTypeDeletionImpact,
+  MEAL_TYPE_SYSTEM_MESSAGE,
+  MEAL_TYPE_IN_USE_MESSAGE,
+  MEAL_TYPE_INVALID_TARGET_MESSAGE,
 } from '../models/mealType.js';
+import {
+  MealTypeIdParamSchema,
+  DeleteMealTypeQuerySchema,
+} from '../schemas/mealTypeSchemas.js';
 import { log } from '../config/logging.js';
 import { authenticate } from '../middleware/authMiddleware.js';
+import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import { isEntryTimeString } from '@workspace/shared';
 const router = express.Router();
 router.use(authenticate);
@@ -275,11 +284,75 @@ router.put('/:id', async (req, res) => {
 });
 /**
  * @swagger
+ * /meal-types/{id}/deletion-impact:
+ *   get:
+ *     summary: Report what references a meal type
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Returns per-category counts of the records that reference this meal
+ *       type. Used to show the user exactly what a delete would affect before
+ *       they choose to reassign those records or delete them.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The ID of the meal type to inspect.
+ *     responses:
+ *       200:
+ *         description: The deletion impact report.
+ *       401:
+ *         description: Unauthorized, authentication token is missing or invalid.
+ *       404:
+ *         description: Meal type not found.
+ *       500:
+ *         description: Failed to fetch meal type deletion impact.
+ */
+router.get(
+  '/:id/deletion-impact',
+  checkPermissionMiddleware('diary'),
+  async (req, res) => {
+    try {
+      const userId = req.userId;
+      const params = MealTypeIdParamSchema.safeParse(req.params);
+      if (!params.success) {
+        return res.status(400).json({ error: 'id must be a valid UUID' });
+      }
+      const { id } = params.data;
+      const mealType = await getMealTypeById(id, userId);
+      if (!mealType) {
+        return res.status(404).json({ error: 'Meal type not found' });
+      }
+      const impact = await getMealTypeDeletionImpact(id, userId);
+      res.status(200).json(impact);
+    } catch (error) {
+      log(
+        'error',
+        `Route GET /meal-types/${req.params.id}/deletion-impact error:`,
+        error
+      );
+      res
+        .status(500)
+        .json({ error: 'Failed to fetch meal type deletion impact' });
+    }
+  }
+);
+/**
+ * @swagger
  * /meal-types/{id}:
  *   delete:
  *     summary: Delete a custom meal type
  *     tags: [Nutrition & Meals]
- *     description: Deletes a custom meal type. System default meal types cannot be deleted.
+ *     description: >
+ *       Deletes a custom meal type. System default meal types cannot be
+ *       deleted. With no query parameters the delete only succeeds when
+ *       nothing references the meal type. Use `mode=reassign` with
+ *       `reassignTo` to move referencing records to another meal type first,
+ *       or `mode=force` to permanently delete them.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -290,9 +363,28 @@ router.put('/:id', async (req, res) => {
  *           type: string
  *           format: uuid
  *         description: The ID of the meal type to delete.
+ *       - in: query
+ *         name: mode
+ *         required: false
+ *         schema:
+ *           type: string
+ *           enum: [strict, reassign, force]
+ *         description: >
+ *           `strict` (default) fails if the meal type is in use. `reassign`
+ *           moves referencing records to `reassignTo`. `force` permanently
+ *           deletes referencing food entries, logged meals, and plan items.
+ *       - in: query
+ *         name: reassignTo
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Target meal type ID. Required when `mode=reassign`.
  *     responses:
  *       200:
  *         description: Meal type deleted successfully.
+ *       400:
+ *         description: Invalid mode, or missing/invalid reassignment target.
  *       401:
  *         description: Unauthorized, authentication token is missing or invalid.
  *       403:
@@ -300,32 +392,48 @@ router.put('/:id', async (req, res) => {
  *       404:
  *         description: Meal type not found or cannot be deleted.
  *       409:
- *         description: Conflict, meal type contains food entries and cannot be deleted.
+ *         description: Conflict, meal type is still in use and cannot be deleted.
  *       500:
  *         description: Failed to delete meal type.
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', checkPermissionMiddleware('diary'), async (req, res) => {
   try {
     const userId = req.userId;
-    const { id } = req.params;
-    const deleted = await deleteMealType(id, userId);
-    if (!deleted) {
+    const params = MealTypeIdParamSchema.safeParse(req.params);
+    if (!params.success) {
+      return res.status(400).json({ error: 'id must be a valid UUID' });
+    }
+    const query = DeleteMealTypeQuerySchema.safeParse(req.query);
+    if (!query.success) {
+      return res
+        .status(400)
+        .json({ error: query.error.issues[0]?.message ?? 'Invalid request.' });
+    }
+    const { id } = params.data;
+    const { mode } = query.data;
+    const targetMealTypeId = query.data.reassignTo ?? null;
+    const result = await deleteMealType(id, userId, { mode, targetMealTypeId });
+    if (!result.deleted) {
       return res
         .status(404)
         .json({ error: 'Meal type not found or cannot be deleted' });
     }
-    res.status(200).json({ message: 'Meal type deleted successfully' });
+    res.status(200).json({
+      message: 'Meal type deleted successfully',
+      mode: result.mode,
+      ...(result.reassignedTo ? { reassignedTo: result.reassignedTo } : {}),
+    });
   } catch (error) {
     log('error', `Route DELETE /meal-types/${req.params.id} error:`, error);
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.includes('system default')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(403).json({ error: error.message });
+    const message = error instanceof Error ? error.message : '';
+    if (message === MEAL_TYPE_SYSTEM_MESSAGE) {
+      return res.status(403).json({ error: message });
     }
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.includes('contains food entries')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(409).json({ error: error.message });
+    if (message === MEAL_TYPE_INVALID_TARGET_MESSAGE) {
+      return res.status(400).json({ error: message });
+    }
+    if (message === MEAL_TYPE_IN_USE_MESSAGE) {
+      return res.status(409).json({ error: message });
     }
     res.status(500).json({ error: 'Failed to delete meal type' });
   }

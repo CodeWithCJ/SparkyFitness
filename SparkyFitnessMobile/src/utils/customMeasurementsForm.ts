@@ -57,8 +57,7 @@ export type CustomOp =
   | { kind: 'delete'; entryId: string; categoryId: string; rowKey: string };
 
 export type BuildCustomOpsResult =
-  | { ok: true; operations: CustomOp[] }
-  | { ok: false };
+  { ok: true; operations: CustomOp[] } | { ok: false };
 
 export type CustomCategoryMeta = Pick<
   CustomCategory,
@@ -74,7 +73,7 @@ export function isManualSource(source: string | null | undefined): boolean {
 
 export function rowValue(
   value: string,
-  dataType: string | null | undefined,
+  dataType: string | null | undefined
 ): string | number | boolean | null {
   const trimmed = value.trim();
   if (trimmed === '') return null;
@@ -143,7 +142,7 @@ function syncDailyCategory(
   manualServer: CustomMeasurementEntry[],
   prev: CustomCategoryForm | undefined,
   dirtyKeys: ReadonlySet<string>,
-  allServer: CustomMeasurementEntry[],
+  allServer: CustomMeasurementEntry[]
 ): CustomCategoryForm {
   const serverEntry = manualServer[0];
   const prevRow = prev?.rows[0] ?? null;
@@ -170,7 +169,10 @@ function syncDailyCategory(
   }
 
   const serverIds = new Set(allServer.map((e) => e.id));
-  return { rows, deleted: (prev?.deleted ?? []).filter((d) => serverIds.has(d.entryId)) };
+  return {
+    rows,
+    deleted: (prev?.deleted ?? []).filter((d) => serverIds.has(d.entryId)),
+  };
 }
 
 /**
@@ -240,6 +242,10 @@ export function buildCustomOps(params: {
   return { ok: true, operations };
 }
 
-export function emptyFormFor(categories: CustomCategoryMeta[]): CustomFormState {
-  return Object.fromEntries(categories.map((cat) => [cat.id, { rows: [], deleted: [] }]));
+export function emptyFormFor(
+  categories: CustomCategoryMeta[]
+): CustomFormState {
+  return Object.fromEntries(
+    categories.map((cat) => [cat.id, { rows: [], deleted: [] }])
+  );
 }

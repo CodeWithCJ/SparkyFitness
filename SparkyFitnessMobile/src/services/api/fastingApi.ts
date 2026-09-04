@@ -52,7 +52,11 @@ interface EndFastParams {
   endTime: string;
 }
 
-export const endFast = ({ id, startTime, endTime }: EndFastParams): Promise<FastingLog> =>
+export const endFast = ({
+  id,
+  startTime,
+  endTime,
+}: EndFastParams): Promise<FastingLog> =>
   apiFetch<FastingLog>({
     endpoint: '/api/fasting/end',
     serviceName: SERVICE_NAME,
@@ -69,7 +73,10 @@ export const endFast = ({ id, startTime, endTime }: EndFastParams): Promise<Fast
  * Partial update of a fasting log (start/end/target times, fasting type, ...).
  * The server recomputes duration_minutes and rejects start_time > end_time.
  */
-export const updateFast = (id: string, updates: Partial<FastingLog>): Promise<FastingLog> =>
+export const updateFast = (
+  id: string,
+  updates: Partial<FastingLog>
+): Promise<FastingLog> =>
   apiFetch<FastingLog>({
     endpoint: `/api/fasting/${id}`,
     serviceName: SERVICE_NAME,

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-08-26*
+_Last updated: 2026-08-31_
 
 SparkyFitness Mobile is a React Native 0.85 + Expo SDK 56 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -31,7 +31,7 @@ English (`en`) is the canonical source locale and the deterministic fallback. Fe
 
 Feature developers do not need to know or translate Polish or any future language, and do not need to wait for Weblate. Translators/Weblate own Polish and future translations and linguistic QA. Missing translation content is non-blocking and falls back to English; existing translated content remains structurally validated.
 
-The shipped locale registry is `src/localization/localeRegistry.ts`. Adding a catalog to Weblate does not ship it. Shipping requires explicit registry enablement plus native/platform support verification. RN catalogs and native resources are separate surfaces (Expo metadata, Android widget resources, and iOS widget/Live Activity `.lproj` resources).
+The shipped locale registry is `src/localization/localeRegistry.json`, read through the typed accessors in `src/localization/localeRegistry.ts`. Adding a catalog to Weblate does not ship it. Shipping requires explicit registry enablement plus native/platform support verification. RN catalogs and native resources are separate surfaces (Expo metadata, Android widget resources, and iOS widget/Live Activity `.lproj` resources).
 
 ## Commands
 
@@ -48,7 +48,7 @@ pnpm run test:coverage -- --watchman=false --runInBand
 npx expo prebuild --clean
 ```
 
-- `pnpm run validate` runs TypeScript typecheck, Expo lint, and the blocking mobile i18n audit.
+- `pnpm run validate` runs i18n generate check, typecheck, lint, i18n audit, Knip (`pnpm run knip` for unused files and exports), and native locales check together.
 - Use Watchman-disabled Jest commands in agent/sandbox runs; bare Jest often fails on macOS.
 - `collectCoverage` is enabled in Jest config, so expect coverage output from normal test runs.
 - Run `npx expo prebuild --clean` after native dependency changes, permissions, app group or widget target changes, Expo plugin changes, native config edits, or patching native modules.
@@ -70,7 +70,7 @@ npx expo prebuild --clean
 - Native header option/button builders live in `utils/nativeHeaderItems.ts` (`createIOSNativeHeaderOptions`, `createIOSSmallNativeHeaderOptions`, text/icon button items); header action colors come from `useHeaderActionColors`, which is Liquid-Glass-aware on iOS.
 - Root-stack screens with a screen-owned React header are automatically checked by `__tests__/navigation/nativeHeaderContract.test.ts`; do not add screen-specific native-header allowlists.
 - Root-stack screens with a screen-owned React header and a real back button must set `headerBackTitle` or `headerBackButtonDisplayMode: 'minimal'` in `App.tsx` so iOS back labels stay explicit or intentionally hidden; close/cancel modal headers do not need either option.
-- Declare screen headers with `useScreenHeader(config)` (`src/hooks/useScreenHeader.tsx`), or the thin `<ScreenHeader …/>` wrapper when nothing interleaves with the bar. One declarative descriptor (`title`/`nativeTitle`, `left`/`right` items of kind `back`/`dismiss`/`text`/`icon`/`primary`/`menu`, `busy`/`disabled`, `animateKey` for view↔edit cross-fades) renders both paths: on the native path it mirrors items into `unstable_header{Left,Right}Items` via a layout effect and returns `null`; on the custom path it returns the bar element for the screen to render. A `menu` item is a declarative dropdown (plain actions and/or titled single-select sections, optional accent-dot `showsBadge`): the native path builds a system UIMenu header button, the custom path renders the trigger plus an `AnchoredMenu` under it — one item list drives both, as in `FoodsLibraryScreen`'s ownership filter. Hook screens must not keep hand-rolled header code (no `unstable_header*Items` blocks or custom bars alongside the hook) — the contract test enforces this.
+- Declare screen headers with `useScreenHeader(config)` (`src/hooks/useScreenHeader.tsx`). One declarative descriptor (`title`/`nativeTitle`, `left`/`right` items of kind `back`/`dismiss`/`text`/`icon`/`primary`/`menu`, `busy`/`disabled`, `animateKey` for view↔edit cross-fades) renders both paths: on the native path it mirrors items into `unstable_header{Left,Right}Items` via a layout effect and returns `null`; on the custom path it returns the bar element for the screen to render. A `menu` item is a declarative dropdown (plain actions and/or titled single-select sections, optional accent-dot `showsBadge`): the native path builds a system UIMenu header button, the custom path renders the trigger plus an `AnchoredMenu` under it — one item list drives both, as in `FoodsLibraryScreen`'s ownership filter. Hook screens must not keep hand-rolled header code (no `unstable_header*Items` blocks or custom bars alongside the hook) — the contract test enforces this.
 - Path selection is `useNativeIOSHeadersActive()` (`services/nativeTabBarPreference.ts`): always false on Android; on iOS it is true below iOS 26 (classic native headers) and follows the Liquid Glass toggle on iOS 26+, so turning the toggle off swaps in the same screen-owned fallback headers Android renders.
 - One-accent rule: exactly one primary header action per screen (`kind: 'primary'` or `role: 'primary'`), enforced with a `__DEV__` throw; primary header save buttons fall back to the localized `t('common.save')` / `t('common.saving')` labels when no `label`/`busyLabel` is supplied. Footer-save forms mark their header Save `placement: 'native-only'` so the custom bar does not duplicate the sticky-footer button. `onPress` handlers dispatch through the hook's internal ref map — do not add per-screen handler-ref effects for native header buttons.
 - A **right-slot** `kind: 'primary'` press is wrapped in the shared synchronous duplicate-press guard (`utils/duplicatePress.ts`, same one `FooterSaveBar` uses): presses inside `DUPLICATE_PRESS_WINDOW_MS` collapse to one. `disabled`/`busy` are React state and have not committed when taps queued behind a blocked JS thread replay, so every queued press otherwise ran the handler again (#2191). The guard is deliberately time-based, not a latch on `busy`, because handlers that never report a pending state would leave the button dead. **Left-slot** primaries are exempt — that slot is navigation, and `CycleOnboardingScreen` uses the sugar for a wizard Back where repeated presses are intended. A screen that needs a rapidly repeatable right-slot action must not use `kind: 'primary'`.
@@ -78,7 +78,7 @@ npx expo prebuild --clean
 - Screens intentionally off the hook (e.g. `FoodSearchScreen`'s bespoke anchored-menu bar) must mirror custom actions with `unstable_header{Left,Right}Items` themselves, hide the screen-owned React header behind `useNativeIOSHeadersActive()` with a guard such as `{!usesNativeHeader && <Header />}`, and gate the `useLayoutEffect` that sets native header items on the same flag; otherwise iOS renders both headers.
 - When adding a tab, update `TabParamList`, `NativeTab.Screen`, and `FallbackTab.Screen`; for content tabs also add a tab-local native stack screen using `createIOSNativeHeaderOptions(...)`.
 - `__tests__/navigation/nativeHeaderContract.test.ts` enforces this native-header wiring. If it fails, fix the route/type/navigator alignment instead of weakening the test.
-- Current stack screens include onboarding/tabs, library/detail/form flows for foods/meals/exercises/presets, food entry view/edit, meal type detail and copy, the family diary flows (`FamilyMembers`, `FamilyDiary`, `FamilyMealDetail`, and `FamilyCopyReview`), `EditBarcode`, food search/entry/scan/photo flow, workout/activity add/detail, exercise/preset search, settings subscreens, logs, sync, measurements, fasting, and `WhatsNew`.
+- Current stack screens include onboarding/tabs, library/detail/form flows for foods/meals/meal plans/exercises/presets, food entry view/edit, meal type detail and copy, the family diary flows (`FamilyMembers`, `FamilyDiary`, `FamilyMealDetail`, and `FamilyCopyReview`), `EditBarcode`, food search/entry/scan/photo flow, workout/activity add/detail, exercise/preset search, settings subscreens, logs, sync, measurements, fasting, and `WhatsNew`.
 - `AddSheet` offers Food, Workout, Activity, Preset, Measurements, Scan Food, Ask Sparky, and Sync Health Data. Keep its present/dismiss refs intact to avoid Android re-present loops.
 - `useNavigationActionGuard` locks navigation-triggering actions while a native-stack transition is running (idle-callback unlock on re-focus, 5s safety release) so double-taps cannot queue duplicate screens; Library create actions use it.
 - `ActiveWorkoutBar` is mounted outside normal screen trees, uses the root navigation ref, and hides itself on modal/editor routes such as food search/forms/scan/photo, exercise search, workout/activity add, measurements, and barcode edit.
@@ -129,7 +129,8 @@ npx expo prebuild --clean
 - On iOS, cumulative metrics should use HealthKit statistics queries, not raw sample summation.
 - On Android, cumulative metrics (`Steps`, `Distance`, `ActiveCaloriesBurned`, `TotalCaloriesBurned`, `FloorsClimbed`) use Health Connect `aggregateGroupByPeriod` once per range. Native source-priority dedup should match Health Connect UI; do not reintroduce JS `Math.max` or source allowlist dedup.
 - Android read helpers return `{ records, error }` via `readHealthRecordsDetailed` and `aggregateCumulativeMetricByDayDetailed`; legacy wrappers unwrap only records.
-- Android exercise sessions are enriched with `aggregateRecord` for active/total calories and distance over the session window. Calories start scoped to `dataOrigin`; incomplete or implausible pairs retry without the origin filter so Health Connect can apply source priority. Distance always stays origin-scoped. Both are filtered for plausibility.
+- Android exercise sessions are enriched with `aggregateRecord` for active, total, and basal calories plus distance and steps over the session window. Active/total calories start scoped to `dataOrigin`, while basal energy remains unfiltered; `total - basal` is compared as an active-energy candidate. Incomplete or implausible active/total pairs retry without the origin filter so Health Connect can apply source priority. Distance and steps always stay origin-scoped; never infer workout steps from an unfiltered clock-window query.
+- iOS exercise-session steps must come from statistics attached directly to the `HKWorkout`. Do not infer workout steps by querying all step samples in the workout's clock window.
 - iOS HealthKit locked-device failures surface as database-inaccessible warnings. Do not treat these as successful empty reads.
 - `app.config.ts` grants `android.permission.health.READ_HEALTH_DATA_HISTORY` so Android can read data older than 30 days.
 - Health Connect permission migrations belong in `services/shared/healthPermissionMigration.ts`, not UI-only state.
@@ -159,11 +160,12 @@ npx expo prebuild --clean
 ## Food, Meals, Units, And Photo Estimates
 
 - Food search spans local foods, online providers, meals, barcode scan, label scan, and AI photo estimates. Keep `FoodSearchScreen`, `FoodScanScreen`, `FoodEntryAddScreen`, `FoodFormScreen`, `FoodPhotoFlow`, and route params aligned.
-- `LibraryScreen` is the hub for saved Foods, Meals, Exercises, and Workout Presets. Full lists live in `FoodsLibraryScreen`, `MealsLibraryScreen`, `ExercisesLibraryScreen`, and `WorkoutPresetsLibraryScreen`.
+- `LibraryScreen` is the hub for saved Foods, Meals, recurring Meal Plans, Exercises, and Workout Presets. Full lists live in `FoodsLibraryScreen`, `MealsLibraryScreen`, `MealPlansScreen`, `ExercisesLibraryScreen`, and `WorkoutPresetsLibraryScreen`.
 - Food detail/edit flow: `FoodDetailScreen`, `FoodFormScreen`, `FoodForm`, `FoodUnitSelectorSheet`, `useFoodVariants`, `useFoodsLibrary`, `useDeleteFood`, `foodsApi`, and `utils/foodDetails.ts`.
 - `FoodForm` supports equivalent serving sizes grouped by nutrient signature, auto-scale nutrition, compatible unit conversion via `convertServingSizeOnUnitChange`, optional AI cross-category unit conversion, custom nutrients, and caller-provided `headerChildren`.
 - `EditBarcodeScreen` lets users add or remove extra barcodes for a saved food. Keep `FoodDetailScreen`, `EditBarcodeScreen`, `foodsApi`, and the `EditBarcode` route params aligned.
 - Meal templates use `MealAddScreen`, `MealDetailScreen`, `FoodSearch` / `FoodEntryAdd` with `pickerMode: 'meal-builder'`, and `services/mealBuilderSelection.ts` for pending ingredient handoff.
+- Recurring meal plans use `MealPlansScreen`, `MealPlanFormScreen`, `useMealPlans`, `mealPlansApi`, and `utils/mealPlanForm.ts`. Plans can schedule any meal already visible in the user's meal library, including family/public meals, but the plan itself remains private to its owner.
 - Logged-meal grouped diary entries use `foodEntryMealsApi`, `FoodEntryViewScreen`, and `EditLoggedMealScreen`. Preserve stored component nutrition snapshots when editing.
 - `MealTypeDetailScreen` owns single-meal-type day views and copy-to-another-day via `useCopyFoodEntries`; be careful with custom meal types and synthetic buckets.
 - External food providers use provider-agnostic v2 endpoints where possible. Provider categories and barcode support come from server config; do not hardcode provider type allowlists unless preserving an explicit fallback.
@@ -242,6 +244,7 @@ npx expo prebuild --clean
 
 - iOS widgets live under `targets/widget/`, share data through the app group from `app.identifiers.js`, and reload through `ExtensionStorage` in `useWidgetSync`.
 - Current iOS widgets are calorie and macro widgets. When changing display, update Swift views, shared helpers, TS snapshot shape, and reload kind handling together.
+- Widget string keys are derived from the Swift sources, not tracked by hand: `__tests__/config/helpers/widgetSwiftKeys.ts` discovers every `.swift` file under `targets/widget/` (recursively) and extracts the literal keys passed to `localizedWidgetString`, `configurationDisplayName` and `.description`. A new key must therefore be added to `targets/widget/en.lproj/Localizable.strings`, and — for `localizedWidgetString` keys — to the `fallbackWidgetString` map, or the contract tests fail. Target-language files stay optional and fall back to EN.
 - Android widgets live under `targets/android-widget/`. `plugins/withCalorieWidget.ts` copies Kotlin/templates/resources, registers receivers, wires the native module package, and documents the pattern for adding another widget.
 - `src/services/CalorieWidgetBridge.ts` is the JS bridge for Android widget snapshot writes and Glance reloads.
 - The scheduled "Rest complete" alert fires exactly only with the `SCHEDULE_EXACT_ALARM` special access ("Alarms & reminders", user-granted, denied by default on Android 13+) — without it expo-notifications falls back to inexact alarms the OS batches ~15s late. The `targets/android-exact-alarm/` Kotlin module (registered by `plugins/withExactAlarmModule.ts`) exposes `canScheduleExactAlarms`/`openExactAlarmSettings` through `src/services/ExactAlarmBridge.ts`; `maybePromptForExactAlarmPermission` in `notifications.ts` owns the one-time grant prompt at workout start.
@@ -265,7 +268,7 @@ All endpoints require auth headers, and proxy headers are injected before auth h
 
 - `healthDataApi.ts` - `POST /api/health-data`, identity checks, chunking, timeout, retry, session-expiry handling.
 - `dailySummaryApi.ts`, `goalsApi.ts`, `measurementsApi.ts`, `preferencesApi.ts` - daily summary, goals, check-ins, water, timezone bootstrap, nutrient display preferences.
-- `foodEntriesApi.ts`, `foodEntryMealsApi.ts`, `foodsApi.ts`, `mealsApi.ts`, `mealTypesApi.ts` - diary food entries, grouped logged meals, saved foods/variants/barcodes, saved meals, meal types.
+- `foodEntriesApi.ts`, `foodEntryMealsApi.ts`, `foodsApi.ts`, `mealsApi.ts`, `mealTypesApi.ts`, `mealPlansApi.ts` - diary food entries, grouped logged meals, saved foods/variants/barcodes, saved meals, meal types, and recurring meal plans.
 - `externalFoodSearchApi.ts`, `aiSettingsApi.ts`, `aiConversionApi.ts` - provider-agnostic food search/details/barcode, label/photo estimate, AI availability, unit conversion.
 - `exerciseApi.ts`, `externalExerciseSearchApi.ts`, `workoutPresetsApi.ts` - exercise history, suggested/search/import flows, preset/individual exercise sessions, workout presets.
 - `fastingApi.ts` - `POST /api/fasting/start`, `POST /api/fasting/end`, and current/stats/history reads.
@@ -311,7 +314,7 @@ const androidService = require('../../src/services/healthConnectService.ts');
 - Health sync bug: start at `healthConnectService.ts` or `.ios.ts`, then `services/healthconnect/` or `services/healthkit/`, `backgroundSyncService.ts`, `autoSyncCoordinator.ts`, `useSyncHealthData.ts`, `SyncScreen.tsx`, and `healthDataApi.ts`.
 - Health writeback bug: inspect `HealthDataWriteback`, `services/writeback.ts` / `.ios.ts`, platform writeback modules, mapper files, tracking storage, app permissions, and inbound source filters.
 - Food library/edit bug: inspect `LibraryScreen`, food library/detail/form/barcode screens, `FoodForm`, unit selector, food hooks, `foodsApi`, food unit types, and `foodDetails.ts`.
-- Meal bug: inspect meals library/detail/add/edit screens, `MealTypeDetailScreen`, food picker routes, meal hooks/API, selection service, logged-meal API, and meal nutrition utils.
+- Meal bug: inspect meals library/detail/add/edit screens, meal plan list/form screens, `MealTypeDetailScreen`, food picker routes, meal and meal-plan hooks/APIs, selection service, logged-meal API, and meal nutrition/form utils.
 - Family diary bug: inspect `FamilyMembersScreen`, `FamilyDiaryScreen`, `FamilyMealDetailScreen`, `FamilyCopyReviewScreen`, family hooks/API, navigation params, and the server family/food-entry routes and models.
 - Exercise/preset bug: inspect library/detail/form/search screens, related hooks/API, selected-exercise handoff, rest-period controls, and workout session helpers.
 - Workout/activity/HUD bug: inspect `AddSheet`, workout/activity screens, workout form hooks, `workoutDraftService`, `activeWorkoutStore`, `ActiveWorkoutBar`, rest notifications, and detail screen set interactions.
@@ -319,6 +322,7 @@ const androidService = require('../../src/services/healthConnectService.ts');
 - Measurements/hydration bug: inspect dashboard/diary/measurements screens, summaries/gauges, measurement/water/check-in hooks, API, date helpers, widget sync, writeback, and unit conversions.
 - Scan/photo bug: inspect food scan/search, `FoodPhotoFlow`, photo screens, AI setting hook/API, estimate hook/API, intro persistence, haptics, icon usage, and route params.
 - Widget/deep-link bug: inspect `useWidgetSync`, `CalorieWidgetBridge`, widget targets, widget plugins, `app.config.ts`, `app.identifiers.js`, `App.tsx`, and dashboard.
+- Widget string shows as a raw key: inspect `targets/widget/en.lproj/Localizable.strings`, the `fallbackWidgetString` map in `SharedHelpers.swift`, and the derived-key contract in `__tests__/config/helpers/widgetSwiftKeys.ts`.
 - Settings/diagnostics bug: inspect settings screens, `SettingsRow`, haptics/theme/sounds/notification services, diagnostics services, `DevTools`, and screen error boundaries.
 
 ## Priority Rule

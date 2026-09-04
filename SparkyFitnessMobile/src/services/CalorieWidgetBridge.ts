@@ -1,5 +1,8 @@
 import { NativeModules, Platform } from 'react-native';
-import type { LanguagePreference, SupportedLanguage } from '../localization/i18n';
+import type {
+  LanguagePreference,
+  SupportedLanguage,
+} from '../localization/i18n';
 
 export type WidgetLocalePreference = LanguagePreference;
 export type WidgetEffectiveLanguage = SupportedLanguage;
@@ -9,7 +12,7 @@ interface CalorieWidgetNativeModule {
   setMacroSnapshot(json: string): Promise<void>;
   prepareWidgetLocale(
     preference: WidgetLocalePreference,
-    effectiveLanguage: WidgetEffectiveLanguage,
+    effectiveLanguage: WidgetEffectiveLanguage
   ): Promise<void>;
   reloadWidget(): Promise<void>;
   reloadMacroWidget(): Promise<void>;
@@ -44,7 +47,7 @@ export const CalorieWidgetBridge = {
    */
   async prepareWidgetLocale(
     preference: WidgetLocalePreference,
-    effectiveLanguage: WidgetEffectiveLanguage,
+    effectiveLanguage: WidgetEffectiveLanguage
   ): Promise<void> {
     if (!nativeModule) return;
     await nativeModule.prepareWidgetLocale(preference, effectiveLanguage);

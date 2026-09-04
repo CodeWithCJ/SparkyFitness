@@ -1,10 +1,17 @@
-import { getActiveServerConfig, proxyHeadersToRecord, ServerConfig } from '../storage';
+import {
+  getActiveServerConfig,
+  proxyHeadersToRecord,
+  ServerConfig,
+} from '../storage';
 import { addLog } from '../LogService';
 import { normalizeUrl } from './apiClient';
 import { ApiError } from './errors';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { ensureTimezoneBootstrapped } from './preferencesApi';
-import { CONNECTION_CHECK_TIMEOUT_MS, fetchWithTimeout } from '../../utils/concurrency';
+import {
+  CONNECTION_CHECK_TIMEOUT_MS,
+  fetchWithTimeout,
+} from '../../utils/concurrency';
 import {
   instantToDay,
   instantToDayWithOffset,
@@ -106,10 +113,10 @@ interface RetryConfig {
  * Retries on network errors, timeouts, and 5xx responses.
  * Does NOT retry on 4xx (including 401 which triggers session expiry).
  */
-export const fetchWithRetry = async (
+export const _fetchWithRetry = async (
   url: string,
   options: RequestInit,
-  { timeoutMs, maxRetries, baseDelayMs, serverConfig }: RetryConfig,
+  { timeoutMs, maxRetries, baseDelayMs, serverConfig }: RetryConfig
 ): Promise<Response> => {
   let lastError: Error | undefined;
 
@@ -127,7 +134,11 @@ export const fetchWithRetry = async (
           notifySessionExpired(serverConfig.id);
         }
         const errorText = await response.text();
-        throw new ApiError(`Server error: ${response.status} - ${errorText}`, response.status, errorText);
+        throw new ApiError(
+          `Server error: ${response.status} - ${errorText}`,
+          response.status,
+          errorText
+        );
       }
 
       // 5xx — retryable
@@ -145,7 +156,10 @@ export const fetchWithRetry = async (
     // Retry with exponential backoff (skip delay after last attempt)
     if (attempt < maxRetries - 1) {
       const delay = baseDelayMs * Math.pow(2, attempt);
-      addLog(`[API] Retry ${attempt + 1}/${maxRetries - 1}: waiting ${delay}ms`, 'WARNING');
+      addLog(
+        `[API] Retry ${attempt + 1}/${maxRetries - 1}: waiting ${delay}ms`,
+        'WARNING'
+      );
       await sleep(delay);
     }
   }
@@ -207,13 +221,16 @@ const recordDay = (
  */
 const splitWorkoutGroupBySize = (
   records: HealthDataPayloadItem[],
-  accountTimezone: string,
+  accountTimezone: string
 ): HealthDataPayloadItem[][] => {
   const sizeOf = (record: HealthDataPayloadItem): number =>
     JSON.stringify(record).length;
 
   let totalBytes = 0;
-  const byDay = new Map<string, { records: HealthDataPayloadItem[]; bytes: number }>();
+  const byDay = new Map<
+    string,
+    { records: HealthDataPayloadItem[]; bytes: number }
+  >();
   for (const record of records) {
     const day = recordDay(record, accountTimezone);
     const bytes = sizeOf(record);
@@ -235,7 +252,10 @@ const splitWorkoutGroupBySize = (
   const days = [...byDay.keys()].sort();
   for (const day of days) {
     const bucket = byDay.get(day)!;
-    if (current.length > 0 && currentBytes + bucket.bytes > WORKOUT_CHUNK_SOFT_LIMIT_BYTES) {
+    if (
+      current.length > 0 &&
+      currentBytes + bucket.bytes > WORKOUT_CHUNK_SOFT_LIMIT_BYTES
+    ) {
       chunks.push(current);
       current = [];
       currentBytes = 0;
@@ -259,7 +279,9 @@ const SMALL_CHUNK_TYPES = new Set(['SleepSession', 'Nutrition']);
 // per-record results with at least one processed record is that legacy partial
 // success. A 400 with no processed records (all rejected, or a malformed-body
 // {error} shape) stays a real failure.
-const parseLegacyPartialFailure = (error: unknown): RecordSyncError[] | null => {
+const parseLegacyPartialFailure = (
+  error: unknown
+): RecordSyncError[] | null => {
   if (!(error instanceof ApiError) || error.statusCode !== 400 || !error.body) {
     return null;
   }
@@ -286,7 +308,7 @@ const sendHealthDataChunked = async (
   headers: Record<string, string>,
   data: HealthDataPayload,
   serverConfig: ServerConfig,
-  accountTimezone: string,
+  accountTimezone: string
 ): Promise<HealthDataSyncSummary> => {
   const simpleRecords: HealthDataPayloadItem[] = [];
   const smallChunkRecords: HealthDataPayloadItem[] = [];
@@ -296,7 +318,9 @@ const sendHealthDataChunked = async (
     if (SMALL_CHUNK_TYPES.has(record.type)) {
       smallChunkRecords.push(record);
     } else if (RANGE_DELETE_TYPES.has(record.type)) {
-      const source = (record as unknown as Record<string, unknown>).source as string ?? 'manual';
+      const source =
+        ((record as unknown as Record<string, unknown>).source as string) ??
+        'manual';
       const group = rangeDeleteBySource.get(source);
       if (group) {
         group.push(record);
@@ -313,7 +337,10 @@ const sendHealthDataChunked = async (
   // Exercise/Workout: one chunk per source, split only at whole-day boundaries
   // when telemetry pushes a group past the size cap.
   for (const sessionRecords of rangeDeleteBySource.values()) {
-    for (const chunk of splitWorkoutGroupBySize(sessionRecords, accountTimezone)) {
+    for (const chunk of splitWorkoutGroupBySize(
+      sessionRecords,
+      accountTimezone
+    )) {
       chunks.push(chunk);
     }
   }
@@ -340,12 +367,12 @@ const sendHealthDataChunked = async (
     if (totalChunks > 1) {
       addLog(
         `[API] Sending chunk ${i + 1}/${totalChunks} (records ${chunkStart}-${chunkEnd} of ${data.length})`,
-        'INFO',
+        'INFO'
       );
     }
 
     try {
-      const response = await fetchWithRetry(
+      const response = await _fetchWithRetry(
         url,
         {
           method: 'POST',
@@ -357,19 +384,21 @@ const sendHealthDataChunked = async (
           maxRetries: MAX_RETRIES,
           baseDelayMs: RETRY_BASE_DELAY_MS,
           serverConfig,
-        },
+        }
       );
 
       const result = (await response.json()) as HealthDataResponseBody | null;
       // Old servers omit errors/skipped — treat as clean.
       const chunkErrors = Array.isArray(result?.errors) ? result.errors : [];
-      const chunkProcessed = Array.isArray(result?.processed) ? result.processed : [];
+      const chunkProcessed = Array.isArray(result?.processed)
+        ? result.processed
+        : [];
       const chunkSkipped = Array.isArray(result?.skipped) ? result.skipped : [];
 
       if (chunkSkipped.length > 0) {
         addLog(
           `[API] Server skipped ${chunkSkipped.length} record(s) in chunk ${i + 1}/${totalChunks} (intentionally not written)`,
-          'INFO',
+          'INFO'
         );
       }
 
@@ -379,10 +408,10 @@ const sendHealthDataChunked = async (
       if (chunkErrors.length > 0 && chunkProcessed.length === 0) {
         addLog(
           `[API] chunk ${i + 1}/${totalChunks} rejected in full by server: ${chunkErrors.length} records`,
-          'ERROR',
+          'ERROR'
         );
         throw new Error(
-          `Chunk ${i + 1}/${totalChunks} rejected in full by server: ${chunkErrors.length} records rejected.`,
+          `Chunk ${i + 1}/${totalChunks} rejected in full by server: ${chunkErrors.length} records rejected.`
         );
       }
 
@@ -393,7 +422,7 @@ const sendHealthDataChunked = async (
       if (legacyErrors) {
         addLog(
           `[API] Legacy server reported ${legacyErrors.length} rejected record(s) in chunk ${i + 1}/${totalChunks}; continuing`,
-          'WARNING',
+          'WARNING'
         );
         recordErrors.push(...legacyErrors);
         recordsSent += chunk.length;
@@ -402,7 +431,7 @@ const sendHealthDataChunked = async (
       const message = error instanceof Error ? error.message : String(error);
       if (recordsSent > 0) {
         throw new Error(
-          `Sync partially completed: ${recordsSent} of ${data.length} records sent. Failed on chunk ${i + 1}/${totalChunks}: ${message}`,
+          `Sync partially completed: ${recordsSent} of ${data.length} records sent. Failed on chunk ${i + 1}/${totalChunks}: ${message}`
         );
       }
       throw error;
@@ -418,7 +447,7 @@ const sendHealthDataChunked = async (
  * sync (see HealthDataSyncSummary).
  */
 export const syncHealthData = async (
-  data: HealthDataPayload,
+  data: HealthDataPayload
 ): Promise<HealthDataSyncSummary | undefined> => {
   const config = await getActiveServerConfig();
   if (!config) {
@@ -428,7 +457,9 @@ export const syncHealthData = async (
   const url = normalizeUrl(config.url);
 
   if (!__DEV__ && url.toLowerCase().startsWith('http://')) {
-    throw new Error('HTTPS is required for server connections. Please update your server URL in Settings.');
+    throw new Error(
+      'HTTPS is required for server connections. Please update your server URL in Settings.'
+    );
   }
 
   if (data.length === 0) {
@@ -462,17 +493,20 @@ export const syncHealthData = async (
       },
       data,
       config,
-      accountTimezone,
+      accountTimezone
     );
 
     if (summary.recordErrors.length > 0) {
       addLog(
         `[API] Sync sent ${summary.recordsSent} records; server rejected ${summary.recordErrors.length} record(s)`,
         'WARNING',
-        summary.recordErrors.slice(0, 10).map((e) => e.error),
+        summary.recordErrors.slice(0, 10).map((e) => e.error)
       );
     } else {
-      addLog(`[API] Sync successful: ${data.length} records sent to server`, 'INFO');
+      addLog(
+        `[API] Sync successful: ${data.length} records sent to server`,
+        'INFO'
+      );
     }
     return summary;
   } catch (error) {
@@ -488,7 +522,10 @@ export const syncHealthData = async (
 export const checkServerConnection = async (): Promise<boolean> => {
   const config = await getActiveServerConfig();
   if (!config || !config.url) {
-    addLog('[API] No active server configuration found for connection check.', 'DEBUG');
+    addLog(
+      '[API] No active server configuration found for connection check.',
+      'DEBUG'
+    );
     return false; // No configuration, so no connection
   }
 
@@ -510,7 +547,7 @@ export const checkServerConnection = async (): Promise<boolean> => {
           ...getAuthHeaders(config),
         },
       },
-      CONNECTION_CHECK_TIMEOUT_MS,
+      CONNECTION_CHECK_TIMEOUT_MS
     );
     if (response.ok) {
       return true;
@@ -519,7 +556,11 @@ export const checkServerConnection = async (): Promise<boolean> => {
         notifySessionExpired(config.id);
       }
       const errorText = await response.text();
-      addLog(`[API] Server connection check failed: status ${response.status}`, 'WARNING', [errorText]);
+      addLog(
+        `[API] Server connection check failed: status ${response.status}`,
+        'WARNING',
+        [errorText]
+      );
       return false;
     }
   } catch (error) {

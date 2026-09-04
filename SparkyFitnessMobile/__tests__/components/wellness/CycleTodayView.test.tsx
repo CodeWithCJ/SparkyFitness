@@ -70,7 +70,9 @@ jest.mock('../../../src/components/wellness/CycleSymptomPicker', () => {
             accessibilityLabel={`toggle-symptom:${name}`}
             onPress={() => onToggle({ displayName: name })}
           >
-            <Text>{selected.includes(name) ? `${name}:on` : `${name}:off`}</Text>
+            <Text>
+              {selected.includes(name) ? `${name}:on` : `${name}:off`}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -106,7 +108,10 @@ jest.mock('../../../src/hooks/useMeasurements', () => ({
 }));
 
 jest.mock('../../../src/hooks/useUpsertCheckIn', () => ({
-  useUpsertCheckIn: () => ({ mutateAsync: mockUpsertCheckInAsync, isPending: false }),
+  useUpsertCheckIn: () => ({
+    mutateAsync: mockUpsertCheckInAsync,
+    isPending: false,
+  }),
 }));
 
 jest.mock('../../../src/hooks/usePreferences', () => ({
@@ -123,7 +128,9 @@ describe('CycleTodayView optional pickers', () => {
   });
 
   it('sends null when Cervical Mucus is set back to None', async () => {
-    const { getByLabelText, getByText } = render(<CycleTodayView date="2026-08-01" />);
+    const { getByLabelText, getByText } = render(
+      <CycleTodayView date="2026-08-01" />
+    );
 
     fireEvent.press(getByLabelText('Select Cervical Mucus:None'));
     fireEvent.press(getByText('Save Log Entry'));
@@ -136,7 +143,9 @@ describe('CycleTodayView optional pickers', () => {
   });
 
   it('sends null when Cervical Position is set back to None', async () => {
-    const { getByLabelText, getByText } = render(<CycleTodayView date="2026-08-01" />);
+    const { getByLabelText, getByText } = render(
+      <CycleTodayView date="2026-08-01" />
+    );
 
     fireEvent.press(getByLabelText('Select Cervical Position:None'));
     fireEvent.press(getByText('Save Log Entry'));
@@ -149,7 +158,9 @@ describe('CycleTodayView optional pickers', () => {
   });
 
   it('writes nothing when the BBT input is invalid', async () => {
-    const { getByPlaceholderText, getByText } = render(<CycleTodayView date="2026-08-01" />);
+    const { getByPlaceholderText, getByText } = render(
+      <CycleTodayView date="2026-08-01" />
+    );
 
     fireEvent.changeText(getByPlaceholderText('e.g. 36.5'), 'abc');
     fireEvent.press(getByText('Save Log Entry'));
@@ -159,7 +170,9 @@ describe('CycleTodayView optional pickers', () => {
   });
 
   it('keeps a real selection instead of clearing it', async () => {
-    const { getByLabelText, getByText } = render(<CycleTodayView date="2026-08-01" />);
+    const { getByLabelText, getByText } = render(
+      <CycleTodayView date="2026-08-01" />
+    );
 
     fireEvent.press(getByLabelText('Select Cervical Mucus:Watery'));
     fireEvent.press(getByText('Save Log Entry'));
@@ -184,7 +197,9 @@ describe('CycleTodayView pregnant mode weight', () => {
   });
 
   it('saves an entered weight through the check-in mutation on Save', async () => {
-    const { getByPlaceholderText, getByText } = render(<CycleTodayView date="2026-08-01" />);
+    const { getByPlaceholderText, getByText } = render(
+      <CycleTodayView date="2026-08-01" />
+    );
 
     fireEvent.changeText(getByPlaceholderText('e.g. 65'), '66.5');
     fireEvent.press(getByText('Save Log Entry'));
@@ -193,12 +208,14 @@ describe('CycleTodayView pregnant mode weight', () => {
       expect(mockUpsertCheckInAsync).toHaveBeenCalledWith({
         entryDate: '2026-08-01',
         weight: 66.5,
-      }),
+      })
     );
   });
 
   it('does not save while typing or on blur', () => {
-    const { getByPlaceholderText } = render(<CycleTodayView date="2026-08-01" />);
+    const { getByPlaceholderText } = render(
+      <CycleTodayView date="2026-08-01" />
+    );
 
     const input = getByPlaceholderText('e.g. 65');
     fireEvent.changeText(input, '66.5');
@@ -209,7 +226,7 @@ describe('CycleTodayView pregnant mode weight', () => {
 
   it('keeps a typed weight when measurements refetch mid-edit', () => {
     const { getByPlaceholderText, getByDisplayValue, rerender } = render(
-      <CycleTodayView date="2026-08-01" />,
+      <CycleTodayView date="2026-08-01" />
     );
 
     fireEvent.changeText(getByPlaceholderText('e.g. 65'), '70');
@@ -221,7 +238,9 @@ describe('CycleTodayView pregnant mode weight', () => {
 
   it('resumes hydration after an edit is retyped back to the hydrated value', () => {
     mockMeasurements = { weight: 65 };
-    const { getByDisplayValue, rerender } = render(<CycleTodayView date="2026-08-01" />);
+    const { getByDisplayValue, rerender } = render(
+      <CycleTodayView date="2026-08-01" />
+    );
 
     const input = getByDisplayValue('65');
     fireEvent.changeText(input, '6');
@@ -244,7 +263,9 @@ describe('CycleTodayView pregnant mode weight', () => {
 
   it('skips the check-in when the field is emptied', async () => {
     mockMeasurements = { weight: 65 };
-    const { getByDisplayValue, getByText } = render(<CycleTodayView date="2026-08-01" />);
+    const { getByDisplayValue, getByText } = render(
+      <CycleTodayView date="2026-08-01" />
+    );
 
     fireEvent.changeText(getByDisplayValue('65'), '');
     fireEvent.press(getByText('Save Log Entry'));
@@ -274,7 +295,9 @@ describe('CycleTodayView deferred symptom save', () => {
   });
 
   it('creates toggled-on symptoms on Save', async () => {
-    const { getByLabelText, getByText } = render(<CycleTodayView date="2026-08-01" />);
+    const { getByLabelText, getByText } = render(
+      <CycleTodayView date="2026-08-01" />
+    );
 
     fireEvent.press(getByLabelText('toggle-symptom:Nausea'));
     fireEvent.press(getByText('Save Log Entry'));
@@ -285,29 +308,51 @@ describe('CycleTodayView deferred symptom save', () => {
         severity: 3,
         source: 'cycle',
         entry_date: '2026-08-01',
-      }),
+      })
     );
     expect(mockDeleteEntryAsync).not.toHaveBeenCalled();
   });
 
   it('deletes toggled-off symptoms on Save, leaving non-cycle entries alone', async () => {
     mockSymptomEntries = [
-      { id: 's1', symptom_name_snapshot: 'Nausea', severity: 3, source: 'cycle', entry_date: '2026-08-01' },
-      { id: 's2', symptom_name_snapshot: 'Fatigue', severity: 3, source: 'manual', entry_date: '2026-08-01' },
+      {
+        id: 's1',
+        symptom_name_snapshot: 'Nausea',
+        severity: 3,
+        source: 'cycle',
+        entry_date: '2026-08-01',
+      },
+      {
+        id: 's2',
+        symptom_name_snapshot: 'Fatigue',
+        severity: 3,
+        source: 'manual',
+        entry_date: '2026-08-01',
+      },
     ];
-    const { getByLabelText, getByText } = render(<CycleTodayView date="2026-08-01" />);
+    const { getByLabelText, getByText } = render(
+      <CycleTodayView date="2026-08-01" />
+    );
 
     fireEvent.press(getByLabelText('toggle-symptom:Nausea'));
     fireEvent.press(getByText('Save Log Entry'));
 
-    await waitFor(() => expect(mockDeleteEntryAsync).toHaveBeenCalledWith('s1'));
+    await waitFor(() =>
+      expect(mockDeleteEntryAsync).toHaveBeenCalledWith('s1')
+    );
     expect(mockDeleteEntryAsync).toHaveBeenCalledTimes(1);
     expect(mockCreateEntryAsync).not.toHaveBeenCalled();
   });
 
   it('leaves an unchanged server selection untouched on Save', async () => {
     mockSymptomEntries = [
-      { id: 's1', symptom_name_snapshot: 'Nausea', severity: 3, source: 'cycle', entry_date: '2026-08-01' },
+      {
+        id: 's1',
+        symptom_name_snapshot: 'Nausea',
+        severity: 3,
+        source: 'cycle',
+        entry_date: '2026-08-01',
+      },
     ];
     const { getByText } = render(<CycleTodayView date="2026-08-01" />);
 
@@ -325,9 +370,15 @@ describe('CycleTodayView parent-owned save', () => {
   });
 
   it('hides the inline button and saves through saveRequestRef', async () => {
-    const saveRequestRef: React.MutableRefObject<(() => void) | null> = { current: null };
+    const saveRequestRef: React.MutableRefObject<(() => void) | null> = {
+      current: null,
+    };
     const { queryByText } = render(
-      <CycleTodayView date="2026-08-01" saveRequestRef={saveRequestRef} hideSaveButton />,
+      <CycleTodayView
+        date="2026-08-01"
+        saveRequestRef={saveRequestRef}
+        hideSaveButton
+      />
     );
 
     expect(queryByText('Save Log Entry')).toBeNull();

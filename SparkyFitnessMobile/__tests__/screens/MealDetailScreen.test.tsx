@@ -4,7 +4,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MealDetailScreen from '../../src/screens/MealDetailScreen';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
-import { useDeleteMeal, useFavorites, useMeal, useProfile, useServerConnection, useToggleFavorite } from '../../src/hooks';
+import {
+  useDeleteMeal,
+  useFavorites,
+  useMeal,
+  useProfile,
+  useServerConnection,
+  useToggleFavorite,
+} from '../../src/hooks';
 import type { Meal } from '../../src/types/meals';
 
 jest.mock('../../src/hooks', () => ({
@@ -13,10 +20,29 @@ jest.mock('../../src/hooks', () => ({
   useProfile: jest.fn(),
   useServerConnection: jest.fn(),
   useUpdateMeal: jest.fn(() => ({ updateMeal: jest.fn(), isPending: false })),
-  usePreferences: jest.fn(() => ({ preferences: undefined, isLoading: false, isError: false, refetch: jest.fn() })),
-  useCustomNutrients: jest.fn(() => ({ customNutrients: [], isLoading: false, isError: false, refetch: jest.fn() })),
-  useFavorites: jest.fn(() => ({ favoriteFoods: [], favoriteMeals: [], isLoading: false, isError: false, refetch: jest.fn() })),
-  useToggleFavorite: jest.fn(() => ({ toggleFavorite: jest.fn(), isPending: false })),
+  usePreferences: jest.fn(() => ({
+    preferences: undefined,
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  })),
+  useCustomNutrients: jest.fn(() => ({
+    customNutrients: [],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  })),
+  useFavorites: jest.fn(() => ({
+    favoriteFoods: [],
+    favoriteMeals: [],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  })),
+  useToggleFavorite: jest.fn(() => ({
+    toggleFavorite: jest.fn(),
+    isPending: false,
+  })),
 }));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
@@ -59,12 +85,20 @@ jest.mock('@react-navigation/native', () => ({
   useNavigation: () => mockNavigation,
 }));
 
-const mockUseDeleteMeal = useDeleteMeal as jest.MockedFunction<typeof useDeleteMeal>;
+const mockUseDeleteMeal = useDeleteMeal as jest.MockedFunction<
+  typeof useDeleteMeal
+>;
 const mockUseMeal = useMeal as jest.MockedFunction<typeof useMeal>;
 const mockUseProfile = useProfile as jest.MockedFunction<typeof useProfile>;
-const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
-const mockUseFavorites = useFavorites as jest.MockedFunction<typeof useFavorites>;
-const mockUseToggleFavorite = useToggleFavorite as jest.MockedFunction<typeof useToggleFavorite>;
+const mockUseServerConnection = useServerConnection as jest.MockedFunction<
+  typeof useServerConnection
+>;
+const mockUseFavorites = useFavorites as jest.MockedFunction<
+  typeof useFavorites
+>;
+const mockUseToggleFavorite = useToggleFavorite as jest.MockedFunction<
+  typeof useToggleFavorite
+>;
 const mockConfirmAndDelete = jest.fn();
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
@@ -122,17 +156,21 @@ describe('MealDetailScreen', () => {
         <SafeAreaProvider initialMetrics={{ insets, frame }}>
           <MealDetailScreen navigation={navigation} route={route} />
         </SafeAreaProvider>
-      </QueryClientProvider>,
+      </QueryClientProvider>
     );
 
   // On iOS the Edit action lives in the native header, applied via
   // navigation.setOptions({ unstable_headerRightItems }); pull it back out to
   // assert on the native item config.
   const getHeaderRightItems = () =>
-    (navigation.setOptions as jest.Mock).mock.calls.at(-1)?.[0]?.unstable_headerRightItems;
+    (navigation.setOptions as jest.Mock).mock.calls.at(-1)?.[0]
+      ?.unstable_headerRightItems;
 
   beforeEach(async () => {
-    await act(async () => { await initializeI18n('en'); await i18n.changeLanguage('en'); });
+    await act(async () => {
+      await initializeI18n('en');
+      await i18n.changeLanguage('en');
+    });
     queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -222,8 +260,18 @@ describe('MealDetailScreen', () => {
           name: 'Lunch Bowl',
           source: 'meal',
         }),
-      }),
+      })
     );
+  });
+
+  it('opens a prefilled meal plan form from the detail screen', () => {
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByText('Plan Meal'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith('MealPlanForm', {
+      initialMeal: meal,
+    });
   });
 
   it('opens MealAdd in edit mode for owners', () => {
@@ -258,6 +306,7 @@ describe('MealDetailScreen', () => {
     ]);
     expect(screen.queryByText('Delete Meal')).toBeNull();
     expect(screen.getByText('Log Meal')).toBeTruthy();
+    expect(screen.getByText('Plan Meal')).toBeTruthy();
   });
 
   it('triggers delete confirmation from the delete action', () => {
@@ -275,43 +324,68 @@ describe('MealDetailScreen', () => {
     renderScreen();
 
     const favItem = getHeaderRightItems()().find(
-      (item: { identifier?: string }) => item.identifier === 'meal-detail-favorite',
+      (item: { identifier?: string }) =>
+        item.identifier === 'meal-detail-favorite'
     );
     expect(favItem?.accessibilityLabel).toBe('Add to favorites');
 
     favItem.onPress();
     expect(toggleFavorite).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'meal', id: 'meal-1', isFavorite: false }),
+      expect.objectContaining({ type: 'meal', id: 'meal-1', isFavorite: false })
     );
   });
 
   it('keeps food content literal and uses the localized fallback for missing food names', async () => {
     const localizedMeal = buildMeal({
-      foods: [{
-        ...meal.foods[0],
-        food_name: null,
-        brand: 'Dragon Brand',
-      } as any],
+      foods: [
+        {
+          ...meal.foods[0],
+          food_name: null,
+          brand: 'Dragon Brand',
+        } as any,
+      ],
     });
-    mockUseMeal.mockReturnValue({ meal: localizedMeal, isLoading: false, isError: false, refetch: jest.fn() });
+    mockUseMeal.mockReturnValue({
+      meal: localizedMeal,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
     const screen = renderScreen();
 
-    await act(async () => { await i18n.changeLanguage('pl'); });
+    await act(async () => {
+      await i18n.changeLanguage('pl');
+    });
     expect(screen.getByText('Produkt', { exact: false })).toBeTruthy();
     expect(screen.queryByText('Food')).toBeNull();
     expect(screen.getByText('Dragon Brand', { exact: false })).toBeTruthy();
 
     screen.unmount();
     const literalMeal = buildMeal({
-      foods: [{ ...meal.foods[0], food_name: 'Dragon Custom Food', brand: 'Dragon Brand' } as any],
+      foods: [
+        {
+          ...meal.foods[0],
+          food_name: 'Dragon Custom Food',
+          brand: 'Dragon Brand',
+        } as any,
+      ],
     });
-    mockUseMeal.mockReturnValue({ meal: literalMeal, isLoading: false, isError: false, refetch: jest.fn() });
+    mockUseMeal.mockReturnValue({
+      meal: literalMeal,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
     const literal = renderScreen();
-    expect(literal.getByText('Dragon Custom Food', { exact: false })).toBeTruthy();
+    expect(
+      literal.getByText('Dragon Custom Food', { exact: false })
+    ).toBeTruthy();
     expect(literal.getByText('Dragon Brand', { exact: false })).toBeTruthy();
     expect(literal.queryByText('Food')).toBeNull();
     literal.unmount();
-    await act(async () => { await i18n.changeLanguage('en'); });
+    await act(async () => {
+      await i18n.changeLanguage('en');
+    });
   });
 
   it('shows the starred state when the meal is a favorite', () => {
@@ -326,7 +400,8 @@ describe('MealDetailScreen', () => {
     renderScreen();
 
     const favItem = getHeaderRightItems()().find(
-      (item: { identifier?: string }) => item.identifier === 'meal-detail-favorite',
+      (item: { identifier?: string }) =>
+        item.identifier === 'meal-detail-favorite'
     );
     expect(favItem?.accessibilityLabel).toBe('Remove from favorites');
   });
@@ -334,35 +409,54 @@ describe('MealDetailScreen', () => {
   // Regression: the makes-summary must use i18next count pluralization for
   // application-owned servings/ingredients labels instead of a manual
   // `count === 1 ? singular : plural` ternary. PL requires one/few/many/other.
-  const renderWithMakes = async (lang: 'en' | 'pl', servings: number, foodCount: number) => {
-    const foods = Array.from({ length: foodCount }, (_, i) => ({
-      ...meal.foods[0],
-      id: `mf-${i}`,
-      food_id: `f-${i}`,
-      variant_id: `v-${i}`,
-      food_name: `Food ${i + 1}`,
-    } as any));
+  const renderWithMakes = async (
+    lang: 'en' | 'pl',
+    servings: number,
+    foodCount: number
+  ) => {
+    const foods = Array.from(
+      { length: foodCount },
+      (_, i) =>
+        ({
+          ...meal.foods[0],
+          id: `mf-${i}`,
+          food_id: `f-${i}`,
+          variant_id: `v-${i}`,
+          food_name: `Food ${i + 1}`,
+        }) as any
+    );
     const localizedMeal = buildMeal({
       total_servings: servings,
       serving_size: servings,
       foods,
     });
-    mockUseMeal.mockReturnValue({ meal: localizedMeal, isLoading: false, isError: false, refetch: jest.fn() });
+    mockUseMeal.mockReturnValue({
+      meal: localizedMeal,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
     const screen = renderScreen();
-    await act(async () => { await i18n.changeLanguage(lang); });
+    await act(async () => {
+      await i18n.changeLanguage(lang);
+    });
     return screen;
   };
 
   describe('makes-summary pluralization (real catalogs)', () => {
     it('EN: 1 serving / 1 ingredient (singular)', async () => {
       const screen = await renderWithMakes('en', 1, 1);
-      expect(screen.getByText('Makes 1 serving · 1 ingredient', { exact: false })).toBeTruthy();
+      expect(
+        screen.getByText('Makes 1 serving · 1 ingredient', { exact: false })
+      ).toBeTruthy();
       screen.unmount();
     });
 
     it('EN: 2 servings / 2 ingredients (plural)', async () => {
       const screen = await renderWithMakes('en', 2, 2);
-      expect(screen.getByText('Makes 2 servings · 2 ingredients', { exact: false })).toBeTruthy();
+      expect(
+        screen.getByText('Makes 2 servings · 2 ingredients', { exact: false })
+      ).toBeTruthy();
       screen.unmount();
     });
 
@@ -413,7 +507,9 @@ describe('MealDetailScreen', () => {
       expect(screen.getByText('25 porcji', { exact: false })).toBeTruthy();
       expect(screen.getByText('25 składników', { exact: false })).toBeTruthy();
       screen.unmount();
-      await act(async () => { await i18n.changeLanguage('en'); });
+      await act(async () => {
+        await i18n.changeLanguage('en');
+      });
     });
   });
 });

@@ -26,7 +26,11 @@ export function useSaveFood() {
       queryClient.invalidateQueries({ queryKey: favoritesQueryKey });
     },
     onError: () => {
-      Toast.show({ type: 'error', text1: t('foodSave.failed', { defaultValue: 'Failed to save food' }), text2: t('common.tryAgain', { defaultValue: 'Please try again.' }) });
+      Toast.show({
+        type: 'error',
+        text1: t('foodSave.failed', { defaultValue: 'Failed to save food' }),
+        text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+      });
     },
   });
 

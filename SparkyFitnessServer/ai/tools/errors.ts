@@ -28,7 +28,7 @@ function describeDbError(error: unknown): string | null {
       ? 'check constraint'
       : code === '23505'
         ? 'unique constraint'
-        : code === '23503'
+        : code === '23503' || code === '23001'
           ? 'foreign key constraint'
           : code === '23502'
             ? 'not-null constraint'

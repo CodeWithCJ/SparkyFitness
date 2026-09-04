@@ -201,7 +201,7 @@ export const GoalPresetDialog = ({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Macros By</Label>
+                <Label>{t('goals.goalsSettings.macrosBy', 'Macros By')}</Label>
                 <RadioGroup
                   className="flex h-10 items-center gap-4 border rounded-md px-3"
                   value={macroInputType}
@@ -212,13 +212,13 @@ export const GoalPresetDialog = ({
                   <div className="flex items-center gap-1.5">
                     <RadioGroupItem value="grams" id="p-g" />
                     <Label htmlFor="p-g" className="text-xs">
-                      Grams
+                      {t('goalPresetDialog.grams', 'Grams')}
                     </Label>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <RadioGroupItem value="percentages" id="p-p" />
                     <Label htmlFor="p-p" className="text-xs">
-                      Percentages
+                      {t('goalPresetDialog.percentages', 'Percentages')}
                     </Label>
                   </div>
                 </RadioGroup>
@@ -281,13 +281,18 @@ export const GoalPresetDialog = ({
                 <div
                   className={`mt-2 text-sm font-medium text-right ${currentMacroTotal === 100 ? 'text-green-600' : 'text-destructive'}`}
                 >
-                  Total: {currentMacroTotal}%{' '}
-                  {currentMacroTotal !== 100 && '(Must be 100%)'}
+                  {t('goals.mealDistribution.total', 'Total')}:{' '}
+                  {currentMacroTotal}%{' '}
+                  {currentMacroTotal !== 100 &&
+                    `(${t('goals.mealDistribution.mustBe100', 'Must be 100% to save')})`}
                 </div>
 
                 <div className="mt-3 p-3 bg-muted/50 rounded-md text-sm text-muted-foreground grid grid-cols-1 sm:grid-cols-3 gap-2 text-center sm:text-left">
                   <div>
-                    <span className="font-semibold">Protein:</span> ≈{' '}
+                    <span className="font-semibold">
+                      {t('nutrition.protein', 'Protein')}:
+                    </span>{' '}
+                    ≈{' '}
                     {calculateGrams(
                       formData.calories,
                       formData.protein_percentage || 0,
@@ -297,7 +302,10 @@ export const GoalPresetDialog = ({
                     g
                   </div>
                   <div>
-                    <span className="font-semibold">Carbs:</span> ≈{' '}
+                    <span className="font-semibold">
+                      {t('nutrition.carbs', 'Carbs')}:
+                    </span>{' '}
+                    ≈{' '}
                     {calculateGrams(
                       formData.calories,
                       formData.carbs_percentage || 0,
@@ -307,7 +315,10 @@ export const GoalPresetDialog = ({
                     g
                   </div>
                   <div>
-                    <span className="font-semibold">Fat:</span> ≈{' '}
+                    <span className="font-semibold">
+                      {t('nutrition.fat', 'Fat')}:
+                    </span>{' '}
+                    ≈{' '}
                     {calculateGrams(
                       formData.calories,
                       formData.fat_percentage || 0,

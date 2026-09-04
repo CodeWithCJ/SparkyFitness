@@ -5,9 +5,7 @@ import { TestAiServiceConnectionRequest } from '@workspace/shared';
 
 // Inline status rendered next to the Test Connection button.
 export type TestConnectionStatus =
-  | { state: 'success' }
-  | { state: 'error'; message: string }
-  | null;
+  { state: 'success' } | { state: 'error'; message: string } | null;
 
 // Shared hook so the test call + category→message mapping isn't duplicated
 // across the parents that own a ServiceForm. Both pages (per-user + global)

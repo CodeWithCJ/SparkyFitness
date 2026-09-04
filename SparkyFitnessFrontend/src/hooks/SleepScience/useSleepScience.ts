@@ -5,7 +5,6 @@ import {
   getDailyNeed,
   getDataSufficiency,
   getEnergyCurve,
-  getMCTQStats,
   getSleepDebt,
 } from '@/api/SleepScience/sleepScience';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -16,14 +15,6 @@ export const useSleepDebtQuery = (targetUserId?: string) => {
     queryKey: sleepScienceKeys.sleepDebt(targetUserId),
     queryFn: () => getSleepDebt(targetUserId),
     staleTime: 5 * 60 * 1000, // 5 min
-  });
-};
-
-export const useMCTQStatsQuery = (targetUserId?: string) => {
-  return useQuery({
-    queryKey: sleepScienceKeys.mctqStats(targetUserId),
-    queryFn: () => getMCTQStats(targetUserId),
-    staleTime: 10 * 60 * 1000, // 10 min
   });
 };
 

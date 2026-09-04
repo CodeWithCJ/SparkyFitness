@@ -4,7 +4,13 @@ import { View, Text } from 'react-native';
 import { CartesianChart, Bar } from 'victory-native';
 import { Line as SkiaLine } from '@shopify/react-native-skia';
 import { useCSSVariable } from 'uniwind';
-import { makeChartFont, formatXLabel7d, formatXLabel30d90d, formatTooltipDate, formatChartYLabel } from './charts/chartFormatting';
+import {
+  makeChartFont,
+  formatXLabel7d,
+  formatXLabel30d90d,
+  formatTooltipDate,
+  formatChartYLabel,
+} from './charts/chartFormatting';
 import { formatLocalizedNumber } from '../localization';
 import type { TrendRange } from '../hooks/useNutritionTrends';
 import ChartTouchOverlay, {
@@ -45,7 +51,11 @@ const font = makeChartFont(11);
 
 const formatYLabel = (value: number) => {
   if (value >= 1000) return formatChartYLabel(value);
-  if (value % 1 !== 0) return formatLocalizedNumber(value, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  if (value % 1 !== 0)
+    return formatLocalizedNumber(value, {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    });
   return formatChartYLabel(value);
 };
 
@@ -65,7 +75,7 @@ const NutrientTooltip: React.FC<{ text: string }> = ({ text }) => (
 export const buildNutrientTooltipText = (
   point: { day: string; value: number } | undefined,
   unit: string,
-  t: ReturnType<typeof useTranslation>['t'],
+  t: ReturnType<typeof useTranslation>['t']
 ): string => {
   if (!point) return DEFAULT_TOOLTIP;
   const formattedVal = formatLocalizedNumber(point.value, {
@@ -96,10 +106,10 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
   ]) as [string, string];
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
-    EMPTY_CHART_TOUCH_LAYOUT,
+    EMPTY_CHART_TOUCH_LAYOUT
   );
 
-  const hasData = useMemo(() => data.some(d => d.value > 0), [data]);
+  const hasData = useMemo(() => data.some((d) => d.value > 0), [data]);
 
   const maxVal = useMemo(() => {
     const dataMax = Math.max(...data.map((d) => d.value), 0);
@@ -124,7 +134,7 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
 
   const handleTouchLayoutChange = useCallback(
     (nextLayout: ChartTouchLayout) => {
-      setTouchLayout(currentLayout => {
+      setTouchLayout((currentLayout) => {
         const currentSignature = createChartTouchLayoutSignature(currentLayout);
         const nextSignature = createChartTouchLayoutSignature(nextLayout);
 
@@ -135,7 +145,7 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
         return nextLayout;
       });
     },
-    [],
+    []
   );
 
   const handleSelectBar = useCallback(
@@ -148,7 +158,7 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
 
       setSelectedIndex(index);
     },
-    [data],
+    [data]
   );
 
   const handleClearSelection = useCallback(() => {
@@ -165,18 +175,24 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
 
       {isLoading ? (
         <View className="h-50 justify-center items-center">
-          <Text className="text-text-muted text-sm">{t('common.loading', { defaultValue: 'Loading...' })}</Text>
+          <Text className="text-text-muted text-sm">
+            {t('common.loading', { defaultValue: 'Loading...' })}
+          </Text>
         </View>
       ) : isError ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            {t('charts.nutrients.loadFailed', { defaultValue: 'Failed to load trend data' })}
+            {t('charts.nutrients.loadFailed', {
+              defaultValue: 'Failed to load trend data',
+            })}
           </Text>
         </View>
       ) : !hasData ? (
         <View className="h-50 justify-center items-center">
           <Text className="text-text-muted text-sm">
-            {t('charts.nutrients.empty', { defaultValue: 'No logged intake for this period' })}
+            {t('charts.nutrients.empty', {
+              defaultValue: 'No logged intake for this period',
+            })}
           </Text>
         </View>
       ) : (
@@ -206,9 +222,13 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
               let goalY: number | null = null;
               if (goal && goal > 0 && maxVal && maxVal > 0) {
                 const height = chartBounds.bottom - chartBounds.top;
-                const calculatedY = chartBounds.bottom - (goal / maxVal) * height;
+                const calculatedY =
+                  chartBounds.bottom - (goal / maxVal) * height;
                 // Only render if it lies within the chart's visible drawing area
-                if (calculatedY >= chartBounds.top && calculatedY <= chartBounds.bottom) {
+                if (
+                  calculatedY >= chartBounds.top &&
+                  calculatedY <= chartBounds.bottom
+                ) {
                   goalY = calculatedY;
                 }
               }

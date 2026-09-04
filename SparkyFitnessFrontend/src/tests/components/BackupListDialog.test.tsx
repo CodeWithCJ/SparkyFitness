@@ -73,6 +73,12 @@ const backupDec: BackupFileInfo = {
 
 const mockMutate = jest.fn();
 
+const monthLabel = (date: string) =>
+  new Date(date).toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric',
+  });
+
 const mockUseBackupList = (
   overrides: Partial<ReturnType<typeof useBackupList>>
 ) => {
@@ -121,9 +127,9 @@ describe('BackupListDialog', () => {
 
     const monthHeadings = screen.getAllByRole('button', { name: /202[56]/ });
     expect(monthHeadings).toHaveLength(3);
-    expect(monthHeadings[0]).toHaveTextContent('February 2026');
-    expect(monthHeadings[1]).toHaveTextContent('January 2026');
-    expect(monthHeadings[2]).toHaveTextContent('December 2025');
+    expect(monthHeadings[0]).toHaveTextContent(monthLabel(backupFeb.createdAt));
+    expect(monthHeadings[1]).toHaveTextContent(monthLabel(backupJan.createdAt));
+    expect(monthHeadings[2]).toHaveTextContent(monthLabel(backupDec.createdAt));
 
     // Newest month is expanded by default.
     expect(screen.getByText(backupFeb.fileName)).toBeInTheDocument();
@@ -139,7 +145,7 @@ describe('BackupListDialog', () => {
 
     expect(screen.queryByText(backupJan.fileName)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('January 2026'));
+    fireEvent.click(screen.getByText(monthLabel(backupJan.createdAt)));
 
     expect(await screen.findByText(backupJan.fileName)).toBeInTheDocument();
   });
@@ -149,7 +155,7 @@ describe('BackupListDialog', () => {
 
     render(<BackupListDialog open onOpenChange={jest.fn()} />);
 
-    fireEvent.click(screen.getByText('January 2026'));
+    fireEvent.click(screen.getByText(monthLabel(backupJan.createdAt)));
     const row = (await screen.findByText(backupJan.fileName)).closest('tr');
     expect(row).not.toBeNull();
     fireEvent.click(within(row as HTMLElement).getByRole('button'));

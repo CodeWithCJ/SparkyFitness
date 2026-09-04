@@ -5,14 +5,17 @@ import {
 } from '../shared/preferences';
 
 // Re-export types for backward compatibility
-export { SyncDuration, SyncInterval };
+export type { SyncDuration, SyncInterval };
 
 // AsyncStorage key prefix for all HealthKit preferences. Exported so cleanup code
 // can enumerate/remove writeback tracking keys directly.
 export const HEALTH_PREFERENCE_PREFIX = '@HealthKit';
 
 // Create preference functions with HealthKit-specific prefix and log tag
-const preferences = createPreferenceFunctions(HEALTH_PREFERENCE_PREFIX, '[HealthKitService]');
+const preferences = createPreferenceFunctions(
+  HEALTH_PREFERENCE_PREFIX,
+  '[HealthKitService]'
+);
 
 export const saveHealthPreference = preferences.saveHealthPreference;
 export const loadHealthPreference = preferences.loadHealthPreference;

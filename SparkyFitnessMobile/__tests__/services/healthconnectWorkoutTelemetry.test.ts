@@ -22,14 +22,15 @@ const { readRecords, requestExerciseRoute } =
     requestExerciseRoute: jest.Mock;
   };
 
-const AsyncStorage =
-  require('@react-native-async-storage/async-storage') as {
-    getItem: jest.Mock;
-    setItem: jest.Mock;
-  };
+const AsyncStorage = require('@react-native-async-storage/async-storage') as {
+  getItem: jest.Mock;
+  setItem: jest.Mock;
+};
 
 const at = (seconds: number): string =>
-  new Date(Date.parse('2026-08-04T09:00:00.000Z') + seconds * 1000).toISOString();
+  new Date(
+    Date.parse('2026-08-04T09:00:00.000Z') + seconds * 1000
+  ).toISOString();
 
 const session = (overrides: Record<string, unknown> = {}) => ({
   startTime: at(0),
@@ -89,7 +90,12 @@ describe('collectSessionRoute', () => {
         exerciseRoute: {
           type: 'DATA',
           route: [
-            { time: at(0), latitude: 37.7, longitude: -122.4, altitude: { inMeters: 10 } },
+            {
+              time: at(0),
+              latitude: 37.7,
+              longitude: -122.4,
+              altitude: { inMeters: 10 },
+            },
           ],
         },
       }),
@@ -143,7 +149,7 @@ describe('collectSessionRoute', () => {
     requestExerciseRoute.mockImplementation(async () => {
       inFlight += 1;
       maxInFlight = Math.max(maxInFlight, inFlight);
-      await new Promise(resolve => setTimeout(resolve, 5));
+      await new Promise((resolve) => setTimeout(resolve, 5));
       inFlight -= 1;
       return [{ time: at(0), latitude: 1, longitude: 2 }];
     });
@@ -276,7 +282,10 @@ describe('prefetchSessionRoutes', () => {
     expect(requestExerciseRoute).toHaveBeenCalledTimes(1);
 
     // The later in-window read consumes the cached points without a dialog.
-    const points = await collectSessionRoute(consentSession('prefetch-1'), true);
+    const points = await collectSessionRoute(
+      consentSession('prefetch-1'),
+      true
+    );
     expect(points).toHaveLength(1);
     expect(requestExerciseRoute).toHaveBeenCalledTimes(1);
   });
@@ -286,9 +295,15 @@ describe('prefetchSessionRoutes', () => {
       records: [
         session({
           metadata: { id: 'prefetch-2' },
-          exerciseRoute: { type: 'DATA', route: [{ time: at(0), latitude: 1, longitude: 2 }] },
+          exerciseRoute: {
+            type: 'DATA',
+            route: [{ time: at(0), latitude: 1, longitude: 2 }],
+          },
         }),
-        session({ metadata: { id: 'prefetch-3' }, exerciseRoute: { type: 'NO_DATA', route: [] } }),
+        session({
+          metadata: { id: 'prefetch-3' },
+          exerciseRoute: { type: 'NO_DATA', route: [] },
+        }),
       ],
     });
 
@@ -347,21 +362,23 @@ describe('collectSessionLaps', () => {
 
 describe('collectSessionTelemetry — heart-rate correlation', () => {
   it('prefers samples from the session own data origin', async () => {
-    readRecords.mockImplementation((type: string, options: { dataOriginFilter?: string[] }) => {
-      if (type === 'HeartRate' && options.dataOriginFilter) {
-        return Promise.resolve({
-          records: [
-            {
-              samples: [
-                { time: at(0), beatsPerMinute: 100 },
-                { time: at(60), beatsPerMinute: 140 },
-              ],
-            },
-          ],
-        });
+    readRecords.mockImplementation(
+      (type: string, options: { dataOriginFilter?: string[] }) => {
+        if (type === 'HeartRate' && options.dataOriginFilter) {
+          return Promise.resolve({
+            records: [
+              {
+                samples: [
+                  { time: at(0), beatsPerMinute: 100 },
+                  { time: at(60), beatsPerMinute: 140 },
+                ],
+              },
+            ],
+          });
+        }
+        return Promise.resolve({ records: [] });
       }
-      return Promise.resolve({ records: [] });
-    });
+    );
 
     const bundle = await collectSessionTelemetry(session(), {
       interactive: false,
@@ -375,13 +392,15 @@ describe('collectSessionTelemetry — heart-rate correlation', () => {
   it('falls back to an unfiltered read when the origin-scoped one is empty', async () => {
     // Common in practice: the session comes from one app and the heart rate
     // from another (Strava session, Wear OS heart rate).
-    readRecords.mockImplementation((type: string, options: { dataOriginFilter?: string[] }) => {
-      if (type !== 'HeartRate') return Promise.resolve({ records: [] });
-      if (options.dataOriginFilter) return Promise.resolve({ records: [] });
-      return Promise.resolve({
-        records: [{ samples: [{ time: at(0), beatsPerMinute: 130 }] }],
-      });
-    });
+    readRecords.mockImplementation(
+      (type: string, options: { dataOriginFilter?: string[] }) => {
+        if (type !== 'HeartRate') return Promise.resolve({ records: [] });
+        if (options.dataOriginFilter) return Promise.resolve({ records: [] });
+        return Promise.resolve({
+          records: [{ samples: [{ time: at(0), beatsPerMinute: 130 }] }],
+        });
+      }
+    );
 
     const bundle = await collectSessionTelemetry(session(), {
       interactive: false,
@@ -391,21 +410,23 @@ describe('collectSessionTelemetry — heart-rate correlation', () => {
   });
 
   it('rejects a fallback read dense enough to be another activity', async () => {
-    readRecords.mockImplementation((type: string, options: { dataOriginFilter?: string[] }) => {
-      if (type !== 'HeartRate') return Promise.resolve({ records: [] });
-      if (options.dataOriginFilter) return Promise.resolve({ records: [] });
-      // ~10 samples/second over a 600s window — far beyond one device's output.
-      return Promise.resolve({
-        records: [
-          {
-            samples: Array.from({ length: 6000 }, (_, i) => ({
-              time: at(i / 10),
-              beatsPerMinute: 130,
-            })),
-          },
-        ],
-      });
-    });
+    readRecords.mockImplementation(
+      (type: string, options: { dataOriginFilter?: string[] }) => {
+        if (type !== 'HeartRate') return Promise.resolve({ records: [] });
+        if (options.dataOriginFilter) return Promise.resolve({ records: [] });
+        // ~10 samples/second over a 600s window — far beyond one device's output.
+        return Promise.resolve({
+          records: [
+            {
+              samples: Array.from({ length: 6000 }, (_, i) => ({
+                time: at(i / 10),
+                beatsPerMinute: 130,
+              })),
+            },
+          ],
+        });
+      }
+    );
 
     const bundle = await collectSessionTelemetry(session(), {
       interactive: false,

@@ -15,8 +15,16 @@ import { notifyNoConfigs } from '../../src/services/api/authService';
 import { useServerConfigs, useServerConnection } from '../../src/hooks';
 
 const mockGoBack = jest.fn();
-const mockNavigation = { goBack: mockGoBack, navigate: jest.fn(), setOptions: jest.fn() } as any;
-const mockRoute = { key: 'server-settings', name: 'ServerSettings' as const, params: undefined };
+const mockNavigation = {
+  goBack: mockGoBack,
+  navigate: jest.fn(),
+  setOptions: jest.fn(),
+} as any;
+const mockRoute = {
+  key: 'server-settings',
+  name: 'ServerSettings' as const,
+  params: undefined,
+};
 
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
@@ -69,12 +77,24 @@ jest.mock('@tanstack/react-query', () => {
   };
 });
 
-const mockUseServerConfigs = useServerConfigs as jest.MockedFunction<typeof useServerConfigs>;
-const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
-const mockGetAllServerConfigs = getAllServerConfigs as jest.MockedFunction<typeof getAllServerConfigs>;
-const mockSetActiveServerConfig = setActiveServerConfig as jest.MockedFunction<typeof setActiveServerConfig>;
-const mockDeleteServerConfig = deleteServerConfig as jest.MockedFunction<typeof deleteServerConfig>;
-const mockNotifyNoConfigs = notifyNoConfigs as jest.MockedFunction<typeof notifyNoConfigs>;
+const mockUseServerConfigs = useServerConfigs as jest.MockedFunction<
+  typeof useServerConfigs
+>;
+const mockUseServerConnection = useServerConnection as jest.MockedFunction<
+  typeof useServerConnection
+>;
+const mockGetAllServerConfigs = getAllServerConfigs as jest.MockedFunction<
+  typeof getAllServerConfigs
+>;
+const mockSetActiveServerConfig = setActiveServerConfig as jest.MockedFunction<
+  typeof setActiveServerConfig
+>;
+const mockDeleteServerConfig = deleteServerConfig as jest.MockedFunction<
+  typeof deleteServerConfig
+>;
+const mockNotifyNoConfigs = notifyNoConfigs as jest.MockedFunction<
+  typeof notifyNoConfigs
+>;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -89,7 +109,7 @@ const renderScreen = () =>
   render(
     <SafeAreaProvider initialMetrics={{ insets, frame }}>
       <ServerSettingsScreen navigation={mockNavigation} route={mockRoute} />
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
 
 describe('ServerSettingsScreen', () => {
@@ -169,7 +189,7 @@ describe('ServerSettingsScreen', () => {
 
     // The "Success" alert should have buttons; press OK to fire notifyNoConfigs
     const successCall = (Alert.alert as jest.Mock).mock.calls.find(
-      (call) => call[0] === 'Success',
+      (call) => call[0] === 'Success'
     );
     expect(successCall).toBeTruthy();
     const okButton = successCall![2].find((b: any) => b.text === 'OK');
@@ -195,7 +215,7 @@ describe('ServerSettingsScreen', () => {
 
     await waitFor(() => {
       expect(Toast.show).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'success', text1: 'Connected' }),
+        expect.objectContaining({ type: 'success', text1: 'Connected' })
       );
     });
   });
@@ -218,7 +238,7 @@ describe('ServerSettingsScreen', () => {
 
     await waitFor(() => {
       expect(Toast.show).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'error', text1: 'Connection failed' }),
+        expect.objectContaining({ type: 'error', text1: 'Connection failed' })
       );
     });
   });
@@ -228,16 +248,17 @@ describe('ServerSettingsScreen', () => {
 
     expect(i18n.t('serverSettingsUi.activeServer')).toBe('Aktywny serwer');
     expect(i18n.t('serverSettingsUi.openWeb')).toBe('Otwórz WWW');
-    expect(i18n.t('serverSettingsUi.testConnection')).toBe('Sprawdź połączenie');
+    expect(i18n.t('serverSettingsUi.testConnection')).toBe(
+      'Sprawdź połączenie'
+    );
     expect(i18n.t('auth.addServer')).toBe('Dodaj serwer');
     expect(
       i18n.t('serverSettingsUi.setActiveFailed', {
         error: 'timeout',
         defaultValue: 'Failed to set active server configuration: {{error}}',
-      }),
+      })
     ).toBe('Nie udało się ustawić aktywnej konfiguracji serwera: timeout');
 
     await i18n.changeLanguage('en');
   });
-
 });

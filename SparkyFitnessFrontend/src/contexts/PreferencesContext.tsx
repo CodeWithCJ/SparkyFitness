@@ -10,6 +10,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { debug, info, error } from '@/utils/logging';
 import { format, parseISO, startOfDay } from 'date-fns';
+import { getDateLocale } from '@/utils/languageUtils';
 import { normalizeTimeFormat } from '@/utils/timeFormatters';
 import {
   FatBreakdownAlgorithm,
@@ -56,11 +57,7 @@ import { todayInZone } from '@workspace/shared';
 
 export type EnergyUnit = 'kcal' | 'kJ';
 export type ActivityLevel =
-  | 'none'
-  | 'not_much'
-  | 'light'
-  | 'moderate'
-  | 'heavy';
+  'none' | 'not_much' | 'light' | 'moderate' | 'heavy';
 export type WeightUnit = 'kg' | 'lbs' | 'st_lbs';
 export type MeasurementUnit = 'cm' | 'inches' | 'ft_in';
 export type DistanceUnit = 'km' | 'miles';
@@ -94,8 +91,12 @@ interface PreferencesContextType {
   defaultFoodDataProviderId: string | null;
   defaultBarcodeProviderId: string | null;
   barcodeFallbackOpenFoodFacts: boolean;
+  // Whether food search defaults to the aggregated "All Providers" mode. Kept
+  // separate from defaultFoodDataProviderId (a uuid column that cannot hold the
+  // ALL_PROVIDERS_VALUE sentinel) so the single-provider choice survives
+  // turning this off.
+  foodSearchAllProvidersDefault: boolean;
   timezone: string;
-  foodDisplayLimit: number;
   itemDisplayLimit: number;
   calorieGoalAdjustmentMode: CalorieGoalAdjustmentMode;
   energyUnit: EnergyUnit;
@@ -140,6 +141,7 @@ interface PreferencesContextType {
   setDefaultFoodDataProviderId: (id: string | null) => void;
   setDefaultBarcodeProviderId: (id: string | null) => void;
   setBarcodeFallbackOpenFoodFacts: (enabled: boolean) => void;
+  setFoodSearchAllProvidersDefault: (enabled: boolean) => void;
   setTimezone: (timezone: string) => void;
   setItemDisplayLimit: (limit: number) => void;
   setCalorieGoalAdjustmentMode: (mode: CalorieGoalAdjustmentMode) => void;
@@ -208,7 +210,6 @@ export interface DefaultPreferences {
   logging_level: LoggingLevel;
   timezone: string;
   item_display_limit: number;
-  food_display_limit: number;
   water_display_unit: WaterDisplayUnit;
   add_exercise_water_to_goal: boolean;
   language: string;
@@ -221,6 +222,7 @@ export interface DefaultPreferences {
   default_food_data_provider_id: string | null;
   default_barcode_provider_id: string | null;
   barcode_fallback_open_food_facts: boolean;
+  food_search_all_providers_default: boolean;
   exercise_calorie_percentage: number;
   activity_level: ActivityLevel;
   tdee_allow_negative_adjustment: boolean;
@@ -284,11 +286,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   >(null);
   const [barcodeFallbackOpenFoodFacts, setBarcodeFallbackOpenFoodFactsState] =
     useState<boolean>(false);
+  const [foodSearchAllProvidersDefault, setFoodSearchAllProvidersDefaultState] =
+    useState<boolean>(false);
   const [timezone, setTimezoneState] = useState<string>(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
   const [itemDisplayLimit, setItemDisplayLimitState] = useState<number>(10);
-  const [foodDisplayLimit, setFoodDisplayLimitState] = useState<number>(10);
   const [calorieGoalAdjustmentMode, setCalorieGoalAdjustmentModeState] =
     useState<CalorieGoalAdjustmentMode>('dynamic');
   const [exerciseCaloriePercentage, setExerciseCaloriePercentageState] =
@@ -535,9 +538,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       }
 
       const formatString = formatStr || 'yyyy-MM-dd';
-      return format(dateToFormat, formatString);
+      return format(dateToFormat, formatString, {
+        locale: getDateLocale(language),
+      });
     },
-    [loggingLevel, toUserTimezone]
+    [language, loggingLevel, toUserTimezone]
   );
 
   const formatDate = useCallback(
@@ -610,7 +615,6 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         logging_level: 'ERROR' as const,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         item_display_limit: 10,
-        food_display_limit: 10,
         water_display_unit: waterDisplayUnit,
         language: 'en',
         calorie_goal_adjustment_mode: 'dynamic' as const,
@@ -680,11 +684,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setBarcodeFallbackOpenFoodFactsState(
           data.barcode_fallback_open_food_facts ?? false
         );
+        setFoodSearchAllProvidersDefaultState(
+          data.food_search_all_providers_default ?? false
+        );
         setTimezoneState(
           data.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone
         );
         setItemDisplayLimitState(data.item_display_limit || 10);
-        setFoodDisplayLimitState(data.food_display_limit || 10);
         setWaterDisplayUnitState(data.water_display_unit || 'ml');
         setLanguageState(data.language || 'en');
         setCalorieGoalAdjustmentModeState(
@@ -875,9 +881,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         barcode_fallback_open_food_facts:
           newPrefs?.barcodeFallbackOpenFoodFacts ??
           barcodeFallbackOpenFoodFacts,
+        food_search_all_providers_default:
+          newPrefs?.foodSearchAllProvidersDefault ??
+          foodSearchAllProvidersDefault,
         timezone: newPrefs?.timezone ?? timezone,
         item_display_limit: newPrefs?.itemDisplayLimit ?? itemDisplayLimit,
-        food_display_limit: foodDisplayLimit,
         water_display_unit: newPrefs?.water_display_unit ?? waterDisplayUnit,
         language: newPrefs?.language ?? language,
         calorie_goal_adjustment_mode:
@@ -954,9 +962,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       defaultFoodDataProviderId,
       defaultBarcodeProviderId,
       barcodeFallbackOpenFoodFacts,
+      foodSearchAllProvidersDefault,
       timezone,
       itemDisplayLimit,
-      foodDisplayLimit,
       waterDisplayUnit,
       addExerciseWaterToGoal,
       language,
@@ -1067,6 +1075,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     [saveAllPreferences]
   );
 
+  // State-only, like setDefaultFoodDataProviderId: this preference is always
+  // changed alongside the single-provider default, and the caller persists both
+  // in one saveAllPreferences rather than firing two racing writes.
+  const setFoodSearchAllProvidersDefault = useCallback((enabled: boolean) => {
+    setFoodSearchAllProvidersDefaultState(enabled);
+  }, []);
+
   const setTimezone = useCallback((newTimezone: string) => {
     setTimezoneState(newTimezone);
   }, []);
@@ -1145,8 +1160,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           'measurementUnit'
         ) as MeasurementUnit;
         const savedDistanceUnit = localStorage.getItem('distanceUnit') as
-          | 'km'
-          | 'miles';
+          'km' | 'miles';
         const savedDateFormat = localStorage.getItem('dateFormat');
         const savedTimeFormat = localStorage.getItem('timeFormat');
         const savedLanguage = localStorage.getItem('language');
@@ -1201,9 +1215,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       defaultFoodDataProviderId,
       defaultBarcodeProviderId,
       barcodeFallbackOpenFoodFacts,
+      foodSearchAllProvidersDefault,
       timezone,
       itemDisplayLimit,
-      foodDisplayLimit,
       calorieGoalAdjustmentMode,
       exerciseCaloriePercentage,
       activityLevel,
@@ -1247,6 +1261,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setDefaultFoodDataProviderId,
       setDefaultBarcodeProviderId,
       setBarcodeFallbackOpenFoodFacts,
+      setFoodSearchAllProvidersDefault,
       setTimezone,
       setItemDisplayLimit,
       setCalorieGoalAdjustmentMode,
@@ -1296,9 +1311,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       defaultFoodDataProviderId,
       defaultBarcodeProviderId,
       barcodeFallbackOpenFoodFacts,
+      foodSearchAllProvidersDefault,
       timezone,
       itemDisplayLimit,
-      foodDisplayLimit,
       calorieGoalAdjustmentMode,
       exerciseCaloriePercentage,
       activityLevel,
@@ -1341,6 +1356,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setDefaultFoodDataProviderId,
       setDefaultBarcodeProviderId,
       setBarcodeFallbackOpenFoodFacts,
+      setFoodSearchAllProvidersDefault,
       setTimezone,
       setItemDisplayLimit,
       setCalorieGoalAdjustmentMode,

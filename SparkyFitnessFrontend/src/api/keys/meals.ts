@@ -24,8 +24,12 @@ export const foodKeys = {
     [...foodKeys.lists(), { searchTerm, filter, page, limit, sort }] as const,
   recentTop: (limit: number, mealType?: string) =>
     [...foodKeys.all, 'recentTop', limit, mealType] as const,
-  databaseSearch: (term: string, limit: number, mealType?: string) =>
-    [...foodKeys.all, 'search', term, limit, mealType] as const,
+  databaseSearch: (term: string, pageSize: number, filter: MealFilter) =>
+    [...foodKeys.all, 'search', term, pageSize, filter] as const,
+  // Separate namespace from `databaseSearch`: that one is an infinite query
+  // whose cached shape is {pages}, this one resolves to a single response.
+  nameLookup: (term: string, limit: number) =>
+    [...foodKeys.all, 'nameLookup', term, limit] as const,
   favorites: () => [...foodKeys.all, 'favorites'] as const,
 };
 

@@ -1,10 +1,5 @@
 import React from 'react';
-import {
-  StyleSheet,
-  View,
-  type ViewProps,
-  type ViewStyle,
-} from 'react-native';
+import { StyleSheet, View, type ViewProps, type ViewStyle } from 'react-native';
 import { GlassView, type GlassViewProps } from 'expo-glass-effect';
 import { useCSSVariable } from 'uniwind';
 
@@ -16,7 +11,7 @@ export const LIQUID_GLASS_VERTICAL_GAP = 6;
 
 export function createLiquidGlassPillStyle(
   chromeBorder: string,
-  overrides: ViewStyle = {},
+  overrides: ViewStyle = {}
 ): ViewStyle {
   return {
     marginHorizontal: LIQUID_GLASS_HORIZONTAL_MARGIN,

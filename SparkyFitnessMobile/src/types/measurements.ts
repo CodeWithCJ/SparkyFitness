@@ -7,6 +7,10 @@ export interface CheckInMeasurement {
   steps?: number | null;
   height?: number | null;
   body_fat_percentage?: number | null;
+  muscle_mass_kg?: number | null;
+  bone_mass_kg?: number | null;
+  body_water_percentage?: number | null;
+  bmr?: number | null;
 }
 
 export interface CheckInMeasurementRange {
@@ -20,6 +24,10 @@ export interface CheckInMeasurementRange {
   steps?: number | null;
   height?: number | null;
   body_fat_percentage?: number | null;
+  muscle_mass_kg?: number | null;
+  bone_mass_kg?: number | null;
+  body_water_percentage?: number | null;
+  bmr?: number | null;
   updated_at: string;
 }
 

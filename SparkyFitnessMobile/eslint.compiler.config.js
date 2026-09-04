@@ -21,12 +21,13 @@ const reactHooks = require('eslint-plugin-react-hooks');
 // doesn't depend on @typescript-eslint/parser being hoisted to the package root
 // (pnpm keeps it nested).
 const tsParser = expoConfig.find(
-  (config) => config.languageOptions?.parser?.meta?.name === 'typescript-eslint/parser',
+  (config) =>
+    config.languageOptions?.parser?.meta?.name === 'typescript-eslint/parser'
 )?.languageOptions?.parser;
 
 if (!tsParser) {
   throw new Error(
-    'eslint-config-expo/flat no longer exposes the typescript-eslint parser - it may have changed in an expo upgrade',
+    'eslint-config-expo/flat no longer exposes the typescript-eslint parser - it may have changed in an expo upgrade'
   );
 }
 

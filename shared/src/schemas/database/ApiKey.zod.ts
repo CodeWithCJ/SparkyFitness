@@ -13,7 +13,7 @@ export const apiKeySchema = z.object({
   id: apiKeyIdSchema,
   name: z.string().nullable(),
   key: z.string(),
-  user_id: userIdSchema,
+  user_id: userIdSchema.optional(),
   metadata: z.string().nullable(),
   created_at: z.date().nullable(),
   updated_at: z.date().nullable(),
@@ -32,13 +32,15 @@ export const apiKeySchema = z.object({
   remaining: z.number().nullable(),
   last_request: z.date().nullable(),
   permissions: z.string().nullable(),
+  reference_id: z.string().nullable().optional(),
+  config_id: z.string().nullable().optional(),
 });
 
 export const apiKeyInitializerSchema = z.object({
   id: apiKeyIdSchema,
   name: z.string().optional().nullable(),
   key: z.string(),
-  user_id: userIdSchema,
+  user_id: userIdSchema.optional(),
   metadata: z.string().optional().nullable(),
   created_at: z.date().optional().nullable(),
   updated_at: z.date().optional().nullable(),
@@ -57,6 +59,8 @@ export const apiKeyInitializerSchema = z.object({
   remaining: z.number().optional().nullable(),
   last_request: z.date().optional().nullable(),
   permissions: z.string().optional().nullable(),
+  reference_id: z.string().optional().nullable(),
+  config_id: z.string().optional().nullable(),
 });
 
 export const apiKeyMutatorSchema = z.object({
@@ -82,6 +86,8 @@ export const apiKeyMutatorSchema = z.object({
   remaining: z.number().optional().nullable(),
   last_request: z.date().optional().nullable(),
   permissions: z.string().optional().nullable(),
+  reference_id: z.string().optional().nullable(),
+  config_id: z.string().optional().nullable(),
 });
 
 export type ApiKey = z.infer<typeof apiKeySchema>;

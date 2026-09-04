@@ -28,11 +28,13 @@ import {
   ExerciseCategory,
 } from '@/constants/exercises';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   resolveExerciseModality,
   setsDurationMinutes,
 } from '@workspace/shared';
 import { formatTimeOfDayString } from '@/utils/timeFormatters';
+import { exerciseDisplayLabel } from '@/utils/exerciseDisplayLabels';
 
 interface ExerciseEntryDisplayProps {
   exerciseEntry: ExerciseEntry;
@@ -82,6 +84,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
   convertEnergy,
   getEnergyUnitString,
 }) => {
+  const { t } = useTranslation();
   const { weightUnit, distanceUnit, convertDistance, timeFormat } =
     usePreferences();
   const snapshot = exerciseEntry.exercise_snapshot;
@@ -95,7 +98,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
     ? SOURCE_BADGES[snapshot.source]
     : snapshot?.is_custom
       ? {
-          label: 'Custom',
+          label: t('exerciseCard.customSource', 'Custom'),
           className:
             'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
         }
@@ -153,7 +156,15 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
             <button className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden cursor-pointer ring-1 ring-gray-200 dark:ring-gray-700 hover:ring-blue-400 transition-all">
               <img
                 src={imageUrl}
-                alt={snapshot?.name || 'Exercise'}
+                alt={
+                  snapshot?.name
+                    ? exerciseDisplayLabel(
+                        snapshot.name,
+                        t,
+                        !snapshot.is_custom
+                      )
+                    : t('exerciseCard.title', 'Exercise')
+                }
                 onError={() => setImageError(true)}
                 className="w-full h-full object-cover"
               />
@@ -161,14 +172,25 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
           </DialogTrigger>
           <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle>{snapshot?.name || 'Exercise Image'}</DialogTitle>
+              <DialogTitle>
+                {snapshot?.name
+                  ? exerciseDisplayLabel(snapshot.name, t, !snapshot.is_custom)
+                  : t('exerciseCard.exerciseImage', 'Exercise Image')}
+              </DialogTitle>
               <DialogDescription>
-                Preview of the exercise image.
+                {t(
+                  'exerciseCard.previewExerciseImage',
+                  'Preview of the exercise image.'
+                )}
               </DialogDescription>
             </DialogHeader>
             <img
               src={imageUrl}
-              alt={snapshot?.name || 'Exercise'}
+              alt={
+                snapshot?.name
+                  ? exerciseDisplayLabel(snapshot.name, t, !snapshot.is_custom)
+                  : t('exerciseCard.title', 'Exercise')
+              }
               onError={() => setImageError(true)}
               className="w-full h-auto object-contain"
             />
@@ -187,7 +209,9 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
         {/* Name row */}
         <div className="flex items-center gap-1.5 flex-wrap mb-1">
           <span className="font-semibold text-sm text-gray-800 dark:text-gray-100 leading-tight">
-            {snapshot?.name || 'Unknown Exercise'}
+            {snapshot?.name
+              ? exerciseDisplayLabel(snapshot.name, t, !snapshot.is_custom)
+              : t('exerciseCard.unknownExercise', 'Unknown Exercise')}
           </span>
           {exerciseEntry.entry_time && (
             <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full dark:bg-blue-900/30 dark:text-blue-300 font-medium">
@@ -207,7 +231,10 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
         <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500 dark:text-gray-400 mb-1">
           {isActiveCalories ? (
             <span className="font-medium text-orange-600 dark:text-orange-400">
-              {caloriesDisplay} active
+              {t('exerciseCard.activeCaloriesValue', {
+                defaultValue: '{{calories}} active',
+                calories: caloriesDisplay,
+              })}
             </span>
           ) : (
             <>
@@ -225,7 +252,13 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
               {hasSets && (
                 <>
                   <span className="text-gray-300 dark:text-gray-600">·</span>
-                  <span>{exerciseEntry.sets!.length} sets</span>
+                  <span>
+                    {t('exerciseCard.setCount', {
+                      defaultValue: '{{count}} set',
+                      defaultValue_other: '{{count}} sets',
+                      count: exerciseEntry.sets!.length,
+                    })}
+                  </span>
                 </>
               )}
             </>
@@ -237,16 +270,29 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
           <div className="flex flex-wrap gap-1 mb-1.5">
             {exerciseEntry.sets!.map((set, index) => {
               const parts: string[] = [];
-              if (Number.isFinite(set.reps))
+              if (typeof set.reps === 'number' && Number.isFinite(set.reps))
                 parts.push(
                   // Isometric sets predating the duration column stored their hold in `reps`.
                   isTimed && set.duration == null
-                    ? `${set.reps}s`
-                    : `${set.reps} reps`
+                    ? t('exerciseCard.secondsShort', {
+                        defaultValue: '{{count}}s',
+                        count: set.reps,
+                      })
+                    : t('exerciseCard.repCount', {
+                        defaultValue: '{{count}} rep',
+                        defaultValue_other: '{{count}} reps',
+                        count: set.reps,
+                      })
                 );
               if (set.weight && Number.isFinite(set.weight))
                 parts.push(formatWeight(set.weight, weightUnit));
-              if (set.duration != null) parts.push(`${set.duration}s`);
+              if (set.duration != null)
+                parts.push(
+                  t('exerciseCard.secondsShort', {
+                    defaultValue: '{{count}}s',
+                    count: set.duration,
+                  })
+                );
               if (set.distance != null)
                 parts.push(formatDistance(set.distance));
               if (Number.isFinite(set.rpe)) parts.push(`RPE ${set.rpe}`);
@@ -271,7 +317,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
                 key={pill}
                 className="text-[10px] px-1.5 py-0.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 capitalize"
               >
-                {pill}
+                {t(`exerciseCard.meta.${pill}`, pill)}
               </span>
             ))}
           </div>
@@ -281,7 +327,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
         {snapshot?.primary_muscles && snapshot.primary_muscles.length > 0 && (
           <div className="text-[10px] text-gray-400 dark:text-gray-500 leading-snug">
             <span className="font-medium text-gray-500 dark:text-gray-400">
-              Primary:{' '}
+              {t('exerciseCard.primaryMusclesLabel', 'Primary Muscles')}:{' '}
             </span>
             {snapshot.primary_muscles.join(', ')}
           </div>
@@ -290,7 +336,8 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
           snapshot.secondary_muscles.length > 0 && (
             <div className="text-[10px] text-gray-400 dark:text-gray-500 leading-snug">
               <span className="font-medium text-gray-500 dark:text-gray-400">
-                Secondary:{' '}
+                {t('exerciseCard.secondaryMusclesLabel', 'Secondary Muscles')}
+                :{' '}
               </span>
               {snapshot.secondary_muscles.join(', ')}
             </div>
@@ -298,7 +345,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
         {snapshot?.equipment && snapshot.equipment.length > 0 && (
           <div className="text-[10px] text-gray-400 dark:text-gray-500 leading-snug">
             <span className="font-medium text-gray-500 dark:text-gray-400">
-              Equipment:{' '}
+              {t('exerciseCard.equipmentLabel', 'Equipment')}:{' '}
             </span>
             {snapshot.equipment.join(', ')}
           </div>
@@ -315,7 +362,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
         {snapshot?.instructions && snapshot.instructions.length > 0 && (
           <ActionButton
             icon={<Play className="w-3.5 h-3.5" />}
-            label="Play Instructions"
+            label={t('exerciseCard.playInstructions', 'Play Instructions')}
             onClick={() => {
               setExerciseToPlay({
                 ...snapshot!,
@@ -327,14 +374,17 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
         )}
         <ActionButton
           icon={<Edit className="w-3.5 h-3.5" />}
-          label="Edit Entry"
+          label={t('exerciseCard.editEntry', 'Edit Entry')}
           onClick={() => handleEdit(exerciseEntry)}
           colorClass="hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50"
         />
         {snapshot?.user_id === currentUserId && (
           <ActionButton
             icon={<Settings className="w-3.5 h-3.5" />}
-            label="Edit Exercise in Database"
+            label={t(
+              'exerciseCard.editExerciseInDatabase',
+              'Edit Exercise in Database'
+            )}
             onClick={() =>
               handleEditExerciseDatabase(exerciseEntry.exercise_id)
             }
@@ -343,7 +393,7 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
         )}
         <ActionButton
           icon={<Trash2 className="w-3.5 h-3.5" />}
-          label="Delete Entry"
+          label={t('exerciseCard.deleteEntry', 'Delete Entry')}
           onClick={() => handleDelete(exerciseEntry.id)}
           colorClass="hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"
         />
