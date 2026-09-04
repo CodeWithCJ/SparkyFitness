@@ -28,19 +28,27 @@ type ProgressPhotosCardNavigation = CompositeNavigationProp<
 
 interface ProgressPhotosCardProps {
   navigation: ProgressPhotosCardNavigation;
+  /** The dashboard's selected day. */
+  date: string;
 }
 
 /**
- * Dashboard entry point into the progress gallery: the most recent shoot, with
- * the date and the weight logged that day.
+ * Dashboard entry point into the progress gallery: the selected day's shoot,
+ * with the weight logged that day.
+ *
+ * Scoped to the day on show rather than the latest shoot whenever it was. Every
+ * other card on the Dashboard answers for the selected date, so a card that
+ * quietly showed a different day read as today's photo and contradicted the
+ * date in the header.
  *
  * The gallery query is gated on the card's visibility preference, so a hidden
  * card costs no request at app open. Unlike the medications and cycle cards
- * this one stays and prompts when empty rather than returning null - nothing
- * else on the Dashboard advertises the feature.
+ * this one stays and prompts when the day is empty rather than returning null -
+ * nothing else on the Dashboard advertises the feature.
  */
 const ProgressPhotosCard: React.FC<ProgressPhotosCardProps> = ({
   navigation,
+  date,
 }) => {
   const { t } = useTranslation();
   const dateLocale = i18n.language;
@@ -56,29 +64,30 @@ const ProgressPhotosCard: React.FC<ProgressPhotosCardProps> = ({
   const weightMode: WeightDisplayMode =
     preferences?.default_weight_unit ?? 'kg';
 
-  // The gallery is newest-first, so the first day that carries any angle is the
-  // latest shoot. Angle preference follows PHOTO_TYPES so the thumbnail is
-  // stable rather than depending on the server's alphabetical photo_type order.
-  const latest = useMemo(() => {
-    const day = days[0];
+  // Read off the gallery rather than the per-day endpoint because the card
+  // shows that day's weight, which only the gallery carries. Angle preference
+  // follows PHOTO_TYPES so the thumbnail is stable rather than depending on the
+  // server's alphabetical photo_type order.
+  const shoot = useMemo(() => {
+    const day = days.find((entry) => entry.entry_date === date);
     if (!day) return null;
     const angle = PHOTO_TYPES.find((type: PhotoType) => day.photos[type]);
     if (!angle) return null;
     return { day, photoId: day.photos[angle]!.id };
-  }, [days]);
+  }, [days, date]);
 
   if (!visible || isLoading) return null;
 
-  // No photos yet: prompt straight into capture for today rather than the
-  // gallery, which would only show its own empty state.
-  if (!latest) {
+  // Nothing on this day: prompt into it, phrased like the Food and exercise
+  // cards so the whole Dashboard reads the same way on an empty day.
+  if (!shoot) {
     return (
       <TouchableOpacity
-        onPress={() => navigation.navigate('ProgressPhotos', {})}
+        onPress={() => navigation.navigate('ProgressPhotos', { date })}
         activeOpacity={0.7}
         accessibilityRole="button"
-        accessibilityLabel={t('progressPhotos.card.addA11y', {
-          defaultValue: 'Add your first progress photos',
+        accessibilityLabel={t('progressPhotos.addDayA11y', {
+          defaultValue: 'Add progress photos for this day',
         })}
         className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
       >
@@ -86,15 +95,13 @@ const ProgressPhotosCard: React.FC<ProgressPhotosCardProps> = ({
           {t('progressPhotos.card.title', { defaultValue: 'Progress' })}
         </Text>
         <Text className="text-text-muted text-sm text-center mb-4">
-          {t('progressPhotos.card.empty', {
-            defaultValue: 'Tap to add check-in photos',
-          })}
+          {t('progressPhotos.tapToAdd', { defaultValue: 'Tap to add photos' })}
         </Text>
       </TouchableOpacity>
     );
   }
 
-  const source = getPhotoSource(latest.photoId);
+  const source = getPhotoSource(shoot.photoId);
 
   return (
     <TouchableOpacity
@@ -136,11 +143,11 @@ const ProgressPhotosCard: React.FC<ProgressPhotosCardProps> = ({
         />
         <View className="flex-1 ml-3">
           <Text className="text-text-primary text-base font-semibold">
-            {formatDateLabel(latest.day.entry_date, t, dateLocale)}
+            {formatDateLabel(shoot.day.entry_date, t, dateLocale)}
           </Text>
-          {latest.day.weight != null ? (
+          {shoot.day.weight != null ? (
             <Text className="text-text-secondary text-sm mt-0.5">
-              {formatWeightDisplay(latest.day.weight, weightMode)}
+              {formatWeightDisplay(shoot.day.weight, weightMode)}
             </Text>
           ) : (
             <Text className="text-text-muted text-sm mt-0.5 italic">

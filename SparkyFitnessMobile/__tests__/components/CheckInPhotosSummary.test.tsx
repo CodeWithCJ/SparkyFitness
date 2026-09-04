@@ -51,14 +51,22 @@ describe('CheckInPhotosSummary', () => {
     } as unknown as ReturnType<typeof useCheckInPhotoSource>);
   });
 
-  it('renders nothing on a day with no photos', () => {
-    // The diary lists what a day holds; prompting for what it does not is the
-    // dashboard card's job.
+  it('prompts on a day with no photos rather than rendering nothing', () => {
+    // Same affordance food and exercise get: a blank space gives no way in.
     setPhotos([]);
 
-    const { toJSON } = renderSummary();
+    const { getByText } = renderSummary();
 
-    expect(toJSON()).toBeNull();
+    expect(getByText('Tap to add photos')).toBeTruthy();
+  });
+
+  it('opens that day from the prompt', () => {
+    setPhotos([]);
+
+    const { getByText } = renderSummary();
+    fireEvent.press(getByText('Tap to add photos'));
+
+    expect(onPress).toHaveBeenCalled();
   });
 
   it('shows every angle so a gap in the day is visible', () => {

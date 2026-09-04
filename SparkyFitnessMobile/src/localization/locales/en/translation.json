@@ -4883,9 +4883,7 @@
     "card": {
       "title": "Progress",
       "viewAll": "View all",
-      "openA11y": "View progress photos",
-      "empty": "Tap to add check-in photos",
-      "addA11y": "Add your first progress photos"
+      "openA11y": "View progress photos"
     },
     "title": "Progress Photos",
     "angle": {
@@ -4929,6 +4927,8 @@
     "range3m": "Last 3 months",
     "chooseDayA11y": "Choose the day",
     "diarySection": "Progress photos",
+    "tapToAdd": "Tap to add photos",
+    "addDayA11y": "Add progress photos for this day",
     "angleCount": "{{taken}} of {{total}}",
     "openDayA11y": "Open the progress photos for this day",
     "missingAngleA11y": "No {{angle}} photo on this day",

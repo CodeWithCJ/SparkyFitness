@@ -622,7 +622,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         {medicationsCardVisible && <MedicationsCard navigation={navigation} />}
 
         {progressPhotosCardVisible && (
-          <ProgressPhotosCard navigation={navigation} />
+          <ProgressPhotosCard navigation={navigation} date={selectedDate} />
         )}
 
         <Text className="text-text-primary text-xl font-bold mb-2">

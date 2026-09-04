@@ -33,13 +33,11 @@ const THUMB = { width: 44, height: 58, borderRadius: 8 };
  * The photos taken on the diary's day, next to the measurements from the same
  * check-in - on the server both hang off (user_id, entry_date).
  *
- * Deliberately not a copy of the dashboard card: that one answers "where am I
- * now" with the latest shoot whenever it was, while this answers "what did I
- * record on this date". It carries no weight or delta because the measurements
- * summary directly above already shows them for the same day.
+ * Carries no weight or delta: the measurements summary directly above already
+ * shows them for the same day.
  *
- * Renders nothing on a day with no photos, like MeasurementsSummary: the diary
- * lists what a day holds rather than prompting for what it does not.
+ * A day with no photos gets the same prompt food and exercise get rather than
+ * rendering nothing, so the row is a way in and not just a readout.
  */
 const CheckInPhotosSummary: React.FC<CheckInPhotosSummaryProps> = ({
   date,
@@ -59,7 +57,22 @@ const CheckInPhotosSummary: React.FC<CheckInPhotosSummaryProps> = ({
   const byType = new Map<PhotoType, CheckInPhoto>();
   for (const photo of photos) byType.set(photo.photo_type, photo);
 
-  if (byType.size === 0) return null;
+  if (byType.size === 0) {
+    return (
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={t('progressPhotos.addDayA11y', {
+          defaultValue: 'Add progress photos for this day',
+        })}
+        className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6"
+      >
+        <Text className="text-text-muted text-base">
+          {t('progressPhotos.tapToAdd', { defaultValue: 'Tap to add photos' })}
+        </Text>
+      </Pressable>
+    );
+  }
 
   const angleLabel = (type: PhotoType): string => {
     switch (type) {

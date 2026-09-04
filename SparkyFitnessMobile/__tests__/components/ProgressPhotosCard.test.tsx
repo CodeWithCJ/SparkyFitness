@@ -54,7 +54,9 @@ const setGallery = (days: ProgressPhotoDay[], isLoading = false) => {
   } as unknown as ReturnType<typeof useCheckInPhotoGallery>);
 };
 
-const renderCard = () =>
+const DATE = '2026-03-15';
+
+const renderCard = (date = DATE) =>
   render(
     <SafeAreaProvider
       initialMetrics={{
@@ -68,6 +70,7 @@ const renderCard = () =>
             typeof ProgressPhotosCard
           >['navigation']
         }
+        date={date}
       />
     </SafeAreaProvider>
   );
@@ -86,7 +89,7 @@ describe('ProgressPhotosCard', () => {
     setGallery([day()]);
   });
 
-  it('shows the latest shoot with its date and weight', () => {
+  it("shows the selected day's shoot with its weight", () => {
     const { getByText } = renderCard();
 
     expect(getByText('Progress')).toBeTruthy();
@@ -101,7 +104,7 @@ describe('ProgressPhotosCard', () => {
     expect(navigation.navigate).toHaveBeenCalledWith('ProgressPhotos');
   });
 
-  it('prompts for a first shoot when the user has no photos yet', () => {
+  it('prompts when the user has no photos at all', () => {
     // Nothing else on the dashboard hints the feature exists, so a card that
     // only appears once you already have photos can never be what gets you to
     // take the first one.
@@ -110,16 +113,30 @@ describe('ProgressPhotosCard', () => {
     const { getByText } = renderCard();
 
     expect(getByText('Progress')).toBeTruthy();
-    expect(getByText('Tap to add check-in photos')).toBeTruthy();
+    expect(getByText('Tap to add photos')).toBeTruthy();
   });
 
-  it('sends the empty card to the gallery, where the day block takes over', () => {
+  it('prompts on a day with no shoot even though older ones exist', () => {
+    // The bug this replaces: the card showed the newest shoot whenever it was,
+    // so a day with no photo still displayed one, contradicting the date in the
+    // dashboard header directly above it.
+    setGallery([day({ entry_date: '2026-03-10' })]);
+
+    const { getByText, queryByText } = renderCard('2026-03-15');
+
+    expect(getByText('Tap to add photos')).toBeTruthy();
+    expect(queryByText('82.5 kg')).toBeNull();
+  });
+
+  it('sends the empty card into that same day, not into today', () => {
     setGallery([]);
 
-    const { getByText } = renderCard();
-    fireEvent.press(getByText('Tap to add check-in photos'));
+    const { getByText } = renderCard('2026-03-15');
+    fireEvent.press(getByText('Tap to add photos'));
 
-    expect(navigation.navigate).toHaveBeenCalledWith('ProgressPhotos', {});
+    expect(navigation.navigate).toHaveBeenCalledWith('ProgressPhotos', {
+      date: '2026-03-15',
+    });
   });
 
   it('renders nothing while the gallery is still loading', () => {
@@ -173,7 +190,7 @@ describe('ProgressPhotosCard', () => {
     expect(getPhotoSource).toHaveBeenCalledWith('photo-front');
   });
 
-  it('says so when the latest shoot has no weight logged', () => {
+  it('says so when the day has no weight logged', () => {
     setGallery([day({ weight: null })]);
 
     const { getByText } = renderCard();
