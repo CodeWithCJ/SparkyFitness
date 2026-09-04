@@ -48,6 +48,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         added_sugar_algorithm = COALESCE($43, added_sugar_algorithm),
         calorie_safety_floor_mode = COALESCE($45, calorie_safety_floor_mode),
         calorie_safety_floor_value = COALESCE($46, calorie_safety_floor_value),
+        chart_scale_mode = COALESCE($48, chart_scale_mode),
         updated_at = now()
       WHERE user_id = $28
       RETURNING *`,
@@ -99,6 +100,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         preferenceData.calorie_safety_floor_mode,
         preferenceData.calorie_safety_floor_value,
         preferenceData.food_search_all_providers_default,
+        preferenceData.chart_scale_mode,
       ]
     );
     return result.rows[0];
@@ -188,6 +190,7 @@ async function upsertUserPreferences(preferenceData: any) {
        added_sugar_algorithm,
        calorie_safety_floor_mode,
        calorie_safety_floor_value,
+       chart_scale_mode,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($44, 'HH:mm'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -216,6 +219,7 @@ async function upsertUserPreferences(preferenceData: any) {
        COALESCE($43, 'WHO_IDEAL'),
        COALESCE($45, 'standard'),
        COALESCE($46, 1200),
+       COALESCE($48, 'time'),
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -266,6 +270,8 @@ async function upsertUserPreferences(preferenceData: any) {
        -- as time_format below.
        food_search_all_providers_default = COALESCE($47, user_preferences.food_search_all_providers_default),
        time_format = COALESCE($44, user_preferences.time_format),
+       -- Read $48 directly rather than EXCLUDED, for the same reason as $47.
+       chart_scale_mode = COALESCE($48, user_preferences.chart_scale_mode),
        updated_at = now()
      RETURNING *`,
       [
@@ -316,6 +322,7 @@ async function upsertUserPreferences(preferenceData: any) {
         preferenceData.calorie_safety_floor_mode,
         preferenceData.calorie_safety_floor_value,
         preferenceData.food_search_all_providers_default,
+        preferenceData.chart_scale_mode,
       ]
     );
     return result.rows[0];

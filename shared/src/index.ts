@@ -101,6 +101,7 @@ export * from "./constants/exercise.ts";
 export * from "./constants/chatAskUser.ts";
 export * from "./constants/mealServing.ts";
 export * from "./constants/notes.ts";
+export * from "./constants/chartConstants.ts";
 export * from "./utils/noteImages.ts";
 export * from "./utils/markdownToolbar.ts";
 export * from "./nutrients/micronutrientCatalog.ts";
