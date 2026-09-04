@@ -1,4 +1,3 @@
-import externalProviderService from '../services/externalProviderService.js';
 import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import preferenceService from '../services/preferenceService.js';
@@ -9,6 +8,7 @@ import {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
 } from '../integrations/openfoodfacts/openFoodFactsService.js';
+import { resolveOpenFoodFactsProviderId } from '../services/externalFoodSearchService.js';
 import {
   searchNutritionixFoods,
   getNutritionixNutrients,
@@ -416,18 +416,23 @@ router.get('/openfoodfacts/search', authenticate, async (req, res, next) => {
       req.userId
     );
     const language = userPrefs?.language || 'en';
-    const providerId =
-      req.headers['x-provider-id'] ||
-      (await externalProviderService.getActiveOpenFoodFactsProviderId(
-        req.authenticatedUserId
-      ));
+    const requestedProviderId =
+      typeof req.headers['x-provider-id'] === 'string'
+        ? req.headers['x-provider-id']
+        : undefined;
+    const provider = await resolveOpenFoodFactsProviderId(
+      req.authenticatedUserId,
+      requestedProviderId
+    );
     const data = await searchOpenFoodFacts(
       query,
       page,
       language,
 
-      providerId ? req.authenticatedUserId : undefined,
-      providerId || undefined
+      provider ? req.authenticatedUserId : undefined,
+      provider?.id,
+      20,
+      provider?.scope ?? 'personal'
     );
     res.json(data);
   } catch (error) {
@@ -469,18 +474,22 @@ router.get(
         req.userId
       );
       const language = userPrefs?.language || 'en';
-      const providerId =
-        req.headers['x-provider-id'] ||
-        (await externalProviderService.getActiveOpenFoodFactsProviderId(
-          req.authenticatedUserId
-        ));
+      const requestedProviderId =
+        typeof req.headers['x-provider-id'] === 'string'
+          ? req.headers['x-provider-id']
+          : undefined;
+      const provider = await resolveOpenFoodFactsProviderId(
+        req.authenticatedUserId,
+        requestedProviderId
+      );
       const data = await searchOpenFoodFactsByBarcodeFields(
         barcode,
         undefined,
         language,
 
-        providerId ? req.authenticatedUserId : undefined,
-        providerId || undefined
+        provider ? req.authenticatedUserId : undefined,
+        provider?.id,
+        provider?.scope ?? 'personal'
       );
       res.json(data);
     } catch (error) {

@@ -61,6 +61,7 @@ export const createExternalProvider = async (
         'free-exercise-db',
         'yazio',
         'norish',
+        'openfoodfacts',
       ].includes(payload.provider_type)
         ? payload.base_url || null
         : null,
