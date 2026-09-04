@@ -1,4 +1,82 @@
 import { getClient } from '../db/poolManager.js';
+
+export interface OpenFoodFactsContributionPreferences {
+  enabled: boolean;
+  productLanguage: string;
+  backfillPending: boolean;
+}
+
+interface OpenFoodFactsPreferenceRow {
+  auto_contribute_openfoodfacts: boolean;
+  openfoodfacts_product_language: string;
+  openfoodfacts_backfill_pending: boolean;
+}
+
+function mapOpenFoodFactsPreferences(
+  row?: OpenFoodFactsPreferenceRow
+): OpenFoodFactsContributionPreferences {
+  return {
+    enabled: row?.auto_contribute_openfoodfacts ?? false,
+    productLanguage: row?.openfoodfacts_product_language ?? 'en',
+    backfillPending: row?.openfoodfacts_backfill_pending ?? false,
+  };
+}
+
+async function getOpenFoodFactsContributionPreferences(
+  userId: string
+): Promise<OpenFoodFactsContributionPreferences> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT auto_contribute_openfoodfacts,
+              openfoodfacts_product_language,
+              openfoodfacts_backfill_pending
+         FROM user_preferences
+        WHERE user_id = $1`,
+      [userId]
+    );
+    return mapOpenFoodFactsPreferences(
+      result.rows[0] as OpenFoodFactsPreferenceRow | undefined
+    );
+  } finally {
+    client.release();
+  }
+}
+
+async function setOpenFoodFactsContributionPreferences(
+  userId: string,
+  input: {
+    enabled: boolean;
+    productLanguage: string;
+  }
+): Promise<OpenFoodFactsContributionPreferences> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `INSERT INTO user_preferences (
+         user_id,
+         auto_contribute_openfoodfacts,
+         openfoodfacts_product_language,
+         created_at,
+         updated_at
+       ) VALUES ($1, $2, $3, now(), now())
+       ON CONFLICT (user_id) DO UPDATE SET
+         auto_contribute_openfoodfacts = EXCLUDED.auto_contribute_openfoodfacts,
+         openfoodfacts_product_language = EXCLUDED.openfoodfacts_product_language,
+         updated_at = now()
+       RETURNING auto_contribute_openfoodfacts,
+                 openfoodfacts_product_language,
+                 openfoodfacts_backfill_pending`,
+      [userId, input.enabled, input.productLanguage]
+    );
+    return mapOpenFoodFactsPreferences(
+      result.rows[0] as OpenFoodFactsPreferenceRow | undefined
+    );
+  } finally {
+    client.release();
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateUserPreferences(userId: any, preferenceData: any) {
   const client = await getClient(userId); // User-specific operation
@@ -328,10 +406,14 @@ export { deleteUserPreferences };
 export { getUserPreferences };
 export { bootstrapUserTimezoneIfUnset };
 export { upsertUserPreferences };
+export { getOpenFoodFactsContributionPreferences };
+export { setOpenFoodFactsContributionPreferences };
 export default {
   updateUserPreferences,
   deleteUserPreferences,
   getUserPreferences,
   bootstrapUserTimezoneIfUnset,
   upsertUserPreferences,
+  getOpenFoodFactsContributionPreferences,
+  setOpenFoodFactsContributionPreferences,
 };

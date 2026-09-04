@@ -50,6 +50,15 @@ describe('CreateGlobalExternalDataProviderBodySchema', () => {
     });
     expect(result.success).toBe(false);
   });
+
+  it('rejects provider-row Open Food Facts contribution settings', () => {
+    const result = CreateGlobalExternalDataProviderBodySchema.safeParse({
+      provider_name: 'Test',
+      provider_type: 'openfoodfacts',
+      auto_contribute_openfoodfacts: true,
+    });
+    expect(result.success).toBe(false);
+  });
 });
 
 describe('UpdateGlobalExternalDataProviderBodySchema', () => {

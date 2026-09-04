@@ -8,6 +8,7 @@ import {
 import { Database } from 'lucide-react';
 import AddExternalProviderForm from '../Settings/AddExternalProviderForm';
 import ExternalProviderList from '../Settings/ExternalProviderList';
+import { OpenFoodFactsAdminContributionSettings } from './OpenFoodFactsAdminContributionSettings';
 
 const GlobalProviderSettings = () => {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -37,6 +38,8 @@ const GlobalProviderSettings = () => {
             keys. OAuth-based connections with personal user accounts (e.g.
             Garmin, Strava) cannot be added globally.
           </div>
+
+          <OpenFoodFactsAdminContributionSettings />
 
           <AddExternalProviderForm
             showAddForm={showAddForm}

@@ -80,7 +80,7 @@ describe('globalSettingsRepository', () => {
       // 6th is the existence flag, false here so the CASE WHEN leaves it untouched.
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE global_settings'),
-        [true, false, true, false, null, false]
+        [true, false, true, false, null, false, null]
       );
       expect(result).toEqual({
         ...savedSettings,
@@ -102,6 +102,7 @@ describe('globalSettingsRepository', () => {
       // Present in the payload, so the existence flag is true and the CASE WHEN
       // writes the supplied value.
       expect(params[5]).toBe(true);
+      expect(params[6]).toBeNull();
       expect(mockClient.query.mock.calls[0][0]).toContain(
         'default_vision_ai_service_id = CASE WHEN $6 THEN $5 ELSE default_vision_ai_service_id END'
       );
@@ -155,6 +156,21 @@ describe('globalSettingsRepository', () => {
       const queryCalls = mockClient.query.mock.calls[0];
       const params = queryCalls[1];
       expect(params[3]).toBe(true);
+    });
+    it('persists the server-wide Open Food Facts contribution gate when supplied', async () => {
+      mockClient.query.mockResolvedValue({
+        rows: [{ id: 1, allow_openfoodfacts_contributions: true }],
+      });
+
+      await globalSettingsRepository.saveGlobalSettings({
+        allow_openfoodfacts_contributions: true,
+      });
+
+      const [query, params] = mockClient.query.mock.calls[0];
+      expect(query).toContain(
+        'allow_openfoodfacts_contributions = COALESCE($7'
+      );
+      expect(params[6]).toBe(true);
     });
   });
   describe('isUserAiConfigAllowed', () => {

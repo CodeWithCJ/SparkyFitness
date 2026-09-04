@@ -16,6 +16,9 @@ import {
   requiresUserSuppliedAiUrl,
 } from '../utils/outboundUrlPolicy.js';
 import { auth } from '../auth.js';
+import { invalidateOpenFoodFactsSession } from '../integrations/openfoodfacts/openFoodFactsAuth.js';
+import { evaluateOpenFoodFactsProviderCredentials } from '../services/openFoodFactsProviderCredentials.js';
+import externalProviderService from '../services/externalProviderService.js';
 const router = express.Router();
 // Middleware to ensure only admins can access these routes
 // This will be enhanced later to prioritize SPARKY_FITNESS_ADMIN_EMAIL
@@ -851,7 +854,11 @@ router.get('/external-data-providers/global', async (req, res, next) => {
   try {
     const providers =
       await externalProviderRepository.getGlobalExternalDataProviders();
-    res.status(200).json(providers);
+    res
+      .status(200)
+      .json(
+        providers.map(externalProviderService.redactGlobalProviderForBrowser)
+      );
   } catch (error) {
     log('error', 'Error fetching global external data providers:', error);
     next(error);
@@ -927,17 +934,26 @@ router.post('/external-data-providers/global', async (req, res, next) => {
       app_key: app_key || null,
       base_url: base_url || null,
       is_active: is_active || false,
-      user_id: req.userId,
+      user_id: req.authenticatedUserId,
     };
+    const openFoodFactsCredentials = evaluateOpenFoodFactsProviderCredentials(
+      undefined,
+      providerData
+    );
+    Object.assign(providerData, openFoodFactsCredentials.credentialPatch);
     const result =
       await externalProviderRepository.createGlobalExternalDataProvider(
         providerData
       );
-
-    await logAdminAction(req.userId, null, 'GLOBAL_PROVIDER_CREATED', {
-      providerId: result.id,
-      providerName: provider_name,
-    });
+    await logAdminAction(
+      req.authenticatedUserId,
+      null,
+      'GLOBAL_PROVIDER_CREATED',
+      {
+        providerId: result.id,
+        providerName: provider_name,
+      }
+    );
     res.status(201).json(result);
   } catch (error) {
     log('error', 'Error creating global external data provider:', error);
@@ -1021,6 +1037,15 @@ router.put('/external-data-providers/global/:id', async (req, res, next) => {
         .status(400)
         .json({ error: `Invalid provider_type: '${provider_type}'.` });
     }
+
+    const existingProvider =
+      await externalProviderRepository.getExternalDataProviderById(id);
+    if (!existingProvider || existingProvider.is_public !== true) {
+      return res
+        .status(404)
+        .json({ error: 'Global external data provider not found.' });
+    }
+
     const updateData = {
       provider_name,
       provider_type,
@@ -1029,6 +1054,11 @@ router.put('/external-data-providers/global/:id', async (req, res, next) => {
       base_url,
       is_active,
     };
+    const openFoodFactsCredentials = evaluateOpenFoodFactsProviderCredentials(
+      existingProvider,
+      updateData
+    );
+    Object.assign(updateData, openFoodFactsCredentials.credentialPatch);
     const result =
       await externalProviderRepository.updateGlobalExternalDataProvider(
         id,
@@ -1039,11 +1069,18 @@ router.put('/external-data-providers/global/:id', async (req, res, next) => {
         .status(404)
         .json({ error: 'Global external data provider not found.' });
     }
-
-    await logAdminAction(req.userId, null, 'GLOBAL_PROVIDER_UPDATED', {
-      providerId: id,
-      providerName: provider_name || result.provider_name,
-    });
+    if (openFoodFactsCredentials.shouldInvalidateSession) {
+      invalidateOpenFoodFactsSession(req.authenticatedUserId, id);
+    }
+    await logAdminAction(
+      req.authenticatedUserId,
+      null,
+      'GLOBAL_PROVIDER_UPDATED',
+      {
+        providerId: id,
+        providerName: provider_name || result.provider_name,
+      }
+    );
     res.status(200).json(result);
   } catch (error) {
     log(
@@ -1086,9 +1123,13 @@ router.delete('/external-data-providers/global/:id', async (req, res, next) => {
     const success =
       await externalProviderRepository.deleteGlobalExternalDataProvider(id);
     if (success) {
-      await logAdminAction(req.userId, null, 'GLOBAL_PROVIDER_DELETED', {
-        providerId: id,
-      });
+      invalidateOpenFoodFactsSession(req.authenticatedUserId, id);
+      await logAdminAction(
+        req.authenticatedUserId,
+        null,
+        'GLOBAL_PROVIDER_DELETED',
+        { providerId: id }
+      );
       res.status(200).json({
         message: 'Global external data provider deleted successfully.',
       });

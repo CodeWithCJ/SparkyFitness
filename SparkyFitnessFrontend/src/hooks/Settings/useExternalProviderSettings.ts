@@ -1,5 +1,8 @@
 import { exerciseSearchKeys } from '@/api/keys/exercises';
-import { externalProviderKeys } from '@/api/keys/settings';
+import {
+  externalProviderKeys,
+  openFoodFactsContributionKeys,
+} from '@/api/keys/settings';
 import {
   createExternalProvider,
   deleteExternalProvider,
@@ -16,8 +19,35 @@ import {
 import type { CreateGlobalProviderPayload } from '@/api/Settings/externalProviderService';
 export type { CreateGlobalProviderPayload };
 import { ExternalDataProvider } from '@/pages/Settings/ExternalProviderSettings';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+
+const invalidateProviderConsumers = (
+  queryClient: QueryClient,
+  includeExerciseProviders = false
+) => {
+  const invalidations = [
+    queryClient.invalidateQueries({ queryKey: externalProviderKeys.all }),
+    queryClient.invalidateQueries({
+      queryKey: openFoodFactsContributionKeys.user(),
+    }),
+  ];
+
+  if (includeExerciseProviders) {
+    invalidations.push(
+      queryClient.invalidateQueries({
+        queryKey: exerciseSearchKeys.providers,
+      })
+    );
+  }
+
+  return Promise.all(invalidations);
+};
 
 export const useExternalProviderTypesQuery = () => {
   return useQuery({
@@ -33,11 +63,7 @@ export const useCreateExternalProviderMutation = () => {
 
   return useMutation({
     mutationFn: createExternalProvider,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: externalProviderKeys.all,
-      });
-    },
+    onSuccess: () => invalidateProviderConsumers(queryClient),
     meta: {
       successMessage: t(
         'providers.createSuccess',
@@ -77,14 +103,7 @@ export const useUpdateExternalProviderMutation = () => {
       id: string;
       data: Partial<ExternalDataProvider>;
     }) => updateExternalProvider(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: externalProviderKeys.all,
-      });
-      queryClient.invalidateQueries({
-        queryKey: exerciseSearchKeys.providers,
-      });
-    },
+    onSuccess: () => invalidateProviderConsumers(queryClient, true),
     meta: {
       successMessage: t(
         'providers.updateSuccess',
@@ -105,11 +124,7 @@ export const useToggleProviderStatusMutation = () => {
   return useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       toggleProviderActiveStatus(id, isActive),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: externalProviderKeys.all,
-      });
-    },
+    onSuccess: () => invalidateProviderConsumers(queryClient),
     meta: {
       successMessage: t(
         'providers.statusUpdateSuccess',
@@ -129,11 +144,7 @@ export const useDeleteExternalProviderMutation = () => {
 
   return useMutation({
     mutationFn: deleteExternalProvider,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: externalProviderKeys.all,
-      });
-    },
+    onSuccess: () => invalidateProviderConsumers(queryClient),
     meta: {
       successMessage: t(
         'providers.deleteSuccess',
@@ -161,11 +172,7 @@ export const useCreateGlobalProvider = () => {
 
   return useMutation({
     mutationFn: createGlobalExternalProvider,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: externalProviderKeys.all,
-      });
-    },
+    onSuccess: () => invalidateProviderConsumers(queryClient),
     meta: {
       successMessage: t(
         'providers.createSuccess',
@@ -191,14 +198,7 @@ export const useUpdateGlobalProvider = () => {
       id: string;
       data: Partial<CreateGlobalProviderPayload>;
     }) => updateGlobalExternalProvider(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: externalProviderKeys.all,
-      });
-      queryClient.invalidateQueries({
-        queryKey: exerciseSearchKeys.providers,
-      });
-    },
+    onSuccess: () => invalidateProviderConsumers(queryClient, true),
     meta: {
       successMessage: t(
         'providers.updateSuccess',
@@ -218,11 +218,7 @@ export const useDeleteGlobalProvider = () => {
 
   return useMutation({
     mutationFn: deleteGlobalExternalProvider,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: externalProviderKeys.all,
-      });
-    },
+    onSuccess: () => invalidateProviderConsumers(queryClient),
     meta: {
       successMessage: t(
         'providers.deleteSuccess',

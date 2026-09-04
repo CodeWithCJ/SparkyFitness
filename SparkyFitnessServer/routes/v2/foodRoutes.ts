@@ -313,7 +313,7 @@ const detailHandler: RequestHandler<{
 
     switch (providerType) {
       case 'openfoodfacts': {
-        const offProviderId = await resolveOpenFoodFactsProviderId(
+        const offProvider = await resolveOpenFoodFactsProviderId(
           req.authenticatedUserId,
           providerId
         );
@@ -322,8 +322,9 @@ const detailHandler: RequestHandler<{
           undefined,
           language,
 
-          offProviderId ? req.authenticatedUserId : undefined,
-          offProviderId || undefined
+          offProvider ? req.authenticatedUserId : undefined,
+          offProvider?.id,
+          offProvider?.scope ?? 'personal'
         );
         if (data.status === 1 && data.product) {
           food = mapOpenFoodFactsProduct(data.product, { language });

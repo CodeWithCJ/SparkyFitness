@@ -166,6 +166,7 @@ describe.runIf(RUN)('RLS permission matrix', () => {
     cycle_test_entries: 'owner',
     cycles: 'owner',
     health_appointments: 'owner',
+    openfoodfacts_sync_queue: 'owner',
     pregnancies: 'owner',
     pregnancy_checklist_state: 'owner',
     pregnancy_contractions: 'owner',
@@ -250,6 +251,7 @@ describe.runIf(RUN)('RLS permission matrix', () => {
     workout_preset_exercises: 'custom',
     // system/internal: RLS-enabled with an explicit deny-all policy; only
     // getSystemClient (which bypasses RLS) touches it.
+    openfoodfacts_product_read_rate_limit: 'custom',
     passkey_registration_tickets: 'custom',
   };
 

@@ -40,6 +40,9 @@ export const userPreferencesSchema = z.object({
   sugar_calculation_algorithm: z.string(),
   added_sugar_algorithm: z.string(),
   auto_scale_open_food_facts_imports: z.boolean().nullable(),
+  auto_contribute_openfoodfacts: z.boolean(),
+  openfoodfacts_product_language: z.string().regex(/^[a-z]{2}$/),
+  openfoodfacts_backfill_pending: z.boolean(),
   exercise_calorie_percentage: z.number().nullable(),
   activity_level: z.string().nullable(),
   tdee_allow_negative_adjustment: z.boolean().nullable(),
@@ -103,6 +106,12 @@ export const userPreferencesInitializerSchema = z.object({
   sugar_calculation_algorithm: z.string().optional(),
   added_sugar_algorithm: z.string().optional(),
   auto_scale_open_food_facts_imports: z.boolean().optional().nullable(),
+  auto_contribute_openfoodfacts: z.boolean().optional(),
+  openfoodfacts_product_language: z
+    .string()
+    .regex(/^[a-z]{2}$/)
+    .optional(),
+  openfoodfacts_backfill_pending: z.boolean().optional(),
   exercise_calorie_percentage: z.number().optional().nullable(),
   activity_level: z.string().optional().nullable(),
   tdee_allow_negative_adjustment: z.boolean().optional().nullable(),
@@ -170,6 +179,12 @@ export const userPreferencesMutatorSchema = z.object({
   sugar_calculation_algorithm: z.string().optional(),
   added_sugar_algorithm: z.string().optional(),
   auto_scale_open_food_facts_imports: z.boolean().optional().nullable(),
+  auto_contribute_openfoodfacts: z.boolean().optional(),
+  openfoodfacts_product_language: z
+    .string()
+    .regex(/^[a-z]{2}$/)
+    .optional(),
+  openfoodfacts_backfill_pending: z.boolean().optional(),
   exercise_calorie_percentage: z.number().optional().nullable(),
   activity_level: z.string().optional().nullable(),
   tdee_allow_negative_adjustment: z.boolean().optional().nullable(),
