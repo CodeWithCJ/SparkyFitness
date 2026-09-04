@@ -15,6 +15,14 @@ import { Battery } from 'lucide-react';
 import BodyBatteryGauge from './BodyBatteryGauge';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
+import {
+  createDateTickFormatter,
+  createTimeSyncMethod,
+  getTimeAwareMaxBarSize,
+  getTimeXAxisProps,
+  prepareTimeChartData,
+  REPORTS_CHART_SYNC_ID,
+} from '@/utils/chartUtils';
 import { BODY_BATTERY_METRICS } from '@/constants/reports';
 import {
   CustomCategoriesResponse,
@@ -42,7 +50,7 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
   measurementsData,
 }) => {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone } = usePreferences();
+  const { formatDateInUserTimezone, chartScaleMode } = usePreferences();
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -112,6 +120,23 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
     );
   }, [bodyBatteryCategories, measurementsData, formatDateInUserTimezone]);
 
+  // Kept separate from transformedData: the gauge below reads the last raw
+  // entry, which must not be reordered or dropped by the time-axis prep.
+  const chartData = useMemo(
+    () => prepareTimeChartData(transformedData, chartScaleMode),
+    [transformedData, chartScaleMode]
+  );
+
+  const syncMethod = useMemo(() => createTimeSyncMethod(), []);
+
+  // In time mode the axis label Recharts hands the tooltip is a numeric
+  // timestamp, not the day string, so the header needs the same formatter the
+  // ticks use.
+  const formatChartDate = useMemo(
+    () => createDateTickFormatter(formatDateInUserTimezone),
+    [formatDateInUserTimezone]
+  );
+
   // Get latest day's data for gauge
   const latestData =
     transformedData.length > 0
@@ -178,10 +203,12 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
                 debounce={100}
               >
                 <BarChart
-                  data={transformedData}
+                  data={chartData}
                   barGap={0}
                   barCategoryGap="20%"
-                  syncId="nutrition-charts"
+                  maxBarSize={getTimeAwareMaxBarSize(chartScaleMode)}
+                  syncId={REPORTS_CHART_SYNC_ID}
+                  syncMethod={syncMethod}
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -189,13 +216,13 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
                     stroke="hsl(var(--border))"
                   />
                   <XAxis
-                    dataKey="date"
+                    {...getTimeXAxisProps({
+                      chartScaleMode,
+                      formatDate: formatDateInUserTimezone,
+                    })}
                     fontSize={11}
                     tickLine={false}
                     tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    tickFormatter={(value) =>
-                      formatDateInUserTimezone(parseISO(value), 'MMM dd')
-                    }
                   />
                   <YAxis
                     domain={[0, 100]}
@@ -205,6 +232,7 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
                     tick={{ fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <Tooltip
+                    labelFormatter={formatChartDate}
                     contentStyle={{
                       backgroundColor: 'hsl(var(--background))',
                       border: '1px solid hsl(var(--border))',

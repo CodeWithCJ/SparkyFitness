@@ -23,13 +23,18 @@ import {
   ReferenceLine,
 } from 'recharts';
 import ZoomableChart from '@/components/ZoomableChart';
-import { parseISO, format } from 'date-fns';
+import { format } from 'date-fns';
 import { TrendingUp, BarChart3, ChevronDown } from 'lucide-react';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import {
   calculateSmartYAxisDomain,
+  createDateTickFormatter,
+  createTimeSyncMethod,
   excludeIncompleteDay,
   getChartConfig,
+  getTimeXAxisProps,
+  prepareTimeChartData,
+  REPORTS_CHART_SYNC_ID,
 } from '@/utils/chartUtils';
 import {
   calculateAverage,
@@ -64,8 +69,13 @@ const NutritionPeriodSummary = ({
   calorieBalanceByDate,
 }: NutritionPeriodSummaryProps) => {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone, energyUnit, convertEnergy, showNetCarbs } =
-    usePreferences();
+  const {
+    formatDateInUserTimezone,
+    energyUnit,
+    convertEnergy,
+    showNetCarbs,
+    chartScaleMode,
+  } = usePreferences();
   const effectiveNutritionData = useMemo(
     () => withNetCarbsSubstitution(nutritionData, showNetCarbs),
     [nutritionData, showNetCarbs]
@@ -77,9 +87,12 @@ const NutritionPeriodSummary = ({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const primaryNutrient = selectedNutrients[0] || 'calories';
 
-  const formatDateForChart = (dateStr: string) => {
-    return formatDateInUserTimezone(parseISO(dateStr), 'MMM dd');
-  };
+  const formatDateForChart = useMemo(
+    () => createDateTickFormatter(formatDateInUserTimezone),
+    [formatDateInUserTimezone]
+  );
+
+  const syncMethod = useMemo(() => createTimeSyncMethod(), []);
 
   const allNutritionOptions = useMemo(() => {
     const getStringColor = (str: string) => {
@@ -235,10 +248,11 @@ const NutritionPeriodSummary = ({
         totalEaten: result.tEaten,
         totalGoal: result.tGoal,
         validDaysCount: result.vDays,
-        cumulativeData: result.data,
+        cumulativeData: prepareTimeChartData(result.data, chartScaleMode),
         netBalance: result.running[primaryNutrient] || 0,
       };
     }, [
+      chartScaleMode,
       filteredNutritionData,
       goals,
       primaryNutrient,
@@ -331,7 +345,7 @@ const NutritionPeriodSummary = ({
     selectedNutrients.some((n) => n !== 'sodium');
 
   const dailyChartData = useMemo(() => {
-    return filteredNutritionData.map((point) => {
+    const rows = filteredNutritionData.map((point) => {
       const dayGoals = goals?.[point.date];
       const newPoint: Record<string, string | number> = {
         date: point.date,
@@ -368,7 +382,9 @@ const NutritionPeriodSummary = ({
 
       return newPoint;
     });
+    return prepareTimeChartData(rows, chartScaleMode);
   }, [
+    chartScaleMode,
     filteredNutritionData,
     goals,
     selectedNutrients,
@@ -507,13 +523,16 @@ const NutritionPeriodSummary = ({
                     >
                       <LineChart
                         data={dailyChartData}
-                        syncId="nutrition-charts"
+                        syncId={REPORTS_CHART_SYNC_ID}
+                        syncMethod={syncMethod}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis
-                          dataKey="date"
+                          {...getTimeXAxisProps({
+                            chartScaleMode,
+                            formatDate: formatDateInUserTimezone,
+                          })}
                           fontSize={10}
-                          tickFormatter={formatDateForChart}
                           tickCount={
                             isMaximized
                               ? Math.max(dailyChartData.length, 10)
@@ -537,9 +556,7 @@ const NutritionPeriodSummary = ({
                           }}
                         />
                         <Tooltip
-                          labelFormatter={(value) =>
-                            formatDateForChart(value as string)
-                          }
+                          labelFormatter={(value) => formatDateForChart(value)}
                           formatter={(
                             value:
                               | string
@@ -650,7 +667,11 @@ const NutritionPeriodSummary = ({
                     minHeight={0}
                     debounce={100}
                   >
-                    <AreaChart data={cumulativeData} syncId="nutrition-charts">
+                    <AreaChart
+                      data={cumulativeData}
+                      syncId={REPORTS_CHART_SYNC_ID}
+                      syncMethod={syncMethod}
+                    >
                       <defs>
                         <linearGradient
                           id="colorNutrient"
@@ -673,9 +694,11 @@ const NutritionPeriodSummary = ({
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
-                        dataKey="date"
+                        {...getTimeXAxisProps({
+                          chartScaleMode,
+                          formatDate: formatDateInUserTimezone,
+                        })}
                         fontSize={10}
-                        tickFormatter={formatDateForChart}
                         tickCount={
                           isMaximized
                             ? Math.max(cumulativeData.length, 10)
@@ -689,9 +712,7 @@ const NutritionPeriodSummary = ({
                         }}
                       />
                       <Tooltip
-                        labelFormatter={(value) =>
-                          formatDateForChart(value as string)
-                        }
+                        labelFormatter={(value) => formatDateForChart(value)}
                         formatter={(
                           value:
                             | string

@@ -8,8 +8,8 @@ import type { MouseHandlerDataParam, TickItem, XAxisProps } from 'recharts';
 import type { ChartScaleMode } from '@workspace/shared';
 
 export interface ChartDataPoint {
-  [key: string]: number | string | boolean | null | undefined | Date;
-  date?: string | number | Date;
+  [key: string]: number | string | boolean | null | undefined;
+  date?: string;
   entry_date?: string;
 }
 
@@ -166,6 +166,17 @@ export function getChartConfig(dataKey: string) {
 /* -------------------------------------------------------------------------- */
 
 /**
+ * Sync group shared by the charts on the Reports page, so hovering one of them
+ * highlights the matching date on all the others.
+ *
+ * The value is deliberately the historical `nutrition-charts` string even
+ * though the group now spans sleep, measurements and body battery too: every
+ * chart in a group has to agree on it, so renaming is an all-at-once change
+ * that belongs in its own commit rather than riding along with this one.
+ */
+export const REPORTS_CHART_SYNC_ID = 'nutrition-charts';
+
+/**
  * Smallest value an all-digit string may have before it is read as epoch
  * milliseconds. 1e11 ms is 1973-03-03 — far below anything this app plots, and
  * far above the two shapes that would otherwise be silently misread: a compact
@@ -248,7 +259,7 @@ export type WithTimestamp<T> = T & { timestamp: number | null };
  * caller's ordering is preserved — the timestamp is still attached, because
  * tooltip synchronisation matches on it.
  */
-export function prepareTimeChartData<T extends ChartDataPoint>(
+export function prepareTimeChartData<T extends object>(
   data: readonly T[] | null | undefined,
   chartScaleMode: ChartScaleMode,
   dateKey: string = 'date'
@@ -259,7 +270,9 @@ export function prepareTimeChartData<T extends ChartDataPoint>(
 
   const prepared: WithTimestamp<T>[] = data.map((item) => ({
     ...item,
-    timestamp: parseDateToTimestamp(item[dateKey]),
+    // Rows arrive as ordinary typed interfaces, which carry no index
+    // signature; this cast is what lets one be read by a runtime key name.
+    timestamp: parseDateToTimestamp((item as Record<string, unknown>)[dateKey]),
   }));
 
   if (chartScaleMode !== 'time') {
@@ -347,6 +360,34 @@ export function getTimeXAxisProps(options: TimeXAxisOptions): TimeXAxisProps {
     dataKey: dateKey,
     tickFormatter,
   };
+}
+
+/**
+ * Width cap, in pixels, for bars sitting on a continuous time axis.
+ *
+ * On a categorical axis Recharts derives bar width from the band it owns, which
+ * is one slot per entry. A time axis has no bands, so it falls back to the
+ * smallest gap between *axis ticks* — and a time scale only emits about five of
+ * those, whatever the data. That makes the implied band roughly a fifth of the
+ * plot, and bars come out around 80px wide, overlapping their neighbours.
+ *
+ * Capping the width fixes it without breaking alignment: Recharts positions a
+ * bar on a numeric axis at `scaled - bandSize / 2 + offset`, and the offset it
+ * computes keeps a narrowed bar centred on its own data point.
+ */
+export const TIME_AXIS_MAX_BAR_SIZE = 24;
+
+/**
+ * The `maxBarSize` a bar chart should use for the current scale mode.
+ *
+ * Returns `undefined` in `point` mode so the categorical layout keeps sizing
+ * bars the way it always has — capping there would visibly thin the bars of a
+ * short range, which is a regression rather than a fix.
+ */
+export function getTimeAwareMaxBarSize(
+  chartScaleMode: ChartScaleMode
+): number | undefined {
+  return chartScaleMode === 'time' ? TIME_AXIS_MAX_BAR_SIZE : undefined;
 }
 
 export type TimeSyncMethod = (
