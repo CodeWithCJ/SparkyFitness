@@ -4,9 +4,12 @@
  * Addresses Issue #144: Improve plot readability
  */
 
+import type { MouseHandlerDataParam, TickItem, XAxisProps } from 'recharts';
+import type { ChartScaleMode } from '@workspace/shared';
+
 export interface ChartDataPoint {
-  [key: string]: number | string | boolean | null | undefined;
-  date?: string;
+  [key: string]: number | string | boolean | null | undefined | Date;
+  date?: string | number | Date;
   entry_date?: string;
 }
 
@@ -155,5 +158,270 @@ export function getChartConfig(dataKey: string) {
     excludeIncompleteDay: false,
     marginPercent: 0.1,
     minRangeThreshold: 0.3,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Time-scaled date axes                                                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Smallest value an all-digit string may have before it is read as epoch
+ * milliseconds. 1e11 ms is 1973-03-03 — far below anything this app plots, and
+ * far above the two shapes that would otherwise be silently misread: a compact
+ * `YYYYMMDD` day (~2.0e7, which would land in 1970) and a bare year (~2.0e3).
+ */
+const MIN_EPOCH_MS = 1e11;
+
+const CALENDAR_DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * The only string shapes we hand to `new Date`: a calendar day, optionally
+ * followed by a time and offset.
+ *
+ * `new Date` falls back to a very lenient parser when a string is not ISO, and
+ * that parser invents dates out of ordinary categorical labels — `new Date`
+ * turns `'Week 3'` into 2001-02-28. On a non-date axis that would silently
+ * mis-sync every tooltip, so anything that is not plainly ISO is refused.
+ */
+const ISO_DATE_PATTERN =
+  /^\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?$/;
+
+/**
+ * Parses whatever a chart axis hands us into epoch milliseconds.
+ *
+ * Returns `null` rather than a `0` sentinel when the value is not a date, so
+ * callers can tell "the epoch" apart from "not a date at all".
+ */
+export function parseDateToTimestamp(value: unknown): number | null {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (value instanceof Date) {
+    const timestamp = value.getTime();
+    return Number.isNaN(timestamp) ? null : timestamp;
+  }
+
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  // Recharts stringifies numeric axis labels, so a timestamp comes back as
+  // e.g. "1767225600000". Only accept digit strings that are plausibly epoch
+  // milliseconds — see MIN_EPOCH_MS for what this is protecting against.
+  if (/^\d+$/.test(trimmed)) {
+    const asNumber = Number(trimmed);
+    return asNumber >= MIN_EPOCH_MS ? asNumber : null;
+  }
+
+  if (!ISO_DATE_PATTERN.test(trimmed)) {
+    return null;
+  }
+
+  // A bare calendar day is pinned to *local* midnight on purpose:
+  // `formatDateInUserTimezone` recognises a local-midnight Date as a literal
+  // day and skips timezone projection, so the tick label always reads back as
+  // the day that was stored, whatever timezone the viewer or their preference
+  // is in.
+  const parsed = new Date(
+    CALENDAR_DAY_PATTERN.test(trimmed) ? trimmed + 'T00:00:00' : trimmed
+  );
+  const timestamp = parsed.getTime();
+  return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+export type WithTimestamp<T> = T & { timestamp: number | null };
+
+/**
+ * Attaches a numeric `timestamp` to each row so a chart can lay it out on a
+ * continuous time axis.
+ *
+ * In `time` mode, rows we cannot date have nowhere to sit, so they are dropped
+ * and the rest are sorted chronologically. In `point` mode the axis is
+ * categorical and every row is plottable, so nothing is dropped and the
+ * caller's ordering is preserved — the timestamp is still attached, because
+ * tooltip synchronisation matches on it.
+ */
+export function prepareTimeChartData<T extends ChartDataPoint>(
+  data: readonly T[] | null | undefined,
+  chartScaleMode: ChartScaleMode,
+  dateKey: string = 'date'
+): WithTimestamp<T>[] {
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  const prepared: WithTimestamp<T>[] = data.map((item) => ({
+    ...item,
+    timestamp: parseDateToTimestamp(item[dateKey]),
+  }));
+
+  if (chartScaleMode !== 'time') {
+    return prepared;
+  }
+
+  return prepared
+    .filter(
+      (item): item is WithTimestamp<T> & { timestamp: number } =>
+        item.timestamp !== null
+    )
+    .sort((a, b) => a.timestamp - b.timestamp);
+}
+
+/**
+ * Builds a tick formatter that renders both axis shapes — the numeric
+ * timestamps of `time` mode and the raw day strings of `point` mode — through
+ * the same date formatter, so the labels read identically either way.
+ *
+ * `formatDate` is the app's `formatDateInUserTimezone`; it is injected rather
+ * than imported to keep this module free of React context.
+ */
+export function createDateTickFormatter(
+  formatDate: (date: Date | string, formatStr?: string) => string,
+  pattern: string = 'MMM dd'
+): (value: unknown) => string {
+  return (value) => {
+    if (typeof value === 'number') {
+      return formatDate(new Date(value), pattern);
+    }
+    if (typeof value === 'string' && value.trim()) {
+      return formatDate(value, pattern);
+    }
+    return '';
+  };
+}
+
+export interface TimeXAxisOptions {
+  chartScaleMode: ChartScaleMode;
+  /** Normally `formatDateInUserTimezone` from `usePreferences()`. */
+  formatDate: (date: Date | string, formatStr?: string) => string;
+  /** date-fns pattern for tick labels. */
+  pattern?: string;
+  /** Row property holding the raw day string, used in `point` mode. */
+  dateKey?: string;
+  /** Row property written by `prepareTimeChartData`, used in `time` mode. */
+  timestampKey?: string;
+}
+
+export type TimeXAxisProps = Pick<
+  XAxisProps,
+  'type' | 'dataKey' | 'domain' | 'scale' | 'tickFormatter'
+>;
+
+/**
+ * XAxis props for the current scale mode, ready to spread onto `<XAxis />`.
+ *
+ * `point` mode deliberately omits `domain` and `scale` instead of passing
+ * `undefined`: spreading an explicit `undefined` would wipe out any value the
+ * call site set for itself.
+ */
+export function getTimeXAxisProps(options: TimeXAxisOptions): TimeXAxisProps {
+  const {
+    chartScaleMode,
+    formatDate,
+    pattern,
+    dateKey = 'date',
+    timestampKey = 'timestamp',
+  } = options;
+
+  const tickFormatter = createDateTickFormatter(formatDate, pattern);
+
+  if (chartScaleMode === 'time') {
+    return {
+      type: 'number',
+      dataKey: timestampKey,
+      domain: ['dataMin', 'dataMax'],
+      scale: 'time',
+      tickFormatter,
+    };
+  }
+
+  return {
+    type: 'category',
+    dataKey: dateKey,
+    tickFormatter,
+  };
+}
+
+export type TimeSyncMethod = (
+  ticks: ReadonlyArray<TickItem>,
+  param: MouseHandlerDataParam
+) => number;
+
+/**
+ * Builds a Recharts `syncMethod` that pairs points up by *date* rather than by
+ * position in the data array.
+ *
+ * Recharts' own `syncMethod="value"` compares labels with `String(a) === b`, so
+ * it only lines up charts sampled on exactly the same days. Series here are
+ * not: weight might be logged twice a week against daily calories. This matches
+ * the nearest point in time instead.
+ *
+ * Call it once per chart and memoise the result with `useMemo(..., [])` — it
+ * runs on every mouse move for every chart in the sync group, and it keeps a
+ * parse cache that is only worth anything if the function survives re-renders.
+ */
+export function createTimeSyncMethod(): TimeSyncMethod {
+  // Axis labels repeat on every mouse move, and parsing one is a regex plus a
+  // Date construction. Cache by raw value; the key space is bounded by the
+  // number of distinct dates on screen.
+  const timestampCache = new Map<string | number, number | null>();
+
+  const parse = (value: unknown): number | null => {
+    if (typeof value !== 'string' && typeof value !== 'number') {
+      return parseDateToTimestamp(value);
+    }
+    const cached = timestampCache.get(value);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const parsed = parseDateToTimestamp(value);
+    timestampCache.set(value, parsed);
+    return parsed;
+  };
+
+  return (ticks, param) => {
+    if (!ticks || ticks.length === 0) {
+      return -1;
+    }
+
+    const target = parse(param?.activeLabel);
+
+    if (target === null) {
+      // Nothing hovered, or an axis that is not dates at all. Defer to the
+      // index Recharts already worked out rather than guessing a position.
+      const fallback = param?.activeTooltipIndex ?? param?.activeIndex;
+      return typeof fallback === 'number' &&
+        fallback >= 0 &&
+        fallback < ticks.length
+        ? fallback
+        : -1;
+    }
+
+    let closestIndex = -1;
+    let smallestDiff = Infinity;
+
+    for (let i = 0; i < ticks.length; i++) {
+      const tickTimestamp = parse(ticks[i]?.value);
+      if (tickTimestamp === null) {
+        continue;
+      }
+      const diff = Math.abs(tickTimestamp - target);
+      if (diff < smallestDiff) {
+        smallestDiff = diff;
+        closestIndex = i;
+      }
+    }
+
+    // -1 means "nothing to highlight", which Recharts handles by clearing the
+    // synced tooltip. That is the honest answer when this chart carries no
+    // dated ticks; returning 0 would light up an unrelated first point.
+    return closestIndex;
   };
 }
