@@ -357,11 +357,9 @@ const DevTools: React.FC = () => {
 
       {Platform.OS === 'ios' && (
         <View className="mt-5">
-          <Text className="text-sm text-text-primary">Apple Watch</Text>
+          <Text className="text-sm text-text-primary">{t('devTools.watch.title', { defaultValue: 'Apple Watch' })}</Text>
           <Text className="text-text-muted mb-3 text-[13px]">
-            Status of the watch companion link. Check-ins captured on the watch are
-            queued and delivered even when &quot;reachable&quot; is off, so a red dot here
-            does not mean data is lost.
+            {t('devTools.watch.description', { defaultValue: 'Status of the watch companion link. Check-ins captured on the watch are queued and delivered even when "reachable" is off, so a red dot here does not mean data is lost.' })}
           </Text>
           <View className="flex-row items-center mb-1">
             <View
@@ -369,7 +367,11 @@ const DevTools: React.FC = () => {
               style={{ backgroundColor: isWatchPaired ? '#22c55e' : '#ef4444' }}
             />
             <Text className="text-sm text-text-secondary">
-              {isWatchSupported ? (isWatchPaired ? 'Watch paired' : 'No watch paired') : 'Not supported on this platform'}
+              {isWatchSupported
+                ? isWatchPaired
+                  ? t('devTools.watch.paired', { defaultValue: 'Watch paired' })
+                  : t('devTools.watch.notPaired', { defaultValue: 'No watch paired' })
+                : t('devTools.watch.unsupported', { defaultValue: 'Not supported on this platform' })}
             </Text>
           </View>
           <View className="flex-row items-center">
@@ -378,7 +380,9 @@ const DevTools: React.FC = () => {
               style={{ backgroundColor: isWatchReachable ? '#22c55e' : '#9ca3af' }}
             />
             <Text className="text-sm text-text-secondary">
-              {isWatchReachable ? 'Watch app reachable now' : 'Watch app not in foreground'}
+              {isWatchReachable
+                ? t('devTools.watch.reachable', { defaultValue: 'Watch app reachable now' })
+                : t('devTools.watch.notReachable', { defaultValue: 'Watch app not in foreground' })}
             </Text>
           </View>
         </View>

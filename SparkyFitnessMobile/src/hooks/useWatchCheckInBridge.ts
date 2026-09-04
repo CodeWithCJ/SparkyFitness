@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppState } from 'react-native';
 import WatchConnectivity, {
@@ -171,7 +171,14 @@ export function useWatchCheckInBridge(enabled: boolean): void {
 
   const timeFormat = preferences?.time_format ?? null;
 
-  const watchWaterLog: WatchWaterLogPayload[] = (waterLogEntries ?? [])
+  // Memoized because `pushContext` below closes over it. A fresh array every
+  // render would either churn the listener subscription that watches
+  // pushContext's identity, or — if left out of the dep list — leave it
+  // pushing a stale log. Keying the memo on the inputs the mapping actually
+  // reads keeps the two honest.
+  const watchWaterLog: WatchWaterLogPayload[] = useMemo(
+    () =>
+      (waterLogEntries ?? [])
     // Manual entries only, per the watch view's design: a synced record
     // (Apple Health and friends) has no container behind it, so there's no
     // honest name to bold and nothing the wearer would recognize as theirs
@@ -182,21 +189,27 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     // row — too load-bearing to leave resting on the server's ORDER BY.
     .slice()
     .sort((a, b) => new Date(b.logged_at).getTime() - new Date(a.logged_at).getTime())
-    .map((entry) => ({
-      id: entry.id,
-      name: entry.container_name ?? '',
-      volumeMl: Number(entry.water_ml) || 0,
-      time: formatTimeLabel(localHourMinute(entry.logged_at), timeFormat) ?? '',
-    }));
+        .map((entry) => ({
+          id: entry.id,
+          name: entry.container_name ?? '',
+          volumeMl: Number(entry.water_ml) || 0,
+          time: formatTimeLabel(localHourMinute(entry.logged_at), timeFormat) ?? '',
+        })),
+    [waterLogEntries, timeFormat],
+  );
 
-  const watchContainers: WatchContainerPayload[] = (containers ?? []).map((container) => ({
-    id: container.id,
-    name: container.name,
-    // Same formula the phone's own +/- buttons use (getServingVolume) — the
-    // watch must add exactly what a phone tap would, not its own guess.
-    servingVolumeMl: getServingVolume(container),
-    unit: container.unit,
-  }));
+  const watchContainers: WatchContainerPayload[] = useMemo(
+    () =>
+      (containers ?? []).map((container) => ({
+        id: container.id,
+        name: container.name,
+        // Same formula the phone's own +/- buttons use (getServingVolume) — the
+        // watch must add exactly what a phone tap would, not its own guess.
+        servingVolumeMl: getServingVolume(container),
+        unit: container.unit,
+      })),
+    [containers],
+  );
 
   const pushContext = useCallback(async (): Promise<void> => {
     if (!WatchConnectivity) return;
@@ -277,9 +290,10 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     // below re-subscribes whenever pushContext's identity changes, which
     // includes calling it once on the way in. They're listed as individual
     // primitives rather than depending on the summary object, so an identical
-    // refetch doesn't churn the listeners. `containers` is the one exception —
-    // there's no cheaper primitive to key off, but react-query only hands back
-    // a new array reference when the container list itself actually changed.
+    // refetch doesn't churn the listeners. The two mapped arrays are the
+    // exception — there's no cheaper primitive to key off — but both are
+    // memoized above, so their identity only changes when the underlying list
+    // does.
   }, [
     weightUnit,
     calorieGoalProgress,
@@ -295,12 +309,11 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     carbsGoal,
     fatConsumed,
     fatGoal,
-    containers,
+    watchContainers,
     waterConsumedMl,
     waterGoalMl,
     waterDisplayUnit,
-    waterLogEntries,
-    timeFormat,
+    watchWaterLog,
   ]);
 
   const handleCheckIn = useCallback(

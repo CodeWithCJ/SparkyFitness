@@ -1223,6 +1223,15 @@
       "trigger": "Trigger Sync",
       "checkPermission": "Check BG Permission"
     },
+    "watch": {
+      "title": "Apple Watch",
+      "description": "Status of the watch companion link. Check-ins captured on the watch are queued and delivered even when \"reachable\" is off, so a red dot here does not mean data is lost.",
+      "paired": "Watch paired",
+      "notPaired": "No watch paired",
+      "unsupported": "Not supported on this platform",
+      "reachable": "Watch app reachable now",
+      "notReachable": "Watch app not in foreground"
+    },
     "auth": {
       "title": "Auth",
       "description": "Trigger auth modals for testing.",
