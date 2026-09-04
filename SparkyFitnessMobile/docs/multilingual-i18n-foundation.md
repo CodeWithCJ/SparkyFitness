@@ -54,6 +54,13 @@ is not bundled, and the i18n audit reports its defects as non-blocking
 `unregisteredLocaleFindings` so an unshipped language cannot redden CI.
 Registered locales stay fully blocking.
 
+The runtime catalog and the metadata are gated at build time, so a candidate is
+free to sit in the repo. The widget resources have no such gate — Android
+compiles every `values-*` directory and the iOS widget target ships every
+`.lproj` folder — so the sync workflow pulls those two surfaces for registered
+locales only, and a candidate's widget arrives on the sync after it is
+registered.
+
 `pnpm run i18n:generate` deterministically emits
 `src/localization/generatedLocaleResources.ts` with Metro-safe static imports
 for every shipped runtime catalog. `pnpm run i18n:generate:check` is included in

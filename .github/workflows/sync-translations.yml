@@ -58,9 +58,32 @@ jobs:
           MOBILE=main-repo/SparkyFitnessMobile
           MIRROR=translation-repo/mobile
 
+          # The runtime catalog and the Expo metadata are gated at build time, so an
+          # unregistered one costs nothing sitting in the repo. The widget resources
+          # are not: withCalorieWidget copies the whole res/ tree and the iOS widget
+          # target is a synchronized folder, so anything that lands there is compiled
+          # into the app. Pull only the registered locales for those two surfaces.
+          shipped=$(node -e '
+            const path = require("path");
+            const root = process.argv[1];
+            const registry = require(path.join(root, "src/localization/localeRegistry.json"));
+            const { androidDirForLocale } = require(
+              path.join(root, "scripts/androidLocaleQualifiers.cjs")
+            );
+            const locales = Object.keys(registry.locales);
+            console.log(
+              locales.map((l) => androidDirForLocale(l, registry.sourceLocale)).join(" ")
+            );
+            console.log(locales.map((l) => l + ".lproj").join(" "));
+          ' "$PWD/$MOBILE")
+          SHIPPED_ANDROID=$(echo "$shipped" | sed -n 1p)
+          SHIPPED_LPROJ=$(echo "$shipped" | sed -n 2p)
+          echo "Registered Android widget resources: $SHIPPED_ANDROID"
+          echo "Registered iOS widget resources: $SHIPPED_LPROJ"
+
           echo "=== Copying non-English mobile translations from translation repo to main repo ==="
           sync_dirs() {
-            src="$1"; dest="$2"; source_unit="$3"; pattern="${4:-*}"
+            src="$1"; dest="$2"; source_unit="$3"; pattern="${4:-*}"; allow="${5:-}"
             if [ ! -d "$src" ]; then
               echo "  $src not in the translations repo yet; skipping."
               return
@@ -71,6 +94,12 @@ jobs:
               [ -d "$dir" ] || continue
               unit=$(basename "$dir")
               [ "$unit" = "$source_unit" ] && continue
+              if [ -n "$allow" ]; then
+                case " $allow " in
+                  *" $unit "*) ;;
+                  *) echo "  skipping $unit: not in localeRegistry.json"; continue ;;
+                esac
+              fi
               echo "  $dest/$unit"
               rm -rf "${dest:?}/$unit"
               cp -r "$dir" "$dest/"
@@ -78,8 +107,8 @@ jobs:
           }
 
           sync_dirs "$MIRROR/src/localization/locales" "$MOBILE/src/localization/locales" en
-          sync_dirs "$MIRROR/targets/android-widget/res" "$MOBILE/targets/android-widget/res" values 'values-*'
-          sync_dirs "$MIRROR/targets/widget" "$MOBILE/targets/widget" en.lproj '*.lproj'
+          sync_dirs "$MIRROR/targets/android-widget/res" "$MOBILE/targets/android-widget/res" values 'values-*' "$SHIPPED_ANDROID"
+          sync_dirs "$MIRROR/targets/widget" "$MOBILE/targets/widget" en.lproj '*.lproj' "$SHIPPED_LPROJ"
 
           if [ -d "$MIRROR/locales" ]; then
             for file in "$MIRROR"/locales/*.json; do
@@ -171,7 +200,7 @@ jobs:
 
             It copies all non-English translation files from the [SparkyFitnessTranslations](https://github.com/CodeWithCJ/SparkyFitnessTranslations) repository (connected to Weblate) to the main repository, across the web catalog and the four mobile surfaces (runtime catalog, Expo metadata, Android widget resources and iOS widget resources).
 
-            Only locales listed in `SparkyFitnessMobile/src/localization/localeRegistry.json` are shipped on mobile; the others sync in as translation candidates and are not bundled.
+            Only locales listed in `SparkyFitnessMobile/src/localization/localeRegistry.json` are shipped on mobile; the others sync in as translation candidates and are not bundled. The widget resources are pulled for registered locales only, because Android and iOS compile whatever resource directories they find, so a candidate's widget arrives on the sync after it is registered.
           labels: |
             i18n
             translations

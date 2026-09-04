@@ -159,7 +159,7 @@ Five Weblate components. The mobile app has four because its surfaces use differ
 
 A mobile surface missing from the translations repo is skipped with a notice, so the workflow is safe to run before all the components exist; the push side seeds each English source on the first run. `pr-validation.yml` rejects a human PR that edits any non-`en` translation file.
 
-Only locales listed in `SparkyFitnessMobile/src/localization/localeRegistry.json` are shipped on mobile. Others sync in as translation candidates, are reported by the i18n audit as non-blocking diagnostics, and are never bundled.
+Only locales listed in `SparkyFitnessMobile/src/localization/localeRegistry.json` are shipped on mobile. Others sync in as translation candidates, are reported by the i18n audit as non-blocking diagnostics, and are never bundled. The widget resources are the exception to "sync in": Android compiles every `values-*` directory and the iOS widget target ships every `.lproj` folder, so those two surfaces are pulled for registered locales only and a candidate's widget arrives on the sync after it is registered.
 
 **Triggers**: Manual workflow dispatch only. Requires the `TRANSLATIONS_PAT` secret.
 
