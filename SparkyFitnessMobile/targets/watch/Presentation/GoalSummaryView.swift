@@ -81,12 +81,15 @@ struct GoalSummaryView: View {
         .accessibilityLabel(calorieAccessibilityLabel)
     }
 
-    /// Always a positive number — going over flips the caption instead of
-    /// showing a minus sign, which is easier to read at a glance and matches
-    /// how the phone phrases it.
+    /// Signed: going over shows a minus as well as flipping the caption.
+    ///
+    /// Deliberately different from the phone, which strips the sign and lets
+    /// "over" carry the meaning alone (`DiaryCalorieMacroSummary`). On a watch
+    /// the number is read in a glance too short to take in the caption under
+    /// it, so the sign does the work the word can't.
     private var calorieValueText: String {
         guard let nutrition else { return "–" }
-        return whole(abs(nutrition.caloriesRemaining))
+        return whole(nutrition.caloriesRemaining)
     }
 
     private var calorieCaption: String {
@@ -94,6 +97,9 @@ struct GoalSummaryView: View {
         return "Kcal over"
     }
 
+    /// Unsigned here even though the visible number is signed: "minus 254
+    /// calories over goal" is worse spoken than written, and the words
+    /// already say which side of the goal the wearer is on.
     private var calorieAccessibilityLabel: String {
         guard let nutrition else { return "Calories not synced yet" }
         let amount = whole(abs(nutrition.caloriesRemaining))

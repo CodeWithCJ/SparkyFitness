@@ -108,17 +108,23 @@ final class WatchSessionManager: NSObject, ObservableObject {
     func refreshComplications() {
         let context = store.context
 
+        // The `isToday` checks are now belt to the publisher's braces — it
+        // rejects a non-today `day` itself. Kept because they also skip the
+        // pointless work of building a snapshot that would be discarded.
         if let nutrition = context.nutrition, nutrition.isToday {
-            ComplicationPublisher.publish(goals: GoalProgress(
-                calories: nutrition.calorieProgress,
-                protein: nutrition.protein.progress,
-                carbs: nutrition.carbs.progress,
-                fat: nutrition.fat.progress
-            ))
+            ComplicationPublisher.publish(
+                goals: GoalProgress(
+                    calories: nutrition.calorieProgress,
+                    protein: nutrition.protein.progress,
+                    carbs: nutrition.carbs.progress,
+                    fat: nutrition.fat.progress
+                ),
+                for: nutrition.day
+            )
         }
 
         if let water = context.water, water.isToday {
-            ComplicationPublisher.publish(waterProgress: water.progress)
+            ComplicationPublisher.publish(waterProgress: water.progress, for: water.day)
         }
     }
 
@@ -170,12 +176,22 @@ final class WatchSessionManager: NSObject, ObservableObject {
         )
         store.apply(context: incoming)
 
-        ComplicationPublisher.publish(goals: ContextPayloadMapper.goalProgress(from: payload))
+        // The day this payload is ABOUT — not necessarily today. Anything
+        // routed through here may be a replay of the cached context by
+        // `adoptReceivedContext()`, which on the first launch of a morning is
+        // still yesterday's. Passing the day is what lets the publisher tell
+        // a genuinely fresh push from a rerun of an old one.
+        let day = ContextPayloadMapper.day(from: payload)
+
+        ComplicationPublisher.publish(
+            goals: ContextPayloadMapper.goalProgress(from: payload),
+            for: day
+        )
         // Derived from the parsed snapshot rather than a dedicated payload
         // field: the two water figures already travel for the Water page's
         // bottle, and a third field carrying their ratio would be a second
         // version of the same truth to keep in step.
-        ComplicationPublisher.publish(waterProgress: incoming.water?.progress ?? 0)
+        ComplicationPublisher.publish(waterProgress: incoming.water?.progress ?? 0, for: day)
     }
 
     /// Marks one check-in saved or failed once the phone reports the server

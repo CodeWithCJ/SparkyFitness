@@ -179,7 +179,7 @@ enum ContextPayloadMapper {
 
     /// The calendar day a payload describes, falling back to the watch's own
     /// today when the phone didn't say.
-    private static func day(from payload: [String: Any]) -> String {
+    static func day(from payload: [String: Any]) -> String {
         payload["today"] as? String ?? CheckInDate.today()
     }
 }

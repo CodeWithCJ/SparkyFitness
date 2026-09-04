@@ -58,10 +58,14 @@ enum ComplicationPublisher {
     // MARK: - Publishing
 
     /// Publishes nutrition progress for the Daily Energy Goal complication.
-    static func publish(goals: GoalProgress) {
+    ///
+    /// `day` is the calendar day these numbers describe. It is checked rather
+    /// than trusted — see `isPublishable(_:)`.
+    static func publish(goals: GoalProgress, for day: String) {
+        guard isPublishable(day) else { return }
         write(
             EnergySnapshot(
-                date: CheckInDate.today(),
+                date: day,
                 calorieGoalProgress: goals.calories,
                 proteinGoalProgress: goals.protein,
                 carbsGoalProgress: goals.carbs,
@@ -73,15 +77,33 @@ enum ComplicationPublisher {
     }
 
     /// Publishes water progress for the Water Intake complication.
-    static func publish(waterProgress: Double) {
+    static func publish(waterProgress: Double, for day: String) {
+        guard isPublishable(day) else { return }
         write(
             WaterSnapshotPayload(
-                date: CheckInDate.today(),
+                date: day,
                 progress: max(0, min(1, waterProgress))
             ),
             forKey: Water.key,
             reloading: Water.kind
         )
+    }
+
+    /// Refuses to publish numbers describing a day other than today.
+    ///
+    /// This used to be each caller's job, and one of them didn't do it.
+    /// `handle(context:)` published whatever arrived while the snapshot
+    /// stamped `CheckInDate.today()` itself, so replaying a cached overnight
+    /// context laundered yesterday's figures through a fresh date and the
+    /// widget's own `isToday` check waved them straight through. Stale data
+    /// on a complication is worse than none: an empty ring reads as "nothing
+    /// logged yet", yesterday's ring reads as a lie about today.
+    ///
+    /// Taking the day as a parameter instead of stamping it here is the whole
+    /// point — a caller now has to state which day it means, and can't
+    /// accidentally assert "today" about data it never checked.
+    private static func isPublishable(_ day: String) -> Bool {
+        day == CheckInDate.today()
     }
 
     // MARK: - Shared mechanism
