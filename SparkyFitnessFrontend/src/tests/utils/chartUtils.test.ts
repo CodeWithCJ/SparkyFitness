@@ -108,19 +108,38 @@ describe('prepareTimeChartData', () => {
     ]);
   });
 
-  it('keeps every row and the caller ordering in point mode', () => {
+  it('keeps every row in point mode, still in chronological order', () => {
     const result = prepareTimeChartData(rows, 'point');
 
+    // On a categorical axis the array order is the axis order, so the points
+    // must still come out by date -- undateable rows go last.
     expect(result.map((r) => r.date)).toEqual([
-      '2026-01-15',
       '2026-01-01',
+      '2026-01-15',
       'unknown',
     ]);
     // Still timestamped where possible, because tooltip sync matches on it.
     expect(result.map((r) => r.timestamp)).toEqual([
-      localMidnight('2026-01-15'),
       localMidnight('2026-01-01'),
+      localMidnight('2026-01-15'),
       null,
+    ]);
+  });
+
+  it('keeps undateable rows in their original relative order', () => {
+    const result = prepareTimeChartData(
+      [
+        { date: 'second', value: 2 },
+        { date: '2026-01-01', value: 1 },
+        { date: 'first', value: 3 },
+      ],
+      'point'
+    );
+
+    expect(result.map((r) => r.date)).toEqual([
+      '2026-01-01',
+      'second',
+      'first',
     ]);
   });
 

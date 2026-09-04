@@ -253,11 +253,14 @@ export type WithTimestamp<T> = T & { timestamp: number | null };
  * Attaches a numeric `timestamp` to each row so a chart can lay it out on a
  * continuous time axis.
  *
- * In `time` mode, rows we cannot date have nowhere to sit, so they are dropped
- * and the rest are sorted chronologically. In `point` mode the axis is
- * categorical and every row is plottable, so nothing is dropped and the
- * caller's ordering is preserved — the timestamp is still attached, because
- * tooltip synchronisation matches on it.
+ * Rows come back in chronological order either way. On a categorical axis the
+ * array order *is* the axis order, so a date series handed over in insertion
+ * order would draw its points out of sequence — which is a bug, not a caller
+ * preference worth preserving.
+ *
+ * The modes differ only in what happens to a row we cannot date: `time` needs a
+ * coordinate and drops it, `point` keeps it at the end. The timestamp is
+ * attached in both modes, because tooltip synchronisation matches on it.
  */
 export function prepareTimeChartData<T extends object>(
   data: readonly T[] | null | undefined,
@@ -275,16 +278,25 @@ export function prepareTimeChartData<T extends object>(
     timestamp: parseDateToTimestamp((item as Record<string, unknown>)[dateKey]),
   }));
 
-  if (chartScaleMode !== 'time') {
-    return prepared;
+  if (chartScaleMode === 'time') {
+    return prepared
+      .filter(
+        (item): item is WithTimestamp<T> & { timestamp: number } =>
+          item.timestamp !== null
+      )
+      .sort((a, b) => a.timestamp - b.timestamp);
   }
 
-  return prepared
-    .filter(
-      (item): item is WithTimestamp<T> & { timestamp: number } =>
-        item.timestamp !== null
-    )
-    .sort((a, b) => a.timestamp - b.timestamp);
+  // Sort is stable, so undateable rows keep their relative order at the end.
+  return prepared.sort((a, b) => {
+    if (a.timestamp === null) {
+      return b.timestamp === null ? 0 : 1;
+    }
+    if (b.timestamp === null) {
+      return -1;
+    }
+    return a.timestamp - b.timestamp;
+  });
 }
 
 /**
