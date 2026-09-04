@@ -84,6 +84,7 @@ import errorHandler from './middleware/errorHandler.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import cron from 'node-cron';
 import { scheduleBackupsOnStartup } from './services/backupScheduler.js';
+import { scheduleOpenFoodFactsAutoSyncOnStartup } from './services/openFoodFactsAutoSyncScheduler.js';
 import externalProviderRepository from './models/externalProviderRepository.js';
 import garminService from './services/garminService.js';
 import { getGarminSyncPhaseErrors } from './services/garminSyncResult.js';
@@ -849,6 +850,7 @@ applyMigrations()
       );
     }
     scheduleBackupsOnStartup();
+    await scheduleOpenFoodFactsAutoSyncOnStartup();
     scheduleSessionCleanup();
     scheduleWithingsSyncs();
     scheduleGarminSyncs();

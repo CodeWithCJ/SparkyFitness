@@ -9,11 +9,18 @@ import {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
 } from '../integrations/openfoodfacts/openFoodFactsService.js';
+import { withOpenFoodFactsProductReadPermit } from '../services/openFoodFactsProductReadRateLimitService.js';
 
 vi.mock('../integrations/openfoodfacts/openFoodFactsAuth.js', () => ({
   resolveOpenFoodFactsProvider: vi.fn(),
   invalidateOpenFoodFactsSession: vi.fn(),
   DEFAULT_OFF_BASE_URL: 'https://world.openfoodfacts.org',
+}));
+vi.mock('../services/openFoodFactsProductReadRateLimitService.js', () => ({
+  OPENFOODFACTS_INTERACTIVE_PRODUCT_READ_MAX_WAIT_MS: 5_250,
+  withOpenFoodFactsProductReadPermit: vi.fn(
+    (operation: () => Promise<unknown>) => operation()
+  ),
 }));
 
 const fetchMock = vi.fn();
@@ -24,6 +31,9 @@ describe('openFoodFactsService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     fetchMock.mockReset();
+    vi.mocked(withOpenFoodFactsProductReadPermit)
+      .mockReset()
+      .mockImplementation((operation) => operation());
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     resolveOpenFoodFactsProvider.mockResolvedValue({
       session: null,
@@ -923,9 +933,84 @@ describe('openFoodFactsService', () => {
         expect.any(Object)
       );
     });
+
+    it('acquires the shared product-read permit for the primary and alias GETs', async () => {
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ status: 0 }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({ status: 1, product: {} }),
+        });
+
+      await searchOpenFoodFactsByBarcodeFields('036000291452');
+
+      expect(withOpenFoodFactsProductReadPermit).toHaveBeenCalledTimes(2);
+      expect(withOpenFoodFactsProductReadPermit).toHaveBeenNthCalledWith(
+        1,
+        expect.any(Function),
+        { maxWaitMs: 5_250 }
+      );
+      expect(withOpenFoodFactsProductReadPermit).toHaveBeenNthCalledWith(
+        2,
+        expect.any(Function),
+        { maxWaitMs: 5_250 }
+      );
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('authenticated request path', () => {
+    it('forwards a global provider scope for barcode session resolution', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ status: 1, product: {} }),
+      });
+
+      await searchOpenFoodFactsByBarcodeFields(
+        '12345678',
+        undefined,
+        'en',
+        'user-A',
+        'prov-1',
+        'global'
+      );
+
+      expect(resolveOpenFoodFactsProvider).toHaveBeenCalledWith(
+        'user-A',
+        'prov-1',
+        'global'
+      );
+    });
+
+    it('forwards a global provider scope for search session resolution', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ hits: [], page: 1, page_size: 20, count: 0 }),
+      });
+
+      await searchOpenFoodFacts(
+        'pizza',
+        1,
+        'en',
+        'user-A',
+        'prov-1',
+        20,
+        'global'
+      );
+
+      expect(resolveOpenFoodFactsProvider).toHaveBeenCalledWith(
+        'user-A',
+        'prov-1',
+        'global'
+      );
+    });
+
     it('attaches a session cookie when providerId+userId are supplied', async () => {
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
       resolveOpenFoodFactsProvider.mockResolvedValue({
@@ -948,13 +1033,15 @@ describe('openFoodFactsService', () => {
 
       expect(resolveOpenFoodFactsProvider).toHaveBeenCalledWith(
         'user-A',
-        'prov-1'
+        'prov-1',
+        'personal'
       );
       // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
       const callArgs = fetch.mock.calls[0];
       expect(callArgs[1].headers).toMatchObject({
         Cookie: 'session=SESS_TOKEN',
       });
+      expect(callArgs[1].redirect).toBe('manual');
     });
 
     it('does not attach a cookie when no providerId is supplied', async () => {
@@ -1001,6 +1088,7 @@ describe('openFoodFactsService', () => {
 
       expect(result).toEqual({ status: 1, product: {} });
       expect(fetch).toHaveBeenCalledTimes(2);
+      expect(withOpenFoodFactsProductReadPermit).toHaveBeenCalledTimes(2);
       expect(invalidateOpenFoodFactsSession).toHaveBeenCalledWith(
         'user-A',
         'prov-1'
@@ -1109,6 +1197,7 @@ describe('openFoodFactsService', () => {
       await searchOpenFoodFacts('pizza', 1, 'en', 'user-A', 'prov-1');
 
       expect(fetch).toHaveBeenCalledTimes(1);
+      expect(withOpenFoodFactsProductReadPermit).not.toHaveBeenCalled();
       // @ts-expect-error TS(2339): Property 'mock' does not exist on type '{ (input: ... Remove this comment to see the full error message
       expect(fetch.mock.calls[0][1].headers.Cookie).toBeUndefined();
     });

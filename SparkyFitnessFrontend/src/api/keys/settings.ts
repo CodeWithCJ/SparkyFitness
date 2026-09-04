@@ -3,6 +3,12 @@ export const externalProviderKeys = {
   lists: () => [...externalProviderKeys.all, 'list'] as const,
 };
 
+export const openFoodFactsContributionKeys = {
+  all: ['openFoodFactsContributions'] as const,
+  user: () => [...openFoodFactsContributionKeys.all, 'user'] as const,
+  admin: () => [...openFoodFactsContributionKeys.all, 'admin'] as const,
+};
+
 export const syncedDataKeys = {
   all: ['syncedData'] as const,
   sources: () => [...syncedDataKeys.all, 'sources'] as const,

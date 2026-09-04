@@ -4,6 +4,14 @@ import {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
 } from '../integrations/openfoodfacts/openFoodFactsService.js';
+
+vi.mock('../services/openFoodFactsProductReadRateLimitService.js', () => ({
+  OPENFOODFACTS_INTERACTIVE_PRODUCT_READ_MAX_WAIT_MS: 5_250,
+  withOpenFoodFactsProductReadPermit: vi.fn(
+    (operation: () => Promise<unknown>) => operation()
+  ),
+}));
+
 global.fetch = vi.fn();
 describe('OpenFoodFacts Language Handling', () => {
   beforeEach(() => {

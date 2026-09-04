@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import FoodDatabaseManager from '@/pages/Foods/Foods';
 import { renderWithClient } from '../test-utils';
@@ -61,9 +61,14 @@ jest.mock('@/pages/Foods/DeleteFoodDialog', () => ({
   __esModule: true,
   default: () => null,
 }));
-
 const foods = [
-  { id: 'food1', name: 'Apple', user_id: 'test-user-id', default_variant: {} },
+  {
+    id: 'food1',
+    name: 'Apple',
+    user_id: 'test-user-id',
+    barcode: '4006381333931',
+    default_variant: {},
+  },
   { id: 'food2', name: 'Banana', user_id: 'test-user-id', default_variant: {} },
 ];
 
@@ -129,5 +134,30 @@ describe('FoodDatabaseManager', () => {
     expect(
       screen.queryByRole('button', { name: 'Add to favorites' })
     ).toBeNull();
+  });
+
+  it('does not expose manual Open Food Facts contribution actions', async () => {
+    renderWithClient(<FoodDatabaseManager />);
+
+    expect(
+      screen.queryByRole('button', {
+        name: 'Contribute all to Open Food Facts',
+      })
+    ).not.toBeInTheDocument();
+
+    const menuTrigger = screen.getAllByRole('button', {
+      name: 'Open menu',
+    })[0];
+    if (!menuTrigger) throw new Error('Expected a food action menu trigger.');
+    fireEvent.pointerDown(menuTrigger, {
+      button: 0,
+      ctrlKey: false,
+      pointerId: 1,
+    });
+    await waitFor(() => {
+      expect(
+        screen.queryByText('Contribute to Open Food Facts')
+      ).not.toBeInTheDocument();
+    });
   });
 });
