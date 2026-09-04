@@ -29,6 +29,7 @@ interface AddSheetProps {
   onSyncHealthData: () => void;
   onBarcodeScan: () => void;
   onAddMeasurements: () => void;
+  onAddProgressPhotos: () => void;
   onAskSparky: () => void;
   onOpenCycle?: () => void;
   showCycleCard?: boolean;
@@ -53,6 +54,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       onSyncHealthData,
       onBarcodeScan,
       onAddMeasurements,
+      onAddProgressPhotos,
       onAskSparky,
       onOpenCycle,
       showCycleCard,
@@ -360,6 +362,13 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
                 {renderCard(cards[2])}
                 {renderCard(cards[3])}
               </View>
+              {renderSecondaryRow(
+                t('addSheet.progressPhotos', {
+                  defaultValue: 'Progress Photos',
+                }),
+                'camera',
+                onAddProgressPhotos
+              )}
               {showCycleCard && onOpenCycle
                 ? renderSecondaryRow(
                     cycleLabel ??

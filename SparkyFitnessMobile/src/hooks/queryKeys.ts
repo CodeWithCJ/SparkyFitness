@@ -104,6 +104,23 @@ export const sleepRangeQueryKey = (startDate: string, endDate: string) =>
 
 export const sleepDayQueryKey = (day: string) => ['sleep', 'day', day] as const;
 
+// --- Check-in progress photos ---
+/** Root, so an upload/delete can invalidate the gallery and every per-day list. */
+export const checkInPhotosRootQueryKey = ['checkInPhotos'] as const;
+/** Flat gallery (all photos + the weight logged that day). */
+export const checkInPhotoGalleryQueryKey = [
+  ...checkInPhotosRootQueryKey,
+  'gallery',
+] as const;
+/** The photos taken on one calendar day. */
+export const checkInPhotosByDateQueryKey = (date: string) =>
+  [...checkInPhotosRootQueryKey, 'byDate', date] as const;
+
+export const checkInPhotoDatesQueryKey = [
+  ...checkInPhotosRootQueryKey,
+  'dates',
+] as const;
+
 export const customCategoriesQueryKey = ['customCategories'] as const;
 export const customMeasurementsByDateQueryKey = (date: string) =>
   ['customMeasurements', date] as const;

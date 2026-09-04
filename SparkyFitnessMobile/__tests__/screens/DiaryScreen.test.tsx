@@ -87,6 +87,15 @@ jest.mock('../../src/hooks/useSleepDay', () => ({
   })),
 }));
 
+const mockUseCheckInPhotoDates = jest.fn(() => ({
+  dates: [] as string[],
+  isLoading: false,
+}));
+jest.mock('../../src/hooks/useCheckInPhotos', () => ({
+  useCheckInPhotoDates: (enabled?: boolean) =>
+    mockUseCheckInPhotoDates(enabled as never),
+  useCheckInPhotosByDate: () => ({ photos: [], isLoading: false }),
+}));
 jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: jest.fn(() => ({
     preferences: {
@@ -823,5 +832,16 @@ describe('DiaryScreen sleep cards', () => {
 
     expect(refetchSleep).toHaveBeenCalled();
     expect(refetchSummary).toHaveBeenCalled();
+  });
+});
+
+describe('DiaryScreen progress photo markers', () => {
+  it('does not fetch the photo days until the calendar is opened', () => {
+    // The dots are a nicety on a picker most days are never opened; paying a
+    // request for them at every diary mount is not worth it.
+    renderScreen();
+
+    expect(mockUseCheckInPhotoDates).toHaveBeenCalledWith(false);
+    expect(mockUseCheckInPhotoDates).not.toHaveBeenCalledWith(true);
   });
 });

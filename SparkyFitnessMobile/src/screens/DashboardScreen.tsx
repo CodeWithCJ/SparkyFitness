@@ -37,6 +37,7 @@ import HydrationGauge from '../components/HydrationGauge';
 import Icon from '../components/Icon';
 import MacroCard from '../components/MacroCard';
 import MedicationsCard from '../components/MedicationsCard';
+import ProgressPhotosCard from '../components/ProgressPhotosCard';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
 import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
@@ -53,6 +54,7 @@ import {
   useWaterIntakeMutation,
   useWidgetSync,
 } from '../hooks';
+import { useCheckInPhotoDates } from '../hooks/useCheckInPhotos';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
@@ -113,7 +115,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       }
     });
   }, [navigation, goToToday]);
-  const openCalendar = useCallback(() => calendarRef.current?.present(), []);
+  // The photo-day markers are fetched on first calendar open rather than at
+  // mount: a user who never opens the picker should not pay a request for it.
+  const [calendarOpened, setCalendarOpened] = useState(false);
+  const { dates: photoDates } = useCheckInPhotoDates(calendarOpened);
+  const openCalendar = useCallback(() => {
+    setCalendarOpened(true);
+    calendarRef.current?.present();
+  }, []);
   const handleCalendarSelect = useCallback(
     (date: string) => setSelectedDate(date),
     [setSelectedDate]
@@ -247,6 +256,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const askSparkyVisible = useAppPreferencesStore((s) => s.askSparkyVisible);
   const medicationsCardVisible = useAppPreferencesStore(
     (s) => s.medicationsCardVisible
+  );
+  const progressPhotosCardVisible = useAppPreferencesStore(
+    (s) => s.progressPhotosCardVisible
   );
 
   useLayoutEffect(() => {
@@ -609,6 +621,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
         {medicationsCardVisible && <MedicationsCard navigation={navigation} />}
 
+        {progressPhotosCardVisible && (
+          <ProgressPhotosCard navigation={navigation} date={selectedDate} />
+        )}
+
         <Text className="text-text-primary text-xl font-bold mb-2">
           {t('dashboard.healthTrends', { defaultValue: 'Health Trends' })}
         </Text>
@@ -641,6 +657,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           ref={calendarRef}
           selectedDate={selectedDate}
           onSelectDate={handleCalendarSelect}
+          markedDates={photoDates}
         />
       </>
     );
@@ -664,6 +681,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         ref={calendarRef}
         selectedDate={selectedDate}
         onSelectDate={handleCalendarSelect}
+        markedDates={photoDates}
       />
     </View>
   );

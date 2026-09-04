@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { localDateToDay } from '@workspace/shared';
 import type {
   CheckInPhotoResponse,
+  CheckInPhotoWithWeight,
   PhotoType,
 } from '../schemas/checkInPhotoSchemas.js';
 
@@ -98,6 +99,60 @@ export const getPhotoDates = async (userId: string): Promise<string[]> => {
         ? localDateToDay(r.entry_date)
         : String(r.entry_date)
     );
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * Every progress photo the user can see, newest day first, each paired with the
+ * weight logged on that day. Backs the mobile gallery, the side-by-side
+ * comparison, and the time-lapse player, which would otherwise need one request
+ * per day plus a separate measurements-range call.
+ *
+ * The join is on (user_id, entry_date) rather than the stored
+ * check_in_measurement_id: that FK is only populated if a measurement row
+ * already existed at upload time, so a photo taken before the day's weight was
+ * entered would report no weight forever. check_in_measurements has a unique
+ * index on (user_id, entry_date), so the join cannot fan out rows.
+ *
+ * RLS-scoped through getClient, so a family member only sees what they may
+ * access.
+ */
+/** One row of the gallery join; `pg` types the columns loosely. */
+interface GalleryRow {
+  id: string;
+  entry_date: string | Date;
+  photo_type: PhotoType;
+  weight: number | string | null;
+}
+
+export const getAllPhotosWithWeight = async (
+  userId: string
+): Promise<CheckInPhotoWithWeight[]> => {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT p.id, p.entry_date, p.photo_type, m.weight
+       FROM check_in_photos p
+       LEFT JOIN check_in_measurements m
+         ON m.user_id = p.user_id AND m.entry_date = p.entry_date
+       WHERE p.user_id = $1
+       ORDER BY p.entry_date DESC, p.photo_type ASC`,
+      [userId]
+    );
+    return (result.rows as GalleryRow[]).map((r) => ({
+      id: r.id,
+      entry_date:
+        r.entry_date instanceof Date
+          ? localDateToDay(r.entry_date)
+          : String(r.entry_date),
+      photo_type: r.photo_type,
+      // numeric columns come back parsed by the pool's global type parser, but
+      // stay defensive: a null weight must remain null, never NaN.
+      weight:
+        r.weight === null || r.weight === undefined ? null : Number(r.weight),
+    }));
   } finally {
     client.release();
   }
@@ -285,6 +340,7 @@ export const deletePhoto = async (
 export default {
   getPhotosByDate,
   getPhotoDates,
+  getAllPhotosWithWeight,
   upsertPhoto,
   getPhotoFileById,
   deletePhoto,
