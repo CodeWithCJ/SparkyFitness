@@ -2,6 +2,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+// A static import, not createRequire: the widget tests import this module through
+// Jest's CommonJS transform, where `import.meta` is undefined.
+import {
+  localeFromAndroidDir,
+  androidDirForLocale,
+} from './androidLocaleQualifiers.cjs';
 
 // `%%` must be consumed first: otherwise in "50%% goal" the second `%` starts a
 // match, takes the space as a flag and `g` as the conversion, inventing a "% g"
@@ -43,21 +49,6 @@ export function parseIosStrings(content) {
   if (content.trim() && values.size === 0)
     throw new Error('iOS Localizable.strings has no parseable declarations');
   return values;
-}
-function localeFromAndroidDir(name, source) {
-  if (name === 'values') return source;
-  if (!name.startsWith('values-')) return null;
-  const qualifier = name.slice('values-'.length);
-  return qualifier.startsWith('b+')
-    ? qualifier.slice(2).replaceAll('+', '-')
-    : qualifier;
-}
-function androidDirForLocale(locale, source) {
-  if (locale === source) return 'values';
-  // Android BCP-47 resource syntax: language-only is values-de; regional/script tags use b+.
-  return locale.includes('-')
-    ? `values-b+${locale.replaceAll('-', '+')}`
-    : `values-${locale}`;
 }
 function sourceMap(maps, source, surface) {
   const result = maps.get(source);

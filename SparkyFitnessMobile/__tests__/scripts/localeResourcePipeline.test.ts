@@ -188,4 +188,84 @@ describe('registry-driven locale resource pipeline', () => {
     expect(output).toContain('de: 1/1 (0 missing)');
     fs.rmSync(root, { recursive: true, force: true });
   });
+
+  it('resolves the Android resource qualifiers Weblate writes for a shipped regional or aliased locale', () => {
+    const root = fixtureRoot();
+    const registryPath = path.join(
+      root,
+      'src/localization/localeRegistry.json'
+    );
+    const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+    for (const [locale, intlLocale] of [
+      ['pt-BR', 'pt-BR'],
+      ['id', 'id-ID'],
+    ]) {
+      registry.locales[locale] = {
+        languageCode: locale,
+        intlLocale,
+        displayNameKey: `settings.language.${locale}`,
+        defaultDisplayName: locale,
+      };
+      fs.mkdirSync(path.join(root, 'src/localization/locales', locale), {
+        recursive: true,
+      });
+      fs.writeFileSync(
+        path.join(root, 'src/localization/locales', locale, 'translation.json'),
+        '{}'
+      );
+      fs.writeFileSync(path.join(root, 'locales', `${locale}.json`), '{}');
+    }
+    fs.writeFileSync(registryPath, JSON.stringify(registry));
+    writeNative(
+      root,
+      'en',
+      '<resources><string name="title">Hello</string></resources>',
+      '"title" = "Hello";'
+    );
+    for (const locale of ['pl', 'de']) {
+      writeNative(
+        root,
+        locale,
+        '<resources><string name="title">Hello</string></resources>',
+        '"title" = "Hello";'
+      );
+    }
+    // Android's own qualifiers, which is what the Weblate component emits:
+    // a region is -rXX and Indonesian keeps its legacy `in` code.
+    for (const [dir, lproj] of [
+      ['values-pt-rBR', 'pt-BR'],
+      ['values-in', 'id'],
+    ]) {
+      fs.mkdirSync(path.join(root, 'targets/android-widget/res', dir), {
+        recursive: true,
+      });
+      fs.writeFileSync(
+        path.join(
+          root,
+          'targets/android-widget/res',
+          dir,
+          'widget_strings.xml'
+        ),
+        '<resources><string name="title">Olá</string></resources>'
+      );
+      fs.mkdirSync(path.join(root, 'targets/widget', `${lproj}.lproj`), {
+        recursive: true,
+      });
+      fs.writeFileSync(
+        path.join(
+          root,
+          'targets/widget',
+          `${lproj}.lproj`,
+          'Localizable.strings'
+        ),
+        '"title" = "Olá";'
+      );
+    }
+
+    const output = run(nativeValidator, ['--root', root]);
+
+    expect(output).toContain('pt-BR: 1/1 (0 missing)');
+    expect(output).toContain('id: 1/1 (0 missing)');
+    fs.rmSync(root, { recursive: true, force: true });
+  });
 });
