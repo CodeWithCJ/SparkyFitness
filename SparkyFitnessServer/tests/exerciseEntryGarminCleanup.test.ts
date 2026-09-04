@@ -36,7 +36,14 @@ describe('Garmin exercise cleanup', () => {
       'Active Calories'
     );
 
-    const [selectSql, params] = mockClient.query.mock.calls[1];
+    const lockCall = mockClient.query.mock.calls.find(([sql]) =>
+      String(sql).includes('pg_advisory_xact_lock')
+    );
+    expect(lockCall?.[1]).toEqual(['exercise-entry-sync:user-1:garmin']);
+
+    const [selectSql, params] = mockClient.query.mock.calls.find(([sql]) =>
+      String(sql).includes('SELECT id FROM exercise_entries')
+    )!;
     expect(selectSql).toContain('NOT EXISTS');
     expect(selectSql).toContain('exercises');
     expect(params).toEqual([

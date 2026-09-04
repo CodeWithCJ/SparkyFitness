@@ -4,7 +4,6 @@ import exerciseDb from '../models/exercise.js';
 import exerciseEntryDb, {
   EXERCISE_ENTRY_TELEMETRY_COLUMNS,
 } from '../models/exerciseEntry.js';
-import activityDetailsRepository from '../models/activityDetailsRepository.js';
 import foodRepository from '../models/foodRepository.js';
 import moodRepository from '../models/moodRepository.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
@@ -1610,7 +1609,24 @@ const workoutHandler: HealthTypeHandler = {
           ...telemetry,
         },
         ctx.actingUserId,
-        source
+        source,
+        null,
+        // Stored inside the entry's own transaction rather than afterwards: a
+        // second sync of the same source range-deletes and re-inserts these
+        // rows, so a detail written against an already committed parent can hit
+        // a parent that is gone, which its RLS policy reports as a row-level
+        // security violation and the workout loses its raw data.
+        raw_data
+          ? {
+              activityDetail: {
+                provider_name: source,
+                detail_type: `${type}_raw_data`,
+                detail_data: JSON.stringify(raw_data),
+                created_by_user_id: ctx.actingUserId,
+                updated_by_user_id: ctx.actingUserId,
+              },
+            }
+          : {}
       );
       if (gpsPoints.length > 0 || hrSamples.length > 0 || entry.laps) {
         try {
@@ -1635,16 +1651,6 @@ const workoutHandler: HealthTypeHandler = {
             `[processHealthData] Saved workout ${exerciseEntry.id} but failed to persist its telemetry: ${message}`
           );
         }
-      }
-      if (raw_data) {
-        await activityDetailsRepository.createActivityDetail(ctx.userId, {
-          exercise_entry_id: exerciseEntry.id,
-          provider_name: source,
-          detail_type: `${type}_raw_data`,
-          detail_data: JSON.stringify(raw_data),
-          created_by_user_id: ctx.actingUserId,
-          updated_by_user_id: ctx.actingUserId,
-        });
       }
       return { status: 'success', data: exerciseEntry };
     } catch (workoutError) {
