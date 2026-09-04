@@ -66,12 +66,12 @@ describe('HealthTrendsSettingsScreen', () => {
 
   test('lists every registered trend in the saved order', () => {
     useAppPreferencesStore.setState({
-      healthTrendOrder: ['sleep', 'steps', 'weight'],
+      healthTrendOrder: ['sleep', 'steps', 'weight', 'hydration'],
     });
 
     renderScreen();
 
-    expect(orderedRowKeys()).toEqual(['sleep', 'steps', 'weight']);
+    expect(orderedRowKeys()).toEqual(['sleep', 'steps', 'weight', 'hydration']);
     expect(orderedRowKeys()).toHaveLength(HEALTH_TREND_KEYS.length);
   });
 
@@ -80,14 +80,14 @@ describe('HealthTrendsSettingsScreen', () => {
 
     renderScreen();
 
-    expect(orderedRowKeys()).toEqual(['steps', 'sleep', 'weight']);
+    expect(orderedRowKeys()).toEqual(['steps', 'sleep', 'hydration', 'weight']);
     expect(screen.getByTestId('health-trend-divider')).toBeTruthy();
   });
 
   test('dragging the last shown trend past the divider hides it', () => {
     useAppPreferencesStore.setState({
-      healthTrendOrder: ['steps', 'weight', 'sleep'],
-      hiddenHealthTrends: ['weight', 'sleep'],
+      healthTrendOrder: ['steps', 'weight', 'sleep', 'hydration'],
+      hiddenHealthTrends: ['weight', 'sleep', 'hydration'],
     });
 
     renderScreen();
@@ -101,7 +101,7 @@ describe('HealthTrendsSettingsScreen', () => {
 
   test('dragging a hidden trend above the divider shows it again', () => {
     useAppPreferencesStore.setState({
-      healthTrendOrder: ['steps', 'weight', 'sleep'],
+      healthTrendOrder: ['steps', 'weight', 'sleep', 'hydration'],
       hiddenHealthTrends: ['steps'],
     });
 
@@ -120,7 +120,12 @@ describe('HealthTrendsSettingsScreen', () => {
     moveRow('steps', 'increment');
 
     const state = useAppPreferencesStore.getState();
-    expect(state.healthTrendOrder).toEqual(['weight', 'steps', 'sleep']);
+    expect(state.healthTrendOrder).toEqual([
+      'weight',
+      'steps',
+      'sleep',
+      'hydration',
+    ]);
     expect(state.hiddenHealthTrends).toEqual([]);
   });
 

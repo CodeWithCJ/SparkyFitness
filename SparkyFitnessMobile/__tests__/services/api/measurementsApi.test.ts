@@ -1,6 +1,7 @@
 import {
   upsertCheckIn,
   fetchMeasurements,
+  fetchWaterIntakeRange,
   serverSupportsPerRecordWater,
 } from '../../../src/services/api/measurementsApi';
 import { apiFetch } from '../../../src/services/api/apiClient';
@@ -131,5 +132,34 @@ describe('serverSupportsPerRecordWater', () => {
     mockApiFetch.mockResolvedValue({ water_ml: 1500, manual_ml: 500 });
 
     await expect(serverSupportsPerRecordWater()).resolves.toBe(true);
+  });
+});
+
+describe('fetchWaterIntakeRange', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockApiFetch.mockResolvedValue([]);
+  });
+
+  test('requests the range endpoint with both dates in the path', async () => {
+    await fetchWaterIntakeRange('2026-08-01', '2026-08-30');
+
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint: '/api/measurements/water-intake-range/2026-08-01/2026-08-30',
+      })
+    );
+  });
+
+  test('returns the response unchanged', async () => {
+    const response = [
+      { entry_date: '2026-08-01', water_ml: 1500 },
+      { entry_date: '2026-08-03', water_ml: 750 },
+    ];
+    mockApiFetch.mockResolvedValue(response);
+
+    await expect(
+      fetchWaterIntakeRange('2026-08-01', '2026-08-30')
+    ).resolves.toEqual(response);
   });
 });

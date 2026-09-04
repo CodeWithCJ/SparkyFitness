@@ -35,6 +35,16 @@ jest.mock('../../src/components/SleepTimelineChart', () => {
   };
 });
 
+jest.mock('../../src/components/HydrationBarChart', () => {
+  const ReactModule = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: () =>
+      ReactModule.createElement(View, { testID: 'hydration-chart' }),
+  };
+});
+
 type PagerProps = React.ComponentProps<typeof HealthTrendsPager>;
 
 const emptySeries = <TPoint,>(): HealthTrendSeries<TPoint> => ({
@@ -92,13 +102,17 @@ const sleepSeries = sleepTrend({
   nightsWithData: 1,
 });
 
+const hydrationSeries = populated({ day: '2026-06-03', milliliters: 1500 });
+
 const baseProps = (): PagerProps => ({
   steps: stepsSeries,
   weight: emptySeries(),
   sleep: sleepTrend(),
+  hydration: emptySeries(),
   range: '7d',
   weightUnit: 'kg',
-  visibleTrends: ['steps', 'weight', 'sleep'],
+  waterUnit: 'ml',
+  visibleTrends: ['steps', 'weight', 'sleep', 'hydration'],
   activePage: 0,
   onPageSelected: jest.fn(),
 });
@@ -301,17 +315,17 @@ describe('HealthTrendsPager', () => {
 
   test('renders pages in the order the user chose', () => {
     renderPager({
-      weight: weightSeries,
-      visibleTrends: ['weight', 'steps'],
+      hydration: hydrationSeries,
+      visibleTrends: ['hydration', 'steps'],
     });
 
-    expect(chartOrder()).toEqual(['weight-chart', 'steps-chart']);
+    expect(chartOrder()).toEqual(['hydration-chart', 'steps-chart']);
   });
 
   test('omits a trend the user hid, even with data for it', () => {
     renderPager({
       weight: weightSeries,
-      visibleTrends: ['steps', 'sleep'],
+      visibleTrends: ['steps', 'sleep', 'hydration'],
     });
 
     expect(screen.queryByTestId('weight-chart')).toBeNull();
@@ -319,8 +333,8 @@ describe('HealthTrendsPager', () => {
 
   test('still hides a shown trend that has no data in this window', () => {
     renderPager({
-      weight: emptySeries(),
-      visibleTrends: ['steps', 'weight'],
+      hydration: emptySeries(),
+      visibleTrends: ['steps', 'hydration'],
     });
 
     expect(chartOrder()).toEqual(['steps-chart']);
@@ -334,11 +348,12 @@ describe('HealthTrendsPager', () => {
     renderPager({
       steps: emptySeries(),
       weight: emptySeries(),
-      sleep: sleepTrend({ nightsWithData: 0 }),
-      visibleTrends: ['weight', 'steps'],
+      sleep: sleepTrend(),
+      hydration: emptySeries(),
+      visibleTrends: ['hydration', 'steps'],
     });
 
-    expect(chartOrder()).toEqual(['weight-chart']);
+    expect(chartOrder()).toEqual(['hydration-chart']);
   });
 
   test('renders the all-hidden card when nothing is visible', () => {

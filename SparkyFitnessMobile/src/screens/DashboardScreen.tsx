@@ -230,6 +230,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
   useWidgetSync(summary);
 
+  // The hydration card and the hydration trend must agree on the unit, so both read it
+  // from here rather than each resolving the fallback chain themselves.
+  const waterDisplayUnit = waterUnit || preferences?.water_display_unit || 'ml';
+
   // The chart is a single-axis line graph; if the user picked stones+lbs, plot lbs.
   const weightUnit: 'kg' | 'lbs' =
     (preferences?.default_weight_unit ?? 'kg') === 'kg' ? 'kg' : 'lbs';
@@ -616,7 +620,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           <HydrationGauge
             consumed={summary.waterConsumed}
             goal={summary.waterGoal}
-            unit={waterUnit || preferences?.water_display_unit || 'ml'}
+            unit={waterDisplayUnit}
             containerVolume={servingVolume}
             onIncrement={isContainersLoaded ? incrementWater : undefined}
             onDecrement={isContainersLoaded ? decrementWater : undefined}
@@ -660,8 +664,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           steps={trends.steps}
           weight={weightSeries}
           sleep={trends.sleep}
+          hydration={trends.hydration}
           range={trendsRange}
           weightUnit={weightUnit}
+          waterUnit={waterDisplayUnit}
           visibleTrends={visibleTrends}
           activePage={chartPage}
           onPageSelected={setChartPage}

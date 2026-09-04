@@ -16,7 +16,13 @@ import {
   kgToStonesLbs,
   stonesLbsToKg,
   formatWeightDisplay,
+  volumeFromMl,
+  formatVolumeForUnit,
 } from '../../src/utils/unitConversions';
+import i18n, {
+  getAppLocale,
+  initializeI18n,
+} from '../../src/localization/i18n';
 
 describe('unitConversions', () => {
   describe('lbsToKg', () => {
@@ -328,6 +334,52 @@ describe('unitConversions', () => {
       const kg = stonesLbsToKg(stones, lbs);
       const split = kgToStonesLbs(kg);
       expect(stonesLbsToKg(split.stones, split.lbs)).toBeCloseTo(kg, 4);
+    });
+  });
+
+  describe('volume helpers', () => {
+    // formatVolumeForUnit formats through formatLocalizedNumber, so the expected text
+    // is whatever the app's `en` locale produces rather than a hardcoded separator.
+    beforeAll(async () => {
+      await initializeI18n('en');
+    });
+
+    beforeEach(async () => {
+      await i18n.changeLanguage('en');
+    });
+
+    describe('volumeFromMl', () => {
+      it('returns millilitres unchanged', () => {
+        expect(volumeFromMl(500, 'ml')).toBe(500);
+      });
+
+      it('converts to fluid ounces', () => {
+        expect(volumeFromMl(1000, 'oz')).toBeCloseTo(33.814, 3);
+      });
+
+      it('converts to litres', () => {
+        expect(volumeFromMl(1500, 'liter')).toBe(1.5);
+      });
+
+      it('falls back to millilitres for an unknown unit', () => {
+        expect(volumeFromMl(500, 'gallons')).toBe(500);
+      });
+    });
+
+    describe('formatVolumeForUnit', () => {
+      it('applies the per-unit decimal rule', () => {
+        const locale = getAppLocale();
+
+        expect(formatVolumeForUnit(1234.567, 'ml')).toBe(
+          (1235).toLocaleString(locale)
+        );
+        expect(formatVolumeForUnit(33.8140227, 'oz')).toBe(
+          (33.8).toLocaleString(locale, { maximumFractionDigits: 1 })
+        );
+        expect(formatVolumeForUnit(1.2345, 'liter')).toBe(
+          (1.23).toLocaleString(locale, { maximumFractionDigits: 2 })
+        );
+      });
     });
   });
 });

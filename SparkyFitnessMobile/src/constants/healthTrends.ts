@@ -5,10 +5,15 @@
  * — at the end of the list — for existing users too, because a saved order is reconciled
  * against this array rather than replacing it (see `resolveHealthTrendOrder`).
  *
- * The order deliberately matches the order the pager shipped with, so a user who never
- * opens the settings screen sees exactly what they saw before.
+ * The first three keys deliberately match the order the pager shipped with, so a user who
+ * never opens the settings screen sees exactly what they saw before.
  */
-export const HEALTH_TREND_KEYS = ['steps', 'weight', 'sleep'] as const;
+export const HEALTH_TREND_KEYS = [
+  'steps',
+  'weight',
+  'sleep',
+  'hydration',
+] as const;
 
 export type HealthTrendKey = (typeof HEALTH_TREND_KEYS)[number];
 
@@ -28,4 +33,5 @@ export const HEALTH_TREND_LABELS: Record<
   steps: (t) => t('charts.steps.title', { defaultValue: 'Steps' }),
   weight: (t) => t('charts.weight.title', { defaultValue: 'Weight' }),
   sleep: (t) => t('charts.sleep.title', { defaultValue: 'Sleep' }),
+  hydration: (t) => t('charts.hydration.title', { defaultValue: 'Hydration' }),
 };

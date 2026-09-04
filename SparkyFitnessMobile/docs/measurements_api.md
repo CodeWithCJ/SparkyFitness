@@ -59,6 +59,30 @@ Returns all fields. Takes a date range and returns way too much. Exercise, sleep
 ]
 ```
 
+### `GET /api/measurements/water-intake-range/{startDate}/{endDate}`
+
+One total per day that has logged water in the range, backing the Health Trends
+hydration graph. Without it a 90-day window needed 90 calls to the per-day
+`/water-intake/{date}` route, and the alternative — `/api/reports` — returns
+whole food, exercise and medication payloads a chart has no use for.
+
+Days with no logged water are simply absent from the response; the mobile hook
+(`useHydrationRange`) zero-fills them, because an unlogged day genuinely means
+no water was drunk — unlike a weigh-in, where a missing day is unknown.
+
+`water_ml` is a number: the underlying `SUM` comes back from pg as a string and
+the service normalizes it once rather than leaving every caller to parse.
+
+```json
+[
+  { "entry_date": "2025-12-01", "water_ml": 1920 },
+  ...
+]
+```
+
+Both params are validated as real `YYYY-MM-DD` calendar days, so a malformed or
+impossible date is a 400 rather than a Postgres failure surfacing as a 500.
+
 ### `GET /api/measurements/check-in-photos`
 
 Every progress photo the caller can see, newest day first, each with the weight
