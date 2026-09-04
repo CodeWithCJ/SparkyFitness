@@ -1895,4 +1895,32 @@ describe('unregistered locale catalogs', () => {
       'invalid-locale-tag'
     );
   });
+
+  it('does not abort the audit when an unregistered catalog is not valid JSON', () => {
+    const tmpDir = createFixtureStructure({ en: SOURCE, pl: SOURCE, de: '{' });
+    unregister(tmpDir, 'de');
+
+    const { report, hasErrors } = auditRun(tmpDir);
+
+    expect(hasErrors).toBe(false);
+    expect(report.localeStructuralErrors).toHaveLength(0);
+    const finding = report.unregisteredLocaleFindings.find(
+      (e) => e.rule === 'malformed-json'
+    );
+    expect(finding?.locale).toBe('de');
+    // The audit ran to completion instead of returning at the parse failure.
+    expect(Object.keys(report.translationCoverage)).toContain('pl');
+  });
+
+  it('still blocks when a registered catalog is not valid JSON', () => {
+    const tmpDir = createFixtureStructure({ en: SOURCE, pl: SOURCE, de: '{' });
+
+    const { report, hasErrors } = auditRun(tmpDir);
+
+    expect(hasErrors).toBe(true);
+    expect(report.localeStructuralErrors.map((e) => e.rule)).toContain(
+      'malformed-json'
+    );
+    expect(report.unregisteredLocaleFindings).toHaveLength(0);
+  });
 });
