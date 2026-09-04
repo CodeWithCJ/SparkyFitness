@@ -4,6 +4,10 @@ import request from 'supertest';
 import express from 'express';
 import globalSettingsRoutes from '../routes/globalSettingsRoutes.js';
 import globalSettingsRepository from '../models/globalSettingsRepository.js';
+import {
+  getOpenFoodFactsAdminSyncStatus,
+  saveGlobalSettingsWithOpenFoodFactsSync,
+} from '../services/openFoodFactsSyncSettingsService.js';
 // Mock dependencies
 vi.mock('../models/globalSettingsRepository.js', () => ({
   default: {
@@ -11,6 +15,10 @@ vi.mock('../models/globalSettingsRepository.js', () => ({
     saveGlobalSettings: vi.fn(),
     isUserAiConfigAllowed: vi.fn(),
   },
+}));
+vi.mock('../services/openFoodFactsSyncSettingsService.js', () => ({
+  getOpenFoodFactsAdminSyncStatus: vi.fn(),
+  saveGlobalSettingsWithOpenFoodFactsSync: vi.fn(),
 }));
 vi.mock('../middleware/authMiddleware', () => ({
   isAdmin: vi.fn((req, res, next) => next()), // Mock authenticate/admin success
@@ -48,8 +56,7 @@ describe('Global Settings Routes', () => {
     it('should update and return global settings', async () => {
       const inputSettings = { allow_user_ai_config: true };
       const savedSettings = { id: 1, allow_user_ai_config: true };
-      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-      globalSettingsRepository.saveGlobalSettings.mockResolvedValue(
+      vi.mocked(saveGlobalSettingsWithOpenFoodFactsSync).mockResolvedValue(
         savedSettings
       );
       const res = await request(app)
@@ -57,13 +64,12 @@ describe('Global Settings Routes', () => {
         .send(inputSettings);
       expect(res.statusCode).toBe(200);
       expect(res.body).toEqual(savedSettings);
-      expect(globalSettingsRepository.saveGlobalSettings).toHaveBeenCalledWith(
+      expect(saveGlobalSettingsWithOpenFoodFactsSync).toHaveBeenCalledWith(
         inputSettings
       );
     });
     it('should handle repository errors during save', async () => {
-      // @ts-expect-error TS(2339): Property 'mockRejectedValue' does not exist on typ... Remove this comment to see the full error message
-      globalSettingsRepository.saveGlobalSettings.mockRejectedValue(
+      vi.mocked(saveGlobalSettingsWithOpenFoodFactsSync).mockRejectedValue(
         new Error('Update failed')
       );
       const res = await request(app).put('/admin/global-settings').send({});
@@ -71,6 +77,22 @@ describe('Global Settings Routes', () => {
       expect(res.body).toEqual({
         message: 'Error updating global auth settings',
       });
+    });
+  });
+  describe('GET /admin/global-settings/openfoodfacts-contributions/status', () => {
+    it('returns aggregate automatic contribution status to an admin', async () => {
+      vi.mocked(getOpenFoodFactsAdminSyncStatus).mockResolvedValue({
+        enabled: true,
+        status: { pending: 1, processing: 0, failed: 2, succeeded: 3 },
+        recentFailures: [],
+      });
+
+      const res = await request(app).get(
+        '/admin/global-settings/openfoodfacts-contributions/status'
+      );
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.status.failed).toBe(2);
     });
   });
   describe('GET /admin/global-settings/allow-user-ai-config', () => {

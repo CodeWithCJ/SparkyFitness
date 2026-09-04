@@ -49,6 +49,8 @@ BEGIN
     'mood_entries',
     'onboarding_data',
     'onboarding_status',
+    'openfoodfacts_product_read_rate_limit',
+    'openfoodfacts_sync_queue',
     'profiles',
     'sparky_chat_history',
     'admin_activity_logs',
@@ -640,6 +642,7 @@ SELECT create_library_policy('workout_presets', 'is_public', ARRAY['can_view_exe
 -- These tables are managed by create_medication_policy at the bottom of this file (Tier 3).
 -- Do NOT apply create_library_policy or create_diary_policy to medication tables.
 SELECT create_owner_policy('user_medication_display_preferences');
+SELECT create_owner_policy('openfoodfacts_sync_queue');
 
 -- Cycle & Pregnancy hub (see migration 20260702180000_add_cycle_tracking_schema.sql).
 -- Tier 1 — owner-only. Deliberately stricter than medications: this reproductive
@@ -918,3 +921,8 @@ CREATE POLICY modify_policy ON public.user_medication_display_preferences FOR AL
 -- RLS). Deny the app role entirely as defense-in-depth so a stray GRANT can
 -- never expose session material to user-scoped queries.
 CREATE POLICY deny_all_policy ON public.passkey_registration_tickets FOR ALL TO PUBLIC USING (false) WITH CHECK (false);
+
+-- Open Food Facts product-read rate limit (Tier 1 - system/internal). The
+-- singleton contains only cross-instance lease/cooldown state and is accessed
+-- via getSystemClient. User-scoped and delegated queries must never mutate it.
+CREATE POLICY deny_all_policy ON public.openfoodfacts_product_read_rate_limit FOR ALL TO PUBLIC USING (false) WITH CHECK (false);

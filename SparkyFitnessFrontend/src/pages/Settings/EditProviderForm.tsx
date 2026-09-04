@@ -102,12 +102,13 @@ export const EditProviderForm = ({
       {editData.provider_type === 'openfoodfacts' && (
         <>
           <div>
-            <Label>
+            <Label htmlFor="edit-openfoodfacts-base-url">
               {t(
                 'settings.foodExerciseDataProviders.openFoodFacts.baseUrlLabel'
               )}
             </Label>
             <Input
+              id="edit-openfoodfacts-base-url"
               type="text"
               value={editData.base_url || ''}
               onChange={(e) =>
@@ -118,14 +119,21 @@ export const EditProviderForm = ({
               }
               placeholder="https://world.openfoodfacts.org"
               autoComplete="off"
+              aria-describedby="edit-openfoodfacts-base-url-help"
             />
           </div>
-          <p className="text-sm text-muted-foreground col-span-2">
+          <p
+            id="edit-openfoodfacts-base-url-help"
+            className="text-sm text-muted-foreground col-span-2"
+          >
             {t('settings.foodExerciseDataProviders.openFoodFacts.baseUrlHelp')}
           </p>
           <div>
-            <Label>Open Food Facts Username (Optional)</Label>
+            <Label htmlFor="edit-openfoodfacts-username">
+              Open Food Facts Username (Optional)
+            </Label>
             <Input
+              id="edit-openfoodfacts-username"
               type="text"
               value={editData.app_id || ''}
               onChange={(e) =>
@@ -136,11 +144,15 @@ export const EditProviderForm = ({
               }
               placeholder="(leave blank to keep existing)"
               autoComplete="username"
+              aria-describedby="edit-openfoodfacts-credential-help"
             />
           </div>
           <div>
-            <Label>Open Food Facts Password (Optional)</Label>
+            <Label htmlFor="edit-openfoodfacts-password">
+              Open Food Facts Password (Optional)
+            </Label>
             <Input
+              id="edit-openfoodfacts-password"
               type="password"
               value={editData.app_key || ''}
               onChange={(e) =>
@@ -151,15 +163,19 @@ export const EditProviderForm = ({
               }
               placeholder="•••••••• (leave blank to keep existing)"
               autoComplete="current-password"
+              aria-describedby="edit-openfoodfacts-credential-help"
             />
           </div>
-          <p className="text-sm text-muted-foreground col-span-2">
-            Username and password for Open Food Facts are optional. If you have
-            an account, adding these credentials allows Sparky to make
-            authenticated requests, which can help reduce rate limiting during
-            busy periods. If you want to keep the existing credentials, simply
-            leave the fields blank. Note that credentials cannot be combined
-            with publicly sharing this provider row.
+          <p
+            id="edit-openfoodfacts-credential-help"
+            className="text-sm text-muted-foreground col-span-2"
+          >
+            {t(
+              'settings.foodExerciseDataProviders.openFoodFacts.credentialContributionHelp'
+            )}{' '}
+            {t(
+              'settings.foodExerciseDataProviders.openFoodFacts.credentialKeepExistingHelp'
+            )}
           </p>
           <p className="text-sm text-muted-foreground col-span-2">
             Open Food Facts is a community-driven database that supports

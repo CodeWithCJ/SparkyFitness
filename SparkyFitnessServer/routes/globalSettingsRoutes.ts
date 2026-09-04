@@ -2,7 +2,27 @@ import express from 'express';
 import globalSettingsRepository from '../models/globalSettingsRepository.js';
 import { log } from '../config/logging.js';
 import { isAdmin, authenticate } from '../middleware/authMiddleware.js';
+import {
+  getOpenFoodFactsAdminSyncStatus,
+  saveGlobalSettingsWithOpenFoodFactsSync,
+} from '../services/openFoodFactsSyncSettingsService.js';
 const router = express.Router();
+
+router.get(
+  '/openfoodfacts-contributions/status',
+  isAdmin,
+  async (_req, res) => {
+    try {
+      res.json(await getOpenFoodFactsAdminSyncStatus());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      log('error', `Error retrieving Open Food Facts sync status: ${message}`);
+      res.status(500).json({
+        message: 'Error retrieving Open Food Facts sync status',
+      });
+    }
+  }
+);
 /**
  * @swagger
  * /admin/global-settings:
@@ -51,7 +71,7 @@ router.put('/', isAdmin, async (req, res) => {
   try {
     const settingsData = req.body;
     const newSettings =
-      await globalSettingsRepository.saveGlobalSettings(settingsData);
+      await saveGlobalSettingsWithOpenFoodFactsSync(settingsData);
     log('info', 'Global auth settings updated successfully.');
     res.status(200).json(newSettings);
   } catch (error) {

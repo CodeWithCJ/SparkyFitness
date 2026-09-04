@@ -2,6 +2,7 @@ export interface GlobalSettings {
   enable_email_password_login: boolean;
   is_oidc_active: boolean;
   is_mfa_mandatory: boolean;
+  allow_openfoodfacts_contributions: boolean;
   allow_user_ai_config?: boolean;
   default_vision_ai_service_id?: string | null;
   is_email_login_env_configured?: boolean;

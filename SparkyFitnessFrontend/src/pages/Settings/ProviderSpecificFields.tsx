@@ -225,12 +225,9 @@ export const ProviderSpecificFields = ({
             />
           </div>
           <p className="text-sm text-muted-foreground col-span-2">
-            Username and password for Open Food Facts are optional. If you have
-            an account, adding these credentials allows Sparky to make
-            authenticated requests, which can help reduce rate limiting during
-            busy periods. If you want to keep the existing credentials, simply
-            leave the fields blank. Note that credentials cannot be combined
-            with publicly sharing this provider row.
+            {t(
+              'settings.foodExerciseDataProviders.openFoodFacts.credentialContributionHelp'
+            )}
           </p>
           <p className="text-sm text-muted-foreground col-span-2">
             Open Food Facts is a community-driven database that supports

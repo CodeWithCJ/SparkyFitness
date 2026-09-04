@@ -288,9 +288,17 @@ const ExternalProviderList = ({
 
     try {
       if (isAdminMode) {
+        const globalProviderUpdateData: Partial<CreateGlobalProviderPayload> = {
+          provider_name: providerUpdateData.provider_name,
+          provider_type: providerUpdateData.provider_type,
+          app_id: providerUpdateData.app_id,
+          app_key: providerUpdateData.app_key,
+          base_url: providerUpdateData.base_url,
+          is_active: providerUpdateData.is_active,
+        };
         await updateGlobalProvider({
           id: providerId,
-          data: providerUpdateData as unknown as Partial<CreateGlobalProviderPayload>,
+          data: globalProviderUpdateData,
         });
       } else {
         const data = await updateExternalProvider({
