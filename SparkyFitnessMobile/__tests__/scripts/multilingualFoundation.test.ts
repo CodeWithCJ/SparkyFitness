@@ -900,4 +900,18 @@ describe('Android widget values-de can be added without Kotlin edits', () => {
     expect(localeFromAndroidDir('values-in', 'en')).toBe('id');
     expect(localeFromAndroidDir('drawable', 'en')).toBeNull();
   });
+
+  it('does not read a non-locale Android qualifier as a locale', () => {
+    // `values-` is shared with every other qualifier, so a widget_strings.xml under
+    // values-night would otherwise be validated as a locale called "night".
+    for (const dir of [
+      'values-night',
+      'values-v31',
+      'values-sw600dp',
+      'values-land',
+      'values-xlarge',
+    ]) {
+      expect(androidQualifiers.localeFromAndroidDir(dir, 'en')).toBeNull();
+    }
+  });
 });

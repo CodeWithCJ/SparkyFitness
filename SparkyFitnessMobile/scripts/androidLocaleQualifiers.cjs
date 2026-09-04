@@ -11,14 +11,22 @@ const TAG_TO_ANDROID = Object.fromEntries(
   Object.entries(ANDROID_TO_TAG).map(([qualifier, tag]) => [tag, qualifier])
 );
 const REGION_TAG = /^[A-Za-z]{2,3}-(?:[A-Za-z]{2}|\d{3})$/;
+// `values-` is shared with every other Android qualifier, so a locale has to be
+// recognized rather than assumed: values-night, values-v31 and values-sw600dp
+// are not translation units.
+const ANDROID_LANGUAGE = /^[a-z]{2,3}$/;
+const ANDROID_LANGUAGE_REGION = /^[a-z]{2,3}-r(?:[A-Z]{2}|\d{3})$/;
 
 function localeFromAndroidDir(name, source) {
   if (name === 'values') return source;
   if (!name.startsWith('values-')) return null;
   const qualifier = name.slice('values-'.length);
-  const tag = qualifier.startsWith('b+')
-    ? qualifier.slice(2).replaceAll('+', '-')
-    : qualifier.replace(/-r(?=(?:[A-Za-z]{2}|\d{3})$)/, '-');
+  let tag;
+  if (qualifier.startsWith('b+')) tag = qualifier.slice(2).replaceAll('+', '-');
+  else if (ANDROID_LANGUAGE.test(qualifier)) tag = qualifier;
+  else if (ANDROID_LANGUAGE_REGION.test(qualifier))
+    tag = qualifier.replace('-r', '-');
+  else return null;
   return ANDROID_TO_TAG[tag] ?? tag;
 }
 

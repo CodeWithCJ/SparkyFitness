@@ -63,23 +63,57 @@ jobs:
           # are not: withCalorieWidget copies the whole res/ tree and the iOS widget
           # target is a synchronized folder, so anything that lands there is compiled
           # into the app. Pull only the registered locales for those two surfaces.
-          shipped=$(node -e '
+          registry=$(node -e '
+            const fs = require("fs");
             const path = require("path");
             const root = process.argv[1];
-            const registry = require(path.join(root, "src/localization/localeRegistry.json"));
-            const { androidDirForLocale } = require(
+            const manifest = require(path.join(root, "src/localization/localeRegistry.json"));
+            const { androidDirForLocale, localeFromAndroidDir } = require(
               path.join(root, "scripts/androidLocaleQualifiers.cjs")
             );
-            const locales = Object.keys(registry.locales);
+            const source = manifest.sourceLocale;
+            const locales = Object.keys(manifest.locales);
+            const android = locales.map((l) => androidDirForLocale(l, source));
+            const lproj = locales.map((l) => l + ".lproj");
+            // Dropping a locale from the registry has to unship its widget too, so
+            // list what is already here and no longer registered. localeFromAndroidDir
+            // returns null for values-night and the other non-locale qualifiers, which
+            // keeps them out of the removal list.
+            const stale = (dir, isUnit, keep) =>
+              fs
+                .readdirSync(path.join(root, dir))
+                .filter((name) => isUnit(name) && !keep.includes(name));
+            console.log(android.join(" "));
+            console.log(lproj.join(" "));
             console.log(
-              locales.map((l) => androidDirForLocale(l, registry.sourceLocale)).join(" ")
+              stale(
+                "targets/android-widget/res",
+                (name) => localeFromAndroidDir(name, source) !== null,
+                android
+              ).join(" ")
             );
-            console.log(locales.map((l) => l + ".lproj").join(" "));
+            console.log(
+              stale(
+                "targets/widget",
+                (name) => name.endsWith(".lproj"),
+                lproj
+              ).join(" ")
+            );
           ' "$PWD/$MOBILE")
-          SHIPPED_ANDROID=$(echo "$shipped" | sed -n 1p)
-          SHIPPED_LPROJ=$(echo "$shipped" | sed -n 2p)
+          SHIPPED_ANDROID=$(echo "$registry" | sed -n 1p)
+          SHIPPED_LPROJ=$(echo "$registry" | sed -n 2p)
           echo "Registered Android widget resources: $SHIPPED_ANDROID"
           echo "Registered iOS widget resources: $SHIPPED_LPROJ"
+
+          prune_unregistered() {
+            dest="$1"
+            for unit in $2; do
+              echo "  removing $dest/$unit: no longer in localeRegistry.json"
+              rm -rf "${dest:?}/$unit"
+            done
+          }
+          prune_unregistered "$MOBILE/targets/android-widget/res" "$(echo "$registry" | sed -n 3p)"
+          prune_unregistered "$MOBILE/targets/widget" "$(echo "$registry" | sed -n 4p)"
 
           echo "=== Copying non-English mobile translations from translation repo to main repo ==="
           sync_dirs() {
