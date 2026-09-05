@@ -59,6 +59,19 @@ describe('foodEntryToNutritionRecord', () => {
     expect(field(record, 'cholesterol')).toBeUndefined(); // absent in fixture
   });
 
+  // #1958: caffeine rides the same generic HC_NUTRIENT_COLUMNS loop as every
+  // other nutrient here -- confirm it scales and lands in the native `caffeine` field.
+  it('scales caffeine_mg and writes it in milligrams', () => {
+    const record = foodEntryToNutritionRecord(
+      { ...baseEntry, caffeine_mg: 60 }, // -> 90 mg
+      1000
+    )!;
+    expect(field(record, 'caffeine')).toEqual({
+      value: 90,
+      unit: 'milligrams',
+    });
+  });
+
   it('maps meal types (unknown -> snack=4)', () => {
     expect(
       foodEntryToNutritionRecord({ ...baseEntry, meal_type: 'lunch' }, 1)!
