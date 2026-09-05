@@ -149,8 +149,23 @@ ALTER TABLE public.meal_foods
 ALTER TABLE public.water_intake_entries
   ADD COLUMN IF NOT EXISTS food_entry_id uuid;
 
+-- food_entries.id has never carried a PRIMARY KEY or UNIQUE constraint across
+-- ~185 prior migrations (it's always been referenced FROM, e.g.
+-- food_entry_meals.food_entry_id, never referenced TO). The FK below is the
+-- first thing that ever points AT food_entries(id), and Postgres refuses a FK
+-- to a column with no unique constraint ("no unique constraint matching given
+-- keys"). Add it here, idempotently, rather than assuming it already exists;
+-- it must run before the FK that depends on it, in the same block.
 DO $$
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'food_entries_pkey'
+      AND conrelid = 'public.food_entries'::regclass
+  ) THEN
+    ALTER TABLE public.food_entries ADD CONSTRAINT food_entries_pkey PRIMARY KEY (id);
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
     WHERE conname = 'water_intake_entries_food_entry_id_fkey'
@@ -338,6 +353,12 @@ ALTER TABLE public.food_entries
 ALTER TABLE public.meal_foods
   ADD COLUMN IF NOT EXISTS alcohol_g numeric;
 
+-- Jurisdictional definition of one "standard drink" / "unit", in grams of pure
+-- ethanol. Default 14 (US). Purely a display divisor; changing it never rewrites
+-- a stored alcohol_g.
+ALTER TABLE public.user_preferences
+  ADD COLUMN IF NOT EXISTS standard_drink_grams numeric(5,2) NOT NULL DEFAULT 14.00;
+
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint
@@ -347,16 +368,7 @@ BEGIN
       ADD CONSTRAINT food_variants_abv_percent_range
       CHECK (abv_percent IS NULL OR (abv_percent >= 0 AND abv_percent <= 100));
   END IF;
-END $$;
 
--- Jurisdictional definition of one "standard drink" / "unit", in grams of pure
--- ethanol. Default 14 (US). Purely a display divisor; changing it never rewrites
--- a stored alcohol_g.
-ALTER TABLE public.user_preferences
-  ADD COLUMN IF NOT EXISTS standard_drink_grams numeric(5,2) NOT NULL DEFAULT 14.00;
-
-DO $$
-BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint
                  WHERE conname = 'user_preferences_standard_drink_grams_range'
                    AND conrelid = 'public.user_preferences'::regclass) THEN
@@ -378,12 +390,18 @@ COMMENT ON COLUMN public.user_preferences.standard_drink_grams IS
   'Grams of ethanol in one standard drink for this user''s jurisdiction. US 14, UK 8 (one unit), AU/EU 10, CA 13.45, JP 20. Display divisor only.';
 
 -- Visibility backfill: make alcohol_g visible for EXISTING users who have
--- saved a customisation (food_database, report_tabular, report_chart, diary).
+-- saved a customisation, in EVERY view group -- unconditional, exactly like
+-- caffeine_mg's backfill above. alcohol_g is goal-eligible
+-- (NON_GOAL_NUTRIENT_KEYS is water_ml only) and is in defaultNutrients
+-- alongside caffeine_mg (nutrientDisplayPreferenceService.ts), so it must get
+-- the identical unconditional treatment -- an earlier draft of this backfill
+-- scoped it to food_database/report_tabular/report_chart/diary only, which
+-- left it missing (not just unchecked) from a customised user's goal and
+-- summary/quick_info option lists.
 UPDATE public.user_nutrient_display_preferences AS p
 SET visible_nutrients = p.visible_nutrients || to_jsonb('alcohol_g'::text),
     updated_at = now()
 WHERE jsonb_typeof(p.visible_nutrients) = 'array'
-  AND p.view_group IN ('food_database', 'report_tabular', 'report_chart', 'diary')
   AND NOT (p.visible_nutrients @> to_jsonb(ARRAY['alcohol_g'::text]));
 
 

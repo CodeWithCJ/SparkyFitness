@@ -151,4 +151,3 @@ const getHydrationNutritionRangeHandler: RequestHandler = async (
 router.get('/hydration-nutrition-range', getHydrationNutritionRangeHandler);
 
 export default router;
-module.exports = router;

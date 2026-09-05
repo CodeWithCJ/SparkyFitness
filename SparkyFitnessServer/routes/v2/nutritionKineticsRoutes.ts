@@ -70,4 +70,3 @@ const getCaffeineActiveHandler: RequestHandler = async (req, res, next) => {
 router.get('/caffeine/active', getCaffeineActiveHandler);
 
 export default router;
-module.exports = router;
