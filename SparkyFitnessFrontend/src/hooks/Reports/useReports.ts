@@ -5,6 +5,7 @@ import { reportKeys } from '@/api/keys/reports';
 import {
   getExerciseDashboardData,
   getAlcoholWeekReport,
+  getHydrationNutritionRange,
   loadReportsData,
 } from '@/api/Reports/reportsService';
 import { parseStressMeasurement } from '@/utils/reportUtil';
@@ -150,6 +151,35 @@ export const useAlcoholWeekReport = (
       errorMessage: t(
         'reports.failedToLoadAlcoholWeek',
         'Failed to load weekly alcohol data.'
+      ),
+    },
+  });
+};
+
+// #2348: water_ml is deliberately absent from the RANGE_COLS-driven nutrition
+// data (design-decisions correction 3), so Trends needs its own range query
+// for the bespoke hydration chart. Caffeine/alcohol already ride the existing
+// nutritionData prop via NutritionChartsGrid.
+export const useHydrationNutritionRange = (
+  startDate: string,
+  endDate: string,
+  userId?: string | null,
+  enabled: boolean = true
+) => {
+  const { t } = useTranslation();
+  return useQuery({
+    queryKey: reportKeys.hydrationNutritionRange(
+      startDate,
+      endDate,
+      userId ?? undefined
+    ),
+    queryFn: () =>
+      getHydrationNutritionRange(startDate, endDate, userId ?? undefined),
+    enabled: Boolean(startDate) && Boolean(endDate) && enabled,
+    meta: {
+      errorMessage: t(
+        'reports.failedToLoadHydrationTrend',
+        'Failed to load hydration trend data.'
       ),
     },
   });

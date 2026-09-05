@@ -3566,7 +3566,11 @@
       "noLimit": "No weekly limit set",
       "drinksRemaining": "drinks remaining"
     },
+    "hydration": {
+      "title": "Hydration"
+    },
     "failedToLoadAlcoholWeek": "Failed to load weekly alcohol data.",
+    "failedToLoadHydrationTrend": "Failed to load hydration trend data.",
     "errorToastTitle": "Error",
     "signInMessage": "Please sign in to view reports.",
     "loadingDateControls": "Loading date controls...",
