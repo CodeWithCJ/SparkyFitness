@@ -224,13 +224,6 @@ describe('Measurement Service - Water Intake', () => {
         1,
         3
       );
-      expect(measurementRepository.incrementWaterData).toHaveBeenCalledWith(
-        mockUserId,
-        mockUserId,
-        250,
-        entryDate,
-        'manual'
-      );
       expect(measurementRepository.insertWaterIntakeLog).toHaveBeenCalledWith(
         mockUserId,
         mockUserId,
@@ -238,8 +231,14 @@ describe('Measurement Service - Water Intake', () => {
         250,
         3,
         'Jug',
-        'manual'
+        'manual',
+        null,
+        null,
+        1.0
       );
+      expect(
+        measurementRepository.recomputeWaterAggregateForUser
+      ).toHaveBeenCalledWith(mockUserId, mockUserId, entryDate, 'manual');
     });
 
     it('falls back to the full container volume when servings_per_container is 0', async () => {
@@ -257,13 +256,21 @@ describe('Measurement Service - Water Intake', () => {
         1,
         3
       );
-      expect(measurementRepository.incrementWaterData).toHaveBeenCalledWith(
+      expect(measurementRepository.insertWaterIntakeLog).toHaveBeenCalledWith(
         mockUserId,
         mockUserId,
-        750,
         entryDate,
-        'manual'
+        750,
+        3,
+        'Broken Row',
+        'manual',
+        null,
+        null,
+        1.0
       );
+      expect(
+        measurementRepository.recomputeWaterAggregateForUser
+      ).toHaveBeenCalledWith(mockUserId, mockUserId, entryDate, 'manual');
     });
   });
   describe('updateWaterIntake', () => {

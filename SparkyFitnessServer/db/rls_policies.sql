@@ -568,6 +568,12 @@ WITH CHECK (authenticated_user_id() = user_id);
 
 SELECT create_diary_policy('user_goals');
 SELECT create_diary_policy('weekly_goal_plans');
+-- user_water_containers now references foods / food_variants / meal_types
+-- (linked_food_id, linked_variant_id, linked_meal_type_id -- #2115). No
+-- policy change needed: both sides are diary-scoped -- this table is
+-- create_diary_policy, and foods below is create_library_policy with
+-- can_manage_diary in its permission array, so a delegate with can_manage_diary
+-- already has full access to both.
 SELECT create_diary_policy('user_water_containers');
 SELECT create_diary_policy('user_custom_nutrients');
 SELECT create_diary_policy('user_nutrient_goal_preferences');

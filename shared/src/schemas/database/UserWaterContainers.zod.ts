@@ -19,6 +19,12 @@ export const userWaterContainersSchema = z.object({
   created_at: z.date(),
   updated_at: z.date(),
   servings_per_container: z.number(),
+  // Manually added (file is ts-to-zod generated; precedent: MealFoods.zod.ts).
+  // Keep on regen. #2115: container -> food link.
+  hydration_factor: z.number().min(0).max(2),
+  linked_food_id: z.string().nullable(),
+  linked_variant_id: z.string().nullable(),
+  linked_meal_type_id: z.string().nullable(),
 });
 
 export const userWaterContainersInitializerSchema = z.object({
@@ -31,6 +37,10 @@ export const userWaterContainersInitializerSchema = z.object({
   created_at: z.date().optional(),
   updated_at: z.date().optional(),
   servings_per_container: z.number().optional(),
+  hydration_factor: z.number().min(0).max(2).optional(),
+  linked_food_id: z.string().optional().nullable(),
+  linked_variant_id: z.string().optional().nullable(),
+  linked_meal_type_id: z.string().optional().nullable(),
 });
 
 export const userWaterContainersMutatorSchema = z.object({
@@ -43,6 +53,10 @@ export const userWaterContainersMutatorSchema = z.object({
   created_at: z.date().optional(),
   updated_at: z.date().optional(),
   servings_per_container: z.number().optional(),
+  hydration_factor: z.number().min(0).max(2).optional(),
+  linked_food_id: z.string().optional().nullable(),
+  linked_variant_id: z.string().optional().nullable(),
+  linked_meal_type_id: z.string().optional().nullable(),
 });
 
 export type UserWaterContainers = z.infer<typeof userWaterContainersSchema>;

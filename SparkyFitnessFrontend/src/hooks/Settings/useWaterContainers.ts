@@ -2,6 +2,7 @@ import { waterContainerKeys } from '@/api/keys/settings';
 import {
   getWaterContainers,
   createWaterContainer,
+  updateWaterContainer,
   deleteWaterContainer,
   setPrimaryWaterContainer,
 } from '@/api/Settings/waterContainerService';
@@ -29,6 +30,27 @@ export const useCreateWaterContainerMutation = () => {
     meta: {
       successMessage: 'Water container added.',
       errorMessage: 'Failed to add water container.',
+    },
+  });
+};
+
+export const useUpdateWaterContainerMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      containerData,
+    }: {
+      id: number;
+      containerData: Parameters<typeof updateWaterContainer>[1];
+    }) => updateWaterContainer(id, containerData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: waterContainerKeys.all });
+    },
+    meta: {
+      successMessage: 'Water container updated.',
+      errorMessage: 'Failed to update water container.',
     },
   });
 };

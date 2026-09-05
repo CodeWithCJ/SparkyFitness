@@ -29,6 +29,18 @@ export const waterIntakeDayTotalsSchema = z.object({
 });
 export type WaterIntakeDayTotals = z.infer<typeof waterIntakeDayTotalsSchema>;
 
+// #2115: a "-" on a linked container removes its food entry too. Optional --
+// only present when at least one removed row was linked, and absent on a
+// server predating the container-food link.
+export const upsertWaterIntakeResponseSchema = waterIntakeDayTotalsSchema
+  .extend({
+    removedFoodEntryIds: z.array(z.string()).optional(),
+  })
+  .or(z.array(z.unknown())); // legacy per-source array shape, still tolerated
+export type UpsertWaterIntakeResponse = z.infer<
+  typeof upsertWaterIntakeResponseSchema
+>;
+
 export const waterIntakeLogEntrySchema = z.object({
   id: z.string(),
   user_id: z.string(),
@@ -39,5 +51,8 @@ export const waterIntakeLogEntrySchema = z.object({
   source: z.string(),
   created_at: z.string(),
   logged_at: z.string(),
+  // #2115: set when this drink was logged by a linked container.
+  food_entry_id: z.string().nullable().optional(),
+  hydration_factor: z.number().nullable().optional(),
 });
 export type WaterIntakeLogEntry = z.infer<typeof waterIntakeLogEntrySchema>;

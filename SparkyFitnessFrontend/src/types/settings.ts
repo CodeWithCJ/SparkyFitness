@@ -32,6 +32,14 @@ export interface WaterContainer {
   unit: 'ml' | 'oz' | 'liter'; // Removed 'cup'
   is_primary: boolean;
   servings_per_container: number; // New field
+  hydration_factor?: number;
+  linked_food_id?: string | null;
+  linked_variant_id?: string | null;
+  linked_meal_type_id?: string | null;
+  linked_food_name?: string | null;
+  linked_variant_serving_size?: number | string | null;
+  linked_variant_serving_unit?: string | null;
+  linked_meal_type_name?: string | null;
 }
 
 export interface FamilyAccess {

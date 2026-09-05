@@ -1588,14 +1588,21 @@ async function insertWaterIntakeLog(
   containerId: number | null,
   containerName: string | null,
   source = 'manual',
-  loggedAt: string | null = null
+  loggedAt: string | null = null,
+  // #2115: set when this drink was logged by a container linked to a food.
+  // hydrationFactor is snapshotted at log time -- editing the container later
+  // must not rewrite history, following container_name's existing precedent.
+  foodEntryId: string | null = null,
+  hydrationFactor: number | null = null,
+  client?: PoolClient
 ) {
-  const client = await getClient(actingUserId);
+  const ownClient = !client;
+  const activeClient = client ?? (await getClient(actingUserId));
   try {
-    const result = await client.query(
+    const result = await activeClient.query(
       `INSERT INTO water_intake_entries
-        (user_id, entry_date, water_ml, container_id, container_name, source, created_at, created_by_user_id, logged_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, COALESCE($8, NOW()))
+        (user_id, entry_date, water_ml, container_id, container_name, source, created_at, created_by_user_id, logged_at, food_entry_id, hydration_factor)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, COALESCE($8, NOW()), $9, $10)
        RETURNING *`,
       [
         userId,
@@ -1606,11 +1613,13 @@ async function insertWaterIntakeLog(
         source,
         actingUserId,
         loggedAt,
+        foodEntryId,
+        hydrationFactor,
       ]
     );
     return result.rows[0];
   } finally {
-    client.release();
+    if (ownClient) activeClient.release();
   }
 }
 
@@ -1909,11 +1918,11 @@ async function getWaterIntakeLogByDate(
   try {
     const result = await client.query(
       source
-        ? `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at
+        ? `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at, food_entry_id, hydration_factor
            FROM water_intake_entries
            WHERE user_id = $1 AND entry_date = $2 AND source = $3
            ORDER BY logged_at DESC`
-        : `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at
+        : `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at, food_entry_id, hydration_factor
            FROM water_intake_entries
            WHERE user_id = $1 AND entry_date = $2
            ORDER BY logged_at DESC`,
@@ -1925,16 +1934,23 @@ async function getWaterIntakeLogByDate(
   }
 }
 
-async function deleteWaterIntakeLog(id: string, userId: string) {
-  const client = await getClient(userId);
+// #2115: accepts an optional external client so a caller that also needs to
+// delete the linked food entry can do both under one transaction.
+async function deleteWaterIntakeLog(
+  id: string,
+  userId: string,
+  client?: PoolClient
+) {
+  const ownClient = !client;
+  const activeClient = client ?? (await getClient(userId));
   try {
-    const result = await client.query(
-      'DELETE FROM water_intake_entries WHERE id = $1 AND user_id = $2 RETURNING id, water_ml, entry_date, source',
+    const result = await activeClient.query(
+      'DELETE FROM water_intake_entries WHERE id = $1 AND user_id = $2 RETURNING id, water_ml, entry_date, source, food_entry_id',
       [id, userId]
     );
     return result.rows[0] || null;
   } finally {
-    client.release();
+    if (ownClient) activeClient.release();
   }
 }
 

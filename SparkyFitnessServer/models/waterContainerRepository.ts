@@ -1,8 +1,17 @@
 import { getClient } from '../db/poolManager.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function createWaterContainer(userId: any, containerData: any) {
-  const { name, volume, unit, is_primary, servings_per_container } =
-    containerData;
+  const {
+    name,
+    volume,
+    unit,
+    is_primary,
+    servings_per_container,
+    hydration_factor,
+    linked_food_id,
+    linked_variant_id,
+    linked_meal_type_id,
+  } = containerData;
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
@@ -14,9 +23,23 @@ async function createWaterContainer(userId: any, containerData: any) {
       );
     }
     const result = await client.query(
-      `INSERT INTO user_water_containers (user_id, name, volume, unit, is_primary, servings_per_container)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [userId, name, volume, unit, is_primary, servings_per_container]
+      `INSERT INTO user_water_containers (
+         user_id, name, volume, unit, is_primary, servings_per_container,
+         hydration_factor, linked_food_id, linked_variant_id, linked_meal_type_id
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 1.000), $8, $9, $10) RETURNING *`,
+      [
+        userId,
+        name,
+        volume,
+        unit,
+        is_primary,
+        servings_per_container,
+        hydration_factor,
+        linked_food_id ?? null,
+        linked_variant_id ?? null,
+        linked_meal_type_id ?? null,
+      ]
     );
     await client.query('COMMIT');
     return result.rows[0];
@@ -32,7 +55,18 @@ async function getWaterContainersByUserId(userId: any) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT * FROM user_water_containers WHERE user_id = $1 ORDER BY created_at',
+      `SELECT
+         c.*,
+         f.name AS linked_food_name,
+         fv.serving_size AS linked_variant_serving_size,
+         fv.serving_unit AS linked_variant_serving_unit,
+         mt.name AS linked_meal_type_name
+       FROM user_water_containers c
+       LEFT JOIN foods f ON c.linked_food_id = f.id
+       LEFT JOIN food_variants fv ON c.linked_variant_id = fv.id
+       LEFT JOIN meal_types mt ON c.linked_meal_type_id = mt.id
+       WHERE c.user_id = $1
+       ORDER BY c.created_at`,
       [userId]
     );
     return result.rows;
@@ -43,6 +77,15 @@ async function getWaterContainersByUserId(userId: any) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateWaterContainer(id: any, userId: any, updateData: any) {
   const { name, volume, unit, is_primary, servings_per_container } = updateData;
+  const hydration_factor = updateData.hydration_factor;
+  // Link fields are nullable, so `undefined` (omitted -- leave alone) and
+  // `null` (explicit -- unlink) must be distinguishable. Same shape as
+  // preferenceRepository's default_barcode_provider_id: a present flag per
+  // field gates a CASE WHEN, and the value beside it is read whether it's a
+  // uuid or null.
+  const linkedFoodIdPresent = 'linked_food_id' in updateData;
+  const linkedVariantIdPresent = 'linked_variant_id' in updateData;
+  const linkedMealTypeIdPresent = 'linked_meal_type_id' in updateData;
   const client = await getClient(userId); // User-specific operation
   try {
     await client.query('BEGIN');
@@ -53,10 +96,29 @@ async function updateWaterContainer(id: any, userId: any, updateData: any) {
         unit = COALESCE($3, unit),
         is_primary = COALESCE($4, is_primary),
         servings_per_container = COALESCE($5, servings_per_container),
+        hydration_factor = COALESCE($8, hydration_factor),
+        linked_food_id = CASE WHEN $9 THEN $10 ELSE linked_food_id END,
+        linked_variant_id = CASE WHEN $11 THEN $12 ELSE linked_variant_id END,
+        linked_meal_type_id = CASE WHEN $13 THEN $14 ELSE linked_meal_type_id END,
         updated_at = now()
        WHERE id = $6 AND user_id = $7
        RETURNING *`,
-      [name, volume, unit, is_primary, servings_per_container, id, userId]
+      [
+        name,
+        volume,
+        unit,
+        is_primary,
+        servings_per_container,
+        id,
+        userId,
+        hydration_factor,
+        linkedFoodIdPresent,
+        updateData.linked_food_id ?? null,
+        linkedVariantIdPresent,
+        updateData.linked_variant_id ?? null,
+        linkedMealTypeIdPresent,
+        updateData.linked_meal_type_id ?? null,
+      ]
     );
     // Demote competing primaries only after the target row is confirmed to
     // exist and belong to this user
@@ -120,7 +182,17 @@ async function getPrimaryWaterContainerByUserId(userId: any) {
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      'SELECT * FROM user_water_containers WHERE user_id = $1 AND is_primary = TRUE',
+      `SELECT
+         c.*,
+         f.name AS linked_food_name,
+         fv.serving_size AS linked_variant_serving_size,
+         fv.serving_unit AS linked_variant_serving_unit,
+         mt.name AS linked_meal_type_name
+       FROM user_water_containers c
+       LEFT JOIN foods f ON c.linked_food_id = f.id
+       LEFT JOIN food_variants fv ON c.linked_variant_id = fv.id
+       LEFT JOIN meal_types mt ON c.linked_meal_type_id = mt.id
+       WHERE c.user_id = $1 AND c.is_primary = TRUE`,
       [userId]
     );
     return result.rows[0] || null;
@@ -133,7 +205,17 @@ async function getWaterContainerById(id: any, userId: any) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
-      'SELECT * FROM user_water_containers WHERE id = $1',
+      `SELECT
+         c.*,
+         f.name AS linked_food_name,
+         fv.serving_size AS linked_variant_serving_size,
+         fv.serving_unit AS linked_variant_serving_unit,
+         mt.name AS linked_meal_type_name
+       FROM user_water_containers c
+       LEFT JOIN foods f ON c.linked_food_id = f.id
+       LEFT JOIN food_variants fv ON c.linked_variant_id = fv.id
+       LEFT JOIN meal_types mt ON c.linked_meal_type_id = mt.id
+       WHERE c.id = $1`,
       [id]
     );
     return result.rows[0] || null;

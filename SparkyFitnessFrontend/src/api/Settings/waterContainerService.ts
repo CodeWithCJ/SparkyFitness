@@ -14,6 +14,16 @@ export const createWaterContainer = async (
   });
 };
 
+export const updateWaterContainer = async (
+  id: number,
+  containerData: Partial<Omit<WaterContainer, 'id' | 'user_id'>>
+): Promise<WaterContainer> => {
+  return await apiCall(`/water-containers/${id}`, {
+    method: 'PUT',
+    body: containerData,
+  });
+};
+
 export const deleteWaterContainer = async (id: number): Promise<void> => {
   await apiCall(`/water-containers/${id}`, {
     method: 'DELETE',

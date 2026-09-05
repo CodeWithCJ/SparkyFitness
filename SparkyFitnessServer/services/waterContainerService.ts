@@ -1,7 +1,53 @@
 import waterContainerRepository from '../models/waterContainerRepository.js';
+import foodRepository from '../models/food.js';
+import foodVariantRepository from '../models/foodVariant.js';
 import { log } from '../config/logging.js';
 import { WATER_CONTAINER_UNITS } from '../schemas/waterContainerSchemas.js';
 const VALID_UNITS: readonly string[] = WATER_CONTAINER_UNITS;
+
+// #2115: when a container is linked to a food, resolve/validate the variant
+// so "+" always has a real variant to snapshot from. A variant explicitly
+// given must actually belong to the linked food -- otherwise a stale or
+// mismatched variant id would silently attach the wrong nutrition profile to
+// every future drink logged through this container.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function resolveLinkedVariantId(userId: any, containerData: any) {
+  if (!('linked_food_id' in containerData)) {
+    return containerData;
+  }
+  const resolved = { ...containerData };
+  if (!containerData.linked_food_id) {
+    // Unlinking the food also clears any variant/meal-type left over from
+    // a previous link -- a stale variant id pointing at nothing useful.
+    resolved.linked_variant_id = null;
+    resolved.linked_meal_type_id = resolved.linked_meal_type_id ?? null;
+    return resolved;
+  }
+  const food = await foodRepository.getFoodById(
+    containerData.linked_food_id,
+    userId
+  );
+  if (!food) {
+    throw new Error('Linked food not found.');
+  }
+  if (containerData.linked_variant_id) {
+    const variant = await foodVariantRepository.getFoodVariantById(
+      containerData.linked_variant_id,
+      userId
+    );
+    if (!variant || variant.food_id !== containerData.linked_food_id) {
+      throw new Error('Linked variant does not belong to the linked food.');
+    }
+  } else {
+    // No variant specified: fall back to the food's default variant.
+    const defaultVariantId = food.default_variant?.id;
+    if (!defaultVariantId) {
+      throw new Error('Linked food has no default variant to attach.');
+    }
+    resolved.linked_variant_id = defaultVariantId;
+  }
+  return resolved;
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function convertToMl(volume: any, unit: any) {
   if (!VALID_UNITS.includes(unit)) {
@@ -24,7 +70,11 @@ async function createWaterContainer(userId: any, containerData: any) {
   }
   try {
     const volumeInMl = convertToMl(containerData.volume, containerData.unit);
-    const dataToSave = { ...containerData, volume: volumeInMl };
+    const withResolvedLink = await resolveLinkedVariantId(
+      userId,
+      containerData
+    );
+    const dataToSave = { ...withResolvedLink, volume: volumeInMl };
     return await waterContainerRepository.createWaterContainer(
       userId,
       dataToSave
@@ -49,7 +99,7 @@ async function updateWaterContainer(id: any, userId: any, updateData: any) {
     throw new Error('Invalid unit provided.');
   }
   try {
-    const dataToSave = { ...updateData };
+    const dataToSave = await resolveLinkedVariantId(userId, updateData);
     if (updateData.volume !== undefined && updateData.unit !== undefined) {
       dataToSave.volume = convertToMl(updateData.volume, updateData.unit);
     } else if (

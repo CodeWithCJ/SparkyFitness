@@ -8,12 +8,16 @@ import {
   instantHourMinuteWithOffset,
   isValidTimeZone,
   isDayString,
+  foodVolumeToMl,
 } from '@workspace/shared';
 import { userAge } from '../utils/dateHelpers.js';
 import userRepository from '../models/userRepository.js';
 import sleepRepository from '../models/sleepRepository.js';
 import exerciseEntryDb from '../models/exerciseEntry.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
+import foodRepository from '../models/foodRepository.js';
+import mealTypeRepository from '../models/mealType.js';
+import { buildFoodEntrySnapshot } from '../utils/foodEntrySnapshot.js';
 import hydrationTotalsService from './hydrationTotalsService.js';
 import {
   resolveHandler,
@@ -501,65 +505,138 @@ async function upsertWaterIntake(
   containerId: number | null
 ) {
   try {
-    // 2. Determine amount per drink based on container
-    let amountPerDrink;
+    let amountPerDrink: number;
     let containerName: string | null = null;
+    let containerRow: any = null;
+
     if (containerId) {
-      const container = await waterContainerRepository.getWaterContainerById(
+      containerRow = await waterContainerRepository.getWaterContainerById(
         containerId,
         authenticatedUserId
       );
-      if (container) {
-        // Stored rows can carry servings_per_container = 0; clamp so the
-        // division can't produce Infinity
+      if (containerRow) {
         const servings = Math.max(
           1,
-          Number(container.servings_per_container) || 1
+          Number(containerRow.servings_per_container) || 1
         );
-        amountPerDrink = Number(container.volume) / servings;
-        containerName = container.name || null;
+        amountPerDrink = Number(containerRow.volume) / servings;
+        containerName = containerRow.name || null;
       } else {
-        // Fallback to default if container not found
         log(
           'warn',
           `Container with ID ${containerId} not found for user ${authenticatedUserId}. Using default amount per drink.`
         );
         amountPerDrink = 2000 / 8; // Default: 2000ml / 8 servings
-        containerId = null; // Reset to null so we don't violate FK constraints
+        containerId = null;
       }
     } else {
-      // Use default amount per drink if no container ID is provided
       amountPerDrink = 2000 / 8; // Default: 2000ml / 8 servings
     }
-    // 5. Log individual drink(s) into water_intake_entries.
+
+    const removedFoodEntryIds: string[] = [];
+
     if (changeDrinks > 0) {
-      // 5a. Additions: insert new log entries and update daily total
-      await measurementRepository.incrementWaterData(
-        authenticatedUserId,
-        actingUserId,
-        changeDrinks * amountPerDrink,
-        entryDate,
-        'manual'
-      );
+      // 5a. Additions: check if container is linked to a food (#2115)
+      let linkedFood: any = null;
+      let linkedVariant: any = null;
+      let targetMealTypeId: string | null = null;
+
+      if (containerRow && containerRow.linked_food_id) {
+        linkedFood = await foodRepository.getFoodById(
+          containerRow.linked_food_id,
+          authenticatedUserId
+        );
+        if (linkedFood) {
+          const variantId =
+            containerRow.linked_variant_id || linkedFood.default_variant?.id;
+          if (variantId) {
+            linkedVariant = await foodRepository.getFoodVariantById(
+              variantId,
+              authenticatedUserId
+            );
+          }
+        }
+        if (containerRow.linked_meal_type_id) {
+          targetMealTypeId = containerRow.linked_meal_type_id;
+        } else {
+          // Fall back to default meal type for user
+          const mealTypes =
+            await mealTypeRepository.getAllMealTypes(authenticatedUserId);
+          targetMealTypeId = mealTypes[0]?.id || null;
+        }
+      }
+
       for (let i = 0; i < changeDrinks; i++) {
+        let createdFoodEntryId: string | null = null;
+        let drinkWaterMl = amountPerDrink;
+        const hydrationFactor =
+          containerRow?.hydration_factor !== undefined &&
+          containerRow?.hydration_factor !== null
+            ? Number(containerRow.hydration_factor)
+            : 1.0;
+
+        if (linkedFood && linkedVariant) {
+          const snapshot = buildFoodEntrySnapshot(linkedFood, linkedVariant);
+          const foodEntryInput = {
+            user_id: authenticatedUserId,
+            food_id: linkedFood.id,
+            variant_id: linkedVariant.id,
+            meal_type_id: targetMealTypeId,
+            quantity: 1,
+            unit: linkedVariant.serving_unit || 'serving',
+            entry_date: entryDate,
+            food_entry_meal_id: null,
+            meal_plan_template_id: null,
+            ...snapshot,
+          };
+
+          const createdEntry = await foodRepository.createFoodEntry(
+            foodEntryInput,
+            actingUserId
+          );
+          if (createdEntry?.id) {
+            createdFoodEntryId = createdEntry.id;
+          }
+
+          // Precedence: explicit water_ml on food -> volume unit conversion -> container volume
+          const foodExplicitWater = Number(linkedVariant.water_ml);
+          if (Number.isFinite(foodExplicitWater) && foodExplicitWater > 0) {
+            drinkWaterMl = foodExplicitWater * hydrationFactor;
+          } else {
+            const volFallback = foodVolumeToMl(
+              1,
+              linkedVariant.serving_unit || ''
+            );
+            if (volFallback !== null) {
+              drinkWaterMl = volFallback * hydrationFactor;
+            } else {
+              drinkWaterMl = amountPerDrink * hydrationFactor;
+            }
+          }
+        }
+
         await measurementRepository.insertWaterIntakeLog(
           authenticatedUserId,
           actingUserId,
           entryDate,
-          amountPerDrink,
+          drinkWaterMl,
           containerId || null,
           containerName,
-          'manual'
+          'manual',
+          null,
+          createdFoodEntryId,
+          hydrationFactor
         );
       }
+
+      await measurementRepository.recomputeWaterAggregateForUser(
+        authenticatedUserId,
+        actingUserId,
+        entryDate,
+        'manual'
+      );
     } else if (changeDrinks < 0) {
-      // 5b. Decrements: delete the most recent log entries, then recompute
-      // the daily total from what's actually left in water_intake_entries
-      // (SUM-from-source-of-truth) rather than subtracting an incremental
-      // delta. Recompute-from-sum is idempotent and self-correcting, so it
-      // needs no "not enough log entries" fallback: deleting fewer rows than
-      // requested (because none remain) simply means the recompute reflects
-      // exactly what was removed, with nothing left to phantom-subtract.
+      // 5b. Decrements: delete the most recent log entries and their linked food entries
       const logEntries = await measurementRepository.getWaterIntakeLogByDate(
         authenticatedUserId,
         entryDate,
@@ -567,13 +644,26 @@ async function upsertWaterIntake(
       );
       const requestedDrinks = Math.abs(changeDrinks);
       const entriesToRemove = Math.min(requestedDrinks, logEntries.length);
+
       for (let i = 0; i < entriesToRemove; i++) {
         const entry = logEntries[i];
         if (entry) {
-          await measurementRepository.deleteWaterIntakeLog(
+          const deleted = await measurementRepository.deleteWaterIntakeLog(
             entry.id,
             authenticatedUserId
           );
+          if (deleted?.food_entry_id) {
+            removedFoodEntryIds.push(deleted.food_entry_id);
+            await foodRepository
+              .deleteFoodEntry(deleted.food_entry_id, authenticatedUserId)
+              .catch((err: unknown) => {
+                log(
+                  'warn',
+                  `Could not delete linked food entry ${deleted.food_entry_id}:`,
+                  err
+                );
+              });
+          }
         }
       }
       await measurementRepository.recomputeWaterAggregateForUser(
@@ -583,11 +673,19 @@ async function upsertWaterIntake(
         'manual'
       );
     }
+
     // Return the latest aggregated record across all sources after the upsert
     const finalRecord = await measurementRepository.getWaterIntakeByDate(
       authenticatedUserId,
       entryDate
     );
+
+    if (removedFoodEntryIds.length > 0) {
+      return {
+        ...finalRecord,
+        removedFoodEntryIds,
+      };
+    }
     return finalRecord;
   } catch (error) {
     log(
@@ -1814,7 +1912,20 @@ async function deleteWaterIntakeLogEntry(
       throw new Error('Water intake log entry not found.');
     }
 
-    // 3. Recompute the daily total from what's left in water_intake_entries
+    // 3. If linked to a food entry, delete it as well (#2115)
+    if (deleted.food_entry_id) {
+      await foodRepository
+        .deleteFoodEntry(deleted.food_entry_id, authenticatedUserId)
+        .catch((err: unknown) => {
+          log(
+            'warn',
+            `Could not delete linked food entry ${deleted.food_entry_id}:`,
+            err
+          );
+        });
+    }
+
+    // 4. Recompute the daily total from what's left in water_intake_entries
     // (SUM-from-source-of-truth), rather than subtracting the deleted row's
     // amount as an incremental delta.
     await measurementRepository.recomputeWaterAggregateForUser(

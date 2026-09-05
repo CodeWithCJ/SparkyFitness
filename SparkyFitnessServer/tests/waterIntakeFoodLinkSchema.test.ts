@@ -29,6 +29,7 @@ const baseWaterIntakeEntry = {
   created_at: new Date(),
   created_by_user_id: null,
   logged_at: new Date(),
+  hydration_factor: null,
 };
 
 describe('waterIntakeEntriesSchema — food_entry_id', () => {

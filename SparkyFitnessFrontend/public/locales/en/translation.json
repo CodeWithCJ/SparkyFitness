@@ -2962,7 +2962,10 @@
       "deletedError": "Failed to remove drink",
       "editTime": "Click to change time",
       "noManualToRemove": "Only manually logged water can be removed here",
-      "fromFood": "Includes {{volume}} {{unit}} from food"
+      "fromFood": "Includes {{volume}} {{unit}} from food",
+      "linkedFoodRemovedTitle": "Food Entry Removed",
+      "linkedFoodRemoved": "Linked food entry was also removed from your food diary.",
+      "linkedDrink": "Linked to a food entry"
     },
     "copyFoodEntryDialog": {
       "title": "Copy Food Entries",
@@ -5433,7 +5436,21 @@
     "servingsCount_one": "{{count}} serving",
     "servingsCount_other": "{{count}} servings",
     "deleted": "Water container deleted.",
-    "primaryUpdated": "Primary container updated."
+    "primaryUpdated": "Primary container updated.",
+    "linkFood": "Link to Food Item",
+    "linkedFood": "Linked Food",
+    "unlinkFood": "Unlink",
+    "searchFood": "Search Food to Link",
+    "selectVariant": "Serving Variant",
+    "selectMealType": "Meal Category",
+    "selectMealTypePlaceholder": "Select meal category (optional)",
+    "hydrationFactor": "Hydration Factor",
+    "hydrationFactorHelp": "Scales water credit (e.g., 0.9 for coffee/tea, 1.0 for standard water). Full calories/macros are logged.",
+    "editContainer": "Edit Container",
+    "saveChanges": "Save Changes",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "updated": "Water container updated."
   },
   "homeFasting": {
     "startNew": "Start a New Fast",

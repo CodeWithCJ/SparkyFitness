@@ -229,3 +229,72 @@ ALTER TABLE public.user_preferences
 
 COMMENT ON COLUMN public.user_preferences.add_food_water_to_intake IS
   'When true, water_ml on logged food entries (explicit column, or the volume fallback via sf_volume_unit_to_ml) is folded into the daily water total alongside water_intake_entries. A food entry already represented by a linked water_intake_entries row (food_entry_id) is excluded, so nothing double-counts. Default false: opt-in only, so no existing user sees a change on upgrade.';
+
+
+-- =============================================================================
+-- Phase 5: container -> food link (#2115)
+-- =============================================================================
+--
+-- Link a water container to a food, so "+" logs the drink AND the diary
+-- entry. Columns on user_water_containers rather than a join table: a user
+-- already has many containers, so "multiple linked containers" needs no new
+-- cardinality, and every consumer already fetches the whole container row.
+--
+-- hydration_factor scales ONLY the water credit. Calories, macros, caffeine
+-- and alcohol from the linked food always count in full -- a coffee is 100%
+-- of its caffeine and (say) 85% of its volume as hydration.
+--
+-- The ledger row snapshots the factor at log time, following
+-- container_name's existing precedent on this table: editing a container
+-- later must not silently rewrite yesterday's drinks.
+
+ALTER TABLE public.user_water_containers
+  ADD COLUMN IF NOT EXISTS hydration_factor numeric(4,3) NOT NULL DEFAULT 1.000,
+  ADD COLUMN IF NOT EXISTS linked_food_id uuid,
+  ADD COLUMN IF NOT EXISTS linked_variant_id uuid,
+  ADD COLUMN IF NOT EXISTS linked_meal_type_id uuid;
+
+ALTER TABLE public.water_intake_entries
+  ADD COLUMN IF NOT EXISTS hydration_factor numeric(4,3);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                 WHERE conname = 'user_water_containers_hydration_factor_range'
+                   AND conrelid = 'public.user_water_containers'::regclass) THEN
+    ALTER TABLE public.user_water_containers
+      ADD CONSTRAINT user_water_containers_hydration_factor_range
+      CHECK (hydration_factor >= 0 AND hydration_factor <= 2);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                 WHERE conname = 'user_water_containers_linked_food_id_fkey'
+                   AND conrelid = 'public.user_water_containers'::regclass) THEN
+    ALTER TABLE public.user_water_containers
+      ADD CONSTRAINT user_water_containers_linked_food_id_fkey
+      FOREIGN KEY (linked_food_id) REFERENCES public.foods(id) ON DELETE SET NULL;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                 WHERE conname = 'user_water_containers_linked_variant_id_fkey'
+                   AND conrelid = 'public.user_water_containers'::regclass) THEN
+    ALTER TABLE public.user_water_containers
+      ADD CONSTRAINT user_water_containers_linked_variant_id_fkey
+      FOREIGN KEY (linked_variant_id) REFERENCES public.food_variants(id) ON DELETE SET NULL;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                 WHERE conname = 'user_water_containers_linked_meal_type_id_fkey'
+                   AND conrelid = 'public.user_water_containers'::regclass) THEN
+    ALTER TABLE public.user_water_containers
+      ADD CONSTRAINT user_water_containers_linked_meal_type_id_fkey
+      FOREIGN KEY (linked_meal_type_id) REFERENCES public.meal_types(id) ON DELETE SET NULL;
+  END IF;
+END $$;
+
+COMMENT ON COLUMN public.user_water_containers.hydration_factor IS
+  'Multiplier applied to this container''s water credit (0-2, default 1.0). Scales ONLY hydration; a linked food''s calories, macros, caffeine and alcohol always count in full.';
+COMMENT ON COLUMN public.user_water_containers.linked_food_id IS
+  'When set, pressing "+" on this container also logs this food to the diary and links the two rows. SET NULL on food deletion so the container survives as a plain water container.';
+COMMENT ON COLUMN public.water_intake_entries.hydration_factor IS
+  'The factor in force when this drink was logged, snapshotted like container_name so later container edits do not rewrite history. NULL on rows predating the column (treat as 1.0).';

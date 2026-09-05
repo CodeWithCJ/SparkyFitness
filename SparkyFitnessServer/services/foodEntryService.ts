@@ -15,6 +15,7 @@ import mealTypeRepository from '../models/mealType.js';
 import goalRepository from '../models/goalRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import reportRepository from '../models/reportRepository.js';
+import { getClient } from '../db/poolManager.js';
 import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
 import { buildFoodEntrySnapshot } from '../utils/foodEntrySnapshot.js';
 import Papa from 'papaparse';
@@ -24,6 +25,7 @@ import {
   foodEntryCopyFingerprint,
   hasExactReviewedFoodEntrySnapshot,
   isDayString,
+  foodVolumeToMl,
 } from '@workspace/shared';
 import customNutrientService from './customNutrientService.js';
 import { removeOrphanedImages } from '../middleware/imageUpload.js';
@@ -920,6 +922,84 @@ async function updateFoodEntry(
       );
     }
 
+    // #2115: If this food entry is linked to a water intake ledger row,
+    // update the ledger row's water_ml and/or entry_date and recompute totals.
+    try {
+      const client = await getClient(authenticatedUserId, actingUserId);
+      try {
+        const linkedRes = await client.query(
+          `SELECT id, entry_date, hydration_factor, source
+           FROM water_intake_entries
+           WHERE food_entry_id = $1 AND user_id = $2`,
+          [entryId, authenticatedUserId]
+        );
+        if (linkedRes.rows.length > 0) {
+          const linkedRow = linkedRes.rows[0];
+          const factor =
+            linkedRow.hydration_factor !== null &&
+            linkedRow.hydration_factor !== undefined
+              ? Number(linkedRow.hydration_factor)
+              : 1.0;
+
+          const updatedWater = Number(updatedEntry.water_ml);
+          const servingSize = Number(updatedEntry.serving_size);
+          const quantity = Number(updatedEntry.quantity) || 1;
+          let entryWaterMl = 0;
+
+          if (Number.isFinite(updatedWater) && updatedWater > 0) {
+            const scale =
+              Number.isFinite(servingSize) && servingSize > 0
+                ? quantity / servingSize
+                : quantity;
+            entryWaterMl = updatedWater * scale;
+          } else {
+            const volFallback = foodVolumeToMl(
+              quantity,
+              updatedEntry.unit || updatedEntry.serving_unit || ''
+            );
+            if (volFallback !== null) {
+              entryWaterMl = volFallback;
+            }
+          }
+
+          const newWaterMl = entryWaterMl * factor;
+          const oldDate = String(linkedRow.entry_date).substring(0, 10);
+          const newDate = String(updatedEntry.entry_date).substring(0, 10);
+
+          await client.query(
+            `UPDATE water_intake_entries
+             SET water_ml = $1, entry_date = $2
+             WHERE id = $3 AND user_id = $4`,
+            [newWaterMl, newDate, linkedRow.id, authenticatedUserId]
+          );
+
+          await measurementRepository.recomputeWaterAggregateForUser(
+            authenticatedUserId,
+            actingUserId,
+            newDate,
+            linkedRow.source || 'manual'
+          );
+
+          if (oldDate !== newDate) {
+            await measurementRepository.recomputeWaterAggregateForUser(
+              authenticatedUserId,
+              actingUserId,
+              oldDate,
+              linkedRow.source || 'manual'
+            );
+          }
+        }
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      log(
+        'warn',
+        'Error updating linked water intake entry for food entry:',
+        err
+      );
+    }
+
     return updatedEntry;
   } catch (error) {
     log(
@@ -948,6 +1028,42 @@ async function deleteFoodEntry(authenticatedUserId: string, entryId: string) {
         'Forbidden: You do not have permission to delete this food entry.'
       );
     }
+
+    // #2115: Find and delete any linked water intake ledger row explicitly,
+    // then recompute the daily aggregate before removing the food entry.
+    try {
+      const client = await getClient(authenticatedUserId);
+      try {
+        const linkedRes = await client.query(
+          `SELECT id, entry_date, source
+           FROM water_intake_entries
+           WHERE food_entry_id = $1 AND user_id = $2`,
+          [entryId, authenticatedUserId]
+        );
+        for (const row of linkedRes.rows) {
+          await measurementRepository.deleteWaterIntakeLog(
+            row.id,
+            authenticatedUserId
+          );
+          const dateStr = String(row.entry_date).substring(0, 10);
+          await measurementRepository.recomputeWaterAggregateForUser(
+            authenticatedUserId,
+            authenticatedUserId,
+            dateStr,
+            row.source || 'manual'
+          );
+        }
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      log(
+        'warn',
+        'Error cleaning up linked water intake entry on food delete:',
+        err
+      );
+    }
+
     const success = await foodRepository.deleteFoodEntry(
       entryId,
       authenticatedUserId

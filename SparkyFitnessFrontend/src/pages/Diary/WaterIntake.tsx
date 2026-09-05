@@ -13,6 +13,7 @@ import {
   Plus,
   Minus,
   Trash2,
+  Utensils,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -338,6 +339,17 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
               {currentContainer?.name ||
                 t('foodDiary.waterIntake.defaultContainer', 'Container')}
             </div>
+            {currentContainer?.linked_food_id && (
+              <span
+                title={t(
+                  'foodDiary.waterIntake.linkedDrink',
+                  'Linked to a food entry'
+                )}
+                className="inline-flex items-center"
+              >
+                <Utensils className="w-2.5 h-2.5 text-blue-500 shrink-0" />
+              </span>
+            )}
             {currentContainer?.is_primary && (
               <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />
             )}
@@ -426,6 +438,17 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
                             'Container'
                           )}
                       </span>
+                      {entry.food_entry_id && (
+                        <span
+                          title={t(
+                            'foodDiary.waterIntake.linkedDrink',
+                            'Linked to a food entry'
+                          )}
+                          className="inline-flex items-center"
+                        >
+                          <Utensils className="w-3 h-3 text-blue-500 shrink-0" />
+                        </span>
+                      )}
                       {/* Synced entries are labelled so it's clear why the "-"
                           control can't remove them; manual rows stay unlabelled
                           to keep the common case uncluttered. */}

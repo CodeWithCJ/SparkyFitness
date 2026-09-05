@@ -12,6 +12,7 @@ import { waterIntakeKeys } from '@/api/keys/diary';
 import { isManualSource } from '@/utils/sourceLabels';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { toast } from '@/hooks/use-toast';
 import { useDiaryInvalidation } from '../useInvalidateKeys';
 
 export const useWaterGoalQuery = (date: string, userId?: string) => {
@@ -125,7 +126,7 @@ export const useUpdateWaterIntakeMutation = () => {
   const invalidate = useDiaryInvalidation();
   return useMutation({
     mutationFn: (payload: UpdateWaterPayload) => updateWaterIntake(payload),
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
         queryKey: waterIntakeKeys.daily(
           variables.entry_date,
@@ -137,6 +138,25 @@ export const useUpdateWaterIntakeMutation = () => {
         queryKey: waterIntakeKeys.log(variables.entry_date, variables.user_id),
       });
       invalidate();
+
+      if (
+        data &&
+        !Array.isArray(data) &&
+        'removedFoodEntryIds' in data &&
+        Array.isArray(data.removedFoodEntryIds) &&
+        data.removedFoodEntryIds.length > 0
+      ) {
+        toast({
+          title: t(
+            'foodDiary.waterIntake.linkedFoodRemovedTitle',
+            'Food Entry Removed'
+          ),
+          description: t(
+            'foodDiary.waterIntake.linkedFoodRemoved',
+            'Linked food entry was also removed from your food diary.'
+          ),
+        });
+      }
     },
     meta: {
       successMessage: t(
