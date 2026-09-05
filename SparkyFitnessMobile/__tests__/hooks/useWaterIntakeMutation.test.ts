@@ -23,6 +23,16 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
+// #2115: noContainerAlert now navigates to the mobile WaterContainers screen
+// instead of pointing the user at the server.
+const mockNavigate = jest.fn();
+jest.mock('../../src/components/ActiveWorkoutBar', () => ({
+  navigationRef: {
+    isReady: () => true,
+    navigate: (...args: unknown[]) => mockNavigate(...args),
+  },
+}));
+
 const mockFetchWaterContainers = fetchWaterContainers as jest.MockedFunction<
   typeof fetchWaterContainers
 >;
@@ -195,11 +205,11 @@ describe('useWaterIntakeMutation', () => {
     expect(Toast.show).toHaveBeenCalledWith({
       type: 'info',
       text1: 'No Water Containers',
-      text2:
-        'Please configure a water container on the server to track hydration.',
+      text2: 'Add a water container to start tracking hydration.',
       visibilityTime: 4000,
     });
     expect(mockChangeWaterIntake).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('WaterContainers');
   });
 
   test('decrement shows toast when no primary container', async () => {
@@ -223,11 +233,11 @@ describe('useWaterIntakeMutation', () => {
     expect(Toast.show).toHaveBeenCalledWith({
       type: 'info',
       text1: 'No Water Containers',
-      text2:
-        'Please configure a water container on the server to track hydration.',
+      text2: 'Add a water container to start tracking hydration.',
       visibilityTime: 4000,
     });
     expect(mockChangeWaterIntake).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('WaterContainers');
   });
 
   describe('with primary container loaded', () => {

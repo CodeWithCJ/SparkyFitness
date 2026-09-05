@@ -28,7 +28,13 @@ import type { MealPlanPickerTarget, MealPlanTemplate } from './mealPlans';
 import type { WorkoutPreset } from './workoutPresets';
 
 export type FoodPickerMode =
-  'log-entry' | 'meal-builder' | 'meal-plan' | 'library';
+  | 'log-entry'
+  | 'meal-builder'
+  | 'meal-plan'
+  | 'library'
+  // #2115: pick a food+variant to link a water container to, without
+  // logging a diary entry. See services/waterContainerLinkSelection.ts.
+  | 'container-link';
 
 export type TabParamList = {
   Dashboard: undefined;
@@ -67,6 +73,9 @@ export type RootStackParamList = {
   MealsLibrary: undefined;
   MealPlans: undefined;
   MealPlanForm: { template?: MealPlanTemplate; initialMeal?: Meal } | undefined;
+  // #2115, Phase 12: mobile-only water-container CRUD.
+  WaterContainers: undefined;
+  WaterContainerEdit: { containerId?: number } | undefined;
   ExercisesLibrary: undefined;
   WorkoutPresetsLibrary: undefined;
   WorkoutPresetDetail: { preset: WorkoutPreset; updatedPreset?: WorkoutPreset };

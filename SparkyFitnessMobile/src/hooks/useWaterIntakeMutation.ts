@@ -10,6 +10,7 @@ import {
 import { getServingVolume } from '../utils/unitConversions';
 import type { DailySummaryRawData } from './useDailySummary';
 import { dailySummaryQueryKey, waterContainersQueryKey } from './queryKeys';
+import { navigationRef as rootNavigationRef } from '../components/ActiveWorkoutBar';
 
 const SELECTED_CONTAINER_KEY = '@SparkyFitness/selected-water-container';
 
@@ -122,6 +123,9 @@ export function useWaterIntakeMutation({
     },
   });
 
+  // #2115: mobile now owns container CRUD, so this no longer sends the user
+  // to configure one on the server -- it takes them straight to the mobile
+  // WaterContainers screen instead.
   const noContainerAlert = () => {
     const hasMultiple = containers && containers.length > 1;
     Toast.show({
@@ -132,16 +136,18 @@ export function useWaterIntakeMutation({
             defaultValue: 'No Water Containers',
           }),
       text2: hasMultiple
-        ? t('waterIntake.multipleNoPrimary', {
+        ? t('waterIntake.multipleNoPrimaryMobile', {
             defaultValue:
-              'You have multiple water containers but none is marked as primary. Please set one as primary on the server.',
+              'You have multiple water containers but none is marked as primary. Tap to choose one.',
           })
-        : t('waterIntake.configure', {
-            defaultValue:
-              'Please configure a water container on the server to track hydration.',
+        : t('waterIntake.configureMobile', {
+            defaultValue: 'Add a water container to start tracking hydration.',
           }),
       visibilityTime: 4000,
     });
+    if (rootNavigationRef.isReady()) {
+      rootNavigationRef.navigate('WaterContainers');
+    }
   };
 
   const increment = () => {

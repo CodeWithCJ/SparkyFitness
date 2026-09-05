@@ -37,6 +37,7 @@ import {
   buildMealPlanMealAssignment,
   setPendingMealPlanSelection,
 } from '../services/mealPlanSelection';
+import { setPendingContainerLinkSelection } from '../services/waterContainerLinkSelection';
 import { CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import { addDays, getTodayDate, getDeviceTimezone } from '../utils/dateUtils';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
@@ -210,7 +211,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const ingredientIndex = route.params?.ingredientIndex;
   const isMealBuilderMode = pickerMode === 'meal-builder';
   const isMealPlanMode = pickerMode === 'meal-plan';
-  const isSelectionMode = isMealBuilderMode || isMealPlanMode;
+  const isContainerLinkMode = pickerMode === 'container-link';
+  const isSelectionMode =
+    isMealBuilderMode || isMealPlanMode || isContainerLinkMode;
   const mealPlanTarget = route.params?.mealPlanTarget;
   const [selectedDate, setSelectedDateState] = useState(
     initialDate ?? useDiaryDateStore.getState().selectedDate
@@ -1023,6 +1026,17 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     });
 
   const finishFoodSelection = (ingredient: MealIngredientDraft) => {
+    if (isContainerLinkMode) {
+      if (ingredient.food_id && ingredient.variant_id) {
+        setPendingContainerLinkSelection({
+          foodId: ingredient.food_id,
+          variantId: ingredient.variant_id,
+          foodName: ingredient.food_name ?? '',
+        });
+      }
+      navigation.dispatch(StackActions.pop(returnDepth));
+      return;
+    }
     if (isMealPlanMode && mealPlanTarget) {
       setPendingMealPlanSelection({
         ...(mealPlanTarget.assignmentIndex === undefined

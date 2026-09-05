@@ -37,6 +37,7 @@ const ICON_MAP = {
   bookmark: { sf: 'bookmark', ion: 'bookmark-outline' },
   'bookmark-filled': { sf: 'bookmark.fill', ion: 'bookmark' },
   star: { sf: 'star.fill', ion: 'star' },
+  water: { sf: 'drop.fill', ion: 'water' },
   link: { sf: 'link', ion: 'link-outline' },
   list: { sf: 'list.bullet', ion: 'list-outline' },
   'checkmark-circle': {

@@ -16,6 +16,8 @@ import FoodsLibraryScreen from '../screens/FoodsLibraryScreen';
 import MealsLibraryScreen from '../screens/MealsLibraryScreen';
 import MealPlansScreen from '../screens/MealPlansScreen';
 import MealPlanFormScreen from '../screens/MealPlanFormScreen';
+import WaterContainersScreen from '../screens/WaterContainersScreen';
+import WaterContainerEditScreen from '../screens/WaterContainerEditScreen';
 import ExercisesLibraryScreen from '../screens/ExercisesLibraryScreen';
 import WorkoutPresetsLibraryScreen from '../screens/WorkoutPresetsLibraryScreen';
 import FoodDetailScreen from '../screens/FoodDetailScreen';
@@ -76,6 +78,8 @@ export const SafeFoodsLibrary = withErrorBoundary(FoodsLibraryScreen, 'FoodsLibr
 export const SafeMealsLibrary = withErrorBoundary(MealsLibraryScreen, 'MealsLibrary', { canGoBack: true });
 export const SafeMealPlans = withErrorBoundary(MealPlansScreen, 'MealPlans', { canGoBack: true });
 export const SafeMealPlanForm = withErrorBoundary(MealPlanFormScreen, 'MealPlanForm', { canGoBack: true });
+export const SafeWaterContainers = withErrorBoundary(WaterContainersScreen, 'WaterContainers', { canGoBack: true });
+export const SafeWaterContainerEdit = withErrorBoundary(WaterContainerEditScreen, 'WaterContainerEdit', { canGoBack: true });
 export const SafeExercisesLibrary = withErrorBoundary(ExercisesLibraryScreen, 'ExercisesLibrary', { canGoBack: true });
 export const SafeWorkoutPresetsLibrary = withErrorBoundary(WorkoutPresetsLibraryScreen, 'WorkoutPresetsLibrary', { canGoBack: true });
 export const SafeFoodDetail = withErrorBoundary(FoodDetailScreen, 'FoodDetail', { canGoBack: true });

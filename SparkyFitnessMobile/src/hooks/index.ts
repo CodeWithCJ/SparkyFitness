@@ -39,6 +39,16 @@ export {
 } from './useMealPlans';
 export { useMealPlanNutrition } from './useMealPlanNutrition';
 export { useMealSearch } from './useMealSearch';
+export {
+  useWaterContainersQuery,
+  useDrinkPresetCatalogQuery,
+  useCreateWaterContainerMutation,
+  useUpdateWaterContainerMutation,
+  useDeleteWaterContainerMutation,
+  useSetPrimaryWaterContainerMutation,
+  useReorderWaterContainersMutation,
+  useAddDrinkPresetMutation,
+} from './useWaterContainers';
 export { useExternalProviders } from './useExternalProviders';
 export { useExternalFoodSearch } from './useExternalFoodSearch';
 export { useAllProvidersSearch } from './useAllProvidersSearch';
