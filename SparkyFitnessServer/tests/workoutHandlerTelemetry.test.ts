@@ -41,6 +41,9 @@ const { HEALTH_TYPE_HANDLERS } =
   await import('../services/healthDataHandlers.js');
 const exerciseDb = (await import('../models/exercise.js')).default;
 const exerciseEntryDb = (await import('../models/exerciseEntry.js')).default;
+const activityDetailsRepository = (
+  await import('../models/activityDetailsRepository.js')
+).default;
 const telemetryRepo = await import('../models/workoutTelemetryRepository.js');
 const { upsertSamplesByDay } =
   await import('../services/healthMetricSampleWriter.js');
@@ -93,6 +96,41 @@ beforeEach(() => {
   (exerciseDb.createExercise as Mock).mockResolvedValue({ id: 'exercise-1' });
   (exerciseEntryDb.createExerciseEntry as Mock).mockResolvedValue({
     id: ENTRY_ID,
+  });
+});
+
+// The raw provider dump used to be stored after the entry had committed, on a
+// connection of its own. That is how the reported sync lost it: a second sync of
+// the same source deletes the parent between the two writes, and the detail's
+// RLS policy resolves that parent through an EXISTS subquery, so the insert
+// fails as a row-level security violation instead of a foreign-key error.
+describe('workoutHandler — raw provider data', () => {
+  it('hands the raw dump to the entry write instead of a second connection', async () => {
+    await workoutHandler.handle(
+      baseEntry({ raw_data: { activityId: 'hk-workout-1' } }),
+      makeCtx()
+    );
+
+    const options = (exerciseEntryDb.createExerciseEntry as Mock).mock
+      .calls[0][5];
+    expect(options.activityDetail).toEqual({
+      provider_name: 'HealthKit',
+      detail_type: 'ExerciseSession_raw_data',
+      detail_data: JSON.stringify({ activityId: 'hk-workout-1' }),
+      created_by_user_id: 'user-1',
+      updated_by_user_id: 'user-1',
+    });
+    expect(
+      activityDetailsRepository.createActivityDetail
+    ).not.toHaveBeenCalled();
+  });
+
+  it('sends no activity detail when the provider sent no raw data', async () => {
+    await workoutHandler.handle(baseEntry(), makeCtx());
+
+    const options = (exerciseEntryDb.createExerciseEntry as Mock).mock
+      .calls[0][5];
+    expect(options?.activityDetail).toBeUndefined();
   });
 });
 

@@ -143,6 +143,28 @@ hasUIChanges = .tsx/.jsx/.css files in components/screens/pages/
 
 ---
 
+#### `sync-translations.yml`
+
+**Purpose**: Bidirectional sync with [SparkyFitnessTranslations](https://github.com/CodeWithCJ/SparkyFitnessTranslations), the repository Weblate is connected to. Pushes the English sources out and pulls every other language back, opening one PR on each side (`i18n/update-english-locales` there, `i18n/sync-weblate-translations` here).
+
+Five Weblate components. The mobile app has four because its surfaces use different formats and placeholder rules (`{{value}}`, `%1$s`, `%@`), so Weblate translates each native file directly and no format conversion sits in between:
+
+| Component | In the translations repo | In this repo |
+| --- | --- | --- |
+| Web | `locales/` | `SparkyFitnessFrontend/public/locales/` |
+| Mobile runtime | `mobile/src/localization/locales/` | `SparkyFitnessMobile/src/localization/locales/` |
+| Mobile Expo metadata | `mobile/locales/` | `SparkyFitnessMobile/locales/` |
+| Mobile Android widgets | `mobile/targets/android-widget/res/` | `SparkyFitnessMobile/targets/android-widget/res/` |
+| Mobile iOS widgets | `mobile/targets/widget/` | `SparkyFitnessMobile/targets/widget/` |
+
+A mobile surface missing from the translations repo is skipped with a notice, so the workflow is safe to run before all the components exist; the push side seeds each English source on the first run. `pr-validation.yml` rejects a human PR that edits any non-`en` translation file.
+
+Only locales listed in `SparkyFitnessMobile/src/localization/localeRegistry.json` are shipped on mobile. Others sync in as translation candidates, are reported by the i18n audit as non-blocking diagnostics, and are never bundled. The widget resources are the exception to "sync in": Android compiles every `values-*` directory and the iOS widget target ships every `.lproj` folder, so those two surfaces are pulled for registered locales only and a candidate's widget arrives on the sync after it is registered.
+
+**Triggers**: Manual workflow dispatch only. Requires the `TRANSLATIONS_PAT` secret.
+
+---
+
 #### `auto-merge-bot-prs.yml`
 
 **Purpose**: Automatically and safely merges clean automated PRs for Translations (`i18n/*`) and Nix hashes (`nix/*`) once all CI checks pass. If there are any merge conflicts, the PR is held untouched for manual review.

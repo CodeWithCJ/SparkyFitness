@@ -1,27 +1,26 @@
 ---
-id: sparky-contributions
+id: 20260903-sparkyfitness-weblate
 active: true
-title: SparkyFitness Contributions! 🌟
+title: SparkyFitness Translations! 🌟
 ---
 
-### ❤️ Want to Contribute to SparkyFitness?
+## 🌍 SparkyFitness Translations Have Moved!
 
-We hope you're enjoying **SparkyFitness** and finding it useful for your health and fitness journey! If you'd like to help make SparkyFitness even better, there are many ways to contribute:
+I’ve moved SparkyFitness translations to our new dedicated translation platform:
 
-- 🐛 Report bugs and issues
-- 💡 Submit feature requests
-- 📚 Improve documentation
-- 🧪 Test development versions
-- 💰 Sponsor the project
-- 👨‍💻 Contribute code and help fix open issues
+👉 https://weblate.sparkyfitness.com/engage/sparkyfitness/
 
-### 🚀 Join the Core Team
+Previously, SparkyFitness translations were hosted on a shared Weblate instance. As the project grew, we ran into the instance’s translation limits, especially as we expanded support for the **SparkyFitness mobile apps**.
 
-Are you a developer interested in joining the **SparkyFitness core team** and participating in design decisions?
+To make sure we can continue adding and maintaining translations across **Web and Mobile**, I’ve now set up a **dedicated Weblate instance exclusively for SparkyFitness**.
 
-We're looking for contributors to help with **development, testing, documentation, and feature implementation**.
+This gives us much more room to grow and makes it easier to keep translations synchronized across the entire SparkyFitness ecosystem.
 
-Interested? **[Join us on Discord](https://discord.gg/vcnMT5cPEA)** and DM me with your expertise and why you'd like to join.
+### 💙 Want to help translate SparkyFitness?
 
-Every contribution, big or small, helps make SparkyFitness better! 🙏
+Visit the translation page and help make SparkyFitness accessible to more users around the world:
+
+👉 https://weblate.sparkyfitness.com/engage/sparkyfitness/
+
+Thank you to everyone who has contributed translations so far! 🙏
 

@@ -10,9 +10,65 @@ import {
   CheckInPhotoDateParamSchema,
   CheckInPhotoUploadParamSchema,
   CheckInPhotoIdParamSchema,
+  CheckInPhotoGalleryResponseSchema,
 } from '../schemas/checkInPhotoSchemas.js';
 
 const router = express.Router();
+
+/**
+ * @swagger
+ * /measurements/check-in-photos:
+ *   get:
+ *     summary: List every progress photo with the weight logged that day
+ *     description: >
+ *       Returns all of the user's progress photos, newest day first, each with
+ *       the weight recorded on the same calendar day (null when that day has no
+ *       weight). Backs the mobile progress gallery, the side-by-side comparison
+ *       and the time-lapse player in a single request. Image bytes are fetched
+ *       separately through /file/{id}. Registered before /:date so it is not
+ *       shadowed by it.
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of photos with their matching weight.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                     format: uuid
+ *                   entry_date:
+ *                     type: string
+ *                     format: date
+ *                   photo_type:
+ *                     type: string
+ *                     enum: [front, back, side]
+ *                   weight:
+ *                     type: number
+ *                     nullable: true
+ */
+router.get(
+  '/',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res) => {
+    try {
+      const photos = await checkInPhotoService.getAllPhotosWithWeight(
+        req.userId
+      );
+      res.json(CheckInPhotoGalleryResponseSchema.parse(photos));
+    } catch (err) {
+      log('error', 'Failed to fetch check-in photo gallery', err);
+      res.status(500).json({ error: 'Failed to fetch check-in photo gallery' });
+    }
+  }
+);
 
 /**
  * @swagger

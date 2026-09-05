@@ -3,6 +3,7 @@ export * from "./schemas/api/Backup.api.zod.ts";
 export * from "./schemas/api/CustomCategories.api.zod.ts";
 export * from "./schemas/api/CustomMeasurements.api.zod.ts";
 export * from "./schemas/api/CheckInMeasurements.api.zod.ts";
+export * from "./schemas/api/CheckInPhotos.api.zod.ts";
 export * from "./schemas/api/DailyGoals.api.zod.ts";
 export * from "./schemas/api/NutrientGoalPreferences.api.zod.ts";
 export * from "./schemas/api/DailySummary.api.zod.ts";

@@ -354,8 +354,12 @@ async function _updateExerciseEntryWithClient(
   updateData: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   updatedByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entrySource: any
+  entrySource: string | undefined,
+  // A caller that can recover from a vanished row (the sync path, which just
+  // inserts a replacement) passes returnNullIfMissing and gets null instead of
+  // an exception. Callers acting on a user-chosen entry leave it unset, because
+  // for them a missing row really is an error.
+  options: { returnNullIfMissing?: boolean } = {}
 ) {
   // Fetch existing entry to get current snapshot values if not provided in updateData
   const existingEntryResult = await client.query(
@@ -363,6 +367,9 @@ async function _updateExerciseEntryWithClient(
     [id, userId]
   );
   if (existingEntryResult.rows.length === 0) {
+    if (options.returnNullIfMissing) {
+      return null;
+    }
     throw new Error('Exercise entry not found for update.');
   }
   const currentEntry = existingEntryResult.rows[0];
@@ -481,7 +488,7 @@ async function _updateExerciseEntryWithClient(
   const telemetrySetClause = EXERCISE_ENTRY_TELEMETRY_COLUMNS.map(
     (column, index) => `${column} = $${32 + index}`
   ).join(',\n      ');
-  await client.query(
+  const updateResult = await client.query(
     `UPDATE exercise_entries SET
       exercise_id = $1,
       duration_minutes = $2,
@@ -551,6 +558,20 @@ async function _updateExerciseEntryWithClient(
       ...telemetryParams,
     ]
   );
+  // The row can be deleted by a competing writer between the existence check
+  // above and this UPDATE: a successful UPDATE would hold a row lock until
+  // commit, so the only interleaving that reaches here with no row is one where
+  // the delete committed first. Left unchecked the UPDATE affects zero rows
+  // without erroring, and the child writes below then run against an id that no
+  // longer exists. Because the sets and activity-detail RLS policies resolve
+  // their parent through an EXISTS subquery, that surfaces as a row-level
+  // security violation rather than the foreign-key error it really is.
+  if (updateResult.rowCount === 0) {
+    if (options.returnNullIfMissing) {
+      return null;
+    }
+    throw new Error('Exercise entry not found for update.');
+  }
   // Handle sets update
   if (updateData.sets !== undefined) {
     // Only modify sets if they are explicitly provided
@@ -583,6 +604,26 @@ async function _updateExerciseEntryWithClient(
   }
   return _getExerciseEntryByIdWithClient(client, id);
 }
+// _updateExerciseEntryWithClient hands back the whole entry row, but the create
+// path below only needs the identity of the row it touched: the full entry is
+// re-read through _getExerciseEntryByIdWithClient before being returned.
+interface MatchedExerciseEntry {
+  id: string;
+}
+
+/**
+ * Serializes destructive range deletes and deduplicating writes for one
+ * user's provider source until the surrounding transaction ends.
+ */
+async function acquireExerciseEntrySyncLockWithClient(
+  client: PoolClient,
+  userId: string,
+  entrySource: string
+): Promise<void> {
+  const key = `exercise-entry-sync:${userId}:${entrySource}`;
+  await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [key]);
+}
+
 async function _createExerciseEntryWithClient(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   client: any,
@@ -603,63 +644,108 @@ async function _createExerciseEntryWithClient(
     // Callers that must always insert (e.g. the chatbot, where logging the
     // same exercise twice in a day means two workouts) pass skipDuplicateCheck.
     const syncDuplicateCheck = entryData.source_id ? true : false;
+    if (syncDuplicateCheck) {
+      await acquireExerciseEntrySyncLockWithClient(client, userId, entrySource);
+    }
     const skipManualDuplicateCheck = [
       'HealthKit',
       'Health Connect',
       'Fitbit',
       'Strava',
     ].includes(entrySource);
-    let existingEntryResult;
-    // 1. Attempt precise sync deduplication via source_id if available
-    if (syncDuplicateCheck) {
-      existingEntryResult = await client.query(
-        'SELECT id FROM exercise_entries WHERE user_id = $1 AND source = $2 AND source_id = $3',
-        [userId, entrySource, entryData.source_id]
-      );
-    }
-    // 2. If no source_id match and NOT a sync source, fall back to "Manual" deduplication (name/date).
-    // Skip this fallback when source_id was provided: a source_id miss means it's a genuinely new
-    // activity (different activityId), so we must INSERT rather than match on exercise_id + date.
-    if (
-      !existingEntryResult?.rows?.length &&
-      !exercisePresetEntryId &&
-      !skipManualDuplicateCheck &&
-      !syncDuplicateCheck &&
-      !options.skipDuplicateCheck
-    ) {
-      if (entryData.workout_plan_assignment_id) {
-        // If it's linked to a workout plan assignment, it's unique by that assignment ID and date.
+    // Both deduplication lookups live behind one function so that the update
+    // path can re-run exactly the lookup that produced its match. Returns the
+    // id of the matched entry, or null when this is a genuinely new one.
+    const findExistingEntryId = async (): Promise<string | null> => {
+      let existingEntryResult;
+      // 1. Attempt precise sync deduplication via source_id if available
+      if (syncDuplicateCheck) {
         existingEntryResult = await client.query(
-          'SELECT id FROM exercise_entries WHERE user_id = $1 AND workout_plan_assignment_id = $2 AND entry_date = $3',
-          [userId, entryData.workout_plan_assignment_id, entryData.entry_date]
-        );
-      } else {
-        // For manual entries (no assignment), keep traditional uniqueness check by exercise_id and date.
-        // We explicitly ensure workout_plan_assignment_id is NULL to avoid matching template-generated entries.
-        existingEntryResult = await client.query(
-          'SELECT id FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3 AND source = $4 AND exercise_preset_entry_id IS NULL AND workout_plan_assignment_id IS NULL',
-          [userId, entryData.exercise_id, entryData.entry_date, entrySource]
+          'SELECT id FROM exercise_entries WHERE user_id = $1 AND source = $2 AND source_id = $3',
+          [userId, entrySource, entryData.source_id]
         );
       }
-    }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let newEntryId: any;
+      // 2. If no source_id match and NOT a sync source, fall back to "Manual" deduplication (name/date).
+      // Skip this fallback when source_id was provided: a source_id miss means it's a genuinely new
+      // activity (different activityId), so we must INSERT rather than match on exercise_id + date.
+      if (
+        !existingEntryResult?.rows?.length &&
+        !exercisePresetEntryId &&
+        !skipManualDuplicateCheck &&
+        !syncDuplicateCheck &&
+        !options.skipDuplicateCheck
+      ) {
+        if (entryData.workout_plan_assignment_id) {
+          // If it's linked to a workout plan assignment, it's unique by that assignment ID and date.
+          existingEntryResult = await client.query(
+            'SELECT id FROM exercise_entries WHERE user_id = $1 AND workout_plan_assignment_id = $2 AND entry_date = $3',
+            [userId, entryData.workout_plan_assignment_id, entryData.entry_date]
+          );
+        } else {
+          // For manual entries (no assignment), keep traditional uniqueness check by exercise_id and date.
+          // We explicitly ensure workout_plan_assignment_id is NULL to avoid matching template-generated entries.
+          existingEntryResult = await client.query(
+            'SELECT id FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3 AND source = $4 AND exercise_preset_entry_id IS NULL AND workout_plan_assignment_id IS NULL',
+            [userId, entryData.exercise_id, entryData.entry_date, entrySource]
+          );
+        }
+      }
+      return existingEntryResult?.rows?.[0]?.id ?? null;
+    };
+    let newEntryId: string;
     let operation: 'created' | 'updated';
-    if (existingEntryResult && existingEntryResult.rows.length > 0) {
-      // Entry exists, update it
-      const existingEntryId = existingEntryResult.rows[0].id;
+    // The matched row can be gone by the time we update it. A provider sync
+    // range-deletes by source and day span before re-inserting, so an
+    // overlapping sync of the same source is enough. For delete-then-insert
+    // ingest a vanished parent means "insert", not "fail", so fall through to
+    // the create path below rather than writing children against a dead id.
+    let updatedEntry: MatchedExerciseEntry | null = null;
+    const existingEntryId = await findExistingEntryId();
+    if (existingEntryId) {
       log(
         'info',
         `Existing exercise entry found for user ${userId}, exercise ${entryData.exercise_id}, date ${entryData.entry_date}, source ${entrySource}. Updating entry ${existingEntryId}.`
       );
-      const updatedEntry = await _updateExerciseEntryWithClient(
+      updatedEntry = await _updateExerciseEntryWithClient(
         client,
         existingEntryId,
         userId,
         entryData,
         createdByUserId,
-        entrySource
+        entrySource,
+        { returnNullIfMissing: true }
       );
+      if (!updatedEntry) {
+        // The writer that deleted the row is a delete-then-insert sync, so it
+        // may already have committed its own replacement for the same natural
+        // key. exercise_entries has no unique constraint to catch a duplicate,
+        // so inserting blindly here would store the workout twice. Re-run the
+        // same lookup and update that row instead. Once only: a sync that keeps
+        // racing falls through to the insert rather than spinning, which leaves
+        // a much smaller window than the one this closes.
+        const replacementEntryId = await findExistingEntryId();
+        log(
+          'warn',
+          `Exercise entry ${existingEntryId} was deleted by a concurrent writer before it could be updated (user ${userId}, source ${entrySource}, date ${entryData.entry_date}). ${
+            replacementEntryId
+              ? `Updating the replacement entry ${replacementEntryId} that writer left behind.`
+              : 'Inserting a replacement.'
+          }`
+        );
+        if (replacementEntryId) {
+          updatedEntry = await _updateExerciseEntryWithClient(
+            client,
+            replacementEntryId,
+            userId,
+            entryData,
+            createdByUserId,
+            entrySource,
+            { returnNullIfMissing: true }
+          );
+        }
+      }
+    }
+    if (updatedEntry) {
       newEntryId = updatedEntry.id;
       operation = 'updated';
     } else {
@@ -769,6 +855,20 @@ async function _createExerciseEntryWithClient(
     throw error;
   }
 }
+// The raw provider dump that belongs with the entry being written. A caller
+// that has one passes it here instead of storing it afterwards, so the pair is
+// written in a single transaction: exercise_entry_activity_details resolves its
+// parent through an EXISTS subquery in its RLS policy, so an insert against a
+// parent that is committed but has since been deleted fails as a row-level
+// security violation and the detail is silently lost.
+interface ExerciseEntryActivityDetail {
+  provider_name: string;
+  detail_type: string;
+  // Either the object itself or its JSON text; the repository normalises both.
+  detail_data: unknown;
+  created_by_user_id: string;
+  updated_by_user_id: string;
+}
 async function createExerciseEntry(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -778,12 +878,15 @@ async function createExerciseEntry(
   createdByUserId: any,
   entrySource = 'Manual',
   exercisePresetEntryId: string | null = null,
-  options: { skipDuplicateCheck?: boolean } = {}
+  options: {
+    skipDuplicateCheck?: boolean;
+    activityDetail?: ExerciseEntryActivityDetail | null;
+  } = {}
 ) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
-    const { entry } = await _createExerciseEntryWithClient(
+    const { entry, operation } = await _createExerciseEntryWithClient(
       client,
       userId,
       entryData,
@@ -792,6 +895,21 @@ async function createExerciseEntry(
       exercisePresetEntryId,
       options
     );
+    if (options.activityDetail) {
+      if (operation === 'updated') {
+        await activityDetailsRepository._deleteActivityDetailsByEntryIdAndProviderWithClient(
+          client,
+          userId,
+          entry.id,
+          options.activityDetail.provider_name,
+          options.activityDetail.detail_type
+        );
+      }
+      await activityDetailsRepository._createActivityDetailWithClient(client, {
+        ...options.activityDetail,
+        exercise_entry_id: entry.id,
+      });
+    }
     await client.query('COMMIT');
     return entry;
   } catch (error) {
@@ -1490,6 +1608,7 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
   entrySource: string,
   excludedExerciseName?: string
 ) {
+  await acquireExerciseEntrySyncLockWithClient(client, userId, entrySource);
   // Get IDs of exercise entries to be deleted
   const entryIdsResult = await client.query(
     `SELECT id FROM exercise_entries

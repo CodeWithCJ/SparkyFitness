@@ -72,6 +72,12 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   const medicationsCardVisible = useAppPreferencesStore(
     (s) => s.medicationsCardVisible
   );
+  const progressPhotosCardVisible = useAppPreferencesStore(
+    (s) => s.progressPhotosCardVisible
+  );
+  const setProgressPhotosCardVisible = useAppPreferencesStore(
+    (s) => s.setProgressPhotosCardVisible
+  );
   const setMedicationsCardVisible = useAppPreferencesStore(
     (s) => s.setMedicationsCardVisible
   );
@@ -310,6 +316,23 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
                 })}
                 value={medicationsCardVisible}
                 onValueChange={setMedicationsCardVisible}
+              />
+            }
+          />
+          <SettingsRow
+            title={t('dashboardSettings.progressPhotos', {
+              defaultValue: 'Progress Photos',
+            })}
+            subtitle={t('dashboardSettings.progressPhotosSubtitle', {
+              defaultValue: 'Show the progress photos card on the Dashboard',
+            })}
+            rightAccessory={
+              <Switch
+                accessibilityLabel={t('dashboardSettings.progressPhotos', {
+                  defaultValue: 'Progress Photos',
+                })}
+                value={progressPhotosCardVisible}
+                onValueChange={setProgressPhotosCardVisible}
               />
             }
           />

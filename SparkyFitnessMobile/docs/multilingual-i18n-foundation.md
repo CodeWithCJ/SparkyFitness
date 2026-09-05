@@ -30,19 +30,43 @@ widget locale bridge.
 2. **Expo/native metadata** — source `locales/en.json`; mask `locales/*.json`.
 3. **Android widgets** — source
    `targets/android-widget/res/values/widget_strings.xml`; targets
-   `targets/android-widget/res/values-*/widget_strings.xml`. Language-only tags
-   use `values-de`; BCP-47 tags with region/script use Android's
-   `values-b+de+DE` form.
+   `targets/android-widget/res/values-*/widget_strings.xml`. Directory names are
+   Android qualifiers, not BCP-47 tags: `values-de` for a language, `values-pt-rBR`
+   for a region, `values-b+yue+Hant` for a script, and a few legacy aliases such as
+   `values-in` for `id`. `scripts/androidLocaleQualifiers.cjs` maps both ways.
 4. **iOS widgets / Live Activities** — source
    `targets/widget/en.lproj/Localizable.strings`; mask
    `targets/widget/*.lproj/Localizable.strings`.
 
-These may be separate Weblate components. EN is the canonical source and
-fallback. Only EN requires complete, non-empty source coverage. Target missing
-or empty values are coverage diagnostics and fall back to EN/default native
-resources; malformed JSON/XML/strings, incompatible type/array shape,
+These are four separate Weblate components, synced both ways by
+`.github/workflows/sync-translations.yml` alongside the web catalog: the English
+source of each is pushed to `mobile/…` in
+[SparkyFitnessTranslations](https://github.com/CodeWithCJ/SparkyFitnessTranslations),
+and every other language is pulled back. Translators edit the real native files,
+so no format conversion sits between Weblate and the app. EN is the canonical
+source and fallback. Only EN requires complete, non-empty source coverage. A key a
+target does not define is a coverage diagnostic and resolves to EN or the default
+native resource; malformed JSON/XML/strings, incompatible type/array shape,
 placeholder mismatch, plural collision, and invalid CLDR plural category remain
 blocking.
+
+An _empty_ value is not the same as a missing one on the native surfaces. Android
+returns the empty string for `<string name="x"></string>` in `values-de/` rather
+than falling back to `values/`, so an empty entry would render a blank widget
+label. Weblate omits untranslated units instead of writing them empty, which is
+why the widget resources fall back key by key in practice.
+
+A catalog that arrives without a registry entry is a translation candidate: it
+is not bundled, and the i18n audit reports its defects as non-blocking
+`unregisteredLocaleFindings` so an unshipped language cannot redden CI.
+Registered locales stay fully blocking.
+
+The runtime catalog and the metadata are gated at build time, so a candidate is
+free to sit in the repo. The widget resources have no such gate — Android
+compiles every `values-*` directory and the iOS widget target ships every
+`.lproj` folder — so the sync workflow pulls those two surfaces for registered
+locales only, and a candidate's widget arrives on the sync after it is
+registered.
 
 `pnpm run i18n:generate` deterministically emits
 `src/localization/generatedLocaleResources.ts` with Metro-safe static imports
@@ -55,7 +79,8 @@ native resource resolution falls back to default/source resources.
 ### Adding `de`
 
 1. Let Weblate create/sync runtime, metadata, Android-widget and iOS-widget
-   translations. They can be incomplete throughout translation work.
+   translations; the sync workflow brings them into the repo. They can be
+   incomplete throughout translation work.
 2. When ready to ship, add `de` metadata to `localeRegistry.json`, provide its
    runtime and metadata files plus (possibly partial) native widget files, and
    run `pnpm run i18n:generate`.

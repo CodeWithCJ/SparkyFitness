@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { toLocalDateString } from '../utils/dateUtils';
 import Icon from './Icon';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
+import { useMarkedDayComponent } from './calendarMarkedDays';
 import {
   useCalendarPresentation,
   getCalendarWeekdayShortNames,
@@ -28,6 +29,12 @@ export interface CalendarSheetRef {
 interface CalendarSheetProps {
   selectedDate: string;
   onSelectDate: (date: string) => void;
+  /**
+   * Calendar days (YYYY-MM-DD) to flag with a dot, e.g. days that already have
+   * a progress photo. Optional: without it the picker renders the library's own
+   * day cell, so existing callers are untouched.
+   */
+  markedDates?: string[];
 }
 
 interface CalendarContentProps extends CalendarSheetProps {
@@ -53,6 +60,7 @@ const CalendarContent = ({
   textSecondary,
   textMuted,
   accentPrimary,
+  markedDates,
 }: CalendarContentProps) => {
   const { appLocale, presentation } = useCalendarPresentation();
   const { t } = useTranslation();
@@ -64,6 +72,13 @@ const CalendarContent = ({
     () => getCalendarMonthNames(appLocale),
     [appLocale]
   );
+  const markedDayComponent = useMarkedDayComponent({
+    markedDates,
+    textPrimary,
+    textMuted,
+    accentPrimary,
+  });
+
   const [initialYear, initialMonth] = selectedDate.split('-').map(Number);
   const [visible, setVisible] = useState({
     year: initialYear,
@@ -242,6 +257,7 @@ const CalendarContent = ({
         // stays the same, preventing a stale 'month'/'year' remount.
         key={`calendar-${presentation.locale}-${presentation.firstDayOfWeek}-${visible.month}-${visible.year}-${pickerMountVersion}`}
         components={{
+          ...markedDayComponent,
           Weekday: (weekday) => (
             <View style={{ minWidth: 30 }}>
               <Text
@@ -285,7 +301,7 @@ const CalendarContent = ({
 };
 
 const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
-  ({ selectedDate, onSelectDate }, ref) => {
+  ({ selectedDate, onSelectDate, markedDates }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary] =
       useCSSVariable([
@@ -327,6 +343,7 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
           textSecondary={textSecondary}
           textMuted={textMuted}
           accentPrimary={accentPrimary}
+          markedDates={markedDates}
         />
       </BottomSheetModal>
     );

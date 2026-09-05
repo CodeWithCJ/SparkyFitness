@@ -45,6 +45,7 @@ export const PREFERENCE_DEFAULTS = {
   cycleCardVisible: true,
   askSparkyVisible: true,
   medicationsCardVisible: true,
+  progressPhotosCardVisible: true,
   medicationRemindersEnabled: true,
   medicationReminderRepeats: true,
   medicationReminderHideNames: false,
@@ -78,6 +79,7 @@ export type AppPreferencesData = {
   cycleCardVisible: boolean;
   askSparkyVisible: boolean;
   medicationsCardVisible: boolean;
+  progressPhotosCardVisible: boolean;
   medicationRemindersEnabled: boolean;
   medicationReminderRepeats: boolean;
   medicationReminderHideNames: boolean;
@@ -111,6 +113,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setCycleCardVisible: (value: boolean) => void;
   setAskSparkyVisible: (value: boolean) => void;
   setMedicationsCardVisible: (value: boolean) => void;
+  setProgressPhotosCardVisible: (value: boolean) => void;
   setMedicationRemindersEnabled: (value: boolean) => void;
   setMedicationReminderRepeats: (value: boolean) => void;
   setMedicationReminderHideNames: (value: boolean) => void;
@@ -191,6 +194,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setAskSparkyVisible: (value) => set({ askSparkyVisible: value }),
       setMedicationsCardVisible: (value) =>
         set({ medicationsCardVisible: value }),
+      setProgressPhotosCardVisible: (value) =>
+        set({ progressPhotosCardVisible: value }),
       setMedicationRemindersEnabled: (value) =>
         set({ medicationRemindersEnabled: value }),
       setMedicationReminderRepeats: (value) =>
@@ -241,6 +246,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         cycleCardVisible: state.cycleCardVisible,
         askSparkyVisible: state.askSparkyVisible,
         medicationsCardVisible: state.medicationsCardVisible,
+        progressPhotosCardVisible: state.progressPhotosCardVisible,
         medicationRemindersEnabled: state.medicationRemindersEnabled,
         medicationReminderRepeats: state.medicationReminderRepeats,
         medicationReminderHideNames: state.medicationReminderHideNames,

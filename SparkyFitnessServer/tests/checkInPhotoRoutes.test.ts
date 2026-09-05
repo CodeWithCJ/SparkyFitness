@@ -68,6 +68,68 @@ const MOCK_PHOTO = {
   created_at: '2026-06-14T10:00:00.000Z',
 };
 
+describe('GET / (gallery)', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns every photo with its matching weight', async () => {
+    const gallery = [
+      {
+        id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        entry_date: '2026-06-14',
+        photo_type: 'front',
+        weight: 82.5,
+      },
+      {
+        id: 'b2c3d4e5-f6a7-8901-bcde-f12345678901',
+        entry_date: '2026-06-10',
+        photo_type: 'side',
+        weight: null,
+      },
+    ];
+    // @ts-expect-error mock
+    checkInPhotoService.getAllPhotosWithWeight.mockResolvedValue(gallery);
+    const res = await request(app).get('/');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(gallery);
+    expect(checkInPhotoService.getAllPhotosWithWeight).toHaveBeenCalledWith(
+      'test-user-id'
+    );
+  });
+
+  it('strips file_path so the on-disk layout stays a server detail', async () => {
+    // @ts-expect-error mock
+    checkInPhotoService.getAllPhotosWithWeight.mockResolvedValue([
+      {
+        id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        entry_date: '2026-06-14',
+        photo_type: 'front',
+        weight: 82.5,
+        file_path: 'uploads/check-in/user/front.jpg',
+      },
+    ]);
+    const res = await request(app).get('/');
+    expect(res.status).toBe(200);
+    expect(res.body[0]).not.toHaveProperty('file_path');
+  });
+
+  it('does not fall through to the /:date route', async () => {
+    // @ts-expect-error mock
+    checkInPhotoService.getAllPhotosWithWeight.mockResolvedValue([]);
+    const res = await request(app).get('/');
+    expect(res.status).toBe(200);
+    expect(checkInPhotoService.getPhotosByDate).not.toHaveBeenCalled();
+  });
+
+  it('returns 500 when the service throws', async () => {
+    // @ts-expect-error mock
+    checkInPhotoService.getAllPhotosWithWeight.mockRejectedValue(
+      new Error('DB error')
+    );
+    const res = await request(app).get('/');
+    expect(res.status).toBe(500);
+  });
+});
+
 describe('GET /dates', () => {
   beforeEach(() => vi.clearAllMocks());
 

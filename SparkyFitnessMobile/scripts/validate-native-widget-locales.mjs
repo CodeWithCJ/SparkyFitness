@@ -2,6 +2,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+// A static import, not createRequire: the widget tests import this module through
+// Jest's CommonJS transform, where `import.meta` is undefined.
+import {
+  localeFromAndroidDir,
+  androidDirForLocale,
+} from './androidLocaleQualifiers.cjs';
 
 // `%%` must be consumed first: otherwise in "50%% goal" the second `%` starts a
 // match, takes the space as a flag and `g` as the conversion, inventing a "% g"
@@ -44,29 +50,15 @@ export function parseIosStrings(content) {
     throw new Error('iOS Localizable.strings has no parseable declarations');
   return values;
 }
-function localeFromAndroidDir(name, source) {
-  if (name === 'values') return source;
-  if (!name.startsWith('values-')) return null;
-  const qualifier = name.slice('values-'.length);
-  return qualifier.startsWith('b+')
-    ? qualifier.slice(2).replaceAll('+', '-')
-    : qualifier;
-}
-function androidDirForLocale(locale, source) {
-  if (locale === source) return 'values';
-  // Android BCP-47 resource syntax: language-only is values-de; regional/script tags use b+.
-  return locale.includes('-')
-    ? `values-b+${locale.replaceAll('-', '+')}`
-    : `values-${locale}`;
-}
 function sourceMap(maps, source, surface) {
   const result = maps.get(source);
   if (!result)
     throw new Error(`${surface} has no source resource catalog for ${source}`);
   return result;
 }
-function validateSurface({ maps, source, surface, formatRegex }) {
+function validateSurface({ maps, source, surface, formatRegex, isShipped }) {
   const errors = [];
+  const findings = [];
   const coverage = {};
   const base = sourceMap(maps, source, surface);
   for (const [key, value] of base) {
@@ -78,23 +70,26 @@ function validateSurface({ maps, source, surface, formatRegex }) {
       );
   }
   for (const [locale, target] of maps) {
+    // Weblate writes a directory long before anyone ships it, so only a
+    // registered locale's defects can block; the rest are reported.
+    const sink = locale === source || isShipped(locale) ? errors : findings;
     let translated = 0;
     for (const [key, value] of target) {
       if (!base.has(key)) {
-        errors.push(`${surface} ${locale}:${key} does not exist in source`);
+        sink.push(`${surface} ${locale}:${key} does not exist in source`);
         continue;
       }
       if (isBlank(value)) {
         continue;
       }
       if (/\{\{.*?\}\}/.test(value))
-        errors.push(
+        sink.push(
           `${surface} ${locale}:${key} uses i18next placeholder syntax`
         );
       if (
         !equal(formats(base.get(key), formatRegex), formats(value, formatRegex))
       )
-        errors.push(`${surface} ${locale}:${key} placeholder mismatch`);
+        sink.push(`${surface} ${locale}:${key} placeholder mismatch`);
       translated += 1;
     }
     coverage[locale] = {
@@ -105,41 +100,67 @@ function validateSurface({ maps, source, surface, formatRegex }) {
         base.size === 0 ? 100 : Math.round((translated / base.size) * 100),
     };
   }
-  return { errors, coverage };
+  return { errors, findings, coverage };
 }
 export function validateNativeWidgetLocales({ root, registry }) {
   const source = registry.sourceLocale;
   const shipped = new Set(Object.keys(registry.locales));
   const androidRoot = path.join(root, 'targets/android-widget/res');
   const iosRoot = path.join(root, 'targets/widget');
+  const isShipped = (locale) => shipped.has(locale);
+  const parseFindings = [];
+  // An unparseable catalog throws; for a locale nobody ships that must not abort the run.
+  const readSurface = (locale, file, parse, surface) => {
+    try {
+      return parse(fs.readFileSync(file, 'utf8'));
+    } catch (error) {
+      if (isShipped(locale)) throw error;
+      parseFindings.push(`${surface} ${locale}: ${error.message}`);
+      return null;
+    }
+  };
   const android = new Map();
   for (const entry of fs.readdirSync(androidRoot, { withFileTypes: true })) {
     const locale = localeFromAndroidDir(entry.name, source);
     const file = path.join(androidRoot, entry.name, 'widget_strings.xml');
-    if (locale && fs.existsSync(file))
-      android.set(locale, parseAndroidStrings(fs.readFileSync(file, 'utf8')));
+    if (!locale || !fs.existsSync(file)) continue;
+    const parsed = readSurface(
+      locale,
+      file,
+      parseAndroidStrings,
+      'Android widget'
+    );
+    if (parsed) android.set(locale, parsed);
   }
   const ios = new Map();
   for (const entry of fs.readdirSync(iosRoot, { withFileTypes: true })) {
     if (!entry.isDirectory() || !entry.name.endsWith('.lproj')) continue;
     const locale = entry.name.slice(0, -'.lproj'.length);
     const file = path.join(iosRoot, entry.name, 'Localizable.strings');
-    if (fs.existsSync(file))
-      ios.set(locale, parseIosStrings(fs.readFileSync(file, 'utf8')));
+    if (!fs.existsSync(file)) continue;
+    const parsed = readSurface(locale, file, parseIosStrings, 'iOS widget');
+    if (parsed) ios.set(locale, parsed);
   }
   const androidResult = validateSurface({
     maps: android,
     source,
     surface: 'Android widget',
     formatRegex: ANDROID_FORMAT,
+    isShipped,
   });
   const iosResult = validateSurface({
     maps: ios,
     source,
     surface: 'iOS widget',
     formatRegex: IOS_FORMAT,
+    isShipped,
   });
   const errors = [...androidResult.errors, ...iosResult.errors];
+  const unregisteredFindings = [
+    ...parseFindings,
+    ...androidResult.findings,
+    ...iosResult.findings,
+  ];
   for (const locale of shipped) {
     if (!android.has(locale))
       errors.push(
@@ -152,6 +173,7 @@ export function validateNativeWidgetLocales({ root, registry }) {
   }
   return {
     errors,
+    unregisteredFindings,
     androidCoverage: androidResult.coverage,
     iosCoverage: iosResult.coverage,
     androidDirForLocale,
@@ -179,6 +201,11 @@ function main() {
     console.log(
       `  ${locale}: ${coverage.translated}/${coverage.total} (${coverage.missing} missing)`
     );
+  if (result.unregisteredFindings.length) {
+    console.log('Unregistered locale findings (non-blocking, not shipped):');
+    for (const finding of result.unregisteredFindings)
+      console.log(`  ${finding}`);
+  }
   if (result.errors.length) throw new Error(result.errors.join('\n'));
 }
 if (
