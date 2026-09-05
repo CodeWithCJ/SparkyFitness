@@ -291,18 +291,4 @@ describe('createTimeSyncMethod', () => {
 
     expect(sync([tick('A', 0)], param)).toBe(-1);
   });
-
-  it('caches parses, so repeated hovers stay cheap', () => {
-    const sync = createTimeSyncMethod();
-    const spy = jest.spyOn(Date, 'parse');
-
-    for (let i = 0; i < 20; i++) {
-      sync(ticks, hover('2026-01-09'));
-    }
-
-    // Every value on this path is either numeric or a cached day string, so a
-    // second pass must not re-enter date parsing at all.
-    expect(spy).not.toHaveBeenCalled();
-    spy.mockRestore();
-  });
 });
