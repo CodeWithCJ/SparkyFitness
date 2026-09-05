@@ -82,12 +82,32 @@ jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'user-1', activeUserId: 'user-1' } }),
 }));
 
+const mockMaterializePreset = jest.fn();
+
 jest.mock('@/hooks/Settings/useWaterContainers', () => ({
   useWaterContainersQuery: () => ({ data: mockContainers }),
   useCreateWaterContainerMutation: () => ({ mutateAsync: mockCreate }),
   useUpdateWaterContainerMutation: () => ({ mutateAsync: mockUpdate }),
   useDeleteWaterContainerMutation: () => ({ mutateAsync: mockDelete }),
   useSetPrimaryWaterContainerMutation: () => ({ mutateAsync: mockSetPrimary }),
+  useDrinkPresetCatalogQuery: () => ({
+    data: [
+      {
+        id: 'espresso',
+        displayNameKey: 'drink_presets.espresso',
+        defaultName: 'Espresso',
+        volumeMl: 30,
+        servingUnit: 'ml',
+        caffeineMg: 63,
+        hydrationFactor: 0,
+        kind: 'caffeine',
+      },
+    ],
+  }),
+  useMaterializeDrinkPresetMutation: () => ({
+    mutateAsync: mockMaterializePreset,
+    isPending: false,
+  }),
 }));
 
 jest.mock('@/hooks/Diary/useMealTypes', () => ({
@@ -183,6 +203,23 @@ describe('WaterContainerManager', () => {
     // Food is now linked
     await waitFor(() => {
       expect(screen.getByText('Mock Black Coffee')).toBeInTheDocument();
+    });
+  });
+
+  it('opens catalog dialog and adds a drink preset', async () => {
+    renderWithClient(<WaterContainerManager />);
+
+    const addCatalogButtons = screen.getAllByText('Add from Catalog');
+    fireEvent.click(addCatalogButtons[0]!);
+
+    expect(screen.getByText('Drink Preset Catalog')).toBeInTheDocument();
+    expect(screen.getByText('Espresso')).toBeInTheDocument();
+
+    const addPresetBtn = screen.getByText('Add Preset');
+    fireEvent.click(addPresetBtn);
+
+    await waitFor(() => {
+      expect(mockMaterializePreset).toHaveBeenCalledWith('espresso');
     });
   });
 });

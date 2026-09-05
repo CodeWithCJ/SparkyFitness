@@ -149,7 +149,7 @@ describe('waterContainerRepository single-primary enforcement', () => {
         { is_primary: true }
       );
 
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
       expect(demoteQueries()).toHaveLength(0);
     });
   });
@@ -178,7 +178,7 @@ describe('waterContainerRepository single-primary enforcement', () => {
         'user-1'
       );
 
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
       expect(demoteQueries()).toHaveLength(0);
     });
   });

@@ -25,6 +25,8 @@ export const userWaterContainersSchema = z.object({
   linked_food_id: z.string().nullable(),
   linked_variant_id: z.string().nullable(),
   linked_meal_type_id: z.string().nullable(),
+  is_quick_add: z.boolean(),
+  sort_order: z.number(),
 });
 
 export const userWaterContainersInitializerSchema = z.object({
@@ -41,6 +43,8 @@ export const userWaterContainersInitializerSchema = z.object({
   linked_food_id: z.string().optional().nullable(),
   linked_variant_id: z.string().optional().nullable(),
   linked_meal_type_id: z.string().optional().nullable(),
+  is_quick_add: z.boolean().optional(),
+  sort_order: z.number().optional(),
 });
 
 export const userWaterContainersMutatorSchema = z.object({
@@ -57,6 +61,8 @@ export const userWaterContainersMutatorSchema = z.object({
   linked_food_id: z.string().optional().nullable(),
   linked_variant_id: z.string().optional().nullable(),
   linked_meal_type_id: z.string().optional().nullable(),
+  is_quick_add: z.boolean().optional(),
+  sort_order: z.number().optional(),
 });
 
 export type UserWaterContainers = z.infer<typeof userWaterContainersSchema>;

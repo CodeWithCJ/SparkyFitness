@@ -28,6 +28,8 @@ export const waterContainerResponseSchema = z.object({
     .optional(),
   linked_variant_serving_unit: z.string().nullable().optional(),
   linked_meal_type_name: z.string().nullable().optional(),
+  is_quick_add: z.boolean().default(false),
+  sort_order: z.number().int().default(0),
 });
 export type WaterContainerResponse = z.infer<
   typeof waterContainerResponseSchema
@@ -43,6 +45,8 @@ export const createWaterContainerBodySchema = z.object({
   linked_food_id: linkedIdSchema.optional(),
   linked_variant_id: linkedIdSchema.optional(),
   linked_meal_type_id: linkedIdSchema.optional(),
+  is_quick_add: z.boolean().optional(),
+  sort_order: z.number().int().optional(),
 });
 export type CreateWaterContainerBody = z.infer<
   typeof createWaterContainerBodySchema
@@ -58,7 +62,24 @@ export const updateWaterContainerBodySchema = z.object({
   linked_food_id: linkedIdSchema.optional(),
   linked_variant_id: linkedIdSchema.optional(),
   linked_meal_type_id: linkedIdSchema.optional(),
+  is_quick_add: z.boolean().optional(),
+  sort_order: z.number().int().optional(),
 });
 export type UpdateWaterContainerBody = z.infer<
   typeof updateWaterContainerBodySchema
 >;
+
+export const materializeDrinkPresetBodySchema = z.object({
+  catalog_id: z.string().min(1),
+});
+export type MaterializeDrinkPresetBody = z.infer<
+  typeof materializeDrinkPresetBodySchema
+>;
+
+export const reorderWaterContainersBodySchema = z.object({
+  container_ids: z.array(z.number().int().positive()),
+});
+export type ReorderWaterContainersBody = z.infer<
+  typeof reorderWaterContainersBodySchema
+>;
+

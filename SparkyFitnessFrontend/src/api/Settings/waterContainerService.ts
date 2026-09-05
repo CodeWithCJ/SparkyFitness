@@ -1,8 +1,24 @@
 import { apiCall } from '@/api/api';
 import { WaterContainer } from '@/types/settings';
+import type { DrinkPresetCatalogEntry } from '@workspace/shared';
 
 export const getWaterContainers = async (): Promise<WaterContainer[]> => {
   return await apiCall('/water-containers');
+};
+
+export const getDrinkPresetCatalog = async (): Promise<
+  DrinkPresetCatalogEntry[]
+> => {
+  return await apiCall('/water-containers/catalog');
+};
+
+export const materializeDrinkPreset = async (
+  catalogId: string
+): Promise<WaterContainer> => {
+  return await apiCall('/water-containers/presets', {
+    method: 'POST',
+    body: { catalog_id: catalogId },
+  });
 };
 
 export const createWaterContainer = async (

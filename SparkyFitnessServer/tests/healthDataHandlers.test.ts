@@ -10,6 +10,7 @@ import {
 import measurementRepository from '../models/measurementRepository.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
+import type { WaterContainerResponse } from '@workspace/shared';
 
 vi.mock('../models/measurementRepository.js', () => ({
   default: {
@@ -187,7 +188,10 @@ describe('waterHandler.handleBatch', () => {
     vi.clearAllMocks();
     vi.mocked(
       waterContainerRepository.getPrimaryWaterContainerByUserId
-    ).mockResolvedValue({ id: 7, name: 'Big Bottle' });
+    ).mockResolvedValue({
+      id: 7,
+      name: 'Big Bottle',
+    } as unknown as WaterContainerResponse);
     vi.mocked(
       measurementRepository.upsertWaterIntakeSamples
     ).mockImplementation(

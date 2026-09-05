@@ -482,6 +482,31 @@ COMMENT ON COLUMN public.user_preferences.caffeine_half_life_hours IS
   'Elimination half-life used for the "active caffeine" estimate, 2-8 h, default 5. Population estimate, not a measurement.';
 COMMENT ON COLUMN public.user_preferences.target_bedtime IS
   'The user''s intended bedtime, local wall-clock. First consumer is the caffeine cutoff; deliberately generic so a future sleep-goal feature reuses it rather than adding a second bedtime.';
+-- =============================================================================
+-- Phase 10: Quick-add drink presets (#1958/#1925)
+-- =============================================================================
+--
+-- A preset IS a water container with a linked food. There is deliberately no
+-- second preset system: hydration_factor = 0 already expresses "log this drink
+-- but credit no water" (an espresso), and a partial factor expresses a beer.
+--
+-- is_quick_add separates the two populations so that presets neither clutter the
+-- diary's container carousel (which cycles linearly) nor become the primary
+-- container -- the primary is what healthDataHandlers stamps onto every synced
+-- water sample, and a preset winning that election would relabel a user's entire
+-- Apple Health hydration history as "Espresso".
+--
+-- sort_order because created_at ordering is meaningless for a grid the user
+-- arranges.
 
+ALTER TABLE public.user_water_containers
+  ADD COLUMN IF NOT EXISTS is_quick_add boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS sort_order integer NOT NULL DEFAULT 0;
 
+CREATE INDEX IF NOT EXISTS idx_user_water_containers_user_quick_add
+  ON public.user_water_containers (user_id, is_quick_add, sort_order);
 
+COMMENT ON COLUMN public.user_water_containers.is_quick_add IS
+  'True for a quick-add drink preset: rendered as a tile grid rather than in the hydration carousel, and never eligible to be the primary container.';
+COMMENT ON COLUMN public.user_water_containers.sort_order IS
+  'User-arranged order within its group (presets or containers). Ties fall back to created_at.';

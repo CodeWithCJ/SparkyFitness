@@ -40,7 +40,8 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser(); // Get activeUserId
-  const { activeContainer, containers } = useWaterContainer(); // Use activeContainer and containers from context
+  const { activeContainer, standardContainers, quickAddPresets } =
+    useWaterContainer();
   const { water_display_unit } = usePreferences();
   const userId = activeUserId || user?.id;
   const { data: waterGoalMl = 1920 } = useWaterGoalQuery(selectedDate, userId);
@@ -76,25 +77,28 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   // State for editing time on a log entry
   const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
 
-  // Derived selected container
+  // Derived selected container from standard containers only
   const currentContainer =
-    containers.find((c) => c.id === selectedContainerId) || activeContainer;
+    standardContainers.find((c) => c.id === selectedContainerId) ||
+    activeContainer;
 
   const cycleContainer = (direction: 'next' | 'prev') => {
-    if (containers.length <= 1) return;
+    if (standardContainers.length <= 1) return;
 
-    const currentIndex = containers.findIndex(
+    const currentIndex = standardContainers.findIndex(
       (c) => c.id === currentContainer?.id
     );
     let nextIndex;
 
     if (direction === 'next') {
-      nextIndex = (currentIndex + 1) % containers.length;
+      nextIndex = (currentIndex + 1) % standardContainers.length;
     } else {
-      nextIndex = (currentIndex - 1 + containers.length) % containers.length;
+      nextIndex =
+        (currentIndex - 1 + standardContainers.length) %
+        standardContainers.length;
     }
 
-    const nextContainer = containers[nextIndex];
+    const nextContainer = standardContainers[nextIndex];
     if (nextContainer) {
       setSelectedContainerId(nextContainer.id);
     }
@@ -328,7 +332,7 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
             variant="ghost"
             size="icon"
             onClick={() => cycleContainer('prev')}
-            disabled={containers.length <= 1}
+            disabled={standardContainers.length <= 1}
             className="h-6 w-6 text-gray-400 hover:text-gray-600"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -359,12 +363,54 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
             variant="ghost"
             size="icon"
             onClick={() => cycleContainer('next')}
-            disabled={containers.length <= 1}
+            disabled={standardContainers.length <= 1}
             className="h-6 w-6 text-gray-400 hover:text-gray-600"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+
+        {/* Quick-Add Drink Presets */}
+        {quickAddPresets.length > 0 && (
+          <div className="mt-3 pt-2 border-t border-gray-100 dark:border-slate-800">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
+              {t('drink_presets.quickAdd', 'Quick-Add Drinks')}
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {quickAddPresets.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => saveWaterIntake(1, preset.id)}
+                  disabled={loading}
+                  className="flex items-center justify-between p-1.5 rounded-lg border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:bg-blue-50/50 dark:hover:bg-slate-700/50 text-left transition-colors cursor-pointer group"
+                >
+                  <div className="min-w-0 pr-1">
+                    <div className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
+                      {preset.name}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <span>
+                        {convertMlToSelectedUnit(
+                          preset.volume,
+                          preset.unit
+                        ).toFixed(preset.unit === 'ml' ? 0 : 1)}{' '}
+                        {preset.unit}
+                      </span>
+                      {preset.hydration_factor === 0 && (
+                        <span className="text-[9px] text-amber-600 dark:text-amber-400 font-mono">
+                          0% water
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="shrink-0 h-5 w-5 rounded-full bg-blue-50 dark:bg-blue-950/60 group-hover:bg-blue-600 group-hover:text-white text-blue-600 dark:text-blue-400 flex items-center justify-center transition-colors">
+                    <Plus className="h-3 w-3" />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Drink History Log */}
         {logEntries.length > 0 && (

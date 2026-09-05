@@ -33,6 +33,8 @@ export const CreateWaterContainerBodySchema = z.object({
   linked_food_id: linkedFoodIdSchema.optional(),
   linked_variant_id: linkedVariantIdSchema.optional(),
   linked_meal_type_id: linkedMealTypeIdSchema.optional(),
+  is_quick_add: z.boolean().default(false),
+  sort_order: z.number().int().default(0),
 });
 
 export const UpdateWaterContainerBodySchema = z.object({
@@ -45,6 +47,16 @@ export const UpdateWaterContainerBodySchema = z.object({
   linked_food_id: linkedFoodIdSchema.optional(),
   linked_variant_id: linkedVariantIdSchema.optional(),
   linked_meal_type_id: linkedMealTypeIdSchema.optional(),
+  is_quick_add: z.boolean().optional(),
+  sort_order: z.number().int().optional(),
+});
+
+export const MaterializeDrinkPresetBodySchema = z.object({
+  catalog_id: z.string().min(1),
+});
+
+export const ReorderWaterContainersBodySchema = z.object({
+  container_ids: z.array(z.number().int().positive()),
 });
 
 export type CreateWaterContainerBody = z.infer<
@@ -52,4 +64,10 @@ export type CreateWaterContainerBody = z.infer<
 >;
 export type UpdateWaterContainerBody = z.infer<
   typeof UpdateWaterContainerBodySchema
+>;
+export type MaterializeDrinkPresetBody = z.infer<
+  typeof MaterializeDrinkPresetBodySchema
+>;
+export type ReorderWaterContainersBody = z.infer<
+  typeof ReorderWaterContainersBodySchema
 >;

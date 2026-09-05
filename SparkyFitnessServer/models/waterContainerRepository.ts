@@ -1,6 +1,38 @@
 import { getClient } from '../db/poolManager.js';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createWaterContainer(userId: any, containerData: any) {
+import type { WaterContainerResponse } from '@workspace/shared';
+
+export interface CreateWaterContainerData {
+  name: string;
+  volume: number;
+  unit: string;
+  is_primary?: boolean | null;
+  servings_per_container?: number;
+  hydration_factor?: number;
+  linked_food_id?: string | null;
+  linked_variant_id?: string | null;
+  linked_meal_type_id?: string | null;
+  is_quick_add?: boolean;
+  sort_order?: number;
+}
+
+export interface UpdateWaterContainerData {
+  name?: string;
+  volume?: number;
+  unit?: string;
+  is_primary?: boolean | null;
+  servings_per_container?: number;
+  hydration_factor?: number;
+  linked_food_id?: string | null;
+  linked_variant_id?: string | null;
+  linked_meal_type_id?: string | null;
+  is_quick_add?: boolean;
+  sort_order?: number;
+}
+
+async function createWaterContainer(
+  userId: string,
+  containerData: CreateWaterContainerData
+): Promise<WaterContainerResponse> {
   const {
     name,
     volume,
@@ -11,8 +43,17 @@ async function createWaterContainer(userId: any, containerData: any) {
     linked_food_id,
     linked_variant_id,
     linked_meal_type_id,
+    is_quick_add = false,
+    sort_order = 0,
   } = containerData;
-  const client = await getClient(userId); // User-specific operation
+
+  if (is_quick_add && is_primary) {
+    throw new Error(
+      'Quick-add drink presets cannot be set as the primary water container.'
+    );
+  }
+
+  const client = await getClient(userId);
   try {
     await client.query('BEGIN');
     if (is_primary === true) {
@@ -25,20 +66,23 @@ async function createWaterContainer(userId: any, containerData: any) {
     const result = await client.query(
       `INSERT INTO user_water_containers (
          user_id, name, volume, unit, is_primary, servings_per_container,
-         hydration_factor, linked_food_id, linked_variant_id, linked_meal_type_id
+         hydration_factor, linked_food_id, linked_variant_id, linked_meal_type_id,
+         is_quick_add, sort_order
        )
-       VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 1.000), $8, $9, $10) RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 1.000), $8, $9, $10, $11, $12) RETURNING *`,
       [
         userId,
         name,
         volume,
         unit,
-        is_primary,
-        servings_per_container,
+        is_primary ?? false,
+        servings_per_container ?? 1,
         hydration_factor,
         linked_food_id ?? null,
         linked_variant_id ?? null,
         linked_meal_type_id ?? null,
+        is_quick_add,
+        sort_order,
       ]
     );
     await client.query('COMMIT');
@@ -50,9 +94,11 @@ async function createWaterContainer(userId: any, containerData: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getWaterContainersByUserId(userId: any) {
-  const client = await getClient(userId); // User-specific operation
+
+async function getWaterContainersByUserId(
+  userId: string
+): Promise<WaterContainerResponse[]> {
+  const client = await getClient(userId);
   try {
     const result = await client.query(
       `SELECT
@@ -66,7 +112,7 @@ async function getWaterContainersByUserId(userId: any) {
        LEFT JOIN food_variants fv ON c.linked_variant_id = fv.id
        LEFT JOIN meal_types mt ON c.linked_meal_type_id = mt.id
        WHERE c.user_id = $1
-       ORDER BY c.created_at`,
+       ORDER BY c.sort_order ASC, c.created_at ASC`,
       [userId]
     );
     return result.rows;
@@ -74,21 +120,40 @@ async function getWaterContainersByUserId(userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateWaterContainer(id: any, userId: any, updateData: any) {
+
+async function updateWaterContainer(
+  id: number,
+  userId: string,
+  updateData: UpdateWaterContainerData
+): Promise<WaterContainerResponse | null> {
   const { name, volume, unit, is_primary, servings_per_container } = updateData;
   const hydration_factor = updateData.hydration_factor;
+  const is_quick_add = updateData.is_quick_add;
+  const sort_order = updateData.sort_order;
+
   // Link fields are nullable, so `undefined` (omitted -- leave alone) and
-  // `null` (explicit -- unlink) must be distinguishable. Same shape as
-  // preferenceRepository's default_barcode_provider_id: a present flag per
-  // field gates a CASE WHEN, and the value beside it is read whether it's a
-  // uuid or null.
+  // `null` (explicit -- unlink) must be distinguishable.
   const linkedFoodIdPresent = 'linked_food_id' in updateData;
   const linkedVariantIdPresent = 'linked_variant_id' in updateData;
   const linkedMealTypeIdPresent = 'linked_meal_type_id' in updateData;
-  const client = await getClient(userId); // User-specific operation
+
+  const client = await getClient(userId);
   try {
     await client.query('BEGIN');
+
+    // If making primary, ensure target is not quick_add
+    if (is_primary === true) {
+      const current = await client.query(
+        'SELECT is_quick_add FROM user_water_containers WHERE id = $1 AND user_id = $2',
+        [id, userId]
+      );
+      if (current.rows[0]?.is_quick_add && is_quick_add !== false) {
+        throw new Error(
+          'Quick-add drink presets cannot be set as the primary water container.'
+        );
+      }
+    }
+
     const result = await client.query(
       `UPDATE user_water_containers SET
         name = COALESCE($1, name),
@@ -100,6 +165,8 @@ async function updateWaterContainer(id: any, userId: any, updateData: any) {
         linked_food_id = CASE WHEN $9 THEN $10 ELSE linked_food_id END,
         linked_variant_id = CASE WHEN $11 THEN $12 ELSE linked_variant_id END,
         linked_meal_type_id = CASE WHEN $13 THEN $14 ELSE linked_meal_type_id END,
+        is_quick_add = COALESCE($15, is_quick_add),
+        sort_order = COALESCE($16, sort_order),
         updated_at = now()
        WHERE id = $6 AND user_id = $7
        RETURNING *`,
@@ -118,19 +185,19 @@ async function updateWaterContainer(id: any, userId: any, updateData: any) {
         updateData.linked_variant_id ?? null,
         linkedMealTypeIdPresent,
         updateData.linked_meal_type_id ?? null,
+        is_quick_add,
+        sort_order,
       ]
     );
-    // Demote competing primaries only after the target row is confirmed to
-    // exist and belong to this user
+
     if (result.rows[0] && is_primary === true) {
-      // A user has at most one primary container
       await client.query(
         'UPDATE user_water_containers SET is_primary = false WHERE user_id = $1 AND id != $2',
         [userId, id]
       );
     }
     await client.query('COMMIT');
-    return result.rows[0];
+    return result.rows[0] || null;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -138,30 +205,50 @@ async function updateWaterContainer(id: any, userId: any, updateData: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteWaterContainer(id: any, userId: any) {
-  const client = await getClient(userId); // User-specific operation
+
+async function deleteWaterContainer(
+  id: number,
+  userId: string
+): Promise<boolean> {
+  const client = await getClient(userId);
   try {
     const result = await client.query(
       'DELETE FROM user_water_containers WHERE id = $1 AND user_id = $2 RETURNING id',
       [id, userId]
     );
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   } finally {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function setPrimaryWaterContainer(id: any, userId: any) {
-  const client = await getClient(userId); // User-specific operation
+
+async function setPrimaryWaterContainer(
+  id: number,
+  userId: string
+): Promise<WaterContainerResponse | null> {
+  const client = await getClient(userId);
   try {
     await client.query('BEGIN');
+
+    // Disallow setting quick-add containers as primary
+    const targetCheck = await client.query(
+      'SELECT is_quick_add FROM user_water_containers WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+    if (!targetCheck.rows[0]) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+    if (targetCheck.rows[0].is_quick_add) {
+      throw new Error(
+        'Quick-add drink presets cannot be set as the primary water container.'
+      );
+    }
+
     const result = await client.query(
       'UPDATE user_water_containers SET is_primary = true, updated_at = now() WHERE id = $1 AND user_id = $2 RETURNING *',
       [id, userId]
     );
-    // Demote the other containers only after the target row is confirmed to
-    // exist and belong to this user
     if (result.rows[0]) {
       await client.query(
         'UPDATE user_water_containers SET is_primary = false WHERE user_id = $1 AND id != $2',
@@ -169,7 +256,7 @@ async function setPrimaryWaterContainer(id: any, userId: any) {
       );
     }
     await client.query('COMMIT');
-    return result.rows[0];
+    return result.rows[0] || null;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -177,9 +264,11 @@ async function setPrimaryWaterContainer(id: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getPrimaryWaterContainerByUserId(userId: any) {
-  const client = await getClient(userId); // User-specific operation
+
+async function getPrimaryWaterContainerByUserId(
+  userId: string
+): Promise<WaterContainerResponse | null> {
+  const client = await getClient(userId);
   try {
     const result = await client.query(
       `SELECT
@@ -192,7 +281,7 @@ async function getPrimaryWaterContainerByUserId(userId: any) {
        LEFT JOIN foods f ON c.linked_food_id = f.id
        LEFT JOIN food_variants fv ON c.linked_variant_id = fv.id
        LEFT JOIN meal_types mt ON c.linked_meal_type_id = mt.id
-       WHERE c.user_id = $1 AND c.is_primary = TRUE`,
+       WHERE c.user_id = $1 AND c.is_primary = TRUE AND (c.is_quick_add IS FALSE OR c.is_quick_add IS NULL)`,
       [userId]
     );
     return result.rows[0] || null;
@@ -200,9 +289,12 @@ async function getPrimaryWaterContainerByUserId(userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getWaterContainerById(id: any, userId: any) {
-  const client = await getClient(userId); // User-specific operation (RLS will handle access)
+
+async function getWaterContainerById(
+  id: number,
+  userId: string
+): Promise<WaterContainerResponse | null> {
+  const client = await getClient(userId);
   try {
     const result = await client.query(
       `SELECT
@@ -223,13 +315,40 @@ async function getWaterContainerById(id: any, userId: any) {
     client.release();
   }
 }
-export { createWaterContainer };
-export { getWaterContainersByUserId };
-export { updateWaterContainer };
-export { deleteWaterContainer };
-export { setPrimaryWaterContainer };
-export { getPrimaryWaterContainerByUserId };
-export { getWaterContainerById };
+
+async function reorderWaterContainers(
+  userId: string,
+  containerIds: number[]
+): Promise<void> {
+  const client = await getClient(userId);
+  try {
+    await client.query('BEGIN');
+    for (let i = 0; i < containerIds.length; i++) {
+      await client.query(
+        'UPDATE user_water_containers SET sort_order = $1, updated_at = now() WHERE id = $2 AND user_id = $3',
+        [i, containerIds[i], userId]
+      );
+    }
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export {
+  createWaterContainer,
+  getWaterContainersByUserId,
+  updateWaterContainer,
+  deleteWaterContainer,
+  setPrimaryWaterContainer,
+  getPrimaryWaterContainerByUserId,
+  getWaterContainerById,
+  reorderWaterContainers,
+};
+
 export default {
   createWaterContainer,
   getWaterContainersByUserId,
@@ -238,4 +357,5 @@ export default {
   setPrimaryWaterContainer,
   getPrimaryWaterContainerByUserId,
   getWaterContainerById,
+  reorderWaterContainers,
 };

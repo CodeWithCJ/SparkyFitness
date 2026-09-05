@@ -27,6 +27,9 @@ jest.mock('react-i18next', () => ({
       if (key === 'foodDiary.waterIntake.fromFood') {
         return `Includes ${options?.['volume']} ${options?.['unit']} from food`;
       }
+      if (key === 'drink_presets.quickAdd') {
+        return 'Quick-Add Drinks';
+      }
       return key;
     },
     i18n: {
@@ -92,26 +95,56 @@ jest.mock('lucide-react', () => ({
   Plus: () => <div data-testid="plus-icon" />,
   Minus: () => <div data-testid="minus-icon" />,
   Trash2: () => <div data-testid="trash-icon" />,
+  Utensils: () => <div data-testid="utensils-icon" />,
 }));
 
-const mockContainers = [
+const mockStandardContainers = [
   {
     id: 1,
     name: 'Work Bottle',
     volume: 500,
-    unit: 'ml',
+    unit: 'ml' as const,
     servings_per_container: 1,
     is_primary: true,
+    is_quick_add: false,
   },
   {
     id: 2,
     name: 'Home Glass',
     volume: 250,
-    unit: 'ml',
+    unit: 'ml' as const,
     servings_per_container: 1,
     is_primary: false,
+    is_quick_add: false,
   },
 ];
+
+const mockQuickAddPresets = [
+  {
+    id: 10,
+    name: 'Espresso',
+    volume: 30,
+    unit: 'ml' as const,
+    servings_per_container: 1,
+    is_primary: false,
+    is_quick_add: true,
+    hydration_factor: 0,
+    sort_order: 0,
+  },
+  {
+    id: 11,
+    name: 'Beer (Pint 4.5%)',
+    volume: 568,
+    unit: 'ml' as const,
+    servings_per_container: 1,
+    is_primary: false,
+    is_quick_add: true,
+    hydration_factor: 0.7,
+    sort_order: 1,
+  },
+];
+
+const allMockContainers = [...mockStandardContainers, ...mockQuickAddPresets];
 
 describe('WaterIntake Component', () => {
   const mockMutate = jest.fn();
@@ -122,8 +155,10 @@ describe('WaterIntake Component', () => {
     (useManualWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 500 });
     (useFoodWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 0 });
     (useWaterContainer as jest.Mock).mockReturnValue({
-      activeContainer: mockContainers[0],
-      containers: mockContainers,
+      activeContainer: mockStandardContainers[0],
+      containers: allMockContainers,
+      standardContainers: mockStandardContainers,
+      quickAddPresets: mockQuickAddPresets,
     });
     (useUpdateWaterIntakeMutation as jest.Mock).mockReturnValue({
       mutate: mockMutate,
@@ -135,43 +170,50 @@ describe('WaterIntake Component', () => {
     renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
 
     expect(screen.getByText(/WORK BOTTLE/i)).toBeInTheDocument();
-    // The volume should be between the plus/minus buttons
     expect(screen.getByText('500 ml')).toBeInTheDocument();
-    // Primary container should have a star
     expect(screen.getByTestId('star-icon')).toBeInTheDocument();
   });
 
-  it('cycles to the next container and updates the volume display', () => {
+  it('cycles only across standard containers and excludes quick-add presets from carousel', () => {
     renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
 
     const nextButton = screen.getByTestId('chevron-right').parentElement;
     fireEvent.click(nextButton!);
 
+    // Should cycle to Home Glass, not Espresso
     expect(screen.getByText(/HOME GLASS/i)).toBeInTheDocument();
     expect(screen.getByText('250 ml')).toBeInTheDocument();
-    // Non-primary container should NOT have a star
-    expect(screen.queryByTestId('star-icon')).not.toBeInTheDocument();
+
+    // Cycling again wraps back to Work Bottle
+    fireEvent.click(nextButton!);
+    expect(screen.getByText(/WORK BOTTLE/i)).toBeInTheDocument();
   });
 
-  it('calls update mutation with the toggled container ID when clicking the Plus icon button', () => {
+  it('renders quick-add drink preset tiles below controls', () => {
     renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
 
-    const nextButton = screen.getByTestId('chevron-right').parentElement;
-    fireEvent.click(nextButton!); // Switch to Home Glass (ID: 2, 250ml)
+    expect(screen.getByText('Quick-Add Drinks')).toBeInTheDocument();
+    expect(screen.getByText('Espresso')).toBeInTheDocument();
+    expect(screen.getByText('Beer (Pint 4.5%)')).toBeInTheDocument();
+    expect(screen.getByText('0% water')).toBeInTheDocument();
+  });
 
-    const plusButton = screen.getByTestId('plus-icon').parentElement;
-    fireEvent.click(plusButton!);
+  it('calls update mutation with preset container ID when tapping a quick-add tile', () => {
+    renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
+
+    const espressoButton = screen.getByText('Espresso').closest('button');
+    expect(espressoButton).toBeInTheDocument();
+    fireEvent.click(espressoButton!);
 
     expect(mockMutate).toHaveBeenCalledWith({
       user_id: 'user-1',
       entry_date: '2023-10-27',
       change_drinks: 1,
-      container_id: 2, // Home Glass
+      container_id: 10,
     });
   });
 
   it('disables the minus button when intake is 0', () => {
-    // Override the mock to simulate zero water intake for this test
     (useWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 0 });
     (useManualWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 0 });
 
@@ -181,9 +223,6 @@ describe('WaterIntake Component', () => {
     expect(minusButton).toBeDisabled();
   });
 
-  // The "-" control only removes manually logged water. When the whole day's
-  // total came from a provider sync there is nothing for it to take away, so
-  // leaving it enabled produced a "removed!" toast with an unchanged total.
   it('disables the minus button when the day has only provider-synced water', () => {
     (useWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 1000 });
     (useManualWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 0 });
@@ -232,8 +271,6 @@ describe('WaterIntake Component', () => {
     expect(screen.queryByText('manual')).not.toBeInTheDocument();
   });
 
-  // Deleting a provider-synced row is futile — the provider still holds the
-  // record, so it re-inserts on the next sync. Only manual rows are deletable.
   it('renders a delete button only on manually logged drink rows', () => {
     (useWaterIntakeLogQuery as jest.Mock).mockReturnValue({
       data: [
@@ -258,12 +295,9 @@ describe('WaterIntake Component', () => {
 
     renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
 
-    // One trash icon: the manual row's. The provider row renders none.
     expect(screen.getAllByTestId('trash-icon')).toHaveLength(1);
   });
 
-  // #1557, #1629: when the user has opted in to counting food water, the
-  // gauge shows a muted line explaining part of the total came from food.
   it('shows the food-derived water line when food water is present', () => {
     (useFoodWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 300 });
 

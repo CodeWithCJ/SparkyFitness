@@ -40,6 +40,8 @@ export interface WaterContainer {
   linked_variant_serving_size?: number | string | null;
   linked_variant_serving_unit?: string | null;
   linked_meal_type_name?: string | null;
+  is_quick_add?: boolean;
+  sort_order?: number;
 }
 
 export interface FamilyAccess {

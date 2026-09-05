@@ -1,24 +1,28 @@
-import waterContainerRepository from '../models/waterContainerRepository.js';
+import waterContainerRepository, {
+  type CreateWaterContainerData,
+  type UpdateWaterContainerData,
+} from '../models/waterContainerRepository.js';
 import foodRepository from '../models/food.js';
 import foodVariantRepository from '../models/foodVariant.js';
 import { log } from '../config/logging.js';
 import { WATER_CONTAINER_UNITS } from '../schemas/waterContainerSchemas.js';
+import {
+  getDrinkPresetCatalogEntry,
+  type WaterContainerResponse,
+} from '@workspace/shared';
+
 const VALID_UNITS: readonly string[] = WATER_CONTAINER_UNITS;
 
 // #2115: when a container is linked to a food, resolve/validate the variant
-// so "+" always has a real variant to snapshot from. A variant explicitly
-// given must actually belong to the linked food -- otherwise a stale or
-// mismatched variant id would silently attach the wrong nutrition profile to
-// every future drink logged through this container.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function resolveLinkedVariantId(userId: any, containerData: any) {
+// so "+" always has a real variant to snapshot from.
+async function resolveLinkedVariantId<
+  T extends CreateWaterContainerData | UpdateWaterContainerData,
+>(userId: string, containerData: T): Promise<T> {
   if (!('linked_food_id' in containerData)) {
     return containerData;
   }
   const resolved = { ...containerData };
   if (!containerData.linked_food_id) {
-    // Unlinking the food also clears any variant/meal-type left over from
-    // a previous link -- a stale variant id pointing at nothing useful.
     resolved.linked_variant_id = null;
     resolved.linked_meal_type_id = resolved.linked_meal_type_id ?? null;
     return resolved;
@@ -39,7 +43,6 @@ async function resolveLinkedVariantId(userId: any, containerData: any) {
       throw new Error('Linked variant does not belong to the linked food.');
     }
   } else {
-    // No variant specified: fall back to the food's default variant.
     const defaultVariantId = food.default_variant?.id;
     if (!defaultVariantId) {
       throw new Error('Linked food has no default variant to attach.');
@@ -48,9 +51,9 @@ async function resolveLinkedVariantId(userId: any, containerData: any) {
   }
   return resolved;
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function convertToMl(volume: any, unit: any) {
-  if (!VALID_UNITS.includes(unit)) {
+
+function convertToMl(volume: number, unit: string): number {
+  if (!VALID_UNITS.includes(unit as (typeof VALID_UNITS)[number])) {
     throw new Error('Invalid unit for conversion.');
   }
   switch (unit) {
@@ -63,9 +66,14 @@ function convertToMl(volume: any, unit: any) {
       return volume;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createWaterContainer(userId: any, containerData: any) {
-  if (!VALID_UNITS.includes(containerData.unit)) {
+
+async function createWaterContainer(
+  userId: string,
+  containerData: CreateWaterContainerData
+): Promise<WaterContainerResponse> {
+  if (
+    !VALID_UNITS.includes(containerData.unit as (typeof VALID_UNITS)[number])
+  ) {
     throw new Error('Invalid unit provided.');
   }
   try {
@@ -84,8 +92,10 @@ async function createWaterContainer(userId: any, containerData: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getWaterContainersByUserId(userId: any) {
+
+async function getWaterContainersByUserId(
+  userId: string
+): Promise<WaterContainerResponse[]> {
   try {
     return await waterContainerRepository.getWaterContainersByUserId(userId);
   } catch (error) {
@@ -93,9 +103,16 @@ async function getWaterContainersByUserId(userId: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateWaterContainer(id: any, userId: any, updateData: any) {
-  if (updateData.unit && !VALID_UNITS.includes(updateData.unit)) {
+
+async function updateWaterContainer(
+  id: number,
+  userId: string,
+  updateData: UpdateWaterContainerData
+): Promise<WaterContainerResponse | null> {
+  if (
+    updateData.unit &&
+    !VALID_UNITS.includes(updateData.unit as (typeof VALID_UNITS)[number])
+  ) {
     throw new Error('Invalid unit provided.');
   }
   try {
@@ -106,10 +123,6 @@ async function updateWaterContainer(id: any, userId: any, updateData: any) {
       updateData.volume !== undefined &&
       updateData.unit === undefined
     ) {
-      // If volume is updated but unit is not, we need the original unit to convert
-      // This scenario might require fetching the existing container first to get its unit
-      // For simplicity, we'll assume unit is always provided if volume is updated, or handle it in the frontend
-      // For now, we'll just pass the volume as is if unit is not provided, assuming it's already in ML or handled by frontend
       log(
         'warn',
         `Volume updated without unit for container ${id}. Assuming volume is already in ML.`
@@ -129,10 +142,12 @@ async function updateWaterContainer(id: any, userId: any, updateData: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteWaterContainer(id: any, userId: any) {
+
+async function deleteWaterContainer(
+  id: number,
+  userId: string
+): Promise<{ message: string }> {
   try {
-    // Add authorization check if needed
     const success = await waterContainerRepository.deleteWaterContainer(
       id,
       userId
@@ -150,10 +165,12 @@ async function deleteWaterContainer(id: any, userId: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function setPrimaryWaterContainer(id: any, userId: any) {
+
+async function setPrimaryWaterContainer(
+  id: number,
+  userId: string
+): Promise<WaterContainerResponse | null> {
   try {
-    // Add authorization check if needed
     return await waterContainerRepository.setPrimaryWaterContainer(id, userId);
   } catch (error) {
     log(
@@ -164,8 +181,10 @@ async function setPrimaryWaterContainer(id: any, userId: any) {
     throw error;
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getPrimaryWaterContainerByUserId(userId: any) {
+
+async function getPrimaryWaterContainerByUserId(
+  userId: string
+): Promise<WaterContainerResponse | null> {
   try {
     return await waterContainerRepository.getPrimaryWaterContainerByUserId(
       userId
@@ -179,13 +198,84 @@ async function getPrimaryWaterContainerByUserId(userId: any) {
     throw error;
   }
 }
-export { createWaterContainer };
-export { getWaterContainersByUserId };
-export { updateWaterContainer };
-export { deleteWaterContainer };
-export { setPrimaryWaterContainer };
-export { getPrimaryWaterContainerByUserId };
-export { convertToMl };
+
+async function materializeDrinkPreset(
+  userId: string,
+  catalogId: string
+): Promise<WaterContainerResponse> {
+  const preset = getDrinkPresetCatalogEntry(catalogId);
+  if (!preset) {
+    throw new Error(`Drink preset '${catalogId}' not found in catalog.`);
+  }
+
+  // Idempotency: check if the user already has a quick-add preset for this drink
+  const existingContainers =
+    await waterContainerRepository.getWaterContainersByUserId(userId);
+  const existing = existingContainers.find(
+    (c) =>
+      c.is_quick_add &&
+      c.name.toLowerCase() === preset.defaultName.toLowerCase()
+  );
+  if (existing) {
+    return existing;
+  }
+
+  const maxSortOrder = existingContainers.reduce(
+    (max, c) => Math.max(max, c.sort_order ?? 0),
+    0
+  );
+
+  // 1. Create per-user custom food
+  const createdFood = await foodRepository.createFood({
+    user_id: userId,
+    name: preset.defaultName,
+    is_custom: true,
+    shared_with_public: false,
+    serving_size: preset.volumeMl,
+    serving_unit: preset.servingUnit,
+    caffeine_mg: preset.caffeineMg ?? 0,
+    abv_percent: preset.abvPercent ?? 0,
+    alcohol_g: preset.alcoholG ?? 0,
+    water_ml:
+      preset.waterMl ?? (preset.hydrationFactor === 0 ? 0 : preset.volumeMl),
+  });
+
+  const variantId = createdFood?.default_variant?.id || null;
+
+  // 2. Create water container linked to this food
+  return await waterContainerRepository.createWaterContainer(userId, {
+    name: preset.defaultName,
+    volume: preset.volumeMl,
+    unit: 'ml',
+    is_primary: false,
+    servings_per_container: 1,
+    hydration_factor: preset.hydrationFactor,
+    linked_food_id: createdFood.id,
+    linked_variant_id: variantId,
+    is_quick_add: true,
+    sort_order: maxSortOrder + 1,
+  });
+}
+
+async function reorderWaterContainers(
+  userId: string,
+  containerIds: number[]
+): Promise<void> {
+  await waterContainerRepository.reorderWaterContainers(userId, containerIds);
+}
+
+export {
+  createWaterContainer,
+  getWaterContainersByUserId,
+  updateWaterContainer,
+  deleteWaterContainer,
+  setPrimaryWaterContainer,
+  getPrimaryWaterContainerByUserId,
+  materializeDrinkPreset,
+  reorderWaterContainers,
+  convertToMl,
+};
+
 export default {
   createWaterContainer,
   getWaterContainersByUserId,
@@ -193,5 +283,7 @@ export default {
   deleteWaterContainer,
   setPrimaryWaterContainer,
   getPrimaryWaterContainerByUserId,
+  materializeDrinkPreset,
+  reorderWaterContainers,
   convertToMl,
 };

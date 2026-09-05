@@ -7,7 +7,11 @@ import {
   WaterContainerIdParamSchema,
   CreateWaterContainerBodySchema,
   UpdateWaterContainerBodySchema,
+  MaterializeDrinkPresetBodySchema,
+  ReorderWaterContainersBodySchema,
 } from '../schemas/waterContainerSchemas.js';
+import { DRINK_PRESET_CATALOG } from '@workspace/shared';
+
 const router = express.Router();
 
 // Small helper to send a uniform 400 for Zod failures.
@@ -17,6 +21,97 @@ function badRequest(res: express.Response, error: z.ZodError): void {
     details: error.flatten().fieldErrors,
   });
 }
+
+/**
+ * @swagger
+ * /water-containers/catalog:
+ *   get:
+ *     summary: Get canonical drink preset catalog
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: List of available canonical drink preset templates.
+ */
+router.get('/catalog', authenticate, (_req, res) => {
+  res.status(200).json(DRINK_PRESET_CATALOG);
+});
+
+/**
+ * @swagger
+ * /water-containers/presets:
+ *   post:
+ *     summary: Materialize a drink preset from the catalog
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [catalog_id]
+ *             properties:
+ *               catalog_id:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Drink preset materialized into a container successfully.
+ */
+router.post('/presets', authenticate, async (req, res, next) => {
+  try {
+    const body = MaterializeDrinkPresetBodySchema.safeParse(req.body);
+    if (!body.success) return badRequest(res, body.error);
+    const container = await waterContainerService.materializeDrinkPreset(
+      req.userId,
+      body.data.catalog_id
+    );
+    res.status(201).json(container);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /water-containers/reorder:
+ *   put:
+ *     summary: Reorder user water containers and drink presets
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [container_ids]
+ *             properties:
+ *               container_ids:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *     responses:
+ *       200:
+ *         description: Containers reordered successfully.
+ */
+router.put('/reorder', authenticate, async (req, res, next) => {
+  try {
+    const body = ReorderWaterContainersBodySchema.safeParse(req.body);
+    if (!body.success) return badRequest(res, body.error);
+    await waterContainerService.reorderWaterContainers(
+      req.userId,
+      body.data.container_ids
+    );
+    res.status(200).json({ message: 'Containers reordered successfully.' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 /**
  * @swagger
  * /water-containers:
@@ -48,6 +143,7 @@ router.post('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+
 /**
  * @swagger
  * /water-containers:
@@ -70,15 +166,14 @@ router.get('/', authenticate, async (req, res, next) => {
   try {
     const { userId } = req.query;
 
-    const targetUserId = userId || req.userId;
+    const targetUserId = (userId as string) || req.userId;
 
     if (targetUserId !== req.userId) {
-      const hasPermission = await { canAccessUserData }.canAccessUserData(
+      const hasPermission = await canAccessUserData(
         targetUserId,
         'diary',
-
         req.userId
-      ); // Assuming diary permission allows viewing containers
+      );
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
     const containers =
@@ -88,6 +183,7 @@ router.get('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+
 /**
  * @swagger
  * /water-containers/{id}:
@@ -132,6 +228,7 @@ router.put('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+
 /**
  * @swagger
  * /water-containers/{id}:
@@ -160,14 +257,13 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     );
     res.status(200).json(result);
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.includes('not found')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+    if (error instanceof Error && error.message.includes('not found')) {
       return res.status(404).json({ error: error.message });
     }
     next(error);
   }
 });
+
 /**
  * @swagger
  * /water-containers/{id}/set-primary:
@@ -201,9 +297,18 @@ router.put('/:id/set-primary', authenticate, async (req, res, next) => {
     }
     res.status(200).json(container);
   } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes(
+        'Quick-add drink presets cannot be set as the primary'
+      )
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
     next(error);
   }
 });
+
 /**
  * @swagger
  * /water-containers/primary:
@@ -220,13 +325,12 @@ router.get('/primary', authenticate, async (req, res, next) => {
   try {
     const { userId } = req.query;
 
-    const targetUserId = userId || req.userId;
+    const targetUserId = (userId as string) || req.userId;
 
     if (targetUserId !== req.userId) {
-      const hasPermission = await { canAccessUserData }.canAccessUserData(
+      const hasPermission = await canAccessUserData(
         targetUserId,
         'diary',
-
         req.userId
       );
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
@@ -240,17 +344,24 @@ router.get('/primary', authenticate, async (req, res, next) => {
     } else {
       // Return a default container if no primary is found
       res.status(200).json({
-        id: null, // Indicate no actual container ID
+        id: null,
         user_id: targetUserId,
         name: 'Default Container',
-        volume: 2000, // Default to 2000ml
+        volume: 2000,
         unit: 'ml',
         is_primary: true,
-        servings_per_container: 8, // Default to 8 servings
+        servings_per_container: 8,
+        hydration_factor: 1.0,
+        linked_food_id: null,
+        linked_variant_id: null,
+        linked_meal_type_id: null,
+        is_quick_add: false,
+        sort_order: 0,
       });
     }
   } catch (error) {
     next(error);
   }
 });
+
 export default router;
