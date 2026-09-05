@@ -22,6 +22,9 @@ export const profileQueryKey = ['userProfile'] as const;
 
 export const waterContainersQueryKey = ['waterContainers'] as const;
 
+/** A day's individual logged drinks — the rows behind the day's water total. */
+export const waterIntakeLogQueryKey = (date: string) => ['waterIntakeLog', date] as const;
+
 export const foodsQueryKey = ['foods'] as const;
 
 export const favoritesQueryKey = ['favorites'] as const;

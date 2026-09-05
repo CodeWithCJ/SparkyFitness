@@ -12,6 +12,12 @@ export { useSyncHealthData } from './useSyncHealthData';
 export { useDailySummary } from './useDailySummary';
 export { useFamilyUsers, useFamilyDailySummary } from './useFamilyDiary';
 export { useMeasurements } from './useMeasurements';
+
+export { useUpsertCheckIn } from './useUpsertCheckIn';
+export { useWatchCheckInBridge } from './useWatchCheckInBridge';
+export { useWatchConnectivity } from './useWatchConnectivity';
+export type { WatchLinkStatus } from './useWatchConnectivity';
+
 export { usePreferences } from './usePreferences';
 export { useRefetchOnFocus } from './useRefetchOnFocus';
 export { useWaterIntakeMutation } from './useWaterIntakeMutation';
