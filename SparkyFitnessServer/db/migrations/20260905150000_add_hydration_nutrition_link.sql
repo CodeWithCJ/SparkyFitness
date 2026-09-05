@@ -444,3 +444,44 @@ COMMENT ON COLUMN public.user_preferences.weekly_alcohol_limit_g IS
   'Optional weekly ethanol ceiling in grams (NULL = none). Weekly because every published guideline is weekly (UK CMO: 14 units/week) and the daily goal system has no weekly concept. Rolled up from reportRepository.getDailyNutritionTotalsRange, not a stored aggregate.';
 
 
+-- =============================================================================
+-- Phase 9: Caffeine kinetics preferences (#1958)
+-- =============================================================================
+--
+-- Elimination half-life and target bedtime for caffeine kinetics.
+--
+-- Deliberately NOT sourced from sleep tracking. sleep_entries.bedtime is an
+-- OBSERVED bedtime that exists only for nights the user logged, is frequently
+-- absent, and would make the caffeine card blank for anyone who does not track
+-- sleep. This is a stated intention, so it is a preference.
+--
+-- target_bedtime is named generically rather than caffeine_bedtime: a second
+-- bedtime preference for the next feature that wants one is how this codebase
+-- ended up with seven copies of the nutrient key list.
+--
+-- Half-life default 5 h with a 2-8 h range covers the published adult spread
+-- (CYP1A2 genotype, oral contraceptives, smoking, pregnancy). Values outside
+-- that are not "power user", they are data entry errors.
+
+ALTER TABLE public.user_preferences
+  ADD COLUMN IF NOT EXISTS caffeine_half_life_hours numeric(3,1) NOT NULL DEFAULT 5.0,
+  ADD COLUMN IF NOT EXISTS target_bedtime time without time zone NOT NULL DEFAULT '22:30';
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                 WHERE conname = 'user_preferences_caffeine_half_life_range'
+                   AND conrelid = 'public.user_preferences'::regclass) THEN
+    ALTER TABLE public.user_preferences
+      ADD CONSTRAINT user_preferences_caffeine_half_life_range
+      CHECK (caffeine_half_life_hours >= 2.0 AND caffeine_half_life_hours <= 8.0);
+  END IF;
+END $$;
+
+COMMENT ON COLUMN public.user_preferences.caffeine_half_life_hours IS
+  'Elimination half-life used for the "active caffeine" estimate, 2-8 h, default 5. Population estimate, not a measurement.';
+COMMENT ON COLUMN public.user_preferences.target_bedtime IS
+  'The user''s intended bedtime, local wall-clock. First consumer is the caffeine cutoff; deliberately generic so a future sleep-goal feature reuses it rather than adding a second bedtime.';
+
+
+

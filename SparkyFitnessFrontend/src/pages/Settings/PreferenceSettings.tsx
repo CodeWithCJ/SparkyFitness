@@ -63,6 +63,10 @@ export const PreferenceSettings = () => {
     setStandardDrinkGrams,
     weeklyAlcoholLimitG,
     setWeeklyAlcoholLimitG,
+    caffeineHalfLifeHours,
+    setCaffeineHalfLifeHours,
+    targetBedtime,
+    setTargetBedtime,
     saveAllPreferences,
   } = usePreferences();
 
@@ -94,6 +98,8 @@ export const PreferenceSettings = () => {
         loggingLevel: localLoggingLevel,
         standardDrinkGrams,
         weeklyAlcoholLimitG,
+        caffeineHalfLifeHours,
+        targetBedtime,
       });
       toast({
         title: t('settings.preferences.successTitle', 'Success'),
@@ -331,6 +337,41 @@ export const PreferenceSettings = () => {
                   );
                 }
               }}
+            />
+          </div>
+          <div>
+            <Label htmlFor="caffeine_half_life">
+              {t(
+                'settings.preferences.caffeineHalfLife',
+                'Caffeine Half-Life (Hours)'
+              )}
+            </Label>
+            <Input
+              id="caffeine_half_life"
+              type="number"
+              min={2.0}
+              max={8.0}
+              step="0.1"
+              value={caffeineHalfLifeHours}
+              onChange={(e) =>
+                setCaffeineHalfLifeHours(
+                  Math.min(
+                    8.0,
+                    Math.max(2.0, parseFloat(e.target.value) || 5.0)
+                  )
+                )
+              }
+            />
+          </div>
+          <div>
+            <Label htmlFor="target_bedtime">
+              {t('settings.preferences.targetBedtime', 'Target Bedtime')}
+            </Label>
+            <Input
+              id="target_bedtime"
+              type="time"
+              value={targetBedtime}
+              onChange={(e) => setTargetBedtime(e.target.value)}
             />
           </div>
           <div>

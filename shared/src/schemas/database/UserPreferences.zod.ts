@@ -74,6 +74,8 @@ export const userPreferencesSchema = z.object({
   add_food_water_to_intake: z.boolean().nullable().optional(),
   standard_drink_grams: z.number().min(0).max(50),
   weekly_alcohol_limit_g: z.number().positive().nullable().optional(),
+  caffeine_half_life_hours: z.number().min(2).max(8),
+  target_bedtime: z.string(),
 });
 
 export const userPreferencesInitializerSchema = z.object({
@@ -144,6 +146,8 @@ export const userPreferencesInitializerSchema = z.object({
   add_food_water_to_intake: z.boolean().optional().nullable(),
   standard_drink_grams: z.number().min(0).max(50).optional(),
   weekly_alcohol_limit_g: z.number().positive().nullable().optional(),
+  caffeine_half_life_hours: z.number().min(2).max(8).optional(),
+  target_bedtime: z.string().optional(),
 });
 
 export const userPreferencesMutatorSchema = z.object({
@@ -214,6 +218,8 @@ export const userPreferencesMutatorSchema = z.object({
   add_food_water_to_intake: z.boolean().optional().nullable(),
   standard_drink_grams: z.number().min(0).max(50).optional(),
   weekly_alcohol_limit_g: z.number().positive().nullable().optional(),
+  caffeine_half_life_hours: z.number().min(2).max(8).optional(),
+  target_bedtime: z.string().optional(),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;

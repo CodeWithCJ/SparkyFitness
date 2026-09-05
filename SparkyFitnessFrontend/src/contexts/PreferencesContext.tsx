@@ -38,6 +38,7 @@ import {
   CalorieSafetyFloorMode,
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   DEFAULT_STANDARD_DRINK_GRAMS,
+  DEFAULT_CAFFEINE_HALF_LIFE_HOURS,
   type UserPreferences as SharedUserPreferences,
 } from '@workspace/shared';
 
@@ -131,6 +132,10 @@ interface PreferencesContextType {
   calorieSafetyFloorValue: number;
   standardDrinkGrams: number;
   weeklyAlcoholLimitG: number | null;
+  caffeineHalfLifeHours: number;
+  targetBedtime: string;
+  setCaffeineHalfLifeHours: (hours: number) => void;
+  setTargetBedtime: (bedtime: string) => void;
   setWeeklyAlcoholLimitG: (limit: number | null) => void;
   setStandardDrinkGrams: (grams: number) => void;
   setMeasurementDecimalPlaces: (places: number) => void;
@@ -252,6 +257,9 @@ export interface DefaultPreferences {
   calorie_safety_floor_mode: SharedUserPreferences['calorie_safety_floor_mode'];
   calorie_safety_floor_value: SharedUserPreferences['calorie_safety_floor_value'];
   standard_drink_grams?: number;
+  weekly_alcohol_limit_g?: number | null;
+  caffeine_half_life_hours?: number;
+  target_bedtime?: string;
 }
 
 const PreferencesContext = createContext<PreferencesContextType | undefined>(
@@ -372,6 +380,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [weeklyAlcoholLimitG, setWeeklyAlcoholLimitGState] = useState<
     number | null
   >(null);
+  const [caffeineHalfLifeHours, setCaffeineHalfLifeHoursState] =
+    useState<number>(DEFAULT_CAFFEINE_HALF_LIFE_HOURS);
+  const [targetBedtime, setTargetBedtimeState] = useState<string>('22:30');
 
   const fetchUserPreferences = useCallback(async () => {
     try {
@@ -645,6 +656,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         calorie_safety_floor_mode: 'standard',
         calorie_safety_floor_value: DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
         standard_drink_grams: DEFAULT_STANDARD_DRINK_GRAMS,
+        caffeine_half_life_hours: DEFAULT_CAFFEINE_HALF_LIFE_HOURS,
+        target_bedtime: '22:30',
       };
       await upsertUserPreferences(defaultPrefs);
     } catch (err) {
@@ -782,6 +795,15 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           data.weekly_alcohol_limit_g != null
             ? Number(data.weekly_alcohol_limit_g)
             : null
+        );
+        setCaffeineHalfLifeHoursState(
+          Number(data.caffeine_half_life_hours) ||
+            DEFAULT_CAFFEINE_HALF_LIFE_HOURS
+        );
+        setTargetBedtimeState(
+          data.target_bedtime
+            ? String(data.target_bedtime).slice(0, 5)
+            : '22:30'
         );
       } else {
         await createDefaultPreferences();
@@ -968,6 +990,14 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           newPrefs?.weeklyAlcoholLimitG !== undefined
             ? newPrefs.weeklyAlcoholLimitG
             : weeklyAlcoholLimitG,
+        caffeine_half_life_hours:
+          newPrefs?.caffeineHalfLifeHours !== undefined
+            ? newPrefs.caffeineHalfLifeHours
+            : caffeineHalfLifeHours,
+        target_bedtime:
+          newPrefs?.targetBedtime !== undefined
+            ? newPrefs.targetBedtime
+            : targetBedtime,
       };
 
       try {
@@ -1031,6 +1061,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       calorieSafetyFloorValue,
       standardDrinkGrams,
       weeklyAlcoholLimitG,
+      caffeineHalfLifeHours,
+      targetBedtime,
       updatePreferences,
       loadPreferences,
     ]
@@ -1176,6 +1208,38 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     [saveAllPreferences]
   );
 
+  const setStandardDrinkGrams = useCallback(
+    (grams: number) => {
+      setStandardDrinkGramsState(grams);
+      saveAllPreferences({ standardDrinkGrams: grams });
+    },
+    [saveAllPreferences]
+  );
+
+  const setCaffeineHalfLifeHours = useCallback(
+    (hours: number) => {
+      setCaffeineHalfLifeHoursState(hours);
+      saveAllPreferences({ caffeineHalfLifeHours: hours });
+    },
+    [saveAllPreferences]
+  );
+
+  const setTargetBedtime = useCallback(
+    (bedtime: string) => {
+      setTargetBedtimeState(bedtime);
+      saveAllPreferences({ targetBedtime: bedtime });
+    },
+    [saveAllPreferences]
+  );
+
+  const setWeeklyAlcoholLimitG = useCallback(
+    (limit: number | null) => {
+      setWeeklyAlcoholLimitGState(limit);
+      saveAllPreferences({ weeklyAlcoholLimitG: limit });
+    },
+    [saveAllPreferences]
+  );
+
   // --- Effects ---
 
   useEffect(() => {
@@ -1288,8 +1352,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       calorieSafetyFloorValue,
       standardDrinkGrams,
       weeklyAlcoholLimitG,
-      setWeeklyAlcoholLimitG: setWeeklyAlcoholLimitGState,
-      setStandardDrinkGrams: setStandardDrinkGramsState,
+      caffeineHalfLifeHours,
+      targetBedtime,
+      setCaffeineHalfLifeHours,
+      setTargetBedtime,
+      setWeeklyAlcoholLimitG,
+      setStandardDrinkGrams,
       setMeasurementDecimalPlaces: setMeasurementDecimalPlacesState,
       setGoalMode,
       setGoalModeCalculationMethod,
@@ -1390,6 +1458,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       calorieSafetyFloorValue,
       standardDrinkGrams,
       weeklyAlcoholLimitG,
+      caffeineHalfLifeHours,
+      targetBedtime,
+      setCaffeineHalfLifeHours,
+      setTargetBedtime,
+      setWeeklyAlcoholLimitG,
+      setStandardDrinkGrams,
       setGoalMode,
       setGoalModeCalculationMethod,
       setGoalModeCustomPercentage,

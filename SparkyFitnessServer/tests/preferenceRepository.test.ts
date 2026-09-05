@@ -284,4 +284,46 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
     expect(sql).not.toContain('EXCLUDED.add_food_water_to_intake');
     expect(params[FOOD_WATER_TO_INTAKE_PARAM]).toBeUndefined();
   });
+
+  it('round-trips caffeine_half_life_hours and target_bedtime through upsert and load', async () => {
+    const row = {
+      user_id: 'user-1',
+      caffeine_half_life_hours: 6.5,
+      target_bedtime: '23:00:00',
+    };
+    mockClient.query.mockResolvedValueOnce({ rows: [row] });
+    mockClient.query.mockResolvedValueOnce({ rows: [row] });
+
+    await preferenceRepository.upsertUserPreferences({
+      user_id: 'user-1',
+      caffeine_half_life_hours: 6.5,
+      target_bedtime: '23:00',
+    });
+    const result = await preferenceRepository.getUserPreferences('user-1');
+
+    expect(result.caffeine_half_life_hours).toBe(6.5);
+    expect(result.target_bedtime).toBe('23:00:00');
+    const [sql, params] = mockClient.query.mock.calls[0];
+    expect(sql).toContain('caffeine_half_life_hours');
+    expect(sql).toContain('target_bedtime');
+    expect(params).toContain(6.5);
+    expect(params).toContain('23:00');
+  });
+
+  it('preserves stored caffeine_half_life_hours and target_bedtime when omitted from upsert', async () => {
+    mockClient.query.mockResolvedValueOnce({ rows: [{ user_id: 'user-1' }] });
+
+    await preferenceRepository.upsertUserPreferences({
+      user_id: 'user-1',
+      show_net_carbs: true,
+    });
+
+    const [sql] = mockClient.query.mock.calls[0];
+    expect(sql).toContain(
+      'caffeine_half_life_hours = COALESCE($51, user_preferences.caffeine_half_life_hours)'
+    );
+    expect(sql).toContain(
+      'target_bedtime = COALESCE($52, user_preferences.target_bedtime)'
+    );
+  });
 });

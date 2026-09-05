@@ -1,6 +1,7 @@
 export * from "./schemas/api/AiServiceSettings.api.zod.ts";
 export * from "./schemas/api/AlcoholWeek.api.zod.ts";
 export * from "./schemas/api/Backup.api.zod.ts";
+export * from "./schemas/api/CaffeineKinetics.api.zod.ts";
 export * from "./schemas/api/CustomCategories.api.zod.ts";
 export * from "./schemas/api/CustomMeasurements.api.zod.ts";
 export * from "./schemas/api/CheckInMeasurements.api.zod.ts";
@@ -110,6 +111,7 @@ export * from "./utils/markdownToolbar.ts";
 export * from "./nutrients/micronutrientCatalog.ts";
 export * from "./nutrients/macroPickerFields.ts";
 export * from "./nutrients/alcoholUnits.ts";
+export * from "./nutrients/caffeineKinetics.ts";
 export * from "./utils/timezone.ts";
 export * from "./utils/calendar.ts";
 export * from "./utils/entryTime.ts";

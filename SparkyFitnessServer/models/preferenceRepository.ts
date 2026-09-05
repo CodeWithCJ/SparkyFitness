@@ -37,6 +37,8 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         add_food_water_to_intake = COALESCE($48, add_food_water_to_intake),
         standard_drink_grams = COALESCE($49, standard_drink_grams),
         weekly_alcohol_limit_g = COALESCE($50, weekly_alcohol_limit_g),
+        caffeine_half_life_hours = COALESCE($51, caffeine_half_life_hours),
+        target_bedtime = COALESCE($52, target_bedtime),
         show_net_carbs = COALESCE($31, show_net_carbs),
         ai_assisted_conversions = COALESCE($32, ai_assisted_conversions),
         goal_mode = COALESCE($33, goal_mode),
@@ -105,6 +107,8 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         preferenceData.add_food_water_to_intake,
         preferenceData.standard_drink_grams,
         preferenceData.weekly_alcohol_limit_g,
+        preferenceData.caffeine_half_life_hours,
+        preferenceData.target_bedtime,
       ]
     );
     return result.rows[0];
@@ -197,6 +201,8 @@ async function upsertUserPreferences(preferenceData: any) {
        add_food_water_to_intake,
        standard_drink_grams,
        weekly_alcohol_limit_g,
+       caffeine_half_life_hours,
+       target_bedtime,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($44, 'HH:mm'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -228,6 +234,8 @@ async function upsertUserPreferences(preferenceData: any) {
        COALESCE($48, false),
        COALESCE($49, 14.00),
        $50,
+       COALESCE($51, 5.0),
+       COALESCE($52, '22:30'),
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -277,12 +285,11 @@ async function upsertUserPreferences(preferenceData: any) {
        -- omits the field would clobber a stored true back to false. Same shape
        -- as time_format below.
        food_search_all_providers_default = COALESCE($47, user_preferences.food_search_all_providers_default),
-       -- Same reasoning as food_search_all_providers_default above: read $48
-       -- directly, not EXCLUDED, or an omitting upsert clobbers a stored true.
        add_food_water_to_intake = COALESCE($48, user_preferences.add_food_water_to_intake),
-       -- Same reasoning: read $49 directly, not EXCLUDED.
        standard_drink_grams = COALESCE($49, user_preferences.standard_drink_grams),
        weekly_alcohol_limit_g = COALESCE(EXCLUDED.weekly_alcohol_limit_g, user_preferences.weekly_alcohol_limit_g),
+       caffeine_half_life_hours = COALESCE($51, user_preferences.caffeine_half_life_hours),
+       target_bedtime = COALESCE($52, user_preferences.target_bedtime),
        time_format = COALESCE($44, user_preferences.time_format),
        updated_at = now()
      RETURNING *`,
@@ -337,6 +344,8 @@ async function upsertUserPreferences(preferenceData: any) {
         preferenceData.add_food_water_to_intake,
         preferenceData.standard_drink_grams,
         preferenceData.weekly_alcohol_limit_g,
+        preferenceData.caffeine_half_life_hours,
+        preferenceData.target_bedtime,
       ]
     );
     return result.rows[0];
