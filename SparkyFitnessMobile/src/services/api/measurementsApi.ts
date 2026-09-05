@@ -11,6 +11,7 @@ import type {
   CreateWaterContainerBody,
   UpdateWaterContainerBody,
   DrinkPresetCatalogEntry,
+  WaterIntakeLogEntry,
 } from '@workspace/shared';
 import type {
   CustomCategory,
@@ -273,6 +274,22 @@ export const deleteCustomMeasurement = async (id: string): Promise<void> => {
 /**
  * Changes water intake by adding or removing a drink.
  */
+/**
+ * Fetches the day's itemized water ledger (#1939): one row per logged drink,
+ * each carrying its real `logged_at` timestamp and `source`. Used by
+ * per-entry health writeback so each drink exports at the time it was
+ * actually logged instead of one noon-anchored day total.
+ */
+export const fetchWaterIntakeLog = async (
+  date: string
+): Promise<WaterIntakeLogEntry[]> => {
+  return apiFetch<WaterIntakeLogEntry[]>({
+    endpoint: `/api/v2/measurements/water-intake/${date}/log`,
+    serviceName: 'Measurements API',
+    operation: 'fetch water intake log',
+  });
+};
+
 export const changeWaterIntake = async (params: {
   entryDate: string;
   changeDrinks: number;

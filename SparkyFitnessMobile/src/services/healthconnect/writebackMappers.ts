@@ -38,11 +38,20 @@ export const nutritionClientRecordId = (
   version: number
 ): string => `${SPARKY_CLIENT_RECORD_PREFIX}nutrition-${entryId}-${version}`;
 
-/** One water record per day, scoped to the write run by version. */
+/** One water record per day, scoped to the write run by version. Used for the
+ *  synthetic food-water-remainder sample (#1557, #1629) — real ledger rows use
+ *  waterEntryClientRecordId below instead. */
 export const waterClientRecordId = (
   entryDate: string,
   version: number
 ): string => `${SPARKY_CLIENT_RECORD_PREFIX}water-${entryDate}-${version}`;
+
+/** Per-ledger-row id for one write run (#1939): entry id + version → unique
+ *  per run, mirroring nutritionClientRecordId above. */
+export const waterEntryClientRecordId = (
+  entryId: string,
+  version: number
+): string => `${SPARKY_CLIENT_RECORD_PREFIX}water-entry-${entryId}-${version}`;
 
 // factor (from HC_NUTRIENT_COLUMNS) → the HC Mass unit Sparky already stores that
 // column in, so we write the value verbatim with no conversion (and never drift
@@ -193,6 +202,35 @@ export const waterMlToHydrationRecord = (
     volume: { value: ml, unit: 'milliliters' },
     metadata: {
       clientRecordId: waterClientRecordId(entryDate, clientRecordVersion),
+      clientRecordVersion,
+      recordingMethod: RecordingMethod.RECORDING_METHOD_MANUAL_ENTRY,
+    },
+  } as HydrationRecord;
+};
+
+/**
+ * Map one water_intake_entries ledger row to a HydrationRecord at its real
+ * logged_at timestamp (#1939), instead of one noon-anchored day total.
+ * A 1-minute interval (matching the meal-time anchor pattern above) rather
+ * than start === end, since Health Connect's interval records require
+ * endTime to be strictly after startTime.
+ */
+export const waterLogEntryToHydrationRecord = (
+  entry: { id: string; water_ml: number; logged_at: string },
+  clientRecordVersion: number
+): HydrationRecord | null => {
+  const loggedAt = new Date(entry.logged_at);
+  if (Number.isNaN(loggedAt.getTime())) return null;
+  const start = loggedAt;
+  const end = new Date(start.getTime() + MINUTE_MS);
+
+  return {
+    recordType: 'Hydration',
+    startTime: start.toISOString(),
+    endTime: end.toISOString(),
+    volume: { value: entry.water_ml, unit: 'milliliters' },
+    metadata: {
+      clientRecordId: waterEntryClientRecordId(entry.id, clientRecordVersion),
       clientRecordVersion,
       recordingMethod: RecordingMethod.RECORDING_METHOD_MANUAL_ENTRY,
     },
