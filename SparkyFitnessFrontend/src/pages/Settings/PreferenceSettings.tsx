@@ -21,6 +21,7 @@ import {
   WeightUnit,
   MeasurementUnit,
 } from '@/contexts/PreferencesContext';
+import type { ChartScaleMode } from '@workspace/shared';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -43,6 +44,8 @@ export const PreferenceSettings = () => {
     setDateFormat,
     timeFormat,
     setTimeFormat,
+    chartScaleMode,
+    setChartScaleMode,
     itemDisplayLimit,
     setItemDisplayLimit, // Add itemDisplayLimit and setItemDisplayLimit
     autoScaleOpenFoodFactsImports,
@@ -85,6 +88,7 @@ export const PreferenceSettings = () => {
         language,
         firstDayOfWeek,
         measurementDecimalPlaces,
+        chartScaleMode,
         timezone,
         loggingLevel: localLoggingLevel,
       });
@@ -164,6 +168,35 @@ export const PreferenceSettings = () => {
                   {t(
                     'settings.preferences.timeFormat12Lower',
                     '12-hour am/pm (2:30 pm)'
+                  )}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="chart_scale_mode">
+              {t('settings.preferences.chartScaleMode', 'Chart Scale Mode')}
+            </Label>
+            <Select
+              value={chartScaleMode}
+              onValueChange={(value) =>
+                setChartScaleMode(value as ChartScaleMode)
+              }
+            >
+              <SelectTrigger id="chart_scale_mode">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="time">
+                  {t(
+                    'settings.preferences.chartScaleTime',
+                    'Time proportional (gaps between entries are visible)'
+                  )}
+                </SelectItem>
+                <SelectItem value="point">
+                  {t(
+                    'settings.preferences.chartScalePoint',
+                    'Evenly spaced (every entry gets the same width)'
                   )}
                 </SelectItem>
               </SelectContent>

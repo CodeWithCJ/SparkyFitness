@@ -3,6 +3,7 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {
+  CHART_SCALE_MODES,
   MAX_CALORIE_SAFETY_FLOOR,
   MIN_CALORIE_SAFETY_FLOOR,
 } from '@workspace/shared';
@@ -1177,6 +1178,12 @@ const options = {
               maximum: MAX_CALORIE_SAFETY_FLOOR,
               description:
                 'Custom calorie safety floor in kcal/day. Used when calorie_safety_floor_mode is custom.',
+            },
+            chart_scale_mode: {
+              type: 'string',
+              enum: [...CHART_SCALE_MODES],
+              description:
+                'Date-axis layout for report charts. Time spaces points by elapsed time so gaps stay visible; point spaces entries evenly.',
             },
             food_search_all_providers_default: {
               type: 'boolean',

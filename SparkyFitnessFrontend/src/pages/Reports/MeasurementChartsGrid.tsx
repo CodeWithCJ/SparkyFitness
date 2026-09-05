@@ -16,13 +16,18 @@ import { useTranslation } from 'react-i18next';
 import ZoomableChart from '@/components/ZoomableChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { info, error } from '@/utils/logging';
-import { parseISO } from 'date-fns';
 import { formatWeight, formatMeasurement } from '@/utils/numberFormatting';
 import { getPrecision } from '@workspace/shared';
 import {
   calculateSmartYAxisDomain,
   ChartDataPoint,
+  createDateTickFormatter,
+  createTimeSyncMethod,
   getChartConfig,
+  getTimeAwareMaxBarSize,
+  getTimeXAxisProps,
+  prepareTimeChartData,
+  REPORTS_CHART_SYNC_ID,
 } from '@/utils/chartUtils';
 import { CheckInMeasurementsResponse } from '@workspace/shared';
 import type { Widget } from '@/components/widgets/WidgetGrid';
@@ -124,10 +129,11 @@ export function useMeasurementChartWidgets({
     convertMeasurement,
     convertEnergy,
     getEnergyUnitString,
+    chartScaleMode,
   } = usePreferences();
 
   const chartData = React.useMemo(() => {
-    return measurementData.map((d) => ({
+    const rows = measurementData.map((d) => ({
       ...d,
       date: d.entry_date,
       rawWeight: d.weight,
@@ -195,6 +201,7 @@ export function useMeasurementChartWidgets({
         ? Math.round(convertEnergy(Number(d.bmr), 'kcal', energyUnit))
         : 0,
     }));
+    return prepareTimeChartData(rows, chartScaleMode);
   }, [
     measurementData,
     weightUnit,
@@ -203,23 +210,33 @@ export function useMeasurementChartWidgets({
     convertWeight,
     convertMeasurement,
     convertEnergy,
+    chartScaleMode,
   ]);
+
+  const syncMethod = React.useMemo(() => createTimeSyncMethod(), []);
 
   info(loggingLevel, 'MeasurementChartsGrid: Rendering component.');
 
+  // Handles both axis shapes: a day string in point mode, a numeric timestamp
+  // in time mode -- which is also what the tooltip label arrives as.
+  const formatChartDate = React.useMemo(
+    () => createDateTickFormatter(formatDateInUserTimezone),
+    [formatDateInUserTimezone]
+  );
+
   const formatDateForChart = React.useCallback(
-    (date: string) => {
-      if (!date || typeof date !== 'string') {
+    (value: unknown) => {
+      const formatted = formatChartDate(value);
+      if (!formatted) {
         error(
           loggingLevel,
-          `MeasurementChartsGrid: Invalid date string provided to formatDateForChart:`,
-          date
+          `MeasurementChartsGrid: Invalid date value provided to formatDateForChart:`,
+          value
         );
-        return '';
       }
-      return formatDateInUserTimezone(parseISO(date), 'MMM dd');
+      return formatted;
     },
-    [loggingLevel, formatDateInUserTimezone]
+    [loggingLevel, formatChartDate]
   );
 
   const getYAxisDomain = React.useCallback(
@@ -465,16 +482,19 @@ export function useMeasurementChartWidgets({
                     debounce={100}
                   >
                     <LineChart
-                      syncId="nutrition-charts"
+                      syncId={REPORTS_CHART_SYNC_ID}
+                      syncMethod={syncMethod}
                       data={chartData.filter(
                         (d) => d[metric.dataKey as keyof typeof d]
                       )}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
-                        dataKey="date"
+                        {...getTimeXAxisProps({
+                          chartScaleMode,
+                          formatDate: formatDateInUserTimezone,
+                        })}
                         fontSize={10}
-                        tickFormatter={formatDateForChart}
                         tickCount={
                           isMaximized
                             ? Math.max(chartData.length, 10)
@@ -494,9 +514,7 @@ export function useMeasurementChartWidgets({
                         tickFormatter={metric.axisTickFormat}
                       />
                       <Tooltip
-                        labelFormatter={(value) =>
-                          formatDateForChart(value as string)
-                        }
+                        labelFormatter={(value) => formatDateForChart(value)}
                         formatter={(
                           _value: unknown,
                           _name: unknown,
@@ -565,12 +583,16 @@ export function useMeasurementChartWidgets({
                       data={chartData.filter(
                         (d) => d.steps !== undefined && d.steps !== null
                       )}
-                      syncId="nutrition-charts"
+                      syncId={REPORTS_CHART_SYNC_ID}
+                      syncMethod={syncMethod}
+                      maxBarSize={getTimeAwareMaxBarSize(chartScaleMode)}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis
-                        dataKey="date"
-                        tickFormatter={formatDateForChart}
+                        {...getTimeXAxisProps({
+                          chartScaleMode,
+                          formatDate: formatDateInUserTimezone,
+                        })}
                         tickCount={
                           isMaximized
                             ? Math.max(chartData.length, 10)
@@ -589,9 +611,7 @@ export function useMeasurementChartWidgets({
                         tickFormatter={(value) => Math.round(value).toString()}
                       />
                       <Tooltip
-                        labelFormatter={(value) =>
-                          formatDateForChart(value as string)
-                        }
+                        labelFormatter={(value) => formatDateForChart(value)}
                         contentStyle={{
                           backgroundColor: 'hsl(var(--background))',
                         }}
@@ -612,5 +632,15 @@ export function useMeasurementChartWidgets({
     };
 
     return [...metricWidgets, stepsWidget];
-  }, [isMounted, metrics, chartData, t, formatDateForChart, getYAxisDomain]);
+  }, [
+    isMounted,
+    metrics,
+    chartData,
+    t,
+    formatDateForChart,
+    formatDateInUserTimezone,
+    getYAxisDomain,
+    chartScaleMode,
+    syncMethod,
+  ]);
 }
