@@ -15,7 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const MIGRATION_PATH = path.join(
   __dirname,
-  '../db/migrations/20260905150000_add_hydration_nutrition_link.sql'
+  '../db/migrations/20260905150000_add_caffeine_alcohol_water_and_container_links.sql'
 );
 
 function parseSqlCaseArms(): Record<string, number> {
