@@ -325,6 +325,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
     vitaminC: useRef<TextInput>(null),
     caffeineMg: useRef<TextInput>(null),
     waterMl: useRef<TextInput>(null),
+    alcoholG: useRef<TextInput>(null),
   };
 
   const focusField = (field: keyof typeof fieldRefs) => {
@@ -747,6 +748,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
         vitaminC: anchor.vitamin_c,
         caffeineMg: anchor.caffeine_mg,
         waterMl: anchor.water_ml,
+        alcoholG: anchor.alcohol_g,
       };
       NUTRITION_FIELDS.forEach((field) => {
         const anchorValue =
@@ -794,6 +796,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
         vitamin_c: scaledPreciseUpdates.vitaminC,
         caffeine_mg: scaledPreciseUpdates.caffeineMg,
         water_ml: scaledPreciseUpdates.waterMl,
+        alcohol_g: scaledPreciseUpdates.alcoholG,
         source: 'ai_estimate',
         ai_confidence: result.confidence,
       };
@@ -1337,7 +1340,16 @@ const FoodForm: React.FC<FoodFormProps> = ({
                     defaultValue: 'Water Content',
                   }),
                   'waterMl',
-                  'ml'
+                  'ml',
+                  false,
+                  'alcoholG'
+                )}
+              </View>
+              <View className="flex-row gap-3">
+                {renderNumericField(
+                  t('nutrients.alcohol', { defaultValue: 'Alcohol' }),
+                  'alcoholG',
+                  'g'
                 )}
               </View>
               {Array.from(

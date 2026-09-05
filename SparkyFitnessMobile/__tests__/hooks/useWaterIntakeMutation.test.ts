@@ -466,6 +466,66 @@ describe('useWaterIntakeMutation', () => {
       });
     });
 
+    test('#2115: linked container skips the optimistic patch and waits for server truth', async () => {
+      const linkedContainer = {
+        ...primaryContainer,
+        linked_food_id: 'food-1',
+        linked_variant_id: 'variant-1',
+      };
+      mockFetchWaterContainers.mockResolvedValue([linkedContainer]);
+      const summary = makeRawData(500);
+      queryClient.setQueryData(dailySummaryQueryKey(testDate), summary);
+
+      let resolveMutation: (value: {
+        id: string;
+        water_ml: number;
+        entry_date: string;
+      }) => void;
+      mockChangeWaterIntake.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveMutation = resolve;
+          })
+      );
+
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        {
+          wrapper: createQueryWrapper(queryClient),
+        }
+      );
+
+      await waitFor(() => {
+        expect(result.current.isReady).toBe(true);
+      });
+
+      act(() => {
+        result.current.increment();
+      });
+
+      // No optimistic patch: the cache stays at the pre-mutation value, not
+      // 500 + container volume (250) -- a linked drink's real credit is
+      // foodWater(entry) x hydration_factor, a number the client can't predict.
+      await waitFor(() => {
+        expect(mockChangeWaterIntake).toHaveBeenCalled();
+      });
+      const midFlightCached = queryClient.getQueryData<DailySummaryRawData>(
+        dailySummaryQueryKey(testDate)
+      );
+      expect(midFlightCached?.waterIntake.water_ml).toBe(500);
+
+      await act(async () => {
+        resolveMutation!({ id: '1', water_ml: 640, entry_date: testDate });
+      });
+
+      await waitFor(() => {
+        const cached = queryClient.getQueryData<DailySummaryRawData>(
+          dailySummaryQueryKey(testDate)
+        );
+        expect(cached?.waterIntake.water_ml).toBe(640);
+      });
+    });
+
     test('rapid taps: each mutation sends to server', async () => {
       const summary = makeRawData(500);
       queryClient.setQueryData(dailySummaryQueryKey(testDate), summary);

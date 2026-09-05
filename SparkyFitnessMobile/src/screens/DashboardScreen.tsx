@@ -598,6 +598,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           <HydrationGauge
             consumed={summary.waterConsumed}
             goal={summary.waterGoal}
+            fromFoodMl={summary.waterFromFood}
             unit={waterUnit || preferences?.water_display_unit || 'ml'}
             containerVolume={servingVolume}
             onIncrement={isContainersLoaded ? incrementWater : undefined}

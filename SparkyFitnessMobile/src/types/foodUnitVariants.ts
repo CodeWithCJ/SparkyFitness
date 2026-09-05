@@ -26,6 +26,12 @@ export interface FoodUnitVariant {
   iron?: number;
   caffeine_mg?: number;
   water_ml?: number;
+  alcohol_g?: number;
+  // Derivation metadata only (#1925): server computes alcohol_g from this at
+  // save time when alcohol_g itself isn't given directly. A concentration,
+  // not an amount -- unlike alcohol_g it must NOT be scaled by serving-size
+  // ratio, same as glycemic_index below.
+  abv_percent?: number;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number> | null;
   // AI-Assisted Unit Conversions provenance. source defaults to 'manual'

@@ -22,6 +22,10 @@ interface ContainerOption {
 interface HydrationGaugeProps {
   consumed: number; // ml
   goal: number; // ml
+  // #1557, #1629: the portion of `consumed` folded in from logged food's
+  // water content. 0/undefined when the user hasn't opted in, in which case
+  // no caption renders -- a caption on every day would say nothing new.
+  fromFoodMl?: number;
   unit?: string;
   containerVolume?: number; // ml per button press
   onIncrement?: () => void;
@@ -54,6 +58,7 @@ const FILL_HEIGHT = FILL_BOTTOM - FILL_TOP;
 const HydrationGauge: React.FC<HydrationGaugeProps> = ({
   consumed,
   goal,
+  fromFoodMl,
   unit = 'ml',
   containerVolume,
   onIncrement,
@@ -209,6 +214,15 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
               unit: unitLabel,
             })}
           </Text>
+          {!!fromFoodMl && fromFoodMl > 0 && (
+            <Text className="text-xs text-text-muted mt-0.5">
+              {t('dashboard.waterFromFood', {
+                defaultValue: 'Includes {{value}} {{unit}} from food',
+                value: formatUnitVolume(convertFromMl(fromFoodMl, unit), unit),
+                unit: unitLabel,
+              })}
+            </Text>
+          )}
           {showChips && (
             <View className="flex-row flex-wrap justify-center mt-2 gap-1">
               {containers!.map((c) => {

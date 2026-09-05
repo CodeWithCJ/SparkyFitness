@@ -44,6 +44,19 @@ export interface WaterContainer {
   unit: string;
   is_primary: boolean;
   servings_per_container: number;
+  // #2115: container -> food link. hydration_factor scales ONLY the water
+  // credit; calories/macros/caffeine/alcohol from the linked food always
+  // count in full.
+  hydration_factor?: number;
+  linked_food_id?: string | null;
+  linked_variant_id?: string | null;
+  linked_meal_type_id?: string | null;
+  linked_food_name?: string | null;
+  linked_variant_serving_size?: number | string | null;
+  linked_variant_serving_unit?: string | null;
+  linked_meal_type_name?: string | null;
+  is_quick_add?: boolean;
+  sort_order?: number;
 }
 
 export interface WaterIntakeResponse {

@@ -5,6 +5,7 @@ import {
   buildDisplayFormState,
   buildPreciseNumericValuesFromVariant,
   getScaledVariantNumericValue,
+  scaleCompatibleDraftVariant,
   NUMERIC_FOOD_FORM_FIELDS,
   NUTRITION_FIELDS,
 } from '../../src/utils/foodFormState';
@@ -40,6 +41,7 @@ const baseForm: FoodFormData = {
   vitaminC: '',
   caffeineMg: '',
   waterMl: '',
+  alcoholG: '',
 };
 
 function makeVariant(
@@ -54,6 +56,7 @@ function makeVariant(
     fat: 0,
     caffeine_mg: 63,
     water_ml: 240,
+    alcohol_g: 12,
     ...overrides,
   };
 }
@@ -135,5 +138,58 @@ describe('foodFormState — waterMl', () => {
   it('buildDisplayFormState formats an initial waterMl value', () => {
     const display = buildDisplayFormState({ waterMl: '300' });
     expect(display.waterMl).toBe('300');
+  });
+});
+
+// Phase 7 mobile parity (#1925): alcohol_g is the third nutrient field added
+// since the form was hand-laid-out. Same coverage shape as caffeineMg/waterMl.
+describe('foodFormState — alcoholG', () => {
+  it('is part of NUMERIC_FOOD_FORM_FIELDS and NUTRITION_FIELDS', () => {
+    expect(NUMERIC_FOOD_FORM_FIELDS).toContain('alcoholG');
+    expect(NUTRITION_FIELDS).toContain('alcoholG');
+  });
+
+  it('getScaledVariantNumericValue reads alcohol_g off the variant', () => {
+    expect(getScaledVariantNumericValue('alcoholG', makeVariant())).toBe(12);
+  });
+
+  it('getScaledVariantNumericValue defaults to 0 when the variant has none', () => {
+    const variant = makeVariant();
+    delete variant.alcohol_g;
+    expect(getScaledVariantNumericValue('alcoholG', variant)).toBe(0);
+  });
+
+  it('applyVariantToFormState formats alcohol_g into the form field', () => {
+    const next = applyVariantToFormState(baseForm, makeVariant());
+    expect(next.alcoholG).toBe('12');
+  });
+
+  it('buildPreciseNumericValuesFromVariant carries alcohol_g through as a number', () => {
+    const precise = buildPreciseNumericValuesFromVariant(makeVariant());
+    expect(precise.alcoholG).toBe(12);
+  });
+
+  it('buildVariantFromFormData round-trips alcoholG back to alcohol_g', () => {
+    const formState = applyVariantToFormState(baseForm, makeVariant());
+    const variant = buildVariantFromFormData(formState);
+    expect(variant.alcohol_g).toBe(12);
+  });
+
+  it('buildDisplayFormState formats an initial alcoholG value', () => {
+    const display = buildDisplayFormState({ alcoholG: '18' });
+    expect(display.alcoholG).toBe('18');
+  });
+});
+
+// #1925: abv_percent is a concentration, not an amount -- unlike alcohol_g it
+// must NOT scale with serving-size ratio changes (same rule as glycemic_index).
+describe('foodFormState — abv_percent is not ratio-scaled', () => {
+  it('scaleCompatibleDraftVariant passes abv_percent through unscaled', () => {
+    const variant = makeVariant({ serving_size: 100, abv_percent: 5 });
+    const scaled = scaleCompatibleDraftVariant(variant, 350);
+    expect(scaled.abv_percent).toBe(5);
+    // Sanity check the ratio really did apply to alcohol_g, so this isn't
+    // vacuously true because nothing scaled.
+    expect(scaled.alcohol_g).toBeCloseTo(12 * 3.5);
   });
 });

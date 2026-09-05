@@ -351,6 +351,7 @@ export function CreateFoodMode({
       vitamin_c: parseOptional(data.vitaminC),
       caffeine_mg: parseOptional(data.caffeineMg),
       water_ml: parseOptional(data.waterMl),
+      alcohol_g: parseOptional(data.alcoholG),
       is_custom: true,
       is_quick_food: isLogEntryMode ? !saveToDatabase : false,
       is_default: true,
@@ -396,6 +397,7 @@ export function CreateFoodMode({
             vitamin_c: groupNutrition.vitamin_c,
             caffeine_mg: groupNutrition.caffeine_mg,
             water_ml: groupNutrition.water_ml,
+            alcohol_g: groupNutrition.alcohol_g,
           })
         )
       ).catch(() => {

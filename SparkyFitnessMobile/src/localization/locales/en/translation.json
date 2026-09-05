@@ -694,7 +694,8 @@
     "removeWater": "Remove water",
     "addWater": "Add water",
     "selectContainer": "Select {{container}}",
-    "perContainer": "{{value}} {{unit}} per container"
+    "perContainer": "{{value}} {{unit}} per container",
+    "waterFromFood": "Includes {{value}} {{unit}} from food"
   },
   "syncScreen": {
     "healthConnectSettings": "Health Connect settings",
@@ -2322,6 +2323,7 @@
     "iron": "Iron",
     "caffeine": "Caffeine",
     "waterContent": "Water Content",
+    "alcohol": "Alcohol",
     "glycemicIndex": "Glycemic Index",
     "totalCarbs": "Total Carbs",
     "netCarbs": "Net Carbs",

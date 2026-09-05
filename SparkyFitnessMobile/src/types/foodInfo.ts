@@ -154,6 +154,7 @@ export interface FoodInfoItem {
   vitaminC?: number;
   caffeineMg?: number;
   waterMl?: number;
+  alcoholG?: number;
   customNutrients?: Record<string, string | number> | null;
   variantId?: string;
   externalVariants?: ExternalFoodVariant[];

@@ -92,6 +92,11 @@ export const NUTRIENT_META: Record<string, NutrientMeta> = {
     defaultLabel: 'Water Content',
     unit: 'ml',
   },
+  alcohol_g: {
+    labelKey: 'nutrients.alcohol',
+    defaultLabel: 'Alcohol',
+    unit: 'g',
+  },
   glycemic_index: {
     labelKey: 'nutrients.glycemicIndex',
     defaultLabel: 'Glycemic Index',
@@ -158,6 +163,8 @@ export function getNutrientLabel(
       return t('nutrients.caffeine', { defaultValue: 'Caffeine' });
     case 'water_ml':
       return t('nutrients.waterContent', { defaultValue: 'Water Content' });
+    case 'alcohol_g':
+      return t('nutrients.alcohol', { defaultValue: 'Alcohol' });
     case 'glycemic_index':
       return t('nutrients.glycemicIndex', { defaultValue: 'Glycemic Index' });
     default:

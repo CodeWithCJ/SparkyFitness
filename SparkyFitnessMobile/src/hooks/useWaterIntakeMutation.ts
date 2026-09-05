@@ -71,6 +71,12 @@ export function useWaterIntakeMutation({
     onMutate: async (changeDrinks: number) => {
       if (!activeContainer) return;
 
+      // #2115: a linked container's water credit is foodWater(entry) x
+      // hydration_factor, not the container volume -- a different number the
+      // optimistic patch cannot predict. Skip it and let onSuccess/onSettled
+      // apply the server's real total instead of flashing the wrong one.
+      if (activeContainer.linked_food_id) return;
+
       await queryClient.cancelQueries({ queryKey: dailySummaryQueryKey(date) });
 
       queryClient.setQueryData<DailySummaryRawData>(
