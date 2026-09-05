@@ -1532,6 +1532,8 @@
       "saveWaterDisplayUnit": "Save Water Display Unit",
       "addExerciseWater": "Add exercise water loss to daily goal",
       "addExerciseWaterHint": "Increases your daily water goal by the estimated sweat loss from activities.",
+      "addFoodWater": "Count water from food toward your intake",
+      "addFoodWaterHint": "Folds a logged food's water content into your daily water total, unless it's already counted by a linked container.",
       "liters": "Liters"
     },
     "nutrientDisplay": {
@@ -2959,7 +2961,8 @@
       "deletedSuccess": "Drink removed",
       "deletedError": "Failed to remove drink",
       "editTime": "Click to change time",
-      "noManualToRemove": "Only manually logged water can be removed here"
+      "noManualToRemove": "Only manually logged water can be removed here",
+      "fromFood": "Includes {{volume}} {{unit}} from food"
     },
     "copyFoodEntryDialog": {
       "title": "Copy Food Entries",

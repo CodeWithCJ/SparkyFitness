@@ -96,11 +96,26 @@ export const supplementTotalsSchema = z.object({
 
 export type SupplementTotals = z.infer<typeof supplementTotalsSchema>;
 
+// Breakdown of waterIntake's components (#1557, #1629): water_ml is the
+// combined total (same value as waterIntake); manual_ml/ledger_ml/food_ml
+// let a client explain the number rather than just showing it. Optional
+// because a caller that skips checkin data (includeCheckin=false) gets no
+// water data at all, not a misleading all-zero breakdown.
+export const waterIntakeBreakdownSchema = z.object({
+  water_ml: z.number(),
+  manual_ml: z.number(),
+  ledger_ml: z.number(),
+  food_ml: z.number(),
+});
+
+export type WaterIntakeBreakdown = z.infer<typeof waterIntakeBreakdownSchema>;
+
 export const dailySummaryResponseSchema = z.object({
   goals: dailyGoalsResponseSchema,
   foodEntries: z.array(foodEntryResponseSchema),
   exerciseSessions: z.array(exerciseSessionResponseSchema),
   waterIntake: z.number(),
+  waterIntakeBreakdown: waterIntakeBreakdownSchema.nullable().optional(),
   stepCalories: z.number(),
   calorieBalance: calorieBalanceSchema,
   adjustedGoals: adjustedGoalsSchema.nullable(),

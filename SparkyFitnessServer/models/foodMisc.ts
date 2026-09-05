@@ -390,6 +390,60 @@ async function getDailyNutritionSummariesByDates(
   }
 }
 
+// The double-counting rule (#1557/#2115): a food_entries row contributes
+// food-derived water iff no water_intake_entries row references it via
+// food_entry_id -- that link means the drink was already logged (and
+// counted) as a ledger row by the container->food feature. water_ml on the
+// entry wins over the volume fallback; sf_volume_unit_to_ml returns NULL for
+// non-volume units (and for the food vocabulary's weight 'oz'), which
+// COALESCE then floors to 0.
+const FOOD_DERIVED_WATER_EXPR = `COALESCE(
+  NULLIF(fe.water_ml, 0) * fe.quantity / NULLIF(fe.serving_size, 0),
+  fe.quantity * sf_volume_unit_to_ml(fe.unit),
+  0
+)`;
+
+async function getFoodDerivedWaterMlForDate(userId: string, date: string) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT COALESCE(SUM(${FOOD_DERIVED_WATER_EXPR}), 0) AS food_ml
+       FROM food_entries fe
+       WHERE fe.user_id = $1 AND fe.entry_date = $2
+         AND NOT EXISTS (
+           SELECT 1 FROM water_intake_entries wie WHERE wie.food_entry_id = fe.id
+         )`,
+      [userId, date]
+    );
+    return Number(result.rows[0]?.food_ml || 0);
+  } finally {
+    client.release();
+  }
+}
+
+async function getFoodDerivedWaterMlByDateRange(
+  userId: string,
+  startDate: string,
+  endDate: string
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT fe.entry_date, COALESCE(SUM(${FOOD_DERIVED_WATER_EXPR}), 0) AS food_ml
+       FROM food_entries fe
+       WHERE fe.user_id = $1 AND fe.entry_date BETWEEN $2 AND $3
+         AND NOT EXISTS (
+           SELECT 1 FROM water_intake_entries wie WHERE wie.food_entry_id = fe.id
+         )
+       GROUP BY fe.entry_date`,
+      [userId, startDate, endDate]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 async function getFoodsNeedingReview(userId: string) {
   const client = await getClient(userId); // User-specific operation
   try {
@@ -582,6 +636,8 @@ export { getDailySupplementTotals };
 export { getFoodsNeedingReview };
 export { updateFoodEntriesSnapshot };
 export { clearUserIgnoredUpdate };
+export { getFoodDerivedWaterMlForDate };
+export { getFoodDerivedWaterMlByDateRange };
 export default {
   getFoodDataProviderById,
   getRecentFoods,
@@ -595,4 +651,6 @@ export default {
   getFoodsNeedingReview,
   updateFoodEntriesSnapshot,
   clearUserIgnoredUpdate,
+  getFoodDerivedWaterMlForDate,
+  getFoodDerivedWaterMlByDateRange,
 };

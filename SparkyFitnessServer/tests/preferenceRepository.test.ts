@@ -12,6 +12,8 @@ const VISION_AI_SERVICE_ID_PARAM = 40;
 const VISION_AI_SERVICE_ID_GUARD_PARAM = 41;
 // $47 in both the update and the upsert.
 const ALL_PROVIDERS_DEFAULT_PARAM = 46;
+// $48 in both the update and the upsert.
+const FOOD_WATER_TO_INTAKE_PARAM = 47;
 // $8 in the update statement (the upsert numbers it $9).
 const FOOD_DATA_PROVIDER_ID_PARAM = 7;
 
@@ -230,5 +232,56 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
     expect(sql).toContain(
       'calorie_safety_floor_value = COALESCE($46, user_preferences.calorie_safety_floor_value)'
     );
+  });
+
+  it('writes add_food_water_to_intake at $48 on the UPDATE branch', async () => {
+    mockClient.query.mockResolvedValueOnce({ rows: [{ user_id: 'user-1' }] });
+
+    await preferenceRepository.updateUserPreferences('user-1', {
+      add_food_water_to_intake: true,
+    });
+
+    const [sql, params] = mockClient.query.mock.calls[0];
+    expect(sql).toContain(
+      'add_food_water_to_intake = COALESCE($48, add_food_water_to_intake)'
+    );
+    expect(params[FOOD_WATER_TO_INTAKE_PARAM]).toBe(true);
+  });
+
+  it('round-trips add_food_water_to_intake through upsert and load', async () => {
+    const row = { user_id: 'user-1', add_food_water_to_intake: true };
+    mockClient.query.mockResolvedValueOnce({ rows: [row] });
+    mockClient.query.mockResolvedValueOnce({ rows: [row] });
+
+    await preferenceRepository.upsertUserPreferences({
+      user_id: 'user-1',
+      add_food_water_to_intake: true,
+    });
+    const result = await preferenceRepository.getUserPreferences('user-1');
+
+    expect(result.add_food_water_to_intake).toBe(true);
+    const [sql, params] = mockClient.query.mock.calls[0];
+    expect(sql).toContain('add_food_water_to_intake');
+    expect(params[FOOD_WATER_TO_INTAKE_PARAM]).toBe(true);
+  });
+
+  it('leaves a stored add_food_water_to_intake alone on an upsert that omits it', async () => {
+    // Same shape as food_search_all_providers_default: the VALUES clause
+    // defaults the column to false for a fresh insert, so the conflict branch
+    // must read $48 directly, not EXCLUDED, or an omitting upsert would
+    // clobber a stored true back to false.
+    mockClient.query.mockResolvedValueOnce({ rows: [{ user_id: 'user-1' }] });
+
+    await preferenceRepository.upsertUserPreferences({
+      user_id: 'user-1',
+      show_net_carbs: true,
+    });
+
+    const [sql, params] = mockClient.query.mock.calls[0];
+    expect(sql).toContain(
+      'add_food_water_to_intake = COALESCE($48, user_preferences.add_food_water_to_intake)'
+    );
+    expect(sql).not.toContain('EXCLUDED.add_food_water_to_intake');
+    expect(params[FOOD_WATER_TO_INTAKE_PARAM]).toBeUndefined();
   });
 });

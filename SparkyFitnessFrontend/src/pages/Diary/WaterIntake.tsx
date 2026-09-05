@@ -24,6 +24,7 @@ import {
   useWaterGoalQuery,
   useWaterIntakeQuery,
   useManualWaterIntakeQuery,
+  useFoodWaterIntakeQuery,
   useUpdateWaterIntakeMutation,
   useWaterIntakeLogQuery,
   useDeleteWaterIntakeLogMutation,
@@ -46,6 +47,10 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   // Only manually logged water can be removed here; provider-synced water is
   // owned by its provider and would just reappear on the next sync.
   const { data: manualWaterMl = 0 } = useManualWaterIntakeQuery(
+    selectedDate,
+    userId
+  );
+  const { data: foodWaterMl = 0 } = useFoodWaterIntakeQuery(
     selectedDate,
     userId
   );
@@ -221,6 +226,20 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
           <div className="text-gray-500 text-xs">
             {currentContainer?.unit || water_display_unit}
           </div>
+          {foodWaterMl > 0 && (
+            <div className="text-muted-foreground text-xs mt-0.5">
+              {(() => {
+                const activeUnit = currentContainer?.unit || water_display_unit;
+                const decimals =
+                  activeUnit === 'oz' ? 1 : activeUnit === 'liter' ? 2 : 0;
+                const val = convertMlToSelectedUnit(foodWaterMl, activeUnit);
+                return t('foodDiary.waterIntake.fromFood', {
+                  volume: parseFloat(val.toFixed(decimals)),
+                  unit: activeUnit,
+                });
+              })()}
+            </div>
+          )}
         </div>
 
         {/* Water Bottle Visualization - takes up most space */}

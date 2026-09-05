@@ -33,10 +33,16 @@ export const useWaterGoalQuery = (date: string, userId?: string) => {
   });
 };
 
-/** Day totals split by origin: `manualMl` is the part the "-" control can remove. */
+/**
+ * Day totals split by origin: `manualMl` is the part the "-" control can
+ * remove. `foodMl` is the food-derived portion folded in when the user has
+ * opted in to add_food_water_to_intake (#1557, #1629) -- 0 for an opted-out
+ * user or a server that predates the breakdown.
+ */
 interface WaterIntakeTotals {
   totalMl: number;
   manualMl: number;
+  foodMl: number;
 }
 
 const fetchWaterIntakeTotals = async (
@@ -53,7 +59,7 @@ const fetchWaterIntakeTotals = async (
         if (isManualSource(record.source)) acc.manualMl += ml;
         return acc;
       },
-      { totalMl: 0, manualMl: 0 }
+      { totalMl: 0, manualMl: 0, foodMl: 0 }
     );
   }
   if (waterData && waterData.water_ml !== undefined) {
@@ -67,9 +73,10 @@ const fetchWaterIntakeTotals = async (
         waterData.manual_ml !== undefined
           ? Number(waterData.manual_ml) || 0
           : totalMl,
+      foodMl: Number(waterData.food_ml) || 0,
     };
   }
-  return { totalMl: 0, manualMl: 0 };
+  return { totalMl: 0, manualMl: 0, foodMl: 0 };
 };
 
 /**
@@ -99,6 +106,15 @@ export const useManualWaterIntakeQuery = (date: string, userId?: string) => {
   return useQuery({
     ...waterIntakeTotalsOptions(date, userId),
     select: (totals: WaterIntakeTotals) => totals.manualMl,
+  });
+};
+
+/** Food-derived portion of the day's water total (#1557, #1629). 0 when the
+ * user hasn't opted in to add_food_water_to_intake. */
+export const useFoodWaterIntakeQuery = (date: string, userId?: string) => {
+  return useQuery({
+    ...waterIntakeTotalsOptions(date, userId),
+    select: (totals: WaterIntakeTotals) => totals.foodMl,
   });
 };
 

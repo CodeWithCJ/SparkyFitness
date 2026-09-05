@@ -34,6 +34,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         first_day_of_week = COALESCE($29, first_day_of_week),
         barcode_fallback_open_food_facts = COALESCE($30, barcode_fallback_open_food_facts),
         food_search_all_providers_default = COALESCE($47, food_search_all_providers_default),
+        add_food_water_to_intake = COALESCE($48, add_food_water_to_intake),
         show_net_carbs = COALESCE($31, show_net_carbs),
         ai_assisted_conversions = COALESCE($32, ai_assisted_conversions),
         goal_mode = COALESCE($33, goal_mode),
@@ -99,6 +100,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         preferenceData.calorie_safety_floor_mode,
         preferenceData.calorie_safety_floor_value,
         preferenceData.food_search_all_providers_default,
+        preferenceData.add_food_water_to_intake,
       ]
     );
     return result.rows[0];
@@ -188,6 +190,7 @@ async function upsertUserPreferences(preferenceData: any) {
        added_sugar_algorithm,
        calorie_safety_floor_mode,
        calorie_safety_floor_value,
+       add_food_water_to_intake,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($44, 'HH:mm'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -216,6 +219,7 @@ async function upsertUserPreferences(preferenceData: any) {
        COALESCE($43, 'WHO_IDEAL'),
        COALESCE($45, 'standard'),
        COALESCE($46, 1200),
+       COALESCE($48, false),
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -265,6 +269,9 @@ async function upsertUserPreferences(preferenceData: any) {
        -- omits the field would clobber a stored true back to false. Same shape
        -- as time_format below.
        food_search_all_providers_default = COALESCE($47, user_preferences.food_search_all_providers_default),
+       -- Same reasoning as food_search_all_providers_default above: read $48
+       -- directly, not EXCLUDED, or an omitting upsert clobbers a stored true.
+       add_food_water_to_intake = COALESCE($48, user_preferences.add_food_water_to_intake),
        time_format = COALESCE($44, user_preferences.time_format),
        updated_at = now()
      RETURNING *`,
@@ -316,6 +323,7 @@ async function upsertUserPreferences(preferenceData: any) {
         preferenceData.calorie_safety_floor_mode,
         preferenceData.calorie_safety_floor_value,
         preferenceData.food_search_all_providers_default,
+        preferenceData.add_food_water_to_intake,
       ]
     );
     return result.rows[0];

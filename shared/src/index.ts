@@ -17,6 +17,7 @@ export * from "./schemas/api/FoodPhotoLog.api.zod.ts";
 export * from "./schemas/api/Pagination.api.zod.ts";
 export * from "./schemas/api/SleepScience.api.zod.ts";
 export * from "./schemas/api/WorkoutPresets.api.zod.ts";
+export * from "./schemas/api/WaterIntake.api.zod.ts";
 export * from "./schemas/database/Account.zod.ts";
 export * from "./schemas/database/AdminActivityLogs.zod.ts";
 export * from "./schemas/database/AiServiceSettings.zod.ts";

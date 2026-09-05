@@ -14,6 +14,7 @@ import userRepository from '../models/userRepository.js';
 import sleepRepository from '../models/sleepRepository.js';
 import exerciseEntryDb from '../models/exerciseEntry.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
+import hydrationTotalsService from './hydrationTotalsService.js';
 import {
   resolveHandler,
   customMeasurementHandler,
@@ -478,12 +479,11 @@ async function getWaterIntake(
   date: string
 ) {
   try {
-    const waterData = await measurementRepository.getWaterIntakeByDate(
+    return await hydrationTotalsService.resolveWaterTotalsForDate(
       targetUserId,
+      authenticatedUserId,
       date
     );
-    // waterData will be { water_ml: SUM(...) } from the new repository logic
-    return waterData || { water_ml: 0 };
   } catch (error) {
     log(
       'error',

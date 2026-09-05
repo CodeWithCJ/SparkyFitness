@@ -210,3 +210,22 @@ SET visible_nutrients = (
 WHERE p.view_group = 'goal'
   AND jsonb_typeof(p.visible_nutrients) = 'array'
   AND p.visible_nutrients @> to_jsonb(ARRAY['water_ml'::text]);
+
+
+-- =============================================================================
+-- Phase 4: add_food_water_to_intake preference (#1557, #1629)
+-- =============================================================================
+--
+-- Opt-in gate for folding food-derived water into the daily water total.
+-- Default FALSE so no existing user's numbers change on upgrade -- that is
+-- the entire compat story for this phase.
+--
+-- Deliberately not named like add_exercise_water_to_goal, which adjusts the
+-- GOAL side of the ratio; this adjusts the INTAKE side -- same domain,
+-- opposite side.
+
+ALTER TABLE public.user_preferences
+  ADD COLUMN IF NOT EXISTS add_food_water_to_intake boolean NOT NULL DEFAULT false;
+
+COMMENT ON COLUMN public.user_preferences.add_food_water_to_intake IS
+  'When true, water_ml on logged food entries (explicit column, or the volume fallback via sf_volume_unit_to_ml) is folded into the daily water total alongside water_intake_entries. A food entry already represented by a linked water_intake_entries row (food_entry_id) is excluded, so nothing double-counts. Default false: opt-in only, so no existing user sees a change on upgrade.';

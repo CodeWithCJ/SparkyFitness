@@ -1,6 +1,8 @@
 import type { PoolClient } from 'pg';
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
+import foodRepository from './foodMisc.js';
+import preferenceRepository from './preferenceRepository.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
 import {
@@ -1998,7 +2000,55 @@ async function getWaterTotalsByDateRange(
     query += ' GROUP BY entry_date ORDER BY entry_date ASC';
 
     const result = await client.query(query, queryParams);
-    return result.rows;
+    const rows = result.rows;
+
+    // Same opt-in gate as hydrationTotalsService.resolveWaterTotalsForDate
+    // (#1557, #1629), applied per-date here so the chatbot's water history
+    // and reports.trends agree with the Diary for an opted-in user.
+    const preferences = await preferenceRepository.getUserPreferences(userId);
+    if (!preferences?.add_food_water_to_intake || !startDate || !endDate) {
+      return rows;
+    }
+
+    const foodRows: Array<{
+      entry_date: string | Date;
+      food_ml: string | number;
+    }> = await foodRepository.getFoodDerivedWaterMlByDateRange(
+      userId,
+      startDate,
+      endDate
+    );
+    // entry_date rows to a plain YYYY-MM-DD key regardless of whether pg
+    // handed back a Date (raw column) or a string (TO_CHAR above).
+    const toDateKey = (value: string | Date): string =>
+      typeof value === 'string'
+        ? value
+        : new Date(value).toISOString().slice(0, 10);
+
+    const foodMlByDate = new Map<string, number>(
+      foodRows.map((row) => [
+        toDateKey(row.entry_date),
+        Number(row.food_ml) || 0,
+      ])
+    );
+
+    const rowsTyped: Array<{
+      entry_date: string | Date;
+      total_ml: string | number;
+    }> = rows;
+    const mergedByDate = new Map<string, number>(
+      rowsTyped.map((row) => [
+        toDateKey(row.entry_date),
+        Number(row.total_ml) || 0,
+      ])
+    );
+    for (const [entryDate, foodMl] of foodMlByDate) {
+      mergedByDate.set(entryDate, (mergedByDate.get(entryDate) || 0) + foodMl);
+    }
+
+    return Array.from(mergedByDate.entries())
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([entry_date, total_ml]) => ({ entry_date, total_ml }));
   } finally {
     client.release();
   }

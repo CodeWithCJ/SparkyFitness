@@ -5,6 +5,7 @@ import { useWaterContainer } from '@/contexts/WaterContainerContext';
 import {
   useWaterIntakeQuery,
   useManualWaterIntakeQuery,
+  useFoodWaterIntakeQuery,
   useWaterIntakeLogQuery,
   useUpdateWaterIntakeMutation,
 } from '@/hooks/Diary/useWaterIntake';
@@ -22,6 +23,9 @@ jest.mock('react-i18next', () => ({
       }
       if (key === 'foodDiary.waterIntake.title') {
         return 'Water Intake';
+      }
+      if (key === 'foodDiary.waterIntake.fromFood') {
+        return `Includes ${options?.['volume']} ${options?.['unit']} from food`;
       }
       return key;
     },
@@ -64,6 +68,7 @@ jest.mock('@/hooks/Diary/useWaterIntake', () => ({
   useWaterGoalQuery: jest.fn().mockReturnValue({ data: 2000 }),
   useWaterIntakeQuery: jest.fn().mockReturnValue({ data: 500 }),
   useManualWaterIntakeQuery: jest.fn().mockReturnValue({ data: 500 }),
+  useFoodWaterIntakeQuery: jest.fn().mockReturnValue({ data: 0 }),
   useUpdateWaterIntakeMutation: jest.fn(),
   useWaterIntakeLogQuery: jest.fn().mockReturnValue({ data: [] }),
   useDeleteWaterIntakeLogMutation: jest.fn().mockReturnValue({
@@ -115,6 +120,7 @@ describe('WaterIntake Component', () => {
     jest.clearAllMocks();
     (useWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 500 });
     (useManualWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 500 });
+    (useFoodWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 0 });
     (useWaterContainer as jest.Mock).mockReturnValue({
       activeContainer: mockContainers[0],
       containers: mockContainers,
@@ -254,5 +260,23 @@ describe('WaterIntake Component', () => {
 
     // One trash icon: the manual row's. The provider row renders none.
     expect(screen.getAllByTestId('trash-icon')).toHaveLength(1);
+  });
+
+  // #1557, #1629: when the user has opted in to counting food water, the
+  // gauge shows a muted line explaining part of the total came from food.
+  it('shows the food-derived water line when food water is present', () => {
+    (useFoodWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 300 });
+
+    renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
+
+    expect(screen.getByText('Includes 300 ml from food')).toBeInTheDocument();
+  });
+
+  it('hides the food-derived water line when the user has not opted in', () => {
+    (useFoodWaterIntakeQuery as jest.Mock).mockReturnValue({ data: 0 });
+
+    renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
+
+    expect(screen.queryByText(/from food/i)).not.toBeInTheDocument();
   });
 });

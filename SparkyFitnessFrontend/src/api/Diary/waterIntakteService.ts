@@ -1,38 +1,16 @@
 import { apiCall } from '@/api/api';
+import type {
+  UpsertWaterIntakeBody,
+  WaterIntakeDayTotals,
+  WaterIntakeLogEntry,
+} from '@workspace/shared';
 
-export interface UpdateWaterPayload {
-  user_id: string;
-  entry_date: string;
-  change_drinks: number;
-  container_id: number | null;
-}
-
-export interface WaterIntakeLogEntry {
-  id: string;
-  user_id: string;
-  entry_date: string;
-  water_ml: number;
-  container_id: number | null;
-  container_name: string | null;
-  source: string;
-  created_at: string;
-  logged_at: string;
-}
+export type { WaterIntakeDayTotals, WaterIntakeLogEntry };
+export type UpdateWaterPayload = UpsertWaterIntakeBody;
 
 export const getWaterGoalForDate = async (date: string, userId: string) => {
   return apiCall(`/goals/for-date?date=${date}&userId=${userId}&adjust=true`);
 };
-
-/**
- * Day totals for water. The endpoint returns a single aggregated object;
- * `manual_ml` is the manually logged subtotal (absent on older servers) and the
- * array form is a legacy per-source shape still tolerated by callers.
- */
-export interface WaterIntakeDayTotals {
-  water_ml: number | string;
-  manual_ml?: number | string;
-  source?: string;
-}
 
 export const getWaterIntakeForDate = async (
   date: string,

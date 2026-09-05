@@ -105,6 +105,7 @@ interface PreferencesContextType {
   nutrientDisplayPreferences: NutrientPreference[];
   water_display_unit: WaterDisplayUnit;
   addExerciseWaterToGoal: boolean;
+  addFoodWaterToIntake: boolean;
   language: string;
   bmrAlgorithm: BmrAlgorithm;
   bodyFatAlgorithm: BodyFatAlgorithm;
@@ -154,6 +155,7 @@ interface PreferencesContextType {
   loadNutrientDisplayPreferences: () => Promise<void>;
   setWaterDisplayUnit: (unit: WaterDisplayUnit) => void;
   setAddExerciseWaterToGoal: (enabled: boolean) => void;
+  setAddFoodWaterToIntake: (enabled: boolean) => void;
   setLanguage: (language: string) => void;
   setBmrAlgorithm: (algorithm: BmrAlgorithm) => void;
   setBodyFatAlgorithm: (algorithm: BodyFatAlgorithm) => void;
@@ -212,6 +214,7 @@ export interface DefaultPreferences {
   item_display_limit: number;
   water_display_unit: WaterDisplayUnit;
   add_exercise_water_to_goal: boolean;
+  add_food_water_to_intake: boolean;
   language: string;
   calorie_goal_adjustment_mode: calorieGoalAdjustmentMode;
   energy_unit: EnergyUnit;
@@ -321,6 +324,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     useState<boolean>(false);
   const [showNetCarbs, setShowNetCarbsState] = useState<boolean>(false);
   const [addExerciseWaterToGoal, setAddExerciseWaterToGoalState] =
+    useState<boolean>(false);
+  const [addFoodWaterToIntake, setAddFoodWaterToIntakeState] =
     useState<boolean>(false);
   // AI-Assisted Unit Conversions: per-user toggle for the diary/food-form AI
   // estimate path. Default true matches the server migration (DEFAULT TRUE).
@@ -723,6 +728,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setAddExerciseWaterToGoalState(
           data.add_exercise_water_to_goal ?? false
         );
+        setAddFoodWaterToIntakeState(data.add_food_water_to_intake ?? false);
         setAiAssistedConversionsState(data.ai_assisted_conversions ?? true);
         setFatBreakdownAlgorithmState(
           data.fat_breakdown_algorithm || FatBreakdownAlgorithm.AHA_GUIDELINES
@@ -908,6 +914,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         show_net_carbs: newPrefs?.showNetCarbs ?? showNetCarbs,
         add_exercise_water_to_goal:
           newPrefs?.addExerciseWaterToGoal ?? addExerciseWaterToGoal,
+        add_food_water_to_intake:
+          newPrefs?.addFoodWaterToIntake ?? addFoodWaterToIntake,
         ai_assisted_conversions:
           newPrefs?.aiAssistedConversions ?? aiAssistedConversions,
         fat_breakdown_algorithm:
@@ -967,6 +975,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       itemDisplayLimit,
       waterDisplayUnit,
       addExerciseWaterToGoal,
+      addFoodWaterToIntake,
       language,
       calorieGoalAdjustmentMode,
       exerciseCaloriePercentage,
@@ -1228,6 +1237,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       nutrientDisplayPreferences,
       water_display_unit: waterDisplayUnit,
       addExerciseWaterToGoal,
+      addFoodWaterToIntake,
       language,
       bmrAlgorithm,
       bodyFatAlgorithm,
@@ -1274,6 +1284,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       loadNutrientDisplayPreferences,
       setWaterDisplayUnit: setWaterDisplayUnitState,
       setAddExerciseWaterToGoal: setAddExerciseWaterToGoalState,
+      setAddFoodWaterToIntake: setAddFoodWaterToIntakeState,
       setLanguage: setLanguageState,
       setBmrAlgorithm: setBmrAlgorithmState,
       setBodyFatAlgorithm: setBodyFatAlgorithmState,
@@ -1324,6 +1335,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       nutrientDisplayPreferences,
       waterDisplayUnit,
       addExerciseWaterToGoal,
+      addFoodWaterToIntake,
       language,
       bmrAlgorithm,
       bodyFatAlgorithm,
