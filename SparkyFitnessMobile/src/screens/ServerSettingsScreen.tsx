@@ -29,7 +29,10 @@ import {
   type ServerConfig,
 } from '../services/storage';
 import { addLog } from '../services/LogService';
-import { notifyNoConfigs } from '../services/api/authService';
+import {
+  notifyIdentityChanged,
+  notifyNoConfigs,
+} from '../services/api/authService';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useServerConfigs, useServerConnection } from '../hooks';
@@ -95,7 +98,7 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({
     }
     try {
       await setActiveServerConfig(configId);
-      queryClient.clear();
+      notifyIdentityChanged();
       await refetchServerConfigs();
       refetchConnection();
       Toast.show({

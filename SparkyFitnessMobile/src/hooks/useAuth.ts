@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   setOnSessionExpired,
   setOnNoConfigs,
+  setOnIdentityChanged,
   suppressSessionExpired,
 } from '../services/api/authService';
 import { clearServerConfigCache } from '../services/storage';
@@ -10,6 +12,7 @@ import type { ServerConfig } from '../services/storage';
 export type AuthModalReason = 'session_expired' | 'no_configs' | null;
 
 export function useAuth() {
+  const queryClient = useQueryClient();
   const [authModalReason, setAuthModalReason] = useState<AuthModalReason>(null);
   const [expiredConfigId, setExpiredConfigId] = useState<string | null>(null);
   const [switchToApiKeyConfig, setSwitchToApiKeyConfig] =
@@ -31,7 +34,12 @@ export function useAuth() {
       setSwitchToApiKeyConfig(null);
       setAuthModalReason('no_configs');
     });
-  }, []);
+    // Everything cached under the previous account has to go, or the new one
+    // reads it until each query happens to refetch.
+    setOnIdentityChanged(() => {
+      queryClient.clear();
+    });
+  }, [queryClient]);
 
   const dismissModal = useCallback(() => {
     setAuthModalReason(null);

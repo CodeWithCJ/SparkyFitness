@@ -78,6 +78,26 @@ export const notifyNoConfigs = (): void => {
   onNoConfigsCallback?.();
 };
 
+let onIdentityChangedCallback: (() => void) | null = null;
+
+export const setOnIdentityChanged = (cb: () => void): void => {
+  onIdentityChangedCallback = cb;
+};
+
+/**
+ * The account whose data the app is showing is no longer the one it was:
+ * a different active server, a session replaced through the reauth modal, or
+ * the active configuration deleted.
+ *
+ * Callers only announce it. Deciding what to drop belongs to whoever holds the
+ * caches, which is why this mirrors the two callbacks above rather than reaching
+ * for the query client from a screen: a new path that changes identity then has
+ * one call to make instead of a list of caches to remember.
+ */
+export const notifyIdentityChanged = (): void => {
+  onIdentityChangedCallback?.();
+};
+
 let pendingProxyHeaders: Record<string, string> = {};
 export const setPendingProxyHeaders = (
   headers: Record<string, string>
