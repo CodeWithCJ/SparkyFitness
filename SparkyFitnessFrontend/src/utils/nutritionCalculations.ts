@@ -54,6 +54,7 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
       calcium: 0,
       iron: 0,
       caffeine_mg: 0,
+      alcohol_g: 0,
       glycemic_index: 'None',
       water_ml: 0,
       custom_nutrients: {},
@@ -79,6 +80,7 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
     calcium: Number(source.calcium) || 0,
     iron: Number(source.iron) || 0,
     caffeine_mg: Number(source.caffeine_mg) || 0,
+    alcohol_g: Number(source.alcohol_g) || 0,
     // 0/undefined means "unknown" here, not "genuinely zero water" -- the
     // scaled return below falls back to the volume-unit heuristic in that case.
     water_ml: Number(source.water_ml) || 0,
@@ -145,6 +147,9 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
       entry.quantity,
     caffeine_mg:
       (nutrientValuesPerReferenceSize.caffeine_mg / effectiveReferenceSize) *
+      entry.quantity,
+    alcohol_g:
+      (nutrientValuesPerReferenceSize.alcohol_g / effectiveReferenceSize) *
       entry.quantity,
     glycemic_index: nutrientValuesPerReferenceSize.glycemic_index, // Pass through glycemic_index
     // Explicit water_ml wins (scaled like every other nutrient); when the food
@@ -237,6 +242,7 @@ export interface CalculatedNutrition {
   calcium: number;
   iron: number;
   caffeine_mg: number;
+  alcohol_g: number;
   custom_nutrients: Record<string, number>;
 }
 
@@ -269,6 +275,7 @@ export const calculateNutrition = (
     calcium: (variant.calcium || 0) * ratio,
     iron: (variant.iron || 0) * ratio,
     caffeine_mg: (variant.caffeine_mg || 0) * ratio,
+    alcohol_g: (variant.alcohol_g || 0) * ratio,
     custom_nutrients: {},
   };
 
@@ -377,6 +384,7 @@ export const calculateDayTotals = (
         iron: meal.iron || 0,
         calcium: meal.calcium || 0,
         caffeine_mg: meal.caffeine_mg || 0,
+        alcohol_g: meal.alcohol_g || 0,
         custom_nutrients:
           (meal.custom_nutrients as Record<string, number>) || {},
       },
@@ -430,6 +438,7 @@ export const calculateDayTotals = (
       iron: 0,
       calcium: 0,
       caffeine_mg: 0,
+      alcohol_g: 0,
       custom_nutrients: {} as Record<string, number>,
     }
   );
@@ -500,6 +509,7 @@ export const getMealTotals = (
       iron: 0,
       calcium: 0,
       caffeine_mg: 0,
+      alcohol_g: 0,
       custom_nutrients: {} as Record<string, number>,
     }
   );
@@ -533,6 +543,7 @@ export const getEntryNutrition = (
       iron: item.iron || 0,
       calcium: item.calcium || 0,
       caffeine_mg: item.caffeine_mg || 0,
+      alcohol_g: item.alcohol_g || 0,
       custom_nutrients: (item.custom_nutrients as Record<string, number>) || {},
     };
   } else {

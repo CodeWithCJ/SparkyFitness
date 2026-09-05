@@ -108,6 +108,7 @@ export * from "./utils/noteImages.ts";
 export * from "./utils/markdownToolbar.ts";
 export * from "./nutrients/micronutrientCatalog.ts";
 export * from "./nutrients/macroPickerFields.ts";
+export * from "./nutrients/alcoholUnits.ts";
 export * from "./utils/timezone.ts";
 export * from "./utils/calendar.ts";
 export * from "./utils/entryTime.ts";

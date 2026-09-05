@@ -40,6 +40,7 @@ export interface NutrientFields {
   iron?: NutrientValue;
   caffeine_mg?: NutrientValue;
   water_ml?: NutrientValue;
+  alcohol_g?: NutrientValue;
   glycemic_index?: string | null;
   custom_nutrients?: CustomNutrients | null;
 }
@@ -73,6 +74,7 @@ export interface FoodVariantInput extends NutrientFields {
   updated_at?: string | Date | null;
   serving_size?: NutrientValue;
   serving_unit?: string | null;
+  abv_percent?: NutrientValue;
   is_default?: boolean | null;
   source?: string | null;
   ai_confidence?: string | null;

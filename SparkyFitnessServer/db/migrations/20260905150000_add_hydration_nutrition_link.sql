@@ -298,3 +298,91 @@ COMMENT ON COLUMN public.user_water_containers.linked_food_id IS
   'When set, pressing "+" on this container also logs this food to the diary and links the two rows. SET NULL on food deletion so the container survives as a plain water container.';
 COMMENT ON COLUMN public.water_intake_entries.hydration_factor IS
   'The factor in force when this drink was logged, snapshotted like container_name so later container edits do not rewrite history. NULL on rows predating the column (treat as 1.0).';
+
+
+-- =============================================================================
+-- Phase 7: alcohol_g as a nutrient (#1925)
+-- =============================================================================
+--
+-- INFORMATIONAL ONLY: alcohol_g NEVER generates calories. Ethanol is 7 kcal/g,
+-- but every beer, wine and spirit entry that carries a calorie figure ALREADY
+-- includes its ethanol calories -- from the label, from the provider, or from
+-- the user copying the label. Deriving calories from alcohol_g here would
+-- double-count them on essentially every row that has one. Calories continue to
+-- come from the calories column, unchanged, forever.
+--
+-- Unlike water_ml, alcohol_g DOES belong in FOOD_VARIANT_NUTRIENT_FIELDS:
+-- trending it, reporting it and letting a supplement (tinctures are real)
+-- declare it are the point of the feature.
+--
+-- STANDARD DRINKS ARE NEVER STORED. The definition is jurisdictional --
+-- US 14 g, UK 8 g (one "unit"), AU/most of EU 10 g, CA 13.45 g, JP 20 g -- so a
+-- stored count is wrong for anyone who moves, and wrong retroactively. Grams are
+-- the invariant; the count is derived at display time from
+-- user_preferences.standard_drink_grams via shared/src/nutrients/alcoholUnits.ts.
+--
+-- abv_percent lands ONLY on food_variants. It is derivation metadata, not a
+-- nutrient: alcohol_g is what the diary sums, and it is computed once at save
+-- time (grams = volume_ml * abv/100 * 0.789) rather than re-derived on read.
+-- Putting ABV on the water container instead was considered and rejected: most
+-- drinks are logged through food search with no container in sight, and
+-- OpenFoodFacts' alcohol_100g field IS ABV and needs somewhere to land.
+
+ALTER TABLE public.food_variants
+  ADD COLUMN IF NOT EXISTS alcohol_g numeric DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS abv_percent numeric;
+
+ALTER TABLE public.food_entries
+  ADD COLUMN IF NOT EXISTS alcohol_g numeric;
+
+ALTER TABLE public.meal_foods
+  ADD COLUMN IF NOT EXISTS alcohol_g numeric;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                 WHERE conname = 'food_variants_abv_percent_range'
+                   AND conrelid = 'public.food_variants'::regclass) THEN
+    ALTER TABLE public.food_variants
+      ADD CONSTRAINT food_variants_abv_percent_range
+      CHECK (abv_percent IS NULL OR (abv_percent >= 0 AND abv_percent <= 100));
+  END IF;
+END $$;
+
+-- Jurisdictional definition of one "standard drink" / "unit", in grams of pure
+-- ethanol. Default 14 (US). Purely a display divisor; changing it never rewrites
+-- a stored alcohol_g.
+ALTER TABLE public.user_preferences
+  ADD COLUMN IF NOT EXISTS standard_drink_grams numeric(5,2) NOT NULL DEFAULT 14.00;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                 WHERE conname = 'user_preferences_standard_drink_grams_range'
+                   AND conrelid = 'public.user_preferences'::regclass) THEN
+    ALTER TABLE public.user_preferences
+      ADD CONSTRAINT user_preferences_standard_drink_grams_range
+      CHECK (standard_drink_grams > 0 AND standard_drink_grams <= 50);
+  END IF;
+END $$;
+
+COMMENT ON COLUMN public.food_variants.alcohol_g IS
+  'Grams of pure ethanol per serving_size. INFORMATIONAL ONLY -- never converted to calories; the calories column already includes them. Standard-drink counts are derived from user_preferences.standard_drink_grams, never stored.';
+COMMENT ON COLUMN public.food_variants.abv_percent IS
+  'Alcohol by volume, 0-100. Derivation metadata for alcohol_g (grams = volume_ml * abv/100 * 0.789), not a nutrient. NOTE: OpenFoodFacts'' alcohol_100g field is ABV and maps HERE, not to alcohol_g. USDA nutrient 1018 is grams/100 g and maps to alcohol_g.';
+COMMENT ON COLUMN public.food_entries.alcohol_g IS
+  'Log-time snapshot of the variant''s alcohol_g. NULL on rows predating this column.';
+COMMENT ON COLUMN public.meal_foods.alcohol_g IS
+  'Log-time snapshot of the variant''s alcohol_g. NULL on rows predating this column.';
+COMMENT ON COLUMN public.user_preferences.standard_drink_grams IS
+  'Grams of ethanol in one standard drink for this user''s jurisdiction. US 14, UK 8 (one unit), AU/EU 10, CA 13.45, JP 20. Display divisor only.';
+
+-- Visibility backfill: make alcohol_g visible for EXISTING users who have
+-- saved a customisation (food_database, report_tabular, report_chart, diary).
+UPDATE public.user_nutrient_display_preferences AS p
+SET visible_nutrients = p.visible_nutrients || to_jsonb('alcohol_g'::text),
+    updated_at = now()
+WHERE jsonb_typeof(p.visible_nutrients) = 'array'
+  AND p.view_group IN ('food_database', 'report_tabular', 'report_chart', 'diary')
+  AND NOT (p.visible_nutrients @> to_jsonb(ARRAY['alcohol_g'::text]));
+

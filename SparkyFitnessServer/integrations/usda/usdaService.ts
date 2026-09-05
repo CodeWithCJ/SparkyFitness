@@ -343,6 +343,8 @@ function mapUsdaBarcodeProduct(food: UsdaFood) {
         // density is ~1 g/ml, so grams and millilitres are numerically
         // equivalent -- no unit conversion, same pattern as protein/carbs.
         water_ml: Math.round((nutrients[1051] || 0) * scale * 10) / 10,
+        // FDC nutrient id 1018 = Alcohol, ethyl, reported in grams/100g.
+        alcohol_g: Math.round((nutrients[1018] || 0) * scale * 10) / 10,
         provider_nutrients: scaleProviderNutrients(
           providerNutrientsByLabel,
           scale

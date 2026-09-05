@@ -55,6 +55,7 @@ export interface MealFood {
   calcium?: number;
   iron?: number;
   caffeine_mg?: number;
+  alcohol_g?: number;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
   serving_size?: number;
@@ -99,6 +100,7 @@ export interface MealFoodPayload {
   calcium?: number;
   iron?: number;
   caffeine_mg?: number;
+  alcohol_g?: number;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
   serving_size?: number;
@@ -178,6 +180,7 @@ export interface FoodEntryMeal {
   calcium?: number;
   iron?: number;
   caffeine_mg?: number;
+  alcohol_g?: number;
   glycemic_index?: string; // Aggregated glycemic index
   custom_nutrients?: Record<string, string | number>;
 }
@@ -201,6 +204,7 @@ export interface MealTotals {
   iron: number;
   calcium: number;
   caffeine_mg: number;
+  alcohol_g: number;
   custom_nutrients?: Record<string, number>; // Add custom_nutrients support
   [key: string]: number | string | Record<string, number> | null | undefined;
 }

@@ -4,7 +4,11 @@ import {
   DEFAULT_OFF_BASE_URL,
 } from './openFoodFactsAuth.js';
 import { log } from '../../config/logging.js';
-import { normalizeNutrientUnit } from '@workspace/shared';
+import {
+  normalizeNutrientUnit,
+  foodVolumeToMl,
+  alcoholGramsFromAbv,
+} from '@workspace/shared';
 import package$0 from '../../package.json' with { type: 'json' };
 import {
   normalizeBarcode,
@@ -789,6 +793,7 @@ const GRAMS_TO_UNIT: Record<string, number> = {
 // OFF ships several `*_100g` fields that are scores/estimates, not nutrients.
 // They clutter the "add as alias" list and should never be offered, so skip them.
 const OFF_NON_NUTRIENT_KEYS = new Set([
+  'alcohol',
   'nova-group',
   'nutrition-score-fr',
   'nutrition-score-uk',
@@ -946,9 +951,14 @@ function mapOpenFoodFactsProduct(
   const servingQuantity = declaredServingQuantity ?? 100;
   const servingSize = autoScale ? servingQuantity : 100;
   const scale = servingSize / 100;
+  const servingUnit = deriveOffServingUnit(product);
+  const rawAbv =
+    parseOffNumber(nutriments['alcohol_100g']) ??
+    parseOffNumber(nutriments['alcohol_serving']) ??
+    parseOffNumber(nutriments['alcohol']);
   const defaultVariant = {
     serving_size: servingSize,
-    serving_unit: deriveOffServingUnit(product),
+    serving_unit: servingUnit,
     calories: Math.round(
       getOffEnergyKcal100g(nutriments, declaredServingQuantity) * scale
     ),
@@ -1080,6 +1090,19 @@ function mapOpenFoodFactsProduct(
           scale *
           10
       ) / 10,
+    // OpenFoodFacts stores alcohol_100g as % ABV (volume fraction * 100),
+    // NOT grams of ethanol per 100g. We extract it directly as abv_percent,
+    // and derive alcohol_g via grams = volume_ml * (abv/100) * 0.789.
+    abv_percent: rawAbv !== null && rawAbv >= 0 ? rawAbv : undefined,
+    alcohol_g:
+      rawAbv !== null && rawAbv >= 0
+        ? (() => {
+            const vol =
+              foodVolumeToMl(servingSize, servingUnit) ??
+              (servingUnit === 'g' ? servingSize : servingSize);
+            return alcoholGramsFromAbv(vol, rawAbv);
+          })()
+        : 0,
     ...(() => {
       const extracted = extractOffProviderNutrients(
         nutriments,

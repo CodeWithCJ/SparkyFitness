@@ -16,6 +16,7 @@ const defaultNutrients = [
   'dietary_fiber',
   'sugars',
   'caffeine_mg',
+  'alcohol_g',
 ];
 const predefinedNutrients = [
   'calories',
@@ -44,6 +45,7 @@ const predefinedNutrients = [
   // predefinedNutrients so it appears in the food form (needed to enter a
   // water content) and is one click from the summary.
   'water_ml',
+  'alcohol_g',
 ];
 /**
  * The view groups a nutrient created from the Custom Nutrients settings page is made

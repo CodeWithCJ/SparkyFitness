@@ -72,6 +72,7 @@ export const userPreferencesSchema = z.object({
   barcode_fallback_open_food_facts: z.boolean().nullable().optional(),
   add_exercise_water_to_goal: z.boolean().nullable().optional(),
   add_food_water_to_intake: z.boolean().nullable().optional(),
+  standard_drink_grams: z.number().min(0).max(50),
 });
 
 export const userPreferencesInitializerSchema = z.object({
@@ -140,6 +141,7 @@ export const userPreferencesInitializerSchema = z.object({
   barcode_fallback_open_food_facts: z.boolean().optional().nullable(),
   add_exercise_water_to_goal: z.boolean().optional().nullable(),
   add_food_water_to_intake: z.boolean().optional().nullable(),
+  standard_drink_grams: z.number().min(0).max(50).optional(),
 });
 
 export const userPreferencesMutatorSchema = z.object({
@@ -208,6 +210,7 @@ export const userPreferencesMutatorSchema = z.object({
   barcode_fallback_open_food_facts: z.boolean().optional().nullable(),
   add_exercise_water_to_goal: z.boolean().optional().nullable(),
   add_food_water_to_intake: z.boolean().optional().nullable(),
+  standard_drink_grams: z.number().min(0).max(50).optional(),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;

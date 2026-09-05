@@ -57,6 +57,7 @@ export interface FoodInput extends NutrientFields {
   ai_confidence?: string | null;
   allergens?: string[] | null;
   traces?: string[] | null;
+  abv_percent?: NutrientValue;
 }
 
 const DEFAULT_VARIANT_JSON_SQL = `
@@ -263,9 +264,9 @@ async function createFoodWithClient(client: PoolClient, foodData: FoodInput) {
         food_id, serving_size, serving_unit, calories, protein, carbs, fat,
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
-        vitamin_a, vitamin_c, calcium, iron, caffeine_mg, water_ml, is_default, glycemic_index, custom_nutrients,
+        vitamin_a, vitamin_c, calcium, iron, caffeine_mg, water_ml, alcohol_g, abv_percent, is_default, glycemic_index, custom_nutrients,
         source, ai_confidence, allergens, traces, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, TRUE, $23, $24, $25, $26, $27, $28, now(), now()) RETURNING id`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, TRUE, $25, $26, $27, $28, $29, $30, now(), now()) RETURNING id`,
     [
       newFood.id,
       sanitizeNumeric(foodData.serving_size),
@@ -289,6 +290,8 @@ async function createFoodWithClient(client: PoolClient, foodData: FoodInput) {
       sanitizeNumeric(foodData.iron),
       sanitizeNumeric(foodData.caffeine_mg),
       sanitizeNumeric(foodData.water_ml),
+      sanitizeNumeric(foodData.alcohol_g),
+      sanitizeNumeric(foodData.abv_percent),
       sanitizeGlycemicIndex(foodData.glycemic_index),
       foodData.custom_nutrients ?? {},
       foodData.source ?? 'manual',
@@ -1055,6 +1058,8 @@ interface BulkImportFoodData {
   iron?: NumericInput;
   caffeine_mg?: NumericInput;
   water_ml?: NumericInput;
+  alcohol_g?: NumericInput;
+  abv_percent?: NumericInput;
   glycemic_index?: string | null;
   custom_nutrients?: Record<string, unknown> | null;
   source?: string | null;
@@ -1294,6 +1299,8 @@ async function createFoodsInBulk(
                 custom_nutrients = COALESCE($21, custom_nutrients),
                 caffeine_mg = COALESCE($22, caffeine_mg),
                 water_ml = COALESCE($23, water_ml),
+                alcohol_g = COALESCE($24, alcohol_g),
+                abv_percent = COALESCE($25, abv_percent),
                 updated_at = now()
               WHERE id = $1`,
             [
@@ -1322,6 +1329,8 @@ async function createFoodsInBulk(
               variant.custom_nutrients ?? null,
               sanitizeNumeric(variant.caffeine_mg),
               sanitizeNumeric(variant.water_ml),
+              sanitizeNumeric(variant.alcohol_g),
+              sanitizeNumeric(variant.abv_percent),
             ]
           );
         } else {
@@ -1331,10 +1340,10 @@ async function createFoodsInBulk(
               saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
               cholesterol, sodium, potassium, dietary_fiber, sugars,
               vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients,
-              source, ai_confidence, allergens, traces, caffeine_mg, water_ml, created_at, updated_at
+              source, ai_confidence, allergens, traces, caffeine_mg, water_ml, alcohol_g, abv_percent, created_at, updated_at
             ) VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-              $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, now(), now()
+              $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, now(), now()
             )`,
             [
               foodId,
@@ -1366,6 +1375,8 @@ async function createFoodsInBulk(
               variant.traces ?? null,
               sanitizeNumeric(variant.caffeine_mg),
               sanitizeNumeric(variant.water_ml),
+              sanitizeNumeric(variant.alcohol_g),
+              sanitizeNumeric(variant.abv_percent),
             ]
           );
         }

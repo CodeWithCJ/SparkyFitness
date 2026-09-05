@@ -40,6 +40,7 @@ export const PREDEFINED_NUTRIENT_KEYS = [
   'iron',
   'caffeine_mg',
   'water_ml',
+  'alcohol_g',
 ];
 
 export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
@@ -239,6 +240,16 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     decimals: 0,
     group: 'minerals',
   },
+  alcohol_g: {
+    id: 'alcohol_g',
+    label: 'nutrition.alcohol',
+    defaultLabel: 'Alcohol',
+    unit: 'g',
+    color: 'text-purple-600 dark:text-purple-400',
+    chartColor: '#9333ea', // purple-600
+    decimals: 1,
+    group: 'macros',
+  },
 };
 
 // Apply the shared "stay under" defaults (single source of truth in
@@ -269,6 +280,7 @@ export const EMPTY_MEAL_TOTALS: MealTotals = {
   iron: 0,
   calcium: 0,
   caffeine_mg: 0,
+  alcohol_g: 0,
   custom_nutrients: {},
 };
 

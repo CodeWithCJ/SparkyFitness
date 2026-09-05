@@ -224,6 +224,7 @@ async function createFoodEntry(
         'iron',
         'caffeine_mg',
         'water_ml',
+        'alcohol_g',
         'glycemic_index',
         'serving_size',
         'serving_unit',
@@ -271,6 +272,7 @@ async function createFoodEntry(
         iron: entryData.iron,
         caffeine_mg: entryData.caffeine_mg,
         water_ml: entryData.water_ml,
+        alcohol_g: entryData.alcohol_g,
         glycemic_index: entryData.glycemic_index,
         custom_nutrients: entryData.custom_nutrients || {},
         allergens: entryData.allergens || null,
@@ -285,10 +287,10 @@ async function createFoodEntry(
          created_by_user_id, food_name, brand_name, serving_size, serving_unit, calories, protein, carbs, fat,
          saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium,
          potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients, allergens, traces, updated_by_user_id,
-         source, source_id, entry_time, images, notes, caffeine_mg, water_ml
+         source, source_id, entry_time, images, notes, caffeine_mg, water_ml, alcohol_g
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41::jsonb, $42, $43, $44
+         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41::jsonb, $42, $43, $44, $45
        )
        -- Idempotent re-sync for provider-sourced entries (e.g. Health Connect):
        -- re-ingesting the same record updates it in place. Manual/web entries
@@ -331,7 +333,8 @@ async function createFoodEntry(
            updated_by_user_id = EXCLUDED.updated_by_user_id,
            entry_time = EXCLUDED.entry_time,
            caffeine_mg = EXCLUDED.caffeine_mg,
-           water_ml = EXCLUDED.water_ml
+           water_ml = EXCLUDED.water_ml,
+           alcohol_g = EXCLUDED.alcohol_g
            -- notes is deliberately absent: it is user-authored, so a provider
            -- re-sync must never overwrite what the user wrote on this entry.
        RETURNING *`,
@@ -387,6 +390,7 @@ async function createFoodEntry(
         sanitizeNotes(entryData.notes) ?? null,
         snapshot.caffeine_mg,
         snapshot.water_ml,
+        snapshot.alcohol_g,
       ]
     );
     await client.query('COMMIT');
@@ -536,7 +540,8 @@ async function updateFoodEntry(
         -- arrives here is the value the entry should end up with.
         notes = $36,
         caffeine_mg = $37,
-        water_ml = $38
+        water_ml = $38,
+        alcohol_g = $39
       WHERE id = $30
       RETURNING *`,
       [
@@ -580,6 +585,7 @@ async function updateFoodEntry(
         sanitizeNotes(entryData.notes) ?? null,
         snapshotData.caffeine_mg,
         snapshotData.water_ml,
+        snapshotData.alcohol_g,
       ]
     );
     return result.rows[0];

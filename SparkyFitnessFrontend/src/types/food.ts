@@ -27,6 +27,8 @@ export interface FoodVariant {
   iron?: number;
   caffeine_mg?: number;
   water_ml?: number;
+  alcohol_g?: number;
+  abv_percent?: number;
   is_default?: boolean;
   is_locked?: boolean;
   glycemic_index?: GlycemicIndex;
@@ -168,6 +170,7 @@ export interface FoodEntry {
   // entry's logged volume client-side when unset -- see foodVolumeToMl in
   // utils/nutritionCalculations.ts.
   water_ml?: number;
+  alcohol_g?: number;
   glycemic_index?: GlycemicIndex;
   serving_size?: number;
   custom_nutrients?: Record<string, string | number>;

@@ -418,6 +418,19 @@ export const MICRONUTRIENT_CATALOG: MicronutrientCatalogEntry[] = [
     // real column instead of a duplicate custom nutrient.
     fixedField: "caffeine_mg",
   },
+  {
+    id: "alcohol",
+    displayName: "Alcohol",
+    unit: "g",
+    rdi: null,
+    aliases: ["Alcohol", "Ethanol", "Alcohol, ethyl", "alcohol_100g"],
+    // Already a first-class food_variants column (#1925): registering it here
+    // with fixedField prevents a divergent user-created "Alcohol" custom
+    // nutrient from shadowing the column, and feeds provider alias matching
+    // (buildAliasIndex in the server's foodUtils) so imports land on the
+    // real column instead of a duplicate custom nutrient.
+    fixedField: "alcohol_g",
+  },
 ];
 
 const CATALOG_BY_ID = new Map(

@@ -16,6 +16,7 @@ import { Switch } from '@/components/ui/switch';
 import { Save, Settings as SettingsIcon } from 'lucide-react';
 import { AccordionTrigger, AccordionContent } from '@/components/ui/accordion'; // Import Accordion components
 import { useTranslation } from 'react-i18next';
+import { STANDARD_DRINK_PRESETS } from '@workspace/shared';
 import {
   usePreferences,
   WeightUnit,
@@ -58,6 +59,8 @@ export const PreferenceSettings = () => {
     setMeasurementDecimalPlaces,
     timezone,
     setTimezone,
+    standardDrinkGrams,
+    setStandardDrinkGrams,
     saveAllPreferences,
   } = usePreferences();
 
@@ -87,6 +90,7 @@ export const PreferenceSettings = () => {
         measurementDecimalPlaces,
         timezone,
         loggingLevel: localLoggingLevel,
+        standardDrinkGrams,
       });
       toast({
         title: t('settings.preferences.successTitle', 'Success'),
@@ -261,6 +265,29 @@ export const PreferenceSettings = () => {
                 <SelectItem value="kJ">
                   {t('settings.preferences.joules', 'Joules (kJ)')}
                 </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="standard_drink_unit">
+              {t(
+                'settings.preferences.standardDrinkUnit',
+                'Standard Drink Unit'
+              )}
+            </Label>
+            <Select
+              value={String(standardDrinkGrams)}
+              onValueChange={(value) => setStandardDrinkGrams(Number(value))}
+            >
+              <SelectTrigger id="standard_drink_unit">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STANDARD_DRINK_PRESETS.map((preset) => (
+                  <SelectItem key={preset.code} value={String(preset.grams)}>
+                    {preset.label} ({preset.grams}g pure alcohol)
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

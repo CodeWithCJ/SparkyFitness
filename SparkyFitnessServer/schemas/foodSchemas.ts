@@ -28,6 +28,8 @@ export const FoodVariantSchema = z.object({
   iron: z.number().optional(),
   caffeine_mg: z.number().optional(),
   water_ml: z.number().optional(),
+  alcohol_g: z.number().optional(),
+  abv_percent: z.number().optional(),
   is_default: z.boolean(),
   glycemic_index: z.string().optional(),
   custom_nutrients: z

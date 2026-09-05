@@ -20,6 +20,8 @@ export const nutrientFields: NumericFoodVariantKeys[] = [
   'iron',
   'caffeine_mg',
   'water_ml',
+  'alcohol_g',
+  'abv_percent',
 ];
 
 // Unit groups mirror the lookup tables in servingSizeConversions.ts so that

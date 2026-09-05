@@ -37,6 +37,7 @@ import {
   GoalModeCalculationMethod,
   CalorieSafetyFloorMode,
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+  DEFAULT_STANDARD_DRINK_GRAMS,
   type UserPreferences as SharedUserPreferences,
 } from '@workspace/shared';
 
@@ -128,6 +129,8 @@ interface PreferencesContextType {
   goalModeCustomPercentage: number;
   calorieSafetyFloorMode: CalorieSafetyFloorMode;
   calorieSafetyFloorValue: number;
+  standardDrinkGrams: number;
+  setStandardDrinkGrams: (grams: number) => void;
   setMeasurementDecimalPlaces: (places: number) => void;
   setGoalMode: (mode: GoalMode) => void;
   setGoalModeCalculationMethod: (method: GoalModeCalculationMethod) => void;
@@ -216,7 +219,7 @@ export interface DefaultPreferences {
   add_exercise_water_to_goal: boolean;
   add_food_water_to_intake: boolean;
   language: string;
-  calorie_goal_adjustment_mode: calorieGoalAdjustmentMode;
+  calorie_goal_adjustment_mode: CalorieGoalAdjustmentMode;
   energy_unit: EnergyUnit;
   auto_scale_open_food_facts_imports: boolean;
   auto_scale_online_imports: boolean;
@@ -246,6 +249,7 @@ export interface DefaultPreferences {
   goal_mode_custom_percentage: number;
   calorie_safety_floor_mode: SharedUserPreferences['calorie_safety_floor_mode'];
   calorie_safety_floor_value: SharedUserPreferences['calorie_safety_floor_value'];
+  standard_drink_grams?: number;
 }
 
 const PreferencesContext = createContext<PreferencesContextType | undefined>(
@@ -360,6 +364,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     useState<CalorieSafetyFloorMode>('standard');
   const [calorieSafetyFloorValue, setCalorieSafetyFloorValueState] =
     useState<number>(DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR);
+  const [standardDrinkGrams, setStandardDrinkGramsState] = useState<number>(
+    DEFAULT_STANDARD_DRINK_GRAMS
+  );
 
   const fetchUserPreferences = useCallback(async () => {
     try {
@@ -632,6 +639,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         ai_assisted_conversions: true,
         calorie_safety_floor_mode: 'standard',
         calorie_safety_floor_value: DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+        standard_drink_grams: DEFAULT_STANDARD_DRINK_GRAMS,
       };
       await upsertUserPreferences(defaultPrefs);
     } catch (err) {
@@ -761,6 +769,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         );
         setCalorieSafetyFloorValueState(
           data.calorie_safety_floor_value ?? DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR
+        );
+        setStandardDrinkGramsState(
+          Number(data.standard_drink_grams) || DEFAULT_STANDARD_DRINK_GRAMS
         );
       } else {
         await createDefaultPreferences();
@@ -941,6 +952,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           newPrefs?.calorieSafetyFloorMode ?? calorieSafetyFloorMode,
         calorie_safety_floor_value:
           newPrefs?.calorieSafetyFloorValue ?? calorieSafetyFloorValue,
+        standard_drink_grams:
+          newPrefs?.standardDrinkGrams ?? standardDrinkGrams,
       };
 
       try {
@@ -1002,6 +1015,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       goalModeCustomPercentage,
       calorieSafetyFloorMode,
       calorieSafetyFloorValue,
+      standardDrinkGrams,
       updatePreferences,
       loadPreferences,
     ]
@@ -1257,6 +1271,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       goalModeCustomPercentage,
       calorieSafetyFloorMode,
       calorieSafetyFloorValue,
+      standardDrinkGrams,
+      setStandardDrinkGrams: setStandardDrinkGramsState,
       setMeasurementDecimalPlaces: setMeasurementDecimalPlacesState,
       setGoalMode,
       setGoalModeCalculationMethod,
@@ -1355,6 +1371,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       goalModeCustomPercentage,
       calorieSafetyFloorMode,
       calorieSafetyFloorValue,
+      standardDrinkGrams,
       setGoalMode,
       setGoalModeCalculationMethod,
       setGoalModeCustomPercentage,
