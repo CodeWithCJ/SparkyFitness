@@ -472,7 +472,7 @@
       "recentItemsHint": "Foods, meals, and exercises you log will appear here for quick access."
     },
     "sleep": "Sleep",
-    "healthTrendsSettings": "Health Trends"
+    "healthTrendsSettings": "Health Trends",
     "progressPhotos": "Progress Photos",
     "progressPhotoCompare": "Compare",
     "progressPhotoTimelapse": "Time-lapse"
@@ -891,9 +891,8 @@
     "cyclePregnancySubtitle": "Show the wellness card on the Dashboard",
     "medications": "Medications",
     "medicationsSubtitle": "Show the medications card on the Dashboard",
-    "customNutrientDisplay": "Custom Nutrient Display",
     "healthTrends": "Health Trends",
-    "healthTrendsSubtitle": "Choose which graphs show on the Dashboard and their order"
+    "healthTrendsSubtitle": "Choose which graphs show on the Dashboard and their order",
     "progressPhotos": "Progress Photos",
     "progressPhotosSubtitle": "Show the progress photos card on the Dashboard",
     "customNutrientDisplay": "Custom Nutrient Display"
