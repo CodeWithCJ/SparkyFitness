@@ -1,21 +1,33 @@
 import { renderHook, act } from '@testing-library/react-native';
+import { Image } from 'expo-image';
 import { useAuth } from '../../src/hooks/useAuth';
 import {
   setOnSessionExpired,
   setOnNoConfigs,
+  setOnIdentityChanged,
   suppressSessionExpired,
 } from '../../src/services/api/authService';
 import { clearServerConfigCache } from '../../src/services/storage';
 import type { ServerConfig } from '../../src/services/storage';
+import { createTestQueryClient, createQueryWrapper } from './queryTestUtils';
+import type { QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/authService', () => ({
   setOnSessionExpired: jest.fn(),
   setOnNoConfigs: jest.fn(),
+  setOnIdentityChanged: jest.fn(),
   suppressSessionExpired: jest.fn(),
 }));
 
 jest.mock('../../src/services/storage', () => ({
   clearServerConfigCache: jest.fn(),
+}));
+
+jest.mock('expo-image', () => ({
+  Image: {
+    clearMemoryCache: jest.fn().mockResolvedValue(true),
+    clearDiskCache: jest.fn().mockResolvedValue(true),
+  },
 }));
 
 const mockSetOnSessionExpired = setOnSessionExpired as jest.MockedFunction<
@@ -24,18 +36,35 @@ const mockSetOnSessionExpired = setOnSessionExpired as jest.MockedFunction<
 const mockSetOnNoConfigs = setOnNoConfigs as jest.MockedFunction<
   typeof setOnNoConfigs
 >;
+const mockSetOnIdentityChanged = setOnIdentityChanged as jest.MockedFunction<
+  typeof setOnIdentityChanged
+>;
 const mockClearServerConfigCache =
   clearServerConfigCache as jest.MockedFunction<typeof clearServerConfigCache>;
 const mockSuppressSessionExpired =
   suppressSessionExpired as jest.MockedFunction<typeof suppressSessionExpired>;
+const mockClearMemoryCache = Image.clearMemoryCache as jest.MockedFunction<
+  typeof Image.clearMemoryCache
+>;
+const mockClearDiskCache = Image.clearDiskCache as jest.MockedFunction<
+  typeof Image.clearDiskCache
+>;
 
 describe('useAuth', () => {
+  let queryClient: QueryClient;
+
+  // The hook reads the query client to drop caches on an identity change, so
+  // every render needs a provider around it.
+  const renderUseAuth = () =>
+    renderHook(() => useAuth(), { wrapper: createQueryWrapper(queryClient) });
+
   beforeEach(() => {
     jest.clearAllMocks();
+    queryClient = createTestQueryClient();
   });
 
   test('does not auto-show any modal on mount', async () => {
-    const { result } = renderHook(() => useAuth());
+    const { result } = renderUseAuth();
 
     await act(async () => {});
 
@@ -45,7 +74,7 @@ describe('useAuth', () => {
   });
 
   test('registers callbacks on mount', async () => {
-    renderHook(() => useAuth());
+    renderUseAuth();
 
     await act(async () => {});
 
@@ -53,10 +82,65 @@ describe('useAuth', () => {
     expect(mockSetOnSessionExpired).toHaveBeenCalledWith(expect.any(Function));
     expect(mockSetOnNoConfigs).toHaveBeenCalledTimes(1);
     expect(mockSetOnNoConfigs).toHaveBeenCalledWith(expect.any(Function));
+    expect(mockSetOnIdentityChanged).toHaveBeenCalledTimes(1);
+    expect(mockSetOnIdentityChanged).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  test('identity changed callback drops every cached query', async () => {
+    renderUseAuth();
+    await act(async () => {});
+
+    queryClient.setQueryData(['dailySummary', '2026-01-01'], {
+      calories: 1800,
+    });
+    queryClient.setQueryData(['measurements', '2026-01-01'], { weight: 70 });
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    act(() => {
+      identityChangedCb();
+    });
+
+    expect(
+      queryClient.getQueryData(['dailySummary', '2026-01-01'])
+    ).toBeUndefined();
+    expect(
+      queryClient.getQueryData(['measurements', '2026-01-01'])
+    ).toBeUndefined();
+  });
+
+  test('identity changed callback drops the image caches', async () => {
+    renderUseAuth();
+    await act(async () => {});
+
+    expect(mockClearMemoryCache).not.toHaveBeenCalled();
+    expect(mockClearDiskCache).not.toHaveBeenCalled();
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      identityChangedCb();
+    });
+
+    // expo-image keys on the URI, which carries no account, so a query-cache
+    // clear on its own still leaves the previous account's photos on screen.
+    expect(mockClearMemoryCache).toHaveBeenCalledTimes(1);
+    expect(mockClearDiskCache).toHaveBeenCalledTimes(1);
+  });
+
+  test('a rejected image cache clear does not escape the callback', async () => {
+    mockClearMemoryCache.mockRejectedValueOnce(new Error('no activity'));
+    mockClearDiskCache.mockRejectedValueOnce(new Error('no activity'));
+
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      expect(() => identityChangedCb()).not.toThrow();
+    });
   });
 
   test('session expired callback shows reauth modal with config ID', async () => {
-    const { result } = renderHook(() => useAuth());
+    const { result } = renderUseAuth();
     await act(async () => {});
 
     const sessionExpiredCb = mockSetOnSessionExpired.mock.calls[0][0];
@@ -71,7 +155,7 @@ describe('useAuth', () => {
   });
 
   test('session expired clears config cache on first trigger', async () => {
-    const { result } = renderHook(() => useAuth());
+    const { result } = renderUseAuth();
     await act(async () => {});
 
     expect(result.current.showReauthModal).toBe(false);
@@ -86,7 +170,7 @@ describe('useAuth', () => {
   });
 
   test('no-configs callback shows setup modal', async () => {
-    const { result } = renderHook(() => useAuth());
+    const { result } = renderUseAuth();
     await act(async () => {});
     expect(result.current.showSetupModal).toBe(false);
 
@@ -100,7 +184,7 @@ describe('useAuth', () => {
   });
 
   test('dismissModal resets state', async () => {
-    const { result } = renderHook(() => useAuth());
+    const { result } = renderUseAuth();
     await act(async () => {});
 
     const sessionExpiredCb = mockSetOnSessionExpired.mock.calls[0][0];
@@ -121,7 +205,7 @@ describe('useAuth', () => {
   });
 
   test('handleLoginSuccess resets state', async () => {
-    const { result } = renderHook(() => useAuth());
+    const { result } = renderUseAuth();
     await act(async () => {});
 
     const sessionExpiredCb = mockSetOnSessionExpired.mock.calls[0][0];
@@ -150,7 +234,7 @@ describe('useAuth', () => {
     };
 
     test('handleSwitchToApiKey hides reauth modal and exposes config', async () => {
-      const { result } = renderHook(() => useAuth());
+      const { result } = renderUseAuth();
       await act(async () => {});
 
       // Trigger session expired first
@@ -172,7 +256,7 @@ describe('useAuth', () => {
     });
 
     test('handleSwitchToApiKey keeps suppression active', async () => {
-      const { result } = renderHook(() => useAuth());
+      const { result } = renderUseAuth();
       await act(async () => {});
 
       const sessionExpiredCb = mockSetOnSessionExpired.mock.calls[0][0];
@@ -190,7 +274,7 @@ describe('useAuth', () => {
     });
 
     test('handleSwitchToApiKeyDone clears state and unsuppresses', async () => {
-      const { result } = renderHook(() => useAuth());
+      const { result } = renderUseAuth();
       await act(async () => {});
 
       const sessionExpiredCb = mockSetOnSessionExpired.mock.calls[0][0];
@@ -213,7 +297,7 @@ describe('useAuth', () => {
     });
 
     test('session expired callback clears switchToApiKeyConfig', async () => {
-      const { result } = renderHook(() => useAuth());
+      const { result } = renderUseAuth();
       await act(async () => {});
 
       act(() => {
@@ -232,7 +316,7 @@ describe('useAuth', () => {
     });
 
     test('no-configs callback clears switchToApiKeyConfig', async () => {
-      const { result } = renderHook(() => useAuth());
+      const { result } = renderUseAuth();
       await act(async () => {});
 
       act(() => {

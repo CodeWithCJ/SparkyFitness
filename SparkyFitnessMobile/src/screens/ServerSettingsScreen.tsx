@@ -29,7 +29,10 @@ import {
   type ServerConfig,
 } from '../services/storage';
 import { addLog } from '../services/LogService';
-import { notifyNoConfigs } from '../services/api/authService';
+import {
+  notifyIdentityChanged,
+  notifyNoConfigs,
+} from '../services/api/authService';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useServerConfigs, useServerConnection } from '../hooks';
@@ -95,7 +98,7 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({
     }
     try {
       await setActiveServerConfig(configId);
-      queryClient.clear();
+      notifyIdentityChanged();
       await refetchServerConfigs();
       refetchConnection();
       Toast.show({
@@ -130,6 +133,13 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({
       const remaining = await getAllServerConfigs();
       if (wasActive && remaining.length > 0) {
         await setActiveServerConfig(remaining[0].id);
+      }
+      // Deleting the active configuration moves the app to another account
+      // just as the Set Active button does, so it has to drop the caches for
+      // the same reason. With no configuration left there is nothing to read
+      // the stale data, but it would still be there for the next one added.
+      if (wasActive) {
+        notifyIdentityChanged();
       }
       await invalidateServerConfigs();
       refetchConnection();

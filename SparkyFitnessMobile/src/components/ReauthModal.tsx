@@ -30,6 +30,7 @@ import {
   fetchAuthSettings,
   loginWithOidc,
   loginWithPasskey,
+  notifyIdentityChanged,
   type MfaFactors,
   type AuthSettings,
   type OidcProvider,
@@ -175,6 +176,13 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
       sessionToken,
       proxyHeaders: config.proxyHeaders,
     });
+    // The configuration keeps its id, but nothing here says the credentials
+    // just entered belong to the account that owned the expired session: the
+    // same server can be signed into as anyone. There is no stored email to
+    // compare against, so announce the change unconditionally — signing back
+    // into the same account costs a refetch, the other case would otherwise
+    // show one person's diary to another.
+    notifyIdentityChanged();
   };
 
   // --- Sign In ---
