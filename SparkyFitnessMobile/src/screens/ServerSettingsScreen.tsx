@@ -134,6 +134,13 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({
       if (wasActive && remaining.length > 0) {
         await setActiveServerConfig(remaining[0].id);
       }
+      // Deleting the active configuration moves the app to another account
+      // just as the Set Active button does, so it has to drop the caches for
+      // the same reason. With no configuration left there is nothing to read
+      // the stale data, but it would still be there for the next one added.
+      if (wasActive) {
+        notifyIdentityChanged();
+      }
       await invalidateServerConfigs();
       refetchConnection();
       addLog('Server configuration deleted.', 'INFO');

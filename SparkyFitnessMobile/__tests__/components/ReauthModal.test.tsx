@@ -4,6 +4,7 @@ import ReauthModal from '../../src/components/ReauthModal';
 import {
   fetchAuthSettings,
   loginWithOidc,
+  notifyIdentityChanged,
   type AuthSettings,
 } from '../../src/services/api/authService';
 import {
@@ -26,6 +27,7 @@ jest.mock('../../src/services/api/authService', () => ({
   fetchAuthSettings: jest.fn(),
   loginWithOidc: jest.fn(),
   loginWithPasskey: jest.fn(),
+  notifyIdentityChanged: jest.fn(),
 }));
 
 jest.mock('../../src/services/storage', () => ({
@@ -58,6 +60,9 @@ const mockGetAllServerConfigs = getAllServerConfigs as jest.MockedFunction<
 >;
 const mockSaveServerConfig = saveServerConfig as jest.MockedFunction<
   typeof saveServerConfig
+>;
+const mockNotifyIdentityChanged = notifyIdentityChanged as jest.MockedFunction<
+  typeof notifyIdentityChanged
 >;
 
 const sessionConfig: ServerConfig = {
@@ -177,6 +182,9 @@ describe('ReauthModal', () => {
     expect(mockSaveServerConfig).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'config-1', sessionToken: 'fresh-token' })
     );
+    // The new session may belong to a different account on the same server,
+    // and the configuration id gives nothing away, so the caches go either way.
+    expect(mockNotifyIdentityChanged).toHaveBeenCalledTimes(1);
     expect(onLoginSuccess).toHaveBeenCalled();
   });
 

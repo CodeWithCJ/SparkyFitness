@@ -1,4 +1,5 @@
 import { renderHook, act } from '@testing-library/react-native';
+import { Image } from 'expo-image';
 import { useAuth } from '../../src/hooks/useAuth';
 import {
   setOnSessionExpired,
@@ -22,6 +23,13 @@ jest.mock('../../src/services/storage', () => ({
   clearServerConfigCache: jest.fn(),
 }));
 
+jest.mock('expo-image', () => ({
+  Image: {
+    clearMemoryCache: jest.fn().mockResolvedValue(true),
+    clearDiskCache: jest.fn().mockResolvedValue(true),
+  },
+}));
+
 const mockSetOnSessionExpired = setOnSessionExpired as jest.MockedFunction<
   typeof setOnSessionExpired
 >;
@@ -35,6 +43,12 @@ const mockClearServerConfigCache =
   clearServerConfigCache as jest.MockedFunction<typeof clearServerConfigCache>;
 const mockSuppressSessionExpired =
   suppressSessionExpired as jest.MockedFunction<typeof suppressSessionExpired>;
+const mockClearMemoryCache = Image.clearMemoryCache as jest.MockedFunction<
+  typeof Image.clearMemoryCache
+>;
+const mockClearDiskCache = Image.clearDiskCache as jest.MockedFunction<
+  typeof Image.clearDiskCache
+>;
 
 describe('useAuth', () => {
   let queryClient: QueryClient;
@@ -92,6 +106,37 @@ describe('useAuth', () => {
     expect(
       queryClient.getQueryData(['measurements', '2026-01-01'])
     ).toBeUndefined();
+  });
+
+  test('identity changed callback drops the image caches', async () => {
+    renderUseAuth();
+    await act(async () => {});
+
+    expect(mockClearMemoryCache).not.toHaveBeenCalled();
+    expect(mockClearDiskCache).not.toHaveBeenCalled();
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      identityChangedCb();
+    });
+
+    // expo-image keys on the URI, which carries no account, so a query-cache
+    // clear on its own still leaves the previous account's photos on screen.
+    expect(mockClearMemoryCache).toHaveBeenCalledTimes(1);
+    expect(mockClearDiskCache).toHaveBeenCalledTimes(1);
+  });
+
+  test('a rejected image cache clear does not escape the callback', async () => {
+    mockClearMemoryCache.mockRejectedValueOnce(new Error('no activity'));
+    mockClearDiskCache.mockRejectedValueOnce(new Error('no activity'));
+
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      expect(() => identityChangedCb()).not.toThrow();
+    });
   });
 
   test('session expired callback shows reauth modal with config ID', async () => {

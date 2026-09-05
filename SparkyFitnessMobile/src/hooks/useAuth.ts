@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { Image } from 'expo-image';
 import {
   setOnSessionExpired,
   setOnNoConfigs,
@@ -38,6 +39,14 @@ export function useAuth() {
     // reads it until each query happens to refetch.
     setOnIdentityChanged(() => {
       queryClient.clear();
+      // expo-image keys on the URI alone, so it ignores the Authorization
+      // header that made the request account-specific. Check-in photos and
+      // exercise images are served from per-server paths that two accounts can
+      // both produce, which is enough for the previous account's picture to be
+      // painted for the new one. Fire and forget: nothing waits on the result,
+      // and a rejection here must not take down the sign-in that caused it.
+      void Image.clearMemoryCache().catch(() => {});
+      void Image.clearDiskCache().catch(() => {});
     });
   }, [queryClient]);
 
