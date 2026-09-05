@@ -268,4 +268,20 @@ describe('getDailySupplementTotals', () => {
     expect(totals.calories).toBe(15);
     expect(totals.fat).toBe(1.5);
   });
+
+  // Phase 3 (#1557): water_ml is deliberately excluded from
+  // FOOD_VARIANT_NUTRIENT_FIELDS, so it must never show up as a "supplement
+  // dose" here -- a vitamin gummy does not have a water content in the sense
+  // this table means, and letting it in would create a second, uncoordinated
+  // water total alongside the real hydration ring.
+  it('never reads or reports a water_ml supplement dose', async () => {
+    mockClient = createMockDbClient([{}]);
+    vi.mocked(getClient).mockResolvedValue(mockClient);
+
+    await getDailySupplementTotals(userId, '2026-08-06');
+
+    const sql = String(mockClient.query.mock.calls[0][0]);
+    expect(sql).not.toContain("nutrients_snapshot->>'water_ml'");
+    expect(EMPTY_SUPPLEMENT_TOTALS).not.toHaveProperty('water_ml');
+  });
 });

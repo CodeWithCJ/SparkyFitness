@@ -24,6 +24,8 @@ export interface FoodUnitVariant {
   vitamin_c?: number;
   calcium?: number;
   iron?: number;
+  caffeine_mg?: number;
+  water_ml?: number;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number> | null;
   // AI-Assisted Unit Conversions provenance. source defaults to 'manual'

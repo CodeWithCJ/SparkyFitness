@@ -38,6 +38,8 @@ export const PREDEFINED_NUTRIENT_KEYS = [
   'vitamin_c',
   'calcium',
   'iron',
+  'caffeine_mg',
+  'water_ml',
 ];
 
 export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
@@ -211,6 +213,32 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     decimals: 1,
     group: 'minerals',
   },
+  caffeine_mg: {
+    id: 'caffeine_mg',
+    label: 'nutrition.caffeine',
+    defaultLabel: 'Caffeine',
+    unit: 'mg',
+    color: 'text-amber-700 dark:text-amber-500',
+    chartColor: '#b45309', // amber-700
+    decimals: 0,
+    group: 'minerals',
+  },
+  // Required so the food form / food grids can render a water-content input
+  // and readout (CENTRAL_NUTRIENT_CONFIG drives NutrientFormGrid). Deliberately
+  // NOT summed into EMPTY_MEAL_TOTALS / calculateDayTotals -- the water ring
+  // already owns the day total once the #1557 fold-in preference lands; a
+  // second sum here would be a second, competing total. See constants/goals.ts
+  // for the matching exclusion from the generic per-nutrient goal system.
+  water_ml: {
+    id: 'water_ml',
+    label: 'nutrition.waterContent',
+    defaultLabel: 'Water Content',
+    unit: 'ml',
+    color: 'text-sky-600 dark:text-sky-400',
+    chartColor: '#0284c7', // sky-600
+    decimals: 0,
+    group: 'minerals',
+  },
 };
 
 // Apply the shared "stay under" defaults (single source of truth in
@@ -240,6 +268,7 @@ export const EMPTY_MEAL_TOTALS: MealTotals = {
   vitamin_c: 0,
   iron: 0,
   calcium: 0,
+  caffeine_mg: 0,
   custom_nutrients: {},
 };
 

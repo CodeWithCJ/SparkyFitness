@@ -259,6 +259,8 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         iron: toFormString(item.iron),
         vitaminA: toFormString(item.vitaminA),
         vitaminC: toFormString(item.vitaminC),
+        caffeineMg: toFormString(item.caffeineMg),
+        waterMl: toFormString(item.waterMl),
       };
     }
   );

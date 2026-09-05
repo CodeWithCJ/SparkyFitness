@@ -26,6 +26,8 @@ export const FoodVariantSchema = z.object({
   vitamin_c: z.number().optional(),
   calcium: z.number().optional(),
   iron: z.number().optional(),
+  caffeine_mg: z.number().optional(),
+  water_ml: z.number().optional(),
   is_default: z.boolean(),
   glycemic_index: z.string().optional(),
   custom_nutrients: z

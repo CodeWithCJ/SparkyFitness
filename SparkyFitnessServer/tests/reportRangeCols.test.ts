@@ -96,4 +96,19 @@ describe('getDailyNutritionTotalsRange select list', () => {
     expect(sql).not.toMatch(/\bas dietary_fiber,?$/im);
     expect(sql).not.toMatch(/\bas sugars,?$/im);
   });
+
+  // Phase 3 (#1557): water_ml is deliberately NOT in FOOD_VARIANT_NUTRIENT_FIELDS
+  // (see shared/src/constants/foodVariantNutrients.ts) -- it is a sibling
+  // column, not a nutrient supplements dose or Reports trends should sum.
+  // This locks that decision against a future well-meaning addition: if
+  // water_ml is ever added to the shared list, this query would start
+  // publishing a water column here (and, per the earlier test in this file,
+  // start summing a "water dose" from medication_entries) with nothing else
+  // to catch it.
+  it('does NOT select water_ml -- it is a sibling column, not a shared nutrient field', async () => {
+    const sql = await sqlOf();
+    expect(FOOD_VARIANT_NUTRIENT_FIELDS).not.toContain('water_ml');
+    expect(sql).not.toMatch(/\bas water_ml,?$/im);
+    expect(sql).not.toContain('fe.water_ml');
+  });
 });

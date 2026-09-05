@@ -38,6 +38,8 @@ const mealFoodsNutritionSnapshotSchema = {
   vitamin_c: z.number().nullable().optional(),
   calcium: z.number().nullable().optional(),
   iron: z.number().nullable().optional(),
+  caffeine_mg: z.number().nullable().optional(),
+  water_ml: z.number().nullable().optional(),
   glycemic_index: z.string().nullable().optional(),
   custom_nutrients: z
     .record(z.string(), z.union([z.string(), z.number()]))

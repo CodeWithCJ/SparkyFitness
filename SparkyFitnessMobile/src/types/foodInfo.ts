@@ -152,6 +152,8 @@ export interface FoodInfoItem {
   cholesterol?: number;
   vitaminA?: number;
   vitaminC?: number;
+  caffeineMg?: number;
+  waterMl?: number;
   customNutrients?: Record<string, string | number> | null;
   variantId?: string;
   externalVariants?: ExternalFoodVariant[];

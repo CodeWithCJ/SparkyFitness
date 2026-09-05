@@ -3,6 +3,7 @@ import {
   resolveSupplementTotals,
   addSupplementCustomNutrients,
   FOOD_VARIANT_NUTRIENT_FIELDS,
+  foodVolumeToMl,
 } from '@workspace/shared';
 import { getDietTemplate } from '@/constants/dietTemplates';
 import { EMPTY_MEAL_TOTALS } from '@/constants/nutrients';
@@ -52,6 +53,7 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
       vitamin_c: 0,
       calcium: 0,
       iron: 0,
+      caffeine_mg: 0,
       glycemic_index: 'None',
       water_ml: 0,
       custom_nutrients: {},
@@ -76,6 +78,10 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
     vitamin_c: Number(source.vitamin_c) || 0,
     calcium: Number(source.calcium) || 0,
     iron: Number(source.iron) || 0,
+    caffeine_mg: Number(source.caffeine_mg) || 0,
+    // 0/undefined means "unknown" here, not "genuinely zero water" -- the
+    // scaled return below falls back to the volume-unit heuristic in that case.
+    water_ml: Number(source.water_ml) || 0,
     glycemic_index: source.glycemic_index,
     custom_nutrients: source.custom_nutrients || {},
   };
@@ -137,11 +143,24 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
     iron:
       (nutrientValuesPerReferenceSize.iron / effectiveReferenceSize) *
       entry.quantity,
+    caffeine_mg:
+      (nutrientValuesPerReferenceSize.caffeine_mg / effectiveReferenceSize) *
+      entry.quantity,
     glycemic_index: nutrientValuesPerReferenceSize.glycemic_index, // Pass through glycemic_index
-    water_ml:
-      entry.unit === 'ml' || entry.unit === 'liter' || entry.unit === 'oz'
-        ? entry.quantity
-        : 0, // Assuming water is tracked in ml, liter, or oz
+    // Explicit water_ml wins (scaled like every other nutrient); when the food
+    // carries no water content at all, fall back to the logged volume for
+    // entries logged in a real volume unit (ml, l, cup, fl oz, ...) (#1557,
+    // #1629). Deliberately NOT 'oz' -- in the food unit vocabulary oz is a
+    // WEIGHT ounce (see shared/src/utils/servingSizeConversions.ts), so 4 oz
+    // of cheese must not read as 118 ml of water. Still unconsumed by
+    // calculateDayTotals on purpose: it is not in EMPTY_MEAL_TOTALS, because
+    // the water ring (not the macro grid) owns the day total once the #1557
+    // fold-in preference lands server-side. This field exists for the
+    // per-entry "this drink contributed X ml" affordance.
+    water_ml: nutrientValuesPerReferenceSize.water_ml
+      ? (nutrientValuesPerReferenceSize.water_ml / effectiveReferenceSize) *
+        entry.quantity
+      : (foodVolumeToMl(entry.quantity, entry.unit ?? '') ?? 0),
     custom_nutrients: Object.entries(
       nutrientValuesPerReferenceSize.custom_nutrients
     ).reduce(
@@ -217,6 +236,7 @@ export interface CalculatedNutrition {
   vitamin_c: number;
   calcium: number;
   iron: number;
+  caffeine_mg: number;
   custom_nutrients: Record<string, number>;
 }
 
@@ -248,6 +268,7 @@ export const calculateNutrition = (
     vitamin_c: (variant.vitamin_c || 0) * ratio,
     calcium: (variant.calcium || 0) * ratio,
     iron: (variant.iron || 0) * ratio,
+    caffeine_mg: (variant.caffeine_mg || 0) * ratio,
     custom_nutrients: {},
   };
 
@@ -355,6 +376,7 @@ export const calculateDayTotals = (
         vitamin_c: meal.vitamin_c || 0,
         iron: meal.iron || 0,
         calcium: meal.calcium || 0,
+        caffeine_mg: meal.caffeine_mg || 0,
         custom_nutrients:
           (meal.custom_nutrients as Record<string, number>) || {},
       },
@@ -407,6 +429,7 @@ export const calculateDayTotals = (
       vitamin_c: 0,
       iron: 0,
       calcium: 0,
+      caffeine_mg: 0,
       custom_nutrients: {} as Record<string, number>,
     }
   );
@@ -476,6 +499,7 @@ export const getMealTotals = (
       vitamin_c: 0,
       iron: 0,
       calcium: 0,
+      caffeine_mg: 0,
       custom_nutrients: {} as Record<string, number>,
     }
   );
@@ -508,6 +532,7 @@ export const getEntryNutrition = (
       vitamin_c: item.vitamin_c || 0,
       iron: item.iron || 0,
       calcium: item.calcium || 0,
+      caffeine_mg: item.caffeine_mg || 0,
       custom_nutrients: (item.custom_nutrients as Record<string, number>) || {},
     };
   } else {

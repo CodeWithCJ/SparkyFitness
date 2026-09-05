@@ -32,6 +32,8 @@ export const FOOD_VARIANT_FIELDS: (keyof FoodFormData)[] = [
   'iron',
   'vitaminA',
   'vitaminC',
+  'caffeineMg',
+  'waterMl',
 ];
 
 const FOOD_METADATA_FIELDS: (keyof FoodFormData)[] = ['name', 'brand'];
@@ -52,6 +54,8 @@ const NUMERIC_FOOD_FIELDS = new Set<keyof FoodFormData>([
   'iron',
   'vitaminA',
   'vitaminC',
+  'caffeineMg',
+  'waterMl',
 ]);
 
 export function isBlankEquivalent(eq: EquivalentUnit): boolean {
@@ -351,6 +355,8 @@ export function buildVariantFromFormData(
     cholesterol: parseOptional(data.cholesterol),
     vitamin_a: parseOptional(data.vitaminA),
     vitamin_c: parseOptional(data.vitaminC),
+    caffeine_mg: parseOptional(data.caffeineMg),
+    water_ml: parseOptional(data.waterMl),
   };
 }
 
@@ -388,6 +394,8 @@ export function buildVariantFromInitialValues(
     cholesterol: parseOptional(initialValues.cholesterol ?? ''),
     vitamin_a: parseOptional(initialValues.vitaminA ?? ''),
     vitamin_c: parseOptional(initialValues.vitaminC ?? ''),
+    caffeine_mg: parseOptional(initialValues.caffeineMg ?? ''),
+    water_ml: parseOptional(initialValues.waterMl ?? ''),
   };
 }
 
@@ -413,6 +421,8 @@ export function buildFormValuesFromVariant(
     iron: variant.iron != null ? String(variant.iron) : '',
     vitaminA: variant.vitamin_a != null ? String(variant.vitamin_a) : '',
     vitaminC: variant.vitamin_c != null ? String(variant.vitamin_c) : '',
+    caffeineMg: variant.caffeine_mg != null ? String(variant.caffeine_mg) : '',
+    waterMl: variant.water_ml != null ? String(variant.water_ml) : '',
   };
 }
 
@@ -471,6 +481,8 @@ export async function persistFoodEdits({
         cholesterol: parseOptional(data.cholesterol),
         vitamin_a: parseOptional(data.vitaminA),
         vitamin_c: parseOptional(data.vitaminC),
+        caffeine_mg: parseOptional(data.caffeineMg),
+        water_ml: parseOptional(data.waterMl),
         custom_nutrients: customNutrients || undefined,
       }).then((updatedVariant) => {
         updateFoodVariantCache(queryClient, updatedVariant);

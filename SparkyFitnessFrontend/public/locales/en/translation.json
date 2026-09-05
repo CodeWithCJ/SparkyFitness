@@ -704,6 +704,8 @@
     "vitaminC": "Vitamin C",
     "calcium": "Calcium",
     "iron": "Iron",
+    "caffeine": "Caffeine",
+    "waterContent": "Water Content",
     "autoCalculate": "Auto-calculate",
     "autoCalculateTooltip": "Auto-calculate using {{algorithm}}",
     "autoCalculateDisabledNoSex": "Set your sex in Profile to enable auto-calculate",

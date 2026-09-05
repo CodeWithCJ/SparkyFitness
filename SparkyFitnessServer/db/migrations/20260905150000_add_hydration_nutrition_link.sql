@@ -1,0 +1,212 @@
+-- Hydration <-> Nutrition Link (#1557, #1629, #2115, #1958, #1925).
+--
+-- Single migration for the whole feature PR: water/caffeine as first-class
+-- nutrients, the container->food link, and the supporting infrastructure.
+-- Sections are ordered the same way the implementation phases are, and each
+-- is self-contained (idempotent ADD COLUMN/CREATE ... IF NOT EXISTS), so this
+-- file is safe to extend with new sections as later phases land rather than
+-- adding new migration files.
+--
+-- See WIP/PLAN-hydration-nutrition-link/ for the full design rationale.
+
+
+-- =============================================================================
+-- Phase 1: caffeine_mg as a first-class nutrient (#1958)
+-- =============================================================================
+--
+-- Lands on all THREE tables that carry nutrition, not just food_variants:
+-- food_entries and meal_foods denormalize the full nutrient block at log time
+-- (see utils/foodEntrySnapshot.ts), so a column added only to food_variants is
+-- silently dropped the moment a food is logged.
+--
+-- numeric with DEFAULT 0 matches every other nutrient column on food_variants;
+-- food_entries/meal_foods leave it nullable with no default, also matching
+-- their existing nutrient columns (a NULL there means "this snapshot predates
+-- the column", which readers coerce to 0).
+--
+-- Unit is milligrams, encoded in the column name because there is no unit
+-- column: 'caffeine' alone would be ambiguous against provider payloads that
+-- report grams per 100 g.
+
+ALTER TABLE public.food_variants
+  ADD COLUMN IF NOT EXISTS caffeine_mg numeric DEFAULT 0;
+
+ALTER TABLE public.food_entries
+  ADD COLUMN IF NOT EXISTS caffeine_mg numeric;
+
+ALTER TABLE public.meal_foods
+  ADD COLUMN IF NOT EXISTS caffeine_mg numeric;
+
+COMMENT ON COLUMN public.food_variants.caffeine_mg IS
+  'Caffeine in milligrams per serving_size of this variant. First-class column rather than a custom nutrient so it can be trended, goal-tracked, and imported from providers by alias (see shared/src/nutrients/micronutrientCatalog.ts, fixedField: caffeine_mg).';
+COMMENT ON COLUMN public.food_entries.caffeine_mg IS
+  'Log-time snapshot of the variant''s caffeine_mg. NULL on rows predating this column.';
+COMMENT ON COLUMN public.meal_foods.caffeine_mg IS
+  'Log-time snapshot of the variant''s caffeine_mg. NULL on rows predating this column.';
+
+-- Visibility backfill: make caffeine_mg visible for EXISTING users who have
+-- saved a customisation. New/untouched users need nothing -- getNutrientDisplayPreferences
+-- synthesizes missing rows from defaultNutrients/predefinedNutrients at read
+-- time (nutrientDisplayPreferenceService.ts), which already include caffeine_mg
+-- once this migration's companion code change lands. Only users who ever SAVED
+-- a customisation have a stored row, and those rows are frozen lists that would
+-- otherwise never learn about a new nutrient.
+--
+-- Deliberately ADDITIVE and it DOES modify curated lists. Appends at the END of
+-- each array so existing column ORDER is untouched -- that order is user-chosen
+-- and is what the grids render.
+UPDATE public.user_nutrient_display_preferences AS p
+SET visible_nutrients = p.visible_nutrients || to_jsonb('caffeine_mg'::text),
+    updated_at = now()
+WHERE jsonb_typeof(p.visible_nutrients) = 'array'
+  AND NOT (p.visible_nutrients @> to_jsonb(ARRAY['caffeine_mg'::text]));
+
+
+-- =============================================================================
+-- Phase 2: sf_volume_unit_to_ml() helper (#1557/#1629 prep)
+-- =============================================================================
+--
+-- Immutable SQL helper converting a food serving unit to millilitres, or NULL
+-- when the unit is not a volume. Mirrors the sf_try_numeric precedent in
+-- 20260710000000_add_supplement_nutrients_to_medications.sql.
+--
+-- TWO UNIT NAMESPACES, AND THEY DISAGREE ABOUT 'oz'.
+--
+--   Food vocabulary (food_entries.unit, food_variants.serving_unit) --
+--     shared/src/utils/servingSizeConversions.ts puts oz: 28.3495 in
+--     WEIGHT_TO_GRAMS. Here 'oz' is a WEIGHT ounce and MUST NOT convert to a
+--     volume; 4 oz of cheese is not 118 ml of water. It returns NULL below.
+--     'fl oz' (fluid ounce, 29.5735 ml) is a distinct, unambiguous volume unit
+--     added to this vocabulary specifically so a beverage logged in fl oz gets
+--     the volume credit without 'oz' changing meaning for everyone else.
+--
+--   Water container vocabulary (schemas/waterContainerSchemas.ts, ml|oz|liter) --
+--     there 'oz' IS a fluid ounce and services/waterContainerService.ts:6
+--     correctly multiplies by 29.5735.
+--
+-- These two must never share a conversion function.
+
+CREATE OR REPLACE FUNCTION public.sf_volume_unit_to_ml(unit text)
+RETURNS numeric LANGUAGE sql IMMUTABLE AS $$
+SELECT CASE lower(btrim(coalesce(unit, '')))
+    WHEN 'ml'     THEN 1
+    WHEN 'l'      THEN 1000
+    WHEN 'liter'  THEN 1000
+    WHEN 'liters' THEN 1000
+    WHEN 'cup'    THEN 236.588
+    WHEN 'cups'   THEN 236.588
+    WHEN 'tbsp'   THEN 14.7868
+    WHEN 'tsp'    THEN 4.92892
+    WHEN 'fl oz'  THEN 29.5735
+    WHEN 'floz'   THEN 29.5735
+    WHEN 'fl_oz'  THEN 29.5735
+    ELSE NULL          -- 'oz' is a WEIGHT ounce in the food vocabulary
+END::numeric;
+$$;
+
+COMMENT ON FUNCTION public.sf_volume_unit_to_ml(text) IS
+  'Food serving unit -> millilitres, NULL for non-volume units. Returns NULL for ''oz'' by design: in the food vocabulary oz is a weight ounce. The water-container vocabulary is separate and treats oz as fluid.';
+
+
+-- =============================================================================
+-- Phase 3: water_ml columns + reserved food_entry_id link (#1557, #2115)
+-- =============================================================================
+--
+-- water_ml lands on all THREE nutrition-carrying tables for the same reason
+-- caffeine_mg did: food_entries and meal_foods snapshot the block at log time.
+--
+-- water_ml is DELIBERATELY NOT added to FOOD_VARIANT_NUTRIENT_FIELDS. That list
+-- is a SQL generator input (models/supplementSql.ts) as well as a field list;
+-- including water there would make supplements report a water dose, add a
+-- water column to Reports trends and to the chatbot's nutrition rows, and
+-- create a second, uncoordinated day total. Water is a sibling column, not a
+-- nutrient in that sense. It is likewise deliberately NOT registered in
+-- shared/src/nutrients/micronutrientCatalog.ts (its unit union has no 'ml').
+--
+-- food_entry_id is added NOW with no writer. Until the container->food link
+-- ships (a later phase in this same migration file) it is always NULL, which
+-- makes the "exclude food entries already represented by a ledger row" filter
+-- a provably-empty predicate. Adding it later would mean shipping the
+-- day-total formula twice.
+--
+-- ON DELETE CASCADE, not SET NULL: a linked ledger row and its food entry are
+-- the same logged event. SET NULL would silently turn it into an orphan manual
+-- drink the user never logged. The service layer that will use this column
+-- removes the ledger row explicitly on user-facing deletes and recomputes the
+-- daily aggregate; CASCADE is the orphan guard for paths that bypass the
+-- service (see recomputeWaterAggregate, added alongside sf_volume_unit_to_ml
+-- above).
+
+ALTER TABLE public.food_variants
+  ADD COLUMN IF NOT EXISTS water_ml numeric DEFAULT 0;
+
+ALTER TABLE public.food_entries
+  ADD COLUMN IF NOT EXISTS water_ml numeric;
+
+ALTER TABLE public.meal_foods
+  ADD COLUMN IF NOT EXISTS water_ml numeric;
+
+ALTER TABLE public.water_intake_entries
+  ADD COLUMN IF NOT EXISTS food_entry_id uuid;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'water_intake_entries_food_entry_id_fkey'
+      AND conrelid = 'public.water_intake_entries'::regclass
+  ) THEN
+    ALTER TABLE public.water_intake_entries
+      ADD CONSTRAINT water_intake_entries_food_entry_id_fkey
+      FOREIGN KEY (food_entry_id) REFERENCES public.food_entries(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_water_intake_entries_food_entry_id
+  ON public.water_intake_entries (food_entry_id)
+  WHERE food_entry_id IS NOT NULL;
+
+COMMENT ON COLUMN public.food_variants.water_ml IS
+  'Water content in millilitres per serving_size of this variant. 0/NULL means "unknown"; readers then fall back to the logged volume when the entry''s unit is a volume unit (see public.sf_volume_unit_to_ml). NOTE: ''oz'' in the food unit vocabulary is a WEIGHT ounce and is NOT a volume fallback; ''fl oz'' is.';
+COMMENT ON COLUMN public.food_entries.water_ml IS
+  'Log-time snapshot of the variant''s water_ml. NULL on rows predating this column.';
+COMMENT ON COLUMN public.meal_foods.water_ml IS
+  'Log-time snapshot of the variant''s water_ml. NULL on rows predating this column.';
+COMMENT ON COLUMN public.water_intake_entries.food_entry_id IS
+  'Set when this drink was logged by a container linked to a food (#2115): the diary entry created alongside it. A food entry referenced here is EXCLUDED from the food-derived water sum, so its water is counted exactly once -- here, scaled by hydration_factor. NULL for every manual or provider-synced drink.';
+
+-- Visibility backfill: water_ml -> everywhere EXCEPT 'goal', 'summary',
+-- 'quick_info', 'diary' for EXISTING users who have saved a customisation.
+--
+-- Excluded from the compact surfaces (summary/quick_info/diary) because water
+-- already has a dedicated gauge on web (pages/Diary/WaterIntake.tsx) and
+-- mobile (HydrationGauge). Putting it in the summary card renders the same
+-- number twice, three inches apart, with different rounding.
+--
+-- Excluded from 'goal' because user_goals.water_goal_ml is the ONE water
+-- goal. NUTRIENT_CONFIG (frontend constants/goals.ts) is derived from
+-- CENTRAL_NUTRIENT_CONFIG, so adding water_ml there -- which this migration's
+-- companion code change must do, to drive the food form -- would otherwise
+-- render a second Water input writing goals.water_ml, a column that does not
+-- exist. See the limit-goals phase for the full four-gate enforcement; this
+-- migration is gate #2 (stored rows never acquire it).
+UPDATE public.user_nutrient_display_preferences AS p
+SET visible_nutrients = p.visible_nutrients || to_jsonb('water_ml'::text),
+    updated_at = now()
+WHERE jsonb_typeof(p.visible_nutrients) = 'array'
+  AND p.view_group IN ('food_database', 'report_tabular', 'report_chart')
+  AND NOT (p.visible_nutrients @> to_jsonb(ARRAY['water_ml'::text]));
+
+-- Defensive: strip water_ml from any 'goal' row that already acquired it
+-- (possible if a client saved the goal picker while water_ml was briefly
+-- offered between this migration's code change and this backfill).
+UPDATE public.user_nutrient_display_preferences AS p
+SET visible_nutrients = (
+      SELECT COALESCE(jsonb_agg(elem ORDER BY ord), '[]'::jsonb)
+      FROM jsonb_array_elements(p.visible_nutrients) WITH ORDINALITY AS t(elem, ord)
+      WHERE elem <> to_jsonb('water_ml'::text)
+    ),
+    updated_at = now()
+WHERE p.view_group = 'goal'
+  AND jsonb_typeof(p.visible_nutrients) = 'array'
+  AND p.visible_nutrients @> to_jsonb(ARRAY['water_ml'::text]);

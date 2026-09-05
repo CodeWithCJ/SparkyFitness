@@ -18,13 +18,15 @@ export const nutrientFields: NumericFoodVariantKeys[] = [
   'vitamin_c',
   'calcium',
   'iron',
+  'caffeine_mg',
+  'water_ml',
 ];
 
 // Unit groups mirror the lookup tables in servingSizeConversions.ts so that
 // compatible-unit detection is consistent in both directions.
 export const UNIT_GROUPS = [
   { label: 'Weight', units: ['g', 'kg', 'mg', 'oz', 'lb'] },
-  { label: 'Volume', units: ['ml', 'l', 'cup', 'tbsp', 'tsp'] },
+  { label: 'Volume', units: ['ml', 'l', 'cup', 'tbsp', 'tsp', 'fl oz'] },
   {
     label: 'Quantity',
     units: [

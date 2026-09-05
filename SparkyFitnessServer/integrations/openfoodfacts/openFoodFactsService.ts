@@ -1061,6 +1061,25 @@ function mapOpenFoodFactsProduct(
           scale *
           10
       ) / 10,
+    // OFF stores caffeine_100g in grams (mass-based, like sodium/iron/calcium
+    // above) -- x1000 converts to milligrams, matching every other mg-unit
+    // nutrient here.
+    caffeine_mg:
+      Math.round(
+        getOffNutrient100g(nutriments, 'caffeine', declaredServingQuantity) *
+          1000 *
+          scale *
+          10
+      ) / 10,
+    // OFF's water_100g is grams; water's density is ~1 g/ml, so grams and
+    // millilitres are numerically equivalent here -- no x1000 factor, just
+    // the same per-100g -> per-serving scale as calories/protein/fat.
+    water_ml:
+      Math.round(
+        getOffNutrient100g(nutriments, 'water', declaredServingQuantity) *
+          scale *
+          10
+      ) / 10,
     ...(() => {
       const extracted = extractOffProviderNutrients(
         nutriments,

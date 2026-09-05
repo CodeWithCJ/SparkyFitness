@@ -222,6 +222,8 @@ async function createFoodEntry(
         'vitamin_c',
         'calcium',
         'iron',
+        'caffeine_mg',
+        'water_ml',
         'glycemic_index',
         'serving_size',
         'serving_unit',
@@ -267,6 +269,8 @@ async function createFoodEntry(
         vitamin_c: entryData.vitamin_c,
         calcium: entryData.calcium,
         iron: entryData.iron,
+        caffeine_mg: entryData.caffeine_mg,
+        water_ml: entryData.water_ml,
         glycemic_index: entryData.glycemic_index,
         custom_nutrients: entryData.custom_nutrients || {},
         allergens: entryData.allergens || null,
@@ -281,10 +285,10 @@ async function createFoodEntry(
          created_by_user_id, food_name, brand_name, serving_size, serving_unit, calories, protein, carbs, fat,
          saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium,
          potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients, allergens, traces, updated_by_user_id,
-         source, source_id, entry_time, images, notes
+         source, source_id, entry_time, images, notes, caffeine_mg, water_ml
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41::jsonb, $42
+         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41::jsonb, $42, $43, $44
        )
        -- Idempotent re-sync for provider-sourced entries (e.g. Health Connect):
        -- re-ingesting the same record updates it in place. Manual/web entries
@@ -325,7 +329,9 @@ async function createFoodEntry(
            allergens = EXCLUDED.allergens,
            traces = EXCLUDED.traces,
            updated_by_user_id = EXCLUDED.updated_by_user_id,
-           entry_time = EXCLUDED.entry_time
+           entry_time = EXCLUDED.entry_time,
+           caffeine_mg = EXCLUDED.caffeine_mg,
+           water_ml = EXCLUDED.water_ml
            -- notes is deliberately absent: it is user-authored, so a provider
            -- re-sync must never overwrite what the user wrote on this entry.
        RETURNING *`,
@@ -379,6 +385,8 @@ async function createFoodEntry(
         // Per-occurrence note. Never seeded from the parent food's notes: the
         // food's note is shown alongside this one, not copied into it.
         sanitizeNotes(entryData.notes) ?? null,
+        snapshot.caffeine_mg,
+        snapshot.water_ml,
       ]
     );
     await client.query('COMMIT');
@@ -526,7 +534,9 @@ async function updateFoodEntry(
         -- Plain assignment like entry_time: the service has already resolved
         -- "key omitted => keep existing" against the stored row, so whatever
         -- arrives here is the value the entry should end up with.
-        notes = $36
+        notes = $36,
+        caffeine_mg = $37,
+        water_ml = $38
       WHERE id = $30
       RETURNING *`,
       [
@@ -568,6 +578,8 @@ async function updateFoodEntry(
           ? null
           : JSON.stringify(toImageArray(entryData.images)),
         sanitizeNotes(entryData.notes) ?? null,
+        snapshotData.caffeine_mg,
+        snapshotData.water_ml,
       ]
     );
     return result.rows[0];

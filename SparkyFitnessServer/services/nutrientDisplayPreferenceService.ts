@@ -15,6 +15,7 @@ const defaultNutrients = [
   'fat',
   'dietary_fiber',
   'sugars',
+  'caffeine_mg',
 ];
 const predefinedNutrients = [
   'calories',
@@ -35,6 +36,14 @@ const predefinedNutrients = [
   'iron',
   'calcium',
   'glycemic_index',
+  'caffeine_mg',
+  // Deliberately NOT in defaultNutrients: water already has a dedicated
+  // gauge on both web (WaterIntake.tsx) and mobile (HydrationGauge), so
+  // putting it in the compact summary/quick_info/diary surfaces would render
+  // the same number twice with different rounding. It stays here in
+  // predefinedNutrients so it appears in the food form (needed to enter a
+  // water content) and is one click from the summary.
+  'water_ml',
 ];
 /**
  * The view groups a nutrient created from the Custom Nutrients settings page is made

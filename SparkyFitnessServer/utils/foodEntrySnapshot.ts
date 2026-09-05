@@ -35,6 +35,8 @@ export interface VariantNutritionSource {
   vitamin_c?: number | string | null;
   calcium?: number | string | null;
   iron?: number | string | null;
+  caffeine_mg?: number | string | null;
+  water_ml?: number | string | null;
   glycemic_index?: string | null;
   custom_nutrients?: Record<string, unknown> | null;
 }
@@ -70,6 +72,8 @@ export function buildFoodEntrySnapshot(
     vitamin_c: variant.vitamin_c,
     calcium: variant.calcium,
     iron: variant.iron,
+    caffeine_mg: variant.caffeine_mg,
+    water_ml: variant.water_ml,
     glycemic_index: variant.glycemic_index,
     custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
   } as FoodEntrySnapshot;

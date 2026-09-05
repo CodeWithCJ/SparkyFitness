@@ -15,6 +15,7 @@ export const waterIntakeEntriesSchema = z.object({
   created_at: z.date(),
   created_by_user_id: userIdSchema.nullable(),
   logged_at: z.date(),
+  food_entry_id: z.string().nullable(),
 });
 
 export const waterIntakeEntriesInitializerSchema = z.object({
@@ -29,6 +30,7 @@ export const waterIntakeEntriesInitializerSchema = z.object({
   created_at: z.date().optional(),
   created_by_user_id: userIdSchema.optional().nullable(),
   logged_at: z.date().optional(),
+  food_entry_id: z.string().optional().nullable(),
 });
 
 export const waterIntakeEntriesMutatorSchema = z.object({
@@ -43,6 +45,7 @@ export const waterIntakeEntriesMutatorSchema = z.object({
   created_at: z.date().optional(),
   created_by_user_id: userIdSchema.optional().nullable(),
   logged_at: z.date().optional(),
+  food_entry_id: z.string().optional().nullable(),
 });
 
 export type WaterIntakeEntries = z.infer<typeof waterIntakeEntriesSchema>;

@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
@@ -1544,6 +1545,8 @@ async function getMostRecentMeasurement(userId: any, measurementType: any) {
 export { upsertStepData };
 export { upsertWaterData };
 export { incrementWaterData };
+export { recomputeWaterAggregate };
+export { recomputeWaterAggregateForUser };
 export { getWaterIntakesByDates };
 export { getWaterIntakeEntryById };
 export { getWaterIntakeEntryOwnerId };
@@ -1632,6 +1635,78 @@ async function insertWaterIntakeLog(
  * wiping the user's tapped-in drink log because a CSV import omitted a
  * source column would destroy real data.
  */
+/**
+ * Recomputes and stores the water_intake daily aggregate for one
+ * (user, entry_date, source) from the CURRENT contents of water_intake_entries
+ * -- SUM-from-source-of-truth, not an incremental `+=`. This is what makes a
+ * caller idempotent: run it twice, or after a row was deleted by something
+ * that bypassed the service layer (e.g. an ON DELETE CASCADE from a linked
+ * food entry), and it converges on the correct total either way, unlike
+ * incrementWaterData's `water_intake.water_ml + $delta`, which only stays
+ * correct if every mutation that ever touched the ledger also called it with
+ * the right delta.
+ *
+ * Runs on the caller's own client so it can participate in an existing
+ * transaction (see upsertWaterIntakeSamples below).
+ */
+async function recomputeWaterAggregate(
+  client: PoolClient,
+  userId: string,
+  actingUserId: string,
+  entryDate: string,
+  source: string
+): Promise<number> {
+  const sumRes = await client.query(
+    `SELECT COALESCE(SUM(water_ml), 0) as total_ml
+     FROM water_intake_entries
+     WHERE user_id = $1 AND entry_date = $2 AND source = $3`,
+    [userId, entryDate, source]
+  );
+  const totalMl = Number(sumRes.rows[0]?.total_ml || 0);
+
+  await client.query(
+    `INSERT INTO water_intake (user_id, entry_date, water_ml, source, created_by_user_id, updated_by_user_id, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $5, NOW(), NOW())
+     ON CONFLICT (user_id, entry_date, source)
+     DO UPDATE SET water_ml = $3, updated_at = NOW(), updated_by_user_id = $5`,
+    [userId, entryDate, totalMl, source, actingUserId]
+  );
+
+  return totalMl;
+}
+
+/**
+ * Convenience wrapper around recomputeWaterAggregate for callers with no
+ * open transaction of their own (e.g. measurementService's manual +/- path).
+ * Opens and closes its own client/transaction, mirroring the
+ * createFoodWithClient/createFood split in models/food.ts.
+ */
+async function recomputeWaterAggregateForUser(
+  userId: string,
+  actingUserId: string,
+  entryDate: string,
+  source: string
+): Promise<number> {
+  const client = await getClient(userId, actingUserId);
+  try {
+    await client.query('BEGIN');
+    const totalMl = await recomputeWaterAggregate(
+      client,
+      userId,
+      actingUserId,
+      entryDate,
+      source
+    );
+    await client.query('COMMIT');
+    return totalMl;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function upsertWaterIntakeSamples(
   userId: string,
   actingUserId: string,
@@ -1787,20 +1862,12 @@ async function upsertWaterIntakeSamples(
     // (source, date) combination touched by this batch's samples.
     for (const [source, dates] of affectedDatesBySource) {
       for (const dateStr of dates) {
-        const sumRes = await client.query(
-          `SELECT COALESCE(SUM(water_ml), 0) as total_ml
-           FROM water_intake_entries
-           WHERE user_id = $1 AND entry_date = $2 AND source = $3`,
-          [userId, dateStr, source]
-        );
-        const totalMl = Number(sumRes.rows[0]?.total_ml || 0);
-
-        await client.query(
-          `INSERT INTO water_intake (user_id, entry_date, water_ml, source, created_by_user_id, updated_by_user_id, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $5, NOW(), NOW())
-           ON CONFLICT (user_id, entry_date, source)
-           DO UPDATE SET water_ml = $3, updated_at = NOW(), updated_by_user_id = $5`,
-          [userId, dateStr, totalMl, source, actingUserId]
+        await recomputeWaterAggregate(
+          client,
+          userId,
+          actingUserId,
+          dateStr,
+          source
         );
       }
     }
@@ -1941,6 +2008,8 @@ export default {
   upsertStepData,
   upsertWaterData,
   incrementWaterData,
+  recomputeWaterAggregate,
+  recomputeWaterAggregateForUser,
   getWaterIntakeByDate,
   getWaterIntakesByDates,
   getWaterIntakeEntryById,

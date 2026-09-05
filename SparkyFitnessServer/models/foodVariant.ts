@@ -13,8 +13,8 @@ async function createFoodVariant(variantData: any, userId: any) {
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
         vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients,
-        source, ai_confidence, allergens, traces, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, now(), now()) RETURNING *`,
+        source, ai_confidence, allergens, traces, caffeine_mg, water_ml, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, now(), now()) RETURNING *`,
       [
         variantData.food_id,
         variantData.serving_size,
@@ -43,6 +43,8 @@ async function createFoodVariant(variantData: any, userId: any) {
         variantData.ai_confidence ?? null,
         variantData.allergens ?? null,
         variantData.traces ?? null,
+        variantData.caffeine_mg,
+        variantData.water_ml,
       ]
     );
     return result.rows[0];
@@ -132,6 +134,8 @@ async function updateFoodVariant(id: any, variantData: any, userId: any) {
         ai_confidence = CASE WHEN $25 THEN $26 ELSE ai_confidence END,
         allergens = COALESCE($28, allergens),
         traces = COALESCE($29, traces),
+        caffeine_mg = COALESCE($30, caffeine_mg),
+        water_ml = COALESCE($31, water_ml),
         updated_at = now()
       WHERE id = $27
       RETURNING *`,
@@ -167,6 +171,8 @@ async function updateFoodVariant(id: any, variantData: any, userId: any) {
         id,
         variantData.allergens ?? null,
         variantData.traces ?? null,
+        variantData.caffeine_mg,
+        variantData.water_ml,
       ]
     );
     // If this variant is being set as default, ensure all other variants for this food_id are not default
@@ -206,7 +212,7 @@ async function bulkCreateFoodVariants(variantsData: any, userId: any) {
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
         vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients,
-        source, ai_confidence, created_at, updated_at
+        source, ai_confidence, caffeine_mg, water_ml, created_at, updated_at
       ) VALUES %L RETURNING id`;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const values = variantsData.map((variant: any) => [
@@ -235,6 +241,8 @@ async function bulkCreateFoodVariants(variantsData: any, userId: any) {
       JSON.stringify(variant.custom_nutrients ?? {}),
       variant.source ?? 'manual',
       variant.ai_confidence ?? null,
+      variant.caffeine_mg,
+      variant.water_ml,
       'now()',
       'now()',
     ]);

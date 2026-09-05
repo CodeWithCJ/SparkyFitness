@@ -336,6 +336,13 @@ function mapUsdaBarcodeProduct(food: UsdaFood) {
           Math.round((nutrients[1292] || 0) * scale * 10) / 10,
         vitamin_a: Math.round((nutrients[1104] || 0) * 0.3 * scale),
         vitamin_c: Math.round((nutrients[1162] || 0) * scale * 10) / 10,
+        // FDC nutrient id 1057 = Caffeine, reported mg/100g -- no unit
+        // conversion needed, unlike the g/100g nutrients above.
+        caffeine_mg: Math.round((nutrients[1057] || 0) * scale * 10) / 10,
+        // FDC nutrient id 1051 = Water, reported in grams/100g. Water's
+        // density is ~1 g/ml, so grams and millilitres are numerically
+        // equivalent -- no unit conversion, same pattern as protein/carbs.
+        water_ml: Math.round((nutrients[1051] || 0) * scale * 10) / 10,
         provider_nutrients: scaleProviderNutrients(
           providerNutrientsByLabel,
           scale

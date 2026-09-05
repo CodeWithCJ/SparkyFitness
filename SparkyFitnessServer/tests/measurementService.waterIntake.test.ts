@@ -112,6 +112,101 @@ describe('Measurement Service - Water Intake', () => {
       measurementRepository.insertWaterIntakeLog.mockResolvedValue({});
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
       measurementRepository.getWaterIntakeByDate.mockResolvedValue({});
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      measurementRepository.getWaterIntakeLogByDate.mockResolvedValue([]);
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      measurementRepository.deleteWaterIntakeLog.mockResolvedValue(true);
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      measurementRepository.recomputeWaterAggregateForUser.mockResolvedValue(0);
+    });
+
+    // Phase 2 (#1557/#1629 prep): the decrement branch used to fall back to
+    // `remainingDrinks * amountPerDrink` when fewer ledger rows existed than
+    // drinks requested, subtracting water no row ever contained. It now
+    // recomputes from whatever is left in water_intake_entries instead.
+    describe('decrements', () => {
+      it('deletes each of the N most recent ledger rows and recomputes, with no incrementWaterData call', async () => {
+        // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+        measurementRepository.getWaterIntakeLogByDate.mockResolvedValue([
+          { id: 'log-1', water_ml: 250 },
+          { id: 'log-2', water_ml: 250 },
+        ]);
+
+        await measurementService.upsertWaterIntake(
+          mockUserId,
+          mockUserId,
+          entryDate,
+          -2,
+          null
+        );
+
+        expect(
+          measurementRepository.deleteWaterIntakeLog
+        ).toHaveBeenCalledTimes(2);
+        expect(measurementRepository.deleteWaterIntakeLog).toHaveBeenCalledWith(
+          'log-1',
+          mockUserId
+        );
+        expect(measurementRepository.deleteWaterIntakeLog).toHaveBeenCalledWith(
+          'log-2',
+          mockUserId
+        );
+        expect(
+          measurementRepository.recomputeWaterAggregateForUser
+        ).toHaveBeenCalledWith(mockUserId, mockUserId, entryDate, 'manual');
+        // The old incremental-delta path must be gone from this branch.
+        expect(measurementRepository.incrementWaterData).not.toHaveBeenCalled();
+      });
+
+      it('removes only what exists and still recomputes when fewer ledger rows exist than requested — no phantom subtraction', async () => {
+        // Only 1 row exists, but the caller asks to remove 3 "drinks".
+        // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+        measurementRepository.getWaterIntakeLogByDate.mockResolvedValue([
+          { id: 'log-1', water_ml: 250 },
+        ]);
+        // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+        waterContainerRepository.getWaterContainerById.mockResolvedValue(
+          undefined
+        );
+
+        await measurementService.upsertWaterIntake(
+          mockUserId,
+          mockUserId,
+          entryDate,
+          -3,
+          null
+        );
+
+        // Exactly the one row that exists is deleted — no phantom volume for
+        // the two "drinks" that had no backing row.
+        expect(
+          measurementRepository.deleteWaterIntakeLog
+        ).toHaveBeenCalledTimes(1);
+        expect(
+          measurementRepository.recomputeWaterAggregateForUser
+        ).toHaveBeenCalledWith(mockUserId, mockUserId, entryDate, 'manual');
+        expect(measurementRepository.incrementWaterData).not.toHaveBeenCalled();
+      });
+
+      it('recomputes (a no-op total) even when there are no ledger rows at all', async () => {
+        // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+        measurementRepository.getWaterIntakeLogByDate.mockResolvedValue([]);
+
+        await measurementService.upsertWaterIntake(
+          mockUserId,
+          mockUserId,
+          entryDate,
+          -1,
+          null
+        );
+
+        expect(
+          measurementRepository.deleteWaterIntakeLog
+        ).not.toHaveBeenCalled();
+        expect(
+          measurementRepository.recomputeWaterAggregateForUser
+        ).toHaveBeenCalledWith(mockUserId, mockUserId, entryDate, 'manual');
+      });
     });
 
     it('divides container volume by servings_per_container per drink', async () => {

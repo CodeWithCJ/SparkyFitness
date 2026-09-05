@@ -38,6 +38,8 @@ export interface NutrientFields {
   vitamin_c?: NutrientValue;
   calcium?: NutrientValue;
   iron?: NutrientValue;
+  caffeine_mg?: NutrientValue;
+  water_ml?: NutrientValue;
   glycemic_index?: string | null;
   custom_nutrients?: CustomNutrients | null;
 }

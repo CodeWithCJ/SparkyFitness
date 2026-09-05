@@ -134,6 +134,18 @@ describe('addSupplementTotals', () => {
     expect(addSupplementTotals(foodTotals, null)).toBe(foodTotals);
   });
 
+  // #1958: caffeine_mg was added to FOOD_VARIANT_NUTRIENT_FIELDS, so a
+  // caffeinated supplement (a pre-workout, say) must fold into the day total
+  // the same way an existing micronutrient like iron already does.
+  it('adds caffeine_mg from the supplement arm', () => {
+    const totals = addSupplementTotals(foodTotals, {
+      ...EMPTY_SUPPLEMENT_TOTALS,
+      caffeine_mg: 200,
+    });
+
+    expect(totals.caffeine_mg).toBe(200);
+  });
+
   it('is a no-op for a day with supplements that carry no nutrition', () => {
     const totals = addSupplementTotals(foodTotals, EMPTY_SUPPLEMENT_TOTALS);
 

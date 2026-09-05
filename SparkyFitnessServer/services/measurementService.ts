@@ -553,9 +553,13 @@ async function upsertWaterIntake(
         );
       }
     } else if (changeDrinks < 0) {
-      // 5b. Decrements: delete the most recent log entries and subtract
-      // their *actual* water_ml from the daily total. This avoids drift
-      // when log rows were recorded with different containers.
+      // 5b. Decrements: delete the most recent log entries, then recompute
+      // the daily total from what's actually left in water_intake_entries
+      // (SUM-from-source-of-truth) rather than subtracting an incremental
+      // delta. Recompute-from-sum is idempotent and self-correcting, so it
+      // needs no "not enough log entries" fallback: deleting fewer rows than
+      // requested (because none remain) simply means the recompute reflects
+      // exactly what was removed, with nothing left to phantom-subtract.
       const logEntries = await measurementRepository.getWaterIntakeLogByDate(
         authenticatedUserId,
         entryDate,
@@ -563,26 +567,18 @@ async function upsertWaterIntake(
       );
       const requestedDrinks = Math.abs(changeDrinks);
       const entriesToRemove = Math.min(requestedDrinks, logEntries.length);
-      let actualMlRemoved = 0;
       for (let i = 0; i < entriesToRemove; i++) {
         const entry = logEntries[i];
         if (entry) {
-          actualMlRemoved += Number(entry.water_ml);
           await measurementRepository.deleteWaterIntakeLog(
             entry.id,
             authenticatedUserId
           );
         }
       }
-      // If there weren't enough individual log entries, remove remaining requested volume
-      if (entriesToRemove < requestedDrinks) {
-        const remainingDrinks = requestedDrinks - entriesToRemove;
-        actualMlRemoved += remainingDrinks * amountPerDrink;
-      }
-      await measurementRepository.incrementWaterData(
+      await measurementRepository.recomputeWaterAggregateForUser(
         authenticatedUserId,
         actingUserId,
-        -actualMlRemoved,
         entryDate,
         'manual'
       );
@@ -1818,11 +1814,12 @@ async function deleteWaterIntakeLogEntry(
       throw new Error('Water intake log entry not found.');
     }
 
-    // 3. Subtract the deleted amount from the daily total
-    await measurementRepository.incrementWaterData(
+    // 3. Recompute the daily total from what's left in water_intake_entries
+    // (SUM-from-source-of-truth), rather than subtracting the deleted row's
+    // amount as an incremental delta.
+    await measurementRepository.recomputeWaterAggregateForUser(
       authenticatedUserId,
       actingUserId,
-      -Number(deleted.water_ml),
       deleted.entry_date,
       deleted.source || 'manual'
     );
