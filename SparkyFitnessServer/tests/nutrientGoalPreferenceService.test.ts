@@ -42,6 +42,8 @@ describe('nutrientGoalPreferenceService', () => {
       expect(result.saturated_fat).toEqual({ goalType: 'maximum' });
       expect(result.trans_fat).toEqual({ goalType: 'maximum' });
       expect(result.sugars).toEqual({ goalType: 'maximum' });
+      expect(result.caffeine_mg).toEqual({ goalType: 'maximum' });
+      expect(result.alcohol_g).toEqual({ goalType: 'maximum' });
       // ...everything else defaults to minimum.
       expect(result.protein).toEqual({ goalType: 'minimum' });
       expect(result.calories).toEqual({ goalType: 'minimum' });
@@ -184,6 +186,17 @@ describe('nutrientGoalPreferenceService', () => {
       );
     });
 
+    it('rejects water_ml as a known nutrient key (Gate 4)', async () => {
+      await expect(
+        nutrientGoalPreferenceService.upsertGoalPreference(
+          'user-1',
+          'water_ml',
+          'minimum'
+        )
+      ).rejects.toThrow(/Unknown nutrient key/);
+      expect(repo.upsertNutrientGoalPreference).not.toHaveBeenCalled();
+    });
+
     it('rejects a nutrientKey that is neither predefined nor a custom nutrient', async () => {
       customNutrients.getCustomNutrients.mockResolvedValue([
         { id: 'cn-1', name: 'Added Sugars' },
@@ -237,6 +250,30 @@ describe('nutrientGoalPreferenceService', () => {
       );
 
       expect(result).toEqual({ nutrientKey: 'protein', goalType: 'minimum' });
+    });
+
+    it('returns maximum for caffeine_mg and alcohol_g', async () => {
+      repo.deleteNutrientGoalPreference.mockResolvedValue(undefined);
+
+      const caffeineResult =
+        await nutrientGoalPreferenceService.resetGoalPreference(
+          'user-1',
+          'caffeine_mg'
+        );
+      const alcoholResult =
+        await nutrientGoalPreferenceService.resetGoalPreference(
+          'user-1',
+          'alcohol_g'
+        );
+
+      expect(caffeineResult).toEqual({
+        nutrientKey: 'caffeine_mg',
+        goalType: 'maximum',
+      });
+      expect(alcoholResult).toEqual({
+        nutrientKey: 'alcohol_g',
+        goalType: 'maximum',
+      });
     });
   });
 

@@ -61,6 +61,8 @@ export const PreferenceSettings = () => {
     setTimezone,
     standardDrinkGrams,
     setStandardDrinkGrams,
+    weeklyAlcoholLimitG,
+    setWeeklyAlcoholLimitG,
     saveAllPreferences,
   } = usePreferences();
 
@@ -91,6 +93,7 @@ export const PreferenceSettings = () => {
         timezone,
         loggingLevel: localLoggingLevel,
         standardDrinkGrams,
+        weeklyAlcoholLimitG,
       });
       toast({
         title: t('settings.preferences.successTitle', 'Success'),
@@ -290,6 +293,45 @@ export const PreferenceSettings = () => {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label htmlFor="weekly_alcohol_limit">
+              {t(
+                'settings.preferences.weeklyAlcoholLimit',
+                'Weekly Alcohol Limit (Standard Drinks)'
+              )}
+            </Label>
+            <Input
+              id="weekly_alcohol_limit"
+              type="number"
+              min={0}
+              step="0.5"
+              placeholder={t(
+                'settings.preferences.noWeeklyLimit',
+                'No limit set'
+              )}
+              value={
+                weeklyAlcoholLimitG != null && standardDrinkGrams > 0
+                  ? String(
+                      Math.round(
+                        (weeklyAlcoholLimitG / standardDrinkGrams) * 10
+                      ) / 10
+                    )
+                  : ''
+              }
+              onChange={(e) => {
+                const val = e.target.value.trim();
+                if (!val || parseFloat(val) <= 0) {
+                  setWeeklyAlcoholLimitG(null);
+                } else {
+                  setWeeklyAlcoholLimitG(
+                    parseFloat(
+                      (parseFloat(val) * standardDrinkGrams).toFixed(2)
+                    )
+                  );
+                }
+              }}
+            />
           </div>
           <div>
             <Label htmlFor="measurement_decimal_places">

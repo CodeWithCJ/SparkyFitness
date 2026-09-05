@@ -36,6 +36,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         food_search_all_providers_default = COALESCE($47, food_search_all_providers_default),
         add_food_water_to_intake = COALESCE($48, add_food_water_to_intake),
         standard_drink_grams = COALESCE($49, standard_drink_grams),
+        weekly_alcohol_limit_g = COALESCE($50, weekly_alcohol_limit_g),
         show_net_carbs = COALESCE($31, show_net_carbs),
         ai_assisted_conversions = COALESCE($32, ai_assisted_conversions),
         goal_mode = COALESCE($33, goal_mode),
@@ -103,6 +104,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         preferenceData.food_search_all_providers_default,
         preferenceData.add_food_water_to_intake,
         preferenceData.standard_drink_grams,
+        preferenceData.weekly_alcohol_limit_g,
       ]
     );
     return result.rows[0];
@@ -194,6 +196,7 @@ async function upsertUserPreferences(preferenceData: any) {
        calorie_safety_floor_value,
        add_food_water_to_intake,
        standard_drink_grams,
+       weekly_alcohol_limit_g,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($44, 'HH:mm'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -224,6 +227,7 @@ async function upsertUserPreferences(preferenceData: any) {
        COALESCE($46, 1200),
        COALESCE($48, false),
        COALESCE($49, 14.00),
+       $50,
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -278,6 +282,7 @@ async function upsertUserPreferences(preferenceData: any) {
        add_food_water_to_intake = COALESCE($48, user_preferences.add_food_water_to_intake),
        -- Same reasoning: read $49 directly, not EXCLUDED.
        standard_drink_grams = COALESCE($49, user_preferences.standard_drink_grams),
+       weekly_alcohol_limit_g = COALESCE(EXCLUDED.weekly_alcohol_limit_g, user_preferences.weekly_alcohol_limit_g),
        time_format = COALESCE($44, user_preferences.time_format),
        updated_at = now()
      RETURNING *`,
@@ -331,6 +336,7 @@ async function upsertUserPreferences(preferenceData: any) {
         preferenceData.food_search_all_providers_default,
         preferenceData.add_food_water_to_intake,
         preferenceData.standard_drink_grams,
+        preferenceData.weekly_alcohol_limit_g,
       ]
     );
     return result.rows[0];

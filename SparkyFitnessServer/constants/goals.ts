@@ -17,6 +17,8 @@ export const DEFAULT_GOALS = {
   vitamin_c: 90,
   calcium: 1000,
   iron: 18,
+  caffeine_mg: 400,
+  alcohol_g: 28,
   target_exercise_calories_burned: 0,
   target_exercise_duration_minutes: 0,
   protein_percentage: null,

@@ -4,6 +4,7 @@ import { checkInKeys } from '@/api/keys/checkin';
 import { reportKeys } from '@/api/keys/reports';
 import {
   getExerciseDashboardData,
+  getAlcoholWeekReport,
   loadReportsData,
 } from '@/api/Reports/reportsService';
 import { parseStressMeasurement } from '@/utils/reportUtil';
@@ -130,6 +131,25 @@ export const useExerciseDashboardData = (
       errorMessage: t(
         'reports.failedToLoadExerciseDashboard',
         'Failed to load exercise dashboard data.'
+      ),
+    },
+  });
+};
+
+export const useAlcoholWeekReport = (
+  date: string,
+  userId?: string | null,
+  enabled: boolean = true
+) => {
+  const { t } = useTranslation();
+  return useQuery({
+    queryKey: reportKeys.alcoholWeek(date, userId ?? undefined),
+    queryFn: () => getAlcoholWeekReport(date, userId ?? undefined),
+    enabled: Boolean(date) && enabled,
+    meta: {
+      errorMessage: t(
+        'reports.failedToLoadAlcoholWeek',
+        'Failed to load weekly alcohol data.'
       ),
     },
   });

@@ -1509,6 +1509,8 @@
       "searchTimezones": "Search timezones...",
       "selectTimezone": "Select timezone...",
       "standardDrinkUnit": "Standard Drink Unit",
+      "weeklyAlcoholLimit": "Weekly Alcohol Limit (Standard Drinks)",
+      "noWeeklyLimit": "No limit set",
       "stonesLbs": "Stones & Pounds (st/lb)",
       "successDescription": "Preferences saved.",
       "successTitle": "Success",
@@ -3536,6 +3538,16 @@
     "pasteButton": "Paste"
   },
   "reports": {
+    "alcohol": {
+      "weeklyAlcohol": "Weekly Alcohol Intake",
+      "standardDrinks": "std drinks",
+      "limit": "Limit",
+      "overLimit": "Over limit",
+      "onTrack": "Under limit",
+      "noLimit": "No weekly limit set",
+      "drinksRemaining": "drinks remaining"
+    },
+    "failedToLoadAlcoholWeek": "Failed to load weekly alcohol data.",
     "errorToastTitle": "Error",
     "signInMessage": "Please sign in to view reports.",
     "loadingDateControls": "Loading date controls...",

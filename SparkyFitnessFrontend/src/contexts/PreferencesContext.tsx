@@ -130,6 +130,8 @@ interface PreferencesContextType {
   calorieSafetyFloorMode: CalorieSafetyFloorMode;
   calorieSafetyFloorValue: number;
   standardDrinkGrams: number;
+  weeklyAlcoholLimitG: number | null;
+  setWeeklyAlcoholLimitG: (limit: number | null) => void;
   setStandardDrinkGrams: (grams: number) => void;
   setMeasurementDecimalPlaces: (places: number) => void;
   setGoalMode: (mode: GoalMode) => void;
@@ -367,6 +369,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [standardDrinkGrams, setStandardDrinkGramsState] = useState<number>(
     DEFAULT_STANDARD_DRINK_GRAMS
   );
+  const [weeklyAlcoholLimitG, setWeeklyAlcoholLimitGState] = useState<
+    number | null
+  >(null);
 
   const fetchUserPreferences = useCallback(async () => {
     try {
@@ -773,6 +778,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setStandardDrinkGramsState(
           Number(data.standard_drink_grams) || DEFAULT_STANDARD_DRINK_GRAMS
         );
+        setWeeklyAlcoholLimitGState(
+          data.weekly_alcohol_limit_g != null
+            ? Number(data.weekly_alcohol_limit_g)
+            : null
+        );
       } else {
         await createDefaultPreferences();
         await createDefaultWaterContainer();
@@ -954,6 +964,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           newPrefs?.calorieSafetyFloorValue ?? calorieSafetyFloorValue,
         standard_drink_grams:
           newPrefs?.standardDrinkGrams ?? standardDrinkGrams,
+        weekly_alcohol_limit_g:
+          newPrefs?.weeklyAlcoholLimitG !== undefined
+            ? newPrefs.weeklyAlcoholLimitG
+            : weeklyAlcoholLimitG,
       };
 
       try {
@@ -1016,6 +1030,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       calorieSafetyFloorMode,
       calorieSafetyFloorValue,
       standardDrinkGrams,
+      weeklyAlcoholLimitG,
       updatePreferences,
       loadPreferences,
     ]
@@ -1272,6 +1287,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       calorieSafetyFloorMode,
       calorieSafetyFloorValue,
       standardDrinkGrams,
+      weeklyAlcoholLimitG,
+      setWeeklyAlcoholLimitG: setWeeklyAlcoholLimitGState,
       setStandardDrinkGrams: setStandardDrinkGramsState,
       setMeasurementDecimalPlaces: setMeasurementDecimalPlacesState,
       setGoalMode,
@@ -1372,6 +1389,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       calorieSafetyFloorMode,
       calorieSafetyFloorValue,
       standardDrinkGrams,
+      weeklyAlcoholLimitG,
       setGoalMode,
       setGoalModeCalculationMethod,
       setGoalModeCustomPercentage,

@@ -386,3 +386,61 @@ WHERE jsonb_typeof(p.visible_nutrients) = 'array'
   AND p.view_group IN ('food_database', 'report_tabular', 'report_chart', 'diary')
   AND NOT (p.visible_nutrients @> to_jsonb(ARRAY['alcohol_g'::text]));
 
+
+-- =============================================================================
+-- Phase 8: Limit goals and the weekly alcohol limit (#1925, #1958)
+-- =============================================================================
+--
+-- Daily goal targets for caffeine and alcohol, plus a weekly alcohol limit.
+--
+-- user_goals and goal_presets are hardcoded-column tables (not a generic
+-- key/value store), so a nutrient that appears in the frontend's NUTRIENT_CONFIG
+-- -- which is derived from CENTRAL_NUTRIENT_CONFIG, so EVERY nutrient the food
+-- form can edit -- renders a goal input that writes to a column of the same name.
+-- Without these columns the value is silently dropped by goalRepository.upsertGoal.
+--
+-- DEFAULT NULL, not a literal. ADD COLUMN ... DEFAULT in modern Postgres fills
+-- existing rows, which would silently create a 400 mg caffeine goal for every
+-- existing user -- a goal they never set. Nullable keeps the database truthful
+-- about what the user chose, and constants/goals.ts DEFAULT_GOALS supplies the
+-- number at read time. This is exactly how nullable water_goal_ml already
+-- behaves.
+--
+-- The WEEKLY alcohol limit lives on user_preferences, not user_goals: user_goals
+-- rows are per-date and cascade backwards (goal_date NULL = the standing
+-- default), so a weekly total stored there is ambiguous about which week it
+-- describes. It is one scalar per user, it sits beside standard_drink_grams, and
+-- it needs no new table and no new RLS. NULL = no weekly limit set, and it is
+-- deliberately NOT defaulted: a weekly alcohol limit is a commitment, not a
+-- setting, and pre-filling one invents a goal the user never made.
+
+ALTER TABLE public.user_goals
+  ADD COLUMN IF NOT EXISTS caffeine_mg numeric,
+  ADD COLUMN IF NOT EXISTS alcohol_g numeric;
+
+ALTER TABLE public.goal_presets
+  ADD COLUMN IF NOT EXISTS caffeine_mg numeric,
+  ADD COLUMN IF NOT EXISTS alcohol_g numeric;
+
+ALTER TABLE public.user_preferences
+  ADD COLUMN IF NOT EXISTS weekly_alcohol_limit_g numeric(7,2);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                 WHERE conname = 'user_preferences_weekly_alcohol_limit_positive'
+                   AND conrelid = 'public.user_preferences'::regclass) THEN
+    ALTER TABLE public.user_preferences
+      ADD CONSTRAINT user_preferences_weekly_alcohol_limit_positive
+      CHECK (weekly_alcohol_limit_g IS NULL OR weekly_alcohol_limit_g > 0);
+  END IF;
+END $$;
+
+COMMENT ON COLUMN public.user_goals.caffeine_mg IS
+  'Daily caffeine ceiling in mg. NULL means "use the default" (400, FDA: not generally associated with dangerous effects in healthy adults). Direction defaults to "maximum" via shared BUILTIN_MAXIMUM_GOAL_NUTRIENTS.';
+COMMENT ON COLUMN public.user_goals.alcohol_g IS
+  'Daily ethanol ceiling in grams. NULL means "use the default" (28 g = 2 US standard drinks, the higher of the two sex-specific US Dietary Guidelines figures -- a default that scolds is worse than one the user raises). Displayed as standard drinks via user_preferences.standard_drink_grams.';
+COMMENT ON COLUMN public.user_preferences.weekly_alcohol_limit_g IS
+  'Optional weekly ethanol ceiling in grams (NULL = none). Weekly because every published guideline is weekly (UK CMO: 14 units/week) and the daily goal system has no weekly concept. Rolled up from reportRepository.getDailyNutritionTotalsRange, not a stored aggregate.';
+
+
