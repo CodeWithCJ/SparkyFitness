@@ -1,29 +1,29 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, Text, ScrollView } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 
+import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import StatusView from '../components/StatusView';
-import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import Switch from '../components/ui/Switch';
 import {
-  useServerConnection,
   useCustomNutrients,
   useNutrientDisplayPreferences,
+  useServerConnection,
 } from '../hooks';
+import { nutrientDisplayPreferencesQueryKey } from '../hooks/queryKeys';
+import { useScreenHeader } from '../hooks/useScreenHeader';
 import {
   updateNutrientDisplayPreference,
   type NutrientDisplayPreference,
 } from '../services/api/preferencesApi';
-import { nutrientDisplayPreferencesQueryKey } from '../hooks/queryKeys';
-import { toggleNutrientVisibility } from '../utils/nutrientUtils';
-import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { RootStackScreenProps } from '../types/navigation';
+import { toggleNutrientVisibility } from '../utils/nutrientUtils';
 
 type DashboardSettingsScreenProps = RootStackScreenProps<'DashboardSettings'>;
 
@@ -41,7 +41,9 @@ const SERVER_DEFAULT_SUMMARY_NUTRIENTS = [
   'dietary_fiber',
 ];
 
-const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
+const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
+  navigation,
+}) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -333,6 +335,18 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = () => {
                 onValueChange={setProgressPhotosCardVisible}
               />
             }
+          />
+          <SettingsRow
+            title={t('dashboardSettings.healthTrends', {
+              defaultValue: 'Health Trends',
+            })}
+            subtitle={t('dashboardSettings.healthTrendsSubtitle', {
+              defaultValue:
+                'Choose which graphs show on the Dashboard and their order',
+            })}
+            subtitleNumberOfLines={2}
+            onPress={() => navigation.navigate('HealthTrendsSettings')}
+            testID="dashboard-settings-health-trends"
           />
         </SettingsRowGroup>
 

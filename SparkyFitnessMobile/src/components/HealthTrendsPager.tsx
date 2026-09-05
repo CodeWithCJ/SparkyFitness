@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { StyleSheet, Text, View } from 'react-native';
 import PagerView from 'react-native-pager-view';
+import type { HealthTrendKey } from '../constants/healthTrends';
+import type { SleepTrendSeries } from '../hooks/useHealthTrends';
 import type {
   StepsDataPoint,
   WeightDataPoint,
 } from '../hooks/useMeasurementsRange';
-import type { SleepTrendSeries } from '../hooks/useHealthTrends';
 import type {
   HealthTrendDateRange,
   HealthTrendSeries,
@@ -20,18 +22,19 @@ type HealthTrendsPagerProps = {
   sleep: SleepTrendSeries;
   range: HealthTrendDateRange;
   weightUnit: string;
+  visibleTrends: readonly HealthTrendKey[];
   activePage: number;
   onPageSelected: (page: number) => void;
 };
 
 type HealthTrendPage = {
-  key: string;
+  key: HealthTrendKey;
   content: React.ReactElement;
 };
 
 /**
  * Sized to the tallest page, which is Sleep: it stacks two stat tiles, a subtitle line, a
- * 150px plot, an x-axis row, and a legend, where Steps and Weight carry a single tooltip
+ * 150px plot, an x-axis row, and a legend, where the bar trends carry a single tooltip
  * line above their plot. The pager takes the max rather than letting the sleep card clip.
  */
 const PAGER_HEIGHT = 350;
@@ -45,33 +48,37 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
   sleep,
   range,
   weightUnit,
+  visibleTrends,
   activePage,
   onPageSelected,
 }) => {
-  const pages: HealthTrendPage[] = [
-    // Steps is the default page and is always shown, so the pager can never end up with nothing to render.
-    // Every other trend hides itself until it has data.
-    { key: 'steps', content: <StepsBarChart {...steps} range={range} /> },
-  ];
+  const { t } = useTranslation();
 
-  if (shouldShowTrend(weight)) {
-    pages.push({
-      key: 'weight',
-      content: <WeightLineChart {...weight} range={range} unit={weightUnit} />,
-    });
-  }
+  const renderTrend: Record<HealthTrendKey, () => React.ReactElement> = {
+    steps: () => <StepsBarChart {...steps} range={range} />,
+    weight: () => (
+      <WeightLineChart {...weight} range={range} unit={weightUnit} />
+    ),
+    sleep: () => <SleepTimelineChart {...sleep} range={range} />,
+  };
 
-  // Sleep cannot use `shouldShowTrend`: its `data` is padded to one entry per day in the
-  // window, so it is never empty and the page would show for users with no sleep at all.
-  const shouldShowSleep =
-    sleep.isLoading || sleep.isError || sleep.nightsWithData > 0;
+  const hasTrendData: Record<HealthTrendKey, () => boolean> = {
+    steps: () => shouldShowTrend(steps),
+    weight: () => shouldShowTrend(weight),
+    // Sleep cannot use `shouldShowTrend`: its `data` is padded to one entry per day in the
+    // window, so it is never empty and the page would show for users with no sleep at all.
+    sleep: () => sleep.isLoading || sleep.isError || sleep.nightsWithData > 0,
+  };
 
-  if (shouldShowSleep) {
-    pages.push({
-      key: 'sleep',
-      content: <SleepTimelineChart {...sleep} range={range} />,
-    });
-  }
+  // A trend the user configured to show but that has no data for in this window still hides itself
+  const keysWithData = visibleTrends.filter((key) => hasTrendData[key]());
+  const keysToRender =
+    keysWithData.length > 0 ? keysWithData : visibleTrends.slice(0, 1);
+
+  const pages: HealthTrendPage[] = keysToRender.map((key) => ({
+    key,
+    content: renderTrend[key](),
+  }));
 
   const pagerRef = useRef<PagerView>(null);
 
@@ -92,14 +99,14 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
   // Which trend the user is on has to be remembered by key, because an index does not
   // survive the list changing shape underneath them.
   //
-  // Two ways it changes: a trend disappears (a 403 arrives) and every later index shifts
-  // down, or a trend appears *earlier* in the fixed steps/weight/sleep order and every
-  // later index shifts up. The second is routine — weight hides itself until the window
-  // holds a weigh-in, so logging one turns [steps, sleep] into [steps, weight, sleep] on
-  // the next focus refetch. Index 1 was Sleep and is now Weight, so the chart under the
-  // user silently changes to one they did not ask for.
+  // Three ways it changes: a trend disappears (a 403 arrives) and every later index shifts
+  // down; a trend appears *earlier* in the order and every later index shifts up; or the
+  // user reorders or hides graphs in Dashboard Settings. The second is routine — weight
+  // hides itself until the window holds a weigh-in, so logging one turns [steps, sleep]
+  // into [steps, weight, sleep] on the next focus refetch. Index 1 was Sleep and is now
+  // Weight, so the chart under the user silently changes to one they did not ask for.
   //
-  // Re-resolving the remembered key covers both: it finds the page's new home when it
+  // Re-resolving the remembered key covers all three: it finds the page's new home when it
   // moved, and falls back to clamping only when the page is genuinely gone. The result
   // goes to the native pager and to the dashboard's `chartPage`, since correcting the
   // indicator alone would leave those two disagreeing with the visible chart.
@@ -128,6 +135,19 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
     pagerRef.current?.setPageWithoutAnimation(nextPage);
     onPageSelected(nextPage);
   }, [activePage, pageKeySignature, onPageSelected]);
+
+  if (pages.length === 0) {
+    return (
+      <View className="bg-surface rounded-xl p-6 my-2 shadow-sm">
+        <Text className="text-text-muted text-sm text-center">
+          {t('charts.allTrendsHidden', {
+            defaultValue:
+              'All graphs are hidden. Choose which to show in Dashboard Settings.',
+          })}
+        </Text>
+      </View>
+    );
+  }
 
   if (pages.length === 1) {
     return <>{pages[0].content}</>;

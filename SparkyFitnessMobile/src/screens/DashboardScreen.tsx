@@ -60,6 +60,10 @@ import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import type { HealthTrendDateRange } from '../types/healthTrends';
+import {
+  resolveHealthTrendOrder,
+  selectVisibleHealthTrends,
+} from '../utils/healthTrendPreferences';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { formatDateLabel } from '../utils/dateUtils';
 import {
@@ -200,9 +204,23 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     enabled: isConnected,
   });
 
+  const healthTrendOrder = useAppPreferencesStore((s) => s.healthTrendOrder);
+  const hiddenHealthTrends = useAppPreferencesStore(
+    (s) => s.hiddenHealthTrends
+  );
+  const visibleTrends = useMemo(
+    () =>
+      selectVisibleHealthTrends(
+        resolveHealthTrendOrder(healthTrendOrder),
+        hiddenHealthTrends
+      ),
+    [healthTrendOrder, hiddenHealthTrends]
+  );
+
   const { refetch: refetchTrends, ...trends } = useHealthTrends({
     range: trendsRange,
     enabled: isConnected,
+    activeTrends: visibleTrends,
   });
 
   const { customNutrients, refetch: refetchCustomNutrients } =
@@ -640,6 +658,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           sleep={trends.sleep}
           range={trendsRange}
           weightUnit={weightUnit}
+          visibleTrends={visibleTrends}
           activePage={chartPage}
           onPageSelected={setChartPage}
         />

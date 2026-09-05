@@ -1,6 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import {
+  HEALTH_TREND_KEYS,
+  type HealthTrendKey,
+} from '../constants/healthTrends';
 import type { LanguagePreference } from '../localization';
 import type { OwnershipFilter } from '../utils/shareStatus';
 
@@ -53,6 +57,8 @@ export const PREFERENCE_DEFAULTS = {
   restTimerSoundEnabled: true,
   workoutKeepAwakeEnabled: false,
   languagePreference: 'system' as LanguagePreference,
+  healthTrendOrder: [...HEALTH_TREND_KEYS] as HealthTrendKey[],
+  hiddenHealthTrends: [] as HealthTrendKey[],
   foodSearchOwnershipFilter: 'all' as OwnershipFilter,
   foodsLibraryOwnershipFilter: 'all' as OwnershipFilter,
   mealsLibraryOwnershipFilter: 'all' as OwnershipFilter,
@@ -85,6 +91,8 @@ export type AppPreferencesData = {
   restTimerSoundEnabled: boolean;
   workoutKeepAwakeEnabled: boolean;
   languagePreference: LanguagePreference;
+  healthTrendOrder: HealthTrendKey[];
+  hiddenHealthTrends: HealthTrendKey[];
   foodSearchOwnershipFilter: OwnershipFilter;
   foodsLibraryOwnershipFilter: OwnershipFilter;
   mealsLibraryOwnershipFilter: OwnershipFilter;
@@ -117,6 +125,10 @@ export interface AppPreferencesState extends AppPreferencesData {
   setRestTimerSoundEnabled: (value: boolean) => void;
   setWorkoutKeepAwakeEnabled: (value: boolean) => void;
   setLanguagePreference: (value: LanguagePreference) => void;
+  setHealthTrendLayout: (
+    order: HealthTrendKey[],
+    hiddenKeys: HealthTrendKey[]
+  ) => void;
   setFoodSearchOwnershipFilter: (value: OwnershipFilter) => void;
   setFoodsLibraryOwnershipFilter: (value: OwnershipFilter) => void;
   setMealsLibraryOwnershipFilter: (value: OwnershipFilter) => void;
@@ -202,6 +214,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setWorkoutKeepAwakeEnabled: (value) =>
         set({ workoutKeepAwakeEnabled: value }),
       setLanguagePreference: (value) => set({ languagePreference: value }),
+      setHealthTrendLayout: (order, hiddenKeys) =>
+        set({ healthTrendOrder: order, hiddenHealthTrends: hiddenKeys }),
       setFoodSearchOwnershipFilter: (value) =>
         set({ foodSearchOwnershipFilter: value }),
       setFoodsLibraryOwnershipFilter: (value) =>
@@ -246,6 +260,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         restTimerSoundEnabled: state.restTimerSoundEnabled,
         workoutKeepAwakeEnabled: state.workoutKeepAwakeEnabled,
         languagePreference: state.languagePreference,
+        healthTrendOrder: state.healthTrendOrder,
+        hiddenHealthTrends: state.hiddenHealthTrends,
         foodSearchOwnershipFilter: state.foodSearchOwnershipFilter,
         foodsLibraryOwnershipFilter: state.foodsLibraryOwnershipFilter,
         mealsLibraryOwnershipFilter: state.mealsLibraryOwnershipFilter,

@@ -472,6 +472,7 @@
       "recentItemsHint": "Foods, meals, and exercises you log will appear here for quick access."
     },
     "sleep": "Sleep",
+    "healthTrendsSettings": "Health Trends",
     "progressPhotos": "Progress Photos",
     "progressPhotoCompare": "Compare",
     "progressPhotoTimelapse": "Time-lapse"
@@ -890,6 +891,8 @@
     "cyclePregnancySubtitle": "Show the wellness card on the Dashboard",
     "medications": "Medications",
     "medicationsSubtitle": "Show the medications card on the Dashboard",
+    "healthTrends": "Health Trends",
+    "healthTrendsSubtitle": "Choose which graphs show on the Dashboard and their order",
     "progressPhotos": "Progress Photos",
     "progressPhotosSubtitle": "Show the progress photos card on the Dashboard",
     "customNutrientDisplay": "Custom Nutrient Display"
@@ -4112,7 +4115,8 @@
     "bbt": {
       "tooltip": "Press the line for details",
       "empty": "Log daily temperature logs to view your BBT chart."
-    }
+    },
+    "allTrendsHidden": "All graphs are hidden. Choose which to show in Dashboard Settings."
   },
   "exerciseLibrary": {
     "title": "Exercises",
@@ -4878,6 +4882,18 @@
       "photoNumber": "Photo {{number}}"
     },
     "photoUnavailable": "Photo unavailable"
+  },
+  "healthTrendsSettings": {
+    "description": "Drag a graph by its handle to reorder it. Drop it below the Hidden line to take it off the Dashboard.",
+    "hiddenLabel": "Hidden",
+    "reorder": "Reorder {{name}}",
+    "reorderHint": "Move below the Hidden line to hide this graph, or above it to show it",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "stateShown": "Shown",
+    "stateHidden": "Hidden",
+    "emptyShown": "No graphs are shown. Drag one above the line to bring it back.",
+    "emptyHidden": "Drop a graph here to hide it."
   },
   "progressPhotos": {
     "card": {
