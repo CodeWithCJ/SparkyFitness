@@ -28,6 +28,64 @@ describe('OpenFoodFacts alcohol mapping (#1925)', () => {
     expect(variant?.provider_nutrients?.['alcohol']).toBeUndefined();
   });
 
+  // A record with no serving_quantity_unit, no product_quantity_unit and no
+  // unit in its free-text serving_size used to fall back to grams, so a real
+  // beer imported as "Nutrition per 100 g" -- a mass the source never claimed.
+  it('reads a unitless drink as millilitres, not grams', () => {
+    const product = {
+      product_name: 'Heineken',
+      nutriments: {
+        'energy-kcal_100g': 42,
+        alcohol_100g: 5.0,
+      },
+    };
+
+    const variant = mapOpenFoodFactsProduct(product as any).default_variant;
+
+    expect(variant?.serving_unit).toBe('ml');
+    expect(variant?.serving_size).toBe(100);
+    // 100 ml * 0.05 * 0.789, now through the volume table rather than by
+    // treating a gram figure as a millilitre one.
+    expect(variant?.alcohol_g).toBeCloseTo(3.945, 3);
+  });
+
+  it('reads a unitless soft drink as millilitres from its pack quantity', () => {
+    const product = {
+      product_name: 'Cola',
+      product_quantity_unit: 'ml',
+      nutriments: { 'energy-kcal_100g': 42 },
+    };
+
+    expect(
+      mapOpenFoodFactsProduct(product as any).default_variant?.serving_unit
+    ).toBe('ml');
+  });
+
+  it('still reads a unitless solid as grams', () => {
+    const product = {
+      product_name: 'Cheddar',
+      nutriments: { 'energy-kcal_100g': 400, fat_100g: 33 },
+    };
+
+    expect(
+      mapOpenFoodFactsProduct(product as any).default_variant?.serving_unit
+    ).toBe('g');
+  });
+
+  it('lets a stated unit win over the drink inference', () => {
+    // Alcohol powder and rum cake are real products; the record says grams, so
+    // the inference must not override it.
+    const product = {
+      product_name: 'Rum Cake',
+      serving_quantity_unit: 'g',
+      nutriments: { 'energy-kcal_100g': 350, alcohol_100g: 1.2 },
+    };
+
+    expect(
+      mapOpenFoodFactsProduct(product as any).default_variant?.serving_unit
+    ).toBe('g');
+  });
+
   it('handles OFF product without alcohol gracefully', () => {
     const product = {
       product_name: 'Orange Juice',

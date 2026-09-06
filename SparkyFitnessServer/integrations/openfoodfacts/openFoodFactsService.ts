@@ -745,7 +745,32 @@ function deriveOffServingUnit(product: OffProduct): string {
       return normalizeServingUnit(match[2]);
     }
   }
-  return 'g';
+  // Nothing in the record states a unit. Grams is right for food and wrong for
+  // every drink, and a product that reports an ABV is a drink: OpenFoodFacts
+  // publishes beverages per 100 ml, so a beer imported as "100 g" is our
+  // fallback showing through, not a mass the source actually claimed.
+  return isOffLiquid(product) ? 'ml' : 'g';
+}
+
+/**
+ * True when the record is a drink, judged only on evidence the record itself
+ * carries: an alcohol reading (published as % vol), or a pack quantity already
+ * measured in volume. Categories are not consulted -- they are free-text,
+ * multilingual and frequently absent, so they would guess where these do not.
+ */
+function isOffLiquid(product: OffProduct): boolean {
+  const nutriments = product.nutriments || {};
+  const abv =
+    parseOffNumber(nutriments['alcohol_100g']) ??
+    parseOffNumber(nutriments['alcohol_serving']) ??
+    parseOffNumber(nutriments['alcohol']);
+  if (abv !== null && abv > 0) return true;
+  const packUnit = product.product_quantity_unit;
+  if (typeof packUnit === 'string') {
+    const normalized = normalizeServingUnit(packUnit);
+    if (normalized === 'ml' || normalized === 'l') return true;
+  }
+  return false;
 }
 
 // Metric units that must never become a household variant — they would just
