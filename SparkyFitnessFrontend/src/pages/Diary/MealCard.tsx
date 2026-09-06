@@ -194,6 +194,11 @@ const MealCard = ({
     'vitamin_c',
     'iron',
     'calcium',
+    // water_ml is deliberately absent: the water ring owns the day total, and
+    // summing it here would put a second, differently-rounded water figure in
+    // the diary (same reason it stays out of EMPTY_MEAL_TOTALS).
+    'caffeine_mg',
+    'alcohol_g',
   ];
 
   // Add custom nutrient names to summable nutrients list if they exist

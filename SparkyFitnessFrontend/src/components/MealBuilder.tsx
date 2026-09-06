@@ -122,6 +122,9 @@ const ALL_NUTRIENT_KEYS = [
   'vitamin_c',
   'calcium',
   'iron',
+  'caffeine_mg',
+  'water_ml',
+  'alcohol_g',
 ] as const;
 
 const MealBuilder: React.FC<MealBuilderProps> = ({
