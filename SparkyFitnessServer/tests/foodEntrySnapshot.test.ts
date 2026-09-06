@@ -93,6 +93,7 @@ describe('foodRepository snapshot functions', () => {
       iron: 0.7,
       caffeine_mg: 5,
       water_ml: 240,
+      alcohol_g: 14,
       glycemic_index: null,
       custom_nutrients: { zinc: '1.3mg' },
       ...overrides,
@@ -118,7 +119,7 @@ describe('foodRepository snapshot functions', () => {
       );
     const updateCall = () => sqlCalls()[1];
 
-    it('should execute UPDATE with all 29 params in correct order and return rowCount', async () => {
+    it('should execute UPDATE with all 30 params in correct order and return rowCount', async () => {
       const snapshot = makeSnapshotData();
       mockSelectThenUpdate(3);
       const result = await foodRepository.updateFoodEntriesSnapshot(
@@ -155,10 +156,11 @@ describe('foodRepository snapshot functions', () => {
         snapshot.custom_nutrients,
         snapshot.caffeine_mg,
         snapshot.water_ml,
+        snapshot.alcohol_g,
         userId,
         foodId,
         variantId,
-        // Images ride along as the 29th param whenever they are being synced.
+        // Images ride along as the 30th param whenever they are being synced.
         JSON.stringify([]),
       ]);
     });
@@ -178,9 +180,9 @@ describe('foodRepository snapshot functions', () => {
       );
 
       const [sql, params] = updateCall();
-      expect(sql).toContain('images = $29::jsonb');
+      expect(sql).toContain('images = $30::jsonb');
       expect(sql).not.toContain('NOT EXISTS');
-      expect(params[28]).toBe(JSON.stringify(['/uploads/foods/f1/new.jpg']));
+      expect(params[29]).toBe(JSON.stringify(['/uploads/foods/f1/new.jpg']));
     });
 
     it('reads and overwrites in one transaction, locking the rows', async () => {
@@ -300,7 +302,7 @@ describe('foodRepository snapshot functions', () => {
       expect(sqlCalls()).toHaveLength(1);
       const [sql, params] = sqlCalls()[0];
       expect(sql).not.toContain('images =');
-      expect(params).toHaveLength(28);
+      expect(params).toHaveLength(29);
       expect(result.replacedEntryImages).toEqual([]);
     });
 

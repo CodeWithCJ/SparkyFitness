@@ -559,11 +559,12 @@ async function updateFoodEntriesSnapshot(
           glycemic_index = $22,
           custom_nutrients = $23,
           caffeine_mg = $24,
-          water_ml = $25
+          water_ml = $25,
+          alcohol_g = $26
           -- The user picked "nutrition only", so the photo column is left out
           -- of the statement and every entry keeps the photo it shows today.
-          ${syncImages ? ', images = $29::jsonb' : ''}
-       WHERE user_id = $26 AND food_id = $27 AND variant_id = $28
+          ${syncImages ? ', images = $30::jsonb' : ''}
+       WHERE user_id = $27 AND food_id = $28 AND variant_id = $29
        RETURNING id`,
       [
         newSnapshotData.food_name,
@@ -591,11 +592,12 @@ async function updateFoodEntriesSnapshot(
         newSnapshotData.custom_nutrients || {},
         newSnapshotData.caffeine_mg,
         newSnapshotData.water_ml,
+        newSnapshotData.alcohol_g,
         userId,
         foodId,
         variantId,
         // Postgres rejects a bind with more parameters than the statement
-        // references, so $29 is only supplied when the SET clause uses it.
+        // references, so $30 is only supplied when the SET clause uses it.
         ...(syncImages ? [JSON.stringify(newSnapshotData.images ?? [])] : []),
       ]
     );
