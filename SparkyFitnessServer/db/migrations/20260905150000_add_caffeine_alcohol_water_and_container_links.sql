@@ -270,17 +270,6 @@ ALTER TABLE public.user_water_containers
   ADD COLUMN IF NOT EXISTS linked_meal_type_id uuid,
   ADD COLUMN IF NOT EXISTS linked_quantity numeric NOT NULL DEFAULT 1;
 
--- On a LINKED container, volume now means "the glass holds more liquid than the
--- food itself" (a cordial concentrate, an electrolyte tablet, a powder), and 0
--- means "no override -- take the volume from the food". Containers linked
--- before that rule existed carry a volume the logging path ignored, so leaving
--- it would silently promote a dead number into an override and change their
--- water credit. Linking only exists in this unreleased feature, so no shipped
--- installation can hold such a row.
-UPDATE public.user_water_containers
-SET volume = 0
-WHERE linked_food_id IS NOT NULL;
-
 ALTER TABLE public.water_intake_entries
   ADD COLUMN IF NOT EXISTS hydration_factor numeric(4,3);
 
@@ -321,6 +310,8 @@ END $$;
 
 COMMENT ON COLUMN public.user_water_containers.hydration_factor IS
   'Multiplier applied to this container''s water credit (0-2, default 1.0). Scales ONLY hydration; a linked food''s calories, macros, caffeine and alcohol always count in full.';
+COMMENT ON COLUMN public.user_water_containers.volume IS
+  'Millilitres one press of "+" logs for an UNLINKED container. On a LINKED container it is instead an override meaning "the glass holds more liquid than the food itself" -- a cordial concentrate, an electrolyte tablet, a powder -- and 0 means "no override, take the volume from the linked food".';
 COMMENT ON COLUMN public.user_water_containers.linked_quantity IS
   'How much of the linked food one press of "+" logs, in the linked variant''s own serving unit. Replaces servings_per_container for linked containers: the diary entry, and every nutrient on it, scales with this. Meaningless without linked_food_id; always 1 for unlinked containers.';
 COMMENT ON COLUMN public.user_water_containers.linked_food_id IS
