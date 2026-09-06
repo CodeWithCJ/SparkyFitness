@@ -144,6 +144,98 @@ describe('Linked Water Container Increment/Decrement (#2115)', () => {
       );
     });
 
+    // The fixtures above use serving_size 1, which is the one value that hides a
+    // missing divisor. These use a realistic serving so the scaling is real:
+    // water_ml is stored per serving_size, so consuming `quantity` of it is
+    // water_ml * quantity / serving_size, exactly as the diary scales nutrients.
+    it('scales the food water by serving size, not by raw quantity', async () => {
+      arrangeContainer({ linked_quantity: '250' });
+      // @ts-expect-error TS mock
+      foodRepository.getFoodVariantById.mockResolvedValue({
+        ...linkedVariant,
+        serving_size: 250,
+        serving_unit: 'ml',
+        water_ml: 22,
+      });
+
+      await measurementService.upsertWaterIntake(
+        mockUserId,
+        mockUserId,
+        entryDate,
+        1,
+        10
+      );
+
+      // 22 * 250 / 250 = 22. Without the divisor this was 22 * 250 = 5500.
+      expect(measurementRepository.insertWaterIntakeLog).toHaveBeenCalledWith(
+        mockUserId,
+        mockUserId,
+        entryDate,
+        22,
+        10,
+        'Travel Mug',
+        'manual',
+        null,
+        'entry-1',
+        1
+      );
+    });
+
+    it('credits half the water for half a serving', async () => {
+      arrangeContainer({ linked_quantity: '125' });
+      // @ts-expect-error TS mock
+      foodRepository.getFoodVariantById.mockResolvedValue({
+        ...linkedVariant,
+        serving_size: 250,
+        serving_unit: 'ml',
+        water_ml: 22,
+      });
+
+      await measurementService.upsertWaterIntake(
+        mockUserId,
+        mockUserId,
+        entryDate,
+        1,
+        10
+      );
+
+      expect(measurementRepository.insertWaterIntakeLog).toHaveBeenCalledWith(
+        mockUserId,
+        mockUserId,
+        entryDate,
+        11,
+        10,
+        'Travel Mug',
+        'manual',
+        null,
+        'entry-1',
+        1
+      );
+    });
+
+    it('does not divide by a zero serving size', async () => {
+      arrangeContainer({ linked_quantity: '1' });
+      // @ts-expect-error TS mock
+      foodRepository.getFoodVariantById.mockResolvedValue({
+        ...linkedVariant,
+        serving_size: 0,
+        water_ml: 22,
+      });
+
+      await measurementService.upsertWaterIntake(
+        mockUserId,
+        mockUserId,
+        entryDate,
+        1,
+        10
+      );
+
+      const call = vi.mocked(measurementRepository.insertWaterIntakeLog).mock
+        .calls[0];
+      expect(Number.isFinite(call[3])).toBe(true);
+      expect(call[3]).toBe(22);
+    });
+
     it('treats a container saved before this column existed as one serving', async () => {
       arrangeContainer({ linked_quantity: undefined });
 

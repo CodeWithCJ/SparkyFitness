@@ -61,6 +61,10 @@ const WaterContainerManager: React.FC = () => {
   const [linkedVariantId, setLinkedVariantId] = useState<string | null>(null);
   const [linkedMealTypeId, setLinkedMealTypeId] = useState<string | null>(null);
   const [linkedQuantity, setLinkedQuantity] = useState<number | ''>(1);
+  // The amount is expressed in the linked variant's own unit, never in
+  // servings, so the field has to say which unit it means.
+  const linkedUnitLabel =
+    foodVariants.find((v) => v.id === linkedVariantId)?.serving_unit ?? '';
 
   // Edit container dialog state
   const [editingContainer, setEditingContainer] =
@@ -79,6 +83,9 @@ const WaterContainerManager: React.FC = () => {
     string | null
   >(null);
   const [editLinkedQuantity, setEditLinkedQuantity] = useState<number | ''>(1);
+  const editLinkedUnitLabel =
+    editFoodVariants.find((v) => v.id === editLinkedVariantId)?.serving_unit ??
+    '';
 
   // Catalog dialog state
   const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
@@ -134,14 +141,19 @@ const WaterContainerManager: React.FC = () => {
         variants.find((v: FoodVariant) => v.is_default) || variants[0];
       const defaultVariantId = defaultVar?.id || null;
 
+      // linked_quantity is expressed in the variant's own unit, so defaulting
+      // it to the serving size makes one press mean exactly one serving.
+      const defaultQuantity = Number(defaultVar?.serving_size) || 1;
       if (searchTarget === 'add') {
         setLinkedFood(fullFood ?? null);
         setFoodVariants(variants);
         setLinkedVariantId(defaultVariantId);
+        setLinkedQuantity(defaultQuantity);
       } else {
         setEditLinkedFood(fullFood ?? null);
         setEditFoodVariants(variants);
         setEditLinkedVariantId(defaultVariantId);
+        setEditLinkedQuantity(defaultQuantity);
       }
     } catch {
       // Fallback to basic selected item if full details fail
@@ -433,6 +445,17 @@ const WaterContainerManager: React.FC = () => {
             onSubmit={handleAddContainer}
             className="space-y-4 border p-4 rounded-lg bg-gray-50/50 dark:bg-slate-900/40"
           >
+            <p className="text-sm text-muted-foreground">
+              {linkedFood
+                ? t(
+                    'waterContainerManager.modeLinked',
+                    'Linked to a food: one press logs the food below and credits its water.'
+                  )
+                : t(
+                    'waterContainerManager.modePlain',
+                    'Plain water container: one press credits its volume. Link a food to log a drink instead.'
+                  )}
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
               <div className="grid gap-1.5">
                 <Label htmlFor="name">
@@ -525,6 +548,7 @@ const WaterContainerManager: React.FC = () => {
                       'waterContainerManager.linkedQuantity',
                       'Amount per press'
                     )}
+                    {linkedUnitLabel ? ` (${linkedUnitLabel})` : ''}
                   </Label>
                   <Input
                     id="linkedQuantity"
@@ -542,7 +566,7 @@ const WaterContainerManager: React.FC = () => {
                   <p className="text-xs text-muted-foreground">
                     {t(
                       'waterContainerManager.linkedQuantityHint',
-                      'Servings of the linked food that one press logs.'
+                      "How much of the linked food one press logs, in that variant's own unit."
                     )}
                   </p>
                 </div>
@@ -637,7 +661,18 @@ const WaterContainerManager: React.FC = () => {
                         </Label>
                         <Select
                           value={linkedVariantId || undefined}
-                          onValueChange={(val) => setLinkedVariantId(val)}
+                          onValueChange={(val) => {
+                            setLinkedVariantId(val);
+                            const picked = foodVariants.find(
+                              (v) => v.id === val
+                            );
+                            // The amount is in the variant's unit, so switching
+                            // variants must re-base it or the number silently
+                            // changes meaning.
+                            setLinkedQuantity(
+                              Number(picked?.serving_size) || 1
+                            );
+                          }}
                         >
                           <SelectTrigger className="h-8 text-xs">
                             <SelectValue />
@@ -1010,6 +1045,7 @@ const WaterContainerManager: React.FC = () => {
                       'waterContainerManager.linkedQuantity',
                       'Amount per press'
                     )}
+                    {editLinkedUnitLabel ? ` (${editLinkedUnitLabel})` : ''}
                   </Label>
                   <Input
                     id="edit-linkedQuantity"
@@ -1027,7 +1063,7 @@ const WaterContainerManager: React.FC = () => {
                   <p className="text-xs text-muted-foreground">
                     {t(
                       'waterContainerManager.linkedQuantityHint',
-                      'Servings of the linked food that one press logs.'
+                      "How much of the linked food one press logs, in that variant's own unit."
                     )}
                   </p>
                 </div>
@@ -1111,7 +1147,15 @@ const WaterContainerManager: React.FC = () => {
                       </Label>
                       <Select
                         value={editLinkedVariantId || undefined}
-                        onValueChange={(val) => setEditLinkedVariantId(val)}
+                        onValueChange={(val) => {
+                          setEditLinkedVariantId(val);
+                          const picked = editFoodVariants.find(
+                            (v) => v.id === val
+                          );
+                          setEditLinkedQuantity(
+                            Number(picked?.serving_size) || 1
+                          );
+                        }}
                       >
                         <SelectTrigger className="h-8 text-xs">
                           <SelectValue />

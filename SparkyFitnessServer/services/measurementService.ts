@@ -632,15 +632,26 @@ async function upsertWaterIntake(
           //      glass -- and only the glass knows the hydration. This used to
           //      sit LAST, so a volume typed on a linked container was silently
           //      discarded whenever the food had any water of its own.
-          //   2. the food's own water, scaled by how much of it was logged.
+          //   2. the food's own water, scaled the way every nutrient is: the
+          //      column holds the amount per serving_size, so consuming
+          //      linked_quantity of it is value * quantity / serving_size --
+          //      the same formula the diary and reports use. Omitting the
+          //      divisor turned a 250 ml drink holding 22 ml of water into
+          //      5500 ml, and looked plausible only at quantity 1.
           //   3. the logged amount read as a volume, for foods served in ml/l.
+          //      No divisor there: the quantity is already an absolute amount
+          //      in a volume unit.
           if (hasVolumeOverride) {
             drinkWaterMl = amountPerDrink * hydrationFactor;
           } else {
             const foodExplicitWater = Number(linkedVariant.water_ml);
             if (Number.isFinite(foodExplicitWater) && foodExplicitWater > 0) {
-              drinkWaterMl =
-                foodExplicitWater * linkedQuantity * hydrationFactor;
+              const servingSize = Number(linkedVariant.serving_size) || 0;
+              const consumedWater =
+                servingSize > 0
+                  ? (foodExplicitWater * linkedQuantity) / servingSize
+                  : foodExplicitWater;
+              drinkWaterMl = consumedWater * hydrationFactor;
             } else {
               const volFallback = foodVolumeToMl(
                 linkedQuantity,

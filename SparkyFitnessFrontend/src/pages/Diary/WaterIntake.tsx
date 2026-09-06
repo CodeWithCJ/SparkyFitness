@@ -135,10 +135,19 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
       );
       const hasVolumeOverride =
         !currentContainer.linked_food_id || currentContainer.volume > 0;
+      // water_ml is stored per serving_size, so the credit for linked_quantity
+      // of it is water * quantity / serving_size -- the same scaling the server
+      // applies. Without the divisor a 250 ml drink read as 5500 ml.
+      const linkedServingSize =
+        Number(currentContainer.linked_variant_serving_size) || 0;
+      const linkedWater =
+        Number(currentContainer.linked_variant_water_ml ?? 0) *
+        Number(currentContainer.linked_quantity ?? 1);
       const volumePerDrink = hasVolumeOverride
         ? currentContainer.volume / servings
-        : Number(currentContainer.linked_variant_water_ml ?? 0) *
-          Number(currentContainer.linked_quantity ?? 1);
+        : linkedServingSize > 0
+          ? linkedWater / linkedServingSize
+          : linkedWater;
       const credited =
         volumePerDrink * Number(currentContainer.hydration_factor ?? 1);
       const displayVolume = convertMlToSelectedUnit(
