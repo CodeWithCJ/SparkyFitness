@@ -280,6 +280,9 @@ const RESOLVED_NUTRIENT_KEYS = [
   'vitamin_c',
   'calcium',
   'iron',
+  'caffeine_mg',
+  'water_ml',
+  'alcohol_g',
 ] as const;
 
 interface ResolvedChildSnapshot {
@@ -1054,6 +1057,9 @@ async function createMealFromDiaryEntries(
         vitamin_c: entry.vitamin_c,
         calcium: entry.calcium,
         iron: entry.iron,
+        caffeine_mg: entry.caffeine_mg,
+        water_ml: entry.water_ml,
+        alcohol_g: entry.alcohol_g,
         glycemic_index: entry.glycemic_index,
         custom_nutrients: entry.custom_nutrients || {},
       });

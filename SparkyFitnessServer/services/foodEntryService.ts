@@ -75,6 +75,9 @@ interface LoggedComponentEntry {
   vitamin_c?: number | null;
   calcium?: number | null;
   iron?: number | null;
+  caffeine_mg?: number | null;
+  water_ml?: number | null;
+  alcohol_g?: number | null;
   glycemic_index?: string | null;
   custom_nutrients?: Record<string, unknown> | null;
   [column: string]: unknown;
@@ -246,6 +249,9 @@ const DIARY_IMPORT_NUTRIENT_FIELDS = [
   'vitamin_c',
   'calcium',
   'iron',
+  'caffeine_mg',
+  'water_ml',
+  'alcohol_g',
 ] as const;
 
 const isBlankCell = (value: unknown): boolean =>
@@ -815,6 +821,9 @@ async function updateFoodEntry(
         vitamin_c: variant.vitamin_c,
         calcium: variant.calcium,
         iron: variant.iron,
+        caffeine_mg: variant.caffeine_mg,
+        water_ml: variant.water_ml,
+        alcohol_g: variant.alcohol_g,
         glycemic_index: variant.glycemic_index,
         custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
       };
@@ -842,6 +851,9 @@ async function updateFoodEntry(
         vitamin_c: existingEntry.vitamin_c,
         calcium: existingEntry.calcium,
         iron: existingEntry.iron,
+        caffeine_mg: existingEntry.caffeine_mg,
+        water_ml: existingEntry.water_ml,
+        alcohol_g: existingEntry.alcohol_g,
         glycemic_index: existingEntry.glycemic_index,
         custom_nutrients: sanitizeCustomNutrients(
           existingEntry.custom_nutrients
@@ -871,6 +883,9 @@ async function updateFoodEntry(
       'vitamin_c',
       'calcium',
       'iron',
+      'caffeine_mg',
+      'water_ml',
+      'alcohol_g',
       'glycemic_index',
     ];
     for (const field of nutritionOverrideFields as (keyof FoodEntryInput)[]) {
@@ -1264,6 +1279,9 @@ async function copyFoodEntries(
           vitamin_c: entry.vitamin_c,
           calcium: entry.calcium,
           iron: entry.iron,
+          caffeine_mg: entry.caffeine_mg,
+          water_ml: entry.water_ml,
+          alcohol_g: entry.alcohol_g,
           glycemic_index: entry.glycemic_index,
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
           // The note travels with the entry it describes.
@@ -1431,6 +1449,9 @@ async function copyFoodEntriesFromUser(
           vitamin_c: entry.vitamin_c,
           calcium: entry.calcium,
           iron: entry.iron,
+          caffeine_mg: entry.caffeine_mg,
+          water_ml: entry.water_ml,
+          alcohol_g: entry.alcohol_g,
           glycemic_index: entry.glycemic_index,
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
           // The note travels with the entry it describes.
@@ -1773,6 +1794,9 @@ async function copyFoodEntriesToUser(
           vitamin_c: entry.vitamin_c,
           calcium: entry.calcium,
           iron: entry.iron,
+          caffeine_mg: entry.caffeine_mg,
+          water_ml: entry.water_ml,
+          alcohol_g: entry.alcohol_g,
           glycemic_index: entry.glycemic_index,
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
           // The note travels with the entry it describes.
@@ -2555,6 +2579,9 @@ async function updateFoodEntryMeal(
         vitamin_c: variant.vitamin_c,
         calcium: variant.calcium,
         iron: variant.iron,
+        caffeine_mg: variant.caffeine_mg,
+        water_ml: variant.water_ml,
+        alcohol_g: variant.alcohol_g,
         glycemic_index: variant.glycemic_index,
         custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
       };
@@ -2749,6 +2776,9 @@ async function getFoodEntryMealWithComponents(
           vitamin_c: entry.vitamin_c,
           calcium: entry.calcium,
           iron: entry.iron,
+          caffeine_mg: entry.caffeine_mg,
+          water_ml: entry.water_ml,
+          alcohol_g: entry.alcohol_g,
           glycemic_index: entry.glycemic_index,
           custom_nutrients: entry.custom_nutrients,
           serving_size: Number(entry.serving_size ?? 0),

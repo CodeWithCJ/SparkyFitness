@@ -882,6 +882,9 @@ async function updateSnapshotForVariant(
     vitamin_c: variant.vitamin_c,
     calcium: variant.calcium,
     iron: variant.iron,
+    caffeine_mg: variant.caffeine_mg,
+    water_ml: variant.water_ml,
+    alcohol_g: variant.alcohol_g,
     glycemic_index: variant.glycemic_index,
     custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
   };

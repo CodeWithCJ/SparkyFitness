@@ -81,6 +81,11 @@ function normalizeFoodVariantForResponse(variant: unknown): unknown {
     vitamin_c: nullToUndefined(record.vitamin_c as number | null | undefined),
     calcium: nullToUndefined(record.calcium as number | null | undefined),
     iron: nullToUndefined(record.iron as number | null | undefined),
+    caffeine_mg: nullToUndefined(
+      record.caffeine_mg as number | null | undefined
+    ),
+    water_ml: nullToUndefined(record.water_ml as number | null | undefined),
+    alcohol_g: nullToUndefined(record.alcohol_g as number | null | undefined),
     glycemic_index: nullToUndefined(
       record.glycemic_index as string | null | undefined
     ),
