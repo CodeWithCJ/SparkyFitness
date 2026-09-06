@@ -307,6 +307,12 @@ describe('useUnitConversion', () => {
       vitamin_c: 0,
       calcium: 0,
       iron: 0,
+      caffeine_mg: 0,
+      water_ml: 0,
+      alcohol_g: 0,
+      // Carried across unchanged: ABV is a property of the liquid, not a
+      // per-serving amount.
+      abv_percent: undefined,
       glycemic_index: gramsVariant.glycemic_index,
       custom_nutrients: { omega3: 5 },
     });

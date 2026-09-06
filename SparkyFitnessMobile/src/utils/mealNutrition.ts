@@ -295,6 +295,8 @@ export function calculateMealNutrition(entries: FoodEntry[]): MealNutrition {
       cholesterol: optionalSum(entries, 'cholesterol'),
       vitaminA: optionalSum(entries, 'vitamin_a'),
       vitaminC: optionalSum(entries, 'vitamin_c'),
+      caffeineMg: optionalSum(entries, 'caffeine_mg'),
+      alcoholG: optionalSum(entries, 'alcohol_g'),
     },
     customNutrients: calculateCustomNutrientTotals(entries),
   };

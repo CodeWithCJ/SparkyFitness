@@ -41,6 +41,12 @@ export function localizeNutrientKey(t: TFunction, key: string): string {
       return t('nutrients.calcium', { defaultValue: 'Calcium' });
     case 'iron':
       return t('nutrients.iron', { defaultValue: 'Iron' });
+    case 'caffeineMg':
+      return t('nutrients.caffeine', { defaultValue: 'Caffeine' });
+    case 'waterMl':
+      return t('nutrients.waterContent', { defaultValue: 'Water Content' });
+    case 'alcoholG':
+      return t('nutrients.alcohol', { defaultValue: 'Alcohol' });
     case 'glycemicIndex':
       return t('nutrients.glycemicIndex', { defaultValue: 'Glycemic Index' });
     case 'totalCarbs':

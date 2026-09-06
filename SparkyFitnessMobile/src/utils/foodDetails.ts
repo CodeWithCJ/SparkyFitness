@@ -33,6 +33,9 @@ export interface FoodDisplayValues {
   cholesterol?: number;
   vitaminA?: number;
   vitaminC?: number;
+  caffeineMg?: number;
+  waterMl?: number;
+  alcoholG?: number;
 }
 
 export interface FoodVariantOptionData extends FoodDisplayValues {
@@ -211,6 +214,9 @@ export function foodInfoToDisplayValues(item: FoodInfoItem): FoodDisplayValues {
     potassium: item.potassium,
     calcium: item.calcium,
     iron: item.iron,
+    caffeineMg: item.caffeineMg,
+    waterMl: item.waterMl,
+    alcoholG: item.alcoholG,
     cholesterol: item.cholesterol,
     vitaminA: item.vitaminA,
     vitaminC: item.vitaminC,
@@ -236,6 +242,9 @@ export function unitVariantToDisplayValues(
     potassium: variant.potassium,
     calcium: variant.calcium,
     iron: variant.iron,
+    caffeineMg: variant.caffeine_mg,
+    waterMl: variant.water_ml,
+    alcoholG: variant.alcohol_g,
     cholesterol: variant.cholesterol,
     vitaminA: variant.vitamin_a,
     vitaminC: variant.vitamin_c,
@@ -665,6 +674,9 @@ export function buildCreateFoodVariantInput(
     potassium: variant.potassium,
     calcium: variant.calcium,
     iron: variant.iron,
+    caffeine_mg: variant.caffeine_mg,
+    water_ml: variant.water_ml,
+    alcohol_g: variant.alcohol_g,
     cholesterol: variant.cholesterol,
     vitamin_a: variant.vitamin_a,
     vitamin_c: variant.vitamin_c,

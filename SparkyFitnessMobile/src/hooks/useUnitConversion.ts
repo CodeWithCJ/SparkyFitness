@@ -126,6 +126,11 @@ export function useUnitConversion({
         vitamin_c: (baseVariant.vitamin_c || 0) * ratio,
         calcium: (baseVariant.calcium || 0) * ratio,
         iron: (baseVariant.iron || 0) * ratio,
+        caffeine_mg: (baseVariant.caffeine_mg || 0) * ratio,
+        water_ml: (baseVariant.water_ml || 0) * ratio,
+        alcohol_g: (baseVariant.alcohol_g || 0) * ratio,
+        // ABV is a property of the liquid, not a per-serving amount.
+        abv_percent: baseVariant.abv_percent,
         glycemic_index: baseVariant.glycemic_index,
         custom_nutrients: Object.fromEntries(
           Object.entries(baseVariant.custom_nutrients || {}).map(
@@ -169,6 +174,10 @@ export function useUnitConversion({
         vitamin_c: baseVariant.vitamin_c || 0,
         calcium: baseVariant.calcium || 0,
         iron: baseVariant.iron || 0,
+        caffeine_mg: baseVariant.caffeine_mg || 0,
+        water_ml: baseVariant.water_ml || 0,
+        alcohol_g: baseVariant.alcohol_g || 0,
+        abv_percent: baseVariant.abv_percent,
         glycemic_index: baseVariant.glycemic_index,
         custom_nutrients: baseVariant.custom_nutrients
           ? { ...baseVariant.custom_nutrients }

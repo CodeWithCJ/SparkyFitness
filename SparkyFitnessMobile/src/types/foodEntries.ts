@@ -44,6 +44,8 @@ export interface FoodEntry {
   calcium?: number;
   iron?: number;
   caffeine_mg?: number;
+  water_ml?: number;
+  alcohol_g?: number;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
 

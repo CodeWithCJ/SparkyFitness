@@ -51,6 +51,12 @@ export const EXTRA_NUTRIENT_FIELDS = [
   { key: 'vitaminA', label: 'Vitamin A', unit: 'mcg', additional: true },
   // i18n-audit-ignore-next-line hardcoded-ui-text -- canonical English metadata; rendered labels are localized at presentation.
   { key: 'vitaminC', label: 'Vitamin C', unit: 'mg', additional: true },
+  // i18n-audit-ignore-next-line hardcoded-ui-text -- canonical English metadata; rendered labels are localized at presentation.
+  { key: 'caffeineMg', label: 'Caffeine', unit: 'mg', additional: true },
+  // i18n-audit-ignore-next-line hardcoded-ui-text -- canonical English metadata; rendered labels are localized at presentation.
+  { key: 'waterMl', label: 'Water Content', unit: 'ml', additional: true },
+  // i18n-audit-ignore-next-line hardcoded-ui-text -- canonical English metadata; rendered labels are localized at presentation.
+  { key: 'alcoholG', label: 'Alcohol', unit: 'g', additional: true },
 ] as const;
 
 type ExtraNutrientKey = (typeof EXTRA_NUTRIENT_FIELDS)[number]['key'];
@@ -210,6 +216,9 @@ export const foodItemToFoodInfo = (
   cholesterol: item.default_variant.cholesterol,
   vitaminA: item.default_variant.vitamin_a,
   vitaminC: item.default_variant.vitamin_c,
+  caffeineMg: item.default_variant.caffeine_mg,
+  waterMl: item.default_variant.water_ml,
+  alcoholG: item.default_variant.alcohol_g,
   customNutrients: item.default_variant.custom_nutrients ?? null,
   variantId: item.default_variant.id,
   images: item.images ?? null,
@@ -245,6 +254,9 @@ export const externalFoodItemToFoodInfo = (
   cholesterol: item.cholesterol,
   vitaminA: item.vitamin_a,
   vitaminC: item.vitamin_c,
+  caffeineMg: item.caffeine_mg,
+  waterMl: item.water_ml,
+  alcoholG: item.alcohol_g,
   externalVariants: item.variants,
   provider_verified: item.provider_verified,
   images: item.images ?? null,
@@ -336,6 +348,15 @@ export const mealToFoodInfo = (meal: Meal): FoodInfoItem => {
       : undefined,
     vitaminC: hasField('vitamin_c')
       ? Math.round(mealNutrientPerServing(meal, 'vitamin_c'))
+      : undefined,
+    caffeineMg: hasField('caffeine_mg')
+      ? Math.round(mealNutrientPerServing(meal, 'caffeine_mg'))
+      : undefined,
+    waterMl: hasField('water_ml')
+      ? Math.round(mealNutrientPerServing(meal, 'water_ml'))
+      : undefined,
+    alcoholG: hasField('alcohol_g')
+      ? Math.round(mealNutrientPerServing(meal, 'alcohol_g'))
       : undefined,
     mealTotalServings: totalServings,
     images: meal.images ?? null,
