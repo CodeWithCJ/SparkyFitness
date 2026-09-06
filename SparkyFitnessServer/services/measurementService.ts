@@ -17,6 +17,7 @@ import exerciseEntryDb from '../models/exerciseEntry.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
 import foodRepository from '../models/foodRepository.js';
 import mealTypeRepository from '../models/mealType.js';
+import { resolveMealTypeIdForTime } from '../utils/mealTypeByTime.js';
 import { buildFoodEntrySnapshot } from '../utils/foodEntrySnapshot.js';
 import hydrationTotalsService from './hydrationTotalsService.js';
 import {
@@ -541,6 +542,21 @@ async function upsertWaterIntake(
       let linkedVariant: any = null;
       let targetMealTypeId: string | null = null;
 
+      // How much of the linked food one press logs. Defaults to 1 so a
+      // container saved before this column existed behaves exactly as before.
+      const linkedQuantity =
+        Number(containerRow?.linked_quantity) > 0
+          ? Number(containerRow.linked_quantity)
+          : 1;
+      // A volume on a LINKED container is an explicit override meaning "the
+      // glass holds more liquid than the food itself" (concentrate, tablet,
+      // powder). Unlinked containers always carry a volume, so this flag is
+      // only consulted inside the linked branch below.
+      const hasVolumeOverride =
+        Number(containerRow?.volume) > 0 && !!containerRow?.linked_food_id;
+      // Local wall-clock "HH:MM" used to place the drink on the meal timeline.
+      const nowClockForEntry = new Date().toTimeString().slice(0, 5);
+
       if (containerRow && containerRow.linked_food_id) {
         linkedFood = await foodRepository.getFoodById(
           containerRow.linked_food_id,
@@ -557,12 +573,19 @@ async function upsertWaterIntake(
           }
         }
         if (containerRow.linked_meal_type_id) {
+          // An explicit link means "always this bucket" -- e.g. a custom
+          // "Drinks" meal type the user wants every drink to land in.
           targetMealTypeId = containerRow.linked_meal_type_id;
         } else {
-          // Fall back to default meal type for user
+          // #2115: otherwise attribute the drink to when it actually happened.
+          // The same coffee is breakfast at 08:00 and dinner at 20:00, so a
+          // fixed bucket misreports a drink taken several times a day. The
+          // previous fallback took getAllMealTypes()[0], which put every drink
+          // all day into the first meal type.
           const mealTypes =
             await mealTypeRepository.getAllMealTypes(authenticatedUserId);
-          targetMealTypeId = mealTypes[0]?.id || null;
+          targetMealTypeId =
+            resolveMealTypeIdForTime(mealTypes, nowClockForEntry) ?? null;
         }
       }
 
@@ -582,7 +605,11 @@ async function upsertWaterIntake(
             food_id: linkedFood.id,
             variant_id: linkedVariant.id,
             meal_type_id: targetMealTypeId,
-            quantity: 1,
+            // #2115: one press logs linked_quantity servings of the variant, so
+            // its calories, caffeine and alcohol all scale with the container.
+            // This was hardcoded to 1, leaving no way to say "my mug is two
+            // servings" and making servings_per_container meaningless here.
+            quantity: linkedQuantity,
             unit: linkedVariant.serving_unit || 'serving',
             entry_date: entryDate,
             food_entry_meal_id: null,
@@ -598,19 +625,31 @@ async function upsertWaterIntake(
             createdFoodEntryId = createdEntry.id;
           }
 
-          // Precedence: explicit water_ml on food -> volume unit conversion -> container volume
-          const foodExplicitWater = Number(linkedVariant.water_ml);
-          if (Number.isFinite(foodExplicitWater) && foodExplicitWater > 0) {
-            drinkWaterMl = foodExplicitWater * hydrationFactor;
+          // Precedence, highest first:
+          //   1. the container's own volume, when the user set it as an
+          //      override. The food is then not the whole drink -- a cordial
+          //      concentrate, an electrolyte tablet or a powder in a 500 ml
+          //      glass -- and only the glass knows the hydration. This used to
+          //      sit LAST, so a volume typed on a linked container was silently
+          //      discarded whenever the food had any water of its own.
+          //   2. the food's own water, scaled by how much of it was logged.
+          //   3. the logged amount read as a volume, for foods served in ml/l.
+          if (hasVolumeOverride) {
+            drinkWaterMl = amountPerDrink * hydrationFactor;
           } else {
-            const volFallback = foodVolumeToMl(
-              1,
-              linkedVariant.serving_unit || ''
-            );
-            if (volFallback !== null) {
-              drinkWaterMl = volFallback * hydrationFactor;
+            const foodExplicitWater = Number(linkedVariant.water_ml);
+            if (Number.isFinite(foodExplicitWater) && foodExplicitWater > 0) {
+              drinkWaterMl =
+                foodExplicitWater * linkedQuantity * hydrationFactor;
             } else {
-              drinkWaterMl = amountPerDrink * hydrationFactor;
+              const volFallback = foodVolumeToMl(
+                linkedQuantity,
+                linkedVariant.serving_unit || ''
+              );
+              drinkWaterMl =
+                volFallback !== null
+                  ? volFallback * hydrationFactor
+                  : amountPerDrink * hydrationFactor;
             }
           }
         }

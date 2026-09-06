@@ -64,7 +64,8 @@ describe('Drink Preset Materialization (#1958, #1925, #2115)', () => {
       id: 101,
       user_id: userId,
       name: 'Espresso',
-      volume: 30,
+      volume: 0,
+      linked_quantity: 1,
       unit: 'ml',
       is_primary: false,
       servings_per_container: 1,
@@ -100,10 +101,14 @@ describe('Drink Preset Materialization (#1958, #1925, #2115)', () => {
       userId,
       {
         name: 'Espresso',
-        volume: 30,
+        // The preset's 30 ml lives on the variant it just created. On a linked
+        // container volume means "the glass holds more than the food", so
+        // repeating it here would override the food with its own number.
+        volume: 0,
         unit: 'ml',
         is_primary: false,
         servings_per_container: 1,
+        linked_quantity: 1,
         hydration_factor: 0,
         linked_food_id: 'food-espresso-1',
         linked_variant_id: 'var-espresso-1',
@@ -121,7 +126,8 @@ describe('Drink Preset Materialization (#1958, #1925, #2115)', () => {
       id: 101,
       user_id: userId,
       name: 'Espresso',
-      volume: 30,
+      volume: 0,
+      linked_quantity: 1,
       unit: 'ml' as const,
       is_primary: false,
       servings_per_container: 1,

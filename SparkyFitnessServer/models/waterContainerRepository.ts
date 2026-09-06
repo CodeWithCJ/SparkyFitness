@@ -11,6 +11,7 @@ export interface CreateWaterContainerData {
   linked_food_id?: string | null;
   linked_variant_id?: string | null;
   linked_meal_type_id?: string | null;
+  linked_quantity?: number | null;
   is_quick_add?: boolean;
   sort_order?: number;
 }
@@ -25,6 +26,7 @@ export interface UpdateWaterContainerData {
   linked_food_id?: string | null;
   linked_variant_id?: string | null;
   linked_meal_type_id?: string | null;
+  linked_quantity?: number | null;
   is_quick_add?: boolean;
   sort_order?: number;
 }
@@ -43,6 +45,7 @@ async function createWaterContainer(
     linked_food_id,
     linked_variant_id,
     linked_meal_type_id,
+    linked_quantity,
     is_quick_add = false,
     sort_order = 0,
   } = containerData;
@@ -67,9 +70,10 @@ async function createWaterContainer(
       `INSERT INTO user_water_containers (
          user_id, name, volume, unit, is_primary, servings_per_container,
          hydration_factor, linked_food_id, linked_variant_id, linked_meal_type_id,
-         is_quick_add, sort_order
+         is_quick_add, sort_order, linked_quantity
        )
-       VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 1.000), $8, $9, $10, $11, $12) RETURNING *`,
+       VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, 1.000), $8, $9, $10, $11, $12,
+               COALESCE($13, 1)) RETURNING *`,
       [
         userId,
         name,
@@ -83,6 +87,7 @@ async function createWaterContainer(
         linked_meal_type_id ?? null,
         is_quick_add,
         sort_order,
+        linked_quantity ?? null,
       ]
     );
     await client.query('COMMIT');
@@ -167,6 +172,7 @@ async function updateWaterContainer(
         linked_meal_type_id = CASE WHEN $13 THEN $14 ELSE linked_meal_type_id END,
         is_quick_add = COALESCE($15, is_quick_add),
         sort_order = COALESCE($16, sort_order),
+        linked_quantity = COALESCE($17, linked_quantity),
         updated_at = now()
        WHERE id = $6 AND user_id = $7
        RETURNING *`,
@@ -187,6 +193,7 @@ async function updateWaterContainer(
         updateData.linked_meal_type_id ?? null,
         is_quick_add,
         sort_order,
+        updateData.linked_quantity ?? null,
       ]
     );
 

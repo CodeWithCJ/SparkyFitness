@@ -242,13 +242,18 @@ async function materializeDrinkPreset(
 
   const variantId = createdFood?.default_variant?.id || null;
 
-  // 2. Create water container linked to this food
+  // 2. Create water container linked to this food.
+  // volume stays 0: the preset's volume already lives on the variant it just
+  // created (serving_size/water_ml), and on a linked container volume means
+  // "the glass holds more than the food" -- setting it here would override the
+  // food with a duplicate of its own number.
   return await waterContainerRepository.createWaterContainer(userId, {
     name: preset.defaultName,
-    volume: preset.volumeMl,
+    volume: 0,
     unit: 'ml',
     is_primary: false,
     servings_per_container: 1,
+    linked_quantity: 1,
     hydration_factor: preset.hydrationFactor,
     linked_food_id: createdFood.id,
     linked_variant_id: variantId,

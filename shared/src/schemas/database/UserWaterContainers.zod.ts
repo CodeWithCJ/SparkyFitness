@@ -25,6 +25,7 @@ export const userWaterContainersSchema = z.object({
   linked_food_id: z.string().nullable(),
   linked_variant_id: z.string().nullable(),
   linked_meal_type_id: z.string().nullable(),
+  linked_quantity: z.number(),
   is_quick_add: z.boolean(),
   sort_order: z.number(),
 });
@@ -43,6 +44,7 @@ export const userWaterContainersInitializerSchema = z.object({
   linked_food_id: z.string().optional().nullable(),
   linked_variant_id: z.string().optional().nullable(),
   linked_meal_type_id: z.string().optional().nullable(),
+  linked_quantity: z.number().optional(),
   is_quick_add: z.boolean().optional(),
   sort_order: z.number().optional(),
 });
@@ -61,6 +63,7 @@ export const userWaterContainersMutatorSchema = z.object({
   linked_food_id: z.string().optional().nullable(),
   linked_variant_id: z.string().optional().nullable(),
   linked_meal_type_id: z.string().optional().nullable(),
+  linked_quantity: z.number().optional(),
   is_quick_add: z.boolean().optional(),
   sort_order: z.number().optional(),
 });

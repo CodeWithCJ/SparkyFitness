@@ -21,6 +21,8 @@ export const waterContainerResponseSchema = z.object({
   linked_food_id: linkedIdSchema,
   linked_variant_id: linkedIdSchema,
   linked_meal_type_id: linkedIdSchema,
+  /** Servings of the linked food one press of "+" logs. 1 for unlinked containers. */
+  linked_quantity: z.number(),
   linked_food_name: z.string().nullable().optional(),
   linked_variant_serving_size: z
     .union([z.number(), z.string()])
@@ -37,7 +39,10 @@ export type WaterContainerResponse = z.infer<
 
 export const createWaterContainerBodySchema = z.object({
   name: z.string().min(1).max(255),
-  volume: z.number().min(0.001).max(9999.999),
+  // 0 means "no override" on a linked container: take the volume from the
+  // linked food instead. Unlinked containers must still carry a real volume,
+  // which the service enforces.
+  volume: z.number().min(0).max(9999.999),
   unit: z.enum(["ml", "oz", "liter"]),
   is_primary: z.boolean().optional(),
   servings_per_container: z.number().int().min(1).optional(),
@@ -45,6 +50,7 @@ export const createWaterContainerBodySchema = z.object({
   linked_food_id: linkedIdSchema.optional(),
   linked_variant_id: linkedIdSchema.optional(),
   linked_meal_type_id: linkedIdSchema.optional(),
+  linked_quantity: z.number().positive().max(9999).optional(),
   is_quick_add: z.boolean().optional(),
   sort_order: z.number().int().optional(),
 });
@@ -54,7 +60,7 @@ export type CreateWaterContainerBody = z.infer<
 
 export const updateWaterContainerBodySchema = z.object({
   name: z.string().min(1).max(255).optional(),
-  volume: z.number().min(0.001).max(9999.999).optional(),
+  volume: z.number().min(0).max(9999.999).optional(),
   unit: z.enum(["ml", "oz", "liter"]).optional(),
   is_primary: z.boolean().optional(),
   servings_per_container: z.number().int().min(1).optional(),
@@ -62,6 +68,7 @@ export const updateWaterContainerBodySchema = z.object({
   linked_food_id: linkedIdSchema.optional(),
   linked_variant_id: linkedIdSchema.optional(),
   linked_meal_type_id: linkedIdSchema.optional(),
+  linked_quantity: z.number().positive().max(9999).optional(),
   is_quick_add: z.boolean().optional(),
   sort_order: z.number().int().optional(),
 });

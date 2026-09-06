@@ -33,6 +33,7 @@ describe('Zero Hydration Factor Preset (#1958, #1925, #2115)', () => {
         unit: 'ml',
         is_primary: false,
         servings_per_container: 1,
+        linked_quantity: 1,
         hydration_factor: 0,
         linked_food_id: 'food-espresso-1',
         linked_variant_id: 'var-espresso-1',
