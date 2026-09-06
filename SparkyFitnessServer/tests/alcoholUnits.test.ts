@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   alcoholGramsFromAbv,
+  alcoholGramsForServing,
   abvFromAlcoholGrams,
   standardDrinks,
   ETHANOL_DENSITY_G_PER_ML,
@@ -43,6 +44,44 @@ describe('alcoholUnits calculations', () => {
   it('correctly converts alcohol grams to UK units (8g per unit)', () => {
     expect(standardDrinks(16, 8)).toBe(2.0);
     expect(standardDrinks(20.167, 8)).toBeCloseTo(2.52, 2);
+  });
+
+  // The OpenFoodFacts import and the save-time fill-in both derive grams from
+  // an ABV, and they used to disagree for a weight serving: the import treated
+  // the number as millilitres, the save path refused to convert at all, so the
+  // same beer came back as 3.945 g when imported and 0 g when saved by hand.
+  describe('alcoholGramsForServing', () => {
+    it('converts a volume serving exactly', () => {
+      // 330 ml of 5% beer.
+      expect(alcoholGramsForServing(330, 'ml', 5)).toBeCloseTo(13.019, 3);
+      // A litre and a fluid ounce reach the same grams through the unit table.
+      expect(alcoholGramsForServing(1, 'l', 5)).toBeCloseTo(39.45, 2);
+    });
+
+    it('reads a weight serving on a drink as millilitres rather than giving up', () => {
+      // OpenFoodFacts publishes beverages per 100 ml but falls back to 'g'
+      // when the record states no unit, which is what a real beer import does.
+      expect(alcoholGramsForServing(100, 'g', 5)).toBeCloseTo(3.945, 3);
+    });
+
+    it('agrees with the raw formula, so the two derivation paths cannot drift', () => {
+      expect(alcoholGramsForServing(330, 'ml', 5)).toBe(
+        alcoholGramsFromAbv(330, 5)
+      );
+      expect(alcoholGramsForServing(100, 'g', 5)).toBe(
+        alcoholGramsFromAbv(100, 5)
+      );
+    });
+
+    it('returns 0 for a serving size that cannot be a drink', () => {
+      expect(alcoholGramsForServing(0, 'ml', 5)).toBe(0);
+      expect(alcoholGramsForServing(-330, 'ml', 5)).toBe(0);
+      expect(alcoholGramsForServing(Number.NaN, 'ml', 5)).toBe(0);
+    });
+
+    it('returns 0 for a drink with no alcohol in it', () => {
+      expect(alcoholGramsForServing(330, 'ml', 0)).toBe(0);
+    });
   });
 
   it('provides expected constants and presets', () => {

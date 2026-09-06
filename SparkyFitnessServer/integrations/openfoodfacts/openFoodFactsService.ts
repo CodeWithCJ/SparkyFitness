@@ -6,8 +6,7 @@ import {
 import { log } from '../../config/logging.js';
 import {
   normalizeNutrientUnit,
-  foodVolumeToMl,
-  alcoholGramsFromAbv,
+  alcoholGramsForServing,
 } from '@workspace/shared';
 import package$0 from '../../package.json' with { type: 'json' };
 import {
@@ -1096,12 +1095,7 @@ function mapOpenFoodFactsProduct(
     abv_percent: rawAbv !== null && rawAbv >= 0 ? rawAbv : undefined,
     alcohol_g:
       rawAbv !== null && rawAbv >= 0
-        ? (() => {
-            const vol =
-              foodVolumeToMl(servingSize, servingUnit) ??
-              (servingUnit === 'g' ? servingSize : servingSize);
-            return alcoholGramsFromAbv(vol, rawAbv);
-          })()
+        ? alcoholGramsForServing(servingSize, servingUnit, rawAbv)
         : 0,
     ...(() => {
       const extracted = extractOffProviderNutrients(

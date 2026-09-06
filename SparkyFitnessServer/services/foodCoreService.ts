@@ -30,7 +30,7 @@ import {
   removeEntityImageDir,
 } from '../middleware/imageUpload.js';
 import { resolveImageInput, toImageArray } from '../utils/imageLocalizer.js';
-import { foodVolumeToMl, alcoholGramsFromAbv } from '@workspace/shared';
+import { alcoholGramsForServing } from '@workspace/shared';
 
 /** A food row as returned by the repository. */
 interface FoodRow {
@@ -172,16 +172,17 @@ function deriveAlcoholGramsIfMissing<
       data.alcohol_g === '')
   ) {
     if (data.serving_size && data.serving_unit) {
-      const ml = foodVolumeToMl(
-        Number(data.serving_size),
-        String(data.serving_unit)
-      );
-      if (ml !== null) {
-        return {
-          ...data,
-          alcohol_g: alcoholGramsFromAbv(ml, Number(data.abv_percent)),
-        };
-      }
+      // Shared with the OpenFoodFacts import, which used to derive grams for a
+      // weight serving while this path refused: the same beer then came back
+      // with grams when imported and zero when saved by hand.
+      return {
+        ...data,
+        alcohol_g: alcoholGramsForServing(
+          Number(data.serving_size),
+          String(data.serving_unit),
+          Number(data.abv_percent)
+        ),
+      };
     }
   }
   return data;
@@ -613,16 +614,11 @@ async function updateFoodVariant(
         processedVariantData.alcohol_g === '')
     ) {
       if (effectiveServingSize && effectiveServingUnit) {
-        const ml = foodVolumeToMl(
+        processedVariantData.alcohol_g = alcoholGramsForServing(
           Number(effectiveServingSize),
-          String(effectiveServingUnit)
+          String(effectiveServingUnit),
+          Number(effectiveAbv)
         );
-        if (ml !== null) {
-          processedVariantData.alcohol_g = alcoholGramsFromAbv(
-            ml,
-            Number(effectiveAbv)
-          );
-        }
       }
     }
     const updatedVariant = await foodRepository.updateFoodVariant(
