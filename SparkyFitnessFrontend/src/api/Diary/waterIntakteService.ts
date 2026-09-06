@@ -36,6 +36,11 @@ export const getWaterIntakeLog = async (
 export const deleteWaterIntakeLogEntry = async (logId: string) => {
   return apiCall(`/v2/measurements/water-intake/log/${logId}`, {
     method: 'DELETE',
+    // Deleting a linked food entry cascades to its water log row, so a diary
+    // page opened before that can still show a drink the server has already
+    // dropped. Gone is the outcome the user asked for, so a 404 refreshes the
+    // list instead of raising an error.
+    suppress404Toast: true,
   });
 };
 

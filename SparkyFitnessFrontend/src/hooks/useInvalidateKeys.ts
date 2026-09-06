@@ -61,6 +61,9 @@ export const useFoodEntryInvalidation = () => {
     queryClient.invalidateQueries({ queryKey: reportKeys.all });
     queryClient.invalidateQueries({ queryKey: foodKeys.all });
     queryClient.invalidateQueries({ queryKey: mealKeys.all });
+    // A food entry created from a water container owns its water log row
+    // (ON DELETE CASCADE), so deleting the food changes the day's water too.
+    queryClient.invalidateQueries({ queryKey: waterIntakeKeys.all });
   }, [queryClient]);
 };
 
