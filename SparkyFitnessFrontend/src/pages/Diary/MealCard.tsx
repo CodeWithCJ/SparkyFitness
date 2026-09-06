@@ -50,6 +50,8 @@ interface MealTotals {
   vitamin_a?: number;
   vitamin_c?: number;
   iron?: number;
+  caffeine_mg?: number;
+  alcohol_g?: number;
   calcium?: number;
   glycemic_index?: GlycemicIndex;
   custom_nutrients?: Record<string, number>;

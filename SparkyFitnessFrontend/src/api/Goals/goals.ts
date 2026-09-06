@@ -153,6 +153,8 @@ export const saveGoals = async (
       p_vitamin_c: goals.vitamin_c,
       p_calcium: goals.calcium,
       p_iron: goals.iron,
+      p_caffeine_mg: goals.caffeine_mg,
+      p_alcohol_g: goals.alcohol_g,
       p_target_exercise_calories_burned: goals.target_exercise_calories_burned,
       p_target_exercise_duration_minutes:
         goals.target_exercise_duration_minutes,
