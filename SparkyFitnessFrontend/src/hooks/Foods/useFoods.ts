@@ -124,7 +124,7 @@ export const useFoodView = (foodId: string, isEnabled: boolean = true) => {
 };
 
 export const useDeleteFoodMutation = () => {
-  const queryClient = useQueryClient();
+  const invalidateFoodEntries = useFoodEntryInvalidation();
   const { t } = useTranslation();
   return useMutation({
     mutationFn: ({
@@ -134,10 +134,11 @@ export const useDeleteFoodMutation = () => {
       foodId: string;
       force?: boolean;
     }) => deleteFood(foodId, force),
+    // A force delete cascades to the diary entries that logged this food, so
+    // invalidating only the food list left the diary rendering rows whose food
+    // no longer exists — opening one 404'd on GET /foods/:id.
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: foodKeys.all,
-      });
+      invalidateFoodEntries();
     },
     meta: {
       errorMessage: t(
