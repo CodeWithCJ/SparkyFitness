@@ -1,3 +1,5 @@
+import { DEFAULT_MEAL_ANCHOR_TIMES } from '@workspace/shared';
+
 /**
  * Pick the meal type a drink logged "now" belongs to.
  *
@@ -12,14 +14,30 @@
  * at 11:00, with breakfast 08:00 and lunch 12:30, lunch is closer and wins.
  * Ties go to the earlier meal, so the result never depends on row order.
  *
- * Meal types with no default_time cannot be placed on the clock and are
- * skipped; if none of them have one, the caller's original order is honoured
- * by returning the first entry, which is the pre-existing behaviour.
+ * meal_types.default_time is nullable and ships NULL for the built-in meals, so
+ * a type with no time of its own falls back to the shared anchor for its name
+ * (DEFAULT_MEAL_ANCHOR_TIMES). Without that fallback this resolver would be
+ * inert on a default install and every drink would land in whichever meal type
+ * happened to come back first.
+ *
+ * A custom meal type with neither a default_time nor a known name cannot be
+ * placed on the clock and is skipped; if nothing can be placed, the caller's
+ * original order is honoured by returning the first entry.
  */
 
 export interface MealTypeTimeCandidate {
   id: string;
+  name?: string | null;
   default_time?: string | null;
+}
+
+/** A meal type's own time, else the shared anchor for its built-in name. */
+function anchorFor(mealType: MealTypeTimeCandidate): number | null {
+  const own = parseClockMinutes(mealType.default_time);
+  if (own !== null) return own;
+  const fallback =
+    DEFAULT_MEAL_ANCHOR_TIMES[(mealType.name ?? '').toLowerCase()];
+  return parseClockMinutes(fallback);
 }
 
 /** Minutes since midnight for "HH:MM" / "HH:MM:SS", or null if unparseable. */
@@ -49,7 +67,7 @@ export function resolveMealTypeIdForTime(
   let bestDistance = Number.POSITIVE_INFINITY;
 
   for (const mealType of mealTypes) {
-    const minutes = parseClockMinutes(mealType.default_time);
+    const minutes = anchorFor(mealType);
     if (minutes === null) continue;
     const distance = Math.abs(minutes - nowMinutes);
     // Strictly-less keeps the earlier meal on a tie, since callers pass them

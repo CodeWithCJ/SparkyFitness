@@ -31,6 +31,51 @@ describe('parseClockMinutes', () => {
   });
 });
 
+// meal_types.default_time ships NULL for the built-in meals, so without the
+// shared-anchor fallback this resolver would be inert on a default install --
+// every drink would land in whichever meal type came back first.
+describe('resolveMealTypeIdForTime — built-in meals with no default_time', () => {
+  const UNTIMED = [
+    { id: 'breakfast', name: 'breakfast', default_time: null },
+    { id: 'lunch', name: 'lunch', default_time: null },
+    { id: 'snacks', name: 'snacks', default_time: null },
+    { id: 'dinner', name: 'dinner', default_time: null },
+  ];
+
+  it('falls back to the shared anchor for the meal name', () => {
+    expect(resolveMealTypeIdForTime(UNTIMED, '08:10')).toBe('breakfast');
+    expect(resolveMealTypeIdForTime(UNTIMED, '12:40')).toBe('lunch');
+    expect(resolveMealTypeIdForTime(UNTIMED, '15:10')).toBe('snacks');
+    expect(resolveMealTypeIdForTime(UNTIMED, '19:30')).toBe('dinner');
+  });
+
+  it('is case-insensitive about the meal name', () => {
+    const titled = [
+      { id: 'b', name: 'Breakfast', default_time: null },
+      { id: 'd', name: 'Dinner', default_time: null },
+    ];
+    expect(resolveMealTypeIdForTime(titled, '08:00')).toBe('b');
+    expect(resolveMealTypeIdForTime(titled, '19:00')).toBe('d');
+  });
+
+  it("prefers a meal type's own default_time over the shared anchor", () => {
+    const overridden = [
+      { id: 'breakfast', name: 'breakfast', default_time: '05:00' },
+      { id: 'lunch', name: 'lunch', default_time: null },
+    ];
+    // 06:00 is nearer the overridden 05:00 than the 12:30 lunch anchor.
+    expect(resolveMealTypeIdForTime(overridden, '06:00')).toBe('breakfast');
+  });
+
+  it('skips a custom meal type that has neither a time nor a known name', () => {
+    const mixed = [
+      { id: 'custom', name: 'Pre-workout', default_time: null },
+      { id: 'dinner', name: 'dinner', default_time: null },
+    ];
+    expect(resolveMealTypeIdForTime(mixed, '19:00')).toBe('dinner');
+  });
+});
+
 describe('resolveMealTypeIdForTime', () => {
   it('places a drink in the meal whose default time is nearest', () => {
     expect(resolveMealTypeIdForTime(MEALS, '08:10')).toBe('breakfast');
