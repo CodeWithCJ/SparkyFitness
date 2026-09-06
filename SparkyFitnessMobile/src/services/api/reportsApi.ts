@@ -19,6 +19,9 @@ export interface NutritionTrendPoint {
   vitamin_c: number;
   calcium: number;
   iron: number;
+  caffeine_mg: number;
+  water_ml: number;
+  alcohol_g: number;
   [customNutrient: string]: string | number;
 }
 

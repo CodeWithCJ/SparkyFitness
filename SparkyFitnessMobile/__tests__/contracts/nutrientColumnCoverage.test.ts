@@ -74,6 +74,60 @@ const DELIBERATE_OMISSIONS: Omission[] = [
     reason: 'Report totals read hydration from its own water arm.',
   },
   {
+    file: /^components\/FoodForm\.tsx$/,
+    columns: TRACKED_COLUMNS,
+    reason:
+      'All three fields are rendered here; the extra `iron` is a focus-chain reference naming the next input, not a nutrient list entry.',
+  },
+  {
+    file: /^constants\/nutrients\.ts$/,
+    columns: TRACKED_COLUMNS,
+    reason:
+      'Nutrient metadata carries an i18n key named for the display name (nutrients.caffeine), not the column (caffeine_mg), so the anchor over-counts here.',
+  },
+  {
+    file: /^screens\/DailyNutritionDetailsScreen\.tsx$/,
+    columns: ['water_ml'],
+    reason:
+      'Fallback visible-nutrient order for the daily view, where the hydration gauge owns the water number.',
+  },
+  {
+    file: /^screens\/FoodEntryViewScreen\.tsx$/,
+    columns: TRACKED_COLUMNS,
+    reason:
+      'The remaining site is the label switch, keyed on display names (Caffeine, Water Content, Alcohol) rather than column names.',
+  },
+  {
+    file: /^services\/healthkit\/writebackMappers\.ts$/,
+    columns: ['water_ml', 'alcohol_g'],
+    reason:
+      'Hydration is written as its own DietaryWater sample, not as part of the food correlation, and HealthKit exposes no alcohol identifier.',
+  },
+  {
+    file: /^services\/shared\/dataTransformation\.ts$/,
+    columns: TRACKED_COLUMNS,
+    reason:
+      'HC_NUTRIENT_COLUMNS maps Health Connect NutritionRecord fields. Hydration is a separate record type and neither platform has an alcohol field.',
+  },
+  {
+    file: /^types\/healthRecords\.ts$/,
+    columns: ['water_ml', 'alcohol_g'],
+    reason:
+      'Inbound nutrition records: hydration arrives as its own record type and neither platform reports alcohol.',
+  },
+  {
+    file: /^utils\/nutrientLocalization\.ts$/,
+    columns: TRACKED_COLUMNS,
+    reason:
+      'Switches on the camelCase display keys (caffeineMg) and returns i18n names, so the column-name anchor under-counts.',
+  },
+  {
+    file: /^types\/goals\.ts$/,
+    columns: ['water_ml'],
+    reason:
+      'water_goal_ml is the one water goal; water is not a nutrient goal.',
+  },
+  {
     file: /^services\/diagnosticReportService\.ts$/,
     columns: TRACKED_COLUMNS,
     reason:

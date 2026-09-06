@@ -48,6 +48,9 @@ type MealFoodNumericField = keyof Pick<
   | 'potassium'
   | 'calcium'
   | 'iron'
+  | 'caffeine_mg'
+  | 'water_ml'
+  | 'alcohol_g'
   | 'cholesterol'
   | 'vitamin_a'
   | 'vitamin_c'
@@ -105,6 +108,9 @@ function buildMealDisplayValues(
     potassium: optionalField('potassium'),
     calcium: optionalField('calcium'),
     iron: optionalField('iron'),
+    caffeineMg: optionalField('caffeine_mg'),
+    waterMl: optionalField('water_ml'),
+    alcoholG: optionalField('alcohol_g'),
     cholesterol: optionalField('cholesterol'),
     vitaminA: optionalField('vitamin_a'),
     vitaminC: optionalField('vitamin_c'),
