@@ -238,7 +238,11 @@ async function upsertUserPreferences(preferenceData: any) {
        COALESCE($49, 14.00),
        $50,
        COALESCE($51, 5.0),
-       COALESCE($52, '22:30'),
+       -- Both the parameter and the literal are untyped here, so Postgres infers
+       -- text and refuses to assign it to a time-typed column. The
+       -- UPDATE arms above take their type from the column being assigned, which
+       -- is why only this INSERT arm failed.
+       COALESCE($52::time without time zone, '22:30'),
        COALESCE($53, 'time'),
        now(), now()
      )
