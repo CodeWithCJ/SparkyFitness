@@ -449,6 +449,8 @@ async function manageGoalTimeline(authenticatedUserId: string, goalData: any) {
       p_vitamin_c,
       p_calcium,
       p_iron,
+      p_caffeine_mg,
+      p_alcohol_g,
       p_target_exercise_calories_burned,
       p_target_exercise_duration_minutes,
       p_protein_percentage,
@@ -563,6 +565,8 @@ async function manageGoalTimeline(authenticatedUserId: string, goalData: any) {
       vitamin_c: cleanNumber(p_vitamin_c),
       calcium: cleanNumber(p_calcium),
       iron: cleanNumber(p_iron),
+      caffeine_mg: cleanNumber(p_caffeine_mg),
+      alcohol_g: cleanNumber(p_alcohol_g),
       target_exercise_calories_burned: cleanNumber(
         p_target_exercise_calories_burned
       ),

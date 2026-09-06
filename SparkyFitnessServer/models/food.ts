@@ -436,6 +436,10 @@ export interface FoodMatchCandidateRow {
   iron: number | string | null;
   vitamin_a: number | string | null;
   vitamin_c: number | string | null;
+  caffeine_mg: number | string | null;
+  water_ml: number | string | null;
+  alcohol_g: number | string | null;
+  abv_percent: number | string | null;
   last_used: string | null;
 }
 
@@ -1585,6 +1589,9 @@ async function updateFoodVariantNutrition(
         calcium = $19,
         iron = $20,
         custom_nutrients = COALESCE($21::jsonb, custom_nutrients),
+        caffeine_mg = $22,
+        water_ml = $23,
+        alcohol_g = $24,
         updated_at = now()
       WHERE id = $1`,
       [
@@ -1611,6 +1618,9 @@ async function updateFoodVariantNutrition(
         nutritionData.custom_nutrients
           ? JSON.stringify(nutritionData.custom_nutrients)
           : null,
+        sanitizeNumeric(nutritionData.caffeine_mg),
+        sanitizeNumeric(nutritionData.water_ml),
+        sanitizeNumeric(nutritionData.alcohol_g),
       ]
     );
   } finally {

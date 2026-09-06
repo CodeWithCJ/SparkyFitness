@@ -52,6 +52,9 @@ interface TabularFoodRow {
   vitamin_c?: number;
   calcium?: number;
   iron?: number;
+  caffeine_mg?: number;
+  water_ml?: number;
+  alcohol_g?: number;
   serving_size: number;
   [key: string]: unknown;
 }
@@ -447,6 +450,8 @@ async function getMiniNutritionTrends(
         vitamin_c: parseFloat(row.total_vitamin_c) || 0,
         calcium: parseFloat(row.total_calcium) || 0,
         iron: parseFloat(row.total_iron) || 0,
+        caffeine_mg: parseFloat(row.total_caffeine_mg) || 0,
+        alcohol_g: parseFloat(row.total_alcohol_g) || 0,
       };
       // Map custom nutrients dynamically
       customNutrients.forEach((cn: CustomNutrientDefinition) => {

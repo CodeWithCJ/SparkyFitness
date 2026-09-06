@@ -1589,6 +1589,9 @@ async function copySelectedFoodEntriesFromUser(
       vitamin_c: entry.vitamin_c,
       calcium: entry.calcium,
       iron: entry.iron,
+      caffeine_mg: entry.caffeine_mg,
+      water_ml: entry.water_ml,
+      alcohol_g: entry.alcohol_g,
       glycemic_index: entry.glycemic_index,
       custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
       // The note travels with the entry it describes.

@@ -112,6 +112,10 @@ export interface ProviderFoodVariant {
   vitamin_c?: number | string | null;
   calcium?: number | string | null;
   iron?: number | string | null;
+  caffeine_mg?: number | string | null;
+  water_ml?: number | string | null;
+  alcohol_g?: number | string | null;
+  abv_percent?: number | string | null;
   glycemic_index?: string | null;
   is_default?: boolean | null;
   [key: string]: unknown;

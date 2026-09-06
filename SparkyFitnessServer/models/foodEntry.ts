@@ -151,6 +151,12 @@ function reviewedCopyConflict() {
  *           type: number
  *         iron:
  *           type: number
+ *         caffeine_mg:
+ *           type: number
+ *         water_ml:
+ *           type: number
+ *         alcohol_g:
+ *           type: number
  *         glycemic_index:
  *           type: number
  *         custom_nutrients:
