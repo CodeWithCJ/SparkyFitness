@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { getActiveCaffeineKinetics } from '../services/caffeineKineticsService.js';
 import * as foodMisc from '../models/foodMisc.js';
@@ -129,5 +130,24 @@ describe('Caffeine Dose Window and Fallback Hierarchy', () => {
     expect(result.doses[0].at).toBe('2026-09-05T06:00:00.000Z');
     expect(result.doses[0].is_estimated).toBe(false);
     expect(result.active_mg_now).toBe(100);
+  });
+});
+
+// The repository tests above mock the query, so nothing there notices which
+// table the meal time came from. A user's own meal times live in
+// user_meal_visibilities and the built-in meal_types rows carry NULL, so
+// reading only the base table silently anchored every untimed entry at noon --
+// four hours off for a user whose Snacks is 16:00.
+describe("the dose query reads the user's own meal times", () => {
+  const source = readFileSync(
+    new URL('../models/foodMisc.ts', import.meta.url),
+    'utf8'
+  );
+
+  it('COALESCEs the per-user override the way getAllMealTypes does', () => {
+    expect(source).toContain(
+      'COALESCE(umv.default_time, mt.default_time)::text AS meal_default_time'
+    );
+    expect(source).toContain('LEFT JOIN user_meal_visibilities umv');
   });
 });

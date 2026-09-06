@@ -2726,7 +2726,8 @@
       "cutoffOver": "Already over for tonight",
       "cutoffOverDesc": "Already past {{threshold}}mg at bedtime",
       "crossingNote": "Back under {{threshold}}mg from {{time}}",
-      "bedShort": "bed"
+      "bedShort": "bed",
+      "underThreshold": "Stays under {{threshold}}mg tonight"
     },
     "exercise": "Exercise",
     "widgets": {

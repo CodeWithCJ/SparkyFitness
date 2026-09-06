@@ -358,15 +358,18 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
               })}
             </AreaChart>
           </ResponsiveContainer>
-          {crossingAt && (
-            <p className="text-[11px] text-muted-foreground text-center">
-              {t('diary.caffeine.crossingNote', {
-                defaultValue: 'Back under {{threshold}}mg from {{time}}',
-                threshold: threshold_mg,
-                time: clockLabel(crossingAt),
-              })}
-            </p>
-          )}
+          <p className="text-[11px] text-muted-foreground text-center">
+            {crossingAt
+              ? t('diary.caffeine.crossingNote', {
+                  defaultValue: 'Back under {{threshold}}mg from {{time}}',
+                  threshold: threshold_mg,
+                  time: clockLabel(crossingAt),
+                })
+              : t('diary.caffeine.underThreshold', {
+                  defaultValue: 'Stays under {{threshold}}mg tonight',
+                  threshold: threshold_mg,
+                })}
+          </p>
         </div>
 
         {/* Dose list strip */}

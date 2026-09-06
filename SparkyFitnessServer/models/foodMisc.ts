@@ -655,12 +655,19 @@ async function getCaffeineDosesForWindow(
         'food' AS source,
         fe.entry_date::text AS entry_date,
         fe.entry_time::text AS entry_time,
-        mt.default_time::text AS meal_default_time,
+        COALESCE(umv.default_time, mt.default_time)::text AS meal_default_time,
         NULL::timestamp AS taken_at,
         (fe.caffeine_mg * fe.quantity / NULLIF(fe.serving_size, 0))::numeric AS caffeine_mg,
         COALESCE(fe.food_name, 'Food') AS name
       FROM food_entries fe
       LEFT JOIN meal_types mt ON mt.id = fe.meal_type_id
+      -- The user's own meal times live in user_meal_visibilities; meal_types
+      -- carries the system default, which is NULL for the built-in meals.
+      -- Reading only the base table anchored every untimed entry at noon even
+      -- for a user who had set Snacks to 16:00, as getAllMealTypes already
+      -- COALESCEs these two.
+      LEFT JOIN user_meal_visibilities umv
+        ON umv.meal_type_id = fe.meal_type_id AND umv.user_id = $1
       WHERE fe.user_id = $1
         AND fe.entry_date >= $2
         AND fe.entry_date <= $3
