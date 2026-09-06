@@ -2092,6 +2092,9 @@ async function buildLeafFoodEntries(
         vitamin_c: (Number(component.vitamin_c) || 0) * multiplier,
         calcium: (Number(component.calcium) || 0) * multiplier,
         iron: (Number(component.iron) || 0) * multiplier,
+        caffeine_mg: (Number(component.caffeine_mg) || 0) * multiplier,
+        water_ml: (Number(component.water_ml) || 0) * multiplier,
+        alcohol_g: (Number(component.alcohol_g) || 0) * multiplier,
         glycemic_index: component.glycemic_index || null,
         custom_nutrients: component.custom_nutrients || null,
       });
@@ -2687,6 +2690,9 @@ async function getFoodEntryMealWithComponents(
     let totalVitaminC = 0;
     let totalCalcium = 0;
     let totalIron = 0;
+    let totalCaffeineMg = 0;
+    let totalWaterMl = 0;
+    let totalAlcoholG = 0;
     // Custom nutrient totals, keyed by the user's nutrient name.
     const totalCustomNutrients: Record<string, number> = {};
     let totalCarbsForGI = 0;
@@ -2711,6 +2717,9 @@ async function getFoodEntryMealWithComponents(
       totalVitaminC += (entry.vitamin_c || 0) * ratio;
       totalCalcium += (entry.calcium || 0) * ratio;
       totalIron += (entry.iron || 0) * ratio;
+      totalCaffeineMg += (entry.caffeine_mg || 0) * ratio;
+      totalWaterMl += (entry.water_ml || 0) * ratio;
+      totalAlcoholG += (entry.alcohol_g || 0) * ratio;
       // Aggregate custom nutrients
       if (
         entry.custom_nutrients &&
@@ -2803,6 +2812,9 @@ async function getFoodEntryMealWithComponents(
       vitamin_c: totalVitaminC,
       calcium: totalCalcium,
       iron: totalIron,
+      caffeine_mg: totalCaffeineMg,
+      water_ml: totalWaterMl,
+      alcohol_g: totalAlcoholG,
       custom_nutrients: totalCustomNutrients,
       glycemic_index: getGlycemicIndexCategory(aggregatedGlycemicIndex),
     };
@@ -2851,6 +2863,9 @@ async function getFoodEntryMealsByDate(
       let totalVitaminC = 0;
       let totalCalcium = 0;
       let totalIron = 0;
+      let totalCaffeineMg = 0;
+      let totalWaterMl = 0;
+      let totalAlcoholG = 0;
       // Custom nutrient totals, keyed by the user's nutrient name.
       const totalCustomNutrients: Record<string, number> = {};
       let totalProtein = 0;
@@ -2877,6 +2892,9 @@ async function getFoodEntryMealsByDate(
         totalVitaminC += (entry.vitamin_c || 0) * ratio;
         totalCalcium += (entry.calcium || 0) * ratio;
         totalIron += (entry.iron || 0) * ratio;
+        totalCaffeineMg += (entry.caffeine_mg || 0) * ratio;
+        totalWaterMl += (entry.water_ml || 0) * ratio;
+        totalAlcoholG += (entry.alcohol_g || 0) * ratio;
         // Aggregate custom nutrients
         if (
           entry.custom_nutrients &&
@@ -2981,6 +2999,15 @@ async function getFoodEntryMealsByDate(
           iron:
             (Number(entry.iron ?? 0) * Number(entry.quantity ?? 0)) /
             Number(entry.serving_size ?? 0),
+          caffeine_mg:
+            (Number(entry.caffeine_mg ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
+          water_ml:
+            (Number(entry.water_ml ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
+          alcohol_g:
+            (Number(entry.alcohol_g ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
           glycemic_index: entry.glycemic_index,
           custom_nutrients: entry.custom_nutrients,
           serving_size: Number(entry.serving_size ?? 0),
@@ -3003,6 +3030,9 @@ async function getFoodEntryMealsByDate(
         vitamin_c: totalVitaminC,
         calcium: totalCalcium,
         iron: totalIron,
+        caffeine_mg: totalCaffeineMg,
+        water_ml: totalWaterMl,
+        alcohol_g: totalAlcoholG,
         custom_nutrients: totalCustomNutrients,
         glycemic_index: getGlycemicIndexCategory(aggregatedGlycemicIndex),
       });

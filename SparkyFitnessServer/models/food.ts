@@ -487,6 +487,7 @@ async function findFoodMatchCandidates(
                 fv.monounsaturated_fat, fv.trans_fat, fv.cholesterol,
                 fv.sodium, fv.potassium, fv.calcium, fv.iron,
                 fv.vitamin_a, fv.vitamin_c,
+                fv.caffeine_mg, fv.water_ml, fv.alcohol_g, fv.abv_percent,
                 (SELECT MAX(fe.entry_date) FROM food_entries fe
                   WHERE fe.food_id = f.id AND fe.user_id = $1) AS last_used
          FROM foods f

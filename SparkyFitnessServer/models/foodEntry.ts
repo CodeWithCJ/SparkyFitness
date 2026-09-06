@@ -440,6 +440,9 @@ async function getFoodEntryById(entryId: string, userId: string) {
         fe.vitamin_c, 
         fe.calcium, 
         fe.iron, 
+        fe.caffeine_mg,
+        fe.water_ml,
+        fe.alcohol_g,
         fe.glycemic_index,
         fe.custom_nutrients,
         fe.allergens,
@@ -632,6 +635,9 @@ async function getFoodEntriesByDate(userId: string, selectedDate: string) {
         fe.vitamin_c,
         fe.calcium,
         fe.iron,
+        fe.caffeine_mg,
+        fe.water_ml,
+        fe.alcohol_g,
         fe.glycemic_index,
         fe.custom_nutrients,
         fe.source,
@@ -699,6 +705,9 @@ async function getFoodEntriesByDateAndMealType(
         fe.vitamin_c,
         fe.calcium,
         fe.iron,
+        fe.caffeine_mg,
+        fe.water_ml,
+        fe.alcohol_g,
         fe.glycemic_index,
         fe.custom_nutrients,
         f.provider_verified,
@@ -767,6 +776,9 @@ async function getFoodEntriesByDateRange(
         fe.vitamin_c, 
         fe.calcium, 
         fe.iron, 
+        fe.caffeine_mg,
+        fe.water_ml,
+        fe.alcohol_g,
         fe.glycemic_index, 
         fe.custom_nutrients,
         f.provider_verified,
@@ -873,6 +885,9 @@ async function copyReviewedFoodEntriesFromUser({
         fe.vitamin_c,
         fe.calcium,
         fe.iron,
+        fe.caffeine_mg,
+        fe.water_ml,
+        fe.alcohol_g,
         fe.glycemic_index,
         fe.custom_nutrients
        FROM food_entries fe
@@ -1004,11 +1019,12 @@ async function copyReviewedFoodEntriesFromUser({
           serving_size, serving_unit, calories, protein, carbs, fat,
           saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
           cholesterol, sodium, potassium, dietary_fiber, sugars, vitamin_a,
-          vitamin_c, calcium, iron, glycemic_index, custom_nutrients, notes
+          vitamin_c, calcium, iron, caffeine_mg, water_ml, alcohol_g,
+          glycemic_index, custom_nutrients, notes
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
           $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-          $27, $28, $29, $30, $31, $32, $33, $34, $35, $36
+          $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39
         ) RETURNING *`,
         [
           targetUserId,
@@ -1044,6 +1060,9 @@ async function copyReviewedFoodEntriesFromUser({
           entry.vitamin_c,
           entry.calcium,
           entry.iron,
+          entry.caffeine_mg,
+          entry.water_ml,
+          entry.alcohol_g,
           entry.glycemic_index,
           sanitizeCustomNutrients(entry.custom_nutrients),
           sanitizeNotes(entry.notes) ?? null,
@@ -1116,6 +1135,9 @@ async function bulkCreateFoodEntriesWithClient(
         vitamin_c, 
         calcium, 
         iron, 
+        caffeine_mg,
+        water_ml,
+        alcohol_g,
         glycemic_index,
         custom_nutrients,
         notes
@@ -1156,6 +1178,9 @@ async function bulkCreateFoodEntriesWithClient(
     entry.vitamin_c,
     entry.calcium,
     entry.iron,
+    entry.caffeine_mg,
+    entry.water_ml,
+    entry.alcohol_g,
     entry.glycemic_index,
     entry.custom_nutrients || {},
     sanitizeNotes(entry.notes) ?? null,
@@ -1225,6 +1250,9 @@ async function getFoodEntryComponentsByFoodEntryMealId(
         fe.vitamin_c, 
         fe.calcium, 
         fe.iron, 
+        fe.caffeine_mg,
+        fe.water_ml,
+        fe.alcohol_g,
         fe.glycemic_index, 
         fe.custom_nutrients
        FROM food_entries fe
@@ -1296,6 +1324,9 @@ async function getFoodEntriesBatch(
         fe.vitamin_c, 
         fe.calcium, 
         fe.iron, 
+        fe.caffeine_mg,
+        fe.water_ml,
+        fe.alcohol_g,
         fe.glycemic_index,
         fe.custom_nutrients
        FROM food_entries fe

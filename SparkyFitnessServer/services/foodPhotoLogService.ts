@@ -90,7 +90,8 @@ async function loadExistingVariants(
        fv.saturated_fat, fv.polyunsaturated_fat, fv.monounsaturated_fat,
        fv.trans_fat, fv.cholesterol, fv.sodium, fv.potassium,
        fv.dietary_fiber, fv.sugars, fv.vitamin_a, fv.vitamin_c,
-       fv.calcium, fv.iron, fv.glycemic_index, fv.custom_nutrients
+       fv.calcium, fv.iron, fv.caffeine_mg, fv.water_ml, fv.alcohol_g,
+       fv.glycemic_index, fv.custom_nutrients
      FROM food_variants fv
      JOIN foods f ON f.id = fv.food_id
      WHERE fv.id = ANY($1::uuid[])`,

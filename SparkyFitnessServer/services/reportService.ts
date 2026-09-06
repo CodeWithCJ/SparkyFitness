@@ -224,6 +224,9 @@ async function getReportsData(
           vitamin_c: row.vitamin_c,
           calcium: row.calcium,
           iron: row.iron,
+          caffeine_mg: row.caffeine_mg,
+          water_ml: row.water_ml,
+          alcohol_g: row.alcohol_g,
           serving_size: row.serving_size,
         },
       };
@@ -251,6 +254,8 @@ async function getReportsData(
           vitamin_c: parseFloat(String(item.vitamin_c)) || 0,
           calcium: parseFloat(String(item.calcium)) || 0,
           iron: parseFloat(String(item.iron)) || 0,
+          caffeine_mg: parseFloat(String(item.caffeine_mg)) || 0,
+          alcohol_g: parseFloat(String(item.alcohol_g)) || 0,
           water: waterByDate.get(String(item.date)) || 0,
         };
         FOOD_VARIANT_NUTRIENT_FIELDS.forEach((nutrient) => {
