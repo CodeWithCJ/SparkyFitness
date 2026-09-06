@@ -5,7 +5,7 @@ import { Wine, AlertCircle, CheckCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAlcoholWeekReport } from '@/hooks/Reports/useReports';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { AlcoholDayTotal } from '@workspace/shared';
+import { compareDays, type AlcoholDayTotal } from '@workspace/shared';
 
 interface WeeklyAlcoholCardProps {
   date: string;
@@ -44,12 +44,16 @@ export const WeeklyAlcoholCard = ({ date, userId }: WeeklyAlcoholCardProps) => {
     days,
   } = data;
 
+  // The bar can only be filled to full, but the number beside it must not be:
+  // clamping both made 157% of a limit look identical to landing exactly on it.
   const percentage =
     limit_standard_drinks && limit_standard_drinks > 0
-      ? Math.min(
-          100,
-          Math.round((standard_drinks / limit_standard_drinks) * 100)
-        )
+      ? Math.round((standard_drinks / limit_standard_drinks) * 100)
+      : 0;
+  const barValue = Math.min(100, percentage);
+  const drinksDelta =
+    limit_standard_drinks !== null
+      ? Number((limit_standard_drinks - standard_drinks).toFixed(1))
       : 0;
 
   return (
@@ -107,18 +111,26 @@ export const WeeklyAlcoholCard = ({ date, userId }: WeeklyAlcoholCardProps) => {
         {limit_standard_drinks !== null && (
           <div className="space-y-1">
             <Progress
-              value={percentage}
+              value={barValue}
               className={`h-2 ${over_limit ? '[&>div]:bg-red-500' : '[&>div]:bg-indigo-500'}`}
             />
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>{percentage}%</span>
-              <span>
-                {Math.max(
-                  0,
-                  Number((limit_standard_drinks - standard_drinks).toFixed(1))
-                )}{' '}
-                {t('reports.alcohol.drinksRemaining', 'drinks remaining')}
-              </span>
+              {over_limit ? (
+                <span className="text-red-600 dark:text-red-400 font-medium">
+                  {t('reports.alcohol.drinksOver', {
+                    defaultValue: '{{count}} drinks over',
+                    count: Math.abs(drinksDelta),
+                  })}
+                </span>
+              ) : (
+                <span>
+                  {t('reports.alcohol.drinksRemaining', {
+                    defaultValue: '{{count}} drinks remaining',
+                    count: Math.max(0, drinksDelta),
+                  })}
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -128,22 +140,41 @@ export const WeeklyAlcoholCard = ({ date, userId }: WeeklyAlcoholCardProps) => {
           {days.map((d: AlcoholDayTotal) => {
             const dayNum = d.date.slice(8);
             const hasIntake = d.alcohol_g > 0;
+            // A week always has 7 days, but the ones after the day being viewed
+            // have not happened. Rendering those the same as a dry day claimed
+            // six days of abstinence the user has not lived through yet.
+            const isUpcoming = compareDays(d.date, date) > 0;
             return (
               <div
                 key={d.date}
+                title={
+                  isUpcoming
+                    ? t('reports.alcohol.upcomingDay', 'Not yet')
+                    : undefined
+                }
                 className={`flex flex-col items-center p-1.5 rounded text-xs border ${
                   hasIntake
                     ? 'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800'
-                    : 'bg-muted/20 border-transparent'
+                    : isUpcoming
+                      ? 'border-dashed border-muted-foreground/20'
+                      : 'bg-muted/20 border-transparent'
                 }`}
               >
-                <span className="text-muted-foreground text-[10px]">
+                <span
+                  className={`text-[10px] ${isUpcoming ? 'text-muted-foreground/50' : 'text-muted-foreground'}`}
+                >
                   {dayNum}
                 </span>
                 <span
-                  className={`font-semibold ${hasIntake ? 'text-indigo-600 dark:text-indigo-400' : 'text-muted-foreground'}`}
+                  className={`font-semibold ${
+                    hasIntake
+                      ? 'text-indigo-600 dark:text-indigo-400'
+                      : isUpcoming
+                        ? 'text-muted-foreground/40'
+                        : 'text-muted-foreground'
+                  }`}
                 >
-                  {d.standard_drinks > 0 ? d.standard_drinks : '-'}
+                  {hasIntake ? d.standard_drinks : isUpcoming ? '·' : '0'}
                 </span>
               </div>
             );

@@ -3567,7 +3567,11 @@
       "overLimit": "Over limit",
       "onTrack": "Under limit",
       "noLimit": "No weekly limit set",
-      "drinksRemaining": "drinks remaining"
+      "drinksRemaining_one": "{{count}} drink remaining",
+      "drinksRemaining_other": "{{count}} drinks remaining",
+      "drinksOver_one": "{{count}} drink over",
+      "drinksOver_other": "{{count}} drinks over",
+      "upcomingDay": "Not yet"
     },
     "hydration": {
       "title": "Hydration"
