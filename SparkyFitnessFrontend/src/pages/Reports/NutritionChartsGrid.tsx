@@ -137,16 +137,23 @@ const NutritionChartsGrid = ({
   };
 
   const allNutritionCharts = useMemo(() => {
-    // Standard nutrients - use centralized chartColor
-    const charts = Object.values(CENTRAL_NUTRIENT_CONFIG).map((n) => ({
-      key: n.id,
-      label:
-        n.id === 'carbs' && showNetCarbs
-          ? t('nutrition.netCarbs', 'Net Carbs')
-          : t(n.label, n.defaultLabel),
-      color: n.chartColor, // Use centralized chartColor
-      unit: n.id === 'calories' ? energyUnit : n.unit,
-    }));
+    // Standard nutrients - use centralized chartColor.
+    // water_ml is excluded: these charts are fed by getDailyNutritionTotalsRange,
+    // whose RANGE_COLS deliberately omit it (design-decisions correction 3), so a
+    // "Water Content" chart here would plot a field the data never carries and
+    // render flat zero next to the real figure. Hydration has its own chart
+    // (HydrationTrendChart, #2348) fed by the water ledger plus the food arm.
+    const charts = Object.values(CENTRAL_NUTRIENT_CONFIG)
+      .filter((n) => n.id !== 'water_ml')
+      .map((n) => ({
+        key: n.id,
+        label:
+          n.id === 'carbs' && showNetCarbs
+            ? t('nutrition.netCarbs', 'Net Carbs')
+            : t(n.label, n.defaultLabel),
+        color: n.chartColor, // Use centralized chartColor
+        unit: n.id === 'calories' ? energyUnit : n.unit,
+      }));
 
     // Generate deterministic color from string for custom nutrients
     const getStringColor = (str: string) => {
