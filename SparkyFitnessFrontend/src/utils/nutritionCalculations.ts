@@ -243,6 +243,7 @@ export interface CalculatedNutrition {
   iron: number;
   caffeine_mg: number;
   alcohol_g: number;
+  water_ml: number;
   custom_nutrients: Record<string, number>;
 }
 
@@ -276,6 +277,16 @@ export const calculateNutrition = (
     iron: (variant.iron || 0) * ratio,
     caffeine_mg: (variant.caffeine_mg || 0) * ratio,
     alcohol_g: (variant.alcohol_g || 0) * ratio,
+    // #1557/#1629: explicit water_ml wins (scaled like any other nutrient);
+    // with none recorded, fall back to the logged volume when serving_unit is a
+    // real volume unit -- never 'oz', which is a WEIGHT ounce in the food
+    // vocabulary. Same resolution calculateFoodEntryNutrition and the server's
+    // food-water formula use, so the figure shown per entry matches the one the
+    // day total credits. Deliberately absent from EMPTY_MEAL_TOTALS: the water
+    // ring owns the day total, this is only the per-entry contribution.
+    water_ml: variant.water_ml
+      ? variant.water_ml * ratio
+      : (foodVolumeToMl(quantity, variant.serving_unit ?? '') ?? 0),
     custom_nutrients: {},
   };
 

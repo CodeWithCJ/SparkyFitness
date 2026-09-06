@@ -1,5 +1,8 @@
-import { calculateFoodEntryNutrition } from '@/utils/nutritionCalculations';
-import type { FoodEntry } from '@/types/food';
+import {
+  calculateFoodEntryNutrition,
+  calculateNutrition,
+} from '@/utils/nutritionCalculations';
+import type { FoodEntry, FoodVariant } from '@/types/food';
 
 // Phase 2 (#1557/#1629): the old water_ml heuristic had four bugs — 'oz' was
 // treated as fluid (it's a weight ounce in the food vocabulary), 'liter' was
@@ -63,5 +66,44 @@ describe('calculateFoodEntryNutrition — water_ml volume fallback', () => {
 
   it('is 0 for a weight unit like "g"', () => {
     expect(calculateFoodEntryNutrition(makeEntry(100, 'g')).water_ml).toBe(0);
+  });
+});
+
+// calculateNutrition is what the Edit Food Entry dialog renders from, and
+// NutrientsGrid draws a nutrient only when the key exists on that object -- so
+// water_ml missing here made the Water Content checkbox a no-op on that screen
+// even with the nutrient enabled.
+function makeVariant(fields: Partial<FoodVariant>): FoodVariant {
+  return {
+    id: 'variant-1',
+    food_id: 'food-1',
+    serving_size: 100,
+    serving_unit: 'g',
+    calories: 0,
+    ...fields,
+  } as unknown as FoodVariant;
+}
+
+describe('calculateNutrition — water_ml', () => {
+  it('scales an explicit water_ml by the serving ratio', () => {
+    const variant = makeVariant({ water_ml: 80 });
+    expect(calculateNutrition(variant, 250)!.water_ml).toBe(200);
+  });
+
+  it('falls back to the logged volume when the food records no water', () => {
+    const variant = makeVariant({ serving_unit: 'ml' });
+    expect(calculateNutrition(variant, 330)!.water_ml).toBe(330);
+  });
+
+  it('never credits a weight-ounce serving unit as water', () => {
+    const variant = makeVariant({ serving_unit: 'oz' });
+    expect(calculateNutrition(variant, 4)!.water_ml).toBe(0);
+  });
+
+  it('prefers an explicit water_ml over the volume fallback', () => {
+    // A 330 ml can of something 90% water: the recorded value wins, so the
+    // entry does not claim the full volume as hydration.
+    const variant = makeVariant({ serving_unit: 'ml', water_ml: 90 });
+    expect(calculateNutrition(variant, 100)!.water_ml).toBe(90);
   });
 });
