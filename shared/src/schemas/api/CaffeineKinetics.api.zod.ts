@@ -14,7 +14,18 @@ export const caffeineActiveResponseSchema = z.object({
   doses: z.array(caffeineDoseSchema),
   active_mg_now: z.number(),
   at_bedtime_mg: z.number(),
+  /** Local HH:MM, present only when cutoff_state is "by" or "passed". */
   latest_safe_dose_time: z.string().nullable(),
+  /**
+   * Which of the four answers latest_safe_dose_time is expressing. A nullable
+   * time cannot separate "room all evening" from "already over the threshold",
+   * and those two need opposite advice.
+   */
+  cutoff_state: z.enum(["anytime", "by", "passed", "over"]),
+  /** Room left under the threshold at bedtime; negative once already over. */
+  bedtime_headroom_mg: z.number(),
+  /** The dose the cutoff was computed for, so a client can label it honestly. */
+  cutoff_dose_mg: z.number(),
   threshold_mg: z.number(),
   has_estimated_times: z.boolean(),
 });

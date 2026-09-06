@@ -34,6 +34,7 @@ import FastingCard from '../components/FastingCard';
 import FastingGoalReconciler from '../components/FastingGoalReconciler';
 import HealthTrendsPager from '../components/HealthTrendsPager';
 import HydrationGauge from '../components/HydrationGauge';
+import CaffeineCard from '../components/CaffeineCard';
 import Icon from '../components/Icon';
 import MacroCard from '../components/MacroCard';
 import MedicationsCard from '../components/MedicationsCard';
@@ -46,6 +47,7 @@ import {
   medicationsRootQueryKey,
   useCustomNutrients,
   useDailySummary,
+  useCaffeineKinetics,
   useHealthTrends,
   useMeasurements,
   useNutrientDisplayPreferences,
@@ -271,6 +273,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const hydrationCardVisible = useAppPreferencesStore(
     (s) => s.hydrationCardVisible
   );
+  const caffeineCardVisible = useAppPreferencesStore(
+    (s) => s.caffeineCardVisible
+  );
+  const {
+    kinetics: caffeineKinetics,
+    nowMs: caffeineNowMs,
+    isLoading: isCaffeineLoading,
+  } = useCaffeineKinetics(selectedDate, caffeineCardVisible);
   const askSparkyVisible = useAppPreferencesStore((s) => s.askSparkyVisible);
   const medicationsCardVisible = useAppPreferencesStore(
     (s) => s.medicationsCardVisible
@@ -625,6 +635,17 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             containers={waterContainers}
             activeContainerId={activeWaterContainer?.id}
             onSelectContainer={selectWaterContainer}
+          />
+        )}
+
+        {/* Active caffeine, like hydration, is a local visibility setting. The
+            card returns null on a day with no caffeine, so the toggle only
+            decides whether it may appear at all. */}
+        {caffeineCardVisible && (
+          <CaffeineCard
+            kinetics={caffeineKinetics}
+            nowMs={caffeineNowMs}
+            isLoading={isCaffeineLoading}
           />
         )}
 

@@ -7,7 +7,50 @@ jest.mock('@/hooks/Diary/useCaffeineKinetics', () => ({
   useActiveCaffeineQuery: jest.fn(),
 }));
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (_k: string, d?: string) => d ?? _k }),
+  useTranslation: () => ({
+    t: (key: string, second?: unknown) => {
+      if (typeof second === 'string') return second;
+      const opts = second as Record<string, unknown> | undefined;
+      const template = (opts?.['defaultValue'] as string) ?? key;
+      return template.replace(/\{\{(\w+)\}\}/g, (_m, name: string) =>
+        String(opts?.[name] ?? '')
+      );
+    },
+  }),
+}));
+
+jest.mock('@/contexts/ThemeContext', () => ({
+  useTheme: () => ({ resolvedTheme: 'light' }),
+}));
+
+// recharts' ResponsiveContainer needs a real layout to render children in
+// jsdom; stub the chart internals so this test exercises the card's own logic
+// rather than chart geometry. The dose markers are kept visible as test ids so
+// the estimated/logged distinction can still be asserted.
+jest.mock('recharts', () => ({
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AreaChart: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="caffeine-chart">{children}</div>
+  ),
+  Area: () => null,
+  CartesianGrid: () => null,
+  XAxis: () => null,
+  YAxis: () => null,
+  Tooltip: () => null,
+  ReferenceLine: ({ y }: { y?: number; x?: number }) => (
+    <div data-testid={y !== undefined ? 'ref-line-y' : 'ref-line-x'} />
+  ),
+  ReferenceDot: ({ strokeDasharray }: { strokeDasharray?: string }) => (
+    <div
+      data-testid={
+        strokeDasharray && strokeDasharray !== '0'
+          ? 'dose-dot-estimated'
+          : 'dose-dot'
+      }
+    />
+  ),
 }));
 
 const mockUseActiveCaffeineQuery =
@@ -29,6 +72,9 @@ describe('CaffeineCard Component', () => {
     active_mg_now: 100,
     at_bedtime_mg: 18,
     latest_safe_dose_time: '17:45',
+    cutoff_state: 'by',
+    bedtime_headroom_mg: 82,
+    cutoff_dose_mg: 200,
     threshold_mg: 100,
     has_estimated_times: false,
   };
@@ -109,5 +155,87 @@ describe('CaffeineCard Component', () => {
 
     render(<CaffeineCard date="2026-09-05" />);
     expect(screen.getByText('Estimated times')).toBeInTheDocument();
+  });
+
+  // The cutoff used to be a time or the word "Any time", which could not say
+  // "you are already over" -- and printed "Any time" beside a red bedtime
+  // badge when it was.
+  it.each([
+    ['passed', 'Too late for another'],
+    ['over', 'Already over for tonight'],
+    ['anytime', 'Any time'],
+  ])('renders its own copy for the %s cutoff state', (state, copy) => {
+    mockUseActiveCaffeineQuery.mockReturnValue({
+      data: {
+        ...baseData,
+        cutoff_state: state,
+        latest_safe_dose_time: state === 'passed' ? '06:10' : null,
+      },
+      isLoading: false,
+    } as never);
+
+    render(<CaffeineCard date="2026-09-05" />);
+    expect(screen.getByText(copy)).toBeInTheDocument();
+  });
+
+  it('names the dose the cutoff was computed for, rather than a fixed 200mg', () => {
+    mockUseActiveCaffeineQuery.mockReturnValue({
+      data: { ...baseData, cutoff_dose_mg: 80 },
+      isLoading: false,
+    } as never);
+
+    render(<CaffeineCard date="2026-09-05" />);
+    expect(screen.getByText('For a 80mg dose')).toBeInTheDocument();
+  });
+
+  it('draws the curve with a marker per dose', () => {
+    mockUseActiveCaffeineQuery.mockReturnValue({
+      data: baseData,
+      isLoading: false,
+    } as never);
+
+    render(<CaffeineCard date="2026-09-05" />);
+    expect(screen.getByTestId('caffeine-chart')).toBeInTheDocument();
+    expect(screen.getAllByTestId('dose-dot')).toHaveLength(1);
+    // Threshold line plus bedtime and now markers.
+    expect(screen.getByTestId('ref-line-y')).toBeInTheDocument();
+    expect(screen.getAllByTestId('ref-line-x')).toHaveLength(2);
+  });
+
+  it('distinguishes a dose whose time was assumed from one that was logged', () => {
+    mockUseActiveCaffeineQuery.mockReturnValue({
+      data: {
+        ...baseData,
+        doses: [
+          ...baseData.doses,
+          {
+            at: '2026-09-05T12:00:00.000Z',
+            mg: 60,
+            name: 'Lunch tea',
+            is_estimated: true,
+          },
+        ],
+        has_estimated_times: true,
+      },
+      isLoading: false,
+    } as never);
+
+    render(<CaffeineCard date="2026-09-05" />);
+    expect(screen.getAllByTestId('dose-dot')).toHaveLength(1);
+    expect(screen.getAllByTestId('dose-dot-estimated')).toHaveLength(1);
+  });
+
+  it('says when the curve drops back under the threshold', () => {
+    mockUseActiveCaffeineQuery.mockReturnValue({
+      data: {
+        ...baseData,
+        doses: [{ at: '2026-09-05T08:00:00.000Z', mg: 200, name: 'Double' }],
+      },
+      isLoading: false,
+    } as never);
+
+    render(<CaffeineCard date="2026-09-05" />);
+    // 200 mg halves to 100 mg after exactly one 5 h half-life.
+    expect(screen.getByText(/Back under 100mg from/)).toBeInTheDocument();
   });
 });

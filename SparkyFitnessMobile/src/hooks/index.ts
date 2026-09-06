@@ -55,6 +55,7 @@ export { useAllProvidersSearch } from './useAllProvidersSearch';
 export type { ProviderSearchResult } from './useAllProvidersSearch';
 export { useMealTypes } from './useMealTypes';
 export { useDeleteFood } from './useDeleteFood';
+export { useCaffeineKinetics } from './useCaffeineKinetics';
 export { useFoodVariants } from './useFoodVariants';
 export type { StepsDataPoint, WeightDataPoint } from './useMeasurementsRange';
 export { useHealthTrends } from './useHealthTrends';

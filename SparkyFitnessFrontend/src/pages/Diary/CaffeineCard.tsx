@@ -1,11 +1,34 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Coffee, Moon, Clock, AlertTriangle, Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useActiveCaffeineQuery } from '@/hooks/Diary/useCaffeineKinetics';
-import { activeCaffeineAt } from '@workspace/shared';
+import { useTheme } from '@/contexts/ThemeContext';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ReferenceDot,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import {
+  activeCaffeineAt,
+  caffeineCurve,
+  thresholdCrossingTime,
+} from '@workspace/shared';
+
+/** Local HH:MM for an instant, in the viewer's own zone. */
+const clockLabel = (instant: string | number) =>
+  new Date(instant).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
 interface CaffeineCardProps {
   date: string;
@@ -14,6 +37,8 @@ interface CaffeineCardProps {
 
 export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
   const { t } = useTranslation();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
   const { data, isLoading } = useActiveCaffeineQuery(date, userId);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
 
@@ -24,6 +49,36 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
     }, 30000);
     return () => clearInterval(interval);
   }, []);
+
+  // Derived above the early returns: hooks must run in the same order on every
+  // render, and the card returns null on a day with no caffeine.
+  const bedtimeMs = data ? new Date(data.bedtime_at).getTime() : 0;
+  // From an hour before the first dose to two hours past bedtime, so the curve
+  // always shows where it is heading rather than stopping at the moment of
+  // most interest.
+  const chart = useMemo(() => {
+    if (!data || data.doses.length === 0) return [];
+    const firstDoseMs = data.doses.reduce(
+      (earliest, dose) => Math.min(earliest, new Date(dose.at).getTime()),
+      Number.POSITIVE_INFINITY
+    );
+    const startMs = Math.min(firstDoseMs - 60 * 60 * 1000, nowMs);
+    const endMs = Math.max(bedtimeMs + 2 * 60 * 60 * 1000, nowMs);
+    return caffeineCurve(data.doses, startMs, endMs, data.half_life_hours, 10);
+  }, [data, bedtimeMs, nowMs]);
+
+  // Recomputed from the same doses, so the words and the curve cannot drift.
+  const crossingAt = useMemo(
+    () =>
+      data
+        ? thresholdCrossingTime(
+            data.doses,
+            data.half_life_hours,
+            data.threshold_mg
+          )
+        : null,
+    [data]
+  );
 
   if (isLoading) {
     return (
@@ -48,10 +103,16 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
     doses,
     at_bedtime_mg,
     latest_safe_dose_time,
+    cutoff_state,
+    cutoff_dose_mg,
+    threshold_mg,
     has_estimated_times,
   } = data;
 
   const currentActiveMg = activeCaffeineAt(doses, nowMs, half_life_hours);
+
+  const peakMg = chart.reduce((max, point) => Math.max(max, point.mg), 0);
+  const yMax = Math.max(peakMg, threshold_mg) * 1.15;
 
   const getBedtimeBadge = (bedtimeMg: number) => {
     if (bedtimeMg < 25) {
@@ -156,9 +217,17 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
               {t('diary.caffeine.bedtimeCutoff', 'Last Coffee By')}
             </span>
             <div className="mt-1">
-              {latest_safe_dose_time ? (
+              {cutoff_state === 'by' && latest_safe_dose_time ? (
                 <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
                   {latest_safe_dose_time}
+                </span>
+              ) : cutoff_state === 'passed' ? (
+                <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                  {t('diary.caffeine.cutoffPassed', 'Too late for another')}
+                </span>
+              ) : cutoff_state === 'over' ? (
+                <span className="text-sm font-medium text-red-600 dark:text-red-400">
+                  {t('diary.caffeine.cutoffOver', 'Already over for tonight')}
                 </span>
               ) : (
                 <span className="text-sm font-medium text-muted-foreground">
@@ -167,9 +236,137 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
               )}
             </div>
             <span className="text-[10px] text-muted-foreground mt-0.5">
-              {t('diary.caffeine.cutoffDesc', 'For ~200mg coffee dose')}
+              {cutoff_state === 'over'
+                ? t('diary.caffeine.cutoffOverDesc', {
+                    defaultValue: 'Already past {{threshold}}mg at bedtime',
+                    threshold: threshold_mg,
+                  })
+                : t('diary.caffeine.cutoffDesc', {
+                    defaultValue: 'For a {{dose}}mg dose',
+                    dose: Math.round(cutoff_dose_mg),
+                  })}
             </span>
           </div>
+        </div>
+
+        {/* The curve: where the day has been and where it is heading.
+            Evaluated client-side from the same doses the tiles use, so the
+            chart and the numbers beside it cannot disagree. */}
+        <div className="pt-1">
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart
+              data={chart}
+              margin={{ top: 8, right: 8, left: -14, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="caffeineFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#d97706" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="#d97706" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}
+                vertical={false}
+              />
+              <XAxis
+                dataKey="t"
+                type="number"
+                scale="time"
+                domain={['dataMin', 'dataMax']}
+                tickFormatter={clockLabel}
+                stroke={isDark ? '#888' : '#666'}
+                fontSize={11}
+                minTickGap={40}
+              />
+              <YAxis
+                domain={[0, Math.ceil(yMax)]}
+                stroke={isDark ? '#888' : '#666'}
+                fontSize={11}
+                width={38}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: isDark ? '#1e1e1e' : '#fff',
+                  border: `1px solid ${isDark ? '#333' : '#ddd'}`,
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+                labelFormatter={(value) => clockLabel(Number(value))}
+                formatter={(
+                  value:
+                    string | number | ReadonlyArray<string | number> | undefined
+                ) => [
+                  `${Math.round(Number(value))} mg`,
+                  t('diary.caffeine.activeCaffeine', 'Active Caffeine'),
+                ]}
+              />
+              <Area
+                type="monotone"
+                dataKey="mg"
+                stroke="#d97706"
+                strokeWidth={2}
+                fill="url(#caffeineFill)"
+                isAnimationActive={false}
+                dot={false}
+              />
+              <ReferenceLine
+                y={threshold_mg}
+                stroke={isDark ? '#f87171' : '#dc2626'}
+                strokeDasharray="4 4"
+                label={{
+                  value: `${threshold_mg} mg`,
+                  position: 'insideTopRight',
+                  fontSize: 10,
+                  fill: isDark ? '#f87171' : '#dc2626',
+                }}
+              />
+              <ReferenceLine
+                x={bedtimeMs}
+                stroke={isDark ? '#818cf8' : '#6366f1'}
+                strokeDasharray="2 4"
+                label={{
+                  value: t('diary.caffeine.bedShort', 'bed'),
+                  position: 'top',
+                  fontSize: 10,
+                  fill: isDark ? '#818cf8' : '#6366f1',
+                }}
+              />
+              <ReferenceLine
+                x={nowMs}
+                stroke={isDark ? '#94a3b8' : '#475569'}
+                strokeWidth={1}
+              />
+              {/* A dose whose time was assumed rather than logged is drawn
+                  hollow: the payload carries that per dose, and the card used
+                  to say so only once, for the whole day. */}
+              {doses.map((dose) => {
+                const doseMs = new Date(dose.at).getTime();
+                return (
+                  <ReferenceDot
+                    key={`${dose.at}-${dose.mg}`}
+                    x={doseMs}
+                    y={activeCaffeineAt(doses, doseMs, half_life_hours)}
+                    r={4}
+                    fill={dose.is_estimated ? 'transparent' : '#d97706'}
+                    stroke="#d97706"
+                    strokeWidth={dose.is_estimated ? 1.5 : 1}
+                    strokeDasharray={dose.is_estimated ? '2 2' : '0'}
+                    ifOverflow="extendDomain"
+                  />
+                );
+              })}
+            </AreaChart>
+          </ResponsiveContainer>
+          {crossingAt && (
+            <p className="text-[11px] text-muted-foreground text-center">
+              {t('diary.caffeine.crossingNote', {
+                defaultValue: 'Back under {{threshold}}mg from {{time}}',
+                threshold: threshold_mg,
+                time: clockLabel(crossingAt),
+              })}
+            </p>
+          )}
         </div>
 
         {/* Dose list strip */}

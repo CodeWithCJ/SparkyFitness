@@ -1,8 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
   activeCaffeineAt,
+  bedtimeHeadroomMg,
   caffeineAtBedtime,
+  caffeineCurve,
+  caffeineCutoff,
   latestSafeDoseTime,
+  thresholdCrossingTime,
 } from '@workspace/shared';
 import type { CaffeineDose } from '@workspace/shared';
 
@@ -102,5 +106,159 @@ describe('Caffeine Kinetics Mathematical Model', () => {
       const cutoff = latestSafeDoseTime(400, bedtime.toISOString(), 3, 100);
       expect(cutoff).toBe('2026-09-05T16:00:00.000Z');
     });
+  });
+});
+
+// latestSafeDoseTime answers "when does this dose alone decay to the
+// threshold?", which ignores everything already circulating. With a 5 h
+// half-life, a 200 mg dose and a 100 mg threshold that is always bedtime minus
+// five hours -- the same answer on a dry day as after four coffees.
+describe('caffeineCutoff — counts what is already on board', () => {
+  const bedtime = '2026-09-05T22:30:00.000Z';
+  const morning = '2026-09-05T08:00:00.000Z';
+
+  it('moves earlier as caffeine is logged, where the old cutoff never moved', () => {
+    const dry = caffeineCutoff({
+      doses: [],
+      bedtimeInstant: bedtime,
+      nowInstant: morning,
+      halfLifeHours: 5,
+      thresholdMg: 100,
+      doseMg: 200,
+    });
+    const afterACoffee = caffeineCutoff({
+      doses: [{ at: '2026-09-05T15:00:00.000Z', mg: 120 }],
+      bedtimeInstant: bedtime,
+      nowInstant: morning,
+      halfLifeHours: 5,
+      thresholdMg: 100,
+      doseMg: 200,
+    });
+
+    expect(dry.kind).toBe('by');
+    expect(afterACoffee.kind).toBe('by');
+    // The whole point: the two answers differ.
+    expect((afterACoffee as { at: string }).at).not.toBe(
+      (dry as { at: string }).at
+    );
+    expect(
+      new Date((afterACoffee as { at: string }).at).getTime()
+    ).toBeLessThan(new Date((dry as { at: string }).at).getTime());
+
+    // With no doses the headroom is the whole threshold, so this matches the
+    // old isolated-dose formula exactly: bedtime - 5*log2(200/100) = 17:30.
+    expect((dry as { at: string }).at).toBe(
+      latestSafeDoseTime(200, bedtime, 5, 100)
+    );
+  });
+
+  it('reports "over" when the threshold is already breached at bedtime', () => {
+    const doses = [{ at: '2026-09-05T21:00:00.000Z', mg: 400 }];
+    expect(
+      caffeineCutoff({
+        doses,
+        bedtimeInstant: bedtime,
+        nowInstant: '2026-09-05T21:30:00.000Z',
+        halfLifeHours: 5,
+        thresholdMg: 100,
+        doseMg: 200,
+      })
+    ).toEqual({ kind: 'over' });
+    expect(bedtimeHeadroomMg(doses, bedtime, 5, 100)).toBeLessThan(0);
+  });
+
+  it('reports "passed" once the cutoff instant has gone by', () => {
+    const cutoff = caffeineCutoff({
+      doses: [],
+      bedtimeInstant: bedtime,
+      nowInstant: '2026-09-05T20:00:00.000Z',
+      halfLifeHours: 5,
+      thresholdMg: 100,
+      doseMg: 200,
+    });
+    expect(cutoff.kind).toBe('passed');
+  });
+
+  it('reports "anytime" when the dose fits under the remaining headroom', () => {
+    expect(
+      caffeineCutoff({
+        doses: [],
+        bedtimeInstant: bedtime,
+        nowInstant: morning,
+        halfLifeHours: 5,
+        thresholdMg: 100,
+        doseMg: 60,
+      })
+    ).toEqual({ kind: 'anytime' });
+  });
+
+  it('never claims "anytime" merely because the dose is small, once room has gone', () => {
+    // 95 mg is under the 100 mg threshold, so the old formula returned null
+    // ("any time") no matter how much was already on board.
+    const doses = [{ at: '2026-09-05T20:00:00.000Z', mg: 300 }];
+    expect(latestSafeDoseTime(95, bedtime, 5, 100)).toBeNull();
+    expect(
+      caffeineCutoff({
+        doses,
+        bedtimeInstant: bedtime,
+        nowInstant: morning,
+        halfLifeHours: 5,
+        thresholdMg: 100,
+        doseMg: 95,
+      })
+    ).toEqual({ kind: 'over' });
+  });
+});
+
+describe('caffeineCurve and thresholdCrossingTime', () => {
+  const from = '2026-09-05T06:00:00.000Z';
+  const to = '2026-09-05T23:00:00.000Z';
+  const doses = [
+    { at: '2026-09-05T08:00:00.000Z', mg: 95 },
+    { at: '2026-09-05T13:00:00.000Z', mg: 60 },
+  ];
+
+  it('sits at zero before the first dose and steps up on it', () => {
+    const curve = caffeineCurve(doses, from, to, 5, 10);
+    expect(curve[0]).toEqual({ t: new Date(from).getTime(), mg: 0 });
+
+    const doseMs = new Date(doses[0]!.at).getTime();
+    const justBefore = curve.find((p) => p.t === doseMs - 1);
+    const atDose = curve.find((p) => p.t === doseMs);
+    // The dose instant is sampled explicitly, so the rise is vertical rather
+    // than sloping up from whichever grid point happened to precede it.
+    expect(justBefore?.mg).toBe(0);
+    expect(atDose?.mg).toBe(95);
+  });
+
+  it('decays monotonically after the last dose', () => {
+    const lastMs = new Date(doses[1]!.at).getTime();
+    const tail = caffeineCurve(doses, from, to, 5, 10).filter(
+      (p) => p.t > lastMs
+    );
+    for (let i = 1; i < tail.length; i++) {
+      expect(tail[i]!.mg).toBeLessThanOrEqual(tail[i - 1]!.mg);
+    }
+  });
+
+  it('returns nothing for an inverted or empty window', () => {
+    expect(caffeineCurve(doses, to, from, 5, 10)).toEqual([]);
+    expect(caffeineCurve(doses, from, from, 5, 10)).toEqual([]);
+  });
+
+  it('solves the threshold crossing exactly, matching a scan', () => {
+    const crossing = thresholdCrossingTime(doses, 5, 100);
+    expect(crossing).not.toBeNull();
+
+    const crossMs = new Date(crossing!).getTime();
+    expect(activeCaffeineAt(doses, crossMs, 5)).toBeCloseTo(100, 1);
+    // Above just before, at or under just after.
+    expect(activeCaffeineAt(doses, crossMs - 60_000, 5)).toBeGreaterThan(100);
+    expect(activeCaffeineAt(doses, crossMs + 60_000, 5)).toBeLessThan(100);
+  });
+
+  it('has no crossing when the total never reaches the threshold', () => {
+    expect(thresholdCrossingTime([{ at: from, mg: 40 }], 5, 100)).toBeNull();
+    expect(thresholdCrossingTime([], 5, 100)).toBeNull();
   });
 });

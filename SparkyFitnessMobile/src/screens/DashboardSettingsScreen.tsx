@@ -65,6 +65,12 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   const setHydrationCardVisible = useAppPreferencesStore(
     (s) => s.setHydrationCardVisible
   );
+  const caffeineCardVisible = useAppPreferencesStore(
+    (s) => s.caffeineCardVisible
+  );
+  const setCaffeineCardVisible = useAppPreferencesStore(
+    (s) => s.setCaffeineCardVisible
+  );
   const askSparkyVisible = useAppPreferencesStore((s) => s.askSparkyVisible);
   const setAskSparkyVisible = useAppPreferencesStore(
     (s) => s.setAskSparkyVisible
@@ -267,6 +273,23 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
                 })}
                 value={hydrationCardVisible}
                 onValueChange={setHydrationCardVisible}
+              />
+            }
+          />
+          <SettingsRow
+            title={t('dashboardSettings.caffeine', {
+              defaultValue: 'Caffeine',
+            })}
+            subtitle={t('dashboardSettings.caffeineSubtitle', {
+              defaultValue: 'Show the active caffeine card on the Dashboard',
+            })}
+            rightAccessory={
+              <Switch
+                accessibilityLabel={t('dashboardSettings.caffeine', {
+                  defaultValue: 'Caffeine',
+                })}
+                value={caffeineCardVisible}
+                onValueChange={setCaffeineCardVisible}
               />
             }
           />

@@ -2713,7 +2713,7 @@
       "halfLifeLabel": "{{hours}}h half-life",
       "atBedtime": "At Bedtime",
       "bedtimeCutoff": "Last Coffee By",
-      "cutoffDesc": "For ~200mg coffee dose",
+      "cutoffDesc": "For a {{dose}}mg dose",
       "anytimeSafe": "Any time",
       "estimatedTimes": "Estimated times",
       "contributingDoses": "Recent Doses (48h)",
@@ -2721,7 +2721,12 @@
       "sleepImpactLow": "Low sleep impact",
       "sleepImpactModerate": "Moderate sleep impact",
       "sleepImpactHigh": "High sleep impact",
-      "failedToLoad": "Failed to load active caffeine data."
+      "failedToLoad": "Failed to load active caffeine data.",
+      "cutoffPassed": "Too late for another",
+      "cutoffOver": "Already over for tonight",
+      "cutoffOverDesc": "Already past {{threshold}}mg at bedtime",
+      "crossingNote": "Back under {{threshold}}mg from {{time}}",
+      "bedShort": "bed"
     },
     "exercise": "Exercise",
     "widgets": {

@@ -7,7 +7,8 @@ import {
   utcToLocalDateTimeInput,
   activeCaffeineAt,
   caffeineAtBedtime,
-  latestSafeDoseTime,
+  caffeineCutoff,
+  bedtimeHeadroomMg,
   CAFFEINE_BEDTIME_THRESHOLD_MG,
   DEFAULT_CAFFEINE_HALF_LIFE_HOURS,
 } from '@workspace/shared';
@@ -87,17 +88,21 @@ export async function getActiveCaffeineKinetics(
   const activeMgNow = activeCaffeineAt(doses, now, halfLifeHours);
   const atBedtimeMg = caffeineAtBedtime(doses, bedtimeAt, halfLifeHours);
 
-  // Latest safe dose cutoff
-  const latestCutoffUtc = latestSafeDoseTime(
-    doseMg,
-    bedtimeAt,
+  // Latest safe dose cutoff, counting what is already circulating: a dose
+  // lands on top of the projected residual, so the room available is
+  // threshold - residual rather than the whole threshold.
+  const cutoff = caffeineCutoff({
+    doses,
+    bedtimeInstant: bedtimeAt,
+    nowInstant: now,
     halfLifeHours,
-    CAFFEINE_BEDTIME_THRESHOLD_MG
-  );
+    thresholdMg: CAFFEINE_BEDTIME_THRESHOLD_MG,
+    doseMg,
+  });
 
   let latestSafeDoseTimeLocal: string | null = null;
-  if (latestCutoffUtc) {
-    const localStr = utcToLocalDateTimeInput(latestCutoffUtc, tz);
+  if (cutoff.kind === 'by' || cutoff.kind === 'passed') {
+    const localStr = utcToLocalDateTimeInput(cutoff.at, tz);
     if (localStr && localStr.includes('T')) {
       latestSafeDoseTimeLocal = localStr.split('T')[1]?.slice(0, 5) || null;
     }
@@ -111,6 +116,14 @@ export async function getActiveCaffeineKinetics(
     active_mg_now: activeMgNow,
     at_bedtime_mg: atBedtimeMg,
     latest_safe_dose_time: latestSafeDoseTimeLocal,
+    cutoff_state: cutoff.kind,
+    bedtime_headroom_mg: bedtimeHeadroomMg(
+      doses,
+      bedtimeAt,
+      halfLifeHours,
+      CAFFEINE_BEDTIME_THRESHOLD_MG
+    ),
+    cutoff_dose_mg: doseMg,
     threshold_mg: CAFFEINE_BEDTIME_THRESHOLD_MG,
     has_estimated_times: hasEstimatedTimes,
   };

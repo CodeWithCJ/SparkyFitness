@@ -898,7 +898,9 @@
     "healthTrendsSubtitle": "Choose which graphs show on the Dashboard and their order",
     "progressPhotos": "Progress Photos",
     "progressPhotosSubtitle": "Show the progress photos card on the Dashboard",
-    "customNutrientDisplay": "Custom Nutrient Display"
+    "customNutrientDisplay": "Custom Nutrient Display",
+    "caffeine": "Caffeine",
+    "caffeineSubtitle": "Show the active caffeine card on the Dashboard"
   },
   "diarySettings": {
     "updateFailed": "Failed to update setting.",
@@ -5042,5 +5044,17 @@
     "rangeA11y": "Choose how far back to play",
     "deltaBadge": "Δ {{value}}",
     "frameCountRanged": "{{current}} of {{total}} · {{range}}"
+  },
+  "caffeine": {
+    "title": "Active Caffeine",
+    "activeNow": "Active now",
+    "atBedtime": "At {{time}}",
+    "lastDose": "Last dose by",
+    "cutoffPassed": "Too late",
+    "cutoffOver": "Over",
+    "anytimeSafe": "Any time",
+    "crossingNote": "Back under {{threshold}}mg from {{time}}",
+    "underThreshold": "Stays under {{threshold}}mg tonight",
+    "estimatedTimes": "Some dose times were estimated"
   }
 }
