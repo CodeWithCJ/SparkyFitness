@@ -29,6 +29,11 @@ export const waterContainerResponseSchema = z.object({
     .nullable()
     .optional(),
   linked_variant_serving_unit: z.string().nullable().optional(),
+  /** The linked variant's own water, so a client can show an honest per-press amount. */
+  linked_variant_water_ml: z
+    .union([z.number(), z.string()])
+    .nullable()
+    .optional(),
   linked_meal_type_name: z.string().nullable().optional(),
   is_quick_add: z.boolean().default(false),
   sort_order: z.number().int().default(0),

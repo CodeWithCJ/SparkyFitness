@@ -124,13 +124,25 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
 
   const getVolumeDisplay = () => {
     if (currentContainer) {
+      // Mirror the server's precedence (measurementService, #2115) so the label
+      // and the ring can never disagree: an explicit container volume wins,
+      // otherwise a linked food supplies its own water, scaled by how much of
+      // it one press logs. This used to always show volume / servings, so a
+      // linked container promised "+500 ml" and credited the food's 22.
       const servings = Math.max(
         1,
         currentContainer.servings_per_container || 1
       );
-      const volumePerDrink = currentContainer.volume / servings;
+      const hasVolumeOverride =
+        !currentContainer.linked_food_id || currentContainer.volume > 0;
+      const volumePerDrink = hasVolumeOverride
+        ? currentContainer.volume / servings
+        : Number(currentContainer.linked_variant_water_ml ?? 0) *
+          Number(currentContainer.linked_quantity ?? 1);
+      const credited =
+        volumePerDrink * Number(currentContainer.hydration_factor ?? 1);
       const displayVolume = convertMlToSelectedUnit(
-        volumePerDrink,
+        credited,
         currentContainer.unit
       ).toFixed(currentContainer.unit === 'ml' ? 0 : 2);
 

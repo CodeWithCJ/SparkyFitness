@@ -111,6 +111,7 @@ async function getWaterContainersByUserId(
          f.name AS linked_food_name,
          fv.serving_size AS linked_variant_serving_size,
          fv.serving_unit AS linked_variant_serving_unit,
+         fv.water_ml AS linked_variant_water_ml,
          mt.name AS linked_meal_type_name
        FROM user_water_containers c
        LEFT JOIN foods f ON c.linked_food_id = f.id
@@ -283,6 +284,7 @@ async function getPrimaryWaterContainerByUserId(
          f.name AS linked_food_name,
          fv.serving_size AS linked_variant_serving_size,
          fv.serving_unit AS linked_variant_serving_unit,
+         fv.water_ml AS linked_variant_water_ml,
          mt.name AS linked_meal_type_name
        FROM user_water_containers c
        LEFT JOIN foods f ON c.linked_food_id = f.id
@@ -309,6 +311,7 @@ async function getWaterContainerById(
          f.name AS linked_food_name,
          fv.serving_size AS linked_variant_serving_size,
          fv.serving_unit AS linked_variant_serving_unit,
+         fv.water_ml AS linked_variant_water_ml,
          mt.name AS linked_meal_type_name
        FROM user_water_containers c
        LEFT JOIN foods f ON c.linked_food_id = f.id

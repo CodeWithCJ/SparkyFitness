@@ -60,6 +60,7 @@ const WaterContainerManager: React.FC = () => {
   const [foodVariants, setFoodVariants] = useState<FoodVariant[]>([]);
   const [linkedVariantId, setLinkedVariantId] = useState<string | null>(null);
   const [linkedMealTypeId, setLinkedMealTypeId] = useState<string | null>(null);
+  const [linkedQuantity, setLinkedQuantity] = useState<number | ''>(1);
 
   // Edit container dialog state
   const [editingContainer, setEditingContainer] =
@@ -77,6 +78,7 @@ const WaterContainerManager: React.FC = () => {
   const [editLinkedMealTypeId, setEditLinkedMealTypeId] = useState<
     string | null
   >(null);
+  const [editLinkedQuantity, setEditLinkedQuantity] = useState<number | ''>(1);
 
   // Catalog dialog state
   const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
@@ -159,13 +161,20 @@ const WaterContainerManager: React.FC = () => {
 
   const handleAddContainer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || volume === '' || servingsPerContainer === '') return;
+    // A linked container measures the drink by how much of the food it holds,
+    // so volume and servings are optional there; unlinked still needs both.
+    if (!name) return;
+    if (!linkedFood && (volume === '' || servingsPerContainer === '')) return;
+    if (linkedFood && linkedQuantity === '') return;
     await createWaterContainer({
       name,
-      volume: Number(volume),
+      // 0 on a linked container means "no override": take the volume from the
+      // linked food rather than repeating it here.
+      volume: linkedFood ? Number(volume || 0) : Number(volume),
       unit,
       is_primary: false,
-      servings_per_container: Number(servingsPerContainer),
+      servings_per_container: linkedFood ? 1 : Number(servingsPerContainer),
+      linked_quantity: linkedFood ? Number(linkedQuantity) : 1,
       hydration_factor: Number(hydrationFactor) || 1.0,
       linked_food_id: linkedFood ? linkedFood.id : null,
       linked_variant_id: linkedVariantId,
@@ -190,6 +199,7 @@ const WaterContainerManager: React.FC = () => {
     setEditServings(container.servings_per_container);
     setEditHydrationFactor(container.hydration_factor ?? 1.0);
     setEditLinkedMealTypeId(container.linked_meal_type_id || null);
+    setEditLinkedQuantity(container.linked_quantity ?? 1);
 
     if (container.linked_food_id) {
       try {
@@ -216,20 +226,20 @@ const WaterContainerManager: React.FC = () => {
   };
 
   const handleSaveEdit = async () => {
-    if (
-      !editingContainer ||
-      !editName ||
-      editVolume === '' ||
-      editServings === ''
-    )
-      return;
+    // Same rule as the add form: a linked container is measured by how much of
+    // the food it holds, so volume and servings are optional there.
+    if (!editingContainer || !editName) return;
+    if (!editLinkedFood && (editVolume === '' || editServings === '')) return;
+    if (editLinkedFood && editLinkedQuantity === '') return;
     await updateWaterContainer({
       id: editingContainer.id,
       containerData: {
         name: editName,
-        volume: Number(editVolume),
+        // 0 when linked = "no override", so the food's own volume is used.
+        volume: editLinkedFood ? Number(editVolume || 0) : Number(editVolume),
         unit: editUnit,
-        servings_per_container: Number(editServings),
+        servings_per_container: editLinkedFood ? 1 : Number(editServings),
+        linked_quantity: editLinkedFood ? Number(editLinkedQuantity) : 1,
         hydration_factor: Number(editHydrationFactor) || 1.0,
         linked_food_id: editLinkedFood ? editLinkedFood.id : null,
         linked_variant_id: editLinkedVariantId ?? null,
@@ -441,12 +451,17 @@ const WaterContainerManager: React.FC = () => {
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="volume">
-                  {t('waterContainerManager.volume', 'Volume')}
+                  {linkedFood
+                    ? t(
+                        'waterContainerManager.volumeOverride',
+                        'Liquid in the glass (optional)'
+                      )
+                    : t('waterContainerManager.volume', 'Volume')}
                 </Label>
                 <Input
                   id="volume"
                   type="number"
-                  min="0.001"
+                  min={linkedFood ? '0' : '0.001'}
                   step="any"
                   value={volume}
                   onChange={(e) =>
@@ -454,12 +469,27 @@ const WaterContainerManager: React.FC = () => {
                       e.target.value === '' ? '' : Number(e.target.value)
                     )
                   }
-                  placeholder={t(
-                    'waterContainerManager.volumePlaceholder',
-                    'e.g., 500'
-                  )}
-                  required
+                  placeholder={
+                    linkedFood
+                      ? t(
+                          'waterContainerManager.volumeOverridePlaceholder',
+                          "Leave blank to use the food's own volume"
+                        )
+                      : t(
+                          'waterContainerManager.volumePlaceholder',
+                          'e.g., 500'
+                        )
+                  }
+                  required={!linkedFood}
                 />
+                {linkedFood && (
+                  <p className="text-xs text-muted-foreground">
+                    {t(
+                      'waterContainerManager.volumeOverrideHint',
+                      'Only needed when the food is not the whole drink — a cordial, a tablet or a powder in a bigger glass.'
+                    )}
+                  </p>
+                )}
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="unit">
@@ -485,30 +515,63 @@ const WaterContainerManager: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="servingsPerContainer">
-                  {t(
-                    'waterContainerManager.servings',
-                    'Servings per Container'
-                  )}
-                </Label>
-                <Input
-                  id="servingsPerContainer"
-                  type="number"
-                  min="1"
-                  value={servingsPerContainer}
-                  onChange={(e) =>
-                    setServingsPerContainer(
-                      e.target.value === '' ? '' : Number(e.target.value)
-                    )
-                  }
-                  placeholder={t(
-                    'waterContainerManager.servingsPlaceholder',
-                    'e.g., 4'
-                  )}
-                  required
-                />
-              </div>
+              {/* Quantity replaces servings-per-container once a food is
+                  linked: one press logs this much of the food, so its calories
+                  and caffeine scale with it. */}
+              {linkedFood ? (
+                <div className="grid gap-1.5">
+                  <Label htmlFor="linkedQuantity">
+                    {t(
+                      'waterContainerManager.linkedQuantity',
+                      'Amount per press'
+                    )}
+                  </Label>
+                  <Input
+                    id="linkedQuantity"
+                    type="number"
+                    min="0.001"
+                    step="any"
+                    value={linkedQuantity}
+                    onChange={(e) =>
+                      setLinkedQuantity(
+                        e.target.value === '' ? '' : Number(e.target.value)
+                      )
+                    }
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t(
+                      'waterContainerManager.linkedQuantityHint',
+                      'Servings of the linked food that one press logs.'
+                    )}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-1.5">
+                  <Label htmlFor="servingsPerContainer">
+                    {t(
+                      'waterContainerManager.servings',
+                      'Servings per Container'
+                    )}
+                  </Label>
+                  <Input
+                    id="servingsPerContainer"
+                    type="number"
+                    min="1"
+                    value={servingsPerContainer}
+                    onChange={(e) =>
+                      setServingsPerContainer(
+                        e.target.value === '' ? '' : Number(e.target.value)
+                      )
+                    }
+                    placeholder={t(
+                      'waterContainerManager.servingsPlaceholder',
+                      'e.g., 4'
+                    )}
+                    required
+                  />
+                </div>
+              )}
             </div>
 
             {/* Hydration Factor & Optional Food Link Section */}
@@ -889,12 +952,17 @@ const WaterContainerManager: React.FC = () => {
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="edit-volume">
-                  {t('waterContainerManager.volume', 'Volume')}
+                  {editLinkedFood
+                    ? t(
+                        'waterContainerManager.volumeOverride',
+                        'Liquid in the glass (optional)'
+                      )
+                    : t('waterContainerManager.volume', 'Volume')}
                 </Label>
                 <Input
                   id="edit-volume"
                   type="number"
-                  min="0.001"
+                  min={editLinkedFood ? '0' : '0.001'}
                   step="any"
                   value={editVolume}
                   onChange={(e) =>
@@ -902,7 +970,15 @@ const WaterContainerManager: React.FC = () => {
                       e.target.value === '' ? '' : Number(e.target.value)
                     )
                   }
-                  required
+                  placeholder={
+                    editLinkedFood
+                      ? t(
+                          'waterContainerManager.volumeOverridePlaceholder',
+                          "Leave blank to use the food's own volume"
+                        )
+                      : undefined
+                  }
+                  required={!editLinkedFood}
                 />
               </div>
               <div className="grid gap-1.5">
@@ -927,26 +1003,56 @@ const WaterContainerManager: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="edit-servings">
-                  {t(
-                    'waterContainerManager.servings',
-                    'Servings per Container'
-                  )}
-                </Label>
-                <Input
-                  id="edit-servings"
-                  type="number"
-                  min="1"
-                  value={editServings}
-                  onChange={(e) =>
-                    setEditServings(
-                      e.target.value === '' ? '' : Number(e.target.value)
-                    )
-                  }
-                  required
-                />
-              </div>
+              {editLinkedFood ? (
+                <div className="grid gap-1.5">
+                  <Label htmlFor="edit-linkedQuantity">
+                    {t(
+                      'waterContainerManager.linkedQuantity',
+                      'Amount per press'
+                    )}
+                  </Label>
+                  <Input
+                    id="edit-linkedQuantity"
+                    type="number"
+                    min="0.001"
+                    step="any"
+                    value={editLinkedQuantity}
+                    onChange={(e) =>
+                      setEditLinkedQuantity(
+                        e.target.value === '' ? '' : Number(e.target.value)
+                      )
+                    }
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t(
+                      'waterContainerManager.linkedQuantityHint',
+                      'Servings of the linked food that one press logs.'
+                    )}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-1.5">
+                  <Label htmlFor="edit-servings">
+                    {t(
+                      'waterContainerManager.servings',
+                      'Servings per Container'
+                    )}
+                  </Label>
+                  <Input
+                    id="edit-servings"
+                    type="number"
+                    min="1"
+                    value={editServings}
+                    onChange={(e) =>
+                      setEditServings(
+                        e.target.value === '' ? '' : Number(e.target.value)
+                      )
+                    }
+                    required
+                  />
+                </div>
+              )}
               <div className="grid gap-1.5">
                 <Label htmlFor="edit-hydrationFactor">
                   {t(
