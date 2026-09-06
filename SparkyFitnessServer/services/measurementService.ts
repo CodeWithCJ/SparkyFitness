@@ -2,7 +2,8 @@ import { log } from '../config/logging.js';
 import measurementRepository from '../models/measurementRepository.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import {
-  clockInZone,
+  pickMealTypeForTime,
+  userHourMinute,
   instantToDay,
   instantHourMinute,
   instantToDayWithOffset,
@@ -18,7 +19,6 @@ import exerciseEntryDb from '../models/exerciseEntry.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
 import foodRepository from '../models/foodRepository.js';
 import mealTypeRepository from '../models/mealType.js';
-import { resolveMealTypeIdForTime } from '../utils/mealTypeByTime.js';
 import { buildFoodEntrySnapshot } from '../utils/foodEntrySnapshot.js';
 import hydrationTotalsService from './hydrationTotalsService.js';
 import {
@@ -581,15 +581,21 @@ async function upsertWaterIntake(
           // fixed bucket misreports a drink taken several times a day. The
           // previous fallback took getAllMealTypes()[0], which put every drink
           // all day into the first meal type.
-          const mealTypes =
-            await mealTypeRepository.getAllMealTypes(authenticatedUserId);
-          // The meal anchors are wall-clock times in the user's own day, so
+          //
+          // pickMealTypeForTime wraps the rule the diary, the photo estimate
+          // and mobile all use, so a drink pressed from a container lands in
+          // the same meal as the same food logged by hand a minute earlier.
+          const mealTypes: Array<{
+            id: string;
+            name: string;
+            default_time?: string | null;
+          }> = await mealTypeRepository.getAllMealTypes(authenticatedUserId);
+          // The meal times are wall-clock times in the user's own day, so
           // "now" has to be read in their zone. Taking the server's clock put
-          // a 15:16 drink for a UTC-4 user at 19:16, which lands on dinner.
+          // a 15:16 drink for a UTC-4 user at 19:16, a whole meal away.
           const tz = await loadUserTimezone(authenticatedUserId);
-          const nowClockForEntry = clockInZone(tz);
           targetMealTypeId =
-            resolveMealTypeIdForTime(mealTypes, nowClockForEntry) ?? null;
+            pickMealTypeForTime(mealTypes, userHourMinute(tz))?.id ?? null;
         }
       }
 

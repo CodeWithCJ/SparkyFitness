@@ -258,9 +258,10 @@ describe('Linked Water Container Increment/Decrement (#2115)', () => {
     });
   });
 
-  // A container with no meal type of its own is placed by the clock, and the
-  // meal anchors are wall-clock times in the user's own day. Reading "now" off
-  // the server put a 15:16 drink for a UTC-4 user at 19:16, which is dinner.
+  // A container with no meal type of its own is placed by the clock, using the
+  // same rule as the diary (the latest meal already started). The meal times
+  // are wall-clock times in the user's own day, so reading "now" off the
+  // server put a 15:16 drink for a UTC-4 user at 19:16, a whole meal away.
   describe("upsertWaterIntake - meal type follows the user's clock", () => {
     beforeEach(() => {
       vi.useFakeTimers();
@@ -329,8 +330,10 @@ describe('Linked Water Container Increment/Decrement (#2115)', () => {
         11
       );
 
+      // 15:16 in New York: lunch (12:15) is the latest meal already started,
+      // which is exactly what the diary would pick for the same food.
       expect(foodRepository.createFoodEntry).toHaveBeenCalledWith(
-        expect.objectContaining({ meal_type_id: 'snacks' }),
+        expect.objectContaining({ meal_type_id: 'lunch' }),
         mockUserId
       );
     });
@@ -348,8 +351,9 @@ describe('Linked Water Container Increment/Decrement (#2115)', () => {
         11
       );
 
+      // 19:16 UTC: snacks (16:00) has started, dinner (19:20) has not.
       expect(foodRepository.createFoodEntry).toHaveBeenCalledWith(
-        expect.objectContaining({ meal_type_id: 'dinner' }),
+        expect.objectContaining({ meal_type_id: 'snacks' }),
         mockUserId
       );
     });

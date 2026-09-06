@@ -128,6 +128,31 @@ export function defaultMealTypeForTime(
 }
 
 /**
+ * The meal type a diary entry logged at `now` belongs to, as the row itself
+ * rather than its name.
+ *
+ * Callers that key their UI by name use defaultMealTypeForTime directly;
+ * anything that has to persist a meal_type_id -- the mobile add screen, a
+ * drink pressed from a linked water container -- needs the row, and matching
+ * the name back to it is the same three lines everywhere. Keeping the match
+ * here means the rule and the lookup change together.
+ */
+export function pickMealTypeForTime<T extends MealTypeWithDefaultTime>(
+  mealTypes: T[],
+  now: { hour: number; minute: number },
+): T | null {
+  if (mealTypes.length === 0) return null;
+  const name = defaultMealTypeForTime(mealTypes, now);
+  return (
+    mealTypes.find(
+      (mealType) => mealType.name.toLowerCase() === name.toLowerCase(),
+    ) ??
+    mealTypes[0] ??
+    null
+  );
+}
+
+/**
  * Prefill value for a diary entry time picker: the meal type's default_time
  * (trimmed to HH:MM) if set; otherwise the current HH:MM in the user's
  * timezone when logging for today; otherwise '' (time stays optional).
