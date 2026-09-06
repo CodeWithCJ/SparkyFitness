@@ -106,6 +106,9 @@ const EMPTY_NUTRIENTS = {
   vitamin_c: 0,
   calcium: 0,
   iron: 0,
+  caffeine_mg: 0,
+  water_ml: 0,
+  alcohol_g: 0,
 };
 
 const day = (date: string, calories: number): NutritionData => ({

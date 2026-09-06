@@ -76,6 +76,7 @@ import {
   SafeMealTypeSettings,
   SafeFoodSettings,
   SafeDashboardSettings,
+  SafeHealthTrendsSettings,
   SafeDiarySettings,
   SafeWorkoutSettings,
   SafeServerSettings,
@@ -699,6 +700,11 @@ function AppContent() {
             name="DashboardSettings"
             component={SafeDashboardSettings}
             options={createStackScreenOptions(t('screens.dashboardSettings', { defaultValue: 'Dashboard Settings' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
+          />
+          <Stack.Screen
+            name="HealthTrendsSettings"
+            component={SafeHealthTrendsSettings}
+            options={createStackScreenOptions(t('screens.healthTrendsSettings', { defaultValue: 'Health Trends' }), { headerBackTitle: t('screens.dashboardSettings', { defaultValue: 'Dashboard Settings' }) })}
           />
           <Stack.Screen
             name="DiarySettings"

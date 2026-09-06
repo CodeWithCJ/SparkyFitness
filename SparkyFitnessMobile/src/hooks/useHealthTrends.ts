@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import type { HealthTrendKey } from '../constants/healthTrends';
 import type {
   HealthTrendDateRange,
   HealthTrendSeries,
@@ -14,6 +15,7 @@ import { useSleepRange } from './useSleepRange';
 interface UseHealthTrendsOptions {
   range: HealthTrendDateRange;
   enabled?: boolean;
+  activeTrends: readonly HealthTrendKey[];
 }
 
 /**
@@ -37,25 +39,39 @@ interface HealthTrends {
 export function useHealthTrends({
   range,
   enabled = true,
+  activeTrends,
 }: UseHealthTrendsOptions): HealthTrends {
+  const isMeasurementsEnabled =
+    enabled &&
+    (activeTrends.includes('steps') || activeTrends.includes('weight'));
+  const isSleepEnabled = enabled && activeTrends.includes('sleep');
+
   const {
     stepsData,
     weightData,
     isLoading: isMeasurementsLoading,
     isError: isMeasurementsError,
     refetch: refetchMeasurements,
-  } = useMeasurementsRange({ range, enabled });
+  } = useMeasurementsRange({ range, enabled: isMeasurementsEnabled });
 
   const {
     sleep,
     isLoading: isSleepLoading,
     isError: isSleepError,
     refetch: refetchSleep,
-  } = useSleepRange({ range, enabled });
+  } = useSleepRange({ range, enabled: isSleepEnabled });
 
   const refetch = useCallback(async () => {
-    await Promise.all([refetchMeasurements(), refetchSleep()]);
-  }, [refetchMeasurements, refetchSleep]);
+    await Promise.all([
+      isMeasurementsEnabled ? refetchMeasurements() : Promise.resolve(),
+      isSleepEnabled ? refetchSleep() : Promise.resolve(),
+    ]);
+  }, [
+    isMeasurementsEnabled,
+    isSleepEnabled,
+    refetchMeasurements,
+    refetchSleep,
+  ]);
 
   return {
     // Steps and weight share one request, so they necessarily share its fetch state.

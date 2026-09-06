@@ -39,6 +39,8 @@ import {
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   DEFAULT_STANDARD_DRINK_GRAMS,
   DEFAULT_CAFFEINE_HALF_LIFE_HOURS,
+  DEFAULT_CHART_SCALE_MODE,
+  type ChartScaleMode,
   type UserPreferences as SharedUserPreferences,
 } from '@workspace/shared';
 
@@ -125,6 +127,8 @@ interface PreferencesContextType {
   selectedDiet: string;
   firstDayOfWeek: DayOfWeek;
   measurementDecimalPlaces: number;
+  chartScaleMode: ChartScaleMode;
+  setChartScaleMode: (mode: ChartScaleMode) => void;
   goalMode: GoalMode;
   goalModeCalculationMethod: GoalModeCalculationMethod;
   goalModeCustomPercentage: number;
@@ -251,6 +255,7 @@ export interface DefaultPreferences {
   added_sugar_algorithm: AddedSugarAlgorithm;
   first_day_of_week: number;
   measurement_decimal_places: number;
+  chart_scale_mode: ChartScaleMode;
   goal_mode: GoalMode;
   goal_mode_calculation_method: GoalModeCalculationMethod;
   goal_mode_custom_percentage: number;
@@ -365,6 +370,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [firstDayOfWeek, setFirstDayOfWeekState] = useState<DayOfWeek>(0);
   const [measurementDecimalPlaces, setMeasurementDecimalPlacesState] =
     useState<number>(0);
+  const [chartScaleMode, setChartScaleModeState] = useState<ChartScaleMode>(
+    DEFAULT_CHART_SCALE_MODE
+  );
   const [goalMode, setGoalModeState] = useState<GoalMode>('maintain');
   const [goalModeCalculationMethod, setGoalModeCalculationMethodState] =
     useState<GoalModeCalculationMethod>('manual');
@@ -777,6 +785,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setSelectedDietState(data.selected_diet || 'balanced');
         setFirstDayOfWeekState(data.first_day_of_week ?? 0);
         setMeasurementDecimalPlacesState(data.measurement_decimal_places ?? 0);
+        setChartScaleModeState(
+          data.chart_scale_mode || DEFAULT_CHART_SCALE_MODE
+        );
         setGoalModeState(data.goal_mode || 'maintain');
         setGoalModeCalculationMethodState(
           data.goal_mode_calculation_method || 'manual'
@@ -878,6 +889,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
             String(updates.auto_scale_online_imports)
           );
         }
+        if (updates.chart_scale_mode)
+          localStorage.setItem('chartScaleMode', updates.chart_scale_mode);
         return;
       }
 
@@ -975,6 +988,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         first_day_of_week: newPrefs?.firstDayOfWeek ?? firstDayOfWeek,
         measurement_decimal_places:
           newPrefs?.measurementDecimalPlaces ?? measurementDecimalPlaces,
+        chart_scale_mode: newPrefs?.chartScaleMode ?? chartScaleMode,
         goal_mode: newPrefs?.goalMode ?? goalMode,
         goal_mode_calculation_method:
           newPrefs?.goalModeCalculationMethod ?? goalModeCalculationMethod,
@@ -1054,6 +1068,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       selectedDiet,
       firstDayOfWeek,
       measurementDecimalPlaces,
+      chartScaleMode,
       goalMode,
       goalModeCalculationMethod,
       goalModeCustomPercentage,
@@ -1299,6 +1314,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           setAutoScaleOnlineImportsState(
             savedAutoScaleOnlineImports === 'true'
           );
+        const savedChartScaleMode = localStorage.getItem(
+          'chartScaleMode'
+        ) as ChartScaleMode | null;
+        if (savedChartScaleMode) setChartScaleModeState(savedChartScaleMode);
       }
     }
   }, [user, loading, loadPreferences, loadNutrientDisplayPreferences]);
@@ -1345,6 +1364,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       selectedDiet,
       firstDayOfWeek,
       measurementDecimalPlaces,
+      chartScaleMode,
       goalMode,
       goalModeCalculationMethod,
       goalModeCustomPercentage,
@@ -1359,6 +1379,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setWeeklyAlcoholLimitG,
       setStandardDrinkGrams,
       setMeasurementDecimalPlaces: setMeasurementDecimalPlacesState,
+      setChartScaleMode: setChartScaleModeState,
       setGoalMode,
       setGoalModeCalculationMethod,
       setGoalModeCustomPercentage,
@@ -1451,6 +1472,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       selectedDiet,
       firstDayOfWeek,
       measurementDecimalPlaces,
+      chartScaleMode,
       goalMode,
       goalModeCalculationMethod,
       goalModeCustomPercentage,

@@ -135,10 +135,6 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
     setSelectedIndex(null);
   }, []);
 
-  if (!hasData && !isLoading && !isError) {
-    return null;
-  }
-
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
       <Text className="text-text-primary text-lg font-semibold mb-2">
@@ -158,6 +154,14 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
           <Text className="text-text-muted text-sm">
             {t('charts.weight.loadFailed', {
               defaultValue: 'Failed to load weight data',
+            })}
+          </Text>
+        </View>
+      ) : !hasData ? (
+        <View className="h-50 justify-center items-center">
+          <Text className="text-text-muted text-sm">
+            {t('charts.weight.empty', {
+              defaultValue: 'No weight data for this period',
             })}
           </Text>
         </View>

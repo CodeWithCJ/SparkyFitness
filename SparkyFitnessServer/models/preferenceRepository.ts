@@ -53,6 +53,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         added_sugar_algorithm = COALESCE($43, added_sugar_algorithm),
         calorie_safety_floor_mode = COALESCE($45, calorie_safety_floor_mode),
         calorie_safety_floor_value = COALESCE($46, calorie_safety_floor_value),
+        chart_scale_mode = COALESCE($53, chart_scale_mode),
         updated_at = now()
       WHERE user_id = $28
       RETURNING *`,
@@ -109,6 +110,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         preferenceData.weekly_alcohol_limit_g,
         preferenceData.caffeine_half_life_hours,
         preferenceData.target_bedtime,
+        preferenceData.chart_scale_mode,
       ]
     );
     return result.rows[0];
@@ -203,6 +205,7 @@ async function upsertUserPreferences(preferenceData: any) {
        weekly_alcohol_limit_g,
        caffeine_half_life_hours,
        target_bedtime,
+       chart_scale_mode,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($44, 'HH:mm'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -236,6 +239,7 @@ async function upsertUserPreferences(preferenceData: any) {
        $50,
        COALESCE($51, 5.0),
        COALESCE($52, '22:30'),
+       COALESCE($53, 'time'),
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -291,6 +295,8 @@ async function upsertUserPreferences(preferenceData: any) {
        caffeine_half_life_hours = COALESCE($51, user_preferences.caffeine_half_life_hours),
        target_bedtime = COALESCE($52, user_preferences.target_bedtime),
        time_format = COALESCE($44, user_preferences.time_format),
+       -- Read $53 directly rather than EXCLUDED, for the same reason as $47.
+       chart_scale_mode = COALESCE($53, user_preferences.chart_scale_mode),
        updated_at = now()
      RETURNING *`,
       [
@@ -346,6 +352,7 @@ async function upsertUserPreferences(preferenceData: any) {
         preferenceData.weekly_alcohol_limit_g,
         preferenceData.caffeine_half_life_hours,
         preferenceData.target_bedtime,
+        preferenceData.chart_scale_mode,
       ]
     );
     return result.rows[0];

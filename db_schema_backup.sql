@@ -3594,10 +3594,12 @@ CREATE TABLE public.user_preferences (
     food_search_all_providers_default boolean DEFAULT false NOT NULL,
     calorie_safety_floor_mode text DEFAULT 'standard'::text NOT NULL,
     calorie_safety_floor_value integer DEFAULT 1200 NOT NULL,
+    chart_scale_mode text DEFAULT 'time'::text NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
     CONSTRAINT user_preferences_calorie_safety_floor_mode_check CHECK ((calorie_safety_floor_mode = ANY (ARRAY['standard'::text, 'custom'::text, 'disabled'::text]))),
     CONSTRAINT user_preferences_calorie_safety_floor_value_check CHECK (((calorie_safety_floor_value >= 800) AND (calorie_safety_floor_value <= 5000))),
+    CONSTRAINT user_preferences_chart_scale_mode_check CHECK ((chart_scale_mode = ANY (ARRAY['time'::text, 'point'::text]))),
     CONSTRAINT user_preferences_time_format_check CHECK ((time_format = ANY (ARRAY['HH:mm'::text, 'h:mm A'::text, 'h:mm a'::text]))),
     CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
 );
@@ -3636,6 +3638,13 @@ COMMENT ON COLUMN public.user_preferences.calorie_safety_floor_mode IS 'Controls
 --
 
 COMMENT ON COLUMN public.user_preferences.calorie_safety_floor_value IS 'Custom calorie safety floor in kcal when calorie_safety_floor_mode is custom.';
+
+
+--
+-- Name: COLUMN user_preferences.chart_scale_mode; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.chart_scale_mode IS 'Date-axis layout for report charts: time (continuous, gaps preserved) or point (categorical, entries evenly spaced).';
 
 
 --

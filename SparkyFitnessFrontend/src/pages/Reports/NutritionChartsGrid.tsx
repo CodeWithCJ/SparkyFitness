@@ -14,11 +14,16 @@ import ZoomableChart from '@/components/ZoomableChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { info } from '@/utils/logging';
-import { parseISO, format } from 'date-fns';
+import { format } from 'date-fns';
 import {
   calculateSmartYAxisDomain,
+  createDateTickFormatter,
+  createTimeSyncMethod,
   excludeIncompleteDay,
   getChartConfig,
+  getTimeXAxisProps,
+  prepareTimeChartData,
+  REPORTS_CHART_SYNC_ID,
 } from '@/utils/chartUtils';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 import { CENTRAL_NUTRIENT_CONFIG } from '@/constants/nutrients';
@@ -58,6 +63,7 @@ const NutritionChartsGrid = ({
     energyUnit,
     convertEnergy,
     showNetCarbs,
+    chartScaleMode,
   } = usePreferences(); // Destructure formatDateInUserTimezone, energyUnit, convertEnergy
   const effectiveNutritionData = useMemo(
     () => withNetCarbsSubstitution(nutritionData, showNetCarbs),
@@ -71,9 +77,12 @@ const NutritionChartsGrid = ({
 
   info(loggingLevel, 'NutritionChartsGrid: Rendering component.');
 
-  const formatDateForChart = (dateStr: string) => {
-    return formatDateInUserTimezone(parseISO(dateStr), 'MMM dd');
-  };
+  const formatDateForChart = useMemo(
+    () => createDateTickFormatter(formatDateInUserTimezone),
+    [formatDateInUserTimezone]
+  );
+
+  const syncMethod = useMemo(() => createTimeSyncMethod(), []);
 
   // Helper function to prepare chart data with optional incomplete day exclusion
   const prepareChartData = (data: NutritionData[], chartKey: string) => {
@@ -110,13 +119,17 @@ const NutritionChartsGrid = ({
       }) as NutritionData[];
     }
 
-    return result;
+    return prepareTimeChartData(result, chartScaleMode);
   };
 
-  // Helper function to get smart Y-axis domain for nutrition metrics
-  const getYAxisDomain = (data: NutritionData[], dataKey: string) => {
+  // Takes the rows the chart is already drawing rather than rebuilding them:
+  // this used to call prepareChartData a second time for every chart on every
+  // render, which now also means a second sort.
+  const getYAxisDomain = (
+    chartData: ReturnType<typeof prepareChartData>,
+    dataKey: string
+  ) => {
     const config = getChartConfig(dataKey);
-    const chartData = prepareChartData(data, dataKey);
     return calculateSmartYAxisDomain(chartData, dataKey, {
       marginPercent: config.marginPercent,
       minRangeThreshold: config.minRangeThreshold,
@@ -189,7 +202,7 @@ const NutritionChartsGrid = ({
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 min-w-0">
       {visibleCharts.map((chart) => {
         const chartData = prepareChartData(effectiveNutritionData, chart.key);
-        const yAxisDomain = getYAxisDomain(effectiveNutritionData, chart.key);
+        const yAxisDomain = getYAxisDomain(chartData, chart.key);
         const average = calculateAverage(chartData, chart.key);
         // The split is shown as a SHARE, not a second and third average. The question
         // behind it is "how much of this comes from a pill", which is a proportion;
@@ -257,12 +270,18 @@ const NutritionChartsGrid = ({
                       minHeight={0}
                       debounce={100}
                     >
-                      <LineChart data={chartData} syncId="nutrition-charts">
+                      <LineChart
+                        data={chartData}
+                        syncId={REPORTS_CHART_SYNC_ID}
+                        syncMethod={syncMethod}
+                      >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis
-                          dataKey="date"
+                          {...getTimeXAxisProps({
+                            chartScaleMode,
+                            formatDate: formatDateInUserTimezone,
+                          })}
                           fontSize={10}
-                          tickFormatter={formatDateForChart} // Apply formatter
                           tickCount={
                             isMaximized
                               ? Math.max(chartData.length, 10)
@@ -286,9 +305,7 @@ const NutritionChartsGrid = ({
                           }}
                         />
                         <Tooltip
-                          labelFormatter={(value) =>
-                            formatDateForChart(value as string)
-                          } // Apply formatter
+                          labelFormatter={(value) => formatDateForChart(value)} // Apply formatter
                           formatter={(
                             value:
                               | string

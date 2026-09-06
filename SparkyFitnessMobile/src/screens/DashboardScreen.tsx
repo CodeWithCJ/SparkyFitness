@@ -60,6 +60,10 @@ import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import type { HealthTrendDateRange } from '../types/healthTrends';
+import {
+  resolveHealthTrendOrder,
+  selectVisibleHealthTrends,
+} from '../utils/healthTrendPreferences';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { formatDateLabel } from '../utils/dateUtils';
 import {
@@ -200,9 +204,23 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     enabled: isConnected,
   });
 
+  const healthTrendOrder = useAppPreferencesStore((s) => s.healthTrendOrder);
+  const hiddenHealthTrends = useAppPreferencesStore(
+    (s) => s.hiddenHealthTrends
+  );
+  const visibleTrends = useMemo(
+    () =>
+      selectVisibleHealthTrends(
+        resolveHealthTrendOrder(healthTrendOrder),
+        hiddenHealthTrends
+      ),
+    [healthTrendOrder, hiddenHealthTrends]
+  );
+
   const { refetch: refetchTrends, ...trends } = useHealthTrends({
     range: trendsRange,
     enabled: isConnected,
+    activeTrends: visibleTrends,
   });
 
   const { customNutrients, refetch: refetchCustomNutrients } =
@@ -629,11 +647,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         <Text className="text-text-primary text-xl font-bold mb-2">
           {t('dashboard.healthTrends', { defaultValue: 'Health Trends' })}
         </Text>
-        <SegmentedControl
-          segments={RANGE_SEGMENTS(t)}
-          activeKey={trendsRange}
-          onSelect={setTrendsRange}
-        />
+        {/* With every graph hidden the pager shows a card explaining that, and a range
+            control over it would only change a window nothing is plotted in. */}
+        {visibleTrends.length > 0 && (
+          <SegmentedControl
+            segments={RANGE_SEGMENTS(t)}
+            activeKey={trendsRange}
+            onSelect={setTrendsRange}
+          />
+        )}
 
         <HealthTrendsPager
           steps={trends.steps}
@@ -641,6 +663,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           sleep={trends.sleep}
           range={trendsRange}
           weightUnit={weightUnit}
+          visibleTrends={visibleTrends}
           activePage={chartPage}
           onPageSelected={setChartPage}
         />

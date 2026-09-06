@@ -1,5 +1,9 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { useHealthTrends } from '../../src/hooks/useHealthTrends';
+import {
+  HEALTH_TREND_KEYS,
+  type HealthTrendKey,
+} from '../../src/constants/healthTrends';
 import { fetchMeasurementsRange } from '../../src/services/api/measurementsApi';
 import { fetchSleepEntries } from '../../src/services/api/sleepApi';
 import { ApiError } from '../../src/services/api/errors';
@@ -57,8 +61,15 @@ const sleepEntry = buildSleepEntry({
 
 let queryClient: QueryClient;
 
-const renderTrends = (range: '7d' | '30d' | '90d' = '7d', enabled = true) =>
-  renderHook(() => useHealthTrends({ range, enabled }), {
+// Every trend active unless a case is specifically about per-trend gating.
+const ALL_TRENDS: readonly HealthTrendKey[] = [...HEALTH_TREND_KEYS];
+
+const renderTrends = (
+  range: '7d' | '30d' | '90d' = '7d',
+  enabled = true,
+  activeTrends: readonly HealthTrendKey[] = ALL_TRENDS
+) =>
+  renderHook(() => useHealthTrends({ range, enabled, activeTrends }), {
     wrapper: createQueryWrapper(queryClient),
   });
 
@@ -224,6 +235,60 @@ describe('useHealthTrends', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     expect(mockFetchMeasurementsRange).not.toHaveBeenCalled();
+    expect(mockFetchSleepEntries).not.toHaveBeenCalled();
+  });
+
+  test('issues no measurements request when neither steps nor weight is active', async () => {
+    const { result } = renderTrends('7d', true, ['sleep']);
+
+    await waitFor(() => {
+      expect(mockFetchSleepEntries).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(result.current.sleep.isLoading).toBe(false);
+    });
+
+    expect(mockFetchMeasurementsRange).not.toHaveBeenCalled();
+  });
+
+  test('still issues one measurements request when only weight is active', async () => {
+    // Steps and weight share one request, so weight alone still has to make it.
+    renderTrends('7d', true, ['weight']);
+
+    await waitFor(() => {
+      expect(mockFetchMeasurementsRange).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  test('refetch refreshes every active source', async () => {
+    const { result } = renderTrends('7d', true, ['steps', 'sleep']);
+
+    await waitFor(() => {
+      expect(mockFetchMeasurementsRange).toHaveBeenCalledTimes(1);
+      expect(mockFetchSleepEntries).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(mockFetchMeasurementsRange).toHaveBeenCalledTimes(2);
+    expect(mockFetchSleepEntries).toHaveBeenCalledTimes(2);
+  });
+
+  test('refetch leaves a hidden trend alone', async () => {
+    const { result } = renderTrends('7d', true, ['steps']);
+
+    await waitFor(() => {
+      expect(mockFetchMeasurementsRange).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    // `refetch()` ignores `enabled`, so this only holds because `useHealthTrends` skips
+    // the call itself. Without that, pull-to-refresh would fetch every hidden trend.
     expect(mockFetchSleepEntries).not.toHaveBeenCalled();
   });
 });

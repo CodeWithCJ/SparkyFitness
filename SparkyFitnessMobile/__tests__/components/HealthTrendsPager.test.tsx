@@ -98,6 +98,7 @@ const baseProps = (): PagerProps => ({
   sleep: sleepTrend(),
   range: '7d',
   weightUnit: 'kg',
+  visibleTrends: ['steps', 'weight', 'sleep'],
   activePage: 0,
   onPageSelected: jest.fn(),
 });
@@ -112,7 +113,7 @@ const renderPager = (overrides: Partial<PagerProps> = {}) => {
 };
 
 const chartOrder = (): string[] =>
-  screen.getAllByTestId(/-chart$/).map((node) => node.props.testID as string);
+  screen.queryAllByTestId(/-chart$/).map((node) => node.props.testID as string);
 
 const dots = () => screen.queryAllByTestId(/^health-trends-dot-/);
 
@@ -169,12 +170,6 @@ describe('HealthTrendsPager', () => {
 
     expect(screen.getByTestId('sleep-chart')).toBeTruthy();
     expect(dots()).toHaveLength(2);
-  });
-
-  test('keeps steps visible even with no step data', () => {
-    renderPager({ steps: emptySeries(), weight: weightSeries });
-
-    expect(chartOrder()).toEqual(['steps-chart', 'weight-chart']);
   });
 
   test('clamps the active dot when activePage exceeds the page count', () => {
@@ -302,6 +297,102 @@ describe('HealthTrendsPager', () => {
       'sleep-chart',
     ]);
     expect(selectedDotIndex()).toBe(1);
+  });
+
+  test('renders pages in the order the user chose', () => {
+    renderPager({
+      weight: weightSeries,
+      visibleTrends: ['weight', 'steps'],
+    });
+
+    expect(chartOrder()).toEqual(['weight-chart', 'steps-chart']);
+  });
+
+  test('omits a trend the user hid, even with data for it', () => {
+    renderPager({
+      weight: weightSeries,
+      visibleTrends: ['steps', 'sleep'],
+    });
+
+    expect(screen.queryByTestId('weight-chart')).toBeNull();
+  });
+
+  test('still hides a shown trend that has no data in this window', () => {
+    renderPager({
+      weight: emptySeries(),
+      visibleTrends: ['steps', 'weight'],
+    });
+
+    expect(chartOrder()).toEqual(['steps-chart']);
+  });
+
+  // The charts are mocked here, so this only asserts which page the fallback picks. That
+  // the page is not blank is each chart's own responsibility, covered by its empty-state
+  // test — see `WeightLineChart.test.tsx`, which is where the fallback used to render
+  // nothing at all.
+  test('falls back to the first shown trend when every shown trend is empty', () => {
+    renderPager({
+      steps: emptySeries(),
+      weight: emptySeries(),
+      sleep: sleepTrend({ nightsWithData: 0 }),
+      visibleTrends: ['weight', 'steps'],
+    });
+
+    expect(chartOrder()).toEqual(['weight-chart']);
+  });
+
+  test('renders the all-hidden card when nothing is visible', () => {
+    renderPager({ visibleTrends: [] });
+
+    expect(
+      screen.getByText(
+        'All graphs are hidden. Choose which to show in Dashboard Settings.'
+      )
+    ).toBeTruthy();
+    expect(screen.queryByTestId('pager-view')).toBeNull();
+    expect(chartOrder()).toEqual([]);
+  });
+
+  test('keeps sleep gated on nightsWithData rather than data.length', () => {
+    // The sleep series is padded to one entry per day, so `data` is never empty.
+    renderPager({
+      sleep: sleepTrend(),
+      visibleTrends: ['steps', 'sleep'],
+    });
+
+    expect(screen.queryByTestId('sleep-chart')).toBeNull();
+  });
+
+  test('keeps the user on the same trend across a pure reorder', () => {
+    const onPageSelected = jest.fn();
+    const { rerenderPager } = renderPager({
+      weight: weightSeries,
+      sleep: sleepSeries,
+      visibleTrends: ['steps', 'weight', 'sleep'],
+      activePage: 1,
+      onPageSelected,
+    });
+    expect(chartOrder()).toEqual([
+      'steps-chart',
+      'weight-chart',
+      'sleep-chart',
+    ]);
+
+    rerenderPager({
+      weight: weightSeries,
+      sleep: sleepSeries,
+      visibleTrends: ['weight', 'steps', 'sleep'],
+      activePage: 1,
+      onPageSelected,
+    });
+
+    expect(chartOrder()).toEqual([
+      'weight-chart',
+      'steps-chart',
+      'sleep-chart',
+    ]);
+    expect(pagerMock.setPageWithoutAnimation).toHaveBeenCalledWith(0);
+    expect(onPageSelected).toHaveBeenCalledWith(0);
   });
 
   test('forwards the selected page position', () => {
