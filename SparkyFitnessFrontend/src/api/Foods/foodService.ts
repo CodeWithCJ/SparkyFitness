@@ -36,6 +36,10 @@ interface FoodPayload {
   vitamin_c?: number;
   calcium?: number;
   iron?: number;
+  caffeine_mg?: number;
+  water_ml?: number;
+  alcohol_g?: number;
+  abv_percent?: number;
   custom_nutrients?: Record<string, string | number>;
 }
 

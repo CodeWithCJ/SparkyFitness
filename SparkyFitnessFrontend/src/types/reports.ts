@@ -56,6 +56,9 @@ export interface DailyFoodEntry {
   vitamin_c?: number;
   calcium?: number;
   iron?: number;
+  caffeine_mg?: number;
+  water_ml?: number;
+  alcohol_g?: number;
   food_name?: string;
   brand_name?: string;
   glycemic_index?: string | number;

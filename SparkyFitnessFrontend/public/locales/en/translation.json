@@ -3620,7 +3620,10 @@
       "vitaminA": "Vitamin A (μg)",
       "vitaminC": "Vitamin C (mg)",
       "calcium": "Calcium (mg)",
-      "iron": "Iron (mg)"
+      "iron": "Iron (mg)",
+      "caffeine": "Caffeine (mg)",
+      "waterContent": "Water Content (ml)",
+      "alcohol": "Alcohol (g)"
     },
     "exerciseEntriesExportHeaders": {
       "date": "Date",
