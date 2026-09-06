@@ -1,4 +1,4 @@
-import { userHourMinute } from "./timezone.ts";
+import { clockInZone } from "./timezone.ts";
 
 /**
  * Helpers for the optional wall-clock time-of-day on diary entries
@@ -138,8 +138,7 @@ export function prefillEntryTime(opts: {
   tz: string;
 }): string {
   if (opts.isToday) {
-    const { hour, minute } = userHourMinute(opts.tz);
-    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    return clockInZone(opts.tz);
   }
   const fromDefault = toHourMinute(opts.defaultTime);
   if (fromDefault) return fromDefault;

@@ -2,6 +2,7 @@ import { log } from '../config/logging.js';
 import measurementRepository from '../models/measurementRepository.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import {
+  clockInZone,
   instantToDay,
   instantHourMinute,
   instantToDayWithOffset,
@@ -586,10 +587,7 @@ async function upsertWaterIntake(
           // "now" has to be read in their zone. Taking the server's clock put
           // a 15:16 drink for a UTC-4 user at 19:16, which lands on dinner.
           const tz = await loadUserTimezone(authenticatedUserId);
-          const { hour, minute } = instantHourMinute(new Date(), tz);
-          const nowClockForEntry = `${String(hour).padStart(2, '0')}:${String(
-            minute
-          ).padStart(2, '0')}`;
+          const nowClockForEntry = clockInZone(tz);
           targetMealTypeId =
             resolveMealTypeIdForTime(mealTypes, nowClockForEntry) ?? null;
         }
