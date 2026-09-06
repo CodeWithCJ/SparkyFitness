@@ -145,6 +145,42 @@ jest.mock('@/components/FoodSearch/FoodSearchDialog', () => {
   };
 });
 
+// The container form asks for quantity and unit with the diary's own picker,
+// so the test stands in for it and confirms a 250 ml choice.
+jest.mock('@/components/FoodUnitSelector', () => {
+  return function MockFoodUnitSelector({
+    open,
+    food,
+    onSelect,
+  }: {
+    open: boolean;
+    food: { id: string; name: string };
+    onSelect: (
+      food: { id: string; name: string },
+      quantity: number,
+      unit: string,
+      variant: { id: string; serving_size: number; serving_unit: string }
+    ) => void;
+  }) {
+    if (!open) return null;
+    return (
+      <div data-testid="food-unit-selector">
+        <button
+          onClick={() =>
+            onSelect(food, 250, 'ml', {
+              id: 'mock-var-ml',
+              serving_size: 250,
+              serving_unit: 'ml',
+            })
+          }
+        >
+          Confirm 250 ml
+        </button>
+      </div>
+    );
+  };
+});
+
 describe('WaterContainerManager', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -193,6 +229,11 @@ describe('WaterContainerManager', () => {
   it('allows linking a food item in the add form', async () => {
     renderWithClient(<WaterContainerManager />);
 
+    // Linking lives on its own tab now, so the plain-water fields and the
+    // food fields can never both be on screen at once.
+    // Radix tabs activate on mousedown, not click.
+    fireEvent.mouseDown(screen.getByText('Drink (linked food)'));
+
     const linkFoodBtn = screen.getByText('Link to Food Item');
     fireEvent.click(linkFoodBtn);
 
@@ -200,10 +241,15 @@ describe('WaterContainerManager', () => {
     const selectCoffeeBtn = screen.getByText('Select Coffee');
     fireEvent.click(selectCoffeeBtn);
 
-    // Food is now linked
+    // The diary picker takes over for quantity and unit
+    const confirmBtn = await screen.findByText('Confirm 250 ml');
+    fireEvent.click(confirmBtn);
+
+    // Food is now linked, and the press logs what the picker returned
     await waitFor(() => {
       expect(screen.getByText('Mock Black Coffee')).toBeInTheDocument();
     });
+    expect(screen.getByText('250 ml')).toBeInTheDocument();
   });
 
   it('opens catalog dialog and adds a drink preset', async () => {

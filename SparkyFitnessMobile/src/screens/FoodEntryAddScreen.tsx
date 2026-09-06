@@ -1050,6 +1050,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           foodId: ingredient.food_id,
           variantId: ingredient.variant_id,
           foodName: ingredient.food_name ?? '',
+          // The quantity picked here is what one press of the container logs,
+          // so it has to travel back with the food rather than reset to 1.
+          quantity: ingredient.quantity,
         });
       }
       navigation.dispatch(StackActions.pop(returnDepth));

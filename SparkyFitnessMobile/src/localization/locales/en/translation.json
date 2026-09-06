@@ -4434,8 +4434,13 @@
       "nameRequired": "Name is required.",
       "volumeInvalid": "Volume must be greater than zero.",
       "servingsInvalid": "Servings per container must be at least 1.",
-      "factorInvalid": "Hydration factor must be between 0 and 2."
-    }
+      "factorInvalid": "Hydration factor must be between 0 and 2.",
+      "foodRequired": "Pick the food this container holds.",
+      "quantityInvalid": "Quantity must be greater than zero."
+    },
+    "tabWater": "Water",
+    "tabDrink": "Drink (linked food)",
+    "quantity": "Quantity"
   },
   "activeWorkoutAutosave": {
     "failedTitle": "Workout not saved",

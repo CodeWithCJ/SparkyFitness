@@ -7,6 +7,8 @@ export interface PendingContainerLinkSelection {
   foodId: string;
   variantId: string;
   foodName: string;
+  /** Quantity chosen on the add screen, in the picked variant's own unit. */
+  quantity: number;
 }
 
 let pendingSelection: PendingContainerLinkSelection | null = null;

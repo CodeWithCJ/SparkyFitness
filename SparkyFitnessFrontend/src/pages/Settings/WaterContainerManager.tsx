@@ -20,6 +20,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -37,6 +38,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import FoodSearchDialog from '@/components/FoodSearch/FoodSearchDialog';
+import FoodUnitSelector from '@/components/FoodUnitSelector';
 import type { Food, FoodVariant } from '@/types/food';
 import type { Meal } from '@/types/meal';
 import type { WaterContainer } from '@/types/settings';
@@ -48,7 +50,10 @@ const WaterContainerManager: React.FC = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  // Add container form state
+  // Add container form state. The two kinds of container are measured
+  // differently -- one by its volume, one by the food it holds -- so the form
+  // asks for one set of fields or the other, never both at once.
+  const [addMode, setAddMode] = useState<'water' | 'food'>('water');
   const [name, setName] = useState('');
   const [volume, setVolume] = useState<number | ''>('');
   const [unit, setUnit] = useState<'ml' | 'oz' | 'liter'>('ml');
@@ -61,10 +66,6 @@ const WaterContainerManager: React.FC = () => {
   const [linkedVariantId, setLinkedVariantId] = useState<string | null>(null);
   const [linkedMealTypeId, setLinkedMealTypeId] = useState<string | null>(null);
   const [linkedQuantity, setLinkedQuantity] = useState<number | ''>(1);
-  // The amount is expressed in the linked variant's own unit, never in
-  // servings, so the field has to say which unit it means.
-  const linkedUnitLabel =
-    foodVariants.find((v) => v.id === linkedVariantId)?.serving_unit ?? '';
 
   // Edit container dialog state
   const [editingContainer, setEditingContainer] =
@@ -83,9 +84,6 @@ const WaterContainerManager: React.FC = () => {
     string | null
   >(null);
   const [editLinkedQuantity, setEditLinkedQuantity] = useState<number | ''>(1);
-  const editLinkedUnitLabel =
-    editFoodVariants.find((v) => v.id === editLinkedVariantId)?.serving_unit ??
-    '';
 
   // Catalog dialog state
   const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
@@ -96,6 +94,10 @@ const WaterContainerManager: React.FC = () => {
   // Food search dialog state
   const [searchDialogOpen, setSearchDialogOpen] = useState(false);
   const [searchTarget, setSearchTarget] = useState<'add' | 'edit'>('add');
+  // The quantity and unit are asked for with the diary's own picker, so a
+  // container is set up the same way the food would be logged -- including the
+  // converted units that only that picker offers.
+  const [unitSelectorFood, setUnitSelectorFood] = useState<Food | null>(null);
 
   const queryClient = useQueryClient();
   const { data: containers = [] } = useWaterContainersQuery(user?.activeUserId);
@@ -134,41 +136,60 @@ const WaterContainerManager: React.FC = () => {
 
   const handleFoodSelect = async (item: Food | Meal, type: 'food' | 'meal') => {
     if (type !== 'food' || !item.id) return;
+    setSearchDialogOpen(false);
     try {
       const fullFood = await queryClient.fetchQuery(foodViewOptions(item.id));
-      const variants = fullFood?.variants || [];
-      const defaultVar =
-        variants.find((v: FoodVariant) => v.is_default) || variants[0];
-      const defaultVariantId = defaultVar?.id || null;
-
-      // linked_quantity is expressed in the variant's own unit, so defaulting
-      // it to the serving size makes one press mean exactly one serving.
-      const defaultQuantity = Number(defaultVar?.serving_size) || 1;
-      if (searchTarget === 'add') {
-        setLinkedFood(fullFood ?? null);
-        setFoodVariants(variants);
-        setLinkedVariantId(defaultVariantId);
-        setLinkedQuantity(defaultQuantity);
-      } else {
-        setEditLinkedFood(fullFood ?? null);
-        setEditFoodVariants(variants);
-        setEditLinkedVariantId(defaultVariantId);
-        setEditLinkedQuantity(defaultQuantity);
-      }
+      setUnitSelectorFood(fullFood ?? (item as Food));
     } catch {
-      // Fallback to basic selected item if full details fail
-      const foodItem = item as Food;
-      if (searchTarget === 'add') {
-        setLinkedFood(foodItem);
-        setFoodVariants([]);
-        setLinkedVariantId(null);
-      } else {
-        setEditLinkedFood(foodItem);
-        setEditFoodVariants([]);
-        setEditLinkedVariantId(null);
-      }
+      // Fallback to the basic selected item if full details fail; the picker
+      // loads the variants itself.
+      setUnitSelectorFood(item as Food);
     }
-    setSearchDialogOpen(false);
+  };
+
+  // What one press logs, in the picked variant's own unit -- the same pairing
+  // the diary shows when you add this food.
+  const describeLink = (
+    variants: FoodVariant[],
+    variantId: string | null,
+    quantity: number | ''
+  ) => {
+    const variant = variants.find((v) => v.id === variantId);
+    return `${quantity === '' ? '' : quantity} ${variant?.serving_unit ?? ''}`.trim();
+  };
+
+  // Only a "Change quantity/unit" reopen carries values in; a freshly picked
+  // food must let the picker default to its own serving size, the way the
+  // diary does, rather than inheriting a leftover 1.
+  const unitSelectorTarget =
+    searchTarget === 'add' ? linkedFood : editLinkedFood;
+  const isReopeningLink =
+    !!unitSelectorFood && unitSelectorFood.id === unitSelectorTarget?.id;
+
+  const handleUnitSelected = (
+    food: Food,
+    quantity: number,
+    _unit: string,
+    variant: FoodVariant
+  ) => {
+    // A converted unit is created on the fly, so it will not be in the cached
+    // food yet -- merge it in or the summary loses its unit.
+    const known = food.variants ?? [];
+    const variants = known.some((v) => v.id === variant.id)
+      ? known
+      : [...known, variant];
+    if (searchTarget === 'add') {
+      setLinkedFood(food);
+      setFoodVariants(variants);
+      setLinkedVariantId(variant.id ?? null);
+      setLinkedQuantity(quantity);
+    } else {
+      setEditLinkedFood(food);
+      setEditFoodVariants(variants);
+      setEditLinkedVariantId(variant.id ?? null);
+      setEditLinkedQuantity(quantity);
+    }
+    setUnitSelectorFood(null);
   };
 
   const handleAddContainer = async (e: React.FormEvent) => {
@@ -176,6 +197,17 @@ const WaterContainerManager: React.FC = () => {
     // A linked container measures the drink by how much of the food it holds,
     // so volume and servings are optional there; unlinked still needs both.
     if (!name) return;
+    if (addMode === 'food' && !linkedFood) {
+      toast({
+        title: t('waterContainerManager.linkFoodRequired', 'Link a food first'),
+        description: t(
+          'waterContainerManager.linkFoodRequiredHint',
+          'A drink container logs a food, so pick the one this container holds.'
+        ),
+        variant: 'destructive',
+      });
+      return;
+    }
     if (!linkedFood && (volume === '' || servingsPerContainer === '')) return;
     if (linkedFood && linkedQuantity === '') return;
     await createWaterContainer({
@@ -201,6 +233,26 @@ const WaterContainerManager: React.FC = () => {
     setFoodVariants([]);
     setLinkedVariantId(null);
     setLinkedMealTypeId(null);
+    setLinkedQuantity(1);
+  };
+
+  const handleAddModeChange = (value: string) => {
+    const mode = value === 'food' ? 'food' : 'water';
+    setAddMode(mode);
+    if (mode === 'water') {
+      // Leaving the drink tab drops the link, so a container cannot keep a
+      // food that the visible form no longer shows.
+      setLinkedFood(null);
+      setFoodVariants([]);
+      setLinkedVariantId(null);
+      setLinkedMealTypeId(null);
+      setLinkedQuantity(1);
+    } else {
+      // Volume and servings belong to the water tab; a linked container takes
+      // both from the food, and 0 is the server's "no override" sentinel.
+      setVolume('');
+      setServingsPerContainer('');
+    }
   };
 
   const handleStartEdit = async (container: WaterContainer) => {
@@ -248,7 +300,9 @@ const WaterContainerManager: React.FC = () => {
       containerData: {
         name: editName,
         // 0 when linked = "no override", so the food's own volume is used.
-        volume: editLinkedFood ? Number(editVolume || 0) : Number(editVolume),
+        // 0 is the server's "no override": a linked container measures the
+        // drink by the food it holds, so it never carries its own volume.
+        volume: editLinkedFood ? 0 : Number(editVolume),
         unit: editUnit,
         servings_per_container: editLinkedFood ? 1 : Number(editServings),
         linked_quantity: editLinkedFood ? Number(editLinkedQuantity) : 1,
@@ -445,18 +499,34 @@ const WaterContainerManager: React.FC = () => {
             onSubmit={handleAddContainer}
             className="space-y-4 border p-4 rounded-lg bg-gray-50/50 dark:bg-slate-900/40"
           >
+            <Tabs value={addMode} onValueChange={handleAddModeChange}>
+              <TabsList className="grid w-full grid-cols-2 sm:inline-flex sm:w-auto">
+                <TabsTrigger value="water">
+                  {t('waterContainerManager.tabWater', 'Water')}
+                </TabsTrigger>
+                <TabsTrigger value="food">
+                  {t('waterContainerManager.tabDrink', 'Drink (linked food)')}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
             <p className="text-sm text-muted-foreground">
-              {linkedFood
+              {addMode === 'food'
                 ? t(
                     'waterContainerManager.modeLinked',
-                    'Linked to a food: one press logs the food below and credits its water.'
+                    'One press logs the food below into your diary and credits its water.'
                   )
                 : t(
                     'waterContainerManager.modePlain',
-                    'Plain water container: one press credits its volume. Link a food to log a drink instead.'
+                    'One press credits this volume of plain water.'
                   )}
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            <div
+              className={
+                addMode === 'food'
+                  ? 'grid grid-cols-1 gap-3'
+                  : 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3'
+              }
+            >
               <div className="grid gap-1.5">
                 <Label htmlFor="name">
                   {t('waterContainerManager.name', 'Container Name')}
@@ -472,105 +542,60 @@ const WaterContainerManager: React.FC = () => {
                   required
                 />
               </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="volume">
-                  {linkedFood
-                    ? t(
-                        'waterContainerManager.volumeOverride',
-                        'Liquid in the glass (optional)'
-                      )
-                    : t('waterContainerManager.volume', 'Volume')}
-                </Label>
-                <Input
-                  id="volume"
-                  type="number"
-                  min={linkedFood ? '0' : '0.001'}
-                  step="any"
-                  value={volume}
-                  onChange={(e) =>
-                    setVolume(
-                      e.target.value === '' ? '' : Number(e.target.value)
-                    )
-                  }
-                  placeholder={
-                    linkedFood
-                      ? t(
-                          'waterContainerManager.volumeOverridePlaceholder',
-                          "Leave blank to use the food's own volume"
+              {addMode === 'water' && (
+                <>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="volume">
+                      {t('waterContainerManager.volume', 'Volume')}
+                    </Label>
+                    <Input
+                      id="volume"
+                      type="number"
+                      min="0.001"
+                      step="any"
+                      value={volume}
+                      onChange={(e) =>
+                        setVolume(
+                          e.target.value === '' ? '' : Number(e.target.value)
                         )
-                      : t(
-                          'waterContainerManager.volumePlaceholder',
-                          'e.g., 500'
-                        )
-                  }
-                  required={!linkedFood}
-                />
-                {linkedFood && (
-                  <p className="text-xs text-muted-foreground">
-                    {t(
-                      'waterContainerManager.volumeOverrideHint',
-                      'Only needed when the food is not the whole drink — a cordial, a tablet or a powder in a bigger glass.'
-                    )}
-                  </p>
-                )}
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="unit">
-                  {t('waterContainerManager.unit', 'Unit')}
-                </Label>
-                <Select
-                  value={unit}
-                  onValueChange={(value: 'ml' | 'oz' | 'liter') =>
-                    setUnit(value)
-                  }
-                >
-                  <SelectTrigger id="unit">
-                    <SelectValue
-                      placeholder={t('waterContainerManager.unit', 'Unit')}
+                      }
+                      placeholder={t(
+                        'waterContainerManager.volumePlaceholder',
+                        'e.g., 500'
+                      )}
+                      required
                     />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ml">ml</SelectItem>
-                    <SelectItem value="oz">oz</SelectItem>
-                    <SelectItem value="liter">
-                      {t('waterContainerManager.liter', 'liter')}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Quantity replaces servings-per-container once a food is
-                  linked: one press logs this much of the food, so its calories
-                  and caffeine scale with it. */}
-              {linkedFood ? (
-                <div className="grid gap-1.5">
-                  <Label htmlFor="linkedQuantity">
-                    {t(
-                      'waterContainerManager.linkedQuantity',
-                      'Amount per press'
-                    )}
-                    {linkedUnitLabel ? ` (${linkedUnitLabel})` : ''}
-                  </Label>
-                  <Input
-                    id="linkedQuantity"
-                    type="number"
-                    min="0.001"
-                    step="any"
-                    value={linkedQuantity}
-                    onChange={(e) =>
-                      setLinkedQuantity(
-                        e.target.value === '' ? '' : Number(e.target.value)
-                      )
-                    }
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t(
-                      'waterContainerManager.linkedQuantityHint',
-                      "How much of the linked food one press logs, in that variant's own unit."
-                    )}
-                  </p>
-                </div>
-              ) : (
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="unit">
+                      {t('waterContainerManager.unit', 'Unit')}
+                    </Label>
+                    <Select
+                      value={unit}
+                      onValueChange={(value: 'ml' | 'oz' | 'liter') =>
+                        setUnit(value)
+                      }
+                    >
+                      <SelectTrigger id="unit">
+                        <SelectValue
+                          placeholder={t('waterContainerManager.unit', 'Unit')}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ml">ml</SelectItem>
+                        <SelectItem value="oz">oz</SelectItem>
+                        <SelectItem value="liter">
+                          {t('waterContainerManager.liter', 'liter')}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+              {/* Quantity lives beside the variant inside the linked-food
+                  card, the way the diary pairs Quantity with Unit. Servings
+                  only means anything for a plain container. */}
+              {addMode === 'water' && (
                 <div className="grid gap-1.5">
                   <Label htmlFor="servingsPerContainer">
                     {t(
@@ -624,123 +649,116 @@ const WaterContainerManager: React.FC = () => {
                 </p>
               </div>
 
-              <div className="grid gap-1.5">
-                <Label>
-                  {t('waterContainerManager.linkedFood', 'Linked Food')}
-                </Label>
-                {linkedFood ? (
-                  <div className="flex flex-col gap-2 p-2 border rounded-md bg-white dark:bg-slate-800">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-sm font-medium">
-                        <Utensils className="w-4 h-4 text-blue-500" />
-                        <span>{linkedFood.name}</span>
+              {addMode === 'food' && (
+                <div className="grid gap-1.5">
+                  <Label>
+                    {t('waterContainerManager.linkedFood', 'Linked Food')}
+                  </Label>
+                  {linkedFood ? (
+                    <div className="flex flex-col gap-2 p-2 border rounded-md bg-white dark:bg-slate-800">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-sm font-medium">
+                          <Utensils className="w-4 h-4 text-blue-500" />
+                          <span>{linkedFood.name}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setLinkedFood(null);
+                            setFoodVariants([]);
+                            setLinkedVariantId(null);
+                            setLinkedMealTypeId(null);
+                          }}
+                          className="h-6 px-2 text-xs text-red-500 hover:text-red-700"
+                        >
+                          <X className="w-3 h-3 mr-1" />
+                          {t('waterContainerManager.unlinkFood', 'Unlink')}
+                        </Button>
                       </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setLinkedFood(null);
-                          setFoodVariants([]);
-                          setLinkedVariantId(null);
-                          setLinkedMealTypeId(null);
-                        }}
-                        className="h-6 px-2 text-xs text-red-500 hover:text-red-700"
-                      >
-                        <X className="w-3 h-3 mr-1" />
-                        {t('waterContainerManager.unlinkFood', 'Unlink')}
-                      </Button>
-                    </div>
-                    {foodVariants.length > 0 && (
-                      <div className="grid gap-1">
-                        <Label className="text-xs">
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="text-muted-foreground">
                           {t(
-                            'waterContainerManager.selectVariant',
-                            'Serving Variant'
-                          )}
-                        </Label>
-                        <Select
-                          value={linkedVariantId || undefined}
-                          onValueChange={(val) => {
-                            setLinkedVariantId(val);
-                            const picked = foodVariants.find(
-                              (v) => v.id === val
-                            );
-                            // The amount is in the variant's unit, so switching
-                            // variants must re-base it or the number silently
-                            // changes meaning.
-                            setLinkedQuantity(
-                              Number(picked?.serving_size) || 1
-                            );
+                            'waterContainerManager.perPress',
+                            'One press logs'
+                          )}{' '}
+                          <span className="font-medium text-foreground">
+                            {describeLink(
+                              foodVariants,
+                              linkedVariantId,
+                              linkedQuantity
+                            )}
+                          </span>
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs"
+                          onClick={() => {
+                            setSearchTarget('add');
+                            setUnitSelectorFood(linkedFood);
                           }}
                         >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {foodVariants.map((v) => (
-                              <SelectItem key={v.id} value={v.id || ''}>
-                                {v.serving_size} {v.serving_unit}{' '}
-                                {v.serving_description
-                                  ? `(${v.serving_description})`
-                                  : ''}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                    {availableMealTypes.length > 0 && (
-                      <div className="grid gap-1">
-                        <Label className="text-xs">
                           {t(
-                            'waterContainerManager.selectMealType',
-                            'Meal Category'
+                            'waterContainerManager.changeQuantity',
+                            'Change quantity/unit'
                           )}
-                        </Label>
-                        <Select
-                          value={linkedMealTypeId || 'none'}
-                          onValueChange={(val) =>
-                            setLinkedMealTypeId(val === 'none' ? null : val)
-                          }
-                        >
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue
-                              placeholder={t(
-                                'waterContainerManager.selectMealTypePlaceholder',
-                                'Select meal category (optional)'
-                              )}
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">
-                              {t(
-                                'waterContainerManager.selectMealTypePlaceholder',
-                                'Select meal category (optional)'
-                              )}
-                            </SelectItem>
-                            {availableMealTypes.map((mt) => (
-                              <SelectItem key={mt.id} value={mt.id}>
-                                {mt.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        </Button>
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleOpenFoodSearch('add')}
-                    className="flex items-center justify-center gap-1.5 h-10 border-dashed"
-                  >
-                    <Link2 className="w-4 h-4" />
-                    {t('waterContainerManager.linkFood', 'Link to Food Item')}
-                  </Button>
-                )}
-              </div>
+                      {availableMealTypes.length > 0 && (
+                        <div className="grid gap-1">
+                          <Label className="text-xs">
+                            {t(
+                              'waterContainerManager.selectMealType',
+                              'Meal Category'
+                            )}
+                          </Label>
+                          <Select
+                            value={linkedMealTypeId || 'none'}
+                            onValueChange={(val) =>
+                              setLinkedMealTypeId(val === 'none' ? null : val)
+                            }
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue
+                                placeholder={t(
+                                  'waterContainerManager.selectMealTypePlaceholder',
+                                  'Select meal category (optional)'
+                                )}
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">
+                                {t(
+                                  'waterContainerManager.selectMealTypePlaceholder',
+                                  'Select meal category (optional)'
+                                )}
+                              </SelectItem>
+                              {availableMealTypes.map((mt) => (
+                                <SelectItem key={mt.id} value={mt.id}>
+                                  {mt.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleOpenFoodSearch('add')}
+                      className="flex items-center justify-center gap-1.5 h-10 border-dashed"
+                    >
+                      <Link2 className="w-4 h-4" />
+                      {t('waterContainerManager.linkFood', 'Link to Food Item')}
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
 
             <Button type="submit">
@@ -985,89 +1003,51 @@ const WaterContainerManager: React.FC = () => {
                   required
                 />
               </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="edit-volume">
-                  {editLinkedFood
-                    ? t(
-                        'waterContainerManager.volumeOverride',
-                        'Liquid in the glass (optional)'
-                      )
-                    : t('waterContainerManager.volume', 'Volume')}
-                </Label>
-                <Input
-                  id="edit-volume"
-                  type="number"
-                  min={editLinkedFood ? '0' : '0.001'}
-                  step="any"
-                  value={editVolume}
-                  onChange={(e) =>
-                    setEditVolume(
-                      e.target.value === '' ? '' : Number(e.target.value)
-                    )
-                  }
-                  placeholder={
-                    editLinkedFood
-                      ? t(
-                          'waterContainerManager.volumeOverridePlaceholder',
-                          "Leave blank to use the food's own volume"
+              {!editLinkedFood && (
+                <>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="edit-volume">
+                      {t('waterContainerManager.volume', 'Volume')}
+                    </Label>
+                    <Input
+                      id="edit-volume"
+                      type="number"
+                      min="0.001"
+                      step="any"
+                      value={editVolume}
+                      onChange={(e) =>
+                        setEditVolume(
+                          e.target.value === '' ? '' : Number(e.target.value)
                         )
-                      : undefined
-                  }
-                  required={!editLinkedFood}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="edit-unit">
-                  {t('waterContainerManager.unit', 'Unit')}
-                </Label>
-                <Select
-                  value={editUnit}
-                  onValueChange={(value: 'ml' | 'oz' | 'liter') =>
-                    setEditUnit(value)
-                  }
-                >
-                  <SelectTrigger id="edit-unit">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ml">ml</SelectItem>
-                    <SelectItem value="oz">oz</SelectItem>
-                    <SelectItem value="liter">
-                      {t('waterContainerManager.liter', 'liter')}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {editLinkedFood ? (
-                <div className="grid gap-1.5">
-                  <Label htmlFor="edit-linkedQuantity">
-                    {t(
-                      'waterContainerManager.linkedQuantity',
-                      'Amount per press'
-                    )}
-                    {editLinkedUnitLabel ? ` (${editLinkedUnitLabel})` : ''}
-                  </Label>
-                  <Input
-                    id="edit-linkedQuantity"
-                    type="number"
-                    min="0.001"
-                    step="any"
-                    value={editLinkedQuantity}
-                    onChange={(e) =>
-                      setEditLinkedQuantity(
-                        e.target.value === '' ? '' : Number(e.target.value)
-                      )
-                    }
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t(
-                      'waterContainerManager.linkedQuantityHint',
-                      "How much of the linked food one press logs, in that variant's own unit."
-                    )}
-                  </p>
-                </div>
-              ) : (
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="edit-unit">
+                      {t('waterContainerManager.unit', 'Unit')}
+                    </Label>
+                    <Select
+                      value={editUnit}
+                      onValueChange={(value: 'ml' | 'oz' | 'liter') =>
+                        setEditUnit(value)
+                      }
+                    >
+                      <SelectTrigger id="edit-unit">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ml">ml</SelectItem>
+                        <SelectItem value="oz">oz</SelectItem>
+                        <SelectItem value="liter">
+                          {t('waterContainerManager.liter', 'liter')}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+              {editLinkedFood ? null : (
                 <div className="grid gap-1.5">
                   <Label htmlFor="edit-servings">
                     {t(
@@ -1137,42 +1117,33 @@ const WaterContainerManager: React.FC = () => {
                       {t('waterContainerManager.unlinkFood', 'Unlink')}
                     </Button>
                   </div>
-                  {editFoodVariants.length > 0 && (
-                    <div className="grid gap-1">
-                      <Label className="text-xs">
-                        {t(
-                          'waterContainerManager.selectVariant',
-                          'Serving Variant'
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground">
+                      {t('waterContainerManager.perPress', 'One press logs')}{' '}
+                      <span className="font-medium text-foreground">
+                        {describeLink(
+                          editFoodVariants,
+                          editLinkedVariantId,
+                          editLinkedQuantity
                         )}
-                      </Label>
-                      <Select
-                        value={editLinkedVariantId || undefined}
-                        onValueChange={(val) => {
-                          setEditLinkedVariantId(val);
-                          const picked = editFoodVariants.find(
-                            (v) => v.id === val
-                          );
-                          setEditLinkedQuantity(
-                            Number(picked?.serving_size) || 1
-                          );
-                        }}
-                      >
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {editFoodVariants.map((v) => (
-                            <SelectItem key={v.id} value={v.id || ''}>
-                              {v.serving_size} {v.serving_unit}{' '}
-                              {v.serving_description
-                                ? `(${v.serving_description})`
-                                : ''}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
+                      </span>
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => {
+                        setSearchTarget('edit');
+                        setUnitSelectorFood(editLinkedFood);
+                      }}
+                    >
+                      {t(
+                        'waterContainerManager.changeQuantity',
+                        'Change quantity/unit'
+                      )}
+                    </Button>
+                  </div>
                   {availableMealTypes.length > 0 && (
                     <div className="grid gap-1">
                       <Label className="text-xs">
@@ -1238,6 +1209,32 @@ const WaterContainerManager: React.FC = () => {
       </Dialog>
 
       {/* Food Search Dialog */}
+      {unitSelectorFood && (
+        <FoodUnitSelector
+          food={unitSelectorFood}
+          open={!!unitSelectorFood}
+          onOpenChange={(open) => {
+            if (!open) setUnitSelectorFood(null);
+          }}
+          onSelect={handleUnitSelected}
+          showUnitSelector
+          initialQuantity={
+            isReopeningLink
+              ? Number(
+                  searchTarget === 'add' ? linkedQuantity : editLinkedQuantity
+                ) || undefined
+              : undefined
+          }
+          initialVariantId={
+            (isReopeningLink
+              ? searchTarget === 'add'
+                ? linkedVariantId
+                : editLinkedVariantId
+              : null) ?? undefined
+          }
+        />
+      )}
+
       <FoodSearchDialog
         open={searchDialogOpen}
         onOpenChange={setSearchDialogOpen}

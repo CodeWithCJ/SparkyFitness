@@ -18,6 +18,7 @@ import {
   useDeleteWaterContainerMutation,
   useMealTypes,
 } from '../hooks';
+import { useFoodVariants } from '../hooks/useFoodVariants';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { consumePendingContainerLinkSelection } from '../services/waterContainerLinkSelection';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -26,6 +27,11 @@ import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
 import { parseDecimalInput } from '../utils/numericInput';
 
 type WaterContainerEditScreenProps = RootStackScreenProps<'WaterContainerEdit'>;
+
+// The two kinds of container are measured differently -- one by its own
+// volume, one by the food it holds -- so the form asks for one set of fields
+// or the other, never both.
+type ContainerMode = 'water' | 'food';
 
 interface FormState {
   name: string;
@@ -38,6 +44,8 @@ interface FormState {
   linkedVariantId: string | null;
   linkedFoodName: string | null;
   linkedMealTypeId: string | null;
+  /** In the linked variant's own unit, exactly as the diary asks for it. */
+  linkedQuantity: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -51,6 +59,7 @@ const EMPTY_FORM: FormState = {
   linkedVariantId: null,
   linkedFoodName: null,
   linkedMealTypeId: null,
+  linkedQuantity: '1',
 };
 
 const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
@@ -87,7 +96,16 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
       linkedVariantId: existingContainer.linked_variant_id ?? null,
       linkedFoodName: existingContainer.linked_food_name ?? null,
       linkedMealTypeId: existingContainer.linked_meal_type_id ?? null,
+      linkedQuantity: String(existingContainer.linked_quantity ?? 1),
     };
+  });
+
+  const [mode, setMode] = useState<ContainerMode>(() =>
+    existingContainer?.linked_food_id ? 'food' : 'water'
+  );
+
+  const { variants } = useFoodVariants(form.linkedFoodId ?? '', {
+    enabled: !!form.linkedFoodId,
   });
 
   // Consume a food picked via FoodSearchScreen's 'container-link' mode.
@@ -100,6 +118,7 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
         linkedFoodId: selection.foodId,
         linkedVariantId: selection.variantId,
         linkedFoodName: selection.foodName,
+        linkedQuantity: String(selection.quantity || 1),
       }));
     }, [])
   );
@@ -123,17 +142,31 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
         defaultValue: 'Name is required.',
       });
     }
-    const volume = parseDecimalInput(form.volume);
-    if (!Number.isFinite(volume) || volume <= 0) {
-      return t('waterContainerEdit.errors.volumeInvalid', {
-        defaultValue: 'Volume must be greater than zero.',
-      });
-    }
-    const servings = parseInt(form.servingsPerContainer, 10);
-    if (!Number.isFinite(servings) || servings < 1) {
-      return t('waterContainerEdit.errors.servingsInvalid', {
-        defaultValue: 'Servings per container must be at least 1.',
-      });
+    if (mode === 'food') {
+      if (!form.linkedFoodId) {
+        return t('waterContainerEdit.errors.foodRequired', {
+          defaultValue: 'Pick the food this container holds.',
+        });
+      }
+      const quantity = parseDecimalInput(form.linkedQuantity);
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        return t('waterContainerEdit.errors.quantityInvalid', {
+          defaultValue: 'Quantity must be greater than zero.',
+        });
+      }
+    } else {
+      const volume = parseDecimalInput(form.volume);
+      if (!Number.isFinite(volume) || volume <= 0) {
+        return t('waterContainerEdit.errors.volumeInvalid', {
+          defaultValue: 'Volume must be greater than zero.',
+        });
+      }
+      const servings = parseInt(form.servingsPerContainer, 10);
+      if (!Number.isFinite(servings) || servings < 1) {
+        return t('waterContainerEdit.errors.servingsInvalid', {
+          defaultValue: 'Servings per container must be at least 1.',
+        });
+      }
     }
     const factor = parseDecimalInput(form.hydrationFactor);
     if (!Number.isFinite(factor) || factor < 0 || factor > 2) {
@@ -157,16 +190,22 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
       return;
     }
 
+    const isLinked = mode === 'food';
     const body = {
       name: form.name.trim(),
-      volume: parseDecimalInput(form.volume),
+      // 0 is the server's "no override": a linked container measures the drink
+      // by the food it holds rather than repeating a volume here.
+      volume: isLinked ? 0 : parseDecimalInput(form.volume),
       unit: form.unit,
       is_primary: form.isPrimary,
-      servings_per_container: parseInt(form.servingsPerContainer, 10),
+      servings_per_container: isLinked
+        ? 1
+        : parseInt(form.servingsPerContainer, 10),
       hydration_factor: parseDecimalInput(form.hydrationFactor),
-      linked_food_id: form.linkedFoodId,
-      linked_variant_id: form.linkedVariantId,
-      linked_meal_type_id: form.linkedMealTypeId,
+      linked_food_id: isLinked ? form.linkedFoodId : null,
+      linked_variant_id: isLinked ? form.linkedVariantId : null,
+      linked_meal_type_id: isLinked ? form.linkedMealTypeId : null,
+      linked_quantity: isLinked ? parseDecimalInput(form.linkedQuantity) : 1,
     };
 
     try {
@@ -284,6 +323,31 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
     },
   ];
 
+  const variantOptions = (variants ?? []).map((variant) => ({
+    label: `${variant.serving_size} ${variant.serving_unit}`,
+    value: variant.id,
+  }));
+
+  const selectMode = (next: ContainerMode) => {
+    setMode(next);
+    setForm((current) =>
+      next === 'water'
+        ? {
+            // Leaving the drink tab drops the link, so a container cannot keep
+            // a food the visible form no longer shows.
+            ...current,
+            linkedFoodId: null,
+            linkedVariantId: null,
+            linkedFoodName: null,
+            linkedMealTypeId: null,
+            linkedQuantity: '1',
+          }
+        : // Volume and servings belong to the water tab; a linked container
+          // takes both from the food.
+          { ...current, volume: '', servingsPerContainer: '1' }
+    );
+  };
+
   const mealTypeOptions = [
     {
       label: t('waterContainerEdit.noMealType', {
@@ -310,6 +374,33 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
         }}
         keyboardShouldPersistTaps="handled"
       >
+        <View className="flex-row bg-surface rounded-xl p-1 mb-4">
+          {(['water', 'food'] as const).map((option) => (
+            <Pressable
+              key={option}
+              accessibilityRole="button"
+              accessibilityState={{ selected: mode === option }}
+              onPress={() => selectMode(option)}
+              className={`flex-1 py-2 rounded-lg ${
+                mode === option ? 'bg-background' : ''
+              }`}
+              style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+            >
+              <Text
+                className={`text-center text-sm font-semibold ${
+                  mode === option ? 'text-text-primary' : 'text-text-muted'
+                }`}
+              >
+                {option === 'water'
+                  ? t('waterContainerEdit.tabWater', { defaultValue: 'Water' })
+                  : t('waterContainerEdit.tabDrink', {
+                      defaultValue: 'Drink (linked food)',
+                    })}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
         <Text className="text-sm font-semibold text-text-secondary mb-1.5">
           {t('waterContainerEdit.name', { defaultValue: 'Name' })}
         </Text>
@@ -321,44 +412,50 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
           onChangeText={(value) => updateField('name', value)}
         />
 
-        <View className="flex-row gap-3 mt-4">
-          <View className="flex-1">
-            <Text className="text-sm font-semibold text-text-secondary mb-1.5">
-              {t('waterContainerEdit.volume', { defaultValue: 'Volume' })}
+        {mode === 'water' ? (
+          <>
+            <View className="flex-row gap-3 mt-4">
+              <View className="flex-1">
+                <Text className="text-sm font-semibold text-text-secondary mb-1.5">
+                  {t('waterContainerEdit.volume', { defaultValue: 'Volume' })}
+                </Text>
+                <FormInput
+                  value={form.volume}
+                  keyboardType="decimal-pad"
+                  placeholder="500"
+                  onChangeText={(value) => updateField('volume', value)}
+                />
+              </View>
+              <View className="w-24">
+                <Text className="text-sm font-semibold text-text-secondary mb-1.5">
+                  {t('waterContainerEdit.unit', { defaultValue: 'Unit' })}
+                </Text>
+                <BottomSheetPicker
+                  value={form.unit}
+                  options={unitOptions}
+                  onSelect={(value) =>
+                    updateField('unit', value as FormState['unit'])
+                  }
+                  title={t('waterContainerEdit.unit', { defaultValue: 'Unit' })}
+                />
+              </View>
+            </View>
+
+            <Text className="text-sm font-semibold text-text-secondary mb-1.5 mt-4">
+              {t('waterContainerEdit.servingsPerContainer', {
+                defaultValue: 'Servings per container',
+              })}
             </Text>
             <FormInput
-              value={form.volume}
-              keyboardType="decimal-pad"
-              placeholder="500"
-              onChangeText={(value) => updateField('volume', value)}
-            />
-          </View>
-          <View className="w-24">
-            <Text className="text-sm font-semibold text-text-secondary mb-1.5">
-              {t('waterContainerEdit.unit', { defaultValue: 'Unit' })}
-            </Text>
-            <BottomSheetPicker
-              value={form.unit}
-              options={unitOptions}
-              onSelect={(value) =>
-                updateField('unit', value as FormState['unit'])
+              value={form.servingsPerContainer}
+              keyboardType="number-pad"
+              placeholder="1"
+              onChangeText={(value) =>
+                updateField('servingsPerContainer', value)
               }
-              title={t('waterContainerEdit.unit', { defaultValue: 'Unit' })}
             />
-          </View>
-        </View>
-
-        <Text className="text-sm font-semibold text-text-secondary mb-1.5 mt-4">
-          {t('waterContainerEdit.servingsPerContainer', {
-            defaultValue: 'Servings per container',
-          })}
-        </Text>
-        <FormInput
-          value={form.servingsPerContainer}
-          keyboardType="number-pad"
-          placeholder="1"
-          onChangeText={(value) => updateField('servingsPerContainer', value)}
-        />
+          </>
+        ) : null}
 
         <View className="flex-row items-center justify-between mt-4">
           <Text className="text-sm font-semibold text-text-secondary">
@@ -390,68 +487,119 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
           })}
         </Text>
 
-        <Text className="text-sm font-semibold text-text-secondary mb-1.5 mt-5">
-          {t('waterContainerEdit.linkedFood', {
-            defaultValue: 'Linked food',
-          })}
-        </Text>
-        <View className="bg-surface rounded-xl overflow-hidden shadow-sm">
-          <View className="flex-row items-center justify-between px-4 py-3">
-            <Pressable
-              accessibilityRole="button"
-              onPress={() =>
-                navigation.navigate('FoodSearch', {
-                  pickerMode: 'container-link',
-                })
-              }
-              className="flex-1 mr-3"
-              style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
-            >
-              <Text className="text-base text-text-primary">
-                {form.linkedFoodName ??
-                  t('waterContainerEdit.selectFood', {
-                    defaultValue: 'Select a food (optional)',
-                  })}
-              </Text>
-            </Pressable>
-            {form.linkedFoodId ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t('waterContainerEdit.unlinkFood', {
-                  defaultValue: 'Unlink food',
-                })}
-                onPress={() => {
-                  updateField('linkedFoodId', null);
-                  updateField('linkedVariantId', null);
-                  updateField('linkedFoodName', null);
-                }}
-                style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
-              >
-                <Icon name="close" size={20} color="#dc2626" />
-              </Pressable>
-            ) : (
-              <Icon name="chevron-forward" size={20} color="#999" />
-            )}
-          </View>
-        </View>
-
-        {form.linkedFoodId ? (
+        {mode === 'food' ? (
           <>
-            <Text className="text-sm font-semibold text-text-secondary mb-1.5 mt-4">
-              {t('waterContainerEdit.linkedMealType', {
-                defaultValue: 'Meal type',
+            <Text className="text-sm font-semibold text-text-secondary mb-1.5 mt-5">
+              {t('waterContainerEdit.linkedFood', {
+                defaultValue: 'Linked food',
               })}
             </Text>
-            <BottomSheetPicker
-              value={form.linkedMealTypeId ?? ''}
-              options={mealTypeOptions}
-              onSelect={(value) =>
-                updateField('linkedMealTypeId', value === '' ? null : value)
-              }
-              title={t('waterContainerEdit.linkedMealType', {
-                defaultValue: 'Meal type',
-              })}
-            />
+            <View className="bg-surface rounded-xl overflow-hidden shadow-sm">
+              <View className="flex-row items-center justify-between px-4 py-3">
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() =>
+                    navigation.navigate('FoodSearch', {
+                      pickerMode: 'container-link',
+                    })
+                  }
+                  className="flex-1 mr-3"
+                  style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+                >
+                  <Text className="text-base text-text-primary">
+                    {form.linkedFoodName ??
+                      t('waterContainerEdit.selectFood', {
+                        defaultValue: 'Select a food (optional)',
+                      })}
+                  </Text>
+                </Pressable>
+                {form.linkedFoodId ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('waterContainerEdit.unlinkFood', {
+                      defaultValue: 'Unlink food',
+                    })}
+                    onPress={() => {
+                      updateField('linkedFoodId', null);
+                      updateField('linkedVariantId', null);
+                      updateField('linkedFoodName', null);
+                    }}
+                    style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+                  >
+                    <Icon name="close" size={20} color="#dc2626" />
+                  </Pressable>
+                ) : (
+                  <Icon name="chevron-forward" size={20} color="#999" />
+                )}
+              </View>
+            </View>
+
+            {form.linkedFoodId ? (
+              <>
+                <View className="flex-row gap-3 mt-4">
+                  <View className="flex-1">
+                    <Text className="text-sm font-semibold text-text-secondary mb-1.5">
+                      {t('waterContainerEdit.quantity', {
+                        defaultValue: 'Quantity',
+                      })}
+                    </Text>
+                    <FormInput
+                      value={form.linkedQuantity}
+                      keyboardType="decimal-pad"
+                      placeholder="1"
+                      onChangeText={(value) =>
+                        updateField('linkedQuantity', value)
+                      }
+                    />
+                  </View>
+                  {variantOptions.length > 0 ? (
+                    <View className="flex-1">
+                      <Text className="text-sm font-semibold text-text-secondary mb-1.5">
+                        {t('waterContainerEdit.unit', { defaultValue: 'Unit' })}
+                      </Text>
+                      <BottomSheetPicker
+                        value={form.linkedVariantId ?? ''}
+                        options={variantOptions}
+                        onSelect={(value) => {
+                          const picked = (variants ?? []).find(
+                            (variant) => variant.id === value
+                          );
+                          setForm((current) => ({
+                            ...current,
+                            linkedVariantId: value,
+                            // The amount is in the variant's unit, so switching
+                            // variants must re-base it or the number silently
+                            // changes meaning.
+                            linkedQuantity: String(
+                              Number(picked?.serving_size) || 1
+                            ),
+                          }));
+                        }}
+                        title={t('waterContainerEdit.unit', {
+                          defaultValue: 'Unit',
+                        })}
+                      />
+                    </View>
+                  ) : null}
+                </View>
+
+                <Text className="text-sm font-semibold text-text-secondary mb-1.5 mt-4">
+                  {t('waterContainerEdit.linkedMealType', {
+                    defaultValue: 'Meal type',
+                  })}
+                </Text>
+                <BottomSheetPicker
+                  value={form.linkedMealTypeId ?? ''}
+                  options={mealTypeOptions}
+                  onSelect={(value) =>
+                    updateField('linkedMealTypeId', value === '' ? null : value)
+                  }
+                  title={t('waterContainerEdit.linkedMealType', {
+                    defaultValue: 'Meal type',
+                  })}
+                />
+              </>
+            ) : null}
           </>
         ) : null}
 
