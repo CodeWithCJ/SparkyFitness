@@ -5490,7 +5490,7 @@
     "selectMealType": "Meal Category",
     "selectMealTypePlaceholder": "Select meal category (optional)",
     "hydrationFactor": "Hydration Factor",
-    "hydrationFactorHelp": "Scales water credit (e.g., 0.9 for coffee/tea, 1.0 for standard water). Full calories/macros are logged.",
+    "hydrationFactorHelp": "Scales the water credit only: 1 for water, about 0.9 for coffee or tea, 0 for a drink that should count as no water at all. Calories, caffeine and alcohol always count in full.",
     "editContainer": "Edit Container",
     "saveChanges": "Save Changes",
     "cancel": "Cancel",
@@ -5502,7 +5502,8 @@
     "linkFoodRequired": "Link a food first",
     "linkFoodRequiredHint": "A drink container logs a food, so pick the one this container holds.",
     "perPress": "One press logs",
-    "changeQuantity": "Change quantity/unit"
+    "changeQuantity": "Change quantity/unit",
+    "hydrationFactorExample": "At {{factor}}, one press adds {{credited}} {{unit}} to your water ring out of the drink’s {{total}} {{unit}}. Calories, caffeine and alcohol always count in full."
   },
   "homeFasting": {
     "startNew": "Start a New Fast",

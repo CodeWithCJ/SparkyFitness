@@ -39,6 +39,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import FoodSearchDialog from '@/components/FoodSearch/FoodSearchDialog';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
+import {
+  linkedHydrationExample,
+  plainHydrationExample,
+} from '@workspace/shared';
 import type { Food, FoodVariant } from '@/types/food';
 import type { Meal } from '@/types/meal';
 import type { WaterContainer } from '@/types/settings';
@@ -165,6 +169,51 @@ const WaterContainerManager: React.FC = () => {
     searchTarget === 'add' ? linkedFood : editLinkedFood;
   const isReopeningLink =
     !!unitSelectorFood && unitSelectorFood.id === unitSelectorTarget?.id;
+
+  // "0.9" says nothing about what a press will do, so show the numbers for the
+  // container in front of the user and fall back to the generic examples only
+  // when there is nothing to compute from yet.
+  const renderHydrationHelp = (
+    factor: number,
+    variants: FoodVariant[],
+    variantId: string | null,
+    quantity: number | '',
+    linked: boolean,
+    containerVolume: number | '',
+    containerServings: number | '',
+    containerUnit: string
+  ) => {
+    const variant = variants.find((v) => v.id === variantId);
+    const example = linked
+      ? linkedHydrationExample(factor, {
+          waterMl: variant?.water_ml,
+          servingSize: variant?.serving_size,
+          quantity,
+        })
+      : plainHydrationExample(factor, {
+          volume: containerVolume,
+          servings: containerServings,
+          unit: containerUnit,
+        });
+
+    return (
+      <p className="text-[11px] text-muted-foreground">
+        {example
+          ? t('waterContainerManager.hydrationFactorExample', {
+              defaultValue:
+                'At {{factor}}, one press adds {{credited}} {{unit}} to your water ring out of the drink’s {{total}} {{unit}}. Calories, caffeine and alcohol always count in full.',
+              factor,
+              credited: example.credited,
+              total: example.total,
+              unit: example.unit,
+            })
+          : t('waterContainerManager.hydrationFactorHelp', {
+              defaultValue:
+                'Scales the water credit only: 1 for water, about 0.9 for coffee or tea, 0 for a drink that should count as no water at all. Calories, caffeine and alcohol always count in full.',
+            })}
+      </p>
+    );
+  };
 
   const handleUnitSelected = (
     food: Food,
@@ -641,12 +690,16 @@ const WaterContainerManager: React.FC = () => {
                   value={hydrationFactor}
                   onChange={(e) => setHydrationFactor(Number(e.target.value))}
                 />
-                <p className="text-[11px] text-muted-foreground">
-                  {t(
-                    'waterContainerManager.hydrationFactorHelp',
-                    'Scales water credit (e.g., 0.9 for coffee/tea, 1.0 for standard water). Full calories/macros are logged.'
-                  )}
-                </p>
+                {renderHydrationHelp(
+                  hydrationFactor,
+                  foodVariants,
+                  linkedVariantId,
+                  linkedQuantity,
+                  addMode === 'food',
+                  volume,
+                  servingsPerContainer,
+                  unit
+                )}
               </div>
 
               {addMode === 'food' && (
@@ -1087,6 +1140,16 @@ const WaterContainerManager: React.FC = () => {
                     setEditHydrationFactor(Number(e.target.value))
                   }
                 />
+                {renderHydrationHelp(
+                  editHydrationFactor,
+                  editFoodVariants,
+                  editLinkedVariantId,
+                  editLinkedQuantity,
+                  !!editLinkedFood,
+                  editVolume,
+                  editServings,
+                  editUnit
+                )}
               </div>
             </div>
 

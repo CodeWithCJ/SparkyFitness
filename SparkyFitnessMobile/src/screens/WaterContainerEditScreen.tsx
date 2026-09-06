@@ -19,6 +19,10 @@ import {
   useMealTypes,
 } from '../hooks';
 import { useFoodVariants } from '../hooks/useFoodVariants';
+import {
+  linkedHydrationExample,
+  plainHydrationExample,
+} from '@workspace/shared';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { consumePendingContainerLinkSelection } from '../services/waterContainerLinkSelection';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -323,6 +327,26 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
     },
   ];
 
+  // "0.9" says nothing about what a press will do, so show the numbers for the
+  // container in front of the user; the generic examples stand in only while
+  // there is nothing to compute from.
+  const factor = parseDecimalInput(form.hydrationFactor);
+  const linkedVariant = (variants ?? []).find(
+    (variant) => variant.id === form.linkedVariantId
+  );
+  const hydrationExample =
+    mode === 'food'
+      ? linkedHydrationExample(factor, {
+          waterMl: linkedVariant?.water_ml,
+          servingSize: linkedVariant?.serving_size,
+          quantity: parseDecimalInput(form.linkedQuantity),
+        })
+      : plainHydrationExample(factor, {
+          volume: parseDecimalInput(form.volume),
+          servings: parseInt(form.servingsPerContainer, 10),
+          unit: form.unit,
+        });
+
   const variantOptions = (variants ?? []).map((variant) => ({
     label: `${variant.serving_size} ${variant.serving_unit}`,
     value: variant.id,
@@ -481,9 +505,24 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
           onChangeText={(value) => updateField('hydrationFactor', value)}
         />
         <Text className="text-xs text-text-muted mt-1">
-          {t('waterContainerEdit.hydrationFactorHint', {
+          {hydrationExample
+            ? t('waterContainerEdit.hydrationFactorExample', {
+                defaultValue:
+                  'At {{factor}}, one press adds {{credited}} {{unit}} to your water ring out of the drink\u2019s {{total}} {{unit}}. Calories, caffeine and alcohol always count in full.',
+                factor,
+                credited: hydrationExample.credited,
+                total: hydrationExample.total,
+                unit: hydrationExample.unit,
+              })
+            : t('waterContainerEdit.hydrationFactorHint', {
+                defaultValue:
+                  'Scales the water credit only: 1 for water, about 0.9 for coffee or tea, 0 for a drink that should count as no water at all. Calories, caffeine and alcohol always count in full.',
+              })}
+        </Text>
+        <Text className="text-xs text-text-muted mt-1">
+          {t('waterContainerEdit.hydrationFactorApplies', {
             defaultValue:
-              "0-2. Scales only the water credit; a linked food's calories, macros, caffeine and alcohol always count in full. Applies to drinks logged from now on -- past entries keep the factor they were logged with.",
+              'Applies to drinks logged from now on -- past entries keep the factor they were logged with.',
           })}
         </Text>
 

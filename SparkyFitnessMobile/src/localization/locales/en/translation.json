@@ -4420,7 +4420,7 @@
     "servingsPerContainer": "Servings per container",
     "primary": "Primary container",
     "hydrationFactor": "Hydration factor",
-    "hydrationFactorHint": "0-2. Scales only the water credit; a linked food's calories, macros, caffeine and alcohol always count in full. Applies to drinks logged from now on -- past entries keep the factor they were logged with.",
+    "hydrationFactorHint": "Scales the water credit only: 1 for water, about 0.9 for coffee or tea, 0 for a drink that should count as no water at all. Calories, caffeine and alcohol always count in full.",
     "linkedFood": "Linked food",
     "selectFood": "Select a food (optional)",
     "unlinkFood": "Unlink food",
@@ -4440,7 +4440,9 @@
     },
     "tabWater": "Water",
     "tabDrink": "Drink (linked food)",
-    "quantity": "Quantity"
+    "quantity": "Quantity",
+    "hydrationFactorExample": "At {{factor}}, one press adds {{credited}} {{unit}} to your water ring out of the drink’s {{total}} {{unit}}. Calories, caffeine and alcohol always count in full.",
+    "hydrationFactorApplies": "Applies to drinks logged from now on -- past entries keep the factor they were logged with."
   },
   "activeWorkoutAutosave": {
     "failedTitle": "Workout not saved",
