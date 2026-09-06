@@ -554,8 +554,6 @@ async function upsertWaterIntake(
       // only consulted inside the linked branch below.
       const hasVolumeOverride =
         Number(containerRow?.volume) > 0 && !!containerRow?.linked_food_id;
-      // Local wall-clock "HH:MM" used to place the drink on the meal timeline.
-      const nowClockForEntry = new Date().toTimeString().slice(0, 5);
 
       if (containerRow && containerRow.linked_food_id) {
         linkedFood = await foodRepository.getFoodById(
@@ -584,6 +582,14 @@ async function upsertWaterIntake(
           // all day into the first meal type.
           const mealTypes =
             await mealTypeRepository.getAllMealTypes(authenticatedUserId);
+          // The meal anchors are wall-clock times in the user's own day, so
+          // "now" has to be read in their zone. Taking the server's clock put
+          // a 15:16 drink for a UTC-4 user at 19:16, which lands on dinner.
+          const tz = await loadUserTimezone(authenticatedUserId);
+          const { hour, minute } = instantHourMinute(new Date(), tz);
+          const nowClockForEntry = `${String(hour).padStart(2, '0')}:${String(
+            minute
+          ).padStart(2, '0')}`;
           targetMealTypeId =
             resolveMealTypeIdForTime(mealTypes, nowClockForEntry) ?? null;
         }

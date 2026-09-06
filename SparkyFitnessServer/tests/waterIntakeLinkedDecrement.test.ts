@@ -1,12 +1,16 @@
-import { vi, beforeEach, describe, expect, it } from 'vitest';
+import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import measurementService from '../services/measurementService.js';
 import measurementRepository from '../models/measurementRepository.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
 import foodRepository from '../models/foodRepository.js';
+import mealTypeRepository from '../models/mealType.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
 
 vi.mock('../models/measurementRepository');
 vi.mock('../models/waterContainerRepository');
 vi.mock('../models/foodRepository');
+vi.mock('../models/mealType');
+vi.mock('../utils/timezoneLoader');
 
 describe('Linked Water Container Increment/Decrement (#2115)', () => {
   const mockUserId = 'test-user-123';
@@ -249,6 +253,103 @@ describe('Linked Water Container Increment/Decrement (#2115)', () => {
 
       expect(foodRepository.createFoodEntry).toHaveBeenCalledWith(
         expect.objectContaining({ quantity: 1 }),
+        mockUserId
+      );
+    });
+  });
+
+  // A container with no meal type of its own is placed by the clock, and the
+  // meal anchors are wall-clock times in the user's own day. Reading "now" off
+  // the server put a 15:16 drink for a UTC-4 user at 19:16, which is dinner.
+  describe("upsertWaterIntake - meal type follows the user's clock", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      // 19:16 UTC == 15:16 in New York.
+      vi.setSystemTime(new Date('2026-09-06T19:16:00Z'));
+      // @ts-expect-error TS mock
+      mealTypeRepository.getAllMealTypes.mockResolvedValue([
+        { id: 'breakfast', name: 'Breakfast', default_time: '07:45' },
+        { id: 'lunch', name: 'Lunch', default_time: '12:15' },
+        { id: 'snacks', name: 'Snacks', default_time: '16:00' },
+        { id: 'dinner', name: 'Dinner', default_time: '19:20' },
+      ]);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    function arrangeUntypedContainer() {
+      // @ts-expect-error TS mock
+      waterContainerRepository.getWaterContainerById.mockResolvedValue({
+        id: 11,
+        name: 'Iced Coffee',
+        volume: '0.000',
+        linked_quantity: 1,
+        servings_per_container: 1,
+        hydration_factor: 1,
+        linked_food_id: 'food-uuid-1',
+        linked_variant_id: 'var-uuid-1',
+        linked_meal_type_id: null,
+      });
+      // @ts-expect-error TS mock
+      foodRepository.getFoodById.mockResolvedValue({
+        id: 'food-uuid-1',
+        name: 'Iced Coffee',
+        default_variant: { id: 'var-uuid-1' },
+      });
+      // @ts-expect-error TS mock
+      foodRepository.getFoodVariantById.mockResolvedValue({
+        id: 'var-uuid-1',
+        calories: 5,
+        serving_size: 1,
+        serving_unit: 'cup',
+        water_ml: 200,
+      });
+      // @ts-expect-error TS mock
+      foodRepository.createFoodEntry.mockResolvedValue({ id: 'entry-1' });
+      // @ts-expect-error TS mock
+      measurementRepository.getWaterIntakeByDate.mockResolvedValue({
+        water_ml: 0,
+        manual_ml: 0,
+        food_ml: 0,
+      });
+    }
+
+    it('places the drink by the time it is in the user zone, not on the server', async () => {
+      arrangeUntypedContainer();
+      // @ts-expect-error TS mock
+      loadUserTimezone.mockResolvedValue('America/New_York');
+
+      await measurementService.upsertWaterIntake(
+        mockUserId,
+        mockUserId,
+        entryDate,
+        1,
+        11
+      );
+
+      expect(foodRepository.createFoodEntry).toHaveBeenCalledWith(
+        expect.objectContaining({ meal_type_id: 'snacks' }),
+        mockUserId
+      );
+    });
+
+    it('uses the same instant for a user who really is on UTC', async () => {
+      arrangeUntypedContainer();
+      // @ts-expect-error TS mock
+      loadUserTimezone.mockResolvedValue('UTC');
+
+      await measurementService.upsertWaterIntake(
+        mockUserId,
+        mockUserId,
+        entryDate,
+        1,
+        11
+      );
+
+      expect(foodRepository.createFoodEntry).toHaveBeenCalledWith(
+        expect.objectContaining({ meal_type_id: 'dinner' }),
         mockUserId
       );
     });
