@@ -6,7 +6,6 @@ export const externalProviderKeys = {
 export const openFoodFactsContributionKeys = {
   all: ['openFoodFactsContributions'] as const,
   user: () => [...openFoodFactsContributionKeys.all, 'user'] as const,
-  admin: () => [...openFoodFactsContributionKeys.all, 'admin'] as const,
 };
 
 export const syncedDataKeys = {

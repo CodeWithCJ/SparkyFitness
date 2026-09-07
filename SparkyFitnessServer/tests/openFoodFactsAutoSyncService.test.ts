@@ -9,6 +9,10 @@ vi.mock('../models/openFoodFactsSyncQueueRepository.js');
 vi.mock('../models/preferenceRepository.js');
 vi.mock('../services/openFoodFactsContributionService.js');
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+// Exercise the dormant implementation independently of the release guard.
+vi.mock('../constants/openFoodFacts.js', () => ({
+  OPEN_FOOD_FACTS_AUTOMATIC_SYNC_ENABLED: true,
+}));
 
 const job = {
   foodId: 'food-1',

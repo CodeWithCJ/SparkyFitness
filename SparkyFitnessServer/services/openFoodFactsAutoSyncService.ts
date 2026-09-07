@@ -1,4 +1,5 @@
 import { log } from '../config/logging.js';
+import { OPEN_FOOD_FACTS_AUTOMATIC_SYNC_ENABLED } from '../constants/openFoodFacts.js';
 import openFoodFactsSyncQueueRepository from '../models/openFoodFactsSyncQueueRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import { contributeFoodToOpenFoodFacts } from './openFoodFactsContributionService.js';
@@ -40,16 +41,17 @@ function isPermanentProductError(error: unknown): boolean {
 }
 
 export async function processOpenFoodFactsAutoSyncBatch(): Promise<OpenFoodFactsAutoSyncBatchResult> {
-  await openFoodFactsSyncQueueRepository.enqueueNextBackfillBatch(
-    BACKFILL_BATCH_SIZE
-  );
-
   const result: OpenFoodFactsAutoSyncBatchResult = {
     claimed: 0,
     contributed: 0,
     failed: 0,
     retried: 0,
   };
+  if (!OPEN_FOOD_FACTS_AUTOMATIC_SYNC_ENABLED) return result;
+
+  await openFoodFactsSyncQueueRepository.enqueueNextBackfillBatch(
+    BACKFILL_BATCH_SIZE
+  );
 
   for (let index = 0; index < BATCH_SIZE; index += 1) {
     // Lease only the item that is about to be uploaded. A batch-wide lease can

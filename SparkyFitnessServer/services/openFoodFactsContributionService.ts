@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { OPEN_FOOD_FACTS_AUTOMATIC_SYNC_ENABLED } from '../constants/openFoodFacts.js';
 import { getConversionFactor, getUnitCategory } from '@workspace/shared';
 import pkg from '../package.json' with { type: 'json' };
 import { ENCRYPTION_KEY } from '../security/encryption.js';
@@ -158,7 +159,13 @@ function normalizeAutomaticGtin(value: string | null | undefined): string {
   } else if (code.length === 14 && code.startsWith('0')) {
     normalized = code.slice(1);
   }
-  if (normalized.startsWith('2') || !hasValidGtinChecksum(normalized)) {
+  // UPC-A number-system 2 is retailer-assigned too. Its EAN-13 and
+  // zero-prefixed GTIN-14 representations must not bypass this check.
+  if (
+    normalized.startsWith('2') ||
+    (normalized.length === 13 && normalized.startsWith('02')) ||
+    !hasValidGtinChecksum(normalized)
+  ) {
     throw statusError(
       'A checksum-valid non-internal GTIN barcode is required.',
       400
@@ -248,15 +255,15 @@ function buildProduct(
   };
 }
 
-export async function contributeFoodToOpenFoodFacts(
+export async function getOwnedOpenFoodFactsProduct(
   foodOwnerUserId: string,
   authenticatedUserId: string,
   foodId: string,
-  options: AutomaticContributionOptions
-): Promise<OpenFoodFactsContributionResult> {
+  productLanguage: string
+): Promise<OpenFoodFactsContributionProduct> {
   if (authenticatedUserId !== foodOwnerUserId) {
     throw statusError(
-      'Only the food owner can contribute automatically to Open Food Facts.',
+      'Only the food owner can contribute to Open Food Facts.',
       403
     );
   }
@@ -276,7 +283,27 @@ export async function contributeFoodToOpenFoodFacts(
     throw statusError(UNSUPPORTED_SOURCE_MESSAGE, 400);
   }
 
-  const product = buildProduct(food, options.productLanguage);
+  return buildProduct(food, productLanguage);
+}
+
+export async function contributeFoodToOpenFoodFacts(
+  foodOwnerUserId: string,
+  authenticatedUserId: string,
+  foodId: string,
+  options: AutomaticContributionOptions
+): Promise<OpenFoodFactsContributionResult> {
+  if (!OPEN_FOOD_FACTS_AUTOMATIC_SYNC_ENABLED) {
+    throw statusError(
+      'Automatic Open Food Facts contributions are disabled in this release.',
+      503
+    );
+  }
+  const product = await getOwnedOpenFoodFactsProduct(
+    foodOwnerUserId,
+    authenticatedUserId,
+    foodId,
+    options.productLanguage
+  );
   const provider =
     await externalProviderService.getAutomaticOpenFoodFactsProvider(
       foodOwnerUserId

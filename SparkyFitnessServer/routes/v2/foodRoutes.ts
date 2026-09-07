@@ -1,4 +1,5 @@
 import express, { RequestHandler } from 'express';
+import openFoodFactsContributionRoutes from './openFoodFactsContributionRoutes.js';
 import {
   BarcodeResponseSchema,
   NormalizedFoodSchema,
@@ -42,6 +43,7 @@ import {
 const router = express.Router();
 
 router.use(checkPermissionMiddleware('diary'));
+router.use(openFoodFactsContributionRoutes);
 
 function nullToUndefined<T>(value: T | null | undefined): T | undefined {
   return value === null ? undefined : value;

@@ -19,11 +19,11 @@ jest.mock('react-i18next', () => ({
     t: (key: string, fallback?: string) =>
       ({
         'settings.foodExerciseDataProviders.openFoodFacts.adminTitle':
-          'Open Food Facts automatic contributions',
+          'Open Food Facts contributions',
         'settings.foodExerciseDataProviders.openFoodFacts.serverGateLabel':
-          'Allow automatic Open Food Facts contributions on this server',
+          'Allow Open Food Facts contributions on this server',
         'settings.foodExerciseDataProviders.openFoodFacts.serverGateHelp':
-          'This server switch and the global credentials only make uploads available. They never opt users in; every user must give consent in their own settings.',
+          'This server switch makes manual contributions available. Each user must preview and confirm one product and their own photo before publishing.',
         'settings.foodExerciseDataProviders.openFoodFacts.pending': 'Pending',
         'settings.foodExerciseDataProviders.openFoodFacts.processing':
           'Processing',
@@ -82,7 +82,7 @@ describe('GlobalProviderSettings Open Food Facts gate', () => {
     jest.clearAllMocks();
   });
 
-  it('makes clear that the server gate does not consent for users and shows aggregate status', async () => {
+  it('exposes the manual server gate without requesting dormant queue status', async () => {
     renderWithClient(<GlobalProviderSettings />);
 
     fireEvent.click(
@@ -91,20 +91,22 @@ describe('GlobalProviderSettings Open Food Facts gate', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: 'Open Food Facts automatic contributions',
+        name: 'Open Food Facts contributions',
       })
     ).toBeInTheDocument();
-    expect(screen.getByText(/never opt users in/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/must preview and confirm one product/)
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('switch', {
-        name: 'Allow automatic Open Food Facts contributions on this server',
+        name: 'Allow Open Food Facts contributions on this server',
       })
     ).toHaveAttribute('aria-describedby', 'openfoodfacts-server-gate-help');
-    expect(screen.getByText('Pending 7')).toBeInTheDocument();
-    expect(screen.getByText('Failed 2')).toBeInTheDocument();
-    expect(screen.getByText('Published (succeeded) 11')).toBeInTheDocument();
-    expect(screen.getByText('Authentication failed')).toBeInTheDocument();
-    expect(screen.getByText(/user-7/)).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(apiCall).not.toHaveBeenCalledWith(
+      '/admin/global-settings/openfoodfacts-contributions/status',
+      expect.anything()
+    );
   });
 
   it('updates only the server availability gate', async () => {
@@ -115,7 +117,7 @@ describe('GlobalProviderSettings Open Food Facts gate', () => {
     );
     fireEvent.click(
       await screen.findByRole('switch', {
-        name: 'Allow automatic Open Food Facts contributions on this server',
+        name: 'Allow Open Food Facts contributions on this server',
       })
     );
 

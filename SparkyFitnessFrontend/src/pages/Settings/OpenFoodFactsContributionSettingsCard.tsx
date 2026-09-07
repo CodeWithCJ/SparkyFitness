@@ -12,13 +12,11 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import {
   useOpenFoodFactsContributionSettings,
   useUpdateOpenFoodFactsContributionSettings,
 } from '@/hooks/Settings/useOpenFoodFactsContributions';
 import type { OpenFoodFactsAutomaticSyncResponse } from '@workspace/shared';
-import { OpenFoodFactsContributionStatus } from './OpenFoodFactsContributionStatus';
 
 const PRODUCT_LANGUAGE_PATTERN = /^[a-z]{2}$/;
 
@@ -55,22 +53,10 @@ const OpenFoodFactsContributionSettingsContent = ({
   const languageIsValid = PRODUCT_LANGUAGE_PATTERN.test(productLanguage);
   const settingsControlsDisabled =
     !settings.serverEnabled || !hasAccount || isPending;
-  const consentDisabled =
-    isPending ||
-    (!settings.userEnabled &&
-      (!languageIsValid || !settings.serverEnabled || !hasAccount));
-  const consentDescription = `openfoodfacts-consent-warning openfoodfacts-account-status${
-    settings.serverEnabled ? '' : ' openfoodfacts-server-disabled'
-  }`;
-  const saveConsent = (enabled: boolean) => {
-    const language = enabled ? productLanguage : settings.productLanguage;
-    if (!PRODUCT_LANGUAGE_PATTERN.test(language)) return;
-    updateSettings({ enabled, productLanguage: language });
-  };
   const saveLanguage = () => {
     if (!languageIsValid) return;
     updateSettings({
-      enabled: settings.userEnabled,
+      enabled: false,
       productLanguage,
     });
   };
@@ -124,13 +110,13 @@ const OpenFoodFactsContributionSettingsContent = ({
             <p>
               {t(
                 'settings.foodExerciseDataProviders.openFoodFacts.personalConsentWarning',
-                'When enabled, qualifying products that you entered from physical packaging are uploaded after you add or edit them. Products imported from Open Food Facts or other providers are never uploaded. Existing eligible products are queued once as an initial backfill.'
+                'Contribute one product at a time from your custom food form or food menu. Choose your own packaging photo, review the exact preview, then confirm publication. Saving a food or these settings does not upload anything.'
               )}
             </p>
             <p>
               {t(
                 'settings.foodExerciseDataProviders.openFoodFacts.sharedDataWarning',
-                'Open Food Facts publishes structured product data under the ODbL and Database Contents License and images under CC BY-SA. SparkyFitness never uploads images automatically.'
+                'Only data you entered from physical packaging is eligible. Open Food Facts publishes structured data under the ODbL and Database Contents License and your own photos under CC BY-SA. Each contribution requires separate data and photo rights confirmations.'
               )}{' '}
               <a
                 href="https://world.openfoodfacts.org/terms-of-use"
@@ -167,26 +153,10 @@ const OpenFoodFactsContributionSettingsContent = ({
           >
             {t(
               'settings.foodExerciseDataProviders.openFoodFacts.serverDisabled',
-              'Automatic contributions are disabled by this server administrator.'
+              'Open Food Facts contributions are disabled by this server administrator.'
             )}
           </p>
         )}
-
-        <div className="flex items-center justify-between gap-4">
-          <Label htmlFor="openfoodfacts-auto-contribute">
-            {t(
-              'settings.foodExerciseDataProviders.openFoodFacts.automaticContributionsLabel',
-              'Automatically contribute eligible products'
-            )}
-          </Label>
-          <Switch
-            id="openfoodfacts-auto-contribute"
-            checked={settings.userEnabled}
-            disabled={consentDisabled}
-            onCheckedChange={saveConsent}
-            aria-describedby={consentDescription}
-          />
-        </div>
 
         <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
           <div className="space-y-2">
@@ -240,11 +210,6 @@ const OpenFoodFactsContributionSettingsContent = ({
             )}
           </Button>
         </div>
-
-        <OpenFoodFactsContributionStatus
-          status={settings.status}
-          recentFailures={settings.recentFailures}
-        />
       </CardContent>
     </Card>
   );

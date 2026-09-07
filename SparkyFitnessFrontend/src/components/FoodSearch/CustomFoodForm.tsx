@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -26,6 +26,9 @@ import { deriveSavedAiUnits } from '@/utils/foodAiUnits';
 import { getConversionFactor } from '@workspace/shared';
 import { FoodImagePicker } from './FoodImagePicker';
 import { resolveFoodImageSrc } from '@/utils/foodImages';
+import { useOpenFoodFactsContributionAvailability } from '@/hooks/Foods/useOpenFoodFactsContribution';
+import { isOpenFoodFactsContributionCandidate } from '@/utils/openFoodFactsContribution';
+import OpenFoodFactsContributionDialog from '@/pages/Foods/OpenFoodFactsContributionDialog';
 
 interface CustomFoodFormProps {
   onSave: (foodData: Food) => void;
@@ -50,6 +53,13 @@ const CustomFoodForm = ({
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
   const { data: customNutrients } = useCustomNutrients();
+  const { available: contributionsAvailable, userId: contributionUserId } =
+    useOpenFoodFactsContributionAvailability();
+  const [contributionFood, setContributionFood] = useState<Food | null>(null);
+  const previewAfterSave = useRef(false);
+  const canOfferContribution =
+    contributionsAvailable &&
+    (!food || isOpenFoodFactsContributionCandidate(food, contributionUserId));
 
   // AI gate for the per-row Convert-with-AI button: admin allows user AI
   // config + active AI service exists + per-user preference is on. Re-checked
@@ -92,7 +102,18 @@ const CustomFoodForm = ({
   } = useCustomFoodForm({
     food,
     initialVariants,
-    onSave,
+    onSave: (savedFood) => {
+      if (
+        previewAfterSave.current &&
+        contributionsAvailable &&
+        isOpenFoodFactsContributionCandidate(savedFood, contributionUserId)
+      ) {
+        setContributionFood(savedFood);
+      } else {
+        onSave(savedFood);
+      }
+      previewAfterSave.current = false;
+    },
     aiEstimatesAvailable,
   });
 
@@ -194,7 +215,17 @@ const CustomFoodForm = ({
           </div>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form
+            onSubmit={(event) => {
+              const submitter = (event.nativeEvent as SubmitEvent).submitter;
+              previewAfterSave.current =
+                canOfferContribution &&
+                submitter instanceof HTMLButtonElement &&
+                submitter.value === 'openfoodfacts-preview';
+              void handleSubmit(event);
+            }}
+            className="space-y-6"
+          >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="name">
@@ -409,9 +440,36 @@ const CustomFoodForm = ({
                   ? t('customFoodForm.updateFood', 'Update Food')
                   : t('customFoodForm.addFood', 'Add Food')}
             </Button>
+            {canOfferContribution && (
+              <Button
+                type="submit"
+                value="openfoodfacts-preview"
+                variant="outline"
+                disabled={loading}
+                className="w-full"
+              >
+                {t(
+                  'openFoodFactsContribution.saveAndPreview',
+                  'Save and preview contribution'
+                )}
+              </Button>
+            )}
           </form>
         </CardContent>
       </Card>
+      {contributionFood && (
+        <OpenFoodFactsContributionDialog
+          open
+          food={contributionFood}
+          onOpenChange={(open) => {
+            if (!open) {
+              const savedFood = contributionFood;
+              setContributionFood(null);
+              onSave(savedFood);
+            }
+          }}
+        />
+      )}
       {showSyncConfirmation && (
         <ConfirmationDialog
           open={showSyncConfirmation}

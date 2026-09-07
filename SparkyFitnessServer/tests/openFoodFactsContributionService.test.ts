@@ -1,4 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+// Retain coverage of the dormant automatic implementation for a future release.
+vi.mock('../constants/openFoodFacts.js', () => ({
+  OPEN_FOOD_FACTS_AUTOMATIC_SYNC_ENABLED: true,
+}));
 import foodCoreService from '../services/foodCoreService.js';
 import externalProviderService from '../services/externalProviderService.js';
 import openFoodFactsSyncQueueRepository from '../models/openFoodFactsSyncQueueRepository.js';
@@ -199,7 +203,13 @@ describe('contributeFoodToOpenFoodFacts', () => {
     }
   );
 
-  it.each(['2001234567893', '02001234567893'])(
+  it.each([
+    '2001234567893',
+    '02001234567893',
+    '234567890129',
+    '0234567890129',
+    '00234567890129',
+  ])(
     'rejects a valid-checksum internal prefix-2 barcode after OFF canonicalization (%s)',
     async (barcode) => {
       vi.mocked(foodCoreService.getFoodById).mockResolvedValue({
@@ -296,7 +306,6 @@ describe('contributeFoodToOpenFoodFacts', () => {
     ['123456784', '0000123456784'],
     ['1234567895', '0001234567895'],
     ['12345678905', '0012345678905'],
-    ['234567890129', '0234567890129'],
   ])(
     'left-pads checksum-valid OFF barcode %s to canonical EAN-13 %s',
     async (barcode, expectedBarcode) => {

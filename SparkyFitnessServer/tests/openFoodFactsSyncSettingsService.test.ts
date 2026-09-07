@@ -19,6 +19,10 @@ vi.mock('../services/openFoodFactsAutoSyncScheduler.js', () => ({
   refreshOpenFoodFactsAutoSyncSchedule: vi.fn(),
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+// Exercise the dormant implementation independently of the release guard.
+vi.mock('../constants/openFoodFacts.js', () => ({
+  OPEN_FOOD_FACTS_AUTOMATIC_SYNC_ENABLED: true,
+}));
 
 const USER_ID = 'user-1';
 

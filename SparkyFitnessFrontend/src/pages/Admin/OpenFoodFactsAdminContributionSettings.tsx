@@ -4,14 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
-import { useOpenFoodFactsAdminSyncStatus } from '@/hooks/Settings/useOpenFoodFactsContributions';
-import { OpenFoodFactsContributionStatus } from '@/pages/Settings/OpenFoodFactsContributionStatus';
 
 export const OpenFoodFactsAdminContributionSettings = () => {
   const { t } = useTranslation();
   const { data: settings, isLoading: settingsLoading } = useSettings();
   const { mutate: updateSettings, isPending } = useUpdateSettings();
-  const { data: syncStatus } = useOpenFoodFactsAdminSyncStatus();
 
   if (settingsLoading || !settings) {
     return null;
@@ -31,7 +28,7 @@ export const OpenFoodFactsAdminContributionSettings = () => {
           <ShieldCheck className="h-5 w-5" aria-hidden />
           {t(
             'settings.foodExerciseDataProviders.openFoodFacts.adminTitle',
-            'Open Food Facts automatic contributions'
+            'Open Food Facts contributions'
           )}
         </CardTitle>
       </CardHeader>
@@ -40,7 +37,7 @@ export const OpenFoodFactsAdminContributionSettings = () => {
           <Label htmlFor="allow-openfoodfacts-contributions">
             {t(
               'settings.foodExerciseDataProviders.openFoodFacts.serverGateLabel',
-              'Allow automatic Open Food Facts contributions on this server'
+              'Allow Open Food Facts contributions on this server'
             )}
           </Label>
           <Switch
@@ -58,17 +55,9 @@ export const OpenFoodFactsAdminContributionSettings = () => {
         >
           {t(
             'settings.foodExerciseDataProviders.openFoodFacts.serverGateHelp',
-            'This server switch allows automatic contributions. Global credentials are an optional fallback for users without a personal account. Neither setting opts users in; every user must give consent in their own settings.'
+            'This server switch makes manual contributions available. Each user must preview and confirm one product and their own photo before publishing. Global credentials are an optional fallback for users without a personal account.'
           )}
         </p>
-
-        {syncStatus && (
-          <OpenFoodFactsContributionStatus
-            status={syncStatus.status}
-            recentFailures={syncStatus.recentFailures}
-            showUserId
-          />
-        )}
       </CardContent>
     </Card>
   );
