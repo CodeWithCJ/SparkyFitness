@@ -16,6 +16,10 @@ vi.mock('../services/openFoodFactsAutoSyncService.js', () => ({
   processOpenFoodFactsAutoSyncBatch: vi.fn(),
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+// Exercise the dormant implementation independently of the release guard.
+vi.mock('../constants/openFoodFacts.js', () => ({
+  OPEN_FOOD_FACTS_AUTOMATIC_SYNC_ENABLED: true,
+}));
 
 beforeEach(() => {
   vi.clearAllMocks();

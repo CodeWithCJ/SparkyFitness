@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { log } from '../config/logging.js';
+import { OPEN_FOOD_FACTS_AUTOMATIC_SYNC_ENABLED } from '../constants/openFoodFacts.js';
 import { processOpenFoodFactsAutoSyncBatch } from './openFoodFactsAutoSyncService.js';
 import openFoodFactsSyncQueueRepository from '../models/openFoodFactsSyncQueueRepository.js';
 
@@ -125,10 +126,12 @@ function ensureOpenFoodFactsActivityWatcher(): void {
 }
 
 export async function refreshOpenFoodFactsAutoSyncSchedule(): Promise<void> {
+  if (!OPEN_FOOD_FACTS_AUTOMATIC_SYNC_ENABLED) return;
   await enqueueScheduleReconciliation();
 }
 
 export async function scheduleOpenFoodFactsAutoSyncOnStartup(): Promise<void> {
+  if (!OPEN_FOOD_FACTS_AUTOMATIC_SYNC_ENABLED) return;
   // Every replica keeps this inexpensive DB-backed watcher, even when the
   // processing task is inactive. That lets replicas observe a later enable
   // transition without relying on which instance served the settings request.

@@ -54,7 +54,9 @@ interface OpenFoodFactsWriteResponse {
 interface OpenFoodFactsProductReadResponse {
   status?: number | string;
   product?: {
+    [field: string]: unknown;
     nutrition_data_per?: unknown;
+    rev?: unknown;
   };
 }
 
@@ -221,12 +223,13 @@ function hasSuccessStatus(
   return response?.status === 1 || response?.status === '1';
 }
 
-async function submitPreparedOpenFoodFactsProduct(options: {
+export async function submitPreparedOpenFoodFactsProduct(options: {
   baseUrl: string;
   session: string;
   form: URLSearchParams;
   beforeWrite?: () => Promise<void>;
 }): Promise<{ statusVerbose: string }> {
+  assertSecureOpenFoodFactsWriteBaseUrl(options.baseUrl);
   await options.beforeWrite?.();
 
   return withWriteDeadline(async (signal) => {
@@ -275,14 +278,45 @@ async function submitPreparedOpenFoodFactsProduct(options: {
   });
 }
 
-async function getExistingNutritionBasis(options: {
+export async function getOpenFoodFactsPublicProductState(options: {
   baseUrl: string;
   session: string;
   barcode: string;
+  language: string;
   executeProductRead?: OpenFoodFactsProductReadExecutor;
-}): Promise<OpenFoodFactsNutritionBasis | 'new' | 'unknown'> {
+}): Promise<{
+  basis: OpenFoodFactsNutritionBasis | 'new' | 'unknown';
+  revision: string | null;
+  fields: string;
+}> {
   return withWriteDeadline(async (signal) => {
-    const fields = encodeURIComponent('nutrition_data_per');
+    const publicFields = [
+      `product_name_${contributionLanguage(options.language)}`,
+      'brands',
+      'serving_size',
+      'nutriments',
+    ];
+    const fields = encodeURIComponent(
+      ['nutrition_data_per', 'rev', ...publicFields].join(',')
+    );
+    const structuredFields = (product: Record<string, unknown> | undefined) =>
+      JSON.stringify(
+        publicFields.map((field) => {
+          const value = product?.[field];
+          if (
+            field === 'nutriments' &&
+            typeof value === 'object' &&
+            value !== null &&
+            !Array.isArray(value)
+          ) {
+            const entries = Object.entries(value).sort(([left], [right]) =>
+              left.localeCompare(right)
+            );
+            return entries.length ? entries : null;
+          }
+          return value === undefined || value === '' ? null : value;
+        })
+      );
     const readProduct = () =>
       fetch(
         `${options.baseUrl}/api/v2/product/${encodeURIComponent(
@@ -306,11 +340,14 @@ async function getExistingNutritionBasis(options: {
       await parseJsonResponse<OpenFoodFactsProductReadResponse>(response);
 
     if (
-      response.status === 404 ||
-      result?.status === 0 ||
-      result?.status === '0'
+      (response.ok || response.status === 404) &&
+      (result?.status === 0 || result?.status === '0')
     ) {
-      return 'new';
+      return {
+        basis: 'new',
+        revision: null,
+        fields: structuredFields(undefined),
+      };
     }
     if (!response.ok || !result || !result.product) {
       throw new OpenFoodFactsContributionError(
@@ -319,9 +356,19 @@ async function getExistingNutritionBasis(options: {
     }
 
     const basis = result.product.nutrition_data_per;
-    return basis === 'serving' || basis === '100g' || basis === '100ml'
-      ? basis
-      : 'unknown';
+    const rev = result.product.rev;
+    return {
+      fields: structuredFields(result.product),
+      basis:
+        basis === 'serving' || basis === '100g' || basis === '100ml'
+          ? basis
+          : 'unknown',
+      revision:
+        (typeof rev === 'number' || typeof rev === 'string') &&
+        /^\d+$/.test(String(rev))
+          ? String(rev)
+          : null,
+    };
   });
 }
 
@@ -368,21 +415,43 @@ function prepareProductForExistingBasis(
   return { ...product, nutritionDataPer, nutrients };
 }
 
-export async function submitOpenFoodFactsProduct(
+export async function prepareOpenFoodFactsProduct(
   options: ProductSubmissionOptions
-): Promise<{ statusVerbose: string }> {
+): Promise<{
+  baseUrl: string;
+  form: URLSearchParams;
+  revision: string | null;
+  existingProduct: boolean;
+  publicFields: string;
+  nutritionBasis: OpenFoodFactsNutritionBasis | 'new' | 'unknown';
+}> {
   const baseUrl = assertSecureOpenFoodFactsWriteBaseUrl(options.baseUrl);
-  const existingBasis = await getExistingNutritionBasis({
+  const existingBasis = await getOpenFoodFactsPublicProductState({
     baseUrl,
     session: options.session,
     barcode: options.product.barcode,
+    language: options.product.language,
     executeProductRead: options.executeProductRead,
   });
   const product = prepareProductForExistingBasis(
     options.product,
-    existingBasis
+    existingBasis.basis
   );
   const form = buildOpenFoodFactsProductForm(product, options.attribution);
+  return {
+    baseUrl,
+    form,
+    revision: existingBasis.revision,
+    existingProduct: existingBasis.basis !== 'new',
+    publicFields: existingBasis.fields,
+    nutritionBasis: existingBasis.basis,
+  };
+}
+
+export async function submitOpenFoodFactsProduct(
+  options: ProductSubmissionOptions
+): Promise<{ statusVerbose: string }> {
+  const { baseUrl, form } = await prepareOpenFoodFactsProduct(options);
   try {
     return await submitPreparedOpenFoodFactsProduct({
       baseUrl,
@@ -418,4 +487,63 @@ export async function submitOpenFoodFactsProduct(
       beforeWrite: options.beforeWrite,
     });
   }
+}
+
+export async function submitOpenFoodFactsPhoto(options: {
+  baseUrl: string;
+  session: string;
+  barcode: string;
+  language: string;
+  imageType: 'front' | 'nutrition' | 'packaging';
+  photo: Buffer;
+  attribution: OpenFoodFactsAttribution;
+  beforeWrite: () => Promise<void>;
+}): Promise<void> {
+  const baseUrl = assertSecureOpenFoodFactsWriteBaseUrl(options.baseUrl);
+  const imagefield = `${options.imageType}_${contributionLanguage(options.language)}`;
+  const form = new FormData();
+  form.set('code', options.barcode);
+  form.set('lc', contributionLanguage(options.language));
+  form.set('lang', contributionLanguage(options.language));
+  form.set('imagefield', imagefield);
+  form.set(
+    `imgupload_${imagefield}`,
+    new Blob([new Uint8Array(options.photo)], { type: 'image/jpeg' }),
+    'packaging.jpg'
+  );
+  form.set('app_name', options.attribution.appName);
+  form.set('app_version', options.attribution.appVersion);
+  form.set('app_uuid', options.attribution.appUuid);
+  await options.beforeWrite();
+  await withWriteDeadline(async (signal) => {
+    const response = await fetch(`${baseUrl}/cgi/product_image_upload.pl`, {
+      method: 'POST',
+      headers: {
+        'User-Agent': USER_AGENT,
+        Cookie: `session=${options.session}`,
+        ...openFoodFactsStagingAuthHeaders(baseUrl),
+      },
+      body: form,
+      redirect: 'manual',
+      signal,
+    });
+    const result = await parseJsonResponse<{
+      status?: unknown;
+      imgid?: unknown;
+    }>(response);
+    if (response.status === 401 || response.status === 403) {
+      throw new OpenFoodFactsAuthenticationError(
+        'Open Food Facts rejected the photo upload authentication.'
+      );
+    }
+    if (
+      !response.ok ||
+      result?.status !== 'status ok' ||
+      !/^[1-9]\d*$/.test(String(result.imgid))
+    ) {
+      throw new OpenFoodFactsContributionError(
+        'Open Food Facts did not confirm the photo upload. No structured fields were submitted. Check the product before retrying.'
+      );
+    }
+  });
 }

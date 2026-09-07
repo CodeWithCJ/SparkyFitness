@@ -1,6 +1,8 @@
--- Open Food Facts uploads have two independent consent gates. The administrator
--- enables the feature for the server, while every food owner opts in for their
--- own catalog. Provider rows retain credentials only.
+-- The first release supports explicit, confirmed single-food contributions.
+-- The administrator enables contributions for the server; each public write
+-- requires the food owner's confirmation. Provider rows retain credentials only.
+-- Automatic queue state and functions are retained for a future release, but
+-- enqueue and backfill triggers are deliberately not installed here.
 ALTER TABLE public.external_data_providers
   DROP COLUMN IF EXISTS allow_openfoodfacts_contributions,
   DROP COLUMN IF EXISTS auto_contribute_openfoodfacts;
@@ -9,7 +11,7 @@ ALTER TABLE public.global_settings
   ADD COLUMN IF NOT EXISTS allow_openfoodfacts_contributions BOOLEAN NOT NULL DEFAULT FALSE;
 
 COMMENT ON COLUMN public.global_settings.allow_openfoodfacts_contributions IS
-  'Server-wide gate for automatic Open Food Facts contributions. A food owner must also opt in.';
+  'Server-wide gate for Open Food Facts contributions. Each single-food upload requires owner confirmation.';
 
 ALTER TABLE public.user_preferences
   ADD COLUMN IF NOT EXISTS auto_contribute_openfoodfacts BOOLEAN NOT NULL DEFAULT FALSE,
@@ -24,9 +26,9 @@ ALTER TABLE public.user_preferences
   CHECK (openfoodfacts_product_language ~ '^[a-z]{2}$');
 
 COMMENT ON COLUMN public.user_preferences.auto_contribute_openfoodfacts IS
-  'Food-owner consent for automatic Open Food Facts contributions. The server-wide gate must also be enabled.';
+  'Dormant food-owner preference for a future automatic Open Food Facts contribution release.';
 COMMENT ON COLUMN public.user_preferences.openfoodfacts_backfill_pending IS
-  'Internal cursor flag for bounded catalog backfill after a false-to-true consent transition.';
+  'Dormant internal cursor flag for a future bounded automatic catalog backfill.';
 COMMENT ON COLUMN public.user_preferences.openfoodfacts_product_language IS
   'Two-letter language code printed on the product packaging and used for Open Food Facts product names.';
 
@@ -214,7 +216,8 @@ ALTER TABLE public.openfoodfacts_sync_queue ENABLE ROW LEVEL SECURITY;
 -- Return OFF's canonical representation only for conservative public GTINs.
 -- OFF left-pads 9- through 12-digit codes to GTIN-13 and removes the
 -- zero indicator from GTIN-14 representations of a GTIN-13. Internal
--- variable-measure codes beginning with 2 after canonicalization are excluded.
+-- variable-measure EAN codes beginning with 2 and UPC-A number-system 2 codes
+-- (canonical GTIN-13 prefix 02) are excluded in every padded representation.
 CREATE OR REPLACE FUNCTION public.normalize_openfoodfacts_gtin(raw_code TEXT)
 RETURNS TEXT
 LANGUAGE plpgsql
@@ -239,7 +242,8 @@ BEGIN
     normalized := SUBSTRING(normalized FROM 2);
   END IF;
 
-  IF LEFT(normalized, 1) = '2' THEN
+  IF LEFT(normalized, 1) = '2'
+     OR (CHAR_LENGTH(normalized) = 13 AND LEFT(normalized, 2) = '02') THEN
     RETURN NULL;
   END IF;
 
@@ -338,8 +342,8 @@ BEGIN
 END;
 $function$;
 
--- Remove every trigger shape from the earlier PR revisions before installing
--- the set-based transition-table triggers below.
+-- Remove every trigger shape from earlier unmerged PR revisions. Keep the
+-- automatic functions below, but install only opt-out cleanup in this release.
 DROP TRIGGER IF EXISTS queue_openfoodfacts_food_insert ON public.foods;
 DROP TRIGGER IF EXISTS queue_openfoodfacts_food_update ON public.foods;
 DROP TRIGGER IF EXISTS queue_openfoodfacts_variant_insert ON public.food_variants;
@@ -463,6 +467,9 @@ BEGIN
 END;
 $function$;
 
+-- Future automatic release: install these triggers in a NEW migration.
+-- Uncommenting this already-applied migration will not enable deployed databases.
+/*
 CREATE TRIGGER queue_openfoodfacts_food_update
 AFTER UPDATE ON public.foods
 REFERENCING OLD TABLE AS old_foods NEW TABLE AS new_foods
@@ -486,6 +493,7 @@ AFTER DELETE ON public.food_variants
 REFERENCING OLD TABLE AS old_variants
 FOR EACH STATEMENT
 EXECUTE FUNCTION public.queue_openfoodfacts_variant_deletes();
+*/
 
 -- Database-level transition guards make consent changes safe even when a new
 -- caller bypasses the normal settings service in the future.
@@ -544,6 +552,8 @@ BEGIN
 END;
 $function$;
 
+-- Future automatic release: install these backfill triggers in a NEW migration.
+/*
 CREATE TRIGGER set_openfoodfacts_backfill_on_preference_insert
 BEFORE INSERT ON public.user_preferences
 FOR EACH ROW
@@ -562,6 +572,7 @@ WHEN (
   NEW.allow_openfoodfacts_contributions IS TRUE
 )
 EXECUTE FUNCTION public.set_openfoodfacts_backfill_on_global_enable();
+*/
 
 CREATE TRIGGER cleanup_openfoodfacts_queue_on_opt_out
 AFTER UPDATE OF auto_contribute_openfoodfacts ON public.user_preferences

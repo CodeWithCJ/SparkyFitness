@@ -4,6 +4,7 @@ import type {
   OpenFoodFactsAutomaticSyncResponse,
 } from '@workspace/shared';
 import { log } from '../config/logging.js';
+import { OPEN_FOOD_FACTS_AUTOMATIC_SYNC_ENABLED } from '../constants/openFoodFacts.js';
 import globalSettingsRepository from '../models/globalSettingsRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import openFoodFactsSyncQueueRepository from '../models/openFoodFactsSyncQueueRepository.js';
@@ -36,7 +37,7 @@ export async function getOpenFoodFactsSyncSettings(
 
   return {
     serverEnabled,
-    userEnabled: preferences.enabled,
+    userEnabled: OPEN_FOOD_FACTS_AUTOMATIC_SYNC_ENABLED && preferences.enabled,
     productLanguage: preferences.productLanguage,
     providerScope: provider?.scope ?? null,
     ...queueState,
@@ -47,12 +48,20 @@ export async function updateOpenFoodFactsSyncSettings(
   userId: string,
   input: OpenFoodFactsAutomaticSyncRequest
 ): Promise<OpenFoodFactsAutomaticSyncResponse> {
+  if (input.enabled && !OPEN_FOOD_FACTS_AUTOMATIC_SYNC_ENABLED) {
+    throw Object.assign(
+      new Error('Automatic Open Food Facts contributions are not available.'),
+      { statusCode: 409 }
+    );
+  }
+
   await preferenceRepository.setOpenFoodFactsContributionPreferences(userId, {
     enabled: input.enabled,
     productLanguage: input.productLanguage,
   });
 
-  // Database triggers atomically maintain backfill and opt-out queue state.
+  // The retained automatic implementation uses database backfill triggers
+  // when enabled in a future release. Opt-out cleanup remains active now.
   // Reconcile after every successful save so retrying an already-persisted
   // value repairs a scheduler refresh interrupted by a crash.
   await refreshOpenFoodFactsAutoSyncScheduleBestEffort();
@@ -64,8 +73,8 @@ export async function saveGlobalSettingsWithOpenFoodFactsSync(
   settings: GlobalSettingsInput
 ): Promise<Record<string, unknown>> {
   const saved = await globalSettingsRepository.saveGlobalSettings(settings);
-  // The global-enable backfill transition is committed by the migration
-  // trigger. Always reconcile liveness after the durable save.
+  // The retained automatic scheduler reconciles after the durable save;
+  // its release gate currently makes this a no-op.
   await refreshOpenFoodFactsAutoSyncScheduleBestEffort();
 
   return saved;

@@ -4,7 +4,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 import pg from 'pg';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vitest';
 import { loadSecrets } from '../utils/secretLoader.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -77,6 +85,91 @@ const VALID_OFF_SHORT_CODES = [
 
 interface OriginalGlobalSetting {
   allow_openfoodfacts_contributions: boolean;
+}
+
+async function installDormantAutomaticTriggers(): Promise<void> {
+  const client = await getSystemClient();
+  try {
+    // Test-only fixture for the retained future automatic implementation.
+    // The release migration must not install these triggers.
+    await client.query(`
+      CREATE TRIGGER queue_openfoodfacts_food_update
+      AFTER UPDATE ON public.foods
+      REFERENCING OLD TABLE AS old_foods NEW TABLE AS new_foods
+      FOR EACH STATEMENT
+      EXECUTE FUNCTION public.queue_openfoodfacts_food_updates();
+
+      CREATE TRIGGER queue_openfoodfacts_variant_insert
+      AFTER INSERT ON public.food_variants
+      REFERENCING NEW TABLE AS new_variants
+      FOR EACH STATEMENT
+      EXECUTE FUNCTION public.queue_openfoodfacts_variant_inserts();
+
+      CREATE TRIGGER queue_openfoodfacts_variant_update
+      AFTER UPDATE ON public.food_variants
+      REFERENCING OLD TABLE AS old_variants NEW TABLE AS new_variants
+      FOR EACH STATEMENT
+      EXECUTE FUNCTION public.queue_openfoodfacts_variant_updates();
+
+      CREATE TRIGGER queue_openfoodfacts_variant_delete
+      AFTER DELETE ON public.food_variants
+      REFERENCING OLD TABLE AS old_variants
+      FOR EACH STATEMENT
+      EXECUTE FUNCTION public.queue_openfoodfacts_variant_deletes();
+
+      CREATE TRIGGER set_openfoodfacts_backfill_on_preference_insert
+      BEFORE INSERT ON public.user_preferences
+      FOR EACH ROW
+      EXECUTE FUNCTION public.set_openfoodfacts_backfill_on_preference_insert();
+
+      CREATE TRIGGER set_openfoodfacts_backfill_on_preference_update
+      BEFORE UPDATE OF auto_contribute_openfoodfacts ON public.user_preferences
+      FOR EACH ROW
+      EXECUTE FUNCTION public.set_openfoodfacts_backfill_on_preference_update();
+
+      CREATE TRIGGER set_openfoodfacts_backfill_on_global_enable
+      AFTER UPDATE OF allow_openfoodfacts_contributions ON public.global_settings
+      FOR EACH ROW
+      WHEN (
+        OLD.allow_openfoodfacts_contributions IS FALSE AND
+        NEW.allow_openfoodfacts_contributions IS TRUE
+      )
+      EXECUTE FUNCTION public.set_openfoodfacts_backfill_on_global_enable();
+    `);
+  } finally {
+    client.release();
+  }
+}
+
+async function removeDormantAutomaticTriggers(): Promise<void> {
+  const client = await getSystemClient();
+  try {
+    await client.query(`
+      DROP TRIGGER IF EXISTS queue_openfoodfacts_food_update ON public.foods;
+      DROP TRIGGER IF EXISTS queue_openfoodfacts_variant_insert ON public.food_variants;
+      DROP TRIGGER IF EXISTS queue_openfoodfacts_variant_update ON public.food_variants;
+      DROP TRIGGER IF EXISTS queue_openfoodfacts_variant_delete ON public.food_variants;
+      DROP TRIGGER IF EXISTS set_openfoodfacts_backfill_on_preference_insert ON public.user_preferences;
+      DROP TRIGGER IF EXISTS set_openfoodfacts_backfill_on_preference_update ON public.user_preferences;
+      DROP TRIGGER IF EXISTS set_openfoodfacts_backfill_on_global_enable ON public.global_settings;
+    `);
+  } finally {
+    client.release();
+  }
+}
+
+async function backfillPending(): Promise<boolean> {
+  const client = await getSystemClient();
+  try {
+    const result = await client.query(
+      `SELECT openfoodfacts_backfill_pending AS pending
+         FROM public.user_preferences WHERE user_id = $1`,
+      [USER_ID]
+    );
+    return (result.rows as Array<{ pending: boolean }>)[0]!.pending;
+  } finally {
+    client.release();
+  }
 }
 
 async function clearFixtures(): Promise<void> {
@@ -234,6 +327,15 @@ describe.runIf(RUN)('Open Food Facts automatic sync database behavior', () => {
   beforeAll(async () => {
     const client = await getSystemClient();
     try {
+      await client.query(
+        await readFile(
+          path.resolve(
+            here,
+            '../db/migrations/20260901103000_add_openfoodfacts_automatic_sync.sql'
+          ),
+          'utf8'
+        )
+      );
       const originalSettingResult = await client.query(
         `SELECT allow_openfoodfacts_contributions
            FROM public.global_settings
@@ -263,6 +365,17 @@ describe.runIf(RUN)('Open Food Facts automatic sync database behavior', () => {
     await clearFixtures();
     await setServerConsent(false);
     await setUserConsent(false);
+    const client = await getSystemClient();
+    try {
+      await client.query(
+        `UPDATE public.user_preferences
+            SET openfoodfacts_backfill_pending = FALSE
+          WHERE user_id = $1`,
+        [USER_ID]
+      );
+    } finally {
+      client.release();
+    }
     await resetProductReadRateLimitIfPresent();
   });
 
@@ -285,462 +398,639 @@ describe.runIf(RUN)('Open Food Facts automatic sync database behavior', () => {
     await endPool();
   });
 
-  it('requires independent server and food-owner consent before a trigger queues work', async () => {
-    await setServerConsent(true);
-    await insertFood({ id: FOOD_IDS[0] });
-    expect(await queuedRows()).toEqual([]);
+  describe('shipped manual-contribution migration', () => {
+    it('does not enqueue a newly created eligible food with both persisted gates enabled', async () => {
+      await setServerConsent(true);
+      await setUserConsent(true);
 
-    await clearFixtures();
-    await setServerConsent(false);
-    await setUserConsent(true);
-    await insertFood({ id: FOOD_IDS[1] });
-    expect(await queuedRows()).toEqual([]);
+      await insertFood({ id: FOOD_IDS[0] });
 
-    await clearFixtures();
-    await setServerConsent(true);
-    await insertFood({ id: FOOD_IDS[2] });
-    expect((await queuedRows()).map((row) => row.food_id)).toEqual([
-      FOOD_IDS[2],
-    ]);
-  });
-
-  it('queues only locally created products and rejects imported provenance even if ownership says custom', async () => {
-    await setServerConsent(true);
-    await setUserConsent(true);
-
-    await insertFood({ id: FOOD_IDS[0], providerType: null });
-    await insertFood({ id: FOOD_IDS[1], providerType: 'custom' });
-    await insertFood({ id: FOOD_IDS[2], providerType: 'fatsecret' });
-    await insertFood({ id: FOOD_IDS[3], providerType: 'openfoodfacts' });
-
-    expect((await queuedRows()).map((row) => row.food_id)).toEqual([
-      FOOD_IDS[0],
-      FOOD_IDS[1],
-    ]);
-  });
-
-  it('requires a checksum-valid public GTIN and a metric-convertible default serving', async () => {
-    await setServerConsent(true);
-    await setUserConsent(true);
-
-    await insertFood({ id: FOOD_IDS[0], barcode: '4006381333932' });
-    await insertFood({ id: FOOD_IDS[1], barcode: '2001234567893' });
-    await insertFood({ id: FOOD_IDS[2], servingUnit: 'scoop' });
-    await insertFood({ id: FOOD_IDS[4], barcode: '00000000' });
-    await insertFood({ id: FOOD_IDS[5], barcode: VALID_OFF_SHORT_CODES[0] });
-    await insertFood({ id: FOOD_IDS[6], barcode: VALID_OFF_SHORT_CODES[1] });
-    await insertFood({ id: FOOD_IDS[7], barcode: VALID_OFF_SHORT_CODES[2] });
-    await insertFood({ id: FOOD_IDS[8], barcode: VALID_LEADING_ZERO_GTIN_14 });
-    await insertFood({
-      id: FOOD_IDS[9],
-      barcode: INTERNAL_LEADING_ZERO_GTIN_14,
-    });
-    await insertFood({ id: FOOD_IDS[10], barcode: VALID_NONZERO_GTIN_14 });
-    await insertFood({
-      id: FOOD_IDS[3],
-      barcode: VALID_UPC_A,
-      servingUnit: 'kg',
+      expect(await queuedRows()).toEqual([]);
     });
 
-    expect((await queuedRows()).map((row) => row.food_id)).toEqual([
-      FOOD_IDS[3],
-      FOOD_IDS[5],
-      FOOD_IDS[6],
-      FOOD_IDS[7],
-      FOOD_IDS[8],
-      FOOD_IDS[10],
-    ]);
+    it('does not enqueue food edits with both persisted gates enabled', async () => {
+      await setServerConsent(true);
+      await setUserConsent(true);
+      await insertFood({ id: FOOD_IDS[0] });
+      const client = await getSystemClient();
+      try {
+        await client.query(
+          'DELETE FROM public.openfoodfacts_sync_queue WHERE food_id = $1',
+          [FOOD_IDS[0]]
+        );
+        await client.query(
+          "UPDATE public.foods SET name = 'Edited packaging name' WHERE id = $1",
+          [FOOD_IDS[0]]
+        );
+      } finally {
+        client.release();
+      }
 
-    const client = await getSystemClient();
-    try {
-      await expect(
-        client.query(
-          'SELECT public.normalize_openfoodfacts_gtin($1) AS normalized',
-          [VALID_UPC_A]
-        )
-      ).resolves.toMatchObject({
-        rows: [{ normalized: `0${VALID_UPC_A}` }],
+      expect(await queuedRows()).toEqual([]);
+    });
+
+    it.each(['insert', 'update', 'make-default'] as const)(
+      'does not enqueue a default variant %s with both persisted gates enabled',
+      async (operation) => {
+        await setServerConsent(true);
+        await setUserConsent(true);
+        const variantId = await insertFood({
+          id: FOOD_IDS[0],
+          isDefault: operation === 'update',
+        });
+        const client = await getSystemClient();
+        try {
+          await client.query(
+            'DELETE FROM public.openfoodfacts_sync_queue WHERE food_id = $1',
+            [FOOD_IDS[0]]
+          );
+          if (operation === 'insert') {
+            await client.query(
+              `INSERT INTO public.food_variants
+                 (food_id, serving_size, serving_unit, calories, is_default)
+               VALUES ($1, 100, 'g', 250, true)`,
+              [FOOD_IDS[0]]
+            );
+          } else if (operation === 'update') {
+            await client.query(
+              'UPDATE public.food_variants SET calories = 251 WHERE id = $1',
+              [variantId]
+            );
+          } else {
+            await client.query(
+              'UPDATE public.food_variants SET is_default = TRUE WHERE id = $1',
+              [variantId]
+            );
+          }
+        } finally {
+          client.release();
+        }
+
+        expect(await queuedRows()).toEqual([]);
+      }
+    );
+
+    it('does not mark backfill or enqueue when an existing user enables the stored preference', async () => {
+      await setServerConsent(true);
+      await insertFood({ id: FOOD_IDS[0] });
+
+      await setUserConsent(true);
+
+      expect(await backfillPending()).toBe(false);
+      expect(await queuedRows()).toEqual([]);
+    });
+
+    it('does not mark backfill when an enabled preference row is inserted', async () => {
+      const client = await getSystemClient();
+      try {
+        await client.query(
+          'DELETE FROM public.user_preferences WHERE user_id = $1',
+          [USER_ID]
+        );
+      } finally {
+        client.release();
+      }
+
+      await setUserConsent(true);
+
+      expect(await backfillPending()).toBe(false);
+    });
+
+    it('does not mark backfill or enqueue when the server gate changes from false to true', async () => {
+      await setUserConsent(true);
+      await insertFood({ id: FOOD_IDS[0] });
+      const client = await getSystemClient();
+      try {
+        await client.query(
+          `UPDATE public.user_preferences
+              SET openfoodfacts_backfill_pending = FALSE WHERE user_id = $1`,
+          [USER_ID]
+        );
+      } finally {
+        client.release();
+      }
+
+      await setServerConsent(true);
+
+      expect(await backfillPending()).toBe(false);
+      expect(await queuedRows()).toEqual([]);
+    });
+
+    it('still removes previously queued work when the user opts out', async () => {
+      await setUserConsent(true);
+      await insertFood({ id: FOOD_IDS[0] });
+      const client = await getSystemClient();
+      try {
+        await client.query(
+          `INSERT INTO public.openfoodfacts_sync_queue (food_id, user_id)
+           VALUES ($1, $2)`,
+          [FOOD_IDS[0], USER_ID]
+        );
+      } finally {
+        client.release();
+      }
+
+      await setUserConsent(false);
+
+      expect(await queuedRows()).toEqual([]);
+    });
+
+    it.each(['234567890129', '0234567890129', '00234567890129'])(
+      'rejects UPC-A number-system 2 code %s regardless of padding',
+      async (code) => {
+        const client = await getSystemClient();
+        try {
+          await expect(
+            client.query(
+              'SELECT public.normalize_openfoodfacts_gtin($1) AS normalized',
+              [code]
+            )
+          ).resolves.toMatchObject({ rows: [{ normalized: null }] });
+        } finally {
+          client.release();
+        }
+      }
+    );
+  });
+
+  describe('dormant automatic implementation with test-only trigger fixtures', () => {
+    beforeEach(async () => {
+      await installDormantAutomaticTriggers();
+    });
+
+    afterEach(async () => {
+      await removeDormantAutomaticTriggers();
+    });
+
+    it('requires independent server and food-owner consent before a trigger queues work', async () => {
+      await setServerConsent(true);
+      await insertFood({ id: FOOD_IDS[0] });
+      expect(await queuedRows()).toEqual([]);
+
+      await clearFixtures();
+      await setServerConsent(false);
+      await setUserConsent(true);
+      await insertFood({ id: FOOD_IDS[1] });
+      expect(await queuedRows()).toEqual([]);
+
+      await clearFixtures();
+      await setServerConsent(true);
+      await insertFood({ id: FOOD_IDS[2] });
+      expect((await queuedRows()).map((row) => row.food_id)).toEqual([
+        FOOD_IDS[2],
+      ]);
+    });
+
+    it('queues only locally created products and rejects imported provenance even if ownership says custom', async () => {
+      await setServerConsent(true);
+      await setUserConsent(true);
+
+      await insertFood({ id: FOOD_IDS[0], providerType: null });
+      await insertFood({ id: FOOD_IDS[1], providerType: 'custom' });
+      await insertFood({ id: FOOD_IDS[2], providerType: 'fatsecret' });
+      await insertFood({ id: FOOD_IDS[3], providerType: 'openfoodfacts' });
+
+      expect((await queuedRows()).map((row) => row.food_id)).toEqual([
+        FOOD_IDS[0],
+        FOOD_IDS[1],
+      ]);
+    });
+
+    it('requires a checksum-valid public GTIN and a metric-convertible default serving', async () => {
+      await setServerConsent(true);
+      await setUserConsent(true);
+
+      await insertFood({ id: FOOD_IDS[0], barcode: '4006381333932' });
+      await insertFood({ id: FOOD_IDS[1], barcode: '2001234567893' });
+      await insertFood({ id: FOOD_IDS[2], servingUnit: 'scoop' });
+      await insertFood({ id: FOOD_IDS[4], barcode: '00000000' });
+      await insertFood({ id: FOOD_IDS[5], barcode: VALID_OFF_SHORT_CODES[0] });
+      await insertFood({ id: FOOD_IDS[6], barcode: VALID_OFF_SHORT_CODES[1] });
+      await insertFood({ id: FOOD_IDS[7], barcode: VALID_OFF_SHORT_CODES[2] });
+      await insertFood({
+        id: FOOD_IDS[8],
+        barcode: VALID_LEADING_ZERO_GTIN_14,
       });
-      for (const code of VALID_OFF_SHORT_CODES) {
+      await insertFood({
+        id: FOOD_IDS[9],
+        barcode: INTERNAL_LEADING_ZERO_GTIN_14,
+      });
+      await insertFood({ id: FOOD_IDS[10], barcode: VALID_NONZERO_GTIN_14 });
+      await insertFood({
+        id: FOOD_IDS[3],
+        barcode: VALID_UPC_A,
+        servingUnit: 'kg',
+      });
+
+      expect((await queuedRows()).map((row) => row.food_id)).toEqual([
+        FOOD_IDS[3],
+        FOOD_IDS[5],
+        FOOD_IDS[6],
+        FOOD_IDS[7],
+        FOOD_IDS[8],
+        FOOD_IDS[10],
+      ]);
+
+      const client = await getSystemClient();
+      try {
         await expect(
           client.query(
             'SELECT public.normalize_openfoodfacts_gtin($1) AS normalized',
-            [code]
+            [VALID_UPC_A]
           )
         ).resolves.toMatchObject({
-          rows: [{ normalized: code.padStart(13, '0') }],
+          rows: [{ normalized: `0${VALID_UPC_A}` }],
         });
+        for (const code of VALID_OFF_SHORT_CODES) {
+          await expect(
+            client.query(
+              'SELECT public.normalize_openfoodfacts_gtin($1) AS normalized',
+              [code]
+            )
+          ).resolves.toMatchObject({
+            rows: [{ normalized: code.padStart(13, '0') }],
+          });
+        }
+        await expect(
+          client.query(
+            'SELECT public.normalize_openfoodfacts_gtin($1) AS normalized',
+            [VALID_LEADING_ZERO_GTIN_14]
+          )
+        ).resolves.toMatchObject({ rows: [{ normalized: VALID_EAN_13 }] });
+        await expect(
+          client.query(
+            'SELECT public.normalize_openfoodfacts_gtin($1) AS normalized',
+            [INTERNAL_LEADING_ZERO_GTIN_14]
+          )
+        ).resolves.toMatchObject({ rows: [{ normalized: null }] });
+        await expect(
+          client.query(
+            'SELECT public.normalize_openfoodfacts_gtin($1) AS normalized',
+            [VALID_NONZERO_GTIN_14]
+          )
+        ).resolves.toMatchObject({
+          rows: [{ normalized: VALID_NONZERO_GTIN_14 }],
+        });
+      } finally {
+        client.release();
       }
-      await expect(
-        client.query(
-          'SELECT public.normalize_openfoodfacts_gtin($1) AS normalized',
-          [VALID_LEADING_ZERO_GTIN_14]
-        )
-      ).resolves.toMatchObject({ rows: [{ normalized: VALID_EAN_13 }] });
-      await expect(
-        client.query(
-          'SELECT public.normalize_openfoodfacts_gtin($1) AS normalized',
-          [INTERNAL_LEADING_ZERO_GTIN_14]
-        )
-      ).resolves.toMatchObject({ rows: [{ normalized: null }] });
-      await expect(
-        client.query(
-          'SELECT public.normalize_openfoodfacts_gtin($1) AS normalized',
-          [VALID_NONZERO_GTIN_14]
-        )
-      ).resolves.toMatchObject({
-        rows: [{ normalized: VALID_NONZERO_GTIN_14 }],
-      });
-    } finally {
-      client.release();
-    }
-  });
-
-  it('ignores secondary variants and increments the revision only for default-variant edits', async () => {
-    await setServerConsent(true);
-    await setUserConsent(true);
-
-    const secondaryVariantId = await insertFood({
-      id: FOOD_IDS[0],
-      isDefault: false,
     });
-    expect(await queuedRows()).toEqual([]);
 
-    const client = await getSystemClient();
-    let defaultVariantId: string;
-    try {
-      await client.query(
-        'UPDATE public.food_variants SET calories = 100 WHERE id = $1',
-        [secondaryVariantId]
-      );
+    it('ignores secondary variants and increments the revision only for default-variant edits', async () => {
+      await setServerConsent(true);
+      await setUserConsent(true);
+
+      const secondaryVariantId = await insertFood({
+        id: FOOD_IDS[0],
+        isDefault: false,
+      });
       expect(await queuedRows()).toEqual([]);
 
-      const defaultVariantResult = await client.query(
-        `INSERT INTO public.food_variants
+      const client = await getSystemClient();
+      let defaultVariantId: string;
+      try {
+        await client.query(
+          'UPDATE public.food_variants SET calories = 100 WHERE id = $1',
+          [secondaryVariantId]
+        );
+        expect(await queuedRows()).toEqual([]);
+
+        const defaultVariantResult = await client.query(
+          `INSERT INTO public.food_variants
            (food_id, serving_size, serving_unit, calories, is_default)
          VALUES ($1, 100, 'g', 250, true)
          RETURNING id`,
-        [FOOD_IDS[0]]
-      );
-      defaultVariantId = (
-        defaultVariantResult.rows as Array<{ id: string }>
-      )[0]!.id;
-      const initialQueuedRow = (await queuedRows())[0];
-      expect(initialQueuedRow).toMatchObject({
-        food_id: FOOD_IDS[0],
-        status: 'pending',
-      });
-      const initialRevision = Number(initialQueuedRow?.revision);
+          [FOOD_IDS[0]]
+        );
+        defaultVariantId = (
+          defaultVariantResult.rows as Array<{ id: string }>
+        )[0]!.id;
+        const initialQueuedRow = (await queuedRows())[0];
+        expect(initialQueuedRow).toMatchObject({
+          food_id: FOOD_IDS[0],
+          status: 'pending',
+        });
+        const initialRevision = Number(initialQueuedRow?.revision);
 
-      await client.query(
-        'UPDATE public.food_variants SET calories = 101 WHERE id = $1',
-        [secondaryVariantId]
-      );
-      expect(Number((await queuedRows())[0]?.revision)).toBe(initialRevision);
+        await client.query(
+          'UPDATE public.food_variants SET calories = 101 WHERE id = $1',
+          [secondaryVariantId]
+        );
+        expect(Number((await queuedRows())[0]?.revision)).toBe(initialRevision);
 
-      await client.query(
-        'UPDATE public.food_variants SET calories = 251 WHERE id = $1',
-        [defaultVariantId]
-      );
-      expect(Number((await queuedRows())[0]?.revision)).toBeGreaterThan(
-        initialRevision
-      );
+        await client.query(
+          'UPDATE public.food_variants SET calories = 251 WHERE id = $1',
+          [defaultVariantId]
+        );
+        expect(Number((await queuedRows())[0]?.revision)).toBeGreaterThan(
+          initialRevision
+        );
 
-      await client.query(
-        'UPDATE public.food_variants SET is_default = false WHERE id = $1',
-        [defaultVariantId]
-      );
-      expect(await queuedRows()).toEqual([]);
-    } finally {
-      client.release();
-    }
-  });
+        await client.query(
+          'UPDATE public.food_variants SET is_default = false WHERE id = $1',
+          [defaultVariantId]
+        );
+        expect(await queuedRows()).toEqual([]);
+      } finally {
+        client.release();
+      }
+    });
 
-  it('deletes retained state on opt-out and marks backfill only on consent transitions', async () => {
-    await setServerConsent(true);
-    await setUserConsent(true);
-    await insertFood({ id: FOOD_IDS[0] });
-    expect(await queuedRows()).toHaveLength(1);
-
-    await setUserConsent(false);
-    expect(await queuedRows()).toEqual([]);
-
-    const client = await getSystemClient();
-    try {
-      const optedOutResult = await client.query(
-        `SELECT openfoodfacts_backfill_pending AS pending
-           FROM public.user_preferences
-          WHERE user_id = $1`,
-        [USER_ID]
-      );
-      expect(
-        (optedOutResult.rows as Array<{ pending: boolean }>)[0]?.pending
-      ).toBe(false);
-
+    it('deletes retained state on opt-out and marks backfill only on consent transitions', async () => {
+      await setServerConsent(true);
       await setUserConsent(true);
-      const optedInResult = await client.query(
-        `SELECT openfoodfacts_backfill_pending AS pending
+      await insertFood({ id: FOOD_IDS[0] });
+      expect(await queuedRows()).toHaveLength(1);
+
+      await setUserConsent(false);
+      expect(await queuedRows()).toEqual([]);
+
+      const client = await getSystemClient();
+      try {
+        const optedOutResult = await client.query(
+          `SELECT openfoodfacts_backfill_pending AS pending
            FROM public.user_preferences
           WHERE user_id = $1`,
-        [USER_ID]
-      );
-      expect(
-        (optedInResult.rows as Array<{ pending: boolean }>)[0]?.pending
-      ).toBe(true);
-    } finally {
-      client.release();
-    }
-  });
+          [USER_ID]
+        );
+        expect(
+          (optedOutResult.rows as Array<{ pending: boolean }>)[0]?.pending
+        ).toBe(false);
 
-  it('durably marks opted-in users on a direct server-gate transition only', async () => {
-    await setUserConsent(true);
-    const client = await getSystemClient();
-    try {
-      await client.query(
-        `UPDATE public.user_preferences
+        await setUserConsent(true);
+        const optedInResult = await client.query(
+          `SELECT openfoodfacts_backfill_pending AS pending
+           FROM public.user_preferences
+          WHERE user_id = $1`,
+          [USER_ID]
+        );
+        expect(
+          (optedInResult.rows as Array<{ pending: boolean }>)[0]?.pending
+        ).toBe(true);
+      } finally {
+        client.release();
+      }
+    });
+
+    it('durably marks opted-in users on a direct server-gate transition only', async () => {
+      await setUserConsent(true);
+      const client = await getSystemClient();
+      try {
+        await client.query(
+          `UPDATE public.user_preferences
             SET openfoodfacts_backfill_pending = FALSE
           WHERE user_id = $1`,
-        [USER_ID]
-      );
+          [USER_ID]
+        );
 
-      await setServerConsent(true);
-      await expect(
-        client.query(
-          `SELECT openfoodfacts_backfill_pending AS pending
+        await setServerConsent(true);
+        await expect(
+          client.query(
+            `SELECT openfoodfacts_backfill_pending AS pending
              FROM public.user_preferences
             WHERE user_id = $1`,
-          [USER_ID]
-        )
-      ).resolves.toMatchObject({ rows: [{ pending: true }] });
+            [USER_ID]
+          )
+        ).resolves.toMatchObject({ rows: [{ pending: true }] });
 
-      await client.query(
-        `UPDATE public.user_preferences
+        await client.query(
+          `UPDATE public.user_preferences
             SET openfoodfacts_backfill_pending = FALSE
           WHERE user_id = $1`,
-        [USER_ID]
-      );
-      await setServerConsent(true);
-      await expect(
-        client.query(
-          `SELECT openfoodfacts_backfill_pending AS pending
+          [USER_ID]
+        );
+        await setServerConsent(true);
+        await expect(
+          client.query(
+            `SELECT openfoodfacts_backfill_pending AS pending
              FROM public.user_preferences
             WHERE user_id = $1`,
-          [USER_ID]
+            [USER_ID]
+          )
+        ).resolves.toMatchObject({ rows: [{ pending: false }] });
+      } finally {
+        client.release();
+      }
+    });
+
+    it('never reuses a revision token after opt-out deletes and recreates a queue row', async () => {
+      await setServerConsent(true);
+      await setUserConsent(true);
+      await insertFood({ id: FOOD_IDS[0] });
+      const originalRevision = Number((await queuedRows())[0]?.revision);
+
+      await setUserConsent(false);
+      expect(await queuedRows()).toEqual([]);
+      await setUserConsent(true);
+      await queueRepository.enqueueNextBackfillBatch(100);
+
+      const recreatedRevision = Number((await queuedRows())[0]?.revision);
+      expect(recreatedRevision).toBeGreaterThan(originalRevision);
+    });
+
+    it('invalidates an expired worker revision when a new lease claims the same food', async () => {
+      await setServerConsent(true);
+      await setUserConsent(true);
+      await insertFood({ id: FOOD_IDS[0] });
+
+      const [firstClaim] = await queueRepository.claimDue(1, 120, 8);
+      expect(firstClaim).toBeDefined();
+      await expireLease(FOOD_IDS[0]);
+      await expect(
+        queueRepository.isClaimCurrent(
+          FOOD_IDS[0],
+          USER_ID,
+          firstClaim!.revision
         )
-      ).resolves.toMatchObject({ rows: [{ pending: false }] });
-    } finally {
-      client.release();
-    }
-  });
+      ).resolves.toBe(false);
 
-  it('never reuses a revision token after opt-out deletes and recreates a queue row', async () => {
-    await setServerConsent(true);
-    await setUserConsent(true);
-    await insertFood({ id: FOOD_IDS[0] });
-    const originalRevision = Number((await queuedRows())[0]?.revision);
+      const [replacementClaim] = await queueRepository.claimDue(1, 120, 8);
+      expect(replacementClaim).toBeDefined();
+      expect(replacementClaim!.revision).toBeGreaterThan(firstClaim!.revision);
+      await expect(
+        queueRepository.markSucceeded(FOOD_IDS[0], firstClaim!.revision)
+      ).resolves.toBe(false);
+      await expect(
+        queueRepository.markSucceeded(FOOD_IDS[0], replacementClaim!.revision)
+      ).resolves.toBe(true);
+    });
 
-    await setUserConsent(false);
-    expect(await queuedRows()).toEqual([]);
-    await setUserConsent(true);
-    await queueRepository.enqueueNextBackfillBatch(100);
+    it('does not reserve a product-read permit while merely claiming queue work', async () => {
+      await setServerConsent(true);
+      await setUserConsent(true);
+      await insertFood({ id: FOOD_IDS[0] });
+      await insertFood({ id: FOOD_IDS[1], barcode: VALID_UPC_A });
 
-    const recreatedRevision = Number((await queuedRows())[0]?.revision);
-    expect(recreatedRevision).toBeGreaterThan(originalRevision);
-  });
+      const concurrentClaims = await Promise.all([
+        queueRepository.claimDue(1, 300, 8),
+        queueRepository.claimDue(1, 300, 8),
+      ]);
+      expect(concurrentClaims.flat()).toHaveLength(2);
 
-  it('invalidates an expired worker revision when a new lease claims the same food', async () => {
-    await setServerConsent(true);
-    await setUserConsent(true);
-    await insertFood({ id: FOOD_IDS[0] });
-
-    const [firstClaim] = await queueRepository.claimDue(1, 120, 8);
-    expect(firstClaim).toBeDefined();
-    await expireLease(FOOD_IDS[0]);
-    await expect(
-      queueRepository.isClaimCurrent(FOOD_IDS[0], USER_ID, firstClaim!.revision)
-    ).resolves.toBe(false);
-
-    const [replacementClaim] = await queueRepository.claimDue(1, 120, 8);
-    expect(replacementClaim).toBeDefined();
-    expect(replacementClaim!.revision).toBeGreaterThan(firstClaim!.revision);
-    await expect(
-      queueRepository.markSucceeded(FOOD_IDS[0], firstClaim!.revision)
-    ).resolves.toBe(false);
-    await expect(
-      queueRepository.markSucceeded(FOOD_IDS[0], replacementClaim!.revision)
-    ).resolves.toBe(true);
-  });
-
-  it('does not reserve a product-read permit while merely claiming queue work', async () => {
-    await setServerConsent(true);
-    await setUserConsent(true);
-    await insertFood({ id: FOOD_IDS[0] });
-    await insertFood({ id: FOOD_IDS[1], barcode: VALID_UPC_A });
-
-    const concurrentClaims = await Promise.all([
-      queueRepository.claimDue(1, 300, 8),
-      queueRepository.claimDue(1, 300, 8),
-    ]);
-    expect(concurrentClaims.flat()).toHaveLength(2);
-
-    const client = await getSystemClient();
-    try {
-      const states = await client.query(
-        `SELECT status, COUNT(*)::integer AS count
+      const client = await getSystemClient();
+      try {
+        const states = await client.query(
+          `SELECT status, COUNT(*)::integer AS count
            FROM public.openfoodfacts_sync_queue
           WHERE user_id = $1
           GROUP BY status
           ORDER BY status`,
-        [USER_ID]
-      );
-      expect(states.rows).toEqual([{ status: 'processing', count: 2 }]);
-    } finally {
-      client.release();
-    }
-  });
-
-  it('keeps delayed automatic and interactive product reads at least five seconds apart', async () => {
-    expect(await resetProductReadRateLimitIfPresent()).toBe(true);
-    const requestStartedAt: number[] = [];
-    let signalFirstStart: (() => void) | undefined;
-    const firstStarted = new Promise<void>((resolve) => {
-      signalFirstStart = resolve;
+          [USER_ID]
+        );
+        expect(states.rows).toEqual([{ status: 'processing', count: 2 }]);
+      } finally {
+        client.release();
+      }
     });
 
-    const automaticRead = withOpenFoodFactsProductReadPermit(
-      async () => {
-        requestStartedAt.push(Date.now());
-        signalFirstStart?.();
-        await new Promise((resolve) => setTimeout(resolve, 250));
-      },
-      { maxWaitMs: 0 }
-    );
-    await firstStarted;
-    const interactiveRead = withOpenFoodFactsProductReadPermit(
-      async () => {
-        requestStartedAt.push(Date.now());
-      },
-      { maxWaitMs: 7_000 }
-    );
+    it('keeps delayed automatic and interactive product reads at least five seconds apart', async () => {
+      expect(await resetProductReadRateLimitIfPresent()).toBe(true);
+      const requestStartedAt: number[] = [];
+      let signalFirstStart: (() => void) | undefined;
+      const firstStarted = new Promise<void>((resolve) => {
+        signalFirstStart = resolve;
+      });
 
-    await Promise.all([automaticRead, interactiveRead]);
-    expect(requestStartedAt).toHaveLength(2);
-    expect(requestStartedAt[1]! - requestStartedAt[0]!).toBeGreaterThanOrEqual(
-      5_000
-    );
-  }, 12_000);
+      const automaticRead = withOpenFoodFactsProductReadPermit(
+        async () => {
+          requestStartedAt.push(Date.now());
+          signalFirstStart?.();
+          await new Promise((resolve) => setTimeout(resolve, 250));
+        },
+        { maxWaitMs: 0 }
+      );
+      await firstStarted;
+      const interactiveRead = withOpenFoodFactsProductReadPermit(
+        async () => {
+          requestStartedAt.push(Date.now());
+        },
+        { maxWaitMs: 7_000 }
+      );
 
-  it('prevents a stale permit release from overwriting a newer owner', async () => {
-    expect(await resetProductReadRateLimitIfPresent()).toBe(true);
-    const staleToken = randomUUID();
-    const currentToken = randomUUID();
-    await expect(
-      productReadRateLimitRepository.tryAcquire(staleToken)
-    ).resolves.toMatchObject({ acquired: true, token: staleToken });
+      await Promise.all([automaticRead, interactiveRead]);
+      expect(requestStartedAt).toHaveLength(2);
+      expect(
+        requestStartedAt[1]! - requestStartedAt[0]!
+      ).toBeGreaterThanOrEqual(5_000);
+    }, 12_000);
 
-    const client = await getSystemClient();
-    try {
-      await client.query(
-        `UPDATE public.openfoodfacts_product_read_rate_limit
+    it('prevents a stale permit release from overwriting a newer owner', async () => {
+      expect(await resetProductReadRateLimitIfPresent()).toBe(true);
+      const staleToken = randomUUID();
+      const currentToken = randomUUID();
+      await expect(
+        productReadRateLimitRepository.tryAcquire(staleToken)
+      ).resolves.toMatchObject({ acquired: true, token: staleToken });
+
+      const client = await getSystemClient();
+      try {
+        await client.query(
+          `UPDATE public.openfoodfacts_product_read_rate_limit
             SET reservation_expires_at = clock_timestamp() - INTERVAL '1 second'
           WHERE id = 1`
-      );
-    } finally {
-      client.release();
-    }
+        );
+      } finally {
+        client.release();
+      }
 
-    await expect(
-      productReadRateLimitRepository.tryAcquire(currentToken)
-    ).resolves.toMatchObject({ acquired: true, token: currentToken });
-    await expect(
-      productReadRateLimitRepository.release(staleToken)
-    ).resolves.toBe(false);
-
-    const verificationClient = await getSystemClient();
-    try {
       await expect(
-        verificationClient.query(
-          `SELECT reservation_token::text AS token
+        productReadRateLimitRepository.tryAcquire(currentToken)
+      ).resolves.toMatchObject({ acquired: true, token: currentToken });
+      await expect(
+        productReadRateLimitRepository.release(staleToken)
+      ).resolves.toBe(false);
+
+      const verificationClient = await getSystemClient();
+      try {
+        await expect(
+          verificationClient.query(
+            `SELECT reservation_token::text AS token
              FROM public.openfoodfacts_product_read_rate_limit
             WHERE id = 1`
-        )
-      ).resolves.toMatchObject({ rows: [{ token: currentToken }] });
-    } finally {
-      verificationClient.release();
-    }
-    await expect(
-      productReadRateLimitRepository.release(currentToken)
-    ).resolves.toBe(true);
-  });
-
-  it('counts crash reclaims once per lease and terminates after the attempt ceiling', async () => {
-    await setServerConsent(true);
-    await setUserConsent(true);
-    await insertFood({ id: FOOD_IDS[0] });
-    const [firstClaim] = await queueRepository.claimDue(1, 300, 2);
-    expect(firstClaim?.attemptCount).toBe(1);
-    await expireLease(FOOD_IDS[0]);
-
-    const [secondClaim] = await queueRepository.claimDue(1, 300, 2);
-    expect(secondClaim?.attemptCount).toBe(2);
-    await expireLease(FOOD_IDS[0]);
-
-    await expect(queueRepository.claimDue(1, 300, 2)).resolves.toEqual([]);
-    const client = await getSystemClient();
-    try {
+          )
+        ).resolves.toMatchObject({ rows: [{ token: currentToken }] });
+      } finally {
+        verificationClient.release();
+      }
       await expect(
-        client.query(
-          `SELECT status, attempt_count
+        productReadRateLimitRepository.release(currentToken)
+      ).resolves.toBe(true);
+    });
+
+    it('counts crash reclaims once per lease and terminates after the attempt ceiling', async () => {
+      await setServerConsent(true);
+      await setUserConsent(true);
+      await insertFood({ id: FOOD_IDS[0] });
+      const [firstClaim] = await queueRepository.claimDue(1, 300, 2);
+      expect(firstClaim?.attemptCount).toBe(1);
+      await expireLease(FOOD_IDS[0]);
+
+      const [secondClaim] = await queueRepository.claimDue(1, 300, 2);
+      expect(secondClaim?.attemptCount).toBe(2);
+      await expireLease(FOOD_IDS[0]);
+
+      await expect(queueRepository.claimDue(1, 300, 2)).resolves.toEqual([]);
+      const client = await getSystemClient();
+      try {
+        await expect(
+          client.query(
+            `SELECT status, attempt_count
              FROM public.openfoodfacts_sync_queue
             WHERE food_id = $1`,
-          [FOOD_IDS[0]]
-        )
-      ).resolves.toMatchObject({
-        rows: [{ status: 'failed', attempt_count: 2 }],
+            [FOOD_IDS[0]]
+          )
+        ).resolves.toMatchObject({
+          rows: [{ status: 'failed', attempt_count: 2 }],
+        });
+      } finally {
+        client.release();
+      }
+    });
+
+    it('feeds the historical catalog in bounded batches', async () => {
+      await insertFood({ id: FOOD_IDS[0] });
+      await insertFood({ id: FOOD_IDS[1], barcode: VALID_UPC_A });
+      await setServerConsent(true);
+      await setUserConsent(true);
+
+      await expect(
+        queueRepository.enqueueNextBackfillBatch(1)
+      ).resolves.toEqual({
+        userId: USER_ID,
+        enqueued: 1,
+        hasMore: true,
       });
-    } finally {
-      client.release();
-    }
-  });
+      expect(await queuedRows()).toHaveLength(1);
 
-  it('feeds the historical catalog in bounded batches', async () => {
-    await insertFood({ id: FOOD_IDS[0] });
-    await insertFood({ id: FOOD_IDS[1], barcode: VALID_UPC_A });
-    await setServerConsent(true);
-    await setUserConsent(true);
+      await expect(
+        queueRepository.enqueueNextBackfillBatch(1)
+      ).resolves.toEqual({
+        userId: USER_ID,
+        enqueued: 1,
+        hasMore: true,
+      });
+      expect(await queuedRows()).toHaveLength(2);
 
-    await expect(queueRepository.enqueueNextBackfillBatch(1)).resolves.toEqual({
-      userId: USER_ID,
-      enqueued: 1,
-      hasMore: true,
+      await expect(
+        queueRepository.enqueueNextBackfillBatch(1)
+      ).resolves.toEqual({
+        userId: USER_ID,
+        enqueued: 0,
+        hasMore: false,
+      });
     });
-    expect(await queuedRows()).toHaveLength(1);
 
-    await expect(queueRepository.enqueueNextBackfillBatch(1)).resolves.toEqual({
-      userId: USER_ID,
-      enqueued: 1,
-      hasMore: true,
-    });
-    expect(await queuedRows()).toHaveLength(2);
-
-    await expect(queueRepository.enqueueNextBackfillBatch(1)).resolves.toEqual({
-      userId: USER_ID,
-      enqueued: 0,
-      hasMore: false,
-    });
-  });
-
-  it('upgrades the earlier automatic-only limiter name without leaving old database objects', async () => {
-    const migrationPath = path.resolve(
-      here,
-      '../db/migrations/20260901103000_add_openfoodfacts_automatic_sync.sql'
-    );
-    const migrationSql = await readFile(migrationPath, 'utf8');
-    const client = await getSystemClient();
-    try {
-      await client.query('BEGIN');
-      await client.query(
-        `DO $test$
+    it('upgrades the earlier automatic-only limiter name without leaving old database objects', async () => {
+      const migrationPath = path.resolve(
+        here,
+        '../db/migrations/20260901103000_add_openfoodfacts_automatic_sync.sql'
+      );
+      const migrationSql = await readFile(migrationPath, 'utf8');
+      const client = await getSystemClient();
+      try {
+        await client.query('BEGIN');
+        await client.query(
+          `DO $test$
          BEGIN
            IF EXISTS (
              SELECT 1
@@ -754,75 +1044,76 @@ describe.runIf(RUN)('Open Food Facts automatic sync database behavior', () => {
            END IF;
          END;
          $test$`
-      );
-      await client.query(
-        `ALTER TABLE public.openfoodfacts_product_read_rate_limit
+        );
+        await client.query(
+          `ALTER TABLE public.openfoodfacts_product_read_rate_limit
          RENAME COLUMN next_product_read_at TO next_claim_at`
-      );
-      await client.query(
-        `ALTER TABLE public.openfoodfacts_product_read_rate_limit
+        );
+        await client.query(
+          `ALTER TABLE public.openfoodfacts_product_read_rate_limit
          RENAME TO openfoodfacts_automatic_sync_rate_limit`
-      );
-      await client.query(migrationSql);
+        );
+        await client.query(migrationSql);
 
-      await expect(
-        client.query(
-          `SELECT
+        await expect(
+          client.query(
+            `SELECT
              to_regclass('public.openfoodfacts_automatic_sync_rate_limit') AS old_table,
              to_regclass('public.openfoodfacts_product_read_rate_limit')::text AS new_table`
-        )
-      ).resolves.toMatchObject({
-        rows: [
-          {
-            old_table: null,
-            new_table: 'openfoodfacts_product_read_rate_limit',
-          },
-        ],
-      });
-      await expect(
-        client.query(
-          `SELECT next_product_read_at, reservation_token, reservation_expires_at
+          )
+        ).resolves.toMatchObject({
+          rows: [
+            {
+              old_table: null,
+              new_table: 'openfoodfacts_product_read_rate_limit',
+            },
+          ],
+        });
+        await expect(
+          client.query(
+            `SELECT next_product_read_at, reservation_token, reservation_expires_at
              FROM public.openfoodfacts_product_read_rate_limit
             WHERE id = 1`
-        )
-      ).resolves.toMatchObject({ rowCount: 1 });
-      await expect(
-        client.query(
-          `SELECT conname
+          )
+        ).resolves.toMatchObject({ rowCount: 1 });
+        await expect(
+          client.query(
+            `SELECT conname
              FROM pg_constraint
             WHERE conrelid = 'public.openfoodfacts_product_read_rate_limit'::regclass
               AND contype = 'p'`
-        )
-      ).resolves.toMatchObject({
-        rows: [{ conname: 'openfoodfacts_product_read_rate_limit_pkey' }],
-      });
-      await expect(
-        client.query(
-          `SELECT COUNT(*)::integer AS count
+          )
+        ).resolves.toMatchObject({
+          rows: [{ conname: 'openfoodfacts_product_read_rate_limit_pkey' }],
+        });
+        await expect(
+          client.query(
+            `SELECT COUNT(*)::integer AS count
              FROM pg_constraint
             WHERE conname LIKE 'openfoodfacts_automatic_sync_rate_limit%'`
-        )
-      ).resolves.toMatchObject({ rows: [{ count: 0 }] });
-      await expect(
-        client.query(
-          `SELECT COUNT(*)::integer AS count
+          )
+        ).resolves.toMatchObject({ rows: [{ count: 0 }] });
+        await expect(
+          client.query(
+            `SELECT COUNT(*)::integer AS count
              FROM pg_class
             WHERE relnamespace = 'public'::regnamespace
               AND relname LIKE 'openfoodfacts_automatic_sync_rate_limit%'`
-        )
-      ).resolves.toMatchObject({ rows: [{ count: 0 }] });
-      await expect(
-        client.query(
-          `SELECT COUNT(*)::integer AS count
+          )
+        ).resolves.toMatchObject({ rows: [{ count: 0 }] });
+        await expect(
+          client.query(
+            `SELECT COUNT(*)::integer AS count
              FROM information_schema.columns
             WHERE table_schema = 'public'
               AND table_name = 'openfoodfacts_product_read_rate_limit'
               AND column_name IN ('next_claim_at', 'next_allowed_at', 'next_available_at')`
-        )
-      ).resolves.toMatchObject({ rows: [{ count: 0 }] });
-    } finally {
-      await client.query('ROLLBACK');
-      client.release();
-    }
+          )
+        ).resolves.toMatchObject({ rows: [{ count: 0 }] });
+      } finally {
+        await client.query('ROLLBACK');
+        client.release();
+      }
+    });
   });
 });

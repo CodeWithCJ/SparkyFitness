@@ -1,6 +1,5 @@
 import { apiCall } from '@/api/api';
 import type {
-  OpenFoodFactsAdminSyncStatusResponse,
   OpenFoodFactsAutomaticSyncRequest,
   OpenFoodFactsAutomaticSyncResponse,
 } from '@workspace/shared';
@@ -20,13 +19,3 @@ export const updateOpenFoodFactsContributionSettings = async (
     body: settings,
   });
 };
-
-export const getOpenFoodFactsAdminSyncStatus =
-  async (): Promise<OpenFoodFactsAdminSyncStatusResponse> => {
-    return apiCall(
-      '/admin/global-settings/openfoodfacts-contributions/status',
-      {
-        method: 'GET',
-      }
-    );
-  };
