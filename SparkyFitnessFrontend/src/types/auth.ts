@@ -27,6 +27,7 @@ export interface LoginSettings {
   };
   warning?: string | null;
   signup_disabled: boolean;
+  demo_mode?: boolean;
 }
 
 export interface AccessibleUser {

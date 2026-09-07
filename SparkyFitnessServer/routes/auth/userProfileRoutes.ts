@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticate } from '../../middleware/authMiddleware.js';
+import { demoGuard } from '../../middleware/demoGuardMiddleware.js';
 import authService from '../../services/authService.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'mult... Remove this comment to see the full error message
 import multer from 'multer';
@@ -315,25 +316,33 @@ router.put('/profiles', authenticate, async (req, res, next) => {
  *       500:
  *         description: Server error.
  */
-router.post('/update-password', authenticate, async (req, res, next) => {
-  const { newPassword } = req.body;
-  if (!newPassword) {
-    return res.status(400).json({ error: 'New password is required.' });
-  }
-  try {
-    // Security: Password updates must always apply to the authenticated user, not the active context
-
-    await authService.updateUserPassword(req.authenticatedUserId, newPassword);
-    res.status(200).json({ message: 'Password updated successfully.' });
-  } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.constructor.name === 'NotFoundError') {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(404).json({ error: error.message });
+router.post(
+  '/update-password',
+  authenticate,
+  demoGuard,
+  async (req, res, next) => {
+    const { newPassword } = req.body;
+    if (!newPassword) {
+      return res.status(400).json({ error: 'New password is required.' });
     }
-    next(error);
+    try {
+      // Security: Password updates must always apply to the authenticated user, not the active context
+
+      await authService.updateUserPassword(
+        req.authenticatedUserId,
+        newPassword
+      );
+      res.status(200).json({ message: 'Password updated successfully.' });
+    } catch (error) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      if (error.constructor.name === 'NotFoundError') {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
+    }
   }
-});
+);
 /**
  * @swagger
  * /identity/update-email:
@@ -370,41 +379,46 @@ router.post('/update-password', authenticate, async (req, res, next) => {
  *       500:
  *         description: Server error.
  */
-router.post('/update-email', authenticate, async (req, res, next) => {
-  const { newEmail, currentPassword } = req.body;
-  if (!newEmail) {
-    return res.status(400).json({ error: 'New email is required.' });
-  }
-  try {
-    // Security: Email updates must always apply to the authenticated user
+router.post(
+  '/update-email',
+  authenticate,
+  demoGuard,
+  async (req, res, next) => {
+    const { newEmail, currentPassword } = req.body;
+    if (!newEmail) {
+      return res.status(400).json({ error: 'New email is required.' });
+    }
+    try {
+      // Security: Email updates must always apply to the authenticated user
 
-    await authService.updateUserEmail(
-      req.authenticatedUserId,
-      newEmail,
-      currentPassword
-    );
-    res.status(200).json({
-      message: 'Email update initiated. User will need to verify new email.',
-    });
-  } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (typeof error.statusCode === 'number') {
+      await authService.updateUserEmail(
+        req.authenticatedUserId,
+        newEmail,
+        currentPassword
+      );
+      res.status(200).json({
+        message: 'Email update initiated. User will need to verify new email.',
+      });
+    } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(error.statusCode).json({ error: error.message });
-    }
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.constructor.name === 'ConflictError') {
+      if (typeof error.statusCode === 'number') {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(error.statusCode).json({ error: error.message });
+      }
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(409).json({ error: error.message });
-    }
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.constructor.name === 'NotFoundError') {
+      if (error.constructor.name === 'ConflictError') {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(409).json({ error: error.message });
+      }
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(404).json({ error: error.message });
+      if (error.constructor.name === 'NotFoundError') {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 /**
  * @swagger
  * /identity/profiles/avatar:
@@ -447,6 +461,7 @@ router.post('/update-email', authenticate, async (req, res, next) => {
 router.post(
   '/profiles/avatar',
   authenticate,
+  demoGuard,
   upload.single('avatar'),
   async (req, res, next) => {
     try {
@@ -542,35 +557,40 @@ router.get('/profiles/avatar/:filename', authenticate, (req, res, next) => {
  *       200:
  *         description: MFA settings updated successfully.
  */
-router.post('/mfa/email-toggle', authenticate, async (req, res, next) => {
-  const { enabled } = req.body;
-  try {
-    // Security: MFA settings must apply to the authenticated user
+router.post(
+  '/mfa/email-toggle',
+  authenticate,
+  demoGuard,
+  async (req, res, next) => {
+    const { enabled } = req.body;
+    try {
+      // Security: MFA settings must apply to the authenticated user
 
-    const user = await authService.getUser(req.authenticatedUserId);
-    const totpEnabled = !!user.mfa_totp_enabled;
-    const globalMfaState = enabled || totpEnabled;
-    await authService.updateUserMfaSettings(
-      req.authenticatedUserId,
-      undefined, // mfaSecret
-      totpEnabled, // mfa_totp_enabled (specifically TOTP)
-      enabled, // mfaEmailEnabled
-      undefined, // mfaRecoveryCodes
-      undefined // mfaEnforced
-    );
-    res.status(200).json({
-      message: `Email MFA ${enabled ? 'enabled' : 'disabled'} successfully.`,
-      mfaEmailEnabled: enabled,
-      twoFactorEnabled: globalMfaState,
-    });
-  } catch (error) {
-    log(
-      'error',
+      const user = await authService.getUser(req.authenticatedUserId);
+      const totpEnabled = !!user.mfa_totp_enabled;
+      const globalMfaState = enabled || totpEnabled;
+      await authService.updateUserMfaSettings(
+        req.authenticatedUserId,
+        undefined, // mfaSecret
+        totpEnabled, // mfa_totp_enabled (specifically TOTP)
+        enabled, // mfaEmailEnabled
+        undefined, // mfaRecoveryCodes
+        undefined // mfaEnforced
+      );
+      res.status(200).json({
+        message: `Email MFA ${enabled ? 'enabled' : 'disabled'} successfully.`,
+        mfaEmailEnabled: enabled,
+        twoFactorEnabled: globalMfaState,
+      });
+    } catch (error) {
+      log(
+        'error',
 
-      `Error toggling email MFA for user ${req.authenticatedUserId}:`,
-      error
-    );
-    next(error);
+        `Error toggling email MFA for user ${req.authenticatedUserId}:`,
+        error
+      );
+      next(error);
+    }
   }
-});
+);
 export default router;

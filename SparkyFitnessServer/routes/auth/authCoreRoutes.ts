@@ -12,6 +12,8 @@ import {
   mintRegistrationTicket,
   redeemRegistrationTicket,
 } from '../../services/passkeyTicketService.js';
+import { isDemoMode } from '../../middleware/demoGuardMiddleware.js';
+import { getDemoCredentials } from '../../services/demoSeedService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -119,6 +121,7 @@ router.get('/settings', async (req, res) => {
         auto_redirect: oidcAutoRedirectEnv,
       },
       signup_disabled: signupDisabled,
+      demo_mode: isDemoMode(),
     });
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -136,7 +139,53 @@ router.get('/settings', async (req, res) => {
         providers: [],
         auto_redirect: false,
       },
+      demo_mode: isDemoMode(),
     });
+  }
+});
+
+/**
+ * @swagger
+ * /auth/demo-login:
+ *   post:
+ *     summary: Authenticate seamlessly as the demo user in Demo Mode
+ *     tags: [Authentication]
+ *     responses:
+ *       200:
+ *         description: Demo login successful
+ *       404:
+ *         description: Demo mode is disabled
+ *       500:
+ *         description: Demo login failed or internal error
+ */
+router.post('/demo-login', async (req, res) => {
+  if (!isDemoMode()) {
+    return res
+      .status(404)
+      .json({ error: 'Demo mode is not enabled on this server.' });
+  }
+
+  try {
+    const { email, password } = getDemoCredentials();
+    const { auth } = authModule;
+    const response = await auth.api.signInEmail({
+      body: {
+        email,
+        password,
+      },
+      headers: fromNodeHeaders(req.headers),
+      asResponse: true,
+    });
+
+    response.headers.forEach((value, key) => {
+      res.setHeader(key, value);
+    });
+
+    const body = await response.json();
+    return res.status(response.status).json(body);
+  } catch (error) {
+    log('error', '[AUTH CORE] Demo Login Error:', error);
+    return res.status(500).json({ error: 'Failed to authenticate demo user.' });
   }
 });
 /**
