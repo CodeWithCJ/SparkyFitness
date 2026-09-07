@@ -120,7 +120,7 @@ describe('calculateNutrition — water_ml', () => {
       water_ml: 0,
     } as FoodVariant;
 
-    expect(calculateNutrition(espresso, 60).water_ml).toBe(0);
+    expect(calculateNutrition(espresso, 60)?.water_ml).toBe(0);
   });
 
   it('still falls back to the volume when no water is recorded at all', () => {
@@ -131,23 +131,20 @@ describe('calculateNutrition — water_ml', () => {
       calories: 5,
     } as FoodVariant;
 
-    expect(calculateNutrition(unrecorded, 60).water_ml).toBe(60);
+    expect(calculateNutrition(unrecorded, 60)?.water_ml).toBe(60);
   });
 
   it('applies the same rule to a logged entry', () => {
-    const variant = {
-      id: 'v3',
-      serving_size: 250,
-      serving_unit: 'ml',
-      water_ml: 0,
-    } as FoodVariant;
+    // The entry carries its own snapshot, which is what the diary reads.
     const entry = {
       id: 'e1',
       quantity: 250,
       unit: 'ml',
-      variant_id: 'v3',
-    } as FoodEntry;
+      serving_size: 250,
+      calories: 5,
+      water_ml: 0,
+    } as unknown as FoodEntry;
 
-    expect(calculateFoodEntryNutrition(entry, variant).water_ml).toBe(0);
+    expect(calculateFoodEntryNutrition(entry).water_ml).toBe(0);
   });
 });
