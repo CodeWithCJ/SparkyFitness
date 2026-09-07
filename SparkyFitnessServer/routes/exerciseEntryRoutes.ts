@@ -1132,6 +1132,8 @@ const fitUpload = multer({
  *                         type: string
  *       400:
  *         description: No files uploaded, or the upload exceeded size/count limits.
+ *       403:
+ *         description: Demo mode accounts cannot import FIT workout files.
  *       500:
  *         description: Failed to import FIT files.
  */
