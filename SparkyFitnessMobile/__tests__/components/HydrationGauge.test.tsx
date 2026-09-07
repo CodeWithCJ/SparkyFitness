@@ -135,4 +135,42 @@ describe('HydrationGauge press caption', () => {
     expect(screen.getByText('Latte')).toBeTruthy();
     expect(screen.getByText('350 ml')).toBeTruthy();
   });
+
+  // A container linked to a food carries no volume of its own -- the credit is
+  // the food's water times the hydration factor -- so keying the buttons off
+  // containerVolume left a selected container unpressable.
+  it('lets a linked container be pressed even though it has no volume', () => {
+    const onIncrement = jest.fn();
+    render(
+      <HydrationGauge
+        consumed={0}
+        goal={2000}
+        unit="ml"
+        onIncrement={onIncrement}
+        containerVolume={undefined}
+        linkedPressLabel="200 ml · Ice Coffe"
+      />
+    );
+
+    fireEvent.press(screen.getByLabelText('Add water'));
+
+    expect(onIncrement).toHaveBeenCalled();
+    expect(screen.getByText('200 ml · Ice Coffe')).toBeTruthy();
+  });
+
+  it('still disables the buttons when there is nothing to press', () => {
+    const onIncrement = jest.fn();
+    render(
+      <HydrationGauge
+        consumed={0}
+        goal={2000}
+        unit="ml"
+        onIncrement={onIncrement}
+        containerVolume={undefined}
+      />
+    );
+
+    fireEvent.press(screen.getByLabelText('Add water'));
+    expect(onIncrement).not.toHaveBeenCalled();
+  });
 });

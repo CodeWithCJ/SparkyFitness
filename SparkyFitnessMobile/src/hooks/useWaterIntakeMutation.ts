@@ -87,25 +87,32 @@ export function useWaterIntakeMutation({
     [t]
   );
 
-  const activeContainer =
-    (selectedContainerId != null
-      ? containers?.find((c) => c.id === selectedContainerId)
-      : undefined) ??
-    standardContainers.find((c) => c.is_primary) ??
-    standardContainers[0] ??
-    (isContainersLoaded ? defaultContainer : undefined);
-
   // A container is a vessel you press repeatedly; a preset is one drink you
   // log once. Mobile had them in a single selectable row, so tapping Latte
   // only ever selected it and nothing was logged. They are separated here the
   // way web separates them, and the default is offered as a real choice so
   // there is a way back to plain water once a container exists.
+  // The default exists so there is something to press before any container is
+  // configured. Once real ones exist it is a phantom vessel that appears in no
+  // settings list, so it steps aside -- web's carousel behaves the same way.
   const selectableContainers = useMemo(() => {
     if (!isContainersLoaded) return standardContainers;
     return standardContainers.length > 0
-      ? [defaultContainer, ...standardContainers]
+      ? standardContainers
       : [defaultContainer];
   }, [standardContainers, defaultContainer, isContainersLoaded]);
+
+  // Resolved against the selectable list, never the raw one. A selection saved
+  // while presets were still selectable would otherwise keep a drink as the
+  // active vessel -- with no chip left to switch away from it, since presets
+  // no longer appear there.
+  const activeContainer =
+    (selectedContainerId != null
+      ? selectableContainers.find((c) => c.id === selectedContainerId)
+      : undefined) ??
+    standardContainers.find((c) => c.is_primary) ??
+    standardContainers[0] ??
+    (isContainersLoaded ? defaultContainer : undefined);
 
   const quickAddPresets = useMemo(
     () => (containers ?? []).filter((c) => c.is_quick_add),
@@ -255,10 +262,17 @@ export function useWaterIntakeMutation({
     decrement,
     isReady: !!activeContainer,
     isContainersLoaded,
-    // The synthetic default has no unit of its own, so callers fall back to
-    // the user's display preference rather than being forced into ml.
+    // A container's unit qualifies its own volume, so it is only meaningful
+    // when it has one. The synthetic default has none, and neither does a
+    // container linked to a food -- its credit comes from the food, and
+    // whatever unit was left in the form when it was created is vestigial.
+    // Letting that drive the card put the day's total in oz for a container
+    // the user thinks of in ml. Undefined falls back to the display
+    // preference.
     unit:
-      activeContainer && activeContainer.id !== DEFAULT_WATER_CONTAINER_ID
+      activeContainer &&
+      activeContainer.id !== DEFAULT_WATER_CONTAINER_ID &&
+      (!activeContainer.linked_food_id || Number(activeContainer.volume) > 0)
         ? activeContainer.unit
         : undefined,
     servingVolume: activeContainer

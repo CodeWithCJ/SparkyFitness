@@ -607,7 +607,7 @@ describe('useWaterIntakeMutation', () => {
     // A container is a vessel you select and press; a preset is one drink
     // logged on tap. They used to share one selectable row, so tapping a
     // preset only selected it and logged nothing.
-    test('offers the default alongside real containers, and never a preset', async () => {
+    test('offers real containers and never a preset', async () => {
       const preset = { ...containerB, id: 99, is_quick_add: true };
       mockFetchWaterContainers.mockResolvedValue([
         containerA,
@@ -622,12 +622,78 @@ describe('useWaterIntakeMutation', () => {
       );
       await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
 
-      expect(result.current.containers).toEqual([
-        expect.objectContaining({ name: 'Default' }),
-        containerA,
-        containerB,
-      ]);
+      // No synthetic default here: it exists only as a stand-in for having
+      // none, and appears in no settings list the user could manage it from.
+      expect(result.current.containers).toEqual([containerA, containerB]);
       expect(result.current.quickAddPresets).toEqual([preset]);
+    });
+
+    // Presets used to be selectable, so a saved selection can still name one.
+    // Resolving that against the raw list left a drink as the active vessel
+    // with no chip to switch away from, since presets no longer appear there.
+    // A linked container's unit qualifies a volume it does not have, so it must
+    // not drive the card: a container created with the form's unit left on oz
+    // put the whole day's total in oz.
+    test('does not take the display unit from a linked container', async () => {
+      const linked = {
+        ...containerA,
+        id: 42,
+        unit: 'oz',
+        volume: 0,
+        linked_food_id: 'food-1',
+      };
+      mockFetchWaterContainers.mockResolvedValue([linked]);
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue('42');
+
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        {
+          wrapper: createQueryWrapper(queryClient),
+        }
+      );
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+
+      expect(result.current.activeContainer?.id).toBe(42);
+      expect(result.current.unit).toBeUndefined();
+    });
+
+    test('still takes the unit from a linked container that overrides the volume', async () => {
+      const linked = {
+        ...containerA,
+        id: 43,
+        unit: 'oz',
+        volume: 500,
+        linked_food_id: 'food-1',
+      };
+      mockFetchWaterContainers.mockResolvedValue([linked]);
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue('43');
+
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        {
+          wrapper: createQueryWrapper(queryClient),
+        }
+      );
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+
+      expect(result.current.unit).toBe('oz');
+    });
+
+    test('ignores a saved selection that names a preset', async () => {
+      const preset = { ...containerB, id: 99, is_quick_add: true };
+      mockFetchWaterContainers.mockResolvedValue([containerA, preset]);
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue('99');
+
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        {
+          wrapper: createQueryWrapper(queryClient),
+        }
+      );
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+
+      expect(result.current.activeContainer?.id).not.toBe(99);
+      expect(result.current.containers).toEqual([containerA]);
     });
 
     test('still offers the default when the user has no containers at all', async () => {

@@ -153,12 +153,12 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
         volumePerDrink * Number(currentContainer.hydration_factor ?? 1);
       const displayVolume = convertMlToSelectedUnit(
         credited,
-        currentContainer.unit
-      ).toFixed(currentContainer.unit === 'ml' ? 0 : 2);
+        displayUnit
+      ).toFixed(displayUnit === 'ml' ? 0 : 2);
 
       return t('foodDiary.waterIntake.perDrink', {
         volume: displayVolume,
-        unit: currentContainer.unit,
+        unit: displayUnit,
       });
     }
 
@@ -227,7 +227,16 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   }
 
   const fillPercentage = Math.min((waterMl / waterGoalMl) * 100, 100);
-  const displayUnit = currentContainer?.unit || water_display_unit;
+  // A container's unit qualifies its own volume. A linked container has none
+  // -- volume is 0 and the credit comes from the food -- so whatever unit was
+  // left in the form when it was created is vestigial, and letting it drive the
+  // card put the day's total in oz for a container the user thinks of as ml.
+  const containerUnitIsMeaningful =
+    !!currentContainer &&
+    (!currentContainer.linked_food_id || currentContainer.volume > 0);
+  const displayUnit = containerUnitIsMeaningful
+    ? currentContainer.unit
+    : water_display_unit;
 
   return (
     <Card className="h-full flex flex-col">

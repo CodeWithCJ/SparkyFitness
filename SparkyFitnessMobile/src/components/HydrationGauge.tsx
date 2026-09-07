@@ -162,8 +162,17 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
   const unitLabel = WATER_UNIT_LABELS[unit] ?? unit;
 
   const showButtons = !!onIncrement || !!onDecrement;
-  const noContainer = containerVolume == null;
-  const showChips = (containers?.length ?? 0) > 1;
+  // "Nothing to press", not "no millilitres". A container linked to a food has
+  // no volume of its own on purpose -- its credit is the food's water times the
+  // hydration factor, which only the server can compute -- so keying the
+  // buttons off containerVolume disabled a container the user had selected and
+  // could see named right below them.
+  const noContainer = containerVolume == null && !linkedPressLabel;
+  // Shown whenever there is a vessel to name, not only when there are two to
+  // choose between: with presets moved to their own row a user can be left
+  // with just "Default", and hiding it then left the card silent about what
+  // the +/- buttons were pressing.
+  const showChips = (containers?.length ?? 0) > 0;
 
   const pressLabel =
     containerVolume != null
@@ -182,59 +191,70 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
         {t('dashboard.hydration', { defaultValue: 'Hydration' })}
       </Text>
       <View className="flex-row items-center">
-        <View className="flex-row items-center mr-4">
-          {showButtons && (
-            <Button
-              variant="ghost"
-              onPress={onDecrement}
-              disabled={disableDecrement || noContainer}
-              className="p-2"
-              accessibilityRole="button"
-              accessibilityLabel={t('dashboard.removeWater', {
-                defaultValue: 'Remove water',
-              })}
-              style={
-                disableDecrement || noContainer ? { opacity: 0.3 } : undefined
-              }
-            >
-              <Icon name="remove-circle" size={28} color={hydrationColor} />
-            </Button>
-          )}
-          <Canvas style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}>
-            {/* Fill clipped to bottle shape */}
-            <Group clip={bottlePath}>
-              <Rect
-                x={0}
-                y={0}
-                width={CANVAS_WIDTH}
-                height={CANVAS_HEIGHT}
-                color={trackColor}
+        <View className="items-center mr-4">
+          <View className="flex-row items-center">
+            {showButtons && (
+              <Button
+                variant="ghost"
+                onPress={onDecrement}
+                disabled={disableDecrement || noContainer}
+                className="p-2"
+                accessibilityRole="button"
+                accessibilityLabel={t('dashboard.removeWater', {
+                  defaultValue: 'Remove water',
+                })}
+                style={
+                  disableDecrement || noContainer ? { opacity: 0.3 } : undefined
+                }
+              >
+                <Icon name="remove-circle" size={28} color={hydrationColor} />
+              </Button>
+            )}
+            <Canvas style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}>
+              {/* Fill clipped to bottle shape */}
+              <Group clip={bottlePath}>
+                <Rect
+                  x={0}
+                  y={0}
+                  width={CANVAS_WIDTH}
+                  height={CANVAS_HEIGHT}
+                  color={trackColor}
+                />
+                <Path path={fillPath} color={hydrationColor} />
+              </Group>
+              {/* Bottle outline */}
+              <Path
+                path={bottlePath}
+                style="stroke"
+                strokeWidth={2}
+                color={outlineColor}
               />
-              <Path path={fillPath} color={hydrationColor} />
-            </Group>
-            {/* Bottle outline */}
-            <Path
-              path={bottlePath}
-              style="stroke"
-              strokeWidth={2}
-              color={outlineColor}
-            />
-          </Canvas>
-          {showButtons && (
-            <Button
-              variant="ghost"
-              onPress={onIncrement}
-              disabled={noContainer}
-              className="p-2"
-              accessibilityRole="button"
-              accessibilityLabel={t('dashboard.addWater', {
-                defaultValue: 'Add water',
-              })}
-              style={noContainer ? { opacity: 0.3 } : undefined}
-            >
-              <Icon name="add-circle" size={28} color={hydrationColor} />
-            </Button>
-          )}
+            </Canvas>
+            {showButtons && (
+              <Button
+                variant="ghost"
+                onPress={onIncrement}
+                disabled={noContainer}
+                className="p-2"
+                accessibilityRole="button"
+                accessibilityLabel={t('dashboard.addWater', {
+                  defaultValue: 'Add water',
+                })}
+                style={noContainer ? { opacity: 0.3 } : undefined}
+              >
+                <Icon name="add-circle" size={28} color={hydrationColor} />
+              </Button>
+            )}
+          </View>
+          {/* Directly under the buttons it describes, rather than centred on
+              the whole card where it read as belonging to the totals. */}
+          {showButtons && pressLabel ? (
+            <View className="rounded-full border border-border-subtle px-3 py-1 mt-2">
+              <Text className="text-sm font-semibold text-accent-primary">
+                {pressLabel}
+              </Text>
+            </View>
+          ) : null}
         </View>
         <View className="flex-1 items-center mr-2">
           <Text className="text-2xl font-bold text-text-primary">
@@ -288,15 +308,6 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
           split across two muted captions -- "N ml per container" for a plain
           container and the drink name for a linked one -- either of which was
           the least readable thing on the card. */}
-      {showButtons && pressLabel ? (
-        <View className="items-center mt-2">
-          <View className="rounded-full border border-border-subtle px-4 py-1">
-            <Text className="text-sm font-semibold text-accent-primary">
-              {pressLabel}
-            </Text>
-          </View>
-        </View>
-      ) : null}
       {/* One tap logs the drink. These deliberately do not carry +/- of their
           own: a second latte is another tap, and removing one belongs in the
           drinks log where you can see which you are deleting. */}
