@@ -167,7 +167,6 @@
       "cabinet": "Skab"
     },
     "scheduleDesc": {
-      "mealSuffix": " ({{meal}} måltid)",
       "daily": "Daglig",
       "weeklyOn": "Ugentligt på {{days}}",
       "everyNDays": "Hver {{n}} dage",

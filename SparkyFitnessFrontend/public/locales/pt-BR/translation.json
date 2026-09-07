@@ -4,7 +4,6 @@
     "checkin": "Check-in",
     "reports": "Relatórios",
     "foods": "Comidas",
-    "exercises": "Exercícios",
     "goals": "Metas",
     "settings": "Configurações",
     "admin": "Administrador",
@@ -34,7 +33,10 @@
       "bio": "Bio",
       "tellAboutYourself": "Conte-nos sobre você",
       "saveProfile": "Salvar Perfil",
-      "saving": "Salvando..."
+      "saving": "Salvando...",
+      "enterHeight": "Insira sua altura",
+      "height": "Altura",
+      "uploading": "Enviando..."
     },
     "preferences": {
       "title": "Preferências",
@@ -95,7 +97,25 @@
     "aiService": {
       "title": "Serviço de IA",
       "description": "Gerenciar configurações para recursos com tecnologia de IA",
-      "invalidKeyLengthWarning": "Se você encontrar um erro de \"Invalid key length\", certifique-se de que sua chaves de criptografia nas variáveis de ambiente do servidor seja de 64 caracteres hexadecimais."
+      "invalidKeyLengthWarning": "Se você encontrar um erro de \"Invalid key length\", certifique-se de que sua chaves de criptografia nas variáveis de ambiente do servidor seja de 64 caracteres hexadecimais.",
+      "globalSettings": {
+        "allowUserConfig": "Permitir que usuários configurem serviços de IA",
+        "syncFromEnv": "Sincronizar das variáveis de ambiente",
+        "addService": "Adicionar serviço",
+        "saveChanges": "Salvar mudanças",
+        "cancel": "Cancelar",
+        "edit": "Editar",
+        "delete": "Remover",
+        "serviceName": "Nome do serviço",
+        "serviceType": "Tipo de serviço",
+        "apiKey": "Chave da API",
+        "apiKeyOptional": "Chave da API (opcional)",
+        "customUrl": "URL personalizada",
+        "activeService": "Serviço ativo",
+        "global": "Global",
+        "error": "Erro",
+        "success": "Sucesso"
+      }
     },
     "apiKeyManagement": {
       "title": "Gerenciamento de chaves de API",
@@ -115,7 +135,6 @@
     },
     "accountSecurity": {
       "updateEmail": "Atualizar e-mail",
-      "verifyNewEmail": "Você precisa validar seu novo e-mail",
       "changePassword": "Alterar Senha",
       "newPassword": "Nova Senha",
       "enterNewPassword": "Entre nova senha",
@@ -129,6 +148,18 @@
       "description": "Alterar seu e-mail ou senha",
       "currentEmail": "E-mail atual",
       "enterNewEmail": "Digite novo endereço de e-mail"
+    },
+    "dataManagement": {
+      "sectionTitle": "Gestão de dados",
+      "subtitle": "Exporte ou gerencie seus dados",
+      "title": "Exportar dados",
+      "delimiterPlaceholder": "Delimitador",
+      "semicolon": "Ponto e vírgula (;)",
+      "comma": "Vírgula (,)",
+      "exportButton": "Exportar meu diário (CSV)",
+      "exporting": "Preparando...",
+      "exportSuccess": "Exportação concluída",
+      "exportSuccessDescription": "Seu diário foi exportado com sucesso."
     }
   },
   "aboutDialog": {
@@ -260,7 +291,7 @@
       "imageLabel": "Imagem",
       "updateSuccess": "Exercício atualizado com sucesso.",
       "updateError": "Falha ao atualizar exercício.",
-      "setTypePlaceholder": "Definir Tipo"
+      "setTypePlaceholder": "Tipo de série"
     },
     "activityDetailsEditor": {
       "fieldNameLabel": "Nome do campo",
@@ -408,7 +439,6 @@
     "type": "Tipo",
     "reps": "Repetições",
     "weight": "Peso",
-    "durationMin": "Duração (min)",
     "restS": "Descanso (s)",
     "notes": "Notas",
     "exercise": "Exercício",
@@ -612,7 +642,7 @@
       "laps": "Voltas",
       "distance": "Distância",
       "cumulativeDistance": "Distância Cumulativa",
-      "avgPace": "Ritmo Médio",
+      "avgPace": "Ritmo médio",
       "avgRunCadence": "Cadência de Corrida Média",
       "maxRunCadence": "Cadência de Corrida Máxima",
       "movingTime": "Tempo de Movimento",
@@ -919,7 +949,6 @@
     "csvHeadersTimeAsleepHours": "Tempo de sono (h)",
     "csvHeadersScore": "Pontuação",
     "csvHeadersEfficiencyPercentage": "Eficiência (%)",
-    "csvHeadersDebtHours": "Dívida (h)",
     "csvHeadersInsight": "compreensão",
     "goodSleep": "Boa noite de sono",
     "needsImprovement": "Precisa melhorar",
@@ -1080,7 +1109,8 @@
       "distributeRemaining": "Distribuir Uniformemente o Restante",
       "total": "Total",
       "mustBe100": "Deve ser 100% para salvar"
-    }
+    },
+    "saveAndStart": "Salvar e começar plano"
   },
   "customFoodForm": {
     "caloriesLabel": "Calorias",
@@ -1286,7 +1316,16 @@
     "addNewFood": "Adicionar nova comida",
     "addNewFoodDescription": "Digite os detalhes do novo item de comida para adicionar ao seu banco de dados.",
     "scanBarcodeDescription": "Posicione o código de barras do produto na frente de sua câmera.",
-    "importFromCSVDescription": "Importar um arquivo CSV para adicionar várias comidas de uma só vez."
+    "importFromCSVDescription": "Importar um arquivo CSV para adicionar várias comidas de uma só vez.",
+    "loadMore": "Carregar mais",
+    "recent": "Recentes",
+    "frequent": "Frequentes",
+    "bySource": "Por fonte",
+    "noResults": "Sem resultados",
+    "favorite": "Favorito",
+    "favorites": "Favoritos",
+    "addToFavorites": "Adicionar aos favoritos",
+    "removeFromFavorites": "Remover dos favoritos"
   },
   "addComp": {
     "addNew": "Adicionar novo"
@@ -1366,7 +1405,35 @@
       "maximize": "Maximizar",
       "restore": "Restaurar",
       "hide": "Ocultar"
-    }
+    },
+    "over": "acima",
+    "addSuccess": "Alimento adicionado com sucesso.",
+    "calculateExplanation": {
+      "bmrMeasured": "Medido",
+      "bmrMeasuredDesc": "Usando sua TMB medida. Sem fórmula aplicada.",
+      "todayTarget": "Como o objetivo do dia é calculado"
+    },
+    "copyAllFromYesterday": "Copiar tudo de ontem",
+    "copyAllSuccess": "O dia foi copiado com sucesso.",
+    "copyAllToDate": "Copiar dia inteiro para outra data",
+    "copyError": "Falha ao copiar entradas.",
+    "copyFamilyFromSuccess": "Entradas copiadas de familiares com sucesso.",
+    "copyFamilyMealType": "Tipo de refeição",
+    "copyFamilyMemberLabel": "Familiar",
+    "copyFamilyMemberPlaceholder": "Selecionar familiar",
+    "copyTargetTitleFamily": "Destino (família)",
+    "copyTargetTitleSelf": "Destino (você)",
+    "deleteSuccess": "Entrada removida.",
+    "mealsLoadError": "Falha ao carregar refeições.",
+    "updateError": "Falha ao atualizar registro.",
+    "updateSuccess": "Registro atualizado.",
+    "entryPhoto": "Fotos para esta entrada",
+    "addEntryPhoto": "Adicionar foto",
+    "replaceEntryPhoto": "Substituir foto",
+    "removeEntryPhoto": "Remover foto",
+    "entryImageUploadFailedTitle": "Falha no envio",
+    "entryImageRemoveFailedTitle": "Falha ao remover",
+    "savingPhotos": "Salvando fotos…"
   },
   "foodDiary": {
     "title": "Diário de alimentação",
@@ -1595,7 +1662,6 @@
       "idTokenSignedAlg": "Algoritmo de assinatura do Token ID",
       "userinfoSignedAlg": "Algoritmo de assinatura de informações do usuário",
       "requestTimeout": "Tempo de requisição esgotado (ms)",
-      "redirectUriInfo": "A URI de redirecionamento para o seu provedor OIDC deve ser: SPARKY_FITNESS_FRONTEND_URL/oidc-callback",
       "redirectUriCopied": "URI de redirecionamento copiada para a área de transferência.",
       "createSuccess": "Provedor OIDC criado com sucesso.",
       "localhostWarning": "Certifique-se de que seu provedor OIDC permita o uso de host local ou de seu IP local para desenvolvimento.",
@@ -1847,7 +1913,7 @@
     "create": "Criar",
     "creating": "Criando...",
     "date": "Data",
-    "delete": "Remover",
+    "delete": "Deletar",
     "duplicate": "Duplicar",
     "edit": "Editar",
     "error": "Erro",
@@ -1871,7 +1937,16 @@
     "save": "Salvar",
     "savePreferences": "Salvar Preferências",
     "select": "Selecionar",
-    "workout": "Treino"
+    "workout": "Treino",
+    "success": "Sucesso",
+    "totalSets": "Total de séries",
+    "actions": "Ações",
+    "advanced": "Avançado",
+    "avgHrUnit": "FC média",
+    "copyRawJson": "Copiar JSON não formatado",
+    "skip": "Pular",
+    "view": "Ver detalher",
+    "weight": "Peso"
   },
   "documentationViewer": {
     "loadingAiContext": "Carregando o contexto de IA...",
@@ -1953,7 +2028,9 @@
     "autoCalculate": "Auto-calculado",
     "autoCalculateTooltip": "Auto-calculado usando {{algorithm}}",
     "autoCalculateDisabledNoSex": "Defina seu sexo no Perfil para permitir calculo automático",
-    "autoCalculateSelectAll": "Selecionar tudo"
+    "autoCalculateSelectAll": "Selecionar tudo",
+    "autoCalculateSelectNone": "Desselecionar todos",
+    "autoCalculateApplySelected": "Calcular selecionados automaticamente ({{count}})"
   },
   "sync": {
     "syncAll": "Sincronizar todas as fontes ativas",
@@ -2019,7 +2096,6 @@
     },
     "scheduleDesc": {
       "atTime": " em {{time}}",
-      "mealSuffix": " ({{meal}} refeição)",
       "daily": "Diariamente",
       "weeklyOn": "Semanal em {{days}}",
       "everyNDays": "Cada {{n}} dias",
@@ -2119,7 +2195,8 @@
     "fileTooLarge": "O arquivo selecionado é muito grande. Por favor, envie um arquivo menor que 25MB.",
     "missingDefaultWarning": "Aviso: {{count}} comida(s) não têm uma variante padrão. Por favor, defina pelo menos uma variante como padrão (destacada em amarelo abaixo).",
     "missingDefaultValidationError": "Pelo menos uma variante por alimento deve ser definida como a unidade padrão.",
-    "showAllRows": "Mostrar todas as linhas ({{count}})"
+    "showAllRows": "Mostrar todas as linhas ({{count}})",
+    "defaultVariantNote": "Pelo menos uma variante por alimento deve ser definida como a unidade padrão."
   },
   "workout": {
     "weight": "peso",
@@ -2128,7 +2205,12 @@
     "reps": "Repetições",
     "durationMin": "Duração (min)",
     "distance": "Distância",
-    "calories": "Calorias"
+    "calories": "Calorias",
+    "avgHr": "FC média (bpm)",
+    "caloriesAuto": "Automática",
+    "durationSet": "Duração da série {{setNumber}}",
+    "notesPlaceholder": "Adicionar uma nota para esta série...",
+    "rpe": "PSE"
   },
   "syncRangeDialog": {
     "timeoutWarning": "Para grandes intervalos de data, o navegador pode sair, mas o servidor continuará sincronizando em segundo plano.",
@@ -2155,7 +2237,9 @@
     "createSuccess": "Provedor de dados externo adicionado com sucesso."
   },
   "mealTypeManager": {
-    "add": "Adicionar Categoria"
+    "add": "Adicionar Categoria",
+    "addDesc": "Criar uma nova categoria de refeições (por exemplo, Pré-Treino).",
+    "nameLabel": "Nome"
   },
   "mealCreation": {
     "mealName": "Nome da refeição",
@@ -2164,7 +2248,6 @@
     "enterDetails": "Digite detalhes para o seu novo modelo de refeição.",
     "description": "Descrição"
   },
-  "key": "texto",
   "i18n": {
     "locale": "en-US"
   },
@@ -2176,12 +2259,19 @@
     "passkeyErrorTitle": "Erro de Passkey",
     "loginSuccess": "Login bem sucedido!",
     "invalidOrigin": "Acesso negado: Esta conexão",
-    "emailExists": "Usuário com este e-mail já existe."
+    "emailExists": "Usuário com este e-mail já existe.",
+    "passkeySecureContextError": "A autenticação passkey requer um contexto seguro (HTTPS ou localhost). Por favor, inscreva-se usando e-mail e senha.",
+    "passwordResetSuccess": "A senha foi redefinida com sucesso. Você pode entrar agora.",
+    "registerError": "Um erro inesperado ocorreu durante a inscrição."
   },
   "diaryCsvImport": {
     "validationErrorTitle": "Erro de validação",
     "scopePublic": "Público",
-    "scopeFamily": "Família"
+    "scopeFamily": "Família",
+    "scopeMine": "Meus itens",
+    "pickDate": "Escolha uma data",
+    "title": "Importar registros de diário (CSV)",
+    "uploadCsv": "Enviar CSV"
   },
   "cycle": {
     "history": {
@@ -2216,5 +2306,54 @@
   "foods": {
     "providerVerified": "Alimentos verificados",
     "removeNutrient": "Remover {{nutrient}}"
+  },
+  "foodPhoto": {
+    "analyzing": "Analisando foto da refeição...",
+    "errors": {
+      "unreachableMessage": "Tente novamente ou registre este alimento manualmente.",
+      "photoTooLargeMessage": "Utilize uma imagem menor.",
+      "photoTooLargeTitle": "Foto muito grande",
+      "aiNotConfiguredTitle": "IA não configurada"
+    },
+    "columns": {
+      "fat": "Gordura",
+      "carbs": "Carboidratos",
+      "protein": "Proteínas",
+      "gramsFor": "Gramas para {{name}}",
+      "grams": "Gramas"
+    },
+    "photosTooLargeTitle": "Fotos muito grandes",
+    "recalcFromGrams": "Recalcular a partir de gramas",
+    "removeIngredient": "Remover {{name}}",
+    "logFailedMessage": "Por favor, tente novamente."
+  },
+  "food": {
+    "mainImage": "Principal",
+    "imagesLabel": "Imagens"
+  },
+  "nutrientGoalDirection": {
+    "min": "Min",
+    "max": "Máx",
+    "to": "para",
+    "goalTypeGroupLabel": "Direção do objetivo",
+    "badgeMin": "Min",
+    "badgeMax": "Máx",
+    "badgeTarget": "Intervalo",
+    "guidance": {
+      "loseWeight": {
+        "title": "Perder peso",
+        "body": "Ajusta calorias ao máximo (um limite) ou um intervalo alvo."
+      },
+      "gainWeight": {
+        "title": "Ganhar peso ou massa muscular"
+      },
+      "maintain": {
+        "title": "Manter peso"
+      }
+    },
+    "sections": {
+      "other": "Outros",
+      "custom": "Nutrientes personalizados"
+    }
   }
 }
