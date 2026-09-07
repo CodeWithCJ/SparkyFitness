@@ -108,7 +108,10 @@ describe('Drink Preset Materialization (#1958, #1925, #2115)', () => {
         unit: 'ml',
         is_primary: false,
         servings_per_container: 1,
-        linked_quantity: 1,
+        // One whole serving in the variant's own unit. Quantity 1 against a
+        // 30 ml espresso would log one millilitre of it -- 2 mg of its 63 mg
+        // of caffeine -- because nutrients scale by quantity / serving_size.
+        linked_quantity: 30,
         hydration_factor: 0,
         linked_food_id: 'food-espresso-1',
         linked_variant_id: 'var-espresso-1',
@@ -161,5 +164,44 @@ describe('Drink Preset Materialization (#1958, #1925, #2115)', () => {
     await expect(
       waterContainerService.materializeDrinkPreset(userId, 'unknown_drink_id')
     ).rejects.toThrow(/not found in catalog/i);
+  });
+
+  // The number that matters is not the column but what a press ends up logging:
+  // the server computes caffeine as caffeine_mg * quantity / serving_size, so
+  // a quantity of 1 silently divided every preset by its serving size.
+  it("logs the preset's whole caffeine dose per press, not a fraction of it", async () => {
+    vi.mocked(
+      waterContainerRepository.getWaterContainersByUserId
+    ).mockResolvedValue([]);
+    vi.mocked(foodRepository.createFood).mockResolvedValue({
+      id: 'food-espresso-1',
+      name: 'Espresso',
+      user_id: userId,
+      is_custom: true,
+      shared_with_public: false,
+      default_variant: {
+        id: 'var-espresso-1',
+        food_id: 'food-espresso-1',
+        serving_size: 30,
+        serving_unit: 'ml',
+        caffeine_mg: 63,
+        water_ml: 0,
+      },
+    } as never);
+    let capturedQuantity = 0;
+    vi.mocked(waterContainerRepository.createWaterContainer).mockImplementation(
+      ((_userId: string, body: { linked_quantity: number }) => {
+        capturedQuantity = body.linked_quantity;
+        return Promise.resolve({ id: 101, ...body });
+      }) as never
+    );
+
+    await waterContainerService.materializeDrinkPreset(userId, 'espresso');
+
+    // Espresso: 63 mg per 30 ml serving.
+    const servingSize = 30;
+    const caffeinePerServing = 63;
+    const logged = (caffeinePerServing * capturedQuantity) / servingSize;
+    expect(logged).toBeCloseTo(63, 5);
   });
 });

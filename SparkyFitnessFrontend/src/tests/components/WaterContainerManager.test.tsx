@@ -31,8 +31,9 @@ const mockContainers: WaterContainer[] = [
     hydration_factor: 0.9,
     linked_food_id: 'food-123',
     linked_food_name: 'Green Tea',
-    linked_variant_serving_size: 1,
-    linked_variant_serving_unit: 'cup',
+    linked_quantity: 240,
+    linked_variant_serving_size: 240,
+    linked_variant_serving_unit: 'ml',
     linked_meal_type_name: 'Breakfast',
   },
 ];
@@ -267,5 +268,22 @@ describe('WaterContainerManager', () => {
     await waitFor(() => {
       expect(mockMaterializePreset).toHaveBeenCalledWith('espresso');
     });
+  });
+
+  // A linked container carries volume 0 on purpose -- its amount lives on the
+  // food -- so printing the volume column showed every drink preset as
+  // "Double Espresso - 0 ml".
+  it('describes a linked container by what one press logs, not by its empty volume', () => {
+    renderWithClient(<WaterContainerManager />);
+
+    expect(screen.getByText(/Tea Mug - 240 ml/)).toBeInTheDocument();
+    expect(screen.queryByText(/Tea Mug - 0/)).not.toBeInTheDocument();
+    // Servings divide a plain container's volume; they mean nothing here.
+    expect(screen.getByText(/Tea Mug/).textContent).not.toMatch(/serving/);
+  });
+
+  it('still shows volume and servings for a plain container', () => {
+    renderWithClient(<WaterContainerManager />);
+    expect(screen.getByText(/Bottle - 500 ml/)).toBeInTheDocument();
   });
 });

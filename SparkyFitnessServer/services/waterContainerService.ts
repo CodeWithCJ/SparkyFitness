@@ -247,13 +247,19 @@ async function materializeDrinkPreset(
   // created (serving_size/water_ml), and on a linked container volume means
   // "the glass holds more than the food" -- setting it here would override the
   // food with a duplicate of its own number.
+  //
+  // linked_quantity is one whole serving, expressed in the variant's own unit
+  // as the diary expresses it. It must be the serving size, not 1: nutrients
+  // are stored per serving_size and consumed as value * quantity / serving_size,
+  // so quantity 1 against a 60 ml espresso logged one millilitre of it --
+  // 2 mg of its 126 mg of caffeine.
   return await waterContainerRepository.createWaterContainer(userId, {
     name: preset.defaultName,
     volume: 0,
     unit: 'ml',
     is_primary: false,
     servings_per_container: 1,
-    linked_quantity: 1,
+    linked_quantity: preset.volumeMl,
     hydration_factor: preset.hydrationFactor,
     linked_food_id: createdFood.id,
     linked_variant_id: variantId,

@@ -151,6 +151,31 @@ const WaterContainerManager: React.FC = () => {
     }
   };
 
+  /**
+   * How much one press is, for the container list.
+   *
+   * A linked container carries volume 0 on purpose -- its amount lives on the
+   * food -- so printing the volume column showed every drink preset as
+   * "Double Espresso - 0 ml".
+   */
+  const describePress = (c: WaterContainer) => {
+    if (c.linked_food_id) {
+      const size = Number(c.linked_variant_serving_size);
+      const unit = c.linked_variant_serving_unit || '';
+      const quantity = Number(c.linked_quantity ?? 1);
+      if (Number.isFinite(quantity) && quantity > 0 && unit) {
+        return `${Number(quantity.toFixed(2))} ${unit}`;
+      }
+      if (Number.isFinite(size) && size > 0 && unit) {
+        return `${size} ${unit}`;
+      }
+      return c.linked_food_name || '';
+    }
+    return `${convertMlToSelectedUnit(c.volume, c.unit).toFixed(
+      c.unit === 'ml' ? 0 : 2
+    )} ${c.unit}`;
+  };
+
   // What one press logs, in the picked variant's own unit -- the same pairing
   // the diary shows when you add this food.
   const describeLink = (
@@ -469,11 +494,8 @@ const WaterContainerManager: React.FC = () => {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <p className="font-semibold">
-                        {c.name} -{' '}
-                        {convertMlToSelectedUnit(c.volume, c.unit).toFixed(
-                          c.unit === 'ml' ? 0 : 2
-                        )}{' '}
-                        {c.unit}
+                        {c.name}
+                        {describePress(c) ? ` - ${describePress(c)}` : ''}
                       </p>
                       <Badge
                         variant="secondary"
@@ -828,18 +850,21 @@ const WaterContainerManager: React.FC = () => {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <p className="font-semibold">
-                      {c.name} -{' '}
-                      {convertMlToSelectedUnit(c.volume, c.unit).toFixed(2)}{' '}
-                      {c.unit === 'liter'
-                        ? t('waterContainerManager.liter', 'liter')
-                        : c.unit}{' '}
-                      (
-                      {t('waterContainerManager.servingsCount', {
-                        count: c.servings_per_container,
-                        defaultValue_one: '{{count}} serving',
-                        defaultValue_other: '{{count}} servings',
-                      })}
-                      )
+                      {c.name}
+                      {describePress(c) ? ` - ${describePress(c)}` : ''}
+                      {/* Servings only divide a plain container's volume; a
+                          linked one is measured by its food instead. */}
+                      {!c.linked_food_id && (
+                        <>
+                          {' ('}
+                          {t('waterContainerManager.servingsCount', {
+                            count: c.servings_per_container,
+                            defaultValue_one: '{{count}} serving',
+                            defaultValue_other: '{{count}} servings',
+                          })}
+                          {')'}
+                        </>
+                      )}
                     </p>
                     {c.is_primary && (
                       <Badge
