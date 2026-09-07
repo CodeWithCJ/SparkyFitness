@@ -75,7 +75,7 @@ async function createDefaultNutrientPreferences(
     JSON.stringify(pref.visible_nutrients),
   ]);
   const query = format(
-    'INSERT INTO %I (user_id, view_group, platform, visible_nutrients) VALUES %L RETURNING *',
+    'INSERT INTO %I (user_id, view_group, platform, visible_nutrients) VALUES %L ON CONFLICT (user_id, view_group, platform) DO NOTHING RETURNING *',
     TABLE_NAME,
     values
   );

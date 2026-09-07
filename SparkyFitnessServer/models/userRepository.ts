@@ -21,7 +21,7 @@ async function createUser(
       [email, 'credential', userId, hashedPassword]
     );
     // Initialize profile and goals safely
-    await ensureUserInitialization(userId, full_name, client);
+    await ensureUserInitialization(userId, full_name, null, client);
     await client.query('COMMIT'); // Commit transaction
     return userId;
   } catch (error) {
@@ -286,7 +286,7 @@ async function createOidcUser(
     );
     const newUserId = userResult.rows[0].id;
     // Initialize profile and goals safely
-    await ensureUserInitialization(newUserId, fullName, client);
+    await ensureUserInitialization(newUserId, fullName, null, client);
     // Link the new user to the OIDC provider (account table)
     await client.query(
       'INSERT INTO "account" (id, account_id, provider_id, user_id, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, $3, now(), now())',
