@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { globalSettingsService } from '@/api/Admin/globalSettingsService';
 import { settingsKeys } from '@/api/keys/admin';
+import { openFoodFactsContributionKeys } from '@/api/keys/settings';
 import { authClient } from '@/lib/auth-client';
 import { GlobalSettings } from '@/types/admin';
 
@@ -32,8 +33,13 @@ export const useUpdateSettings = () => {
     mutationFn: (settings: GlobalSettings) =>
       globalSettingsService.saveSettings(settings),
     onSuccess: () => {
-      refetch();
-      queryClient.invalidateQueries({ queryKey: settingsKeys.all });
+      void refetch();
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: settingsKeys.all }),
+        queryClient.invalidateQueries({
+          queryKey: openFoodFactsContributionKeys.all,
+        }),
+      ]);
     },
   });
 };

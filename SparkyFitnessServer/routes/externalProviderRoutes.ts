@@ -89,7 +89,8 @@ router.use(express.json());
 router.get('/', authenticate, async (req, res, next) => {
   try {
     const providers = await externalProviderService.getExternalDataProviders(
-      req.userId
+      req.userId,
+      req.authenticatedUserId
     );
     res.status(200).json(providers);
   } catch (error) {
@@ -147,7 +148,7 @@ router.get('/user/:targetUserId', authenticate, async (req, res, next) => {
   try {
     const providers =
       await externalProviderService.getExternalDataProvidersForUser(
-        req.userId,
+        req.authenticatedUserId,
         targetUserId
       );
     res.status(200).json(providers);
@@ -220,7 +221,7 @@ router.post('/', authenticate, async (req, res, next) => {
   try {
     const newProvider =
       await externalProviderService.createExternalDataProvider(
-        req.userId,
+        req.authenticatedUserId,
         req.body
       );
     res.status(201).json(newProvider);
@@ -303,7 +304,7 @@ router.put('/:id', authenticate, async (req, res, next) => {
   try {
     const updatedProvider =
       await externalProviderService.updateExternalDataProvider(
-        req.userId,
+        req.authenticatedUserId,
         id,
         req.body
       );
@@ -362,7 +363,10 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     return res.status(400).json({ error: 'Provider ID is required.' });
   }
   try {
-    await externalProviderService.deleteExternalDataProvider(req.userId, id);
+    await externalProviderService.deleteExternalDataProvider(
+      req.authenticatedUserId,
+      id
+    );
     res
       .status(200)
       .json({ message: 'External data provider deleted successfully.' });
@@ -427,9 +431,9 @@ router.get('/:id', authenticate, async (req, res, next) => {
         req.userId,
         id
       );
-    // Visibility (RLS) let this row through, but decrypted secrets must only
-    // reach the row's owner — redact them for family/public viewers and for a
-    // delegate switched into the owner's context (real actor != owner).
+    // Visibility (RLS) let this row through, but storage ciphertext never
+    // belongs in a browser response. Redact decrypted secrets for family/public
+    // viewers and delegates; OFF passwords stay server-side even for owners.
     res
       .status(200)
       .json(

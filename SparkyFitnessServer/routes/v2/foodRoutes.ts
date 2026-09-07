@@ -1,4 +1,5 @@
 import express, { RequestHandler } from 'express';
+import openFoodFactsContributionRoutes from './openFoodFactsContributionRoutes.js';
 import {
   BarcodeResponseSchema,
   NormalizedFoodSchema,
@@ -42,6 +43,7 @@ import {
 const router = express.Router();
 
 router.use(checkPermissionMiddleware('diary'));
+router.use(openFoodFactsContributionRoutes);
 
 function nullToUndefined<T>(value: T | null | undefined): T | undefined {
   return value === null ? undefined : value;
@@ -313,7 +315,7 @@ const detailHandler: RequestHandler<{
 
     switch (providerType) {
       case 'openfoodfacts': {
-        const offProviderId = await resolveOpenFoodFactsProviderId(
+        const offProvider = await resolveOpenFoodFactsProviderId(
           req.authenticatedUserId,
           providerId
         );
@@ -322,8 +324,9 @@ const detailHandler: RequestHandler<{
           undefined,
           language,
 
-          offProviderId ? req.authenticatedUserId : undefined,
-          offProviderId || undefined
+          offProvider ? req.authenticatedUserId : undefined,
+          offProvider?.id,
+          offProvider?.scope ?? 'personal'
         );
         if (data.status === 1 && data.product) {
           food = mapOpenFoodFactsProduct(data.product, { language });

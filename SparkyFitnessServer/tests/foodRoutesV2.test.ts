@@ -88,9 +88,9 @@ vi.mock('../services/foodIntegrationService.js', () => ({
 const app = express();
 app.use(express.json());
 app.use((req, res, next) => {
-  req.userId = 'user-123';
-
-  req.authenticatedUserId = 'user-123';
+  req.userId = req.header('x-test-active-user-id') || 'user-123';
+  req.authenticatedUserId =
+    req.header('x-test-authenticated-user-id') || 'user-123';
   next();
 });
 app.use('/v2/foods', foodRoutesV2);
@@ -172,6 +172,17 @@ describe('GET /v2/foods/barcode/:barcode', () => {
     expect(res.body.food.default_variant).not.toHaveProperty(
       'custom_nutrients'
     );
+  });
+});
+
+describe('removed manual Open Food Facts contribution endpoints', () => {
+  it.each([
+    '/v2/foods/food-123/openfoodfacts/contribution',
+    '/v2/foods/openfoodfacts/contributions',
+  ])('does not expose POST %s', async (path) => {
+    const response = await request(app).post(path).send({});
+
+    expect(response.status).toBe(404);
   });
 });
 

@@ -46,6 +46,12 @@ async function getGlobalSettings() {
     ) {
       settings.allow_user_ai_config = true;
     }
+    if (
+      settings.allow_openfoodfacts_contributions === null ||
+      settings.allow_openfoodfacts_contributions === undefined
+    ) {
+      settings.allow_openfoodfacts_contributions = false;
+    }
     log(
       'info',
       `[GLOBAL SETTINGS REPO] Retrieved Global Settings with overrides: ${JSON.stringify(settings)}`
@@ -65,7 +71,7 @@ async function saveGlobalSettings(settings: any) {
         : true;
     await client.query(
       `UPDATE global_settings
-             SET enable_email_password_login = $1, is_oidc_active = $2, mfa_mandatory = $3, allow_user_ai_config = COALESCE($4, allow_user_ai_config, true), default_vision_ai_service_id = CASE WHEN $6 THEN $5 ELSE default_vision_ai_service_id END
+             SET enable_email_password_login = $1, is_oidc_active = $2, mfa_mandatory = $3, allow_user_ai_config = COALESCE($4, allow_user_ai_config, true), default_vision_ai_service_id = CASE WHEN $6 THEN $5 ELSE default_vision_ai_service_id END, allow_openfoodfacts_contributions = COALESCE($7, allow_openfoodfacts_contributions, false)
              WHERE id = 1
              RETURNING *`,
       // Use 'is_mfa_mandatory' from the incoming settings from the frontend.
@@ -80,10 +86,24 @@ async function saveGlobalSettings(settings: any) {
         allowUserAiConfig,
         settings.default_vision_ai_service_id ?? null,
         'default_vision_ai_service_id' in settings,
+        settings.allow_openfoodfacts_contributions ?? null,
       ]
     );
     // Return the full truth (DB + ENV overrides)
     return await getGlobalSettings();
+  } finally {
+    client.release();
+  }
+}
+async function isOpenFoodFactsContributionAllowed(): Promise<boolean> {
+  const client = await getSystemClient();
+  try {
+    const result = await client.query(
+      `SELECT allow_openfoodfacts_contributions
+         FROM global_settings
+        WHERE id = 1`
+    );
+    return result.rows[0]?.allow_openfoodfacts_contributions === true;
   } finally {
     client.release();
   }
@@ -133,10 +153,12 @@ export { saveGlobalSettings };
 export { getMfaMandatorySetting };
 export { setMfaMandatorySetting };
 export { isUserAiConfigAllowed };
+export { isOpenFoodFactsContributionAllowed };
 export default {
   getGlobalSettings,
   saveGlobalSettings,
   getMfaMandatorySetting,
   setMfaMandatorySetting,
   isUserAiConfigAllowed,
+  isOpenFoodFactsContributionAllowed,
 };

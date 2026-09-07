@@ -3,6 +3,7 @@ import {
   invalidateOpenFoodFactsSession,
   DEFAULT_OFF_BASE_URL,
 } from './openFoodFactsAuth.js';
+import type { OpenFoodFactsCredentialScope } from './openFoodFactsAuth.js';
 import { log } from '../../config/logging.js';
 import { normalizeNutrientUnit } from '@workspace/shared';
 import package$0 from '../../package.json' with { type: 'json' };
@@ -11,6 +12,10 @@ import {
   normalizeServingUnit,
   altBarcode,
 } from '../../utils/foodUtils.js';
+import {
+  OPENFOODFACTS_INTERACTIVE_PRODUCT_READ_MAX_WAIT_MS,
+  withOpenFoodFactsProductReadPermit,
+} from '../../services/openFoodFactsProductReadRateLimitService.js';
 const { name, version } = package$0;
 const USER_AGENT = `${name}/${version} (https://github.com/CodeWithCJ/SparkyFitness)`;
 const SEARCH_A_LICIOUS_URL = 'https://search.openfoodfacts.org/search';
@@ -253,7 +258,8 @@ function rankSearchHits(
  */
 async function resolveOffRequestContext(
   authenticatedUserId?: string,
-  providerId?: string
+  providerId?: string,
+  credentialScope: OpenFoodFactsCredentialScope = 'personal'
 ): Promise<{ sessionCookie: string | null; baseUrl: string }> {
   if (!authenticatedUserId || !providerId) {
     return { sessionCookie: null, baseUrl: DEFAULT_OFF_BASE_URL };
@@ -261,7 +267,8 @@ async function resolveOffRequestContext(
   try {
     const { session, baseUrl } = await resolveOpenFoodFactsProvider(
       authenticatedUserId,
-      providerId
+      providerId,
+      credentialScope
     );
     return { sessionCookie: session, baseUrl };
   } catch (error) {
@@ -281,13 +288,15 @@ async function fetchOpenFoodFacts(
     providerId,
     sessionCookie,
     timeoutMs = OFF_FETCH_TIMEOUT_MS,
+    rateLimitProductRead = false,
   }: {
     authenticatedUserId?: string;
     providerId?: string;
     sessionCookie?: string | null;
     timeoutMs?: number;
+    rateLimitProductRead?: boolean;
   } = {}
-) {
+): Promise<Response> {
   const baseHeaders = { ...OFF_HEADERS };
 
   const headers = sessionCookie
@@ -298,14 +307,41 @@ async function fetchOpenFoodFacts(
   // answered near the end of the budget cannot double the wall-clock time.
   const requestDeadline = Date.now() + timeoutMs;
 
-  const response = await fetchWithTimeout(
-    url,
-    {
-      method: 'GET',
-      headers,
-    },
-    timeoutMs
-  );
+  const performGet = async (
+    requestHeaders: Record<string, string>
+  ): Promise<Response> => {
+    const operation = (): Promise<Response> => {
+      const remainingTimeoutMs = requestDeadline - Date.now();
+      if (remainingTimeoutMs <= 0) {
+        log('warn', `OpenFoodFacts request deadline exhausted: ${url}`);
+        return Promise.reject(
+          Object.assign(new Error('OpenFoodFacts request timed out'), {
+            status: 504,
+          })
+        );
+      }
+      return fetchWithTimeout(
+        url,
+        {
+          method: 'GET',
+          headers: requestHeaders,
+          redirect: 'manual',
+        },
+        remainingTimeoutMs
+      );
+    };
+
+    if (!rateLimitProductRead) return operation();
+    const remainingWaitBudget = Math.max(0, requestDeadline - Date.now());
+    return withOpenFoodFactsProductReadPermit(operation, {
+      maxWaitMs: Math.min(
+        OPENFOODFACTS_INTERACTIVE_PRODUCT_READ_MAX_WAIT_MS,
+        remainingWaitBudget
+      ),
+    });
+  };
+
+  const response = await performGet(headers);
 
   if (sessionCookie && (response.status === 429 || response.status >= 500)) {
     log(
@@ -322,14 +358,7 @@ async function fetchOpenFoodFacts(
         status: 504,
       });
     }
-    return fetchWithTimeout(
-      url,
-      {
-        method: 'GET',
-        headers: baseHeaders,
-      },
-      remainingTimeoutMs
-    );
+    return performGet(baseHeaders);
   }
 
   return response;
@@ -473,7 +502,8 @@ async function searchOpenFoodFacts(
   language = 'en',
   authenticatedUserId?: string,
   providerId?: string,
-  pageSize = 20
+  pageSize = 20,
+  credentialScope: OpenFoodFactsCredentialScope = 'personal'
 ): Promise<{
   products: OffProduct[];
   pagination: {
@@ -491,7 +521,8 @@ async function searchOpenFoodFacts(
     const fields = [...fieldSet];
     const { sessionCookie, baseUrl } = await resolveOffRequestContext(
       authenticatedUserId,
-      providerId
+      providerId,
+      credentialScope
     );
 
     // Search-a-licious is Open Food Facts' relevance-ranked full-text search
@@ -634,7 +665,8 @@ async function searchOpenFoodFactsByBarcodeFields(
   fields = OFF_FIELDS,
   language = 'en',
   authenticatedUserId?: string,
-  providerId?: string
+  providerId?: string,
+  credentialScope: OpenFoodFactsCredentialScope = 'personal'
 ): Promise<{
   status: number;
   status_verbose: string;
@@ -650,13 +682,15 @@ async function searchOpenFoodFactsByBarcodeFields(
     const fieldsParam = finalFields.join(',');
     const { sessionCookie, baseUrl } = await resolveOffRequestContext(
       authenticatedUserId,
-      providerId
+      providerId,
+      credentialScope
     );
     const searchUrl = `${baseUrl}/api/v2/product/${barcode}.json?fields=${fieldsParam}&lc=${language}`;
     const response = await fetchOpenFoodFacts(searchUrl, {
       authenticatedUserId,
       providerId,
       sessionCookie,
+      rateLimitProductRead: true,
     });
     if (!response.ok) {
       if (response.status === 404) {
@@ -686,6 +720,7 @@ async function searchOpenFoodFactsByBarcodeFields(
           authenticatedUserId,
           providerId,
           sessionCookie,
+          rateLimitProductRead: true,
         });
         if (altResponse.ok) {
           const altData = (await altResponse.json()) as {

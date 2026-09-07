@@ -1,7 +1,16 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import FoodDatabaseManager from '@/pages/Foods/Foods';
 import { renderWithClient } from '../test-utils';
+import { apiCall } from '@/api/api';
+
+jest.mock('@/api/api', () => ({ apiCall: jest.fn() }));
+let mockActiveUserId = 'test-user-id';
+jest.mock('@/hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: { id: 'test-user-id', activeUserId: mockActiveUserId },
+  }),
+}));
 
 // Mock i18n directly for calls outside of hooks
 jest.mock('@/i18n', () => ({
@@ -61,10 +70,23 @@ jest.mock('@/pages/Foods/DeleteFoodDialog', () => ({
   __esModule: true,
   default: () => null,
 }));
-
 const foods = [
-  { id: 'food1', name: 'Apple', user_id: 'test-user-id', default_variant: {} },
-  { id: 'food2', name: 'Banana', user_id: 'test-user-id', default_variant: {} },
+  {
+    id: 'food1',
+    name: 'Apple',
+    user_id: 'test-user-id',
+    barcode: '4006381333931',
+    is_custom: true,
+    default_variant: {},
+  },
+  {
+    id: 'food2',
+    name: 'Banana',
+    user_id: 'test-user-id',
+    default_variant: {},
+    is_custom: true,
+    provider_type: 'openfoodfacts',
+  },
 ];
 
 jest.mock('@/hooks/Foods/useFoodDatabaseManager', () => ({
@@ -113,6 +135,18 @@ jest.mock('@/hooks/Foods/useFoodDatabaseManager', () => ({
 }));
 
 describe('FoodDatabaseManager', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockActiveUserId = 'test-user-id';
+    jest.mocked(apiCall).mockResolvedValue({
+      serverEnabled: true,
+      userEnabled: false,
+      productLanguage: 'de',
+      providerScope: 'personal',
+      status: { pending: 0, processing: 0, failed: 0, succeeded: 0 },
+      recentFailures: [],
+    });
+  });
   it('shows a favorite indicator only on favorited food rows', async () => {
     renderWithClient(<FoodDatabaseManager />);
 
@@ -130,4 +164,68 @@ describe('FoodDatabaseManager', () => {
       screen.queryByRole('button', { name: 'Add to favorites' })
     ).toBeNull();
   });
+
+  it('offers one owned custom food for contribution without a bulk action', async () => {
+    renderWithClient(<FoodDatabaseManager />);
+    await screen.findAllByLabelText('Favorited');
+
+    expect(
+      screen.queryByRole('button', {
+        name: 'Contribute all to Open Food Facts',
+      })
+    ).not.toBeInTheDocument();
+
+    const menuTrigger = screen.getAllByRole('button', {
+      name: 'Open menu',
+    })[0];
+    if (!menuTrigger) throw new Error('Expected a food action menu trigger.');
+    fireEvent.pointerDown(menuTrigger, {
+      button: 0,
+      ctrlKey: false,
+      pointerId: 1,
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByRole('menuitem', { name: 'Contribute to Open Food Facts' })
+      ).toBeInTheDocument();
+    });
+    fireEvent.click(
+      screen.getByRole('menuitem', { name: 'Contribute to Open Food Facts' })
+    );
+    expect(
+      await screen.findByLabelText('Your own product photo')
+    ).toBeInTheDocument();
+    expect(
+      jest
+        .mocked(apiCall)
+        .mock.calls.every(([, options]) => options?.method === 'GET')
+    ).toBe(true);
+  });
+
+  it.each([
+    ['an imported food', 1, 'test-user-id'],
+    ['a delegate', 0, 'another-user'],
+  ])(
+    'hides contribution actions for %s',
+    async (_name, menuIndex, activeUserId) => {
+      mockActiveUserId = activeUserId;
+      renderWithClient(<FoodDatabaseManager />);
+      await screen.findAllByLabelText('Favorited');
+      const trigger = screen.getAllByRole('button', { name: 'Open menu' })[
+        menuIndex
+      ];
+      if (!trigger) throw new Error('Missing menu trigger');
+      fireEvent.pointerDown(trigger, {
+        button: 0,
+        ctrlKey: false,
+        pointerId: 1,
+      });
+      await screen.findByRole('menuitem', { name: 'Edit food' });
+      expect(
+        screen.queryByRole('menuitem', {
+          name: 'Contribute to Open Food Facts',
+        })
+      ).not.toBeInTheDocument();
+    }
+  );
 });
