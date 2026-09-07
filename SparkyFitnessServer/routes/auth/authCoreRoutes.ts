@@ -12,7 +12,10 @@ import {
   mintRegistrationTicket,
   redeemRegistrationTicket,
 } from '../../services/passkeyTicketService.js';
-import { isDemoMode } from '../../middleware/demoGuardMiddleware.js';
+import {
+  isDemoMode,
+  demoLoginRateLimit,
+} from '../../middleware/demoGuardMiddleware.js';
 import {
   getDemoCredentials,
   seedDemoUser,
@@ -158,10 +161,18 @@ router.get('/settings', async (req, res) => {
  *         description: Demo login successful
  *       404:
  *         description: Demo mode is disabled
+ *       429:
+ *         description: Too many demo login attempts from this address
  *       500:
  *         description: Demo login failed or internal error
  */
-router.post('/demo-login', async (req, res) => {
+// Re-seeding is an expensive multi-hundred-row transaction. Without a cooldown
+// an anonymous caller could amplify one cheap request into a full re-seed on
+// every 401, so cap how often the credential re-sync can fire.
+const DEMO_RESEED_COOLDOWN_MS = 5 * 60 * 1000;
+let lastDemoReseedAt = 0;
+
+router.post('/demo-login', demoLoginRateLimit, async (req, res) => {
   if (!isDemoMode()) {
     return res
       .status(404)
@@ -188,8 +199,13 @@ router.post('/demo-login', async (req, res) => {
       asResponse: true,
     });
 
-    // If password mismatch or 401 occurred (e.g. password out of sync), re-sync credentials and retry once
-    if (response.status === 401) {
+    // If password mismatch or 401 occurred (e.g. password out of sync), re-sync
+    // credentials and retry once — but no more often than the cooldown allows.
+    if (
+      response.status === 401 &&
+      Date.now() - lastDemoReseedAt > DEMO_RESEED_COOLDOWN_MS
+    ) {
+      lastDemoReseedAt = Date.now();
       log(
         'warn',
         '[AUTH CORE] Demo login returned 401. Re-syncing demo credentials and retrying...'

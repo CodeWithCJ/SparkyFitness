@@ -7,7 +7,7 @@ import { configureOutboundProxy } from './utils/outboundProxy.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-dotenv.config({ path: path.resolve(__dirname, '../.env'), override: true });
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 loadSecrets();
 configureOutboundProxy();
 
