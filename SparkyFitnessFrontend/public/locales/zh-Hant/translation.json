@@ -1660,7 +1660,6 @@
     "totalNutrition": "總營養資訊：熱量 {{calories}}、蛋白質 {{protein}}g、碳水 {{carbs}}g、脂肪 {{fat}}g",
     "totalNutritionLabel": "總營養：",
     "fullRecipeNutritionLabel": "完整食譜營養：",
-    "loggedNutritionLabel": "登記攝取營養：",
     "totalServings": "總份數",
     "totalAmount": "總重量",
     "servingSize": "單份份量",

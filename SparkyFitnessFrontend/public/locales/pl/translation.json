@@ -148,7 +148,12 @@
       "summaryUnavailableDesc": "Nie udało się wczytać dziennego podsumowania energii. Spróbuj odświeżyć stronę.",
       "summaryUnavailableTitle": "Dzienne podsumowanie niedostępne",
       "updateProfile": "Zaktualizuj profil",
-      "weightTrend": "Trend masy ciała"
+      "weightTrend": "Trend masy ciała",
+      "bmrSourceMeasured": "Zmierzone",
+      "bmrSourceAlgorithm": "Algorytm",
+      "healthConnectProjectionSource": "Łączne kalorie z Health Connect",
+      "fallbackProjectionSource": "BMR + aktywne kalorie (metoda zapasowa)",
+      "legacyProjectionSource": "Prognoza urządzenia"
     },
     "editExerciseEntryDialog": {
       "repsLabel": "Powtórzenia",
@@ -2667,7 +2672,6 @@
     "saveMealButton": "Zapisz posiłek",
     "totalNutritionLabel": "Całkowite odżywianie:",
     "fullRecipeNutritionLabel": "Wartość odżywcza całego przepisu:",
-    "loggedNutritionLabel": "Zapisane wartości odżywcze:",
     "totalServings": "Całkowite porcje",
     "totalAmount": "Całkowita ilość",
     "servingSize": "Wielkość porcji",
@@ -3735,7 +3739,8 @@
       "after": "Po posiłku",
       "before": "Przed posiłkiem",
       "none": "Bez określonej zależności od posiłku",
-      "with": "Z posiłkiem"
+      "with": "Z posiłkiem",
+      "awayFromMeals": "Poza posiłkami"
     },
     "print": {
       "header": "Raport leków dla lekarza przepisującego",

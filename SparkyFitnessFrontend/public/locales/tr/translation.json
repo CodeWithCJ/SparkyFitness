@@ -1663,7 +1663,6 @@
     "totalNutrition": "Toplam Beslenme: Kalori: {{calories}}, Protein: {{protein}}g, Karbonhidrat: {{carbs}}g, Yağ: {{fat}}g",
     "totalNutritionLabel": "Toplam Beslenme:",
     "fullRecipeNutritionLabel": "Tam Tarifli Beslenme:",
-    "loggedNutritionLabel": "Kayıtlı Beslenme:",
     "totalServings": "Toplam Porsiyon",
     "totalAmount": "Toplam Tutar",
     "servingSize": "Porsiyon Boyutu",
