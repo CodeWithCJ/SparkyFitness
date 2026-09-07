@@ -51,6 +51,7 @@ interface MealTotals {
   vitamin_c?: number;
   iron?: number;
   caffeine_mg?: number;
+  water_ml?: number;
   alcohol_g?: number;
   calcium?: number;
   glycemic_index?: GlycemicIndex;
@@ -196,10 +197,10 @@ const MealCard = ({
     'vitamin_c',
     'iron',
     'calcium',
-    // water_ml is deliberately absent: the water ring owns the day total, and
-    // summing it here would put a second, differently-rounded water figure in
-    // the diary (same reason it stays out of EMPTY_MEAL_TOTALS).
     'caffeine_mg',
+    // Summable like the rest: a meal states the water it holds. The hydration
+    // ring still owns the day total, which is computed from its own arm.
+    'water_ml',
     'alcohol_g',
   ];
 

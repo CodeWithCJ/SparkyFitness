@@ -530,6 +530,10 @@ export const getMealTotals = (
       iron: 0,
       calcium: 0,
       caffeine_mg: 0,
+      // Summed like any other nutrient so a meal can state the water it holds.
+      // The hydration ring still owns the DAY total -- this is the per-meal
+      // contribution, and calculateDayTotals deliberately does not read it.
+      water_ml: 0,
       alcohol_g: 0,
       custom_nutrients: {} as Record<string, number>,
     }
@@ -564,6 +568,7 @@ export const getEntryNutrition = (
       iron: item.iron || 0,
       calcium: item.calcium || 0,
       caffeine_mg: item.caffeine_mg || 0,
+      water_ml: item.water_ml || 0,
       alcohol_g: item.alcohol_g || 0,
       custom_nutrients: (item.custom_nutrients as Record<string, number>) || {},
     };

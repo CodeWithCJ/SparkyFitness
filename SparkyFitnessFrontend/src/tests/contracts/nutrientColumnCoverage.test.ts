@@ -96,21 +96,9 @@ const DELIBERATE_OMISSIONS: Omission[] = [
       'RDA targets for vitamins/minerals. Caffeine and alcohol are limits, not recommended intakes, and water has its own goal.',
   },
   {
-    file: /^pages\/Diary\/MealCard\.tsx$/,
-    columns: ['water_ml'],
-    reason:
-      'The water ring owns the day total; summing water into the diary grid would render it twice with different rounding (same reason it is absent from EMPTY_MEAL_TOTALS).',
-  },
-  {
     file: /^pages\/Diary\/NutritionSummaryCard\.tsx$/,
     columns: ['water_ml'],
     reason: 'Summary card — the water ring owns that number.',
-  },
-  {
-    file: /^types\/meal\.ts$/,
-    columns: ['water_ml'],
-    reason:
-      'MealTotals mirrors EMPTY_MEAL_TOTALS, which deliberately excludes water.',
   },
   {
     file: /^types\/Chatbot_types\.ts$/,

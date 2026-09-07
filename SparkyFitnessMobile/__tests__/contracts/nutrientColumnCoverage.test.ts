@@ -63,12 +63,6 @@ const DELIBERATE_OMISSIONS: Omission[] = [
       'Trends mirror the summary view group, where the hydration gauge owns the number.',
   },
   {
-    file: /^utils\/mealNutrition\.ts$/,
-    columns: ['water_ml'],
-    reason:
-      'Meal totals mirror the web MealTotals shape, which deliberately omits water.',
-  },
-  {
     file: /^services\/api\/reportsApi\.ts$/,
     columns: ['water_ml'],
     reason: 'Report totals read hydration from its own water arm.',

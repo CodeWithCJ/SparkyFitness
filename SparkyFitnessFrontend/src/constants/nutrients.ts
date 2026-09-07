@@ -225,11 +225,12 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     group: 'minerals',
   },
   // Required so the food form / food grids can render a water-content input
-  // and readout (CENTRAL_NUTRIENT_CONFIG drives NutrientFormGrid). Deliberately
-  // NOT summed into EMPTY_MEAL_TOTALS / calculateDayTotals -- the water ring
-  // already owns the day total once the #1557 fold-in preference lands; a
-  // second sum here would be a second, competing total. See constants/goals.ts
-  // for the matching exclusion from the generic per-nutrient goal system.
+  // and readout (CENTRAL_NUTRIENT_CONFIG drives NutrientFormGrid). Summed into
+  // meal totals like any other nutrient, so a meal can state the water it
+  // holds, but NOT into calculateDayTotals: the hydration ring owns the day
+  // figure through its own arm, and a second sum there would compete with it.
+  // See constants/goals.ts for the matching exclusion from the generic
+  // per-nutrient goal system.
   water_ml: {
     id: 'water_ml',
     label: 'nutrition.waterContent',
@@ -280,6 +281,7 @@ export const EMPTY_MEAL_TOTALS: MealTotals = {
   iron: 0,
   calcium: 0,
   caffeine_mg: 0,
+  water_ml: 0,
   alcohol_g: 0,
   custom_nutrients: {},
 };
