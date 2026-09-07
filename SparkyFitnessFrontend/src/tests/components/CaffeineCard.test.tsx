@@ -238,4 +238,32 @@ describe('CaffeineCard Component', () => {
     // 200 mg halves to 100 mg after exactly one 5 h half-life.
     expect(screen.getByText(/Back under 100mg from/)).toBeInTheDocument();
   });
+
+  // In-plot labels were clipped by the chart's top margin, and the "now" line
+  // never had one at all, so the marks are named beneath the plot instead.
+  it('names every mark on the plot', () => {
+    mockUseActiveCaffeineQuery.mockReturnValue({
+      data: baseData,
+      isLoading: false,
+    } as never);
+
+    render(<CaffeineCard date="2026-09-05" />);
+    expect(screen.getByText('Active caffeine')).toBeInTheDocument();
+    expect(screen.getByText('100mg sleep threshold')).toBeInTheDocument();
+    expect(screen.getByText('Bedtime 22:30')).toBeInTheDocument();
+    expect(screen.getByText('Now')).toBeInTheDocument();
+    expect(screen.getByText('Logged dose')).toBeInTheDocument();
+    // Only explained when there is an assumed dose to explain.
+    expect(screen.queryByText('Assumed time')).not.toBeInTheDocument();
+  });
+
+  it('explains the hollow marker only when a dose time was assumed', () => {
+    mockUseActiveCaffeineQuery.mockReturnValue({
+      data: { ...baseData, has_estimated_times: true },
+      isLoading: false,
+    } as never);
+
+    render(<CaffeineCard date="2026-09-05" />);
+    expect(screen.getByText('Assumed time')).toBeInTheDocument();
+  });
 });

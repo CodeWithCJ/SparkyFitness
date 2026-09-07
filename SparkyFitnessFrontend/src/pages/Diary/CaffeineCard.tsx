@@ -256,7 +256,7 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
           <ResponsiveContainer width="100%" height={180}>
             <AreaChart
               data={chart}
-              margin={{ top: 8, right: 8, left: -14, bottom: 0 }}
+              margin={{ top: 10, right: 10, left: -14, bottom: 0 }}
             >
               <defs>
                 <linearGradient id="caffeineFill" x1="0" y1="0" x2="0" y2="1">
@@ -314,23 +314,11 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
                 y={threshold_mg}
                 stroke={isDark ? '#f87171' : '#dc2626'}
                 strokeDasharray="4 4"
-                label={{
-                  value: `${threshold_mg} mg`,
-                  position: 'insideTopRight',
-                  fontSize: 10,
-                  fill: isDark ? '#f87171' : '#dc2626',
-                }}
               />
               <ReferenceLine
                 x={bedtimeMs}
                 stroke={isDark ? '#818cf8' : '#6366f1'}
                 strokeDasharray="2 4"
-                label={{
-                  value: t('diary.caffeine.bedShort', 'bed'),
-                  position: 'top',
-                  fontSize: 10,
-                  fill: isDark ? '#818cf8' : '#6366f1',
-                }}
               />
               <ReferenceLine
                 x={nowMs}
@@ -358,6 +346,44 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
               })}
             </AreaChart>
           </ResponsiveContainer>
+          {/* Every mark on the plot is named here rather than labelled in
+              place: in-plot labels were clipped by the top margin, and the
+              "now" line had no label at all. */}
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground pt-1">
+            <span className="flex items-center gap-1">
+              <span className="h-[2px] w-4 rounded bg-amber-600" />
+              {t('diary.caffeine.legendCurve', 'Active caffeine')}
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-0 w-4 border-t-2 border-dashed border-red-600 dark:border-red-400" />
+              {t('diary.caffeine.legendThreshold', {
+                defaultValue: '{{threshold}}mg sleep threshold',
+                threshold: threshold_mg,
+              })}
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-3 w-0 border-l-2 border-dashed border-indigo-500 dark:border-indigo-400" />
+              {t('diary.caffeine.legendBedtime', {
+                defaultValue: 'Bedtime {{time}}',
+                time: target_bedtime,
+              })}
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-3 w-0 border-l-2 border-slate-600 dark:border-slate-400" />
+              {t('diary.caffeine.legendNow', 'Now')}
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 rounded-full bg-amber-600" />
+              {t('diary.caffeine.legendDose', 'Logged dose')}
+            </span>
+            {has_estimated_times && (
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full border border-dashed border-amber-600" />
+                {t('diary.caffeine.legendEstimated', 'Assumed time')}
+              </span>
+            )}
+          </div>
+
           <p className="text-[11px] text-muted-foreground text-center">
             {crossingAt
               ? t('diary.caffeine.crossingNote', {

@@ -177,6 +177,34 @@ const CaffeineCard: React.FC<CaffeineCardProps> = ({
         </CartesianChart>
       </View>
 
+      {/* The plot carries two series and no axis legend, so name them. */}
+      <View className="flex-row justify-center items-center gap-4 mt-1">
+        <View className="flex-row items-center gap-1.5">
+          <View
+            style={{ width: 14, height: 2, backgroundColor: accentColor }}
+          />
+          <Text className="text-text-muted text-[11px]">
+            {t('caffeine.legendCurve', { defaultValue: 'Active caffeine' })}
+          </Text>
+        </View>
+        <View className="flex-row items-center gap-1.5">
+          <View
+            style={{
+              width: 14,
+              height: 0,
+              borderTopWidth: 1,
+              borderStyle: 'dashed',
+              borderColor: dangerColor,
+            }}
+          />
+          <Text className="text-text-muted text-[11px]">
+            {t('caffeine.legendThreshold', {
+              defaultValue: '{{threshold}}mg threshold',
+            }).replace('{{threshold}}', String(kinetics.threshold_mg))}
+          </Text>
+        </View>
+      </View>
+
       <Text className="text-text-muted text-xs text-center mt-1">
         {crossingAt
           ? t('caffeine.crossingNote', {

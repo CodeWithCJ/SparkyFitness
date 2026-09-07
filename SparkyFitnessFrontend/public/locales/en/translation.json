@@ -2726,8 +2726,13 @@
       "cutoffOver": "Already over for tonight",
       "cutoffOverDesc": "Already past {{threshold}}mg at bedtime",
       "crossingNote": "Back under {{threshold}}mg from {{time}}",
-      "bedShort": "bed",
-      "underThreshold": "Stays under {{threshold}}mg tonight"
+      "underThreshold": "Stays under {{threshold}}mg tonight",
+      "legendCurve": "Active caffeine",
+      "legendThreshold": "{{threshold}}mg sleep threshold",
+      "legendBedtime": "Bedtime {{time}}",
+      "legendNow": "Now",
+      "legendDose": "Logged dose",
+      "legendEstimated": "Assumed time"
     },
     "exercise": "Exercise",
     "widgets": {
