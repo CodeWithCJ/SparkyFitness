@@ -27,7 +27,9 @@ describe('Drink Preset Materialization (#1958, #1925, #2115)', () => {
     expect(espresso).toBeDefined();
     expect(espresso?.volumeMl).toBe(30);
     expect(espresso?.caffeineMg).toBe(63);
-    expect(espresso?.hydrationFactor).toBe(0);
+    // A preference, not a claim: non-alcoholic drinks count in full and the
+    // user discounts them if they disagree.
+    expect(espresso?.hydrationFactor).toBe(1);
     expect(espresso?.kind).toBe('caffeine');
 
     const beer = getDrinkPresetCatalogEntry('beer_pint');
@@ -102,7 +104,9 @@ describe('Drink Preset Materialization (#1958, #1925, #2115)', () => {
       saturated_fat: 0,
       abv_percent: 0,
       alcohol_g: 0,
-      water_ml: 0,
+      // The drink's own water content, independent of how much of it the
+      // container is set to credit.
+      water_ml: 30,
     });
 
     expect(waterContainerRepository.createWaterContainer).toHaveBeenCalledWith(
@@ -120,7 +124,7 @@ describe('Drink Preset Materialization (#1958, #1925, #2115)', () => {
         // 30 ml espresso would log one millilitre of it -- 2 mg of its 63 mg
         // of caffeine -- because nutrients scale by quantity / serving_size.
         linked_quantity: 30,
-        hydration_factor: 0,
+        hydration_factor: 1,
         linked_food_id: 'food-espresso-1',
         linked_variant_id: 'var-espresso-1',
         is_quick_add: true,

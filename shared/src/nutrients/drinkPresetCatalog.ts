@@ -42,10 +42,16 @@ export interface DrinkPresetCatalogEntry {
   sugarsG?: number;
   saturatedFatG?: number;
   /**
-   * Hydration scaling factor (0.0 - 2.0).
-   * 0 = no water credit (e.g. espresso)
-   * 1 = full water credit (e.g. water, tea)
-   * partial = partial hydration (e.g. beer, coffee)
+   * How much of the drink's water counts toward the hydration goal (0.0 - 2.0).
+   *
+   * A preference, not a claim: the Beverage Hydration Index found coffee and
+   * tea at normal doses about as hydrating as water, so every non-alcoholic
+   * preset ships at 1 and the user can discount it if they disagree. Only the
+   * alcoholic ones are discounted by default, where the diuretic effect is far
+   * better established.
+   *
+   * Distinct from the food's own `waterMl`, which is a fact about the drink. An
+   * espresso holds ~60 ml of water whatever a user decides to count.
    */
   hydrationFactor: number;
   /** Primary category kind */
@@ -64,7 +70,7 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     proteinG: 0.1,
     carbsG: 0.5,
     fatG: 0.1,
-    hydrationFactor: 0,
+    hydrationFactor: 1,
     kind: "caffeine",
   },
   {
@@ -78,7 +84,7 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     proteinG: 0.1,
     carbsG: 1.0,
     fatG: 0.1,
-    hydrationFactor: 0,
+    hydrationFactor: 1,
     kind: "caffeine",
   },
   {
@@ -92,7 +98,7 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     proteinG: 0.3,
     carbsG: 0.0,
     fatG: 0.0,
-    hydrationFactor: 0.8,
+    hydrationFactor: 1,
     kind: "caffeine",
   },
   {
@@ -106,7 +112,7 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     proteinG: 0.2,
     carbsG: 0.7,
     fatG: 0.0,
-    hydrationFactor: 0.9,
+    hydrationFactor: 1,
     kind: "caffeine",
   },
   {
@@ -122,7 +128,7 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     fatG: 9.5,
     sugarsG: 14.5,
     saturatedFatG: 5.5,
-    hydrationFactor: 0.85,
+    hydrationFactor: 1,
     kind: "caffeine",
   },
   {
@@ -138,7 +144,7 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     fatG: 4.2,
     sugarsG: 6.4,
     saturatedFatG: 2.5,
-    hydrationFactor: 0.85,
+    hydrationFactor: 1,
     kind: "caffeine",
   },
   {
@@ -152,7 +158,7 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     proteinG: 0.0,
     carbsG: 0.5,
     fatG: 0.0,
-    hydrationFactor: 0.95,
+    hydrationFactor: 1,
     kind: "caffeine",
   },
   {
@@ -166,7 +172,7 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     proteinG: 0.0,
     carbsG: 0.0,
     fatG: 0.0,
-    hydrationFactor: 0.95,
+    hydrationFactor: 1,
     kind: "caffeine",
   },
   {
@@ -181,7 +187,7 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     carbsG: 27.5,
     fatG: 0.0,
     sugarsG: 27.0,
-    hydrationFactor: 0.6,
+    hydrationFactor: 1,
     kind: "caffeine",
   },
   {
@@ -196,7 +202,7 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     carbsG: 35.0,
     fatG: 0.0,
     sugarsG: 35.0,
-    hydrationFactor: 0.7,
+    hydrationFactor: 1,
     kind: "caffeine",
   },
   {

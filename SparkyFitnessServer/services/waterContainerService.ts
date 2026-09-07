@@ -254,8 +254,11 @@ async function materializeDrinkPreset(
       caffeine_mg: preset.caffeineMg ?? 0,
       abv_percent: preset.abvPercent ?? 0,
       alcohol_g: preset.alcoholG ?? 0,
-      water_ml:
-        preset.waterMl ?? (preset.hydrationFactor === 0 ? 0 : preset.volumeMl),
+      // The food's water content is a fact about the drink; the container's
+      // hydration factor is a preference about how much of it counts. Deriving
+      // one from the other made an espresso claim to be dry, so its entry
+      // showed 0 ml of water in a 60 ml cup.
+      water_ml: preset.waterMl ?? preset.volumeMl,
     }));
 
   const defaultVariant = createdFood?.default_variant;
