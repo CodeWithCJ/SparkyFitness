@@ -27,7 +27,15 @@ interface HydrationGaugeProps {
   // no caption renders -- a caption on every day would say nothing new.
   fromFoodMl?: number;
   unit?: string;
-  containerVolume?: number; // ml per button press
+  containerVolume?: number | null; // ml per press; null when not measured in ml
+  /**
+   * What one press logs when the container is linked to a food, e.g.
+   * "250 ml of Ice Coffe". A linked container has no volume of its own, so
+   * there is no millilitre figure to state.
+   */
+  linkedPressLabel?: string;
+  /** Opens the container screen when there is no container to press. */
+  onConfigure?: () => void;
   onIncrement?: () => void;
   onDecrement?: () => void;
   disableDecrement?: boolean;
@@ -61,6 +69,8 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
   fromFoodMl,
   unit = 'ml',
   containerVolume,
+  linkedPressLabel,
+  onConfigure,
   onIncrement,
   onDecrement,
   disableDecrement,
@@ -262,14 +272,33 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
           })}
         </Text>
       )}
-      {showButtons && containerVolume == null && (
+      {showButtons && containerVolume == null && linkedPressLabel ? (
         <Text className="text-xs text-text-muted text-center mt-2">
-          {t('dashboard.configureWaterContainer', {
-            defaultValue:
-              'Configure water container on server to\nenable quick add/remove buttons',
-          })}
+          {linkedPressLabel}
         </Text>
-      )}
+      ) : null}
+      {/* No container to press. This used to be a dead sentence telling the
+          user to go to the server; the containers screen lives here now, so
+          it is a way in. */}
+      {showButtons && containerVolume == null && !linkedPressLabel ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onConfigure}
+          disabled={!onConfigure}
+          style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}
+        >
+          <Text
+            className={`text-xs text-center mt-2 ${
+              onConfigure ? 'text-accent-primary' : 'text-text-muted'
+            }`}
+          >
+            {t('dashboard.chooseWaterContainer', {
+              defaultValue:
+                'Choose a water container to enable quick add/remove',
+            })}
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 };

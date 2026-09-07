@@ -148,6 +148,13 @@ export const WATER_UNIT_LABELS: Record<string, string> = {
 export function getServingVolume(container: {
   volume: number;
   servings_per_container?: number | null;
-}): number {
+  linked_food_id?: string | null;
+}): number | null {
+  // A container linked to a food carries volume 0 on purpose: its amount lives
+  // on the food, and a volume there would mean "the glass holds more than the
+  // food". Dividing that by servings yields 0, which the gauge then reported as
+  // "0 ml per container" with a +/- that appeared to add nothing. Null says
+  // "not measured in millilitres" so callers can describe the press instead.
+  if (container.linked_food_id) return null;
   return container.volume / (container.servings_per_container || 1);
 }

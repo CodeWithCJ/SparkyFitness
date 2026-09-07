@@ -13,6 +13,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatLocalizedNumber } from '../localization';
 import {
   Pressable,
   RefreshControl,
@@ -205,6 +206,19 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     date: selectedDate,
     enabled: isConnected,
   });
+
+  // A linked container has no volume of its own, so state what one press logs
+  // in the linked variant's own unit instead of a millilitre figure it does
+  // not have.
+  const linkedPressLabel = useMemo(() => {
+    if (!activeWaterContainer?.linked_food_id) return undefined;
+    const quantity = Number(activeWaterContainer.linked_quantity ?? 1);
+    const unit = activeWaterContainer.linked_variant_serving_unit || '';
+    const name = activeWaterContainer.linked_food_name || '';
+    if (!unit || !Number.isFinite(quantity) || quantity <= 0) return name;
+    const amount = `${formatLocalizedNumber(quantity, { maximumFractionDigits: 2 })} ${unit}`;
+    return name ? `${amount} \u00b7 ${name}` : amount;
+  }, [activeWaterContainer]);
 
   const healthTrendOrder = useAppPreferencesStore((s) => s.healthTrendOrder);
   const hiddenHealthTrends = useAppPreferencesStore(
@@ -629,6 +643,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             fromFoodMl={summary.waterFromFood}
             unit={waterUnit || preferences?.water_display_unit || 'ml'}
             containerVolume={servingVolume}
+            linkedPressLabel={linkedPressLabel}
+            onConfigure={
+              isContainersLoaded && !activeWaterContainer
+                ? () => navigation.navigate('WaterContainers')
+                : undefined
+            }
             onIncrement={isContainersLoaded ? incrementWater : undefined}
             onDecrement={isContainersLoaded ? decrementWater : undefined}
             disableDecrement={summary.waterConsumed <= 0}

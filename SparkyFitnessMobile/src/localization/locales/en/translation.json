@@ -689,7 +689,6 @@
     "hydration": "Hydration",
     "ofVolume": "of {{value}} {{unit}}",
     "perBottle": "{{value}} {{unit}} per bottle",
-    "configureWaterContainer": "Configure water container on server to\nenable quick add/remove buttons",
     "exercise": "Exercise",
     "minutes": "Minutes",
     "calories": "Calories",
@@ -698,7 +697,8 @@
     "addWater": "Add water",
     "selectContainer": "Select {{container}}",
     "perContainer": "{{value}} {{unit}} per container",
-    "waterFromFood": "Includes {{value}} {{unit}} from food"
+    "waterFromFood": "Includes {{value}} {{unit}} from food",
+    "chooseWaterContainer": "Choose a water container to enable quick add/remove"
   },
   "syncScreen": {
     "healthConnectSettings": "Health Connect settings",

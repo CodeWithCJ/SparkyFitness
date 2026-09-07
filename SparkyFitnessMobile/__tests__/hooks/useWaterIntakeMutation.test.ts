@@ -693,7 +693,10 @@ describe('useWaterIntakeMutation', () => {
       await waitFor(() => expect(result.current.activeContainer?.id).toBe(3));
     });
 
-    test('noContainerAlert shows "No Primary Container" when multiple containers but none selected', async () => {
+    // Mobile used to give up here -- several containers, none primary -- and
+    // leave the gauge with nothing to press. Web falls back to the first
+    // standard container, so mobile now does too.
+    test('falls back to the first container when several exist and none is primary', async () => {
       mockFetchWaterContainers.mockResolvedValue([
         { ...containerA, is_primary: false },
         { ...containerB, is_primary: false },
@@ -705,17 +708,51 @@ describe('useWaterIntakeMutation', () => {
         }
       );
       await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
-      expect(result.current.isReady).toBe(false);
+
+      expect(result.current.isReady).toBe(true);
+      expect(result.current.activeContainer?.id).toBe(containerA.id);
 
       act(() => {
         result.current.increment();
       });
-
-      expect(Toast.show).toHaveBeenCalledWith(
-        expect.objectContaining({
-          text1: 'No Primary Container',
-        })
+      expect(Toast.show).not.toHaveBeenCalledWith(
+        expect.objectContaining({ text1: 'No Primary Container' })
       );
+    });
+
+    test('offers a 250 ml default when the user has no containers at all', async () => {
+      mockFetchWaterContainers.mockResolvedValue([]);
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        {
+          wrapper: createQueryWrapper(queryClient),
+        }
+      );
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+
+      expect(result.current.isReady).toBe(true);
+      // 2000 ml over 8 servings, the same figure the server falls back to.
+      expect(result.current.servingVolume).toBe(250);
+      // No unit of its own, so the caller keeps the user's display preference.
+      expect(result.current.unit).toBeUndefined();
+    });
+
+    test('ignores quick-add presets when picking the container to measure with', async () => {
+      // Presets are drinks with their own chips; the +/- buttons measure plain
+      // water, and a linked espresso would credit no water at all.
+      mockFetchWaterContainers.mockResolvedValue([
+        { ...containerA, id: 90, is_primary: false, is_quick_add: true },
+        { ...containerB, id: 91, is_primary: false },
+      ]);
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        {
+          wrapper: createQueryWrapper(queryClient),
+        }
+      );
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+
+      expect(result.current.activeContainer?.id).toBe(91);
     });
   });
 });
