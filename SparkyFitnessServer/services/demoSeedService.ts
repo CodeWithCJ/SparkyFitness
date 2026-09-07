@@ -242,11 +242,15 @@ async function cleanDemoUserData(
     userId,
   ]);
   await client.query('DELETE FROM food_entries WHERE user_id = $1', [userId]);
+  await client.query('DELETE FROM food_entry_meals WHERE user_id = $1', [
+    userId,
+  ]);
   await client.query(
     'DELETE FROM food_variants WHERE food_id IN (SELECT id FROM foods WHERE user_id = $1)',
     [userId]
   );
   await client.query('DELETE FROM foods WHERE user_id = $1', [userId]);
+  await client.query('DELETE FROM user_goals WHERE user_id = $1', [userId]);
   await client.query('DELETE FROM check_in_measurements WHERE user_id = $1', [
     userId,
   ]);
@@ -301,83 +305,105 @@ async function createCustomFoodWithVariant(
   return foodId;
 }
 
+let activeSeedPromise: Promise<string> | null = null;
+
 /**
  * Ensures the demo user exists and is populated with rich sample data.
  */
 export async function seedDemoUser(): Promise<string> {
-  const { email, fullName, password } = getDemoCredentials();
-  const client = await getSystemClient();
+  if (activeSeedPromise) {
+    return activeSeedPromise;
+  }
 
-  try {
-    const user = await userRepository.findUserByEmail(email);
-    let userId: string;
+  activeSeedPromise = (async () => {
+    const { email, fullName, password } = getDemoCredentials();
+    const client = await getSystemClient();
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    try {
+      await client.query('BEGIN');
 
-    if (!user) {
-      log('info', `[DEMO] Creating demo user account: ${email}`);
-      userId = uuidv4();
-      await userRepository.createUser(userId, email, hashedPassword, fullName);
-      log('info', `[DEMO] Demo user account created with ID: ${userId}`);
-    } else {
-      userId = user.id;
-      // Ensure the password hash matches the configured demo password in account table
-      const updateRes = await client.query(
-        'UPDATE "account" SET password = $1, updated_at = NOW() WHERE user_id = $2 AND provider_id = \'credential\'',
-        [hashedPassword, userId]
-      );
-      if ((updateRes?.rowCount ?? 0) === 0) {
-        await client.query(
-          'INSERT INTO "account" (id, account_id, provider_id, user_id, password, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, $3, $4, NOW(), NOW())',
-          [email, 'credential', userId, hashedPassword]
+      const user = await userRepository.findUserByEmail(email);
+      let userId: string;
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      if (!user) {
+        log('info', `[DEMO] Creating demo user account: ${email}`);
+        userId = uuidv4();
+        await userRepository.createUser(
+          userId,
+          email,
+          hashedPassword,
+          fullName
         );
+        log('info', `[DEMO] Demo user account created with ID: ${userId}`);
+      } else {
+        userId = user.id;
+        // Ensure the password hash matches the configured demo password in account table
+        const updateRes = await client.query(
+          'UPDATE "account" SET password = $1, updated_at = NOW() WHERE user_id = $2 AND provider_id = \'credential\'',
+          [hashedPassword, userId]
+        );
+        if ((updateRes?.rowCount ?? 0) === 0) {
+          await client.query(
+            'INSERT INTO "account" (id, account_id, provider_id, user_id, password, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, $3, $4, NOW(), NOW())',
+            [email, 'credential', userId, hashedPassword]
+          );
+        }
       }
+
       // Scoped clean of prior records before re-populating fresh daily data
       await cleanDemoUserData(client, userId);
+
+      // 1. Update profile with realistic demo user details (valid columns in `profiles`)
+      await client.query(
+        `UPDATE profiles
+         SET full_name = $2,
+             date_of_birth = '1995-05-15',
+             gender = 'male',
+             bio = 'SparkyFitness Demo Account — Daily sandbox resetting at 00:00 UTC',
+             updated_at = NOW()
+         WHERE id = $1`,
+        [userId, fullName]
+      );
+
+      // 2. Mark onboarding complete so demo user jumps straight into the app
+      await client.query(
+        `INSERT INTO onboarding_status (user_id, onboarding_complete, created_at, updated_at)
+         VALUES ($1, true, NOW(), NOW())
+         ON CONFLICT (user_id) DO UPDATE SET onboarding_complete = true, updated_at = NOW()`,
+        [userId]
+      );
+
+      // 3. Ensure user preferences are initialized
+      await client.query(
+        `INSERT INTO user_preferences (user_id, timezone, water_display_unit, created_at, updated_at)
+         VALUES ($1, 'UTC', 'ml', NOW(), NOW())
+         ON CONFLICT (user_id) DO NOTHING`,
+        [userId]
+      );
+
+      // 4. Initialize default nutrient display preferences
+      await createDefaultNutrientPreferencesForUser(userId);
+
+      // 5. Populate or refresh demo fitness records
+      await populateDemoDataForUser(userId, client);
+
+      await client.query('COMMIT');
+      log('info', `[DEMO] Demo data successfully initialized for ${email}`);
+      return userId;
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      log('error', '[DEMO] Failed to seed demo user data:', error);
+      throw error;
+    } finally {
+      client.release();
     }
+  })().finally(() => {
+    activeSeedPromise = null;
+  });
 
-    // 1. Update profile with realistic demo user details (valid columns in `profiles`)
-    await client.query(
-      `UPDATE profiles
-       SET full_name = $2,
-           date_of_birth = '1995-05-15',
-           gender = 'male',
-           bio = 'SparkyFitness Demo Account — Daily sandbox resetting at 00:00 UTC',
-           updated_at = NOW()
-       WHERE id = $1`,
-      [userId, fullName]
-    );
-
-    // 2. Mark onboarding complete so demo user jumps straight into the app
-    await client.query(
-      `INSERT INTO onboarding_status (user_id, onboarding_complete, created_at, updated_at)
-       VALUES ($1, true, NOW(), NOW())
-       ON CONFLICT (user_id) DO UPDATE SET onboarding_complete = true, updated_at = NOW()`,
-      [userId]
-    );
-
-    // 3. Ensure user preferences are initialized
-    await client.query(
-      `INSERT INTO user_preferences (user_id, timezone, water_display_unit, created_at, updated_at)
-       VALUES ($1, 'UTC', 'ml', NOW(), NOW())
-       ON CONFLICT (user_id) DO NOTHING`,
-      [userId]
-    );
-
-    // 4. Initialize default nutrient display preferences
-    await createDefaultNutrientPreferencesForUser(userId);
-
-    // 5. Populate or refresh demo fitness records
-    await populateDemoDataForUser(userId, client);
-
-    log('info', `[DEMO] Demo data successfully initialized for ${email}`);
-    return userId;
-  } catch (error) {
-    log('error', '[DEMO] Failed to seed demo user data:', error);
-    throw error;
-  } finally {
-    client.release();
-  }
+  return activeSeedPromise;
 }
 
 /**
