@@ -14,13 +14,17 @@ import { createDefaultNutrientPreferencesForUser } from './nutrientDisplayPrefer
 
 import crypto from 'crypto';
 
-let ephemeralDemoPassword: string | null = null;
-
 function getRuntimeFallbackPassword(): string {
-  if (!ephemeralDemoPassword) {
-    ephemeralDemoPassword = crypto.randomBytes(24).toString('base64') + '!1Aa';
-  }
-  return ephemeralDemoPassword;
+  const secretKey =
+    process.env.BETTER_AUTH_SECRET ||
+    process.env.SPARKY_FITNESS_API_ENCRYPTION_KEY ||
+    'sparky-demo-isolated-seed';
+  return (
+    crypto
+      .createHmac('sha256', secretKey)
+      .update('sparky-demo-user-key:' + getDemoEmail())
+      .digest('hex') + '!1Aa'
+  );
 }
 
 export function getDemoCredentials(): {
@@ -317,11 +321,17 @@ export async function seedDemoUser(): Promise<string> {
       log('info', `[DEMO] Demo user account created with ID: ${userId}`);
     } else {
       userId = user.id;
-      // Ensure the password hash matches the configured demo password
-      await client.query(
+      // Ensure the password hash matches the configured demo password in account table
+      const updateRes = await client.query(
         'UPDATE "account" SET password = $1, updated_at = NOW() WHERE user_id = $2 AND provider_id = \'credential\'',
         [hashedPassword, userId]
       );
+      if ((updateRes?.rowCount ?? 0) === 0) {
+        await client.query(
+          'INSERT INTO "account" (id, account_id, provider_id, user_id, password, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, $3, $4, NOW(), NOW())',
+          [email, 'credential', userId, hashedPassword]
+        );
+      }
       // Scoped clean of prior records before re-populating fresh daily data
       await cleanDemoUserData(client, userId);
     }
