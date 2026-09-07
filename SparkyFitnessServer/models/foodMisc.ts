@@ -401,11 +401,15 @@ async function getDailyNutritionSummariesByDates(
 // entry wins over the volume fallback; sf_volume_unit_to_ml returns NULL for
 // non-volume units (and for the food vocabulary's weight 'oz'), which
 // COALESCE then floors to 0.
-const FOOD_DERIVED_WATER_EXPR = `COALESCE(
-  NULLIF(fe.water_ml, 0) * fe.quantity / NULLIF(fe.serving_size, 0),
-  fe.quantity * sf_volume_unit_to_ml(fe.unit),
-  0
-)`;
+// A recorded 0 is an answer, not a blank. NULLIF(fe.water_ml, 0) treated the
+// two alike, so an espresso explicitly holding no water had its 60 ml of
+// volume credited back to the day total -- the opposite of what the row said.
+// Only a NULL falls through to the volume now.
+const FOOD_DERIVED_WATER_EXPR = `CASE
+  WHEN fe.water_ml IS NOT NULL
+    THEN fe.water_ml * fe.quantity / NULLIF(fe.serving_size, 0)
+  ELSE COALESCE(fe.quantity * sf_volume_unit_to_ml(fe.unit), 0)
+END`;
 
 async function getFoodDerivedWaterMlForDate(userId: string, date: string) {
   const client = await getClient(userId);

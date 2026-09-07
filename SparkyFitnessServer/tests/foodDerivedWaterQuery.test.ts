@@ -51,13 +51,25 @@ describe('foodMisc getFoodDerivedWaterMlForDate / getFoodDerivedWaterMlByDateRan
     await foodRepository.getFoodDerivedWaterMlForDate('user-1', '2026-09-05');
 
     const sql = mockClient.query.mock.calls[0][0] as string;
-    expect(sql).toContain('NULLIF(fe.water_ml, 0)');
+    expect(sql).toContain('fe.water_ml IS NOT NULL');
     expect(sql).toContain('sf_volume_unit_to_ml(fe.unit)');
-    // COALESCE argument order: explicit column first, volume fallback second.
-    const explicitIdx = sql.indexOf('NULLIF(fe.water_ml, 0)');
+    // Branch order: the explicit column first, the volume only in the ELSE.
+    const explicitIdx = sql.indexOf('fe.water_ml IS NOT NULL');
     const fallbackIdx = sql.indexOf('sf_volume_unit_to_ml(fe.unit)');
     expect(explicitIdx).toBeGreaterThan(-1);
     expect(fallbackIdx).toBeGreaterThan(explicitIdx);
+  });
+
+  // NULLIF(fe.water_ml, 0) treated "recorded as none" exactly like "never
+  // recorded", so an espresso explicitly holding no water had its own volume
+  // credited back to the day total -- the opposite of what the row said.
+  it('does not fall back to the volume for a drink recorded as holding no water', async () => {
+    mockClient.query.mockResolvedValue({ rows: [{ food_ml: '0' }] });
+
+    await foodRepository.getFoodDerivedWaterMlForDate('user-1', '2026-09-05');
+
+    const sql = mockClient.query.mock.calls[0][0] as string;
+    expect(sql).not.toContain('NULLIF(fe.water_ml, 0)');
   });
 
   it('defaults to 0 when the query returns no rows', async () => {

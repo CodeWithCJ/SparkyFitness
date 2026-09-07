@@ -106,4 +106,48 @@ describe('calculateNutrition — water_ml', () => {
     const variant = makeVariant({ serving_unit: 'ml', water_ml: 90 });
     expect(calculateNutrition(variant, 100)!.water_ml).toBe(90);
   });
+
+  // A drink recorded as holding no water is an answer, not a blank. Because 0
+  // is falsy the explicit value lost to the volume heuristic, so an espresso
+  // logged as 0 ml of water displayed 60 ml -- contradicting both its own row
+  // and the "0% water" badge on the container that logged it.
+  it('keeps an explicit zero instead of guessing the volume back in', () => {
+    const espresso = {
+      id: 'v1',
+      serving_size: 60,
+      serving_unit: 'ml',
+      calories: 5,
+      water_ml: 0,
+    } as FoodVariant;
+
+    expect(calculateNutrition(espresso, 60).water_ml).toBe(0);
+  });
+
+  it('still falls back to the volume when no water is recorded at all', () => {
+    const unrecorded = {
+      id: 'v2',
+      serving_size: 60,
+      serving_unit: 'ml',
+      calories: 5,
+    } as FoodVariant;
+
+    expect(calculateNutrition(unrecorded, 60).water_ml).toBe(60);
+  });
+
+  it('applies the same rule to a logged entry', () => {
+    const variant = {
+      id: 'v3',
+      serving_size: 250,
+      serving_unit: 'ml',
+      water_ml: 0,
+    } as FoodVariant;
+    const entry = {
+      id: 'e1',
+      quantity: 250,
+      unit: 'ml',
+      variant_id: 'v3',
+    } as FoodEntry;
+
+    expect(calculateFoodEntryNutrition(entry, variant).water_ml).toBe(0);
+  });
 });

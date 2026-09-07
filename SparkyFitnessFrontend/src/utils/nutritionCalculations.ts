@@ -81,9 +81,13 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
     iron: Number(source.iron) || 0,
     caffeine_mg: Number(source.caffeine_mg) || 0,
     alcohol_g: Number(source.alcohol_g) || 0,
-    // 0/undefined means "unknown" here, not "genuinely zero water" -- the
-    // scaled return below falls back to the volume-unit heuristic in that case.
-    water_ml: Number(source.water_ml) || 0,
+    // Kept nullable rather than coerced to 0 like the rest: only a MISSING
+    // value falls back to the volume-unit heuristic below. A recorded 0 means
+    // the food genuinely holds no water and must survive to the caller.
+    water_ml:
+      source.water_ml === null || source.water_ml === undefined
+        ? null
+        : Number(source.water_ml) || 0,
     glycemic_index: source.glycemic_index,
     custom_nutrients: source.custom_nutrients || {},
   };
@@ -162,10 +166,14 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
     // the water ring (not the macro grid) owns the day total once the #1557
     // fold-in preference lands server-side. This field exists for the
     // per-entry "this drink contributed X ml" affordance.
-    water_ml: nutrientValuesPerReferenceSize.water_ml
-      ? (nutrientValuesPerReferenceSize.water_ml / effectiveReferenceSize) *
-        entry.quantity
-      : (foodVolumeToMl(entry.quantity, entry.unit ?? '') ?? 0),
+    // An explicit 0 is an answer, not a blank: a drink recorded as containing
+    // no water must not have its volume guessed back in. Only a missing value
+    // falls through to the volume.
+    water_ml:
+      nutrientValuesPerReferenceSize.water_ml != null
+        ? (nutrientValuesPerReferenceSize.water_ml / effectiveReferenceSize) *
+          entry.quantity
+        : (foodVolumeToMl(entry.quantity, entry.unit ?? '') ?? 0),
     custom_nutrients: Object.entries(
       nutrientValuesPerReferenceSize.custom_nutrients
     ).reduce(
@@ -284,9 +292,11 @@ export const calculateNutrition = (
     // food-water formula use, so the figure shown per entry matches the one the
     // day total credits. Deliberately absent from EMPTY_MEAL_TOTALS: the water
     // ring owns the day total, this is only the per-entry contribution.
-    water_ml: variant.water_ml
-      ? variant.water_ml * ratio
-      : (foodVolumeToMl(quantity, variant.serving_unit ?? '') ?? 0),
+    // As above: an explicit 0 wins, only a missing value falls back.
+    water_ml:
+      variant.water_ml != null
+        ? variant.water_ml * ratio
+        : (foodVolumeToMl(quantity, variant.serving_unit ?? '') ?? 0),
     custom_nutrients: {},
   };
 
