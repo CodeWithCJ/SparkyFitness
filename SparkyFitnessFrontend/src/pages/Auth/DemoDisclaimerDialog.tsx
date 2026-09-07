@@ -80,7 +80,7 @@ export const DemoDisclaimerDialog: React.FC<DemoDisclaimerDialogProps> = ({
               <p className="text-xs mt-0.5">
                 {t(
                   'auth.demoLicenseDesc',
-                  'SparkyFitness is provided for non-commercial evaluation and personal use under its project license. Unauthorized commercial exploitation or redistribution is strictly prohibited.'
+                  'By using this demo, you agree to the project license.'
                 )}
               </p>
             </div>
