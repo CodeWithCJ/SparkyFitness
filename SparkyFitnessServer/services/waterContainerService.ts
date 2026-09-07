@@ -225,22 +225,49 @@ async function materializeDrinkPreset(
     0
   );
 
-  // 1. Create per-user custom food
-  const createdFood = await foodRepository.createFood({
-    user_id: userId,
-    name: preset.defaultName,
-    is_custom: true,
-    shared_with_public: false,
-    serving_size: preset.volumeMl,
-    serving_unit: preset.servingUnit,
-    caffeine_mg: preset.caffeineMg ?? 0,
-    abv_percent: preset.abvPercent ?? 0,
-    alcohol_g: preset.alcoholG ?? 0,
-    water_ml:
-      preset.waterMl ?? (preset.hydrationFactor === 0 ? 0 : preset.volumeMl),
-  });
+  // 1. Reuse the user's own food of this name, or create it.
+  //
+  // The idempotency check above only sees containers, so deleting a preset and
+  // adding it again created a fresh food every time and orphaned the last one.
+  // Reusing by name also means a user who already keeps their own "Latte" gets
+  // their numbers rather than a second entry competing with them in search.
+  const existingFood = await foodRepository.findVisibleFoodByName(
+    userId,
+    preset.defaultName
+  );
 
-  const variantId = createdFood?.default_variant?.id || null;
+  const createdFood =
+    existingFood ??
+    (await foodRepository.createFood({
+      user_id: userId,
+      name: preset.defaultName,
+      is_custom: true,
+      shared_with_public: false,
+      serving_size: preset.volumeMl,
+      serving_unit: preset.servingUnit,
+      calories: preset.caloriesKcal ?? 0,
+      protein: preset.proteinG ?? 0,
+      carbs: preset.carbsG ?? 0,
+      fat: preset.fatG ?? 0,
+      sugars: preset.sugarsG ?? 0,
+      saturated_fat: preset.saturatedFatG ?? 0,
+      caffeine_mg: preset.caffeineMg ?? 0,
+      abv_percent: preset.abvPercent ?? 0,
+      alcohol_g: preset.alcoholG ?? 0,
+      water_ml:
+        preset.waterMl ?? (preset.hydrationFactor === 0 ? 0 : preset.volumeMl),
+    }));
+
+  const defaultVariant = createdFood?.default_variant;
+  const variantId =
+    defaultVariant?.id || createdFood?.default_variant_id || null;
+
+  // One whole serving of whatever food we ended up with -- a reused food may
+  // be sized differently from the catalog entry.
+  const servingSize =
+    Number(defaultVariant?.serving_size) ||
+    Number(createdFood?.serving_size) ||
+    preset.volumeMl;
 
   // 2. Create water container linked to this food.
   // volume stays 0: the preset's volume already lives on the variant it just
@@ -259,7 +286,7 @@ async function materializeDrinkPreset(
     unit: 'ml',
     is_primary: false,
     servings_per_container: 1,
-    linked_quantity: preset.volumeMl,
+    linked_quantity: servingSize,
     hydration_factor: preset.hydrationFactor,
     linked_food_id: createdFood.id,
     linked_variant_id: variantId,

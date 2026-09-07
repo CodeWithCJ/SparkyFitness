@@ -26,6 +26,22 @@ export interface DrinkPresetCatalogEntry {
   /** Explicit water volume in ml, if distinct from volumeMl */
   waterMl?: number;
   /**
+   * Energy and macros for the stated serving.
+   *
+   * Generic values for the drink as commonly served -- a latte is milk, a pint
+   * is malt and ethanol -- because a preset that logs a 180 kcal latte as
+   * 0 kcal is worse than no preset at all in a calorie tracker. The
+   * materialized food is per-user and editable, the same contract as any
+   * database entry. Ethanol's 7 kcal/g is already inside `caloriesKcal`; it is
+   * never added on top of it.
+   */
+  caloriesKcal?: number;
+  proteinG?: number;
+  carbsG?: number;
+  fatG?: number;
+  sugarsG?: number;
+  saturatedFatG?: number;
+  /**
    * Hydration scaling factor (0.0 - 2.0).
    * 0 = no water credit (e.g. espresso)
    * 1 = full water credit (e.g. water, tea)
@@ -44,6 +60,10 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     volumeMl: 30,
     servingUnit: "ml",
     caffeineMg: 63,
+    caloriesKcal: 3,
+    proteinG: 0.1,
+    carbsG: 0.5,
+    fatG: 0.1,
     hydrationFactor: 0,
     kind: "caffeine",
   },
@@ -54,6 +74,10 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     volumeMl: 60,
     servingUnit: "ml",
     caffeineMg: 126,
+    caloriesKcal: 5,
+    proteinG: 0.1,
+    carbsG: 1.0,
+    fatG: 0.1,
     hydrationFactor: 0,
     kind: "caffeine",
   },
@@ -64,6 +88,10 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     volumeMl: 240,
     servingUnit: "ml",
     caffeineMg: 95,
+    caloriesKcal: 2,
+    proteinG: 0.3,
+    carbsG: 0.0,
+    fatG: 0.0,
     hydrationFactor: 0.8,
     kind: "caffeine",
   },
@@ -74,6 +102,10 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     volumeMl: 240,
     servingUnit: "ml",
     caffeineMg: 60,
+    caloriesKcal: 4,
+    proteinG: 0.2,
+    carbsG: 0.7,
+    fatG: 0.0,
     hydrationFactor: 0.9,
     kind: "caffeine",
   },
@@ -84,6 +116,12 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     volumeMl: 350,
     servingUnit: "ml",
     caffeineMg: 75,
+    caloriesKcal: 180,
+    proteinG: 9.5,
+    carbsG: 14.5,
+    fatG: 9.5,
+    sugarsG: 14.5,
+    saturatedFatG: 5.5,
     hydrationFactor: 0.85,
     kind: "caffeine",
   },
@@ -94,6 +132,12 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     volumeMl: 200,
     servingUnit: "ml",
     caffeineMg: 75,
+    caloriesKcal: 80,
+    proteinG: 4.3,
+    carbsG: 6.4,
+    fatG: 4.2,
+    sugarsG: 6.4,
+    saturatedFatG: 2.5,
     hydrationFactor: 0.85,
     kind: "caffeine",
   },
@@ -104,6 +148,10 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     volumeMl: 240,
     servingUnit: "ml",
     caffeineMg: 47,
+    caloriesKcal: 2,
+    proteinG: 0.0,
+    carbsG: 0.5,
+    fatG: 0.0,
     hydrationFactor: 0.95,
     kind: "caffeine",
   },
@@ -114,6 +162,10 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     volumeMl: 240,
     servingUnit: "ml",
     caffeineMg: 28,
+    caloriesKcal: 2,
+    proteinG: 0.0,
+    carbsG: 0.0,
+    fatG: 0.0,
     hydrationFactor: 0.95,
     kind: "caffeine",
   },
@@ -124,6 +176,11 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     volumeMl: 250,
     servingUnit: "ml",
     caffeineMg: 80,
+    caloriesKcal: 112,
+    proteinG: 0.5,
+    carbsG: 27.5,
+    fatG: 0.0,
+    sugarsG: 27.0,
     hydrationFactor: 0.6,
     kind: "caffeine",
   },
@@ -134,6 +191,11 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     volumeMl: 330,
     servingUnit: "ml",
     caffeineMg: 32,
+    caloriesKcal: 139,
+    proteinG: 0.0,
+    carbsG: 35.0,
+    fatG: 0.0,
+    sugarsG: 35.0,
     hydrationFactor: 0.7,
     kind: "caffeine",
   },
@@ -145,6 +207,10 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     servingUnit: "ml",
     abvPercent: 4.5,
     alcoholG: 20.2,
+    caloriesKcal: 215,
+    proteinG: 1.7,
+    carbsG: 17.0,
+    fatG: 0.0,
     hydrationFactor: 0.7,
     kind: "alcohol",
   },
@@ -156,6 +222,10 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     servingUnit: "ml",
     abvPercent: 5.0,
     alcoholG: 13.0,
+    caloriesKcal: 140,
+    proteinG: 1.0,
+    carbsG: 10.6,
+    fatG: 0.0,
     hydrationFactor: 0.7,
     kind: "alcohol",
   },
@@ -167,6 +237,10 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     servingUnit: "ml",
     abvPercent: 12.0,
     alcoholG: 16.6,
+    caloriesKcal: 147,
+    proteinG: 0.1,
+    carbsG: 4.5,
+    fatG: 0.0,
     hydrationFactor: 0.5,
     kind: "alcohol",
   },
@@ -178,6 +252,10 @@ export const DRINK_PRESET_CATALOG: readonly DrinkPresetCatalogEntry[] = [
     servingUnit: "ml",
     abvPercent: 40.0,
     alcoholG: 7.9,
+    caloriesKcal: 56,
+    proteinG: 0.0,
+    carbsG: 0.0,
+    fatG: 0.0,
     hydrationFactor: 0.1,
     kind: "alcohol",
   },

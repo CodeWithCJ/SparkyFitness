@@ -92,6 +92,14 @@ describe('Drink Preset Materialization (#1958, #1925, #2115)', () => {
       serving_size: 30,
       serving_unit: 'ml',
       caffeine_mg: 63,
+      // Generic energy and macros for the drink as served: a preset that
+      // logged a 180 kcal latte as 0 kcal is worse than no preset at all.
+      calories: 3,
+      protein: 0.1,
+      carbs: 0.5,
+      fat: 0.1,
+      sugars: 0,
+      saturated_fat: 0,
       abv_percent: 0,
       alcohol_g: 0,
       water_ml: 0,
@@ -203,5 +211,81 @@ describe('Drink Preset Materialization (#1958, #1925, #2115)', () => {
     const caffeinePerServing = 63;
     const logged = (caffeinePerServing * capturedQuantity) / servingSize;
     expect(logged).toBeCloseTo(63, 5);
+  });
+
+  // The idempotency check above only sees containers, so deleting a preset and
+  // adding it again created a fresh food each time. Four "Double Espresso"
+  // foods accumulated on the dev database that way, three of them orphans.
+  it("reuses the user's existing food instead of orphaning another copy", async () => {
+    vi.mocked(
+      waterContainerRepository.getWaterContainersByUserId
+    ).mockResolvedValue([]);
+    vi.mocked(foodRepository.findVisibleFoodByName).mockResolvedValue({
+      id: 'food-espresso-existing',
+      name: 'Espresso',
+      default_variant: {
+        id: 'var-existing',
+        serving_size: 30,
+        serving_unit: 'ml',
+      },
+    } as never);
+    vi.mocked(waterContainerRepository.createWaterContainer).mockResolvedValue({
+      id: 101,
+    } as never);
+
+    await waterContainerService.materializeDrinkPreset(userId, 'espresso');
+
+    expect(foodRepository.createFood).not.toHaveBeenCalled();
+    expect(waterContainerRepository.createWaterContainer).toHaveBeenCalledWith(
+      userId,
+      expect.objectContaining({
+        linked_food_id: 'food-espresso-existing',
+        linked_variant_id: 'var-existing',
+      })
+    );
+  });
+
+  it('sizes the press by the reused food, which may differ from the catalog', async () => {
+    vi.mocked(
+      waterContainerRepository.getWaterContainersByUserId
+    ).mockResolvedValue([]);
+    // The user's own espresso is a 50 ml serving, not the catalog's 30.
+    vi.mocked(foodRepository.findVisibleFoodByName).mockResolvedValue({
+      id: 'food-espresso-existing',
+      name: 'Espresso',
+      default_variant: { id: 'var-existing', serving_size: 50 },
+    } as never);
+    vi.mocked(waterContainerRepository.createWaterContainer).mockResolvedValue({
+      id: 101,
+    } as never);
+
+    await waterContainerService.materializeDrinkPreset(userId, 'espresso');
+
+    expect(waterContainerRepository.createWaterContainer).toHaveBeenCalledWith(
+      userId,
+      expect.objectContaining({ linked_quantity: 50 })
+    );
+  });
+
+  it('gives every catalog entry energy that reconciles with its macros', () => {
+    // Atwater factors: 4 kcal/g protein and carbohydrate, 9 for fat, 7 for
+    // ethanol. Alcohol's contribution is inside caloriesKcal, never added on
+    // top of it, so the two must agree here or the diary and the label will
+    // disagree in front of the user.
+    for (const preset of DRINK_PRESET_CATALOG) {
+      expect(preset.caloriesKcal, preset.id).toBeTypeOf('number');
+      const fromMacros =
+        (preset.proteinG ?? 0) * 4 +
+        (preset.carbsG ?? 0) * 4 +
+        (preset.fatG ?? 0) * 9 +
+        (preset.alcoholG ?? 0) * 7;
+      // Within 10% or 5 kcal, whichever is larger: these are generic drinks,
+      // not label transcriptions.
+      const tolerance = Math.max(5, (preset.caloriesKcal ?? 0) * 0.1);
+      expect(
+        Math.abs((preset.caloriesKcal ?? 0) - fromMacros),
+        `${preset.id}: ${preset.caloriesKcal} kcal vs ${fromMacros.toFixed(1)} from macros`
+      ).toBeLessThanOrEqual(tolerance);
+    }
   });
 });
