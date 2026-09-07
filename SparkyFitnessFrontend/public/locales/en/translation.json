@@ -5105,6 +5105,7 @@
     "loginError": "Login failed. Please check your credentials.",
     "loginSuccess": "Login successful!",
     "magicLinkError": "Failed to request magic link.",
+    "viewLicense": "View License",
     "magicLinkSent": "Magic link sent! Check your inbox.",
     "oidcError": "Failed to initiate provider login.",
     "passkeyErrorTitle": "Passkey Error",

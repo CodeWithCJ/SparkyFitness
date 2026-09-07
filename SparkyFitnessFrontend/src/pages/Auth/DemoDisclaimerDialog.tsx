@@ -16,6 +16,7 @@ import {
   Lock,
   Scale,
   Loader2,
+  ExternalLink,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -61,11 +62,22 @@ export const DemoDisclaimerDialog: React.FC<DemoDisclaimerDialogProps> = ({
         <CardContent className="space-y-4 text-sm text-muted-foreground max-h-[60vh] overflow-y-auto pr-2">
           <div className="flex items-start space-x-3 p-3 rounded-lg bg-muted/50 border border-border/50">
             <Scale className="h-5 w-5 text-indigo-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-foreground">
-                {t('auth.demoLicenseTitle', 'Non-Commercial License & Terms')}
-              </p>
-              <p className="text-xs">
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <p className="font-medium text-foreground">
+                  {t('auth.demoLicenseTitle', 'Non-Commercial License & Terms')}
+                </p>
+                <a
+                  href="https://github.com/CodeWithCJ/SparkyFitness/blob/main/LICENSE"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline inline-flex items-center gap-1 font-medium"
+                >
+                  {t('auth.viewLicense', 'View License')}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+              <p className="text-xs mt-0.5">
                 {t(
                   'auth.demoLicenseDesc',
                   'SparkyFitness is provided for non-commercial evaluation and personal use under its project license. Unauthorized commercial exploitation or redistribution is strictly prohibited.'
