@@ -61,11 +61,12 @@ function generateSampleGpsPoints(startTimeStr: string): GpsPoint[] {
   const baseLon = -73.968285;
   const numPoints = 35;
   const totalSeconds = 1920; // 32 minutes
-  const stepSeconds = Math.floor(totalSeconds / numPoints);
+  const stepSeconds = Math.floor(totalSeconds / (numPoints - 1));
 
   for (let i = 0; i < numPoints; i++) {
+    const fraction = i / (numPoints - 1);
     const t = new Date(start + i * stepSeconds * 1000).toISOString();
-    const angle = (i / numPoints) * 2 * Math.PI;
+    const angle = fraction * 2 * Math.PI;
     const lat = Number(
       (
         baseLat +
@@ -80,13 +81,11 @@ function generateSampleGpsPoints(startTimeStr: string): GpsPoint[] {
         (Math.random() - 0.5) * 0.0002
       ).toFixed(6)
     );
-    const dist = Math.round((i / numPoints) * 5120);
+    const dist = Math.round(fraction * 5120);
     const speed = Number(
       (2.6 + Math.sin(angle) * 0.3 + (Math.random() - 0.5) * 0.2).toFixed(2)
     );
-    const hr = Math.round(
-      138 + (i / numPoints) * 22 + (Math.random() - 0.5) * 4
-    );
+    const hr = Math.round(138 + fraction * 22 + (Math.random() - 0.5) * 4);
     const alt = Math.round(24 + Math.sin(angle * 2) * 6);
 
     points.push({
@@ -339,6 +338,23 @@ export async function seedDemoUser(): Promise<string> {
         log('info', `[DEMO] Demo user account created with ID: ${userId}`);
       } else {
         userId = user.id;
+
+        // Verify safety marker before modifying credentials or wiping data
+        const profileRes = await client.query(
+          'SELECT bio FROM profiles WHERE id = $1',
+          [userId]
+        );
+        const bio = profileRes.rows[0]?.bio || '';
+        if (bio && !bio.includes('SparkyFitness Demo Account')) {
+          log(
+            'error',
+            `[DEMO] Safety guard prevented modifying non-demo user with email ${email}`
+          );
+          throw new Error(
+            `Safety check failed: Account ${email} is not marked as a demo sandbox account.`
+          );
+        }
+
         // Ensure the password hash matches the configured demo password in account table
         const updateRes = await client.query(
           'UPDATE "account" SET password = $1, updated_at = NOW() WHERE user_id = $2 AND provider_id = \'credential\'',
@@ -1445,6 +1461,19 @@ export async function resetDemoUserData(): Promise<void> {
   const client = await getSystemClient();
   try {
     const userId = user.id;
+    const profileRes = await client.query(
+      'SELECT bio FROM profiles WHERE id = $1',
+      [userId]
+    );
+    const bio = profileRes.rows[0]?.bio || '';
+    if (bio && !bio.includes('SparkyFitness Demo Account')) {
+      log(
+        'warn',
+        `[DEMO RESET] Skipping reset: Account ${email} does not carry demo identity marker.`
+      );
+      return;
+    }
+
     log(
       'info',
       `[DEMO RESET] Performing daily scoped reset for demo user ${userId}...`
@@ -1480,12 +1509,25 @@ export async function purgeDemoUserIfExists(): Promise<void> {
   try {
     const user = await userRepository.findUserByEmail(email);
     if (user) {
-      log(
-        'info',
-        `[DEMO] Demo mode disabled — purging demo user ${email} (${user.id})...`
-      );
       const client = await getSystemClient();
       try {
+        const profileRes = await client.query(
+          'SELECT bio FROM profiles WHERE id = $1',
+          [user.id]
+        );
+        const bio = profileRes.rows[0]?.bio || '';
+        if (bio && !bio.includes('SparkyFitness Demo Account')) {
+          log(
+            'warn',
+            `[DEMO] Skipping purge: Account ${email} does not carry demo identity marker.`
+          );
+          return;
+        }
+
+        log(
+          'info',
+          `[DEMO] Demo mode disabled — purging demo user ${email} (${user.id})...`
+        );
         await cleanDemoUserData(client, user.id);
       } finally {
         client.release();

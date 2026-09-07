@@ -183,7 +183,18 @@ describe('Demo Mode Infrastructure', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
       const mockClient = {
-        query: vi.fn().mockResolvedValue({ rows: [] }),
+        query: vi.fn().mockImplementation(async (sql: string) => {
+          if (sql.includes('SELECT bio FROM profiles')) {
+            return {
+              rows: [
+                {
+                  bio: 'SparkyFitness Demo Account — Daily sandbox resetting at 00:00 UTC',
+                },
+              ],
+            };
+          }
+          return { rows: [] };
+        }),
         release: vi.fn(),
       };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -209,6 +220,15 @@ describe('Demo Mode Infrastructure', () => {
 
       const mockClient = {
         query: vi.fn().mockImplementation(async (sql: string) => {
+          if (sql.includes('SELECT bio FROM profiles')) {
+            return {
+              rows: [
+                {
+                  bio: 'SparkyFitness Demo Account — Daily sandbox resetting at 00:00 UTC',
+                },
+              ],
+            };
+          }
           if (sql.includes('SELECT id, name FROM meal_types')) {
             return {
               rows: [
@@ -256,10 +276,19 @@ describe('Demo Mode Infrastructure', () => {
 
       const mockClient = {
         query: vi.fn().mockImplementation(async (sql: string) => {
+          if (sql.includes('SELECT bio FROM profiles')) {
+            return {
+              rows: [
+                {
+                  bio: 'SparkyFitness Demo Account — Daily sandbox resetting at 00:00 UTC',
+                },
+              ],
+            };
+          }
           if (sql.includes('SELECT image_url FROM exercise_entries')) {
             return {
               rows: [
-                { image_url: '/uploads/../../etc/passwd' },
+                { image_url: '/uploads/exercise_entries/../../etc/passwd' },
                 { image_url: '/uploads/exercise_entries/safe-image.png' },
               ],
             };
