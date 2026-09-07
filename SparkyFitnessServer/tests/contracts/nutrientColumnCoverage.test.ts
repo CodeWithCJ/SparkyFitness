@@ -116,6 +116,15 @@ const DELIBERATE_OMISSIONS: Omission[] = [
     columns: TRACKED_COLUMNS,
     reason: 'Garmin reports its own fixed nutrient subset.',
   },
+  {
+    file: /^services\/openFoodFactsContributionService\.ts$/,
+    columns: ['alcohol_g'],
+    reason:
+      'We publish per-serving masses, but Open Food Facts stores alcohol as % ABV by volume, ' +
+      'not grams (see the alcoholGramsForServing conversion on the read side). Deriving an ABV ' +
+      'back from alcohol_g needs a volume-based serving we cannot assume, and a wrong number here ' +
+      'is written to a public shared database.',
+  },
 ];
 
 function allowedMissing(relPath: string): Set<string> {

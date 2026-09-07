@@ -47,6 +47,8 @@ interface ContributableVariant {
   vitamin_c?: unknown;
   calcium?: unknown;
   iron?: unknown;
+  caffeine_mg?: unknown;
+  water_ml?: unknown;
 }
 
 interface ContributableFood {
@@ -81,6 +83,8 @@ type NutrientKey = keyof Pick<
   | 'vitamin_c'
   | 'calcium'
   | 'iron'
+  | 'caffeine_mg'
+  | 'water_ml'
 >;
 
 const STANDARD_GTIN_LENGTHS = new Set([8, 9, 10, 11, 12, 13, 14]);
@@ -100,6 +104,8 @@ const NUTRIENT_KEYS: NutrientKey[] = [
   'vitamin_c',
   'calcium',
   'iron',
+  'caffeine_mg',
+  'water_ml',
 ];
 const UNSUPPORTED_SOURCE_MESSAGE =
   'Only product data entered from physical packaging can be contributed.';

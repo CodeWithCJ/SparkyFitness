@@ -85,6 +85,9 @@ const NUTRIENT_MAPPINGS: NutrientMapping[] = [
   { source: 'vitamin_c', target: 'vitamin-c', unit: 'mg' },
   { source: 'calcium', target: 'calcium', unit: 'mg' },
   { source: 'iron', target: 'iron', unit: 'mg' },
+  { source: 'caffeine_mg', target: 'caffeine', unit: 'mg' },
+  // Water's density is ~1 g/ml, so our millilitres go out as OFF grams.
+  { source: 'water_ml', target: 'water', unit: 'g' },
 ];
 
 export class OpenFoodFactsContributionError extends Error {
