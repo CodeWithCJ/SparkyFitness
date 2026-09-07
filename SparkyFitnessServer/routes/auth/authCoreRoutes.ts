@@ -12,10 +12,8 @@ import {
   mintRegistrationTicket,
   redeemRegistrationTicket,
 } from '../../services/passkeyTicketService.js';
-import {
-  isDemoMode,
-  demoLoginRateLimit,
-} from '../../middleware/demoGuardMiddleware.js';
+import { isDemoMode } from '../../middleware/demoGuardMiddleware.js';
+import { getClientIp } from '../../utils/clientIp.js';
 import {
   getDemoCredentials,
   seedDemoUser,
@@ -43,7 +41,7 @@ const mfaFactorsRateLimit = (() => {
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (req: any, res: any, next: any) => {
-    const ip = req.ip;
+    const ip = getClientIp(req);
     const now = Date.now();
     // Sweep at most once per window to avoid O(n) cleanup on every request.
     if (hits.size > 0 && now - lastSweepAt >= WINDOW_MS) {
@@ -171,6 +169,9 @@ router.get('/settings', async (req, res) => {
 // every 401, so cap how often the credential re-sync can fire.
 const DEMO_RESEED_COOLDOWN_MS = 5 * 60 * 1000;
 let lastDemoReseedAt = 0;
+// makeIpRateLimit is a hoisted function declaration defined further down, next
+// to the other limiters that use it.
+const demoLoginRateLimit = makeIpRateLimit(10, 60 * 1000);
 
 router.post('/demo-login', demoLoginRateLimit, async (req, res) => {
   if (!isDemoMode()) {
@@ -300,7 +301,7 @@ function makeIpRateLimit(max: number, windowMs: number) {
   let lastSweepAt = 0;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (req: any, res: any, next: any) => {
-    const ip = req.ip;
+    const ip = getClientIp(req);
     const now = Date.now();
     if (hits.size > 0 && now - lastSweepAt >= windowMs) {
       for (const [k, e] of hits) if (now - e.start >= windowMs) hits.delete(k);

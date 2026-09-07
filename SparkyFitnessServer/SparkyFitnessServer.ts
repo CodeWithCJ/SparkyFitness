@@ -136,7 +136,21 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.set('trust proxy', 1); // Trust the first proxy immediately in front of me just internal nginx. external not required.
+// How many proxies sit in front of the app, deciding which X-Forwarded-For
+// entry Express reports as req.ip. The default of 1 covers the bundled setup,
+// where only the frontend container's nginx is in front. Add a hop for each
+// extra proxy (reverse proxy, tunnel connector, load balancer) or req.ip will
+// resolve to an internal address shared by every visitor.
+const trustedProxyHops = Number.parseInt(
+  process.env.SPARKY_FITNESS_TRUSTED_PROXY_HOPS ?? '',
+  10
+);
+app.set(
+  'trust proxy',
+  Number.isInteger(trustedProxyHops) && trustedProxyHops >= 0
+    ? trustedProxyHops
+    : 1
+);
 // 304s from ETag revalidation break the iOS mobile app (#1353).
 app.set('etag', false);
 const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
@@ -208,8 +222,11 @@ app.use(
   mcpRoutes
 );
 // Middleware to parse JSON bodies for all incoming requests
-// Increased limit to 50mb to accommodate image uploads
-app.use(express.json({ limit: '50mb' }));
+// Increased limit to 50mb to accommodate image uploads. A public demo instance
+// takes a much lower cap: the routes that need the headroom (image analysis,
+// uploads, FIT import) are blocked for the demo account anyway, and a 50mb
+// parse per request is a cheap way for an anonymous visitor to burn memory.
+app.use(express.json({ limit: isDemoMode() ? '2mb' : '50mb' }));
 app.use(cookieParser());
 // --- Better Auth Mounting Logic (Moved to after migrations) ---
 // @ts-expect-error TS7034
