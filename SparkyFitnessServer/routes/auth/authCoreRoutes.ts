@@ -13,7 +13,10 @@ import {
   redeemRegistrationTicket,
 } from '../../services/passkeyTicketService.js';
 import { isDemoMode } from '../../middleware/demoGuardMiddleware.js';
-import { getDemoCredentials } from '../../services/demoSeedService.js';
+import {
+  getDemoCredentials,
+  seedDemoUser,
+} from '../../services/demoSeedService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -168,7 +171,15 @@ router.post('/demo-login', async (req, res) => {
   try {
     const { email, password } = getDemoCredentials();
     const { auth } = authModule;
-    const response = await auth.api.signInEmail({
+
+    // Ensure demo user exists in database before attempting login
+    const existingUser = await userRepository.findUserByEmail(email);
+    if (!existingUser) {
+      log('info', '[AUTH CORE] Demo user not found for login. Seeding now...');
+      await seedDemoUser();
+    }
+
+    let response = await auth.api.signInEmail({
       body: {
         email,
         password,
@@ -176,6 +187,23 @@ router.post('/demo-login', async (req, res) => {
       headers: fromNodeHeaders(req.headers),
       asResponse: true,
     });
+
+    // If password mismatch or 401 occurred (e.g. password out of sync), re-sync credentials and retry once
+    if (response.status === 401) {
+      log(
+        'warn',
+        '[AUTH CORE] Demo login returned 401. Re-syncing demo credentials and retrying...'
+      );
+      await seedDemoUser();
+      response = await auth.api.signInEmail({
+        body: {
+          email,
+          password,
+        },
+        headers: fromNodeHeaders(req.headers),
+        asResponse: true,
+      });
+    }
 
     response.headers.forEach((value, key) => {
       res.setHeader(key, value);
