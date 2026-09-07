@@ -1,6 +1,6 @@
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { syncHealthData, HealthDataPayload } from './api/healthDataApi';
 import { runWriteback } from './writeback';
 import { addLog, _flushBuffer } from './LogService';
@@ -12,9 +12,15 @@ import {
   getDatabaseInaccessibleCount,
   getClientUnavailableCount,
 } from './healthConnectService';
-import { collectHealthData, sessionTelemetryOutcomesUsable } from './shared/healthSyncEngine';
+import {
+  collectHealthData,
+  sessionTelemetryOutcomesUsable,
+} from './shared/healthSyncEngine';
 import { markEnrichedSessions } from './shared/enrichedSessionCache';
-import { buildBackgroundWindows, MAX_BACKGROUND_LOOKBACK_DAYS } from '../utils/syncUtils';
+import {
+  buildBackgroundWindows,
+  MAX_BACKGROUND_LOOKBACK_DAYS,
+} from '../utils/syncUtils';
 import {
   loadLastSyncedTime,
   saveLastSyncedTime,
@@ -34,6 +40,7 @@ import {
   createTelemetryRunContext,
   type TelemetryRunContext,
 } from './shared/telemetryBudget';
+import { refreshAndroidWidgetsFromServer } from './androidWidgetSyncService';
 
 const isAppActive = (): boolean => AppState.currentState === 'active';
 
@@ -55,23 +62,27 @@ async function refreshHealthSyncCacheWhenActive() {
   }
 }
 
-export const flushPendingHealthSyncCacheRefresh = async (): Promise<boolean> => {
-  if (!isAppActive()) {
-    return false;
-  }
+export const flushPendingHealthSyncCacheRefresh =
+  async (): Promise<boolean> => {
+    if (!isAppActive()) {
+      return false;
+    }
 
-  const shouldRefresh = await consumePendingHealthSyncCacheRefresh();
-  if (!shouldRefresh) {
-    return false;
-  }
+    const shouldRefresh = await consumePendingHealthSyncCacheRefresh();
+    if (!shouldRefresh) {
+      return false;
+    }
 
-  refreshHealthSyncCache(queryClient);
-  return true;
-}
+    refreshHealthSyncCache(queryClient);
+    return true;
+  };
 
 export const performBackgroundSync = async (taskId: string): Promise<void> => {
   if (inflightSync) {
-    addLog(`[Background Sync] Sync already in progress, waiting for it to finish (triggered by ${taskId})`, 'DEBUG');
+    addLog(
+      `[Background Sync] Sync already in progress, waiting for it to finish (triggered by ${taskId})`,
+      'DEBUG'
+    );
     return inflightSync;
   }
 
@@ -97,7 +108,10 @@ const isForegroundTriggeredSync = (taskId: string): boolean =>
 
 const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
   if (isBackfillRunning()) {
-    addLog(`[Background Sync] Skipping ${taskId} — history import is running`, 'INFO');
+    addLog(
+      `[Background Sync] Skipping ${taskId} — history import is running`,
+      'INFO'
+    );
     return;
   }
 
@@ -115,32 +129,53 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
         interactive: false,
       });
   await runBackgroundSync(taskId, telemetry);
+  if (Platform.OS === 'android') {
+    try {
+      await refreshAndroidWidgetsFromServer();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(
+        `[Background Sync] Android widget refresh failed: ${message}`,
+        'ERROR'
+      );
+    }
+  }
 };
 
-const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext): Promise<void> => {
+const runBackgroundSync = async (
+  taskId: string,
+  telemetry: TelemetryRunContext
+): Promise<void> => {
   const lastSyncedTimeStr = await loadLastSyncedTime();
-  addLog(`[Background Sync] Last synced: ${lastSyncedTimeStr ?? 'never (defaulting to 24h ago)'}`, 'INFO');
+  addLog(
+    `[Background Sync] Last synced: ${lastSyncedTimeStr ?? 'never (defaulting to 24h ago)'}`,
+    'INFO'
+  );
 
   // Session reads use the cursor minus a 6h overlap so late-arriving records are
   // still picked up; day-aggregated reads align to start-of-day so complete daily
   // values are sent, never partial-window slices (see buildBackgroundWindows).
   const windows = buildBackgroundWindows(lastSyncedTimeStr);
 
-  addLog(`[Background Sync] Syncing sessions from ${windows.sessionStart.toISOString()}, aggregated from ${windows.aggregatedStart.toISOString()} to ${windows.end.toISOString()}`, 'INFO');
+  addLog(
+    `[Background Sync] Syncing sessions from ${windows.sessionStart.toISOString()}, aggregated from ${windows.aggregatedStart.toISOString()} to ${windows.end.toISOString()}`,
+    'INFO'
+  );
 
   // The clamp stops a stuck cursor from widening the window every cycle until
   // it can never finish, but the span it drops is genuinely not read by the
   // background task — say so rather than silently skipping it (#2191).
   if (windows.clampedFrom) {
     const skippedDays = Math.round(
-      (windows.sessionStart.getTime() - windows.clampedFrom.getTime()) / (24 * 60 * 60 * 1000),
+      (windows.sessionStart.getTime() - windows.clampedFrom.getTime()) /
+        (24 * 60 * 60 * 1000)
     );
     addLog(
       `[Background Sync] Last sync was ${MAX_BACKGROUND_LOOKBACK_DAYS}+ days ago — reading only the last ` +
-      `${MAX_BACKGROUND_LOOKBACK_DAYS} days. About ${skippedDays} earlier day(s) ` +
-      `(${windows.clampedFrom.toISOString()} to ${windows.sessionStart.toISOString()}) are NOT covered here. ` +
-      `Run History Import, or a manual sync with a wider time range, to bring them in.`,
-      'WARNING',
+        `${MAX_BACKGROUND_LOOKBACK_DAYS} days. About ${skippedDays} earlier day(s) ` +
+        `(${windows.clampedFrom.toISOString()} to ${windows.sessionStart.toISOString()}) are NOT covered here. ` +
+        `Run History Import, or a manual sync with a wider time range, to bring them in.`,
+      'WARNING'
     );
   }
 
@@ -159,17 +194,28 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
     }
   }
   const enabledMetricCount = enabledMetrics.length;
-  addLog(`[Background Sync] Found ${enabledMetricCount} enabled metrics`, 'INFO');
+  addLog(
+    `[Background Sync] Found ${enabledMetricCount} enabled metrics`,
+    'INFO'
+  );
 
   if (enabledMetricCount === 0) {
-    await addLog('[Background Sync] No metrics enabled — nothing to sync', 'INFO');
+    await addLog(
+      '[Background Sync] No metrics enabled — nothing to sync',
+      'INFO'
+    );
     return;
   }
 
-  const outcomes = await collectHealthData(healthReadProvider, enabledMetrics, windows, {
-    timeoutLabelPrefix: 'Background query',
-    telemetry,
-  });
+  const outcomes = await collectHealthData(
+    healthReadProvider,
+    enabledMetrics,
+    windows,
+    {
+      timeoutLabelPrefix: 'Background query',
+      telemetry,
+    }
+  );
 
   // Staged telemetry keys are only committable when the session read itself
   // completed; see sessionTelemetryOutcomesUsable.
@@ -182,7 +228,7 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
       syncErrors++;
       addLog(
         `[Background Sync] Skipping ${metric.defaultLabel} because an earlier metric timed out; will retry next cycle`,
-        'WARNING',
+        'WARNING'
       );
     } else if (outcome.status === 'fulfilled') {
       if (outcome.data.length > 0) {
@@ -198,12 +244,15 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
         syncErrors++;
         addLog(
           `[Background Sync] ${metric.defaultLabel} completed with read errors: ${outcome.error}`,
-          'WARNING',
+          'WARNING'
         );
       }
     } else {
       syncErrors++;
-      addLog(`[Background Sync] Error syncing ${metric.defaultLabel}: ${outcome.error}`, 'ERROR');
+      addLog(
+        `[Background Sync] Error syncing ${metric.defaultLabel}: ${outcome.error}`,
+        'ERROR'
+      );
     }
   }
 
@@ -216,16 +265,16 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
   if (clientUnavailableCount > 0) {
     addLog(
       `[Background Sync] Health Connect was unavailable for ${clientUnavailableCount} metric read(s) ` +
-      `(the client disconnects when the app is backgrounded or the provider updates). ` +
-      `Reconnect was attempted once; unread metrics hold the sync timestamp and retry next cycle.`,
-      'WARNING',
+        `(the client disconnects when the app is backgrounded or the provider updates). ` +
+        `Reconnect was attempted once; unread metrics hold the sync timestamp and retry next cycle.`,
+      'WARNING'
     );
   }
 
   if (inaccessibleCount > 0 && allData.length === 0) {
     await addLog(
       `[Background Sync] Device appears locked — ${inaccessibleCount} HealthKit query(s) returned database inaccessible ` +
-      `(${enabledMetricCount} metric(s) enabled). Skipping timestamp update; will retry next cycle.`,
+        `(${enabledMetricCount} metric(s) enabled). Skipping timestamp update; will retry next cycle.`,
       'WARNING'
     );
     return;
@@ -234,14 +283,20 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
   if (inaccessibleCount > 0) {
     addLog(
       `[Background Sync] Partial data collected — ${inaccessibleCount} query(s) hit database inaccessible, ` +
-      `but ${allData.length} records were still collected. Proceeding with sync.`,
+        `but ${allData.length} records were still collected. Proceeding with sync.`,
       'WARNING'
     );
   }
 
   if (allData.length > 0) {
-    addLog(`[Background Sync] Collected ${allData.length} records (${collectedCounts.join(', ')})`, 'INFO');
-    addLog(`[Background Sync] Sending ${allData.length} records to server`, 'INFO');
+    addLog(
+      `[Background Sync] Collected ${allData.length} records (${collectedCounts.join(', ')})`,
+      'INFO'
+    );
+    addLog(
+      `[Background Sync] Sending ${allData.length} records to server`,
+      'INFO'
+    );
     const uploadSummary = await syncHealthData(allData);
     // Only a fully accepted upload commits the telemetry reuse cache; see the
     // invariant on markEnrichedSessions.
@@ -253,15 +308,21 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
     if (syncErrors > 0) {
       addLog(
         `[Background Sync] Skipping timestamp update — ${syncErrors} metric(s) had errors, will retry from same window`,
-        'WARNING',
+        'WARNING'
       );
     } else {
       await saveLastSyncedTime();
     }
 
-    await addLog(`[Background Sync] Sync completed successfully${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'INFO');
+    await addLog(
+      `[Background Sync] Sync completed successfully${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`,
+      'INFO'
+    );
   } else {
-    await addLog(`[Background Sync] No health data collected to sync${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`, 'INFO');
+    await addLog(
+      `[Background Sync] No health data collected to sync${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`,
+      'INFO'
+    );
   }
 
   // Outbound phase: SparkyFitness diary → OS health store (Health Connect on
@@ -272,7 +333,10 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
     await runWriteback();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await addLog(`[Background Sync] Writeback phase failed: ${message}`, 'ERROR');
+    await addLog(
+      `[Background Sync] Writeback phase failed: ${message}`,
+      'ERROR'
+    );
   }
 
   // Reconcile medication reminders against fresh server schedules. With
@@ -280,7 +344,8 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
   // so any pending reminders get cancelled.
   try {
     const prefs = useAppPreferencesStore.getState();
-    const remindersActive = prefs.medicationRemindersEnabled && prefs.notificationsEnabled;
+    const remindersActive =
+      prefs.medicationRemindersEnabled && prefs.notificationsEnabled;
     const today = getTodayDate();
     const [medications, entries] = remindersActive
       ? await Promise.all([
@@ -291,7 +356,10 @@ const runBackgroundSync = async (taskId: string, telemetry: TelemetryRunContext)
     await reconcileMedicationReminders(medications, entries);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await addLog(`[Background Sync] Medication reminder reconciliation failed: ${message}`, 'ERROR');
+    await addLog(
+      `[Background Sync] Medication reminder reconciliation failed: ${message}`,
+      'ERROR'
+    );
   }
 };
 
@@ -315,7 +383,9 @@ export const configureBackgroundSync = async (): Promise<void> => {
   try {
     const enabled = await loadBackgroundSyncEnabled();
     if (!enabled) {
-      await BackgroundTask.unregisterTaskAsync(BACKGROUND_TASK_NAME).catch(() => {});
+      await BackgroundTask.unregisterTaskAsync(BACKGROUND_TASK_NAME).catch(
+        () => {}
+      );
       // Disabled temporarily due to log flooding
       // addLog('[Background Sync] Background sync disabled, task unregistered', 'DEBUG');
       return;
@@ -332,7 +402,10 @@ export const configureBackgroundSync = async (): Promise<void> => {
     // // }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[Background Sync] Failed to register background task: ${message}`, 'ERROR');
+    addLog(
+      `[Background Sync] Failed to register background task: ${message}`,
+      'ERROR'
+    );
   }
 };
 
@@ -342,7 +415,10 @@ export const stopBackgroundSync = async (): Promise<void> => {
     addLog('[Background Sync] Background task unregistered', 'INFO');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    addLog(`[Background Sync] Background task failed to stop: ${message}`, 'ERROR');
+    addLog(
+      `[Background Sync] Background task failed to stop: ${message}`,
+      'ERROR'
+    );
   }
 };
 

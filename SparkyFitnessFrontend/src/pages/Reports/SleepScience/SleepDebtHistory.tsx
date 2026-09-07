@@ -118,10 +118,7 @@ const SleepDebtHistory: React.FC<SleepDebtHistoryProps> = ({ data }) => {
               }}
               formatter={(
                 value:
-                  | string
-                  | number
-                  | ReadonlyArray<string | number>
-                  | undefined,
+                  string | number | ReadonlyArray<string | number> | undefined,
                 name: string | number | undefined
               ) => {
                 const label =

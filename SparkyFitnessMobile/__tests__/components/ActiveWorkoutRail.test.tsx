@@ -2,7 +2,9 @@ import React from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import type { ExerciseEntryResponse } from '@workspace/shared';
-import ActiveWorkoutRail, { type SupersetBorder } from '../../src/components/ActiveWorkoutRail';
+import ActiveWorkoutRail, {
+  type SupersetBorder,
+} from '../../src/components/ActiveWorkoutRail';
 
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
@@ -84,14 +86,16 @@ describe('ActiveWorkoutRail superset borders', () => {
         getImageSource={() => null}
         onPressExercise={jest.fn()}
         onPressAdd={jest.fn()}
-      />,
+      />
     );
   }
 
   it('draws a bottom bar in the group color under each grouped thumb', () => {
     const { getByTestId } = renderRail();
     for (const entryId of ['ex-a', 'ex-b']) {
-      const bar = StyleSheet.flatten(getByTestId(`superset-bar-${entryId}`).props.style);
+      const bar = StyleSheet.flatten(
+        getByTestId(`superset-bar-${entryId}`).props.style
+      );
       expect(bar.backgroundColor).toBe('#3366ff');
       expect(bar.height).toBe(3);
     }
@@ -99,8 +103,12 @@ describe('ActiveWorkoutRail superset borders', () => {
 
   it('extends non-last bars across the item gap so the group reads as one line', () => {
     const { getByTestId } = renderRail();
-    const interior = StyleSheet.flatten(getByTestId('superset-bar-ex-a').props.style);
-    const last = StyleSheet.flatten(getByTestId('superset-bar-ex-b').props.style);
+    const interior = StyleSheet.flatten(
+      getByTestId('superset-bar-ex-a').props.style
+    );
+    const last = StyleSheet.flatten(
+      getByTestId('superset-bar-ex-b').props.style
+    );
     expect(interior.right).toBeLessThan(0); // bridges into the gap
     expect(last.right).toBeGreaterThan(0); // stops inside its own thumb
   });
@@ -112,9 +120,15 @@ describe('ActiveWorkoutRail superset borders', () => {
 });
 
 describe('ActiveWorkoutRail focus ring vs current marker', () => {
-  const exercises = [makeExercise('ex-a', 'Bench Press'), makeExercise('ex-b', 'Squat')];
+  const exercises = [
+    makeExercise('ex-a', 'Bench Press'),
+    makeExercise('ex-b', 'Squat'),
+  ];
 
-  function renderRail(activeEntryId: string | null, focusedEntryId: string | null = null) {
+  function renderRail(
+    activeEntryId: string | null,
+    focusedEntryId: string | null = null
+  ) {
     return render(
       <ActiveWorkoutRail
         exercises={exercises}
@@ -125,13 +139,15 @@ describe('ActiveWorkoutRail focus ring vs current marker', () => {
         getImageSource={() => null}
         onPressExercise={jest.fn()}
         onPressAdd={jest.fn()}
-      />,
+      />
     );
   }
 
   it('rings the scroll-focused exercise, independent of the current one', () => {
     const { getByTestId } = renderRail('ex-b', 'ex-a');
-    const focused = StyleSheet.flatten(getByTestId('rail-ring-ex-a').props.style);
+    const focused = StyleSheet.flatten(
+      getByTestId('rail-ring-ex-a').props.style
+    );
     const other = StyleSheet.flatten(getByTestId('rail-ring-ex-b').props.style);
     expect(focused.borderColor).not.toBe('transparent');
     expect(other.borderColor).toBe('transparent');
@@ -151,7 +167,10 @@ describe('ActiveWorkoutRail focus ring vs current marker', () => {
 });
 
 describe('ActiveWorkoutRail initial focus scroll', () => {
-  const exercises = [makeExercise('ex-a', 'Bench Press'), makeExercise('ex-b', 'Squat')];
+  const exercises = [
+    makeExercise('ex-a', 'Bench Press'),
+    makeExercise('ex-b', 'Squat'),
+  ];
 
   function renderRail(focusedEntryId: string | null) {
     return render(
@@ -164,12 +183,14 @@ describe('ActiveWorkoutRail initial focus scroll', () => {
         getImageSource={() => null}
         onPressExercise={jest.fn()}
         onPressAdd={jest.fn()}
-      />,
+      />
     );
   }
 
   it('scrolls to a chip focused from the first render once its layout lands', () => {
-    const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo').mockImplementation(() => {});
+    const scrollTo = jest
+      .spyOn(ScrollView.prototype, 'scrollTo')
+      .mockImplementation(() => {});
     try {
       const { getByTestId } = renderRail('ex-b');
       // The focus effect ran before any onLayout — nothing to scroll to yet.
@@ -185,7 +206,9 @@ describe('ActiveWorkoutRail initial focus scroll', () => {
   });
 
   it('does not scroll when a non-focused chip lays out', () => {
-    const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo').mockImplementation(() => {});
+    const scrollTo = jest
+      .spyOn(ScrollView.prototype, 'scrollTo')
+      .mockImplementation(() => {});
     try {
       const { getByTestId } = renderRail('ex-b');
       fireEvent(getByTestId('rail-chip-ex-a'), 'layout', {

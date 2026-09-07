@@ -19,7 +19,11 @@ import {
   deleteFast,
 } from '../../src/services/api/fastingApi';
 import { cancelScheduledNotification } from '../../src/services/notifications';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 import type { FastingLog, FastingStats } from '../../src/types/fasting';
 
 jest.mock('../../src/services/api/fastingApi', () => ({
@@ -47,16 +51,23 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
-const mockFetchCurrent = fetchCurrentFast as jest.MockedFunction<typeof fetchCurrentFast>;
-const mockFetchStats = fetchFastingStats as jest.MockedFunction<typeof fetchFastingStats>;
-const mockFetchHistory = fetchFastingHistory as jest.MockedFunction<typeof fetchFastingHistory>;
+const mockFetchCurrent = fetchCurrentFast as jest.MockedFunction<
+  typeof fetchCurrentFast
+>;
+const mockFetchStats = fetchFastingStats as jest.MockedFunction<
+  typeof fetchFastingStats
+>;
+const mockFetchHistory = fetchFastingHistory as jest.MockedFunction<
+  typeof fetchFastingHistory
+>;
 const mockStartFast = startFast as jest.MockedFunction<typeof startFast>;
 const mockEndFast = endFast as jest.MockedFunction<typeof endFast>;
 const mockUpdateFast = updateFast as jest.MockedFunction<typeof updateFast>;
 const mockDeleteFast = deleteFast as jest.MockedFunction<typeof deleteFast>;
-const mockCancelNotification = cancelScheduledNotification as jest.MockedFunction<
-  typeof cancelScheduledNotification
->;
+const mockCancelNotification =
+  cancelScheduledNotification as jest.MockedFunction<
+    typeof cancelScheduledNotification
+  >;
 
 const GOAL_NOTIF_STORAGE_KEY = '@Fasting:goalNotificationId';
 
@@ -103,7 +114,9 @@ describe('useFasting queries and mutations', () => {
     });
 
     it('does not fetch when disabled', () => {
-      const { result } = renderHook(() => useCurrentFast({ enabled: false }), { wrapper });
+      const { result } = renderHook(() => useCurrentFast({ enabled: false }), {
+        wrapper,
+      });
 
       expect(mockFetchCurrent).not.toHaveBeenCalled();
       expect(result.current.fetchStatus).toBe('idle');
@@ -135,7 +148,9 @@ describe('useFasting queries and mutations', () => {
       const history = [activeFast({ id: 'h1', status: 'COMPLETED' })];
       mockFetchHistory.mockResolvedValue(history);
 
-      const { result } = renderHook(() => useFastingHistory(5, 10), { wrapper });
+      const { result } = renderHook(() => useFastingHistory(5, 10), {
+        wrapper,
+      });
 
       await waitFor(() => expect(result.current.data).toEqual(history));
       expect(mockFetchHistory).toHaveBeenCalledWith({ limit: 5, offset: 10 });
@@ -181,9 +196,11 @@ describe('useFasting queries and mutations', () => {
       });
 
       expect(mockStartFast).toHaveBeenCalledWith(params);
-      const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
+      const invalidatedKeys = invalidateSpy.mock.calls.map(
+        (call) => call[0]?.queryKey
+      );
       expect(invalidatedKeys).toEqual(
-        expect.arrayContaining([['fasting'], ['dailySummary']]),
+        expect.arrayContaining([['fasting'], ['dailySummary']])
       );
     });
 
@@ -199,7 +216,7 @@ describe('useFasting queries and mutations', () => {
             startTime: 's',
             targetEndTime: 't',
             fastingType: 'x',
-          }),
+          })
         ).rejects.toThrow('network');
       });
 
@@ -209,11 +226,17 @@ describe('useFasting queries and mutations', () => {
 
   describe('useEndFast', () => {
     it('ends a fast, eagerly cancels the goal notification, and invalidates caches', async () => {
-      mockEndFast.mockResolvedValue(activeFast({ status: 'COMPLETED', end_time: '2026-06-27T16:00:00Z' }));
+      mockEndFast.mockResolvedValue(
+        activeFast({ status: 'COMPLETED', end_time: '2026-06-27T16:00:00Z' })
+      );
       // Seed a stored goal notification so the eager cancel has something to clear.
       await AsyncStorage.setItem(
         GOAL_NOTIF_STORAGE_KEY,
-        JSON.stringify({ fastId: 'fast-1', target: '2026-06-27T16:00:00Z', notificationId: 'notif-1' }),
+        JSON.stringify({
+          fastId: 'fast-1',
+          target: '2026-06-27T16:00:00Z',
+          notificationId: 'notif-1',
+        })
       );
       const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
 
@@ -237,9 +260,11 @@ describe('useFasting queries and mutations', () => {
         expect(await AsyncStorage.getItem(GOAL_NOTIF_STORAGE_KEY)).toBeNull();
       });
 
-      const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
+      const invalidatedKeys = invalidateSpy.mock.calls.map(
+        (call) => call[0]?.queryKey
+      );
       expect(invalidatedKeys).toEqual(
-        expect.arrayContaining([['fasting'], ['dailySummary']]),
+        expect.arrayContaining([['fasting'], ['dailySummary']])
       );
     });
 
@@ -249,7 +274,11 @@ describe('useFasting queries and mutations', () => {
       // wired into onSuccess only, never onError/onSettled).
       await AsyncStorage.setItem(
         GOAL_NOTIF_STORAGE_KEY,
-        JSON.stringify({ fastId: 'fast-1', target: '2026-06-27T16:00:00Z', notificationId: 'notif-1' }),
+        JSON.stringify({
+          fastId: 'fast-1',
+          target: '2026-06-27T16:00:00Z',
+          notificationId: 'notif-1',
+        })
       );
       const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
 
@@ -257,7 +286,11 @@ describe('useFasting queries and mutations', () => {
 
       await act(async () => {
         await expect(
-          result.current.mutateAsync({ id: 'fast-1', startTime: 's', endTime: 'e' }),
+          result.current.mutateAsync({
+            id: 'fast-1',
+            startTime: 's',
+            endTime: 'e',
+          })
         ).rejects.toThrow('network');
       });
 
@@ -270,7 +303,7 @@ describe('useFasting queries and mutations', () => {
   describe('useUpdateFast', () => {
     it('updates a fast and invalidates fasting + daily-summary caches', async () => {
       mockUpdateFast.mockResolvedValue(
-        activeFast({ status: 'COMPLETED', end_time: '2026-06-27T16:00:00Z' }),
+        activeFast({ status: 'COMPLETED', end_time: '2026-06-27T16:00:00Z' })
       );
       const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
 
@@ -278,15 +311,22 @@ describe('useFasting queries and mutations', () => {
 
       const params = {
         id: 'fast-1',
-        updates: { start_time: '2026-06-27T08:00:00Z', end_time: '2026-06-27T16:00:00Z' },
+        updates: {
+          start_time: '2026-06-27T08:00:00Z',
+          end_time: '2026-06-27T16:00:00Z',
+        },
       };
       await act(async () => {
         await result.current.mutateAsync(params);
       });
 
       expect(mockUpdateFast).toHaveBeenCalledWith(params.id, params.updates);
-      const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
-      expect(invalidatedKeys).toEqual(expect.arrayContaining([['fasting'], ['dailySummary']]));
+      const invalidatedKeys = invalidateSpy.mock.calls.map(
+        (call) => call[0]?.queryKey
+      );
+      expect(invalidatedKeys).toEqual(
+        expect.arrayContaining([['fasting'], ['dailySummary']])
+      );
     });
 
     it('surfaces the error without invalidating on failure', async () => {
@@ -297,7 +337,10 @@ describe('useFasting queries and mutations', () => {
 
       await act(async () => {
         await expect(
-          result.current.mutateAsync({ id: 'fast-1', updates: { end_time: 'e' } }),
+          result.current.mutateAsync({
+            id: 'fast-1',
+            updates: { end_time: 'e' },
+          })
         ).rejects.toThrow('network');
       });
 
@@ -317,8 +360,12 @@ describe('useFasting queries and mutations', () => {
       });
 
       expect(mockDeleteFast).toHaveBeenCalledWith('fast-1');
-      const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
-      expect(invalidatedKeys).toEqual(expect.arrayContaining([['fasting'], ['dailySummary']]));
+      const invalidatedKeys = invalidateSpy.mock.calls.map(
+        (call) => call[0]?.queryKey
+      );
+      expect(invalidatedKeys).toEqual(
+        expect.arrayContaining([['fasting'], ['dailySummary']])
+      );
     });
 
     it('surfaces the error without invalidating on failure', async () => {
@@ -328,7 +375,9 @@ describe('useFasting queries and mutations', () => {
       const { result } = renderHook(() => useDeleteFast(), { wrapper });
 
       await act(async () => {
-        await expect(result.current.mutateAsync('fast-1')).rejects.toThrow('network');
+        await expect(result.current.mutateAsync('fast-1')).rejects.toThrow(
+          'network'
+        );
       });
 
       expect(invalidateSpy).not.toHaveBeenCalled();

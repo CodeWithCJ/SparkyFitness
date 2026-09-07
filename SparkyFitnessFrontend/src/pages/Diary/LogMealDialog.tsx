@@ -56,6 +56,9 @@ const LogMealDialog: React.FC<LogMealDialogProps> = ({
         <MealBuilder
           mealId={mealTemplate.id} // Pass template ID so it can be linked
           initialFoods={initialFoods}
+          initialMealName={mealTemplate.name}
+          initialDescription={mealTemplate.description}
+          initialNotes={mealTemplate.notes || ''}
           onSave={handleSave}
           onCancel={() => onOpenChange(false)}
           source="food-diary"
@@ -63,6 +66,18 @@ const LogMealDialog: React.FC<LogMealDialogProps> = ({
           foodEntryMealType={mealType}
           initialServingSize={mealTemplate.serving_size}
           initialServingUnit={mealTemplate.serving_unit}
+          initialTotalServings={mealTemplate.total_servings}
+          initialTotalAmount={
+            mealTemplate.serving_unit !== 'serving'
+              ? (mealTemplate.serving_size || 1) *
+                (mealTemplate.total_servings || 1)
+              : null
+          }
+          initialConsumedQuantity={
+            mealTemplate.serving_unit === 'serving'
+              ? 1
+              : mealTemplate.serving_size || 1
+          }
           initialEntryTime={initialEntryTime}
         />
       </DialogContent>

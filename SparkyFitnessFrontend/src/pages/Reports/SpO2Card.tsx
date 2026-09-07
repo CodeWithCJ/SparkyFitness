@@ -161,10 +161,7 @@ const SpO2Card = ({ data }: SpO2CardProps) => {
                 }}
                 formatter={(
                   value:
-                    | string
-                    | number
-                    | ReadonlyArray<string | number>
-                    | undefined
+                    string | number | ReadonlyArray<string | number> | undefined
                 ) =>
                   value
                     ? [`${Number(Array.isArray(value) ? value[0] : value)}%`]

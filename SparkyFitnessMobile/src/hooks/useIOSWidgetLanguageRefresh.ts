@@ -68,7 +68,7 @@ export function useIOSWidgetLanguageRefresh(): void {
       } catch (error) {
         addLog(
           `[useIOSWidgetLanguageRefresh] Calorie widget reload failed: ${error}`,
-          'ERROR',
+          'ERROR'
         );
         fullyApplied = false;
       }
@@ -77,7 +77,7 @@ export function useIOSWidgetLanguageRefresh(): void {
       } catch (error) {
         addLog(
           `[useIOSWidgetLanguageRefresh] Macro widget reload failed: ${error}`,
-          'ERROR',
+          'ERROR'
         );
         fullyApplied = false;
       }

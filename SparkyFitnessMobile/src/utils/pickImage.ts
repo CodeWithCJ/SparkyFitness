@@ -84,7 +84,7 @@ export async function pickImageFromCamera(): Promise<CameraPickResult> {
     // accepts the original when it is within limits.
     addLog(
       `[Food Image] Downscale failed, using original: ${String(error)}`,
-      'WARNING',
+      'WARNING'
     );
     return { status: 'ok', image: { uri: asset.uri } };
   }
@@ -94,7 +94,7 @@ export async function pickImageFromCamera(): Promise<CameraPickResult> {
  * Picks up to `limit` images from the photo library.
  */
 export async function pickImagesFromLibrary(
-  limit: number,
+  limit: number
 ): Promise<PickedImage[]> {
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: 'images',
@@ -112,7 +112,7 @@ export async function pickImagesFromLibrary(
     } catch (error) {
       addLog(
         `[Food Image] Downscale failed, using original: ${String(error)}`,
-        'WARNING',
+        'WARNING'
       );
       picked.push({ uri: asset.uri });
     }

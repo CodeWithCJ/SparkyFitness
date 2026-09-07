@@ -15,13 +15,15 @@ export const calorieBalanceSchema = z.object({
   net: z.number(),
   progress: z.number(),
   bmr: z.number(),
-  bmrSource: z.enum(["formula", "external"]).optional(),
+  bmrSource: z.enum(["formula", "measured"]).optional(),
   exerciseSource: z.enum(["logged", "active", "steps", "none"]),
   tdeeProjection: z
     .object({
       projectedBurn: z.number(),
       baselineBurn: z.number(),
       adjustment: z.number(),
+      targetCalories: z.number().optional(),
+      source: z.enum(["health_connect_total", "active_plus_bmr"]).optional(),
     })
     .nullable(),
 });

@@ -1,5 +1,9 @@
 import { apiFetch } from './apiClient';
 import type {
+  FoodPhotoLogRequest,
+  FoodPhotoLogResponse,
+} from '@workspace/shared';
+import type {
   FoodEntryMeal,
   FoodEntryMealCreateData,
   FoodEntryMealUpdateData,
@@ -9,7 +13,7 @@ import type {
  * Creates a logged meal (food_entry_meals row + N component food_entries).
  */
 export const createFoodEntryMeal = async (
-  payload: FoodEntryMealCreateData,
+  payload: FoodEntryMealCreateData
 ): Promise<FoodEntryMeal> => {
   return apiFetch<FoodEntryMeal>({
     endpoint: '/api/food-entry-meals',
@@ -21,7 +25,7 @@ export const createFoodEntryMeal = async (
 };
 
 export const fetchFoodEntryMealsByDate = async (
-  date: string,
+  date: string
 ): Promise<FoodEntryMeal[]> => {
   return apiFetch<FoodEntryMeal[]>({
     endpoint: `/api/food-entry-meals/by-date/${encodeURIComponent(date)}`,
@@ -35,7 +39,7 @@ export const fetchFoodEntryMealsByDate = async (
  */
 export const updateFoodEntryMeal = async (
   id: string,
-  payload: FoodEntryMealUpdateData,
+  payload: FoodEntryMealUpdateData
 ): Promise<FoodEntryMeal> => {
   return apiFetch<FoodEntryMeal>({
     endpoint: `/api/food-entry-meals/${id}`,
@@ -50,7 +54,7 @@ export const updateFoodEntryMeal = async (
  * Fetches a logged meal with its (unscaled) component foods.
  */
 export const getFoodEntryMealWithComponents = async (
-  id: string,
+  id: string
 ): Promise<FoodEntryMeal> => {
   return apiFetch<FoodEntryMeal>({
     endpoint: `/api/food-entry-meals/${id}`,
@@ -68,5 +72,24 @@ export const deleteFoodEntryMeal = async (id: string): Promise<void> => {
     serviceName: 'FoodEntryMeals API',
     operation: 'delete food entry meal',
     method: 'DELETE',
+  });
+};
+
+/**
+ * Logs a reviewed AI photo estimate in one transactional request.
+ *
+ * `X-Meal-Model-Version: 2` marks this client as being on the current serving
+ * model, matching every other logged-meal write.
+ */
+export const createPhotoLoggedMeal = async (
+  payload: FoodPhotoLogRequest
+): Promise<FoodPhotoLogResponse> => {
+  return apiFetch<FoodPhotoLogResponse>({
+    endpoint: '/api/food-entry-meals/from-photo-estimate',
+    serviceName: 'FoodEntryMeals API',
+    operation: 'log food photo estimate',
+    method: 'POST',
+    headers: { 'X-Meal-Model-Version': '2' },
+    body: payload,
   });
 };

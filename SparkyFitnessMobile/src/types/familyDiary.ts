@@ -6,7 +6,6 @@ export interface FamilyDiaryUser {
   accessEndDate: string | null;
 }
 
-
 export type {
   CopyReviewedFoodEntriesFromUserPayload,
   CopySelectedFoodEntriesFromUserPayload,

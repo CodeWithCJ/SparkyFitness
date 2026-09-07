@@ -37,5 +37,9 @@ export const adminActivityLogsMutatorSchema = z.object({
 });
 
 export type AdminActivityLogs = z.infer<typeof adminActivityLogsSchema>;
-export type AdminActivityLogsInitializer = z.infer<typeof adminActivityLogsInitializerSchema>;
-export type AdminActivityLogsMutator = z.infer<typeof adminActivityLogsMutatorSchema>;
+export type AdminActivityLogsInitializer = z.infer<
+  typeof adminActivityLogsInitializerSchema
+>;
+export type AdminActivityLogsMutator = z.infer<
+  typeof adminActivityLogsMutatorSchema
+>;

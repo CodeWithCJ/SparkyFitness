@@ -21,13 +21,13 @@ export interface FamilyCopyTotals {
 
 export function familyDiaryUserName(
   user: { displayName: string },
-  fallback: string,
+  fallback: string
 ): string {
   return user.displayName.trim() || fallback;
 }
 
 export function groupFamilyFoodEntries(
-  entries: FoodEntry[],
+  entries: FoodEntry[]
 ): FamilyMealGroup[] {
   const groups = new Map<string, FamilyMealGroup>();
 
@@ -52,7 +52,7 @@ export function groupFamilyFoodEntries(
 function nutrientForQuantity(
   entry: FoodEntry,
   field: 'calories' | 'protein' | 'carbs' | 'fat',
-  quantity: number,
+  quantity: number
 ): number {
   const servingSize = Number(entry.serving_size);
   const nutrient = Number(entry[field] ?? 0);
@@ -60,7 +60,7 @@ function nutrientForQuantity(
 }
 
 export function calculateFamilyCopyTotals(
-  selections: FamilyCopySelection[],
+  selections: FamilyCopySelection[]
 ): FamilyCopyTotals {
   return selections.reduce<FamilyCopyTotals>(
     (totals, { entry, quantity }) => {
@@ -70,18 +70,18 @@ export function calculateFamilyCopyTotals(
       totals.fat += nutrientForQuantity(entry, 'fat', quantity);
       return totals;
     },
-    { calories: 0, protein: 0, carbs: 0, fat: 0 },
+    { calories: 0, protein: 0, carbs: 0, fat: 0 }
   );
 }
 
 export function isUnchangedWholeMeal(
   sourceEntries: FoodEntry[],
   selectedEntryIds: Set<string>,
-  quantitiesById: Record<string, number>,
+  quantitiesById: Record<string, number>
 ): boolean {
   if (sourceEntries.length !== selectedEntryIds.size) return false;
 
-  return sourceEntries.every(entry => {
+  return sourceEntries.every((entry) => {
     if (!selectedEntryIds.has(entry.id)) return false;
     const selectedQuantity = quantitiesById[entry.id];
     return (

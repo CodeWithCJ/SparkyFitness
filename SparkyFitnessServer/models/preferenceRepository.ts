@@ -33,6 +33,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         auto_scale_online_imports = COALESCE($25, auto_scale_online_imports),
         first_day_of_week = COALESCE($29, first_day_of_week),
         barcode_fallback_open_food_facts = COALESCE($30, barcode_fallback_open_food_facts),
+        food_search_all_providers_default = COALESCE($47, food_search_all_providers_default),
         show_net_carbs = COALESCE($31, show_net_carbs),
         ai_assisted_conversions = COALESCE($32, ai_assisted_conversions),
         goal_mode = COALESCE($33, goal_mode),
@@ -97,6 +98,7 @@ async function updateUserPreferences(userId: any, preferenceData: any) {
         preferenceData.time_format,
         preferenceData.calorie_safety_floor_mode,
         preferenceData.calorie_safety_floor_value,
+        preferenceData.food_search_all_providers_default,
       ]
     );
     return result.rows[0];
@@ -172,6 +174,7 @@ async function upsertUserPreferences(preferenceData: any) {
        auto_scale_open_food_facts_imports, exercise_calorie_percentage, activity_level,
        tdee_allow_negative_adjustment, auto_scale_online_imports, default_barcode_provider_id,
        first_day_of_week, barcode_fallback_open_food_facts,
+       food_search_all_providers_default,
        show_net_carbs,
        ai_assisted_conversions,
        goal_mode,
@@ -199,6 +202,7 @@ async function upsertUserPreferences(preferenceData: any) {
        $27,
        COALESCE($29, 0),
        COALESCE($30, true),
+       COALESCE($47, false),
        COALESCE($31, false),
        COALESCE($32, true),
        COALESCE($33, 'maintain'),
@@ -256,6 +260,11 @@ async function upsertUserPreferences(preferenceData: any) {
        added_sugar_algorithm = COALESCE(EXCLUDED.added_sugar_algorithm, user_preferences.added_sugar_algorithm),
        calorie_safety_floor_mode = COALESCE($45, user_preferences.calorie_safety_floor_mode),
        calorie_safety_floor_value = COALESCE($46, user_preferences.calorie_safety_floor_value),
+       -- Read $47 directly rather than EXCLUDED: the VALUES clause defaults it to
+       -- false for a fresh insert, so EXCLUDED is never NULL and an upsert that
+       -- omits the field would clobber a stored true back to false. Same shape
+       -- as time_format below.
+       food_search_all_providers_default = COALESCE($47, user_preferences.food_search_all_providers_default),
        time_format = COALESCE($44, user_preferences.time_format),
        updated_at = now()
      RETURNING *`,
@@ -306,6 +315,7 @@ async function upsertUserPreferences(preferenceData: any) {
         preferenceData.time_format,
         preferenceData.calorie_safety_floor_mode,
         preferenceData.calorie_safety_floor_value,
+        preferenceData.food_search_all_providers_default,
       ]
     );
     return result.rows[0];

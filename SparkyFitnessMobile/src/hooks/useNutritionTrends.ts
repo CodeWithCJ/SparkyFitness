@@ -1,5 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchNutritionTrends, type NutritionTrendPoint } from '../services/api/reportsApi';
+import {
+  fetchNutritionTrends,
+  type NutritionTrendPoint,
+} from '../services/api/reportsApi';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import { nutritionTrendsQueryKey } from './queryKeys';
 import { getTodayDate, addDays } from '../utils/dateUtils';
@@ -37,7 +40,10 @@ interface UseNutritionTrendsOptions {
   enabled?: boolean;
 }
 
-export function useNutritionTrends({ range, enabled = true }: UseNutritionTrendsOptions) {
+export function useNutritionTrends({
+  range,
+  enabled = true,
+}: UseNutritionTrendsOptions) {
   const today = getTodayDate();
   const days = RANGE_DAYS[range];
   const startDate = addDays(today, -(days - 1));

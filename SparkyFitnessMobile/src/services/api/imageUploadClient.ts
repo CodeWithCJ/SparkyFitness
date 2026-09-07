@@ -52,7 +52,7 @@ export async function postImageMultipart<T>(params: {
   // and user photos, so never send them over plaintext in a release build.
   if (!__DEV__ && baseUrl.toLowerCase().startsWith('http://')) {
     throw new Error(
-      'HTTPS is required for server connections. Please update your server URL in Settings.',
+      'HTTPS is required for server connections. Please update your server URL in Settings.'
     );
   }
 
@@ -72,7 +72,10 @@ export async function postImageMultipart<T>(params: {
   // Text fields must precede the file parts either way: multer only reliably
   // exposes fields that arrive before the files in the multipart stream.
   if (payload !== undefined && wrapperField) {
-    form.append(wrapperField, JSON.stringify({ ...(payload as object), images: order }));
+    form.append(
+      wrapperField,
+      JSON.stringify({ ...(payload as object), images: order })
+    );
   } else {
     form.append('images', JSON.stringify(order));
   }
@@ -94,7 +97,7 @@ export async function postImageMultipart<T>(params: {
         },
         body: form,
       },
-      UPLOAD_TIMEOUT_MS,
+      UPLOAD_TIMEOUT_MS
     );
   } catch (err) {
     // A throw here means no response ever arrived (dropped connection,
@@ -115,14 +118,17 @@ export async function postImageMultipart<T>(params: {
     throw new ApiError(
       `Server error: ${response.status} - ${text}`,
       response.status,
-      text,
+      text
     );
   }
 
   // 204 has no body; image endpoints otherwise return the updated row. An
   // empty 200 is treated the same, as apiFetch does — response.json() would
   // throw on it after an otherwise successful upload.
-  if (response.status === 204 || response.headers?.get('content-length') === '0') {
+  if (
+    response.status === 204 ||
+    response.headers?.get('content-length') === '0'
+  ) {
     return undefined as T;
   }
   return (await response.json()) as T;

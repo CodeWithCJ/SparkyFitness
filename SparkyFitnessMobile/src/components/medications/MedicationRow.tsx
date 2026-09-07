@@ -12,10 +12,18 @@ interface MedicationRowProps {
 }
 
 /** One medication in the user's regimen. */
-const MedicationRow: React.FC<MedicationRowProps> = ({ medication, onPress }) => {
+const MedicationRow: React.FC<MedicationRowProps> = ({
+  medication,
+  onPress,
+}) => {
   const { t } = useTranslation();
-  const [iconDecorative] = useCSSVariable(['--color-icon-decorative']) as [string];
-  const summary = [formatDose(medication), localizedDescribeSchedules(t, medication.schedules ?? [])]
+  const [iconDecorative] = useCSSVariable(['--color-icon-decorative']) as [
+    string,
+  ];
+  const summary = [
+    formatDose(medication),
+    localizedDescribeSchedules(t, medication.schedules ?? []),
+  ]
     .filter((part) => part != null && part !== '')
     .join(' · ');
 

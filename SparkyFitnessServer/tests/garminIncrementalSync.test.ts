@@ -70,8 +70,7 @@ describe('Garmin syncGarminData - Incremental Chunk Resilience', () => {
     expect(result.activities?.processedEntries).toBe(6);
     expect(result.activities?.partialErrors).toBeDefined();
     const partialErrors = result.activities?.partialErrors as
-      | string[]
-      | undefined;
+      string[] | undefined;
     expect(partialErrors).toHaveLength(1);
     expect(partialErrors?.[0]).toContain('Connection reset on chunk 2');
   });

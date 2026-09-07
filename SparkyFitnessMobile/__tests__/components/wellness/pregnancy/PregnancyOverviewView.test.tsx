@@ -27,22 +27,37 @@ jest.mock('../../../../src/components/wellness/pregnancy/WeekBanner', () => {
   const { View } = require('react-native');
   return { __esModule: true, default: () => <View testID="week-banner" /> };
 });
-jest.mock('../../../../src/components/wellness/pregnancy/BabyGrowthView', () => {
-  const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="baby-growth" /> };
-});
-jest.mock('../../../../src/components/wellness/pregnancy/WeeklyChecklist', () => {
-  const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="weekly-checklist" /> };
-});
-jest.mock('../../../../src/components/wellness/pregnancy/BumpPhotoJournal', () => {
-  const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="bump-photos" /> };
-});
-jest.mock('../../../../src/components/wellness/pregnancy/FoodMedSafetySearch', () => {
-  const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="safety-search" /> };
-});
+jest.mock(
+  '../../../../src/components/wellness/pregnancy/BabyGrowthView',
+  () => {
+    const { View } = require('react-native');
+    return { __esModule: true, default: () => <View testID="baby-growth" /> };
+  }
+);
+jest.mock(
+  '../../../../src/components/wellness/pregnancy/WeeklyChecklist',
+  () => {
+    const { View } = require('react-native');
+    return {
+      __esModule: true,
+      default: () => <View testID="weekly-checklist" />,
+    };
+  }
+);
+jest.mock(
+  '../../../../src/components/wellness/pregnancy/BumpPhotoJournal',
+  () => {
+    const { View } = require('react-native');
+    return { __esModule: true, default: () => <View testID="bump-photos" /> };
+  }
+);
+jest.mock(
+  '../../../../src/components/wellness/pregnancy/FoodMedSafetySearch',
+  () => {
+    const { View } = require('react-native');
+    return { __esModule: true, default: () => <View testID="safety-search" /> };
+  }
+);
 
 describe('PregnancyOverviewView', () => {
   beforeEach(() => {
@@ -50,7 +65,9 @@ describe('PregnancyOverviewView', () => {
   });
 
   it('renders only weekly content in the overview section', () => {
-    const { getByTestId, queryByTestId } = render(<PregnancyOverviewView section="overview" />);
+    const { getByTestId, queryByTestId } = render(
+      <PregnancyOverviewView section="overview" />
+    );
     expect(getByTestId('week-banner')).toBeTruthy();
     expect(getByTestId('baby-growth')).toBeTruthy();
     expect(getByTestId('weekly-checklist')).toBeTruthy();
@@ -59,7 +76,9 @@ describe('PregnancyOverviewView', () => {
   });
 
   it('renders only interactive cards in the tools section', () => {
-    const { getByTestId, queryByTestId } = render(<PregnancyOverviewView section="tools" />);
+    const { getByTestId, queryByTestId } = render(
+      <PregnancyOverviewView section="tools" />
+    );
     expect(getByTestId('bump-photos')).toBeTruthy();
     expect(getByTestId('safety-search')).toBeTruthy();
     expect(queryByTestId('week-banner')).toBeNull();
@@ -70,7 +89,9 @@ describe('PregnancyOverviewView', () => {
   it('shows the setup prompt in both sections when no active pregnancy exists', () => {
     mockPregnancy = null;
     for (const section of ['overview', 'tools'] as const) {
-      const { getByText, unmount } = render(<PregnancyOverviewView section={section} />);
+      const { getByText, unmount } = render(
+        <PregnancyOverviewView section={section} />
+      );
       expect(getByText('Set up your pregnancy')).toBeTruthy();
       unmount();
     }

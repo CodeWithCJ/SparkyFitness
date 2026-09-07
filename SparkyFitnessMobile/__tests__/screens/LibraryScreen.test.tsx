@@ -3,7 +3,13 @@ import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import LibraryScreen from '../../src/screens/LibraryScreen';
-import { useFoods, useMeals, useRecentMeals, useServerConnection, useSuggestedExercises } from '../../src/hooks';
+import {
+  useFoods,
+  useMeals,
+  useRecentMeals,
+  useServerConnection,
+  useSuggestedExercises,
+} from '../../src/hooks';
 import { fetchExercisesCount } from '../../src/services/api/exerciseApi';
 import { fetchFoodsPage } from '../../src/services/api/foodsApi';
 import { fetchWorkoutPresetsPage } from '../../src/services/api/workoutPresetsApi';
@@ -11,12 +17,23 @@ import { fetchWorkoutPresetsPage } from '../../src/services/api/workoutPresetsAp
 jest.mock('../../src/hooks', () => ({
   useFoods: jest.fn(),
   useMeals: jest.fn(),
-  useMedications: jest.fn(() => ({ data: [], isLoading: false, isError: false, refetch: jest.fn() })),
+  useMedications: jest.fn(() => ({
+    data: [],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  })),
   useRecentMeals: jest.fn(),
   useServerConnection: jest.fn(),
   useSuggestedExercises: jest.fn(),
   useProfile: jest.fn(() => ({ profile: undefined, isLoading: false })),
-  useFavorites: jest.fn(() => ({ favoriteFoods: [], favoriteMeals: [], isLoading: false, isError: false, refetch: jest.fn() })),
+  useFavorites: jest.fn(() => ({
+    favoriteFoods: [],
+    favoriteMeals: [],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  })),
 }));
 
 jest.mock('../../src/services/api/foodsApi', () => ({
@@ -37,12 +54,25 @@ jest.mock('../../src/components/ActiveWorkoutBar', () => ({
 
 const mockUseFoods = useFoods as jest.MockedFunction<typeof useFoods>;
 const mockUseMeals = useMeals as jest.MockedFunction<typeof useMeals>;
-const mockUseRecentMeals = useRecentMeals as jest.MockedFunction<typeof useRecentMeals>;
-const mockUseServerConnection = useServerConnection as jest.MockedFunction<typeof useServerConnection>;
-const mockUseSuggestedExercises = useSuggestedExercises as jest.MockedFunction<typeof useSuggestedExercises>;
-const mockFetchFoodsPage = fetchFoodsPage as jest.MockedFunction<typeof fetchFoodsPage>;
-const mockFetchExercisesCount = fetchExercisesCount as jest.MockedFunction<typeof fetchExercisesCount>;
-const mockFetchWorkoutPresetsPage = fetchWorkoutPresetsPage as jest.MockedFunction<typeof fetchWorkoutPresetsPage>;
+const mockUseRecentMeals = useRecentMeals as jest.MockedFunction<
+  typeof useRecentMeals
+>;
+const mockUseServerConnection = useServerConnection as jest.MockedFunction<
+  typeof useServerConnection
+>;
+const mockUseSuggestedExercises = useSuggestedExercises as jest.MockedFunction<
+  typeof useSuggestedExercises
+>;
+const mockFetchFoodsPage = fetchFoodsPage as jest.MockedFunction<
+  typeof fetchFoodsPage
+>;
+const mockFetchExercisesCount = fetchExercisesCount as jest.MockedFunction<
+  typeof fetchExercisesCount
+>;
+const mockFetchWorkoutPresetsPage =
+  fetchWorkoutPresetsPage as jest.MockedFunction<
+    typeof fetchWorkoutPresetsPage
+  >;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -110,7 +140,9 @@ describe('LibraryScreen', () => {
     params: undefined,
   };
 
-  const renderScreen = ({ fetchCounts = [] }: { fetchCounts?: CountQueryName[] } = {}) => {
+  const renderScreen = ({
+    fetchCounts = [],
+  }: { fetchCounts?: CountQueryName[] } = {}) => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });
@@ -130,7 +162,7 @@ describe('LibraryScreen', () => {
         <SafeAreaProvider initialMetrics={{ insets, frame }}>
           <LibraryScreen navigation={navigation} route={route} />
         </SafeAreaProvider>
-      </QueryClientProvider>,
+      </QueryClientProvider>
     );
   };
 
@@ -212,6 +244,12 @@ describe('LibraryScreen', () => {
     expect(navigation.navigate).toHaveBeenCalledWith('MealsLibrary');
   });
 
+  it('navigates to MealPlans when the Meal plans row is pressed', () => {
+    const screen = renderScreen();
+    fireEvent.press(screen.getByText('Meal plans'));
+    expect(navigation.navigate).toHaveBeenCalledWith('MealPlans');
+  });
+
   it('navigates to FoodsLibrary when the Foods row is pressed', () => {
     const screen = renderScreen();
     fireEvent.press(screen.getByText('Foods'));
@@ -270,7 +308,7 @@ describe('LibraryScreen', () => {
       expect.objectContaining({
         mealId: 'm1',
         initialMeal: expect.objectContaining({ name: 'Breakfast Bowl' }),
-      }),
+      })
     );
   });
 
@@ -289,8 +327,12 @@ describe('LibraryScreen', () => {
     expect(navigation.navigate).toHaveBeenCalledWith(
       'FoodDetail',
       expect.objectContaining({
-        item: expect.objectContaining({ id: '1', name: 'Apple', source: 'local' }),
-      }),
+        item: expect.objectContaining({
+          id: '1',
+          name: 'Apple',
+          source: 'local',
+        }),
+      })
     );
   });
 
@@ -366,7 +408,7 @@ describe('LibraryScreen', () => {
     fireEvent.press(screen.getByText('Bench Press'));
     expect(navigation.navigate).toHaveBeenCalledWith(
       'ExerciseDetail',
-      expect.objectContaining({ item: expect.objectContaining({ id: 'ex-1' }) }),
+      expect.objectContaining({ item: expect.objectContaining({ id: 'ex-1' }) })
     );
   });
 

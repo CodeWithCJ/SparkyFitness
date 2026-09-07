@@ -23,7 +23,7 @@ jest.mock('../../src/hooks/useScreenHeader', () => ({
     return React.createElement(
       Text,
       { testID: 'screen-header-title' },
-      props.title,
+      props.title
     );
   }),
 }));
@@ -42,7 +42,7 @@ jest.mock('../../src/components/Icon', () => {
 
 jest.mock('uniwind', () => ({
   useCSSVariable: jest.fn((variables: string | string[]) =>
-    (Array.isArray(variables) ? variables : [variables]).map(() => '#000000'),
+    (Array.isArray(variables) ? variables : [variables]).map(() => '#000000')
   ),
 }));
 
@@ -68,7 +68,7 @@ describe('WhatsNewScreen localization', () => {
     expect(screen.getByText("What's New")).toBeTruthy();
     expect(screen.getByText('Track your medications')).toBeTruthy();
     expect(
-      screen.getByText('What can I have for dinner with 500 calories left?'),
+      screen.getByText('What can I have for dinner with 500 calories left?')
     ).toBeTruthy();
 
     fireEvent.press(screen.getByText('Set up medications'));
@@ -82,7 +82,7 @@ describe('WhatsNewScreen localization', () => {
     expect(screen.getByText('Co nowego')).toBeTruthy();
     expect(screen.getByText('Monitoruj przyjmowanie leków')).toBeTruthy();
     expect(
-      screen.getByText('Co mogę zjeść na kolację, jeśli zostało mi 500 kcal?'),
+      screen.getByText('Co mogę zjeść na kolację, jeśli zostało mi 500 kcal?')
     ).toBeTruthy();
     expect(screen.getByText('08:00')).toBeTruthy();
     expect(screen.getByText('1 515')).toBeTruthy();

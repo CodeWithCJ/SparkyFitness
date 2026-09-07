@@ -4,9 +4,11 @@
  */
 import type { SupportedLanguage } from './localeRegistry';
 import locale_enTranslation from './locales/en/translation.json';
+import locale_esTranslation from './locales/es/translation.json';
 import locale_plTranslation from './locales/pl/translation.json';
 
 export const RESOURCE_MAP = {
   "en": { translation: locale_enTranslation },
+  "es": { translation: locale_esTranslation },
   "pl": { translation: locale_plTranslation },
 } satisfies Record<SupportedLanguage, { translation: object }>;

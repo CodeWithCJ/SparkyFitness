@@ -43,13 +43,18 @@ import {
 import { addLog } from '../services/LogService';
 import Icon from '../components/Icon';
 import Switch from '../components/ui/Switch';
-import MealTypeFormSheet, { type MealTypeFormSheetRef } from '../components/MealTypeFormSheet';
+import MealTypeFormSheet, {
+  type MealTypeFormSheetRef,
+} from '../components/MealTypeFormSheet';
 import MealTypeTimePickerSheet, {
   type MealTypeTimePickerSheetRef,
 } from '../components/MealTypeTimePickerSheet';
 import { MEAL_CONFIG } from '../constants/meals';
 import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
-import { computeReorderTargetIndex, computeReorderPreviewShift } from '../components/WorkoutReorderList';
+import {
+  computeReorderTargetIndex,
+  computeReorderPreviewShift,
+} from '../components/WorkoutReorderList';
 import type { IconName } from '../components/Icon';
 import type { MealType } from '../types/mealTypes';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -115,7 +120,7 @@ export function useMealTypeRowDragPreviewStyle(
   panY: SharedValue<number>,
   committingTranslate: SharedValue<number>,
   targetIndex: SharedValue<number>,
-  strides: number[],
+  strides: number[]
 ) {
   return useAnimatedStyle(() => {
     const active = activeDragIndex.value;
@@ -148,7 +153,7 @@ export function useMealTypeRowDragPreviewStyle(
       rowIndex,
       active,
       targetIndex.value,
-      strides[active],
+      strides[active]
     );
     return {
       transform: [
@@ -173,7 +178,7 @@ export function useMealTypeRowDragPreviewStyle(
 export function resetMealTypeDragPreview(
   activeDragIndex: SharedValue<number>,
   panY: SharedValue<number>,
-  committingTranslate: SharedValue<number>,
+  committingTranslate: SharedValue<number>
 ): void {
   committingTranslate.value = 0;
   activeDragIndex.value = -1;
@@ -246,7 +251,7 @@ const CustomMealTypeRow: React.FC<{
     panY,
     committingTranslate,
     targetIndex,
-    strides,
+    strides
   );
 
   const handleAccessibilityAction = (event: AccessibilityActionEvent) => {
@@ -269,10 +274,21 @@ const CustomMealTypeRow: React.FC<{
           testID={`drag-handle-${mt.id}`}
           className="px-4 py-3"
           accessibilityRole="adjustable"
-          accessibilityLabel={t('mealTypeSettings.reorder', { defaultValue: 'Reorder {{name}}', name: mt.name })}
+          accessibilityLabel={t('mealTypeSettings.reorder', {
+            defaultValue: 'Reorder {{name}}',
+            name: mt.name,
+          })}
           accessibilityActions={[
-            { name: 'decrement', label: t('mealTypeSettings.moveUp', { defaultValue: 'Move up' }) },
-            { name: 'increment', label: t('mealTypeSettings.moveDown', { defaultValue: 'Move down' }) },
+            {
+              name: 'decrement',
+              label: t('mealTypeSettings.moveUp', { defaultValue: 'Move up' }),
+            },
+            {
+              name: 'increment',
+              label: t('mealTypeSettings.moveDown', {
+                defaultValue: 'Move down',
+              }),
+            },
           ]}
           onAccessibilityAction={handleAccessibilityAction}
         >
@@ -283,19 +299,33 @@ const CustomMealTypeRow: React.FC<{
         className="flex-1 py-3 flex-shrink"
         onPress={() => onEdit(mt)}
         activeOpacity={0.6}
-        accessibilityLabel={t('mealTypeSettings.edit', { defaultValue: 'Edit {{name}}', name: mt.name })}
+        accessibilityLabel={t('mealTypeSettings.edit', {
+          defaultValue: 'Edit {{name}}',
+          name: mt.name,
+        })}
         testID={`edit-custom-${mt.id}`}
       >
-        <Text className="text-base text-text-primary font-medium" numberOfLines={1}>
+        <Text
+          className="text-base text-text-primary font-medium"
+          numberOfLines={1}
+        >
           {mt.name}
         </Text>
       </TouchableOpacity>
-      <MealTypeTimeCell mealType={mt} onPress={() => onTime(mt)} textSecondary={textSecondary} t={t} />
+      <MealTypeTimeCell
+        mealType={mt}
+        onPress={() => onTime(mt)}
+        textSecondary={textSecondary}
+        t={t}
+      />
       <View className="pr-4 pl-1">
         <Switch
           value={mt.is_visible}
           onValueChange={(val) => onToggleVisibility(mt, val)}
-          accessibilityLabel={t('mealTypeSettings.visible', { defaultValue: 'Visible {{name}}', name: mt.name })}
+          accessibilityLabel={t('mealTypeSettings.visible', {
+            defaultValue: 'Visible {{name}}',
+            name: mt.name,
+          })}
         />
       </View>
     </Animated.View>
@@ -345,7 +375,7 @@ const SystemMealTypeRow: React.FC<{
     panY,
     committingTranslate,
     targetIndex,
-    strides,
+    strides
   );
 
   return (
@@ -356,25 +386,43 @@ const SystemMealTypeRow: React.FC<{
       testID={`meal-type-system-${mt.id}`}
     >
       <View className="px-4 py-3">
-        <Icon name={getSystemMealTypeIcon(mt.name)} size={22} color={accentColor} />
+        <Icon
+          name={getSystemMealTypeIcon(mt.name)}
+          size={22}
+          color={accentColor}
+        />
       </View>
       <TouchableOpacity
         className="flex-1 py-3 flex-shrink"
         onPress={() => onEdit(mt)}
         activeOpacity={0.6}
-        accessibilityLabel={t('mealTypeSettings.edit', { defaultValue: 'Edit {{name}}', name: getMealTypeDisplayLabel(mt, t) })}
+        accessibilityLabel={t('mealTypeSettings.edit', {
+          defaultValue: 'Edit {{name}}',
+          name: getMealTypeDisplayLabel(mt, t),
+        })}
         testID={`edit-system-${mt.id}`}
       >
-        <Text className="text-base text-text-primary font-medium" numberOfLines={1}>
+        <Text
+          className="text-base text-text-primary font-medium"
+          numberOfLines={1}
+        >
           {getMealTypeDisplayLabel(mt, t)}
         </Text>
       </TouchableOpacity>
-      <MealTypeTimeCell mealType={mt} onPress={() => onTime(mt)} textSecondary={textSecondary} t={t} />
+      <MealTypeTimeCell
+        mealType={mt}
+        onPress={() => onTime(mt)}
+        textSecondary={textSecondary}
+        t={t}
+      />
       <View className="pr-4 pl-1">
         <Switch
           value={mt.is_visible}
           onValueChange={(val) => onToggleVisibility(mt, val)}
-          accessibilityLabel={t('mealTypeSettings.visible', { defaultValue: 'Visible {{name}}', name: getMealTypeDisplayLabel(mt, t) })}
+          accessibilityLabel={t('mealTypeSettings.visible', {
+            defaultValue: 'Visible {{name}}',
+            name: getMealTypeDisplayLabel(mt, t),
+          })}
         />
       </View>
     </Animated.View>
@@ -397,7 +445,12 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   const formSheetRef = useRef<MealTypeFormSheetRef>(null);
   const timePickerRef = useRef<MealTypeTimePickerSheetRef>(null);
 
-  const { data: mealTypes, isLoading, isError, refetch } = useQuery({
+  const {
+    data: mealTypes,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: mealTypesQueryKey,
     queryFn: fetchMealTypes,
     staleTime: 0,
@@ -472,27 +525,35 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           reservation.resolveDone();
         });
     },
-    onMutate: ({ id, data, token, previousFields, optimisticFields }: GenericUpdateVars) => {
+    onMutate: ({
+      id,
+      data,
+      token,
+      previousFields,
+      optimisticFields,
+    }: GenericUpdateVars) => {
       // The slot + ownership were already reserved synchronously by
       // `mutateMealType`. Here we only cancel in-flight fetches and then apply
       // the guarded optimistic cache write: a field is written ONLY if this
       // mutation still owns it (a newer mutation may have taken it over while
       // cancelQueries was pending).
-      return queryClient.cancelQueries({ queryKey: mealTypesQueryKey }).then(() => {
-        queryClient.setQueryData<MealType[]>(mealTypesQueryKey, (old) =>
-          (old ?? []).map((mt) => {
-            if (mt.id !== id) return mt;
-            const next = { ...mt };
-            for (const [field, value] of Object.entries(data)) {
-              const key = `${id}:${field}`;
-              if (fieldOwnerRef.current.get(key) !== token) continue;
-              (next as unknown as Record<string, unknown>)[field] = value;
-            }
-            return next;
-          }),
-        );
-        return { id, token, previousFields, optimisticFields };
-      });
+      return queryClient
+        .cancelQueries({ queryKey: mealTypesQueryKey })
+        .then(() => {
+          queryClient.setQueryData<MealType[]>(mealTypesQueryKey, (old) =>
+            (old ?? []).map((mt) => {
+              if (mt.id !== id) return mt;
+              const next = { ...mt };
+              for (const [field, value] of Object.entries(data)) {
+                const key = `${id}:${field}`;
+                if (fieldOwnerRef.current.get(key) !== token) continue;
+                (next as unknown as Record<string, unknown>)[field] = value;
+              }
+              return next;
+            })
+          );
+          return { id, token, previousFields, optimisticFields };
+        });
     },
     onSuccess: (updated, _vars, ctx) => {
       const context = ctx as {
@@ -520,7 +581,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
             }
           }
           return next;
-        }),
+        })
       );
     },
     onError: (err: Error, _vars, context) => {
@@ -541,11 +602,16 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
               }
             }
             return next;
-          }),
+          })
         );
       }
       addLog(`Failed to update meal type: ${err.message}`, 'ERROR');
-      Toast.show({ type: 'error', text1: t('mealTypeSettings.failedUpdate', { defaultValue: 'Failed to update' }) });
+      Toast.show({
+        type: 'error',
+        text1: t('mealTypeSettings.failedUpdate', {
+          defaultValue: 'Failed to update',
+        }),
+      });
     },
     onSettled: (_data, _err, vars, context) => {
       // Authoritative reconciliation ONLY after this record's update queue
@@ -572,11 +638,21 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     mutationFn: (id: string) => deleteMealType(id),
     onSuccess: () => {
       invalidate();
-      Toast.show({ type: 'success', text1: t('mealTypeSettings.deleted', { defaultValue: 'Meal type deleted' }) });
+      Toast.show({
+        type: 'success',
+        text1: t('mealTypeSettings.deleted', {
+          defaultValue: 'Meal type deleted',
+        }),
+      });
     },
     onError: (err: Error) => {
       addLog(`Failed to delete meal type: ${err.message}`, 'ERROR');
-      Toast.show({ type: 'error', text1: t('mealTypeSettings.failedDelete', { defaultValue: 'Failed to delete' }) });
+      Toast.show({
+        type: 'error',
+        text1: t('mealTypeSettings.failedDelete', {
+          defaultValue: 'Failed to delete',
+        }),
+      });
     },
   });
 
@@ -603,12 +679,13 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     (
       id: string,
       data: Partial<Omit<MealType, 'id'>>,
-      options?: { onSuccess?: () => void },
+      options?: { onSuccess?: () => void }
     ) => {
       const token = ++mutationTokenRef.current;
 
       // 2. Reserve the per-record queue slot synchronously.
-      const predecessor = updateRequestQueueRef.current.get(id) ?? Promise.resolve();
+      const predecessor =
+        updateRequestQueueRef.current.get(id) ?? Promise.resolve();
       let resolveDone!: () => void;
       const done = new Promise<void>((resolve) => {
         resolveDone = resolve;
@@ -617,7 +694,10 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       const reservation: UpdateReservation = { predecessor, done, resolveDone };
 
       // 3. Pending counter for drain-gated invalidation.
-      pendingUpdatesRef.current.set(id, (pendingUpdatesRef.current.get(id) ?? 0) + 1);
+      pendingUpdatesRef.current.set(
+        id,
+        (pendingUpdatesRef.current.get(id) ?? 0) + 1
+      );
 
       // 4 + 5. Reserve ownership + capture rollback metadata from the CURRENT
       // cache (synchronously, before any async work).
@@ -626,7 +706,9 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       const current = queryClient.getQueryData<MealType[]>(mealTypesQueryKey);
       for (const field of Object.keys(data)) {
         fieldOwnerRef.current.set(`${id}:${field}`, token);
-        optimisticFields[field] = (data as unknown as Record<string, unknown>)[field];
+        optimisticFields[field] = (data as unknown as Record<string, unknown>)[
+          field
+        ];
         const existing = current?.find((mt) => mt.id === id);
         previousFields[field] = existing
           ? (existing as unknown as Record<string, unknown>)[field]
@@ -635,10 +717,10 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
 
       updateMutation.mutate(
         { id, data, token, previousFields, optimisticFields, reservation },
-        options,
+        options
       );
     },
-    [updateMutation, queryClient],
+    [updateMutation, queryClient]
   );
 
   const { systemTypes, customTypes } = useMemo(() => {
@@ -660,9 +742,15 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
    * null = follow the server sort_order. Cleared when the persisted state is
    * reconciled (success writes cache + clears; failure clears + refetches).
    */
-  const [gapOverride, setGapOverride] = useState<Record<MealGapKey, string[]> | null>(null);
+  const [gapOverride, setGapOverride] = useState<Record<
+    MealGapKey,
+    string[]
+  > | null>(null);
 
-  const serverGaps = useMemo(() => assignCustomTypesToGaps(customTypes), [customTypes]);
+  const serverGaps = useMemo(
+    () => assignCustomTypesToGaps(customTypes),
+    [customTypes]
+  );
 
   const currentGaps = useMemo<Record<MealGapKey, MealType[]>>(() => {
     if (!gapOverride) return serverGaps;
@@ -679,7 +767,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   /** Unified visual rows (anchors fixed, customs per current gaps). */
   const unifiedRows = useMemo(
     () => buildUnifiedList(systemTypes, currentGaps),
-    [systemTypes, currentGaps],
+    [systemTypes, currentGaps]
   );
 
   // Drag geometry over the unified rows. Anchors and customs share the same
@@ -709,7 +797,12 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   const targetIndex = useDerivedValue(() =>
     activeDragIndex.value < 0
       ? -1
-      : computeReorderTargetIndex(strides, offsets, activeDragIndex.value, panY.value),
+      : computeReorderTargetIndex(
+          strides,
+          offsets,
+          activeDragIndex.value,
+          panY.value
+        )
   );
 
   /** Generation of the currently displayed optimistic order (incremented on
@@ -738,7 +831,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   const doPersist = useCallback(
     async (
       gapsToPersist: Record<MealGapKey, MealType[]>,
-      generation: number,
+      generation: number
     ) => {
       // ABSOLUTE snapshot persistence: every custom type in every gap is
       // written with its canonical slot, independent of the (possibly stale)
@@ -760,7 +853,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         queryClient.setQueryData<MealType[]>(mealTypesQueryKey, (old) => {
           const byId = new Map(writes.map((w) => [w.id, w.sort_order]));
           return (old ?? []).map((mt) =>
-            byId.has(mt.id) ? { ...mt, sort_order: byId.get(mt.id)! } : mt,
+            byId.has(mt.id) ? { ...mt, sort_order: byId.get(mt.id)! } : mt
           );
         });
         // Clear ONLY if this generation is still displayed and no newer
@@ -773,8 +866,16 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         }
         invalidate();
       } catch (err) {
-        addLog(`Failed to persist meal type order: ${(err as Error).message}`, 'ERROR');
-        Toast.show({ type: 'error', text1: t('mealTypeSettings.failedReorder', { defaultValue: 'Failed to reorder meal types' }) });
+        addLog(
+          `Failed to persist meal type order: ${(err as Error).message}`,
+          'ERROR'
+        );
+        Toast.show({
+          type: 'error',
+          text1: t('mealTypeSettings.failedReorder', {
+            defaultValue: 'Failed to reorder meal types',
+          }),
+        });
         // Never clear a NEWER optimistic override. If no newer order exists
         // this generation is still displayed, so reconcile it back to the
         // server state.
@@ -787,7 +888,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         invalidate();
       }
     },
-    [invalidate, queryClient, t],
+    [invalidate, queryClient, t]
   );
 
   /**
@@ -846,13 +947,19 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       // inserting before the last anchor means toIndex === lastSystemIndex - 1.
       const lastSystemIndex = unifiedRows.reduce(
         (acc, row, idx) => (row.isSystem ? idx : acc),
-        -1,
+        -1
       );
-      const clampedTo = Math.min(Math.max(toIndex, 1), Math.max(lastSystemIndex - 1, 1));
+      const clampedTo = Math.min(
+        Math.max(toIndex, 1),
+        Math.max(lastSystemIndex - 1, 1)
+      );
       const currentUnified = unifiedRows.map((r) => ({ ...r }));
       const [moved] = currentUnified.splice(fromIndex, 1);
       currentUnified.splice(clampedTo, 0, moved);
-      if (!currentUnified[0]?.isSystem || !currentUnified[currentUnified.length - 1]?.isSystem) {
+      if (
+        !currentUnified[0]?.isSystem ||
+        !currentUnified[currentUnified.length - 1]?.isSystem
+      ) {
         // Defensive anchor-bound guard: also release a frozen preview.
         resetMealTypeDragPreview(activeDragIndex, panY, committingTranslate);
         return; // defensive: anchors must bound the list
@@ -864,7 +971,10 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           const movingInto = GAP_USER_LABEL[key];
           Toast.show({
             type: 'error',
-            text1: t('mealTypeSettings.capacity', { defaultValue: 'No more meal types can be placed {{gap}}.', gap: movingInto }),
+            text1: t('mealTypeSettings.capacity', {
+              defaultValue: 'No more meal types can be placed {{gap}}.',
+              gap: movingInto,
+            }),
           });
           // Rejected drop: the gesture already froze the preview in onEnd;
           // release it immediately so the dropped row and sibling shifts
@@ -889,7 +999,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       pendingDragResetRef.current = true;
       enqueuePersist();
     },
-    [unifiedRows, enqueuePersist, activeDragIndex, panY, committingTranslate, t],
+    [unifiedRows, enqueuePersist, activeDragIndex, panY, committingTranslate, t]
   );
 
   // Post-render commit handoff: after the new unifiedRows render (gapOverride
@@ -921,7 +1031,9 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         setIsCreating(false);
         formSheetRef.current?.presentCreate();
       },
-      accessibilityLabel: t('mealTypeSettings.add', { defaultValue: 'Add meal type' }),
+      accessibilityLabel: t('mealTypeSettings.add', {
+        defaultValue: 'Add meal type',
+      }),
       identifier: 'meal-types-add',
     },
   });
@@ -945,7 +1057,10 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         setIsCreating(false);
         Toast.show({
           type: 'error',
-          text1: t('mealTypeSettings.capacity', { defaultValue: 'No more meal types can be placed {{gap}}.', gap: GAP_USER_LABEL[targetGap] }),
+          text1: t('mealTypeSettings.capacity', {
+            defaultValue: 'No more meal types can be placed {{gap}}.',
+            gap: GAP_USER_LABEL[targetGap],
+          }),
         });
         return;
       }
@@ -956,11 +1071,15 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           sort_order: nextSort,
           default_time: values.defaultTime || null,
         });
-        const followUps: { id: string; data: Partial<Omit<MealType, 'id'>> }[] = [];
+        const followUps: { id: string; data: Partial<Omit<MealType, 'id'>> }[] =
+          [];
         // Visibility is owned by the main-list Switch (backend defaults TRUE);
         // only the Quick log choice needs a follow-up update.
         if (!values.showInQuickLog) {
-          followUps.push({ id: created.id, data: { show_in_quick_log: false } });
+          followUps.push({
+            id: created.id,
+            data: { show_in_quick_log: false },
+          });
         }
         try {
           for (const up of followUps) {
@@ -968,10 +1087,15 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           }
         } catch (err) {
           // Partially configured: report accurately and reconcile with server.
-          addLog(`Failed to apply meal type settings: ${(err as Error).message}`, 'ERROR');
+          addLog(
+            `Failed to apply meal type settings: ${(err as Error).message}`,
+            'ERROR'
+          );
           Toast.show({
             type: 'error',
-            text1: t('mealTypeSettings.createdPartial', { defaultValue: 'Created, but some settings failed to save.' }),
+            text1: t('mealTypeSettings.createdPartial', {
+              defaultValue: 'Created, but some settings failed to save.',
+            }),
           });
           formSheetRef.current?.dismiss();
           setEditingType(null);
@@ -979,18 +1103,31 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           invalidate();
           return;
         }
-        Toast.show({ type: 'success', text1: t('mealTypeSettings.created', { defaultValue: 'Meal type created' }) });
+        Toast.show({
+          type: 'success',
+          text1: t('mealTypeSettings.created', {
+            defaultValue: 'Meal type created',
+          }),
+        });
         formSheetRef.current?.dismiss();
         setEditingType(null);
         setIsCreating(false);
         invalidate();
       } catch (err) {
-        addLog(`Failed to create meal type: ${(err as Error).message}`, 'ERROR');
-        Toast.show({ type: 'error', text1: t('mealTypeSettings.failedCreate', { defaultValue: 'Failed to create meal type' }) });
+        addLog(
+          `Failed to create meal type: ${(err as Error).message}`,
+          'ERROR'
+        );
+        Toast.show({
+          type: 'error',
+          text1: t('mealTypeSettings.failedCreate', {
+            defaultValue: 'Failed to create meal type',
+          }),
+        });
         setIsCreating(false);
       }
     },
-    [gapOverride, serverGaps, invalidate, t],
+    [gapOverride, serverGaps, invalidate, t]
   );
 
   /** Edit: name/default_time/quick log/visibility only — sort_order untouched. */
@@ -1018,24 +1155,34 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
             // No explicit invalidate here — the generic updateMutation's
             // onSettled already reconciles the query once.
           },
-        },
+        }
       );
     },
-    [editingType, mutateMealType],
+    [editingType, mutateMealType]
   );
 
   const handleDelete = useCallback(
     (mt: MealType) => {
-      Alert.alert(t('mealTypeSettings.deleteTitle', { defaultValue: 'Delete Meal Type' }), t('mealTypeSettings.deleteMessage', { defaultValue: "Delete '{{name}}'?", name: mt.name }), [
-        { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
-        {
-          text: t('common.delete', { defaultValue: 'Delete' }),
-          style: 'destructive',
-          onPress: () => deleteMutation.mutate(mt.id),
-        },
-      ]);
+      Alert.alert(
+        t('mealTypeSettings.deleteTitle', { defaultValue: 'Delete Meal Type' }),
+        t('mealTypeSettings.deleteMessage', {
+          defaultValue: "Delete '{{name}}'?",
+          name: mt.name,
+        }),
+        [
+          {
+            text: t('common.cancel', { defaultValue: 'Cancel' }),
+            style: 'cancel',
+          },
+          {
+            text: t('common.delete', { defaultValue: 'Delete' }),
+            style: 'destructive',
+            onPress: () => deleteMutation.mutate(mt.id),
+          },
+        ]
+      );
     },
-    [deleteMutation, t],
+    [deleteMutation, t]
   );
 
   const openEdit = useCallback((mt: MealType) => {
@@ -1046,11 +1193,14 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
 
   const openTimePicker = useCallback(
     (mt: MealType) => {
-      timePickerRef.current?.present(toHourMinute(mt.default_time) || null, (time) => {
-        mutateMealType(mt.id, { default_time: time });
-      });
+      timePickerRef.current?.present(
+        toHourMinute(mt.default_time) || null,
+        (time) => {
+          mutateMealType(mt.id, { default_time: time });
+        }
+      );
     },
-    [mutateMealType],
+    [mutateMealType]
   );
 
   /** Row-level Visibility switch (mockup placement: main list owns it). */
@@ -1058,7 +1208,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     (mt: MealType, value: boolean) => {
       mutateMealType(mt.id, { is_visible: value });
     },
-    [mutateMealType],
+    [mutateMealType]
   );
 
   return (
@@ -1069,13 +1219,23 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
       {header}
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <Text className="text-text-muted text-base">{t('mealTypeSettings.loading', { defaultValue: 'Loading meal types...' })}</Text>
+          <Text className="text-text-muted text-base">
+            {t('mealTypeSettings.loading', {
+              defaultValue: 'Loading meal types...',
+            })}
+          </Text>
         </View>
       ) : isError ? (
         <View className="flex-1 items-center justify-center p-8">
-          <Text className="text-text-muted text-base text-center">{t('mealTypeSettings.loadFailed', { defaultValue: 'Failed to load meal types.' })}</Text>
+          <Text className="text-text-muted text-base text-center">
+            {t('mealTypeSettings.loadFailed', {
+              defaultValue: 'Failed to load meal types.',
+            })}
+          </Text>
           <TouchableOpacity onPress={() => void refetch()} className="mt-4">
-            <Text className="text-accent-primary text-base font-medium">{t('common.retry', { defaultValue: 'Retry' })}</Text>
+            <Text className="text-accent-primary text-base font-medium">
+              {t('common.retry', { defaultValue: 'Retry' })}
+            </Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -1083,9 +1243,15 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           contentContainerStyle={{
             paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding,
           }}
-          contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
+          contentInsetAdjustmentBehavior={
+            usesNativeHeader ? 'automatic' : 'never'
+          }
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={accentColor}
+            />
           }
         >
           {unifiedRows.length > 0 ? (
@@ -1127,12 +1293,16 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
                     strides={strides}
                     t={t}
                   />
-                ),
+                )
               )}
             </View>
           ) : (
             <View className="items-center justify-center py-16 px-8">
-              <Text className="text-text-muted text-lg text-center">{t('mealTypeSettings.empty', { defaultValue: 'No meal types found' })}</Text>
+              <Text className="text-text-muted text-lg text-center">
+                {t('mealTypeSettings.empty', {
+                  defaultValue: 'No meal types found',
+                })}
+              </Text>
             </View>
           )}
         </ScrollView>
@@ -1144,7 +1314,11 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         isSaving={isCreating || updateMutation.isPending}
         onCreate={handleCreate}
         onEditSave={handleEditSave}
-        onDelete={editingType && editingType.user_id !== null ? () => handleDelete(editingType) : undefined}
+        onDelete={
+          editingType && editingType.user_id !== null
+            ? () => handleDelete(editingType)
+            : undefined
+        }
         timePickerRef={timePickerRef}
       />
       <MealTypeTimePickerSheet ref={timePickerRef} />
@@ -1167,10 +1341,19 @@ const MealTypeTimeCell: React.FC<{
       onPress={onPress}
       className="px-3 py-3"
       accessibilityRole="button"
-      accessibilityLabel={t('mealTypeSettings.defaultTime', { defaultValue: 'Default time for {{name}}{{time}}', name: getMealTypeDisplayLabel(mealType, t), time: time ? `, ${time}` : `, ${t('mealTypeSettings.notSet', { defaultValue: "Not set" })}` })}
+      accessibilityLabel={t('mealTypeSettings.defaultTime', {
+        defaultValue: 'Default time for {{name}}{{time}}',
+        name: getMealTypeDisplayLabel(mealType, t),
+        time: time
+          ? `, ${time}`
+          : `, ${t('mealTypeSettings.notSet', { defaultValue: 'Not set' })}`,
+      })}
       testID={`time-cell-${mealType.id}`}
     >
-      <Text className="text-sm text-text-secondary" style={{ minWidth: 44, textAlign: 'right' }}>
+      <Text
+        className="text-sm text-text-secondary"
+        style={{ minWidth: 44, textAlign: 'right' }}
+      >
         {time || t('mealTypeSettings.notSet', { defaultValue: 'Not set' })}
       </Text>
     </TouchableOpacity>

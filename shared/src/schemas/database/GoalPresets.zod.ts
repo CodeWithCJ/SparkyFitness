@@ -43,6 +43,7 @@ export const goalPresetsSchema = z.object({
   dinner_percentage: z.number().nullable(),
   snacks_percentage: z.number().nullable(),
   custom_nutrients: z.unknown().nullable(),
+  custom_meal_percentages: z.unknown().nullable().optional(),
 });
 
 export const goalPresetsInitializerSchema = z.object({
@@ -79,6 +80,7 @@ export const goalPresetsInitializerSchema = z.object({
   dinner_percentage: z.number().optional().nullable(),
   snacks_percentage: z.number().optional().nullable(),
   custom_nutrients: z.unknown().optional().nullable(),
+  custom_meal_percentages: z.unknown().optional().nullable(),
 });
 
 export const goalPresetsMutatorSchema = z.object({
@@ -115,8 +117,11 @@ export const goalPresetsMutatorSchema = z.object({
   dinner_percentage: z.number().optional().nullable(),
   snacks_percentage: z.number().optional().nullable(),
   custom_nutrients: z.unknown().optional().nullable(),
+  custom_meal_percentages: z.unknown().optional().nullable(),
 });
 
 export type GoalPresets = z.infer<typeof goalPresetsSchema>;
-export type GoalPresetsInitializer = z.infer<typeof goalPresetsInitializerSchema>;
+export type GoalPresetsInitializer = z.infer<
+  typeof goalPresetsInitializerSchema
+>;
 export type GoalPresetsMutator = z.infer<typeof goalPresetsMutatorSchema>;

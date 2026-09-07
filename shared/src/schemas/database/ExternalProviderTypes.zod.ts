@@ -44,5 +44,9 @@ export const externalProviderTypesMutatorSchema = z.object({
 });
 
 export type ExternalProviderTypes = z.infer<typeof externalProviderTypesSchema>;
-export type ExternalProviderTypesInitializer = z.infer<typeof externalProviderTypesInitializerSchema>;
-export type ExternalProviderTypesMutator = z.infer<typeof externalProviderTypesMutatorSchema>;
+export type ExternalProviderTypesInitializer = z.infer<
+  typeof externalProviderTypesInitializerSchema
+>;
+export type ExternalProviderTypesMutator = z.infer<
+  typeof externalProviderTypesMutatorSchema
+>;

@@ -1,13 +1,19 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { useExerciseSearch } from '../../src/hooks/useExerciseSearch';
 import { searchExercises } from '../../src/services/api/exerciseApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/exerciseApi', () => ({
   searchExercises: jest.fn(),
 }));
 
-const mockSearchExercises = searchExercises as jest.MockedFunction<typeof searchExercises>;
+const mockSearchExercises = searchExercises as jest.MockedFunction<
+  typeof searchExercises
+>;
 
 describe('useExerciseSearch', () => {
   let queryClient: QueryClient;

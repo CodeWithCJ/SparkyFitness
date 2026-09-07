@@ -4,7 +4,12 @@ import { SvgXml } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 import { useCSSVariable } from 'uniwind';
 
-const buildSvg = (main: string, subtle: string, medium: string, accent: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 746.83 359.73" opacity=".9">
+const buildSvg = (
+  main: string,
+  subtle: string,
+  medium: string,
+  accent: string
+) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 746.83 359.73" opacity=".9">
   <g opacity=".74">
     <circle fill="${main}" opacity=".77" cx="367.15" cy="168.1" r="168.1"/>
     <circle fill="none" stroke="${main}" stroke-miterlimit="10" stroke-width="14" cx="657.93" cy="174.83" r="81.9"/>
@@ -36,8 +41,16 @@ const EmptyDayIllustration: React.FC = () => {
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center">
-      <SvgXml xml={buildSvg(main, subtle, medium, accent)} width="80%" height={100} />
-      <Text className="text-sm text-text-secondary mt-2">{t('diary.emptyDay', { defaultValue: 'No entries recorded for this day' })}</Text>
+      <SvgXml
+        xml={buildSvg(main, subtle, medium, accent)}
+        width="80%"
+        height={100}
+      />
+      <Text className="text-sm text-text-secondary mt-2">
+        {t('diary.emptyDay', {
+          defaultValue: 'No entries recorded for this day',
+        })}
+      </Text>
     </View>
   );
 };

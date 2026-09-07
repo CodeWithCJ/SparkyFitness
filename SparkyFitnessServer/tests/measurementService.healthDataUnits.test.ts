@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import measurementRepository from '../models/measurementRepository.js';
+import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import measurementService from '../services/measurementService.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 vi.mock('../utils/timezoneLoader.js', () => ({
@@ -12,6 +13,9 @@ vi.mock('../models/exerciseEntry');
 vi.mock('../models/sleepRepository');
 vi.mock('../models/waterContainerRepository');
 vi.mock('../models/activityDetailsRepository');
+vi.mock('../models/genericHealthRepository.js', () => ({
+  upsertDailyHealthMetrics: vi.fn(),
+}));
 describe('processHealthData default units (#567)', () => {
   const userId = 'user-123';
   const actingUserId = 'user-123';
@@ -25,6 +29,9 @@ describe('processHealthData default units (#567)', () => {
     measurementRepository.bulkUpsertCustomMeasurements = vi
       .fn()
       .mockResolvedValue([{ id: 'entry-1' }]);
+    vi.mocked(
+      genericHealthRepository.upsertDailyHealthMetrics
+    ).mockResolvedValue({ id: 'daily-1' } as never);
   });
   it('applies default unit when payload has no unit (e.g. heart_rate -> bpm)', async () => {
     const healthDataArray = [
@@ -68,7 +75,7 @@ describe('processHealthData default units (#567)', () => {
       measurementRepository.createCustomCategory.mock.calls[0][0];
     expect(createPayload.measurement_type).toBe('beats/min');
   });
-  it('applies default unit for TotalCaloriesBurned when unit missing', async () => {
+  it('stores TotalCaloriesBurned in the daily Health Connect summary', async () => {
     const healthDataArray = [
       {
         type: 'TotalCaloriesBurned',
@@ -82,11 +89,16 @@ describe('processHealthData default units (#567)', () => {
       userId,
       actingUserId
     );
-    expect(measurementRepository.createCustomCategory).toHaveBeenCalledTimes(1);
-    const createPayload =
-      // @ts-expect-error TS(2339): Property 'mock' does not exist on type '(categoryD... Remove this comment to see the full error message
-      measurementRepository.createCustomCategory.mock.calls[0][0];
-    expect(createPayload.measurement_type).toBe('kcal');
+    expect(
+      genericHealthRepository.upsertDailyHealthMetrics
+    ).toHaveBeenCalledWith(userId, actingUserId, {
+      user_id: userId,
+      entry_date: '2025-02-01',
+      source_provider: 'health_connect',
+      total_calories: 2100,
+      total_calories_captured_at: new Date('2025-02-01T00:00:00.000Z'),
+    });
+    expect(measurementRepository.createCustomCategory).not.toHaveBeenCalled();
   });
   it('applies default unit for distance when unit missing', async () => {
     const healthDataArray = [

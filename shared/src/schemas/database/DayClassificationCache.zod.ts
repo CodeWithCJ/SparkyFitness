@@ -42,6 +42,12 @@ export const dayClassificationCacheMutatorSchema = z.object({
   last_updated: z.date().optional().nullable(),
 });
 
-export type DayClassificationCache = z.infer<typeof dayClassificationCacheSchema>;
-export type DayClassificationCacheInitializer = z.infer<typeof dayClassificationCacheInitializerSchema>;
-export type DayClassificationCacheMutator = z.infer<typeof dayClassificationCacheMutatorSchema>;
+export type DayClassificationCache = z.infer<
+  typeof dayClassificationCacheSchema
+>;
+export type DayClassificationCacheInitializer = z.infer<
+  typeof dayClassificationCacheInitializerSchema
+>;
+export type DayClassificationCacheMutator = z.infer<
+  typeof dayClassificationCacheMutatorSchema
+>;

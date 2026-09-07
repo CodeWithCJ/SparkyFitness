@@ -7,13 +7,17 @@ import { CommonActions } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import FoodForm, { type FoodFormData } from '../../components/FoodForm';
 import FoodImagePicker from '../../components/FoodImagePicker';
+import { usableFoodImages } from '../../utils/foodImages';
 import {
   pickerImagesDiffer,
   splitPickerImages,
   toSavedImages,
   type PickerImage,
 } from '../../utils/pickerImages';
-import { useCreateFoodVariant, useFoodVariants } from '../../hooks/useFoodVariants';
+import {
+  useCreateFoodVariant,
+  useFoodVariants,
+} from '../../hooks/useFoodVariants';
 import { parseOptional } from '../../types/foodInfo';
 import {
   createFoodVariant,
@@ -23,6 +27,7 @@ import {
   updateFoodEntriesSnapshot,
   type CreateFoodVariantPayload,
   type UpdateFoodVariantPayload,
+  type UpdateFoodPayload,
 } from '../../services/api/foodsApi';
 import type { FoodFormScreenProps } from '../FoodFormScreen';
 import type { FoodInfoItem } from '../../types/foodInfo';
@@ -43,7 +48,11 @@ import { formatLocalizedNumber } from '../../localization';
 import { localizeFoodUnit } from '../../utils/foodUnitLocalization';
 import { parseDecimalInput } from '../../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../../hooks/useScreenHeader';
+import {
+  useScreenHeader,
+  SAVE_LABEL,
+  SAVING_LABEL,
+} from '../../hooks/useScreenHeader';
 import {
   FOOD_VARIANT_FIELDS,
   buildFormValuesFromVariant,
@@ -59,9 +68,16 @@ import {
   validateFoodForm,
 } from './persistence';
 
-type EditFoodParams = Extract<FoodFormScreenProps['route']['params'], { mode: 'edit-food' }>;
+type EditFoodParams = Extract<
+  FoodFormScreenProps['route']['params'],
+  { mode: 'edit-food' }
+>;
 
-function buildUpdatedFoodInfo(item: FoodInfoItem, data: FoodFormData, variantId: string): FoodInfoItem {
+function buildUpdatedFoodInfo(
+  item: FoodInfoItem,
+  data: FoodFormData,
+  variantId: string
+): FoodInfoItem {
   return {
     ...item,
     name: data.name,
@@ -87,26 +103,45 @@ function buildUpdatedFoodInfo(item: FoodInfoItem, data: FoodFormData, variantId:
   };
 }
 
-export function EditFoodMode({ params, navigation }: { params: EditFoodParams; navigation: FoodFormScreenProps['navigation'] }) {
-  const { item, initialValues, returnKey, foodId, variantId, customNutrients } = params;
+export function EditFoodMode({
+  params,
+  navigation,
+}: {
+  params: EditFoodParams;
+  navigation: FoodFormScreenProps['navigation'];
+}) {
+  const { item, initialValues, returnKey, foodId, variantId, customNutrients } =
+    params;
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pickerImages, setPickerImages] = useState<PickerImage[]>(() =>
-    toSavedImages(item?.images),
+    toSavedImages(item?.images)
+  );
+
+  // Only already-saved photos can be embedded in a note: a staged file exists
+  // solely on the device until the food is saved, so it has no path to link to.
+  const savedNoteImages = useMemo(
+    () =>
+      usableFoodImages(
+        pickerImages
+          .filter((image) => image.kind === 'saved')
+          .map((image) => image.path)
+      ),
+    [pickerImages]
   );
   const imagesChanged = pickerImagesDiffer(pickerImages, item?.images);
   const { createVariant } = useCreateFoodVariant();
   const { variants } = useFoodVariants(foodId, { enabled: true });
   const savedUnitVariants = useMemo(
     () => buildLocalUnitVariants(variants),
-    [variants],
+    [variants]
   );
   const fallbackVariant = useMemo(
     () => buildVariantFromInitialValues(initialValues, variantId),
-    [initialValues, variantId],
+    [initialValues, variantId]
   );
   const availableUnitVariants = useMemo(
     () =>
@@ -115,7 +150,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
         : fallbackVariant
           ? [fallbackVariant]
           : [],
-    [fallbackVariant, savedUnitVariants],
+    [fallbackVariant, savedUnitVariants]
   );
   const [pendingUnitSelection, setPendingUnitSelection] =
     useState<FoodUnitSelectionResult | null>(() =>
@@ -124,7 +159,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
             kind: 'existing',
             variant: fallbackVariant,
           }
-        : null,
+        : null
     );
   // initialValues (from FoodFormData) doesn't carry source/ai_confidence, so
   // the fallback selection lands without AI provenance. When the server-backed
@@ -153,18 +188,15 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
     Record<string, string | number> | null | undefined
   >(customNutrients);
 
-  const groups = useMemo(
-    () => groupEquivalentVariants(variants),
-    [variants],
-  );
+  const groups = useMemo(() => groupEquivalentVariants(variants), [variants]);
   const activeGroup = useMemo(
     () =>
       groups.find(
         (g) =>
           g.base.id === currentVariantId ||
-          g.equivalents.some((eq) => eq.id === currentVariantId),
+          g.equivalents.some((eq) => eq.id === currentVariantId)
       ),
-    [groups, currentVariantId],
+    [groups, currentVariantId]
   );
   const otherSiblings = useMemo<EquivalentUnit[]>(() => {
     if (!activeGroup) return [];
@@ -176,9 +208,9 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
   }, [activeGroup, currentVariantId]);
 
   const [equivalentDraft, setEquivalentDraft] = useState<EquivalentUnit[]>([]);
-  const [equivalentBaseline, setEquivalentBaseline] = useState<EquivalentUnit[]>(
-    [],
-  );
+  const [equivalentBaseline, setEquivalentBaseline] = useState<
+    EquivalentUnit[]
+  >([]);
 
   // Seed the editable equivalents from the current variant's siblings whenever
   // the source signature changes. Done during render (instead of in an effect)
@@ -209,7 +241,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
 
   const handleUnitSelectionChange = useCallback(
     async (
-      selection: FoodUnitSelectionResult,
+      selection: FoodUnitSelectionResult
     ): Promise<FoodUnitSelectionResult> => {
       const isSwappingActive =
         selection.kind === 'existing' &&
@@ -241,7 +273,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
       equivalentDraft,
       equivalentBaseline,
       pendingUnitSelection,
-    ],
+    ]
   );
 
   const isDraftSelection = pendingUnitSelection?.kind === 'draft';
@@ -249,7 +281,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
   const buildGroupNutrition = useCallback(
     (
       data: FoodFormData,
-      snapshot: FoodVariantDetail | undefined,
+      snapshot: FoodVariantDetail | undefined
     ): Partial<FoodVariantDetail> => ({
       calories: parseDecimalInput(data.calories) || 0,
       protein: parseDecimalInput(data.protein) || 0,
@@ -269,9 +301,10 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
       polyunsaturated_fat: snapshot?.polyunsaturated_fat,
       monounsaturated_fat: snapshot?.monounsaturated_fat,
       glycemic_index: snapshot?.glycemic_index,
-      custom_nutrients: currentCustomNutrients ?? snapshot?.custom_nutrients ?? undefined,
+      custom_nutrients:
+        currentCustomNutrients ?? snapshot?.custom_nutrients ?? undefined,
     }),
-    [currentCustomNutrients],
+    [currentCustomNutrients]
   );
 
   const handleSubmit = async (data: FoodFormData) => {
@@ -286,7 +319,9 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
       // row would be misclassified as a create and duplicate the existing variant.
       Toast.show({
         type: 'error',
-        text1: t('foodForm.loadingDetails', { defaultValue: 'Still loading food details. Try again in a moment.' }),
+        text1: t('foodForm.loadingDetails', {
+          defaultValue: 'Still loading food details. Try again in a moment.',
+        }),
       });
       return;
     }
@@ -297,9 +332,14 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
       let nextVariantBaselineValues = variantBaselineValues;
       let nextCustomNutrients = currentCustomNutrients;
 
-      const foodPayload: { name?: string; brand?: string } = {};
+      const foodPayload: UpdateFoodPayload = {};
       if (data.name !== initialValues.name) foodPayload.name = data.name;
-      if (data.brand !== initialValues.brand) foodPayload.brand = data.brand || '';
+      if (data.brand !== initialValues.brand)
+        foodPayload.brand = data.brand || '';
+      // Key presence is the update signal, so only set `notes` when it really
+      // changed; an unchanged save must leave the stored note untouched.
+      if ((data.notes ?? '') !== (initialValues.notes ?? ''))
+        foodPayload.notes = (data.notes ?? '').trim() || null;
       // Only send images when they actually changed: the server treats a
       // supplied `images` array as authoritative and deletes anything omitted,
       // so an unchanged round-trip is wasted work at best.
@@ -315,8 +355,8 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
         const createdVariant = await createVariant(
           buildCreateFoodVariantPayload(
             foodId,
-            buildVariantFromFormData(data, draftSelection),
-          ),
+            buildVariantFromFormData(data, draftSelection)
+          )
         );
         nextVariantId = createdVariant.id;
         setCurrentVariantId(createdVariant.id);
@@ -346,7 +386,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
         };
 
         const cleanEquivalents = equivalentDraft.filter(
-          (eq) => !isBlankEquivalent(eq),
+          (eq) => !isBlankEquivalent(eq)
         );
         const siblingRows = cleanEquivalents.map((eq) => ({
           id: eq.id,
@@ -365,7 +405,7 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
           });
         }
         const currentRows: FoodVariantDetail[] = (variants ?? []).filter((v) =>
-          activeGroupIds.has(v.id),
+          activeGroupIds.has(v.id)
         );
 
         // If the active variant's nutrition changed, ask whether to overwrite
@@ -373,10 +413,12 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
         const nutritionChanged = hasFoodFormChanges(
           variantBaselineValues,
           data,
-          FOOD_VARIANT_FIELDS,
+          FOOD_VARIANT_FIELDS
         );
         if (nutritionChanged && currentVariantId) {
-          const activeVariant = variants?.find((v) => v.id === currentVariantId);
+          const activeVariant = variants?.find(
+            (v) => v.id === currentVariantId
+          );
           const unitLabel = activeVariant
             ? `${formatServingSizeForDisplay(activeVariant.serving_size)} ${localizeFoodUnit(activeVariant.serving_unit, t)}`
             : data.servingUnit;
@@ -386,19 +428,24 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
             return;
           }
           if (choice === 'new') {
-            const pendingSelection = pendingUnitSelection?.kind === 'existing'
-              ? pendingUnitSelection
-              : null;
+            const pendingSelection =
+              pendingUnitSelection?.kind === 'existing'
+                ? pendingUnitSelection
+                : null;
             const createdVariant = await createVariant(
               buildCreateFoodVariantPayload(
                 foodId,
-                buildVariantFromFormData(data, pendingSelection),
-              ),
+                buildVariantFromFormData(data, pendingSelection)
+              )
             );
             nextVariantId = createdVariant.id;
             setCurrentVariantId(createdVariant.id);
-            setPendingUnitSelection({ kind: 'existing', variant: createdVariant });
-            nextVariantBaselineValues = buildFormValuesFromVariant(createdVariant);
+            setPendingUnitSelection({
+              kind: 'existing',
+              variant: createdVariant,
+            });
+            nextVariantBaselineValues =
+              buildFormValuesFromVariant(createdVariant);
             nextCustomNutrients = createdVariant.custom_nutrients ?? null;
             setVariantBaselineValues(nextVariantBaselineValues);
             setCurrentCustomNutrients(nextCustomNutrients);
@@ -408,7 +455,12 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
             invalidateFoodCaches(queryClient, foodId);
             // Skip the diff/overwrite path — new variant is already saved.
             setEquivalentBaseline(equivalentDraft);
-            Toast.show({ type: 'success', text1: t('foodForm.savedNewVariant', { defaultValue: 'Saved as new variant' }) });
+            Toast.show({
+              type: 'success',
+              text1: t('foodForm.savedNewVariant', {
+                defaultValue: 'Saved as new variant',
+              }),
+            });
 
             // Same prompt as the main path: one rule — every save of a food
             // you own asks before touching diary history.
@@ -418,15 +470,24 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
                 await updateFoodEntriesSnapshot(
                   foodId,
                   undefined,
-                  syncChoice === 'nutrition-and-photos',
+                  syncChoice === 'nutrition-and-photos'
                 );
                 invalidateFoodCaches(queryClient, foodId);
-                Toast.show({ type: 'success', text1: t('foodForm.pastEntriesUpdated', { defaultValue: 'Past entries updated' }) });
+                Toast.show({
+                  type: 'success',
+                  text1: t('foodForm.pastEntriesUpdated', {
+                    defaultValue: 'Past entries updated',
+                  }),
+                });
               } catch {
                 Toast.show({
                   type: 'error',
-                  text1: t('foodForm.pastEntriesFailed', { defaultValue: 'Could not update past entries' }),
-                  text2: t('foodForm.foodSaved', { defaultValue: 'Your food was saved.' }),
+                  text1: t('foodForm.pastEntriesFailed', {
+                    defaultValue: 'Could not update past entries',
+                  }),
+                  text2: t('foodForm.foodSaved', {
+                    defaultValue: 'Your food was saved.',
+                  }),
                 });
               }
             }
@@ -458,14 +519,12 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
         }
 
         for (const row of diff.creates) {
-          writes.push(
-            createFoodVariant(row as CreateFoodVariantPayload),
-          );
+          writes.push(createFoodVariant(row as CreateFoodVariantPayload));
         }
         for (const row of diff.updates) {
           const { id, ...payload } = row;
           writes.push(
-            updateFoodVariant(id, payload as UpdateFoodVariantPayload),
+            updateFoodVariant(id, payload as UpdateFoodVariantPayload)
           );
         }
         for (const delId of diff.deletes) {
@@ -487,9 +546,12 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
             ? t('foodForm.equivalentUnitsUpdated', {
                 count: equivalentChangedCount,
                 formattedCount: formatLocalizedNumber(equivalentChangedCount),
-                defaultValue: 'Saved · {{formattedCount}} equivalent units updated',
-                defaultValue_one: 'Saved · {{formattedCount}} equivalent unit updated',
-                defaultValue_other: 'Saved · {{formattedCount}} equivalent units updated',
+                defaultValue:
+                  'Saved · {{formattedCount}} equivalent units updated',
+                defaultValue_one:
+                  'Saved · {{formattedCount}} equivalent unit updated',
+                defaultValue_other:
+                  'Saved · {{formattedCount}} equivalent units updated',
               })
             : t('foodForm.saved', { defaultValue: 'Saved' }),
       });
@@ -505,17 +567,26 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
           await updateFoodEntriesSnapshot(
             foodId,
             undefined,
-            syncChoice === 'nutrition-and-photos',
+            syncChoice === 'nutrition-and-photos'
           );
           invalidateFoodCaches(queryClient, foodId);
-          Toast.show({ type: 'success', text1: t('foodForm.pastEntriesUpdated', { defaultValue: 'Past entries updated' }) });
+          Toast.show({
+            type: 'success',
+            text1: t('foodForm.pastEntriesUpdated', {
+              defaultValue: 'Past entries updated',
+            }),
+          });
         } catch {
           // The food itself saved fine; only the optional sync failed, so say
           // so rather than implying the edit was lost.
           Toast.show({
             type: 'error',
-            text1: t('foodForm.pastEntriesFailed', { defaultValue: 'Could not update past entries' }),
-            text2: t('foodForm.foodSaved', { defaultValue: 'Your food was saved.' }),
+            text1: t('foodForm.pastEntriesFailed', {
+              defaultValue: 'Could not update past entries',
+            }),
+            text2: t('foodForm.foodSaved', {
+              defaultValue: 'Your food was saved.',
+            }),
           });
         }
       }
@@ -531,7 +602,12 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
 
       navigation.goBack();
     } catch {
-      Toast.show({ type: 'error', text1: t('foodForm.updateFailed', { defaultValue: 'Could not update food' }) });
+      Toast.show({
+        type: 'error',
+        text1: t('foodForm.updateFailed', {
+          defaultValue: 'Could not update food',
+        }),
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -560,7 +636,10 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
   });
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
+    <View
+      className="flex-1 bg-background"
+      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+    >
       {header}
 
       <FoodForm
@@ -570,6 +649,8 @@ export function EditFoodMode({ params, navigation }: { params: EditFoodParams; n
         submitRequestRef={submitRequestRef}
         initialValues={initialValues}
         submitLabel={SAVE_LABEL}
+        showNotes
+        noteImages={savedNoteImages}
         isSubmitting={isSubmitting}
         hideSubmitButton={usesNativeHeader}
         headerChildren={

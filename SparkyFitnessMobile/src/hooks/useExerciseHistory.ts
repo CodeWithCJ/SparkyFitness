@@ -1,5 +1,9 @@
 import { useMemo, useCallback, useEffect, useRef } from 'react';
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import { fetchExerciseHistory } from '../services/api/exerciseApi';
 import {
@@ -27,7 +31,7 @@ interface UseExerciseHistoryReturn {
 }
 
 export function useExerciseHistory(
-  options: UseExerciseHistoryOptions = {},
+  options: UseExerciseHistoryOptions = {}
 ): UseExerciseHistoryReturn {
   const { enabled = true, exerciseId } = options;
   const queryClient = useQueryClient();
@@ -38,7 +42,7 @@ export function useExerciseHistory(
       exerciseId
         ? exerciseHistoryForExerciseQueryKey(exerciseId)
         : exerciseHistoryQueryKey,
-    [exerciseId],
+    [exerciseId]
   );
 
   const query = useInfiniteQuery({
@@ -58,8 +62,8 @@ export function useExerciseHistory(
   });
 
   const sessions = useMemo<ExerciseSessionResponse[]>(
-    () => query.data?.pages.flatMap(page => page.sessions) ?? [],
-    [query.data?.pages],
+    () => query.data?.pages.flatMap((page) => page.sessions) ?? [],
+    [query.data?.pages]
   );
 
   useEffect(() => {
@@ -84,7 +88,7 @@ export function useExerciseHistory(
     if (query.hasNextPage && !query.isFetching) {
       void query.fetchNextPage();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- spreading `query` causes infinite re-renders; stable sub-properties are sufficient
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- spreading `query` causes infinite re-renders; stable sub-properties are sufficient
   }, [query.fetchNextPage, query.hasNextPage, query.isFetching]);
 
   useRefetchOnFocus(refetch, enabled);

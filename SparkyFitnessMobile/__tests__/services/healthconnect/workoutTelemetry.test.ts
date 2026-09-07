@@ -24,7 +24,10 @@ describe('prefetchSessionRoutes is bounded', () => {
     startTime: `2024-01-${String(1 + (i % 28)).padStart(2, '0')}T10:00:00.000Z`,
     endTime: `2024-01-${String(1 + (i % 28)).padStart(2, '0')}T11:00:00.000Z`,
     exerciseRoute: { type: 'CONSENT_REQUIRED' },
-    metadata: { id: `session-${i}`, lastModifiedTime: '2024-01-01T00:00:00.000Z' },
+    metadata: {
+      id: `session-${i}`,
+      lastModifiedTime: '2024-01-01T00:00:00.000Z',
+    },
   });
 
   beforeEach(async () => {
@@ -40,7 +43,11 @@ describe('prefetchSessionRoutes is bounded', () => {
       records: Array.from({ length: 200 }, (_, i) => consentRequired(i)),
     });
 
-    await prefetchSessionRoutes(new Date('2024-01-01'), new Date('2024-02-01'), 5);
+    await prefetchSessionRoutes(
+      new Date('2024-01-01'),
+      new Date('2024-02-01'),
+      5
+    );
 
     // Exactly, not at most: an upper bound also passes if the implementation
     // resolved nothing, which would hide a prefetch that stopped too early.
@@ -55,7 +62,12 @@ describe('prefetchSessionRoutes is bounded', () => {
     // sessions enrichment would never reach.
     const withEmbeddedRoute = (i: number) => ({
       ...consentRequired(i),
-      exerciseRoute: { type: 'DATA', route: [{ time: '2024-01-01T10:00:00.000Z', latitude: 1, longitude: 2 }] },
+      exerciseRoute: {
+        type: 'DATA',
+        route: [
+          { time: '2024-01-01T10:00:00.000Z', latitude: 1, longitude: 2 },
+        ],
+      },
     });
 
     mockReadRecords.mockResolvedValue({
@@ -66,7 +78,11 @@ describe('prefetchSessionRoutes is bounded', () => {
       ],
     });
 
-    await prefetchSessionRoutes(new Date('2024-01-01'), new Date('2024-02-01'), 5);
+    await prefetchSessionRoutes(
+      new Date('2024-01-01'),
+      new Date('2024-02-01'),
+      5
+    );
 
     // The five newest consumed the whole limit, so nothing older is prompted.
     expect(mockRequestRoute).not.toHaveBeenCalled();
@@ -88,7 +104,11 @@ describe('prefetchSessionRoutes is bounded', () => {
       ],
     });
 
-    await prefetchSessionRoutes(new Date('2024-01-01'), new Date('2024-02-01'), 5);
+    await prefetchSessionRoutes(
+      new Date('2024-01-01'),
+      new Date('2024-02-01'),
+      5
+    );
 
     expect(mockRequestRoute).toHaveBeenCalledTimes(5);
   });
@@ -96,7 +116,11 @@ describe('prefetchSessionRoutes is bounded', () => {
   test('a zero limit resolves nothing at all', async () => {
     mockReadRecords.mockResolvedValue({ records: [consentRequired(0)] });
 
-    await prefetchSessionRoutes(new Date('2024-01-01'), new Date('2024-02-01'), 0);
+    await prefetchSessionRoutes(
+      new Date('2024-01-01'),
+      new Date('2024-02-01'),
+      0
+    );
 
     expect(mockRequestRoute).not.toHaveBeenCalled();
   });
@@ -106,7 +130,11 @@ describe('prefetchSessionRoutes is bounded', () => {
       records: [consentRequired(0), consentRequired(5), consentRequired(20)],
     });
 
-    await prefetchSessionRoutes(new Date('2024-01-01'), new Date('2024-02-01'), 1);
+    await prefetchSessionRoutes(
+      new Date('2024-01-01'),
+      new Date('2024-02-01'),
+      1
+    );
 
     expect(mockRequestRoute).toHaveBeenCalledTimes(1);
     expect(mockRequestRoute).toHaveBeenCalledWith('session-20');
@@ -119,7 +147,11 @@ describe('prefetchSessionRoutes is bounded', () => {
     ]);
     mockReadRecords.mockResolvedValue({ records: [already] });
 
-    await prefetchSessionRoutes(new Date('2024-01-01'), new Date('2024-02-01'), 5);
+    await prefetchSessionRoutes(
+      new Date('2024-01-01'),
+      new Date('2024-02-01'),
+      5
+    );
 
     // Enrichment will skip this session, so warming its route is wasted
     // consent work.

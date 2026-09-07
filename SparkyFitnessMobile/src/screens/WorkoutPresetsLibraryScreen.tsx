@@ -1,13 +1,23 @@
 import { useTranslation } from 'react-i18next';
 import React, { useCallback, useState, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  RefreshControl,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import LibrarySearchBar from '../components/LibrarySearchBar';
 import PaginatedLibraryFooter from '../components/PaginatedLibraryFooter';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useServerConnection, useWorkoutPresetsLibrary, useProfile } from '../hooks';
+import {
+  useServerConnection,
+  useWorkoutPresetsLibrary,
+  useProfile,
+} from '../hooks';
 import {
   deriveShareStatus,
   filterByOwnership,
@@ -21,9 +31,12 @@ import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { RootStackScreenProps } from '../types/navigation';
 
-type WorkoutPresetsLibraryScreenProps = RootStackScreenProps<'WorkoutPresetsLibrary'>;
+type WorkoutPresetsLibraryScreenProps =
+  RootStackScreenProps<'WorkoutPresetsLibrary'>;
 
-const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = ({ navigation }) => {
+const WorkoutPresetsLibraryScreen: React.FC<
+  WorkoutPresetsLibraryScreenProps
+> = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -34,8 +47,12 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
   ]) as [string, string];
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
-  const ownershipFilter = useAppPreferencesStore((s) => s.workoutPresetsLibraryOwnershipFilter);
-  const setOwnershipFilter = useAppPreferencesStore((s) => s.setWorkoutPresetsLibraryOwnershipFilter);
+  const ownershipFilter = useAppPreferencesStore(
+    (s) => s.workoutPresetsLibraryOwnershipFilter
+  );
+  const setOwnershipFilter = useAppPreferencesStore(
+    (s) => s.setWorkoutPresetsLibraryOwnershipFilter
+  );
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { profile } = useProfile();
@@ -50,17 +67,24 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
     loadMore,
     refetch,
   } = useWorkoutPresetsLibrary(searchText, { enabled: isConnected });
-  const filteredPresets = useMemo(() => filterByOwnership(presets, ownershipFilter, profile?.id), [presets, ownershipFilter, profile?.id]);
+  const filteredPresets = useMemo(
+    () => filterByOwnership(presets, ownershipFilter, profile?.id),
+    [presets, ownershipFilter, profile?.id]
+  );
 
   const handlePresetPress = useCallback(
     (preset: WorkoutPreset) => {
       navigation.navigate('WorkoutPresetDetail', { preset });
     },
-    [navigation],
+    [navigation]
   );
 
   const renderEmpty = () => {
-    if (ownershipFilter !== 'all' && presets.length > 0 && filteredPresets.length === 0) {
+    if (
+      ownershipFilter !== 'all' &&
+      presets.length > 0 &&
+      filteredPresets.length === 0
+    ) {
       return (
         <StatusView
           inline
@@ -74,8 +98,12 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
               family: t('ownership.family', { defaultValue: 'Family' }),
               public: t('ownership.public', { defaultValue: 'Public' }),
             },
-            emptyTitle: t('ownership.emptyTitle', { defaultValue: 'No {{noun}} in {{filter}}' }),
-            emptySubtitle: t('ownership.emptySubtitle', { defaultValue: 'Change the filter to see your other {{noun}}.' }),
+            emptyTitle: t('ownership.emptyTitle', {
+              defaultValue: 'No {{noun}} in {{filter}}',
+            }),
+            emptySubtitle: t('ownership.emptySubtitle', {
+              defaultValue: 'Change the filter to see your other {{noun}}.',
+            }),
             showAllLabel: t('ownership.showAll', { defaultValue: 'Show All' }),
           })}
         />
@@ -84,15 +112,36 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
     return (
       <StatusView
         inline
-        title={searchText.trim().length > 0 ? t('presetLibrary.noMatch', { defaultValue: 'No matching presets found' }) : t('presetLibrary.noItems', { defaultValue: 'No workout presets yet' })}
-        subtitle={searchText.trim().length > 0
-          ? t('presetLibrary.trySearch', { defaultValue: 'Try a different search term to find a workout preset.' })
-          : t('presetLibrary.empty', { defaultValue: 'Workout presets you create will appear here.' })}
+        title={
+          searchText.trim().length > 0
+            ? t('presetLibrary.noMatch', {
+                defaultValue: 'No matching presets found',
+              })
+            : t('presetLibrary.noItems', {
+                defaultValue: 'No workout presets yet',
+              })
+        }
+        subtitle={
+          searchText.trim().length > 0
+            ? t('presetLibrary.trySearch', {
+                defaultValue:
+                  'Try a different search term to find a workout preset.',
+              })
+            : t('presetLibrary.empty', {
+                defaultValue: 'Workout presets you create will appear here.',
+              })
+        }
       />
     );
   };
 
-  const renderRow = ({ item, index }: { item: WorkoutPreset; index: number }) => {
+  const renderRow = ({
+    item,
+    index,
+  }: {
+    item: WorkoutPreset;
+    index: number;
+  }) => {
     const exerciseCount = item.exercises?.length ?? 0;
     const status = deriveShareStatus(item.user_id, item.is_public, profile?.id);
     return (
@@ -102,7 +151,10 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
         onPress={() => handlePresetPress(item)}
       >
         <View className="flex-row items-center gap-1.5">
-          <Text className="text-text-primary text-base font-medium flex-shrink" numberOfLines={1}>
+          <Text
+            className="text-text-primary text-base font-medium flex-shrink"
+            numberOfLines={1}
+          >
             {item.name}
           </Text>
           <ShareStatusBadge status={status} />
@@ -126,8 +178,13 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           icon="cloud-offline"
           iconTone="muted"
           iconSize={64}
-          title={t('presetLibrary.noServer', { defaultValue: 'No server configured' })}
-          subtitle={t('workoutPresetLibrary.configure', { defaultValue: 'Configure your server connection in Settings to view your workout presets.' })}
+          title={t('presetLibrary.noServer', {
+            defaultValue: 'No server configured',
+          })}
+          subtitle={t('workoutPresetLibrary.configure', {
+            defaultValue:
+              'Configure your server connection in Settings to view your workout presets.',
+          })}
           action={{
             label: t('presetLibrary.go', { defaultValue: 'Go to Settings' }),
             onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
@@ -138,7 +195,14 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title={t('presetLibrary.loading', { defaultValue: 'Loading workout presets...' })} />;
+      return (
+        <StatusView
+          loading
+          title={t('presetLibrary.loading', {
+            defaultValue: 'Loading workout presets...',
+          })}
+        />
+      );
     }
 
     if (isError) {
@@ -147,8 +211,12 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           icon="alert-circle"
           iconTone="danger"
           iconSize={64}
-          title={t('presetLibrary.failed', { defaultValue: 'Failed to load workout presets' })}
-          subtitle={t('presetLibrary.check', { defaultValue: 'Please check your connection and try again.' })}
+          title={t('presetLibrary.failed', {
+            defaultValue: 'Failed to load workout presets',
+          })}
+          subtitle={t('presetLibrary.check', {
+            defaultValue: 'Please check your connection and try again.',
+          })}
           action={{
             label: t('presetLibrary.retry', { defaultValue: 'Retry' }),
             onPress: () => {
@@ -170,7 +238,9 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
           <PaginatedLibraryFooter
             isFetchingNextPage={isFetchingNextPage}
             isFetchNextPageError={isFetchNextPageError}
-            errorMessage={t('presetLibrary.moreFailed', { defaultValue: 'Failed to load more presets.' })}
+            errorMessage={t('presetLibrary.moreFailed', {
+              defaultValue: 'Failed to load more presets.',
+            })}
             onRetry={loadMore}
           />
         }
@@ -182,9 +252,16 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
         }}
         onEndReachedThreshold={0.5}
         refreshControl={
-          <RefreshControl refreshing={isSearching} onRefresh={refetch} tintColor={accentColor} />
+          <RefreshControl
+            refreshing={isSearching}
+            onRefresh={refetch}
+            tintColor={accentColor}
+          />
         }
-        contentContainerStyle={{ paddingBottom: scrollBottomPadding, flexGrow: 1 }}
+        contentContainerStyle={{
+          paddingBottom: scrollBottomPadding,
+          flexGrow: 1,
+        }}
       />
     );
   };
@@ -201,7 +278,9 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
         public: t('ownership.public', { defaultValue: 'Public' }),
       },
       showLabel: t('ownership.show', { defaultValue: 'Show' }),
-      filterAccessibilityLabel: t('ownership.filter', { defaultValue: 'Filter {{noun}}, filtered to {{filter}}' }),
+      filterAccessibilityLabel: t('ownership.filter', {
+        defaultValue: 'Filter {{noun}}, filtered to {{filter}}',
+      }),
       identifier: 'workout-presets-library-filter',
       filter: ownershipFilter,
       onSelect: setOwnershipFilter,
@@ -209,13 +288,18 @@ const WorkoutPresetsLibraryScreen: React.FC<WorkoutPresetsLibraryScreenProps> = 
   });
 
   return (
-    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       {isConnected ? (
         <LibrarySearchBar
           value={searchText}
           onChangeText={setSearchText}
-          placeholder={t('presetLibrary.search', { defaultValue: 'Search workout presets...' })}
+          placeholder={t('presetLibrary.search', {
+            defaultValue: 'Search workout presets...',
+          })}
           isSearching={isSearching}
         />
       ) : null}

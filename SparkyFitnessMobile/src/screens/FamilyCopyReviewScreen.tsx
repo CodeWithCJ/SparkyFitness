@@ -31,7 +31,7 @@ function formatNutritionValue(value: number): number {
 
 function initialQuantityTextById(
   sourceEntries: FamilyCopyReviewScreenProps['route']['params']['sourceEntries'],
-  selectedEntryIds: string[],
+  selectedEntryIds: string[]
 ): Record<string, string> {
   const selectedIds = new Set(selectedEntryIds);
   return sourceEntries.reduce<Record<string, string>>((quantities, entry) => {
@@ -57,7 +57,7 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
   const locale = i18n?.resolvedLanguage ?? i18n?.language ?? 'en-US';
   const displayName = familyDiaryUserName(
     familyUser,
-    t('familyDiary.unnamedMember', { defaultValue: 'Family member' }),
+    t('familyDiary.unnamedMember', { defaultValue: 'Family member' })
   );
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -67,16 +67,16 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
   const wasPendingRef = useRef(false);
   const [targetDate, setTargetDate] = useState(getTodayDate);
   const [quantityTextById, setQuantityTextById] = useState(() =>
-    initialQuantityTextById(sourceEntries, selectedEntryIds),
+    initialQuantityTextById(sourceEntries, selectedEntryIds)
   );
   const { mealTypes, defaultMealTypeId } = useMealTypes();
   const [targetMealTypeId, setTargetMealTypeId] = useState<string | null>(null);
   const sourceMealExists = mealTypeId
-    ? mealTypes.some(mealType => mealType.id === mealTypeId)
+    ? mealTypes.some((mealType) => mealType.id === mealTypeId)
     : false;
   const selectedOwnMealTypeId =
     targetMealTypeId &&
-    mealTypes.some(mealType => mealType.id === targetMealTypeId)
+    mealTypes.some((mealType) => mealType.id === targetMealTypeId)
       ? targetMealTypeId
       : null;
   const resolvedTargetMealTypeId =
@@ -84,14 +84,14 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
     (sourceMealExists ? mealTypeId : defaultMealTypeId);
 
   const sourceEntryById = useMemo(
-    () => new Map(sourceEntries.map(entry => [entry.id, entry])),
-    [sourceEntries],
+    () => new Map(sourceEntries.map((entry) => [entry.id, entry])),
+    [sourceEntries]
   );
   const selectionIdsAreUnique =
     new Set(selectedEntryIds).size === selectedEntryIds.length;
   const selectedEntries = useMemo(() => {
     if (!selectionIdsAreUnique) return [];
-    return selectedEntryIds.flatMap(entryId => {
+    return selectedEntryIds.flatMap((entryId) => {
       const entry = sourceEntryById.get(entryId);
       return entry ? [entry] : [];
     });
@@ -105,29 +105,29 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
         quantities[entry.id] = parseDecimalInput(quantityTextById[entry.id]);
         return quantities;
       }, {}),
-    [quantityTextById, selectedEntries],
+    [quantityTextById, selectedEntries]
   );
   const invalidEntryIds = useMemo(
     () =>
       selectedEntries
-        .filter(entry => {
+        .filter((entry) => {
           const quantity = quantitiesById[entry.id];
           return !Number.isFinite(quantity) || quantity <= 0;
         })
-        .map(entry => entry.id),
-    [quantitiesById, selectedEntries],
+        .map((entry) => entry.id),
+    [quantitiesById, selectedEntries]
   );
   const totals = useMemo(
     () =>
       calculateFamilyCopyTotals(
         selectedEntries
-          .filter(entry => !invalidEntryIds.includes(entry.id))
-          .map(entry => ({ entry, quantity: quantitiesById[entry.id] })),
+          .filter((entry) => !invalidEntryIds.includes(entry.id))
+          .map((entry) => ({ entry, quantity: quantitiesById[entry.id] }))
       ),
-    [invalidEntryIds, quantitiesById, selectedEntries],
+    [invalidEntryIds, quantitiesById, selectedEntries]
   );
   const { copyFromFamilyAsync, isPending } = useCopyFamilyFoodEntries({
-    onSuccess: request => {
+    onSuccess: (request) => {
       useDiaryDateStore.getState().setSelectedDate(request.payload.targetDate);
       navigation.navigate('Tabs', {
         screen: 'Diary',
@@ -149,7 +149,7 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
     nativeTitle: t('familyDiary.copyReview', { defaultValue: 'Review copy' }),
     left: { kind: 'back' },
   });
-  const selectedIds = new Set(selectedEntries.map(entry => entry.id));
+  const selectedIds = new Set(selectedEntries.map((entry) => entry.id));
   const cannotSubmit =
     isPending ||
     hasInvalidSelection ||
@@ -165,7 +165,7 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
     const request = isUnchangedWholeMeal(
       sourceEntries,
       selectedIds,
-      quantitiesById,
+      quantitiesById
     )
       ? {
           kind: 'whole' as const,
@@ -175,7 +175,7 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
             sourceMealType: mealTypeId ?? mealTypeName,
             targetDate,
             targetMealType: resolvedTargetMealTypeId,
-            entries: sourceEntries.map(entry => ({
+            entries: sourceEntries.map((entry) => ({
               entryId: entry.id,
               sourceFingerprint: foodEntryCopyFingerprint(entry),
             })),
@@ -188,7 +188,7 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
             sourceDate,
             targetDate,
             targetMealType: resolvedTargetMealTypeId,
-            entries: selectedEntries.map(entry => ({
+            entries: selectedEntries.map((entry) => ({
               entryId: entry.id,
               quantity: quantitiesById[entry.id],
               sourceFingerprint: foodEntryCopyFingerprint(entry),
@@ -227,7 +227,7 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
         </Text>
 
         <View className="mt-5 gap-3">
-          {selectedEntries.map(entry => {
+          {selectedEntries.map((entry) => {
             const foodName =
               entry.food_name ??
               t('familyDiary.unnamedFood', { defaultValue: 'Unnamed food' });
@@ -251,8 +251,8 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
                         : undefined
                     }
                     value={quantityTextById[entry.id] ?? ''}
-                    onChangeText={quantityText =>
-                      setQuantityTextById(current => ({
+                    onChangeText={(quantityText) =>
+                      setQuantityTextById((current) => ({
                         ...current,
                         [entry.id]: quantityText,
                       }))
@@ -343,7 +343,7 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
           {t('familyDiary.copyTargetMeal', { defaultValue: 'Copy to meal' })}
         </Text>
         <View className="flex-row flex-wrap gap-2">
-          {mealTypes.map(mealType => {
+          {mealTypes.map((mealType) => {
             const selected = mealType.id === resolvedTargetMealTypeId;
             return (
               <Pressable

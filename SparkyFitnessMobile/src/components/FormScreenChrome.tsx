@@ -5,7 +5,11 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createDuplicatePressGuard } from '../utils/duplicatePress';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, type HeaderItem } from '../hooks/useScreenHeader';
+import {
+  useScreenHeader,
+  SAVE_LABEL,
+  type HeaderItem,
+} from '../hooks/useScreenHeader';
 import Button from './ui/Button';
 
 interface FooterSaveBarProps {
@@ -122,7 +126,9 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
         contentContainerClassName="px-4 pt-4 pb-20 gap-4"
         keyboardShouldPersistTaps="handled"
         bottomOffset={20}
-        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : undefined}
+        contentInsetAdjustmentBehavior={
+          usesNativeHeader ? 'automatic' : undefined
+        }
         // Set-row taps remount the focused input; stop the keyboard-hide
         // restore scroll so the refocus lands on the tapped cell (see
         // ActiveWorkoutScreen's scroll view).

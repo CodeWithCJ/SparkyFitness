@@ -8,8 +8,13 @@ import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 import { formatElapsed } from '../utils/workoutSession';
 import Icon, { type IconName } from './Icon';
 import KeyboardCollapsible from './KeyboardCollapsible';
-import LiquidGlassSurface, { createLiquidGlassPillStyle } from './LiquidGlassSurface';
-import ActionSheet, { type ActionSheetItem, type ActionSheetRef } from './ActionSheet';
+import LiquidGlassSurface, {
+  createLiquidGlassPillStyle,
+} from './LiquidGlassSurface';
+import ActionSheet, {
+  type ActionSheetItem,
+  type ActionSheetRef,
+} from './ActionSheet';
 
 /** Per-exercise completion used by the segmented progress bar. */
 export interface ExerciseProgress {
@@ -20,12 +25,13 @@ export interface ExerciseProgress {
 
 export function buildExerciseProgress(
   session: PresetSessionResponse,
-  completedSetIds: CompletedSetMap,
+  completedSetIds: CompletedSetMap
 ): ExerciseProgress[] {
   return session.exercises.map((exercise) => ({
     entryId: exercise.id,
     totalSets: exercise.sets.length,
-    completedSets: exercise.sets.filter((s) => completedSetIds[String(s.id)]).length,
+    completedSets: exercise.sets.filter((s) => completedSetIds[String(s.id)])
+      .length,
   }));
 }
 
@@ -77,7 +83,9 @@ function HeaderIconButton({
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
-      className={usesGlass ? 'h-[38px] w-[38px] items-center justify-center' : 'p-2'}
+      className={
+        usesGlass ? 'h-[38px] w-[38px] items-center justify-center' : 'p-2'
+      }
     >
       <Icon name={icon} size={22} color={color} />
     </Pressable>
@@ -117,29 +125,37 @@ function ActiveWorkoutHeader({
   onClearAllSets,
 }: ActiveWorkoutHeaderProps) {
   const { t } = useTranslation();
-  const [textPrimary, textMuted, accentPrimary, successColor, trackColor, chromeBorder] =
-    useCSSVariable([
-      '--color-text-primary',
-      '--color-text-muted',
-      '--color-accent-primary',
-      '--color-icon-success',
-      '--color-progress-track',
-      '--color-chrome-border',
-    ]) as [string, string, string, string, string, string];
+  const [
+    textPrimary,
+    textMuted,
+    accentPrimary,
+    successColor,
+    trackColor,
+    chromeBorder,
+  ] = useCSSVariable([
+    '--color-text-primary',
+    '--color-text-muted',
+    '--color-accent-primary',
+    '--color-icon-success',
+    '--color-progress-track',
+    '--color-chrome-border',
+  ]) as [string, string, string, string, string, string];
   const usesGlass = useNativeIOSTabsActive();
 
   const menuSheetRef = useRef<ActionSheetRef>(null);
   const openMenu = () => menuSheetRef.current?.present();
 
   const doneCount = progress.filter(
-    (p) => p.totalSets > 0 && p.completedSets >= p.totalSets,
+    (p) => p.totalSets > 0 && p.completedSets >= p.totalSets
   ).length;
 
   const menuItems: ActionSheetItem[] = [];
   if (onAddExercise) {
     menuItems.push({
       key: 'add-exercise',
-label: t('activeWorkout.header.addExercise', { defaultValue: 'Add exercise' }),
+      label: t('activeWorkout.header.addExercise', {
+        defaultValue: 'Add exercise',
+      }),
       group: 'edit',
       onPress: onAddExercise,
     });
@@ -147,7 +163,9 @@ label: t('activeWorkout.header.addExercise', { defaultValue: 'Add exercise' }),
   if (onReorder) {
     menuItems.push({
       key: 'reorder',
-label: t('activeWorkout.header.reorderExercises', { defaultValue: 'Reorder exercises' }),
+      label: t('activeWorkout.header.reorderExercises', {
+        defaultValue: 'Reorder exercises',
+      }),
       group: 'edit',
       onPress: onReorder,
     });
@@ -155,7 +173,9 @@ label: t('activeWorkout.header.reorderExercises', { defaultValue: 'Reorder exerc
   if (onRename) {
     menuItems.push({
       key: 'rename',
-label: t('activeWorkout.header.renameWorkout', { defaultValue: 'Rename workout' }),
+      label: t('activeWorkout.header.renameWorkout', {
+        defaultValue: 'Rename workout',
+      }),
       group: 'workout',
       onPress: onRename,
     });
@@ -163,7 +183,9 @@ label: t('activeWorkout.header.renameWorkout', { defaultValue: 'Rename workout' 
   if (onOpenSettings) {
     menuItems.push({
       key: 'workout-settings',
-label: t('activeWorkout.header.settings', { defaultValue: 'Workout settings' }),
+      label: t('activeWorkout.header.settings', {
+        defaultValue: 'Workout settings',
+      }),
       group: 'workout',
       onPress: onOpenSettings,
     });
@@ -171,7 +193,9 @@ label: t('activeWorkout.header.settings', { defaultValue: 'Workout settings' }),
   if (onEndWorkout) {
     menuItems.push({
       key: 'end-workout',
-label: t('activeWorkout.header.endWorkout', { defaultValue: 'End workout' }),
+      label: t('activeWorkout.header.endWorkout', {
+        defaultValue: 'End workout',
+      }),
       group: 'finish',
       onPress: onEndWorkout,
     });
@@ -179,7 +203,9 @@ label: t('activeWorkout.header.endWorkout', { defaultValue: 'End workout' }),
   if (onClearAllSets) {
     menuItems.push({
       key: 'clear-sets',
-label: t('activeWorkout.header.clearAllSets', { defaultValue: 'Clear all logged sets' }),
+      label: t('activeWorkout.header.clearAllSets', {
+        defaultValue: 'Clear all logged sets',
+      }),
       group: 'danger',
       destructive: true,
       onPress: onClearAllSets,
@@ -187,7 +213,9 @@ label: t('activeWorkout.header.clearAllSets', { defaultValue: 'Clear all logged 
   }
   menuItems.push({
     key: 'discard',
-label: t('activeWorkout.header.discardWorkout', { defaultValue: 'Discard workout' }),
+    label: t('activeWorkout.header.discardWorkout', {
+      defaultValue: 'Discard workout',
+    }),
     group: 'danger',
     destructive: true,
     onPress: onDiscard,
@@ -202,18 +230,26 @@ label: t('activeWorkout.header.discardWorkout', { defaultValue: 'Discard workout
           usesGlass={usesGlass}
           chromeBorder={chromeBorder}
           onPress={onBack}
-          accessibilityLabel={t('activeWorkout.header.back', { defaultValue: 'Back' })}
+          accessibilityLabel={t('activeWorkout.header.back', {
+            defaultValue: 'Back',
+          })}
         />
 
         <View className="flex-1 items-center">
-          <Text numberOfLines={1} className="text-base font-semibold text-text-primary">
+          <Text
+            numberOfLines={1}
+            className="text-base font-semibold text-text-primary"
+          >
             {name}
           </Text>
           <Text
             className="text-xs text-text-secondary"
             style={{ fontVariant: ['tabular-nums'] }}
           >
-            {t('activeWorkout.header.elapsedTime', { defaultValue: '{{time}} elapsed', time: formatElapsed(startedAt, now) })}
+            {t('activeWorkout.header.elapsedTime', {
+              defaultValue: '{{time}} elapsed',
+              time: formatElapsed(startedAt, now),
+            })}
           </Text>
         </View>
 
@@ -225,7 +261,9 @@ label: t('activeWorkout.header.discardWorkout', { defaultValue: 'Discard workout
           usesGlass={usesGlass}
           chromeBorder={chromeBorder}
           onPress={openMenu}
-          accessibilityLabel={t('activeWorkout.header.menu', { defaultValue: 'Workout menu' })}
+          accessibilityLabel={t('activeWorkout.header.menu', {
+            defaultValue: 'Workout menu',
+          })}
         />
       </View>
 
@@ -237,19 +275,26 @@ label: t('activeWorkout.header.discardWorkout', { defaultValue: 'Discard workout
             {progress.map((p) => {
               const isDone = p.totalSets > 0 && p.completedSets >= p.totalSets;
               const fillPct =
-                p.totalSets > 0 ? Math.min(1, p.completedSets / p.totalSets) : 0;
+                p.totalSets > 0
+                  ? Math.min(1, p.completedSets / p.totalSets)
+                  : 0;
               return (
                 <View
                   key={p.entryId}
                   testID={isDone ? 'header-segment-done' : 'header-segment'}
                   className="flex-1 h-[5px] rounded-full overflow-hidden"
-                  style={{ backgroundColor: isDone ? successColor : trackColor }}
+                  style={{
+                    backgroundColor: isDone ? successColor : trackColor,
+                  }}
                 >
                   {!isDone && fillPct > 0 && (
                     <View
                       testID="header-segment-fill"
                       className="h-full rounded-full"
-                      style={{ width: `${fillPct * 100}%`, backgroundColor: accentPrimary }}
+                      style={{
+                        width: `${fillPct * 100}%`,
+                        backgroundColor: accentPrimary,
+                      }}
                     />
                   )}
                 </View>
@@ -260,7 +305,11 @@ label: t('activeWorkout.header.discardWorkout', { defaultValue: 'Discard workout
             className="text-xs text-text-secondary"
             style={{ fontVariant: ['tabular-nums'] }}
           >
-            {t('activeWorkout.header.exerciseProgress', { defaultValue: '{{completed}} / {{count}} exercises', completed: doneCount, count: progress.length })}
+            {t('activeWorkout.header.exerciseProgress', {
+              defaultValue: '{{completed}} / {{count}} exercises',
+              completed: doneCount,
+              count: progress.length,
+            })}
           </Text>
         </View>
       </KeyboardCollapsible>

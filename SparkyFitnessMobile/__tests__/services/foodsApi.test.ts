@@ -7,11 +7,15 @@ import {
   updateFoodEntriesSnapshot,
 } from '../../src/services/api/foodsApi';
 import type { SaveFoodPayload } from '../../src/services/api/foodsApi';
-import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
+import {
+  getActiveServerConfig,
+  ServerConfig,
+} from '../../src/services/storage';
 
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
-  proxyHeadersToRecord: jest.requireActual('../../src/services/storage').proxyHeadersToRecord,
+  proxyHeadersToRecord: jest.requireActual('../../src/services/storage')
+    .proxyHeadersToRecord,
 }));
 
 jest.mock('../../src/services/LogService', () => ({
@@ -155,9 +159,7 @@ describe('foodsApi', () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockRejectedValue(new Error('Network request failed'));
 
-      await expect(fetchFoods()).rejects.toThrow(
-        'Network request failed'
-      );
+      await expect(fetchFoods()).rejects.toThrow('Network request failed');
     });
   });
 
@@ -198,7 +200,14 @@ describe('foodsApi', () => {
             name: 'Banana',
             brand: null,
             is_custom: false,
-            default_variant: { serving_size: 1, serving_unit: 'medium', calories: 105, protein: 1.3, carbs: 27, fat: 0.4 },
+            default_variant: {
+              serving_size: 1,
+              serving_unit: 'medium',
+              calories: 105,
+              protein: 1.3,
+              carbs: 27,
+              fat: 0.4,
+            },
           },
         ],
         totalCount: 1,
@@ -329,7 +338,7 @@ describe('foodsApi', () => {
 
             'X-Meal-Model-Version': '2',
           },
-        }),
+        })
       );
     });
 
@@ -355,7 +364,7 @@ describe('foodsApi', () => {
       });
 
       await expect(deleteFood('food-abc')).rejects.toThrow(
-        'Server error: 404 - Not Found',
+        'Server error: 404 - Not Found'
       );
     });
   });
@@ -382,7 +391,20 @@ describe('foodsApi', () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ id: 'new-food-1', ...testPayload, is_custom: true, default_variant: { serving_size: 40, serving_unit: 'g', calories: 150, protein: 5, carbs: 27, fat: 3 } }),
+        json: () =>
+          Promise.resolve({
+            id: 'new-food-1',
+            ...testPayload,
+            is_custom: true,
+            default_variant: {
+              serving_size: 40,
+              serving_unit: 'g',
+              calories: 150,
+              protein: 5,
+              carbs: 27,
+              fat: 3,
+            },
+          }),
       });
 
       await saveFood(testPayload);
@@ -405,7 +427,14 @@ describe('foodsApi', () => {
         name: 'Oats',
         brand: null,
         is_custom: true,
-        default_variant: { serving_size: 40, serving_unit: 'g', calories: 150, protein: 5, carbs: 27, fat: 3 },
+        default_variant: {
+          serving_size: 40,
+          serving_unit: 'g',
+          calories: 150,
+          protein: 5,
+          carbs: 27,
+          fat: 3,
+        },
       };
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
@@ -452,7 +481,10 @@ describe('foodsApi', () => {
       // snapshot on already-logged diary entries. Nothing else in the food
       // edit flow touches history.
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
 
       await updateFoodEntriesSnapshot('food-abc');
 
@@ -461,30 +493,36 @@ describe('foodsApi', () => {
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ foodId: 'food-abc', syncImages: true }),
-        }),
+        })
       );
     });
 
     test('omits variantId entirely when not supplied, so all variants sync', async () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
 
       await updateFoodEntriesSnapshot('food-abc');
 
       const body = JSON.parse(
-        (mockFetch.mock.calls[0][1] as { body: string }).body,
+        (mockFetch.mock.calls[0][1] as { body: string }).body
       );
       expect(body).not.toHaveProperty('variantId');
     });
 
     test('scopes to a single variant when one is given', async () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
 
       await updateFoodEntriesSnapshot('food-abc', 'variant-1');
 
       const body = JSON.parse(
-        (mockFetch.mock.calls[0][1] as { body: string }).body,
+        (mockFetch.mock.calls[0][1] as { body: string }).body
       );
       expect(body).toEqual({
         foodId: 'food-abc',
@@ -497,12 +535,15 @@ describe('foodsApi', () => {
       // The "Update nutrition only" choice: past entries get the new numbers
       // and every entry keeps the photo it is showing, custom or inherited.
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
-      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
 
       await updateFoodEntriesSnapshot('food-abc', undefined, false);
 
       const body = JSON.parse(
-        (mockFetch.mock.calls[0][1] as { body: string }).body,
+        (mockFetch.mock.calls[0][1] as { body: string }).body
       );
       expect(body).toEqual({ foodId: 'food-abc', syncImages: false });
     });

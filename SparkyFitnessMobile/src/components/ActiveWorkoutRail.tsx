@@ -36,7 +36,7 @@ export interface SupersetBorder {
  * `{ id: clientId, superset_group: supersetGroup }`.
  */
 export function useSupersetBorders(
-  exercises: { id: string; superset_group?: number | null }[],
+  exercises: { id: string; superset_group?: number | null }[]
 ): { runs: SupersetRun[]; borders: Map<string, SupersetBorder> } {
   const palette = useCSSVariable(SUPERSET_PALETTE_VARS) as string[];
   const runs = useMemo(() => getSupersetRuns(exercises), [exercises]);
@@ -47,7 +47,10 @@ export function useSupersetBorders(
       run.entryIds.forEach((entryId, index) => {
         const color = colorByEntryId.get(entryId);
         if (color != null) {
-          map.set(entryId, { color, isLast: index === run.entryIds.length - 1 });
+          map.set(entryId, {
+            color,
+            isLast: index === run.entryIds.length - 1,
+          });
         }
       });
     }
@@ -112,13 +115,15 @@ function ActiveWorkoutRail({
         scrollToEntry(entryId);
       }
     },
-    [scrollToEntry],
+    [scrollToEntry]
   );
 
   // Keep the focused chip in view as the cursor advances or the log scrolls.
   useEffect(() => {
     if (focusedEntryId == null) return;
-    pendingFocusRef.current = scrollToEntry(focusedEntryId) ? null : focusedEntryId;
+    pendingFocusRef.current = scrollToEntry(focusedEntryId)
+      ? null
+      : focusedEntryId;
   }, [focusedEntryId, scrollToEntry]);
 
   return (
@@ -130,7 +135,9 @@ function ActiveWorkoutRail({
       contentContainerClassName="px-3 py-2 gap-2"
     >
       {exercises.map((exercise) => {
-        const name = exercise.exercise_snapshot?.name ?? t('workout.exercise', { defaultValue: 'Exercise' });
+        const name =
+          exercise.exercise_snapshot?.name ??
+          t('workout.exercise', { defaultValue: 'Exercise' });
         const image = exercise.exercise_snapshot?.images?.[0] ?? null;
         const fallbackIcon =
           (exercise.exercise_snapshot?.category &&
@@ -148,7 +155,9 @@ function ActiveWorkoutRail({
             key={exercise.id}
             testID={`rail-chip-${exercise.id}`}
             onPress={() => onPressExercise(exercise.id)}
-            onLayout={(e) => handleItemLayout(exercise.id, e.nativeEvent.layout.x)}
+            onLayout={(e) =>
+              handleItemLayout(exercise.id, e.nativeEvent.layout.x)
+            }
             accessibilityRole="button"
             accessibilityLabel={name}
             className="items-center"
@@ -168,11 +177,19 @@ function ActiveWorkoutRail({
               <View style={{ opacity: isDone ? 0.45 : 1 }}>
                 <SafeImage
                   source={image ? getImageSource(image) : null}
-                  style={{ width: THUMB_SIZE, height: THUMB_SIZE, borderRadius: 10 }}
+                  style={{
+                    width: THUMB_SIZE,
+                    height: THUMB_SIZE,
+                    borderRadius: 10,
+                  }}
                   fallback={
                     <View
                       className="bg-raised items-center justify-center"
-                      style={{ width: THUMB_SIZE, height: THUMB_SIZE, borderRadius: 10 }}
+                      style={{
+                        width: THUMB_SIZE,
+                        height: THUMB_SIZE,
+                        borderRadius: 10,
+                      }}
                     >
                       <Icon name={fallbackIcon} size={26} color={textMuted} />
                     </View>
@@ -216,7 +233,9 @@ function ActiveWorkoutRail({
                   left: BAR_INSET,
                   // Non-last members bridge the item gap up to the next
                   // member's inset so the group reads as one shared line.
-                  right: supersetBorder.isLast ? BAR_INSET : -(ITEM_GAP + BAR_INSET),
+                  right: supersetBorder.isLast
+                    ? BAR_INSET
+                    : -(ITEM_GAP + BAR_INSET),
                   height: 3,
                   backgroundColor: supersetBorder.color,
                 }}
@@ -242,7 +261,9 @@ function ActiveWorkoutRail({
       <Pressable
         onPress={onPressAdd}
         accessibilityRole="button"
-        accessibilityLabel={t('activeWorkout.rail.addExercise', { defaultValue: 'Add exercise' })}
+        accessibilityLabel={t('activeWorkout.rail.addExercise', {
+          defaultValue: 'Add exercise',
+        })}
         className="items-center"
         style={{ width: THUMB_SIZE + 24 }}
       >

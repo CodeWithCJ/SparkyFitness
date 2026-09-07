@@ -30,19 +30,54 @@ describe('aggregateByDay', () => {
       { value: 6.0, type: 'running_speed', date: '2024-01-16', unit: 'm/s' },
     ];
 
-    const result = aggregateByDay(records, 'running_speed', 'm/s', 'min-max-avg');
+    const result = aggregateByDay(
+      records,
+      'running_speed',
+      'm/s',
+      'min-max-avg'
+    );
 
     expect(result).toHaveLength(6);
 
     // Day 1: min=2.5, max=4.0, avg=(2.5+3.0+4.0)/3=3.17
-    expect(result[0]).toEqual({ value: 2.5, type: 'running_speed_min', date: '2024-01-15', unit: 'm/s' });
-    expect(result[1]).toEqual({ value: 4.0, type: 'running_speed_max', date: '2024-01-15', unit: 'm/s' });
-    expect(result[2]).toEqual({ value: 3.17, type: 'running_speed_avg', date: '2024-01-15', unit: 'm/s' });
+    expect(result[0]).toEqual({
+      value: 2.5,
+      type: 'running_speed_min',
+      date: '2024-01-15',
+      unit: 'm/s',
+    });
+    expect(result[1]).toEqual({
+      value: 4.0,
+      type: 'running_speed_max',
+      date: '2024-01-15',
+      unit: 'm/s',
+    });
+    expect(result[2]).toEqual({
+      value: 3.17,
+      type: 'running_speed_avg',
+      date: '2024-01-15',
+      unit: 'm/s',
+    });
 
     // Day 2: min=5.0, max=6.0, avg=(5.0+6.0)/2=5.5
-    expect(result[3]).toEqual({ value: 5.0, type: 'running_speed_min', date: '2024-01-16', unit: 'm/s' });
-    expect(result[4]).toEqual({ value: 6.0, type: 'running_speed_max', date: '2024-01-16', unit: 'm/s' });
-    expect(result[5]).toEqual({ value: 5.5, type: 'running_speed_avg', date: '2024-01-16', unit: 'm/s' });
+    expect(result[3]).toEqual({
+      value: 5.0,
+      type: 'running_speed_min',
+      date: '2024-01-16',
+      unit: 'm/s',
+    });
+    expect(result[4]).toEqual({
+      value: 6.0,
+      type: 'running_speed_max',
+      date: '2024-01-16',
+      unit: 'm/s',
+    });
+    expect(result[5]).toEqual({
+      value: 5.5,
+      type: 'running_speed_avg',
+      date: '2024-01-16',
+      unit: 'm/s',
+    });
   });
 
   test('min-max-avg with single record on a day sets min/max/avg all equal', () => {
@@ -50,12 +85,32 @@ describe('aggregateByDay', () => {
       { value: 3.5, type: 'running_speed', date: '2024-01-15', unit: 'm/s' },
     ];
 
-    const result = aggregateByDay(records, 'running_speed', 'm/s', 'min-max-avg');
+    const result = aggregateByDay(
+      records,
+      'running_speed',
+      'm/s',
+      'min-max-avg'
+    );
 
     expect(result).toHaveLength(3);
-    expect(result[0]).toEqual({ value: 3.5, type: 'running_speed_min', date: '2024-01-15', unit: 'm/s' });
-    expect(result[1]).toEqual({ value: 3.5, type: 'running_speed_max', date: '2024-01-15', unit: 'm/s' });
-    expect(result[2]).toEqual({ value: 3.5, type: 'running_speed_avg', date: '2024-01-15', unit: 'm/s' });
+    expect(result[0]).toEqual({
+      value: 3.5,
+      type: 'running_speed_min',
+      date: '2024-01-15',
+      unit: 'm/s',
+    });
+    expect(result[1]).toEqual({
+      value: 3.5,
+      type: 'running_speed_max',
+      date: '2024-01-15',
+      unit: 'm/s',
+    });
+    expect(result[2]).toEqual({
+      value: 3.5,
+      type: 'running_speed_avg',
+      date: '2024-01-15',
+      unit: 'm/s',
+    });
   });
 
   test('sum strategy returns 1 record per day with summed value', () => {
@@ -68,8 +123,18 @@ describe('aggregateByDay', () => {
     const result = aggregateByDay(records, 'step', 'count', 'sum');
 
     expect(result).toHaveLength(2);
-    expect(result[0]).toEqual({ value: 300, type: 'step', date: '2024-01-15', unit: 'count' });
-    expect(result[1]).toEqual({ value: 300, type: 'step', date: '2024-01-16', unit: 'count' });
+    expect(result[0]).toEqual({
+      value: 300,
+      type: 'step',
+      date: '2024-01-15',
+      unit: 'count',
+    });
+    expect(result[1]).toEqual({
+      value: 300,
+      type: 'step',
+      date: '2024-01-16',
+      unit: 'count',
+    });
   });
 
   test('sum strategy combines same-day hydration drinks into one daily water total (ml)', () => {
@@ -85,8 +150,18 @@ describe('aggregateByDay', () => {
     const result = aggregateByDay(records, 'water', 'ml', 'sum');
 
     expect(result).toHaveLength(2);
-    expect(result[0]).toEqual({ value: 500, type: 'water', date: '2024-01-15', unit: 'ml' });
-    expect(result[1]).toEqual({ value: 250, type: 'water', date: '2024-01-16', unit: 'ml' });
+    expect(result[0]).toEqual({
+      value: 500,
+      type: 'water',
+      date: '2024-01-15',
+      unit: 'ml',
+    });
+    expect(result[1]).toEqual({
+      value: 250,
+      type: 'water',
+      date: '2024-01-16',
+      unit: 'ml',
+    });
   });
 
   test('last strategy returns 1 record per day with the newest value (first in newest-first order)', () => {
@@ -100,15 +175,34 @@ describe('aggregateByDay', () => {
     const result = aggregateByDay(records, 'weight', 'kg', 'last');
 
     expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({ value: 72, type: 'weight', date: '2024-01-15', unit: 'kg' });
+    expect(result[0]).toEqual({
+      value: 72,
+      type: 'weight',
+      date: '2024-01-15',
+      unit: 'kg',
+    });
   });
 });
 
 describe('timezone metadata propagation', () => {
   test('aggregateByDay propagates record_timezone from input records', () => {
     const records: TransformedRecord[] = [
-      { value: 100, type: 'step', date: '2024-01-15', unit: 'count', source: 'HealthKit', record_timezone: 'Asia/Tokyo' },
-      { value: 200, type: 'step', date: '2024-01-15', unit: 'count', source: 'HealthKit', record_timezone: 'Asia/Tokyo' },
+      {
+        value: 100,
+        type: 'step',
+        date: '2024-01-15',
+        unit: 'count',
+        source: 'HealthKit',
+        record_timezone: 'Asia/Tokyo',
+      },
+      {
+        value: 200,
+        type: 'step',
+        date: '2024-01-15',
+        unit: 'count',
+        source: 'HealthKit',
+        record_timezone: 'Asia/Tokyo',
+      },
     ];
     const result = aggregateByDay(records, 'step', 'count', 'sum');
     expect(result).toHaveLength(1);
@@ -117,7 +211,14 @@ describe('timezone metadata propagation', () => {
 
   test('aggregateByDay propagates record_utc_offset_minutes from input records', () => {
     const records: TransformedRecord[] = [
-      { value: 72, type: 'weight', date: '2024-01-15', unit: 'kg', source: 'Health Connect', record_utc_offset_minutes: 540 },
+      {
+        value: 72,
+        type: 'weight',
+        date: '2024-01-15',
+        unit: 'kg',
+        source: 'Health Connect',
+        record_utc_offset_minutes: 540,
+      },
     ];
     const result = aggregateByDay(records, 'weight', 'kg', 'last');
     expect(result).toHaveLength(1);
@@ -126,7 +227,13 @@ describe('timezone metadata propagation', () => {
 
   test('aggregateByDay omits timezone fields when not present on input', () => {
     const records: TransformedRecord[] = [
-      { value: 100, type: 'step', date: '2024-01-15', unit: 'count', source: 'HealthKit' },
+      {
+        value: 100,
+        type: 'step',
+        date: '2024-01-15',
+        unit: 'count',
+        source: 'HealthKit',
+      },
     ];
     const result = aggregateByDay(records, 'step', 'count', 'sum');
     expect(result).toHaveLength(1);

@@ -33,7 +33,17 @@ export function useWellnessTokens(): WellnessPalette {
     '--color-surface',
     '--color-accent-primary',
     '--color-accent-muted',
-  ]) as [string, string, string, string, string, string, string, string, string];
+  ]) as [
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+    string,
+  ];
 
   return {
     accent: accentPrimary,
@@ -58,7 +68,7 @@ export function useWellnessTokens(): WellnessPalette {
 export function resolveSymptomCategoryColor(
   colorToken: string,
   tokens: WellnessPalette,
-  neutralColor: string,
+  neutralColor: string
 ): string {
   switch (colorToken) {
     case 'period':

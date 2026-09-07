@@ -40,7 +40,7 @@ describe('NutritionMacroCard', () => {
 
     it('ignores fiber when showNetCarbs is false', () => {
       const { getByText, queryByText } = render(
-        <NutritionMacroCard {...baseProps} fiber={15} showNetCarbs={false} />,
+        <NutritionMacroCard {...baseProps} fiber={15} showNetCarbs={false} />
       );
       expect(getByText('Carbs')).toBeTruthy();
       expect(getByText('50g')).toBeTruthy();
@@ -51,7 +51,7 @@ describe('NutritionMacroCard', () => {
   describe('showNetCarbs enabled', () => {
     it('swaps label to "Net Carbs" and shows max(0, carbs - fiber)', () => {
       const { getByText, queryByText } = render(
-        <NutritionMacroCard {...baseProps} fiber={15} showNetCarbs />,
+        <NutritionMacroCard {...baseProps} fiber={15} showNetCarbs />
       );
       expect(getByText('Net Carbs')).toBeTruthy();
       expect(getByText('35g')).toBeTruthy();
@@ -67,7 +67,7 @@ describe('NutritionMacroCard', () => {
           fat={15}
           fiber={25}
           showNetCarbs
-        />,
+        />
       );
       expect(getByText('Net Carbs')).toBeTruthy();
       expect(getByText('0g')).toBeTruthy();
@@ -77,7 +77,7 @@ describe('NutritionMacroCard', () => {
       // Defensive: opting in without fiber data should not blow up; we just
       // show the raw carbs value with the original label.
       const { getByText, queryByText } = render(
-        <NutritionMacroCard {...baseProps} showNetCarbs />,
+        <NutritionMacroCard {...baseProps} showNetCarbs />
       );
       expect(getByText('Carbs')).toBeTruthy();
       expect(getByText('50g')).toBeTruthy();
@@ -93,7 +93,7 @@ describe('NutritionMacroCard', () => {
           fiber={15}
           showNetCarbs
           goalPercentages={{ calories: 30, protein: 60, carbs: 35, fat: 50 }}
-        />,
+        />
       );
       expect(getByText('Net Carbs')).toBeTruthy();
       expect(getByText('35g')).toBeTruthy();
@@ -105,7 +105,7 @@ describe('NutritionMacroCard', () => {
           {...baseProps}
           goalPercentages={{ calories: 30, protein: 60, carbs: 35, fat: 50 }}
           calorieGoal={2000}
-        />,
+        />
       );
       expect(getByTestId('progress-ring')).toBeTruthy();
       expect(queryByTestId('macro-composition-ring')).toBeNull();
@@ -118,7 +118,7 @@ describe('NutritionMacroCard', () => {
         <NutritionMacroCard
           {...baseProps}
           goalPercentages={{ calories: 30, protein: 60, carbs: 35, fat: 50 }}
-        />,
+        />
       );
       expect(getByTestId('macro-composition-ring')).toBeTruthy();
       expect(queryByTestId('progress-ring')).toBeNull();

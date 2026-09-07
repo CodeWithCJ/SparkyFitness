@@ -60,7 +60,7 @@ describe('useFamilyDiary', () => {
 
     await waitFor(() => expect(result.current.data).toHaveLength(1));
     expect(queryClient.getQueryData(['familyDiaryUsers'])).toEqual(
-      result.current.data,
+      result.current.data
     );
   });
 
@@ -69,7 +69,9 @@ describe('useFamilyDiary', () => {
       wrapper: createQueryWrapper(queryClient),
     });
 
-    await waitFor(() => expect(mockFetchFamilyDiaryUsers).not.toHaveBeenCalled());
+    await waitFor(() =>
+      expect(mockFetchFamilyDiaryUsers).not.toHaveBeenCalled()
+    );
   });
 
   test('isolates family summaries by family user and date without collapsing entries', async () => {
@@ -83,22 +85,18 @@ describe('useFamilyDiary', () => {
     const { result } = renderHook(
       () =>
         useFamilyDailySummary({ familyUserId: 'member-b', date: '2026-08-23' }),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() =>
-      expect(result.current.data?.foodEntries).toHaveLength(2),
+      expect(result.current.data?.foodEntries).toHaveLength(2)
     );
     expect(
-      queryClient.getQueryData([
-        'familyDailySummary',
-        'member-b',
-        '2026-08-23',
-      ]),
+      queryClient.getQueryData(['familyDailySummary', 'member-b', '2026-08-23'])
     ).toBeDefined();
     expect(mockFetchDailySummary).toHaveBeenCalledWith(
       '2026-08-23',
-      'member-b',
+      'member-b'
     );
     expect(resolveCollapsedFoodEntries).not.toHaveBeenCalled();
   });
@@ -108,7 +106,7 @@ describe('useFamilyDiary', () => {
       () => useFamilyDailySummary({ familyUserId: '', date: '2026-08-23' }),
       {
         wrapper: createQueryWrapper(queryClient),
-      },
+      }
     );
 
     await waitFor(() => expect(mockFetchDailySummary).not.toHaveBeenCalled());

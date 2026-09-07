@@ -1,6 +1,9 @@
 import React, { useCallback } from 'react';
 import { Platform } from 'react-native';
-import { BottomSheetBackdrop, type BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
+import {
+  BottomSheetBackdrop,
+  type BottomSheetBackdropProps,
+} from '@gorhom/bottom-sheet';
 import { FullWindowOverlay } from 'react-native-screens';
 import { useUniwind } from 'uniwind';
 
@@ -8,7 +11,9 @@ import { useUniwind } from 'uniwind';
 // presentation. No-op on Android.
 export const sheetContainer =
   Platform.OS === 'ios'
-    ? ({ children }: React.PropsWithChildren) => <FullWindowOverlay>{children}</FullWindowOverlay>
+    ? ({ children }: React.PropsWithChildren) => (
+        <FullWindowOverlay>{children}</FullWindowOverlay>
+      )
     : undefined;
 
 /**
@@ -28,6 +33,6 @@ export function useSheetBackdrop() {
         appearsOnIndex={0}
       />
     ),
-    [isDarkMode],
+    [isDarkMode]
   );
 }

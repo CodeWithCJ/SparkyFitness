@@ -4,7 +4,11 @@ import {
   fetchWorkoutPresetsPage,
   searchWorkoutPresets,
 } from '../../src/services/api/workoutPresetsApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 import type { WorkoutPreset } from '../../src/types/workoutPresets';
 
 jest.mock('../../src/services/api/workoutPresetsApi', () => ({
@@ -16,9 +20,10 @@ jest.mock('../../src/hooks/useRefetchOnFocus', () => ({
   useRefetchOnFocus: jest.fn(),
 }));
 
-const mockFetchWorkoutPresetsPage = fetchWorkoutPresetsPage as jest.MockedFunction<
-  typeof fetchWorkoutPresetsPage
->;
+const mockFetchWorkoutPresetsPage =
+  fetchWorkoutPresetsPage as jest.MockedFunction<
+    typeof fetchWorkoutPresetsPage
+  >;
 const mockSearchWorkoutPresets = searchWorkoutPresets as jest.MockedFunction<
   typeof searchWorkoutPresets
 >;

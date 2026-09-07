@@ -87,7 +87,7 @@ describe('SettingsScreen family diary entry', () => {
         }}
       >
         <SettingsScreen navigation={navigation} route={route} />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
     fireEvent.press(getByText('Family Diaries'));
@@ -108,7 +108,7 @@ describe('SettingsScreen family diary entry', () => {
         }}
       >
         <SettingsScreen navigation={navigation} route={route} />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
     expect(queryByText('Family Diaries')).toBeNull();

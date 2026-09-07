@@ -64,7 +64,11 @@ export function useMedicationDetail(id: string, options?: QueryOptions) {
 }
 
 export function useMedicationEntries(
-  opts?: { fromDate?: string; toDate?: string; medicationId?: string } & QueryOptions,
+  opts?: {
+    fromDate?: string;
+    toDate?: string;
+    medicationId?: string;
+  } & QueryOptions
 ) {
   const { enabled, ...filters } = opts ?? {};
   const query = useQuery({
@@ -93,7 +97,9 @@ export function useUpdateMedication() {
       updateMedication(id, body),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
-      queryClient.invalidateQueries({ queryKey: medicationDetailQueryKey(variables.id) });
+      queryClient.invalidateQueries({
+        queryKey: medicationDetailQueryKey(variables.id),
+      });
     },
   });
 }
@@ -111,11 +117,18 @@ export function useDeleteMedication() {
 export function useCreateMedicationSchedule() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ medicationId, body }: { medicationId: string; body: CreateScheduleInput }) =>
-      createSchedule(medicationId, body),
+    mutationFn: ({
+      medicationId,
+      body,
+    }: {
+      medicationId: string;
+      body: CreateScheduleInput;
+    }) => createSchedule(medicationId, body),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
-      queryClient.invalidateQueries({ queryKey: medicationDetailQueryKey(variables.medicationId) });
+      queryClient.invalidateQueries({
+        queryKey: medicationDetailQueryKey(variables.medicationId),
+      });
     },
   });
 }
@@ -133,7 +146,9 @@ export function useUpdateMedicationSchedule() {
     }) => updateSchedule(id, body),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
-      queryClient.invalidateQueries({ queryKey: medicationDetailQueryKey(variables.medicationId) });
+      queryClient.invalidateQueries({
+        queryKey: medicationDetailQueryKey(variables.medicationId),
+      });
     },
   });
 }
@@ -141,10 +156,13 @@ export function useUpdateMedicationSchedule() {
 export function useDeleteMedicationSchedule() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id }: { id: string; medicationId: string }) => deleteSchedule(id),
+    mutationFn: ({ id }: { id: string; medicationId: string }) =>
+      deleteSchedule(id),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey });
-      queryClient.invalidateQueries({ queryKey: medicationDetailQueryKey(variables.medicationId) });
+      queryClient.invalidateQueries({
+        queryKey: medicationDetailQueryKey(variables.medicationId),
+      });
     },
   });
 }
@@ -162,8 +180,13 @@ export function useCreateMedicationEntry() {
 export function useUpdateMedicationEntry() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: UpdateMedicationEntryInput }) =>
-      updateEntry(id, body),
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: UpdateMedicationEntryInput;
+    }) => updateEntry(id, body),
     onSuccess: () => {
       invalidateMedicationEntryCaches(queryClient);
     },
@@ -191,15 +214,21 @@ export function useDeleteMedicationEntry() {
  *
  * `entries` must cover `selectedDate` for the medications being acted on.
  */
-export function useLogDose(selectedDate: string, entries: MedicationEntry[] | undefined) {
+export function useLogDose(
+  selectedDate: string,
+  entries: MedicationEntry[] | undefined
+) {
   const { t } = useTranslation();
   const createEntryMutation = useCreateMedicationEntry();
   const updateEntryMutation = useUpdateMedicationEntry();
   const deleteEntryMutation = useDeleteMedicationEntry();
 
   const entryForDue = useCallback(
-    (due: DueDose) => entries?.find((e) => entryMatchesDose(e, due.medication.id, due.schedule.id)),
-    [entries],
+    (due: DueDose) =>
+      entries?.find((e) =>
+        entryMatchesDose(e, due.medication.id, due.schedule.id)
+      ),
+    [entries]
   );
 
   const showEntryError = useCallback((message: string, error: Error) => {
@@ -217,20 +246,38 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
         ? existing?.status === 'taken' || existing?.status === 'prn_taken'
         : existing?.status === 'skipped';
       const undoneMessage = isTaken
-        ? t('medications.dose.unmarked', { defaultValue: '{{name}} unmarked', name: due.medication.name })
-        : t('medications.dose.unskipped', { defaultValue: '{{name}} unskipped', name: due.medication.name });
+        ? t('medications.dose.unmarked', {
+            defaultValue: '{{name}} unmarked',
+            name: due.medication.name,
+          })
+        : t('medications.dose.unskipped', {
+            defaultValue: '{{name}} unskipped',
+            name: due.medication.name,
+          });
       if (existing && undone) {
         deleteEntryMutation.mutate(existing.id, {
-          onSuccess: () =>
-            Toast.show({ type: 'info', text1: undoneMessage }),
-          onError: (error) => showEntryError(t('medications.dose.failedUnmark', { defaultValue: 'Failed to unmark {{name}}', name: due.medication.name }), error),
+          onSuccess: () => Toast.show({ type: 'info', text1: undoneMessage }),
+          onError: (error) =>
+            showEntryError(
+              t('medications.dose.failedUnmark', {
+                defaultValue: 'Failed to unmark {{name}}',
+                name: due.medication.name,
+              }),
+              error
+            ),
         });
         return;
       }
 
       const loggedMessage = isTaken
-        ? t('medications.dose.takenToast', { defaultValue: '{{name}} taken', name: due.medication.name })
-        : t('medications.dose.skippedToast', { defaultValue: '{{name}} skipped', name: due.medication.name });
+        ? t('medications.dose.takenToast', {
+            defaultValue: '{{name}} taken',
+            name: due.medication.name,
+          })
+        : t('medications.dose.skippedToast', {
+            defaultValue: '{{name}} skipped',
+            name: due.medication.name,
+          });
       const showLoggedToast = () =>
         Toast.show({
           type: isTaken ? 'success' : 'info',
@@ -251,8 +298,15 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
           },
           {
             onSuccess: showLoggedToast,
-            onError: (error) => showEntryError(t('medications.dose.failedUpdate', { defaultValue: 'Failed to update {{name}}', name: due.medication.name }), error),
-          },
+            onError: (error) =>
+              showEntryError(
+                t('medications.dose.failedUpdate', {
+                  defaultValue: 'Failed to update {{name}}',
+                  name: due.medication.name,
+                }),
+                error
+              ),
+          }
         );
       } else {
         createEntryMutation.mutate(
@@ -265,12 +319,27 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
           },
           {
             onSuccess: showLoggedToast,
-            onError: (error) => showEntryError(t('medications.dose.failedLog', { defaultValue: 'Failed to log {{name}}', name: due.medication.name }), error),
-          },
+            onError: (error) =>
+              showEntryError(
+                t('medications.dose.failedLog', {
+                  defaultValue: 'Failed to log {{name}}',
+                  name: due.medication.name,
+                }),
+                error
+              ),
+          }
         );
       }
     },
-    [entryForDue, createEntryMutation, updateEntryMutation, deleteEntryMutation, selectedDate, showEntryError, t],
+    [
+      entryForDue,
+      createEntryMutation,
+      updateEntryMutation,
+      deleteEntryMutation,
+      selectedDate,
+      showEntryError,
+      t,
+    ]
   );
 
   const toggleTaken = useCallback(
@@ -278,13 +347,20 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
       const existing = entryForDue(due);
       if (existing) {
         deleteEntryMutation.mutate(existing.id, {
-          onError: (error) => showEntryError(t('medications.dose.failedUnmark', { defaultValue: 'Failed to unmark {{name}}', name: due.medication.name }), error),
+          onError: (error) =>
+            showEntryError(
+              t('medications.dose.failedUnmark', {
+                defaultValue: 'Failed to unmark {{name}}',
+                name: due.medication.name,
+              }),
+              error
+            ),
         });
         return;
       }
       logDose(due, 'taken');
     },
-    [entryForDue, deleteEntryMutation, logDose, showEntryError, t],
+    [entryForDue, deleteEntryMutation, logDose, showEntryError, t]
   );
 
   // Unlike scheduled slots, a PRN log has no toggle surface to undo a
@@ -302,26 +378,50 @@ export function useLogDose(selectedDate: string, entries: MedicationEntry[] | un
           onSuccess: (created) =>
             Toast.show({
               type: 'success',
-              text1: t('medications.dose.logged', { defaultValue: '{{name}} logged', name: med.name }),
-              text2: t('medications.dose.tapUndo', { defaultValue: 'Tap to undo' }),
+              text1: t('medications.dose.logged', {
+                defaultValue: '{{name}} logged',
+                name: med.name,
+              }),
+              text2: t('medications.dose.tapUndo', {
+                defaultValue: 'Tap to undo',
+              }),
               props: {
                 onPress: () => {
                   Toast.hide();
                   deleteEntryMutation.mutate(created.id, {
-                    onSuccess: () => Toast.show({ type: 'info', text1: t('medications.dose.removed', { defaultValue: '{{name}} dose removed', name: med.name }) }),
-                    onError: (error) => showEntryError(t('medications.dose.failedRemoveDose', { defaultValue: 'Failed to remove {{name}} dose', name: med.name }), error),
+                    onSuccess: () =>
+                      Toast.show({
+                        type: 'info',
+                        text1: t('medications.dose.removed', {
+                          defaultValue: '{{name}} dose removed',
+                          name: med.name,
+                        }),
+                      }),
+                    onError: (error) =>
+                      showEntryError(
+                        t('medications.dose.failedRemoveDose', {
+                          defaultValue: 'Failed to remove {{name}} dose',
+                          name: med.name,
+                        }),
+                        error
+                      ),
                   });
                 },
               },
             }),
-          onError: (error) => showEntryError(t('medications.dose.failedLog', { defaultValue: 'Failed to log {{name}}', name: med.name }), error),
-        },
+          onError: (error) =>
+            showEntryError(
+              t('medications.dose.failedLog', {
+                defaultValue: 'Failed to log {{name}}',
+                name: med.name,
+              }),
+              error
+            ),
+        }
       );
     },
-    [createEntryMutation, deleteEntryMutation, selectedDate, showEntryError, t],
+    [createEntryMutation, deleteEntryMutation, selectedDate, showEntryError, t]
   );
 
   return { entryForDue, logDose, toggleTaken, logPrn };
 }
-
-

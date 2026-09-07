@@ -40,7 +40,9 @@ export const AppLanguageNative = {
     return platformSupportsNativePerAppLanguage();
   },
 
-  async setApplicationLanguage(language: SupportedLanguage | null): Promise<void> {
+  async setApplicationLanguage(
+    language: SupportedLanguage | null
+  ): Promise<void> {
     if (!platformSupportsNativePerAppLanguage()) return;
     await nativeModule?.setApplicationLanguage(language);
   },

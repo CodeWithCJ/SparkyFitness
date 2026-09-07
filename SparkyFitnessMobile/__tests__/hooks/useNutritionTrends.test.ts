@@ -2,7 +2,11 @@ import { renderHook, waitFor } from '@testing-library/react-native';
 import { useNutritionTrends } from '../../src/hooks/useNutritionTrends';
 import { fetchNutritionTrends } from '../../src/services/api/reportsApi';
 import { getTodayDate, addDays } from '../../src/utils/dateUtils';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/reportsApi', () => ({
   fetchNutritionTrends: jest.fn(),
@@ -14,7 +18,9 @@ jest.mock('@react-navigation/native', () => ({
   }),
 }));
 
-const mockFetchNutritionTrends = fetchNutritionTrends as jest.MockedFunction<typeof fetchNutritionTrends>;
+const mockFetchNutritionTrends = fetchNutritionTrends as jest.MockedFunction<
+  typeof fetchNutritionTrends
+>;
 
 describe('useNutritionTrends', () => {
   let queryClient: QueryClient;
@@ -56,10 +62,9 @@ describe('useNutritionTrends', () => {
       },
     ]);
 
-    const { result } = renderHook(
-      () => useNutritionTrends({ range: '7d' }),
-      { wrapper: createQueryWrapper(queryClient) },
-    );
+    const { result } = renderHook(() => useNutritionTrends({ range: '7d' }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
@@ -87,7 +92,7 @@ describe('useNutritionTrends', () => {
 
     const { result: res30 } = renderHook(
       () => useNutritionTrends({ range: '30d' }),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
@@ -98,7 +103,7 @@ describe('useNutritionTrends', () => {
 
     const { result: res90 } = renderHook(
       () => useNutritionTrends({ range: '90d' }),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
@@ -111,7 +116,7 @@ describe('useNutritionTrends', () => {
   test('does not fetch when enabled is false', async () => {
     const { result } = renderHook(
       () => useNutritionTrends({ range: '7d', enabled: false }),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     expect(mockFetchNutritionTrends).not.toHaveBeenCalled();

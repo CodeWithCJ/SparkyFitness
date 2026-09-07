@@ -1,13 +1,19 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { useExerciseStats } from '../../src/hooks/useExerciseStats';
 import { fetchExerciseStats } from '../../src/services/api/exerciseApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/exerciseApi', () => ({
   fetchExerciseStats: jest.fn(),
 }));
 
-const mockFetchStats = fetchExerciseStats as jest.MockedFunction<typeof fetchExerciseStats>;
+const mockFetchStats = fetchExerciseStats as jest.MockedFunction<
+  typeof fetchExerciseStats
+>;
 
 describe('useExerciseStats', () => {
   let queryClient: QueryClient;
@@ -71,10 +77,9 @@ describe('useExerciseStats', () => {
       recentSessions: [],
     });
 
-    const { result } = renderHook(
-      () => useExerciseStats('ex-1', 'session-1'),
-      { wrapper: createQueryWrapper(queryClient) },
-    );
+    const { result } = renderHook(() => useExerciseStats('ex-1', 'session-1'), {
+      wrapper: createQueryWrapper(queryClient),
+    });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
@@ -91,7 +96,7 @@ describe('useExerciseStats', () => {
 
     const { result } = renderHook(
       () => useExerciseStats('ex-1', 'session-1', 42),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
@@ -109,11 +114,11 @@ describe('useExerciseStats', () => {
 
     const { result: resultA } = renderHook(
       () => useExerciseStats('ex-1', undefined, 1),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
     const { result: resultB } = renderHook(
       () => useExerciseStats('ex-1', undefined, 2),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {

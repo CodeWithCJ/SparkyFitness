@@ -36,7 +36,8 @@ const PregnancyLogView: React.FC<PregnancyLogViewProps> = ({
   onDatePress,
   hideSaveButton,
 }) => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { t } = useTranslation();
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
 
@@ -54,11 +55,21 @@ const PregnancyLogView: React.FC<PregnancyLogViewProps> = ({
   if (!hasActive) {
     return (
       <View className="bg-surface rounded-2xl p-6 shadow-sm gap-4 items-center">
-        <Text className="text-text-primary text-base font-semibold">{t('pregnancy.prompt.title', { defaultValue: 'Set up your pregnancy' })}</Text>
-        <Text className="text-text-secondary text-sm text-center">
-          {t('pregnancy.prompt.message', { defaultValue: "Add your due date to track baby's growth week by week and keep a bump photo journal." })}
+        <Text className="text-text-primary text-base font-semibold">
+          {t('pregnancy.prompt.title', {
+            defaultValue: 'Set up your pregnancy',
+          })}
         </Text>
-        <Button variant="primary" onPress={() => navigation.navigate('PregnancySetup')}>
+        <Text className="text-text-secondary text-sm text-center">
+          {t('pregnancy.prompt.message', {
+            defaultValue:
+              "Add your due date to track baby's growth week by week and keep a bump photo journal.",
+          })}
+        </Text>
+        <Button
+          variant="primary"
+          onPress={() => navigation.navigate('PregnancySetup')}
+        >
           {t('pregnancy.prompt.getStarted', { defaultValue: 'Get Started' })}
         </Button>
       </View>

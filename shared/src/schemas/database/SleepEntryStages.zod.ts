@@ -54,5 +54,9 @@ export const sleepEntryStagesMutatorSchema = z.object({
 });
 
 export type SleepEntryStages = z.infer<typeof sleepEntryStagesSchema>;
-export type SleepEntryStagesInitializer = z.infer<typeof sleepEntryStagesInitializerSchema>;
-export type SleepEntryStagesMutator = z.infer<typeof sleepEntryStagesMutatorSchema>;
+export type SleepEntryStagesInitializer = z.infer<
+  typeof sleepEntryStagesInitializerSchema
+>;
+export type SleepEntryStagesMutator = z.infer<
+  typeof sleepEntryStagesMutatorSchema
+>;

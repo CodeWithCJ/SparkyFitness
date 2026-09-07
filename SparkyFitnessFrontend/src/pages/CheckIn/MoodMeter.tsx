@@ -150,6 +150,8 @@ const MoodMeter = ({
     (m) => !hidden.includes(m.name)
   );
   const visibleCustoms = custom.filter((cm) => !hidden.includes(cm.name));
+  const builtInMoodLabel = (name: string, fallback: string) =>
+    t(`moodMeter.${name}`, fallback);
 
   const Chip = ({
     name,
@@ -214,8 +216,8 @@ const MoodMeter = ({
                 key={m.name}
                 type="button"
                 onClick={() => onMoodChange(representativeMoodValue([m.name]))}
-                aria-label={m.displayName}
-                title={m.displayName}
+                aria-label={builtInMoodLabel(m.name, m.displayName)}
+                title={builtInMoodLabel(m.name, m.displayName)}
                 className={cn(
                   'text-lg leading-none transition',
                   active
@@ -310,7 +312,7 @@ const MoodMeter = ({
                 {BUILT_IN_MOODS.map((m) => (
                   <ManageRow
                     key={m.name}
-                    label={`${m.emoji} ${m.displayName}`}
+                    label={`${m.emoji} ${builtInMoodLabel(m.name, m.displayName)}`}
                     color={m.color}
                     isHidden={hidden.includes(m.name)}
                     onToggleHidden={() => toggleHidden(m.name)}
@@ -338,7 +340,7 @@ const MoodMeter = ({
             <Chip
               key={m.name}
               name={m.name}
-              label={m.displayName}
+              label={builtInMoodLabel(m.name, m.displayName)}
               emoji={m.emoji}
               color={m.color}
             />
@@ -411,7 +413,11 @@ function ManageRow({
           size="icon"
           className="h-6 w-6"
           onClick={onToggleHidden}
-          aria-label={isHidden ? 'Show mood' : 'Hide mood'}
+          aria-label={
+            isHidden
+              ? t('moodMeter.showMood', 'Show mood')
+              : t('moodMeter.hideMood', 'Hide mood')
+          }
         >
           {isHidden ? (
             <EyeOff className="h-3.5 w-3.5" />
@@ -427,7 +433,7 @@ function ManageRow({
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
-                aria-label="Delete mood"
+                aria-label={t('moodMeter.deleteMood', 'Delete mood')}
               >
                 <Trash className="h-3.5 w-3.5" />
               </Button>

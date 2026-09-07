@@ -140,5 +140,3 @@ export const CustomNutrientDialog = ({
     </Dialog>
   );
 };
-
-export default CustomNutrientDialog;

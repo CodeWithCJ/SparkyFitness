@@ -4,11 +4,15 @@ import {
   getWorkoutPresetById,
   searchWorkoutPresets,
 } from '../../../src/services/api/workoutPresetsApi';
-import { getActiveServerConfig, type ServerConfig } from '../../../src/services/storage';
+import {
+  getActiveServerConfig,
+  type ServerConfig,
+} from '../../../src/services/storage';
 
 jest.mock('../../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
-  proxyHeadersToRecord: jest.requireActual('../../../src/services/storage').proxyHeadersToRecord,
+  proxyHeadersToRecord: jest.requireActual('../../../src/services/storage')
+    .proxyHeadersToRecord,
 }));
 
 jest.mock('../../../src/services/LogService', () => ({
@@ -52,7 +56,7 @@ describe('workoutPresetsApi', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://example.com/api/workout-presets?limit=50',
-        expect.objectContaining({ method: 'GET' }),
+        expect.objectContaining({ method: 'GET' })
       );
     });
 
@@ -75,7 +79,9 @@ describe('workoutPresetsApi', () => {
 
     it('throws error when no server config exists', async () => {
       mockGetActiveServerConfig.mockResolvedValue(null);
-      await expect(fetchWorkoutPresets()).rejects.toThrow('Server configuration not found.');
+      await expect(fetchWorkoutPresets()).rejects.toThrow(
+        'Server configuration not found.'
+      );
     });
   });
 
@@ -92,7 +98,7 @@ describe('workoutPresetsApi', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://example.com/api/workout-presets/7',
-        expect.objectContaining({ method: 'GET' }),
+        expect.objectContaining({ method: 'GET' })
       );
       expect(result).toEqual(responseData);
     });
@@ -169,7 +175,8 @@ describe('workoutPresetsApi', () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ presets: [], total: 0, page: 3, limit: 25 }),
+        json: () =>
+          Promise.resolve({ presets: [], total: 0, page: 3, limit: 25 }),
       });
 
       await fetchWorkoutPresetsPage({ page: 3, pageSize: 25 });
@@ -184,7 +191,8 @@ describe('workoutPresetsApi', () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ presets: [], total: 0, page: 1, limit: 20 }),
+        json: () =>
+          Promise.resolve({ presets: [], total: 0, page: 1, limit: 20 }),
       });
 
       await fetchWorkoutPresetsPage();

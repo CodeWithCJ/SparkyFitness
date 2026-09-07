@@ -3,11 +3,16 @@ import '@testing-library/jest-dom';
 import ExerciseEntryDisplay from '@/pages/Diary/ExerciseEntryDisplay';
 import type { ExerciseEntry } from '@/types/exercises';
 
+jest.mock('react-i18next', () =>
+  jest.requireActual('@/tests/mocks/reactI18next')
+);
+
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
     weightUnit: 'kg',
     distanceUnit: 'km',
     convertDistance: (value: number) => value,
+    timeFormat: '24h',
   }),
 }));
 

@@ -53,11 +53,11 @@ const {
 } = jest.requireMock('../../src/services/api/exerciseApi');
 
 const { invalidateExerciseCache: mockInvalidateCache } = jest.requireMock(
-  '../../src/hooks/invalidateExerciseCache',
+  '../../src/hooks/invalidateExerciseCache'
 );
 
 const { syncExerciseSessionInCache: mockSyncCache } = jest.requireMock(
-  '../../src/hooks/syncExerciseSessionInCache',
+  '../../src/hooks/syncExerciseSessionInCache'
 );
 
 describe('useExerciseMutations', () => {
@@ -77,17 +77,27 @@ describe('useExerciseMutations', () => {
 
   describe('useCreateWorkout', () => {
     it('calls createWorkout API and returns result', async () => {
-      const responseData = { id: 'session-1', type: 'preset', name: 'Push Day' };
+      const responseData = {
+        id: 'session-1',
+        type: 'preset',
+        name: 'Push Day',
+      };
       mockCreateWorkout.mockResolvedValue(responseData);
 
       const { result } = renderHook(() => useCreateWorkout(), { wrapper });
 
       let createResult: unknown;
       await act(async () => {
-        createResult = await result.current.createSession({ name: 'Push Day', exercises: [] } as any);
+        createResult = await result.current.createSession({
+          name: 'Push Day',
+          exercises: [],
+        } as any);
       });
 
-      expect(mockCreateWorkout).toHaveBeenCalledWith({ name: 'Push Day', exercises: [] });
+      expect(mockCreateWorkout).toHaveBeenCalledWith({
+        name: 'Push Day',
+        exercises: [],
+      });
       expect(createResult).toEqual(responseData);
     });
 
@@ -98,7 +108,10 @@ describe('useExerciseMutations', () => {
 
       await act(async () => {
         try {
-          await result.current.createSession({ name: 'Push Day', exercises: [] } as any);
+          await result.current.createSession({
+            name: 'Push Day',
+            exercises: [],
+          } as any);
         } catch {
           // expected
         }
@@ -120,7 +133,10 @@ describe('useExerciseMutations', () => {
         result.current.invalidateCache('2026-03-20');
       });
 
-      expect(mockInvalidateCache).toHaveBeenCalledWith(queryClient, '2026-03-20');
+      expect(mockInvalidateCache).toHaveBeenCalledWith(
+        queryClient,
+        '2026-03-20'
+      );
     });
   });
 
@@ -138,7 +154,10 @@ describe('useExerciseMutations', () => {
         });
       });
 
-      expect(mockUpdateWorkout).toHaveBeenCalledWith('session-1', { name: 'Updated', exercises: [] });
+      expect(mockUpdateWorkout).toHaveBeenCalledWith('session-1', {
+        name: 'Updated',
+        exercises: [],
+      });
       expect(mockSyncCache).toHaveBeenCalledWith(queryClient, responseData);
     });
   });
@@ -153,7 +172,9 @@ describe('useExerciseMutations', () => {
       };
       mockCreateExerciseEntry.mockResolvedValue({ id: 'entry-1' });
 
-      const { result } = renderHook(() => useCreateExerciseEntry(), { wrapper });
+      const { result } = renderHook(() => useCreateExerciseEntry(), {
+        wrapper,
+      });
 
       await act(async () => {
         await result.current.createEntry(payload as any);
@@ -173,7 +194,9 @@ describe('useExerciseMutations', () => {
       };
       mockUpdateExerciseEntry.mockResolvedValue({ id: 'entry-1' });
 
-      const { result } = renderHook(() => useUpdateExerciseEntry(), { wrapper });
+      const { result } = renderHook(() => useUpdateExerciseEntry(), {
+        wrapper,
+      });
 
       await act(async () => {
         await result.current.updateEntry({ id: 'entry-1', payload } as any);
@@ -186,8 +209,9 @@ describe('useExerciseMutations', () => {
   describe('useDeleteWorkout', () => {
     it('shows confirmation dialog on confirmAndDelete', () => {
       const { result } = renderHook(
-        () => useDeleteWorkout({ sessionId: 'session-1', entryDate: '2026-03-20' }),
-        { wrapper },
+        () =>
+          useDeleteWorkout({ sessionId: 'session-1', entryDate: '2026-03-20' }),
+        { wrapper }
       );
 
       act(() => {
@@ -200,7 +224,7 @@ describe('useExerciseMutations', () => {
         expect.arrayContaining([
           expect.objectContaining({ text: 'Cancel', style: 'cancel' }),
           expect.objectContaining({ text: 'Delete', style: 'destructive' }),
-        ]),
+        ])
       );
     });
 
@@ -209,8 +233,13 @@ describe('useExerciseMutations', () => {
 
       const onSuccess = jest.fn();
       const { result } = renderHook(
-        () => useDeleteWorkout({ sessionId: 'session-1', entryDate: '2026-03-20', onSuccess }),
-        { wrapper },
+        () =>
+          useDeleteWorkout({
+            sessionId: 'session-1',
+            entryDate: '2026-03-20',
+            onSuccess,
+          }),
+        { wrapper }
       );
 
       act(() => {
@@ -228,29 +257,40 @@ describe('useExerciseMutations', () => {
       await waitFor(() => {
         expect(mockDeleteWorkout).toHaveBeenCalledWith('session-1');
         expect(onSuccess).toHaveBeenCalled();
-        expect(mockInvalidateCache).toHaveBeenCalledWith(queryClient, '2026-03-20');
+        expect(mockInvalidateCache).toHaveBeenCalledWith(
+          queryClient,
+          '2026-03-20'
+        );
       });
     });
 
     it('invalidateCache calls invalidateExerciseCache with normalized date', async () => {
       const { result } = renderHook(
-        () => useDeleteWorkout({ sessionId: 'session-1', entryDate: '2026-03-20' }),
-        { wrapper },
+        () =>
+          useDeleteWorkout({ sessionId: 'session-1', entryDate: '2026-03-20' }),
+        { wrapper }
       );
 
       await act(async () => {
         result.current.invalidateCache();
       });
 
-      expect(mockInvalidateCache).toHaveBeenCalledWith(queryClient, '2026-03-20');
+      expect(mockInvalidateCache).toHaveBeenCalledWith(
+        queryClient,
+        '2026-03-20'
+      );
     });
   });
 
   describe('useDeleteExerciseEntry', () => {
     it('shows confirmation dialog with activity-specific text', () => {
       const { result } = renderHook(
-        () => useDeleteExerciseEntry({ entryId: 'entry-1', entryDate: '2026-03-20' }),
-        { wrapper },
+        () =>
+          useDeleteExerciseEntry({
+            entryId: 'entry-1',
+            entryDate: '2026-03-20',
+          }),
+        { wrapper }
       );
 
       act(() => {
@@ -260,7 +300,7 @@ describe('useExerciseMutations', () => {
       expect(Alert.alert).toHaveBeenCalledWith(
         'Delete Activity?',
         'This activity will be permanently removed.',
-        expect.any(Array),
+        expect.any(Array)
       );
     });
 
@@ -269,8 +309,13 @@ describe('useExerciseMutations', () => {
 
       const onSuccess = jest.fn();
       const { result } = renderHook(
-        () => useDeleteExerciseEntry({ entryId: 'entry-1', entryDate: '2026-03-20', onSuccess }),
-        { wrapper },
+        () =>
+          useDeleteExerciseEntry({
+            entryId: 'entry-1',
+            entryDate: '2026-03-20',
+            onSuccess,
+          }),
+        { wrapper }
       );
 
       act(() => {
@@ -287,7 +332,10 @@ describe('useExerciseMutations', () => {
       await waitFor(() => {
         expect(mockDeleteExerciseEntry).toHaveBeenCalledWith('entry-1');
         expect(onSuccess).toHaveBeenCalled();
-        expect(mockInvalidateCache).toHaveBeenCalledWith(queryClient, '2026-03-20');
+        expect(mockInvalidateCache).toHaveBeenCalledWith(
+          queryClient,
+          '2026-03-20'
+        );
       });
     });
   });
@@ -301,16 +349,22 @@ describe('useExerciseMutations', () => {
       const { result } = renderHook(() => useCreateExercise(), { wrapper });
 
       await act(async () => {
-        await result.current.createExerciseAsync({ name: 'Test', category: 'general', description: null });
+        await result.current.createExerciseAsync({
+          name: 'Test',
+          category: 'general',
+          description: null,
+        });
       });
 
-      const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
+      const invalidatedKeys = invalidateSpy.mock.calls.map(
+        (call) => call[0]?.queryKey
+      );
       expect(invalidatedKeys).toEqual(
         expect.arrayContaining([
           ['suggestedExercises'],
           ['exercises', 'count'],
           ['exerciseSearch'],
-        ]),
+        ])
       );
       const resetKeys = resetSpy.mock.calls.map((call) => call[0]?.queryKey);
       expect(resetKeys).toEqual(expect.arrayContaining([['exercisesLibrary']]));
@@ -331,25 +385,34 @@ describe('useExerciseMutations', () => {
         });
       });
 
-      expect(mockUpdateExercise).toHaveBeenCalledWith('ex-1', { name: 'Updated' });
-      const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
+      expect(mockUpdateExercise).toHaveBeenCalledWith('ex-1', {
+        name: 'Updated',
+      });
+      const invalidatedKeys = invalidateSpy.mock.calls.map(
+        (call) => call[0]?.queryKey
+      );
       expect(invalidatedKeys).toEqual(
         expect.arrayContaining([
           ['suggestedExercises'],
           ['exercises', 'count'],
           ['exerciseSearch'],
-        ]),
+        ])
       );
     });
 
     it('shows permission toast on 403', async () => {
-      mockUpdateExercise.mockRejectedValue(new Error('Server error: 403 - Forbidden'));
+      mockUpdateExercise.mockRejectedValue(
+        new Error('Server error: 403 - Forbidden')
+      );
 
       const { result } = renderHook(() => useUpdateExercise(), { wrapper });
 
       await act(async () => {
         try {
-          await result.current.updateExerciseAsync({ id: 'ex-1', payload: { name: 'X' } });
+          await result.current.updateExerciseAsync({
+            id: 'ex-1',
+            payload: { name: 'X' },
+          });
         } catch {
           // expected
         }
@@ -365,13 +428,18 @@ describe('useExerciseMutations', () => {
     });
 
     it('shows permission toast on 404', async () => {
-      mockUpdateExercise.mockRejectedValue(new Error('Server error: 404 - not authorized'));
+      mockUpdateExercise.mockRejectedValue(
+        new Error('Server error: 404 - not authorized')
+      );
 
       const { result } = renderHook(() => useUpdateExercise(), { wrapper });
 
       await act(async () => {
         try {
-          await result.current.updateExerciseAsync({ id: 'ex-1', payload: { name: 'X' } });
+          await result.current.updateExerciseAsync({
+            id: 'ex-1',
+            payload: { name: 'X' },
+          });
         } catch {
           // expected
         }
@@ -381,7 +449,7 @@ describe('useExerciseMutations', () => {
         expect(Toast.show).toHaveBeenCalledWith(
           expect.objectContaining({
             text2: "You don't have permission to edit this exercise.",
-          }),
+          })
         );
       });
     });
@@ -391,7 +459,7 @@ describe('useExerciseMutations', () => {
     it('shows confirmation dialog with exercise-specific text', () => {
       const { result } = renderHook(
         () => useDeleteExerciseLibrary({ exerciseId: 'ex-1' }),
-        { wrapper },
+        { wrapper }
       );
 
       act(() => {
@@ -401,7 +469,7 @@ describe('useExerciseMutations', () => {
       expect(Alert.alert).toHaveBeenCalledWith(
         'Delete Exercise?',
         expect.stringContaining('removed from your library'),
-        expect.any(Array),
+        expect.any(Array)
       );
     });
 
@@ -411,7 +479,7 @@ describe('useExerciseMutations', () => {
 
       const { result } = renderHook(
         () => useDeleteExerciseLibrary({ exerciseId: 'ex-1', onSuccess }),
-        { wrapper },
+        { wrapper }
       );
 
       act(() => {
@@ -433,12 +501,12 @@ describe('useExerciseMutations', () => {
 
     it('shows permission toast on 403', async () => {
       mockDeleteExerciseFromLibrary.mockRejectedValue(
-        new Error('Server error: 403 - Forbidden'),
+        new Error('Server error: 403 - Forbidden')
       );
 
       const { result } = renderHook(
         () => useDeleteExerciseLibrary({ exerciseId: 'ex-1' }),
-        { wrapper },
+        { wrapper }
       );
 
       act(() => {

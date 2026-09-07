@@ -10,7 +10,7 @@ const renderBar = (props: React.ComponentProps<typeof FooterSaveBar>) =>
   render(
     <SafeAreaProvider initialMetrics={{ insets, frame }}>
       <FooterSaveBar {...props} />
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
 
 /**

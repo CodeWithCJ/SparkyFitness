@@ -9,8 +9,12 @@ import MarkdownMessage from '../../../src/components/chat/MarkdownMessage';
 
 describe('MarkdownMessage', () => {
   it('passes complete markdown through unchanged', () => {
-    const { getByTestId } = render(<MarkdownMessage text="**done** and more" />);
-    expect(getByTestId('enriched-markdown').props.children).toBe('**done** and more');
+    const { getByTestId } = render(
+      <MarkdownMessage text="**done** and more" />
+    );
+    expect(getByTestId('enriched-markdown').props.children).toBe(
+      '**done** and more'
+    );
   });
 
   it('repairs partial markdown from streaming via remend', () => {
@@ -31,16 +35,24 @@ describe('MarkdownMessage', () => {
   });
 
   it('forwards the streaming flag to the native fade animation', () => {
-    const { getByTestId, rerender } = render(<MarkdownMessage text="hi" streaming={false} />);
-    expect(getByTestId('enriched-markdown').props.streamingAnimation).toBe(false);
+    const { getByTestId, rerender } = render(
+      <MarkdownMessage text="hi" streaming={false} />
+    );
+    expect(getByTestId('enriched-markdown').props.streamingAnimation).toBe(
+      false
+    );
     rerender(<MarkdownMessage text="hi" streaming />);
-    expect(getByTestId('enriched-markdown').props.streamingAnimation).toBe(true);
+    expect(getByTestId('enriched-markdown').props.streamingAnimation).toBe(
+      true
+    );
   });
 
   it('opens tapped links via Linking', () => {
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
     const { getByTestId } = render(<MarkdownMessage text="hi" />);
-    fireEvent(getByTestId('enriched-markdown'), 'linkPress', { url: 'https://example.com' });
+    fireEvent(getByTestId('enriched-markdown'), 'linkPress', {
+      url: 'https://example.com',
+    });
     expect(openURL).toHaveBeenCalledWith('https://example.com');
     openURL.mockRestore();
   });

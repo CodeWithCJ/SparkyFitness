@@ -1,5 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { getActiveServerConfig, getAllServerConfigs, type ServerConfig } from '../services/storage';
+import {
+  getActiveServerConfig,
+  getAllServerConfigs,
+  type ServerConfig,
+} from '../services/storage';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import { serverConfigsQueryKey } from './queryKeys';
 

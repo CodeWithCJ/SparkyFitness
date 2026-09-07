@@ -1,5 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { loadChatHistory, mapHistoryToInitialMessages } from '../services/api/chatApi';
+import {
+  loadChatHistory,
+  mapHistoryToInitialMessages,
+} from '../services/api/chatApi';
 import { chatHistoryQueryKey } from './queryKeys';
 
 interface UseChatHistoryOptions {

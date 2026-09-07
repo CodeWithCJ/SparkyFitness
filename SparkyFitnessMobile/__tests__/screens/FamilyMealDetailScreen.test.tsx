@@ -64,11 +64,11 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (
       key: string,
-      options?: { defaultValue?: string; [name: string]: unknown },
+      options?: { defaultValue?: string; [name: string]: unknown }
     ) =>
       (options?.defaultValue ?? key).replace(
         /\{\{(\w+)\}\}/g,
-        (match, name: string) => String(options?.[name] ?? match),
+        (match, name: string) => String(options?.[name] ?? match)
       ),
   }),
 }));
@@ -101,7 +101,7 @@ const renderMealDetail = ({
           },
         }}
       />
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
 
 describe('FamilyMealDetailScreen', () => {
@@ -128,11 +128,11 @@ describe('FamilyMealDetailScreen', () => {
     const screen = renderMealDetail();
 
     expect(
-      screen.getByText('270 kcal · P 9 g · C 48 g · F 4.5 g'),
+      screen.getByText('270 kcal · P 9 g · C 48 g · F 4.5 g')
     ).toBeTruthy();
     expect(screen.getByText('30 kcal · P 2 g · C 6 g · F 1 g')).toBeTruthy();
     expect(
-      screen.getByText('Selected: 300 kcal · P 11 g · C 54 g · F 5.5 g'),
+      screen.getByText('Selected: 300 kcal · P 11 g · C 54 g · F 5.5 g')
     ).toBeTruthy();
 
     const selectedSauce = screen.getByLabelText('Deselect Tomato Sauce');
@@ -144,7 +144,7 @@ describe('FamilyMealDetailScreen', () => {
       selected: false,
     });
     expect(
-      screen.getByText('Selected: 270 kcal · P 9 g · C 48 g · F 4.5 g'),
+      screen.getByText('Selected: 270 kcal · P 9 g · C 48 g · F 4.5 g')
     ).toBeTruthy();
     expect(screen.getByText('30 kcal · P 2 g · C 6 g · F 1 g')).toBeTruthy();
 
@@ -174,7 +174,7 @@ describe('FamilyMealDetailScreen', () => {
       selected: false,
     });
     expect(
-      screen.getByRole('button', { name: 'Continue' }).props.accessibilityState,
+      screen.getByRole('button', { name: 'Continue' }).props.accessibilityState
     ).toMatchObject({ disabled: true });
 
     fireEvent.press(selectAll);
@@ -201,15 +201,15 @@ describe('FamilyMealDetailScreen', () => {
     const screen = renderMealDetail({ entries: [] });
 
     expect(
-      screen.getByLabelText('Select all').props.accessibilityState,
+      screen.getByLabelText('Select all').props.accessibilityState
     ).toMatchObject({
       selected: false,
     });
     expect(
-      screen.getByRole('button', { name: 'Continue' }).props.accessibilityState,
+      screen.getByRole('button', { name: 'Continue' }).props.accessibilityState
     ).toMatchObject({ disabled: true });
     expect(
-      screen.getByText('Selected: 0 kcal · P 0 g · C 0 g · F 0 g'),
+      screen.getByText('Selected: 0 kcal · P 0 g · C 0 g · F 0 g')
     ).toBeTruthy();
   });
 });

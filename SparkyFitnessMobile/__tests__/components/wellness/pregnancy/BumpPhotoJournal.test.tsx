@@ -42,8 +42,12 @@ describe('BumpPhotoJournal', () => {
 
   it('renders an empty state when there are no photos', () => {
     mockUsePregnancyPhotos.mockReturnValue({ photos: [], isLoading: false });
-    const { getByText } = render(<BumpPhotoJournal pregnancyId="p1" currentWeek={12} />);
-    expect(getByText('Capture your first bump photo to start a weekly journal.')).toBeTruthy();
+    const { getByText } = render(
+      <BumpPhotoJournal pregnancyId="p1" currentWeek={12} />
+    );
+    expect(
+      getByText('Capture your first bump photo to start a weekly journal.')
+    ).toBeTruthy();
   });
 
   it('renders existing photos with their week label', () => {
@@ -61,14 +65,18 @@ describe('BumpPhotoJournal', () => {
       isLoading: false,
     });
 
-    const { getByText } = render(<BumpPhotoJournal pregnancyId="p1" currentWeek={12} />);
+    const { getByText } = render(
+      <BumpPhotoJournal pregnancyId="p1" currentWeek={12} />
+    );
     expect(getByText('Week 12')).toBeTruthy();
   });
 
   it('uploads a photo picked from the library', async () => {
     mockUsePregnancyPhotos.mockReturnValue({ photos: [], isLoading: false });
 
-    const { getByText } = render(<BumpPhotoJournal pregnancyId="p1" currentWeek={12} />);
+    const { getByText } = render(
+      <BumpPhotoJournal pregnancyId="p1" currentWeek={12} />
+    );
     fireEvent.press(getByText('Add Photo'));
     fireEvent.press(getByText('Choose from Library'));
 

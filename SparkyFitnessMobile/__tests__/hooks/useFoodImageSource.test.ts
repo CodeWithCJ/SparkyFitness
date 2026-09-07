@@ -76,7 +76,7 @@ describe('useFoodImageSource', () => {
     const { result } = await renderResolver();
 
     expect(result.current.getImageSource('/uploads/foods/abc/1.jpg')?.uri).toBe(
-      'https://example.com/api/uploads/foods/abc/1.jpg',
+      'https://example.com/api/uploads/foods/abc/1.jpg'
     );
   });
 
@@ -84,7 +84,7 @@ describe('useFoodImageSource', () => {
     const { result } = await renderResolver();
 
     expect(result.current.getImageSource('1.jpg')?.uri).toBe(
-      'https://example.com/api/uploads/foods/1.jpg',
+      'https://example.com/api/uploads/foods/1.jpg'
     );
   });
 
@@ -102,7 +102,7 @@ describe('useFoodImageSource', () => {
     const { result } = await renderResolver();
 
     expect(
-      result.current.getImageSource('/uploads/foods/abc/1.jpg')?.headers,
+      result.current.getImageSource('/uploads/foods/abc/1.jpg')?.headers
     ).toEqual({ 'X-Auth': 'token' });
   });
 
@@ -123,21 +123,23 @@ describe('useFoodImageSource', () => {
     mockGetActiveServerConfig.mockReturnValue(
       new Promise((resolve) => {
         resolveConfig = resolve;
-      }) as ReturnType<typeof getActiveServerConfig>,
+      }) as ReturnType<typeof getActiveServerConfig>
     );
 
     const { result } = renderHook(() => useFoodImageSource());
 
     // Nothing to build a URL from yet — and crucially this must not be cached,
     // or the path would stay unresolved after the config arrives.
-    expect(result.current.getImageSource('/uploads/foods/abc/1.jpg')).toBeNull();
+    expect(
+      result.current.getImageSource('/uploads/foods/abc/1.jpg')
+    ).toBeNull();
 
     await act(async () => {
       resolveConfig(CONFIG);
     });
 
     expect(result.current.getImageSource('/uploads/foods/abc/1.jpg')?.uri).toBe(
-      'https://example.com/api/uploads/foods/abc/1.jpg',
+      'https://example.com/api/uploads/foods/abc/1.jpg'
     );
   });
 
@@ -146,7 +148,7 @@ describe('useFoodImageSource', () => {
     const { result } = await renderResolver();
 
     expect(result.current.getImageSource('/uploads/foods/abc/1.jpg')?.uri).toBe(
-      'https://example.com/api/uploads/foods/abc/1.jpg',
+      'https://example.com/api/uploads/foods/abc/1.jpg'
     );
 
     mockGetActiveServerConfig.mockResolvedValue({
@@ -158,7 +160,7 @@ describe('useFoodImageSource', () => {
     await returnToForeground();
 
     expect(result.current.getImageSource('/uploads/foods/abc/1.jpg')?.uri).toBe(
-      'https://other.example/api/uploads/foods/abc/1.jpg',
+      'https://other.example/api/uploads/foods/abc/1.jpg'
     );
   });
 });

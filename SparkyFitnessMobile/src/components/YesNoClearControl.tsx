@@ -26,7 +26,7 @@ const YesNoClearControl: React.FC<YesNoClearControlProps> = ({
     label: string,
     selected: boolean,
     onPress: () => void,
-    disabled = false,
+    disabled = false
   ) => (
     <TouchableOpacity
       onPress={onPress}

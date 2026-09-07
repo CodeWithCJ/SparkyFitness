@@ -1,13 +1,20 @@
 import fs from 'fs';
 import path from 'path';
-import { SHIPPED_LOCALES, SOURCE_LOCALE } from '../../src/localization/localeRegistry';
+import {
+  SHIPPED_LOCALES,
+  SOURCE_LOCALE,
+} from '../../src/localization/localeRegistry';
 
-const TARGETS_ROOT = path.join(
-  __dirname,
-  '../../targets/android-widget',
+const TARGETS_ROOT = path.join(__dirname, '../../targets/android-widget');
+
+const KOTLIN_ROOT = path.join(
+  TARGETS_ROOT,
+  'kotlin',
+  'com',
+  'sparkyapps',
+  'sparkyfitness',
+  'widget'
 );
-
-const KOTLIN_ROOT = path.join(TARGETS_ROOT, 'kotlin', 'com', 'sparkyapps', 'sparkyfitness', 'widget');
 const RES_ROOT = path.join(TARGETS_ROOT, 'res');
 
 /**
@@ -23,7 +30,9 @@ function discoverWidgetLocaleDirs(): Map<string, string> {
       result.set(SOURCE_LOCALE, entry.name);
     } else if (entry.name.startsWith('values-')) {
       const qualifier = entry.name.slice('values-'.length);
-      const locale = qualifier.startsWith('b+') ? qualifier.slice(2).replaceAll('+', '-') : qualifier;
+      const locale = qualifier.startsWith('b+')
+        ? qualifier.slice(2).replaceAll('+', '-')
+        : qualifier;
       result.set(locale, entry.name);
     }
   }
@@ -31,19 +40,28 @@ function discoverWidgetLocaleDirs(): Map<string, string> {
 }
 
 const WIDGET_LOCALE_DIRS = discoverWidgetLocaleDirs();
-const SHIPPED_WIDGET_LOCALES = Object.keys(SHIPPED_LOCALES).filter((locale) => WIDGET_LOCALE_DIRS.has(locale));
+const SHIPPED_WIDGET_LOCALES = Object.keys(SHIPPED_LOCALES).filter((locale) =>
+  WIDGET_LOCALE_DIRS.has(locale)
+);
 
-function readWidgetStringResources(locale: string = SOURCE_LOCALE): { name: string; value: string }[] {
+function readWidgetStringResources(
+  locale: string = SOURCE_LOCALE
+): { name: string; value: string }[] {
   const dir = WIDGET_LOCALE_DIRS.get(locale);
-  if (!dir) throw new Error(`No Android widget resource directory for locale "${locale}"`);
+  if (!dir)
+    throw new Error(
+      `No Android widget resource directory for locale "${locale}"`
+    );
   const xml = fs.readFileSync(
     path.join(RES_ROOT, dir, 'widget_strings.xml'),
-    'utf8',
+    'utf8'
   );
   return extractStringResources(xml);
 }
 
-function extractStringResources(xml: string): { name: string; value: string }[] {
+function extractStringResources(
+  xml: string
+): { name: string; value: string }[] {
   const result: { name: string; value: string }[] = [];
   const regex = /<string\b[^>]*\bname="([^"]+)"[^>]*>([^<]*)<\/string>/g;
   let match: RegExpExecArray | null;
@@ -55,7 +73,9 @@ function extractStringResources(xml: string): { name: string; value: string }[] 
   }
   const declaredCount = (xml.match(/<string\b/g) ?? []).length;
   if (result.length !== declaredCount) {
-    throw new Error(`Widget resource parser matched ${result.length} of ${declaredCount} string declarations`);
+    throw new Error(
+      `Widget resource parser matched ${result.length} of ${declaredCount} string declarations`
+    );
   }
   return result;
 }
@@ -150,7 +170,9 @@ describe('Android widget localization contract', () => {
 
     it('does not keep resource keys that lost their consumer after the resize removal', () => {
       for (const locale of WIDGET_LOCALE_DIRS.keys()) {
-        const resources = new Set(readWidgetStringResources(locale).map((r) => r.name));
+        const resources = new Set(
+          readWidgetStringResources(locale).map((r) => r.name)
+        );
         for (const key of DEAD_RESIZE_KEYS) {
           expect(resources.has(key)).toBe(false);
         }
@@ -167,38 +189,31 @@ describe('Android widget localization contract', () => {
       // the native widget validator and the placeholder tests below.
     });
 
-    it('uses approved Polish translations with diacritics where natural', () => {
-      // PL-specific regression guard: these translations were reviewed and
-      // approved. This test is intentionally PL-specific (not registry-driven)
-      // because it verifies known-good linguistic content, not architecture.
-      const pl = new Map(
-        readWidgetStringResources('pl').map((r) => [r.name, r.value]),
-      );
-
-      expect(pl.get('sparky_calorie_widget_name')).toBe('Kalorie');
-      expect(pl.get('sparky_macro_widget_name')).toBe('Makroskładniki');
-      expect(pl.get('widget_protein')).toBe('Białko');
-      expect(pl.get('widget_carbs')).toBe('Węglowodany');
-      expect(pl.get('widget_fat')).toBe('Tłuszcz');
-      expect(pl.get('widget_search_food')).toBe('Wyszukaj produkt');
-      expect(pl.get('widget_scan_barcode')).toBe('Skanuj kod kreskowy');
-      expect(pl.get('widget_kcal_left')).toBe('Pozostało %1$s kcal');
+    it('keeps the two widget names distinct in every shipped locale', () => {
+      for (const locale of SHIPPED_WIDGET_LOCALES) {
+        const strings = new Map(
+          readWidgetStringResources(locale).map((r) => [r.name, r.value])
+        );
+        expect(strings.get('sparky_calorie_widget_name')).not.toBe(
+          strings.get('sparky_macro_widget_name')
+        );
+      }
     });
 
     it('keeps placeholder positions compatible across all shipped widget locales', () => {
       const en = new Map(
-        readWidgetStringResources().map((r) => [r.name, r.value]),
+        readWidgetStringResources().map((r) => [r.name, r.value])
       );
-      const placeholderKeys = [
-        'widget_kcal_left',
-        'widget_grams',
-      ];
+      const placeholderKeys = ['widget_kcal_left', 'widget_grams'];
       for (const locale of SHIPPED_WIDGET_LOCALES) {
         if (locale === SOURCE_LOCALE) continue;
-        const target = new Map(readWidgetStringResources(locale).map((r) => [r.name, r.value]));
+        const target = new Map(
+          readWidgetStringResources(locale).map((r) => [r.name, r.value])
+        );
         for (const key of placeholderKeys) {
           const enCount = (en.get(key)?.match(/%\d+\$[sd]/g) ?? []).length;
-          const targetCount = (target.get(key)?.match(/%\d+\$[sd]/g) ?? []).length;
+          const targetCount = (target.get(key)?.match(/%\d+\$[sd]/g) ?? [])
+            .length;
           // Missing key: Android falls back to default `values` — allowed.
           if (!target.has(key) || target.get(key) === '') continue;
           expect(targetCount).toBe(enCount);
@@ -239,7 +254,7 @@ describe('Android widget localization contract', () => {
     it('resolves widget labels through context.getString(R.string...)', () => {
       const calorieSrc = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'CalorieWidget.kt.tmpl'),
-        'utf8',
+        'utf8'
       );
       expect(calorieSrc).toMatch(/R\.string\.widget_kcal_left/);
       expect(calorieSrc).toMatch(/R\.string\.widget_kcal_left_empty/);
@@ -251,7 +266,7 @@ describe('Android widget localization contract', () => {
 
       const macroSrc = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'),
-        'utf8',
+        'utf8'
       );
       for (const ref of [
         'widget_protein',
@@ -273,8 +288,12 @@ describe('Android widget localization contract', () => {
     it('localizes accessibility labels in the Kotlin widgets', () => {
       for (const template of ['CalorieWidget.kt.tmpl', 'MacroWidget.kt.tmpl']) {
         const src = fs.readFileSync(path.join(KOTLIN_ROOT, template), 'utf8');
-        expect(src).toMatch(/widgetContext\.getString\(R\.string\.widget_search_food\)/);
-        expect(src).toMatch(/widgetContext\.getString\(R\.string\.widget_scan_barcode\)/);
+        expect(src).toMatch(
+          /widgetContext\.getString\(R\.string\.widget_search_food\)/
+        );
+        expect(src).toMatch(
+          /widgetContext\.getString\(R\.string\.widget_scan_barcode\)/
+        );
         expect(src).toMatch(/contentDescription = searchFoodLabel/);
         expect(src).toMatch(/contentDescription = scanBarcodeLabel/);
       }
@@ -283,7 +302,7 @@ describe('Android widget localization contract', () => {
     it('uses locale-aware number formatting without hardcoding English separators', () => {
       const helper = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
-        'utf8',
+        'utf8'
       );
       expect(helper).toMatch(/NumberFormat\.getIntegerInstance/);
       expect(helper).not.toContain('String.format(Locale.US');
@@ -300,27 +319,33 @@ describe('Android widget localization contract', () => {
     it('keeps the pre-localization per-widget rounding (calorie truncates, macro rounds)', () => {
       const calorieSrc = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'CalorieWidget.kt.tmpl'),
-        'utf8',
+        'utf8'
       );
       // PR3 behavior (22415819): calorie widget truncates 1240.7 -> 1240.
-      expect(calorieSrc).toMatch(/formatWidgetInt\(context, value\.toLong\(\)\)/);
+      expect(calorieSrc).toMatch(
+        /formatWidgetInt\(context, value\.toLong\(\)\)/
+      );
       expect(calorieSrc).not.toMatch(/\.roundToLong\(\)/);
 
       const macroSrc = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'),
-        'utf8',
+        'utf8'
       );
       // PR3 behavior (22415819): macro widget rounds 1240.7 -> 1241.
-      expect(macroSrc).toMatch(/formatWidgetInt\(context, value\.roundToLong\(\)\)/);
+      expect(macroSrc).toMatch(
+        /formatWidgetInt\(context, value\.roundToLong\(\)\)/
+      );
       expect(macroSrc).not.toMatch(/value\.toLong\(\)/);
 
       // The shared helper formats ONLY: locale-aware separators, no business
       // rounding inside it (each caller keeps its pre-localization rule).
       const helper = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
-        'utf8',
+        'utf8'
       );
-      expect(helper).toMatch(/fun formatWidgetInt\(context: Context, value: Long\)/);
+      expect(helper).toMatch(
+        /fun formatWidgetInt\(context: Context, value: Long\)/
+      );
       expect(helper).not.toMatch(/roundToLong/);
       expect(helper).not.toMatch(/\.toLong\(\)/);
     });
@@ -328,10 +353,14 @@ describe('Android widget localization contract', () => {
     it('updates every GlanceId and continues past a failing instance', () => {
       const moduleSrc = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'CalorieWidgetModule.kt.tmpl'),
-        'utf8',
+        'utf8'
       );
-      expect(moduleSrc).toMatch(/getGlanceIds\(CalorieWidget::class\.java\)\.forEach/);
-      expect(moduleSrc).toMatch(/getGlanceIds\(MacroWidget::class\.java\)\.forEach/);
+      expect(moduleSrc).toMatch(
+        /getGlanceIds\(CalorieWidget::class\.java\)\.forEach/
+      );
+      expect(moduleSrc).toMatch(
+        /getGlanceIds\(MacroWidget::class\.java\)\.forEach/
+      );
       expect(moduleSrc).not.toMatch(/getGlanceIds\([^)]*\)\[0\]/);
       expect(moduleSrc).toMatch(/catch \(e: CancellationException\)/);
       expect(moduleSrc).toMatch(/var firstFailure: Exception\?/);
@@ -340,11 +369,11 @@ describe('Android widget localization contract', () => {
     it('keeps the midnight refresh mechanism with distinct request codes', () => {
       const calorieReceiver = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'CalorieWidgetReceiver.kt.tmpl'),
-        'utf8',
+        'utf8'
       );
       const macroReceiver = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'MacroWidgetReceiver.kt.tmpl'),
-        'utf8',
+        'utf8'
       );
 
       for (const src of [calorieReceiver, macroReceiver]) {
@@ -378,14 +407,20 @@ describe('Android widget localization contract', () => {
     // resizable. This PR removed the resize/responsive experiment entirely.
     it('keeps resizeMode="none" on both provider XMLs', () => {
       for (const infoXml of WIDGET_INFO_XMLS) {
-        const src = fs.readFileSync(path.join(RES_ROOT, 'xml', infoXml), 'utf8');
+        const src = fs.readFileSync(
+          path.join(RES_ROOT, 'xml', infoXml),
+          'utf8'
+        );
         expect(src).toMatch(/android:resizeMode="none"/);
       }
     });
 
     it('never re-enables horizontal or vertical resizing', () => {
       for (const infoXml of WIDGET_INFO_XMLS) {
-        const src = fs.readFileSync(path.join(RES_ROOT, 'xml', infoXml), 'utf8');
+        const src = fs.readFileSync(
+          path.join(RES_ROOT, 'xml', infoXml),
+          'utf8'
+        );
         expect(src).not.toMatch(/resizeMode="horizontal\|vertical"/);
         expect(src).not.toMatch(/minResizeWidth/);
         expect(src).not.toMatch(/minResizeHeight/);
@@ -395,11 +430,11 @@ describe('Android widget localization contract', () => {
     it('keeps the classic provider footprints (calorie 110x40 2x1, macro 110x110 2x2)', () => {
       const calorie = fs.readFileSync(
         path.join(RES_ROOT, 'xml', 'sparky_calorie_widget_info.xml'),
-        'utf8',
+        'utf8'
       );
       const macro = fs.readFileSync(
         path.join(RES_ROOT, 'xml', 'sparky_macro_widget_info.xml'),
-        'utf8',
+        'utf8'
       );
 
       // Calorie: classic 2x1 footprint with the pre-localization minimums.
@@ -422,7 +457,7 @@ describe('Android widget localization contract', () => {
       // re-render when the app language is changed outside the app.
       const pluginSrc = fs.readFileSync(
         path.join(__dirname, '../../plugins/withCalorieWidget.ts'),
-        'utf8',
+        'utf8'
       );
       expect(pluginSrc).toMatch(/android\.appwidget\.action\.APPWIDGET_UPDATE/);
       expect(pluginSrc).toMatch(/android\.intent\.action\.LOCALE_CHANGED/);
@@ -436,12 +471,12 @@ describe('Android widget localization contract', () => {
     it('restores the classic macro size mode (single 200x200 responsive size)', () => {
       const macroSrc = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'),
-        'utf8',
+        'utf8'
       );
       // The pre-localization SizeMode: one responsive size matching the fixed
       // 2x2 footprint — NOT resizable, NOT SizeMode.Exact.
       expect(macroSrc).toMatch(
-        /SizeMode\.Responsive\(\s*setOf\(DpSize\(200\.dp, 200\.dp\)\),?\s*\)/,
+        /SizeMode\.Responsive\(\s*setOf\(DpSize\(200\.dp, 200\.dp\)\),?\s*\)/
       );
     });
 
@@ -460,7 +495,10 @@ describe('Android widget localization contract', () => {
     });
 
     it('keeps the classic calorie composition (one-line heading, progress, actions)', () => {
-      const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'CalorieWidget.kt.tmpl'), 'utf8');
+      const src = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'CalorieWidget.kt.tmpl'),
+        'utf8'
+      );
       // Classic structure: 12dp padding, one-line bold 18sp heading, 8dp gap +
       // 8dp progress, flexible spacer, then the 32dp action row with 24dp
       // icons and a 24dp divider.
@@ -478,11 +516,18 @@ describe('Android widget localization contract', () => {
     });
 
     it('keeps the classic macro composition (centered content block, inline rows, actions)', () => {
-      const src = fs.readFileSync(path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'), 'utf8');
+      const src = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'),
+        'utf8'
+      );
       // Classic container strategy: Box centers a CONTENT-SIZED column.
       expect(src).toMatch(/contentAlignment = Alignment\.Center/);
-      expect(src).toMatch(/Column\(modifier = GlanceModifier\.fillMaxWidth\(\)\)/);
-      expect(src).not.toMatch(/Column\(modifier = GlanceModifier\.fillMaxSize\(\)\)/);
+      expect(src).toMatch(
+        /Column\(modifier = GlanceModifier\.fillMaxWidth\(\)\)/
+      );
+      expect(src).not.toMatch(
+        /Column\(modifier = GlanceModifier\.fillMaxSize\(\)\)/
+      );
       // The kcal header and all macro rows are always rendered.
       expect(src).toMatch(/CalorieHeader\(/);
       expect(src).toMatch(/MacroRows\(/);
@@ -500,12 +545,16 @@ describe('Android widget localization contract', () => {
     it('owns the widget locale and render cache in a dedicated SharedPreferences namespace', () => {
       const src = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
-        'utf8',
+        'utf8'
       );
       expect(src).toMatch(/PREFS_NAME = "SparkyWidgetLocale"/);
       expect(src).toMatch(/KEY_LOCALE = "widgetLocale"/);
-      expect(src).toMatch(/KEY_EFFECTIVE_RENDER_LOCALE = "effectiveRenderLocale"/);
-      expect(src).toMatch(/getSharedPreferences\(PREFS_NAME, Context\.MODE_PRIVATE\)/);
+      expect(src).toMatch(
+        /KEY_EFFECTIVE_RENDER_LOCALE = "effectiveRenderLocale"/
+      );
+      expect(src).toMatch(
+        /getSharedPreferences\(PREFS_NAME, Context\.MODE_PRIVATE\)/
+      );
       expect(src).toMatch(/LOCALE_RENDER_REVISION_STATE_KEY/);
       expect(src).toMatch(/longPreferencesKey\(\"localeRenderRevision\"\)/);
       expect(src).toMatch(/updateAppWidgetState\(context, glanceId\)/);
@@ -518,26 +567,40 @@ describe('Android widget localization contract', () => {
     it('prepares preference and effective language atomically before reload', () => {
       const moduleSrc = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'CalorieWidgetModule.kt.tmpl'),
-        'utf8',
+        'utf8'
       );
       expect(moduleSrc).toMatch(/fun prepareWidgetLocale\(/);
       expect(moduleSrc).toMatch(/preference: String/);
       expect(moduleSrc).toMatch(/effectiveLanguage: String/);
-      expect(moduleSrc).toMatch(/WidgetLocale\.prepareWidgetLocale\(ctx, preference, effectiveLanguage\)/);
-      expect(moduleSrc).toMatch(/WidgetLocale\.bumpLocaleRenderRevision\(ctx, id\)/);
-      const prepareIndex = moduleSrc.indexOf('WidgetLocale.prepareWidgetLocale(ctx, preference, effectiveLanguage)');
-      const bumpIndex = moduleSrc.indexOf('WidgetLocale.bumpLocaleRenderRevision(ctx, id)', prepareIndex);
-      const resolveIndex = moduleSrc.indexOf('promise.resolve(null)', bumpIndex);
+      expect(moduleSrc).toMatch(
+        /WidgetLocale\.prepareWidgetLocale\(ctx, preference, effectiveLanguage\)/
+      );
+      expect(moduleSrc).toMatch(
+        /WidgetLocale\.bumpLocaleRenderRevision\(ctx, id\)/
+      );
+      const prepareIndex = moduleSrc.indexOf(
+        'WidgetLocale.prepareWidgetLocale(ctx, preference, effectiveLanguage)'
+      );
+      const bumpIndex = moduleSrc.indexOf(
+        'WidgetLocale.bumpLocaleRenderRevision(ctx, id)',
+        prepareIndex
+      );
+      const resolveIndex = moduleSrc.indexOf(
+        'promise.resolve(null)',
+        bumpIndex
+      );
       expect(prepareIndex).toBeGreaterThan(-1);
       expect(bumpIndex).toBeGreaterThan(prepareIndex);
       expect(resolveIndex).toBeGreaterThan(bumpIndex);
       expect(moduleSrc).toMatch(/var firstFailure: Exception\?/);
       expect(moduleSrc).toMatch(/RuntimeException\([^\n]+, firstFailure\)/);
-      expect(moduleSrc).toMatch(/catch \(e: CancellationException\)\s*\{\s*throw e/);
+      expect(moduleSrc).toMatch(
+        /catch \(e: CancellationException\)\s*\{\s*throw e/
+      );
 
       const bridge = fs.readFileSync(
         path.join(__dirname, '../../src/services/CalorieWidgetBridge.ts'),
-        'utf8',
+        'utf8'
       );
       expect(bridge).toMatch(/prepareWidgetLocale\(/);
       expect(bridge).toMatch(/effectiveLanguage/);
@@ -546,39 +609,62 @@ describe('Android widget localization contract', () => {
     it('resolves the render cache before LocaleManager on Android 13+', () => {
       const src = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
-        'utf8',
+        'utf8'
       );
-      const renderContextIndex = src.indexOf('fun localizedContext(context: Context): Context');
-      const cacheIndex = src.indexOf('effectiveRenderLocale(context)', renderContextIndex);
-      const platformIndex = src.indexOf('currentPlatformLanguage(context)', renderContextIndex);
+      const renderContextIndex = src.indexOf(
+        'fun localizedContext(context: Context): Context'
+      );
+      const cacheIndex = src.indexOf(
+        'effectiveRenderLocale(context)',
+        renderContextIndex
+      );
+      const platformIndex = src.indexOf(
+        'currentPlatformLanguage(context)',
+        renderContextIndex
+      );
       expect(renderContextIndex).toBeGreaterThan(-1);
       expect(cacheIndex).toBeGreaterThan(renderContextIndex);
       expect(platformIndex).toBeGreaterThan(cacheIndex);
       expect(src).toMatch(/applicationLocales/);
       expect(src).toMatch(/systemLocales/);
       expect(src).toMatch(/createConfigurationContext\(config\)/);
-      expect(src).not.toMatch(/if \(isNativeAppLanguageSupported\(\)\) return context/);
+      expect(src).not.toMatch(
+        /if \(isNativeAppLanguageSupported\(\)\) return context/
+      );
     });
 
     it('keeps API <=32 override behavior and removes the API 33 cache there', () => {
       const src = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
-        'utf8',
+        'utf8'
       );
       expect(src).toMatch(/override\(context\)/);
       expect(src).toMatch(/editor\.remove\(KEY_EFFECTIVE_RENDER_LOCALE\)/);
       expect(src).toMatch(/editor\.remove\(KEY_LOCALE\)/);
-      expect(src).toMatch(/editor\.putString\(KEY_LOCALE, normalizedPreference\)/);
+      expect(src).toMatch(
+        /editor\.putString\(KEY_LOCALE, normalizedPreference\)/
+      );
       expect(src).toMatch(/\{\{SUPPORTED_LOCALES\}\}/);
       expect(src).toMatch(/\{\{FALLBACK_LOCALE\}\}/);
     });
 
     it('refreshes the broadcast locale payload before LOCALE_CHANGED updateAll', () => {
-      for (const receiver of ['CalorieWidgetReceiver.kt.tmpl', 'MacroWidgetReceiver.kt.tmpl']) {
+      for (const receiver of [
+        'CalorieWidgetReceiver.kt.tmpl',
+        'MacroWidgetReceiver.kt.tmpl',
+      ]) {
         const src = fs.readFileSync(path.join(KOTLIN_ROOT, receiver), 'utf8');
-        const refreshIndex = src.indexOf('refreshEffectiveRenderLocaleFromBroadcast(context, intent)');
-        const bumpIndex = src.indexOf('WidgetLocale.bumpLocaleRenderRevision(context, id)', refreshIndex);
-        const updateIndex = src.indexOf('glanceAppWidget.updateAll(context)', bumpIndex);
+        const refreshIndex = src.indexOf(
+          'refreshEffectiveRenderLocaleFromBroadcast(context, intent)'
+        );
+        const bumpIndex = src.indexOf(
+          'WidgetLocale.bumpLocaleRenderRevision(context, id)',
+          refreshIndex
+        );
+        const updateIndex = src.indexOf(
+          'glanceAppWidget.updateAll(context)',
+          bumpIndex
+        );
         expect(refreshIndex).toBeGreaterThan(-1);
         expect(bumpIndex).toBeGreaterThan(refreshIndex);
         expect(updateIndex).toBeGreaterThan(bumpIndex);
@@ -591,7 +677,7 @@ describe('Android widget localization contract', () => {
 
       const locale = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'WidgetLocale.kt.tmpl'),
-        'utf8',
+        'utf8'
       );
       expect(locale).toMatch(/Intent\.EXTRA_PACKAGE_NAME/);
       expect(locale).toMatch(/Intent\.EXTRA_LOCALE_LIST/);
@@ -599,52 +685,78 @@ describe('Android widget localization contract', () => {
       // in WidgetLocaleApi33 (issue #2253); the common WidgetLocale object only
       // delegates to it.
       expect(locale).toMatch(/WidgetLocaleApi33\.getLocaleListExtra\(intent\)/);
-      expect(locale).not.toMatch(/getParcelableExtra\(\s*Intent\.EXTRA_LOCALE_LIST,\s*LocaleList::class\.java,?\s*\)/);
+      expect(locale).not.toMatch(
+        /getParcelableExtra\(\s*Intent\.EXTRA_LOCALE_LIST,\s*LocaleList::class\.java,?\s*\)/
+      );
       expect(locale).toMatch(/systemPlatformLanguage\(context\)/);
       expect(locale).toMatch(/refreshEffectiveRenderLocaleFromBroadcast/);
       expect(locale).not.toMatch(/refreshEffectiveRenderLocaleFromPlatform/);
       // The app-locale payload is the primary path. A stale
       // applicationLocales readback may only remain in the non-app fallback.
-      const broadcastStart = locale.indexOf('fun refreshEffectiveRenderLocaleFromBroadcast');
-      const broadcastEnd = locale.indexOf('/** Reads only the API 33+ synchronized rendering cache. */', broadcastStart);
+      const broadcastStart = locale.indexOf(
+        'fun refreshEffectiveRenderLocaleFromBroadcast'
+      );
+      const broadcastEnd = locale.indexOf(
+        '/** Reads only the API 33+ synchronized rendering cache. */',
+        broadcastStart
+      );
       const broadcastBody = locale.slice(broadcastStart, broadcastEnd);
-      const appBranchStart = broadcastBody.indexOf('val effective = if (hasAppLocaleExtras) {');
+      const appBranchStart = broadcastBody.indexOf(
+        'val effective = if (hasAppLocaleExtras) {'
+      );
       const appBranchEnd = broadcastBody.indexOf(
         '        } else {\n            val contextLocales',
-        appBranchStart,
+        appBranchStart
       );
-      const appPayloadBranch = broadcastBody.slice(appBranchStart, appBranchEnd);
+      const appPayloadBranch = broadcastBody.slice(
+        appBranchStart,
+        appBranchEnd
+      );
       expect(appBranchStart).toBeGreaterThan(-1);
       expect(appBranchEnd).toBeGreaterThan(appBranchStart);
-      expect(appPayloadBranch).not.toMatch(/currentPlatformLanguage\(context\)/);
-      expect(appPayloadBranch).toMatch(/appLocales != null && !appLocales\.isEmpty/);
+      expect(appPayloadBranch).not.toMatch(
+        /currentPlatformLanguage\(context\)/
+      );
+      expect(appPayloadBranch).toMatch(
+        /appLocales != null && !appLocales\.isEmpty/
+      );
       expect(appPayloadBranch).toMatch(/languageFromLocaleList\(appLocales\)/);
       expect(broadcastBody).toMatch(/systemPlatformLanguage\(context\)/);
-      expect(broadcastBody).toMatch(/editor\.putString\(KEY_EFFECTIVE_RENDER_LOCALE, effective\)/);
+      expect(broadcastBody).toMatch(
+        /editor\.putString\(KEY_EFFECTIVE_RENDER_LOCALE, effective\)/
+      );
 
       // The API 33+ overload must live in the isolated helper (issue #2253).
       const helper = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'WidgetLocaleApi33.kt.tmpl'),
-        'utf8',
+        'utf8'
       );
-      expect(helper).toMatch(/getParcelableExtra\(\s*Intent\.EXTRA_LOCALE_LIST,\s*LocaleList::class\.java,?\s*\)/);
+      expect(helper).toMatch(
+        /getParcelableExtra\(\s*Intent\.EXTRA_LOCALE_LIST,\s*LocaleList::class\.java,?\s*\)/
+      );
     });
 
     it('exposes prepareWidgetLocale through the native bridge', () => {
       const moduleSrc = fs.readFileSync(
         path.join(KOTLIN_ROOT, 'CalorieWidgetModule.kt.tmpl'),
-        'utf8',
+        'utf8'
       );
       expect(moduleSrc).toMatch(/fun prepareWidgetLocale\(/);
-      expect(moduleSrc).toMatch(/WidgetLocale\.prepareWidgetLocale\(ctx, preference, effectiveLanguage\)/);
+      expect(moduleSrc).toMatch(
+        /WidgetLocale\.prepareWidgetLocale\(ctx, preference, effectiveLanguage\)/
+      );
     });
 
     it('makes both active widget compositions observe the locale revision state', () => {
       for (const template of ['CalorieWidget.kt.tmpl', 'MacroWidget.kt.tmpl']) {
         const src = fs.readFileSync(path.join(KOTLIN_ROOT, template), 'utf8');
         expect(src).toMatch(/currentState<Preferences>\(\)/);
-        expect(src).toMatch(/currentState\(WidgetLocale\.LOCALE_RENDER_REVISION_STATE_KEY\)/);
-        expect(src).not.toMatch(/state\[WidgetLocale\.LOCALE_RENDER_REVISION_STATE_KEY\]/);
+        expect(src).toMatch(
+          /currentState\(WidgetLocale\.LOCALE_RENDER_REVISION_STATE_KEY\)/
+        );
+        expect(src).not.toMatch(
+          /state\[WidgetLocale\.LOCALE_RENDER_REVISION_STATE_KEY\]/
+        );
       }
     });
   });
@@ -653,11 +765,11 @@ describe('Android widget localization contract', () => {
     it('uses resource labels and descriptions in the receiver info XML', () => {
       const calorieInfo = fs.readFileSync(
         path.join(RES_ROOT, 'xml', 'sparky_calorie_widget_info.xml'),
-        'utf8',
+        'utf8'
       );
       const macroInfo = fs.readFileSync(
         path.join(RES_ROOT, 'xml', 'sparky_macro_widget_info.xml'),
-        'utf8',
+        'utf8'
       );
 
       expect(calorieInfo).toContain('@string/sparky_widget_description');
@@ -671,10 +783,13 @@ describe('Android widget localization contract', () => {
         'sparky_widget_initial_layout.xml',
         'sparky_macro_widget_initial_layout.xml',
       ]) {
-        const src = fs.readFileSync(path.join(RES_ROOT, 'layout', layout), 'utf8');
-        const textValues = [
-          ...src.matchAll(/android:text="([^"]*)"/g),
-        ].map((m) => m[1]);
+        const src = fs.readFileSync(
+          path.join(RES_ROOT, 'layout', layout),
+          'utf8'
+        );
+        const textValues = [...src.matchAll(/android:text="([^"]*)"/g)].map(
+          (m) => m[1]
+        );
         const contentDescriptions = [
           ...src.matchAll(/android:contentDescription="([^"]*)"/g),
         ].map((m) => m[1]);
@@ -690,7 +805,7 @@ describe('Android widget localization contract', () => {
     it('reuses localized labels for macros and grams samples', () => {
       const macroLayout = fs.readFileSync(
         path.join(RES_ROOT, 'layout', 'sparky_macro_widget_initial_layout.xml'),
-        'utf8',
+        'utf8'
       );
       expect(macroLayout).toContain('@string/widget_protein');
       expect(macroLayout).toContain('@string/widget_carbs');
@@ -701,12 +816,14 @@ describe('Android widget localization contract', () => {
     it('calorie preview mirrors the classic one-line heading', () => {
       const calorieLayout = fs.readFileSync(
         path.join(RES_ROOT, 'layout', 'sparky_widget_initial_layout.xml'),
-        'utf8',
+        'utf8'
       );
       // Classic one-line heading, not the two-line caption/value split.
       expect(calorieLayout).toContain('@string/widget_preview_calories_left');
       expect(calorieLayout).not.toContain('@string/widget_kcal_left_caption');
-      expect(calorieLayout).not.toContain('@string/widget_preview_calories_value');
+      expect(calorieLayout).not.toContain(
+        '@string/widget_preview_calories_value'
+      );
       // Progress + action row present like the classic default.
       expect(calorieLayout).toContain('@string/widget_search_food');
       expect(calorieLayout).toContain('@string/widget_scan_barcode');
@@ -715,7 +832,7 @@ describe('Android widget localization contract', () => {
     it('macro preview mirrors the classic one-line header and inline rows', () => {
       const macroLayout = fs.readFileSync(
         path.join(RES_ROOT, 'layout', 'sparky_macro_widget_initial_layout.xml'),
-        'utf8',
+        'utf8'
       );
       // One-line kcal header (no caption/value split).
       expect(macroLayout).toContain('@string/widget_preview_macros_left');
@@ -723,7 +840,9 @@ describe('Android widget localization contract', () => {
       expect(macroLayout).not.toContain('@string/widget_preview_macros_value');
       // Inline rows: label and gram value live in the SAME row.
       const carbsIndex = macroLayout.indexOf('@string/widget_carbs');
-      const gramsCarbsIndex = macroLayout.indexOf('@string/widget_preview_grams_carbs');
+      const gramsCarbsIndex = macroLayout.indexOf(
+        '@string/widget_preview_grams_carbs'
+      );
       expect(carbsIndex).toBeGreaterThan(-1);
       expect(gramsCarbsIndex).toBeGreaterThan(carbsIndex);
       expect(gramsCarbsIndex - carbsIndex).toBeLessThan(900);

@@ -8,7 +8,10 @@ import {
   saveFood,
   type SaveFoodPayload,
 } from '../services/api/foodsApi';
-import { createFoodEntry, type CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
+import {
+  createFoodEntry,
+  type CreateFoodEntryPayload,
+} from '../services/api/foodEntriesApi';
 import type { ImageUploadArgs } from '../utils/pickerImages';
 import { dailySummaryQueryKey, foodsQueryKey } from './queryKeys';
 import { invalidateMealUsageCaches } from './useMeals';
@@ -68,7 +71,7 @@ async function resolveSelectedVariant(
         serving_unit: string;
       }
     | null
-    | undefined,
+    | undefined
 ): Promise<StoredServingReference> {
   const selectedIdentity = {
     serving_size: selectedServingSize,
@@ -93,7 +96,7 @@ async function resolveSelectedVariant(
   }
 
   const exactMatches = allVariants.filter(
-    variant => servingVariantKey(variant) === exactKey,
+    (variant) => servingVariantKey(variant) === exactKey
   );
   if (exactMatches.length === 1) return exactMatches[0];
   if (exactDefault) return exactDefault;
@@ -103,9 +106,9 @@ async function resolveSelectedVariant(
 
   const baseKey = baseServingVariantKey(selectedIdentity);
   const legacyMatches = allVariants.filter(
-    variant =>
+    (variant) =>
       !hasDistinctMetricServingContext(variant) &&
-      baseServingVariantKey(variant) === baseKey,
+      baseServingVariantKey(variant) === baseKey
   );
   if (legacyMatches.length === 1) return legacyMatches[0];
 
@@ -119,7 +122,10 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
   const mutation = useMutation({
     mutationFn: async (input: AddFoodEntryInput) => {
       if (input.saveFoodPayload) {
-        const saved = await saveFood(input.saveFoodPayload, input.saveFoodImages);
+        const saved = await saveFood(
+          input.saveFoodPayload,
+          input.saveFoodImages
+        );
 
         let variantId = saved.default_variant?.id;
         let unit = input.createEntryPayload.unit;
@@ -146,14 +152,16 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
             saved.id,
             selectedServingSize,
             selectedServingUnit,
-            saved.default_variant,
+            saved.default_variant
           );
           variantId = resolvedVariant.id;
           unit = resolvedVariant.serving_unit;
         }
 
         if (!variantId) {
-          throw new Error('Server did not return a variant ID for the saved food');
+          throw new Error(
+            'Server did not return a variant ID for the saved food'
+          );
         }
 
         return createFoodEntry({
@@ -173,10 +181,21 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
     },
     onError: (error) => {
       const text2 =
-        error instanceof Error && error.message === SELECTED_VARIANT_RESOLUTION_ERROR
-          ? t('foodEntryAdd.errors.chooseDifferentServing', { defaultValue: 'Choose a different serving.' })
-          : t('foodEntryAdd.errors.tryAgain', { defaultValue: 'Please try again.' });
-      Toast.show({ type: 'error', text1: t('foodEntryAdd.errors.failedToAddFood', { defaultValue: 'Failed to add food' }), text2 });
+        error instanceof Error &&
+        error.message === SELECTED_VARIANT_RESOLUTION_ERROR
+          ? t('foodEntryAdd.errors.chooseDifferentServing', {
+              defaultValue: 'Choose a different serving.',
+            })
+          : t('foodEntryAdd.errors.tryAgain', {
+              defaultValue: 'Please try again.',
+            });
+      Toast.show({
+        type: 'error',
+        text1: t('foodEntryAdd.errors.failedToAddFood', {
+          defaultValue: 'Failed to add food',
+        }),
+        text2,
+      });
     },
   });
 

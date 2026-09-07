@@ -26,7 +26,7 @@ interface FoodEntryImageOverrideProps {
  * When the entry has no photos of its own, the parent's images are shown
  * dimmed and read-only, since that is what the diary actually falls back to.
  */
-export function FoodEntryImageOverride({
+function FoodEntryImageOverride({
   items,
   onItemsChange,
   entry,

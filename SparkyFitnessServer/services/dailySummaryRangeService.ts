@@ -4,10 +4,11 @@ import exerciseEntryRepository from '../models/exerciseEntry.js';
 import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
+import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import { log } from '../config/logging.js';
 import {
   computeCalorieBalance,
-  resolveDayFraction,
+  resolveDeviceProjectionSnapshot,
   type CalorieBalanceMeasurements,
 } from './calorieBalanceService.js';
 import {
@@ -30,6 +31,7 @@ import type { DailyCalorieBalanceRow } from '@workspace/shared';
  */
 
 export interface DailySummaryRangeOptions {
+  actorUserId: string;
   targetUserId: string;
   startDate: string;
   endDate: string;
@@ -51,6 +53,7 @@ interface CheckInRow {
   weight?: number | string | null;
   height?: number | string | null;
   body_fat_percentage?: number | string | null;
+  bmr?: number | string | null;
 }
 
 /**
@@ -61,6 +64,7 @@ const MEASUREMENT_FIELDS = [
   'weight',
   'height',
   'body_fat_percentage',
+  'bmr',
 ] as const satisfies readonly (keyof CalorieBalanceMeasurements)[];
 
 /**
@@ -80,6 +84,7 @@ function enumerateDays(startDate: string, endDate: string): string[] {
 }
 
 export async function getDailySummaryRange({
+  actorUserId,
   targetUserId,
   startDate,
   endDate,
@@ -94,6 +99,7 @@ export async function getDailySummaryRange({
     latestWeightHeight,
     userProfile,
     userPreferences,
+    healthConnectTotalRows,
   ] = await Promise.all([
     // Only `calories` is needed, so the custom-nutrient catalog is deliberately not
     // passed — it would inflate the dynamic SQL for columns nothing here reads.
@@ -130,21 +136,24 @@ export async function getDailySummaryRange({
       : { weightKg: null, heightCm: null },
     userRepository.getUserProfile(targetUserId),
     preferenceRepository.getUserPreferences(targetUserId),
-  ]);
-
-  const externalBmrByDate =
-    userPreferences?.use_external_bmr && includeCheckin
-      ? await measurementRepository
-          .getExternalBmrByDateRange(targetUserId, startDate, endDate)
+    includeCheckin
+      ? genericHealthRepository
+          .getHealthConnectTotalCaloriesByDateRange(
+            targetUserId,
+            actorUserId,
+            startDate,
+            endDate
+          )
           .catch((error: unknown) => {
             log(
               'warn',
-              `External BMR range fetch failed for user ${targetUserId}:`,
+              `Health Connect total-calorie range fetch failed for user ${targetUserId} (${startDate}..${endDate}):`,
               error
             );
-            return new Map<string, number>();
+            return [];
           })
-      : new Map<string, number>();
+      : [],
+  ]);
 
   const eatenByDate = new Map<string, number>();
   for (const row of nutritionRows as Array<{
@@ -156,6 +165,15 @@ export async function getDailySummaryRange({
 
   const splitByDate = new Map(
     exerciseSplits.map((split) => [split.entry_date, split])
+  );
+  const healthConnectTotalByDate = new Map(
+    healthConnectTotalRows.map((row) => [
+      row.entry_date,
+      {
+        totalCalories: Number(row.total_calories),
+        capturedAt: row.captured_at,
+      },
+    ])
   );
 
   // Sorted ascending once, then walked with a cursor in the day loop. Filtering and
@@ -184,6 +202,7 @@ export async function getDailySummaryRange({
     height: (seedMeasurement as CalorieBalanceMeasurements | null)?.height,
     body_fat_percentage: (seedMeasurement as CalorieBalanceMeasurements | null)
       ?.body_fat_percentage,
+    bmr: (seedMeasurement as CalorieBalanceMeasurements | null)?.bmr,
   };
 
   const days: DailyCalorieBalanceRow[] = [];
@@ -224,6 +243,13 @@ export async function getDailySummaryRange({
     const dayGoals = (goalsByDate as Record<string, { calories?: unknown }>)[
       date
     ];
+    const healthConnectTotal = healthConnectTotalByDate.get(date);
+    const deviceProjectionSnapshot = resolveDeviceProjectionSnapshot({
+      date,
+      timezone: tz,
+      deviceTotal: healthConnectTotal,
+      now,
+    });
 
     days.push({
       date,
@@ -236,8 +262,7 @@ export async function getDailySummaryRange({
         userProfile,
         userPreferences,
         measurements: carried,
-        externalBmr: externalBmrByDate.get(date) ?? null,
-        dayFraction: resolveDayFraction(date, tz, now),
+        ...deviceProjectionSnapshot,
       }),
     });
   }

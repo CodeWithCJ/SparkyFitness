@@ -31,7 +31,7 @@ describe('ActiveWorkoutSetDetail', () => {
   it('commits the trimmed per-set note on blur', () => {
     const onCommitField = jest.fn();
     const { getByLabelText } = render(
-      <ActiveWorkoutSetDetail set={makeSet()} onCommitField={onCommitField} />,
+      <ActiveWorkoutSetDetail set={makeSet()} onCommitField={onCommitField} />
     );
     const input = getByLabelText('Notes for set 1');
     fireEvent.changeText(input, '  felt strong  ');
@@ -42,7 +42,10 @@ describe('ActiveWorkoutSetDetail', () => {
   it('clears the note to null when blurred empty', () => {
     const onCommitField = jest.fn();
     const { getByLabelText } = render(
-      <ActiveWorkoutSetDetail set={makeSet({ notes: 'old' })} onCommitField={onCommitField} />,
+      <ActiveWorkoutSetDetail
+        set={makeSet({ notes: 'old' })}
+        onCommitField={onCommitField}
+      />
     );
     const input = getByLabelText('Notes for set 1');
     fireEvent.changeText(input, '   ');
@@ -56,17 +59,25 @@ describe('ActiveWorkoutSetDetail', () => {
     // native blur never reaches JS — the draft must still reach the store.
     const onCommitField = jest.fn();
     const { getByLabelText, unmount } = render(
-      <ActiveWorkoutSetDetail set={makeSet()} onCommitField={onCommitField} />,
+      <ActiveWorkoutSetDetail set={makeSet()} onCommitField={onCommitField} />
     );
-    fireEvent.changeText(getByLabelText('Notes for set 1'), 'last set to failure');
+    fireEvent.changeText(
+      getByLabelText('Notes for set 1'),
+      'last set to failure'
+    );
     unmount();
-    expect(onCommitField).toHaveBeenCalledWith('101', { notes: 'last set to failure' });
+    expect(onCommitField).toHaveBeenCalledWith('101', {
+      notes: 'last set to failure',
+    });
   });
 
   it('does not re-commit an unchanged note on unmount', () => {
     const onCommitField = jest.fn();
     const { unmount } = render(
-      <ActiveWorkoutSetDetail set={makeSet({ notes: 'existing' })} onCommitField={onCommitField} />,
+      <ActiveWorkoutSetDetail
+        set={makeSet({ notes: 'existing' })}
+        onCommitField={onCommitField}
+      />
     );
     unmount();
     expect(onCommitField).not.toHaveBeenCalled();
@@ -80,7 +91,7 @@ describe('WorkoutNotesField re-seed', () => {
         value="first"
         onCommit={jest.fn()}
         accessibilityLabel="note"
-      />,
+      />
     );
     const input = getByLabelText('note');
     expect(input.props.value).toBe('first');
@@ -92,19 +103,29 @@ describe('WorkoutNotesField re-seed', () => {
         value="second"
         onCommit={jest.fn()}
         accessibilityLabel="note"
-      />,
+      />
     );
     expect(getByLabelText('note').props.value).toBe('second');
   });
 
   it('keeps an in-progress draft while the value prop is unchanged', () => {
     const { getByLabelText, rerender } = render(
-      <WorkoutNotesField value="" onCommit={jest.fn()} accessibilityLabel="note" />,
+      <WorkoutNotesField
+        value=""
+        onCommit={jest.fn()}
+        accessibilityLabel="note"
+      />
     );
     const input = getByLabelText('note');
     fireEvent.changeText(input, 'typing…');
     // A re-render with the same value must not clobber the local draft.
-    rerender(<WorkoutNotesField value="" onCommit={jest.fn()} accessibilityLabel="note" />);
+    rerender(
+      <WorkoutNotesField
+        value=""
+        onCommit={jest.fn()}
+        accessibilityLabel="note"
+      />
+    );
     expect(getByLabelText('note').props.value).toBe('typing…');
   });
 });
@@ -113,7 +134,11 @@ describe('WorkoutNotesField unmount flush', () => {
   it('commits an uncommitted draft when the field unmounts', () => {
     const onCommit = jest.fn();
     const { getByLabelText, unmount } = render(
-      <WorkoutNotesField value="" onCommit={onCommit} accessibilityLabel="note" />,
+      <WorkoutNotesField
+        value=""
+        onCommit={onCommit}
+        accessibilityLabel="note"
+      />
     );
     fireEvent.changeText(getByLabelText('note'), 'felt strong');
     // No blur — the field is torn down first.
@@ -124,7 +149,11 @@ describe('WorkoutNotesField unmount flush', () => {
   it('does not commit on unmount when the draft matches the committed value', () => {
     const onCommit = jest.fn();
     const { unmount } = render(
-      <WorkoutNotesField value="already saved" onCommit={onCommit} accessibilityLabel="note" />,
+      <WorkoutNotesField
+        value="already saved"
+        onCommit={onCommit}
+        accessibilityLabel="note"
+      />
     );
     unmount();
     expect(onCommit).not.toHaveBeenCalled();
@@ -135,14 +164,24 @@ describe('WorkoutNotesField unmount flush', () => {
     // the draft matches, and the unmount flush is a no-op.
     const onCommit = jest.fn();
     const { getByLabelText, rerender, unmount } = render(
-      <WorkoutNotesField value="" onCommit={onCommit} accessibilityLabel="note" />,
+      <WorkoutNotesField
+        value=""
+        onCommit={onCommit}
+        accessibilityLabel="note"
+      />
     );
     const input = getByLabelText('note');
     fireEvent.changeText(input, 'done');
     fireEvent(input, 'blur');
     expect(onCommit).toHaveBeenCalledTimes(1);
     // The committed value flows back in as the new prop.
-    rerender(<WorkoutNotesField value="done" onCommit={onCommit} accessibilityLabel="note" />);
+    rerender(
+      <WorkoutNotesField
+        value="done"
+        onCommit={onCommit}
+        accessibilityLabel="note"
+      />
+    );
     unmount();
     expect(onCommit).toHaveBeenCalledTimes(1);
   });

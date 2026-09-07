@@ -6,7 +6,10 @@ import {
   type UserInteractionEvent,
 } from 'expo-widgets';
 import i18n from '../localization/i18n';
-import { useActiveWorkoutStore, type ActiveWorkoutState } from '../stores/activeWorkoutStore';
+import {
+  useActiveWorkoutStore,
+  type ActiveWorkoutState,
+} from '../stores/activeWorkoutStore';
 import {
   describeActiveSet,
   formatElapsed,
@@ -42,7 +45,9 @@ let reconciled = false;
 let unsubscribeStore: (() => void) | null = null;
 let unsubscribeHydration: (() => void) | null = null;
 let unsubscribeLanguageChanged: (() => void) | null = null;
-let interactionSubscription: ReturnType<typeof addUserInteractionListener> | null = null;
+let interactionSubscription: ReturnType<
+  typeof addUserInteractionListener
+> | null = null;
 let activity: LiveActivity<WorkoutLiveActivityProps> | null = null;
 let lastSentProps: WorkoutLiveActivityProps | null = null;
 
@@ -83,7 +88,9 @@ async function resolveAppIcon(): Promise<void> {
     // Must stay small: WidgetKit rejects oversized Live Activity images
     // ("widget archival failed") and renders a grey placeholder shape, so the
     // full-resolution icon art cannot be used directly.
-    const asset = Asset.fromModule(require('../../assets/icons/live-activity-icon.png'));
+    const asset = Asset.fromModule(
+      require('../../assets/icons/live-activity-icon.png')
+    );
     await asset.downloadAsync();
     if (asset.localUri == null) return;
     const destination = new File(container, 'workout-live-activity-icon.png');
@@ -101,7 +108,9 @@ function ensureAppIcon(): Promise<void> {
   return appIconResolution;
 }
 
-function withAppIcon(props: WorkoutLiveActivityProps): WorkoutLiveActivityProps {
+function withAppIcon(
+  props: WorkoutLiveActivityProps
+): WorkoutLiveActivityProps {
   return appIconUri != null ? { ...props, appIconUri } : props;
 }
 
@@ -141,12 +150,28 @@ function handleUserInteraction(event: UserInteractionEvent): void {
 export function computeWorkoutLiveActivityProps(
   state: Pick<
     ActiveWorkoutState,
-    'sessionId' | 'session' | 'startedAt' | 'steps' | 'completedSetIds' | 'activeSetId' | 'rest'
+    | 'sessionId'
+    | 'session'
+    | 'startedAt'
+    | 'steps'
+    | 'completedSetIds'
+    | 'activeSetId'
+    | 'rest'
   >,
-  locale: WorkoutLiveActivityLocale = resolveWorkoutLiveActivityLocale(i18n.resolvedLanguage),
-  labels: WorkoutLiveActivityLabels = buildWorkoutLiveActivityLabels(locale),
+  locale: WorkoutLiveActivityLocale = resolveWorkoutLiveActivityLocale(
+    i18n.resolvedLanguage
+  ),
+  labels: WorkoutLiveActivityLabels = buildWorkoutLiveActivityLabels(locale)
 ): WorkoutLiveActivityProps | null {
-  const { sessionId, session, startedAt, steps, completedSetIds, activeSetId, rest } = state;
+  const {
+    sessionId,
+    session,
+    startedAt,
+    steps,
+    completedSetIds,
+    activeSetId,
+    rest,
+  } = state;
   if (sessionId == null || startedAt == null) return null;
 
   const workoutName = session?.name ?? labels.workout;
@@ -156,7 +181,8 @@ export function computeWorkoutLiveActivityProps(
   // keep its clock running.
   if (activeSetId == null && steps.length > 0) {
     const completedTimes = Object.values(completedSetIds);
-    const frozenAt = completedTimes.length > 0 ? Math.max(...completedTimes) : startedAt;
+    const frozenAt =
+      completedTimes.length > 0 ? Math.max(...completedTimes) : startedAt;
     return {
       workoutName,
       locale,
@@ -222,7 +248,7 @@ export function computeWorkoutLiveActivityProps(
 
 function labelsEqual(
   a: WorkoutLiveActivityLabels,
-  b: WorkoutLiveActivityLabels,
+  b: WorkoutLiveActivityLabels
 ): boolean {
   return (
     a.rest === b.rest &&
@@ -240,7 +266,10 @@ function labelsEqual(
   );
 }
 
-function propsEqual(a: WorkoutLiveActivityProps, b: WorkoutLiveActivityProps): boolean {
+function propsEqual(
+  a: WorkoutLiveActivityProps,
+  b: WorkoutLiveActivityProps
+): boolean {
   return (
     a.locale === b.locale &&
     labelsEqual(a.labels, b.labels) &&
@@ -262,7 +291,9 @@ function propsEqual(a: WorkoutLiveActivityProps, b: WorkoutLiveActivityProps): b
  * workout A goes through the update path on purpose — repainting the same
  * activity avoids an end+start flicker.
  */
-async function applyProps(props: WorkoutLiveActivityProps | null): Promise<void> {
+async function applyProps(
+  props: WorkoutLiveActivityProps | null
+): Promise<void> {
   // State only advances after each native call succeeds, so a rejected op
   // leaves the service ready to retry on the next state change instead of
   // believing the send landed.
@@ -287,7 +318,9 @@ async function applyProps(props: WorkoutLiveActivityProps | null): Promise<void>
 /** Queue a sync that reads the latest store state when it actually runs. */
 function syncFromState(): void {
   void enqueue(async () => {
-    await applyProps(computeWorkoutLiveActivityProps(useActiveWorkoutStore.getState()));
+    await applyProps(
+      computeWorkoutLiveActivityProps(useActiveWorkoutStore.getState())
+    );
   }).catch((error) => logActivityError('sync failed', error));
 }
 
@@ -301,7 +334,9 @@ async function reconcileInstances(): Promise<void> {
   // never throws, and a failure just leaves the icon slots on their fallbacks.
   await ensureAppIcon();
   const instances = WorkoutLiveActivityFactory.getInstances();
-  const props = computeWorkoutLiveActivityProps(useActiveWorkoutStore.getState());
+  const props = computeWorkoutLiveActivityProps(
+    useActiveWorkoutStore.getState()
+  );
 
   if (props == null) {
     for (const instance of instances) {

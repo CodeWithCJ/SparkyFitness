@@ -38,8 +38,7 @@ const withNetworkSecurityConfig: ConfigPlugin = (config) => {
     const app = config.modResults.manifest.application?.[0];
 
     if (app) {
-      app.$['android:networkSecurityConfig'] =
-        '@xml/network_security_config';
+      app.$['android:networkSecurityConfig'] = '@xml/network_security_config';
     }
 
     return config;

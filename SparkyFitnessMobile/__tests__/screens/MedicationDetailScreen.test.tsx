@@ -2,7 +2,10 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import i18n, { getAppLocale, initializeI18n } from '../../src/localization/i18n';
+import i18n, {
+  getAppLocale,
+  initializeI18n,
+} from '../../src/localization/i18n';
 import MedicationDetailScreen from '../../src/screens/MedicationDetailScreen';
 import {
   useMedicationDetail,
@@ -11,7 +14,11 @@ import {
   useDeleteMedicationEntry,
   useLogDose,
 } from '../../src/hooks/useMedications';
-import type { MedicationDetail, MedicationEntry, MedicationSchedule } from '@workspace/shared';
+import type {
+  MedicationDetail,
+  MedicationEntry,
+  MedicationSchedule,
+} from '@workspace/shared';
 import type { RootStackScreenProps } from '../../src/types/navigation';
 
 type ScreenProps = RootStackScreenProps<'MedicationDetail'>;
@@ -57,10 +64,19 @@ jest.mock('@react-navigation/native', () => ({
 
 jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
-const mockUseMedicationDetail = useMedicationDetail as jest.MockedFunction<typeof useMedicationDetail>;
-const mockUseMedicationEntries = useMedicationEntries as jest.MockedFunction<typeof useMedicationEntries>;
-const mockUseDeleteMedication = useDeleteMedication as jest.MockedFunction<typeof useDeleteMedication>;
-const mockUseDeleteMedicationEntry = useDeleteMedicationEntry as jest.MockedFunction<typeof useDeleteMedicationEntry>;
+const mockUseMedicationDetail = useMedicationDetail as jest.MockedFunction<
+  typeof useMedicationDetail
+>;
+const mockUseMedicationEntries = useMedicationEntries as jest.MockedFunction<
+  typeof useMedicationEntries
+>;
+const mockUseDeleteMedication = useDeleteMedication as jest.MockedFunction<
+  typeof useDeleteMedication
+>;
+const mockUseDeleteMedicationEntry =
+  useDeleteMedicationEntry as jest.MockedFunction<
+    typeof useDeleteMedicationEntry
+  >;
 const mockUseLogDose = useLogDose as jest.MockedFunction<typeof useLogDose>;
 
 const mockEntryForDue = jest.fn();
@@ -68,7 +84,9 @@ const mockLogDose = jest.fn();
 const mockToggleTaken = jest.fn();
 const mockLogPrn = jest.fn();
 
-function buildSchedule(overrides: Partial<MedicationSchedule> = {}): MedicationSchedule {
+function buildSchedule(
+  overrides: Partial<MedicationSchedule> = {}
+): MedicationSchedule {
   return {
     id: 'sched-1',
     medication_id: 'med-1',
@@ -92,7 +110,9 @@ function buildSchedule(overrides: Partial<MedicationSchedule> = {}): MedicationS
   };
 }
 
-function buildMedication(overrides: Partial<MedicationDetail> = {}): MedicationDetail {
+function buildMedication(
+  overrides: Partial<MedicationDetail> = {}
+): MedicationDetail {
   return {
     id: 'med-1',
     user_id: 'user-1',
@@ -164,14 +184,16 @@ function setupScreen(med: MedicationDetail, entries: MedicationEntry[] = []) {
   return render(
     <SafeAreaProvider initialMetrics={{ insets, frame }}>
       <MedicationDetailScreen route={route} navigation={mockNavigation} />
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
 }
 
 describe('MedicationDetailScreen', () => {
   beforeEach(async () => {
-    await act(async () => { await initializeI18n('en');
-    await i18n.changeLanguage('en'); });
+    await act(async () => {
+      await initializeI18n('en');
+      await i18n.changeLanguage('en');
+    });
     jest.clearAllMocks();
     mockEntryForDue.mockReturnValue(undefined);
     mockUseLogDose.mockReturnValue({
@@ -199,7 +221,12 @@ describe('MedicationDetailScreen', () => {
 
   it('suppresses the strength line for web-created meds that mirror strength into dose', () => {
     const screen = setupScreen(
-      buildMedication({ dose_amount: 10, dose_unit: 'mg', strength_value: 10, strength_unit: 'mg' }),
+      buildMedication({
+        dose_amount: 10,
+        dose_unit: 'mg',
+        strength_value: 10,
+        strength_unit: 'mg',
+      })
     );
 
     expect(screen.getAllByText('10 mg').length).toBeGreaterThan(0);
@@ -212,19 +239,23 @@ describe('MedicationDetailScreen', () => {
     expect(screen.getByText('8:00 AM')).toBeTruthy();
     fireEvent.press(screen.getByText('Log'));
     expect(mockLogDose).toHaveBeenCalledWith(
-      expect.objectContaining({ schedule: expect.objectContaining({ id: 'sched-1' }) }),
-      'taken',
+      expect.objectContaining({
+        schedule: expect.objectContaining({ id: 'sched-1' }),
+      }),
+      'taken'
     );
     fireEvent.press(screen.getByText('Skip'));
     expect(mockLogDose).toHaveBeenCalledWith(
-      expect.objectContaining({ schedule: expect.objectContaining({ id: 'sched-1' }) }),
-      'skipped',
+      expect.objectContaining({
+        schedule: expect.objectContaining({ id: 'sched-1' }),
+      }),
+      'skipped'
     );
   });
 
   it('shows the schedule dose override on the today row', () => {
     const screen = setupScreen(
-      buildMedication({ schedules: [buildSchedule({ dose_amount: 2 })] }),
+      buildMedication({ schedules: [buildSchedule({ dose_amount: 2 })] })
     );
 
     expect(screen.getAllByText('2 tablet').length).toBeGreaterThan(0);
@@ -241,21 +272,33 @@ describe('MedicationDetailScreen', () => {
   it('logs and counts PRN doses for schedule-less medications', () => {
     const med = buildMedication({ schedules: [] });
     const screen = setupScreen(med, [
-      buildEntry({ id: 'prn-1', schedule_id: null, status: 'prn_taken', taken_at: '2026-07-29T08:00:00Z' }),
-      buildEntry({ id: 'prn-2', schedule_id: null, status: 'prn_taken', taken_at: '2026-07-29T14:00:00Z' }),
+      buildEntry({
+        id: 'prn-1',
+        schedule_id: null,
+        status: 'prn_taken',
+        taken_at: '2026-07-29T08:00:00Z',
+      }),
+      buildEntry({
+        id: 'prn-2',
+        schedule_id: null,
+        status: 'prn_taken',
+        taken_at: '2026-07-29T14:00:00Z',
+      }),
     ]);
 
     expect(screen.getByText('As needed')).toBeTruthy();
     expect(screen.getByText('2')).toBeTruthy();
     fireEvent.press(screen.getByText('Log'));
-    expect(mockLogPrn).toHaveBeenCalledWith(expect.objectContaining({ id: 'med-1' }));
+    expect(mockLogPrn).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'med-1' })
+    );
   });
 
   it('describes schedules with dose override and meal timing', () => {
     const screen = setupScreen(
       buildMedication({
         schedules: [buildSchedule({ dose_amount: 2, with_meal: 'before' })],
-      }),
+      })
     );
 
     expect(screen.getByText('Daily at 8:00 AM')).toBeTruthy();
@@ -264,7 +307,14 @@ describe('MedicationDetailScreen', () => {
 
   it('notes when nothing is scheduled for the selected day', () => {
     const screen = setupScreen(
-      buildMedication({ schedules: [buildSchedule({ schedule_type_id: 'specific_days', days_of_week: [] })] }),
+      buildMedication({
+        schedules: [
+          buildSchedule({
+            schedule_type_id: 'specific_days',
+            days_of_week: [],
+          }),
+        ],
+      })
     );
 
     expect(screen.getByText('No doses scheduled for this day.')).toBeTruthy();
@@ -272,7 +322,12 @@ describe('MedicationDetailScreen', () => {
 
   it('shows reference details when present', () => {
     const screen = setupScreen(
-      buildMedication({ prescriber: 'Dr. Ipsum', pharmacy: 'Sunny Pharmacy', rx_number: 'RX-123', notes: 'Take with water' }),
+      buildMedication({
+        prescriber: 'Dr. Ipsum',
+        pharmacy: 'Sunny Pharmacy',
+        rx_number: 'RX-123',
+        notes: 'Take with water',
+      })
     );
 
     expect(screen.getByText('Prescriber')).toBeTruthy();
@@ -282,7 +337,9 @@ describe('MedicationDetailScreen', () => {
   });
 
   it('hides logging and badges the med when inactive', () => {
-    const screen = setupScreen(buildMedication({ is_active: false, schedules: [] }));
+    const screen = setupScreen(
+      buildMedication({ is_active: false, schedules: [] })
+    );
 
     expect(screen.getByText('Inactive')).toBeTruthy();
     expect(screen.queryByText('As needed')).toBeNull();
@@ -293,22 +350,30 @@ describe('MedicationDetailScreen', () => {
     const screen = setupScreen(buildMedication({ schedules: [] }));
 
     expect(screen.getByText('Schedules')).toBeTruthy();
-    expect(screen.getByText('No schedule. Doses are logged as needed.')).toBeTruthy();
+    expect(
+      screen.getByText('No schedule. Doses are logged as needed.')
+    ).toBeTruthy();
 
     fireEvent.press(screen.getByLabelText('Add schedule'));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('MedicationScheduleForm', {
-      medicationId: 'med-1',
-    });
+    expect(mockNavigation.navigate).toHaveBeenCalledWith(
+      'MedicationScheduleForm',
+      {
+        medicationId: 'med-1',
+      }
+    );
   });
 
   it('opens the schedule editor when a schedule row is pressed', () => {
     const screen = setupScreen(buildMedication());
 
     fireEvent.press(screen.getByText('Daily at 8:00 AM'));
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('MedicationScheduleForm', {
-      medicationId: 'med-1',
-      scheduleId: 'sched-1',
-    });
+    expect(mockNavigation.navigate).toHaveBeenCalledWith(
+      'MedicationScheduleForm',
+      {
+        medicationId: 'med-1',
+        scheduleId: 'sched-1',
+      }
+    );
   });
 
   it('confirms before deleting the medication', () => {
@@ -318,25 +383,36 @@ describe('MedicationDetailScreen', () => {
     expect(Alert.alert).toHaveBeenCalledWith(
       'Delete Medication',
       expect.stringContaining('Lisinopril'),
-      expect.any(Array),
+      expect.any(Array)
     );
   });
   it('localizes the PRN Logged fallback and keeps timestamp entries distinct', async () => {
     const med = buildMedication({ schedules: [] });
-    const logged = setupScreen(med, [buildEntry({ schedule_id: null, status: 'prn_taken', taken_at: null })]);
+    const logged = setupScreen(med, [
+      buildEntry({ schedule_id: null, status: 'prn_taken', taken_at: null }),
+    ]);
     expect(logged.getByText('Logged')).toBeTruthy();
-    await act(async () => { await i18n.changeLanguage('pl'); });
+    await act(async () => {
+      await i18n.changeLanguage('pl');
+    });
     expect(logged.getByText('Zapisano')).toBeTruthy();
     expect(logged.queryByText('Logged')).toBeNull();
     logged.unmount();
-    const timestamp = setupScreen(med, [buildEntry({ schedule_id: null, status: 'prn_taken', taken_at: '2026-07-29T14:00:00Z' })]);
-    const expectedTimestamp = new Date('2026-07-29T14:00:00Z').toLocaleTimeString(
-      getAppLocale(),
-      { hour: 'numeric', minute: '2-digit' },
-    );
+    const timestamp = setupScreen(med, [
+      buildEntry({
+        schedule_id: null,
+        status: 'prn_taken',
+        taken_at: '2026-07-29T14:00:00Z',
+      }),
+    ]);
+    const expectedTimestamp = new Date(
+      '2026-07-29T14:00:00Z'
+    ).toLocaleTimeString(getAppLocale(), {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
     expect(timestamp.getByText(expectedTimestamp)).toBeTruthy();
     expect(timestamp.queryByText('Zapisano')).toBeNull();
     expect(timestamp.queryByText('Logged')).toBeNull();
   });
-
 });

@@ -31,7 +31,7 @@ jest.mock('@/contexts/ActiveUserContext', () => ({
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
     loggingLevel: 'debug',
-    foodDisplayLimit: 100,
+    itemDisplayLimit: 100,
     nutrientDisplayPreferences: [
       {
         view_group: 'quick_info',
@@ -79,6 +79,127 @@ jest.mock('@/components/FoodUnitSelector', () => {
   return function MockFoodUnitSelector() {
     return <div data-testid="food-unit-selector">FoodUnitSelector</div>;
   };
+});
+
+jest.mock('@/components/FoodSearch/FoodSearchDialog', () => {
+  return function MockFoodSearchDialog() {
+    return <div data-testid="food-search-dialog">FoodSearchDialog</div>;
+  };
+});
+
+const sampleFoods = [
+  {
+    food_id: 'food1',
+    food_name: 'Apple',
+    variant_id: 'v1',
+    quantity: 1,
+    unit: 'piece',
+    calories: 95,
+    protein: 0.5,
+    carbs: 25,
+    fat: 0.3,
+    serving_size: 1,
+    serving_unit: 'piece',
+  },
+];
+
+describe('MealBuilder', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('gives a photo-built diary meal the full serving model', async () => {
+    // A new custom meal in the diary (no mealId, no foodEntryId) is the photo
+    // path: the ingredients are a whole dish, so it gets the same unit +
+    // amount + serving size controls a saved meal has, plus how much was eaten.
+    renderWithClient(
+      <MealBuilder
+        initialFoods={sampleFoods}
+        source="food-diary"
+        foodEntryDate="2026-08-28"
+        foodEntryMealType="dinner"
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Total Servings')).toBeInTheDocument();
+    });
+    expect(
+      screen.getByLabelText('Quantity Consumed (serving)')
+    ).toBeInTheDocument();
+    // The unit is a real choice here, unlike the template-backed diary flows.
+    expect(screen.getByRole('combobox')).toBeEnabled();
+  });
+
+  it('toggles diary nutrition between the consumed portion and the whole dish', async () => {
+    // The diary dialog shows the portion by default, but the whole-dish totals
+    // have to stay reachable so the ingredient list above (which is always at
+    // dish scale) can be reconciled against a number.
+    renderWithClient(
+      <MealBuilder
+        initialFoods={sampleFoods}
+        source="food-diary"
+        foodEntryDate="2026-08-28"
+        foodEntryMealType="dinner"
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Total Servings')).toBeInTheDocument();
+    });
+
+    // The label and value are separate text nodes, so read the row's textContent.
+    const caloriesRow = () =>
+      screen
+        .getAllByText((_content, element) =>
+          /^Calories:/.test(element?.textContent ?? '')
+        )
+        .at(-1)?.textContent;
+
+    // Default: one serving of a dish that yields one, so the portion is all of it.
+    expect(screen.getByRole('tab', { name: 'Consumed' })).toBeInTheDocument();
+    expect(caloriesRow()).toMatch(/95/);
+
+    // Yield 4, still one serving consumed: the portion is a quarter (95/4,
+    // shown rounded)...
+    fireEvent.change(screen.getByLabelText('Total Servings'), {
+      target: { value: '4' },
+    });
+    await waitFor(() => {
+      expect(caloriesRow()).toMatch(/24/);
+    });
+
+    // ...while Total keeps showing the whole dish.
+    // Radix tabs activate on mousedown, not click.
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Total' }));
+    await waitFor(() => {
+      expect(caloriesRow()).toMatch(/95/);
+    });
+  });
+
+  it('keeps the unit locked and shows whole dish yield when logging or editing a template-backed meal', async () => {
+    // Risk guard: these two dialogs share this component. In diary mode the unit
+    // is locked to preserve ingredient math, while the whole-dish yield and
+    // consumed quantity are both visible and editable.
+    renderWithClient(
+      <MealBuilder
+        initialFoods={sampleFoods}
+        source="food-diary"
+        foodEntryId="entry-1"
+        foodEntryDate="2026-08-28"
+        foodEntryMealType="dinner"
+      />
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText('Quantity Consumed (serving)')
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByRole('combobox')).toBeDisabled();
+    expect(screen.getByLabelText('Total Servings')).toBeInTheDocument();
+  });
+
   it('rounds derived total_servings for non-serving meals before saving', async () => {
     mockCreateMeal.mockResolvedValue({ id: 'new-meal', name: 'My Meal' });
 
@@ -111,37 +232,10 @@ jest.mock('@/components/FoodUnitSelector', () => {
           serving_unit: 'ml',
           serving_size: 333,
           total_servings: 3.003003,
-        })
+        }),
+        []
       );
     });
-  });
-});
-
-jest.mock('@/components/FoodSearch/FoodSearchDialog', () => {
-  return function MockFoodSearchDialog() {
-    return <div data-testid="food-search-dialog">FoodSearchDialog</div>;
-  };
-});
-
-const sampleFoods = [
-  {
-    food_id: 'food1',
-    food_name: 'Apple',
-    variant_id: 'v1',
-    quantity: 1,
-    unit: 'piece',
-    calories: 95,
-    protein: 0.5,
-    carbs: 25,
-    fat: 0.3,
-    serving_size: 1,
-    serving_unit: 'piece',
-  },
-];
-
-describe('MealBuilder', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
   });
 
   it('renders in create mode with correct labels', () => {

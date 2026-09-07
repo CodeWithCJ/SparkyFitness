@@ -195,10 +195,7 @@ const HRVCard = ({ data }: HRVCardProps) => {
                 }}
                 formatter={(
                   value:
-                    | string
-                    | number
-                    | ReadonlyArray<string | number>
-                    | undefined
+                    string | number | ReadonlyArray<string | number> | undefined
                 ) => [
                   `${Number(Array.isArray(value) ? value[0] : value).toFixed(0)} ms`,
                 ]}

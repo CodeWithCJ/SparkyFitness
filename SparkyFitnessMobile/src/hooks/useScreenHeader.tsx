@@ -22,7 +22,9 @@ import type {
 } from '@react-navigation/native-stack';
 import Icon, { IconName } from '../components/Icon';
 import FadeView from '../components/FadeView';
-import AnchoredMenu, { measureAnchoredMenuTrigger } from '../components/AnchoredMenu';
+import AnchoredMenu, {
+  measureAnchoredMenuTrigger,
+} from '../components/AnchoredMenu';
 import type { AnchoredMenuItem, AnchorRect } from '../components/AnchoredMenu';
 import { useHeaderActionColors } from './useHeaderActionColors';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -81,7 +83,12 @@ function isMenuSection(entry: HeaderMenuEntry): entry is HeaderMenuSection {
 }
 
 export type HeaderItem =
-  | { kind: 'back'; onPress?: () => void; disabled?: boolean; identifier?: string }
+  | {
+      kind: 'back';
+      onPress?: () => void;
+      disabled?: boolean;
+      identifier?: string;
+    }
   | {
       kind: 'dismiss';
       onPress: () => void;
@@ -183,12 +190,12 @@ function itemIsBusy(item: HeaderItem): boolean {
 }
 
 function itemPlacement(item: HeaderItem): HeaderPlacement {
-  return 'placement' in item ? item.placement ?? 'both' : 'both';
+  return 'placement' in item ? (item.placement ?? 'both') : 'both';
 }
 
 function resolvePress(
   item: Exclude<HeaderItem, MenuHeaderItem>,
-  goBack: () => void,
+  goBack: () => void
 ): () => void {
   if (item.kind === 'back') return item.onPress ?? goBack;
   return item.onPress;
@@ -198,7 +205,10 @@ function itemIsDisabled(item: HeaderItem): boolean {
   return ('disabled' in item && !!item.disabled) || itemIsBusy(item);
 }
 
-function itemAccessibilityLabel(item: HeaderItem, t: TFunction): string | undefined {
+function itemAccessibilityLabel(
+  item: HeaderItem,
+  t: TFunction
+): string | undefined {
   switch (item.kind) {
     case 'back':
       return t('common.back', 'Back');
@@ -233,7 +243,11 @@ function resolveItemLabel(item: HeaderItem, t: TFunction): string | undefined {
     case 'text':
       // A role:'primary' text item with the canonical SAVE_LABEL marker is also
       // localized (e.g. caller reuses SAVE_LABEL for a primary text action).
-      if (('role' in item && item.role === 'primary') && item.label === SAVE_LABEL) {
+      if (
+        'role' in item &&
+        item.role === 'primary' &&
+        item.label === SAVE_LABEL
+      ) {
         return t('common.save', 'Save');
       }
       return item.label;
@@ -249,11 +263,18 @@ function resolveItemLabel(item: HeaderItem, t: TFunction): string | undefined {
  * busy label, or whose busy label is the canonical SAVING_LABEL marker, fall
  * back to the localized `common.saving` value with an explicit English fallback.
  */
-function resolveItemBusyLabel(item: HeaderItem, t: TFunction): string | undefined {
+function resolveItemBusyLabel(
+  item: HeaderItem,
+  t: TFunction
+): string | undefined {
   const primaryBusy = (kind: 'primary' | 'text') =>
     kind === 'primary'
-      ? item.kind === 'primary' && (item.busyLabel === undefined || item.busyLabel === SAVING_LABEL)
-      : item.kind === 'text' && ('role' in item && item.role === 'primary') && item.busyLabel === SAVING_LABEL;
+      ? item.kind === 'primary' &&
+        (item.busyLabel === undefined || item.busyLabel === SAVING_LABEL)
+      : item.kind === 'text' &&
+        'role' in item &&
+        item.role === 'primary' &&
+        item.busyLabel === SAVING_LABEL;
 
   if (item.kind === 'primary') {
     return primaryBusy('primary')
@@ -262,9 +283,7 @@ function resolveItemBusyLabel(item: HeaderItem, t: TFunction): string | undefine
   }
 
   if (item.kind === 'text') {
-    return primaryBusy('text')
-      ? t('common.saving', 'Saving…')
-      : item.busyLabel;
+    return primaryBusy('text') ? t('common.saving', 'Saving…') : item.busyLabel;
   }
 
   return undefined;
@@ -278,7 +297,7 @@ function resolveItemBusyLabel(item: HeaderItem, t: TFunction): string | undefine
 function collectMenuHandlers(
   item: HeaderItem,
   id: string,
-  handlers: Record<string, () => void>,
+  handlers: Record<string, () => void>
 ): void {
   if (item.kind !== 'menu') return;
   item.items.forEach((entry, i) => {
@@ -292,11 +311,18 @@ function collectMenuHandlers(
   });
 }
 
-function toAnchoredMenuItems(entries: HeaderMenuEntry[], idPrefix: string): AnchoredMenuItem[] {
+function toAnchoredMenuItems(
+  entries: HeaderMenuEntry[],
+  idPrefix: string
+): AnchoredMenuItem[] {
   const out: AnchoredMenuItem[] = [];
   entries.forEach((entry, i) => {
     if (isMenuSection(entry)) {
-      out.push({ key: `${idPrefix}~${i}`, label: entry.label, isGroupLabel: true });
+      out.push({
+        key: `${idPrefix}~${i}`,
+        label: entry.label,
+        isGroupLabel: true,
+      });
       entry.items.forEach((action, j) => {
         out.push({
           key: `${idPrefix}~${i}.${j}`,
@@ -321,7 +347,7 @@ function toAnchoredMenuItems(entries: HeaderMenuEntry[], idPrefix: string): Anch
 
 function toNativeMenuAction(
   action: HeaderMenuAction,
-  onPress: () => void,
+  onPress: () => void
 ): NativeStackHeaderItemMenu['menu']['items'][number] {
   return {
     type: 'action',
@@ -341,20 +367,21 @@ function buildNativeMenuItem(
   identifier: string,
   colors: HeaderColors,
   accentColor: string,
-  pressFor: (handlerKey: string) => () => void,
+  pressFor: (handlerKey: string) => () => void
 ): NativeStackHeaderItem {
-  const menuItems: NativeStackHeaderItemMenu['menu']['items'] = item.items.map((entry, i) =>
-    isMenuSection(entry)
-      ? {
-          type: 'submenu',
-          label: entry.label,
-          inline: true,
-          multiselectable: false,
-          items: entry.items.map((action, j) =>
-            toNativeMenuAction(action, pressFor(`${identifier}~${i}.${j}`)),
-          ),
-        }
-      : toNativeMenuAction(entry, pressFor(`${identifier}~${i}`)),
+  const menuItems: NativeStackHeaderItemMenu['menu']['items'] = item.items.map(
+    (entry, i) =>
+      isMenuSection(entry)
+        ? {
+            type: 'submenu',
+            label: entry.label,
+            inline: true,
+            multiselectable: false,
+            items: entry.items.map((action, j) =>
+              toNativeMenuAction(action, pressFor(`${identifier}~${i}.${j}`))
+            ),
+          }
+        : toNativeMenuAction(entry, pressFor(`${identifier}~${i}`))
   );
   return createNativeHeaderMenuButtonItem({
     // Bare glyph: Liquid Glass draws its own circular button background, so
@@ -362,8 +389,11 @@ function buildNativeMenuItem(
     sfSymbol: item.sfSymbol ?? 'ellipsis',
     identifier,
     tintColor: colors.defaultColor,
-    accessibilityLabel: item.nativeAccessibilityLabel ?? item.accessibilityLabel,
-    badge: item.showsBadge ? createNativeHeaderAccentBadge(accentColor, item.badgeValue ?? '•') : undefined,
+    accessibilityLabel:
+      item.nativeAccessibilityLabel ?? item.accessibilityLabel,
+    badge: item.showsBadge
+      ? createNativeHeaderAccentBadge(accentColor, item.badgeValue ?? '•')
+      : undefined,
     menuItems,
   });
 }
@@ -385,7 +415,13 @@ function RawHeaderIcon({
   if (Platform.OS === 'ios' && !useIoniconOnIOS) {
     return <SymbolView name={sf as never} tintColor={color} size={size} />;
   }
-  return <Ionicons name={ion as keyof typeof Ionicons.glyphMap} color={color} size={size} />;
+  return (
+    <Ionicons
+      name={ion as keyof typeof Ionicons.glyphMap}
+      color={color}
+      size={size}
+    />
+  );
 }
 
 /**
@@ -443,7 +479,13 @@ function HeaderBarButton({
     );
   } else {
     content = (
-      <Text style={{ color, fontSize: 17, fontWeight: isPrimaryItem(item) ? '600' : '500' }}>
+      <Text
+        style={{
+          color,
+          fontSize: 17,
+          fontWeight: isPrimaryItem(item) ? '600' : '500',
+        }}
+      >
         {label}
       </Text>
     );
@@ -477,7 +519,7 @@ function buildNativeItem(
   identifier: string,
   colors: HeaderColors,
   press: () => void,
-  t: TFunction,
+  t: TFunction
 ): NativeStackHeaderItem | null {
   const color = itemColor(item, colors);
   switch (item.kind) {
@@ -489,7 +531,8 @@ function buildNativeItem(
         sfSymbol: 'xmark',
         identifier,
         tintColor: colors.defaultColor,
-        accessibilityLabel: item.accessibilityLabel ?? t('common.close', 'Close'),
+        accessibilityLabel:
+          item.accessibilityLabel ?? t('common.close', 'Close'),
         onPress: press,
         disabled: !!item.disabled,
       });
@@ -506,9 +549,10 @@ function buildNativeItem(
     case 'primary': {
       const resolvedLabel = resolveItemLabel(item, t);
       const resolvedBusyLabel = resolveItemBusyLabel(item, t);
-      const visibleLabel = itemIsBusy(item) && resolvedBusyLabel
-        ? resolvedBusyLabel
-        : (resolvedLabel ?? t('common.save', 'Save'));
+      const visibleLabel =
+        itemIsBusy(item) && resolvedBusyLabel
+          ? resolvedBusyLabel
+          : (resolvedLabel ?? t('common.save', 'Save'));
       return createNativeHeaderTextButtonItem({
         label: visibleLabel,
         identifier,
@@ -541,23 +585,36 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
   const colors: HeaderColors = { defaultColor, saveColor };
   // The menu badge dot always takes the real accent, even on the Liquid Glass
   // path where saveColor is coerced to the monochrome text color.
-  const accentColor = (useCSSVariable('--color-accent-primary') as string) || '#0A84FF';
+  const accentColor =
+    (useCSSVariable('--color-accent-primary') as string) || '#0A84FF';
 
   // Custom-path menu presentation: which menu item is open, anchored where.
-  const [openMenu, setOpenMenu] = useState<{ id: string; anchor: AnchorRect } | null>(null);
+  const [openMenu, setOpenMenu] = useState<{
+    id: string;
+    anchor: AnchorRect;
+  } | null>(null);
   const menuTriggerRefs = useRef<Record<string, View | null>>({});
 
-  const { title, nativeTitle, left, right, center, borderless, nativeOptions, animateKey } = config;
+  const {
+    title,
+    nativeTitle,
+    left,
+    right,
+    center,
+    borderless,
+    nativeOptions,
+    animateKey,
+  } = config;
   const rightItems = toRightArray(right);
 
   // One-accent invariant: count both `kind:'primary'` and `role:'primary'`.
   if (__DEV__) {
     const primaryCount = [left, ...rightItems].filter(
-      (item): item is HeaderItem => !!item && isPrimaryItem(item),
+      (item): item is HeaderItem => !!item && isPrimaryItem(item)
     ).length;
     if (primaryCount > 1) {
       throw new Error(
-        `useScreenHeader: ${primaryCount} primary header actions declared; exactly one accent action is allowed per screen.`,
+        `useScreenHeader: ${primaryCount} primary header actions declared; exactly one accent action is allowed per screen.`
       );
     }
   }
@@ -587,10 +644,15 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
   // the UIMenu itself; only the per-entry handlers fire from JS.)
   const openAnchoredMenu = (id: string) => () =>
     measureAnchoredMenuTrigger(menuTriggerRefs.current[id] ?? null, (anchor) =>
-      setOpenMenu({ id, anchor }),
+      setOpenMenu({ id, anchor })
     );
-  const registerHandlers = (item: HeaderItem, id: string, slot: 'left' | 'right') => {
-    const press = item.kind === 'menu' ? openAnchoredMenu(id) : resolvePress(item, goBack);
+  const registerHandlers = (
+    item: HeaderItem,
+    id: string,
+    slot: 'left' | 'right'
+  ) => {
+    const press =
+      item.kind === 'menu' ? openAnchoredMenu(id) : resolvePress(item, goBack);
     nextHandlers[id] =
       item.kind === 'primary' && slot === 'right'
         ? () => {
@@ -632,7 +694,11 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
                     sfSymbol: a.sfSymbol,
                   })),
                 }
-              : { label: entry.label, selected: entry.selected ?? null, sfSymbol: entry.sfSymbol },
+              : {
+                  label: entry.label,
+                  selected: entry.selected ?? null,
+                  sfSymbol: entry.sfSymbol,
+                }
           ),
         }
       : undefined;
@@ -681,20 +747,38 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
     if (usesNativeHeader) {
       if (nativeTitle !== undefined) options.title = nativeTitle;
 
-      const buildItem = (item: HeaderItem, id: string): NativeStackHeaderItem | null =>
+      const buildItem = (
+        item: HeaderItem,
+        id: string
+      ): NativeStackHeaderItem | null =>
         item.kind === 'menu'
-          ? buildNativeMenuItem(item, id, colors, accentColor, (handlerKey) => () =>
-              handlersRef.current[handlerKey]?.(),
+          ? buildNativeMenuItem(
+              item,
+              id,
+              colors,
+              accentColor,
+              (handlerKey) => () => handlersRef.current[handlerKey]?.()
             )
-          : buildNativeItem(item, id, colors, () => handlersRef.current[id]?.(), t);
+          : buildNativeItem(
+              item,
+              id,
+              colors,
+              () => handlersRef.current[id]?.(),
+              t
+            );
 
       if (!left || left.kind === 'back') {
         options.unstable_headerLeftItems = undefined;
       } else {
         const leftNative = buildItem(left, leftId);
-        options.unstable_headerLeftItems = leftNative ? () => [leftNative] : undefined;
+        options.unstable_headerLeftItems = leftNative
+          ? () => [leftNative]
+          : undefined;
         // A dismiss/text left item replaces the system back button.
-        if (left.kind === 'dismiss' && options.headerBackVisible === undefined) {
+        if (
+          left.kind === 'dismiss' &&
+          options.headerBackVisible === undefined
+        ) {
           options.headerBackVisible = false;
         }
       }
@@ -702,7 +786,9 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
       const rightNative = rightMeta
         .map(({ item, id }) => buildItem(item, id))
         .filter((entry): entry is NativeStackHeaderItem => entry !== null);
-      options.unstable_headerRightItems = rightNative.length ? () => rightNative : undefined;
+      options.unstable_headerRightItems = rightNative.length
+        ? () => rightNative
+        : undefined;
     }
 
     navigation.setOptions(options);
@@ -740,7 +826,9 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
   };
 
   const leftCustom =
-    left && itemPlacement(left) !== 'native-only' ? renderButton(left, leftId) : null;
+    left && itemPlacement(left) !== 'native-only'
+      ? renderButton(left, leftId)
+      : null;
 
   const rightCustom = rightMeta
     .filter(({ item }) => itemPlacement(item) !== 'native-only')
@@ -748,7 +836,10 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
 
   const openMenuItem = (() => {
     if (!openMenu) return null;
-    const candidates = [...(left ? [{ item: left, id: leftId }] : []), ...rightMeta];
+    const candidates = [
+      ...(left ? [{ item: left, id: leftId }] : []),
+      ...rightMeta,
+    ];
     const match = candidates.find(({ id }) => id === openMenu.id)?.item;
     return match && match.kind === 'menu' ? match : null;
   })();
@@ -758,7 +849,9 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
       visible={!!openMenuItem}
       anchor={openMenu?.anchor ?? null}
       items={
-        openMenu && openMenuItem ? toAnchoredMenuItems(openMenuItem.items, openMenu.id) : []
+        openMenu && openMenuItem
+          ? toAnchoredMenuItems(openMenuItem.items, openMenu.id)
+          : []
       }
       onClose={() => setOpenMenu(null)}
     />
@@ -767,7 +860,12 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
   const bar = (
     <View
       className={`px-4 py-3 ${borderless ? '' : 'border-b border-border-subtle'}`}
-      style={{ position: 'relative', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+      style={{
+        position: 'relative',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }}
     >
       {/* The title is a separate, absolutely-positioned layer centered on the
           bar's full width, independent of the side cells' own flex layout —
@@ -812,7 +910,10 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
       <View className="flex-row items-center gap-4" style={{ flexShrink: 0 }}>
         {leftCustom}
       </View>
-      <View className="flex-row items-center justify-end gap-4" style={{ flexShrink: 0 }}>
+      <View
+        className="flex-row items-center justify-end gap-4"
+        style={{ flexShrink: 0 }}
+      >
         {rightCustom}
       </View>
     </View>
@@ -820,7 +921,11 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
 
   return (
     <>
-      {animateKey !== undefined ? <FadeView key={animateKey}>{bar}</FadeView> : bar}
+      {animateKey !== undefined ? (
+        <FadeView key={animateKey}>{bar}</FadeView>
+      ) : (
+        bar
+      )}
       {menuOverlay}
     </>
   );

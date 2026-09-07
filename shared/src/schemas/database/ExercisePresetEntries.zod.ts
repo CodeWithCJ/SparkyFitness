@@ -54,5 +54,9 @@ export const exercisePresetEntriesMutatorSchema = z.object({
 });
 
 export type ExercisePresetEntries = z.infer<typeof exercisePresetEntriesSchema>;
-export type ExercisePresetEntriesInitializer = z.infer<typeof exercisePresetEntriesInitializerSchema>;
-export type ExercisePresetEntriesMutator = z.infer<typeof exercisePresetEntriesMutatorSchema>;
+export type ExercisePresetEntriesInitializer = z.infer<
+  typeof exercisePresetEntriesInitializerSchema
+>;
+export type ExercisePresetEntriesMutator = z.infer<
+  typeof exercisePresetEntriesMutatorSchema
+>;

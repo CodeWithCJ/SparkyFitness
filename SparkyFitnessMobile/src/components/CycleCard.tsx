@@ -36,7 +36,7 @@ interface CycleCardProps {
 function getModeTitle(
   t: TFunction,
   mode?: string,
-  discreetMode?: boolean,
+  discreetMode?: boolean
 ): string {
   if (discreetMode)
     return t('cycleCard.mode.wellness', { defaultValue: 'Wellness' });
@@ -86,7 +86,9 @@ export const CycleCardRingContent: React.FC<{
   info: CycleRingContentInfo;
 }> = ({ title, info }) => {
   const { t, i18n: translationI18n } = useTranslation();
-  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
+  const dateLocale = translationI18n.language.startsWith('pl')
+    ? 'pl-PL'
+    : 'en-US';
   const tokens = useWellnessTokens();
   const [textAccent] = useCSSVariable(['--color-accent-primary']) as [string];
   const phaseName = (() => {

@@ -18,7 +18,7 @@ export function useExerciseImageSource() {
   useFocusEffect(
     useCallback(() => {
       getActiveServerConfig().then(setConfig);
-    }, []),
+    }, [])
   );
 
   // Cache resolved sources by image path so the same path yields a
@@ -66,7 +66,7 @@ export function useExerciseImageSource() {
       cacheRef.current.set(imagePath, source);
       return source;
     },
-    [config],
+    [config]
   );
 
   return { getImageSource };
@@ -85,7 +85,7 @@ const PAIR_ASPECT_TOLERANCE = 0.1;
  * modes over it. Ignores arrays that are not exactly a pair.
  */
 export function useImagePairAspectMatch(
-  sources: readonly ImageSource[],
+  sources: readonly ImageSource[]
 ): boolean | undefined {
   const [match, setMatch] = useState<boolean | undefined>(undefined);
 
@@ -105,13 +105,13 @@ export function useImagePairAspectMatch(
     // same pipeline means one download and one disk-cache entry serve both the
     // probe and the render. A failed load leaves its ratio at 0, keeping the
     // verdict undefined per the contract above.
-    Promise.allSettled(sources.map(source => Image.loadAsync(source))).then(
-      results => {
-        const refs = results.map(result =>
-          result.status === 'fulfilled' ? result.value : null,
+    Promise.allSettled(sources.map((source) => Image.loadAsync(source))).then(
+      (results) => {
+        const refs = results.map((result) =>
+          result.status === 'fulfilled' ? result.value : null
         );
-        const [a, b] = refs.map(ref =>
-          ref && ref.height > 0 ? ref.width / ref.height : 0,
+        const [a, b] = refs.map((ref) =>
+          ref && ref.height > 0 ? ref.width / ref.height : 0
         );
         if (!cancelled && a > 0 && b > 0) {
           setMatch(Math.abs(a - b) / Math.max(a, b) <= PAIR_ASPECT_TOLERANCE);
@@ -119,7 +119,7 @@ export function useImagePairAspectMatch(
         // ImageRefs pin the decoded bitmaps in native memory; only the
         // dimensions are needed here.
         for (const ref of refs) ref?.release();
-      },
+      }
     );
 
     return () => {

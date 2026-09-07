@@ -23,7 +23,6 @@ export const passkeyKeys = {
 export const waterContainerKeys = {
   all: ['waterContainers'] as const,
   lists: () => [...waterContainerKeys.all, 'list'] as const,
-  primary: () => [...waterContainerKeys.all, 'primary'] as const,
 };
 
 export const apiKeyKeys = {

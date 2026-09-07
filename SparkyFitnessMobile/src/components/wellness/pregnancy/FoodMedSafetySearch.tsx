@@ -38,18 +38,30 @@ const FoodMedSafetySearch: React.FC = () => {
       debouncedQuery,
       category === 'food' ? FOOD_SAFETY : MED_SAFETY,
       group,
-      t,
+      t
     );
   }, [debouncedQuery, category, t]);
 
   return (
     <View className="bg-surface rounded-xl p-4 shadow-sm gap-3">
-      <Text className="text-base font-bold text-text-secondary">{t('pregnancySafety.title', { defaultValue: 'Food & Medication Safety' })}</Text>
+      <Text className="text-base font-bold text-text-secondary">
+        {t('pregnancySafety.title', {
+          defaultValue: 'Food & Medication Safety',
+        })}
+      </Text>
 
       <SegmentedControl
         segments={[
-          { key: 'food', label: t('pregnancySafety.food', { defaultValue: 'Food' }) },
-          { key: 'med', label: t('pregnancySafety.medications', { defaultValue: 'Medications' }) },
+          {
+            key: 'food',
+            label: t('pregnancySafety.food', { defaultValue: 'Food' }),
+          },
+          {
+            key: 'med',
+            label: t('pregnancySafety.medications', {
+              defaultValue: 'Medications',
+            }),
+          },
         ]}
         activeKey={category}
         onSelect={setCategory}
@@ -58,18 +70,28 @@ const FoodMedSafetySearch: React.FC = () => {
       <FormInput
         value={query}
         onChangeText={setQuery}
-        placeholder={category === 'food'
-          ? t('pregnancySafety.foodExample', { defaultValue: 'Sushi' })
-          : t('pregnancySafety.medicationExample', { defaultValue: 'Ibuprofen' })}
+        placeholder={
+          category === 'food'
+            ? t('pregnancySafety.foodExample', { defaultValue: 'Sushi' })
+            : t('pregnancySafety.medicationExample', {
+                defaultValue: 'Ibuprofen',
+              })
+        }
       />
 
       {!debouncedQuery.trim() ? (
         <Text className="text-text-secondary text-sm">
-          {t('pregnancySafety.searchHint', { defaultValue: 'Search to see how a food or medication is commonly categorized during pregnancy.' })}
+          {t('pregnancySafety.searchHint', {
+            defaultValue:
+              'Search to see how a food or medication is commonly categorized during pregnancy.',
+          })}
         </Text>
       ) : results.length === 0 ? (
         <Text className="text-text-secondary text-sm">
-          {t('pregnancySafety.noMatch', { defaultValue: 'No match found. This list is not exhaustive, so ask your provider if unsure.' })}
+          {t('pregnancySafety.noMatch', {
+            defaultValue:
+              'No match found. This list is not exhaustive, so ask your provider if unsure.',
+          })}
         </Text>
       ) : (
         <View>
@@ -82,13 +104,25 @@ const FoodMedSafetySearch: React.FC = () => {
               >
                 <View className="flex-row items-center justify-between">
                   <Text className="text-text-primary text-base font-semibold flex-1 mr-2">
-                    {localizeSafetyName(item, category === 'food' ? 'food' : 'med', t)}
+                    {localizeSafetyName(
+                      item,
+                      category === 'food' ? 'food' : 'med',
+                      t
+                    )}
                   </Text>
                   <View className={`rounded-full px-2.5 py-0.5 ${style.bg}`}>
-                    <Text className={`text-xs font-bold ${style.text}`}>{localizeSafetyStatus(t, item.status)}</Text>
+                    <Text className={`text-xs font-bold ${style.text}`}>
+                      {localizeSafetyStatus(t, item.status)}
+                    </Text>
                   </View>
                 </View>
-                <Text className="text-text-secondary text-xs leading-normal">{localizeSafetyNote(item, category === 'food' ? 'food' : 'med', t)}</Text>
+                <Text className="text-text-secondary text-xs leading-normal">
+                  {localizeSafetyNote(
+                    item,
+                    category === 'food' ? 'food' : 'med',
+                    t
+                  )}
+                </Text>
               </View>
             );
           })}
@@ -96,7 +130,10 @@ const FoodMedSafetySearch: React.FC = () => {
       )}
 
       <Text className="text-text-secondary text-sm">
-        {t('pregnancySafety.disclaimer', { defaultValue: 'General guidance only, not medical advice. Always confirm with your provider.' })}
+        {t('pregnancySafety.disclaimer', {
+          defaultValue:
+            'General guidance only, not medical advice. Always confirm with your provider.',
+        })}
       </Text>
     </View>
   );

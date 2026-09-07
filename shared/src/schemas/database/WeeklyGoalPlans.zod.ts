@@ -66,5 +66,9 @@ export const weeklyGoalPlansMutatorSchema = z.object({
 });
 
 export type WeeklyGoalPlans = z.infer<typeof weeklyGoalPlansSchema>;
-export type WeeklyGoalPlansInitializer = z.infer<typeof weeklyGoalPlansInitializerSchema>;
-export type WeeklyGoalPlansMutator = z.infer<typeof weeklyGoalPlansMutatorSchema>;
+export type WeeklyGoalPlansInitializer = z.infer<
+  typeof weeklyGoalPlansInitializerSchema
+>;
+export type WeeklyGoalPlansMutator = z.infer<
+  typeof weeklyGoalPlansMutatorSchema
+>;

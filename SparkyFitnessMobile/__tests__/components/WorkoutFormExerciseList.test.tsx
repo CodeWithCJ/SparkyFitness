@@ -39,7 +39,12 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
   return {
     __esModule: true,
     METRIC_OPTIONS: ['rpe', 'volume', 'e1rm', 'tenrm'],
-    METRIC_MENU_LABELS: { rpe: 'RPE', volume: 'Volume', e1rm: 'Est. 1RM', tenrm: 'Est. 10RM' },
+    METRIC_MENU_LABELS: {
+      rpe: 'RPE',
+      volume: 'Volume',
+      e1rm: 'Est. 1RM',
+      tenrm: 'Est. 10RM',
+    },
     default: (props: any) => {
       const id = props.exercise.id;
       const firstSetId = String(props.exercise.sets[0]?.id);
@@ -78,21 +83,35 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
           />
           <Pressable
             testID={`card-${id}-rest`}
-            onPress={() => props.onPressRestChip?.(id, props.exercise.sets[0]?.rest_time ?? null)}
+            onPress={() =>
+              props.onPressRestChip?.(
+                id,
+                props.exercise.sets[0]?.rest_time ?? null
+              )
+            }
           />
           <Pressable
             testID={`card-${id}-metric-header`}
-            onPress={() => props.onPressMetricHeader?.({ x: 0, y: 0, width: 0, height: 0 })}
+            onPress={() =>
+              props.onPressMetricHeader?.({ x: 0, y: 0, width: 0, height: 0 })
+            }
           />
           <Pressable
             testID={`card-${id}-set-type`}
             onPress={() =>
-              props.onPressSetType?.(firstSetId, { x: 0, y: 0, width: 0, height: 0 })
+              props.onPressSetType?.(firstSetId, {
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0,
+              })
             }
           />
           <Pressable
             testID={`card-${id}-commit-prefill`}
-            onPress={() => props.onCommitField?.(firstSetId, { weight: 100, reps: 5 })}
+            onPress={() =>
+              props.onCommitField?.(firstSetId, { weight: 100, reps: 5 })
+            }
           />
           <Pressable
             testID={`card-${id}-commit-rpe`}
@@ -104,9 +123,14 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
           />
           <Pressable
             testID={`card-${id}-editchange`}
-            onPress={() => props.onEditFieldChange?.(firstSetId, 'weight', '105.5')}
+            onPress={() =>
+              props.onEditFieldChange?.(firstSetId, 'weight', '105.5')
+            }
           />
-          <Pressable testID={`card-${id}-delete-set`} onPress={() => props.onDeleteSet?.(firstSetId)} />
+          <Pressable
+            testID={`card-${id}-delete-set`}
+            onPress={() => props.onDeleteSet?.(firstSetId)}
+          />
           <Pressable
             testID={`card-${id}-toggle-complete`}
             onPress={() => props.onToggleComplete?.(firstSetId)}
@@ -121,7 +145,9 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
           />
           <Pressable
             testID={`card-${id}-commit-set-note`}
-            onPress={() => props.onCommitField?.(firstSetId, { notes: 'slow tempo' })}
+            onPress={() =>
+              props.onCommitField?.(firstSetId, { notes: 'slow tempo' })
+            }
           />
         </View>
       );
@@ -169,7 +195,10 @@ jest.mock('../../src/components/ActionSheet', () => {
   return {
     __esModule: true,
     default: React.forwardRef(({ items }: any, ref: any) => {
-      React.useImperativeHandle(ref, () => ({ present: jest.fn(), dismiss: jest.fn() }));
+      React.useImperativeHandle(ref, () => ({
+        present: jest.fn(),
+        dismiss: jest.fn(),
+      }));
       return (
         <View>
           {items.map((item: any) => (
@@ -211,7 +240,7 @@ jest.mock('../../src/components/ExerciseSetRestSheet', () => {
 
 function makeExercise(
   clientId: string,
-  overrides?: Partial<WorkoutDraftExercise>,
+  overrides?: Partial<WorkoutDraftExercise>
 ): WorkoutDraftExercise {
   return {
     clientId,
@@ -219,7 +248,9 @@ function makeExercise(
     exerciseName: clientId.toUpperCase(),
     exerciseCategory: 'Strength',
     images: [],
-    sets: [{ clientId: `${clientId}-s1`, weight: '100', reps: '5', restTime: 90 }],
+    sets: [
+      { clientId: `${clientId}-s1`, weight: '100', reps: '5', restTime: 90 },
+    ],
     ...overrides,
   };
 }
@@ -227,7 +258,7 @@ function makeExercise(
 function renderList(
   exercises: WorkoutDraftExercise[],
   props?: Partial<React.ComponentProps<typeof WorkoutFormExerciseList>>,
-  ref?: React.Ref<WorkoutFormExerciseListHandle>,
+  ref?: React.Ref<WorkoutFormExerciseListHandle>
 ) {
   const callbacks = {
     onActivateSet: jest.fn(),
@@ -253,13 +284,15 @@ function renderList(
       activeSetField="weight"
       {...callbacks}
       {...props}
-    />,
+    />
   );
   return { ...utils, callbacks };
 }
 
 function cardInfo(utils: ReturnType<typeof render>, id: string) {
-  return JSON.parse(utils.getByTestId(`card-${id}-info`).props.children as string);
+  return JSON.parse(
+    utils.getByTestId(`card-${id}-info`).props.children as string
+  );
 }
 
 describe('WorkoutFormExerciseList', () => {
@@ -292,13 +325,21 @@ describe('WorkoutFormExerciseList', () => {
     expect(cardInfo(utils, 'b').activeSetId).toBeNull();
 
     fireEvent.press(utils.getByTestId('card-b-activate'));
-    expect(utils.callbacks.onActivateSet).toHaveBeenCalledWith('b:b-s1', 'reps');
+    expect(utils.callbacks.onActivateSet).toHaveBeenCalledWith(
+      'b:b-s1',
+      'reps'
+    );
   });
 
   it('routes per-keystroke edits to updateSetField with the owning exercise', () => {
     const utils = renderList([makeExercise('a')]);
     fireEvent.press(utils.getByTestId('card-a-editchange'));
-    expect(utils.callbacks.updateSetField).toHaveBeenCalledWith('a', 'a-s1', 'weight', '105.5');
+    expect(utils.callbacks.updateSetField).toHaveBeenCalledWith(
+      'a',
+      'a-s1',
+      'weight',
+      '105.5'
+    );
   });
 
   it('derives completedSetIds from draft completedAt', () => {
@@ -308,7 +349,9 @@ describe('WorkoutFormExerciseList', () => {
         sets: [{ clientId: 'a-s1', weight: '100', reps: '5', completedAt }],
       }),
     ]);
-    expect(cardInfo(utils, 'a').completed).toEqual({ 'a-s1': Date.parse(completedAt) });
+    expect(cardInfo(utils, 'a').completed).toEqual({
+      'a-s1': Date.parse(completedAt),
+    });
   });
 
   it('forwards excludePresetEntryId to every card when editing a saved workout', () => {
@@ -345,7 +388,10 @@ describe('WorkoutFormExerciseList', () => {
     });
 
     it('ignores singleton groups', () => {
-      const utils = renderList([makeExercise('a', { supersetGroup: 4 }), makeExercise('b')]);
+      const utils = renderList([
+        makeExercise('a', { supersetGroup: 4 }),
+        makeExercise('b'),
+      ]);
       expect(utils.queryByTestId('superset-rail-a')).toBeNull();
     });
   });
@@ -374,7 +420,11 @@ describe('WorkoutFormExerciseList', () => {
     });
 
     it('drives the pick flow: Superset with… lists candidates and dispatches supersetWith', () => {
-      const utils = renderList([makeExercise('a'), makeExercise('b'), makeExercise('c')]);
+      const utils = renderList([
+        makeExercise('a'),
+        makeExercise('b'),
+        makeExercise('c'),
+      ]);
       fireEvent.press(utils.getByTestId('card-a-overflow'));
       fireEvent.press(utils.getByTestId('menu-item-superset-with'));
       // Pick mode lists the other ungrouped exercises by name.
@@ -398,7 +448,9 @@ describe('WorkoutFormExerciseList', () => {
       const utils = renderList(exercises);
       fireEvent.press(utils.getByTestId('card-b-overflow'));
       fireEvent.press(utils.getByTestId('menu-item-remove'));
-      expect(utils.callbacks.onRemoveExercise).toHaveBeenCalledWith(exercises[1]);
+      expect(utils.callbacks.onRemoveExercise).toHaveBeenCalledWith(
+        exercises[1]
+      );
     });
 
     it('no longer offers Reorder exercises in the card menu (moved to the screen header)', () => {
@@ -435,7 +487,7 @@ describe('WorkoutFormExerciseList', () => {
           }),
           makeExercise('b'),
         ],
-        { clearExerciseCompletions },
+        { clearExerciseCompletions }
       );
       fireEvent.press(utils.getByTestId('card-a-overflow'));
       fireEvent.press(utils.getByTestId('menu-item-clear'));
@@ -463,7 +515,7 @@ describe('WorkoutFormExerciseList', () => {
             ],
           }),
         ],
-        { clearExerciseCompletions },
+        { clearExerciseCompletions }
       );
       fireEvent.press(utils.getByTestId('card-a-overflow'));
       expect(utils.queryByText('Clear logged sets')).toBeNull();
@@ -484,11 +536,17 @@ describe('WorkoutFormExerciseList', () => {
                 duration: 900,
                 completedAt: '2026-07-14T10:00:00.000Z',
               },
-              { clientId: 'a-s2', weight: '', reps: '', distance: '', duration: 900 },
+              {
+                clientId: 'a-s2',
+                weight: '',
+                reps: '',
+                distance: '',
+                duration: 900,
+              },
             ],
           }),
         ],
-        { clearExerciseCompletions },
+        { clearExerciseCompletions }
       );
       fireEvent.press(utils.getByTestId('card-a-overflow'));
       fireEvent.press(utils.getByTestId('menu-item-clear'));
@@ -499,7 +557,12 @@ describe('WorkoutFormExerciseList', () => {
       const utils = renderList([
         makeExercise('a', {
           sets: [
-            { clientId: 'a-s1', weight: '100', reps: '5', completedAt: '2026-07-14T10:00:00.000Z' },
+            {
+              clientId: 'a-s1',
+              weight: '100',
+              reps: '5',
+              completedAt: '2026-07-14T10:00:00.000Z',
+            },
           ],
         }),
       ]);
@@ -529,12 +592,12 @@ describe('WorkoutFormExerciseList', () => {
           setExerciseNotes: jest.fn(),
           onReplaceExercise: jest.fn(),
           clearExerciseCompletions: jest.fn(),
-        },
+        }
       );
       fireEvent.press(utils.getByTestId('card-a-overflow'));
       const keys = utils
         .getAllByTestId(/^menu-item-/)
-        .map(node => node.props.testID.replace('menu-item-', ''));
+        .map((node) => node.props.testID.replace('menu-item-', ''));
       expect(keys).toEqual([
         'view',
         'notes',
@@ -557,11 +620,13 @@ describe('WorkoutFormExerciseList', () => {
 
     it('routes the View exercise menu item through onViewExercise with the draft mapped to an Exercise', () => {
       const onViewExercise = jest.fn();
-      const utils = renderList([makeExercise('a'), makeExercise('b')], { onViewExercise });
+      const utils = renderList([makeExercise('a'), makeExercise('b')], {
+        onViewExercise,
+      });
       fireEvent.press(utils.getByTestId('card-a-overflow'));
       fireEvent.press(utils.getByTestId('menu-item-view'));
       expect(onViewExercise).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'x-a', name: 'A', category: 'Strength' }),
+        expect.objectContaining({ id: 'x-a', name: 'A', category: 'Strength' })
       );
     });
 
@@ -570,14 +635,16 @@ describe('WorkoutFormExerciseList', () => {
       const utils = renderList([makeExercise('a')], { onViewExercise });
       fireEvent.press(utils.getByTestId('card-a-thumb'));
       expect(onViewExercise).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'x-a', name: 'A' }),
+        expect.objectContaining({ id: 'x-a', name: 'A' })
       );
     });
   });
 
   describe('notes (workout forms, gated on setExerciseNotes)', () => {
     it('offers a Notes menu item that toggles the exercise note editor', () => {
-      const utils = renderList([makeExercise('a')], { setExerciseNotes: jest.fn() });
+      const utils = renderList([makeExercise('a')], {
+        setExerciseNotes: jest.fn(),
+      });
       fireEvent.press(utils.getByTestId('card-a-overflow'));
       expect(utils.getByText('Notes')).toBeTruthy();
 
@@ -588,7 +655,9 @@ describe('WorkoutFormExerciseList', () => {
     });
 
     it('expands a collapsed card when its note editor opens', () => {
-      const utils = renderList([makeExercise('a')], { setExerciseNotes: jest.fn() });
+      const utils = renderList([makeExercise('a')], {
+        setExerciseNotes: jest.fn(),
+      });
       fireEvent.press(utils.getByTestId('card-a-toggle'));
       expect(cardInfo(utils, 'a').expanded).toBe(false);
 
@@ -607,7 +676,9 @@ describe('WorkoutFormExerciseList', () => {
     });
 
     it('toggles the per-set note panel from a row long-press', () => {
-      const utils = renderList([makeExercise('a')], { setExerciseNotes: jest.fn() });
+      const utils = renderList([makeExercise('a')], {
+        setExerciseNotes: jest.fn(),
+      });
       expect(cardInfo(utils, 'a').hasLongPressSet).toBe(true);
 
       fireEvent.press(utils.getByTestId('card-a-longpress-set'));
@@ -633,7 +704,9 @@ describe('WorkoutFormExerciseList', () => {
     });
 
     it('routes a set-note commit through updateSetMeta', () => {
-      const utils = renderList([makeExercise('a')], { setExerciseNotes: jest.fn() });
+      const utils = renderList([makeExercise('a')], {
+        setExerciseNotes: jest.fn(),
+      });
       fireEvent.press(utils.getByTestId('card-a-commit-set-note'));
       expect(utils.callbacks.updateSetMeta).toHaveBeenCalledWith('a', 'a-s1', {
         notes: 'slow tempo',
@@ -643,9 +716,15 @@ describe('WorkoutFormExerciseList', () => {
 
   describe('reorder overlay', () => {
     it('opens via the imperative handle (dismissing the active set + keyboard) and commits a move', () => {
-      const dismissSpy = jest.spyOn(Keyboard, 'dismiss').mockImplementation(() => {});
+      const dismissSpy = jest
+        .spyOn(Keyboard, 'dismiss')
+        .mockImplementation(() => {});
       const ref = React.createRef<WorkoutFormExerciseListHandle>();
-      const utils = renderList([makeExercise('a'), makeExercise('b')], undefined, ref);
+      const utils = renderList(
+        [makeExercise('a'), makeExercise('b')],
+        undefined,
+        ref
+      );
       expect(utils.queryByTestId('reorder-list')).toBeNull();
 
       act(() => ref.current?.openReorder());
@@ -666,7 +745,9 @@ describe('WorkoutFormExerciseList', () => {
   it('opens the set-type menu and dispatches updateSetMeta / removeSet', () => {
     const utils = renderList([
       makeExercise('a', {
-        sets: [{ clientId: 'a-s1', weight: '100', reps: '5', setType: 'normal' }],
+        sets: [
+          { clientId: 'a-s1', weight: '100', reps: '5', setType: 'normal' },
+        ],
       }),
     ]);
     fireEvent.press(utils.getByTestId('card-a-set-type'));
@@ -693,8 +774,12 @@ describe('WorkoutFormExerciseList', () => {
   describe('completion toggle', () => {
     it('stamps completedAt when toggling an incomplete set (showCompletion)', () => {
       const utils = renderList(
-        [makeExercise('a', { sets: [{ clientId: 'a-s1', weight: '100', reps: '5' }] })],
-        { showCompletion: true },
+        [
+          makeExercise('a', {
+            sets: [{ clientId: 'a-s1', weight: '100', reps: '5' }],
+          }),
+        ],
+        { showCompletion: true }
       );
       fireEvent.press(utils.getByTestId('card-a-toggle-complete'));
       expect(utils.callbacks.updateSetMeta).toHaveBeenCalledWith('a', 'a-s1', {
@@ -707,11 +792,16 @@ describe('WorkoutFormExerciseList', () => {
         [
           makeExercise('a', {
             sets: [
-              { clientId: 'a-s1', weight: '100', reps: '5', completedAt: '2026-07-06T10:00:00.000Z' },
+              {
+                clientId: 'a-s1',
+                weight: '100',
+                reps: '5',
+                completedAt: '2026-07-06T10:00:00.000Z',
+              },
             ],
           }),
         ],
-        { showCompletion: true },
+        { showCompletion: true }
       );
       fireEvent.press(utils.getByTestId('card-a-toggle-complete'));
       expect(utils.callbacks.updateSetMeta).toHaveBeenCalledWith('a', 'a-s1', {
@@ -721,7 +811,9 @@ describe('WorkoutFormExerciseList', () => {
 
     it('does not wire the toggle without showCompletion (preset form)', () => {
       const utils = renderList([
-        makeExercise('a', { sets: [{ clientId: 'a-s1', weight: '100', reps: '5' }] }),
+        makeExercise('a', {
+          sets: [{ clientId: 'a-s1', weight: '100', reps: '5' }],
+        }),
       ]);
       fireEvent.press(utils.getByTestId('card-a-toggle-complete'));
       expect(utils.callbacks.updateSetMeta).not.toHaveBeenCalled();
@@ -731,13 +823,17 @@ describe('WorkoutFormExerciseList', () => {
   it('targets the rest sheet at the pressed exercise', () => {
     const utils = renderList([makeExercise('a'), makeExercise('b')]);
     fireEvent.press(utils.getByTestId('card-b-rest'));
-    expect(mockRestSheet.present).toHaveBeenCalledWith('B', [
-      {
-        setId: 'b-s1',
-        setNumber: 1,
-        restSec: 90,
-      },
-    ], false);
+    expect(mockRestSheet.present).toHaveBeenCalledWith(
+      'B',
+      [
+        {
+          setId: 'b-s1',
+          setNumber: 1,
+          restSec: 90,
+        },
+      ],
+      false
+    );
 
     mockRestSheet.onApply?.([{ setId: 'b-s1', seconds: 120 }]);
     expect(utils.callbacks.setExerciseRest).toHaveBeenCalledWith('b', 120);
@@ -747,16 +843,20 @@ describe('WorkoutFormExerciseList', () => {
     const supersetExerciseA = makeExercise('a', { supersetGroup: 1 });
     const supersetExerciseB = makeExercise('b', { supersetGroup: 1 });
     const utils = renderList([supersetExerciseA, supersetExerciseB]);
-    
+
     fireEvent.press(utils.getByTestId('card-b-rest'));
     // For superset members, isSupersetRound should be true
-    expect(mockRestSheet.present).toHaveBeenCalledWith('B', [
-      {
-        setId: 'b-s1',
-        setNumber: 1,
-        restSec: 90,
-      },
-    ], true);
+    expect(mockRestSheet.present).toHaveBeenCalledWith(
+      'B',
+      [
+        {
+          setId: 'b-s1',
+          setNumber: 1,
+          restSec: 90,
+        },
+      ],
+      true
+    );
 
     // When superset member rest is applied, use setExerciseRest regardless of matching sets
     mockRestSheet.onApply?.([{ setId: 'b-s1', seconds: 120 }]);
@@ -767,14 +867,26 @@ describe('WorkoutFormExerciseList', () => {
     it('converts kg commits to display strings for the reducer (lbs)', () => {
       const utils = renderList([makeExercise('a')], { weightUnit: 'lbs' });
       fireEvent.press(utils.getByTestId('card-a-commit-prefill'));
-      expect(utils.callbacks.updateSetField).toHaveBeenCalledWith('a', 'a-s1', 'weight', '220.5');
-      expect(utils.callbacks.updateSetField).toHaveBeenCalledWith('a', 'a-s1', 'reps', '5');
+      expect(utils.callbacks.updateSetField).toHaveBeenCalledWith(
+        'a',
+        'a-s1',
+        'weight',
+        '220.5'
+      );
+      expect(utils.callbacks.updateSetField).toHaveBeenCalledWith(
+        'a',
+        'a-s1',
+        'reps',
+        '5'
+      );
     });
 
     it('routes rpe commits to updateSetMeta', () => {
       const utils = renderList([makeExercise('a')]);
       fireEvent.press(utils.getByTestId('card-a-commit-rpe'));
-      expect(utils.callbacks.updateSetMeta).toHaveBeenCalledWith('a', 'a-s1', { rpe: 8.5 });
+      expect(utils.callbacks.updateSetMeta).toHaveBeenCalledWith('a', 'a-s1', {
+        rpe: 8.5,
+      });
       expect(utils.callbacks.updateSetField).not.toHaveBeenCalled();
     });
   });
@@ -788,9 +900,13 @@ describe('WorkoutFormExerciseList', () => {
   describe('removeExerciseOnLastSetDelete (workout forms)', () => {
     it('routes deleting the only set through onRemoveExercise instead of removeSet', () => {
       const exercises = [makeExercise('a')];
-      const utils = renderList(exercises, { removeExerciseOnLastSetDelete: true });
+      const utils = renderList(exercises, {
+        removeExerciseOnLastSetDelete: true,
+      });
       fireEvent.press(utils.getByTestId('card-a-delete-set'));
-      expect(utils.callbacks.onRemoveExercise).toHaveBeenCalledWith(exercises[0]);
+      expect(utils.callbacks.onRemoveExercise).toHaveBeenCalledWith(
+        exercises[0]
+      );
       expect(utils.callbacks.removeSet).not.toHaveBeenCalled();
     });
 
@@ -804,7 +920,7 @@ describe('WorkoutFormExerciseList', () => {
             ],
           }),
         ],
-        { removeExerciseOnLastSetDelete: true },
+        { removeExerciseOnLastSetDelete: true }
       );
       fireEvent.press(utils.getByTestId('card-a-delete-set'));
       expect(utils.callbacks.removeSet).toHaveBeenCalledWith('a', 'a-s1');
@@ -813,10 +929,14 @@ describe('WorkoutFormExerciseList', () => {
 
     it('applies the guard to the set-type menu Delete item too', () => {
       const exercises = [makeExercise('a')];
-      const utils = renderList(exercises, { removeExerciseOnLastSetDelete: true });
+      const utils = renderList(exercises, {
+        removeExerciseOnLastSetDelete: true,
+      });
       fireEvent.press(utils.getByTestId('card-a-set-type'));
       fireEvent.press(utils.getByTestId('menu-item-delete'));
-      expect(utils.callbacks.onRemoveExercise).toHaveBeenCalledWith(exercises[0]);
+      expect(utils.callbacks.onRemoveExercise).toHaveBeenCalledWith(
+        exercises[0]
+      );
       expect(utils.callbacks.removeSet).not.toHaveBeenCalled();
     });
   });

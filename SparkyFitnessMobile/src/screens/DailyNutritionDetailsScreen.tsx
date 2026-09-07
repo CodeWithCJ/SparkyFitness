@@ -1,6 +1,12 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, Text, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Platform,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
@@ -23,9 +29,11 @@ import type { RootStackScreenProps } from '../types/navigation';
 import type { FoodEntry } from '../types/foodEntries';
 import { formatLocalizedNumber } from '../localization';
 
-type DailyNutritionDetailsScreenProps = RootStackScreenProps<'DailyNutritionDetails'>;
+type DailyNutritionDetailsScreenProps =
+  RootStackScreenProps<'DailyNutritionDetails'>;
 
-type GlycemicIndexValue = 'None' | 'Very Low' | 'Low' | 'Medium' | 'High' | 'Very High';
+type GlycemicIndexValue =
+  'None' | 'Very Low' | 'Low' | 'Medium' | 'High' | 'Very High';
 
 /**
  * The API/database constrains glycemic_index to a controlled classification enum.
@@ -34,7 +42,7 @@ type GlycemicIndexValue = 'None' | 'Very Low' | 'Low' | 'Medium' | 'High' | 'Ver
  */
 export function getGlycemicIndexLabel(
   t: (key: string, options: { defaultValue: string }) => string,
-  value: string,
+  value: string
 ): string {
   switch (value as GlycemicIndexValue) {
     case 'None':
@@ -48,13 +56,17 @@ export function getGlycemicIndexLabel(
     case 'High':
       return t('nutrients.glycemicIndexHigh', { defaultValue: 'High' });
     case 'Very High':
-      return t('nutrients.glycemicIndexVeryHigh', { defaultValue: 'Very High' });
+      return t('nutrients.glycemicIndexVeryHigh', {
+        defaultValue: 'Very High',
+      });
     default:
       return value;
   }
 }
 
-const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = ({ route, navigation }) => {
+const DailyNutritionDetailsScreen: React.FC<
+  DailyNutritionDetailsScreenProps
+> = ({ route, navigation }) => {
   const { t } = useTranslation();
   const { date } = route.params;
   const insets = useSafeAreaInsets();
@@ -62,8 +74,12 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
   const { isConnected } = useServerConnection();
 
   const { summary, isLoading, isError } = useDailySummary({ date });
-  const { preferences } = useNutrientDisplayPreferences({ enabled: isConnected });
-  const { customNutrients: customDefs } = useCustomNutrients({ enabled: isConnected });
+  const { preferences } = useNutrientDisplayPreferences({
+    enabled: isConnected,
+  });
+  const { customNutrients: customDefs } = useCustomNutrients({
+    enabled: isConnected,
+  });
 
   const [accentColor, progressTrackColor] = useCSSVariable([
     '--color-accent-primary',
@@ -72,12 +88,17 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
 
   // Configure screen header
   const header = useScreenHeader({
-    title: t('dailyNutritionDetails.title', { defaultValue: 'Nutrition Details' }),
+    title: t('dailyNutritionDetails.title', {
+      defaultValue: 'Nutrition Details',
+    }),
     left: { kind: 'back' },
   });
 
   // Calculate standard nutrient totals from food entries
-  const calculateNutrientTotal = (entries: FoodEntry[], key: keyof FoodEntry): number => {
+  const calculateNutrientTotal = (
+    entries: FoodEntry[],
+    key: keyof FoodEntry
+  ): number => {
     return entries.reduce((total, entry) => {
       if (!entry.serving_size) return total;
       const value = entry[key];
@@ -90,11 +111,13 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
   const displayGroups = useMemo(() => {
     if (!summary) return null;
 
-    const reportPref = preferences.find(
-      (p) => p.view_group === 'report_tabular' && p.platform === 'mobile',
-    ) || preferences.find(
-      (p) => p.view_group === 'report_tabular' && p.platform === 'web',
-    );
+    const reportPref =
+      preferences.find(
+        (p) => p.view_group === 'report_tabular' && p.platform === 'mobile'
+      ) ||
+      preferences.find(
+        (p) => p.view_group === 'report_tabular' && p.platform === 'web'
+      );
 
     // Default visible keys in a logical fallback order if no report preferences are found
     const visibleKeys = reportPref
@@ -175,7 +198,8 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
           rolledUp[key] ??
           calculateNutrientTotal(summary.foodEntries, key as keyof FoodEntry) +
             (isFixedNutrient(key) ? supplements[key] : 0);
-        const goal = summary.goals[key as keyof typeof summary.goals] as number | undefined;
+        const goal = summary.goals[key as keyof typeof summary.goals] as
+          number | undefined;
 
         standardItems.push({
           key,
@@ -206,7 +230,9 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
     }
 
     // Add any logged custom nutrients not in current custom definitions
-    for (const [name, consumed] of Object.entries(summary.customNutrientTotals)) {
+    for (const [name, consumed] of Object.entries(
+      summary.customNutrientTotals
+    )) {
       if (seenCustom.has(name)) continue;
       const isVisible = !reportPref || visibleKeys.includes(name);
       if (isVisible) {
@@ -232,20 +258,36 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
     return (
       <View className="flex-1 bg-background justify-center items-center p-4">
         <Text className="text-text-primary text-base font-semibold mb-2">
-          {t('dailyNutritionDetails.loadFailed', { defaultValue: 'Failed to load nutrition details' })}
+          {t('dailyNutritionDetails.loadFailed', {
+            defaultValue: 'Failed to load nutrition details',
+          })}
         </Text>
         <Text className="text-text-secondary text-sm text-center">
-          {t('dailyNutritionDetails.tryAgain', { defaultValue: 'Please check your connection and try again.' })}
+          {t('dailyNutritionDetails.tryAgain', {
+            defaultValue: 'Please check your connection and try again.',
+          })}
         </Text>
       </View>
     );
   }
 
   const goalPercentages = {
-    calories: summary.calorieGoal > 0 ? Math.round((summary.caloriesConsumed / summary.calorieGoal) * 100) : null,
-    protein: summary.protein.goal > 0 ? Math.round((summary.protein.consumed / summary.protein.goal) * 100) : null,
-    carbs: summary.carbs.goal > 0 ? Math.round((summary.carbs.consumed / summary.carbs.goal) * 100) : null,
-    fat: summary.fat.goal > 0 ? Math.round((summary.fat.consumed / summary.fat.goal) * 100) : null,
+    calories:
+      summary.calorieGoal > 0
+        ? Math.round((summary.caloriesConsumed / summary.calorieGoal) * 100)
+        : null,
+    protein:
+      summary.protein.goal > 0
+        ? Math.round((summary.protein.consumed / summary.protein.goal) * 100)
+        : null,
+    carbs:
+      summary.carbs.goal > 0
+        ? Math.round((summary.carbs.consumed / summary.carbs.goal) * 100)
+        : null,
+    fat:
+      summary.fat.goal > 0
+        ? Math.round((summary.fat.consumed / summary.fat.goal) * 100)
+        : null,
   };
 
   const renderNutrientRow = (item: {
@@ -265,22 +307,45 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
       return (
         <View key={item.key} className="py-3 border-b border-border-subtle">
           <View className="flex-row justify-between items-center">
-            <Text className="text-text-secondary text-sm font-medium">{item.label}</Text>
-            <Text className="text-text-primary text-sm font-semibold">{giDisplayValue}</Text>
+            <Text className="text-text-secondary text-sm font-medium">
+              {item.label}
+            </Text>
+            <Text className="text-text-primary text-sm font-semibold">
+              {giDisplayValue}
+            </Text>
           </View>
         </View>
       );
     }
 
     const hasGoal = item.goal !== undefined && item.goal > 0;
-    const progressPercent = hasGoal ? Math.min(Math.round((item.consumed / (item.goal || 1)) * 100), 100) : 0;
+    const progressPercent = hasGoal
+      ? Math.min(Math.round((item.consumed / (item.goal || 1)) * 100), 100)
+      : 0;
 
     let subText = '';
     if (hasGoal) {
       const diff = item.goal! - item.consumed;
-      const remainingLabel = diff > 0 ? t('dailyNutritionDetails.left', { defaultValue: '{{value}}{{unit}} left', value: formatLocalizedNumber(Math.round(diff)), unit: item.unit }) : diff < 0 ? t('dailyNutritionDetails.over', { defaultValue: '{{value}}{{unit}} over', value: formatLocalizedNumber(Math.round(Math.abs(diff))), unit: item.unit }) : t('dailyNutritionDetails.met', { defaultValue: 'met' });
+      const remainingLabel =
+        diff > 0
+          ? t('dailyNutritionDetails.left', {
+              defaultValue: '{{value}}{{unit}} left',
+              value: formatLocalizedNumber(Math.round(diff)),
+              unit: item.unit,
+            })
+          : diff < 0
+            ? t('dailyNutritionDetails.over', {
+                defaultValue: '{{value}}{{unit}} over',
+                value: formatLocalizedNumber(Math.round(Math.abs(diff))),
+                unit: item.unit,
+              })
+            : t('dailyNutritionDetails.met', { defaultValue: 'met' });
       const pct = Math.round((item.consumed / item.goal!) * 100);
-      subText = t('dailyNutritionDetails.percentRemaining', { defaultValue: '{{percent}}% · {{remaining}}', percent: pct, remaining: remainingLabel });
+      subText = t('dailyNutritionDetails.percentRemaining', {
+        defaultValue: '{{percent}}% · {{remaining}}',
+        percent: pct,
+        remaining: remainingLabel,
+      });
     }
 
     return (
@@ -298,18 +363,25 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
         className="py-3 border-b border-border-subtle"
       >
         <View className="flex-row justify-between items-center mb-1">
-          <Text className="text-text-secondary text-sm font-medium">{item.label}</Text>
+          <Text className="text-text-secondary text-sm font-medium">
+            {item.label}
+          </Text>
           <View className="flex-row items-center gap-1">
             <Text className="text-text-primary text-sm font-semibold">
-              {formatLocalizedNumber(Math.round(item.consumed))}{item.unit}
-              {hasGoal && ` / ${formatLocalizedNumber(Math.round(item.goal!))}${item.unit}`}
+              {formatLocalizedNumber(Math.round(item.consumed))}
+              {item.unit}
+              {hasGoal &&
+                ` / ${formatLocalizedNumber(Math.round(item.goal!))}${item.unit}`}
             </Text>
             <Icon name="chevron-forward" size={14} color={progressTrackColor} />
           </View>
         </View>
         {hasGoal && (
           <>
-            <View className="h-1.5 bg-progress-track rounded-full overflow-hidden mt-1" style={{ backgroundColor: progressTrackColor }}>
+            <View
+              className="h-1.5 bg-progress-track rounded-full overflow-hidden mt-1"
+              style={{ backgroundColor: progressTrackColor }}
+            >
               <View
                 className="h-full rounded-full"
                 style={{
@@ -318,9 +390,7 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
                 }}
               />
             </View>
-            <Text className="text-[10px] text-text-muted mt-1">
-              {subText}
-            </Text>
+            <Text className="text-[10px] text-text-muted mt-1">{subText}</Text>
           </>
         )}
       </TouchableOpacity>
@@ -358,12 +428,14 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
           fatGoal={summary.fat.goal}
         />
 
-
-
         {/* Predefined Nutrients Section */}
         {displayGroups && displayGroups.standardItems.length > 0 && (
           <View className="bg-surface rounded-xl p-4 mt-4 shadow-sm">
-            <Text className="text-text-primary text-base font-bold mb-2">{t('dailyNutritionDetails.nutrientBreakdown', { defaultValue: 'Nutrient Breakdown' })}</Text>
+            <Text className="text-text-primary text-base font-bold mb-2">
+              {t('dailyNutritionDetails.nutrientBreakdown', {
+                defaultValue: 'Nutrient Breakdown',
+              })}
+            </Text>
             {displayGroups.standardItems.map(renderNutrientRow)}
           </View>
         )}
@@ -371,7 +443,11 @@ const DailyNutritionDetailsScreen: React.FC<DailyNutritionDetailsScreenProps> = 
         {/* Custom Nutrients Section */}
         {displayGroups && displayGroups.customItems.length > 0 && (
           <View className="bg-surface rounded-xl p-4 mt-4 shadow-sm">
-            <Text className="text-text-primary text-base font-bold mb-2">{t('dailyNutritionDetails.customTracked', { defaultValue: 'Custom Tracked Nutrients' })}</Text>
+            <Text className="text-text-primary text-base font-bold mb-2">
+              {t('dailyNutritionDetails.customTracked', {
+                defaultValue: 'Custom Tracked Nutrients',
+              })}
+            </Text>
             {displayGroups.customItems.map(renderNutrientRow)}
           </View>
         )}

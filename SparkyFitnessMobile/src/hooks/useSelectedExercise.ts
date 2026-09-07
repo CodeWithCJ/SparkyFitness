@@ -8,7 +8,7 @@ interface RouteParamsWithExercise {
 
 export function useSelectedExercise(
   params: RouteParamsWithExercise | undefined,
-  onSelect: (exercise: Exercise) => void,
+  onSelect: (exercise: Exercise) => void
 ): void {
   const lastNonceRef = useRef<number | undefined>(undefined);
 

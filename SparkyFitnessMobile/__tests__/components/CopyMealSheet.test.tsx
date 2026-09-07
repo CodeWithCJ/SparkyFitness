@@ -47,7 +47,7 @@ describe('CopyMealSheet', () => {
     const ref = createRef<CopyMealSheetRef>();
     const view = render(<CopyMealSheet ref={ref} onCopy={jest.fn()} />);
     act(() =>
-      ref.current?.present(getTodayDate(), 'breakfast-id', 'Breakfast'),
+      ref.current?.present(getTodayDate(), 'breakfast-id', 'Breakfast')
     );
     expect(view.getByText('Copy meal: Breakfast')).toBeTruthy();
     expect(view.getByText(/^Source date:/)).toBeTruthy();
@@ -62,7 +62,7 @@ describe('CopyMealSheet', () => {
     const ref = createRef<CopyMealSheetRef>();
     const screen = render(<CopyMealSheet ref={ref} onCopy={jest.fn()} />);
     act(() =>
-      ref.current?.present(getTodayDate(), 'breakfast-id', 'Breakfast'),
+      ref.current?.present(getTodayDate(), 'breakfast-id', 'Breakfast')
     );
 
     expect(screen.getByText('Kopiuj posiłek: Śniadanie')).toBeTruthy();
@@ -109,10 +109,10 @@ describe('CopyMealSheet', () => {
   it('renders the pending label while copying', () => {
     const ref = createRef<CopyMealSheetRef>();
     const view = render(
-      <CopyMealSheet ref={ref} isPending onCopy={jest.fn()} />,
+      <CopyMealSheet ref={ref} isPending onCopy={jest.fn()} />
     );
     act(() =>
-      ref.current?.present(getTodayDate(), 'breakfast-id', 'Breakfast'),
+      ref.current?.present(getTodayDate(), 'breakfast-id', 'Breakfast')
     );
     expect(view.getByText('Copying...')).toBeTruthy();
   });
@@ -124,7 +124,7 @@ describe('CopyMealSheet', () => {
     const view = render(<CopyMealSheet ref={ref} onCopy={onCopy} />);
     const sourceDate = getTodayDate();
     act(() =>
-      ref.current?.present(sourceDate, 'breakfast-custom', 'Breakfast'),
+      ref.current?.present(sourceDate, 'breakfast-custom', 'Breakfast')
     );
 
     // Target Brunch is unambiguous but the SOURCE name "Breakfast" maps to two
@@ -134,7 +134,7 @@ describe('CopyMealSheet', () => {
 
     expect(onCopy).not.toHaveBeenCalled();
     expect(Toast.show).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'error' }),
+      expect.objectContaining({ type: 'error' })
     );
   });
 
@@ -154,7 +154,7 @@ describe('CopyMealSheet', () => {
 
     expect(onCopy).not.toHaveBeenCalled();
     expect(Toast.show).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'error' }),
+      expect.objectContaining({ type: 'error' })
     );
   });
 
@@ -171,7 +171,7 @@ describe('CopyMealSheet', () => {
     // Source id = the CUSTOM type -> its literal name wins, never the system
     // "Breakfast" label, and never the first same-named item.
     act(() =>
-      ref.current?.present(getTodayDate(), 'breakfast-custom', 'breakfast'),
+      ref.current?.present(getTodayDate(), 'breakfast-custom', 'breakfast')
     );
     expect(view.getByText('Copy meal: breakfast')).toBeTruthy();
     expect(view.queryByText('Copy meal: Breakfast')).toBeNull();
@@ -181,7 +181,7 @@ describe('CopyMealSheet', () => {
     const ref = createRef<CopyMealSheetRef>();
     const view = render(<CopyMealSheet ref={ref} onCopy={jest.fn()} />);
     act(() =>
-      ref.current?.present(getTodayDate(), 'deleted-custom-id', 'my old meal'),
+      ref.current?.present(getTodayDate(), 'deleted-custom-id', 'my old meal')
     );
     expect(view.getByText('Copy meal: my old meal')).toBeTruthy();
   });

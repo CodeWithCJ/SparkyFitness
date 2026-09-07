@@ -8,7 +8,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import FoodForm, { type FoodFormData } from '../../components/FoodForm';
 import Switch from '../../components/ui/Switch';
 import { usePreferences } from '../../hooks';
-import { useCreateFoodVariant, useFoodVariants } from '../../hooks/useFoodVariants';
+import {
+  useCreateFoodVariant,
+  useFoodVariants,
+} from '../../hooks/useFoodVariants';
 import { parseOptional } from '../../types/foodInfo';
 import {
   createFoodVariant,
@@ -33,7 +36,11 @@ import {
 import { localizeFoodUnit } from '../../utils/foodUnitLocalization';
 import { parseDecimalInput } from '../../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../../services/nativeTabBarPreference';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../../hooks/useScreenHeader';
+import {
+  useScreenHeader,
+  SAVE_LABEL,
+  SAVING_LABEL,
+} from '../../hooks/useScreenHeader';
 import {
   FOOD_VARIANT_FIELDS,
   buildFormValuesFromVariant,
@@ -49,9 +56,18 @@ import {
   validateFoodForm,
 } from './persistence';
 
-type AdjustNutritionParams = Extract<FoodFormScreenProps['route']['params'], { mode: 'adjust-entry-nutrition' }>;
+type AdjustNutritionParams = Extract<
+  FoodFormScreenProps['route']['params'],
+  { mode: 'adjust-entry-nutrition' }
+>;
 
-export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutritionParams; navigation: FoodFormScreenProps['navigation'] }) {
+export function AdjustNutritionMode({
+  params,
+  navigation,
+}: {
+  params: AdjustNutritionParams;
+  navigation: FoodFormScreenProps['navigation'];
+}) {
   const {
     initialValues,
     returnKey,
@@ -86,18 +102,15 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
 
   // Equivalent units — only fetched/shown when we have a real saved food.
   const { variants } = useFoodVariants(foodId ?? '', { enabled: !!foodId });
-  const groups = useMemo(
-    () => groupEquivalentVariants(variants),
-    [variants],
-  );
+  const groups = useMemo(() => groupEquivalentVariants(variants), [variants]);
   const activeGroup = useMemo(
     () =>
       groups.find(
         (g) =>
           g.base.id === currentVariantId ||
-          g.equivalents.some((eq) => eq.id === currentVariantId),
+          g.equivalents.some((eq) => eq.id === currentVariantId)
       ),
-    [groups, currentVariantId],
+    [groups, currentVariantId]
   );
   const otherSiblings = useMemo<EquivalentUnit[]>(() => {
     if (!activeGroup) return [];
@@ -109,7 +122,9 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
   }, [activeGroup, currentVariantId]);
 
   const [equivalentDraft, setEquivalentDraft] = useState<EquivalentUnit[]>([]);
-  const [equivalentBaseline, setEquivalentBaseline] = useState<EquivalentUnit[]>([]);
+  const [equivalentBaseline, setEquivalentBaseline] = useState<
+    EquivalentUnit[]
+  >([]);
 
   // Seed the editable equivalents from the current variant's siblings whenever
   // the source signature changes. Done during render (instead of in an effect)
@@ -141,7 +156,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
   const buildGroupNutrition = useCallback(
     (
       data: FoodFormData,
-      snapshot: FoodVariantDetail | undefined,
+      snapshot: FoodVariantDetail | undefined
     ): Partial<FoodVariantDetail> => ({
       calories: parseDecimalInput(data.calories) || 0,
       protein: parseDecimalInput(data.protein) || 0,
@@ -161,14 +176,15 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
       polyunsaturated_fat: snapshot?.polyunsaturated_fat,
       monounsaturated_fat: snapshot?.monounsaturated_fat,
       glycemic_index: snapshot?.glycemic_index,
-      custom_nutrients: currentCustomNutrients ?? snapshot?.custom_nutrients ?? undefined,
+      custom_nutrients:
+        currentCustomNutrients ?? snapshot?.custom_nutrients ?? undefined,
     }),
-    [currentCustomNutrients],
+    [currentCustomNutrients]
   );
 
   const handleUnitSelectionChange = useCallback(
     async (
-      selection: FoodUnitSelectionResult,
+      selection: FoodUnitSelectionResult
     ): Promise<FoodUnitSelectionResult> => {
       if (selection.kind === 'existing') {
         setPendingUnitSelection(selection);
@@ -178,14 +194,15 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
       setPendingUnitSelection(selection);
       return selection;
     },
-    [variantId],
+    [variantId]
   );
 
   const isDraftSelection = pendingUnitSelection?.kind === 'draft';
   // Show equivalents for local foods (canUpdateVariant) and also when navigating
   // from FoodEntryAdd for external foods — equivalents get deferred to onSuccess
   // of addEntry once the food has a real food_id.
-  const showEquivalents = canUpdateVariant || params.returnTo === 'FoodEntryAdd';
+  const showEquivalents =
+    canUpdateVariant || params.returnTo === 'FoodEntryAdd';
 
   const handleSubmit = async (data: FoodFormData) => {
     if (isSubmitting) return;
@@ -206,7 +223,9 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
     ) {
       Toast.show({
         type: 'error',
-        text1: t('foodForm.loadingDetails', { defaultValue: 'Still loading food details. Try again in a moment.' }),
+        text1: t('foodForm.loadingDetails', {
+          defaultValue: 'Still loading food details. Try again in a moment.',
+        }),
       });
       return;
     }
@@ -229,8 +248,8 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
           const createdVariant = await createVariant(
             buildCreateFoodVariantPayload(
               foodId,
-              buildVariantFromFormData(data, draftSelection),
-            ),
+              buildVariantFromFormData(data, draftSelection)
+            )
           );
           nextUnitSelection = {
             kind: 'existing',
@@ -240,7 +259,12 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
           setPendingUnitSelection(nextUnitSelection);
           setCurrentVariantId(createdVariant.id);
         } catch {
-          Toast.show({ type: 'error', text1: t('foodForm.saveNewUnitFailed', { defaultValue: 'Could not save new unit' }) });
+          Toast.show({
+            type: 'error',
+            text1: t('foodForm.saveNewUnitFailed', {
+              defaultValue: 'Could not save new unit',
+            }),
+          });
           return;
         }
       }
@@ -261,8 +285,8 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
             const createdVariant = await createVariant(
               buildCreateFoodVariantPayload(
                 foodId,
-                buildVariantFromFormData(data),
-              ),
+                buildVariantFromFormData(data)
+              )
             );
             nextUnitSelection = { kind: 'existing', variant: createdVariant };
             nextVariantId = createdVariant.id;
@@ -270,7 +294,9 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
             setCurrentVariantId(createdVariant.id);
             // First-ever variant — no existing siblings to diff against, so create
             // draft equivalents directly (same pattern as "Save as new" above).
-            const cleanEqFirst = equivalentDraft.filter((eq) => !isBlankEquivalent(eq));
+            const cleanEqFirst = equivalentDraft.filter(
+              (eq) => !isBlankEquivalent(eq)
+            );
             if (cleanEqFirst.length > 0) {
               const groupNutrFirst = buildGroupNutrition(data, undefined);
               await Promise.all(
@@ -280,13 +306,20 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
                     serving_size: eq.serving_size,
                     serving_unit: eq.serving_unit,
                     ...groupNutrFirst,
-                  } as CreateFoodVariantPayload),
-                ),
-              ).catch(() => {
-                Toast.show({ type: 'error', text1: t('foodForm.equivalentUnitsFailed', { defaultValue: 'Some equivalent units could not be saved' }) });
-              }).finally(() => {
-                invalidateFoodCaches(queryClient, foodId);
-              });
+                  } as CreateFoodVariantPayload)
+                )
+              )
+                .catch(() => {
+                  Toast.show({
+                    type: 'error',
+                    text1: t('foodForm.equivalentUnitsFailed', {
+                      defaultValue: 'Some equivalent units could not be saved',
+                    }),
+                  });
+                })
+                .finally(() => {
+                  invalidateFoodCaches(queryClient, foodId);
+                });
               setEquivalentBaseline(equivalentDraft);
             }
           } else if (draftSelection && foodId) {
@@ -314,7 +347,9 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
             // form values differ from what's stored, ask whether they want to
             // overwrite that variant or save the edited values as a new one.
             const existingSelection =
-              pendingUnitSelection?.kind === 'existing' ? pendingUnitSelection : null;
+              pendingUnitSelection?.kind === 'existing'
+                ? pendingUnitSelection
+                : null;
             const variantValues = existingSelection
               ? buildFormValuesFromVariant(existingSelection.variant)
               : null;
@@ -325,7 +360,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
             let saveVariantId = nextVariantId;
             if (existingSelection && nutritionChanged && foodId) {
               const choice = await confirmVariantOverwrite(
-                `${formatServingSizeForDisplay(existingSelection.variant.serving_size)} ${localizeFoodUnit(existingSelection.variant.serving_unit, t)}`,
+                `${formatServingSizeForDisplay(existingSelection.variant.serving_size)} ${localizeFoodUnit(existingSelection.variant.serving_unit, t)}`
               );
               if (choice === 'cancel') return;
               if (choice === 'new') {
@@ -333,17 +368,22 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
                   const createdVariant = await createVariant(
                     buildCreateFoodVariantPayload(
                       foodId,
-                      buildVariantFromFormData(data, existingSelection),
-                    ),
+                      buildVariantFromFormData(data, existingSelection)
+                    )
                   );
-                  nextUnitSelection = { kind: 'existing', variant: createdVariant };
+                  nextUnitSelection = {
+                    kind: 'existing',
+                    variant: createdVariant,
+                  };
                   saveVariantId = createdVariant.id;
                   equivDiffVariantId = createdVariant.id;
                   setPendingUnitSelection(nextUnitSelection);
                   setCurrentVariantId(createdVariant.id);
                   // New variant has no existing siblings — create draft equivalents
                   // directly rather than diffing against a stale snapshot.
-                  const cleanEq = equivalentDraft.filter((eq) => !isBlankEquivalent(eq));
+                  const cleanEq = equivalentDraft.filter(
+                    (eq) => !isBlankEquivalent(eq)
+                  );
                   if (cleanEq.length > 0) {
                     const groupNutr = buildGroupNutrition(data, undefined);
                     await Promise.all(
@@ -353,17 +393,30 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
                           serving_size: eq.serving_size,
                           serving_unit: eq.serving_unit,
                           ...groupNutr,
-                        } as CreateFoodVariantPayload),
-                      ),
-                    ).catch(() => {
-                      Toast.show({ type: 'error', text1: t('foodForm.equivalentUnitsFailed', { defaultValue: 'Some equivalent units could not be saved' }) });
-                    }).finally(() => {
-                      invalidateFoodCaches(queryClient, foodId);
-                    });
+                        } as CreateFoodVariantPayload)
+                      )
+                    )
+                      .catch(() => {
+                        Toast.show({
+                          type: 'error',
+                          text1: t('foodForm.equivalentUnitsFailed', {
+                            defaultValue:
+                              'Some equivalent units could not be saved',
+                          }),
+                        });
+                      })
+                      .finally(() => {
+                        invalidateFoodCaches(queryClient, foodId);
+                      });
                     setEquivalentBaseline(equivalentDraft);
                   }
                 } catch {
-                  Toast.show({ type: 'error', text1: t('foodForm.saveNewVariantFailed', { defaultValue: 'Could not save new variant' }) });
+                  Toast.show({
+                    type: 'error',
+                    text1: t('foodForm.saveNewVariantFailed', {
+                      defaultValue: 'Could not save new variant',
+                    }),
+                  });
                   return;
                 }
                 // Fall through to persistFoodEdits with the new variant ID so the
@@ -380,7 +433,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
               const matchingDbVariant = (variants ?? []).find(
                 (v) =>
                   Number(v.serving_size) === formServingSize &&
-                  v.serving_unit === formServingUnit,
+                  v.serving_unit === formServingUnit
               );
 
               if (!matchingDbVariant) {
@@ -388,10 +441,13 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
                 const createdVariant = await createVariant(
                   buildCreateFoodVariantPayload(
                     foodId,
-                    buildVariantFromFormData(data, existingSelection),
-                  ),
+                    buildVariantFromFormData(data, existingSelection)
+                  )
                 );
-                nextUnitSelection = { kind: 'existing', variant: createdVariant };
+                nextUnitSelection = {
+                  kind: 'existing',
+                  variant: createdVariant,
+                };
                 saveVariantId = createdVariant.id;
                 equivDiffVariantId = createdVariant.id;
                 setPendingUnitSelection(nextUnitSelection);
@@ -399,7 +455,8 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
                 invalidateFoodCaches(queryClient, foodId);
               } else {
                 // Matching variant exists — update it if nutrition changed.
-                const dbVariantValues = buildFormValuesFromVariant(matchingDbVariant);
+                const dbVariantValues =
+                  buildFormValuesFromVariant(matchingDbVariant);
                 const saved = await persistFoodEdits({
                   queryClient,
                   foodId,
@@ -431,7 +488,9 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
             variants &&
             equivalentsDiffer(equivalentDraft, equivalentBaseline)
           ) {
-            const activeSnapshot = variants.find((v) => v.id === equivDiffVariantId);
+            const activeSnapshot = variants.find(
+              (v) => v.id === equivDiffVariantId
+            );
             const groupNutrition = buildGroupNutrition(data, activeSnapshot);
 
             const activeRow: Partial<FoodVariantDetail> & { id?: string } = {
@@ -442,7 +501,9 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
               ...groupNutrition,
             };
 
-            const cleanEquivalents = equivalentDraft.filter((eq) => !isBlankEquivalent(eq));
+            const cleanEquivalents = equivalentDraft.filter(
+              (eq) => !isBlankEquivalent(eq)
+            );
             const siblingRows = cleanEquivalents.map((eq) => ({
               id: eq.id,
               food_id: foodId,
@@ -456,7 +517,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
             const diffGroup = diffGroups.find(
               (g) =>
                 g.base.id === equivDiffVariantId ||
-                g.equivalents.some((eq) => eq.id === equivDiffVariantId),
+                g.equivalents.some((eq) => eq.id === equivDiffVariantId)
             );
             const activeGroupIds = new Set<string>();
             if (diffGroup) {
@@ -466,7 +527,7 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
               });
             }
             const currentRows: FoodVariantDetail[] = variants.filter((v) =>
-              activeGroupIds.has(v.id),
+              activeGroupIds.has(v.id)
             );
 
             const diff = diffSiblingRows(currentRows, desired);
@@ -476,7 +537,9 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
             }
             for (const row of diff.updates) {
               const { id, ...payload } = row;
-              writes.push(updateFoodVariant(id, payload as UpdateFoodVariantPayload));
+              writes.push(
+                updateFoodVariant(id, payload as UpdateFoodVariantPayload)
+              );
             }
             for (const delId of diff.deletes) {
               writes.push(deleteFoodVariant(delId));
@@ -488,11 +551,18 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
             setEquivalentBaseline(equivalentDraft);
           }
         } catch {
-          Toast.show({ type: 'error', text1: t('foodForm.saveNutritionFailed', { defaultValue: 'Could not save nutrition for future use' }) });
+          Toast.show({
+            type: 'error',
+            text1: t('foodForm.saveNutritionFailed', {
+              defaultValue: 'Could not save nutrition for future use',
+            }),
+          });
         }
       }
 
-      const cleanEquivalentsForReturn = equivalentDraft.filter((eq) => !isBlankEquivalent(eq));
+      const cleanEquivalentsForReturn = equivalentDraft.filter(
+        (eq) => !isBlankEquivalent(eq)
+      );
 
       isSavingRef.current = true;
       navigation.dispatch({
@@ -503,7 +573,9 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
           // For external foods on the FoodEntryAdd path, return equivalents so
           // FoodEntryAddScreen can persist them after the food is saved.
           pendingEquivalents:
-            !canUpdateVariant && params.returnTo === 'FoodEntryAdd' && cleanEquivalentsForReturn.length > 0
+            !canUpdateVariant &&
+            params.returnTo === 'FoodEntryAdd' &&
+            cleanEquivalentsForReturn.length > 0
               ? cleanEquivalentsForReturn
               : undefined,
         }),
@@ -518,7 +590,9 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
   const submitRequestRef = useRef<(() => void) | null>(null);
 
   const header = useScreenHeader({
-    title: t('foodFormPersistence.adjustNutritionTitle', { defaultValue: 'Adjust Nutrition' }),
+    title: t('foodFormPersistence.adjustNutritionTitle', {
+      defaultValue: 'Adjust Nutrition',
+    }),
     left: {
       kind: 'dismiss',
       onPress: () => navigation.goBack(),
@@ -538,7 +612,10 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
   });
 
   return (
-    <View className="flex-1 bg-background" style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}>
+    <View
+      className="flex-1 bg-background"
+      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+    >
       {header}
 
       <FoodForm
@@ -559,11 +636,15 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
               }
             : undefined
         }
-        equivalents={showEquivalents ? {
-          items: equivalentDraft,
-          onChange: setEquivalentDraft,
-          disabled: isDraftSelection,
-        } : undefined}
+        equivalents={
+          showEquivalents
+            ? {
+                items: equivalentDraft,
+                onChange: setEquivalentDraft,
+                disabled: isDraftSelection,
+              }
+            : undefined
+        }
         customNutrients={currentCustomNutrients}
         onCustomNutrientsChange={setCurrentCustomNutrients}
       >
@@ -571,10 +652,15 @@ export function AdjustNutritionMode({ params, navigation }: { params: AdjustNutr
           <View className="bg-surface rounded-xl p-4 shadow-sm">
             <View className="flex-row items-center justify-between">
               <Text className="text-text-secondary text-base">
-                {t('foodFormPersistence.saveNutritionFuture', { defaultValue: 'Save nutrition for future use' })}
+                {t('foodFormPersistence.saveNutritionFuture', {
+                  defaultValue: 'Save nutrition for future use',
+                })}
               </Text>
               <Switch
-                accessibilityLabel={t('foodFormPersistence.saveNutritionFuture', { defaultValue: 'Save nutrition for future use' })}
+                accessibilityLabel={t(
+                  'foodFormPersistence.saveNutritionFuture',
+                  { defaultValue: 'Save nutrition for future use' }
+                )}
                 value={updateFoodToggle}
                 onValueChange={setUpdateFoodToggle}
               />

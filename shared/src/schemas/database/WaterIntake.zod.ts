@@ -12,6 +12,7 @@ export const waterIntakeSchema = z.object({
   water_ml: z.number().nullable(),
   created_by_user_id: userIdSchema.nullable(),
   updated_by_user_id: userIdSchema.nullable(),
+  source: z.string().max(50).nullable().optional(),
 });
 
 export const waterIntakeInitializerSchema = z.object({
@@ -23,6 +24,7 @@ export const waterIntakeInitializerSchema = z.object({
   water_ml: z.number().optional().nullable(),
   created_by_user_id: userIdSchema.optional().nullable(),
   updated_by_user_id: userIdSchema.optional().nullable(),
+  source: z.string().max(50).optional().nullable(),
 });
 
 export const waterIntakeMutatorSchema = z.object({
@@ -34,8 +36,11 @@ export const waterIntakeMutatorSchema = z.object({
   water_ml: z.number().optional().nullable(),
   created_by_user_id: userIdSchema.optional().nullable(),
   updated_by_user_id: userIdSchema.optional().nullable(),
+  source: z.string().max(50).optional().nullable(),
 });
 
 export type WaterIntake = z.infer<typeof waterIntakeSchema>;
-export type WaterIntakeInitializer = z.infer<typeof waterIntakeInitializerSchema>;
+export type WaterIntakeInitializer = z.infer<
+  typeof waterIntakeInitializerSchema
+>;
 export type WaterIntakeMutator = z.infer<typeof waterIntakeMutatorSchema>;

@@ -28,7 +28,9 @@ describe('seedHealthData.ts (Android)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Default: permissions granted, insertions succeed
-    mockRequestPermission.mockImplementation((requested) => Promise.resolve(requested));
+    mockRequestPermission.mockImplementation((requested) =>
+      Promise.resolve(requested)
+    );
     mockInsertRecords.mockResolvedValue(undefined);
   });
 
@@ -45,7 +47,9 @@ describe('seedHealthData.ts (Android)', () => {
     test('record count scales with days parameter', async () => {
       const result1 = await seedService.seedHealthData(1);
       jest.clearAllMocks();
-      mockRequestPermission.mockImplementation((requested) => Promise.resolve(requested));
+      mockRequestPermission.mockImplementation((requested) =>
+        Promise.resolve(requested)
+      );
       mockInsertRecords.mockResolvedValue(undefined);
       const result7 = await seedService.seedHealthData(7);
 
@@ -206,12 +210,16 @@ describe('seedOldHealthData (Android)', () => {
   const insertedTimestamps = (): number[] =>
     mockInsertRecords.mock.calls
       .flatMap((call) => call[0] as { startTime?: string; time?: string }[])
-      .map((record) => new Date(record.startTime ?? record.time ?? '').getTime())
+      .map((record) =>
+        new Date(record.startTime ?? record.time ?? '').getTime()
+      )
       .filter(Number.isFinite);
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockRequestPermission.mockImplementation((requested) => Promise.resolve(requested));
+    mockRequestPermission.mockImplementation((requested) =>
+      Promise.resolve(requested)
+    );
     mockInsertRecords.mockResolvedValue(undefined);
   });
 

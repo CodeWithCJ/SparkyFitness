@@ -67,7 +67,7 @@ describe('useExerciseImageSource', () => {
     await act(async () => {});
 
     const source = result.current.getImageSource(
-      'https://cdn.example.com/image.jpg',
+      'https://cdn.example.com/image.jpg'
     );
     expect(source).toEqual({
       uri: 'https://cdn.example.com/image.jpg',
@@ -87,7 +87,7 @@ describe('useExerciseImageSource', () => {
     await act(async () => {});
 
     const source = result.current.getImageSource(
-      'http://example.com/image.jpg',
+      'http://example.com/image.jpg'
     );
     expect(source).toEqual({
       uri: 'http://example.com/image.jpg',
@@ -131,7 +131,7 @@ describe('useExerciseImageSource', () => {
     await act(async () => {});
 
     const source = result.current.getImageSource(
-      '/uploads/exercises/Bench_Press/0_ab12cd34.jpg',
+      '/uploads/exercises/Bench_Press/0_ab12cd34.jpg'
     );
     expect(source).toEqual({
       uri: 'https://example.com/api/uploads/exercises/Bench_Press/0_ab12cd34.jpg',
@@ -158,7 +158,7 @@ describe('useImagePairAspectMatch', () => {
   ];
 
   const makeRef = (width: number, height: number) =>
-    ({ width, height, release: jest.fn() } as unknown as ImageRef);
+    ({ width, height, release: jest.fn() }) as unknown as ImageRef;
 
   let loadSpy: jest.SpyInstance;
 
@@ -223,7 +223,7 @@ describe('useImagePairAspectMatch', () => {
 
     const { result, rerender } = renderHook(
       (sources: typeof pair) => useImagePairAspectMatch(sources),
-      { initialProps: pair },
+      { initialProps: pair }
     );
 
     await waitFor(() => expect(result.current).toBe(true));
@@ -231,7 +231,7 @@ describe('useImagePairAspectMatch', () => {
     // Gate the new pair's measurements so the reset is observable before the
     // new verdict lands.
     let openGate!: () => void;
-    const gate = new Promise<void>(resolve => {
+    const gate = new Promise<void>((resolve) => {
       openGate = resolve;
     });
     const gatedRefs = [makeRef(1600, 900), makeRef(800, 600)];

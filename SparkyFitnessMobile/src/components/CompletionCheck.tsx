@@ -70,7 +70,12 @@ export default function CompletionCheck({
           />
         </Svg>
       ) : (
-        <Icon name="checkmark" size={glyphSize} color={CHECK_COLOR} weight="bold" />
+        <Icon
+          name="checkmark"
+          size={glyphSize}
+          color={CHECK_COLOR}
+          weight="bold"
+        />
       )}
     </View>
   );
@@ -96,7 +101,10 @@ export function LogCircle({ color }: { color: string }) {
       style={[style, { borderColor: color }]}
       className="h-7 w-7 rounded-full border-2 items-center justify-center"
     >
-      <View className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
+      <View
+        className="h-3 w-3 rounded-full"
+        style={{ backgroundColor: color }}
+      />
     </Animated.View>
   );
 }

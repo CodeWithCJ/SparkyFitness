@@ -415,7 +415,7 @@ const NutritionPeriodSummary = ({
                   <span>{opt.label}</span>
                   {opt.key === primaryNutrient && (
                     <span className="text-xs text-muted-foreground ml-2">
-                      (Primary)
+                      ({t('reports.primary', 'Primary')})
                     </span>
                   )}
                 </div>
@@ -730,7 +730,12 @@ const NutritionPeriodSummary = ({
 
                           return [
                             `${numValue > 0 ? '+' : ''}${formattedValue} ${opt?.unit || ''}`,
-                            isCumulative ? `${opt?.label} Balance` : opt?.label,
+                            isCumulative
+                              ? t('reports.nutrientBalance', {
+                                  defaultValue: '{{nutrient}} Balance',
+                                  nutrient: opt?.label || '',
+                                })
+                              : opt?.label,
                           ];
                         }}
                         contentStyle={{

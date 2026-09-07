@@ -46,5 +46,7 @@ const PERMANENT_UNAVAILABILITY_PATTERNS = [
 
 export const isPermanentlyUnavailableError = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error ?? '');
-  return PERMANENT_UNAVAILABILITY_PATTERNS.some((pattern) => pattern.test(message));
+  return PERMANENT_UNAVAILABILITY_PATTERNS.some((pattern) =>
+    pattern.test(message)
+  );
 };

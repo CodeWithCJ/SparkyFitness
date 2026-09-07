@@ -256,7 +256,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div>{t('common.loading', 'Loading...')}</div>;
   return (
     <Card>
       <CardHeader>
@@ -371,8 +371,10 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-md font-semibold">
-                      Sleep Entry for{' '}
-                      {formatDateInUserTimezone(entry.entry_date, 'PPP')}
+                      {t('sleepEntrySection.sleepEntryFor', {
+                        date: formatDateInUserTimezone(entry.entry_date, 'PPP'),
+                        defaultValue: `Sleep Entry for ${formatDateInUserTimezone(entry.entry_date, 'PPP')}`,
+                      })}
                     </p>
                   </div>
                   <div className="flex space-x-2">
@@ -393,7 +395,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Cancel</p>
+                              <p>{t('common.cancel', 'Cancel')}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -420,7 +422,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>Save</p>
+                              <p>{t('common.save', 'Save')}</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -445,7 +447,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Edit</p>
+                            <p>{t('common.edit', 'Edit')}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -462,7 +464,7 @@ const SleepEntrySection: React.FC<SleepEntrySectionProps> = ({
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Delete</p>
+                          <p>{t('common.delete', 'Delete')}</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>

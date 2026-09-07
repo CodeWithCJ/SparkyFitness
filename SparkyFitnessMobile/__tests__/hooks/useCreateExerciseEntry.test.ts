@@ -8,7 +8,11 @@ import {
   suggestedExercisesQueryKey,
   dailySummaryQueryKey,
 } from '../../src/hooks/queryKeys';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/exerciseApi', () => ({
   createExerciseEntry: jest.fn(),
@@ -18,7 +22,9 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
-const mockCreateExerciseEntry = createExerciseEntry as jest.MockedFunction<typeof createExerciseEntry>;
+const mockCreateExerciseEntry = createExerciseEntry as jest.MockedFunction<
+  typeof createExerciseEntry
+>;
 
 describe('useCreateExerciseEntry', () => {
   let queryClient: QueryClient;
@@ -44,10 +50,9 @@ describe('useCreateExerciseEntry', () => {
   test('calls createExerciseEntry with correct payload', async () => {
     mockCreateExerciseEntry.mockResolvedValue({ id: 'new-entry-1' } as any);
 
-    const { result } = renderHook(
-      () => useCreateExerciseEntry(),
-      { wrapper: createQueryWrapper(queryClient) },
-    );
+    const { result } = renderHook(() => useCreateExerciseEntry(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
 
     await act(async () => {
       await result.current.createEntry(testPayload);
@@ -61,10 +66,9 @@ describe('useCreateExerciseEntry', () => {
   test('shows error toast on failure', async () => {
     mockCreateExerciseEntry.mockRejectedValue(new Error('Network error'));
 
-    const { result } = renderHook(
-      () => useCreateExerciseEntry(),
-      { wrapper: createQueryWrapper(queryClient) },
-    );
+    const { result } = renderHook(() => useCreateExerciseEntry(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
 
     await act(async () => {
       try {
@@ -87,10 +91,9 @@ describe('useCreateExerciseEntry', () => {
     const removeSpy = jest.spyOn(queryClient, 'removeQueries');
     const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
 
-    const { result } = renderHook(
-      () => useCreateExerciseEntry(),
-      { wrapper: createQueryWrapper(queryClient) },
-    );
+    const { result } = renderHook(() => useCreateExerciseEntry(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
 
     act(() => {
       result.current.invalidateCache('2026-03-12');
@@ -111,10 +114,9 @@ describe('useCreateExerciseEntry', () => {
   test('invalidateCache sets exercise history reset key', () => {
     const setDataSpy = jest.spyOn(queryClient, 'setQueryData');
 
-    const { result } = renderHook(
-      () => useCreateExerciseEntry(),
-      { wrapper: createQueryWrapper(queryClient) },
-    );
+    const { result } = renderHook(() => useCreateExerciseEntry(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
 
     act(() => {
       result.current.invalidateCache('2026-03-12');
@@ -122,7 +124,7 @@ describe('useCreateExerciseEntry', () => {
 
     expect(setDataSpy).toHaveBeenCalledWith(
       exerciseHistoryResetQueryKey,
-      expect.any(Number),
+      expect.any(Number)
     );
 
     setDataSpy.mockRestore();
@@ -131,10 +133,9 @@ describe('useCreateExerciseEntry', () => {
   test('invalidateCache invalidates suggested exercises', () => {
     const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
 
-    const { result } = renderHook(
-      () => useCreateExerciseEntry(),
-      { wrapper: createQueryWrapper(queryClient) },
-    );
+    const { result } = renderHook(() => useCreateExerciseEntry(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
 
     act(() => {
       result.current.invalidateCache('2026-03-12');
@@ -150,10 +151,9 @@ describe('useCreateExerciseEntry', () => {
   test('invalidateCache invalidates daily summary for the entry date', () => {
     const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
 
-    const { result } = renderHook(
-      () => useCreateExerciseEntry(),
-      { wrapper: createQueryWrapper(queryClient) },
-    );
+    const { result } = renderHook(() => useCreateExerciseEntry(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
 
     act(() => {
       result.current.invalidateCache('2026-03-12');

@@ -28,7 +28,8 @@ describe('locale-less presentation guard', () => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        if (entry.name === '__tests__' || entry.name === 'node_modules') continue;
+        if (entry.name === '__tests__' || entry.name === 'node_modules')
+          continue;
         walk(full);
       } else if (/\.(ts|tsx|js|jsx)$/.test(entry.name)) {
         files.push(full);
@@ -95,10 +96,12 @@ describe('locale-less presentation guard', () => {
         .split('\n')
         .map((line, i) => ({ line, n: i + 1 }))
         .filter(({ line }) =>
-          /\.toLocaleString\(\)|\.toLocaleDateString\(\)|\.toLocaleTimeString\(\)/.test(line),
+          /\.toLocaleString\(\)|\.toLocaleDateString\(\)|\.toLocaleTimeString\(\)/.test(
+            line
+          )
         );
       expect(
-        flagged.map(({ line, n }) => `${rel}:${n}: ${line.trim()}`),
+        flagged.map(({ line, n }) => `${rel}:${n}: ${line.trim()}`)
       ).toEqual([]);
     }
   });

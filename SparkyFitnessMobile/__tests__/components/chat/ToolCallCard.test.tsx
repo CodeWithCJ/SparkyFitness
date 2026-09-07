@@ -50,7 +50,9 @@ describe('ToolCallCard', () => {
   });
 
   it('renders a spinner while running (no result, no error)', () => {
-    const { UNSAFE_getByType, queryByTestId } = render(<ToolCallCard part={baseFoodPart} />);
+    const { UNSAFE_getByType, queryByTestId } = render(
+      <ToolCallCard part={baseFoodPart} />
+    );
     expect(UNSAFE_getByType(ActivityIndicator)).toBeTruthy();
     expect(queryByTestId('icon-checkmark-circle')).toBeNull();
     expect(queryByTestId('icon-alert-circle')).toBeNull();
@@ -66,7 +68,9 @@ describe('ToolCallCard', () => {
 
   it('renders an error indicator when isError is set', () => {
     const { getByTestId, UNSAFE_queryByType } = render(
-      <ToolCallCard part={{ ...baseFoodPart, result: 'Failed to log', isError: true }} />
+      <ToolCallCard
+        part={{ ...baseFoodPart, result: 'Failed to log', isError: true }}
+      />
     );
     expect(getByTestId('icon-alert-circle')).toBeTruthy();
     expect(UNSAFE_queryByType(ActivityIndicator)).toBeNull();

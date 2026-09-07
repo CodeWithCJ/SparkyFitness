@@ -45,7 +45,10 @@ const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
       <View className="flex-row items-center justify-center">
-        <SideStat label={t('dashboard.consumed', { defaultValue: 'Consumed' })} value={caloriesConsumed} />
+        <SideStat
+          label={t('dashboard.consumed', { defaultValue: 'Consumed' })}
+          value={caloriesConsumed}
+        />
 
         <View className="relative items-center justify-center mx-2">
           <View>
@@ -65,12 +68,18 @@ const CalorieRingCard: React.FC<CalorieRingCardProps> = ({
               {t('dashboard.remaining', { defaultValue: 'remaining' })}
             </Text>
             <Text className="text-text-muted text-xs mt-0.5">
-              {t('dashboard.ofCalories', { defaultValue: 'of {{value}} kcal', value: formatLocalizedNumber(calorieGoal) })}
+              {t('dashboard.ofCalories', {
+                defaultValue: 'of {{value}} kcal',
+                value: formatLocalizedNumber(calorieGoal),
+              })}
             </Text>
           </View>
         </View>
 
-        <SideStat label={t('dashboard.burned', { defaultValue: 'Burned' })} value={caloriesBurned} />
+        <SideStat
+          label={t('dashboard.burned', { defaultValue: 'Burned' })}
+          value={caloriesBurned}
+        />
       </View>
     </View>
   );

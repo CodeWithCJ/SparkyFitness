@@ -3,7 +3,10 @@ import {
   addNotificationResponseListener,
   MEDICATION_TAKEN_ACTION,
 } from '../../src/services/notifications';
-import { createEntry, listEntries } from '../../src/services/api/medicationsApi';
+import {
+  createEntry,
+  listEntries,
+} from '../../src/services/api/medicationsApi';
 import { queryClient } from '../../src/hooks/queryClient';
 
 jest.mock('../../src/services/notifications', () => ({
@@ -54,14 +57,15 @@ describe('logging a dose from a notification action', () => {
     initMedicationNotificationActions();
     listener = (addNotificationResponseListener as jest.Mock).mock
       .calls[0]?.[0] as ResponseListener;
-    if (!listener) throw new Error('no notification response listener registered');
+    if (!listener)
+      throw new Error('no notification response listener registered');
   });
 
   beforeEach(() => {
     jest.clearAllMocks();
-    spy = jest.spyOn(queryClient, 'invalidateQueries').mockImplementation(
-      () => undefined as never
-    );
+    spy = jest
+      .spyOn(queryClient, 'invalidateQueries')
+      .mockImplementation(() => undefined as never);
     (listEntries as jest.Mock).mockResolvedValue([]);
     (createEntry as jest.Mock).mockResolvedValue({ id: 'e1' });
   });

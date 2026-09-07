@@ -14,7 +14,7 @@ export type { FastTimerValues } from '../utils/fasting';
 export function useFastingTimer(
   startTime: string | null | undefined,
   targetEndTime: string | null | undefined,
-  active: boolean,
+  active: boolean
 ): FastTimerValues {
   const { t } = useTranslation();
   const [, setTick] = useState(0);
@@ -24,7 +24,7 @@ export function useFastingTimer(
       if (!active || !startTime) return;
       const id = setInterval(() => setTick((t) => t + 1), 1000);
       return () => clearInterval(id);
-    }, [active, startTime]),
+    }, [active, startTime])
   );
 
   // Read `Date.now()` fresh at render time (see the note in this file's header);

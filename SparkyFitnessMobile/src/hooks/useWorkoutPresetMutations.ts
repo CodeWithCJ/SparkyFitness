@@ -1,4 +1,8 @@
-import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
 import i18n from '../localization/i18n';
@@ -35,7 +39,9 @@ export function useCreateWorkoutPreset() {
     onError: () => {
       Toast.show({
         type: 'error',
-        text1: i18n.t('workoutPresetMutations.errors.create', { defaultValue: 'Could not create workout preset' }),
+        text1: i18n.t('workoutPresetMutations.errors.create', {
+          defaultValue: 'Could not create workout preset',
+        }),
         text2: i18n.t('common.tryAgain', { defaultValue: 'Please try again.' }),
       });
     },
@@ -50,16 +56,29 @@ export function useCreateWorkoutPreset() {
 export function useUpdateWorkoutPreset() {
   const queryClient = useQueryClient();
   const mutation = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: WorkoutPresetUpdatePayload }) =>
-      updateWorkoutPreset(id, payload),
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: number;
+      payload: WorkoutPresetUpdatePayload;
+    }) => updateWorkoutPreset(id, payload),
     onSuccess: () => {
       invalidateWorkoutPresetCaches(queryClient);
     },
     onError: (error) => {
       const message = isAuthzError(error)
-        ? i18n.t('workoutPresetMutations.errors.editPermission', { defaultValue: "You don't have permission to edit this preset." })
+        ? i18n.t('workoutPresetMutations.errors.editPermission', {
+            defaultValue: "You don't have permission to edit this preset.",
+          })
         : i18n.t('common.tryAgain', { defaultValue: 'Please try again.' });
-      Toast.show({ type: 'error', text1: i18n.t('workoutPresetMutations.errors.update', { defaultValue: 'Failed to update preset' }), text2: message });
+      Toast.show({
+        type: 'error',
+        text1: i18n.t('workoutPresetMutations.errors.update', {
+          defaultValue: 'Failed to update preset',
+        }),
+        text2: message,
+      });
     },
   });
 
@@ -77,7 +96,10 @@ interface UseDeleteWorkoutPresetOptions {
   onSuccess?: () => void;
 }
 
-export function useDeleteWorkoutPreset({ presetId, onSuccess }: UseDeleteWorkoutPresetOptions) {
+export function useDeleteWorkoutPreset({
+  presetId,
+  onSuccess,
+}: UseDeleteWorkoutPresetOptions) {
   const queryClient = useQueryClient();
   const mutation = useMutation({
     mutationFn: () => deleteWorkoutPreset(presetId),
@@ -87,20 +109,40 @@ export function useDeleteWorkoutPreset({ presetId, onSuccess }: UseDeleteWorkout
     },
     onError: (error) => {
       const message = isAuthzError(error)
-        ? i18n.t('workoutPresetMutations.errors.deletePermission', { defaultValue: "You don't have permission to delete this preset." })
+        ? i18n.t('workoutPresetMutations.errors.deletePermission', {
+            defaultValue: "You don't have permission to delete this preset.",
+          })
         : i18n.t('common.tryAgain', { defaultValue: 'Please try again.' });
-      Toast.show({ type: 'error', text1: i18n.t('workoutPresetMutations.errors.delete', { defaultValue: 'Failed to delete preset' }), text2: message });
+      Toast.show({
+        type: 'error',
+        text1: i18n.t('workoutPresetMutations.errors.delete', {
+          defaultValue: 'Failed to delete preset',
+        }),
+        text2: message,
+      });
     },
   });
 
   const confirmAndDelete = () => {
     Alert.alert(
-      i18n.t('workoutPresetMutations.confirm.title', { defaultValue: 'Delete Workout Preset?' }),
-      i18n.t('workoutPresetMutations.confirm.message', { defaultValue: 'This preset will be permanently removed from your library.' }),
+      i18n.t('workoutPresetMutations.confirm.title', {
+        defaultValue: 'Delete Workout Preset?',
+      }),
+      i18n.t('workoutPresetMutations.confirm.message', {
+        defaultValue:
+          'This preset will be permanently removed from your library.',
+      }),
       [
-        { text: i18n.t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
-        { text: i18n.t('common.delete', { defaultValue: 'Delete' }), style: 'destructive', onPress: () => mutation.mutate() },
-      ],
+        {
+          text: i18n.t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+        },
+        {
+          text: i18n.t('common.delete', { defaultValue: 'Delete' }),
+          style: 'destructive',
+          onPress: () => mutation.mutate(),
+        },
+      ]
     );
   };
 

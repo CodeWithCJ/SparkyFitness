@@ -4,7 +4,7 @@ import { TimeoutError } from '../../../src/utils/concurrency';
 describe('getApiErrorMessage', () => {
   it('returns a friendly message for a TimeoutError', () => {
     expect(getApiErrorMessage(new TimeoutError('Request', 30_000))).toBe(
-      'Request timed out. Check your server connection.',
+      'Request timed out. Check your server connection.'
     );
   });
 
@@ -12,15 +12,21 @@ describe('getApiErrorMessage', () => {
     const error = new ApiError(
       'Bad Gateway',
       502,
-      JSON.stringify({ error: 'FatSecret API error (code 21): Invalid IP address detected' }),
+      JSON.stringify({
+        error: 'FatSecret API error (code 21): Invalid IP address detected',
+      })
     );
     expect(getApiErrorMessage(error)).toBe(
-      'FatSecret API error (code 21): Invalid IP address detected',
+      'FatSecret API error (code 21): Invalid IP address detected'
     );
   });
 
   it('returns the message from an ApiError with a { message } body', () => {
-    const error = new ApiError('Bad Gateway', 502, JSON.stringify({ message: 'Something failed' }));
+    const error = new ApiError(
+      'Bad Gateway',
+      502,
+      JSON.stringify({ message: 'Something failed' })
+    );
     expect(getApiErrorMessage(error)).toBe('Something failed');
   });
 
@@ -28,7 +34,7 @@ describe('getApiErrorMessage', () => {
     const error = new ApiError(
       'Bad Gateway',
       502,
-      JSON.stringify({ error: 'primary', message: 'secondary' }),
+      JSON.stringify({ error: 'primary', message: 'secondary' })
     );
     expect(getApiErrorMessage(error)).toBe('primary');
   });

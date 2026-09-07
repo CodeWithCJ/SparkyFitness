@@ -26,7 +26,8 @@ const ANDROID_MATH_PROPERTY = 'enrichedMarkdown.enableMath';
 const withEnrichedMarkdownNoMath: ConfigPlugin = (config) => {
   config = withGradleProperties(config, (config) => {
     config.modResults = config.modResults.filter(
-      (item) => !(item.type === 'property' && item.key === ANDROID_MATH_PROPERTY)
+      (item) =>
+        !(item.type === 'property' && item.key === ANDROID_MATH_PROPERTY)
     );
     config.modResults.push({
       type: 'property',
@@ -39,7 +40,10 @@ const withEnrichedMarkdownNoMath: ConfigPlugin = (config) => {
   config = withDangerousMod(config, [
     'ios',
     (config) => {
-      const podfile = path.join(config.modRequest.platformProjectRoot, 'Podfile');
+      const podfile = path.join(
+        config.modRequest.platformProjectRoot,
+        'Podfile'
+      );
       const lines = fs
         .readFileSync(podfile, 'utf8')
         .split('\n')

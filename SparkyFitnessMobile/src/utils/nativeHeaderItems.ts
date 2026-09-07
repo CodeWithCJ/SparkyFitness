@@ -6,7 +6,7 @@ import type {
 
 export function createIOSNativeHeaderOptions(
   actionTintColor: string,
-  titleColor: string = actionTintColor,
+  titleColor: string = actionTintColor
 ): NativeStackNavigationOptions {
   return {
     headerShown: true,
@@ -27,7 +27,7 @@ export function createIOSNativeHeaderOptions(
 
 export function createIOSSmallNativeHeaderOptions(
   actionTintColor: string,
-  titleColor: string = actionTintColor,
+  titleColor: string = actionTintColor
 ): NativeStackNavigationOptions {
   return {
     ...createIOSNativeHeaderOptions(actionTintColor, titleColor),
@@ -73,7 +73,7 @@ export function createNativeHeaderTextButtonItem({
  */
 export function createNativeHeaderAccentBadge(
   accentColor: string,
-  value = '•',
+  value = '•'
 ): NativeStackHeaderItemMenu['badge'] {
   return {
     value,

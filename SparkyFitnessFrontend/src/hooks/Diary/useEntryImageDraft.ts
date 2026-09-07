@@ -58,5 +58,3 @@ export function useEntryImageDraft(
     reset,
   };
 }
-
-export default useEntryImageDraft;

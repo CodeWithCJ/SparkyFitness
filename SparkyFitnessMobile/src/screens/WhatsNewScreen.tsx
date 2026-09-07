@@ -235,7 +235,7 @@ const LiquidGlassMockup: React.FC = () => {
           className="flex-1 flex-row items-center justify-around py-2 rounded-3xl"
           style={glassStyle}
         >
-          {tabs.map(tab => (
+          {tabs.map((tab) => (
             <View
               key={tab.label}
               className="items-center px-2 py-1 rounded-2xl"
@@ -715,7 +715,7 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
           usesNativeHeader ? 'automatic' : 'never'
         }
       >
-        {features.map(feature => (
+        {features.map((feature) => (
           <View
             key={feature.headline}
             className="bg-surface rounded-xl mb-4 shadow-sm overflow-hidden"

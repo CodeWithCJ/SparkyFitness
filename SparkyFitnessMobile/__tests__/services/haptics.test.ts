@@ -7,9 +7,10 @@ import {
 } from '../../src/stores/appPreferencesStore';
 
 describe('haptics service', () => {
-  const mockNotificationAsync = Haptics.notificationAsync as jest.MockedFunction<
-    typeof Haptics.notificationAsync
-  >;
+  const mockNotificationAsync =
+    Haptics.notificationAsync as jest.MockedFunction<
+      typeof Haptics.notificationAsync
+    >;
 
   beforeEach(async () => {
     await AsyncStorage.clear();
@@ -22,7 +23,7 @@ describe('haptics service', () => {
 
     expect(mockNotificationAsync).toHaveBeenCalledTimes(1);
     expect(mockNotificationAsync).toHaveBeenCalledWith(
-      Haptics.NotificationFeedbackType.Success,
+      Haptics.NotificationFeedbackType.Success
     );
   });
 

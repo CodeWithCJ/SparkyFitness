@@ -14,7 +14,10 @@ const mockPutSettings = putSettings as jest.MockedFunction<typeof putSettings>;
 
 jest.mock('../../src/components/BottomSheetPicker', () => {
   const { View } = require('react-native');
-  return { __esModule: true, default: () => <View testID="bottom-sheet-picker" /> };
+  return {
+    __esModule: true,
+    default: () => <View testID="bottom-sheet-picker" />,
+  };
 });
 
 jest.mock('../../src/components/StepperInput', () => {
@@ -51,7 +54,11 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-const mockNavigation = { goBack: jest.fn(), navigate: jest.fn(), setOptions: jest.fn() } as any;
+const mockNavigation = {
+  goBack: jest.fn(),
+  navigate: jest.fn(),
+  setOptions: jest.fn(),
+} as any;
 const mockRoute = { params: {} } as any;
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
@@ -68,7 +75,7 @@ function renderScreen(initialSettings: any) {
     ...render(
       <QueryClientProvider client={queryClient}>
         <CycleSettingsScreen navigation={mockNavigation} route={mockRoute} />
-      </QueryClientProvider>,
+      </QueryClientProvider>
     ),
   };
 }
@@ -91,7 +98,10 @@ const baseSettings = {
 describe('CycleSettingsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockPutSettings.mockImplementation(async (body) => ({ ...baseSettings, ...body }));
+    mockPutSettings.mockImplementation(async (body) => ({
+      ...baseSettings,
+      ...body,
+    }));
   });
 
   it('renders settings fields when enabled is true', async () => {
@@ -108,12 +118,17 @@ describe('CycleSettingsScreen', () => {
       view.unmount();
       return mockNavigation.setOptions.mock.calls
         .map(([options]: [{ title?: string }]) => options?.title)
-        .filter((title: string | undefined): title is string => typeof title === 'string')
+        .filter(
+          (title: string | undefined): title is string =>
+            typeof title === 'string'
+        )
         .pop();
     };
 
     expect(nativeTitleFor(baseSettings)).toBe('Cycle & Pregnancy');
-    expect(nativeTitleFor({ ...baseSettings, discreet_mode: true })).toBe('Wellness Settings');
+    expect(nativeTitleFor({ ...baseSettings, discreet_mode: true })).toBe(
+      'Wellness Settings'
+    );
   });
 
   it('clears a custom cycle-length override when the field is left empty', async () => {
@@ -124,7 +139,9 @@ describe('CycleSettingsScreen', () => {
     fireEvent(cycleLengthInput, 'blur');
 
     await waitFor(() => {
-      expect(mockPutSettings).toHaveBeenCalledWith({ avg_cycle_length_override: null });
+      expect(mockPutSettings).toHaveBeenCalledWith({
+        avg_cycle_length_override: null,
+      });
     });
   });
 });
@@ -133,14 +150,18 @@ describe('CycleSettingsScreen localization contracts', () => {
   it('keeps shared birth-control and condition values covered by both catalogs', () => {
     const en = require('../../src/localization/locales/en/translation.json');
     const pl = require('../../src/localization/locales/pl/translation.json');
-    const { BIRTH_CONTROL_METHODS, CYCLE_CONDITIONS } = require('@workspace/shared');
+    const {
+      BIRTH_CONTROL_METHODS,
+      CYCLE_CONDITIONS,
+    } = require('@workspace/shared');
 
     for (const method of BIRTH_CONTROL_METHODS) {
-      const key = method.value === 'iud_hormonal'
-        ? 'iudHormonal'
-        : method.value === 'iud_copper'
-          ? 'iudCopper'
-          : method.value;
+      const key =
+        method.value === 'iud_hormonal'
+          ? 'iudHormonal'
+          : method.value === 'iud_copper'
+            ? 'iudCopper'
+            : method.value;
       expect(en.cycleSettings.birthControl[key]).toBeTruthy();
       expect(pl.cycleSettings.birthControl[key]).toBeTruthy();
     }

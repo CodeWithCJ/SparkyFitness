@@ -56,6 +56,10 @@ const HomeDashboardFasting = () => {
   const { mutate: endFast } = useEndFastMutation();
 
   const { data: stats } = useFastingStats();
+  const averageDurationMinutes = Number(stats?.average_duration_minutes ?? 0);
+  const averageDurationHours = Number.isFinite(averageDurationMinutes)
+    ? Math.round(averageDurationMinutes / 60)
+    : 0;
 
   if (isLoading) return <Card className="h-64 animate-pulse" />;
 
@@ -114,8 +118,8 @@ const HomeDashboardFasting = () => {
         </CardTitle>
         <CardDescription>
           {activeFast
-            ? 'You are currently fasting'
-            : 'Ready to start a new fast?'}
+            ? t('fasting.currentlyFasting', 'You are currently fasting')
+            : t('fasting.readyToStart', 'Ready to start a new fast?')}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-6">
@@ -140,7 +144,8 @@ const HomeDashboardFasting = () => {
                 }}
                 className="w-full gap-2 font-semibold"
               >
-                <Play className="w-4 h-4" /> Start Fast
+                <Play className="w-4 h-4" />
+                {t('fasting.startFast', 'Start Fast')}
               </Button>
             </div>
           )}
@@ -158,7 +163,8 @@ const HomeDashboardFasting = () => {
               onClick={() => setShowEndDialog(true)}
               className="w-full shadow-md hover:shadow-lg transition-all"
             >
-              <Square className="w-4 h-4 mr-2 fill-current" /> End Fast
+              <Square className="w-4 h-4 mr-2 fill-current" />
+              {t('fasting.endFast', 'End Fast')}
             </Button>
           </>
         )}
@@ -168,7 +174,7 @@ const HomeDashboardFasting = () => {
           <div className="grid grid-cols-2 gap-4 pt-4 border-t">
             <div className="flex flex-col items-center p-2 bg-secondary/20 rounded-lg">
               <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
-                Total Fasts
+                {t('fasting.totalFasts', 'Total Fasts')}
               </span>
               <span className="text-xl font-bold">
                 {stats.total_completed_fasts}
@@ -176,10 +182,13 @@ const HomeDashboardFasting = () => {
             </div>
             <div className="flex flex-col items-center p-2 bg-secondary/20 rounded-lg">
               <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">
-                Avg Duration
+                {t('fasting.avgDuration', 'Avg Duration')}
               </span>
               <span className="text-xl font-bold">
-                {Math.round(parseInt(stats.average_duration_minutes) / 60)}h
+                {t('fasting.hoursShort', {
+                  count: averageDurationHours,
+                  defaultValue: `${averageDurationHours}h`,
+                })}
               </span>
             </div>
           </div>
@@ -190,14 +199,19 @@ const HomeDashboardFasting = () => {
       <Dialog open={showStartDialog} onOpenChange={setShowStartDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Start a New Fast</DialogTitle>
+            <DialogTitle>
+              {t('homeFasting.startNew', 'Start a New Fast')}
+            </DialogTitle>
             <DialogDescription>
-              Select a protocol to begin your fast.
+              {t(
+                'homeFasting.description',
+                'Select a protocol to begin your fast.'
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Start Time</Label>
+              <Label>{t('homeFasting.startTime', 'Start Time')}</Label>
               <Input
                 type="datetime-local"
                 value={startLocal}
@@ -205,7 +219,7 @@ const HomeDashboardFasting = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label>Fasting Protocol</Label>
+              <Label>{t('homeFasting.protocol', 'Fasting Protocol')}</Label>
               <Select
                 value={selectedPresetId}
                 onValueChange={setSelectedPresetId}
@@ -231,9 +245,11 @@ const HomeDashboardFasting = () => {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowStartDialog(false)}>
-              Cancel
+              {t('common.cancel', 'Cancel')}
             </Button>
-            <Button onClick={handleStartFast}>Start Fasting</Button>
+            <Button onClick={handleStartFast}>
+              {t('homeFasting.start', 'Start Fasting')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

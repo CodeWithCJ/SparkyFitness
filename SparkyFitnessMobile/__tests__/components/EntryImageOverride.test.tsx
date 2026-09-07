@@ -19,13 +19,11 @@ describe('EntryImageOverride', () => {
         inheritedImages={['/uploads/foods/f/1.jpg', '/uploads/foods/f/2.jpg']}
         onSave={noop}
         onClear={noop}
-      />,
+      />
     );
 
     expect(queryAllByTestId('food-thumbnail')).toHaveLength(2);
-    expect(
-      getByText('Add a photo to set one for this entry.'),
-    ).toBeTruthy();
+    expect(getByText('Add a photo to set one for this entry.')).toBeTruthy();
   });
 
   it('shows the override instead of the parent photos when one is set', () => {
@@ -37,12 +35,10 @@ describe('EntryImageOverride', () => {
         inheritedImages={['/uploads/foods/f/1.jpg']}
         onSave={noop}
         onClear={noop}
-      />,
+      />
     );
 
-    expect(
-      queryByText('Add a photo to set one for this entry.'),
-    ).toBeNull();
+    expect(queryByText('Add a photo to set one for this entry.')).toBeNull();
     expect(queryAllByTestId('food-thumbnail')).toHaveLength(0);
     expect(getByTestId('food-image-tile-0')).toBeTruthy();
   });
@@ -54,12 +50,10 @@ describe('EntryImageOverride', () => {
         inheritedImages={null}
         onSave={noop}
         onClear={noop}
-      />,
+      />
     );
 
-    expect(
-      queryByText('Add a photo to set one for this entry.'),
-    ).toBeNull();
+    expect(queryByText('Add a photo to set one for this entry.')).toBeNull();
     expect(getByTestId('food-image-add')).toBeTruthy();
   });
 });

@@ -28,9 +28,15 @@ export const createPreferenceFunctions = (
 ): PreferenceFunctions => {
   const syncDurationKey = `${storagePrefix}:syncDuration`;
 
-  const saveHealthPreference = async <T>(key: string, value: T): Promise<void> => {
+  const saveHealthPreference = async <T>(
+    key: string,
+    value: T
+  ): Promise<void> => {
     try {
-      await AsyncStorage.setItem(`${storagePrefix}:${key}`, JSON.stringify(value));
+      await AsyncStorage.setItem(
+        `${storagePrefix}:${key}`,
+        JSON.stringify(value)
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`${logTag} Failed to save preference ${key}: ${message}`, 'ERROR');
@@ -51,12 +57,18 @@ export const createPreferenceFunctions = (
     }
   };
 
-  const saveStringPreference = async (key: string, value: string): Promise<void> => {
+  const saveStringPreference = async (
+    key: string,
+    value: string
+  ): Promise<void> => {
     try {
       await AsyncStorage.setItem(`${storagePrefix}:${key}`, value);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`${logTag} Failed to save string preference ${key}: ${message}`, 'ERROR');
+      addLog(
+        `${logTag} Failed to save string preference ${key}: ${message}`,
+        'ERROR'
+      );
     }
   };
 
@@ -69,12 +81,17 @@ export const createPreferenceFunctions = (
       return null;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      addLog(`${logTag} Failed to load string preference ${key}: ${message}`, 'ERROR');
+      addLog(
+        `${logTag} Failed to load string preference ${key}: ${message}`,
+        'ERROR'
+      );
       return null;
     }
   };
 
-  const saveSyncDuration = async (value: SyncDuration | SyncInterval): Promise<void> => {
+  const saveSyncDuration = async (
+    value: SyncDuration | SyncInterval
+  ): Promise<void> => {
     try {
       await AsyncStorage.setItem(syncDurationKey, value);
     } catch (error) {

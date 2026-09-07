@@ -32,7 +32,7 @@ export function toNewImage(uri: string): PickerImage {
 
 /** Seeds the picker from an entity's stored image array. */
 export function toSavedImages(
-  images: string[] | null | undefined,
+  images: string[] | null | undefined
 ): SavedPickerImage[] {
   if (!Array.isArray(images)) return [];
   return images
@@ -68,12 +68,12 @@ export function splitPickerImages(items: PickerImage[]): ImageUploadArgs {
  */
 export function pickerImagesDiffer(
   items: PickerImage[],
-  stored: string[] | null | undefined,
+  stored: string[] | null | undefined
 ): boolean {
   if (items.some((item) => item.kind === 'new')) return true;
 
   const current = items.flatMap((item) =>
-    item.kind === 'saved' ? [item.path] : [],
+    item.kind === 'saved' ? [item.path] : []
   );
   const previous = toSavedImages(stored).map((item) => item.path);
 
@@ -82,10 +82,7 @@ export function pickerImagesDiffer(
 }
 
 /** Moves an image to index 0, making it the thumbnail. Order is otherwise kept. */
-export function setAsMain(
-  items: PickerImage[],
-  index: number,
-): PickerImage[] {
+export function setAsMain(items: PickerImage[], index: number): PickerImage[] {
   if (index <= 0 || index >= items.length) return items;
   const next = [...items];
   const [promoted] = next.splice(index, 1);
@@ -96,7 +93,7 @@ export function setAsMain(
 /** Removes the image at `index`. */
 export function removeImageAt(
   items: PickerImage[],
-  index: number,
+  index: number
 ): PickerImage[] {
   if (index < 0 || index >= items.length) return items;
   return items.filter((_, i) => i !== index);

@@ -178,14 +178,6 @@ export const DAYS_OF_WEEK = [
   { id: 6, name: 'Saturday' },
 ];
 
-export const DATE_FORMATS = [
-  { value: 'MM/dd/yyyy', label: 'MM/dd/yyyy (e.g., 12/25/2024)' },
-  { value: 'dd/MM/yyyy', label: 'dd/MM/yyyy (e.g., 25/12/2024)' },
-  { value: 'dd-MMM-yyyy', label: 'dd-MMM-yyyy (e.g., 25-Dec-2024)' },
-  { value: 'yyyy-MM-dd', label: 'yyyy-MM-dd (e.g., 2024-12-25)' },
-  { value: 'MMM dd, yyyy', label: 'MMM dd, yyyy (e.g., Dec 25, 2024)' },
-];
-
 export const CSV_DUMMY_DATA = [
   {
     entry_date: format(new Date(), 'MM/dd/yyyy'),

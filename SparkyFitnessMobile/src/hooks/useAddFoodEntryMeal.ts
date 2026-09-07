@@ -18,13 +18,20 @@ export function useAddFoodEntryMeal(options?: UseAddFoodEntryMealOptions) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (payload: FoodEntryMealCreateData) => createFoodEntryMeal(payload),
+    mutationFn: (payload: FoodEntryMealCreateData) =>
+      createFoodEntryMeal(payload),
     onSuccess: (meal) => {
       invalidateMealUsageCaches(queryClient);
       options?.onSuccess?.(meal);
     },
     onError: () => {
-      Toast.show({ type: 'error', text1: t('foodEntryMeal.failed', { defaultValue: 'Failed to add meal' }), text2: t('common.tryAgain', { defaultValue: 'Please try again.' }) });
+      Toast.show({
+        type: 'error',
+        text1: t('foodEntryMeal.failed', {
+          defaultValue: 'Failed to add meal',
+        }),
+        text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+      });
     },
   });
 

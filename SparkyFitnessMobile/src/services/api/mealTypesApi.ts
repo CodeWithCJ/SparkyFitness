@@ -32,7 +32,8 @@ export const updateMealType = async (
  * Creates a new custom meal type.
  */
 export const createMealType = async (
-  data: Pick<MealType, 'name' | 'sort_order'> & Partial<Omit<MealType, 'id' | 'name' | 'sort_order'>>
+  data: Pick<MealType, 'name' | 'sort_order'> &
+    Partial<Omit<MealType, 'id' | 'name' | 'sort_order'>>
 ): Promise<MealType> => {
   return apiFetch<MealType>({
     endpoint: '/api/meal-types',

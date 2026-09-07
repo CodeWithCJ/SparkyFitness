@@ -15,11 +15,11 @@ import path from 'path';
 
 const LANGUAGE_ROOT = path.join(
   __dirname,
-  '../../targets/android-language/kotlin/com/sparkyapps/sparkyfitness/language',
+  '../../targets/android-language/kotlin/com/sparkyapps/sparkyfitness/language'
 );
 const WIDGET_ROOT = path.join(
   __dirname,
-  '../../targets/android-widget/kotlin/com/sparkyapps/sparkyfitness/widget',
+  '../../targets/android-widget/kotlin/com/sparkyapps/sparkyfitness/widget'
 );
 
 function readSource(relativeRoot: string, file: string): string {
@@ -81,7 +81,9 @@ function extractFunctionBody(source: string, functionName: string): string {
 describe('Android API 33 isolation contract (issue #2253)', () => {
   describe('common language bridge layer (loaded unconditionally)', () => {
     it('1. AppLanguageModule.kt has no code reference to LocaleManager (imports, types, calls)', () => {
-      const code = stripComments(readSource(LANGUAGE_ROOT, 'AppLanguageModule.kt'));
+      const code = stripComments(
+        readSource(LANGUAGE_ROOT, 'AppLanguageModule.kt')
+      );
       expect(code).not.toMatch(/import\s+android\.app\.LocaleManager/);
       expect(code).not.toMatch(/LocaleManager\b/);
     });
@@ -97,7 +99,9 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
     });
 
     it('AppLanguagePackage.kt has no code reference to LocaleManager', () => {
-      const code = stripComments(readSource(LANGUAGE_ROOT, 'AppLanguagePackage.kt'));
+      const code = stripComments(
+        readSource(LANGUAGE_ROOT, 'AppLanguagePackage.kt')
+      );
       expect(code).not.toMatch(/LocaleManager\b/);
     });
 
@@ -107,7 +111,9 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
       // setApplicationLanguage: guard before helper, inside the same body.
       const setBody = extractFunctionBody(src, 'setApplicationLanguage');
       const setGuard = setBody.indexOf('Build.VERSION.SDK_INT < API_33');
-      const setDelegate = setBody.indexOf('AppLanguageApi33.setApplicationLanguage');
+      const setDelegate = setBody.indexOf(
+        'AppLanguageApi33.setApplicationLanguage'
+      );
       expect(setGuard).toBeGreaterThan(-1);
       expect(setDelegate).toBeGreaterThan(-1);
       expect(setDelegate).toBeGreaterThan(setGuard);
@@ -115,7 +121,9 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
       // getApplicationLanguage: its OWN guard before its OWN helper call.
       const getBody = extractFunctionBody(src, 'getApplicationLanguage');
       const getGuard = getBody.indexOf('Build.VERSION.SDK_INT < API_33');
-      const getDelegate = getBody.indexOf('AppLanguageApi33.getApplicationLanguage');
+      const getDelegate = getBody.indexOf(
+        'AppLanguageApi33.getApplicationLanguage'
+      );
       expect(getGuard).toBeGreaterThan(-1);
       expect(getDelegate).toBeGreaterThan(-1);
       expect(getDelegate).toBeGreaterThan(getGuard);
@@ -123,7 +131,9 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
       // getEffectiveLanguage: its OWN >= API_33 branch before its OWN helper.
       const effBody = extractFunctionBody(src, 'getEffectiveLanguage');
       const effGuard = effBody.indexOf('Build.VERSION.SDK_INT >= API_33');
-      const effDelegate = effBody.indexOf('AppLanguageApi33.getApplicationLanguageTag');
+      const effDelegate = effBody.indexOf(
+        'AppLanguageApi33.getApplicationLanguageTag'
+      );
       expect(effGuard).toBeGreaterThan(-1);
       expect(effDelegate).toBeGreaterThan(-1);
       expect(effDelegate).toBeGreaterThan(effGuard);
@@ -135,9 +145,21 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
       // Each method body must contain its OWN guard before its helper call.
       // A guard from another method must not satisfy this assertion.
       const cases: { fn: string; guard: string; helper: string }[] = [
-        { fn: 'setApplicationLanguage', guard: 'Build.VERSION.SDK_INT < API_33', helper: 'AppLanguageApi33.setApplicationLanguage' },
-        { fn: 'getApplicationLanguage', guard: 'Build.VERSION.SDK_INT < API_33', helper: 'AppLanguageApi33.getApplicationLanguage' },
-        { fn: 'getEffectiveLanguage', guard: 'Build.VERSION.SDK_INT >= API_33', helper: 'AppLanguageApi33.getApplicationLanguageTag' },
+        {
+          fn: 'setApplicationLanguage',
+          guard: 'Build.VERSION.SDK_INT < API_33',
+          helper: 'AppLanguageApi33.setApplicationLanguage',
+        },
+        {
+          fn: 'getApplicationLanguage',
+          guard: 'Build.VERSION.SDK_INT < API_33',
+          helper: 'AppLanguageApi33.getApplicationLanguage',
+        },
+        {
+          fn: 'getEffectiveLanguage',
+          guard: 'Build.VERSION.SDK_INT >= API_33',
+          helper: 'AppLanguageApi33.getApplicationLanguageTag',
+        },
       ];
 
       for (const { fn, guard, helper } of cases) {
@@ -164,11 +186,13 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
       // Mutate: remove the guard from getApplicationLanguage only.
       const mutatedGetBody = getBody.replace(
         /if \(Build\.VERSION\.SDK_INT < API_33\)\s*\{[^}]*\}/,
-        '',
+        ''
       );
       // Confirm the mutation removed the guard but left the helper call.
       expect(mutatedGetBody).not.toContain('Build.VERSION.SDK_INT < API_33');
-      expect(mutatedGetBody).toContain('AppLanguageApi33.getApplicationLanguage');
+      expect(mutatedGetBody).toContain(
+        'AppLanguageApi33.getApplicationLanguage'
+      );
 
       // Reconstruct the full source with the mutated body so the per-method
       // extraction in test 7 would see the missing guard. We replace the
@@ -182,7 +206,10 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
         if (src[i] === '{') depth += 1;
         if (src[i] === '}') {
           depth -= 1;
-          if (depth === 0) { closeBrace = i; break; }
+          if (depth === 0) {
+            closeBrace = i;
+            break;
+          }
         }
       }
       expect(closeBrace).toBeGreaterThan(openBrace);
@@ -191,7 +218,10 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
 
       // Now extract the mutated body and verify the guard is gone while the
       // helper call remains — this is the condition test 7 rejects.
-      const reExtracted = extractFunctionBody(mutatedSrc, 'getApplicationLanguage');
+      const reExtracted = extractFunctionBody(
+        mutatedSrc,
+        'getApplicationLanguage'
+      );
       expect(reExtracted).not.toContain('Build.VERSION.SDK_INT < API_33');
       expect(reExtracted).toContain('AppLanguageApi33.getApplicationLanguage');
     });
@@ -199,7 +229,9 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
 
   describe('widget locale layer (object loaded on first reference)', () => {
     it('2. WidgetLocale.kt.tmpl has no code reference to LocaleManager (imports, types, calls)', () => {
-      const code = stripComments(readSource(WIDGET_ROOT, 'WidgetLocale.kt.tmpl'));
+      const code = stripComments(
+        readSource(WIDGET_ROOT, 'WidgetLocale.kt.tmpl')
+      );
       expect(code).not.toMatch(/import\s+android\.app\.LocaleManager/);
       expect(code).not.toMatch(/LocaleManager\b/);
       expect(code).not.toMatch(/\.applicationLocales\s*=/);
@@ -207,19 +239,28 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
     });
 
     it('3. WidgetLocale.kt.tmpl does not call the API 33 getParcelableExtra(String, Class) overload', () => {
-      const code = stripComments(readSource(WIDGET_ROOT, 'WidgetLocale.kt.tmpl'));
+      const code = stripComments(
+        readSource(WIDGET_ROOT, 'WidgetLocale.kt.tmpl')
+      );
       // The API 33+ overload is getParcelableExtra(name, Class<T>). The legacy
       // single-arg overload (API 1) is fine, so we look for the two-arg form.
       // Match `getParcelableExtra(` followed by a name and a `,` and a Class.
-      expect(code).not.toMatch(/getParcelableExtra\(\s*[\w.]+\s*,\s*\w+::class\.java\s*\)/);
+      expect(code).not.toMatch(
+        /getParcelableExtra\(\s*[\w.]+\s*,\s*\w+::class\.java\s*\)/
+      );
       // Also reject the type-token form with an explicit Class reference.
       expect(code).not.toMatch(/getParcelableExtra\([^)]*::class\.java\)/);
     });
 
     it('WidgetLocale.kt.tmpl delegates EXTRA_LOCALE_LIST read to WidgetLocaleApi33', () => {
       const src = readSource(WIDGET_ROOT, 'WidgetLocale.kt.tmpl');
-      const broadcastFn = src.indexOf('fun refreshEffectiveRenderLocaleFromBroadcast');
-      const helperCall = src.indexOf('WidgetLocaleApi33.getLocaleListExtra', broadcastFn);
+      const broadcastFn = src.indexOf(
+        'fun refreshEffectiveRenderLocaleFromBroadcast'
+      );
+      const helperCall = src.indexOf(
+        'WidgetLocaleApi33.getLocaleListExtra',
+        broadcastFn
+      );
       expect(broadcastFn).toBeGreaterThan(-1);
       expect(helperCall).toBeGreaterThan(broadcastFn);
     });
@@ -230,9 +271,18 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
       // Each method must contain its OWN guard before its helper call, scoped
       // to the method body so a guard from another method cannot satisfy it.
       const cases: { fn: string; helper: string }[] = [
-        { fn: 'refreshEffectiveRenderLocaleFromBroadcast', helper: 'WidgetLocaleApi33.getLocaleListExtra' },
-        { fn: 'systemPlatformLanguage', helper: 'WidgetLocaleApi33.systemPlatformLanguage' },
-        { fn: 'currentPlatformLanguage', helper: 'WidgetLocaleApi33.currentPlatformLanguage' },
+        {
+          fn: 'refreshEffectiveRenderLocaleFromBroadcast',
+          helper: 'WidgetLocaleApi33.getLocaleListExtra',
+        },
+        {
+          fn: 'systemPlatformLanguage',
+          helper: 'WidgetLocaleApi33.systemPlatformLanguage',
+        },
+        {
+          fn: 'currentPlatformLanguage',
+          helper: 'WidgetLocaleApi33.currentPlatformLanguage',
+        },
       ];
 
       for (const { fn, helper } of cases) {
@@ -267,7 +317,11 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
       const src = readSource(LANGUAGE_ROOT, 'AppLanguageApi33.kt');
       // Every public method that touches LocaleManager/applicationLocales must
       // carry @DoNotInline so R8/ART does not inline it back into the caller.
-      const methods = ['setApplicationLanguage', 'getApplicationLanguage', 'getApplicationLanguageTag'];
+      const methods = [
+        'setApplicationLanguage',
+        'getApplicationLanguage',
+        'getApplicationLanguageTag',
+      ];
       for (const m of methods) {
         const fnIdx = src.indexOf(`fun ${m}(`);
         expect(fnIdx).toBeGreaterThan(-1);
@@ -285,17 +339,23 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
       // Public methods (no `private` modifier) must return String? (safe on
       // minSdk), not LocaleManager?. A private helper inside Api33 may return
       // LocaleManager? because it never crosses the helper boundary.
-      const publicFns = src.match(/(?:^|\n)\s*fun\s+\w+\s*\([^)]*\)\s*:\s*\w+/g) ?? [];
-      const privateFns = src.match(/(?:^|\n)\s*private\s+fun\s+\w+\s*\([^)]*\)\s*:\s*\w+/g) ?? [];
+      const publicFns =
+        src.match(/(?:^|\n)\s*fun\s+\w+\s*\([^)]*\)\s*:\s*\w+/g) ?? [];
+      const privateFns =
+        src.match(/(?:^|\n)\s*private\s+fun\s+\w+\s*\([^)]*\)\s*:\s*\w+/g) ??
+        [];
       const publicSet = new Set(publicFns);
-      for (const fn of privateFns) publicSet.delete(fn.replace(/\n\s*/, '').trim());
+      for (const fn of privateFns)
+        publicSet.delete(fn.replace(/\n\s*/, '').trim());
       for (const fn of publicSet) {
         expect(fn).not.toMatch(/:\s*LocaleManager\??/);
       }
     });
 
     it('AppLanguageApi33 does not duplicate SDK_INT guard (caller-guarded via @RequiresApi)', () => {
-      const code = stripComments(readSource(LANGUAGE_ROOT, 'AppLanguageApi33.kt'));
+      const code = stripComments(
+        readSource(LANGUAGE_ROOT, 'AppLanguageApi33.kt')
+      );
       expect(code).not.toMatch(/Build\.VERSION\.SDK_INT/);
     });
 
@@ -310,12 +370,18 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
 
     it('WidgetLocaleApi33 owns the API 33 getParcelableExtra(String, Class) overload', () => {
       const src = readSource(WIDGET_ROOT, 'WidgetLocaleApi33.kt.tmpl');
-      expect(src).toMatch(/getParcelableExtra\(\s*Intent\.EXTRA_LOCALE_LIST,\s*LocaleList::class\.java\s*\)/);
+      expect(src).toMatch(
+        /getParcelableExtra\(\s*Intent\.EXTRA_LOCALE_LIST,\s*LocaleList::class\.java\s*\)/
+      );
     });
 
     it('5. WidgetLocaleApi33 methods executing API 33 calls are @DoNotInline', () => {
       const src = readSource(WIDGET_ROOT, 'WidgetLocaleApi33.kt.tmpl');
-      const methods = ['getLocaleListExtra', 'systemPlatformLanguage', 'currentPlatformLanguage'];
+      const methods = [
+        'getLocaleListExtra',
+        'systemPlatformLanguage',
+        'currentPlatformLanguage',
+      ];
       for (const m of methods) {
         const fnIdx = src.indexOf(`fun ${m}(`);
         expect(fnIdx).toBeGreaterThan(-1);
@@ -328,17 +394,23 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
 
     it('WidgetLocaleApi33 does not expose LocaleManager across the boundary', () => {
       const src = readSource(WIDGET_ROOT, 'WidgetLocaleApi33.kt.tmpl');
-      const publicFns = src.match(/(?:^|\n)\s*fun\s+\w+\s*\([^)]*\)\s*:\s*\w+/g) ?? [];
-      const privateFns = src.match(/(?:^|\n)\s*private\s+fun\s+\w+\s*\([^)]*\)\s*:\s*\w+/g) ?? [];
+      const publicFns =
+        src.match(/(?:^|\n)\s*fun\s+\w+\s*\([^)]*\)\s*:\s*\w+/g) ?? [];
+      const privateFns =
+        src.match(/(?:^|\n)\s*private\s+fun\s+\w+\s*\([^)]*\)\s*:\s*\w+/g) ??
+        [];
       const publicSet = new Set(publicFns);
-      for (const fn of privateFns) publicSet.delete(fn.replace(/\n\s*/, '').trim());
+      for (const fn of privateFns)
+        publicSet.delete(fn.replace(/\n\s*/, '').trim());
       for (const fn of publicSet) {
         expect(fn).not.toMatch(/:\s*LocaleManager\??/);
       }
     });
 
     it('WidgetLocaleApi33 does not duplicate SDK_INT guard (caller-guarded via @RequiresApi)', () => {
-      const code = stripComments(readSource(WIDGET_ROOT, 'WidgetLocaleApi33.kt.tmpl'));
+      const code = stripComments(
+        readSource(WIDGET_ROOT, 'WidgetLocaleApi33.kt.tmpl')
+      );
       expect(code).not.toMatch(/Build\.VERSION\.SDK_INT/);
     });
   });
@@ -350,16 +422,14 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
     // LocaleManager would be caught without needing to update this list.
     // WidgetLocale.kt.tmpl is intentionally NOT excluded: redundancy with the
     // dedicated tests above is desirable here.
-    const API_33_WIDGET_HELPERS = new Set([
-      'WidgetLocaleApi33.kt.tmpl',
-    ]);
+    const API_33_WIDGET_HELPERS = new Set(['WidgetLocaleApi33.kt.tmpl']);
 
     const widgetKotlinFiles = fs
       .readdirSync(WIDGET_ROOT, { withFileTypes: true })
       .filter(
         (entry) =>
           entry.isFile() &&
-          (entry.name.endsWith('.kt') || entry.name.endsWith('.kt.tmpl')),
+          (entry.name.endsWith('.kt') || entry.name.endsWith('.kt.tmpl'))
       )
       .map((entry) => entry.name)
       .filter((file) => !API_33_WIDGET_HELPERS.has(file));
@@ -377,7 +447,7 @@ describe('Android API 33 isolation contract (issue #2253)', () => {
         const code = stripComments(readSource(WIDGET_ROOT, file));
         expect(code).not.toMatch(/LocaleManager\b/);
         expect(code).not.toMatch(/getParcelableExtra\([^)]*::class\.java\)/);
-      },
+      }
     );
   });
 });

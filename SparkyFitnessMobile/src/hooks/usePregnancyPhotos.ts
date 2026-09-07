@@ -1,5 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { listPhotos, deletePhoto, uploadPhoto } from '../services/api/pregnancyPhotosApi';
+import {
+  listPhotos,
+  deletePhoto,
+  uploadPhoto,
+} from '../services/api/pregnancyPhotosApi';
 import { pregnancyPhotosQueryKey } from './queryKeys';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 

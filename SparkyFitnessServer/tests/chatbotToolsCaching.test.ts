@@ -22,8 +22,7 @@ describe('buildChatbotTools Anthropic prompt caching', () => {
     for (const [name, tool] of entries) {
       const cacheControl = (
         tool.providerOptions?.anthropic as
-          | { cacheControl?: unknown }
-          | undefined
+          { cacheControl?: unknown } | undefined
       )?.cacheControl;
 
       if (name === lastKey) {

@@ -4,7 +4,9 @@ import { useCycleSettings } from '../../src/hooks/useCycleSettings';
 
 jest.mock('../../src/hooks/useCycleSettings');
 
-const mockUseCycleSettings = useCycleSettings as jest.MockedFunction<typeof useCycleSettings>;
+const mockUseCycleSettings = useCycleSettings as jest.MockedFunction<
+  typeof useCycleSettings
+>;
 
 describe('useCycleMode', () => {
   beforeEach(() => {

@@ -18,12 +18,14 @@ import {
 import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
 
 function minutesDisplayText(durationSec: number | null | undefined): string {
-  return durationSec != null ? String(parseFloat((durationSec / 60).toFixed(2))) : '';
+  return durationSec != null
+    ? String(parseFloat((durationSec / 60).toFixed(2)))
+    : '';
 }
 
 function distanceDisplayText(
   distanceKm: number | null | undefined,
-  distanceUnit: 'km' | 'miles',
+  distanceUnit: 'km' | 'miles'
 ): string {
   return distanceKm != null
     ? String(parseFloat(distanceFromKm(distanceKm, distanceUnit).toFixed(2)))
@@ -76,7 +78,7 @@ interface CardioEffortFormProps {
   /** Live only: register the form's accessory handle, keyed by render key. */
   onRegisterAccessoryHandle?: (
     key: string,
-    handle: SetRowAccessoryHandle | null,
+    handle: SetRowAccessoryHandle | null
   ) => void;
 }
 
@@ -111,9 +113,11 @@ export default function CardioEffortForm({
   const distanceLabel = distanceUnit === 'miles' ? 'mi' : 'km';
 
   const setId = set != null ? String(set.id) : null;
-  const [minutesDraft, setMinutesDraft] = useState(() => minutesDisplayText(set?.duration));
+  const [minutesDraft, setMinutesDraft] = useState(() =>
+    minutesDisplayText(set?.duration)
+  );
   const [distanceDraft, setDistanceDraft] = useState(() =>
-    distanceDisplayText(set?.distance, distanceUnit),
+    distanceDisplayText(set?.distance, distanceUnit)
   );
 
   // Assumed values render as placeholders only while the field is empty, so
@@ -126,7 +130,9 @@ export default function CardioEffortForm({
     mode === 'live' && set?.distance == null && assumed?.distance != null
       ? distanceDisplayText(assumed.distance, distanceUnit)
       : null;
-  const [focusedField, setFocusedField] = useState<'duration' | 'distance' | null>(null);
+  const [focusedField, setFocusedField] = useState<
+    'duration' | 'distance' | null
+  >(null);
 
   // Re-seed the drafts when the underlying set's values change externally
   // (autosave echo, unit change) — but never under the open keyboard, where
@@ -135,7 +141,8 @@ export default function CardioEffortForm({
   const [prevSignature, setPrevSignature] = useState(signature);
   if (signature !== prevSignature) {
     setPrevSignature(signature);
-    if (focusedField !== 'duration') setMinutesDraft(minutesDisplayText(set?.duration));
+    if (focusedField !== 'duration')
+      setMinutesDraft(minutesDisplayText(set?.duration));
     if (focusedField !== 'distance') {
       setDistanceDraft(distanceDisplayText(set?.distance, distanceUnit));
     }
@@ -149,7 +156,7 @@ export default function CardioEffortForm({
       if (seconds === (set?.duration ?? null)) return;
       onCommitField?.(setId, { duration: seconds });
     },
-    [setId, set?.duration, onCommitField],
+    [setId, set?.duration, onCommitField]
   );
 
   const commitDistance = useCallback(
@@ -164,7 +171,7 @@ export default function CardioEffortForm({
       if (km === (set?.distance ?? null)) return;
       onCommitField?.(setId, { distance: km });
     },
-    [setId, set?.distance, distanceUnit, onCommitField],
+    [setId, set?.distance, distanceUnit, onCommitField]
   );
 
   const handleMinutesChange = useCallback(
@@ -174,7 +181,7 @@ export default function CardioEffortForm({
       // a header Save that reads it synchronously can never persist stale text.
       if (mode === 'edit') commitMinutes(text);
     },
-    [mode, commitMinutes],
+    [mode, commitMinutes]
   );
 
   const handleDistanceChange = useCallback(
@@ -182,7 +189,7 @@ export default function CardioEffortForm({
       setDistanceDraft(text);
       if (mode === 'edit') commitDistance(text);
     },
-    [mode, commitDistance],
+    [mode, commitDistance]
   );
 
   const handleToggleComplete = useCallback(() => {
@@ -233,7 +240,8 @@ export default function CardioEffortForm({
   // and adding another from the bar would flip the exercise to the fallback
   // set table.
   useEffect(() => {
-    if (mode !== 'live' || onRegisterAccessoryHandle == null || setId == null) return;
+    if (mode !== 'live' || onRegisterAccessoryHandle == null || setId == null)
+      return;
     const key = renderKey ?? setId;
     onRegisterAccessoryHandle(key, {
       log: () => handleLogRef.current(),
@@ -250,7 +258,10 @@ export default function CardioEffortForm({
     return (
       <View
         className="mt-2 px-1 pb-2 flex-row gap-3"
-        accessibilityLabel={t('cardioEffort.effort', { defaultValue: '{{name}} effort', name: exerciseName })}
+        accessibilityLabel={t('cardioEffort.effort', {
+          defaultValue: '{{name}} effort',
+          name: exerciseName,
+        })}
       >
         <View className="flex-1 items-center">
           <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
@@ -265,7 +276,10 @@ export default function CardioEffortForm({
         </View>
         <View className="flex-1 items-center">
           <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
-            {t('cardioEffort.distance', { defaultValue: 'Distance ({{unit}})', unit: distanceLabel })}
+            {t('cardioEffort.distance', {
+              defaultValue: 'Distance ({{unit}})',
+              unit: distanceLabel,
+            })}
           </Text>
           <Text
             className="text-center text-sm text-text-primary"
@@ -290,14 +304,18 @@ export default function CardioEffortForm({
           onChangeText={handleMinutesChange}
           onFocus={() => {
             setFocusedField('duration');
-            if (mode === 'live' && setId != null) onActivateSet?.(setId, 'duration');
+            if (mode === 'live' && setId != null)
+              onActivateSet?.(setId, 'duration');
           }}
           onBlur={() => {
             setFocusedField(null);
             commitMinutes(minutesDraft);
           }}
           keyboardType="decimal-pad"
-          accessibilityLabel={t('cardioEffort.durationHint', { defaultValue: 'Duration in minutes for {{name}}', name: exerciseName })}
+          accessibilityLabel={t('cardioEffort.durationHint', {
+            defaultValue: 'Duration in minutes for {{name}}',
+            name: exerciseName,
+          })}
           className="w-16"
           placeholder={assumedMinutesText ?? '–'}
           flat
@@ -305,7 +323,10 @@ export default function CardioEffortForm({
       </View>
       <View className="flex-1 items-center">
         <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
-          {t('cardioEffort.distance', { defaultValue: 'Distance ({{unit}})', unit: distanceLabel })}
+          {t('cardioEffort.distance', {
+            defaultValue: 'Distance ({{unit}})',
+            unit: distanceLabel,
+          })}
         </Text>
         <SetCellInput
           inputRef={distanceInputRef}
@@ -313,14 +334,19 @@ export default function CardioEffortForm({
           onChangeText={handleDistanceChange}
           onFocus={() => {
             setFocusedField('distance');
-            if (mode === 'live' && setId != null) onActivateSet?.(setId, 'distance');
+            if (mode === 'live' && setId != null)
+              onActivateSet?.(setId, 'distance');
           }}
           onBlur={() => {
             setFocusedField(null);
             commitDistance(distanceDraft);
           }}
           keyboardType="decimal-pad"
-          accessibilityLabel={t('cardioEffort.distanceHint', { defaultValue: 'Distance in {{unit}} for {{name}}', unit: distanceLabel, name: exerciseName })}
+          accessibilityLabel={t('cardioEffort.distanceHint', {
+            defaultValue: 'Distance in {{unit}} for {{name}}',
+            unit: distanceLabel,
+            name: exerciseName,
+          })}
           className="w-16"
           placeholder={assumedDistanceText ?? '–'}
           flat
@@ -334,8 +360,14 @@ export default function CardioEffortForm({
           accessibilityState={{ checked: completed }}
           accessibilityLabel={
             completed
-              ? t('cardioEffort.markIncomplete', { defaultValue: 'Mark {{name}} incomplete', name: exerciseName })
-              : t('cardioEffort.complete', { defaultValue: 'Complete {{name}}', name: exerciseName })
+              ? t('cardioEffort.markIncomplete', {
+                  defaultValue: 'Mark {{name}} incomplete',
+                  name: exerciseName,
+                })
+              : t('cardioEffort.complete', {
+                  defaultValue: 'Complete {{name}}',
+                  name: exerciseName,
+                })
           }
           className="pb-1"
         >

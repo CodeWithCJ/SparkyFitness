@@ -12,7 +12,7 @@ const item = (id: string): ExternalFoodItem =>
 const result = (
   id: string,
   items: ExternalFoodItem[],
-  overrides: Partial<ProviderSearchResult> = {},
+  overrides: Partial<ProviderSearchResult> = {}
 ): ProviderSearchResult => ({
   provider: provider(id),
   items,
@@ -43,7 +43,7 @@ describe('interleaveTopMatches', () => {
 
   it('caps the list at 5 by default', () => {
     const many = Array.from({ length: 4 }, (_, i) =>
-      result(`p${i}`, [item(`p${i}-0`), item(`p${i}-1`)]),
+      result(`p${i}`, [item(`p${i}-0`), item(`p${i}-1`)])
     );
     expect(interleaveTopMatches(many)).toHaveLength(5);
   });
@@ -52,7 +52,7 @@ describe('interleaveTopMatches', () => {
     const out = interleaveTopMatches(
       [result('a', [item('a0'), item('a1'), item('a2'), item('a3')])],
       2,
-      10,
+      10
     );
     expect(out.map((m) => m.online.id)).toEqual(['a0', 'a1']);
   });
@@ -61,7 +61,7 @@ describe('interleaveTopMatches', () => {
     // 8 providers with one item each: every provider should appear, despite the
     // base cap of 5.
     const providers = Array.from({ length: 8 }, (_, i) =>
-      result(`p${i}`, [item(`p${i}-0`)]),
+      result(`p${i}`, [item(`p${i}-0`)])
     );
     const out = interleaveTopMatches(providers);
     expect(out).toHaveLength(8);
@@ -92,7 +92,7 @@ describe('interleaveTopMatches', () => {
       interleaveTopMatches([
         result('a', [], { isLoading: true }),
         result('b', [], { isError: true }),
-      ]),
+      ])
     ).toEqual([]);
   });
 });

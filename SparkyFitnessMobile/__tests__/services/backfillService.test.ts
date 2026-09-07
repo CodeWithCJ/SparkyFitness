@@ -1,6 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
-import { runBackfill, type BackfillProgress } from '../../src/services/backfillService';
+import {
+  runBackfill,
+  type BackfillProgress,
+} from '../../src/services/backfillService';
 import {
   tryClaimAutoSync,
   isSyncClaimed,
@@ -39,9 +42,27 @@ jest.mock('../../src/hooks/refreshHealthSyncCache', () => ({
 
 jest.mock('../../src/HealthMetrics', () => ({
   HEALTH_METRICS: [
-    { id: 'steps', recordType: 'Steps', preferenceKey: 'syncStepsEnabled', label: 'Steps', permissions: [{ accessType: 'read', recordType: 'Steps' }] },
-    { id: 'weight', recordType: 'Weight', preferenceKey: 'syncWeightEnabled', label: 'Weight', permissions: [{ accessType: 'read', recordType: 'Weight' }] },
-    { id: 'heartRate', recordType: 'HeartRate', preferenceKey: 'syncHeartRateEnabled', label: 'Heart Rate', permissions: [{ accessType: 'read', recordType: 'HeartRate' }] },
+    {
+      id: 'steps',
+      recordType: 'Steps',
+      preferenceKey: 'syncStepsEnabled',
+      label: 'Steps',
+      permissions: [{ accessType: 'read', recordType: 'Steps' }],
+    },
+    {
+      id: 'weight',
+      recordType: 'Weight',
+      preferenceKey: 'syncWeightEnabled',
+      label: 'Weight',
+      permissions: [{ accessType: 'read', recordType: 'Weight' }],
+    },
+    {
+      id: 'heartRate',
+      recordType: 'HeartRate',
+      preferenceKey: 'syncHeartRateEnabled',
+      label: 'Heart Rate',
+      permissions: [{ accessType: 'read', recordType: 'HeartRate' }],
+    },
   ],
 }));
 
@@ -58,15 +79,24 @@ jest.mock('../../src/services/healthConnectService', () => {
   };
 });
 
-type MetricLike = { id: string; recordType: string; preferenceKey: string; label: string };
+type MetricLike = {
+  id: string;
+  recordType: string;
+  preferenceKey: string;
+  label: string;
+};
 type WindowsLike = { sessionStart: Date; aggregatedStart: Date; end: Date };
 
-const api = require('../../src/services/api/healthDataApi') as { syncHealthData: jest.Mock };
+const api = require('../../src/services/api/healthDataApi') as {
+  syncHealthData: jest.Mock;
+};
 const storage = require('../../src/services/storage') as {
   getActiveServerConfig: jest.Mock;
   saveLastSyncedTime: jest.Mock;
 };
-const engine = require('../../src/services/shared/healthSyncEngine') as { collectHealthData: jest.Mock };
+const engine = require('../../src/services/shared/healthSyncEngine') as {
+  collectHealthData: jest.Mock;
+};
 const healthService = require('../../src/services/healthConnectService') as {
   loadHealthPreference: jest.Mock;
   ensureHistoryReadPermission: jest.Mock;
@@ -75,7 +105,8 @@ const healthService = require('../../src/services/healthConnectService') as {
   getDatabaseInaccessibleCount: jest.Mock;
   readEarliestRecord: jest.Mock;
 };
-const mockRefreshHealthSyncCache = refreshHealthSyncCache as jest.MockedFunction<typeof refreshHealthSyncCache>;
+const mockRefreshHealthSyncCache =
+  refreshHealthSyncCache as jest.MockedFunction<typeof refreshHealthSyncCache>;
 
 // All fixture dates are LOCAL so window math is timezone-independent.
 // "Now" = 2026-08-03 15:00 local → endEdge = Aug 3 local midnight.
@@ -87,12 +118,19 @@ const JUN_20 = new Date(2026, 5, 20, 0, 0, 0, 0);
 const STEPS_EARLIEST = new Date(2026, 5, 20, 10, 0).toISOString();
 const WEIGHT_EARLIEST = new Date(2026, 6, 20, 8, 0).toISOString();
 
-const runOpts = (overrides: { shouldCancel?: () => boolean; onProgress?: (p: BackfillProgress) => void } = {}) => ({
+const runOpts = (
+  overrides: {
+    shouldCancel?: () => boolean;
+    onProgress?: (p: BackfillProgress) => void;
+  } = {}
+) => ({
   shouldCancel: overrides.shouldCancel ?? (() => false),
   onProgress: overrides.onProgress ?? jest.fn(),
 });
 
-const inProgressCheckpoint = (overrides: Partial<BackfillCheckpoint> = {}): BackfillCheckpoint => ({
+const inProgressCheckpoint = (
+  overrides: Partial<BackfillCheckpoint> = {}
+): BackfillCheckpoint => ({
   version: 1,
   status: 'in-progress',
   endEdge: AUG_3.toISOString(),
@@ -118,31 +156,39 @@ describe('runBackfill', () => {
 
     appStateHandler = null;
     removeSubscription = jest.fn();
-    jest.spyOn(AppState, 'addEventListener').mockImplementation((_type, handler) => {
-      appStateHandler = handler as unknown as (state: string) => void;
-      return { remove: removeSubscription } as ReturnType<typeof AppState.addEventListener>;
-    });
+    jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation((_type, handler) => {
+        appStateHandler = handler as unknown as (state: string) => void;
+        return { remove: removeSubscription } as ReturnType<
+          typeof AppState.addEventListener
+        >;
+      });
 
     storage.getActiveServerConfig.mockResolvedValue({ id: 'server-1' });
     healthService.loadHealthPreference.mockImplementation((key: string) =>
-      Promise.resolve(key === 'syncStepsEnabled' || key === 'syncWeightEnabled'),
+      Promise.resolve(key === 'syncStepsEnabled' || key === 'syncWeightEnabled')
     );
     healthService.ensureHistoryReadPermission.mockResolvedValue(true);
     healthService.requestHealthPermissions.mockResolvedValue(true);
     healthService.getDatabaseInaccessibleCount.mockReturnValue(0);
-    healthService.readEarliestRecord.mockImplementation(async (metric: MetricLike) => {
-      if (metric.recordType === 'Steps') return { records: [{ startTime: STEPS_EARLIEST }] };
-      if (metric.recordType === 'Weight') return { records: [{ startTime: WEIGHT_EARLIEST }] };
-      return { records: [] };
-    });
+    healthService.readEarliestRecord.mockImplementation(
+      async (metric: MetricLike) => {
+        if (metric.recordType === 'Steps')
+          return { records: [{ startTime: STEPS_EARLIEST }] };
+        if (metric.recordType === 'Weight')
+          return { records: [{ startTime: WEIGHT_EARLIEST }] };
+        return { records: [] };
+      }
+    );
     engine.collectHealthData.mockImplementation(
       async (_provider: unknown, metrics: MetricLike[], windows: WindowsLike) =>
-        metrics.map(metric => ({
+        metrics.map((metric) => ({
           metric,
           status: 'fulfilled' as const,
           data: [{ type: metric.recordType, date: windows.end.toISOString() }],
           error: undefined,
-        })),
+        }))
     );
     api.syncHealthData.mockImplementation(async (payload: unknown[]) => ({
       recordsSent: payload.length,
@@ -165,16 +211,22 @@ describe('runBackfill', () => {
     expect(result.recordsUploaded).toBe(3);
 
     expect(engine.collectHealthData).toHaveBeenCalledTimes(2);
-    const firstWindows = engine.collectHealthData.mock.calls[0][2] as WindowsLike;
-    const secondWindows = engine.collectHealthData.mock.calls[1][2] as WindowsLike;
+    const firstWindows = engine.collectHealthData.mock
+      .calls[0][2] as WindowsLike;
+    const secondWindows = engine.collectHealthData.mock
+      .calls[1][2] as WindowsLike;
     expect(firstWindows.sessionStart).toEqual(JUL_4);
     expect(firstWindows.aggregatedStart).toEqual(JUL_4);
     expect(firstWindows.end).toEqual(AUG_3);
     expect(secondWindows.sessionStart).toEqual(JUN_20);
     expect(secondWindows.end).toEqual(JUL_4);
 
-    const firstMetrics = (engine.collectHealthData.mock.calls[0][1] as MetricLike[]).map(m => m.recordType);
-    const secondMetrics = (engine.collectHealthData.mock.calls[1][1] as MetricLike[]).map(m => m.recordType);
+    const firstMetrics = (
+      engine.collectHealthData.mock.calls[0][1] as MetricLike[]
+    ).map((m) => m.recordType);
+    const secondMetrics = (
+      engine.collectHealthData.mock.calls[1][1] as MetricLike[]
+    ).map((m) => m.recordType);
     expect(firstMetrics).toEqual(['Steps', 'Weight']);
     expect(secondMetrics).toEqual(['Steps']);
 
@@ -193,7 +245,9 @@ describe('runBackfill', () => {
     expect(mockRefreshHealthSyncCache).toHaveBeenCalled();
 
     expect(onProgress.mock.calls[0][0].phase).toBe('probing');
-    const lastProgress = onProgress.mock.calls[onProgress.mock.calls.length - 1][0] as BackfillProgress;
+    const lastProgress = onProgress.mock.calls[
+      onProgress.mock.calls.length - 1
+    ][0] as BackfillProgress;
     expect(lastProgress.totalDays).toBe(44);
     expect(lastProgress.importedDays).toBe(44);
 
@@ -261,7 +315,10 @@ describe('runBackfill', () => {
   });
 
   test('a quota error during probing stops immediately without a probe retry', async () => {
-    healthService.readEarliestRecord.mockResolvedValue({ records: [], error: 'API call quota exceeded' });
+    healthService.readEarliestRecord.mockResolvedValue({
+      records: [],
+      error: 'API call quota exceeded',
+    });
 
     const result = await runBackfill(runOpts());
 
@@ -281,7 +338,10 @@ describe('runBackfill', () => {
   });
 
   test('a persistent probe error stops the run without guessing a floor', async () => {
-    healthService.readEarliestRecord.mockResolvedValue({ records: [], error: 'probe broke' });
+    healthService.readEarliestRecord.mockResolvedValue({
+      records: [],
+      error: 'probe broke',
+    });
 
     const result = await runBackfill(runOpts());
 
@@ -294,12 +354,12 @@ describe('runBackfill', () => {
   test('a quota error in a window stops without retrying or advancing', async () => {
     engine.collectHealthData.mockImplementation(
       async (_provider: unknown, metrics: MetricLike[]) =>
-        metrics.map(metric => ({
+        metrics.map((metric) => ({
           metric,
           status: 'fulfilled' as const,
           data: [],
           error: 'Health Connect API call quota exceeded',
-        })),
+        }))
     );
 
     const result = await runBackfill(runOpts());
@@ -317,7 +377,12 @@ describe('runBackfill', () => {
   test('a failing window is retried once, then stops without advancing', async () => {
     engine.collectHealthData.mockImplementation(
       async (_provider: unknown, metrics: MetricLike[]) =>
-        metrics.map(metric => ({ metric, status: 'rejected' as const, data: [], error: 'read exploded' })),
+        metrics.map((metric) => ({
+          metric,
+          status: 'rejected' as const,
+          data: [],
+          error: 'read exploded',
+        }))
     );
 
     const result = await runBackfill(runOpts());
@@ -331,18 +396,27 @@ describe('runBackfill', () => {
   test('a transient window error recovers on the retry', async () => {
     let calls = 0;
     engine.collectHealthData.mockImplementation(
-      async (_provider: unknown, metrics: MetricLike[], windows: WindowsLike) => {
+      async (
+        _provider: unknown,
+        metrics: MetricLike[],
+        windows: WindowsLike
+      ) => {
         calls++;
         if (calls === 1) {
-          return metrics.map(metric => ({ metric, status: 'rejected' as const, data: [], error: 'flaky' }));
+          return metrics.map((metric) => ({
+            metric,
+            status: 'rejected' as const,
+            data: [],
+            error: 'flaky',
+          }));
         }
-        return metrics.map(metric => ({
+        return metrics.map((metric) => ({
           metric,
           status: 'fulfilled' as const,
           data: [{ type: metric.recordType, date: windows.end.toISOString() }],
           error: undefined,
         }));
-      },
+      }
     );
 
     const result = await runBackfill(runOpts());
@@ -354,17 +428,23 @@ describe('runBackfill', () => {
   test('device-locked reads stop the run even when outcomes look clean', async () => {
     // Probes succeed; the device locks during the first window's reads.
     let locked = false;
-    healthService.getDatabaseInaccessibleCount.mockImplementation(() => (locked ? 2 : 0));
+    healthService.getDatabaseInaccessibleCount.mockImplementation(() =>
+      locked ? 2 : 0
+    );
     engine.collectHealthData.mockImplementation(
-      async (_provider: unknown, metrics: MetricLike[], windows: WindowsLike) => {
+      async (
+        _provider: unknown,
+        metrics: MetricLike[],
+        windows: WindowsLike
+      ) => {
         locked = true;
-        return metrics.map(metric => ({
+        return metrics.map((metric) => ({
           metric,
           status: 'fulfilled' as const,
           data: [{ type: metric.recordType, date: windows.end.toISOString() }],
           error: undefined,
         }));
-      },
+      }
     );
 
     const result = await runBackfill(runOpts());
@@ -377,17 +457,21 @@ describe('runBackfill', () => {
 
   test('an app-inactive transition mid-window discards its results without advancing', async () => {
     engine.collectHealthData.mockImplementation(
-      async (_provider: unknown, metrics: MetricLike[], windows: WindowsLike) => {
+      async (
+        _provider: unknown,
+        metrics: MetricLike[],
+        windows: WindowsLike
+      ) => {
         // Locked-mid-window reads can return silently empty; the AppState flag is
         // the only signal. Simulate the app leaving 'active' during the read.
         appStateHandler?.('background');
-        return metrics.map(metric => ({
+        return metrics.map((metric) => ({
           metric,
           status: 'fulfilled' as const,
           data: [{ type: metric.recordType, date: windows.end.toISOString() }],
           error: undefined,
         }));
-      },
+      }
     );
 
     const result = await runBackfill(runOpts());
@@ -431,9 +515,11 @@ describe('runBackfill', () => {
   test('cancel between windows keeps the finished window and returns cancelled', async () => {
     // Cancel lands at the first window boundary AFTER an upload — the in-flight
     // window finishes; the next one never starts.
-    const result = await runBackfill(runOpts({
-      shouldCancel: () => api.syncHealthData.mock.calls.length >= 1,
-    }));
+    const result = await runBackfill(
+      runOpts({
+        shouldCancel: () => api.syncHealthData.mock.calls.length >= 1,
+      })
+    );
 
     expect(result.outcome).toBe('cancelled');
     expect(result.recordsUploaded).toBe(2);
@@ -454,7 +540,9 @@ describe('runBackfill', () => {
 
     // Only the frozen Steps set runs, even though Weight is currently enabled.
     expect(engine.collectHealthData).toHaveBeenCalledTimes(1);
-    const metricsUsed = (engine.collectHealthData.mock.calls[0][1] as MetricLike[]).map(m => m.recordType);
+    const metricsUsed = (
+      engine.collectHealthData.mock.calls[0][1] as MetricLike[]
+    ).map((m) => m.recordType);
     expect(metricsUsed).toEqual(['Steps']);
 
     // recordsUploaded accumulates on top of the checkpoint's prior total.
@@ -467,11 +555,14 @@ describe('runBackfill', () => {
     // Jul 5 and re-import the seam day; rounding it down to Jul 4 would mark the
     // never-imported 7 hours of Jul 4 as covered and silently skip them.
     const skewMs = 7 * 60 * 60 * 1000;
-    await saveBackfillCheckpoint('server-1', inProgressCheckpoint({
-      endEdge: new Date(AUG_3.getTime() + skewMs).toISOString(),
-      cursor: new Date(JUL_4.getTime() + skewMs).toISOString(),
-      floor: new Date(JUN_20.getTime() + skewMs).toISOString(),
-    }));
+    await saveBackfillCheckpoint(
+      'server-1',
+      inProgressCheckpoint({
+        endEdge: new Date(AUG_3.getTime() + skewMs).toISOString(),
+        cursor: new Date(JUL_4.getTime() + skewMs).toISOString(),
+        floor: new Date(JUN_20.getTime() + skewMs).toISOString(),
+      })
+    );
 
     const result = await runBackfill(runOpts());
 
@@ -484,12 +575,17 @@ describe('runBackfill', () => {
 
   test('a window with a very large record set uploads without hitting the argument limit', async () => {
     engine.collectHealthData.mockImplementation(
-      async (_provider: unknown, metrics: MetricLike[]) => [{
-        metric: metrics[0],
-        status: 'fulfilled' as const,
-        data: Array.from({ length: 200_000 }, (_, i) => ({ type: 'Steps', date: String(i) })),
-        error: undefined,
-      }],
+      async (_provider: unknown, metrics: MetricLike[]) => [
+        {
+          metric: metrics[0],
+          status: 'fulfilled' as const,
+          data: Array.from({ length: 200_000 }, (_, i) => ({
+            type: 'Steps',
+            date: String(i),
+          })),
+          error: undefined,
+        },
+      ]
     );
 
     const result = await runBackfill(runOpts());
@@ -525,8 +621,10 @@ describe('runBackfill', () => {
       { accessType: 'read', recordType: 'Steps' },
       { accessType: 'read', recordType: 'Weight' },
     ]);
-    expect(healthService.requestHealthPermissions.mock.invocationCallOrder[0]).toBeLessThan(
-      healthService.readEarliestRecord.mock.invocationCallOrder[0],
+    expect(
+      healthService.requestHealthPermissions.mock.invocationCallOrder[0]
+    ).toBeLessThan(
+      healthService.readEarliestRecord.mock.invocationCallOrder[0]
     );
   });
 
@@ -541,7 +639,10 @@ describe('runBackfill', () => {
   });
 
   test('a done checkpoint short-circuits to completed without touching anything', async () => {
-    await saveBackfillCheckpoint('server-1', inProgressCheckpoint({ status: 'done' }));
+    await saveBackfillCheckpoint(
+      'server-1',
+      inProgressCheckpoint({ status: 'done' })
+    );
 
     const result = await runBackfill(runOpts());
 
@@ -551,7 +652,9 @@ describe('runBackfill', () => {
   });
 
   test('an unexpected throw still releases the claim, flag, and AppState listener', async () => {
-    healthService.ensureHistoryReadPermission.mockRejectedValue(new Error('bridge died'));
+    healthService.ensureHistoryReadPermission.mockRejectedValue(
+      new Error('bridge died')
+    );
 
     const result = await runBackfill(runOpts());
 
@@ -565,18 +668,28 @@ describe('runBackfill', () => {
   test('metrics whose history starts later are dropped from older windows', async () => {
     // Steps is frozen as the late starter (history from Jul 20), so window 2
     // [Jun 20, Jul 4) must read Weight only.
-    await saveBackfillCheckpoint('server-1', inProgressCheckpoint({
-      cursor: AUG_3.toISOString(),
-      earliestByRecordType: { Steps: WEIGHT_EARLIEST, Weight: STEPS_EARLIEST },
-      enabledRecordTypes: ['Steps', 'Weight'],
-      recordsUploaded: 0,
-    }));
+    await saveBackfillCheckpoint(
+      'server-1',
+      inProgressCheckpoint({
+        cursor: AUG_3.toISOString(),
+        earliestByRecordType: {
+          Steps: WEIGHT_EARLIEST,
+          Weight: STEPS_EARLIEST,
+        },
+        enabledRecordTypes: ['Steps', 'Weight'],
+        recordsUploaded: 0,
+      })
+    );
 
     const result = await runBackfill(runOpts());
 
     expect(result.outcome).toBe('completed');
-    const firstMetrics = (engine.collectHealthData.mock.calls[0][1] as MetricLike[]).map(m => m.recordType);
-    const secondMetrics = (engine.collectHealthData.mock.calls[1][1] as MetricLike[]).map(m => m.recordType);
+    const firstMetrics = (
+      engine.collectHealthData.mock.calls[0][1] as MetricLike[]
+    ).map((m) => m.recordType);
+    const secondMetrics = (
+      engine.collectHealthData.mock.calls[1][1] as MetricLike[]
+    ).map((m) => m.recordType);
     expect(firstMetrics).toEqual(['Steps', 'Weight']);
     expect(secondMetrics).toEqual(['Weight']);
   });

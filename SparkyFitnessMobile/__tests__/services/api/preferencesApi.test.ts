@@ -2,7 +2,10 @@ import {
   ensureTimezoneBootstrapped,
   fetchPreferences,
 } from '../../../src/services/api/preferencesApi';
-import { getActiveServerConfig, ServerConfig } from '../../../src/services/storage';
+import {
+  getActiveServerConfig,
+  ServerConfig,
+} from '../../../src/services/storage';
 import { addLog } from '../../../src/services/LogService';
 
 // Mock the underlying apiFetch so we control fetch/update responses directly
@@ -13,7 +16,8 @@ jest.mock('../../../src/services/api/apiClient', () => ({
 
 jest.mock('../../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
-  proxyHeadersToRecord: jest.requireActual('../../../src/services/storage').proxyHeadersToRecord,
+  proxyHeadersToRecord: jest.requireActual('../../../src/services/storage')
+    .proxyHeadersToRecord,
 }));
 
 jest.mock('../../../src/services/LogService', () => ({
@@ -60,7 +64,7 @@ describe('ensureTimezoneBootstrapped', () => {
         endpoint: '/api/user-preferences/bootstrap-timezone',
         method: 'POST',
         body: { timezone: deviceTz },
-      }),
+      })
     );
   });
 
@@ -77,9 +81,9 @@ describe('ensureTimezoneBootstrapped', () => {
     let resolveRequest: ((value: { timezone: string }) => void) | undefined;
     mockApiFetch.mockImplementationOnce(
       () =>
-        new Promise(resolve => {
+        new Promise((resolve) => {
           resolveRequest = resolve;
-        }),
+        })
     );
 
     const first = ensureTimezoneBootstrapped();
@@ -112,7 +116,7 @@ describe('ensureTimezoneBootstrapped', () => {
     expect(mockApiFetch).not.toHaveBeenCalled();
     expect(addLog).toHaveBeenCalledWith(
       expect.stringContaining('Device timezone invalid or unavailable'),
-      'WARNING',
+      'WARNING'
     );
 
     resolvedOptionsSpy.mockRestore();
@@ -126,7 +130,7 @@ describe('ensureTimezoneBootstrapped', () => {
     expect(result).toBeUndefined();
     expect(addLog).toHaveBeenCalledWith(
       expect.stringContaining('Timezone bootstrap failed'),
-      'WARNING',
+      'WARNING'
     );
   });
 });

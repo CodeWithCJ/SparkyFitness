@@ -32,13 +32,23 @@ const SwipeableIngredientRow: React.FC<SwipeableIngredientRowProps> = ({
 
   const handleDeletePress = () => {
     const message = isLastIngredient
-      ? t('ingredientRow.lastWarning', { defaultValue: 'This is the last ingredient. Add another before you can save, or use Delete Meal to remove the whole meal.' })
+      ? t('ingredientRow.lastWarning', {
+          defaultValue:
+            'This is the last ingredient. Add another before you can save, or use Delete Meal to remove the whole meal.',
+        })
       : undefined;
     Alert.alert(
-      t('ingredientRow.removeTitle', { defaultValue: 'Remove {{name}}?', name: foodName }),
+      t('ingredientRow.removeTitle', {
+        defaultValue: 'Remove {{name}}?',
+        name: foodName,
+      }),
       message,
       [
-        { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel', onPress: () => swipeableRef.current?.close() },
+        {
+          text: t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+          onPress: () => swipeableRef.current?.close(),
+        },
         {
           text: t('common.remove', { defaultValue: 'Remove' }),
           style: 'destructive',
@@ -50,7 +60,7 @@ const SwipeableIngredientRow: React.FC<SwipeableIngredientRowProps> = ({
       ],
       // Android lets the user dismiss by tapping outside; close the row so it
       // does not stay stuck in the swiped-open state.
-      { cancelable: true, onDismiss: () => swipeableRef.current?.close() },
+      { cancelable: true, onDismiss: () => swipeableRef.current?.close() }
     );
   };
 
@@ -64,11 +74,25 @@ const SwipeableIngredientRow: React.FC<SwipeableIngredientRowProps> = ({
       style?: 'cancel' | 'destructive';
       onPress?: () => void;
     }[] = [];
-    if (onPress) buttons.push({ text: t('common.edit', { defaultValue: 'Edit' }), onPress });
-    buttons.push({ text: t('common.delete', { defaultValue: 'Delete' }), style: 'destructive', onPress: onConfirmDelete });
-    buttons.push({ text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' });
+    if (onPress)
+      buttons.push({
+        text: t('common.edit', { defaultValue: 'Edit' }),
+        onPress,
+      });
+    buttons.push({
+      text: t('common.delete', { defaultValue: 'Delete' }),
+      style: 'destructive',
+      onPress: onConfirmDelete,
+    });
+    buttons.push({
+      text: t('common.cancel', { defaultValue: 'Cancel' }),
+      style: 'cancel',
+    });
     const message = isLastIngredient
-      ? t('ingredientRow.lastWarning', { defaultValue: 'This is the last ingredient. Add another before you can save, or use Delete Meal to remove the whole meal.' })
+      ? t('ingredientRow.lastWarning', {
+          defaultValue:
+            'This is the last ingredient. Add another before you can save, or use Delete Meal to remove the whole meal.',
+        })
       : undefined;
     Alert.alert(foodName, message, buttons);
   };
@@ -85,9 +109,13 @@ const SwipeableIngredientRow: React.FC<SwipeableIngredientRowProps> = ({
         <Text className="text-text-primary text-base" numberOfLines={1}>
           {foodName}
         </Text>
-        <Text className="text-text-secondary text-xs mt-0.5">{quantityLabel}</Text>
+        <Text className="text-text-secondary text-xs mt-0.5">
+          {quantityLabel}
+        </Text>
       </View>
-      <Text className="text-text-secondary text-sm font-medium">{caloriesLabel}</Text>
+      <Text className="text-text-secondary text-sm font-medium">
+        {caloriesLabel}
+      </Text>
     </View>
   );
 
@@ -105,7 +133,10 @@ const SwipeableIngredientRow: React.FC<SwipeableIngredientRowProps> = ({
           onPress={onPress}
           onLongPress={handleLongPress}
           disabled={disabled}
-          accessibilityLabel={t('ingredientRow.edit', { defaultValue: 'Edit {{name}}', name: foodName })}
+          accessibilityLabel={t('ingredientRow.edit', {
+            defaultValue: 'Edit {{name}}',
+            name: foodName,
+          })}
           accessibilityRole="button"
         >
           {rowBody}

@@ -322,12 +322,7 @@ const WorkoutPlaybackPage = () => {
     (
       pointer: WorkoutSetPointer,
       field:
-        | 'reps'
-        | 'weight'
-        | 'duration'
-        | 'rest_time'
-        | 'set_type'
-        | 'notes',
+        'reps' | 'weight' | 'duration' | 'rest_time' | 'set_type' | 'notes',
       value: number | string | null
     ) => {
       updateDraft((currentDraft) =>

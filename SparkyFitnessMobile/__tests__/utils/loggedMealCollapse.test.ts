@@ -12,9 +12,10 @@ jest.mock('../../src/services/api/foodEntryMealsApi', () => ({
   fetchFoodEntryMealsByDate: jest.fn(),
 }));
 
-const mockFetchFoodEntryMealsByDate = fetchFoodEntryMealsByDate as jest.MockedFunction<
-  typeof fetchFoodEntryMealsByDate
->;
+const mockFetchFoodEntryMealsByDate =
+  fetchFoodEntryMealsByDate as jest.MockedFunction<
+    typeof fetchFoodEntryMealsByDate
+  >;
 
 const makeEntry = (overrides: Partial<FoodEntry> = {}): FoodEntry => ({
   id: 'entry-1',
@@ -48,12 +49,17 @@ const makeMeal = (overrides: Partial<FoodEntryMeal> = {}): FoodEntryMeal => ({
 
 describe('hasLoggedMealComponents', () => {
   test('false for entries without meal links', () => {
-    expect(hasLoggedMealComponents([makeEntry(), makeEntry({ id: 'entry-2' })])).toBe(false);
+    expect(
+      hasLoggedMealComponents([makeEntry(), makeEntry({ id: 'entry-2' })])
+    ).toBe(false);
   });
 
   test('true when any entry carries food_entry_meal_id', () => {
     expect(
-      hasLoggedMealComponents([makeEntry(), makeEntry({ food_entry_meal_id: 'meal-1' })]),
+      hasLoggedMealComponents([
+        makeEntry(),
+        makeEntry({ food_entry_meal_id: 'meal-1' }),
+      ])
     ).toBe(true);
   });
 
@@ -62,8 +68,12 @@ describe('hasLoggedMealComponents', () => {
   });
 
   test('null-safe for missing list and holes', () => {
-    expect(hasLoggedMealComponents(undefined as unknown as FoodEntry[])).toBe(false);
-    expect(hasLoggedMealComponents([undefined as unknown as FoodEntry])).toBe(false);
+    expect(hasLoggedMealComponents(undefined as unknown as FoodEntry[])).toBe(
+      false
+    );
+    expect(hasLoggedMealComponents([undefined as unknown as FoodEntry])).toBe(
+      false
+    );
   });
 });
 
@@ -93,17 +103,24 @@ describe('loggedMealToFoodEntry', () => {
     expect(loggedMealToFoodEntry(makeMeal({ quantity: 0 })).quantity).toBe(1);
     expect(loggedMealToFoodEntry(makeMeal({ quantity: -3 })).quantity).toBe(1);
     expect(
-      loggedMealToFoodEntry(makeMeal({ quantity: NaN as unknown as number })).quantity,
+      loggedMealToFoodEntry(makeMeal({ quantity: NaN as unknown as number }))
+        .quantity
     ).toBe(1);
-    expect(loggedMealToFoodEntry(makeMeal({ quantity: 0 })).serving_size).toBe(1);
+    expect(loggedMealToFoodEntry(makeMeal({ quantity: 0 })).serving_size).toBe(
+      1
+    );
   });
 
   test('missing calories defaults to 0', () => {
-    expect(loggedMealToFoodEntry(makeMeal({ calories: undefined })).calories).toBe(0);
+    expect(
+      loggedMealToFoodEntry(makeMeal({ calories: undefined })).calories
+    ).toBe(0);
   });
 
   test('null meal_template_id and meal_type_id map to undefined', () => {
-    const entry = loggedMealToFoodEntry(makeMeal({ meal_template_id: null, meal_type_id: null }));
+    const entry = loggedMealToFoodEntry(
+      makeMeal({ meal_template_id: null, meal_type_id: null })
+    );
     expect(entry.meal_id).toBeUndefined();
     expect(entry.meal_type_id).toBeUndefined();
   });
@@ -156,7 +173,7 @@ describe('collapseLoggedMealComponents', () => {
   test('logged meals with no components in the entry list are appended', () => {
     const collapsed = collapseLoggedMealComponents(
       [makeEntry({ id: 'solo' })],
-      [makeMeal({ id: 'meal-x' })],
+      [makeMeal({ id: 'meal-x' })]
     );
 
     expect(collapsed.map((e) => e.id)).toEqual(['solo', 'meal-x']);
@@ -176,13 +193,22 @@ describe('collapseLoggedMealComponents', () => {
   });
 
   test('missing entry list collapses to empty', () => {
-    expect(collapseLoggedMealComponents(undefined as unknown as FoodEntry[], [makeMeal()])).toEqual([]);
+    expect(
+      collapseLoggedMealComponents(undefined as unknown as FoodEntry[], [
+        makeMeal(),
+      ])
+    ).toEqual([]);
   });
 
   test('no logged meals returns the entries untouched', () => {
     const entries = [makeEntry()];
     expect(collapseLoggedMealComponents(entries, [])).toBe(entries);
-    expect(collapseLoggedMealComponents(entries, undefined as unknown as FoodEntryMeal[])).toBe(entries);
+    expect(
+      collapseLoggedMealComponents(
+        entries,
+        undefined as unknown as FoodEntryMeal[]
+      )
+    ).toBe(entries);
   });
 });
 
@@ -225,7 +251,7 @@ describe('resolveCollapsedFoodEntries', () => {
   test('missing raw entries resolve to an empty list', async () => {
     const result = await resolveCollapsedFoodEntries(
       '2024-06-15',
-      undefined as unknown as FoodEntry[],
+      undefined as unknown as FoodEntry[]
     );
 
     expect(result).toEqual([]);

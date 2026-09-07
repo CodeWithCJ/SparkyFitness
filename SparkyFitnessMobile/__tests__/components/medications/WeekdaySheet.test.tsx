@@ -24,7 +24,13 @@ describe('WeekdaySheet', () => {
   it('exposes selection through accessibilityState', () => {
     const screen = render(<WeekdaySheet value={[3]} onChange={jest.fn()} />);
 
-    expect(screen.getByLabelText('Wednesday, selected').props.accessibilityState.selected).toBe(true);
-    expect(screen.getByLabelText('Monday, not selected').props.accessibilityState.selected).toBe(false);
+    expect(
+      screen.getByLabelText('Wednesday, selected').props.accessibilityState
+        .selected
+    ).toBe(true);
+    expect(
+      screen.getByLabelText('Monday, not selected').props.accessibilityState
+        .selected
+    ).toBe(false);
   });
 });

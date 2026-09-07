@@ -22,7 +22,7 @@ import type { RootStackParamList } from '../types/navigation';
 function getServerConnectionMessage(
   t: (key: string, options: { defaultValue: string }) => string,
   key: string,
-  fallback: string,
+  fallback: string
 ): string {
   switch (key) {
     case 'addSheetActions.configureForExercise':
@@ -51,7 +51,7 @@ type TabStateSnapshot = {
 
 function findRouteState(
   state: TabStateSnapshot | undefined,
-  routeName: string,
+  routeName: string
 ): TabStateSnapshot | undefined {
   if (!state) return undefined;
 
@@ -73,7 +73,7 @@ function findRouteState(
 
 function findRouteParams<T extends object>(
   state: TabStateSnapshot | undefined,
-  routeName: string,
+  routeName: string
 ): T | undefined {
   if (!state) return undefined;
 
@@ -131,7 +131,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
       : undefined;
 
     const tabState = rootOrTabState?.routes?.some(
-      route => route.name === 'Tabs',
+      (route) => route.name === 'Tabs'
     )
       ? findRouteState(rootOrTabState, 'Tabs')
       : rootOrTabState;
@@ -146,15 +146,15 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
   const navigateFromSheet = useCallback(
     <T extends keyof RootStackParamList>(
       screen: T,
-      params?: RootStackParamList[T],
+      params?: RootStackParamList[T]
     ) => {
       if (rootNavigationRef.isReady()) {
         rootNavigationRef.dispatch(
-          CommonActions.navigate({ name: screen, params }),
+          CommonActions.navigate({ name: screen, params })
         );
       }
     },
-    [],
+    []
   );
 
   const handleAddFood = useCallback(() => {
@@ -187,13 +187,13 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
               }),
               onPress: () => navigateFromSheet('Tabs', { screen: 'Settings' }),
             },
-          ],
+          ]
         );
         return false;
       }
       return true;
     },
-    [navigateFromSheet, t],
+    [navigateFromSheet, t]
   );
 
   const handleStartExerciseForm = useCallback(
@@ -201,7 +201,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
       if (
         !checkServerConnected(
           'addSheetActions.configureForExercise',
-          'Configure your server connection in Settings to add an exercise.',
+          'Configure your server connection in Settings to add an exercise.'
         )
       ) {
         return;
@@ -253,14 +253,14 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
                 navigateFromSheet(screen, { date, skipDraftLoad: true });
               },
             },
-          ],
+          ]
         );
         return;
       }
 
       navigateFromSheet(screen, { date, skipDraftLoad: true });
     },
-    [checkServerConnected, navigateFromSheet, getActiveDiaryDate, t],
+    [checkServerConnected, navigateFromSheet, getActiveDiaryDate, t]
   );
 
   // Live start: no draft guard (form drafts belong to the Log Workout path) and
@@ -270,7 +270,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
     if (
       !checkServerConnected(
         'addSheetActions.configureForWorkout',
-        'Configure your server connection in Settings to start a workout.',
+        'Configure your server connection in Settings to start a workout.'
       )
     ) {
       return;
@@ -281,7 +281,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
         onGoToWorkout: () => navigateFromSheet('ActiveWorkout'),
         onClearAndStart: () => navigateFromSheet('PresetSearch'),
       },
-      t,
+      t
     );
     if (prompted) return;
     navigateFromSheet('PresetSearch');
@@ -289,11 +289,11 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
 
   const handleLogWorkout = useCallback(
     () => handleStartExerciseForm('WorkoutAdd'),
-    [handleStartExerciseForm],
+    [handleStartExerciseForm]
   );
   const handleAddActivity = useCallback(
     () => handleStartExerciseForm('ActivityAdd'),
-    [handleStartExerciseForm],
+    [handleStartExerciseForm]
   );
 
   const handleAddMeasurements = useCallback(() => {
@@ -321,7 +321,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
         t('addSheetActions.healthUnavailable.message', {
           defaultValue:
             'Could not initialize health data access. Check your permissions in Settings.',
-        }),
+        })
       );
       return;
     }
@@ -347,7 +347,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
       rootNavigationRef.dispatch(
         CommonActions.navigate('Tabs', {
           screen: lastActiveTabRef.current,
-        }),
+        })
       );
     };
 

@@ -3,7 +3,10 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { useKeepAwake } from 'expo-keep-awake';
 
 import ImportHistoryScreen from '../../src/screens/ImportHistoryScreen';
-import { useBackfillRunner, type BackfillRunner } from '../../src/hooks/useBackfillRunner';
+import {
+  useBackfillRunner,
+  type BackfillRunner,
+} from '../../src/hooks/useBackfillRunner';
 import { initHealthConnect } from '../../src/services/healthConnectService';
 import { isSyncClaimed } from '../../src/services/autoSyncCoordinator';
 import type { BackfillCheckpoint } from '../../src/services/backfillCheckpoint';
@@ -50,21 +53,30 @@ jest.mock('expo-keep-awake', () => ({
   useKeepAwake: jest.fn(),
 }));
 
-const mockNavigation = { goBack: jest.fn(), navigate: jest.fn(), setOptions: jest.fn() } as never;
+const mockNavigation = {
+  goBack: jest.fn(),
+  navigate: jest.fn(),
+  setOptions: jest.fn(),
+} as never;
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => mockNavigation,
 }));
 
-const mockUseBackfillRunner = useBackfillRunner as jest.MockedFunction<typeof useBackfillRunner>;
+const mockUseBackfillRunner = useBackfillRunner as jest.MockedFunction<
+  typeof useBackfillRunner
+>;
 const mockInitHealthConnect = initHealthConnect as jest.Mock;
 const mockIsSyncClaimed = isSyncClaimed as jest.Mock;
-const { __notifyClaimListeners } = require('../../src/services/autoSyncCoordinator') as {
-  __notifyClaimListeners: () => void;
-};
+const { __notifyClaimListeners } =
+  require('../../src/services/autoSyncCoordinator') as {
+    __notifyClaimListeners: () => void;
+  };
 const mockUseKeepAwake = useKeepAwake as jest.Mock;
 
-const checkpoint = (overrides: Partial<BackfillCheckpoint> = {}): BackfillCheckpoint => ({
+const checkpoint = (
+  overrides: Partial<BackfillCheckpoint> = {}
+): BackfillCheckpoint => ({
   version: 1,
   status: 'in-progress',
   endEdge: '2026-08-03T04:00:00.000Z',
@@ -162,7 +174,10 @@ describe('ImportHistoryScreen', () => {
         phase: 'importing',
         totalDays: 44,
         importedDays: 30,
-        currentWindow: { start: new Date(2026, 6, 4), end: new Date(2026, 7, 3) },
+        currentWindow: {
+          start: new Date(2026, 6, 4),
+          end: new Date(2026, 7, 3),
+        },
         recordsUploaded: 100,
         historyAccessGranted: true,
       },
@@ -184,33 +199,40 @@ describe('ImportHistoryScreen', () => {
   });
 
   test('running: probing shows no day counts; importing shows them', async () => {
-    mockUseBackfillRunner.mockReturnValue(runner({
-      status: 'running',
-      progress: {
-        phase: 'probing',
-        totalDays: 0,
-        importedDays: 0,
-        currentWindow: null,
-        recordsUploaded: 0,
-        historyAccessGranted: true,
-      },
-    }));
+    mockUseBackfillRunner.mockReturnValue(
+      runner({
+        status: 'running',
+        progress: {
+          phase: 'probing',
+          totalDays: 0,
+          importedDays: 0,
+          currentWindow: null,
+          recordsUploaded: 0,
+          historyAccessGranted: true,
+        },
+      })
+    );
     const probing = renderScreen();
     await waitFor(() => expect(mockInitHealthConnect).toHaveBeenCalled());
     expect(probing.queryByText(/of \d+ days/)).toBeNull();
     probing.unmount();
 
-    mockUseBackfillRunner.mockReturnValue(runner({
-      status: 'running',
-      progress: {
-        phase: 'importing',
-        totalDays: 44,
-        importedDays: 30,
-        currentWindow: { start: new Date(2026, 6, 4), end: new Date(2026, 7, 3) },
-        recordsUploaded: 100,
-        historyAccessGranted: true,
-      },
-    }));
+    mockUseBackfillRunner.mockReturnValue(
+      runner({
+        status: 'running',
+        progress: {
+          phase: 'importing',
+          totalDays: 44,
+          importedDays: 30,
+          currentWindow: {
+            start: new Date(2026, 6, 4),
+            end: new Date(2026, 7, 3),
+          },
+          recordsUploaded: 100,
+          historyAccessGranted: true,
+        },
+      })
+    );
     const importing = renderScreen();
     await waitFor(() => expect(importing.getByText('30')).toBeTruthy());
     expect(importing.getByText('of 44 days')).toBeTruthy();
@@ -226,36 +248,46 @@ describe('ImportHistoryScreen', () => {
       historyAccessGranted: true,
     };
 
-    mockUseBackfillRunner.mockReturnValue(runner({
-      status: 'running',
-      progress: importingProgress,
-      estimatedMsRemaining: null,
-    }));
+    mockUseBackfillRunner.mockReturnValue(
+      runner({
+        status: 'running',
+        progress: importingProgress,
+        estimatedMsRemaining: null,
+      })
+    );
     const noPace = renderScreen();
     expect(noPace.getByText('—')).toBeTruthy();
     noPace.unmount();
 
-    mockUseBackfillRunner.mockReturnValue(runner({
-      status: 'running',
-      progress: importingProgress,
-      estimatedMsRemaining: 5 * 60_000,
-    }));
+    mockUseBackfillRunner.mockReturnValue(
+      runner({
+        status: 'running',
+        progress: importingProgress,
+        estimatedMsRemaining: 5 * 60_000,
+      })
+    );
     const minutes = renderScreen();
     expect(minutes.queryByText('—')).toBeNull();
     expect(minutes.getByText('5 min')).toBeTruthy();
     minutes.unmount();
 
-    mockUseBackfillRunner.mockReturnValue(runner({
-      status: 'running',
-      progress: importingProgress,
-      estimatedMsRemaining: 20_000,
-    }));
+    mockUseBackfillRunner.mockReturnValue(
+      runner({
+        status: 'running',
+        progress: importingProgress,
+        estimatedMsRemaining: 20_000,
+      })
+    );
     const subMinute = renderScreen();
     expect(subMinute.getByText('Under a minute')).toBeTruthy();
   });
 
   test('interrupted: Resume resumes and Start Over restarts', async () => {
-    const state = runner({ status: 'interrupted', lastOutcome: 'quota', checkpoint: checkpoint() });
+    const state = runner({
+      status: 'interrupted',
+      lastOutcome: 'quota',
+      checkpoint: checkpoint(),
+    });
     mockUseBackfillRunner.mockReturnValue(state);
 
     const { getByText } = renderScreen();
@@ -271,11 +303,13 @@ describe('ImportHistoryScreen', () => {
   test('interrupted: derives progress from the checkpoint when no live progress exists', async () => {
     // Fresh mount after a restart: `progress` is null, so day counts and the
     // record total must come from the checkpoint; time remaining is unknown.
-    mockUseBackfillRunner.mockReturnValue(runner({
-      status: 'interrupted',
-      progress: null,
-      checkpoint: checkpoint(),
-    }));
+    mockUseBackfillRunner.mockReturnValue(
+      runner({
+        status: 'interrupted',
+        progress: null,
+        checkpoint: checkpoint(),
+      })
+    );
 
     const { getByText } = renderScreen();
     await waitFor(() => expect(mockInitHealthConnect).toHaveBeenCalled());
@@ -288,18 +322,20 @@ describe('ImportHistoryScreen', () => {
   });
 
   test('interrupted: falls back to the checkpoint cursor for the month when the last progress had no window', async () => {
-    mockUseBackfillRunner.mockReturnValue(runner({
-      status: 'interrupted',
-      progress: {
-        phase: 'importing',
-        totalDays: 44,
-        importedDays: 30,
-        currentWindow: null,
-        recordsUploaded: 250,
-        historyAccessGranted: true,
-      },
-      checkpoint: checkpoint(),
-    }));
+    mockUseBackfillRunner.mockReturnValue(
+      runner({
+        status: 'interrupted',
+        progress: {
+          phase: 'importing',
+          totalDays: 44,
+          importedDays: 30,
+          currentWindow: null,
+          recordsUploaded: 250,
+          historyAccessGranted: true,
+        },
+        checkpoint: checkpoint(),
+      })
+    );
 
     const { getByText } = renderScreen();
     await waitFor(() => expect(mockInitHealthConnect).toHaveBeenCalled());
@@ -308,51 +344,65 @@ describe('ImportHistoryScreen', () => {
   });
 
   test('interrupted: the reason callout renders for abnormal stops but not manual pauses', async () => {
-    mockUseBackfillRunner.mockReturnValue(runner({
-      status: 'interrupted',
-      lastOutcome: 'quota',
-      checkpoint: checkpoint(),
-    }));
+    mockUseBackfillRunner.mockReturnValue(
+      runner({
+        status: 'interrupted',
+        lastOutcome: 'quota',
+        checkpoint: checkpoint(),
+      })
+    );
     const quota = renderScreen();
     await waitFor(() => expect(mockInitHealthConnect).toHaveBeenCalled());
     expect(quota.getByTestId('paused-reason-callout')).toBeTruthy();
     quota.unmount();
 
-    mockUseBackfillRunner.mockReturnValue(runner({
-      status: 'interrupted',
-      lastOutcome: 'cancelled',
-      checkpoint: checkpoint(),
-    }));
+    mockUseBackfillRunner.mockReturnValue(
+      runner({
+        status: 'interrupted',
+        lastOutcome: 'cancelled',
+        checkpoint: checkpoint(),
+      })
+    );
     const paused = renderScreen();
     await waitFor(() => expect(mockInitHealthConnect).toHaveBeenCalled());
     expect(paused.queryByTestId('paused-reason-callout')).toBeNull();
   });
 
   test('interrupted: the metric-selection notice renders only when the frozen set differs', async () => {
-    mockUseBackfillRunner.mockReturnValue(runner({
-      status: 'interrupted',
-      checkpoint: checkpoint(),
-      frozenSelectionDiffers: false,
-    }));
+    mockUseBackfillRunner.mockReturnValue(
+      runner({
+        status: 'interrupted',
+        checkpoint: checkpoint(),
+        frozenSelectionDiffers: false,
+      })
+    );
     const unchanged = renderScreen();
     await waitFor(() => expect(mockInitHealthConnect).toHaveBeenCalled());
     expect(unchanged.queryByTestId('metric-selection-notice')).toBeNull();
     unchanged.unmount();
 
-    mockUseBackfillRunner.mockReturnValue(runner({
-      status: 'interrupted',
-      checkpoint: checkpoint(),
-      frozenSelectionDiffers: true,
-    }));
+    mockUseBackfillRunner.mockReturnValue(
+      runner({
+        status: 'interrupted',
+        checkpoint: checkpoint(),
+        frozenSelectionDiffers: true,
+      })
+    );
     const changed = renderScreen();
-    await waitFor(() => expect(changed.getByTestId('metric-selection-notice')).toBeTruthy());
+    await waitFor(() =>
+      expect(changed.getByTestId('metric-selection-notice')).toBeTruthy()
+    );
   });
 
   test('interrupted: buttons re-enable when the abandoned run releases the claim', async () => {
     // Backing out mid-run leaves the old run holding the claim until its window
     // boundary; the buttons must wake up when it frees, without a remount.
     mockIsSyncClaimed.mockReturnValue(true);
-    const state = runner({ status: 'interrupted', lastOutcome: 'cancelled', checkpoint: checkpoint() });
+    const state = runner({
+      status: 'interrupted',
+      lastOutcome: 'cancelled',
+      checkpoint: checkpoint(),
+    });
     mockUseBackfillRunner.mockReturnValue(state);
 
     const { getByText, getByTestId, queryByTestId } = renderScreen();

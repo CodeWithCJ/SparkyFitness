@@ -33,7 +33,7 @@ describe('Polish runtime localization', () => {
     expect(title).toBe('Zapisz wartości odżywcze');
     expect(message).toContain('Wariant „kubek użytkownika” jest już zapisany.');
     expect(message).not.toContain('unitLabel');
-    expect(buttons.map(button => button.text)).toEqual([
+    expect(buttons.map((button) => button.text)).toEqual([
       'Anuluj',
       'Zapisz jako nowy',
       'Zaktualizuj istniejący',
@@ -47,7 +47,7 @@ describe('Polish runtime localization', () => {
     const toastMock = jest.spyOn(Toast, 'show').mockImplementation(() => {});
 
     expect(validateFoodForm({ name: '   ', servingSize: '100' } as never)).toBe(
-      false,
+      false
     );
     expect(toastMock).toHaveBeenCalledWith({
       type: 'error',
@@ -79,8 +79,8 @@ describe('confirmSyncPastEntries', () => {
       void confirmSyncPastEntries();
 
       expect(spy).toHaveBeenCalled();
-      expect(buttons().find(b => b.style === 'cancel')?.text).toBe(
-        "Don't Update",
+      expect(buttons().find((b) => b.style === 'cancel')?.text).toBe(
+        "Don't Update"
       );
     });
 
@@ -98,7 +98,7 @@ describe('confirmSyncPastEntries', () => {
       const result = confirmSyncPastEntries();
 
       buttons()
-        .find(b => b.text === 'Update')
+        .find((b) => b.text === 'Update')
         ?.onPress?.();
       await expect(result).resolves.toBe('nutrition');
     });
@@ -108,7 +108,7 @@ describe('confirmSyncPastEntries', () => {
       const result = confirmSyncPastEntries();
 
       buttons()
-        .find(b => b.text === "Don't Update")
+        .find((b) => b.text === "Don't Update")
         ?.onPress?.();
       await expect(result).resolves.toBe('none');
     });
@@ -135,7 +135,7 @@ describe('confirmSyncPastEntries', () => {
       const { buttons } = captureAlert();
       void confirmSyncPastEntries(true);
 
-      expect(buttons().map(b => b.text)).toEqual([
+      expect(buttons().map((b) => b.text)).toEqual([
         "Don't Update",
         'Update nutrition only',
         'Update nutrition & photos',
@@ -148,8 +148,8 @@ describe('confirmSyncPastEntries', () => {
 
       expect(
         buttons()
-          .filter(b => b.style === 'destructive')
-          .map(b => b.text),
+          .filter((b) => b.style === 'destructive')
+          .map((b) => b.text)
       ).toEqual(['Update nutrition & photos']);
     });
 
@@ -157,8 +157,8 @@ describe('confirmSyncPastEntries', () => {
       const { buttons, options } = captureAlert();
       const result = confirmSyncPastEntries(true);
 
-      expect(buttons().find(b => b.style === 'cancel')?.text).toBe(
-        "Don't Update",
+      expect(buttons().find((b) => b.style === 'cancel')?.text).toBe(
+        "Don't Update"
       );
       options().onDismiss?.();
       await expect(result).resolves.toBe('none');
@@ -169,7 +169,7 @@ describe('confirmSyncPastEntries', () => {
       const result = confirmSyncPastEntries(true);
 
       buttons()
-        .find(b => b.text === 'Update nutrition only')
+        .find((b) => b.text === 'Update nutrition only')
         ?.onPress?.();
       await expect(result).resolves.toBe('nutrition');
     });
@@ -179,7 +179,7 @@ describe('confirmSyncPastEntries', () => {
       const result = confirmSyncPastEntries(true);
 
       buttons()
-        .find(b => b.text === 'Update nutrition & photos')
+        .find((b) => b.text === 'Update nutrition & photos')
         ?.onPress?.();
       await expect(result).resolves.toBe('nutrition-and-photos');
     });
@@ -198,7 +198,7 @@ describe('confirmDiscardEquivalents', () => {
 
     expect(alertMock.mock.calls[0][0]).toBe('Discard unsaved equivalents?');
     expect(alertMock.mock.calls[0][1]).toContain('Discard them to continue?');
-    expect(buttons.map(button => button.text)).toEqual(['Cancel', 'Discard']);
+    expect(buttons.map((button) => button.text)).toEqual(['Cancel', 'Discard']);
 
     buttons[1].onPress?.();
     await expect(result).resolves.toBe(true);
@@ -219,7 +219,7 @@ describe('confirmVariantOverwrite', () => {
     expect(title).toBe('Save nutrition');
     expect(message).toContain('"custom cup" is already a saved variant.');
     expect(message).not.toContain('unitLabel');
-    expect(buttons.map(button => button.text)).toEqual([
+    expect(buttons.map((button) => button.text)).toEqual([
       'Cancel',
       'Save as new',
       'Update existing',
@@ -239,7 +239,7 @@ describe('validateFoodForm localization', () => {
     const toastMock = jest.spyOn(Toast, 'show').mockImplementation(() => {});
 
     expect(validateFoodForm({ name: '   ', servingSize: '100' } as never)).toBe(
-      false,
+      false
     );
     expect(toastMock).toHaveBeenCalledWith({
       type: 'error',
@@ -252,7 +252,7 @@ describe('validateFoodForm localization', () => {
     const toastMock = jest.spyOn(Toast, 'show').mockImplementation(() => {});
 
     expect(validateFoodForm({ name: 'Apple', servingSize: '0' } as never)).toBe(
-      false,
+      false
     );
     expect(toastMock).toHaveBeenCalledWith({
       type: 'error',
@@ -266,29 +266,48 @@ describe('foodFormPersistence catalog coverage', () => {
   it('provides readable English and Polish text for every persistence key', async () => {
     await initializeI18n('en');
     const keys = [
-      'discardTitle', 'discardMessage', 'discard', 'updateTitle', 'updateMessage',
-      'dontUpdate', 'update', 'updatePhotosMessage', 'updateNutrition',
-      'updateNutritionPhotos', 'saveNutritionTitle', 'overwriteMessage', 'saveAsNew',
-      'updateExisting', 'missingName', 'nameRequired', 'invalidServingSize',
+      'discardTitle',
+      'discardMessage',
+      'discard',
+      'updateTitle',
+      'updateMessage',
+      'dontUpdate',
+      'update',
+      'updatePhotosMessage',
+      'updateNutrition',
+      'updateNutritionPhotos',
+      'saveNutritionTitle',
+      'overwriteMessage',
+      'saveAsNew',
+      'updateExisting',
+      'missingName',
+      'nameRequired',
+      'invalidServingSize',
       'servingSizeRequired',
     ];
 
     for (const key of keys) {
-      const english = i18n.t(`foodFormPersistence.${key}`, { defaultValue: `fallback:${key}` });
+      const english = i18n.t(`foodFormPersistence.${key}`, {
+        defaultValue: `fallback:${key}`,
+      });
       expect(english).not.toBe(`fallback:${key}`);
       expect(english).not.toMatch(/^foodFormPersistence\./);
     }
 
     await i18n.changeLanguage('pl');
     for (const key of keys) {
-      const polish = i18n.t(`foodFormPersistence.${key}`, { defaultValue: `fallback:${key}` });
+      const polish = i18n.t(`foodFormPersistence.${key}`, {
+        defaultValue: `fallback:${key}`,
+      });
       expect(polish).not.toBe(`fallback:${key}`);
       expect(polish).not.toMatch(/^foodFormPersistence\./);
     }
 
-    expect(i18n.t('foodFormPersistence.overwriteMessage', {
-      unitLabel: 'kubek użytkownika',
-      defaultValue: '"{{unitLabel}}" is already a saved variant.',
-    })).toContain('kubek użytkownika');
+    expect(
+      i18n.t('foodFormPersistence.overwriteMessage', {
+        unitLabel: 'kubek użytkownika',
+        defaultValue: '"{{unitLabel}}" is already a saved variant.',
+      })
+    ).toContain('kubek użytkownika');
   });
 });

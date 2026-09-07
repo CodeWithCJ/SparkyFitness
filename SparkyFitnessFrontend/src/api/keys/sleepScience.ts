@@ -2,8 +2,6 @@ export const sleepScienceKeys = {
   all: ['sleepScience'] as const,
   sleepDebt: (targetUserId?: string) =>
     [...sleepScienceKeys.all, 'sleepDebt', targetUserId] as const,
-  mctqStats: (targetUserId?: string) =>
-    [...sleepScienceKeys.all, 'mctqStats', targetUserId] as const,
   dailyNeed: (date: string, targetUserId?: string) =>
     [...sleepScienceKeys.all, 'dailyNeed', date, targetUserId] as const,
   energyCurve: (targetUserId?: string) =>

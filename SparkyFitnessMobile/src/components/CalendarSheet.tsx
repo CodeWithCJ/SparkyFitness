@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
@@ -49,10 +56,19 @@ const CalendarContent = ({
 }: CalendarContentProps) => {
   const { appLocale, presentation } = useCalendarPresentation();
   const { t } = useTranslation();
-  const weekdayLabels = useMemo(() => getCalendarWeekdayShortNames(appLocale), [appLocale]);
-  const monthLabels = useMemo(() => getCalendarMonthNames(appLocale), [appLocale]);
+  const weekdayLabels = useMemo(
+    () => getCalendarWeekdayShortNames(appLocale),
+    [appLocale]
+  );
+  const monthLabels = useMemo(
+    () => getCalendarMonthNames(appLocale),
+    [appLocale]
+  );
   const [initialYear, initialMonth] = selectedDate.split('-').map(Number);
-  const [visible, setVisible] = useState({ year: initialYear, month: initialMonth - 1 });
+  const [visible, setVisible] = useState({
+    year: initialYear,
+    month: initialMonth - 1,
+  });
   // react-native-ui-datepicker only honours `initialView` on mount. The parent
   // tracks `pickerView` ('day' | 'month' | 'year') as logical UI state and a
   // separate `pickerMountVersion` token that increments ONLY when the user
@@ -70,22 +86,26 @@ const CalendarContent = ({
     setPickerMountVersion((v) => v + 1);
   }, []);
 
-  const shiftVisible = useCallback((delta: number) => {
-    setVisible((prev) => {
-      // In the month grid prev/next moves by year; in the day grid by month.
-      const step = pickerView === 'month' || pickerView === 'year' ? 12 * delta : delta;
-      const date = new Date(prev.year, prev.month + step, 1);
-      return { year: date.getFullYear(), month: date.getMonth() };
-    });
-    // The chevron always returns to the day grid so accessibility labels and
-    // subsequent navigation reflect month (not year) stepping. This also covers
-    // the case where the library internally returned to day view after the
-    // user tapped the already-selected month/year, which does NOT fire
-    // onMonthChange/onYearChange (see react-native-ui-datepicker v3.1.2).
-    // Only logical state is reset — the mount token is NOT bumped so the picker
-    // is not forced back into the month/year grid.
-    setPickerView('day');
-  }, [pickerView]);
+  const shiftVisible = useCallback(
+    (delta: number) => {
+      setVisible((prev) => {
+        // In the month grid prev/next moves by year; in the day grid by month.
+        const step =
+          pickerView === 'month' || pickerView === 'year' ? 12 * delta : delta;
+        const date = new Date(prev.year, prev.month + step, 1);
+        return { year: date.getFullYear(), month: date.getMonth() };
+      });
+      // The chevron always returns to the day grid so accessibility labels and
+      // subsequent navigation reflect month (not year) stepping. This also covers
+      // the case where the library internally returned to day view after the
+      // user tapped the already-selected month/year, which does NOT fire
+      // onMonthChange/onYearChange (see react-native-ui-datepicker v3.1.2).
+      // Only logical state is reset — the mount token is NOT bumped so the picker
+      // is not forced back into the month/year grid.
+      setPickerView('day');
+    },
+    [pickerView]
+  );
 
   const [sy, sm, sd] = selectedDate.split('-').map(Number);
   const selectedDateValue = new Date(sy, sm - 1, sd);
@@ -94,7 +114,7 @@ const CalendarContent = ({
       if (!date) return;
       onSelectDate(toLocalDateString(new Date(date as string | number | Date)));
     },
-    [onSelectDate],
+    [onSelectDate]
   );
   const handleMonthChange = useCallback((value: number) => {
     setVisible((prev) => {
@@ -122,8 +142,19 @@ const CalendarContent = ({
 
   return (
     <BottomSheetView className="pb-safe-or-5 px-2">
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 }}>
-        <Pressable onPress={() => shiftVisible(-1)} hitSlop={12} accessibilityLabel={prevLabel}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingVertical: 8,
+        }}
+      >
+        <Pressable
+          onPress={() => shiftVisible(-1)}
+          hitSlop={12}
+          accessibilityLabel={prevLabel}
+        >
           <Icon name="chevron-back" size={18} color={textPrimary} />
         </Pressable>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -142,13 +173,24 @@ const CalendarContent = ({
               }
             }}
             hitSlop={6}
-            accessibilityLabel={t('cycleCalendar.selectMonth', { defaultValue: 'Select month' })}
+            accessibilityLabel={t('cycleCalendar.selectMonth', {
+              defaultValue: 'Select month',
+            })}
           >
-            <Text style={{ color: textPrimary, fontSize: 16, fontWeight: '600', textTransform: 'capitalize' }}>
+            <Text
+              style={{
+                color: textPrimary,
+                fontSize: 16,
+                fontWeight: '600',
+                textTransform: 'capitalize',
+              }}
+            >
               {monthLabels[visible.month] ?? ''}
             </Text>
           </Pressable>
-          <Text style={{ color: textPrimary, fontSize: 16, fontWeight: '600' }}>{' '}</Text>
+          <Text style={{ color: textPrimary, fontSize: 16, fontWeight: '600' }}>
+            {' '}
+          </Text>
           <Pressable
             onPress={() => {
               if (pickerView === 'year') {
@@ -162,14 +204,22 @@ const CalendarContent = ({
               }
             }}
             hitSlop={6}
-            accessibilityLabel={t('cycleCalendar.selectYear', { defaultValue: 'Select year' })}
+            accessibilityLabel={t('cycleCalendar.selectYear', {
+              defaultValue: 'Select year',
+            })}
           >
-            <Text style={{ color: textPrimary, fontSize: 16, fontWeight: '600' }}>
+            <Text
+              style={{ color: textPrimary, fontSize: 16, fontWeight: '600' }}
+            >
               {visible.year}
             </Text>
           </Pressable>
         </View>
-        <Pressable onPress={() => shiftVisible(1)} hitSlop={12} accessibilityLabel={nextLabel}>
+        <Pressable
+          onPress={() => shiftVisible(1)}
+          hitSlop={12}
+          accessibilityLabel={nextLabel}
+        >
           <Icon name="chevron-forward" size={18} color={textPrimary} />
         </Pressable>
       </View>
@@ -194,14 +244,22 @@ const CalendarContent = ({
         components={{
           Weekday: (weekday) => (
             <View style={{ minWidth: 30 }}>
-              <Text style={{ color: textSecondary, fontSize: 12, textAlign: 'center' }}>
+              <Text
+                style={{
+                  color: textSecondary,
+                  fontSize: 12,
+                  textAlign: 'center',
+                }}
+              >
                 {weekdayLabels[weekday.index] ?? weekday.name.short}
               </Text>
             </View>
           ),
           Month: (month) => (
             <View style={{ paddingVertical: 4, alignItems: 'center' }}>
-              <Text style={{ color: textPrimary, fontSize: 14 }}>{monthLabels[month.index] ?? month.name.full}</Text>
+              <Text style={{ color: textPrimary, fontSize: 14 }}>
+                {monthLabels[month.index] ?? month.name.full}
+              </Text>
             </View>
           ),
         }}
@@ -229,9 +287,14 @@ const CalendarContent = ({
 const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
   ({ selectedDate, onSelectDate }, ref) => {
     const bottomSheetRef = useRef<BottomSheetModal>(null);
-    const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary] = useCSSVariable([
-      '--color-surface', '--color-text-muted', '--color-accent-primary', '--color-text-primary', '--color-text-secondary',
-    ]) as [string, string, string, string, string];
+    const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary] =
+      useCSSVariable([
+        '--color-surface',
+        '--color-text-muted',
+        '--color-accent-primary',
+        '--color-text-primary',
+        '--color-text-secondary',
+      ]) as [string, string, string, string, string];
     const renderBackdrop = useSheetBackdrop();
 
     useImperativeHandle(ref, () => ({
@@ -267,7 +330,7 @@ const CalendarSheet = React.forwardRef<CalendarSheetRef, CalendarSheetProps>(
         />
       </BottomSheetModal>
     );
-  },
+  }
 );
 
 CalendarSheet.displayName = 'CalendarSheet';

@@ -49,7 +49,7 @@ jest.mock('react-i18next', () => ({
         'familyDiary.viewOnly': 'View only',
         'familyDiary.unnamedMember': 'Family member',
         'common.retry': 'Retry',
-      }[key] ?? key),
+      })[key] ?? key,
   }),
 }));
 
@@ -66,7 +66,7 @@ const renderScreen = (bottomInset = 0) =>
       }}
     >
       <FamilyMembersScreen navigation={navigation} route={route} />
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
 
 describe('FamilyMembersScreen', () => {
@@ -137,7 +137,7 @@ describe('FamilyMembersScreen', () => {
     } as ReturnType<typeof useFamilyUsers>);
 
     expect(
-      renderScreen().getByLabelText('Family member. View only'),
+      renderScreen().getByLabelText('Family member. View only')
     ).toBeTruthy();
   });
 
@@ -150,9 +150,7 @@ describe('FamilyMembersScreen', () => {
     } as ReturnType<typeof useFamilyUsers>);
 
     expect(
-      renderScreen().getByText(
-        'Family diary access is managed in the web app.',
-      ),
+      renderScreen().getByText('Family diary access is managed in the web app.')
     ).toBeTruthy();
   });
 
@@ -175,7 +173,7 @@ describe('FamilyMembersScreen', () => {
     const { getByTestId } = renderScreen(20);
 
     expect(
-      getByTestId('family-members-list').props.contentContainerStyle,
+      getByTestId('family-members-list').props.contentContainerStyle
     ).toEqual({
       padding: 16,
       paddingBottom: 48,

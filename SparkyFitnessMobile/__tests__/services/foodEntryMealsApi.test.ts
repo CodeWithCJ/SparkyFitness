@@ -5,11 +5,15 @@ import {
   getFoodEntryMealWithComponents,
   deleteFoodEntryMeal,
 } from '../../src/services/api/foodEntryMealsApi';
-import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
+import {
+  getActiveServerConfig,
+  ServerConfig,
+} from '../../src/services/storage';
 
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
-  proxyHeadersToRecord: jest.requireActual('../../src/services/storage').proxyHeadersToRecord,
+  proxyHeadersToRecord: jest.requireActual('../../src/services/storage')
+    .proxyHeadersToRecord,
 }));
 
 jest.mock('../../src/services/LogService', () => ({
@@ -69,7 +73,7 @@ describe('foodEntryMealsApi', () => {
           'Content-Type': 'application/json',
         }),
         body: JSON.stringify(payload),
-      }),
+      })
     );
     expect(result).toEqual({ id: 'fem-1' });
   });
@@ -85,7 +89,7 @@ describe('foodEntryMealsApi', () => {
 
     expect(mockFetch).toHaveBeenCalledWith(
       'https://example.com/api/food-entry-meals/by-date/2026-05-15',
-      expect.objectContaining({ method: 'GET' }),
+      expect.objectContaining({ method: 'GET' })
     );
     expect(result).toEqual(expected);
   });
@@ -121,7 +125,7 @@ describe('foodEntryMealsApi', () => {
       expect.objectContaining({
         method: 'PUT',
         body: JSON.stringify(payload),
-      }),
+      })
     );
   });
 
@@ -136,7 +140,7 @@ describe('foodEntryMealsApi', () => {
 
     expect(mockFetch).toHaveBeenCalledWith(
       'https://example.com/api/food-entry-meals/fem-1',
-      expect.objectContaining({ method: 'GET' }),
+      expect.objectContaining({ method: 'GET' })
     );
     expect(result).toEqual(expected);
   });
@@ -152,7 +156,7 @@ describe('foodEntryMealsApi', () => {
 
     expect(mockFetch).toHaveBeenCalledWith(
       'https://example.com/api/food-entry-meals/fem-1',
-      expect.objectContaining({ method: 'DELETE' }),
+      expect.objectContaining({ method: 'DELETE' })
     );
   });
 });

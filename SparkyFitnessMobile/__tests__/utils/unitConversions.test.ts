@@ -47,13 +47,19 @@ describe('unitConversions', () => {
   });
 
   describe('round-trip weight conversions', () => {
-    it.each([0, 1, 50, 100, 225, 500])('kg → lbs → kg preserves %d kg', (kg) => {
-      expect(lbsToKg(kgToLbs(kg))).toBeCloseTo(kg, 4);
-    });
+    it.each([0, 1, 50, 100, 225, 500])(
+      'kg → lbs → kg preserves %d kg',
+      (kg) => {
+        expect(lbsToKg(kgToLbs(kg))).toBeCloseTo(kg, 4);
+      }
+    );
 
-    it.each([0, 1, 45, 135, 315, 1000])('lbs → kg → lbs preserves %d lbs', (lbs) => {
-      expect(kgToLbs(lbsToKg(lbs))).toBeCloseTo(lbs, 4);
-    });
+    it.each([0, 1, 45, 135, 315, 1000])(
+      'lbs → kg → lbs preserves %d lbs',
+      (lbs) => {
+        expect(kgToLbs(lbsToKg(lbs))).toBeCloseTo(lbs, 4);
+      }
+    );
   });
 
   describe('weightToKg', () => {
@@ -105,13 +111,19 @@ describe('unitConversions', () => {
   });
 
   describe('round-trip distance conversions', () => {
-    it.each([0, 1, 5, 10, 42.195, 100])('km → miles → km preserves %d km', (km) => {
-      expect(milesToKm(kmToMiles(km))).toBeCloseTo(km, 3);
-    });
+    it.each([0, 1, 5, 10, 42.195, 100])(
+      'km → miles → km preserves %d km',
+      (km) => {
+        expect(milesToKm(kmToMiles(km))).toBeCloseTo(km, 3);
+      }
+    );
 
-    it.each([0, 1, 3.1, 6.2, 13.1, 26.2])('miles → km → miles preserves %d miles', (miles) => {
-      expect(kmToMiles(milesToKm(miles))).toBeCloseTo(miles, 3);
-    });
+    it.each([0, 1, 3.1, 6.2, 13.1, 26.2])(
+      'miles → km → miles preserves %d miles',
+      (miles) => {
+        expect(kmToMiles(milesToKm(miles))).toBeCloseTo(miles, 3);
+      }
+    );
   });
 
   describe('distanceToKm', () => {
@@ -187,9 +199,14 @@ describe('unitConversions', () => {
       expect(lengthFromCm(lengthToCm(cm, 'cm'), 'cm')).toBeCloseTo(cm, 4);
     });
 
-    it.each([0, 1, 30, 70, 90, 120])('inches → cm → inches preserves %d in', (inches) => {
-      expect(lengthFromCm(lengthToCm(inches, 'inches'), 'inches')).toBeCloseTo(inches, 4);
-    });
+    it.each([0, 1, 30, 70, 90, 120])(
+      'inches → cm → inches preserves %d in',
+      (inches) => {
+        expect(
+          lengthFromCm(lengthToCm(inches, 'inches'), 'inches')
+        ).toBeCloseTo(inches, 4);
+      }
+    );
   });
 
   describe('cmToFeetInches', () => {
@@ -199,7 +216,7 @@ describe('unitConversions', () => {
       expect(inches).toBeCloseTo(0, 4);
     });
 
-    it("splits 6'1\" (185.42 cm) into 6/1", () => {
+    it('splits 6\'1" (185.42 cm) into 6/1', () => {
       const { feet, inches } = cmToFeetInches(185.42);
       expect(feet).toBe(6);
       expect(inches).toBeCloseTo(1, 4);
@@ -213,11 +230,11 @@ describe('unitConversions', () => {
   });
 
   describe('feetInchesToCm', () => {
-    it("combines 5'0\" → 152.4 cm", () => {
+    it('combines 5\'0" → 152.4 cm', () => {
       expect(feetInchesToCm(5, 0)).toBeCloseTo(152.4, 4);
     });
 
-    it("combines 6'1\" → 185.42 cm", () => {
+    it('combines 6\'1" → 185.42 cm', () => {
       expect(feetInchesToCm(6, 1)).toBeCloseTo(185.42, 4);
     });
 

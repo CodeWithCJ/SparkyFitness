@@ -27,6 +27,7 @@ interface LatestMeasurement {
   weight?: string | number | null;
   height?: string | number | null;
   body_fat_percentage?: string | number | null;
+  bmr?: string | number | null;
 }
 
 interface CheckInMeasurement {
@@ -106,21 +107,28 @@ function computeAdaptiveTdeeFromData(
   }
 
   const gender = profile?.gender || 'male';
-  const fallbackTdee =
-    (bmrService.calculateBmr(
-      bmrAlgorithm,
-      weightKg,
-      heightCm,
-      age,
-      gender as 'male' | 'female',
-      latestMeasurement?.body_fat_percentage
-        ? parseFloat(String(latestMeasurement.body_fat_percentage))
-        : undefined
-    ) ||
-      10 * weightKg +
-        6.25 * heightCm -
-        5 * age +
-        (gender === 'male' ? 5 : -161)) * multiplier;
+  const measuredBmr = latestMeasurement?.bmr
+    ? parseFloat(String(latestMeasurement.bmr))
+    : null;
+  const baseBmr =
+    measuredBmr && measuredBmr >= 300 && measuredBmr <= 10000
+      ? measuredBmr
+      : bmrService.calculateBmr(
+          bmrAlgorithm,
+          weightKg,
+          heightCm,
+          age,
+          gender as 'male' | 'female',
+          latestMeasurement?.body_fat_percentage
+            ? parseFloat(String(latestMeasurement.body_fat_percentage))
+            : undefined
+        ) ||
+        10 * weightKg +
+          6.25 * heightCm -
+          5 * age +
+          (gender === 'male' ? 5 : -161);
+
+  const fallbackTdee = baseBmr * multiplier;
 
   // Check if we have enough data (at least 2 weight entries separated by 7 days)
   const weightEntries = checkInMeasurements

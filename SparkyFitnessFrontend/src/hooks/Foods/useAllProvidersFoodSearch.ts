@@ -80,11 +80,16 @@ const noop = () => {};
 // Kept distinct from v2FoodKeys.search / nutritionixKeys.search because those
 // cache the providers' raw response shapes; reusing them here with a different
 // (normalised) shape would corrupt the shared cache.
+// itemDisplayLimit belongs in the key because it is the pageSize for the
+// providers in PAGE_SIZE_PROVIDERS. Omitting it serves results fetched under
+// the previous limit once the preference changes. That was harmless while the
+// limit was a dead constant; it is a live preference now.
 const allProvidersFoodSearchKey = (
   providerType: string,
   query: string,
   providerId?: string,
-  autoScale?: boolean
+  autoScale?: boolean,
+  itemDisplayLimit?: number
 ) =>
   [
     'v2',
@@ -94,6 +99,7 @@ const allProvidersFoodSearchKey = (
     query,
     providerId,
     autoScale,
+    itemDisplayLimit,
   ] as const;
 
 // Providers whose single-provider search caps results at the food display
@@ -103,7 +109,7 @@ const PAGE_SIZE_PROVIDERS = ['usda', 'yazio'];
 async function fetchProviderResults(
   provider: DataProvider,
   query: string,
-  options: { autoScale?: boolean; foodDisplayLimit?: number }
+  options: { autoScale?: boolean; itemDisplayLimit?: number }
 ): Promise<NormalisedProviderResult> {
   if (provider.provider_type === 'nutritionix') {
     const data: NutritionixItem[] = await searchNutritionixFoods(
@@ -123,7 +129,7 @@ async function fetchProviderResults(
   }
 
   const pageSize = PAGE_SIZE_PROVIDERS.includes(provider.provider_type)
-    ? options.foodDisplayLimit
+    ? options.itemDisplayLimit
     : undefined;
   const data = await searchFoodsV2(
     provider.provider_type,
@@ -159,7 +165,7 @@ export function useAllProvidersFoodSearch(
   options?: {
     enabled?: boolean;
     autoScale?: boolean;
-    foodDisplayLimit?: number;
+    itemDisplayLimit?: number;
   }
 ): {
   providerResults: ProviderFoodSearchResult[];
@@ -170,7 +176,7 @@ export function useAllProvidersFoodSearch(
   // step with the aggregated results rather than a faster local debounce.
   debouncedSearch: string;
 } {
-  const { enabled = true, autoScale, foodDisplayLimit } = options ?? {};
+  const { enabled = true, autoScale, itemDisplayLimit } = options ?? {};
   const debouncedSearch = useDebounce(searchTerm.trim(), DEBOUNCE_MS);
   // Require both the live and the debounced term to clear the threshold. The
   // debounced check gates the queries; the live check makes backspacing below
@@ -216,12 +222,13 @@ export function useAllProvidersFoodSearch(
         provider.provider_type,
         debouncedSearch,
         provider.id,
-        autoScale
+        autoScale,
+        itemDisplayLimit
       ),
       queryFn: () =>
         fetchProviderResults(provider, debouncedSearch, {
           autoScale,
-          foodDisplayLimit,
+          itemDisplayLimit,
         }),
       enabled: isSearchActive && enabled,
       staleTime: STALE_TIME,

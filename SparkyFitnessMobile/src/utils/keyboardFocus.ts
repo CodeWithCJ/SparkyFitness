@@ -1,6 +1,9 @@
 import type { RefObject } from 'react';
 import { Platform, type TextInput } from 'react-native';
-import { KeyboardController, KeyboardEvents } from 'react-native-keyboard-controller';
+import {
+  KeyboardController,
+  KeyboardEvents,
+} from 'react-native-keyboard-controller';
 import Clipboard from '@react-native-clipboard/clipboard';
 
 /** Spaced to outlast a slow IME bind while keeping the common case snappy. */
@@ -20,7 +23,7 @@ const IME_RETRY_DELAYS_MS = [100, 400];
  * Returns a cleanup that cancels pending retries, shaped for an effect return.
  */
 export function scheduleAndroidImeShowRetry(
-  ref: RefObject<TextInput | null>,
+  ref: RefObject<TextInput | null>
 ): (() => void) | undefined {
   if (Platform.OS !== 'android') return undefined;
   const timers = IME_RETRY_DELAYS_MS.map((delay) =>
@@ -28,7 +31,7 @@ export function scheduleAndroidImeShowRetry(
       if (ref.current?.isFocused() && !KeyboardController.isVisible()) {
         KeyboardController.setFocusTo('current');
       }
-    }, delay),
+    }, delay)
   );
   return () => timers.forEach((timer) => clearTimeout(timer));
 }
@@ -43,7 +46,7 @@ export function scheduleAndroidImeShowRetry(
  */
 export function runAfterKeyboardSettles(
   action: () => void,
-  delayMsWhenHidden: number,
+  delayMsWhenHidden: number
 ): () => void {
   if (KeyboardController.isVisible()) {
     const subscription = KeyboardEvents.addListener('keyboardDidHide', () => {
@@ -61,7 +64,7 @@ export function runAfterKeyboardSettles(
  * retry above. Returns the retry cleanup, shaped for an effect return.
  */
 export function focusWithAndroidImeRetry(
-  ref: RefObject<TextInput | null>,
+  ref: RefObject<TextInput | null>
 ): (() => void) | undefined {
   ref.current?.focus();
   return scheduleAndroidImeShowRetry(ref);
@@ -77,7 +80,7 @@ export function focusWithAndroidImeRetry(
  */
 export async function pasteFromClipboard(
   ref: RefObject<TextInput | null>,
-  setValue: (text: string) => void,
+  setValue: (text: string) => void
 ): Promise<void> {
   setValue(await Clipboard.getString());
   ref.current?.focus();

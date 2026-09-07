@@ -150,7 +150,7 @@ export function buildCheckinTools(userId: string, tz: string) {
       description: `Health tracking: weight, steps, body measurements, mood, sleep, fasting, custom metrics.
 
 Actions:
-- log_biometrics(entry_date, weight?, steps?, height?, neck?, waist?, hips?, body_fat?, muscle_mass?, bone_mass?, body_water?, weight_unit?:"kg"|"lbs", height_unit?:"cm"|"in", measurements_unit?:"cm"|"in")
+- log_biometrics(entry_date, weight?, steps?, height?, neck?, waist?, hips?, body_fat?, muscle_mass?, bone_mass?, body_water?, bmr?, weight_unit?:"kg"|"lbs", height_unit?:"cm"|"in", measurements_unit?:"cm"|"in")
 - log_mood(entry_date, mood_value:1-10, notes?)
 - log_sleep(entry_date, duration_seconds?, sleep_score?:0-100, bedtime?, wake_time?, source?)
 - log_fasting(start_time:ISO8601, end_time?, fasting_status?:"ACTIVE"|"COMPLETED"|"CANCELLED", fasting_type?)
@@ -197,7 +197,11 @@ Actions:
               args.body_fat !== undefined ||
               args.neck !== undefined ||
               args.waist !== undefined ||
-              args.hips !== undefined
+              args.hips !== undefined ||
+              args.muscle_mass !== undefined ||
+              args.bone_mass !== undefined ||
+              args.body_water !== undefined ||
+              args.bmr !== undefined
             ) {
               return 'log_biometrics';
             }
@@ -300,6 +304,9 @@ Actions:
               if (isSet(args.body_water)) {
                 measurements.body_water_percentage = args.body_water;
               }
+              if (isSet(args.bmr)) {
+                measurements.bmr = args.bmr;
+              }
 
               await measurementService.upsertCheckInMeasurements(
                 userId,
@@ -325,6 +332,7 @@ Actions:
                 parts.push(`bone mass: ${args.bone_mass}${wUnit}`);
               if (isSet(args.body_water))
                 parts.push(`body water: ${args.body_water}%`);
+              if (isSet(args.bmr)) parts.push(`bmr: ${args.bmr}kcal`);
               const summary =
                 parts.length > 0 ? parts.join(', ') : 'no changes';
               return formatConfirmation(
@@ -597,17 +605,15 @@ Actions:
                 created_at?: string | Date;
               }
               const customs = [...customRows]
-                .map(
-                  (row: CustomMeasurementEntryRow): MappedCustomMetric => ({
-                    id: row.id,
-                    category_name: row.custom_categories?.name,
-                    value: row.value,
-                    measurement_type: row.custom_categories?.measurement_type,
-                    notes: row.notes,
-                    entry_date: row.entry_date,
-                    created_at: row.created_at,
-                  })
-                )
+                .map((row: CustomMeasurementEntryRow): MappedCustomMetric => ({
+                  id: row.id,
+                  category_name: row.custom_categories?.name,
+                  value: row.value,
+                  measurement_type: row.custom_categories?.measurement_type,
+                  notes: row.notes,
+                  entry_date: row.entry_date,
+                  created_at: row.created_at,
+                }))
                 .sort(
                   (a: MappedCustomMetric, b: MappedCustomMetric) =>
                     String(a.category_name).localeCompare(

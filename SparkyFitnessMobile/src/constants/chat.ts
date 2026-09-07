@@ -8,10 +8,26 @@ export interface ChatSuggestion {
 
 /** Canonical English prompts sent to the assistant; labels are localized at render time. */
 export const CHAT_SUGGESTIONS: readonly ChatSuggestion[] = [
-  { prompt: 'Log two eggs and a banana for breakfast', labelKey: 'chat.suggestions.breakfast', defaultLabel: 'Log two eggs and a banana for breakfast' },
-  { prompt: 'Log a 30 minute run today', labelKey: 'chat.suggestions.run', defaultLabel: 'Log a 30 minute run today' },
-  { prompt: 'How many calories do I have left today?', labelKey: 'chat.suggestions.calories', defaultLabel: 'How many calories do I have left today?' },
-  { prompt: 'Suggest a high-protein snack', labelKey: 'chat.suggestions.snack', defaultLabel: 'Suggest a high-protein snack' },
+  {
+    prompt: 'Log two eggs and a banana for breakfast',
+    labelKey: 'chat.suggestions.breakfast',
+    defaultLabel: 'Log two eggs and a banana for breakfast',
+  },
+  {
+    prompt: 'Log a 30 minute run today',
+    labelKey: 'chat.suggestions.run',
+    defaultLabel: 'Log a 30 minute run today',
+  },
+  {
+    prompt: 'How many calories do I have left today?',
+    labelKey: 'chat.suggestions.calories',
+    defaultLabel: 'How many calories do I have left today?',
+  },
+  {
+    prompt: 'Suggest a high-protein snack',
+    labelKey: 'chat.suggestions.snack',
+    defaultLabel: 'Suggest a high-protein snack',
+  },
 ];
 
 export interface ToolDisplay {
@@ -21,10 +37,26 @@ export interface ToolDisplay {
 }
 
 const TOOL_DISPLAY: Record<string, ToolDisplay> = {
-  sparky_manage_food: { labelKey: 'chat.tools.food', defaultLabel: 'Food', icon: 'food' },
-  sparky_manage_exercise: { labelKey: 'chat.tools.exercise', defaultLabel: 'Exercise', icon: 'exercise' },
-  sparky_manage_checkin: { labelKey: 'chat.tools.checkin', defaultLabel: 'Check-in', icon: 'measurements' },
-  sparky_manage_goals: { labelKey: 'chat.tools.goals', defaultLabel: 'Goals', icon: 'flame' },
+  sparky_manage_food: {
+    labelKey: 'chat.tools.food',
+    defaultLabel: 'Food',
+    icon: 'food',
+  },
+  sparky_manage_exercise: {
+    labelKey: 'chat.tools.exercise',
+    defaultLabel: 'Exercise',
+    icon: 'exercise',
+  },
+  sparky_manage_checkin: {
+    labelKey: 'chat.tools.checkin',
+    defaultLabel: 'Check-in',
+    icon: 'measurements',
+  },
+  sparky_manage_goals: {
+    labelKey: 'chat.tools.goals',
+    defaultLabel: 'Goals',
+    icon: 'flame',
+  },
 };
 
 function humanize(name: string): string {
@@ -43,8 +75,15 @@ export function getToolDisplay(toolName: string): ToolDisplay {
 
   const lookup = toolName.match(/^sparky_get_(.+)$/);
   if (lookup) {
-    return { labelKey: 'chat.tools.lookedUp', defaultLabel: humanize(lookup[1]).toLowerCase(), icon: 'search' };
+    return {
+      labelKey: 'chat.tools.lookedUp',
+      defaultLabel: humanize(lookup[1]).toLowerCase(),
+      icon: 'search',
+    };
   }
 
-  return { defaultLabel: humanize(toolName.replace(/^sparky_/, '')), icon: 'wrench' };
+  return {
+    defaultLabel: humanize(toolName.replace(/^sparky_/, '')),
+    icon: 'wrench',
+  };
 }

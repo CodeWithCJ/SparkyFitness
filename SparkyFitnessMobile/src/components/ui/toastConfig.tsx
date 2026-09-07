@@ -11,7 +11,10 @@ interface ToastTapProps {
   onPress?: () => void;
 }
 
-const variantTokens: Record<ToastVariant, { bg: string; text: string; border: string }> = {
+const variantTokens: Record<
+  ToastVariant,
+  { bg: string; text: string; border: string }
+> = {
   success: {
     bg: '--color-bg-success',
     // i18n-audit-ignore-next-line hardcoded-ui-text -- CSS variable identifier, not user-visible text.
@@ -70,7 +73,14 @@ function ToastContent({
         </Text>
       ) : null}
       {text2 ? (
-        <Text style={{ color: textColor, fontSize: 13, marginTop: 2, opacity: 0.85 }}>
+        <Text
+          style={{
+            color: textColor,
+            fontSize: 13,
+            marginTop: 2,
+            opacity: 0.85,
+          }}
+        >
           {text2}
         </Text>
       ) : null}
@@ -79,7 +89,11 @@ function ToastContent({
 
   if (!onPress) return body;
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8} accessibilityRole="button">
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      accessibilityRole="button"
+    >
       {body}
     </TouchableOpacity>
   );
@@ -87,12 +101,27 @@ function ToastContent({
 
 export const toastConfig: ToastConfig = {
   success: ({ text1, text2, props }) => (
-    <ToastContent variant="success" text1={text1} text2={text2} onPress={(props as ToastTapProps | undefined)?.onPress} />
+    <ToastContent
+      variant="success"
+      text1={text1}
+      text2={text2}
+      onPress={(props as ToastTapProps | undefined)?.onPress}
+    />
   ),
   error: ({ text1, text2, props }) => (
-    <ToastContent variant="error" text1={text1} text2={text2} onPress={(props as ToastTapProps | undefined)?.onPress} />
+    <ToastContent
+      variant="error"
+      text1={text1}
+      text2={text2}
+      onPress={(props as ToastTapProps | undefined)?.onPress}
+    />
   ),
   info: ({ text1, text2, props }) => (
-    <ToastContent variant="info" text1={text1} text2={text2} onPress={(props as ToastTapProps | undefined)?.onPress} />
+    <ToastContent
+      variant="info"
+      text1={text1}
+      text2={text2}
+      onPress={(props as ToastTapProps | undefined)?.onPress}
+    />
   ),
 };

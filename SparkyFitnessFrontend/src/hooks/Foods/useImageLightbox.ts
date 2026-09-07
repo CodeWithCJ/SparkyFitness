@@ -43,5 +43,3 @@ export function useImageLightbox() {
     openLightbox,
   };
 }
-
-export default useImageLightbox;

@@ -96,7 +96,7 @@ describe('collectWorkoutRoute', () => {
     expect(points[0].t).toBe(at(2000));
   });
 
-  it('maps CoreLocation\'s -1 sentinel (no fix) for speed/course to null, not -1', async () => {
+  it("maps CoreLocation's -1 sentinel (no fix) for speed/course to null, not -1", async () => {
     const workout = workoutWithRoutes([
       {
         locations: [
@@ -402,20 +402,22 @@ describe('collectWorkoutTelemetry', () => {
     // HealthKit returns [] when there are simply no samples, so a rejection is
     // never "no data". An unclassified failure must not be recorded as
     // collected — the reuse cache has no expiry.
-    mockQueryQuantitySamples.mockRejectedValue(new Error('HKErrorDomain error 6'));
+    mockQueryQuantitySamples.mockRejectedValue(
+      new Error('HKErrorDomain error 6')
+    );
 
     await expect(
-      collectWorkoutTelemetry(workoutWithRoutes([]), []),
+      collectWorkoutTelemetry(workoutWithRoutes([]), [])
     ).resolves.toEqual({ incomplete: true });
   });
 
   it('an explicitly unauthorized series type is stable and stays cacheable', async () => {
     mockQueryQuantitySamples.mockRejectedValue(
-      new Error('Authorization not determined'),
+      new Error('Authorization not determined')
     );
 
     await expect(
-      collectWorkoutTelemetry(workoutWithRoutes([]), []),
+      collectWorkoutTelemetry(workoutWithRoutes([]), [])
     ).resolves.toEqual({});
   });
 
@@ -437,7 +439,7 @@ describe('collectWorkoutTelemetry', () => {
     mockQueryQuantitySamples.mockResolvedValue([]);
 
     await expect(
-      collectWorkoutTelemetry(workoutWithRoutes([]), []),
+      collectWorkoutTelemetry(workoutWithRoutes([]), [])
     ).resolves.toEqual({});
   });
 });

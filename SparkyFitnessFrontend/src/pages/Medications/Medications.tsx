@@ -457,7 +457,8 @@ export default function Medications() {
                             <>
                               <span>·</span>
                               <span className="truncate">
-                                Dr. {med.prescriber}
+                                {t('medications.cabinet.doctorPrefix', 'Dr.')}{' '}
+                                {med.prescriber}
                               </span>
                             </>
                           )}
@@ -467,7 +468,7 @@ export default function Medications() {
 
                     {!med.is_active && (
                       <Badge variant="secondary" className="text-[10px]">
-                        Inactive
+                        {t('medications.common.inactive', 'Inactive')}
                       </Badge>
                     )}
                   </CardContent>
@@ -483,11 +484,16 @@ export default function Medications() {
                     <Info className="h-6 w-6" />
                   </div>
                   <CardTitle className="text-sm font-semibold">
-                    No medication selected
+                    {t(
+                      'medications.noSelection.title',
+                      'No medication selected'
+                    )}
                   </CardTitle>
                   <CardDescription className="max-w-[240px] mt-1 text-xs">
-                    Select a medication from the list to view schedules, notes,
-                    and GLP-1 coaching tools.
+                    {t(
+                      'medications.noSelection.description',
+                      'Select a medication from the list to view schedules, notes, and GLP-1 coaching tools.'
+                    )}
                   </CardDescription>
                 </Card>
               ) : (
@@ -561,7 +567,10 @@ export default function Medications() {
                         {selected.prescriber && (
                           <div className="rounded-lg bg-muted/40 p-2 border">
                             <p className="text-[10px] font-semibold text-muted-foreground">
-                              Prescriber
+                              {t(
+                                'medications.cabinet.prescriberDetail',
+                                'Prescriber'
+                              )}
                             </p>
                             <p className="font-medium mt-0.5 truncate">
                               {selected.prescriber}
@@ -571,7 +580,10 @@ export default function Medications() {
                         {selected.pharmacy && (
                           <div className="rounded-lg bg-muted/40 p-2 border">
                             <p className="text-[10px] font-semibold text-muted-foreground">
-                              Pharmacy
+                              {t(
+                                'medications.cabinet.pharmacyDetail',
+                                'Pharmacy'
+                              )}
                             </p>
                             <p className="font-medium mt-0.5 truncate">
                               {selected.pharmacy}
@@ -581,7 +593,10 @@ export default function Medications() {
                         {selected.rx_number && (
                           <div className="rounded-lg bg-muted/40 p-2 border col-span-2">
                             <p className="text-[10px] font-semibold text-muted-foreground">
-                              Rx Number
+                              {t(
+                                'medications.cabinet.rxNumberDetail',
+                                'Rx Number'
+                              )}
                             </p>
                             <p className="font-medium mt-0.5 truncate">
                               {selected.rx_number}
@@ -594,7 +609,10 @@ export default function Medications() {
                       {selected.photo_path && (
                         <div className="space-y-1.5">
                           <p className="text-xs font-semibold text-muted-foreground">
-                            Pill/Packaging Photo
+                            {t(
+                              'medications.cabinet.packagingPhoto',
+                              'Pill/Packaging Photo'
+                            )}
                           </p>
                           <div className="relative aspect-video rounded-lg overflow-hidden border bg-muted flex items-center justify-center">
                             <img
@@ -614,7 +632,10 @@ export default function Medications() {
                       {selected.effectiveness_rating != null && (
                         <div className="space-y-1">
                           <p className="text-xs font-semibold text-muted-foreground">
-                            Effectiveness
+                            {t(
+                              'medications.cabinet.effectivenessDetail',
+                              'Effectiveness'
+                            )}
                           </p>
                           <div className="flex items-center gap-1">
                             {Array.from({ length: 5 }).map((_, i) => (
@@ -667,14 +688,24 @@ export default function Medications() {
                         <CardHeader className="pb-3">
                           <CardTitle className="text-sm font-semibold flex items-center gap-2">
                             <Activity className="h-4 w-4 text-primary" />{' '}
-                            Adherence Overview
+                            {t(
+                              'medications.today.adherenceTitle',
+                              'Adherence overview'
+                            )}
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="text-sm text-muted-foreground">
-                          Schedules and daily checklists for non-GLP-1
-                          medications are fully active. Manage schedule rules
-                          below, and log daily intake from the{' '}
-                          <strong>Today</strong> tab.
+                          {t(
+                            'medications.cabinet.adherenceDescriptionBefore',
+                            'Schedules and daily checklists for non-GLP-1 medications are fully active. Manage schedule rules below, and log daily intake from the'
+                          )}{' '}
+                          <strong>
+                            {t('medications.cabinet.todayTab', 'Today')}
+                          </strong>{' '}
+                          {t(
+                            'medications.cabinet.adherenceDescriptionAfter',
+                            'tab.'
+                          )}
                         </CardContent>
                       </Card>
                       <ScheduleManager med={selected} />

@@ -49,5 +49,7 @@ export const moodEntriesMutatorSchema = z.object({
 });
 
 export type MoodEntries = z.infer<typeof moodEntriesSchema>;
-export type MoodEntriesInitializer = z.infer<typeof moodEntriesInitializerSchema>;
+export type MoodEntriesInitializer = z.infer<
+  typeof moodEntriesInitializerSchema
+>;
 export type MoodEntriesMutator = z.infer<typeof moodEntriesMutatorSchema>;

@@ -64,19 +64,26 @@ describe('runtime app-language reactivity (PL <-> EN without restart)', () => {
 
   test('CalendarSheet presentation preserves Sunday week-start across languages', async () => {
     await i18n.changeLanguage('pl');
-    expect(resolveCalendarPresentation(getAppLocale(), 0).firstDayOfWeek).toBe(0);
+    expect(resolveCalendarPresentation(getAppLocale(), 0).firstDayOfWeek).toBe(
+      0
+    );
     await i18n.changeLanguage('en');
-    expect(resolveCalendarPresentation(getAppLocale(), 0).firstDayOfWeek).toBe(0);
+    expect(resolveCalendarPresentation(getAppLocale(), 0).firstDayOfWeek).toBe(
+      0
+    );
   });
 
   test('CalendarSheet falls back to Sunday (0) when preference is unavailable', async () => {
     await i18n.changeLanguage('en');
-    expect(resolveCalendarPresentation(getAppLocale(), undefined).firstDayOfWeek).toBe(0);
+    expect(
+      resolveCalendarPresentation(getAppLocale(), undefined).firstDayOfWeek
+    ).toBe(0);
     await i18n.changeLanguage('pl');
-    expect(resolveCalendarPresentation(getAppLocale(), undefined).firstDayOfWeek).toBe(0);
+    expect(
+      resolveCalendarPresentation(getAppLocale(), undefined).firstDayOfWeek
+    ).toBe(0);
   });
 });
-
 
 describe('calendar grid visible labels (app-locale driven, live switch)', () => {
   beforeAll(async () => {

@@ -29,6 +29,7 @@ export const userPreferencesSchema = z.object({
   body_fat_algorithm: z.string(),
   include_bmr_in_net_calories: z.boolean(),
   show_net_carbs: z.boolean(),
+  food_search_all_providers_default: z.boolean(),
   default_distance_unit: z.string(),
   language: z.string().nullable(),
   calorie_goal_adjustment_mode: z.string().nullable(),
@@ -67,6 +68,9 @@ export const userPreferencesSchema = z.object({
   use_external_bmr: z.boolean(),
   active_ai_service_id: z.string().uuid().nullable().optional(),
   active_vision_ai_service_id: z.string().uuid().nullable().optional(),
+  auto_scale_online_imports: z.boolean().nullable().optional(),
+  barcode_fallback_open_food_facts: z.boolean().nullable().optional(),
+  add_exercise_water_to_goal: z.boolean().nullable().optional(),
 });
 
 export const userPreferencesInitializerSchema = z.object({
@@ -88,6 +92,7 @@ export const userPreferencesInitializerSchema = z.object({
   body_fat_algorithm: z.string().optional(),
   include_bmr_in_net_calories: z.boolean().optional(),
   show_net_carbs: z.boolean().optional(),
+  food_search_all_providers_default: z.boolean().optional(),
   default_distance_unit: z.string().optional(),
   language: z.string().optional().nullable(),
   calorie_goal_adjustment_mode: z.string().optional().nullable(),
@@ -130,6 +135,9 @@ export const userPreferencesInitializerSchema = z.object({
   use_external_bmr: z.boolean().optional(),
   active_ai_service_id: z.string().uuid().nullable().optional(),
   active_vision_ai_service_id: z.string().uuid().nullable().optional(),
+  auto_scale_online_imports: z.boolean().optional().nullable(),
+  barcode_fallback_open_food_facts: z.boolean().optional().nullable(),
+  add_exercise_water_to_goal: z.boolean().optional().nullable(),
 });
 
 export const userPreferencesMutatorSchema = z.object({
@@ -151,6 +159,7 @@ export const userPreferencesMutatorSchema = z.object({
   body_fat_algorithm: z.string().optional(),
   include_bmr_in_net_calories: z.boolean().optional(),
   show_net_carbs: z.boolean().optional(),
+  food_search_all_providers_default: z.boolean().optional(),
   default_distance_unit: z.string().optional(),
   language: z.string().optional().nullable(),
   calorie_goal_adjustment_mode: z.string().optional().nullable(),
@@ -193,6 +202,9 @@ export const userPreferencesMutatorSchema = z.object({
   use_external_bmr: z.boolean().optional(),
   active_ai_service_id: z.string().uuid().nullable().optional(),
   active_vision_ai_service_id: z.string().uuid().nullable().optional(),
+  auto_scale_online_imports: z.boolean().optional().nullable(),
+  barcode_fallback_open_food_facts: z.boolean().optional().nullable(),
+  add_exercise_water_to_goal: z.boolean().optional().nullable(),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;

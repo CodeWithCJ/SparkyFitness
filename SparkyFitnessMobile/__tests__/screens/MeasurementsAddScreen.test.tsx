@@ -4,7 +4,10 @@ import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { pressAction, skipDuplicatePressWindow } from './helpers/nativeHeaderTestUtils';
+import {
+  pressAction,
+  skipDuplicatePressWindow,
+} from './helpers/nativeHeaderTestUtils';
 import MeasurementsAddScreen from '../../src/screens/MeasurementsAddScreen';
 import { useMeasurements } from '../../src/hooks/useMeasurements';
 import { usePreferences } from '../../src/hooks/usePreferences';
@@ -17,7 +20,10 @@ import {
 } from '../../src/hooks/useCustomMeasurements';
 import { SAVE_LABEL } from '../../src/hooks/useScreenHeader';
 import type { CheckInMeasurement } from '../../src/types/measurements';
-import type { CustomCategory, CustomMeasurementEntry } from '../../src/types/customMeasurements';
+import type {
+  CustomCategory,
+  CustomMeasurementEntry,
+} from '../../src/types/customMeasurements';
 import type { RootStackScreenProps } from '../../src/types/navigation';
 
 type ScreenProps = RootStackScreenProps<'MeasurementsAdd'>;
@@ -54,13 +60,15 @@ jest.mock('../../src/components/CalendarSheet', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: ReactModule.forwardRef((_props: unknown, ref: React.Ref<unknown>) => {
-      ReactModule.useImperativeHandle(ref, () => ({
-        present: jest.fn(),
-        dismiss: jest.fn(),
-      }));
-      return <View testID="calendar-sheet" />;
-    }),
+    default: ReactModule.forwardRef(
+      (_props: unknown, ref: React.Ref<unknown>) => {
+        ReactModule.useImperativeHandle(ref, () => ({
+          present: jest.fn(),
+          dismiss: jest.fn(),
+        }));
+        return <View testID="calendar-sheet" />;
+      }
+    ),
   };
 });
 
@@ -75,19 +83,30 @@ jest.mock('@react-navigation/native', () => ({
   useNavigation: () => mockNavigation,
 }));
 
-const mockUseMeasurements = useMeasurements as jest.MockedFunction<typeof useMeasurements>;
-const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
-const mockUseUpsertCheckIn = useUpsertCheckIn as jest.MockedFunction<typeof useUpsertCheckIn>;
-const mockUseCustomCategories = useCustomCategories as jest.MockedFunction<typeof useCustomCategories>;
-const mockUseCustomMeasurementsByDate = useCustomMeasurementsByDate as jest.MockedFunction<
-  typeof useCustomMeasurementsByDate
+const mockUseMeasurements = useMeasurements as jest.MockedFunction<
+  typeof useMeasurements
 >;
-const mockUseSaveCustomMeasurement = useSaveCustomMeasurement as jest.MockedFunction<
-  typeof useSaveCustomMeasurement
+const mockUsePreferences = usePreferences as jest.MockedFunction<
+  typeof usePreferences
 >;
-const mockUseDeleteCustomMeasurement = useDeleteCustomMeasurement as jest.MockedFunction<
-  typeof useDeleteCustomMeasurement
+const mockUseUpsertCheckIn = useUpsertCheckIn as jest.MockedFunction<
+  typeof useUpsertCheckIn
 >;
+const mockUseCustomCategories = useCustomCategories as jest.MockedFunction<
+  typeof useCustomCategories
+>;
+const mockUseCustomMeasurementsByDate =
+  useCustomMeasurementsByDate as jest.MockedFunction<
+    typeof useCustomMeasurementsByDate
+  >;
+const mockUseSaveCustomMeasurement =
+  useSaveCustomMeasurement as jest.MockedFunction<
+    typeof useSaveCustomMeasurement
+  >;
+const mockUseDeleteCustomMeasurement =
+  useDeleteCustomMeasurement as jest.MockedFunction<
+    typeof useDeleteCustomMeasurement
+  >;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -110,7 +129,10 @@ const setMeasurements = (measurements: Partial<CheckInMeasurement>) => {
   } as unknown as ReturnType<typeof useMeasurements>);
 };
 
-const setPreferences = (prefs: { default_weight_unit?: string; default_measurement_unit?: string }) => {
+const setPreferences = (prefs: {
+  default_weight_unit?: string;
+  default_measurement_unit?: string;
+}) => {
   mockUsePreferences.mockReturnValue({
     preferences: prefs,
     isLoading: false,
@@ -172,7 +194,7 @@ const renderScreen = () => {
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
         <MeasurementsAddScreen navigation={mockNavigation} route={route} />
       </SafeAreaProvider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 };
 
@@ -216,7 +238,10 @@ const savedPayload = (): UpsertVars => {
 const confirmClearAlert = async () => {
   const alertMock = Alert.alert as jest.Mock;
   expect(alertMock).toHaveBeenCalled();
-  const buttons = alertMock.mock.calls.at(-1)?.[2] as { text: string; onPress?: () => void }[];
+  const buttons = alertMock.mock.calls.at(-1)?.[2] as {
+    text: string;
+    onPress?: () => void;
+  }[];
   const save = buttons.find((button) => button.text === 'Save');
   expect(save?.onPress).toBeDefined();
   await act(async () => {
@@ -231,7 +256,10 @@ describe('MeasurementsAddScreen — omitted vs null save semantics', () => {
     jest.clearAllMocks();
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     setMeasurements({});
-    setPreferences({ default_weight_unit: 'kg', default_measurement_unit: 'cm' });
+    setPreferences({
+      default_weight_unit: 'kg',
+      default_measurement_unit: 'cm',
+    });
     mockUseUpsertCheckIn.mockReturnValue({
       mutate,
       mutateAsync,
@@ -296,7 +324,11 @@ describe('MeasurementsAddScreen — omitted vs null save semantics', () => {
     await pressSave(screen);
 
     expect(Alert.alert).not.toHaveBeenCalled();
-    expect(savedPayload()).toEqual({ entryDate: ENTRY_DATE, weight: 80, steps: 7000 });
+    expect(savedPayload()).toEqual({
+      entryDate: ENTRY_DATE,
+      weight: 80,
+      steps: 7000,
+    });
   });
 
   test('clear, keep, and add in one save produce null, value, and value', async () => {
@@ -323,7 +355,9 @@ describe('MeasurementsAddScreen — omitted vs null save semantics', () => {
 
     expect(mutateAsync).not.toHaveBeenCalled();
     expect(Alert.alert).not.toHaveBeenCalled();
-    expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }));
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'info' })
+    );
   });
 
   test('non-numeric and negative values block the save with an error toast', async () => {
@@ -332,13 +366,17 @@ describe('MeasurementsAddScreen — omitted vs null save semantics', () => {
     fireEvent.changeText(getInput(screen, 'weight'), 'abc');
     await pressSave(screen);
     expect(mutateAsync).not.toHaveBeenCalled();
-    expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' })
+    );
 
     (Toast.show as jest.Mock).mockClear();
     fireEvent.changeText(getInput(screen, 'weight'), '-5');
     await pressSave(screen);
     expect(mutateAsync).not.toHaveBeenCalled();
-    expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' })
+    );
   });
 
   test('steps must be a whole number and body fat at most 100', async () => {
@@ -347,14 +385,18 @@ describe('MeasurementsAddScreen — omitted vs null save semantics', () => {
     fireEvent.changeText(getInput(screen, 'steps'), '100.5');
     await pressSave(screen);
     expect(mutateAsync).not.toHaveBeenCalled();
-    expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' })
+    );
 
     fireEvent.changeText(getInput(screen, 'steps'), '');
     (Toast.show as jest.Mock).mockClear();
     fireEvent.changeText(getInput(screen, 'bodyFat'), '150');
     await pressSave(screen);
     expect(mutateAsync).not.toHaveBeenCalled();
-    expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' })
+    );
   });
 
   test('a successful save shows a toast and closes the screen', async () => {
@@ -363,13 +405,18 @@ describe('MeasurementsAddScreen — omitted vs null save semantics', () => {
     fireEvent.changeText(getInput(screen, 'weight'), '82.5');
     await pressSave(screen);
 
-    expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'success' })
+    );
     expect(mockNavigation.goBack).toHaveBeenCalled();
   });
 
   describe('unit conversion to metric storage', () => {
     test('lbs weight is converted to kg', async () => {
-      setPreferences({ default_weight_unit: 'lbs', default_measurement_unit: 'cm' });
+      setPreferences({
+        default_weight_unit: 'lbs',
+        default_measurement_unit: 'cm',
+      });
       const screen = renderScreen();
 
       fireEvent.changeText(getInput(screen, 'weight'), '220');
@@ -379,7 +426,10 @@ describe('MeasurementsAddScreen — omitted vs null save semantics', () => {
     });
 
     test('inch body measurements are converted to cm', async () => {
-      setPreferences({ default_weight_unit: 'kg', default_measurement_unit: 'inches' });
+      setPreferences({
+        default_weight_unit: 'kg',
+        default_measurement_unit: 'inches',
+      });
       const screen = renderScreen();
 
       fireEvent.changeText(getInput(screen, 'waist'), '30');
@@ -391,7 +441,10 @@ describe('MeasurementsAddScreen — omitted vs null save semantics', () => {
 
   describe('stones + lbs weight mode', () => {
     beforeEach(() => {
-      setPreferences({ default_weight_unit: 'st_lbs', default_measurement_unit: 'cm' });
+      setPreferences({
+        default_weight_unit: 'st_lbs',
+        default_measurement_unit: 'cm',
+      });
     });
 
     test('stones and lbs combine into a single kg value', async () => {
@@ -435,7 +488,10 @@ describe('MeasurementsAddScreen — omitted vs null save semantics', () => {
 
   describe('feet + inches height mode', () => {
     test('feet and inches combine into a single cm value', async () => {
-      setPreferences({ default_weight_unit: 'kg', default_measurement_unit: 'ft_in' });
+      setPreferences({
+        default_weight_unit: 'kg',
+        default_measurement_unit: 'ft_in',
+      });
       const screen = renderScreen();
 
       const feetInput = screen.getByPlaceholderText('ft');
@@ -455,7 +511,10 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     jest.clearAllMocks();
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     setMeasurements({});
-    setPreferences({ default_weight_unit: 'kg', default_measurement_unit: 'cm' });
+    setPreferences({
+      default_weight_unit: 'kg',
+      default_measurement_unit: 'cm',
+    });
     mockUseUpsertCheckIn.mockReturnValue({
       mutate,
       mutateAsync,
@@ -486,7 +545,8 @@ describe('MeasurementsAddScreen — custom measurements', () => {
   });
 
   const savedCustomPayload = () => {
-    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value as {
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)
+      ?.value as {
       mutateAsync: jest.Mock;
     };
     expect(saveMock.mutateAsync).toHaveBeenCalled();
@@ -494,7 +554,8 @@ describe('MeasurementsAddScreen — custom measurements', () => {
   };
 
   const deletedCustomId = () => {
-    const deleteMock = mockUseDeleteCustomMeasurement.mock.results.at(-1)?.value as {
+    const deleteMock = mockUseDeleteCustomMeasurement.mock.results.at(-1)
+      ?.value as {
       mutateAsync: jest.Mock;
     };
     expect(deleteMock.mutateAsync).toHaveBeenCalled();
@@ -503,8 +564,18 @@ describe('MeasurementsAddScreen — custom measurements', () => {
 
   test('renders custom categories in API order with literal names and units', () => {
     setCustomCategories([
-      customCategory({ id: 'c1', name: 'Stres', display_name: null, measurement_type: 'mmHg' }),
-      customCategory({ id: 'c2', name: 'Energy', display_name: 'Energy Level', measurement_type: '' }),
+      customCategory({
+        id: 'c1',
+        name: 'Stres',
+        display_name: null,
+        measurement_type: 'mmHg',
+      }),
+      customCategory({
+        id: 'c2',
+        name: 'Energy',
+        display_name: 'Energy Level',
+        measurement_type: '',
+      }),
     ]);
     const screen = renderScreen();
 
@@ -572,11 +643,18 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     fireEvent.changeText(getInput(screen, 'weight'), '80');
     await pressSave(screen);
 
-    expect(mockUseUpsertCheckIn.mock.results.at(-1)?.value.mutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ entryDate: ENTRY_DATE, weight: 80 }),
+    expect(
+      mockUseUpsertCheckIn.mock.results.at(-1)?.value.mutateAsync
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ entryDate: ENTRY_DATE, weight: 80 })
     );
     expect(savedCustomPayload()).toEqual(
-      expect.objectContaining({ category_id: 'c1', value: 82.5, entry_date: ENTRY_DATE, source: 'manual' }),
+      expect.objectContaining({
+        category_id: 'c1',
+        value: 82.5,
+        entry_date: ENTRY_DATE,
+        source: 'manual',
+      })
     );
   });
 
@@ -587,7 +665,9 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     fireEvent.changeText(screen.getByTestId('custom-input-c1'), '82,5');
     await pressSave(screen);
 
-    expect(savedCustomPayload()).toEqual(expect.objectContaining({ category_id: 'c1', value: 82.5 }));
+    expect(savedCustomPayload()).toEqual(
+      expect.objectContaining({ category_id: 'c1', value: 82.5 })
+    );
   });
 
   test('saves zero as a number, not as empty', async () => {
@@ -597,7 +677,9 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     fireEvent.changeText(screen.getByTestId('custom-input-c1'), '0');
     await pressSave(screen);
 
-    expect(savedCustomPayload()).toEqual(expect.objectContaining({ category_id: 'c1', value: 0 }));
+    expect(savedCustomPayload()).toEqual(
+      expect.objectContaining({ category_id: 'c1', value: 0 })
+    );
   });
 
   test('saves boolean false as the literal string payload', async () => {
@@ -607,7 +689,9 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     fireEvent.press(screen.getAllByText('No')[0]);
     await pressSave(screen);
 
-    expect(savedCustomPayload()).toEqual(expect.objectContaining({ category_id: 'c1', value: 'false' }));
+    expect(savedCustomPayload()).toEqual(
+      expect.objectContaining({ category_id: 'c1', value: 'false' })
+    );
   });
 
   test('clears an existing custom value through delete after confirmation', async () => {
@@ -617,11 +701,16 @@ describe('MeasurementsAddScreen — custom measurements', () => {
 
     fireEvent.changeText(screen.getByTestId('custom-input-c1'), '');
     await pressSave(screen);
-    expect(mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync).not.toHaveBeenCalled();
+    expect(
+      mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync
+    ).not.toHaveBeenCalled();
 
     // Confirm the clear alert; the save/delete then run.
     const alertMock = Alert.alert as jest.Mock;
-    const buttons = alertMock.mock.calls.at(-1)?.[2] as { text: string; onPress?: () => void }[];
+    const buttons = alertMock.mock.calls.at(-1)?.[2] as {
+      text: string;
+      onPress?: () => void;
+    }[];
     const save = buttons.find((button) => button.text === 'Save');
     expect(save?.onPress).toBeDefined();
     await act(async () => {
@@ -629,8 +718,12 @@ describe('MeasurementsAddScreen — custom measurements', () => {
       await Promise.resolve();
     });
 
-    expect(deletedCustomId()).toEqual(expect.objectContaining({ id: 'entry-1' }));
-    expect(mockUseUpsertCheckIn.mock.results.at(-1)?.value.mutateAsync).not.toHaveBeenCalled();
+    expect(deletedCustomId()).toEqual(
+      expect.objectContaining({ id: 'entry-1' })
+    );
+    expect(
+      mockUseUpsertCheckIn.mock.results.at(-1)?.value.mutateAsync
+    ).not.toHaveBeenCalled();
   });
 
   test('does not delete when an empty never-prefilled field is saved', async () => {
@@ -639,10 +732,18 @@ describe('MeasurementsAddScreen — custom measurements', () => {
 
     await pressSave(screen);
 
-    expect(mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync).not.toHaveBeenCalled();
-    expect(mockUseDeleteCustomMeasurement.mock.results.at(-1)?.value.mutateAsync).not.toHaveBeenCalled();
-    expect(mockUseUpsertCheckIn.mock.results.at(-1)?.value.mutateAsync).not.toHaveBeenCalled();
-    expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }));
+    expect(
+      mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync
+    ).not.toHaveBeenCalled();
+    expect(
+      mockUseDeleteCustomMeasurement.mock.results.at(-1)?.value.mutateAsync
+    ).not.toHaveBeenCalled();
+    expect(
+      mockUseUpsertCheckIn.mock.results.at(-1)?.value.mutateAsync
+    ).not.toHaveBeenCalled();
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'info' })
+    );
   });
 
   test('deleting one category does not affect another category value', async () => {
@@ -660,7 +761,10 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     await pressSave(screen);
 
     const alertMock = Alert.alert as jest.Mock;
-    const buttons = alertMock.mock.calls.at(-1)?.[2] as { text: string; onPress?: () => void }[];
+    const buttons = alertMock.mock.calls.at(-1)?.[2] as {
+      text: string;
+      onPress?: () => void;
+    }[];
     const save = buttons.find((button) => button.text === 'Save');
     await act(async () => {
       save?.onPress?.();
@@ -669,7 +773,8 @@ describe('MeasurementsAddScreen — custom measurements', () => {
 
     // Only the cleared entry is deleted; c2 stays untouched.
     expect(deletedCustomId()).toEqual(expect.objectContaining({ id: 'e1' }));
-    const deleteMock = mockUseDeleteCustomMeasurement.mock.results.at(-1)?.value.mutateAsync;
+    const deleteMock =
+      mockUseDeleteCustomMeasurement.mock.results.at(-1)?.value.mutateAsync;
     expect(deleteMock).toHaveBeenCalledTimes(1);
   });
 
@@ -690,7 +795,8 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     setCustomCategories([customCategory({ id: 'c1' })]);
     const screen = renderScreen();
 
-    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value as {
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)
+      ?.value as {
       mutateAsync: jest.Mock;
     };
     saveMock.mutateAsync.mockRejectedValueOnce(new Error('boom'));
@@ -698,7 +804,9 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     fireEvent.changeText(screen.getByTestId('custom-input-c1'), '10');
     await pressSave(screen);
 
-    expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' })
+    );
     expect(mockNavigation.goBack).not.toHaveBeenCalled();
   });
 
@@ -710,7 +818,8 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     ]);
     const screen = renderScreen();
 
-    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value as {
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)
+      ?.value as {
       mutateAsync: jest.Mock;
     };
     // Op #1 (c1) succeeds, op #2 (c2) fails, op #3 (c3) never runs.
@@ -723,7 +832,9 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     fireEvent.changeText(screen.getByTestId('custom-input-c3'), '30');
     await pressSave(screen);
 
-    expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' })
+    );
     expect(mockNavigation.goBack).not.toHaveBeenCalled();
     // Only c1 and c2 were attempted on the first pass.
     expect(saveMock.mutateAsync).toHaveBeenCalledTimes(2);
@@ -735,7 +846,9 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     // Retry sends only the remaining work — c1 (already persisted) is not
     // re-sent, so a successful insert is never duplicated.
     await pressSave(screen);
-    const calls = saveMock.mutateAsync.mock.calls.map((c) => c[0] as { category_id: string });
+    const calls = saveMock.mutateAsync.mock.calls.map(
+      (c) => c[0] as { category_id: string }
+    );
     expect(calls.filter((p) => p.category_id === 'c1')).toHaveLength(1);
     expect(calls.filter((p) => p.category_id === 'c2')).toHaveLength(2);
     expect(calls.filter((p) => p.category_id === 'c3')).toHaveLength(1);
@@ -746,7 +859,8 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     setCustomCategories([customCategory({ id: 'c1' })]);
     const screen = renderScreen();
 
-    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value as {
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)
+      ?.value as {
       mutateAsync: jest.Mock;
     };
     saveMock.mutateAsync.mockRejectedValueOnce(new Error('boom'));
@@ -755,10 +869,14 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     fireEvent.changeText(getInput(screen, 'weight'), '80');
     await pressSave(screen);
 
-    expect(Toast.show).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' })
+    );
     // The standard upsert never ran because the custom op failed first; the
     // typed weight must not be erased.
-    expect(mockUseUpsertCheckIn.mock.results.at(-1)?.value.mutateAsync).not.toHaveBeenCalled();
+    expect(
+      mockUseUpsertCheckIn.mock.results.at(-1)?.value.mutateAsync
+    ).not.toHaveBeenCalled();
     expect(getInput(screen, 'weight').props.value).toBe('80');
     expect(screen.getByTestId('custom-input-c1').props.value).toBe('10');
   });
@@ -768,13 +886,17 @@ describe('MeasurementsAddScreen — custom measurements', () => {
       customCategory({ id: 'c1', frequency: 'Daily' }),
       customCategory({ id: 'c2' }),
     ]);
-    setCustomEntries([customEntry({ id: 'e1', category_id: 'c1', value: '5' })]);
+    setCustomEntries([
+      customEntry({ id: 'e1', category_id: 'c1', value: '5' }),
+    ]);
     const screen = renderScreen();
 
-    const deleteMock = mockUseDeleteCustomMeasurement.mock.results.at(-1)?.value as {
+    const deleteMock = mockUseDeleteCustomMeasurement.mock.results.at(-1)
+      ?.value as {
       mutateAsync: jest.Mock;
     };
-    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value as {
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)
+      ?.value as {
       mutateAsync: jest.Mock;
     };
 
@@ -804,7 +926,8 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     setCustomCategories([customCategory({ id: 'c1' })]);
     const screen = renderScreen();
 
-    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value as {
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)
+      ?.value as {
       mutateAsync: jest.Mock;
     };
     saveMock.mutateAsync.mockRejectedValueOnce(new Error('boom'));
@@ -840,14 +963,18 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     fireEvent.changeText(getInput(screen, 'weight'), '80');
     await pressSave(screen);
 
-    expect(mockUseUpsertCheckIn.mock.results.at(-1)?.value.mutateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ entryDate: ENTRY_DATE, weight: 80 }),
+    expect(
+      mockUseUpsertCheckIn.mock.results.at(-1)?.value.mutateAsync
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ entryDate: ENTRY_DATE, weight: 80 })
     );
   });
 
   test('delete control exposes an accessible name and role', () => {
     setCustomCategories([customCategory({ id: 'c1', frequency: 'Daily' })]);
-    setCustomEntries([customEntry({ id: 'e1', category_id: 'c1', value: '5' })]);
+    setCustomEntries([
+      customEntry({ id: 'e1', category_id: 'c1', value: '5' }),
+    ]);
     const screen = renderScreen();
 
     const del = screen.getByTestId('delete-custom-entry-e1');
@@ -863,19 +990,41 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     const touchable = yes.parent?.parent;
     expect(touchable?.props.accessibilityRole).toBe('button');
     expect(touchable?.props.accessibilityState).toEqual(
-      expect.objectContaining({ selected: false, disabled: false }),
+      expect.objectContaining({ selected: false, disabled: false })
     );
   });
 
   test('health-sync Daily categories with no manual entry collapse under More; Hourly/All/Unlimited stay absent', () => {
     setCustomCategories([
       customCategory({ id: 'manual-1', name: 'My Daily', frequency: 'Daily' }),
-      customCategory({ id: 'sync-1', name: 'HRV_SDNN_min', frequency: 'Daily' }),
-      customCategory({ id: 'sync-2', name: 'Resting Heart Rate', frequency: 'Daily' }),
-      customCategory({ id: 'sync-3', name: 'Raw Stress Data', frequency: 'Daily', data_type: 'text', measurement_type: 'JSON' }),
-      customCategory({ id: 'hourly-1', name: 'Hourly Thing', frequency: 'Hourly' }),
+      customCategory({
+        id: 'sync-1',
+        name: 'HRV_SDNN_min',
+        frequency: 'Daily',
+      }),
+      customCategory({
+        id: 'sync-2',
+        name: 'Resting Heart Rate',
+        frequency: 'Daily',
+      }),
+      customCategory({
+        id: 'sync-3',
+        name: 'Raw Stress Data',
+        frequency: 'Daily',
+        data_type: 'text',
+        measurement_type: 'JSON',
+      }),
+      customCategory({
+        id: 'hourly-1',
+        name: 'Hourly Thing',
+        frequency: 'Hourly',
+      }),
       customCategory({ id: 'all-1', name: 'All Things', frequency: 'All' }),
-      customCategory({ id: 'unl-1', name: 'Unlimited Things', frequency: 'Unlimited' }),
+      customCategory({
+        id: 'unl-1',
+        name: 'Unlimited Things',
+        frequency: 'Unlimited',
+      }),
     ]);
     const screen = renderScreen();
 
@@ -894,7 +1043,10 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     expect(screen.getByTestId('custom-input-sync-1')).toBeTruthy();
     expect(screen.getByTestId('custom-input-sync-2')).toBeTruthy();
     expect(screen.getByTestId('custom-input-sync-3')).toBeTruthy();
-    expect(screen.getByLabelText('Hide categories ▴').props.accessibilityState?.expanded).toBe(true);
+    expect(
+      screen.getByLabelText('Hide categories ▴').props.accessibilityState
+        ?.expanded
+    ).toBe(true);
     // Hourly / All / Unlimited are not exposed anywhere — even after expanding.
     expect(screen.queryByTestId('custom-input-hourly-1')).toBeNull();
     expect(screen.queryByTestId('custom-input-all-1')).toBeNull();
@@ -907,7 +1059,12 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     setCustomCategories([
       // The user renamed the canonical health category away from its name, so
       // exact-name matching no longer hides it (maintainer expectation).
-      customCategory({ id: 'renamed-1', name: 'My HRV Notes', frequency: 'Daily', data_type: 'text' }),
+      customCategory({
+        id: 'renamed-1',
+        name: 'My HRV Notes',
+        frequency: 'Daily',
+        data_type: 'text',
+      }),
     ]);
     const screen = renderScreen();
 
@@ -917,7 +1074,14 @@ describe('MeasurementsAddScreen — custom measurements', () => {
   test('a synced entry is never prefilled as editable manual state', () => {
     setCustomCategories([customCategory({ id: 'c1', frequency: 'Daily' })]);
     // Only a healthkit entry exists for this category.
-    setCustomEntries([customEntry({ id: 'e1', category_id: 'c1', value: '75', source: 'healthkit' })]);
+    setCustomEntries([
+      customEntry({
+        id: 'e1',
+        category_id: 'c1',
+        value: '75',
+        source: 'healthkit',
+      }),
+    ]);
     const screen = renderScreen();
 
     // The synced value must NOT prefill the editable input.
@@ -928,7 +1092,9 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     setCustomCategories([customCategory({ id: 'c1', frequency: 'Daily' })]);
     // Null source is NOT manual per the strict DB contract, so it must not
     // prefill the manual editor either.
-    setCustomEntries([customEntry({ id: 'e1', category_id: 'c1', value: '75', source: null })]);
+    setCustomEntries([
+      customEntry({ id: 'e1', category_id: 'c1', value: '75', source: null }),
+    ]);
     const screen = renderScreen();
 
     expect(screen.getByTestId('custom-input-c1').props.value).toBe('');
@@ -936,36 +1102,58 @@ describe('MeasurementsAddScreen — custom measurements', () => {
 
   test('a user-entered value for a category with a synced entry saves as a fresh manual operation', async () => {
     setCustomCategories([customCategory({ id: 'c1', frequency: 'Daily' })]);
-    setCustomEntries([customEntry({ id: 'e1', category_id: 'c1', value: '75', source: 'healthkit' })]);
+    setCustomEntries([
+      customEntry({
+        id: 'e1',
+        category_id: 'c1',
+        value: '75',
+        source: 'healthkit',
+      }),
+    ]);
     const screen = renderScreen();
 
     fireEvent.changeText(screen.getByTestId('custom-input-c1'), '90');
     await pressSave(screen);
 
-    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync;
+    const saveMock =
+      mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync;
     expect(saveMock).toHaveBeenCalledWith(
-      expect.objectContaining({ category_id: 'c1', value: 90, source: 'manual' }),
+      expect.objectContaining({
+        category_id: 'c1',
+        value: 90,
+        source: 'manual',
+      })
     );
   });
 
   test('a new manual value for a synced category saves with source manual', async () => {
     setCustomCategories([customCategory({ id: 'c1', frequency: 'Daily' })]);
-    setCustomEntries([customEntry({ id: 'e1', category_id: 'c1', value: '75', source: 'garmin' })]);
+    setCustomEntries([
+      customEntry({
+        id: 'e1',
+        category_id: 'c1',
+        value: '75',
+        source: 'garmin',
+      }),
+    ]);
     const screen = renderScreen();
 
     fireEvent.changeText(screen.getByTestId('custom-input-c1'), '80');
     await pressSave(screen);
 
-    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync;
+    const saveMock =
+      mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync;
     expect(saveMock).toHaveBeenCalledWith(
       expect.objectContaining({
         category_id: 'c1',
         value: 80,
         source: 'manual',
-      }),
+      })
     );
     // The synced entry is never deleted/overwritten by this save.
-    expect(mockUseDeleteCustomMeasurement.mock.results.at(-1)?.value.mutateAsync).not.toHaveBeenCalled();
+    expect(
+      mockUseDeleteCustomMeasurement.mock.results.at(-1)?.value.mutateAsync
+    ).not.toHaveBeenCalled();
   });
 
   test('integrated health-heavy account does not flood the add screen', async () => {
@@ -974,31 +1162,109 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     // Withings/Google names) plus one manual Daily category, one renamed former
     // sync category, and a Garmin raw structured-value category.
     const healthNames = [
-      'steps', 'heart_rate', 'HeartRate', 'Active Calories', 'ActiveCaloriesBurned',
-      'total_calories', 'TotalCaloriesBurned', 'distance', 'Distance', 'floors_climbed',
-      'FloorsClimbed', 'weight', 'Weight', 'sleep_session', 'SleepSession', 'stress',
-      'Stress', 'blood_pressure', 'BloodPressure', 'basal_metabolic_rate',
-      'BasalMetabolicRate', 'blood_glucose', 'BloodGlucose', 'body_fat', 'BodyFat',
-      'body_temperature', 'BodyTemperature', 'resting_heart_rate', 'RestingHeartRate',
-      'HRV', 'HRV_SDNN', 'respiratory_rate', 'RespiratoryRate', 'oxygen_saturation',
-      'OxygenSaturation', 'BloodOxygenSaturation', 'vo2_max', 'Vo2Max', 'hydration',
-      'Hydration', 'HRV_SDNN_min', 'HRV_SDNN_max', 'HRV_SDNN_avg', 'heart_rate_min',
-      'heart_rate_max', 'heart_rate_avg', 'running_speed_min', 'running_speed_max',
-      'running_speed_avg', 'cycling_power_min', 'cycling_power_max', 'cycling_power_avg',
-      'apple_move_time', 'apple_exercise_time', 'apple_stand_time', 'dietary_fat_total',
-      'dietary_protein', 'dietary_sodium', 'environmental_audio_exposure_min',
-      'headphone_audio_exposure_max', 'cycling_ftp', 'Metabolism', 'Activity Score',
-      'Readiness Score', 'Skin Temperature Variation', 'SpO2',
-      'Breathing Disturbance Index', 'Stress High Minutes', 'Recovery High Minutes',
-      'Vascular Age', 'VO2 Max', 'Heart Rate', 'Maximum Heart Rate', 'Aerobic Threshold',
-      'Anaerobic Threshold', 'Steps', 'Daily Calories', 'Nightly Recharge Score',
-      'ANS Charge', 'Overnight HRV', 'Overnight RHR', 'Breathing Rate',
-      'Fat Free Mass', 'Fat Mass Weight', 'Blood Pressure', 'Body Temperature',
-      'Blood Oxygen (SpO2)', 'Skin Temperature', 'Pulse Wave Velocity',
-      'Heart Health', 'ECG Metrics', 'Body Water Breakdown', 'Nerve Health',
-      'Segmental Body Comp', 'Sleep Metrics', 'Stress Metrics', 'Visceral Fat',
-      'Floors', 'Minutes Sedentary', 'Minutes Lightly Active', 'Minutes Fairly Active',
-      'Minutes Very Active', 'Raw Stress Data',
+      'steps',
+      'heart_rate',
+      'HeartRate',
+      'Active Calories',
+      'ActiveCaloriesBurned',
+      'total_calories',
+      'TotalCaloriesBurned',
+      'distance',
+      'Distance',
+      'floors_climbed',
+      'FloorsClimbed',
+      'weight',
+      'Weight',
+      'sleep_session',
+      'SleepSession',
+      'stress',
+      'Stress',
+      'blood_pressure',
+      'BloodPressure',
+      'basal_metabolic_rate',
+      'BasalMetabolicRate',
+      'blood_glucose',
+      'BloodGlucose',
+      'body_fat',
+      'BodyFat',
+      'body_temperature',
+      'BodyTemperature',
+      'resting_heart_rate',
+      'RestingHeartRate',
+      'HRV',
+      'HRV_SDNN',
+      'respiratory_rate',
+      'RespiratoryRate',
+      'oxygen_saturation',
+      'OxygenSaturation',
+      'BloodOxygenSaturation',
+      'vo2_max',
+      'Vo2Max',
+      'hydration',
+      'Hydration',
+      'HRV_SDNN_min',
+      'HRV_SDNN_max',
+      'HRV_SDNN_avg',
+      'heart_rate_min',
+      'heart_rate_max',
+      'heart_rate_avg',
+      'running_speed_min',
+      'running_speed_max',
+      'running_speed_avg',
+      'cycling_power_min',
+      'cycling_power_max',
+      'cycling_power_avg',
+      'apple_move_time',
+      'apple_exercise_time',
+      'apple_stand_time',
+      'dietary_fat_total',
+      'dietary_protein',
+      'dietary_sodium',
+      'environmental_audio_exposure_min',
+      'headphone_audio_exposure_max',
+      'cycling_ftp',
+      'Metabolism',
+      'Activity Score',
+      'Readiness Score',
+      'Skin Temperature Variation',
+      'SpO2',
+      'Breathing Disturbance Index',
+      'Stress High Minutes',
+      'Recovery High Minutes',
+      'Vascular Age',
+      'VO2 Max',
+      'Heart Rate',
+      'Maximum Heart Rate',
+      'Aerobic Threshold',
+      'Anaerobic Threshold',
+      'Steps',
+      'Daily Calories',
+      'Nightly Recharge Score',
+      'ANS Charge',
+      'Overnight HRV',
+      'Overnight RHR',
+      'Breathing Rate',
+      'Fat Free Mass',
+      'Fat Mass Weight',
+      'Blood Pressure',
+      'Body Temperature',
+      'Blood Oxygen (SpO2)',
+      'Skin Temperature',
+      'Pulse Wave Velocity',
+      'Heart Health',
+      'ECG Metrics',
+      'Body Water Breakdown',
+      'Nerve Health',
+      'Segmental Body Comp',
+      'Sleep Metrics',
+      'Stress Metrics',
+      'Visceral Fat',
+      'Floors',
+      'Minutes Sedentary',
+      'Minutes Lightly Active',
+      'Minutes Fairly Active',
+      'Minutes Very Active',
+      'Raw Stress Data',
     ];
     setCustomCategories([
       ...healthNames.map((name, idx) =>
@@ -1008,11 +1274,20 @@ describe('MeasurementsAddScreen — custom measurements', () => {
           frequency: 'Daily',
           data_type: name === 'Raw Stress Data' ? 'text' : 'numeric',
           measurement_type: name === 'Raw Stress Data' ? 'JSON' : '',
-        }),
+        })
       ),
       customCategory({ id: 'manual-1', name: 'My Daily', frequency: 'Daily' }),
-      customCategory({ id: 'renamed-1', name: 'My HRV Notes', frequency: 'Daily', data_type: 'text' }),
-      customCategory({ id: 'hourly-1', name: 'Hourly Thing', frequency: 'Hourly' }),
+      customCategory({
+        id: 'renamed-1',
+        name: 'My HRV Notes',
+        frequency: 'Daily',
+        data_type: 'text',
+      }),
+      customCategory({
+        id: 'hourly-1',
+        name: 'Hourly Thing',
+        frequency: 'Hourly',
+      }),
     ]);
     const screen = renderScreen();
 
@@ -1020,9 +1295,12 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     expect(screen.getByTestId('custom-input-manual-1')).toBeTruthy();
     expect(screen.getByTestId('custom-input-renamed-1')).toBeTruthy();
     // Health categories are NOT flooded initially — they live behind More.
-    const rendered = screen.UNSAFE_getAllByType(require('react-native').TextInput);
-    const healthInputs = rendered.filter((el: { props?: { testID?: string } }) =>
-      el.props?.testID?.startsWith('custom-input-health-'),
+    const rendered = screen.UNSAFE_getAllByType(
+      require('react-native').TextInput
+    );
+    const healthInputs = rendered.filter(
+      (el: { props?: { testID?: string } }) =>
+        el.props?.testID?.startsWith('custom-input-health-')
     );
     expect(healthInputs).toHaveLength(0);
     // The one-tap More categories control is present (not flooded, not gone).
@@ -1033,21 +1311,34 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     fireEvent.press(moreButton);
     expect(screen.getByTestId('custom-input-health-0')).toBeTruthy(); // steps
     expect(screen.getByTestId('custom-input-health-3')).toBeTruthy(); // Active Calories
-    expect(screen.getByLabelText('Hide categories ▴').props.accessibilityState?.expanded).toBe(true);
+    expect(
+      screen.getByLabelText('Hide categories ▴').props.accessibilityState
+        ?.expanded
+    ).toBe(true);
     // Hourly is hidden even after expanding More.
     expect(screen.queryByTestId('custom-input-hourly-1')).toBeNull();
     // Standard built-ins remain present and usable.
-    expect(screen.getAllByPlaceholderText('0').length).toBeGreaterThanOrEqual(7);
+    expect(screen.getAllByPlaceholderText('0').length).toBeGreaterThanOrEqual(
+      7
+    );
 
     // Manual values can still be saved.
     fireEvent.changeText(screen.getByTestId('custom-input-manual-1'), '42');
     fireEvent.changeText(getInput(screen, 'weight'), '80');
     await pressSave(screen);
-    expect(savedCustomPayload()).toEqual(expect.objectContaining({ category_id: 'manual-1', value: 42, source: 'manual' }));
+    expect(savedCustomPayload()).toEqual(
+      expect.objectContaining({
+        category_id: 'manual-1',
+        value: 42,
+        source: 'manual',
+      })
+    );
   });
 
   test('A. matched no-manual category (weight) is collapsed initially and appears after expanding More', () => {
-    setCustomCategories([customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' })]);
+    setCustomCategories([
+      customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' }),
+    ]);
     setCustomEntries([]);
     const screen = renderScreen();
 
@@ -1059,8 +1350,17 @@ describe('MeasurementsAddScreen — custom measurements', () => {
   });
 
   test('B. known health name WITH manual entry is visible in primary and prefilled', () => {
-    setCustomCategories([customCategory({ id: 'bp1', name: 'Blood Pressure', frequency: 'Daily' })]);
-    setCustomEntries([customEntry({ id: 'e1', category_id: 'bp1', value: '120', source: 'manual' })]);
+    setCustomCategories([
+      customCategory({ id: 'bp1', name: 'Blood Pressure', frequency: 'Daily' }),
+    ]);
+    setCustomEntries([
+      customEntry({
+        id: 'e1',
+        category_id: 'bp1',
+        value: '120',
+        source: 'manual',
+      }),
+    ]);
     const screen = renderScreen();
 
     // Visible WITHOUT expanding More.
@@ -1071,8 +1371,17 @@ describe('MeasurementsAddScreen — custom measurements', () => {
   });
 
   test('C. synced-only entry stays behind More and is NOT prefilled', () => {
-    setCustomCategories([customCategory({ id: 'h1', name: 'HRV_SDNN_min', frequency: 'Daily' })]);
-    setCustomEntries([customEntry({ id: 'e1', category_id: 'h1', value: '45', source: 'healthkit' })]);
+    setCustomCategories([
+      customCategory({ id: 'h1', name: 'HRV_SDNN_min', frequency: 'Daily' }),
+    ]);
+    setCustomEntries([
+      customEntry({
+        id: 'e1',
+        category_id: 'h1',
+        value: '45',
+        source: 'healthkit',
+      }),
+    ]);
     const screen = renderScreen();
 
     expect(screen.queryByTestId('custom-input-h1')).toBeNull();
@@ -1082,8 +1391,12 @@ describe('MeasurementsAddScreen — custom measurements', () => {
   });
 
   test('D. null-source entry does NOT count as manual (stays behind More)', () => {
-    setCustomCategories([customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' })]);
-    setCustomEntries([customEntry({ id: 'e1', category_id: 'w1', value: '80', source: null })]);
+    setCustomCategories([
+      customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' }),
+    ]);
+    setCustomEntries([
+      customEntry({ id: 'e1', category_id: 'w1', value: '80', source: null }),
+    ]);
     const screen = renderScreen();
 
     expect(screen.queryByTestId('custom-input-w1')).toBeNull();
@@ -1092,24 +1405,42 @@ describe('MeasurementsAddScreen — custom measurements', () => {
   });
 
   test('E. saving from More uses source manual and never deletes synced entries', async () => {
-    setCustomCategories([customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' })]);
-    setCustomEntries([customEntry({ id: 'e1', category_id: 'w1', value: '80', source: 'healthkit' })]);
+    setCustomCategories([
+      customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' }),
+    ]);
+    setCustomEntries([
+      customEntry({
+        id: 'e1',
+        category_id: 'w1',
+        value: '80',
+        source: 'healthkit',
+      }),
+    ]);
     const screen = renderScreen();
 
     fireEvent.press(screen.getByLabelText('More categories ▾'));
     fireEvent.changeText(screen.getByTestId('custom-input-w1'), '82');
     await pressSave(screen);
 
-    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync;
+    const saveMock =
+      mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync;
     expect(saveMock).toHaveBeenCalledWith(
-      expect.objectContaining({ category_id: 'w1', value: 82, source: 'manual' }),
+      expect.objectContaining({
+        category_id: 'w1',
+        value: 82,
+        source: 'manual',
+      })
     );
     // The synced entry is never deleted/overwritten by this manual save.
-    expect(mockUseDeleteCustomMeasurement.mock.results.at(-1)?.value.mutateAsync).not.toHaveBeenCalled();
+    expect(
+      mockUseDeleteCustomMeasurement.mock.results.at(-1)?.value.mutateAsync
+    ).not.toHaveBeenCalled();
   });
 
   test('F. dirty value typed inside More survives collapse and re-expand', async () => {
-    setCustomCategories([customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' })]);
+    setCustomCategories([
+      customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' }),
+    ]);
     setCustomEntries([]);
     const screen = renderScreen();
 
@@ -1122,14 +1453,21 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     expect(screen.getByTestId('custom-input-w1').props.value).toBe('82');
     // Save submits the retained value.
     await pressSave(screen);
-    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync;
+    const saveMock =
+      mockUseSaveCustomMeasurement.mock.results.at(-1)?.value.mutateAsync;
     expect(saveMock).toHaveBeenCalledWith(
-      expect.objectContaining({ category_id: 'w1', value: 82, source: 'manual' }),
+      expect.objectContaining({
+        category_id: 'w1',
+        value: 82,
+        source: 'manual',
+      })
     );
   });
 
   test('G. dirty value typed inside More survives a background refetch reconciliation', async () => {
-    setCustomCategories([customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' })]);
+    setCustomCategories([
+      customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' }),
+    ]);
     setCustomEntries([]);
     const screen = renderScreen();
 
@@ -1139,7 +1477,9 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     // Simulate a background refetch: same categories, same (empty) entries —
     // the reconciliation must preserve the typed value.
     act(() => {
-      setCustomCategories([customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' })]);
+      setCustomCategories([
+        customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' }),
+      ]);
       setCustomEntries([]);
     });
     expect(screen.getByTestId('custom-input-w1').props.value).toBe('82');
@@ -1150,7 +1490,14 @@ describe('MeasurementsAddScreen — custom measurements', () => {
       customCategory({ id: 'c1', name: 'My Daily', frequency: 'Daily' }),
       customCategory({ id: 'bp1', name: 'Blood Pressure', frequency: 'Daily' }),
     ]);
-    setCustomEntries([customEntry({ id: 'e1', category_id: 'bp1', value: '120', source: 'manual' })]);
+    setCustomEntries([
+      customEntry({
+        id: 'e1',
+        category_id: 'bp1',
+        value: '120',
+        source: 'manual',
+      }),
+    ]);
     const screen = renderScreen();
 
     expect(screen.getByTestId('custom-input-c1')).toBeTruthy();
@@ -1159,7 +1506,9 @@ describe('MeasurementsAddScreen — custom measurements', () => {
   });
 
   test('L. More categories toggle exposes accessibility expanded state', () => {
-    setCustomCategories([customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' })]);
+    setCustomCategories([
+      customCategory({ id: 'w1', name: 'weight', frequency: 'Daily' }),
+    ]);
     setCustomEntries([]);
     const screen = renderScreen();
 
@@ -1167,9 +1516,14 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     expect(button.props.accessibilityRole).toBe('button');
     expect(button.props.accessibilityState?.expanded).toBe(false);
     fireEvent.press(button);
-    expect(screen.getByLabelText('Hide categories ▴').props.accessibilityState?.expanded).toBe(true);
+    expect(
+      screen.getByLabelText('Hide categories ▴').props.accessibilityState
+        ?.expanded
+    ).toBe(true);
     fireEvent.press(screen.getByLabelText('Hide categories ▴'));
-    expect(screen.getByLabelText('More categories ▾').props.accessibilityState?.expanded).toBe(false);
+    expect(
+      screen.getByLabelText('More categories ▾').props.accessibilityState
+        ?.expanded
+    ).toBe(false);
   });
-
 });

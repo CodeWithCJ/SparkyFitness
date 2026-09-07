@@ -42,14 +42,20 @@ describe('appPreferencesStore', () => {
       expect(useAppPreferencesStore.getState().hapticsEnabled).toBe(false);
 
       store.setLiquidGlassTabBarEnabled(true);
-      expect(useAppPreferencesStore.getState().liquidGlassTabBarEnabled).toBe(true);
+      expect(useAppPreferencesStore.getState().liquidGlassTabBarEnabled).toBe(
+        true
+      );
 
       store.setActiveWorkoutMetricColumn('e1rm');
-      expect(useAppPreferencesStore.getState().activeWorkoutMetricColumn).toBe('e1rm');
+      expect(useAppPreferencesStore.getState().activeWorkoutMetricColumn).toBe(
+        'e1rm'
+      );
 
       store.setDiarySummaryVisible(true);
       expect(useAppPreferencesStore.getState().diarySummaryVisible).toBe(true);
-      expect(useAppPreferencesStore.getState().diarySummaryExpanded).toBe(false);
+      expect(useAppPreferencesStore.getState().diarySummaryExpanded).toBe(
+        false
+      );
 
       store.setDiarySummaryExpanded(true);
       expect(useAppPreferencesStore.getState().diarySummaryExpanded).toBe(true);
@@ -61,17 +67,25 @@ describe('appPreferencesStore', () => {
       expect(useAppPreferencesStore.getState().languagePreference).toBe('pl');
 
       store.setRestTimerSoundEnabled(false);
-      expect(useAppPreferencesStore.getState().restTimerSoundEnabled).toBe(false);
+      expect(useAppPreferencesStore.getState().restTimerSoundEnabled).toBe(
+        false
+      );
     });
   });
 
   describe('activeWorkoutMetricColumn backfill', () => {
     it('falls back to the default when an older persisted blob lacks the key', async () => {
-      const withoutMetricColumn = { ...PREFERENCE_DEFAULTS } as Record<string, unknown>;
+      const withoutMetricColumn = { ...PREFERENCE_DEFAULTS } as Record<
+        string,
+        unknown
+      >;
       delete withoutMetricColumn.activeWorkoutMetricColumn;
       await AsyncStorage.setItem(
         '@SparkyFitness/app-preferences',
-        JSON.stringify({ state: { ...withoutMetricColumn, soundsEnabled: false }, version: 1 }),
+        JSON.stringify({
+          state: { ...withoutMetricColumn, soundsEnabled: false },
+          version: 1,
+        })
       );
 
       await useAppPreferencesStore.persist.rehydrate();
@@ -88,7 +102,10 @@ describe('appPreferencesStore', () => {
       // previously saved them with the old booleanPreference factory.
       await AsyncStorage.setItem('@HealthConnect:soundsEnabled', 'false');
       await AsyncStorage.setItem('@HealthConnect:hapticsEnabled', 'false');
-      await AsyncStorage.setItem('@HealthConnect:liquidGlassTabBarEnabled', 'true');
+      await AsyncStorage.setItem(
+        '@HealthConnect:liquidGlassTabBarEnabled',
+        'true'
+      );
 
       // Force re-hydration from storage (simulates cold-start with legacy data).
       await useAppPreferencesStore.persist.rehydrate();
@@ -118,7 +135,10 @@ describe('appPreferencesStore', () => {
         state: { ...PREFERENCE_DEFAULTS, soundsEnabled: false },
         version: 1,
       });
-      await AsyncStorage.setItem('@SparkyFitness/app-preferences', combinedValue);
+      await AsyncStorage.setItem(
+        '@SparkyFitness/app-preferences',
+        combinedValue
+      );
 
       // Legacy key has a different value — should be ignored.
       await AsyncStorage.setItem('@HealthConnect:soundsEnabled', 'true');

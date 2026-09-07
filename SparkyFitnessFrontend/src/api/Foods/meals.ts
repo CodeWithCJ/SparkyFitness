@@ -3,7 +3,6 @@ import { buildPayloadRequest } from '../imageRequest';
 import type {
   Meal,
   MealPayload,
-  MealPlanTemplate,
   MealDeletionImpact,
   MealFilter,
 } from '@/types/meal';
@@ -94,37 +93,6 @@ export const getMealDeletionImpact = async (
   mealId: string
 ): Promise<MealDeletionImpact> => {
   return await apiCall(`/meals/${mealId}/deletion-impact`, { method: 'GET' });
-};
-
-export const createMealPlanEntry = async (
-  planData: MealPlanTemplate
-): Promise<MealPlanTemplate> => {
-  return await apiCall(`/meals/plan`, { method: 'POST', body: planData });
-};
-
-export const getMealPlanEntries = async (
-  startDate: string,
-  endDate: string
-): Promise<MealPlanTemplate[]> => {
-  const response = await apiCall(`/meals/plan`, {
-    method: 'GET',
-    params: { startDate, endDate },
-  });
-  return Array.isArray(response) ? response : [];
-};
-
-export const updateMealPlanEntry = async (
-  planId: string,
-  planData: MealPlanTemplate
-): Promise<MealPlanTemplate> => {
-  return await apiCall(`/meals/plan/${planId}`, {
-    method: 'PUT',
-    body: planData,
-  });
-};
-
-export const deleteMealPlanEntry = async (planId: string): Promise<void> => {
-  await apiCall(`/meals/plan/${planId}`, { method: 'DELETE' });
 };
 
 export const createMealFromDiary = async (

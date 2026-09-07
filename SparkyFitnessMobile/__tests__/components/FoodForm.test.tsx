@@ -39,9 +39,7 @@ jest.mock('../../src/components/FoodUnitSelectorSheet', () => {
       return (
         <View>
           {props.renderTrigger?.({ onPress: () => {} })}
-          <Pressable
-            onPress={() => props.onSelect(mockUnitSelectionPayload)}
-          >
+          <Pressable onPress={() => props.onSelect(mockUnitSelectionPayload)}>
             <Text>Use Converted Unit</Text>
           </Pressable>
         </View>
@@ -65,7 +63,12 @@ jest.mock('../../src/hooks', () => ({
   useServerConnection: () => ({ isConnected: true, isLoading: false }),
 }));
 jest.mock('../../src/hooks/useCustomNutrients', () => ({
-  useCustomNutrients: () => ({ customNutrients: [], isLoading: false, isError: false, refetch: jest.fn() }),
+  useCustomNutrients: () => ({
+    customNutrients: [],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  }),
 }));
 jest.mock('../../src/hooks/useActiveAiServiceSetting', () => ({
   useActiveAiServiceSetting: () => ({
@@ -127,7 +130,7 @@ describe('FoodForm', () => {
           fiber: '',
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     fireEvent.changeText(screen.getByDisplayValue('100'), '150');
@@ -154,7 +157,7 @@ describe('FoodForm', () => {
           fat: '4',
         }}
         onSubmit={onSubmit}
-      />,
+      />
     );
 
     fireEvent.changeText(screen.getByDisplayValue('100'), '150');
@@ -167,7 +170,7 @@ describe('FoodForm', () => {
         protein: '15',
         carbs: '12.345',
         fat: '6',
-      }),
+      })
     );
   });
 
@@ -185,7 +188,7 @@ describe('FoodForm', () => {
           fat: '4',
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     fireEvent.changeText(screen.getByDisplayValue('100'), '150');
@@ -210,11 +213,15 @@ describe('FoodForm', () => {
           fat: '4',
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     fireEvent.changeText(screen.getByDisplayValue('100'), '150');
-    fireEvent(screen.getByLabelText('Auto Scale Nutrition'), 'valueChange', true);
+    fireEvent(
+      screen.getByLabelText('Auto Scale Nutrition'),
+      'valueChange',
+      true
+    );
     fireEvent.changeText(screen.getByDisplayValue('150'), '200');
 
     expect(screen.getByDisplayValue('160')).toBeTruthy();
@@ -236,7 +243,7 @@ describe('FoodForm', () => {
           fat: '4',
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     expect(screen.queryByLabelText('Auto Scale Nutrition')).toBeNull();
@@ -257,13 +264,17 @@ describe('FoodForm', () => {
           fat: '4',
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     fireEvent.changeText(screen.getByDisplayValue('100'), '150');
     expect(screen.getByDisplayValue('180')).toBeTruthy();
 
-    fireEvent(screen.getByLabelText('Auto Scale Nutrition'), 'valueChange', false);
+    fireEvent(
+      screen.getByLabelText('Auto Scale Nutrition'),
+      'valueChange',
+      false
+    );
     fireEvent.changeText(screen.getByDisplayValue('150'), '200');
 
     expect(screen.getByDisplayValue('180')).toBeTruthy();
@@ -282,24 +293,30 @@ describe('FoodForm', () => {
           fat: '4',
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     const servingUnitPickerCall = mockBottomSheetPicker.mock.calls.find(
-      ([props]) => props.title === 'Select Unit',
+      ([props]) => props.title === 'Select Unit'
     );
 
     expect(servingUnitPickerCall?.[0].sections).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ title: 'Weight', options: expect.any(Array) }),
-        expect.objectContaining({ title: 'Volume', options: expect.any(Array) }),
+        expect.objectContaining({
+          title: 'Weight',
+          options: expect.any(Array),
+        }),
+        expect.objectContaining({
+          title: 'Volume',
+          options: expect.any(Array),
+        }),
         expect.objectContaining({
           title: 'Quantity',
           options: expect.arrayContaining([
             expect.objectContaining({ label: 'portion', value: 'portion' }),
           ]),
         }),
-      ]),
+      ])
     );
   });
 
@@ -352,7 +369,7 @@ describe('FoodForm', () => {
           onUnitSelectionChange,
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     fireEvent.press(screen.getByText('Use Converted Unit'));
@@ -374,8 +391,12 @@ describe('FoodForm', () => {
     });
     expect(screen.getByText('oz')).toBeTruthy();
     expect(mockFoodUnitSelectorSheet).toHaveBeenCalled();
-    expect(mockFoodUnitSelectorSheet.mock.calls[0]?.[0]?.title).toBe('Select Unit');
-    expect(mockFoodUnitSelectorSheet.mock.calls[0]?.[0]?.selectedSelection).toEqual({
+    expect(mockFoodUnitSelectorSheet.mock.calls[0]?.[0]?.title).toBe(
+      'Select Unit'
+    );
+    expect(
+      mockFoodUnitSelectorSheet.mock.calls[0]?.[0]?.selectedSelection
+    ).toEqual({
       kind: 'existing',
       variant: {
         id: 'variant-1',
@@ -389,7 +410,7 @@ describe('FoodForm', () => {
       },
     });
     expect(
-      mockFoodUnitSelectorSheet.mock.calls[0]?.[0]?.showManualUpdateBanner,
+      mockFoodUnitSelectorSheet.mock.calls[0]?.[0]?.showManualUpdateBanner
     ).toBeUndefined();
   });
 
@@ -446,7 +467,7 @@ describe('FoodForm', () => {
           onUnitSelectionChange: jest.fn(),
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     fireEvent.press(screen.getByText('Use Converted Unit'));
@@ -515,7 +536,7 @@ describe('FoodForm', () => {
           onUnitSelectionChange: jest.fn(),
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     fireEvent.press(screen.getByText('Use Converted Unit'));
@@ -530,7 +551,9 @@ describe('FoodForm', () => {
     expect(screen.getByDisplayValue('4')).toBeTruthy();
 
     const latestSelectorProps =
-      mockFoodUnitSelectorSheet.mock.calls[mockFoodUnitSelectorSheet.mock.calls.length - 1]?.[0];
+      mockFoodUnitSelectorSheet.mock.calls[
+        mockFoodUnitSelectorSheet.mock.calls.length - 1
+      ]?.[0];
     expect(latestSelectorProps?.variants).toEqual([
       expect.objectContaining({
         id: 'variant-1',
@@ -545,13 +568,13 @@ describe('FoodForm', () => {
           serving_unit: 'cup',
         }),
         requiresNutritionUpdate: true,
-      }),
+      })
     );
     expect(latestSelectorProps?.showManualUpdateBanner).toBeUndefined();
     expect(
       screen.getByText(
-        "Can't convert between units. Update nutrition values manually.",
-      ),
+        "Can't convert between units. Update nutrition values manually."
+      )
     ).toBeTruthy();
   });
 
@@ -595,13 +618,13 @@ describe('FoodForm', () => {
           onUnitSelectionChange: jest.fn(),
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     expect(
       screen.getByText(
-        "Can't convert between units. Update nutrition values manually.",
-      ),
+        "Can't convert between units. Update nutrition values manually."
+      )
     ).toBeTruthy();
   });
 
@@ -661,13 +684,15 @@ describe('FoodForm', () => {
           onUnitSelectionChange: jest.fn(),
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     fireEvent.press(screen.getByText('Use Converted Unit'));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(false);
+      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(
+        false
+      );
     });
   });
 
@@ -730,13 +755,15 @@ describe('FoodForm', () => {
           onUnitSelectionChange: jest.fn(),
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     fireEvent.press(screen.getByText('Use Converted Unit'));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(true);
+      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(
+        true
+      );
       expect(screen.getByText('Convert with AI')).toBeTruthy();
     });
   });
@@ -808,13 +835,15 @@ describe('FoodForm', () => {
           onUnitSelectionChange: jest.fn(),
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     fireEvent.press(screen.getByText('Use Converted Unit'));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(true);
+      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(
+        true
+      );
     });
   });
 
@@ -867,7 +896,7 @@ describe('FoodForm', () => {
           onUnitSelectionChange: jest.fn(),
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     fireEvent.press(screen.getByText('Use Converted Unit'));
@@ -875,10 +904,12 @@ describe('FoodForm', () => {
     await waitFor(() => {
       expect(
         screen.getByText(
-          "Can't convert between units. Update nutrition values manually.",
-        ),
+          "Can't convert between units. Update nutrition values manually."
+        )
       ).toBeTruthy();
-      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(false);
+      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(
+        false
+      );
     });
     expect(screen.queryByText('Convert with AI')).toBeNull();
   });
@@ -935,7 +966,7 @@ describe('FoodForm', () => {
           onUnitSelectionChange: jest.fn(),
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     fireEvent.press(screen.getByText('Use Converted Unit'));
@@ -945,10 +976,12 @@ describe('FoodForm', () => {
       // below is the AI affordance when the swap is eligible.
       expect(
         screen.getByText(
-          "Can't convert between units. Update nutrition values manually.",
-        ),
+          "Can't convert between units. Update nutrition values manually."
+        )
       ).toBeTruthy();
-      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(true);
+      expect(screen.getByLabelText('Auto Scale Nutrition').props.value).toBe(
+        true
+      );
       expect(screen.getByText('Convert with AI')).toBeTruthy();
     });
   });
@@ -994,7 +1027,7 @@ describe('FoodForm', () => {
           onUnitSelectionChange: jest.fn(),
         }}
         onSubmit={onSubmit}
-      />,
+      />
     );
 
     fireEvent.press(screen.getByText('Add Food'));
@@ -1005,12 +1038,14 @@ describe('FoodForm', () => {
       expect.arrayContaining([
         expect.objectContaining({ text: 'Cancel', style: 'cancel' }),
         expect.objectContaining({ text: 'Save Anyway' }),
-      ]),
+      ])
     );
     expect(onSubmit).not.toHaveBeenCalled();
 
     const buttons = (Alert.alert as jest.Mock).mock.calls[0][2];
-    const saveAnyway = buttons.find((button: { text: string }) => button.text === 'Save Anyway');
+    const saveAnyway = buttons.find(
+      (button: { text: string }) => button.text === 'Save Anyway'
+    );
     saveAnyway?.onPress?.();
 
     expect(onSubmit).toHaveBeenCalled();
@@ -1071,7 +1106,7 @@ describe('FoodForm', () => {
           onUnitSelectionChange: jest.fn(),
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     fireEvent.press(screen.getByText('Use Converted Unit'));
@@ -1143,7 +1178,7 @@ describe('FoodForm', () => {
           onUnitSelectionChange: jest.fn(),
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     fireEvent.press(screen.getByText('Use Converted Unit'));
@@ -1198,7 +1233,7 @@ describe('FoodForm', () => {
           onUnitSelectionChange: jest.fn(),
         }}
         onSubmit={onSubmit}
-      />,
+      />
     );
 
     screen.rerender(
@@ -1221,7 +1256,7 @@ describe('FoodForm', () => {
           onUnitSelectionChange: jest.fn(),
         }}
         onSubmit={onSubmit}
-      />,
+      />
     );
 
     fireEvent.press(screen.getByText('Add Food'));
@@ -1234,7 +1269,7 @@ describe('FoodForm', () => {
         protein: '10',
         carbs: '8.23',
         fat: '4',
-      }),
+      })
     );
   });
 
@@ -1272,7 +1307,7 @@ describe('FoodForm', () => {
           onUnitSelectionChange: jest.fn(),
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     // Phase G follow-up: the AI provenance shows up as a plain confidence
@@ -1318,7 +1353,7 @@ describe('FoodForm', () => {
           onUnitSelectionChange,
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     expect(screen.getByText(/Fair estimate/)).toBeTruthy();
@@ -1337,7 +1372,7 @@ describe('FoodForm', () => {
           source: 'manual',
           ai_confidence: null,
         }),
-      }),
+      })
     );
     const latestSheetProps =
       mockFoodUnitSelectorSheet.mock.calls[
@@ -1403,7 +1438,7 @@ describe('FoodForm', () => {
           onUnitSelectionChange: jest.fn(),
         }}
         onSubmit={jest.fn()}
-      />,
+      />
     );
 
     fireEvent.press(screen.getByText('Use Converted Unit'));

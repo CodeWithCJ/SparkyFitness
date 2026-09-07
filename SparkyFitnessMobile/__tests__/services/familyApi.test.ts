@@ -96,7 +96,7 @@ describe('familyApi', () => {
     ]);
     expect(mockFetch).toHaveBeenCalledWith(
       'https://example.com/api/identity/users/accessible-users',
-      expect.anything(),
+      expect.anything()
     );
   });
 
@@ -225,7 +225,7 @@ describe('familyApi', () => {
 
     expect(mockFetch).toHaveBeenCalledWith(
       'https://example.com/api/daily-summary?date=2026-08-23&userId=member-b',
-      expect.anything(),
+      expect.anything()
     );
   });
 });

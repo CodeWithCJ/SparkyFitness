@@ -6,10 +6,7 @@ import * as HealthKitPreferences from './healthkit/preferences';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import { healthReadProvider, readCumulativeByDay } from './healthkit/provider';
 import { runForegroundSync } from './shared/healthSyncEngine';
-import {
-  SyncResult,
-  HealthMetricStates,
-} from '../types/healthRecords';
+import { SyncResult, HealthMetricStates } from '../types/healthRecords';
 import { SyncDuration } from './healthkit/preferences';
 import { migrateEnabledMetricPermissionsIfNeeded } from './shared/healthPermissionMigration';
 import { enabledWritebackPermissions } from './shared/healthPermissionSets';
@@ -35,11 +32,13 @@ export const readMinMaxAvgByDayDetailed = HealthKit.readMinMaxAvgByDayDetailed;
 export const getSyncStartDate = HealthKit.getSyncStartDate;
 
 // Locked-device detection (HealthKit database inaccessible)
-export const resetDatabaseInaccessibleCount = HealthKit.resetDatabaseInaccessibleCount;
+export const resetDatabaseInaccessibleCount =
+  HealthKit.resetDatabaseInaccessibleCount;
 // HealthKit has no equivalent: its store is not a separate client that can
 // disconnect. Locked-device failures are covered by databaseInaccessibleCount.
 export const getClientUnavailableCount = (): number => 0;
-export const getDatabaseInaccessibleCount = HealthKit.getDatabaseInaccessibleCount;
+export const getDatabaseInaccessibleCount =
+  HealthKit.getDatabaseInaccessibleCount;
 
 export const aggregateByDay = HealthKitAggregation.aggregateByDay;
 
@@ -48,27 +47,42 @@ export { alignToLocalDayStart } from '../utils/syncUtils';
 // Deduplicated aggregation functions (use HealthKit's statistics API). The Detailed
 // variants carry a { records, error } envelope so read failures propagate to callers.
 export const getAggregatedStepsByDate = HealthKit.getAggregatedStepsByDate;
-export const getAggregatedStepsByDateDetailed = HealthKit.getAggregatedStepsByDateDetailed;
-export const getAggregatedActiveCaloriesByDate = HealthKit.getAggregatedActiveCaloriesByDate;
-export const getAggregatedActiveCaloriesByDateDetailed = HealthKit.getAggregatedActiveCaloriesByDateDetailed;
-export const getAggregatedTotalCaloriesByDate = HealthKit.getAggregatedTotalCaloriesByDate;
-export const getAggregatedTotalCaloriesByDateDetailed = HealthKit.getAggregatedTotalCaloriesByDateDetailed;
-export const getAggregatedDistanceByDate = HealthKit.getAggregatedDistanceByDate;
-export const getAggregatedDistanceByDateDetailed = HealthKit.getAggregatedDistanceByDateDetailed;
-export const getAggregatedFloorsClimbedByDate = HealthKit.getAggregatedFloorsClimbedByDate;
-export const getAggregatedFloorsClimbedByDateDetailed = HealthKit.getAggregatedFloorsClimbedByDateDetailed;
-export const getAggregatedBasalEnergyByDate = HealthKit.getAggregatedBasalEnergyByDate;
-export const getAggregatedBasalEnergyByDateDetailed = HealthKit.getAggregatedBasalEnergyByDateDetailed;
+export const getAggregatedStepsByDateDetailed =
+  HealthKit.getAggregatedStepsByDateDetailed;
+export const getAggregatedActiveCaloriesByDate =
+  HealthKit.getAggregatedActiveCaloriesByDate;
+export const getAggregatedActiveCaloriesByDateDetailed =
+  HealthKit.getAggregatedActiveCaloriesByDateDetailed;
+export const getAggregatedTotalCaloriesByDate =
+  HealthKit.getAggregatedTotalCaloriesByDate;
+export const getAggregatedTotalCaloriesByDateDetailed =
+  HealthKit.getAggregatedTotalCaloriesByDateDetailed;
+export const getAggregatedDistanceByDate =
+  HealthKit.getAggregatedDistanceByDate;
+export const getAggregatedDistanceByDateDetailed =
+  HealthKit.getAggregatedDistanceByDateDetailed;
+export const getAggregatedFloorsClimbedByDate =
+  HealthKit.getAggregatedFloorsClimbedByDate;
+export const getAggregatedFloorsClimbedByDateDetailed =
+  HealthKit.getAggregatedFloorsClimbedByDateDetailed;
+export const getAggregatedBasalEnergyByDate =
+  HealthKit.getAggregatedBasalEnergyByDate;
+export const getAggregatedBasalEnergyByDateDetailed =
+  HealthKit.getAggregatedBasalEnergyByDateDetailed;
 
 export { healthReadProvider, readCumulativeByDay };
 
-export const aggregateSleepSessions = HealthKitAggregation.aggregateSleepSessions;
+export const aggregateSleepSessions =
+  HealthKitAggregation.aggregateSleepSessions;
 
 // iOS enriches workouts inside the read layer (handleWorkout fetches per-session
 // statistics), so this is a passthrough — same pattern as Android's aggregateSleepSessions.
-export const enrichExerciseSessions = async (records: unknown[]): Promise<unknown[]> => records;
+export const enrichExerciseSessions = async (
+  records: unknown[]
+): Promise<unknown[]> => records;
 
-export const transformHealthRecords = HealthKitTransformation.transformHealthRecords;
+export const transformHealthRecords =
+  HealthKitTransformation.transformHealthRecords;
 
 export const saveHealthPreference = HealthKitPreferences.saveHealthPreference;
 export const loadHealthPreference = HealthKitPreferences.loadHealthPreference;
@@ -78,7 +92,7 @@ export const saveSyncDuration = HealthKitPreferences.saveSyncDuration;
 export const loadSyncDuration = HealthKitPreferences.loadSyncDuration;
 export const refreshEnabledMetricPermissions = async (
   healthMetricStates: HealthMetricStates,
-  writebackStates: Record<string, boolean> = {},
+  writebackStates: Record<string, boolean> = {}
 ): Promise<boolean> =>
   migrateEnabledMetricPermissionsIfNeeded({
     healthMetricStates,
@@ -105,7 +119,7 @@ export {
 
 export const syncHealthData = (
   syncDuration: SyncDuration,
-  healthMetricStates: HealthMetricStates = {},
+  healthMetricStates: HealthMetricStates = {}
 ): Promise<SyncResult> =>
   runForegroundSync(healthReadProvider, syncDuration, healthMetricStates, {
     logTag: '[HealthKitService]',

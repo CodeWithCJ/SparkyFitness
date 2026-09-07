@@ -8,7 +8,12 @@ import PaginatedLibraryFooter from '../components/PaginatedLibraryFooter';
 import StatusView from '../components/StatusView';
 import FoodLibraryRow from '../components/FoodLibraryRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useFavorites, useFoodsLibrary, useServerConnection, useProfile } from '../hooks';
+import {
+  useFavorites,
+  useFoodsLibrary,
+  useServerConnection,
+  useProfile,
+} from '../hooks';
 import { foodItemToFoodInfo } from '../types/foodInfo';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -23,7 +28,9 @@ import type { FoodItem } from '../types/foods';
 
 type FoodsLibraryScreenProps = RootStackScreenProps<'FoodsLibrary'>;
 
-const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) => {
+const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({
+  navigation,
+}) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -31,8 +38,12 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
-  const ownershipFilter = useAppPreferencesStore((s) => s.foodsLibraryOwnershipFilter);
-  const setOwnershipFilter = useAppPreferencesStore((s) => s.setFoodsLibraryOwnershipFilter);
+  const ownershipFilter = useAppPreferencesStore(
+    (s) => s.foodsLibraryOwnershipFilter
+  );
+  const setOwnershipFilter = useAppPreferencesStore(
+    (s) => s.setFoodsLibraryOwnershipFilter
+  );
   const [refreshing, setRefreshing] = useState(false);
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -48,16 +59,22 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     loadMore,
     refetch,
   } = useFoodsLibrary(searchText, { enabled: isConnected });
-  const filteredFoods = useMemo(() => filterByOwnership(foods, ownershipFilter, profile?.id), [foods, ownershipFilter, profile?.id]);
+  const filteredFoods = useMemo(
+    () => filterByOwnership(foods, ownershipFilter, profile?.id),
+    [foods, ownershipFilter, profile?.id]
+  );
   const { favoriteFoods } = useFavorites({ enabled: isConnected });
   const favoriteFoodIds = useMemo(
     () => new Set(favoriteFoods.map((f) => f.id)),
-    [favoriteFoods],
+    [favoriteFoods]
   );
 
-  const handleFoodPress = useCallback((food: FoodItem) => {
-    navigation.navigate('FoodDetail', { item: foodItemToFoodInfo(food) });
-  }, [navigation]);
+  const handleFoodPress = useCallback(
+    (food: FoodItem) => {
+      navigation.navigate('FoodDetail', { item: foodItemToFoodInfo(food) });
+    },
+    [navigation]
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -66,7 +83,11 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   }, [refetch]);
 
   const renderEmpty = () => {
-    if (ownershipFilter !== 'all' && foods.length > 0 && filteredFoods.length === 0) {
+    if (
+      ownershipFilter !== 'all' &&
+      foods.length > 0 &&
+      filteredFoods.length === 0
+    ) {
       return (
         <StatusView
           inline
@@ -80,8 +101,12 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
               family: t('ownership.family', { defaultValue: 'Family' }),
               public: t('ownership.public', { defaultValue: 'Public' }),
             },
-            emptyTitle: t('ownership.emptyTitle', { defaultValue: 'No {{noun}} in {{filter}}' }),
-            emptySubtitle: t('ownership.emptySubtitle', { defaultValue: 'Change the filter to see your other {{noun}}.' }),
+            emptyTitle: t('ownership.emptyTitle', {
+              defaultValue: 'No {{noun}} in {{filter}}',
+            }),
+            emptySubtitle: t('ownership.emptySubtitle', {
+              defaultValue: 'Change the filter to see your other {{noun}}.',
+            }),
             showAllLabel: t('ownership.showAll', { defaultValue: 'Show All' }),
           })}
         />
@@ -90,10 +115,23 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
     return (
       <StatusView
         inline
-        title={searchText.trim().length > 0 ? t('foodLibrary.noMatch', { defaultValue: 'No matching foods found' }) : t('foodLibrary.noItems', { defaultValue: 'No foods found' })}
-        subtitle={searchText.trim().length > 0
-          ? t('foodLibrary.trySearch', { defaultValue: 'Try a different search term to find saved foods.' })
-          : t('foodLibrary.empty', { defaultValue: 'Foods you save or log will appear here.' })}
+        title={
+          searchText.trim().length > 0
+            ? t('foodLibrary.noMatch', {
+                defaultValue: 'No matching foods found',
+              })
+            : t('foodLibrary.noItems', { defaultValue: 'No foods found' })
+        }
+        subtitle={
+          searchText.trim().length > 0
+            ? t('foodLibrary.trySearch', {
+                defaultValue:
+                  'Try a different search term to find saved foods.',
+              })
+            : t('foodLibrary.empty', {
+                defaultValue: 'Foods you save or log will appear here.',
+              })
+        }
       />
     );
   };
@@ -105,15 +143,29 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           icon="cloud-offline"
           iconTone="muted"
           iconSize={64}
-          title={t('foodLibrary.noServer', { defaultValue: 'No server configured' })}
-          subtitle={t('foodLibrary.configure', { defaultValue: 'Configure your server connection in Settings to view your food library.' })}
-          action={{ label: t('foodLibrary.go', { defaultValue: 'Go to Settings' }), onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }), variant: 'primary' }}
+          title={t('foodLibrary.noServer', {
+            defaultValue: 'No server configured',
+          })}
+          subtitle={t('foodLibrary.configure', {
+            defaultValue:
+              'Configure your server connection in Settings to view your food library.',
+          })}
+          action={{
+            label: t('foodLibrary.go', { defaultValue: 'Go to Settings' }),
+            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
+            variant: 'primary',
+          }}
         />
       );
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title={t('foodLibrary.loading', { defaultValue: 'Loading foods...' })} />;
+      return (
+        <StatusView
+          loading
+          title={t('foodLibrary.loading', { defaultValue: 'Loading foods...' })}
+        />
+      );
     }
 
     if (isError) {
@@ -122,9 +174,17 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           icon="alert-circle"
           iconTone="danger"
           iconSize={64}
-          title={t('foodLibrary.failed', { defaultValue: 'Failed to load foods' })}
-          subtitle={t('foodLibrary.check', { defaultValue: 'Please check your connection and try again.' })}
-          action={{ label: t('foodLibrary.retry', { defaultValue: 'Retry' }), onPress: () => refetch(), variant: 'primary' }}
+          title={t('foodLibrary.failed', {
+            defaultValue: 'Failed to load foods',
+          })}
+          subtitle={t('foodLibrary.check', {
+            defaultValue: 'Please check your connection and try again.',
+          })}
+          action={{
+            label: t('foodLibrary.retry', { defaultValue: 'Retry' }),
+            onPress: () => refetch(),
+            variant: 'primary',
+          }}
         />
       );
     }
@@ -146,7 +206,9 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
           <PaginatedLibraryFooter
             isFetchingNextPage={isFetchingNextPage}
             isFetchNextPageError={isFetchNextPageError}
-            errorMessage={t('foodLibrary.moreFailed', { defaultValue: 'Failed to load more foods.' })}
+            errorMessage={t('foodLibrary.moreFailed', {
+              defaultValue: 'Failed to load more foods.',
+            })}
             onRetry={loadMore}
           />
         }
@@ -158,9 +220,16 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
         }}
         onEndReachedThreshold={0.5}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={accentColor}
+          />
         }
-        contentContainerStyle={{ paddingBottom: scrollBottomPadding, flexGrow: 1 }}
+        contentContainerStyle={{
+          paddingBottom: scrollBottomPadding,
+          flexGrow: 1,
+        }}
       />
     );
   };
@@ -177,7 +246,9 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
         public: t('ownership.public', { defaultValue: 'Public' }),
       },
       showLabel: t('ownership.show', { defaultValue: 'Show' }),
-      filterAccessibilityLabel: t('ownership.filter', { defaultValue: 'Filter {{noun}}, filtered to {{filter}}' }),
+      filterAccessibilityLabel: t('ownership.filter', {
+        defaultValue: 'Filter {{noun}}, filtered to {{filter}}',
+      }),
       identifier: 'foods-library-filter',
       filter: ownershipFilter,
       onSelect: setOwnershipFilter,
@@ -185,18 +256,23 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({ navigation }) =
   });
 
   return (
-      <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
-        {header}
-        {isConnected ? (
-          <LibrarySearchBar
-            value={searchText}
-            onChangeText={setSearchText}
-            placeholder={t('foodLibrary.search', { defaultValue: 'Search foods...' })}
-            isSearching={isSearching}
-          />
-        ) : null}
-        {renderContent()}
-      </View>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
+      {header}
+      {isConnected ? (
+        <LibrarySearchBar
+          value={searchText}
+          onChangeText={setSearchText}
+          placeholder={t('foodLibrary.search', {
+            defaultValue: 'Search foods...',
+          })}
+          isSearching={isSearching}
+        />
+      ) : null}
+      {renderContent()}
+    </View>
   );
 };
 

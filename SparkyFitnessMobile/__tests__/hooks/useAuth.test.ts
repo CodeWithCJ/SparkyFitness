@@ -1,6 +1,10 @@
 import { renderHook, act } from '@testing-library/react-native';
 import { useAuth } from '../../src/hooks/useAuth';
-import { setOnSessionExpired, setOnNoConfigs, suppressSessionExpired } from '../../src/services/api/authService';
+import {
+  setOnSessionExpired,
+  setOnNoConfigs,
+  suppressSessionExpired,
+} from '../../src/services/api/authService';
 import { clearServerConfigCache } from '../../src/services/storage';
 import type { ServerConfig } from '../../src/services/storage';
 
@@ -14,10 +18,16 @@ jest.mock('../../src/services/storage', () => ({
   clearServerConfigCache: jest.fn(),
 }));
 
-const mockSetOnSessionExpired = setOnSessionExpired as jest.MockedFunction<typeof setOnSessionExpired>;
-const mockSetOnNoConfigs = setOnNoConfigs as jest.MockedFunction<typeof setOnNoConfigs>;
-const mockClearServerConfigCache = clearServerConfigCache as jest.MockedFunction<typeof clearServerConfigCache>;
-const mockSuppressSessionExpired = suppressSessionExpired as jest.MockedFunction<typeof suppressSessionExpired>;
+const mockSetOnSessionExpired = setOnSessionExpired as jest.MockedFunction<
+  typeof setOnSessionExpired
+>;
+const mockSetOnNoConfigs = setOnNoConfigs as jest.MockedFunction<
+  typeof setOnNoConfigs
+>;
+const mockClearServerConfigCache =
+  clearServerConfigCache as jest.MockedFunction<typeof clearServerConfigCache>;
+const mockSuppressSessionExpired =
+  suppressSessionExpired as jest.MockedFunction<typeof suppressSessionExpired>;
 
 describe('useAuth', () => {
   beforeEach(() => {

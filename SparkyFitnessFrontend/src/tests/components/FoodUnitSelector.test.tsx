@@ -4,6 +4,10 @@ import '@testing-library/jest-dom';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
 import type { Food, FoodVariant } from '@/types/food';
 
+jest.mock('react-i18next', () =>
+  jest.requireActual('@/tests/mocks/reactI18next')
+);
+
 const mockFetchQuery = jest.fn();
 const mockMutateAsync = jest.fn();
 const mockQueryClient = {
@@ -177,6 +181,54 @@ describe('FoodUnitSelector', () => {
     jest.clearAllMocks();
   });
 
+  it('clears the entry note when reopened for another food', async () => {
+    // Diary never clears `selectedFood`, so this dialog stays mounted between
+    // foods. A note typed for one food must not be sitting there for the next.
+    const food = createFood(
+      createVariant({ id: 'v1', serving_size: 10, serving_unit: 'g' })
+    );
+    mockFetchQuery.mockResolvedValue([]);
+
+    const { rerender } = render(
+      <FoodUnitSelector
+        food={food}
+        open={true}
+        onOpenChange={jest.fn()}
+        onSelect={jest.fn()}
+      />
+    );
+    await waitFor(() => expect(mockFetchQuery).toHaveBeenCalled());
+
+    const noteBox = screen.getByLabelText(/note for this entry/i);
+    fireEvent.change(noteBox, { target: { value: 'ate half of it' } });
+    expect(noteBox).toHaveValue('ate half of it');
+
+    const reopen = (open: boolean, nextFood: Food) =>
+      rerender(
+        <FoodUnitSelector
+          food={nextFood}
+          open={open}
+          onOpenChange={jest.fn()}
+          onSelect={jest.fn()}
+        />
+      );
+
+    reopen(false, food);
+    const otherFood = {
+      // A distinct id, so this really is a different food and not the same one
+      // reopened — the fixture factory hardcodes 'food-1'.
+      ...createFood(
+        createVariant({ id: 'v2', serving_size: 10, serving_unit: 'g' })
+      ),
+      id: 'food-2',
+    };
+    reopen(true, otherFood);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/note for this entry/i)).toHaveValue('')
+    );
+  });
+
   it('shows the manual warning, hides preview, and disables save for unresolved incompatible units', async () => {
     const food = createFood(
       createVariant({
@@ -285,6 +337,78 @@ describe('FoodUnitSelector', () => {
     ).toBeInTheDocument();
   });
 
+  it('allows clearing and replacing the quantity without forcing zero', async () => {
+    const food = createFood(
+      createVariant({
+        id: 'default-variant',
+        serving_size: 3,
+        serving_unit: 'g',
+      })
+    );
+
+    mockFetchQuery.mockResolvedValue([]);
+
+    await renderSelector(food);
+
+    const quantityInput = screen.getByLabelText(/^Quantity$/i);
+    expect(quantityInput).toHaveValue(3);
+
+    fireEvent.change(quantityInput, { target: { value: '' } });
+    expect(quantityInput).toHaveValue(null);
+
+    fireEvent.change(quantityInput, { target: { value: '1' } });
+    expect(quantityInput).toHaveValue(1);
+  });
+
+  it('submits fractional quantities through the selector', async () => {
+    const food = createFood(
+      createVariant({
+        id: 'default-variant',
+        serving_size: 1,
+        serving_unit: 'g',
+      })
+    );
+    const onSelect = jest.fn();
+
+    mockFetchQuery.mockResolvedValue([]);
+
+    await renderSelector(food, { onSelect });
+
+    const quantityInput = screen.getByLabelText(/^Quantity$/i);
+    fireEvent.change(quantityInput, { target: { value: '0.25' } });
+    expect(quantityInput).toHaveValue(0.25);
+
+    fireEvent.click(screen.getByRole('button', { name: /Add to Meal/i }));
+
+    await waitFor(() => {
+      expect(onSelect).toHaveBeenCalledTimes(1);
+    });
+    expect(onSelect.mock.calls[0]?.[1]).toBe(0.25);
+  });
+
+  it('keeps autofocus and selection when using NumericInput', async () => {
+    const food = createFood(
+      createVariant({
+        id: 'default-variant',
+        serving_size: 3,
+        serving_unit: 'g',
+      })
+    );
+    const selectSpy = jest.spyOn(HTMLInputElement.prototype, 'select');
+
+    mockFetchQuery.mockResolvedValue([]);
+
+    await renderSelector(food);
+
+    const quantityInput = screen.getByLabelText(/^Quantity$/i);
+    await waitFor(() => {
+      expect(quantityInput).toHaveFocus();
+      expect(selectSpy).toHaveBeenCalled();
+    });
+
+    selectSpy.mockRestore();
+  });
+
   it('does not show compatible-unit checks when the selected saved variant is AI-estimated', async () => {
     const food = createFood(
       createVariant({
@@ -310,5 +434,31 @@ describe('FoodUnitSelector', () => {
     const tbspItem = screen.getByRole('button', { name: /^tbsp$/i });
 
     expect(tbspItem.querySelector('svg.text-green-500')).toBeNull();
+  });
+
+  it('hides an AI badge when a saved variant has an unrecognized confidence', async () => {
+    const food = createFood(
+      createVariant({
+        id: 'default-variant',
+        serving_size: 10,
+        serving_unit: 'g',
+      })
+    );
+
+    mockFetchQuery.mockResolvedValue([
+      createVariant({
+        id: 'cup-ai',
+        serving_size: 1,
+        serving_unit: 'cup',
+        calories: 30,
+        source: 'ai_estimate',
+        // API data can be malformed despite the TypeScript type at this boundary.
+        ai_confidence: 'unknown' as FoodVariant['ai_confidence'],
+      }),
+    ]);
+
+    await renderSelector(food);
+
+    expect(screen.queryByLabelText(/AI estimate/i)).not.toBeInTheDocument();
   });
 });

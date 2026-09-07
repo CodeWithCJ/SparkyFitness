@@ -1,4 +1,14 @@
-import { isClosingToTabsTransition } from '../../src/components/ActiveWorkoutBar';
+import {
+  isClosingToTabsTransition,
+  shouldSuppressActiveWorkoutBar,
+} from '../../src/components/ActiveWorkoutBar';
+
+describe('shouldSuppressActiveWorkoutBar', () => {
+  it('keeps the HUD off meal-plan routes with sticky bottom actions', () => {
+    expect(shouldSuppressActiveWorkoutBar('MealPlans')).toBe(true);
+    expect(shouldSuppressActiveWorkoutBar('MealPlanForm')).toBe(true);
+  });
+});
 
 // Root stack [Tabs, ActiveWorkout]: the top route is suppressed and sits
 // directly above Tabs — the state where the suppression bypass can apply.
@@ -11,14 +21,14 @@ describe('isClosingToTabsTransition', () => {
         phase: 'start',
         closing: true,
         routeKey: 'ActiveWorkout-1',
-      }),
+      })
     ).toBe(true);
     expect(
       isClosingToTabsTransition(onActiveWorkout, {
         phase: 'end',
         closing: true,
         routeKey: 'ActiveWorkout-1',
-      }),
+      })
     ).toBe(true);
   });
 
@@ -28,7 +38,7 @@ describe('isClosingToTabsTransition', () => {
         phase: 'start',
         closing: true,
         routeKey: null,
-      }),
+      })
     ).toBe(true);
   });
 
@@ -41,14 +51,14 @@ describe('isClosingToTabsTransition', () => {
         phase: 'end',
         closing: true,
         routeKey: 'ExerciseSearch-9',
-      }),
+      })
     ).toBe(false);
     expect(
       isClosingToTabsTransition(onActiveWorkout, {
         phase: 'start',
         closing: true,
         routeKey: 'ExerciseSearch-9',
-      }),
+      })
     ).toBe(false);
   });
 
@@ -58,20 +68,20 @@ describe('isClosingToTabsTransition', () => {
         phase: 'idle',
         closing: false,
         routeKey: null,
-      }),
+      })
     ).toBe(false);
     expect(
       isClosingToTabsTransition(onActiveWorkout, {
         phase: 'start',
         closing: false,
         routeKey: 'ActiveWorkout-1',
-      }),
+      })
     ).toBe(false);
     expect(
       isClosingToTabsTransition(
         { tabsUnderTop: false, topRouteKey: 'ExerciseSearch-9' },
-        { phase: 'start', closing: true, routeKey: 'ExerciseSearch-9' },
-      ),
+        { phase: 'start', closing: true, routeKey: 'ExerciseSearch-9' }
+      )
     ).toBe(false);
   });
 });

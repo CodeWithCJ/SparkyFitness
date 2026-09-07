@@ -41,24 +41,41 @@ const SLEEP_STAGE_OUTPUT: Record<InternalSleepStage, SleepStageType> = {
   unknown: 'unknown',
 };
 
-const mapHealthKitSleepStage = (hkStage: string | number): InternalSleepStage => {
+const mapHealthKitSleepStage = (
+  hkStage: string | number
+): InternalSleepStage => {
   switch (hkStage) {
-    case 'HKCategoryValueSleepAnalysisAsleepREM': return 'rem';
-    case 'HKCategoryValueSleepAnalysisAsleepDeep': return 'deep';
-    case 'HKCategoryValueSleepAnalysisAsleepCore': return 'core';
-    case 'HKCategoryValueSleepAnalysisAwake': return 'awake';
-    case 'HKCategoryValueSleepAnalysisInBed': return 'in_bed';
-    case 'HKCategoryValueSleepAnalysisAsleep': return 'asleep_generic'; // Generic (unspecified) asleep
+    case 'HKCategoryValueSleepAnalysisAsleepREM':
+      return 'rem';
+    case 'HKCategoryValueSleepAnalysisAsleepDeep':
+      return 'deep';
+    case 'HKCategoryValueSleepAnalysisAsleepCore':
+      return 'core';
+    case 'HKCategoryValueSleepAnalysisAwake':
+      return 'awake';
+    case 'HKCategoryValueSleepAnalysisInBed':
+      return 'in_bed';
+    case 'HKCategoryValueSleepAnalysisAsleep':
+      return 'asleep_generic'; // Generic (unspecified) asleep
     // Handle numeric enum values often returned by RN HealthKit
     // (CategoryValueSleepAnalysis: inBed=0, asleepUnspecified=1, awake=2, core=3, deep=4, REM=5)
-    case 0: return 'in_bed';         // InBed
-    case 1: return 'asleep_generic'; // Asleep (Generic / unspecified)
-    case 2: return 'awake';          // Awake
-    case 3: return 'core';           // AsleepCore
-    case 4: return 'deep';           // AsleepDeep
-    case 5: return 'rem';            // AsleepREM
+    case 0:
+      return 'in_bed'; // InBed
+    case 1:
+      return 'asleep_generic'; // Asleep (Generic / unspecified)
+    case 2:
+      return 'awake'; // Awake
+    case 3:
+      return 'core'; // AsleepCore
+    case 4:
+      return 'deep'; // AsleepDeep
+    case 5:
+      return 'rem'; // AsleepREM
     default:
-      addLog(`[HealthKitService] Unknown sleep stage value: ${hkStage}`, 'WARNING');
+      addLog(
+        `[HealthKitService] Unknown sleep stage value: ${hkStage}`,
+        'WARNING'
+      );
       return 'unknown';
   }
 };
@@ -113,8 +130,11 @@ const flattenSleepEvents = (events: SleepRawEvent[]): MergedSleepSegment[] => {
   return segments;
 };
 
-const finalizeSession = (session: SleepSessionAccumulator): AggregatedSleepSession => {
-  const totalDuration = (session.wake_time.getTime() - session.bedtime.getTime()) / 1000;
+const finalizeSession = (
+  session: SleepSessionAccumulator
+): AggregatedSleepSession => {
+  const totalDuration =
+    (session.wake_time.getTime() - session.bedtime.getTime()) / 1000;
 
   const segments = flattenSleepEvents(session.raw_events);
   let deep = 0;
@@ -161,11 +181,15 @@ const finalizeSession = (session: SleepSessionAccumulator): AggregatedSleepSessi
   return result;
 };
 
-export const aggregateSleepSessions = (records: HKSleepRecord[]): AggregatedSleepSession[] => {
+export const aggregateSleepSessions = (
+  records: HKSleepRecord[]
+): AggregatedSleepSession[] => {
   if (!Array.isArray(records)) return [];
 
   // Sort records by start time to process them chronologically
-  const sortedRecords = [...records].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  const sortedRecords = [...records].sort(
+    (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+  );
 
   const aggregatedSessions: AggregatedSleepSession[] = [];
   let currentSession: SleepSessionAccumulator | null = null;
@@ -181,7 +205,11 @@ export const aggregateSleepSessions = (records: HKSleepRecord[]): AggregatedSlee
     const recordTz = record.metadata?.HKTimeZone;
 
     // If no current session or a significant gap, start a new session
-    if (!currentSession || (recordStartTime.getTime() - currentSession.wake_time.getTime() > SESSION_GAP_THRESHOLD_MS)) {
+    if (
+      !currentSession ||
+      recordStartTime.getTime() - currentSession.wake_time.getTime() >
+        SESSION_GAP_THRESHOLD_MS
+    ) {
       if (currentSession) {
         // Finalize the previous session before starting a new one
         aggregatedSessions.push(finalizeSession(currentSession));
@@ -248,7 +276,7 @@ export const mapDayStatisticsToMinMaxAvg = (
   unit: string,
   source: string,
   recordTimezone: string,
-  toValue?: (value: number) => number,
+  toValue?: (value: number) => number
 ): TransformedRecord[] => {
   const records: TransformedRecord[] = [];
   for (const bucket of buckets) {

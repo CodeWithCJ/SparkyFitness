@@ -1,5 +1,8 @@
 import type { HealthMetric } from '../../HealthMetrics';
-import type { AggregatedHealthRecord, ReadResult } from '../../types/healthRecords';
+import type {
+  AggregatedHealthRecord,
+  ReadResult,
+} from '../../types/healthRecords';
 import type { HealthReadProvider } from '../shared/healthSyncEngine';
 import {
   getAggregatedStepsByDateDetailed,
@@ -15,7 +18,10 @@ import {
 import { aggregateSleepSessions } from './dataAggregation';
 import { transformHealthRecords } from './dataTransformation';
 
-type CumulativeReader = (startDate: Date, endDate: Date) => Promise<ReadResult<AggregatedHealthRecord>>;
+type CumulativeReader = (
+  startDate: Date,
+  endDate: Date
+) => Promise<ReadResult<AggregatedHealthRecord>>;
 
 // HealthKit metrics with a native day-bucketed statistics read. BasalMetabolicRate
 // maps to the basal-energy aggregation: last-complete-day Resting Energy stamped with
@@ -37,7 +43,7 @@ const CUMULATIVE_READERS: Record<string, CumulativeReader> = {
 export const readCumulativeByDay = async (
   metric: Pick<HealthMetric, 'recordType'>,
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): Promise<ReadResult<AggregatedHealthRecord> | null> => {
   const reader = CUMULATIVE_READERS[metric.recordType];
   return reader ? reader(startDate, endDate) : null;
@@ -50,16 +56,19 @@ export const readCumulativeByDay = async (
  */
 export const postProcessRaw = async (
   metric: Pick<HealthMetric, 'recordType'>,
-  records: unknown[],
+  records: unknown[]
 ): Promise<unknown[]> =>
   metric.recordType === 'SleepSession'
-    ? aggregateSleepSessions(records as Parameters<typeof aggregateSleepSessions>[0])
+    ? aggregateSleepSessions(
+        records as Parameters<typeof aggregateSleepSessions>[0]
+      )
     : records;
 
 /** Earliest stored sample for the history-import floor probe. */
 export const readEarliestRecord = async (
-  metric: Pick<HealthMetric, 'recordType'>,
-): Promise<ReadResult<{ startTime: string }>> => readEarliestSampleDetailed(metric.recordType);
+  metric: Pick<HealthMetric, 'recordType'>
+): Promise<ReadResult<{ startTime: string }>> =>
+  readEarliestSampleDetailed(metric.recordType);
 
 export const healthReadProvider: HealthReadProvider = {
   readCumulativeByDay,

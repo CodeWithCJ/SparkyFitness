@@ -4,14 +4,36 @@ import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    // Interpolates `{{var}}` the way i18next does, so assertions can match the rendered
-    // text rather than the raw template.
-    t: (_key: string, defaultValue?: string, opts?: Record<string, unknown>) =>
-      opts
-        ? (defaultValue ?? '').replace(/\{\{(\w+)\}\}/g, (_m, name) =>
-            String(opts[name] ?? '')
-          )
-        : defaultValue,
+    // Supports both t(key, fallback, values) and t(key, { defaultValue, ...values }).
+    t: (
+      key: string,
+      defaultValueOrOptions?: string | Record<string, unknown>,
+      values?: Record<string, unknown>
+    ) => {
+      const localizedLabels: Record<string, string> = {
+        'calculationSettings.bmrAlgorithmOptions.mifflinStJeor':
+          'Localized Mifflin',
+        'calculationSettings.bodyFatAlgorithmOptions.usNavy': 'Localized Navy',
+        'settings.goalMode.modeNames.leanBulk': 'Localized Lean Bulk',
+        'settings.goalMode.modeNames.manual': 'Localized Manual',
+        'settings.goalMode.modeNames.cut': 'Localized Cut',
+      };
+      if (key in localizedLabels) return localizedLabels[key];
+
+      const defaultValue =
+        typeof defaultValueOrOptions === 'string'
+          ? defaultValueOrOptions
+          : defaultValueOrOptions?.['defaultValue'];
+      const interpolationValues =
+        typeof defaultValueOrOptions === 'string'
+          ? values
+          : defaultValueOrOptions;
+
+      if (typeof defaultValue !== 'string') return key;
+      return defaultValue.replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
+        String(interpolationValues?.[name] ?? `{{${name}}}`)
+      );
+    },
   }),
   initReactI18next: {
     type: '3rdParty',
@@ -56,7 +78,7 @@ const defaultProps = {
     confidence: 'HIGH' as const,
   },
   bmrAlgorithm: 'Mifflin-St Jeor',
-  bodyFatAlgorithm: 'US Navy',
+  bodyFatAlgorithm: 'U.S. Navy',
   displayWeight: 84.5,
   displayHeight: 180,
   displayAge: 35,
@@ -71,6 +93,13 @@ const defaultProps = {
 };
 
 describe('CalorieTargetBreakdown baseline label', () => {
+  it('uses translation keys for algorithm labels', () => {
+    render(<CalorieTargetBreakdown {...defaultProps} />);
+
+    expect(screen.getByText('Localized Mifflin')).toBeInTheDocument();
+    expect(screen.getByText('Localized Navy')).toBeInTheDocument();
+  });
+
   it('labels the baseline as the adaptive TDEE under the adaptive method with sufficient data', () => {
     render(<CalorieTargetBreakdown {...defaultProps} />);
     expect(
@@ -141,7 +170,7 @@ describe('CalorieTargetBreakdown goal adjustment line', () => {
     render(<CalorieTargetBreakdown {...gainProps} />);
     expect(screen.getByText('Goal Surplus:')).toBeInTheDocument();
     expect(
-      screen.getByText(/lean_bulk Surplus \(\+10%\) = \+219 kcal/)
+      screen.getByText(/Localized Lean Bulk Surplus \(\+10%\) = \+219 kcal/)
     ).toBeInTheDocument();
   });
 
@@ -159,7 +188,9 @@ describe('CalorieTargetBreakdown goal adjustment line', () => {
       />
     );
     expect(screen.getByText('Goal Surplus:')).toBeInTheDocument();
-    expect(screen.getByText(/manual Surplus \(\+15%\)/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Localized Manual Surplus \(\+15%\)/)
+    ).toBeInTheDocument();
   });
 
   it('still labels a deficit mode as a deficit', () => {
@@ -176,7 +207,7 @@ describe('CalorieTargetBreakdown goal adjustment line', () => {
     );
     expect(screen.getByText('Goal Deficit:')).toBeInTheDocument();
     expect(
-      screen.getByText(/cut Deficit \(-15%\) = -329 kcal/)
+      screen.getByText(/Localized Cut Deficit \(-15%\) = -329 kcal/)
     ).toBeInTheDocument();
   });
 });

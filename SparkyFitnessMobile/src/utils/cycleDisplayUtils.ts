@@ -1,14 +1,20 @@
 import type { WellnessPalette } from '../components/wellness/theme/wellnessTokens';
 import type { TFunction } from 'i18next';
 
-export type CyclePhaseKey = 'menstrual' | 'follicular' | 'fertile' | 'ovulation' | 'luteal' | 'unknown';
+export type CyclePhaseKey =
+  'menstrual' | 'follicular' | 'fertile' | 'ovulation' | 'luteal' | 'unknown';
 
 /**
  * Single source of truth for user-facing phase display labels across Dashboard & Hub.
  * Respects discreet mode to avoid revealing sensitive terms when enabled.
  */
-export function getPhaseDisplayName(phase: string, discreetMode: boolean, t: TFunction): string {
-  if (discreetMode) return t('cycle.phase.active', { defaultValue: 'Active Phase' });
+export function getPhaseDisplayName(
+  phase: string,
+  discreetMode: boolean,
+  t: TFunction
+): string {
+  if (discreetMode)
+    return t('cycle.phase.active', { defaultValue: 'Active Phase' });
   switch (phase) {
     case 'menstrual':
       return t('cycle.phase.period', { defaultValue: 'Period' });
@@ -59,5 +65,3 @@ export const CYCLE_SETTING_LIMITS = {
 export const PREGNANCY_SETTING_LIMITS = {
   fetusCount: { min: 1, max: 4 },
 } as const;
-
-export { useCyclePredictionData, type CyclePredictionData } from '../hooks/useCyclePredictionData';

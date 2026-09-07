@@ -9,9 +9,12 @@ import { Text } from 'react-native';
 const MedicalDisclaimer: React.FC = () => {
   const { t } = useTranslation();
   return (
-  <Text className="text-text-secondary text-xs text-left leading-normal">
-    {t('medicalDisclaimer.text', { defaultValue: 'For tracking and general information only, not medical advice. Talk with your healthcare provider about medical concerns.' })}
-  </Text>
+    <Text className="text-text-secondary text-xs text-left leading-normal">
+      {t('medicalDisclaimer.text', {
+        defaultValue:
+          'For tracking and general information only, not medical advice. Talk with your healthcare provider about medical concerns.',
+      })}
+    </Text>
   );
 };
 

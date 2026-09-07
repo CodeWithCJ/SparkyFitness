@@ -73,5 +73,9 @@ export const sleepNeedCalculationsMutatorSchema = z.object({
 });
 
 export type SleepNeedCalculations = z.infer<typeof sleepNeedCalculationsSchema>;
-export type SleepNeedCalculationsInitializer = z.infer<typeof sleepNeedCalculationsInitializerSchema>;
-export type SleepNeedCalculationsMutator = z.infer<typeof sleepNeedCalculationsMutatorSchema>;
+export type SleepNeedCalculationsInitializer = z.infer<
+  typeof sleepNeedCalculationsInitializerSchema
+>;
+export type SleepNeedCalculationsMutator = z.infer<
+  typeof sleepNeedCalculationsMutatorSchema
+>;

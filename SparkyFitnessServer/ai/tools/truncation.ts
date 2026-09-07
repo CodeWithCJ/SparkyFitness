@@ -32,6 +32,24 @@ export function truncateIfNeeded(
   );
 }
 
+/**
+ * Longest user-authored note emitted verbatim in a tool result.
+ *
+ * A note may be up to NOTES_MAX_LENGTH (4000) characters — half the cloud
+ * response budget for a single field, and a whole-record truncation pass would
+ * drop other foods to make room for one recipe. Cap the field instead, and say
+ * so, so the model knows the text continues and can fetch the food directly.
+ */
+export const NOTE_PREVIEW_LIMIT = 400;
+
+export function truncateNote(note: unknown): string | undefined {
+  if (typeof note !== 'string') return undefined;
+  const trimmed = note.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.length <= NOTE_PREVIEW_LIMIT) return trimmed;
+  return `${trimmed.slice(0, NOTE_PREVIEW_LIMIT)}… (note truncated)`;
+}
+
 // Space reserved for the truncation note appended after a reduced payload.
 const NOTE_RESERVE = 200;
 

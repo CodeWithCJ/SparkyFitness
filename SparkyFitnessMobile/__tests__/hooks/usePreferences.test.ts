@@ -2,7 +2,11 @@ import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { usePreferences } from '../../src/hooks/usePreferences';
 import { preferencesQueryKey } from '../../src/hooks/queryKeys';
 import { fetchPreferences } from '../../src/services/api/preferencesApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/preferencesApi', () => ({
   fetchPreferences: jest.fn(),
@@ -12,7 +16,9 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
-const mockFetchPreferences = fetchPreferences as jest.MockedFunction<typeof fetchPreferences>;
+const mockFetchPreferences = fetchPreferences as jest.MockedFunction<
+  typeof fetchPreferences
+>;
 
 describe('usePreferences', () => {
   let queryClient: QueryClient;

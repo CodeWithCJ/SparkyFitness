@@ -1,7 +1,11 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { useCycleSettings } from '../../src/hooks/useCycleSettings';
 import { getSettings, putSettings } from '../../src/services/api/cycleApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/cycleApi', () => ({
   getSettings: jest.fn(),

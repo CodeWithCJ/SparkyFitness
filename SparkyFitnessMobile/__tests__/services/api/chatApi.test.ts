@@ -68,7 +68,9 @@ describe('mapHistoryToInitialMessages', () => {
       }),
     ]) as unknown as MappedMessage[];
 
-    expect(result[0].parts).toEqual([{ type: 'text', text: 'surrounding text' }]);
+    expect(result[0].parts).toEqual([
+      { type: 'text', text: 'surrounding text' },
+    ]);
   });
 
   it('falls back to content for an empty parts array (no parts dropped)', () => {

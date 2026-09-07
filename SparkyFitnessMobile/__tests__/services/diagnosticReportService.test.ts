@@ -24,7 +24,10 @@ import type { UserPreferences } from '../../src/types/preferences';
 jest.mock('../../src/services/LogService', () => ({
   getLogs: jest.fn().mockResolvedValue([]),
   getLogSummary: jest.fn().mockResolvedValue({
-    DEBUG: 0, INFO: 5, WARNING: 1, ERROR: 0,
+    DEBUG: 0,
+    INFO: 5,
+    WARNING: 1,
+    ERROR: 0,
   }),
   getCaptureLevel: jest.fn().mockResolvedValue('all'),
   getViewFilter: jest.fn().mockResolvedValue('no_debug'),
@@ -38,13 +41,20 @@ jest.mock('../../src/services/storage', () => ({
 
 const mockLoadHealthPreference = jest.fn().mockResolvedValue(false);
 jest.mock('../../src/services/healthConnectService', () => ({
-  loadHealthPreference: (...args: unknown[]) => mockLoadHealthPreference(...args),
+  loadHealthPreference: (...args: unknown[]) =>
+    mockLoadHealthPreference(...args),
 }));
 
-const { getLogs, getLogSummary } = jest.requireMock('../../src/services/LogService');
-const { loadLastSyncedTime, loadTimeRange } = jest.requireMock('../../src/services/storage');
+const { getLogs, getLogSummary } = jest.requireMock(
+  '../../src/services/LogService'
+);
+const { loadLastSyncedTime, loadTimeRange } = jest.requireMock(
+  '../../src/services/storage'
+);
 
-const makeHookData = (overrides?: Partial<DiagnosticHookData>): DiagnosticHookData => ({
+const makeHookData = (
+  overrides?: Partial<DiagnosticHookData>
+): DiagnosticHookData => ({
   isServerConnected: true,
   userPreferences: {
     default_weight_unit: 'kg',
@@ -129,10 +139,15 @@ describe('diagnosticReportService', () => {
       expect(logInfo.captureLevel).toBe('all');
       expect(logInfo.viewFilter).toBe('no_debug');
       expect(logInfo.todaySummary).toEqual({
-        DEBUG: 0, INFO: 5, WARNING: 1, ERROR: 0,
+        DEBUG: 0,
+        INFO: 5,
+        WARNING: 1,
+        ERROR: 0,
       });
       expect(logInfo.recentLogs).toHaveLength(1);
-      expect(logInfo.recentLogs[0].message).not.toContain('https://myserver.com');
+      expect(logInfo.recentLogs[0].message).not.toContain(
+        'https://myserver.com'
+      );
       expect(logInfo.recentLogs[0].details[0]).not.toContain('Bearer');
     });
 
@@ -203,14 +218,18 @@ describe('diagnosticReportService', () => {
     });
 
     it('redacts HTTP URLs', () => {
-      const entry = makeEntry('Failed to connect to http://192.168.1.100:3000/api');
+      const entry = makeEntry(
+        'Failed to connect to http://192.168.1.100:3000/api'
+      );
       const sanitized = sanitizeLogEntry(entry);
       expect(sanitized.message).not.toContain('192.168.1.100');
       expect(sanitized.message).toContain('[REDACTED_URL]');
     });
 
     it('redacts HTTPS URLs', () => {
-      const entry = makeEntry('Synced to https://myserver.example.com/health-data');
+      const entry = makeEntry(
+        'Synced to https://myserver.example.com/health-data'
+      );
       const sanitized = sanitizeLogEntry(entry);
       expect(sanitized.message).not.toContain('myserver.example.com');
       expect(sanitized.message).toContain('[REDACTED_URL]');
@@ -290,9 +309,19 @@ describe('diagnosticReportService', () => {
     });
 
     it('redacts externalFoodSearch search terms and provider ID', () => {
-      const key = ['externalFoodSearch', 'fatsecret', 'pizza', 'provider-123'] as const;
+      const key = [
+        'externalFoodSearch',
+        'fatsecret',
+        'pizza',
+        'provider-123',
+      ] as const;
       const sanitized = sanitizeQueryKey(key);
-      expect(sanitized).toEqual(['externalFoodSearch', '[REDACTED]', '[REDACTED]', '[REDACTED]']);
+      expect(sanitized).toEqual([
+        'externalFoodSearch',
+        '[REDACTED]',
+        '[REDACTED]',
+        '[REDACTED]',
+      ]);
     });
 
     it('preserves non-search query keys unchanged', () => {
@@ -367,7 +396,9 @@ describe('diagnosticReportService', () => {
 
     it('handles null userPreferences', async () => {
       getLogs.mockResolvedValueOnce([]);
-      const report = await buildDiagnosticReport(makeHookData({ userPreferences: null }));
+      const report = await buildDiagnosticReport(
+        makeHookData({ userPreferences: null })
+      );
       expect(report.userPreferences).toBeNull();
     });
 
@@ -382,7 +413,9 @@ describe('diagnosticReportService', () => {
       });
       const report = await buildDiagnosticReport(hookData);
       expect(report.userPreferences?.default_weight_unit).toBe('lbs');
-      expect(JSON.stringify(report.userPreferences)).not.toContain('should-be-stripped');
+      expect(JSON.stringify(report.userPreferences)).not.toContain(
+        'should-be-stripped'
+      );
     });
 
     it('does not contain server URLs', async () => {
@@ -417,7 +450,12 @@ describe('diagnosticReportService', () => {
 
   // ---- shareDiagnosticReport ----
   describe('shareDiagnosticReport', () => {
-    let mockFileInstance: { uri: string; create: jest.Mock; write: jest.Mock; delete: jest.Mock };
+    let mockFileInstance: {
+      uri: string;
+      create: jest.Mock;
+      write: jest.Mock;
+      delete: jest.Mock;
+    };
 
     beforeEach(() => {
       getLogs.mockResolvedValue([]);
@@ -444,7 +482,7 @@ describe('diagnosticReportService', () => {
       expect(Sharing.shareAsync).toHaveBeenCalledTimes(1);
       expect(Sharing.shareAsync).toHaveBeenCalledWith(
         mockFileInstance.uri,
-        expect.objectContaining({ mimeType: 'application/json' }),
+        expect.objectContaining({ mimeType: 'application/json' })
       );
     });
 
@@ -454,9 +492,13 @@ describe('diagnosticReportService', () => {
     });
 
     it('cleans up temp file on share failure', async () => {
-      (Sharing.shareAsync as jest.Mock).mockRejectedValueOnce(new Error('Share failed'));
+      (Sharing.shareAsync as jest.Mock).mockRejectedValueOnce(
+        new Error('Share failed')
+      );
 
-      await expect(shareDiagnosticReport(makeHookData())).rejects.toThrow('Share failed');
+      await expect(shareDiagnosticReport(makeHookData())).rejects.toThrow(
+        'Share failed'
+      );
       expect(mockFileInstance.delete).toHaveBeenCalledTimes(1);
     });
 

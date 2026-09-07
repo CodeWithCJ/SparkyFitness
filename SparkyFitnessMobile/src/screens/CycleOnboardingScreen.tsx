@@ -46,7 +46,7 @@ const MODE_OPTIONS = [
   { value: 'menopause', key: 'menopause' },
 ] as const;
 
-const BC_OPTIONS = BIRTH_CONTROL_METHODS.map(m => ({
+const BC_OPTIONS = BIRTH_CONTROL_METHODS.map((m) => ({
   value: m.value,
   label: m.displayName,
 }));
@@ -178,9 +178,9 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({
 
   const handleToggleCondition = (cond: string, val: boolean) => {
     if (val) {
-      setConditions(prev => [...prev, cond]);
+      setConditions((prev) => [...prev, cond]);
     } else {
-      setConditions(prev => prev.filter(c => c !== cond));
+      setConditions((prev) => prev.filter((c) => c !== cond));
     }
   };
 
@@ -284,7 +284,7 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({
         ? {
             kind: 'primary',
             label: t('common.back', { defaultValue: 'Back' }),
-            onPress: () => setStep(s => s - 1),
+            onPress: () => setStep((s) => s - 1),
           }
         : {
             kind: 'primary',
@@ -322,7 +322,7 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({
               })}
             </Text>
             <SettingsRowGroup>
-              {MODE_OPTIONS.map(opt => {
+              {MODE_OPTIONS.map((opt) => {
                 const isSelected = mode === opt.value;
                 return (
                   <SettingsRow
@@ -440,7 +440,7 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({
                 rightAccessory={
                   <BottomSheetPicker
                     value={birthControl}
-                    options={BC_OPTIONS.map(option => ({
+                    options={BC_OPTIONS.map((option) => ({
                       ...option,
                       label: getBirthControlLabel(option.value, option.label),
                     }))}
@@ -458,14 +458,14 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({
               {t('cycleOnboarding.conditions', { defaultValue: 'Conditions' })}
             </Text>
             <SettingsRowGroup>
-              {CYCLE_CONDITIONS.map(cond => (
+              {CYCLE_CONDITIONS.map((cond) => (
                 <SettingsRow
                   key={cond.value}
                   title={getConditionLabel(cond.value, cond.displayName)}
                   rightAccessory={
                     <Switch
                       value={conditions.includes(cond.value)}
-                      onValueChange={val =>
+                      onValueChange={(val) =>
                         handleToggleCondition(cond.value, val)
                       }
                     />
@@ -539,8 +539,8 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({
             backgroundColor: 'transparent',
           }}
         >
-          <Button variant="primary" onPress={() => setStep(s => s + 1)}>
-            {t('common.next', { defaultValue: "Next" })}
+          <Button variant="primary" onPress={() => setStep((s) => s + 1)}>
+            {t('common.next', { defaultValue: 'Next' })}
           </Button>
         </View>
       )}

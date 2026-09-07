@@ -4,10 +4,7 @@ import Toast from 'react-native-toast-message';
 import type { QueryClient } from '@tanstack/react-query';
 import type { FoodFormData } from '../../components/FoodForm';
 import { parseOptional } from '../../types/foodInfo';
-import {
-  updateFoodVariant,
-  updateFood,
-} from '../../services/api/foodsApi';
+import { updateFoodVariant, updateFood } from '../../services/api/foodsApi';
 import { foodVariantsQueryKey, foodsQueryKey } from '../../hooks/queryKeys';
 import type { FoodVariantDetail } from '../../types/foods';
 import type {
@@ -61,14 +58,19 @@ export function isBlankEquivalent(eq: EquivalentUnit): boolean {
   return !eq.serving_unit || eq.serving_size <= 0;
 }
 
-export function equivalentsDiffer(a: EquivalentUnit[], b: EquivalentUnit[]): boolean {
+export function equivalentsDiffer(
+  a: EquivalentUnit[],
+  b: EquivalentUnit[]
+): boolean {
   const left = a.filter((eq) => !isBlankEquivalent(eq));
   const right = b.filter((eq) => !isBlankEquivalent(eq));
   if (left.length !== right.length) return true;
   for (let i = 0; i < left.length; i++) {
     if ((left[i].id ?? '') !== (right[i].id ?? '')) return true;
-    if (Number(left[i].serving_size) !== Number(right[i].serving_size)) return true;
-    if ((left[i].serving_unit ?? '') !== (right[i].serving_unit ?? '')) return true;
+    if (Number(left[i].serving_size) !== Number(right[i].serving_size))
+      return true;
+    if ((left[i].serving_unit ?? '') !== (right[i].serving_unit ?? ''))
+      return true;
   }
   return false;
 }
@@ -76,18 +78,34 @@ export function equivalentsDiffer(a: EquivalentUnit[], b: EquivalentUnit[]): boo
 export function confirmDiscardEquivalents(): Promise<boolean> {
   return new Promise((resolve) => {
     Alert.alert(
-      i18n.t('foodFormPersistence.discardTitle', { defaultValue: 'Discard unsaved equivalents?' }),
-      i18n.t('foodFormPersistence.discardMessage', { defaultValue: 'You have unsaved equivalent sizes. Discard them to continue?' }),
+      i18n.t('foodFormPersistence.discardTitle', {
+        defaultValue: 'Discard unsaved equivalents?',
+      }),
+      i18n.t('foodFormPersistence.discardMessage', {
+        defaultValue:
+          'You have unsaved equivalent sizes. Discard them to continue?',
+      }),
       [
-        { text: i18n.t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel', onPress: () => resolve(false) },
-        { text: i18n.t('foodFormPersistence.discard', { defaultValue: 'Discard' }), style: 'destructive', onPress: () => resolve(true) },
+        {
+          text: i18n.t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+          onPress: () => resolve(false),
+        },
+        {
+          text: i18n.t('foodFormPersistence.discard', {
+            defaultValue: 'Discard',
+          }),
+          style: 'destructive',
+          onPress: () => resolve(true),
+        },
       ],
-      { onDismiss: () => resolve(false) },
+      { onDismiss: () => resolve(false) }
     );
   });
 }
 
-export type SyncPastEntriesChoice = 'none' | 'nutrition' | 'nutrition-and-photos';
+export type SyncPastEntriesChoice =
+  'none' | 'nutrition' | 'nutrition-and-photos';
 
 /**
  * Asks whether to rewrite past diary entries with the food's new values.
@@ -109,71 +127,144 @@ export type SyncPastEntriesChoice = 'none' | 'nutrition' | 'nutrition-and-photos
  *    is showing today, custom or inherited.
  */
 export function confirmSyncPastEntries(
-  photosChanged = false,
+  photosChanged = false
 ): Promise<SyncPastEntriesChoice> {
   if (!photosChanged) {
     return new Promise((resolve) => {
       Alert.alert(
-        i18n.t('foodFormPersistence.updateTitle', { defaultValue: 'Update past entries?' }),
-        i18n.t('foodFormPersistence.updateMessage', { defaultValue: "Your library food is saved. Do you also want to update past diary entries for this food with the new nutrition? Entries you don't update keep their original values." }),
+        i18n.t('foodFormPersistence.updateTitle', {
+          defaultValue: 'Update past entries?',
+        }),
+        i18n.t('foodFormPersistence.updateMessage', {
+          defaultValue:
+            "Your library food is saved. Do you also want to update past diary entries for this food with the new nutrition? Entries you don't update keep their original values.",
+        }),
         [
           // "Update"/"Don't Update" rather than two parallel "… past entries"
           // labels: the negation lands on the first word, so the options are
           // told apart at a glance instead of by diffing similar phrases.
-          { text: i18n.t('foodFormPersistence.dontUpdate', { defaultValue: "Don't Update" }), style: 'cancel', onPress: () => resolve('none') },
+          {
+            text: i18n.t('foodFormPersistence.dontUpdate', {
+              defaultValue: "Don't Update",
+            }),
+            style: 'cancel',
+            onPress: () => resolve('none'),
+          },
           // Photos did not change, so syncing them would be a no-op — ask for
           // the nutrition-only sync and leave every entry's photo alone.
-          { text: i18n.t('foodFormPersistence.update', { defaultValue: 'Update' }), onPress: () => resolve('nutrition') },
+          {
+            text: i18n.t('foodFormPersistence.update', {
+              defaultValue: 'Update',
+            }),
+            onPress: () => resolve('nutrition'),
+          },
         ],
-        { onDismiss: () => resolve('none') },
+        { onDismiss: () => resolve('none') }
       );
     });
   }
 
   return new Promise((resolve) => {
     Alert.alert(
-      i18n.t('foodFormPersistence.updateTitle', { defaultValue: 'Update past entries?' }),
-      i18n.t('foodFormPersistence.updatePhotosMessage', { defaultValue: 'Your library food is saved. What should past diary entries for this food use?' }),
+      i18n.t('foodFormPersistence.updateTitle', {
+        defaultValue: 'Update past entries?',
+      }),
+      i18n.t('foodFormPersistence.updatePhotosMessage', {
+        defaultValue:
+          'Your library food is saved. What should past diary entries for this food use?',
+      }),
       [
-        { text: i18n.t('foodFormPersistence.dontUpdate', { defaultValue: "Don't Update" }), style: 'cancel', onPress: () => resolve('none') },
-        { text: i18n.t('foodFormPersistence.updateNutrition', { defaultValue: 'Update nutrition only' }), onPress: () => resolve('nutrition') },
+        {
+          text: i18n.t('foodFormPersistence.dontUpdate', {
+            defaultValue: "Don't Update",
+          }),
+          style: 'cancel',
+          onPress: () => resolve('none'),
+        },
+        {
+          text: i18n.t('foodFormPersistence.updateNutrition', {
+            defaultValue: 'Update nutrition only',
+          }),
+          onPress: () => resolve('nutrition'),
+        },
         // Destructive: this is the one path that discards a photo the user
         // chose for a specific diary entry, so it is styled as such.
         {
-          text: i18n.t('foodFormPersistence.updateNutritionPhotos', { defaultValue: 'Update nutrition & photos' }),
+          text: i18n.t('foodFormPersistence.updateNutritionPhotos', {
+            defaultValue: 'Update nutrition & photos',
+          }),
           style: 'destructive',
           onPress: () => resolve('nutrition-and-photos'),
         },
       ],
-      { onDismiss: () => resolve('none') },
+      { onDismiss: () => resolve('none') }
     );
   });
 }
 
-export function confirmVariantOverwrite(unitLabel: string): Promise<'overwrite' | 'new' | 'cancel'> {
+export function confirmVariantOverwrite(
+  unitLabel: string
+): Promise<'overwrite' | 'new' | 'cancel'> {
   return new Promise((resolve) => {
     Alert.alert(
-      i18n.t('foodFormPersistence.saveNutritionTitle', { defaultValue: 'Save nutrition' }),
-      i18n.t('foodFormPersistence.overwriteMessage', { defaultValue: '"{{unitLabel}}" is already a saved variant. Do you want to update it with these values, or save as a new variant?', unitLabel }),
+      i18n.t('foodFormPersistence.saveNutritionTitle', {
+        defaultValue: 'Save nutrition',
+      }),
+      i18n.t('foodFormPersistence.overwriteMessage', {
+        defaultValue:
+          '"{{unitLabel}}" is already a saved variant. Do you want to update it with these values, or save as a new variant?',
+        unitLabel,
+      }),
       [
-        { text: i18n.t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel', onPress: () => resolve('cancel') },
-        { text: i18n.t('foodFormPersistence.saveAsNew', { defaultValue: 'Save as new' }), onPress: () => resolve('new') },
-        { text: i18n.t('foodFormPersistence.updateExisting', { defaultValue: 'Update existing' }), style: 'destructive', onPress: () => resolve('overwrite') },
+        {
+          text: i18n.t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+          onPress: () => resolve('cancel'),
+        },
+        {
+          text: i18n.t('foodFormPersistence.saveAsNew', {
+            defaultValue: 'Save as new',
+          }),
+          onPress: () => resolve('new'),
+        },
+        {
+          text: i18n.t('foodFormPersistence.updateExisting', {
+            defaultValue: 'Update existing',
+          }),
+          style: 'destructive',
+          onPress: () => resolve('overwrite'),
+        },
       ],
-      { onDismiss: () => resolve('cancel') },
+      { onDismiss: () => resolve('cancel') }
     );
   });
 }
 
 export function validateFoodForm(data: FoodFormData): boolean {
   if (!data.name.trim()) {
-    Toast.show({ type: 'error', text1: i18n.t('foodFormPersistence.missingName', { defaultValue: 'Missing name' }), text2: i18n.t('foodFormPersistence.nameRequired', { defaultValue: 'Please enter a food name.' }) });
+    Toast.show({
+      type: 'error',
+      text1: i18n.t('foodFormPersistence.missingName', {
+        defaultValue: 'Missing name',
+      }),
+      text2: i18n.t('foodFormPersistence.nameRequired', {
+        defaultValue: 'Please enter a food name.',
+      }),
+    });
     return false;
   }
 
   const servingSize = parseDecimalInput(data.servingSize);
   if (!Number.isFinite(servingSize) || servingSize <= 0) {
-    Toast.show({ type: 'error', text1: i18n.t('foodFormPersistence.invalidServingSize', { defaultValue: 'Invalid serving size' }), text2: i18n.t('foodFormPersistence.servingSizeRequired', { defaultValue: 'Serving size must be greater than zero.' }) });
+    Toast.show({
+      type: 'error',
+      text1: i18n.t('foodFormPersistence.invalidServingSize', {
+        defaultValue: 'Invalid serving size',
+      }),
+      text2: i18n.t('foodFormPersistence.servingSizeRequired', {
+        defaultValue: 'Serving size must be greater than zero.',
+      }),
+    });
     return false;
   }
 
@@ -183,7 +274,7 @@ export function validateFoodForm(data: FoodFormData): boolean {
 export function hasFoodFormChanges(
   initialValues: Partial<FoodFormData>,
   data: FoodFormData,
-  fields: (keyof FoodFormData)[],
+  fields: (keyof FoodFormData)[]
 ): boolean {
   return fields.some((field) => {
     if (!NUMERIC_FOOD_FIELDS.has(field)) {
@@ -204,27 +295,42 @@ export function hasFoodFormChanges(
 }
 
 export function invalidateFoodCaches(queryClient: QueryClient, foodId: string) {
-  void queryClient.invalidateQueries({ queryKey: foodVariantsQueryKey(foodId), refetchType: 'all' });
-  void queryClient.invalidateQueries({ queryKey: foodsQueryKey, refetchType: 'all' });
-  void queryClient.invalidateQueries({ queryKey: ['foodsLibrary'], refetchType: 'all' });
-  void queryClient.invalidateQueries({ queryKey: ['foodSearch'], refetchType: 'all' });
+  void queryClient.invalidateQueries({
+    queryKey: foodVariantsQueryKey(foodId),
+    refetchType: 'all',
+  });
+  void queryClient.invalidateQueries({
+    queryKey: foodsQueryKey,
+    refetchType: 'all',
+  });
+  void queryClient.invalidateQueries({
+    queryKey: ['foodsLibrary'],
+    refetchType: 'all',
+  });
+  void queryClient.invalidateQueries({
+    queryKey: ['foodSearch'],
+    refetchType: 'all',
+  });
 }
 
-function updateFoodVariantCache(queryClient: QueryClient, updatedVariant: FoodVariantDetail) {
+function updateFoodVariantCache(
+  queryClient: QueryClient,
+  updatedVariant: FoodVariantDetail
+) {
   queryClient.setQueryData<FoodVariantDetail[] | undefined>(
     foodVariantsQueryKey(updatedVariant.food_id),
     (current) => {
       if (!current) return current;
-      return current.map((variant) => (
+      return current.map((variant) =>
         variant.id === updatedVariant.id ? updatedVariant : variant
-      ));
-    },
+      );
+    }
   );
 }
 
 export function buildVariantFromFormData(
   data: FoodFormData,
-  selection?: FoodUnitSelectionResult | null,
+  selection?: FoodUnitSelectionResult | null
 ): FoodUnitVariant {
   return {
     ...selection?.variant,
@@ -250,7 +356,7 @@ export function buildVariantFromFormData(
 
 export function buildVariantFromInitialValues(
   initialValues?: Partial<FoodFormData>,
-  id?: string,
+  id?: string
 ): FoodUnitVariant | null {
   if (!initialValues) {
     return null;
@@ -286,7 +392,7 @@ export function buildVariantFromInitialValues(
 }
 
 export function buildFormValuesFromVariant(
-  variant: FoodUnitVariant,
+  variant: FoodUnitVariant
 ): Partial<FoodFormData> {
   return {
     servingSize: String(variant.serving_size),
@@ -302,8 +408,7 @@ export function buildFormValuesFromVariant(
     sodium: variant.sodium != null ? String(variant.sodium) : '',
     sugars: variant.sugars != null ? String(variant.sugars) : '',
     potassium: variant.potassium != null ? String(variant.potassium) : '',
-    cholesterol:
-      variant.cholesterol != null ? String(variant.cholesterol) : '',
+    cholesterol: variant.cholesterol != null ? String(variant.cholesterol) : '',
     calcium: variant.calcium != null ? String(variant.calcium) : '',
     iron: variant.iron != null ? String(variant.iron) : '',
     vitaminA: variant.vitamin_a != null ? String(variant.vitamin_a) : '',
@@ -331,12 +436,12 @@ export async function persistFoodEdits({
   const shouldUpdateVariant = hasFoodFormChanges(
     variantInitialValues,
     data,
-    FOOD_VARIANT_FIELDS,
+    FOOD_VARIANT_FIELDS
   );
   const shouldUpdateFood = hasFoodFormChanges(
     foodInitialValues,
     data,
-    FOOD_METADATA_FIELDS,
+    FOOD_METADATA_FIELDS
   );
 
   if (!shouldUpdateVariant && !shouldUpdateFood) {
@@ -370,14 +475,15 @@ export async function persistFoodEdits({
       }).then((updatedVariant) => {
         updateFoodVariantCache(queryClient, updatedVariant);
         return updatedVariant;
-      }),
+      })
     );
   }
 
   if (shouldUpdateFood) {
     const foodPayload: { name?: string; brand?: string } = {};
     if (data.name !== foodInitialValues.name) foodPayload.name = data.name;
-    if (data.brand !== foodInitialValues.brand) foodPayload.brand = data.brand || '';
+    if (data.brand !== foodInitialValues.brand)
+      foodPayload.brand = data.brand || '';
     updates.push(updateFood(foodId, foodPayload));
   }
 
@@ -397,7 +503,11 @@ export async function persistFoodMetadataEdits({
   data: FoodFormData;
   initialValues: Partial<FoodFormData>;
 }): Promise<boolean> {
-  const shouldUpdateFood = hasFoodFormChanges(initialValues, data, FOOD_METADATA_FIELDS);
+  const shouldUpdateFood = hasFoodFormChanges(
+    initialValues,
+    data,
+    FOOD_METADATA_FIELDS
+  );
 
   if (!shouldUpdateFood) {
     return false;

@@ -15,7 +15,7 @@ import {
 } from './localeRegistry';
 
 export { RESOURCE_MAP } from './generatedLocaleResources';
-export { FALLBACK_LOCALE, SHIPPED_LOCALES, SUPPORTED_LANGUAGES } from './localeRegistry';
+export { SUPPORTED_LANGUAGES } from './localeRegistry';
 export type { SupportedLanguage } from './localeRegistry';
 export type LanguagePreference = 'system' | SupportedLanguage;
 
@@ -30,12 +30,16 @@ const I18N_INIT_OPTIONS = {
   react: { useSuspense: false },
 };
 
-export function normalizeLanguage(language: string | null | undefined): SupportedLanguage {
+export function normalizeLanguage(
+  language: string | null | undefined
+): SupportedLanguage {
   return resolveLanguage(language);
 }
 
 export function getDeviceLanguage(): SupportedLanguage {
-  return resolveLanguage(getLocales()[0]?.languageTag ?? getLocales()[0]?.languageCode);
+  return resolveLanguage(
+    getLocales()[0]?.languageTag ?? getLocales()[0]?.languageCode
+  );
 }
 
 export function getAppLocale(): string {
@@ -53,36 +57,49 @@ export function useAppLocale(): string {
   return useSyncExternalStore(subscribeToAppLocale, getAppLocale, getAppLocale);
 }
 
-export function formatLocalizedNumber(value: number, options?: Intl.NumberFormatOptions): string {
+export function formatLocalizedNumber(
+  value: number,
+  options?: Intl.NumberFormatOptions
+): string {
   return value.toLocaleString(getAppLocale(), options);
 }
 
 export function getNativeIOSLanguage(): SupportedLanguage {
   for (const locale of getLocales()) {
-    const language = normalizeRegisteredLocale(locale.languageTag ?? locale.languageCode);
+    const language = normalizeRegisteredLocale(
+      locale.languageTag ?? locale.languageCode
+    );
     if (language) return language;
   }
   return FALLBACK_LOCALE;
 }
 
 async function initI18nLanguage(language: SupportedLanguage): Promise<void> {
-  await i18n.use(initReactI18next).init({ ...I18N_INIT_OPTIONS, lng: language });
+  await i18n
+    .use(initReactI18next)
+    .init({ ...I18N_INIT_OPTIONS, lng: language });
 }
 
 let initPromise: Promise<void> | null = null;
 export function initializeI18n(language: SupportedLanguage): Promise<void> {
   if (initPromise) return initPromise;
-  initPromise = (async () => initI18nLanguage(language))().catch(async (error) => {
-    const message = error instanceof Error ? error.message : String(error);
-    await addLog(`[i18n] initializeI18n failed: ${message}`, 'ERROR');
-    if (!i18n.isInitialized) {
-      try { await initI18nLanguage(FALLBACK_LOCALE); }
-      catch (fallbackError) {
-        await addLog(`[i18n] Fallback init with ${FALLBACK_LOCALE} failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`, 'ERROR');
-        if (!i18n.isInitialized) initPromise = null;
+  initPromise = (async () => initI18nLanguage(language))().catch(
+    async (error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      await addLog(`[i18n] initializeI18n failed: ${message}`, 'ERROR');
+      if (!i18n.isInitialized) {
+        try {
+          await initI18nLanguage(FALLBACK_LOCALE);
+        } catch (fallbackError) {
+          await addLog(
+            `[i18n] Fallback init with ${FALLBACK_LOCALE} failed: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`,
+            'ERROR'
+          );
+          if (!i18n.isInitialized) initPromise = null;
+        }
       }
     }
-  });
+  );
   return initPromise;
 }
 

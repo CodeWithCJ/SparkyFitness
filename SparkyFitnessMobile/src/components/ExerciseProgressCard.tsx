@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
-import Animated, { useSharedValue, useDerivedValue, useAnimatedStyle, withTiming, Easing } from 'react-native-reanimated';
+import Animated, {
+  useSharedValue,
+  useDerivedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { useIsFocused } from '@react-navigation/native';
 import { useCSSVariable } from 'uniwind';
 
@@ -15,7 +21,15 @@ interface ProgressBarProps {
   opacity?: number;
 }
 
-const ProgressBar: React.FC<ProgressBarProps> = ({ label, current, goal, unit, color, trackColor, opacity = 1 }) => {
+const ProgressBar: React.FC<ProgressBarProps> = ({
+  label,
+  current,
+  goal,
+  unit,
+  color,
+  trackColor,
+  opacity = 1,
+}) => {
   const [barWidth, setBarWidth] = useState(0);
   const barHeight = 8;
   const borderRadius = 4;
@@ -71,39 +85,55 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ label, current, goal, unit, c
       <View className="flex-row justify-between items-center mb-2">
         <Text className="text-sm font-semibold text-text-primary">{label}</Text>
         <Text className="text-sm text-text-primary">
-          {goal > 0 ? `${Math.round(current)} / ${Math.round(goal)} ${unit}` : `${Math.round(current)} ${unit}`}
+          {goal > 0
+            ? `${Math.round(current)} / ${Math.round(goal)} ${unit}`
+            : `${Math.round(current)} ${unit}`}
         </Text>
       </View>
-      {showBar && <View
-        className="h-3"
-        onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
-      >
-        {barWidth > 0 && (
-          <View
-            style={{
-              width: barWidth,
-              height: barHeight,
-              borderRadius,
-              overflow: 'hidden',
-              backgroundColor: trackColor,
-              opacity,
-            }}
-          >
-            <Animated.View
-              style={[
-                { position: 'absolute', left: 0, top: 0, height: barHeight, backgroundColor: color },
-                fillStyle,
-              ]}
-            />
-            <Animated.View
-              style={[
-                { position: 'absolute', top: 0, height: barHeight, backgroundColor: color, opacity: 0.65 },
-                overflowStyle,
-              ]}
-            />
-          </View>
-        )}
-      </View>}
+      {showBar && (
+        <View
+          className="h-3"
+          onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}
+        >
+          {barWidth > 0 && (
+            <View
+              style={{
+                width: barWidth,
+                height: barHeight,
+                borderRadius,
+                overflow: 'hidden',
+                backgroundColor: trackColor,
+                opacity,
+              }}
+            >
+              <Animated.View
+                style={[
+                  {
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    height: barHeight,
+                    backgroundColor: color,
+                  },
+                  fillStyle,
+                ]}
+              />
+              <Animated.View
+                style={[
+                  {
+                    position: 'absolute',
+                    top: 0,
+                    height: barHeight,
+                    backgroundColor: color,
+                    opacity: 0.65,
+                  },
+                  overflowStyle,
+                ]}
+              />
+            </View>
+          )}
+        </View>
+      )}
     </View>
   );
 };
@@ -131,7 +161,9 @@ const ExerciseProgressCard: React.FC<ExerciseProgressCardProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-      <Text className="text-md font-bold text-text-secondary mb-4">{t('dashboard.exercise', { defaultValue: 'Exercise' })}</Text>
+      <Text className="text-md font-bold text-text-secondary mb-4">
+        {t('dashboard.exercise', { defaultValue: 'Exercise' })}
+      </Text>
       {hasEntries ? (
         <>
           <ProgressBar
@@ -148,14 +180,18 @@ const ExerciseProgressCard: React.FC<ExerciseProgressCardProps> = ({
             label={t('dashboard.calories', { defaultValue: 'Calories' })}
             current={exerciseCalories}
             goal={exerciseCaloriesGoal}
-            unit={t('nutrition.caloriesUnit', { defaultValue: "Cal" })}
+            unit={t('nutrition.caloriesUnit', { defaultValue: 'Cal' })}
             color={exerciseColor}
             trackColor={trackColor}
             opacity={0.5}
           />
         </>
       ) : (
-        <Text className="text-sm text-text-secondary text-center py-2">{t('dashboard.noExerciseEntries', { defaultValue: 'No exercise entries yet' })}</Text>
+        <Text className="text-sm text-text-secondary text-center py-2">
+          {t('dashboard.noExerciseEntries', {
+            defaultValue: 'No exercise entries yet',
+          })}
+        </Text>
       )}
     </View>
   );

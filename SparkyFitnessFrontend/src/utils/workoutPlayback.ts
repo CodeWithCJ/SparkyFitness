@@ -417,50 +417,6 @@ function getPointerIndex(
   );
 }
 
-export function getNextWorkoutSetPointer(
-  draft: WorkoutPlaybackDraft,
-  pointer: WorkoutSetPointer = getCurrentWorkoutSetPointer(draft)
-): WorkoutSetPointer | null {
-  const pointers = listWorkoutSetPointers(draft);
-  const currentIndex = getPointerIndex(pointers, pointer);
-  if (currentIndex < 0 || currentIndex >= pointers.length - 1) {
-    return null;
-  }
-  return pointers[currentIndex + 1] ?? null;
-}
-
-export function getPreviousWorkoutSetPointer(
-  draft: WorkoutPlaybackDraft,
-  pointer: WorkoutSetPointer = getCurrentWorkoutSetPointer(draft)
-): WorkoutSetPointer | null {
-  const pointers = listWorkoutSetPointers(draft);
-  const currentIndex = getPointerIndex(pointers, pointer);
-  if (currentIndex <= 0) {
-    return null;
-  }
-  return pointers[currentIndex - 1] ?? null;
-}
-
-export function moveToNextWorkoutSet(
-  draft: WorkoutPlaybackDraft
-): WorkoutPlaybackDraft {
-  const nextPointer = getNextWorkoutSetPointer(draft);
-  if (!nextPointer) {
-    return draft;
-  }
-  return setWorkoutPlaybackPointer(draft, nextPointer);
-}
-
-export function moveToPreviousWorkoutSet(
-  draft: WorkoutPlaybackDraft
-): WorkoutPlaybackDraft {
-  const previousPointer = getPreviousWorkoutSetPointer(draft);
-  if (!previousPointer) {
-    return draft;
-  }
-  return setWorkoutPlaybackPointer(draft, previousPointer);
-}
-
 function updateSetAtPointer(
   draft: WorkoutPlaybackDraft,
   pointer: WorkoutSetPointer,

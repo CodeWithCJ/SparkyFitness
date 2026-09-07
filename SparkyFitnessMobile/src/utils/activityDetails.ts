@@ -11,21 +11,44 @@ const activityLabel = (
   t: TFunction | undefined,
   key: string,
   defaultValue: string,
-  interpolation?: Record<string, string | number>,
+  interpolation?: Record<string, string | number>
 ): string => {
   if (!t) return defaultValue;
   switch (key) {
-    case 'activitySummary.avgHeartRate': return t('activitySummary.avgHeartRate', { defaultValue: 'Avg HR' });
-    case 'activitySummary.maxHeartRate': return t('activitySummary.maxHeartRate', { defaultValue: 'Max HR' });
-    case 'activitySummary.elevationGain': return t('activitySummary.elevationGain', { defaultValue: 'Elevation Gain' });
-    case 'activitySummary.avgCadence': return t('activitySummary.avgCadence', { defaultValue: 'Avg Cadence' });
-    case 'activitySummary.zone': return t('activitySummary.zone', { defaultValue: 'Zone {{zone}}', ...interpolation });
-    case 'activitySummary.heartRateZone': return t('activitySummary.heartRateZone', { defaultValue: 'Heart-rate zone: {{zone}}', ...interpolation });
-    case 'activitySummary.heartRateZoneLight': return t('activitySummary.heartRateZoneLight', { defaultValue: 'Light' });
-    case 'activitySummary.heartRateZoneModerate': return t('activitySummary.heartRateZoneModerate', { defaultValue: 'Moderate' });
-    case 'activitySummary.heartRateZoneIntense': return t('activitySummary.heartRateZoneIntense', { defaultValue: 'Intense' });
-    case 'activitySummary.heartRateZonePeak': return t('activitySummary.heartRateZonePeak', { defaultValue: 'Peak' });
-    default: return defaultValue;
+    case 'activitySummary.avgHeartRate':
+      return t('activitySummary.avgHeartRate', { defaultValue: 'Avg HR' });
+    case 'activitySummary.maxHeartRate':
+      return t('activitySummary.maxHeartRate', { defaultValue: 'Max HR' });
+    case 'activitySummary.elevationGain':
+      return t('activitySummary.elevationGain', {
+        defaultValue: 'Elevation Gain',
+      });
+    case 'activitySummary.avgCadence':
+      return t('activitySummary.avgCadence', { defaultValue: 'Avg Cadence' });
+    case 'activitySummary.zone':
+      return t('activitySummary.zone', {
+        defaultValue: 'Zone {{zone}}',
+        ...interpolation,
+      });
+    case 'activitySummary.heartRateZone':
+      return t('activitySummary.heartRateZone', {
+        defaultValue: 'Heart-rate zone: {{zone}}',
+        ...interpolation,
+      });
+    case 'activitySummary.heartRateZoneLight':
+      return t('activitySummary.heartRateZoneLight', { defaultValue: 'Light' });
+    case 'activitySummary.heartRateZoneModerate':
+      return t('activitySummary.heartRateZoneModerate', {
+        defaultValue: 'Moderate',
+      });
+    case 'activitySummary.heartRateZoneIntense':
+      return t('activitySummary.heartRateZoneIntense', {
+        defaultValue: 'Intense',
+      });
+    case 'activitySummary.heartRateZonePeak':
+      return t('activitySummary.heartRateZonePeak', { defaultValue: 'Peak' });
+    default:
+      return defaultValue;
   }
 };
 
@@ -70,7 +93,10 @@ function toRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>;
 }
 
-function readNumber(record: Record<string, unknown>, keys: string[]): number | null {
+function readNumber(
+  record: Record<string, unknown>,
+  keys: string[]
+): number | null {
   for (const key of keys) {
     const value = record[key];
     if (typeof value === 'number') {
@@ -82,7 +108,7 @@ function readNumber(record: Record<string, unknown>, keys: string[]): number | n
 
 export function extractActivitySummary(
   details: ActivityDetailResponse[],
-  t?: TFunction,
+  t?: TFunction
 ): ActivitySummaryItem[] {
   const items: ActivitySummaryItem[] = [];
 
@@ -113,7 +139,10 @@ export function extractActivitySummary(
           'averageHR',
         ]);
         if (averageHeartRate != null) {
-          items.push({ label: activityLabel(t, 'activitySummary.avgHeartRate', 'Avg HR'), value: `${formatLocalizedNumber(averageHeartRate)} bpm` });
+          items.push({
+            label: activityLabel(t, 'activitySummary.avgHeartRate', 'Avg HR'),
+            value: `${formatLocalizedNumber(averageHeartRate)} bpm`,
+          });
         }
 
         const maxHeartRate = readNumber(garminActivity, [
@@ -121,7 +150,10 @@ export function extractActivitySummary(
           'maxHR',
         ]);
         if (maxHeartRate != null) {
-          items.push({ label: activityLabel(t, 'activitySummary.maxHeartRate', 'Max HR'), value: `${formatLocalizedNumber(maxHeartRate)} bpm` });
+          items.push({
+            label: activityLabel(t, 'activitySummary.maxHeartRate', 'Max HR'),
+            value: `${formatLocalizedNumber(maxHeartRate)} bpm`,
+          });
         }
 
         const elevationGain = readNumber(garminActivity, [
@@ -129,7 +161,14 @@ export function extractActivitySummary(
           'totalAscent',
         ]);
         if (elevationGain != null) {
-          items.push({ label: activityLabel(t, 'activitySummary.elevationGain', 'Elevation Gain'), value: `${formatLocalizedNumber(elevationGain)} m` });
+          items.push({
+            label: activityLabel(
+              t,
+              'activitySummary.elevationGain',
+              'Elevation Gain'
+            ),
+            value: `${formatLocalizedNumber(elevationGain)} m`,
+          });
         }
 
         const averageCadence = readNumber(garminActivity, [
@@ -137,7 +176,14 @@ export function extractActivitySummary(
           'averageRunCadence',
         ]);
         if (averageCadence != null) {
-          items.push({ label: activityLabel(t, 'activitySummary.avgCadence', 'Avg Cadence'), value: `${formatLocalizedNumber(averageCadence)} spm` });
+          items.push({
+            label: activityLabel(
+              t,
+              'activitySummary.avgCadence',
+              'Avg Cadence'
+            ),
+            value: `${formatLocalizedNumber(averageCadence)} spm`,
+          });
         }
       }
 
@@ -149,12 +195,24 @@ export function extractActivitySummary(
 
           const zoneNumber = zoneRecord.zoneNumber;
           const secondsInZone = zoneRecord.secsInZone;
-          if (typeof zoneNumber !== 'number' || typeof secondsInZone !== 'number' || secondsInZone <= 0) {
+          if (
+            typeof zoneNumber !== 'number' ||
+            typeof secondsInZone !== 'number' ||
+            secondsInZone <= 0
+          ) {
             continue;
           }
 
           const duration = formatDuration(secondsInZone, t);
-        items.push({ label: activityLabel(t, 'activitySummary.zone', `Zone ${zoneNumber}`, { zone: zoneNumber }).replace('{{zone}}', String(zoneNumber)), value: duration });
+          items.push({
+            label: activityLabel(
+              t,
+              'activitySummary.zone',
+              `Zone ${zoneNumber}`,
+              { zone: zoneNumber }
+            ).replace('{{zone}}', String(zoneNumber)),
+            value: duration,
+          });
         }
       }
 
@@ -168,15 +226,32 @@ export function extractActivitySummary(
 
         const duration = formatDuration(seconds, t);
         const zoneLabels: Record<string, string> = {
-          light: activityLabel(t, 'activitySummary.heartRateZoneLight', 'Light'),
-          moderate: activityLabel(t, 'activitySummary.heartRateZoneModerate', 'Moderate'),
-          intense: activityLabel(t, 'activitySummary.heartRateZoneIntense', 'Intense'),
+          light: activityLabel(
+            t,
+            'activitySummary.heartRateZoneLight',
+            'Light'
+          ),
+          moderate: activityLabel(
+            t,
+            'activitySummary.heartRateZoneModerate',
+            'Moderate'
+          ),
+          intense: activityLabel(
+            t,
+            'activitySummary.heartRateZoneIntense',
+            'Intense'
+          ),
           peak: activityLabel(t, 'activitySummary.heartRateZonePeak', 'Peak'),
         };
         const rawZoneLabel = zone.replace(/^Zone\s+/i, '');
         const semanticZoneLabel = zoneLabels[rawZoneLabel.toLowerCase()];
         const displayZone = semanticZoneLabel ?? rawZoneLabel;
-        const label = activityLabel(t, 'activitySummary.heartRateZone', 'Heart-rate zone: {{zone}}', { zone: displayZone }).replace('{{zone}}', displayZone);
+        const label = activityLabel(
+          t,
+          'activitySummary.heartRateZone',
+          'Heart-rate zone: {{zone}}',
+          { zone: displayZone }
+        ).replace('{{zone}}', displayZone);
         items.push({ label, value: duration });
       }
       continue;

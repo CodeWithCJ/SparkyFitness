@@ -20,35 +20,44 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 
-type NotificationSettingsScreenProps = RootStackScreenProps<'NotificationSettings'>;
+type NotificationSettingsScreenProps =
+  RootStackScreenProps<'NotificationSettings'>;
 
-const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = () => {
+const NotificationSettingsScreen: React.FC<
+  NotificationSettingsScreenProps
+> = () => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const notificationsEnabled = useAppPreferencesStore((s) => s.notificationsEnabled);
+  const notificationsEnabled = useAppPreferencesStore(
+    (s) => s.notificationsEnabled
+  );
   const restTimerNotificationsEnabled = useAppPreferencesStore(
-    (s) => s.restTimerNotificationsEnabled,
+    (s) => s.restTimerNotificationsEnabled
   );
   const fastingGoalNotificationsEnabled = useAppPreferencesStore(
-    (s) => s.fastingGoalNotificationsEnabled,
+    (s) => s.fastingGoalNotificationsEnabled
   );
   const setFastingGoalNotificationsEnabled = useAppPreferencesStore(
-    (s) => s.setFastingGoalNotificationsEnabled,
+    (s) => s.setFastingGoalNotificationsEnabled
   );
-  const medicationRemindersEnabled = useAppPreferencesStore((s) => s.medicationRemindersEnabled);
+  const medicationRemindersEnabled = useAppPreferencesStore(
+    (s) => s.medicationRemindersEnabled
+  );
   const setMedicationRemindersEnabled = useAppPreferencesStore(
-    (s) => s.setMedicationRemindersEnabled,
+    (s) => s.setMedicationRemindersEnabled
   );
-  const medicationReminderRepeats = useAppPreferencesStore((s) => s.medicationReminderRepeats);
+  const medicationReminderRepeats = useAppPreferencesStore(
+    (s) => s.medicationReminderRepeats
+  );
   const setMedicationReminderRepeats = useAppPreferencesStore(
-    (s) => s.setMedicationReminderRepeats,
+    (s) => s.setMedicationReminderRepeats
   );
   const medicationReminderHideNames = useAppPreferencesStore(
-    (s) => s.medicationReminderHideNames,
+    (s) => s.medicationReminderHideNames
   );
   const setMedicationReminderHideNames = useAppPreferencesStore(
-    (s) => s.setMedicationReminderHideNames,
+    (s) => s.setMedicationReminderHideNames
   );
   const usesNativeHeader = useNativeIOSHeadersActive();
   const bannerRef = useRef<NotificationPermissionBannerHandle>(null);
@@ -81,28 +90,42 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
         await maybePromptForExactAlarmPermission();
       }
     },
-    [setMedicationRemindersEnabled],
+    [setMedicationRemindersEnabled]
   );
 
-  const header = useScreenHeader({ title: t('notificationSettings.title', { defaultValue: 'Notifications' }), left: { kind: 'back' } });
+  const header = useScreenHeader({
+    title: t('notificationSettings.title', { defaultValue: 'Notifications' }),
+    left: { kind: 'back' },
+  });
 
   return (
-    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       <ScrollView
         contentContainerStyle={{
           padding: 16,
           paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding,
         }}
-        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
+        contentInsetAdjustmentBehavior={
+          usesNativeHeader ? 'automatic' : 'never'
+        }
       >
         <SettingsRow
-          title={t('notificationSettings.allow', { defaultValue: 'Allow Notifications' })}
-          subtitle={t('notificationSettings.allowSubtitle', { defaultValue: 'Master switch for all alerts from SparkyFitness.' })}
+          title={t('notificationSettings.allow', {
+            defaultValue: 'Allow Notifications',
+          })}
+          subtitle={t('notificationSettings.allowSubtitle', {
+            defaultValue: 'Master switch for all alerts from SparkyFitness.',
+          })}
           subtitleNumberOfLines={0}
           rightAccessory={
             <Switch
-              accessibilityLabel={t('notificationSettings.allow', { defaultValue: 'Allow Notifications' })}
+              accessibilityLabel={t('notificationSettings.allow', {
+                defaultValue: 'Allow Notifications',
+              })}
               value={notificationsEnabled}
               onValueChange={handleNotificationsToggle}
             />
@@ -112,26 +135,43 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
         <NotificationPermissionBanner ref={bannerRef} />
 
         {notificationsEnabled && (
-          <SettingsRowGroup title={t('notificationSettings.alerts', { defaultValue: 'Alerts' })}>
+          <SettingsRowGroup
+            title={t('notificationSettings.alerts', { defaultValue: 'Alerts' })}
+          >
             <SettingsRow
-              title={t('notificationSettings.restTimer', { defaultValue: 'Rest Timer' })}
-              subtitle={t('notificationSettings.restTimerSubtitle', { defaultValue: 'Alert when a rest period ends, even in the background.' })}
+              title={t('notificationSettings.restTimer', {
+                defaultValue: 'Rest Timer',
+              })}
+              subtitle={t('notificationSettings.restTimerSubtitle', {
+                defaultValue:
+                  'Alert when a rest period ends, even in the background.',
+              })}
               subtitleNumberOfLines={0}
               rightAccessory={
                 <Switch
-                  accessibilityLabel={t('notificationSettings.restTimer', { defaultValue: 'Rest Timer' })}
+                  accessibilityLabel={t('notificationSettings.restTimer', {
+                    defaultValue: 'Rest Timer',
+                  })}
                   value={restTimerNotificationsEnabled}
-                  onValueChange={(value) => void setRestTimerNotificationsEnabled(value)}
+                  onValueChange={(value) =>
+                    void setRestTimerNotificationsEnabled(value)
+                  }
                 />
               }
             />
             <SettingsRow
-              title={t('notificationSettings.fastingGoals', { defaultValue: 'Fasting Goals' })}
-              subtitle={t('notificationSettings.fastingGoalsSubtitle', { defaultValue: 'Alert when you reach your fasting goal.' })}
+              title={t('notificationSettings.fastingGoals', {
+                defaultValue: 'Fasting Goals',
+              })}
+              subtitle={t('notificationSettings.fastingGoalsSubtitle', {
+                defaultValue: 'Alert when you reach your fasting goal.',
+              })}
               subtitleNumberOfLines={0}
               rightAccessory={
                 <Switch
-                  accessibilityLabel={t('notificationSettings.fastingGoals', { defaultValue: 'Fasting Goals' })}
+                  accessibilityLabel={t('notificationSettings.fastingGoals', {
+                    defaultValue: 'Fasting Goals',
+                  })}
                   value={fastingGoalNotificationsEnabled}
                   onValueChange={setFastingGoalNotificationsEnabled}
                 />
@@ -141,14 +181,25 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
         )}
 
         {notificationsEnabled && (
-          <SettingsRowGroup title={t('notificationSettings.medications', { defaultValue: 'Medications' })}>
+          <SettingsRowGroup
+            title={t('notificationSettings.medications', {
+              defaultValue: 'Medications',
+            })}
+          >
             <SettingsRow
-              title={t('notificationSettings.medicationReminders', { defaultValue: 'Medication Reminders' })}
-              subtitle={t('notificationSettings.medicationRemindersSubtitle', { defaultValue: 'Reminders for scheduled medications.' })}
+              title={t('notificationSettings.medicationReminders', {
+                defaultValue: 'Medication Reminders',
+              })}
+              subtitle={t('notificationSettings.medicationRemindersSubtitle', {
+                defaultValue: 'Reminders for scheduled medications.',
+              })}
               subtitleNumberOfLines={0}
               rightAccessory={
                 <Switch
-                  accessibilityLabel={t('notificationSettings.medicationReminders', { defaultValue: 'Medication Reminders' })}
+                  accessibilityLabel={t(
+                    'notificationSettings.medicationReminders',
+                    { defaultValue: 'Medication Reminders' }
+                  )}
                   value={medicationRemindersEnabled}
                   onValueChange={handleMedicationRemindersToggle}
                 />
@@ -156,12 +207,20 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
             />
             {medicationRemindersEnabled && (
               <SettingsRow
-                title={t('notificationSettings.repeatReminders', { defaultValue: 'Repeat Reminders' })}
-                subtitle={t('notificationSettings.repeatRemindersSubtitle', { defaultValue: 'Repeat each reminder every 10 minutes, up to 3 times, until the dose is logged.' })}
+                title={t('notificationSettings.repeatReminders', {
+                  defaultValue: 'Repeat Reminders',
+                })}
+                subtitle={t('notificationSettings.repeatRemindersSubtitle', {
+                  defaultValue:
+                    'Repeat each reminder every 10 minutes, up to 3 times, until the dose is logged.',
+                })}
                 subtitleNumberOfLines={0}
                 rightAccessory={
                   <Switch
-                    accessibilityLabel={t('notificationSettings.repeatReminders', { defaultValue: 'Repeat Reminders' })}
+                    accessibilityLabel={t(
+                      'notificationSettings.repeatReminders',
+                      { defaultValue: 'Repeat Reminders' }
+                    )}
                     value={medicationReminderRepeats}
                     onValueChange={setMedicationReminderRepeats}
                   />
@@ -170,12 +229,23 @@ const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ()
             )}
             {medicationRemindersEnabled && (
               <SettingsRow
-                title={t('notificationSettings.hideMedicationNames', { defaultValue: 'Hide Medication Names' })}
-                subtitle={t('notificationSettings.hideMedicationNamesSubtitle', { defaultValue: 'Show a generic reminder instead of the medication name and dose.' })}
+                title={t('notificationSettings.hideMedicationNames', {
+                  defaultValue: 'Hide Medication Names',
+                })}
+                subtitle={t(
+                  'notificationSettings.hideMedicationNamesSubtitle',
+                  {
+                    defaultValue:
+                      'Show a generic reminder instead of the medication name and dose.',
+                  }
+                )}
                 subtitleNumberOfLines={0}
                 rightAccessory={
                   <Switch
-                    accessibilityLabel={t('notificationSettings.hideMedicationNames', { defaultValue: 'Hide Medication Names' })}
+                    accessibilityLabel={t(
+                      'notificationSettings.hideMedicationNames',
+                      { defaultValue: 'Hide Medication Names' }
+                    )}
                     value={medicationReminderHideNames}
                     onValueChange={setMedicationReminderHideNames}
                   />

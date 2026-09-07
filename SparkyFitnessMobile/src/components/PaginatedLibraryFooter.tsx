@@ -31,7 +31,9 @@ const PaginatedLibraryFooter: React.FC<PaginatedLibraryFooterProps> = ({
   if (isFetchNextPageError) {
     return (
       <View className="px-4 py-4 items-center">
-        <Text className="text-text-secondary text-sm text-center mb-3">{errorMessage}</Text>
+        <Text className="text-text-secondary text-sm text-center mb-3">
+          {errorMessage}
+        </Text>
         <Button variant="secondary" className="px-6" onPress={onRetry}>
           {t('common.retry', { defaultValue: 'Retry' })}
         </Button>

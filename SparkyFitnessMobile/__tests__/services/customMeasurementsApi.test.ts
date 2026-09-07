@@ -8,7 +8,8 @@ import { getActiveServerConfig } from '../../src/services/storage';
 
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
-  proxyHeadersToRecord: jest.requireActual('../../src/services/storage').proxyHeadersToRecord,
+  proxyHeadersToRecord: jest.requireActual('../../src/services/storage')
+    .proxyHeadersToRecord,
 }));
 
 jest.mock('../../src/services/LogService', () => ({
@@ -43,25 +44,49 @@ describe('customMeasurementsApi', () => {
   describe('fetchCustomCategories', () => {
     test('returns list of custom categories with id, name, measurement_type', async () => {
       const categories = [
-        { id: 'cat-1', name: 'Blood Pressure', measurement_type: 'mmHg', frequency: 'Daily', data_type: 'numeric', display_name: null },
-        { id: 'cat-2', name: 'Blood Sugar', measurement_type: 'mg/dL', frequency: 'Daily', data_type: 'numeric', display_name: null },
+        {
+          id: 'cat-1',
+          name: 'Blood Pressure',
+          measurement_type: 'mmHg',
+          frequency: 'Daily',
+          data_type: 'numeric',
+          display_name: null,
+        },
+        {
+          id: 'cat-2',
+          name: 'Blood Sugar',
+          measurement_type: 'mg/dL',
+          frequency: 'Daily',
+          data_type: 'numeric',
+          display_name: null,
+        },
       ];
-      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(categories) });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(categories),
+      });
 
       const result = await fetchCustomCategories();
 
       expect(result).toHaveLength(2);
-      expect(result[0]).toMatchObject({ id: 'cat-1', name: 'Blood Pressure', measurement_type: 'mmHg' });
+      expect(result[0]).toMatchObject({
+        id: 'cat-1',
+        name: 'Blood Pressure',
+        measurement_type: 'mmHg',
+      });
     });
 
     test('sends GET to custom-categories endpoint', async () => {
-      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
 
       await fetchCustomCategories();
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://example.com/api/measurements/custom-categories',
-        expect.objectContaining({ method: 'GET' }),
+        expect.objectContaining({ method: 'GET' })
       );
     });
   });
@@ -70,11 +95,21 @@ describe('customMeasurementsApi', () => {
     test('returns entries for the given date', async () => {
       const entries = [
         {
-          id: 'entry-1', category_id: 'cat-1', value: '120', entry_date: '2024-06-15',
-          source: 'manual', custom_categories: { name: 'Blood Pressure', measurement_type: 'mmHg' },
+          id: 'entry-1',
+          category_id: 'cat-1',
+          value: '120',
+          entry_date: '2024-06-15',
+          source: 'manual',
+          custom_categories: {
+            name: 'Blood Pressure',
+            measurement_type: 'mmHg',
+          },
         },
       ];
-      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(entries) });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(entries),
+      });
 
       const result = await fetchCustomMeasurementsByDate('2024-06-15');
 
@@ -84,13 +119,16 @@ describe('customMeasurementsApi', () => {
     });
 
     test('sends GET with date in URL path', async () => {
-      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
 
       await fetchCustomMeasurementsByDate('2024-06-15');
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://example.com/api/measurements/custom-entries/2024-06-15',
-        expect.objectContaining({ method: 'GET' }),
+        expect.objectContaining({ method: 'GET' })
       );
     });
   });
@@ -98,9 +136,15 @@ describe('customMeasurementsApi', () => {
   describe('saveCustomMeasurement', () => {
     test('sends POST with the complete body (category_id, value, entry_date, source)', async () => {
       const savedEntry = {
-        id: 'entry-1', category_id: 'cat-1', value: '75', entry_date: '2024-06-15',
+        id: 'entry-1',
+        category_id: 'cat-1',
+        value: '75',
+        entry_date: '2024-06-15',
       };
-      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(savedEntry) });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(savedEntry),
+      });
 
       const result = await saveCustomMeasurement({
         category_id: 'cat-1',
@@ -114,27 +158,32 @@ describe('customMeasurementsApi', () => {
         'https://example.com/api/measurements/custom-entries',
         expect.objectContaining({
           method: 'POST',
-          headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
           body: JSON.stringify({
             category_id: 'cat-1',
             value: 75,
             entry_date: '2024-06-15',
             source: 'manual',
           }),
-        }),
+        })
       );
     });
   });
 
   describe('deleteCustomMeasurement', () => {
     test('sends DELETE with entry id in URL', async () => {
-      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({}) });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({}),
+      });
 
       await deleteCustomMeasurement('entry-123');
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://example.com/api/measurements/custom-entries/entry-123',
-        expect.objectContaining({ method: 'DELETE' }),
+        expect.objectContaining({ method: 'DELETE' })
       );
     });
   });
@@ -151,7 +200,10 @@ describe('customMeasurementsApi', () => {
           frequency: 'Daily',
         },
       ];
-      mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve(categories) });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(categories),
+      });
 
       const [cat] = await fetchCustomCategories();
 

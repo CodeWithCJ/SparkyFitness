@@ -24,7 +24,11 @@ interface FoodSummaryProps {
   calorieGoal?: number;
   onAddFood?: () => void;
   onAdjustServing?: (entry: FoodEntry) => void;
-  onPressMealType?: (mealTypeId: string | null, mealTypeName: string, entries: FoodEntry[]) => void;
+  onPressMealType?: (
+    mealTypeId: string | null,
+    mealTypeName: string,
+    entries: FoodEntry[]
+  ) => void;
 }
 
 interface MealSectionProps {
@@ -32,20 +36,28 @@ interface MealSectionProps {
   goals?: DailyGoals;
   calorieGoal?: number;
   onAdjustServing?: (entry: FoodEntry) => void;
-  onPressMealType?: (mealTypeId: string | null, mealTypeName: string, entries: FoodEntry[]) => void;
+  onPressMealType?: (
+    mealTypeId: string | null,
+    mealTypeName: string,
+    entries: FoodEntry[]
+  ) => void;
 }
 
 const EmptyState: React.FC<{ onAddFood?: () => void }> = ({ onAddFood }) => {
   const { t } = useTranslation();
   return (
-  <Pressable
-    onPress={onAddFood}
-    accessibilityRole="button"
-    accessibilityLabel={t('foodSummary.tapToAddFood', { defaultValue: 'Tap to add food' })}
-    className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6"
-  >
-    <Text className="text-text-muted text-base">{t('foodSummary.tapToAddFood', { defaultValue: 'Tap to add food' })}</Text>
-  </Pressable>
+    <Pressable
+      onPress={onAddFood}
+      accessibilityRole="button"
+      accessibilityLabel={t('foodSummary.tapToAddFood', {
+        defaultValue: 'Tap to add food',
+      })}
+      className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6"
+    >
+      <Text className="text-text-muted text-base">
+        {t('foodSummary.tapToAddFood', { defaultValue: 'Tap to add food' })}
+      </Text>
+    </Pressable>
   );
 };
 
@@ -81,12 +93,15 @@ const MealSection: React.FC<MealSectionProps> = ({
   const headerContent = (
     <>
       <Icon name={icon} size={18} color={accentPrimary} />
-      <Text className="text-base font-bold text-text-secondary flex-1">{label}</Text>
+      <Text className="text-base font-bold text-text-secondary flex-1">
+        {label}
+      </Text>
       {(totalCalories > 0 || targetCalories > 0) && (
         <View className="bg-accent-primary/5 rounded-full px-2.5 py-0.5">
           <Text className="text-xs text-accent-primary font-semibold">
             {totalCalories}
-            {targetCalories > 0 ? ` / ${targetCalories}` : ''} {t('foodSummary.caloriesUnit', { defaultValue: 'Cal' })}
+            {targetCalories > 0 ? ` / ${targetCalories}` : ''}{' '}
+            {t('foodSummary.caloriesUnit', { defaultValue: 'Cal' })}
           </Text>
         </View>
       )}
@@ -100,10 +115,15 @@ const MealSection: React.FC<MealSectionProps> = ({
     <View className="bg-surface rounded-xl p-4 overflow-hidden shadow-sm">
       {onPressMealType ? (
         <Pressable
-          onPress={() => onPressMealType(group.mealTypeId, group.name, group.entries)}
+          onPress={() =>
+            onPressMealType(group.mealTypeId, group.name, group.entries)
+          }
           className="flex-row gap-2 mb-3 items-center"
           accessibilityRole="button"
-          accessibilityLabel={t('foodSummary.nutritionBreakdown', { defaultValue: '{{label}} nutrition breakdown', label })}
+          accessibilityLabel={t('foodSummary.nutritionBreakdown', {
+            defaultValue: '{{label}} nutrition breakdown',
+            label,
+          })}
         >
           {headerContent}
         </Pressable>

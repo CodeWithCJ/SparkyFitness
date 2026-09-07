@@ -7,13 +7,26 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Keyboard, LayoutAnimation, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
+import {
+  Keyboard,
+  LayoutAnimation,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+} from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import ActiveWorkoutExerciseCard from './ActiveWorkoutExerciseCard';
 import { MetricColumnMenu, SetTypeMenu } from './WorkoutMenus';
-import ActionSheet, { type ActionSheetItem, type ActionSheetRef } from './ActionSheet';
+import ActionSheet, {
+  type ActionSheetItem,
+  type ActionSheetRef,
+} from './ActionSheet';
 import { type AnchorRect } from './AnchoredMenu';
 import ExerciseSetRestSheet, {
   type ExerciseSetRestSheetRef,
@@ -28,9 +41,15 @@ import {
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { SetInputField, SetRowAccessoryHandle } from './SetRowChrome';
-import type { ActiveSetPatch, CompletedSetMap } from '../stores/activeWorkoutStore';
+import type {
+  ActiveSetPatch,
+  CompletedSetMap,
+} from '../stores/activeWorkoutStore';
 import { useSupersetBorders } from './ActiveWorkoutRail';
-import type { WorkoutDraftExercise, WorkoutSetMetaPatch } from '../types/drafts';
+import type {
+  WorkoutDraftExercise,
+  WorkoutSetMetaPatch,
+} from '../types/drafts';
 import type { Exercise } from '../types/exercise';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
 
@@ -61,17 +80,20 @@ interface WorkoutFormExerciseListProps {
    * (keyed by set clientId) so the screen's sticky Done/Next bar can dispatch
    * to the focused row.
    */
-  onRegisterAccessoryHandle?: (key: string, handle: SetRowAccessoryHandle | null) => void;
+  onRegisterAccessoryHandle?: (
+    key: string,
+    handle: SetRowAccessoryHandle | null
+  ) => void;
   updateSetField: (
     exerciseClientId: string,
     setClientId: string,
     field: 'weight' | 'reps' | 'duration' | 'distance',
-    value: string,
+    value: string
   ) => void;
   updateSetMeta: (
     exerciseClientId: string,
     setClientId: string,
-    patch: WorkoutSetMetaPatch,
+    patch: WorkoutSetMetaPatch
   ) => void;
   removeSet: (exerciseClientId: string, setClientId: string) => void;
   onAddSet: (exerciseClientId: string) => void;
@@ -185,17 +207,17 @@ const WorkoutFormExerciseList = forwardRef<
     showCompletion = false,
     removeExerciseOnLastSetDelete = false,
   },
-  ref,
+  ref
 ) {
   const { t } = useTranslation();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
   const cardExercises = useMemo(
     () =>
-      exercises.map(exercise =>
-        draftExerciseToCardExercise(exercise, weightUnit, distanceUnit),
+      exercises.map((exercise) =>
+        draftExerciseToCardExercise(exercise, weightUnit, distanceUnit)
       ),
-    [exercises, weightUnit, distanceUnit],
+    [exercises, weightUnit, distanceUnit]
   );
 
   // Reorder overlay. The open trigger lives in the owning screen's header
@@ -212,13 +234,13 @@ const WorkoutFormExerciseList = forwardRef<
         setReorderVisible(true);
       },
     }),
-    [onDeactivateSet],
+    [onDeactivateSet]
   );
 
   // Form cards default expanded; the map tracks explicit collapses.
   const [collapsedIds, setCollapsedIds] = useState<Record<string, boolean>>({});
   const toggleExpanded = useCallback((entryId: string) => {
-    setCollapsedIds(prev => ({ ...prev, [entryId]: !prev[entryId] }));
+    setCollapsedIds((prev) => ({ ...prev, [entryId]: !prev[entryId] }));
   }, []);
 
   const setOwnerByClientId = useMemo(() => {
@@ -244,8 +266,12 @@ const WorkoutFormExerciseList = forwardRef<
   // Superset rails, same presentation as the live/detail screens but keyed by
   // draft clientIds.
   const exercisesForBorders = useMemo(
-    () => exercises.map(e => ({ id: e.clientId, superset_group: e.supersetGroup ?? null })),
-    [exercises],
+    () =>
+      exercises.map((e) => ({
+        id: e.clientId,
+        superset_group: e.supersetGroup ?? null,
+      })),
+    [exercises]
   );
   const { runs: supersetRuns, borders: supersetBorders } =
     useSupersetBorders(exercisesForBorders);
@@ -255,7 +281,7 @@ const WorkoutFormExerciseList = forwardRef<
       const owner = setOwnerByClientId.get(setId);
       if (owner) onActivateSet(`${owner}:${setId}`, field);
     },
-    [setOwnerByClientId, onActivateSet],
+    [setOwnerByClientId, onActivateSet]
   );
 
   // Tapping the RPE column makes the row active and focuses its RPE input.
@@ -264,7 +290,7 @@ const WorkoutFormExerciseList = forwardRef<
       const owner = setOwnerByClientId.get(setId);
       if (owner) onActivateSet(`${owner}:${setId}`, 'rpe');
     },
-    [setOwnerByClientId, onActivateSet],
+    [setOwnerByClientId, onActivateSet]
   );
 
   const handleEditFieldChange = useCallback(
@@ -272,7 +298,7 @@ const WorkoutFormExerciseList = forwardRef<
       const owner = setOwnerByClientId.get(setId);
       if (owner) updateSetField(owner, setId, field, text);
     },
-    [setOwnerByClientId, updateSetField],
+    [setOwnerByClientId, updateSetField]
   );
 
   // Programmatic commits (prefill weight/reps in kg, RPE from the row input)
@@ -285,25 +311,36 @@ const WorkoutFormExerciseList = forwardRef<
         const text =
           patch.weight == null
             ? ''
-            : String(parseFloat(weightFromKg(patch.weight, weightUnit).toFixed(1)));
+            : String(
+                parseFloat(weightFromKg(patch.weight, weightUnit).toFixed(1))
+              );
         updateSetField(owner, setId, 'weight', text);
       }
       if (patch.reps !== undefined) {
-        updateSetField(owner, setId, 'reps', patch.reps == null ? '' : String(patch.reps));
+        updateSetField(
+          owner,
+          setId,
+          'reps',
+          patch.reps == null ? '' : String(patch.reps)
+        );
       }
       if (patch.duration !== undefined) {
         updateSetField(
           owner,
           setId,
           'duration',
-          patch.duration == null ? '' : String(patch.duration),
+          patch.duration == null ? '' : String(patch.duration)
         );
       }
       if (patch.distance !== undefined) {
         const text =
           patch.distance == null
             ? ''
-            : String(parseFloat(distanceFromKm(patch.distance, distanceUnit).toFixed(2)));
+            : String(
+                parseFloat(
+                  distanceFromKm(patch.distance, distanceUnit).toFixed(2)
+                )
+              );
         updateSetField(owner, setId, 'distance', text);
       }
       if (patch.rpe !== undefined) {
@@ -313,7 +350,13 @@ const WorkoutFormExerciseList = forwardRef<
         updateSetMeta(owner, setId, { notes: patch.notes });
       }
     },
-    [setOwnerByClientId, updateSetField, updateSetMeta, weightUnit, distanceUnit],
+    [
+      setOwnerByClientId,
+      updateSetField,
+      updateSetMeta,
+      weightUnit,
+      distanceUnit,
+    ]
   );
 
   const handleDeleteSet = useCallback(
@@ -321,7 +364,7 @@ const WorkoutFormExerciseList = forwardRef<
       const owner = setOwnerByClientId.get(setId);
       if (!owner) return;
       if (removeExerciseOnLastSetDelete) {
-        const exercise = exercises.find(e => e.clientId === owner);
+        const exercise = exercises.find((e) => e.clientId === owner);
         if (exercise != null && exercise.sets.length <= 1) {
           onRemoveExercise(exercise);
           return;
@@ -329,19 +372,29 @@ const WorkoutFormExerciseList = forwardRef<
       }
       removeSet(owner, setId);
     },
-    [setOwnerByClientId, removeSet, removeExerciseOnLastSetDelete, exercises, onRemoveExercise],
+    [
+      setOwnerByClientId,
+      removeSet,
+      removeExerciseOnLastSetDelete,
+      exercises,
+      onRemoveExercise,
+    ]
   );
 
   // Notes (workout forms only, gated on `setExerciseNotes`): which exercise's
   // note field the ⋮ "Notes" item revealed, and which set's inline note panel
   // is expanded (toggled by long-pressing its row). Mirrors the live screen.
-  const [noteEditorClientId, setNoteEditorClientId] = useState<string | null>(null);
-  const [expandedSetClientId, setExpandedSetClientId] = useState<string | null>(null);
+  const [noteEditorClientId, setNoteEditorClientId] = useState<string | null>(
+    null
+  );
+  const [expandedSetClientId, setExpandedSetClientId] = useState<string | null>(
+    null
+  );
   const handleToggleSetDetail = useCallback((setId: string) => {
     // Animate the panel and the rows it pushes, matching the card wrapper's
     // 300ms LinearTransition (same idiom as the live screen).
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpandedSetClientId(prev => (prev === setId ? null : setId));
+    setExpandedSetClientId((prev) => (prev === setId ? null : setId));
   }, []);
   const handleToggleExerciseNote = useCallback(
     (clientId: string) => {
@@ -349,10 +402,12 @@ const WorkoutFormExerciseList = forwardRef<
       setNoteEditorClientId(opening ? clientId : null);
       // Opening reveals the field, so make sure the card is expanded to show it.
       if (opening) {
-        setCollapsedIds(prev => (prev[clientId] ? { ...prev, [clientId]: false } : prev));
+        setCollapsedIds((prev) =>
+          prev[clientId] ? { ...prev, [clientId]: false } : prev
+        );
       }
     },
-    [noteEditorClientId],
+    [noteEditorClientId]
   );
   const handleCommitExerciseNote = useCallback(
     (clientId: string, text: string) => {
@@ -362,42 +417,54 @@ const WorkoutFormExerciseList = forwardRef<
       // and force the save to send an identical payload.
       const trimmed = text.trim();
       const nextNotes = trimmed.length > 0 ? trimmed : null;
-      const draft = exercises.find(e => e.clientId === clientId);
+      const draft = exercises.find((e) => e.clientId === clientId);
       if (draft == null || (draft.notes ?? null) === nextNotes) return;
       setExerciseNotes(clientId, text);
     },
-    [exercises, setExerciseNotes],
+    [exercises, setExerciseNotes]
   );
 
   // Toggle a set's completion (stamp/clear completedAt), which round-trips to
   // the server through the draft on save.
   const handleToggleComplete = useCallback(
     (setId: string) => {
-      const owner = exercises.find(e => e.sets.some(s => s.clientId === setId));
-      const set = owner?.sets.find(s => s.clientId === setId);
+      const owner = exercises.find((e) =>
+        e.sets.some((s) => s.clientId === setId)
+      );
+      const set = owner?.sets.find((s) => s.clientId === setId);
       if (!owner || !set) return;
       updateSetMeta(owner.clientId, setId, {
         completedAt: set.completedAt ? null : new Date().toISOString(),
       });
     },
-    [exercises, updateSetMeta],
+    [exercises, updateSetMeta]
   );
 
   // Set-type menu: tapping a set number (or long-pressing the row) anchors
   // the shared SetTypeMenu (with its Delete-set item). Replaces an Alert,
   // which capped at 3 buttons on Android and hid most of the options.
-  const [setTypeMenu, setSetTypeMenu] = useState<{ setId: string; anchor: AnchorRect } | null>(
-    null,
+  const [setTypeMenu, setSetTypeMenu] = useState<{
+    setId: string;
+    anchor: AnchorRect;
+  } | null>(null);
+  const handlePressSetType = useCallback(
+    (setId: string, anchor: AnchorRect) => {
+      setSetTypeMenu({ setId, anchor });
+    },
+    []
   );
-  const handlePressSetType = useCallback((setId: string, anchor: AnchorRect) => {
-    setSetTypeMenu({ setId, anchor });
-  }, []);
   const setTypeTarget = useMemo(() => {
     if (setTypeMenu == null) return null;
-    const owner = exercises.find(e => e.sets.some(s => s.clientId === setTypeMenu.setId));
-    const set = owner?.sets.find(s => s.clientId === setTypeMenu.setId);
+    const owner = exercises.find((e) =>
+      e.sets.some((s) => s.clientId === setTypeMenu.setId)
+    );
+    const set = owner?.sets.find((s) => s.clientId === setTypeMenu.setId);
     if (!owner || !set) return null;
-    return { ownerClientId: owner.clientId, setId: setTypeMenu.setId, currentType: set.setType ?? 'normal' };
+    return {
+      ownerClientId: owner.clientId,
+      setId: setTypeMenu.setId,
+      currentType: set.setType ?? 'normal',
+    };
   }, [setTypeMenu, exercises]);
 
   // Open the library Exercise Detail for a draft row (thumbnail tap + ⋮ menu).
@@ -406,64 +473,72 @@ const WorkoutFormExerciseList = forwardRef<
   const handleViewExercise = useCallback(
     (clientId: string) => {
       if (!onViewExercise) return;
-      const draft = exercises.find(e => e.clientId === clientId);
+      const draft = exercises.find((e) => e.clientId === clientId);
       if (draft) onViewExercise(exerciseFromDraft(draft, t));
     },
-    [exercises, onViewExercise, t],
+    [exercises, onViewExercise, t]
   );
 
   // Rest sheet (All/per-set rest duration, committed on Done).
   const restSheetRef = useRef<ExerciseSetRestSheetRef>(null);
   const restSheetEntryIdRef = useRef<string | null>(null);
-  const handlePressRestChip = useCallback((entryId: string, _currentSec: number | null) => {
-    const exercise = exercises.find((e) => e.clientId === entryId);
-    if (!exercise) return;
-    restSheetEntryIdRef.current = entryId;
-    const isSupersetMember = exercise.supersetGroup != null;
-    restSheetRef.current?.present(
-      exercise.exerciseName,
-      exercise.sets.map((set, index) => ({
-        setId: set.clientId,
-        setNumber: index + 1,
-        restSec: set.restTime,
-      })),
-      isSupersetMember,
-    );
-  }, [exercises]);
-  const handleRestApply = useCallback((updates: ExerciseSetRestUpdate[]) => {
-    const owner = restSheetEntryIdRef.current;
-    if (!owner) return;
-    const exercise = exercises.find((e) => e.clientId === owner);
-    if (!exercise) return;
+  const handlePressRestChip = useCallback(
+    (entryId: string, _currentSec: number | null) => {
+      const exercise = exercises.find((e) => e.clientId === entryId);
+      if (!exercise) return;
+      restSheetEntryIdRef.current = entryId;
+      const isSupersetMember = exercise.supersetGroup != null;
+      restSheetRef.current?.present(
+        exercise.exerciseName,
+        exercise.sets.map((set, index) => ({
+          setId: set.clientId,
+          setNumber: index + 1,
+          restSec: set.restTime,
+        })),
+        isSupersetMember
+      );
+    },
+    [exercises]
+  );
+  const handleRestApply = useCallback(
+    (updates: ExerciseSetRestUpdate[]) => {
+      const owner = restSheetEntryIdRef.current;
+      if (!owner) return;
+      const exercise = exercises.find((e) => e.clientId === owner);
+      if (!exercise) return;
 
-    // Superset members: always use setExerciseRest to harmonize all members
-    if (exercise.supersetGroup != null) {
-      if (updates.length > 0) {
-        // All updates should have the same value for superset members
-        setExerciseRest(owner, updates[0].seconds);
-      }
-      return;
-    }
-
-    // Solo exercise: check if all sets have the same rest, then use setExerciseRest
-    if (updates.length === exercise.sets.length && updates.length > 0) {
-      const [first, ...rest] = updates;
-      if (rest.every((u) => u.seconds === first.seconds)) {
-        setExerciseRest(owner, first.seconds);
+      // Superset members: always use setExerciseRest to harmonize all members
+      if (exercise.supersetGroup != null) {
+        if (updates.length > 0) {
+          // All updates should have the same value for superset members
+          setExerciseRest(owner, updates[0].seconds);
+        }
         return;
       }
-    }
 
-    // Otherwise update individual sets
-    for (const update of updates) {
-      updateSetMeta(owner, update.setId, { restTime: update.seconds });
-    }
-  }, [exercises, setExerciseRest, updateSetMeta]);
+      // Solo exercise: check if all sets have the same rest, then use setExerciseRest
+      if (updates.length === exercise.sets.length && updates.length > 0) {
+        const [first, ...rest] = updates;
+        if (rest.every((u) => u.seconds === first.seconds)) {
+          setExerciseRest(owner, first.seconds);
+          return;
+        }
+      }
+
+      // Otherwise update individual sets
+      for (const update of updates) {
+        updateSetMeta(owner, update.setId, { restTime: update.seconds });
+      }
+    },
+    [exercises, setExerciseRest, updateSetMeta]
+  );
 
   // Metric column is shared with the active-workout screen (intended).
   // Preset sets store no RPE, so the preset form hides RPE from the column
   // picker and falls the shared 'rpe' selection back to volume for display.
-  const metricColumn = useAppPreferencesStore(s => s.activeWorkoutMetricColumn);
+  const metricColumn = useAppPreferencesStore(
+    (s) => s.activeWorkoutMetricColumn
+  );
   const effectiveMetricColumn =
     !rpeEditable && metricColumn === 'rpe' ? 'volume' : metricColumn;
   const [metricMenu, setMetricMenu] = useState<{
@@ -474,7 +549,7 @@ const WorkoutFormExerciseList = forwardRef<
     (anchor: AnchorRect, clampedToRpe: boolean) => {
       setMetricMenu({ anchor, clampedToRpe });
     },
-    [],
+    []
   );
 
   // Card ⋮ menu, presented as a bottom sheet titled with the exercise name.
@@ -496,13 +571,13 @@ const WorkoutFormExerciseList = forwardRef<
   const overflowMenuItems = useMemo<ActionSheetItem[]>(() => {
     if (overflowMenu == null) return [];
     const { clientId, mode } = overflowMenu;
-    const groupedIds = new Set(supersetRuns.flatMap(run => run.entryIds));
+    const groupedIds = new Set(supersetRuns.flatMap((run) => run.entryIds));
     const candidates = exercises.filter(
-      e => e.clientId !== clientId && !groupedIds.has(e.clientId),
+      (e) => e.clientId !== clientId && !groupedIds.has(e.clientId)
     );
 
     if (mode === 'pick') {
-      return candidates.map(candidate => ({
+      return candidates.map((candidate) => ({
         key: candidate.clientId,
         label: candidate.exerciseName,
         onPress: () => supersetWith(clientId, candidate.clientId),
@@ -527,48 +602,58 @@ const WorkoutFormExerciseList = forwardRef<
     if (candidates.length > 0) {
       items.push({
         key: 'superset-with',
-        label: t('workoutForm.supersetWith', { defaultValue: 'Superset with…' }),
+        label: t('workoutForm.supersetWith', {
+          defaultValue: 'Superset with…',
+        }),
         // Keeps the sheet presented; the candidate list swaps in place.
         dismissOnPress: false,
         onPress: () => {
-          setOverflowMenu(prev => (prev ? { ...prev, mode: 'pick' } : prev));
+          setOverflowMenu((prev) => (prev ? { ...prev, mode: 'pick' } : prev));
         },
       });
     }
     if (groupedIds.has(clientId)) {
       items.push({
         key: 'ungroup',
-        label: t('workoutForm.removeFromSuperset', { defaultValue: 'Remove from superset' }),
+        label: t('workoutForm.removeFromSuperset', {
+          defaultValue: 'Remove from superset',
+        }),
         onPress: () => ungroupExercise(clientId),
       });
     }
     if (onReplaceExercise) {
       items.push({
         key: 'replace',
-        label: t('workoutForm.replaceExercise', { defaultValue: 'Replace exercise' }),
+        label: t('workoutForm.replaceExercise', {
+          defaultValue: 'Replace exercise',
+        }),
         onPress: () => onReplaceExercise(clientId),
       });
     }
     if (onDuplicateExercise) {
       items.push({
         key: 'duplicate',
-        label: t('workoutForm.duplicateExercise', { defaultValue: 'Duplicate exercise' }),
+        label: t('workoutForm.duplicateExercise', {
+          defaultValue: 'Duplicate exercise',
+        }),
         onPress: () => onDuplicateExercise(clientId),
       });
     }
     if (clearExerciseCompletions) {
-      const target = exercises.find(e => e.clientId === clientId);
+      const target = exercises.find((e) => e.clientId === clientId);
       // The cardio effort form shows no completion state in the forms, so a
       // Clear item there would toggle something invisible.
-      const card = cardExercises.find(c => c.id === clientId);
+      const card = cardExercises.find((c) => c.id === clientId);
       const cardioForm =
         cardioFormEnabled &&
         card != null &&
         rendersCardioEffortForm(card.exercise_snapshot, card.sets.length);
-      if (!cardioForm && target?.sets.some(s => s.completedAt != null)) {
+      if (!cardioForm && target?.sets.some((s) => s.completedAt != null)) {
         items.push({
           key: 'clear',
-          label: t('workoutForm.clearLoggedSets', { defaultValue: 'Clear logged sets' }),
+          label: t('workoutForm.clearLoggedSets', {
+            defaultValue: 'Clear logged sets',
+          }),
           destructive: true,
           onPress: () => clearExerciseCompletions(clientId),
         });
@@ -576,10 +661,12 @@ const WorkoutFormExerciseList = forwardRef<
     }
     items.push({
       key: 'remove',
-      label: t('workoutForm.removeExercise', { defaultValue: 'Remove exercise' }),
+      label: t('workoutForm.removeExercise', {
+        defaultValue: 'Remove exercise',
+      }),
       destructive: true,
       onPress: () => {
-        const exercise = exercises.find(e => e.clientId === clientId);
+        const exercise = exercises.find((e) => e.clientId === clientId);
         if (exercise) onRemoveExercise(exercise);
       },
     });
@@ -605,7 +692,7 @@ const WorkoutFormExerciseList = forwardRef<
 
   return (
     <Animated.View layout={LinearTransition.duration(300)}>
-      {cardExercises.map(cardExercise => {
+      {cardExercises.map((cardExercise) => {
         const clientId = cardExercise.id;
         const isExpanded = !collapsedIds[clientId];
         const supersetBorder = supersetBorders.get(clientId) ?? null;
@@ -634,9 +721,13 @@ const WorkoutFormExerciseList = forwardRef<
             onToggleExpanded={toggleExpanded}
             onChangeCalories={setExerciseCalories}
             noteEditorOpen={noteEditorClientId === clientId}
-            onCommitExerciseNote={setExerciseNotes ? handleCommitExerciseNote : undefined}
+            onCommitExerciseNote={
+              setExerciseNotes ? handleCommitExerciseNote : undefined
+            }
             expandedSetKey={expandedSetClientId}
-            onLongPressSet={setExerciseNotes ? handleToggleSetDetail : undefined}
+            onLongPressSet={
+              setExerciseNotes ? handleToggleSetDetail : undefined
+            }
             onPressRestChip={handlePressRestChip}
             onPressMetricHeader={handlePressMetricHeader}
             onPressOverflow={handlePressOverflow}
@@ -693,7 +784,10 @@ const WorkoutFormExerciseList = forwardRef<
           activeOpacity={0.6}
         >
           <Icon name="add-circle" size={20} color={accentPrimary} />
-          <Text className="text-lg font-medium ml-2" style={{ color: accentPrimary }}>
+          <Text
+            className="text-lg font-medium ml-2"
+            style={{ color: accentPrimary }}
+          >
             {t('workoutForm.addExercise', { defaultValue: 'Add Exercise' })}
           </Text>
         </TouchableOpacity>
@@ -713,13 +807,17 @@ const WorkoutFormExerciseList = forwardRef<
         title={
           overflowMenu?.mode === 'pick'
             ? t('workoutForm.supersetWith', { defaultValue: 'Superset with…' })
-            : (exercises.find(e => e.clientId === overflowMenu?.clientId)?.exerciseName ??
+            : (exercises.find((e) => e.clientId === overflowMenu?.clientId)
+                ?.exerciseName ??
               t('workoutForm.exercise', { defaultValue: 'Exercise' }))
         }
         items={overflowMenuItems}
         onBack={
           overflowMenu?.mode === 'pick'
-            ? () => setOverflowMenu(prev => (prev ? { ...prev, mode: 'main' } : prev))
+            ? () =>
+                setOverflowMenu((prev) =>
+                  prev ? { ...prev, mode: 'main' } : prev
+                )
             : undefined
         }
         onDismiss={() => setOverflowMenu(null)}
@@ -729,9 +827,11 @@ const WorkoutFormExerciseList = forwardRef<
         anchor={setTypeTarget != null ? (setTypeMenu?.anchor ?? null) : null}
         currentType={setTypeTarget?.currentType}
         onClose={() => setSetTypeMenu(null)}
-        onSelect={type => {
+        onSelect={(type) => {
           if (setTypeTarget != null) {
-            updateSetMeta(setTypeTarget.ownerClientId, setTypeTarget.setId, { setType: type });
+            updateSetMeta(setTypeTarget.ownerClientId, setTypeTarget.setId, {
+              setType: type,
+            });
           }
         }}
         // Through handleDeleteSet so the last-set → remove-exercise guard applies.

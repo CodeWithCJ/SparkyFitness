@@ -1,58 +1,75 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
-import { View, Text, ScrollView, RefreshControl, Pressable } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import type { CompositeScreenProps } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
-import { useCSSVariable } from 'uniwind';
-import { hasSupplementNutrition } from '@workspace/shared';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
-import Icon from '../components/Icon';
+import { hasSupplementNutrition } from '@workspace/shared';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  useServerConnection,
-  useDailySummary,
-  usePreferences,
-  useMeasurements,
-  useWaterIntakeMutation,
-  useMeasurementsRange,
-  useWidgetSync,
-  useCustomNutrients,
-  useNutrientDisplayPreferences,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCSSVariable } from 'uniwind';
+import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import CalendarSheet, {
+  type CalendarSheetRef,
+} from '../components/CalendarSheet';
+import CalorieRingCard from '../components/CalorieRingCard';
+import CycleCard from '../components/CycleCard';
+import DateNavigator from '../components/DateNavigator';
+import ExerciseProgressCard from '../components/ExerciseProgressCard';
+import FastingCard from '../components/FastingCard';
+import FastingGoalReconciler from '../components/FastingGoalReconciler';
+import HealthTrendsPager from '../components/HealthTrendsPager';
+import HydrationGauge from '../components/HydrationGauge';
+import Icon from '../components/Icon';
+import MacroCard from '../components/MacroCard';
+import MedicationsCard from '../components/MedicationsCard';
+import SegmentedControl, { type Segment } from '../components/SegmentedControl';
+import StatusView from '../components/StatusView';
+import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
+import {
   fastingRootQueryKey,
   medicationsRootQueryKey,
+  useCustomNutrients,
+  useDailySummary,
+  useHealthTrends,
+  useMeasurements,
+  useNutrientDisplayPreferences,
+  usePreferences,
+  useServerConnection,
+  useWaterIntakeMutation,
+  useWidgetSync,
 } from '../hooks';
-import type { StepsRange } from '../hooks';
-import CalorieRingCard from '../components/CalorieRingCard';
-import MacroCard from '../components/MacroCard';
-import DateNavigator from '../components/DateNavigator';
-import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
+import type { HealthTrendDateRange } from '../types/healthTrends';
+import type { RootStackParamList, TabParamList } from '../types/navigation';
+import { formatDateLabel } from '../utils/dateUtils';
 import {
   setNativeHeaderDatePickerOptions,
   type NativeHeaderDatePickerNavigation,
 } from '../utils/nativeHeaderDatePicker';
-import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
-import { weightFromKg } from '../utils/unitConversions';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
-import { formatDateLabel } from '../utils/dateUtils';
-import HydrationGauge from '../components/HydrationGauge';
-import SegmentedControl, { type Segment } from '../components/SegmentedControl';
-import HealthTrendsPager from '../components/HealthTrendsPager';
-import ExerciseProgressCard from '../components/ExerciseProgressCard';
-import StatusView from '../components/StatusView';
-import FastingCard from '../components/FastingCard';
-import CycleCard from '../components/CycleCard';
-import FastingGoalReconciler from '../components/FastingGoalReconciler';
-import MedicationsCard from '../components/MedicationsCard';
-import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useAppPreferencesStore } from '../stores/appPreferencesStore';
-import type { CompositeScreenProps } from '@react-navigation/native';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList, TabParamList } from '../types/navigation';
-import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
-import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
+import { weightFromKg } from '../utils/unitConversions';
 
-const RANGE_SEGMENTS = (t: (key: string, options: { defaultValue: string }) => string): Segment<StepsRange>[] => [
+const RANGE_SEGMENTS = (
+  t: (key: string, options: { defaultValue: string }) => string
+): Segment<HealthTrendDateRange>[] => [
   { key: '7d', label: t('ranges.7d', { defaultValue: '7d' }) },
   { key: '30d', label: t('ranges.30d', { defaultValue: '30d' }) },
   { key: '90d', label: t('ranges.90d', { defaultValue: '90d' }) },
@@ -64,8 +81,10 @@ type DashboardScreenProps = CompositeScreenProps<
 >;
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
-  const { t , i18n: translationI18n } = useTranslation();
-  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
+  const { t, i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl')
+    ? 'pl-PL'
+    : 'en-US';
   const queryClient = useQueryClient();
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
   const setSelectedDate = useDiaryDateStore((s) => s.setSelectedDate);
@@ -73,7 +92,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const goToNextDay = useDiaryDateStore((s) => s.goToNextDay);
   const goToToday = useDiaryDateStore((s) => s.goToToday);
   const syncTodayRollover = useDiaryDateStore((s) => s.syncTodayRollover);
-  const [stepsRange, setStepsRange] = useState<StepsRange>('7d');
+  const [trendsRange, setTrendsRange] = useState<HealthTrendDateRange>('7d');
   const scrollViewRef = useRef<ScrollView>(null);
   const calendarRef = useRef<CalendarSheetRef>(null);
 
@@ -95,7 +114,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     });
   }, [navigation, goToToday]);
   const openCalendar = useCallback(() => calendarRef.current?.present(), []);
-  const handleCalendarSelect = useCallback((date: string) => setSelectedDate(date), [setSelectedDate]);
+  const handleCalendarSelect = useCallback(
+    (date: string) => setSelectedDate(date),
+    [setSelectedDate]
+  );
   const usesNativeTabs = useNativeIOSTabsActive();
   const insets = useSafeAreaInsets();
   const { defaultColor: nativeHeaderActionColor } = useHeaderActionColors();
@@ -110,13 +132,17 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         onDatePress: openCalendar,
         onNextDate: goToNextDay,
         tintColor: nativeHeaderActionColor,
-        accessibilityLabel: t('dashboard.chooseDate', { defaultValue: 'Choose dashboard date' }),
-        previousDayLabel: t('common.previousDay', { defaultValue: ': previous day' }),
+        accessibilityLabel: t('dashboard.chooseDate', {
+          defaultValue: 'Choose dashboard date',
+        }),
+        previousDayLabel: t('common.previousDay', {
+          defaultValue: ': previous day',
+        }),
         nextDayLabel: t('common.nextDay', { defaultValue: ': next day' }),
         dateLabel: `${formatDateLabel(selectedDate, t, dateLocale)} ▾`,
         t,
         locale: dateLocale,
-      },
+      }
     );
   }, [
     goToNextDay,
@@ -135,38 +161,70 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     date: selectedDate,
     enabled: isConnected,
   });
-  const { preferences, isLoading: isPreferencesLoading, isError: isPreferencesError, refetch: refetchPreferences } = usePreferences({
+  const {
+    preferences,
+    isLoading: isPreferencesLoading,
+    isError: isPreferencesError,
+    refetch: refetchPreferences,
+  } = usePreferences({
     enabled: isConnected,
   });
-  const { isLoading: isMeasurementsLoading, isError: isMeasurementsError, refetch: refetchMeasurements } = useMeasurements({
+  const {
+    isLoading: isMeasurementsLoading,
+    isError: isMeasurementsError,
+    refetch: refetchMeasurements,
+  } = useMeasurements({
     date: selectedDate,
     enabled: isConnected,
   });
-  const { increment: incrementWater, decrement: decrementWater, unit: waterUnit, servingVolume, isContainersLoaded, containers: waterContainers, activeContainer: activeWaterContainer, selectContainer: selectWaterContainer } = useWaterIntakeMutation({
+  const {
+    increment: incrementWater,
+    decrement: decrementWater,
+    unit: waterUnit,
+    servingVolume,
+    isContainersLoaded,
+    containers: waterContainers,
+    activeContainer: activeWaterContainer,
+    selectContainer: selectWaterContainer,
+  } = useWaterIntakeMutation({
     date: selectedDate,
     enabled: isConnected,
   });
 
-  const { stepsData, weightData: rawWeightData, isLoading: isStepsLoading, isError: isStepsError, refetch: refetchSteps } = useMeasurementsRange({
-    range: stepsRange,
+  const { refetch: refetchTrends, ...trends } = useHealthTrends({
+    range: trendsRange,
     enabled: isConnected,
   });
 
-  const { customNutrients, refetch: refetchCustomNutrients } = useCustomNutrients({ enabled: isConnected });
-  const { summaryNutrients, refetch: refetchNutrientPrefs } = useNutrientDisplayPreferences({ enabled: isConnected });
+  const { customNutrients, refetch: refetchCustomNutrients } =
+    useCustomNutrients({ enabled: isConnected });
+  const { summaryNutrients, refetch: refetchNutrientPrefs } =
+    useNutrientDisplayPreferences({ enabled: isConnected });
 
   useWidgetSync(summary);
 
   // The chart is a single-axis line graph; if the user picked stones+lbs, plot lbs.
   const weightUnit: 'kg' | 'lbs' =
     (preferences?.default_weight_unit ?? 'kg') === 'kg' ? 'kg' : 'lbs';
-  const weightData = useMemo(() => {
-    if (weightUnit === 'kg') return rawWeightData;
-    return rawWeightData.map(p => ({ ...p, weight: weightFromKg(p.weight, weightUnit) }));
-  }, [rawWeightData, weightUnit]);
+  const weightSeries = useMemo(() => {
+    if (weightUnit === 'kg') return trends.weight;
+    return {
+      ...trends.weight,
+      data: trends.weight.data.map((p) => ({
+        ...p,
+        weight: weightFromKg(p.weight, weightUnit),
+      })),
+    };
+  }, [trends.weight, weightUnit]);
 
   // CSS variable macro colors are theme-aware (lower saturation than hardcoded hex)
-  const [proteinColor, carbsColor, fatColor, fiberColor, progressTrackOverfillColor] = useCSSVariable([
+  const [
+    proteinColor,
+    carbsColor,
+    fatColor,
+    fiberColor,
+    progressTrackOverfillColor,
+  ] = useCSSVariable([
     '--color-macro-protein',
     '--color-macro-carbs',
     '--color-macro-fat',
@@ -179,11 +237,17 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [chartPage, setChartPage] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
-  const fastingCardVisible = useAppPreferencesStore((s) => s.fastingCardVisible);
+  const fastingCardVisible = useAppPreferencesStore(
+    (s) => s.fastingCardVisible
+  );
   const cycleCardVisible = useAppPreferencesStore((s) => s.cycleCardVisible);
-  const hydrationCardVisible = useAppPreferencesStore((s) => s.hydrationCardVisible);
+  const hydrationCardVisible = useAppPreferencesStore(
+    (s) => s.hydrationCardVisible
+  );
   const askSparkyVisible = useAppPreferencesStore((s) => s.askSparkyVisible);
-  const medicationsCardVisible = useAppPreferencesStore((s) => s.medicationsCardVisible);
+  const medicationsCardVisible = useAppPreferencesStore(
+    (s) => s.medicationsCardVisible
+  );
 
   useLayoutEffect(() => {
     syncNativeHeaderDatePicker();
@@ -201,7 +265,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       refetch(),
       refetchPreferences(),
       refetchMeasurements(),
-      refetchSteps(),
+      refetchTrends(),
       refetchCustomNutrients(),
       refetchNutrientPrefs(),
       // FastingCard owns its own queries; nudge them on pull-to-refresh.
@@ -210,7 +274,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey }),
     ]);
     setRefreshing(false);
-  }, [refetch, refetchPreferences, refetchMeasurements, refetchSteps, refetchCustomNutrients, refetchNutrientPrefs, queryClient]);
+  }, [
+    refetch,
+    refetchPreferences,
+    refetchMeasurements,
+    refetchTrends,
+    refetchCustomNutrients,
+    refetchNutrientPrefs,
+    queryClient,
+  ]);
 
   // Render content based on state
   const renderContent = () => {
@@ -220,24 +292,49 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         <View className="flex-1">
           {!usesNativeTabs && (
             <View className="px-4 pb-5" style={{ paddingTop: insets.top + 16 }}>
-              <Text className="text-2xl font-bold text-text-primary">{t('navigation.dashboard', { defaultValue: 'Dashboard' })}</Text>
+              <Text className="text-2xl font-bold text-text-primary">
+                {t('navigation.dashboard', { defaultValue: 'Dashboard' })}
+              </Text>
             </View>
           )}
           <StatusView
             icon="cloud-offline"
             iconTone="muted"
             iconSize={64}
-            title={t('dashboard.noServerConfigured', { defaultValue: 'No server configured' })}
-            subtitle={t('dashboard.configureServer', { defaultValue: 'Configure your server connection in Settings to view your daily summary.' })}
-            action={{ label: t('dashboard.goToSettings', { defaultValue: 'Go to Settings' }), onPress: () => navigation.navigate('Settings'), variant: 'primary' }}
+            title={t('dashboard.noServerConfigured', {
+              defaultValue: 'No server configured',
+            })}
+            subtitle={t('dashboard.configureServer', {
+              defaultValue:
+                'Configure your server connection in Settings to view your daily summary.',
+            })}
+            action={{
+              label: t('dashboard.goToSettings', {
+                defaultValue: 'Go to Settings',
+              }),
+              onPress: () => navigation.navigate('Settings'),
+              variant: 'primary',
+            }}
           />
         </View>
       );
     }
 
     // Loading state
-    if (isLoading || isConnectionLoading || isPreferencesLoading || isMeasurementsLoading) {
-      return <StatusView loading title={t('dashboard.loadingSummary', { defaultValue: 'Loading summary...' })} />;
+    if (
+      isLoading ||
+      isConnectionLoading ||
+      isPreferencesLoading ||
+      isMeasurementsLoading
+    ) {
+      return (
+        <StatusView
+          loading
+          title={t('dashboard.loadingSummary', {
+            defaultValue: 'Loading summary...',
+          })}
+        />
+      );
     }
 
     // Error state
@@ -247,9 +344,17 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           icon="alert-circle"
           iconTone="danger"
           iconSize={64}
-          title={t('dashboard.loadFailed', { defaultValue: 'Failed to load summary' })}
-          subtitle={t('dashboard.checkConnection', { defaultValue: 'Please check your connection and try again.' })}
-          action={{ label: t('common.retry', { defaultValue: 'Retry' }), onPress: () => refetch(), variant: 'primary' }}
+          title={t('dashboard.loadFailed', {
+            defaultValue: 'Failed to load summary',
+          })}
+          subtitle={t('dashboard.checkConnection', {
+            defaultValue: 'Please check your connection and try again.',
+          })}
+          action={{
+            label: t('common.retry', { defaultValue: 'Retry' }),
+            onPress: () => refetch(),
+            variant: 'primary',
+          }}
         />
       );
     }
@@ -276,7 +381,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         contentInsetAdjustmentBehavior={usesNativeTabs ? 'automatic' : 'never'}
         automaticallyAdjustsScrollIndicatorInsets={usesNativeTabs}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={accentColor || '#3B82F6'} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={accentColor || '#3B82F6'}
+          />
         }
       >
         {(summary.foodEntries.length > 0 ||
@@ -303,7 +412,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             className="flex-row items-center bg-surface rounded-lg  px-4 py-3 mb-3 shadow-sm"
           >
             <Icon name="sparkles" size={18} color={accentColor} />
-            <Text className="text-text-muted text-base ml-3">{t('dashboard.askSparky', { defaultValue: 'Ask Sparky…' })}</Text>
+            <Text className="text-text-muted text-base ml-3">
+              {t('dashboard.askSparky', { defaultValue: 'Ask Sparky…' })}
+            </Text>
           </Pressable>
         )}
 
@@ -316,109 +427,158 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             ring above it displayed the supplement's calories. */}
         {(summary.foodEntries.length > 0 ||
           hasSupplementNutrition(summary.supplementTotals)) &&
-        summaryNutrients.length > 0 ? (() => {
-          const CORE_MACROS = new Set(['protein', 'carbs', 'fat', 'dietary_fiber']);
-          const customNutrientNames = new Set(customNutrients.map((cn) => cn.name));
-          const dashboardNutrients = summaryNutrients.filter(
-            (key) => CORE_MACROS.has(key) || customNutrientNames.has(key),
-          );
-          if (dashboardNutrients.length === 0) return null;
-          return (
-            <View className="bg-surface rounded-xl p-3 mb-3 shadow-sm">
-              <Pressable
-                onPress={() => navigation.navigate('DailyNutritionDetails', { date: summary.date })}
-                className="flex-row justify-between items-center mb-2 px-1"
-              >
-                <Text className="text-md font-bold text-text-secondary">{t('dashboard.nutrients', { defaultValue: 'Nutrients' })}</Text>
-                <View className="flex-row items-center">
-                  <Text className="text-xs font-semibold text-accent-primary mr-1">{t('common.details', { defaultValue: 'Details' })}</Text>
-                  <Icon name="chevron-forward" size={14} color={accentColor} />
+        summaryNutrients.length > 0
+          ? (() => {
+              const CORE_MACROS = new Set([
+                'protein',
+                'carbs',
+                'fat',
+                'dietary_fiber',
+              ]);
+              const customNutrientNames = new Set(
+                customNutrients.map((cn) => cn.name)
+              );
+              const dashboardNutrients = summaryNutrients.filter(
+                (key) => CORE_MACROS.has(key) || customNutrientNames.has(key)
+              );
+              if (dashboardNutrients.length === 0) return null;
+              return (
+                <View className="bg-surface rounded-xl p-3 mb-3 shadow-sm">
+                  <Pressable
+                    onPress={() =>
+                      navigation.navigate('DailyNutritionDetails', {
+                        date: summary.date,
+                      })
+                    }
+                    className="flex-row justify-between items-center mb-2 px-1"
+                  >
+                    <Text className="text-md font-bold text-text-secondary">
+                      {t('dashboard.nutrients', { defaultValue: 'Nutrients' })}
+                    </Text>
+                    <View className="flex-row items-center">
+                      <Text className="text-xs font-semibold text-accent-primary mr-1">
+                        {t('common.details', { defaultValue: 'Details' })}
+                      </Text>
+                      <Icon
+                        name="chevron-forward"
+                        size={14}
+                        color={accentColor}
+                      />
+                    </View>
+                  </Pressable>
+                  <View className="flex-row flex-wrap justify-between">
+                    {dashboardNutrients.map((nutrientKey) => {
+                      // Resolve display label and unit.
+                      const meta = NUTRIENT_META[nutrientKey];
+                      const customDef = !meta
+                        ? customNutrients.find((cn) => cn.name === nutrientKey)
+                        : undefined;
+                      const label = meta
+                        ? getNutrientLabel(t, nutrientKey)
+                        : (customDef?.name ?? nutrientKey);
+                      const unit = meta?.unit ?? customDef?.unit ?? 'g';
+
+                      // Use theme-aware CSS variable colors for the 4 core macros;
+                      // custom nutrients fall back to the app accent color.
+                      let color: string;
+                      if (nutrientKey === 'protein') color = proteinColor;
+                      else if (nutrientKey === 'carbs') color = carbsColor;
+                      else if (nutrientKey === 'fat') color = fatColor;
+                      else if (nutrientKey === 'dietary_fiber')
+                        color = fiberColor;
+                      else color = accentColor;
+
+                      // Resolve consumed value.
+                      let consumed: number;
+                      if (nutrientKey === 'carbs' && showNetCarbs) {
+                        consumed = getNetCarbsValue(
+                          summary.carbs.consumed,
+                          summary.fiber.consumed
+                        );
+                      } else if (nutrientKey === 'protein') {
+                        consumed = summary.protein.consumed;
+                      } else if (nutrientKey === 'carbs') {
+                        consumed = summary.carbs.consumed;
+                      } else if (nutrientKey === 'fat') {
+                        consumed = summary.fat.consumed;
+                      } else if (nutrientKey === 'dietary_fiber') {
+                        consumed = summary.fiber.consumed;
+                      } else {
+                        consumed =
+                          summary.customNutrientTotals[nutrientKey] ?? 0;
+                      }
+
+                      // Resolve goal. Core macros use their tracked goals; custom
+                      // nutrients use their per-nutrient goal when one is set. When a
+                      // custom nutrient has no goal, `goal` stays undefined and
+                      // MacroCard hides the "/0".
+                      let goal: number | undefined;
+                      if (nutrientKey === 'protein')
+                        goal = summary.protein.goal || undefined;
+                      else if (nutrientKey === 'carbs')
+                        goal = summary.carbs.goal || undefined;
+                      else if (nutrientKey === 'fat')
+                        goal = summary.fat.goal || undefined;
+                      else if (nutrientKey === 'dietary_fiber')
+                        goal = summary.fiber.goal || undefined;
+                      else
+                        goal =
+                          summary.customNutrientGoals[nutrientKey] || undefined;
+
+                      const displayLabel =
+                        nutrientKey === 'carbs' && showNetCarbs
+                          ? t('nutrients.netCarbs', {
+                              defaultValue: 'Net Carbs',
+                            })
+                          : label;
+
+                      return (
+                        <MacroCard
+                          key={nutrientKey}
+                          label={displayLabel}
+                          consumed={consumed}
+                          goal={goal}
+                          color={color}
+                          overfillColor={progressTrackOverfillColor}
+                          unit={unit}
+                        />
+                      );
+                    })}
+                  </View>
                 </View>
-              </Pressable>
-              <View className="flex-row flex-wrap justify-between">
-                {dashboardNutrients.map((nutrientKey) => {
-                  // Resolve display label and unit.
-                  const meta = NUTRIENT_META[nutrientKey];
-                  const customDef = !meta
-                    ? customNutrients.find((cn) => cn.name === nutrientKey)
-                    : undefined;
-                  const label = meta ? getNutrientLabel(t, nutrientKey) : (customDef?.name ?? nutrientKey);
-                  const unit = meta?.unit ?? customDef?.unit ?? 'g';
-
-                  // Use theme-aware CSS variable colors for the 4 core macros;
-                  // custom nutrients fall back to the app accent color.
-                  let color: string;
-                  if (nutrientKey === 'protein') color = proteinColor;
-                  else if (nutrientKey === 'carbs') color = carbsColor;
-                  else if (nutrientKey === 'fat') color = fatColor;
-                  else if (nutrientKey === 'dietary_fiber') color = fiberColor;
-                  else color = accentColor;
-
-                  // Resolve consumed value.
-                  let consumed: number;
-                  if (nutrientKey === 'carbs' && showNetCarbs) {
-                    consumed = getNetCarbsValue(summary.carbs.consumed, summary.fiber.consumed);
-                  } else if (nutrientKey === 'protein') {
-                    consumed = summary.protein.consumed;
-                  } else if (nutrientKey === 'carbs') {
-                    consumed = summary.carbs.consumed;
-                  } else if (nutrientKey === 'fat') {
-                    consumed = summary.fat.consumed;
-                  } else if (nutrientKey === 'dietary_fiber') {
-                    consumed = summary.fiber.consumed;
-                  } else {
-                    consumed = summary.customNutrientTotals[nutrientKey] ?? 0;
-                  }
-
-                  // Resolve goal. Core macros use their tracked goals; custom
-                  // nutrients use their per-nutrient goal when one is set. When a
-                  // custom nutrient has no goal, `goal` stays undefined and
-                  // MacroCard hides the "/0".
-                  let goal: number | undefined;
-                  if (nutrientKey === 'protein') goal = summary.protein.goal || undefined;
-                  else if (nutrientKey === 'carbs') goal = summary.carbs.goal || undefined;
-                  else if (nutrientKey === 'fat') goal = summary.fat.goal || undefined;
-                  else if (nutrientKey === 'dietary_fiber') goal = summary.fiber.goal || undefined;
-                  else goal = summary.customNutrientGoals[nutrientKey] || undefined;
-
-                  const displayLabel = nutrientKey === 'carbs' && showNetCarbs ? t('nutrients.netCarbs', { defaultValue: 'Net Carbs' }) : label;
-
-                  return (
-                    <MacroCard
-                      key={nutrientKey}
-                      label={displayLabel}
-                      consumed={consumed}
-                      goal={goal}
-                      color={color}
-                      overfillColor={progressTrackOverfillColor}
-                      unit={unit}
-                    />
-                  );
-                })}
-              </View>
-            </View>
-          );
-        })() : null}
+              );
+            })()
+          : null}
 
         {summary.foodEntries.length === 0 && (
           <Pressable
             className="bg-surface rounded-xl p-4 mb-3 shadow-sm"
-            onPress={() => navigation.navigate('FoodSearch', { date: selectedDate })}
+            onPress={() =>
+              navigation.navigate('FoodSearch', { date: selectedDate })
+            }
           >
-            <Text className="text-md font-bold text-text-primary mb-4">{t('dashboard.food', { defaultValue: 'Food' })}</Text>
-            <Text className="text-text-muted text-sm text-center mb-4">{t('dashboard.tapToAddFood', { defaultValue: 'Tap to add food' })}</Text>
+            <Text className="text-md font-bold text-text-primary mb-4">
+              {t('dashboard.food', { defaultValue: 'Food' })}
+            </Text>
+            <Text className="text-text-muted text-sm text-center mb-4">
+              {t('dashboard.tapToAddFood', { defaultValue: 'Tap to add food' })}
+            </Text>
           </Pressable>
         )}
 
-        {(summary.foodEntries.length > 0 || summary.exerciseEntries.length > 0) &&
-          (summary.exerciseMinutesGoal > 0 || summary.exerciseCaloriesGoal > 0 || summary.exerciseMinutes > 0 || summary.otherExerciseCalories > 0) && (
-          <ExerciseProgressCard
-            exerciseMinutes={summary.exerciseMinutes}
-            exerciseMinutesGoal={summary.exerciseMinutesGoal}
-            exerciseCalories={summary.otherExerciseCalories}
-            exerciseCaloriesGoal={summary.exerciseCaloriesGoal}
-          />
-        )}
+        {(summary.foodEntries.length > 0 ||
+          summary.exerciseEntries.length > 0) &&
+          (summary.exerciseMinutesGoal > 0 ||
+            summary.exerciseCaloriesGoal > 0 ||
+            summary.exerciseMinutes > 0 ||
+            summary.otherExerciseCalories > 0) && (
+            <ExerciseProgressCard
+              exerciseMinutes={summary.exerciseMinutes}
+              exerciseMinutesGoal={summary.exerciseMinutesGoal}
+              exerciseCalories={summary.otherExerciseCalories}
+              exerciseCaloriesGoal={summary.exerciseCaloriesGoal}
+            />
+          )}
 
         {/* Hydration card visibility is a local app setting toggled from
             Dashboard Settings. */}
@@ -449,15 +609,20 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
         {medicationsCardVisible && <MedicationsCard navigation={navigation} />}
 
-        <Text className="text-text-primary text-xl font-bold mb-2">{t('dashboard.healthTrends', { defaultValue: 'Health Trends' })}</Text>
-        <SegmentedControl segments={RANGE_SEGMENTS(t)} activeKey={stepsRange} onSelect={setStepsRange} />
+        <Text className="text-text-primary text-xl font-bold mb-2">
+          {t('dashboard.healthTrends', { defaultValue: 'Health Trends' })}
+        </Text>
+        <SegmentedControl
+          segments={RANGE_SEGMENTS(t)}
+          activeKey={trendsRange}
+          onSelect={setTrendsRange}
+        />
 
         <HealthTrendsPager
-          stepsData={stepsData}
-          weightData={weightData}
-          isLoading={isStepsLoading}
-          isError={isStepsError}
-          range={stepsRange}
+          steps={trends.steps}
+          weight={weightSeries}
+          sleep={trends.sleep}
+          range={trendsRange}
           weightUnit={weightUnit}
           activePage={chartPage}
           onPageSelected={setChartPage}
@@ -472,7 +637,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     return (
       <>
         {renderedContent}
-        <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
+        <CalendarSheet
+          ref={calendarRef}
+          selectedDate={selectedDate}
+          onSelectDate={handleCalendarSelect}
+        />
       </>
     );
   }
@@ -491,7 +660,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         />
       ) : null}
       {renderedContent}
-      <CalendarSheet ref={calendarRef} selectedDate={selectedDate} onSelectDate={handleCalendarSelect} />
+      <CalendarSheet
+        ref={calendarRef}
+        selectedDate={selectedDate}
+        onSelectDate={handleCalendarSelect}
+      />
     </View>
   );
 };

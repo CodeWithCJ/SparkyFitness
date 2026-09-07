@@ -20,13 +20,17 @@ const getImageSource = jest.fn(() => ({ uri: 'mock' }));
 function makeCard(
   id: string,
   setCount: number,
-  group: number | null = null,
+  group: number | null = null
 ): WorkoutCardExercise {
   return {
     id,
     exercise_id: `ex-${id}`,
     superset_group: group,
-    exercise_snapshot: { name: id.toUpperCase(), category: 'Strength', images: [] },
+    exercise_snapshot: {
+      name: id.toUpperCase(),
+      category: 'Strength',
+      images: [],
+    },
     sets: Array.from({ length: setCount }, (_, i) => ({
       id: `${id}-s${i}`,
       set_number: i + 1,
@@ -36,7 +40,10 @@ function makeCard(
   };
 }
 
-function renderList(exercises: WorkoutCardExercise[], overrides?: Partial<Parameters<typeof WorkoutReorderList>[0]>) {
+function renderList(
+  exercises: WorkoutCardExercise[],
+  overrides?: Partial<Parameters<typeof WorkoutReorderList>[0]>
+) {
   const onMoveItem = jest.fn();
   const onDone = jest.fn();
   const utils = render(
@@ -49,17 +56,25 @@ function renderList(exercises: WorkoutCardExercise[], overrides?: Partial<Parame
         onDone={onDone}
         {...overrides}
       />
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
   return { ...utils, onMoveItem, onDone };
 }
 
 describe('WorkoutReorderList', () => {
   // A(3), B(2, g1), C(4, g1), D(1) → items [A], [B,C run], [D].
-  const exercises = [makeCard('a', 3), makeCard('b', 2, 1), makeCard('c', 4, 1), makeCard('d', 1)];
+  const exercises = [
+    makeCard('a', 3),
+    makeCard('b', 2, 1),
+    makeCard('c', 4, 1),
+    makeCard('d', 1),
+  ];
 
   beforeEach(async () => {
-    await act(async () => { await initializeI18n('en'); await i18n.changeLanguage('en'); });
+    await act(async () => {
+      await initializeI18n('en');
+      await i18n.changeLanguage('en');
+    });
   });
 
   it('renders one row per exercise', () => {
@@ -105,7 +120,9 @@ describe('WorkoutReorderList', () => {
 
   describe('computeReorderTargetIndex', () => {
     // Member counts [1, 3, 1] → mixed strides.
-    const strides = [1, 3, 1].map((n) => n * REORDER_ROW_HEIGHT + REORDER_ITEM_GAP);
+    const strides = [1, 3, 1].map(
+      (n) => n * REORDER_ROW_HEIGHT + REORDER_ITEM_GAP
+    );
     // strides = [72, 200, 72]; offsets = [0, 72, 272].
     const offsets = [0, 72, 272];
 
@@ -140,7 +157,9 @@ describe('WorkoutReorderList', () => {
       sEntry('D', 1),
       sEntry('E', null),
     ];
-    const strides = [1, 3, 1].map((n) => n * REORDER_ROW_HEIGHT + REORDER_ITEM_GAP);
+    const strides = [1, 3, 1].map(
+      (n) => n * REORDER_ROW_HEIGHT + REORDER_ITEM_GAP
+    );
     const offsets = [0, 72, 272];
 
     it('drops the top solo below the run (down)', () => {
@@ -176,45 +195,61 @@ describe('WorkoutReorderList', () => {
 
     it('PL: 1 seria (one)', async () => {
       const { getByText } = rowForCount(1);
-      await act(async () => { await i18n.changeLanguage('pl'); });
+      await act(async () => {
+        await i18n.changeLanguage('pl');
+      });
       expect(getByText('1 seria')).toBeTruthy();
     });
 
     it('PL: 2 serie (few)', async () => {
       const { getByText } = rowForCount(2);
-      await act(async () => { await i18n.changeLanguage('pl'); });
+      await act(async () => {
+        await i18n.changeLanguage('pl');
+      });
       expect(getByText('2 serie')).toBeTruthy();
     });
 
     it('PL: 3 serie (few)', async () => {
       const { getByText } = rowForCount(3);
-      await act(async () => { await i18n.changeLanguage('pl'); });
+      await act(async () => {
+        await i18n.changeLanguage('pl');
+      });
       expect(getByText('3 serie')).toBeTruthy();
     });
 
     it('PL: 5 serii (many)', async () => {
       const { getByText } = rowForCount(5);
-      await act(async () => { await i18n.changeLanguage('pl'); });
+      await act(async () => {
+        await i18n.changeLanguage('pl');
+      });
       expect(getByText('5 serii')).toBeTruthy();
     });
 
     it('PL: 12 serii (many)', async () => {
       const { getByText } = rowForCount(12);
-      await act(async () => { await i18n.changeLanguage('pl'); });
+      await act(async () => {
+        await i18n.changeLanguage('pl');
+      });
       expect(getByText('12 serii')).toBeTruthy();
     });
 
     it('PL: 22 serie (few)', async () => {
       const { getByText } = rowForCount(22);
-      await act(async () => { await i18n.changeLanguage('pl'); });
+      await act(async () => {
+        await i18n.changeLanguage('pl');
+      });
       expect(getByText('22 serie')).toBeTruthy();
     });
 
     it('PL: 25 serii (many)', async () => {
       const { getByText } = rowForCount(25);
-      await act(async () => { await i18n.changeLanguage('pl'); });
+      await act(async () => {
+        await i18n.changeLanguage('pl');
+      });
       expect(getByText('25 serii')).toBeTruthy();
-      await act(async () => { await i18n.changeLanguage('en'); });
+      await act(async () => {
+        await i18n.changeLanguage('en');
+      });
     });
   });
 });

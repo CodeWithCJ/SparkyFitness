@@ -1,13 +1,28 @@
 const path = require('node:path');
 const fs = require('node:fs');
-const { LocaleValidator, PLURAL_SUFFIXES, requiredPluralForms } = require('./localeValidator.cjs');
+const {
+  LocaleValidator,
+  PLURAL_SUFFIXES,
+  requiredPluralForms,
+} = require('./localeValidator.cjs');
 const REGISTRY_MANIFEST = require('../../src/localization/localeRegistry.json');
-const { collectFindings: scanFindings, getAllSuppressionIssues, SOURCE_SCAN_ERROR_RULE } = require('./sourceScanner.cjs');
+const {
+  collectFindings: scanFindings,
+  getAllSuppressionIssues,
+  SOURCE_SCAN_ERROR_RULE,
+} = require('./sourceScanner.cjs');
 
 const MOBILE_ROOT = path.resolve(__dirname, '..', '..');
 const SOURCE_LOCALE = REGISTRY_MANIFEST.sourceLocale;
 const FALLBACK_LOCALE = REGISTRY_MANIFEST.fallbackLocale;
-const EN_LOCALE_PATH = path.join(MOBILE_ROOT, 'src', 'localization', 'locales', SOURCE_LOCALE, 'translation.json');
+const EN_LOCALE_PATH = path.join(
+  MOBILE_ROOT,
+  'src',
+  'localization',
+  'locales',
+  SOURCE_LOCALE,
+  'translation.json'
+);
 const SOURCE_INTL_LOCALE = REGISTRY_MANIFEST.locales[SOURCE_LOCALE].intlLocale;
 
 function localeHasKey(keySet, key) {
@@ -19,7 +34,6 @@ function localeHasKey(keySet, key) {
   }
   return false;
 }
-
 
 function expectedFallbackKey(key, fallbackName, hasCount) {
   if (!hasCount) return key;
@@ -47,12 +61,26 @@ function expectedFallbackKey(key, fallbackName, hasCount) {
  */
 function runAudit(options = {}) {
   const rootDir = options.rootDir || MOBILE_ROOT;
-  const enLocalePath = options.enLocalePath || path.join(rootDir, "src", "localization", "locales", SOURCE_LOCALE, "translation.json");
+  const enLocalePath =
+    options.enLocalePath ||
+    path.join(
+      rootDir,
+      'src',
+      'localization',
+      'locales',
+      SOURCE_LOCALE,
+      'translation.json'
+    );
   let manifest = REGISTRY_MANIFEST;
-  const registryPath = options.registryPath || path.join(rootDir, 'src', 'localization', 'localeRegistry.json');
+  const registryPath =
+    options.registryPath ||
+    path.join(rootDir, 'src', 'localization', 'localeRegistry.json');
   if (fs.existsSync(registryPath)) {
-    try { manifest = JSON.parse(fs.readFileSync(registryPath, 'utf8')); }
-    catch { manifest = REGISTRY_MANIFEST; }
+    try {
+      manifest = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+    } catch {
+      manifest = REGISTRY_MANIFEST;
+    }
   }
   // Default source roots derive from the ACTUAL rootDir so a custom-root run
   // scans its own source tree; the production default remains mobile/src.
@@ -76,16 +104,39 @@ function runAudit(options = {}) {
   const localeRoot = path.dirname(sourceLocaleDir);
   let localePaths = [];
   if (fs.existsSync(localeRoot)) {
-    localePaths = fs.readdirSync(localeRoot, { withFileTypes: true })
+    localePaths = fs
+      .readdirSync(localeRoot, { withFileTypes: true })
       .filter((entry) => entry.isDirectory() && entry.name !== SOURCE_LOCALE)
-      .map((entry) => ({ locale: entry.name, path: path.join(localeRoot, entry.name, 'translation.json'), intlLocale: manifest.locales[entry.name]?.intlLocale || entry.name }))
+      .map((entry) => ({
+        locale: entry.name,
+        path: path.join(localeRoot, entry.name, 'translation.json'),
+        intlLocale: manifest.locales[entry.name]?.intlLocale || entry.name,
+      }))
       .filter((entry) => {
         if (!fs.existsSync(entry.path)) return false;
-        try { new Intl.PluralRules(entry.intlLocale || manifest.locales[entry.locale]?.intlLocale || entry.locale); return true; }
-        catch { report.localeStructuralErrors.push({ rule: 'invalid-locale-tag', locale: entry.locale, message: `Invalid locale tag "${entry.intlLocale}" discovered in locale root; skipping` }); return false; }
+        try {
+          new Intl.PluralRules(
+            entry.intlLocale ||
+              manifest.locales[entry.locale]?.intlLocale ||
+              entry.locale
+          );
+          return true;
+        } catch {
+          report.localeStructuralErrors.push({
+            rule: 'invalid-locale-tag',
+            locale: entry.locale,
+            message: `Invalid locale tag "${entry.intlLocale}" discovered in locale root; skipping`,
+          });
+          return false;
+        }
       });
   }
-  const validator = new LocaleValidator(enLocalePath, null, { localePaths, sourceLocale: SOURCE_LOCALE, fallbackLocale: FALLBACK_LOCALE, sourceIntlLocale: SOURCE_INTL_LOCALE });
+  const validator = new LocaleValidator(enLocalePath, null, {
+    localePaths,
+    sourceLocale: SOURCE_LOCALE,
+    fallbackLocale: FALLBACK_LOCALE,
+    sourceIntlLocale: SOURCE_INTL_LOCALE,
+  });
   let localeResult;
   try {
     localeResult = validator.validate();
@@ -138,10 +189,26 @@ function runAudit(options = {}) {
     if (finding.kind === 'static-t-key') {
       const { fallbacks = {}, hasCount = false } = finding.context;
       if (hasCount) {
-        if (!sourceRequiredForms.every((form) => enKeySet.has(`${finding.value}${form}`))) report.pluralErrors.push({ rule: 'count-requires-plural-group', locale: SOURCE_LOCALE, key: finding.value, file: finding.file, line: finding.line, message: `Count lookup requires ${sourceRequiredForms.join(', ')} forms in the ${SOURCE_LOCALE} source locale` });
+        if (
+          !sourceRequiredForms.every((form) =>
+            enKeySet.has(`${finding.value}${form}`)
+          )
+        )
+          report.pluralErrors.push({
+            rule: 'count-requires-plural-group',
+            locale: SOURCE_LOCALE,
+            key: finding.value,
+            file: finding.file,
+            line: finding.line,
+            message: `Count lookup requires ${sourceRequiredForms.join(', ')} forms in the ${SOURCE_LOCALE} source locale`,
+          });
       }
       for (const [fallbackName, fallbackValue] of Object.entries(fallbacks)) {
-        const expectedKey = expectedFallbackKey(finding.value, fallbackName, hasCount);
+        const expectedKey = expectedFallbackKey(
+          finding.value,
+          fallbackName,
+          hasCount
+        );
         if (localeResult.enValues[expectedKey] !== fallbackValue) {
           report.missingFallbackFindings.push({
             rule: 'default-value-mismatch',
@@ -183,9 +250,21 @@ function runAudit(options = {}) {
         message: `Dynamic i18n key "${finding.value}" at ${finding.file}:${finding.line} — use a static map instead`,
       });
     } else if (finding.kind === 'manual-pluralization') {
-      report.manualPluralizationFindings.push({ rule: 'manual-pluralization', file: finding.file, line: finding.line, expression: finding.value, context: finding.context });
+      report.manualPluralizationFindings.push({
+        rule: 'manual-pluralization',
+        file: finding.file,
+        line: finding.line,
+        expression: finding.value,
+        context: finding.context,
+      });
     } else if (finding.kind === 'locale-unsafe-number-format') {
-      report.unsafeNumberFormatFindings.push({ rule: 'locale-unsafe-number-format', file: finding.file, line: finding.line, expression: finding.value, context: finding.context });
+      report.unsafeNumberFormatFindings.push({
+        rule: 'locale-unsafe-number-format',
+        file: finding.file,
+        line: finding.line,
+        expression: finding.value,
+        context: finding.context,
+      });
     } else if (finding.kind === 'hardcoded-ui-text') {
       // Hardcoded application-owned UI is a blocking regression guard.
       report.hardcodedUiFindings.push({
@@ -211,7 +290,13 @@ function runAudit(options = {}) {
 
   report.summary = buildSummary(report);
 
-  return { report, hasErrors: structuralErrorCount > 0 || report.hardcodedUiFindings.length > 0 || report.unsafeNumberFormatFindings.length > 0 };
+  return {
+    report,
+    hasErrors:
+      structuralErrorCount > 0 ||
+      report.hardcodedUiFindings.length > 0 ||
+      report.unsafeNumberFormatFindings.length > 0,
+  };
 }
 
 function collectFindingsForSource(rootDir, sourceRoots) {
@@ -233,7 +318,7 @@ function buildSummary(report) {
     unsafeNumberFormatFindings: report.unsafeNumberFormatFindings.length,
     manualPluralizationFindings: report.manualPluralizationFindings.length,
     sourceScanErrors: report.localeStructuralErrors.filter(
-      (e) => e.rule === SOURCE_SCAN_ERROR_RULE,
+      (e) => e.rule === SOURCE_SCAN_ERROR_RULE
     ).length,
   };
 }

@@ -13,13 +13,16 @@ import {
   type BackfillCheckpoint,
 } from '../services/backfillCheckpoint';
 
-export type BackfillRunnerStatus = 'loading' | 'idle' | 'running' | 'interrupted' | 'done';
+export type BackfillRunnerStatus =
+  'loading' | 'idle' | 'running' | 'interrupted' | 'done';
 
 // The checkpoint is the source of truth for the resting state: every outcome
 // that leaves a resumable checkpoint lands on 'interrupted', a done checkpoint
 // on 'done', and everything else (no-history, cancelled-before-probes,
 // server-changed to a config with no checkpoint) back on 'idle'.
-const statusFromCheckpoint = (checkpoint: BackfillCheckpoint | null): BackfillRunnerStatus => {
+const statusFromCheckpoint = (
+  checkpoint: BackfillCheckpoint | null
+): BackfillRunnerStatus => {
   if (checkpoint === null) return 'idle';
   return checkpoint.status === 'done' ? 'done' : 'interrupted';
 };
@@ -34,8 +37,12 @@ const loadEnabledRecordTypes = async (): Promise<Set<string>> => {
   return enabled;
 };
 
-const recordTypeSetsDiffer = (frozen: Set<string>, current: Set<string>): boolean =>
-  frozen.size !== current.size || [...frozen].some(recordType => !current.has(recordType));
+const recordTypeSetsDiffer = (
+  frozen: Set<string>,
+  current: Set<string>
+): boolean =>
+  frozen.size !== current.size ||
+  [...frozen].some((recordType) => !current.has(recordType));
 
 export interface BackfillRunner {
   status: BackfillRunnerStatus;
@@ -67,27 +74,36 @@ export const useBackfillRunner = (): BackfillRunner => {
   const [lastOutcome, setLastOutcome] = useState<BackfillOutcome | null>(null);
   const [lastError, setLastError] = useState<string | undefined>(undefined);
   const [frozenSelectionDiffers, setFrozenSelectionDiffers] = useState(false);
-  const [enabledMetricCount, setEnabledMetricCount] = useState<number | null>(null);
-  const [estimatedMsRemaining, setEstimatedMsRemaining] = useState<number | null>(null);
+  const [enabledMetricCount, setEnabledMetricCount] = useState<number | null>(
+    null
+  );
+  const [estimatedMsRemaining, setEstimatedMsRemaining] = useState<
+    number | null
+  >(null);
   const cancelRef = useRef(false);
-  const paceAnchorRef = useRef<{ time: number; importedDays: number } | null>(null);
+  const paceAnchorRef = useRef<{ time: number; importedDays: number } | null>(
+    null
+  );
   const runningRef = useRef(false);
   const mountedRef = useRef(true);
 
-  const refreshFromCheckpoint = useCallback(async (): Promise<BackfillCheckpoint | null> => {
-    const config = await getActiveServerConfig();
-    const loaded = config ? await loadBackfillCheckpoint(config.id) : null;
-    const current = await loadEnabledRecordTypes();
-    if (!mountedRef.current) return loaded;
-    setCheckpoint(loaded);
-    setEnabledMetricCount(current.size);
-    if (loaded?.status === 'in-progress') {
-      setFrozenSelectionDiffers(recordTypeSetsDiffer(new Set(loaded.enabledRecordTypes), current));
-    } else {
-      setFrozenSelectionDiffers(false);
-    }
-    return loaded;
-  }, []);
+  const refreshFromCheckpoint =
+    useCallback(async (): Promise<BackfillCheckpoint | null> => {
+      const config = await getActiveServerConfig();
+      const loaded = config ? await loadBackfillCheckpoint(config.id) : null;
+      const current = await loadEnabledRecordTypes();
+      if (!mountedRef.current) return loaded;
+      setCheckpoint(loaded);
+      setEnabledMetricCount(current.size);
+      if (loaded?.status === 'in-progress') {
+        setFrozenSelectionDiffers(
+          recordTypeSetsDiffer(new Set(loaded.enabledRecordTypes), current)
+        );
+      } else {
+        setFrozenSelectionDiffers(false);
+      }
+      return loaded;
+    }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -119,7 +135,7 @@ export const useBackfillRunner = (): BackfillRunner => {
     void (async () => {
       const result = await runBackfill({
         shouldCancel: () => cancelRef.current,
-        onProgress: update => {
+        onProgress: (update) => {
           if (!mountedRef.current) return;
           setProgress(update);
           if (update.phase !== 'importing') return;
@@ -128,10 +144,19 @@ export const useBackfillRunner = (): BackfillRunner => {
           const now = Date.now();
           const anchor = paceAnchorRef.current;
           if (anchor === null) {
-            paceAnchorRef.current = { time: now, importedDays: update.importedDays };
-          } else if (update.importedDays > anchor.importedDays && now > anchor.time) {
-            const msPerDay = (now - anchor.time) / (update.importedDays - anchor.importedDays);
-            setEstimatedMsRemaining((update.totalDays - update.importedDays) * msPerDay);
+            paceAnchorRef.current = {
+              time: now,
+              importedDays: update.importedDays,
+            };
+          } else if (
+            update.importedDays > anchor.importedDays &&
+            now > anchor.time
+          ) {
+            const msPerDay =
+              (now - anchor.time) / (update.importedDays - anchor.importedDays);
+            setEstimatedMsRemaining(
+              (update.totalDays - update.importedDays) * msPerDay
+            );
           }
         },
       });

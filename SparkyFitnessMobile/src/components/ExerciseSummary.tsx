@@ -31,14 +31,18 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({
 
   if (exerciseEntries.length === 0) {
     const emptyContent = (
-      <Text className="text-text-muted text-base">{t('exerciseSummary.tapToAdd', { defaultValue: 'Tap to add exercise' })}</Text>
+      <Text className="text-text-muted text-base">
+        {t('exerciseSummary.tapToAdd', { defaultValue: 'Tap to add exercise' })}
+      </Text>
     );
     if (onAddExercise) {
       return (
         <Pressable
           onPress={onAddExercise}
           accessibilityRole="button"
-          accessibilityLabel={t('exerciseSummary.addExercise', { defaultValue: 'Add exercise' })}
+          accessibilityLabel={t('exerciseSummary.addExercise', {
+            defaultValue: 'Add exercise',
+          })}
           className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6"
         >
           {emptyContent}
@@ -56,7 +60,9 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({
     <View className="bg-surface rounded-xl p-4 mb-2 shadow-sm overflow-hidden">
       <View className="flex-row items-center gap-2 mb-2">
         <Icon name="exercise" size={18} color={accentPrimary} />
-        <Text className="text-base font-bold text-text-secondary">{t('exerciseSummary.title', { defaultValue: 'Exercise' })}</Text>
+        <Text className="text-base font-bold text-text-secondary">
+          {t('exerciseSummary.title', { defaultValue: 'Exercise' })}
+        </Text>
       </View>
       {exerciseEntries.map((session, index) => (
         <SwipeableExerciseRow

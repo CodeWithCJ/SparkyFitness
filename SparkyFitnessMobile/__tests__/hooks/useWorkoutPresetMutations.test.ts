@@ -11,7 +11,11 @@ import {
   updateWorkoutPreset,
   deleteWorkoutPreset,
 } from '../../src/services/api/workoutPresetsApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/workoutPresetsApi', () => ({
   createWorkoutPreset: jest.fn(),
@@ -19,9 +23,15 @@ jest.mock('../../src/services/api/workoutPresetsApi', () => ({
   deleteWorkoutPreset: jest.fn(),
 }));
 
-const mockCreate = createWorkoutPreset as jest.MockedFunction<typeof createWorkoutPreset>;
-const mockUpdate = updateWorkoutPreset as jest.MockedFunction<typeof updateWorkoutPreset>;
-const mockDelete = deleteWorkoutPreset as jest.MockedFunction<typeof deleteWorkoutPreset>;
+const mockCreate = createWorkoutPreset as jest.MockedFunction<
+  typeof createWorkoutPreset
+>;
+const mockUpdate = updateWorkoutPreset as jest.MockedFunction<
+  typeof updateWorkoutPreset
+>;
+const mockDelete = deleteWorkoutPreset as jest.MockedFunction<
+  typeof deleteWorkoutPreset
+>;
 
 const createBody = { name: 'Push Day', exercises: [] } as never;
 
@@ -44,19 +54,23 @@ describe('useWorkoutPresetMutations', () => {
   /** The five caches `invalidateWorkoutPresetCaches` touches. */
   function expectCachesInvalidated(
     invalidateSpy: jest.SpyInstance,
-    resetSpy: jest.SpyInstance,
+    resetSpy: jest.SpyInstance
   ): void {
-    const invalidatedKeys = invalidateSpy.mock.calls.map((call) => call[0]?.queryKey);
+    const invalidatedKeys = invalidateSpy.mock.calls.map(
+      (call) => call[0]?.queryKey
+    );
     expect(invalidatedKeys).toEqual(
       expect.arrayContaining([
         ['workoutPresets'],
         ['workoutPresets', 'count'],
         ['workoutPresetsLibrary'],
         ['workoutPresetSearch'],
-      ]),
+      ])
     );
     const resetKeys = resetSpy.mock.calls.map((call) => call[0]?.queryKey);
-    expect(resetKeys).toEqual(expect.arrayContaining([['workoutPresetsLibraryList']]));
+    expect(resetKeys).toEqual(
+      expect.arrayContaining([['workoutPresetsLibraryList']])
+    );
   }
 
   describe('useCreateWorkoutPreset', () => {
@@ -65,7 +79,9 @@ describe('useWorkoutPresetMutations', () => {
       const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
       const resetSpy = jest.spyOn(queryClient, 'resetQueries');
 
-      const { result } = renderHook(() => useCreateWorkoutPreset(), { wrapper });
+      const { result } = renderHook(() => useCreateWorkoutPreset(), {
+        wrapper,
+      });
 
       await act(async () => {
         await result.current.createPresetAsync(createBody);
@@ -78,10 +94,14 @@ describe('useWorkoutPresetMutations', () => {
     it('shows an error toast when creation fails', async () => {
       mockCreate.mockRejectedValue(new Error('network'));
 
-      const { result } = renderHook(() => useCreateWorkoutPreset(), { wrapper });
+      const { result } = renderHook(() => useCreateWorkoutPreset(), {
+        wrapper,
+      });
 
       await act(async () => {
-        await expect(result.current.createPresetAsync(createBody)).rejects.toThrow('network');
+        await expect(
+          result.current.createPresetAsync(createBody)
+        ).rejects.toThrow('network');
       });
 
       await waitFor(() => {
@@ -100,7 +120,9 @@ describe('useWorkoutPresetMutations', () => {
       const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
       const resetSpy = jest.spyOn(queryClient, 'resetQueries');
 
-      const { result } = renderHook(() => useUpdateWorkoutPreset(), { wrapper });
+      const { result } = renderHook(() => useUpdateWorkoutPreset(), {
+        wrapper,
+      });
 
       const payload = { name: 'Updated', exercises: [] } as never;
       await act(async () => {
@@ -114,11 +136,13 @@ describe('useWorkoutPresetMutations', () => {
     it('shows a permission toast on a 403 error', async () => {
       mockUpdate.mockRejectedValue(new Error('Request failed: 403 Forbidden'));
 
-      const { result } = renderHook(() => useUpdateWorkoutPreset(), { wrapper });
+      const { result } = renderHook(() => useUpdateWorkoutPreset(), {
+        wrapper,
+      });
 
       await act(async () => {
         await expect(
-          result.current.updatePresetAsync({ id: 'p1', payload: {} as never }),
+          result.current.updatePresetAsync({ id: 'p1', payload: {} as never })
         ).rejects.toThrow();
       });
 
@@ -134,11 +158,13 @@ describe('useWorkoutPresetMutations', () => {
     it('shows a generic toast on a non-authz error', async () => {
       mockUpdate.mockRejectedValue(new Error('500 Server Error'));
 
-      const { result } = renderHook(() => useUpdateWorkoutPreset(), { wrapper });
+      const { result } = renderHook(() => useUpdateWorkoutPreset(), {
+        wrapper,
+      });
 
       await act(async () => {
         await expect(
-          result.current.updatePresetAsync({ id: 'p1', payload: {} as never }),
+          result.current.updatePresetAsync({ id: 'p1', payload: {} as never })
         ).rejects.toThrow();
       });
 
@@ -156,7 +182,7 @@ describe('useWorkoutPresetMutations', () => {
     it('confirmAndDelete shows a destructive confirmation alert', () => {
       const { result } = renderHook(
         () => useDeleteWorkoutPreset({ presetId: 'p1' }),
-        { wrapper },
+        { wrapper }
       );
 
       act(() => result.current.confirmAndDelete());
@@ -167,7 +193,7 @@ describe('useWorkoutPresetMutations', () => {
         expect.arrayContaining([
           expect.objectContaining({ text: 'Cancel', style: 'cancel' }),
           expect.objectContaining({ text: 'Delete', style: 'destructive' }),
-        ]),
+        ])
       );
     });
 
@@ -179,13 +205,15 @@ describe('useWorkoutPresetMutations', () => {
 
       const { result } = renderHook(
         () => useDeleteWorkoutPreset({ presetId: 'p1', onSuccess }),
-        { wrapper },
+        { wrapper }
       );
 
       act(() => result.current.confirmAndDelete());
 
       const buttons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const deleteButton = buttons.find((b: { text: string }) => b.text === 'Delete');
+      const deleteButton = buttons.find(
+        (b: { text: string }) => b.text === 'Delete'
+      );
       await act(async () => {
         deleteButton.onPress();
       });
@@ -202,13 +230,15 @@ describe('useWorkoutPresetMutations', () => {
 
       const { result } = renderHook(
         () => useDeleteWorkoutPreset({ presetId: 'p1' }),
-        { wrapper },
+        { wrapper }
       );
 
       act(() => result.current.confirmAndDelete());
 
       const buttons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const deleteButton = buttons.find((b: { text: string }) => b.text === 'Delete');
+      const deleteButton = buttons.find(
+        (b: { text: string }) => b.text === 'Delete'
+      );
       await act(async () => {
         deleteButton.onPress();
       });
@@ -225,13 +255,15 @@ describe('useWorkoutPresetMutations', () => {
 
       const { result } = renderHook(
         () => useDeleteWorkoutPreset({ presetId: 'p1' }),
-        { wrapper },
+        { wrapper }
       );
 
       act(() => result.current.confirmAndDelete());
 
       const buttons = (Alert.alert as jest.Mock).mock.calls[0][2];
-      const deleteButton = buttons.find((b: { text: string }) => b.text === 'Delete');
+      const deleteButton = buttons.find(
+        (b: { text: string }) => b.text === 'Delete'
+      );
       await act(async () => {
         deleteButton.onPress();
       });

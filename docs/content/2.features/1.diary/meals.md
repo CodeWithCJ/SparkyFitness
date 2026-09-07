@@ -21,6 +21,20 @@ You can customize the target start time for any meal category on both Web and Mo
 - **Web**: Go to **Settings → Meal Categories** and edit the **Default Time** (`HH:MM`) for any category.
 - **Mobile**: Go to **Settings → Food Settings → Suggested Meal Times** and adjust the target times (`HH:MM`).
 
+### Deleting a Custom Meal Category
+Custom meal categories can be deleted from **Settings → Meal Categories** on Web. System defaults (Breakfast, Lunch, Dinner, Snacks) cannot be deleted, only hidden.
+
+If the category has never been used, it is removed immediately. If anything still references it, a dialog shows exactly what is affected — diary entries, logged meals, planned items, and meal plan template items — and offers two choices:
+
+- **Move items and delete** — everything is reassigned to another meal category you pick. Nutrition values, dates, and times are preserved; only the category label changes, so daily totals stay the same. This is the recommended option.
+- **Delete everything** — permanently removes those records along with their logged nutrition. This cannot be undone.
+
+If someone you share your diary with has entries in that category, the delete is refused until those are cleared, since they are not yours to remove.
+
+::alert{type="info"}
+Prefer hiding a category (the eye icon) if you only want it out of your diary. Hiding keeps all history intact.
+::
+
 ---
 
 ## Custom Meals

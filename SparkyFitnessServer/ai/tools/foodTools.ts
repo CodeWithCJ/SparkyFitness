@@ -7,17 +7,17 @@ import foodEntryService from '../../services/foodEntryService.js';
 import mealService from '../../services/mealService.js';
 import preferenceService from '../../services/preferenceService.js';
 import measurementService from '../../services/measurementService.js';
-import {
-  searchProviderFoods,
-  type ProviderType,
-} from '../../services/externalFoodSearchService.js';
-import { VALID_PROVIDER_TYPES } from '../../constants/foodProviders.js';
 import foodRepository from '../../models/foodRepository.js';
 import foodEntryMealRepository from '../../models/foodEntryMealRepository.js';
 import mealTypeRepository from '../../models/mealType.js';
 import measurementRepository from '../../models/measurementRepository.js';
 import reportRepository from '../../models/reportRepository.js';
-import externalProviderRepository from '../../models/externalProviderRepository.js';
+import {
+  resolveFoodProviderOrder,
+  lookupFoodFromProviders,
+  pickBestVariant,
+  IMPLAUSIBLE_SERVING_UNITS,
+} from '../../services/foodProviderLookupService.js';
 import { ERRORS, formatZodError } from './errors.js';
 import {
   compactRecord,
@@ -32,6 +32,7 @@ import {
   type PaginatedResult,
 } from './pagination.js';
 import { convertEnergy } from './unitConversion.js';
+import { truncateNote } from './truncation.js';
 import {
   manageFoodSchema,
   manageFoodInput,
@@ -64,10 +65,6 @@ const VALID_ACTIONS = [
   'get_nutritional_summary',
   'get_water_history',
 ];
-
-// Provider types the no-provider cascade may search (exercise/health
-// providers are excluded). Derived from VALID_PROVIDER_TYPES.
-const FOOD_PROVIDER_TYPES = [...VALID_PROVIDER_TYPES];
 
 // Quick Add only skips *saving* a new food. Actions that log a food already in
 // the user's list (log_food always, log_external_food on an internal match)
@@ -103,53 +100,18 @@ function isSet<T>(value: T | null | undefined): value is T {
 // serving (a food portion measured in milli/microgram is almost always
 // mislabeled branded data). Variants using them are demoted when picking the
 // one to show/log.
-const IMPLAUSIBLE_SERVING_UNITS = new Set(['mg', 'mcg', 'µg', 'ug']);
 
 // Picks the variant to surface for an external provider match. Providers
 // (USDA especially) sometimes mark a nonsensical variant as default — e.g. a
 // "28 mg" serving on a branded item — so prefer a variant with a plausible
 // serving unit and positive size, keeping the provider's default only as a
 // tiebreak within the sane set.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function pickBestVariant(food: any) {
-  const variants: any[] = (
-    food?.variants?.length ? food.variants : [food?.default_variant]
-  ).filter(Boolean);
-  if (variants.length === 0) return food?.default_variant ?? null;
-  const isPlausible = (v: any) =>
-    Number(v.serving_size) > 0 &&
-    !IMPLAUSIBLE_SERVING_UNITS.has(String(v.serving_unit || '').toLowerCase());
-  const pool = variants.filter(isPlausible);
-  const chosen = pool.length > 0 ? pool : variants;
-  return chosen.find((v) => v.is_default) ?? chosen[0];
-}
 
 // Re-ranks external provider matches so generic/whole foods win over branded
 // products. Providers return branded items ("EGG (SNICKERS)", "BANANA
 // (BETTER'N PEANUT BUTTER)") ahead of the plain whole food a user almost
 // always means, and small models just take the first result. Stable within
 // each tier so the provider's own relevance order is otherwise preserved.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rankProviderMatches(foods: any[], query: string): any[] {
-  const q = query.trim().toLowerCase();
-  const qStem = q.replace(/s$/, '');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const score = (f: any): number => {
-    const name = String(f?.name ?? '').toLowerCase();
-    const branded = Boolean(f?.brand && String(f.brand).trim());
-    const firstSegment = name.split(',')[0].trim();
-    let s = branded ? 0 : 100; // whole foods first
-    if (firstSegment === q || firstSegment === qStem) s += 20;
-    else if (firstSegment.startsWith(qStem)) s += 10;
-    else if (name.includes(q)) s += 5;
-    return s;
-  };
-  return foods
-    .map((f, i) => ({ f, i, s: score(f) }))
-    .sort((a, b) => b.s - a.s || a.i - b.i)
-    .map((x) => x.f);
-}
-
 // Provider nutrition values arrive as strings or numbers; absent/blank/NaN
 // all normalize to null so createFood stores them as empty, not 0.
 function toNutrientNumber(value: unknown): number | null {
@@ -464,6 +426,7 @@ const DIARY_MEAL_DROP = [
   'updated_by_user_id',
   'meal_template_id',
   'legacy_serving_unit_math',
+  'entry_total_servings',
 ] as const;
 
 interface ResolvedMealType {
@@ -592,8 +555,13 @@ const FULL_ENTRY_DROP: readonly string[] = [
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function projectCatalogFood(row: any) {
   const { default_variant: defaultVariant, ...rest } = row;
+  const compacted = compactRecord(rest, CATALOG_FOOD_DROP);
+  // A user's note can be as long as the whole response budget; preview it so
+  // one recipe cannot crowd out the other foods in a list.
+  const notePreview = truncateNote(compacted.notes);
+  if (notePreview) compacted.notes = notePreview;
   return {
-    ...compactRecord(rest, CATALOG_FOOD_DROP),
+    ...compacted,
     variants: defaultVariant?.id
       ? [compactRecord(defaultVariant, VARIANT_DROP)]
       : [],
@@ -765,95 +733,10 @@ async function lookupFoodNutrition(
     }
   }
 
-  let targetProviders: {
-    id?: string;
-    provider_type: string;
-    provider_name: string;
-  }[] = [];
-
-  if (providerType) {
-    if (providerType === 'openfoodfacts') {
-      targetProviders.push({
-        provider_type: 'openfoodfacts',
-        provider_name: 'OpenFoodFacts',
-      });
-    } else {
-      const rows = await externalProviderRepository.getActiveProvidersByTypes(
-        userId,
-        [providerType]
-      );
-      if (rows.length > 0) {
-        targetProviders.push(rows[0]);
-      } else {
-        // Explicitly requested but unconfigured: the per-provider search
-        // below fails (no credentials) and the cascade falls through to the
-        // AI-estimate response — MCP behavior, pinned by test.
-        targetProviders.push({
-          provider_type: providerType,
-          provider_name: providerType,
-        });
-      }
-    }
-  } else {
-    targetProviders =
-      await externalProviderRepository.getActiveProvidersByTypes(
-        userId,
-        FOOD_PROVIDER_TYPES
-      );
-    if (!targetProviders.some((p) => p.provider_type === 'openfoodfacts')) {
-      targetProviders.push({
-        provider_type: 'openfoodfacts',
-        provider_name: 'OpenFoodFacts',
-      });
-    }
-    // Honour the user's chosen default food provider. Without this the cascade
-    // order comes from sort_order, which is NULL for most installs and falls
-    // back to created_at DESC — so the most recently added provider silently
-    // won every lookup and the setting the user picked in the UI did nothing.
-    const defaultProviderId = (
-      await preferenceService.getUserPreferences(userId, userId)
-    )?.default_food_data_provider_id;
-    if (defaultProviderId) {
-      const defaultIndex = targetProviders.findIndex(
-        (p) => p.id === defaultProviderId
-      );
-      if (defaultIndex > 0) {
-        const [preferred] = targetProviders.splice(defaultIndex, 1);
-        targetProviders.unshift(preferred);
-      }
-    }
-  }
-
-  for (const provider of targetProviders) {
-    try {
-      log(
-        'debug',
-        `[Food Tool] Lookup cascade querying provider: ${provider.provider_name} (${provider.provider_type})`
-      );
-      const result = await searchProviderFoods(
-        userId,
-        provider.provider_type as ProviderType,
-        foodName,
-        { providerId: provider.id }
-      );
-      if (result.foods.length > 0) {
-        const ranked = rankProviderMatches(result.foods, foodName);
-        return {
-          source: provider.provider_type,
-          food: ranked[0],
-          alternatives: ranked.slice(1),
-        };
-      }
-    } catch (error) {
-      log(
-        'warn',
-        `[Food Tool] Lookup cascade provider ${provider.provider_name} failed:`,
-        error
-      );
-    }
-  }
-
-  return { source: 'ai_estimate', food: null };
+  // The provider half of the cascade lives in foodProviderLookupService so the
+  // food-photo matcher runs the identical order and ranking.
+  const targetProviders = await resolveFoodProviderOrder(userId, providerType);
+  return lookupFoodFromProviders(userId, foodName, targetProviders);
 }
 
 // Standalone domain tools.
@@ -899,7 +782,7 @@ Actions:
 - list_meal_types() — lists the user's built-in and custom meal types with IDs, names, and sort order.
 - log_food(quantity, meal_type_id?|meal_type?, food_name?|food_id?, unit?, entry_date?, variant_id?) — use meal_type_id for custom meal types; the legacy meal_type fallback accepts "breakfast"|"lunch"|"dinner"|"snacks". meal_type_id takes precedence when both are supplied. Provide food_name or food_id (an internal food UUID, never a lookup result's External ID); unit defaults to the food's serving unit, entry_date defaults to today. Works only for foods already in the database (source='internal').
 - log_external_food(food_name, meal_type_id?|meal_type?, quantity?, unit?, entry_date?, external_id?, provider_type?, is_quick_food?) — PREFERRED way to log an external lookup_food_nutrition match (usda/openfoodfacts/...): the server re-fetches the provider result, saves it with full nutrition, and logs it in one call. quantity is in servings and defaults to 1. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list.
-- create_food(food_name, calories, protein, carbs, fat, brand?, quantity?, unit?, meal_type_id?, meal_type?, entry_date?, is_quick_food?, saturated_fat?, fiber?, sugar?, sodium?, ...) — MANDATORY: You must run lookup_food_nutrition first. Call only when lookup returns source='ai_estimate' (no match anywhere) or for custom/homemade foods, using AI-estimated values; for external lookup matches use log_external_food instead. Include meal_type_id (or legacy meal_type) + entry_date to also log the food in the same call. Populate as many micro-nutrients, GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list; it then requires meal_type_id (or meal_type) in the same call.
+- create_food(food_name, calories, protein, carbs, fat, brand?, notes?, quantity?, unit?, meal_type_id?, meal_type?, entry_date?, is_quick_food?, saturated_fat?, fiber?, sugar?, sodium?, ...) — MANDATORY: You must run lookup_food_nutrition first. Call only when lookup returns source='ai_estimate' (no match anywhere) or for custom/homemade foods, using AI-estimated values; for external lookup matches use log_external_food instead. Include meal_type_id (or legacy meal_type) + entry_date to also log the food in the same call. Populate as many micro-nutrients, GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list; it then requires meal_type_id (or meal_type) in the same call. Pass notes only when the user gave reference detail worth keeping on the food itself — how they order or prepare it, or a recipe; it is markdown, it is not a nutrition field, and you must never invent one.
 - search_meal(meal_name)
 - log_meal(meal_type_id?|meal_type?, entry_date, meal_id?, meal_name?, quantity?)
 - list_diary(entry_date?)
@@ -908,7 +791,8 @@ Actions:
 - update_entry(entry_id?|food_name?, entry_type?, entry_date?, quantity?, unit?, meal_type_id?, meal_type?) — changes quantity/unit and/or moves the entry to another meal type (meal_type/meal_type_id is the NEW meal). Provide entry_id when you have it; otherwise food_name is resolved against the diary for entry_date (defaults to today). Ambiguous names return the candidates with their ids instead of updating.
 - update_food_variant(food_id?|variant_id?, serving_size?, serving_unit?, calories?, protein?, carbs?, fat?, saturated_fat?, fiber?, sugar?, sodium?, ..., update_existing_entries?) — updates an existing food variant without deleting the food. Defaults to leaving existing diary entries unchanged.
 - copy_from_yesterday(target_date?, source_date?, meal_type_id?|meal_type?)
-- save_as_meal_template(entry_date, meal_type_id?|meal_type?, meal_name, description?) — REQUIRES EXPLICIT action field. Saves diary entries for a given date and meal type as a reusable meal template.
+- set_food_notes(food_id?|food_name?, notes) — Sets the markdown reference note on a saved food (how the user orders or prepares it, a recipe). Pass an empty string to clear it. It REPLACES the existing note, so when the user is adding to one, read the food first and send the merged text. Owner-only: it fails on someone else's shared or public food. Never write a note the user did not ask for.
+- save_as_meal_template(entry_date, meal_type_id?|meal_type?, meal_name, description?, notes?) — REQUIRES EXPLICIT action field. Saves diary entries for a given date and meal type as a reusable meal template. notes is an optional markdown reference note (e.g. a recipe) and is only set when the user supplied one.
 - log_water(amount_ml, entry_date)
 - get_nutritional_summary(start_date, end_date) — returns macro breakdown for a range of dates
 - get_water_history(start_date?, end_date?)`,
@@ -1695,6 +1579,7 @@ Actions:
                 user_id: userId,
                 name: args.food_name,
                 brand: args.brand || null,
+                notes: args.notes || null,
                 serving_size: targetQuantity,
                 serving_unit: targetUnit,
                 calories: args.calories,
@@ -2008,6 +1893,64 @@ Actions:
                 throw error;
               }
               return formatConfirmation('Entry deleted.');
+            }
+
+            case 'set_food_notes': {
+              if (!args.food_id && !args.food_name) {
+                return ERRORS.VALIDATION(
+                  'Either food_id or food_name must be provided'
+                );
+              }
+              let notesFoodId = args.food_id;
+              let notesFoodName = args.food_name;
+              if (!notesFoodId) {
+                const row = await findFoodByExactName(
+                  userId,
+                  args.food_name ?? ''
+                );
+                if (!row) {
+                  return ERRORS.VALIDATION(
+                    `Food "${args.food_name}" not found.`
+                  );
+                }
+                notesFoodId = row.id;
+                notesFoodName = row.name;
+              } else {
+                const row = await foodRepository.getFoodById(
+                  notesFoodId,
+                  userId
+                );
+                if (!row) {
+                  return ERRORS.NOT_FOUND(
+                    'Food',
+                    args.food_id || args.food_name || 'unknown'
+                  );
+                }
+                notesFoodName = row.name;
+              }
+              try {
+                // The service rejects a food the user does not own, so a
+                // shared or public food cannot be edited through here.
+                // sanitizeNotes turns an empty string into NULL, which is how
+                // clearing is expressed: the tool layer strips null arguments
+                // before validation, so null can never reach here.
+                await foodCoreService.updateFood(userId, notesFoodId!, {
+                  notes: args.notes ?? '',
+                });
+              } catch (err) {
+                // updateFood throws Forbidden for a food the user does not
+                // own, which is a normal outcome for a shared or public food.
+                const message =
+                  err instanceof Error ? err.message : String(err);
+                return message.toLowerCase().includes('forbidden')
+                  ? ERRORS.FORBIDDEN(
+                      `You can only edit notes on your own foods (${notesFoodName}).`
+                    )
+                  : ERRORS.DB_ERROR(err);
+              }
+              return args.notes?.trim()
+                ? `Saved the note on ${notesFoodName}.`
+                : `Cleared the note on ${notesFoodName}.`;
             }
 
             case 'delete_food': {
@@ -2389,7 +2332,14 @@ Actions:
                 args.entry_date,
                 mealType.id,
                 args.meal_name,
-                args.description ?? null
+                args.description ?? null,
+                false,
+                null,
+                1,
+                1,
+                1,
+                'serving',
+                args.notes ?? null
               );
               // createMealFromDiaryEntries returns the meal without its
               // foods; re-fetch for the item count.
@@ -2531,8 +2481,13 @@ Actions:
             userId
           );
           const { default_variant: _defaultVariant, ...rest } = food;
+          const compacted = compactRecord(rest, CATALOG_FOOD_DROP);
+          // The note is returned in full here, unlike the catalog listings.
+          // set_food_notes replaces the stored note outright, so appending to
+          // one means reading it first — and reading a truncated preview would
+          // write back a note with its tail cut off.
           const data = {
-            ...compactRecord(rest, CATALOG_FOOD_DROP),
+            ...compacted,
             variants: variants.map((v: Record<string, unknown>) =>
               compactRecord(v, VARIANT_DROP)
             ),

@@ -157,7 +157,9 @@ export function getMetabolicStageIndex(stage: MetabolicStage): number {
  *
  * MUST NOT feed goal/progress math — that always derives from the timestamps.
  */
-export function protocolBadgeLabel(fastingType: string | null | undefined): string {
+export function protocolBadgeLabel(
+  fastingType: string | null | undefined
+): string {
   if (!fastingType || !fastingType.trim()) return 'Fasting';
   const ratio = fastingType.match(/(\d{1,2})\s*:\s*(\d{1,2})/);
   if (ratio) return `${ratio[1]}:${ratio[2]}`;

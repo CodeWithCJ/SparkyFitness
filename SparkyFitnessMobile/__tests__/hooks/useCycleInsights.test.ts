@@ -1,7 +1,19 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
-import { useCycleOverview, useCycleInsights, useCycleCorrelations } from '../../src/hooks/useCycleInsights';
-import { getOverview, getInsights, getCorrelations } from '../../src/services/api/cycleApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  useCycleOverview,
+  useCycleInsights,
+  useCycleCorrelations,
+} from '../../src/hooks/useCycleInsights';
+import {
+  getOverview,
+  getInsights,
+  getCorrelations,
+} from '../../src/services/api/cycleApi';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/cycleApi', () => ({
   getOverview: jest.fn(),
@@ -17,7 +29,9 @@ jest.mock('@react-navigation/native', () => ({
 
 const mockGetOverview = getOverview as jest.MockedFunction<typeof getOverview>;
 const mockGetInsights = getInsights as jest.MockedFunction<typeof getInsights>;
-const mockGetCorrelations = getCorrelations as jest.MockedFunction<typeof getCorrelations>;
+const mockGetCorrelations = getCorrelations as jest.MockedFunction<
+  typeof getCorrelations
+>;
 
 describe('useCycleInsights', () => {
   let queryClient: QueryClient;

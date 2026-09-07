@@ -1,4 +1,11 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { getLocalizedMealLabel } from '../constants/meals';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
@@ -8,15 +15,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
+import MarkdownNotesField from '../components/MarkdownNotesField';
+import { NoteMarkdown } from '../components/NoteMarkdown';
 import EntryImageOverride from '../components/EntryImageOverride';
 import Icon from '../components/Icon';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import StepperInput from '../components/StepperInput';
 import BottomSheetPicker from '../components/BottomSheetPicker';
-import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import CalendarSheet, {
+  type CalendarSheetRef,
+} from '../components/CalendarSheet';
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import { toHourMinute } from '@workspace/shared';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
+import { usableFoodImages } from '../utils/foodImages';
 import NutritionMacroCard from '../components/NutritionMacroCard';
 import StatusView from '../components/StatusView';
 import SwipeableIngredientRow from '../components/SwipeableIngredientRow';
@@ -33,11 +45,12 @@ import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
 import { consumePendingMealIngredientSelection } from '../services/mealBuilderSelection';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDateLabel, normalizeDate } from '../utils/dateUtils';
-import {
-  getFoodEntryMealTypeLabel,
-} from '../utils/mealNutrition';
+import { getFoodEntryMealTypeLabel } from '../utils/mealNutrition';
 import { buildMealIngredientDraftFromEntryMealFood } from '../utils/mealBuilderDraft';
-import { formatCaloriesDisplay, formatServingSizeDisplay } from '../utils/foodDetails';
+import {
+  formatCaloriesDisplay,
+  formatServingSizeDisplay,
+} from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import { mealIngredientDraftToFoodInfo } from '../types/foodInfo';
 import type { MealIngredientDraft } from '../types/meals';
@@ -58,7 +71,9 @@ interface IngredientTotals {
 // food scaled by its own quantity / serving_size). The meal-level servings
 // factor is applied by the caller. Recomputing here (rather than reading
 // meal.calories) keeps totals correct after foods are added/removed/edited.
-function computeBaseTotals(ingredients: MealIngredientDraft[]): IngredientTotals {
+function computeBaseTotals(
+  ingredients: MealIngredientDraft[]
+): IngredientTotals {
   let calories = 0;
   let protein = 0;
   let carbs = 0;
@@ -79,9 +94,14 @@ function computeBaseTotals(ingredients: MealIngredientDraft[]): IngredientTotals
   return { calories, protein, carbs, fat, fiber: hasFiber ? fiber : undefined };
 }
 
-const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation, route }) => {
-  const { t , i18n: translationI18n } = useTranslation();
-  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
+const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
+  navigation,
+  route,
+}) => {
+  const { t, i18n: translationI18n } = useTranslation();
+  const dateLocale = translationI18n.language.startsWith('pl')
+    ? 'pl-PL'
+    : 'en-US';
   const { foodEntryMealId, initialMeal } = route.params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -89,30 +109,35 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   const calendarRef = useRef<CalendarSheetRef>(null);
   const timeSheetRef = useRef<TimeSheetRef>(null);
 
-  const { meal, isLoading, isError, error } = useFoodEntryMealDetails(foodEntryMealId, { initialMeal });
+  const { meal, isLoading, isError, error } = useFoodEntryMealDetails(
+    foodEntryMealId,
+    { initialMeal }
+  );
 
   // Per-entry override photo for this logged meal. Never written back to the
   // meal template, which is what an entry without an override falls back to.
-  const {
-    setImages: setMealEntryImages,
-    isPending: isSettingMealImage,
-  } = useSetFoodEntryMealImages(foodEntryMealId, meal?.entry_date ?? '');
-  const {
-    clearImage: clearMealEntryImage,
-    isPending: isClearingMealImage,
-  } = useClearFoodEntryMealImage(foodEntryMealId, meal?.entry_date ?? '');
+  const { setImages: setMealEntryImages, isPending: isSettingMealImage } =
+    useSetFoodEntryMealImages(foodEntryMealId, meal?.entry_date ?? '');
+  const { clearImage: clearMealEntryImage, isPending: isClearingMealImage } =
+    useClearFoodEntryMealImage(foodEntryMealId, meal?.entry_date ?? '');
   const isMealImagePending = isSettingMealImage || isClearingMealImage;
   const { mealTypes } = useMealTypes();
   const { preferences } = usePreferences();
   const showNetCarbs = preferences?.show_net_carbs === true;
 
   const [name, setName] = useState<string | null>(null);
+  // null means "untouched", matching the other fields on this screen.
+  const [notes, setNotes] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [entryTime, setEntryTime] = useState<string | null>(null);
-  const [selectedMealId, setSelectedMealId] = useState<string | undefined>(undefined);
+  const [selectedMealId, setSelectedMealId] = useState<string | undefined>(
+    undefined
+  );
   const [quantityText, setQuantityText] = useState<string | null>(null);
   const [ingredients, setIngredients] = useState<MealIngredientDraft[]>([]);
-  const [initializedMealId, setInitializedMealId] = useState<string | null>(null);
+  const [initializedMealId, setInitializedMealId] = useState<string | null>(
+    null
+  );
   const [foodsTouched, setFoodsTouched] = useState(false);
   // Latest displayScale, read inside useFocusEffect without re-creating it.
   const displayScaleRef = useRef(1);
@@ -144,7 +169,9 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
       const ingredient = {
         ...selection.ingredient,
         quantity:
-          scale > 0 ? selection.ingredient.quantity / scale : selection.ingredient.quantity,
+          scale > 0
+            ? selection.ingredient.quantity / scale
+            : selection.ingredient.quantity,
       };
       setIngredients((current) => {
         const next = [...current];
@@ -160,16 +187,21 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
         return next;
       });
       setFoodsTouched(true);
-    }, []),
+    }, [])
   );
 
   const effectiveName = name ?? meal?.name ?? '';
-  const effectiveDate = selectedDate ?? (meal ? normalizeDate(meal.entry_date) : null);
-  const effectiveEntryTime = entryTime ?? (meal ? toHourMinute(meal.entry_time) ?? '' : '');
+  const effectiveNotes = notes ?? meal?.notes ?? '';
+  const effectiveDate =
+    selectedDate ?? (meal ? normalizeDate(meal.entry_date) : null);
+  const effectiveEntryTime =
+    entryTime ?? (meal ? (toHourMinute(meal.entry_time) ?? '') : '');
   const effectiveMealId = selectedMealId ?? meal?.meal_type_id ?? undefined;
-  const effectiveQuantityText = quantityText ?? (meal ? String(meal.quantity) : '');
+  const effectiveQuantityText =
+    quantityText ?? (meal ? String(meal.quantity) : '');
   const quantity = parseDecimalInput(effectiveQuantityText) || 0;
-  const originalQuantity = meal?.quantity && meal.quantity > 0 ? meal.quantity : 1;
+  const originalQuantity =
+    meal?.quantity && meal.quantity > 0 ? meal.quantity : 1;
   // Rescale stored component quantities by the CHANGE in servings, not the raw
   // servings count: meal.foods are already at the logged-servings amount
   // (originalQuantity), so the factor is newServings / loadedServings. This
@@ -182,31 +214,42 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
   const mealTypeLabel = useCallback(
     (mealType: (typeof mealTypes)[number]) =>
       mealType.user_id == null
-        ? getLocalizedMealLabel(t, mealType.name.toLowerCase() === 'snack' ? 'snacks' : mealType.name.toLowerCase())
+        ? getLocalizedMealLabel(
+            t,
+            mealType.name.toLowerCase() === 'snack'
+              ? 'snacks'
+              : mealType.name.toLowerCase()
+          )
         : mealType.name,
-    [t],
+    [t]
   );
   const mealPickerOptions = useMemo(
     () => mealTypes.map((mt) => ({ label: mealTypeLabel(mt), value: mt.id })),
-    [mealTypes, mealTypeLabel],
+    [mealTypes, mealTypeLabel]
   );
   const entryMealTypeLabel = selectedMealType
     ? mealTypeLabel(selectedMealType)
-    : meal ? getFoodEntryMealTypeLabel(meal, mealTypes, t) : t('mealTypes.other', { defaultValue: 'Other' });
+    : meal
+      ? getFoodEntryMealTypeLabel(meal, mealTypes, t)
+      : t('mealTypes.other', { defaultValue: 'Other' });
 
   const initialDate = meal ? normalizeDate(meal.entry_date) : null;
   const dirty =
     meal != null &&
-    (
-      (name !== null && name !== meal.name) ||
+    ((name !== null && name !== meal.name) ||
       (selectedDate !== null && selectedDate !== initialDate) ||
-      (entryTime !== null && entryTime !== (toHourMinute(meal.entry_time) ?? '')) ||
+      (entryTime !== null &&
+        entryTime !== (toHourMinute(meal.entry_time) ?? '')) ||
       (selectedMealId !== undefined && selectedMealId !== meal.meal_type_id) ||
       (quantityText !== null && quantity !== meal.quantity) ||
-      foodsTouched
-    );
+      (notes !== null && notes !== (meal.notes ?? '')) ||
+      foodsTouched);
 
-  const { updateMeal, isPending: isSavePending, invalidateCache: invalidateUpdateCache } = useUpdateFoodEntryMeal({
+  const {
+    updateMeal,
+    isPending: isSavePending,
+    invalidateCache: invalidateUpdateCache,
+  } = useUpdateFoodEntryMeal({
     mealId: foodEntryMealId,
     entryDate: meal?.entry_date ?? '',
     onSuccess: () => {
@@ -215,35 +258,51 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
     },
   });
 
-  const { confirmAndDelete, isPending: isDeletePending, invalidateCache: invalidateDeleteCache } =
-    useDeleteFoodEntryMeal({
-      mealId: foodEntryMealId,
-      entryDate: meal?.entry_date ?? '',
-      onSuccess: () => {
-        invalidateDeleteCache();
-        navigation.goBack();
-      },
-    });
+  const {
+    confirmAndDelete,
+    isPending: isDeletePending,
+    invalidateCache: invalidateDeleteCache,
+  } = useDeleteFoodEntryMeal({
+    mealId: foodEntryMealId,
+    entryDate: meal?.entry_date ?? '',
+    onSuccess: () => {
+      invalidateDeleteCache();
+      navigation.goBack();
+    },
+  });
 
   const isRowBusy = isSavePending || isDeletePending;
 
-  const baseTotals = useMemo(() => computeBaseTotals(ingredients), [ingredients]);
+  const baseTotals = useMemo(
+    () => computeBaseTotals(ingredients),
+    [ingredients]
+  );
 
-  // Template-linked meals come back with component foods at recipe BASE
-  // quantities but meal.calories as the CONSUMED total (server divides foods by
-  // the storage multiplier on read, foodEntryService.ts). Base totals alone
-  // would therefore understate the meal, so recover that multiplier (consumed /
-  // base) from the loaded snapshot and fold it into all display scaling.
-  // Non-template meals already store consumed amounts, so this is 1 for them.
+  // Whether the server applies a portion multiplier to this entry's components.
+  // This mirrors the gate in resolveLoggedMealPortion: a linked template OR a
+  // snapshotted yield is enough. Checking meal_template_id alone used to be
+  // equivalent, but an entry whose template was deleted keeps its snapshot and
+  // is still scaled, so the template check would both misrender it and
+  // double-scale it on save.
+  const serverScalesComponents = Boolean(
+    meal?.meal_template_id || meal?.entry_total_servings
+  );
+
+  // Scaled meals come back with component foods at recipe BASE quantities but
+  // meal.calories as the CONSUMED total (server divides foods by the storage
+  // multiplier on read, foodEntryService.ts). Base totals alone would therefore
+  // understate the meal, so recover that multiplier (consumed / base) from the
+  // loaded snapshot and fold it into all display scaling. Unscaled meals
+  // already store consumed amounts, so this is 1 for them.
   const templateScale = useMemo(() => {
-    // Guard null/zero calories: without it a template meal with no aggregate
+    // Guard null/zero calories: without it a scaled meal with no aggregate
     // calories would yield templateScale 0 and zero out the whole display.
-    if (!meal?.meal_template_id || !meal.calories) return 1;
+    if (!serverScalesComponents || !meal?.calories) return 1;
     const base = computeBaseTotals(
-      meal.foods.map(buildMealIngredientDraftFromEntryMealFood),
+      meal.foods.map(buildMealIngredientDraftFromEntryMealFood)
     ).calories;
     return base > 0 ? meal.calories / base : 1;
-  }, [meal]);
+  }, [meal, serverScalesComponents]);
 
   // Keep displayScaleRef current so the deferred handlers (editIngredient and
   // the meal-builder focus effect) unscale consumed amounts using the latest
@@ -324,14 +383,19 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
       meal_type_id: effectiveMealId,
       entry_date: effectiveDate,
       entry_time: effectiveEntryTime || null,
+      notes: effectiveNotes.trim() || null,
       quantity,
       unit: meal.unit,
       meal_template_id: meal.meal_template_id,
+      entry_total_servings: meal.entry_total_servings,
       foods: ingredients.map(({ brand: _brand, ...food }) => ({
         ...food,
-        // Non-template meals persist consumed (scaled) component quantities;
-        // template-linked meals are rescaled server-side, so send base values.
-        quantity: meal.meal_template_id ? food.quantity : food.quantity * scaleFactor,
+        // Unscaled meals persist consumed component quantities verbatim; meals
+        // the server rescales (linked template or snapshotted yield) take base
+        // values, because it applies the multiplier itself on write.
+        quantity: serverScalesComponents
+          ? food.quantity
+          : food.quantity * scaleFactor,
       })),
     };
 
@@ -348,14 +412,19 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
       busy: isSavePending,
       disabled: !canSave || isRowBusy,
       onPress: handleSave,
-      accessibilityLabel: t('editLoggedMeal.accessibility.saveMeal', { defaultValue: 'Save meal' }),
+      accessibilityLabel: t('editLoggedMeal.accessibility.saveMeal', {
+        defaultValue: 'Save meal',
+      }),
       identifier: 'edit-logged-meal-save',
     },
   });
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+      <View
+        className="flex-1 bg-background"
+        style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+      >
         <StatusView loading />
       </View>
     );
@@ -378,25 +447,66 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
     baseTotals.fiber != null ? baseTotals.fiber * displayScale : undefined;
 
   return (
-    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
 
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-4 py-4 gap-4"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 16 + activeWorkoutBarPadding }}
+        contentContainerStyle={{
+          paddingBottom: insets.bottom + 16 + activeWorkoutBarPadding,
+        }}
         keyboardShouldPersistTaps="handled"
       >
         {/* Name */}
         <View>
-          <Text className="text-text-secondary text-sm mb-1">{t('editLoggedMeal.fields.mealName', { defaultValue: 'Meal name' })}</Text>
+          <Text className="text-text-secondary text-sm mb-1">
+            {t('editLoggedMeal.fields.mealName', { defaultValue: 'Meal name' })}
+          </Text>
           <FormInput
             value={effectiveName}
             onChangeText={setName}
-            placeholder={t('editLoggedMeal.fields.mealName', { defaultValue: 'Meal name' })} accessibilityLabel={t('editLoggedMeal.accessibility.mealName', { defaultValue: 'Meal name' })}
+            placeholder={t('editLoggedMeal.fields.mealName', {
+              defaultValue: 'Meal name',
+            })}
+            accessibilityLabel={t('editLoggedMeal.accessibility.mealName', {
+              defaultValue: 'Meal name',
+            })}
             autoCapitalize="sentences"
           />
         </View>
+
+        {meal?.meal_notes ? (
+          <View>
+            <Text className="text-xs font-semibold uppercase text-text-muted mb-1">
+              {t('editLoggedMeal.fields.aboutThisMeal', {
+                defaultValue: 'About this meal',
+              })}
+            </Text>
+            <View className="rounded-lg border border-border-subtle bg-raised px-3 py-2">
+              <NoteMarkdown
+                text={meal.meal_notes}
+                fontSize={14}
+                images={usableFoodImages(meal.meal_images)}
+              />
+            </View>
+          </View>
+        ) : null}
+
+        <MarkdownNotesField
+          images={[
+            ...usableFoodImages(meal?.images),
+            ...usableFoodImages(meal?.meal_images),
+          ]}
+          value={effectiveNotes}
+          onCommit={setNotes}
+          label={t('editLoggedMeal.fields.notes', {
+            defaultValue: 'Note for this entry',
+          })}
+        />
 
         <EntryImageOverride
           images={meal?.images}
@@ -418,7 +528,9 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
 
         {/* Quantity */}
         <View>
-          <Text className="text-text-secondary text-sm mb-1">{t('editLoggedMeal.fields.servings', { defaultValue: 'Servings' })}</Text>
+          <Text className="text-text-secondary text-sm mb-1">
+            {t('editLoggedMeal.fields.servings', { defaultValue: 'Servings' })}
+          </Text>
           <View className="flex-row items-center">
             <StepperInput
               value={effectiveQuantityText}
@@ -435,44 +547,75 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
         </View>
 
         {/* Date row */}
-        <Animated.View layout={LinearTransition.duration(300)} className="flex-row items-center">
+        <Animated.View
+          layout={LinearTransition.duration(300)}
+          className="flex-row items-center"
+        >
           <View className="flex-1 flex-row items-center">
-            <Text className="text-text-secondary text-base mr-2">{t('common.date', { defaultValue: 'Date' })}</Text>
+            <Text className="text-text-secondary text-base mr-2">
+              {t('common.date', { defaultValue: 'Date' })}
+            </Text>
             <TouchableOpacity
               onPress={() => calendarRef.current?.present()}
               activeOpacity={0.7}
               className="flex-row items-center"
               accessibilityRole="button"
-              accessibilityLabel={t('editLoggedMeal.accessibility.date', { defaultValue: 'Select date: {{date}}', date: effectiveDate ?? '' })}
+              accessibilityLabel={t('editLoggedMeal.accessibility.date', {
+                defaultValue: 'Select date: {{date}}',
+                date: effectiveDate ?? '',
+              })}
             >
               <Text className="text-text-primary text-base font-medium">
-                {effectiveDate ? formatDateLabel(effectiveDate, t, dateLocale) : ''}
+                {effectiveDate
+                  ? formatDateLabel(effectiveDate, t, dateLocale)
+                  : ''}
               </Text>
-              <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 6 }} weight="medium" />
+              <Icon
+                name="chevron-down"
+                size={12}
+                color={textPrimary}
+                style={{ marginLeft: 6 }}
+                weight="medium"
+              />
             </TouchableOpacity>
           </View>
 
           {/* Meal type */}
           <View className="flex-1 flex-row items-center">
-            <Text className="text-text-secondary text-base mr-2">{t('editLoggedMeal.fields.meal', { defaultValue: 'Meal' })}</Text>
+            <Text className="text-text-secondary text-base mr-2">
+              {t('editLoggedMeal.fields.meal', { defaultValue: 'Meal' })}
+            </Text>
             {selectedMealType && effectiveMealId ? (
               <BottomSheetPicker
                 value={effectiveMealId}
                 options={mealPickerOptions}
                 onSelect={(id) => setSelectedMealId(id)}
-                title={t('editLoggedMeal.fields.selectMeal', { defaultValue: 'Select Meal' })}
+                title={t('editLoggedMeal.fields.selectMeal', {
+                  defaultValue: 'Select Meal',
+                })}
                 renderTrigger={({ onPress }) => (
                   <TouchableOpacity
                     onPress={onPress}
                     activeOpacity={0.7}
                     className="flex-row items-center"
                     accessibilityRole="button"
-                    accessibilityLabel={t('editLoggedMeal.accessibility.meal', { defaultValue: 'Select meal: {{meal}}', meal: selectedMealType ? mealTypeLabel(selectedMealType) : '' })}
+                    accessibilityLabel={t('editLoggedMeal.accessibility.meal', {
+                      defaultValue: 'Select meal: {{meal}}',
+                      meal: selectedMealType
+                        ? mealTypeLabel(selectedMealType)
+                        : '',
+                    })}
                   >
                     <Text className="text-text-primary text-base font-medium">
                       {mealTypeLabel(selectedMealType)}
                     </Text>
-                    <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 6 }} weight="medium" />
+                    <Icon
+                      name="chevron-down"
+                      size={12}
+                      color={textPrimary}
+                      style={{ marginLeft: 6 }}
+                      weight="medium"
+                    />
                   </TouchableOpacity>
                 )}
               />
@@ -485,19 +628,36 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
         </Animated.View>
 
         {/* Time row */}
-        <Animated.View layout={LinearTransition.duration(300)} className="flex-row items-center">
-          <Text className="text-text-secondary text-base mr-2">{t('editLoggedMeal.fields.time', { defaultValue: 'Time' })}</Text>
+        <Animated.View
+          layout={LinearTransition.duration(300)}
+          className="flex-row items-center"
+        >
+          <Text className="text-text-secondary text-base mr-2">
+            {t('editLoggedMeal.fields.time', { defaultValue: 'Time' })}
+          </Text>
           <TouchableOpacity
             onPress={() => timeSheetRef.current?.present()}
             activeOpacity={0.7}
             className="flex-row items-center"
             accessibilityRole="button"
-            accessibilityLabel={t('editLoggedMeal.accessibility.time', { defaultValue: 'Select time: {{time}}', time: formatTimeLabel(effectiveEntryTime, preferences?.time_format) ?? t('common.none', { defaultValue: 'None' }) })}
+            accessibilityLabel={t('editLoggedMeal.accessibility.time', {
+              defaultValue: 'Select time: {{time}}',
+              time:
+                formatTimeLabel(effectiveEntryTime, preferences?.time_format) ??
+                t('common.none', { defaultValue: 'None' }),
+            })}
           >
             <Text className="text-text-primary text-base font-medium">
-              {formatTimeLabel(effectiveEntryTime, preferences?.time_format) ?? t('common.none', { defaultValue: 'None' })}
+              {formatTimeLabel(effectiveEntryTime, preferences?.time_format) ??
+                t('common.none', { defaultValue: 'None' })}
             </Text>
-            <Icon name="chevron-down" size={12} color={textPrimary} style={{ marginLeft: 6 }} weight="medium" />
+            <Icon
+              name="chevron-down"
+              size={12}
+              color={textPrimary}
+              style={{ marginLeft: 6 }}
+              weight="medium"
+            />
           </TouchableOpacity>
           {effectiveEntryTime !== '' && (
             <TouchableOpacity
@@ -505,30 +665,44 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
               className="flex-row items-center ml-4"
               onPress={() => setEntryTime('')}
               accessibilityRole="button"
-              accessibilityLabel={t('editLoggedMeal.accessibility.clearTime', { defaultValue: 'Clear entry time' })}
+              accessibilityLabel={t('editLoggedMeal.accessibility.clearTime', {
+                defaultValue: 'Clear entry time',
+              })}
             >
-              <Text className="text-text-link text-sm font-medium">{t('common.clear', { defaultValue: 'Clear' })}</Text>
+              <Text className="text-text-link text-sm font-medium">
+                {t('common.clear', { defaultValue: 'Clear' })}
+              </Text>
             </TouchableOpacity>
           )}
         </Animated.View>
 
         {/* Component foods: tap a row to edit, swipe to remove, button to add. */}
         <View className="mt-2">
-          <Text className="text-text-secondary text-sm mb-2">{t('editLoggedMeal.fields.foodsInMeal', { defaultValue: 'Foods in this meal' })}</Text>
+          <Text className="text-text-secondary text-sm mb-2">
+            {t('editLoggedMeal.fields.foodsInMeal', {
+              defaultValue: 'Foods in this meal',
+            })}
+          </Text>
           {ingredients.length > 0 ? (
             <View className="bg-surface rounded-xl overflow-hidden">
               {ingredients.map((food, index) => {
                 // Show consumed amounts (stored quantity x servings change), so
                 // rows stay consistent with the nutrition card and the payload.
                 const scaledQty = food.quantity * displayScale;
-                const scale = food.serving_size > 0 ? scaledQty / food.serving_size : 0;
-                const foodCals = formatCaloriesDisplay((food.calories ?? 0) * scale);
+                const scale =
+                  food.serving_size > 0 ? scaledQty / food.serving_size : 0;
+                const foodCals = formatCaloriesDisplay(
+                  (food.calories ?? 0) * scale
+                );
                 return (
                   <SwipeableIngredientRow
                     key={`${food.food_id}-${food.variant_id}-${index}`}
-                    foodName={food.food_name ?? t('common.food', { defaultValue: 'Food' })}
+                    foodName={
+                      food.food_name ??
+                      t('common.food', { defaultValue: 'Food' })
+                    }
                     quantityLabel={`${formatServingSizeDisplay(scaledQty)} ${food.unit}`}
-                    caloriesLabel={`${foodCals} ${t('nutrition.caloriesShort', { defaultValue: "kcal" })}`}
+                    caloriesLabel={`${foodCals} ${t('nutrition.caloriesShort', { defaultValue: 'kcal' })}`}
                     showBottomBorder={index < ingredients.length - 1}
                     isLastIngredient={ingredients.length === 1}
                     disabled={isRowBusy}
@@ -539,7 +713,11 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
               })}
             </View>
           ) : (
-            <Text className="text-text-muted text-sm">{t('editLoggedMeal.states.noFoods', { defaultValue: 'No foods in this meal yet.' })}</Text>
+            <Text className="text-text-muted text-sm">
+              {t('editLoggedMeal.states.noFoods', {
+                defaultValue: 'No foods in this meal yet.',
+              })}
+            </Text>
           )}
 
           <View className="items-center pt-3">
@@ -548,10 +726,16 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
               onPress={openIngredientPicker}
               disabled={isRowBusy}
               className="min-h-11 flex-row items-center gap-1.5 rounded-xl px-3 py-2"
-              accessibilityLabel={t('editLoggedMeal.actions.addFood', { defaultValue: 'Add Food' })}
+              accessibilityLabel={t('editLoggedMeal.actions.addFood', {
+                defaultValue: 'Add Food',
+              })}
             >
               <Icon name="add" size={16} color={accentColor} />
-              <Text className="text-accent-primary text-sm font-semibold">{t('editLoggedMeal.actions.addFood', { defaultValue: 'Add Food' })}</Text>
+              <Text className="text-accent-primary text-sm font-semibold">
+                {t('editLoggedMeal.actions.addFood', {
+                  defaultValue: 'Add Food',
+                })}
+              </Text>
             </Button>
           </View>
         </View>
@@ -563,7 +747,11 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({ navigation,
           disabled={isRowBusy}
           className="mt-2"
         >
-          {isDeletePending ? t('common.deleting', { defaultValue: 'Deleting...' }) : t('editLoggedMeal.actions.deleteMeal', { defaultValue: 'Delete Meal' })}
+          {isDeletePending
+            ? t('common.deleting', { defaultValue: 'Deleting...' })
+            : t('editLoggedMeal.actions.deleteMeal', {
+                defaultValue: 'Delete Meal',
+              })}
         </Button>
       </ScrollView>
 

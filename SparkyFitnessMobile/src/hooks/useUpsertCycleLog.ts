@@ -33,12 +33,17 @@ export function useUpsertCycleLog() {
   const upsertMutation = useMutation({
     mutationFn: (vars: UpsertCycleLogVars) => putLog(vars.date, vars.body),
     onSuccess: (data, vars) => {
-      queryClient.setQueryData<SharedCycleDailyLog>(cycleLogQueryKey(vars.date), data);
+      queryClient.setQueryData<SharedCycleDailyLog>(
+        cycleLogQueryKey(vars.date),
+        data
+      );
       invalidateCaches(vars.date);
       Toast.show({
         type: 'success',
         text1: t('cycleLog.saved', { defaultValue: 'Saved' }),
-        text2: t('cycleLog.updated', { defaultValue: 'Daily log updated successfully.' }),
+        text2: t('cycleLog.updated', {
+          defaultValue: 'Daily log updated successfully.',
+        }),
       });
     },
     onError: (error) => {
@@ -46,7 +51,9 @@ export function useUpsertCycleLog() {
       Toast.show({
         type: 'error',
         text1: t('cycleLog.saveFailed', { defaultValue: 'Save failed' }),
-        text2: t('cycleLog.saveError', { defaultValue: 'Could not save log entry. Please try again.' }),
+        text2: t('cycleLog.saveError', {
+          defaultValue: 'Could not save log entry. Please try again.',
+        }),
       });
     },
   });
@@ -67,7 +74,9 @@ export function useUpsertCycleLog() {
       Toast.show({
         type: 'error',
         text1: t('cycleLog.deleteFailed', { defaultValue: 'Delete failed' }),
-        text2: t('cycleLog.deleteError', { defaultValue: 'Could not clear log entry. Please try again.' }),
+        text2: t('cycleLog.deleteError', {
+          defaultValue: 'Could not clear log entry. Please try again.',
+        }),
       });
     },
   });

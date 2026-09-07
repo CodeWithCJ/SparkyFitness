@@ -33,7 +33,11 @@ interface UseCycleLogsRangeOptions {
   enabled?: boolean;
 }
 
-export function useCycleLogsRange({ startDate, endDate, enabled = true }: UseCycleLogsRangeOptions) {
+export function useCycleLogsRange({
+  startDate,
+  endDate,
+  enabled = true,
+}: UseCycleLogsRangeOptions) {
   const query = useQuery<SharedCycleDailyLog[]>({
     queryKey: cycleLogsRangeQueryKey(startDate, endDate),
     queryFn: () => listLogs(startDate, endDate),

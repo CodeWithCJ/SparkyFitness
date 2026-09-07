@@ -18,7 +18,7 @@ export function formatRest(seconds: number | null | undefined): string {
 /** Label a configured rest setting: 0 means no rest ("Off"), else the duration. */
 export function formatRestLabel(
   seconds: number | null | undefined,
-  offLabel = 'Off',
+  offLabel = 'Off'
 ): string {
   return seconds === 0 ? offLabel : formatRest(seconds);
 }
@@ -27,9 +27,9 @@ export function formatRestLabel(
 export function formatRestRangeLabel(
   values: (number | null | undefined)[],
   defaultRestSec: number,
-  offLabel = 'Off',
+  offLabel = 'Off'
 ): string {
-  const normalized = values.map((v) => (v ?? defaultRestSec));
+  const normalized = values.map((v) => v ?? defaultRestSec);
   if (normalized.length === 0) return formatRestLabel(defaultRestSec, offLabel);
   let min = normalized[0];
   let max = normalized[0];
@@ -48,7 +48,12 @@ interface RestPeriodChipProps {
   readOnly?: boolean;
 }
 
-function RestPeriodChip({ value, values, onPress, readOnly = false }: RestPeriodChipProps) {
+function RestPeriodChip({
+  value,
+  values,
+  onPress,
+  readOnly = false,
+}: RestPeriodChipProps) {
   const [textMuted, accentPrimary] = useCSSVariable([
     '--color-text-muted',
     '--color-accent-primary',
@@ -57,8 +62,15 @@ function RestPeriodChip({ value, values, onPress, readOnly = false }: RestPeriod
   const { t } = useTranslation();
   const label =
     values != null && values.length > 0
-      ? formatRestRangeLabel(values, defaultRestSec, t('restPeriod.off', { defaultValue: 'Off' }))
-      : formatRestLabel(value ?? defaultRestSec, t('restPeriod.off', { defaultValue: 'Off' }));
+      ? formatRestRangeLabel(
+          values,
+          defaultRestSec,
+          t('restPeriod.off', { defaultValue: 'Off' })
+        )
+      : formatRestLabel(
+          value ?? defaultRestSec,
+          t('restPeriod.off', { defaultValue: 'Off' })
+        );
 
   if (readOnly) {
     return (
@@ -70,7 +82,12 @@ function RestPeriodChip({ value, values, onPress, readOnly = false }: RestPeriod
         })}
       >
         <Icon name="timer" size={14} color={textMuted} />
-        <Text className="text-sm text-text-secondary ml-1">{t('restPeriod.rest', { defaultValue: 'Rest {{duration}}', duration: label })}</Text>
+        <Text className="text-sm text-text-secondary ml-1">
+          {t('restPeriod.rest', {
+            defaultValue: 'Rest {{duration}}',
+            duration: label,
+          })}
+        </Text>
       </View>
     );
   }
@@ -91,7 +108,10 @@ function RestPeriodChip({ value, values, onPress, readOnly = false }: RestPeriod
     >
       <Icon name="timer" size={14} color={accentPrimary} />
       <Text className="text-sm" style={{ color: accentPrimary }}>
-        {t('restPeriod.rest', { defaultValue: 'Rest {{duration}}', duration: label })}
+        {t('restPeriod.rest', {
+          defaultValue: 'Rest {{duration}}',
+          duration: label,
+        })}
       </Text>
       <Icon name="chevron-down" size={10} color={accentPrimary} />
     </Pressable>

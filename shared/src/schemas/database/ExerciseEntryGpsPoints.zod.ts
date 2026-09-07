@@ -47,8 +47,15 @@ export const exerciseEntryGpsPointsInitializerSchema = z.object({
   updated_at: z.coerce.date().optional().nullable(),
 });
 
-export const exerciseEntryGpsPointsMutatorSchema = exerciseEntryGpsPointsInitializerSchema.partial();
+export const exerciseEntryGpsPointsMutatorSchema =
+  exerciseEntryGpsPointsInitializerSchema.partial();
 
-export type ExerciseEntryGpsPoints = z.infer<typeof exerciseEntryGpsPointsSchema>;
-export type ExerciseEntryGpsPointsInitializer = z.infer<typeof exerciseEntryGpsPointsInitializerSchema>;
-export type ExerciseEntryGpsPointsMutator = z.infer<typeof exerciseEntryGpsPointsMutatorSchema>;
+export type ExerciseEntryGpsPoints = z.infer<
+  typeof exerciseEntryGpsPointsSchema
+>;
+export type ExerciseEntryGpsPointsInitializer = z.infer<
+  typeof exerciseEntryGpsPointsInitializerSchema
+>;
+export type ExerciseEntryGpsPointsMutator = z.infer<
+  typeof exerciseEntryGpsPointsMutatorSchema
+>;

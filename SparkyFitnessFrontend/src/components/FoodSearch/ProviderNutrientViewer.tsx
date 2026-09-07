@@ -277,5 +277,3 @@ export const ProviderNutrientViewer = ({
     </>
   );
 };
-
-export default ProviderNutrientViewer;

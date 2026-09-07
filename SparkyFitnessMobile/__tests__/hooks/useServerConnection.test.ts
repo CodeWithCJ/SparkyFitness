@@ -2,7 +2,11 @@ import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { useServerConnection } from '../../src/hooks/useServerConnection';
 import { serverConnectionQueryKey } from '../../src/hooks/queryKeys';
 import { checkServerConnection } from '../../src/services/api/healthDataApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/healthDataApi', () => ({
   checkServerConnection: jest.fn(),
@@ -89,9 +93,12 @@ describe('useServerConnection', () => {
     test('accepts enablePolling option without error', async () => {
       mockCheckServerConnection.mockResolvedValue(true);
 
-      const { result } = renderHook(() => useServerConnection({ enablePolling: true }), {
-        wrapper: createQueryWrapper(queryClient),
-      });
+      const { result } = renderHook(
+        () => useServerConnection({ enablePolling: true }),
+        {
+          wrapper: createQueryWrapper(queryClient),
+        }
+      );
 
       await waitFor(() => {
         expect(result.current.isConnected).toBe(true);

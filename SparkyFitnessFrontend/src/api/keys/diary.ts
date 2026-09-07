@@ -1,6 +1,7 @@
 export const mealTypeKeys = {
   all: ['mealTypes'] as const,
   lists: () => [...mealTypeKeys.all, 'list'] as const,
+  impact: (id: string) => [...mealTypeKeys.all, 'impact', id] as const,
 };
 
 export const dailyProgressKeys = {

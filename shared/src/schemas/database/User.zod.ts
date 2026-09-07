@@ -26,6 +26,8 @@ export const userSchema = z.object({
   magic_link_token: z.string().nullable(),
   magic_link_expires: z.date().nullable(),
   mfa_totp_enabled: z.boolean().nullable(),
+  image: z.string().nullable().optional(),
+  last_login_at: z.date().nullable().optional(),
 });
 
 export const userInitializerSchema = z.object({
@@ -47,6 +49,8 @@ export const userInitializerSchema = z.object({
   magic_link_token: z.string().optional().nullable(),
   magic_link_expires: z.date().optional().nullable(),
   mfa_totp_enabled: z.boolean().optional().nullable(),
+  image: z.string().optional().nullable(),
+  last_login_at: z.date().optional().nullable(),
 });
 
 export const userMutatorSchema = z.object({
@@ -68,6 +72,8 @@ export const userMutatorSchema = z.object({
   magic_link_token: z.string().optional().nullable(),
   magic_link_expires: z.date().optional().nullable(),
   mfa_totp_enabled: z.boolean().optional().nullable(),
+  image: z.string().optional().nullable(),
+  last_login_at: z.date().optional().nullable(),
 });
 
 export type User = z.infer<typeof userSchema>;

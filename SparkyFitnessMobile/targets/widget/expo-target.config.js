@@ -1,4 +1,8 @@
-const { getIosAppGroup, isDevVariant, DEV_BUNDLE_IDENTIFIER } = require('../../app.identifiers.js');
+const {
+  getIosAppGroup,
+  isDevVariant,
+  DEV_BUNDLE_IDENTIFIER,
+} = require('../../app.identifiers.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -28,7 +32,7 @@ const syncInfoPlist = (appGroup) => {
     </dict>
   </dict>
 </plist>
-`,
+`
   );
 };
 

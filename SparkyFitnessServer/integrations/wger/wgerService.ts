@@ -174,8 +174,7 @@ async function getWgerMuscleIdMap(): Promise<
 
   for (const ourName of Object.keys(muscleNameMap)) {
     const rawValue = muscleNameMap[ourName as keyof typeof muscleNameMap] as
-      | string
-      | string[];
+      string | string[];
     const wgerNames = Array.isArray(rawValue) ? rawValue : [rawValue];
 
     const ids = wgerNames

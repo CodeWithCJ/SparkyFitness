@@ -34,12 +34,12 @@ describe('DateNavigator action', () => {
             onPress,
           }}
         />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
     const action = getByRole('button', { name: 'Open family diaries' });
     expect(action.props.style).toEqual(
-      expect.objectContaining({ width: 44, height: 44 }),
+      expect.objectContaining({ width: 44, height: 44 })
     );
     fireEvent.press(action);
     expect(onPress).toHaveBeenCalledTimes(1);
@@ -64,7 +64,7 @@ describe('DateNavigator action', () => {
           onToday={jest.fn()}
           onDatePress={onDatePress}
         />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
     const previous = getByRole('button', { name: 'Previous day' });
@@ -73,7 +73,7 @@ describe('DateNavigator action', () => {
 
     for (const control of [previous, picker, next]) {
       expect(control.props.style).toEqual(
-        expect.objectContaining({ minHeight: 44, minWidth: 44 }),
+        expect.objectContaining({ minHeight: 44, minWidth: 44 })
       );
     }
     expect(previous.props.accessibilityHint).toBe('Shows the previous day');
@@ -115,12 +115,12 @@ describe('DateNavigator action', () => {
             goToTodayHint: 'Wraca do dzisiaj',
           }}
         />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
     expect(screen.getByText('Today')).toBeTruthy();
     expect(
-      screen.getByRole('button', { name: 'Poprzedni dzień' }),
+      screen.getByRole('button', { name: 'Poprzedni dzień' })
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Następny dzień' })).toBeTruthy();
     jest.useRealTimers();
@@ -144,11 +144,11 @@ describe('DateNavigator action', () => {
           onToday={jest.fn()}
           onDatePress={jest.fn()}
         />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
     expect(
-      screen.getByRole('button', { name: 'Poprzedni dzień' }),
+      screen.getByRole('button', { name: 'Poprzedni dzień' })
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Wybierz datę' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Następny dzień' })).toBeTruthy();

@@ -52,8 +52,13 @@ export const exerciseEntryLapsInitializerSchema = z.object({
   updated_at: z.coerce.date().optional().nullable(),
 });
 
-export const exerciseEntryLapsMutatorSchema = exerciseEntryLapsInitializerSchema.partial();
+export const exerciseEntryLapsMutatorSchema =
+  exerciseEntryLapsInitializerSchema.partial();
 
 export type ExerciseEntryLaps = z.infer<typeof exerciseEntryLapsSchema>;
-export type ExerciseEntryLapsInitializer = z.infer<typeof exerciseEntryLapsInitializerSchema>;
-export type ExerciseEntryLapsMutator = z.infer<typeof exerciseEntryLapsMutatorSchema>;
+export type ExerciseEntryLapsInitializer = z.infer<
+  typeof exerciseEntryLapsInitializerSchema
+>;
+export type ExerciseEntryLapsMutator = z.infer<
+  typeof exerciseEntryLapsMutatorSchema
+>;

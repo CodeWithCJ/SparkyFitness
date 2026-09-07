@@ -50,7 +50,11 @@ export default function StatusView({
     '--color-icon-danger',
   ]) as [string, string, string];
   const toneColor =
-    iconTone === 'muted' ? mutedColor : iconTone === 'danger' ? dangerColor : accentColor;
+    iconTone === 'muted'
+      ? mutedColor
+      : iconTone === 'danger'
+        ? dangerColor
+        : accentColor;
 
   const containerClassName = inline
     ? 'px-6 py-10 items-center'
@@ -66,11 +70,7 @@ export default function StatusView({
       ) : icon ? (
         <Icon name={icon} size={iconSize} color={iconColor ?? toneColor} />
       ) : null}
-      {title && (
-        <Text className={titleClassName}>
-          {title}
-        </Text>
-      )}
+      {title && <Text className={titleClassName}>{title}</Text>}
       {subtitle && (
         <Text className="text-text-secondary text-sm mt-2 text-center">
           {subtitle}

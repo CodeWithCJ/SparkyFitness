@@ -1,11 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Pressable,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useCSSVariable } from 'uniwind';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
@@ -19,7 +20,11 @@ import {
 import { focusWithAndroidImeRetry } from '../utils/keyboardFocus';
 import { withAlpha } from '../utils/colors';
 import { parseDecimalInput } from '../utils/numericInput';
-import { distanceFromKm, weightFromKg, weightToKg } from '../utils/unitConversions';
+import {
+  distanceFromKm,
+  weightFromKg,
+  weightToKg,
+} from '../utils/unitConversions';
 import { formatLocalizedNumber } from '../localization';
 import {
   effectiveSetDurationSec,
@@ -37,7 +42,10 @@ import {
 } from '../utils/workoutSession';
 import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
 import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
-import type { ExerciseModality, ExerciseRecentSessionSet } from '@workspace/shared';
+import type {
+  ExerciseModality,
+  ExerciseRecentSessionSet,
+} from '@workspace/shared';
 
 export type SetRowState = 'done' | 'current' | 'upcoming';
 
@@ -48,9 +56,14 @@ export const RPE_TONE_VARS: Record<RpeTone, string> = {
   max: '--color-icon-danger',
 };
 
-function formatDisplayWeight(weightKg: number | null, unit: 'kg' | 'lbs'): string {
+function formatDisplayWeight(
+  weightKg: number | null,
+  unit: 'kg' | 'lbs'
+): string {
   if (weightKg == null) return '';
-  return formatLocalizedNumber(weightFromKg(weightKg, unit), { maximumFractionDigits: 1 });
+  return formatLocalizedNumber(weightFromKg(weightKg, unit), {
+    maximumFractionDigits: 1,
+  });
 }
 
 function formatMetricWeight(valueKg: number, unit: 'kg' | 'lbs'): string {
@@ -60,7 +73,9 @@ function formatMetricWeight(valueKg: number, unit: 'kg' | 'lbs'): string {
 
 function formatRpe(rpe: number | null): string {
   if (rpe == null) return '–';
-  return Number.isInteger(rpe) ? String(rpe) : formatLocalizedNumber(rpe, { maximumFractionDigits: 1 });
+  return Number.isInteger(rpe)
+    ? String(rpe)
+    : formatLocalizedNumber(rpe, { maximumFractionDigits: 1 });
 }
 
 /** Clamp a typed RPE to 1–10 in 0.5 steps; empty/invalid → null. */
@@ -172,7 +187,7 @@ interface ActiveWorkoutSetRowProps {
   onEditFieldChange?: (
     setId: string,
     field: Exclude<SetInputField, 'rpe'>,
-    text: string,
+    text: string
   ) => void;
   onAddSet?: (entryId: string) => void;
   /**
@@ -180,7 +195,10 @@ interface ActiveWorkoutSetRowProps {
    * its render key) so the screen's sticky accessory bar can dispatch
    * Next/Log/advance to the focused row. Called with `null` on unmount.
    */
-  onRegisterAccessoryHandle?: (key: string, handle: SetRowAccessoryHandle | null) => void;
+  onRegisterAccessoryHandle?: (
+    key: string,
+    handle: SetRowAccessoryHandle | null
+  ) => void;
 }
 
 function ActiveWorkoutSetRow({
@@ -227,34 +245,30 @@ function ActiveWorkoutSetRow({
   // is the focused cell, while in `live` this marks the row the user is
   // editing (drafts win over store re-seeds, deactivation flushes commits) —
   // distinct from the cursor, which can stay on the next set.
-  const isFocusedRow = isEdit ? state === 'current' : isLive ? isFocused : false;
+  const isFocusedRow = isEdit
+    ? state === 'current'
+    : isLive
+      ? isFocused
+      : false;
 
-  const [
-    accentPrimary,
-    textMuted,
-    rpeEasy,
-    rpeModerate,
-    rpeHard,
-    rpeMax,
-  ] = useCSSVariable([
-    '--color-accent-primary',
-    '--color-text-muted',
-    RPE_TONE_VARS.easy,
-    RPE_TONE_VARS.moderate,
-    RPE_TONE_VARS.hard,
-    RPE_TONE_VARS.max,
-  ]) as [
-    string,
-    string,
-    string,
-    string,
-    string,
-    string,
-  ];
+  const [accentPrimary, textMuted, rpeEasy, rpeModerate, rpeHard, rpeMax] =
+    useCSSVariable([
+      '--color-accent-primary',
+      '--color-text-muted',
+      RPE_TONE_VARS.easy,
+      RPE_TONE_VARS.moderate,
+      RPE_TONE_VARS.hard,
+      RPE_TONE_VARS.max,
+    ]) as [string, string, string, string, string, string];
 
   const rpeToneColors: Record<RpeTone, string> = useMemo(
-    () => ({ easy: rpeEasy, moderate: rpeModerate, hard: rpeHard, max: rpeMax }),
-    [rpeEasy, rpeModerate, rpeHard, rpeMax],
+    () => ({
+      easy: rpeEasy,
+      moderate: rpeModerate,
+      hard: rpeHard,
+      max: rpeMax,
+    }),
+    [rpeEasy, rpeModerate, rpeHard, rpeMax]
   );
 
   const setId = String(set.id);
@@ -264,18 +278,23 @@ function ActiveWorkoutSetRow({
   // effectiveSetDurationSec). Editing writes `duration`; reps stay untouched.
   const effectiveDurationSec = effectiveSetDurationSec(
     { duration: set.duration ?? null, reps: set.reps },
-    modality,
+    modality
   );
-  const durationSeedText = effectiveDurationSec != null ? String(effectiveDurationSec) : '';
+  const durationSeedText =
+    effectiveDurationSec != null ? String(effectiveDurationSec) : '';
 
   // Local drafts while the row is current — committed on blur/step/log so the
   // store (kg) isn't rewritten on every keystroke of a decimal in progress.
   const [weightDraft, setWeightDraft] = useState(() =>
-    formatDisplayWeight(set.weight, weightUnit),
+    formatDisplayWeight(set.weight, weightUnit)
   );
-  const [repsDraft, setRepsDraft] = useState(() => (set.reps != null ? String(set.reps) : ''));
+  const [repsDraft, setRepsDraft] = useState(() =>
+    set.reps != null ? String(set.reps) : ''
+  );
   const [durationDraft, setDurationDraft] = useState(durationSeedText);
-  const [rpeDraft, setRpeDraft] = useState(() => (set.rpe != null ? formatRpe(set.rpe) : ''));
+  const [rpeDraft, setRpeDraft] = useState(() =>
+    set.rpe != null ? formatRpe(set.rpe) : ''
+  );
 
   // Re-seed drafts when the underlying set's VALUES change (unit change or an
   // external edit) — but deliberately NOT on `set.id`. A stable render key keeps
@@ -342,7 +361,9 @@ function ActiveWorkoutSetRow({
       ? formatDisplayWeight(assumed.weight, weightUnit)
       : null;
   const assumedRepsText =
-    isLive && set.reps == null && assumed?.reps != null ? String(assumed.reps) : null;
+    isLive && set.reps == null && assumed?.reps != null
+      ? String(assumed.reps)
+      : null;
   const assumedDurationText =
     isLive && effectiveDurationSec == null && assumed?.duration != null
       ? String(assumed.duration)
@@ -357,7 +378,7 @@ function ActiveWorkoutSetRow({
     if (durationLike) {
       const seconds = effectiveSetDurationSec(
         { duration: previousSet.duration ?? null, reps: previousSet.reps },
-        modality,
+        modality
       );
       if (seconds == null) return;
       onCommitField?.(setId, { duration: seconds });
@@ -388,7 +409,7 @@ function ActiveWorkoutSetRow({
       setRpeDraft(text);
       onCommitField?.(setId, { rpe: parseRpeInput(text) });
     },
-    [onCommitField, setId],
+    [onCommitField, setId]
   );
 
   // Advance past this row: activate the next set's first value cell, or add a
@@ -429,7 +450,7 @@ function ActiveWorkoutSetRow({
       if (weightKg === (set.weight ?? null)) return;
       onCommitField?.(setId, { weight: weightKg });
     },
-    [onCommitField, setId, weightUnit, set.weight],
+    [onCommitField, setId, weightUnit, set.weight]
   );
 
   const commitReps = useCallback(
@@ -439,7 +460,7 @@ function ActiveWorkoutSetRow({
       const value = parseInt(text, 10);
       onCommitField?.(setId, { reps: Number.isNaN(value) ? null : value });
     },
-    [onCommitField, setId, set.reps],
+    [onCommitField, setId, set.reps]
   );
 
   const commitDuration = useCallback(
@@ -453,7 +474,7 @@ function ActiveWorkoutSetRow({
       if (seconds === (set.duration ?? null)) return;
       onCommitField?.(setId, { duration: seconds });
     },
-    [onCommitField, setId, set.duration, durationSeedText],
+    [onCommitField, setId, set.duration, durationSeedText]
   );
 
   // Store-commit only, no draft echo — the deactivation effect below may call
@@ -464,7 +485,7 @@ function ActiveWorkoutSetRow({
       if (text === (set.rpe != null ? formatRpe(set.rpe) : '')) return;
       onCommitField?.(setId, { rpe: parseRpeInput(text) });
     },
-    [onCommitField, setId, set.rpe],
+    [onCommitField, setId, set.rpe]
   );
 
   // Blur handler: commit, then snap the visible text to the committed form
@@ -475,7 +496,7 @@ function ActiveWorkoutSetRow({
       const value = parseRpeInput(text);
       setRpeDraft(value != null ? formatRpe(value) : '');
     },
-    [commitRpeValue],
+    [commitRpeValue]
   );
 
   // Live only: commit any in-progress drafts when this row stops being the
@@ -574,15 +595,26 @@ function ActiveWorkoutSetRow({
     switch (metricColumn) {
       case 'rpe': {
         if (set.rpe == null) return { text: '–' };
-        return { text: formatRpe(set.rpe), color: rpeToneColors[getRpeTone(set.rpe)] };
+        return {
+          text: formatRpe(set.rpe),
+          color: rpeToneColors[getRpeTone(set.rpe)],
+        };
       }
       case 'volume':
         return { text: formatMetricWeight(setVolumeKg(set), weightUnit) };
       case 'e1rm':
-        return { text: formatMetricWeight(epley1RmKg(set.weight, set.reps), weightUnit) };
+        return {
+          text: formatMetricWeight(
+            epley1RmKg(set.weight, set.reps),
+            weightUnit
+          ),
+        };
       case 'tenrm':
         return {
-          text: formatMetricWeight(estimateRepMaxKg(set.weight, set.reps, 10), weightUnit),
+          text: formatMetricWeight(
+            estimateRepMaxKg(set.weight, set.reps, 10),
+            weightUnit
+          ),
         };
     }
   })();
@@ -594,7 +626,9 @@ function ActiveWorkoutSetRow({
       className="text-sm text-text-muted"
       style={[
         { fontVariant: ['tabular-nums'] },
-        state === 'current' ? { color: accentPrimary, fontWeight: '700' } : null,
+        state === 'current'
+          ? { color: accentPrimary, fontWeight: '700' }
+          : null,
       ]}
     >
       {setLabel}
@@ -607,7 +641,7 @@ function ActiveWorkoutSetRow({
   const openSetTypeMenu = useCallback(() => {
     if (!onPressSetType) return;
     measureAnchoredMenuTrigger(setNumberRef.current, (anchor) =>
-      onPressSetType(setId, anchor),
+      onPressSetType(setId, anchor)
     );
   }, [onPressSetType, setId]);
 
@@ -628,7 +662,10 @@ function ActiveWorkoutSetRow({
           onPress={openSetTypeMenu}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityLabel={t('activeWorkout.setRow.changeType', { defaultValue: 'Change type for set {{setNumber}}', setNumber: set.set_number })}
+          accessibilityLabel={t('activeWorkout.setRow.changeType', {
+            defaultValue: 'Change type for set {{setNumber}}',
+            setNumber: set.set_number,
+          })}
         >
           {setIndicator}
         </Pressable>
@@ -656,7 +693,10 @@ function ActiveWorkoutSetRow({
           onPress={() => onUncomplete?.(setId)}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityLabel={t('activeWorkout.setRow.incomplete', { defaultValue: 'Un-complete set {{setNumber}}', setNumber: set.set_number })}
+          accessibilityLabel={t('activeWorkout.setRow.incomplete', {
+            defaultValue: 'Un-complete set {{setNumber}}',
+            setNumber: set.set_number,
+          })}
         >
           <CompletionCheck size={28} />
         </Pressable>
@@ -668,7 +708,10 @@ function ActiveWorkoutSetRow({
           onPress={handleLog}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityLabel={t('activeWorkout.setRow.log', { defaultValue: 'Log set {{setNumber}}', setNumber: set.set_number })}
+          accessibilityLabel={t('activeWorkout.setRow.log', {
+            defaultValue: 'Log set {{setNumber}}',
+            setNumber: set.set_number,
+          })}
         >
           <LogCircle color={accentPrimary} />
         </Pressable>
@@ -684,7 +727,10 @@ function ActiveWorkoutSetRow({
         onPress={handleLog}
         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         accessibilityRole="button"
-        accessibilityLabel={t('activeWorkout.setRow.log', { defaultValue: 'Log set {{setNumber}}', setNumber: set.set_number })}
+        accessibilityLabel={t('activeWorkout.setRow.log', {
+          defaultValue: 'Log set {{setNumber}}',
+          setNumber: set.set_number,
+        })}
       >
         <View
           className="h-7 w-7 rounded-full border-2 items-center justify-center"
@@ -705,7 +751,15 @@ function ActiveWorkoutSetRow({
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       accessibilityRole="button"
       accessibilityLabel={
-        completedBadge ? t('activeWorkout.setRow.incomplete', { defaultValue: 'Un-complete set {{setNumber}}', setNumber: set.set_number }) : t('activeWorkout.setRow.complete', { defaultValue: 'Mark set {{setNumber}} complete', setNumber: set.set_number })
+        completedBadge
+          ? t('activeWorkout.setRow.incomplete', {
+              defaultValue: 'Un-complete set {{setNumber}}',
+              setNumber: set.set_number,
+            })
+          : t('activeWorkout.setRow.complete', {
+              defaultValue: 'Mark set {{setNumber}} complete',
+              setNumber: set.set_number,
+            })
       }
     >
       {completedBadge ? (
@@ -734,7 +788,12 @@ function ActiveWorkoutSetRow({
         disabled={!canFillFromPrevious}
         accessibilityRole={canFillFromPrevious ? 'button' : undefined}
         accessibilityLabel={
-          canFillFromPrevious ? t('activeWorkout.setRow.fillFromPrevious', { defaultValue: 'Fill set {{setNumber}} from previous', setNumber: set.set_number }) : undefined
+          canFillFromPrevious
+            ? t('activeWorkout.setRow.fillFromPrevious', {
+                defaultValue: 'Fill set {{setNumber}} from previous',
+                setNumber: set.set_number,
+              })
+            : undefined
         }
       >
         <Text
@@ -744,12 +803,15 @@ function ActiveWorkoutSetRow({
           className="text-center text-xs text-text-secondary"
           style={{ fontVariant: ['tabular-nums'] }}
         >
-          {previousSet != null ? formatRecentSessionSet(previousSet, weightUnit, t, modality) : '-'}
+          {previousSet != null
+            ? formatRecentSessionSet(previousSet, weightUnit, t, modality)
+            : '-'}
         </Text>
       </Pressable>
     ) : null;
 
-  const displayWeight = set.weight != null ? formatDisplayWeight(set.weight, weightUnit) : '–';
+  const displayWeight =
+    set.weight != null ? formatDisplayWeight(set.weight, weightUnit) : '–';
   const displayReps = set.reps != null ? String(set.reps) : '–';
 
   // View cells: flat text.
@@ -783,7 +845,9 @@ function ActiveWorkoutSetRow({
       style={{ fontVariant: ['tabular-nums'] }}
     >
       {set.distance != null
-        ? formatLocalizedNumber(distanceFromKm(set.distance, distanceUnit), { maximumFractionDigits: 2 })
+        ? formatLocalizedNumber(distanceFromKm(set.distance, distanceUnit), {
+            maximumFractionDigits: 2,
+          })
         : '–'}
     </Text>
   );
@@ -803,12 +867,16 @@ function ActiveWorkoutSetRow({
         inputRef={weightInputRef}
         value={isEdit ? editWeightText : weightDraft}
         onChangeText={
-          isEdit ? (text) => onEditFieldChange?.(setId, 'weight', text) : setWeightDraft
+          isEdit
+            ? (text) => onEditFieldChange?.(setId, 'weight', text)
+            : setWeightDraft
         }
         onBlur={isEdit ? undefined : () => commitWeight(weightDraft)}
         onFocus={() => onActivateSet?.(setId, 'weight')}
         keyboardType="decimal-pad"
-        accessibilityLabel={t('activeWorkout.setRow.weight', { defaultValue: 'Weight' })}
+        accessibilityLabel={t('activeWorkout.setRow.weight', {
+          defaultValue: 'Weight',
+        })}
         className="w-16"
         placeholder={isEdit ? '–' : (assumedWeightText ?? '–')}
         flat
@@ -821,12 +889,16 @@ function ActiveWorkoutSetRow({
         inputRef={repsInputRef}
         value={isEdit ? editRepsText : repsDraft}
         onChangeText={
-          isEdit ? (text) => onEditFieldChange?.(setId, 'reps', text) : setRepsDraft
+          isEdit
+            ? (text) => onEditFieldChange?.(setId, 'reps', text)
+            : setRepsDraft
         }
         onBlur={isEdit ? undefined : () => commitReps(repsDraft)}
         onFocus={() => onActivateSet?.(setId, 'reps')}
         keyboardType="number-pad"
-        accessibilityLabel={t('activeWorkout.setRow.reps', { defaultValue: 'Reps' })}
+        accessibilityLabel={t('activeWorkout.setRow.reps', {
+          defaultValue: 'Reps',
+        })}
         className="w-16"
         placeholder={isEdit ? '–' : (assumedRepsText ?? '–')}
         flat
@@ -841,18 +913,30 @@ function ActiveWorkoutSetRow({
     <View className="flex-1 items-center">
       <SetCellInput
         inputRef={durationInputRef}
-        value={isEdit ? (set.duration != null ? String(set.duration) : '') : durationDraft}
+        value={
+          isEdit
+            ? set.duration != null
+              ? String(set.duration)
+              : ''
+            : durationDraft
+        }
         onChangeText={
-          isEdit ? (text) => onEditFieldChange?.(setId, 'duration', text) : setDurationDraft
+          isEdit
+            ? (text) => onEditFieldChange?.(setId, 'duration', text)
+            : setDurationDraft
         }
         onBlur={isEdit ? undefined : () => commitDuration(durationDraft)}
         onFocus={() => onActivateSet?.(setId, 'duration')}
         keyboardType="number-pad"
-        accessibilityLabel={t('activeWorkout.setRow.duration', { defaultValue: 'Duration' })}
+        accessibilityLabel={t('activeWorkout.setRow.duration', {
+          defaultValue: 'Duration',
+        })}
         className="w-16"
         placeholder={
           isEdit
-            ? (effectiveDurationSec != null ? String(effectiveDurationSec) : '–')
+            ? effectiveDurationSec != null
+              ? String(effectiveDurationSec)
+              : '–'
             : (assumedDurationText ?? '–')
         }
         flat
@@ -871,7 +955,9 @@ function ActiveWorkoutSetRow({
         onBlur={() => commitRpe(rpeDraft)}
         onFocus={() => onActivateRpe?.(setId)}
         keyboardType="decimal-pad"
-        accessibilityLabel={t('activeWorkout.setRow.rpe', { defaultValue: 'RPE' })}
+        accessibilityLabel={t('activeWorkout.setRow.rpe', {
+          defaultValue: 'RPE',
+        })}
         className="w-11"
         flat
         textColor={metricValue.color}
@@ -889,7 +975,11 @@ function ActiveWorkoutSetRow({
       testID="set-row"
       onLongPress={longPress}
       className={`flex-row items-center ${isLive ? 'py-2' : 'py-2.5'} px-1 ${isCursor ? 'rounded-xl' : 'bg-background'}`}
-      style={isCursor ? { backgroundColor: withAlpha(accentPrimary, 0.12) } : undefined}
+      style={
+        isCursor
+          ? { backgroundColor: withAlpha(accentPrimary, 0.12) }
+          : undefined
+      }
     >
       {/* Done rows recede (opacity 0.62), but the completion check lives outside
           this wrapper so its green stays vivid and matches the card/rail badges. */}
@@ -911,7 +1001,8 @@ function ActiveWorkoutSetRow({
           )
         ) : (
           <>
-            {modality !== 'reps_only' && (readOnly ? weightCellText : weightInputCell)}
+            {modality !== 'reps_only' &&
+              (readOnly ? weightCellText : weightInputCell)}
             {readOnly ? repsCellText : repsInputCell}
           </>
         )}
@@ -929,7 +1020,9 @@ function ActiveWorkoutSetRow({
           </Text>
         )}
       </View>
-      <View className="w-10 items-center">{isEdit ? editLastCell : checkControl}</View>
+      <View className="w-10 items-center">
+        {isEdit ? editLastCell : checkControl}
+      </View>
     </Pressable>
   );
 
@@ -940,7 +1033,10 @@ function ActiveWorkoutSetRow({
       renderRightActions={() => (
         <SetSwipeDeleteAction
           onPress={() => onDelete?.(setId)}
-          accessibilityLabel={t('activeWorkout.setRow.delete', { defaultValue: 'Delete set {{setNumber}}', setNumber: set.set_number })}
+          accessibilityLabel={t('activeWorkout.setRow.delete', {
+            defaultValue: 'Delete set {{setNumber}}',
+            setNumber: set.set_number,
+          })}
         />
       )}
       overshootRight={false}

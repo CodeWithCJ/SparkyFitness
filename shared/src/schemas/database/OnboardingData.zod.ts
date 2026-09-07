@@ -58,5 +58,7 @@ export const onboardingDataMutatorSchema = z.object({
 });
 
 export type OnboardingData = z.infer<typeof onboardingDataSchema>;
-export type OnboardingDataInitializer = z.infer<typeof onboardingDataInitializerSchema>;
+export type OnboardingDataInitializer = z.infer<
+  typeof onboardingDataInitializerSchema
+>;
 export type OnboardingDataMutator = z.infer<typeof onboardingDataMutatorSchema>;

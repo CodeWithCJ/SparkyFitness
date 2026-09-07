@@ -42,8 +42,9 @@ export const medicationEntriesSchema = medicationEntriesFieldsSchema.extend({
   id: medicationEntriesIdSchema,
 });
 
-export const medicationEntriesInitializerSchema =
-  medicationEntriesFieldsSchema.partial().extend({
+export const medicationEntriesInitializerSchema = medicationEntriesFieldsSchema
+  .partial()
+  .extend({
     user_id: userIdSchema,
   });
 

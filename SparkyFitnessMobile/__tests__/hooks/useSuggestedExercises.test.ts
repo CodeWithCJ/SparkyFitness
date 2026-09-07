@@ -1,7 +1,11 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { useSuggestedExercises } from '../../src/hooks/useSuggestedExercises';
 import { fetchSuggestedExercises } from '../../src/services/api/exerciseApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/exerciseApi', () => ({
   fetchSuggestedExercises: jest.fn(),

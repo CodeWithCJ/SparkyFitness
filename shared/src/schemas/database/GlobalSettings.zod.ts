@@ -38,5 +38,7 @@ export const globalSettingsMutatorSchema = z.object({
 });
 
 export type GlobalSettings = z.infer<typeof globalSettingsSchema>;
-export type GlobalSettingsInitializer = z.infer<typeof globalSettingsInitializerSchema>;
+export type GlobalSettingsInitializer = z.infer<
+  typeof globalSettingsInitializerSchema
+>;
 export type GlobalSettingsMutator = z.infer<typeof globalSettingsMutatorSchema>;

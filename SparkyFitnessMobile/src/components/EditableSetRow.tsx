@@ -2,13 +2,25 @@
 // preset forms use the card-based ActiveWorkoutSetRow in edit mode.
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, View, Text, TextInput, TouchableOpacity, InputAccessoryView, Platform } from 'react-native';
+import {
+  Alert,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  InputAccessoryView,
+  Platform,
+} from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
 import Icon from './Icon';
 import StepperInput from './StepperInput';
-import { SetInputAccessoryBar, SetSwipeDeleteAction, useAccessoryEpoch } from './SetRowChrome';
+import {
+  SetInputAccessoryBar,
+  SetSwipeDeleteAction,
+  useAccessoryEpoch,
+} from './SetRowChrome';
 import { focusWithAndroidImeRetry } from '../utils/keyboardFocus';
 import { parseDecimalInput } from '../utils/numericInput';
 import { isDurationModality } from '../utils/workoutSession';
@@ -32,13 +44,16 @@ interface EditableSetRowProps {
   modality?: ExerciseModality;
   weightUnit: string;
   nextSetKey?: string | null;
-  onActivateSet: (setKey: string, field: 'weight' | 'reps' | 'duration') => void;
+  onActivateSet: (
+    setKey: string,
+    field: 'weight' | 'reps' | 'duration'
+  ) => void;
   onDeactivate: () => void;
   onUpdateSetField: (
     exerciseClientId: string,
     setClientId: string,
     field: 'weight' | 'reps' | 'duration',
-    value: string,
+    value: string
   ) => void;
   onRemoveSet: (exerciseClientId: string, setClientId: string) => void;
   onAddSet: (exerciseClientId: string) => void;
@@ -67,7 +82,11 @@ function EditableSetRow({
 
   const durationLike = isDurationModality(modality);
   const repsOnly = modality === 'reps_only';
-  const firstField = durationLike ? ('duration' as const) : repsOnly ? ('reps' as const) : ('weight' as const);
+  const firstField = durationLike
+    ? ('duration' as const)
+    : repsOnly
+      ? ('reps' as const)
+      : ('weight' as const);
 
   const setKey = `${exerciseClientId}:${setClientId}`;
   const weightInputRef = useRef<TextInput>(null);
@@ -100,45 +119,77 @@ function EditableSetRow({
     return focusWithAndroidImeRetry(ref);
   }, [isActive, activeField]);
 
-  const handleUpdateWeight = useCallback((value: string) => {
-    onUpdateSetField(exerciseClientId, setClientId, 'weight', value);
-  }, [exerciseClientId, onUpdateSetField, setClientId]);
+  const handleUpdateWeight = useCallback(
+    (value: string) => {
+      onUpdateSetField(exerciseClientId, setClientId, 'weight', value);
+    },
+    [exerciseClientId, onUpdateSetField, setClientId]
+  );
 
-  const handleUpdateReps = useCallback((value: string) => {
-    onUpdateSetField(exerciseClientId, setClientId, 'reps', value);
-  }, [exerciseClientId, onUpdateSetField, setClientId]);
+  const handleUpdateReps = useCallback(
+    (value: string) => {
+      onUpdateSetField(exerciseClientId, setClientId, 'reps', value);
+    },
+    [exerciseClientId, onUpdateSetField, setClientId]
+  );
 
-  const handleUpdateDuration = useCallback((value: string) => {
-    onUpdateSetField(exerciseClientId, setClientId, 'duration', value);
-  }, [exerciseClientId, onUpdateSetField, setClientId]);
+  const handleUpdateDuration = useCallback(
+    (value: string) => {
+      onUpdateSetField(exerciseClientId, setClientId, 'duration', value);
+    },
+    [exerciseClientId, onUpdateSetField, setClientId]
+  );
 
-  const handleStepWeight = useCallback((direction: number) => {
-    const current = parseDecimalInput(weight) || 0;
-    const next = Math.max(0, current + direction * 5);
-    handleUpdateWeight(String(next));
-  }, [weight, handleUpdateWeight]);
+  const handleStepWeight = useCallback(
+    (direction: number) => {
+      const current = parseDecimalInput(weight) || 0;
+      const next = Math.max(0, current + direction * 5);
+      handleUpdateWeight(String(next));
+    },
+    [weight, handleUpdateWeight]
+  );
 
-  const handleStepReps = useCallback((direction: number) => {
-    const current = parseInt(reps, 10) || 0;
-    const next = Math.max(0, current + direction);
-    handleUpdateReps(String(next));
-  }, [reps, handleUpdateReps]);
+  const handleStepReps = useCallback(
+    (direction: number) => {
+      const current = parseInt(reps, 10) || 0;
+      const next = Math.max(0, current + direction);
+      handleUpdateReps(String(next));
+    },
+    [reps, handleUpdateReps]
+  );
 
-  const handleStepDuration = useCallback((direction: number) => {
-    const current = parseInt(duration, 10) || 0;
-    const next = Math.max(0, current + direction * 5);
-    handleUpdateDuration(String(next));
-  }, [duration, handleUpdateDuration]);
+  const handleStepDuration = useCallback(
+    (direction: number) => {
+      const current = parseInt(duration, 10) || 0;
+      const next = Math.max(0, current + direction * 5);
+      handleUpdateDuration(String(next));
+    },
+    [duration, handleUpdateDuration]
+  );
 
   const handleRemove = useCallback(() => {
     onRemoveSet(exerciseClientId, setClientId);
   }, [exerciseClientId, onRemoveSet, setClientId]);
 
   const handleConfirmRemove = useCallback(() => {
-    Alert.alert(t('editableSet.removeTitle', { defaultValue: 'Set {{number}}', number: setNumber }), undefined, [
-      { text: t('common.delete', { defaultValue: 'Delete' }), style: 'destructive', onPress: handleRemove },
-      { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
-    ]);
+    Alert.alert(
+      t('editableSet.removeTitle', {
+        defaultValue: 'Set {{number}}',
+        number: setNumber,
+      }),
+      undefined,
+      [
+        {
+          text: t('common.delete', { defaultValue: 'Delete' }),
+          style: 'destructive',
+          onPress: handleRemove,
+        },
+        {
+          text: t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+        },
+      ]
+    );
   }, [handleRemove, setNumber, t]);
 
   const handleAdvance = useCallback(() => {
@@ -167,7 +218,9 @@ function EditableSetRow({
   ]);
 
   const advanceLabel =
-    !durationLike && !repsOnly && activeField === 'weight' ? 'Next' : 'Next Set';
+    !durationLike && !repsOnly && activeField === 'weight'
+      ? 'Next'
+      : 'Next Set';
 
   // The epoch keeps a remounted input from reusing a prior activation's id,
   // which iOS view recycling would treat as unchanged (see useAccessoryEpoch).
@@ -178,28 +231,30 @@ function EditableSetRow({
       onFocus: handleActivateWeight,
       ...(Platform.OS === 'ios' && { inputAccessoryViewID: accessoryId }),
     }),
-    [accessoryId, handleActivateWeight],
+    [accessoryId, handleActivateWeight]
   );
   const repsInputProps = useMemo(
     () => ({
       onFocus: handleActivateReps,
       ...(Platform.OS === 'ios' && { inputAccessoryViewID: accessoryId }),
     }),
-    [accessoryId, handleActivateReps],
+    [accessoryId, handleActivateReps]
   );
   const durationInputProps = useMemo(
     () => ({
       onFocus: handleActivateDuration,
       ...(Platform.OS === 'ios' && { inputAccessoryViewID: accessoryId }),
     }),
-    [accessoryId, handleActivateDuration],
+    [accessoryId, handleActivateDuration]
   );
 
   if (isActive) {
     return (
       <>
         <View className="flex-row items-center py-3">
-          <Text className="text-base text-text-muted w-10 text-center">{setNumber}</Text>
+          <Text className="text-base text-text-muted w-10 text-center">
+            {setNumber}
+          </Text>
           {durationLike ? (
             <View className="flex-1 items-center">
               <StepperInput
@@ -256,7 +311,9 @@ function EditableSetRow({
           <InputAccessoryView nativeID={accessoryId}>
             <SetInputAccessoryBar
               onDone={onDeactivate}
-              actions={[{ key: 'advance', label: advanceLabel, onPress: handleAdvance }]}
+              actions={[
+                { key: 'advance', label: advanceLabel, onPress: handleAdvance },
+              ]}
             />
           </InputAccessoryView>
         )}
@@ -275,7 +332,9 @@ function EditableSetRow({
       rightThreshold={40}
     >
       <View className="flex-row items-center py-3 bg-background">
-        <Text className="text-base text-text-muted w-10 text-center">{setNumber}</Text>
+        <Text className="text-base text-text-muted w-10 text-center">
+          {setNumber}
+        </Text>
         {durationLike ? (
           <TouchableOpacity
             className="flex-1 py-1"
@@ -283,7 +342,9 @@ function EditableSetRow({
             onLongPress={handleConfirmRemove}
             activeOpacity={0.6}
           >
-            <Text className="text-base text-text-primary text-center">{displayDuration}</Text>
+            <Text className="text-base text-text-primary text-center">
+              {displayDuration}
+            </Text>
           </TouchableOpacity>
         ) : (
           <>
@@ -294,7 +355,9 @@ function EditableSetRow({
                 onLongPress={handleConfirmRemove}
                 activeOpacity={0.6}
               >
-                <Text className="text-base text-text-primary text-center">{displayWeight}</Text>
+                <Text className="text-base text-text-primary text-center">
+                  {displayWeight}
+                </Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity
@@ -303,7 +366,9 @@ function EditableSetRow({
               onLongPress={handleConfirmRemove}
               activeOpacity={0.6}
             >
-              <Text className="text-base text-text-primary text-center">{displayReps}</Text>
+              <Text className="text-base text-text-primary text-center">
+                {displayReps}
+              </Text>
             </TouchableOpacity>
           </>
         )}

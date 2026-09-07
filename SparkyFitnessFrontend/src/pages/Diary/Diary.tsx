@@ -251,7 +251,9 @@ const Diary = () => {
     quantity: number,
     unit: string,
     selectedVariant: FoodVariant,
-    entryTime?: string | null
+    entryTime?: string | null,
+    _mealType?: string | null,
+    notes?: string | null
   ) => {
     if (!currentUserId) {
       return;
@@ -274,6 +276,7 @@ const Diary = () => {
         variant_id: selectedVariant.id,
         entry_date: selectedDate,
         entry_time: entryTime || null,
+        notes: notes || null,
       });
       info(loggingLevel, 'Food entry added successfully.');
     } catch (err) {
@@ -486,7 +489,7 @@ const Diary = () => {
     t,
   ]);
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div>{t('common.loading', 'Loading...')}</div>;
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b">

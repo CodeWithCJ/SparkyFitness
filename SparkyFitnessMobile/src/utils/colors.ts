@@ -20,9 +20,9 @@ export function withAlpha(color: string, alpha: number): string {
     return hexToRgba(
       shortHexMatch[1]
         .split('')
-        .map(value => value + value)
+        .map((value) => value + value)
         .join(''),
-      alpha,
+      alpha
     );
   }
 

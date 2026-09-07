@@ -34,14 +34,14 @@ describe('whatsNewBanner', () => {
   test('storage key matches namespaced format', async () => {
     await markWhatsNewVersionSeen('1.4.0');
     await expect(
-      AsyncStorage.getItem('@WhatsNew:lastSeenVersion'),
+      AsyncStorage.getItem('@WhatsNew:lastSeenVersion')
     ).resolves.toBe('1.4.0');
   });
 
   test('markCurrentVersionSeen stamps the current content version', async () => {
     await markCurrentVersionSeen();
     await expect(getLastSeenWhatsNewVersion()).resolves.toBe(
-      String(WHATS_NEW_CONTENT_VERSION),
+      String(WHATS_NEW_CONTENT_VERSION)
     );
   });
 });

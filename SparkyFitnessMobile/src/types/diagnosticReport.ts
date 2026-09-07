@@ -1,4 +1,8 @@
-import type { LogEntry, LogThreshold, LogSummary } from '../services/LogService';
+import type {
+  LogEntry,
+  LogThreshold,
+  LogSummary,
+} from '../services/LogService';
 import type { UserPreferences } from './preferences';
 import type { TimeRange } from '../services/storage';
 

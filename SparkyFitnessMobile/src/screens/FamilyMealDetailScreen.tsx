@@ -27,13 +27,13 @@ const FamilyMealDetailScreen: React.FC<FamilyMealDetailScreenProps> = ({
   const { t } = useTranslation();
   const displayName = familyDiaryUserName(
     familyUser,
-    t('familyDiary.unnamedMember', { defaultValue: 'Family member' }),
+    t('familyDiary.unnamedMember', { defaultValue: 'Family member' })
   );
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [selectedIds, setSelectedIds] = useState(
-    () => new Set(entries.map(entry => entry.id)),
+    () => new Set(entries.map((entry) => entry.id))
   );
   const header = useScreenHeader({
     title: mealTypeName,
@@ -41,11 +41,11 @@ const FamilyMealDetailScreen: React.FC<FamilyMealDetailScreenProps> = ({
     left: { kind: 'back' },
   });
   const selectedEntries = useMemo(
-    () => entries.filter(entry => selectedIds.has(entry.id)),
-    [entries, selectedIds],
+    () => entries.filter((entry) => selectedIds.has(entry.id)),
+    [entries, selectedIds]
   );
   const selectedTotals = calculateFamilyCopyTotals(
-    selectedEntries.map(entry => ({ entry, quantity: entry.quantity })),
+    selectedEntries.map((entry) => ({ entry, quantity: entry.quantity }))
   );
   const allSelected = entries.length > 0 && selectedIds.size === entries.length;
   const selectAllLabel = allSelected
@@ -53,7 +53,7 @@ const FamilyMealDetailScreen: React.FC<FamilyMealDetailScreenProps> = ({
     : t('familyDiary.selectAll', { defaultValue: 'Select all' });
 
   const toggleEntry = (entryId: string) => {
-    setSelectedIds(current => {
+    setSelectedIds((current) => {
       const next = new Set(current);
       if (next.has(entryId)) {
         next.delete(entryId);
@@ -66,7 +66,7 @@ const FamilyMealDetailScreen: React.FC<FamilyMealDetailScreenProps> = ({
 
   const toggleAll = () => {
     setSelectedIds(
-      allSelected ? new Set() : new Set(entries.map(entry => entry.id)),
+      allSelected ? new Set() : new Set(entries.map((entry) => entry.id))
     );
   };
 
@@ -78,8 +78,8 @@ const FamilyMealDetailScreen: React.FC<FamilyMealDetailScreenProps> = ({
       mealTypeName,
       sourceEntries: entries,
       selectedEntryIds: entries
-        .filter(entry => selectedIds.has(entry.id))
-        .map(entry => entry.id),
+        .filter((entry) => selectedIds.has(entry.id))
+        .map((entry) => entry.id),
     });
   };
 
@@ -128,7 +128,7 @@ const FamilyMealDetailScreen: React.FC<FamilyMealDetailScreenProps> = ({
         )}
 
         <View className="mt-4 gap-2">
-          {entries.map(entry => {
+          {entries.map((entry) => {
             const selected = selectedIds.has(entry.id);
             const foodName =
               entry.food_name ??

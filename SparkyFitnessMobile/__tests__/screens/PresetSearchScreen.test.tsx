@@ -2,7 +2,11 @@ import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import PresetSearchScreen from '../../src/screens/PresetSearchScreen';
-import { useWorkoutPresets, useWorkoutPresetSearch, useProfile } from '../../src/hooks';
+import {
+  useWorkoutPresets,
+  useWorkoutPresetSearch,
+  useProfile,
+} from '../../src/hooks';
 import {
   useAppPreferencesStore,
   __resetAppPreferencesStoreForTests,
@@ -50,15 +54,19 @@ jest.mock('../../src/services/nativeTabBarPreference', () => ({
   useNativeIOSHeadersActive: jest.fn(() => false),
 }));
 
-const mockUseWorkoutPresets = useWorkoutPresets as jest.MockedFunction<typeof useWorkoutPresets>;
+const mockUseWorkoutPresets = useWorkoutPresets as jest.MockedFunction<
+  typeof useWorkoutPresets
+>;
 const mockUseProfile = useProfile as jest.MockedFunction<typeof useProfile>;
-const mockUseNavigationActionGuard = useNavigationActionGuard as jest.MockedFunction<
-  typeof useNavigationActionGuard
+const mockUseNavigationActionGuard =
+  useNavigationActionGuard as jest.MockedFunction<
+    typeof useNavigationActionGuard
+  >;
+const mockUseWorkoutPresetSearch =
+  useWorkoutPresetSearch as jest.MockedFunction<typeof useWorkoutPresetSearch>;
+const mockUseScreenHeader = useScreenHeader as jest.MockedFunction<
+  typeof useScreenHeader
 >;
-const mockUseWorkoutPresetSearch = useWorkoutPresetSearch as jest.MockedFunction<
-  typeof useWorkoutPresetSearch
->;
-const mockUseScreenHeader = useScreenHeader as jest.MockedFunction<typeof useScreenHeader>;
 const mockUseStartLiveWorkout = useStartLiveWorkout as jest.MockedFunction<
   typeof useStartLiveWorkout
 >;
@@ -106,7 +114,8 @@ const navigation = {
   setOptions: jest.fn(),
 } as any;
 
-type RouteParams = { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
+type RouteParams =
+  { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
 
 function makeRoute(params?: RouteParams) {
   return { key: 'PresetSearch-key', name: 'PresetSearch' as const, params };
@@ -116,7 +125,7 @@ function renderScreen(params?: RouteParams) {
   return render(
     <SafeAreaProvider initialMetrics={{ insets, frame }}>
       <PresetSearchScreen navigation={navigation} route={makeRoute(params)} />
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
 }
 
@@ -128,9 +137,13 @@ function pressHeaderFilterOption(label: string) {
   const config = mockUseScreenHeader.mock.calls.at(-1)?.[0] as {
     right?: { items?: { items?: { label: string; onPress: () => void }[] }[] };
   };
-  const option = config?.right?.items?.[0]?.items?.find((item) => item.label === label);
+  const option = config?.right?.items?.[0]?.items?.find(
+    (item) => item.label === label
+  );
   if (!option) {
-    throw new Error(`pressHeaderFilterOption: no filter option labelled "${label}"`);
+    throw new Error(
+      `pressHeaderFilterOption: no filter option labelled "${label}"`
+    );
   }
   act(() => {
     option.onPress();
@@ -143,7 +156,10 @@ describe('PresetSearchScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     __resetAppPreferencesStoreForTests();
-    mockUseProfile.mockReturnValue({ profile: { id: 'user-1' }, isLoading: false } as any);
+    mockUseProfile.mockReturnValue({
+      profile: { id: 'user-1' },
+      isLoading: false,
+    } as any);
     mockUseWorkoutPresets.mockReturnValue({
       presets: [buildPreset()],
       isLoading: false,
@@ -156,7 +172,10 @@ describe('PresetSearchScreen', () => {
       isSearchActive: false,
       isSearchError: false,
     } as any);
-    mockUseStartLiveWorkout.mockReturnValue({ startLiveWorkout, isStarting: false });
+    mockUseStartLiveWorkout.mockReturnValue({
+      startLiveWorkout,
+      isStarting: false,
+    });
     mockUseNavigationActionGuard.mockReturnValue({
       isNavigationLocked: false,
       runNavigationAction: (action: () => void) => action(),
@@ -167,7 +186,7 @@ describe('PresetSearchScreen', () => {
     const screen = renderScreen();
 
     expect(mockUseScreenHeader).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Start Workout' }),
+      expect.objectContaining({ title: 'Start Workout' })
     );
     expect(screen.getByText('Empty workout')).toBeTruthy();
     expect(screen.getByText('Pick your first exercise')).toBeTruthy();
@@ -177,7 +196,12 @@ describe('PresetSearchScreen', () => {
     mockUseWorkoutPresets.mockReturnValue({
       presets: [
         buildPreset(),
-        buildPreset({ id: 8, name: 'Community Pull', user_id: 'user-2', is_public: true }),
+        buildPreset({
+          id: 8,
+          name: 'Community Pull',
+          user_id: 'user-2',
+          is_public: true,
+        }),
       ],
       isLoading: false,
       isError: false,
@@ -189,7 +213,9 @@ describe('PresetSearchScreen', () => {
 
     pressHeaderFilterOption('Mine');
 
-    expect(useAppPreferencesStore.getState().presetSearchOwnershipFilter).toBe('mine');
+    expect(useAppPreferencesStore.getState().presetSearchOwnershipFilter).toBe(
+      'mine'
+    );
     expect(screen.getByText('Push Day')).toBeTruthy();
     expect(screen.queryByText('Community Pull')).toBeNull();
   });
@@ -203,7 +229,9 @@ describe('PresetSearchScreen', () => {
 
     fireEvent.press(screen.getByText('Show All'));
 
-    expect(useAppPreferencesStore.getState().presetSearchOwnershipFilter).toBe('all');
+    expect(useAppPreferencesStore.getState().presetSearchOwnershipFilter).toBe(
+      'all'
+    );
     expect(screen.getByText('Push Day')).toBeTruthy();
   });
 
@@ -277,7 +305,7 @@ describe('PresetSearchScreen', () => {
           navigation={navigation}
           route={makeRoute({ selectedExercise: exercise, selectionNonce: 1 })}
         />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
     expect(startLiveWorkout).toHaveBeenCalledTimes(1);
@@ -288,7 +316,10 @@ describe('PresetSearchScreen', () => {
 
   it('does not re-fire the start for the same selection nonce', () => {
     const exercise = buildExercise();
-    const screen = renderScreen({ selectedExercise: exercise, selectionNonce: 1 });
+    const screen = renderScreen({
+      selectedExercise: exercise,
+      selectionNonce: 1,
+    });
 
     expect(startLiveWorkout).toHaveBeenCalledTimes(1);
 
@@ -298,14 +329,17 @@ describe('PresetSearchScreen', () => {
           navigation={navigation}
           route={makeRoute({ selectedExercise: exercise, selectionNonce: 1 })}
         />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
     expect(startLiveWorkout).toHaveBeenCalledTimes(1);
   });
 
   it('disables preset rows and the empty row while a start is in flight', () => {
-    mockUseStartLiveWorkout.mockReturnValue({ startLiveWorkout, isStarting: true });
+    mockUseStartLiveWorkout.mockReturnValue({
+      startLiveWorkout,
+      isStarting: true,
+    });
     const screen = renderScreen();
 
     fireEvent.press(screen.getByText('Push Day'));

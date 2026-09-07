@@ -118,7 +118,9 @@ describe('reconcileFastGoalNotification', () => {
     // Same fast id, but the goal was edited (e.g. on web) to a later target.
     const newTarget = new Date(Date.now() + 12 * HOUR).toISOString();
     mockSchedule.mockResolvedValueOnce('notif-2');
-    await reconcileFastGoalNotification(activeFast({ target_end_time: newTarget }));
+    await reconcileFastGoalNotification(
+      activeFast({ target_end_time: newTarget })
+    );
 
     // Old alert cancelled, new one scheduled for the new target.
     expect(mockCancel).toHaveBeenCalledWith('notif-1');
@@ -136,7 +138,7 @@ describe('reconcileFastGoalNotification', () => {
     // Simulate a record persisted before `target` was tracked.
     await AsyncStorage.setItem(
       GOAL_NOTIF_STORAGE_KEY,
-      JSON.stringify({ fastId: 'fast-1', notificationId: 'notif-legacy' }),
+      JSON.stringify({ fastId: 'fast-1', notificationId: 'notif-legacy' })
     );
 
     mockSchedule.mockResolvedValueOnce('notif-2');
@@ -184,7 +186,9 @@ describe('useFastingGoalReconciler notification preferences', () => {
     await waitFor(() => expect(mockSchedule).toHaveBeenCalledTimes(1));
 
     act(() => {
-      useAppPreferencesStore.getState().setFastingGoalNotificationsEnabled(false);
+      useAppPreferencesStore
+        .getState()
+        .setFastingGoalNotificationsEnabled(false);
     });
 
     await waitFor(() => expect(mockCancel).toHaveBeenCalledWith('notif-1'));
@@ -192,7 +196,9 @@ describe('useFastingGoalReconciler notification preferences', () => {
 
     mockSchedule.mockResolvedValueOnce('notif-2');
     act(() => {
-      useAppPreferencesStore.getState().setFastingGoalNotificationsEnabled(true);
+      useAppPreferencesStore
+        .getState()
+        .setFastingGoalNotificationsEnabled(true);
     });
 
     await waitFor(() => expect(mockSchedule).toHaveBeenCalledTimes(2));

@@ -112,10 +112,8 @@ async function analyzeTrends(userId: string, tz: string, days: number) {
   }));
 
   let weightTrend:
-    | 'increasing'
-    | 'decreasing'
-    | 'stable'
-    | 'insufficient_data' = 'insufficient_data';
+    'increasing' | 'decreasing' | 'stable' | 'insufficient_data' =
+    'insufficient_data';
   if (weights.length >= 2) {
     const first = weights[0].weight;
     const last = weights[weights.length - 1].weight;

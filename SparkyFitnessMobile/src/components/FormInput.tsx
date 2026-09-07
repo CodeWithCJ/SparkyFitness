@@ -55,7 +55,10 @@ type FormInputProps = Omit<TextInputProps, 'placeholderTextColor'> & {
  * Drop-in replacement for TextInput — accepts all TextInput props.
  */
 const FormInput = forwardRef<TextInput, FormInputProps>(
-  ({ className = '', style, placeholderTextColor, onFocus, onBlur, ...props }, ref) => {
+  (
+    { className = '', style, placeholderTextColor, onFocus, onBlur, ...props },
+    ref
+  ) => {
     const [textMuted, raisedBg, borderSubtle, accentPrimary] = useCSSVariable([
       '--color-text-muted',
       '--color-raised',
@@ -112,7 +115,7 @@ const FormInput = forwardRef<TextInput, FormInputProps>(
         {...props}
       />
     );
-  },
+  }
 );
 
 FormInput.displayName = 'FormInput';

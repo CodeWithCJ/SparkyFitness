@@ -9,13 +9,21 @@ import type { FoodPhotoFlowParamList } from '../types/navigation';
 
 const Stack = createNativeStackNavigator<FoodPhotoFlowParamList>();
 
-const SafeImprove = withErrorBoundary(FoodPhotoImproveScreen, 'FoodPhotoImprove', { canGoBack: true });
+const SafeImprove = withErrorBoundary(
+  FoodPhotoImproveScreen,
+  'FoodPhotoImprove',
+  { canGoBack: true }
+);
 const SafeEstimateReview = withErrorBoundary(
   FoodPhotoEstimateReviewScreen,
   'FoodPhotoEstimateReview',
-  { canGoBack: true },
+  { canGoBack: true }
 );
-const SafeLogEntry = withErrorBoundary(FoodPhotoLogEntryScreen, 'FoodPhotoLogEntry', { canGoBack: true });
+const SafeLogEntry = withErrorBoundary(
+  FoodPhotoLogEntryScreen,
+  'FoodPhotoLogEntry',
+  { canGoBack: true }
+);
 
 // Native-stack presents this flow as a modal, which gives it a separate
 // view hierarchy that doesn't always inherit the root KeyboardProvider's

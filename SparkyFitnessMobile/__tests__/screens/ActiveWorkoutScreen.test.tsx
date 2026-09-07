@@ -26,20 +26,26 @@ jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useIsFocused: jest.fn(() => true),
 }));
-const mockUseIsFocused = useIsFocused as jest.MockedFunction<typeof useIsFocused>;
+const mockUseIsFocused = useIsFocused as jest.MockedFunction<
+  typeof useIsFocused
+>;
 
 jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: jest.fn(() => ({ preferences: null })),
 }));
 
 jest.mock('../../src/hooks/useExerciseImageSource', () => ({
-  useExerciseImageSource: jest.fn(() => ({ getImageSource: jest.fn(() => null) })),
+  useExerciseImageSource: jest.fn(() => ({
+    getImageSource: jest.fn(() => null),
+  })),
 }));
 
 // The real hook imports the workout update API and the screen destructures
 // { flush } from it — left unmocked it would fire network on blur/finish.
 jest.mock('../../src/hooks/useActiveWorkoutAutosave', () => ({
-  useActiveWorkoutAutosave: jest.fn(() => ({ flush: jest.fn(async () => true) })),
+  useActiveWorkoutAutosave: jest.fn(() => ({
+    flush: jest.fn(async () => true),
+  })),
 }));
 
 jest.mock('../../src/hooks/useSelectedExercise', () => ({
@@ -95,7 +101,11 @@ jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
         {props.exercise.sets.map((set: any) => {
           const key = String(set.id);
           const registerHandle = () => {
-            const handle = { log: jest.fn(), focusField: jest.fn(), advance: jest.fn() };
+            const handle = {
+              log: jest.fn(),
+              focusField: jest.fn(),
+              advance: jest.fn(),
+            };
             mockAccessoryHandles[key] = handle;
             props.onRegisterAccessoryHandle?.(key, handle);
           };
@@ -135,7 +145,10 @@ jest.mock('../../src/components/RestPeriodSheet', () => {
   return {
     __esModule: true,
     default: React.forwardRef((_props: any, ref: any) => {
-      React.useImperativeHandle(ref, () => ({ present: jest.fn(), dismiss: jest.fn() }));
+      React.useImperativeHandle(ref, () => ({
+        present: jest.fn(),
+        dismiss: jest.fn(),
+      }));
       return null;
     }),
   };
@@ -219,7 +232,11 @@ function makeSet(id: number, overrides?: Record<string, unknown>) {
   };
 }
 
-function makeExercise(id: string, name: string, sets: ReturnType<typeof makeSet>[]) {
+function makeExercise(
+  id: string,
+  name: string,
+  sets: ReturnType<typeof makeSet>[]
+) {
   return {
     id,
     exercise_id: `x-${id}`,
@@ -275,7 +292,11 @@ const navigation = {
   canGoBack: jest.fn(() => true),
   addListener: jest.fn(() => jest.fn()),
 } as any;
-const route = { key: 'ActiveWorkout-1', name: 'ActiveWorkout', params: undefined } as any;
+const route = {
+  key: 'ActiveWorkout-1',
+  name: 'ActiveWorkout',
+  params: undefined,
+} as any;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -289,7 +310,7 @@ function renderScreen() {
       <QueryClientProvider client={queryClient}>
         <ActiveWorkoutScreen navigation={navigation} route={route} />
       </QueryClientProvider>
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
 }
 
@@ -404,7 +425,10 @@ describe('ActiveWorkoutScreen overflow menu wiring', () => {
 
     expect(mockSheet.props?.title).toBe('Superset with…');
     expect(sheetItemKeys()).toEqual(['ex-b', 'ex-c']);
-    expect(mockSheet.props?.items.map((i) => i.label)).toEqual(['Squat', 'Deadlift']);
+    expect(mockSheet.props?.items.map((i) => i.label)).toEqual([
+      'Squat',
+      'Deadlift',
+    ]);
     expect(mockSheet.props?.onBack).toBeDefined();
 
     act(() => mockSheet.props?.onBack?.());
@@ -495,7 +519,9 @@ describe('ActiveWorkoutScreen keyboard accessory bar', () => {
     fireEvent.press(getByTestId('focus-duration-401'));
     fireEvent.press(getByText('Next'));
 
-    expect(mockAccessoryHandles['401'].focusField).toHaveBeenCalledWith('distance');
+    expect(mockAccessoryHandles['401'].focusField).toHaveBeenCalledWith(
+      'distance'
+    );
   });
 
   it('offers Log on an uncompleted cardio distance field, never Next Set', () => {
@@ -577,7 +603,9 @@ describe('ActiveWorkoutScreen finish flow with a failing flush', () => {
 
   function lastAlertButton(label: string): { onPress?: () => void } {
     const call = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
-    const button = (call?.[2] ?? []).find((b: { text?: string }) => b.text === label);
+    const button = (call?.[2] ?? []).find(
+      (b: { text?: string }) => b.text === label
+    );
     expect(button).toBeDefined();
     return button;
   }
@@ -603,7 +631,9 @@ describe('ActiveWorkoutScreen finish flow with a failing flush', () => {
     jest.useRealTimers();
   });
 
-  async function endWorkoutIntoFailedSaveAlert(getByText: (text: string) => unknown) {
+  async function endWorkoutIntoFailedSaveAlert(
+    getByText: (text: string) => unknown
+  ) {
     fireEvent.press(getByText('End Workout') as any);
     expect(lastAlertTitle()).toBe('End workout?');
     await act(async () => {
@@ -646,7 +676,9 @@ describe('ActiveWorkoutScreen finish success celebration', () => {
 
   function lastAlertButton(label: string): { onPress?: () => void } {
     const call = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
-    const button = (call?.[2] ?? []).find((b: { text?: string }) => b.text === label);
+    const button = (call?.[2] ?? []).find(
+      (b: { text?: string }) => b.text === label
+    );
     expect(button).toBeDefined();
     return button;
   }
@@ -698,7 +730,9 @@ describe('ActiveWorkoutScreen finish success celebration', () => {
     // The update-preset prompt inputs ride the same pre-clear snapshot.
     expect(params.sourcePresetId).toBe(42);
     expect(params.sourceServerConfigId).toBe('config-1');
-    expect(params.plannedSetValues).toEqual({ '101': { weight: 80, reps: 5, duration: null } });
+    expect(params.plannedSetValues).toEqual({
+      '101': { weight: 80, reps: 5, duration: null },
+    });
     expect(useActiveWorkoutStore.getState().session).toBeNull();
     expect(navigation.goBack).not.toHaveBeenCalled();
   });
@@ -724,7 +758,9 @@ describe('ActiveWorkoutScreen long-workout duration adjust', () => {
 
   function lastAlertButton(label: string): { onPress?: () => void } {
     const call = alertSpy.mock.calls[alertSpy.mock.calls.length - 1];
-    const button = (call?.[2] ?? []).find((b: { text?: string }) => b.text === label);
+    const button = (call?.[2] ?? []).find(
+      (b: { text?: string }) => b.text === label
+    );
     expect(button).toBeDefined();
     return button;
   }
@@ -757,7 +793,10 @@ describe('ActiveWorkoutScreen long-workout duration adjust', () => {
   });
 
   /** Complete '102' 5 min in, then '201' 12 h later: active 5 min, span 12h 5m. */
-  function completeSetsAroundLongBreak(): { start: number; lastCompletedAt: number } {
+  function completeSetsAroundLongBreak(): {
+    start: number;
+    lastCompletedAt: number;
+  } {
     const start = useActiveWorkoutStore.getState().startedAt!;
     const lastCompletedAt = start + 725 * MIN;
     act(() => {
@@ -793,7 +832,7 @@ describe('ActiveWorkoutScreen long-workout duration adjust', () => {
     expect(startedAtAtFlush).toBe(start);
     expect(navigation.replace).toHaveBeenCalledWith(
       'WorkoutComplete',
-      expect.objectContaining({ finishedAt: expect.any(Number) }),
+      expect.objectContaining({ finishedAt: expect.any(Number) })
     );
   });
 
@@ -810,7 +849,10 @@ describe('ActiveWorkoutScreen long-workout duration adjust', () => {
 
     expect(startedAtAtFlush).toBe(lastCompletedAt - 5 * MIN);
     expect(useActiveWorkoutStore.getState().session).toBeNull();
-    expect(navigation.replace).toHaveBeenCalledWith('WorkoutComplete', expect.anything());
+    expect(navigation.replace).toHaveBeenCalledWith(
+      'WorkoutComplete',
+      expect.anything()
+    );
   });
 
   it('keeps the full span when the user declines', async () => {
@@ -824,7 +866,10 @@ describe('ActiveWorkoutScreen long-workout duration adjust', () => {
     });
 
     expect(startedAtAtFlush).toBe(start);
-    expect(navigation.replace).toHaveBeenCalledWith('WorkoutComplete', expect.anything());
+    expect(navigation.replace).toHaveBeenCalledWith(
+      'WorkoutComplete',
+      expect.anything()
+    );
   });
 
   it('opens the custom sheet capped at the span and finishes with the picked value', async () => {
@@ -843,7 +888,10 @@ describe('ActiveWorkoutScreen long-workout duration adjust', () => {
     });
 
     expect(startedAtAtFlush).toBe(lastCompletedAt - 20 * MIN);
-    expect(navigation.replace).toHaveBeenCalledWith('WorkoutComplete', expect.anything());
+    expect(navigation.replace).toHaveBeenCalledWith(
+      'WorkoutComplete',
+      expect.anything()
+    );
   });
 });
 
@@ -861,7 +909,9 @@ describe('ActiveWorkoutScreen stale deep link guard', () => {
   });
 
   it('auto-pops when the hydrated store has no session', () => {
-    jest.spyOn(useActiveWorkoutStore.persist, 'hasHydrated').mockReturnValue(true);
+    jest
+      .spyOn(useActiveWorkoutStore.persist, 'hasHydrated')
+      .mockReturnValue(true);
 
     renderScreen();
 
@@ -869,7 +919,9 @@ describe('ActiveWorkoutScreen stale deep link guard', () => {
   });
 
   it('waits for hydration before popping, and keeps a restored session', () => {
-    jest.spyOn(useActiveWorkoutStore.persist, 'hasHydrated').mockReturnValue(false);
+    jest
+      .spyOn(useActiveWorkoutStore.persist, 'hasHydrated')
+      .mockReturnValue(false);
     let finishHydration: (() => void) | undefined;
     jest
       .spyOn(useActiveWorkoutStore.persist, 'onFinishHydration')
@@ -891,7 +943,9 @@ describe('ActiveWorkoutScreen stale deep link guard', () => {
   });
 
   it('pops once hydration completes with no session', () => {
-    jest.spyOn(useActiveWorkoutStore.persist, 'hasHydrated').mockReturnValue(false);
+    jest
+      .spyOn(useActiveWorkoutStore.persist, 'hasHydrated')
+      .mockReturnValue(false);
     let finishHydration: (() => void) | undefined;
     jest
       .spyOn(useActiveWorkoutStore.persist, 'onFinishHydration')
@@ -922,10 +976,14 @@ describe('ActiveWorkoutScreen source preset server-config guard', () => {
   function rerenderScreen(rerender: (ui: React.ReactElement) => void) {
     rerender(
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
-        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <QueryClientProvider
+          client={
+            new QueryClient({ defaultOptions: { queries: { retry: false } } })
+          }
+        >
           <ActiveWorkoutScreen navigation={navigation} route={route} />
         </QueryClientProvider>
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
   }
 
@@ -955,7 +1013,7 @@ describe('ActiveWorkoutScreen source preset server-config guard', () => {
     await flushConfigCheck();
 
     expect(getByTestId('card-ex-a').props.accessibilityLabel).toBe(
-      'sourcePresetId:42',
+      'sourcePresetId:42'
     );
   });
 
@@ -975,7 +1033,7 @@ describe('ActiveWorkoutScreen source preset server-config guard', () => {
     await flushConfigCheck();
 
     expect(getByTestId('card-ex-a').props.accessibilityLabel).toBe(
-      'sourcePresetId:undefined',
+      'sourcePresetId:undefined'
     );
   });
 
@@ -985,7 +1043,7 @@ describe('ActiveWorkoutScreen source preset server-config guard', () => {
     await flushConfigCheck();
 
     expect(getByTestId('card-ex-a').props.accessibilityLabel).toBe(
-      'sourcePresetId:undefined',
+      'sourcePresetId:undefined'
     );
     expect(mockGetActiveServerConfig).not.toHaveBeenCalled();
   });
@@ -1003,7 +1061,7 @@ describe('ActiveWorkoutScreen source preset server-config guard', () => {
     const { getByTestId, rerender } = renderScreen();
     await flushConfigCheck();
     expect(getByTestId('card-ex-a').props.accessibilityLabel).toBe(
-      'sourcePresetId:42',
+      'sourcePresetId:42'
     );
 
     // The user backgrounds this screen (e.g. to Server Settings) and switches
@@ -1015,7 +1073,7 @@ describe('ActiveWorkoutScreen source preset server-config guard', () => {
     await flushConfigCheck();
     // Blurred: the previously-verified id must not linger on screen.
     expect(getByTestId('card-ex-a').props.accessibilityLabel).toBe(
-      'sourcePresetId:undefined',
+      'sourcePresetId:undefined'
     );
 
     mockGetActiveServerConfig.mockResolvedValue({
@@ -1030,12 +1088,14 @@ describe('ActiveWorkoutScreen source preset server-config guard', () => {
     // Refocused against a different server: re-verification must fail, not
     // resurrect the stale, now-foreign preset id 42.
     expect(getByTestId('card-ex-a').props.accessibilityLabel).toBe(
-      'sourcePresetId:undefined',
+      'sourcePresetId:undefined'
     );
   });
 
   it('leaves sourcePresetId withheld without throwing when the config lookup rejects', async () => {
-    mockGetActiveServerConfig.mockRejectedValue(new Error('storage unavailable'));
+    mockGetActiveServerConfig.mockRejectedValue(
+      new Error('storage unavailable')
+    );
     useActiveWorkoutStore.getState().startWorkout(makeSession(), {
       sourcePresetId: 42,
       sourceServerConfigId: 'config-1',
@@ -1045,7 +1105,7 @@ describe('ActiveWorkoutScreen source preset server-config guard', () => {
     await flushConfigCheck();
 
     expect(getByTestId('card-ex-a').props.accessibilityLabel).toBe(
-      'sourcePresetId:undefined',
+      'sourcePresetId:undefined'
     );
   });
 });

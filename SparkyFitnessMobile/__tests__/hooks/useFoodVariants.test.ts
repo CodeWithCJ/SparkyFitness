@@ -2,13 +2,19 @@ import { renderHook, waitFor } from '@testing-library/react-native';
 import { useFoodVariants } from '../../src/hooks/useFoodVariants';
 import { foodVariantsQueryKey } from '../../src/hooks/queryKeys';
 import { fetchFoodVariants } from '../../src/services/api/foodsApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/foodsApi', () => ({
   fetchFoodVariants: jest.fn(),
 }));
 
-const mockFetchFoodVariants = fetchFoodVariants as jest.MockedFunction<typeof fetchFoodVariants>;
+const mockFetchFoodVariants = fetchFoodVariants as jest.MockedFunction<
+  typeof fetchFoodVariants
+>;
 
 describe('useFoodVariants', () => {
   let queryClient: QueryClient;
@@ -81,7 +87,7 @@ describe('useFoodVariants', () => {
     mockFetchFoodVariants.mockReturnValue(
       new Promise((resolve) => {
         resolveVariants = resolve;
-      }),
+      })
     );
 
     const { result } = renderHook(() => useFoodVariants('food-1'), {
@@ -111,7 +117,10 @@ describe('useFoodVariants', () => {
 
   describe('query key', () => {
     test('uses correct query key for a food id', () => {
-      expect(foodVariantsQueryKey('food-1')).toEqual(['foodVariants', 'food-1']);
+      expect(foodVariantsQueryKey('food-1')).toEqual([
+        'foodVariants',
+        'food-1',
+      ]);
     });
   });
 });

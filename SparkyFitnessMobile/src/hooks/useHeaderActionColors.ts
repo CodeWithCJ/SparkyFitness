@@ -7,7 +7,7 @@ export function resolveHeaderActionColors(
   _version: number | string,
   accentColor: string,
   textColor: string,
-  usesNativeTabs = false,
+  usesNativeTabs = false
 ) {
   // Liquid Glass path (iOS 26 with the glass tab bar on): keep the header
   // monochrome — every action, including save, takes the text color.
@@ -36,7 +36,7 @@ export function useHeaderActionColors() {
     Platform.Version,
     accentColor || '#0A84FF',
     textColor || '#111827',
-    usesNativeTabs,
+    usesNativeTabs
   );
 
   return {

@@ -483,7 +483,11 @@ export function calculateMinimumMetabolism(
   bodyFatPercentage?: number | null,
   bmrAlgorithm: string = "Mifflin-St Jeor",
   calculateBmrFn?: BmrCalculatorFn,
+  measuredBmr?: number | null,
 ): number {
+  if (measuredBmr && measuredBmr >= 300 && measuredBmr <= 10000) {
+    return measuredBmr;
+  }
   const activeBmrFn = calculateBmrFn || calculateBmr;
   if (
     (bmrAlgorithm === "Katch-McArdle" || bmrAlgorithm === "Cunningham") &&
@@ -639,6 +643,7 @@ export function computeCalorieTarget({
   calculateBmrFn,
   calorieSafetyFloorMode = "standard",
   calorieSafetyFloorValue = DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+  measuredBmr,
 }: {
   goalMode: string;
   calculationMethod: string;
@@ -658,6 +663,7 @@ export function computeCalorieTarget({
   calculateBmrFn?: BmrCalculatorFn;
   calorieSafetyFloorMode?: CalorieSafetyFloorMode;
   calorieSafetyFloorValue?: number;
+  measuredBmr?: number | null;
 }): CalorieTargetResult {
   const rmr = calculateMinimumMetabolism(
     weightKg,
@@ -667,6 +673,7 @@ export function computeCalorieTarget({
     bodyFatPercentage,
     bmrAlgorithm,
     calculateBmrFn,
+    measuredBmr,
   );
   // Signed: positive is a deficit, negative is a surplus.
   const deficitPercent = getGoalModeAdjustment(goalMode, customPercentage);

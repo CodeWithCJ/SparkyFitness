@@ -326,7 +326,10 @@ export default function TodayMedications({
                       </div>
                       {!isLogged && (
                         <Input
-                          placeholder="Add note..."
+                          placeholder={t(
+                            'medications.today.addNote',
+                            'Add note...'
+                          )}
                           value={logNotes[due.schedule.id] || ''}
                           onChange={(e) =>
                             setLogNotes((prev) => ({
@@ -339,7 +342,7 @@ export default function TodayMedications({
                       )}
                       {isLogged && entry?.notes && (
                         <p className="text-xs text-muted-foreground italic mt-1.5">
-                          Note: {entry.notes}
+                          {t('medications.today.note', 'Note:')} {entry.notes}
                         </p>
                       )}
                     </div>
@@ -453,7 +456,7 @@ export default function TodayMedications({
                     </Badge>
                   </div>
                   <Input
-                    placeholder="Add note..."
+                    placeholder={t('medications.today.addNote', 'Add note...')}
                     value={logNotes[schedId] || ''}
                     onChange={(e) =>
                       setLogNotes((prev) => ({
@@ -861,17 +864,32 @@ export default function TodayMedications({
               <Syringe className="h-5 w-5 text-blue-500" />
               <div>
                 <p className="font-semibold">
-                  {nextGlpDue.medication.display_name ||
-                    nextGlpDue.medication.name}{' '}
-                  injection —{' '}
-                  {selectedDate === today ? 'due today' : 'scheduled'}
+                  {selectedDate === today
+                    ? t('medications.today.injectionDueToday', {
+                        defaultValue: '{{name}} injection — due today',
+                        name:
+                          nextGlpDue.medication.display_name ||
+                          nextGlpDue.medication.name,
+                      })
+                    : t('medications.today.injectionScheduled', {
+                        defaultValue: '{{name}} injection — scheduled',
+                        name:
+                          nextGlpDue.medication.display_name ||
+                          nextGlpDue.medication.name,
+                      })}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {nextGlpDue.schedule.time_of_day
-                    ? `Scheduled ${formatTimeOfDayString(nextGlpDue.schedule.time_of_day, timeFormat)}`
+                    ? t('medications.today.scheduledAt', {
+                        defaultValue: 'Scheduled {{time}}',
+                        time: formatTimeOfDayString(
+                          nextGlpDue.schedule.time_of_day,
+                          timeFormat
+                        ),
+                      })
                     : selectedDate === today
-                      ? 'Any time today'
-                      : 'Any time'}
+                      ? t('medications.today.anyTimeToday', 'Any time today')
+                      : t('medications.schedule.anyTime', 'Any time')}
                 </p>
               </div>
             </div>
@@ -886,7 +904,7 @@ export default function TodayMedications({
                 onClick={() => handleLogScheduled(nextGlpDue, 'taken')}
                 disabled={isPending}
               >
-                Log shot
+                {t('medications.today.logShot', 'Log shot')}
               </Button>
             )}
           </CardContent>
@@ -965,7 +983,7 @@ export default function TodayMedications({
                       {adherence14.pct}%
                     </span>
                     <span className="text-[9px] text-muted-foreground">
-                      14-day
+                      {t('medications.today.ring14Day', '14-day')}
                     </span>
                   </div>
                 </div>
@@ -1044,8 +1062,26 @@ export default function TodayMedications({
                 </CardTitle>
                 <CardDescription className="mt-1">
                   {dueDoses.length === 0
-                    ? `No scheduled doses for ${selectedDate === today ? 'today' : 'this day'}.`
-                    : `${completedDosesCount} of ${dueDoses.length} doses logged ${selectedDate === today ? 'today' : 'for this day'}.`}
+                    ? selectedDate === today
+                      ? t(
+                          'medications.today.noScheduledToday',
+                          'No scheduled doses for today.'
+                        )
+                      : t(
+                          'medications.today.noScheduledDay',
+                          'No scheduled doses for this day.'
+                        )
+                    : selectedDate === today
+                      ? t('medications.today.loggedToday', {
+                          completed: completedDosesCount,
+                          total: dueDoses.length,
+                          defaultValue: `${completedDosesCount} of ${dueDoses.length} doses logged today.`,
+                        })
+                      : t('medications.today.loggedDay', {
+                          completed: completedDosesCount,
+                          total: dueDoses.length,
+                          defaultValue: `${completedDosesCount} of ${dueDoses.length} doses logged for this day.`,
+                        })}
                 </CardDescription>
               </div>
               {dueDoses.length > 0 && (
@@ -1164,16 +1200,19 @@ export default function TodayMedications({
                   <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/50">
                     <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
                   </span>
-                  Logged today
+                  {t('medications.today.loggedActivity', 'Logged today')}
                 </CardTitle>
                 <CardDescription>
-                  Everything you've taken or skipped on this date.
+                  {t(
+                    'medications.today.loggedActivityDescription',
+                    "Everything you've taken or skipped on this date."
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 {loadingEntries && (
                   <p className="text-sm text-muted-foreground">
-                    Loading history…
+                    {t('medications.today.loadingHistory', 'Loading history…')}
                   </p>
                 )}
                 {!loadingEntries && entries.length === 0 && (
@@ -1223,17 +1262,20 @@ export default function TodayMedications({
                             }`}
                           >
                             {entry.status === 'taken'
-                              ? 'Taken'
+                              ? t('medications.today.taken', 'Taken')
                               : entry.status === 'prn_taken'
-                                ? 'PRN Taken'
+                                ? t('medications.today.prnTaken', 'PRN Taken')
                                 : entry.status === 'snoozed'
-                                  ? 'Snoozed'
-                                  : 'Skipped'}
+                                  ? t('medications.today.snoozed', 'Snoozed')
+                                  : t(
+                                      'medications.calendar.skipped',
+                                      'Skipped'
+                                    )}
                           </Badge>
                         </div>
                         {entry.notes && (
                           <p className="text-[11px] text-muted-foreground italic mt-1">
-                            Note: {entry.notes}
+                            {t('medications.today.note', 'Note:')} {entry.notes}
                           </p>
                         )}
                       </div>
@@ -1246,7 +1288,10 @@ export default function TodayMedications({
                         className="h-7 w-7 text-muted-foreground"
                         onClick={() => openEditEntry(entry)}
                         disabled={isPending}
-                        aria-label="Edit entry time"
+                        aria-label={t(
+                          'medications.today.editEntryTime',
+                          'Edit entry time'
+                        )}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
@@ -1256,7 +1301,10 @@ export default function TodayMedications({
                         className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                         onClick={() => handleUndoEntry(entry)}
                         disabled={isPending}
-                        aria-label="Remove entry"
+                        aria-label={t(
+                          'medications.today.removeEntry',
+                          'Remove entry'
+                        )}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>

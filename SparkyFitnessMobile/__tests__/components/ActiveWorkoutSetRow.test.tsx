@@ -12,7 +12,10 @@ import ActiveWorkoutSetRow, {
   type SetRowMode,
   type SetRowState,
 } from '../../src/components/ActiveWorkoutSetRow';
-import type { AssumedSetValues, WorkoutCardSet } from '../../src/utils/workoutSession';
+import type {
+  AssumedSetValues,
+  WorkoutCardSet,
+} from '../../src/utils/workoutSession';
 import type { ActiveWorkoutMetricColumn } from '../../src/stores/appPreferencesStore';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 
@@ -39,7 +42,9 @@ const COLORS: Record<string, string> = {
   '--color-icon-danger': '#ef4444',
 };
 
-function makeSet(overrides?: Partial<ExerciseEntrySetResponse>): ExerciseEntrySetResponse {
+function makeSet(
+  overrides?: Partial<ExerciseEntrySetResponse>
+): ExerciseEntrySetResponse {
   return {
     id: 101,
     set_number: 1,
@@ -123,7 +128,8 @@ function renderRow(overrides?: RenderOverrides) {
   );
   const utils = render(buildElement(overrides));
   /** Re-render the same row (same callbacks) with updated overrides — e.g. the committed set flowing back. */
-  const rerenderRow = (next: RenderOverrides) => utils.rerender(buildElement(next));
+  const rerenderRow = (next: RenderOverrides) =>
+    utils.rerender(buildElement(next));
   return { ...utils, callbacks, rerenderRow };
 }
 
@@ -152,21 +158,25 @@ describe('parseRpeInput', () => {
 
 describe('ActiveWorkoutSetRow', () => {
   beforeEach(() => {
-    (useCSSVariable as jest.Mock).mockImplementation((vars: string | string[]) =>
-      Array.isArray(vars)
-        ? vars.map((v) => COLORS[v] ?? '#888888')
-        : (COLORS[vars] ?? '#888888'),
+    (useCSSVariable as jest.Mock).mockImplementation(
+      (vars: string | string[]) =>
+        Array.isArray(vars)
+          ? vars.map((v) => COLORS[v] ?? '#888888')
+          : (COLORS[vars] ?? '#888888')
     );
   });
 
   describe('done state', () => {
     it('dims the row content to 0.62 opacity but keeps the check vivid', () => {
       const { getByTestId, getByLabelText } = renderRow({ state: 'done' });
-      expect(StyleSheet.flatten(getByTestId('set-row-content').props.style).opacity).toBe(0.62);
+      expect(
+        StyleSheet.flatten(getByTestId('set-row-content').props.style).opacity
+      ).toBe(0.62);
       // The completion check sits outside the dimmed content so its green
       // matches the card/rail badges instead of fading with the row.
       expect(
-        StyleSheet.flatten(getByLabelText('Un-complete set 1').props.style)?.opacity,
+        StyleSheet.flatten(getByLabelText('Un-complete set 1').props.style)
+          ?.opacity
       ).toBeUndefined();
     });
 
@@ -215,12 +225,18 @@ describe('ActiveWorkoutSetRow', () => {
     it('renders cells as plain text until focused — no chip chrome on the resting grid', () => {
       const { getByLabelText } = renderRow({ state: 'current' });
       const input = getByLabelText('Weight');
-      expect(StyleSheet.flatten(input.props.style).backgroundColor).toBe('transparent');
-      expect(StyleSheet.flatten(input.props.style).borderColor).toBe('transparent');
+      expect(StyleSheet.flatten(input.props.style).backgroundColor).toBe(
+        'transparent'
+      );
+      expect(StyleSheet.flatten(input.props.style).borderColor).toBe(
+        'transparent'
+      );
 
       // The chip + ring come back on the focused cell to mark the keyboard target.
       fireEvent(input, 'focus');
-      expect(StyleSheet.flatten(input.props.style).backgroundColor).not.toBe('transparent');
+      expect(StyleSheet.flatten(input.props.style).backgroundColor).not.toBe(
+        'transparent'
+      );
     });
 
     it('reports RPE focus when the RPE column input is focused', () => {
@@ -253,7 +269,9 @@ describe('ActiveWorkoutSetRow', () => {
       expect(input.props.value).toBe('60');
       fireEvent.changeText(input, '105');
       fireEvent(input, 'blur');
-      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 105 });
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        weight: 105,
+      });
     });
 
     it('converts a typed lbs weight to kg quantized to the server precision', () => {
@@ -268,7 +286,9 @@ describe('ActiveWorkoutSetRow', () => {
       expect(input.props.value).toBe('132.3');
       fireEvent.changeText(input, '135');
       fireEvent(input, 'blur');
-      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 61.23 });
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        weight: 61.23,
+      });
     });
 
     it('does not re-commit a draft that parses back to the stored weight', () => {
@@ -285,17 +305,22 @@ describe('ActiveWorkoutSetRow', () => {
       fireEvent.changeText(input, '135.05'); // 61.2576… kg → quantizes to 61.26
       fireEvent(input, 'blur');
       const weightCommits = callbacks.onCommitField.mock.calls.filter(
-        ([, patch]) => 'weight' in patch,
+        ([, patch]) => 'weight' in patch
       );
       expect(weightCommits).toHaveLength(0);
     });
 
     it('commits a cleared weight as null', () => {
-      const { getByLabelText, callbacks } = renderRow({ state: 'current', isFocused: true });
+      const { getByLabelText, callbacks } = renderRow({
+        state: 'current',
+        isFocused: true,
+      });
       const input = getByLabelText('Weight');
       fireEvent.changeText(input, '');
       fireEvent(input, 'blur');
-      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: null });
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        weight: null,
+      });
     });
 
     it('does not re-commit an untouched weight on blur (no lbs↔kg drift)', () => {
@@ -310,13 +335,16 @@ describe('ActiveWorkoutSetRow', () => {
       expect(input.props.value).toBe('132.3'); // 60 kg shown in lbs
       fireEvent(input, 'blur');
       const weightCommits = callbacks.onCommitField.mock.calls.filter(
-        ([, patch]) => 'weight' in patch,
+        ([, patch]) => 'weight' in patch
       );
       expect(weightCommits).toHaveLength(0);
     });
 
     it('commits reps on blur', () => {
-      const { getByLabelText, callbacks } = renderRow({ state: 'current', isFocused: true });
+      const { getByLabelText, callbacks } = renderRow({
+        state: 'current',
+        isFocused: true,
+      });
       const input = getByLabelText('Reps');
       expect(input.props.value).toBe('10');
       fireEvent.changeText(input, '12');
@@ -336,7 +364,9 @@ describe('ActiveWorkoutSetRow', () => {
 
       fireEvent.press(getByLabelText('Log set 1'));
 
-      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 80 });
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        weight: 80,
+      });
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { reps: 8 });
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 8 });
       expect(callbacks.onComplete).toHaveBeenCalledWith('101');
@@ -363,14 +393,19 @@ describe('ActiveWorkoutSetRow', () => {
       expect(callbacks.onCommitField).not.toHaveBeenCalled();
 
       rerenderRow({ ...base, isFocused: false });
-      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 80 });
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        weight: 80,
+      });
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { reps: 8 });
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 8 });
     });
 
     it('commits nothing when an untouched row deactivates', () => {
       const base = { state: 'current' as const, metricColumn: 'rpe' as const };
-      const { callbacks, rerenderRow } = renderRow({ ...base, isFocused: true });
+      const { callbacks, rerenderRow } = renderRow({
+        ...base,
+        isFocused: true,
+      });
       rerenderRow({ ...base, isFocused: false });
       expect(callbacks.onCommitField).not.toHaveBeenCalled();
     });
@@ -396,13 +431,18 @@ describe('ActiveWorkoutSetRow', () => {
         isFocused: true,
         metricColumn: 'rpe',
       });
-      expect(getByLabelText('Weight').props.inputAccessoryViewID).toBeUndefined();
+      expect(
+        getByLabelText('Weight').props.inputAccessoryViewID
+      ).toBeUndefined();
       expect(getByLabelText('Reps').props.inputAccessoryViewID).toBeUndefined();
       expect(getByLabelText('RPE').props.inputAccessoryViewID).toBeUndefined();
     });
 
     it('registers a sticky-bar handle whose log flushes drafts, then completes', () => {
-      const { getByLabelText, callbacks } = renderRow({ state: 'current', isFocused: true });
+      const { getByLabelText, callbacks } = renderRow({
+        state: 'current',
+        isFocused: true,
+      });
       const [key, handle] = callbacks.onRegisterAccessoryHandle.mock.calls[0];
       expect(key).toBe('101');
       expect(handle).not.toBeNull();
@@ -410,14 +450,19 @@ describe('ActiveWorkoutSetRow', () => {
       fireEvent.changeText(getByLabelText('Weight'), '80');
       act(() => handle.log());
 
-      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 80 });
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        weight: 80,
+      });
       expect(callbacks.onComplete).toHaveBeenCalledWith('101');
     });
 
     it('unregisters the sticky-bar handle on unmount', () => {
       const { unmount, callbacks } = renderRow({ state: 'current' });
       unmount();
-      expect(callbacks.onRegisterAccessoryHandle).toHaveBeenLastCalledWith('101', null);
+      expect(callbacks.onRegisterAccessoryHandle).toHaveBeenLastCalledWith(
+        '101',
+        null
+      );
     });
   });
 
@@ -449,7 +494,9 @@ describe('ActiveWorkoutSetRow', () => {
 
     it('is not dimmed', () => {
       const { getByTestId } = renderRow({ state: 'upcoming' });
-      expect(StyleSheet.flatten(getByTestId('set-row').props.style)?.opacity).toBeUndefined();
+      expect(
+        StyleSheet.flatten(getByTestId('set-row').props.style)?.opacity
+      ).toBeUndefined();
     });
   });
 
@@ -460,14 +507,19 @@ describe('ActiveWorkoutSetRow', () => {
     });
 
     it('renders a static checkmark on done rows with no un-complete control', () => {
-      const { getByTestId, queryByLabelText } = renderRow({ state: 'done', readOnly: true });
+      const { getByTestId, queryByLabelText } = renderRow({
+        state: 'done',
+        readOnly: true,
+      });
       expect(getByTestId('icon-checkmark')).toBeTruthy();
       expect(queryByLabelText('Un-complete set 1')).toBeNull();
     });
 
     it('does not dim done rows', () => {
       const { getByTestId } = renderRow({ state: 'done', readOnly: true });
-      expect(StyleSheet.flatten(getByTestId('set-row').props.style)?.opacity).toBeUndefined();
+      expect(
+        StyleSheet.flatten(getByTestId('set-row').props.style)?.opacity
+      ).toBeUndefined();
     });
 
     it('offers no swipe-delete and no completion control', () => {
@@ -496,7 +548,10 @@ describe('ActiveWorkoutSetRow', () => {
     });
 
     it('still fires onLongPress with the set id', () => {
-      const { getByTestId, callbacks } = renderRow({ state: 'done', readOnly: true });
+      const { getByTestId, callbacks } = renderRow({
+        state: 'done',
+        readOnly: true,
+      });
       fireEvent(getByTestId('set-row'), 'longPress');
       expect(callbacks.onLongPress).toHaveBeenCalledWith('101');
     });
@@ -520,7 +575,7 @@ describe('ActiveWorkoutSetRow', () => {
           weightUnit="kg"
           mode="view"
           onLongPress={jest.fn()}
-        />,
+        />
       );
       expect(getByTestId('set-row')).toBeTruthy();
     });
@@ -534,7 +589,7 @@ describe('ActiveWorkoutSetRow', () => {
           metricColumn="rpe"
           weightUnit="kg"
           mode="view"
-        />,
+        />
       );
       fireEvent(getByTestId('set-row'), 'longPress');
       expect(getByTestId('set-row')).toBeTruthy();
@@ -576,61 +631,74 @@ describe('ActiveWorkoutSetRow', () => {
       });
     });
 
-    describe.each(['duration', 'duration_distance'] as const)('%s', (modality) => {
-      it('renders a single seconds input in live mode', () => {
-        const { queryByLabelText, getByLabelText } = renderRow({
-          modality,
-          state: 'current',
-          set: { weight: null, reps: null, duration: 45 },
+    describe.each(['duration', 'duration_distance'] as const)(
+      '%s',
+      (modality) => {
+        it('renders a single seconds input in live mode', () => {
+          const { queryByLabelText, getByLabelText } = renderRow({
+            modality,
+            state: 'current',
+            set: { weight: null, reps: null, duration: 45 },
+          });
+          expect(queryByLabelText('Weight')).toBeNull();
+          expect(queryByLabelText('Reps')).toBeNull();
+          expect(getByLabelText('Duration').props.value).toBe('45');
         });
-        expect(queryByLabelText('Weight')).toBeNull();
-        expect(queryByLabelText('Reps')).toBeNull();
-        expect(getByLabelText('Duration').props.value).toBe('45');
-      });
 
-      it('renders flat seconds text in view mode', () => {
-        const { getByText } = renderRow({
-          modality,
-          state: 'done',
-          readOnly: true,
-          set: { weight: null, reps: null, duration: 90 },
+        it('renders flat seconds text in view mode', () => {
+          const { getByText } = renderRow({
+            modality,
+            state: 'done',
+            readOnly: true,
+            set: { weight: null, reps: null, duration: 90 },
+          });
+          expect(getByText('90')).toBeTruthy();
         });
-        expect(getByText('90')).toBeTruthy();
-      });
 
-      it('commits an edited duration on blur', () => {
-        const { getByLabelText, callbacks } = renderRow({
-          modality,
-          state: 'current',
-          set: { weight: null, reps: null, duration: null },
+        it('commits an edited duration on blur', () => {
+          const { getByLabelText, callbacks } = renderRow({
+            modality,
+            state: 'current',
+            set: { weight: null, reps: null, duration: null },
+          });
+          const input = getByLabelText('Duration');
+          fireEvent.changeText(input, '75');
+          fireEvent(input, 'blur');
+          expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+            duration: 75,
+          });
         });
-        const input = getByLabelText('Duration');
-        fireEvent.changeText(input, '75');
-        fireEvent(input, 'blur');
-        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { duration: 75 });
-      });
 
-      it('shows the assumed duration as the gray placeholder', () => {
-        const { getByLabelText } = renderRow({
-          modality,
-          state: 'current',
-          set: { weight: null, reps: null, duration: null },
-          assumed: { weight: null, reps: null, duration: 60 },
+        it('shows the assumed duration as the gray placeholder', () => {
+          const { getByLabelText } = renderRow({
+            modality,
+            state: 'current',
+            set: { weight: null, reps: null, duration: null },
+            assumed: { weight: null, reps: null, duration: 60 },
+          });
+          expect(getByLabelText('Duration').props.placeholder).toBe('60');
         });
-        expect(getByLabelText('Duration').props.placeholder).toBe('60');
-      });
 
-      it('fills the duration from the previous set on PREV tap', () => {
-        const { getByLabelText, callbacks } = renderRow({
-          modality,
-          state: 'current',
-          set: { weight: null, reps: null, duration: null },
-          previousSet: { setNumber: 1, setType: 'normal', weight: null, reps: null, duration: 45 },
+        it('fills the duration from the previous set on PREV tap', () => {
+          const { getByLabelText, callbacks } = renderRow({
+            modality,
+            state: 'current',
+            set: { weight: null, reps: null, duration: null },
+            previousSet: {
+              setNumber: 1,
+              setType: 'normal',
+              weight: null,
+              reps: null,
+              duration: 45,
+            },
+          });
+          fireEvent.press(getByLabelText('Fill set 1 from previous'));
+          expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+            duration: 45,
+          });
         });
-        fireEvent.press(getByLabelText('Fill set 1 from previous'));
-        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { duration: 45 });
-      });
-    });
+      }
+    );
 
     describe('duration_distance view-mode distance cell', () => {
       it('renders the distance next to the seconds', () => {
@@ -660,7 +728,13 @@ describe('ActiveWorkoutSetRow', () => {
           modality: 'duration_distance',
           state: 'done',
           readOnly: true,
-          set: { weight: null, reps: null, duration: 300, distance: null, rpe: 5 },
+          set: {
+            weight: null,
+            reps: null,
+            duration: 300,
+            distance: null,
+            rpe: 5,
+          },
         });
         expect(getByText('–')).toBeTruthy();
       });
@@ -717,7 +791,9 @@ describe('ActiveWorkoutSetRow', () => {
         const input = getByLabelText('Duration');
         fireEvent.changeText(input, '50');
         fireEvent(input, 'blur');
-        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { duration: 50 });
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+          duration: 50,
+        });
       });
 
       it('never applies the fallback on duration_distance (seeded cardio reps)', () => {
@@ -734,7 +810,12 @@ describe('ActiveWorkoutSetRow', () => {
           modality: 'duration',
           state: 'current',
           set: { weight: null, reps: null, duration: null },
-          previousSet: { setNumber: 1, setType: 'normal', weight: null, reps: 45 },
+          previousSet: {
+            setNumber: 1,
+            setType: 'normal',
+            weight: null,
+            reps: 45,
+          },
         });
         expect(getByText('45s')).toBeTruthy();
       });
@@ -742,7 +823,9 @@ describe('ActiveWorkoutSetRow', () => {
   });
 
   describe('edit mode', () => {
-    const editSet = (overrides?: Partial<WorkoutCardSet>): Partial<WorkoutCardSet> => ({
+    const editSet = (
+      overrides?: Partial<WorkoutCardSet>
+    ): Partial<WorkoutCardSet> => ({
       editWeightText: '100',
       editRepsText: '5',
       ...overrides,
@@ -759,12 +842,20 @@ describe('ActiveWorkoutSetRow', () => {
         expect(weightInput.props.value).toBe('102.55');
 
         fireEvent.changeText(weightInput, '102.556');
-        expect(callbacks.onEditFieldChange).toHaveBeenCalledWith('101', 'weight', '102.556');
+        expect(callbacks.onEditFieldChange).toHaveBeenCalledWith(
+          '101',
+          'weight',
+          '102.556'
+        );
         // No commit path on typing — the reducer is the single source.
         expect(callbacks.onCommitField).not.toHaveBeenCalled();
 
         fireEvent.changeText(getByLabelText('Reps'), '6');
-        expect(callbacks.onEditFieldChange).toHaveBeenCalledWith('101', 'reps', '6');
+        expect(callbacks.onEditFieldChange).toHaveBeenCalledWith(
+          '101',
+          'reps',
+          '6'
+        );
       });
 
       it('shows no log ring; delete stays on the swipe action, active row included', () => {
@@ -835,12 +926,18 @@ describe('ActiveWorkoutSetRow', () => {
         });
         const rpe = getByLabelText('RPE');
         fireEvent.changeText(rpe, '8.');
-        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: 8 });
+        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
+          rpe: 8,
+        });
         // Snaps to 0.5 steps live (8.3 → 8.5), not just on blur.
         fireEvent.changeText(rpe, '8.3');
-        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: 8.5 });
+        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
+          rpe: 8.5,
+        });
         fireEvent(rpe, 'blur');
-        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: 8.5 });
+        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
+          rpe: 8.5,
+        });
       });
 
       it('commits null when the RPE field is cleared, so Save drops a stale value', () => {
@@ -851,7 +948,9 @@ describe('ActiveWorkoutSetRow', () => {
           set: editSet({ rpe: 8 }),
         });
         fireEvent.changeText(getByLabelText('RPE'), '');
-        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: null });
+        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
+          rpe: null,
+        });
       });
 
       it('clamps an out-of-range RPE on keystroke, so Save can never persist 11', () => {
@@ -862,18 +961,26 @@ describe('ActiveWorkoutSetRow', () => {
           set: editSet(),
         });
         fireEvent.changeText(getByLabelText('RPE'), '11');
-        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: 10 });
+        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
+          rpe: 10,
+        });
       });
 
       it('does not rewrite the RPE text mid-typing when the clamp changes the committed value', () => {
-        const base = { mode: 'edit' as const, state: 'current' as const, metricColumn: 'rpe' as const };
+        const base = {
+          mode: 'edit' as const,
+          state: 'current' as const,
+          metricColumn: 'rpe' as const,
+        };
         const { getByLabelText, callbacks, rerenderRow } = renderRow({
           ...base,
           set: editSet(),
         });
         const rpe = getByLabelText('RPE');
         fireEvent.changeText(rpe, '0');
-        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', { rpe: 1 });
+        expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
+          rpe: 1,
+        });
         // The committed (clamped) value flows back into the row; the visible
         // text must stay what the user typed, not jump "0" → "1".
         rerenderRow({ ...base, set: editSet({ rpe: 1 }) });
@@ -909,7 +1016,9 @@ describe('ActiveWorkoutSetRow', () => {
             state: 'current',
             set: editSet(),
           });
-          const style = StyleSheet.flatten(getByLabelText('Weight').props.style);
+          const style = StyleSheet.flatten(
+            getByLabelText('Weight').props.style
+          );
           expect(style.height).toBe(32);
           expect(style.paddingTop).toBe(0);
           expect(style.paddingBottom).toBe(0);
@@ -931,9 +1040,15 @@ describe('ActiveWorkoutSetRow', () => {
           metricColumn: 'rpe',
           set: editSet(),
         });
-        expect(getByLabelText('Weight').props.inputAccessoryViewID).toBeUndefined();
-        expect(getByLabelText('Reps').props.inputAccessoryViewID).toBeUndefined();
-        expect(getByLabelText('RPE').props.inputAccessoryViewID).toBeUndefined();
+        expect(
+          getByLabelText('Weight').props.inputAccessoryViewID
+        ).toBeUndefined();
+        expect(
+          getByLabelText('Reps').props.inputAccessoryViewID
+        ).toBeUndefined();
+        expect(
+          getByLabelText('RPE').props.inputAccessoryViewID
+        ).toBeUndefined();
       });
 
       it('unregisters the sticky-bar handle on unmount', () => {
@@ -943,7 +1058,10 @@ describe('ActiveWorkoutSetRow', () => {
           set: editSet(),
         });
         unmount();
-        expect(callbacks.onRegisterAccessoryHandle).toHaveBeenLastCalledWith('101', null);
+        expect(callbacks.onRegisterAccessoryHandle).toHaveBeenLastCalledWith(
+          '101',
+          null
+        );
       });
     });
 
@@ -1016,7 +1134,7 @@ describe('ActiveWorkoutSetRow', () => {
           set: editSet(),
         });
         expect(
-          StyleSheet.flatten(getByTestId('set-row').props.style)?.opacity,
+          StyleSheet.flatten(getByTestId('set-row').props.style)?.opacity
         ).toBeUndefined();
         fireEvent.press(getByLabelText('Delete set 1'));
         expect(callbacks.onDelete).toHaveBeenCalledWith('101');
@@ -1044,7 +1162,11 @@ describe('ActiveWorkoutSetRow', () => {
         const input = getByLabelText('Duration');
         expect(input.props.value).toBe('45');
         fireEvent.changeText(input, '50');
-        expect(callbacks.onEditFieldChange).toHaveBeenCalledWith('101', 'duration', '50');
+        expect(callbacks.onEditFieldChange).toHaveBeenCalledWith(
+          '101',
+          'duration',
+          '50'
+        );
       });
 
       it('surfaces the legacy reps-as-seconds value as the duration placeholder', () => {
@@ -1074,7 +1196,10 @@ describe('ActiveWorkoutSetRow', () => {
         enableSetType: true,
       });
       fireEvent.press(getByLabelText('Change type for set 1'));
-      expect(callbacks.onPressSetType).toHaveBeenCalledWith('101', expect.any(Object));
+      expect(callbacks.onPressSetType).toHaveBeenCalledWith(
+        '101',
+        expect.any(Object)
+      );
     });
 
     it('routes the row long-press to onLongPress (not the set-type menu) when both are wired', () => {
@@ -1100,7 +1225,7 @@ describe('ActiveWorkoutSetRow', () => {
           weightUnit="kg"
           mode="edit"
           onPressSetType={onPressSetType}
-        />,
+        />
       );
       fireEvent(getByTestId('set-row'), 'longPress');
       expect(onPressSetType).toHaveBeenCalledWith('101', expect.any(Object));
@@ -1116,19 +1241,25 @@ describe('ActiveWorkoutSetRow', () => {
     ['warmup', 'W'],
     ['drop', 'D'],
     ['failure', 'F'],
-  ])('shows %s sets as a plain %s instead of the set number', (setType, letter) => {
-    const { getByText, queryByText } = renderRow({
-      state: 'upcoming',
-      set: { set_type: setType, reps: 15, weight: 20 },
-      displayNumber: 3,
-    });
-    expect(getByText(letter)).toBeTruthy();
-    expect(queryByText('3')).toBeNull();
-  });
+  ])(
+    'shows %s sets as a plain %s instead of the set number',
+    (setType, letter) => {
+      const { getByText, queryByText } = renderRow({
+        state: 'upcoming',
+        set: { set_type: setType, reps: 15, weight: 20 },
+        displayNumber: 3,
+      });
+      expect(getByText(letter)).toBeTruthy();
+      expect(queryByText('3')).toBeNull();
+    }
+  );
 
   describe('metric column display', () => {
     it('shows an en-dash placeholder when RPE is missing', () => {
-      const { getByLabelText } = renderRow({ state: 'upcoming', metricColumn: 'rpe' });
+      const { getByLabelText } = renderRow({
+        state: 'upcoming',
+        metricColumn: 'rpe',
+      });
       const input = getByLabelText('RPE');
       expect(input.props.value).toBe('');
       expect(input.props.placeholder).toBe('–');
@@ -1146,16 +1277,26 @@ describe('ActiveWorkoutSetRow', () => {
         set: { rpe: rpe as number, reps: 3 },
       });
       const input = getByLabelText('RPE');
-      const label = Number.isInteger(rpe) ? String(rpe) : (rpe as number).toFixed(1);
+      const label = Number.isInteger(rpe)
+        ? String(rpe)
+        : (rpe as number).toFixed(1);
       expect(input.props.value).toBe(label);
       expect(textColor(input)).toBe(expectedColor);
     });
 
     it('formats volume per weight unit', () => {
-      const kg = renderRow({ state: 'upcoming', metricColumn: 'volume', weightUnit: 'kg' });
+      const kg = renderRow({
+        state: 'upcoming',
+        metricColumn: 'volume',
+        weightUnit: 'kg',
+      });
       expect(kg.getByText('600')).toBeTruthy();
 
-      const lbs = renderRow({ state: 'upcoming', metricColumn: 'volume', weightUnit: 'lbs' });
+      const lbs = renderRow({
+        state: 'upcoming',
+        metricColumn: 'volume',
+        weightUnit: 'lbs',
+      });
       expect(lbs.getByText('1,323')).toBeTruthy();
     });
 
@@ -1166,7 +1307,11 @@ describe('ActiveWorkoutSetRow', () => {
       const e1rm = renderRow({ state: 'upcoming', metricColumn: 'e1rm', set });
       expect(e1rm.getByText('108')).toBeTruthy();
 
-      const tenrm = renderRow({ state: 'upcoming', metricColumn: 'tenrm', set });
+      const tenrm = renderRow({
+        state: 'upcoming',
+        metricColumn: 'tenrm',
+        set,
+      });
       expect(tenrm.getByText('81')).toBeTruthy();
     });
 
@@ -1183,7 +1328,9 @@ describe('ActiveWorkoutSetRow', () => {
   });
 
   describe('previous column', () => {
-    const prev = (o?: Partial<ExerciseRecentSessionSet>): ExerciseRecentSessionSet => ({
+    const prev = (
+      o?: Partial<ExerciseRecentSessionSet>
+    ): ExerciseRecentSessionSet => ({
       setNumber: 1,
       setType: null,
       weight: 100,
@@ -1195,7 +1342,11 @@ describe('ActiveWorkoutSetRow', () => {
       const kg = renderRow({ state: 'upcoming', previousSet: prev() });
       expect(kg.getByText('100 × 5')).toBeTruthy();
 
-      const lbs = renderRow({ state: 'upcoming', previousSet: prev(), weightUnit: 'lbs' });
+      const lbs = renderRow({
+        state: 'upcoming',
+        previousSet: prev(),
+        weightUnit: 'lbs',
+      });
       expect(lbs.getByText('220.5 × 5')).toBeTruthy();
     });
 
@@ -1206,7 +1357,10 @@ describe('ActiveWorkoutSetRow', () => {
       });
       expect(warm.getByText('W 50 × 8')).toBeTruthy();
 
-      const weightOnly = renderRow({ state: 'upcoming', previousSet: prev({ reps: null }) });
+      const weightOnly = renderRow({
+        state: 'upcoming',
+        previousSet: prev({ reps: null }),
+      });
       expect(weightOnly.getByText('100')).toBeTruthy();
 
       const repsOnly = renderRow({
@@ -1220,26 +1374,46 @@ describe('ActiveWorkoutSetRow', () => {
       await initializeI18n('pl');
       await i18n.changeLanguage('pl');
       try {
-        const { getByLabelText, getByText } = renderRow({ state: 'upcoming', previousSet: prev({ weight: null, reps: 2 }) });
-        expect(getByLabelText('Uzupełnij serię 1 danymi z poprzedniego treningu')).toBeTruthy();
+        const { getByLabelText, getByText } = renderRow({
+          state: 'upcoming',
+          previousSet: prev({ weight: null, reps: 2 }),
+        });
+        expect(
+          getByLabelText('Uzupełnij serię 1 danymi z poprzedniego treningu')
+        ).toBeTruthy();
         expect(getByText('2 powtórzenia')).toBeTruthy();
-      } finally { await i18n.changeLanguage('en'); }
+      } finally {
+        await i18n.changeLanguage('en');
+      }
     });
 
     it('uses Polish decimal seeds and preserves numeric commit semantics', async () => {
       await initializeI18n('pl');
       await i18n.changeLanguage('pl');
       try {
-        const { getByLabelText, callbacks } = renderRow({ state: 'current', isFocused: true, activeField: 'weight', set: { weight: 132.3, rpe: 7.5 } });
+        const { getByLabelText, callbacks } = renderRow({
+          state: 'current',
+          isFocused: true,
+          activeField: 'weight',
+          set: { weight: 132.3, rpe: 7.5 },
+        });
         const weight = getByLabelText('Obciążenie');
         const rpe = getByLabelText('RPE');
         expect(weight.props.value).toContain(',');
         expect(rpe.props.value).toBe('7,5');
-        fireEvent.changeText(weight, '132,3'); fireEvent(weight, 'blur');
-        fireEvent.changeText(rpe, '7,5'); fireEvent(rpe, 'blur');
-        expect(callbacks.onCommitField).not.toHaveBeenCalledWith('101', { weight: expect.anything() });
-        expect(callbacks.onCommitField).not.toHaveBeenCalledWith('101', { rpe: expect.anything() });
-      } finally { await i18n.changeLanguage('en'); }
+        fireEvent.changeText(weight, '132,3');
+        fireEvent(weight, 'blur');
+        fireEvent.changeText(rpe, '7,5');
+        fireEvent(rpe, 'blur');
+        expect(callbacks.onCommitField).not.toHaveBeenCalledWith('101', {
+          weight: expect.anything(),
+        });
+        expect(callbacks.onCommitField).not.toHaveBeenCalledWith('101', {
+          rpe: expect.anything(),
+        });
+      } finally {
+        await i18n.changeLanguage('en');
+      }
     });
 
     it('renders a dash when this row has no previous counterpart', () => {
@@ -1293,7 +1467,9 @@ describe('ActiveWorkoutSetRow', () => {
         fireEvent.press(getByLabelText('Fill set 1 from previous'));
 
         // Weight replaced; reps untouched rather than cleared to null.
-        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 100 });
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+          weight: 100,
+        });
       });
 
       it('replaces in edit mode through the same kg commit path', () => {
@@ -1400,7 +1576,11 @@ describe('ActiveWorkoutSetRow', () => {
       // An autosave churns the id (-1 → 777) while the values are unchanged and
       // the instance survives (stable render key). The signature dropped set.id,
       // so the draft must NOT re-seed and wipe the typed text.
-      rerenderRow({ state: 'current', isFocused: true, set: { id: 777, weight: 60 } });
+      rerenderRow({
+        state: 'current',
+        isFocused: true,
+        set: { id: 777, weight: 60 },
+      });
       expect(getByLabelText('Weight').props.value).toBe('105');
     });
 
@@ -1432,21 +1612,31 @@ describe('ActiveWorkoutSetRow', () => {
       const weight = getByLabelText('Weight');
       fireEvent.changeText(weight, '135');
       fireEvent(weight, 'blur');
-      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 61.23 });
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        weight: 61.23,
+      });
 
       fireEvent.changeText(getByLabelText('Reps'), '12');
 
       // Autosave echo lands mid-typing: the committed weight flows back (any
       // server normalization would change the signature the same way).
-      rerenderRow({ ...base, isFocused: true, set: { id: 101, weight: 61.23, reps: 10 } });
+      rerenderRow({
+        ...base,
+        isFocused: true,
+        set: { id: 101, weight: 61.23, reps: 10 },
+      });
       expect(getByLabelText('Reps').props.value).toBe('12');
       expect(getByLabelText('Weight').props.value).toBe('135');
 
       // Deactivating flushes the surviving draft to the store.
-      rerenderRow({ ...base, isFocused: false, set: { id: 101, weight: 61.23, reps: 10 } });
+      rerenderRow({
+        ...base,
+        isFocused: false,
+        set: { id: 101, weight: 61.23, reps: 10 },
+      });
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { reps: 12 });
       const weightCommits = callbacks.onCommitField.mock.calls.filter(
-        ([, patch]) => 'weight' in patch,
+        ([, patch]) => 'weight' in patch
       );
       expect(weightCommits).toHaveLength(1);
     });
@@ -1462,7 +1652,10 @@ describe('ActiveWorkoutSetRow', () => {
       });
       fireEvent.changeText(getByLabelText('Reps'), '12'); // typed, then overridden by fill
       fireEvent.press(getByLabelText('Fill set 1 from previous'));
-      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { weight: 100, reps: 5 });
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        weight: 100,
+        reps: 5,
+      });
       expect(getByLabelText('Weight').props.value).toBe('100');
       expect(getByLabelText('Reps').props.value).toBe('5');
     });

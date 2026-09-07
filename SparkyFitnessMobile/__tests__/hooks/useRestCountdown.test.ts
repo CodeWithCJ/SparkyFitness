@@ -46,7 +46,11 @@ describe('useRestCountdown', () => {
 
   it('returns zeros while ready', () => {
     const { result } = renderHook(() => useRestCountdown());
-    expect(result.current).toEqual({ state: 'ready', remainingMs: 0, progress: 0 });
+    expect(result.current).toEqual({
+      state: 'ready',
+      remainingMs: 0,
+      progress: 0,
+    });
   });
 
   it('derives remainingMs and progress from the deadline while resting', () => {
@@ -89,7 +93,7 @@ describe('useRestCountdown', () => {
   it('does not tick with selfTick: false; the caller re-render refreshes it', () => {
     setRest({ state: 'resting', durationSec: 90, endsAt: FIXED_NOW + 45_000 });
     const { result, rerender } = renderHook(() =>
-      useRestCountdown({ selfTick: false }),
+      useRestCountdown({ selfTick: false })
     );
     act(() => {
       jest.advanceTimersByTime(2_000);

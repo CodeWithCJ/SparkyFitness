@@ -70,6 +70,13 @@ export const MIN_CALORIE_SAFETY_FLOOR = 800;
 export const MAX_CALORIE_SAFETY_FLOOR = 5_000;
 export const DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR = 1200;
 
+/**
+ * Generous upper bound for a person's cumulative full-day energy expenditure.
+ * It protects both projection math and the NUMERIC(8,2) persistence boundary
+ * from corrupt provider payloads without constraining realistic athlete days.
+ */
+export const MAX_HEALTH_TOTAL_CALORIES_PER_DAY = 20_000;
+
 export const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   none: 1.0,
   not_much: 1.2,

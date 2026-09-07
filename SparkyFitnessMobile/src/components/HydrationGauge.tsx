@@ -3,7 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { View, Text, Pressable } from 'react-native';
 import { Canvas, Group, Path, Rect, Skia } from '@shopify/react-native-skia';
 import Button from './ui/Button';
-import { useSharedValue, useDerivedValue, withTiming, Easing } from 'react-native-reanimated';
+import {
+  useSharedValue,
+  useDerivedValue,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import { WATER_UNIT_LABELS } from '../utils/unitConversions';
@@ -16,7 +21,7 @@ interface ContainerOption {
 
 interface HydrationGaugeProps {
   consumed: number; // ml
-  goal: number;     // ml
+  goal: number; // ml
   unit?: string;
   containerVolume?: number; // ml per button press
   onIncrement?: () => void;
@@ -29,9 +34,12 @@ interface HydrationGaugeProps {
 
 function convertFromMl(ml: number, unit: string): number {
   switch (unit) {
-    case 'oz': return ml / 29.5735;
-    case 'liter': return ml / 1000;
-    default: return ml;
+    case 'oz':
+      return ml / 29.5735;
+    case 'liter':
+      return ml / 1000;
+    default:
+      return ml;
   }
 }
 
@@ -44,9 +52,16 @@ const FILL_BOTTOM = 124;
 const FILL_HEIGHT = FILL_BOTTOM - FILL_TOP;
 
 const HydrationGauge: React.FC<HydrationGaugeProps> = ({
-  consumed, goal, unit = 'ml', containerVolume,
-  onIncrement, onDecrement, disableDecrement,
-  containers, activeContainerId, onSelectContainer,
+  consumed,
+  goal,
+  unit = 'ml',
+  containerVolume,
+  onIncrement,
+  onDecrement,
+  disableDecrement,
+  containers,
+  activeContainerId,
+  onSelectContainer,
 }) => {
   const { t } = useTranslation();
   const hydrationColor = useCSSVariable('--color-hydration') as string;
@@ -125,7 +140,9 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-      <Text className="text-md font-bold text-text-secondary mb-3">{t('dashboard.hydration', { defaultValue: 'Hydration' })}</Text>
+      <Text className="text-md font-bold text-text-secondary mb-3">
+        {t('dashboard.hydration', { defaultValue: 'Hydration' })}
+      </Text>
       <View className="flex-row items-center">
         <View className="flex-row items-center mr-4">
           {showButtons && (
@@ -135,8 +152,12 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
               disabled={disableDecrement || noContainer}
               className="p-2"
               accessibilityRole="button"
-              accessibilityLabel={t('dashboard.removeWater', { defaultValue: 'Remove water' })}
-              style={disableDecrement || noContainer ? { opacity: 0.3 } : undefined}
+              accessibilityLabel={t('dashboard.removeWater', {
+                defaultValue: 'Remove water',
+              })}
+              style={
+                disableDecrement || noContainer ? { opacity: 0.3 } : undefined
+              }
             >
               <Icon name="remove-circle" size={28} color={hydrationColor} />
             </Button>
@@ -144,11 +165,22 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
           <Canvas style={{ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }}>
             {/* Fill clipped to bottle shape */}
             <Group clip={bottlePath}>
-              <Rect x={0} y={0} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} color={trackColor} />
+              <Rect
+                x={0}
+                y={0}
+                width={CANVAS_WIDTH}
+                height={CANVAS_HEIGHT}
+                color={trackColor}
+              />
               <Path path={fillPath} color={hydrationColor} />
             </Group>
             {/* Bottle outline */}
-            <Path path={bottlePath} style="stroke" strokeWidth={2} color={outlineColor} />
+            <Path
+              path={bottlePath}
+              style="stroke"
+              strokeWidth={2}
+              color={outlineColor}
+            />
           </Canvas>
           {showButtons && (
             <Button
@@ -157,7 +189,9 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
               disabled={noContainer}
               className="p-2"
               accessibilityRole="button"
-              accessibilityLabel={t('dashboard.addWater', { defaultValue: 'Add water' })}
+              accessibilityLabel={t('dashboard.addWater', {
+                defaultValue: 'Add water',
+              })}
               style={noContainer ? { opacity: 0.3 } : undefined}
             >
               <Icon name="add-circle" size={28} color={hydrationColor} />
@@ -169,22 +203,31 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
             {displayConsumed} {unitLabel}
           </Text>
           <Text className="text-sm text-text-secondary mt-0.5">
-            {t('dashboard.ofVolume', { defaultValue: 'of {{value}} {{unit}}', value: displayGoal, unit: unitLabel })}
+            {t('dashboard.ofVolume', {
+              defaultValue: 'of {{value}} {{unit}}',
+              value: displayGoal,
+              unit: unitLabel,
+            })}
           </Text>
           {showChips && (
             <View className="flex-row flex-wrap justify-center mt-2 gap-1">
-              {containers!.map(c => {
+              {containers!.map((c) => {
                 const active = c.id === activeContainerId;
                 return (
                   <Pressable
                     key={c.id}
                     onPress={() => onSelectContainer?.(c.id)}
                     accessibilityRole="button"
-                    accessibilityLabel={t('dashboard.selectContainer', { defaultValue: 'Select {{container}}', container: c.name })}
+                    accessibilityLabel={t('dashboard.selectContainer', {
+                      defaultValue: 'Select {{container}}',
+                      container: c.name,
+                    })}
                     accessibilityState={{ selected: active }}
                     className={`rounded-full px-3 py-1 border ${active ? 'bg-accent-primary border-accent-primary' : 'bg-raised border-border-subtle'}`}
                   >
-                    <Text className={`text-xs font-medium ${active ? 'text-white' : 'text-text-primary'}`}>
+                    <Text
+                      className={`text-xs font-medium ${active ? 'text-white' : 'text-text-primary'}`}
+                    >
                       {c.name}
                     </Text>
                   </Pressable>
@@ -196,12 +239,21 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
       </View>
       {showButtons && containerVolume != null && !showChips && (
         <Text className="text-xs text-text-muted text-center mt-2">
-          {t('dashboard.perContainer', { defaultValue: '{{value}} {{unit}} per container', value: formatLocalizedNumber(convertFromMl(containerVolume, unit), { maximumFractionDigits: 1 }), unit: unitLabel })}
+          {t('dashboard.perContainer', {
+            defaultValue: '{{value}} {{unit}} per container',
+            value: formatLocalizedNumber(convertFromMl(containerVolume, unit), {
+              maximumFractionDigits: 1,
+            }),
+            unit: unitLabel,
+          })}
         </Text>
       )}
       {showButtons && containerVolume == null && (
         <Text className="text-xs text-text-muted text-center mt-2">
-          {t('dashboard.configureWaterContainer', { defaultValue: 'Configure water container on server to\nenable quick add/remove buttons' })}
+          {t('dashboard.configureWaterContainer', {
+            defaultValue:
+              'Configure water container on server to\nenable quick add/remove buttons',
+          })}
         </Text>
       )}
     </View>

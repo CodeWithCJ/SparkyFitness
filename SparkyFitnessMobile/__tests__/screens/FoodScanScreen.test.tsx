@@ -3,12 +3,18 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import FoodScanScreen from '../../src/screens/FoodScanScreen';
-import { lookupBarcodeV2, scanNutritionLabel } from '../../src/services/api/externalFoodSearchApi';
+import {
+  lookupBarcodeV2,
+  scanNutritionLabel,
+} from '../../src/services/api/externalFoodSearchApi';
 import { ApiError } from '../../src/services/api/errors';
 import { TimeoutError } from '../../src/utils/concurrency';
 import { fireSuccessHaptic } from '../../src/services/haptics';
 import { useActiveAiServiceSetting } from '../../src/hooks/useActiveAiServiceSetting';
-import { hasSeenFoodPhotoIntro, markFoodPhotoIntroSeen } from '../../src/services/foodPhotoIntro';
+import {
+  hasSeenFoodPhotoIntro,
+  markFoodPhotoIntroSeen,
+} from '../../src/services/foodPhotoIntro';
 
 jest.mock('../../src/services/api/externalFoodSearchApi', () => ({
   lookupBarcodeV2: jest.fn(),
@@ -29,13 +35,19 @@ jest.mock('../../src/services/foodPhotoIntro', () => ({
 }));
 
 describe('FoodScanScreen', () => {
-  const mockLookupBarcodeV2 = lookupBarcodeV2 as jest.MockedFunction<typeof lookupBarcodeV2>;
-  const mockScanNutritionLabel = scanNutritionLabel as jest.MockedFunction<typeof scanNutritionLabel>;
+  const mockLookupBarcodeV2 = lookupBarcodeV2 as jest.MockedFunction<
+    typeof lookupBarcodeV2
+  >;
+  const mockScanNutritionLabel = scanNutritionLabel as jest.MockedFunction<
+    typeof scanNutritionLabel
+  >;
   const mockFireSuccessHaptic = fireSuccessHaptic as jest.MockedFunction<
     typeof fireSuccessHaptic
   >;
   const mockUseActiveAiServiceSetting =
-    useActiveAiServiceSetting as jest.MockedFunction<typeof useActiveAiServiceSetting>;
+    useActiveAiServiceSetting as jest.MockedFunction<
+      typeof useActiveAiServiceSetting
+    >;
   const mockHasSeenFoodPhotoIntro =
     hasSeenFoodPhotoIntro as jest.MockedFunction<typeof hasSeenFoodPhotoIntro>;
 
@@ -87,7 +99,7 @@ describe('FoodScanScreen', () => {
     render(
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
         <FoodScanScreen navigation={mockNavigation} route={mockRoute} />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
   beforeEach(() => {
@@ -113,7 +125,7 @@ describe('FoodScanScreen', () => {
           navigation={mockNavigation}
           route={{ ...mockRoute, params }}
         />
-      </SafeAreaProvider>,
+      </SafeAreaProvider>
     );
 
   it('fires a success haptic when barcode lookup finds an existing food', async () => {
@@ -134,12 +146,44 @@ describe('FoodScanScreen', () => {
           id: 'food-1',
           barcode: '012345678905',
         }),
-      }),
+      })
+    );
+  });
+
+  it('preserves meal-plan selection context after a barcode lookup', async () => {
+    mockLookupBarcodeV2.mockResolvedValue(existingFoodResult);
+    const mealPlanTarget = {
+      dayOfWeek: 5,
+      mealTypeId: 'dinner',
+      mealTypeName: 'Dinner',
+    };
+    const screen = renderScreenWithRoute({
+      pickerMode: 'meal-plan',
+      returnDepth: 2,
+      mealPlanTarget,
+    });
+
+    fireEvent(screen.getByTestId('camera-view'), 'onBarcodeScanned', {
+      data: '012345678905',
+    });
+
+    await waitFor(() =>
+      expect(mockNavigation.replace).toHaveBeenCalledWith(
+        'FoodEntryAdd',
+        expect.objectContaining({
+          pickerMode: 'meal-plan',
+          returnDepth: 2,
+          mealPlanTarget,
+        })
+      )
     );
   });
 
   it('does not fire a success haptic when barcode lookup finds no match', async () => {
-    mockLookupBarcodeV2.mockResolvedValue({ source: 'remote', food: null } as any);
+    mockLookupBarcodeV2.mockResolvedValue({
+      source: 'remote',
+      food: null,
+    } as any);
     const screen = renderScreen();
 
     fireEvent(screen.getByTestId('camera-view'), 'onBarcodeScanned', {
@@ -243,7 +287,7 @@ describe('FoodScanScreen', () => {
               }),
             ]),
           }),
-        }),
+        })
       );
     });
   });
@@ -253,8 +297,10 @@ describe('FoodScanScreen', () => {
       new ApiError(
         'Bad Gateway',
         502,
-        JSON.stringify({ error: 'FatSecret API error (code 21): Invalid IP address detected' }),
-      ),
+        JSON.stringify({
+          error: 'FatSecret API error (code 21): Invalid IP address detected',
+        })
+      )
     );
     const screen = renderScreen();
 
@@ -266,7 +312,9 @@ describe('FoodScanScreen', () => {
       expect(screen.getByText('Lookup failed')).toBeTruthy();
     });
     expect(
-      screen.getByText('FatSecret API error (code 21): Invalid IP address detected'),
+      screen.getByText(
+        'FatSecret API error (code 21): Invalid IP address detected'
+      )
     ).toBeTruthy();
     // The misleading not-found copy is not shown for a real failure.
     expect(screen.queryByText('No match for barcode')).toBeNull();
@@ -288,7 +336,7 @@ describe('FoodScanScreen', () => {
       expect(screen.getByText('Lookup failed')).toBeTruthy();
     });
     expect(
-      screen.getByText("Couldn't look up this barcode. Please try again."),
+      screen.getByText("Couldn't look up this barcode. Please try again.")
     ).toBeTruthy();
   });
 
@@ -296,9 +344,9 @@ describe('FoodScanScreen', () => {
     let resolveLookup: ((value: any) => void) | undefined;
     mockLookupBarcodeV2.mockImplementation(
       () =>
-        new Promise(resolve => {
+        new Promise((resolve) => {
           resolveLookup = resolve;
-        }),
+        })
     );
 
     const screen = renderScreen();
@@ -326,7 +374,10 @@ describe('FoodScanScreen', () => {
     const screen = renderScreen();
 
     fireEvent.press(screen.getByText('Type Barcode Instead'));
-    fireEvent.changeText(screen.getByPlaceholderText('Barcode number'), '012345678905');
+    fireEvent.changeText(
+      screen.getByPlaceholderText('Barcode number'),
+      '012345678905'
+    );
     fireEvent.press(screen.getByText('Look Up'));
 
     await waitFor(() => {
@@ -334,7 +385,7 @@ describe('FoodScanScreen', () => {
         'FoodEntryAdd',
         expect.objectContaining({
           item: expect.objectContaining({ id: 'food-1' }),
-        }),
+        })
       );
     });
     expect(mockFireSuccessHaptic).not.toHaveBeenCalled();
@@ -352,7 +403,7 @@ describe('FoodScanScreen', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(/AI photo estimates aren.t set up/),
+          screen.getByText(/AI photo estimates aren.t set up/)
         ).toBeTruthy();
       });
     });
@@ -366,7 +417,7 @@ describe('FoodScanScreen', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(/AI photo estimates aren.t set up/),
+          screen.getByText(/AI photo estimates aren.t set up/)
         ).toBeTruthy();
       });
     });
@@ -388,9 +439,7 @@ describe('FoodScanScreen', () => {
       await waitFor(() => {
         expect(screen.getByLabelText('Choose photo from library')).toBeTruthy();
       });
-      expect(
-        screen.queryByText(/AI photo estimates aren.t set up/),
-      ).toBeNull();
+      expect(screen.queryByText(/AI photo estimates aren.t set up/)).toBeNull();
     });
 
     it('pushes the intro screen on first Photo use when the user has not seen it', async () => {
@@ -418,7 +467,7 @@ describe('FoodScanScreen', () => {
       });
       expect(mockNavigation.navigate).not.toHaveBeenCalledWith(
         'FoodPhotoIntro',
-        expect.anything(),
+        expect.anything()
       );
     });
 
@@ -431,6 +480,14 @@ describe('FoodScanScreen', () => {
       expect(screen.queryByText('Photo')).toBeNull();
     });
 
+    it('hides the diary-only Photo segment in meal-plan mode', () => {
+      const screen = renderScreenWithRoute({ pickerMode: 'meal-plan' });
+
+      expect(screen.getByText('Barcode')).toBeTruthy();
+      expect(screen.getByText('Label')).toBeTruthy();
+      expect(screen.queryByText('Photo')).toBeNull();
+    });
+
     it('coerces initialMode=photo to barcode in meal-builder mode', () => {
       const screen = renderScreenWithRoute({
         pickerMode: 'meal-builder',
@@ -438,9 +495,7 @@ describe('FoodScanScreen', () => {
       });
       // No Photo segment, no AI gate — the scan opens on barcode instead.
       expect(screen.queryByText('Photo')).toBeNull();
-      expect(
-        screen.queryByText(/AI photo estimates aren.t set up/),
-      ).toBeNull();
+      expect(screen.queryByText(/AI photo estimates aren.t set up/)).toBeNull();
     });
   });
 
@@ -448,7 +503,10 @@ describe('FoodScanScreen', () => {
     const captureRoute = {
       key: 'FoodScan-key',
       name: 'FoodScan' as const,
-      params: { mode: 'capture-barcode' as const, returnKey: 'EditBarcode-key' },
+      params: {
+        mode: 'capture-barcode' as const,
+        returnKey: 'EditBarcode-key',
+      },
     };
 
     const mockDispatch = jest.fn();
@@ -461,7 +519,7 @@ describe('FoodScanScreen', () => {
       render(
         <SafeAreaProvider initialMetrics={{ insets, frame }}>
           <FoodScanScreen navigation={captureNavigation} route={captureRoute} />
-        </SafeAreaProvider>,
+        </SafeAreaProvider>
       );
 
     beforeEach(() => {
@@ -485,7 +543,7 @@ describe('FoodScanScreen', () => {
           params: expect.objectContaining({
             pendingScannedBarcode: '012345678905',
           }),
-        }),
+        })
       );
       expect(mockLookupBarcodeV2).not.toHaveBeenCalled();
       expect(captureNavigation.goBack).toHaveBeenCalledTimes(1);
@@ -502,7 +560,10 @@ describe('FoodScanScreen', () => {
       const screen = renderCapture();
 
       fireEvent.press(screen.getByText('Type Barcode Instead'));
-      fireEvent.changeText(screen.getByPlaceholderText('Barcode number'), '012345678905');
+      fireEvent.changeText(
+        screen.getByPlaceholderText('Barcode number'),
+        '012345678905'
+      );
       fireEvent.press(screen.getByText('Use Barcode'));
 
       await waitFor(() => {
@@ -526,7 +587,7 @@ describe('FoodScanScreen', () => {
       fireEvent.press(screen.getByText('Photo'));
       await waitFor(() => {
         expect(
-          screen.getByText(/AI photo estimates aren.t set up/),
+          screen.getByText(/AI photo estimates aren.t set up/)
         ).toBeTruthy();
       });
 
@@ -537,9 +598,10 @@ describe('FoodScanScreen', () => {
   });
 
   describe('Photo library picker', () => {
-    const mockLaunchLibrary = ImagePicker.launchImageLibraryAsync as jest.MockedFunction<
-      typeof ImagePicker.launchImageLibraryAsync
-    >;
+    const mockLaunchLibrary =
+      ImagePicker.launchImageLibraryAsync as jest.MockedFunction<
+        typeof ImagePicker.launchImageLibraryAsync
+      >;
     const mockMarkSeen = markFoodPhotoIntroSeen as jest.MockedFunction<
       typeof markFoodPhotoIntroSeen
     >;
@@ -568,7 +630,7 @@ describe('FoodScanScreen', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText(/AI photo estimates aren.t set up/),
+          screen.getByText(/AI photo estimates aren.t set up/)
         ).toBeTruthy();
       });
       expect(screen.queryByLabelText('Choose photo from library')).toBeNull();
@@ -620,7 +682,10 @@ describe('FoodScanScreen', () => {
     it('ignores a second tap while the picker is still resolving', async () => {
       let resolveLaunch: ((value: any) => void) | undefined;
       mockLaunchLibrary.mockImplementation(
-        () => new Promise((resolve) => { resolveLaunch = resolve; }),
+        () =>
+          new Promise((resolve) => {
+            resolveLaunch = resolve;
+          })
       );
 
       const screen = renderScreenWithRoute({ initialMode: 'photo' });
@@ -644,9 +709,13 @@ describe('FoodScanScreen', () => {
   it('localizes timeout lookup failures and keeps recovery actions visible', async () => {
     mockLookupBarcodeV2.mockRejectedValue(new TimeoutError('Request', 30000));
     const screen = renderScreen();
-    fireEvent(screen.getByTestId('camera-view'), 'onBarcodeScanned', { data: '012345678905' });
+    fireEvent(screen.getByTestId('camera-view'), 'onBarcodeScanned', {
+      data: '012345678905',
+    });
     await waitFor(() => expect(screen.getByText('Lookup failed')).toBeTruthy());
-    expect(screen.getByText('Request timed out. Check your server connection.')).toBeTruthy();
+    expect(
+      screen.getByText('Request timed out. Check your server connection.')
+    ).toBeTruthy();
     expect(screen.queryByText('No match for barcode')).toBeNull();
     expect(screen.getByText('Scan Nutrition Label')).toBeTruthy();
   });
@@ -658,8 +727,13 @@ describe('FoodScanScreen', () => {
     expect(barcodeTab?.props.accessibilityState?.selected).toBe(true);
     expect(labelTab?.props.accessibilityState?.selected).toBe(false);
     fireEvent.press(screen.getByText('Label'));
-    expect(screen.getByText('Barcode').parent?.parent?.props.accessibilityState?.selected).toBe(false);
-    expect(screen.getByText('Label').parent?.parent?.props.accessibilityState?.selected).toBe(true);
+    expect(
+      screen.getByText('Barcode').parent?.parent?.props.accessibilityState
+        ?.selected
+    ).toBe(false);
+    expect(
+      screen.getByText('Label').parent?.parent?.props.accessibilityState
+        ?.selected
+    ).toBe(true);
   });
-
 });

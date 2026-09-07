@@ -1,6 +1,9 @@
 import { HEALTH_METRICS } from '../../HealthMetrics';
 import { WRITEBACK_METRICS } from '../../WritebackMetrics';
-import type { PermissionRequest, HealthMetricStates } from '../../types/healthRecords';
+import type {
+  PermissionRequest,
+  HealthMetricStates,
+} from '../../types/healthRecords';
 
 /**
  * Why a request may carry a direction the caller did not ask about.
@@ -20,19 +23,21 @@ import type { PermissionRequest, HealthMetricStates } from '../../types/healthRe
 /** Write permissions for writeback metrics that are enabled, optionally scoped to record types. */
 export const enabledWritebackPermissions = (
   writebackStates: Record<string, boolean>,
-  recordTypes?: ReadonlySet<string>,
+  recordTypes?: ReadonlySet<string>
 ): PermissionRequest[] =>
   WRITEBACK_METRICS.filter(
-    metric =>
+    (metric) =>
       writebackStates[metric.id] === true &&
-      (!recordTypes || recordTypes.has(metric.permission.recordType)),
-  ).map(metric => metric.permission);
+      (!recordTypes || recordTypes.has(metric.permission.recordType))
+  ).map((metric) => metric.permission);
 
 /** Read permissions for enabled read metrics covering a record type. */
 export const enabledReadPermissionsForRecordType = (
   healthMetricStates: HealthMetricStates,
-  recordType: string,
+  recordType: string
 ): PermissionRequest[] =>
   HEALTH_METRICS.filter(
-    metric => metric.recordType === recordType && healthMetricStates[metric.stateKey] === true,
-  ).flatMap(metric => metric.permissions);
+    (metric) =>
+      metric.recordType === recordType &&
+      healthMetricStates[metric.stateKey] === true
+  ).flatMap((metric) => metric.permissions);

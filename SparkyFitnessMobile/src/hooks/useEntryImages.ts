@@ -32,7 +32,7 @@ type EntryImageOptions<TResult> = {
  */
 function useEntryImageMutation<TVariables, TResult>(
   mutationFn: (variables: TVariables) => Promise<TResult>,
-  options: EntryImageOptions<TResult>,
+  options: EntryImageOptions<TResult>
 ) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -50,7 +50,13 @@ function useEntryImageMutation<TVariables, TResult>(
       onSuccess?.(result);
     },
     onError: () => {
-      Toast.show({ type: 'error', text1: errorText, text2: t('common.pleaseTryAgain', { defaultValue: 'Please try again.' }) });
+      Toast.show({
+        type: 'error',
+        text1: errorText,
+        text2: t('common.pleaseTryAgain', {
+          defaultValue: 'Please try again.',
+        }),
+      });
     },
   });
 }
@@ -58,7 +64,11 @@ function useEntryImageMutation<TVariables, TResult>(
 export function useSetFoodEntryImages(
   entryId: string,
   entryDate: string,
-  options?: { onSuccess?: (result: Awaited<ReturnType<typeof setFoodEntryImages>>) => void },
+  options?: {
+    onSuccess?: (
+      result: Awaited<ReturnType<typeof setFoodEntryImages>>
+    ) => void;
+  }
 ) {
   const { t } = useTranslation();
   const mutation = useEntryImageMutation(
@@ -69,8 +79,10 @@ export function useSetFoodEntryImages(
     {
       entryDate,
       onSuccess: options?.onSuccess,
-      errorText: t('entryImage.saveFailed', { defaultValue: 'Failed to save photo' }),
-    },
+      errorText: t('entryImage.saveFailed', {
+        defaultValue: 'Failed to save photo',
+      }),
+    }
   );
 
   return {
@@ -83,14 +95,19 @@ export function useSetFoodEntryImages(
 export function useClearFoodEntryImage(
   entryId: string,
   entryDate: string,
-  options?: { onSuccess?: () => void },
+  options?: { onSuccess?: () => void }
 ) {
   const { t } = useTranslation();
-  const mutation = useEntryImageMutation<void, void>(() => clearFoodEntryImage(entryId), {
-    entryDate,
-    onSuccess: options?.onSuccess,
-    errorText: t('entryImage.removeFailed', { defaultValue: 'Failed to remove photo' }),
-  });
+  const mutation = useEntryImageMutation<void, void>(
+    () => clearFoodEntryImage(entryId),
+    {
+      entryDate,
+      onSuccess: options?.onSuccess,
+      errorText: t('entryImage.removeFailed', {
+        defaultValue: 'Failed to remove photo',
+      }),
+    }
+  );
 
   return { clearImage: () => mutation.mutate(), isPending: mutation.isPending };
 }
@@ -98,7 +115,7 @@ export function useClearFoodEntryImage(
 export function useSetFoodEntryMealImages(
   entryId: string,
   entryDate: string,
-  options?: { onSuccess?: () => void },
+  options?: { onSuccess?: () => void }
 ) {
   const { t } = useTranslation();
   const mutation = useEntryImageMutation(
@@ -110,8 +127,10 @@ export function useSetFoodEntryMealImages(
       entryDate,
       extraKeys: [foodEntryMealDetailQueryKey(entryId)],
       onSuccess: options?.onSuccess,
-      errorText: t('entryImage.saveFailed', { defaultValue: 'Failed to save photo' }),
-    },
+      errorText: t('entryImage.saveFailed', {
+        defaultValue: 'Failed to save photo',
+      }),
+    }
   );
 
   return {
@@ -124,7 +143,7 @@ export function useSetFoodEntryMealImages(
 export function useClearFoodEntryMealImage(
   entryId: string,
   entryDate: string,
-  options?: { onSuccess?: () => void },
+  options?: { onSuccess?: () => void }
 ) {
   const { t } = useTranslation();
   const mutation = useEntryImageMutation<void, void>(
@@ -133,8 +152,10 @@ export function useClearFoodEntryMealImage(
       entryDate,
       extraKeys: [foodEntryMealDetailQueryKey(entryId)],
       onSuccess: options?.onSuccess,
-      errorText: t('entryImage.removeFailed', { defaultValue: 'Failed to remove photo' }),
-    },
+      errorText: t('entryImage.removeFailed', {
+        defaultValue: 'Failed to remove photo',
+      }),
+    }
   );
 
   return { clearImage: () => mutation.mutate(), isPending: mutation.isPending };

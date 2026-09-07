@@ -220,9 +220,12 @@ async function getUserGoalsForRange(
         CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM;
       const bodyFat =
         getMeasurementFieldForDate(dateStr, 'body_fat_percentage') || undefined;
+      const measuredBmr = getMeasurementFieldForDate(dateStr, 'bmr');
 
       let bmr = 0;
-      if (userProfile && userPreferences) {
+      if (measuredBmr && measuredBmr >= 300 && measuredBmr <= 10000) {
+        bmr = measuredBmr;
+      } else if (userProfile && userPreferences) {
         const tz = userPreferences.timezone || 'UTC';
         const age = userAge(userProfile.date_of_birth ?? '', tz) ?? 30;
         try {
@@ -336,6 +339,10 @@ async function getUserGoalsForRange(
           calorieSafetyFloorValue:
             userPreferences?.calorie_safety_floor_value ||
             DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+          measuredBmr:
+            measuredBmr && measuredBmr >= 300 && measuredBmr <= 10000
+              ? measuredBmr
+              : undefined,
         });
         goalCalories = targetResult.finalTarget;
       }

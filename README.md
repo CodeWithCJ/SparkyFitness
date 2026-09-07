@@ -193,10 +193,15 @@ For full installation guides, configuration options, and development docs, pleas
 
 ## Translations
 
-**[Weblate Translations](https://hosted.weblate.org/engage/sparkyfitness)**
 
-<a href="https://hosted.weblate.org/engage/sparkyfitness/">
-<img src="https://hosted.weblate.org/widget/sparkyfitness/sparkyfitness-translations/multi-auto.svg" alt="Translation status" />
+**[Weblate Translations](https://weblate.sparkyfitness.com/engage/sparkyfitness)**
+
+<a href="http://weblate.sparkyfitness.com/engage/sparkyfitness/"><img src="http://weblate.sparkyfitness.com/widget/sparkyfitness/svg-badge.svg" alt="Translation status"></a>
+
+
+
+<a href="https://weblate.sparkyfitness.com/engage/sparkyfitness">
+<img src="http://weblate.sparkyfitness.com/widget/sparkyfitness/multi-auto.svg" alt="Translation status" />
 </a>
 
 ## Repository activity

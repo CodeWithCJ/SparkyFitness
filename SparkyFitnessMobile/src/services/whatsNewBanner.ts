@@ -15,7 +15,7 @@ export async function getLastSeenWhatsNewVersion(): Promise<string | null> {
     const message = error instanceof Error ? error.message : String(error);
     addLog(
       `[WhatsNew Banner] Failed to read last seen version: ${message}`,
-      'WARNING',
+      'WARNING'
     );
     return null;
   }
@@ -28,7 +28,7 @@ export async function markWhatsNewVersionSeen(version: string): Promise<void> {
     const message = error instanceof Error ? error.message : String(error);
     addLog(
       `[WhatsNew Banner] Failed to persist last seen version: ${message}`,
-      'WARNING',
+      'WARNING'
     );
   }
 }
@@ -59,7 +59,7 @@ export async function resetWhatsNewBanner(): Promise<void> {
     const message = error instanceof Error ? error.message : String(error);
     addLog(
       `[WhatsNew Banner] Failed to reset last seen version: ${message}`,
-      'WARNING',
+      'WARNING'
     );
     return;
   }

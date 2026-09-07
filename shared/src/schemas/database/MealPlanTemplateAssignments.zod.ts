@@ -56,6 +56,12 @@ export const mealPlanTemplateAssignmentsMutatorSchema = z.object({
   meal_type_id: mealTypesIdSchema.optional(),
 });
 
-export type MealPlanTemplateAssignments = z.infer<typeof mealPlanTemplateAssignmentsSchema>;
-export type MealPlanTemplateAssignmentsInitializer = z.infer<typeof mealPlanTemplateAssignmentsInitializerSchema>;
-export type MealPlanTemplateAssignmentsMutator = z.infer<typeof mealPlanTemplateAssignmentsMutatorSchema>;
+export type MealPlanTemplateAssignments = z.infer<
+  typeof mealPlanTemplateAssignmentsSchema
+>;
+export type MealPlanTemplateAssignmentsInitializer = z.infer<
+  typeof mealPlanTemplateAssignmentsInitializerSchema
+>;
+export type MealPlanTemplateAssignmentsMutator = z.infer<
+  typeof mealPlanTemplateAssignmentsMutatorSchema
+>;

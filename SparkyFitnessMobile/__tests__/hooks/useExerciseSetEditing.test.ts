@@ -18,7 +18,11 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 const fireTransitionEnd = (closing = false) =>
-  act(() => transitionEndListeners.forEach((listener) => listener({ data: { closing } })));
+  act(() =>
+    transitionEndListeners.forEach((listener) =>
+      listener({ data: { closing } })
+    )
+  );
 
 beforeEach(() => {
   transitionEndListeners = [];
@@ -41,7 +45,10 @@ const makeExercise = (overrides?: Partial<Exercise>): Exercise => ({
 
 function makeActions() {
   return {
-    addExercise: jest.fn(() => ({ exerciseClientId: 'added-ex', setClientId: 'added-set' })),
+    addExercise: jest.fn(() => ({
+      exerciseClientId: 'added-ex',
+      setClientId: 'added-set',
+    })),
     removeExercise: jest.fn(),
     addSet: jest.fn(() => 'new-set'),
     replaceExercise: jest.fn((clientId: string) => ({
@@ -74,7 +81,7 @@ describe('useExerciseSetEditing — replace routing', () => {
 
     expect(actions.replaceExercise).toHaveBeenCalledWith(
       'target-ex',
-      expect.objectContaining({ id: 'ex-9' }),
+      expect.objectContaining({ id: 'ex-9' })
     );
     expect(actions.addExercise).not.toHaveBeenCalled();
     expect(result.current.activeSetKey).toBe('target-ex:replacement-set');

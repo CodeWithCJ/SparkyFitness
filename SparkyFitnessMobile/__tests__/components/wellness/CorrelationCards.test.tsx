@@ -20,7 +20,7 @@ function renderComponent() {
   return render(
     <QueryClientProvider client={queryClient}>
       <CorrelationCards />
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 }
 

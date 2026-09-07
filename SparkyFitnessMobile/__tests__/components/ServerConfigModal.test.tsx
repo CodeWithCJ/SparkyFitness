@@ -12,13 +12,12 @@ import {
   fetchAuthSettings,
   type AuthSettings,
 } from '../../src/services/api/authService';
-import {
-  saveServerConfig,
-} from '../../src/services/storage';
+import { saveServerConfig } from '../../src/services/storage';
 
 jest.mock('../../src/services/api/authService', () => ({
   login: jest.fn(),
-  LoginError: jest.requireActual('../../src/services/api/authErrors').LoginError,
+  LoginError: jest.requireActual('../../src/services/api/authErrors')
+    .LoginError,
   clearAuthCookies: jest.fn().mockResolvedValue(undefined),
   fetchMfaFactors: jest.fn(),
   verifyTotp: jest.fn(),
@@ -33,7 +32,8 @@ jest.mock('../../src/services/api/authService', () => ({
 
 jest.mock('../../src/services/storage', () => ({
   saveServerConfig: jest.fn().mockResolvedValue(undefined),
-  proxyHeadersToRecord: jest.requireActual('../../src/services/storage').proxyHeadersToRecord,
+  proxyHeadersToRecord: jest.requireActual('../../src/services/storage')
+    .proxyHeadersToRecord,
 }));
 
 jest.mock('../../src/services/LogService', () => ({
@@ -49,13 +49,25 @@ jest.mock('../../src/components/Icon', () => {
 });
 
 const mockLogin = login as jest.MockedFunction<typeof login>;
-const mockClearAuthCookies = clearAuthCookies as jest.MockedFunction<typeof clearAuthCookies>;
-const mockFetchMfaFactors = fetchMfaFactors as jest.MockedFunction<typeof fetchMfaFactors>;
+const mockClearAuthCookies = clearAuthCookies as jest.MockedFunction<
+  typeof clearAuthCookies
+>;
+const mockFetchMfaFactors = fetchMfaFactors as jest.MockedFunction<
+  typeof fetchMfaFactors
+>;
 const mockVerifyTotp = verifyTotp as jest.MockedFunction<typeof verifyTotp>;
-const mockSendEmailOtp = sendEmailOtp as jest.MockedFunction<typeof sendEmailOtp>;
-const mockVerifyEmailOtp = verifyEmailOtp as jest.MockedFunction<typeof verifyEmailOtp>;
-const mockFetchAuthSettings = fetchAuthSettings as jest.MockedFunction<typeof fetchAuthSettings>;
-const mockSaveServerConfig = saveServerConfig as jest.MockedFunction<typeof saveServerConfig>;
+const mockSendEmailOtp = sendEmailOtp as jest.MockedFunction<
+  typeof sendEmailOtp
+>;
+const mockVerifyEmailOtp = verifyEmailOtp as jest.MockedFunction<
+  typeof verifyEmailOtp
+>;
+const mockFetchAuthSettings = fetchAuthSettings as jest.MockedFunction<
+  typeof fetchAuthSettings
+>;
+const mockSaveServerConfig = saveServerConfig as jest.MockedFunction<
+  typeof saveServerConfig
+>;
 
 const URL_PLACEHOLDER = 'https://your-server-url.com';
 const EMAIL_PLACEHOLDER = 'email@example.com';
@@ -75,7 +87,9 @@ const defaultProps = {
   onDismiss: jest.fn(),
 };
 
-function renderModal(props: Partial<React.ComponentProps<typeof ServerConfigModal>> = {}) {
+function renderModal(
+  props: Partial<React.ComponentProps<typeof ServerConfigModal>> = {}
+) {
   return render(<ServerConfigModal {...defaultProps} {...props} />);
 }
 
@@ -114,7 +128,7 @@ async function waitForAuthReady(result: ReturnType<typeof renderModal>) {
 /** Types a URL and waits for the dynamically-fetched auth options to render. */
 async function enterUrl(
   result: ReturnType<typeof renderModal>,
-  url = 'https://my-server.com',
+  url = 'https://my-server.com'
 ) {
   fireEvent.changeText(result.getByPlaceholderText(URL_PLACEHOLDER), url);
   await waitForAuthReady(result);
@@ -164,7 +178,7 @@ describe('ServerConfigModal', () => {
       await enterUrl(result, 'https://a-long-enough-server-url.example.com');
 
       expect(
-        result.getByText('https://a-long-enough-server-url.example.com'),
+        result.getByText('https://a-long-enough-server-url.example.com')
       ).toBeTruthy();
     });
 
@@ -274,7 +288,7 @@ describe('ServerConfigModal', () => {
 
       fireEvent.changeText(
         result.getByPlaceholderText(EMAIL_PLACEHOLDER),
-        'user@example.com',
+        'user@example.com'
       );
 
       await act(async () => {
@@ -301,9 +315,12 @@ describe('ServerConfigModal', () => {
 
       fireEvent.changeText(
         result.getByPlaceholderText(EMAIL_PLACEHOLDER),
-        'user@example.com',
+        'user@example.com'
       );
-      fireEvent.changeText(result.getByPlaceholderText('Password'), 'password123');
+      fireEvent.changeText(
+        result.getByPlaceholderText('Password'),
+        'password123'
+      );
 
       await act(async () => {
         pressConnectButton(result);
@@ -312,14 +329,14 @@ describe('ServerConfigModal', () => {
       expect(mockLogin).toHaveBeenCalledWith(
         'https://my-server.com',
         'user@example.com',
-        'password123',
+        'password123'
       );
       expect(mockSaveServerConfig).toHaveBeenCalledWith(
         expect.objectContaining({
           url: 'https://my-server.com',
           authType: 'session',
           sessionToken: 'new-session-token',
-        }),
+        })
       );
       expect(onSuccess).toHaveBeenCalled();
     });
@@ -335,7 +352,10 @@ describe('ServerConfigModal', () => {
       await waitForForm(result);
       await enterUrl(result, 'https://my-server.com/');
 
-      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
+      fireEvent.changeText(
+        result.getByPlaceholderText(EMAIL_PLACEHOLDER),
+        'a@b.com'
+      );
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
@@ -343,7 +363,7 @@ describe('ServerConfigModal', () => {
       });
 
       expect(mockSaveServerConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ url: 'https://my-server.com' }),
+        expect.objectContaining({ url: 'https://my-server.com' })
       );
     });
 
@@ -368,7 +388,10 @@ describe('ServerConfigModal', () => {
       await waitForForm(result);
       await waitForAuthReady(result);
 
-      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'user@example.com');
+      fireEvent.changeText(
+        result.getByPlaceholderText(EMAIL_PLACEHOLDER),
+        'user@example.com'
+      );
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
@@ -381,7 +404,7 @@ describe('ServerConfigModal', () => {
           url: 'https://existing-server.com',
           authType: 'session',
           sessionToken: 'new-token',
-        }),
+        })
       );
       expect(onSuccess).toHaveBeenCalled();
     });
@@ -395,7 +418,10 @@ describe('ServerConfigModal', () => {
       await waitForForm(result);
       await enterUrl(result);
 
-      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
+      fireEvent.changeText(
+        result.getByPlaceholderText(EMAIL_PLACEHOLDER),
+        'a@b.com'
+      );
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'wrong');
 
       await act(async () => {
@@ -412,7 +438,10 @@ describe('ServerConfigModal', () => {
       await waitForForm(result);
       await enterUrl(result, 'https://server.com');
 
-      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
+      fireEvent.changeText(
+        result.getByPlaceholderText(EMAIL_PLACEHOLDER),
+        'a@b.com'
+      );
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
@@ -420,7 +449,9 @@ describe('ServerConfigModal', () => {
       });
 
       expect(
-        result.getByText('Could not connect to server. Check the URL and try again.'),
+        result.getByText(
+          'Could not connect to server. Check the URL and try again.'
+        )
       ).toBeTruthy();
     });
   });
@@ -452,7 +483,10 @@ describe('ServerConfigModal', () => {
       await enterUrl(result);
 
       fireEvent.press(result.getByText('API Key'));
-      fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'my-api-key');
+      fireEvent.changeText(
+        result.getByPlaceholderText('Uds3d8i...'),
+        'my-api-key'
+      );
 
       await act(async () => {
         pressConnectButton(result);
@@ -464,14 +498,14 @@ describe('ServerConfigModal', () => {
           headers: expect.objectContaining({
             Authorization: 'Bearer my-api-key',
           }),
-        }),
+        })
       );
       expect(mockSaveServerConfig).toHaveBeenCalledWith(
         expect.objectContaining({
           url: 'https://my-server.com',
           apiKey: 'my-api-key',
           authType: 'apiKey',
-        }),
+        })
       );
       expect(onSuccess).toHaveBeenCalled();
     });
@@ -488,18 +522,25 @@ describe('ServerConfigModal', () => {
       await enterUrl(result);
 
       fireEvent.press(result.getByText('API Key'));
-      fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'bad-key');
+      fireEvent.changeText(
+        result.getByPlaceholderText('Uds3d8i...'),
+        'bad-key'
+      );
 
       await act(async () => {
         pressConnectButton(result);
       });
 
-      expect(result.getByText('Invalid API key. Please check and try again.')).toBeTruthy();
+      expect(
+        result.getByText('Invalid API key. Please check and try again.')
+      ).toBeTruthy();
       expect(mockSaveServerConfig).not.toHaveBeenCalled();
     });
 
     it('shows error on connection failure', async () => {
-      global.fetch = jest.fn().mockRejectedValue(new Error('Network error')) as jest.Mock;
+      global.fetch = jest
+        .fn()
+        .mockRejectedValue(new Error('Network error')) as jest.Mock;
 
       const result = renderModal();
       await waitForForm(result);
@@ -513,7 +554,7 @@ describe('ServerConfigModal', () => {
       });
 
       expect(
-        result.getByText('Could not connect to server: Network error'),
+        result.getByText('Could not connect to server: Network error')
       ).toBeTruthy();
       expect(mockSaveServerConfig).not.toHaveBeenCalled();
     });
@@ -522,7 +563,7 @@ describe('ServerConfigModal', () => {
   describe('MFA flow', () => {
     async function navigateToMfa(
       result: ReturnType<typeof renderModal>,
-      factors = { mfaTotpEnabled: true, mfaEmailEnabled: false },
+      factors = { mfaTotpEnabled: true, mfaEmailEnabled: false }
     ) {
       mockLogin.mockResolvedValue({ type: 'mfa_required' });
       mockFetchMfaFactors.mockResolvedValue(factors);
@@ -530,7 +571,10 @@ describe('ServerConfigModal', () => {
       await waitForForm(result);
       await enterUrl(result);
 
-      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'user@test.com');
+      fireEvent.changeText(
+        result.getByPlaceholderText(EMAIL_PLACEHOLDER),
+        'user@test.com'
+      );
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
@@ -544,7 +588,7 @@ describe('ServerConfigModal', () => {
 
       expect(result.getByText('Two-Factor Authentication')).toBeTruthy();
       expect(
-        result.getByText('Enter the code from your authenticator app.'),
+        result.getByText('Enter the code from your authenticator app.')
       ).toBeTruthy();
     });
 
@@ -564,12 +608,15 @@ describe('ServerConfigModal', () => {
         fireEvent.press(result.getByText('Verify'));
       });
 
-      expect(mockVerifyTotp).toHaveBeenCalledWith('https://my-server.com', '123456');
+      expect(mockVerifyTotp).toHaveBeenCalledWith(
+        'https://my-server.com',
+        '123456'
+      );
       expect(mockSaveServerConfig).toHaveBeenCalledWith(
         expect.objectContaining({
           authType: 'session',
           sessionToken: 'mfa-token',
-        }),
+        })
       );
       expect(onSuccess).toHaveBeenCalled();
     });
@@ -605,8 +652,8 @@ describe('ServerConfigModal', () => {
 
       expect(
         result.getByText(
-          'Tap the button below to receive a verification code by email.',
-        ),
+          'Tap the button below to receive a verification code by email.'
+        )
       ).toBeTruthy();
 
       await act(async () => {
@@ -614,7 +661,9 @@ describe('ServerConfigModal', () => {
       });
 
       expect(mockSendEmailOtp).toHaveBeenCalled();
-      expect(result.getByText('Enter the code sent to your email.')).toBeTruthy();
+      expect(
+        result.getByText('Enter the code sent to your email.')
+      ).toBeTruthy();
       expect(result.getByText('Resend Code')).toBeTruthy();
 
       fireEvent.changeText(result.getByPlaceholderText('000000'), '654321');
@@ -625,7 +674,7 @@ describe('ServerConfigModal', () => {
 
       expect(mockVerifyEmailOtp).toHaveBeenCalledWith(
         'https://my-server.com',
-        '654321',
+        '654321'
       );
       expect(onSuccess).toHaveBeenCalled();
     });
@@ -656,7 +705,10 @@ describe('ServerConfigModal', () => {
       await waitForForm(result);
       await enterUrl(result);
 
-      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
+      fireEvent.changeText(
+        result.getByPlaceholderText(EMAIL_PLACEHOLDER),
+        'a@b.com'
+      );
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
@@ -665,9 +717,7 @@ describe('ServerConfigModal', () => {
     }
 
     it('shows invalid code error', async () => {
-      mockVerifyTotp.mockRejectedValue(
-        new LoginError('invalid code', 400),
-      );
+      mockVerifyTotp.mockRejectedValue(new LoginError('invalid code', 400));
 
       const result = renderModal();
       await setupMfaForm(result);
@@ -679,7 +729,7 @@ describe('ServerConfigModal', () => {
       });
 
       expect(
-        result.getByText('Invalid verification code. Please try again.'),
+        result.getByText('Invalid verification code. Please try again.')
       ).toBeTruthy();
     });
 
@@ -696,13 +746,15 @@ describe('ServerConfigModal', () => {
       });
 
       expect(
-        result.getByText('Too many attempts. Please wait a moment and try again.'),
+        result.getByText(
+          'Too many attempts. Please wait a moment and try again.'
+        )
       ).toBeTruthy();
     });
 
     it('returns to form on expired session', async () => {
       mockVerifyTotp.mockRejectedValue(
-        new LoginError('INVALID_TWO_FACTOR_COOKIE', 401),
+        new LoginError('INVALID_TWO_FACTOR_COOKIE', 401)
       );
 
       const result = renderModal();
@@ -733,7 +785,7 @@ describe('ServerConfigModal', () => {
       });
 
       expect(
-        result.getByText('Verification failed. Please try again.'),
+        result.getByText('Verification failed. Please try again.')
       ).toBeTruthy();
     });
 
@@ -744,14 +796,17 @@ describe('ServerConfigModal', () => {
         mfaEmailEnabled: true,
       });
       mockSendEmailOtp.mockRejectedValue(
-        new LoginError('Email send failed', 500),
+        new LoginError('Email send failed', 500)
       );
 
       const result = renderModal();
       await waitForForm(result);
       await enterUrl(result);
 
-      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
+      fireEvent.changeText(
+        result.getByPlaceholderText(EMAIL_PLACEHOLDER),
+        'a@b.com'
+      );
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
@@ -786,7 +841,10 @@ describe('ServerConfigModal', () => {
       await waitForForm(result);
       await enterUrl(result);
 
-      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
+      fireEvent.changeText(
+        result.getByPlaceholderText(EMAIL_PLACEHOLDER),
+        'a@b.com'
+      );
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'wrong');
 
       await act(async () => {
@@ -843,7 +901,7 @@ describe('ServerConfigModal', () => {
       // Change the URL
       fireEvent.changeText(
         result.getByDisplayValue('https://old-server.com'),
-        'https://new-server.com',
+        'https://new-server.com'
       );
 
       await act(async () => {
@@ -858,7 +916,7 @@ describe('ServerConfigModal', () => {
           authType: 'session',
           sessionToken: 'old-token',
           proxyHeaders: [{ name: 'X-Auth', value: 'abc' }],
-        }),
+        })
       );
       expect(onSuccess).toHaveBeenCalled();
     });
@@ -869,7 +927,7 @@ describe('ServerConfigModal', () => {
 
       fireEvent.changeText(
         result.getByDisplayValue('https://old-server.com'),
-        '',
+        ''
       );
 
       await act(async () => {
@@ -888,7 +946,10 @@ describe('ServerConfigModal', () => {
 
       // Switch to API Key tab and enter a key
       fireEvent.press(result.getByText('API Key'));
-      fireEvent.changeText(result.getByPlaceholderText('Uds3d8i...'), 'new-api-key');
+      fireEvent.changeText(
+        result.getByPlaceholderText('Uds3d8i...'),
+        'new-api-key'
+      );
 
       await act(async () => {
         fireEvent.press(result.getByText('Save'));
@@ -900,7 +961,7 @@ describe('ServerConfigModal', () => {
           authType: 'apiKey',
           apiKey: 'new-api-key',
           sessionToken: '',
-        }),
+        })
       );
       expect(onSuccess).toHaveBeenCalled();
     });
@@ -923,7 +984,7 @@ describe('ServerConfigModal', () => {
           id: 'cfg-1',
           authType: 'session',
           sessionToken: 'old-token',
-        }),
+        })
       );
     });
   });
@@ -950,7 +1011,10 @@ describe('ServerConfigModal', () => {
       await waitForForm(result);
       await waitForAuthReady(result);
 
-      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'user@example.com');
+      fireEvent.changeText(
+        result.getByPlaceholderText(EMAIL_PLACEHOLDER),
+        'user@example.com'
+      );
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
@@ -963,7 +1027,7 @@ describe('ServerConfigModal', () => {
           apiKey: 'saved-fallback-key',
           authType: 'session',
           sessionToken: 'new-session-token',
-        }),
+        })
       );
     });
   });
@@ -977,7 +1041,10 @@ describe('ServerConfigModal', () => {
       await waitForForm(result);
       await enterUrl(result);
 
-      fireEvent.changeText(result.getByPlaceholderText(EMAIL_PLACEHOLDER), 'a@b.com');
+      fireEvent.changeText(
+        result.getByPlaceholderText(EMAIL_PLACEHOLDER),
+        'a@b.com'
+      );
       fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
 
       await act(async () => {
@@ -985,7 +1052,7 @@ describe('ServerConfigModal', () => {
       });
 
       expect(
-        result.getByText('Enter the code from your authenticator app.'),
+        result.getByText('Enter the code from your authenticator app.')
       ).toBeTruthy();
     });
   });

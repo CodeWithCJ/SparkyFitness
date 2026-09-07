@@ -31,7 +31,9 @@ const SegmentedControl = <T extends string>({
         >
           <Text
             className={`text-sm font-medium ${
-              activeKey === segment.key ? 'text-text-primary' : 'text-text-muted'
+              activeKey === segment.key
+                ? 'text-text-primary'
+                : 'text-text-muted'
             }`}
           >
             {segment.label}

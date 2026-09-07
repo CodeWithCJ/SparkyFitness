@@ -1,5 +1,9 @@
 import { useCallback, useMemo } from 'react';
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import {
   fetchWorkoutPresetsPage,
   searchWorkoutPresets,
@@ -18,7 +22,7 @@ const MIN_SEARCH_LENGTH = 2;
 
 export function useWorkoutPresetsLibrary(
   searchText: string,
-  options?: UseWorkoutPresetsLibraryOptions,
+  options?: UseWorkoutPresetsLibraryOptions
 ) {
   const { enabled = true } = options ?? {};
   const queryClient = useQueryClient();
@@ -31,7 +35,10 @@ export function useWorkoutPresetsLibrary(
   // same Query, and the conflicting expectations about `data` shape crash
   // react-query inside hasNextPage/getNextPageParam ("Cannot read property
   // 'length' of undefined").
-  const listQueryKey = useMemo(() => ['workoutPresetsLibraryList'] as const, []);
+  const listQueryKey = useMemo(
+    () => ['workoutPresetsLibraryList'] as const,
+    []
+  );
   const searchQueryKey = workoutPresetsLibraryQueryKey(debouncedSearch);
 
   const listQuery = useInfiniteQuery({
@@ -47,7 +54,8 @@ export function useWorkoutPresetsLibrary(
 
   const searchQuery = useQuery({
     queryKey: searchQueryKey,
-    queryFn: () => searchWorkoutPresets(debouncedSearch, { limit: SEARCH_LIMIT }),
+    queryFn: () =>
+      searchWorkoutPresets(debouncedSearch, { limit: SEARCH_LIMIT }),
     enabled: enabled && isSearchActive,
     staleTime: 1000 * 60 * 5,
   });
@@ -96,9 +104,11 @@ export function useWorkoutPresetsLibrary(
   return {
     presets,
     isLoading,
-    isSearching: isFetching && (isSearchActive || !listQuery.isFetchingNextPage),
+    isSearching:
+      isFetching && (isSearchActive || !listQuery.isFetchingNextPage),
     isError: activeQuery.isError && presets.length === 0,
-    isFetchNextPageError: !isSearchActive && listQuery.isError && presets.length > 0,
+    isFetchNextPageError:
+      !isSearchActive && listQuery.isError && presets.length > 0,
     hasNextPage: !isSearchActive && (listQuery.hasNextPage ?? false),
     isFetchingNextPage: !isSearchActive && listQuery.isFetchingNextPage,
     loadMore,

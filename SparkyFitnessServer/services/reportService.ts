@@ -61,6 +61,7 @@ interface MeasurementEntry {
   weight?: number | string | null;
   height?: number | string | null;
   body_fat_percentage?: number | string | null;
+  bmr?: number | string | null;
   [key: string]: unknown;
 }
 
@@ -305,7 +306,14 @@ async function getReportsData(
           latestMeasurement?.body_fat_percentage !== undefined
             ? Number(latestMeasurement.body_fat_percentage)
             : undefined;
-        if (weight && height && age && gender && bmrAlgorithm) {
+        const measuredBmr =
+          latestMeasurement?.bmr !== null &&
+          latestMeasurement?.bmr !== undefined
+            ? Number(latestMeasurement.bmr)
+            : undefined;
+        if (measuredBmr && measuredBmr >= 300 && measuredBmr <= 10000) {
+          day.bmr = measuredBmr;
+        } else if (weight && height && age && gender && bmrAlgorithm) {
           try {
             day.bmr = bmrService.calculateBmr(
               bmrAlgorithm,

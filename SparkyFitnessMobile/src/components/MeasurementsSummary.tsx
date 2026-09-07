@@ -22,7 +22,8 @@ interface MeasurementsSummaryProps {
   customMeasurements?: CustomMeasurementEntry[];
 }
 
-const formatNumber = (value: number): string => String(Math.round(value * 10) / 10);
+const formatNumber = (value: number): string =>
+  String(Math.round(value * 10) / 10);
 
 const formatWeight = (kg: number, mode: 'kg' | 'lbs' | 'st_lbs'): string => {
   if (mode === 'st_lbs') {
@@ -48,7 +49,7 @@ const formatBodyLength = (cm: number, unit: 'cm' | 'inches'): string => {
 
 const formatCustomValue = (
   value: string,
-  dataType: string | null | undefined,
+  dataType: string | null | undefined
 ): string => {
   if (dataType !== 'numeric') {
     return value;
@@ -76,27 +77,85 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
 
   const { t } = useTranslation();
 
-  if (!measurements && (!customMeasurements || customMeasurements.length === 0)) return null;
+  if (!measurements && (!customMeasurements || customMeasurements.length === 0))
+    return null;
 
-  const localizedMeasurement = (key: 'weight' | 'bodyFatPercentage' | 'height' | 'neck' | 'waist' | 'hips' | 'steps') => {
+  const localizedMeasurement = (
+    key:
+      | 'weight'
+      | 'bodyFatPercentage'
+      | 'height'
+      | 'neck'
+      | 'waist'
+      | 'hips'
+      | 'steps'
+  ) => {
     switch (key) {
-      case 'weight': return t('measurements.fields.weight', { defaultValue: 'Weight' });
-      case 'bodyFatPercentage': return t('measurements.fields.bodyFatPercentage', { defaultValue: 'Body fat %' });
-      case 'height': return t('measurements.fields.height', { defaultValue: 'Height' });
-      case 'neck': return t('measurements.fields.neck', { defaultValue: 'Neck' });
-      case 'waist': return t('measurements.fields.waist', { defaultValue: 'Waist' });
-      case 'hips': return t('measurements.fields.hips', { defaultValue: 'Hips' });
-      case 'steps': return t('measurements.fields.steps', { defaultValue: 'Steps' });
+      case 'weight':
+        return t('measurements.fields.weight', { defaultValue: 'Weight' });
+      case 'bodyFatPercentage':
+        return t('measurements.fields.bodyFatPercentage', {
+          defaultValue: 'Body fat %',
+        });
+      case 'height':
+        return t('measurements.fields.height', { defaultValue: 'Height' });
+      case 'neck':
+        return t('measurements.fields.neck', { defaultValue: 'Neck' });
+      case 'waist':
+        return t('measurements.fields.waist', { defaultValue: 'Waist' });
+      case 'hips':
+        return t('measurements.fields.hips', { defaultValue: 'Hips' });
+      case 'steps':
+        return t('measurements.fields.steps', { defaultValue: 'Steps' });
     }
   };
-  const rows: { kind: MeasurementKind | 'custom'; label: string; value: string }[] = [];
-  if (measurements?.weight != null) rows.push({ kind: 'weight', label: localizedMeasurement('weight'), value: formatWeight(measurements.weight, weightMode) });
-  if (measurements?.body_fat_percentage != null) rows.push({ kind: 'body_fat_percentage', label: localizedMeasurement('bodyFatPercentage'), value: `${formatNumber(measurements.body_fat_percentage)}%` });
-  if (measurements?.height != null) rows.push({ kind: 'height', label: localizedMeasurement('height'), value: formatHeight(measurements.height, heightMode) });
-  if (measurements?.neck != null) rows.push({ kind: 'neck', label: localizedMeasurement('neck'), value: formatBodyLength(measurements.neck, bodyUnit) });
-  if (measurements?.waist != null) rows.push({ kind: 'waist', label: localizedMeasurement('waist'), value: formatBodyLength(measurements.waist, bodyUnit) });
-  if (measurements?.hips != null) rows.push({ kind: 'hips', label: localizedMeasurement('hips'), value: formatBodyLength(measurements.hips, bodyUnit) });
-  if (measurements?.steps != null) rows.push({ kind: 'steps', label: localizedMeasurement('steps'), value: String(measurements.steps) });
+  const rows: {
+    kind: MeasurementKind | 'custom';
+    label: string;
+    value: string;
+  }[] = [];
+  if (measurements?.weight != null)
+    rows.push({
+      kind: 'weight',
+      label: localizedMeasurement('weight'),
+      value: formatWeight(measurements.weight, weightMode),
+    });
+  if (measurements?.body_fat_percentage != null)
+    rows.push({
+      kind: 'body_fat_percentage',
+      label: localizedMeasurement('bodyFatPercentage'),
+      value: `${formatNumber(measurements.body_fat_percentage)}%`,
+    });
+  if (measurements?.height != null)
+    rows.push({
+      kind: 'height',
+      label: localizedMeasurement('height'),
+      value: formatHeight(measurements.height, heightMode),
+    });
+  if (measurements?.neck != null)
+    rows.push({
+      kind: 'neck',
+      label: localizedMeasurement('neck'),
+      value: formatBodyLength(measurements.neck, bodyUnit),
+    });
+  if (measurements?.waist != null)
+    rows.push({
+      kind: 'waist',
+      label: localizedMeasurement('waist'),
+      value: formatBodyLength(measurements.waist, bodyUnit),
+    });
+  if (measurements?.hips != null)
+    rows.push({
+      kind: 'hips',
+      label: localizedMeasurement('hips'),
+      value: formatBodyLength(measurements.hips, bodyUnit),
+    });
+  if (measurements?.steps != null)
+    rows.push({
+      kind: 'steps',
+      label: localizedMeasurement('steps'),
+      value: String(measurements.steps),
+    });
 
   if (customMeasurements) {
     // Diary tiles only show MANUAL custom entries (strict source contract).
@@ -121,23 +180,36 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
 
   const header = (
     <View className="flex-row items-center gap-2 mb-2 px-1">
-      <Text className="text-base font-bold text-text-secondary flex-1">{t('measurements.title', { defaultValue: 'Measurements' })}</Text>
+      <Text className="text-base font-bold text-text-secondary flex-1">
+        {t('measurements.title', { defaultValue: 'Measurements' })}
+      </Text>
       {onPress && <Icon name="add" size={14} color={accentPrimary} />}
     </View>
   );
 
   const tiles = rows.map((row, idx) => {
-    const IconComponent = row.kind !== 'custom' ? MeasurementIcons[row.kind] : null;
+    const IconComponent =
+      row.kind !== 'custom' ? MeasurementIcons[row.kind] : null;
     return (
-      <View key={row.kind === 'custom' ? `custom-${idx}` : row.kind} className="w-[48%] mb-2">
+      <View
+        key={row.kind === 'custom' ? `custom-${idx}` : row.kind}
+        className="w-[48%] mb-2"
+      >
         <View className="bg-surface rounded-xl py-3 px-3 shadow-sm flex-row items-center">
           {IconComponent ? (
-            <IconComponent size={56} color={iconColor} accentColor={accentPrimary} />
+            <IconComponent
+              size={56}
+              color={iconColor}
+              accentColor={accentPrimary}
+            />
           ) : (
             <Icon name="chart-bar" size={32} color={accentPrimary} />
           )}
           <View className="flex-1 ml-2 items-center">
-            <Text className="text-lg font-bold text-text-primary" numberOfLines={1}>
+            <Text
+              className="text-lg font-bold text-text-primary"
+              numberOfLines={1}
+            >
               {row.value}
             </Text>
             <Text className="text-sm text-text-secondary" numberOfLines={1}>
@@ -162,7 +234,9 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
         <Pressable
           onPress={onPress}
           accessibilityRole="button"
-          accessibilityLabel={t('measurements.edit', { defaultValue: 'Edit measurements' })}
+          accessibilityLabel={t('measurements.edit', {
+            defaultValue: 'Edit measurements',
+          })}
         >
           {content}
         </Pressable>

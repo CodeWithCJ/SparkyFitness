@@ -1,7 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import i18n from '../localization/i18n';
-import { listCycles, createManualCycle, updateCycle, deleteCycle } from '../services/api/cycleApi';
+import {
+  listCycles,
+  createManualCycle,
+  updateCycle,
+  deleteCycle,
+} from '../services/api/cycleApi';
 import { addLog } from '../services/LogService';
 import { cyclesQueryKey } from './queryKeys';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
@@ -30,8 +35,12 @@ export function useCycleHistory() {
       invalidateCaches();
       Toast.show({
         type: 'success',
-        text1: i18n.t('cycleHistory.toast.success', { defaultValue: 'Success' }),
-        text2: i18n.t('cycleHistory.toast.manualAdded', { defaultValue: 'Manual cycle added successfully.' }),
+        text1: i18n.t('cycleHistory.toast.success', {
+          defaultValue: 'Success',
+        }),
+        text2: i18n.t('cycleHistory.toast.manualAdded', {
+          defaultValue: 'Manual cycle added successfully.',
+        }),
       });
     },
     onError: (err) => {
@@ -39,7 +48,9 @@ export function useCycleHistory() {
       Toast.show({
         type: 'error',
         text1: i18n.t('cycleHistory.toast.error', { defaultValue: 'Error' }),
-        text2: i18n.t('cycleHistory.toast.manualAddFailed', { defaultValue: 'Could not add manual cycle entry.' }),
+        text2: i18n.t('cycleHistory.toast.manualAddFailed', {
+          defaultValue: 'Could not add manual cycle entry.',
+        }),
       });
     },
   });
@@ -51,8 +62,12 @@ export function useCycleHistory() {
       invalidateCaches();
       Toast.show({
         type: 'success',
-        text1: i18n.t('cycleHistory.toast.success', { defaultValue: 'Success' }),
-        text2: i18n.t('cycleHistory.toast.updated', { defaultValue: 'Cycle entry updated successfully.' }),
+        text1: i18n.t('cycleHistory.toast.success', {
+          defaultValue: 'Success',
+        }),
+        text2: i18n.t('cycleHistory.toast.updated', {
+          defaultValue: 'Cycle entry updated successfully.',
+        }),
       });
     },
     onError: (err) => {
@@ -60,7 +75,9 @@ export function useCycleHistory() {
       Toast.show({
         type: 'error',
         text1: i18n.t('cycleHistory.toast.error', { defaultValue: 'Error' }),
-        text2: i18n.t('cycleHistory.toast.updateFailed', { defaultValue: 'Could not update cycle entry.' }),
+        text2: i18n.t('cycleHistory.toast.updateFailed', {
+          defaultValue: 'Could not update cycle entry.',
+        }),
       });
     },
   });
@@ -71,8 +88,12 @@ export function useCycleHistory() {
       invalidateCaches();
       Toast.show({
         type: 'success',
-        text1: i18n.t('cycleHistory.toast.success', { defaultValue: 'Success' }),
-        text2: i18n.t('cycleHistory.toast.deleted', { defaultValue: 'Cycle entry deleted successfully.' }),
+        text1: i18n.t('cycleHistory.toast.success', {
+          defaultValue: 'Success',
+        }),
+        text2: i18n.t('cycleHistory.toast.deleted', {
+          defaultValue: 'Cycle entry deleted successfully.',
+        }),
       });
     },
     onError: (err) => {
@@ -80,7 +101,9 @@ export function useCycleHistory() {
       Toast.show({
         type: 'error',
         text1: i18n.t('cycleHistory.toast.error', { defaultValue: 'Error' }),
-        text2: i18n.t('cycleHistory.toast.deleteFailed', { defaultValue: 'Could not delete cycle entry.' }),
+        text2: i18n.t('cycleHistory.toast.deleteFailed', {
+          defaultValue: 'Could not delete cycle entry.',
+        }),
       });
     },
   });

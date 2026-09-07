@@ -1,8 +1,16 @@
-import { getToolDisplay, isLookupTool, CHAT_SUGGESTIONS } from '../../src/constants/chat';
+import {
+  getToolDisplay,
+  isLookupTool,
+  CHAT_SUGGESTIONS,
+} from '../../src/constants/chat';
 
 describe('getToolDisplay', () => {
   it('maps the high-traffic logging tools to friendly labels + icons', () => {
-    expect(getToolDisplay('sparky_manage_food')).toEqual({ labelKey: 'chat.tools.food', defaultLabel: 'Food', icon: 'food' });
+    expect(getToolDisplay('sparky_manage_food')).toEqual({
+      labelKey: 'chat.tools.food',
+      defaultLabel: 'Food',
+      icon: 'food',
+    });
     expect(getToolDisplay('sparky_manage_exercise')).toEqual({
       labelKey: 'chat.tools.exercise',
       defaultLabel: 'Exercise',
@@ -13,7 +21,11 @@ describe('getToolDisplay', () => {
       defaultLabel: 'Check-in',
       icon: 'measurements',
     });
-    expect(getToolDisplay('sparky_manage_goals')).toEqual({ labelKey: 'chat.tools.goals', defaultLabel: 'Goals', icon: 'flame' });
+    expect(getToolDisplay('sparky_manage_goals')).toEqual({
+      labelKey: 'chat.tools.goals',
+      defaultLabel: 'Goals',
+      icon: 'flame',
+    });
   });
 
   it('labels sparky_get_* tools as "Looked up …" with the search icon', () => {

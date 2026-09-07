@@ -25,7 +25,11 @@ describe('draftExercisesReducer REPLACE_EXERCISE', () => {
     const next = draftExercisesReducer(exercises, {
       type: 'REPLACE_EXERCISE',
       clientId: 'ex-1',
-      exercise: { id: 'exercise-2', name: 'Squat', category: 'strength' } as Exercise,
+      exercise: {
+        id: 'exercise-2',
+        name: 'Squat',
+        category: 'strength',
+      } as Exercise,
       setClientId: 'new-set',
       preserveSets: true,
     });
@@ -33,10 +37,10 @@ describe('draftExercisesReducer REPLACE_EXERCISE', () => {
     expect(next[0].exerciseId).toBe('exercise-2');
     expect(next[0].sets).toHaveLength(2);
     expect(next[0].sets[0]).toEqual(
-      expect.objectContaining({ clientId: 'set-1', weight: '60', reps: '8' }),
+      expect.objectContaining({ clientId: 'set-1', weight: '60', reps: '8' })
     );
     expect(next[0].sets[1]).toEqual(
-      expect.objectContaining({ clientId: 'set-2', weight: '70', reps: '6' }),
+      expect.objectContaining({ clientId: 'set-2', weight: '70', reps: '6' })
     );
   });
 
@@ -46,7 +50,11 @@ describe('draftExercisesReducer REPLACE_EXERCISE', () => {
     const next = draftExercisesReducer(exercises, {
       type: 'REPLACE_EXERCISE',
       clientId: 'ex-1',
-      exercise: { id: 'exercise-3', name: 'Plank', category: 'isometric' } as Exercise,
+      exercise: {
+        id: 'exercise-3',
+        name: 'Plank',
+        category: 'isometric',
+      } as Exercise,
       setClientId: 'new-set',
       preserveSets: true,
     });
@@ -69,7 +77,11 @@ describe('draftExercisesReducer REPLACE_EXERCISE', () => {
     const next = draftExercisesReducer(exercises, {
       type: 'REPLACE_EXERCISE',
       clientId: 'ex-1',
-      exercise: { id: 'exercise-2', name: 'Squat', category: 'strength' } as Exercise,
+      exercise: {
+        id: 'exercise-2',
+        name: 'Squat',
+        category: 'strength',
+      } as Exercise,
       setClientId: 'new-set',
       preserveSets: false,
     });

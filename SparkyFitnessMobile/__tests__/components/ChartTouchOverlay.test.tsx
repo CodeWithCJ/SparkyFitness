@@ -56,13 +56,13 @@ describe('ChartTouchOverlay', () => {
         onSelect={onSelect}
         onClear={onClear}
         testIDPrefix="touch-overlay"
-      />,
+      />
     );
 
     fireEvent(
       screen.getByTestId('touch-overlay'),
       'touchStart',
-      createTouchEvent(25, 20),
+      createTouchEvent(25, 20)
     );
 
     expect(onSelect).not.toHaveBeenCalled();
@@ -76,7 +76,7 @@ describe('ChartTouchOverlay', () => {
     fireEvent(
       screen.getByTestId('touch-overlay'),
       'touchEnd',
-      createTouchEvent(25, 20),
+      createTouchEvent(25, 20)
     );
 
     expect(onClear).toHaveBeenCalledTimes(1);
@@ -89,18 +89,18 @@ describe('ChartTouchOverlay', () => {
         layout={layout}
         onSelect={onSelect}
         testIDPrefix="touch-overlay"
-      />,
+      />
     );
 
     fireEvent(
       screen.getByTestId('touch-overlay'),
       'touchStart',
-      createTouchEvent(25, 20),
+      createTouchEvent(25, 20)
     );
     fireEvent(
       screen.getByTestId('touch-overlay'),
       'touchMove',
-      createTouchEvent(25, 35),
+      createTouchEvent(25, 35)
     );
 
     act(() => {
@@ -119,13 +119,13 @@ describe('ChartTouchOverlay', () => {
         onSelect={onSelect}
         onClear={onClear}
         testIDPrefix="touch-overlay"
-      />,
+      />
     );
 
     fireEvent(
       screen.getByTestId('touch-overlay'),
       'touchStart',
-      createTouchEvent(10, 20),
+      createTouchEvent(10, 20)
     );
     act(() => {
       jest.advanceTimersByTime(CHART_TOUCH_LONG_PRESS_DELAY_MS);
@@ -134,7 +134,7 @@ describe('ChartTouchOverlay', () => {
     fireEvent(
       screen.getByTestId('touch-overlay'),
       'touchMove',
-      createTouchEvent(45, 20),
+      createTouchEvent(45, 20)
     );
 
     expect(onSelect).toHaveBeenNthCalledWith(1, 0);

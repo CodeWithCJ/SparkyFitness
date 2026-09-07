@@ -20,7 +20,12 @@ const REPEAT_MINUTES = [10, 20, 30];
 const REMINDER_LOOKAHEAD_DAYS = 7;
 const schedulingLock = new Set<string>();
 
-function medReminderKey(medicationId: string, scheduleId: string, date: string, timeOfDay: string) {
+function medReminderKey(
+  medicationId: string,
+  scheduleId: string,
+  date: string,
+  timeOfDay: string
+) {
   return `med_${date}_${medicationId}_${scheduleId}_${timeOfDay}`;
 }
 
@@ -29,24 +34,28 @@ function repeatMedReminderKey(baseKey: string, offset: number) {
 }
 
 async function cancelReminders(ids: string[]): Promise<void> {
-  await Promise.all(ids.map(async (id) => {
-    try {
-      await Notifications.cancelScheduledNotificationAsync(id);
-    } catch {
-      // already cancelled or invalid
-    }
-  }));
+  await Promise.all(
+    ids.map(async (id) => {
+      try {
+        await Notifications.cancelScheduledNotificationAsync(id);
+      } catch {
+        // already cancelled or invalid
+      }
+    })
+  );
 }
 
 async function scheduleReminder(
   body: string,
   triggerDate: Date,
-  data: Record<string, string>,
+  data: Record<string, string>
 ): Promise<string | null> {
   try {
     return await Notifications.scheduleNotificationAsync({
       content: {
-        title: i18n.t('medications.notificationTitle', { defaultValue: 'Medication reminder' }),
+        title: i18n.t('medications.notificationTitle', {
+          defaultValue: 'Medication reminder',
+        }),
         body,
         sound: true,
         categoryIdentifier: MEDICATION_REMINDER_CATEGORY,
@@ -79,7 +88,7 @@ async function scheduleReminder(
  */
 export async function reconcileMedicationReminders(
   medications: MedicationDetail[],
-  entries: MedicationEntry[],
+  entries: MedicationEntry[]
 ): Promise<void> {
   if (schedulingLock.has('medication-reminders')) return;
   schedulingLock.add('medication-reminders');
@@ -110,8 +119,8 @@ export async function reconcileMedicationReminders(
     const today = getTodayDate();
     const tz = getDeviceTimezone();
     const hideNames = prefs.medicationReminderHideNames;
-    const reminderLocale = i18n.resolvedLanguage?.split('-')[0] === 'pl' ? 'pl' : 'en';
-
+    const reminderLocale =
+      i18n.resolvedLanguage?.split('-')[0] === 'pl' ? 'pl' : 'en';
 
     const desiredKeys = new Set<string>();
     const dosesToSchedule: {
@@ -130,11 +139,19 @@ export async function reconcileMedicationReminders(
         if (!timeOfDay) continue;
 
         // Entries only cover today; future doses can't have been logged yet.
-        if (isToday && isDoseLogged(entries, due.medication.id, due.schedule.id)) {
+        if (
+          isToday &&
+          isDoseLogged(entries, due.medication.id, due.schedule.id)
+        ) {
           continue;
         }
 
-        const baseKey = medReminderKey(due.medication.id, due.schedule.id, date, timeOfDay);
+        const baseKey = medReminderKey(
+          due.medication.id,
+          due.schedule.id,
+          date,
+          timeOfDay
+        );
         desiredKeys.add(baseKey);
 
         const withRepeats = isToday && prefs.medicationReminderRepeats;
@@ -156,26 +173,37 @@ export async function reconcileMedicationReminders(
         if (!key || !desiredKeys.has(key)) return true;
         // Notification copy is language-sensitive as well as privacy-sensitive:
         // changing EN ↔ PL must replace pending notifications created earlier.
-        return (n.content.data.hideNames === 'true') !== hideNames
-          || (n.content.data.locale ?? 'en') !== reminderLocale;
-
+        return (
+          (n.content.data.hideNames === 'true') !== hideNames ||
+          (n.content.data.locale ?? 'en') !== reminderLocale
+        );
       })
       .map((n) => n.identifier);
     if (toCancel.length > 0) await cancelReminders(toCancel);
 
     const pendingKeys = new Set(
       allPending
-        .filter((n) => n.content.data?.medicationId && toCancel.indexOf(n.identifier) === -1)
-        .map((n) => n.content.data?.key as string),
+        .filter(
+          (n) =>
+            n.content.data?.medicationId &&
+            toCancel.indexOf(n.identifier) === -1
+        )
+        .map((n) => n.content.data?.key as string)
     );
 
     for (const { due, timeOfDay, date, withRepeats } of dosesToSchedule) {
-      const baseKey = medReminderKey(due.medication.id, due.schedule.id, date, timeOfDay);
+      const baseKey = medReminderKey(
+        due.medication.id,
+        due.schedule.id,
+        date,
+        timeOfDay
+      );
 
       const [hours, minutes] = timeOfDay.split(':').map(Number);
-      const doseSuffix = due.medication.dose_amount != null
-        ? ` (${due.medication.dose_amount}${due.medication.dose_unit ? ` ${due.medication.dose_unit}` : ''})`
-        : '';
+      const doseSuffix =
+        due.medication.dose_amount != null
+          ? ` (${due.medication.dose_amount}${due.medication.dose_unit ? ` ${due.medication.dose_unit}` : ''})`
+          : '';
       const body = hideNames
         ? i18n.t('medications.notificationScheduledDose', {
             defaultValue: 'You have a scheduled dose',
@@ -193,7 +221,6 @@ export async function reconcileMedicationReminders(
         baseKey,
         hideNames: String(hideNames),
         locale: reminderLocale,
-
       };
 
       const [year, month, day] = date.split('-').map(Number);
@@ -210,7 +237,10 @@ export async function reconcileMedicationReminders(
           if (pendingKeys.has(repeatKey)) continue;
           const repeatDate = new Date(triggerDate.getTime() + offset * 60000);
           if (repeatDate.getTime() > Date.now()) {
-            await scheduleReminder(body, repeatDate, { ...data, key: repeatKey });
+            await scheduleReminder(body, repeatDate, {
+              ...data,
+              key: repeatKey,
+            });
           }
         }
       }

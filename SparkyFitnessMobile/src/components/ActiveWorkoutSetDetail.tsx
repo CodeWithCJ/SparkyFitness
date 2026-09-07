@@ -14,7 +14,10 @@ interface ActiveWorkoutSetDetailProps {
  * by long-pressing the set row). Holds a per-set note. Kept as its own
  * component so the per-set advanced area has a home to grow into.
  */
-function ActiveWorkoutSetDetail({ set, onCommitField }: ActiveWorkoutSetDetailProps) {
+function ActiveWorkoutSetDetail({
+  set,
+  onCommitField,
+}: ActiveWorkoutSetDetailProps) {
   const { t } = useTranslation();
   const setId = String(set.id);
   return (
@@ -31,9 +34,16 @@ function ActiveWorkoutSetDetail({ set, onCommitField }: ActiveWorkoutSetDetailPr
           if ((set.notes ?? null) === nextNotes) return;
           onCommitField(setId, { notes: nextNotes });
         }}
-        label={t('activeWorkout.setDetail.notes', { defaultValue: 'Set notes' })}
-        placeholder={t('activeWorkout.setDetail.addNote', { defaultValue: 'Add a note for this set…' })}
-        accessibilityLabel={t('activeWorkout.setDetail.notesForSet', { defaultValue: 'Notes for set {{setNumber}}', setNumber: set.set_number })}
+        label={t('activeWorkout.setDetail.notes', {
+          defaultValue: 'Set notes',
+        })}
+        placeholder={t('activeWorkout.setDetail.addNote', {
+          defaultValue: 'Add a note for this set…',
+        })}
+        accessibilityLabel={t('activeWorkout.setDetail.notesForSet', {
+          defaultValue: 'Notes for set {{setNumber}}',
+          setNumber: set.set_number,
+        })}
       />
     </View>
   );

@@ -26,7 +26,7 @@ interface UseCopyFamilyFoodEntriesOptions {
 }
 
 export function useCopyFamilyFoodEntries(
-  options?: UseCopyFamilyFoodEntriesOptions,
+  options?: UseCopyFamilyFoodEntriesOptions
 ) {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
@@ -67,7 +67,7 @@ export function useCopyFamilyFoodEntries(
       if (error instanceof ApiError && error.statusCode === 409) {
         const sourceQueryKey = familyDailySummaryQueryKey(
           request.payload.familyUserId,
-          request.payload.sourceDate,
+          request.payload.sourceDate
         );
         void queryClient.invalidateQueries({ queryKey: sourceQueryKey });
         void queryClient.refetchQueries({ queryKey: sourceQueryKey });

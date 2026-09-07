@@ -1,6 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Platform, Pressable, StatusBar, Text, View } from 'react-native';
+import {
+  Modal,
+  Platform,
+  Pressable,
+  StatusBar,
+  Text,
+  View,
+} from 'react-native';
 import {
   Gesture,
   GestureDetector,
@@ -69,10 +82,11 @@ export function computeReorderTargetIndex(
   strides: number[],
   offsets: number[],
   activeIndex: number,
-  translationY: number,
+  translationY: number
 ): number {
   'worklet';
-  const activeCenter = offsets[activeIndex] + strides[activeIndex] / 2 + translationY;
+  const activeCenter =
+    offsets[activeIndex] + strides[activeIndex] / 2 + translationY;
   let target = 0;
   for (let j = 0; j < strides.length; j++) {
     if (j === activeIndex) continue;
@@ -95,7 +109,7 @@ export function computeReorderPreviewShift(
   rowIndex: number,
   activeIndex: number,
   targetIndex: number,
-  stride: number,
+  stride: number
 ): number {
   'worklet';
   if (rowIndex === activeIndex || activeIndex < 0 || targetIndex < 0) {
@@ -184,7 +198,7 @@ function ReorderItemRow({
       index,
       active,
       targetIndex.value,
-      strides[active],
+      strides[active]
     );
     return {
       transform: [
@@ -243,12 +257,14 @@ function ReorderItemRow({
       targetIndex,
       onCommit,
       setScrollEnabled,
-    ],
+    ]
   );
 
   const rows = item.entryIds.map((entryId) => {
     const exercise = exercisesById.get(entryId);
-    const name = exercise?.exercise_snapshot?.name ?? t('workout.exercise', { defaultValue: 'Exercise' });
+    const name =
+      exercise?.exercise_snapshot?.name ??
+      t('workout.exercise', { defaultValue: 'Exercise' });
     const setCount = exercise?.sets.length ?? 0;
     return (
       <View
@@ -258,14 +274,21 @@ function ReorderItemRow({
         className="flex-row items-center gap-3 px-3"
       >
         {exercise ? (
-          <ExerciseThumb exercise={exercise} getImageSource={getImageSource} size={40} />
+          <ExerciseThumb
+            exercise={exercise}
+            getImageSource={getImageSource}
+            size={40}
+          />
         ) : null}
         <View className="flex-1">
           <Text numberOfLines={1} className="text-base text-text-primary">
             {name}
           </Text>
           <Text className="text-sm text-text-muted">
-            {t('workoutReorder.sets', { defaultValue: '{{count}} sets', count: setCount })}
+            {t('workoutReorder.sets', {
+              defaultValue: '{{count}} sets',
+              count: setCount,
+            })}
           </Text>
         </View>
       </View>
@@ -275,7 +298,10 @@ function ReorderItemRow({
   return (
     <Animated.View
       testID={`reorder-item-${item.key}`}
-      style={[{ marginBottom: REORDER_ITEM_GAP, paddingLeft: isRun ? 10 : 0 }, animatedStyle]}
+      style={[
+        { marginBottom: REORDER_ITEM_GAP, paddingLeft: isRun ? 10 : 0 },
+        animatedStyle,
+      ]}
     >
       {isRun && railColor ? (
         <View
@@ -298,7 +324,9 @@ function ReorderItemRow({
           <View
             testID={`reorder-handle-${item.key}`}
             className="px-4 py-2 justify-center"
-            accessibilityLabel={t('workoutReorder.drag', { defaultValue: 'Drag to reorder' })}
+            accessibilityLabel={t('workoutReorder.drag', {
+              defaultValue: 'Drag to reorder',
+            })}
             accessibilityRole="adjustable"
           >
             <Icon name="reorder-handle" size={24} color={textMuted} />
@@ -331,19 +359,25 @@ function WorkoutReorderList({
   const items = useMemo(
     () =>
       buildExerciseReorderItems(
-        exercises.map((e) => ({ id: e.id, superset_group: e.superset_group ?? null })),
+        exercises.map((e) => ({
+          id: e.id,
+          superset_group: e.superset_group ?? null,
+        }))
       ),
-    [exercises],
+    [exercises]
   );
 
   const exercisesById = useMemo(
     () => new Map(exercises.map((e) => [e.id, e])),
-    [exercises],
+    [exercises]
   );
 
   const railColorByItemKey = useMemo(() => {
     const runs = getSupersetRuns(
-      exercises.map((e) => ({ id: e.id, superset_group: e.superset_group ?? null })),
+      exercises.map((e) => ({
+        id: e.id,
+        superset_group: e.superset_group ?? null,
+      }))
     );
     const colorMap = buildSupersetColorMap(runs, palette);
     const map = new Map<string, string>();
@@ -359,8 +393,11 @@ function WorkoutReorderList({
   // the drag target math. Kept as plain memoized arrays so the worklets can
   // capture them.
   const strides = useMemo(
-    () => items.map((item) => item.entryIds.length * REORDER_ROW_HEIGHT + REORDER_ITEM_GAP),
-    [items],
+    () =>
+      items.map(
+        (item) => item.entryIds.length * REORDER_ROW_HEIGHT + REORDER_ITEM_GAP
+      ),
+    [items]
   );
   const offsets = useMemo(() => {
     const out: number[] = [];
@@ -371,7 +408,10 @@ function WorkoutReorderList({
     }
     return out;
   }, [strides]);
-  const contentHeight = useMemo(() => strides.reduce((sum, s) => sum + s, 0), [strides]);
+  const contentHeight = useMemo(
+    () => strides.reduce((sum, s) => sum + s, 0),
+    [strides]
+  );
 
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const activeIndex = useSharedValue(-1);
@@ -386,11 +426,13 @@ function WorkoutReorderList({
 
   // Effective displacement of the dragged block: pan plus any auto-scroll that
   // happened since the drag began, so target math tracks auto-scroll for free.
-  const ty = useDerivedValue(() => panY.value + (scrollY.value - dragStartScrollY.value));
+  const ty = useDerivedValue(
+    () => panY.value + (scrollY.value - dragStartScrollY.value)
+  );
   const targetIndex = useDerivedValue(() =>
     activeIndex.value < 0
       ? -1
-      : computeReorderTargetIndex(strides, offsets, activeIndex.value, ty.value),
+      : computeReorderTargetIndex(strides, offsets, activeIndex.value, ty.value)
   );
 
   const scrollHandler = useAnimatedScrollHandler((event) => {
@@ -398,7 +440,10 @@ function WorkoutReorderList({
   });
 
   const [scrollEnabled, setScrollEnabled] = useState(true);
-  const setScrollEnabledJS = useCallback((enabled: boolean) => setScrollEnabled(enabled), []);
+  const setScrollEnabledJS = useCallback(
+    (enabled: boolean) => setScrollEnabled(enabled),
+    []
+  );
 
   // Set when a committing drop fires; cleared by the reset effect once the new
   // order has rendered. Guards the effect so it only releases the frozen drag
@@ -406,12 +451,16 @@ function WorkoutReorderList({
   const pendingReset = useRef(false);
   const handleCommit = useCallback(
     (fromItemIndex: number, toItemIndex: number) => {
-      if (fromItemIndex >= 0 && toItemIndex >= 0 && fromItemIndex !== toItemIndex) {
+      if (
+        fromItemIndex >= 0 &&
+        toItemIndex >= 0 &&
+        fromItemIndex !== toItemIndex
+      ) {
         pendingReset.current = true;
         onMoveItem(fromItemIndex, toItemIndex);
       }
     },
-    [onMoveItem],
+    [onMoveItem]
   );
 
   // Release the frozen drag transforms only after the reordered `items` have
@@ -434,10 +483,15 @@ function WorkoutReorderList({
   useAnimatedReaction(
     () => targetIndex.value,
     (curr, prev) => {
-      if (activeIndex.value >= 0 && curr >= 0 && prev != null && curr !== prev) {
+      if (
+        activeIndex.value >= 0 &&
+        curr >= 0 &&
+        prev != null &&
+        curr !== prev
+      ) {
         runOnJS(fireSelectionHaptic)();
       }
-    },
+    }
   );
 
   // Auto-scroll while the pointer is near a viewport edge during a drag.
@@ -449,7 +503,8 @@ function WorkoutReorderList({
     const pointer = pointerAbsY.value;
     let delta = 0;
     if (pointer < frame.pageY + AUTO_SCROLL_EDGE) delta = -AUTO_SCROLL_SPEED;
-    else if (pointer > frame.pageY + frame.height - AUTO_SCROLL_EDGE) delta = AUTO_SCROLL_SPEED;
+    else if (pointer > frame.pageY + frame.height - AUTO_SCROLL_EDGE)
+      delta = AUTO_SCROLL_SPEED;
     if (delta === 0) return;
     const maxScroll = Math.max(0, contentHeight - frame.height);
     const next = Math.min(maxScroll, Math.max(0, scrollY.value + delta));
@@ -457,7 +512,9 @@ function WorkoutReorderList({
   });
 
   const headerTopPad =
-    Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 8 : insets.top + 8;
+    Platform.OS === 'android'
+      ? (StatusBar.currentHeight ?? 0) + 8
+      : insets.top + 8;
 
   return (
     <Modal
@@ -471,12 +528,16 @@ function WorkoutReorderList({
           className="flex-row items-center justify-between px-4 pb-3 border-b border-border-subtle"
           style={{ paddingTop: headerTopPad }}
         >
-          <Text className="text-lg font-semibold text-text-primary">{t('workoutReorder.title', { defaultValue: 'Reorder exercises' })}</Text>
+          <Text className="text-lg font-semibold text-text-primary">
+            {t('workoutReorder.title', { defaultValue: 'Reorder exercises' })}
+          </Text>
           <Pressable
             onPress={onDone}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityRole="button"
-            accessibilityLabel={t('workoutReorder.doneHint', { defaultValue: 'Done reordering' })}
+            accessibilityLabel={t('workoutReorder.doneHint', {
+              defaultValue: 'Done reordering',
+            })}
           >
             <Text className="text-base font-semibold" style={{ color: accent }}>
               {t('common.done', { defaultValue: 'Done' })}
@@ -489,7 +550,10 @@ function WorkoutReorderList({
           onScroll={scrollHandler}
           scrollEventThrottle={16}
           scrollEnabled={scrollEnabled}
-          contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 24 }}
+          contentContainerStyle={{
+            padding: 12,
+            paddingBottom: insets.bottom + 24,
+          }}
         >
           {items.map((item, index) => (
             <ReorderItemRow

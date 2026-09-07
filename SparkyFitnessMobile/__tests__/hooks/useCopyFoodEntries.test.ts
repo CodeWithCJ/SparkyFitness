@@ -1,7 +1,11 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { useCopyFoodEntries } from '../../src/hooks/useCopyFoodEntries';
 import { copyFoodEntries } from '../../src/services/api/foodEntriesApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/foodEntriesApi', () => ({
   copyFoodEntries: jest.fn(),
@@ -11,7 +15,9 @@ jest.mock('react-native-toast-message', () => ({
   show: jest.fn(),
 }));
 
-const mockCopyFoodEntries = copyFoodEntries as jest.MockedFunction<typeof copyFoodEntries>;
+const mockCopyFoodEntries = copyFoodEntries as jest.MockedFunction<
+  typeof copyFoodEntries
+>;
 
 const payload = {
   sourceDate: '2026-05-15',

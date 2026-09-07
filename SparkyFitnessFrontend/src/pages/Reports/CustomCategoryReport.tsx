@@ -17,6 +17,10 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { formatCustomChartData } from '@/utils/reportUtil';
 import { calculateSmartYAxisDomain, getChartConfig } from '@/utils/chartUtils';
 import {
+  healthMetricLabel,
+  healthMetricUnitLabel,
+} from '@/utils/healthMetricLabels';
+import {
   CustomCategoriesResponse,
   CustomMeasurementsResponse,
   getPrecision,
@@ -68,6 +72,15 @@ export const CustomCategoryReport = ({
               !HIDDEN_CUSTOM_METRICS.includes(c.name)
           )
           .map((category) => {
+            const categoryLabel = healthMetricLabel(
+              category.name,
+              category.display_name,
+              t
+            );
+            const categoryUnit = healthMetricUnitLabel(
+              category.measurement_type,
+              t
+            );
             const data = customMeasurementsData.filter(
               (m) => m.category_id === category.id
             );
@@ -86,8 +99,8 @@ export const CustomCategoryReport = ({
                   'reports.customMeasurementChartTitle',
                   '{{categoryName}} ({{measurementType}})',
                   {
-                    categoryName: category.display_name || category.name,
-                    measurementType: category.measurement_type,
+                    categoryName: categoryLabel,
+                    measurementType: categoryUnit,
                   }
                 )}
               >
@@ -97,8 +110,8 @@ export const CustomCategoryReport = ({
                       <Activity className="w-5 h-5 mr-2" />
                       {category.measurement_type.toLowerCase() === 'length' ||
                       category.measurement_type.toLowerCase() === 'distance'
-                        ? `${category.display_name || category.name} (${defaultMeasurementUnit})`
-                        : `${category.display_name || category.name} (${category.measurement_type})`}
+                        ? `${categoryLabel} (${defaultMeasurementUnit})`
+                        : `${categoryLabel} (${categoryUnit})`}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>

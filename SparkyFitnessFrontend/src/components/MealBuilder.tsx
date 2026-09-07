@@ -25,12 +25,22 @@ import FoodSearchDialog from './FoodSearch/FoodSearchDialog';
 import MealUnitSelector from '@/pages/Foods/MealUnitSelector';
 import LinkedMealPreviewDialog from './LinkedMealPreviewDialog';
 import { useQueryClient } from '@tanstack/react-query';
-import { toHourMinute, userHourMinute } from '@workspace/shared';
+import {
+  toHourMinute,
+  userHourMinute,
+  MEAL_SERVING_PRECISION,
+  MEAL_SERVING_UNITS,
+  type MealServingUnit,
+} from '@workspace/shared';
 import {
   mealViewOptions,
   useCreateMealMutation,
   useUpdateMealMutation,
 } from '@/hooks/Foods/useMeals';
+import {
+  foodNameLookupOptions,
+  useCreateFoodDatabaseItemMutation,
+} from '@/hooks/Foods/useFoods';
 import {
   getNutrientMetadata,
   formatNutrientValue,
@@ -41,6 +51,10 @@ import {
   useUpdateFoodEntryMealMutation,
 } from '@/hooks/Diary/useFoodEntries';
 import { Textarea } from '@/components/ui/textarea';
+import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
+import { MarkdownView } from '@/components/ui/MarkdownView';
+import { usableFoodImages } from '@/utils/foodImages';
+import { resolveFoodImageSrc } from '@/utils/foodImages';
 import { FoodImagePicker } from './FoodSearch/FoodImagePicker';
 import {
   splitPickerImages,
@@ -54,19 +68,38 @@ interface MealBuilderProps {
   duplicateFromMealId?: string; // Optional: seed a NEW meal from an existing one (Duplicate action)
   onCancel?: () => void;
   initialFoods?: MealFood[]; // New prop for food diary entries
+  initialMealName?: string;
+  initialDescription?: string;
+  initialNotes?: string;
   source?: 'meal-management' | 'food-diary'; // New prop to differentiate context
   foodEntryId?: string; // ID of the FoodEntryMeal when editing a logged meal
   foodEntryDate?: string; // New prop for food diary editing
   foodEntryMealType?: string; // New prop for food diary editing
   initialServingSize?: number;
   initialServingUnit?: string;
+  initialTotalServings?: number | null;
+  initialConsumedQuantity?: number | null;
+  initialTotalAmount?: number | null;
   // May be async: the diary edit dialog persists staged entry photos here, so
   // callers must await it rather than floating the promise.
   onSave?: () => void | Promise<void>;
   initialEntryTime?: string | null;
 }
 
-const MEAL_SERVING_PRECISION = 6;
+/**
+ * Long-form labels for the shared meal unit list, which carries bare keys.
+ * The English text is the i18n default, so an untranslated locale still reads.
+ */
+const MEAL_SERVING_UNIT_LABELS: Record<MealServingUnit, string> = {
+  serving: 'serving',
+  g: 'grams (g)',
+  ml: 'milliliters (ml)',
+  oz: 'ounces (oz)',
+  cup: 'cup',
+  tbsp: 'tablespoon (tbsp)',
+  tsp: 'teaspoon (tsp)',
+  piece: 'piece',
+};
 
 // Full nutrient snapshot key set (mirrors meal_foods columns), independent of
 // the user's visible-nutrient display preferences — used when aggregating a
@@ -96,12 +129,18 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   duplicateFromMealId,
   onCancel,
   initialFoods,
+  initialMealName,
+  initialDescription,
+  initialNotes,
   source = 'meal-management', // Default to meal-management
   foodEntryId, // Using foodEntryId here as the actual ID of the FoodEntryMeal
   foodEntryDate,
   foodEntryMealType,
   initialServingSize,
   initialServingUnit,
+  initialTotalServings,
+  initialConsumedQuantity,
+  initialTotalAmount,
   onSave,
   initialEntryTime,
 }) => {
@@ -133,11 +172,33 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         : ['calories', 'protein', 'carbs', 'fat'],
     [quickInfoPreferences]
   );
-  const [mealName, setMealName] = useState('');
+  const [mealName, setMealName] = useState(initialMealName || '');
   // One ordered list of saved images and staged files, so the user can drag a
   // new photo ahead of an existing one before saving.
   const [mealImageItems, setMealImageItems] = useState<PickerImage[]>([]);
-  const [mealDescription, setMealDescription] = useState('');
+  const [mealDescription, setMealDescription] = useState(
+    initialDescription || ''
+  );
+  const [mealNotes, setMealNotes] = useState(initialNotes || '');
+  // The parent template's own note, shown read-only while logging it. Kept
+  // apart from `mealNotes` on purpose: copying a recipe into every logged
+  // occasion duplicates it and lets the two drift.
+  const [templateNotes, setTemplateNotes] = useState<string | null>(null);
+  // The template's own photos, so image references inside `templateNotes`
+  // resolve. Separate from `mealImageItems`, which is the editable set and is
+  // not populated at all when editing a logged meal.
+  const [templateImages, setTemplateImages] = useState<readonly string[]>([]);
+  // Saved photos only — a staged file has no server path for a note to link to.
+  const savedMealImageOptions = useMemo(
+    () =>
+      mealImageItems.flatMap((item) => {
+        if (item.kind !== 'saved') return [];
+        const src = resolveFoodImageSrc(item.path);
+        return src ? [{ path: src, src }] : [];
+      }),
+    [mealImageItems]
+  );
+
   const [entryTime, setEntryTime] = useState<string>(
     toHourMinute(initialEntryTime) || ''
   );
@@ -148,19 +209,28 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   const [servingUnit, setServingUnit] = useState<string>(
     initialServingUnit || 'serving'
   );
+  // How much of the dish goes in the diary, in servingUnit.
+  const [consumedQuantity, setConsumedQuantity] = useState<string>(
+    initialConsumedQuantity?.toString() || '1'
+  );
   // total_servings = how many portions the recipe yields (denominator alongside
   // serving_size in the uniform multiplier: quantity / (serving_size × total_servings)).
   // For serving-unit meals, this is what the user types directly.
-  const [totalServings, setTotalServings] = useState<string>('1');
+  const [totalServings, setTotalServings] = useState<string>(
+    initialTotalServings?.toString() || '1'
+  );
   // For non-serving units we ask the user for the BATCH amount (more natural
   // mental model: "I made 2000 ml") and derive total_servings on save as
   // totalAmount / servingSize.
-  const [totalAmountText, setTotalAmountText] = useState<string>('1');
-  // Nutrition view toggle (meal-management mode only). Default to per-serving
-  // to match mobile MealDetailScreen and surface the most useful framing.
-  const [nutritionView, setNutritionView] = useState<'perServing' | 'total'>(
-    'perServing'
+  const [totalAmountText, setTotalAmountText] = useState<string>(
+    initialTotalAmount?.toString() || initialTotalServings?.toString() || '1'
   );
+  // Nutrition view toggle. Meal-management defaults to per-serving (matches
+  // mobile MealDetailScreen); diary mode with an inline yield defaults to
+  // "Logged" — the portion actually going into the diary.
+  const [nutritionView, setNutritionView] = useState<
+    'logged' | 'perServing' | 'total'
+  >(source === 'food-diary' ? 'logged' : 'perServing');
   const [mealFoods, setMealFoods] = useState<MealFood[]>(initialFoods || []);
   const [isFoodUnitSelectorOpen, setIsFoodUnitSelectorOpen] = useState(false);
   const [showFoodSearchDialog, setShowFoodSearchDialog] = useState(false);
@@ -203,6 +273,8 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
 
   const { mutateAsync: updateMeal } = useUpdateMealMutation();
   const { mutateAsync: createMeal } = useCreateMealMutation();
+  const { mutateAsync: createFoodDatabaseItem } =
+    useCreateFoodDatabaseItemMutation();
   const { mutateAsync: createFoodEntryMeal } = useCreateFoodEntryMealMutation();
   const { mutateAsync: updateFoodEntryMeal } = useUpdateFoodEntryMealMutation();
   // Tracks which source (meal/entry) has already seeded the form, so the load
@@ -236,6 +308,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             setMealName(isDuplicate ? `${meal.name} ${copySuffix}` : meal.name);
             setMealImageItems(toSavedImages(meal.images));
             setMealDescription(meal.description || '');
+            setMealNotes(meal.notes || '');
             // A duplicate is always a fresh private meal owned by the current
             // user, even when cloning a Public, Family, or System meal.
             setIsPublic(isDuplicate ? false : meal.is_public || false);
@@ -268,67 +341,65 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             const quantity = loggedMeal.quantity || 1;
             setMealName(loggedMeal.name);
             setMealDescription(loggedMeal.description || '');
-            setServingSize(quantity.toString());
+            setMealNotes(loggedMeal.notes || '');
+            setTemplateNotes(loggedMeal.meal_notes || null);
+            setTemplateImages(usableFoodImages(loggedMeal.meal_images));
+            setConsumedQuantity(quantity.toString());
             setServingUnit(loggedMeal.unit || 'serving');
 
-            // Use the foods directly without unscaling, so the list shows the actual consumed amounts
             setMealFoods(loggedMeal.foods || []);
 
-            // Fetch the template info for scaling if the meal came from a template
-            if (loggedMeal.meal_template_id) {
+            let effTotalServings = loggedMeal.entry_total_servings ?? null;
+
+            // Fallback for pre-migration entries without snapshotted yield
+            if (effTotalServings === null && !loggedMeal.meal_template_id) {
+              // Template-less entries (ad-hoc logs, grouped photo logs) have no
+              // whole-dish record at all: the server unscales them with a
+              // multiplier of 1, so the ingredient rows it just returned ARE
+              // the dish as recorded. Seeding the yield from the consumed
+              // amount keeps that identity — saving unchanged re-derives a
+              // multiplier of 1 — while still letting the user re-portion from
+              // here. Defaulting to 1 instead would rescale every ingredient by
+              // the consumed quantity on the next save.
+              effTotalServings = quantity;
+            } else if (
+              effTotalServings === null &&
+              loggedMeal.meal_template_id
+            ) {
               try {
                 const templateMeal = await queryClient.fetchQuery(
                   mealViewOptions(loggedMeal.meal_template_id)
                 );
                 if (templateMeal) {
-                  setTemplateInfo({
-                    id: loggedMeal.meal_template_id,
-                    size: templateMeal.serving_size || 1,
-                    unit: templateMeal.serving_unit || 'serving',
-                    total_servings: templateMeal.total_servings || 1,
-                    legacy_serving_unit_math:
-                      loggedMeal.legacy_serving_unit_math === true,
-                  });
-                } else {
-                  // If template not found, still perserve ID for scaling
-                  error(
-                    loggingLevel,
-                    'Template meal not found, preserving ID for scaling'
-                  );
-                  setTemplateInfo({
-                    id: loggedMeal.meal_template_id,
-                    size: loggedMeal.unit === 'serving' ? 1 : 100, // Default guess
-                    unit: loggedMeal.unit || 'serving',
-                    total_servings: 1,
-                    legacy_serving_unit_math:
-                      loggedMeal.legacy_serving_unit_math === true,
-                  });
+                  effTotalServings =
+                    templateMeal.serving_unit === 'serving'
+                      ? templateMeal.total_servings || 1
+                      : (templateMeal.serving_size || 1) *
+                        (templateMeal.total_servings || 1);
                 }
               } catch (err) {
-                error(
+                warn(
                   loggingLevel,
-                  'Failed to fetch template for logged meal, preserving ID:',
+                  'Failed to fetch legacy template yield:',
                   err
                 );
-                // Still preserve ID for scaling
-                setTemplateInfo({
-                  id: loggedMeal.meal_template_id,
-                  size: loggedMeal.unit === 'serving' ? 1 : 100,
-                  unit: loggedMeal.unit || 'serving',
-                  total_servings: 1,
-                  legacy_serving_unit_math:
-                    loggedMeal.legacy_serving_unit_math === true,
-                });
               }
-            } else {
-              // Custom meal without a template handling
-              setTemplateInfo({
-                id: null,
-                size: 1,
-                unit: 'serving',
-                total_servings: 1,
-                legacy_serving_unit_math: false,
-              });
+            }
+
+            setTemplateInfo({
+              id: loggedMeal.meal_template_id || null,
+              size: 1,
+              unit: loggedMeal.unit || 'serving',
+              total_servings: effTotalServings || 1,
+              legacy_serving_unit_math:
+                loggedMeal.legacy_serving_unit_math === true,
+            });
+
+            const finalTotalServings = effTotalServings ?? 1;
+            setServingSize('1');
+            setTotalServings(finalTotalServings.toString());
+            if (loggedMeal.unit !== 'serving') {
+              setTotalAmountText(finalTotalServings.toString());
             }
           }
         } catch (err) {
@@ -346,13 +417,18 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             setMealName(meal.name);
             setMealImageItems(toSavedImages(meal.images));
             setMealDescription(meal.description || '');
+            setTemplateNotes(meal.notes || null);
+            setTemplateImages(usableFoodImages(meal.images));
             setIsPublic(false); // Logged meals are personal copies
-            // Prefill Quantity Consumed with one serving's worth (meal.serving_size).
-            // This is the key UX fix: an 8-serving meal now defaults to logging 1
-            // serving instead of the whole recipe.
+            setConsumedQuantity(meal.serving_size?.toString() || '1');
             setServingSize(meal.serving_size?.toString() || '1');
             setServingUnit(meal.serving_unit || 'serving');
             setTotalServings(meal.total_servings?.toString() || '1');
+            if (meal.serving_unit !== 'serving') {
+              const totalAmt =
+                (meal.serving_size || 1) * (meal.total_servings || 1);
+              setTotalAmountText(totalAmt.toString());
+            }
             setMealFoods(meal.foods || []);
             //Include units and size to be used in Diary context
             setTemplateInfo({
@@ -373,8 +449,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       } else if (initialFoods) {
         // For new food-diary entries or when initialFoods are pre-loaded
         setMealFoods(initialFoods);
-        setMealName(foodEntryMealType || 'Logged Meal');
-        setMealDescription('');
+        setMealName(initialMealName || foodEntryMealType || 'Logged Meal');
+        setMealDescription(initialDescription || '');
+        setMealNotes(initialNotes || '');
         // Set template info based on props for scaling logic, defaults to 1 serving otherwise
         const initialSize = initialServingSize || 1;
         const initialUnit = initialServingUnit || 'serving';
@@ -412,6 +489,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     loggingLevel,
     source,
     initialFoods,
+    initialMealName,
+    initialDescription,
+    initialNotes,
     foodEntryId,
     foodEntryMealType,
     initialServingSize,
@@ -547,36 +627,36 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     }
     if (mealFoodToEdit) {
       // Create a dummy Food object for FoodUnitSelector
-      // This is a workaround as FoodUnitSelector expects a Food object
+      const defaultVariant: FoodVariant = {
+        id: mealFoodToEdit.variant_id,
+        serving_size: mealFoodToEdit.serving_size || 100,
+        serving_unit: mealFoodToEdit.serving_unit || mealFoodToEdit.unit || 'g',
+        calories: mealFoodToEdit.calories || 0,
+        protein: mealFoodToEdit.protein || 0,
+        carbs: mealFoodToEdit.carbs || 0,
+        fat: mealFoodToEdit.fat || 0,
+        saturated_fat: mealFoodToEdit.saturated_fat,
+        polyunsaturated_fat: mealFoodToEdit.polyunsaturated_fat,
+        monounsaturated_fat: mealFoodToEdit.monounsaturated_fat,
+        trans_fat: mealFoodToEdit.trans_fat,
+        cholesterol: mealFoodToEdit.cholesterol,
+        sodium: mealFoodToEdit.sodium,
+        potassium: mealFoodToEdit.potassium,
+        dietary_fiber: mealFoodToEdit.dietary_fiber,
+        sugars: mealFoodToEdit.sugars,
+        vitamin_a: mealFoodToEdit.vitamin_a,
+        vitamin_c: mealFoodToEdit.vitamin_c,
+        calcium: mealFoodToEdit.calcium,
+        iron: mealFoodToEdit.iron,
+        glycemic_index: mealFoodToEdit.glycemic_index as GlycemicIndex,
+        custom_nutrients: mealFoodToEdit.custom_nutrients,
+      };
       const dummyFood: Food = {
-        id: mealFoodToEdit.food_id || '',
+        id: mealFoodToEdit.food_id || `temp-${index}`,
         name: mealFoodToEdit.food_name || '',
-        is_custom: false, // Assuming foods added to meals are not always custom, or this property is not relevant for editing quantity/unit
-        default_variant: {
-          id: mealFoodToEdit.variant_id,
-          serving_size: mealFoodToEdit.serving_size || 1,
-          serving_unit:
-            mealFoodToEdit.serving_unit || mealFoodToEdit.unit || 'serving',
-          calories: mealFoodToEdit.calories || 0,
-          protein: mealFoodToEdit.protein || 0,
-          carbs: mealFoodToEdit.carbs || 0,
-          fat: mealFoodToEdit.fat || 0,
-          saturated_fat: mealFoodToEdit.saturated_fat,
-          polyunsaturated_fat: mealFoodToEdit.polyunsaturated_fat,
-          monounsaturated_fat: mealFoodToEdit.monounsaturated_fat,
-          trans_fat: mealFoodToEdit.trans_fat,
-          cholesterol: mealFoodToEdit.cholesterol,
-          sodium: mealFoodToEdit.sodium,
-          potassium: mealFoodToEdit.potassium,
-          dietary_fiber: mealFoodToEdit.dietary_fiber,
-          sugars: mealFoodToEdit.sugars,
-          vitamin_a: mealFoodToEdit.vitamin_a,
-          vitamin_c: mealFoodToEdit.vitamin_c,
-          calcium: mealFoodToEdit.calcium,
-          iron: mealFoodToEdit.iron,
-          glycemic_index: mealFoodToEdit.glycemic_index as GlycemicIndex,
-          custom_nutrients: mealFoodToEdit.custom_nutrients,
-        },
+        is_custom: false,
+        default_variant: defaultVariant,
+        variants: [defaultVariant],
       };
       setSelectedFoodForUnitSelection(dummyFood);
       setEditingMealFood({ mealFood: mealFoodToEdit, index });
@@ -662,6 +742,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
   };
 
   const handleSaveMeal = async () => {
+    // One normalization for every payload built below: an empty or
+    // whitespace-only note is the absence of a note, not an empty string.
+    const normalizedMealNotes = mealNotes.trim() || null;
     if (mealFoods.length === 0) {
       toast({
         title: t('mealBuilder.errorTitle', 'Error'),
@@ -672,6 +755,76 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         variant: 'destructive',
       });
       return;
+    }
+
+    // Resolve any un-persisted foods (e.g. from photo estimation) before saving
+    const resolvedFoods: MealFood[] = [];
+    for (const mf of mealFoods) {
+      if (mf.item_type === 'meal' || mf.child_meal_id || mf.food_id) {
+        resolvedFoods.push(mf);
+        continue;
+      }
+      try {
+        const cleanName = (mf.food_name || '').trim().toLowerCase();
+        let matchedFood: Food | null = null;
+        if (cleanName) {
+          try {
+            const searchResults = (await queryClient.fetchQuery(
+              foodNameLookupOptions(mf.food_name || '', 5)
+            )) as Food[];
+            const found = (
+              Array.isArray(searchResults) ? searchResults : []
+            ).find((f: Food) => f.name.trim().toLowerCase() === cleanName);
+            if (found) {
+              matchedFood = found;
+            }
+          } catch {
+            // ignore search error and proceed to create
+          }
+        }
+
+        if (matchedFood?.id) {
+          resolvedFoods.push({
+            ...mf,
+            food_id: matchedFood.id,
+            variant_id:
+              matchedFood.variants?.[0]?.id ||
+              matchedFood.default_variant?.id ||
+              undefined,
+          });
+          continue;
+        }
+
+        const created = await createFoodDatabaseItem({
+          name: mf.food_name || 'Food item',
+          calories: mf.calories ?? 0,
+          protein: mf.protein ?? 0,
+          carbs: mf.carbs ?? 0,
+          fat: mf.fat ?? 0,
+          serving_size: mf.serving_size || 100,
+          serving_unit: mf.serving_unit || 'g',
+          is_custom: true,
+        });
+        resolvedFoods.push({
+          ...mf,
+          food_id: created.id,
+          variant_id: created.variants?.[0]?.id || undefined,
+        });
+      } catch (err) {
+        // Pushing the unresolved row and carrying on would save a meal whose
+        // ingredient has no food_id — silently unlinked, reported as success,
+        // and impossible for the user to notice. Stop and say which one.
+        error(loggingLevel, 'Failed to create food for meal ingredient:', err);
+        toast({
+          title: t('mealBuilder.errorTitle', 'Error'),
+          description: t('mealBuilder.ingredientResolveFailed', {
+            foodName: mf.food_name,
+            defaultValue: `Could not save the ingredient "${mf.food_name}". Please try again.`,
+          }),
+          variant: 'destructive',
+        });
+        return;
+      }
     }
 
     if (source === 'meal-management') {
@@ -752,12 +905,15 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       const mealData: MealPayload = {
         name: mealName,
         description: mealDescription,
+        // Always send the key: an omitted `notes` means "leave unchanged"
+        // server-side, so clearing a note has to send null.
+        notes: normalizedMealNotes,
         is_public: isPublic,
         serving_size: persistedServingSize,
         serving_unit: servingUnit,
         total_servings: persistedTotalServings,
         images: mealImageOrder,
-        foods: mealFoods.map((mf) => ({
+        foods: resolvedFoods.map((mf) => ({
           item_type: mf.item_type || 'food',
           food_id: mf.food_id,
           child_meal_id: mf.child_meal_id,
@@ -820,24 +976,134 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         return;
       }
 
+      // When the builder describes a whole dish, the ingredient rows are the
+      // dish and the serving model decides what fraction of it is logged. Every
+      // part of that model has to be a positive number before anything is
+      // scaled by it — `parseFloat(x) || 1` would quietly turn a typo into a
+      // full-dish log.
+      let dishServingSizeToSave = 1;
+      let dishYieldToSave = 1;
+      let consumedToSave = parseFloat(servingSize) || 1;
+      if (source === 'food-diary') {
+        if (servingUnit === 'serving') {
+          const parsedYield = parseFloat(totalServings);
+          if (!Number.isFinite(parsedYield) || parsedYield <= 0) {
+            toast({
+              title: t('mealBuilder.errorTitle', 'Error'),
+              description: t(
+                'mealBuilder.invalidTotalServings',
+                'Total servings must be greater than zero.'
+              ),
+              variant: 'destructive',
+            });
+            return;
+          }
+          dishServingSizeToSave = 1;
+          dishYieldToSave = parsedYield;
+        } else {
+          const parsedAmount = parseFloat(totalAmountText);
+          if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+            toast({
+              title: t('mealBuilder.errorTitle', 'Error'),
+              description: t(
+                'mealBuilder.invalidTotalAmount',
+                'Total amount must be greater than zero.'
+              ),
+              variant: 'destructive',
+            });
+            return;
+          }
+          dishServingSizeToSave = 1;
+          dishYieldToSave = parsedAmount;
+        }
+        const parsedConsumed = parseFloat(consumedQuantity);
+        if (!Number.isFinite(parsedConsumed) || parsedConsumed <= 0) {
+          toast({
+            title: t('mealBuilder.errorTitle', 'Error'),
+            description: t(
+              'mealBuilder.invalidConsumedQuantity',
+              'Quantity consumed must be greater than zero.'
+            ),
+            variant: 'destructive',
+          });
+          return;
+        }
+        consumedToSave = parsedConsumed;
+      }
+
+      let templateId = templateInfo.id;
+      // If saving a new meal to diary, also save as reusable meal template if a name is provided
+      if (!foodEntryId && !templateId && mealName.trim()) {
+        try {
+          const mealTemplateData: MealPayload = {
+            name: mealName.trim(),
+            description: mealDescription,
+            notes: normalizedMealNotes,
+            is_public: false,
+            // The template holds the WHOLE dish, so re-logging one serving of
+            // it later reproduces the portion being logged here.
+            serving_size: dishServingSizeToSave,
+            serving_unit: servingUnit || 'serving',
+            total_servings: dishYieldToSave,
+            images: [],
+            foods: resolvedFoods.map((mf) => ({
+              item_type: mf.item_type || 'food',
+              food_id: mf.food_id,
+              child_meal_id: mf.child_meal_id,
+              food_name: mf.food_name,
+              variant_id: mf.variant_id,
+              quantity: mf.quantity,
+              unit: mf.unit,
+              calories: mf.calories,
+              protein: mf.protein,
+              carbs: mf.carbs,
+              fat: mf.fat,
+              serving_size: mf.serving_size,
+              serving_unit: mf.serving_unit,
+              saturated_fat: mf.saturated_fat,
+              polyunsaturated_fat: mf.polyunsaturated_fat,
+              monounsaturated_fat: mf.monounsaturated_fat,
+              trans_fat: mf.trans_fat,
+              cholesterol: mf.cholesterol,
+              sodium: mf.sodium,
+              potassium: mf.potassium,
+              dietary_fiber: mf.dietary_fiber,
+              sugars: mf.sugars,
+              vitamin_a: mf.vitamin_a,
+              vitamin_c: mf.vitamin_c,
+              calcium: mf.calcium,
+              iron: mf.iron,
+              glycemic_index: mf.glycemic_index,
+              custom_nutrients: mf.custom_nutrients,
+            })),
+          };
+          const createdMeal = await createMeal({
+            mealPayload: mealTemplateData,
+            imageFiles: [],
+          });
+          if (createdMeal?.id) {
+            templateId = createdMeal.id;
+          }
+        } catch (err) {
+          warn(loggingLevel, 'Could not save reusable meal template:', err);
+        }
+      }
+
+      const entryFoods = resolvedFoods;
+
       const foodEntryMealData = {
-        meal_template_id: templateInfo.id, // Preserve template ID for proper scaling now that it has logic to handle missing template info
+        meal_template_id: templateId,
         meal_type: foodEntryMealType,
         entry_date: foodEntryDate,
-        name: mealName.trim() || 'Custom Meal', // Use edited name or default
+        name: mealName.trim() || 'Custom Meal',
         description: mealDescription,
-        quantity: parseFloat(servingSize) || 1,
+        notes: normalizedMealNotes,
+        quantity: consumedToSave,
         unit: servingUnit,
-        foods: mealFoods,
+        entry_total_servings: dishYieldToSave,
+        foods: entryFoods,
         entry_time: entryTime || null,
       };
-
-      console.log('[MealBuilder] Saving food diary meal:', {
-        meal_template_id: templateInfo.id,
-        quantity: foodEntryMealData.quantity,
-        unit: foodEntryMealData.unit,
-        templateInfo,
-      });
 
       try {
         if (foodEntryId) {
@@ -856,26 +1122,30 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     }
   };
 
+  /** A positive number from a text input, else the given fallback. */
+  const positiveOr = (value: string, fallback: number) => {
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  };
+
+  // The dish's serving model, as the inputs currently describe it. For the
+  // 'serving' unit the user types the yield directly and a serving is
+  // tautologically 1; otherwise the yield is the batch divided by one serving.
+  const dishServingSize =
+    source === 'food-diary' || servingUnit === 'serving'
+      ? 1
+      : positiveOr(servingSize, 1);
+  const dishYield =
+    servingUnit === 'serving'
+      ? positiveOr(totalServings, 1)
+      : source === 'food-diary'
+        ? positiveOr(totalAmountText, 1)
+        : positiveOr(totalAmountText, 1) / dishServingSize;
+
   const calculateMealNutrition = useCallback(() => {
     // Initialize totals for all visible nutrients
     const totals: Record<string, number> = {};
     visibleNutrients.forEach((n) => (totals[n] = 0));
-
-    // Calculate total nutrition for the meal based on its component foods.
-    // Food-diary mode uses the uniform multiplier:
-    //   quantity / (template.serving_size × template.total_servings).
-    // Meal-management mode shows the FULL recipe (multiplier = 1).
-    let multiplier = 1;
-    if (source === 'food-diary' && templateInfo.id) {
-      const qty = parseFloat(servingSize) || 1;
-      if (templateInfo.legacy_serving_unit_math && servingUnit === 'serving') {
-        multiplier = qty;
-      } else {
-        const denominator =
-          (templateInfo.size || 1) * (templateInfo.total_servings || 1);
-        multiplier = denominator > 0 ? qty / denominator : 1;
-      }
-    }
 
     mealFoods.forEach((mf) => {
       // Use the nutritional information stored directly in the MealFood object
@@ -900,22 +1170,144 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       });
     });
 
-    // Apply multiplier to all totals
-    Object.keys(totals).forEach((key) => {
-      totals[key] = (totals[key] || 0) * multiplier;
-    });
-
     return totals;
-  }, [
-    mealFoods,
-    servingSize,
-    servingUnit,
-    source,
-    visibleNutrients,
-    templateInfo,
-  ]); // Recalculate on changes
+  }, [mealFoods, visibleNutrients]);
 
   const mealTotals = calculateMealNutrition();
+
+  let displayScale = 1;
+  if (nutritionView === 'logged') {
+    const qty = positiveOr(consumedQuantity, 1);
+    if (templateInfo.legacy_serving_unit_math && servingUnit === 'serving') {
+      displayScale = qty;
+    } else {
+      const denominator = dishServingSize * dishYield;
+      displayScale = denominator > 0 ? qty / denominator : 1;
+    }
+  } else if (nutritionView === 'perServing') {
+    displayScale = dishYield > 0 ? 1 / dishYield : 1;
+  } else if (nutritionView === 'total') {
+    displayScale = 1;
+  }
+
+  const servingModelFields = (
+    // Meal-management serving model:
+    //   serving === 'serving' →
+    //     [ Total Servings ] [ Unit ]
+    //   other units →
+    //     [ Total Amount ]   [ Unit ]
+    //     [ Default Serving Size ]
+    //   Total Amount + Default Serving Size live alongside Unit, with the
+    //   unit suffix shown inside each input as light text. total_servings
+    //   is derived on save: totalAmount / defaultServingSize.
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          {servingUnit === 'serving' ? (
+            <>
+              <Label htmlFor="totalServings">
+                {t('mealBuilder.totalServings', 'Total Servings')}
+              </Label>
+              <Input
+                id="totalServings"
+                type="number"
+                step="any"
+                min="0"
+                value={totalServings}
+                onChange={(e) => setTotalServings(e.target.value)}
+                placeholder="1"
+              />
+            </>
+          ) : (
+            <>
+              <Label htmlFor="totalAmount">
+                {t('mealBuilder.totalAmount', 'Total Amount')} ({servingUnit})
+              </Label>
+              <Input
+                id="totalAmount"
+                type="number"
+                step="any"
+                min="0"
+                value={totalAmountText}
+                onChange={(e) => setTotalAmountText(e.target.value)}
+                placeholder="1"
+              />
+            </>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="servingUnit">
+            {t('mealBuilder.servingUnit', 'Unit')}
+          </Label>
+          <Select
+            value={servingUnit}
+            onValueChange={(value) => {
+              const previousUnit = servingUnit;
+              setServingUnit(value);
+              if (value === 'serving') {
+                // Switching INTO serving-unit.
+                // If coming from a quantity-based unit, derive
+                // total_servings from the current Total Amount /
+                // Default Serving Size so the user's recipe definition
+                // isn't silently lost when serving_size collapses to 1.
+                if (previousUnit !== 'serving') {
+                  const parsedAmount = parseFloat(totalAmountText);
+                  const parsedSize = parseFloat(servingSize);
+                  if (
+                    parsedAmount > 0 &&
+                    parsedSize > 0 &&
+                    Number.isFinite(parsedAmount) &&
+                    Number.isFinite(parsedSize)
+                  ) {
+                    setTotalServings(String(parsedAmount / parsedSize));
+                  }
+                }
+                setServingSize('1');
+              } else if (previousUnit === 'serving') {
+                // Switching OUT of serving-unit: serving_size now means
+                // per-serving quantity, default it to 1. Initialize
+                // Total Amount from current total_servings × 1 = totalServings.
+                setServingSize('1');
+                setTotalAmountText(totalServings || '1');
+              }
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Unit" />
+            </SelectTrigger>
+            <SelectContent>
+              {MEAL_SERVING_UNITS.map((unit) => (
+                <SelectItem key={unit} value={unit}>
+                  {t(`mealBuilder.servingUnits.${unit}`, {
+                    defaultValue: MEAL_SERVING_UNIT_LABELS[unit],
+                  })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      {servingUnit !== 'serving' && (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="servingSize">
+              {t('mealBuilder.defaultServingSize', 'Default Serving Size')} (
+              {servingUnit})
+            </Label>
+            <Input
+              id="servingSize"
+              type="number"
+              step="any"
+              value={servingSize}
+              onChange={(e) => setServingSize(e.target.value)}
+              placeholder="1"
+            />
+          </div>
+          <div />
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-6 pt-4">
@@ -931,7 +1323,6 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             'mealBuilder.mealNamePlaceholder',
             'e.g., High Protein Breakfast'
           )}
-          disabled={source === 'food-diary'} // Disable name editing for food diary entries
         />
       </div>
       <div className="space-y-2">
@@ -946,7 +1337,6 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
             'mealBuilder.mealDescriptionPlaceholder',
             'e.g., My go-to morning meal'
           )}
-          disabled={source === 'food-diary'} // Disable description editing for food diary entries
         />
       </div>
       {source !== 'food-diary' && (
@@ -979,8 +1369,21 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
 
       <div className="space-y-4">
         <h3 className="text-lg font-semibold">
-          {t('mealBuilder.foodsInMeal', 'Foods in Meal')}
+          {source === 'food-diary'
+            ? t(
+                'mealBuilder.foodsInMealWholeDish',
+                'Recipe Ingredients (Whole Dish)'
+              )
+            : t('mealBuilder.foodsInMeal', 'Foods in Meal')}
         </h3>
+        {source === 'food-diary' && (
+          <p className="text-xs text-muted-foreground -mt-2">
+            {t(
+              'mealBuilder.foodsInMealWholeDishHint',
+              'Enter ingredient amounts for the entire recipe; your portion is calculated above.'
+            )}
+          </p>
+        )}
         {mealFoods.length === 0 ? (
           <p className="text-muted-foreground">
             {t('mealBuilder.noFoodsInMeal', 'No foods added to this meal yet.')}
@@ -1095,93 +1498,6 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         )}
 
         {source === 'food-diary' ? (
-          // Diary mode: keep the existing "Quantity Consumed" + locked unit pair + time.
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="servingSize">
-                {t('mealBuilder.consumedQuantity', 'Quantity Consumed')}
-              </Label>
-              <Input
-                id="servingSize"
-                type="number"
-                step="any"
-                value={servingSize}
-                onChange={(e) => setServingSize(e.target.value)}
-                placeholder="1"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="servingUnit">
-                {t('mealBuilder.servingUnit', 'Unit')}
-              </Label>
-              <Select
-                value={servingUnit}
-                onValueChange={setServingUnit}
-                disabled
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Unit" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="serving">serving</SelectItem>
-                  <SelectItem value="g">grams (g)</SelectItem>
-                  <SelectItem value="ml">milliliters (ml)</SelectItem>
-                  <SelectItem value="oz">ounces (oz)</SelectItem>
-                  <SelectItem value="cup">cup</SelectItem>
-                  <SelectItem value="tbsp">tablespoon (tbsp)</SelectItem>
-                  <SelectItem value="tsp">teaspoon (tsp)</SelectItem>
-                  <SelectItem value="piece">piece</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="entryTime">Time (optional)</Label>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setEntryTime('')}
-                    disabled={!entryTime}
-                    className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-muted-foreground shadow-sm hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-40 disabled:pointer-events-none"
-                    title="Clear time"
-                  >
-                    <X className="h-4 w-4" />
-                    Clear
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const { hour, minute } = userHourMinute(timezone);
-                      setEntryTime(
-                        `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
-                      );
-                    }}
-                    className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-                    title="Set to current local time"
-                  >
-                    <Clock className="h-4 w-4" />
-                    Now
-                  </button>
-                </div>
-              </div>
-              <Input
-                id="entryTime"
-                type="time"
-                value={entryTime}
-                onChange={(e) => setEntryTime(e.target.value)}
-              />
-            </div>
-          </div>
-        ) : (
-          // Meal-management mode:
-          //   serving === 'serving' →
-          //     [ Total Servings ] [ Unit ]
-          //   other units →
-          //     [ Total Amount ]   [ Unit ]
-          //     [ Default Serving Size ]
-          //   Total Amount + Default Serving Size live alongside Unit, with the
-          //   unit suffix shown inside each input as light text. total_servings
-          //   is derived on save: totalAmount / defaultServingSize.
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -1203,7 +1519,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                 ) : (
                   <>
                     <Label htmlFor="totalAmount">
-                      {t('mealBuilder.totalAmount', 'Total Amount')} (
+                      {t('mealBuilder.totalDishAmount', 'Total Dish Amount')} (
                       {servingUnit})
                     </Label>
                     <Input
@@ -1224,32 +1540,19 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                 </Label>
                 <Select
                   value={servingUnit}
+                  disabled={Boolean(foodEntryId || mealId)}
                   onValueChange={(value) => {
                     const previousUnit = servingUnit;
                     setServingUnit(value);
                     if (value === 'serving') {
-                      // Switching INTO serving-unit.
-                      // If coming from a quantity-based unit, derive
-                      // total_servings from the current Total Amount /
-                      // Default Serving Size so the user's recipe definition
-                      // isn't silently lost when serving_size collapses to 1.
                       if (previousUnit !== 'serving') {
                         const parsedAmount = parseFloat(totalAmountText);
-                        const parsedSize = parseFloat(servingSize);
-                        if (
-                          parsedAmount > 0 &&
-                          parsedSize > 0 &&
-                          Number.isFinite(parsedAmount) &&
-                          Number.isFinite(parsedSize)
-                        ) {
-                          setTotalServings(String(parsedAmount / parsedSize));
+                        if (parsedAmount > 0 && Number.isFinite(parsedAmount)) {
+                          setTotalServings(String(parsedAmount));
                         }
                       }
                       setServingSize('1');
                     } else if (previousUnit === 'serving') {
-                      // Switching OUT of serving-unit: serving_size now means
-                      // per-serving quantity, default it to 1. Initialize
-                      // Total Amount from current total_servings × 1 = totalServings.
                       setServingSize('1');
                       setTotalAmountText(totalServings || '1');
                     }
@@ -1259,80 +1562,141 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
                     <SelectValue placeholder="Unit" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="serving">serving</SelectItem>
-                    <SelectItem value="g">grams (g)</SelectItem>
-                    <SelectItem value="ml">milliliters (ml)</SelectItem>
-                    <SelectItem value="oz">ounces (oz)</SelectItem>
-                    <SelectItem value="cup">cup</SelectItem>
-                    <SelectItem value="tbsp">tablespoon (tbsp)</SelectItem>
-                    <SelectItem value="tsp">teaspoon (tsp)</SelectItem>
-                    <SelectItem value="piece">piece</SelectItem>
+                    {MEAL_SERVING_UNITS.map((unit) => (
+                      <SelectItem key={unit} value={unit}>
+                        {t(`mealBuilder.servingUnits.${unit}`, {
+                          defaultValue: MEAL_SERVING_UNIT_LABELS[unit],
+                        })}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            {servingUnit !== 'serving' && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="servingSize">
-                    {t(
-                      'mealBuilder.defaultServingSize',
-                      'Default Serving Size'
-                    )}{' '}
-                    ({servingUnit})
-                  </Label>
-                  <Input
-                    id="servingSize"
-                    type="number"
-                    step="any"
-                    value={servingSize}
-                    onChange={(e) => setServingSize(e.target.value)}
-                    placeholder="1"
-                  />
-                </div>
-                <div />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="consumedQuantity">
+                  {t('mealBuilder.consumedQuantity', 'Quantity Consumed')} (
+                  {servingUnit})
+                </Label>
+                <Input
+                  id="consumedQuantity"
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={consumedQuantity}
+                  onChange={(e) => setConsumedQuantity(e.target.value)}
+                  placeholder="1"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    'mealBuilder.diaryConsumedQuantityHint',
+                    'How much of the dish goes in your diary'
+                  )}
+                </p>
               </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="entryTime">
+                    {t('mealBuilder.entryTimeOptional', {
+                      defaultValue: 'Time (optional)',
+                    })}
+                  </Label>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setEntryTime('')}
+                      disabled={!entryTime}
+                      className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-muted-foreground shadow-sm hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                      title={t('mealBuilder.clearTime', {
+                        defaultValue: 'Clear time',
+                      })}
+                    >
+                      <X className="h-4 w-4" />
+                      {t('mealBuilder.clear', { defaultValue: 'Clear' })}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const { hour, minute } = userHourMinute(timezone);
+                        setEntryTime(
+                          `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+                        );
+                      }}
+                      className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
+                      title={t('mealBuilder.setToCurrentTime', {
+                        defaultValue: 'Set to current local time',
+                      })}
+                    >
+                      <Clock className="h-4 w-4" />
+                      {t('mealBuilder.now', { defaultValue: 'Now' })}
+                    </button>
+                  </div>
+                </div>
+                <Input
+                  id="entryTime"
+                  type="time"
+                  value={entryTime}
+                  onChange={(e) => setEntryTime(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {dishYield > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {t(
+                  'mealBuilder.diaryPortionExplainer',
+                  'This dish yields {{total}} {{unit}} in total and you logged {{consumed}} {{unit}} ({{pct}}%), so each ingredient below counts at {{pct}}% on your plate.',
+                  {
+                    total:
+                      servingUnit === 'serving'
+                        ? totalServings
+                        : totalAmountText,
+                    unit: servingUnit,
+                    consumed: consumedQuantity,
+                    pct:
+                      Math.round(
+                        (positiveOr(consumedQuantity, 1) / dishYield) * 10000
+                      ) / 100,
+                  }
+                )}
+              </p>
             )}
           </div>
+        ) : (
+          servingModelFields
         )}
         <div className="space-y-2">
-          {source === 'food-diary' ? (
-            <h4 className="text-sm font-medium">
-              {t('mealBuilder.loggedNutritionLabel', 'Logged Nutrition:')}
-            </h4>
-          ) : (
-            // Meal-management mode shows a Per serving / Total toggle (matches
-            // mobile MealDetailScreen). The toggle replaces the static header —
-            // selecting "Per serving" divides the recipe totals by
-            // total_servings; "Total" shows the raw full-recipe sum.
-            <Tabs
-              value={nutritionView}
-              onValueChange={(value) =>
-                setNutritionView(value as 'perServing' | 'total')
-              }
-            >
-              <TabsList>
+          {/* Diary mode weighs the portion against the whole dish, so it
+              toggles Consumed vs Total. Meal management has no consumed
+              portion and toggles Per serving vs Total instead. */}
+          <Tabs
+            value={nutritionView}
+            onValueChange={(value) =>
+              setNutritionView(value as 'logged' | 'perServing' | 'total')
+            }
+          >
+            <TabsList>
+              {source === 'food-diary' ? (
+                <TabsTrigger value="logged">
+                  {t('mealBuilder.consumedTab', 'Consumed')}
+                </TabsTrigger>
+              ) : (
                 <TabsTrigger value="perServing">
                   {t('mealBuilder.perServingTab', 'Per serving')}
                 </TabsTrigger>
-                <TabsTrigger value="total">
-                  {t('mealBuilder.totalTab', 'Total')}
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          )}
+              )}
+              <TabsTrigger value="total">
+                {t('mealBuilder.totalTab', 'Total')}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm text-muted-foreground">
             {visibleNutrients.map((key) => {
               const meta = getNutrientMetadata(key);
               const rawVal = mealTotals[key] || 0;
-              // Only meal-management mode divides by total_servings; food-diary
-              // mode's calculateMealNutrition already applies the per-log
-              // multiplier, so we display its values as-is.
-              const divisor =
-                source !== 'food-diary' && nutritionView === 'perServing'
-                  ? parseFloat(totalServings) || 1
-                  : 1;
-              const val = divisor > 0 ? rawVal / divisor : rawVal;
+              const val = rawVal * displayScale;
               const displayVal =
                 key === 'calories'
                   ? formatNutrientValue(
@@ -1374,12 +1738,17 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
 
       {selectedFoodForUnitSelection && (
         <FoodUnitSelector
+          key={`${selectedFoodForUnitSelection.id}-${editingMealFood?.index}-${isFoodUnitSelectorOpen}`}
           food={selectedFoodForUnitSelection}
           open={isFoodUnitSelectorOpen}
           onOpenChange={setIsFoodUnitSelectorOpen}
           onSelect={handleFoodUnitSelected}
           initialQuantity={editingMealFood?.mealFood.quantity}
-          initialUnit={editingMealFood?.mealFood.unit}
+          initialUnit={
+            editingMealFood?.mealFood.unit ||
+            editingMealFood?.mealFood.serving_unit ||
+            'g'
+          }
           initialVariantId={editingMealFood?.mealFood.variant_id}
         />
       )}
@@ -1449,6 +1818,35 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           if (!open) setViewingLinkedMealId(null);
         }}
       />
+
+      {/*
+        Notes come last, after the ingredients and nutrition totals: those are
+        what this screen is for, and a full recipe above them would push them
+        off-screen.
+      */}
+      {templateNotes ? (
+        <div className="space-y-2">
+          <Label>{t('mealBuilder.templateNotes', 'About this meal')}</Label>
+          <div className="rounded-md border bg-muted/40 px-3 py-2 max-h-48 overflow-y-auto">
+            <MarkdownView images={templateImages}>{templateNotes}</MarkdownView>
+          </div>
+        </div>
+      ) : null}
+      <div className="space-y-2">
+        <Label htmlFor="mealNotes">
+          {t('mealBuilder.mealNotes', 'Notes (Optional)')}
+        </Label>
+        <MarkdownEditor
+          id="mealNotes"
+          value={mealNotes}
+          onChange={setMealNotes}
+          placeholder={t(
+            'mealBuilder.mealNotesPlaceholder',
+            'e.g., the recipe, or how you prepare this'
+          )}
+          imageOptions={savedMealImageOptions}
+        />
+      </div>
 
       <div className="flex justify-end space-x-2">
         <Button variant="outline" onClick={onCancel}>

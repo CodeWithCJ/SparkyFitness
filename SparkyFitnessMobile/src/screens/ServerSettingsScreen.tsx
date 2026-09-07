@@ -33,31 +33,44 @@ import { notifyNoConfigs } from '../services/api/authService';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useServerConfigs, useServerConnection } from '../hooks';
-import { serverConfigsQueryKey, serverConnectionQueryKey } from '../hooks/queryKeys';
+import {
+  serverConfigsQueryKey,
+  serverConnectionQueryKey,
+} from '../hooks/queryKeys';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type ServerSettingsScreenProps = RootStackScreenProps<'ServerSettings'>;
 
-const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation }) => {
+const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({
+  navigation,
+}) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
-  const [accentPrimary, textSecondary, textLink, success, danger] = useCSSVariable([
-    '--color-accent-primary',
-    '--color-text-secondary',
-    '--color-text-link',
-    '--color-icon-success',
-    '--color-bg-danger',
-  ]) as [string, string, string, string, string];
+  const [accentPrimary, textSecondary, textLink, success, danger] =
+    useCSSVariable([
+      '--color-accent-primary',
+      '--color-text-secondary',
+      '--color-text-link',
+      '--color-icon-success',
+      '--color-bg-danger',
+    ]) as [string, string, string, string, string];
 
   const queryClient = useQueryClient();
-  const { allConfigs, activeConfig, refetch: refetchServerConfigs } = useServerConfigs();
+  const {
+    allConfigs,
+    activeConfig,
+    refetch: refetchServerConfigs,
+  } = useServerConfigs();
   const { isConnected, refetch: refetchConnection } = useServerConnection();
 
   const [unifiedModalVisible, setUnifiedModalVisible] = useState(false);
-  const [unifiedModalConfig, setUnifiedModalConfig] = useState<ServerConfig | null>(null);
-  const [unifiedModalTab, setUnifiedModalTab] = useState<'signIn' | 'apiKey'>('signIn');
+  const [unifiedModalConfig, setUnifiedModalConfig] =
+    useState<ServerConfig | null>(null);
+  const [unifiedModalTab, setUnifiedModalTab] = useState<'signIn' | 'apiKey'>(
+    'signIn'
+  );
   const [isTesting, setIsTesting] = useState(false);
 
   const otherConfigs = allConfigs.filter((c) => c.id !== activeConfig?.id);
@@ -72,7 +85,10 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
         Toast.show({
           type: 'error',
           text1: t('common.error', { defaultValue: 'Error' }),
-          text2: t('auth.errors.httpsRequiredEdit', { defaultValue: 'HTTPS is required for server connections. Please edit this configuration to use HTTPS.' }),
+          text2: t('auth.errors.httpsRequiredEdit', {
+            defaultValue:
+              'HTTPS is required for server connections. Please edit this configuration to use HTTPS.',
+          }),
         });
         return;
       }
@@ -82,15 +98,27 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
       queryClient.clear();
       await refetchServerConfigs();
       refetchConnection();
-      Toast.show({ type: 'success', text1: t('serverSettingsUi.activeServerChanged', { defaultValue: 'Active server changed' }) });
+      Toast.show({
+        type: 'success',
+        text1: t('serverSettingsUi.activeServerChanged', {
+          defaultValue: 'Active server changed',
+        }),
+      });
       addLog('Active server configuration changed.', 'INFO');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      addLog(`Failed to set active server configuration: ${errorMessage}`, 'ERROR');
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      addLog(
+        `Failed to set active server configuration: ${errorMessage}`,
+        'ERROR'
+      );
       Toast.show({
         type: 'error',
         text1: t('common.error', { defaultValue: 'Error' }),
-        text2: t('serverSettingsUi.setActiveFailed', { defaultValue: 'Failed to set active server configuration: {{error}}', error: errorMessage }),
+        text2: t('serverSettingsUi.setActiveFailed', {
+          defaultValue: 'Failed to set active server configuration: {{error}}',
+          error: errorMessage,
+        }),
       });
     }
   };
@@ -108,18 +136,36 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
       addLog('Server configuration deleted.', 'INFO');
 
       if (remaining.length === 0) {
-        Alert.alert(t('common.success', { defaultValue: 'Success' }), t('serverSettingsUi.configurationDeleted', { defaultValue: 'Server configuration deleted.' }), [
-          { text: t('common.ok', { defaultValue: 'OK' }), onPress: () => notifyNoConfigs() },
-        ]);
+        Alert.alert(
+          t('common.success', { defaultValue: 'Success' }),
+          t('serverSettingsUi.configurationDeleted', {
+            defaultValue: 'Server configuration deleted.',
+          }),
+          [
+            {
+              text: t('common.ok', { defaultValue: 'OK' }),
+              onPress: () => notifyNoConfigs(),
+            },
+          ]
+        );
       } else {
-        Toast.show({ type: 'success', text1: t('serverSettingsUi.configurationDeletedToast', { defaultValue: 'Server configuration deleted' }) });
+        Toast.show({
+          type: 'success',
+          text1: t('serverSettingsUi.configurationDeletedToast', {
+            defaultValue: 'Server configuration deleted',
+          }),
+        });
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       Toast.show({
         type: 'error',
         text1: t('common.error', { defaultValue: 'Error' }),
-        text2: t('serverSettingsUi.deleteFailed', { defaultValue: 'Failed to delete server configuration: {{error}}', error: errorMessage }),
+        text2: t('serverSettingsUi.deleteFailed', {
+          defaultValue: 'Failed to delete server configuration: {{error}}',
+          error: errorMessage,
+        }),
       });
       addLog(`Failed to delete server configuration: ${errorMessage}`, 'ERROR');
     }
@@ -140,7 +186,14 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
   const openWebDashboard = async (): Promise<void> => {
     try {
       if (!activeConfig || !activeConfig.url) {
-        Alert.alert(t('serverSettingsUi.noServerConfiguredTitle', { defaultValue: 'No Server Configured' }), t('serverSettingsUi.noServerConfiguredMessage', { defaultValue: 'Please add a server first.' }));
+        Alert.alert(
+          t('serverSettingsUi.noServerConfiguredTitle', {
+            defaultValue: 'No Server Configured',
+          }),
+          t('serverSettingsUi.noServerConfiguredMessage', {
+            defaultValue: 'Please add a server first.',
+          })
+        );
         return;
       }
 
@@ -151,16 +204,23 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
       try {
         await WebBrowser.openBrowserAsync(serverUrl);
       } catch (inAppError) {
-        addLog(`In-app browser failed, falling back to Linking: ${inAppError}`, 'ERROR');
+        addLog(
+          `In-app browser failed, falling back to Linking: ${inAppError}`,
+          'ERROR'
+        );
         await Linking.openURL(serverUrl);
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       addLog(`Error opening web dashboard: ${errorMessage}`, 'ERROR');
       Toast.show({
         type: 'error',
         text1: t('common.error', { defaultValue: 'Error' }),
-        text2: t('serverSettingsUi.openDashboardFailed', { defaultValue: 'Could not open web dashboard: {{error}}', error: errorMessage }),
+        text2: t('serverSettingsUi.openDashboardFailed', {
+          defaultValue: 'Could not open web dashboard: {{error}}',
+          error: errorMessage,
+        }),
       });
     }
   };
@@ -173,7 +233,9 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
         type: result.data ? 'success' : 'error',
         text1: result.data
           ? t('serverSettingsUi.connected', { defaultValue: 'Connected' })
-          : t('serverSettingsUi.connectionFailed', { defaultValue: 'Connection failed' }),
+          : t('serverSettingsUi.connectionFailed', {
+              defaultValue: 'Connection failed',
+            }),
       });
     } finally {
       setIsTesting(false);
@@ -186,92 +248,168 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
     if (Platform.OS === 'android' && !isActive) {
       Alert.alert(
         item.url,
-        t('serverSettingsUi.selectAction', { defaultValue: 'Select an action' }),
+        t('serverSettingsUi.selectAction', {
+          defaultValue: 'Select an action',
+        }),
         [
-          { text: t('serverSettingsUi.setActive', { defaultValue: 'Set Active' }), onPress: () => handleSetActiveConfig(item.id) },
-          { text: t('serverSettingsUi.configure', { defaultValue: 'Configure' }), onPress: () => handleConfigureServer(item) },
-          { text: t('common.delete', { defaultValue: 'Delete' }), style: 'destructive', onPress: () => handleDeleteConfig(item.id) },
+          {
+            text: t('serverSettingsUi.setActive', {
+              defaultValue: 'Set Active',
+            }),
+            onPress: () => handleSetActiveConfig(item.id),
+          },
+          {
+            text: t('serverSettingsUi.configure', {
+              defaultValue: 'Configure',
+            }),
+            onPress: () => handleConfigureServer(item),
+          },
+          {
+            text: t('common.delete', { defaultValue: 'Delete' }),
+            style: 'destructive',
+            onPress: () => handleDeleteConfig(item.id),
+          },
         ],
-        { cancelable: true },
+        { cancelable: true }
       );
       return;
     }
 
     const buttons = [
-      ...(!isActive ? [{ text: t('serverSettingsUi.setActive', { defaultValue: 'Set Active' }), onPress: () => handleSetActiveConfig(item.id) }] : []),
-      { text: t('serverSettingsUi.configure', { defaultValue: 'Configure' }), onPress: () => handleConfigureServer(item) },
-      { text: t('common.delete', { defaultValue: 'Delete' }), style: 'destructive' as const, onPress: () => handleDeleteConfig(item.id) },
-      ...(Platform.OS === 'ios' ? [{ text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' as const }] : []),
+      ...(!isActive
+        ? [
+            {
+              text: t('serverSettingsUi.setActive', {
+                defaultValue: 'Set Active',
+              }),
+              onPress: () => handleSetActiveConfig(item.id),
+            },
+          ]
+        : []),
+      {
+        text: t('serverSettingsUi.configure', { defaultValue: 'Configure' }),
+        onPress: () => handleConfigureServer(item),
+      },
+      {
+        text: t('common.delete', { defaultValue: 'Delete' }),
+        style: 'destructive' as const,
+        onPress: () => handleDeleteConfig(item.id),
+      },
+      ...(Platform.OS === 'ios'
+        ? [
+            {
+              text: t('common.cancel', { defaultValue: 'Cancel' }),
+              style: 'cancel' as const,
+            },
+          ]
+        : []),
     ];
     Alert.alert(
       item.url,
-      isActive ? t('serverSettingsUi.activeConfiguration', { defaultValue: 'Active configuration' }) : t('serverSettingsUi.selectAction', { defaultValue: 'Select an action' }),
+      isActive
+        ? t('serverSettingsUi.activeConfiguration', {
+            defaultValue: 'Active configuration',
+          })
+        : t('serverSettingsUi.selectAction', {
+            defaultValue: 'Select an action',
+          }),
       buttons,
-      { cancelable: true },
+      { cancelable: true }
     );
   };
 
-  const header = useScreenHeader({ title: t('screens.serverSettings', { defaultValue: 'Server Settings' }), left: { kind: 'back' } });
+  const header = useScreenHeader({
+    title: t('screens.serverSettings', { defaultValue: 'Server Settings' }),
+    left: { kind: 'back' },
+  });
 
   return (
-    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       <ScrollView
         contentContainerStyle={{
           padding: 16,
           paddingBottom: insets.bottom + 80 + activeWorkoutBarPadding,
         }}
-        contentInsetAdjustmentBehavior={usesNativeHeader ? 'automatic' : 'never'}
+        contentInsetAdjustmentBehavior={
+          usesNativeHeader ? 'automatic' : 'never'
+        }
       >
         {activeConfig && (
           <>
             <Text className="text-text-secondary text-xs font-semibold uppercase px-2 mb-2">
-              {t('serverSettingsUi.activeServer', { defaultValue: 'Active Server' })}
+              {t('serverSettingsUi.activeServer', {
+                defaultValue: 'Active Server',
+              })}
             </Text>
             <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-            <Pressable
-              onPress={() => showConfigMenu(activeConfig)}
-              accessibilityLabel={t('serverSettingsUi.optionsFor', { defaultValue: 'Options for {{url}}', url: activeConfig.url })}
-              accessibilityHint={isConnected ? t('serverSettingsUi.connected', { defaultValue: 'Connected' }) : t('serverSettingsUi.connectionFailed', { defaultValue: 'Connection failed' })}
-              accessibilityRole="button"
-              className="flex-row items-center"
-            >
-              <View
-                className="w-2.5 h-2.5 rounded-full mr-2"
-                style={{ backgroundColor: isConnected ? success : danger }}
-              />
-              <Text
-                className="text-base text-text-primary flex-1"
-                numberOfLines={1}
-                ellipsizeMode="middle"
+              <Pressable
+                onPress={() => showConfigMenu(activeConfig)}
+                accessibilityLabel={t('serverSettingsUi.optionsFor', {
+                  defaultValue: 'Options for {{url}}',
+                  url: activeConfig.url,
+                })}
+                accessibilityHint={
+                  isConnected
+                    ? t('serverSettingsUi.connected', {
+                        defaultValue: 'Connected',
+                      })
+                    : t('serverSettingsUi.connectionFailed', {
+                        defaultValue: 'Connection failed',
+                      })
+                }
+                accessibilityRole="button"
+                className="flex-row items-center"
               >
-                {activeConfig.url}
-              </Text>
-            </Pressable>
-            <View className="flex-row gap-3 mt-4">
-              <Button variant="ghost" onPress={openWebDashboard} className="flex-1 flex-row">
-                <Icon name="globe" size={18} color={accentPrimary} />
-                <Text className="text-base text-accent-primary font-semibold ml-2">{t('serverSettingsUi.openWeb', { defaultValue: 'Open Web' })}</Text>
-              </Button>
-              <Button
-                variant="ghost"
-                onPress={handleTestConnection}
-                disabled={isTesting}
-                className="flex-1 flex-row"
-              >
-                {isTesting ? (
-                  <ActivityIndicator size="small" />
-                ) : (
-                  <>
-                    <Icon name="wifi" size={18} color={accentPrimary} />
-                    <Text className="text-base text-accent-primary font-semibold ml-2">
-                      {t('serverSettingsUi.testConnection', { defaultValue: 'Test Connection' })}
-                    </Text>
-                  </>
-                )}
-              </Button>
+                <View
+                  className="w-2.5 h-2.5 rounded-full mr-2"
+                  style={{ backgroundColor: isConnected ? success : danger }}
+                />
+                <Text
+                  className="text-base text-text-primary flex-1"
+                  numberOfLines={1}
+                  ellipsizeMode="middle"
+                >
+                  {activeConfig.url}
+                </Text>
+              </Pressable>
+              <View className="flex-row gap-3 mt-4">
+                <Button
+                  variant="ghost"
+                  onPress={openWebDashboard}
+                  className="flex-1 flex-row"
+                >
+                  <Icon name="globe" size={18} color={accentPrimary} />
+                  <Text className="text-base text-accent-primary font-semibold ml-2">
+                    {t('serverSettingsUi.openWeb', {
+                      defaultValue: 'Open Web',
+                    })}
+                  </Text>
+                </Button>
+                <Button
+                  variant="ghost"
+                  onPress={handleTestConnection}
+                  disabled={isTesting}
+                  className="flex-1 flex-row"
+                >
+                  {isTesting ? (
+                    <ActivityIndicator size="small" />
+                  ) : (
+                    <>
+                      <Icon name="wifi" size={18} color={accentPrimary} />
+                      <Text className="text-base text-accent-primary font-semibold ml-2">
+                        {t('serverSettingsUi.testConnection', {
+                          defaultValue: 'Test Connection',
+                        })}
+                      </Text>
+                    </>
+                  )}
+                </Button>
+              </View>
             </View>
-          </View>
           </>
         )}
 
@@ -287,7 +425,9 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
         {otherConfigs.length > 0 && (
           <>
             <Text className="text-text-secondary text-xs font-semibold uppercase px-2 mb-2">
-              {t('serverSettingsUi.otherServers', { defaultValue: 'Other Servers' })}
+              {t('serverSettingsUi.otherServers', {
+                defaultValue: 'Other Servers',
+              })}
             </Text>
             <View className="bg-surface rounded-xl mb-4 shadow-sm">
               {otherConfigs.map((cfg, i) => (
@@ -295,7 +435,10 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
                   key={cfg.id}
                   onPress={() => showConfigMenu(cfg)}
                   className={`p-4 flex-row items-center justify-between${i > 0 ? ' border-t border-border-subtle' : ''}`}
-                  accessibilityLabel={t('serverSettingsUi.optionsFor', { defaultValue: 'Options for {{url}}', url: cfg.url })}
+                  accessibilityLabel={t('serverSettingsUi.optionsFor', {
+                    defaultValue: 'Options for {{url}}',
+                    url: cfg.url,
+                  })}
                   accessibilityRole="button"
                 >
                   <View className="flex-1 mr-3">
@@ -307,7 +450,11 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
                       {cfg.url}
                     </Text>
                   </View>
-                  <Icon name="chevron-forward" size={20} color={textSecondary} />
+                  <Icon
+                    name="chevron-forward"
+                    size={20}
+                    color={textSecondary}
+                  />
                 </TouchableOpacity>
               ))}
             </View>
@@ -316,18 +463,27 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({ navigation 
 
         {allConfigs.length === 0 && (
           <View className="items-center py-8">
-            <Text className="text-text-secondary mb-4">{t('serverSettingsUi.noServersConfigured', { defaultValue: 'No servers configured yet.' })}</Text>
+            <Text className="text-text-secondary mb-4">
+              {t('serverSettingsUi.noServersConfigured', {
+                defaultValue: 'No servers configured yet.',
+              })}
+            </Text>
           </View>
         )}
 
         <Button
           variant="ghost"
           onPress={handleAddNewConfig}
-          accessibilityLabel={t('auth.addServer', { defaultValue: 'Add Server' })}
+          accessibilityLabel={t('auth.addServer', {
+            defaultValue: 'Add Server',
+          })}
           className="self-center flex-row mt-2 py-1 px-0"
         >
           <Icon name="add" size={24} color={textLink} />
-          <Text className="ml-2 text-base font-medium" style={{ color: textLink }}>
+          <Text
+            className="ml-2 text-base font-medium"
+            style={{ color: textLink }}
+          >
             {t('auth.addServer', { defaultValue: 'Add Server' })}
           </Text>
         </Button>

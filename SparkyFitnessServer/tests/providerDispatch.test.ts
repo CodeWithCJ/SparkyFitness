@@ -709,7 +709,7 @@ describe('dispatchAiRequest — text-only structured request shapes', () => {
     );
   });
 
-  it('ollama sends the raw schema as format on /api/chat with no auth header', async () => {
+  it('ollama asks for JSON and carries the schema in the prompt', async () => {
     const m = mockFetch(ollamaBody(JSON.stringify(SAMPLE)));
     await dispatchAiRequest(
       baseRequest({
@@ -723,9 +723,29 @@ describe('dispatchAiRequest — text-only structured request shapes', () => {
     );
     const { url, headers, body } = captured(m);
     expect(url).toBe('http://localhost:11434/api/chat');
+    // No key configured, so no Authorization header — one is sent only when
+    // the provider has an api_key (Ollama behind an authenticating proxy).
     expect(headers.Authorization).toBeUndefined();
     expect(body.stream).toBe(false);
-    expect(body.format).toEqual(SCHEMA);
+    // Ollama takes format: 'json' and reads the schema from the prompt.
+    expect(body.format).toBe('json');
+    const message = (body.messages as { content: string }[])[0];
+    expect(message.content).toContain('conforms to this JSON Schema');
+  });
+
+  it('ollama sends a bearer token when the provider has an api key', async () => {
+    const m = mockFetch(ollamaBody(JSON.stringify(SAMPLE)));
+    await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'ollama',
+          api_key: 'secret-key',
+          custom_url: 'http://localhost:11434',
+        }),
+        networkPolicy: PRIVATE_NETWORK_POLICY,
+      })
+    );
+    expect(captured(m).headers.Authorization).toBe('Bearer secret-key');
   });
 });
 
@@ -828,7 +848,8 @@ describe('dispatchAiRequest — vision request shapes', () => {
       body.messages as Array<{ images?: string[]; content: string }>
     )[0];
     expect(message.images).toEqual([IMG.base64]);
-    expect(message.content).toBe('Do the thing.');
+    // The structured-output schema is appended to the prompt for Ollama.
+    expect(message.content).toContain('Do the thing.');
   });
 });
 

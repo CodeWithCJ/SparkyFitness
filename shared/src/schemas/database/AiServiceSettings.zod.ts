@@ -18,7 +18,7 @@ export const aiServiceSettingsSchema = z.object({
   api_key_iv: z.string().nullable().optional(),
   api_key_tag: z.string().nullable().optional(),
   is_public: z.boolean(),
-  chat_tool_profile: z.enum(['full', 'core']).optional(),
+  chat_tool_profile: z.enum(["full", "core"]).optional(),
 });
 
 export const aiServiceSettingsInitializerSchema = z.object({
@@ -36,7 +36,7 @@ export const aiServiceSettingsInitializerSchema = z.object({
   api_key_iv: z.string().optional().nullable(),
   api_key_tag: z.string().optional().nullable(),
   is_public: z.boolean().optional(),
-  chat_tool_profile: z.enum(['full', 'core']).optional(),
+  chat_tool_profile: z.enum(["full", "core"]).optional(),
 });
 
 export const aiServiceSettingsMutatorSchema = z.object({
@@ -54,7 +54,7 @@ export const aiServiceSettingsMutatorSchema = z.object({
   api_key_iv: z.string().optional().nullable(),
   api_key_tag: z.string().optional().nullable(),
   is_public: z.boolean().optional(),
-  chat_tool_profile: z.enum(['full', 'core']).optional(),
+  chat_tool_profile: z.enum(["full", "core"]).optional(),
 });
 
 export type AiServiceSettings = z.infer<typeof aiServiceSettingsSchema>;

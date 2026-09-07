@@ -114,8 +114,7 @@ function extractTelemetry(entry: ExerciseEntry, activityData: unknown) {
 
   const rawData =
     ((activityData as Record<string, unknown>)?.['activity'] as
-      | Record<string, unknown>
-      | undefined) || providerDump?.['detail_data'];
+      Record<string, unknown> | undefined) || providerDump?.['detail_data'];
 
   const rawObj = (rawData as Record<string, unknown>) || {};
   const summary =

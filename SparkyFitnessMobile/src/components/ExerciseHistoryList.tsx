@@ -10,7 +10,10 @@ import type {
 } from '@workspace/shared';
 import Button from './ui/Button';
 import { useExerciseHistory } from '../hooks/useExerciseHistory';
-import { formatRecentSessionSet, matchesSetRecord } from '../utils/workoutSession';
+import {
+  formatRecentSessionSet,
+  matchesSetRecord,
+} from '../utils/workoutSession';
 import { formatDateLabel } from '../utils/dateUtils';
 
 interface ExerciseHistoryListProps {
@@ -45,7 +48,7 @@ const SetChip: React.FC<{
     weightUnit,
     t,
     modality,
-    distanceUnit,
+    distanceUnit
   );
   return (
     <View
@@ -70,9 +73,17 @@ const SetChip: React.FC<{
 };
 
 /** Duration/calories line for entries logged without set data (cardio, quick logs). */
-const formatEntrySummary = (entries: ExerciseEntryResponse[]): string | null => {
-  const duration = entries.reduce((sum, e) => sum + (e.duration_minutes ?? 0), 0);
-  const calories = entries.reduce((sum, e) => sum + (e.calories_burned ?? 0), 0);
+const formatEntrySummary = (
+  entries: ExerciseEntryResponse[]
+): string | null => {
+  const duration = entries.reduce(
+    (sum, e) => sum + (e.duration_minutes ?? 0),
+    0
+  );
+  const calories = entries.reduce(
+    (sum, e) => sum + (e.calories_burned ?? 0),
+    0
+  );
   const parts: string[] = [];
   if (duration > 0) parts.push(`${Math.round(duration)} min`);
   if (calories > 0) parts.push(`${Math.round(calories)} cal`);
@@ -88,7 +99,9 @@ const SessionCard: React.FC<{
   bestSet?: ExerciseSetStats | null;
 }> = ({ session, exerciseId, weightUnit, distanceUnit, modality, bestSet }) => {
   const { t, i18n: translationI18n } = useTranslation();
-  const dateLocale = translationI18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
+  const dateLocale = translationI18n.language.startsWith('pl')
+    ? 'pl-PL'
+    : 'en-US';
   // The history endpoint filters at the session level, so a preset session
   // still carries every exercise it contains — show only this exercise's sets.
   const entries =
@@ -102,7 +115,7 @@ const SessionCard: React.FC<{
         set.weight != null ||
         set.reps != null ||
         set.duration != null ||
-        set.distance != null,
+        set.distance != null
     );
   const presetName = session.type === 'preset' ? session.name : null;
 
@@ -110,10 +123,15 @@ const SessionCard: React.FC<{
     <View className="bg-surface rounded-xl p-4">
       <View className="flex-row items-center justify-between">
         <Text className="text-text-primary text-base font-semibold">
-          {session.entry_date ? formatDateLabel(session.entry_date, t, dateLocale) : t('common.unknownDate', { defaultValue: 'Unknown date' })}
+          {session.entry_date
+            ? formatDateLabel(session.entry_date, t, dateLocale)
+            : t('common.unknownDate', { defaultValue: 'Unknown date' })}
         </Text>
         {presetName ? (
-          <Text className="text-text-muted text-sm flex-shrink ml-3" numberOfLines={1}>
+          <Text
+            className="text-text-muted text-sm flex-shrink ml-3"
+            numberOfLines={1}
+          >
             {presetName}
           </Text>
         ) : null}
@@ -133,7 +151,8 @@ const SessionCard: React.FC<{
         </View>
       ) : (
         <Text className="text-text-secondary text-sm mt-2">
-          {formatEntrySummary(entries) ?? t('exerciseHistory.noSetData', { defaultValue: 'No set data' })}
+          {formatEntrySummary(entries) ??
+            t('exerciseHistory.noSetData', { defaultValue: 'No set data' })}
         </Text>
       )}
     </View>
@@ -152,8 +171,15 @@ const ExerciseHistoryList: React.FC<ExerciseHistoryListProps> = ({
   bestSet,
 }) => {
   const { t } = useTranslation();
-  const { sessions, isLoading, isLoadingMore, isError, refetch, loadMore, hasMore } =
-    useExerciseHistory({ exerciseId });
+  const {
+    sessions,
+    isLoading,
+    isLoadingMore,
+    isError,
+    refetch,
+    loadMore,
+    hasMore,
+  } = useExerciseHistory({ exerciseId });
 
   if (isLoading) {
     return (
@@ -166,7 +192,11 @@ const ExerciseHistoryList: React.FC<ExerciseHistoryListProps> = ({
   if (isError) {
     return (
       <View className="bg-surface rounded-xl p-4 items-center">
-        <Text className="text-text-secondary text-sm">{t('exerciseHistory.loadError', { defaultValue: "Couldn't load history." })}</Text>
+        <Text className="text-text-secondary text-sm">
+          {t('exerciseHistory.loadError', {
+            defaultValue: "Couldn't load history.",
+          })}
+        </Text>
         <Button variant="ghost" onPress={refetch}>
           {t('common.retry', { defaultValue: 'Retry' })}
         </Button>
@@ -177,7 +207,11 @@ const ExerciseHistoryList: React.FC<ExerciseHistoryListProps> = ({
   if (sessions.length === 0) {
     return (
       <View className="bg-surface rounded-xl p-4 items-center">
-        <Text className="text-text-secondary text-sm">{t('exerciseHistory.empty', { defaultValue: 'No sessions logged yet.' })}</Text>
+        <Text className="text-text-secondary text-sm">
+          {t('exerciseHistory.empty', {
+            defaultValue: 'No sessions logged yet.',
+          })}
+        </Text>
       </View>
     );
   }
@@ -197,7 +231,9 @@ const ExerciseHistoryList: React.FC<ExerciseHistoryListProps> = ({
       ))}
       {hasMore ? (
         <Button variant="ghost" onPress={loadMore} disabled={isLoadingMore}>
-          {isLoadingMore ? t('common.loading', { defaultValue: "Loading..." }) : t('common.loadMore', { defaultValue: 'Load more' })}
+          {isLoadingMore
+            ? t('common.loading', { defaultValue: 'Loading...' })
+            : t('common.loadMore', { defaultValue: 'Load more' })}
         </Button>
       ) : null}
     </>

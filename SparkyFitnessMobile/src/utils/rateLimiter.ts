@@ -10,7 +10,7 @@ export class RateLimiter {
 
   constructor(
     private readonly maxRequests: number,
-    private readonly windowMs: number,
+    private readonly windowMs: number
   ) {}
 
   private prune(): void {

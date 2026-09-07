@@ -31,7 +31,7 @@ export type NativeHeaderDatePickerNavigation = {
 
 export function setNativeHeaderDatePickerOptions(
   navigation: NativeHeaderDatePickerNavigation,
-  options: NativeHeaderDatePickerOptions,
+  options: NativeHeaderDatePickerOptions
 ) {
   const leadingAction = options.leadingAction;
 

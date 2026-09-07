@@ -24,14 +24,18 @@ interface SwipeableFoodRowProps {
   onAdjustServing?: (entry: FoodEntry) => void;
 }
 
-const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, onAdjustServing }) => {
+const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
+  entry,
+  nutrition,
+  onAdjustServing,
+}) => {
   const { t } = useTranslation();
   const { preferences } = usePreferences();
   const navigation = useNavigation();
   const swipeableRef = useRef<any>(null);
   const invalidateCacheRef = useRef<() => void>(() => {});
   const { collapse, handleLayout, animatedStyle } = useRowCollapse(() =>
-    invalidateCacheRef.current(),
+    invalidateCacheRef.current()
   );
 
   const isMealComponent = !!entry.food_entry_meal_id;
@@ -56,32 +60,49 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
     onSuccess: onDeleteSuccess,
   });
 
-  const confirmAndDelete = isMealComponent ? mealDelete.confirmAndDelete : foodEntryDelete.confirmAndDelete;
-  const deleteEntry = isMealComponent ? mealDelete.deleteEntry : foodEntryDelete.deleteEntry;
+  const confirmAndDelete = isMealComponent
+    ? mealDelete.confirmAndDelete
+    : foodEntryDelete.confirmAndDelete;
+  const deleteEntry = isMealComponent
+    ? mealDelete.deleteEntry
+    : foodEntryDelete.deleteEntry;
 
   // Keep the latest invalidateCache in a ref so the post-collapse callback
   // (run via runOnJS after the delete) always invokes the current one. Written
   // in an effect rather than during render so the value stays mutable to
   // React's compiler.
   useEffect(() => {
-    invalidateCacheRef.current = isMealComponent ? mealDelete.invalidateCache : foodEntryDelete.invalidateCache;
-  }, [isMealComponent, mealDelete.invalidateCache, foodEntryDelete.invalidateCache]);
+    invalidateCacheRef.current = isMealComponent
+      ? mealDelete.invalidateCache
+      : foodEntryDelete.invalidateCache;
+  }, [
+    isMealComponent,
+    mealDelete.invalidateCache,
+    foodEntryDelete.invalidateCache,
+  ]);
 
   const renderRightActions = () => (
     <DeleteRowAction
       onPress={confirmAndDelete}
       className="ml-4"
-      accessibilityLabel={t('foodRow.deleteFood', { defaultValue: 'Delete food' })}
+      accessibilityLabel={t('foodRow.deleteFood', {
+        defaultValue: 'Delete food',
+      })}
     />
   );
 
-  const canQuickAdjust = !isMealComponent && !!onAdjustServing && Number(entry.serving_size) > 0;
-  const name = entry.food_name || t('foodRow.unknownFood', { defaultValue: 'Unknown food' });
+  const canQuickAdjust =
+    !isMealComponent && !!onAdjustServing && Number(entry.serving_size) > 0;
+  const name =
+    entry.food_name ||
+    t('foodRow.unknownFood', { defaultValue: 'Unknown food' });
   const timeLabel = formatTimeLabel(entry.entry_time, preferences?.time_format);
 
   const handlePress = () => {
     if (isMealComponent && entry.food_entry_meal_id) {
-      navigation.navigate('EditLoggedMeal', { foodEntryMealId: entry.food_entry_meal_id });
+      navigation.navigate('EditLoggedMeal', {
+        foodEntryMealId: entry.food_entry_meal_id,
+      });
       return;
     }
     navigation.navigate('FoodEntryView', { entry });
@@ -94,10 +115,20 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
       onPress?: () => void;
     }[] = [];
     if (canQuickAdjust) {
-      buttons.push({ text: t('foodRow.adjustServing', { defaultValue: 'Adjust serving' }), onPress: () => onAdjustServing!(entry) });
+      buttons.push({
+        text: t('foodRow.adjustServing', { defaultValue: 'Adjust serving' }),
+        onPress: () => onAdjustServing!(entry),
+      });
     }
-    buttons.push({ text: t('common.delete', { defaultValue: 'Delete' }), style: 'destructive', onPress: deleteEntry });
-    buttons.push({ text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' });
+    buttons.push({
+      text: t('common.delete', { defaultValue: 'Delete' }),
+      style: 'destructive',
+      onPress: deleteEntry,
+    });
+    buttons.push({
+      text: t('common.cancel', { defaultValue: 'Cancel' }),
+      style: 'cancel',
+    });
     Alert.alert(name, undefined, buttons);
   };
 
@@ -134,10 +165,14 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
                 {name}
               </Text>
               <Text className="text-sm text-text-secondary" numberOfLines={1}>
-                {' · '}{entry.quantity} {entry.unit}
+                {' · '}
+                {entry.quantity} {entry.unit}
               </Text>
               {timeLabel && (
-                <Text className="text-xs text-text-link ml-1.5" numberOfLines={1}>
+                <Text
+                  className="text-xs text-text-link ml-1.5"
+                  numberOfLines={1}
+                >
                   {timeLabel}
                 </Text>
               )}
@@ -151,11 +186,12 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({ entry, nutrition, o
               className="py-0 px-0"
               textClassName="text-sm text-text-secondary font-medium"
             >
-              {`${nutrition.calories} ${t('foodRow.caloriesUnit', { defaultValue: 'Cal' })} ▾`}
+              {`${Math.round(nutrition.calories)} ${t('foodRow.caloriesUnit', { defaultValue: 'Cal' })} ▾`}
             </Button>
           ) : (
             <Text className="text-sm text-text-secondary font-medium mr-2">
-              {nutrition.calories} {t('foodRow.caloriesUnit', { defaultValue: 'Cal' })}
+              {Math.round(nutrition.calories)}{' '}
+              {t('foodRow.caloriesUnit', { defaultValue: 'Cal' })}
             </Text>
           )}
         </View>

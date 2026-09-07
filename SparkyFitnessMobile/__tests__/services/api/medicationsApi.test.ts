@@ -36,7 +36,7 @@ describe('medicationsApi', () => {
             status: 'skipped',
             taken_at: '2026-07-28T09:05:00Z',
           },
-        }),
+        })
       );
     });
   });
@@ -56,7 +56,7 @@ describe('medicationsApi', () => {
           endpoint: '/api/v2/medications/med-1/schedules',
           method: 'POST',
           body: { schedule_type_id: 'daily', time_of_day: '08:00' },
-        }),
+        })
       );
     });
   });
@@ -65,14 +65,17 @@ describe('medicationsApi', () => {
     test('PUTs the patch to /api/v2/medications/schedules/:id', async () => {
       mockApiFetch.mockResolvedValueOnce({ id: 'sched-1' });
 
-      await updateSchedule('sched-1', { time_of_day: '09:00', days_of_week: null });
+      await updateSchedule('sched-1', {
+        time_of_day: '09:00',
+        days_of_week: null,
+      });
 
       expect(mockApiFetch).toHaveBeenCalledWith(
         expect.objectContaining({
           endpoint: '/api/v2/medications/schedules/sched-1',
           method: 'PUT',
           body: { time_of_day: '09:00', days_of_week: null },
-        }),
+        })
       );
     });
   });
@@ -87,7 +90,7 @@ describe('medicationsApi', () => {
         expect.objectContaining({
           endpoint: '/api/v2/medications/schedules/sched-1',
           method: 'DELETE',
-        }),
+        })
       );
     });
   });

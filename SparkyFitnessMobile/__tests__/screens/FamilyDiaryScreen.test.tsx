@@ -122,7 +122,7 @@ jest.mock('../../src/components/CalendarSheet', () => {
         selectedDate: string;
         onSelectDate: (date: string) => void;
       },
-      ref: unknown,
+      ref: unknown
     ) => {
       React.useImperativeHandle(ref, () => ({
         present: () => undefined,
@@ -138,7 +138,7 @@ jest.mock('../../src/components/CalendarSheet', () => {
           />
         </View>
       );
-    },
+    }
   );
 });
 
@@ -150,11 +150,11 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (
       key: string,
-      options?: { defaultValue?: string; [name: string]: unknown },
+      options?: { defaultValue?: string; [name: string]: unknown }
     ) =>
       (options?.defaultValue ?? key).replace(
         /\{\{(\w+)\}\}/g,
-        (match, name: string) => String(options?.[name] ?? match),
+        (match, name: string) => String(options?.[name] ?? match)
       ),
     i18n: { language: 'en-US' },
   }),
@@ -180,7 +180,7 @@ const renderFamilyDiary = () =>
           params: { familyUser },
         }}
       />
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
 
 describe('FamilyDiaryScreen', () => {
@@ -272,7 +272,7 @@ describe('FamilyDiaryScreen', () => {
     } as ReturnType<typeof useFamilyDailySummary>);
 
     expect(
-      renderFamilyDiary().getByText('No food entries for this date'),
+      renderFamilyDiary().getByText('No food entries for this date')
     ).toBeTruthy();
   });
 

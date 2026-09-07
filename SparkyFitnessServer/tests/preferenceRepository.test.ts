@@ -4,6 +4,17 @@ import { getClient } from '../db/poolManager.js';
 vi.mock('../db/poolManager', () => ({
   getClient: vi.fn(),
 }));
+// Zero-based positions of $41 (active_vision_ai_service_id) and $42 (its
+// 'in'-guard flag) in the upsert's parameter array. Pinned from the front:
+// preferences are appended to that array, so an offset counted from the tail
+// moves whenever an unrelated column is added.
+const VISION_AI_SERVICE_ID_PARAM = 40;
+const VISION_AI_SERVICE_ID_GUARD_PARAM = 41;
+// $47 in both the update and the upsert.
+const ALL_PROVIDERS_DEFAULT_PARAM = 46;
+// $8 in the update statement (the upsert numbers it $9).
+const FOOD_DATA_PROVIDER_ID_PARAM = 7;
+
 describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockClient: any;
@@ -91,11 +102,12 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
       'active_vision_ai_service_id'
     );
     // The 'in'-guard flag ($42) gates the CASE WHEN, and the value ($41)
-    // precedes it. Use their stable SQL parameter numbers instead of counting
-    // backward from the end, because new preferences are appended over time.
+    // precedes it. Indexed from the front, not the tail: every new preference is
+    // appended to this array, so tail offsets silently move under an unrelated
+    // column addition. A partial payload that includes the field must write it.
     const params = mockClient.query.mock.calls[0][1];
-    expect(params[40]).toBe('svc-99');
-    expect(params[41]).toBe(true);
+    expect(params[VISION_AI_SERVICE_ID_PARAM]).toBe('svc-99');
+    expect(params[VISION_AI_SERVICE_ID_GUARD_PARAM]).toBe(true);
   });
 
   it('leaves active_vision_ai_service_id untouched when the field is omitted', async () => {
@@ -108,7 +120,44 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
 
     // The guard flag is false, so the CASE WHEN keeps the stored pointer.
     const params = mockClient.query.mock.calls[0][1];
-    expect(params[41]).toBe(false);
+    expect(params[VISION_AI_SERVICE_ID_GUARD_PARAM]).toBe(false);
+  });
+
+  it('writes food_search_all_providers_default without touching the provider uuid', async () => {
+    // The aggregated "All Providers" default is its own boolean because
+    // default_food_data_provider_id is a uuid and cannot hold the '__all__'
+    // sentinel. Turning it on must leave the stored provider alone.
+    mockClient.query.mockResolvedValueOnce({ rows: [{ user_id: 'user-1' }] });
+
+    await preferenceRepository.updateUserPreferences('user-1', {
+      food_search_all_providers_default: true,
+    });
+
+    const [sql, params] = mockClient.query.mock.calls[0];
+    expect(sql).toContain(
+      'food_search_all_providers_default = COALESCE($47, food_search_all_providers_default)'
+    );
+    expect(params[ALL_PROVIDERS_DEFAULT_PARAM]).toBe(true);
+    expect(params[FOOD_DATA_PROVIDER_ID_PARAM]).toBeUndefined();
+  });
+
+  it('leaves a stored food_search_all_providers_default alone on an upsert that omits it', async () => {
+    // The VALUES clause defaults the column to false for a fresh insert, so the
+    // conflict branch has to read $47 directly; reading EXCLUDED would push that
+    // false over a stored true on every unrelated upsert.
+    mockClient.query.mockResolvedValueOnce({ rows: [{ user_id: 'user-1' }] });
+
+    await preferenceRepository.upsertUserPreferences({
+      user_id: 'user-1',
+      show_net_carbs: true,
+    });
+
+    const [sql, params] = mockClient.query.mock.calls[0];
+    expect(sql).toContain(
+      'food_search_all_providers_default = COALESCE($47, user_preferences.food_search_all_providers_default)'
+    );
+    expect(sql).not.toContain('EXCLUDED.food_search_all_providers_default');
+    expect(params[ALL_PROVIDERS_DEFAULT_PARAM]).toBeUndefined();
   });
 
   it('round-trips goal_mode preferences through save and load', async () => {

@@ -239,7 +239,6 @@ describe('foodCoreService.searchFoods provider metadata', () => {
     // @ts-expect-error mocked in test
     preferenceService.getUserPreferences.mockResolvedValue({
       item_display_limit: 10,
-      food_display_limit: 10,
     });
   });
 
@@ -298,6 +297,65 @@ describe('foodCoreService.searchFoods provider metadata', () => {
 
     expect(foodRepository.updateFood).not.toHaveBeenCalled();
     expect(result.searchResults[0]).toBe(localFood);
+  });
+
+  // Regression: the search limit used to read `food_display_limit`, a column
+  // renamed to `item_display_limit` by migration 20250720201800. That read was
+  // always undefined, so the preference was ignored and the request's own
+  // number won every time. The two must not be equal here, or the assertion
+  // can't tell the preference from the fallback.
+  it('honours the item_display_limit preference over the request limit', async () => {
+    // @ts-expect-error mocked in test
+    preferenceService.getUserPreferences.mockResolvedValue({
+      item_display_limit: 25,
+    });
+    // @ts-expect-error mocked in test
+    foodRepository.searchFoods.mockResolvedValue([]);
+
+    await foodCoreService.searchFoods(
+      TEST_USER_ID,
+      'local',
+      TEST_USER_ID,
+      false,
+      true,
+      false,
+      10
+    );
+
+    expect(foodRepository.searchFoods).toHaveBeenCalledWith(
+      'local',
+      TEST_USER_ID,
+      false,
+      true,
+      false,
+      25
+    );
+  });
+
+  it('falls back to the request limit when no preference is set', async () => {
+    // @ts-expect-error mocked in test
+    preferenceService.getUserPreferences.mockResolvedValue(null);
+    // @ts-expect-error mocked in test
+    foodRepository.searchFoods.mockResolvedValue([]);
+
+    await foodCoreService.searchFoods(
+      TEST_USER_ID,
+      'local',
+      TEST_USER_ID,
+      false,
+      true,
+      false,
+      10
+    );
+
+    expect(foodRepository.searchFoods).toHaveBeenCalledWith(
+      'local',
+      TEST_USER_ID,
+      false,
+      true,
+      false,
+      10
+    );
   });
 });
 

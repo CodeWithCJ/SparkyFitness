@@ -27,15 +27,21 @@ export const confidenceTones = CONFIDENCE_TONES;
  */
 export function localizeAiEstimateQuality(
   t: TFunction,
-  confidence: AiConfidence | null | undefined,
+  confidence: AiConfidence | null | undefined
 ): string | null {
   switch (confidence) {
     case 'high':
-      return t('foodForm.ai.estimateQuality.high', { defaultValue: 'Good estimate' });
+      return t('foodForm.ai.estimateQuality.high', {
+        defaultValue: 'Good estimate',
+      });
     case 'medium':
-      return t('foodForm.ai.estimateQuality.medium', { defaultValue: 'Fair estimate' });
+      return t('foodForm.ai.estimateQuality.medium', {
+        defaultValue: 'Fair estimate',
+      });
     case 'low':
-      return t('foodForm.ai.estimateQuality.low', { defaultValue: 'Rough estimate' });
+      return t('foodForm.ai.estimateQuality.low', {
+        defaultValue: 'Rough estimate',
+      });
     default:
       return null;
   }
@@ -50,7 +56,7 @@ export function localizeAiEstimateQuality(
  */
 export function localizeAiConfidenceLevel(
   t: TFunction,
-  confidence: AiConfidence | null | undefined,
+  confidence: AiConfidence | null | undefined
 ): string | null {
   switch (confidence) {
     case 'high':
@@ -74,7 +80,7 @@ export interface EstimateErrorCopy {
 }
 
 export function mapEstimateError(
-  code: FoodPhotoEstimateErrorCode,
+  code: FoodPhotoEstimateErrorCode
 ): EstimateErrorCopy {
   switch (code) {
     case 'NO_AI_CONFIGURED':
@@ -84,7 +90,8 @@ export function mapEstimateError(
         titleKey: 'aiNotConfiguredTitle',
         titleDefaultValue: 'AI not configured',
         messageKey: 'aiNotConfiguredMessage',
-        messageDefaultValue: 'Configure an AI provider in the web app to use photo estimates.',
+        messageDefaultValue:
+          'Configure an AI provider in the web app to use photo estimates.',
         stayOnForm: false,
         invalidateAiSettings: true,
       };
@@ -111,7 +118,8 @@ export function mapEstimateError(
         titleKey: 'couldNotProcessPhotoTitle',
         titleDefaultValue: 'Could not process photo',
         messageKey: 'couldNotProcessPhotoMessage',
-        messageDefaultValue: 'The provider blocked this image. Try another shot.',
+        messageDefaultValue:
+          'The provider blocked this image. Try another shot.',
         stayOnForm: true,
         invalidateAiSettings: false,
       };
@@ -120,7 +128,8 @@ export function mapEstimateError(
         titleKey: 'providerTimedOutTitle',
         titleDefaultValue: 'AI provider timed out',
         messageKey: 'providerTimedOutMessage',
-        messageDefaultValue: 'The estimate took too long. Try again, or log this food manually.',
+        messageDefaultValue:
+          'The estimate took too long. Try again, or log this food manually.',
         stayOnForm: true,
         invalidateAiSettings: false,
       };
@@ -129,7 +138,8 @@ export function mapEstimateError(
         titleKey: 'providerNotAllowedTitle',
         titleDefaultValue: 'AI provider not allowed',
         messageKey: 'providerNotAllowedMessage',
-        messageDefaultValue: 'This AI provider points to a private network address. Ask an admin to configure it globally.',
+        messageDefaultValue:
+          'This AI provider points to a private network address. Ask an admin to configure it globally.',
         stayOnForm: false,
         invalidateAiSettings: true,
       };

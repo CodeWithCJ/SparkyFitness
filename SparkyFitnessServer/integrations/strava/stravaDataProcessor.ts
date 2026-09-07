@@ -146,8 +146,7 @@ async function processStravaActivities(
       // Strava SummaryActivity often lacks calories, but DetailedActivity (if available) has it.
       // Default to 0 to satisfy the NOT NULL constraint in the database.
       const detailedActivity = detailedActivities[activity.id] as
-        | StravaActivity
-        | undefined;
+        StravaActivity | undefined;
       const caloriesAuto =
         (detailedActivity && detailedActivity.calories) ||
         activity.calories ||
@@ -187,8 +186,7 @@ async function processStravaActivities(
       // Store detailed activity data (GPS, laps, splits, segments) if available
       if (newEntry && newEntry.id) {
         const detailedActivity = detailedActivities[activity.id] as
-          | StravaActivity
-          | undefined;
+          StravaActivity | undefined;
         const detailData = detailedActivity || activity;
         await activityDetailsRepository.createActivityDetail(userId, {
           exercise_entry_id: newEntry.id,

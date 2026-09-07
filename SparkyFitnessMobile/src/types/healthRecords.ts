@@ -28,7 +28,8 @@ export interface HKSleepRecord {
 // ==========================================
 
 /** Sleep stage type including 'in_bed' (the output shape stored in stage_events) */
-export type SleepStageType = 'awake' | 'rem' | 'light' | 'deep' | 'in_bed' | 'unknown';
+export type SleepStageType =
+  'awake' | 'rem' | 'light' | 'deep' | 'in_bed' | 'unknown';
 
 /**
  * Internal sleep stage classification used only during HealthKit overlap resolution.
@@ -38,13 +39,7 @@ export type SleepStageType = 'awake' | 'rem' | 'light' | 'deep' | 'in_bed' | 'un
  * output 'light' stage. See mapHealthKitSleepStage / SLEEP_STAGE_RANK in dataAggregation.ts.
  */
 export type InternalSleepStage =
-  | 'deep'
-  | 'rem'
-  | 'core'
-  | 'awake'
-  | 'asleep_generic'
-  | 'in_bed'
-  | 'unknown';
+  'deep' | 'rem' | 'core' | 'awake' | 'asleep_generic' | 'in_bed' | 'unknown';
 
 /** One raw HealthKit sleep sample collected before overlap resolution (uses epoch ms). */
 export interface SleepRawEvent {
@@ -85,6 +80,8 @@ export interface AggregatedHealthRecord extends RecordTimezoneMetadata {
   date: string;
   value: number;
   type: string;
+  /** Instant when this cumulative snapshot was read from the health provider. */
+  timestamp?: string;
 }
 
 /** Sleep session output (complex structure) */
@@ -114,7 +111,7 @@ export interface ExerciseSet {
   // Explicitly unit-suffixed so servers without the seconds-based set model
   // drop the field instead of misreading it (legacy `duration` was minutes).
   duration_seconds?: number;
-  rest_time?: number;   // seconds
+  rest_time?: number; // seconds
   notes?: string;
   rpe?: number;
 }
@@ -134,6 +131,8 @@ export interface TransformedExerciseSession extends RecordTimezoneMetadata {
   caloriesBurned?: number;
   /** Stored in kilometers to match exercise entry API/storage. */
   distance?: number;
+  /** Steps explicitly associated with this workout by the health provider. */
+  steps?: number;
   notes?: string;
   raw_data?: unknown;
   sets?: ExerciseSet[];

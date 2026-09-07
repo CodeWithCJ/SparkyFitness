@@ -12,7 +12,7 @@ const showJson = args.includes('--json') || args.includes('--json-output');
 // expect a file, so say so explicitly and continue with the human report.
 if (outputFile && !showJson) {
   console.error(
-    `[audit] Output file "${outputFile}" requires --json (JSON report mode); writing only the human report to stdout.`,
+    `[audit] Output file "${outputFile}" requires --json (JSON report mode); writing only the human report to stdout.`
   );
 }
 
@@ -38,7 +38,9 @@ function printHumanReport() {
   if (report.placeholderErrors.length > 0) {
     console.log('\nPlaceholder errors:');
     for (const e of report.placeholderErrors) {
-      console.log(`  - ${e.locale} ${e.key}: source=${JSON.stringify(e.sourcePlaceholders)} translated=${JSON.stringify(e.translatedPlaceholders)}`);
+      console.log(
+        `  - ${e.locale} ${e.key}: source=${JSON.stringify(e.sourcePlaceholders)} translated=${JSON.stringify(e.translatedPlaceholders)}`
+      );
     }
   }
 
@@ -70,18 +72,33 @@ function printHumanReport() {
   console.log(`missing static keys: ${summary.missingStaticKeys}`);
   console.log(`placeholder errors: ${summary.placeholderErrors}`);
   console.log(`plural errors: ${summary.pluralErrors}`);
-  console.log(`user-facing t() without English fallback: ${summary.missingFallbackFindings}`);
+  console.log(
+    `user-facing t() without English fallback: ${summary.missingFallbackFindings}`
+  );
   console.log(`dynamic t() keys: ${summary.dynamicI18nFindings}`);
   console.log(`source scan errors: ${summary.sourceScanErrors ?? 0}`);
-  if (report.translationCoverage && Object.keys(report.translationCoverage).length > 0) {
+  if (
+    report.translationCoverage &&
+    Object.keys(report.translationCoverage).length > 0
+  ) {
     console.log('\nTranslations:');
-    for (const [locale, coverage] of Object.entries(report.translationCoverage)) {
-      console.log(`  ${locale}: ${coverage.translated}/${coverage.total} complete (${coverage.percent}%), ${coverage.missing} missing${coverage.stale ? `, ${coverage.stale} stale` : ''}`);
+    for (const [locale, coverage] of Object.entries(
+      report.translationCoverage
+    )) {
+      console.log(
+        `  ${locale}: ${coverage.translated}/${coverage.total} complete (${coverage.percent}%), ${coverage.missing} missing${coverage.stale ? `, ${coverage.stale} stale` : ''}`
+      );
     }
   }
-  console.log(`hardcoded UI strings (blocking): ${summary.hardcodedUiFindings}`);
-  console.log(`locale-unsafe number formatting (blocking): ${summary.unsafeNumberFormatFindings ?? 0}`);
-  console.log(`manual pluralization antipatterns (blocking): ${summary.manualPluralizationFindings ?? 0}`);
+  console.log(
+    `hardcoded UI strings (blocking): ${summary.hardcodedUiFindings}`
+  );
+  console.log(
+    `locale-unsafe number formatting (blocking): ${summary.unsafeNumberFormatFindings ?? 0}`
+  );
+  console.log(
+    `manual pluralization antipatterns (blocking): ${summary.manualPluralizationFindings ?? 0}`
+  );
 }
 
 if (showJson) {

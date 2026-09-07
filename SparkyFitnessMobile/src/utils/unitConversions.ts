@@ -37,9 +37,10 @@ export function kgToStonesLbs(kg: number): { stones: number; lbs: number } {
   const totalLbs = kgToLbs(kg);
   // Snap to the nearest whole pound when within float-precision tolerance,
   // so e.g. 6.35029 kg splits cleanly into 1st 0lb instead of 0st 13.999...lb.
-  const rounded = Math.abs(totalLbs - Math.round(totalLbs)) < 1e-6
-    ? Math.round(totalLbs)
-    : totalLbs;
+  const rounded =
+    Math.abs(totalLbs - Math.round(totalLbs)) < 1e-6
+      ? Math.round(totalLbs)
+      : totalLbs;
   const stones = Math.floor(rounded / LBS_PER_STONE);
   const lbs = rounded - stones * LBS_PER_STONE;
   return { stones, lbs };
@@ -91,9 +92,10 @@ export function cmToFeetInches(cm: number): { feet: number; inches: number } {
   const totalInches = cmToInches(cm);
   // Snap to the nearest whole inch when within float-precision tolerance,
   // so e.g. 152.4 cm splits cleanly into 5'0" instead of 4'11.999...".
-  const rounded = Math.abs(totalInches - Math.round(totalInches)) < 1e-6
-    ? Math.round(totalInches)
-    : totalInches;
+  const rounded =
+    Math.abs(totalInches - Math.round(totalInches)) < 1e-6
+      ? Math.round(totalInches)
+      : totalInches;
   const feet = Math.floor(rounded / INCHES_PER_FOOT);
   const inches = rounded - feet * INCHES_PER_FOOT;
   return { feet, inches };
@@ -113,6 +115,9 @@ export const WATER_UNIT_LABELS: Record<string, string> = {
 };
 
 /** Volume per serving, accounting for servings_per_container. */
-export function getServingVolume(container: { volume: number; servings_per_container?: number | null }): number {
+export function getServingVolume(container: {
+  volume: number;
+  servings_per_container?: number | null;
+}): number {
   return container.volume / (container.servings_per_container || 1);
 }

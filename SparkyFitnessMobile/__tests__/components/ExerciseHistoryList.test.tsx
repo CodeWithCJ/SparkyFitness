@@ -22,7 +22,7 @@ const OTHER_EXERCISE_ID = '22222222-2222-4222-8222-222222222222';
 
 let nextSetId = 1;
 const makeSet = (
-  overrides: Partial<ExerciseEntrySetResponse> = {},
+  overrides: Partial<ExerciseEntrySetResponse> = {}
 ): ExerciseEntrySetResponse => ({
   id: nextSetId++,
   set_number: 1,
@@ -41,7 +41,7 @@ const makeSet = (
 const makeEntry = (
   exerciseId: string,
   sets: ExerciseEntrySetResponse[],
-  overrides: Partial<ExerciseEntryResponse> = {},
+  overrides: Partial<ExerciseEntryResponse> = {}
 ): ExerciseEntryResponse => ({
   id: `entry-${exerciseId}-${nextSetId++}`,
   exercise_id: exerciseId,
@@ -60,7 +60,7 @@ const makeEntry = (
 
 const makeIndividualSession = (
   sets: ExerciseEntrySetResponse[],
-  overrides: Partial<ExerciseEntryResponse> = {},
+  overrides: Partial<ExerciseEntryResponse> = {}
 ): ExerciseSessionResponse => ({
   ...makeEntry(EXERCISE_ID, sets, overrides),
   type: 'individual',
@@ -69,7 +69,7 @@ const makeIndividualSession = (
 
 const makePresetSession = (
   exercises: ExerciseEntryResponse[],
-  name = 'Push Day',
+  name = 'Push Day'
 ): ExerciseSessionResponse => ({
   type: 'preset',
   id: `preset-${nextSetId++}`,
@@ -96,10 +96,10 @@ const baseHookResult = {
 };
 
 const renderList = (
-  props?: Partial<React.ComponentProps<typeof ExerciseHistoryList>>,
+  props?: Partial<React.ComponentProps<typeof ExerciseHistoryList>>
 ) =>
   render(
-    <ExerciseHistoryList exerciseId={EXERCISE_ID} weightUnit="kg" {...props} />,
+    <ExerciseHistoryList exerciseId={EXERCISE_ID} weightUnit="kg" {...props} />
   );
 
 describe('ExerciseHistoryList', () => {
@@ -205,7 +205,10 @@ describe('ExerciseHistoryList', () => {
     mockUseExerciseHistory.mockReturnValue({
       ...baseHookResult,
       sessions: [
-        makeIndividualSession([], { duration_minutes: 30, calories_burned: 200 }),
+        makeIndividualSession([], {
+          duration_minutes: 30,
+          calories_burned: 200,
+        }),
       ],
     });
 
@@ -220,7 +223,10 @@ describe('ExerciseHistoryList', () => {
   });
 
   it('shows a spinner while loading', () => {
-    mockUseExerciseHistory.mockReturnValue({ ...baseHookResult, isLoading: true });
+    mockUseExerciseHistory.mockReturnValue({
+      ...baseHookResult,
+      isLoading: true,
+    });
     const screen = renderList();
     expect(screen.UNSAFE_getByType(ActivityIndicator)).toBeTruthy();
   });

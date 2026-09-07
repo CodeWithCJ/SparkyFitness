@@ -46,6 +46,7 @@ const EXPECTED_TOOLS = [
   'sparky_get_synced_data',
   'sparky_list_exercises',
   'sparky_list_foods',
+  'sparky_log_food_photo',
   'sparky_manage_allergens',
   'sparky_manage_checkin',
   'sparky_manage_custom_nutrients',

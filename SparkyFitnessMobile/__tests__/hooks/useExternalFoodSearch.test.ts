@@ -2,7 +2,11 @@ import { renderHook, waitFor } from '@testing-library/react-native';
 import { useExternalFoodSearch } from '../../src/hooks/useExternalFoodSearch';
 import { externalFoodSearchQueryKey } from '../../src/hooks/queryKeys';
 import { searchExternalFoods } from '../../src/services/api/externalFoodSearchApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 import type { PaginatedExternalFoodSearchResult } from '../../src/types/externalFoods';
 
 jest.mock('../../src/services/api/externalFoodSearchApi', () => ({
@@ -13,7 +17,7 @@ const mockSearchExternalFoods = jest.mocked(searchExternalFoods);
 
 function makePaginatedResult(
   items: PaginatedExternalFoodSearchResult['items'],
-  pagination?: Partial<PaginatedExternalFoodSearchResult['pagination']>,
+  pagination?: Partial<PaginatedExternalFoodSearchResult['pagination']>
 ): PaginatedExternalFoodSearchResult {
   return {
     items,
@@ -65,15 +69,16 @@ describe('useExternalFoodSearch', () => {
           serving_unit: 'g',
           source: 'openfoodfacts',
         },
-      ]),
+      ])
     );
 
     const { result, rerender } = renderHook(
-      ({ term }: { term: string }) => useExternalFoodSearch(term, 'openfoodfacts'),
+      ({ term }: { term: string }) =>
+        useExternalFoodSearch(term, 'openfoodfacts'),
       {
         wrapper: createQueryWrapper(queryClient),
         initialProps: { term: 'chicken' },
-      },
+      }
     );
 
     await waitFor(() => expect(result.current.searchResults).toHaveLength(1));
@@ -86,8 +91,9 @@ describe('useExternalFoodSearch', () => {
 
   test('does not fetch when enabled is false', () => {
     renderHook(
-      () => useExternalFoodSearch('chicken', 'openfoodfacts', { enabled: false }),
-      { wrapper: createQueryWrapper(queryClient) },
+      () =>
+        useExternalFoodSearch('chicken', 'openfoodfacts', { enabled: false }),
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     expect(mockSearchExternalFoods).not.toHaveBeenCalled();
@@ -108,16 +114,22 @@ describe('useExternalFoodSearch', () => {
           serving_unit: 'g',
           source: 'openfoodfacts',
         },
-      ]),
+      ])
     );
 
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'openfoodfacts'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
-      expect(mockSearchExternalFoods).toHaveBeenCalledWith('openfoodfacts', 'chicken', 1, undefined, undefined);
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith(
+        'openfoodfacts',
+        'chicken',
+        1,
+        undefined,
+        undefined
+      );
       expect(result.current.searchResults).toHaveLength(1);
     });
   });
@@ -125,7 +137,7 @@ describe('useExternalFoodSearch', () => {
   test('returns empty array for unsupported provider type', async () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'unknown_provider'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
@@ -138,7 +150,7 @@ describe('useExternalFoodSearch', () => {
   test('isSearchActive is false when under 3 characters', () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('ab', 'openfoodfacts'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     expect(result.current.isSearchActive).toBe(false);
@@ -149,7 +161,7 @@ describe('useExternalFoodSearch', () => {
 
     const { result } = renderHook(
       () => useExternalFoodSearch('test', 'openfoodfacts'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
@@ -160,7 +172,7 @@ describe('useExternalFoodSearch', () => {
   test('reports usda as a supported provider', () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'usda'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     expect(result.current.isProviderSupported).toBe(true);
@@ -181,16 +193,23 @@ describe('useExternalFoodSearch', () => {
           serving_unit: 'g',
           source: 'usda',
         },
-      ]),
+      ])
     );
 
     const { result } = renderHook(
-      () => useExternalFoodSearch('chicken', 'usda', { providerId: 'provider-1' }),
-      { wrapper: createQueryWrapper(queryClient) },
+      () =>
+        useExternalFoodSearch('chicken', 'usda', { providerId: 'provider-1' }),
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
-      expect(mockSearchExternalFoods).toHaveBeenCalledWith('usda', 'chicken', 1, 'provider-1', undefined);
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith(
+        'usda',
+        'chicken',
+        1,
+        'provider-1',
+        undefined
+      );
       expect(result.current.searchResults).toHaveLength(1);
       expect(result.current.searchResults[0].source).toBe('usda');
     });
@@ -213,13 +232,13 @@ describe('useExternalFoodSearch', () => {
             source: 'openfoodfacts',
           },
         ],
-        { page: 1, hasMore: true, totalCount: 2 },
-      ),
+        { page: 1, hasMore: true, totalCount: 2 }
+      )
     );
 
     const { result } = renderHook(
       () => useExternalFoodSearch('food', 'openfoodfacts'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
@@ -246,8 +265,8 @@ describe('useExternalFoodSearch', () => {
               source: 'openfoodfacts',
             },
           ],
-          { page: 1, hasMore: true, totalCount: 2 },
-        ),
+          { page: 1, hasMore: true, totalCount: 2 }
+        )
       )
       .mockResolvedValueOnce(
         makePaginatedResult(
@@ -265,13 +284,13 @@ describe('useExternalFoodSearch', () => {
               source: 'openfoodfacts',
             },
           ],
-          { page: 2, hasMore: false, totalCount: 2 },
-        ),
+          { page: 2, hasMore: false, totalCount: 2 }
+        )
       );
 
     const { result } = renderHook(
       () => useExternalFoodSearch('food', 'openfoodfacts'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
@@ -304,16 +323,25 @@ describe('useExternalFoodSearch', () => {
           serving_unit: 'g',
           source: 'fatsecret',
         },
-      ]),
+      ])
     );
 
     const { result } = renderHook(
-      () => useExternalFoodSearch('chicken', 'fatsecret', { providerId: 'provider-fs' }),
-      { wrapper: createQueryWrapper(queryClient) },
+      () =>
+        useExternalFoodSearch('chicken', 'fatsecret', {
+          providerId: 'provider-fs',
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
-      expect(mockSearchExternalFoods).toHaveBeenCalledWith('fatsecret', 'chicken', 1, 'provider-fs', undefined);
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith(
+        'fatsecret',
+        'chicken',
+        1,
+        'provider-fs',
+        undefined
+      );
       expect(result.current.searchResults).toHaveLength(1);
       expect(result.current.searchResults[0].source).toBe('fatsecret');
     });
@@ -334,16 +362,25 @@ describe('useExternalFoodSearch', () => {
           serving_unit: 'ml',
           source: 'mealie',
         },
-      ]),
+      ])
     );
 
     const { result } = renderHook(
-      () => useExternalFoodSearch('chicken', 'mealie', { providerId: 'provider-mealie' }),
-      { wrapper: createQueryWrapper(queryClient) },
+      () =>
+        useExternalFoodSearch('chicken', 'mealie', {
+          providerId: 'provider-mealie',
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
-      expect(mockSearchExternalFoods).toHaveBeenCalledWith('mealie', 'chicken', 1, 'provider-mealie', undefined);
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith(
+        'mealie',
+        'chicken',
+        1,
+        'provider-mealie',
+        undefined
+      );
       expect(result.current.searchResults).toHaveLength(1);
       expect(result.current.searchResults[0].source).toBe('mealie');
     });
@@ -352,7 +389,7 @@ describe('useExternalFoodSearch', () => {
   test('fatsecret returns empty when no providerId', async () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'fatsecret'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
@@ -365,7 +402,7 @@ describe('useExternalFoodSearch', () => {
   test('mealie returns empty when no providerId', async () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'mealie'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
@@ -378,7 +415,7 @@ describe('useExternalFoodSearch', () => {
   test('reports tandoor as a supported provider', () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'tandoor'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     expect(result.current.isProviderSupported).toBe(true);
@@ -387,7 +424,7 @@ describe('useExternalFoodSearch', () => {
   test('tandoor returns empty when no providerId', async () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'tandoor'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
@@ -400,7 +437,7 @@ describe('useExternalFoodSearch', () => {
   test('reports norish as a supported provider', () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'norish'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     expect(result.current.isProviderSupported).toBe(true);
@@ -409,7 +446,7 @@ describe('useExternalFoodSearch', () => {
   test('norish returns empty when no providerId', async () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'norish'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
@@ -422,7 +459,7 @@ describe('useExternalFoodSearch', () => {
   test('reports fatsecret as a supported provider', () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'fatsecret'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     expect(result.current.isProviderSupported).toBe(true);
@@ -431,7 +468,7 @@ describe('useExternalFoodSearch', () => {
   test('reports mealie as a supported provider', () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'mealie'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     expect(result.current.isProviderSupported).toBe(true);
@@ -440,7 +477,7 @@ describe('useExternalFoodSearch', () => {
   test('reports swissfood as a supported provider', () => {
     const { result } = renderHook(
       () => useExternalFoodSearch('chicken', 'swissfood'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     expect(result.current.isProviderSupported).toBe(true);
@@ -461,16 +498,22 @@ describe('useExternalFoodSearch', () => {
           serving_unit: 'g',
           source: 'swissfood',
         },
-      ]),
+      ])
     );
 
     const { result } = renderHook(
       () => useExternalFoodSearch('cheese', 'swissfood'),
-      { wrapper: createQueryWrapper(queryClient) },
+      { wrapper: createQueryWrapper(queryClient) }
     );
 
     await waitFor(() => {
-      expect(mockSearchExternalFoods).toHaveBeenCalledWith('swissfood', 'cheese', 1, undefined, undefined);
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith(
+        'swissfood',
+        'cheese',
+        1,
+        undefined,
+        undefined
+      );
       expect(result.current.searchResults).toHaveLength(1);
       expect(result.current.searchResults[0].source).toBe('swissfood');
     });
@@ -487,12 +530,9 @@ describe('useExternalFoodSearch', () => {
     });
 
     test('includes providerId when supplied', () => {
-      expect(externalFoodSearchQueryKey('usda', 'chicken', 'provider-1')).toEqual([
-        'externalFoodSearch',
-        'usda',
-        'chicken',
-        'provider-1',
-      ]);
+      expect(
+        externalFoodSearchQueryKey('usda', 'chicken', 'provider-1')
+      ).toEqual(['externalFoodSearch', 'usda', 'chicken', 'provider-1']);
     });
   });
 });

@@ -99,7 +99,10 @@ export const setRouteConsent = async (
   consent: RouteConsent
 ): Promise<void> => {
   try {
-    const stored: StoredRouteConsent = { value: consent, storedAtMs: Date.now() };
+    const stored: StoredRouteConsent = {
+      value: consent,
+      storedAtMs: Date.now(),
+    };
     await AsyncStorage.setItem(consentKey(recordId), JSON.stringify(stored));
   } catch {
     // A failed write only costs us a repeat prompt; never block the sync.
@@ -212,9 +215,14 @@ const prefetchedRoutes = new Map<string, WorkoutGpsPoint[]>();
  * first reading. endTime is the fallback for sources that omit it.
  */
 export const sessionCacheKey = (record: unknown): string | null => {
-  const metadata = (record as { metadata?: { id?: string; lastModifiedTime?: string } }).metadata;
+  const metadata = (
+    record as { metadata?: { id?: string; lastModifiedTime?: string } }
+  ).metadata;
   const endTime = (record as { endTime?: string }).endTime;
-  return sessionTelemetryKey(metadata?.id, metadata?.lastModifiedTime ?? endTime);
+  return sessionTelemetryKey(
+    metadata?.id,
+    metadata?.lastModifiedTime ?? endTime
+  );
 };
 
 /**
@@ -272,7 +280,7 @@ export async function prefetchSessionRoutes(
 
   // Newest-first, matching enrichExerciseSessions' claim order.
   sessions.sort((a, b) =>
-    String(b.startTime ?? '').localeCompare(String(a.startTime ?? '')),
+    String(b.startTime ?? '').localeCompare(String(a.startTime ?? ''))
   );
 
   // The limit counts enrichment CANDIDATES, not consent requests.
@@ -293,7 +301,11 @@ export async function prefetchSessionRoutes(
     if (typeof startTime !== 'string' || typeof endTime !== 'string') continue;
     const startMs = Date.parse(startTime);
     const endMs = Date.parse(endTime);
-    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
+    if (
+      !Number.isFinite(startMs) ||
+      !Number.isFinite(endMs) ||
+      endMs <= startMs
+    ) {
       continue;
     }
 
@@ -344,7 +356,7 @@ export async function collectSessionRoute(
    * identically for a real refusal and for a transient failure. The caller uses
    * it to leave the session out of the permanent reuse cache for one more sync.
    */
-  onPossiblySpuriousDenial?: () => void,
+  onPossiblySpuriousDenial?: () => void
 ): Promise<WorkoutGpsPoint[]> {
   const route = session.exerciseRoute as HcExerciseRoute | undefined;
   const recordId = (session.metadata as { id?: string } | undefined)?.id;
@@ -422,17 +434,23 @@ async function readSeriesForWindow(
 
   try {
     if (window.dataOrigin) {
-      const scoped = await readRecords(recordType as never, {
-        timeRangeFilter,
-        dataOriginFilter: [window.dataOrigin],
-      } as never);
+      const scoped = await readRecords(
+        recordType as never,
+        {
+          timeRangeFilter,
+          dataOriginFilter: [window.dataOrigin],
+        } as never
+      );
       const points = collect((scoped as { records?: unknown[] }).records ?? []);
       if (points.length > 0) return points;
     }
 
-    const unfiltered = await readRecords(recordType as never, {
-      timeRangeFilter,
-    } as never);
+    const unfiltered = await readRecords(
+      recordType as never,
+      {
+        timeRangeFilter,
+      } as never
+    );
     const points = collect(
       (unfiltered as { records?: unknown[] }).records ?? []
     );
@@ -482,11 +500,7 @@ const FOOT_BASED_TYPES = new Set([37, 56, 57, 79]);
 const PEDAL_BASED_TYPES = new Set([8, 9]);
 
 type SeriesName =
-  | 'HeartRate'
-  | 'Speed'
-  | 'Power'
-  | 'StepsCadence'
-  | 'CyclingPedalingCadence';
+  'HeartRate' | 'Speed' | 'Power' | 'StepsCadence' | 'CyclingPedalingCadence';
 
 const ALL_SERIES: SeriesName[] = [
   'HeartRate',
@@ -510,34 +524,53 @@ export function seriesForExerciseType(
   return ALL_SERIES;
 }
 
-const sampleExtractors: Record<
-  string,
-  (record: unknown) => SeriesPoint[]
-> = {
+const sampleExtractors: Record<string, (record: unknown) => SeriesPoint[]> = {
   HeartRate: (record) =>
-    ((record as { samples?: { time: string; beatsPerMinute: number }[] })
-      .samples ?? [])
+    (
+      (record as { samples?: { time: string; beatsPerMinute: number }[] })
+        .samples ?? []
+    )
       .filter((s) => Number.isFinite(s?.beatsPerMinute))
       .map((s) => ({ t: s.time, v: s.beatsPerMinute })),
   Speed: (record) =>
-    ((record as { samples?: { time: string; speed?: { inMetersPerSecond?: number } }[] })
-      .samples ?? [])
+    (
+      (
+        record as {
+          samples?: { time: string; speed?: { inMetersPerSecond?: number } }[];
+        }
+      ).samples ?? []
+    )
       .map((s) => ({ t: s.time, v: s.speed?.inMetersPerSecond }))
-      .filter((s): s is SeriesPoint => Number.isFinite(s.v as number)) as SeriesPoint[],
+      .filter((s): s is SeriesPoint =>
+        Number.isFinite(s.v as number)
+      ) as SeriesPoint[],
   Power: (record) =>
-    ((record as { samples?: { time: string; power?: { inWatts?: number } }[] })
-      .samples ?? [])
+    (
+      (record as { samples?: { time: string; power?: { inWatts?: number } }[] })
+        .samples ?? []
+    )
       .map((s) => ({ t: s.time, v: s.power?.inWatts }))
-      .filter((s): s is SeriesPoint => Number.isFinite(s.v as number)) as SeriesPoint[],
+      .filter((s): s is SeriesPoint =>
+        Number.isFinite(s.v as number)
+      ) as SeriesPoint[],
   StepsCadence: (record) =>
     ((record as { samples?: { time: string; rate?: number }[] }).samples ?? [])
       .map((s) => ({ t: s.time, v: s.rate }))
-      .filter((s): s is SeriesPoint => Number.isFinite(s.v as number)) as SeriesPoint[],
+      .filter((s): s is SeriesPoint =>
+        Number.isFinite(s.v as number)
+      ) as SeriesPoint[],
   CyclingPedalingCadence: (record) =>
-    ((record as { samples?: { time: string; revolutionsPerMinute?: number }[] })
-      .samples ?? [])
+    (
+      (
+        record as {
+          samples?: { time: string; revolutionsPerMinute?: number }[];
+        }
+      ).samples ?? []
+    )
       .map((s) => ({ t: s.time, v: s.revolutionsPerMinute }))
-      .filter((s): s is SeriesPoint => Number.isFinite(s.v as number)) as SeriesPoint[],
+      .filter((s): s is SeriesPoint =>
+        Number.isFinite(s.v as number)
+      ) as SeriesPoint[],
 };
 
 /**
@@ -562,7 +595,9 @@ export function collectSessionLaps(
         Number.isFinite(Date.parse(lap.startTime)) &&
         Number.isFinite(Date.parse(lap.endTime))
     )
-    .sort((a, b) => (a.startTime as string).localeCompare(b.startTime as string))
+    .sort((a, b) =>
+      (a.startTime as string).localeCompare(b.startTime as string)
+    )
     .map((lap, index) => ({
       lap_index: index + 1,
       start_time: lap.startTime as string,

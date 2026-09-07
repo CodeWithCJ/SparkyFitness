@@ -183,9 +183,7 @@ describe('ServiceForm — test connection button', () => {
       onTestConnection?: (model: string) => void;
       testing?: boolean;
       testStatus?:
-        | { state: 'success' }
-        | { state: 'error'; message: string }
-        | null;
+        { state: 'success' } | { state: 'error'; message: string } | null;
     } = {}
   ) {
     const onSubmit = jest.fn();

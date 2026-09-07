@@ -2,7 +2,11 @@ import React, { useRef } from 'react';
 import { View, Platform } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useScreenHeader, SAVE_LABEL, SAVING_LABEL } from '../hooks/useScreenHeader';
+import {
+  useScreenHeader,
+  SAVE_LABEL,
+  SAVING_LABEL,
+} from '../hooks/useScreenHeader';
 import { useCycleMode } from '../hooks/useCycleMode';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -12,7 +16,9 @@ import PregnancyLogView from '../components/wellness/pregnancy/PregnancyLogView'
 import FertilityCard from '../components/wellness/ttc/FertilityCard';
 import TestQuickLog from '../components/wellness/ttc/TestQuickLog';
 import DateSelectRow from '../components/DateSelectRow';
-import CalendarSheet, { type CalendarSheetRef } from '../components/CalendarSheet';
+import CalendarSheet, {
+  type CalendarSheetRef,
+} from '../components/CalendarSheet';
 import { FooterSaveBar } from '../components/FormScreenChrome';
 import { getTodayDate } from '../utils/dateUtils';
 
@@ -20,13 +26,18 @@ import { useDiscreetMode } from '../hooks/useDiscreetMode';
 
 type CycleLogModalScreenProps = RootStackScreenProps<'CycleLogModal'>;
 
-const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, route }) => {
+const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({
+  navigation,
+  route,
+}) => {
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const { mode } = useCycleMode();
   const { discreetMode } = useDiscreetMode();
   const calendarRef = useRef<CalendarSheetRef>(null);
-  const [selectedDate, setSelectedDate] = React.useState(route.params?.date || getTodayDate());
+  const [selectedDate, setSelectedDate] = React.useState(
+    route.params?.date || getTodayDate()
+  );
 
   // Save lives in CycleTodayView; the header/footer buttons trigger it here.
   const saveRequestRef = useRef<(() => void) | null>(null);
@@ -77,7 +88,10 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({ navigation, r
           {/* Date card; pregnancy mode shows the date inside its weight card instead */}
           {mode !== 'pregnant' && (
             <View className="bg-surface rounded-xl p-4 shadow-sm border-0">
-              <DateSelectRow date={selectedDate} onPress={() => calendarRef.current?.present()} />
+              <DateSelectRow
+                date={selectedDate}
+                onPress={() => calendarRef.current?.present()}
+              />
             </View>
           )}
 

@@ -5,11 +5,15 @@ import {
   fetchRecentMeals,
   updateMeal,
 } from '../../src/services/api/mealsApi';
-import { getActiveServerConfig, ServerConfig } from '../../src/services/storage';
+import {
+  getActiveServerConfig,
+  ServerConfig,
+} from '../../src/services/storage';
 
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfig: jest.fn(),
-  proxyHeadersToRecord: jest.requireActual('../../src/services/storage').proxyHeadersToRecord,
+  proxyHeadersToRecord: jest.requireActual('../../src/services/storage')
+    .proxyHeadersToRecord,
 }));
 
 jest.mock('../../src/services/LogService', () => ({
@@ -58,12 +62,14 @@ describe('mealsApi', () => {
 
             'X-Meal-Model-Version': '2',
           },
-        }),
+        })
       );
     });
 
     test('returns parsed JSON response on success', async () => {
-      const responseData = [{ id: 'meal-1', name: 'Overnight Oats', foods: [] }];
+      const responseData = [
+        { id: 'meal-1', name: 'Overnight Oats', foods: [] },
+      ];
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
@@ -81,7 +87,8 @@ describe('mealsApi', () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ id: 'meal-1', name: 'Overnight Oats', foods: [] }),
+        json: () =>
+          Promise.resolve({ id: 'meal-1', name: 'Overnight Oats', foods: [] }),
       });
 
       await fetchMeal('meal-1');
@@ -95,7 +102,7 @@ describe('mealsApi', () => {
 
             'X-Meal-Model-Version': '2',
           },
-        }),
+        })
       );
     });
   });
@@ -134,12 +141,12 @@ describe('mealsApi', () => {
             name: 'Updated Meal',
             foods: [],
           }),
-        }),
+        })
       );
       expect(mockFetch).toHaveBeenNthCalledWith(
         2,
         'https://example.com/api/meals/meal-1',
-        expect.objectContaining({ method: 'GET' }),
+        expect.objectContaining({ method: 'GET' })
       );
       expect(result).toEqual(updatedMeal);
     });
@@ -164,7 +171,7 @@ describe('mealsApi', () => {
 
             'X-Meal-Model-Version': '2',
           },
-        }),
+        })
       );
     });
   });
@@ -182,7 +189,7 @@ describe('mealsApi', () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         'https://example.com/api/meals/meal-1/deletion-impact',
-        expect.objectContaining({ method: 'GET' }),
+        expect.objectContaining({ method: 'GET' })
       );
       expect(result).toEqual(impact);
     });

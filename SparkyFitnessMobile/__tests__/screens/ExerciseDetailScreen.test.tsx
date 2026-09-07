@@ -5,7 +5,9 @@ import Toast from 'react-native-toast-message';
 import {
   pressAction,
   expectActionPresent,
-  findHeaderItem, skipDuplicatePressWindow } from './helpers/nativeHeaderTestUtils';
+  findHeaderItem,
+  skipDuplicatePressWindow,
+} from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import ExerciseDetailScreen from '../../src/screens/ExerciseDetailScreen';
 import {
@@ -30,7 +32,10 @@ jest.mock('../../src/hooks', () => ({
   usePreferences: jest.fn(),
   useProfile: jest.fn(),
   useServerConnection: jest.fn(),
-  useUpdateExercise: jest.fn(() => ({ updateExercise: jest.fn(), isPending: false })),
+  useUpdateExercise: jest.fn(() => ({
+    updateExercise: jest.fn(),
+    isPending: false,
+  })),
 }));
 
 jest.mock('../../src/hooks/useExerciseStats', () => ({
@@ -54,12 +59,17 @@ jest.mock('../../src/components/ActiveWorkoutBar', () => ({
 }));
 
 jest.mock('../../src/hooks/useExerciseImageSource', () => ({
-  useExerciseImageSource: jest.fn(() => ({ getImageSource: jest.fn(() => null) })),
+  useExerciseImageSource: jest.fn(() => ({
+    getImageSource: jest.fn(() => null),
+  })),
   useImagePairAspectMatch: jest.fn(() => undefined),
 }));
 
 jest.mock('../../src/hooks/useStartLiveWorkout', () => ({
-  useStartLiveWorkout: jest.fn(() => ({ startLiveWorkout: jest.fn(), isStarting: false })),
+  useStartLiveWorkout: jest.fn(() => ({
+    startLiveWorkout: jest.fn(),
+    isStarting: false,
+  })),
 }));
 
 jest.mock('uniwind', () => ({
@@ -89,7 +99,9 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 const mockUseProfile = useProfile as jest.MockedFunction<typeof useProfile>;
-const mockUsePreferences = usePreferences as jest.MockedFunction<typeof usePreferences>;
+const mockUsePreferences = usePreferences as jest.MockedFunction<
+  typeof usePreferences
+>;
 const mockUseExerciseStats = useExerciseStats as jest.MockedFunction<
   typeof useExerciseStats
 >;
@@ -100,19 +112,21 @@ const mockUseServerConnection = useServerConnection as jest.MockedFunction<
   typeof useServerConnection
 >;
 const mockUseDeleteExerciseLibrary =
-  useDeleteExerciseLibrary as jest.MockedFunction<typeof useDeleteExerciseLibrary>;
+  useDeleteExerciseLibrary as jest.MockedFunction<
+    typeof useDeleteExerciseLibrary
+  >;
 const mockFetchExerciseById = fetchExerciseById as jest.MockedFunction<
   typeof fetchExerciseById
 >;
 const mockImportExercise = importExercise as jest.MockedFunction<
   typeof importExercise
 >;
-const mockUseExerciseImageSource = useExerciseImageSource as jest.MockedFunction<
-  typeof useExerciseImageSource
->;
-const mockUseImagePairAspectMatch = useImagePairAspectMatch as jest.MockedFunction<
-  typeof useImagePairAspectMatch
->;
+const mockUseExerciseImageSource =
+  useExerciseImageSource as jest.MockedFunction<typeof useExerciseImageSource>;
+const mockUseImagePairAspectMatch =
+  useImagePairAspectMatch as jest.MockedFunction<
+    typeof useImagePairAspectMatch
+  >;
 const mockConfirmAndDelete = jest.fn();
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
@@ -122,7 +136,9 @@ let queryClient: QueryClient;
 
 const Providers: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <QueryClientProvider client={queryClient}>
-    <SafeAreaProvider initialMetrics={{ insets, frame }}>{children}</SafeAreaProvider>
+    <SafeAreaProvider initialMetrics={{ insets, frame }}>
+      {children}
+    </SafeAreaProvider>
   </QueryClientProvider>
 );
 
@@ -158,8 +174,11 @@ describe('ExerciseDetailScreen', () => {
   const renderScreen = (overrides: Partial<Exercise> = {}) =>
     render(
       <Providers>
-        <ExerciseDetailScreen navigation={navigation} route={buildRoute(overrides) as any} />
-      </Providers>,
+        <ExerciseDetailScreen
+          navigation={navigation}
+          route={buildRoute(overrides) as any}
+        />
+      </Providers>
     );
 
   beforeEach(() => {
@@ -205,7 +224,7 @@ describe('ExerciseDetailScreen', () => {
 
     // The name lives in the (native) header title.
     expect(mockNavigation.setOptions).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Bench Press' }),
+      expect.objectContaining({ title: 'Bench Press' })
     );
     expect(screen.getByText('360')).toBeTruthy();
     expect(screen.getByText('Barbell, Bench')).toBeTruthy();
@@ -225,9 +244,12 @@ describe('ExerciseDetailScreen', () => {
     expect(navigation.navigate).toHaveBeenCalledWith(
       'ActivityAdd',
       expect.objectContaining({
-        selectedExercise: expect.objectContaining({ id: 'ex-1', name: 'Bench Press' }),
+        selectedExercise: expect.objectContaining({
+          id: 'ex-1',
+          name: 'Bench Press',
+        }),
         selectionNonce: expect.any(Number),
-      }),
+      })
     );
   });
 
@@ -247,7 +269,7 @@ describe('ExerciseDetailScreen', () => {
     const screen = render(
       <Providers>
         <ExerciseDetailScreen navigation={navigation} route={route as any} />
-      </Providers>,
+      </Providers>
     );
 
     expect(screen.queryByText('Start Workout')).toBeNull();
@@ -269,16 +291,22 @@ describe('ExerciseDetailScreen', () => {
   });
 
   it('shows Edit and Delete for non-custom exercises even when the user matches', () => {
-    const screen = renderScreen({ source: 'sparky', userId: 'user-1', isCustom: true });
+    const screen = renderScreen({
+      source: 'sparky',
+      userId: 'user-1',
+      isCustom: true,
+    });
 
     expectActionPresent(screen, navigation, 'Edit');
     expect(screen.queryByText('Delete Exercise')).toBeTruthy();
-    
   });
 
-
   it('hides Edit and Delete when the user does not own the exercise', () => {
-    const screen = renderScreen({ source: 'custom', userId: 'someone-else', isCustom: true });
+    const screen = renderScreen({
+      source: 'custom',
+      userId: 'someone-else',
+      isCustom: true,
+    });
 
     expect(screen.queryByText('Edit')).toBeNull();
     expect(screen.queryByText('Delete Exercise')).toBeNull();
@@ -309,7 +337,7 @@ describe('ExerciseDetailScreen', () => {
         mode: 'edit-exercise',
         returnKey: 'ExerciseDetail-key',
         exercise: expect.objectContaining({ id: 'ex-1' }),
-      }),
+      })
     );
   });
 
@@ -330,10 +358,10 @@ describe('ExerciseDetailScreen', () => {
     const screen = render(
       <Providers>
         <ExerciseDetailScreen navigation={navigation} route={route as any} />
-      </Providers>,
+      </Providers>
     );
     expect(mockNavigation.setOptions).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Bench Press' }),
+      expect.objectContaining({ title: 'Bench Press' })
     );
 
     screen.rerender(
@@ -350,11 +378,11 @@ describe('ExerciseDetailScreen', () => {
             } as any
           }
         />
-      </Providers>,
+      </Providers>
     );
 
     expect(mockNavigation.setOptions).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'Bench Press 2' }),
+      expect.objectContaining({ title: 'Bench Press 2' })
     );
   });
 
@@ -379,13 +407,13 @@ describe('ExerciseDetailScreen', () => {
       });
 
       expect(mockNavigation.setOptions).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Sparse Bench' }),
+        expect.objectContaining({ title: 'Sparse Bench' })
       );
 
       await waitFor(() =>
         expect(mockNavigation.setOptions).toHaveBeenCalledWith(
-          expect.objectContaining({ title: 'Hydrated Bench Press' }),
-        ),
+          expect.objectContaining({ title: 'Hydrated Bench Press' })
+        )
       );
       expect(mockFetchExerciseById).toHaveBeenCalledWith(uuidId);
       expect(screen.getByText('Pectorals')).toBeTruthy();
@@ -414,8 +442,18 @@ describe('ExerciseDetailScreen', () => {
     it('renders Best and Last tiles from stats', () => {
       mockUseExerciseStats.mockReturnValue({
         data: {
-          bestSet: { entryDate: '2026-01-06', weight: 100, reps: 5, setNumber: 2 },
-          lastSet: { entryDate: '2026-01-08', weight: 95, reps: 8, setNumber: 3 },
+          bestSet: {
+            entryDate: '2026-01-06',
+            weight: 100,
+            reps: 5,
+            setNumber: 2,
+          },
+          lastSet: {
+            entryDate: '2026-01-08',
+            weight: 95,
+            reps: 8,
+            setNumber: 3,
+          },
           recentSessions: [],
         },
       } as any);
@@ -437,7 +475,12 @@ describe('ExerciseDetailScreen', () => {
       } as any);
       mockUseExerciseStats.mockReturnValue({
         data: {
-          bestSet: { entryDate: '2026-01-06', weight: 100, reps: 5, setNumber: 1 },
+          bestSet: {
+            entryDate: '2026-01-06',
+            weight: 100,
+            reps: 5,
+            setNumber: 1,
+          },
           lastSet: null,
           recentSessions: [],
         },
@@ -581,7 +624,9 @@ describe('ExerciseDetailScreen', () => {
 
       fireEvent.press(screen.getByText('History'));
 
-      expect(mockUseExerciseHistory).toHaveBeenCalledWith({ exerciseId: uuidId });
+      expect(mockUseExerciseHistory).toHaveBeenCalledWith({
+        exerciseId: uuidId,
+      });
       expect(screen.getByText('Tue, Jan 6')).toBeTruthy();
       expect(screen.getByText('100 × 5')).toBeTruthy();
       expect(screen.queryByText('Equipment')).toBeNull();
@@ -613,7 +658,7 @@ describe('ExerciseDetailScreen', () => {
               } as any
             }
           />
-        </Providers>,
+        </Providers>
       );
 
     it('shows no Add action without selectionReturnKey', () => {
@@ -640,14 +685,14 @@ describe('ExerciseDetailScreen', () => {
               }),
             }),
             source: returnKey,
-          }),
-        ),
+          })
+        )
       );
       expect(navigation.dispatch).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'POP',
           payload: expect.objectContaining({ count: 2 }),
-        }),
+        })
       );
       expect(mockImportExercise).not.toHaveBeenCalled();
     });
@@ -673,15 +718,15 @@ describe('ExerciseDetailScreen', () => {
               }),
             }),
             source: returnKey,
-          }),
-        ),
+          })
+        )
       );
       expect(mockImportExercise).toHaveBeenCalledWith('wger', '123');
       expect(navigation.dispatch).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'POP',
           payload: expect.objectContaining({ count: 2 }),
-        }),
+        })
       );
     });
 
@@ -694,8 +739,11 @@ describe('ExerciseDetailScreen', () => {
 
       await waitFor(() =>
         expect(Toast.show).toHaveBeenCalledWith(
-          expect.objectContaining({ type: 'error', text1: 'Failed to add exercise' }),
-        ),
+          expect.objectContaining({
+            type: 'error',
+            text1: 'Failed to add exercise',
+          })
+        )
       );
       expect(navigation.dispatch).not.toHaveBeenCalled();
 
@@ -709,8 +757,8 @@ describe('ExerciseDetailScreen', () => {
 
       await waitFor(() =>
         expect(navigation.dispatch).toHaveBeenCalledWith(
-          expect.objectContaining({ type: 'SET_PARAMS' }),
-        ),
+          expect.objectContaining({ type: 'SET_PARAMS' })
+        )
       );
     });
 

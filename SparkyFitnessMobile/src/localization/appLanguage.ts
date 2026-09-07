@@ -32,7 +32,9 @@ export function normalizePreference(value: unknown): LanguagePreference {
   return normalizeRegisteredLocale(value) ?? 'system';
 }
 
-function normalizeNativeLanguage(value: string | null | undefined): SupportedLanguage | null {
+function normalizeNativeLanguage(
+  value: string | null | undefined
+): SupportedLanguage | null {
   return normalizeRegisteredLocale(value);
 }
 
@@ -60,7 +62,9 @@ async function hydratePreferences(): Promise<void> {
   });
 }
 
-async function applyEffectiveLanguage(language: SupportedLanguage): Promise<SupportedLanguage> {
+async function applyEffectiveLanguage(
+  language: SupportedLanguage
+): Promise<SupportedLanguage> {
   await initializeI18n(language);
   if (i18n.resolvedLanguage !== language) {
     await i18n.changeLanguage(language);
@@ -83,24 +87,30 @@ function setStorePreference(preference: LanguagePreference): void {
  * back to expo-localization's device locale and is logged. Never rejects.
  */
 async function resolveSystemLanguage(): Promise<SupportedLanguage> {
-  if (!AppLanguageNative.supportsNativePerAppLanguage) return getDeviceLanguage();
+  if (!AppLanguageNative.supportsNativePerAppLanguage)
+    return getDeviceLanguage();
   try {
     const native = await AppLanguageNative.getEffectiveLanguage();
     return normalizeNativeLanguage(native) ?? getDeviceLanguage();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await addLog(`[AppLanguage] Failed to read native effective language: ${message}`, 'WARNING');
+    await addLog(
+      `[AppLanguage] Failed to read native effective language: ${message}`,
+      'WARNING'
+    );
     return getDeviceLanguage();
   }
 }
 
 let languageOperation: Promise<unknown> = Promise.resolve();
 
-function serializeLanguageOperation<T>(operation: () => Promise<T>): Promise<T> {
+function serializeLanguageOperation<T>(
+  operation: () => Promise<T>
+): Promise<T> {
   const next = languageOperation.then(operation, operation);
   languageOperation = next.then(
     () => undefined,
-    () => undefined,
+    () => undefined
   );
   return next;
 }
@@ -113,7 +123,9 @@ function serializeLanguageOperation<T>(operation: () => Promise<T>): Promise<T> 
  */
 async function ensureNativeLanguage(target: LanguagePreference): Promise<void> {
   if (!AppLanguageNative.supportsNativePerAppLanguage) return;
-  const current = mapNativeToPreference(await AppLanguageNative.getApplicationLanguage());
+  const current = mapNativeToPreference(
+    await AppLanguageNative.getApplicationLanguage()
+  );
   const targetValue = target === 'system' ? null : target;
   if (current === target) return;
   await AppLanguageNative.setApplicationLanguage(targetValue);
@@ -129,7 +141,9 @@ async function ensureNativeLanguage(target: LanguagePreference): Promise<void> {
  */
 async function readNativePreference(): Promise<MappedNative> {
   if (!AppLanguageNative.supportsNativePerAppLanguage) return 'system';
-  return mapNativeToPreference(await AppLanguageNative.getApplicationLanguage());
+  return mapNativeToPreference(
+    await AppLanguageNative.getApplicationLanguage()
+  );
 }
 
 async function readMigrationFinished(): Promise<boolean> {
@@ -144,7 +158,10 @@ async function readMigrationFinished(): Promise<boolean> {
 }
 
 async function writeMigrationFinished(): Promise<void> {
-  await AsyncStorage.setItem(MIGRATION_STORAGE_KEY, JSON.stringify({ version: MIGRATION_VERSION }));
+  await AsyncStorage.setItem(
+    MIGRATION_STORAGE_KEY,
+    JSON.stringify({ version: MIGRATION_VERSION })
+  );
 }
 
 /**
@@ -162,11 +179,11 @@ async function adoptNativeState(): Promise<SupportedLanguage> {
     const message = error instanceof Error ? error.message : String(error);
     await addLog(
       `[AppLanguage] Native application-language read failed; using stored preference: ${message}`,
-      'WARNING',
+      'WARNING'
     );
     const preference = normalizePreference(storePreference());
     return applyEffectiveLanguage(
-      preference === 'system' ? await resolveSystemLanguage() : preference,
+      preference === 'system' ? await resolveSystemLanguage() : preference
     );
   }
 
@@ -179,7 +196,7 @@ async function adoptNativeState(): Promise<SupportedLanguage> {
       const message = error instanceof Error ? error.message : String(error);
       await addLog(
         `[AppLanguage] Could not repair unsupported native locale to system: ${message}`,
-        'WARNING',
+        'WARNING'
       );
     }
     setStorePreference('system');
@@ -187,7 +204,9 @@ async function adoptNativeState(): Promise<SupportedLanguage> {
   }
 
   setStorePreference(native);
-  return applyEffectiveLanguage(native === 'system' ? await resolveSystemLanguage() : native);
+  return applyEffectiveLanguage(
+    native === 'system' ? await resolveSystemLanguage() : native
+  );
 }
 
 /**
@@ -212,7 +231,7 @@ export function initializeAppLanguage(): Promise<SupportedLanguage> {
         const message = error instanceof Error ? error.message : String(error);
         await addLog(
           `[AppLanguage] iOS native locale read failed; using ${FALLBACK_LOCALE} for this launch: ${message}`,
-          'WARNING',
+          'WARNING'
         );
         return applyEffectiveLanguage(FALLBACK_LOCALE);
       }
@@ -223,7 +242,7 @@ export function initializeAppLanguage(): Promise<SupportedLanguage> {
 
     if (!AppLanguageNative.supportsNativePerAppLanguage) {
       return applyEffectiveLanguage(
-        preference === 'system' ? await resolveSystemLanguage() : preference,
+        preference === 'system' ? await resolveSystemLanguage() : preference
       );
     }
 
@@ -249,7 +268,9 @@ export function initializeAppLanguage(): Promise<SupportedLanguage> {
  *     ├─ system, stored system → no write + mark
  *     └─ read failed → local fallback for this startup, marker ABSENT (retry)
  */
-async function runMigration(storedPreference: LanguagePreference): Promise<SupportedLanguage> {
+async function runMigration(
+  storedPreference: LanguagePreference
+): Promise<SupportedLanguage> {
   let native: MappedNative;
   try {
     native = await readNativePreference();
@@ -260,11 +281,11 @@ async function runMigration(storedPreference: LanguagePreference): Promise<Suppo
     const message = error instanceof Error ? error.message : String(error);
     await addLog(
       `[AppLanguage] Migration could not read native language; using stored preference and retrying next launch: ${message}`,
-      'WARNING',
+      'WARNING'
     );
     const preference = normalizePreference(storePreference());
     return applyEffectiveLanguage(
-      preference === 'system' ? await resolveSystemLanguage() : preference,
+      preference === 'system' ? await resolveSystemLanguage() : preference
     );
   }
 
@@ -277,13 +298,13 @@ async function runMigration(storedPreference: LanguagePreference): Promise<Suppo
       const message = error instanceof Error ? error.message : String(error);
       await addLog(
         `[AppLanguage] Migration could not repair unsupported native locale: ${message}`,
-        'WARNING',
+        'WARNING'
       );
     }
     await writeMigrationFinished();
     const preference = normalizePreference(storePreference());
     return applyEffectiveLanguage(
-      preference === 'system' ? await resolveSystemLanguage() : preference,
+      preference === 'system' ? await resolveSystemLanguage() : preference
     );
   }
 
@@ -301,19 +322,19 @@ async function runMigration(storedPreference: LanguagePreference): Promise<Suppo
         const message = error instanceof Error ? error.message : String(error);
         await addLog(
           `[AppLanguage] Migration seed failed; will retry next launch: ${message}`,
-          'WARNING',
+          'WARNING'
         );
         // Marker stays absent; local fallback preserved below.
         const preference = normalizePreference(storePreference());
         return applyEffectiveLanguage(
-          preference === 'system' ? await resolveSystemLanguage() : preference,
+          preference === 'system' ? await resolveSystemLanguage() : preference
         );
       }
     }
     await writeMigrationFinished();
     const preference = normalizePreference(storePreference());
     return applyEffectiveLanguage(
-      preference === 'system' ? await resolveSystemLanguage() : preference,
+      preference === 'system' ? await resolveSystemLanguage() : preference
     );
   }
 
@@ -321,7 +342,9 @@ async function runMigration(storedPreference: LanguagePreference): Promise<Suppo
   // wins over the legacy store value. No native write.
   setStorePreference(native);
   await writeMigrationFinished();
-  return applyEffectiveLanguage(normalizeRegisteredLocale(native) ?? FALLBACK_LOCALE);
+  return applyEffectiveLanguage(
+    normalizeRegisteredLocale(native) ?? FALLBACK_LOCALE
+  );
 }
 
 /**
@@ -336,7 +359,7 @@ async function runMigration(storedPreference: LanguagePreference): Promise<Suppo
  * normalized to `system`.
  */
 export function setAppLanguagePreference(
-  preference: LanguagePreference,
+  preference: LanguagePreference
 ): Promise<SupportedLanguage> {
   return serializeLanguageOperation(async () => {
     const normalized = normalizePreference(preference);
@@ -348,7 +371,8 @@ export function setAppLanguagePreference(
     const previousStore = normalizePreference(storePreference());
     const resolvedLanguage = i18n.resolvedLanguage;
     const previousEffective: SupportedLanguage | undefined =
-      resolvedLanguage && (SUPPORTED_LANGUAGES as readonly string[]).includes(resolvedLanguage)
+      resolvedLanguage &&
+      (SUPPORTED_LANGUAGES as readonly string[]).includes(resolvedLanguage)
         ? (resolvedLanguage as SupportedLanguage)
         : undefined;
 
@@ -358,20 +382,26 @@ export function setAppLanguagePreference(
         previousNative = await readNativePreference();
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        await addLog(`[AppLanguage] Could not snapshot native language: ${message}`, 'WARNING');
+        await addLog(
+          `[AppLanguage] Could not snapshot native language: ${message}`,
+          'WARNING'
+        );
       }
 
       try {
         await ensureNativeLanguage(normalized);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        await addLog(`[AppLanguage] Native application-language write failed: ${message}`, 'ERROR');
+        await addLog(
+          `[AppLanguage] Native application-language write failed: ${message}`,
+          'ERROR'
+        );
         throw error;
       }
 
       try {
         const effective = await applyEffectiveLanguage(
-          normalized === 'system' ? await resolveSystemLanguage() : normalized,
+          normalized === 'system' ? await resolveSystemLanguage() : normalized
         );
         setStorePreference(normalized);
         return effective;
@@ -379,8 +409,15 @@ export function setAppLanguagePreference(
         // i18n apply failed after a successful native write: roll the native
         // value back best-effort, then reconcile the store/i18n to reality.
         const message = error instanceof Error ? error.message : String(error);
-        await addLog(`[AppLanguage] i18n apply failed; rolling back native: ${message}`, 'ERROR');
-        await rollbackNativeLanguage(previousNative, previousStore, previousEffective);
+        await addLog(
+          `[AppLanguage] i18n apply failed; rolling back native: ${message}`,
+          'ERROR'
+        );
+        await rollbackNativeLanguage(
+          previousNative,
+          previousStore,
+          previousEffective
+        );
         throw error;
       }
     }
@@ -388,13 +425,16 @@ export function setAppLanguagePreference(
     // Android <=12 / iOS: local-only. Commit the store only after i18n applies.
     try {
       const effective = await applyEffectiveLanguage(
-        normalized === 'system' ? await resolveSystemLanguage() : normalized,
+        normalized === 'system' ? await resolveSystemLanguage() : normalized
       );
       setStorePreference(normalized);
       return effective;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      await addLog(`[AppLanguage] i18n apply failed; store unchanged: ${message}`, 'ERROR');
+      await addLog(
+        `[AppLanguage] i18n apply failed; store unchanged: ${message}`,
+        'ERROR'
+      );
       throw error;
     }
   });
@@ -410,7 +450,7 @@ export function setAppLanguagePreference(
 async function rollbackNativeLanguage(
   previousNative: MappedNative | undefined,
   previousStore: LanguagePreference,
-  previousEffective: SupportedLanguage | undefined,
+  previousEffective: SupportedLanguage | undefined
 ): Promise<void> {
   try {
     if (previousNative !== undefined && previousNative !== 'unsupported') {
@@ -420,7 +460,7 @@ async function rollbackNativeLanguage(
     const message = error instanceof Error ? error.message : String(error);
     await addLog(
       `[AppLanguage] Native rollback failed (${message}); reconciling to actual state`,
-      'ERROR',
+      'ERROR'
     );
   }
 
@@ -432,10 +472,12 @@ async function rollbackNativeLanguage(
         await ensureNativeLanguage('system');
       } catch (repairError) {
         const repairMessage =
-          repairError instanceof Error ? repairError.message : String(repairError);
+          repairError instanceof Error
+            ? repairError.message
+            : String(repairError);
         await addLog(
           `[AppLanguage] Could not repair native locale after rollback: ${repairMessage}`,
-          'ERROR',
+          'ERROR'
         );
       }
       setStorePreference('system');
@@ -446,12 +488,14 @@ async function rollbackNativeLanguage(
     // Reconcile store + i18n to the ACTUAL native state (which may be the
     // previous value or something the platform decided independently).
     setStorePreference(actual);
-    await applyEffectiveLanguage(actual === 'system' ? await resolveSystemLanguage() : actual);
+    await applyEffectiveLanguage(
+      actual === 'system' ? await resolveSystemLanguage() : actual
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await addLog(
       `[AppLanguage] Post-rollback reconciliation failed; restoring stored preference: ${message}`,
-      'ERROR',
+      'ERROR'
     );
     setStorePreference(previousStore);
     if (previousEffective) {
@@ -462,7 +506,7 @@ async function rollbackNativeLanguage(
           applyError instanceof Error ? applyError.message : String(applyError);
         await addLog(
           `[AppLanguage] Could not restore effective language after rollback: ${applyMessage}`,
-          'ERROR',
+          'ERROR'
         );
       }
     }
@@ -486,7 +530,7 @@ export function syncAppLanguageFromSystem(): Promise<SupportedLanguage> {
         const message = error instanceof Error ? error.message : String(error);
         await addLog(
           `[AppLanguage] iOS foreground locale read failed; language unchanged for this read: ${message}`,
-          'WARNING',
+          'WARNING'
         );
         return applyEffectiveLanguage(FALLBACK_LOCALE);
       }
@@ -495,7 +539,7 @@ export function syncAppLanguageFromSystem(): Promise<SupportedLanguage> {
     if (!AppLanguageNative.supportsNativePerAppLanguage) {
       const preference = normalizePreference(storePreference());
       return applyEffectiveLanguage(
-        preference === 'system' ? await resolveSystemLanguage() : preference,
+        preference === 'system' ? await resolveSystemLanguage() : preference
       );
     }
 

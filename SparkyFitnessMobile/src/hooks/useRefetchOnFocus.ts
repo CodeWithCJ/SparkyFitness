@@ -17,7 +17,7 @@ const DEFAULT_STALE_TIME = 30_000;
 export function useRefetchOnFocus(
   refetch: RefetchFn,
   enabled: boolean = true,
-  staleTime: number = DEFAULT_STALE_TIME,
+  staleTime: number = DEFAULT_STALE_TIME
 ): void {
   const lastRefetchedAt = useRef(-Infinity);
 

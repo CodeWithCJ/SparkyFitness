@@ -31,15 +31,3 @@ export const upsertMedicationDisplayPreference = async (
     }
   );
 };
-
-export const deleteMedicationDisplayPreference = async (
-  viewGroup: string,
-  platform: string
-): Promise<void> => {
-  return apiCall(
-    `/v2/medications/display-preferences/${viewGroup}/${platform}`,
-    {
-      method: 'DELETE',
-    }
-  );
-};

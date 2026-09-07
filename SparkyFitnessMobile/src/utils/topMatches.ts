@@ -20,7 +20,7 @@ export interface TopMatch {
 export function interleaveTopMatches(
   providerResults: ProviderSearchResult[],
   perProvider = 2,
-  baseCap = 5,
+  baseCap = 5
 ): TopMatch[] {
   const out: TopMatch[] = [];
   for (let rank = 0; rank < perProvider; rank++) {
@@ -36,7 +36,7 @@ export function interleaveTopMatches(
     }
   }
   const providersWithResults = providerResults.filter(
-    (r) => r.items.length > 0,
+    (r) => r.items.length > 0
   ).length;
   return out.slice(0, Math.max(baseCap, providersWithResults));
 }

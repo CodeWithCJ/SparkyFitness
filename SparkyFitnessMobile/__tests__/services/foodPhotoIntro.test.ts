@@ -26,7 +26,7 @@ describe('foodPhotoIntro', () => {
   test('storage key matches namespaced format', async () => {
     await markFoodPhotoIntroSeen();
     await expect(AsyncStorage.getItem('@FoodPhoto:hasSeenIntro')).resolves.toBe(
-      'true',
+      'true'
     );
   });
 });

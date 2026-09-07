@@ -24,7 +24,7 @@ describe('fastingApi', () => {
       const result = await fetchCurrentFast();
       expect(result).toEqual({ id: 'fast-1' });
       expect(mockApiFetch).toHaveBeenCalledWith(
-        expect.objectContaining({ endpoint: '/api/fasting/current' }),
+        expect.objectContaining({ endpoint: '/api/fasting/current' })
       );
     });
 
@@ -51,7 +51,7 @@ describe('fastingApi', () => {
             target_end_time: '2026-06-22T02:00:00.000Z',
             fasting_type: '16:8 Leangains',
           },
-        }),
+        })
       );
     });
   });
@@ -73,7 +73,7 @@ describe('fastingApi', () => {
             start_time: '2026-06-21T10:00:00.000Z',
             end_time: '2026-06-22T02:00:00.000Z',
           },
-        }),
+        })
       );
     });
   });
@@ -93,7 +93,7 @@ describe('fastingApi', () => {
             start_time: '2026-06-21T10:00:00.000Z',
             end_time: '2026-06-22T02:00:00.000Z',
           },
-        }),
+        })
       );
     });
   });
@@ -106,7 +106,7 @@ describe('fastingApi', () => {
         expect.objectContaining({
           endpoint: '/api/fasting/fast-1',
           method: 'DELETE',
-        }),
+        })
       );
     });
   });
@@ -116,7 +116,7 @@ describe('fastingApi', () => {
       mockApiFetch.mockResolvedValueOnce({ total_completed_fasts: '0' });
       await fetchFastingStats();
       expect(mockApiFetch).toHaveBeenCalledWith(
-        expect.objectContaining({ endpoint: '/api/fasting/stats' }),
+        expect.objectContaining({ endpoint: '/api/fasting/stats' })
       );
     });
   });
@@ -127,7 +127,9 @@ describe('fastingApi', () => {
       const result = await fetchFastingHistory({ limit: 1, offset: 0 });
       expect(result).toEqual([{ id: 'fast-1' }]);
       expect(mockApiFetch).toHaveBeenCalledWith(
-        expect.objectContaining({ endpoint: '/api/fasting/history?limit=1&offset=0' }),
+        expect.objectContaining({
+          endpoint: '/api/fasting/history?limit=1&offset=0',
+        })
       );
     });
 

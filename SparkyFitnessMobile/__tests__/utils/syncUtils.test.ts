@@ -26,13 +26,15 @@ describe('alignToLocalDayStart', () => {
 describe('ceilToLocalDayStart', () => {
   test('rounds a mid-day instant up to the next local midnight', () => {
     const input = new Date(2026, 6, 2, 15, 30, 45, 123);
-    expect(ceilToLocalDayStart(input)).toEqual(new Date(2026, 6, 3, 0, 0, 0, 0));
+    expect(ceilToLocalDayStart(input)).toEqual(
+      new Date(2026, 6, 3, 0, 0, 0, 0)
+    );
     expect(input.getHours()).toBe(15);
   });
 
   test('leaves a midnight-aligned instant unchanged', () => {
     expect(ceilToLocalDayStart(new Date(2026, 6, 2, 0, 0, 0, 0))).toEqual(
-      new Date(2026, 6, 2, 0, 0, 0, 0),
+      new Date(2026, 6, 2, 0, 0, 0, 0)
     );
   });
 });
@@ -47,13 +49,17 @@ describe('addLocalDays', () => {
   });
 
   test('supports negative day counts across month boundaries', () => {
-    expect(addLocalDays(new Date(2026, 6, 2, 0, 0, 0, 0), -30)).toEqual(new Date(2026, 5, 2, 0, 0, 0, 0));
+    expect(addLocalDays(new Date(2026, 6, 2, 0, 0, 0, 0), -30)).toEqual(
+      new Date(2026, 5, 2, 0, 0, 0, 0)
+    );
   });
 });
 
 describe('countLocalDays', () => {
   test('counts calendar days in [start, end)', () => {
-    expect(countLocalDays(new Date(2026, 6, 1), new Date(2026, 6, 31))).toBe(30);
+    expect(countLocalDays(new Date(2026, 6, 1), new Date(2026, 6, 31))).toBe(
+      30
+    );
   });
 
   test('returns 0 for an empty or inverted span', () => {
@@ -63,7 +69,9 @@ describe('countLocalDays', () => {
   });
 
   test('aligns non-midnight inputs before counting', () => {
-    expect(countLocalDays(new Date(2026, 6, 1, 15, 30), new Date(2026, 6, 3, 2, 0))).toBe(2);
+    expect(
+      countLocalDays(new Date(2026, 6, 1, 15, 30), new Date(2026, 6, 3, 2, 0))
+    ).toBe(2);
   });
 });
 
@@ -89,9 +97,18 @@ describe('enumerateDayAlignedWindows', () => {
     const windows = enumerateDayAlignedWindows(floor, endEdge, 30);
 
     expect(windows).toEqual([
-      { start: new Date(2026, 5, 3, 0, 0, 0, 0), end: new Date(2026, 6, 3, 0, 0, 0, 0) },
-      { start: new Date(2026, 4, 4, 0, 0, 0, 0), end: new Date(2026, 5, 3, 0, 0, 0, 0) },
-      { start: new Date(2026, 3, 19, 0, 0, 0, 0), end: new Date(2026, 4, 4, 0, 0, 0, 0) },
+      {
+        start: new Date(2026, 5, 3, 0, 0, 0, 0),
+        end: new Date(2026, 6, 3, 0, 0, 0, 0),
+      },
+      {
+        start: new Date(2026, 4, 4, 0, 0, 0, 0),
+        end: new Date(2026, 5, 3, 0, 0, 0, 0),
+      },
+      {
+        start: new Date(2026, 3, 19, 0, 0, 0, 0),
+        end: new Date(2026, 4, 4, 0, 0, 0, 0),
+      },
     ]);
     expect(countLocalDays(windows[2].start, windows[2].end)).toBe(15);
   });
@@ -108,18 +125,23 @@ describe('enumerateDayAlignedWindows', () => {
   test('returns [] when floor >= endEdge (HC rejects start >= end windows)', () => {
     const edge = new Date(2026, 6, 3, 0, 0, 0, 0);
     expect(enumerateDayAlignedWindows(edge, edge, 30)).toEqual([]);
-    expect(enumerateDayAlignedWindows(new Date(2026, 6, 4), edge, 30)).toEqual([]);
+    expect(enumerateDayAlignedWindows(new Date(2026, 6, 4), edge, 30)).toEqual(
+      []
+    );
   });
 
   test('aligns non-midnight inputs so every window edge is a local midnight', () => {
     const windows = enumerateDayAlignedWindows(
       new Date(2026, 6, 1, 9, 15),
       new Date(2026, 6, 3, 18, 45),
-      30,
+      30
     );
 
     expect(windows).toEqual([
-      { start: new Date(2026, 6, 1, 0, 0, 0, 0), end: new Date(2026, 6, 3, 0, 0, 0, 0) },
+      {
+        start: new Date(2026, 6, 1, 0, 0, 0, 0),
+        end: new Date(2026, 6, 3, 0, 0, 0, 0),
+      },
     ]);
   });
 });
@@ -158,7 +180,9 @@ describe('buildBackgroundWindows', () => {
     const lastSynced = new Date(2026, 6, 3, 8, 0, 0);
     const windows = buildBackgroundWindows(lastSynced.toISOString(), now);
 
-    expect(windows.sessionStart).toEqual(new Date(lastSynced.getTime() - SESSION_OVERLAP_MS));
+    expect(windows.sessionStart).toEqual(
+      new Date(lastSynced.getTime() - SESSION_OVERLAP_MS)
+    );
     expect(windows.aggregatedStart).toEqual(new Date(2026, 6, 3, 0, 0, 0, 0));
     expect(windows.end).toBe(now);
   });
@@ -167,9 +191,11 @@ describe('buildBackgroundWindows', () => {
     const windows = buildBackgroundWindows(null, now);
 
     expect(windows.sessionStart).toEqual(
-      new Date(now.getTime() - 24 * 60 * 60 * 1000 - SESSION_OVERLAP_MS),
+      new Date(now.getTime() - 24 * 60 * 60 * 1000 - SESSION_OVERLAP_MS)
     );
-    expect(windows.aggregatedStart).toEqual(alignToLocalDayStart(windows.sessionStart));
+    expect(windows.aggregatedStart).toEqual(
+      alignToLocalDayStart(windows.sessionStart)
+    );
   });
 });
 
@@ -196,7 +222,9 @@ describe('getSyncStartDate', () => {
 
     // 179 days before 2026-02-26
     const now = new Date('2026-02-26T14:30:00.000Z');
-    const diffDays = Math.round((now.getTime() - result.getTime()) / (1000 * 60 * 60 * 24));
+    const diffDays = Math.round(
+      (now.getTime() - result.getTime()) / (1000 * 60 * 60 * 24)
+    );
     // Should cover 180 days (today + 179 days back)
     expect(diffDays).toBeGreaterThanOrEqual(179);
     expect(diffDays).toBeLessThanOrEqual(180);
@@ -212,14 +240,25 @@ describe('getSyncStartDate', () => {
 
     // 364 days before 2026-02-26
     const now = new Date('2026-02-26T14:30:00.000Z');
-    const diffDays = Math.round((now.getTime() - result.getTime()) / (1000 * 60 * 60 * 24));
+    const diffDays = Math.round(
+      (now.getTime() - result.getTime()) / (1000 * 60 * 60 * 24)
+    );
     // Should cover 365 days (today + 364 days back)
     expect(diffDays).toBeGreaterThanOrEqual(364);
     expect(diffDays).toBeLessThanOrEqual(365);
   });
 
   test('existing durations still work correctly', () => {
-    const durations: SyncDuration[] = ['today', '24h', '3d', '7d', '30d', '90d', '180d', '365d'];
+    const durations: SyncDuration[] = [
+      'today',
+      '24h',
+      '3d',
+      '7d',
+      '30d',
+      '90d',
+      '180d',
+      '365d',
+    ];
 
     for (const duration of durations) {
       const result = getSyncStartDate(duration);
@@ -237,7 +276,7 @@ describe('buildBackgroundWindows lookback clamp', () => {
     const windows = buildBackgroundWindows(ninetyDaysAgo.toISOString(), now);
 
     const floor = new Date(
-      now.getTime() - MAX_BACKGROUND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000,
+      now.getTime() - MAX_BACKGROUND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
     );
     expect(windows.sessionStart).toEqual(floor);
   });
@@ -249,7 +288,7 @@ describe('buildBackgroundWindows lookback clamp', () => {
     const windows = buildBackgroundWindows(lastSynced.toISOString(), now);
 
     expect(windows.sessionStart).toEqual(
-      new Date(lastSynced.getTime() - SESSION_OVERLAP_MS),
+      new Date(lastSynced.getTime() - SESSION_OVERLAP_MS)
     );
   });
 
@@ -260,7 +299,9 @@ describe('buildBackgroundWindows lookback clamp', () => {
 
     expect(Number.isFinite(windows.sessionStart.getTime())).toBe(true);
     expect(windows.sessionStart).toEqual(
-      new Date(now.getTime() - MAX_BACKGROUND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000),
+      new Date(
+        now.getTime() - MAX_BACKGROUND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
+      )
     );
   });
 });
@@ -273,7 +314,7 @@ describe('buildBackgroundWindows clamp reporting', () => {
     const windows = buildBackgroundWindows(ninetyDaysAgo.toISOString(), now);
 
     expect(windows.clampedFrom).toEqual(
-      new Date(ninetyDaysAgo.getTime() - SESSION_OVERLAP_MS),
+      new Date(ninetyDaysAgo.getTime() - SESSION_OVERLAP_MS)
     );
   });
 
@@ -301,10 +342,15 @@ describe('buildBackgroundWindows invalid cursor (PR #2218 review)', () => {
 
   test('a start exactly on the floor is not reported as shortened', () => {
     const now = new Date('2026-08-21T03:00:00Z');
-    const floor = new Date(now.getTime() - MAX_BACKGROUND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+    const floor = new Date(
+      now.getTime() - MAX_BACKGROUND_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
+    );
     const cursorLandingOnFloor = new Date(floor.getTime() + SESSION_OVERLAP_MS);
 
-    const windows = buildBackgroundWindows(cursorLandingOnFloor.toISOString(), now);
+    const windows = buildBackgroundWindows(
+      cursorLandingOnFloor.toISOString(),
+      now
+    );
 
     expect(windows.clampedFrom).toBeUndefined();
   });

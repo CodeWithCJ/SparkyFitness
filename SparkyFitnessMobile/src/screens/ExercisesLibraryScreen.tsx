@@ -48,10 +48,10 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
   const [searchText, setSearchText] = useState('');
   const ownershipFilter = useAppPreferencesStore(
-    s => s.exercisesLibraryOwnershipFilter,
+    (s) => s.exercisesLibraryOwnershipFilter
   );
   const setOwnershipFilter = useAppPreferencesStore(
-    s => s.setExercisesLibraryOwnershipFilter,
+    (s) => s.setExercisesLibraryOwnershipFilter
   );
 
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -71,14 +71,14 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
   } = useExercisesLibrary(searchText, { enabled: isConnected });
   const filteredExercises = useMemo(
     () => filterByOwnership(exercises, ownershipFilter, profile?.id),
-    [exercises, ownershipFilter, profile?.id],
+    [exercises, ownershipFilter, profile?.id]
   );
 
   const handleExercisePress = useCallback(
     (exercise: Exercise) => {
       navigation.navigate('ExerciseDetail', { item: exercise });
     },
-    [navigation],
+    [navigation]
   );
 
   const renderEmpty = () => {
@@ -100,8 +100,12 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
               family: t('ownership.family', { defaultValue: 'Family' }),
               public: t('ownership.public', { defaultValue: 'Public' }),
             },
-            emptyTitle: t('ownership.emptyTitle', { defaultValue: 'No {{noun}} in {{filter}}' }),
-            emptySubtitle: t('ownership.emptySubtitle', { defaultValue: 'Change the filter to see your other {{noun}}.' }),
+            emptyTitle: t('ownership.emptyTitle', {
+              defaultValue: 'No {{noun}} in {{filter}}',
+            }),
+            emptySubtitle: t('ownership.emptySubtitle', {
+              defaultValue: 'Change the filter to see your other {{noun}}.',
+            }),
             showAllLabel: t('ownership.showAll', { defaultValue: 'Show All' }),
           })}
         />
@@ -112,13 +116,22 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
         inline
         title={
           searchText.trim().length > 0
-            ? t('exerciseLibrary.noMatch', { defaultValue: 'No matching exercises found' })
-            : t('exerciseLibrary.noItems', { defaultValue: 'No exercises found' })
+            ? t('exerciseLibrary.noMatch', {
+                defaultValue: 'No matching exercises found',
+              })
+            : t('exerciseLibrary.noItems', {
+                defaultValue: 'No exercises found',
+              })
         }
         subtitle={
           searchText.trim().length > 0
-            ? t('exerciseLibrary.trySearch', { defaultValue: 'Try a different search term to find saved exercises.' })
-            : t('exerciseLibrary.empty', { defaultValue: 'Exercises you save or log will appear here.' })
+            ? t('exerciseLibrary.trySearch', {
+                defaultValue:
+                  'Try a different search term to find saved exercises.',
+              })
+            : t('exerciseLibrary.empty', {
+                defaultValue: 'Exercises you save or log will appear here.',
+              })
         }
       />
     );
@@ -128,7 +141,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
     const status = deriveShareStatus(
       item.userId,
       item.sharedWithPublic,
-      profile?.id,
+      profile?.id
     );
     const image = item.images?.[0] ?? null;
     const fallbackIcon =
@@ -184,8 +197,13 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
           icon="cloud-offline"
           iconTone="muted"
           iconSize={64}
-          title={t('exerciseLibrary.noServer', { defaultValue: 'No server configured' })}
-          subtitle={t('exerciseLibrary.configure', { defaultValue: 'Configure your server connection in Settings to view your exercise library.' })}
+          title={t('exerciseLibrary.noServer', {
+            defaultValue: 'No server configured',
+          })}
+          subtitle={t('exerciseLibrary.configure', {
+            defaultValue:
+              'Configure your server connection in Settings to view your exercise library.',
+          })}
           action={{
             label: t('exerciseLibrary.go', { defaultValue: 'Go to Settings' }),
             onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
@@ -196,7 +214,14 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
     }
 
     if (isLoading || isConnectionLoading) {
-      return <StatusView loading title={t('exerciseLibrary.loading', { defaultValue: 'Loading exercises...' })} />;
+      return (
+        <StatusView
+          loading
+          title={t('exerciseLibrary.loading', {
+            defaultValue: 'Loading exercises...',
+          })}
+        />
+      );
     }
 
     if (isError) {
@@ -205,8 +230,12 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
           icon="alert-circle"
           iconTone="danger"
           iconSize={64}
-          title={t('exerciseLibrary.failed', { defaultValue: 'Failed to load exercises' })}
-          subtitle={t('exerciseLibrary.check', { defaultValue: 'Please check your connection and try again.' })}
+          title={t('exerciseLibrary.failed', {
+            defaultValue: 'Failed to load exercises',
+          })}
+          subtitle={t('exerciseLibrary.check', {
+            defaultValue: 'Please check your connection and try again.',
+          })}
           action={{
             label: t('exerciseLibrary.retry', { defaultValue: 'Retry' }),
             onPress: () => {
@@ -221,14 +250,16 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
     return (
       <FlatList
         data={filteredExercises}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
         renderItem={renderRow}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={
           <PaginatedLibraryFooter
             isFetchingNextPage={isFetchingNextPage}
             isFetchNextPageError={isFetchNextPageError}
-            errorMessage={t('exerciseLibrary.moreFailed', { defaultValue: 'Failed to load more exercises.' })}
+            errorMessage={t('exerciseLibrary.moreFailed', {
+              defaultValue: 'Failed to load more exercises.',
+            })}
             onRetry={loadMore}
           />
         }
@@ -266,7 +297,9 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
         public: t('ownership.public', { defaultValue: 'Public' }),
       },
       showLabel: t('ownership.show', { defaultValue: 'Show' }),
-      filterAccessibilityLabel: t('ownership.filter', { defaultValue: 'Filter {{noun}}, filtered to {{filter}}' }),
+      filterAccessibilityLabel: t('ownership.filter', {
+        defaultValue: 'Filter {{noun}}, filtered to {{filter}}',
+      }),
       identifier: 'exercises-library-filter',
       filter: ownershipFilter,
       onSelect: setOwnershipFilter,
@@ -283,7 +316,9 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
         <LibrarySearchBar
           value={searchText}
           onChangeText={setSearchText}
-          placeholder={t('exerciseLibrary.search', { defaultValue: 'Search exercises...' })}
+          placeholder={t('exerciseLibrary.search', {
+            defaultValue: 'Search exercises...',
+          })}
           isSearching={isSearching}
         />
       ) : null}

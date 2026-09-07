@@ -6,7 +6,10 @@ import {
 describe('healthPermissionSets', () => {
   describe('enabledWritebackPermissions', () => {
     it('returns the write direction only for writeback metrics that are on', () => {
-      const perms = enabledWritebackPermissions({ hydration: true, nutrition: false });
+      const perms = enabledWritebackPermissions({
+        hydration: true,
+        nutrition: false,
+      });
       expect(perms).toEqual([{ accessType: 'write', recordType: 'Hydration' }]);
     });
 
@@ -18,7 +21,7 @@ describe('healthPermissionSets', () => {
     it('scopes to the requested record types', () => {
       const perms = enabledWritebackPermissions(
         { hydration: true, nutrition: true },
-        new Set(['Hydration']),
+        new Set(['Hydration'])
       );
       expect(perms).toEqual([{ accessType: 'write', recordType: 'Hydration' }]);
     });
@@ -28,20 +31,26 @@ describe('healthPermissionSets', () => {
     it('returns the read direction when that metric is on', () => {
       const perms = enabledReadPermissionsForRecordType(
         { isHydrationSyncEnabled: true },
-        'Hydration',
+        'Hydration'
       );
       expect(perms).toEqual([{ accessType: 'read', recordType: 'Hydration' }]);
     });
 
     it('returns nothing when the read metric is off — an off direction is never requested', () => {
       expect(
-        enabledReadPermissionsForRecordType({ isHydrationSyncEnabled: false }, 'Hydration'),
+        enabledReadPermissionsForRecordType(
+          { isHydrationSyncEnabled: false },
+          'Hydration'
+        )
       ).toEqual([]);
     });
 
     it('ignores metrics for other record types', () => {
       expect(
-        enabledReadPermissionsForRecordType({ isHydrationSyncEnabled: true }, 'Nutrition'),
+        enabledReadPermissionsForRecordType(
+          { isHydrationSyncEnabled: true },
+          'Nutrition'
+        )
       ).toEqual([]);
     });
   });

@@ -180,7 +180,7 @@ function LightboxContent({
   );
 }
 
-export function ImageLightbox({
+function ImageLightbox({
   images,
   open,
   onOpenChange,

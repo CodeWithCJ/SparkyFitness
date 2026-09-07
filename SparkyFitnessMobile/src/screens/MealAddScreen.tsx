@@ -17,6 +17,8 @@ import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
+import MarkdownNotesField from '../components/MarkdownNotesField';
+import { usableFoodImages } from '../utils/foodImages';
 import StatusView from '../components/StatusView';
 import { FooterSaveBar } from '../components/FormScreenChrome';
 import Icon from '../components/Icon';
@@ -39,19 +41,26 @@ import {
   formatServingSizeDisplay,
 } from '../utils/foodDetails';
 import { buildMealIngredientDraftFromMealFood } from '../utils/mealBuilderDraft';
-import { DECIMAL_INPUT_REGEX, parseDecimalInput, toFiniteNumber } from '../utils/numericInput';
+import { MEAL_SERVING_PRECISION, MEAL_SERVING_UNITS } from '@workspace/shared';
+import {
+  DECIMAL_INPUT_REGEX,
+  parseDecimalInput,
+  toFiniteNumber,
+} from '../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 
 type MealAddScreenProps = RootStackScreenProps<'MealAdd'>;
 
-const MEAL_SERVING_PRECISION = 6;
+const SERVING_UNIT_OPTIONS = MEAL_SERVING_UNITS.map((unit) => ({
+  label: unit,
+  value: unit,
+}));
 
-const SERVING_UNIT_OPTIONS = [
-  'serving', 'g', 'ml', 'oz', 'cup', 'tbsp', 'tsp', 'piece',
-].map((unit) => ({ label: unit, value: unit }));
-
-function getServingUnitLabel(unit: string, t: (key: string, options?: Record<string, unknown>) => string): string {
+function getServingUnitLabel(
+  unit: string,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string {
   const labels: Record<string, string> = {
     serving: t('mealBuilder.units.serving', { defaultValue: 'serving' }),
     g: t('mealBuilder.units.g', { defaultValue: 'g' }),
@@ -81,7 +90,13 @@ interface MacroStatProps {
 const MacroStat: React.FC<MacroStatProps> = ({ color, value, label }) => (
   <View className="flex-1 flex-row items-start gap-1.5">
     <View
-      style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color, marginTop: 6 }}
+      style={{
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: color,
+        marginTop: 6,
+      }}
     />
     <Text className="flex-1 text-text-primary text-base">
       {value}
@@ -103,7 +118,7 @@ function toMealTotals(ingredients: MealIngredientDraft[]): MealTotals {
       totals.fat += toFiniteNumber(ingredient.fat) * scale;
       return totals;
     },
-    { calories: 0, protein: 0, carbs: 0, fat: 0 },
+    { calories: 0, protein: 0, carbs: 0, fat: 0 }
   );
 }
 
@@ -115,8 +130,12 @@ const mealIngredientToPayload = ({
 const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const localizedServingUnitOptions = useMemo(
-    () => SERVING_UNIT_OPTIONS.map((option) => ({ ...option, label: getServingUnitLabel(option.value, t) })),
-    [t],
+    () =>
+      SERVING_UNIT_OPTIONS.map((option) => ({
+        ...option,
+        label: getServingUnitLabel(option.value, t),
+      })),
+    [t]
   );
   const isEditMode = route.params?.mode === 'edit';
   const editMealId = isEditMode ? route.params.mealId : undefined;
@@ -133,6 +152,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
   const [mealName, setMealName] = useState('');
   const [description, setDescription] = useState('');
+  const [notes, setNotes] = useState('');
   // serving_size = quantity of ONE serving in serving_unit (e.g. 250 for 250 ml,
   // or 1 when unit is 'serving'). total_servings = yield count.
   const [servingSizeText, setServingSizeText] = useState('1');
@@ -143,10 +163,17 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   const [totalAmountText, setTotalAmountText] = useState('1');
   const [ingredients, setIngredients] = useState<MealIngredientDraft[]>([]);
   const [pickerImages, setPickerImages] = useState<PickerImage[]>([]);
-  const [initializedMealId, setInitializedMealId] = useState<string | null>(null);
+  const [initializedMealId, setInitializedMealId] = useState<string | null>(
+    null
+  );
 
   const { createMealAsync, isPending } = useCreateMeal();
-  const { meal: editMeal, isLoading: isEditMealLoading, isError: isEditMealError, refetch } = useMeal(editMealId, {
+  const {
+    meal: editMeal,
+    isLoading: isEditMealLoading,
+    isError: isEditMealError,
+    refetch,
+  } = useMeal(editMealId, {
     enabled: isEditMode,
   });
   const { updateMealAsync, isPending: isUpdatePending } = useUpdateMeal({
@@ -160,6 +187,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMealName(editMeal.name);
     setDescription(editMeal.description ?? '');
+    setNotes(editMeal.notes ?? '');
     const loadedServingSize = editMeal.serving_size ?? 1;
     const loadedTotalServings = editMeal.total_servings ?? 1;
     setServingSizeText(String(loadedServingSize));
@@ -168,9 +196,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     // toPrecision(15) strips IEEE 754 artifacts (e.g. 1000 * 4.015 →
     // 4014.99999…) without losing real precision.
     setTotalAmountText(
-      String(
-        Number((loadedServingSize * loadedTotalServings).toPrecision(15))
-      )
+      String(Number((loadedServingSize * loadedTotalServings).toPrecision(15)))
     );
     setIngredients(editMeal.foods.map(buildMealIngredientDraftFromMealFood));
     setPickerImages(toSavedImages(editMeal.images));
@@ -196,7 +222,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
         nextIngredients.push(selection.ingredient);
         return nextIngredients;
       });
-    }, []),
+    }, [])
   );
 
   const totals = useMemo(() => toMealTotals(ingredients), [ingredients]);
@@ -235,12 +261,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
       if (previousUnit !== 'serving') {
         const parsedAmount = parseDecimalInput(totalAmountText);
         const parsedSize = parseDecimalInput(servingSizeText);
-        if (
-          parsedAmount &&
-          parsedSize &&
-          parsedAmount > 0 &&
-          parsedSize > 0
-        ) {
+        if (parsedAmount && parsedSize && parsedAmount > 0 && parsedSize > 0) {
           setTotalServingsText(String(parsedAmount / parsedSize));
         }
       }
@@ -254,7 +275,9 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
   const removeIngredient = (index: number) => {
     setIngredients((currentIngredients) =>
-      currentIngredients.filter((_, ingredientIndex) => ingredientIndex !== index),
+      currentIngredients.filter(
+        (_, ingredientIndex) => ingredientIndex !== index
+      )
     );
   };
 
@@ -262,7 +285,10 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     navigation.push('FoodSearch', { pickerMode: 'meal-builder' });
   };
 
-  const editIngredient = (ingredient: MealIngredientDraft, ingredientIndex: number) => {
+  const editIngredient = (
+    ingredient: MealIngredientDraft,
+    ingredientIndex: number
+  ) => {
     // Linked sub-meal ingredients aren't editable in the mobile builder yet
     // (quantity editing for a linked meal needs a meal-serving picker, not the
     // food/variant editor below) — remove and re-add via the web app instead.
@@ -270,7 +296,9 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
       Toast.show({
         type: 'info',
         text1: t('mealBuilder.linkedMeal', { defaultValue: 'Linked meal' }),
-        text2: t('mealBuilder.linkedMealWebEdit', { defaultValue: 'Edit this sub-meal ingredient in the web app.' }),
+        text2: t('mealBuilder.linkedMealWebEdit', {
+          defaultValue: 'Edit this sub-meal ingredient in the web app.',
+        }),
       });
       return;
     }
@@ -305,19 +333,28 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     });
   };
 
-  const showIngredientMenu = (ingredient: MealIngredientDraft, ingredientIndex: number) => {
+  const showIngredientMenu = (
+    ingredient: MealIngredientDraft,
+    ingredientIndex: number
+  ) => {
     Alert.alert(
       ingredient.food_name || t('addSheet.food', { defaultValue: 'Food' }),
       undefined,
       [
-        { text: t('common.edit', { defaultValue: 'Edit' }), onPress: () => editIngredient(ingredient, ingredientIndex) },
+        {
+          text: t('common.edit', { defaultValue: 'Edit' }),
+          onPress: () => editIngredient(ingredient, ingredientIndex),
+        },
         {
           text: t('common.delete', { defaultValue: 'Delete' }),
           style: 'destructive',
           onPress: () => removeIngredient(ingredientIndex),
         },
-        { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
-      ],
+        {
+          text: t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+        },
+      ]
     );
   };
 
@@ -349,8 +386,12 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     if (!trimmedMealName) {
       Toast.show({
         type: 'error',
-        text1: t('mealBuilder.errors.missingNameTitle', { defaultValue: 'Missing meal name' }),
-        text2: t('mealBuilder.errors.missingNameMessage', { defaultValue: 'Please enter a name for your meal.' }),
+        text1: t('mealBuilder.errors.missingNameTitle', {
+          defaultValue: 'Missing meal name',
+        }),
+        text2: t('mealBuilder.errors.missingNameMessage', {
+          defaultValue: 'Please enter a name for your meal.',
+        }),
       });
       return;
     }
@@ -358,8 +399,12 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     if (!parsedServingSize || parsedServingSize <= 0) {
       Toast.show({
         type: 'error',
-        text1: t('mealBuilder.errors.invalidServingSizeTitle', { defaultValue: 'Invalid serving size' }),
-        text2: t('mealBuilder.errors.invalidServingSizeMessage', { defaultValue: 'Default serving size must be greater than zero.' }),
+        text1: t('mealBuilder.errors.invalidServingSizeTitle', {
+          defaultValue: 'Invalid serving size',
+        }),
+        text2: t('mealBuilder.errors.invalidServingSizeMessage', {
+          defaultValue: 'Default serving size must be greater than zero.',
+        }),
       });
       return;
     }
@@ -369,12 +414,20 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
         type: 'error',
         text1:
           servingUnit === 'serving'
-            ? t('mealBuilder.errors.invalidTotalServingsTitle', { defaultValue: 'Invalid total servings' })
-            : t('mealBuilder.errors.invalidTotalAmountTitle', { defaultValue: 'Invalid total amount' }),
+            ? t('mealBuilder.errors.invalidTotalServingsTitle', {
+                defaultValue: 'Invalid total servings',
+              })
+            : t('mealBuilder.errors.invalidTotalAmountTitle', {
+                defaultValue: 'Invalid total amount',
+              }),
         text2:
           servingUnit === 'serving'
-            ? t('mealBuilder.errors.invalidTotalServingsMessage', { defaultValue: 'Total servings must be greater than zero.' })
-            : t('mealBuilder.errors.invalidTotalAmountMessage', { defaultValue: 'Total amount must be greater than zero.' }),
+            ? t('mealBuilder.errors.invalidTotalServingsMessage', {
+                defaultValue: 'Total servings must be greater than zero.',
+              })
+            : t('mealBuilder.errors.invalidTotalAmountMessage', {
+                defaultValue: 'Total amount must be greater than zero.',
+              }),
       });
       return;
     }
@@ -382,8 +435,12 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     if (!ingredients.length) {
       Toast.show({
         type: 'error',
-        text1: t('mealBuilder.errors.noIngredientsTitle', { defaultValue: 'No ingredients yet' }),
-        text2: t('mealBuilder.errors.noIngredientsMessage', { defaultValue: 'Add at least one food before saving this meal.' }),
+        text1: t('mealBuilder.errors.noIngredientsTitle', {
+          defaultValue: 'No ingredients yet',
+        }),
+        text2: t('mealBuilder.errors.noIngredientsMessage', {
+          defaultValue: 'Add at least one food before saving this meal.',
+        }),
       });
       return;
     }
@@ -391,8 +448,13 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     if (ingredients.some((ingredient) => !ingredient.variant_id)) {
       Toast.show({
         type: 'error',
-        text1: t('mealBuilder.errors.missingIngredientTitle', { defaultValue: 'Missing ingredient data' }),
-        text2: t('mealBuilder.errors.missingIngredientMessage', { defaultValue: 'One of the selected foods is missing a serving variant. Please re-add it.' }),
+        text1: t('mealBuilder.errors.missingIngredientTitle', {
+          defaultValue: 'Missing ingredient data',
+        }),
+        text2: t('mealBuilder.errors.missingIngredientMessage', {
+          defaultValue:
+            'One of the selected foods is missing a serving variant. Please re-add it.',
+        }),
       });
       return;
     }
@@ -401,6 +463,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
       const payload = {
         name: trimmedMealName,
         description: description.trim() || null,
+        notes: notes.trim() || null,
         serving_size: parsedServingSize,
         serving_unit: servingUnit,
         total_servings: parsedTotalServings,
@@ -409,14 +472,13 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
       // Only send images on edit when they changed: a supplied `images` array
       // is authoritative server-side and deletes anything omitted.
-      const imageArgs =
-        isEditMode
-          ? pickerImagesDiffer(pickerImages, editMeal?.images)
-            ? splitPickerImages(pickerImages)
-            : undefined
-          : pickerImages.length > 0
-            ? splitPickerImages(pickerImages)
-            : undefined;
+      const imageArgs = isEditMode
+        ? pickerImagesDiffer(pickerImages, editMeal?.images)
+          ? splitPickerImages(pickerImages)
+          : undefined
+        : pickerImages.length > 0
+          ? splitPickerImages(pickerImages)
+          : undefined;
 
       if (isEditMode) {
         await updateMealAsync(payload, imageArgs);
@@ -426,7 +488,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
             ...payload,
             is_public: false,
           },
-          imageArgs,
+          imageArgs
         );
       }
       navigation.goBack();
@@ -438,7 +500,9 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   const isSaving = isPending || isUpdatePending;
 
   const header = useScreenHeader({
-    title: isEditMode ? t('mealBuilder.editTitle', { defaultValue: 'Edit Meal' }) : t('mealBuilder.createTitle', { defaultValue: 'Create Meal' }),
+    title: isEditMode
+      ? t('mealBuilder.editTitle', { defaultValue: 'Edit Meal' })
+      : t('mealBuilder.createTitle', { defaultValue: 'Create Meal' }),
     left: {
       kind: 'dismiss',
       onPress: () => navigation.goBack(),
@@ -461,10 +525,15 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     return (
       <View
         className="flex-1 bg-background"
-        style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+        style={
+          Platform.OS === 'android' ? { paddingTop: insets.top } : undefined
+        }
       >
         {header}
-        <StatusView loading title={t('mealBuilder.loading', { defaultValue: 'Loading meal...' })} />
+        <StatusView
+          loading
+          title={t('mealBuilder.loading', { defaultValue: 'Loading meal...' })}
+        />
       </View>
     );
   }
@@ -473,16 +542,26 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
     return (
       <View
         className="flex-1 bg-background"
-        style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+        style={
+          Platform.OS === 'android' ? { paddingTop: insets.top } : undefined
+        }
       >
         {header}
         <StatusView
           icon="alert-circle"
           iconTone="danger"
           iconSize={64}
-          title={t('mealBuilder.loadErrorTitle', { defaultValue: 'Failed to load meal' })}
-          subtitle={t('common.connectionRetry', { defaultValue: 'Please check your connection and try again.' })}
-          action={{ label: t('common.retry', { defaultValue: 'Retry' }), onPress: () => void refetch(), variant: 'primary' }}
+          title={t('mealBuilder.loadErrorTitle', {
+            defaultValue: 'Failed to load meal',
+          })}
+          subtitle={t('common.connectionRetry', {
+            defaultValue: 'Please check your connection and try again.',
+          })}
+          action={{
+            label: t('common.retry', { defaultValue: 'Retry' }),
+            onPress: () => void refetch(),
+            variant: 'primary',
+          }}
         />
       </View>
     );
@@ -508,9 +587,13 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
           />
 
           <View className="gap-1.5">
-            <Text className="text-text-secondary text-sm font-medium">{t('mealBuilder.mealName', { defaultValue: 'Meal Name' })} *</Text>
+            <Text className="text-text-secondary text-sm font-medium">
+              {t('mealBuilder.mealName', { defaultValue: 'Meal Name' })} *
+            </Text>
             <FormInput
-              placeholder={t('mealBuilder.mealNamePlaceholder', { defaultValue: 'e.g. Chicken Rice Bowl' })}
+              placeholder={t('mealBuilder.mealNamePlaceholder', {
+                defaultValue: 'e.g. Chicken Rice Bowl',
+              })}
               value={mealName}
               onChangeText={setMealName}
               returnKeyType="done"
@@ -518,9 +601,15 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
           </View>
 
           <View className="gap-1.5">
-            <Text className="text-text-secondary text-sm font-medium">{t('mealBuilder.descriptionOptional', { defaultValue: 'Description (optional)' })}</Text>
+            <Text className="text-text-secondary text-sm font-medium">
+              {t('mealBuilder.descriptionOptional', {
+                defaultValue: 'Description (optional)',
+              })}
+            </Text>
             <FormInput
-              placeholder={t('mealBuilder.descriptionPlaceholder', { defaultValue: 'Notes about this meal' })}
+              placeholder={t('mealBuilder.descriptionPlaceholder', {
+                defaultValue: 'Notes about this meal',
+              })}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -533,7 +622,10 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
               {servingUnit === 'serving' ? (
                 <>
                   <Text className="text-text-secondary text-sm font-medium">
-                    {t('mealBuilder.totalServings', { defaultValue: 'Total Servings' })} *
+                    {t('mealBuilder.totalServings', {
+                      defaultValue: 'Total Servings',
+                    })}{' '}
+                    *
                   </Text>
                   <FormInput
                     placeholder="1"
@@ -546,7 +638,10 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
               ) : (
                 <>
                   <Text className="text-text-secondary text-sm font-medium">
-                    {t('mealBuilder.totalAmount', { defaultValue: 'Total Amount ({{unit}}) *', unit: getServingUnitLabel(servingUnit, t) })}
+                    {t('mealBuilder.totalAmount', {
+                      defaultValue: 'Total Amount ({{unit}}) *',
+                      unit: getServingUnitLabel(servingUnit, t),
+                    })}
                   </Text>
                   <FormInput
                     placeholder="1"
@@ -566,21 +661,37 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                 value={servingUnit}
                 options={localizedServingUnitOptions}
                 onSelect={handleServingUnitChange}
-                title={t('mealBuilder.selectUnit', { defaultValue: 'Select Unit' })}
+                title={t('mealBuilder.selectUnit', {
+                  defaultValue: 'Select Unit',
+                })}
                 renderTrigger={({ onPress, selectedOption }) => (
                   <TouchableOpacity
                     onPress={onPress}
                     activeOpacity={0.7}
                     accessibilityRole="button"
-                    accessibilityLabel={t('mealBuilder.unitPickerLabel', { defaultValue: 'Unit, {{unit}}', unit: getServingUnitLabel(servingUnit, t) })}
-                    accessibilityHint={t('common.openSelectionMenu', { defaultValue: 'Opens selection menu' })}
+                    accessibilityLabel={t('mealBuilder.unitPickerLabel', {
+                      defaultValue: 'Unit, {{unit}}',
+                      unit: getServingUnitLabel(servingUnit, t),
+                    })}
+                    accessibilityHint={t('common.openSelectionMenu', {
+                      defaultValue: 'Opens selection menu',
+                    })}
                     className="bg-raised rounded-lg border border-border-subtle px-3 py-2.5 flex-row items-center justify-between"
                     style={{ minHeight: 44 }}
                   >
-                    <Text className="text-text-primary" style={{ fontSize: 16 }}>
-                      {selectedOption?.label ?? getServingUnitLabel(servingUnit, t)}
+                    <Text
+                      className="text-text-primary"
+                      style={{ fontSize: 16 }}
+                    >
+                      {selectedOption?.label ??
+                        getServingUnitLabel(servingUnit, t)}
                     </Text>
-                    <Icon name="chevron-down" size={12} color={textMuted} weight="medium" />
+                    <Icon
+                      name="chevron-down"
+                      size={12}
+                      color={textMuted}
+                      weight="medium"
+                    />
                   </TouchableOpacity>
                 )}
               />
@@ -594,7 +705,10 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
             <View className="flex-row gap-3">
               <View className="flex-1 gap-1.5">
                 <Text className="text-text-secondary text-sm font-medium">
-                  {t('mealBuilder.servingSize', { defaultValue: 'Serving Size ({{unit}}) *', unit: getServingUnitLabel(servingUnit, t) })}
+                  {t('mealBuilder.servingSize', {
+                    defaultValue: 'Serving Size ({{unit}}) *',
+                    unit: getServingUnitLabel(servingUnit, t),
+                  })}
                 </Text>
                 <FormInput
                   placeholder="1"
@@ -610,7 +724,9 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
         </View>
 
         <View className="bg-surface rounded-xl p-4 gap-3 shadow-sm">
-          <Text className="text-text-primary text-lg font-semibold">{t('mealBuilder.foodsInMeal', { defaultValue: 'Foods in Meal' })}</Text>
+          <Text className="text-text-primary text-lg font-semibold">
+            {t('mealBuilder.foodsInMeal', { defaultValue: 'Foods in Meal' })}
+          </Text>
 
           {ingredients.length > 0 ? (
             <View>
@@ -619,16 +735,16 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                 const quantity = toFiniteNumber(ingredient.quantity);
                 const scale = servingSize > 0 ? quantity / servingSize : 0;
                 const ingredientCalories = formatCaloriesDisplay(
-                  toFiniteNumber(ingredient.calories) * scale,
+                  toFiniteNumber(ingredient.calories) * scale
                 );
                 const ingredientProtein = formatMacroDisplay(
-                  toFiniteNumber(ingredient.protein) * scale,
+                  toFiniteNumber(ingredient.protein) * scale
                 );
                 const ingredientCarbs = formatMacroDisplay(
-                  toFiniteNumber(ingredient.carbs) * scale,
+                  toFiniteNumber(ingredient.carbs) * scale
                 );
                 const ingredientFat = formatMacroDisplay(
-                  toFiniteNumber(ingredient.fat) * scale,
+                  toFiniteNumber(ingredient.fat) * scale
                 );
                 const isFirst = index === 0;
                 const ingredientKey = `${ingredient.food_id}-${ingredient.variant_id}-${index}`;
@@ -644,10 +760,22 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                           className="bg-bg-danger rounded-lg flex-1 justify-center items-center"
                           onPress={() => removeIngredient(index)}
                           activeOpacity={0.7}
-                          accessibilityLabel={t('mealBuilder.removeIngredient', { defaultValue: 'Remove {{name}}', name: ingredient.food_name || t('mealBuilder.ingredient', { defaultValue: 'ingredient' }) })}
+                          accessibilityLabel={t(
+                            'mealBuilder.removeIngredient',
+                            {
+                              defaultValue: 'Remove {{name}}',
+                              name:
+                                ingredient.food_name ||
+                                t('mealBuilder.ingredient', {
+                                  defaultValue: 'ingredient',
+                                }),
+                            }
+                          )}
                           accessibilityRole="button"
                         >
-                          <Text className="text-text-danger font-semibold text-sm">{t('common.delete', { defaultValue: 'Delete' })}</Text>
+                          <Text className="text-text-danger font-semibold text-sm">
+                            {t('common.delete', { defaultValue: 'Delete' })}
+                          </Text>
                         </TouchableOpacity>
                       </View>
                     )}
@@ -656,7 +784,14 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                       activeOpacity={0.7}
                       onPress={() => editIngredient(ingredient, index)}
                       onLongPress={() => showIngredientMenu(ingredient, index)}
-                      accessibilityLabel={t('mealBuilder.editIngredient', { defaultValue: 'Edit {{name}}', name: ingredient.food_name || t('mealBuilder.ingredient', { defaultValue: 'ingredient' }) })}
+                      accessibilityLabel={t('mealBuilder.editIngredient', {
+                        defaultValue: 'Edit {{name}}',
+                        name:
+                          ingredient.food_name ||
+                          t('mealBuilder.ingredient', {
+                            defaultValue: 'ingredient',
+                          }),
+                      })}
                       accessibilityRole="button"
                       className="bg-surface"
                     >
@@ -671,7 +806,8 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                             ellipsizeMode="tail"
                             className="text-text-primary text-base font-semibold"
                           >
-                            {ingredient.food_name || t('addSheet.food', { defaultValue: 'Food' })}
+                            {ingredient.food_name ||
+                              t('addSheet.food', { defaultValue: 'Food' })}
                             {ingredient.brand ? (
                               <Text className="text-text-secondary font-normal">
                                 {' \u00b7 '}
@@ -684,22 +820,44 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
                               className="self-start rounded-full px-2 py-0.5 mt-1"
                               style={{ backgroundColor: `${textMuted}1A` }}
                             >
-                              <Text className="text-xs font-medium" style={{ color: textMuted }}>
-                                {t('mealBuilder.linkedMeal', { defaultValue: 'Linked meal' })}
+                              <Text
+                                className="text-xs font-medium"
+                                style={{ color: textMuted }}
+                              >
+                                {t('mealBuilder.linkedMeal', {
+                                  defaultValue: 'Linked meal',
+                                })}
                               </Text>
                             </View>
                           ) : null}
                           <Text className="text-text-muted text-sm mt-1">
-                            {ingredientProtein}g {t('nutrition.protein', { defaultValue: 'protein' })}{' \u00b7 '}{ingredientCarbs}g {t('nutrition.carbs', { defaultValue: 'carbs' })}{' \u00b7 '}{ingredientFat}g {t('nutrition.fat', { defaultValue: 'fat' })}
+                            {ingredientProtein}g{' '}
+                            {t('nutrition.protein', {
+                              defaultValue: 'protein',
+                            })}
+                            {' \u00b7 '}
+                            {ingredientCarbs}g{' '}
+                            {t('nutrition.carbs', { defaultValue: 'carbs' })}
+                            {' \u00b7 '}
+                            {ingredientFat}g{' '}
+                            {t('nutrition.fat', { defaultValue: 'fat' })}
                           </Text>
                         </View>
                         <View className="items-end">
                           <Text className="text-text-primary text-base font-semibold">
-                            {ingredientCalories} {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
+                            {ingredientCalories}{' '}
+                            {t('foodSearch.labels.caloriesUnit', {
+                              defaultValue: 'cal',
+                            })}
                           </Text>
                           <Text className="text-text-muted text-sm mt-1">
                             {formatServingSizeDisplay(quantity)}{' '}
-                            {getServingUnitLabel(ingredient.unit || ingredient.serving_unit || 'serving', t)}
+                            {getServingUnitLabel(
+                              ingredient.unit ||
+                                ingredient.serving_unit ||
+                                'serving',
+                              t
+                            )}
                           </Text>
                         </View>
                       </View>
@@ -715,10 +873,14 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
               variant="ghost"
               onPress={openIngredientPicker}
               className="min-h-11 flex-row items-center gap-1.5 rounded-xl px-3 py-2"
-              accessibilityLabel={t('mealBuilder.addFood', { defaultValue: 'Add Food' })}
+              accessibilityLabel={t('mealBuilder.addFood', {
+                defaultValue: 'Add Food',
+              })}
             >
               <Icon name="add" size={16} color={accentColor} />
-              <Text className="text-accent-primary text-sm font-semibold">{t('mealBuilder.addFood', { defaultValue: 'Add Food' })}</Text>
+              <Text className="text-accent-primary text-sm font-semibold">
+                {t('mealBuilder.addFood', { defaultValue: 'Add Food' })}
+              </Text>
             </Button>
           </View>
 
@@ -726,39 +888,71 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
             <View className="bg-raised rounded-lg p-4 gap-4">
               <View className="gap-2">
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-text-secondary text-base font-medium">{t('mealBuilder.mealTotal', { defaultValue: 'Meal total' })}</Text>
-                    <Text className="text-text-primary text-base font-semibold text-right">
-                    {formatCaloriesDisplay(totals.calories)} {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
+                  <Text className="text-text-secondary text-base font-medium">
+                    {t('mealBuilder.mealTotal', { defaultValue: 'Meal total' })}
+                  </Text>
+                  <Text className="text-text-primary text-base font-semibold text-right">
+                    {formatCaloriesDisplay(totals.calories)}{' '}
+                    {t('foodSearch.labels.caloriesUnit', {
+                      defaultValue: 'cal',
+                    })}
                   </Text>
                 </View>
                 <View className="flex-row items-start gap-2 mt-1">
-                  <MacroStat color={proteinColor} value={formatMacroDisplay(totals.protein)} label={proteinLabel} />
-                  <MacroStat color={carbsColor} value={formatMacroDisplay(totals.carbs)} label={carbsLabel} />
-                  <MacroStat color={fatColor} value={formatMacroDisplay(totals.fat)} label={fatLabel} />
+                  <MacroStat
+                    color={proteinColor}
+                    value={formatMacroDisplay(totals.protein)}
+                    label={proteinLabel}
+                  />
+                  <MacroStat
+                    color={carbsColor}
+                    value={formatMacroDisplay(totals.carbs)}
+                    label={carbsLabel}
+                  />
+                  <MacroStat
+                    color={fatColor}
+                    value={formatMacroDisplay(totals.fat)}
+                    label={fatLabel}
+                  />
                 </View>
               </View>
               {showPerServing ? (
                 <View className="gap-2">
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-text-secondary text-base font-medium">{t('mealBuilder.perServing', { defaultValue: 'Per serving' })}</Text>
+                    <Text className="text-text-secondary text-base font-medium">
+                      {t('mealBuilder.perServing', {
+                        defaultValue: 'Per serving',
+                      })}
+                    </Text>
                     <Text className="text-text-primary text-base font-semibold text-right">
-                      {formatCaloriesDisplay(totals.calories / totalServingsCount)} {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
+                      {formatCaloriesDisplay(
+                        totals.calories / totalServingsCount
+                      )}{' '}
+                      {t('foodSearch.labels.caloriesUnit', {
+                        defaultValue: 'cal',
+                      })}
                     </Text>
                   </View>
                   <View className="flex-row items-start gap-2 mt-1">
                     <MacroStat
                       color={proteinColor}
-                      value={formatMacroDisplay(totals.protein / totalServingsCount)}
+                      value={formatMacroDisplay(
+                        totals.protein / totalServingsCount
+                      )}
                       label={proteinLabel}
                     />
                     <MacroStat
                       color={carbsColor}
-                      value={formatMacroDisplay(totals.carbs / totalServingsCount)}
+                      value={formatMacroDisplay(
+                        totals.carbs / totalServingsCount
+                      )}
                       label={carbsLabel}
                     />
                     <MacroStat
                       color={fatColor}
-                      value={formatMacroDisplay(totals.fat / totalServingsCount)}
+                      value={formatMacroDisplay(
+                        totals.fat / totalServingsCount
+                      )}
                       label={fatLabel}
                     />
                   </View>
@@ -766,8 +960,26 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
               ) : null}
             </View>
           ) : null}
-        </View>
 
+          {/*
+            Last, after the ingredients and nutrition totals: those are what
+            this screen is for, and a full recipe above them would push them
+            off-screen.
+          */}
+          <View className="mt-4">
+            <MarkdownNotesField
+              images={usableFoodImages(editMeal?.images)}
+              value={notes}
+              onCommit={setNotes}
+              label={t('mealBuilder.notes', {
+                defaultValue: 'Notes (optional)',
+              })}
+              placeholder={t('mealBuilder.notesPlaceholder', {
+                defaultValue: 'e.g. the recipe, or how you prepare this',
+              })}
+            />
+          </View>
+        </View>
       </ScrollView>
 
       {!usesNativeHeader && (
@@ -778,7 +990,11 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
           }}
           disabled={isSaving}
           busy={isSaving}
-          label={isSaving ? t('common.saving', { defaultValue: 'Saving…' }) : t('common.save', { defaultValue: 'Save' })}
+          label={
+            isSaving
+              ? t('common.saving', { defaultValue: 'Saving…' })
+              : t('common.save', { defaultValue: 'Save' })
+          }
         />
       )}
     </View>

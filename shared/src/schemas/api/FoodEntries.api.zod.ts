@@ -42,6 +42,9 @@ export const foodEntryResponseSchema = z.object({
   // Provider that produced this entry (e.g. 'health_connect'); NULL/absent for
   // manual entries. Not every food-entry query selects it, so keep it optional.
   source: z.string().nullish(),
+  // Per-occurrence markdown note. Never derived from the parent food's notes,
+  // and not selected by every food-entry query, so keep it optional.
+  notes: z.string().nullish(),
 });
 
 export type FoodEntryResponse = z.infer<typeof foodEntryResponseSchema>;

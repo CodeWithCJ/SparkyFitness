@@ -36,14 +36,14 @@ export type WhatsNewBannerState = {
 };
 
 export function useWhatsNewBannerState(): WhatsNewBannerState {
-  const workoutActive = useActiveWorkoutStore(s => s.sessionId !== null);
+  const workoutActive = useActiveWorkoutStore((s) => s.sessionId !== null);
   const [phase, setPhase] = useState<Phase>('evaluating');
   const [resetTick, setResetTick] = useState(0);
   const contentVersion = String(WHATS_NEW_CONTENT_VERSION);
 
   useEffect(
-    () => subscribeToWhatsNewBannerReset(() => setResetTick(t => t + 1)),
-    [],
+    () => subscribeToWhatsNewBannerReset(() => setResetTick((t) => t + 1)),
+    []
   );
 
   useEffect(() => {
@@ -110,25 +110,36 @@ export const WhatsNewBannerContent: React.FC<
         <Pressable
           onPress={state.open}
           accessibilityRole="button"
-          accessibilityLabel={t('whatsNew.seeUpdate', { defaultValue: "See what's new in this update" })}
+          accessibilityLabel={t('whatsNew.seeUpdate', {
+            defaultValue: "See what's new in this update",
+          })}
           className="flex-row items-center px-4 py-3"
         >
           <View className="h-9 w-9 items-center justify-center rounded-full bg-accent-primary/15">
-            <Icon name="whats-new" size={20} color={accentPrimary} weight="bold" />
+            <Icon
+              name="whats-new"
+              size={20}
+              color={accentPrimary}
+              weight="bold"
+            />
           </View>
           <View className="flex-1 px-3">
             <Text className="text-sm font-semibold text-text-primary">
               {t('whatsNew.title', { defaultValue: "What's new" })}
             </Text>
             <Text numberOfLines={1} className="text-xs text-text-secondary">
-              {t('whatsNew.subtitle', { defaultValue: "See what's improved in this update" })}
+              {t('whatsNew.subtitle', {
+                defaultValue: "See what's improved in this update",
+              })}
             </Text>
           </View>
           <Pressable
             onPress={state.dismiss}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             accessibilityRole="button"
-            accessibilityLabel={t('common.dismiss', { defaultValue: 'Dismiss' })}
+            accessibilityLabel={t('common.dismiss', {
+              defaultValue: 'Dismiss',
+            })}
             className="p-2"
           >
             <Icon name="close" size={20} color={textMuted} weight="bold" />
@@ -150,7 +161,9 @@ export const WhatsNewBannerContent: React.FC<
       <Pressable
         onPress={state.open}
         accessibilityRole="button"
-        accessibilityLabel={t('whatsNew.seeUpdate', { defaultValue: "See what's new in this update" })}
+        accessibilityLabel={t('whatsNew.seeUpdate', {
+          defaultValue: "See what's new in this update",
+        })}
         className="flex-row items-center px-3 py-2"
       >
         <View className="h-8 w-8 items-center justify-center rounded-full bg-accent-primary/15">
@@ -166,7 +179,9 @@ export const WhatsNewBannerContent: React.FC<
             {t('whatsNew.title', { defaultValue: "What's new" })}
           </Text>
           <Text numberOfLines={1} className="text-xs text-text-secondary">
-            {t('whatsNew.subtitle', { defaultValue: "See what's improved in this update" })}
+            {t('whatsNew.subtitle', {
+              defaultValue: "See what's improved in this update",
+            })}
           </Text>
         </View>
         <Pressable
@@ -183,7 +198,7 @@ export const WhatsNewBannerContent: React.FC<
   );
 };
 
-const WhatsNewBanner: React.FC<WhatsNewBannerProps> = props => {
+const WhatsNewBanner: React.FC<WhatsNewBannerProps> = (props) => {
   const state = useWhatsNewBannerState();
   return <WhatsNewBannerContent {...props} state={state} />;
 };

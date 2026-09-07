@@ -155,35 +155,261 @@ async function updateMealType(mealTypeId: any, data: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteMealType(mealTypeId: any, userId: any) {
-  log('info', `deleteMealType in mealType.js: id: ${mealTypeId}`);
+export type MealTypeDeleteMode = 'strict' | 'reassign' | 'force';
+
+export interface MealTypeDeletionImpact {
+  foodEntries: number;
+  foodEntryMeals: number;
+  mealPlans: number;
+  templateAssignments: number;
+  totalReferences: number;
+}
+
+export interface DeleteMealTypeOptions {
+  mode?: MealTypeDeleteMode;
+  targetMealTypeId?: string | null;
+}
+
+export interface DeleteMealTypeResult {
+  deleted: boolean;
+  mode: MealTypeDeleteMode;
+  reassignedTo?: string;
+}
+
+// Stable markers the route layer maps to HTTP status codes.
+export const MEAL_TYPE_SYSTEM_MESSAGE =
+  'Cannot delete system default meal types.';
+export const MEAL_TYPE_IN_USE_MESSAGE =
+  'Cannot delete this meal type because it is still in use.';
+export const MEAL_TYPE_INVALID_TARGET_MESSAGE =
+  'Invalid reassignment target meal type.';
+
+/**
+ * True for the two Postgres codes that a blocked meal_type delete can raise.
+ *
+ * The four referencing FKs are ON DELETE RESTRICT, which raises 23001
+ * (restrict_violation) — checked immediately — not the 23503
+ * (foreign_key_violation) that NO ACTION would raise. Handling only 23503
+ * previously left the friendly message unreachable, so every blocked delete
+ * surfaced as a generic 500.
+ */
+function isForeignKeyBlock(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const code = (error as { code?: unknown }).code;
+  return code === '23001' || code === '23503';
+}
+
+// Counts on an existing client so callers inside a transaction can reuse it.
+// meal_plan_template_assignments has no user_id column — its RLS policy derives
+// ownership through the parent template, so it must be scoped by that join or
+// it silently matches nothing.
+async function countMealTypeReferences(
+  client: {
+    query: (
+      sql: string,
+      params: unknown[]
+    ) => Promise<{ rows: Record<string, string>[] }>;
+  },
+  mealTypeId: string,
+  userId: string
+): Promise<MealTypeDeletionImpact> {
+  const result = await client.query(
+    `SELECT
+       (SELECT COUNT(*) FROM food_entries
+          WHERE meal_type_id = $1 AND user_id = $2) AS food_entries,
+       (SELECT COUNT(*) FROM food_entry_meals
+          WHERE meal_type_id = $1 AND user_id = $2) AS food_entry_meals,
+       (SELECT COUNT(*) FROM meal_plans
+          WHERE meal_type_id = $1 AND user_id = $2) AS meal_plans,
+       (SELECT COUNT(*) FROM meal_plan_template_assignments a
+          WHERE a.meal_type_id = $1
+            AND a.template_id IN (
+              SELECT id FROM meal_plan_templates WHERE user_id = $2
+            )) AS template_assignments`,
+    [mealTypeId, userId]
+  );
+  const row = result.rows[0];
+  const foodEntries = Number(row.food_entries);
+  const foodEntryMeals = Number(row.food_entry_meals);
+  const mealPlans = Number(row.meal_plans);
+  const templateAssignments = Number(row.template_assignments);
+  return {
+    foodEntries,
+    foodEntryMeals,
+    mealPlans,
+    templateAssignments,
+    totalReferences:
+      foodEntries + foodEntryMeals + mealPlans + templateAssignments,
+  };
+}
+
+/**
+ * Reports what currently references a meal type, so the client can show exact
+ * counts before asking the user to reassign or force delete.
+ */
+async function getMealTypeDeletionImpact(
+  mealTypeId: string,
+  userId: string
+): Promise<MealTypeDeletionImpact> {
   const client = await getClient(userId);
   try {
+    return await countMealTypeReferences(client, mealTypeId, userId);
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Deletes a custom meal type.
+ *
+ * - `strict` (default): only succeeds when nothing references the type.
+ * - `reassign`: moves every referencing row to `targetMealTypeId` first, so
+ *   logged nutrition history is preserved and only the grouping label changes.
+ * - `force`: permanently deletes the referencing rows.
+ *
+ * All modes run in a single transaction, and ownership is checked before any
+ * mutation so a rejected delete never leaves rows already moved.
+ */
+async function deleteMealType(
+  mealTypeId: string,
+  userId: string,
+  options: DeleteMealTypeOptions = {}
+): Promise<DeleteMealTypeResult> {
+  const mode: MealTypeDeleteMode = options.mode ?? 'strict';
+  const targetMealTypeId = options.targetMealTypeId ?? null;
+  log(
+    'info',
+    `deleteMealType in mealType.ts: id: ${mealTypeId}, mode: ${mode}`
+  );
+  const client = await getClient(userId);
+  try {
+    await client.query('BEGIN');
+
+    // Resolve ownership up front. Doing this before any UPDATE/DELETE is what
+    // keeps a rejected system-type or foreign-type delete from mutating rows.
+    const owner = await client.query(
+      'SELECT user_id FROM meal_types WHERE id = $1',
+      [mealTypeId]
+    );
+    if (owner.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return { deleted: false, mode };
+    }
+    if (owner.rows[0].user_id === null) {
+      throw new Error(MEAL_TYPE_SYSTEM_MESSAGE);
+    }
+    if (owner.rows[0].user_id !== userId) {
+      await client.query('ROLLBACK');
+      return { deleted: false, mode };
+    }
+
+    if (mode === 'reassign') {
+      if (!targetMealTypeId || targetMealTypeId === mealTypeId) {
+        throw new Error(MEAL_TYPE_INVALID_TARGET_MESSAGE);
+      }
+      // Same visibility rule as getAllMealTypes: own types plus system defaults.
+      const target = await client.query(
+        'SELECT id FROM meal_types WHERE id = $1 AND (user_id = $2 OR user_id IS NULL)',
+        [targetMealTypeId, userId]
+      );
+      if (target.rows.length === 0) {
+        throw new Error(MEAL_TYPE_INVALID_TARGET_MESSAGE);
+      }
+      // food_entries and food_entry_meals move under the same predicate, which
+      // keeps a container and its component entries consistent.
+      await client.query(
+        'UPDATE food_entries SET meal_type_id = $1 WHERE meal_type_id = $2 AND user_id = $3',
+        [targetMealTypeId, mealTypeId, userId]
+      );
+      await client.query(
+        `UPDATE food_entry_meals
+         SET meal_type_id = $1,
+             updated_by_user_id = $3,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE meal_type_id = $2 AND user_id = $3`,
+        [targetMealTypeId, mealTypeId, userId]
+      );
+      await client.query(
+        `UPDATE meal_plans
+         SET meal_type_id = $1, updated_at = now()
+         WHERE meal_type_id = $2 AND user_id = $3`,
+        [targetMealTypeId, mealTypeId, userId]
+      );
+      await client.query(
+        `UPDATE meal_plan_template_assignments
+         SET meal_type_id = $1
+         WHERE meal_type_id = $2
+           AND template_id IN (
+             SELECT id FROM meal_plan_templates WHERE user_id = $3
+           )`,
+        [targetMealTypeId, mealTypeId, userId]
+      );
+    } else if (mode === 'force') {
+      // food_entries.food_entry_meal_id references food_entry_meals ON DELETE
+      // CASCADE, so deleting a container takes its children with it. Detach any
+      // child that belongs to a different meal type first, otherwise the
+      // cascade would destroy data the user never asked to delete.
+      //
+      // Deliberately not filtered by user_id: the subquery already limits this
+      // to the caller's own containers, and a child row owned by someone else
+      // needs protecting from the cascade just as much. RLS still bounds which
+      // rows the UPDATE can actually touch.
+      await client.query(
+        `UPDATE food_entries
+         SET food_entry_meal_id = NULL
+         WHERE meal_type_id <> $1
+           AND food_entry_meal_id IN (
+             SELECT id FROM food_entry_meals
+             WHERE meal_type_id = $1 AND user_id = $2
+           )`,
+        [mealTypeId, userId]
+      );
+      await client.query(
+        'DELETE FROM food_entry_meals WHERE meal_type_id = $1 AND user_id = $2',
+        [mealTypeId, userId]
+      );
+      await client.query(
+        'DELETE FROM food_entries WHERE meal_type_id = $1 AND user_id = $2',
+        [mealTypeId, userId]
+      );
+      await client.query(
+        'DELETE FROM meal_plans WHERE meal_type_id = $1 AND user_id = $2',
+        [mealTypeId, userId]
+      );
+      await client.query(
+        `DELETE FROM meal_plan_template_assignments
+         WHERE meal_type_id = $1
+           AND template_id IN (
+             SELECT id FROM meal_plan_templates WHERE user_id = $2
+           )`,
+        [mealTypeId, userId]
+      );
+    }
+
     const result = await client.query(
-      `DELETE FROM meal_types 
+      `DELETE FROM meal_types
        WHERE id = $1 AND user_id = $2
        RETURNING id`,
       [mealTypeId, userId]
     );
     if (result.rowCount === 0) {
-      const checkSystem = await client.query(
-        'SELECT id FROM meal_types WHERE id = $1 AND user_id IS NULL',
-        [mealTypeId]
-      );
-      if (checkSystem.rows.length > 0) {
-        throw new Error('Cannot delete system default meal types.');
-      }
-      return false;
+      await client.query('ROLLBACK');
+      return { deleted: false, mode };
     }
-    return true;
+    await client.query('COMMIT');
+    return {
+      deleted: true,
+      mode,
+      ...(mode === 'reassign' && targetMealTypeId
+        ? { reassignedTo: targetMealTypeId }
+        : {}),
+    };
   } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.code === '23503') {
-      throw new Error(
-        'Cannot delete this meal type because it contains food entries.',
-        { cause: error }
-      );
+    await client.query('ROLLBACK');
+    if (isForeignKeyBlock(error)) {
+      // Reachable even after clearing the user's own rows: FK checks bypass
+      // RLS, so a delegate's entries against this type still block the delete.
+      throw new Error(MEAL_TYPE_IN_USE_MESSAGE, { cause: error });
     }
     log('error', 'Error deleting meal type:', error);
     throw error;
@@ -196,10 +422,12 @@ export { getAllMealTypes };
 export { getMealTypeById };
 export { updateMealType };
 export { deleteMealType };
+export { getMealTypeDeletionImpact };
 export default {
   createMealType,
   getAllMealTypes,
   getMealTypeById,
   updateMealType,
   deleteMealType,
+  getMealTypeDeletionImpact,
 };

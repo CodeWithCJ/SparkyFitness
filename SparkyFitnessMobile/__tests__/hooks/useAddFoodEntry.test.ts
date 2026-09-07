@@ -2,8 +2,16 @@ import { renderHook, waitFor, act } from '@testing-library/react-native';
 import Toast from 'react-native-toast-message';
 import { useAddFoodEntry } from '../../src/hooks/useAddFoodEntry';
 import { createFoodEntry } from '../../src/services/api/foodEntriesApi';
-import { createFoodVariant, fetchFoodVariants, saveFood } from '../../src/services/api/foodsApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createFoodVariant,
+  fetchFoodVariants,
+  saveFood,
+} from '../../src/services/api/foodsApi';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 import type { FoodVariantDetail } from '../../src/types/foods';
 
 jest.mock('../../src/services/api/foodEntriesApi', () => ({
@@ -20,17 +28,21 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
-const mockCreateFoodEntry = createFoodEntry as jest.MockedFunction<typeof createFoodEntry>;
-const mockCreateFoodVariant =
-  createFoodVariant as jest.MockedFunction<typeof createFoodVariant>;
-const mockFetchFoodVariants =
-  fetchFoodVariants as jest.MockedFunction<typeof fetchFoodVariants>;
+const mockCreateFoodEntry = createFoodEntry as jest.MockedFunction<
+  typeof createFoodEntry
+>;
+const mockCreateFoodVariant = createFoodVariant as jest.MockedFunction<
+  typeof createFoodVariant
+>;
+const mockFetchFoodVariants = fetchFoodVariants as jest.MockedFunction<
+  typeof fetchFoodVariants
+>;
 const mockSaveFood = saveFood as jest.MockedFunction<typeof saveFood>;
 
 function makeStoredVariant(
   id: string,
   servingUnit: string,
-  calories: number,
+  calories: number
 ): FoodVariantDetail {
   return {
     id,
@@ -245,7 +257,7 @@ describe('useAddFoodEntry', () => {
         carbs: 22,
         fat: 7,
       },
-      undefined,
+      undefined
     );
     expect(mockCreateFoodVariant).toHaveBeenCalledWith({
       food_id: 'food-1',
@@ -389,15 +401,17 @@ describe('useAddFoodEntry', () => {
 
     expect(mockFetchFoodVariants).toHaveBeenCalledWith('food-1');
     expect(mockCreateFoodVariant).toHaveBeenCalledTimes(1);
-    expect(mockCreateFoodVariant).toHaveBeenCalledWith(expect.objectContaining({
-      food_id: 'food-1',
-      serving_size: 250,
-      serving_unit: 'glass.large',
-      calories: 113,
-      protein: 2,
-      carbs: 25,
-      fat: 0,
-    }));
+    expect(mockCreateFoodVariant).toHaveBeenCalledWith(
+      expect.objectContaining({
+        food_id: 'food-1',
+        serving_size: 250,
+        serving_unit: 'glass.large',
+        calories: 113,
+        protein: 2,
+        carbs: 25,
+        fat: 0,
+      })
+    );
     expect(mockCreateFoodEntry).toHaveBeenCalledWith({
       meal_type_id: 'meal-type-1',
       quantity: 1,
@@ -697,9 +711,9 @@ describe('useAddFoodEntry', () => {
               unit: 'package (400 g)',
               entry_date: '2026-04-25',
             },
-          }),
+          })
         ).rejects.toThrow(
-          'Could not uniquely resolve the selected serving variant',
+          'Could not uniquely resolve the selected serving variant'
         );
       });
 
@@ -711,7 +725,7 @@ describe('useAddFoodEntry', () => {
           text2: 'Choose a different serving.',
         });
       });
-    },
+    }
   );
 
   test('uses an exact saved default to resolve multiple exact stored variants', async () => {

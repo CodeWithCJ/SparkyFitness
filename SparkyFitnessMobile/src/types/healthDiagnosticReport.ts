@@ -1,4 +1,7 @@
-import type { DiagnosticAppInfo, DiagnosticDeviceInfo } from './diagnosticReport';
+import type {
+  DiagnosticAppInfo,
+  DiagnosticDeviceInfo,
+} from './diagnosticReport';
 
 export const HEALTH_DIAGNOSTIC_REPORT_VERSION = '1.0.0';
 

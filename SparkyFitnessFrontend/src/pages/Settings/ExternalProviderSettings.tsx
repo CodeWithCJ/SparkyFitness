@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import {
@@ -18,6 +19,10 @@ import GarminConnectSettings from './GarminConnectSettings';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useExternalProviders } from '@/hooks/Settings/useExternalProviderSettings';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  ALL_PROVIDERS_VALUE,
+  resolveSettingsFoodProviderValue,
+} from '@/utils/settings';
 
 export interface ExternalDataProvider {
   id: string;
@@ -62,6 +67,7 @@ export interface ExternalDataProvider {
 }
 
 const ExternalProviderSettings = () => {
+  const { t } = useTranslation();
   const [showAddForm, setShowAddForm] = useState(false);
   const [showGarminMfaInputFromAddForm, setShowGarminMfaInputFromAddForm] =
     useState(false);
@@ -75,6 +81,8 @@ const ExternalProviderSettings = () => {
     setDefaultBarcodeProviderId,
     barcodeFallbackOpenFoodFacts,
     setBarcodeFallbackOpenFoodFacts,
+    foodSearchAllProvidersDefault,
+    setFoodSearchAllProvidersDefault,
     saveAllPreferences,
   } = usePreferences();
   const { data: providers = [] } = useExternalProviders(user?.activeUserId);
@@ -135,21 +143,46 @@ const ExternalProviderSettings = () => {
                     Default Food Data Provider
                   </Label>
                   <Select
-                    value={
-                      foodProviders.find(
-                        (p) => p.id === defaultFoodDataProviderId
-                      )?.id ?? ''
-                    }
+                    value={resolveSettingsFoodProviderValue(
+                      defaultFoodDataProviderId,
+                      foodProviders,
+                      foodSearchAllProvidersDefault
+                    )}
                     onValueChange={(value) => {
+                      if (value === ALL_PROVIDERS_VALUE) {
+                        // Leave defaultFoodDataProviderId alone: it is a uuid
+                        // column that cannot store the sentinel, and keeping it
+                        // means turning "All Providers" back off restores the
+                        // provider the user had picked.
+                        setFoodSearchAllProvidersDefault(true);
+                        saveAllPreferences({
+                          foodSearchAllProvidersDefault: true,
+                        });
+                        return;
+                      }
                       const id = value || null;
                       setDefaultFoodDataProviderId(id);
-                      saveAllPreferences({ defaultFoodDataProviderId: id });
+                      setFoodSearchAllProvidersDefault(false);
+                      saveAllPreferences({
+                        defaultFoodDataProviderId: id,
+                        foodSearchAllProvidersDefault: false,
+                      });
                     }}
                   >
                     <SelectTrigger id="food-provider">
                       <SelectValue placeholder="Select a food provider" />
                     </SelectTrigger>
                     <SelectContent>
+                      {/* Matches the food-search dropdown, which only offers the
+                          aggregated view with more than one provider. */}
+                      {foodProviders.length > 1 && (
+                        <SelectItem value={ALL_PROVIDERS_VALUE}>
+                          {t(
+                            'enhancedFoodSearch.allProviders',
+                            'All Providers'
+                          )}
+                        </SelectItem>
+                      )}
                       {foodProviders.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.provider_name}

@@ -6,7 +6,14 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Alert, Platform, Pressable, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  Platform,
+  Pressable,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
@@ -33,10 +40,17 @@ interface FastingEditSheetProps {
 
 const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
   ({ onSaved }, ref) => {
-  const { t } = useTranslation();
+    const { t } = useTranslation();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
 
-    const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary, danger] = useCSSVariable([
+    const [
+      surfaceBg,
+      textMuted,
+      accentPrimary,
+      textPrimary,
+      textSecondary,
+      danger,
+    ] = useCSSVariable([
       '--color-surface',
       '--color-text-muted',
       '--color-accent-primary',
@@ -82,8 +96,11 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
     const isValid = startDate.getTime() < endDate.getTime();
     const durationLabel = useMemo(
       () =>
-        formatHoursMinutes(Math.max(0, endDate.getTime() - startDate.getTime()), t),
-      [startDate, endDate, t],
+        formatHoursMinutes(
+          Math.max(0, endDate.getTime() - startDate.getTime()),
+          t
+        ),
+      [startDate, endDate, t]
     );
 
     const pickerStyles = useMemo(
@@ -93,7 +110,10 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
         today: { borderColor: accentPrimary, borderWidth: 1 },
         day_label: { color: textPrimary },
         weekday_label: { color: textSecondary },
-        month_selector_label: { color: textPrimary, fontWeight: '600' as const },
+        month_selector_label: {
+          color: textPrimary,
+          fontWeight: '600' as const,
+        },
         year_selector_label: { color: textPrimary, fontWeight: '600' as const },
         time_selector_label: { color: textPrimary, fontWeight: '600' as const },
         // Hide the calendar header's time button — we render a dedicated time
@@ -109,7 +129,7 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
         selected_year: { backgroundColor: accentPrimary },
         selected_year_label: { color: '#FFFFFF' },
       }),
-      [accentPrimary, textPrimary, textSecondary, textMuted],
+      [accentPrimary, textPrimary, textSecondary, textMuted]
     );
 
     const pickerComponents = useMemo(
@@ -117,7 +137,7 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
         IconPrev: <Icon name="chevron-back" size={18} color={textPrimary} />,
         IconNext: <Icon name="chevron-forward" size={18} color={textPrimary} />,
       }),
-      [textPrimary],
+      [textPrimary]
     );
 
     const handleSave = () => {
@@ -133,47 +153,72 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
         {
           onSuccess: () => {
             bottomSheetRef.current?.dismiss();
-            Toast.show({ type: 'success', text1: t('fastingEdit.updated', { defaultValue: 'Fast updated' }) });
+            Toast.show({
+              type: 'success',
+              text1: t('fastingEdit.updated', { defaultValue: 'Fast updated' }),
+            });
             onSaved?.();
           },
           onError: (error) => {
             addLog(`Failed to update fast: ${error}`, 'ERROR');
             Toast.show({
               type: 'error',
-              text1: t('fastingEdit.failedUpdate', { defaultValue: 'Failed to update fast' }),
-              text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+              text1: t('fastingEdit.failedUpdate', {
+                defaultValue: 'Failed to update fast',
+              }),
+              text2: t('common.tryAgain', {
+                defaultValue: 'Please try again.',
+              }),
             });
           },
-        },
+        }
       );
     };
 
     const handleDelete = () => {
       if (!fastId) return;
-      Alert.alert(t('fastingEdit.deleteTitle', { defaultValue: 'Delete fast?' }), t('fastingEdit.deleteMessage', { defaultValue: 'This cannot be undone.' }), [
-        { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
-        {
-          text: t('common.delete', { defaultValue: 'Delete' }),
-          style: 'destructive',
-          onPress: () => {
-            deleteFast(fastId, {
-              onSuccess: () => {
-                bottomSheetRef.current?.dismiss();
-                Toast.show({ type: 'success', text1: t('fastingEdit.deleted', { defaultValue: 'Fast deleted' }) });
-                onSaved?.();
-              },
-              onError: (error) => {
-                addLog(`Failed to delete fast: ${error}`, 'ERROR');
-                Toast.show({
-                  type: 'error',
-                  text1: t('fastingEdit.failedDelete', { defaultValue: 'Failed to delete fast' }),
-                  text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
-                });
-              },
-            });
+      Alert.alert(
+        t('fastingEdit.deleteTitle', { defaultValue: 'Delete fast?' }),
+        t('fastingEdit.deleteMessage', {
+          defaultValue: 'This cannot be undone.',
+        }),
+        [
+          {
+            text: t('common.cancel', { defaultValue: 'Cancel' }),
+            style: 'cancel',
           },
-        },
-      ]);
+          {
+            text: t('common.delete', { defaultValue: 'Delete' }),
+            style: 'destructive',
+            onPress: () => {
+              deleteFast(fastId, {
+                onSuccess: () => {
+                  bottomSheetRef.current?.dismiss();
+                  Toast.show({
+                    type: 'success',
+                    text1: t('fastingEdit.deleted', {
+                      defaultValue: 'Fast deleted',
+                    }),
+                  });
+                  onSaved?.();
+                },
+                onError: (error) => {
+                  addLog(`Failed to delete fast: ${error}`, 'ERROR');
+                  Toast.show({
+                    type: 'error',
+                    text1: t('fastingEdit.failedDelete', {
+                      defaultValue: 'Failed to delete fast',
+                    }),
+                    text2: t('common.tryAgain', {
+                      defaultValue: 'Please try again.',
+                    }),
+                  });
+                },
+              });
+            },
+          },
+        ]
+      );
     };
 
     const togglePicker = (picker: 'start' | 'end') => {
@@ -183,7 +228,7 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
     const renderRow = (
       label: string,
       value: string,
-      picker: 'start' | 'end',
+      picker: 'start' | 'end'
     ) => (
       <TouchableOpacity
         onPress={() => togglePicker(picker)}
@@ -207,7 +252,7 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
 
     const renderInlinePicker = (
       value: Date,
-      onChange: (payload: { date: DateType }) => void,
+      onChange: (payload: { date: DateType }) => void
     ) => (
       <View className="mt-2">
         {/* Calendar for the date. `timePicker` keeps the time-of-day when a day
@@ -257,17 +302,33 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
           <Text className="text-lg font-semibold text-text-primary text-center mb-1">
             {t('fastingEdit.editTitle', { defaultValue: 'Edit fast' })}
           </Text>
-          <Text className="text-center text-text-secondary mb-4">{t('fastingEdit.fasted', { defaultValue: '{{duration}} fasted', duration: durationLabel })}</Text>
+          <Text className="text-center text-text-secondary mb-4">
+            {t('fastingEdit.fasted', {
+              defaultValue: '{{duration}} fasted',
+              duration: durationLabel,
+            })}
+          </Text>
 
-          {renderRow(t('fastingEdit.started', { defaultValue: 'Started' }), formatDateTime(startDate), 'start')}
-          {openPicker === 'start' && renderInlinePicker(startDate, handleStartChange)}
+          {renderRow(
+            t('fastingEdit.started', { defaultValue: 'Started' }),
+            formatDateTime(startDate),
+            'start'
+          )}
+          {openPicker === 'start' &&
+            renderInlinePicker(startDate, handleStartChange)}
 
-          {renderRow(t('fastingEdit.ended', { defaultValue: 'Ended' }), formatDateTime(endDate), 'end')}
+          {renderRow(
+            t('fastingEdit.ended', { defaultValue: 'Ended' }),
+            formatDateTime(endDate),
+            'end'
+          )}
           {openPicker === 'end' && renderInlinePicker(endDate, handleEndChange)}
 
           {!isValid && (
             <Text className="text-text-danger-subtle text-sm mt-3 text-center">
-              {t('fastingEdit.beforeEnd', { defaultValue: 'Start time must be before the end time.' })}
+              {t('fastingEdit.beforeEnd', {
+                defaultValue: 'Start time must be before the end time.',
+              })}
             </Text>
           )}
 
@@ -279,7 +340,11 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
             }`}
           >
             <Text className="text-white text-base font-semibold">
-              {isSavePending ? t('fastingEdit.saving', { defaultValue: 'Saving...' }) : t('fastingEdit.saveChanges', { defaultValue: 'Save changes' })}
+              {isSavePending
+                ? t('fastingEdit.saving', { defaultValue: 'Saving...' })
+                : t('fastingEdit.saveChanges', {
+                    defaultValue: 'Save changes',
+                  })}
             </Text>
           </Pressable>
 
@@ -292,13 +357,17 @@ const FastingEditSheet = forwardRef<FastingEditSheetRef, FastingEditSheetProps>(
           >
             <Icon name="trash" size={15} color={danger} />
             <Text className="text-icon-danger text-base font-semibold ml-2">
-              {isDeletePending ? t('fastingEdit.deleting', { defaultValue: 'Deleting...' }) : t('fastingEdit.deleteAction', { defaultValue: 'Delete fast' })}
+              {isDeletePending
+                ? t('fastingEdit.deleting', { defaultValue: 'Deleting...' })
+                : t('fastingEdit.deleteAction', {
+                    defaultValue: 'Delete fast',
+                  })}
             </Text>
           </Pressable>
         </BottomSheetScrollView>
       </BottomSheetModal>
     );
-  },
+  }
 );
 
 FastingEditSheet.displayName = 'FastingEditSheet';

@@ -3,8 +3,6 @@ import { debug } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
 import type { ActivityDetailsResponse } from '@/types/exercises';
 import {
-  ExerciseHistoryResponse,
-  exerciseHistoryResponseSchema,
   ExerciseSessionResponse,
   exerciseSessionResponseSchema,
   ExerciseEntryResponse,
@@ -36,28 +34,6 @@ export const fetchExerciseEntries = async (
     }
   );
   return z.array(exerciseSessionResponseSchema).parse(response);
-};
-
-export const fetchExerciseEntryHistoryV2 = async (
-  page: number = 1,
-  pageSize: number = 20,
-  userId?: string
-): Promise<ExerciseHistoryResponse> => {
-  const params = new URLSearchParams({
-    page: page.toString(),
-    pageSize: pageSize.toString(),
-  });
-  if (userId) {
-    params.append('userId', userId);
-  }
-
-  const response = await apiCall(
-    `/v2/exercise-entries/history?${params.toString()}`,
-    {
-      method: 'GET',
-    }
-  );
-  return exerciseHistoryResponseSchema.parse(response);
 };
 
 export const createExerciseEntry = async (

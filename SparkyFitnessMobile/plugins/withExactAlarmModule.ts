@@ -61,7 +61,7 @@ const withExactAlarmModule: ConfigPlugin = (config) => {
 
     if (!src.includes(MODULE_PACKAGE_ADD_LINE)) {
       const applyMatch = src.match(
-        /PackageList\(this\)\.packages\.apply\s*\{\s*\n/,
+        /PackageList\(this\)\.packages\.apply\s*\{\s*\n/
       );
       if (applyMatch && applyMatch.index !== undefined) {
         const insertAt = applyMatch.index + applyMatch[0].length;
@@ -71,7 +71,7 @@ const withExactAlarmModule: ConfigPlugin = (config) => {
           src.slice(insertAt);
       } else {
         throw new Error(
-          '[withExactAlarmModule] Could not locate PackageList(this).packages.apply { block in MainApplication.',
+          '[withExactAlarmModule] Could not locate PackageList(this).packages.apply { block in MainApplication.'
         );
       }
     }

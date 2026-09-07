@@ -1,10 +1,6 @@
 import type { UserLoggingLevel } from './logging';
 
-let currentUserLoggingLevel: UserLoggingLevel = 'ERROR'; // Default logging level
-
-export const setUserLoggingLevel = (level: UserLoggingLevel) => {
-  currentUserLoggingLevel = level;
-};
+const currentUserLoggingLevel: UserLoggingLevel = 'ERROR'; // Default logging level
 
 export const getUserLoggingLevel = (): UserLoggingLevel => {
   return currentUserLoggingLevel;

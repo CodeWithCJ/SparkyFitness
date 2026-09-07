@@ -31,7 +31,9 @@ export const aggregateByDay = (
     const { record_timezone, record_utc_offset_minutes } = dayRecords[0];
     const tz = {
       ...(record_timezone != null ? { record_timezone } : {}),
-      ...(record_utc_offset_minutes != null ? { record_utc_offset_minutes } : {}),
+      ...(record_utc_offset_minutes != null
+        ? { record_utc_offset_minutes }
+        : {}),
     };
 
     if (strategy === 'min-max-avg') {
@@ -45,20 +47,55 @@ export const aggregateByDay = (
       }
       const avg = total / dayRecords.length;
       result.push(
-        { value: parseFloat(min.toFixed(2)), type: `${baseType}_min`, date, unit, source: dayRecords[0].source, ...tz },
-        { value: parseFloat(max.toFixed(2)), type: `${baseType}_max`, date, unit, source: dayRecords[0].source, ...tz },
-        { value: parseFloat(avg.toFixed(2)), type: `${baseType}_avg`, date, unit, source: dayRecords[0].source, ...tz },
+        {
+          value: parseFloat(min.toFixed(2)),
+          type: `${baseType}_min`,
+          date,
+          unit,
+          source: dayRecords[0].source,
+          ...tz,
+        },
+        {
+          value: parseFloat(max.toFixed(2)),
+          type: `${baseType}_max`,
+          date,
+          unit,
+          source: dayRecords[0].source,
+          ...tz,
+        },
+        {
+          value: parseFloat(avg.toFixed(2)),
+          type: `${baseType}_avg`,
+          date,
+          unit,
+          source: dayRecords[0].source,
+          ...tz,
+        }
       );
     } else if (strategy === 'sum') {
       let total = 0;
       for (const rec of dayRecords) {
         total += rec.value;
       }
-      result.push({ value: parseFloat(total.toFixed(2)), type: baseType, date, unit, source: dayRecords[0].source, ...tz });
+      result.push({
+        value: parseFloat(total.toFixed(2)),
+        type: baseType,
+        date,
+        unit,
+        source: dayRecords[0].source,
+        ...tz,
+      });
     } else if (strategy === 'last') {
       // HealthKit-only strategy today; HK reads return newest-first so [0] is most
       // recent. No HC metric uses 'last' — if added, note HC reads default ascending.
-      result.push({ value: dayRecords[0].value, type: baseType, date, unit, source: dayRecords[0].source, ...tz });
+      result.push({
+        value: dayRecords[0].value,
+        type: baseType,
+        date,
+        unit,
+        source: dayRecords[0].source,
+        ...tz,
+      });
     }
   }
 

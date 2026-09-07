@@ -26,11 +26,14 @@ export type MeasurementKind =
   | 'hips'
   | 'steps';
 
-export const MeasurementIcons: Record<MeasurementKind, React.ComponentType<{
-  size?: number;
-  color?: string;
-  accentColor?: string;
-}>> = {
+export const MeasurementIcons: Record<
+  MeasurementKind,
+  React.ComponentType<{
+    size?: number;
+    color?: string;
+    accentColor?: string;
+  }>
+> = {
   weight: WeightIcon,
   body_fat_percentage: BodyFatIcon,
   height: HeightIcon,

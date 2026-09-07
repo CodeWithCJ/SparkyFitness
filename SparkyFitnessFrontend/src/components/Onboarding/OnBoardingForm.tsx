@@ -221,5 +221,3 @@ export const OnBoardingForm = ({
     </div>
   );
 };
-
-export default OnBoardingForm;

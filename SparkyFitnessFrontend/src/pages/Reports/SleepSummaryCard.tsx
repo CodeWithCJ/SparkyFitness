@@ -116,10 +116,7 @@ const SleepSummaryCard = ({ latestSleepEntry }: SleepSummaryCardProps) => {
             {t('sleepSummary.lastNight', 'Last Night')}
           </div>
           <span className="text-sm font-normal text-muted-foreground">
-            {formatDateInUserTimezone(
-              latestSleepEntry.entry_date,
-              'EEEE, MMM d'
-            )}
+            {formatDateInUserTimezone(latestSleepEntry.entry_date, 'PPPP')}
           </span>
         </CardTitle>
       </CardHeader>

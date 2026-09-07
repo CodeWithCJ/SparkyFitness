@@ -3,7 +3,10 @@ import { Image } from 'expo-image';
 import { render } from '@testing-library/react-native';
 import SafeImage from '../../src/components/SafeImage';
 
-const source = { uri: 'https://server/uploads/exercises/demo/0.gif', headers: {} };
+const source = {
+  uri: 'https://server/uploads/exercises/demo/0.gif',
+  headers: {},
+};
 
 describe('SafeImage autoplay', () => {
   it('holds animated formats on their first frame by default', () => {
@@ -11,7 +14,7 @@ describe('SafeImage autoplay', () => {
     // thumbnails everywhere SafeImage is used, because expo-image autoplays
     // unless told otherwise.
     const { UNSAFE_getByType } = render(
-      <SafeImage source={source} style={{ width: 42, height: 42 }} />,
+      <SafeImage source={source} style={{ width: 42, height: 42 }} />
     );
 
     expect(UNSAFE_getByType(Image).props.autoplay).toBe(false);
@@ -19,7 +22,7 @@ describe('SafeImage autoplay', () => {
 
   it('plays animated formats when the caller opts in', () => {
     const { UNSAFE_getByType } = render(
-      <SafeImage source={source} style={{ width: 42, height: 42 }} autoplay />,
+      <SafeImage source={source} style={{ width: 42, height: 42 }} autoplay />
     );
 
     expect(UNSAFE_getByType(Image).props.autoplay).toBe(true);

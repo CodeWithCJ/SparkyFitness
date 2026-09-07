@@ -81,7 +81,9 @@ export function useToggleFavorite() {
       }
       Toast.show({
         type: 'error',
-        text1: t('favorites.updateFailed', { defaultValue: 'Failed to update favorites' }),
+        text1: t('favorites.updateFailed', {
+          defaultValue: 'Failed to update favorites',
+        }),
         text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
       });
     },

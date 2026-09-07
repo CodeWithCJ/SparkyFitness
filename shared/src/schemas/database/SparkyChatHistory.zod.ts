@@ -44,5 +44,9 @@ export const sparkyChatHistoryMutatorSchema = z.object({
 });
 
 export type SparkyChatHistory = z.infer<typeof sparkyChatHistorySchema>;
-export type SparkyChatHistoryInitializer = z.infer<typeof sparkyChatHistoryInitializerSchema>;
-export type SparkyChatHistoryMutator = z.infer<typeof sparkyChatHistoryMutatorSchema>;
+export type SparkyChatHistoryInitializer = z.infer<
+  typeof sparkyChatHistoryInitializerSchema
+>;
+export type SparkyChatHistoryMutator = z.infer<
+  typeof sparkyChatHistoryMutatorSchema
+>;

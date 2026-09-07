@@ -5,7 +5,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { getAppLocale, formatLocalizedNumber } from '../localization';
-import { useNutritionTrends, type TrendRange } from '../hooks/useNutritionTrends';
+import {
+  useNutritionTrends,
+  type TrendRange,
+} from '../hooks/useNutritionTrends';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
@@ -15,13 +18,17 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 type NutrientTrendsScreenProps = RootStackScreenProps<'NutrientTrends'>;
 
-const RANGE_SEGMENTS = (t: (key: string, options: { defaultValue: string }) => string): Segment<TrendRange>[] => [
+const RANGE_SEGMENTS = (
+  t: (key: string, options: { defaultValue: string }) => string
+): Segment<TrendRange>[] => [
   { key: '7d', label: t('ranges.7d', { defaultValue: '7d' }) },
   { key: '30d', label: t('ranges.30d', { defaultValue: '30d' }) },
   { key: '90d', label: t('ranges.90d', { defaultValue: '90d' }) },
 ];
 
-const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) => {
+const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({
+  route,
+}) => {
   const { t } = useTranslation();
   const { nutrientKey, nutrientLabel, unit, goal } = route.params;
   const insets = useSafeAreaInsets();
@@ -30,7 +37,10 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
   const [range, setRange] = useState<TrendRange>('7d');
 
   const header = useScreenHeader({
-    title: t('nutrientTrends.title', { defaultValue: '{{nutrient}} Trends', nutrient: nutrientLabel }),
+    title: t('nutrientTrends.title', {
+      defaultValue: '{{nutrient}} Trends',
+      nutrient: nutrientLabel,
+    }),
     left: { kind: 'back' },
   });
 
@@ -40,7 +50,8 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
   const chartData = useMemo(() => {
     return data.map((item) => {
       const rawVal = item[nutrientKey];
-      const val = typeof rawVal === 'number' ? rawVal : parseFloat(String(rawVal)) || 0;
+      const val =
+        typeof rawVal === 'number' ? rawVal : parseFloat(String(rawVal)) || 0;
       return {
         day: item.date,
         value: val,
@@ -73,7 +84,10 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
     if (!stats.peakDay) return '';
     const [year, month, d] = stats.peakDay.split('-').map(Number);
     const date = new Date(year, month - 1, d);
-    return date.toLocaleDateString(getAppLocale(), { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(getAppLocale(), {
+      month: 'short',
+      day: 'numeric',
+    });
   }, [stats.peakDay]);
 
   if (isLoading) {
@@ -84,17 +98,24 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
     return (
       <View className="flex-1 bg-background justify-center items-center p-4">
         <Text className="text-text-primary text-base font-semibold mb-2">
-          {t('nutrientTrends.states.loadFailed', { defaultValue: 'Failed to load trend data' })}
+          {t('nutrientTrends.states.loadFailed', {
+            defaultValue: 'Failed to load trend data',
+          })}
         </Text>
         <Text className="text-text-secondary text-sm text-center">
-          {t('common.connectionRetry', { defaultValue: 'Please check your connection and try again.' })}
+          {t('common.connectionRetry', {
+            defaultValue: 'Please check your connection and try again.',
+          })}
         </Text>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       <ScrollView
         className="flex-1"
@@ -127,24 +148,46 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
         {/* Statistics Summary Card */}
         <View className="bg-surface rounded-xl p-4 mt-4 shadow-sm">
           <Text className="text-text-primary text-base font-bold mb-3">
-            {t('nutrientTrends.labels.summary', { defaultValue: 'Summary Statistics' })}
+            {t('nutrientTrends.labels.summary', {
+              defaultValue: 'Summary Statistics',
+            })}
           </Text>
 
           <View className="flex-row justify-between py-2 border-b border-border-subtle">
-            <Text className="text-text-secondary text-sm">{t('nutrientTrends.labels.dailyAverage', { defaultValue: 'Daily Average' })}</Text>
+            <Text className="text-text-secondary text-sm">
+              {t('nutrientTrends.labels.dailyAverage', {
+                defaultValue: 'Daily Average',
+              })}
+            </Text>
             <Text className="text-text-primary text-sm font-semibold">
-              {stats.average % 1 !== 0 ? formatLocalizedNumber(stats.average, { maximumFractionDigits: 1 }) : formatLocalizedNumber(stats.average)} {unit}
+              {stats.average % 1 !== 0
+                ? formatLocalizedNumber(stats.average, {
+                    maximumFractionDigits: 1,
+                  })
+                : formatLocalizedNumber(stats.average)}{' '}
+              {unit}
             </Text>
           </View>
 
           <View className="flex-row justify-between py-2 border-b border-border-subtle">
-            <Text className="text-text-secondary text-sm">{t('nutrientTrends.labels.highestDay', { defaultValue: 'Highest Intake Day' })}</Text>
+            <Text className="text-text-secondary text-sm">
+              {t('nutrientTrends.labels.highestDay', {
+                defaultValue: 'Highest Intake Day',
+              })}
+            </Text>
             <View className="items-end">
               <Text className="text-text-primary text-sm font-semibold">
-                {stats.peak % 1 !== 0 ? formatLocalizedNumber(stats.peak, { maximumFractionDigits: 1 }) : formatLocalizedNumber(stats.peak)} {unit}
+                {stats.peak % 1 !== 0
+                  ? formatLocalizedNumber(stats.peak, {
+                      maximumFractionDigits: 1,
+                    })
+                  : formatLocalizedNumber(stats.peak)}{' '}
+                {unit}
               </Text>
               {formattedPeakDay ? (
-                <Text className="text-text-muted text-xs mt-0.5">{formattedPeakDay}</Text>
+                <Text className="text-text-muted text-xs mt-0.5">
+                  {formattedPeakDay}
+                </Text>
               ) : null}
             </View>
           </View>
@@ -152,16 +195,27 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({ route }) =>
           {goal && goal > 0 ? (
             <>
               <View className="flex-row justify-between py-2 border-b border-border-subtle">
-                <Text className="text-text-secondary text-sm">{t('nutrientTrends.labels.targetGoal', { defaultValue: 'Target Daily Goal' })}</Text>
+                <Text className="text-text-secondary text-sm">
+                  {t('nutrientTrends.labels.targetGoal', {
+                    defaultValue: 'Target Daily Goal',
+                  })}
+                </Text>
                 <Text className="text-text-primary text-sm font-semibold">
                   {formatLocalizedNumber(Math.round(goal))} {unit}
                 </Text>
               </View>
 
               <View className="flex-row justify-between py-2">
-                <Text className="text-text-secondary text-sm">{t('nutrientTrends.labels.averageVsTarget', { defaultValue: 'Average vs. Target' })}</Text>
+                <Text className="text-text-secondary text-sm">
+                  {t('nutrientTrends.labels.averageVsTarget', {
+                    defaultValue: 'Average vs. Target',
+                  })}
+                </Text>
                 <Text className="text-text-primary text-sm font-semibold">
-                  {t('nutrientTrends.labels.percentOfGoal', { defaultValue: '{{percent}}% of goal', percent: Math.round((stats.average / goal) * 100) })}
+                  {t('nutrientTrends.labels.percentOfGoal', {
+                    defaultValue: '{{percent}}% of goal',
+                    percent: Math.round((stats.average / goal) * 100),
+                  })}
                 </Text>
               </View>
             </>

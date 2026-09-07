@@ -12,13 +12,12 @@ describe('Garmin daily calorie measurement mapping', () => {
     });
   });
 
-  it('stores Garmin resting calories as the external BMR category', () => {
+  it('stores Garmin resting calories as check-in BMR', () => {
     expect(garminMeasurementMapping.bmr_calories).toEqual({
-      targetType: 'custom',
-      name: 'basal_metabolic_rate',
+      targetType: 'check_in',
+      field: 'bmr',
       dataType: 'numeric',
       measurementType: 'kcal',
-      frequency: 'Daily',
     });
   });
 

@@ -11,7 +11,7 @@ interface UseFoodsLibraryOptions {
 
 export function useFoodsLibrary(
   searchText: string,
-  options?: UseFoodsLibraryOptions,
+  options?: UseFoodsLibraryOptions
 ) {
   const { enabled = true } = options ?? {};
   const queryClient = useQueryClient();
@@ -36,7 +36,7 @@ export function useFoodsLibrary(
 
   const foods = useMemo(
     () => query.data?.pages.flatMap((page) => page.foods) ?? [],
-    [query.data?.pages],
+    [query.data?.pages]
   );
 
   // Reset rather than refetch: query.refetch() on an infinite query re-fetches
@@ -60,7 +60,7 @@ export function useFoodsLibrary(
     if (query.hasNextPage && !query.isFetching) {
       void query.fetchNextPage();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- spreading `query` causes infinite re-renders; stable sub-properties are sufficient
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- spreading `query` causes infinite re-renders; stable sub-properties are sufficient
   }, [query.fetchNextPage, query.hasNextPage, query.isFetching]);
 
   useRefetchOnFocus(refetch, enabled);

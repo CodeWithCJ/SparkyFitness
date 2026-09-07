@@ -57,7 +57,7 @@ export function loggedMealToFoodEntry(meal: FoodEntryMeal): FoodEntry {
 
 export function collapseLoggedMealComponents(
   foodEntries: FoodEntry[],
-  loggedMeals: FoodEntryMeal[],
+  loggedMeals: FoodEntryMeal[]
 ): FoodEntry[] {
   if (!foodEntries) {
     return [];
@@ -105,7 +105,7 @@ export function collapseLoggedMealComponents(
  */
 export async function resolveCollapsedFoodEntries(
   date: string,
-  rawFoodEntries: FoodEntry[],
+  rawFoodEntries: FoodEntry[]
 ): Promise<FoodEntry[]> {
   if (!rawFoodEntries || !hasLoggedMealComponents(rawFoodEntries)) {
     return rawFoodEntries ?? [];

@@ -1,14 +1,13 @@
 import type { TFunction } from 'i18next';
 import { BUILT_IN_CYCLE_SYMPTOMS } from '@workspace/shared';
 
-
 /**
  * Reverse map from a built-in cycle symptom's English `displayName` (the value
  * persisted as `symptom_name_snapshot`) to its snake_case `name` key, which the
  * `cycleSymptoms.items.*` catalog keys align with. Built only once.
  */
 const DISPLAY_TO_KEY: ReadonlyMap<string, string> = new Map(
-  BUILT_IN_CYCLE_SYMPTOMS.map((s) => [s.displayName.toLowerCase(), s.name]),
+  BUILT_IN_CYCLE_SYMPTOMS.map((s) => [s.displayName.toLowerCase(), s.name])
 );
 
 /**
@@ -19,7 +18,7 @@ const DISPLAY_TO_KEY: ReadonlyMap<string, string> = new Map(
  */
 export function localizeCycleSymptom(
   symptom: string | null | undefined,
-  t: TFunction,
+  t: TFunction
 ): string {
   if (symptom == null || symptom.trim() === '') return symptom ?? '';
   const translate = t;
@@ -67,7 +66,7 @@ export function localizeCycleAnomaly(
   key: string,
   fallbackMessage: string,
   t: TFunction,
-  params?: CycleMessageParams,
+  params?: CycleMessageParams
 ): string {
   const translate = t;
   if (key === 'short_cycle') {
@@ -110,7 +109,7 @@ export function localizeCycleAlert(
   key: string,
   fallbackMessage: string,
   t: TFunction,
-  params?: CycleMessageParams,
+  params?: CycleMessageParams
 ): string {
   const translate = t;
   if (key === 'late_period' && params?.days != null) {

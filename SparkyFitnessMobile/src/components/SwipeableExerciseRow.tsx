@@ -20,7 +20,10 @@ import {
   buildSessionSubtitle,
 } from '../utils/workoutSession';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
-import { useDeleteExerciseEntry, useDeleteWorkout } from '../hooks/useExerciseMutations';
+import {
+  useDeleteExerciseEntry,
+  useDeleteWorkout,
+} from '../hooks/useExerciseMutations';
 
 interface SwipeableExerciseRowProps {
   session: ExerciseSessionResponse;
@@ -43,7 +46,7 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
   const swipeableRef = useRef<SwipeableMethods | null>(null);
   const invalidateCacheRef = useRef<() => void>(() => {});
   const { collapse, handleLayout, animatedStyle } = useRowCollapse(() =>
-    invalidateCacheRef.current(),
+    invalidateCacheRef.current()
   );
 
   const [accentPrimary, textMuted, textSecondary] = useCSSVariable([
@@ -80,7 +83,12 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
   }, [invalidateCache]);
 
   const renderRightActions = () => (
-    <DeleteRowAction onPress={confirmAndDelete} accessibilityLabel={t('exerciseRow.deleteExercise', { defaultValue: 'Delete exercise' })} />
+    <DeleteRowAction
+      onPress={confirmAndDelete}
+      accessibilityLabel={t('exerciseRow.deleteExercise', {
+        defaultValue: 'Delete exercise',
+      })}
+    />
   );
 
   const { name, duration, calories } = getWorkoutSummary(session, t);
@@ -88,12 +96,24 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
   const canEdit = canEditGroupedWorkout(session.source);
   const iconName = getWorkoutIcon(session);
   const firstImage = getFirstImage(session);
-  const imageSource = firstImage && getImageSource ? getImageSource(firstImage) : null;
-  const subtitle = buildSessionSubtitle(session, duration, calories, t, weightUnit, distanceUnit);
+  const imageSource =
+    firstImage && getImageSource ? getImageSource(firstImage) : null;
+  const subtitle = buildSessionSubtitle(
+    session,
+    duration,
+    calories,
+    t,
+    weightUnit,
+    distanceUnit
+  );
 
   const handleLongPress = () => {
     Alert.alert(name, undefined, [
-      { text: t('common.delete', { defaultValue: 'Delete' }), style: 'destructive', onPress: deleteEntry },
+      {
+        text: t('common.delete', { defaultValue: 'Delete' }),
+        style: 'destructive',
+        onPress: deleteEntry,
+      },
       { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
     ]);
   };
@@ -106,26 +126,42 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
         overshootRight={false}
         rightThreshold={40}
       >
-        <Pressable className="py-2.5 bg-surface" onPress={onPress} onLongPress={handleLongPress}>
+        <Pressable
+          className="py-2.5 bg-surface"
+          onPress={onPress}
+          onLongPress={handleLongPress}
+        >
           <View className="flex-row items-center">
             {/* Kept in step with the food row's thumbnail so the two diary
                 row types line up rather than differing by a few pixels. */}
-            <View className="mr-3 items-center justify-center" style={{ width: 56, height: 56 }}>
+            <View
+              className="mr-3 items-center justify-center"
+              style={{ width: 56, height: 56 }}
+            >
               <SafeImage
                 source={imageSource}
                 style={{ width: 56, height: 56, borderRadius: 8 }}
-                fallback={<Icon name={iconName} size={28} color={accentPrimary} />}
+                fallback={
+                  <Icon name={iconName} size={28} color={accentPrimary} />
+                }
               />
             </View>
             <View className="flex-1">
               <View className="flex-row items-center justify-between">
-                <Text className="text-base font-semibold text-text-primary flex-1 mr-2" numberOfLines={1}>
+                <Text
+                  className="text-base font-semibold text-text-primary flex-1 mr-2"
+                  numberOfLines={1}
+                >
                   {name}
                 </Text>
                 <View className="flex-row items-center gap-2">
                   <View
                     className="rounded-full px-1.5 py-0.5"
-                    style={{ backgroundColor: canEdit ? `${accentPrimary}20` : `${textMuted}20` }}
+                    style={{
+                      backgroundColor: canEdit
+                        ? `${accentPrimary}20`
+                        : `${textMuted}20`,
+                    }}
                   >
                     <Text
                       className="text-xs font-medium"
@@ -137,7 +173,10 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
                   <Icon name="chevron-forward" size={14} color={textMuted} />
                 </View>
               </View>
-              <Text className="text-sm text-text-secondary mt-0.5" numberOfLines={1}>
+              <Text
+                className="text-sm text-text-secondary mt-0.5"
+                numberOfLines={1}
+              >
                 {subtitle}
               </Text>
             </View>

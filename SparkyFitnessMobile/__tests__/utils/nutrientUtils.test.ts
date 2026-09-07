@@ -51,13 +51,13 @@ describe('toggleNutrientVisibility', () => {
 
   it('removes the nutrient when disabled', () => {
     expect(
-      toggleNutrientVisibility(['protein', 'magnesium'], 'magnesium', false),
+      toggleNutrientVisibility(['protein', 'magnesium'], 'magnesium', false)
     ).toEqual(['protein']);
   });
 
   it('is idempotent when enabling an already-present nutrient', () => {
     expect(
-      toggleNutrientVisibility(['protein', 'magnesium'], 'magnesium', true),
+      toggleNutrientVisibility(['protein', 'magnesium'], 'magnesium', true)
     ).toEqual(['protein', 'magnesium']);
   });
 

@@ -6,6 +6,7 @@ import exerciseEntryRepository from '../models/exerciseEntry.js';
 import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
+import * as genericHealthRepository from '../models/genericHealthRepository.js';
 
 vi.mock('../services/goalService.js', () => ({
   default: { getUserGoals: vi.fn() },
@@ -38,6 +39,10 @@ vi.mock('../models/userRepository.js', () => ({
 
 vi.mock('../models/preferenceRepository.js', () => ({
   default: { getUserPreferences: vi.fn() },
+}));
+
+vi.mock('../models/genericHealthRepository.js', () => ({
+  getHealthConnectTotalCaloriesByDateRange: vi.fn(),
 }));
 
 vi.mock('../services/bmrService.js', () => ({
@@ -97,6 +102,9 @@ beforeEach(() => {
   vi.mocked(measurementRepository.getExternalBmrForDate).mockResolvedValue(
     null
   );
+  vi.mocked(
+    genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+  ).mockResolvedValue([]);
 });
 
 describe('getDashboardStats includeCheckin gate', () => {
@@ -134,6 +142,9 @@ describe('getDashboardStats includeCheckin gate', () => {
     expect(
       measurementRepository.getCheckInMeasurementsByDate
     ).not.toHaveBeenCalled();
+    expect(
+      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+    ).not.toHaveBeenCalled();
   });
 
   test('includeCheckin=false zeroes out steps and step calories in response', async () => {
@@ -143,37 +154,48 @@ describe('getDashboardStats includeCheckin gate', () => {
     expect(result.stepCalories).toBe(0);
   });
 
-  test('includeCheckin=false skips external BMR even when use_external_bmr=true', async () => {
-    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
-      ...basePreferences,
-      use_external_bmr: true,
-    });
-
-    await getDashboardStats('user1', '2026-06-13', false);
-
-    expect(measurementRepository.getExternalBmrForDate).not.toHaveBeenCalled();
-  });
-
-  test('includeCheckin=true applies external BMR when use_external_bmr=true and value is in range', async () => {
-    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
-      ...basePreferences,
-      use_external_bmr: true,
-    });
-    vi.mocked(measurementRepository.getExternalBmrForDate).mockResolvedValue(
-      1950
-    );
+  test('includeCheckin=true applies check-in measured BMR when present', async () => {
+    vi.mocked(
+      measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate
+    ).mockResolvedValue({ weight: 80, height: 180, bmr: 1950 } as never);
 
     const result = await getDashboardStats('user1', '2026-06-13', true);
 
-    expect(measurementRepository.getExternalBmrForDate).toHaveBeenCalledWith(
-      'user1',
-      '2026-06-13'
-    );
     expect(result.bmr).toBe(1950);
   });
 });
 
 describe('getDashboardStats calorie arithmetic', () => {
+  test('uses Health Connect total burn for the Device Projection target', async () => {
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+      ...basePreferences,
+      calorie_goal_adjustment_mode: 'tdee',
+      goal_mode: 'maintain',
+    });
+    vi.mocked(
+      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+    ).mockResolvedValue([{ entry_date: '2026-06-13', total_calories: 2300 }]);
+
+    const result = await getDashboardStats('user1', '2026-06-13', true);
+
+    expect(result.goal).toBe(2300);
+  });
+
+  test('falls back when the Health Connect total query fails', async () => {
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+      ...basePreferences,
+      calorie_goal_adjustment_mode: 'tdee',
+      goal_mode: 'maintain',
+    });
+    vi.mocked(
+      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+    ).mockRejectedValue(new Error('temporary query failure'));
+
+    await expect(
+      getDashboardStats('user1', '2026-06-13', true)
+    ).resolves.toMatchObject({ goal: expect.any(Number) });
+  });
+
   /**
    * The widget must show the number the Diary shows. Previously it summed the device
    * "Active Calories" row and logged workouts instead of taking the larger of the two,

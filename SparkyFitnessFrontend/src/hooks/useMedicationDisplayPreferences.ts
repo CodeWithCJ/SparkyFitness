@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import {
   getMedicationDisplayPreferences,
   upsertMedicationDisplayPreference,
-  deleteMedicationDisplayPreference,
   UserMedicationDisplayPreference,
 } from '@/api/Medications/medicationReportService';
 
@@ -36,20 +35,6 @@ export const useUpsertMedicationDisplayPreferenceMutation = () => {
   >({
     mutationFn: ({ viewGroup, platform, visibleItems }) =>
       upsertMedicationDisplayPreference(viewGroup, platform, visibleItems),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: medicationReportKeys.preferences,
-      });
-    },
-  });
-};
-
-export const useDeleteMedicationDisplayPreferenceMutation = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<void, Error, { viewGroup: string; platform: string }>({
-    mutationFn: ({ viewGroup, platform }) =>
-      deleteMedicationDisplayPreference(viewGroup, platform),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: medicationReportKeys.preferences,

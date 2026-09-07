@@ -47,9 +47,6 @@ export interface PregnancyOverview {
   vitals?: PregnancyVitals | null;
 }
 
-export const getCurrent = (): Promise<SharedPregnancy | null> =>
-  apiCall('/v2/pregnancy/current', { method: 'GET' });
-
 export const getOverview = (date?: string): Promise<PregnancyOverview> =>
   apiCall('/v2/pregnancy/overview', { method: 'GET', params: { date } });
 
@@ -57,15 +54,6 @@ export const createPregnancy = (
   body: Partial<SharedPregnancy>
 ): Promise<SharedPregnancy> =>
   apiCall('/v2/pregnancy', { method: 'POST', body });
-
-export const updatePregnancy = (
-  id: string,
-  body: Partial<SharedPregnancy>
-): Promise<SharedPregnancy> =>
-  apiCall(`/v2/pregnancy/${id}`, { method: 'PUT', body });
-
-export const deletePregnancy = (id: string): Promise<void> =>
-  apiCall(`/v2/pregnancy/${id}`, { method: 'DELETE' });
 
 // Kicks
 export const startKickSession = (
@@ -81,9 +69,6 @@ export const updateKickSession = (
   body: { kick_count?: number; kick_times?: string[]; ended?: boolean }
 ): Promise<SharedKickSession> =>
   apiCall(`/v2/pregnancy/kicks/${id}`, { method: 'PUT', body });
-
-export const listKickSessions = (): Promise<SharedKickSession[]> =>
-  apiCall('/v2/pregnancy/kicks', { method: 'GET' });
 
 // Contractions
 export const createContraction = (
@@ -110,12 +95,6 @@ export const getContractions = (): Promise<ContractionAnalysis> =>
   apiCall('/v2/pregnancy/contractions', { method: 'GET' });
 
 // Checklist
-export const getChecklist = (pregnancyId: string): Promise<unknown[]> =>
-  apiCall('/v2/pregnancy/checklist', {
-    method: 'GET',
-    params: { pregnancy_id: pregnancyId },
-  });
-
 export const upsertChecklistItem = (body: {
   id?: string;
   pregnancy_id?: string;

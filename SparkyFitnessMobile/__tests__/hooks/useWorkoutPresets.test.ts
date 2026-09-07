@@ -1,13 +1,19 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { useWorkoutPresets } from '../../src/hooks/useWorkoutPresets';
 import { fetchWorkoutPresets } from '../../src/services/api/workoutPresetsApi';
-import { createTestQueryClient, createQueryWrapper, type QueryClient } from './queryTestUtils';
+import {
+  createTestQueryClient,
+  createQueryWrapper,
+  type QueryClient,
+} from './queryTestUtils';
 
 jest.mock('../../src/services/api/workoutPresetsApi', () => ({
   fetchWorkoutPresets: jest.fn(),
 }));
 
-const mockFetchPresets = fetchWorkoutPresets as jest.MockedFunction<typeof fetchWorkoutPresets>;
+const mockFetchPresets = fetchWorkoutPresets as jest.MockedFunction<
+  typeof fetchWorkoutPresets
+>;
 
 describe('useWorkoutPresets', () => {
   let queryClient: QueryClient;

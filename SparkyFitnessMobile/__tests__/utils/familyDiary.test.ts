@@ -19,7 +19,7 @@ const entry = (overrides: Partial<FoodEntry> = {}): FoodEntry =>
     carbs: 20,
     fat: 5,
     ...overrides,
-  } as FoodEntry);
+  }) as FoodEntry;
 
 describe('family diary helpers', () => {
   it('groups raw components by canonical meal identity and preserves every row', () => {
@@ -30,7 +30,7 @@ describe('family diary helpers', () => {
     ]);
 
     expect(
-      groups.map(group => [group.key, group.entries.map(item => item.id)]),
+      groups.map((group) => [group.key, group.entries.map((item) => item.id)])
     ).toEqual([
       ['dinner-id', ['a', 'b']],
       ['snack-id', ['c']],
@@ -50,7 +50,7 @@ describe('family diary helpers', () => {
           }),
           quantity: 150,
         },
-      ]),
+      ])
     ).toEqual({ calories: 270, protein: 9, carbs: 48, fat: 4.5 });
   });
 
@@ -61,13 +61,13 @@ describe('family diary helpers', () => {
     ];
 
     expect(
-      isUnchangedWholeMeal(source, new Set(['a', 'b']), { a: 100, b: 1 }),
+      isUnchangedWholeMeal(source, new Set(['a', 'b']), { a: 100, b: 1 })
     ).toBe(true);
     expect(isUnchangedWholeMeal(source, new Set(['a']), { a: 100 })).toBe(
-      false,
+      false
     );
     expect(
-      isUnchangedWholeMeal(source, new Set(['a', 'b']), { a: 150, b: 1 }),
+      isUnchangedWholeMeal(source, new Set(['a', 'b']), { a: 150, b: 1 })
     ).toBe(false);
   });
 
@@ -79,14 +79,14 @@ describe('family diary helpers', () => {
 
     expect(groups).toHaveLength(1);
     expect(groups[0]).toMatchObject({ key: 'legacy:custom', mealTypeId: null });
-    expect(groups[0].entries.map(item => item.id)).toEqual(['a', 'b']);
+    expect(groups[0].entries.map((item) => item.id)).toEqual(['a', 'b']);
   });
 
   it('returns zero for nutrients whose serving basis is not positive', () => {
     expect(
       calculateFamilyCopyTotals([
         { entry: entry({ serving_size: 0 }), quantity: 150 },
-      ]),
+      ])
     ).toEqual({
       calories: 0,
       protein: 0,
@@ -100,43 +100,43 @@ describe('family diary helpers', () => {
       isUnchangedWholeMeal(
         [entry({ id: 'zero', quantity: 0 })],
         new Set(['zero']),
-        { zero: 0 },
-      ),
+        { zero: 0 }
+      )
     ).toBe(false);
     expect(
       isUnchangedWholeMeal(
         [entry({ id: 'negative', quantity: -1 })],
         new Set(['negative']),
-        { negative: -1 },
-      ),
+        { negative: -1 }
+      )
     ).toBe(false);
     expect(
       isUnchangedWholeMeal(
         [entry({ id: 'source-nan', quantity: Number.NaN })],
         new Set(['source-nan']),
-        { 'source-nan': Number.NaN },
-      ),
+        { 'source-nan': Number.NaN }
+      )
     ).toBe(false);
     expect(
       isUnchangedWholeMeal(
         [entry({ id: 'requested-zero', quantity: 1 })],
         new Set(['requested-zero']),
-        { 'requested-zero': 0 },
-      ),
+        { 'requested-zero': 0 }
+      )
     ).toBe(false);
     expect(
       isUnchangedWholeMeal(
         [entry({ id: 'requested-negative', quantity: 1 })],
         new Set(['requested-negative']),
-        { 'requested-negative': -1 },
-      ),
+        { 'requested-negative': -1 }
+      )
     ).toBe(false);
     expect(
       isUnchangedWholeMeal(
         [entry({ id: 'requested-inf', quantity: 1 })],
         new Set(['requested-inf']),
-        { 'requested-inf': Number.POSITIVE_INFINITY },
-      ),
+        { 'requested-inf': Number.POSITIVE_INFINITY }
+      )
     ).toBe(false);
   });
 });

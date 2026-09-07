@@ -1,5 +1,10 @@
 import * as Notifications from 'expo-notifications';
-import { addNotificationResponseListener, dismissDeliveredNotification, MEDICATION_TAKEN_ACTION, MEDICATION_SKIP_ACTION } from './notifications';
+import {
+  addNotificationResponseListener,
+  dismissDeliveredNotification,
+  MEDICATION_TAKEN_ACTION,
+  MEDICATION_SKIP_ACTION,
+} from './notifications';
 import { createEntry, listEntries } from './api/medicationsApi';
 import { queryClient } from '../hooks/queryClient';
 import { invalidateMedicationEntryCaches } from '../hooks/invalidateMedicationEntryCaches';
@@ -32,11 +37,21 @@ export function initMedicationNotificationActions(): void {
     const entryDate = data?.entryDate;
 
     if (!medicationId || !entryDate) {
-      addLog('[MedicationNotificationAction] Missing required data in notification', 'WARNING');
+      addLog(
+        '[MedicationNotificationAction] Missing required data in notification',
+        'WARNING'
+      );
       return;
     }
 
-    void handleNotificationAction(status, medicationId, scheduleId ?? null, entryDate, response.notification.request.identifier, data?.baseKey ?? data?.key ?? null);
+    void handleNotificationAction(
+      status,
+      medicationId,
+      scheduleId ?? null,
+      entryDate,
+      response.notification.request.identifier,
+      data?.baseKey ?? data?.key ?? null
+    );
   });
 }
 
@@ -46,10 +61,14 @@ async function handleNotificationAction(
   scheduleId: string | null,
   entryDate: string,
   notificationId: string,
-  key: string | null,
+  key: string | null
 ): Promise<void> {
   try {
-    const existing = await listEntries({ fromDate: entryDate, toDate: entryDate, medicationId });
+    const existing = await listEntries({
+      fromDate: entryDate,
+      toDate: entryDate,
+      medicationId,
+    });
     if (isDoseLogged(existing, medicationId, scheduleId)) {
       await dismissDeliveredNotification(notificationId);
       return;
@@ -70,16 +89,29 @@ async function handleNotificationAction(
     invalidateMedicationEntryCaches(queryClient);
 
     if (key) {
-      const allPending = await Notifications.getAllScheduledNotificationsAsync();
-      const toCancel = allPending.filter((n) => n.content.data?.baseKey === key);
-      await Promise.all(toCancel.map((n) =>
-        Notifications.cancelScheduledNotificationAsync(n.identifier).catch(() => {}),
-      ));
+      const allPending =
+        await Notifications.getAllScheduledNotificationsAsync();
+      const toCancel = allPending.filter(
+        (n) => n.content.data?.baseKey === key
+      );
+      await Promise.all(
+        toCancel.map((n) =>
+          Notifications.cancelScheduledNotificationAsync(n.identifier).catch(
+            () => {}
+          )
+        )
+      );
     }
 
     await dismissDeliveredNotification(notificationId);
-    addLog(`[MedicationNotificationAction] Logged medication ${medicationId} as ${status}`, 'DEBUG');
+    addLog(
+      `[MedicationNotificationAction] Logged medication ${medicationId} as ${status}`,
+      'DEBUG'
+    );
   } catch (error) {
-    addLog(`[MedicationNotificationAction] Failed to log medication: ${(error as Error).message}`, 'ERROR');
+    addLog(
+      `[MedicationNotificationAction] Failed to log medication: ${(error as Error).message}`,
+      'ERROR'
+    );
   }
 }

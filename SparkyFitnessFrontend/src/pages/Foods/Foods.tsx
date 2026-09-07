@@ -75,6 +75,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { formatServingLabel } from '@/utils/foodServing';
 import { usableFoodImages } from '@/utils/foodImages';
+import { MarkdownView } from '@/components/ui/MarkdownView';
 import { useImageLightbox } from '@/hooks/Foods/useImageLightbox';
 import ImageLightbox from '@/components/FoodSearch/ImageLightbox';
 
@@ -865,6 +866,19 @@ const FoodDatabaseManager = () => {
               );
             })}
           </div>
+
+          {/* After the nutrition grid: the numbers are what this dialog is
+              opened to check. */}
+          {viewingFood?.notes ? (
+            <div className="mt-6 rounded-md border bg-muted/40 px-3 py-2">
+              <h4 className="font-semibold mb-1 text-sm">
+                {t('foodDatabaseManager.notes', 'Notes')}
+              </h4>
+              <MarkdownView images={usableFoodImages(viewingFood.images)}>
+                {viewingFood.notes}
+              </MarkdownView>
+            </div>
+          ) : null}
 
           <div className="mt-8 flex justify-end">
             <Button variant="outline" onClick={() => setViewingFood(null)}>

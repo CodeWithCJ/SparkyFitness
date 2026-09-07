@@ -2,7 +2,10 @@ import { addLog } from '../LogService';
 import { normalizeUrl } from './apiClient';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
-import { DEFAULT_API_TIMEOUT_MS, fetchWithTimeout } from '../../utils/concurrency';
+import {
+  DEFAULT_API_TIMEOUT_MS,
+  fetchWithTimeout,
+} from '../../utils/concurrency';
 
 export interface ActiveAiServiceSetting {
   id: string;
@@ -23,21 +26,25 @@ export async function fetchUserAiConfigAllowed(): Promise<boolean> {
   }
 
   try {
-    const response = await fetchWithTimeout(`${baseUrl}/api/global-settings/allow-user-ai-config`, {
-      method: 'GET',
-      cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
-      headers: {
-        ...proxyHeadersToRecord(config.proxyHeaders),
-        ...getAuthHeaders(config),
+    const response = await fetchWithTimeout(
+      `${baseUrl}/api/global-settings/allow-user-ai-config`,
+      {
+        method: 'GET',
+        cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
+        headers: {
+          ...proxyHeadersToRecord(config.proxyHeaders),
+          ...getAuthHeaders(config),
+        },
       },
-    }, DEFAULT_API_TIMEOUT_MS);
+      DEFAULT_API_TIMEOUT_MS
+    );
     if (!response.ok) {
       if (response.status === 401 && config.authType === 'session') {
         notifySessionExpired(config.id);
       }
       addLog(
         `[AI Settings] User AI config gate fetch failed: ${response.status}`,
-        'WARNING',
+        'WARNING'
       );
       return false;
     }
@@ -48,7 +55,7 @@ export async function fetchUserAiConfigAllowed(): Promise<boolean> {
     const message = error instanceof Error ? error.message : String(error);
     addLog(
       `[AI Settings] User AI config gate fetch error: ${message}`,
-      'WARNING',
+      'WARNING'
     );
     return false;
   }
@@ -66,21 +73,25 @@ export async function fetchActiveAiServiceSetting(): Promise<ActiveAiServiceSett
   }
 
   try {
-    const response = await fetchWithTimeout(`${baseUrl}/api/chat/ai-service-settings/active`, {
-      method: 'GET',
-      cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
-      headers: {
-        ...proxyHeadersToRecord(config.proxyHeaders),
-        ...getAuthHeaders(config),
+    const response = await fetchWithTimeout(
+      `${baseUrl}/api/chat/ai-service-settings/active`,
+      {
+        method: 'GET',
+        cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
+        headers: {
+          ...proxyHeadersToRecord(config.proxyHeaders),
+          ...getAuthHeaders(config),
+        },
       },
-    }, DEFAULT_API_TIMEOUT_MS);
+      DEFAULT_API_TIMEOUT_MS
+    );
     if (!response.ok) {
       if (response.status === 401 && config.authType === 'session') {
         notifySessionExpired(config.id);
       }
       addLog(
         `[AI Settings] Active setting fetch failed: ${response.status}`,
-        'WARNING',
+        'WARNING'
       );
       return null;
     }
@@ -107,7 +118,7 @@ export async function fetchActiveAiServiceSetting(): Promise<ActiveAiServiceSett
 // via mapEstimateError. service_type is a free-form string in the shared model,
 // so trim before testing for emptiness.
 export function isFoodPhotoAvailable(
-  setting: ActiveAiServiceSetting | null | undefined,
+  setting: ActiveAiServiceSetting | null | undefined
 ): boolean {
   return (setting?.service_type ?? '').trim().length > 0;
 }

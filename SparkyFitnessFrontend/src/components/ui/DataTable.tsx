@@ -25,6 +25,7 @@ import { Loader2, ArrowDown, ArrowUp, ArrowUpDown, Search } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { DataTablePagination } from './DataTablePagination';
+import { useTranslation } from 'react-i18next';
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -82,6 +83,7 @@ export function DataTable<TData, TValue>({
   onSearchChange,
   titleColumnId,
 }: DataTableProps<TData, TValue>) {
+  const { t } = useTranslation();
   const [internalSorting, setInternalSorting] = useState<SortingState>(
     initialState?.sorting || []
   );
@@ -219,7 +221,7 @@ export function DataTable<TData, TValue>({
                 >
                   <div className="flex items-center justify-center gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Loading...</span>
+                    <span>{t('dataTable.loading', 'Loading...')}</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -270,7 +272,7 @@ export function DataTable<TData, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  {t('dataTable.noResults', 'No results found.')}
                 </TableCell>
               </TableRow>
             )}
@@ -283,7 +285,7 @@ export function DataTable<TData, TValue>({
         {isLoading && !table.getRowModel().rows?.length ? (
           <div className="p-12 text-center text-muted-foreground italic border-2 border-dashed rounded-2xl bg-gray-50/50 dark:bg-gray-900/20">
             <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 opacity-50" />
-            Loading...
+            {t('dataTable.loading', 'Loading...')}
           </div>
         ) : table.getRowModel().rows?.length ? (
           <>
@@ -442,7 +444,7 @@ export function DataTable<TData, TValue>({
           </>
         ) : (
           <div className="p-12 text-center text-muted-foreground italic border-2 border-dashed rounded-2xl bg-gray-50/50 dark:bg-gray-900/20">
-            No results found.
+            {t('dataTable.noResults', 'No results found.')}
           </div>
         )}
       </div>

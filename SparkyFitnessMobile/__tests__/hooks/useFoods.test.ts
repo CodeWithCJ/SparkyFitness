@@ -18,7 +18,11 @@ function createFoodsWrapper(queryClient: QueryClient) {
     React.createElement(
       NavigationContainer,
       null,
-      React.createElement(QueryClientProvider, { client: queryClient }, children),
+      React.createElement(
+        QueryClientProvider,
+        { client: queryClient },
+        children
+      )
     );
   Wrapper.displayName = 'FoodsHookWrapper';
   return Wrapper;

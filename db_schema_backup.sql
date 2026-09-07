@@ -1264,8 +1264,17 @@ CREATE TABLE public.check_in_measurements (
     updated_by_user_id uuid,
     muscle_mass_kg numeric(5,2),
     bone_mass_kg numeric(5,2),
-    body_water_percentage numeric(5,2)
+    body_water_percentage numeric(5,2),
+    bmr numeric(6,1),
+    CONSTRAINT check_in_measurements_bmr_check CHECK (((bmr IS NULL) OR ((bmr >= (300)::numeric) AND (bmr <= (10000)::numeric))))
 );
+
+
+--
+-- Name: COLUMN check_in_measurements.bmr; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.check_in_measurements.bmr IS 'Basal Metabolic Rate (BMR) in kcal, measured from smart weight scale or synced from health provider.';
 
 
 --
@@ -1469,7 +1478,8 @@ CREATE TABLE public.daily_health_metrics (
     body_battery_highest integer,
     body_battery_lowest integer,
     created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now()
+    updated_at timestamp with time zone DEFAULT now(),
+    total_calories_captured_at timestamp with time zone
 );
 
 
@@ -1994,6 +2004,7 @@ CREATE TABLE public.food_entries (
     source_id character varying(255),
     entry_time time without time zone,
     images jsonb DEFAULT '[]'::jsonb NOT NULL,
+    notes text,
     CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL)))),
     CONSTRAINT food_entries_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text)),
     CONSTRAINT food_entries_serving_size_positive CHECK ((serving_size > (0)::numeric))
@@ -2022,6 +2033,13 @@ COMMENT ON COLUMN public.food_entries.entry_time IS 'Optional wall-clock local t
 
 
 --
+-- Name: COLUMN food_entries.notes; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entries.notes IS 'Per-occurrence markdown note for a single diary entry. Never derived from foods.notes.';
+
+
+--
 -- Name: food_entry_meals; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2042,6 +2060,9 @@ CREATE TABLE public.food_entry_meals (
     legacy_serving_unit_math boolean DEFAULT false NOT NULL,
     entry_time time without time zone,
     images jsonb DEFAULT '[]'::jsonb NOT NULL,
+    notes text,
+    entry_total_servings numeric,
+    CONSTRAINT food_entry_meals_entry_total_servings_positive CHECK (((entry_total_servings IS NULL) OR (entry_total_servings > (0)::numeric))),
     CONSTRAINT food_entry_meals_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text))
 );
 
@@ -2072,6 +2093,20 @@ COMMENT ON COLUMN public.food_entry_meals.legacy_serving_unit_math IS 'TRUE for 
 --
 
 COMMENT ON COLUMN public.food_entry_meals.entry_time IS 'Optional wall-clock local time of day the logged meal was eaten (no timezone). NULL = not recorded.';
+
+
+--
+-- Name: COLUMN food_entry_meals.notes; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entry_meals.notes IS 'Per-occurrence markdown note for a single logged meal. Never derived from meals.notes.';
+
+
+--
+-- Name: COLUMN food_entry_meals.entry_total_servings; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entry_meals.entry_total_servings IS 'Snapshotted total dish yield of the meal in its unit when logged. NULL falls back to the live meal template.';
 
 
 --
@@ -2149,8 +2184,16 @@ CREATE TABLE public.foods (
     is_quick_food boolean DEFAULT false NOT NULL,
     provider_verified boolean DEFAULT false NOT NULL,
     images jsonb DEFAULT '[]'::jsonb NOT NULL,
+    notes text,
     CONSTRAINT foods_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text))
 );
+
+
+--
+-- Name: COLUMN foods.notes; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.foods.notes IS 'Owner-authored markdown reference note for this food (e.g. how it is ordered or prepared).';
 
 
 --
@@ -2408,6 +2451,7 @@ CREATE TABLE public.meals (
     serving_unit text DEFAULT 'serving'::text NOT NULL,
     total_servings numeric DEFAULT 1.0 NOT NULL,
     images jsonb DEFAULT '[]'::jsonb NOT NULL,
+    notes text,
     CONSTRAINT meals_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text))
 );
 
@@ -2431,6 +2475,13 @@ COMMENT ON COLUMN public.meals.serving_unit IS 'Unit of measurement for the serv
 --
 
 COMMENT ON COLUMN public.meals.total_servings IS 'How many servings the recipe yields. Full recipe quantity = serving_size × total_servings.';
+
+
+--
+-- Name: COLUMN meals.notes; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.meals.notes IS 'Owner-authored markdown reference note for this meal (e.g. a recipe).';
 
 
 --
@@ -3540,6 +3591,7 @@ CREATE TABLE public.user_preferences (
     active_vision_ai_service_id uuid,
     added_sugar_algorithm text DEFAULT 'WHO_IDEAL'::text NOT NULL,
     time_format text DEFAULT 'h:mm A'::text NOT NULL,
+    food_search_all_providers_default boolean DEFAULT false NOT NULL,
     calorie_safety_floor_mode text DEFAULT 'standard'::text NOT NULL,
     calorie_safety_floor_value integer DEFAULT 1200 NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),

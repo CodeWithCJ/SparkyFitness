@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import { saveDraft, loadDraft, clearDraft } from '../services/workoutDraftService';
+import {
+  saveDraft,
+  loadDraft,
+  clearDraft,
+} from '../services/workoutDraftService';
 import type { FormDraft } from '../types/drafts';
 
 interface UseDraftPersistenceOptions<T extends FormDraft> {
@@ -16,8 +20,17 @@ interface DraftPersistenceControls {
   clearPersistedDraft: () => Promise<void>;
 }
 
-export function useDraftPersistence<T extends FormDraft>(options: UseDraftPersistenceOptions<T>): DraftPersistenceControls {
-  const { state, draftType, isEditMode, skipDraftLoad, onDraftLoaded, onInitialDate } = options;
+export function useDraftPersistence<T extends FormDraft>(
+  options: UseDraftPersistenceOptions<T>
+): DraftPersistenceControls {
+  const {
+    state,
+    draftType,
+    isEditMode,
+    skipDraftLoad,
+    onDraftLoaded,
+    onInitialDate,
+  } = options;
 
   const isDraftLoadedRef = useRef(false);
   const skipNextSaveRef = useRef(false);
@@ -54,7 +67,7 @@ export function useDraftPersistence<T extends FormDraft>(options: UseDraftPersis
       isDraftLoadedRef.current = true;
       return;
     }
-    loadDraft().then(draft => {
+    loadDraft().then((draft) => {
       if (draft && draft.type === draftType) {
         skipNextSaveRef.current = true;
         onDraftLoaded(draft as T);

@@ -25,6 +25,77 @@ function interpolateQuery(sql: any, params: any) {
 }
 const WITHINGS_API_BASE_URL = 'https://wbsapi.withings.net';
 const WITHINGS_ACCOUNT_BASE_URL = 'https://account.withings.com';
+interface WithingsTokenBody {
+  access_token: string;
+  refresh_token: string;
+  expires_in?: string | number;
+  scope?: string;
+  userid?: string | number;
+}
+
+interface WithingsTokenEnvelope {
+  status?: number | string;
+  error?: string;
+  body?: Partial<WithingsTokenBody>;
+}
+
+// A rejected response can still carry a live access_token (for example when only
+// the refresh_token is missing), so failures are described by status and error
+// alone. The raw payload must never reach the logs.
+function describeWithingsFailure(
+  data: WithingsTokenEnvelope | undefined
+): string {
+  const status = data?.status === undefined ? 'absent' : String(data.status);
+  return `status ${status}${data?.error ? `: ${data.error}` : ''}`;
+}
+
+// Withings wraps every response as { status, body } and only status 0 is success.
+// Their docs do not specify whether an error response omits `body` or sends an
+// empty one, so a truthy-body check alone is not a safe guard: check the status
+// and the token fields before anything is encrypted or persisted. encrypt()
+// returns nulls rather than throwing on a missing token, so an unguarded refresh
+// would overwrite the stored refresh token with NULL and disconnect the user.
+function parseWithingsTokenResponse(
+  data: WithingsTokenEnvelope | undefined,
+  context: string
+): WithingsTokenBody {
+  const failure = describeWithingsFailure(data);
+  if (data?.status !== undefined && Number(data.status) !== 0) {
+    log('error', `Withings ${context} error: ${failure}.`);
+    throw new Error(`Withings ${context} failed with ${failure}.`);
+  }
+  if (!data || !data.body) {
+    log(
+      'error',
+      `Withings ${context} error: invalid response structure (${failure}).`
+    );
+    throw new Error(`Invalid Withings API response structure (${context}).`);
+  }
+  const { access_token, refresh_token } = data.body;
+  if (!access_token || !refresh_token) {
+    log(
+      'error',
+      `Withings ${context} error: response contained no usable tokens (${failure}).`
+    );
+    throw new Error(
+      `Missing access_token or refresh_token in Withings ${context} response.`
+    );
+  }
+  return { ...data.body, access_token, refresh_token };
+}
+
+// Withings expects token requests as form-encoded POST bodies on the v2/oauth2 endpoint.
+async function requestWithingsToken(params: Record<string, string>) {
+  return axios.post(
+    `${WITHINGS_API_BASE_URL}/v2/oauth2`,
+    new URLSearchParams({ action: 'requesttoken', ...params }),
+    {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    }
+  );
+}
 // Function to construct the Withings authorization URL
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getAuthorizationUrl(userId: any) {
@@ -90,40 +161,24 @@ async function exchangeCodeForTokens(userId: any, code: any, redirectUri: any) {
       app_key_tag,
       ENCRYPTION_KEY
     );
-    const response = await axios.post(
-      `${WITHINGS_API_BASE_URL}/v2/oauth2`,
-      null,
-      {
-        params: {
-          action: 'requesttoken',
-          grant_type: 'authorization_code',
-          client_id: clientId,
-          client_secret: clientSecret,
-          code: code,
-          redirect_uri: redirectUri,
-        },
-      }
-    );
-    if (!response.data || !response.data.body) {
-      log(
-        'error',
-        'Withings requesttoken error: Invalid response structure.',
-        JSON.stringify(response.data)
-      );
-      throw new Error('Invalid Withings API response structure.');
+    if (!clientId || !clientSecret) {
+      throw new Error('Withings client ID or client secret is missing.');
     }
+
+    const response = await requestWithingsToken({
+      grant_type: 'authorization_code',
+      client_id: clientId,
+      client_secret: clientSecret,
+      code: code,
+      redirect_uri: redirectUri,
+    });
     const { access_token, refresh_token, expires_in, scope, userid } =
-      response.data.body;
-    if (!access_token || !refresh_token) {
-      throw new Error(
-        'Missing access_token or refresh_token in Withings API response.'
-      );
-    }
+      parseWithingsTokenResponse(response.data, 'requesttoken');
     // Encrypt tokens
     const encryptedAccessToken = await encrypt(access_token, ENCRYPTION_KEY);
     const encryptedRefreshToken = await encrypt(refresh_token, ENCRYPTION_KEY);
     // Validate expires_in
-    let validExpiresIn = parseInt(expires_in, 10);
+    let validExpiresIn = parseInt(String(expires_in), 10);
     if (isNaN(validExpiresIn) || validExpiresIn <= 0) {
       log(
         'warn',
@@ -239,37 +294,25 @@ async function refreshAccessToken(userId: any) {
       refresh_token_tag,
       ENCRYPTION_KEY
     );
-    const response = await axios.post(
-      `${WITHINGS_API_BASE_URL}/v2/oauth2`,
-      null,
-      {
-        params: {
-          action: 'requesttoken',
-          grant_type: 'refresh_token',
-          client_id: clientId,
-          client_secret: clientSecret,
-          refresh_token: refreshToken,
-        },
-      }
-    );
-    if (!response.data || !response.data.body) {
-      log(
-        'error',
-        'Withings refresh access token error: Invalid response structure.',
-        JSON.stringify(response.data)
-      );
+    if (!clientId || !clientSecret || !refreshToken) {
       throw new Error(
-        'Invalid Withings API response structure during token refresh.'
+        'Withings client ID, client secret, or refresh token is missing.'
       );
     }
+    const response = await requestWithingsToken({
+      grant_type: 'refresh_token',
+      client_id: clientId,
+      client_secret: clientSecret,
+      refresh_token: refreshToken,
+    });
     const {
       access_token,
       refresh_token: newRefreshToken,
       expires_in,
       scope,
-    } = response.data.body;
+    } = parseWithingsTokenResponse(response.data, 'token refresh');
     // Validate expires_in
-    let validExpiresIn = parseInt(expires_in, 10);
+    let validExpiresIn = parseInt(String(expires_in), 10);
     if (isNaN(validExpiresIn) || validExpiresIn <= 0) {
       log(
         'warn',

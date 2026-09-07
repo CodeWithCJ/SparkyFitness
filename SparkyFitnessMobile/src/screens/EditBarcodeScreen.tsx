@@ -27,9 +27,18 @@ function normalizeBarcodeClient(value: string): string {
   return value.length === 12 ? `0${value}` : value;
 }
 
-const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route }) => {
-  const { foodId, foodName, currentBarcode, returnKey, pendingScannedBarcode, scannedBarcodeNonce } =
-    route.params;
+const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({
+  navigation,
+  route,
+}) => {
+  const {
+    foodId,
+    foodName,
+    currentBarcode,
+    returnKey,
+    pendingScannedBarcode,
+    scannedBarcodeNonce,
+  } = route.params;
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -52,9 +61,18 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
   }, [scannedBarcodeNonce, pendingScannedBarcode, navigation]);
 
   const invalidateCaches = () => {
-    queryClient.invalidateQueries({ queryKey: foodsQueryKey, refetchType: 'all' });
-    queryClient.invalidateQueries({ queryKey: ['foodsLibrary'], refetchType: 'all' });
-    queryClient.invalidateQueries({ queryKey: ['foodSearch'], refetchType: 'all' });
+    queryClient.invalidateQueries({
+      queryKey: foodsQueryKey,
+      refetchType: 'all',
+    });
+    queryClient.invalidateQueries({
+      queryKey: ['foodsLibrary'],
+      refetchType: 'all',
+    });
+    queryClient.invalidateQueries({
+      queryKey: ['foodSearch'],
+      refetchType: 'all',
+    });
   };
 
   const mutation = useMutation({
@@ -83,8 +101,12 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
     if (!BARCODE_REGEX.test(barcode)) {
       Toast.show({
         type: 'error',
-        text1: t('editBarcode.errors.invalid', { defaultValue: 'Invalid barcode' }),
-        text2: t('editBarcode.errors.invalidFormat', { defaultValue: 'Barcode must be 8-14 digits.' }),
+        text1: t('editBarcode.errors.invalid', {
+          defaultValue: 'Invalid barcode',
+        }),
+        text2: t('editBarcode.errors.invalidFormat', {
+          defaultValue: 'Barcode must be 8-14 digits.',
+        }),
       });
       return;
     }
@@ -96,27 +118,52 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
     // Conflict pre-check — fail open if lookup itself errors.
     try {
       const lookup = await lookupBarcodeV2(barcode);
-      if (lookup.source === 'local' && lookup.food?.id && lookup.food.id !== foodId) {
+      if (
+        lookup.source === 'local' &&
+        lookup.food?.id &&
+        lookup.food.id !== foodId
+      ) {
         const otherName = lookup.food.name || 'another food';
         const proceed = await new Promise<boolean>((resolve) => {
           Alert.alert(
-            t('editBarcode.confirm.inUseTitle', { defaultValue: 'Barcode already in use' }),
-            t('editBarcode.confirm.inUseMessage', { defaultValue: 'This barcode is already attached to \"{{otherName}}\". Attach it to \"{{foodName}}\" anyway?', otherName, foodName }),
+            t('editBarcode.confirm.inUseTitle', {
+              defaultValue: 'Barcode already in use',
+            }),
+            t('editBarcode.confirm.inUseMessage', {
+              defaultValue:
+                'This barcode is already attached to \"{{otherName}}\". Attach it to \"{{foodName}}\" anyway?',
+              otherName,
+              foodName,
+            }),
             [
-              { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel', onPress: () => resolve(false) },
-              { text: t('editBarcode.actions.attach', { defaultValue: 'Attach' }), style: 'default', onPress: () => resolve(true) },
+              {
+                text: t('common.cancel', { defaultValue: 'Cancel' }),
+                style: 'cancel',
+                onPress: () => resolve(false),
+              },
+              {
+                text: t('editBarcode.actions.attach', {
+                  defaultValue: 'Attach',
+                }),
+                style: 'default',
+                onPress: () => resolve(true),
+              },
             ],
-            { cancelable: true, onDismiss: () => resolve(false) },
+            { cancelable: true, onDismiss: () => resolve(false) }
           );
         });
         if (!proceed) return;
       }
     } catch (error) {
-      addLog('[EditBarcode] Pre-check lookup failed; proceeding anyway', 'WARNING', [
-        `foodId: ${foodId}`,
-        `barcode: ${barcode}`,
-        `error: ${error instanceof Error ? error.message : String(error)}`,
-      ]);
+      addLog(
+        '[EditBarcode] Pre-check lookup failed; proceeding anyway',
+        'WARNING',
+        [
+          `foodId: ${foodId}`,
+          `barcode: ${barcode}`,
+          `error: ${error instanceof Error ? error.message : String(error)}`,
+        ]
+      );
     }
 
     try {
@@ -124,7 +171,12 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
       const stored = updated?.barcode ?? null;
       dispatchUpdate(stored);
       invalidateCaches();
-      Toast.show({ type: 'success', text1: t('editBarcode.success.saved', { defaultValue: 'Barcode saved' }) });
+      Toast.show({
+        type: 'success',
+        text1: t('editBarcode.success.saved', {
+          defaultValue: 'Barcode saved',
+        }),
+      });
       navigation.goBack();
     } catch (error) {
       addLog('[EditBarcode] Failed to save barcode', 'ERROR', [
@@ -133,7 +185,9 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
       ]);
       Toast.show({
         type: 'error',
-        text1: t('editBarcode.errors.saveFailed', { defaultValue: 'Could not save barcode' }),
+        text1: t('editBarcode.errors.saveFailed', {
+          defaultValue: 'Could not save barcode',
+        }),
         text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
       });
     }
@@ -142,9 +196,15 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
   const handleRemove = () => {
     Alert.alert(
       t('editBarcode.confirm.removeTitle', { defaultValue: 'Remove barcode' }),
-      t('editBarcode.confirm.removeMessage', { defaultValue: 'Remove the barcode from \"{{foodName}}\"?', foodName }),
+      t('editBarcode.confirm.removeMessage', {
+        defaultValue: 'Remove the barcode from \"{{foodName}}\"?',
+        foodName,
+      }),
       [
-        { text: t('common.cancel', { defaultValue: 'Cancel' }), style: 'cancel' },
+        {
+          text: t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+        },
         {
           text: t('editBarcode.actions.remove', { defaultValue: 'Remove' }),
           style: 'destructive',
@@ -153,7 +213,12 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
               await mutation.mutateAsync(null);
               dispatchUpdate(null);
               invalidateCaches();
-              Toast.show({ type: 'success', text1: t('editBarcode.success.removed', { defaultValue: 'Barcode removed' }) });
+              Toast.show({
+                type: 'success',
+                text1: t('editBarcode.success.removed', {
+                  defaultValue: 'Barcode removed',
+                }),
+              });
               navigation.goBack();
             } catch (error) {
               addLog('[EditBarcode] Failed to remove barcode', 'ERROR', [
@@ -162,13 +227,17 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
               ]);
               Toast.show({
                 type: 'error',
-                text1: t('editBarcode.errors.removeFailed', { defaultValue: 'Could not remove barcode' }),
-                text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+                text1: t('editBarcode.errors.removeFailed', {
+                  defaultValue: 'Could not remove barcode',
+                }),
+                text2: t('common.tryAgain', {
+                  defaultValue: 'Please try again.',
+                }),
               });
             }
           },
         },
-      ],
+      ]
     );
   };
 
@@ -181,13 +250,18 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
       label: SAVE_LABEL,
       disabled: saveDisabled,
       onPress: () => void handleSave(),
-      accessibilityLabel: t('editBarcode.accessibility.save', { defaultValue: 'Save barcode' }),
+      accessibilityLabel: t('editBarcode.accessibility.save', {
+        defaultValue: 'Save barcode',
+      }),
       identifier: 'edit-barcode-save',
     },
   });
 
   return (
-    <View className="flex-1 bg-background" style={usesNativeHeader ? undefined : { paddingTop: insets.top }}>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
 
       <ScrollView
@@ -195,7 +269,12 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
         keyboardShouldPersistTaps="handled"
       >
         <View className="gap-2">
-          <Text className="text-sm text-text-secondary">{t('editBarcode.labels.forFood', { defaultValue: 'For {{foodName}}', foodName })}</Text>
+          <Text className="text-sm text-text-secondary">
+            {t('editBarcode.labels.forFood', {
+              defaultValue: 'For {{foodName}}',
+              foodName,
+            })}
+          </Text>
           <FormInput
             placeholder="012345678905"
             keyboardType="number-pad"
@@ -210,11 +289,15 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
           />
           {!isValidFormat ? (
             <Text className="text-sm" style={{ color: '#dc2626' }}>
-              {t('editBarcode.errors.invalidFormat', { defaultValue: 'Barcode must be 8-14 digits.' })}
+              {t('editBarcode.errors.invalidFormat', {
+                defaultValue: 'Barcode must be 8-14 digits.',
+              })}
             </Text>
           ) : (
             <Text className="text-xs" style={{ color: textSecondary }}>
-              {t('editBarcode.help.standardFormat', { defaultValue: 'Standard barcodes are 8 to 14 digits.' })}
+              {t('editBarcode.help.standardFormat', {
+                defaultValue: 'Standard barcodes are 8 to 14 digits.',
+              })}
             </Text>
           )}
         </View>
@@ -228,7 +311,9 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
             })
           }
         >
-          {t('editBarcode.actions.scanWithCamera', { defaultValue: 'Scan with camera' })}
+          {t('editBarcode.actions.scanWithCamera', {
+            defaultValue: 'Scan with camera',
+          })}
         </Button>
 
         {currentBarcode != null ? (
@@ -237,7 +322,9 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({ navigation, route
             onPress={handleRemove}
             disabled={mutation.isPending}
           >
-            {t('editBarcode.actions.removeBarcode', { defaultValue: 'Remove barcode' })}
+            {t('editBarcode.actions.removeBarcode', {
+              defaultValue: 'Remove barcode',
+            })}
           </Button>
         ) : null}
       </ScrollView>

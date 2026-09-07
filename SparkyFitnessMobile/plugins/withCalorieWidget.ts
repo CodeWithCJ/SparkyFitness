@@ -15,7 +15,10 @@ import {
 } from 'expo/config-plugins';
 import fs from 'fs';
 import path from 'path';
-import { FALLBACK_LOCALE, SUPPORTED_LANGUAGES } from '../src/localization/localeRegistry';
+import {
+  FALLBACK_LOCALE,
+  SUPPORTED_LANGUAGES,
+} from '../src/localization/localeRegistry';
 
 const WIDGET_PACKAGE = 'com.sparkyapps.sparkyfitness.widget';
 const WIDGET_PACKAGE_IMPORT = `import ${WIDGET_PACKAGE}.CalorieWidgetPackage`;
@@ -42,7 +45,10 @@ const RES_SUBDIR = 'res';
 async function copyTree(
   srcDir: string,
   destDir: string,
-  transform?: (srcPath: string, contents: Buffer) => { destName: string; contents: Buffer },
+  transform?: (
+    srcPath: string,
+    contents: Buffer
+  ) => { destName: string; contents: Buffer }
 ): Promise<void> {
   const entries = await fs.promises.readdir(srcDir, { withFileTypes: true });
   await fs.promises.mkdir(destDir, { recursive: true });
@@ -67,7 +73,7 @@ const withCalorieWidget: ConfigPlugin = (config) => {
       const applicationId = config.android?.package;
       if (!applicationId) {
         throw new Error(
-          '[withCalorieWidget] config.android.package must be set before this plugin runs.',
+          '[withCalorieWidget] config.android.package must be set before this plugin runs.'
         );
       }
 
@@ -87,7 +93,10 @@ const withCalorieWidget: ConfigPlugin = (config) => {
           const substituted = contents
             .toString('utf8')
             .replace(/\{\{APPLICATION_ID\}\}/g, applicationId)
-            .replace(/\{\{SUPPORTED_LOCALES\}\}/g, SUPPORTED_LANGUAGES.map((language) => `"${language}"`).join(', '))
+            .replace(
+              /\{\{SUPPORTED_LOCALES\}\}/g,
+              SUPPORTED_LANGUAGES.map((language) => `"${language}"`).join(', ')
+            )
             .replace(/\{\{FALLBACK_LOCALE\}\}/g, FALLBACK_LOCALE);
           return {
             destName: base.slice(0, -TEMPLATE_SUFFIX.length),
@@ -111,7 +120,7 @@ const withCalorieWidget: ConfigPlugin = (config) => {
     for (const receiver of WIDGET_RECEIVERS) {
       const existing = app.receiver.find(
         (r: { $?: Record<string, string> }) =>
-          r.$?.['android:name'] === receiver.name,
+          r.$?.['android:name'] === receiver.name
       ) as
         | {
             $?: Record<string, string>;
@@ -180,7 +189,7 @@ const withCalorieWidget: ConfigPlugin = (config) => {
 
     if (!src.includes(WIDGET_PACKAGE_ADD_LINE)) {
       const applyMatch = src.match(
-        /PackageList\(this\)\.packages\.apply\s*\{\s*\n/,
+        /PackageList\(this\)\.packages\.apply\s*\{\s*\n/
       );
       if (applyMatch && applyMatch.index !== undefined) {
         const insertAt = applyMatch.index + applyMatch[0].length;
@@ -190,7 +199,7 @@ const withCalorieWidget: ConfigPlugin = (config) => {
           src.slice(insertAt);
       } else {
         throw new Error(
-          '[withCalorieWidget] Could not locate PackageList(this).packages.apply { block in MainApplication.',
+          '[withCalorieWidget] Could not locate PackageList(this).packages.apply { block in MainApplication.'
         );
       }
     }

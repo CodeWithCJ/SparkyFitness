@@ -264,8 +264,14 @@ export default function SymptomHistoryCalendar({
                       className={`absolute right-2 top-2 ${trend === 'up' ? 'text-red-500' : 'text-emerald-500'}`}
                       title={
                         trend === 'up'
-                          ? 'Trending up vs earlier this period'
-                          : 'Trending down vs earlier this period'
+                          ? t(
+                              'medications.symptoms.trendingUp',
+                              'Trending up vs earlier this period'
+                            )
+                          : t(
+                              'medications.symptoms.trendingDown',
+                              'Trending down vs earlier this period'
+                            )
                       }
                     >
                       {trend === 'up' ? (
@@ -330,7 +336,13 @@ export default function SymptomHistoryCalendar({
                 />
                 <div>
                   <p className="font-semibold text-xs leading-none capitalize mb-1">
-                    {hint.symptomName.replace(/_/g, ' ')} Correlation
+                    {t('medications.insights.symptomCorrelation', {
+                      defaultValue: '{{symptom}} Correlation',
+                      symptom: t(
+                        `medications.symptomNames.${hint.symptomName}`,
+                        hint.symptomName.replace(/_/g, ' ')
+                      ),
+                    })}
                   </p>
                   <p className="text-xs leading-relaxed">{hint.message}</p>
                 </div>
@@ -357,7 +369,10 @@ export default function SymptomHistoryCalendar({
             )}
           </CardTitle>
           <CardDescription>
-            Symptom logging frequency and severity over the past 30 days
+            {t(
+              'medications.symptoms.calendarDescription',
+              'Symptom logging frequency and severity over the past 30 days'
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -400,7 +415,13 @@ export default function SymptomHistoryCalendar({
                 <div
                   key={day.dateString}
                   onClick={() => onDateChange?.(day.dateString)}
-                  title={`${day.dateString}: ${day.logs.length} logged, max severity ${day.maxSeverity}`}
+                  title={t('medications.symptoms.dayTooltip', {
+                    defaultValue:
+                      '{{date}}: {{count}} logged, max severity {{severity}}',
+                    date: day.dateString,
+                    count: day.logs.length,
+                    severity: day.maxSeverity,
+                  })}
                   className={`group relative flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border text-xs transition-all hover:scale-[1.06] hover:shadow-sm ${colorClass} ${
                     isSelected
                       ? 'ring-2 ring-primary ring-offset-1 ring-offset-background'
@@ -456,19 +477,20 @@ export default function SymptomHistoryCalendar({
           </div>
           <div className="flex gap-4 justify-center mt-4 text-[10px] text-muted-foreground">
             <div className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded bg-muted/40 border"></span> Clear
+              <span className="h-3 w-3 rounded bg-muted/40 border"></span>{' '}
+              {t('medications.symptoms.clear', 'Clear')}
             </div>
             <div className="flex items-center gap-1.5">
               <span className="h-3 w-3 rounded bg-green-500/20 border border-green-400"></span>{' '}
-              Mild (1-3)
+              {t('medications.symptoms.mild', 'Mild (1-3)')}
             </div>
             <div className="flex items-center gap-1.5">
               <span className="h-3 w-3 rounded bg-amber-500/20 border border-amber-400"></span>{' '}
-              Moderate (4-6)
+              {t('medications.symptoms.moderate', 'Moderate (4-6)')}
             </div>
             <div className="flex items-center gap-1.5">
               <span className="h-3 w-3 rounded bg-red-500/20 border border-red-400"></span>{' '}
-              Severe (7-10)
+              {t('medications.symptoms.severe', 'Severe (7-10)')}
             </div>
           </div>
         </CardContent>

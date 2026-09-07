@@ -99,8 +99,6 @@ export const exerciseEntryKeys = {
       exerciseId,
       ...(limit ? [{ limit }] : []),
     ] as const,
-  historyV2: (userId?: string, pageSize: number = 20) =>
-    [...exerciseEntryKeys.all, 'historyV2', { userId, pageSize }] as const,
   progress: (
     exerciseId: string,
     startDate: string,
@@ -126,11 +124,6 @@ export const exerciseEntryKeys = {
     [...exerciseEntryKeys.all, 'dailyStats', date] as const,
   groupedSession: (presetEntryId: string) =>
     [...exerciseEntryKeys.all, 'groupedSession', presetEntryId] as const,
-};
-export const suggestedExercisesKeys = {
-  all: ['exercises', 'suggested'] as const,
-  byLimit: (limit: number) =>
-    [...suggestedExercisesKeys.all, { limit }] as const,
 };
 
 export const assetKeys = {

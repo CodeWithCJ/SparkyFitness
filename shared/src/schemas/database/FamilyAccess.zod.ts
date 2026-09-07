@@ -46,5 +46,7 @@ export const familyAccessMutatorSchema = z.object({
 });
 
 export type FamilyAccess = z.infer<typeof familyAccessSchema>;
-export type FamilyAccessInitializer = z.infer<typeof familyAccessInitializerSchema>;
+export type FamilyAccessInitializer = z.infer<
+  typeof familyAccessInitializerSchema
+>;
 export type FamilyAccessMutator = z.infer<typeof familyAccessMutatorSchema>;

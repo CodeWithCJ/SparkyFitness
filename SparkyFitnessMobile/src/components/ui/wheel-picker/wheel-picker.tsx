@@ -2,7 +2,7 @@
  * Vendored from react-native-ui-datepicker
  * Original source: https://github.com/farhoudshapouran/react-native-ui-datepicker
  * License: MIT
- * 
+ *
  * iOS bug fix: Track user-scroll state to avoid over-scrolling animation when
  * wrapping values (e.g., 59->00 in seconds). When a user scroll triggers onChange,
  * we skip the animated scrollToIndex since the FlatList is already positioned correctly.
@@ -43,7 +43,10 @@ interface Props {
   opacityFunction?: (x: number) => number;
   visibleRest?: number;
   decelerationRate?: 'normal' | 'fast' | number;
-  flatListProps?: Omit<FlatListProps<PickerOption | null>, 'data' | 'renderItem'>;
+  flatListProps?: Omit<
+    FlatListProps<PickerOption | null>,
+    'data' | 'renderItem'
+  >;
 }
 
 const WheelPicker: React.FC<Props> = ({
@@ -69,7 +72,7 @@ const WheelPicker: React.FC<Props> = ({
   // Track if we just handled a user scroll to avoid over-scrolling animation
   const handledUserScroll = useRef(false);
   const lastEmittedValueRef = useRef<number | string>(value);
-  
+
   const selectedIndex = options.findIndex((item) => item.value === value);
 
   const flatListRef = useRef<FlatList>(null);
@@ -126,7 +129,9 @@ const WheelPicker: React.FC<Props> = ({
     handleScrollEnd(event);
   };
 
-  const scrollEndDragTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollEndDragTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
 
   const handleScrollEndDrag = (
     event: NativeSyntheticEvent<NativeScrollEvent>

@@ -31,5 +31,4 @@ describe('meals constants', () => {
       expect(MEAL_TYPES).toContain(result);
     });
   });
-
 });

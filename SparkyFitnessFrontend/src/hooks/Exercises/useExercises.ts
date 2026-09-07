@@ -10,7 +10,6 @@ import {
   assetKeys,
   exerciseEntryKeys,
   exerciseKeys,
-  suggestedExercisesKeys,
 } from '@/api/keys/exercises';
 import {
   loadExercises,
@@ -24,7 +23,6 @@ import {
   importExerciseHistory,
   importFitFiles,
   getExerciseById,
-  getSuggestedExercises,
   getBodyMapSvg,
 } from '@/api/Exercises/exerciseService';
 import i18n from '@/i18n';
@@ -295,22 +293,6 @@ export const exerciseByIdOptions = (id: string) => ({
     ),
   },
 });
-export const useSuggestedExercises = (limit: number) => {
-  const { t } = useTranslation();
-
-  return useQuery({
-    queryKey: suggestedExercisesKeys.byLimit(limit),
-    queryFn: () => getSuggestedExercises(limit),
-    enabled: limit > 0,
-    meta: {
-      errorMessage: t(
-        'exercise.failedToFetchSuggested',
-        'Could not load suggested exercises.'
-      ),
-    },
-  });
-};
-
 export const exerciseProgressOptions = (
   exerciseId: string,
   startDate: string,

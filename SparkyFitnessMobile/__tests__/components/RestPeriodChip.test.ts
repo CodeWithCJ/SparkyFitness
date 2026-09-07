@@ -1,5 +1,12 @@
-import { formatRest, formatRestLabel } from '../../src/components/RestPeriodChip';
-import { clampRestSeconds, MIN_REST_SEC, MAX_REST_SEC } from '../../src/components/RestPeriodSheet';
+import {
+  formatRest,
+  formatRestLabel,
+} from '../../src/components/RestPeriodChip';
+import {
+  clampRestSeconds,
+  MIN_REST_SEC,
+  MAX_REST_SEC,
+} from '../../src/components/RestPeriodSheet';
 import { DEFAULT_REST_SEC } from '../../src/utils/workoutSession';
 import {
   useAppPreferencesStore,

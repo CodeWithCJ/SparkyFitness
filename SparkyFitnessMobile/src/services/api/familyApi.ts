@@ -10,22 +10,22 @@ interface AccessibleFamilyUserResponse {
 }
 
 const hasDiaryPermission = (
-  permissions: AccessibleFamilyUserResponse['permissions'],
+  permissions: AccessibleFamilyUserResponse['permissions']
 ) =>
   Boolean(
     permissions?.diary ||
-      permissions?.calorie ||
-      permissions?.can_manage_diary ||
-      permissions?.can_view_reports ||
-      permissions?.can_view_food_library,
+    permissions?.calorie ||
+    permissions?.can_manage_diary ||
+    permissions?.can_view_reports ||
+    permissions?.can_view_food_library
   );
 
 const hasCopyPermission = (
-  permissions: AccessibleFamilyUserResponse['permissions'],
+  permissions: AccessibleFamilyUserResponse['permissions']
 ) =>
   Boolean(
     permissions?.can_manage_diary &&
-      (permissions.food_list || permissions.can_view_food_library),
+    (permissions.food_list || permissions.can_view_food_library)
   );
 
 export async function fetchFamilyDiaryUsers(): Promise<FamilyDiaryUser[]> {
@@ -36,8 +36,8 @@ export async function fetchFamilyDiaryUsers(): Promise<FamilyDiaryUser[]> {
   });
 
   return users
-    .filter(user => hasDiaryPermission(user.permissions))
-    .map(user => ({
+    .filter((user) => hasDiaryPermission(user.permissions))
+    .map((user) => ({
       userId: user.user_id,
       displayName: user.full_name ?? user.email ?? '',
       email: user.email,

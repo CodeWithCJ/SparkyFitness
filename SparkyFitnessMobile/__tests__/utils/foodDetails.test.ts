@@ -37,7 +37,7 @@ function makeItem(overrides: Partial<FoodInfoItem> = {}): FoodInfoItem {
 }
 
 function makeLocalVariant(
-  overrides: Partial<FoodVariantDetail> = {},
+  overrides: Partial<FoodVariantDetail> = {}
 ): FoodVariantDetail {
   return {
     id: 'variant-1',
@@ -53,7 +53,7 @@ function makeLocalVariant(
 }
 
 function makeExternalVariant(
-  overrides: Partial<ExternalFoodVariant> = {},
+  overrides: Partial<ExternalFoodVariant> = {}
 ): ExternalFoodVariant {
   return {
     serving_size: 1,
@@ -70,7 +70,7 @@ function makeExternalVariant(
 function makeDisplayVariant(
   serving_size: number,
   serving_unit: string,
-  serving_description?: string,
+  serving_description?: string
 ) {
   return { serving_size, serving_unit, serving_description };
 }
@@ -83,7 +83,7 @@ describe('formatServingDescription', () => {
 
   it('collapses multiple whitespace', () => {
     expect(formatServingDescription('1  Stück   (30 g)')).toBe(
-      '1 Stück (30 g)',
+      '1 Stück (30 g)'
     );
   });
 
@@ -97,7 +97,7 @@ describe('formatServingDescription', () => {
 
   it('preserves decimals and units', () => {
     expect(formatServingDescription('1.5_cups_(350_ml)')).toBe(
-      '1.5 cups (350 ml)',
+      '1.5 cups (350 ml)'
     );
   });
 
@@ -117,14 +117,14 @@ describe('toPersistedServingUnit', () => {
         serving_size: 200,
         serving_unit: 'g',
         serving_description: '200 g',
-      }),
+      })
     ).toBe('g');
     expect(
       toPersistedServingUnit({
         serving_size: 250,
         serving_unit: 'g',
         serving_description: '1 cup (250 g)',
-      }),
+      })
     ).toBe('g');
   });
 
@@ -134,27 +134,27 @@ describe('toPersistedServingUnit', () => {
         serving_size: 1,
         serving_unit: 'package',
         serving_description: '1 package (200 g)',
-      }),
+      })
     ).toBe('package (200 g)');
     expect(
       toPersistedServingUnit({
         serving_size: 1,
         serving_unit: 'package',
         serving_description: '1 package (400 g)',
-      }),
+      })
     ).toBe('package (400 g)');
   });
 
   it('preserves a plain unit when no metric context is available', () => {
     expect(
-      toPersistedServingUnit({ serving_size: 1, serving_unit: 'serving' }),
+      toPersistedServingUnit({ serving_size: 1, serving_unit: 'serving' })
     ).toBe('serving');
     expect(
       toPersistedServingUnit({
         serving_size: 200,
         serving_unit: 'glass.small',
         serving_description: 'Small glass',
-      }),
+      })
     ).toBe('glass.small');
   });
 
@@ -164,7 +164,7 @@ describe('toPersistedServingUnit', () => {
         serving_size: 1,
         serving_unit: 'package (200 g)',
         serving_description: '1 package (200 g)',
-      }),
+      })
     ).toBe('package (200 g)');
   });
 });
@@ -243,7 +243,7 @@ describe('selectDisplayVariant', () => {
 
     expect(
       selectDisplayVariant(reference, [reference, package200, package400])
-        .orderedVariants,
+        .orderedVariants
     ).toEqual([package200, reference, package400]);
   });
 
@@ -303,7 +303,7 @@ describe('selectDisplayVariant', () => {
         serving_size: 1,
         serving_unit: 'package',
         serving_description: '1 package (400 g)',
-      },
+      }
     );
     expect(result.displayVariant).toBe(package400);
   });
@@ -312,7 +312,7 @@ describe('selectDisplayVariant', () => {
 describe('formatVariantLabel', () => {
   test('formats as "{size} {unit} ({cal} cal)"', () => {
     expect(
-      formatVariantLabel({ servingSize: 100, servingUnit: 'g', calories: 52 }),
+      formatVariantLabel({ servingSize: 100, servingUnit: 'g', calories: 52 })
     ).toBe('100 g (52 cal)');
   });
 
@@ -323,7 +323,7 @@ describe('formatVariantLabel', () => {
         servingUnit: 'piece',
         servingDescription: '1 piece (15 g)',
         calories: 50,
-      }),
+      })
     ).toBe('1 piece (15 g) (50 cal)');
   });
 });
@@ -439,7 +439,7 @@ describe('buildLocalVariantOptions', () => {
     ];
 
     expect(resolveLocalPickerVariantId(variants, 'v-portion-grams')).toBe(
-      'v-portion',
+      'v-portion'
     );
   });
 });
@@ -453,7 +453,9 @@ describe('convertEquivalentVariantQuantity', () => {
   test('returns undefined when serving sizes are missing or invalid', () => {
     expect(convertEquivalentVariantQuantity(2, undefined, 150)).toBeUndefined();
     expect(convertEquivalentVariantQuantity(2, 1, 0)).toBeUndefined();
-    expect(convertEquivalentVariantQuantity(Number.NaN, 1, 150)).toBeUndefined();
+    expect(
+      convertEquivalentVariantQuantity(Number.NaN, 1, 150)
+    ).toBeUndefined();
   });
 });
 
@@ -476,7 +478,7 @@ describe('buildExternalVariantOptions', () => {
       }),
     ]);
 
-    expect(options.map(option => option.label)).toEqual([
+    expect(options.map((option) => option.label)).toEqual([
       '1 package (200 g) (100 cal)',
       '1 package (400 g) (200 cal)',
     ]);
@@ -493,7 +495,7 @@ describe('buildExternalVariantOptions', () => {
       }),
     ]);
 
-    expect(options.map(option => option.id)).toEqual(['ext-0', 'ext-1']);
+    expect(options.map((option) => option.id)).toEqual(['ext-0', 'ext-1']);
     expect(options[0].label).toBe('1 small (60 cal)');
     expect(options[1].label).toBe('1 large (120 cal)');
   });
@@ -529,7 +531,7 @@ describe('buildExternalVariantOptions', () => {
       }),
     ]);
 
-    expect(options.map(option => option.label)).toEqual([
+    expect(options.map((option) => option.label)).toEqual([
       '1 Fruit (4.9 g) (3 cal)',
       '100 g (61 cal)',
     ]);
@@ -626,7 +628,7 @@ describe('applyDisplayValuesToFoodInfo', () => {
         fat: 2,
         fiber: 3,
       },
-      'variant-xyz',
+      'variant-xyz'
     );
 
     expect(merged.calories).toBe(200);
@@ -737,14 +739,14 @@ describe('groupEquivalentVariants', () => {
 
       const groups = groupEquivalentVariants([legacy, package200, package400]);
 
-      expect(groups.map(group => group.base.id)).toEqual([
+      expect(groups.map((group) => group.base.id)).toEqual([
         'package-200',
         'package-400',
       ]);
-      expect(groups[0].equivalents.map(equivalent => equivalent.id)).toEqual([
+      expect(groups[0].equivalents.map((equivalent) => equivalent.id)).toEqual([
         'legacy-package',
       ]);
-    },
+    }
   );
 
   test('promotes non-reference variant to base when 100g matches first', () => {
@@ -772,7 +774,7 @@ describe('groupEquivalentVariants', () => {
     expect(groups).toHaveLength(1);
     // 'b' (cup) becomes base because reference (100g) is a reference serving
     expect(groups[0].base.id).toBe('b');
-    expect(groups[0].equivalents.map(eq => eq.id)).toEqual(['a', 'c']);
+    expect(groups[0].equivalents.map((eq) => eq.id)).toEqual(['a', 'c']);
   });
 
   test('splits into separate groups when nutrition differs', () => {
@@ -816,7 +818,7 @@ describe('groupEquivalentVariants', () => {
 
     expect(groups).toHaveLength(1);
     expect(groups[0].base.id).toBe('named');
-    expect(groups[0].equivalents.map(eq => eq.id)).toContain('metric');
+    expect(groups[0].equivalents.map((eq) => eq.id)).toContain('metric');
   });
 });
 
@@ -855,7 +857,7 @@ describe('diffSiblingRows', () => {
 
     const { creates, updates, deletes } = diffSiblingRows(current, desired);
 
-    expect(updates.map(u => u.id)).toEqual(['b']);
+    expect(updates.map((u) => u.id)).toEqual(['b']);
     expect(updates[0].serving_size).toBe(2);
     expect(creates).toHaveLength(1);
     expect(creates[0].serving_unit).toBe('oz');
@@ -901,7 +903,7 @@ describe('diffSiblingRows', () => {
     });
     const { updates } = diffSiblingRows(
       [variant],
-      [{ ...variant, custom_nutrients: { magnesium: 50 } }],
+      [{ ...variant, custom_nutrients: { magnesium: 50 } }]
     );
     expect(updates).toEqual([]);
   });

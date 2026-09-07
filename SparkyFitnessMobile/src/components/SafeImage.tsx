@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, type ImageStyle, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  type ImageStyle,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { Image, type ImageContentFit } from 'expo-image';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
@@ -18,7 +24,7 @@ interface SafeImageProps {
 }
 
 function getImageSourceSignature(
-  source: { uri: string; headers: Record<string, string> } | null,
+  source: { uri: string; headers: Record<string, string> } | null
 ): string {
   if (!source) return '';
 
@@ -78,10 +84,13 @@ const SafeImage: React.FC<SafeImageProps> = ({
 
   useEffect(() => {
     if (!error || attempt >= MAX_RETRIES) return;
-    const timer = setTimeout(() => {
-      setError(false);
-      setAttempt((a) => a + 1);
-    }, RETRY_DELAY_MS * (attempt + 1));
+    const timer = setTimeout(
+      () => {
+        setError(false);
+        setAttempt((a) => a + 1);
+      },
+      RETRY_DELAY_MS * (attempt + 1)
+    );
     return () => clearTimeout(timer);
   }, [error, attempt]);
 
@@ -108,7 +117,10 @@ const SafeImage: React.FC<SafeImageProps> = ({
   return (
     <View style={[style as StyleProp<ViewStyle>, styles.frame]}>
       {(showUnderlay || failed) && !settled && (
-        <Animated.View entering={FadeIn.duration(TRANSITION_MS)} style={StyleSheet.absoluteFill}>
+        <Animated.View
+          entering={FadeIn.duration(TRANSITION_MS)}
+          style={StyleSheet.absoluteFill}
+        >
           {fallback}
         </Animated.View>
       )}

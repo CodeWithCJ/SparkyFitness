@@ -43,6 +43,7 @@ export default function MarkdownMessage({
   color,
   fontSize,
   streaming = true,
+  styleOverrides,
 }: {
   text: string;
   /** Body text color. Defaults to the theme's primary text color. */
@@ -51,15 +52,21 @@ export default function MarkdownMessage({
   fontSize?: number;
   /** Fade in appended characters. Leave off for already-complete text. */
   streaming?: boolean;
+  /**
+   * Per-element style overrides merged over the themed defaults. Notes use it
+   * to size embedded photos, which chat never has.
+   */
+  styleOverrides?: MarkdownStyle;
 }) {
-  const [textPrimary, muted, accent, raised, background, border] = useCSSVariable([
-    '--color-text-primary',
-    '--color-text-muted',
-    '--color-accent-primary',
-    '--color-raised',
-    '--color-background',
-    '--color-border-subtle',
-  ]) as [string, string, string, string, string, string];
+  const [textPrimary, muted, accent, raised, background, border] =
+    useCSSVariable([
+      '--color-text-primary',
+      '--color-text-muted',
+      '--color-accent-primary',
+      '--color-raised',
+      '--color-background',
+      '--color-border-subtle',
+    ]) as [string, string, string, string, string, string];
 
   const body = color ?? textPrimary;
 
@@ -82,10 +89,15 @@ export default function MarkdownMessage({
       blockquote: { color: muted, borderColor: border },
       link: { color: accent, underline: true },
       code: { color: body, backgroundColor: raised },
-      codeBlock: { color: body, backgroundColor: background, borderColor: border },
+      codeBlock: {
+        color: body,
+        backgroundColor: background,
+        borderColor: border,
+      },
       thematicBreak: { color: border },
+      ...styleOverrides,
     }),
-    [body, muted, accent, raised, background, border, fontSize]
+    [body, muted, accent, raised, background, border, fontSize, styleOverrides]
   );
 
   const markdown = useMemo(() => remend(text, REMEND_OPTIONS), [text]);

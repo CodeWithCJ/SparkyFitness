@@ -7,6 +7,7 @@ vi.mock('../models/foodRepository.js', () => ({
     getFoodVariantById: vi.fn(),
     bulkCreateFoodEntries: vi.fn(),
     deleteFoodEntryComponentsByFoodEntryMealId: vi.fn(),
+    getFoodEntryComponentsByFoodEntryMealId: vi.fn(),
   },
 }));
 
@@ -15,6 +16,8 @@ vi.mock('../models/foodEntryMealRepository.js', () => ({
     createFoodEntryMeal: vi.fn(),
     updateFoodEntryMeal: vi.fn(),
     moveFoodEntryMealToMealType: vi.fn(),
+    getFoodEntryMealById: vi.fn(),
+    getFoodEntryMealComponents: vi.fn(),
   },
 }));
 
@@ -30,6 +33,7 @@ vi.mock('../config/logging.js', () => ({
 
 import {
   createFoodEntryMeal,
+  getFoodEntryMealWithComponents,
   moveFoodEntryMealToMealType,
   updateFoodEntryMeal,
 } from '../services/foodEntryService.js';
@@ -369,6 +373,204 @@ describe('foodEntryMealService', () => {
       expect(foodRepository.getFoodById).not.toHaveBeenCalled();
       expect(foodRepository.getFoodVariantById).not.toHaveBeenCalled();
       expect(foodRepository.bulkCreateFoodEntries).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateFoodEntryMeal component dates', () => {
+    // entry_date was the one inherited field with no fallback to the stored
+    // row. Omitting it sent undefined into the NOT NULL column, and because the
+    // delete had already run the entry was left with no components at all.
+    it('falls back to the stored entry_date when the update omits it', async () => {
+      vi.mocked(foodEntryMealRepository.updateFoodEntryMeal).mockResolvedValue({
+        id: 'meal-entry-1',
+        meal_type_id: 'breakfast-id',
+        entry_date: '2026-06-19',
+        quantity: 1,
+        unit: 'serving',
+        entry_total_servings: 1,
+        legacy_serving_unit_math: false,
+      });
+
+      vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+        id: 'food-1',
+        name: 'Food',
+        default_variant: { id: 'variant-1' },
+      });
+      vi.mocked(foodRepository.getFoodVariantById).mockResolvedValue({
+        id: 'variant-1',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 100,
+      });
+
+      await updateFoodEntryMeal('user-1', 'user-1', 'meal-entry-1', {
+        name: 'Renamed',
+        foods: [
+          {
+            food_id: 'food-1',
+            variant_id: 'variant-1',
+            quantity: 100,
+            unit: 'g',
+          },
+        ],
+      });
+
+      expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledWith(
+        [expect.objectContaining({ entry_date: '2026-06-19' })],
+        'user-1'
+      );
+    });
+  });
+
+  describe('snapshotted serving model', () => {
+    it('snapshots entry_total_servings from template when logging', async () => {
+      vi.mocked(mealRepository.getMealById).mockResolvedValue({
+        id: 'template-soup',
+        name: 'Big Pot Soup',
+        serving_size: 250,
+        serving_unit: 'ml',
+        total_servings: 8,
+        foods: [
+          {
+            food_id: 'broth',
+            variant_id: 'broth-var',
+            quantity: 2000,
+            unit: 'ml',
+          },
+        ],
+      });
+
+      vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+        id: 'broth',
+        name: 'Broth',
+      });
+      vi.mocked(foodRepository.getFoodVariantById).mockResolvedValue({
+        id: 'broth-var',
+        serving_size: 100,
+        serving_unit: 'ml',
+        calories: 20,
+      });
+
+      vi.mocked(foodEntryMealRepository.createFoodEntryMeal).mockResolvedValue({
+        id: 'entry-soup-1',
+        user_id: 'user-1',
+        meal_type_id: 'lunch-id',
+        quantity: 500,
+        unit: 'ml',
+        entry_total_servings: 2000,
+      });
+
+      await createFoodEntryMeal('user-1', 'user-1', {
+        meal_template_id: 'template-soup',
+        meal_type_id: 'lunch-id',
+        entry_date: '2026-09-01',
+        quantity: 500,
+        unit: 'ml',
+        _clientMealModelVersion: 2,
+      });
+
+      // Assert snapshot field (250 * 8 = 2000 ml total yield) was saved into food_entry_meals repository
+      expect(foodEntryMealRepository.createFoodEntryMeal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entry_total_servings: 2000,
+          quantity: 500,
+          unit: 'ml',
+        }),
+        'user-1'
+      );
+
+      // Denominator: 2000. Multiplier: 500 / 2000 = 0.25.
+      // Whole dish broth: 2000 ml * 0.25 = 500 ml.
+      expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            food_id: 'broth',
+            quantity: 500,
+          }),
+        ],
+        'user-1'
+      );
+    });
+
+    it('unscales component foods using snapshotted yield without querying mealRepository', async () => {
+      vi.mocked(foodEntryMealRepository.getFoodEntryMealById).mockResolvedValue(
+        {
+          id: 'entry-soup-1',
+          user_id: 'user-1',
+          meal_template_id: 'template-soup',
+          quantity: 500,
+          unit: 'ml',
+          entry_total_servings: 2000,
+          legacy_serving_unit_math: false,
+        }
+      );
+
+      vi.mocked(
+        foodRepository.getFoodEntryComponentsByFoodEntryMealId
+      ).mockResolvedValue([
+        {
+          id: 'comp-1',
+          food_id: 'broth',
+          food_name: 'Broth',
+          variant_id: 'broth-var',
+          quantity: 500, // stored scaled quantity
+          unit: 'ml',
+          serving_size: 100,
+          serving_unit: 'ml',
+          calories: 100,
+        },
+      ]);
+
+      const result = await getFoodEntryMealWithComponents(
+        'user-1',
+        'entry-soup-1'
+      );
+
+      // Stored multiplier = 500 / 2000 = 0.25.
+      // Unscaled quantity = 500 / 0.25 = 2000 ml.
+      expect(result?.foods[0].quantity).toBe(2000);
+
+      // Verifies the snapshot was used without touching the live template
+      expect(mealRepository.getMealById).not.toHaveBeenCalled();
+    });
+
+    it('unscales component foods correctly when original meal template was deleted', async () => {
+      vi.mocked(foodEntryMealRepository.getFoodEntryMealById).mockResolvedValue(
+        {
+          id: 'entry-chaat-1',
+          user_id: 'user-1',
+          meal_template_id: null, // template was deleted
+          quantity: 10,
+          unit: 'g',
+          entry_total_servings: 100,
+          legacy_serving_unit_math: false,
+        }
+      );
+
+      vi.mocked(
+        foodRepository.getFoodEntryComponentsByFoodEntryMealId
+      ).mockResolvedValue([
+        {
+          id: 'comp-sev',
+          food_id: 'sev',
+          food_name: 'Sev',
+          variant_id: 'sev-var',
+          quantity: 9.4, // stored scaled 10% quantity
+          unit: 'g',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 520,
+        },
+      ]);
+
+      const result = await getFoodEntryMealWithComponents(
+        'user-1',
+        'entry-chaat-1'
+      );
+
+      // Stored multiplier = 10 / 100 = 0.1.
+      // Unscaled quantity = 9.4 / 0.1 = 94 g.
+      expect(result?.foods[0].quantity).toBe(94);
     });
   });
 });

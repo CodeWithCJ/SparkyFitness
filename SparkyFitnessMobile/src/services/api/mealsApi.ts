@@ -1,7 +1,12 @@
 import { apiFetch } from './apiClient';
 import { postPayloadWithImages } from './imageUploadClient';
 import type { ImageUploadArgs } from '../../utils/pickerImages';
-import { CreateMealPayload, Meal, MealDeletionImpact, UpdateMealPayload } from '../../types/meals';
+import {
+  CreateMealPayload,
+  Meal,
+  MealDeletionImpact,
+  UpdateMealPayload,
+} from '../../types/meals';
 
 /**
  * Fetches all meals for the current user.
@@ -66,7 +71,7 @@ export const searchMeals = async (searchTerm: string): Promise<Meal[]> => {
  */
 export const createMeal = async (
   payload: CreateMealPayload,
-  images?: ImageUploadArgs,
+  images?: ImageUploadArgs
 ): Promise<Meal> => {
   const sendJson = (body: Record<string, unknown>) =>
     apiFetch<Meal>({
@@ -100,7 +105,7 @@ export const createMeal = async (
 export const updateMeal = async (
   id: string,
   payload: UpdateMealPayload,
-  images?: ImageUploadArgs,
+  images?: ImageUploadArgs
 ): Promise<Meal> => {
   const sendJson = (body: Record<string, unknown>) =>
     apiFetch<Meal>({
@@ -145,7 +150,9 @@ export const deleteMeal = async (id: string): Promise<void> => {
 /**
  * Fetches the server's deletion impact summary for a meal.
  */
-export const fetchMealDeletionImpact = async (id: string): Promise<MealDeletionImpact> => {
+export const fetchMealDeletionImpact = async (
+  id: string
+): Promise<MealDeletionImpact> => {
   return apiFetch<MealDeletionImpact>({
     endpoint: `/api/meals/${id}/deletion-impact`,
     serviceName: 'Meals API',

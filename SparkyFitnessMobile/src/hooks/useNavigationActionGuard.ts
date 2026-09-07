@@ -55,7 +55,7 @@ export function useNavigationActionGuard(navigation: FocusAwareNavigation) {
         // has fully released its transition state.
         unlockTimeoutRef.current = setTimeout(releaseLock, 100);
       },
-      { timeout: 500 },
+      { timeout: 500 }
     );
   }, [clearPendingTimers, releaseLock]);
 
@@ -83,7 +83,7 @@ export function useNavigationActionGuard(navigation: FocusAwareNavigation) {
         throw error;
       }
     },
-    [releaseLock],
+    [releaseLock]
   );
 
   return { isNavigationLocked: isLocked, runNavigationAction };

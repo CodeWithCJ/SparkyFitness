@@ -29,7 +29,7 @@ const DIAGNOSTIC_MAX_PAGES = 20;
 export const diagnosticReadRecords = async (
   recordType: string,
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): Promise<unknown[]> => {
   const allRecords: unknown[] = [];
   let pageToken: string | undefined;
@@ -51,7 +51,7 @@ export const diagnosticReadRecords = async (
 
     const result = await readRecords(
       recordType as Parameters<typeof readRecords>[0],
-      options as unknown as Parameters<typeof readRecords>[1],
+      options as unknown as Parameters<typeof readRecords>[1]
     );
 
     const records = result.records || [];
@@ -92,12 +92,13 @@ export const roundDistance = (value: number): number =>
 
 /** Rounding config keyed by substrings that appear in HC unit field names.
  *  Order matters — mercury must precede meter so "inMillimetersOfMercury" matches BP, not distance. */
-const UNIT_FIELD_ROUNDERS: { pattern: RegExp; round: (v: number) => number }[] = [
-  { pattern: /mercury/i, round: roundBloodPressure },
-  { pattern: /calorie|joule|energy/i, round: roundCalories },
-  { pattern: /meter|mile|kilometer|distance/i, round: roundDistance },
-  { pattern: /pressure/i, round: roundBloodPressure },
-];
+const UNIT_FIELD_ROUNDERS: { pattern: RegExp; round: (v: number) => number }[] =
+  [
+    { pattern: /mercury/i, round: roundBloodPressure },
+    { pattern: /calorie|joule|energy/i, round: roundCalories },
+    { pattern: /meter|mile|kilometer|distance/i, round: roundDistance },
+    { pattern: /pressure/i, round: roundBloodPressure },
+  ];
 
 const defaultRound = (v: number): number => Math.round(v);
 
@@ -108,20 +109,24 @@ const defaultRound = (v: number): number => Math.round(v);
  */
 export const roundAllNumericUnits = (
   obj: Record<string, unknown>,
-  parentRound?: (v: number) => number,
+  parentRound?: (v: number) => number
 ): Record<string, unknown> => {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
     if (typeof value === 'number') {
-      const matched = UNIT_FIELD_ROUNDERS.find(r => r.pattern.test(key));
+      const matched = UNIT_FIELD_ROUNDERS.find((r) => r.pattern.test(key));
       const rounder = matched?.round ?? parentRound ?? defaultRound;
       result[key] = rounder(value);
-    } else if (value != null && typeof value === 'object' && !Array.isArray(value)) {
+    } else if (
+      value != null &&
+      typeof value === 'object' &&
+      !Array.isArray(value)
+    ) {
       // Determine parent rounder from the key name (e.g., "energy" → calorie rounder)
-      const matched = UNIT_FIELD_ROUNDERS.find(r => r.pattern.test(key));
+      const matched = UNIT_FIELD_ROUNDERS.find((r) => r.pattern.test(key));
       result[key] = roundAllNumericUnits(
         value as Record<string, unknown>,
-        matched?.round ?? parentRound,
+        matched?.round ?? parentRound
       );
     } else {
       result[key] = value;
@@ -155,12 +160,15 @@ const roundCalorieRecord = (record: unknown): DiagnosticHealthRecord => {
  * Round an ExerciseSession record.
  * HC shape: { startTime, endTime, exerciseType, title?, metadata: { id?, dataOrigin? }, exerciseRoute?, ... }
  */
-const roundExerciseSessionRecord = (record: unknown): DiagnosticHealthRecord => {
+const roundExerciseSessionRecord = (
+  record: unknown
+): DiagnosticHealthRecord => {
   const rec = record as Record<string, unknown>;
   const metadata = rec.metadata as Record<string, unknown> | undefined;
   const energy = rec.energy as Record<string, unknown> | undefined;
   const distance = rec.distance as Record<string, unknown> | undefined;
-  const exerciseRoute = rec.exerciseRoute as Record<string, unknown> | undefined;
+  const exerciseRoute = rec.exerciseRoute as
+    Record<string, unknown> | undefined;
 
   // Calculate duration in minutes from timestamps if available
   let durationMinutes: number | undefined;
@@ -188,7 +196,9 @@ const roundExerciseSessionRecord = (record: unknown): DiagnosticHealthRecord => 
     hasTitle: rec.title != null,
     durationMinutes,
     energy: energy ? roundAllNumericUnits(energy, roundCalories) : undefined,
-    distance: distance ? roundAllNumericUnits(distance, roundDistance) : undefined,
+    distance: distance
+      ? roundAllNumericUnits(distance, roundDistance)
+      : undefined,
     exerciseRoute: routeSummary,
     dataOrigin: metadata?.dataOrigin ?? undefined,
   };
@@ -206,8 +216,12 @@ const roundBloodPressureRecord = (record: unknown): DiagnosticHealthRecord => {
 
   return {
     time: rec.time ?? rec.startTime,
-    systolic: systolic ? roundAllNumericUnits(systolic, roundBloodPressure) : undefined,
-    diastolic: diastolic ? roundAllNumericUnits(diastolic, roundBloodPressure) : undefined,
+    systolic: systolic
+      ? roundAllNumericUnits(systolic, roundBloodPressure)
+      : undefined,
+    diastolic: diastolic
+      ? roundAllNumericUnits(diastolic, roundBloodPressure)
+      : undefined,
     dataOrigin: metadata?.dataOrigin ?? undefined,
   };
 };
@@ -253,7 +267,7 @@ const roundSleepSessionRecord = (record: unknown): DiagnosticHealthRecord => {
   // Preserve stage structure with rounded durations
   let roundedStages: Record<string, unknown>[] | undefined;
   if (Array.isArray(stages)) {
-    roundedStages = stages.map(stage => {
+    roundedStages = stages.map((stage) => {
       const s = stage as Record<string, unknown>;
       const result: Record<string, unknown> = {
         stage: s.stage ?? s.type ?? s.value,
@@ -298,10 +312,14 @@ const METRIC_ROUNDERS: Record<
 export const collectMetricSection = async (
   metricType: DiagnosticMetricType,
   startDate: Date,
-  endDate: Date,
+  endDate: Date
 ): Promise<DiagnosticMetricSection> => {
   try {
-    const rawRecords = await diagnosticReadRecords(metricType, startDate, endDate);
+    const rawRecords = await diagnosticReadRecords(
+      metricType,
+      startDate,
+      endDate
+    );
     const rounder = METRIC_ROUNDERS[metricType];
     const roundedRecords = rawRecords.map(rounder);
 
@@ -326,13 +344,13 @@ export const buildHealthDiagnosticReport =
   async (): Promise<HealthDiagnosticReport> => {
     const endDate = new Date();
     const startDate = new Date(
-      endDate.getTime() - LOOKBACK_HOURS * 60 * 60 * 1000,
+      endDate.getTime() - LOOKBACK_HOURS * 60 * 60 * 1000
     );
 
     const metricSections = await Promise.all(
-      DIAGNOSTIC_METRIC_TYPES.map(metricType =>
-        collectMetricSection(metricType, startDate, endDate),
-      ),
+      DIAGNOSTIC_METRIC_TYPES.map((metricType) =>
+        collectMetricSection(metricType, startDate, endDate)
+      )
     );
 
     return {

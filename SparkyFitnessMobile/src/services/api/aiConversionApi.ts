@@ -13,7 +13,7 @@ import { AI_TIMEOUT_MS } from '../../utils/concurrency';
  * both ends. See SparkyFitnessServer/services/aiUnitConversionService.ts.
  */
 export async function requestAiUnitConversion(
-  payload: AiUnitConversionRequest,
+  payload: AiUnitConversionRequest
 ): Promise<AiUnitConversionResponse> {
   const validatedRequest = aiUnitConversionRequestSchema.parse(payload);
   const response = await apiFetch<unknown>({
