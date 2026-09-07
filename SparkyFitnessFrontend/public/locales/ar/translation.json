@@ -1292,7 +1292,6 @@
     "totalNutrition": "إجمالي القيم الغذائية: السعرات {{calories}}، البروتين {{protein}} غ، الكربوهيدرات {{carbs}} غ، الدهون {{fat}} غ",
     "totalNutritionLabel": "إجمالي القيم الغذائية:",
     "fullRecipeNutritionLabel": "القيم الغذائية للوصفة كاملة:",
-    "loggedNutritionLabel": "القيم الغذائية المسجّلة:",
     "totalServings": "عدد الحصص",
     "totalAmount": "إجمالي الكمية",
     "servingSize": "حجم الحصة",

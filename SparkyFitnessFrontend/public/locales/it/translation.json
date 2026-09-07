@@ -1301,7 +1301,6 @@
     "saveMealButton": "Salva pasto",
     "totalNutritionLabel": "Nutrizione Totale:",
     "fullRecipeNutritionLabel": "Nutrizione Ricetta Totale:",
-    "loggedNutritionLabel": "Dati nutrizionali registrati:",
     "totalServings": "Porzioni totali",
     "totalAmount": "Ammontare Totale",
     "servingSize": "Misura Porzione",
@@ -2428,7 +2427,19 @@
       "asNeededHint": "Tocca per registrare una dose ora (fuori programma o non prevista per oggi).",
       "asNeeded": "Al bisogno",
       "dueToday": "Da assumere oggi",
-      "loadingChecklist": "Caricamento checklist…"
+      "loadingChecklist": "Caricamento checklist…",
+      "scheduled": "Programmate",
+      "undo": "Annulla",
+      "snooze": "Rimanda",
+      "snoozed": "Rimandate",
+      "skip": "Salta",
+      "take": "Preso",
+      "adherenceTitle": "Panoramica assunzioni",
+      "editLogged": "Modifica dose salvata",
+      "takenAt": "Presa alle"
+    },
+    "insights": {
+      "title": "Effetti collaterali e indicazioni"
     }
   }
 }

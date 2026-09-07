@@ -1660,7 +1660,6 @@
     "totalNutrition": "合计营养数据：热量 {{calories}} 、蛋白质 {{protein}} g、碳水 {{carbs}} g、脂肪 {{fat}} g",
     "totalNutritionLabel": "整体营养总值：",
     "fullRecipeNutritionLabel": "整套食谱总营养：",
-    "loggedNutritionLabel": "实际录入营养值：",
     "totalServings": "总份数",
     "totalAmount": "食材总重量",
     "servingSize": "单份规格",

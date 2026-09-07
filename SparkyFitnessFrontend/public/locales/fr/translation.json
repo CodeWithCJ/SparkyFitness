@@ -10,7 +10,8 @@
     "cycle": "Cycle",
     "pregnancy": "Grossesse",
     "medications": "Médicaments",
-    "wellness": "Bien-être"
+    "wellness": "Bien-être",
+    "foodLog": "Journal alimentaire"
   },
   "settings": {
     "profileInformation": {
@@ -443,7 +444,9 @@
     "fatsecretApi": "FatSecret API",
     "openFoodFactsApi": "Open Food Facts API",
     "gotIt": "Compris",
-    "close": "Fermer"
+    "close": "Fermer",
+    "swissFoodApi": "API de la base de données suisse sur la composition des aliments",
+    "usdaApi": "API de la base de données alimentaire de l'USDA"
   },
   "exercise": {
     "title": "Exercices",
@@ -492,7 +495,8 @@
       "importDuplicateTitle": "Échec de l'import : éléments dupliqués trouvées",
       "importDuplicateDescription": "Les éléments suivants existent déjà : {{duplicateList}}. Veuillez les retirer de votre fichier et réessayer.",
       "importError": "Impossible d'importer les données d'exercice. Merci de bien vouloir réessayer.",
-      "importFitTab": "Importer FIT"
+      "importFitTab": "Importer FIT",
+      "modalityLabel": "Type de suivi"
     },
     "addWorkoutPresetDialog": {
       "searchPlaceholder": "Chercher parmi vos séances prédéfinies…",
@@ -544,7 +548,9 @@
       "enterMeasurements": "Saisir des mesures",
       "profileIncompleteTitle": "Profil incomplet",
       "updateProfile": "Mise à jour du profil",
-      "weightTrend": "Tendance du poids"
+      "weightTrend": "Tendance du poids",
+      "adaptiveTdee": "TDEE adaptatif",
+      "burnedEnergyBreakdown": "Répartition de l'énergie dépensée :"
     },
     "editExerciseEntryDialog": {
       "setLabel": "Définir",
@@ -1188,7 +1194,17 @@
     "errorOccurred": "Une erreur s'est produite",
     "confirm": "Confirmer",
     "notApplicable": "N/A",
-    "totalSets": "Total des séries"
+    "totalSets": "Total des séries",
+    "save": "Sauvegarder",
+    "back": "Retour",
+    "next": "Suivant",
+    "close": "Fermer",
+    "error": "Erreur",
+    "delete": "Supprimer",
+    "success": "Succès",
+    "edit": "Modifier",
+    "date": "Date",
+    "loading": "Chargement..."
   },
   "diary": {
     "nutritionSummary": "Résumé nutritionnel",
@@ -1531,7 +1547,6 @@
     "saveMealButton": "Sauvegarder le repas",
     "totalNutritionLabel": "Nutrition totale :",
     "fullRecipeNutritionLabel": "Informations nutritionnelles complètes de la recette :",
-    "loggedNutritionLabel": "Données nutritionnelles enregistrées :",
     "totalServings": "Nombre total de portions",
     "totalAmount": "Montant total",
     "servingSize": "Portion",
@@ -2471,7 +2486,21 @@
     "energyUnitSaveSuccess": "Succès",
     "joules": "Joules",
     "saveError": "Erreur",
-    "saveSuccess": "Succès"
+    "saveSuccess": "Succès",
+    "bmrAlgorithm": "Algorithme BMR",
+    "bmrAlgorithmHint": "Sélectionnez la formule utilisée pour calculer votre métabolisme de base.",
+    "bodyFatAlgorithm": "Algorithme de calcul de la masse graisseuse",
+    "bodyFatAlgorithmHint": "Sélectionnez la formule utilisée pour estimer le pourcentage de graisse corporelle à partir des mesures.",
+    "energyUnitHint": "Choisissez l'unité de votre choix pour afficher les valeurs énergétiques (par exemple, calories, kilojoules).",
+    "energyUnitSaveErrorDesc": "Échec de la mise à jour de l'unité d'énergie.",
+    "energyUnitSaveSuccessDesc": "L'unité d'énergie a été mise à jour avec succès.",
+    "includeBmrInNetCalories": "Intégrer le métabolisme de base (BMR) dans les calories nettes",
+    "includeBmrInNetCaloriesHint": "Lorsque cette option est activée, votre métabolisme de base (BMR) sera déduit de votre apport calorique net quotidien.",
+    "saveErrorDesc": "Échec de l'enregistrement des paramètres de calcul.",
+    "saveSuccessDesc": "Les paramètres de calcul ont été enregistrés avec succès !",
+    "selectBmrAlgorithm": "Sélectionner l'algorithme BMR",
+    "selectBodyFatAlgorithm": "Sélectionner l'algorithme de calcul de la masse graisseuse",
+    "selectEnergyUnitPlaceholder": "Sélectionner une unité d'énergie"
   },
   "sleepScience": {
     "chronotypeEarlyDesc": "Vous vous réveillez naturellement tôt et êtes plus performant le matin.",
@@ -2612,7 +2641,8 @@
       "cyclic": "Cycle : {{on}} jours actifs, {{off}} jours de pause",
       "monthly": "Chaque mois le jour {{day}}",
       "prn": "Au besoin (PRN)",
-      "taper": "Réduction progressive / titration"
+      "taper": "Réduction progressive / titration",
+      "mealRelationSuffix": " ({{meal}})"
     },
     "bodymap": {
       "label": "Carte corporelle des sites d'injection"
@@ -2706,7 +2736,9 @@
         "food_noise": "Bruit alimentaire",
         "fullness": "Satiété",
         "energy": "Énergie"
-      }
+      },
+      "noAccessBody": "Demandez à {{name}} de partager l'accès au suivi pour enregistrer ici la faim, les pensées obsédantes liées à la nourriture, la satiété et le niveau d'énergie.",
+      "noAccessTitle": "Le suivi quotidien GLP-1 nécessite un accès au suivi"
     },
     "sites": {
       "customize": "Personnaliser les sites",
@@ -2763,7 +2795,10 @@
       "editInjection": "Modifier l'injection",
       "notes": "Notes",
       "quickLogTitle": "Où avez-vous effectué l'injection ?",
-      "skipSite": "Ignorer le site"
+      "skipSite": "Ignorer le site",
+      "addInventory": "Ajouter du stock",
+      "notesPlaceholder": "Par ex. : légère sensation de picotement, je me sentais bien",
+      "quickLogHint": "{{name}} — la dose est automatiquement déduite de votre stylo en cours d'utilisation. Vert = site de rotation recommandé."
     },
     "types": {
       "pill": "pilule",
@@ -2820,9 +2855,9 @@
       "servingUnit_capsule_one": "capsule",
       "servingUnit_capsule_many": "capsules",
       "servingUnit_capsule_other": "capsules",
-      "servingUnit_softgel_one": "capsule molle",
-      "servingUnit_softgel_many": "capsules molles",
-      "servingUnit_softgel_other": "capsules molles",
+      "servingUnit_softgel_one": "capsule molle (softgel)",
+      "servingUnit_softgel_many": "capsules molles (softgel)",
+      "servingUnit_softgel_other": "capsules molles (softgel)",
       "servingUnit_pill_one": "pillule",
       "servingUnit_pill_many": "pillules",
       "servingUnit_pill_other": "pillules",
@@ -2843,7 +2878,29 @@
       "nutrientCount_other": "nutriments",
       "customIsOral": "Administration orale",
       "notes": "Notes",
-      "showAdvanced": "Afficher les options avancées"
+      "showAdvanced": "Afficher les options avancées",
+      "supplementNamePlaceholder": "par ex. vitamine D3",
+      "strengthUnit": "Unité de résistance",
+      "doseFollowsStrength": "Maintient l'intensité jusqu'à ce que vous la modifiiez.",
+      "nutritionHelpLabel": "Comment lire votre étiquette",
+      "nutritionHelpSubGram": "Une étiquette indiquant « moins de 1 g » ne précise pas la quantité exacte. Saisissez 0,5 comme valeur médiane, ou 0 pour éviter de surestimer la quantité.",
+      "nutrientsNeedDiaryAccess": "Pour afficher les informations nutritionnelles par dose, l'accès au journal alimentaire est nécessaire pour ce profil. Vous pouvez tout de même enregistrer le complément et en assurer le suivi (calendrier, rappels et doses).",
+      "nutrientNamePlaceholder": "par ex. l'ashwagandha",
+      "empty": "Aucun médicament pour l'instant. Ajoutez-en un premier pour commencer.",
+      "emptyMeds": "Aucun médicament pour l'instant. Ajoutez-en un premier pour commencer.",
+      "emptySupplements": "Aucun complément pour l'instant. Ajoutez-en un premier pour commencer.",
+      "customCadence": "rythme",
+      "customGlpName": "Nom du médicament personnalisé (facultatif)",
+      "customHalfLife": "Demi-vie (jours)",
+      "customTMax": "Délai pour atteindre le pic (jours)",
+      "effectiveness": "Évaluation de l'efficacité",
+      "hideAdvanced": "Masquer les options avancées",
+      "notesPlaceholder": "À prendre avec de l'eau avant le petit-déjeuner. Éviter la consommation d'alcool.",
+      "photoPath": "URL de la photo du comprimé / de l'étiquette (facultatif)",
+      "servingUnit_gummy_one": "gummy",
+      "servingUnit_gummy_many": "gummies",
+      "servingUnit_gummy_other": "gummies",
+      "customGlp1": "GLP-1 personnalisé / Autre..."
     },
     "schedule": {
       "heading": "Horaires et rappels",
@@ -2876,7 +2933,14 @@
       "endDate": "Date de fin (facultatif)",
       "servingUnit": "portion",
       "startDateRequired": "Date de début (Obligatoire)",
-      "weekdays": "Sélectionner des jours"
+      "weekdays": "Sélectionner des jours",
+      "supplementDoseScalingCalories": "Chaque bûche compte {{dose}} portions : {{dose}} x {{perDose}} kcal = {{total}} kcal.",
+      "supplementDoseScaling": "Chaque entrée correspond à {{dose}} portions ; les valeurs nutritionnelles saisies par portion sont donc multipliées par {{dose}}.",
+      "servingsPerLog": "Portions par bûche",
+      "cycleOff": "Jours de congé",
+      "cycleOn": "Jours de travail",
+      "doseAmount": "Quantité de la dose (priorité manuelle)",
+      "time": "Moment de la journée"
     },
     "reports": {
       "logTableTitle": "Tableau du journal des médicaments",
@@ -2927,13 +2991,21 @@
       "tablet": "Tablette",
       "capsule": "Capsule",
       "softgel": "Capsule molle",
-      "gummy": "Gomme vitaminée",
+      "gummy": "Gomme vitaminée (Gummy)",
       "powder": "Poudre",
       "liquid": "Liquide"
     },
     "disclaimer": {
       "accept": "Accepter & Continuer",
-      "title": "Avant de commencer"
+      "title": "Avant de commencer",
+      "acknowledge": "Je comprends que ce dispositif de suivi n'est pas un dispositif médical et ne fournit pas d'avis médical. Je consulterai mon professionnel de santé pour toute décision relative aux médicaments.",
+      "badge": "Suivi des médicaments",
+      "healthTitle": "Avertissement important concernant la santé",
+      "reminderTitle": "Les rappels ne sont pas des alertes médicales",
+      "subtitle": "Veuillez lire et prendre connaissance des informations suivantes avant d'utiliser l'outil de suivi des médicaments.",
+      "text1": "Cette fonctionnalité de suivi des médicaments est destinée uniquement à un usage personnel (tenue de dossiers) et à titre informatif. Elle ne remplace pas l'avis, le diagnostic ou le traitement d'un professionnel de santé.",
+      "text2": "Consultez toujours votre médecin, votre pharmacien ou un autre professionnel de santé qualifié avant de commencer, d'arrêter ou de modifier un traitement médicamenteux. Ne négligez jamais un avis médical professionnel et ne tardez pas à consulter en raison d'informations fournies par cet outil de suivi.",
+      "text3": "Les rappels de prise et le suivi de l'observance sont des fonctionnalités pratiques. Ils ne tiennent pas nécessairement compte des interactions médicamenteuses, des contre-indications ou des ajustements de posologie prescrits par votre équipe soignante. Vous êtes seul responsable de la prise de vos médicaments conformément à la prescription."
     },
     "mealRelation": {
       "after": "Après le repas",
@@ -2947,7 +3019,16 @@
       "everyNDays": "Tous les N jours",
       "monthly": "Mensuellement",
       "prn": "Au besoin (PRN)",
-      "weekly": "Jours spécifiques de la semaine"
+      "weekly": "Jours spécifiques de la semaine",
+      "cyclic": "Cyclique (Marche/Arrêt)"
+    },
+    "beta": {
+      "description": "Attendez-vous à quelques imperfections. Si vous rencontrez des bugs ou des problèmes, signalez-les sur GitHub pour nous aider à nous améliorer !",
+      "title": "Version bêta initiale"
+    },
+    "print": {
+      "dates": "Période de rapport :",
+      "header": "Rapport sur les médicaments prescrits"
     }
   },
   "chat": {
