@@ -5,6 +5,7 @@ import checkInPhotoUpload, {
   getImageExtension,
 } from '../middleware/checkInPhotoUpload.js';
 import checkInPhotoService from '../services/checkInPhotoService.js';
+import { demoGuard } from '../middleware/demoGuardMiddleware.js';
 import { log } from '../config/logging.js';
 import {
   CheckInPhotoDateParamSchema,
@@ -259,6 +260,7 @@ router.post(
   '/:date/:type',
   authenticate,
   checkPermissionMiddleware('checkin'),
+  demoGuard,
   (req, res, next) => {
     const parsed = CheckInPhotoUploadParamSchema.safeParse(req.params);
     if (!parsed.success) {
@@ -330,6 +332,7 @@ router.delete(
   '/photo/:id',
   authenticate,
   checkPermissionMiddleware('checkin'),
+  demoGuard,
   async (req, res) => {
     const parsed = CheckInPhotoIdParamSchema.safeParse(req.params);
     if (!parsed.success) {

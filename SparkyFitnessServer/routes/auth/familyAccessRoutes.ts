@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticate } from '../../middleware/authMiddleware.js';
+import { demoGuard } from '../../middleware/demoGuardMiddleware.js';
 import authService from '../../services/authService.js';
 import { log } from '../../config/logging.js';
 const router = express.Router();
@@ -223,42 +224,47 @@ router.get('/family-access', authenticate, async (req, res, next) => {
  *       500:
  *         description: Server error.
  */
-router.post('/family-access', authenticate, async (req, res, next) => {
-  const entryData = req.body;
-  // Normalize access_permissions keys (replace spaces with underscores)
-  if (entryData.access_permissions) {
-    const normalizedPermissions = {};
-    for (const [key, value] of Object.entries(entryData.access_permissions)) {
-      // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-      normalizedPermissions[key.replace(/ /g, '_')] = value;
+router.post(
+  '/family-access',
+  authenticate,
+  demoGuard,
+  async (req, res, next) => {
+    const entryData = req.body;
+    // Normalize access_permissions keys (replace spaces with underscores)
+    if (entryData.access_permissions) {
+      const normalizedPermissions = {};
+      for (const [key, value] of Object.entries(entryData.access_permissions)) {
+        // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
+        normalizedPermissions[key.replace(/ /g, '_')] = value;
+      }
+      entryData.access_permissions = normalizedPermissions;
     }
-    entryData.access_permissions = normalizedPermissions;
-  }
-  if (
-    !entryData.family_user_id ||
-    !entryData.family_email ||
-    !entryData.access_permissions
-  ) {
-    return res.status(400).json({
-      error:
-        'Family User ID, Family Email, and Access Permissions are required.',
-    });
-  }
-  try {
-    const newEntry = await authService.createFamilyAccessEntry(
-      req.authenticatedUserId || req.userId,
-      entryData
-    );
-    res.status(201).json(newEntry);
-  } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
+    if (
+      !entryData.family_user_id ||
+      !entryData.family_email ||
+      !entryData.access_permissions
+    ) {
+      return res.status(400).json({
+        error:
+          'Family User ID, Family Email, and Access Permissions are required.',
+      });
+    }
+    try {
+      const newEntry = await authService.createFamilyAccessEntry(
+        req.authenticatedUserId || req.userId,
+        entryData
+      );
+      res.status(201).json(newEntry);
+    } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(403).json({ error: error.message });
+      if (error.message.startsWith('Forbidden')) {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 /**
  * @swagger
  * /identity/family-access/{id}:
@@ -308,45 +314,52 @@ router.post('/family-access', authenticate, async (req, res, next) => {
  *       500:
  *         description: Server error.
  */
-router.put('/family-access/:id', authenticate, async (req, res, next) => {
-  const { id } = req.params;
-  const updateData = req.body;
-  // Normalize access_permissions keys (replace spaces with underscores)
-  if (updateData.access_permissions) {
-    const normalizedPermissions = {};
-    for (const [key, value] of Object.entries(updateData.access_permissions)) {
-      // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
-      normalizedPermissions[key.replace(/ /g, '_')] = value;
+router.put(
+  '/family-access/:id',
+  authenticate,
+  demoGuard,
+  async (req, res, next) => {
+    const { id } = req.params;
+    const updateData = req.body;
+    // Normalize access_permissions keys (replace spaces with underscores)
+    if (updateData.access_permissions) {
+      const normalizedPermissions = {};
+      for (const [key, value] of Object.entries(
+        updateData.access_permissions
+      )) {
+        // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
+        normalizedPermissions[key.replace(/ /g, '_')] = value;
+      }
+      updateData.access_permissions = normalizedPermissions;
     }
-    updateData.access_permissions = normalizedPermissions;
-  }
-  if (!id) {
-    return res.status(400).json({ error: 'Family Access ID is required.' });
-  }
-  try {
-    const updatedEntry = await authService.updateFamilyAccessEntry(
-      req.authenticatedUserId || req.userId,
-      id,
-      updateData
-    );
-    res.status(200).json(updatedEntry);
-  } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(403).json({ error: error.message });
+    if (!id) {
+      return res.status(400).json({ error: 'Family Access ID is required.' });
     }
-    if (
+    try {
+      const updatedEntry = await authService.updateFamilyAccessEntry(
+        req.authenticatedUserId || req.userId,
+        id,
+        updateData
+      );
+      res.status(200).json(updatedEntry);
+    } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error.message ===
-      'Family access entry not found or not authorized to update.'
-    ) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(404).json({ error: error.message });
+      if (error.message.startsWith('Forbidden')) {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(403).json({ error: error.message });
+      }
+      if (
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error.message ===
+        'Family access entry not found or not authorized to update.'
+      ) {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 /**
  * @swagger
  * /identity/family-access/{id}:
@@ -378,34 +391,39 @@ router.put('/family-access/:id', authenticate, async (req, res, next) => {
  *       500:
  *         description: Server error.
  */
-router.delete('/family-access/:id', authenticate, async (req, res, next) => {
-  const { id } = req.params;
-  if (!id) {
-    return res.status(400).json({ error: 'Family Access ID is required.' });
-  }
-  try {
-    await authService.deleteFamilyAccessEntry(
-      req.authenticatedUserId || req.userId,
-      id
-    );
-    res
-      .status(200)
-      .json({ message: 'Family access entry deleted successfully.' });
-  } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(403).json({ error: error.message });
+router.delete(
+  '/family-access/:id',
+  authenticate,
+  demoGuard,
+  async (req, res, next) => {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ error: 'Family Access ID is required.' });
     }
-    if (
+    try {
+      await authService.deleteFamilyAccessEntry(
+        req.authenticatedUserId || req.userId,
+        id
+      );
+      res
+        .status(200)
+        .json({ message: 'Family access entry deleted successfully.' });
+    } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error.message ===
-      'Family access entry not found or not authorized to delete.'
-    ) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(404).json({ error: error.message });
+      if (error.message.startsWith('Forbidden')) {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(403).json({ error: error.message });
+      }
+      if (
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error.message ===
+        'Family access entry not found or not authorized to delete.'
+      ) {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 export default router;

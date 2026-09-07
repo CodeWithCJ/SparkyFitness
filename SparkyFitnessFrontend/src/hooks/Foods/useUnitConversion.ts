@@ -129,7 +129,9 @@ export function useUnitConversion({
 
   const convertibleUnits = useMemo(() => {
     const existingUnits = new Set(
-      variants.map((v) => v.serving_unit.toLowerCase())
+      variants
+        .map((v) => (v.serving_unit ? v.serving_unit.toLowerCase() : ''))
+        .filter(Boolean)
     );
     return ALL_CONVERSION_UNITS.filter(
       (u) => !existingUnits.has(u.toLowerCase())

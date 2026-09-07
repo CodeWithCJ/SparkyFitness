@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
+import { demoGuard } from '../middleware/demoGuardMiddleware.js';
 import externalProviderService from '../services/externalProviderService.js';
 import { log } from '../config/logging.js';
 const router = express.Router();
@@ -217,7 +218,7 @@ router.get('/user/:targetUserId', authenticate, async (req, res, next) => {
  *       500:
  *         description: Failed to create external data provider.
  */
-router.post('/', authenticate, async (req, res, next) => {
+router.post('/', authenticate, demoGuard, async (req, res, next) => {
   try {
     const newProvider =
       await externalProviderService.createExternalDataProvider(
@@ -296,7 +297,7 @@ router.post('/', authenticate, async (req, res, next) => {
  *       500:
  *         description: Failed to update external data provider.
  */
-router.put('/:id', authenticate, async (req, res, next) => {
+router.put('/:id', authenticate, demoGuard, async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'Provider ID is required.' });
@@ -357,7 +358,7 @@ router.put('/:id', authenticate, async (req, res, next) => {
  *       500:
  *         description: Failed to delete external data provider.
  */
-router.delete('/:id', authenticate, async (req, res, next) => {
+router.delete('/:id', authenticate, demoGuard, async (req, res, next) => {
   const { id } = req.params;
   if (!id) {
     return res.status(400).json({ error: 'Provider ID is required.' });
