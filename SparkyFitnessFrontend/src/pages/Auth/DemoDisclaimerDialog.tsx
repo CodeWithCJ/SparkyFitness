@@ -65,7 +65,7 @@ export const DemoDisclaimerDialog: React.FC<DemoDisclaimerDialogProps> = ({
             <div className="flex-1">
               <div className="flex items-center justify-between">
                 <p className="font-medium text-foreground">
-                  {t('auth.demoLicenseTitle', 'Non-Commercial License & Terms')}
+                  {t('auth.demoLicenseTitle', 'License & Terms')}
                 </p>
                 <a
                   href="https://github.com/CodeWithCJ/SparkyFitness/blob/main/LICENSE"
