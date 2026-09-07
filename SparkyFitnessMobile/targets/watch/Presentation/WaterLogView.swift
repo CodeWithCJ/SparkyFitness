@@ -109,7 +109,7 @@ struct WaterLogView: View {
     /// Formatted in the account's configured water unit, the same way the
     /// bottle's label and the container squares are.
     private func amountText(_ entry: WaterLogEntry) -> String {
-        water?.formattedAmount(ml: entry.volumeMl) ?? "\(Int(entry.volumeMl))ml"
+        store.context.formattedWater(ml: entry.volumeMl)
     }
 
     private func confirmation(for entry: WaterLogEntry) -> some View {

@@ -67,7 +67,7 @@ struct NutritionSnapshot: Codable, Equatable {
 /// ml → "500ml" / "16.9oz" / "0.31L", matching the phone app's own
 /// conventions (`WATER_UNIT_LABELS`, `formatUnitVolume`): no space before the
 /// unit, and decimals that make sense for the unit's usual precision.
-/// Shared by `WaterContainer.displayVolume` and `WaterSnapshot.formattedAmount`
+/// Shared by `WaterContainer.displayVolume` and `WatchContext.formattedWater`
 /// — the only two places that turn a raw ml figure into user-facing text.
 private func formatWaterMl(_ ml: Double, unit: String) -> String {
     let converted: Double
@@ -133,29 +133,35 @@ struct WaterLogEntry: Codable, Equatable, Identifiable {
 /// configuration, not a measurement: they don't stop being true at midnight,
 /// and bundling them in here meant the day rollover took them with it — see
 /// `WatchContext.waterContainers`.
+/// What was drunk today. Deliberately holds no goal and no unit: both of those
+/// are account configuration that outlives the day, and keeping them in here
+/// meant a morning with no snapshot yet had no goal either — so `progress` was
+/// a hard zero and the bottle could not render an optimistic tap at all. Same
+/// mistake `waterContainers` used to have. They live on `WatchContext` now.
 struct WaterSnapshot: Codable, Equatable {
     let day: String
     let consumedMl: Double
-    let goalMl: Double
     /// Today's individual drinks, newest first. Empty is a real state (nothing
     /// logged yet), distinct from the whole snapshot being nil.
     let log: [WaterLogEntry]
-    /// The app's globally configured water display unit — independent of any
-    /// one container's own `unit` — for the label above the bottle. The watch
-    /// builds this whole struct itself, so it defaults to `ml` (the phone's
-    /// own fallback) rather than needing to be Optional.
-    let displayUnit: String
 
-    var progress: Double { goalMl > 0 ? max(0, min(1, consumedMl / goalMl)) : 0 }
     var isToday: Bool { day == CheckInDate.today() }
+}
 
-    /// `ml` formatted in `displayUnit` — used for a specific amount (which may
-    /// include a not-yet-confirmed tap) rather than always `consumedMl`
-    /// itself, so the label above the bottle can track the same optimistic
-    /// bump the fill does.
-    func formattedAmount(ml: Double) -> String {
-        formatWaterMl(ml, unit: displayUnit)
-    }
+/// A container tap the wearer has made but the phone hasn't confirmed.
+///
+/// Lives in `CheckInStore` rather than the Water page's own `@State` so it
+/// survives leaving the page and relaunching the app: the tap is realistically
+/// made with the phone in another room, where confirmation is minutes away.
+struct PendingWaterTap: Codable, Equatable, Identifiable {
+    let id: String
+    let volumeMl: Double
+    /// The day the tap was made. Needed because a tap outlives the app now: a
+    /// glass logged at 23:58 and still unconfirmed at 00:02 belongs to
+    /// yesterday, and must not pre-fill the new day's bottle.
+    let day: String
+
+    var isToday: Bool { day == CheckInDate.today() }
 }
 
 /// One container tap captured on the watch, sent straight to the phone. There
@@ -230,6 +236,11 @@ struct WatchContext: Codable, Equatable {
     /// = synced and the server genuinely has none configured, non-empty =
     /// usable. The page says something different for each.
     var waterContainers: [WaterContainer]?
+    /// Today's water target, and the unit to draw amounts in. Account
+    /// configuration, not day data — see `WaterSnapshot` for why they moved
+    /// out of it — so both are carried forward when a push omits them.
+    var waterGoalMl: Double?
+    var waterDisplayUnit: String?
 
     static let empty = WatchContext(
         today: nil,
@@ -244,11 +255,27 @@ struct WatchContext: Codable, Equatable {
         weightUnit: nil,
         nutrition: nil,
         water: nil,
-        waterContainers: nil
+        waterContainers: nil,
+        waterGoalMl: nil,
+        waterDisplayUnit: nil
     )
 
     /// True when there is no value to anchor the Digital Crown to, which is the
     /// one case where typing beats the crown (see `FirstRunEntryView`).
+    /// Fraction of today's goal, for the bottle and the complication. Nil when
+    /// no goal has ever been synced — distinct from 0, which is a real "none
+    /// drunk yet".
+    func waterProgress(ml: Double) -> Double? {
+        guard let goal = waterGoalMl, goal > 0 else { return nil }
+        return max(0, min(1, ml / goal))
+    }
+
+    /// `ml` in the account's configured unit. Falls back to the phone's own
+    /// default rather than being Optional at the call site.
+    func formattedWater(ml: Double) -> String {
+        formatWaterMl(ml, unit: waterDisplayUnit ?? "ml")
+    }
+
     var hasSeed: Bool { todayWeightKg != nil || lastWeightKg != nil }
 
     /// `weightUnit`, defaulted to kg — the same fallback used everywhere else

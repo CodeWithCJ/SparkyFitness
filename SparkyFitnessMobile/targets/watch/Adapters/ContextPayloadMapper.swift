@@ -21,14 +21,14 @@ enum ContextPayloadMapper {
 
     /// Assembles the full context.
     ///
-    /// `previousContainers` is the carry-forward for a push that didn't
+    /// `previous` supplies the carry-forward values for a push that didn't
     /// include the container key at all: `CheckInStore.apply(context:)`
     /// replaces the stored context wholesale, so without a fallback such a
     /// push would erase a perfectly good container list and strand the Water
     /// page. See `waterContainers(from:)` for why nil and empty differ.
     static func context(
         from payload: [String: Any],
-        previousContainers: [WaterContainer]?
+        previous: WatchContext
     ) -> WatchContext {
         WatchContext(
             today: payload["today"] as? String,
@@ -45,7 +45,12 @@ enum ContextPayloadMapper {
             weightUnit: (payload["weightUnit"] as? String).flatMap(WeightUnit.init(rawValue:)),
             nutrition: nutrition(from: payload),
             water: water(from: payload),
-            waterContainers: waterContainers(from: payload) ?? previousContainers
+            waterContainers: waterContainers(from: payload) ?? previous.waterContainers,
+            // Carried forward for the same reason containers are: these are
+            // account settings, and a push that happens not to mention them
+            // must not blank the bottle's scale.
+            waterGoalMl: payload["waterGoalMl"] as? Double ?? previous.waterGoalMl,
+            waterDisplayUnit: payload["waterDisplayUnit"] as? String ?? previous.waterDisplayUnit
         )
     }
 
@@ -101,18 +106,16 @@ enum ContextPayloadMapper {
 
     /// Today's water totals. Containers are deliberately not part of this —
     /// they're configuration and outlive the day this snapshot describes.
+    /// Nil when the phone didn't send today's total — which is how it says
+    /// "I can't vouch for this day". The goal and unit are read separately in
+    /// `context(from:previous:)`, because those survive the day this describes.
     static func water(from payload: [String: Any]) -> WaterSnapshot? {
-        guard
-            let consumedMl = payload["waterConsumedMl"] as? Double,
-            let goalMl = payload["waterGoalMl"] as? Double
-        else { return nil }
+        guard let consumedMl = payload["waterConsumedMl"] as? Double else { return nil }
 
         return WaterSnapshot(
             day: day(from: payload),
             consumedMl: consumedMl,
-            goalMl: goalMl,
-            log: waterLog(from: payload),
-            displayUnit: payload["waterDisplayUnit"] as? String ?? "ml"
+            log: waterLog(from: payload)
         )
     }
 

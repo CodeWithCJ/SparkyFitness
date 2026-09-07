@@ -24,6 +24,13 @@ final class WatchSessionManager: NSObject, ObservableObject {
 
     private let store = CheckInStore.shared
 
+    /// True while a queued context request is still waiting to be answered.
+    ///
+    /// `transferUserInfo` queues rather than drops, so without this every
+    /// phone-free glance at the watch would leave another request behind, and
+    /// the phone would answer the lot in one burst the next time it woke.
+    private var hasQueuedContextRequest = false
+
     private override init() {
         super.init()
         activate()
@@ -124,7 +131,10 @@ final class WatchSessionManager: NSObject, ObservableObject {
         }
 
         if let water = context.water, water.isToday {
-            ComplicationPublisher.publish(waterProgress: water.progress, for: water.day)
+            ComplicationPublisher.publish(
+                waterProgress: context.waterProgress(ml: water.consumedMl) ?? 0,
+                for: water.day
+            )
         }
     }
 
@@ -149,16 +159,32 @@ final class WatchSessionManager: NSObject, ObservableObject {
         route(received)
     }
 
-    /// Asks the phone for a fresh context (seed values + history). Only works
-    /// while the phone app is running, so the cached context is always the
-    /// fallback.
+    /// Asks the phone for a fresh context (seed values + history).
+    ///
+    /// Two transports, because the interesting case is the one where the phone
+    /// isn't there: `sendMessage` reaches a phone whose app is running right
+    /// now and fails outright otherwise, so on its own it made every glance
+    /// with the phone in another room a silent no-op. `transferUserInfo`
+    /// queues instead, and the system delivers it whenever the phone next
+    /// wakes — the same guarantee check-ins already rely on.
+    ///
+    /// At most one queued request is outstanding: the phone's answer clears the
+    /// flag in `handle(context:)`.
     func requestContext() {
-        guard WCSession.isSupported(), WCSession.default.isReachable else { return }
-        WCSession.default.sendMessage(
-            OutboundPayloads.contextRequest,
-            replyHandler: nil,
-            errorHandler: nil
-        )
+        guard WCSession.isSupported() else { return }
+
+        if WCSession.default.isReachable {
+            WCSession.default.sendMessage(
+                OutboundPayloads.contextRequest,
+                replyHandler: nil,
+                errorHandler: nil
+            )
+            return
+        }
+
+        guard !hasQueuedContextRequest else { return }
+        hasQueuedContextRequest = true
+        WCSession.default.transferUserInfo(OutboundPayloads.contextRequest)
     }
 
     /// Applies an inbound context: into the app's own store, and — separately
@@ -170,10 +196,11 @@ final class WatchSessionManager: NSObject, ObservableObject {
     /// also why they can disagree, which is what `refreshComplications()`
     /// above exists to repair.
     private func handle(context payload: [String: Any]) {
-        let incoming = ContextPayloadMapper.context(
-            from: payload,
-            previousContainers: store.context.waterContainers
-        )
+        // Whatever this is a reply to, the phone has now spoken — so a fresh
+        // queued request is allowed again.
+        hasQueuedContextRequest = false
+
+        let incoming = ContextPayloadMapper.context(from: payload, previous: store.context)
         store.apply(context: incoming)
 
         // The day this payload is ABOUT — not necessarily today. Anything
@@ -191,7 +218,11 @@ final class WatchSessionManager: NSObject, ObservableObject {
         // field: the two water figures already travel for the Water page's
         // bottle, and a third field carrying their ratio would be a second
         // version of the same truth to keep in step.
-        ComplicationPublisher.publish(waterProgress: incoming.water?.progress ?? 0, for: day)
+        let waterMl = incoming.water?.consumedMl ?? 0
+        ComplicationPublisher.publish(
+            waterProgress: incoming.waterProgress(ml: waterMl) ?? 0,
+            for: day
+        )
     }
 
     /// Marks one check-in saved or failed once the phone reports the server

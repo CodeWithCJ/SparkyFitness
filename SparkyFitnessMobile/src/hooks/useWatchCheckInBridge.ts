@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppState } from 'react-native';
 import WatchConnectivity, {
@@ -43,6 +43,37 @@ function goalProgress(consumed: number, goal: number): number {
 
 /** Days of history relayed to the watch — matches the watch's 14-day chart. */
 const HISTORY_DAYS = 14;
+
+/**
+ * Every day-scoped figure, blanked.
+ *
+ * Sent instead of the real ones whenever this hook's data belongs to a
+ * different calendar day than the push does. The watch's mapper returns nil for
+ * both snapshots when the three calorie figures or the two water figures are
+ * missing, so this lands as "not synced yet" on the pages and an empty
+ * complication — the honest answer, and one the wearer can tell apart from a
+ * real zero.
+ *
+ * All of them, not the stale half: a payload the watch can only partly trust is
+ * worse than an empty one, because nothing marks which half is which.
+ */
+const NO_FIGURES_FOR_TODAY = {
+  calorieGoalProgress: null,
+  proteinGoalProgress: null,
+  carbsGoalProgress: null,
+  fatGoalProgress: null,
+  caloriesConsumed: null,
+  caloriesBurned: null,
+  caloriesRemaining: null,
+  proteinConsumed: null,
+  proteinGoal: null,
+  carbsConsumed: null,
+  carbsGoal: null,
+  fatConsumed: null,
+  fatGoal: null,
+  waterConsumedMl: null,
+  waterLog: [] as WatchWaterLogPayload[],
+} as const;
 
 /**
  * Turns a `logged_at` timestamp into the 'HH:MM' shape `formatTimeLabel`
@@ -93,11 +124,36 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     ? 'lbs'
     : 'kg';
 
+  // The calendar day everything below describes.
+  //
+  // State rather than a bare `getTodayDate()` call, because this hook is
+  // mounted for the life of the app and midnight re-renders nothing on its own.
+  // Left as a plain call, the query stayed on yesterday's key while
+  // `pushContext` stamped its payload with today's date — the watch then had
+  // today's numbers, by its own reckoning, and every staleness guard it owns
+  // passed on data from the day before.
+  const [summaryDate, setSummaryDate] = useState(getTodayDate);
+
+  /**
+   * Rolls this hook onto the current day if the clock has moved past it.
+   *
+   * Returns the same value when it hasn't, so React bails out rather than
+   * re-rendering on every inbound watch event. Called from the event handlers
+   * and the foreground listener — all places a fresh day plausibly first
+   * becomes noticeable.
+   */
+  const catchUpToToday = useCallback(() => {
+    setSummaryDate((current) => {
+      const today = getTodayDate();
+      return current === today ? current : today;
+    });
+  }, []);
+
   // Always today's summary regardless of what date the Dashboard happens to
   // have selected — this hook seeds the watch, which only ever cares about
   // today. Same underlying query the Dashboard uses, so this rides its cache
   // rather than adding a second fetch when both are mounted.
-  const { summary: dailySummary } = useDailySummary({ date: getTodayDate(), enabled });
+  const { summary: dailySummary } = useDailySummary({ date: summaryDate, enabled });
 
   // EVERY calorie figure sent to the watch comes from this one object — the
   // same one the phone's own summary bar (DiaryCalorieMacroSummary) and the
@@ -164,8 +220,8 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // on today's date and invalidated by every tap/delete below, so it tracks
   // the same truth the totals do.
   const { data: waterLogEntries } = useQuery({
-    queryKey: waterIntakeLogQueryKey(getTodayDate()),
-    queryFn: () => fetchWaterIntakeLog(getTodayDate()),
+    queryKey: waterIntakeLogQueryKey(summaryDate),
+    queryFn: () => fetchWaterIntakeLog(summaryDate),
     enabled,
   });
 
@@ -211,6 +267,46 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     [containers],
   );
 
+  // Bundled so the day check below is one decision rather than sixteen. The
+  // memo also keeps `pushContext`'s identity stable across renders that changed
+  // nothing it reads.
+  const figuresForSummaryDate = useMemo(
+    () => ({
+      calorieGoalProgress,
+      proteinGoalProgress,
+      carbsGoalProgress,
+      fatGoalProgress,
+      caloriesConsumed,
+      caloriesBurned,
+      caloriesRemaining,
+      proteinConsumed,
+      proteinGoal,
+      carbsConsumed,
+      carbsGoal,
+      fatConsumed,
+      fatGoal,
+      waterConsumedMl,
+      waterLog: watchWaterLog,
+    }),
+    [
+      calorieGoalProgress,
+      proteinGoalProgress,
+      carbsGoalProgress,
+      fatGoalProgress,
+      caloriesConsumed,
+      caloriesBurned,
+      caloriesRemaining,
+      proteinConsumed,
+      proteinGoal,
+      carbsConsumed,
+      carbsGoal,
+      fatConsumed,
+      fatGoal,
+      waterConsumedMl,
+      watchWaterLog,
+    ],
+  );
+
   const pushContext = useCallback(async (): Promise<void> => {
     if (!WatchConnectivity) return;
     try {
@@ -245,6 +341,19 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       const lastWithWeight = [...history].reverse().find((point) => point.day !== today)
         ?? [...history].reverse()[0];
 
+      // The one check that stops a stale payload from impersonating a fresh
+      // one. `today` is read at call time; every figure below was read when
+      // this hook last rendered, which — with the app resident overnight — can
+      // be yesterday. When they disagree, the day-scoped values are dropped
+      // wholesale. `catchUpToToday()` in the handlers then re-renders onto the
+      // new day, react-query fetches it, and the effect below pushes again with
+      // real numbers a moment later.
+      //
+      // Seed weight, history and containers are deliberately NOT gated: none of
+      // them expires at midnight, and a watch that loses its containers because
+      // the phone woke up on a new day is the bug we fixed once already.
+      const figures = summaryDate === today ? figuresForSummaryDate : NO_FIGURES_FOR_TODAY;
+
       const context: WatchContextPayload = {
         // Keeps consecutive pushes distinct — see the field's own comment.
         // Without it an unchanged day pushes an identical dictionary, which
@@ -259,24 +368,13 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         history,
         ackedClientIds: ackedClientIdsRef.current.slice(-20),
         weightUnit,
-        calorieGoalProgress,
-        proteinGoalProgress,
-        carbsGoalProgress,
-        fatGoalProgress,
-        caloriesConsumed,
-        caloriesBurned,
-        caloriesRemaining,
-        proteinConsumed,
-        proteinGoal,
-        carbsConsumed,
-        carbsGoal,
-        fatConsumed,
-        fatGoal,
         containers: watchContainers,
-        waterConsumedMl,
+        // Goal and display unit ride outside the day gate: the watch treats
+        // both as account configuration and carries them forward, which is
+        // what lets a phone-free morning still draw a tap against a scale.
         waterGoalMl,
         waterDisplayUnit,
-        waterLog: watchWaterLog,
+        ...figures,
       };
 
       await WatchConnectivity.updateContext(context);
@@ -285,36 +383,32 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       // again next time it becomes reachable.
       addLog(`Watch context push failed: ${String(error)}`, 'WARNING');
     }
-    // weightUnit and every nutrition value are deps so flipping the phone's
-    // unit setting, or logging food, re-pushes context immediately — the effect
-    // below re-subscribes whenever pushContext's identity changes, which
-    // includes calling it once on the way in. They're listed as individual
-    // primitives rather than depending on the summary object, so an identical
-    // refetch doesn't churn the listeners. The two mapped arrays are the
-    // exception — there's no cheaper primitive to key off — but both are
-    // memoized above, so their identity only changes when the underlying list
-    // does.
+    // Everything read above is a dep, so logging food, drinking water or
+    // flipping the phone's unit setting all give `pushContext` a new identity —
+    // which the push effect below watches, so the watch hears about the change
+    // within a render rather than waiting for its next request. All four
+    // aggregates are memoized, so an identical refetch doesn't cause a push.
   }, [
     weightUnit,
-    calorieGoalProgress,
-    proteinGoalProgress,
-    carbsGoalProgress,
-    fatGoalProgress,
-    caloriesConsumed,
-    caloriesBurned,
-    caloriesRemaining,
-    proteinConsumed,
-    proteinGoal,
-    carbsConsumed,
-    carbsGoal,
-    fatConsumed,
-    fatGoal,
-    watchContainers,
-    waterConsumedMl,
     waterGoalMl,
     waterDisplayUnit,
-    watchWaterLog,
+    summaryDate,
+    figuresForSummaryDate,
+    watchContainers,
   ]);
+
+  /**
+   * The newest `pushContext`, for the write handlers below.
+   *
+   * They each finish by pushing, and that push has to carry the result of the
+   * write they just did. Calling the `pushContext` they closed over sends the
+   * state from before it — so a delete, say, was confirmed to the watch by
+   * re-sending the log with the deleted row still in it.
+   */
+  const pushContextRef = useRef(pushContext);
+  useEffect(() => {
+    pushContextRef.current = pushContext;
+  });
 
   const handleCheckIn = useCallback(
     async (payload: WatchCheckInPayload): Promise<void> => {
@@ -356,7 +450,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
           'INFO',
         );
         await WatchConnectivity.sendAck(payload.clientId, true);
-        await pushContext();
+        await pushContextRef.current();
       } catch (error) {
         addLog(`Watch check-in failed to save: ${String(error)}`, 'ERROR');
         // Report the failure so the watch shows a retry affordance rather than a
@@ -364,7 +458,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         await WatchConnectivity.sendAck(payload.clientId, false);
       }
     },
-    [pushContext],
+    [],
   );
 
   /**
@@ -404,12 +498,12 @@ export function useWatchCheckInBridge(enabled: boolean): void {
           `Watch water tap logged for ${payload.entryDate}: container ${payload.containerId}`,
           'INFO',
         );
-        await pushContext();
+        await pushContextRef.current();
       } catch (error) {
         addLog(`Watch water tap failed to save: ${String(error)}`, 'ERROR');
       }
     },
-    [pushContext],
+    [],
   );
 
   /**
@@ -436,42 +530,69 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         await queryClient.invalidateQueries({ queryKey: waterIntakeLogQueryKey(today) });
 
         addLog(`Watch deleted water log entry ${payload.entryId}`, 'INFO');
-        await pushContext();
+        await pushContextRef.current();
       } catch (error) {
         addLog(`Watch water delete failed: ${String(error)}`, 'ERROR');
         // Re-push so the watch's optimistically-removed row comes back rather
         // than staying gone on a screen that now disagrees with the server.
-        await pushContext();
+        await pushContextRef.current();
       }
     },
-    [pushContext],
+    [],
   );
 
+  // Latest handlers, read by the subscriptions below.
+  //
+  // Without this, the subscription effect had to list every handler as a dep,
+  // so logging a single meal tore down five native listeners and an AppState
+  // listener and rebuilt them. It also conflated two jobs: subscribing, and
+  // pushing when the data changed. They're separate effects now.
+  // Written in an effect rather than during render: a ref is mutable state, and
+  // touching `.current` on the way through render is exactly what
+  // `react-hooks/refs` forbids. The one-render lag that introduces is harmless
+  // here — these events arrive from the native side long after mount.
+  const handlersRef = useRef({ handleCheckIn, handleWaterTap, handleWaterDelete, pushContext, catchUpToToday });
+  useEffect(() => {
+    handlersRef.current = { handleCheckIn, handleWaterTap, handleWaterDelete, pushContext, catchUpToToday };
+  });
+
+  // Subscriptions. Depends on `enabled` alone, so these are set up once.
   useEffect(() => {
     if (!enabled || !WatchConnectivity || !WatchConnectivity.isSupported()) return;
 
+    // Every inbound event is a chance to notice the day has turned over: each
+    // one means the watch is awake and talking to us, which after a night
+    // asleep is the first moment anything here runs at all.
+    const onEvent = <T,>(handle: (payload: T) => Promise<void>) => (payload: T) => {
+      handlersRef.current.catchUpToToday();
+      void handle(payload);
+    };
+
     const checkInSub = WatchConnectivity.addListener('onCheckIn', (payload) => {
-      void handleCheckIn(payload);
+      onEvent(handlersRef.current.handleCheckIn)(payload);
     });
     const waterIntakeSub = WatchConnectivity.addListener('onWaterIntake', (payload) => {
-      void handleWaterTap(payload);
+      onEvent(handlersRef.current.handleWaterTap)(payload);
     });
     const waterDeleteSub = WatchConnectivity.addListener('onWaterDelete', (payload) => {
-      void handleWaterDelete(payload);
+      onEvent(handlersRef.current.handleWaterDelete)(payload);
     });
     const contextRequestSub = WatchConnectivity.addListener('onContextRequest', () => {
-      void pushContext();
+      handlersRef.current.catchUpToToday();
+      void handlersRef.current.pushContext();
     });
     const reachabilitySub = WatchConnectivity.addListener('onReachabilityChange', ({ isReachable }) => {
-      if (isReachable) void pushContext();
+      if (!isReachable) return;
+      handlersRef.current.catchUpToToday();
+      void handlersRef.current.pushContext();
     });
 
-    // Seed the watch as soon as the app is usable, and again whenever the user
-    // returns — measurements may have been edited on the phone meanwhile, and a
-    // stale seed makes every morning start from a wrong anchor.
-    void pushContext();
+    // Coming back to the foreground is the other way a new day first shows up
+    // — the app can sit resident for days without re-rendering this hook.
     const appStateSub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void pushContext();
+      if (state !== 'active') return;
+      handlersRef.current.catchUpToToday();
+      void handlersRef.current.pushContext();
     });
 
     return () => {
@@ -482,5 +603,15 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       reachabilitySub.remove();
       appStateSub.remove();
     };
-  }, [enabled, handleCheckIn, handleWaterTap, handleWaterDelete, pushContext]);
+  }, [enabled]);
+
+  // Push whenever what we'd send changes — `pushContext`'s identity tracks
+  // every value it reads. This is what makes food logged on the phone reach the
+  // watch immediately instead of waiting for the watch to ask, and it also
+  // covers the second push after a day rollover, once react-query has fetched
+  // the new day.
+  useEffect(() => {
+    if (!enabled || !WatchConnectivity || !WatchConnectivity.isSupported()) return;
+    void pushContext();
+  }, [enabled, pushContext]);
 }

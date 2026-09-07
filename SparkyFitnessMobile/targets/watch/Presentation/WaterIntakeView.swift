@@ -13,27 +13,6 @@ struct WaterIntakeView: View {
     @EnvironmentObject private var store: CheckInStore
     @EnvironmentObject private var session: WatchSessionManager
 
-    /// Taps logged locally before the phone's confirmed total has caught up
-    /// to them. Each one assumes it landed; if the write actually failed, it
-    /// simply expires after `pendingTimeout` and the bottle settles back down
-    /// to the true total on the next context push. That settle-back is a
-    /// deliberately accepted tradeoff — see `WatchSessionManager.sendWaterTap`
-    /// — for making a tap feel instant instead of gating it on a phone round
-    /// trip.
-    @State private var pendingTaps: [PendingTap] = []
-
-    private struct PendingTap: Identifiable {
-        let id: String
-        let volumeMl: Double
-    }
-
-    /// Long enough to comfortably cover one normal watch → phone → server →
-    /// context-push round trip; short enough that a real failure doesn't
-    /// leave the bottle looking wrong for long. Nanoseconds rather than the
-    /// newer `Duration` type, which needs a newer OS than this target commits
-    /// to — same deployment-target caution as the rest of this target.
-    private static let pendingTimeoutNanoseconds: UInt64 = 10_000_000_000
-
     /// Yesterday's totals are worse than none — discarded the same way
     /// `GoalSummaryView` discards stale nutrition.
     private var water: WaterSnapshot? {
@@ -53,8 +32,14 @@ struct WaterIntakeView: View {
     private var hasEverSyncedContainers: Bool { store.context.waterContainers != nil }
 
     private var confirmedMl: Double { water?.consumedMl ?? 0 }
-    private var goalMl: Double { water?.goalMl ?? 0 }
-    private var pendingMl: Double { pendingTaps.reduce(0) { $0 + $1.volumeMl } }
+    /// The goal comes from the context, not the day's snapshot — so a morning
+    /// the phone hasn't spoken to still has a scale to draw a tap against.
+    /// This is the whole reason a first-thing-in-the-morning tap used to leave
+    /// the bottle empty: with the goal inside the snapshot, there wasn't one.
+    private var goalMl: Double { store.context.waterGoalMl ?? 0 }
+    /// Held by the store, so a tap survives leaving this page and relaunching
+    /// the app, and stays until the phone actually confirms it.
+    private var pendingMl: Double { store.pendingWaterMl }
     /// What the bottle and the label above it both show — confirmed plus
     /// whatever's still an optimistic guess. Keeping this one property is
     /// what keeps the two from ever disagreeing.
@@ -67,9 +52,9 @@ struct WaterIntakeView: View {
     /// configured display unit. Both read off `effectiveMl`/`progress`, so
     /// this tracks a tap's optimistic bump exactly as the bottle does.
     private var goalLabel: String {
-        guard let water else { return "Water not synced yet" }
+        guard goalMl > 0 else { return "Water not synced yet" }
         let percent = Int((progress * 100).rounded())
-        return "\(percent)% * \(water.formattedAmount(ml: effectiveMl))"
+        return "\(percent)% * \(store.context.formattedWater(ml: effectiveMl))"
     }
 
     var body: some View {
@@ -122,15 +107,6 @@ struct WaterIntakeView: View {
         // ScrollView can't scroll content past its own top edge into the
         // clock's space because that edge is the same boundary.
         .padding(.horizontal, 4)
-        // The phone only re-pushes context with a changed water total once it
-        // has actually written a tap (or water was logged on the phone
-        // itself) — either way the server-side truth has moved, so whatever
-        // is still pending is now redundant.
-        // Single-parameter form, not the newer two-parameter one — same
-        // deployment-target caution as the rest of this target.
-        .onChange(of: confirmedMl) { _ in
-            pendingTaps.removeAll()
-        }
     }
 
     // MARK: - Container list
@@ -229,14 +205,12 @@ struct WaterIntakeView: View {
         // bottle.
         WKInterfaceDevice.current().play(.click)
 
-        let id = UUID().uuidString
-        pendingTaps.append(PendingTap(id: id, volumeMl: container.servingVolumeMl))
+        // No timeout to un-do this: the tap stands until the phone sends a
+        // total for today that accounts for it. A ten-second expiry looked
+        // honest when the phone was in the room and was simply wrong when it
+        // wasn't — which is exactly when the wearer is drinking.
+        store.recordWaterTap(volumeMl: container.servingVolumeMl)
         session.sendWaterTap(containerId: container.id)
-
-        Task {
-            try? await Task.sleep(nanoseconds: Self.pendingTimeoutNanoseconds)
-            pendingTaps.removeAll { $0.id == id }
-        }
     }
 
     // MARK: - Bottle

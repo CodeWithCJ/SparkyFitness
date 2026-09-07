@@ -17,11 +17,18 @@ final class CheckInStore: ObservableObject {
     /// state even after the ack arrives and it leaves `pending`.
     @Published private(set) var lastCaptured: CheckIn?
     @Published private(set) var lastCapturedState: SyncState = .saved
+    /// Container taps sent to the phone but not yet reflected in a pushed
+    /// total. Kept here rather than in the Water page so they outlive both the
+    /// page and the app process — a tap made with the phone in another room
+    /// can wait a long while for its confirmation, and until then this is the
+    /// only record that it happened.
+    @Published private(set) var pendingWaterTaps: [PendingWaterTap] = []
 
     private let defaults = UserDefaults.standard
     private let contextKey = "sparky.watch.context"
     private let pendingKey = "sparky.watch.pending"
     private let lastCapturedKey = "sparky.watch.lastCaptured"
+    private let pendingWaterKey = "sparky.watch.pendingWaterTaps"
 
     private init() {
         load()
@@ -88,10 +95,50 @@ final class CheckInStore: ObservableObject {
         persist()
     }
 
+    // MARK: - Water
+
+    /// Records an optimistic tap and returns nothing — the bottle reads
+    /// `pendingWaterTaps` directly, and the id only matters to `apply`.
+    func recordWaterTap(volumeMl: Double) {
+        pendingWaterTaps.append(
+            PendingWaterTap(id: UUID().uuidString, volumeMl: volumeMl, day: CheckInDate.today())
+        )
+        persist()
+    }
+
+    /// Total still awaiting confirmation, added to the day's real total for
+    /// display.
+    var pendingWaterMl: Double {
+        pendingWaterTaps.reduce(0) { $0 + $1.volumeMl }
+    }
+
     // MARK: - Phone updates
 
     func apply(context incoming: WatchContext) {
         context = incoming
+        // Applied here rather than only from the callers' own prune calls,
+        // because an inbound context is not always a fresh one: an
+        // `adoptReceivedContext()` replay hands back whatever the phone last
+        // set, which on the first launch of a morning is still yesterday's.
+        // With the prune outside, `ContentView.onAppear` cleared the stale day
+        // and the replay two lines later put it straight back.
+        //
+        // Every inbound path now goes through one rule, and the store cannot
+        // hold a day that has ended regardless of who applied it.
+        clearStaleDayData()
+
+        // A snapshot for today is the phone's authoritative word on what has
+        // been drunk, so everything optimistic is now either counted in it or
+        // was never written. Either way holding on would double-count.
+        //
+        // Keyed on a today-snapshot arriving rather than on the total having
+        // changed: two taps of the same container between pushes leave the
+        // total looking untouched by that test, and the taps would sit in the
+        // bottle forever.
+        if context.water?.isToday == true, !pendingWaterTaps.isEmpty {
+            pendingWaterTaps.removeAll()
+        }
+
         // Acks ride along in the context so they still arrive if the watch app
         // was asleep when the server write completed.
         let acked = Set(incoming.ackedClientIds)
@@ -179,6 +226,15 @@ final class CheckInStore: ObservableObject {
     /// Weight and body-fat history is deliberately left alone — unlike
     /// today's totals, it doesn't expire at midnight.
     func pruneStaleDayData() {
+        guard clearStaleDayData() else { return }
+        persist()
+    }
+
+    /// Drops the stale snapshots and reports whether anything went, leaving
+    /// persistence to the caller — `apply(context:)` writes once at the end
+    /// either way, and a second write there would be pure waste.
+    @discardableResult
+    private func clearStaleDayData() -> Bool {
         var changed = false
 
         if let nutrition = context.nutrition, !nutrition.isToday {
@@ -189,9 +245,17 @@ final class CheckInStore: ObservableObject {
             context.water = nil
             changed = true
         }
+        // Yesterday's unconfirmed taps are yesterday's problem — carrying them
+        // into a new day would show a bottle part-full before a drop was drunk.
+        // Keyed on each tap's own day, not on the water snapshot: an unsynced
+        // today has no snapshot either, and this morning's taps must survive
+        // exactly that case.
+        if pendingWaterTaps.contains(where: { !$0.isToday }) {
+            pendingWaterTaps.removeAll { !$0.isToday }
+            changed = true
+        }
 
-        guard changed else { return }
-        persist()
+        return changed
     }
 
     // MARK: - Persistence
@@ -202,6 +266,9 @@ final class CheckInStore: ObservableObject {
         if let data = try? encoder.encode(pending) { defaults.set(data, forKey: pendingKey) }
         if let last = lastCaptured, let data = try? encoder.encode(last) {
             defaults.set(data, forKey: lastCapturedKey)
+        }
+        if let data = try? encoder.encode(pendingWaterTaps) {
+            defaults.set(data, forKey: pendingWaterKey)
         }
     }
 
@@ -219,6 +286,11 @@ final class CheckInStore: ObservableObject {
            let decoded = try? decoder.decode(CheckIn.self, from: data) {
             lastCaptured = decoded
             lastCapturedState = pending.contains(where: { $0.id == decoded.id }) ? .queued : .saved
+        }
+
+        if let data = defaults.data(forKey: pendingWaterKey),
+           let decoded = try? decoder.decode([PendingWaterTap].self, from: data) {
+            pendingWaterTaps = decoded
         }
 
         // What was just restored may describe a day that has since ended —
