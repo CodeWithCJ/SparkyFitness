@@ -5,8 +5,6 @@ import {
   isDemoEmail,
   demoGuard,
   demoRestrictionGuard,
-  demoLoginRateLimit,
-  resetDemoLoginRateLimit,
 } from '../middleware/demoGuardMiddleware.js';
 import {
   getDemoCredentials,
@@ -396,12 +394,14 @@ describe('Demo Mode Infrastructure', () => {
     function run(
       path: string,
       method = 'GET',
-      headers: Record<string, string> = {}
+      headers: Record<string, string> = {},
+      baseUrl = ''
     ) {
       const req = {
         path,
+        baseUrl,
         method,
-        originalUrl: path,
+        originalUrl: baseUrl + path,
         headers,
         user: { email: 'demo@sparkyfitness.com' },
       } as unknown as Request;
@@ -433,6 +433,19 @@ describe('Demo Mode Infrastructure', () => {
       expect(res.status).toHaveBeenCalledWith(403);
     });
 
+    // /mcp is mounted with app.use('/mcp', ...), so Express strips the mount
+    // point and the guard sees '/tools'. Rebuilding the full path is what makes
+    // the block work there; asserting on a bare path would pass regardless.
+    it('blocks /mcp when mounted, where req.path is relative', () => {
+      const { res, next } = run('/tools', 'POST', {}, '/mcp');
+      expect(next).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(403);
+
+      const root = run('/', 'POST', {}, '/mcp');
+      expect(root.next).not.toHaveBeenCalled();
+      expect(root.res.status).toHaveBeenCalledWith(403);
+    });
+
     it('blocks mutations under /api/identity but allows reads', () => {
       const write = run('/api/identity/profiles', 'PUT');
       expect(write.next).not.toHaveBeenCalled();
@@ -441,6 +454,29 @@ describe('Demo Mode Infrastructure', () => {
       const read = run('/api/identity/profiles', 'GET');
       expect(read.next).toHaveBeenCalled();
       expect(read.res.status).not.toHaveBeenCalled();
+    });
+
+    // These ingest files as base64 or a pasted document, so the multipart check
+    // never sees them.
+    it.each([
+      '/api/foods/import-from-csv',
+      '/api/food-entries/import-from-csv',
+      '/api/exercise-entries/import-history-csv',
+      '/api/exercise-entries/import-fit',
+      '/api/exercises/import-json',
+      '/api/foods/scan-label',
+      '/api/foods/estimate-food-photo',
+      '/api/v2/foods/abc-123/openfoodfacts/contribute',
+    ])('blocks non-multipart upload route %s', (path) => {
+      const { res, next } = run(path, 'POST');
+      expect(next).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(403);
+    });
+
+    it('does not mistake a path merely containing "import" for an import', () => {
+      const { res, next } = run('/api/foods/important-notes', 'POST');
+      expect(next).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalled();
     });
 
     it('blocks multipart uploads on any route', () => {
@@ -474,54 +510,6 @@ describe('Demo Mode Infrastructure', () => {
       demoRestrictionGuard(req, res, next);
       expect(next).toHaveBeenCalled();
       expect(res.status).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('demoLoginRateLimit', () => {
-    beforeEach(() => {
-      resetDemoLoginRateLimit();
-    });
-
-    it('allows a burst then returns 429', () => {
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as unknown as Response;
-      const req = { ip: '203.0.113.5' } as unknown as Request;
-
-      for (let i = 0; i < 10; i++) {
-        const next = vi.fn() as NextFunction;
-        demoLoginRateLimit(req, res, next);
-        expect(next).toHaveBeenCalled();
-      }
-
-      const blocked = vi.fn() as NextFunction;
-      demoLoginRateLimit(req, res, blocked);
-      expect(blocked).not.toHaveBeenCalled();
-      expect(res.status).toHaveBeenCalledWith(429);
-    });
-
-    it('tracks callers independently', () => {
-      const res = {
-        status: vi.fn().mockReturnThis(),
-        json: vi.fn(),
-      } as unknown as Response;
-
-      for (let i = 0; i < 11; i++) {
-        demoLoginRateLimit(
-          { ip: '203.0.113.5' } as unknown as Request,
-          res,
-          vi.fn() as NextFunction
-        );
-      }
-
-      const next = vi.fn() as NextFunction;
-      demoLoginRateLimit(
-        { ip: '198.51.100.9' } as unknown as Request,
-        res,
-        next
-      );
-      expect(next).toHaveBeenCalled();
     });
   });
 });

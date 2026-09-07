@@ -79,6 +79,20 @@ const DEMO_BLOCKED_PREFIXES = [
  */
 const DEMO_READONLY_PREFIXES = ['/api/identity'];
 
+/**
+ * Endpoints that ingest a file, image, or bulk document *without* multipart —
+ * base64 in a JSON body, or a pasted CSV/JSON payload — so the content-type
+ * check below never sees them. Matched as patterns because several sit behind a
+ * dynamic `:id` segment.
+ */
+const DEMO_BLOCKED_PATH_PATTERNS = [
+  // import-from-csv, import-history-csv, import-fit, import-json
+  /\/import(-|\/|$)/i,
+  /\/scan-label$/i, // base64 label image -> LLM
+  /\/estimate-food-photo$/i, // base64 meal photo -> LLM
+  /\/openfoodfacts\//i, // publishes product data and photos to a public database
+];
+
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 function matchesPrefix(path: string, prefixes: string[]): boolean {
@@ -111,13 +125,27 @@ export function demoRestrictionGuard(
     return next();
   }
 
-  if (matchesPrefix(req.path, DEMO_BLOCKED_PREFIXES)) {
+  // Express rewrites req.path relative to the mount point, so inside
+  // app.use('/mcp', ...) a request for /mcp/tools arrives as '/tools'. Prefixes
+  // are absolute, so rebuild the full path or the mounted copy matches nothing.
+  const fullPath = (req.baseUrl || '') + req.path;
+
+  if (matchesPrefix(fullPath, DEMO_BLOCKED_PREFIXES)) {
     return denyDemo(req, res, RESTRICTED_MESSAGE, 'DEMO_ACTION_RESTRICTED');
+  }
+
+  if (DEMO_BLOCKED_PATH_PATTERNS.some((pattern) => pattern.test(fullPath))) {
+    return denyDemo(
+      req,
+      res,
+      'Imports and photo analysis are disabled on the demo account.',
+      'DEMO_UPLOAD_RESTRICTED'
+    );
   }
 
   if (
     MUTATING_METHODS.has(req.method) &&
-    matchesPrefix(req.path, DEMO_READONLY_PREFIXES)
+    matchesPrefix(fullPath, DEMO_READONLY_PREFIXES)
   ) {
     return denyDemo(req, res, RESTRICTED_MESSAGE, 'DEMO_ACTION_RESTRICTED');
   }
@@ -169,55 +197,4 @@ export function demoUploadGuard(
     'File uploads are disabled on the demo account to prevent storage abuse.',
     'DEMO_UPLOAD_RESTRICTED'
   );
-}
-
-// --- Demo login rate limiting -------------------------------------------------
-// `/api/auth/demo-login` is unauthenticated and short-circuits the Better Auth
-// handler, so Better Auth's own rate limiter never sees it. This is a small
-// fixed-window in-process limiter; the demo runs single-node, and the endpoint
-// only ever mints one shared account's session, so a shared store isn't needed.
-
-const DEMO_LOGIN_WINDOW_MS = 60_000;
-const DEMO_LOGIN_MAX_PER_WINDOW = 10;
-const demoLoginHits = new Map<string, { count: number; resetAt: number }>();
-
-export function demoLoginRateLimit(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void {
-  const now = Date.now();
-
-  // Sweep expired buckets so an IP-keyed map can't grow without bound.
-  for (const [key, entry] of demoLoginHits) {
-    if (entry.resetAt <= now) demoLoginHits.delete(key);
-  }
-
-  const key = req.ip || 'unknown';
-  const entry = demoLoginHits.get(key);
-
-  if (!entry) {
-    demoLoginHits.set(key, {
-      count: 1,
-      resetAt: now + DEMO_LOGIN_WINDOW_MS,
-    });
-    return next();
-  }
-
-  entry.count += 1;
-  if (entry.count > DEMO_LOGIN_MAX_PER_WINDOW) {
-    log('warn', `[DEMO GUARD] Rate limited demo login from ${key}`);
-    res.status(429).json({
-      error: 'Too many demo login attempts. Please try again in a minute.',
-      code: 'DEMO_LOGIN_RATE_LIMITED',
-    });
-    return;
-  }
-
-  next();
-}
-
-/** Test seam — clears the in-process rate-limit buckets. */
-export function resetDemoLoginRateLimit(): void {
-  demoLoginHits.clear();
 }
