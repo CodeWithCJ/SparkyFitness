@@ -4,6 +4,9 @@ import {
   getDemoEmail,
   isDemoEmail,
   demoGuard,
+  demoRestrictionGuard,
+  demoLoginRateLimit,
+  resetDemoLoginRateLimit,
 } from '../middleware/demoGuardMiddleware.js';
 import {
   getDemoCredentials,
@@ -75,7 +78,7 @@ describe('Demo Mode Infrastructure', () => {
     it('bypasses demoGuard when demo mode is inactive', () => {
       process.env.SPARKY_FITNESS_DEMO_MODE = 'false';
       const req = {
-        authenticatedUserEmail: 'demo@sparkyfitness.com',
+        user: { email: 'demo@sparkyfitness.com' },
       } as unknown as Request;
       const res = {
         status: vi.fn().mockReturnThis(),
@@ -91,7 +94,7 @@ describe('Demo Mode Infrastructure', () => {
     it('blocks demo user mutations with 403 when demo mode is active', () => {
       process.env.SPARKY_FITNESS_DEMO_MODE = 'true';
       const req = {
-        authenticatedUserEmail: 'demo@sparkyfitness.com',
+        user: { email: 'demo@sparkyfitness.com' },
         method: 'POST',
         originalUrl: '/api/identity/update-password',
       } as unknown as Request;
@@ -305,6 +308,220 @@ describe('Demo Mode Infrastructure', () => {
 
       await purgeDemoUserIfExists();
       expect(mockClient.release).toHaveBeenCalled();
+    });
+  });
+
+  describe('demo marker safety (fails closed)', () => {
+    // A normally-created profile is inserted without a bio, so an absent marker
+    // is the default state of every real account — never a licence to wipe one.
+    function clientWithBio(bio: string | null) {
+      return {
+        query: vi.fn().mockImplementation(async (sql: string) => {
+          if (sql.includes('SELECT bio FROM profiles')) {
+            return { rows: [{ bio }] };
+          }
+          return { rows: [] };
+        }),
+        release: vi.fn(),
+      };
+    }
+
+    it.each([
+      ['a null bio', null],
+      ['an empty bio', ''],
+      ['someone else’s bio', 'Just here to track my runs'],
+    ])('refuses to purge an account with %s', async (_label, bio) => {
+      vi.mocked(userRepository.findUserByEmail).mockResolvedValueOnce({
+        id: 'real-user-id',
+        email: 'demo@sparkyfitness.com',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+      const mockClient = clientWithBio(bio);
+      vi.mocked(poolManager.getSystemClient).mockResolvedValueOnce(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        mockClient as any
+      );
+
+      await purgeDemoUserIfExists();
+
+      expect(userRepository.deleteUser).not.toHaveBeenCalled();
+      expect(mockClient.query).not.toHaveBeenCalledWith(
+        expect.stringContaining('DELETE FROM'),
+        expect.anything()
+      );
+      expect(mockClient.release).toHaveBeenCalled();
+    });
+
+    it('refuses to seed over an existing account with no marker', async () => {
+      process.env.SPARKY_FITNESS_DEMO_MODE = 'true';
+      vi.mocked(userRepository.findUserByEmail).mockResolvedValueOnce({
+        id: 'real-user-id',
+        email: 'demo@sparkyfitness.com',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+      const mockClient = clientWithBio(null);
+      vi.mocked(poolManager.getSystemClient).mockResolvedValueOnce(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        mockClient as any
+      );
+
+      await expect(seedDemoUser()).rejects.toThrow(/not marked as a demo/i);
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+      expect(mockClient.query).not.toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE "account" SET password'),
+        expect.anything()
+      );
+    });
+
+    it('skips the daily reset when the marker is absent', async () => {
+      vi.mocked(userRepository.findUserByEmail).mockResolvedValueOnce({
+        id: 'real-user-id',
+        email: 'demo@sparkyfitness.com',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+      const mockClient = clientWithBio(null);
+      vi.mocked(poolManager.getSystemClient).mockResolvedValueOnce(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        mockClient as any
+      );
+
+      await resetDemoUserData();
+
+      expect(mockClient.query).not.toHaveBeenCalledWith('BEGIN');
+      expect(mockClient.release).toHaveBeenCalled();
+    });
+  });
+
+  describe('demoRestrictionGuard', () => {
+    function run(
+      path: string,
+      method = 'GET',
+      headers: Record<string, string> = {}
+    ) {
+      const req = {
+        path,
+        method,
+        originalUrl: path,
+        headers,
+        user: { email: 'demo@sparkyfitness.com' },
+      } as unknown as Request;
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+      } as unknown as Response;
+      const next = vi.fn() as NextFunction;
+      demoRestrictionGuard(req, res, next);
+      return { res, next };
+    }
+
+    beforeEach(() => {
+      process.env.SPARKY_FITNESS_DEMO_MODE = 'true';
+    });
+
+    it.each([
+      '/api/chat',
+      '/api/chat/stream',
+      '/api/ai/convert',
+      '/mcp',
+      '/api/admin/global-settings',
+      '/api/integrations/strava/connect',
+      '/api/withings/link',
+      '/api/external-providers',
+    ])('blocks %s on any method', (path) => {
+      const { res, next } = run(path);
+      expect(next).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(403);
+    });
+
+    it('blocks mutations under /api/identity but allows reads', () => {
+      const write = run('/api/identity/profiles', 'PUT');
+      expect(write.next).not.toHaveBeenCalled();
+      expect(write.res.status).toHaveBeenCalledWith(403);
+
+      const read = run('/api/identity/profiles', 'GET');
+      expect(read.next).toHaveBeenCalled();
+      expect(read.res.status).not.toHaveBeenCalled();
+    });
+
+    it('blocks multipart uploads on any route', () => {
+      const { res, next } = run('/api/foods/image', 'POST', {
+        'content-type': 'multipart/form-data; boundary=x',
+      });
+      expect(next).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(403);
+    });
+
+    it('allows ordinary demo activity through', () => {
+      const { res, next } = run('/api/food-entries', 'POST');
+      expect(next).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalled();
+    });
+
+    it('does not touch requests from non-demo users', () => {
+      const req = {
+        path: '/api/chat',
+        method: 'POST',
+        originalUrl: '/api/chat',
+        headers: {},
+        user: { email: 'real-user@example.com' },
+      } as unknown as Request;
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+      } as unknown as Response;
+      const next = vi.fn() as NextFunction;
+
+      demoRestrictionGuard(req, res, next);
+      expect(next).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('demoLoginRateLimit', () => {
+    beforeEach(() => {
+      resetDemoLoginRateLimit();
+    });
+
+    it('allows a burst then returns 429', () => {
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+      } as unknown as Response;
+      const req = { ip: '203.0.113.5' } as unknown as Request;
+
+      for (let i = 0; i < 10; i++) {
+        const next = vi.fn() as NextFunction;
+        demoLoginRateLimit(req, res, next);
+        expect(next).toHaveBeenCalled();
+      }
+
+      const blocked = vi.fn() as NextFunction;
+      demoLoginRateLimit(req, res, blocked);
+      expect(blocked).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(429);
+    });
+
+    it('tracks callers independently', () => {
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+      } as unknown as Response;
+
+      for (let i = 0; i < 11; i++) {
+        demoLoginRateLimit(
+          { ip: '203.0.113.5' } as unknown as Request,
+          res,
+          vi.fn() as NextFunction
+        );
+      }
+
+      const next = vi.fn() as NextFunction;
+      demoLoginRateLimit(
+        { ip: '198.51.100.9' } as unknown as Request,
+        res,
+        next
+      );
+      expect(next).toHaveBeenCalled();
     });
   });
 });

@@ -8,23 +8,65 @@ import { getSystemClient } from '../db/poolManager.js';
 import userRepository from '../models/userRepository.js';
 import { log } from '../config/logging.js';
 import { todayInZone, addDays } from '@workspace/shared';
-import { getDemoEmail, isDemoMode } from '../middleware/demoGuardMiddleware.js';
+import {
+  DEMO_ACCOUNT_MARKER,
+  getDemoEmail,
+  isDemoMode,
+} from '../middleware/demoGuardMiddleware.js';
 
 import { createDefaultNutrientPreferencesForUser } from './nutrientDisplayPreferenceService.js';
 
 import crypto from 'crypto';
 
+/**
+ * Confirms an account is the seeded demo sandbox before anything destructive
+ * touches it. Fails closed on purpose: `ensureUserInitialization` inserts
+ * profiles without a bio, so every real account has a NULL marker. Treating an
+ * absent marker as "safe" would let the seed overwrite, and the purge delete,
+ * a genuine user who happens to hold the configured demo address.
+ */
+async function hasDemoMarker(
+  client: PoolClient,
+  userId: string
+): Promise<boolean> {
+  const profileRes = await client.query(
+    'SELECT bio FROM profiles WHERE id = $1',
+    [userId]
+  );
+  const bio: unknown = profileRes.rows[0]?.bio;
+  return typeof bio === 'string' && bio.includes(DEMO_ACCOUNT_MARKER);
+}
+
+// Generated once per process when no server secret is configured, so the
+// credential stays stable for the lifetime of the server without ever being
+// derivable from the source.
+let randomFallbackPassword: string | null = null;
+
 function getRuntimeFallbackPassword(): string {
   const secretKey =
     process.env.BETTER_AUTH_SECRET ||
-    process.env.SPARKY_FITNESS_API_ENCRYPTION_KEY ||
-    'sparky-demo-isolated-seed';
-  return (
-    crypto
-      .createHmac('sha256', secretKey)
-      .update('sparky-demo-user-key:' + getDemoEmail())
-      .digest('hex') + '!1Aa'
-  );
+    process.env.SPARKY_FITNESS_API_ENCRYPTION_KEY;
+
+  // Derive from the server secret when there is one: deterministic, so every
+  // replica and every restart agrees on the credential.
+  if (secretKey) {
+    return (
+      crypto
+        .createHmac('sha256', secretKey)
+        .update('sparky-demo-user-key:' + getDemoEmail())
+        .digest('hex') + '!1Aa'
+    );
+  }
+
+  if (!randomFallbackPassword) {
+    randomFallbackPassword = crypto.randomBytes(32).toString('hex') + '!1Aa';
+    log(
+      'warn',
+      '[DEMO] Neither BETTER_AUTH_SECRET nor SPARKY_FITNESS_API_ENCRYPTION_KEY is set. ' +
+        'Generating a random in-memory demo password; set SPARKY_FITNESS_DEMO_PASSWORD for a stable credential.'
+    );
+  }
+  return randomFallbackPassword;
 }
 
 export function getDemoCredentials(): {
@@ -340,18 +382,14 @@ export async function seedDemoUser(): Promise<string> {
         userId = user.id;
 
         // Verify safety marker before modifying credentials or wiping data
-        const profileRes = await client.query(
-          'SELECT bio FROM profiles WHERE id = $1',
-          [userId]
-        );
-        const bio = profileRes.rows[0]?.bio || '';
-        if (bio && !bio.includes('SparkyFitness Demo Account')) {
+        if (!(await hasDemoMarker(client, userId))) {
           log(
             'error',
             `[DEMO] Safety guard prevented modifying non-demo user with email ${email}`
           );
           throw new Error(
-            `Safety check failed: Account ${email} is not marked as a demo sandbox account.`
+            `Safety check failed: Account ${email} already exists and is not marked as a demo sandbox account. ` +
+              'Set SPARKY_FITNESS_DEMO_EMAIL to an address that is not in use.'
           );
         }
 
@@ -377,10 +415,14 @@ export async function seedDemoUser(): Promise<string> {
          SET full_name = $2,
              date_of_birth = '1995-05-15',
              gender = 'male',
-             bio = 'SparkyFitness Demo Account — Daily sandbox resetting at 00:00 UTC',
+             bio = $3,
              updated_at = NOW()
          WHERE id = $1`,
-        [userId, fullName]
+        [
+          userId,
+          fullName,
+          `${DEMO_ACCOUNT_MARKER} — Daily sandbox resetting at 00:00 UTC`,
+        ]
       );
 
       // 2. Mark onboarding complete so demo user jumps straight into the app
@@ -1461,15 +1503,10 @@ export async function resetDemoUserData(): Promise<void> {
   const client = await getSystemClient();
   try {
     const userId = user.id;
-    const profileRes = await client.query(
-      'SELECT bio FROM profiles WHERE id = $1',
-      [userId]
-    );
-    const bio = profileRes.rows[0]?.bio || '';
-    if (bio && !bio.includes('SparkyFitness Demo Account')) {
+    if (!(await hasDemoMarker(client, userId))) {
       log(
         'warn',
-        `[DEMO RESET] Skipping reset: Account ${email} does not carry demo identity marker.`
+        `[DEMO RESET] Skipping reset: Account ${email} does not carry the demo identity marker.`
       );
       return;
     }
@@ -1511,15 +1548,10 @@ export async function purgeDemoUserIfExists(): Promise<void> {
     if (user) {
       const client = await getSystemClient();
       try {
-        const profileRes = await client.query(
-          'SELECT bio FROM profiles WHERE id = $1',
-          [user.id]
-        );
-        const bio = profileRes.rows[0]?.bio || '';
-        if (bio && !bio.includes('SparkyFitness Demo Account')) {
+        if (!(await hasDemoMarker(client, user.id))) {
           log(
             'warn',
-            `[DEMO] Skipping purge: Account ${email} does not carry demo identity marker.`
+            `[DEMO] Skipping purge: Account ${email} does not carry the demo identity marker. Leaving it untouched.`
           );
           return;
         }
