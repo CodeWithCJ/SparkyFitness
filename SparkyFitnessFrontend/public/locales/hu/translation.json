@@ -80,8 +80,13 @@
       "food": "Étel & Víz",
       "exercise": "Edzés",
       "goals": "Célok",
-      "checkin": "Test és Check-inek"
-    }
+      "checkin": "Test és Check-inek",
+      "medications": "Gyógyszerek"
+    },
+    "errorClearingHistory": "A csevegési előzményeket nem sikerült törölni.",
+    "errorLoadingHistory": "A csevegési előzményeket nem sikerült betölteni.",
+    "errorLoadingPreferences": "A csevegési beállítások betöltése nem sikerült.",
+    "successClearingHistory": "A csevegési előzmények törlése sikeresen megtörtént."
   },
   "foodCsvImport": {
     "clearData": "Adatok törlése",
@@ -94,7 +99,12 @@
   },
   "workoutLaps": {
     "avgMaxHr": "Átlag / Max BPM",
-    "power": "Erő"
+    "power": "Erő",
+    "lapsCount": "{{count}} Kör",
+    "lap": "Kör",
+    "distance": "Távolság",
+    "time": "Idő",
+    "pace": "Tempó (/{{unit}})"
   },
   "dailyHealthMetrics": {
     "title": "Napi Összefoglaló az Eszközeidről",

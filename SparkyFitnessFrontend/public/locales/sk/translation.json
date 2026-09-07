@@ -164,8 +164,7 @@
       "enterNewEmailAddress": "Zadajte novú e-mailovú adresu",
       "description": "Zmeňte si e-mail alebo heslo",
       "enterNewEmail": "Zadajte novú e-mailovú adresu",
-      "updateEmail": "Aktualizovať e-mail",
-      "verifyNewEmail": "Budete musieť overiť svoju novú e-mailovú adresu"
+      "updateEmail": "Aktualizovať e-mail"
     },
     "foodExerciseDataProviders": {
       "invalidKeyLengthWarning": "Ak sa zobrazí chyba „Neplatná dĺžka kľúča“, uistite sa, že vaše šifrovacie a autentifikačné kľúče JWT v premenných prostredia servera majú veľkosť 64 hex."
@@ -232,7 +231,6 @@
       "redirectUriPlaceholder": "napr. {{origin}}/oidc-callback",
       "idTokenSignedAlg": "Algoritmus podpisu ID token",
       "requestTimeout": "Časový limit požiadavky (ms)",
-      "redirectUriInfo": "URI presmerovania pre vášho poskytovateľa OIDC by malo byť: SPARKY_FITNESS_FRONTEND_URL/oidc-callback",
       "redirectUriCopied": "URI presmerovania bolo skopírované do schránky.",
       "localhostWarning": "Uistite sa, že váš poskytovateľ OIDC povoľuje vývoj na lokálnom hostiteľovi alebo vašej lokálnej IP adrese.",
       "proxyWarning": "Ak používate proxy server, ako napríklad Nginx Proxy Manager, uistite sa, že sú nakonfigurované nasledujúce hlavičky:",

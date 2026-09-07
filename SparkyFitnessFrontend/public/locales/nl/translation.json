@@ -127,7 +127,6 @@
       "netCaloriesBreakdown": "{{dailyIntakeCalories}} gegeten - {{finalTotalCaloriesBurned}} verbrand",
       "dailyProgress": "Dagelijkse voortgang",
       "targetBand": "doel {{min}}–{{max}}",
-      "bmrSourceExternal": "Gezondheidsapp",
       "adaptiveTdee": "Adaptieve TDEE",
       "adjustment": "Aanpassing",
       "burnedEnergyBreakdown": "Uitsplitsing energieverbruik:",
@@ -149,7 +148,13 @@
       "summaryUnavailableDesc": "Uw dagelijkse energieoverzicht konden niet worden geladen. Probeer de pagina te vernieuwen.",
       "summaryUnavailableTitle": "Dagelijks overzicht niet beschikbaar",
       "updateProfile": "Profiel bijwerken",
-      "weightTrend": "Gewichtstrend"
+      "weightTrend": "Gewichtstrend",
+      "bmrSourceMeasured": "Gemeten",
+      "bmrSourceAlgorithm": "Algoritme",
+      "goalModeTarget": "Doelwaarde",
+      "healthConnectProjectionSource": "Health Connect totaal calorieën",
+      "fallbackProjectionSource": "BMR + actieve calorieën (terugvaloptie)",
+      "legacyProjectionSource": "Apparaat weergave"
     },
     "editExerciseEntryDialog": {
       "setLabel": "Set",
@@ -464,7 +469,9 @@
     "name": "Naam",
     "presets": "Voorinstellingen",
     "startWorkout": "Begin met trainen",
-    "stats": "Statistieken"
+    "stats": "Statistieken",
+    "duplicate": "Dupliceren",
+    "duplicateNameSuffix": "{{name}} (Kopiëren)"
   },
   "workoutPlansManager": {
     "addPlanButton": "Plan toevoegen",
@@ -527,7 +534,7 @@
       "monounsaturatedFat": "Enkelvoudig onverzadigd vet (g)",
       "transFat": "Transvet (g)",
       "cholesterol": "Cholesterol (mg)",
-      "sodium": "Zout (mg)",
+      "sodium": "Natrium(mg)",
       "potassium": "Kalium (mg)",
       "dietaryFiber": "Voedingsvezels (g)",
       "sugars": "Suikers (g)",
@@ -716,7 +723,7 @@
       "monounsaturatedFat": "Enkelvoudig onverzadigd vet (g)",
       "transFat": "Transvet (g)",
       "cholesterol": "Cholesterol (mg)",
-      "sodium": "Zout (mg)",
+      "sodium": "Natrium (mg)",
       "potassium": "Kalium (mg)",
       "dietaryFiber": "Voedingsvezels (g)",
       "sugars": "Suikers (g)",
@@ -1242,6 +1249,14 @@
         "clientSecretPlaceholder": "Vul YAZIO client-secret in",
         "allFieldsRequired": "Alle velden (e-mailadres/gebruikersnaam, wachtwoord, client-ID en client-secret) zijn verplicht.",
         "languageSupportHelp": "De zoekresultaten van YAZIO worden automatisch aangepast aan de taal die u in SparkyFitness heeft ingesteld (ondersteunde talen: Engels, Duits, Frans, Russisch, Spaans, Italiaans, Nederlands, Pools, Portugees, Deens, Fins, Zweeds, Tsjechisch, Hongaars, Grieks, Noors, Turks, Chinees, Japans en Koreaans). Voor andere talen worden de standaard internationale databaseparameters gebruikt."
+      },
+      "oauthDashboards": {
+        "fallback": "Dashboard ontwikkelaar van providers",
+        "withings": "Dashboard ontwikkelaar van Withings",
+        "fitbit": "Dashboard ontwikkelaar van Fitbit",
+        "oura": "Dashboard ontwikkelaar van Oura",
+        "googlehealth": "Google Cloud Console",
+        "polar": "Polar AccessLink administrator"
       }
     },
     "aiService": {
@@ -1488,7 +1503,6 @@
       "currentEmail": "Huidige email",
       "enterNewEmail": "Voer een nieuw e-mailadres in",
       "updateEmail": "E-mail bijwerken",
-      "verifyNewEmail": "Je moet je nieuwe e-mailadres verifiëren",
       "changePassword": "Wachtwoord wijzigen",
       "newPassword": "Nieuw wachtwoord",
       "enterNewPassword": "Voer een nieuw wachtwoord in",
@@ -1616,7 +1630,8 @@
       "remainingTdee": "Dagelijks doel − geconsumeerd + (verwachte totale daginname − TDEE)",
       "remainingTitle": "Resterende calorieën",
       "tdeeFootnote": "* De prognose komt om middernacht overeen met de werkelijke waarde. Hiervoor moet de BMR berekenbaar zijn en moet het apparaat stappen of actieve calorieën registreren.",
-      "title": "Hoe uw calorieën worden berekend"
+      "title": "Hoe uw calorieën worden berekend",
+      "burnedTdee": "Health Connect totale calorieën (BMR + actieve calorieën)"
     },
     "calorieGoalAdjustment": {
       "activityHeavy": "Zeer actief (×1,725)",
@@ -1847,7 +1862,6 @@
       "idTokenSignedAlg": "ID-token handtekeningalgoritme",
       "userinfoSignedAlg": "Gebruikersinfo handtekeningalgoritme",
       "requestTimeout": "Time-out voor verzoek (ms)",
-      "redirectUriInfo": "De Omleidings-URI voor uw OIDC-provider moet zijn: SPARKY_FITNESS_FRONTEND_URL/oidc-callback",
       "redirectUriCopied": "Omleidings-URI naar het klembord gekopieerd.",
       "localhostWarning": "Zorg ervoor dat uw OIDC-provider localhost of uw lokale IP-adres toestaat voor ontwikkelingsdoeleinden.",
       "proxyWarning": "Als u een proxy zoals Nginx Proxy Manager gebruikt, zorg er dan voor dat de volgende headers geconfigureerd zijn:",
@@ -1912,7 +1926,7 @@
       "fat": "vet",
       "fiber": "vezels",
       "sugar": "suiker",
-      "sodium": "zout",
+      "sodium": "natrium",
       "cholesterol": "cholesterol",
       "satFat": "verzadigd vet",
       "transFat": "transvet",
@@ -2078,7 +2092,7 @@
     "monounsaturated_fat": "Enkelvoudig onverzadigd vet",
     "trans_fat": "Transvet",
     "cholesterol": "Cholesterol",
-    "sodium": "Zout",
+    "sodium": "Natrium",
     "potassium": "Kalium",
     "dietary_fiber": "Voedingsvezels",
     "sugars": "Suikers",
@@ -2114,7 +2128,7 @@
     "monounsaturatedFatLabel": "Enkelvoudig onverzadigd vet (g)",
     "transFatLabel": "Transvet (g)",
     "cholesterolLabel": "Cholesterol (mg)",
-    "sodiumLabel": "Zout (mg)",
+    "sodiumLabel": "Natrium (mg)",
     "potassiumLabel": "Kalium (mg)",
     "dietaryFiberLabel": "Voedingsvezels (g)",
     "sugarsLabel": "Suikers (g)",
@@ -2223,7 +2237,7 @@
     "items": "items",
     "kJUnit": "kJ",
     "kcalUnit": "kcal",
-    "loading": "Laden...",
+    "loading": "Aan het laden...",
     "min": "min",
     "minutesUnit": "Tijd",
     "next": "Volgende",
@@ -2758,7 +2772,6 @@
     "reps": "Herhalingen",
     "weight": "Gewicht",
     "tonnage": "Tonnage",
-    "durationMin": "Duur (min)",
     "restS": "Rust (s)",
     "notes": "Opmerkingen",
     "caloriesBurned": "Verbrande calorieën",
@@ -2873,7 +2886,6 @@
     "csvHeadersTimeAsleepHours": "Tijd in slaap (u)",
     "csvHeadersScore": "Score",
     "csvHeadersEfficiencyPercentage": "Efficiëntie (%)",
-    "csvHeadersDebtHours": "Schuld (u)",
     "csvHeadersAwakePeriods": "Periodes wakker",
     "csvHeadersSource": "Bron",
     "csvHeadersInsight": "Inzicht",
@@ -3140,7 +3152,7 @@
     "netCarbs": "Netto koolhydraten",
     "transFat": "Transvetten",
     "cholesterol": "Cholesterol",
-    "sodium": "Zout",
+    "sodium": "Natrium",
     "potassium": "Kalium",
     "dietaryFiber": "Voedingsvezels",
     "fiber": "Vezels",
@@ -3347,14 +3359,14 @@
     },
     "scheduleDesc": {
       "atTime": " om {{time}}",
-      "mealSuffix": " ({{meal}} maaltijd)",
       "daily": "Dagelijks",
       "weeklyOn": "Wekelijks op {{days}}",
       "everyNDays": "Om de {{n}} dagen",
       "cyclic": "Cyclus: {{on}} dagen aan, {{off}} dagen uit",
       "monthly": "Maandelijks op {{day}}",
       "prn": "Indien nodig (PRN)",
-      "taper": "Afbouw"
+      "taper": "Afbouw",
+      "mealRelationSuffix": " ({{meal}})"
     },
     "bodymap": {
       "label": "Lichaamskaart met injectieplaatsen"
@@ -3519,7 +3531,6 @@
       "supplementNamePlaceholder": "bijv. Vitamine D3",
       "doseForm": "Doseringsvorm",
       "nutritionPerDose": "Voedingsstof per portie",
-      "nutritionPerDoseHint": "Lees de voedingsstoffen op het etiket in en vul vervolgens de hoeveelheid in die één dosis bevat.",
       "clearNutrients": "Alles verwijderen",
       "nutrientsNeedDiaryAccess": "Voor de voedingswaarde per dosis is voor dit profiel toegang tot het voedingsdagboek vereist. U kunt het supplement wel opslaan en het schema, de herinneringen en de doses bijhouden.",
       "addNutrient": "Voedingsstof toevoegen",
@@ -3603,7 +3614,8 @@
       "after": "Na de maaltijd",
       "before": "Voor de maaltijd",
       "none": "Geen specifiek verband met voedsel",
-      "with": "Tijdens de maaltijd"
+      "with": "Tijdens de maaltijd",
+      "awayFromMeals": "Buiten maaltijden om"
     },
     "print": {
       "dates": "Rapportageperiode:",
@@ -3765,7 +3777,7 @@
       },
       "heart": {
         "title": "Hoog cholesterolgehalte of hartgezondheid",
-        "body": "Houd het cholesterolgehalte, het gehalte aan verzadigde vetten en het zoutgehalte op het maximum (de standaardinstellingen)."
+        "body": "Houd het cholesterolgehalte, het gehalte aan verzadigde vetten en het natriumgehalte op het maximum (de standaardinstellingen)."
       },
       "lowCarb": {
         "title": "Koolhydraatarm of keto",
@@ -4453,7 +4465,6 @@
     "withingsError": "Het koppelen van het Withings-account is mislukt. Probeer het nog eens.",
     "withingsSuccess": "Uw Withings-account is succesvol gekoppeld."
   },
-  "key": "tekst",
   "mealCreation": {
     "convertToMeal": "Maaltijd aanmaken op basis van dagboek",
     "description": "Beschrijving",

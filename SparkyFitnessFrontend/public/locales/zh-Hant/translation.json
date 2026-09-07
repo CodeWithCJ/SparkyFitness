@@ -42,7 +42,6 @@
     },
     "scheduleDesc": {
       "atTime": " 於 {{time}}",
-      "mealSuffix": " ({{meal}} 餐後)",
       "daily": "每日",
       "weeklyOn": "每週 {{days}}",
       "everyNDays": "每 {{n}} 天一次",
@@ -374,7 +373,6 @@
       "activeCalories": "活動消耗熱量：{{activeCaloriesFromExercise}} 大卡",
       "stepsCalories": "步數消耗：{{dailySteps}} 步 = {{stepsCalories}} 大卡",
       "bmrCalories": "基礎代謝率：{{bmr}} 大卡",
-      "bmrSourceExternal": "健康應用程式",
       "totalCaloriesBurned": "總消耗熱量：{{totalCaloriesBurned}} 大卡",
       "goal": "目標值",
       "caloriesBurnedBreakdownTitle": "熱量消耗明細表",
@@ -2131,7 +2129,6 @@
     "reps": "次數",
     "weight": "重量",
     "tonnage": "總負荷噸數",
-    "durationMin": "持續時間（分鐘）",
     "restS": "休息秒數（s）",
     "notes": "備註",
     "caloriesBurned": "消耗熱量",
