@@ -18,6 +18,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { convertMlToSelectedUnit } from '@/utils/nutritionCalculations';
+import { describeContainerPress } from '@/utils/waterContainerLabels';
 import { isManualSource, prettifySource } from '@/utils/sourceLabels';
 import { useWaterContainer } from '@/contexts/WaterContainerContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
@@ -410,12 +411,10 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
                       {preset.name}
                     </div>
                     <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      {/* A preset is linked to a food and carries volume 0,
+                          so describe the press by what it logs. */}
                       <span>
-                        {convertMlToSelectedUnit(
-                          preset.volume,
-                          preset.unit
-                        ).toFixed(preset.unit === 'ml' ? 0 : 1)}{' '}
-                        {preset.unit}
+                        {describeContainerPress(preset, { nonMlDecimals: 1 })}
                       </span>
                       {preset.hydration_factor === 0 && (
                         <span className="text-[9px] text-amber-600 dark:text-amber-400 font-mono">
@@ -526,22 +525,38 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="font-medium text-blue-600 dark:text-blue-400">
-                        {(() => {
-                          const val = convertMlToSelectedUnit(
-                            Number(entry.water_ml),
-                            displayUnit
-                          );
-                          const decimals =
-                            displayUnit === 'oz'
-                              ? 1
-                              : displayUnit === 'liter'
-                                ? 2
-                                : 0;
-                          return parseFloat(val.toFixed(decimals));
-                        })()}{' '}
-                        {displayUnit}
-                      </span>
+                      {/* A drink with a hydration factor of 0 -- an espresso,
+                          a spirit -- credits no water on purpose. Printing a
+                          bare "0 ml" beside it read as a failed calculation
+                          rather than the intended answer. */}
+                      {Number(entry.water_ml) === 0 ? (
+                        <span
+                          className="font-medium text-muted-foreground"
+                          title={t(
+                            'foodDiary.waterIntake.noWaterCreditHint',
+                            'This drink is set to count as no water'
+                          )}
+                        >
+                          {t('foodDiary.waterIntake.noWaterCredit', 'no water')}
+                        </span>
+                      ) : (
+                        <span className="font-medium text-blue-600 dark:text-blue-400">
+                          {(() => {
+                            const val = convertMlToSelectedUnit(
+                              Number(entry.water_ml),
+                              displayUnit
+                            );
+                            const decimals =
+                              displayUnit === 'oz'
+                                ? 1
+                                : displayUnit === 'liter'
+                                  ? 2
+                                  : 0;
+                            return parseFloat(val.toFixed(decimals));
+                          })()}{' '}
+                          {displayUnit}
+                        </span>
+                      )}
                       {/* Provider-synced rows get no delete: the provider still
                           holds the record, so a deleted row just re-inserts on
                           the next sync. */}

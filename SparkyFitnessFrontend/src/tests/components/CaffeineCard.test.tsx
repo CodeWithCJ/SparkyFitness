@@ -295,4 +295,30 @@ describe('CaffeineCard Component', () => {
     expect(screen.getAllByTestId('ref-line-x')).toHaveLength(2);
     expect(screen.queryByText(/Last 200mg dose/)).not.toBeInTheDocument();
   });
+
+  // A long half-life against a small headroom pushes the cutoff a day or more
+  // into the past. The marker is outside the plot and hidden; the legend used
+  // to keep printing its bare HH:MM, which reads as a time today.
+  it('drops the cutoff from the legend when it falls outside the plotted day', () => {
+    mockUseActiveCaffeineQuery.mockReturnValue({
+      data: {
+        ...baseData,
+        half_life_hours: 8,
+        // ~97 mg projected at the 20:30Z bedtime leaves ~3 mg of headroom, so
+        // a 200 mg dose would have had to be taken about two days earlier.
+        doses: [
+          { at: '2026-09-05T16:20:00.000Z', mg: 126, name: 'Double Espresso' },
+          { at: '2026-09-05T12:00:00.000Z', mg: 20, name: 'Ice Coffe' },
+        ],
+        at_bedtime_mg: 97,
+        cutoff_state: 'passed',
+      },
+      isLoading: false,
+    } as never);
+
+    render(<CaffeineCard date="2026-09-05" />);
+    expect(screen.queryByText(/Last 200mg dose/)).not.toBeInTheDocument();
+    // Bedtime and now remain; the cutoff marker does not.
+    expect(screen.getAllByTestId('ref-line-x')).toHaveLength(2);
+  });
 });

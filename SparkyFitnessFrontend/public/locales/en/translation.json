@@ -3004,7 +3004,9 @@
       "fromFood": "Includes {{volume}} {{unit}} from food",
       "linkedFoodRemovedTitle": "Food Entry Removed",
       "linkedFoodRemoved": "Linked food entry was also removed from your food diary.",
-      "linkedDrink": "Linked to a food entry"
+      "linkedDrink": "Linked to a food entry",
+      "noWaterCredit": "no water",
+      "noWaterCreditHint": "This drink is set to count as no water"
     },
     "copyFoodEntryDialog": {
       "title": "Copy Food Entries",

@@ -81,9 +81,8 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
       thresholdMg: data.threshold_mg,
       doseMg: data.cutoff_dose_mg,
     });
-    return cutoff.kind === 'by' || cutoff.kind === 'passed'
-      ? new Date(cutoff.at).getTime()
-      : null;
+    if (cutoff.kind !== 'by' && cutoff.kind !== 'passed') return null;
+    return new Date(cutoff.at).getTime();
   }, [data, nowMs]);
 
   // Recomputed from the same doses, so the words and the curve cannot drift.
@@ -129,6 +128,16 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
   } = data;
 
   const currentActiveMg = activeCaffeineAt(doses, nowMs, half_life_hours);
+
+  // A long half-life against a small headroom can push the cutoff a day or
+  // more into the past, outside the plotted window. The marker is already
+  // hidden there; the legend must go with it, because it prints a bare HH:MM
+  // that would read as a time today.
+  const cutoffInWindow =
+    cutoffMs !== null &&
+    chart.length > 0 &&
+    cutoffMs >= chart[0]!.t &&
+    cutoffMs <= chart[chart.length - 1]!.t;
 
   const peakMg = chart.reduce((max, point) => Math.max(max, point.mg), 0);
   const yMax = Math.max(peakMg, threshold_mg) * 1.15;
@@ -347,7 +356,7 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
               {/* The moment another dose stops fitting under the threshold.
                   Hidden when it falls outside the plotted window rather than
                   clamped to the edge, which would put it at a time it is not. */}
-              {cutoffMs !== null && (
+              {cutoffInWindow && cutoffMs !== null && (
                 <ReferenceLine
                   x={cutoffMs}
                   stroke={isDark ? '#34d399' : '#059669'}
@@ -402,7 +411,7 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
               <span className="h-3 w-0 border-l-2 border-slate-600 dark:border-slate-400" />
               {t('diary.caffeine.legendNow', 'Now')}
             </span>
-            {cutoffMs !== null && (
+            {cutoffInWindow && cutoffMs !== null && (
               <span className="flex items-center gap-1">
                 <span className="h-3 w-0 border-l-2 border-dashed border-emerald-600 dark:border-emerald-400" />
                 {t('diary.caffeine.legendCutoff', {
