@@ -238,13 +238,6 @@ struct WaterIntakeView: View {
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
-        // Wider than BottleShape's own 70:130 design space, which left the
-        // bottle height-bound and a good 20pt short of its column: at 70:130
-        // the fit resolved against the available height and simply didn't use
-        // the width it had. At 100:130 the width becomes the binding
-        // constraint instead, so the bottle fills the column. BottleShape
-        // stretches to whatever rect it's handed, so this widens the
-        // silhouette rather than cropping it — nudge the numerator to taste.
         // Must stay in step with BottleShape's design space below (70×130).
         // The shape maps that fixed space onto whatever rect it's handed, so
         // a mismatched ratio here doesn't resize the bottle — it stretches

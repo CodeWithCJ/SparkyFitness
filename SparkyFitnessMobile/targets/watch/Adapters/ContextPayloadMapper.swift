@@ -50,7 +50,13 @@ enum ContextPayloadMapper {
             // account settings, and a push that happens not to mention them
             // must not blank the bottle's scale.
             waterGoalMl: payload["waterGoalMl"] as? Double ?? previous.waterGoalMl,
-            waterDisplayUnit: payload["waterDisplayUnit"] as? String ?? previous.waterDisplayUnit
+            waterDisplayUnit: payload["waterDisplayUnit"] as? String ?? previous.waterDisplayUnit,
+            // Milliseconds since the epoch on the phone's clock. Carried
+            // forward is wrong here — a payload with no timestamp is exactly
+            // the one we can't reason about, so it stays nil.
+            generatedAt: (payload["pushedAt"] as? Double).map {
+                Date(timeIntervalSince1970: $0 / 1000)
+            }
         )
     }
 
@@ -161,13 +167,28 @@ enum ContextPayloadMapper {
     /// the complication is fed in parallel with the app's own store, not
     /// derived from it, so a payload too partial to build a snapshot still
     /// publishes something rather than leaving the watch face stale.
-    static func goalProgress(from payload: [String: Any]) -> GoalProgress {
-        GoalProgress(
-            calories: payload["calorieGoalProgress"] as? Double ?? 0,
-            protein: payload["proteinGoalProgress"] as? Double ?? 0,
-            carbs: payload["carbsGoalProgress"] as? Double ?? 0,
-            fat: payload["fatGoalProgress"] as? Double ?? 0
-        )
+    /// Nil unless the phone sent all four fractions.
+    ///
+    /// The same "partial is worse than absent" rule `nutrition(from:)` uses,
+    /// and for the same reason: coercing an absent key to 0 made the
+    /// complication assert an empty ring for today while the Goals page beside
+    /// it said "not synced yet". Note that absent is now the normal shape for
+    /// an unknown value — the phone's module strips nulls before the transfer,
+    /// since one `NSNull` fails the whole push.
+    ///
+    /// A real 0 still comes through as a real 0: the phone sends that only
+    /// when it has a summary and the summary has no goal set.
+    static func goalProgress(from payload: [String: Any]) -> GoalProgress? {
+        func value(_ key: String) -> Double? { payload[key] as? Double }
+
+        guard
+            let calories = value("calorieGoalProgress"),
+            let protein = value("proteinGoalProgress"),
+            let carbs = value("carbsGoalProgress"),
+            let fat = value("fatGoalProgress")
+        else { return nil }
+
+        return GoalProgress(calories: calories, protein: protein, carbs: carbs, fat: fat)
     }
 
     // MARK: - Acks

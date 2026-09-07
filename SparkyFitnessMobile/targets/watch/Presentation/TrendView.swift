@@ -82,8 +82,7 @@ struct TrendView: View {
             // firing near each other.
             isHapticFeedbackEnabled: false
         )
-        // Single-parameter form, per this target's deployment-target caution.
-        .onChange(of: currentMetric) { _ in
+        .onChange(of: currentMetric) {
             WKInterfaceDevice.current().play(.click)
         }
     }
@@ -159,15 +158,24 @@ struct TrendView: View {
                     // only captured on the watch — the chart itself carries the
                     // sync state rather than hiding it in a label.
                     let isToday = point.day == CheckInDate.today()
+                    let unconfirmed = store.isDayUnconfirmed(point.day)
                     PointMark(x: .value("Day", date), y: .value("Weight", unit.fromKg(point.weightKg)))
-                        .symbolSize(isToday ? 60 : 16)
-                        .symbol(store.isDayUnconfirmed(point.day) ? .circle : .circle)
-                        .foregroundStyle(
-                            isToday
-                                ? (store.isDayUnconfirmed(point.day) ? Color.orange : Color.green)
-                                : Color.secondary
-                        )
-                        .opacity(store.isDayUnconfirmed(point.day) ? 0.55 : 1)
+                        // A custom symbol view rather than `symbolSize` plus a
+                        // `ChartSymbolShape`: every built-in shape is filled,
+                        // so there is no `.circle`-but-hollow to pick. Size and
+                        // colour move into the symbol with it, since a custom
+                        // symbol draws itself.
+                        .symbol {
+                            TrendPointSymbol(
+                                // Matches what `symbolSize(60)` and
+                                // `symbolSize(16)` used to produce — those are
+                                // areas in points², so ~8.7pt and ~4.5pt across.
+                                diameter: isToday ? 9 : 4.5,
+                                color: isToday ? (unconfirmed ? .orange : .green) : .secondary,
+                                hollow: unconfirmed
+                            )
+                        }
+                        .opacity(unconfirmed ? 0.55 : 1)
                 }
             }
         }
@@ -197,5 +205,32 @@ struct TrendView: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+}
+
+/// One dot on the weight chart.
+///
+/// A ring rather than a disc while the day is captured on the watch but not
+/// yet acknowledged by the phone. `CheckInStore.isDayUnconfirmed` has always
+/// documented that as "drawn hollow", but the chart asked for `.circle` on
+/// both sides of the ternary, so opacity was carrying the whole distinction
+/// on its own.
+private struct TrendPointSymbol: View {
+    let diameter: CGFloat
+    let color: Color
+    let hollow: Bool
+
+    var body: some View {
+        Group {
+            if hollow {
+                // `strokeBorder`, not `stroke`: a stroke straddles the path and
+                // would spill half its width outside the frame below — the same
+                // thing that clipped the complication rings.
+                Circle().strokeBorder(color, lineWidth: 1.5)
+            } else {
+                Circle().fill(color)
+            }
+        }
+        .frame(width: diameter, height: diameter)
     }
 }

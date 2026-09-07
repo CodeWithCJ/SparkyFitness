@@ -151,7 +151,7 @@ public class WatchConnectivityModule: Module {
         /// missed update is simply superseded by the next one.
         AsyncFunction("updateContext") { (context: [String: Any]) -> Void in
             guard WCSession.isSupported() else { return }
-            var payload = context
+            var payload = context.compactMapValues(withoutNulls)
             payload["type"] = "context"
             try WCSession.default.updateApplicationContext(payload)
         }
@@ -168,4 +168,30 @@ public class WatchConnectivityModule: Module {
             )
         }
     }
+}
+
+/// Strips JS `null`s out of a payload bound for `updateApplicationContext`.
+///
+/// That API accepts property-list types only — data, string, number, date,
+/// array, dictionary — and a single `NSNull` anywhere in the tree makes it
+/// throw `WCErrorCodeInvalidParameter`. It fails the WHOLE push, not the
+/// offending field, so one absent body-fat reading silently costs the watch
+/// every other value in the same dictionary.
+///
+/// Nulls are load-bearing in this payload rather than accidental: the bridge
+/// sends `null` for a figure it cannot vouch for, and `history[]` entries
+/// carry `bodyFatPercentage: null` whenever a day has a weight but no body
+/// fat. Dropping the key is lossless, because the watch reads every optional
+/// field as `payload["key"] as? Double`, which cannot tell an absent key from
+/// a null one. The carry-forward paths in `ContextPayloadMapper` rely on the
+/// same equivalence.
+private func withoutNulls(_ value: Any) -> Any? {
+    if value is NSNull { return nil }
+    if let dictionary = value as? [String: Any] {
+        return dictionary.compactMapValues(withoutNulls)
+    }
+    if let array = value as? [Any] {
+        return array.compactMap(withoutNulls)
+    }
+    return value
 }

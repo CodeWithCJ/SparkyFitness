@@ -101,7 +101,12 @@ final class CheckInStore: ObservableObject {
     /// `pendingWaterTaps` directly, and the id only matters to `apply`.
     func recordWaterTap(volumeMl: Double) {
         pendingWaterTaps.append(
-            PendingWaterTap(id: UUID().uuidString, volumeMl: volumeMl, day: CheckInDate.today())
+            PendingWaterTap(
+                id: UUID().uuidString,
+                volumeMl: volumeMl,
+                createdAt: Date(),
+                day: CheckInDate.today()
+            )
         )
         persist()
     }
@@ -127,16 +132,33 @@ final class CheckInStore: ObservableObject {
         // hold a day that has ended regardless of who applied it.
         clearStaleDayData()
 
-        // A snapshot for today is the phone's authoritative word on what has
-        // been drunk, so everything optimistic is now either counted in it or
-        // was never written. Either way holding on would double-count.
+        // Clears the optimistic taps a total has had the chance to account
+        // for — those made before the phone built it.
         //
-        // Keyed on a today-snapshot arriving rather than on the total having
-        // changed: two taps of the same container between pushes leave the
-        // total looking untouched by that test, and the taps would sit in the
-        // bottle forever.
+        // Not simply "a today-snapshot arrived, drop everything": an inbound
+        // context is not always a fresh one. `adoptReceivedContext()` replays
+        // whatever the phone last set, so re-opening the app minutes after a
+        // tap re-applied this morning's cached total and wiped a tap that was
+        // still sitting in the outbox, un-written. The bump vanished from the
+        // bottle while the tap was very much still pending.
+        //
+        // Not "the total changed" either: two taps of the same container
+        // between pushes leave the total looking untouched by that test, and
+        // the taps would sit in the bottle forever.
+        //
+        // Both clocks are involved, so a phone/watch skew can clear a tap a
+        // moment early or late. Bounded and self-correcting — the next push
+        // settles the bottle on the server's number either way — where the
+        // previous rule lost the tap outright.
         if context.water?.isToday == true, !pendingWaterTaps.isEmpty {
-            pendingWaterTaps.removeAll()
+            if let generatedAt = context.generatedAt {
+                pendingWaterTaps.removeAll { $0.createdAt <= generatedAt }
+            } else {
+                // A phone build from before `pushedAt` existed. Nothing to
+                // reason with, so keep the old behaviour rather than letting
+                // taps accumulate with no way out.
+                pendingWaterTaps.removeAll()
+            }
         }
 
         // Acks ride along in the context so they still arrive if the watch app

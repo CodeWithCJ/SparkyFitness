@@ -1,4 +1,4 @@
-import { NativeModule, requireNativeModule } from 'expo';
+import { NativeModule, requireOptionalNativeModule } from 'expo';
 import { Platform } from 'react-native';
 
 /** A morning check-in captured on the Apple Watch. */
@@ -188,7 +188,9 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
 // src/hooks/useWatchCheckInBridge.ts over importing this module directly.
 const WatchConnectivityModule: WatchConnectivityModuleType | null =
   Platform.OS === 'ios'
-    ? requireNativeModule<WatchConnectivityModuleType>('WatchConnectivity')
+    ? requireOptionalNativeModule<WatchConnectivityModuleType>(
+        'WatchConnectivity'
+      )
     : null;
 
 export default WatchConnectivityModule;

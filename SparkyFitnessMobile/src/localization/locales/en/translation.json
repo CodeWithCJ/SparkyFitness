@@ -1245,7 +1245,7 @@
     },
     "watch": {
       "title": "Apple Watch",
-      "description": "Status of the watch companion link. Check-ins captured on the watch are queued and delivered even when \"reachable\" is off, so a red dot here does not mean data is lost.",
+      "description": "Status of the watch companion link. Check-ins captured on the watch are queued and delivered even when \"reachable\" is off, so a gray dot here does not mean data is lost.",
       "paired": "Watch paired",
       "notPaired": "No watch paired",
       "unsupported": "Not supported on this platform",

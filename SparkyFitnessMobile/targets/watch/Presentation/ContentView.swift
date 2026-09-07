@@ -72,8 +72,7 @@ struct ContentView: View {
         // The case `onAppear` misses: the app was never torn down, just put
         // away for the night, so the only signal that a new day started is
         // coming back to the foreground.
-        // Single-parameter form, per this target's deployment-target caution.
-        .onChange(of: scenePhase) { phase in
+        .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
             store.pruneStaleDayData()
             // Cheap, local, and works with the phone out of range — unlike
@@ -105,7 +104,7 @@ struct ContentView: View {
         }
     }
 
-    /// Landing page on a normal (non-first-run) launch: Trend if today is
+    /// Landing page on a normal (non-first-run) launch: Nutrition goal if today is
     /// already logged — nothing left to capture — otherwise Entry.
     private var initialPage: Page {
         store.isReplacingToday ? .goals : .entry

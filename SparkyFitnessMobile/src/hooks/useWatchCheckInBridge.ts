@@ -119,10 +119,11 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // extra fetch. 'st_lbs' collapses to 'lbs' for the watch: its crown dial only
   // has room for one number, not a stone+lb split.
   const { preferences } = usePreferences();
-  const weightUnit: 'kg' | 'lbs' = preferences?.default_weight_unit === 'lbs'
-    || preferences?.default_weight_unit === 'st_lbs'
-    ? 'lbs'
-    : 'kg';
+  const weightUnit: 'kg' | 'lbs' =
+    preferences?.default_weight_unit === 'lbs' ||
+    preferences?.default_weight_unit === 'st_lbs'
+      ? 'lbs'
+      : 'kg';
 
   // The calendar day everything below describes.
   //
@@ -153,7 +154,10 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // have selected — this hook seeds the watch, which only ever cares about
   // today. Same underlying query the Dashboard uses, so this rides its cache
   // rather than adding a second fetch when both are mounted.
-  const { summary: dailySummary } = useDailySummary({ date: summaryDate, enabled });
+  const { summary: dailySummary } = useDailySummary({
+    date: summaryDate,
+    enabled,
+  });
 
   // EVERY calorie figure sent to the watch comes from this one object — the
   // same one the phone's own summary bar (DiaryCalorieMacroSummary) and the
@@ -168,18 +172,25 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // one layer up, which is why the balance is computed in exactly one place.
   const balance = dailySummary?.calorieBalance;
 
-  const calorieGoalProgress = balance && balance.goal > 0
-    ? Math.max(0, Math.min(1, balance.progress / 100))
-    : 0;
+  // Null when there is no summary at all, 0 only when a summary says there is
+  // no goal. These feed the complication rings, and the two cases are not the
+  // same claim: a 0 the watch can't tell apart from "nothing logged yet" drew
+  // an empty ring for today while the Goals page next to it said "not synced
+  // yet" — the same page/complication divergence we chased before, in reverse.
+  const calorieGoalProgress = dailySummary
+    ? balance && balance.goal > 0
+      ? Math.max(0, Math.min(1, balance.progress / 100))
+      : 0
+    : null;
   const proteinGoalProgress = dailySummary
     ? goalProgress(dailySummary.protein.consumed, dailySummary.protein.goal)
-    : 0;
+    : null;
   const carbsGoalProgress = dailySummary
     ? goalProgress(dailySummary.carbs.consumed, dailySummary.carbs.goal)
-    : 0;
+    : null;
   const fatGoalProgress = dailySummary
     ? goalProgress(dailySummary.fat.consumed, dailySummary.fat.goal)
-    : 0;
+    : null;
 
   // Totals behind the watch's Goals page: eaten on the left, remaining in the
   // ring, burned on the right. Null rather than 0 while the summary is still
@@ -235,23 +246,27 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   const watchWaterLog: WatchWaterLogPayload[] = useMemo(
     () =>
       (waterLogEntries ?? [])
-    // Manual entries only, per the watch view's design: a synced record
-    // (Apple Health and friends) has no container behind it, so there's no
-    // honest name to bold and nothing the wearer would recognize as theirs
-    // to delete.
-    .filter((entry) => entry.source === 'manual' && entry.container_name)
-    // Newest first. The endpoint already orders logged_at DESC, but the watch
-    // view's whole premise is that the drink you just mis-tapped is the top
-    // row — too load-bearing to leave resting on the server's ORDER BY.
-    .slice()
-    .sort((a, b) => new Date(b.logged_at).getTime() - new Date(a.logged_at).getTime())
+        // Manual entries only, per the watch view's design: a synced record
+        // (Apple Health and friends) has no container behind it, so there's no
+        // honest name to bold and nothing the wearer would recognize as theirs
+        // to delete.
+        .filter((entry) => entry.source === 'manual' && entry.container_name)
+        // Newest first. The endpoint already orders logged_at DESC, but the watch
+        // view's whole premise is that the drink you just mis-tapped is the top
+        // row — too load-bearing to leave resting on the server's ORDER BY.
+        .slice()
+        .sort(
+          (a, b) =>
+            new Date(b.logged_at).getTime() - new Date(a.logged_at).getTime()
+        )
         .map((entry) => ({
           id: entry.id,
           name: entry.container_name ?? '',
           volumeMl: Number(entry.water_ml) || 0,
-          time: formatTimeLabel(localHourMinute(entry.logged_at), timeFormat) ?? '',
+          time:
+            formatTimeLabel(localHourMinute(entry.logged_at), timeFormat) ?? '',
         })),
-    [waterLogEntries, timeFormat],
+    [waterLogEntries, timeFormat]
   );
 
   const watchContainers: WatchContainerPayload[] = useMemo(
@@ -264,7 +279,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         servingVolumeMl: getServingVolume(container),
         unit: container.unit,
       })),
-    [containers],
+    [containers]
   );
 
   // Bundled so the day check below is one decision rather than sixteen. The
@@ -304,7 +319,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       fatGoal,
       waterConsumedMl,
       watchWaterLog,
-    ],
+    ]
   );
 
   const pushContext = useCallback(async (): Promise<void> => {
@@ -316,7 +331,10 @@ export function useWatchCheckInBridge(enabled: boolean): void {
 
       // The API returns DESC by updated_at, so the first row seen for a date is
       // the most recent one for that date.
-      const byDay = new Map<string, { weight?: number | null; bodyFat?: number | null }>();
+      const byDay = new Map<
+        string,
+        { weight?: number | null; bodyFat?: number | null }
+      >();
       for (const entry of range) {
         if (byDay.has(entry.entry_date)) continue;
         byDay.set(entry.entry_date, {
@@ -330,7 +348,11 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         const day = addDays(today, -(HISTORY_DAYS - 1 - i));
         const row = byDay.get(day);
         if (row?.weight != null && row.weight > 0) {
-          history.push({ day, weightKg: row.weight, bodyFatPercentage: row.bodyFat ?? null });
+          history.push({
+            day,
+            weightKg: row.weight,
+            bodyFatPercentage: row.bodyFat ?? null,
+          });
         }
       }
 
@@ -338,8 +360,9 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       // Most recent day that actually has a weight — the crown's anchor. Falls
       // back through history so a skipped morning doesn't leave the watch
       // unseeded.
-      const lastWithWeight = [...history].reverse().find((point) => point.day !== today)
-        ?? [...history].reverse()[0];
+      const lastWithWeight =
+        [...history].reverse().find((point) => point.day !== today) ??
+        [...history].reverse()[0];
 
       // The one check that stops a stale payload from impersonating a fresh
       // one. `today` is read at call time; every figure below was read when
@@ -352,7 +375,8 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       // Seed weight, history and containers are deliberately NOT gated: none of
       // them expires at midnight, and a watch that loses its containers because
       // the phone woke up on a new day is the bug we fixed once already.
-      const figures = summaryDate === today ? figuresForSummaryDate : NO_FIGURES_FOR_TODAY;
+      const figures =
+        summaryDate === today ? figuresForSummaryDate : NO_FIGURES_FOR_TODAY;
 
       const context: WatchContextPayload = {
         // Keeps consecutive pushes distinct — see the field's own comment.
@@ -413,7 +437,10 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   const handleCheckIn = useCallback(
     async (payload: WatchCheckInPayload): Promise<void> => {
       if (!WatchConnectivity) return;
-      if (payload.clientId && handledClientIdsRef.current.has(payload.clientId)) {
+      if (
+        payload.clientId &&
+        handledClientIdsRef.current.has(payload.clientId)
+      ) {
         // Already written; re-ack so the watch can clear it and move on.
         await WatchConnectivity.sendAck(payload.clientId, true);
         return;
@@ -431,23 +458,26 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         });
 
         handledClientIdsRef.current.add(payload.clientId);
-        ackedClientIdsRef.current = [...ackedClientIdsRef.current, payload.clientId].slice(-20);
+        ackedClientIdsRef.current = [
+          ...ackedClientIdsRef.current,
+          payload.clientId,
+        ].slice(-20);
 
         queryClient.setQueryData<CheckInMeasurement>(
           measurementsQueryKey(payload.entryDate),
-          saved,
+          saved
         );
         queryClient.invalidateQueries({
           queryKey: measurementsRangeQueryKey(
             addDays(getTodayDate(), -(HISTORY_DAYS - 1)),
-            getTodayDate(),
+            getTodayDate()
           ),
         });
         refreshHealthSyncCache(queryClient);
 
         addLog(
           `Watch check-in saved for ${payload.entryDate}: ${payload.weightKg} kg`,
-          'INFO',
+          'INFO'
         );
         await WatchConnectivity.sendAck(payload.clientId, true);
         await pushContextRef.current();
@@ -458,7 +488,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         await WatchConnectivity.sendAck(payload.clientId, false);
       }
     },
-    [],
+    []
   );
 
   /**
@@ -473,9 +503,23 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   const handleWaterTap = useCallback(
     async (payload: WatchWaterIntakePayload): Promise<void> => {
       if (!WatchConnectivity) return;
-      if (payload.clientId && handledWaterClientIdsRef.current.has(payload.clientId)) {
+      if (
+        payload.clientId &&
+        handledWaterClientIdsRef.current.has(payload.clientId)
+      ) {
         return;
       }
+      // Reserved BEFORE the write rather than after it. `changeWaterIntake` is
+      // additive — one tap adds one serving — so two deliveries of the same
+      // clientId add two servings. WatchConnectivity makes no once-only
+      // delivery promise (which is why this set exists at all), and a
+      // redelivery arriving while the first request is still in flight sails
+      // past a check that only records the id on completion.
+      //
+      // `handleCheckIn` can keep recording afterwards: it upserts by date, so
+      // writing the same check-in twice is writing it once.
+      if (payload.clientId)
+        handledWaterClientIdsRef.current.add(payload.clientId);
 
       try {
         await changeWaterIntake({
@@ -486,8 +530,9 @@ export function useWatchCheckInBridge(enabled: boolean): void {
           containerId: payload.containerId,
         });
 
-        handledWaterClientIdsRef.current.add(payload.clientId);
-        queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(payload.entryDate) });
+        queryClient.invalidateQueries({
+          queryKey: dailySummaryQueryKey(payload.entryDate),
+        });
         // The tap also created a new log row, which the watch's log view
         // reads — refetch so the next push carries it.
         await queryClient.invalidateQueries({
@@ -496,14 +541,20 @@ export function useWatchCheckInBridge(enabled: boolean): void {
 
         addLog(
           `Watch water tap logged for ${payload.entryDate}: container ${payload.containerId}`,
-          'INFO',
+          'INFO'
         );
         await pushContextRef.current();
       } catch (error) {
+        // Released again, so the id isn't spent on a write that never landed.
+        // The system's own redelivery of the queued transfer is the only retry
+        // a tap gets — there's no ack path back to the watch — so holding the
+        // reservation here would turn a transient failure into a lost tap.
+        if (payload.clientId)
+          handledWaterClientIdsRef.current.delete(payload.clientId);
         addLog(`Watch water tap failed to save: ${String(error)}`, 'ERROR');
       }
     },
-    [],
+    []
   );
 
   /**
@@ -514,7 +565,10 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   const handleWaterDelete = useCallback(
     async (payload: WatchWaterDeletePayload): Promise<void> => {
       if (!WatchConnectivity) return;
-      if (payload.clientId && handledWaterClientIdsRef.current.has(payload.clientId)) {
+      if (
+        payload.clientId &&
+        handledWaterClientIdsRef.current.has(payload.clientId)
+      ) {
         return;
       }
       if (!payload.entryId) return;
@@ -526,8 +580,12 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         await deleteWaterIntakeLogEntry(payload.entryId);
 
         handledWaterClientIdsRef.current.add(payload.clientId);
-        queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(today) });
-        await queryClient.invalidateQueries({ queryKey: waterIntakeLogQueryKey(today) });
+        queryClient.invalidateQueries({
+          queryKey: dailySummaryQueryKey(today),
+        });
+        await queryClient.invalidateQueries({
+          queryKey: waterIntakeLogQueryKey(today),
+        });
 
         addLog(`Watch deleted water log entry ${payload.entryId}`, 'INFO');
         await pushContextRef.current();
@@ -538,7 +596,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         await pushContextRef.current();
       }
     },
-    [],
+    []
   );
 
   // Latest handlers, read by the subscriptions below.
@@ -551,41 +609,68 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // touching `.current` on the way through render is exactly what
   // `react-hooks/refs` forbids. The one-render lag that introduces is harmless
   // here — these events arrive from the native side long after mount.
-  const handlersRef = useRef({ handleCheckIn, handleWaterTap, handleWaterDelete, pushContext, catchUpToToday });
+  const handlersRef = useRef({
+    handleCheckIn,
+    handleWaterTap,
+    handleWaterDelete,
+    pushContext,
+    catchUpToToday,
+  });
   useEffect(() => {
-    handlersRef.current = { handleCheckIn, handleWaterTap, handleWaterDelete, pushContext, catchUpToToday };
+    handlersRef.current = {
+      handleCheckIn,
+      handleWaterTap,
+      handleWaterDelete,
+      pushContext,
+      catchUpToToday,
+    };
   });
 
   // Subscriptions. Depends on `enabled` alone, so these are set up once.
   useEffect(() => {
-    if (!enabled || !WatchConnectivity || !WatchConnectivity.isSupported()) return;
+    if (!enabled || !WatchConnectivity || !WatchConnectivity.isSupported())
+      return;
 
     // Every inbound event is a chance to notice the day has turned over: each
     // one means the watch is awake and talking to us, which after a night
     // asleep is the first moment anything here runs at all.
-    const onEvent = <T,>(handle: (payload: T) => Promise<void>) => (payload: T) => {
-      handlersRef.current.catchUpToToday();
-      void handle(payload);
-    };
+    const onEvent =
+      <T>(handle: (payload: T) => Promise<void>) =>
+      (payload: T) => {
+        handlersRef.current.catchUpToToday();
+        void handle(payload);
+      };
 
     const checkInSub = WatchConnectivity.addListener('onCheckIn', (payload) => {
       onEvent(handlersRef.current.handleCheckIn)(payload);
     });
-    const waterIntakeSub = WatchConnectivity.addListener('onWaterIntake', (payload) => {
-      onEvent(handlersRef.current.handleWaterTap)(payload);
-    });
-    const waterDeleteSub = WatchConnectivity.addListener('onWaterDelete', (payload) => {
-      onEvent(handlersRef.current.handleWaterDelete)(payload);
-    });
-    const contextRequestSub = WatchConnectivity.addListener('onContextRequest', () => {
-      handlersRef.current.catchUpToToday();
-      void handlersRef.current.pushContext();
-    });
-    const reachabilitySub = WatchConnectivity.addListener('onReachabilityChange', ({ isReachable }) => {
-      if (!isReachable) return;
-      handlersRef.current.catchUpToToday();
-      void handlersRef.current.pushContext();
-    });
+    const waterIntakeSub = WatchConnectivity.addListener(
+      'onWaterIntake',
+      (payload) => {
+        onEvent(handlersRef.current.handleWaterTap)(payload);
+      }
+    );
+    const waterDeleteSub = WatchConnectivity.addListener(
+      'onWaterDelete',
+      (payload) => {
+        onEvent(handlersRef.current.handleWaterDelete)(payload);
+      }
+    );
+    const contextRequestSub = WatchConnectivity.addListener(
+      'onContextRequest',
+      () => {
+        handlersRef.current.catchUpToToday();
+        void handlersRef.current.pushContext();
+      }
+    );
+    const reachabilitySub = WatchConnectivity.addListener(
+      'onReachabilityChange',
+      ({ isReachable }) => {
+        if (!isReachable) return;
+        handlersRef.current.catchUpToToday();
+        void handlersRef.current.pushContext();
+      }
+    );
 
     // Coming back to the foreground is the other way a new day first shows up
     // — the app can sit resident for days without re-rendering this hook.
@@ -611,7 +696,8 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // covers the second push after a day rollover, once react-query has fetched
   // the new day.
   useEffect(() => {
-    if (!enabled || !WatchConnectivity || !WatchConnectivity.isSupported()) return;
+    if (!enabled || !WatchConnectivity || !WatchConnectivity.isSupported())
+      return;
     void pushContext();
   }, [enabled, pushContext]);
 }

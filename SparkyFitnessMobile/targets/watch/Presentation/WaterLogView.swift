@@ -59,8 +59,7 @@ struct WaterLogView: View {
         // a FAILED delete self-correct: the phone re-pushes the unchanged log,
         // this drops the id, and the row comes back rather than staying
         // invisible on a screen that no longer matches the server.
-        // Single-parameter form, per this target's deployment-target caution.
-        .onChange(of: water?.log ?? []) { _ in
+        .onChange(of: water?.log ?? []) {
             deletedIds.removeAll()
         }
     }

@@ -30,7 +30,10 @@ struct CheckInEntryView: View {
     @State private var bodyFat: Double = 20
     @State private var bodyFatSkipped = false
     @State private var showTypeEntry = false
-    @State private var didSeed = false
+    /// The unit `weight` below is currently expressed in, and nil until the
+    /// first seed. Replaces a plain `didSeed` flag: latching on "have we
+    /// seeded at all" left a stale unit behind whenever the phone changed it.
+    @State private var seededUnit: WeightUnit?
 
     private var unit: WeightUnit { store.context.effectiveWeightUnit }
 
@@ -112,10 +115,16 @@ struct CheckInEntryView: View {
         )
         .id(active)
         .onAppear(perform: seedIfNeeded)
+        // `onAppear` alone isn't enough: this is a page in a `.page` TabView,
+        // so it stays alive and doesn't appear again when the wearer swipes
+        // back to it. A unit change arriving from the phone while it sits here
+        // has to be caught on its own.
+        .onChange(of: unit) { seedIfNeeded() }
         .sheet(isPresented: $showTypeEntry) {
             TypedValueEntryView(
                 title: active == .weight ? "Weight (\(unit.suffix))" : "Body fat (%)",
-                initial: active == .weight ? weight : bodyFat
+                initial: active == .weight ? weight : bodyFat,
+                range: typedEntryRange
             ) { typed in
                 if active == .weight { weight = typed } else { bodyFat = typed; bodyFatSkipped = false }
             }
@@ -236,6 +245,25 @@ struct CheckInEntryView: View {
         )
     }
 
+    /// Sanity bounds for a *typed* value, in the unit on screen. The crown
+    /// clamps itself — body fat to 0...100 in `crownRange` below — so this is
+    /// the only entry point that needs stating.
+    ///
+    /// Not a medical range: the job here is keeping zero, negatives and
+    /// infinities out of the payload. A weight of 0 sails through the server
+    /// and then anchors every later crown session and trend line to itself,
+    /// and a NaN makes `persist()`'s JSONEncoder throw into a `try?` so the
+    /// check-in vanishes without a word. A wrong-but-plausible number is
+    /// `weightLooksWrong`'s job, not this one's.
+    private var typedEntryRange: ClosedRange<Double> {
+        guard active == .weight else { return 0...100 }
+        let lower = unit.fromKg(Self.typedWeightKgRange.lowerBound)
+        let upper = unit.fromKg(Self.typedWeightKgRange.upperBound)
+        return lower...upper
+    }
+
+    private static let typedWeightKgRange: ClosedRange<Double> = 2...500
+
     private var crownRange: ClosedRange<Double> {
         if active == .weight {
             return (seedWeight - weightWindow)...(seedWeight + weightWindow)
@@ -245,11 +273,29 @@ struct CheckInEntryView: View {
 
     // MARK: - Actions
 
+    /// Seeds the dials, and re-expresses the weight if the phone has since
+    /// changed the display unit.
+    ///
+    /// `weight` is held in the display unit, so a unit change without this
+    /// leaves the number as it was while everything around it moves: the label
+    /// reads "80.7 lbs" for a kg value, `crownRange` recentres on ~178 lbs and
+    /// no longer contains it, and `save()`'s `unit.toKg(80.7)` writes 36.6 kg
+    /// to the server. A wrong weight written silently is the worst outcome
+    /// this screen has.
+    ///
+    /// Converted rather than re-seeded: an untouched dial converts to exactly
+    /// what re-seeding would give, and a dial the wearer has already moved
+    /// keeps the number they chose instead of losing it.
     private func seedIfNeeded() {
-        guard !didSeed else { return }
-        didSeed = true
-        weight = seedWeight
-        bodyFat = seedBodyFat
+        guard let seededUnit else {
+            weight = seedWeight
+            bodyFat = seedBodyFat
+            self.seededUnit = unit
+            return
+        }
+        guard seededUnit != unit else { return }
+        weight = unit.fromKg(seededUnit.toKg(weight))
+        self.seededUnit = unit
     }
 
     private func save() {
@@ -273,10 +319,31 @@ struct CheckInEntryView: View {
 struct TypedValueEntryView: View {
     let title: String
     let initial: Double
+    /// What may be committed, in the same unit `initial` is in. Scribble and
+    /// dictation will hand over whatever they think they heard, and this is
+    /// the one path into a check-in that the Digital Crown's own clamping
+    /// doesn't cover.
+    let range: ClosedRange<Double>
     let onCommit: (Double) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var text: String = ""
+
+    /// Nil when what's typed isn't worth committing: unparseable, non-finite
+    /// (`Double("nan")` and `Double("inf")` both parse happily), or outside
+    /// `range`.
+    ///
+    /// Drives the commit and the button's enabled state from one place, so an
+    /// invalid entry leaves the sheet open instead of dismissing having
+    /// silently done nothing — the same shape `FirstRunEntryView` already
+    /// uses for its Save button.
+    private var parsed: Double? {
+        let normalized = text.replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(normalized), value.isFinite, range.contains(value) else {
+            return nil
+        }
+        return value
+    }
 
     var body: some View {
         VStack(spacing: 8) {
@@ -285,11 +352,12 @@ struct TypedValueEntryView: View {
                 .font(.title3)
                 .multilineTextAlignment(.center)
             Button("Set") {
-                let normalized = text.replacingOccurrences(of: ",", with: ".")
-                if let value = Double(normalized) { onCommit(value) }
+                guard let parsed else { return }
+                onCommit(parsed)
                 dismiss()
             }
             .buttonStyle(.borderedProminent)
+            .disabled(parsed == nil)
         }
         .padding()
         .onAppear { text = String(format: "%.1f", initial) }

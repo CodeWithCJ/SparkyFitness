@@ -43,19 +43,70 @@ final class WatchSessionManager: NSObject, ObservableObject {
         session.activate()
     }
 
+    /// Sends made before `WCSession` finished activating.
+    ///
+    /// `activate()` returns immediately and the session only becomes usable
+    /// when the delegate callback lands, so there is a window at launch where
+    /// `transferUserInfo` is a programmer error rather than a queued send —
+    /// WatchConnectivity raises instead of holding it. The window is short but
+    /// it is exactly the one a complication tap lands in: the app cold-starts
+    /// straight onto the Water page and a square is one tap away.
+    ///
+    /// In memory rather than persisted, deliberately. Activation completes
+    /// moments after launch, and a tap lost with the process is reconciled
+    /// anyway: the optimistic bump in `CheckInStore.pendingWaterTaps` clears
+    /// on the next context push carrying today's water, so the bottle settles
+    /// back to the truth rather than lying indefinitely.
+    private var deferredTransfers: [[String: Any]] = []
+
+    private var isActivated: Bool {
+        WCSession.isSupported() && WCSession.default.activationState == .activated
+    }
+
+    /// The single door every queued send goes through.
+    ///
+    /// Water taps and deletes need the deferral: neither has an ack path or a
+    /// replayable backing list, so dropping one silently is indistinguishable
+    /// to the wearer from the app being broken. Check-ins would survive
+    /// without it — they sit in `CheckInStore.pending` until `retryPending()`
+    /// — but routing them through here too keeps one rule instead of two.
+    private func transfer(_ payload: [String: Any]) {
+        guard WCSession.isSupported() else { return }
+        guard isActivated else {
+            deferredTransfers.append(payload)
+            return
+        }
+        WCSession.default.transferUserInfo(payload)
+    }
+
+    private func flushDeferredTransfers() {
+        guard isActivated, !deferredTransfers.isEmpty else { return }
+        let queued = deferredTransfers
+        deferredTransfers.removeAll()
+        for payload in queued {
+            WCSession.default.transferUserInfo(payload)
+        }
+    }
+
     /// Hands a check-in to the system for delivery. Returns the state to show:
     /// `.queued` always, because even a reachable phone hasn't written to the
     /// server yet — the ack flips it to `.saved`.
     func send(_ checkIn: CheckIn) -> SyncState {
         guard WCSession.isSupported() else { return .failed }
-        WCSession.default.transferUserInfo(OutboundPayloads.checkIn(checkIn))
+        transfer(OutboundPayloads.checkIn(checkIn))
+        // Still `.queued` even when the transfer was deferred: the check-in is
+        // in `CheckInStore.pending` either way, and the ack is the only thing
+        // that moves it to `.saved`.
         return .queued
     }
 
     /// Re-queues everything still unconfirmed. Used by the retry affordance and
     /// on app launch, since a transfer can be lost if the app was force-quit.
     func retryPending() {
-        guard WCSession.isSupported() else { return }
+        // Skipped rather than deferred while activating: the activation
+        // callback calls this itself, so deferring here would queue every
+        // pending check-in twice.
+        guard isActivated else { return }
         for checkIn in store.retryable {
             WCSession.default.transferUserInfo(OutboundPayloads.checkIn(checkIn))
         }
@@ -78,7 +129,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
             entryDate: CheckInDate.today(),
             containerId: containerId
         )
-        WCSession.default.transferUserInfo(OutboundPayloads.waterTap(tap))
+        transfer(OutboundPayloads.waterTap(tap))
     }
 
     /// Asks the phone to delete one logged drink. Same fire-and-reconcile
@@ -88,7 +139,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
     func sendWaterDelete(entryId: String) {
         guard WCSession.isSupported() else { return }
         let request = WaterDeleteRequest(id: UUID().uuidString, entryId: entryId)
-        WCSession.default.transferUserInfo(OutboundPayloads.waterDelete(request))
+        transfer(OutboundPayloads.waterDelete(request))
     }
 
     /// Re-publishes both complications' shared-storage snapshots from the
@@ -184,7 +235,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
 
         guard !hasQueuedContextRequest else { return }
         hasQueuedContextRequest = true
-        WCSession.default.transferUserInfo(OutboundPayloads.contextRequest)
+        transfer(OutboundPayloads.contextRequest)
     }
 
     /// Applies an inbound context: into the app's own store, and — separately
@@ -210,10 +261,13 @@ final class WatchSessionManager: NSObject, ObservableObject {
         // a genuinely fresh push from a rerun of an old one.
         let day = ContextPayloadMapper.day(from: payload)
 
-        ComplicationPublisher.publish(
-            goals: ContextPayloadMapper.goalProgress(from: payload),
-            for: day
-        )
+        // Skipped, not published as zeros, when the phone couldn't vouch for
+        // today's numbers. Whatever snapshot is already in shared storage stays
+        // — and the widget's own date check turns a stale one into an empty
+        // face, which is the honest answer.
+        if let goals = ContextPayloadMapper.goalProgress(from: payload) {
+            ComplicationPublisher.publish(goals: goals, for: day)
+        }
         // Derived from the parsed snapshot rather than a dedicated payload
         // field: the two water figures already travel for the Water page's
         // bottle, and a third field carrying their ratio would be a second
@@ -259,6 +313,8 @@ extension WatchSessionManager: WCSessionDelegate {
         let reachable = session.isReachable
         Task { @MainActor in
             self.isReachable = reachable
+            // First: anything the wearer did before the session was usable.
+            self.flushDeferredTransfers()
             // Before asking the phone for anything: whatever it last sent is
             // already available locally, and unlike `requestContext()` this
             // works with the phone nowhere in sight.

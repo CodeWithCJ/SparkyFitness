@@ -156,6 +156,9 @@ struct WaterSnapshot: Codable, Equatable {
 struct PendingWaterTap: Codable, Equatable, Identifiable {
     let id: String
     let volumeMl: Double
+    /// When the wearer tapped, so an inbound total can be asked whether it is
+    /// old enough to have missed this tap. See `CheckInStore.apply(context:)`.
+    let createdAt: Date
     /// The day the tap was made. Needed because a tap outlives the app now: a
     /// glass logged at 23:58 and still unconfirmed at 00:02 belongs to
     /// yesterday, and must not pre-fill the new day's bottle.
@@ -241,6 +244,11 @@ struct WatchContext: Codable, Equatable {
     /// out of it — so both are carried forward when a push omits them.
     var waterGoalMl: Double?
     var waterDisplayUnit: String?
+    /// When the phone built this payload (its `pushedAt`), as opposed to
+    /// `updatedAt` above, which is when this watch received it. Needed to tell
+    /// a genuinely fresh push from `adoptReceivedContext()` replaying a cached
+    /// one — the two are indistinguishable by arrival time.
+    var generatedAt: Date?
 
     static let empty = WatchContext(
         today: nil,
@@ -257,7 +265,8 @@ struct WatchContext: Codable, Equatable {
         water: nil,
         waterContainers: nil,
         waterGoalMl: nil,
-        waterDisplayUnit: nil
+        waterDisplayUnit: nil,
+        generatedAt: nil
     )
 
     /// True when there is no value to anchor the Digital Crown to, which is the

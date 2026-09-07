@@ -99,7 +99,8 @@ enum SampleDay {
             water: water,
             waterContainers: containers,
             waterGoalMl: 2500,
-            waterDisplayUnit: "liter"
+            waterDisplayUnit: "liter",
+            generatedAt: Date()
         )
     }
 
