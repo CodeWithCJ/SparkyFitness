@@ -130,9 +130,9 @@ struct GoalSummaryView: View {
     /// intentionally independent, since one is a list and the other a dial.
     private var macroRows: some View {
         VStack(spacing: 7) {
+            macroRow("Protein", nutrition?.protein, color: GoalPalette.protein)
             macroRow("Carbs", nutrition?.carbs, color: GoalPalette.carbs)
             macroRow("Fat", nutrition?.fat, color: GoalPalette.fat)
-            macroRow("Protein", nutrition?.protein, color: GoalPalette.protein)
         }
     }
 
