@@ -5057,6 +5057,7 @@
     "underThreshold": "Stays under {{threshold}}mg tonight",
     "estimatedTimes": "Some dose times were estimated",
     "legendCurve": "Active caffeine",
-    "legendThreshold": "{{threshold}}mg threshold"
+    "legendThreshold": "{{threshold}}mg threshold",
+    "unitMg": "mg"
   }
 }

@@ -116,7 +116,10 @@ const CaffeineCard: React.FC<CaffeineCardProps> = ({
           </Text>
           <Text className="text-text-primary text-2xl font-bold">
             {Math.round(activeNowMg)}
-            <Text className="text-text-muted text-xs"> mg</Text>
+            <Text className="text-text-muted text-xs">
+              {' '}
+              {t('caffeine.unitMg', { defaultValue: 'mg' })}
+            </Text>
           </Text>
         </View>
         <View>
@@ -128,7 +131,10 @@ const CaffeineCard: React.FC<CaffeineCardProps> = ({
           </Text>
           <Text className="text-text-primary text-2xl font-bold">
             {Math.round(kinetics.at_bedtime_mg)}
-            <Text className="text-text-muted text-xs"> mg</Text>
+            <Text className="text-text-muted text-xs">
+              {' '}
+              {t('caffeine.unitMg', { defaultValue: 'mg' })}
+            </Text>
           </Text>
         </View>
         <View>
