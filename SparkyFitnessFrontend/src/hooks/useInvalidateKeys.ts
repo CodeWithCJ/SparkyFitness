@@ -6,6 +6,7 @@ import {
   presetKeys,
 } from '@/api/keys/exercises';
 import {
+  caffeineKeys,
   dailyProgressKeys,
   diaryReportKeys,
   foodEntryKeys,
@@ -33,6 +34,9 @@ export const useDiaryInvalidation = () => {
     queryClient.invalidateQueries({ queryKey: foodKeys.all });
     queryClient.invalidateQueries({ queryKey: mealKeys.all });
     queryClient.invalidateQueries({ queryKey: waterIntakeKeys.all });
+    // A linked water container logs a coffee as a food entry, so pressing "+"
+    // moves the caffeine curve as surely as logging one by hand does.
+    queryClient.invalidateQueries({ queryKey: caffeineKeys.all });
     queryClient.invalidateQueries({ queryKey: checkInKeys.all });
     queryClient.invalidateQueries({ queryKey: sleepKeys.all });
     queryClient.invalidateQueries({ queryKey: goalKeys.all });
@@ -64,6 +68,10 @@ export const useFoodEntryInvalidation = () => {
     // A food entry created from a water container owns its water log row
     // (ON DELETE CASCADE), so deleting the food changes the day's water too.
     queryClient.invalidateQueries({ queryKey: waterIntakeKeys.all });
+    // Caffeine kinetics is a derived view over the same entries: logging or
+    // editing a coffee moves the whole curve, and its query is keyed by date
+    // rather than by entry, so nothing else would refresh it.
+    queryClient.invalidateQueries({ queryKey: caffeineKeys.all });
   }, [queryClient]);
 };
 
