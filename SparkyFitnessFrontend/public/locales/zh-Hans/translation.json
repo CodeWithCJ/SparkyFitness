@@ -87,7 +87,6 @@
     },
     "scheduleDesc": {
       "atTime": " 在 {{time}}",
-      "mealSuffix": " (在{{meal}} 餐后)",
       "daily": "每日",
       "weeklyOn": "每周 {{days}}",
       "everyNDays": "每 {{n}} 天",
@@ -375,7 +374,6 @@
       "stepsCalories": "步数消耗： {{dailySteps}} 步 = {{stepsCalories}} 千卡",
       "bmrCalories": "基础代谢(BMR)： {{bmr}} 千卡",
       "totalCaloriesBurned": "总消耗热量： {{totalCaloriesBurned}} 千卡",
-      "bmrSourceExternal": "数据取自健康应用",
       "goal": "目标值",
       "caloriesBurnedBreakdownTitle": "热量消耗汇总详情",
       "netCalories": "热量收支净额： {{netCalories}}",
@@ -2131,7 +2129,6 @@
     "reps": "动作次数",
     "weight": "负重",
     "tonnage": "负重吨位",
-    "durationMin": "运动时长 (分钟)",
     "restS": "组间休息 (秒)",
     "notes": "备注信息",
     "caloriesBurned": "消耗热量",
@@ -2708,5 +2705,68 @@
       "notes": "备注信息",
       "notesPlaceholder": "记录其他身体感受或相关事项…"
     }
+  },
+  "layout": {
+    "welcome": "欢迎 {{activeUserName}}"
+  },
+  "chat": {
+    "toolCategories": {
+      "tooltip": "选择聊天机器人工具",
+      "title": "聊天机器人工具",
+      "description": "较少的工具能帮助较小的本地模型更可靠地响应。",
+      "presetFull": "全量",
+      "presetCore": "核心",
+      "clearAll": "清除全部",
+      "emptyHint": "未选择任何分类 — 聊天机器人将使用其默认工具集。",
+      "food": "食物与水",
+      "exercise": "锻炼",
+      "checkin": "身体状况与打卡",
+      "goals": "目标",
+      "reports": "报告与分析",
+      "coaching": "教练",
+      "vision": "识图",
+      "profile": "个人资料与习惯",
+      "medications": "药品"
+    },
+    "errorClearingHistory": "清除聊天记录失败。",
+    "errorLoadingHistory": "加载聊天记录失败。",
+    "errorLoadingPreferences": "加载聊天偏好失败。",
+    "successClearingHistory": "聊天记录已成功清除。"
+  },
+  "workoutLaps": {
+    "title": "训练间隔与圈数",
+    "lapsCount": "{{count}} 圈",
+    "lap": "圈数",
+    "distance": "距离",
+    "time": "时间",
+    "pace": "配速 (/{{unit}})",
+    "avgMaxHr": "平均 / 最大心率",
+    "resp": "呼吸 (次/分)",
+    "cadence": "踏频",
+    "power": "功率"
+  },
+  "dailyHealthMetrics": {
+    "title": "每日智能穿戴健康摘要",
+    "bodyBattery": "身体电量",
+    "peak": "最高值",
+    "low": "低值：{{val}}",
+    "avgStress": "平均压力",
+    "max": "最大值：{{val}}",
+    "restingHr": "静息心率",
+    "recovery": "恢复时间：{{val}}",
+    "vo2Max": "最大摄氧量",
+    "fitnessAge": "身体年龄：{{val}}",
+    "readiness": "就绪度",
+    "recHours": "恢复：{{val}}"
+  },
+  "foodCsvImport": {
+    "title": "导入食物信息",
+    "addRow": "添加行",
+    "uploadCsv": "上传 CSV",
+    "downloadTemplate": "下载模板",
+    "clearData": "清空数据",
+    "pastePlaceholder": "或者把 CSV 内容粘贴至这里...",
+    "parseText": "解析文本",
+    "recordsLoaded": "成功加载 {{count}} 条记录。"
   }
 }

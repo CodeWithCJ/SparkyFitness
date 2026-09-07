@@ -80,6 +80,7 @@
     "collapseSection": "Contraer esta sección",
     "expandSection": "Expandir esta sección",
     "itemCount_one": "{{count}} elemento",
+    "itemCount_many": "{{count}} elementos",
     "itemCount_other": "{{count}} elementos",
     "off": "Desactivado",
     "openSelectionMenu": "Abre el menú de selección",
@@ -95,7 +96,7 @@
     "yes": "Sí",
     "no": "No",
     "and": "y",
-    "listFinalSeparator": " y ",
+    "listFinalSeparator": ", y ",
     "date": "Fecha",
     "add": "Añadir",
     "loading": "Cargando...",
@@ -220,8 +221,10 @@
     "neverSynced": "Nunca sincronizado",
     "justNow": "Ahora mismo",
     "minutesAgo_one": "hace {{count}} minuto",
+    "minutesAgo_many": "hace {{count}} minutos",
     "minutesAgo_other": "hace {{count}} minutos",
     "hoursAgo_one": "hace {{count}} hora",
+    "hoursAgo_many": "hace {{count}} horas",
     "hoursAgo_other": "hace {{count}} horas",
     "yesterdayAt": "Ayer a las {{time}}",
     "onDateAt": "{{date}} a las {{time}}",
@@ -290,6 +293,7 @@
       "nextSetTitle": "Descanso completado: siguiente serie",
       "bodySetProgress": "{{name}} · Serie {{setNumber}} de {{setCount}}",
       "bodySetProgressReps_one": "{{setProgress}} · objetivo {{formattedCount}} rep",
+      "bodySetProgressReps_many": "{{setProgress}} · objetivo {{formattedCount}} reps",
       "bodySetProgressReps_other": "{{setProgress}} · objetivo {{formattedCount}} reps",
       "bodySetProgressDuration": "{{setProgress}} · objetivo {{duration}}"
     },
@@ -330,6 +334,7 @@
     "summarySubtitle": "Mostrar calorías y macronutrientes",
     "customNutrientDisplay": "Visualización de nutrientes personalizados",
     "limitDescription_one": "Se puede mostrar aquí hasta {{count}} nutriente personalizado.",
+    "limitDescription_many": "Se pueden mostrar aquí hasta {{count}} nutrientes personalizados.",
     "limitDescription_other": "Se pueden mostrar aquí hasta {{count}} nutrientes personalizados."
   },
   "dashboardSettings": {
@@ -662,7 +667,14 @@
       "weightStones": "Peso en stones",
       "weightPounds": "Peso en libras",
       "heightFeet": "Altura en pies",
-      "heightInches": "Altura en pulgadas"
+      "heightInches": "Altura en pulgadas",
+      "muscleMass": "Masa muscular",
+      "boneMass": "Masa ósea",
+      "bodyWaterPercentage": "% de agua corporal",
+      "bmr": "TMB",
+      "muscleMassWithUnit": "Masa muscular ({{unit}})",
+      "boneMassWithUnit": "Masa ósea ({{unit}})",
+      "bmrWithUnit": "TMB (kcal)"
     },
     "validation": {
       "invalid": "{{label}} no válido",
@@ -674,7 +686,10 @@
       "nonNegative": "Los valores deben ser 0 o mayores.",
       "invalidHeight": "Altura no válida",
       "feetInchesNumber": "Introduce un número para pies y pulgadas.",
-      "bodyFatRange": "El % de grasa corporal debe estar entre 0 y 100."
+      "bodyFatRange": "El % de grasa corporal debe estar entre 0 y 100.",
+      "min": "Debe ser {{min}} o mayor.",
+      "bodyWaterRange": "El % de agua corporal debe estar entre 0 y 100.",
+      "bmrRange": "La TMB debe estar entre 300 y 10000 kcal."
     },
     "nothingToSave": "Nada que guardar",
     "enterValue": "Introduce o borra al menos un valor.",
@@ -696,6 +711,7 @@
       "measurements": "medidas",
       "message": "{{labels}} se borrarán.",
       "title_one": "¿Borrar {{count}} medida?",
+      "title_many": "",
       "title_other": "¿Borrar {{count}} medidas?"
     },
     "units": {
@@ -712,7 +728,7 @@
       "newFood": "Nuevo alimento",
       "newMeal": "Nueva comida",
       "show": "Mostrar",
-      "allSources": "Todas las fuentes"
+      "allProviders": "Todos los proveedores"
     },
     "accessibility": {
       "moreFiltered": "Más opciones, filtrado a {{filter}}",
@@ -721,14 +737,15 @@
       "scanFood": "Escanear comida",
       "searchingFoods": "Buscando alimentos guardados",
       "searchingFoodsMeals": "Buscando alimentos y comidas guardados",
-      "sourceChange": "Fuente {{source}}, toca para cambiar",
       "providerError": "{{provider}}, no se pudo cargar, toca para reintentar",
       "providerNoResults": "{{provider}}, sin resultados",
       "favorite": "Favorito",
       "viewPhoto": "Ver foto",
       "verifiedFood": "Alimento verificado",
       "providerExpand_one": "{{provider}}, {{count}} resultado, toca para {{action}}",
-      "providerExpand_other": "{{provider}}, {{count}} resultados, toca para {{action}}"
+      "providerExpand_many": "",
+      "providerExpand_other": "{{provider}}, {{count}} resultados, toca para {{action}}",
+      "providerChange": "Proveedor {{provider}}, toca para cambiar"
     },
     "errors": {
       "detailsUnavailable": "Detalles no disponibles",
@@ -741,8 +758,8 @@
       "yourFoods": "Tus alimentos",
       "yourMeals": "Tus comidas",
       "topMatches": "Mejores coincidencias",
-      "bySource": "Por fuente",
-      "onlineResults": "Resultados en línea"
+      "onlineResults": "Resultados en línea",
+      "byProvider": "Por proveedor"
     },
     "search": {
       "placeholder": "Buscar alimentos..."
@@ -770,8 +787,10 @@
       "loadMoreFailed": "No se pudo cargar más. Toca para reintentar",
       "loadMore": "Cargar más",
       "showAllProviderResults_one": "Mostrar {{count}} resultado de {{provider}}",
+      "showAllProviderResults_many": "",
       "showAllProviderResults_other": "Mostrar los {{count}} resultados de {{provider}}",
       "showAllLocalResults_one": "Mostrar {{count}} {{itemType}}",
+      "showAllLocalResults_many": "",
       "showAllLocalResults_other": "Mostrar los {{count}} {{itemType}}"
     },
     "pickers": {
@@ -784,6 +803,7 @@
       "meals": "comidas",
       "meal": "Comida",
       "itemCount_one": "{{count}} elemento",
+      "itemCount_many": "",
       "itemCount_other": "{{count}} elementos"
     }
   },
@@ -834,6 +854,7 @@
     "addFood": "Añadir alimento",
     "saved": "Guardado",
     "equivalentUnitsUpdated_one": "Guardado · {{formattedCount}} unidad equivalente actualizada",
+    "equivalentUnitsUpdated_many": "",
     "equivalentUnitsUpdated_other": "Guardado · {{formattedCount}} unidades equivalentes actualizadas"
   },
   "foodDetail": {
@@ -914,8 +935,10 @@
       "none": "Ninguna",
       "meal": "Comida",
       "serving_one": "ración",
+      "serving_many": "",
       "serving_other": "raciones",
       "mealMakes_one": "la comida rinde {{formattedCount}} ración",
+      "mealMakes_many": "",
       "mealMakes_other": "la comida rinde {{formattedCount}} raciones"
     },
     "pickers": {
@@ -1613,6 +1636,7 @@
     "selectValue": "Seleccionar…",
     "next": "Siguiente",
     "exerciseCount_one": "{{formattedCount}} ejercicio",
+    "exerciseCount_many": "{{formattedCount}} ejercicios",
     "exerciseCount_other": "{{formattedCount}} ejercicios",
     "failedToSaveActivity": "No se pudo guardar la actividad",
     "pleaseTryAgain": "Inténtalo de nuevo.",
@@ -1673,6 +1697,7 @@
     "failedMorePresets": "No se pudieron cargar más plantillas.",
     "searchWorkoutPresets": "Buscar plantillas de entrenamiento...",
     "workoutPresetCount_one": "{{formattedCount}} ejercicio",
+    "workoutPresetCount_many": "{{formattedCount}} ejercicios",
     "workoutPresetCount_other": "{{formattedCount}} ejercicios",
     "metricVolumeShort": "Vol",
     "metricE1rmShort": "1RM",
@@ -1684,14 +1709,17 @@
     "km": "km",
     "reps": "Reps",
     "setCount_one": "{{formattedCount}} serie",
+    "setCount_many": "{{formattedCount}} series",
     "setCount_other": "{{formattedCount}} series",
     "caloriesShort": "kcal",
     "caloriesUnit": "Cal",
     "unknownExercise": "Ejercicio desconocido",
     "addNotePlaceholder": "Añadir una nota…",
     "setOf_one": "Serie {{number}} de {{count}}",
+    "setOf_many": "Serie {{number}} de {{count}}",
     "setOf_other": "Serie {{number}} de {{count}}",
     "repCount_one": "{{formattedCount}} rep",
+    "repCount_many": "{{formattedCount}} reps",
     "repCount_other": "{{formattedCount}} reps"
   },
   "activeWorkout": {
@@ -1741,6 +1769,7 @@
       "elapsedTime": "{{time}} transcurrido",
       "endWorkout": "Terminar entrenamiento",
       "exerciseProgress_one": "{{completed}} / {{count}} ejercicio",
+      "exerciseProgress_many": "{{completed}} / {{count}} ejercicios",
       "exerciseProgress_other": "{{completed}} / {{count}} ejercicios",
       "renameWorkout": "Renombrar entrenamiento",
       "reorderExercises": "Reordenar ejercicios",
@@ -1769,6 +1798,7 @@
       "notesFor": "Notas de {{exerciseName}}",
       "notesFallback": "Notas del ejercicio",
       "setSummary_one": "{{count}} serie{{detail}}",
+      "setSummary_many": "{{count}} series{{detail}}",
       "setSummary_other": "{{count}} series{{detail}}",
       "notesForSet": "Notas de la serie {{setNumber}}"
     },
@@ -1850,10 +1880,13 @@
       "partialSets": "{{completed}} de {{total}} series",
       "allSetsOne": "1 serie",
       "allSets_one": "{{count}} serie",
+      "allSets_many": "",
       "allSets_other": "{{count}} series",
       "sets_one": "{{count}} serie",
+      "sets_many": "",
       "sets_other": "{{count}} series",
       "personalRecordCount_one": "{{formattedCount}} récord personal",
+      "personalRecordCount_many": "",
       "personalRecordCount_other": "{{formattedCount}} récords personales"
     },
     "accessibility": {
@@ -1887,6 +1920,7 @@
   "workoutDetail": {
     "summary": {
       "exercise_one": "Ejercicio",
+      "exercise_many": "",
       "exercise_other": "Ejercicios",
       "sets": "Series",
       "volume": "Volumen",
@@ -1949,6 +1983,7 @@
   },
   "workoutReorder": {
     "sets_one": "{{count}} serie",
+    "sets_many": "",
     "sets_other": "{{count}} series",
     "drag": "Arrastra para reordenar",
     "title": "Reordenar ejercicios",
@@ -2188,20 +2223,25 @@
       "at": "{{frequency}} a las {{time}}",
       "unknown": "Pauta",
       "cycleOn_one": "{{count}} día activo",
+      "cycleOn_many": "{{count}} días activos",
       "cycleOn_other": "{{count}} días activos",
       "cycleOff_one": "{{count}} día de descanso",
+      "cycleOff_many": "{{count}} días de descanso",
       "cycleOff_other": "{{count}} días de descanso",
       "everyNDays_one": "Cada {{count}} día",
+      "everyNDays_many": "Cada {{count}} días",
       "everyNDays_other": "Cada {{count}} días"
     },
     "notificationScheduledDose": "Tienes una toma programada",
     "notificationScheduledDoseNamed": "Toma programada: {{name}}{{dose}}",
     "inactiveA11y_one": "Medicamento inactivo ({{count}})",
+    "inactiveA11y_many": "Medicamentos inactivos ({{count}})",
     "inactiveA11y_other": "Medicamentos inactivos ({{count}})",
     "inactiveCount_one": "Inactivo ({{count}})",
+    "inactiveCount_many": "Inactivos ({{count}})",
     "inactiveCount_other": "Inactivos ({{count}})",
     "mealRelation": {
-      "awayFromMeals": "Lejos de las comidas"
+      "awayFromMeals": "Fuera de las comidas"
     }
   },
   "pregnancy": {
@@ -2218,6 +2258,7 @@
       "edit": "Editar detalles del embarazo",
       "anyDayNow": "En cualquier momento",
       "daysToGo_one": "Queda {{days}} día",
+      "daysToGo_many": "",
       "daysToGo_other": "Quedan {{days}} días"
     },
     "trimester": {
@@ -2648,9 +2689,11 @@
     "day": "Día {{day}}",
     "active": "Activo",
     "periodLate_one": "Periodo con {{count}} día de retraso",
+    "periodLate_many": "Periodo con {{count}} días de retraso",
     "periodLate_other": "Periodo con {{count}} días de retraso",
     "daysToDue_one": "{{count}} día para la fecha de parto",
-    "daysToDue_other": "{{count}} d para la fecha de parto"
+    "daysToDue_many": "{{count}} días para la fecha de parto",
+    "daysToDue_other": "{{count}} días para la fecha de parto"
   },
   "cycleHub": {
     "tools": "Herramientas",
@@ -2664,6 +2707,7 @@
     "ring": {
       "day": "Día {{day}}",
       "dayCycle_one": "Ciclo de {{count}} día",
+      "dayCycle_many": "",
       "dayCycle_other": "Ciclo de {{count}} días"
     }
   },
@@ -2736,8 +2780,10 @@
       "deleteFailed": "No se pudo eliminar la entrada de ciclo."
     },
     "dayPeriod_one": "Periodo de {{count}} día",
+    "dayPeriod_many": "",
     "dayPeriod_other": "Periodos de {{count}} días",
     "dayCycle_one": "Ciclo de {{count}} día",
+    "dayCycle_many": "",
     "dayCycle_other": "Ciclo de {{count}} días"
   },
   "fertility": {
@@ -2746,10 +2792,12 @@
     "ovulation": "Ovulación est.",
     "nextPeriod": "Próximo periodo en",
     "days_one": "{{count}} día",
+    "days_many": "",
     "days_other": "{{count}} días",
     "twoWeekWait": "Espera de dos semanas",
     "ovulationDay": "Día de ovulación",
     "daysPastOvulation_one": "{{count}} día tras la ovulación",
+    "daysPastOvulation_many": "",
     "daysPastOvulation_other": "{{count}} días tras la ovulación",
     "testAccuracy": "Las pruebas caseras suelen ser más precisas entre 12 y 14 días después de la ovulación.",
     "disclaimer": "Estimaciones a partir de tus datos registrados. No es consejo médico."
@@ -2997,12 +3045,15 @@
     "forecastHint": "Registra síntomas durante un par de ciclos para prever los próximos días.",
     "personalCorrelations": "Correlaciones personales",
     "days_one": "{{count}} día",
+    "days_many": "",
     "days_other": "{{count}} días",
     "anomaly": {
       "irregular_cycles": "La duración de tus ciclos ha variado en más de unos días recientemente. Si esto es nuevo para ti, quizá valga la pena comentarlo con un profesional.",
       "short_cycle_one": "Tuviste un ciclo corto de {{count}} día. Los ciclos de menos de 21 días conviene vigilarlos.",
+      "short_cycle_many": "",
       "short_cycle_other": "Tuviste un ciclo corto de {{count}} días. Los ciclos de menos de 21 días conviene vigilarlos.",
       "long_cycle_one": "Tuviste un ciclo largo de {{count}} día. Los ciclos de más de 45 días conviene vigilarlos.",
+      "long_cycle_many": "",
       "long_cycle_other": "Tuviste un ciclo largo de {{count}} días. Los ciclos de más de 45 días conviene vigilarlos.",
       "heavy_bleeding": "Tus registros recientes muestran un flujo más abundante de lo habitual o periodos de más de 7 días. Si continúa, plantéate comentarlo con un profesional.",
       "unusual_discharge": "Has registrado un flujo inusual. Plantéate anotar cambios de color, olor o textura.",
@@ -3011,8 +3062,10 @@
     },
     "alert": {
       "late_period_one": "Tu periodo tiene {{count}} día de retraso.",
+      "late_period_many": "",
       "late_period_other": "Tu periodo tiene {{count}} días de retraso.",
       "upcoming_period_one": "Se espera el periodo en {{count}} día.",
+      "upcoming_period_many": "",
       "upcoming_period_other": "Se espera el periodo en {{count}} días.",
       "ovulation_today": "Se prevé que la ovulación ocurra hoy.",
       "upcoming_period_today": "Se espera el periodo hoy."
@@ -3105,7 +3158,7 @@
     "cyclingSpeed": "Velocidad en bici",
     "cyclingPower": "Potencia en bici",
     "cyclingCadence": "Cadencia en bici",
-    "cyclingFunctionalThresholdPower": "Potencia umbral funcional (FTP)",
+    "cyclingFunctionalThresholdPower": "Potencia Umbral Funcional",
     "environmentalAudioExposure": "Exposición a sonido ambiental",
     "headphoneAudioExposure": "Exposición a sonido por auriculares",
     "appleMoveTime": "Tiempo de movimiento de Apple",
@@ -3135,8 +3188,10 @@
     "breathsPerMinute": "{{value}}/min",
     "error": "Error",
     "workouts_one": "{{count}} entrenamiento",
+    "workouts_many": "",
     "workouts_other": "{{count}} entrenamientos",
     "records_one": "{{count}} registro",
+    "records_many": "",
     "records_other": "{{count}} registros"
   },
   "healthCategories": {
@@ -3196,8 +3251,10 @@
     "errorDetails": "La sincronización de datos de salud falló: {{message}}",
     "loading": "Cargando datos de salud",
     "readErrors_one": "No se pudo leer {{count}} métrica. Se reintentará en la próxima sincronización.",
+    "readErrors_many": "",
     "readErrors_other": "No se pudieron leer {{count}} métricas. Se reintentarán en la próxima sincronización.",
     "uploadErrors_one": "El servidor rechazó {{count}} registro. Consulta los registros.",
+    "uploadErrors_many": "",
     "uploadErrors_other": "El servidor rechazó {{count}} registros. Consulta los registros."
   },
   "dailyNutritionDetails": {
@@ -3230,7 +3287,12 @@
     "over": "de más",
     "title": "Resumen",
     "collapse": "Contraer esta sección",
-    "expand": "Expandir esta sección"
+    "expand": "Expandir esta sección",
+    "projectedTdee": "TDEE proyectado: {{value}} kcal",
+    "goalModeTarget": "Objetivo en Modo Objetivo: {{value}} kcal",
+    "healthConnectProjectionSource": "Calorías totales de Health Connect",
+    "fallbackProjectionSource": "Alternativa TMB + calorías activas",
+    "legacyProjectionSource": "Proyección del dispositivo"
   },
   "calorieSettings": {
     "restingEnergy": "Energía en reposo",
@@ -3280,7 +3342,8 @@
       "percentage": "Objetivo − Ingerido + {{percentage}}% del ejercicio",
       "tdee": "Objetivo − Ingerido + (Proyección − GET)",
       "adaptive": "Objetivo − Ingerido",
-      "fixed": "Objetivo − Ingerido"
+      "fixed": "Objetivo − Ingerido",
+      "projectedTotal": "Calorías totales de Health Connect (alternativa TMB + calorías activas)"
     },
     "notes": {
       "dynamic": "El objetivo crece a medida que te mueves",
@@ -3298,6 +3361,22 @@
       "standardDescription": "Usa el mayor entre tu RMR estimado y el mínimo clínico.",
       "customDescription": "Sustituye el límite estándar por el mínimo que elijas. Las recomendaciones de salud siguen visibles.",
       "disabledDescription": "Detiene el ajuste automático del objetivo. Las advertencias de salud siguen visibles."
+    },
+    "deviceProjectionDescription": "Las calorías totales del día actual de Health Connect se proyectan hasta la medianoche; los días completados usan el total registrado. El Modo Objetivo se aplica a ese TDEE, con TMB + calorías activas como alternativa.",
+    "deviceProjectionFallback": "Solo se usa como alternativa de TMB + calorías activas cuando el total del dispositivo no está disponible.",
+    "goalMode": {
+      "title": "Modo Objetivo",
+      "description": "Ajusta tu objetivo de calorías para mantenimiento, déficit o superávit.",
+      "deviceProjectionDescription": "Este porcentaje se aplica directamente al TDEE proyectado del dispositivo.",
+      "maintain": "Mantenimiento (0%)",
+      "recomp": "Recomposición corporal (-10%)",
+      "cut": "Definición (-15%)",
+      "highCut": "Definición alta (-20%)",
+      "leanBulk": "Volumen limpio (+10%)",
+      "bulk": "Volumen (+20%)",
+      "manual": "Manual (% personalizado)",
+      "customPercentage": "Porcentaje personalizado",
+      "customPercentageDescription": "Un valor positivo añade calorías; uno negativo crea un déficit. Limitado a ±40%."
     }
   },
   "foodUnit": {
@@ -3348,42 +3427,61 @@
     },
     "unitPlurals": {
       "cup_one": "taza",
+      "cup_many": "",
       "cup_other": "tazas",
       "cups_one": "taza",
+      "cups_many": "",
       "cups_other": "tazas",
       "tbsp_one": "cda",
+      "tbsp_many": "",
       "tbsp_other": "cdas",
       "tsp_one": "cdta",
+      "tsp_many": "",
       "tsp_other": "cdtas",
       "piece_one": "pieza",
+      "piece_many": "",
       "piece_other": "piezas",
       "slice_one": "rebanada",
+      "slice_many": "",
       "slice_other": "rebanadas",
       "serving_one": "ración",
+      "serving_many": "",
       "serving_other": "raciones",
       "portion_one": "porción",
+      "portion_many": "porciones",
       "portion_other": "porciones",
       "can_one": "lata",
+      "can_many": "",
       "can_other": "latas",
       "bottle_one": "botella",
+      "bottle_many": "",
       "bottle_other": "botellas",
       "packet_one": "paquete",
+      "packet_many": "",
       "packet_other": "paquetes",
       "bag_one": "bolsa",
+      "bag_many": "",
       "bag_other": "bolsas",
       "bowl_one": "bol",
+      "bowl_many": "",
       "bowl_other": "boles",
       "plate_one": "plato",
+      "plate_many": "",
       "plate_other": "platos",
       "handful_one": "puñado",
+      "handful_many": "",
       "handful_other": "puñados",
       "scoop_one": "cazo",
+      "scoop_many": "",
       "scoop_other": "cazos",
       "bar_one": "barrita",
+      "bar_many": "",
       "bar_other": "barritas",
       "stick_one": "barra",
+      "stick_many": "",
       "stick_other": "barras",
       "whole_one": "entero",
+      "whole_many": "",
       "whole_other": "enteros"
     }
   },
@@ -3455,8 +3553,10 @@
     "perServing": "Por ración",
     "total": "Total",
     "servingsLabel_one": "ración",
+    "servingsLabel_many": "",
     "servingsLabel_other": "raciones",
     "ingredientsLabel_one": "ingrediente",
+    "ingredientsLabel_many": "",
     "ingredientsLabel_other": "ingredientes",
     "foodsInMeal": "Alimentos de la comida",
     "linkedMeal": "Comida vinculada",
@@ -3469,8 +3569,10 @@
     "deleting": "Eliminando...",
     "deleteMeal": "Eliminar comida",
     "makesSummary_one": "Rinde {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}",
+    "makesSummary_many": "",
     "makesSummary_other": "Rinde {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}",
     "items_one": "{{formattedCount}} elemento",
+    "items_many": "",
     "items_other": "{{formattedCount}} elementos"
   },
   "workoutPresetDetail": {
@@ -3500,6 +3602,8 @@
       "duplicate": "Duplicar plantilla de entrenamiento"
     },
     "duplicateName": "{{name}} (Copia)",
+    "exerciseCount_one": "{{count}} ejercicio",
+    "exerciseCount_many": "",
     "exerciseCount_other": "{{count}} ejercicios",
     "actions": {
       "starting": "Iniciando…",
@@ -3509,8 +3613,7 @@
       "deleting": "Eliminando…",
       "duplicating": "Duplicando…",
       "duplicate": "Duplicar plantilla"
-    },
-    "exerciseCount_one": "{{count}} ejercicio"
+    }
   },
   "workoutPresetForm": {
     "nameRequired": "Nombre *",
@@ -3563,6 +3666,7 @@
     "exercise": "ejercicio",
     "exercises": "ejercicios",
     "exerciseCount_one": "{{count}} ejercicio",
+    "exerciseCount_many": "",
     "exerciseCount_other": "{{count}} ejercicios",
     "noun": "plantillas de entrenamiento"
   },
@@ -3672,6 +3776,7 @@
     "addAnotherImage": "Añadir otra imagen",
     "descriptionHint": "Añade cualquier cosa que la {{subject}} pueda no dejar clara.",
     "subjectLabel_one": "foto",
+    "subjectLabel_many": "",
     "subjectLabel_other": "fotos",
     "totalWeightOptional": "Peso total (opcional)",
     "weightPlaceholder": "p. ej. 350",
@@ -3721,7 +3826,70 @@
       "invalidRequiredNutrition": "Las calorías, proteínas, carbohidratos y grasas deben ser números no negativos.",
       "invalidOptionalNutrition": "Todos los valores nutricionales deben ser números no negativos.",
       "invalidServingSize": "Tamaño de ración no válido",
-      "invalidServingSizeMessage": "El tamaño de la ración debe ser un número positivo."
+      "invalidServingSizeMessage": "El tamaño de la ración debe ser un número positivo.",
+      "noIngredients": "Conserva al menos un ingrediente o cambia a Un solo alimento.",
+      "invalidServings": "Porciones no válidas",
+      "positiveServings": "El total del plato, el tamaño de la porción y la cantidad consumida deben ser mayores que cero."
+    },
+    "ingredients": {
+      "editRow": "Editar {{name}}",
+      "remove": "Eliminar {{name}}",
+      "name": "Nombre",
+      "grams": "Peso (g)",
+      "calories": "Calorías",
+      "protein": "Proteína (g)",
+      "carbs": "Carbohidratos (g)",
+      "fat": "Grasa (g)",
+      "fiber": "Fibra (g)",
+      "sugar": "Azúcar (g)",
+      "recalcFromGrams": "La información nutricional se editó manualmente, por lo que ya no coincide con el peso. Toca para recalcular a partir del peso.",
+      "heading": "Ingredientes detectados",
+      "empty": "Se han eliminado todos los ingredientes. Añade uno de nuevo o cambia a Un solo alimento.",
+      "totals": "Total",
+      "rowSummary": "{{grams}} g · {{calories}} kcal",
+      "macroSummary": "{{calories}} kcal · {{protein}}P · {{carbs}}C · {{fat}}G",
+      "addFood": "Añadir alimento",
+      "addedFood": "Alimento",
+      "pickedRowSummary": "{{quantity}} {{unit}} · {{calories}} kcal",
+      "pickedFoodNote": "Añadido desde tus alimentos. Elimínalo y vuelve a añadirlo para cambiar la cantidad.",
+      "count_one": "{{count}} ingrediente",
+      "count_many": "{{count}} ingredientes",
+      "count_other": "{{count}} ingredientes"
+    },
+    "match": {
+      "useYourFood": "De tus alimentos: {{name}} · toca para usarlo",
+      "usingYourFood": "Usando tu alimento: {{name}} · toca para usar la estimación de la IA",
+      "matchedCount_one": "{{count}} ingrediente que coinciden con tus alimentos",
+      "matchedCount_many": "{{count}} ingredientes que coinciden con tus alimentos",
+      "matchedCount_other": "{{count}} ingredientes que coinciden con tus alimentos"
+    },
+    "mode": {
+      "ingredients": "Ingredientes",
+      "combined": "Un solo alimento",
+      "explainerIngredients": "Registra una comida que puedes desglosar en cada ingrediente.",
+      "explainerCombined": "Registra todo el plato como un solo alimento.",
+      "label": "Guardar como",
+      "ingredientsAndMeal": "Ingredientes + comida reutilizable",
+      "ingredientsOnly": "Solo ingredientes",
+      "oneFood": "Un solo alimento",
+      "mealName": "Nombre de la comida",
+      "hintIngredientsAndMeal": "Cada ingrediente se registra por separado y la comida se guarda para que puedas volver a registrarla sin necesidad de foto.",
+      "hintIngredientsOnly": "Cada ingrediente se registra por separado. No se guarda como comida reutilizable.",
+      "hintOneFood": "Guarda todo el plato como un solo alimento, sin desglosar."
+    },
+    "servings": {
+      "unit": "Unidad",
+      "total": "Porciones totales",
+      "totalAmount": "Cantidad total ({{unit}})",
+      "servingSize": "Una porción es ({{unit}})",
+      "eatenServings": "Porciones consumidas",
+      "eatenAmount": "Consumiste ({{unit}})",
+      "hint": "Los ingredientes anteriores forman el plato completo: indica cómo se divide y solo lo que consumiste irá a tu diario.",
+      "perServing": "Por porción",
+      "logging": "Registro",
+      "derivedYield_one": "Da para una {{count}} ración",
+      "derivedYield_many": "Da para unas {{count}} raciones",
+      "derivedYield_other": "Da para unas {{count}} raciones"
     }
   },
   "foodPhotoIntro": {
@@ -3745,7 +3913,11 @@
     "meal": "Comida",
     "selectMeal": "Seleccionar comida",
     "date": "Fecha",
-    "servings": "Raciones"
+    "servings": "Raciones",
+    "failed": "No se pudo registrar la estimación",
+    "groupedSummary_one": "El ingrediente {{count}} se registrará como una comida.",
+    "groupedSummary_many": "Los ingredientes {{count}} se registrarán como una comida.",
+    "groupedSummary_other": "Los ingredientes {{count}} se registrarán como una comida."
   },
   "editBarcode": {
     "title": "Código de barras",
@@ -3872,6 +4044,7 @@
       "hoursMinutes": "{{formattedHours}} h {{formattedMinutes}} min",
       "hours": "{{formattedHours}} h",
       "minutes_one": "{{formattedCount}} min",
+      "minutes_many": "",
       "minutes_other": "{{formattedCount}} min"
     },
     "progress": {
@@ -3879,6 +4052,7 @@
       "timeRemaining": "Tiempo restante",
       "around": "Alrededor de {{date}}",
       "ofDays_one": "de {{formattedCount}} día",
+      "ofDays_many": "",
       "ofDays_other": "de {{formattedCount}} días"
     },
     "actions": {
@@ -3909,6 +4083,7 @@
       "completed": "Completada",
       "nextSync": "Los datos nuevos se recogerán automáticamente con la sincronización normal. Ejecuta otra importación solo si activas métricas de salud adicionales.",
       "daysImported_one": "{{formattedCount}} día importado",
+      "daysImported_many": "",
       "daysImported_other": "{{formattedCount}} días importados"
     }
   },
@@ -3992,6 +4167,7 @@
     "noLogs": "Aún no hay registros.",
     "noMatchingLogs": "Ningún registro coincide con el filtro actual.",
     "showingLogs_one": "Mostrando {{count}} registro",
+    "showingLogs_many": "",
     "showingLogs_other": "Mostrando {{count}} registros",
     "status": {
       "error": "Error",
@@ -4039,6 +4215,7 @@
       "loadFailed": "No se pudieron cargar los datos de pasos",
       "empty": "No hay datos de pasos para este periodo",
       "tooltip_one": "{{formattedCount}} paso",
+      "tooltip_many": "",
       "tooltip_other": "{{formattedCount}} pasos"
     },
     "loading": "Cargando gráfica...",
@@ -4267,8 +4444,10 @@
     "taper": "Pauta descendente",
     "at": "{{frequency}} a las {{time}}",
     "cycleOn_one": "{{count}} día activo",
+    "cycleOn_many": "{{count}} días activos",
     "cycleOn_other": "{{count}} días activos",
     "cycleOff_one": "{{count}} día de descanso",
+    "cycleOff_many": "{{count}} días de descanso",
     "cycleOff_other": "{{count}} días de descanso"
   },
   "announcementModal": {
@@ -4372,10 +4551,12 @@
       "syncCompleted": "Sincronización en segundo plano completada. Consulta los registros para ver detalles.",
       "syncFailed": "La sincronización falló: {{message}}",
       "healthSeeded_one": "Se sembró {{count}} registro de salud de los últimos {{days}} días.",
+      "healthSeeded_many": "Se sembraron {{count}} registros de salud de los últimos {{days}} días.",
       "healthSeeded_other": "Se sembraron {{count}} registros de salud de los últimos {{days}} días.",
       "healthSeedFailed": "No se pudieron sembrar los datos de salud.",
       "healthSeedFailedWithMessage": "No se pudieron sembrar los datos de salud: {{message}}",
       "historicalSeeded_one": "Se sembró {{count}} registro de pasos histórico del último año.",
+      "historicalSeeded_many": "Se sembraron {{count}} registros de pasos históricos del último año.",
       "historicalSeeded_other": "Se sembraron {{count}} registros de pasos históricos del último año.",
       "historicalSeedFailed": "No se pudieron sembrar los datos de pasos históricos.",
       "historicalSeedFailedWithMessage": "No se pudieron sembrar los datos de pasos históricos: {{message}}",
@@ -4386,6 +4567,7 @@
       "popoverReset": "El popover {{label}} reaparecerá.",
       "popoverResetFailed": "No se pudo restablecer el popover.",
       "seedOldSeeded_one": "Se sembró {{count}} registro en grupos de 1-3 años atrás.",
+      "seedOldSeeded_many": "Se sembraron {{count}} registros en grupos de 1-3 años atrás.",
       "seedOldSeeded_other": "Se sembraron {{count}} registros en grupos de 1-3 años atrás.",
       "seedOldFailedWithMessage": "No se pudieron sembrar los datos de salud antiguos: {{message}}",
       "seedOldFailed": "No se pudieron sembrar los datos de salud antiguos.",
@@ -4483,6 +4665,7 @@
     }
   },
   "workoutPresetCount_one": "{{formattedCount}} ejercicio",
+  "workoutPresetCount_many": "",
   "workoutPresetCount_other": "{{formattedCount}} ejercicios",
   "chat": {
     "title": "Sparky",
@@ -4516,5 +4699,69 @@
   },
   "foodEntryMeal": {
     "failed": "No se pudo añadir la comida"
+  },
+  "familyDiary": {
+    "title": "Diarios familiares",
+    "openFamilyDiaries": "Abrir diarios familiares",
+    "loadingMembers": "Cargando miembros de la familia…",
+    "loadMembersFailed": "No se pudieron cargar los miembros de la familia",
+    "noMembers": "No hay miembros de la familia",
+    "manageOnWeb": "El acceso al diario familiar se gestiona desde la aplicación web.",
+    "canCopy": "Puede copiar",
+    "viewOnly": "Solo lectura",
+    "diary": "Diario familiar",
+    "loadingDiary": "Cargando diario familiar…",
+    "loadDiaryFailed": "Acceso al diario familiar no disponible",
+    "back": "Volver",
+    "emptyForDate": "No hay alimentos registrados para esta fecha",
+    "diaryForDate": "Diario familiar · {{date}}",
+    "openMeal": "Abrir comida {{meal}}",
+    "mealCalories": "{{calories}} kcal",
+    "unnamedFood": "Alimento sin nombre",
+    "selectAll": "Seleccionar todo",
+    "deselectAll": "Desmarcar todo",
+    "viewingOnly": "Solo lectura",
+    "selectFood": "Seleccionar {{food}}",
+    "deselectFood": "Desmarcar {{food}}",
+    "continue": "Continuar",
+    "nutritionSummary": "{{calories}} kcal · P {{protein}} g · C {{carbs}} g · G {{fat}} g",
+    "selectedNutrition": "Seleccionado: {{calories}} kcal · P {{protein}} g · C {{carbs}} g · G {{fat}} g",
+    "copyReview": "Revisar copia",
+    "copyFrom": "Copiando de {{name}}",
+    "copyMealTitle": "Comida {{meal}}",
+    "quantityForFood": "Cantidad para {{food}}",
+    "quantityMustBePositive": "Introduce una cantidad mayor que cero.",
+    "copyNutrition": "Copiar nutrición",
+    "copyCalories": "{{calories}} kcal",
+    "copyProtein": "{{protein}} g de proteína",
+    "copyCarbs": "{{carbs}} g de carbohidratos",
+    "copyFat": "{{fat}} g de grasa",
+    "copyTargetDate": "Copiar fecha",
+    "copyTargetDateHint": "Abre el selector de fecha",
+    "copyTargetMeal": "Copiar a la comida",
+    "copyTargetMealRequired": "Elige una comida antes de copiar.",
+    "copyToMyDiary": "Copiar a mi diario",
+    "copyInvalidSelection": "Los alimentos seleccionados ya no están disponibles.",
+    "copyTargetDateLabel": "Fecha de copia: {{date}}",
+    "copySuccess": "Copiado a tu diario",
+    "copyFailed": "No se pudieron copiar los alimentos",
+    "copyFailedGuidance": "Tu revisión sigue aquí. Por favor, inténtalo de nuevo.",
+    "copyPermissionRevoked": "Se eliminó el permiso para copiar",
+    "copyPermissionRevokedGuidance": "Actualiza los diarios familiares para ver tu acceso actual.",
+    "copyStale": "El diario familiar ha cambiado",
+    "copyStaleGuidance": "Se está abriendo el último diario familiar para su revisión.",
+    "unnamedMember": "Miembro de la familia",
+    "previousDay": "Día anterior",
+    "previousDayHint": "Muestra el día anterior",
+    "nextDay": "Día siguiente",
+    "nextDayHint": "Muestra el día siguiente",
+    "chooseDate": "Elegir fecha",
+    "chooseDateHint": "Abre el selector de fecha",
+    "goToToday": "Ir a hoy",
+    "goToTodayHint": "Vuelve a hoy"
+  },
+  "foodProvenance": {
+    "aiEstimate": "Estimación por IA",
+    "aiEstimateAccessibility": "Información nutricional estimada por IA"
   }
 }
