@@ -396,14 +396,6 @@ const Diary = () => {
         icon: Droplet,
         render: () => <WaterIntake selectedDate={selectedDate} />,
       },
-      {
-        key: 'caffeine',
-        title: t('diary.caffeine.title', 'Caffeine Kinetics'),
-        icon: Coffee,
-        render: () => (
-          <CaffeineCard date={selectedDate} userId={activeUserId} />
-        ),
-      },
     ];
 
     if (hasDisplayableHealthMetrics) {
@@ -478,6 +470,16 @@ const Diary = () => {
           onExercisesLogged={() => setExercisesToLogFromPreset(undefined)}
         />
       ),
+    });
+
+    // Last in the registry to match its default tile, which sits below
+    // exercise; the grid positions by layout, but keeping the two in the same
+    // order stops the next reader wondering which one is authoritative.
+    list.push({
+      key: 'caffeine',
+      title: t('diary.caffeine.title', 'Caffeine Kinetics'),
+      icon: Coffee,
+      render: () => <CaffeineCard date={selectedDate} userId={activeUserId} />,
     });
 
     return list;

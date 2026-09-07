@@ -2732,7 +2732,8 @@
       "legendBedtime": "Bedtime {{time}}",
       "legendNow": "Now",
       "legendDose": "Logged dose",
-      "legendEstimated": "Assumed time"
+      "legendEstimated": "Assumed time",
+      "legendCutoff": "Last {{dose}}mg dose {{time}}"
     },
     "exercise": "Exercise",
     "widgets": {

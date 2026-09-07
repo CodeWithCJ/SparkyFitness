@@ -286,10 +286,10 @@ export function buildWidgetKeys(
     'energy',
     'nutrition',
     'water',
-    'caffeine',
     ...(hasDisplayableHealthMetrics ? ['healthMetrics'] : []),
     ...visibleMealTypeIds.map(mealWidgetKey),
     'exercise',
+    'caffeine',
   ];
 }
 
@@ -310,32 +310,32 @@ export function generateDefaultLayouts(mealKeys: string[]): DashboardLayouts {
     { i: 'energy', x: 0, y: 0, w: 3, h: 10, minW: 2, minH: 6 },
     { i: 'nutrition', x: 3, y: 0, w: 6, h: 10, minW: 3, minH: 6 },
     { i: 'water', x: 9, y: 0, w: 3, h: 10, minW: 2, minH: 6 },
-    // Full width: the caffeine card carries a curve, which is unreadable in a
-    // quarter-width tile.
-    { i: 'caffeine', x: 0, y: 10, w: 12, h: 11, minW: 4, minH: 7 },
-    { i: 'healthMetrics', x: 0, y: 21, w: 12, h: 6, minW: 3, minH: 4 },
+    { i: 'healthMetrics', x: 0, y: 10, w: 12, h: 6, minW: 3, minH: 4 },
   ];
-  let lgY = 27;
+  let lgY = 16;
   for (const key of mealKeys) {
     lg.push({ i: key, x: 0, y: lgY, w: 12, h: 4, minW: 3, minH: 3 });
     lgY += 4;
   }
   lg.push({ i: 'exercise', x: 0, y: lgY, w: 12, h: 4, minW: 3, minH: 3 });
+  // Full width and last: the caffeine card carries a curve, which is
+  // unreadable in a quarter-width tile.
+  lg.push({ i: 'caffeine', x: 0, y: lgY + 4, w: 12, h: 11, minW: 4, minH: 7 });
 
   // md (10 cols): energy + nutrition top row, water below, then meals.
   const md: WidgetLayout[] = [
     { i: 'energy', x: 0, y: 0, w: 4, h: 10, minW: 2, minH: 6 },
     { i: 'nutrition', x: 4, y: 0, w: 6, h: 10, minW: 3, minH: 6 },
     { i: 'water', x: 0, y: 10, w: 10, h: 6, minW: 2, minH: 4 },
-    { i: 'caffeine', x: 0, y: 16, w: 10, h: 11, minW: 4, minH: 7 },
-    { i: 'healthMetrics', x: 0, y: 27, w: 10, h: 6, minW: 3, minH: 4 },
+    { i: 'healthMetrics', x: 0, y: 16, w: 10, h: 6, minW: 3, minH: 4 },
   ];
-  let mdY = 33;
+  let mdY = 22;
   for (const key of mealKeys) {
     md.push({ i: key, x: 0, y: mdY, w: 10, h: 4, minW: 3, minH: 3 });
     mdY += 4;
   }
   md.push({ i: 'exercise', x: 0, y: mdY, w: 10, h: 4, minW: 3, minH: 3 });
+  md.push({ i: 'caffeine', x: 0, y: mdY + 4, w: 10, h: 11, minW: 4, minH: 7 });
 
   // sm / xs: single column, everything stacked.
   const stacked = (cols: number): WidgetLayout[] => {
@@ -349,10 +349,10 @@ export function generateDefaultLayouts(mealKeys: string[]): DashboardLayouts {
     push('energy', 10, 6);
     push('nutrition', 10, 6);
     push('water', 8, 5);
-    push('caffeine', 11, 7);
     push('healthMetrics', 6, 4);
     for (const key of mealKeys) push(key, 4, 3);
     push('exercise', 4, 3);
+    push('caffeine', 11, 7);
     return out;
   };
 

@@ -197,9 +197,9 @@ describe('CaffeineCard Component', () => {
     render(<CaffeineCard date="2026-09-05" />);
     expect(screen.getByTestId('caffeine-chart')).toBeInTheDocument();
     expect(screen.getAllByTestId('dose-dot')).toHaveLength(1);
-    // Threshold line plus bedtime and now markers.
+    // Threshold line plus the bedtime, now and cutoff markers.
     expect(screen.getByTestId('ref-line-y')).toBeInTheDocument();
-    expect(screen.getAllByTestId('ref-line-x')).toHaveLength(2);
+    expect(screen.getAllByTestId('ref-line-x')).toHaveLength(3);
   });
 
   it('distinguishes a dose whose time was assumed from one that was logged', () => {
@@ -265,5 +265,34 @@ describe('CaffeineCard Component', () => {
 
     render(<CaffeineCard date="2026-09-05" />);
     expect(screen.getByText('Assumed time')).toBeInTheDocument();
+  });
+
+  // The cutoff is a moment on the same timeline as everything else, so it
+  // belongs on the plot rather than only in a tile above it.
+  it('marks the cutoff on the chart and names it in the legend', () => {
+    mockUseActiveCaffeineQuery.mockReturnValue({
+      data: baseData,
+      isLoading: false,
+    } as never);
+
+    render(<CaffeineCard date="2026-09-05" />);
+    // Threshold (y) plus bedtime, now and cutoff (x).
+    expect(screen.getAllByTestId('ref-line-x')).toHaveLength(3);
+    expect(screen.getByText(/Last 200mg dose/)).toBeInTheDocument();
+  });
+
+  it('omits the cutoff marker when no dose fits at all', () => {
+    mockUseActiveCaffeineQuery.mockReturnValue({
+      data: {
+        ...baseData,
+        // 400 mg an hour before bed leaves no room under the threshold.
+        doses: [{ at: '2026-09-05T19:30:00.000Z', mg: 400 }],
+      },
+      isLoading: false,
+    } as never);
+
+    render(<CaffeineCard date="2026-09-05" />);
+    expect(screen.getAllByTestId('ref-line-x')).toHaveLength(2);
+    expect(screen.queryByText(/Last 200mg dose/)).not.toBeInTheDocument();
   });
 });

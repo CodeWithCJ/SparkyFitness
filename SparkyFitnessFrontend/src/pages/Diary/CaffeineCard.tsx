@@ -20,6 +20,7 @@ import {
 import {
   activeCaffeineAt,
   caffeineCurve,
+  caffeineCutoff,
   thresholdCrossingTime,
 } from '@workspace/shared';
 
@@ -66,6 +67,24 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
     const endMs = Math.max(bedtimeMs + 2 * 60 * 60 * 1000, nowMs);
     return caffeineCurve(data.doses, startMs, endMs, data.half_life_hours, 10);
   }, [data, bedtimeMs, nowMs]);
+
+  // Recomputed rather than parsed back from the response's local HH:MM: the
+  // shared helper returns the exact instant, which is what the plot needs, and
+  // it is the same function the server answered with.
+  const cutoffMs = useMemo(() => {
+    if (!data) return null;
+    const cutoff = caffeineCutoff({
+      doses: data.doses,
+      bedtimeInstant: data.bedtime_at,
+      nowInstant: nowMs,
+      halfLifeHours: data.half_life_hours,
+      thresholdMg: data.threshold_mg,
+      doseMg: data.cutoff_dose_mg,
+    });
+    return cutoff.kind === 'by' || cutoff.kind === 'passed'
+      ? new Date(cutoff.at).getTime()
+      : null;
+  }, [data, nowMs]);
 
   // Recomputed from the same doses, so the words and the curve cannot drift.
   const crossingAt = useMemo(
@@ -325,6 +344,17 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
                 stroke={isDark ? '#94a3b8' : '#475569'}
                 strokeWidth={1}
               />
+              {/* The moment another dose stops fitting under the threshold.
+                  Hidden when it falls outside the plotted window rather than
+                  clamped to the edge, which would put it at a time it is not. */}
+              {cutoffMs !== null && (
+                <ReferenceLine
+                  x={cutoffMs}
+                  stroke={isDark ? '#34d399' : '#059669'}
+                  strokeDasharray="3 3"
+                  ifOverflow="hidden"
+                />
+              )}
               {/* A dose whose time was assumed rather than logged is drawn
                   hollow: the payload carries that per dose, and the card used
                   to say so only once, for the whole day. */}
@@ -372,6 +402,16 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
               <span className="h-3 w-0 border-l-2 border-slate-600 dark:border-slate-400" />
               {t('diary.caffeine.legendNow', 'Now')}
             </span>
+            {cutoffMs !== null && (
+              <span className="flex items-center gap-1">
+                <span className="h-3 w-0 border-l-2 border-dashed border-emerald-600 dark:border-emerald-400" />
+                {t('diary.caffeine.legendCutoff', {
+                  defaultValue: 'Last {{dose}}mg dose {{time}}',
+                  dose: Math.round(cutoff_dose_mg),
+                  time: clockLabel(cutoffMs),
+                })}
+              </span>
+            )}
             <span className="flex items-center gap-1">
               <span className="h-2 w-2 rounded-full bg-amber-600" />
               {t('diary.caffeine.legendDose', 'Logged dose')}

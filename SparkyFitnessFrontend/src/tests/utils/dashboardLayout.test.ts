@@ -20,11 +20,11 @@ describe('buildWidgetKeys', () => {
       'energy',
       'nutrition',
       'water',
-      'caffeine',
       'healthMetrics',
       'meal:a',
       'meal:b',
       'exercise',
+      'caffeine',
     ]);
   });
 });
