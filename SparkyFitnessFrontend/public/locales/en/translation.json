@@ -5083,7 +5083,7 @@
   "auth": {
     "agreeAndEnter": "I Agree & Enter Demo",
     "demoAgreeCheckbox": "I accept the License terms and agree not to misuse this evaluation sandbox.",
-    "demoLicenseDesc": "SparkyFitness is provided for non-commercial evaluation and personal use under its project license. Unauthorized commercial exploitation or redistribution is strictly prohibited.",
+    "demoLicenseDesc": "By using this demo, you agree to the project license.",
     "demoLicenseTitle": "Non-Commercial License & Terms",
     "demoLockedDesc": "Credential modifications, MFA / passkey setups, and external device OAuth integrations are disabled on the shared demo account for stability.",
     "demoLockedTitle": "Protected Settings",
