@@ -77,13 +77,40 @@ export function useWaterIntakeMutation({
   // The synthetic container is never sent to the server as a real id: the
   // server does not find id -1 and falls back to its own 2000 ml / 8 default,
   // which is the same amount this describes.
+  const defaultContainer = useMemo(
+    () => ({
+      ...DEFAULT_WATER_CONTAINER,
+      name: t('waterIntake.defaultContainer', {
+        defaultValue: 'Default',
+      }),
+    }),
+    [t]
+  );
+
   const activeContainer =
     (selectedContainerId != null
       ? containers?.find((c) => c.id === selectedContainerId)
       : undefined) ??
     standardContainers.find((c) => c.is_primary) ??
     standardContainers[0] ??
-    (isContainersLoaded ? DEFAULT_WATER_CONTAINER : undefined);
+    (isContainersLoaded ? defaultContainer : undefined);
+
+  // A container is a vessel you press repeatedly; a preset is one drink you
+  // log once. Mobile had them in a single selectable row, so tapping Latte
+  // only ever selected it and nothing was logged. They are separated here the
+  // way web separates them, and the default is offered as a real choice so
+  // there is a way back to plain water once a container exists.
+  const selectableContainers = useMemo(() => {
+    if (!isContainersLoaded) return standardContainers;
+    return standardContainers.length > 0
+      ? [defaultContainer, ...standardContainers]
+      : [defaultContainer];
+  }, [standardContainers, defaultContainer, isContainersLoaded]);
+
+  const quickAddPresets = useMemo(
+    () => (containers ?? []).filter((c) => c.is_quick_add),
+    [containers]
+  );
 
   const selectContainer = (id: number) => {
     setSelectedContainerId(id);
@@ -191,6 +218,29 @@ export function useWaterIntakeMutation({
     mutation.mutate(1);
   };
 
+  // A preset logs the drink it names without becoming the selected vessel:
+  // one latte should not turn the +/- buttons into a latte dispenser for the
+  // rest of the day. No optimistic patch -- a linked container's credit is
+  // foodWater x hydration_factor, which the client cannot predict, so the
+  // server's total is what lands.
+  const logPreset = useMutation({
+    mutationFn: (containerId: number) =>
+      changeWaterIntake({ entryDate: date, changeDrinks: 1, containerId }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: dailySummaryQueryKey(date),
+      });
+    },
+    onError: () => {
+      Toast.show({
+        type: 'error',
+        text1: t('dashboard.logDrinkFailed', {
+          defaultValue: 'Could not log that drink',
+        }),
+      });
+    },
+  });
+
   const decrement = () => {
     if (!activeContainer) {
       noContainerAlert();
@@ -201,6 +251,7 @@ export function useWaterIntakeMutation({
 
   return {
     increment,
+    logPreset: logPreset.mutate,
     decrement,
     isReady: !!activeContainer,
     isContainersLoaded,
@@ -213,7 +264,8 @@ export function useWaterIntakeMutation({
     servingVolume: activeContainer
       ? getServingVolume(activeContainer)
       : undefined,
-    containers,
+    containers: selectableContainers,
+    quickAddPresets,
     activeContainer,
     selectContainer,
   };

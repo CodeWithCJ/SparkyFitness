@@ -604,8 +604,16 @@ describe('useWaterIntakeMutation', () => {
       (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
     });
 
-    test('returns all containers via containers field', async () => {
-      mockFetchWaterContainers.mockResolvedValue([containerA, containerB]);
+    // A container is a vessel you select and press; a preset is one drink
+    // logged on tap. They used to share one selectable row, so tapping a
+    // preset only selected it and logged nothing.
+    test('offers the default alongside real containers, and never a preset', async () => {
+      const preset = { ...containerB, id: 99, is_quick_add: true };
+      mockFetchWaterContainers.mockResolvedValue([
+        containerA,
+        containerB,
+        preset,
+      ]);
       const { result } = renderHook(
         () => useWaterIntakeMutation({ date: testDate }),
         {
@@ -613,7 +621,28 @@ describe('useWaterIntakeMutation', () => {
         }
       );
       await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
-      expect(result.current.containers).toEqual([containerA, containerB]);
+
+      expect(result.current.containers).toEqual([
+        expect.objectContaining({ name: 'Default' }),
+        containerA,
+        containerB,
+      ]);
+      expect(result.current.quickAddPresets).toEqual([preset]);
+    });
+
+    test('still offers the default when the user has no containers at all', async () => {
+      mockFetchWaterContainers.mockResolvedValue([]);
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        {
+          wrapper: createQueryWrapper(queryClient),
+        }
+      );
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+
+      expect(result.current.containers).toEqual([
+        expect.objectContaining({ name: 'Default' }),
+      ]);
     });
 
     test('activeContainer is primary when no saved selection', async () => {

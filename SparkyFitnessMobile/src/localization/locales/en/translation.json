@@ -698,7 +698,11 @@
     "selectContainer": "Select {{container}}",
     "perContainer": "{{value}} {{unit}} per container",
     "waterFromFood": "Includes {{value}} {{unit}} from food",
-    "chooseWaterContainer": "Choose a water container to enable quick add/remove"
+    "chooseWaterContainer": "Choose a water container to enable quick add/remove",
+    "quickAddDrinks": "Quick add",
+    "logDrink": "Log {{drink}}",
+    "perPress": "{{value}} {{unit}}",
+    "logDrinkFailed": "Could not log that drink"
   },
   "syncScreen": {
     "healthConnectSettings": "Health Connect settings",
@@ -4379,7 +4383,8 @@
     "multipleNoPrimary": "You have multiple water containers but none is marked as primary. Please set one as primary on the server.",
     "configure": "Please configure a water container on the server to track hydration.",
     "multipleNoPrimaryMobile": "You have multiple water containers but none is marked as primary. Tap to choose one.",
-    "configureMobile": "Add a water container to start tracking hydration."
+    "configureMobile": "Add a water container to start tracking hydration.",
+    "defaultContainer": "Default"
   },
   "waterContainers": {
     "title": "Water containers",

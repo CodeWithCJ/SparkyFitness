@@ -77,6 +77,9 @@ describe('HydrationGauge press caption', () => {
     expect(screen.queryByText(/Choose a water container/)).toBeNull();
   });
 
+  // The amount was two different muted captions -- "N ml per container" for a
+  // plain container, the drink name for a linked one -- either of which was the
+  // least readable thing on a card whose whole purpose is that number.
   it('still states the millilitres per press for a plain container', () => {
     render(
       <HydrationGauge
@@ -88,7 +91,48 @@ describe('HydrationGauge press caption', () => {
       />
     );
 
-    expect(screen.getByText('500 ml per container')).toBeTruthy();
+    expect(screen.getByText('500 ml')).toBeTruthy();
     expect(screen.queryByText(/Choose a water container/)).toBeNull();
+  });
+
+  // Tapping a preset used to select it and log nothing, because mobile put
+  // vessels and drinks in one selectable row.
+  it('logs a preset on tap rather than selecting it', () => {
+    const onQuickAdd = jest.fn();
+    const onSelectContainer = jest.fn();
+    render(
+      <HydrationGauge
+        consumed={0}
+        goal={2000}
+        unit="ml"
+        onIncrement={noop}
+        containerVolume={250}
+        onSelectContainer={onSelectContainer}
+        onQuickAdd={onQuickAdd}
+        quickAddPresets={[{ id: 7, name: 'Latte', pressLabel: '350 ml' }]}
+      />
+    );
+
+    fireEvent.press(screen.getByLabelText('Log Latte'));
+
+    expect(onQuickAdd).toHaveBeenCalledWith(7);
+    expect(onSelectContainer).not.toHaveBeenCalled();
+  });
+
+  it('states what one tap of a preset logs', () => {
+    render(
+      <HydrationGauge
+        consumed={0}
+        goal={2000}
+        unit="ml"
+        onIncrement={noop}
+        containerVolume={250}
+        onQuickAdd={noop}
+        quickAddPresets={[{ id: 7, name: 'Latte', pressLabel: '350 ml' }]}
+      />
+    );
+
+    expect(screen.getByText('Latte')).toBeTruthy();
+    expect(screen.getByText('350 ml')).toBeTruthy();
   });
 });

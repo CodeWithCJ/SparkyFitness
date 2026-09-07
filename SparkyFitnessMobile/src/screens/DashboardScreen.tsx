@@ -200,6 +200,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     servingVolume,
     isContainersLoaded,
     containers: waterContainers,
+    quickAddPresets: waterQuickAddPresets,
+    logPreset: logWaterPreset,
     activeContainer: activeWaterContainer,
     selectContainer: selectWaterContainer,
   } = useWaterIntakeMutation({
@@ -219,6 +221,25 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     const amount = `${formatLocalizedNumber(quantity, { maximumFractionDigits: 2 })} ${unit}`;
     return name ? `${amount} \u00b7 ${name}` : amount;
   }, [activeWaterContainer]);
+
+  // Each preset states what one tap logs, in the linked drink's own unit --
+  // the same phrasing the selected container uses above it.
+  const quickAddOptions = useMemo(
+    () =>
+      waterQuickAddPresets.map((preset) => {
+        const quantity = Number(preset.linked_quantity ?? 1);
+        const unit = preset.linked_variant_serving_unit || '';
+        return {
+          id: preset.id,
+          name: preset.linked_food_name || preset.name,
+          pressLabel:
+            unit && Number.isFinite(quantity) && quantity > 0
+              ? `${formatLocalizedNumber(quantity, { maximumFractionDigits: 2 })} ${unit}`
+              : undefined,
+        };
+      }),
+    [waterQuickAddPresets]
+  );
 
   const healthTrendOrder = useAppPreferencesStore((s) => s.healthTrendOrder);
   const hiddenHealthTrends = useAppPreferencesStore(
@@ -655,6 +676,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
             containers={waterContainers}
             activeContainerId={activeWaterContainer?.id}
             onSelectContainer={selectWaterContainer}
+            quickAddPresets={quickAddOptions}
+            onQuickAdd={
+              isContainersLoaded
+                ? (id: number) => logWaterPreset(id)
+                : undefined
+            }
           />
         )}
 
