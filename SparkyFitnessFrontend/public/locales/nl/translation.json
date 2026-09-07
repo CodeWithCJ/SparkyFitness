@@ -1653,7 +1653,8 @@
       "percentageLabel": "Terugverdienpercentage:",
       "tdeeGoal": "Volg apparaat",
       "tdeeGoalDescription": "Net als MyFitnessPal met de Apple Watch. SparkyFitness berekent uw totale energieverbruik over de hele dag door de huidige gegevens van uw apparaat door te trekken tot middernacht. De aanpassing = prognose − TDEE.",
-      "title": "Aanpassing van het dagelijkse caloriedoel"
+      "title": "Aanpassing van het dagelijkse caloriedoel",
+      "tdeeActivityHint": "Het activiteitsniveau wordt alleen gebruikt door de BMR + actieve calorieën-reserveoptie wanneer er geen totaalcijfer van het apparaat beschikbaar is."
     },
     "dataImport": {
       "checkin": {
@@ -1707,7 +1708,25 @@
       "modeManual": "Handmatig (instelbaar %)",
       "modeRecomp": "Lichaamsherverdeling (recomp) (-10%)",
       "subtitle": "Pas uw dagelijkse caloriedoel aan op basis van uw streefdoel voor uw lichaamssamenstelling.",
-      "title": "Doelmodus"
+      "title": "Doelmodus",
+      "deviceProjectionHint": "In de modus ‘Apparaatprojectie’ wordt dit percentage rechtstreeks toegepast op de geprojecteerde TDEE van het apparaat.",
+      "customPercentageHint": "Een positief getal betekent meer calorieën (overschot), een negatief getal betekent minder calorieën (tekort).",
+      "modeBulk": "Spiermassa opbouwen (+20%)",
+      "modeLeanBulk": "Rustig spiermassa opbouwen (+10%)",
+      "coaching": {
+        "maintenanceTitle": "Coaching voor gewichtsbehoud",
+        "maintenanceText": "De calorie-inname voor gewichtsbehoud is bedoeld om het lichaamsgewicht relatief stabiel te houden. De nadruk ligt op een constante eiwitinname (1,6–2,2 g/kg lichaamsgewicht), regelmatige krachttraining en het bijhouden van gewichtstrends in de loop van de tijd om kleine aanpassingen te kunnen doen.",
+        "aggressiveSurplusTitle": "Waarschuwing voor een te groot calorieoverschot",
+        "aggressiveSurplusText": "Een dergelijk groot calorieoverschot zorgt ervoor dat je sneller vet dan spiermassa opbouwt. Spiergroei wordt beperkt door je training en herstel, niet door hoeveel je boven je onderhoudsbehoefte eet — vanaf ongeveer 0,5% van je lichaamsgewicht per week bestaat het overschot voornamelijk uit vet. Combineer dit met een intensief krachttrainingsprogramma, houd je eiwitinname op 1,6–2,2 g/kg en evalueer je tempo om de paar weken opnieuw.",
+        "leanBulkTitle": "Aanbevelingen voor spieropbouw zonder vet",
+        "leanBulkText": "Een bescheiden calorieoverschot ondersteunt spiergroei en beperkt tegelijkertijd vetaanwas. Progressieve weerstandstraining is de drijvende kracht achter de spiergroei — de calorieën maken dit alleen mogelijk. Streef naar 1,6–2,2 g eiwit per kg lichaamsgewicht. Beoogde groeisnelheid: ~0,1–0,5% lichaamsgewicht/week, langzamer naarmate je meer getraind bent.",
+        "highlyAggressiveDeficitText": "Zeer agressief tekort. Een tekort van meer dan 25% verhoogt het risico op spierverlies, afname van trainingsprestaties, intense honger en slecht herstel aanzienlijk. Overweeg een kleiner tekort, tenzij je onder actief professioneel toezicht staat. Als je hiermee doorgaat, geef dan prioriteit aan een hoge eiwitinname (2,2–2,5 g/kg) en slaap.",
+        "highlyAggressiveDeficitTitle": "Waarschuwing voor zeer agressief tekort",
+        "aggressiveDeficitTitle": "Agressief tekort aanbevelingen",
+        "aggressiveDeficitText": "Agressief tekort voor snel vetverlies. Om spierverlies te voorkomen, moet je 2,2–2,5 g eiwit per kg lichaamsgewicht innemen, prioriteit geven aan slaap en overwegen om elke 6–8 weken terug te keren naar het onderhoudspatroon. Beoogd verliespercentage: ~0,75–1,0% lichaamsgewicht/week.",
+        "standardDeficitText": "Ideaal tekort voor gestaag vetverlies met behoud van vetvrije massa. Richt je op een hoge eiwitinname (2,0–2,4 g/kg lichaamsgewicht) en houd je energie- en herstelniveaus in de gaten. Beoogd verliespercentage: ~0,5–0,75% lichaamsgewicht/week.",
+        "standardDeficitTitle": "Aanbevelingen voor een standaardtekort"
+      }
     },
     "mfa": {
       "confirmPassword": "Bevestig het wachtwoord om door te gaan",
@@ -2054,7 +2073,6 @@
     "totalTab": "Totaal",
     "totalNutritionLabel": "Totale voedingswaarden:",
     "fullRecipeNutritionLabel": "Voedingswaarde van het recept:",
-    "loggedNutritionLabel": "Geregistreerde voedingswaarden:",
     "totalServings": "Totaal aantal porties",
     "servingSize": "Portiegrootte",
     "defaultServingSize": "Standaard portiegrootte",

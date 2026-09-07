@@ -1183,7 +1183,7 @@
     "inactiveCount_few": "Nieaktywne ({{count}})",
     "inactiveCount_many": "Nieaktywnych ({{count}})",
     "mealRelation": {
-      "awayFromMeals": "Z dala od posiłków"
+      "awayFromMeals": "Poza posiłkami"
     }
   },
   "scheduleSummary": {
