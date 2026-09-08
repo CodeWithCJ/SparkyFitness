@@ -11,10 +11,12 @@ const mockRes = () => {
 };
 
 /**
- * Better Auth returns a Fetch `Response` and sets more than one cookie on
- * sign-in. Forwarding those through `Headers.forEach` + `res.setHeader` keeps
- * only the last one, because forEach yields each set-cookie separately and
- * setHeader replaces rather than appends.
+ * Better Auth returns a Fetch `Response`. Forwarding its headers through
+ * `Headers.forEach` + `res.setHeader` keeps only the last set-cookie, because
+ * forEach yields each one separately and setHeader replaces rather than
+ * appends. Sign-in emits a single cookie under the current config, so these
+ * cover the multi-cookie response as a supported shape rather than as today's
+ * behaviour.
  */
 describe('forwardResponseHeaders', () => {
   it('forwards every Set-Cookie value, not just the last one', () => {
