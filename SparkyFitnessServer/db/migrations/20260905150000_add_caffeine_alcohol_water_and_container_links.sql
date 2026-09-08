@@ -144,15 +144,8 @@ COMMENT ON FUNCTION public.sf_volume_unit_to_ml(text) IS
 -- service (see recomputeWaterAggregate, added alongside sf_volume_unit_to_ml
 -- above).
 
--- No DEFAULT, unlike caffeine_mg/alcohol_g above. water_ml is the one nutrient
--- whose reader distinguishes "recorded as none" from "never recorded": the
--- food-derived water sum falls back to the logged volume only when the value is
--- NULL (see FOOD_DERIVED_WATER_EXPR in models/foodMisc.ts). Backfilling every
--- existing variant with 0 would make that fallback unreachable for the entire
--- pre-existing food library -- and with it sf_volume_unit_to_ml and the new
--- 'fl oz' unit, which exist to serve exactly that path (#1629).
 ALTER TABLE public.food_variants
-  ADD COLUMN IF NOT EXISTS water_ml numeric;
+  ADD COLUMN IF NOT EXISTS water_ml numeric DEFAULT 0;
 
 ALTER TABLE public.food_entries
   ADD COLUMN IF NOT EXISTS water_ml numeric;
@@ -199,7 +192,7 @@ CREATE INDEX IF NOT EXISTS idx_water_intake_entries_food_entry_id
   WHERE food_entry_id IS NOT NULL;
 
 COMMENT ON COLUMN public.food_variants.water_ml IS
-  'Water content in millilitres per serving_size of this variant. NULL means "unknown" and readers fall back to the logged volume when the entry''s unit is a volume unit (see public.sf_volume_unit_to_ml); an explicit 0 means "this drink holds no water" and suppresses that fallback. NOTE: ''oz'' in the food unit vocabulary is a WEIGHT ounce and is NOT a volume fallback; ''fl oz'' is.';
+  'Water content in millilitres per serving_size of this variant. 0/NULL means "unknown"; readers then fall back to the logged volume when the entry''s unit is a volume unit (see public.sf_volume_unit_to_ml). NOTE: ''oz'' in the food unit vocabulary is a WEIGHT ounce and is NOT a volume fallback; ''fl oz'' is.';
 COMMENT ON COLUMN public.food_entries.water_ml IS
   'Log-time snapshot of the variant''s water_ml. NULL on rows predating this column.';
 COMMENT ON COLUMN public.meal_foods.water_ml IS
