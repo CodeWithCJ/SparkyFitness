@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { log } from '../config/logging.js';
+import { getSystemClient } from '../db/poolManager.js';
 
 /**
  * Marker written into `profiles.bio` when the demo sandbox is seeded. It is the
@@ -23,6 +24,60 @@ export function getDemoEmail(): string {
 export function isDemoEmail(email?: string | null): boolean {
   if (!isDemoMode() || !email) return false;
   return email.toLowerCase().trim() === getDemoEmail();
+}
+
+/**
+ * True when a Better Auth password-reset token belongs to the demo account.
+ *
+ * The other recovery endpoints name the account in the request body, but
+ * `/api/auth/reset-password` carries only `{ newPassword, token }` -- Better
+ * Auth identifies the account by the token alone. An address-based check
+ * therefore sees nothing there and lets the reset through, so resolve the token
+ * to its owner instead. Better Auth records it as a `verification` row keyed
+ * `reset-password:<token>` whose value is the user id.
+ *
+ * Fails closed: a lookup that cannot be completed must not be read as "not the
+ * demo account". In demo mode that only costs a reset the sandbox can retry.
+ */
+export async function isDemoPasswordResetToken(
+  token: unknown
+): Promise<boolean> {
+  if (!isDemoMode()) return false;
+  if (typeof token !== 'string' || token.trim() === '') return false;
+
+  // Acquired inside the try so a pool that cannot hand out a connection is
+  // caught here rather than rejecting out of the guard.
+  let client: Awaited<ReturnType<typeof getSystemClient>> | null = null;
+  try {
+    client = await getSystemClient();
+    const result = await client.query(
+      // Deliberately not filtered on `expires_at`. A token that resolves to the
+      // demo account is blocked whether or not it has lapsed -- Better Auth
+      // judges expiry in JS against a `timestamp without time zone` column, and
+      // an SQL `now()` comparison resolves in the database session's timezone
+      // rather than the one the row was written in. Where those differ the two
+      // verdicts diverge, and the direction that lets a live token read as
+      // expired here would hand the reset straight to Better Auth.
+      `SELECT u.email
+         FROM verification v
+         JOIN "user" u ON u.id::text = v.value
+        WHERE v.identifier = $1
+        LIMIT 1`,
+      // Keyed on the raw token, not a trimmed copy: Better Auth looks up
+      // `reset-password:${token}` verbatim, so the guard has to hit the same row.
+      [`reset-password:${token}`]
+    );
+    return isDemoEmail(result.rows[0]?.email);
+  } catch (error) {
+    log(
+      'error',
+      '[DEMO GUARD] Could not resolve a password reset token; blocking to fail closed:',
+      error
+    );
+    return true;
+  } finally {
+    client?.release();
+  }
 }
 
 /**
