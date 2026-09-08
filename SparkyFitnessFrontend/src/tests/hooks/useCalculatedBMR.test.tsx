@@ -27,6 +27,7 @@ describe('useCalculatedBMR', () => {
     mockUsePreferences.mockReturnValue({
       bmrAlgorithm: 'Mifflin-St Jeor',
       includeBmrInNetCalories: false,
+      useExternalBmr: true,
       timezone: 'UTC',
     });
     mockQueryData = {};
@@ -52,6 +53,35 @@ describe('useCalculatedBMR', () => {
     expect(result.current.bmr).toBe(1750);
     expect(result.current.measuredBmr).toBe(1750);
     expect(result.current.includeInNet).toBe(false);
+  });
+
+  it('ignores measured BMR when useExternalBmr is off (issue #2395)', () => {
+    mockUsePreferences.mockReturnValue({
+      bmrAlgorithm: 'Mifflin-St Jeor',
+      includeBmrInNetCalories: false,
+      useExternalBmr: false,
+      timezone: 'UTC',
+    });
+    mockQueryData[JSON.stringify(['users', 'profile', 'user-1'])] = {
+      gender: 'male',
+      date_of_birth: '1990-01-01',
+    };
+    mockQueryData[
+      JSON.stringify(['dailyProgress', 'measurements', 'recent', 'weight'])
+    ] = { weight: 75 };
+    mockQueryData[
+      JSON.stringify(['dailyProgress', 'measurements', 'recent', 'height'])
+    ] = { height: 180 };
+    // Plausible relative to this person's formula estimate, but not opted in.
+    mockQueryData[
+      JSON.stringify(['dailyProgress', 'measurements', 'recent', 'bmr'])
+    ] = { bmr: 1750 };
+
+    const { result } = renderHook(() => useCalculatedBMR());
+
+    expect(result.current.measuredBmr).toBeNull();
+    expect(result.current.bmr).toBeGreaterThan(1000);
+    expect(result.current.bmr).not.toBe(1750);
   });
 
   it('falls back to formula BMR when no valid measured BMR is present', () => {

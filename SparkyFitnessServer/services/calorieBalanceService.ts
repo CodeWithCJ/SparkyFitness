@@ -280,15 +280,19 @@ export function computeCalorieBalance({
 
   // 1b. Measured BMR override — when a measured BMR is recorded on the day
   // (from a smart scale, health provider sync, or manual check-in entry),
-  // prefer it over the formula, but only when it is plausible for this person
-  // (see isPlausibleMeasuredBmr) — otherwise a bad reading silently tanks the
+  // prefer it over the formula, but only when the user has opted in
+  // (use_external_bmr) AND it is plausible for this person (see
+  // isPlausibleMeasuredBmr) — otherwise a bad reading silently tanks the
   // day's calorie balance.
   let bmrSource: 'formula' | 'measured' = 'formula';
   const checkInBmr = measurements?.bmr
     ? parseFloat(String(measurements.bmr))
     : null;
 
-  if (isPlausibleMeasuredBmr(checkInBmr, bmr)) {
+  if (
+    userPreferences?.use_external_bmr &&
+    isPlausibleMeasuredBmr(checkInBmr, bmr)
+  ) {
     bmr = checkInBmr;
     bmrSource = 'measured';
   }

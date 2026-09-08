@@ -312,6 +312,7 @@ async function getReportsData(
           latestMeasurement?.bmr !== undefined
             ? Number(latestMeasurement.bmr)
             : undefined;
+        const useExternalBmr = Boolean(userPreferences?.use_external_bmr);
         if (weight && height && age && gender && bmrAlgorithm) {
           try {
             const formulaBmr = bmrService.calculateBmr(
@@ -323,10 +324,12 @@ async function getReportsData(
               bodyFat
             );
             // A measured/carried-forward BMR only overrides the formula when
-            // it is plausible for this person -- see isPlausibleMeasuredBmr.
-            day.bmr = isPlausibleMeasuredBmr(measuredBmr, formulaBmr)
-              ? measuredBmr
-              : formulaBmr;
+            // the user has opted in (use_external_bmr) AND it is plausible
+            // for this person -- see isPlausibleMeasuredBmr.
+            day.bmr =
+              useExternalBmr && isPlausibleMeasuredBmr(measuredBmr, formulaBmr)
+                ? measuredBmr
+                : formulaBmr;
           } catch (error) {
             log(
               'warn',
@@ -335,7 +338,7 @@ async function getReportsData(
             );
             day.bmr = null;
           }
-        } else if (isPlausibleMeasuredBmr(measuredBmr)) {
+        } else if (useExternalBmr && isPlausibleMeasuredBmr(measuredBmr)) {
           day.bmr = measuredBmr;
         } else {
           day.bmr = null;

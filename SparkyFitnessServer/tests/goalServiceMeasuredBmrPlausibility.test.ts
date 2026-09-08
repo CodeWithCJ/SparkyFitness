@@ -34,7 +34,9 @@ const IMPLAUSIBLE_MEASURED_BMR = 350;
  * Reproduces GitHub issue #2395: a measured BMR carried on the check-in
  * history must not silently replace a sane formula estimate just because it
  * clears the absolute range, especially once a goal-mode deficit (here,
- * Body Recomposition's 10%) is layered on top of it.
+ * Body Recomposition's 10%) is layered on top of it. Two independent guards
+ * cover this: the user must opt in via use_external_bmr, and even then the
+ * value must be plausible for their own formula estimate.
  */
 describe('goalService ignores an implausible measured BMR (issue #2395)', () => {
   beforeEach(() => {
@@ -76,6 +78,9 @@ describe('goalService ignores an implausible measured BMR (issue #2395)', () => 
       calorie_safety_floor_mode: 'standard',
       calorie_safety_floor_value: 1200,
       timezone: 'Europe/Berlin',
+      // Opted in: these tests exercise the plausibility guard itself, not
+      // the opt-in gate (see the dedicated opt-in test below).
+      use_external_bmr: true,
     });
   });
 
@@ -115,5 +120,31 @@ describe('goalService ignores an implausible measured BMR (issue #2395)', () => 
 
     // 1700 * 1.2 = 2040 baseline TDEE, recomp = -10% = 1836.
     expect(await caloriesForDate()).toBe(1836);
+  });
+
+  it('ignores an otherwise-plausible measured BMR when use_external_bmr is off', async () => {
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+      calorie_goal_adjustment_mode: 'dynamic',
+      goal_mode: 'recomp',
+      goal_mode_calculation_method: 'adaptive',
+      goal_mode_custom_percentage: 0,
+      activity_level: 'not_much',
+      bmr_algorithm: 'Mifflin-St Jeor',
+      calorie_safety_floor_mode: 'standard',
+      calorie_safety_floor_value: 1200,
+      timezone: 'Europe/Berlin',
+      use_external_bmr: false,
+    });
+    vi.mocked(
+      measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate
+    ).mockResolvedValue({
+      entry_date: date,
+      weight: 80,
+      height: 180,
+      bmr: 1700, // plausible, but the user has not opted in to using it
+    });
+
+    // Same as the formula-only case: 1800 * 1.2 = 2160, recomp = -10% = 1944.
+    expect(await caloriesForDate()).toBe(1944);
   });
 });

@@ -438,6 +438,9 @@ describe('AdaptiveTdeeService', () => {
       preferences: {
         bmr_algorithm: 'Mifflin-St Jeor',
         activity_level: 'moderate',
+        // Opted in -- this test exercises the plausibility guard itself,
+        // not the opt-in gate (see the dedicated opt-in test below).
+        use_external_bmr: true,
       },
       // A stray/carried-forward measured BMR of 350 kcal (e.g. a corrupted
       // sync value) must not replace the ~1800 kcal formula estimate just
@@ -455,6 +458,31 @@ describe('AdaptiveTdeeService', () => {
     expect(result.isFallback).toBe(true);
     // 1800 * 1.55 = 2790, nowhere near the 350 * 1.55 = 542.5 a blindly
     // trusted measured BMR would have produced.
+    expect(result.tdee).toBe(2790);
+  });
+
+  test('ignores an otherwise-plausible measured BMR when use_external_bmr is off', () => {
+    // @ts-expect-error
+    bmrService.calculateBmr.mockReturnValue(1800);
+    bmrService.ActivityMultiplier = { moderate: 1.55 };
+
+    const data = {
+      profile: { date_of_birth: '1990-01-01', gender: 'male' },
+      preferences: {
+        bmr_algorithm: 'Mifflin-St Jeor',
+        activity_level: 'moderate',
+        use_external_bmr: false,
+      },
+      // Plausible relative to the 1800 formula estimate, but not opted in.
+      latestMeasurement: { weight: 80, height: 180, bmr: 1750 },
+      checkInMeasurements: [{ entry_date: calculationDateStr, weight: 80 }],
+      nutritionData: [],
+    };
+
+    const result = computeAdaptiveTdeeFromData(data, calculationDateStr);
+
+    expect(result.isFallback).toBe(true);
+    // Same as the formula-only case: 1800 * 1.55 = 2790.
     expect(result.tdee).toBe(2790);
   });
 });

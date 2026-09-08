@@ -113,6 +113,7 @@ const CalculationSettings = () => {
     bmrAlgorithm: contextBmrAlgorithm,
     bodyFatAlgorithm: contextBodyFatAlgorithm,
     includeBmrInNetCalories: contextIncludeBmrInNetCalories,
+    useExternalBmr: contextUseExternalBmr,
     showNetCarbs: contextShowNetCarbs,
     fatBreakdownAlgorithm: contextFatBreakdownAlgorithm,
     mineralCalculationAlgorithm: contextMineralCalculationAlgorithm,
@@ -193,6 +194,9 @@ const CalculationSettings = () => {
   const [includeBmrInNetCalories, setIncludeBmrInNetCalories] = useState(
     contextIncludeBmrInNetCalories || false
   );
+  const [useExternalBmr, setUseExternalBmr] = useState(
+    contextUseExternalBmr || false
+  );
   const [showNetCarbs, setShowNetCarbs] = useState(
     contextShowNetCarbs || false
   );
@@ -232,6 +236,9 @@ const CalculationSettings = () => {
     }
     if (contextIncludeBmrInNetCalories !== undefined) {
       setIncludeBmrInNetCalories(contextIncludeBmrInNetCalories);
+    }
+    if (contextUseExternalBmr !== undefined) {
+      setUseExternalBmr(contextUseExternalBmr);
     }
     if (contextShowNetCarbs !== undefined) {
       setShowNetCarbs(contextShowNetCarbs);
@@ -296,6 +303,7 @@ const CalculationSettings = () => {
     contextBmrAlgorithm,
     contextBodyFatAlgorithm,
     contextIncludeBmrInNetCalories,
+    contextUseExternalBmr,
     contextShowNetCarbs,
     contextFatBreakdownAlgorithm,
     contextMineralCalculationAlgorithm,
@@ -322,6 +330,7 @@ const CalculationSettings = () => {
         bmrAlgorithm,
         bodyFatAlgorithm,
         includeBmrInNetCalories,
+        useExternalBmr,
         showNetCarbs,
         energyUnit, // Ensure energyUnit is included in saving
         fatBreakdownAlgorithm: fatBreakdownAlgorithm,
@@ -755,6 +764,31 @@ const CalculationSettings = () => {
             {t(
               'calculationSettings.includeBmrInNetCaloriesHint',
               'When enabled, your BMR will be subtracted from your daily net calorie total.'
+            )}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="use-external-bmr"
+          checked={useExternalBmr}
+          onCheckedChange={(checked) => setUseExternalBmr(Boolean(checked))}
+        />
+        <div className="grid gap-1.5 leading-none">
+          <Label
+            htmlFor="use-external-bmr"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+          >
+            {t(
+              'calculationSettings.useExternalBmr',
+              'Use measured/synced BMR when available'
+            )}
+          </Label>
+          <p className="text-sm text-muted-foreground">
+            {t(
+              'calculationSettings.useExternalBmrHint',
+              'When enabled, a BMR entered on a check-in or synced from a smart scale or health provider can override the calculated formula for that day. Off by default -- your calculated BMR is always used until you opt in.'
             )}
           </p>
         </div>

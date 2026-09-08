@@ -236,20 +236,26 @@ async function getUserGoalsForRange(
             gender,
             bodyFat
           );
-          // A measured/carried-forward BMR only overrides the formula when it
-          // is plausible for this person -- otherwise a bad reading (unit
-          // mismatch, a stale partial-day sync value, ...) silently tanks
-          // every downstream TDEE and calorie-goal calculation.
-          bmr = isPlausibleMeasuredBmr(measuredBmr, formulaBmr)
-            ? measuredBmr
-            : formulaBmr;
+          // A measured/carried-forward BMR only overrides the formula when
+          // the user has opted in (use_external_bmr) AND it is plausible for
+          // this person -- otherwise a bad reading (unit mismatch, a stale
+          // partial-day sync value, ...) silently tanks every downstream
+          // TDEE and calorie-goal calculation.
+          bmr =
+            userPreferences.use_external_bmr &&
+            isPlausibleMeasuredBmr(measuredBmr, formulaBmr)
+              ? measuredBmr
+              : formulaBmr;
         } catch (err) {
           log(
             'warn',
             `goalService: BMR calc failed for ${userId} on ${dateStr}: ${(err as Error).message}`
           );
         }
-      } else if (isPlausibleMeasuredBmr(measuredBmr)) {
+      } else if (
+        userPreferences?.use_external_bmr &&
+        isPlausibleMeasuredBmr(measuredBmr)
+      ) {
         bmr = measuredBmr;
       }
 
@@ -348,8 +354,12 @@ async function getUserGoalsForRange(
             userPreferences?.calorie_safety_floor_value ||
             DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
           // computeCalorieTarget validates this against its own formula
-          // estimate (isPlausibleMeasuredBmr) before trusting it.
-          measuredBmr,
+          // estimate (isPlausibleMeasuredBmr) before trusting it; also
+          // respect the same opt-in as the bmr resolution above so the
+          // safety floor doesn't silently use a source the user disabled.
+          measuredBmr: userPreferences?.use_external_bmr
+            ? measuredBmr
+            : undefined,
         });
         goalCalories = targetResult.finalTarget;
       }

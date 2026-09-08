@@ -22,6 +22,7 @@ interface UserProfile {
 interface UserPreferences {
   bmr_algorithm?: string | null;
   activity_level?: string | null;
+  use_external_bmr?: boolean | null;
 }
 
 interface LatestMeasurement {
@@ -123,13 +124,16 @@ function computeAdaptiveTdeeFromData(
         : undefined
     ) ||
     10 * weightKg + 6.25 * heightCm - 5 * age + (gender === 'male' ? 5 : -161);
-  // A measured/synced BMR only overrides the formula when it is plausible for
-  // this person; otherwise a bad reading (unit mismatch, a partial-day sample
-  // carried forward from an old sync, ...) would silently tank every TDEE and
+  // A measured/synced BMR only overrides the formula when the user has
+  // opted in (use_external_bmr) AND it is plausible for this person;
+  // otherwise a bad reading (unit mismatch, a partial-day sample carried
+  // forward from an old sync, ...) would silently tank every TDEE and
   // calorie-goal calculation that reads it. See isPlausibleMeasuredBmr.
-  const baseBmr = isPlausibleMeasuredBmr(measuredBmr, formulaBmr)
-    ? measuredBmr
-    : formulaBmr;
+  const baseBmr =
+    preferences?.use_external_bmr &&
+    isPlausibleMeasuredBmr(measuredBmr, formulaBmr)
+      ? measuredBmr
+      : formulaBmr;
 
   const fallbackTdee = baseBmr * multiplier;
 

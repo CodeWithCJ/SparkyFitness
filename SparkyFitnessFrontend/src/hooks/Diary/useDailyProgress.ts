@@ -165,7 +165,8 @@ export const useMostRecentBmrQuery = (enabled = true) => {
 
 export const useCalculatedBMR = () => {
   const { user } = useAuth();
-  const { bmrAlgorithm, includeBmrInNetCalories, timezone } = usePreferences();
+  const { bmrAlgorithm, includeBmrInNetCalories, useExternalBmr, timezone } =
+    usePreferences();
 
   const { data: userProfile } = useQuery({
     queryKey: userKeys.profile(user?.id ?? ''),
@@ -206,11 +207,12 @@ export const useCalculatedBMR = () => {
     }
   }
 
-  // A measured/synced BMR only overrides the formula when it is plausible for
-  // this person -- otherwise a bad reading (unit mismatch, a stale
-  // partial-day sync value, ...) silently tanks the displayed BMR and every
-  // TDEE/calorie-goal calculation that reads it.
-  if (isPlausibleMeasuredBmr(rawMeasured, formulaBmr)) {
+  // A measured/synced BMR only overrides the formula when the user has opted
+  // in (useExternalBmr) AND it is plausible for this person -- otherwise a
+  // bad reading (unit mismatch, a stale partial-day sync value, ...) silently
+  // tanks the displayed BMR and every TDEE/calorie-goal calculation that
+  // reads it.
+  if (useExternalBmr && isPlausibleMeasuredBmr(rawMeasured, formulaBmr)) {
     return {
       bmr: rawMeasured,
       measuredBmr: rawMeasured,

@@ -397,6 +397,16 @@ describe('dailySummaryService', () => {
   describe('external BMR override', () => {
     // Use dynamic mode so calorieBalance.bmr reflects the resolved BMR directly
     test('overrides formula BMR with the check-in measured value', async () => {
+      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+        bmr_algorithm: 'Mifflin-St Jeor',
+        activity_level: 'not_much',
+        calorie_goal_adjustment_mode: 'tdee',
+        exercise_calorie_percentage: 100,
+        include_bmr_in_net_calories: false,
+        tdee_allow_negative_adjustment: false,
+        timezone: 'UTC',
+        use_external_bmr: true,
+      });
       vi.mocked(
         measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate
       ).mockResolvedValue({ weight: 80, height: 180, bmr: 1500 } as never);

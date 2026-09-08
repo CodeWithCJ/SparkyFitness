@@ -515,7 +515,20 @@ describe('measured BMR override', () => {
     activity_level: 'not_much',
     calorie_goal_adjustment_mode: 'dynamic' as const,
     include_bmr_in_net_calories: true,
+    use_external_bmr: true,
   };
+
+  test('ignores a plausible check-in BMR when use_external_bmr is off (issue #2395)', () => {
+    const balance = computeCalorieBalance(
+      inputs({
+        measurements: { weight: 80, height: 180, bmr: 1850 },
+        userPreferences: { ...prefs, use_external_bmr: false },
+      })
+    );
+
+    expect(balance.bmr).toBe(BMR);
+    expect(balance.bmrSource).toBe('formula');
+  });
 
   test('prefers a check-in measured BMR over the formula calculation', () => {
     const balance = computeCalorieBalance(

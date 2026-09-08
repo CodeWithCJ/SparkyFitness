@@ -779,7 +779,9 @@
     "saveSuccessDesc": "Calculation settings saved successfully!",
     "selectBmrAlgorithm": "Select BMR Algorithm",
     "selectBodyFatAlgorithm": "Select Body Fat Algorithm",
-    "selectEnergyUnitPlaceholder": "Select energy unit"
+    "selectEnergyUnitPlaceholder": "Select energy unit",
+    "useExternalBmr": "Use measured/synced BMR when available",
+    "useExternalBmrHint": "When enabled, a BMR entered on a check-in or synced from a smart scale or health provider can override the calculated formula for that day. Off by default -- your calculated BMR is always used until you opt in."
   },
   "aboutDialog": {
     "title": "About SparkyFitness",
