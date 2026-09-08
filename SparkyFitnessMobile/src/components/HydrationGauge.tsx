@@ -1,18 +1,22 @@
-import React, { useMemo, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { View, Text, Pressable } from 'react-native';
 import { Canvas, Group, Path, Rect, Skia } from '@shopify/react-native-skia';
-import Button from './ui/Button';
+import React, { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Pressable, Text, View } from 'react-native';
 import {
-  useSharedValue,
-  useDerivedValue,
-  withTiming,
   Easing,
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
-import Icon from './Icon';
-import { WATER_UNIT_LABELS } from '../utils/unitConversions';
 import { formatLocalizedNumber } from '../localization';
+import {
+  WATER_UNIT_LABELS,
+  formatVolumeForUnit,
+  volumeFromMl,
+} from '../utils/unitConversions';
+import Icon from './Icon';
+import Button from './ui/Button';
 
 interface ContainerOption {
   id: number;
@@ -30,17 +34,6 @@ interface HydrationGaugeProps {
   containers?: ContainerOption[];
   activeContainerId?: number;
   onSelectContainer?: (id: number) => void;
-}
-
-function convertFromMl(ml: number, unit: string): number {
-  switch (unit) {
-    case 'oz':
-      return ml / 29.5735;
-    case 'liter':
-      return ml / 1000;
-    default:
-      return ml;
-  }
 }
 
 const CANVAS_WIDTH = 70;
@@ -122,16 +115,11 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
     return Skia.Path.Rect(Skia.XYWHRect(0, y, CANVAS_WIDTH, CANVAS_HEIGHT - y));
   });
 
-  const convertedConsumed = convertFromMl(consumed, unit);
-  const convertedGoal = convertFromMl(goal, unit);
-  const formatUnitVolume = (val: number, u: string): string => {
-    const decimals = u === 'oz' ? 1 : u === 'liter' ? 2 : 0;
-    // formatLocalizedNumber keeps thousands grouping and the app locale's
-    // decimal separator; maximumFractionDigits alone strips trailing zeros.
-    return formatLocalizedNumber(val, { maximumFractionDigits: decimals });
-  };
-  const displayConsumed = formatUnitVolume(convertedConsumed, unit);
-  const displayGoal = formatUnitVolume(convertedGoal, unit);
+  const displayConsumed = formatVolumeForUnit(
+    volumeFromMl(consumed, unit),
+    unit
+  );
+  const displayGoal = formatVolumeForUnit(volumeFromMl(goal, unit), unit);
   const unitLabel = WATER_UNIT_LABELS[unit] ?? unit;
 
   const showButtons = !!onIncrement || !!onDecrement;
@@ -241,7 +229,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
         <Text className="text-xs text-text-muted text-center mt-2">
           {t('dashboard.perContainer', {
             defaultValue: '{{value}} {{unit}} per container',
-            value: formatLocalizedNumber(convertFromMl(containerVolume, unit), {
+            value: formatLocalizedNumber(volumeFromMl(containerVolume, unit), {
               maximumFractionDigits: 1,
             }),
             unit: unitLabel,

@@ -11,7 +11,9 @@ import type {
 import type {
   HealthTrendDateRange,
   HealthTrendSeries,
+  HydrationDataPoint,
 } from '../types/healthTrends';
+import HydrationBarChart from './HydrationBarChart';
 import SleepTimelineChart from './SleepTimelineChart';
 import StepsBarChart from './StepsBarChart';
 import WeightLineChart from './WeightLineChart';
@@ -20,8 +22,10 @@ type HealthTrendsPagerProps = {
   steps: HealthTrendSeries<StepsDataPoint>;
   weight: HealthTrendSeries<WeightDataPoint>;
   sleep: SleepTrendSeries;
+  hydration: HealthTrendSeries<HydrationDataPoint>;
   range: HealthTrendDateRange;
   weightUnit: string;
+  waterUnit: string;
   visibleTrends: readonly HealthTrendKey[];
   activePage: number;
   onPageSelected: (page: number) => void;
@@ -46,8 +50,10 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
   steps,
   weight,
   sleep,
+  hydration,
   range,
   weightUnit,
+  waterUnit,
   visibleTrends,
   activePage,
   onPageSelected,
@@ -60,6 +66,9 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
       <WeightLineChart {...weight} range={range} unit={weightUnit} />
     ),
     sleep: () => <SleepTimelineChart {...sleep} range={range} />,
+    hydration: () => (
+      <HydrationBarChart {...hydration} range={range} unit={waterUnit} />
+    ),
   };
 
   const hasTrendData: Record<HealthTrendKey, () => boolean> = {
@@ -68,6 +77,13 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
     // Sleep cannot use `shouldShowTrend`: its `data` is padded to one entry per day in the
     // window, so it is never empty and the page would show for users with no sleep at all.
     sleep: () => sleep.isLoading || sleep.isError || sleep.nightsWithData > 0,
+    // Hydration cannot use `shouldShowTrend` either: `useHydrationRange` zero-fills every
+    // day in the window, so `data` is never empty and the page would show for users who
+    // have never logged water. A day of zero is real data; a window of them is not.
+    hydration: () =>
+      hydration.isLoading ||
+      hydration.isError ||
+      hydration.data.some((point) => point.milliliters > 0),
   };
 
   // A trend the user configured to show but that has no data for in this window still hides itself

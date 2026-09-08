@@ -9,17 +9,18 @@ import {
 
 describe('resolveHealthTrendOrder', () => {
   test('returns a saved order verbatim when it covers every registered key', () => {
-    const savedOrder = ['sleep', 'steps', 'weight'];
+    const savedOrder = ['sleep', 'steps', 'hydration', 'weight'];
 
     expect(resolveHealthTrendOrder(savedOrder)).toEqual(savedOrder);
   });
 
   test('appends registry keys the saved order never knew about', () => {
-    // An order written before a graph was registered must still reach it, at the end.
-    expect(resolveHealthTrendOrder(['steps', 'weight'])).toEqual([
+    // An order written before hydration was registered must still reach it, at the end.
+    expect(resolveHealthTrendOrder(['steps', 'weight', 'sleep'])).toEqual([
       'steps',
       'weight',
       'sleep',
+      'hydration',
     ]);
   });
 
@@ -31,6 +32,7 @@ describe('resolveHealthTrendOrder', () => {
       'steps',
       'weight',
       'sleep',
+      'hydration',
     ]);
   });
 
@@ -38,7 +40,7 @@ describe('resolveHealthTrendOrder', () => {
     const resolvedOrder = resolveHealthTrendOrder(['steps', 'steps', 'weight']);
 
     expect(resolvedOrder.filter((key) => key === 'steps')).toHaveLength(1);
-    expect(resolvedOrder).toEqual(['steps', 'weight', 'sleep']);
+    expect(resolvedOrder).toEqual(['steps', 'weight', 'sleep', 'hydration']);
   });
 
   test('returns the full default order for an empty saved order', () => {

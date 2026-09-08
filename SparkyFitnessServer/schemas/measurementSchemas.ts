@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { isDayString } from '@workspace/shared';
 
 const coerceLegacyNumber = (value: unknown) => {
   if (typeof value !== 'string') {
@@ -227,6 +228,31 @@ export const DateRangeParamSchema = z
   .loose();
 
 export type DateRangeParam = z.infer<typeof DateRangeParamSchema>;
+
+const requiredDayString = (fieldName: string) =>
+  z.preprocess(
+    (value) => (typeof value === 'string' ? value.trim() : value),
+    z
+      .string()
+      .refine(isDayString, `${fieldName} must be a YYYY-MM-DD calendar date`)
+  );
+
+/**
+ * Date-range params that are actually validated as calendar days.
+ *
+ * `DateRangeParamSchema` only asserts a non-empty string, so a malformed date reaches the
+ * repository and surfaces as a database error rather than a 400. Fixing that schema in
+ * place would change the contract of the endpoints already using it, so new routes adopt
+ * this one instead and the older routes are migrated separately.
+ */
+export const StrictDateRangeParamSchema = z
+  .object({
+    startDate: requiredDayString('startDate'),
+    endDate: requiredDayString('endDate'),
+  })
+  .loose();
+
+export type StrictDateRangeParam = z.infer<typeof StrictDateRangeParamSchema>;
 
 export const CustomMeasurementsRangeParamSchema = z
   .object({

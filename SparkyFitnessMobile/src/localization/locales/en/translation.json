@@ -4101,6 +4101,12 @@
       "avgTimeAsleep": "Avg time asleep",
       "rangeLabel": "{{startDate}} – {{endDate}}"
     },
+    "hydration": {
+      "title": "Hydration",
+      "loadFailed": "Failed to load hydration data",
+      "empty": "No hydration data for this period",
+      "tooltip": "{{formattedVolume}} {{unit}} · {{date}}"
+    },
     "loading": "Loading chart...",
     "weightLoadFailed": "Failed to load weight data",
     "stepsLoadFailed": "Failed to load step data",
