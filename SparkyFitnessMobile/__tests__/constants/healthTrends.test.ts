@@ -18,6 +18,7 @@ describe('healthTrends registry', () => {
       steps: 'Steps',
       weight: 'Weight',
       sleep: 'Sleep',
+      hydration: 'Hydration',
     };
 
     for (const key of HEALTH_TREND_KEYS) {
@@ -26,8 +27,8 @@ describe('healthTrends registry', () => {
   });
 
   test('the default order leads with the trends the pager shipped with', () => {
-    // A user who never opens the settings screen must see exactly the pager they had
-    // before it became configurable, so these keys stay frozen in this order.
+    // A user who never opens the settings screen must see exactly what they saw before
+    // hydration was registered, so the first three keys are frozen in place.
     expect(HEALTH_TREND_KEYS.slice(0, 3)).toEqual(['steps', 'weight', 'sleep']);
   });
 });

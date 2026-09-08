@@ -182,6 +182,26 @@ export const fetchMeasurementsRange = async (
   });
 };
 
+export type WaterIntakeRangeEntry = {
+  entry_date: string;
+  water_ml: number;
+};
+
+/**
+ * Fetches one water total per day that has logged water in the range. Days with no
+ * intake are absent from the response, not returned as zero.
+ */
+export const fetchWaterIntakeRange = async (
+  startDate: string,
+  endDate: string
+): Promise<WaterIntakeRangeEntry[]> => {
+  return apiFetch<WaterIntakeRangeEntry[]>({
+    endpoint: `/api/measurements/water-intake-range/${startDate}/${endDate}`,
+    serviceName: 'Measurements API',
+    operation: 'fetch water intake range',
+  });
+};
+
 /**
  * Upserts a check-in measurement record for a given date.
  *

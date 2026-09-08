@@ -520,6 +520,42 @@ async function getWaterIntake(
     throw error;
   }
 }
+interface WaterTotalRow {
+  entry_date: string;
+  total_ml: string | number;
+}
+
+interface WaterIntakeDayTotal {
+  entry_date: string;
+  water_ml: number;
+}
+
+async function getWaterIntakeByDateRange(
+  authenticatedUserId: string,
+  targetUserId: string,
+  startDate: string,
+  endDate: string
+): Promise<WaterIntakeDayTotal[]> {
+  try {
+    const waterTotals = await measurementRepository.getWaterTotalsByDateRange(
+      targetUserId,
+      startDate,
+      endDate
+    );
+    // total_ml is a SUM, so pg hands it back as a string; normalize here so no caller parses.
+    return (waterTotals as WaterTotalRow[]).map((row) => ({
+      entry_date: row.entry_date,
+      water_ml: Number(row.total_ml) || 0,
+    }));
+  } catch (error) {
+    log(
+      'error',
+      `Error fetching water intake range for user ${targetUserId} from ${startDate} to ${endDate} by ${authenticatedUserId}:`,
+      error
+    );
+    throw error;
+  }
+}
 async function upsertWaterIntake(
   authenticatedUserId: string,
   actingUserId: string,
@@ -1919,6 +1955,7 @@ export const getSleepEntriesByUserIdAndDateRange =
 export const deleteSleepEntry = sleepRepository.deleteSleepEntry;
 export { processHealthData };
 export { getWaterIntake };
+export { getWaterIntakeByDateRange };
 export { upsertWaterIntake };
 export { logWaterIntakeAmount };
 export { getWaterIntakeEntryById };
@@ -2060,6 +2097,7 @@ export { updateWaterIntakeLogTime };
 export default {
   processHealthData,
   getWaterIntake,
+  getWaterIntakeByDateRange,
   upsertWaterIntake,
   logWaterIntakeAmount,
   getWaterIntakeEntryById,

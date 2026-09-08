@@ -17,7 +17,13 @@ import {
   stonesLbsToKg,
   formatWeightDisplay,
   getServingVolume,
+  volumeFromMl,
+  formatVolumeForUnit,
 } from '../../src/utils/unitConversions';
+import i18n, {
+  getAppLocale,
+  initializeI18n,
+} from '../../src/localization/i18n';
 
 describe('unitConversions', () => {
   describe('lbsToKg', () => {
@@ -332,6 +338,51 @@ describe('unitConversions', () => {
     });
   });
 
+  describe('volume helpers', () => {
+    // formatVolumeForUnit formats through formatLocalizedNumber, so the expected text
+    // is whatever the app's `en` locale produces rather than a hardcoded separator.
+    beforeAll(async () => {
+      await initializeI18n('en');
+    });
+
+    beforeEach(async () => {
+      await i18n.changeLanguage('en');
+    });
+
+    describe('volumeFromMl', () => {
+      it('returns millilitres unchanged', () => {
+        expect(volumeFromMl(500, 'ml')).toBe(500);
+      });
+
+      it('converts to fluid ounces', () => {
+        expect(volumeFromMl(1000, 'oz')).toBeCloseTo(33.814, 3);
+      });
+
+      it('converts to litres', () => {
+        expect(volumeFromMl(1500, 'liter')).toBe(1.5);
+      });
+
+      it('falls back to millilitres for an unknown unit', () => {
+        expect(volumeFromMl(500, 'gallons')).toBe(500);
+      });
+    });
+
+    describe('formatVolumeForUnit', () => {
+      it('applies the per-unit decimal rule', () => {
+        const locale = getAppLocale();
+
+        expect(formatVolumeForUnit(1234.567, 'ml')).toBe(
+          (1235).toLocaleString(locale)
+        );
+        expect(formatVolumeForUnit(33.8140227, 'oz')).toBe(
+          (33.8).toLocaleString(locale, { maximumFractionDigits: 1 })
+        );
+        expect(formatVolumeForUnit(1.2345, 'liter')).toBe(
+          (1.23).toLocaleString(locale, { maximumFractionDigits: 2 })
+        );
+      });
+    });
+  });
   // A container linked to a food carries volume 0 on purpose: its amount lives
   // on the food. Dividing that by servings gave 0, which the dashboard gauge
   // rendered as "0 ml per container" beside a +/- that appeared to do nothing.

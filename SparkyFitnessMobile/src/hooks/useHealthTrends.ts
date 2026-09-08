@@ -3,6 +3,7 @@ import type { HealthTrendKey } from '../constants/healthTrends';
 import type {
   HealthTrendDateRange,
   HealthTrendSeries,
+  HydrationDataPoint,
 } from '../types/healthTrends';
 import type { SleepTimelineDay, SleepTimelineSummary } from '../types/sleep';
 import {
@@ -10,6 +11,7 @@ import {
   type StepsDataPoint,
   type WeightDataPoint,
 } from './useMeasurementsRange';
+import { useHydrationRange } from './useHydrationRange';
 import { useSleepRange } from './useSleepRange';
 
 interface UseHealthTrendsOptions {
@@ -30,6 +32,7 @@ interface HealthTrends {
   steps: HealthTrendSeries<StepsDataPoint>;
   weight: HealthTrendSeries<WeightDataPoint>;
   sleep: SleepTrendSeries;
+  hydration: HealthTrendSeries<HydrationDataPoint>;
   refetch: () => Promise<void>;
 }
 
@@ -45,6 +48,7 @@ export function useHealthTrends({
     enabled &&
     (activeTrends.includes('steps') || activeTrends.includes('weight'));
   const isSleepEnabled = enabled && activeTrends.includes('sleep');
+  const isHydrationEnabled = enabled && activeTrends.includes('hydration');
 
   const {
     stepsData,
@@ -61,16 +65,26 @@ export function useHealthTrends({
     refetch: refetchSleep,
   } = useSleepRange({ range, enabled: isSleepEnabled });
 
+  const {
+    hydrationData,
+    isLoading: isHydrationLoading,
+    isError: isHydrationError,
+    refetch: refetchHydration,
+  } = useHydrationRange({ range, enabled: isHydrationEnabled });
+
   const refetch = useCallback(async () => {
     await Promise.all([
       isMeasurementsEnabled ? refetchMeasurements() : Promise.resolve(),
       isSleepEnabled ? refetchSleep() : Promise.resolve(),
+      isHydrationEnabled ? refetchHydration() : Promise.resolve(),
     ]);
   }, [
     isMeasurementsEnabled,
     isSleepEnabled,
+    isHydrationEnabled,
     refetchMeasurements,
     refetchSleep,
+    refetchHydration,
   ]);
 
   return {
@@ -92,6 +106,11 @@ export function useHealthTrends({
       nightsWithData: sleep.nightsWithData,
       isLoading: isSleepLoading,
       isError: isSleepError,
+    },
+    hydration: {
+      data: hydrationData,
+      isLoading: isHydrationLoading,
+      isError: isHydrationError,
     },
     refetch,
   };

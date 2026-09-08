@@ -30,7 +30,7 @@ import type { RootStackScreenProps } from '../types/navigation';
 import type { WaterContainer } from '../types/measurements';
 import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
 import { parseDecimalInput } from '../utils/numericInput';
-import { convertMlToUnit } from '../utils/unitConversions';
+import { volumeFromMl } from '../utils/unitConversions';
 
 type WaterContainerEditScreenProps = RootStackScreenProps<'WaterContainerEdit'>;
 
@@ -81,7 +81,7 @@ function formStateFromContainer(
     // container into ~17.5 L on the first save.
     volume: String(
       Number(
-        convertMlToUnit(container.volume, unit).toFixed(unit === 'ml' ? 0 : 2)
+        volumeFromMl(container.volume, unit).toFixed(unit === 'ml' ? 0 : 2)
       )
     ),
     unit,

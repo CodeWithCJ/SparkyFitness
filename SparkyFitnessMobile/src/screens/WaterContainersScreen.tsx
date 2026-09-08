@@ -28,7 +28,7 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { WaterContainer } from '../types/measurements';
 import type { RootStackScreenProps } from '../types/navigation';
-import { WATER_UNIT_LABELS, convertMlToUnit } from '../utils/unitConversions';
+import { WATER_UNIT_LABELS, volumeFromMl } from '../utils/unitConversions';
 
 type WaterContainersScreenProps = RootStackScreenProps<'WaterContainers'>;
 
@@ -187,7 +187,7 @@ const WaterContainersScreen: React.FC<WaterContainersScreenProps> = ({
     item: WaterContainer;
     index: number;
   }) => {
-    const displayVolume = convertMlToUnit(item.volume, item.unit).toFixed(
+    const displayVolume = volumeFromMl(item.volume, item.unit).toFixed(
       item.unit === 'liter' ? 2 : item.unit === 'oz' ? 1 : 0
     );
     const unitLabel = WATER_UNIT_LABELS[item.unit] ?? item.unit;

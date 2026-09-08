@@ -458,6 +458,75 @@ describe('Measurement Service - Water Intake', () => {
       expect(measurementRepository.deleteWaterIntake).not.toHaveBeenCalled();
     });
   });
+  describe('getWaterIntakeByDateRange', () => {
+    const mockUserId = 'test-user-id';
+    const targetUserId = 'target-user-id';
+    const startDate = '2026-08-01';
+    const endDate = '2026-08-30';
+
+    it('maps repository rows to the wire shape with a numeric total', async () => {
+      vi.mocked(
+        measurementRepository.getWaterTotalsByDateRange
+      ).mockResolvedValue([{ entry_date: '2026-08-30', total_ml: '750' }]);
+
+      const result = await measurementService.getWaterIntakeByDateRange(
+        mockUserId,
+        targetUserId,
+        startDate,
+        endDate
+      );
+
+      expect(result).toEqual([{ entry_date: '2026-08-30', water_ml: 750 }]);
+    });
+
+    it('passes the target user and window straight through to the repository', async () => {
+      vi.mocked(
+        measurementRepository.getWaterTotalsByDateRange
+      ).mockResolvedValue([]);
+
+      await measurementService.getWaterIntakeByDateRange(
+        mockUserId,
+        targetUserId,
+        startDate,
+        endDate
+      );
+
+      expect(
+        measurementRepository.getWaterTotalsByDateRange
+      ).toHaveBeenCalledWith(targetUserId, startDate, endDate);
+    });
+
+    it('coerces an unparseable total to 0', async () => {
+      vi.mocked(
+        measurementRepository.getWaterTotalsByDateRange
+      ).mockResolvedValue([{ entry_date: '2026-08-30', total_ml: null }]);
+
+      const result = await measurementService.getWaterIntakeByDateRange(
+        mockUserId,
+        targetUserId,
+        startDate,
+        endDate
+      );
+
+      expect(result).toEqual([{ entry_date: '2026-08-30', water_ml: 0 }]);
+    });
+
+    it('rethrows a repository failure', async () => {
+      const repositoryError = new Error('Database error');
+      vi.mocked(
+        measurementRepository.getWaterTotalsByDateRange
+      ).mockRejectedValue(repositoryError);
+
+      await expect(
+        measurementService.getWaterIntakeByDateRange(
+          mockUserId,
+          targetUserId,
+          startDate,
+          endDate
+        )
+      ).rejects.toThrow(repositoryError);
+    });
+  });
   // ---------------------------------------------------------------------------
   // Integration Tests
   // ---------------------------------------------------------------------------

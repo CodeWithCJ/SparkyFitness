@@ -9,6 +9,7 @@ import {
   resolveBackgroundStepCalories,
   isDayString,
   isValidTimeZone,
+  localDateToDay,
   todayInZone,
 } from '@workspace/shared';
 
@@ -2036,10 +2037,11 @@ async function getWaterTotalsByDateRange(
     );
     // entry_date rows to a plain YYYY-MM-DD key regardless of whether pg
     // handed back a Date (raw column) or a string (TO_CHAR above).
+    // localDateToDay, not toISOString: pg parses a `date` column to local
+    // midnight, so converting through UTC lands on the previous day for every
+    // negative-offset zone -- food water would be credited to the wrong day.
     const toDateKey = (value: string | Date): string =>
-      typeof value === 'string'
-        ? value
-        : new Date(value).toISOString().slice(0, 10);
+      typeof value === 'string' ? value.slice(0, 10) : localDateToDay(value);
 
     const foodMlByDate = new Map<string, number>(
       foodRows.map((row) => [

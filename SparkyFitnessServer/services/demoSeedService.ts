@@ -228,6 +228,17 @@ async function cleanDemoUserData(
   // Clean filesystem upload directories for demo user first
   await removeDemoUploadedFiles(client, userId);
 
+  // Any password-reset token still outstanding for the demo account would let
+  // whoever holds it change the shared credential after this reset. They are
+  // Better Auth `verification` rows keyed `reset-password:<token>` whose value
+  // is the user id, so drop them along with the rest of the account's state.
+  await client.query(
+    `DELETE FROM verification
+      WHERE value = $1
+        AND identifier LIKE 'reset-password:%'`,
+    [userId]
+  );
+
   await client.query('DELETE FROM cycle_daily_entries WHERE user_id = $1', [
     userId,
   ]);
