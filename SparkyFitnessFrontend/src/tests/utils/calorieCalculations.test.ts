@@ -10,6 +10,8 @@ import {
   normalizeCalorieGoalAdjustmentMode,
   shouldShowCalorieSafetyWarning,
   isAdaptiveTdeeMature,
+  isPlausibleMeasuredBmr,
+  calculateMinimumMetabolism,
   ADAPTIVE_TDEE_GOAL_MIN_DAYS,
   convertEnergyValue,
 } from '@workspace/shared';
@@ -761,6 +763,136 @@ describe('isAdaptiveTdeeMature', () => {
     expect(immature.baselineTdee).toBe(1920);
     expect(mature.insufficientHistory).toBe(false);
     expect(mature.baselineTdee).toBe(1420);
+  });
+});
+
+describe('isPlausibleMeasuredBmr', () => {
+  // GitHub issue #2395: a stale/carried-forward measured BMR of ~350 replaced
+  // a real ~1800 kcal formula estimate, collapsing the calorie target once
+  // Adaptive TDEE + a goal-mode deficit were both in play.
+  it('rejects a value far below the formula estimate even though it clears the absolute range', () => {
+    expect(isPlausibleMeasuredBmr(350, 1800)).toBe(false);
+  });
+
+  it('rejects a value far above the formula estimate', () => {
+    expect(isPlausibleMeasuredBmr(4500, 1800)).toBe(false);
+  });
+
+  it('accepts a measured value within a plausible band of the formula estimate', () => {
+    expect(isPlausibleMeasuredBmr(1650, 1800)).toBe(true);
+    expect(isPlausibleMeasuredBmr(1080, 1800)).toBe(true); // 0.6x boundary
+    expect(isPlausibleMeasuredBmr(2880, 1800)).toBe(true); // 1.6x boundary
+  });
+
+  it('rejects a value just outside the plausible band', () => {
+    expect(isPlausibleMeasuredBmr(1079, 1800)).toBe(false);
+    expect(isPlausibleMeasuredBmr(2881, 1800)).toBe(false);
+  });
+
+  it('rejects a value outside the absolute physiological range regardless of the formula estimate', () => {
+    expect(isPlausibleMeasuredBmr(299, 1800)).toBe(false);
+    expect(isPlausibleMeasuredBmr(10001, 1800)).toBe(false);
+  });
+
+  it('rejects nullish or non-finite input', () => {
+    expect(isPlausibleMeasuredBmr(null, 1800)).toBe(false);
+    expect(isPlausibleMeasuredBmr(undefined, 1800)).toBe(false);
+    expect(isPlausibleMeasuredBmr(NaN, 1800)).toBe(false);
+  });
+
+  it('falls back to the absolute range alone when there is no formula estimate to compare against', () => {
+    expect(isPlausibleMeasuredBmr(350, null)).toBe(true);
+    expect(isPlausibleMeasuredBmr(350, 0)).toBe(true);
+    expect(isPlausibleMeasuredBmr(350, undefined)).toBe(true);
+  });
+});
+
+describe('calculateMinimumMetabolism', () => {
+  const person = {
+    weightKg: 80,
+    heightCm: 180,
+    age: 30,
+    gender: 'male' as const,
+  };
+
+  it('ignores an implausible measured BMR and uses the formula estimate', () => {
+    const withoutMeasured = calculateMinimumMetabolism(
+      person.weightKg,
+      person.heightCm,
+      person.age,
+      person.gender
+    );
+
+    const withImplausibleMeasured = calculateMinimumMetabolism(
+      person.weightKg,
+      person.heightCm,
+      person.age,
+      person.gender,
+      undefined,
+      'Mifflin-St Jeor',
+      undefined,
+      350
+    );
+
+    expect(withImplausibleMeasured).toBe(withoutMeasured);
+    expect(withImplausibleMeasured).toBeGreaterThan(1500);
+  });
+
+  it('uses a plausible measured BMR over the formula estimate', () => {
+    const result = calculateMinimumMetabolism(
+      person.weightKg,
+      person.heightCm,
+      person.age,
+      person.gender,
+      undefined,
+      'Mifflin-St Jeor',
+      undefined,
+      1650
+    );
+
+    expect(result).toBe(1650);
+  });
+});
+
+describe('computeCalorieTarget ignores an implausible measured BMR (issue #2395)', () => {
+  // Body Recomposition (10% deficit) baselined on the formula-calculated TDEE
+  // (2200) rather than being wrecked by a stray ~350 kcal measured reading.
+  it('does not collapse the target when the measured BMR is wildly off', () => {
+    const withoutMeasured = computeCalorieTarget({
+      goalMode: 'recomp',
+      calculationMethod: 'manual',
+      customPercentage: 0,
+      bmr: 1800,
+      activityLevelMultiplier: 1.2,
+      adaptiveTdee: null,
+      adaptiveTdeeFallback: true,
+      adaptiveTdeeDaysOfData: 0,
+      weightKg: 80,
+      heightCm: 180,
+      age: 30,
+      gender: 'male',
+      currentGoalCalories: 2160,
+    });
+
+    const withImplausibleMeasured = computeCalorieTarget({
+      goalMode: 'recomp',
+      calculationMethod: 'manual',
+      customPercentage: 0,
+      bmr: 1800,
+      activityLevelMultiplier: 1.2,
+      adaptiveTdee: null,
+      adaptiveTdeeFallback: true,
+      adaptiveTdeeDaysOfData: 0,
+      weightKg: 80,
+      heightCm: 180,
+      age: 30,
+      gender: 'male',
+      currentGoalCalories: 2160,
+      measuredBmr: 350,
+    });
+
+    expect(withImplausibleMeasured.rmr).toBe(withoutMeasured.rmr);
+    expect(withImplausibleMeasured.finalTarget).toBeGreaterThan(1000);
   });
 });
 

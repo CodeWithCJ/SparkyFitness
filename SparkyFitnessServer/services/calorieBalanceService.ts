@@ -16,6 +16,7 @@ import {
   computeCalorieProgress,
   getGoalModeAdjustment,
   getRecommendedCalorieSafetyFloor,
+  isPlausibleMeasuredBmr,
   MAX_HEALTH_TOTAL_CALORIES_PER_DAY,
   MIN_CALORIE_SAFETY_FLOOR,
   resolveCalorieSafetyFloor,
@@ -279,21 +280,16 @@ export function computeCalorieBalance({
 
   // 1b. Measured BMR override — when a measured BMR is recorded on the day
   // (from a smart scale, health provider sync, or manual check-in entry),
-  // prefer it over the formula. Sanity-bounded between 300 and 10000 kcal.
+  // prefer it over the formula, but only when it is plausible for this person
+  // (see isPlausibleMeasuredBmr) — otherwise a bad reading silently tanks the
+  // day's calorie balance.
   let bmrSource: 'formula' | 'measured' = 'formula';
   const checkInBmr = measurements?.bmr
     ? parseFloat(String(measurements.bmr))
     : null;
-  const validCheckInBmr =
-    checkInBmr !== null &&
-    Number.isFinite(checkInBmr) &&
-    checkInBmr >= 300 &&
-    checkInBmr <= 10000
-      ? checkInBmr
-      : null;
 
-  if (validCheckInBmr !== null) {
-    bmr = validCheckInBmr;
+  if (isPlausibleMeasuredBmr(checkInBmr, bmr)) {
+    bmr = checkInBmr;
     bmrSource = 'measured';
   }
 

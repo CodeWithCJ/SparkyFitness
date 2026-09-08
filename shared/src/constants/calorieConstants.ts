@@ -77,6 +77,26 @@ export const DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR = 1200;
  */
 export const MAX_HEALTH_TOTAL_CALORIES_PER_DAY = 20_000;
 
+/**
+ * Absolute plausibility bounds for a measured/synced BMR value (smart scale,
+ * wearable, or a value carried forward from a previous sync). Matches the
+ * `check_in_measurements.bmr` column's CHECK constraint.
+ */
+export const MIN_MEASURED_BMR_KCAL = 300;
+export const MAX_MEASURED_BMR_KCAL = 10000;
+
+/**
+ * How far a measured BMR may diverge from the formula-calculated estimate for
+ * the same person before it is treated as implausible and the formula is used
+ * instead. Real measured BMR (and real metabolic adaptation) can differ
+ * meaningfully from a population formula, but a reading this far off a
+ * person's own estimate is far more likely to be a unit mismatch, a
+ * partial-day accumulator value mistaken for a full-day total, or otherwise
+ * corrupted data than an actual BMR.
+ */
+export const MEASURED_BMR_MIN_RATIO_OF_FORMULA = 0.6;
+export const MEASURED_BMR_MAX_RATIO_OF_FORMULA = 1.6;
+
 export const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   none: 1.0,
   not_much: 1.2,

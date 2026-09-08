@@ -17,6 +17,7 @@ import {
   CALORIE_CALCULATION_CONSTANTS,
   computeCalorieTarget,
   isAdaptiveTdeeMature,
+  isPlausibleMeasuredBmr,
   resolveCalorieSafetyFloor,
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   ACTIVITY_MULTIPLIERS,
@@ -223,13 +224,11 @@ async function getUserGoalsForRange(
       const measuredBmr = getMeasurementFieldForDate(dateStr, 'bmr');
 
       let bmr = 0;
-      if (measuredBmr && measuredBmr >= 300 && measuredBmr <= 10000) {
-        bmr = measuredBmr;
-      } else if (userProfile && userPreferences) {
+      if (userProfile && userPreferences) {
         const tz = userPreferences.timezone || 'UTC';
         const age = userAge(userProfile.date_of_birth ?? '', tz) ?? 30;
         try {
-          bmr = bmrService.calculateBmr(
+          const formulaBmr = bmrService.calculateBmr(
             bmrAlgorithm,
             weightKg,
             heightCm,
@@ -237,12 +236,21 @@ async function getUserGoalsForRange(
             gender,
             bodyFat
           );
+          // A measured/carried-forward BMR only overrides the formula when it
+          // is plausible for this person -- otherwise a bad reading (unit
+          // mismatch, a stale partial-day sync value, ...) silently tanks
+          // every downstream TDEE and calorie-goal calculation.
+          bmr = isPlausibleMeasuredBmr(measuredBmr, formulaBmr)
+            ? measuredBmr
+            : formulaBmr;
         } catch (err) {
           log(
             'warn',
             `goalService: BMR calc failed for ${userId} on ${dateStr}: ${(err as Error).message}`
           );
         }
+      } else if (isPlausibleMeasuredBmr(measuredBmr)) {
+        bmr = measuredBmr;
       }
 
       // Mirror DashboardService exactly: use user's actual activity multiplier, not hardcoded
@@ -339,10 +347,9 @@ async function getUserGoalsForRange(
           calorieSafetyFloorValue:
             userPreferences?.calorie_safety_floor_value ||
             DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
-          measuredBmr:
-            measuredBmr && measuredBmr >= 300 && measuredBmr <= 10000
-              ? measuredBmr
-              : undefined,
+          // computeCalorieTarget validates this against its own formula
+          // estimate (isPlausibleMeasuredBmr) before trusting it.
+          measuredBmr,
         });
         goalCalories = targetResult.finalTarget;
       }

@@ -5,7 +5,11 @@ import {
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   ENERGY_DENSITY_KCAL_PER_KG,
   MAX_CALORIE_SAFETY_FLOOR,
+  MAX_MEASURED_BMR_KCAL,
+  MEASURED_BMR_MAX_RATIO_OF_FORMULA,
+  MEASURED_BMR_MIN_RATIO_OF_FORMULA,
   MIN_CALORIE_SAFETY_FLOOR,
+  MIN_MEASURED_BMR_KCAL,
   type CalorieSafetyFloorMode,
 } from "../constants/calorieConstants.ts";
 
@@ -475,6 +479,47 @@ export function calculateBmr(
   return 10 * weightKg + 6.25 * heightCm - 5 * age + genderOffset;
 }
 
+/**
+ * Whether a measured/synced BMR (smart scale, wearable sync, or a value
+ * carried forward from check-in history) is trustworthy enough to override a
+ * formula-calculated estimate.
+ *
+ * Checks the absolute physiological range first, then -- when a calculated
+ * estimate for the same person is available -- requires the measurement to
+ * sit within `MEASURED_BMR_MIN_RATIO_OF_FORMULA`..`MEASURED_BMR_MAX_RATIO_OF_FORMULA`
+ * of it. The absolute range alone is far too wide to catch bad data: a
+ * partial-day resting-energy accumulator sample, a unit mismatch, or a value
+ * synced for an unrelated metric can easily land inside 300-10000 while being
+ * wildly wrong for a specific person (e.g. a real ~1800 kcal BMR reported as
+ * ~350). Comparing against that person's own formula estimate catches this
+ * without narrowing what a deliberately-entered, genuinely unusual BMR can be.
+ *
+ * When no calculated estimate is available to compare against (missing
+ * profile data), falls back to the absolute range alone -- the same behavior
+ * every caller had before this check existed.
+ */
+export function isPlausibleMeasuredBmr(
+  measuredBmr: number | null | undefined,
+  calculatedBmr?: number | null,
+): measuredBmr is number {
+  if (
+    measuredBmr === null ||
+    measuredBmr === undefined ||
+    !Number.isFinite(measuredBmr) ||
+    measuredBmr < MIN_MEASURED_BMR_KCAL ||
+    measuredBmr > MAX_MEASURED_BMR_KCAL
+  ) {
+    return false;
+  }
+  if (!calculatedBmr || !Number.isFinite(calculatedBmr) || calculatedBmr <= 0) {
+    return true;
+  }
+  return (
+    measuredBmr >= calculatedBmr * MEASURED_BMR_MIN_RATIO_OF_FORMULA &&
+    measuredBmr <= calculatedBmr * MEASURED_BMR_MAX_RATIO_OF_FORMULA
+  );
+}
+
 export function calculateMinimumMetabolism(
   weightKg: number,
   heightCm: number,
@@ -485,27 +530,26 @@ export function calculateMinimumMetabolism(
   calculateBmrFn?: BmrCalculatorFn,
   measuredBmr?: number | null,
 ): number {
-  if (measuredBmr && measuredBmr >= 300 && measuredBmr <= 10000) {
-    return measuredBmr;
-  }
   const activeBmrFn = calculateBmrFn || calculateBmr;
-  if (
+  const formulaBmr =
     (bmrAlgorithm === "Katch-McArdle" || bmrAlgorithm === "Cunningham") &&
     bodyFatPercentage &&
     bodyFatPercentage > 0
-  ) {
-    const lbm = weightKg * (1 - bodyFatPercentage / 100);
-    return bmrAlgorithm === "Cunningham" ? 500 + 22 * lbm : 370 + 21.6 * lbm;
-  }
+      ? bmrAlgorithm === "Cunningham"
+        ? 500 + 22 * weightKg * (1 - bodyFatPercentage / 100)
+        : 370 + 21.6 * weightKg * (1 - bodyFatPercentage / 100)
+      : activeBmrFn(
+          bmrAlgorithm,
+          weightKg,
+          heightCm,
+          age,
+          gender,
+          bodyFatPercentage,
+        );
 
-  return activeBmrFn(
-    bmrAlgorithm,
-    weightKg,
-    heightCm,
-    age,
-    gender,
-    bodyFatPercentage,
-  );
+  return isPlausibleMeasuredBmr(measuredBmr, formulaBmr)
+    ? measuredBmr
+    : formulaBmr;
 }
 
 export interface CalorieTargetResult {

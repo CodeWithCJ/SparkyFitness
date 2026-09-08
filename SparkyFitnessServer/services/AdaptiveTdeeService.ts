@@ -11,6 +11,7 @@ import {
   todayInZone,
   dayToPickerDate,
   ENERGY_DENSITY_KCAL_PER_KG,
+  isPlausibleMeasuredBmr,
 } from '@workspace/shared';
 const tdeeCache = new NodeCache({ stdTTL: 3600 }); // 1 hour cache
 interface UserProfile {
@@ -110,23 +111,25 @@ function computeAdaptiveTdeeFromData(
   const measuredBmr = latestMeasurement?.bmr
     ? parseFloat(String(latestMeasurement.bmr))
     : null;
-  const baseBmr =
-    measuredBmr && measuredBmr >= 300 && measuredBmr <= 10000
-      ? measuredBmr
-      : bmrService.calculateBmr(
-          bmrAlgorithm,
-          weightKg,
-          heightCm,
-          age,
-          gender as 'male' | 'female',
-          latestMeasurement?.body_fat_percentage
-            ? parseFloat(String(latestMeasurement.body_fat_percentage))
-            : undefined
-        ) ||
-        10 * weightKg +
-          6.25 * heightCm -
-          5 * age +
-          (gender === 'male' ? 5 : -161);
+  const formulaBmr =
+    bmrService.calculateBmr(
+      bmrAlgorithm,
+      weightKg,
+      heightCm,
+      age,
+      gender as 'male' | 'female',
+      latestMeasurement?.body_fat_percentage
+        ? parseFloat(String(latestMeasurement.body_fat_percentage))
+        : undefined
+    ) ||
+    10 * weightKg + 6.25 * heightCm - 5 * age + (gender === 'male' ? 5 : -161);
+  // A measured/synced BMR only overrides the formula when it is plausible for
+  // this person; otherwise a bad reading (unit mismatch, a partial-day sample
+  // carried forward from an old sync, ...) would silently tank every TDEE and
+  // calorie-goal calculation that reads it. See isPlausibleMeasuredBmr.
+  const baseBmr = isPlausibleMeasuredBmr(measuredBmr, formulaBmr)
+    ? measuredBmr
+    : formulaBmr;
 
   const fallbackTdee = baseBmr * multiplier;
 

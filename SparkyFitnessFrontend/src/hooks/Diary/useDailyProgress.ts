@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { calculateAge } from '@workspace/shared';
+import { calculateAge, isPlausibleMeasuredBmr } from '@workspace/shared';
 import { dailyProgressKeys } from '@/api/keys/diary';
 import { userManagementService } from '@/api/Admin/userManagementService';
 import {
@@ -179,11 +179,38 @@ export const useCalculatedBMR = () => {
   const { data: bmrData } = useMostRecentBmrQuery();
 
   const rawMeasured = bmrData?.bmr ? Number(bmrData.bmr) : null;
-  const isMeasured = Boolean(
-    rawMeasured && rawMeasured >= 300 && rawMeasured <= 10000
+
+  const hasProfileForFormula = Boolean(
+    userProfile &&
+    weightData?.weight &&
+    heightData?.height &&
+    userProfile.gender
   );
 
-  if (isMeasured && rawMeasured !== null) {
+  let formulaBmr: number | null = null;
+  if (hasProfileForFormula) {
+    const age = userProfile!.date_of_birth
+      ? calculateAge(userProfile!.date_of_birth, timezone)
+      : 0;
+    try {
+      formulaBmr = calculateBmr(
+        bmrAlgorithm as BmrAlgorithm,
+        weightData!.weight,
+        heightData!.height,
+        age,
+        userProfile!.gender as 'male' | 'female',
+        bodyFatData?.body_fat_percentage
+      );
+    } catch (err) {
+      formulaBmr = null;
+    }
+  }
+
+  // A measured/synced BMR only overrides the formula when it is plausible for
+  // this person -- otherwise a bad reading (unit mismatch, a stale
+  // partial-day sync value, ...) silently tanks the displayed BMR and every
+  // TDEE/calorie-goal calculation that reads it.
+  if (isPlausibleMeasuredBmr(rawMeasured, formulaBmr)) {
     return {
       bmr: rawMeasured,
       measuredBmr: rawMeasured,
@@ -193,37 +220,15 @@ export const useCalculatedBMR = () => {
     };
   }
 
-  if (
-    !userProfile ||
-    !weightData?.weight ||
-    !heightData?.height ||
-    !userProfile.gender
-  ) {
+  if (!hasProfileForFormula || formulaBmr === null) {
     return { bmr: 0, includeInNet: false };
   }
 
-  const age = userProfile.date_of_birth
-    ? calculateAge(userProfile.date_of_birth, timezone)
-    : 0;
-
-  try {
-    const bmr = calculateBmr(
-      bmrAlgorithm as BmrAlgorithm,
-      weightData.weight,
-      heightData.height,
-      age,
-      userProfile.gender as 'male' | 'female',
-      bodyFatData?.body_fat_percentage
-    );
-
-    return {
-      bmr,
-      measuredBmr: null,
-      includeInNet: includeBmrInNetCalories || false,
-      weight: weightData.weight,
-      height: heightData.height,
-    };
-  } catch (err) {
-    return { bmr: 0, includeInNet: false, weight: 0, height: 0 };
-  }
+  return {
+    bmr: formulaBmr,
+    measuredBmr: null,
+    includeInNet: includeBmrInNetCalories || false,
+    weight: weightData!.weight,
+    height: heightData!.height,
+  };
 };

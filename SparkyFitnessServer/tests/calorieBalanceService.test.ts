@@ -546,17 +546,40 @@ describe('measured BMR override', () => {
     }
   );
 
-  test.each([300, 10000])('accepts the boundary value %s', (value) => {
-    const balance = computeCalorieBalance(
-      inputs({
-        measurements: { weight: 80, height: 180, bmr: value },
-        userPreferences: prefs,
-      })
-    );
+  test.each([300, 10000])(
+    'rejects an absolute-range-legal but implausible value like %s',
+    (value) => {
+      // Formula BMR is mocked to 2000, so 300/10000 sit far outside the
+      // plausible 1200-3200 band around it -- a bad reading (unit mismatch, a
+      // stale partial-day sync value, ...) must not silently override a
+      // sane formula estimate just because it clears the absolute 300-10000
+      // sanity bound.
+      const balance = computeCalorieBalance(
+        inputs({
+          measurements: { weight: 80, height: 180, bmr: value },
+          userPreferences: prefs,
+        })
+      );
 
-    expect(balance.bmr).toBe(value);
-    expect(balance.bmrSource).toBe('measured');
-  });
+      expect(balance.bmr).toBe(BMR);
+      expect(balance.bmrSource).toBe('formula');
+    }
+  );
+
+  test.each([1200, 3200])(
+    'accepts a measured value at the plausible boundary %s',
+    (value) => {
+      const balance = computeCalorieBalance(
+        inputs({
+          measurements: { weight: 80, height: 180, bmr: value },
+          userPreferences: prefs,
+        })
+      );
+
+      expect(balance.bmr).toBe(value);
+      expect(balance.bmrSource).toBe('measured');
+    }
+  );
 
   test('falls back to formula BMR when check-in BMR is absent', () => {
     const balance = computeCalorieBalance(

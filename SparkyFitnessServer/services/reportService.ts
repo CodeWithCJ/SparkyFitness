@@ -16,6 +16,7 @@ import {
   addDays,
   compareDays,
   FOOD_VARIANT_NUTRIENT_FIELDS,
+  isPlausibleMeasuredBmr,
   todayInZone,
 } from '@workspace/shared';
 import { userAge } from '../utils/dateHelpers.js';
@@ -311,11 +312,9 @@ async function getReportsData(
           latestMeasurement?.bmr !== undefined
             ? Number(latestMeasurement.bmr)
             : undefined;
-        if (measuredBmr && measuredBmr >= 300 && measuredBmr <= 10000) {
-          day.bmr = measuredBmr;
-        } else if (weight && height && age && gender && bmrAlgorithm) {
+        if (weight && height && age && gender && bmrAlgorithm) {
           try {
-            day.bmr = bmrService.calculateBmr(
+            const formulaBmr = bmrService.calculateBmr(
               bmrAlgorithm,
               weight,
               height,
@@ -323,6 +322,11 @@ async function getReportsData(
               gender,
               bodyFat
             );
+            // A measured/carried-forward BMR only overrides the formula when
+            // it is plausible for this person -- see isPlausibleMeasuredBmr.
+            day.bmr = isPlausibleMeasuredBmr(measuredBmr, formulaBmr)
+              ? measuredBmr
+              : formulaBmr;
           } catch (error) {
             log(
               'warn',
@@ -331,6 +335,8 @@ async function getReportsData(
             );
             day.bmr = null;
           }
+        } else if (isPlausibleMeasuredBmr(measuredBmr)) {
+          day.bmr = measuredBmr;
         } else {
           day.bmr = null;
         }

@@ -427,4 +427,34 @@ describe('AdaptiveTdeeService', () => {
     // 2000 kcal intake + (~0.88 kg smoothed weight loss * 6000) / 28 = ~2190 kcal
     expect(result.tdee).toBe(2190);
   });
+
+  test('ignores an implausible measured BMR carried on the latest measurement (issue #2395)', () => {
+    // @ts-expect-error
+    bmrService.calculateBmr.mockReturnValue(1800);
+    bmrService.ActivityMultiplier = { moderate: 1.55 };
+
+    const data = {
+      profile: { date_of_birth: '1990-01-01', gender: 'male' },
+      preferences: {
+        bmr_algorithm: 'Mifflin-St Jeor',
+        activity_level: 'moderate',
+      },
+      // A stray/carried-forward measured BMR of 350 kcal (e.g. a corrupted
+      // sync value) must not replace the ~1800 kcal formula estimate just
+      // because it clears the absolute 300-10000 sanity bound.
+      latestMeasurement: { weight: 80, height: 180, bmr: 350 },
+      // A single weight entry is not enough history, so this takes the
+      // fallback path and returns fallbackTdee = baseBmr * activityMultiplier
+      // directly -- the clearest place to see which BMR won.
+      checkInMeasurements: [{ entry_date: calculationDateStr, weight: 80 }],
+      nutritionData: [],
+    };
+
+    const result = computeAdaptiveTdeeFromData(data, calculationDateStr);
+
+    expect(result.isFallback).toBe(true);
+    // 1800 * 1.55 = 2790, nowhere near the 350 * 1.55 = 542.5 a blindly
+    // trusted measured BMR would have produced.
+    expect(result.tdee).toBe(2790);
+  });
 });
