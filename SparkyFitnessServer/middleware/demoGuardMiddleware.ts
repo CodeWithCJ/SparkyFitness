@@ -45,16 +45,27 @@ export async function isDemoPasswordResetToken(
   if (!isDemoMode()) return false;
   if (typeof token !== 'string' || token.trim() === '') return false;
 
-  const client = await getSystemClient();
+  // Acquired inside the try so a pool that cannot hand out a connection is
+  // caught here rather than rejecting out of the guard.
+  let client: Awaited<ReturnType<typeof getSystemClient>> | null = null;
   try {
+    client = await getSystemClient();
     const result = await client.query(
+      // Deliberately not filtered on `expires_at`. A token that resolves to the
+      // demo account is blocked whether or not it has lapsed -- Better Auth
+      // judges expiry in JS against a `timestamp without time zone` column, and
+      // an SQL `now()` comparison resolves in the database session's timezone
+      // rather than the one the row was written in. Where those differ the two
+      // verdicts diverge, and the direction that lets a live token read as
+      // expired here would hand the reset straight to Better Auth.
       `SELECT u.email
          FROM verification v
          JOIN "user" u ON u.id::text = v.value
         WHERE v.identifier = $1
-          AND v.expires_at > now()
         LIMIT 1`,
-      [`reset-password:${token.trim()}`]
+      // Keyed on the raw token, not a trimmed copy: Better Auth looks up
+      // `reset-password:${token}` verbatim, so the guard has to hit the same row.
+      [`reset-password:${token}`]
     );
     return isDemoEmail(result.rows[0]?.email);
   } catch (error) {
@@ -65,7 +76,7 @@ export async function isDemoPasswordResetToken(
     );
     return true;
   } finally {
-    client.release();
+    client?.release();
   }
 }
 

@@ -296,7 +296,12 @@ app.use(async (req, res, next) => {
       if (
         isRecoveryPath &&
         (isDemoEmail(req.body?.email) ||
-          (await isDemoPasswordResetToken(req.body?.token ?? req.query?.token)))
+          (await isDemoPasswordResetToken(
+            // `||`, not `??`: Better Auth resolves the token as
+            // `ctx.body.token || ctx.query?.token`, so an empty body token still
+            // falls through to the query string there and must here too.
+            req.body?.token || req.query?.token
+          )))
       ) {
         log(
           'warn',

@@ -62,13 +62,26 @@ describe('demo password reset token guard', () => {
     await expect(isDemoPasswordResetToken('tok_abc')).resolves.toBe(false);
   });
 
-  it('does not block an unknown or expired token', async () => {
+  it('does not block a token no verification row matches', async () => {
     mockClient([]);
 
-    await expect(isDemoPasswordResetToken('tok_expired')).resolves.toBe(false);
+    await expect(isDemoPasswordResetToken('tok_unknown')).resolves.toBe(false);
   });
 
-  it('only matches the reset-password identifier, scoped to live rows', async () => {
+  it('blocks a lapsed demo token rather than judging expiry in SQL', async () => {
+    const client = mockClient([{ email: 'demo@sparkyfitness.com' }]);
+
+    await expect(isDemoPasswordResetToken('tok_abc')).resolves.toBe(true);
+
+    // Expiry is Better Auth's call, made in JS. Repeating it as an SQL `now()`
+    // comparison against a `timestamp without time zone` column resolves in the
+    // database session timezone, which need not be the one the row was written
+    // in; a live token reading as expired here would be a bypass.
+    const [sql] = client.query.mock.calls[0] as [string];
+    expect(sql).not.toContain('expires_at');
+  });
+
+  it('looks the token up under the reset-password identifier', async () => {
     const client = mockClient([]);
 
     await isDemoPasswordResetToken('tok_abc');
@@ -76,7 +89,6 @@ describe('demo password reset token guard', () => {
     const [sql, params] = client.query.mock.calls[0] as [string, string[]];
     // The identifier is parameterised, so the prefix lives in the bound value.
     expect(params).toEqual(['reset-password:tok_abc']);
-    expect(sql).toContain('expires_at > now()');
     expect(sql).toContain('verification');
   });
 
@@ -94,6 +106,15 @@ describe('demo password reset token guard', () => {
     // An unreadable row must never be read as "not the demo account".
     await expect(isDemoPasswordResetToken('tok_abc')).resolves.toBe(true);
     expect(client.release).toHaveBeenCalled();
+  });
+
+  it('fails closed when the pool cannot hand out a client', async () => {
+    vi.mocked(poolManager.getSystemClient).mockRejectedValue(
+      new Error('pool exhausted')
+    );
+
+    // Acquisition failure must be caught here, not thrown out of the guard.
+    await expect(isDemoPasswordResetToken('tok_abc')).resolves.toBe(true);
   });
 
   it('honours a configured demo address', async () => {
