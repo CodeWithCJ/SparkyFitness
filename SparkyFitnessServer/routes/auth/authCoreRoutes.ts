@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { log } from '../../config/logging.js';
+import { forwardResponseHeaders } from '../../utils/forwardResponseHeaders.js';
 import globalSettingsRepository from '../../models/globalSettingsRepository.js';
 import oidcProviderRepository from '../../models/oidcProviderRepository.js';
 import userRepository from '../../models/userRepository.js';
@@ -222,9 +223,7 @@ router.post('/demo-login', demoLoginRateLimit, async (req, res) => {
       });
     }
 
-    response.headers.forEach((value, key) => {
-      res.setHeader(key, value);
-    });
+    forwardResponseHeaders(response.headers, res);
 
     const body = await response.json();
     return res.status(response.status).json(body);
