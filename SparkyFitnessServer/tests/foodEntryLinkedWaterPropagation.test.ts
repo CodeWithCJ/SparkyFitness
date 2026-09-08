@@ -87,19 +87,27 @@ describe('Food Entry Linked Water Propagation (#2115)', () => {
         serving_size: 1,
       });
 
-      // Mock client queries for finding linked water row and updating it
-      mockClient.query
-        .mockResolvedValueOnce({
-          rows: [
-            {
-              id: 'water-log-1',
-              entry_date: '2026-09-05',
-              hydration_factor: 0.8,
-              source: 'manual',
-            },
-          ],
-        }) // SELECT from water_intake_entries
-        .mockResolvedValueOnce({ rows: [] }); // UPDATE water_intake_entries
+      // Dispatch on the SQL rather than on call order: the ledger write and the
+      // aggregate recompute now share one transaction, so BEGIN/COMMIT are in
+      // this sequence too.
+      mockClient.query.mockImplementation((sql: string) => {
+        if (
+          typeof sql === 'string' &&
+          sql.includes('FROM water_intake_entries')
+        ) {
+          return Promise.resolve({
+            rows: [
+              {
+                id: 'water-log-1',
+                entry_date: '2026-09-05',
+                hydration_factor: 0.8,
+                source: 'manual',
+              },
+            ],
+          });
+        }
+        return Promise.resolve({ rows: [] });
+      });
 
       await foodEntryService.updateFoodEntry(
         mockUserId,
@@ -122,10 +130,23 @@ describe('Food Entry Linked Water Propagation (#2115)', () => {
       expect(updateCall[1][1]).toBe('2026-09-05'); // newDate
       expect(updateCall[1][2]).toBe('water-log-1'); // logId
 
-      // Verify aggregates recomputed
+      // The ledger write and the recompute run on the same client inside one
+      // transaction, so this takes the client-accepting form.
       expect(
-        measurementRepository.recomputeWaterAggregateForUser
-      ).toHaveBeenCalledWith(mockUserId, mockUserId, '2026-09-05', 'manual');
+        measurementRepository.recomputeWaterAggregate
+      ).toHaveBeenCalledWith(
+        mockClient,
+        mockUserId,
+        mockUserId,
+        '2026-09-05',
+        'manual'
+      );
+      const sqlSeen = mockClient.query.mock.calls.map(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (call: any[]) => call[0]
+      );
+      expect(sqlSeen).toContain('BEGIN');
+      expect(sqlSeen).toContain('COMMIT');
     });
   });
 
@@ -138,11 +159,6 @@ describe('Food Entry Linked Water Propagation (#2115)', () => {
         id: mockEntryId,
         user_id: mockUserId,
         entry_date: '2026-09-05',
-      });
-
-      // @ts-expect-error TS mock
-      measurementRepository.deleteWaterIntakeLog.mockResolvedValue({
-        id: 'water-log-1',
       });
 
       // @ts-expect-error TS mock
@@ -160,14 +176,63 @@ describe('Food Entry Linked Water Propagation (#2115)', () => {
 
       await foodEntryService.deleteFoodEntry(mockUserId, mockEntryId);
 
-      expect(measurementRepository.deleteWaterIntakeLog).toHaveBeenCalledWith(
-        'water-log-1',
+      // The ledger row is NOT deleted here: water_intake_entries.food_entry_id
+      // is ON DELETE CASCADE, so removing the food entry removes it. Deleting
+      // it first meant a failure below left the water credit gone and the diary
+      // entry still standing.
+      expect(measurementRepository.deleteWaterIntakeLog).not.toHaveBeenCalled();
+      expect(foodRepository.deleteFoodEntry).toHaveBeenCalledWith(
+        mockEntryId,
         mockUserId
       );
 
+      // ...and the aggregate is rebuilt only once the cascade has fired.
       expect(
         measurementRepository.recomputeWaterAggregateForUser
       ).toHaveBeenCalledWith(mockUserId, mockUserId, '2026-09-05', 'manual');
+      const deleteOrder = (
+        foodRepository.deleteFoodEntry as unknown as {
+          mock: { invocationCallOrder: number[] };
+        }
+      ).mock.invocationCallOrder[0]!;
+      const recomputeOrder = (
+        measurementRepository.recomputeWaterAggregateForUser as unknown as {
+          mock: { invocationCallOrder: number[] };
+        }
+      ).mock.invocationCallOrder[0]!;
+      expect(recomputeOrder).toBeGreaterThan(deleteOrder);
+    });
+
+    it('leaves the linked water row alone when the food entry delete fails', async () => {
+      // @ts-expect-error TS mock
+      foodRepository.getFoodEntryOwnerId.mockResolvedValue(mockUserId);
+      // @ts-expect-error TS mock
+      foodRepository.getFoodEntryById.mockResolvedValue({
+        id: mockEntryId,
+        user_id: mockUserId,
+        entry_date: '2026-09-05',
+      });
+      // @ts-expect-error TS mock
+      foodRepository.deleteFoodEntry.mockResolvedValue(false);
+
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'water-log-1',
+            entry_date: '2026-09-05',
+            source: 'manual',
+          },
+        ],
+      });
+
+      await expect(
+        foodEntryService.deleteFoodEntry(mockUserId, mockEntryId)
+      ).rejects.toThrow('Food entry not found or not authorized to delete.');
+
+      expect(measurementRepository.deleteWaterIntakeLog).not.toHaveBeenCalled();
+      expect(
+        measurementRepository.recomputeWaterAggregateForUser
+      ).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,4 +1,7 @@
-import { foodVolumeToMl } from "../utils/servingSizeConversions.ts";
+import {
+  foodVolumeToMl,
+  getConversionFactor,
+} from "../utils/servingSizeConversions.ts";
 
 export const ETHANOL_DENSITY_G_PER_ML = 0.789;
 /** Exported for documentation and tooltips. NEVER used in a calorie sum. */
@@ -57,8 +60,22 @@ export function alcoholGramsForServing(
   abvPercent: number,
 ): number {
   if (!Number.isFinite(servingSize) || servingSize <= 0) return 0;
-  const volumeMl = foodVolumeToMl(servingSize, servingUnit) ?? servingSize;
-  return alcoholGramsFromAbv(volumeMl, abvPercent);
+
+  const volumeMl = foodVolumeToMl(servingSize, servingUnit);
+  if (volumeMl !== null) return alcoholGramsFromAbv(volumeMl, abvPercent);
+
+  // Weight unit: convert to grams FIRST, then read grams as millilitres.
+  // Taking the raw number as millilitres only happens to work when the unit is
+  // already gram-scaled; for `oz` -- a WEIGHT ounce in the food vocabulary --
+  // it read 1 oz of spirits as 1 ml and understated the alcohol ~28x. Going
+  // through grams keeps the documented "within 1% for beer and wine" behaviour
+  // for `g` and makes `oz`/`lb` land in the same place.
+  const grams = servingSize * (getConversionFactor("g", servingUnit) ?? 0);
+  if (grams > 0) return alcoholGramsFromAbv(grams, abvPercent);
+
+  // Neither a volume nor a weight (a `piece`, a `serving`): the number carries
+  // no scale at all, so there is nothing honest to derive.
+  return 0;
 }
 
 /**

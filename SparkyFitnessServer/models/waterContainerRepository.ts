@@ -1,6 +1,17 @@
 import { getClient } from '../db/poolManager.js';
 import type { WaterContainerResponse } from '@workspace/shared';
 
+// Attempting to make a container both primary and quick-add is a bad request,
+// not a server fault; errorHandler.ts maps on `statusCode` alone, so without
+// this the caller gets a 500.
+type HttpStatusError = Error & { statusCode: number };
+
+function conflictError(message: string): HttpStatusError {
+  const error = new Error(message) as HttpStatusError;
+  error.statusCode = 409;
+  return error;
+}
+
 export interface CreateWaterContainerData {
   name: string;
   volume: number;
@@ -51,7 +62,7 @@ async function createWaterContainer(
   } = containerData;
 
   if (is_quick_add && is_primary) {
-    throw new Error(
+    throw conflictError(
       'Quick-add drink presets cannot be set as the primary water container.'
     );
   }
@@ -163,7 +174,7 @@ async function updateWaterContainer(
         const willBePrimary = is_primary ?? currentRow.is_primary;
         const willBeQuickAdd = is_quick_add ?? currentRow.is_quick_add;
         if (willBePrimary && willBeQuickAdd) {
-          throw new Error(
+          throw conflictError(
             'Quick-add drink presets cannot be set as the primary water container.'
           );
         }
@@ -258,7 +269,7 @@ async function setPrimaryWaterContainer(
       return null;
     }
     if (targetCheck.rows[0].is_quick_add) {
-      throw new Error(
+      throw conflictError(
         'Quick-add drink presets cannot be set as the primary water container.'
       );
     }

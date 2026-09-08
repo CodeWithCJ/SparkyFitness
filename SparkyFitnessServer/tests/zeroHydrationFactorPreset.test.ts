@@ -9,6 +9,8 @@ vi.mock('../models/measurementRepository.js');
 vi.mock('../models/waterContainerRepository.js');
 vi.mock('../models/foodRepository.js');
 vi.mock('../models/mealType.js');
+vi.mock('../models/preferenceRepository.js');
+vi.mock('../models/foodMisc.js');
 
 describe('Zero Hydration Factor Preset (#1958, #1925, #2115)', () => {
   const mockUserId = '11111111-1111-1111-1111-111111111111';
@@ -108,9 +110,12 @@ describe('Zero Hydration Factor Preset (#1958, #1925, #2115)', () => {
       0
     );
 
+    // The upsert now answers with the same four-field breakdown the GET
+    // returns, rather than the bare ledger aggregate.
     expect(result).toEqual({
       water_ml: 0,
       manual_ml: 0,
+      ledger_ml: 0,
       food_ml: 0,
     });
   });

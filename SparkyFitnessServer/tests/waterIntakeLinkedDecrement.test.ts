@@ -11,6 +11,8 @@ vi.mock('../models/waterContainerRepository');
 vi.mock('../models/foodRepository');
 vi.mock('../models/mealType');
 vi.mock('../utils/timezoneLoader');
+vi.mock('../models/preferenceRepository');
+vi.mock('../models/foodMisc');
 
 describe('Linked Water Container Increment/Decrement (#2115)', () => {
   const mockUserId = 'test-user-123';
@@ -452,6 +454,7 @@ describe('Linked Water Container Increment/Decrement (#2115)', () => {
       expect(res).toEqual({
         water_ml: 216,
         manual_ml: 216,
+        ledger_ml: 216,
         food_ml: 0,
       });
     });
@@ -504,6 +507,7 @@ describe('Linked Water Container Increment/Decrement (#2115)', () => {
       expect(res).toEqual({
         water_ml: 0,
         manual_ml: 0,
+        ledger_ml: 0,
         food_ml: 0,
         removedFoodEntryIds: ['food-entry-to-remove-123'],
       });

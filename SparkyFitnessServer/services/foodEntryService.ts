@@ -947,12 +947,17 @@ async function updateFoodEntry(
     // #2115: If this food entry is linked to a water intake ledger row,
     // update the ledger row's water_ml and/or entry_date and recompute totals.
     try {
-      // Recomputes are deliberately deferred until after client.release():
-      // recomputeWaterAggregateForUser acquires a pooled client of its own, and
-      // holding two at once for a single request can exhaust the pool.
-      let recomputeTargets: { dates: string[]; source: string } | null = null;
+      // Ledger write and aggregate recompute share ONE client and ONE
+      // transaction. recomputeWaterAggregate takes a client precisely so a
+      // caller that already holds one does not have to acquire a second (the
+      // ...ForUser wrapper is for callers with no open transaction), so there
+      // is no nested-acquisition risk here. Splitting them, as this did before,
+      // could leave the ledger row rewritten and the daily aggregate stale --
+      // and unlike a delete, that divergence does not self-heal, because the
+      // aggregate is recomputed from ledger rows that are already wrong.
       const client = await getClient(authenticatedUserId, actingUserId);
       try {
+        await client.query('BEGIN');
         const linkedRes = await client.query(
           `SELECT id, entry_date, hydration_factor, source
            FROM water_intake_entries
@@ -999,27 +1004,34 @@ async function updateFoodEntry(
             [newWaterMl, newDate, linkedRow.id, authenticatedUserId]
           );
 
-          recomputeTargets = {
-            dates: oldDate === newDate ? [newDate] : [newDate, oldDate],
-            source: linkedRow.source || 'manual',
-          };
+          // Moving the entry to another day leaves two days to rebuild.
+          const dates = oldDate === newDate ? [newDate] : [newDate, oldDate];
+          const source = linkedRow.source || 'manual';
+          for (const date of dates) {
+            await measurementRepository.recomputeWaterAggregate(
+              client,
+              authenticatedUserId,
+              actingUserId,
+              date,
+              source
+            );
+          }
         }
+        await client.query('COMMIT');
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
       } finally {
         client.release();
       }
-
-      for (const date of recomputeTargets?.dates ?? []) {
-        await measurementRepository.recomputeWaterAggregateForUser(
-          authenticatedUserId,
-          actingUserId,
-          date,
-          recomputeTargets?.source ?? 'manual'
-        );
-      }
     } catch (err) {
+      // Non-fatal: the food entry itself is already saved, so reporting a
+      // failure here would misdescribe what happened. Logged at error, not
+      // warn -- the ledger row and the diary entry now disagree and nothing
+      // downstream repairs that on its own.
       log(
-        'warn',
-        'Error updating linked water intake entry for food entry:',
+        'error',
+        `Food entry ${entryId} was updated but its linked water intake row was not; the water ring and the diary will disagree for that day:`,
         err
       );
     }
@@ -1053,15 +1065,20 @@ async function deleteFoodEntry(authenticatedUserId: string, entryId: string) {
       );
     }
 
-    // #2115: Find and delete any linked water intake ledger row explicitly,
-    // then recompute the daily aggregate before removing the food entry.
+    // #2115: note which days a linked water ledger row will disappear from, so
+    // their aggregates can be recomputed once the food entry is actually gone.
+    //
+    // The ledger rows themselves are NOT deleted here. water_intake_entries
+    // .food_entry_id is ON DELETE CASCADE, so removing the food entry removes
+    // them. Deleting them first would mean a failure in deleteFoodEntry below
+    // left the drink's water credit gone while the entry it belonged to stayed
+    // in the diary -- and the old code only logged that at warn level.
+    let linkedRows: LinkedWaterEntryRow[] = [];
     try {
-      // Read the linked rows first and release the client before touching the
-      // repository: deleteWaterIntakeLog and recomputeWaterAggregateForUser
-      // each take a pooled client of their own, and holding two at once for a
-      // single request can exhaust the pool.
+      // Read on its own client and release before calling the repository:
+      // recomputeWaterAggregateForUser takes a pooled client of its own, and
+      // holding two at once for a single request can exhaust the pool.
       const client = await getClient(authenticatedUserId);
-      let linkedRows: LinkedWaterEntryRow[];
       try {
         const linkedRes = await client.query(
           `SELECT id, entry_date, source
@@ -1073,24 +1090,13 @@ async function deleteFoodEntry(authenticatedUserId: string, entryId: string) {
       } finally {
         client.release();
       }
-
-      for (const row of linkedRows) {
-        await measurementRepository.deleteWaterIntakeLog(
-          row.id,
-          authenticatedUserId
-        );
-        const dateStr = String(row.entry_date).substring(0, 10);
-        await measurementRepository.recomputeWaterAggregateForUser(
-          authenticatedUserId,
-          authenticatedUserId,
-          dateStr,
-          row.source || 'manual'
-        );
-      }
     } catch (err) {
+      // A failed read costs an out-of-date aggregate, not lost data, and the
+      // next recompute for that day self-heals it. Deleting the entry is still
+      // the right outcome, so this does not abort the delete.
       log(
         'warn',
-        'Error cleaning up linked water intake entry on food delete:',
+        `Could not read linked water intake rows for food entry ${entryId}; the daily water aggregate may lag until the next recompute:`,
         err
       );
     }
@@ -1101,6 +1107,32 @@ async function deleteFoodEntry(authenticatedUserId: string, entryId: string) {
     );
     if (!success) {
       throw new Error('Food entry not found or not authorized to delete.');
+    }
+
+    // The CASCADE has fired by now. Recompute from what is left, per affected
+    // (date, source) pair -- recomputeWaterAggregate sums the ledger rather
+    // than applying a delta, so a repeat is harmless.
+    const recomputed = new Set<string>();
+    for (const row of linkedRows) {
+      const dateStr = String(row.entry_date).substring(0, 10);
+      const source = row.source || 'manual';
+      const key = `${dateStr}|${source}`;
+      if (recomputed.has(key)) continue;
+      recomputed.add(key);
+      try {
+        await measurementRepository.recomputeWaterAggregateForUser(
+          authenticatedUserId,
+          authenticatedUserId,
+          dateStr,
+          source
+        );
+      } catch (err) {
+        log(
+          'warn',
+          `Could not recompute the water aggregate for ${dateStr} after deleting food entry ${entryId}:`,
+          err
+        );
+      }
     }
     return true;
   } catch (error) {

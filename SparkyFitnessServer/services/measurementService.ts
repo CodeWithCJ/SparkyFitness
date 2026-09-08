@@ -20,7 +20,28 @@ import waterContainerRepository from '../models/waterContainerRepository.js';
 import foodRepository from '../models/foodRepository.js';
 import mealTypeRepository from '../models/mealType.js';
 import { buildFoodEntrySnapshot } from '../utils/foodEntrySnapshot.js';
+import type {
+  VariantNutritionSource,
+  FoodNameSource,
+} from '../utils/foodEntrySnapshot.js';
+import type { WaterContainerResponse } from '@workspace/shared';
 import hydrationTotalsService from './hydrationTotalsService.js';
+
+/**
+ * The parts of a linked container's food and variant this path actually reads.
+ *
+ * models/food.ts still returns untyped rows; rather than carry that `any`
+ * forward, these name the fields used here and stay assignable to
+ * buildFoodEntrySnapshot's inputs.
+ */
+interface LinkedContainerFood extends FoodNameSource {
+  id: string;
+  default_variant?: { id: string } | null;
+}
+
+interface LinkedContainerVariant extends VariantNutritionSource {
+  id: string;
+}
 import {
   resolveHandler,
   customMeasurementHandler,
@@ -509,7 +530,7 @@ async function upsertWaterIntake(
   try {
     let amountPerDrink: number;
     let containerName: string | null = null;
-    let containerRow: any = null;
+    let containerRow: WaterContainerResponse | null = null;
 
     if (containerId) {
       containerRow = await waterContainerRepository.getWaterContainerById(
@@ -539,15 +560,15 @@ async function upsertWaterIntake(
 
     if (changeDrinks > 0) {
       // 5a. Additions: check if container is linked to a food (#2115)
-      let linkedFood: any = null;
-      let linkedVariant: any = null;
+      let linkedFood: LinkedContainerFood | null = null;
+      let linkedVariant: LinkedContainerVariant | null = null;
       let targetMealTypeId: string | null = null;
 
       // How much of the linked food one press logs. Defaults to 1 so a
       // container saved before this column existed behaves exactly as before.
       const linkedQuantity =
         Number(containerRow?.linked_quantity) > 0
-          ? Number(containerRow.linked_quantity)
+          ? Number(containerRow?.linked_quantity)
           : 1;
       // A volume on a LINKED container is an explicit override meaning "the
       // glass holds more liquid than the food itself" (concentrate, tablet,
@@ -734,9 +755,14 @@ async function upsertWaterIntake(
       );
     }
 
-    // Return the latest aggregated record across all sources after the upsert
-    const finalRecord = await measurementRepository.getWaterIntakeByDate(
+    // Return the latest totals after the upsert, through the same owner the GET
+    // uses. Reading the ledger aggregate directly here made this endpoint
+    // report a water_ml that excluded food-derived water while GET
+    // /water-intake included it -- the same field, two values, for any user who
+    // had opted in to add_food_water_to_intake.
+    const finalRecord = await hydrationTotalsService.resolveWaterTotalsForDate(
       authenticatedUserId,
+      actingUserId,
       entryDate
     );
 

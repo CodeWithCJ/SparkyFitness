@@ -13,6 +13,21 @@ import {
 
 const VALID_UNITS: readonly string[] = WATER_CONTAINER_UNITS;
 
+/**
+ * Every throw below is a response to something the caller sent, not a server
+ * fault. middleware/errorHandler.ts only honours `statusCode` (it has no
+ * message-to-status mapping), so a bare `new Error` here reaches the user as a
+ * 500 -- including the "give that food a serving size" guidance in
+ * materializeDrinkPreset, which is written to be read and acted on.
+ */
+type HttpStatusError = Error & { statusCode: number };
+
+function statusError(message: string, statusCode: number): HttpStatusError {
+  const error = new Error(message) as HttpStatusError;
+  error.statusCode = statusCode;
+  return error;
+}
+
 // #2115: when a container is linked to a food, resolve/validate the variant
 // so "+" always has a real variant to snapshot from.
 async function resolveLinkedVariantId<
@@ -32,7 +47,7 @@ async function resolveLinkedVariantId<
     userId
   );
   if (!food) {
-    throw new Error('Linked food not found.');
+    throw statusError('Linked food not found.', 404);
   }
   if (containerData.linked_variant_id) {
     const variant = await foodVariantRepository.getFoodVariantById(
@@ -40,12 +55,15 @@ async function resolveLinkedVariantId<
       userId
     );
     if (!variant || variant.food_id !== containerData.linked_food_id) {
-      throw new Error('Linked variant does not belong to the linked food.');
+      throw statusError(
+        'Linked variant does not belong to the linked food.',
+        400
+      );
     }
   } else {
     const defaultVariantId = food.default_variant?.id;
     if (!defaultVariantId) {
-      throw new Error('Linked food has no default variant to attach.');
+      throw statusError('Linked food has no default variant to attach.', 400);
     }
     resolved.linked_variant_id = defaultVariantId;
   }
@@ -54,7 +72,7 @@ async function resolveLinkedVariantId<
 
 function convertToMl(volume: number, unit: string): number {
   if (!VALID_UNITS.includes(unit as (typeof VALID_UNITS)[number])) {
-    throw new Error('Invalid unit for conversion.');
+    throw statusError('Invalid unit for conversion.', 400);
   }
   switch (unit) {
     case 'oz':
@@ -74,7 +92,7 @@ async function createWaterContainer(
   if (
     !VALID_UNITS.includes(containerData.unit as (typeof VALID_UNITS)[number])
   ) {
-    throw new Error('Invalid unit provided.');
+    throw statusError('Invalid unit provided.', 400);
   }
   try {
     const volumeInMl = convertToMl(containerData.volume, containerData.unit);
@@ -113,7 +131,7 @@ async function updateWaterContainer(
     updateData.unit &&
     !VALID_UNITS.includes(updateData.unit as (typeof VALID_UNITS)[number])
   ) {
-    throw new Error('Invalid unit provided.');
+    throw statusError('Invalid unit provided.', 400);
   }
   try {
     const dataToSave = await resolveLinkedVariantId(userId, updateData);
@@ -153,7 +171,10 @@ async function deleteWaterContainer(
       userId
     );
     if (!success) {
-      throw new Error('Water container not found or not authorized to delete.');
+      throw statusError(
+        'Water container not found or not authorized to delete.',
+        404
+      );
     }
     return { message: 'Water container deleted successfully.' };
   } catch (error) {
@@ -205,7 +226,7 @@ async function materializeDrinkPreset(
 ): Promise<WaterContainerResponse> {
   const preset = getDrinkPresetCatalogEntry(catalogId);
   if (!preset) {
-    throw new Error(`Drink preset '${catalogId}' not found in catalog.`);
+    throw statusError(`Drink preset '${catalogId}' not found in catalog.`, 404);
   }
 
   // Idempotency: check if the user already has a quick-add preset for this drink
@@ -270,8 +291,9 @@ async function materializeDrinkPreset(
   // container to it anyway produced a preset that logged nothing when pressed,
   // so fail loudly here instead.
   if (!variantId) {
-    throw new Error(
-      `"${preset.defaultName}" already exists without a default serving, so it cannot back a quick-add drink. Give that food a serving size, or rename it, and try again.`
+    throw statusError(
+      `"${preset.defaultName}" already exists without a default serving, so it cannot back a quick-add drink. Give that food a serving size, or rename it, and try again.`,
+      409
     );
   }
 

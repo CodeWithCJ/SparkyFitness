@@ -73,6 +73,29 @@ describe('alcoholUnits calculations', () => {
       );
     });
 
+    it('converts a weight ounce through grams instead of reading it as ml', () => {
+      // 'oz' is a WEIGHT ounce in the food vocabulary (28.3495 g), so a shot of
+      // 40% spirits is ~28 ml of liquid, not 1. Taking the raw number as
+      // millilitres understated this ~28x.
+      expect(alcoholGramsForServing(1, 'oz', 40)).toBeCloseTo(
+        alcoholGramsFromAbv(28.3495, 40),
+        3
+      );
+      expect(alcoholGramsForServing(1, 'oz', 40)).toBeGreaterThan(8);
+      // 'fl oz' is the volume unit and stays a straight volume conversion.
+      expect(alcoholGramsForServing(1, 'fl oz', 40)).toBeCloseTo(
+        alcoholGramsFromAbv(29.5735, 40),
+        3
+      );
+    });
+
+    it('returns 0 for a unit that carries no scale at all', () => {
+      // A 'piece' or a 'serving' is not a measurement, so there is nothing
+      // honest to derive -- better than silently treating the count as ml.
+      expect(alcoholGramsForServing(1, 'piece', 40)).toBe(0);
+      expect(alcoholGramsForServing(2, 'serving', 12)).toBe(0);
+    });
+
     it('returns 0 for a serving size that cannot be a drink', () => {
       expect(alcoholGramsForServing(0, 'ml', 5)).toBe(0);
       expect(alcoholGramsForServing(-330, 'ml', 5)).toBe(0);

@@ -65,7 +65,11 @@ export const foodVariantToFormVariant = (
   calcium: variant.calcium === 0 ? undefined : variant.calcium,
   iron: variant.iron === 0 ? undefined : variant.iron,
   caffeine_mg: variant.caffeine_mg === 0 ? undefined : variant.caffeine_mg,
-  water_ml: variant.water_ml === 0 ? undefined : variant.water_ml,
+  // water_ml is the one nutrient column with no DEFAULT 0, so unlike its
+  // neighbours it genuinely arrives as null for a variant nobody has filled in
+  // — "unknown", which the food-derived water sum reads as "fall back to the
+  // logged volume". Both null and 0 show as an empty field.
+  water_ml: variant.water_ml ? variant.water_ml : undefined,
   alcohol_g: variant.alcohol_g === 0 ? undefined : variant.alcohol_g,
   abv_percent: variant.abv_percent === 0 ? undefined : variant.abv_percent,
 });

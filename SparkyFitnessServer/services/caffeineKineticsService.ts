@@ -81,6 +81,13 @@ export async function getActiveCaffeineKinetics(
     };
   });
 
+  // Order by the resolved instant, not by the SQL ordering. That ORDER BY sorts
+  // on COALESCE(entry_time, meal_default_time, '12:00'), and a supplement dose
+  // has neither -- it carries taken_at -- so every supplement sorted as though
+  // it were taken at noon. The kinetics maths is order-independent, but this
+  // list is rendered as the day's doses in sequence.
+  doses.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+
   // Calculate bedtime instant in user's timezone for target date
   const bedtimeDate = localDateTimeToUtc(`${date}T${targetBedtime}`, tz);
   const bedtimeAt = bedtimeDate.toISOString();

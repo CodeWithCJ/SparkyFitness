@@ -6,6 +6,11 @@ import { UpsertWaterIntakeBodySchema } from '../schemas/measurementSchemas.js';
 // Mock the repository functions
 vi.mock('../models/measurementRepository');
 vi.mock('../models/waterContainerRepository');
+// upsertWaterIntake now returns totals through hydrationTotalsService, the
+// same owner the GET uses, so the preference read and the food-water read
+// have to be mocked here too.
+vi.mock('../models/preferenceRepository');
+vi.mock('../models/foodMisc');
 describe('Measurement Service - Water Intake', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -18,7 +23,7 @@ describe('Measurement Service - Water Intake', () => {
       it('should accept request with omitted container_id', () => {
         const validData = {
           entry_date: '2023-01-01',
-          change_drinks: 250,
+          change_drinks: 2,
           // container_id is omitted
         };
         const result = UpsertWaterIntakeBodySchema.safeParse(validData);
@@ -29,7 +34,7 @@ describe('Measurement Service - Water Intake', () => {
       it('should accept request with null container_id', () => {
         const validData = {
           entry_date: '2023-01-01',
-          change_drinks: 250,
+          change_drinks: 2,
           container_id: null,
         };
         const result = UpsertWaterIntakeBodySchema.safeParse(validData);
@@ -40,7 +45,7 @@ describe('Measurement Service - Water Intake', () => {
       it('should accept request with valid container_id', () => {
         const validData = {
           entry_date: '2023-01-01',
-          change_drinks: 250,
+          change_drinks: 2,
           container_id: 5,
         };
         const result = UpsertWaterIntakeBodySchema.safeParse(validData);
@@ -57,6 +62,33 @@ describe('Measurement Service - Water Intake', () => {
         expect(result.success).toBe(false);
         // @ts-expect-error TS(2532): Object is possibly 'undefined'.
         expect(result.error.issues).toHaveLength(2);
+      });
+
+      // upsertWaterIntake loops once per drink, and since #2115 a single
+      // iteration can also insert a food_entries row, so an unbounded or
+      // fractional count is an unbounded serial write loop.
+      it('rejects a drink count beyond what the UI can issue', () => {
+        const result = UpsertWaterIntakeBodySchema.safeParse({
+          entry_date: '2023-01-01',
+          change_drinks: 5000,
+        });
+        expect(result.success).toBe(false);
+      });
+
+      it('rejects a fractional drink count', () => {
+        const result = UpsertWaterIntakeBodySchema.safeParse({
+          entry_date: '2023-01-01',
+          change_drinks: 2.5,
+        });
+        expect(result.success).toBe(false);
+      });
+
+      it('still accepts a negative count, which is how "-" is expressed', () => {
+        const result = UpsertWaterIntakeBodySchema.safeParse({
+          entry_date: '2023-01-01',
+          change_drinks: -3,
+        });
+        expect(result.success).toBe(true);
       });
     });
   });
