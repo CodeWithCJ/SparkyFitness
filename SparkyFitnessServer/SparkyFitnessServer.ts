@@ -16,6 +16,7 @@ import { applySignOutCookieCleanup } from './middleware/signOutCookieCleanup.js'
 import {
   isDemoMode,
   isDemoEmail,
+  isDemoPasswordResetToken,
   getDemoEmail,
   demoRestrictionGuard,
 } from './middleware/demoGuardMiddleware.js';
@@ -277,8 +278,13 @@ app.use(async (req, res, next) => {
       );
 
       // Password-recovery endpoints are unauthenticated, so there is no session
-      // to match on — key off the address in the request body instead, or the
-      // demo credential could be reset out from under the sandbox.
+      // to match on — identify the account from the request itself, or the demo
+      // credential could be reset out from under the sandbox.
+      //
+      // The two request endpoints name it by address. `/reset-password` does
+      // not: it carries `{ newPassword, token }`, so the account has to be
+      // resolved from the token, which Better Auth accepts in either the body
+      // or the query string.
       const recoveryPrefixes = [
         '/api/auth/forget-password',
         '/api/auth/request-password-reset',
@@ -287,7 +293,11 @@ app.use(async (req, res, next) => {
       const isRecoveryPath = recoveryPrefixes.some(
         (prefix) => req.path === prefix || req.path.startsWith(prefix + '/')
       );
-      if (isRecoveryPath && isDemoEmail(req.body?.email)) {
+      if (
+        isRecoveryPath &&
+        (isDemoEmail(req.body?.email) ||
+          (await isDemoPasswordResetToken(req.body?.token ?? req.query?.token)))
+      ) {
         log(
           'warn',
           `[DEMO GUARD] Blocked password recovery on ${req.method} ${req.path} for the demo account`
