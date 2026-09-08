@@ -77,7 +77,13 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
     // Sleep cannot use `shouldShowTrend`: its `data` is padded to one entry per day in the
     // window, so it is never empty and the page would show for users with no sleep at all.
     sleep: () => sleep.isLoading || sleep.isError || sleep.nightsWithData > 0,
-    hydration: () => shouldShowTrend(hydration),
+    // Hydration cannot use `shouldShowTrend` either: `useHydrationRange` zero-fills every
+    // day in the window, so `data` is never empty and the page would show for users who
+    // have never logged water. A day of zero is real data; a window of them is not.
+    hydration: () =>
+      hydration.isLoading ||
+      hydration.isError ||
+      hydration.data.some((point) => point.milliliters > 0),
   };
 
   // A trend the user configured to show but that has no data for in this window still hides itself
