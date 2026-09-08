@@ -94,6 +94,13 @@ export interface WatchContextPayload {
   history: WatchHistoryPoint[];
   ackedClientIds: string[];
   /**
+   * Client ids the phone tried to write and couldn't — check-ins and water
+   * taps alike. Rides in the context for the same reason `ackedClientIds`
+   * does: an immediate `sendAck` needs the watch reachable right then, and a
+   * failure the watch never hears about leaves a tap queued forever.
+   */
+  failedClientIds: string[];
+  /**
    * Mirrors the phone's Settings → default weight unit, so the watch's crown
    * dial and trend chart display in the same unit as the phone. The watch
    * always stores and transmits kg regardless — this only affects what's

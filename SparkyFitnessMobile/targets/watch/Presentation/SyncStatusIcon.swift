@@ -8,13 +8,25 @@ import SwiftUI
 /// means it needs a retry tap. The label exists for VoiceOver even though it
 /// doesn't render as visible text.
 struct SyncStatusIcon: View {
+    /// What this pill reports. Nil means the wearer's last check-in, which is
+    /// what Trend and Entry want; the Water page passes its own tap state, so
+    /// a red dot above the bottle is always about the bottle.
+    var state: SyncState?
+    /// Run when a failed state is tapped. Nil retries pending check-ins.
+    var onRetry: (() -> Void)?
+
     @EnvironmentObject private var store: CheckInStore
     @EnvironmentObject private var session: WatchSessionManager
 
     var body: some View {
-        let state = store.lastCapturedState
+        let state = state ?? store.lastCapturedState
         Button {
-            if state == .failed { session.retryPending() }
+            guard state == .failed else { return }
+            if let onRetry {
+                onRetry()
+            } else {
+                session.retryPending()
+            }
         } label: {
             Image(systemName: state.symbol)
                 .font(.caption2)

@@ -117,19 +117,33 @@ final class WatchSessionManager: NSObject, ObservableObject {
     /// delivery as a check-in (`send(_:)`) and for the same reason: the
     /// wearer is realistically drinking from wherever the phone isn't.
     ///
-    /// Unlike a check-in, this is never acknowledged back. A tap that fails to
-    /// write simply doesn't show up in the next context push, and the Water
-    /// page's own optimistic bump settles back down once that push arrives
-    /// (or its short local timeout elapses) — an accepted tradeoff for making
-    /// a tap feel instant rather than gating it on a phone round trip.
-    func sendWaterTap(containerId: Int) {
+    /// Acknowledged like a check-in: the phone reports each tap by `clientId`,
+    /// immediately when reachable and again in every context push, so the
+    /// Water page can show the tap as queued, then saved, then failed. It used
+    /// to be fire-and-forget, which meant a tap that never landed looked
+    /// exactly like one that did.
+    /// `clientId` comes from `CheckInStore.recordWaterTap` rather than being
+    /// generated here: the store's copy of the tap and the phone's
+    /// acknowledgement have to be talking about the same id, and two `UUID()`
+    /// calls never are.
+    func sendWaterTap(containerId: Int, clientId: String) {
         guard WCSession.isSupported() else { return }
         let tap = WaterTap(
-            id: UUID().uuidString,
+            id: clientId,
             entryDate: CheckInDate.today(),
             containerId: containerId
         )
         transfer(OutboundPayloads.waterTap(tap))
+    }
+
+    /// Re-sends every tap the phone reported as failed, under its original id.
+    /// Reusing the id is what keeps a retry from double-counting if the first
+    /// attempt actually landed — the phone's own dedupe set recognises it.
+    func retryFailedWaterTaps() {
+        for tap in store.retryableWaterTaps {
+            store.markWaterTap(tap.id, .queued)
+            sendWaterTap(containerId: tap.containerId, clientId: tap.id)
+        }
     }
 
     /// Asks the phone to delete one logged drink. Same fire-and-reconcile
@@ -284,10 +298,16 @@ final class WatchSessionManager: NSObject, ObservableObject {
     /// re-delivered transfer for something already reconciled.
     private func handle(ack payload: [String: Any]) {
         guard let ack = ContextPayloadMapper.ack(from: payload) else { return }
-        guard let checkIn = store.retryable.first(where: { $0.id == ack.clientId })
-            ?? (store.lastCaptured?.id == ack.clientId ? store.lastCaptured : nil)
-        else { return }
-        store.markState(ack.ok ? .saved : .failed, for: checkIn)
+
+        // Check-ins and water taps draw their client ids from the same UUID
+        // space, so one ack message serves both — whichever recognises the id
+        // acts on it, and neither can mistake the other's.
+        if let checkIn = store.retryable.first(where: { $0.id == ack.clientId })
+            ?? (store.lastCaptured?.id == ack.clientId ? store.lastCaptured : nil) {
+            store.markState(ack.ok ? .saved : .failed, for: checkIn)
+            return
+        }
+        store.markWaterTap(ack.clientId, ack.ok ? .saved : .failed)
     }
 
     /// The single entry point for everything inbound, whichever transport

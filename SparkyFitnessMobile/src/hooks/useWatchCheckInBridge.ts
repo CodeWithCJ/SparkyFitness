@@ -107,6 +107,9 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // and survives the watch app being asleep), so they must accumulate across
   // pushes rather than being sent once and forgotten.
   const ackedClientIdsRef = useRef<string[]>([]);
+  // Increments on every `pushContext` call, so each one can tell whether it is
+  // still the newest by the time it has something to send.
+  const pushGenerationRef = useRef(0);
   // Guards against a queued transfer being delivered twice — WatchConnectivity
   // makes no once-only promise.
   const handledClientIdsRef = useRef<Set<string>>(new Set());
@@ -114,6 +117,11 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // handledClientIdsRef) since check-in ids and water-tap ids are separate
   // namespaces the watch generates independently.
   const handledWaterClientIdsRef = useRef<Set<string>>(new Set());
+  // Client ids the server refused. Rides in every context push beside
+  // `ackedClientIds`, so a failed water tap reaches a watch whose phone was
+  // never reachable — the immediate `sendAck` below can't manage that, and the
+  // watch would otherwise show the tap as queued indefinitely.
+  const failedClientIdsRef = useRef<string[]>([]);
 
   // Shared, already-cached query (30 min stale time) — reading it here adds no
   // extra fetch. 'st_lbs' collapses to 'lbs' for the watch: its crown dial only
@@ -324,6 +332,18 @@ export function useWatchCheckInBridge(enabled: boolean): void {
 
   const pushContext = useCallback(async (): Promise<void> => {
     if (!WatchConnectivity) return;
+    // Claimed before the first await, checked again before publishing: this
+    // is a latest-only guard, so an older push that finishes late is dropped
+    // rather than overwriting a newer one.
+    //
+    // Overlap is normal here — a reachability change, a context request, a
+    // foreground and a data change can all land within a second — and the
+    // day-scoped figures come from the closure each call was built with. So a
+    // push started before a meal was logged, but finishing after the push that
+    // carried it, would put the pre-meal numbers back. `updateApplicationContext`
+    // keeps only the last value written, which makes late-and-stale the one
+    // ordering that sticks.
+    const generation = ++pushGenerationRef.current;
     try {
       const today = getTodayDate();
       const startDate = addDays(today, -(HISTORY_DAYS - 1));
@@ -391,6 +411,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         lastEntryDate: lastWithWeight?.day ?? null,
         history,
         ackedClientIds: ackedClientIdsRef.current.slice(-20),
+        failedClientIds: failedClientIdsRef.current.slice(-20),
         weightUnit,
         containers: watchContainers,
         // Goal and display unit ride outside the day gate: the watch treats
@@ -400,6 +421,10 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         waterDisplayUnit,
         ...figures,
       };
+
+      // Superseded while the fetch above was in flight — a newer push has
+      // already sent, or is about to, from fresher state than this one holds.
+      if (generation !== pushGenerationRef.current) return;
 
       await WatchConnectivity.updateContext(context);
     } catch (error) {
@@ -530,6 +555,19 @@ export function useWatchCheckInBridge(enabled: boolean): void {
           containerId: payload.containerId,
         });
 
+        // Acknowledged both ways: immediately when the watch is reachable,
+        // and durably through the context push. A retry of a tap that
+        // previously failed also clears it from the failed list, so the watch
+        // doesn't keep a red dot for something that has since gone through.
+        ackedClientIdsRef.current = [
+          ...ackedClientIdsRef.current,
+          payload.clientId,
+        ].slice(-20);
+        failedClientIdsRef.current = failedClientIdsRef.current.filter(
+          (id) => id !== payload.clientId
+        );
+        await WatchConnectivity.sendAck(payload.clientId, true);
+
         queryClient.invalidateQueries({
           queryKey: dailySummaryQueryKey(payload.entryDate),
         });
@@ -545,13 +583,21 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         );
         await pushContextRef.current();
       } catch (error) {
-        // Released again, so the id isn't spent on a write that never landed.
-        // The system's own redelivery of the queued transfer is the only retry
-        // a tap gets — there's no ack path back to the watch — so holding the
-        // reservation here would turn a transient failure into a lost tap.
-        if (payload.clientId)
+        // Released again, so the id isn't spent on a write that never landed:
+        // a redelivery of the queued transfer, or the watch's own retry of a
+        // failed tap, can still get through under the same id.
+        if (payload.clientId) {
           handledWaterClientIdsRef.current.delete(payload.clientId);
+          failedClientIdsRef.current = [
+            ...failedClientIdsRef.current,
+            payload.clientId,
+          ].slice(-20);
+          await WatchConnectivity.sendAck(payload.clientId, false);
+        }
         addLog(`Watch water tap failed to save: ${String(error)}`, 'ERROR');
+        // So the failure still reaches a watch that wasn't reachable for the
+        // ack above.
+        await pushContextRef.current();
       }
     },
     []

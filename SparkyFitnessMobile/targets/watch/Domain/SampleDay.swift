@@ -93,6 +93,7 @@ enum SampleDay {
             lastEntryDate: today,
             history: history,
             ackedClientIds: [],
+            failedClientIds: [],
             updatedAt: Date(),
             weightUnit: .kg,
             nutrition: nutrition,

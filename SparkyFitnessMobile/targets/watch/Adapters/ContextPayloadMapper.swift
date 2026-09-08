@@ -39,6 +39,7 @@ enum ContextPayloadMapper {
             lastEntryDate: payload["lastEntryDate"] as? String,
             history: history(from: payload),
             ackedClientIds: payload["ackedClientIds"] as? [String] ?? [],
+            failedClientIds: payload["failedClientIds"] as? [String] ?? [],
             updatedAt: Date(),
             // nil (→ .kg via effectiveWeightUnit) when absent or unrecognized,
             // e.g. a phone build from before this field existed.

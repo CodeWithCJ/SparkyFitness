@@ -154,8 +154,13 @@ struct WaterSnapshot: Codable, Equatable {
 /// survives leaving the page and relaunching the app: the tap is realistically
 /// made with the phone in another room, where confirmation is minutes away.
 struct PendingWaterTap: Codable, Equatable, Identifiable {
+    /// Also the `clientId` sent to the phone, which is what the acknowledgement
+    /// comes back naming. One id from tap to ack.
     let id: String
     let volumeMl: Double
+    /// Kept so a failed tap can be sent again without the wearer re-finding the
+    /// square they pressed.
+    let containerId: Int
     /// When the wearer tapped, so an inbound total can be asked whether it is
     /// old enough to have missed this tap. See `CheckInStore.apply(context:)`.
     let createdAt: Date
@@ -163,6 +168,9 @@ struct PendingWaterTap: Codable, Equatable, Identifiable {
     /// glass logged at 23:58 and still unconfirmed at 00:02 belongs to
     /// yesterday, and must not pre-fill the new day's bottle.
     let day: String
+    /// `.queued` draws the line above the fill; `.saved` joins the fill;
+    /// `.failed` draws nothing and turns the page's status pill red.
+    var state: SyncState = .queued
 
     var isToday: Bool { day == CheckInDate.today() }
 }
@@ -203,6 +211,11 @@ struct WatchContext: Codable, Equatable {
     /// in the context rather than a separate message so it survives the watch
     /// app being asleep when the write lands.
     var ackedClientIds: [String]
+    /// Client ids the phone tried to write and couldn't. Travels beside
+    /// `ackedClientIds` so a failure reaches a watch whose phone was never
+    /// reachable — an immediate `sendMessage` ack can't do that, and "queued
+    /// forever" would be the only other story the watch could tell.
+    var failedClientIds: [String]
     var updatedAt: Date?
     /// Mirrors the phone's Settings → default weight unit. Optional (rather than
     /// defaulting in the initializer) so a context blob persisted before this
@@ -259,6 +272,7 @@ struct WatchContext: Codable, Equatable {
         lastEntryDate: nil,
         history: [],
         ackedClientIds: [],
+        failedClientIds: [],
         updatedAt: nil,
         weightUnit: nil,
         nutrition: nil,
@@ -339,7 +353,7 @@ enum WeightUnit: String, Codable {
 /// Where a captured check-in currently is. The watch's local store is the
 /// source of truth the moment Save is tapped; delivery is a separate concern
 /// and the UI says so honestly rather than pretending it already landed.
-enum SyncState: Equatable {
+enum SyncState: String, Codable, Equatable {
     case saved
     case queued
     case failed

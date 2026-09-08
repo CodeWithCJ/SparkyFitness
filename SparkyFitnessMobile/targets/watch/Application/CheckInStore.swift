@@ -97,24 +97,58 @@ final class CheckInStore: ObservableObject {
 
     // MARK: - Water
 
-    /// Records an optimistic tap and returns nothing — the bottle reads
-    /// `pendingWaterTaps` directly, and the id only matters to `apply`.
-    func recordWaterTap(volumeMl: Double) {
+    /// Records a tap and returns the id to send to the phone. Caller must use
+    /// this id as the tap's `clientId`: it is what the acknowledgement names,
+    /// and a second id generated at send time would never match.
+    func recordWaterTap(volumeMl: Double, containerId: Int) -> String {
+        let id = UUID().uuidString
         pendingWaterTaps.append(
             PendingWaterTap(
-                id: UUID().uuidString,
+                id: id,
                 volumeMl: volumeMl,
+                containerId: containerId,
                 createdAt: Date(),
-                day: CheckInDate.today()
+                day: CheckInDate.today(),
+                state: .queued
             )
         )
         persist()
+        return id
     }
 
-    /// Total still awaiting confirmation, added to the day's real total for
-    /// display.
-    var pendingWaterMl: Double {
-        pendingWaterTaps.reduce(0) { $0 + $1.volumeMl }
+    /// Moves one tap to `.saved` or `.failed` once the phone reports on it.
+    /// Unknown ids are ignored — an ack for a tap this watch has already
+    /// settled, or one from a previous install.
+    func markWaterTap(_ clientId: String, _ state: SyncState) {
+        guard let index = pendingWaterTaps.firstIndex(where: { $0.id == clientId }) else { return }
+        guard pendingWaterTaps[index].state != state else { return }
+        pendingWaterTaps[index].state = state
+        persist()
+    }
+
+    /// Written to the server, but not yet reflected in a pushed total — so it
+    /// belongs in the fill, alongside the confirmed amount.
+    var savedWaterMl: Double {
+        pendingWaterTaps.filter { $0.state == .saved }.reduce(0) { $0 + $1.volumeMl }
+    }
+
+    /// Still waiting on the phone. Drawn as the line above the fill rather than
+    /// as fill, so the gap is what the wearer is waiting on.
+    var queuedWaterMl: Double {
+        pendingWaterTaps.filter { $0.state == .queued }.reduce(0) { $0 + $1.volumeMl }
+    }
+
+    /// What the Water page's status pill shows: the worst outstanding state,
+    /// since a single failure is the thing worth surfacing.
+    var waterSyncState: SyncState {
+        if pendingWaterTaps.contains(where: { $0.state == .failed }) { return .failed }
+        if pendingWaterTaps.contains(where: { $0.state == .queued }) { return .queued }
+        return .saved
+    }
+
+    /// Taps to send again, oldest first.
+    var retryableWaterTaps: [PendingWaterTap] {
+        pendingWaterTaps.filter { $0.state == .failed }
     }
 
     // MARK: - Phone updates
@@ -132,8 +166,15 @@ final class CheckInStore: ObservableObject {
         // hold a day that has ended regardless of who applied it.
         clearStaleDayData()
 
-        // Clears the optimistic taps a total has had the chance to account
-        // for — those made before the phone built it.
+        // Acks first: the phone naming a tap is more specific than any
+        // inference from the total, and a tap moved to `.saved` here is what
+        // fills the bottle up to the line the queued state drew.
+        for clientId in incoming.ackedClientIds { markWaterTap(clientId, .saved) }
+        for clientId in incoming.failedClientIds { markWaterTap(clientId, .failed) }
+
+        // Then settle the resolved ones. A total the phone built after the tap
+        // has had its chance to include it, so keeping our own copy would
+        // double-count.
         //
         // Not simply "a today-snapshot arrived, drop everything": an inbound
         // context is not always a fresh one. `adoptReceivedContext()` replays
@@ -150,14 +191,17 @@ final class CheckInStore: ObservableObject {
         // moment early or late. Bounded and self-correcting — the next push
         // settles the bottle on the server's number either way — where the
         // previous rule lost the tap outright.
+        // Deliberately does NOT settle `.queued` taps. An unacknowledged tap
+        // has no evidence behind it either way, and dropping it would put the
+        // bottle back to a number the wearer knows is wrong — the exact
+        // complaint that started this. It waits for its ack, or for midnight.
         if context.water?.isToday == true, !pendingWaterTaps.isEmpty {
             if let generatedAt = context.generatedAt {
-                pendingWaterTaps.removeAll { $0.createdAt <= generatedAt }
+                pendingWaterTaps.removeAll { $0.state != .queued && $0.createdAt <= generatedAt }
             } else {
-                // A phone build from before `pushedAt` existed. Nothing to
-                // reason with, so keep the old behaviour rather than letting
-                // taps accumulate with no way out.
-                pendingWaterTaps.removeAll()
+                // A phone build from before `pushedAt` existed: no timestamp to
+                // reason with, so settle everything already resolved.
+                pendingWaterTaps.removeAll { $0.state != .queued }
             }
         }
 
