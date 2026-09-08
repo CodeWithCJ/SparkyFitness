@@ -11,7 +11,7 @@ import {
 } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
-import { WATER_UNIT_LABELS } from '../utils/unitConversions';
+import { WATER_UNIT_LABELS, convertMlToUnit } from '../utils/unitConversions';
 import { formatLocalizedNumber } from '../localization';
 
 interface ContainerOption {
@@ -52,17 +52,6 @@ interface HydrationGaugeProps {
   onQuickAdd?: (id: number) => void;
   activeContainerId?: number;
   onSelectContainer?: (id: number) => void;
-}
-
-function convertFromMl(ml: number, unit: string): number {
-  switch (unit) {
-    case 'oz':
-      return ml / 29.5735;
-    case 'liter':
-      return ml / 1000;
-    default:
-      return ml;
-  }
 }
 
 const CANVAS_WIDTH = 70;
@@ -149,8 +138,8 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
     return Skia.Path.Rect(Skia.XYWHRect(0, y, CANVAS_WIDTH, CANVAS_HEIGHT - y));
   });
 
-  const convertedConsumed = convertFromMl(consumed, unit);
-  const convertedGoal = convertFromMl(goal, unit);
+  const convertedConsumed = convertMlToUnit(consumed, unit);
+  const convertedGoal = convertMlToUnit(goal, unit);
   const formatUnitVolume = (val: number, u: string): string => {
     const decimals = u === 'oz' ? 1 : u === 'liter' ? 2 : 0;
     // formatLocalizedNumber keeps thousands grouping and the app locale's
@@ -178,7 +167,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
     containerVolume != null
       ? t('dashboard.perPress', {
           defaultValue: '{{value}} {{unit}}',
-          value: formatLocalizedNumber(convertFromMl(containerVolume, unit), {
+          value: formatLocalizedNumber(convertMlToUnit(containerVolume, unit), {
             maximumFractionDigits: 1,
           }),
           unit: unitLabel,
@@ -271,7 +260,10 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
             <Text className="text-xs text-text-muted mt-0.5">
               {t('dashboard.waterFromFood', {
                 defaultValue: 'Includes {{value}} {{unit}} from food',
-                value: formatUnitVolume(convertFromMl(fromFoodMl, unit), unit),
+                value: formatUnitVolume(
+                  convertMlToUnit(fromFoodMl, unit),
+                  unit
+                ),
                 unit: unitLabel,
               })}
             </Text>

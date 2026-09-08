@@ -27,8 +27,10 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { consumePendingContainerLinkSelection } from '../services/waterContainerLinkSelection';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
+import type { WaterContainer } from '../types/measurements';
 import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
 import { parseDecimalInput } from '../utils/numericInput';
+import { convertMlToUnit } from '../utils/unitConversions';
 
 type WaterContainerEditScreenProps = RootStackScreenProps<'WaterContainerEdit'>;
 
@@ -66,6 +68,34 @@ const EMPTY_FORM: FormState = {
   linkedQuantity: '1',
 };
 
+function formStateFromContainer(
+  container: WaterContainer | undefined
+): FormState {
+  if (!container) return EMPTY_FORM;
+  const unit = (container.unit as FormState['unit']) || 'ml';
+  return {
+    name: container.name,
+    // Volumes are persisted in millilitres. The field is labelled with the
+    // container's own unit and is sent back under that unit, where the server
+    // converts to millilitres again -- seeding raw millilitres turned a 20 oz
+    // container into ~17.5 L on the first save.
+    volume: String(
+      Number(
+        convertMlToUnit(container.volume, unit).toFixed(unit === 'ml' ? 0 : 2)
+      )
+    ),
+    unit,
+    servingsPerContainer: String(container.servings_per_container ?? 1),
+    isPrimary: container.is_primary,
+    hydrationFactor: String(container.hydration_factor ?? 1),
+    linkedFoodId: container.linked_food_id ?? null,
+    linkedVariantId: container.linked_variant_id ?? null,
+    linkedFoodName: container.linked_food_name ?? null,
+    linkedMealTypeId: container.linked_meal_type_id ?? null,
+    linkedQuantity: String(container.linked_quantity ?? 1),
+  };
+}
+
 const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
   navigation,
   route,
@@ -85,28 +115,28 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
 
   const { mealTypes } = useMealTypes();
 
-  const [form, setForm] = useState<FormState>(() => {
-    if (!existingContainer) return EMPTY_FORM;
-    return {
-      name: existingContainer.name,
-      volume: String(existingContainer.volume),
-      unit: (existingContainer.unit as FormState['unit']) || 'ml',
-      servingsPerContainer: String(
-        existingContainer.servings_per_container ?? 1
-      ),
-      isPrimary: existingContainer.is_primary,
-      hydrationFactor: String(existingContainer.hydration_factor ?? 1),
-      linkedFoodId: existingContainer.linked_food_id ?? null,
-      linkedVariantId: existingContainer.linked_variant_id ?? null,
-      linkedFoodName: existingContainer.linked_food_name ?? null,
-      linkedMealTypeId: existingContainer.linked_meal_type_id ?? null,
-      linkedQuantity: String(existingContainer.linked_quantity ?? 1),
-    };
-  });
+  const [form, setForm] = useState<FormState>(() =>
+    formStateFromContainer(existingContainer)
+  );
 
   const [mode, setMode] = useState<ContainerMode>(() =>
     existingContainer?.linked_food_id ? 'food' : 'water'
   );
+
+  // useState initialisers run once, on the first render -- which happens before
+  // useWaterContainersQuery has resolved on a cold start or a deep link. The
+  // form stayed empty then, and saving it wiped the container. Re-seed the
+  // first time the container actually arrives, during render rather than in an
+  // effect (React's "adjusting state when a prop changes" pattern) so the form
+  // never paints a blank frame over real data.
+  const [seededContainerId, setSeededContainerId] = useState<number | null>(
+    existingContainer?.id ?? null
+  );
+  if (existingContainer && seededContainerId !== existingContainer.id) {
+    setSeededContainerId(existingContainer.id);
+    setForm(formStateFromContainer(existingContainer));
+    setMode(existingContainer.linked_food_id ? 'food' : 'water');
+  }
 
   const { variants } = useFoodVariants(form.linkedFoodId ?? '', {
     enabled: !!form.linkedFoodId,

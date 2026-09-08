@@ -147,16 +147,26 @@ async function updateWaterContainer(
   try {
     await client.query('BEGIN');
 
-    // If making primary, ensure target is not quick_add
-    if (is_primary === true) {
+    // Primary and quick-add are mutually exclusive, and either flag can arrive
+    // on its own -- so judge the state this update would leave behind rather
+    // than the single field it names. Keying off `is_primary === true` alone
+    // let one request set both flags at once, and let quick-add be turned on
+    // for a container that was already primary.
+    if (is_primary === true || is_quick_add === true) {
       const current = await client.query(
-        'SELECT is_quick_add FROM user_water_containers WHERE id = $1 AND user_id = $2',
+        'SELECT is_primary, is_quick_add FROM user_water_containers WHERE id = $1 AND user_id = $2',
         [id, userId]
       );
-      if (current.rows[0]?.is_quick_add && is_quick_add !== false) {
-        throw new Error(
-          'Quick-add drink presets cannot be set as the primary water container.'
-        );
+      const currentRow = current.rows[0];
+      if (currentRow) {
+        // `??` mirrors the COALESCE below: an absent flag keeps its stored value.
+        const willBePrimary = is_primary ?? currentRow.is_primary;
+        const willBeQuickAdd = is_quick_add ?? currentRow.is_quick_add;
+        if (willBePrimary && willBeQuickAdd) {
+          throw new Error(
+            'Quick-add drink presets cannot be set as the primary water container.'
+          );
+        }
       }
     }
 

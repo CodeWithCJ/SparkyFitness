@@ -205,12 +205,18 @@ export function caffeineCurve(
 }
 
 /**
- * When the total falls back under `thresholdMg`, or null if it never rises
- * above it.
+ * When the total falls back under `thresholdMg` for good, or null if it never
+ * rises above it.
  *
- * Exact rather than scanned: after the last dose every term decays at the same
- * rate, so the sum decays at that rate too and the crossing can be solved in
- * one step from the level at the last dose.
+ * Exact rather than scanned: the level only ever rises at a dose and decays
+ * between them, so the final crossing lies in the decay that follows one
+ * particular dose, and that one step can be solved directly.
+ *
+ * It is not always the last dose. A 200 mg coffee followed a day later by a
+ * 1 mg square of chocolate leaves the total far under the threshold at that
+ * final dose, yet the morning coffee did cross it hours earlier. Solving from
+ * the last dose alone reported "never above" for the whole day, so walk back to
+ * the last dose that is itself still above the threshold.
  */
 export function thresholdCrossingTime(
   doses: CaffeineDose[],
@@ -220,17 +226,25 @@ export function thresholdCrossingTime(
   if (!doses || doses.length === 0) return null;
   if (halfLifeHours <= 0 || thresholdMg <= 0) return null;
 
-  let lastMs = Number.NEGATIVE_INFINITY;
+  const doseTimesMs: number[] = [];
   for (const dose of doses) {
     if (!dose || dose.mg <= 0) continue;
     const doseMs = new Date(dose.at).getTime();
-    if (!isNaN(doseMs) && doseMs > lastMs) lastMs = doseMs;
+    if (!isNaN(doseMs)) doseTimesMs.push(doseMs);
   }
-  if (!isFinite(lastMs)) return null;
+  if (doseTimesMs.length === 0) return null;
+  doseTimesMs.sort((a, b) => a - b);
 
-  const peakMg = activeCaffeineAt(doses, lastMs, halfLifeHours);
-  if (peakMg <= thresholdMg) return null;
-
-  const deltaHours = halfLifeHours * Math.log2(peakMg / thresholdMg);
-  return new Date(lastMs + deltaHours * 3600 * 1000).toISOString();
+  for (let i = doseTimesMs.length - 1; i >= 0; i--) {
+    const doseMs = doseTimesMs[i];
+    if (doseMs === undefined) continue;
+    const levelMg = activeCaffeineAt(doses, doseMs, halfLifeHours);
+    if (levelMg <= thresholdMg) continue;
+    // Every later dose sits at or under the threshold and the level only decays
+    // between doses, so this crossing is the final one and it lands before the
+    // next dose.
+    const deltaHours = halfLifeHours * Math.log2(levelMg / thresholdMg);
+    return new Date(doseMs + deltaHours * 3600 * 1000).toISOString();
+  }
+  return null;
 }

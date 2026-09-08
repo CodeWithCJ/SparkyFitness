@@ -265,6 +265,16 @@ async function materializeDrinkPreset(
   const variantId =
     defaultVariant?.id || createdFood?.default_variant_id || null;
 
+  // A reused food is whatever the user already had under this name, and one
+  // without a default variant carries no serving to measure. Linking the
+  // container to it anyway produced a preset that logged nothing when pressed,
+  // so fail loudly here instead.
+  if (!variantId) {
+    throw new Error(
+      `"${preset.defaultName}" already exists without a default serving, so it cannot back a quick-add drink. Give that food a serving size, or rename it, and try again.`
+    );
+  }
+
   // One whole serving of whatever food we ended up with -- a reused food may
   // be sized differently from the catalog entry.
   const servingSize =

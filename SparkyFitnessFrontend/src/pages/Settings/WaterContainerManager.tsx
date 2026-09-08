@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { describeContainerPress } from '@/utils/waterContainerLabels';
+import { convertMlToSelectedUnit } from '@/utils/nutritionCalculations';
 import {
   Select,
   SelectContent,
@@ -307,7 +308,17 @@ const WaterContainerManager: React.FC = () => {
   const handleStartEdit = async (container: WaterContainer) => {
     setEditingContainer(container);
     setEditName(container.name);
-    setEditVolume(container.volume);
+    // container.volume is stored in millilitres, but the dialog labels the
+    // field with container.unit. Seeding the raw millilitres would send them
+    // back as if they were that unit, and the server converts again -- one
+    // no-op save turned a 20 oz container into ~17.5 L.
+    setEditVolume(
+      Number(
+        convertMlToSelectedUnit(container.volume, container.unit).toFixed(
+          container.unit === 'ml' ? 0 : 2
+        )
+      )
+    );
     setEditUnit(container.unit);
     setEditServings(container.servings_per_container);
     setEditHydrationFactor(container.hydration_factor ?? 1.0);

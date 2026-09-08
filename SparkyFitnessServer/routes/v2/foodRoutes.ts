@@ -88,6 +88,9 @@ function normalizeFoodVariantForResponse(variant: unknown): unknown {
     ),
     water_ml: nullToUndefined(record.water_ml as number | null | undefined),
     alcohol_g: nullToUndefined(record.alcohol_g as number | null | undefined),
+    abv_percent: nullToUndefined(
+      record.abv_percent as number | null | undefined
+    ),
     glycemic_index: nullToUndefined(
       record.glycemic_index as string | null | undefined
     ),

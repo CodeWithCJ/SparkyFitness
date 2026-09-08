@@ -144,6 +144,22 @@ export const WATER_UNIT_LABELS: Record<string, string> = {
   liter: 'L',
 };
 
+/**
+ * Container volumes are stored in millilitres; every display and every edit
+ * field shows them in the container's own unit. Keep this the single
+ * conversion so a form never seeds millilitres into a field labelled 'oz'.
+ */
+export function convertMlToUnit(ml: number, unit: string): number {
+  switch (unit) {
+    case 'oz':
+      return ml / 29.5735;
+    case 'liter':
+      return ml / 1000;
+    default:
+      return ml;
+  }
+}
+
 /** Volume per serving, accounting for servings_per_container. */
 export function getServingVolume(container: {
   volume: number;

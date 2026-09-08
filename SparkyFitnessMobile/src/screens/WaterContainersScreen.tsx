@@ -28,21 +28,9 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { WaterContainer } from '../types/measurements';
 import type { RootStackScreenProps } from '../types/navigation';
-import { WATER_UNIT_LABELS } from '../utils/unitConversions';
+import { WATER_UNIT_LABELS, convertMlToUnit } from '../utils/unitConversions';
 
 type WaterContainersScreenProps = RootStackScreenProps<'WaterContainers'>;
-
-// Same conversion HydrationGauge uses; not exported from unitConversions.ts.
-function convertMlToUnit(ml: number, unit: string): number {
-  switch (unit) {
-    case 'oz':
-      return ml / 29.5735;
-    case 'liter':
-      return ml / 1000;
-    default:
-      return ml;
-  }
-}
 
 const WaterContainersScreen: React.FC<WaterContainersScreenProps> = ({
   navigation,

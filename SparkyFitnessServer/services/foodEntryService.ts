@@ -150,6 +150,13 @@ interface MealTypeRow {
   user_id: string | null;
 }
 
+/** A water ledger row linked back to the food entry that created it (#2115). */
+interface LinkedWaterEntryRow {
+  id: string;
+  entry_date: string;
+  source: string | null;
+}
+
 type HttpStatusError = Error & { statusCode: number };
 
 function copyStatusError(message: string, statusCode: number): HttpStatusError {
@@ -940,6 +947,10 @@ async function updateFoodEntry(
     // #2115: If this food entry is linked to a water intake ledger row,
     // update the ledger row's water_ml and/or entry_date and recompute totals.
     try {
+      // Recomputes are deliberately deferred until after client.release():
+      // recomputeWaterAggregateForUser acquires a pooled client of its own, and
+      // holding two at once for a single request can exhaust the pool.
+      let recomputeTargets: { dates: string[]; source: string } | null = null;
       const client = await getClient(authenticatedUserId, actingUserId);
       try {
         const linkedRes = await client.query(
@@ -988,24 +999,22 @@ async function updateFoodEntry(
             [newWaterMl, newDate, linkedRow.id, authenticatedUserId]
           );
 
-          await measurementRepository.recomputeWaterAggregateForUser(
-            authenticatedUserId,
-            actingUserId,
-            newDate,
-            linkedRow.source || 'manual'
-          );
-
-          if (oldDate !== newDate) {
-            await measurementRepository.recomputeWaterAggregateForUser(
-              authenticatedUserId,
-              actingUserId,
-              oldDate,
-              linkedRow.source || 'manual'
-            );
-          }
+          recomputeTargets = {
+            dates: oldDate === newDate ? [newDate] : [newDate, oldDate],
+            source: linkedRow.source || 'manual',
+          };
         }
       } finally {
         client.release();
+      }
+
+      for (const date of recomputeTargets?.dates ?? []) {
+        await measurementRepository.recomputeWaterAggregateForUser(
+          authenticatedUserId,
+          actingUserId,
+          date,
+          recomputeTargets?.source ?? 'manual'
+        );
       }
     } catch (err) {
       log(
@@ -1047,7 +1056,12 @@ async function deleteFoodEntry(authenticatedUserId: string, entryId: string) {
     // #2115: Find and delete any linked water intake ledger row explicitly,
     // then recompute the daily aggregate before removing the food entry.
     try {
+      // Read the linked rows first and release the client before touching the
+      // repository: deleteWaterIntakeLog and recomputeWaterAggregateForUser
+      // each take a pooled client of their own, and holding two at once for a
+      // single request can exhaust the pool.
       const client = await getClient(authenticatedUserId);
+      let linkedRows: LinkedWaterEntryRow[];
       try {
         const linkedRes = await client.query(
           `SELECT id, entry_date, source
@@ -1055,21 +1069,23 @@ async function deleteFoodEntry(authenticatedUserId: string, entryId: string) {
            WHERE food_entry_id = $1 AND user_id = $2`,
           [entryId, authenticatedUserId]
         );
-        for (const row of linkedRes.rows) {
-          await measurementRepository.deleteWaterIntakeLog(
-            row.id,
-            authenticatedUserId
-          );
-          const dateStr = String(row.entry_date).substring(0, 10);
-          await measurementRepository.recomputeWaterAggregateForUser(
-            authenticatedUserId,
-            authenticatedUserId,
-            dateStr,
-            row.source || 'manual'
-          );
-        }
+        linkedRows = linkedRes.rows as LinkedWaterEntryRow[];
       } finally {
         client.release();
+      }
+
+      for (const row of linkedRows) {
+        await measurementRepository.deleteWaterIntakeLog(
+          row.id,
+          authenticatedUserId
+        );
+        const dateStr = String(row.entry_date).substring(0, 10);
+        await measurementRepository.recomputeWaterAggregateForUser(
+          authenticatedUserId,
+          authenticatedUserId,
+          dateStr,
+          row.source || 'manual'
+        );
       }
     } catch (err) {
       log(

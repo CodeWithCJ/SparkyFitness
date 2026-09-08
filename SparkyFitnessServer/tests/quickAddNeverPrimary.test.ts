@@ -49,18 +49,26 @@ describe('Quick-Add Presets Never Primary (#1958, #1925, #2115)', () => {
     expect(mockClient.release).toHaveBeenCalled();
   });
 
+  const updateMockClient = (current: {
+    is_primary: boolean;
+    is_quick_add: boolean;
+  }) => ({
+    query: vi.fn().mockImplementation(async (sql: string) => {
+      if (sql === 'BEGIN') return {};
+      if (sql === 'ROLLBACK') return {};
+      if (sql.includes('is_quick_add FROM user_water_containers')) {
+        return { rows: [current] };
+      }
+      return { rows: [] };
+    }),
+    release: vi.fn(),
+  });
+
   it('rejects updateWaterContainer making a quick-add container primary', async () => {
-    const mockClient = {
-      query: vi.fn().mockImplementation(async (sql: string) => {
-        if (sql === 'BEGIN') return {};
-        if (sql === 'ROLLBACK') return {};
-        if (sql.includes('SELECT is_quick_add FROM user_water_containers')) {
-          return { rows: [{ is_quick_add: true }] };
-        }
-        return { rows: [] };
-      }),
-      release: vi.fn(),
-    };
+    const mockClient = updateMockClient({
+      is_primary: false,
+      is_quick_add: true,
+    });
 
     vi.mocked(getClient).mockResolvedValue(mockClient as any);
 
@@ -72,6 +80,45 @@ describe('Quick-Add Presets Never Primary (#1958, #1925, #2115)', () => {
 
     expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
     expect(mockClient.release).toHaveBeenCalled();
+  });
+
+  it('rejects updateWaterContainer setting both flags in one request', async () => {
+    // The container is neither flag today, so checking only its stored
+    // is_quick_add let this request through and produced a container that was
+    // primary and quick-add at once.
+    const mockClient = updateMockClient({
+      is_primary: false,
+      is_quick_add: false,
+    });
+
+    vi.mocked(getClient).mockResolvedValue(mockClient as any);
+
+    await expect(
+      waterContainerRepository.updateWaterContainer(10, userId, {
+        is_primary: true,
+        is_quick_add: true,
+      })
+    ).rejects.toThrow(/Quick-add drink presets cannot be set as the primary/i);
+
+    expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+  });
+
+  it('rejects making an already-primary container quick-add', async () => {
+    // is_primary is absent from this update, so the old guard never ran.
+    const mockClient = updateMockClient({
+      is_primary: true,
+      is_quick_add: false,
+    });
+
+    vi.mocked(getClient).mockResolvedValue(mockClient as any);
+
+    await expect(
+      waterContainerRepository.updateWaterContainer(10, userId, {
+        is_quick_add: true,
+      })
+    ).rejects.toThrow(/Quick-add drink presets cannot be set as the primary/i);
+
+    expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
   });
 
   it('getPrimaryWaterContainerByUserId query filters out quick-add containers', async () => {

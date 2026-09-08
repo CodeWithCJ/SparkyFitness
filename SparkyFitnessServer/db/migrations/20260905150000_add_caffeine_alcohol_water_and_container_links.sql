@@ -158,9 +158,12 @@ ALTER TABLE public.water_intake_entries
 -- it must run before the FK that depends on it, in the same block.
 DO $$
 BEGIN
+  -- Match on the constraint TYPE, not its name: a database whose primary key
+  -- was created under a different name still has one, and ADD CONSTRAINT would
+  -- then fail with "multiple primary keys for table" and abort the migration.
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint
-    WHERE conname = 'food_entries_pkey'
+    WHERE contype = 'p'
       AND conrelid = 'public.food_entries'::regclass
   ) THEN
     ALTER TABLE public.food_entries ADD CONSTRAINT food_entries_pkey PRIMARY KEY (id);
