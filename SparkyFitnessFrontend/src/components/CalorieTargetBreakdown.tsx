@@ -157,11 +157,6 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
   // the sum again in kJ — 2100 + 100 kcal renders as 8786 + 418 = 9204 kJ beside a
   // total of 9205. So the delta is derived from the two displayed numbers rather
   // than converted on its own, and the arithmetic holds in either unit.
-  // Energy density in the unit on screen, so the stated formula matches the
-  // numbers beside it in kJ as well as kcal.
-  const displayEnergyPerKg = Math.round(
-    convertEnergy(ENERGY_DENSITY_KCAL_PER_KG, 'kcal', energyUnit)
-  );
   const displayAdaptiveIntake = Math.round(
     convertEnergy(adaptiveTdeeData?.avgIntake || 0, 'kcal', energyUnit)
   );
@@ -172,6 +167,20 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
   // longer equals intake plus trend, and the trend row still has to state the real
   // trend rather than be bent to match a capped total.
   const displayAdaptiveDelta = displayAdaptiveRawTdee - displayAdaptiveIntake;
+  // In kcal the equation stands alone; in any other unit the kcal result is shown
+  // first (so the multiplication checks out) with the converted value beside it.
+  const adaptiveDeltaKcal =
+    Math.round(adaptiveTdeeData?.rawTdee || 0) -
+    Math.round(adaptiveTdeeData?.avgIntake || 0);
+  const signedKcal = `${adaptiveDeltaKcal >= 0 ? '+' : '−'}${Math.abs(
+    adaptiveDeltaKcal
+  )} kcal`;
+  const adaptiveDeltaText =
+    energyUnit === 'kcal'
+      ? signedKcal
+      : `${signedKcal} (${
+          displayAdaptiveDelta >= 0 ? '+' : '−'
+        }${Math.abs(displayAdaptiveDelta)} ${getEnergyUnitString(energyUnit)})`;
 
   // Inputs are printed at the precision the formula actually evaluates at. Rounding
   // weight to one decimal made the panel unable to reproduce its own answer: a stored
@@ -567,26 +576,18 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
             <div className="font-semibold text-foreground">
               {t(
                 'settings.breakdown.adaptiveFormula',
-                'Formula: Average Daily Calories − (Daily Weight Change in kg × {{energyPerKg}} {{unit}}/kg)',
-                {
-                  energyPerKg: displayEnergyPerKg,
-                  unit: getEnergyUnitString(energyUnit),
-                }
+                'Formula: Average Daily Calories − (Daily Weight Change in kg × {{kcalPerKg}} kcal/kg)',
+                { kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG }
               )}
             </div>
             <p className="text-muted-foreground">
               {t(
                 'settings.breakdown.adaptiveFormulaExplainer',
-                '{{energyPerKg}} {{unit}}/kg is how much energy a kilogram of body weight represents, so your weight trend can be converted into energy. Body weight lost or gained is a mix of fat (~{{fatPerKg}} {{unit}}/kg) and lean tissue and water (~{{leanPerKg}} {{unit}}/kg), and {{energyPerKg}} reflects a typical blend.',
+                '{{kcalPerKg}} kcal/kg is how much energy a kilogram of body weight represents, so your weight trend can be converted into calories. Body weight lost or gained is a mix of fat (~{{fatPerKg}} kcal/kg) and lean tissue and water (~{{leanPerKg}} kcal/kg), and {{kcalPerKg}} reflects a typical blend.',
                 {
-                  energyPerKg: displayEnergyPerKg,
-                  fatPerKg: Math.round(
-                    convertEnergy(FAT_KCAL_PER_KG, 'kcal', energyUnit)
-                  ),
-                  leanPerKg: Math.round(
-                    convertEnergy(LEAN_TISSUE_KCAL_PER_KG, 'kcal', energyUnit)
-                  ),
-                  unit: getEnergyUnitString(energyUnit),
+                  kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG,
+                  fatPerKg: FAT_KCAL_PER_KG.toLocaleString(),
+                  leanPerKg: LEAN_TISSUE_KCAL_PER_KG.toLocaleString(),
                 }
               )}
             </p>
@@ -819,25 +820,19 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                     <li>
                       {t(
                         'diary.calculateExplanation.weightTrendCalories',
-                        'Energy from that trend: {{daily}} kg/day × {{density}} {{unit}}/kg = {{value}} {{unit}}',
+                        'Energy from that trend: {{daily}} kg/day × {{kcalPerKg}} kcal/kg = {{value}}',
                         {
-                          // Energy density in the unit on screen. Labelling it
-                          // kcal/kg while printing a kJ result stated an equation
-                          // that does not compute.
-                          density: Math.round(
-                            convertEnergy(
-                              ENERGY_DENSITY_KCAL_PER_KG,
-                              'kcal',
-                              energyUnit
-                            )
-                          ),
                           daily: (
                             adaptiveTdeeData.dailyWeightChangeKg ?? 0
                           ).toFixed(4),
-                          value: `${
-                            displayAdaptiveDelta >= 0 ? '+' : '−'
-                          }${Math.abs(displayAdaptiveDelta)}`,
-                          unit: getEnergyUnitString(energyUnit),
+                          kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG,
+                          // Evaluated against the kcal constant so the equation
+                          // reproduces, with the converted figure appended when the
+                          // viewer reads another unit. The energy densities are
+                          // reference values from the literature — restating them as
+                          // 25,104 kJ/kg would make the sum work and the citation
+                          // unrecognisable.
+                          value: adaptiveDeltaText,
                         }
                       )}
                     </li>

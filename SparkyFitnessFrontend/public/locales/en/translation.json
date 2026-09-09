@@ -2259,8 +2259,8 @@
       "goalMaintain": "Maintain (0% change)",
       "surplus": "Surplus",
       "deficit": "Deficit",
-      "adaptiveFormula": "Formula: Average Daily Calories − (Daily Weight Change in kg × {{energyPerKg}} {{unit}}/kg)",
-      "adaptiveFormulaExplainer": "{{energyPerKg}} {{unit}}/kg is how much energy a kilogram of body weight represents, so your weight trend can be converted into energy. Body weight lost or gained is a mix of fat (~{{fatPerKg}} {{unit}}/kg) and lean tissue and water (~{{leanPerKg}} {{unit}}/kg), and {{energyPerKg}} reflects a typical blend.",
+      "adaptiveFormula": "Formula: Average Daily Calories − (Daily Weight Change in kg × {{kcalPerKg}} kcal/kg)",
+      "adaptiveFormulaExplainer": "{{kcalPerKg}} kcal/kg is how much energy a kilogram of body weight represents, so your weight trend can be converted into calories. Body weight lost or gained is a mix of fat (~{{fatPerKg}} kcal/kg) and lean tissue and water (~{{leanPerKg}} kcal/kg), and {{kcalPerKg}} reflects a typical blend.",
       "adjustment": "Adjustment",
       "goalAdjustmentLabel": "Goal Adjustment:"
     },
@@ -2854,7 +2854,7 @@
       "adaptiveManualGoal": "Adaptive Manual Calorie Goal",
       "targetSafeRange": "✓ Target is in safe range above metabolic safety floor.",
       "weightTrendTerm": "Weight trend: {{start}} → {{end}} kg ({{change}} kg across all {{days}} days of the window) = {{daily}} kg/day",
-      "weightTrendCalories": "Energy from that trend: {{daily}} kg/day × {{density}} {{unit}}/kg = {{value}} {{unit}}",
+      "weightTrendCalories": "Energy from that trend: {{daily}} kg/day × {{kcalPerKg}} kcal/kg = {{value}}",
       "tdeeSum": "({{intake}} {{sign}} {{delta}})",
       "adaptiveClamped": "Raw estimate of {{raw}} {{unit}} was capped to {{capped}} {{unit}}, the plausibility limit of ±500 {{unit}} around your BMR-based estimate ({{min}}–{{max}} {{unit}}).",
       "intakeWindow": "(mean of {{logged}} logged days between {{start}} and {{end}}; days under 200 kcal are excluded, not counted as zero)"
