@@ -10,6 +10,11 @@ import {
   isDayString,
 } from '@workspace/shared';
 import { userAge } from '../utils/dateHelpers.js';
+import {
+  getPrimarySleepStageCluster,
+  recomputeSleepAggregatesFromStages,
+  sumAsleepSeconds,
+} from '../utils/sleepStageAggregates.js';
 import userRepository from '../models/userRepository.js';
 import sleepRepository from '../models/sleepRepository.js';
 import exerciseEntryDb from '../models/exerciseEntry.js';
@@ -1316,25 +1321,6 @@ async function calculateSleepScore(
   // Ensure score is within 0-100 range
   return Math.round(Math.max(0, Math.min(score, maxScore)));
 }
-// "Time asleep" is the sum of the genuinely-asleep stages only: deep + light + rem.
-// It excludes 'awake', and also 'in_bed' and 'unknown' — the in-bed envelope still
-// counts toward `duration` (so efficiency = time_asleep / duration stays meaningful)
-// but must not inflate asleep time. Overlap across sources is resolved on the mobile
-// client before upload, so a plain sum over the stored stages does not double-count.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function sumAsleepSeconds(stages: any[]): number {
-  if (!Array.isArray(stages)) return 0;
-  return stages.reduce((sum, stage) => {
-    if (
-      stage.stage_type === 'deep' ||
-      stage.stage_type === 'light' ||
-      stage.stage_type === 'rem'
-    ) {
-      return sum + (Math.round(Number(stage.duration_in_seconds)) || 0);
-    }
-    return sum;
-  }, 0);
-}
 async function processSleepEntry(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -1481,13 +1467,14 @@ async function processSleepEntry(
         `[processSleepEntry] Preserving ${mergedStages.length} existing stage events for entry ${newSleepEntry.id} because the payload had no authoritative stage data.`
       );
     }
+    const primaryStages = getPrimarySleepStageCluster(mergedStages);
     const recomputed = recomputeSleepAggregatesFromStages(mergedStages);
     const recomputedSleepScore = await calculateSleepScore(
       {
         duration_in_seconds: recomputed.duration_in_seconds,
         time_asleep_in_seconds: recomputed.time_asleep_in_seconds,
       },
-      mergedStages,
+      primaryStages,
       age,
       // @ts-expect-error TS(2554): Expected 2-3 arguments, but got 4.
       gender
@@ -1512,68 +1499,6 @@ async function processSleepEntry(
   }
 }
 
-// Pure aggregate derivation from a stage list. The stored stages are already a
-// non-overlapping timeline (mobile resolves cross-source overlap before upload), so the
-// per-stage buckets and `duration` are plain min/max/sum. `time_asleep` counts only the
-// asleep stages (deep/light/rem) via sumAsleepSeconds; `duration` still spans the full
-// in-bed envelope so efficiency = time_asleep / duration stays meaningful.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function recomputeSleepAggregatesFromStages(stages: any[]) {
-  if (!stages || stages.length === 0) {
-    return {
-      bedtime: null,
-      wake_time: null,
-      duration_in_seconds: 0,
-      time_asleep_in_seconds: 0,
-      deep_sleep_seconds: 0,
-      light_sleep_seconds: 0,
-      rem_sleep_seconds: 0,
-      awake_sleep_seconds: 0,
-    };
-  }
-  let minStart = new Date(stages[0].start_time).getTime();
-  let maxEnd = new Date(stages[0].end_time).getTime();
-  let deep = 0;
-  let light = 0;
-  let rem = 0;
-  let awake = 0;
-  for (const s of stages) {
-    const startMs = new Date(s.start_time).getTime();
-    const endMs = new Date(s.end_time).getTime();
-    if (startMs < minStart) minStart = startMs;
-    if (endMs > maxEnd) maxEnd = endMs;
-    const duration = Math.round(Number(s.duration_in_seconds)) || 0;
-    switch (s.stage_type) {
-      case 'deep':
-        deep += duration;
-        break;
-      case 'light':
-        light += duration;
-        break;
-      case 'rem':
-        rem += duration;
-        break;
-      case 'awake':
-        awake += duration;
-        break;
-      default:
-        // in_bed / unknown: bounds the envelope (min/max above) but is NOT asleep time.
-        break;
-    }
-  }
-  const durationInSeconds = Math.max(0, Math.round((maxEnd - minStart) / 1000));
-  const timeAsleep = sumAsleepSeconds(stages);
-  return {
-    bedtime: new Date(minStart),
-    wake_time: new Date(maxEnd),
-    duration_in_seconds: durationInSeconds,
-    time_asleep_in_seconds: timeAsleep,
-    deep_sleep_seconds: deep,
-    light_sleep_seconds: light,
-    rem_sleep_seconds: rem,
-    awake_sleep_seconds: awake,
-  };
-}
 async function updateSleepEntry(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -1802,6 +1727,12 @@ export { processSleepEntry };
 export { updateSleepEntry };
 export { getOrCreateCustomCategory };
 export { resolveHealthEntryDate };
+export {
+  clusterSleepStagesByGap,
+  getPrimarySleepStageCluster,
+  recomputeSleepAggregatesFromStages,
+  sumAsleepSeconds,
+} from '../utils/sleepStageAggregates.js';
 
 // ── Water Intake Entries service functions ───────────────────────────────
 
