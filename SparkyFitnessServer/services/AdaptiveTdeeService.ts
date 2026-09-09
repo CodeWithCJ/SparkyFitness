@@ -387,7 +387,10 @@ function computeAdaptiveTdeeFromData(
     endWeightTrend: Math.round(endWeightTrend * 10) / 10,
     weightChangeKg: Math.round(weightChange * 100) / 100,
     daysInWindow,
-    dailyWeightChangeKg: Math.round(dailyWeightChange * 1000) / 1000,
+    // Four decimals, not three: the UI multiplies this by the energy density to
+    // show its working, and at 3dp a -0.0185 kg/day trend prints as -0.018 and
+    // reproduces 108 kcal against a stated 111.
+    dailyWeightChangeKg: Math.round(dailyWeightChange * 10000) / 10000,
     // Derived from the two rounded figures the UI actually prints, not rounded
     // independently: otherwise "2026 + 110" renders next to a total of 2137 and
     // the explanation undermines itself.
