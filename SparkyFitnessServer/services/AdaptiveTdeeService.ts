@@ -11,6 +11,7 @@ import {
   todayInZone,
   dayToPickerDate,
   ENERGY_DENSITY_KCAL_PER_KG,
+  ADAPTIVE_TDEE_CLAMP_KCAL,
   isUsableMeasuredBmr,
 } from '@workspace/shared';
 const tdeeCache = new NodeCache({ stdTTL: 3600 }); // 1 hour cache
@@ -315,8 +316,8 @@ function computeAdaptiveTdeeFromData(
     avgDailyIntake - dailyWeightChange * ENERGY_DENSITY_KCAL_PER_KG;
   // Plausibility capping: +/- 500 kcal from the BMR-based estimate. Clinical
   // calorie floors are a goal policy and are applied later, not to TDEE itself.
-  const maxTdee = fallbackTdee + 500;
-  const minTdee = Math.max(0, fallbackTdee - 500);
+  const maxTdee = fallbackTdee + ADAPTIVE_TDEE_CLAMP_KCAL;
+  const minTdee = Math.max(0, fallbackTdee - ADAPTIVE_TDEE_CLAMP_KCAL);
   const adaptiveTdee = Math.min(Math.max(rawAdaptiveTdee, minTdee), maxTdee);
   // Whether the clamp actually moved the number. When it did, the displayed TDEE
   // is not `intake + weight term` and the arithmetic on screen would not

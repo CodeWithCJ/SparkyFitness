@@ -47,6 +47,15 @@ export const CALORIE_CALCULATION_CONSTANTS = {
 export const ENERGY_DENSITY_KCAL_PER_KG = 6000;
 
 /**
+ * Half-width of the Adaptive TDEE plausibility band, in kcal.
+ *
+ * The log-derived estimate is capped to within this much of `BMR x activity
+ * multiplier`. Defined in kcal because the estimate is: any display in another
+ * unit must convert it, or the stated band contradicts the bounds beside it.
+ */
+export const ADAPTIVE_TDEE_CLAMP_KCAL = 500;
+
+/**
  * Qualifying calorie-log days before a measured adaptive TDEE may drive a goal.
  *
  * `AdaptiveTdeeService` releases a raw estimate at 7 days, which is enough to

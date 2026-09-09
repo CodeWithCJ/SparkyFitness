@@ -20,6 +20,7 @@ import {
   ADAPTIVE_TDEE_GOAL_MIN_DAYS,
   getGoalModeAdjustment,
   ENERGY_DENSITY_KCAL_PER_KG,
+  ADAPTIVE_TDEE_CLAMP_KCAL,
   type CalorieTargetResult,
 } from '@workspace/shared';
 
@@ -810,7 +811,7 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                           days: adaptiveTdeeData.daysInWindow ?? 0,
                           daily: (
                             adaptiveTdeeData.dailyWeightChangeKg ?? 0
-                          ).toFixed(3),
+                          ).toFixed(4),
                         }
                       )}
                     </li>
@@ -875,8 +876,18 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                   <p className="text-xs text-amber-600 dark:text-amber-500">
                     {t(
                       'diary.calculateExplanation.adaptiveClamped',
-                      'Raw estimate of {{raw}} {{unit}} was capped to {{capped}} {{unit}}, the plausibility limit of ±500 {{unit}} around your BMR-based estimate ({{min}}–{{max}} {{unit}}).',
+                      'Raw estimate of {{raw}} {{unit}} was capped to {{capped}} {{unit}}, the plausibility limit of ±{{band}} {{unit}} around your BMR-based estimate ({{min}}–{{max}} {{unit}}).',
                       {
+                        // The band is defined in kcal; printing a bare 500 beside
+                        // converted bounds claimed a range 4x narrower than the one
+                        // shown next to it.
+                        band: Math.round(
+                          convertEnergy(
+                            ADAPTIVE_TDEE_CLAMP_KCAL,
+                            'kcal',
+                            energyUnit
+                          )
+                        ),
                         raw: Math.round(
                           convertEnergy(
                             adaptiveTdeeData?.rawTdee || 0,

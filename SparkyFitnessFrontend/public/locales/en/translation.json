@@ -2856,7 +2856,7 @@
       "weightTrendTerm": "Weight trend: {{start}} → {{end}} kg ({{change}} kg across all {{days}} days of the window) = {{daily}} kg/day",
       "weightTrendCalories": "Energy from that trend: {{daily}} kg/day × {{kcalPerKg}} kcal/kg = {{value}}",
       "tdeeSum": "({{intake}} {{sign}} {{delta}})",
-      "adaptiveClamped": "Raw estimate of {{raw}} {{unit}} was capped to {{capped}} {{unit}}, the plausibility limit of ±500 {{unit}} around your BMR-based estimate ({{min}}–{{max}} {{unit}}).",
+      "adaptiveClamped": "Raw estimate of {{raw}} {{unit}} was capped to {{capped}} {{unit}}, the plausibility limit of ±{{band}} {{unit}} around your BMR-based estimate ({{min}}–{{max}} {{unit}}).",
       "intakeWindow": "(mean of {{logged}} logged days between {{start}} and {{end}}; days under 200 kcal are excluded, not counted as zero)"
     },
     "copyAllError": "Failed to copy entire day.",
