@@ -173,6 +173,13 @@ export function bedtimeHeadroomMg(
  * step lands on the dose time instead of wherever the fixed grid happened to
  * fall.
  */
+/**
+ * Most grid points any one curve is walked at. Dose boundaries are added on
+ * top of these, so a curve can exceed it slightly; it bounds the walk, not the
+ * output exactly.
+ */
+const MAX_CURVE_POINTS = 2000;
+
 export function caffeineCurve(
   doses: CaffeineDose[],
   fromInstant: string | number | Date,
@@ -185,7 +192,19 @@ export function caffeineCurve(
   if (isNaN(fromMs) || isNaN(toMsValue) || toMsValue <= fromMs) return [];
   if (halfLifeHours <= 0 || stepMinutes <= 0) return [];
 
-  const stepMs = stepMinutes * 60 * 1000;
+  // Backstop against a caller handing in a range far wider than it meant to.
+  // The grid is walked one step at a time, so an unbounded span turns straight
+  // into unbounded work and an unrenderable series -- a year at ten-minute
+  // steps is ~52k points. Callers are expected to pass a window of hours; if
+  // one passes days, widen the step rather than refusing or hanging, which
+  // keeps the curve's shape honest at a resolution the range can carry.
+  const requestedStepMs = stepMinutes * 60 * 1000;
+  const spanMs = toMsValue - fromMs;
+  const stepMs =
+    spanMs / requestedStepMs > MAX_CURVE_POINTS
+      ? Math.ceil(spanMs / MAX_CURVE_POINTS)
+      : requestedStepMs;
+
   const points = new Set<number>();
   for (let t = fromMs; t < toMsValue; t += stepMs) points.add(t);
   points.add(toMsValue);

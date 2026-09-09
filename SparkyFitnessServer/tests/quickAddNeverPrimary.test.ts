@@ -56,7 +56,9 @@ describe('Quick-Add Presets Never Primary (#1958, #1925, #2115)', () => {
     query: vi.fn().mockImplementation(async (sql: string) => {
       if (sql === 'BEGIN') return {};
       if (sql === 'ROLLBACK') return {};
-      if (sql.includes('is_quick_add FROM user_water_containers')) {
+      // Match the row lookup by its target, not by its column list: the
+      // guard's SELECT grows as more fields are judged on the resulting row.
+      if (sql.includes('FROM user_water_containers WHERE id = $1')) {
         return { rows: [current] };
       }
       return { rows: [] };

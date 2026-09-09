@@ -54,19 +54,53 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
   // Derived above the early returns: hooks must run in the same order on every
   // render, and the card returns null on a day with no caffeine.
   const bedtimeMs = data ? new Date(data.bedtime_at).getTime() : 0;
-  // From an hour before the first dose to two hours past bedtime, so the curve
-  // always shows where it is heading rather than stopping at the moment of
-  // most interest.
-  const chart = useMemo(() => {
-    if (!data || data.doses.length === 0) return [];
+
+  // The plotted window belongs to the day on screen: an hour before its first
+  // dose to two hours past its bedtime, so the curve shows where it is heading
+  // rather than stopping at the moment of most interest.
+  //
+  // The wall clock must never widen it. This card renders for whatever date the
+  // diary is showing, and the server answers for that date, so on a past day
+  // `Date.now()` sits outside the window entirely -- stretching the range to
+  // reach it drew a curve from that day's first coffee to this instant, and
+  // caffeineCurve steps the whole span at 10-minute intervals with no cap. A
+  // year-old dose meant ~52k points and a hung chart.
+  const windowMs = useMemo(() => {
+    if (!data || data.doses.length === 0) return null;
     const firstDoseMs = data.doses.reduce(
       (earliest, dose) => Math.min(earliest, new Date(dose.at).getTime()),
       Number.POSITIVE_INFINITY
     );
-    const startMs = Math.min(firstDoseMs - 60 * 60 * 1000, nowMs);
-    const endMs = Math.max(bedtimeMs + 2 * 60 * 60 * 1000, nowMs);
-    return caffeineCurve(data.doses, startMs, endMs, data.half_life_hours, 10);
+    const end = bedtimeMs + 2 * 60 * 60 * 1000;
+    // `bedtime_at` sits on the date being viewed, so the 24 hours before it are
+    // that day. Only a clock inside them belongs on this chart; anything else
+    // is a different day and must not drag the window across to meet it.
+    const nowBelongsToDay =
+      nowMs >= bedtimeMs - 24 * 60 * 60 * 1000 && nowMs <= end;
+    const doseStart = firstDoseMs - 60 * 60 * 1000;
+    return {
+      start: nowBelongsToDay ? Math.min(doseStart, nowMs) : doseStart,
+      end,
+      nowBelongsToDay,
+    };
   }, [data, bedtimeMs, nowMs]);
+
+  // "Now" on the day being viewed, otherwise that day's edge -- so the decay
+  // figure and the cutoff describe the day on screen rather than this instant.
+  const referenceMs =
+    windowMs && !windowMs.nowBelongsToDay ? windowMs.end : nowMs;
+  const nowIsInWindow = windowMs?.nowBelongsToDay ?? false;
+
+  const chart = useMemo(() => {
+    if (!data || !windowMs) return [];
+    return caffeineCurve(
+      data.doses,
+      windowMs.start,
+      windowMs.end,
+      data.half_life_hours,
+      10
+    );
+  }, [data, windowMs]);
 
   // Recomputed rather than parsed back from the response's local HH:MM: the
   // shared helper returns the exact instant, which is what the plot needs, and
@@ -76,14 +110,14 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
     const cutoff = caffeineCutoff({
       doses: data.doses,
       bedtimeInstant: data.bedtime_at,
-      nowInstant: nowMs,
+      nowInstant: referenceMs,
       halfLifeHours: data.half_life_hours,
       thresholdMg: data.threshold_mg,
       doseMg: data.cutoff_dose_mg,
     });
     if (cutoff.kind !== 'by' && cutoff.kind !== 'passed') return null;
     return new Date(cutoff.at).getTime();
-  }, [data, nowMs]);
+  }, [data, referenceMs]);
 
   // Recomputed from the same doses, so the words and the curve cannot drift.
   const crossingAt = useMemo(
@@ -127,7 +161,7 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
     has_estimated_times,
   } = data;
 
-  const currentActiveMg = activeCaffeineAt(doses, nowMs, half_life_hours);
+  const currentActiveMg = activeCaffeineAt(doses, referenceMs, half_life_hours);
 
   // A long half-life against a small headroom can push the cutoff a day or
   // more into the past, outside the plotted window. The marker is already
@@ -348,11 +382,13 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
                 stroke={isDark ? '#818cf8' : '#6366f1'}
                 strokeDasharray="2 4"
               />
-              <ReferenceLine
-                x={nowMs}
-                stroke={isDark ? '#94a3b8' : '#475569'}
-                strokeWidth={1}
-              />
+              {nowIsInWindow && (
+                <ReferenceLine
+                  x={nowMs}
+                  stroke={isDark ? '#94a3b8' : '#475569'}
+                  strokeWidth={1}
+                />
+              )}
               {/* The moment another dose stops fitting under the threshold.
                   Hidden when it falls outside the plotted window rather than
                   clamped to the edge, which would put it at a time it is not. */}

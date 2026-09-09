@@ -322,3 +322,68 @@ describe('CaffeineCard Component', () => {
     expect(screen.getAllByTestId('ref-line-x')).toHaveLength(2);
   });
 });
+
+// The card renders for whatever date the diary is showing, and the server
+// answers for that date. The wall clock therefore has no business widening the
+// plotted window: on a past day it lies outside it entirely, and the range was
+// being stretched from that day's first dose all the way to this instant.
+describe('CaffeineCard on a historical date', () => {
+  const historicalData = {
+    half_life_hours: 5,
+    target_bedtime: '22:30',
+    bedtime_at: '2026-09-05T20:30:00.000Z',
+    doses: [
+      {
+        at: '2026-09-05T08:00:00.000Z',
+        mg: 100,
+        name: 'Morning Coffee',
+        is_estimated: false,
+      },
+    ],
+    active_mg_now: 100,
+    at_bedtime_mg: 18,
+    latest_safe_dose_time: '17:45',
+    cutoff_state: 'by',
+    bedtime_headroom_mg: 82,
+    cutoff_dose_mg: 200,
+    threshold_mg: 100,
+    has_estimated_times: false,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    // A year after the day being viewed.
+    jest.setSystemTime(new Date('2027-09-05T12:00:00.000Z'));
+    mockUseActiveCaffeineQuery.mockReturnValue({
+      data: historicalData,
+      isLoading: false,
+    } as ReturnType<typeof useActiveCaffeineQuery>);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('renders without walking a year of curve points', () => {
+    const startedAt = Date.now();
+    render(<CaffeineCard date="2026-09-05" userId="user-1" />);
+    expect(screen.getByTestId('caffeine-chart')).toBeInTheDocument();
+    // Guards the shape of the fix rather than a wall-clock budget: an
+    // unbounded range here used to be ~52k points.
+    expect(Date.now() - startedAt).toBeLessThan(5000);
+  });
+
+  it('omits the "now" marker, which does not fall on the day being viewed', () => {
+    render(<CaffeineCard date="2026-09-05" userId="user-1" />);
+    // Bedtime and the cutoff still draw their lines; "now" does not.
+    expect(screen.getAllByTestId('ref-line-x')).toHaveLength(2);
+  });
+
+  it('still draws the "now" marker when the day being viewed is today', () => {
+    jest.setSystemTime(new Date('2026-09-05T12:00:00.000Z'));
+    render(<CaffeineCard date="2026-09-05" userId="user-1" />);
+    // The same two, plus "now" -- the one line the historical case drops.
+    expect(screen.getAllByTestId('ref-line-x')).toHaveLength(3);
+  });
+});

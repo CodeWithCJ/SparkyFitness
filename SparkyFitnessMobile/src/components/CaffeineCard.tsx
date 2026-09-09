@@ -49,18 +49,41 @@ const CaffeineCard: React.FC<CaffeineCardProps> = ({
 
   const bedtimeMs = kinetics ? new Date(kinetics.bedtime_at).getTime() : 0;
 
-  const chartData = useMemo(() => {
-    if (!kinetics || kinetics.doses.length === 0) return [];
+  // The plotted window belongs to the day on screen, and the wall clock must
+  // never widen it: the card renders for whatever date the dashboard shows, so
+  // on a past day `nowMs` sits outside the window and stretching the range to
+  // reach it walked the whole span at 15-minute steps with no cap.
+  const windowMs = useMemo(() => {
+    if (!kinetics || kinetics.doses.length === 0) return null;
     const firstDoseMs = kinetics.doses.reduce(
       (earliest, dose) => Math.min(earliest, new Date(dose.at).getTime()),
       Number.POSITIVE_INFINITY
     );
-    const startMs = Math.min(firstDoseMs - 60 * 60 * 1000, nowMs);
-    const endMs = Math.max(bedtimeMs + 2 * 60 * 60 * 1000, nowMs);
+    const end = bedtimeMs + 2 * 60 * 60 * 1000;
+    // `bedtime_at` sits on the date being viewed, so the 24 hours before it are
+    // that day. Only a clock inside them belongs on this chart; anything else
+    // is a different day and must not drag the window across to meet it.
+    const nowBelongsToDay =
+      nowMs >= bedtimeMs - 24 * 60 * 60 * 1000 && nowMs <= end;
+    const doseStart = firstDoseMs - 60 * 60 * 1000;
+    return {
+      start: nowBelongsToDay ? Math.min(doseStart, nowMs) : doseStart,
+      end,
+      nowBelongsToDay,
+    };
+  }, [kinetics, bedtimeMs, nowMs]);
+
+  // "Now" on the day being viewed, otherwise that day's edge, so the active
+  // figure describes the day on screen rather than this instant.
+  const referenceMs =
+    windowMs && !windowMs.nowBelongsToDay ? windowMs.end : nowMs;
+
+  const chartData = useMemo(() => {
+    if (!kinetics || kinetics.doses.length === 0 || !windowMs) return [];
     return caffeineCurve(
       kinetics.doses,
-      startMs,
-      endMs,
+      windowMs.start,
+      windowMs.end,
       kinetics.half_life_hours,
       15
     ).map((point) => ({
@@ -69,7 +92,7 @@ const CaffeineCard: React.FC<CaffeineCardProps> = ({
       // has no reference-line primitive.
       threshold: kinetics.threshold_mg,
     }));
-  }, [kinetics, bedtimeMs, nowMs]);
+  }, [kinetics, windowMs]);
 
   const crossingAt = useMemo(
     () =>
@@ -90,7 +113,7 @@ const CaffeineCard: React.FC<CaffeineCardProps> = ({
 
   const activeNowMg = activeCaffeineAt(
     kinetics.doses,
-    nowMs,
+    referenceMs,
     kinetics.half_life_hours
   );
 

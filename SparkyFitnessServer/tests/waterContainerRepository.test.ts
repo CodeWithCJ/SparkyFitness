@@ -183,3 +183,89 @@ describe('waterContainerRepository single-primary enforcement', () => {
     });
   });
 });
+
+// A container's volume and its food link are validated against the row the
+// update would LEAVE BEHIND, not against the fields the request happened to
+// name. Volume 0 means "take the volume from the linked food", so it is only
+// meaningful while a link exists -- and either half can arrive on its own.
+describe('waterContainerRepository volume/link coherence on update', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockClient: any;
+
+  // The guard reads the stored row before deciding; every test seeds it here.
+  const seedCurrentRow = (row: Record<string, unknown>) => {
+    mockClient.query.mockImplementation((text: string) =>
+      typeof text === 'string' && text.startsWith('SELECT is_primary')
+        ? Promise.resolve({ rows: [row] })
+        : Promise.resolve({ rows: [{}] })
+    );
+  };
+
+  beforeEach(() => {
+    mockClient = {
+      query: vi.fn().mockResolvedValue({ rows: [{}] }),
+      release: vi.fn(),
+    };
+    vi.mocked(getClient).mockResolvedValue(mockClient);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('rejects unlinking a container that is holding volume 0', async () => {
+    seedCurrentRow({
+      is_primary: false,
+      is_quick_add: false,
+      volume: 0,
+      linked_food_id: 'food-1',
+    });
+
+    await expect(
+      waterContainerRepository.updateWaterContainer(1, 'user-1', {
+        linked_food_id: null,
+      })
+    ).rejects.toThrow(/greater than 0 unless the container is linked/);
+  });
+
+  it('rejects setting volume 0 on a container whose link is not in the body', async () => {
+    seedCurrentRow({
+      is_primary: false,
+      is_quick_add: false,
+      volume: 500,
+      linked_food_id: null,
+    });
+
+    await expect(
+      waterContainerRepository.updateWaterContainer(1, 'user-1', { volume: 0 })
+    ).rejects.toThrow(/greater than 0 unless the container is linked/);
+  });
+
+  it('allows volume 0 when the stored row is linked and the body omits the link', async () => {
+    seedCurrentRow({
+      is_primary: false,
+      is_quick_add: false,
+      volume: 250,
+      linked_food_id: 'food-1',
+    });
+
+    await expect(
+      waterContainerRepository.updateWaterContainer(1, 'user-1', { volume: 0 })
+    ).resolves.not.toThrow();
+  });
+
+  it('allows unlinking a container that carries a real volume', async () => {
+    seedCurrentRow({
+      is_primary: false,
+      is_quick_add: false,
+      volume: 500,
+      linked_food_id: 'food-1',
+    });
+
+    await expect(
+      waterContainerRepository.updateWaterContainer(1, 'user-1', {
+        linked_food_id: null,
+      })
+    ).resolves.not.toThrow();
+  });
+});

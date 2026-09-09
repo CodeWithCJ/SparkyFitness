@@ -163,9 +163,14 @@ async function updateWaterContainer(
     // than the single field it names. Keying off `is_primary === true` alone
     // let one request set both flags at once, and let quick-add be turned on
     // for a container that was already primary.
-    if (is_primary === true || is_quick_add === true) {
+    if (
+      is_primary === true ||
+      is_quick_add === true ||
+      volume !== undefined ||
+      linkedFoodIdPresent
+    ) {
       const current = await client.query(
-        'SELECT is_primary, is_quick_add FROM user_water_containers WHERE id = $1 AND user_id = $2',
+        'SELECT is_primary, is_quick_add, volume, linked_food_id FROM user_water_containers WHERE id = $1 AND user_id = $2',
         [id, userId]
       );
       const currentRow = current.rows[0];
@@ -176,6 +181,23 @@ async function updateWaterContainer(
         if (willBePrimary && willBeQuickAdd) {
           throw conflictError(
             'Quick-add drink presets cannot be set as the primary water container.'
+          );
+        }
+
+        // Volume 0 means "no override -- take the volume from the linked
+        // food", so it is only meaningful while a link exists. Judged on the
+        // resulting row for the same reason as the pair above: the request can
+        // name either half. Validating only the submitted patch let
+        // `{"linked_food_id": null}` unlink a container that was holding 0 and
+        // leave it crediting nothing, while `{"volume": 0}` on an already
+        // linked container was refused because the link was not in the body.
+        const willBeVolume = volume ?? Number(currentRow.volume);
+        const willBeLinked = linkedFoodIdPresent
+          ? Boolean(updateData.linked_food_id)
+          : Boolean(currentRow.linked_food_id);
+        if (Number(willBeVolume) === 0 && !willBeLinked) {
+          throw conflictError(
+            'Volume must be greater than 0 unless the container is linked to a food.'
           );
         }
       }

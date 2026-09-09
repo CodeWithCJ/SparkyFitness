@@ -262,3 +262,49 @@ describe('caffeineCurve and thresholdCrossingTime', () => {
     expect(thresholdCrossingTime([], 5, 100)).toBeNull();
   });
 });
+
+// The curve is walked one step at a time, so the range decides the work. The
+// cards used to widen their window to reach `Date.now()`, which on an old
+// diary date meant a span of months and a series nothing could render.
+describe('caffeineCurve range guard', () => {
+  const doses: CaffeineDose[] = [{ at: '2026-09-05T08:00:00.000Z', mg: 95 }];
+
+  it('stays bounded across a year-wide range instead of stepping all of it', () => {
+    const from = '2026-09-05T07:00:00.000Z';
+    const to = '2027-09-05T07:00:00.000Z';
+
+    const curve = caffeineCurve(doses, from, to, 5, 10);
+
+    // At the requested 10-minute step this span is ~52.6k points.
+    expect(curve.length).toBeLessThan(2100);
+    expect(curve.length).toBeGreaterThan(0);
+  });
+
+  it('still honours the requested step on a normal day-sized window', () => {
+    const from = '2026-09-05T07:00:00.000Z';
+    const to = '2026-09-05T23:00:00.000Z';
+
+    const curve = caffeineCurve(doses, from, to, 5, 10);
+
+    // 16h at 10-minute steps, plus the endpoint and the dose boundaries.
+    expect(curve.length).toBeGreaterThan(90);
+    expect(curve.length).toBeLessThan(110);
+  });
+
+  it('keeps the curve monotonically decreasing after the last dose', () => {
+    const curve = caffeineCurve(
+      doses,
+      '2026-09-05T07:00:00.000Z',
+      '2027-09-05T07:00:00.000Z',
+      5,
+      10
+    );
+    const afterDose = curve.filter(
+      (p) => p.t > new Date('2026-09-05T08:00:00.000Z').getTime()
+    );
+
+    for (let i = 1; i < afterDose.length; i += 1) {
+      expect(afterDose[i]!.mg).toBeLessThanOrEqual(afterDose[i - 1]!.mg);
+    }
+  });
+});
