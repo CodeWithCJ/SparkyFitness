@@ -71,7 +71,11 @@ interface AdaptiveTdeeResult {
   startWeightTrend?: number;
   endWeightTrend?: number;
   weightChangeKg?: number;
+  /** Length of the TDEE window in days (28), which the weight trend spans. */
   daysInWindow?: number;
+  /** First and last day of that window, as YYYY-MM-DD. */
+  windowStartDate?: string;
+  windowEndDate?: string;
   dailyWeightChangeKg?: number;
   /** The weight-trend term in kcal — the gap between average intake and TDEE. */
   weightChangeCalories?: number;
@@ -370,6 +374,15 @@ function computeAdaptiveTdeeFromData(
     lastCalculated: new Date().toISOString(),
     // Derivation terms, so the UI can show how the number was reached instead of
     // only its inputs and result.
+    windowStartDate: calculationWindow[0]
+      ? format(calculationWindow[0].date, 'yyyy-MM-dd')
+      : undefined,
+    windowEndDate: calculationWindow[calculationWindow.length - 1]
+      ? format(
+          calculationWindow[calculationWindow.length - 1]!.date,
+          'yyyy-MM-dd'
+        )
+      : undefined,
     startWeightTrend: Math.round(startWeightTrend * 10) / 10,
     endWeightTrend: Math.round(endWeightTrend * 10) / 10,
     weightChangeKg: Math.round(weightChange * 100) / 100,

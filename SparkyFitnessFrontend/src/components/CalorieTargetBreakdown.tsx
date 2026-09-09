@@ -36,6 +36,8 @@ interface AdaptiveTdeeData {
   endWeightTrend?: number;
   weightChangeKg?: number;
   daysInWindow?: number;
+  windowStartDate?: string;
+  windowEndDate?: string;
   dailyWeightChangeKg?: number;
   weightChangeCalories?: number;
   rawTdee?: number;
@@ -742,13 +744,32 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                       )
                     )}{' '}
                     {getEnergyUnitString(energyUnit)}
+                    {adaptiveTdeeData?.windowStartDate &&
+                      adaptiveTdeeData?.windowEndDate && (
+                        // The average covers only days that were actually logged,
+                        // not every day in the window — days under 200 kcal are
+                        // skipped rather than counted as zero. Saying so is what
+                        // makes the "under-logging reads high" caveat make sense.
+                        <span className="text-muted-foreground">
+                          {' '}
+                          {t(
+                            'diary.calculateExplanation.intakeWindow',
+                            '(mean of {{logged}} logged days between {{start}} and {{end}}; days under 200 kcal are excluded, not counted as zero)',
+                            {
+                              logged: adaptiveTdeeData?.daysOfData ?? 0,
+                              start: adaptiveTdeeData.windowStartDate,
+                              end: adaptiveTdeeData.windowEndDate,
+                            }
+                          )}
+                        </span>
+                      )}
                   </li>
                   {typeof adaptiveTdeeData?.weightChangeCalories ===
                     'number' && (
                     <li>
                       {t(
                         'diary.calculateExplanation.weightTrendTerm',
-                        'Weight trend: {{start}} → {{end}} kg ({{change}} kg over {{days}} days) = {{daily}} kg/day',
+                        'Weight trend: {{start}} → {{end}} kg ({{change}} kg across all {{days}} days of the window) = {{daily}} kg/day',
                         {
                           start: adaptiveTdeeData.startWeightTrend ?? 0,
                           end: adaptiveTdeeData.endWeightTrend ?? 0,
