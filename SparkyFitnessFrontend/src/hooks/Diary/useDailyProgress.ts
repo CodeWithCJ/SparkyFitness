@@ -177,7 +177,8 @@ export const useMostRecentBmrQuery = (onDate: string, enabled = true) => {
 
 export const useCalculatedBMR = () => {
   const { user } = useAuth();
-  const { bmrAlgorithm, includeBmrInNetCalories, timezone } = usePreferences();
+  const { bmrAlgorithm, includeBmrInNetCalories, useExternalBmr, timezone } =
+    usePreferences();
 
   const { data: userProfile } = useQuery({
     queryKey: userKeys.profile(user?.id ?? ''),
@@ -226,7 +227,13 @@ export const useCalculatedBMR = () => {
     }
   }
 
-  if (isUsableMeasuredBmr(rawMeasured, formulaBmr) && rawMeasured !== null) {
+  // Same opt-in gate as the server: without it the Diary would show a measured
+  // BMR the goal calculation had already discarded.
+  if (
+    useExternalBmr &&
+    isUsableMeasuredBmr(rawMeasured, formulaBmr) &&
+    rawMeasured !== null
+  ) {
     return {
       bmr: rawMeasured,
       measuredBmr: rawMeasured,

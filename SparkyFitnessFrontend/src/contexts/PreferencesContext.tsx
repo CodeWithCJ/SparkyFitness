@@ -111,6 +111,8 @@ interface PreferencesContextType {
   bmrAlgorithm: BmrAlgorithm;
   bodyFatAlgorithm: BodyFatAlgorithm;
   includeBmrInNetCalories: boolean;
+  /** Whether a synced/measured BMR may replace the chosen formula. Off by default. */
+  useExternalBmr: boolean;
   showNetCarbs: boolean;
   aiAssistedConversions: boolean;
   fatBreakdownAlgorithm: FatBreakdownAlgorithm;
@@ -162,6 +164,7 @@ interface PreferencesContextType {
   setBmrAlgorithm: (algorithm: BmrAlgorithm) => void;
   setBodyFatAlgorithm: (algorithm: BodyFatAlgorithm) => void;
   setIncludeBmrInNetCalories: (include: boolean) => void;
+  setUseExternalBmr: (use: boolean) => void;
   setShowNetCarbs: (show: boolean) => void;
   setAiAssistedConversions: (enabled: boolean) => void;
   setFatBreakdownAlgorithm: (algorithm: FatBreakdownAlgorithm) => void;
@@ -233,6 +236,7 @@ export interface DefaultPreferences {
   bmr_algorithm: BmrAlgorithm;
   body_fat_algorithm: BodyFatAlgorithm;
   include_bmr_in_net_calories: boolean;
+  use_external_bmr: boolean;
   show_net_carbs: boolean;
   ai_assisted_conversions: boolean;
   fat_breakdown_algorithm: FatBreakdownAlgorithm;
@@ -324,6 +328,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     useState<BodyFatAlgorithm>(BodyFatAlgorithm.US_NAVY);
   const [includeBmrInNetCalories, setIncludeBmrInNetCaloriesState] =
     useState<boolean>(false);
+  const [useExternalBmr, setUseExternalBmrState] = useState<boolean>(false);
   const [showNetCarbs, setShowNetCarbsState] = useState<boolean>(false);
   const [addExerciseWaterToGoal, setAddExerciseWaterToGoalState] =
     useState<boolean>(false);
@@ -727,6 +732,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setIncludeBmrInNetCaloriesState(
           data.include_bmr_in_net_calories ?? false
         );
+        setUseExternalBmrState(data.use_external_bmr ?? false);
         setShowNetCarbsState(data.show_net_carbs ?? false);
         setAddExerciseWaterToGoalState(
           data.add_exercise_water_to_goal ?? false
@@ -918,6 +924,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         body_fat_algorithm: newPrefs?.bodyFatAlgorithm ?? bodyFatAlgorithm,
         include_bmr_in_net_calories:
           newPrefs?.includeBmrInNetCalories ?? includeBmrInNetCalories,
+        use_external_bmr: newPrefs?.useExternalBmr ?? useExternalBmr,
         show_net_carbs: newPrefs?.showNetCarbs ?? showNetCarbs,
         add_exercise_water_to_goal:
           newPrefs?.addExerciseWaterToGoal ?? addExerciseWaterToGoal,
@@ -992,6 +999,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       bmrAlgorithm,
       bodyFatAlgorithm,
       includeBmrInNetCalories,
+      useExternalBmr,
       showNetCarbs,
       aiAssistedConversions,
       fatBreakdownAlgorithm,
@@ -1251,6 +1259,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       bmrAlgorithm,
       bodyFatAlgorithm,
       includeBmrInNetCalories,
+      useExternalBmr,
       showNetCarbs,
       aiAssistedConversions,
       fatBreakdownAlgorithm,
@@ -1299,6 +1308,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setBmrAlgorithm: setBmrAlgorithmState,
       setBodyFatAlgorithm: setBodyFatAlgorithmState,
       setIncludeBmrInNetCalories: setIncludeBmrInNetCaloriesState,
+      setUseExternalBmr: setUseExternalBmrState,
       setShowNetCarbs: setShowNetCarbsState,
       setAiAssistedConversions: setAiAssistedConversionsState,
       setFatBreakdownAlgorithm: setFatBreakdownAlgorithmState,
@@ -1349,6 +1359,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       bmrAlgorithm,
       bodyFatAlgorithm,
       includeBmrInNetCalories,
+      useExternalBmr,
       showNetCarbs,
       aiAssistedConversions,
       fatBreakdownAlgorithm,

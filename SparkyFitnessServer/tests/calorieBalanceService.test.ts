@@ -515,6 +515,8 @@ describe('measured BMR override', () => {
     activity_level: 'not_much',
     calorie_goal_adjustment_mode: 'dynamic' as const,
     include_bmr_in_net_calories: true,
+    // The override is opt-in; this block exercises it turned on.
+    use_external_bmr: true,
   };
 
   test('prefers a check-in measured BMR over the formula calculation', () => {

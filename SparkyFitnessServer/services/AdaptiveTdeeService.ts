@@ -23,6 +23,7 @@ interface UserProfile {
 interface UserPreferences {
   bmr_algorithm?: string | null;
   activity_level?: string | null;
+  use_external_bmr?: boolean | null;
 }
 
 interface LatestMeasurement {
@@ -155,9 +156,11 @@ function computeAdaptiveTdeeFromData(
         : undefined
     ) ||
     10 * weightKg + 6.25 * heightCm - 5 * age + (gender === 'male' ? 5 : -161);
-  const baseBmr = isUsableMeasuredBmr(measuredBmr, formulaBmr)
-    ? parseFloat(String(measuredBmr))
-    : formulaBmr;
+  const baseBmr =
+    preferences?.use_external_bmr &&
+    isUsableMeasuredBmr(measuredBmr, formulaBmr)
+      ? parseFloat(String(measuredBmr))
+      : formulaBmr;
 
   const fallbackTdee = baseBmr * multiplier;
 

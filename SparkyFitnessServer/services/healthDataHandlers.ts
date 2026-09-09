@@ -21,6 +21,7 @@ import {
   type TelemetryGpsPoint,
 } from './workoutTelemetryDerivation.js';
 import { upsertSamplesByDay } from './healthMetricSampleWriter.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import {
   BUILT_IN_MOODS,
@@ -28,6 +29,7 @@ import {
   MAX_HEALTH_TOTAL_CALORIES_PER_DAY,
   MIN_MEASURED_BMR_KCAL,
   MAX_MEASURED_BMR_KCAL,
+  todayInZone,
 } from '@workspace/shared';
 
 /**
@@ -682,11 +684,43 @@ const checkInHandleBatch: HandleBatchFn = async (entries, ctx) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     measurements: Record<string, any>;
   }> = [];
+  // BMR only: providers that report it as a daily *accumulation* rather than a
+  // rate — Garmin's `bmrKilocalories` sits in the daily summary beside
+  // `totalKilocalories` — hand back a partial total when the day is still
+  // running. A 4am sync reported 716 kcal against a ~1800 kcal formula estimate
+  // (issue #2395), and a late-afternoon one is worse because it looks plausible.
+  // HealthKit already keeps only fully-elapsed days; this is the equivalent for
+  // every other source. Resolved once per batch, and only when a BMR is present.
+  const hasBmrWrite = entries.some(
+    (e) => e.entry?.type === 'bmr' || e.entry?.type === 'basal_metabolic_rate'
+  );
+  const todayForUser = hasBmrWrite
+    ? todayInZone(await loadUserTimezone(ctx.userId))
+    : null;
   for (let i = 0; i < entries.length; i++) {
     const prepared = prepareCheckInMeasurement(entries[i].entry);
     if ('error' in prepared) {
       outcomes[i] = { status: 'error', error: prepared.error };
       continue;
+    }
+    if (
+      prepared.measurements.bmr !== undefined &&
+      todayForUser !== null &&
+      entries[i].parsedDate >= todayForUser
+    ) {
+      delete prepared.measurements.bmr;
+      log(
+        'info',
+        `healthDataHandlers: ignoring BMR for ${entries[i].parsedDate} — the day is not complete in the user's timezone, so the value may be a partial daily total.`
+      );
+      if (Object.keys(prepared.measurements).length === 0) {
+        outcomes[i] = {
+          status: 'skipped',
+          reason:
+            'BMR is only accepted for a completed day, since some providers report it as a running daily total.',
+        };
+        continue;
+      }
     }
     writes.push({
       index: i,

@@ -267,9 +267,11 @@ async function getUserGoalsForRange(
       // The measured value is checked against the formula estimate when one could
       // be computed, and on the absolute bounds alone when it could not — a failed
       // or impossible formula must not discard an otherwise good reading.
-      const bmr = isUsableMeasuredBmr(measuredBmr, formulaBmr || null)
-        ? (measuredBmr as number)
-        : formulaBmr;
+      const bmr =
+        userPreferences?.use_external_bmr &&
+        isUsableMeasuredBmr(measuredBmr, formulaBmr || null)
+          ? (measuredBmr as number)
+          : formulaBmr;
 
       // Mirror DashboardService exactly: use user's actual activity multiplier, not hardcoded
       const activityMultiplier = ACTIVITY_MULTIPLIERS[activityLevel] || 1.2;
@@ -367,9 +369,11 @@ async function getUserGoalsForRange(
             DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
           // computeCalorieTarget re-validates this against its own formula estimate
           // before letting it become the RMR safety floor.
-          measuredBmr: isUsableMeasuredBmr(measuredBmr, formulaBmr || null)
-            ? measuredBmr
-            : undefined,
+          measuredBmr:
+            userPreferences?.use_external_bmr &&
+            isUsableMeasuredBmr(measuredBmr, formulaBmr || null)
+              ? measuredBmr
+              : undefined,
         });
         goalCalories = targetResult.finalTarget;
       }

@@ -113,6 +113,7 @@ const CalculationSettings = () => {
     bmrAlgorithm: contextBmrAlgorithm,
     bodyFatAlgorithm: contextBodyFatAlgorithm,
     includeBmrInNetCalories: contextIncludeBmrInNetCalories,
+    useExternalBmr: contextUseExternalBmr,
     showNetCarbs: contextShowNetCarbs,
     fatBreakdownAlgorithm: contextFatBreakdownAlgorithm,
     mineralCalculationAlgorithm: contextMineralCalculationAlgorithm,
@@ -193,6 +194,7 @@ const CalculationSettings = () => {
   const [includeBmrInNetCalories, setIncludeBmrInNetCalories] = useState(
     contextIncludeBmrInNetCalories || false
   );
+  const [useExternalBmr, setUseExternalBmr] = useState(contextUseExternalBmr);
   const [showNetCarbs, setShowNetCarbs] = useState(
     contextShowNetCarbs || false
   );
@@ -322,6 +324,7 @@ const CalculationSettings = () => {
         bmrAlgorithm,
         bodyFatAlgorithm,
         includeBmrInNetCalories,
+        useExternalBmr,
         showNetCarbs,
         energyUnit, // Ensure energyUnit is included in saving
         fatBreakdownAlgorithm: fatBreakdownAlgorithm,
@@ -755,6 +758,31 @@ const CalculationSettings = () => {
             {t(
               'calculationSettings.includeBmrInNetCaloriesHint',
               'When enabled, your BMR will be subtracted from your daily net calorie total.'
+            )}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="use-external-bmr"
+          checked={useExternalBmr}
+          onCheckedChange={(checked) => setUseExternalBmr(Boolean(checked))}
+        />
+        <div className="grid gap-1.5 leading-none">
+          <Label
+            htmlFor="use-external-bmr"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+          >
+            {t(
+              'calculationSettings.useExternalBmr',
+              'Use measured BMR from check-ins and synced devices'
+            )}
+          </Label>
+          <p className="text-sm text-muted-foreground">
+            {t(
+              'calculationSettings.useExternalBmrHint',
+              'Off by default — your chosen formula is always used until you turn this on. When enabled, a BMR recorded on a check-in or synced from a smart scale or health provider replaces the formula for that day, provided it is physiologically plausible for you. Some devices report BMR as a running daily total rather than a rate, which is why this is opt-in.'
             )}
           </p>
         </div>

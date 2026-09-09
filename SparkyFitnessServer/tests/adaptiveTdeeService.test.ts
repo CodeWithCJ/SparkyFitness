@@ -38,6 +38,7 @@ describe('AdaptiveTdeeService', () => {
     preferenceRepository.getUserPreferences.mockResolvedValue({
       bmr_algorithm: 'Mifflin-St Jeor',
       activity_level: 'moderate',
+      use_external_bmr: true,
     });
     // Mock weight entries spanning 90 days
     const weightEntries = [];
@@ -110,6 +111,7 @@ describe('AdaptiveTdeeService', () => {
       preferences: {
         bmr_algorithm: 'Mifflin-St Jeor',
         activity_level: 'moderate',
+        use_external_bmr: true,
       },
       latestMeasurement: { weight: 80, height: 180 },
       checkInMeasurements: [
@@ -144,6 +146,7 @@ describe('AdaptiveTdeeService', () => {
     preferenceRepository.getUserPreferences.mockResolvedValue({
       bmr_algorithm: 'Mifflin-St Jeor',
       activity_level: 'moderate',
+      use_external_bmr: true,
     });
     // Mock weight entries spanning 90 days
     const weightEntries = [];
@@ -203,6 +206,7 @@ describe('AdaptiveTdeeService', () => {
       preferences: {
         bmr_algorithm: 'Mifflin-St Jeor',
         activity_level: 'moderate',
+        use_external_bmr: true,
       },
       latestMeasurement: { weight: 80, height: 180 },
       checkInMeasurements: [
@@ -287,6 +291,7 @@ describe('AdaptiveTdeeService', () => {
       preferences: {
         bmr_algorithm: 'Mifflin-St Jeor',
         activity_level: 'moderate',
+        use_external_bmr: true,
       },
       latestMeasurement: { weight: 80, height: 180 },
       checkInMeasurements: Array.from({ length: 28 }, (_, i) => ({
@@ -336,6 +341,7 @@ describe('AdaptiveTdeeService', () => {
       preferences: {
         bmr_algorithm: 'Mifflin-St Jeor',
         activity_level: 'moderate',
+        use_external_bmr: true,
       },
       latestMeasurement: { weight: 80, height: 180 },
       checkInMeasurements,
@@ -365,6 +371,7 @@ describe('AdaptiveTdeeService', () => {
       preferences: {
         bmr_algorithm: 'Mifflin-St Jeor',
         activity_level: 'moderate',
+        use_external_bmr: true,
       },
       latestMeasurement: { weight: 80, height: 180 },
       checkInMeasurements: Array.from({ length: 70 }, (_, i) => ({
@@ -414,6 +421,7 @@ describe('AdaptiveTdeeService', () => {
       preferences: {
         bmr_algorithm: 'Mifflin-St Jeor',
         activity_level: 'moderate',
+        use_external_bmr: true,
       },
       latestMeasurement: { weight: 80, height: 180 },
       checkInMeasurements,
@@ -448,6 +456,7 @@ describe('AdaptiveTdeeService', () => {
       preferences: {
         bmr_algorithm: 'Mifflin-St Jeor',
         activity_level: 'moderate',
+        use_external_bmr: true,
       },
       latestMeasurement,
       checkInMeasurements,

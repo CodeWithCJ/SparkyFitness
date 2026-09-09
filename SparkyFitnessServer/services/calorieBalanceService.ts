@@ -44,6 +44,8 @@ export interface CalorieBalanceUserPreferences {
   activity_level?: string | null;
   bmr_algorithm?: string | null;
   include_bmr_in_net_calories?: boolean | null;
+  /** Opt-in for letting a synced/measured BMR replace the chosen formula. */
+  use_external_bmr?: boolean | null;
   calorie_goal_adjustment_mode?: CalorieGoalAdjustmentMode | string | null;
   exercise_calorie_percentage?: number | null;
   tdee_allow_negative_adjustment?: boolean | null;
@@ -284,7 +286,10 @@ export function computeCalorieBalance({
   // `bmr` still holds the formula estimate here, which is what the measured value
   // is sanity-checked against.
   let bmrSource: 'formula' | 'measured' = 'formula';
-  if (isUsableMeasuredBmr(measurements?.bmr, bmr)) {
+  if (
+    userPreferences?.use_external_bmr &&
+    isUsableMeasuredBmr(measurements?.bmr, bmr)
+  ) {
     bmr = parseFloat(String(measurements!.bmr));
     bmrSource = 'measured';
   }

@@ -33,6 +33,8 @@ describe('useCalculatedBMR', () => {
     mockUsePreferences.mockReturnValue({
       bmrAlgorithm: 'Mifflin-St Jeor',
       includeBmrInNetCalories: false,
+      // The measured-BMR path is opt-in; these cases exercise it turned on.
+      useExternalBmr: true,
       timezone: 'UTC',
     });
     mockQueryData = {};
@@ -123,5 +125,31 @@ describe('useCalculatedBMR', () => {
 
     expect(result.current.measuredBmr).toBeNull();
     expect(result.current.bmr).toBeGreaterThan(1000);
+  });
+  it('ignores a measured BMR when the opt-in is off', () => {
+    mockUsePreferences.mockReturnValue({
+      bmrAlgorithm: 'Mifflin-St Jeor',
+      includeBmrInNetCalories: false,
+      useExternalBmr: false,
+      timezone: 'UTC',
+    });
+    mockQueryData[JSON.stringify(['users', 'profile', 'user-1'])] = {
+      gender: 'male',
+      date_of_birth: '1990-01-01',
+    };
+    mockQueryData[
+      JSON.stringify(['dailyProgress', 'measurements', 'recent', 'weight'])
+    ] = { weight: 80 };
+    mockQueryData[
+      JSON.stringify(['dailyProgress', 'measurements', 'recent', 'height'])
+    ] = { height: 180 };
+    // Well inside the plausible band, so only the preference can reject it.
+    mockQueryData[bmrKey()] = { bmr: 1900 };
+
+    const { result } = renderHook(() => useCalculatedBMR());
+
+    expect(result.current.measuredBmr).toBeNull();
+    expect(result.current.bmr).toBeGreaterThan(1000);
+    expect(result.current.bmr).not.toBe(1900);
   });
 });

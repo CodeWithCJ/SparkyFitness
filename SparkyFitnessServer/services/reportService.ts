@@ -339,9 +339,11 @@ async function getReportsData(
         // The measured reading wins only if it is plausible against this person's
         // own formula estimate; with no estimate to compare, the absolute bounds
         // decide on their own.
-        day.bmr = isUsableMeasuredBmr(measuredBmr, formulaBmr)
-          ? Number(measuredBmr)
-          : formulaBmr;
+        day.bmr =
+          userPreferences?.use_external_bmr &&
+          isUsableMeasuredBmr(measuredBmr, formulaBmr)
+            ? Number(measuredBmr)
+            : formulaBmr;
         day.include_bmr_in_net_calories =
           userPreferences.include_bmr_in_net_calories;
       });
