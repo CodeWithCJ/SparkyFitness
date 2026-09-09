@@ -375,9 +375,11 @@ function computeAdaptiveTdeeFromData(
     weightChangeKg: Math.round(weightChange * 100) / 100,
     daysInWindow,
     dailyWeightChangeKg: Math.round(dailyWeightChange * 1000) / 1000,
-    weightChangeCalories: Math.round(
-      -dailyWeightChange * ENERGY_DENSITY_KCAL_PER_KG
-    ),
+    // Derived from the two rounded figures the UI actually prints, not rounded
+    // independently: otherwise "2026 + 110" renders next to a total of 2137 and
+    // the explanation undermines itself.
+    weightChangeCalories:
+      Math.round(rawAdaptiveTdee) - Math.round(avgDailyIntake),
     rawTdee: Math.round(rawAdaptiveTdee),
     wasClamped,
     clampMin: Math.round(minTdee),
