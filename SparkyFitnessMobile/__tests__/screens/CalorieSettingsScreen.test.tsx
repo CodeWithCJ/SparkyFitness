@@ -122,6 +122,21 @@ describe('CalorieSettingsScreen', () => {
     expect(mockMutate).toHaveBeenCalledWith({ goal_mode: 'recomp' });
   });
 
+  it('saves the measured-BMR opt-in against the shared preference', () => {
+    // Same `use_external_bmr` column the web Calculation Settings writes, so the
+    // two clients stay in step without any sync of their own.
+    const { getByLabelText } = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
+
+    const toggle = getByLabelText(
+      'Use measured BMR from check-ins and synced devices'
+    );
+    fireEvent(toggle, 'valueChange', true);
+
+    expect(mockMutate).toHaveBeenCalledWith({ use_external_bmr: true });
+  });
+
   it('saves a bounded custom Goal Mode percentage', () => {
     mockPreferences.goal_mode = 'manual';
     mockPreferences.goal_mode_custom_percentage = -10;

@@ -874,7 +874,10 @@
       "standardDescription": "Uses the higher of your estimated RMR and the clinical minimum.",
       "customDescription": "Replaces the standard floor with your chosen minimum. Health recommendations remain visible.",
       "disabledDescription": "Stops automatic target clamping. Health warnings remain visible."
-    }
+    },
+    "useExternalBmr": "Use measured BMR from check-ins and synced devices",
+    "useExternalBmrHint": "Off by default — your chosen formula is always used until you turn this on. When enabled, a BMR recorded on a check-in or synced from a smart scale or health provider replaces the formula for that day, provided it is physiologically plausible for you.",
+    "useExternalBmrIosNote": "Apple Health’s Resting Energy already includes light daily activity, so consider setting Activity Level to None (×1.0) to avoid counting it twice."
   },
   "dashboardSettings": {
     "updateFailed": "Failed to update setting.",

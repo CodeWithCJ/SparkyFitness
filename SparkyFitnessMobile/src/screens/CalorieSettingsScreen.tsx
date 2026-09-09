@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, Platform } from 'react-native';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -38,6 +38,7 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
     activityLevel: prefs?.activity_level ?? 'not_much',
     exerciseCaloriePercentage: prefs?.exercise_calorie_percentage ?? 100,
     includeBmrInNetCalories: prefs?.include_bmr_in_net_calories ?? false,
+    useExternalBmr: prefs?.use_external_bmr ?? false,
     tdeeAllowNegativeAdjustment: prefs?.tdee_allow_negative_adjustment ?? false,
     goalMode: prefs?.goal_mode ?? 'maintain',
     goalModeCustomPercentage: prefs?.goal_mode_custom_percentage ?? 0,
@@ -291,6 +292,13 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   const handleBmrToggle = useCallback(
     (value: boolean) => {
       mutation.mutate({ include_bmr_in_net_calories: value });
+    },
+    [mutation]
+  );
+
+  const handleExternalBmrToggle = useCallback(
+    (value: boolean) => {
+      mutation.mutate({ use_external_bmr: value });
     },
     [mutation]
   );
@@ -833,6 +841,43 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
             )}
           </Animated.View>
         </Animated.View>
+
+        {/* Measured BMR — same `use_external_bmr` preference as the web
+            Calculation Settings, so a change here shows up there and vice versa.
+            Deliberately worded identically: one setting under two different names
+            across clients is worse than a slightly less platform-native label. */}
+        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+          <View className="flex-row justify-between items-center">
+            <Text className="text-base font-semibold text-text-primary flex-1 mr-3">
+              {t('calorieSettings.useExternalBmr', {
+                defaultValue:
+                  'Use measured BMR from check-ins and synced devices',
+              })}
+            </Text>
+            <Switch
+              onValueChange={handleExternalBmrToggle}
+              value={normalized.useExternalBmr}
+              accessibilityLabel={t('calorieSettings.useExternalBmr', {
+                defaultValue:
+                  'Use measured BMR from check-ins and synced devices',
+              })}
+            />
+          </View>
+          <Text className="text-text-secondary text-sm mt-3">
+            {t('calorieSettings.useExternalBmrHint', {
+              defaultValue:
+                'Off by default — your chosen formula is always used until you turn this on. When enabled, a BMR recorded on a check-in or synced from a smart scale or health provider replaces the formula for that day, provided it is physiologically plausible for you.',
+            })}
+          </Text>
+          {normalized.useExternalBmr && Platform.OS === 'ios' && (
+            <Text className="text-text-secondary text-xs mt-3 italic">
+              {t('calorieSettings.useExternalBmrIosNote', {
+                defaultValue:
+                  'Apple Health’s Resting Energy already includes light daily activity, so consider setting Activity Level to None (×1.0) to avoid counting it twice.',
+              })}
+            </Text>
+          )}
+        </View>
       </ScrollView>
     </View>
   );
