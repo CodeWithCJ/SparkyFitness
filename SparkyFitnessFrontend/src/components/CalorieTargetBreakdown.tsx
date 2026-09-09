@@ -854,12 +854,18 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                     <li>
                       {t(
                         'diary.calculateExplanation.weightTrendCalories',
-                        'Energy from that trend: {{daily}} kg/day × {{kcalPerKg}} kcal/kg ≈ {{value}}',
+                        'Energy from that trend: −({{daily}} kg/day × {{kcalPerKg}} kcal/kg) ≈ {{value}}',
                         {
                           daily: (
                             adaptiveTdeeData.dailyWeightChangeKg ?? 0
                           ).toFixed(4),
                           kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG,
+                          // Negated on purpose. The server computes
+                          // rawTdee = avgIntake − dailyWeightChange × 6000, so the
+                          // term added to intake is minus the product of the two
+                          // factors printed here. Without the sign the line reads
+                          // '−0.0185 × 6000 = +111', which is the wrong number in
+                          // the one panel built for checking the arithmetic.
                           // Approximate, deliberately. The intake and the total
                           // are each rounded on their own, so the difference
                           // between them can sit a kcal away from what the

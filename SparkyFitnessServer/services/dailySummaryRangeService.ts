@@ -59,12 +59,16 @@ interface CheckInRow {
 /**
  * Body-composition fields the BMR formula reads. Each is carried forward on its own,
  * mirroring the per-field subselects in `getLatestCheckInMeasurementsOnOrBeforeDate`.
+ *
+ * `bmr` is deliberately absent: a measured BMR describes the day it was recorded, so
+ * it is resolved per date below rather than carried. Leaving it here reported a
+ * single Sept 1 reading as `measured` for Sept 2 and 3 as well, which put this
+ * endpoint (Reports) and the Diary in disagreement about the same day.
  */
 const MEASUREMENT_FIELDS = [
   'weight',
   'height',
   'body_fat_percentage',
-  'bmr',
 ] as const satisfies readonly (keyof CalorieBalanceMeasurements)[];
 
 /**
@@ -202,8 +206,15 @@ export async function getDailySummaryRange({
     height: (seedMeasurement as CalorieBalanceMeasurements | null)?.height,
     body_fat_percentage: (seedMeasurement as CalorieBalanceMeasurements | null)
       ?.body_fat_percentage,
-    bmr: (seedMeasurement as CalorieBalanceMeasurements | null)?.bmr,
   };
+
+  // Exact-date lookup for the one field that is not carried forward.
+  const bmrByDate = new Map<string, unknown>();
+  for (const row of measurementsAsc) {
+    if (row.bmr !== null && row.bmr !== undefined && Number(row.bmr) > 0) {
+      bmrByDate.set(String(row.entry_date).slice(0, 10), row.bmr);
+    }
+  }
 
   const days: DailyCalorieBalanceRow[] = [];
 
@@ -261,7 +272,7 @@ export async function getDailySummaryRange({
         adjustedGoalCalories: Number(dayGoals?.calories) || 2000,
         userProfile,
         userPreferences,
-        measurements: carried,
+        measurements: { ...carried, bmr: bmrByDate.get(date) as never },
         ...deviceProjectionSnapshot,
       }),
     });

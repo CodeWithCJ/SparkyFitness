@@ -41,6 +41,33 @@ describe('measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate', () 
     expect(mockClient.release).toHaveBeenCalledTimes(1);
   });
 
+  it('selects bmr for the exact date while other fields carry forward', async () => {
+    // The one-line fix for issue #2395. Reverting `entry_date = $2` back to `<= $2`
+    // for bmr passed the whole suite before this, so the query text is asserted
+    // directly: a measured BMR describes the day it was taken, and nothing else.
+    mockClient.query.mockResolvedValue({ rows: [{ id: 'm1' }] });
+
+    await measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(
+      'user-1',
+      '2026-06-12'
+    );
+
+    const sql: string = mockClient.query.mock.calls[0][0];
+    const bmrSubselect = sql
+      .split('\n')
+      .find((line: string) => line.includes(') as bmr'));
+
+    expect(bmrSubselect).toBeDefined();
+    expect(bmrSubselect).toContain('entry_date = $2');
+    expect(bmrSubselect).not.toContain('entry_date <= $2');
+
+    // Body composition is still carried forward — only bmr changed.
+    const weightSubselect = sql
+      .split('\n')
+      .find((line: string) => line.includes(') as weight'));
+    expect(weightSubselect).toContain('entry_date <= $2');
+  });
+
   it('returns null when no data exists', async () => {
     mockClient.query.mockResolvedValue({ rows: [{ id: null }] });
 
