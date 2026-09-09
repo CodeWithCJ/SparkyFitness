@@ -1003,7 +1003,7 @@ const CalculationSettings = () => {
                   💡{' '}
                   {t(
                     'settings.calorieGoalAdjustment.adaptiveActivityHint',
-                    'In Adaptive mode, this setting acts as a fallback until you have enough tracking data.'
+                    'In Adaptive mode this is the fallback estimate until you have enough tracking data — and it keeps setting the plausibility limits afterwards. Your measured TDEE is capped to within ±500 kcal of BMR × this multiplier, so a level set too low can hold a genuinely higher expenditure down.'
                   )}
                 </p>
               )}

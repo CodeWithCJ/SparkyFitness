@@ -148,6 +148,22 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
     convertEnergy(previewResult.rmr, 'kcal', energyUnit)
   );
 
+  // Adaptive TDEE derivation, in the units actually shown. The server reconciles
+  // its figures in kcal, but converting and rounding each one independently breaks
+  // the sum again in kJ — 2100 + 100 kcal renders as 8786 + 418 = 9204 kJ beside a
+  // total of 9205. So the delta is derived from the two displayed numbers rather
+  // than converted on its own, and the arithmetic holds in either unit.
+  const displayAdaptiveIntake = Math.round(
+    convertEnergy(adaptiveTdeeData?.avgIntake || 0, 'kcal', energyUnit)
+  );
+  const displayAdaptiveRawTdee = Math.round(
+    convertEnergy(adaptiveTdeeData?.rawTdee || 0, 'kcal', energyUnit)
+  );
+  // Against the raw estimate, not the capped one: when the cap binds the total no
+  // longer equals intake plus trend, and the trend row still has to state the real
+  // trend rather than be bent to match a capped total.
+  const displayAdaptiveDelta = displayAdaptiveRawTdee - displayAdaptiveIntake;
+
   // Inputs are printed at the precision the formula actually evaluates at. Rounding
   // weight to one decimal made the panel unable to reproduce its own answer: a stored
   // 73.45 kg printed as "73.5" recomputes to 1597 kcal against a stated 1596.
@@ -736,14 +752,7 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                       'diary.calculateExplanation.averageDailyIntake',
                       'Average daily calorie intake:'
                     )}{' '}
-                    {Math.round(
-                      convertEnergy(
-                        adaptiveTdeeData?.avgIntake || 0,
-                        'kcal',
-                        energyUnit
-                      )
-                    )}{' '}
-                    {getEnergyUnitString(energyUnit)}
+                    {displayAdaptiveIntake} {getEnergyUnitString(energyUnit)}
                     {adaptiveTdeeData?.windowStartDate &&
                       adaptiveTdeeData?.windowEndDate && (
                         // The average covers only days that were actually logged,
@@ -795,18 +804,8 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                             adaptiveTdeeData.dailyWeightChangeKg ?? 0
                           ).toFixed(3),
                           value: `${
-                            adaptiveTdeeData.weightChangeCalories >= 0
-                              ? '+'
-                              : '−'
-                          }${Math.abs(
-                            Math.round(
-                              convertEnergy(
-                                adaptiveTdeeData.weightChangeCalories,
-                                'kcal',
-                                energyUnit
-                              )
-                            )
-                          )}`,
+                            displayAdaptiveDelta >= 0 ? '+' : '−'
+                          }${Math.abs(displayAdaptiveDelta)}`,
                           unit: getEnergyUnitString(energyUnit),
                         }
                       )}
@@ -834,26 +833,9 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                             'diary.calculateExplanation.tdeeSum',
                             '({{intake}} {{sign}} {{delta}})',
                             {
-                              intake: Math.round(
-                                convertEnergy(
-                                  adaptiveTdeeData?.avgIntake || 0,
-                                  'kcal',
-                                  energyUnit
-                                )
-                              ),
-                              sign:
-                                adaptiveTdeeData.weightChangeCalories < 0
-                                  ? '−'
-                                  : '+',
-                              delta: Math.abs(
-                                Math.round(
-                                  convertEnergy(
-                                    adaptiveTdeeData.weightChangeCalories,
-                                    'kcal',
-                                    energyUnit
-                                  )
-                                )
-                              ),
+                              intake: displayAdaptiveIntake,
+                              sign: displayAdaptiveDelta < 0 ? '−' : '+',
+                              delta: Math.abs(displayAdaptiveDelta),
                             }
                           )}
                         </span>

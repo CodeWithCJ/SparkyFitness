@@ -127,6 +127,55 @@ Paths are relative to each package root. `—` means that layer does not exist f
 
 ---
 
+## Measured BMR — Rules That Are Easy To Break
+
+`check_in_measurements.bmr` holds a BMR measured by a smart scale or synced from a
+health provider. It is not treated like the other body metrics, and every rule
+below exists because breaking it caused issue #2395.
+
+**Exact date, never carried forward.** Weight, height, circumferences and body
+composition all carry forward — there is no other source for a day without a
+reading, so the last known value is reused. BMR is the exception: a formula
+fallback exists that already tracks the user's current weight, so a stale reading
+is strictly worse than recomputing. It applies only on its own `entry_date`, and
+days without one use the formula. This is also what makes "turn the sync off"
+actually restore the formula the next day.
+
+Do **not** read `bmr` from `getLatestMeasurement()` for a per-date calculation —
+that query is unbounded by date and is fetched once and reused across a whole
+range, so a reading taken today would set the fallback TDEE, and therefore the
+±500 Adaptive TDEE clamp, for dates weeks earlier.
+
+**Two-layer plausibility, always both.** `isUsableMeasuredBmr(value, formulaBmr)`
+in `shared/src/utils/calorieCalculations.ts` applies absolute bounds
+(`MIN/MAX_MEASURED_BMR_KCAL`, 600–6000) *and* a ratio band against the user's own
+formula estimate (0.6–1.6). Compute the formula estimate first and pass it. When
+no estimate can be computed the absolute bounds decide alone, so they must stay
+meaningful on their own — the wider 300–10000 pair is what let a 350 kcal reading
+through.
+
+**Five consumers, one rule.** A measured BMR feeds the daily burn
+(`calorieBalanceService`), the goal (`goalService`), the Adaptive TDEE fallback
+(`AdaptiveTdeeService`), the RMR safety floor (`calculateMinimumMetabolism` in
+shared) and reports (`reportService`). The safety-floor path is the one people
+miss: `getRecommendedCalorieSafetyFloor()` uses RMR verbatim, so a bad value does
+not merely shift the goal, it becomes the floor underneath it.
+
+**Provider quirks.** iOS maps `BasalMetabolicRate` to HealthKit's
+`BasalEnergyBurned`, keeps only fully-elapsed days, and stamps each day D with
+D+1 so an exact-date lookup picks up yesterday's complete resting energy. Android
+reads Health Connect's `BasalMetabolicRate` at the record's own timestamp, with no
+such shift — so the same underlying data lands a day apart on the two platforms.
+Garmin sends `bmrKilocalories` from the daily summary, which accumulates through
+the day and has no per-metric opt-out.
+
+**Activity level still matters after Adaptive goes live.** It does not feed the
+adaptive estimate, but `fallbackTdee = BMR × multiplier` sets the ±500 band the
+estimate is capped to. A level set too low silently holds a genuinely higher
+measured expenditure down.
+
+---
+
 ## How AI Tools Use This
 
 Grep the feature name in this doc to narrow to the right package folders, then grep the same name inside those folders to open the actual files. The naming is intentionally **not** uniform, so confirm against the filesystem rather than assuming a `<feature>Service.ts` / `<feature>Repository.ts` file exists.

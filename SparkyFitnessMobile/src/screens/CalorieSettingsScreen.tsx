@@ -582,7 +582,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
                 <Text className="text-text-secondary text-sm mt-3">
                   {t('calorieSettings.adaptiveFallback', {
                     defaultValue:
-                      'Acts as a fallback until you have enough tracking data.',
+                      'The fallback estimate until you have enough tracking data — and it keeps setting the plausibility limits afterwards. Your measured TDEE is capped to within ±500 kcal of BMR × this multiplier.',
                   })}
                 </Text>
               )}

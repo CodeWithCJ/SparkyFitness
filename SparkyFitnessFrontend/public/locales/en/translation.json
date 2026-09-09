@@ -2072,7 +2072,7 @@
       "activityModerate": "Moderately active (×1.55)",
       "activityNone": "None (×1.0)",
       "activityNotMuch": "Sedentary (×1.2)",
-      "adaptiveActivityHint": "In Adaptive mode, this setting acts as a fallback until you have enough tracking data.",
+      "adaptiveActivityHint": "In Adaptive mode this is the fallback estimate until you have enough tracking data — and it keeps setting the plausibility limits afterwards. Your measured TDEE is capped to within ±500 kcal of BMR × this multiplier, so a level set too low can hold a genuinely higher expenditure down.",
       "adaptiveGoal": "Adaptive Goal",
       "adaptiveGoalDescription": "Your calorie goal is derived from your measured expenditure, by comparing your logged intake against your weight trend over the last 28 days. This is the most accurate option once you have a few weeks of consistent weight and food logging.",
       "allowNegativeAdjustment": "Allow the fallback projection to lower the target",
