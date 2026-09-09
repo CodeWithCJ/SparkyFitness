@@ -152,4 +152,31 @@ describe('useCalculatedBMR', () => {
     expect(result.current.bmr).toBeGreaterThan(1000);
     expect(result.current.bmr).not.toBe(1900);
   });
+  it('honours an unsaved override so the settings preview reacts before saving', () => {
+    // Saved preference is off; the Settings page passes its pending edit instead.
+    mockUsePreferences.mockReturnValue({
+      bmrAlgorithm: 'Mifflin-St Jeor',
+      includeBmrInNetCalories: false,
+      useExternalBmr: false,
+      timezone: 'UTC',
+    });
+    mockQueryData[JSON.stringify(['users', 'profile', 'user-1'])] = {
+      gender: 'male',
+      date_of_birth: '1990-01-01',
+    };
+    mockQueryData[
+      JSON.stringify(['dailyProgress', 'measurements', 'recent', 'weight'])
+    ] = { weight: 80 };
+    mockQueryData[
+      JSON.stringify(['dailyProgress', 'measurements', 'recent', 'height'])
+    ] = { height: 180 };
+    mockQueryData[bmrKey()] = { bmr: 1900 };
+
+    const { result } = renderHook(() =>
+      useCalculatedBMR({ useExternalBmr: true })
+    );
+
+    expect(result.current.measuredBmr).toBe(1900);
+    expect(result.current.bmr).toBe(1900);
+  });
 });

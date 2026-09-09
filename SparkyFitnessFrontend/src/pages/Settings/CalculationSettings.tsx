@@ -235,6 +235,9 @@ const CalculationSettings = () => {
     if (contextIncludeBmrInNetCalories !== undefined) {
       setIncludeBmrInNetCalories(contextIncludeBmrInNetCalories);
     }
+    if (contextUseExternalBmr !== undefined) {
+      setUseExternalBmr(contextUseExternalBmr);
+    }
     if (contextShowNetCarbs !== undefined) {
       setShowNetCarbs(contextShowNetCarbs);
     }
@@ -298,6 +301,7 @@ const CalculationSettings = () => {
     contextBmrAlgorithm,
     contextBodyFatAlgorithm,
     contextIncludeBmrInNetCalories,
+    contextUseExternalBmr,
     contextShowNetCarbs,
     contextFatBreakdownAlgorithm,
     contextMineralCalculationAlgorithm,
@@ -395,7 +399,7 @@ const CalculationSettings = () => {
     measuredBmr,
     weight: weightKg,
     height: heightCm,
-  } = useCalculatedBMR();
+  } = useCalculatedBMR({ bmrAlgorithm, useExternalBmr });
   const todayStr = todayInZone(timezone || 'UTC');
   const { data: adaptiveTdeeData } = useAdaptiveTdee(todayStr);
   const { data: goalsData } = useDiaryGoals(todayStr, false);
@@ -1491,6 +1495,16 @@ const CalculationSettings = () => {
           <div className="p-4 bg-muted/50 dark:bg-muted/30 border border-border rounded-xl space-y-2">
             <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
               {t('settings.goalMode.livePreview', 'Live Preview Calculation')}
+            </p>
+            {/* Adaptive TDEE is computed on the server from the *saved*
+                preferences, so an unsaved edit cannot move it or anything derived
+                from it. BMR and body fat are worked out here and do update as you
+                type, which makes the split invisible without saying so. */}
+            <p className="text-xs text-muted-foreground italic">
+              {t(
+                'settings.goalMode.livePreviewSavedNote',
+                'BMR and body fat update as you change settings. Expenditure is calculated on the server from your saved settings, so it and the final target only change after you save.'
+              )}
             </p>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-sm">
               <div>

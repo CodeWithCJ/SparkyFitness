@@ -175,10 +175,24 @@ export const useMostRecentBmrQuery = (onDate: string, enabled = true) => {
   });
 };
 
-export const useCalculatedBMR = () => {
+/**
+ * @param overrides Unsaved values to preview against. The Settings page holds its
+ * pending edits in local state, so without these the live preview would keep
+ * showing the last *saved* preference and only catch up after a save and reload.
+ */
+export const useCalculatedBMR = (overrides?: {
+  bmrAlgorithm?: string;
+  useExternalBmr?: boolean;
+}) => {
   const { user } = useAuth();
-  const { bmrAlgorithm, includeBmrInNetCalories, useExternalBmr, timezone } =
-    usePreferences();
+  const {
+    bmrAlgorithm: savedBmrAlgorithm,
+    includeBmrInNetCalories,
+    useExternalBmr: savedUseExternalBmr,
+    timezone,
+  } = usePreferences();
+  const bmrAlgorithm = overrides?.bmrAlgorithm ?? savedBmrAlgorithm;
+  const useExternalBmr = overrides?.useExternalBmr ?? savedUseExternalBmr;
 
   const { data: userProfile } = useQuery({
     queryKey: userKeys.profile(user?.id ?? ''),

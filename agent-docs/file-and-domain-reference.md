@@ -146,7 +146,18 @@ that query is unbounded by date and is fetched once and reused across a whole
 range, so a reading taken today would set the fallback TDEE, and therefore the
 ±500 Adaptive TDEE clamp, for dates weeks earlier.
 
-**Two-layer plausibility, always both.** `isUsableMeasuredBmr(value, formulaBmr)`
+**Opt-in first.** Every consumer is gated on the `use_external_bmr` preference,
+which defaults to `false`. Check it *before* `isUsableMeasuredBmr`. The mobile
+per-metric sync toggle is not a substitute: Garmin has no per-metric control, so
+`bmr_calories` arrives with no user opt-out of its own.
+
+**Completed days only.** `checkInHandleBatch` in `healthDataHandlers.ts` drops a
+`bmr` write whose `entry_date` is not yet finished in the user's timezone. Garmin
+reports `bmrKilocalories` in its daily summary beside `totalKilocalories` — a
+running accumulation, not a rate — so a mid-day sync sends part of the day. The
+ratio band catches an early-morning value but not a late-afternoon one.
+
+**Two-layer plausibility.** `isUsableMeasuredBmr(value, formulaBmr)`
 in `shared/src/utils/calorieCalculations.ts` applies absolute bounds
 (`MIN/MAX_MEASURED_BMR_KCAL`, 600–6000) *and* a ratio band against the user's own
 formula estimate (0.6–1.6). Compute the formula estimate first and pass it. When

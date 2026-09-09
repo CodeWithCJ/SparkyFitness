@@ -158,6 +158,19 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
   // the sum again in kJ — 2100 + 100 kcal renders as 8786 + 418 = 9204 kJ beside a
   // total of 9205. So the delta is derived from the two displayed numbers rather
   // than converted on its own, and the arithmetic holds in either unit.
+  const adjustmentModeLabel =
+    {
+      adaptive: t('diary.calculateExplanation.modeAdaptive', 'Adaptive Goal'),
+      dynamic: t('diary.calculateExplanation.modeDynamic', 'Dynamic Goal'),
+      fixed: t('diary.calculateExplanation.modeFixed', 'Fixed Goal'),
+      percentage: t(
+        'diary.calculateExplanation.modePercentage',
+        'Percentage Earn-Back'
+      ),
+      tdee: t('diary.calculateExplanation.modeDevice', 'Device Projection'),
+      smart: t('diary.calculateExplanation.modeDevice', 'Device Projection'),
+    }[calorieGoalAdjustmentMode] ?? calorieGoalAdjustmentMode;
+
   const displayAdaptiveIntake = Math.round(
     convertEnergy(adaptiveTdeeData?.avgIntake || 0, 'kcal', energyUnit)
   );
@@ -478,7 +491,7 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
             <div>
               {t(
                 'diary.calculateExplanation.bmrMeasuredScope',
-                'A measured value only counts on the day it was recorded. Days without one fall back to the formula. To stop using measured values, turn off BMR sync in your health app settings.'
+                'A measured value only counts on the day it was recorded. Days without one fall back to the formula. To stop using measured values, turn off “Use measured BMR from check-ins and synced devices” in Calculation Settings.'
               )}
             </div>
           </div>
@@ -552,6 +565,26 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                   { algorithm: bmrAlgorithmLabel }
                 )}
         </p>
+      </div>
+
+      {/* Which Daily Calorie Goal Adjustment mode produced this. Without it the
+          panel reads as the only possible derivation, and under Device Projection
+          it is not even the one the Diary will use. */}
+      <div className="text-xs text-muted-foreground">
+        {t(
+          'diary.calculateExplanation.adjustmentMode',
+          'Daily calorie goal adjustment: {{mode}}',
+          { mode: adjustmentModeLabel }
+        )}
+        {calorieGoalAdjustmentMode === 'tdee' && (
+          <span className="text-amber-600 dark:text-amber-500">
+            {' '}
+            {t(
+              'diary.calculateExplanation.deviceProjectionCaveat',
+              'In this mode your Diary target comes from your device’s total calories projected to midnight, which is not known here. The figures below are the stored-goal derivation and will differ from what the Diary shows.'
+            )}
+          </span>
+        )}
       </div>
 
       {/* Step 3: Adaptive TDEE (Expenditure) */}
@@ -801,7 +834,7 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                     <li>
                       {t(
                         'diary.calculateExplanation.weightTrendTerm',
-                        'Weight trend: {{start}} → {{end}} kg ({{change}} kg across all {{days}} days of the window) = {{daily}} kg/day',
+                        'Weight trend: {{start}} → {{end}} kg ({{change}} kg across all {{days}} days of the window) = {{daily}} kg/day — 7-day averages of your logged weights, not the readings themselves, with missing days filled in between the ones either side',
                         {
                           start: adaptiveTdeeData.startWeightTrend ?? 0,
                           end: adaptiveTdeeData.endWeightTrend ?? 0,
@@ -821,12 +854,18 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                     <li>
                       {t(
                         'diary.calculateExplanation.weightTrendCalories',
-                        'Energy from that trend: {{daily}} kg/day × {{kcalPerKg}} kcal/kg = {{value}}',
+                        'Energy from that trend: {{daily}} kg/day × {{kcalPerKg}} kcal/kg ≈ {{value}}',
                         {
                           daily: (
                             adaptiveTdeeData.dailyWeightChangeKg ?? 0
                           ).toFixed(4),
                           kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG,
+                          // Approximate, deliberately. The intake and the total
+                          // are each rounded on their own, so the difference
+                          // between them can sit a kcal away from what the
+                          // rounded daily rate multiplies out to. The sum line
+                          // below is the one that has to reconcile exactly, and
+                          // it does; claiming '=' here would be the false half.
                           // Evaluated against the kcal constant so the equation
                           // reproduces, with the converted figure appended when the
                           // viewer reads another unit. The energy densities are
@@ -869,6 +908,38 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                       )}
                   </li>
                 </ul>
+                {typeof adaptiveTdeeData?.clampMin === 'number' &&
+                  typeof adaptiveTdeeData?.clampMax === 'number' &&
+                  !adaptiveTdeeData?.wasClamped && (
+                    // Stated even when it does not bite: the band is set by the
+                    // activity level, and a user whose expenditure is being held
+                    // down has no way to discover that unless the limits are
+                    // visible before they start clipping.
+                    <p className="text-xs text-muted-foreground">
+                      {t(
+                        'diary.calculateExplanation.adaptivePlausibilityBand',
+                        'Plausibility limits from your activity level (×{{multiplier}}): {{min}}–{{max}} {{unit}}. The estimate is inside this range, so it is used as calculated.',
+                        {
+                          multiplier: activityMultiplier.toFixed(3),
+                          min: Math.round(
+                            convertEnergy(
+                              adaptiveTdeeData.clampMin,
+                              'kcal',
+                              energyUnit
+                            )
+                          ),
+                          max: Math.round(
+                            convertEnergy(
+                              adaptiveTdeeData.clampMax,
+                              'kcal',
+                              energyUnit
+                            )
+                          ),
+                          unit: getEnergyUnitString(energyUnit),
+                        }
+                      )}
+                    </p>
+                  )}
                 {adaptiveTdeeData?.wasClamped && (
                   // Without this the arithmetic above simply would not add up to
                   // the number shown, which is exactly the "my TDEE moved and I

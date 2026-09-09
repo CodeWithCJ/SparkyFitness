@@ -2213,7 +2213,8 @@
       "unsafeLossText": "Losing more than 1.5% of body weight per week is considered excessive. This rate dramatically increases risks of severe muscle loss, lethargy, hormonal imbalances, and nutritional deficiencies. Please choose a less aggressive goal mode.",
       "calibrationDescription": "Sparky's Adaptive TDEE engine requires at least {{required}} days of consistent tracking to calculate your metabolism accurately (currently using fallback estimates). To speed up calibration:",
       "calibrationWeightTip": "Log weight at least 3-4 times per week.",
-      "calibrationFoodTip": "Log food intake daily (>200 kcal/day)."
+      "calibrationFoodTip": "Log food intake daily (>200 kcal/day).",
+      "livePreviewSavedNote": "BMR and body fat update as you change settings. Expenditure is calculated on the server from your saved settings, so it and the final target only change after you save."
     },
     "mfa": {
       "confirmPassword": "Confirm Password to Continue",
@@ -2788,7 +2789,7 @@
     "calculateExplanation": {
       "bmrMeasured": "Measured",
       "bmrMeasuredDesc": "Using a measured BMR of {{value}} {{unit}} recorded for this day, from a smart scale or health app sync. Your {{algorithm}} formula is not applied.",
-      "bmrMeasuredScope": "A measured value only counts on the day it was recorded. Days without one fall back to the formula. To stop using measured values, disable BMR sync for your connected device or health app.",
+      "bmrMeasuredScope": "A measured value only counts on the day it was recorded. Days without one fall back to the formula. To stop using measured values, turn off “Use measured BMR from check-ins and synced devices” in Calculation Settings.",
       "dialogDescription": "Step-by-step breakdown of how your daily energy target is calculated.",
       "todayTarget": "How today's target is calculated",
       "bmrTitle": "1. Basal Metabolic Rate (BMR)",
@@ -2855,11 +2856,19 @@
       "adaptiveTdeeExpenditure": "Adaptive TDEE (Expenditure)",
       "adaptiveManualGoal": "Adaptive Manual Calorie Goal",
       "targetSafeRange": "✓ Target is in safe range above metabolic safety floor.",
-      "weightTrendTerm": "Weight trend: {{start}} → {{end}} kg ({{change}} kg across all {{days}} days of the window) = {{daily}} kg/day",
-      "weightTrendCalories": "Energy from that trend: {{daily}} kg/day × {{kcalPerKg}} kcal/kg = {{value}}",
+      "weightTrendTerm": "Weight trend: {{start}} → {{end}} kg ({{change}} kg across all {{days}} days of the window) = {{daily}} kg/day — 7-day averages of your logged weights, not the readings themselves, with missing days filled in between the ones either side",
+      "weightTrendCalories": "Energy from that trend: {{daily}} kg/day × {{kcalPerKg}} kcal/kg ≈ {{value}}",
       "tdeeSum": "({{intake}} {{sign}} {{delta}})",
       "adaptiveClamped": "Raw estimate of {{raw}} {{unit}} was capped to {{capped}} {{unit}}, the plausibility limit of ±{{band}} {{unit}} around your BMR-based estimate ({{min}}–{{max}} {{unit}}).",
-      "intakeWindow": "(mean of {{logged}} logged days between {{start}} and {{end}}; days under 200 kcal are excluded, not counted as zero)"
+      "intakeWindow": "(mean of {{logged}} logged days between {{start}} and {{end}}; days under 200 kcal are excluded, not counted as zero)",
+      "adaptivePlausibilityBand": "Plausibility limits from your activity level (×{{multiplier}}): {{min}}–{{max}} {{unit}}. The estimate is inside this range, so it is used as calculated.",
+      "adjustmentMode": "Daily calorie goal adjustment: {{mode}}",
+      "deviceProjectionCaveat": "In this mode your Diary target comes from your device’s total calories projected to midnight, which is not known here. The figures below are the stored-goal derivation and will differ from what the Diary shows.",
+      "modeAdaptive": "Adaptive Goal",
+      "modeDynamic": "Dynamic Goal",
+      "modeFixed": "Fixed Goal",
+      "modePercentage": "Percentage Earn-Back",
+      "modeDevice": "Device Projection"
     },
     "copyAllError": "Failed to copy entire day.",
     "copyAllFromYesterday": "Copy all from yesterday",
