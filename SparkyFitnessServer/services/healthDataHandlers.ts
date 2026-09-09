@@ -676,6 +676,12 @@ function prepareCheckInMeasurement(
 // all valid records go through one bulkUpsertCheckInMeasurements call (one
 // client + one transaction), with same-date records merged server-side
 // (later record wins per column, matching the old sequential upserts).
+/**
+ * Sources whose BMR is a running daily total rather than a rate, so a value read
+ * before the day ends is only part of it.
+ */
+const ACCUMULATING_BMR_SOURCES = new Set(['garmin']);
+
 const checkInHandleBatch: HandleBatchFn = async (entries, ctx) => {
   const outcomes: HandlerOutcome[] = new Array(entries.length);
   const writes: Array<{
@@ -684,17 +690,26 @@ const checkInHandleBatch: HandleBatchFn = async (entries, ctx) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     measurements: Record<string, any>;
   }> = [];
-  // BMR only: providers that report it as a daily *accumulation* rather than a
-  // rate — Garmin's `bmrKilocalories` sits in the daily summary beside
-  // `totalKilocalories` — hand back a partial total when the day is still
-  // running. A 4am sync reported 716 kcal against a ~1800 kcal formula estimate
-  // (issue #2395), and a late-afternoon one is worse because it looks plausible.
-  // HealthKit already keeps only fully-elapsed days; this is the equivalent for
-  // every other source. Resolved once per batch, and only when a BMR is present.
-  const hasBmrWrite = entries.some(
-    (e) => e.entry?.type === 'bmr' || e.entry?.type === 'basal_metabolic_rate'
+  // Garmin reports BMR as a daily *accumulation*, not a rate: `bmrKilocalories`
+  // sits in the daily summary beside `totalKilocalories`, so a sync while the day
+  // is still running hands back part of it. A 4am sync reported 716 kcal against a
+  // ~1800 kcal formula estimate (issue #2395), and a late-afternoon one is worse
+  // because it looks plausible enough to clear the ratio band.
+  //
+  // Scoped to those sources deliberately. HealthKit already keeps only fully
+  // elapsed days and stamps each one with D+1 — the day it applies to — so a
+  // blanket "refuse today" rejected precisely the value it is designed to send and
+  // stopped iOS storing any BMR at all. Health Connect's BasalMetabolicRate is an
+  // instantaneous rate and is fine on the current day too.
+  const isAccumulatingBmrSource = (entry: { source?: unknown }) =>
+    typeof entry?.source === 'string' &&
+    ACCUMULATING_BMR_SOURCES.has(entry.source.toLowerCase());
+  const hasGuardedBmrWrite = entries.some(
+    (e) =>
+      (e.entry?.type === 'bmr' || e.entry?.type === 'basal_metabolic_rate') &&
+      isAccumulatingBmrSource(e.entry)
   );
-  const todayForUser = hasBmrWrite
+  const todayForUser = hasGuardedBmrWrite
     ? todayInZone(await loadUserTimezone(ctx.userId))
     : null;
   for (let i = 0; i < entries.length; i++) {
@@ -706,12 +721,13 @@ const checkInHandleBatch: HandleBatchFn = async (entries, ctx) => {
     if (
       prepared.measurements.bmr !== undefined &&
       todayForUser !== null &&
+      isAccumulatingBmrSource(entries[i].entry) &&
       entries[i].parsedDate >= todayForUser
     ) {
       delete prepared.measurements.bmr;
       log(
         'info',
-        `healthDataHandlers: ignoring BMR for ${entries[i].parsedDate} — the day is not complete in the user's timezone, so the value may be a partial daily total.`
+        `healthDataHandlers: ignoring BMR for ${entries[i].parsedDate} from ${entries[i].entry?.source} — that source reports BMR as a daily total and the day is not complete in the user's timezone.`
       );
       if (Object.keys(prepared.measurements).length === 0) {
         outcomes[i] = {

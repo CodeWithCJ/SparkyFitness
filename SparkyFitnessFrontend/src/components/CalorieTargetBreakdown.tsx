@@ -20,13 +20,11 @@ import {
   ADAPTIVE_TDEE_GOAL_MIN_DAYS,
   getGoalModeAdjustment,
   ENERGY_DENSITY_KCAL_PER_KG,
+  FAT_KCAL_PER_KG,
+  LEAN_TISSUE_KCAL_PER_KG,
   ADAPTIVE_TDEE_CLAMP_KCAL,
   type CalorieTargetResult,
 } from '@workspace/shared';
-
-/** Energy density of the tissue the blended ENERGY_DENSITY_KCAL_PER_KG averages. */
-const FAT_KCAL_PER_KG = 9441;
-const LEAN_TISSUE_KCAL_PER_KG = 1816;
 
 interface AdaptiveTdeeData {
   tdee?: number;

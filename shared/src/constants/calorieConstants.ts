@@ -112,6 +112,13 @@ export const MAX_MEASURED_BMR_KCAL = 6000;
  * of measuring — so the band is loose enough to let real metabolic variation and
  * adaptation through.
  */
+/**
+ * The two tissue densities that ENERGY_DENSITY_KCAL_PER_KG blends. Kept beside it
+ * so the blend and its components cannot drift apart.
+ */
+export const FAT_KCAL_PER_KG = 9441;
+export const LEAN_TISSUE_KCAL_PER_KG = 1816;
+
 export const MEASURED_BMR_MIN_RATIO_OF_FORMULA = 0.6;
 export const MEASURED_BMR_MAX_RATIO_OF_FORMULA = 1.6;
 

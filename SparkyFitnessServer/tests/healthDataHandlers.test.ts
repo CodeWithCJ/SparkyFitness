@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { todayInZone } from '@workspace/shared';
 import {
   resolveHandler,
   customMeasurementHandler,
@@ -322,6 +323,29 @@ describe('bmrHandler.handleBatch', () => {
     );
 
     expect(outcomes[0].status).toBe('success');
+  });
+
+  it('refuses an in-progress day only for sources that accumulate', async () => {
+    // Garmin's bmrKilocalories is a running daily total, so a value read before
+    // the day ends is only part of it. HealthKit stamps each fully-elapsed day
+    // with D+1 and Health Connect sends an instantaneous rate, so both are valid
+    // on the current date — refusing today wholesale stopped iOS storing any BMR.
+    const today = todayInZone('UTC');
+    const outcomes = await bmrHandler.handleBatch!(
+      [
+        prepared({ type: 'bmr', value: '1650', source: 'garmin' }, today),
+        prepared(
+          { type: 'bmr', value: '1650', source: 'garmin' },
+          '2026-08-03'
+        ),
+        prepared({ type: 'bmr', value: '1650', source: 'HealthKit' }, today),
+      ],
+      ctx
+    );
+
+    expect(outcomes[0].status).toBe('skipped');
+    expect(outcomes[1].status).toBe('success');
+    expect(outcomes[2].status).toBe('success');
   });
 
   it('rejects values with non-numeric suffixes or out of bounds', async () => {

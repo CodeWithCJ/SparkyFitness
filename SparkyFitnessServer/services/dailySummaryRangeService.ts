@@ -209,10 +209,13 @@ export async function getDailySummaryRange({
   };
 
   // Exact-date lookup for the one field that is not carried forward.
-  const bmrByDate = new Map<string, unknown>();
+  const bmrByDate = new Map<string, string | number | null>();
   for (const row of measurementsAsc) {
     if (row.bmr !== null && row.bmr !== undefined && Number(row.bmr) > 0) {
-      bmrByDate.set(String(row.entry_date).slice(0, 10), row.bmr);
+      bmrByDate.set(
+        String(row.entry_date).slice(0, 10),
+        row.bmr as string | number
+      );
     }
   }
 
@@ -272,7 +275,7 @@ export async function getDailySummaryRange({
         adjustedGoalCalories: Number(dayGoals?.calories) || 2000,
         userProfile,
         userPreferences,
-        measurements: { ...carried, bmr: bmrByDate.get(date) as never },
+        measurements: { ...carried, bmr: bmrByDate.get(date) ?? null },
         ...deviceProjectionSnapshot,
       }),
     });
