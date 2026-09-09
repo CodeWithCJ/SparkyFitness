@@ -31,6 +31,17 @@ interface AdaptiveTdeeData {
   avgIntake?: number;
   weightTrend?: number | null;
   confidence?: 'HIGH' | 'MEDIUM' | 'LOW';
+  // Derivation terms for the Active branch (see AdaptiveTdeeService).
+  startWeightTrend?: number;
+  endWeightTrend?: number;
+  weightChangeKg?: number;
+  daysInWindow?: number;
+  dailyWeightChangeKg?: number;
+  weightChangeCalories?: number;
+  rawTdee?: number;
+  wasClamped?: boolean;
+  clampMin?: number;
+  clampMax?: number;
 }
 
 interface CalorieTargetBreakdownProps {
@@ -732,6 +743,54 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                     )}{' '}
                     {getEnergyUnitString(energyUnit)}
                   </li>
+                  {typeof adaptiveTdeeData?.weightChangeCalories ===
+                    'number' && (
+                    <li>
+                      {t(
+                        'diary.calculateExplanation.weightTrendTerm',
+                        'Weight trend: {{start}} → {{end}} kg ({{change}} kg over {{days}} days) = {{daily}} kg/day',
+                        {
+                          start: adaptiveTdeeData.startWeightTrend ?? 0,
+                          end: adaptiveTdeeData.endWeightTrend ?? 0,
+                          change: (
+                            adaptiveTdeeData.weightChangeKg ?? 0
+                          ).toFixed(2),
+                          days: adaptiveTdeeData.daysInWindow ?? 0,
+                          daily: (
+                            adaptiveTdeeData.dailyWeightChangeKg ?? 0
+                          ).toFixed(3),
+                        }
+                      )}
+                    </li>
+                  )}
+                  {typeof adaptiveTdeeData?.weightChangeCalories ===
+                    'number' && (
+                    <li>
+                      {t(
+                        'diary.calculateExplanation.weightTrendCalories',
+                        'Energy from that trend: {{daily}} kg/day × 6000 kcal/kg = {{value}} {{unit}}',
+                        {
+                          daily: (
+                            adaptiveTdeeData.dailyWeightChangeKg ?? 0
+                          ).toFixed(3),
+                          value: `${
+                            adaptiveTdeeData.weightChangeCalories >= 0
+                              ? '+'
+                              : '−'
+                          }${Math.abs(
+                            Math.round(
+                              convertEnergy(
+                                adaptiveTdeeData.weightChangeCalories,
+                                'kcal',
+                                energyUnit
+                              )
+                            )
+                          )}`,
+                          unit: getEnergyUnitString(energyUnit),
+                        }
+                      )}
+                    </li>
+                  )}
                   <li>
                     {t(
                       'diary.calculateExplanation.calculatedExpenditure',
@@ -745,8 +804,83 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                       )
                     )}{' '}
                     {getEnergyUnitString(energyUnit)}
+                    {typeof adaptiveTdeeData?.weightChangeCalories ===
+                      'number' &&
+                      !adaptiveTdeeData?.wasClamped && (
+                        <span className="text-muted-foreground">
+                          {' '}
+                          {t(
+                            'diary.calculateExplanation.tdeeSum',
+                            '({{intake}} {{sign}} {{delta}})',
+                            {
+                              intake: Math.round(
+                                convertEnergy(
+                                  adaptiveTdeeData?.avgIntake || 0,
+                                  'kcal',
+                                  energyUnit
+                                )
+                              ),
+                              sign:
+                                adaptiveTdeeData.weightChangeCalories < 0
+                                  ? '−'
+                                  : '+',
+                              delta: Math.abs(
+                                Math.round(
+                                  convertEnergy(
+                                    adaptiveTdeeData.weightChangeCalories,
+                                    'kcal',
+                                    energyUnit
+                                  )
+                                )
+                              ),
+                            }
+                          )}
+                        </span>
+                      )}
                   </li>
                 </ul>
+                {adaptiveTdeeData?.wasClamped && (
+                  // Without this the arithmetic above simply would not add up to
+                  // the number shown, which is exactly the "my TDEE moved and I
+                  // cannot see why" confusion this panel exists to prevent.
+                  <p className="text-xs text-amber-600 dark:text-amber-500">
+                    {t(
+                      'diary.calculateExplanation.adaptiveClamped',
+                      'Raw estimate of {{raw}} {{unit}} was capped to {{capped}} {{unit}}, the plausibility limit of ±500 {{unit}} around your BMR-based estimate ({{min}}–{{max}} {{unit}}).',
+                      {
+                        raw: Math.round(
+                          convertEnergy(
+                            adaptiveTdeeData?.rawTdee || 0,
+                            'kcal',
+                            energyUnit
+                          )
+                        ),
+                        capped: Math.round(
+                          convertEnergy(
+                            adaptiveTdeeData?.tdee || 0,
+                            'kcal',
+                            energyUnit
+                          )
+                        ),
+                        min: Math.round(
+                          convertEnergy(
+                            adaptiveTdeeData?.clampMin || 0,
+                            'kcal',
+                            energyUnit
+                          )
+                        ),
+                        max: Math.round(
+                          convertEnergy(
+                            adaptiveTdeeData?.clampMax || 0,
+                            'kcal',
+                            energyUnit
+                          )
+                        ),
+                        unit: getEnergyUnitString(energyUnit),
+                      }
+                    )}
+                  </p>
+                )}
               </div>
             )}
           </div>

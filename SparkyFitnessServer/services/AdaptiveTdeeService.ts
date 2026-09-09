@@ -63,6 +63,23 @@ interface AdaptiveTdeeResult {
   avgIntake?: number;
   daysOfData: number;
   lastCalculated: string;
+  /**
+   * Derivation terms for the Active branch, so the UI can show how the estimate
+   * was reached rather than only its inputs and result. Absent on the fallback
+   * branch, which has its own (BMR x multiplier) explanation.
+   */
+  startWeightTrend?: number;
+  endWeightTrend?: number;
+  weightChangeKg?: number;
+  daysInWindow?: number;
+  dailyWeightChangeKg?: number;
+  /** The weight-trend term in kcal — the gap between average intake and TDEE. */
+  weightChangeCalories?: number;
+  /** Estimate before the +/-500 plausibility cap. */
+  rawTdee?: number;
+  wasClamped?: boolean;
+  clampMin?: number;
+  clampMax?: number;
 }
 
 function computeAdaptiveTdeeFromData(
@@ -290,13 +307,18 @@ function computeAdaptiveTdeeFromData(
   // TDEE = (Avg_Daily_Intake) - (Avg_Daily_Weight_Change_kg * kcal_per_kg)
   // Losing weight on a given intake means expenditure exceeded it, so a negative
   // dailyWeightChange raises the estimate above intake.
-  let adaptiveTdee =
+  const rawAdaptiveTdee =
     avgDailyIntake - dailyWeightChange * ENERGY_DENSITY_KCAL_PER_KG;
   // Plausibility capping: +/- 500 kcal from the BMR-based estimate. Clinical
   // calorie floors are a goal policy and are applied later, not to TDEE itself.
   const maxTdee = fallbackTdee + 500;
   const minTdee = Math.max(0, fallbackTdee - 500);
-  adaptiveTdee = Math.min(Math.max(adaptiveTdee, minTdee), maxTdee);
+  const adaptiveTdee = Math.min(Math.max(rawAdaptiveTdee, minTdee), maxTdee);
+  // Whether the clamp actually moved the number. When it did, the displayed TDEE
+  // is not `intake + weight term` and the arithmetic on screen would not
+  // reconcile, so the UI has to say the cap bound rather than leave the reader to
+  // work out why the figures do not add up.
+  const wasClamped = Math.round(adaptiveTdee) !== Math.round(rawAdaptiveTdee);
 
   // Find tracking age of weight logging (weightEntries is sorted by date ascending)
   let trackingAgeWeeks = 0;
@@ -346,6 +368,20 @@ function computeAdaptiveTdeeFromData(
     avgIntake: Math.round(avgDailyIntake),
     daysOfData: filteredCalories.length,
     lastCalculated: new Date().toISOString(),
+    // Derivation terms, so the UI can show how the number was reached instead of
+    // only its inputs and result.
+    startWeightTrend: Math.round(startWeightTrend * 10) / 10,
+    endWeightTrend: Math.round(endWeightTrend * 10) / 10,
+    weightChangeKg: Math.round(weightChange * 100) / 100,
+    daysInWindow,
+    dailyWeightChangeKg: Math.round(dailyWeightChange * 1000) / 1000,
+    weightChangeCalories: Math.round(
+      -dailyWeightChange * ENERGY_DENSITY_KCAL_PER_KG
+    ),
+    rawTdee: Math.round(rawAdaptiveTdee),
+    wasClamped,
+    clampMin: Math.round(minTdee),
+    clampMax: Math.round(maxTdee),
   };
 }
 

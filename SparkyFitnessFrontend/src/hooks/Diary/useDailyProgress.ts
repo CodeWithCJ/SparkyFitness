@@ -209,7 +209,7 @@ export const useCalculatedBMR = () => {
       ? calculateAge(userProfile!.date_of_birth, timezone)
       : 0;
     try {
-      formulaBmr = calculateBmr(
+      const computed = calculateBmr(
         bmrAlgorithm as BmrAlgorithm,
         weightData!.weight,
         heightData!.height,
@@ -217,6 +217,10 @@ export const useCalculatedBMR = () => {
         userProfile!.gender as 'male' | 'female',
         bodyFatData?.body_fat_percentage
       );
+      // `calculateBmr` does not throw on incomplete input — it warns and returns 0
+      // (e.g. Katch-McArdle with no body-fat reading). A zero is "no estimate", not
+      // an estimate of zero, so it must not reach the ratio check or the caller.
+      formulaBmr = computed > 0 ? computed : null;
     } catch {
       formulaBmr = null;
     }
@@ -232,10 +236,17 @@ export const useCalculatedBMR = () => {
     };
   }
 
+  // One shape for every outcome, so consumers never have to branch on which keys
+  // are present. With no usable BMR there is nothing to subtract, so net calories
+  // must exclude it regardless of the user's preference.
   if (formulaBmr === null) {
-    return canComputeFormula
-      ? { bmr: 0, includeInNet: false, weight: 0, height: 0 }
-      : { bmr: 0, includeInNet: false };
+    return {
+      bmr: 0,
+      measuredBmr: null,
+      includeInNet: false,
+      weight: weightData?.weight || 0,
+      height: heightData?.height || 0,
+    };
   }
 
   return {

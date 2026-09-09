@@ -2786,7 +2786,7 @@
     "calculateExplanation": {
       "bmrMeasured": "Measured",
       "bmrMeasuredDesc": "Using a measured BMR of {{value}} {{unit}} recorded for this day, from a smart scale or health app sync. Your {{algorithm}} formula is not applied.",
-      "bmrMeasuredScope": "A measured value only counts on the day it was recorded. Days without one fall back to the formula. To stop using measured values, turn off BMR sync in your health app settings.",
+      "bmrMeasuredScope": "A measured value only counts on the day it was recorded. Days without one fall back to the formula. To stop using measured values, disable BMR sync for your connected device or health app.",
       "dialogDescription": "Step-by-step breakdown of how your daily energy target is calculated.",
       "todayTarget": "How today's target is calculated",
       "bmrTitle": "1. Basal Metabolic Rate (BMR)",
@@ -2852,7 +2852,11 @@
       "fallbackBaselineDetail": "BMR ({{bmr}}) × Activity Multiplier ({{multiplier}}) = {{result}} {{unit}} (Fallback used: not enough history [<{{required}} days]; raw calculation of {{raw}} {{unit}} bypassed)",
       "adaptiveTdeeExpenditure": "Adaptive TDEE (Expenditure)",
       "adaptiveManualGoal": "Adaptive Manual Calorie Goal",
-      "targetSafeRange": "✓ Target is in safe range above metabolic safety floor."
+      "targetSafeRange": "✓ Target is in safe range above metabolic safety floor.",
+      "weightTrendTerm": "Weight trend: {{start}} → {{end}} kg ({{change}} kg over {{days}} days) = {{daily}} kg/day",
+      "weightTrendCalories": "Energy from that trend: {{daily}} kg/day × 6000 kcal/kg = {{value}} {{unit}}",
+      "tdeeSum": "({{intake}} {{sign}} {{delta}})",
+      "adaptiveClamped": "Raw estimate of {{raw}} {{unit}} was capped to {{capped}} {{unit}}, the plausibility limit of ±500 {{unit}} around your BMR-based estimate ({{min}}–{{max}} {{unit}})."
     },
     "copyAllError": "Failed to copy entire day.",
     "copyAllFromYesterday": "Copy all from yesterday",

@@ -1670,9 +1670,21 @@ router.get(
  *         schema:
  *           type: string
  *         description: weight, steps, body_fat_percentage, etc.
+ *       - in: query
+ *         name: date
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: >-
+ *           Restrict the lookup to this single day (YYYY-MM-DD) instead of
+ *           returning the newest value ever recorded. Used for measured BMR,
+ *           which only applies on the day it was taken.
  *     responses:
  *       200:
  *         description: The most recent measurement.
+ *       400:
+ *         description: The date query parameter was present but not a valid YYYY-MM-DD day.
  */
 router.get(
   '/most-recent/:measurementType',
@@ -1683,10 +1695,19 @@ router.get(
     // Optional `?date=YYYY-MM-DD` pins the lookup to that single day instead of
     // returning the newest value ever recorded. The Diary uses it for BMR, which
     // is only meaningful on the day it was measured.
-    const onDate =
-      typeof req.query.date === 'string' && isDayString(req.query.date)
-        ? req.query.date
-        : undefined;
+    //
+    // A malformed date is rejected rather than ignored: silently dropping it would
+    // fall back to "newest ever", which for BMR is exactly the carry-forward this
+    // change removes — and the caller would get it with a 200 and no signal.
+    const rawDate = req.query.date;
+    if (rawDate !== undefined) {
+      if (typeof rawDate !== 'string' || !isDayString(rawDate)) {
+        return res
+          .status(400)
+          .json({ error: 'date must be a valid YYYY-MM-DD day string.' });
+      }
+    }
+    const onDate = typeof rawDate === 'string' ? rawDate : undefined;
     try {
       const measurement = await measurementService.getMostRecentMeasurement(
         req.userId,
