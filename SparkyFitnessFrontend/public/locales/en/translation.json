@@ -2785,7 +2785,8 @@
     "addSuccess": "Food added successfully.",
     "calculateExplanation": {
       "bmrMeasured": "Measured",
-      "bmrMeasuredDesc": "Using your measured BMR. No formula applied.",
+      "bmrMeasuredDesc": "Using a measured BMR of {{value}} {{unit}} recorded for this day, from a smart scale or health app sync. Your {{algorithm}} formula is not applied.",
+      "bmrMeasuredScope": "A measured value only counts on the day it was recorded. Days without one fall back to the formula. To stop using measured values, turn off BMR sync in your health app settings.",
       "dialogDescription": "Step-by-step breakdown of how your daily energy target is calculated.",
       "todayTarget": "How today's target is calculated",
       "bmrTitle": "1. Basal Metabolic Rate (BMR)",

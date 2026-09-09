@@ -18,6 +18,7 @@ import {
   CustomMeasurementsRangeParamSchema,
   ImportHealthDataBodySchema,
 } from '../schemas/measurementSchemas.js';
+import { isDayString } from '@workspace/shared';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 const router = express.Router();
@@ -1679,10 +1680,18 @@ router.get(
   checkPermissionMiddleware('checkin'),
   async (req, res, next) => {
     const { measurementType } = req.params;
+    // Optional `?date=YYYY-MM-DD` pins the lookup to that single day instead of
+    // returning the newest value ever recorded. The Diary uses it for BMR, which
+    // is only meaningful on the day it was measured.
+    const onDate =
+      typeof req.query.date === 'string' && isDayString(req.query.date)
+        ? req.query.date
+        : undefined;
     try {
       const measurement = await measurementService.getMostRecentMeasurement(
         req.userId,
-        measurementType
+        measurementType,
+        onDate
       );
       res.status(200).json(measurement);
     } catch (error) {

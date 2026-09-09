@@ -2,7 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { calculateAge } from '@workspace/shared';
+import {
+  calculateAge,
+  isUsableMeasuredBmr,
+  todayInZone,
+} from '@workspace/shared';
 import { dailyProgressKeys } from '@/api/keys/diary';
 import { userManagementService } from '@/api/Admin/userManagementService';
 import {
@@ -147,13 +151,21 @@ export const useMostRecentBodyFatQuery = (enabled = true) => {
   });
 };
 
-export const useMostRecentBmrQuery = (enabled = true) => {
+/**
+ * Measured BMR for a single day.
+ *
+ * Unlike weight or height this is never carried forward: a measured BMR describes
+ * the day it was recorded, so on a day without a reading the caller falls back to
+ * the user's chosen formula. Carrying it forward kept a stale reading driving the
+ * calorie target long after syncing stopped (issue #2395).
+ */
+export const useMostRecentBmrQuery = (onDate: string, enabled = true) => {
   const { t } = useTranslation();
 
   return useQuery({
-    queryKey: dailyProgressKeys.measurements.mostRecent('bmr'),
-    queryFn: () => getMostRecentMeasurement('bmr'),
-    enabled,
+    queryKey: dailyProgressKeys.measurements.mostRecent('bmr', onDate),
+    queryFn: () => getMostRecentMeasurement('bmr', onDate),
+    enabled: enabled && Boolean(onDate),
     meta: {
       errorMessage: t(
         'measurements.errorLoadingBmr',
@@ -176,14 +188,41 @@ export const useCalculatedBMR = () => {
   const { data: weightData } = useMostRecentWeightQuery();
   const { data: heightData } = useMostRecentHeightQuery();
   const { data: bodyFatData } = useMostRecentBodyFatQuery();
-  const { data: bmrData } = useMostRecentBmrQuery();
+  const { data: bmrData } = useMostRecentBmrQuery(todayInZone(timezone));
 
   const rawMeasured = bmrData?.bmr ? Number(bmrData.bmr) : null;
-  const isMeasured = Boolean(
-    rawMeasured && rawMeasured >= 300 && rawMeasured <= 10000
+
+  // The formula estimate is computed first, because a measured reading is only
+  // trusted once it has been checked against this person's own estimate. It stays
+  // null when the profile is too incomplete to compute one, in which case the
+  // absolute bounds decide alone. Mirrors the server (calorieBalanceService).
+  const canComputeFormula = Boolean(
+    userProfile &&
+    weightData?.weight &&
+    heightData?.height &&
+    userProfile.gender
   );
 
-  if (isMeasured && rawMeasured !== null) {
+  let formulaBmr: number | null = null;
+  if (canComputeFormula) {
+    const age = userProfile!.date_of_birth
+      ? calculateAge(userProfile!.date_of_birth, timezone)
+      : 0;
+    try {
+      formulaBmr = calculateBmr(
+        bmrAlgorithm as BmrAlgorithm,
+        weightData!.weight,
+        heightData!.height,
+        age,
+        userProfile!.gender as 'male' | 'female',
+        bodyFatData?.body_fat_percentage
+      );
+    } catch {
+      formulaBmr = null;
+    }
+  }
+
+  if (isUsableMeasuredBmr(rawMeasured, formulaBmr) && rawMeasured !== null) {
     return {
       bmr: rawMeasured,
       measuredBmr: rawMeasured,
@@ -193,37 +232,17 @@ export const useCalculatedBMR = () => {
     };
   }
 
-  if (
-    !userProfile ||
-    !weightData?.weight ||
-    !heightData?.height ||
-    !userProfile.gender
-  ) {
-    return { bmr: 0, includeInNet: false };
+  if (formulaBmr === null) {
+    return canComputeFormula
+      ? { bmr: 0, includeInNet: false, weight: 0, height: 0 }
+      : { bmr: 0, includeInNet: false };
   }
 
-  const age = userProfile.date_of_birth
-    ? calculateAge(userProfile.date_of_birth, timezone)
-    : 0;
-
-  try {
-    const bmr = calculateBmr(
-      bmrAlgorithm as BmrAlgorithm,
-      weightData.weight,
-      heightData.height,
-      age,
-      userProfile.gender as 'male' | 'female',
-      bodyFatData?.body_fat_percentage
-    );
-
-    return {
-      bmr,
-      measuredBmr: null,
-      includeInNet: includeBmrInNetCalories || false,
-      weight: weightData.weight,
-      height: heightData.height,
-    };
-  } catch (err) {
-    return { bmr: 0, includeInNet: false, weight: 0, height: 0 };
-  }
+  return {
+    bmr: formulaBmr,
+    measuredBmr: null,
+    includeInNet: includeBmrInNetCalories || false,
+    weight: weightData!.weight,
+    height: heightData!.height,
+  };
 };

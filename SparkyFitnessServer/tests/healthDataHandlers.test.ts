@@ -329,9 +329,12 @@ describe('bmrHandler.handleBatch', () => {
       [
         prepared({ type: 'bmr', value: '1650kcal' }),
         prepared({ type: 'bmr', value: '300xyz' }),
-        prepared({ type: 'bmr', value: '299' }),
-        prepared({ type: 'bmr', value: '10001' }),
+        prepared({ type: 'bmr', value: '599' }),
+        prepared({ type: 'bmr', value: '6001' }),
         prepared({ type: 'bmr', value: '' }),
+        // The reading from issue #2395: physiologically impossible for an adult,
+        // but inside the old 300-10000 range that shipped in v1.6.5.
+        prepared({ type: 'bmr', value: '350' }),
       ],
       ctx
     );
@@ -341,5 +344,19 @@ describe('bmrHandler.handleBatch', () => {
     expect(outcomes[2].status).toBe('error');
     expect(outcomes[3].status).toBe('error');
     expect(outcomes[4].status).toBe('error');
+    expect(outcomes[5].status).toBe('error');
+  });
+
+  it('accepts the 600 and 6000 boundary values', async () => {
+    const outcomes = await bmrHandler.handleBatch!(
+      [
+        prepared({ type: 'bmr', value: '600' }),
+        prepared({ type: 'bmr', value: '6000' }),
+      ],
+      ctx
+    );
+
+    expect(outcomes[0].status).not.toBe('error');
+    expect(outcomes[1].status).not.toBe('error');
   });
 });

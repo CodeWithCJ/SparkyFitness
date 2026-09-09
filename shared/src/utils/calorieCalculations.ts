@@ -6,6 +6,10 @@ import {
   ENERGY_DENSITY_KCAL_PER_KG,
   MAX_CALORIE_SAFETY_FLOOR,
   MIN_CALORIE_SAFETY_FLOOR,
+  MIN_MEASURED_BMR_KCAL,
+  MAX_MEASURED_BMR_KCAL,
+  MEASURED_BMR_MIN_RATIO_OF_FORMULA,
+  MEASURED_BMR_MAX_RATIO_OF_FORMULA,
   type CalorieSafetyFloorMode,
 } from "../constants/calorieConstants.ts";
 
@@ -361,6 +365,50 @@ export type GoalModeCalculationMethod = "adaptive" | "manual";
 export const MAX_GOAL_MODE_PERCENTAGE = 40;
 
 /**
+ * Whether a measured BMR may be used in place of a formula estimate.
+ *
+ * Two layers. The absolute bounds reject readings no adult can produce. The ratio
+ * band then rejects readings that are only wrong *for this person* — 2400 kcal is
+ * unremarkable on its own but implausible against a 1200 kcal formula estimate —
+ * which is what catches unit mismatches and mis-mapped metrics that sit inside the
+ * absolute range.
+ *
+ * When no formula estimate is available (incomplete profile) the absolute bounds
+ * alone decide. That is why they must stay meaningful on their own rather than
+ * relying on the ratio to do the work.
+ *
+ * Accepts the loose shapes these values arrive in (numeric strings from the
+ * database driver, null/undefined when absent) so callers do not each re-implement
+ * the parse.
+ */
+export function isUsableMeasuredBmr(
+  value: number | string | null | undefined,
+  formulaBmr?: number | null,
+): boolean {
+  if (value === null || value === undefined || value === "") return false;
+  const parsed = typeof value === "number" ? value : parseFloat(String(value));
+  if (
+    !Number.isFinite(parsed) ||
+    parsed < MIN_MEASURED_BMR_KCAL ||
+    parsed > MAX_MEASURED_BMR_KCAL
+  ) {
+    return false;
+  }
+  if (
+    formulaBmr === null ||
+    formulaBmr === undefined ||
+    !Number.isFinite(formulaBmr) ||
+    formulaBmr <= 0
+  ) {
+    return true;
+  }
+  return (
+    parsed >= formulaBmr * MEASURED_BMR_MIN_RATIO_OF_FORMULA &&
+    parsed <= formulaBmr * MEASURED_BMR_MAX_RATIO_OF_FORMULA
+  );
+}
+
+/**
  * Signed adjustment applied to the baseline TDEE, as a fraction.
  *
  * **Return value: positive means a deficit, negative means a surplus.** That is
@@ -485,27 +533,31 @@ export function calculateMinimumMetabolism(
   calculateBmrFn?: BmrCalculatorFn,
   measuredBmr?: number | null,
 ): number {
-  if (measuredBmr && measuredBmr >= 300 && measuredBmr <= 10000) {
-    return measuredBmr;
-  }
   const activeBmrFn = calculateBmrFn || calculateBmr;
+  // The formula is computed unconditionally, because a measured value is only
+  // trusted once it has been checked against it.
+  let formulaBmr: number;
   if (
     (bmrAlgorithm === "Katch-McArdle" || bmrAlgorithm === "Cunningham") &&
     bodyFatPercentage &&
     bodyFatPercentage > 0
   ) {
     const lbm = weightKg * (1 - bodyFatPercentage / 100);
-    return bmrAlgorithm === "Cunningham" ? 500 + 22 * lbm : 370 + 21.6 * lbm;
+    formulaBmr = bmrAlgorithm === "Cunningham" ? 500 + 22 * lbm : 370 + 21.6 * lbm;
+  } else {
+    formulaBmr = activeBmrFn(
+      bmrAlgorithm,
+      weightKg,
+      heightCm,
+      age,
+      gender,
+      bodyFatPercentage,
+    );
   }
 
-  return activeBmrFn(
-    bmrAlgorithm,
-    weightKg,
-    heightCm,
-    age,
-    gender,
-    bodyFatPercentage,
-  );
+  return isUsableMeasuredBmr(measuredBmr, formulaBmr)
+    ? (measuredBmr as number)
+    : formulaBmr;
 }
 
 export interface CalorieTargetResult {

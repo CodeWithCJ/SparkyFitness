@@ -16,6 +16,7 @@ import {
   computeCalorieProgress,
   getGoalModeAdjustment,
   getRecommendedCalorieSafetyFloor,
+  isUsableMeasuredBmr,
   MAX_HEALTH_TOTAL_CALORIES_PER_DAY,
   MIN_CALORIE_SAFETY_FLOOR,
   resolveCalorieSafetyFloor,
@@ -43,7 +44,6 @@ export interface CalorieBalanceUserPreferences {
   activity_level?: string | null;
   bmr_algorithm?: string | null;
   include_bmr_in_net_calories?: boolean | null;
-  use_external_bmr?: boolean | null;
   calorie_goal_adjustment_mode?: CalorieGoalAdjustmentMode | string | null;
   exercise_calorie_percentage?: number | null;
   tdee_allow_negative_adjustment?: boolean | null;
@@ -277,23 +277,15 @@ export function computeCalorieBalance({
     }
   }
 
-  // 1b. Measured BMR override — when a measured BMR is recorded on the day
-  // (from a smart scale, health provider sync, or manual check-in entry),
-  // prefer it over the formula. Sanity-bounded between 300 and 10000 kcal.
+  // 1b. Measured BMR override — when a measured BMR was recorded on this day
+  // (smart scale, health provider sync, or manual check-in entry), prefer it over
+  // the formula. `measurements.bmr` is resolved for this exact date, never carried
+  // forward, so "measured" always means a reading actually taken on the day shown.
+  // `bmr` still holds the formula estimate here, which is what the measured value
+  // is sanity-checked against.
   let bmrSource: 'formula' | 'measured' = 'formula';
-  const checkInBmr = measurements?.bmr
-    ? parseFloat(String(measurements.bmr))
-    : null;
-  const validCheckInBmr =
-    checkInBmr !== null &&
-    Number.isFinite(checkInBmr) &&
-    checkInBmr >= 300 &&
-    checkInBmr <= 10000
-      ? checkInBmr
-      : null;
-
-  if (validCheckInBmr !== null) {
-    bmr = validCheckInBmr;
+  if (isUsableMeasuredBmr(measurements?.bmr, bmr)) {
+    bmr = parseFloat(String(measurements!.bmr));
     bmrSource = 'measured';
   }
 

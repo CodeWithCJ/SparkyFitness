@@ -26,6 +26,8 @@ import {
   BUILT_IN_MOODS,
   instantToDay,
   MAX_HEALTH_TOTAL_CALORIES_PER_DAY,
+  MIN_MEASURED_BMR_KCAL,
+  MAX_MEASURED_BMR_KCAL,
 } from '@workspace/shared';
 
 /**
@@ -644,11 +646,11 @@ function prepareCheckInMeasurement(
       if (
         trimmed === '' ||
         !Number.isFinite(numericValue) ||
-        numericValue < 300 ||
-        numericValue > 10000
+        numericValue < MIN_MEASURED_BMR_KCAL ||
+        numericValue > MAX_MEASURED_BMR_KCAL
       ) {
         return {
-          error: `Invalid value for ${entry.type}. Must be between 300 and 10000 kcal.`,
+          error: `Invalid value for ${entry.type}. Must be between ${MIN_MEASURED_BMR_KCAL} and ${MAX_MEASURED_BMR_KCAL} kcal.`,
         };
       }
       return { measurements: { [canonical]: numericValue } };

@@ -43,6 +43,10 @@ import {
 } from '../utils/unitConversions';
 import { parseDecimalInput } from '../utils/numericInput';
 import {
+  MIN_MEASURED_BMR_KCAL,
+  MAX_MEASURED_BMR_KCAL,
+} from '@workspace/shared';
+import {
   syncCustomForm,
   buildCustomOps,
   isManualSource,
@@ -831,13 +835,13 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       !apply(
         'bmr',
         evaluateField('bmr', fieldLabel('bmr', 'BMR'), {
-          min: 300,
-          max: 10000,
+          min: MIN_MEASURED_BMR_KCAL,
+          max: MAX_MEASURED_BMR_KCAL,
           minMessage: t('measurements.validation.bmrRange', {
-            defaultValue: 'BMR must be between 300 and 10000 kcal.',
+            defaultValue: 'BMR must be between 600 and 6000 kcal.',
           }),
           maxMessage: t('measurements.validation.bmrRange', {
-            defaultValue: 'BMR must be between 300 and 10000 kcal.',
+            defaultValue: 'BMR must be between 600 and 6000 kcal.',
           }),
         }),
         (v) => v

@@ -11,6 +11,7 @@ import {
   todayInZone,
   dayToPickerDate,
   ENERGY_DENSITY_KCAL_PER_KG,
+  isUsableMeasuredBmr,
 } from '@workspace/shared';
 const tdeeCache = new NodeCache({ stdTTL: 3600 }); // 1 hour cache
 interface UserProfile {
@@ -27,12 +28,16 @@ interface LatestMeasurement {
   weight?: string | number | null;
   height?: string | number | null;
   body_fat_percentage?: string | number | null;
-  bmr?: string | number | null;
+  // No `bmr` here on purpose: this snapshot is fetched once and reused across a
+  // whole date range, so a BMR read from it would apply a reading taken today to
+  // every earlier date. Measured BMR comes from the per-date check-in row instead.
 }
 
 interface CheckInMeasurement {
   entry_date: string | Date;
   weight: string | number | null;
+  /** Measured BMR for this exact day, when one was recorded. */
+  bmr?: string | number | null;
 }
 
 interface NutritionDataEntry {
@@ -107,26 +112,30 @@ function computeAdaptiveTdeeFromData(
   }
 
   const gender = profile?.gender || 'male';
-  const measuredBmr = latestMeasurement?.bmr
-    ? parseFloat(String(latestMeasurement.bmr))
-    : null;
-  const baseBmr =
-    measuredBmr && measuredBmr >= 300 && measuredBmr <= 10000
-      ? measuredBmr
-      : bmrService.calculateBmr(
-          bmrAlgorithm,
-          weightKg,
-          heightCm,
-          age,
-          gender as 'male' | 'female',
-          latestMeasurement?.body_fat_percentage
-            ? parseFloat(String(latestMeasurement.body_fat_percentage))
-            : undefined
-        ) ||
-        10 * weightKg +
-          6.25 * heightCm -
-          5 * age +
-          (gender === 'male' ? 5 : -161);
+  // A measured BMR counts only on the day it was recorded, so read it from this
+  // date's check-in row rather than from `latestMeasurement`. The latter is fetched
+  // once and reused across a whole range, which let a reading taken today set the
+  // fallback TDEE — and therefore the +/-500 plausibility clamp — for dates weeks
+  // earlier (issue #2395).
+  const measuredBmr =
+    checkInMeasurements.find(
+      (m) => String(m.entry_date).slice(0, 10) === calculationDateStr
+    )?.bmr ?? null;
+  const formulaBmr =
+    bmrService.calculateBmr(
+      bmrAlgorithm,
+      weightKg,
+      heightCm,
+      age,
+      gender as 'male' | 'female',
+      latestMeasurement?.body_fat_percentage
+        ? parseFloat(String(latestMeasurement.body_fat_percentage))
+        : undefined
+    ) ||
+    10 * weightKg + 6.25 * heightCm - 5 * age + (gender === 'male' ? 5 : -161);
+  const baseBmr = isUsableMeasuredBmr(measuredBmr, formulaBmr)
+    ? parseFloat(String(measuredBmr))
+    : formulaBmr;
 
   const fallbackTdee = baseBmr * multiplier;
 

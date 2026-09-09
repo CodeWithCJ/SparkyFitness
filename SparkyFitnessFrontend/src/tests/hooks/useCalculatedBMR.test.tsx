@@ -1,5 +1,11 @@
 import { renderHook } from '@testing-library/react';
+import { todayInZone } from '@workspace/shared';
 import { useCalculatedBMR } from '@/hooks/Diary/useDailyProgress';
+
+// Measured BMR is looked up for a single day, so its query key carries that date.
+// The other metrics carry forward and stay date-less.
+const bmrKey = (date: string = todayInZone('UTC')) =>
+  JSON.stringify(['dailyProgress', 'measurements', 'recent', 'bmr', date]);
 
 const mockUseAuth = jest.fn();
 const mockUsePreferences = jest.fn();
@@ -43,9 +49,7 @@ describe('useCalculatedBMR', () => {
     mockQueryData[
       JSON.stringify(['dailyProgress', 'measurements', 'recent', 'height'])
     ] = null; // Missing height
-    mockQueryData[
-      JSON.stringify(['dailyProgress', 'measurements', 'recent', 'bmr'])
-    ] = { bmr: 1750 };
+    mockQueryData[bmrKey()] = { bmr: 1750 };
 
     const { result } = renderHook(() => useCalculatedBMR());
 
@@ -65,9 +69,7 @@ describe('useCalculatedBMR', () => {
     mockQueryData[
       JSON.stringify(['dailyProgress', 'measurements', 'recent', 'height'])
     ] = { height: 175 };
-    mockQueryData[
-      JSON.stringify(['dailyProgress', 'measurements', 'recent', 'bmr'])
-    ] = null;
+    mockQueryData[bmrKey()] = null;
 
     const { result } = renderHook(() => useCalculatedBMR());
 
@@ -80,5 +82,46 @@ describe('useCalculatedBMR', () => {
 
     expect(result.current.bmr).toBe(0);
     expect(result.current.includeInNet).toBe(false);
+  });
+
+  it('ignores a measured BMR recorded on a different day', () => {
+    mockQueryData[JSON.stringify(['users', 'profile', 'user-1'])] = {
+      gender: 'male',
+      date_of_birth: '1990-01-01',
+    };
+    mockQueryData[
+      JSON.stringify(['dailyProgress', 'measurements', 'recent', 'weight'])
+    ] = { weight: 70 };
+    mockQueryData[
+      JSON.stringify(['dailyProgress', 'measurements', 'recent', 'height'])
+    ] = { height: 175 };
+    // Recorded on some other date, so today's lookup misses it entirely.
+    mockQueryData[bmrKey('2020-01-01')] = { bmr: 2600 };
+
+    const { result } = renderHook(() => useCalculatedBMR());
+
+    expect(result.current.measuredBmr).toBeNull();
+    expect(result.current.bmr).toBeGreaterThan(1000);
+    expect(result.current.bmr).not.toBe(2600);
+  });
+
+  it('rejects a measured BMR outside the plausible range', () => {
+    mockQueryData[JSON.stringify(['users', 'profile', 'user-1'])] = {
+      gender: 'male',
+      date_of_birth: '1990-01-01',
+    };
+    mockQueryData[
+      JSON.stringify(['dailyProgress', 'measurements', 'recent', 'weight'])
+    ] = { weight: 70 };
+    mockQueryData[
+      JSON.stringify(['dailyProgress', 'measurements', 'recent', 'height'])
+    ] = { height: 175 };
+    // The reading from issue #2395 — inside the old 300-10000 range, outside 600-6000.
+    mockQueryData[bmrKey()] = { bmr: 350 };
+
+    const { result } = renderHook(() => useCalculatedBMR());
+
+    expect(result.current.measuredBmr).toBeNull();
+    expect(result.current.bmr).toBeGreaterThan(1000);
   });
 });

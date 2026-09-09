@@ -17,6 +17,7 @@ import {
   compareDays,
   FOOD_VARIANT_NUTRIENT_FIELDS,
   todayInZone,
+  isUsableMeasuredBmr,
 } from '@workspace/shared';
 import { userAge } from '../utils/dateHelpers.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
@@ -306,16 +307,19 @@ async function getReportsData(
           latestMeasurement?.body_fat_percentage !== undefined
             ? Number(latestMeasurement.body_fat_percentage)
             : undefined;
-        const measuredBmr =
-          latestMeasurement?.bmr !== null &&
-          latestMeasurement?.bmr !== undefined
-            ? Number(latestMeasurement.bmr)
-            : undefined;
-        if (measuredBmr && measuredBmr >= 300 && measuredBmr <= 10000) {
-          day.bmr = measuredBmr;
-        } else if (weight && height && age && gender && bmrAlgorithm) {
+        // Exact date, unlike the body metrics above: a measured BMR describes the
+        // day it was taken, so it is never carried forward onto later days.
+        const measuredBmr = (measurementData as MeasurementEntry[]).find(
+          (m: MeasurementEntry) =>
+            String(m.entry_date).slice(0, 10) ===
+              String(day.date).slice(0, 10) &&
+            m.bmr !== null &&
+            m.bmr !== undefined
+        )?.bmr;
+        let formulaBmr: number | null = null;
+        if (weight && height && age && gender && bmrAlgorithm) {
           try {
-            day.bmr = bmrService.calculateBmr(
+            formulaBmr = bmrService.calculateBmr(
               bmrAlgorithm,
               weight,
               height,
@@ -329,11 +333,15 @@ async function getReportsData(
               // @ts-expect-error TS(2571): Object is of type 'unknown'.
               `Could not calculate BMR for user ${targetUserId} on date ${day.date}: ${error.message}`
             );
-            day.bmr = null;
+            formulaBmr = null;
           }
-        } else {
-          day.bmr = null;
         }
+        // The measured reading wins only if it is plausible against this person's
+        // own formula estimate; with no estimate to compare, the absolute bounds
+        // decide on their own.
+        day.bmr = isUsableMeasuredBmr(measuredBmr, formulaBmr)
+          ? Number(measuredBmr)
+          : formulaBmr;
         day.include_bmr_in_net_calories =
           userPreferences.include_bmr_in_net_calories;
       });

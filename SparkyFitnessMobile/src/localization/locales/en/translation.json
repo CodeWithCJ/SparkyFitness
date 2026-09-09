@@ -2012,7 +2012,7 @@
       "feetInchesNumber": "Enter a number for feet and inches.",
       "bodyFatRange": "Body fat % must be between 0 and 100.",
       "bodyWaterRange": "Body water % must be between 0 and 100.",
-      "bmrRange": "BMR must be between 300 and 10000 kcal."
+      "bmrRange": "BMR must be between 600 and 6000 kcal."
     },
     "nothingToSave": "Nothing to save",
     "enterValue": "Enter or clear at least one value.",
