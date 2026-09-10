@@ -1,4 +1,5 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
+import { log } from '../config/logging.js';
 import exerciseRepository from '../models/exercise.js';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
@@ -135,4 +136,54 @@ describe('processStravaActivities', () => {
       activityDetailsRepository.createActivityDetail
     ).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['missing detail', undefined, undefined, undefined],
+    ['detail without calories', {}, undefined, undefined],
+    ['null detail calories', { calories: null }, undefined, undefined],
+    ['summary calories', undefined, 300, 300],
+    ['zero summary calories', undefined, 0, 0],
+    ['detail calories', { calories: 325 }, 300, 325],
+    ['zero detail calories', { calories: 0 }, 300, 0],
+    ['summary fallback', { calories: null }, 300, 300],
+  ] as const)(
+    'passes %s to the entry transaction',
+    async (_case, detail, summaryCalories, expected) => {
+      const activity = {
+        id: 987,
+        name: 'Morning Run',
+        calories: summaryCalories,
+      };
+      await processStravaActivities(UID, CID, [activity], {
+        987: { ...activity, calories: 325 },
+      });
+      await processStravaActivities(
+        UID,
+        CID,
+        [activity],
+        detail ? { 987: detail } : {}
+      );
+
+      for (const [index, calories] of [325, expected].entries()) {
+        expect(
+          exerciseEntryRepository.createExerciseEntry
+        ).toHaveBeenNthCalledWith(
+          index + 1,
+          UID,
+          expect.objectContaining({
+            source_id: '987',
+            calories_burned: calories,
+          }),
+          CID,
+          'Strava',
+          null,
+          expect.any(Object)
+        );
+      }
+      expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenCalledTimes(
+        2
+      );
+      expect(log).not.toHaveBeenCalledWith('error', expect.any(String));
+    }
+  );
 });

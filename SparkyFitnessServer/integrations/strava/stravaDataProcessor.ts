@@ -143,13 +143,11 @@ async function processStravaActivities(
           : 0;
       const durationMinutes = Math.round(durationSeconds / 60);
       // Strava SummaryActivity often lacks calories, but DetailedActivity (if available) has it.
-      // Default to 0 to satisfy the NOT NULL constraint in the database.
+      // Missing calories preserve existing values; new entries default to 0.
       const detailedActivity = detailedActivities[activity.id] as
         StravaActivity | undefined;
       const caloriesAuto =
-        (detailedActivity && detailedActivity.calories) ||
-        activity.calories ||
-        0;
+        detailedActivity?.calories ?? activity.calories ?? undefined;
       const entryData = {
         exercise_id: exercise.id,
         entry_date: entryDate,
