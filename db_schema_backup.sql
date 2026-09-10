@@ -1589,7 +1589,7 @@ CREATE TABLE public.check_in_measurements (
     bone_mass_kg numeric(5,2),
     body_water_percentage numeric(5,2),
     bmr numeric(6,1),
-    CONSTRAINT check_in_measurements_bmr_check CHECK (((bmr IS NULL) OR ((bmr >= (300)::numeric) AND (bmr <= (10000)::numeric))))
+    CONSTRAINT check_in_measurements_bmr_check CHECK (((bmr IS NULL) OR ((bmr >= (600)::numeric) AND (bmr <= (6000)::numeric))))
 );
 
 
@@ -1597,7 +1597,7 @@ CREATE TABLE public.check_in_measurements (
 -- Name: COLUMN check_in_measurements.bmr; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.check_in_measurements.bmr IS 'Basal Metabolic Rate (BMR) in kcal, measured from smart weight scale or synced from health provider.';
+COMMENT ON COLUMN public.check_in_measurements.bmr IS 'Basal Metabolic Rate (BMR) in kcal, measured from smart weight scale or synced from health provider. Applies only to its own entry_date; days without a reading fall back to the user''s BMR formula.';
 
 
 --
