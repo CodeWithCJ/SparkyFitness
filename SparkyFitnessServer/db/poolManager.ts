@@ -64,6 +64,10 @@ function _getRawAppPool() {
   }
   return appPoolInstance;
 }
+/**
+ * Borrows a client with RLS context set for the target user and authenticated actor.
+ * The caller must release it in a finally block; failed context setup discards it.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getClient(
   userId: any,
