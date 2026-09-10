@@ -3,39 +3,41 @@ import '@testing-library/jest-dom';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 
 const mockUsePreferences = jest.fn();
+const mockT = jest.fn(
+  (
+    key: string,
+    defaultValueOrOptions?: string | Record<string, unknown>,
+    values?: Record<string, unknown>
+  ) => {
+    const localizedLabels: Record<string, string> = {
+      'calculationSettings.bmrAlgorithmOptions.mifflinStJeor':
+        'Localized Mifflin',
+      'calculationSettings.bodyFatAlgorithmOptions.usNavy': 'Localized Navy',
+      'settings.goalMode.modeNames.leanBulk': 'Localized Lean Bulk',
+      'settings.goalMode.modeNames.manual': 'Localized Manual',
+      'settings.goalMode.modeNames.cut': 'Localized Cut',
+    };
+    if (key in localizedLabels) return localizedLabels[key];
+
+    const defaultValue =
+      typeof defaultValueOrOptions === 'string'
+        ? defaultValueOrOptions
+        : defaultValueOrOptions?.['defaultValue'];
+    const interpolationValues =
+      typeof defaultValueOrOptions === 'string'
+        ? values
+        : defaultValueOrOptions;
+
+    if (typeof defaultValue !== 'string') return key;
+    return defaultValue.replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
+      String(interpolationValues?.[name] ?? `{{${name}}}`)
+    );
+  }
+);
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    // Supports both t(key, fallback, values) and t(key, { defaultValue, ...values }).
-    t: (
-      key: string,
-      defaultValueOrOptions?: string | Record<string, unknown>,
-      values?: Record<string, unknown>
-    ) => {
-      const localizedLabels: Record<string, string> = {
-        'calculationSettings.bmrAlgorithmOptions.mifflinStJeor':
-          'Localized Mifflin',
-        'calculationSettings.bodyFatAlgorithmOptions.usNavy': 'Localized Navy',
-        'settings.goalMode.modeNames.leanBulk': 'Localized Lean Bulk',
-        'settings.goalMode.modeNames.manual': 'Localized Manual',
-        'settings.goalMode.modeNames.cut': 'Localized Cut',
-      };
-      if (key in localizedLabels) return localizedLabels[key];
-
-      const defaultValue =
-        typeof defaultValueOrOptions === 'string'
-          ? defaultValueOrOptions
-          : defaultValueOrOptions?.['defaultValue'];
-      const interpolationValues =
-        typeof defaultValueOrOptions === 'string'
-          ? values
-          : defaultValueOrOptions;
-
-      if (typeof defaultValue !== 'string') return key;
-      return defaultValue.replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
-        String(interpolationValues?.[name] ?? `{{${name}}}`)
-      );
-    },
+    t: (...args: Parameters<typeof mockT>) => mockT(...args),
   }),
   initReactI18next: {
     type: '3rdParty',
@@ -92,6 +94,7 @@ const defaultProps = {
 };
 
 beforeEach(() => {
+  mockT.mockClear();
   mockUsePreferences.mockReturnValue({
     energyUnit: 'kcal',
     convertEnergy: (value: number) => value,
@@ -450,6 +453,21 @@ describe('CalorieTargetBreakdown weight-trend units', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/114\.6 kg → 110\.9 kg/)).not.toBeInTheDocument();
     expect(container.textContent).not.toMatch(/\{\{/);
+
+    const formulaVars = mockT.mock.calls.find(
+      ([key]) => key === 'settings.breakdown.adaptiveFormula'
+    )?.[1] as Record<string, unknown>;
+    const explainerVars = mockT.mock.calls.find(
+      ([key]) => key === 'settings.breakdown.adaptiveFormulaExplainer'
+    )?.[1] as Record<string, unknown>;
+    // de/es/ru still say "kg" with {{kcalPerKg}}; the per-lb figure belongs
+    // only on kcalPerUnit, which English interpolates with massUnit.
+    expect(formulaVars.kcalPerKg).toBe(6000);
+    expect(formulaVars.kcalPerUnit).toBe(2722);
+    expect(explainerVars.kcalPerKg).toBe(6000);
+    expect(explainerVars.kcalPerUnit).toBe(2722);
+    expect(explainerVars.fatPerKg).toBe((9441).toLocaleString());
+    expect(explainerVars.leanPerKg).toBe((1816).toLocaleString());
   });
 
   it('prints stones-configured trends in pounds so the energy working stays a usable figure', () => {
