@@ -418,15 +418,16 @@ describe('CalorieTargetBreakdown weight-trend units', () => {
   };
 
   it('prints the adaptive weight trend in kg by default', () => {
-    render(<CalorieTargetBreakdown {...trendProps} />);
+    const { container } = render(<CalorieTargetBreakdown {...trendProps} />);
 
     expect(
-      screen.getByText(/114\.6 → 110\.9 kg \(-3\.72 kg across all 28 days/)
+      screen.getByText(/114\.6 kg → 110\.9 kg \(-3\.72 kg across all 28 days/)
     ).toBeInTheDocument();
     expect(screen.getByText(/= -0\.1328 kg\/day/)).toBeInTheDocument();
     expect(
       screen.getByText(/Daily Weight Change in kg × 6000 kcal\/kg/)
     ).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/\{\{/);
   });
 
   it('prints the adaptive weight trend in pounds when that unit is configured', () => {
@@ -436,16 +437,19 @@ describe('CalorieTargetBreakdown weight-trend units', () => {
       weightUnit: 'lbs',
     });
 
-    render(<CalorieTargetBreakdown {...trendProps} />);
+    const { container } = render(<CalorieTargetBreakdown {...trendProps} />);
 
     expect(
-      screen.getByText(/252\.6 → 244\.5 lbs \(-8\.20 lbs across all 28 days/)
+      screen.getByText(
+        /252\.6 lbs → 244\.5 lbs \(-8\.20 lbs across all 28 days/
+      )
     ).toBeInTheDocument();
     expect(screen.getByText(/= -0\.2928 lbs\/day/)).toBeInTheDocument();
     expect(
       screen.getByText(/Daily Weight Change in lbs × 2722 kcal\/lbs/)
     ).toBeInTheDocument();
-    expect(screen.queryByText(/114\.6 → 110\.9 kg/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/114\.6 kg → 110\.9 kg/)).not.toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/\{\{/);
   });
 
   it('prints stones-configured trends in pounds so the energy working stays a usable figure', () => {
@@ -455,10 +459,13 @@ describe('CalorieTargetBreakdown weight-trend units', () => {
       weightUnit: 'st_lbs',
     });
 
-    render(<CalorieTargetBreakdown {...trendProps} />);
+    const { container } = render(<CalorieTargetBreakdown {...trendProps} />);
 
     expect(
-      screen.getByText(/252\.6 → 244\.5 lbs \(-8\.20 lbs across all 28 days/)
+      screen.getByText(
+        /252\.6 lbs → 244\.5 lbs \(-8\.20 lbs across all 28 days/
+      )
     ).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/\{\{/);
   });
 });
