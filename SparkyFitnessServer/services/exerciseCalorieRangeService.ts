@@ -41,6 +41,11 @@ interface CheckInStepsRow {
   height?: number | string | null;
 }
 
+/**
+ * Returns resolved calories for days with exercise or check-ins in the inclusive range.
+ * Weight and height carry forward independently, seeded from the latest prior value
+ * or the earliest later value when no prior measurement exists.
+ */
 export async function getResolvedExerciseCaloriesRange(
   userId: string,
   startDate: string,

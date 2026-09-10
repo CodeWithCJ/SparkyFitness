@@ -87,6 +87,11 @@ function enumerateDays(startDate: string, endDate: string): string[] {
   return days;
 }
 
+/**
+ * Returns a balance for every day in the inclusive range without per-day queries.
+ * Step estimates can use the earliest later weight or height when no prior value
+ * exists; body-composition inputs for BMR remain prior-only.
+ */
 export async function getDailySummaryRange({
   actorUserId,
   targetUserId,
