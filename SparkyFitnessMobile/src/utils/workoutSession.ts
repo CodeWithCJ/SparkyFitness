@@ -1437,7 +1437,7 @@ export function extractPlannedSetValues(
   exercises: PresetSessionExerciseRequest[]
 ): AssumedSetValues[][] {
   return exercises.map((exercise) =>
-    exercise.sets.map((set) => ({
+    (exercise.sets || []).map((set: any, i: number) => ({
       weight: set.weight ?? null,
       reps: set.reps ?? null,
       duration: set.duration ?? null,
@@ -1451,7 +1451,7 @@ export function stripPlannedSetValues(
 ): PresetSessionExerciseRequest[] {
   return exercises.map((exercise) => ({
     ...exercise,
-    sets: exercise.sets.map((set) => ({
+    sets: (exercise.sets || []).map((set: any, setIndex: number) => ({
       ...set,
       weight: null,
       reps: null,

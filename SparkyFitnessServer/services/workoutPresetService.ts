@@ -1,4 +1,5 @@
 import { getClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
 import workoutPresetRepository from '../models/workoutPresetRepository.js';
 import exerciseRepository from '../models/exerciseRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
@@ -13,12 +14,18 @@ import {
  * Helper to dynamically evaluate progression overload on preset exercises
  * from the user's completed history before returning to mobile/web clients.
  */
-async function applyProgressionToPreset(userId: string, preset: any) {
+async function applyProgressionToPreset(
+  userId: string,
+  preset: any,
+  sharedClient?: any
+) {
   if (!preset || !preset.exercises || preset.exercises.length === 0) {
     return preset;
   }
 
-  const client = await getClient(userId);
+  const client = sharedClient || (await getClient(userId));
+  const shouldRelease = !sharedClient;
+
   try {
     const enrichedExercises = await Promise.all(
       preset.exercises.map(async (ex: any) => {
@@ -31,7 +38,6 @@ async function applyProgressionToPreset(userId: string, preset: any) {
         }
 
         try {
-          // Query the most recent completed workout sets for this exercise
           const historyResult = await client.query(
             `SELECT ees.weight, ees.reps, ees.set_number, ee.entry_date
              FROM exercise_entry_sets ees
@@ -77,7 +83,6 @@ async function applyProgressionToPreset(userId: string, preset: any) {
             const progression = evaluateProgression(config, lastPerf);
 
             if (progression.goalAchieved) {
-              // Case A: Weight Progression
               if (config.incrementType === 'weight' && baseWeightInLbs > 0) {
                 const newWeightKg = progression.suggestedWeight / 2.20462;
                 return {
@@ -89,7 +94,6 @@ async function applyProgressionToPreset(userId: string, preset: any) {
                 };
               }
 
-              // Case B: Rep Progression
               if (
                 config.incrementType === 'reps' ||
                 ex.progression_mode === 'step_load'
@@ -111,8 +115,12 @@ async function applyProgressionToPreset(userId: string, preset: any) {
               }
             }
           }
-        } catch {
-          // Graceful fallback to static blueprint
+        } catch (err) {
+          log(
+            'warn',
+            `Failed evaluating progression for exercise ${ex.exercise_id}:`,
+            err
+          );
         }
         return ex;
       })
@@ -123,7 +131,9 @@ async function applyProgressionToPreset(userId: string, preset: any) {
       exercises: enrichedExercises,
     };
   } finally {
-    client.release();
+    if (shouldRelease) {
+      client.release();
+    }
   }
 }
 
@@ -147,21 +157,26 @@ async function createWorkoutPreset(userId: any, presetData: any) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getWorkoutPresets(userId: any, page: any, limit: any) {
-  const result = await workoutPresetRepository.getWorkoutPresets(
-    userId,
-    page,
-    limit
-  );
-  const enrichedPresets = await Promise.all(
-    result.presets.map((preset: any) =>
-      applyProgressionToPreset(userId, preset)
-    )
-  );
-  return {
-    ...result,
-    presets: enrichedPresets,
-  };
+async function getWorkoutPresets(userId: any, page = 1, limit = 10) {
+  const client = await getClient(userId);
+  try {
+    const result = await workoutPresetRepository.getWorkoutPresets(
+      userId,
+      page,
+      limit
+    );
+    const enrichedPresets = await Promise.all(
+      result.presets.map((preset: any) =>
+        applyProgressionToPreset(userId, preset, client)
+      )
+    );
+    return {
+      ...result,
+      presets: enrichedPresets,
+    };
+  } finally {
+    client.release();
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

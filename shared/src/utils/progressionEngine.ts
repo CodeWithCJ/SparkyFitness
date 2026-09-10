@@ -43,39 +43,35 @@ export function evaluateProgression(
   if (config.progressionMode === "fixed") {
     // Fixed mode: Every working set must reach or exceed the target per-set reps
     const targetPerSet = config.repGoal ?? 8;
-    const allSetsHit = validSets.length >= config.targetSets && validSets.every((s) => s.reps >= targetPerSet);
-    goalAchieved = allSetsHit;
-    repDifference = validSets.filter((s) => s.reps >= targetPerSet).length - config.targetSets;
-  } else {
-    // 'rep_goal' & 'step_load': Cumulative total reps check
-    goalAchieved = totalRepsAchieved >= effectiveRepGoal;
-    repDifference = totalRepsAchieved - effectiveRepGoal;
-  }
+    const successfulSets = validSets.filter((s) => s.reps >= targetPerSet).length;
+    goalAchieved = validSets.length >= config.targetSets && successfulSets >= config.targetSets;
+    const totalTargetReps = config.targetSets * targetPerSet;
+    repDifference = totalRepsAchieved - totalTargetReps;
 
-  if (goalAchieved) {
-    if (config.incrementType === "weight" && config.progressionMode !== "step_load") {
-      const newWeight = lastPerformance.baseWeight + config.incrementValue;
-      return {
-        goalAchieved: true,
-        status: "PROGRESSION_WEIGHT_INCREASE",
-        suggestedWeight: newWeight,
-        suggestedRepGoal: effectiveRepGoal,
-        totalRepsAchieved,
-        repDifference,
-        message: `Goal achieved! Increase weight to ${newWeight}.`,
-      };
-    } else {
-      const newRepGoal = effectiveRepGoal + config.incrementValue;
-      return {
-        goalAchieved: true,
-        status: "PROGRESSION_REPS_INCREASE",
-        suggestedWeight: lastPerformance.baseWeight,
-        suggestedRepGoal: newRepGoal,
-        totalRepsAchieved,
-        repDifference,
-        message: `Goal achieved! Target increased to ${newRepGoal} reps.`,
-      };
+    if (goalAchieved) {
+      if (config.incrementType === "weight") {
+        const newWeight = lastPerformance.baseWeight + config.incrementValue;
+        return {
+          goalAchieved: true,
+          status: "PROGRESSION_WEIGHT_INCREASE",
+          suggestedWeight: newWeight,
+          suggestedRepGoal: targetPerSet,
+          totalRepsAchieved,
+          repDifference,
+          message: `All ${config.targetSets} sets reached ${targetPerSet} reps! Increase weight to ${newWeight}.`,
+        };
+      }
     }
+
+    return {
+      goalAchieved: false,
+      status: "MAINTAIN_TARGET",
+      suggestedWeight: lastPerformance.baseWeight,
+      suggestedRepGoal: targetPerSet,
+      totalRepsAchieved,
+      repDifference,
+      message: `${successfulSets}/${config.targetSets} sets reached ${targetPerSet} reps. Hold weight.`,
+    };
   }
 
   return {
