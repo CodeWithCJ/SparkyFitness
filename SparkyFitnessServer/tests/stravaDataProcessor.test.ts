@@ -1,6 +1,7 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 import exerciseRepository from '../models/exercise.js';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
+import activityDetailsRepository from '../models/activityDetailsRepository.js';
 import { processStravaActivities } from '../integrations/strava/stravaDataProcessor.js';
 
 type StravaActivity = NonNullable<
@@ -18,6 +19,7 @@ vi.mock('../models/exercise.js', () => ({
 vi.mock('../models/exerciseEntry.js', () => ({
   default: {
     createExerciseEntry: vi.fn(),
+    updateExerciseEntryTelemetryOnly: vi.fn(),
   },
 }));
 vi.mock('../models/activityDetailsRepository.js', () => ({
@@ -27,7 +29,7 @@ vi.mock('../models/activityDetailsRepository.js', () => ({
 const UID = 1;
 const CID = 1;
 
-describe('processStravaActivities duration units', () => {
+describe('processStravaActivities', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(exerciseRepository.findExerciseByNameAndUserId).mockResolvedValue(
@@ -59,7 +61,78 @@ describe('processStravaActivities duration units', () => {
         sets: [expect.objectContaining({ duration: 1800 })],
       }),
       CID,
-      'Strava'
+      'Strava',
+      null,
+      { activityDetail: undefined }
     );
+  });
+
+  it('passes repeated complete snapshots through the entry transaction', async () => {
+    const activity = { id: 987, name: 'Morning Run' };
+    const detail = { ...activity, resource_state: 3, calories: 300 };
+
+    for (let i = 0; i < 2; i++) {
+      await processStravaActivities(UID, CID, [activity], { 987: detail });
+    }
+
+    expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenCalledTimes(
+      2
+    );
+    for (const call of [1, 2]) {
+      expect(
+        exerciseEntryRepository.createExerciseEntry
+      ).toHaveBeenNthCalledWith(
+        call,
+        UID,
+        expect.objectContaining({ source_id: '987', calories_burned: 300 }),
+        CID,
+        'Strava',
+        null,
+        {
+          activityDetail: {
+            provider_name: 'Strava',
+            detail_type: 'full_activity_data',
+            detail_data: detail,
+            created_by_user_id: String(CID),
+            updated_by_user_id: String(CID),
+          },
+        }
+      );
+    }
+    expect(
+      activityDetailsRepository.createActivityDetail
+    ).not.toHaveBeenCalled();
+  });
+
+  it('does not replace a complete snapshot when the next detail fetch is missing', async () => {
+    const activity = { id: 987, name: 'Morning Run' };
+    const detail = { ...activity, resource_state: 3, calories: 300 };
+    await processStravaActivities(UID, CID, [activity], { 987: detail });
+    await processStravaActivities(UID, CID, [activity]);
+
+    expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenCalledTimes(
+      2
+    );
+    expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenNthCalledWith(
+      1,
+      UID,
+      expect.objectContaining({ source_id: '987', calories_burned: 300 }),
+      CID,
+      'Strava',
+      null,
+      { activityDetail: expect.objectContaining({ detail_data: detail }) }
+    );
+    expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenNthCalledWith(
+      2,
+      UID,
+      expect.objectContaining({ source_id: '987' }),
+      CID,
+      'Strava',
+      null,
+      { activityDetail: undefined }
+    );
+    expect(
+      activityDetailsRepository.createActivityDetail
+    ).not.toHaveBeenCalled();
   });
 });
