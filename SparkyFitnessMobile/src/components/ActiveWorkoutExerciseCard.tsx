@@ -15,6 +15,11 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
+import {
+  evaluateProgression,
+  type ExerciseProgressionConfig,
+  type LastExercisePerformance,
+} from '@workspace/shared';
 import Icon from './Icon';
 import SafeImage from './SafeImage';
 import CompletionCheck from './CompletionCheck';
@@ -31,7 +36,11 @@ import WorkoutNotesField from './WorkoutNotesField';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
 import { useExerciseStats } from '../hooks/useExerciseStats';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
-import { distanceFromKm, weightFromKg } from '../utils/unitConversions';
+import {
+  distanceFromKm,
+  weightFromKg,
+  weightToKg,
+} from '../utils/unitConversions';
 import { formatLocalizedNumber } from '../localization';
 import {
   CATEGORY_ICON_MAP,
@@ -318,13 +327,9 @@ function ActiveWorkoutExerciseCard({
   // Never written back to the shared preference.
   const clampedToRpe = durationLike || modality === 'reps_only';
   const effectiveMetricColumn = clampedToRpe ? 'rpe' : metricColumn;
-  // Live and edit fetch the stats baseline with the active/edited session
-  // excluded so its own sets don't pollute it. View mode fetches only when the
-  // owner supplies the viewed session's id to exclude — without it (e.g. the
-  // preset detail view) Best could show the very workout being viewed, so the
-  // fetch is skipped (the hook gates on a null id).
+  // Live, edit, and preview fetch the stats baseline so progression overload evaluates
   const { data: stats } = useExerciseStats(
-    readOnly && excludePresetEntryId == null ? null : exercise.exercise_id,
+    exercise.exercise_id,
     excludePresetEntryId,
     sourcePresetId
   );
@@ -332,10 +337,72 @@ function ActiveWorkoutExerciseCard({
   const bestSet = stats?.bestSet ?? null;
 
   // PREVIOUS column source: the most recent prior session's sets, matched to
-  // the current rows by position (Hevy-style). Older servers omit
-  // recentSessions; `?? []` covers deploy skew (mobile never Zod-parses), so
-  // the column just shows dashes there.
+  // the current rows by position (Hevy-style).
   const previousSessionSets = (stats?.recentSessions ?? [])[0]?.sets;
+
+  // Progression Engine Evaluation
+  const progressionResult = useMemo(() => {
+    if (!exercise.rep_goal && exercise.progression_mode !== 'fixed')
+      return null;
+    const config: ExerciseProgressionConfig = {
+      progressionMode: (exercise.progression_mode as any) ?? 'rep_goal',
+      targetSets: exercise.sets.length || 3,
+      repGoal: exercise.rep_goal,
+      incrementType: exercise.increment_type ?? 'weight',
+      incrementValue: exercise.increment_value ?? 2.5,
+      equipmentBrand: exercise.equipment_brand ?? null,
+    };
+
+    const lastPerformance: LastExercisePerformance | null =
+      previousSessionSets && previousSessionSets.length > 0
+        ? {
+            baseWeight: previousSessionSets[0]?.weight
+              ? weightFromKg(previousSessionSets[0].weight, weightUnit)
+              : 0,
+            sets: previousSessionSets.map((s, idx) => ({
+              setNumber: idx + 1,
+              reps: s.reps ?? 0,
+              weight: s.weight ? weightFromKg(s.weight, weightUnit) : 0,
+            })),
+          }
+        : null;
+
+    return evaluateProgression(config, lastPerformance);
+  }, [
+    exercise.rep_goal,
+    exercise.progression_mode,
+    exercise.sets.length,
+    exercise.increment_type,
+    exercise.increment_value,
+    exercise.equipment_brand,
+    previousSessionSets,
+    weightUnit,
+  ]);
+
+  // Apple-style collapsible progression settings (Preset Edit Mode)
+  const [progressionEditorOpen, setProgressionEditorOpen] = useState(false);
+  const [editMode, setEditMode] = useState<
+    'rep_goal' | 'fixed' | 'step_load' | 'manual'
+  >((exercise.progression_mode as any) ?? 'rep_goal');
+  const [editRepGoal, setEditRepGoal] = useState<string>(
+    exercise.rep_goal != null ? String(exercise.rep_goal) : ''
+  );
+  const [editIncrementValue, setEditIncrementValue] = useState<string>(
+    exercise.increment_value != null ? String(exercise.increment_value) : '2.5'
+  );
+  const [editIncrementType, setEditIncrementType] = useState<'weight' | 'reps'>(
+    exercise.increment_type ?? 'weight'
+  );
+  const [editEquipmentBrand, setEditEquipmentBrand] = useState<string>(
+    exercise.equipment_brand ?? ''
+  );
+
+  const handleCommitProgression = useCallback(
+    (patch: any) => {
+      onCommitField?.(exercise.id, patch);
+    },
+    [exercise.id, onCommitField]
+  );
 
   // Assumed (placeholder) weight/reps per row — live only. Resolved from the
   // same sources completion adoption uses in the store, so the gray value a
@@ -347,10 +414,21 @@ function ActiveWorkoutExerciseCard({
         ? resolveAssumedSetValues(
             exercise.sets,
             previousSessionSets,
-            plannedSetValues
+            plannedSetValues,
+            progressionResult?.goalAchieved &&
+              progressionResult.status === 'PROGRESSION_WEIGHT_INCREASE'
+              ? weightToKg(progressionResult.suggestedWeight, weightUnit)
+              : null
           )
         : null,
-    [isLive, exercise.sets, previousSessionSets, plannedSetValues]
+    [
+      isLive,
+      exercise.sets,
+      previousSessionSets,
+      plannedSetValues,
+      progressionResult,
+      weightUnit,
+    ]
   );
 
   // Capture the historical PR baseline once per exercise. The store no-ops
@@ -422,8 +500,7 @@ function ActiveWorkoutExerciseCard({
 
   // Chip-row calories: an editable field in edit mode (when the form wires a
   // handler), a read-only value in view mode. Live mode shows neither — the
-  // value churns with every autosave recompute. The edit field renders as a
-  // tappable accent chip until activated, matching the screen's other cells.
+  // value churns with every autosave recompute.
   const caloriesField = isEdit && onChangeCalories != null;
   const [caloriesEditing, setCaloriesEditing] = useState(false);
   const caloriesText =
@@ -433,10 +510,7 @@ function ActiveWorkoutExerciseCard({
 
   // Edit-only: seed the first still-empty set from "last time" once, when
   // stats arrive. Weight and reps fill independently — a null lastSet field
-  // must not clobber a value the user already typed (a typed character makes
-  // the mapped field non-null and skips that side). The guard is keyed by
-  // exercise identity, not once-per-mount: a replaced exercise reuses the
-  // card instance and must be able to seed from its own history.
+  // must not clobber a value the user already typed.
   const prefilledExerciseIdRef = useRef<string | null>(null);
   const firstSet = exercise.sets[0];
   const firstSetId = firstSet != null ? String(firstSet.id) : null;
@@ -477,10 +551,6 @@ function ActiveWorkoutExerciseCard({
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
 
-  // The body's slide-in should fire only on user-driven expands: a card that
-  // mounts already expanded (forms default expanded; the live screen mounts
-  // the cursor's card open) renders its body statically. Render-time state
-  // adjust (not an effect) so the flip lands in the same commit as the collapse.
   const [hasRenderedCollapsed, setHasRenderedCollapsed] = useState(!expanded);
   if (!expanded && !hasRenderedCollapsed) setHasRenderedCollapsed(true);
 
@@ -492,19 +562,9 @@ function ActiveWorkoutExerciseCard({
   };
 
   const openOverflowMenu = () => onPressOverflow?.(exercise.id);
-  // Live-only long-press opens the same overflow menu (the collapsed row has
-  // no ⋮ of its own, so this is its only entry point).
   const longPressMenu =
     isLive && onPressOverflow ? openOverflowMenu : undefined;
 
-  // Row callbacks that feed set-keyed SCREEN state (focus, note expand) must
-  // hand back render keys, not raw set ids — the screen stores and compares
-  // keys. The row passes raw ids (tap, within-row Next, long-press), so
-  // translate here, once, in stable memoized wrappers: per-row memoization
-  // survives because a wrapper only changes identity when the map or its
-  // handler does (not while typing). When `setRenderKeys` is absent (view/edit)
-  // the translation is identity. Commit/complete/delete callbacks are NOT
-  // wrapped — they must keep passing ids to the store.
   const translateSetKey = useCallback(
     (id: string) => setRenderKeys?.[id] ?? id,
     [setRenderKeys]
@@ -532,9 +592,6 @@ function ActiveWorkoutExerciseCard({
     [onLongPressSet, translateSetKey]
   );
 
-  // Exercise thumbnail with a completion badge, shared by the collapsed and
-  // expanded rows so the image stays visible when the card is collapsed. The
-  // done-badge is suppressed in edit mode, where per-set badges convey state.
   const thumb = (
     <View>
       <ExerciseThumb
@@ -552,10 +609,6 @@ function ActiveWorkoutExerciseCard({
 
   if (!expanded) {
     const volumeKg = getExerciseVolumeKg(exercise);
-    // "planned" describes a live workout that hasn't reached the exercise yet;
-    // historical/imported workouts (view mode) and form drafts (edit mode)
-    // never show it. A cardio form card summarizes its effort instead of a
-    // set count.
     const cardioParts: string[] = [];
     if (cardioForm) {
       const firstCardioSet = exercise.sets[0];
@@ -572,8 +625,6 @@ function ActiveWorkoutExerciseCard({
         cardioParts.push(`${dist} ${distanceUnit === 'miles' ? 'mi' : 'km'}`);
       }
     }
-    // Duration tables have no volume, so their collapsed line carries the
-    // summed set duration instead (legacy-aware via effectiveSetDurationSec).
     const totalDurationSec = durationLike
       ? exercise.sets.reduce(
           (sum, s) =>
@@ -598,11 +649,6 @@ function ActiveWorkoutExerciseCard({
         ? `${exercise.sets.length} sets${detail}`
         : `${exercise.sets.length} sets`;
 
-    // The root → header row → thumb <Pressable> wrappers mirror the expanded
-    // card exactly so the thumbnail <Image> keeps its position in the tree
-    // across expand/collapse. A divergent structure would remount the image
-    // (a fresh network fetch) and flash it on every toggle. The thumb press
-    // target expands here; the labeled "Expand" affordance is the row body.
     return (
       <View className="border-b border-border-subtle">
         <View className="flex-row items-center gap-3 px-2 py-3">
@@ -613,14 +659,6 @@ function ActiveWorkoutExerciseCard({
           >
             {thumb}
           </Pressable>
-          {/* self-stretch fills the row's content height and hitSlop reaches
-              into the row's py-3 padding, so the expand target spans the whole
-              row height instead of just the text box. The horizontal slop
-              covers the row's own padding/gaps: right reaches through the px-2
-              to the card edge — the 16px chevron sits flush against it, and
-              taps aimed at the icon often land in that strip (the expanded
-              chevron's slopped target trains exactly that spot) — and left
-              covers the gap-3 next to the thumb. */}
           <Pressable
             onPress={() => onToggleExpanded(exercise.id)}
             onLongPress={longPressMenu}
@@ -632,12 +670,19 @@ function ActiveWorkoutExerciseCard({
             })}
             className="flex-1 self-stretch flex-row items-center gap-3"
           >
-            <Text
-              numberOfLines={2}
-              className={`flex-1 text-base ${isDone ? 'text-text-secondary' : 'text-text-primary'}`}
-            >
-              {name}
-            </Text>
+            <View className="flex-1">
+              <Text
+                numberOfLines={2}
+                className={`text-base ${isDone ? 'text-text-secondary' : 'text-text-primary'}`}
+              >
+                {name}
+              </Text>
+              {exercise.equipment_brand ? (
+                <Text className="text-xs text-text-muted mt-0.5">
+                  {exercise.equipment_brand}
+                </Text>
+              ) : null}
+            </View>
             <Text
               className="text-sm text-text-muted"
               style={{ fontVariant: ['tabular-nums'] }}
@@ -656,9 +701,6 @@ function ActiveWorkoutExerciseCard({
   return (
     <View className="border-b border-border-subtle px-2 pt-3 pb-2">
       <View className="flex-row items-center gap-3">
-        {/* Always a <Pressable> so the thumb subtree matches the collapsed
-            render and the <Image> is preserved rather than remounted. Inert
-            (no press, hidden from a11y) when no detail handler is wired. */}
         <Pressable
           onPress={onPressThumb ? () => onPressThumb(exercise.id) : undefined}
           accessible={onPressThumb != null}
@@ -674,9 +716,6 @@ function ActiveWorkoutExerciseCard({
         >
           {thumb}
         </Pressable>
-        {/* self-stretch + justify-center make the whole header-row height
-            tappable (not just the text box), so the collapse target around the
-            name matches the chevron's generous hit area. */}
         <Pressable
           onPress={() => onToggleExpanded(exercise.id)}
           onLongPress={longPressMenu}
@@ -694,6 +733,11 @@ function ActiveWorkoutExerciseCard({
           >
             {name}
           </Text>
+          {exercise.equipment_brand ? (
+            <Text className="text-xs text-text-muted mt-0.5">
+              {exercise.equipment_brand}
+            </Text>
+          ) : null}
         </Pressable>
         {!readOnly && (
           <Pressable
@@ -725,17 +769,204 @@ function ActiveWorkoutExerciseCard({
         </Pressable>
       </View>
 
-      {/* The revealed body slides down from the header on expand and folds
-          back up on collapse, in step with the host screens' LinearTransition
-          card wrappers. */}
       <Animated.View
         entering={hasRenderedCollapsed ? FadeInDown.duration(200) : undefined}
         exiting={FadeOutUp.duration(150)}
       >
-        {/* Per-exercise note: a subtle line under the name, shown when a note
-            already exists or the card ⋮ "Notes" editor was opened. Editable
-            wherever a commit handler is wired (live + workout forms); view mode
-            shows the saved note as plain text. */}
+        {/* Apple-Style Modern Progression Configuration (Preset Edit Mode) */}
+        {isEdit && (
+          <View className="mt-2 mb-1 px-1">
+            <Pressable
+              onPress={() => setProgressionEditorOpen(!progressionEditorOpen)}
+              className="flex-row items-center justify-between px-3 py-2 rounded-lg bg-surface border border-border-subtle"
+            >
+              <View className="flex-row items-center gap-2 flex-1 mr-2">
+                <Text className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                  Progression
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  className="text-xs font-medium text-text-primary flex-1"
+                >
+                  {editMode === 'manual'
+                    ? 'Manual (Off)'
+                    : editMode === 'fixed'
+                      ? `Fixed Target · +${editIncrementValue} ${weightUnit}`
+                      : editMode === 'step_load'
+                        ? `Step-Load · ${editRepGoal || '–'} reps · +${editIncrementValue} reps`
+                        : `Rep Goal · ${editRepGoal || '–'} reps · +${editIncrementValue} ${weightUnit}`}
+                </Text>
+              </View>
+              <Icon
+                name={progressionEditorOpen ? 'chevron-up' : 'chevron-down'}
+                size={14}
+                color={textMuted}
+              />
+            </Pressable>
+
+            {progressionEditorOpen && (
+              <View className="mt-2 p-3 rounded-xl bg-surface border border-border-subtle gap-3">
+                <View>
+                  <Text className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1.5">
+                    Overload Mode
+                  </Text>
+                  <View className="flex-row bg-raised rounded-lg p-0.5 border border-border-subtle">
+                    {(
+                      [
+                        { key: 'rep_goal', label: 'Rep Goal' },
+                        { key: 'fixed', label: 'Fixed' },
+                        { key: 'step_load', label: 'Step-Load' },
+                        { key: 'manual', label: 'Off' },
+                      ] as const
+                    ).map((tab) => {
+                      const isActive = editMode === tab.key;
+                      return (
+                        <Pressable
+                          key={tab.key}
+                          onPress={() => {
+                            setEditMode(tab.key);
+                            const newIncType =
+                              tab.key === 'step_load'
+                                ? 'reps'
+                                : editIncrementType;
+                            if (tab.key === 'step_load')
+                              setEditIncrementType('reps');
+                            handleCommitProgression({
+                              progression_mode: tab.key,
+                              increment_type: newIncType,
+                            });
+                          }}
+                          className={`flex-1 py-1.5 items-center justify-center rounded-md ${
+                            isActive ? 'bg-surface shadow-sm' : ''
+                          }`}
+                        >
+                          <Text
+                            className={`text-xs font-medium ${
+                              isActive
+                                ? 'text-text-primary font-semibold'
+                                : 'text-text-muted'
+                            }`}
+                          >
+                            {tab.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                {editMode !== 'manual' && (
+                  <View className="flex-row items-center gap-3">
+                    <View className="flex-1">
+                      <Text className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1">
+                        {editMode === 'fixed'
+                          ? 'Target Reps / Set'
+                          : 'Target Reps (Total)'}
+                      </Text>
+                      <FormInput
+                        value={editRepGoal}
+                        onChangeText={(val) => {
+                          setEditRepGoal(val);
+                          const num = parseInt(val, 10);
+                          handleCommitProgression({
+                            rep_goal: isNaN(num) ? null : num,
+                          });
+                        }}
+                        keyboardType="number-pad"
+                        placeholder={editMode === 'fixed' ? '8' : '75'}
+                        style={{
+                          height: 38,
+                          fontSize: 14,
+                          paddingHorizontal: 10,
+                        }}
+                      />
+                    </View>
+
+                    <View className="flex-1">
+                      <Text className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1">
+                        {editMode === 'step_load' ||
+                        editIncrementType === 'reps'
+                          ? 'Increment (Reps)'
+                          : `Increment (${weightUnit})`}
+                      </Text>
+                      <FormInput
+                        value={editIncrementValue}
+                        onChangeText={(val) => {
+                          setEditIncrementValue(val);
+                          const num = parseFloat(val);
+                          handleCommitProgression({
+                            increment_value: isNaN(num) ? 2.5 : num,
+                          });
+                        }}
+                        keyboardType="decimal-pad"
+                        placeholder="2.5"
+                        style={{
+                          height: 38,
+                          fontSize: 14,
+                          paddingHorizontal: 10,
+                        }}
+                      />
+                    </View>
+                  </View>
+                )}
+
+                <View>
+                  <Text className="text-[10px] font-semibold uppercase tracking-wider text-text-muted mb-1">
+                    Equipment / Machine Brand
+                  </Text>
+                  <FormInput
+                    value={editEquipmentBrand}
+                    onChangeText={(val) => {
+                      setEditEquipmentBrand(val);
+                      handleCommitProgression({
+                        equipment_brand: val.trim() || null,
+                      });
+                    }}
+                    autoCapitalize="words"
+                    placeholder="e.g. Hammer Strength, Cable Stack"
+                    style={{ height: 38, fontSize: 14, paddingHorizontal: 10 }}
+                  />
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Live Progression Overload Banner */}
+        {isLive && progressionResult && (
+          <View className="mt-2.5 mb-1 px-2.5 py-1.5 rounded-lg bg-raised flex-row items-center justify-between border border-border-subtle">
+            <View className="flex-row items-center gap-1.5 flex-1 mr-2">
+              <Icon
+                name={
+                  progressionResult.goalAchieved
+                    ? 'trophy-outline'
+                    : 'exercise-weights'
+                }
+                size={16}
+                color={
+                  progressionResult.goalAchieved ? accentPrimary : textSecondary
+                }
+              />
+              <Text
+                className="text-xs font-medium text-text-primary flex-1"
+                numberOfLines={2}
+              >
+                {progressionResult.message}
+              </Text>
+            </View>
+            {progressionResult.suggestedWeight > 0 && (
+              <View className="px-2 py-0.5 rounded bg-surface">
+                <Text
+                  className="text-xs font-bold"
+                  style={{ color: accentPrimary }}
+                >
+                  {progressionResult.suggestedWeight} {unitLabel}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {!readOnly &&
           onCommitExerciseNote != null &&
           (!!exercise.notes || noteEditorOpen) && (
@@ -772,9 +1003,6 @@ function ActiveWorkoutExerciseCard({
           bestDisplay != null ||
           caloriesField ||
           caloriesText != null) && (
-          // flex-wrap + gap-y so the rest chip and "Best" stack gracefully on
-          // narrow screens instead of shifting off the edge. "Last" lives in the
-          // per-set PREVIOUS column, not here.
           <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1 mt-2 mb-1 px-1">
             {showRestChip && !cardioForm && (
               <RestPeriodChip
@@ -896,9 +1124,6 @@ function ActiveWorkoutExerciseCard({
             distanceUnit={distanceUnit}
             assumed={assumedSetValues?.[0] ?? null}
             state={((): SetRowState => {
-              // Same state derivation as the table rows, so the form's log
-              // affordance matches: done check, pulsing cursor ring, or muted
-              // upcoming ring.
               const set = exercise.sets[0];
               if (set == null) return 'upcoming';
               if (completedSetIds[String(set.id)]) return 'done';
@@ -919,10 +1144,6 @@ function ActiveWorkoutExerciseCard({
 
         {!cardioForm && exercise.sets.length > 0 && (
           <View className="flex-row items-center px-1 py-1.5">
-            {/* Duration tables have a single value column; against it the
-                5-column fixed Set/Prev widths read squished, so their content
-                columns share the width equally instead of aligning with
-                neighboring cards. Keep in sync with ActiveWorkoutSetRow. */}
             <Text
               className={`${durationLike ? 'flex-1' : 'w-9'} text-center text-xs font-semibold uppercase text-text-muted`}
             >
@@ -940,9 +1161,6 @@ function ActiveWorkoutExerciseCard({
                 <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
                   {t('workout.sec', { defaultValue: 'Sec' })}
                 </Text>
-                {/* Read-only cardio tables surface per-set distance (imports,
-                    intervals); live/edit tables keep the single editable Sec
-                    cell, so the column only exists in view mode. */}
                 {readOnly && modality === 'duration_distance' && (
                   <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
                     {distanceUnit === 'miles'
@@ -993,12 +1211,7 @@ function ActiveWorkoutExerciseCard({
         {!cardioForm &&
           exercise.sets.map((set, index) => {
             const setId = String(set.id);
-            // Stable across an autosave id churn (view/edit: keyed by id). Used for
-            // the React key + focus/expand compares so the row instance — and its
-            // keyboard/draft — survives the set's id being reassigned.
             const renderKey = setRenderKeys?.[setId] ?? setId;
-            // Edit mode never surfaces 'done' — completed sets stay editable and
-            // show the static completedBadge instead.
             const state = isEdit
               ? setId === activeSetId
                 ? 'current'
@@ -1009,10 +1222,23 @@ function ActiveWorkoutExerciseCard({
                   ? 'current'
                   : 'upcoming';
             const nextSet = exercise.sets[index + 1];
+
+            // In preview mode ('view'), display the calculated progression weight if goal was hit
+            const effectiveSetWeight =
+              readOnly &&
+              progressionResult?.goalAchieved &&
+              progressionResult.status === 'PROGRESSION_WEIGHT_INCREASE'
+                ? weightToKg(progressionResult.suggestedWeight, weightUnit)
+                : set.weight;
+
+            const effectiveSet = readOnly
+              ? { ...set, weight: effectiveSetWeight }
+              : set;
+
             return (
               <React.Fragment key={renderKey}>
                 <ActiveWorkoutSetRow
-                  set={set}
+                  set={effectiveSet}
                   modality={modality}
                   distanceUnit={distanceUnit}
                   renderKey={renderKey}
@@ -1046,8 +1272,6 @@ function ActiveWorkoutExerciseCard({
                   onAddSet={onAddSet}
                   onRegisterAccessoryHandle={onRegisterAccessoryHandle}
                 />
-                {/* Per-set note expand — live and edit, toggled by long-pressing
-                  the set row. View mode shows a saved note as plain text. */}
                 {!readOnly &&
                   expandedSetKey === renderKey &&
                   onCommitField != null && (

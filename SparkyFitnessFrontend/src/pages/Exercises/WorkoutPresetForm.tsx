@@ -63,6 +63,15 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
     handleDragEnd,
     handleSubmit,
   } = useWorkoutPresetForm({ onSave, initialPreset });
+  const handleExerciseFieldChange = (
+    exerciseIndex: number,
+    field: string,
+    value: any
+  ) => {
+    if (exercises[exerciseIndex]) {
+      (exercises[exerciseIndex] as any)[field] = value;
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -172,6 +181,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
                         onRemoveSet={handleRemoveSet}
                         onAddSet={handleAddSet}
                         onReorderSets={handleReorderSets}
+                        onExerciseFieldChange={handleExerciseFieldChange}
                         simplified
                       />
                     );

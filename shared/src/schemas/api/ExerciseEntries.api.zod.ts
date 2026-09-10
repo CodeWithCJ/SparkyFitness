@@ -97,6 +97,12 @@ export const exerciseEntrySetResponseSchema = z
     is_pr: z.boolean(),
     // Km. Optional: pre-distance servers omit it.
     distance: z.number().nullable().optional(),
+    // Progression & Equipment Fields
+    progression_mode: z.enum(["rep_goal", "fixed", "step_load", "manual"]).nullable().optional(),
+    rep_goal: z.number().int().nullable().optional(),
+    increment_type: z.enum(["weight", "reps"]).nullable().optional(),
+    increment_value: z.number().nullable().optional(),
+    equipment_brand: z.string().nullable().optional(),
   })
   .strict();
 
@@ -156,6 +162,12 @@ export const createPresetSessionRequestSchema = z
     notes: z.string().nullable().optional(),
     source: z.string().default("manual"),
     exercises: z.array(presetSessionExerciseRequestSchema).min(1).optional(),
+    // Progression & Equipment Fields
+    progression_mode: z.enum(["rep_goal", "fixed", "step_load", "manual"]).nullable().optional(),
+    rep_goal: z.number().int().nullable().optional(),
+    increment_type: z.enum(["weight", "reps"]).nullable().optional(),
+    increment_value: z.number().nullable().optional(),
+    equipment_brand: z.string().nullable().optional(),
   })
   .strict()
   .superRefine((data, ctx) => {

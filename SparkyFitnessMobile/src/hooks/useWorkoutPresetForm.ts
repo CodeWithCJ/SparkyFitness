@@ -71,6 +71,11 @@ export function presetFormReducer(
           exerciseModality: exercise.modality ?? null,
           images: exercise.image_url ? [exercise.image_url] : [],
           supersetGroup: exercise.superset_group ?? null,
+          // Progression & Equipment Fields
+          repGoal: exercise.rep_goal ?? null,
+          incrementType: exercise.increment_type ?? 'weight',
+          incrementValue: exercise.increment_value ?? 5,
+          equipmentBrand: exercise.equipment_brand ?? null,
           sets: exercise.sets.map((set, setIdx) => ({
             clientId: action.clientIds[exerciseIdx].setClientIds[setIdx],
             restTime: set.rest_time,
@@ -99,7 +104,6 @@ export function presetFormReducer(
           })),
         })),
       };
-
     // "Save as preset" from a logged workout. Every logged set carries over
     // verbatim (completed or not — completion is about that day's session, not
     // the template); session-only fields (completion, PRs, RPE, per-exercise
