@@ -87,6 +87,9 @@ async function getWorkoutPlanTemplatesByUserId(userId: any) {
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getWorkoutPlanTemplateById(userId: any, templateId: any) {
+  // RLS already gates read access (owner or family-shared via
+  // can_view_exercise_library). If the row comes back, the caller is allowed to
+  // see it; an extra owner check here would wrongly 403 shared templates.
   const template =
     await workoutPlanTemplateRepository.getWorkoutPlanTemplateById(
       templateId,
@@ -94,16 +97,6 @@ async function getWorkoutPlanTemplateById(userId: any, templateId: any) {
     );
   if (!template) {
     throw new Error('Workout plan template not found.');
-  }
-  const ownerId =
-    // @ts-expect-error TS(2554): Expected 2 arguments, but got 1.
-    await workoutPlanTemplateRepository.getWorkoutPlanTemplateOwnerId(
-      templateId
-    );
-  if (ownerId !== userId) {
-    throw new Error(
-      'Forbidden: You do not have access to this workout plan template.'
-    );
   }
   return template;
 }
