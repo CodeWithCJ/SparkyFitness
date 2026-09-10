@@ -36,9 +36,8 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { getClient, getSystemClient, endPool } from '../db/poolManager.js';
 
 // Probe the app role RLS actually needs, with a short timeout, using a
-// standalone client (NOT the shared pools, whose error handler calls
-// process.exit). Returns false on any failure so the suite skips rather than
-// erroring when no DB is reachable.
+// standalone client. Returns false on any failure so the suite skips rather
+// than erroring when no DB is reachable.
 async function rlsTestDbReachable(): Promise<boolean> {
   if (process.env.SKIP_RLS_MATRIX === '1') return false;
   if (
