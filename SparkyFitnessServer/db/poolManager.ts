@@ -78,11 +78,16 @@ async function getClient(
   const store = dbContextStorage.getStore();
   const actualAuthUserId =
     authenticatedUserId || store?.authenticatedUserId || userId;
-  await client.query('SELECT public.set_app_context($1, $2)', [
-    userId,
-    actualAuthUserId,
-  ]);
-  return client;
+  try {
+    await client.query('SELECT public.set_app_context($1, $2)', [
+      userId,
+      actualAuthUserId,
+    ]);
+    return client;
+  } catch (error) {
+    client.release(true);
+    throw error;
+  }
 }
 async function getSystemClient() {
   const client = await _getRawOwnerPool().connect();
