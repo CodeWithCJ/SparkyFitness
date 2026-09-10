@@ -78,22 +78,27 @@ describe('processStravaActivities', () => {
     expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenCalledTimes(
       2
     );
-    expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenCalledWith(
-      UID,
-      expect.objectContaining({ source_id: '987', calories_burned: 300 }),
-      CID,
-      'Strava',
-      null,
-      {
-        activityDetail: {
-          provider_name: 'Strava',
-          detail_type: 'full_activity_data',
-          detail_data: detail,
-          created_by_user_id: String(CID),
-          updated_by_user_id: String(CID),
-        },
-      }
-    );
+    for (const call of [1, 2]) {
+      expect(
+        exerciseEntryRepository.createExerciseEntry
+      ).toHaveBeenNthCalledWith(
+        call,
+        UID,
+        expect.objectContaining({ source_id: '987', calories_burned: 300 }),
+        CID,
+        'Strava',
+        null,
+        {
+          activityDetail: {
+            provider_name: 'Strava',
+            detail_type: 'full_activity_data',
+            detail_data: detail,
+            created_by_user_id: String(CID),
+            updated_by_user_id: String(CID),
+          },
+        }
+      );
+    }
     expect(
       activityDetailsRepository.createActivityDetail
     ).not.toHaveBeenCalled();
@@ -101,14 +106,24 @@ describe('processStravaActivities', () => {
 
   it('does not replace a complete snapshot when the next detail fetch is missing', async () => {
     const activity = { id: 987, name: 'Morning Run' };
-    await processStravaActivities(UID, CID, [activity], {
-      987: { ...activity, resource_state: 3, calories: 300 },
-    });
+    const detail = { ...activity, resource_state: 3, calories: 300 };
+    await processStravaActivities(UID, CID, [activity], { 987: detail });
     await processStravaActivities(UID, CID, [activity]);
 
-    expect(
-      exerciseEntryRepository.createExerciseEntry
-    ).toHaveBeenLastCalledWith(
+    expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenCalledTimes(
+      2
+    );
+    expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenNthCalledWith(
+      1,
+      UID,
+      expect.objectContaining({ source_id: '987', calories_burned: 300 }),
+      CID,
+      'Strava',
+      null,
+      { activityDetail: expect.objectContaining({ detail_data: detail }) }
+    );
+    expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenNthCalledWith(
+      2,
       UID,
       expect.objectContaining({ source_id: '987' }),
       CID,
