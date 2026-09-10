@@ -27,8 +27,8 @@ export interface WorkoutPlanAssignmentInput {
 export interface CreateWorkoutPlanTemplateInput {
   plan_name: string;
   description?: string | null;
-  start_date?: string | Date | null;
-  end_date?: string | Date | null;
+  start_date?: string | null;
+  end_date?: string | null;
   is_active?: boolean | null;
   assignments?: WorkoutPlanAssignmentInput[] | null;
   currentClientDate?: string | null;
@@ -37,8 +37,8 @@ export interface CreateWorkoutPlanTemplateInput {
 export interface UpdateWorkoutPlanTemplateInput {
   plan_name?: string;
   description?: string | null;
-  start_date?: string | Date | null;
-  end_date?: string | Date | null;
+  start_date?: string | null;
+  end_date?: string | null;
   is_active?: boolean | null;
   assignments?: WorkoutPlanAssignmentInput[] | null;
   currentClientDate?: string | null;
