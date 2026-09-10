@@ -34,6 +34,8 @@ import {
   SafeMealsLibrary,
   SafeMealPlans,
   SafeMealPlanForm,
+  SafeWaterContainers,
+  SafeWaterContainerEdit,
   SafeExercisesLibrary,
   SafeWorkoutPresetsLibrary,
   SafeFoodDetail,
@@ -396,6 +398,16 @@ function AppContent() {
             name="MealPlanForm"
             component={SafeMealPlanForm}
             options={createStackScreenOptions(t('mealPlans.title', { defaultValue: 'Meal plans' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
+          />
+          <Stack.Screen
+            name="WaterContainers"
+            component={SafeWaterContainers}
+            options={createStackScreenOptions(t('waterContainers.title', { defaultValue: 'Water containers' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
+          />
+          <Stack.Screen
+            name="WaterContainerEdit"
+            component={SafeWaterContainerEdit}
+            options={createStackScreenOptions(t('waterContainerEdit.editTitle', { defaultValue: 'Edit container' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
           />
           <Stack.Screen
             name="ExercisesLibrary"

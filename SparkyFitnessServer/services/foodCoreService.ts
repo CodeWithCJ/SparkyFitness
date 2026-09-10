@@ -30,6 +30,7 @@ import {
   removeEntityImageDir,
 } from '../middleware/imageUpload.js';
 import { resolveImageInput, toImageArray } from '../utils/imageLocalizer.js';
+import { alcoholGramsForServing } from '@workspace/shared';
 
 /** A food row as returned by the repository. */
 interface FoodRow {
@@ -152,8 +153,39 @@ async function refreshExistingExternalFoodMetadata(
     authenticatedUserId,
     metadata
   );
-
   return updatedFood ?? { ...existingFood, ...metadata };
+}
+
+function deriveAlcoholGramsIfMissing<
+  T extends {
+    serving_size?: unknown;
+    serving_unit?: unknown;
+    abv_percent?: unknown;
+    alcohol_g?: unknown;
+  },
+>(data: T): T {
+  if (
+    data.abv_percent !== undefined &&
+    data.abv_percent !== null &&
+    (data.alcohol_g === undefined ||
+      data.alcohol_g === null ||
+      data.alcohol_g === '')
+  ) {
+    if (data.serving_size && data.serving_unit) {
+      // Shared with the OpenFoodFacts import, which used to derive grams for a
+      // weight serving while this path refused: the same beer then came back
+      // with grams when imported and zero when saved by hand.
+      return {
+        ...data,
+        alcohol_g: alcoholGramsForServing(
+          Number(data.serving_size),
+          String(data.serving_unit),
+          Number(data.abv_percent)
+        ),
+      };
+    }
+  }
+  return data;
 }
 
 async function createFood(authenticatedUserId: string, foodData: FoodInput) {
@@ -187,10 +219,13 @@ async function createFood(authenticatedUserId: string, foodData: FoodInput) {
         );
       }
     }
+    const processedFoodData = deriveAlcoholGramsIfMissing(foodData);
     const newFood = await foodRepository.createFood({
-      ...foodData,
-      glycemic_index: foodData.glycemic_index || null,
-      custom_nutrients: sanitizeCustomNutrients(foodData.custom_nutrients),
+      ...processedFoodData,
+      glycemic_index: processedFoodData.glycemic_index || null,
+      custom_nutrients: sanitizeCustomNutrients(
+        processedFoodData.custom_nutrients
+      ),
     });
     return newFood;
   } catch (error) {
@@ -484,10 +519,11 @@ async function createFoodVariant(
       );
     }
     variantData.user_id = authenticatedUserId; // Ensure user_id is set from authenticated user
+    const processedVariantData = deriveAlcoholGramsIfMissing(variantData);
     const newVariant = await foodRepository.createFoodVariant(
       {
-        ...variantData,
-        glycemic_index: variantData.glycemic_index || null,
+        ...processedVariantData,
+        glycemic_index: processedVariantData.glycemic_index || null,
       },
       authenticatedUserId
     );
@@ -557,12 +593,42 @@ async function updateFoodVariant(
       );
     }
     variantData.user_id = authenticatedUserId; // Ensure user_id is set from authenticated user
+    const effectiveServingSize =
+      variantData.serving_size !== undefined
+        ? variantData.serving_size
+        : variant.serving_size;
+    const effectiveServingUnit =
+      variantData.serving_unit !== undefined
+        ? variantData.serving_unit
+        : variant.serving_unit;
+    const effectiveAbv =
+      variantData.abv_percent !== undefined
+        ? variantData.abv_percent
+        : variant.abv_percent;
+    const processedVariantData = { ...variantData };
+    if (
+      effectiveAbv !== null &&
+      effectiveAbv !== undefined &&
+      (processedVariantData.alcohol_g === undefined ||
+        processedVariantData.alcohol_g === null ||
+        processedVariantData.alcohol_g === '')
+    ) {
+      if (effectiveServingSize && effectiveServingUnit) {
+        processedVariantData.alcohol_g = alcoholGramsForServing(
+          Number(effectiveServingSize),
+          String(effectiveServingUnit),
+          Number(effectiveAbv)
+        );
+      }
+    }
     const updatedVariant = await foodRepository.updateFoodVariant(
       variantId,
       {
-        ...variantData,
-        glycemic_index: variantData.glycemic_index || null,
-        custom_nutrients: sanitizeCustomNutrients(variantData.custom_nutrients),
+        ...processedVariantData,
+        glycemic_index: processedVariantData.glycemic_index || null,
+        custom_nutrients: sanitizeCustomNutrients(
+          processedVariantData.custom_nutrients
+        ),
       },
       authenticatedUserId
     );
@@ -812,6 +878,9 @@ async function updateSnapshotForVariant(
     vitamin_c: variant.vitamin_c,
     calcium: variant.calcium,
     iron: variant.iron,
+    caffeine_mg: variant.caffeine_mg,
+    water_ml: variant.water_ml,
+    alcohol_g: variant.alcohol_g,
     glycemic_index: variant.glycemic_index,
     custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
   };

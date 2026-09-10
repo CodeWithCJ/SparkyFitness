@@ -253,6 +253,13 @@ const ReportsTables = ({
               calcium:
                 (Number(acc.calcium) || 0) + (Number(entry.calcium) || 0),
               iron: (Number(acc.iron) || 0) + (Number(entry.iron) || 0),
+              caffeine_mg:
+                (Number(acc.caffeine_mg) || 0) +
+                (Number(entry.caffeine_mg) || 0),
+              water_ml:
+                (Number(acc.water_ml) || 0) + (Number(entry.water_ml) || 0),
+              alcohol_g:
+                (Number(acc.alcohol_g) || 0) + (Number(entry.alcohol_g) || 0),
               glycemic_index: 'None',
               ...customNutrientsSum,
             };
@@ -275,6 +282,9 @@ const ReportsTables = ({
             vitamin_c: 0,
             calcium: 0,
             iron: 0,
+            caffeine_mg: 0,
+            water_ml: 0,
+            alcohol_g: 0,
             glycemic_index: 'None',
           } as Partial<DailyFoodEntry>
         ); // Use Partial to allow for initial empty state
@@ -303,6 +313,9 @@ const ReportsTables = ({
           vitamin_c: dailyTotals.vitamin_c,
           calcium: dailyTotals.calcium,
           iron: dailyTotals.iron,
+          caffeine_mg: dailyTotals.caffeine_mg,
+          water_ml: dailyTotals.water_ml,
+          alcohol_g: dailyTotals.alcohol_g,
           glycemic_index: 'None',
           serving_size: 100, // Default value, not used for totals
           ...dailyTotals, // Include custom nutrient totals

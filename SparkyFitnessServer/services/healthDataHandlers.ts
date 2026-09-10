@@ -292,6 +292,7 @@ const NUTRITION_DIRECT_COLUMNS = [
   'vitamin_c',
   'calcium',
   'iron',
+  'caffeine_mg',
 ] as const;
 
 // Maps the client's display label (dataEntry.source) to a stable provider tag

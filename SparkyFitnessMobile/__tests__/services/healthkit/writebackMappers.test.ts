@@ -65,6 +65,18 @@ describe('foodEntryToNutrientSamples', () => {
     ).toBeUndefined(); // absent
   });
 
+  // #1958: caffeine rides the same generic per-column loop as every other
+  // nutrient here, so it needs its own scaling/unit assertion like sodium/vitamin_a above.
+  it('scales caffeine_mg and writes it in mg', () => {
+    const descriptor = foodEntryToNutrientSamples(
+      { ...baseEntry, caffeine_mg: 60 }, // -> 90 mg
+      NOW
+    )!;
+    expect(
+      sampleFor(descriptor, 'HKQuantityTypeIdentifierDietaryCaffeine')
+    ).toMatchObject({ unit: 'mg', quantity: 90 });
+  });
+
   it('never emits a trans-fat sample (no HealthKit identifier in the library)', () => {
     const descriptor = foodEntryToNutrientSamples(
       { ...baseEntry, trans_fat: 5 },
@@ -179,12 +191,24 @@ describe('DIETARY_HK_MAP', () => {
     });
   });
 
+  // #1958: caffeine rides the same generic HC_NUTRIENT_COLUMNS-derived map as
+  // every other nutrient here -- no bespoke write path, no new permission.
+  it('maps caffeine_mg to HKQuantityTypeIdentifierDietaryCaffeine in mg', () => {
+    expect(DIETARY_HK_MAP.caffeine_mg).toEqual({
+      identifier: 'HKQuantityTypeIdentifierDietaryCaffeine',
+      unit: 'mg',
+    });
+  });
+
   it('excludes trans_fat (no HealthKit identifier)', () => {
     expect(DIETARY_HK_MAP.trans_fat).toBeUndefined();
   });
 
   it('DIETARY_WRITE_IDENTIFIERS leads with energy and contains no trans-fat id', () => {
     expect(DIETARY_WRITE_IDENTIFIERS[0]).toBe(DIETARY_ENERGY_IDENTIFIER);
+    expect(DIETARY_WRITE_IDENTIFIERS).toContain(
+      'HKQuantityTypeIdentifierDietaryCaffeine'
+    );
     expect(DIETARY_WRITE_IDENTIFIERS).toContain(
       'HKQuantityTypeIdentifierDietaryProtein'
     );

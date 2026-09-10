@@ -100,6 +100,7 @@ async function getNutritionixNutrients(query: string, providerId: string) {
         vitamin_c: food.nf_vitamin_c, // Assuming this exists or needs to be mapped
         calcium: food.nf_calcium, // Assuming this exists or needs to be mapped
         iron: food.nf_iron, // Assuming this exists or needs to be mapped
+        caffeine_mg: food.nf_caffeine,
       };
     }
     return null;
@@ -160,6 +161,7 @@ async function getNutritionixBrandedNutrients(
         vitamin_c: getNutrientValue(401), // Vitamin C (Commonly 401, verify with Nutritionix API docs)
         calcium: getNutrientValue(301), // Calcium (Commonly 301, verify with Nutritionix API docs)
         iron: getNutrientValue(303), // Iron (Commonly 303, verify with Nutritionix API docs)
+        caffeine_mg: getNutrientValue(262), // Caffeine
       };
     }
     return null;

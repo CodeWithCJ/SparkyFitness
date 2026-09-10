@@ -1180,6 +1180,18 @@ describe('mapDietarySample (dietary reverse mapper)', () => {
     ).toEqual({ column: 'vitamin_a', value: 120 });
   });
 
+  // #1958: caffeine is mapped generically off DIETARY_HK_MAP like every other
+  // mg-stored micro above (mapDietarySample is the inbound Food-correlation reader).
+  test('maps caffeine in mg to the mg-stored column unchanged', () => {
+    expect(
+      mapDietarySample({
+        quantityType: 'HKQuantityTypeIdentifierDietaryCaffeine',
+        quantity: 90,
+        unit: 'mg',
+      })
+    ).toEqual({ column: 'caffeine_mg', value: 90 });
+  });
+
   test('returns null for an unknown unit (never guesses a conversion)', () => {
     expect(
       mapDietarySample({

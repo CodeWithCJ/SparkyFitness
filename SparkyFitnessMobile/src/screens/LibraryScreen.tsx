@@ -28,6 +28,7 @@ import {
   useFoods,
   useMeals,
   useMedications,
+  useWaterContainersQuery,
   useRecentMeals,
   useServerConnection,
   useSuggestedExercises,
@@ -88,6 +89,9 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   } = useRecentMeals({ enabled: isConnected, limit: RECENT_LIMIT });
   const { meals, refetch: refetchMeals } = useMeals({ enabled: isConnected });
   const { data: medications, refetch: refetchMedications } = useMedications({
+    enabled: isConnected,
+  });
+  const { containers: waterContainers } = useWaterContainersQuery({
     enabled: isConnected,
   });
   const {
@@ -418,6 +422,30 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           <View className="flex-row items-center">
             <Text className="text-text-secondary text-base mr-2">
               {presetsCount ?? '-'}
+            </Text>
+            <Icon name="chevron-forward" size={20} color="#999" />
+          </View>
+        </Pressable>
+        <Pressable
+          className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
+          onPress={() => navigation.navigate('WaterContainers')}
+          style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+        >
+          <View className="flex-1 mr-3">
+            <Text className="text-base font-semibold text-text-primary">
+              {t('screens.library.waterContainers', {
+                defaultValue: 'Water containers',
+              })}
+            </Text>
+            <Text className="text-sm text-text-secondary mt-0.5">
+              {t('screens.library.waterContainersSubtitle', {
+                defaultValue: 'Bottles, glasses, and drinks linked to foods',
+              })}
+            </Text>
+          </View>
+          <View className="flex-row items-center">
+            <Text className="text-text-secondary text-base mr-2">
+              {waterContainers.length}
             </Text>
             <Icon name="chevron-forward" size={20} color="#999" />
           </View>

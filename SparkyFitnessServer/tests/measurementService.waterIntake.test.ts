@@ -6,6 +6,11 @@ import { UpsertWaterIntakeBodySchema } from '../schemas/measurementSchemas.js';
 // Mock the repository functions
 vi.mock('../models/measurementRepository');
 vi.mock('../models/waterContainerRepository');
+// upsertWaterIntake now returns totals through hydrationTotalsService, the
+// same owner the GET uses, so the preference read and the food-water read
+// have to be mocked here too.
+vi.mock('../models/preferenceRepository');
+vi.mock('../models/foodMisc');
 describe('Measurement Service - Water Intake', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -18,7 +23,7 @@ describe('Measurement Service - Water Intake', () => {
       it('should accept request with omitted container_id', () => {
         const validData = {
           entry_date: '2023-01-01',
-          change_drinks: 250,
+          change_drinks: 2,
           // container_id is omitted
         };
         const result = UpsertWaterIntakeBodySchema.safeParse(validData);
@@ -29,7 +34,7 @@ describe('Measurement Service - Water Intake', () => {
       it('should accept request with null container_id', () => {
         const validData = {
           entry_date: '2023-01-01',
-          change_drinks: 250,
+          change_drinks: 2,
           container_id: null,
         };
         const result = UpsertWaterIntakeBodySchema.safeParse(validData);
@@ -40,7 +45,7 @@ describe('Measurement Service - Water Intake', () => {
       it('should accept request with valid container_id', () => {
         const validData = {
           entry_date: '2023-01-01',
-          change_drinks: 250,
+          change_drinks: 2,
           container_id: 5,
         };
         const result = UpsertWaterIntakeBodySchema.safeParse(validData);
@@ -57,6 +62,33 @@ describe('Measurement Service - Water Intake', () => {
         expect(result.success).toBe(false);
         // @ts-expect-error TS(2532): Object is possibly 'undefined'.
         expect(result.error.issues).toHaveLength(2);
+      });
+
+      // upsertWaterIntake loops once per drink, and since #2115 a single
+      // iteration can also insert a food_entries row, so an unbounded or
+      // fractional count is an unbounded serial write loop.
+      it('rejects a drink count beyond what the UI can issue', () => {
+        const result = UpsertWaterIntakeBodySchema.safeParse({
+          entry_date: '2023-01-01',
+          change_drinks: 5000,
+        });
+        expect(result.success).toBe(false);
+      });
+
+      it('rejects a fractional drink count', () => {
+        const result = UpsertWaterIntakeBodySchema.safeParse({
+          entry_date: '2023-01-01',
+          change_drinks: 2.5,
+        });
+        expect(result.success).toBe(false);
+      });
+
+      it('still accepts a negative count, which is how "-" is expressed', () => {
+        const result = UpsertWaterIntakeBodySchema.safeParse({
+          entry_date: '2023-01-01',
+          change_drinks: -3,
+        });
+        expect(result.success).toBe(true);
       });
     });
   });
@@ -112,6 +144,101 @@ describe('Measurement Service - Water Intake', () => {
       measurementRepository.insertWaterIntakeLog.mockResolvedValue({});
       // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
       measurementRepository.getWaterIntakeByDate.mockResolvedValue({});
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      measurementRepository.getWaterIntakeLogByDate.mockResolvedValue([]);
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      measurementRepository.deleteWaterIntakeLog.mockResolvedValue(true);
+      // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+      measurementRepository.recomputeWaterAggregateForUser.mockResolvedValue(0);
+    });
+
+    // Phase 2 (#1557/#1629 prep): the decrement branch used to fall back to
+    // `remainingDrinks * amountPerDrink` when fewer ledger rows existed than
+    // drinks requested, subtracting water no row ever contained. It now
+    // recomputes from whatever is left in water_intake_entries instead.
+    describe('decrements', () => {
+      it('deletes each of the N most recent ledger rows and recomputes, with no incrementWaterData call', async () => {
+        // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+        measurementRepository.getWaterIntakeLogByDate.mockResolvedValue([
+          { id: 'log-1', water_ml: 250 },
+          { id: 'log-2', water_ml: 250 },
+        ]);
+
+        await measurementService.upsertWaterIntake(
+          mockUserId,
+          mockUserId,
+          entryDate,
+          -2,
+          null
+        );
+
+        expect(
+          measurementRepository.deleteWaterIntakeLog
+        ).toHaveBeenCalledTimes(2);
+        expect(measurementRepository.deleteWaterIntakeLog).toHaveBeenCalledWith(
+          'log-1',
+          mockUserId
+        );
+        expect(measurementRepository.deleteWaterIntakeLog).toHaveBeenCalledWith(
+          'log-2',
+          mockUserId
+        );
+        expect(
+          measurementRepository.recomputeWaterAggregateForUser
+        ).toHaveBeenCalledWith(mockUserId, mockUserId, entryDate, 'manual');
+        // The old incremental-delta path must be gone from this branch.
+        expect(measurementRepository.incrementWaterData).not.toHaveBeenCalled();
+      });
+
+      it('removes only what exists and still recomputes when fewer ledger rows exist than requested — no phantom subtraction', async () => {
+        // Only 1 row exists, but the caller asks to remove 3 "drinks".
+        // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+        measurementRepository.getWaterIntakeLogByDate.mockResolvedValue([
+          { id: 'log-1', water_ml: 250 },
+        ]);
+        // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+        waterContainerRepository.getWaterContainerById.mockResolvedValue(
+          undefined
+        );
+
+        await measurementService.upsertWaterIntake(
+          mockUserId,
+          mockUserId,
+          entryDate,
+          -3,
+          null
+        );
+
+        // Exactly the one row that exists is deleted — no phantom volume for
+        // the two "drinks" that had no backing row.
+        expect(
+          measurementRepository.deleteWaterIntakeLog
+        ).toHaveBeenCalledTimes(1);
+        expect(
+          measurementRepository.recomputeWaterAggregateForUser
+        ).toHaveBeenCalledWith(mockUserId, mockUserId, entryDate, 'manual');
+        expect(measurementRepository.incrementWaterData).not.toHaveBeenCalled();
+      });
+
+      it('recomputes (a no-op total) even when there are no ledger rows at all', async () => {
+        // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
+        measurementRepository.getWaterIntakeLogByDate.mockResolvedValue([]);
+
+        await measurementService.upsertWaterIntake(
+          mockUserId,
+          mockUserId,
+          entryDate,
+          -1,
+          null
+        );
+
+        expect(
+          measurementRepository.deleteWaterIntakeLog
+        ).not.toHaveBeenCalled();
+        expect(
+          measurementRepository.recomputeWaterAggregateForUser
+        ).toHaveBeenCalledWith(mockUserId, mockUserId, entryDate, 'manual');
+      });
     });
 
     it('divides container volume by servings_per_container per drink', async () => {
@@ -129,13 +256,6 @@ describe('Measurement Service - Water Intake', () => {
         1,
         3
       );
-      expect(measurementRepository.incrementWaterData).toHaveBeenCalledWith(
-        mockUserId,
-        mockUserId,
-        250,
-        entryDate,
-        'manual'
-      );
       expect(measurementRepository.insertWaterIntakeLog).toHaveBeenCalledWith(
         mockUserId,
         mockUserId,
@@ -143,8 +263,14 @@ describe('Measurement Service - Water Intake', () => {
         250,
         3,
         'Jug',
-        'manual'
+        'manual',
+        null,
+        null,
+        1.0
       );
+      expect(
+        measurementRepository.recomputeWaterAggregateForUser
+      ).toHaveBeenCalledWith(mockUserId, mockUserId, entryDate, 'manual');
     });
 
     it('falls back to the full container volume when servings_per_container is 0', async () => {
@@ -162,13 +288,21 @@ describe('Measurement Service - Water Intake', () => {
         1,
         3
       );
-      expect(measurementRepository.incrementWaterData).toHaveBeenCalledWith(
+      expect(measurementRepository.insertWaterIntakeLog).toHaveBeenCalledWith(
         mockUserId,
         mockUserId,
-        750,
         entryDate,
-        'manual'
+        750,
+        3,
+        'Broken Row',
+        'manual',
+        null,
+        null,
+        1.0
       );
+      expect(
+        measurementRepository.recomputeWaterAggregateForUser
+      ).toHaveBeenCalledWith(mockUserId, mockUserId, entryDate, 'manual');
     });
   });
   describe('updateWaterIntake', () => {

@@ -26,6 +26,9 @@ export interface FoodDefaultVariant {
   vitamin_c?: number;
   calcium?: number;
   iron?: number;
+  caffeine_mg?: number;
+  water_ml?: number;
+  alcohol_g?: number;
   is_default?: boolean;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
@@ -118,6 +121,9 @@ export interface FoodVariantDetail {
   vitamin_c?: number;
   calcium?: number;
   iron?: number;
+  caffeine_mg?: number;
+  water_ml?: number;
+  alcohol_g?: number;
   is_default?: boolean;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;

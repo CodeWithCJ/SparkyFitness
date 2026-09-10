@@ -13,6 +13,9 @@ export const familyDailySummaryQueryKey = (
   date: string
 ) => ['familyDailySummary', familyUserId, date] as const;
 
+export const caffeineActiveQueryKey = (date: string) =>
+  ['caffeineActive', date] as const;
+
 export const measurementsQueryKey = (date: string) =>
   ['measurements', date] as const;
 

@@ -1,11 +1,15 @@
+import type { PoolClient } from 'pg';
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
+import foodRepository from './foodMisc.js';
+import preferenceRepository from './preferenceRepository.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
 import {
   resolveBackgroundStepCalories,
   isDayString,
   isValidTimeZone,
+  localDateToDay,
   todayInZone,
 } from '@workspace/shared';
 
@@ -1568,6 +1572,8 @@ async function getMostRecentMeasurement(
 export { upsertStepData };
 export { upsertWaterData };
 export { incrementWaterData };
+export { recomputeWaterAggregate };
+export { recomputeWaterAggregateForUser };
 export { getWaterIntakesByDates };
 export { getWaterIntakeEntryById };
 export { getWaterIntakeEntryOwnerId };
@@ -1607,14 +1613,21 @@ async function insertWaterIntakeLog(
   containerId: number | null,
   containerName: string | null,
   source = 'manual',
-  loggedAt: string | null = null
+  loggedAt: string | null = null,
+  // #2115: set when this drink was logged by a container linked to a food.
+  // hydrationFactor is snapshotted at log time -- editing the container later
+  // must not rewrite history, following container_name's existing precedent.
+  foodEntryId: string | null = null,
+  hydrationFactor: number | null = null,
+  client?: PoolClient
 ) {
-  const client = await getClient(actingUserId);
+  const ownClient = !client;
+  const activeClient = client ?? (await getClient(actingUserId));
   try {
-    const result = await client.query(
+    const result = await activeClient.query(
       `INSERT INTO water_intake_entries
-        (user_id, entry_date, water_ml, container_id, container_name, source, created_at, created_by_user_id, logged_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, COALESCE($8, NOW()))
+        (user_id, entry_date, water_ml, container_id, container_name, source, created_at, created_by_user_id, logged_at, food_entry_id, hydration_factor)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, COALESCE($8, NOW()), $9, $10)
        RETURNING *`,
       [
         userId,
@@ -1625,11 +1638,13 @@ async function insertWaterIntakeLog(
         source,
         actingUserId,
         loggedAt,
+        foodEntryId,
+        hydrationFactor,
       ]
     );
     return result.rows[0];
   } finally {
-    client.release();
+    if (ownClient) activeClient.release();
   }
 }
 
@@ -1656,6 +1671,78 @@ async function insertWaterIntakeLog(
  * wiping the user's tapped-in drink log because a CSV import omitted a
  * source column would destroy real data.
  */
+/**
+ * Recomputes and stores the water_intake daily aggregate for one
+ * (user, entry_date, source) from the CURRENT contents of water_intake_entries
+ * -- SUM-from-source-of-truth, not an incremental `+=`. This is what makes a
+ * caller idempotent: run it twice, or after a row was deleted by something
+ * that bypassed the service layer (e.g. an ON DELETE CASCADE from a linked
+ * food entry), and it converges on the correct total either way, unlike
+ * incrementWaterData's `water_intake.water_ml + $delta`, which only stays
+ * correct if every mutation that ever touched the ledger also called it with
+ * the right delta.
+ *
+ * Runs on the caller's own client so it can participate in an existing
+ * transaction (see upsertWaterIntakeSamples below).
+ */
+async function recomputeWaterAggregate(
+  client: PoolClient,
+  userId: string,
+  actingUserId: string,
+  entryDate: string,
+  source: string
+): Promise<number> {
+  const sumRes = await client.query(
+    `SELECT COALESCE(SUM(water_ml), 0) as total_ml
+     FROM water_intake_entries
+     WHERE user_id = $1 AND entry_date = $2 AND source = $3`,
+    [userId, entryDate, source]
+  );
+  const totalMl = Number(sumRes.rows[0]?.total_ml || 0);
+
+  await client.query(
+    `INSERT INTO water_intake (user_id, entry_date, water_ml, source, created_by_user_id, updated_by_user_id, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $5, NOW(), NOW())
+     ON CONFLICT (user_id, entry_date, source)
+     DO UPDATE SET water_ml = $3, updated_at = NOW(), updated_by_user_id = $5`,
+    [userId, entryDate, totalMl, source, actingUserId]
+  );
+
+  return totalMl;
+}
+
+/**
+ * Convenience wrapper around recomputeWaterAggregate for callers with no
+ * open transaction of their own (e.g. measurementService's manual +/- path).
+ * Opens and closes its own client/transaction, mirroring the
+ * createFoodWithClient/createFood split in models/food.ts.
+ */
+async function recomputeWaterAggregateForUser(
+  userId: string,
+  actingUserId: string,
+  entryDate: string,
+  source: string
+): Promise<number> {
+  const client = await getClient(userId, actingUserId);
+  try {
+    await client.query('BEGIN');
+    const totalMl = await recomputeWaterAggregate(
+      client,
+      userId,
+      actingUserId,
+      entryDate,
+      source
+    );
+    await client.query('COMMIT');
+    return totalMl;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function upsertWaterIntakeSamples(
   userId: string,
   actingUserId: string,
@@ -1811,20 +1898,12 @@ async function upsertWaterIntakeSamples(
     // (source, date) combination touched by this batch's samples.
     for (const [source, dates] of affectedDatesBySource) {
       for (const dateStr of dates) {
-        const sumRes = await client.query(
-          `SELECT COALESCE(SUM(water_ml), 0) as total_ml
-           FROM water_intake_entries
-           WHERE user_id = $1 AND entry_date = $2 AND source = $3`,
-          [userId, dateStr, source]
-        );
-        const totalMl = Number(sumRes.rows[0]?.total_ml || 0);
-
-        await client.query(
-          `INSERT INTO water_intake (user_id, entry_date, water_ml, source, created_by_user_id, updated_by_user_id, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $5, NOW(), NOW())
-           ON CONFLICT (user_id, entry_date, source)
-           DO UPDATE SET water_ml = $3, updated_at = NOW(), updated_by_user_id = $5`,
-          [userId, dateStr, totalMl, source, actingUserId]
+        await recomputeWaterAggregate(
+          client,
+          userId,
+          actingUserId,
+          dateStr,
+          source
         );
       }
     }
@@ -1864,11 +1943,11 @@ async function getWaterIntakeLogByDate(
   try {
     const result = await client.query(
       source
-        ? `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at
+        ? `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at, food_entry_id, hydration_factor
            FROM water_intake_entries
            WHERE user_id = $1 AND entry_date = $2 AND source = $3
            ORDER BY logged_at DESC`
-        : `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at
+        : `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at, food_entry_id, hydration_factor
            FROM water_intake_entries
            WHERE user_id = $1 AND entry_date = $2
            ORDER BY logged_at DESC`,
@@ -1880,16 +1959,23 @@ async function getWaterIntakeLogByDate(
   }
 }
 
-async function deleteWaterIntakeLog(id: string, userId: string) {
-  const client = await getClient(userId);
+// #2115: accepts an optional external client so a caller that also needs to
+// delete the linked food entry can do both under one transaction.
+async function deleteWaterIntakeLog(
+  id: string,
+  userId: string,
+  client?: PoolClient
+) {
+  const ownClient = !client;
+  const activeClient = client ?? (await getClient(userId));
   try {
-    const result = await client.query(
-      'DELETE FROM water_intake_entries WHERE id = $1 AND user_id = $2 RETURNING id, water_ml, entry_date, source',
+    const result = await activeClient.query(
+      'DELETE FROM water_intake_entries WHERE id = $1 AND user_id = $2 RETURNING id, water_ml, entry_date, source, food_entry_id',
       [id, userId]
     );
     return result.rows[0] || null;
   } finally {
-    client.release();
+    if (ownClient) activeClient.release();
   }
 }
 
@@ -1955,7 +2041,56 @@ async function getWaterTotalsByDateRange(
     query += ' GROUP BY entry_date ORDER BY entry_date ASC';
 
     const result = await client.query(query, queryParams);
-    return result.rows;
+    const rows = result.rows;
+
+    // Same opt-in gate as hydrationTotalsService.resolveWaterTotalsForDate
+    // (#1557, #1629), applied per-date here so the chatbot's water history
+    // and reports.trends agree with the Diary for an opted-in user.
+    const preferences = await preferenceRepository.getUserPreferences(userId);
+    if (!preferences?.add_food_water_to_intake || !startDate || !endDate) {
+      return rows;
+    }
+
+    const foodRows: Array<{
+      entry_date: string | Date;
+      food_ml: string | number;
+    }> = await foodRepository.getFoodDerivedWaterMlByDateRange(
+      userId,
+      startDate,
+      endDate
+    );
+    // entry_date rows to a plain YYYY-MM-DD key regardless of whether pg
+    // handed back a Date (raw column) or a string (TO_CHAR above).
+    // localDateToDay, not toISOString: pg parses a `date` column to local
+    // midnight, so converting through UTC lands on the previous day for every
+    // negative-offset zone -- food water would be credited to the wrong day.
+    const toDateKey = (value: string | Date): string =>
+      typeof value === 'string' ? value.slice(0, 10) : localDateToDay(value);
+
+    const foodMlByDate = new Map<string, number>(
+      foodRows.map((row) => [
+        toDateKey(row.entry_date),
+        Number(row.food_ml) || 0,
+      ])
+    );
+
+    const rowsTyped: Array<{
+      entry_date: string | Date;
+      total_ml: string | number;
+    }> = rows;
+    const mergedByDate = new Map<string, number>(
+      rowsTyped.map((row) => [
+        toDateKey(row.entry_date),
+        Number(row.total_ml) || 0,
+      ])
+    );
+    for (const [entryDate, foodMl] of foodMlByDate) {
+      mergedByDate.set(entryDate, (mergedByDate.get(entryDate) || 0) + foodMl);
+    }
+
+    return Array.from(mergedByDate.entries())
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([entry_date, total_ml]) => ({ entry_date, total_ml }));
   } finally {
     client.release();
   }
@@ -1965,6 +2100,8 @@ export default {
   upsertStepData,
   upsertWaterData,
   incrementWaterData,
+  recomputeWaterAggregate,
+  recomputeWaterAggregateForUser,
   getWaterIntakeByDate,
   getWaterIntakesByDates,
   getWaterIntakeEntryById,

@@ -122,6 +122,9 @@ const ALL_NUTRIENT_KEYS = [
   'vitamin_c',
   'calcium',
   'iron',
+  'caffeine_mg',
+  'water_ml',
+  'alcohol_g',
 ] as const;
 
 const MealBuilder: React.FC<MealBuilderProps> = ({
@@ -648,6 +651,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         vitamin_c: mealFoodToEdit.vitamin_c,
         calcium: mealFoodToEdit.calcium,
         iron: mealFoodToEdit.iron,
+        caffeine_mg: mealFoodToEdit.caffeine_mg,
+        water_ml: mealFoodToEdit.water_ml,
+        alcohol_g: mealFoodToEdit.alcohol_g,
         glycemic_index: mealFoodToEdit.glycemic_index as GlycemicIndex,
         custom_nutrients: mealFoodToEdit.custom_nutrients,
       };
@@ -695,6 +701,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       vitamin_c: selectedVariant.vitamin_c,
       calcium: selectedVariant.calcium,
       iron: selectedVariant.iron,
+      caffeine_mg: selectedVariant.caffeine_mg,
+      water_ml: selectedVariant.water_ml,
+      alcohol_g: selectedVariant.alcohol_g,
       glycemic_index: selectedVariant.glycemic_index,
       custom_nutrients: selectedVariant.custom_nutrients,
     };
@@ -940,6 +949,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           vitamin_c: mf.vitamin_c,
           calcium: mf.calcium,
           iron: mf.iron,
+          caffeine_mg: mf.caffeine_mg,
+          water_ml: mf.water_ml,
+          alcohol_g: mf.alcohol_g,
           glycemic_index: mf.glycemic_index,
           custom_nutrients: mf.custom_nutrients,
         })),
@@ -1073,6 +1085,9 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
               vitamin_c: mf.vitamin_c,
               calcium: mf.calcium,
               iron: mf.iron,
+              caffeine_mg: mf.caffeine_mg,
+              water_ml: mf.water_ml,
+              alcohol_g: mf.alcohol_g,
               glycemic_index: mf.glycemic_index,
               custom_nutrients: mf.custom_nutrients,
             })),

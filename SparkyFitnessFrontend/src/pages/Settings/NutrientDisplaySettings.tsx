@@ -30,6 +30,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { CENTRAL_NUTRIENT_CONFIG } from '@/constants/nutrients';
+import { NON_GOAL_NUTRIENT_KEYS } from '@workspace/shared';
 
 const baseNutrients = [
   'calories',
@@ -50,6 +51,9 @@ const baseNutrients = [
   'iron',
   'calcium',
   'glycemic_index',
+  'caffeine_mg',
+  'water_ml',
+  'alcohol_g',
 ];
 
 const viewGroups = [
@@ -94,6 +98,18 @@ function buildOrderedList(
   const visibleSet = new Set(visibleNutrients);
   const rest = allNutrients.filter((n) => !visibleSet.has(n));
   return [...visibleNutrients, ...rest];
+}
+
+// water_ml is never offerable as a goal: user_goals has no water_ml column (the
+// one water goal is water_goal_ml), so a checked box here would render a goal
+// input whose value is silently dropped on save. Same guard as DailyGoals.tsx,
+// EditGoalsForToday.tsx and NutrientGoalDirectionSettings.tsx.
+function nutrientsForGroup(viewGroup: string, allNutrients: string[]) {
+  return viewGroup === 'goal'
+    ? allNutrients.filter(
+        (n) => !(NON_GOAL_NUTRIENT_KEYS as readonly string[]).includes(n)
+      )
+    : allNutrients;
 }
 
 interface SortableNutrientRowProps {
@@ -174,7 +190,7 @@ function buildInitialOrder(
       );
       groupOrders[platform] = buildOrderedList(
         pref?.visible_nutrients ?? [],
-        allNutrients
+        nutrientsForGroup(group.id, allNutrients)
       );
     }
 
@@ -320,7 +336,10 @@ const NutrientDisplaySettingsInner: React.FC<
     platformsToUpdate.forEach((pform) => {
       const order =
         nutrientOrder[viewGroup]?.[pform] ??
-        buildOrderedList(getVisibleNutrients(viewGroup, pform), allNutrients);
+        buildOrderedList(
+          getVisibleNutrients(viewGroup, pform),
+          nutrientsForGroup(viewGroup, allNutrients)
+        );
       const currentVisible = getVisibleNutrients(viewGroup, pform);
       const newVisible = checked
         ? order.filter((n) => n === nutrient || currentVisible.includes(n))
@@ -345,7 +364,10 @@ const NutrientDisplaySettingsInner: React.FC<
     platformsToUpdate.forEach((pform) => {
       const currentOrder =
         nutrientOrder[viewGroup]?.[pform] ??
-        buildOrderedList(getVisibleNutrients(viewGroup, pform), allNutrients);
+        buildOrderedList(
+          getVisibleNutrients(viewGroup, pform),
+          nutrientsForGroup(viewGroup, allNutrients)
+        );
       const oldIndex = currentOrder.indexOf(active.id as string);
       const newIndex = currentOrder.indexOf(over.id as string);
       if (oldIndex === -1 || newIndex === -1) return;
@@ -374,7 +396,10 @@ const NutrientDisplaySettingsInner: React.FC<
     platformsToUpdate.forEach((pform) => {
       const order =
         nutrientOrder[viewGroup]?.[pform] ??
-        buildOrderedList(getVisibleNutrients(viewGroup, pform), allNutrients);
+        buildOrderedList(
+          getVisibleNutrients(viewGroup, pform),
+          nutrientsForGroup(viewGroup, allNutrients)
+        );
       updatePreferences(viewGroup, pform, order);
     });
   };
@@ -419,7 +444,7 @@ const NutrientDisplaySettingsInner: React.FC<
               ...(prev[viewGroup] ?? {}),
               [pform]: buildOrderedList(
                 defaultPreference.visible_nutrients ?? [],
-                allNutrients
+                nutrientsForGroup(viewGroup, allNutrients)
               ),
             },
           }));
@@ -512,7 +537,7 @@ const NutrientDisplaySettingsInner: React.FC<
                   nutrientOrder[group.id]?.[platform] ??
                   buildOrderedList(
                     getVisibleNutrients(group.id, platform),
-                    allNutrients
+                    nutrientsForGroup(group.id, allNutrients)
                   );
 
                 return (

@@ -13,10 +13,12 @@ import {
   Plus,
   Minus,
   Trash2,
+  Utensils,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { convertMlToSelectedUnit } from '@/utils/nutritionCalculations';
+import { describeContainerPress } from '@/utils/waterContainerLabels';
 import { isManualSource, prettifySource } from '@/utils/sourceLabels';
 import { useWaterContainer } from '@/contexts/WaterContainerContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
@@ -24,6 +26,7 @@ import {
   useWaterGoalQuery,
   useWaterIntakeQuery,
   useManualWaterIntakeQuery,
+  useFoodWaterIntakeQuery,
   useUpdateWaterIntakeMutation,
   useWaterIntakeLogQuery,
   useDeleteWaterIntakeLogMutation,
@@ -38,7 +41,8 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId } = useActiveUser(); // Get activeUserId
-  const { activeContainer, containers } = useWaterContainer(); // Use activeContainer and containers from context
+  const { activeContainer, standardContainers, quickAddPresets } =
+    useWaterContainer();
   const { water_display_unit } = usePreferences();
   const userId = activeUserId || user?.id;
   const { data: waterGoalMl = 1920 } = useWaterGoalQuery(selectedDate, userId);
@@ -46,6 +50,10 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   // Only manually logged water can be removed here; provider-synced water is
   // owned by its provider and would just reappear on the next sync.
   const { data: manualWaterMl = 0 } = useManualWaterIntakeQuery(
+    selectedDate,
+    userId
+  );
+  const { data: foodWaterMl = 0 } = useFoodWaterIntakeQuery(
     selectedDate,
     userId
   );
@@ -70,25 +78,28 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   // State for editing time on a log entry
   const [editingTimeId, setEditingTimeId] = useState<string | null>(null);
 
-  // Derived selected container
+  // Derived selected container from standard containers only
   const currentContainer =
-    containers.find((c) => c.id === selectedContainerId) || activeContainer;
+    standardContainers.find((c) => c.id === selectedContainerId) ||
+    activeContainer;
 
   const cycleContainer = (direction: 'next' | 'prev') => {
-    if (containers.length <= 1) return;
+    if (standardContainers.length <= 1) return;
 
-    const currentIndex = containers.findIndex(
+    const currentIndex = standardContainers.findIndex(
       (c) => c.id === currentContainer?.id
     );
     let nextIndex;
 
     if (direction === 'next') {
-      nextIndex = (currentIndex + 1) % containers.length;
+      nextIndex = (currentIndex + 1) % standardContainers.length;
     } else {
-      nextIndex = (currentIndex - 1 + containers.length) % containers.length;
+      nextIndex =
+        (currentIndex - 1 + standardContainers.length) %
+        standardContainers.length;
     }
 
-    const nextContainer = containers[nextIndex];
+    const nextContainer = standardContainers[nextIndex];
     if (nextContainer) {
       setSelectedContainerId(nextContainer.id);
     }
@@ -114,19 +125,40 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
 
   const getVolumeDisplay = () => {
     if (currentContainer) {
+      // Mirror the server's precedence (measurementService, #2115) so the label
+      // and the ring can never disagree: an explicit container volume wins,
+      // otherwise a linked food supplies its own water, scaled by how much of
+      // it one press logs. This used to always show volume / servings, so a
+      // linked container promised "+500 ml" and credited the food's 22.
       const servings = Math.max(
         1,
         currentContainer.servings_per_container || 1
       );
-      const volumePerDrink = currentContainer.volume / servings;
+      const hasVolumeOverride =
+        !currentContainer.linked_food_id || currentContainer.volume > 0;
+      // water_ml is stored per serving_size, so the credit for linked_quantity
+      // of it is water * quantity / serving_size -- the same scaling the server
+      // applies. Without the divisor a 250 ml drink read as 5500 ml.
+      const linkedServingSize =
+        Number(currentContainer.linked_variant_serving_size) || 0;
+      const linkedWater =
+        Number(currentContainer.linked_variant_water_ml ?? 0) *
+        Number(currentContainer.linked_quantity ?? 1);
+      const volumePerDrink = hasVolumeOverride
+        ? currentContainer.volume / servings
+        : linkedServingSize > 0
+          ? linkedWater / linkedServingSize
+          : linkedWater;
+      const credited =
+        volumePerDrink * Number(currentContainer.hydration_factor ?? 1);
       const displayVolume = convertMlToSelectedUnit(
-        volumePerDrink,
-        currentContainer.unit
-      ).toFixed(currentContainer.unit === 'ml' ? 0 : 2);
+        credited,
+        displayUnit
+      ).toFixed(displayUnit === 'ml' ? 0 : 2);
 
       return t('foodDiary.waterIntake.perDrink', {
         volume: displayVolume,
-        unit: currentContainer.unit,
+        unit: displayUnit,
       });
     }
 
@@ -195,7 +227,16 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   }
 
   const fillPercentage = Math.min((waterMl / waterGoalMl) * 100, 100);
-  const displayUnit = currentContainer?.unit || water_display_unit;
+  // A container's unit qualifies its own volume. A linked container has none
+  // -- volume is 0 and the credit comes from the food -- so whatever unit was
+  // left in the form when it was created is vestigial, and letting it drive the
+  // card put the day's total in oz for a container the user thinks of as ml.
+  const containerUnitIsMeaningful =
+    !!currentContainer &&
+    (!currentContainer.linked_food_id || currentContainer.volume > 0);
+  const displayUnit = containerUnitIsMeaningful
+    ? currentContainer.unit
+    : water_display_unit;
 
   return (
     <Card className="h-full flex flex-col">
@@ -221,6 +262,20 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
           <div className="text-gray-500 text-xs">
             {currentContainer?.unit || water_display_unit}
           </div>
+          {foodWaterMl > 0 && (
+            <div className="text-muted-foreground text-xs mt-0.5">
+              {(() => {
+                const activeUnit = currentContainer?.unit || water_display_unit;
+                const decimals =
+                  activeUnit === 'oz' ? 1 : activeUnit === 'liter' ? 2 : 0;
+                const val = convertMlToSelectedUnit(foodWaterMl, activeUnit);
+                return t('foodDiary.waterIntake.fromFood', {
+                  volume: parseFloat(val.toFixed(decimals)),
+                  unit: activeUnit,
+                });
+              })()}
+            </div>
+          )}
         </div>
 
         {/* Water Bottle Visualization - takes up most space */}
@@ -308,7 +363,7 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
             variant="ghost"
             size="icon"
             onClick={() => cycleContainer('prev')}
-            disabled={containers.length <= 1}
+            disabled={standardContainers.length <= 1}
             className="h-6 w-6 text-gray-400 hover:text-gray-600"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -319,6 +374,17 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
               {currentContainer?.name ||
                 t('foodDiary.waterIntake.defaultContainer', 'Container')}
             </div>
+            {currentContainer?.linked_food_id && (
+              <span
+                title={t(
+                  'foodDiary.waterIntake.linkedDrink',
+                  'Linked to a food entry'
+                )}
+                className="inline-flex items-center"
+              >
+                <Utensils className="w-2.5 h-2.5 text-blue-500 shrink-0" />
+              </span>
+            )}
             {currentContainer?.is_primary && (
               <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />
             )}
@@ -328,12 +394,52 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
             variant="ghost"
             size="icon"
             onClick={() => cycleContainer('next')}
-            disabled={containers.length <= 1}
+            disabled={standardContainers.length <= 1}
             className="h-6 w-6 text-gray-400 hover:text-gray-600"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
+
+        {/* Quick-Add Drink Presets */}
+        {quickAddPresets.length > 0 && (
+          <div className="mt-3 pt-2 border-t border-gray-100 dark:border-slate-800">
+            <div className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-1.5">
+              {t('drink_presets.quickAdd', 'Quick-Add Drinks')}
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {quickAddPresets.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => saveWaterIntake(1, preset.id)}
+                  disabled={loading}
+                  className="flex items-center justify-between p-1.5 rounded-lg border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-800/60 hover:bg-blue-50/50 dark:hover:bg-slate-700/50 text-left transition-colors cursor-pointer group"
+                >
+                  <div className="min-w-0 pr-1">
+                    <div className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">
+                      {preset.name}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      {/* A preset is linked to a food and carries volume 0,
+                          so describe the press by what it logs. */}
+                      <span>
+                        {describeContainerPress(preset, { nonMlDecimals: 1 })}
+                      </span>
+                      {preset.hydration_factor === 0 && (
+                        <span className="text-[9px] text-amber-600 dark:text-amber-400 font-mono">
+                          0% water
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="shrink-0 h-5 w-5 rounded-full bg-blue-50 dark:bg-blue-950/60 group-hover:bg-blue-600 group-hover:text-white text-blue-600 dark:text-blue-400 flex items-center justify-center transition-colors">
+                    <Plus className="h-3 w-3" />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Drink History Log */}
         {logEntries.length > 0 && (
@@ -407,6 +513,17 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
                             'Container'
                           )}
                       </span>
+                      {entry.food_entry_id && (
+                        <span
+                          title={t(
+                            'foodDiary.waterIntake.linkedDrink',
+                            'Linked to a food entry'
+                          )}
+                          className="inline-flex items-center"
+                        >
+                          <Utensils className="w-3 h-3 text-blue-500 shrink-0" />
+                        </span>
+                      )}
                       {/* Synced entries are labelled so it's clear why the "-"
                           control can't remove them; manual rows stay unlabelled
                           to keep the common case uncluttered. */}
@@ -417,22 +534,38 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="font-medium text-blue-600 dark:text-blue-400">
-                        {(() => {
-                          const val = convertMlToSelectedUnit(
-                            Number(entry.water_ml),
-                            displayUnit
-                          );
-                          const decimals =
-                            displayUnit === 'oz'
-                              ? 1
-                              : displayUnit === 'liter'
-                                ? 2
-                                : 0;
-                          return parseFloat(val.toFixed(decimals));
-                        })()}{' '}
-                        {displayUnit}
-                      </span>
+                      {/* A drink with a hydration factor of 0 -- an espresso,
+                          a spirit -- credits no water on purpose. Printing a
+                          bare "0 ml" beside it read as a failed calculation
+                          rather than the intended answer. */}
+                      {Number(entry.water_ml) === 0 ? (
+                        <span
+                          className="font-medium text-muted-foreground"
+                          title={t(
+                            'foodDiary.waterIntake.noWaterCreditHint',
+                            'This drink is set to count as no water'
+                          )}
+                        >
+                          {t('foodDiary.waterIntake.noWaterCredit', 'no water')}
+                        </span>
+                      ) : (
+                        <span className="font-medium text-blue-600 dark:text-blue-400">
+                          {(() => {
+                            const val = convertMlToSelectedUnit(
+                              Number(entry.water_ml),
+                              displayUnit
+                            );
+                            const decimals =
+                              displayUnit === 'oz'
+                                ? 1
+                                : displayUnit === 'liter'
+                                  ? 2
+                                  : 0;
+                            return parseFloat(val.toFixed(decimals));
+                          })()}{' '}
+                          {displayUnit}
+                        </span>
+                      )}
                       {/* Provider-synced rows get no delete: the provider still
                           holds the record, so a deleted row just re-inserts on
                           the next sync. */}

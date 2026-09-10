@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { ExpandedGoals } from '@/types/goals';
+import { NON_GOAL_NUTRIENT_KEYS } from '@workspace/shared';
 import MealPercentageManager from '@/components/MealPercentageManager';
 import { Separator } from '@/components/ui/separator';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -132,7 +133,9 @@ const EditGoalsForm = ({
       'monounsaturated_fat',
       'trans_fat',
     ];
-    const merged = Array.from(new Set([...base, ...mustInclude]));
+    const merged = Array.from(new Set([...base, ...mustInclude])).filter(
+      (k) => !(NON_GOAL_NUTRIENT_KEYS as readonly string[]).includes(k)
+    );
 
     // Also include custom nutrients in the visibility list so they aren't filtered out by NutrientInput
     return [...merged, ...customNutrients.map((cn) => cn.name)];

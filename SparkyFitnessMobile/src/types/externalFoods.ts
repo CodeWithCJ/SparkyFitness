@@ -17,6 +17,9 @@ export interface ExternalFoodVariant {
   cholesterol?: number;
   vitamin_a?: number;
   vitamin_c?: number;
+  caffeine_mg?: number;
+  water_ml?: number;
+  alcohol_g?: number;
 }
 
 export interface ExternalFoodSearchPagination {
@@ -54,6 +57,9 @@ export interface ExternalFoodItem {
   cholesterol?: number;
   vitamin_a?: number;
   vitamin_c?: number;
+  caffeine_mg?: number;
+  water_ml?: number;
+  alcohol_g?: number;
   serving_size: number;
   serving_unit: string;
   serving_description?: string;

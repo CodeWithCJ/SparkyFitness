@@ -474,6 +474,9 @@ interface NormalizedFoodVariant {
   vitamin_c?: number;
   calcium?: number;
   iron?: number;
+  caffeine_mg?: number;
+  water_ml?: number;
+  alcohol_g?: number;
   is_default: boolean;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
@@ -548,6 +551,9 @@ export function _transformNormalizedFood(
     potassium: v.potassium,
     calcium: v.calcium,
     iron: v.iron,
+    caffeine_mg: v.caffeine_mg,
+    water_ml: v.water_ml,
+    alcohol_g: v.alcohol_g,
     vitamin_a: v.vitamin_a,
     vitamin_c: v.vitamin_c,
   });
@@ -707,6 +713,9 @@ export interface LabelScanResult {
   potassium: number | null;
   calcium: number | null;
   iron: number | null;
+  caffeine_mg: number | null;
+  water_ml: number | null;
+  alcohol_g: number | null;
   vitamin_a: number | null;
   vitamin_c: number | null;
 }

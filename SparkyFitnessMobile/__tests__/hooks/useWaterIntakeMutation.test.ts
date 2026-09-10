@@ -23,6 +23,16 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
+// #2115: noContainerAlert now navigates to the mobile WaterContainers screen
+// instead of pointing the user at the server.
+const mockNavigate = jest.fn();
+jest.mock('../../src/components/ActiveWorkoutBar', () => ({
+  navigationRef: {
+    isReady: () => true,
+    navigate: (...args: unknown[]) => mockNavigate(...args),
+  },
+}));
+
 const mockFetchWaterContainers = fetchWaterContainers as jest.MockedFunction<
   typeof fetchWaterContainers
 >;
@@ -195,11 +205,11 @@ describe('useWaterIntakeMutation', () => {
     expect(Toast.show).toHaveBeenCalledWith({
       type: 'info',
       text1: 'No Water Containers',
-      text2:
-        'Please configure a water container on the server to track hydration.',
+      text2: 'Add a water container to start tracking hydration.',
       visibilityTime: 4000,
     });
     expect(mockChangeWaterIntake).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('WaterContainers');
   });
 
   test('decrement shows toast when no primary container', async () => {
@@ -223,11 +233,11 @@ describe('useWaterIntakeMutation', () => {
     expect(Toast.show).toHaveBeenCalledWith({
       type: 'info',
       text1: 'No Water Containers',
-      text2:
-        'Please configure a water container on the server to track hydration.',
+      text2: 'Add a water container to start tracking hydration.',
       visibilityTime: 4000,
     });
     expect(mockChangeWaterIntake).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('WaterContainers');
   });
 
   describe('with primary container loaded', () => {
@@ -466,6 +476,66 @@ describe('useWaterIntakeMutation', () => {
       });
     });
 
+    test('#2115: linked container skips the optimistic patch and waits for server truth', async () => {
+      const linkedContainer = {
+        ...primaryContainer,
+        linked_food_id: 'food-1',
+        linked_variant_id: 'variant-1',
+      };
+      mockFetchWaterContainers.mockResolvedValue([linkedContainer]);
+      const summary = makeRawData(500);
+      queryClient.setQueryData(dailySummaryQueryKey(testDate), summary);
+
+      let resolveMutation: (value: {
+        id: string;
+        water_ml: number;
+        entry_date: string;
+      }) => void;
+      mockChangeWaterIntake.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveMutation = resolve;
+          })
+      );
+
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        {
+          wrapper: createQueryWrapper(queryClient),
+        }
+      );
+
+      await waitFor(() => {
+        expect(result.current.isReady).toBe(true);
+      });
+
+      act(() => {
+        result.current.increment();
+      });
+
+      // No optimistic patch: the cache stays at the pre-mutation value, not
+      // 500 + container volume (250) -- a linked drink's real credit is
+      // foodWater(entry) x hydration_factor, a number the client can't predict.
+      await waitFor(() => {
+        expect(mockChangeWaterIntake).toHaveBeenCalled();
+      });
+      const midFlightCached = queryClient.getQueryData<DailySummaryRawData>(
+        dailySummaryQueryKey(testDate)
+      );
+      expect(midFlightCached?.waterIntake.water_ml).toBe(500);
+
+      await act(async () => {
+        resolveMutation!({ id: '1', water_ml: 640, entry_date: testDate });
+      });
+
+      await waitFor(() => {
+        const cached = queryClient.getQueryData<DailySummaryRawData>(
+          dailySummaryQueryKey(testDate)
+        );
+        expect(cached?.waterIntake.water_ml).toBe(640);
+      });
+    });
+
     test('rapid taps: each mutation sends to server', async () => {
       const summary = makeRawData(500);
       queryClient.setQueryData(dailySummaryQueryKey(testDate), summary);
@@ -534,8 +604,16 @@ describe('useWaterIntakeMutation', () => {
       (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
     });
 
-    test('returns all containers via containers field', async () => {
-      mockFetchWaterContainers.mockResolvedValue([containerA, containerB]);
+    // A container is a vessel you select and press; a preset is one drink
+    // logged on tap. They used to share one selectable row, so tapping a
+    // preset only selected it and logged nothing.
+    test('offers real containers and never a preset', async () => {
+      const preset = { ...containerB, id: 99, is_quick_add: true };
+      mockFetchWaterContainers.mockResolvedValue([
+        containerA,
+        containerB,
+        preset,
+      ]);
       const { result } = renderHook(
         () => useWaterIntakeMutation({ date: testDate }),
         {
@@ -543,7 +621,94 @@ describe('useWaterIntakeMutation', () => {
         }
       );
       await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+
+      // No synthetic default here: it exists only as a stand-in for having
+      // none, and appears in no settings list the user could manage it from.
       expect(result.current.containers).toEqual([containerA, containerB]);
+      expect(result.current.quickAddPresets).toEqual([preset]);
+    });
+
+    // Presets used to be selectable, so a saved selection can still name one.
+    // Resolving that against the raw list left a drink as the active vessel
+    // with no chip to switch away from, since presets no longer appear there.
+    // A linked container's unit qualifies a volume it does not have, so it must
+    // not drive the card: a container created with the form's unit left on oz
+    // put the whole day's total in oz.
+    test('does not take the display unit from a linked container', async () => {
+      const linked = {
+        ...containerA,
+        id: 42,
+        unit: 'oz',
+        volume: 0,
+        linked_food_id: 'food-1',
+      };
+      mockFetchWaterContainers.mockResolvedValue([linked]);
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue('42');
+
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        {
+          wrapper: createQueryWrapper(queryClient),
+        }
+      );
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+
+      expect(result.current.activeContainer?.id).toBe(42);
+      expect(result.current.unit).toBeUndefined();
+    });
+
+    test('still takes the unit from a linked container that overrides the volume', async () => {
+      const linked = {
+        ...containerA,
+        id: 43,
+        unit: 'oz',
+        volume: 500,
+        linked_food_id: 'food-1',
+      };
+      mockFetchWaterContainers.mockResolvedValue([linked]);
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue('43');
+
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        {
+          wrapper: createQueryWrapper(queryClient),
+        }
+      );
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+
+      expect(result.current.unit).toBe('oz');
+    });
+
+    test('ignores a saved selection that names a preset', async () => {
+      const preset = { ...containerB, id: 99, is_quick_add: true };
+      mockFetchWaterContainers.mockResolvedValue([containerA, preset]);
+      (AsyncStorage.getItem as jest.Mock).mockResolvedValue('99');
+
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        {
+          wrapper: createQueryWrapper(queryClient),
+        }
+      );
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+
+      expect(result.current.activeContainer?.id).not.toBe(99);
+      expect(result.current.containers).toEqual([containerA]);
+    });
+
+    test('still offers the default when the user has no containers at all', async () => {
+      mockFetchWaterContainers.mockResolvedValue([]);
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        {
+          wrapper: createQueryWrapper(queryClient),
+        }
+      );
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+
+      expect(result.current.containers).toEqual([
+        expect.objectContaining({ name: 'Default' }),
+      ]);
     });
 
     test('activeContainer is primary when no saved selection', async () => {
@@ -623,7 +788,10 @@ describe('useWaterIntakeMutation', () => {
       await waitFor(() => expect(result.current.activeContainer?.id).toBe(3));
     });
 
-    test('noContainerAlert shows "No Primary Container" when multiple containers but none selected', async () => {
+    // Mobile used to give up here -- several containers, none primary -- and
+    // leave the gauge with nothing to press. Web falls back to the first
+    // standard container, so mobile now does too.
+    test('falls back to the first container when several exist and none is primary', async () => {
       mockFetchWaterContainers.mockResolvedValue([
         { ...containerA, is_primary: false },
         { ...containerB, is_primary: false },
@@ -635,17 +803,51 @@ describe('useWaterIntakeMutation', () => {
         }
       );
       await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
-      expect(result.current.isReady).toBe(false);
+
+      expect(result.current.isReady).toBe(true);
+      expect(result.current.activeContainer?.id).toBe(containerA.id);
 
       act(() => {
         result.current.increment();
       });
-
-      expect(Toast.show).toHaveBeenCalledWith(
-        expect.objectContaining({
-          text1: 'No Primary Container',
-        })
+      expect(Toast.show).not.toHaveBeenCalledWith(
+        expect.objectContaining({ text1: 'No Primary Container' })
       );
+    });
+
+    test('offers a 250 ml default when the user has no containers at all', async () => {
+      mockFetchWaterContainers.mockResolvedValue([]);
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        {
+          wrapper: createQueryWrapper(queryClient),
+        }
+      );
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+
+      expect(result.current.isReady).toBe(true);
+      // 2000 ml over 8 servings, the same figure the server falls back to.
+      expect(result.current.servingVolume).toBe(250);
+      // No unit of its own, so the caller keeps the user's display preference.
+      expect(result.current.unit).toBeUndefined();
+    });
+
+    test('ignores quick-add presets when picking the container to measure with', async () => {
+      // Presets are drinks with their own chips; the +/- buttons measure plain
+      // water, and a linked espresso would credit no water at all.
+      mockFetchWaterContainers.mockResolvedValue([
+        { ...containerA, id: 90, is_primary: false, is_quick_add: true },
+        { ...containerB, id: 91, is_primary: false },
+      ]);
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        {
+          wrapper: createQueryWrapper(queryClient),
+        }
+      );
+      await waitFor(() => expect(result.current.isContainersLoaded).toBe(true));
+
+      expect(result.current.activeContainer?.id).toBe(91);
     });
   });
 });

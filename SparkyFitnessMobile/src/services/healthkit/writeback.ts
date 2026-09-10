@@ -12,6 +12,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addLog } from '../LogService';
 import { fetchDailySummary } from '../api/dailySummaryApi';
+import { fetchWaterIntakeLog } from '../api/measurementsApi';
 import { resolveCollapsedFoodEntries } from '../../utils/loggedMealCollapse';
 import {
   loadHealthPreference,
@@ -122,20 +123,20 @@ const nutritionSignature = (
   return hashString([NUTRITION_WRITE_SCHEMA, ...projections].join('|'));
 };
 
-const hydrationSignature = (
-  descriptor: WaterSampleDescriptor | null
-): string => {
-  const projections = descriptor
-    ? [
-        JSON.stringify({
-          identifier: descriptor.identifier,
-          unit: descriptor.unit,
-          quantity: descriptor.quantity,
-          start: descriptor.start.toISOString(),
-          end: descriptor.end.toISOString(),
-        }),
-      ]
-    : [];
+// #1939: order-independent over N per-entry samples (plus at most one
+// synthetic food-remainder sample), not a single day total.
+const hydrationSignature = (descriptors: WaterSampleDescriptor[]): string => {
+  const projections = descriptors
+    .map((d) =>
+      JSON.stringify({
+        identifier: d.identifier,
+        unit: d.unit,
+        quantity: d.quantity,
+        start: d.start.toISOString(),
+        end: d.end.toISOString(),
+      })
+    )
+    .sort();
   return hashString(projections.join('|'));
 };
 
@@ -325,19 +326,77 @@ const writeNutritionForDate = async (
   );
 };
 
+/**
+ * #1939, #1557: export one real-timestamped sample per manually-logged drink,
+ * plus (if the user opted in to add_food_water_to_intake) one synthetic
+ * noon-anchored sample for the water folded in from logged food, which has
+ * no ledger row of its own. Per-entry export makes the "only export what we
+ * didn't import" guard explicit on the write side too — imported (non-manual
+ * source) ledger rows are never re-exported, matching the read-side
+ * isOwnRecord guard and the nutrition path's own filter.
+ */
+const buildHydrationDescriptors = async (
+  date: string,
+  summary: DailySummary
+): Promise<{ descriptors: WaterSampleDescriptor[]; deferred: boolean }> => {
+  const logEntries = await fetchWaterIntakeLog(date);
+  const descriptors: WaterSampleDescriptor[] = [];
+
+  for (const entry of logEntries) {
+    if (entry.source !== 'manual') continue; // provider-synced — never re-export
+    const loggedAt = new Date(entry.logged_at);
+    if (Number.isNaN(loggedAt.getTime())) continue;
+    descriptors.push({
+      identifier: DIETARY_WATER_IDENTIFIER,
+      unit: 'mL',
+      quantity: entry.water_ml,
+      start: loggedAt,
+      end: loggedAt,
+    });
+  }
+
+  const foodMl = summary.waterIntakeBreakdown?.food_ml ?? 0;
+  let deferred = false;
+  if (foodMl > 0) {
+    const remainder = waterMlToSample(date, foodMl);
+    if (remainder) {
+      descriptors.push(remainder);
+    } else {
+      // Noon anchor still in the future for the synthetic remainder. Real
+      // ledger rows above never defer, but the remainder's absence would
+      // still understate the day, so treat the whole day as unresolved —
+      // matching the pre-per-entry deferral contract exactly.
+      deferred = true;
+    }
+  }
+
+  return { descriptors, deferred };
+};
+
 const writeHydrationForDate = async (
   date: string,
   summary: DailySummary,
   version: number
 ): Promise<void> => {
-  const ml = summary.waterIntake ?? 0;
-  const descriptor = waterMlToSample(date, ml);
+  let descriptors: WaterSampleDescriptor[];
+  let deferred: boolean;
+  try {
+    ({ descriptors, deferred } = await buildHydrationDescriptors(
+      date,
+      summary
+    ));
+  } catch (error) {
+    addLog(
+      `[Writeback] Failed to load water log for ${date}: ${message(error)}`,
+      'ERROR'
+    );
+    return;
+  }
 
-  // A null descriptor with water logged means the noon anchor is still in the
-  // future — the day's sample can't be written yet. Bail before the signature
-  // check: storing the empty signature here would make every later pre-noon
-  // run report "unchanged" no matter how much the total moves.
-  if (ml > 0 && !descriptor) {
+  // Bail before the signature check: storing a signature here would make
+  // every later pre-noon run report "unchanged" no matter how much the food
+  // remainder moves.
+  if (deferred) {
     addLog(
       `[Writeback] Hydration ${date}: deferred — noon anchor still in the future`,
       'DEBUG'
@@ -345,7 +404,7 @@ const writeHydrationForDate = async (
     return;
   }
 
-  const signature = hydrationSignature(descriptor);
+  const signature = hydrationSignature(descriptors);
   if (
     signature === (await loadHealthPreference<string>(hydrationSigKey(date)))
   ) {
@@ -372,7 +431,7 @@ const writeHydrationForDate = async (
     }
   }
 
-  if (descriptor) {
+  for (const descriptor of descriptors) {
     const saved = await saveWaterSample(descriptor, version);
     if (saved) tracked.push(saved.uuid);
     else allSucceeded = false;
@@ -383,7 +442,7 @@ const writeHydrationForDate = async (
     await saveHealthPreference(hydrationSigKey(date), signature);
   }
   addLog(
-    `[Writeback] Hydration ${date}: ${ml} ml -> wrote ${tracked.length} record(s)`,
+    `[Writeback] Hydration ${date}: ${descriptors.length} entry(ies) -> wrote ${tracked.length} record(s)`,
     'INFO'
   );
 };

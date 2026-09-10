@@ -1890,6 +1890,7 @@ describe('transformHealthRecords', () => {
           iron: { inGrams: 0.008 }, // g → mg: 8
           vitaminC: { inGrams: 0.06 }, // g → mg: 60
           vitaminA: { inGrams: 0.0009 }, // g → mcg: 900
+          caffeine: { inGrams: 0.06 }, // g → mg: 60 (#1958)
           // No dedicated Sparky column → dropped (no canonical unit to store it in):
           magnesium: { inGrams: 0.4 },
         },
@@ -1908,6 +1909,7 @@ describe('transformHealthRecords', () => {
       expect(result[0].iron).toBe(8); // mg
       expect(result[0].vitamin_c).toBe(60); // mg
       expect(result[0].vitamin_a).toBe(900); // mcg
+      expect(result[0].caffeine_mg).toBe(60); // mg
       // Nutrients without a dedicated column are not forwarded at all:
       expect(
         (result[0] as unknown as { custom_nutrients?: unknown })

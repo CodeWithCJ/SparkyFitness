@@ -37,6 +37,8 @@ import {
   GoalModeCalculationMethod,
   CalorieSafetyFloorMode,
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+  DEFAULT_STANDARD_DRINK_GRAMS,
+  DEFAULT_CAFFEINE_HALF_LIFE_HOURS,
   DEFAULT_CHART_SCALE_MODE,
   type ChartScaleMode,
   type UserPreferences as SharedUserPreferences,
@@ -107,6 +109,7 @@ interface PreferencesContextType {
   nutrientDisplayPreferences: NutrientPreference[];
   water_display_unit: WaterDisplayUnit;
   addExerciseWaterToGoal: boolean;
+  addFoodWaterToIntake: boolean;
   language: string;
   bmrAlgorithm: BmrAlgorithm;
   bodyFatAlgorithm: BodyFatAlgorithm;
@@ -133,6 +136,14 @@ interface PreferencesContextType {
   goalModeCustomPercentage: number;
   calorieSafetyFloorMode: CalorieSafetyFloorMode;
   calorieSafetyFloorValue: number;
+  standardDrinkGrams: number;
+  weeklyAlcoholLimitG: number | null;
+  caffeineHalfLifeHours: number;
+  targetBedtime: string;
+  setCaffeineHalfLifeHours: (hours: number) => void;
+  setTargetBedtime: (bedtime: string) => void;
+  setWeeklyAlcoholLimitG: (limit: number | null) => void;
+  setStandardDrinkGrams: (grams: number) => void;
   setMeasurementDecimalPlaces: (places: number) => void;
   setGoalMode: (mode: GoalMode) => void;
   setGoalModeCalculationMethod: (method: GoalModeCalculationMethod) => void;
@@ -160,6 +171,7 @@ interface PreferencesContextType {
   loadNutrientDisplayPreferences: () => Promise<void>;
   setWaterDisplayUnit: (unit: WaterDisplayUnit) => void;
   setAddExerciseWaterToGoal: (enabled: boolean) => void;
+  setAddFoodWaterToIntake: (enabled: boolean) => void;
   setLanguage: (language: string) => void;
   setBmrAlgorithm: (algorithm: BmrAlgorithm) => void;
   setBodyFatAlgorithm: (algorithm: BodyFatAlgorithm) => void;
@@ -219,8 +231,9 @@ export interface DefaultPreferences {
   item_display_limit: number;
   water_display_unit: WaterDisplayUnit;
   add_exercise_water_to_goal: boolean;
+  add_food_water_to_intake: boolean;
   language: string;
-  calorie_goal_adjustment_mode: calorieGoalAdjustmentMode;
+  calorie_goal_adjustment_mode: CalorieGoalAdjustmentMode;
   energy_unit: EnergyUnit;
   auto_scale_open_food_facts_imports: boolean;
   auto_scale_online_imports: boolean;
@@ -252,6 +265,10 @@ export interface DefaultPreferences {
   goal_mode_custom_percentage: number;
   calorie_safety_floor_mode: SharedUserPreferences['calorie_safety_floor_mode'];
   calorie_safety_floor_value: SharedUserPreferences['calorie_safety_floor_value'];
+  standard_drink_grams?: number;
+  weekly_alcohol_limit_g?: number | null;
+  caffeine_half_life_hours?: number;
+  target_bedtime?: string;
 }
 
 const PreferencesContext = createContext<PreferencesContextType | undefined>(
@@ -332,6 +349,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [showNetCarbs, setShowNetCarbsState] = useState<boolean>(false);
   const [addExerciseWaterToGoal, setAddExerciseWaterToGoalState] =
     useState<boolean>(false);
+  const [addFoodWaterToIntake, setAddFoodWaterToIntakeState] =
+    useState<boolean>(false);
   // AI-Assisted Unit Conversions: per-user toggle for the diary/food-form AI
   // estimate path. Default true matches the server migration (DEFAULT TRUE).
   const [aiAssistedConversions, setAiAssistedConversionsState] =
@@ -368,6 +387,15 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     useState<CalorieSafetyFloorMode>('standard');
   const [calorieSafetyFloorValue, setCalorieSafetyFloorValueState] =
     useState<number>(DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR);
+  const [standardDrinkGrams, setStandardDrinkGramsState] = useState<number>(
+    DEFAULT_STANDARD_DRINK_GRAMS
+  );
+  const [weeklyAlcoholLimitG, setWeeklyAlcoholLimitGState] = useState<
+    number | null
+  >(null);
+  const [caffeineHalfLifeHours, setCaffeineHalfLifeHoursState] =
+    useState<number>(DEFAULT_CAFFEINE_HALF_LIFE_HOURS);
+  const [targetBedtime, setTargetBedtimeState] = useState<string>('22:30');
 
   const fetchUserPreferences = useCallback(async () => {
     try {
@@ -640,6 +668,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         ai_assisted_conversions: true,
         calorie_safety_floor_mode: 'standard',
         calorie_safety_floor_value: DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+        standard_drink_grams: DEFAULT_STANDARD_DRINK_GRAMS,
+        caffeine_half_life_hours: DEFAULT_CAFFEINE_HALF_LIFE_HOURS,
+        target_bedtime: '22:30',
       };
       await upsertUserPreferences(defaultPrefs);
     } catch (err) {
@@ -737,6 +768,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setAddExerciseWaterToGoalState(
           data.add_exercise_water_to_goal ?? false
         );
+        setAddFoodWaterToIntakeState(data.add_food_water_to_intake ?? false);
         setAiAssistedConversionsState(data.ai_assisted_conversions ?? true);
         setFatBreakdownAlgorithmState(
           data.fat_breakdown_algorithm || FatBreakdownAlgorithm.AHA_GUIDELINES
@@ -772,6 +804,23 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         );
         setCalorieSafetyFloorValueState(
           data.calorie_safety_floor_value ?? DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR
+        );
+        setStandardDrinkGramsState(
+          Number(data.standard_drink_grams) || DEFAULT_STANDARD_DRINK_GRAMS
+        );
+        setWeeklyAlcoholLimitGState(
+          data.weekly_alcohol_limit_g != null
+            ? Number(data.weekly_alcohol_limit_g)
+            : null
+        );
+        setCaffeineHalfLifeHoursState(
+          Number(data.caffeine_half_life_hours) ||
+            DEFAULT_CAFFEINE_HALF_LIFE_HOURS
+        );
+        setTargetBedtimeState(
+          data.target_bedtime
+            ? String(data.target_bedtime).slice(0, 5)
+            : '22:30'
         );
       } else {
         await createDefaultPreferences();
@@ -928,6 +977,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         show_net_carbs: newPrefs?.showNetCarbs ?? showNetCarbs,
         add_exercise_water_to_goal:
           newPrefs?.addExerciseWaterToGoal ?? addExerciseWaterToGoal,
+        add_food_water_to_intake:
+          newPrefs?.addFoodWaterToIntake ?? addFoodWaterToIntake,
         ai_assisted_conversions:
           newPrefs?.aiAssistedConversions ?? aiAssistedConversions,
         fat_breakdown_algorithm:
@@ -954,6 +1005,20 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           newPrefs?.calorieSafetyFloorMode ?? calorieSafetyFloorMode,
         calorie_safety_floor_value:
           newPrefs?.calorieSafetyFloorValue ?? calorieSafetyFloorValue,
+        standard_drink_grams:
+          newPrefs?.standardDrinkGrams ?? standardDrinkGrams,
+        weekly_alcohol_limit_g:
+          newPrefs?.weeklyAlcoholLimitG !== undefined
+            ? newPrefs.weeklyAlcoholLimitG
+            : weeklyAlcoholLimitG,
+        caffeine_half_life_hours:
+          newPrefs?.caffeineHalfLifeHours !== undefined
+            ? newPrefs.caffeineHalfLifeHours
+            : caffeineHalfLifeHours,
+        target_bedtime:
+          newPrefs?.targetBedtime !== undefined
+            ? newPrefs.targetBedtime
+            : targetBedtime,
       };
 
       try {
@@ -988,6 +1053,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       itemDisplayLimit,
       waterDisplayUnit,
       addExerciseWaterToGoal,
+      addFoodWaterToIntake,
       language,
       calorieGoalAdjustmentMode,
       exerciseCaloriePercentage,
@@ -1016,6 +1082,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       goalModeCustomPercentage,
       calorieSafetyFloorMode,
       calorieSafetyFloorValue,
+      standardDrinkGrams,
+      weeklyAlcoholLimitG,
+      caffeineHalfLifeHours,
+      targetBedtime,
       updatePreferences,
       loadPreferences,
     ]
@@ -1161,6 +1231,38 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     [saveAllPreferences]
   );
 
+  const setStandardDrinkGrams = useCallback(
+    (grams: number) => {
+      setStandardDrinkGramsState(grams);
+      saveAllPreferences({ standardDrinkGrams: grams });
+    },
+    [saveAllPreferences]
+  );
+
+  const setCaffeineHalfLifeHours = useCallback(
+    (hours: number) => {
+      setCaffeineHalfLifeHoursState(hours);
+      saveAllPreferences({ caffeineHalfLifeHours: hours });
+    },
+    [saveAllPreferences]
+  );
+
+  const setTargetBedtime = useCallback(
+    (bedtime: string) => {
+      setTargetBedtimeState(bedtime);
+      saveAllPreferences({ targetBedtime: bedtime });
+    },
+    [saveAllPreferences]
+  );
+
+  const setWeeklyAlcoholLimitG = useCallback(
+    (limit: number | null) => {
+      setWeeklyAlcoholLimitGState(limit);
+      saveAllPreferences({ weeklyAlcoholLimitG: limit });
+    },
+    [saveAllPreferences]
+  );
+
   // --- Effects ---
 
   useEffect(() => {
@@ -1255,6 +1357,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       nutrientDisplayPreferences,
       water_display_unit: waterDisplayUnit,
       addExerciseWaterToGoal,
+      addFoodWaterToIntake,
       language,
       bmrAlgorithm,
       bodyFatAlgorithm,
@@ -1276,6 +1379,14 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       goalModeCustomPercentage,
       calorieSafetyFloorMode,
       calorieSafetyFloorValue,
+      standardDrinkGrams,
+      weeklyAlcoholLimitG,
+      caffeineHalfLifeHours,
+      targetBedtime,
+      setCaffeineHalfLifeHours,
+      setTargetBedtime,
+      setWeeklyAlcoholLimitG,
+      setStandardDrinkGrams,
       setMeasurementDecimalPlaces: setMeasurementDecimalPlacesState,
       setChartScaleMode: setChartScaleModeState,
       setGoalMode,
@@ -1304,6 +1415,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       loadNutrientDisplayPreferences,
       setWaterDisplayUnit: setWaterDisplayUnitState,
       setAddExerciseWaterToGoal: setAddExerciseWaterToGoalState,
+      setAddFoodWaterToIntake: setAddFoodWaterToIntakeState,
       setLanguage: setLanguageState,
       setBmrAlgorithm: setBmrAlgorithmState,
       setBodyFatAlgorithm: setBodyFatAlgorithmState,
@@ -1355,6 +1467,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       nutrientDisplayPreferences,
       waterDisplayUnit,
       addExerciseWaterToGoal,
+      addFoodWaterToIntake,
       language,
       bmrAlgorithm,
       bodyFatAlgorithm,
@@ -1376,6 +1489,14 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       goalModeCustomPercentage,
       calorieSafetyFloorMode,
       calorieSafetyFloorValue,
+      standardDrinkGrams,
+      weeklyAlcoholLimitG,
+      caffeineHalfLifeHours,
+      targetBedtime,
+      setCaffeineHalfLifeHours,
+      setTargetBedtime,
+      setWeeklyAlcoholLimitG,
+      setStandardDrinkGrams,
       setGoalMode,
       setGoalModeCalculationMethod,
       setGoalModeCustomPercentage,

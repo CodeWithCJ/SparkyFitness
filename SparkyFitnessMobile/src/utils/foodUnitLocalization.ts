@@ -42,6 +42,7 @@ const UNIT_KEYS: Record<string, string> = {
   kg: 'foodUnit.units.kg',
   mg: 'foodUnit.units.mg',
   oz: 'foodUnit.units.oz',
+  'fl oz': 'foodUnit.units.flOz',
   lb: 'foodUnit.units.lb',
   lbs: 'foodUnit.units.lbs',
   ml: 'foodUnit.units.ml',

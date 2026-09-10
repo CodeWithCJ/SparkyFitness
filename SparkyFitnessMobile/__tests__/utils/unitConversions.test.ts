@@ -16,6 +16,7 @@ import {
   kgToStonesLbs,
   stonesLbsToKg,
   formatWeightDisplay,
+  getServingVolume,
   volumeFromMl,
   formatVolumeForUnit,
 } from '../../src/utils/unitConversions';
@@ -380,6 +381,45 @@ describe('unitConversions', () => {
           (1.23).toLocaleString(locale, { maximumFractionDigits: 2 })
         );
       });
+    });
+  });
+  // A container linked to a food carries volume 0 on purpose: its amount lives
+  // on the food. Dividing that by servings gave 0, which the dashboard gauge
+  // rendered as "0 ml per container" beside a +/- that appeared to do nothing.
+  describe('getServingVolume', () => {
+    it('divides a plain container by its servings', () => {
+      expect(
+        getServingVolume({ volume: 2000, servings_per_container: 8 })
+      ).toBe(250);
+    });
+
+    it('treats a missing serving count as one serving', () => {
+      expect(getServingVolume({ volume: 500 })).toBe(500);
+      expect(
+        getServingVolume({ volume: 500, servings_per_container: null })
+      ).toBe(500);
+    });
+
+    it('reports a linked container as having no millilitre figure', () => {
+      expect(
+        getServingVolume({
+          volume: 0,
+          servings_per_container: 1,
+          linked_food_id: 'food-1',
+        })
+      ).toBeNull();
+    });
+
+    it('reports null for a linked container even when a volume was stored', () => {
+      // An override volume means "the glass holds more than the food", not
+      // "this is what one press credits".
+      expect(
+        getServingVolume({
+          volume: 500,
+          servings_per_container: 1,
+          linked_food_id: 'food-1',
+        })
+      ).toBeNull();
     });
   });
 });

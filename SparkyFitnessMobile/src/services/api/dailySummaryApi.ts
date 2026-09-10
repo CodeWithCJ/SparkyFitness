@@ -5,6 +5,7 @@ import type {
   ExerciseSessionResponse,
   CalorieBalance,
   SupplementTotals,
+  WaterIntakeBreakdown,
 } from '@workspace/shared';
 
 export interface DailySummaryApiResponse {
@@ -12,6 +13,9 @@ export interface DailySummaryApiResponse {
   foodEntries: FoodEntry[];
   exerciseSessions: ExerciseSessionResponse[];
   waterIntake: number;
+  // #1557, #1629: present only when includeCheckin fetched water at all
+  // (server dailySummaryService.ts), absent on an older server.
+  waterIntakeBreakdown?: WaterIntakeBreakdown | null;
   stepCalories?: number;
   calorieBalance?: CalorieBalance;
   // Optional: a client can outrun the server it talks to, and supplement totals only exist

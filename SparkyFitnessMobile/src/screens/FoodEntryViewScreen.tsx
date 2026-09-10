@@ -111,6 +111,9 @@ const foodEntryToUnitVariant = (entry: FoodEntry): FoodUnitVariant => ({
   vitamin_c: entry.vitamin_c,
   calcium: entry.calcium,
   iron: entry.iron,
+  caffeine_mg: entry.caffeine_mg,
+  water_ml: entry.water_ml,
+  alcohol_g: entry.alcohol_g,
   glycemic_index: entry.glycemic_index,
   custom_nutrients: entry.custom_nutrients ?? null,
 });
@@ -130,6 +133,9 @@ const entryToDisplayValues = (entry: FoodEntry) => ({
   potassium: entry.potassium,
   calcium: entry.calcium,
   iron: entry.iron,
+  caffeineMg: entry.caffeine_mg,
+  waterMl: entry.water_ml,
+  alcoholG: entry.alcohol_g,
   cholesterol: entry.cholesterol,
   vitaminA: entry.vitamin_a,
   vitaminC: entry.vitamin_c,
@@ -375,6 +381,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           potassium: variant.potassium,
           calcium: variant.calcium,
           iron: variant.iron,
+          caffeineMg: variant.caffeine_mg,
+          waterMl: variant.water_ml,
+          alcoholG: variant.alcohol_g,
           cholesterol: variant.cholesterol,
           vitaminA: variant.vitamin_a,
           vitaminC: variant.vitamin_c,
@@ -479,6 +488,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       potassium: parseOptional(adjustedValues.potassium),
       calcium: parseOptional(adjustedValues.calcium),
       iron: parseOptional(adjustedValues.iron),
+      caffeineMg: parseOptional(adjustedValues.caffeineMg),
+      waterMl: parseOptional(adjustedValues.waterMl),
+      alcoholG: parseOptional(adjustedValues.alcoholG),
       cholesterol: parseOptional(adjustedValues.cholesterol),
       vitaminA: parseOptional(adjustedValues.vitaminA),
       vitaminC: parseOptional(adjustedValues.vitaminC),
@@ -670,6 +682,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       potassium: displayValues.potassium,
       calcium: displayValues.calcium,
       iron: displayValues.iron,
+      caffeine_mg: displayValues.caffeineMg,
+      water_ml: displayValues.waterMl,
+      alcohol_g: displayValues.alcoholG,
       cholesterol: displayValues.cholesterol,
       vitamin_a: displayValues.vitaminA,
       vitamin_c: displayValues.vitaminC,
@@ -704,6 +719,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         potassium: toFormString(displayValues.potassium),
         calcium: toFormString(displayValues.calcium),
         iron: toFormString(displayValues.iron),
+        caffeineMg: toFormString(displayValues.caffeineMg),
+        waterMl: toFormString(displayValues.waterMl),
+        alcoholG: toFormString(displayValues.alcoholG),
         cholesterol: toFormString(displayValues.cholesterol),
         vitaminA: toFormString(displayValues.vitaminA),
         vitaminC: toFormString(displayValues.vitaminC),
@@ -785,6 +803,9 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       payload.potassium = displayValues.potassium;
       payload.calcium = displayValues.calcium;
       payload.iron = displayValues.iron;
+      payload.caffeine_mg = displayValues.caffeineMg;
+      payload.water_ml = displayValues.waterMl;
+      payload.alcohol_g = displayValues.alcoholG;
       payload.cholesterol = displayValues.cholesterol;
       payload.vitamin_a = displayValues.vitaminA;
       payload.vitamin_c = displayValues.vitaminC;
@@ -919,6 +940,13 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         return t('nutrients.calcium', { defaultValue: 'Calcium' });
       case 'Iron':
         return t('nutrients.iron', { defaultValue: 'Iron' });
+      // Labels come from EXTRA_NUTRIENT_FIELDS, which now surfaces these three.
+      case 'Caffeine':
+        return t('nutrients.caffeine', { defaultValue: 'Caffeine' });
+      case 'Water Content':
+        return t('nutrients.waterContent', { defaultValue: 'Water Content' });
+      case 'Alcohol':
+        return t('nutrients.alcohol', { defaultValue: 'Alcohol' });
       case 'Vitamin A':
         return t('nutrients.vitaminA', { defaultValue: 'Vitamin A' });
       case 'Vitamin C':

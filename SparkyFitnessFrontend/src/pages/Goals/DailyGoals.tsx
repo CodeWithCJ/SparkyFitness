@@ -6,6 +6,7 @@ import MealPercentageManager from '@/components/MealPercentageManager';
 import { Separator } from '@/components/ui/separator';
 
 import { NUTRIENT_CONFIG } from '@/constants/goals';
+import { NON_GOAL_NUTRIENT_KEYS } from '@workspace/shared';
 import { NutrientInput } from './NutrientInput';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useTranslation } from 'react-i18next';
@@ -317,7 +318,9 @@ export const DailyGoals = ({
               )
               .map((key) => {
                 // Validate standard or custom nutrient
-                const isStandard = NUTRIENT_CONFIG.some((n) => n.id === key);
+                const isStandard =
+                  NUTRIENT_CONFIG.some((n) => n.id === key) &&
+                  !(NON_GOAL_NUTRIENT_KEYS as readonly string[]).includes(key);
                 const isCustom = customNutrients?.some((cn) => cn.name === key);
 
                 if (!isStandard && !isCustom) return null;

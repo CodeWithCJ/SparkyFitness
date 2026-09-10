@@ -323,6 +323,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
     iron: useRef<TextInput>(null),
     vitaminA: useRef<TextInput>(null),
     vitaminC: useRef<TextInput>(null),
+    caffeineMg: useRef<TextInput>(null),
+    waterMl: useRef<TextInput>(null),
+    alcoholG: useRef<TextInput>(null),
   };
 
   const focusField = (field: keyof typeof fieldRefs) => {
@@ -743,6 +746,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
         iron: anchor.iron,
         vitaminA: anchor.vitamin_a,
         vitaminC: anchor.vitamin_c,
+        caffeineMg: anchor.caffeine_mg,
+        waterMl: anchor.water_ml,
+        alcoholG: anchor.alcohol_g,
       };
       NUTRITION_FIELDS.forEach((field) => {
         const anchorValue =
@@ -788,6 +794,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
         iron: scaledPreciseUpdates.iron,
         vitamin_a: scaledPreciseUpdates.vitaminA,
         vitamin_c: scaledPreciseUpdates.vitaminC,
+        caffeine_mg: scaledPreciseUpdates.caffeineMg,
+        water_ml: scaledPreciseUpdates.waterMl,
+        alcohol_g: scaledPreciseUpdates.alcoholG,
         source: 'ai_estimate',
         ai_confidence: result.confidence,
       };
@@ -1313,7 +1322,34 @@ const FoodForm: React.FC<FoodFormProps> = ({
                 {renderNumericField(
                   t('nutrients.potassium', { defaultValue: 'Potassium' }),
                   'potassium',
-                  'mg'
+                  'mg',
+                  false,
+                  'caffeineMg'
+                )}
+              </View>
+              <View className="flex-row gap-3">
+                {renderNumericField(
+                  t('nutrients.caffeine', { defaultValue: 'Caffeine' }),
+                  'caffeineMg',
+                  'mg',
+                  false,
+                  'waterMl'
+                )}
+                {renderNumericField(
+                  t('nutrients.waterContent', {
+                    defaultValue: 'Water Content',
+                  }),
+                  'waterMl',
+                  'ml',
+                  false,
+                  'alcoholG'
+                )}
+              </View>
+              <View className="flex-row gap-3">
+                {renderNumericField(
+                  t('nutrients.alcohol', { defaultValue: 'Alcohol' }),
+                  'alcoholG',
+                  'g'
                 )}
               </View>
               {Array.from(

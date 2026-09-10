@@ -21,6 +21,7 @@ const LEGACY_KEYS = {
   soundsEnabled: '@HealthConnect:soundsEnabled',
   notificationsEnabled: '@HealthConnect:notificationsEnabled',
   hydrationCardVisible: '@HealthConnect:hydrationCardVisible',
+  caffeineCardVisible: '@HealthConnect:caffeineCardVisible',
   fastingCardVisible: '@HealthConnect:fastingCardVisible',
   askSparkyVisible: '@HealthConnect:askSparkyVisible',
   liquidGlassTabBarEnabled: '@HealthConnect:liquidGlassTabBarEnabled',
@@ -41,6 +42,7 @@ export const PREFERENCE_DEFAULTS = {
   restTimerNotificationsEnabled: true,
   fastingGoalNotificationsEnabled: true,
   hydrationCardVisible: true,
+  caffeineCardVisible: true,
   fastingCardVisible: true,
   cycleCardVisible: true,
   askSparkyVisible: true,
@@ -75,6 +77,7 @@ export type AppPreferencesData = {
   restTimerNotificationsEnabled: boolean;
   fastingGoalNotificationsEnabled: boolean;
   hydrationCardVisible: boolean;
+  caffeineCardVisible: boolean;
   fastingCardVisible: boolean;
   cycleCardVisible: boolean;
   askSparkyVisible: boolean;
@@ -109,6 +112,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setRestTimerNotificationsEnabled: (value: boolean) => void;
   setFastingGoalNotificationsEnabled: (value: boolean) => void;
   setHydrationCardVisible: (value: boolean) => void;
+  setCaffeineCardVisible: (value: boolean) => void;
   setFastingCardVisible: (value: boolean) => void;
   setCycleCardVisible: (value: boolean) => void;
   setAskSparkyVisible: (value: boolean) => void;
@@ -189,6 +193,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setFastingGoalNotificationsEnabled: (value) =>
         set({ fastingGoalNotificationsEnabled: value }),
       setHydrationCardVisible: (value) => set({ hydrationCardVisible: value }),
+      setCaffeineCardVisible: (value) => set({ caffeineCardVisible: value }),
       setFastingCardVisible: (value) => set({ fastingCardVisible: value }),
       setCycleCardVisible: (value) => set({ cycleCardVisible: value }),
       setAskSparkyVisible: (value) => set({ askSparkyVisible: value }),
@@ -242,6 +247,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         restTimerNotificationsEnabled: state.restTimerNotificationsEnabled,
         fastingGoalNotificationsEnabled: state.fastingGoalNotificationsEnabled,
         hydrationCardVisible: state.hydrationCardVisible,
+        caffeineCardVisible: state.caffeineCardVisible,
         fastingCardVisible: state.fastingCardVisible,
         cycleCardVisible: state.cycleCardVisible,
         askSparkyVisible: state.askSparkyVisible,

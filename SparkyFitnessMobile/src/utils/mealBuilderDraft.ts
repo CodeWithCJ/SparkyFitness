@@ -48,6 +48,12 @@ function normalizeMealIngredientDraft(
       draft.potassium == null ? undefined : toFiniteNumber(draft.potassium),
     calcium: draft.calcium == null ? undefined : toFiniteNumber(draft.calcium),
     iron: draft.iron == null ? undefined : toFiniteNumber(draft.iron),
+    caffeine_mg:
+      draft.caffeine_mg == null ? undefined : toFiniteNumber(draft.caffeine_mg),
+    water_ml:
+      draft.water_ml == null ? undefined : toFiniteNumber(draft.water_ml),
+    alcohol_g:
+      draft.alcohol_g == null ? undefined : toFiniteNumber(draft.alcohol_g),
     cholesterol:
       draft.cholesterol == null ? undefined : toFiniteNumber(draft.cholesterol),
     vitamin_a:
@@ -87,6 +93,9 @@ export function buildMealIngredientDraft({
     potassium: values.potassium,
     calcium: values.calcium,
     iron: values.iron,
+    caffeine_mg: values.caffeineMg,
+    water_ml: values.waterMl,
+    alcohol_g: values.alcoholG,
     cholesterol: values.cholesterol,
     vitamin_a: values.vitaminA,
     vitamin_c: values.vitaminC,
@@ -123,6 +132,9 @@ export function buildMealIngredientDraftFromSavedFood(
     potassium: food.default_variant.potassium,
     calcium: food.default_variant.calcium,
     iron: food.default_variant.iron,
+    caffeine_mg: food.default_variant.caffeine_mg,
+    water_ml: food.default_variant.water_ml,
+    alcohol_g: food.default_variant.alcohol_g,
     cholesterol: food.default_variant.cholesterol,
     vitamin_a: food.default_variant.vitamin_a,
     vitamin_c: food.default_variant.vitamin_c,
@@ -176,6 +188,9 @@ export function buildMealIngredientDraftFromMealFood(
     potassium: food.potassium,
     calcium: food.calcium,
     iron: food.iron,
+    caffeine_mg: food.caffeine_mg,
+    water_ml: food.water_ml,
+    alcohol_g: food.alcohol_g,
     cholesterol: food.cholesterol,
     vitamin_a: food.vitamin_a,
     vitamin_c: food.vitamin_c,

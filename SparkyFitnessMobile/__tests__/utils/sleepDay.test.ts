@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 import {
   formatClockTime,
@@ -51,15 +52,22 @@ describe('formatSleepDuration', () => {
     expect(formatSleepDuration(90000, i18n.t)).toBe('25h 0m');
   });
 
-  test('takes its copy from the injected translator, not the singleton', async () => {
-    const english = formatSleepDuration(27000, i18n.t);
+  test('takes its copy from the injected translator, not the singleton', () => {
+    // The contract here is dependency injection, so assert it against a stub
+    // translator rather than against the Polish catalog. Translations are
+    // contributed by the community and sync in incomplete, so pinning a real
+    // non-English string makes this test fail for whichever key nobody has
+    // translated yet -- which is exactly what happened to time.minutesShort.
+    // Polish grammar itself is covered in foodUnitLocalization.test.ts.
+    const stubCopy: Record<string, string> = {
+      'time.hoursShort': 'godz.',
+      'time.minutesShort': 'min',
+    };
+    const stubT = ((key: string, options?: { defaultValue?: string }) =>
+      stubCopy[key] ?? options?.defaultValue ?? key) as unknown as TFunction;
 
-    await i18n.changeLanguage('pl');
-    const polish = formatSleepDuration(27000, i18n.t);
-
-    expect(english).toBe('7h 30m');
-    expect(polish).not.toBe(english);
-    expect(polish).toBe('7godz. 30min');
+    expect(formatSleepDuration(27000, i18n.t)).toBe('7h 30m');
+    expect(formatSleepDuration(27000, stubT)).toBe('7godz. 30min');
   });
 });
 

@@ -16,6 +16,7 @@ import type {
   ExerciseSessionResponse,
   CalorieBalance,
   SupplementTotals,
+  WaterIntakeBreakdown,
 } from '@workspace/shared';
 import {
   resolveSupplementTotals,
@@ -28,6 +29,7 @@ export interface DailySummaryRawData {
   foodEntries: FoodEntry[];
   exerciseEntries: ExerciseSessionResponse[];
   waterIntake: WaterIntake;
+  waterIntakeBreakdown?: WaterIntakeBreakdown | null;
   stepCalories: number;
   calorieBalance?: CalorieBalance;
   supplementTotals?: SupplementTotals;
@@ -50,6 +52,7 @@ export async function loadDailySummaryRawData(
     foodEntries,
     exerciseEntries: data.exerciseSessions,
     waterIntake: { water_ml: data.waterIntake },
+    waterIntakeBreakdown: data.waterIntakeBreakdown ?? null,
     stepCalories: data.stepCalories ?? 0,
     calorieBalance: data.calorieBalance,
     supplementTotals: data.supplementTotals,
@@ -66,6 +69,7 @@ export function buildDailySummary(
     foodEntries,
     exerciseEntries,
     waterIntake,
+    waterIntakeBreakdown,
     stepCalories,
     calorieBalance,
     supplementTotals,
@@ -131,6 +135,7 @@ export function buildDailySummary(
     },
     waterConsumed: waterIntake.water_ml || 0,
     waterGoal: goals.water_goal_ml ?? 2500,
+    waterFromFood: Number(waterIntakeBreakdown?.food_ml) || 0,
     foodEntries,
     supplementTotals: supplements,
     exerciseEntries,

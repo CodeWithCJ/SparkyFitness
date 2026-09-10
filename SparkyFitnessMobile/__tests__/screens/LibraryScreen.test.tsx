@@ -26,6 +26,12 @@ jest.mock('../../src/hooks', () => ({
   useRecentMeals: jest.fn(),
   useServerConnection: jest.fn(),
   useSuggestedExercises: jest.fn(),
+  useWaterContainersQuery: jest.fn(() => ({
+    containers: [],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  })),
   useProfile: jest.fn(() => ({ profile: undefined, isLoading: false })),
   useFavorites: jest.fn(() => ({
     favoriteFoods: [],
@@ -357,6 +363,12 @@ describe('LibraryScreen', () => {
     const screen = renderScreen();
     fireEvent.press(screen.getByText('Medications'));
     expect(navigation.navigate).toHaveBeenCalledWith('MedicationsList');
+  });
+
+  it('navigates to WaterContainers when the Water containers row is pressed (#2115)', () => {
+    const screen = renderScreen();
+    fireEvent.press(screen.getByText('Water containers'));
+    expect(navigation.navigate).toHaveBeenCalledWith('WaterContainers');
   });
 
   it('does not queue multiple create screens during the same navigation transition', () => {

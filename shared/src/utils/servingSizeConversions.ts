@@ -26,6 +26,12 @@ const VOLUME_TO_ML: Record<string, number> = {
   cups: 236.588,
   tbsp: 14.7868,
   tsp: 4.92892,
+  // Fluid ounce, distinct from the WEIGHT 'oz' above. Two spellings are
+  // recognized for parsing/provider-import purposes; only 'fl oz' is exposed
+  // in STANDARD_UNIT_GROUPS as the canonical picker/storage form.
+  "fl oz": 29.5735,
+  floz: 29.5735,
+  fl_oz: 29.5735,
 };
 
 export type UnitCategory = "weight" | "volume";
@@ -43,7 +49,7 @@ export const STANDARD_UNIT_GROUPS: StandardUnitGroup[] = [
   },
   {
     label: "Volume",
-    units: ["ml", "l", "cup", "cups", "tbsp", "tsp"],
+    units: ["ml", "l", "cup", "cups", "tbsp", "tsp", "fl oz"],
   },
 ];
 
@@ -131,3 +137,21 @@ export const STANDARD_UNIT_KEYS: readonly string[] = Object.freeze([
   ...Object.keys(WEIGHT_TO_GRAMS),
   ...Object.keys(VOLUME_TO_ML),
 ]);
+
+/**
+ * Food serving unit -> millilitres, or null when the unit is not a volume
+ * unit (including the WEIGHT 'oz' — see the module doc comment). Mirrors the
+ * SQL sf_volume_unit_to_ml() function so server and client agree byte-for-byte;
+ * see tests/volumeUnitToMl.test.ts for the parity check.
+ *
+ * Named foodVolumeToMl (not volumeToMl) to avoid colliding with
+ * utils/csvValue.ts's unrelated volumeToMl, which serves health-data CSV
+ * import and deliberately treats 'oz' as FLUID — the opposite convention
+ * from this food-serving-unit vocabulary. The two must never be confused for
+ * each other, so they cannot share a name.
+ */
+export function foodVolumeToMl(value: number, unit: string): number | null {
+  return getUnitCategory(unit) === "volume"
+    ? value * getConversionFactor("ml", unit)!
+    : null;
+}

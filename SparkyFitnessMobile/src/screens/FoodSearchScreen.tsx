@@ -103,8 +103,11 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   const mealPlanTarget = route.params?.mealPlanTarget;
   const isMealBuilderMode = pickerMode === 'meal-builder';
   const isMealPlanMode = pickerMode === 'meal-plan';
+  const isContainerLinkMode = pickerMode === 'container-link';
   const selectionPickerMode =
-    isMealBuilderMode || isMealPlanMode ? pickerMode : undefined;
+    isMealBuilderMode || isMealPlanMode || isContainerLinkMode
+      ? pickerMode
+      : undefined;
   const insets = useSafeAreaInsets();
   const [accentColor, textMuted, textSecondary, favoriteGold] = useCSSVariable([
     '--color-accent-primary',

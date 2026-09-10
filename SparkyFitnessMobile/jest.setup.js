@@ -546,12 +546,15 @@ jest.mock('@shopify/react-native-skia', () => {
           lineTo: jest.fn().mockReturnThis(),
           close: jest.fn().mockReturnThis(),
         }),
+        Rect: jest.fn((rect) => rect),
       },
+      XYWHRect: jest.fn((x, y, width, height) => ({ x, y, width, height })),
       PathBuilder: {
         Make: () => ({
           addArc: jest.fn().mockReturnThis(),
           moveTo: jest.fn().mockReturnThis(),
           lineTo: jest.fn().mockReturnThis(),
+          cubicTo: jest.fn().mockReturnThis(),
           close: jest.fn().mockReturnThis(),
           build: jest.fn().mockReturnValue(null),
         }),

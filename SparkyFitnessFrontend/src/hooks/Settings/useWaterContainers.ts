@@ -1,7 +1,10 @@
 import { waterContainerKeys } from '@/api/keys/settings';
 import {
   getWaterContainers,
+  getDrinkPresetCatalog,
+  materializeDrinkPreset,
   createWaterContainer,
+  updateWaterContainer,
   deleteWaterContainer,
   setPrimaryWaterContainer,
 } from '@/api/Settings/waterContainerService';
@@ -18,6 +21,31 @@ export const useWaterContainersQuery = (userId?: string) => {
   });
 };
 
+export const useDrinkPresetCatalogQuery = () => {
+  return useQuery({
+    queryKey: ['water-containers', 'catalog'],
+    queryFn: getDrinkPresetCatalog,
+    meta: {
+      errorMessage: 'Failed to fetch drink preset catalog.',
+    },
+  });
+};
+
+export const useMaterializeDrinkPresetMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (catalogId: string) => materializeDrinkPreset(catalogId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: waterContainerKeys.all });
+    },
+    meta: {
+      successMessage: 'Drink preset added.',
+      errorMessage: 'Failed to add drink preset.',
+    },
+  });
+};
+
 export const useCreateWaterContainerMutation = () => {
   const queryClient = useQueryClient();
 
@@ -29,6 +57,27 @@ export const useCreateWaterContainerMutation = () => {
     meta: {
       successMessage: 'Water container added.',
       errorMessage: 'Failed to add water container.',
+    },
+  });
+};
+
+export const useUpdateWaterContainerMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      containerData,
+    }: {
+      id: number;
+      containerData: Parameters<typeof updateWaterContainer>[1];
+    }) => updateWaterContainer(id, containerData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: waterContainerKeys.all });
+    },
+    meta: {
+      successMessage: 'Water container updated.',
+      errorMessage: 'Failed to update water container.',
     },
   });
 };

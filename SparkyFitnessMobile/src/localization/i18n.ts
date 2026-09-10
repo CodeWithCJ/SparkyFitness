@@ -74,10 +74,65 @@ export function getNativeIOSLanguage(): SupportedLanguage {
   return FALLBACK_LOCALE;
 }
 
+/**
+ * Languages whose catalogs carry one/few/many but no `other` form.
+ *
+ * Weblate models Polish, Russian and Ukrainian with the three-form gettext
+ * plural, so it never emits an `other` translation for them. CLDR gives these
+ * languages a fourth category of that name, and it is the one
+ * `Intl.PluralRules` -- which i18next uses to choose a key suffix -- returns for
+ * a non-integer count such as 1.5. The key therefore never existed and every
+ * fractional count fell back to English: "1,5 cups" instead of "1,5 szklanki".
+ *
+ * The form these languages actually want there is the genitive singular, which
+ * is the same string they already use for `few`. Drop this shim only once the
+ * catalogs gain real `_other` plurals.
+ */
+const FRACTIONAL_PLURAL_USES_FEW = new Set(['pl', 'ru', 'uk']);
+
+const OTHER_SUFFIX = 'other';
+const FEW_SUFFIX = 'few';
+
+/** The slice of i18next's private plural resolver this shim depends on. */
+interface PluralSuffixResolver {
+  getSuffix(
+    code: string,
+    count: number,
+    options?: { ordinal?: boolean }
+  ): string;
+}
+
+let fractionalPluralFallbackInstalled = false;
+
+function installFractionalPluralFallback(): void {
+  if (fractionalPluralFallbackInstalled) return;
+  const resolver = (
+    i18n as unknown as {
+      services?: { pluralResolver?: PluralSuffixResolver };
+    }
+  ).services?.pluralResolver;
+  if (!resolver) return;
+
+  const resolveSuffix = resolver.getSuffix.bind(resolver);
+  resolver.getSuffix = (code, count, options = {}) => {
+    const suffix = resolveSuffix(code, count, options);
+    // Ordinals are a separate series and are not affected.
+    if (options.ordinal) return suffix;
+    if (!suffix.endsWith(OTHER_SUFFIX)) return suffix;
+    const language = code.split(/[-_]/)[0]?.toLowerCase() ?? '';
+    if (!FRACTIONAL_PLURAL_USES_FEW.has(language)) return suffix;
+    return `${suffix.slice(0, -OTHER_SUFFIX.length)}${FEW_SUFFIX}`;
+  };
+
+  fractionalPluralFallbackInstalled = true;
+}
+
 async function initI18nLanguage(language: SupportedLanguage): Promise<void> {
   await i18n
     .use(initReactI18next)
     .init({ ...I18N_INIT_OPTIONS, lng: language });
+  // The resolver only exists once init has built the instance's services.
+  installFractionalPluralFallback();
 }
 
 let initPromise: Promise<void> | null = null;

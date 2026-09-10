@@ -36,6 +36,7 @@ import {
   PREDEFINED_NUTRIENT_KEYS,
   NutrientGoalType,
 } from '@/constants/nutrients';
+import { NON_GOAL_NUTRIENT_KEYS } from '@workspace/shared';
 import { RotateCcw, Info, ChevronDown } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
@@ -583,7 +584,11 @@ const NutrientGoalDirectionSettings = () => {
 
   const sections = useMemo(() => {
     const placed = new Set(SECTION_DEFINITIONS.flatMap((s) => s.keys));
-    const other = PREDEFINED_NUTRIENT_KEYS.filter((k) => !placed.has(k));
+    const other = PREDEFINED_NUTRIENT_KEYS.filter(
+      (k) =>
+        !placed.has(k) &&
+        !(NON_GOAL_NUTRIENT_KEYS as readonly string[]).includes(k)
+    );
     return [
       ...SECTION_DEFINITIONS,
       ...(other.length > 0

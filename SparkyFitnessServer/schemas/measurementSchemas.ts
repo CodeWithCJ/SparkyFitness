@@ -106,7 +106,15 @@ const smartScaleBmrKcal = boundedNullableOptionalLegacyNumber(
 export const UpsertWaterIntakeBodySchema = z
   .object({
     entry_date: requiredLegacyString('entry_date'),
-    change_drinks: requiredLegacyNumber,
+    // Bounded and integral because upsertWaterIntake loops once per drink, and
+    // since #2115 a single iteration can also insert a food_entries row. An
+    // unbounded (or fractional) value turned one request into an unbounded
+    // serial write loop. 100 presses of "+" in one call is already far past
+    // anything the UI issues.
+    change_drinks: z.preprocess(
+      coerceLegacyNumber,
+      z.number().int().min(-100).max(100)
+    ),
     container_id: nullableOptionalLegacyNumber,
     user_id: optionalLegacyString,
   })

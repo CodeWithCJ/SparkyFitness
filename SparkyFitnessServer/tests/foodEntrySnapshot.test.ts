@@ -2,9 +2,54 @@ import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import foodRepository from '../models/foodRepository.js';
 import { v4 as uuidv4 } from 'uuid';
 import { getClient } from '../db/poolManager.js';
+import { buildFoodEntrySnapshot } from '../utils/foodEntrySnapshot.js';
 vi.mock('../db/poolManager', () => ({
   getClient: vi.fn(),
 }));
+
+describe('buildFoodEntrySnapshot', () => {
+  it('carries caffeine_mg through from the variant', () => {
+    const snapshot = buildFoodEntrySnapshot(
+      { name: 'Espresso', brand: null },
+      {
+        serving_size: 30,
+        serving_unit: 'ml',
+        calories: 3,
+        caffeine_mg: 63,
+      }
+    );
+    expect(snapshot.caffeine_mg).toBe(63);
+  });
+
+  it('passes through an undefined caffeine_mg unchanged', () => {
+    const snapshot = buildFoodEntrySnapshot(
+      { name: 'Water', brand: null },
+      { serving_size: 250, serving_unit: 'ml' }
+    );
+    expect(snapshot.caffeine_mg).toBeUndefined();
+  });
+
+  it('carries water_ml through from the variant', () => {
+    const snapshot = buildFoodEntrySnapshot(
+      { name: 'Coconut Water', brand: null },
+      {
+        serving_size: 330,
+        serving_unit: 'ml',
+        calories: 60,
+        water_ml: 310,
+      }
+    );
+    expect(snapshot.water_ml).toBe(310);
+  });
+
+  it('passes through an undefined water_ml unchanged', () => {
+    const snapshot = buildFoodEntrySnapshot(
+      { name: 'Steak', brand: null },
+      { serving_size: 200, serving_unit: 'g' }
+    );
+    expect(snapshot.water_ml).toBeUndefined();
+  });
+});
 describe('foodRepository snapshot functions', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockClient: any;
@@ -46,6 +91,9 @@ describe('foodRepository snapshot functions', () => {
       vitamin_c: 0,
       calcium: 11,
       iron: 0.7,
+      caffeine_mg: 5,
+      water_ml: 240,
+      alcohol_g: 14,
       glycemic_index: null,
       custom_nutrients: { zinc: '1.3mg' },
       ...overrides,
@@ -71,7 +119,7 @@ describe('foodRepository snapshot functions', () => {
       );
     const updateCall = () => sqlCalls()[1];
 
-    it('should execute UPDATE with all 27 params in correct order and return rowCount', async () => {
+    it('should execute UPDATE with all 30 params in correct order and return rowCount', async () => {
       const snapshot = makeSnapshotData();
       mockSelectThenUpdate(3);
       const result = await foodRepository.updateFoodEntriesSnapshot(
@@ -106,10 +154,13 @@ describe('foodRepository snapshot functions', () => {
         snapshot.iron,
         snapshot.glycemic_index,
         snapshot.custom_nutrients,
+        snapshot.caffeine_mg,
+        snapshot.water_ml,
+        snapshot.alcohol_g,
         userId,
         foodId,
         variantId,
-        // Images ride along as the 27th param whenever they are being synced.
+        // Images ride along as the 30th param whenever they are being synced.
         JSON.stringify([]),
       ]);
     });
@@ -129,9 +180,9 @@ describe('foodRepository snapshot functions', () => {
       );
 
       const [sql, params] = updateCall();
-      expect(sql).toContain('images = $27::jsonb');
+      expect(sql).toContain('images = $30::jsonb');
       expect(sql).not.toContain('NOT EXISTS');
-      expect(params[26]).toBe(JSON.stringify(['/uploads/foods/f1/new.jpg']));
+      expect(params[29]).toBe(JSON.stringify(['/uploads/foods/f1/new.jpg']));
     });
 
     it('reads and overwrites in one transaction, locking the rows', async () => {
@@ -251,7 +302,7 @@ describe('foodRepository snapshot functions', () => {
       expect(sqlCalls()).toHaveLength(1);
       const [sql, params] = sqlCalls()[0];
       expect(sql).not.toContain('images =');
-      expect(params).toHaveLength(26);
+      expect(params).toHaveLength(29);
       expect(result.replacedEntryImages).toEqual([]);
     });
 

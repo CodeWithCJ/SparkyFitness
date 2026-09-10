@@ -1,4 +1,4 @@
-import { defaultMealTypeForTime } from '@workspace/shared';
+import { pickMealTypeForTime } from '@workspace/shared';
 import type { IconName } from '../components/Icon';
 import type { MealType } from '../types/mealTypes';
 
@@ -58,11 +58,7 @@ export function getDefaultMealTypeId(
     hour: date.getHours(),
     minute: date.getMinutes(),
   };
-  const predictedName = defaultMealTypeForTime(mealTypes, currentNow);
-  const match = mealTypes.find(
-    (mt) => mt.name.toLowerCase() === predictedName.toLowerCase()
-  );
-  return match?.id ?? mealTypes[0].id;
+  return pickMealTypeForTime(mealTypes, currentNow)?.id ?? mealTypes[0].id;
 }
 
 /** Localized label for a KNOWN system meal type key. Unknown/custom names are returned literally. */

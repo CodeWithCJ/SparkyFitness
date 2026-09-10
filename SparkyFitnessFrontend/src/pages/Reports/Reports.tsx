@@ -7,6 +7,8 @@ import { useActiveUser } from '@/contexts/ActiveUserContext';
 import ZoomableChart from '@/components/ZoomableChart';
 import ReportsControls from '@/pages/Reports/ReportsControls';
 import NutritionPeriodSummary from '@/pages/Reports/NutritionPeriodSummary';
+import { WeeklyAlcoholCard } from '@/pages/Reports/WeeklyAlcoholCard';
+import HydrationTrendChart from '@/pages/Reports/HydrationTrendChart';
 import NutritionChartsGrid from '@/pages/Reports/NutritionChartsGrid';
 import WidgetGrid from '@/components/widgets/WidgetGrid';
 import {
@@ -201,6 +203,16 @@ const Reports = () => {
       case 'charts':
         return (
           <div className="space-y-12">
+            <ChartErrorBoundary>
+              <WeeklyAlcoholCard date={endDate} userId={activeUserId} />
+            </ChartErrorBoundary>
+            <ChartErrorBoundary>
+              <HydrationTrendChart
+                startDate={startDate}
+                endDate={endDate}
+                userId={activeUserId}
+              />
+            </ChartErrorBoundary>
             <ChartErrorBoundary>
               <NutritionPeriodSummary
                 nutritionData={nutritionData}

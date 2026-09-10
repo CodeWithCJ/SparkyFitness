@@ -17,6 +17,8 @@ export interface ExpandedGoals {
   vitamin_c: number;
   calcium: number;
   iron: number;
+  caffeine_mg?: number | null;
+  alcohol_g?: number | null;
   target_exercise_calories_burned: number;
   target_exercise_duration_minutes: number;
   protein_percentage: number | null;
@@ -52,6 +54,8 @@ export interface GoalPreset {
   vitamin_c: number;
   calcium: number;
   iron: number;
+  caffeine_mg?: number | null;
+  alcohol_g?: number | null;
   target_exercise_calories_burned: number;
   target_exercise_duration_minutes: number;
   protein_percentage: number | null;

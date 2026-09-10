@@ -37,6 +37,7 @@ import {
   buildMealPlanMealAssignment,
   setPendingMealPlanSelection,
 } from '../services/mealPlanSelection';
+import { setPendingContainerLinkSelection } from '../services/waterContainerLinkSelection';
 import { CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import { addDays, getTodayDate, getDeviceTimezone } from '../utils/dateUtils';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
@@ -124,6 +125,9 @@ const NUTRITION_FIELDS = [
   'potassium',
   'calcium',
   'iron',
+  'caffeineMg',
+  'waterMl',
+  'alcoholG',
   'cholesterol',
   'vitaminA',
   'vitaminC',
@@ -210,7 +214,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const ingredientIndex = route.params?.ingredientIndex;
   const isMealBuilderMode = pickerMode === 'meal-builder';
   const isMealPlanMode = pickerMode === 'meal-plan';
-  const isSelectionMode = isMealBuilderMode || isMealPlanMode;
+  const isContainerLinkMode = pickerMode === 'container-link';
+  const isSelectionMode =
+    isMealBuilderMode || isMealPlanMode || isContainerLinkMode;
   const mealPlanTarget = route.params?.mealPlanTarget;
   const [selectedDate, setSelectedDateState] = useState(
     initialDate ?? useDiaryDateStore.getState().selectedDate
@@ -259,6 +265,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         iron: toFormString(item.iron),
         vitaminA: toFormString(item.vitaminA),
         vitaminC: toFormString(item.vitaminC),
+        caffeineMg: toFormString(item.caffeineMg),
+        waterMl: toFormString(item.waterMl),
+        alcoholG: toFormString(item.alcoholG),
       };
     }
   );
@@ -548,6 +557,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       potassium: parseOptional(adjustedValues.potassium),
       calcium: parseOptional(adjustedValues.calcium),
       iron: parseOptional(adjustedValues.iron),
+      caffeineMg: parseOptional(adjustedValues.caffeineMg),
+      waterMl: parseOptional(adjustedValues.waterMl),
+      alcoholG: parseOptional(adjustedValues.alcoholG),
       cholesterol: parseOptional(adjustedValues.cholesterol),
       vitaminA: parseOptional(adjustedValues.vitaminA),
       vitaminC: parseOptional(adjustedValues.vitaminC),
@@ -583,6 +595,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       vitamin_c: displayValues.vitaminC,
       calcium: displayValues.calcium,
       iron: displayValues.iron,
+      caffeine_mg: displayValues.caffeineMg,
+      water_ml: displayValues.waterMl,
+      alcohol_g: displayValues.alcoholG,
     };
   }, [displayValues, selectedVariantOverride]);
 
@@ -838,6 +853,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       potassium: saveFoodSourceValues.potassium,
       calcium: saveFoodSourceValues.calcium,
       iron: saveFoodSourceValues.iron,
+      caffeine_mg: saveFoodSourceValues.caffeineMg,
+      water_ml: saveFoodSourceValues.waterMl,
+      alcohol_g: saveFoodSourceValues.alcoholG,
       cholesterol: saveFoodSourceValues.cholesterol,
       vitamin_a: saveFoodSourceValues.vitaminA,
       vitamin_c: saveFoodSourceValues.vitaminC,
@@ -901,6 +919,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             potassium: displayValues.potassium,
             calcium: displayValues.calcium,
             iron: displayValues.iron,
+            caffeine_mg: displayValues.caffeineMg,
+            water_ml: displayValues.waterMl,
+            alcohol_g: displayValues.alcoholG,
             cholesterol: displayValues.cholesterol,
             vitamin_a: displayValues.vitaminA,
             vitamin_c: displayValues.vitaminC,
@@ -972,6 +993,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                 potassium: displayValues.potassium,
                 calcium: displayValues.calcium,
                 iron: displayValues.iron,
+                caffeine_mg: displayValues.caffeineMg,
+                water_ml: displayValues.waterMl,
+                alcohol_g: displayValues.alcoholG,
                 cholesterol: displayValues.cholesterol,
                 vitamin_a: displayValues.vitaminA,
                 vitamin_c: displayValues.vitaminC,
@@ -1020,6 +1044,20 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     });
 
   const finishFoodSelection = (ingredient: MealIngredientDraft) => {
+    if (isContainerLinkMode) {
+      if (ingredient.food_id && ingredient.variant_id) {
+        setPendingContainerLinkSelection({
+          foodId: ingredient.food_id,
+          variantId: ingredient.variant_id,
+          foodName: ingredient.food_name ?? '',
+          // The quantity picked here is what one press of the container logs,
+          // so it has to travel back with the food rather than reset to 1.
+          quantity: ingredient.quantity,
+        });
+      }
+      navigation.dispatch(StackActions.pop(returnDepth));
+      return;
+    }
     if (isMealPlanMode && mealPlanTarget) {
       setPendingMealPlanSelection({
         ...(mealPlanTarget.assignmentIndex === undefined
@@ -1314,6 +1352,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       potassium: displayValues.potassium,
       calcium: displayValues.calcium,
       iron: displayValues.iron,
+      caffeine_mg: displayValues.caffeineMg,
+      water_ml: displayValues.waterMl,
+      alcohol_g: displayValues.alcoholG,
       cholesterol: displayValues.cholesterol,
       vitamin_a: displayValues.vitaminA,
       vitamin_c: displayValues.vitaminC,
@@ -1350,6 +1391,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         potassium: toFormString(displayValues.potassium),
         calcium: toFormString(displayValues.calcium),
         iron: toFormString(displayValues.iron),
+        caffeineMg: toFormString(displayValues.caffeineMg),
+        waterMl: toFormString(displayValues.waterMl),
+        alcoholG: toFormString(displayValues.alcoholG),
         cholesterol: toFormString(displayValues.cholesterol),
         vitaminA: toFormString(displayValues.vitaminA),
         vitaminC: toFormString(displayValues.vitaminC),

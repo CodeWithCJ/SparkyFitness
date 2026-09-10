@@ -57,6 +57,7 @@ export interface FoodInput extends NutrientFields {
   ai_confidence?: string | null;
   allergens?: string[] | null;
   traces?: string[] | null;
+  abv_percent?: NutrientValue;
 }
 
 const DEFAULT_VARIANT_JSON_SQL = `
@@ -81,6 +82,10 @@ const DEFAULT_VARIANT_JSON_SQL = `
     'vitamin_c', fv.vitamin_c,
     'calcium', fv.calcium,
     'iron', fv.iron,
+    'caffeine_mg', fv.caffeine_mg,
+    'water_ml', fv.water_ml,
+    'alcohol_g', fv.alcohol_g,
+    'abv_percent', fv.abv_percent,
     'is_default', fv.is_default,
     'glycemic_index', fv.glycemic_index,
     'custom_nutrients', fv.custom_nutrients,
@@ -263,9 +268,9 @@ async function createFoodWithClient(client: PoolClient, foodData: FoodInput) {
         food_id, serving_size, serving_unit, calories, protein, carbs, fat,
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
-        vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients,
+        vitamin_a, vitamin_c, calcium, iron, caffeine_mg, water_ml, alcohol_g, abv_percent, is_default, glycemic_index, custom_nutrients,
         source, ai_confidence, allergens, traces, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, TRUE, $21, $22, $23, $24, $25, $26, now(), now()) RETURNING id`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, TRUE, $25, $26, $27, $28, $29, $30, now(), now()) RETURNING id`,
     [
       newFood.id,
       sanitizeNumeric(foodData.serving_size),
@@ -287,6 +292,10 @@ async function createFoodWithClient(client: PoolClient, foodData: FoodInput) {
       sanitizeNumeric(foodData.vitamin_c),
       sanitizeNumeric(foodData.calcium),
       sanitizeNumeric(foodData.iron),
+      sanitizeNumeric(foodData.caffeine_mg),
+      sanitizeNumeric(foodData.water_ml),
+      sanitizeNumeric(foodData.alcohol_g),
+      sanitizeNumeric(foodData.abv_percent),
       sanitizeGlycemicIndex(foodData.glycemic_index),
       foodData.custom_nutrients ?? {},
       foodData.source ?? 'manual',
@@ -330,6 +339,10 @@ function buildDefaultVariantEcho(
     vitamin_c: foodData.vitamin_c,
     calcium: foodData.calcium,
     iron: foodData.iron,
+    caffeine_mg: foodData.caffeine_mg,
+    water_ml: foodData.water_ml,
+    alcohol_g: foodData.alcohol_g,
+    abv_percent: foodData.abv_percent,
     is_default: true,
     user_id: newFood.user_id,
     source: foodData.source ?? 'manual',
@@ -423,6 +436,10 @@ export interface FoodMatchCandidateRow {
   iron: number | string | null;
   vitamin_a: number | string | null;
   vitamin_c: number | string | null;
+  caffeine_mg: number | string | null;
+  water_ml: number | string | null;
+  alcohol_g: number | string | null;
+  abv_percent: number | string | null;
   last_used: string | null;
 }
 
@@ -474,6 +491,7 @@ async function findFoodMatchCandidates(
                 fv.monounsaturated_fat, fv.trans_fat, fv.cholesterol,
                 fv.sodium, fv.potassium, fv.calcium, fv.iron,
                 fv.vitamin_a, fv.vitamin_c,
+                fv.caffeine_mg, fv.water_ml, fv.alcohol_g, fv.abv_percent,
                 (SELECT MAX(fe.entry_date) FROM food_entries fe
                   WHERE fe.food_id = f.id AND fe.user_id = $1) AS last_used
          FROM foods f
@@ -1051,6 +1069,10 @@ interface BulkImportFoodData {
   vitamin_c?: NumericInput;
   calcium?: NumericInput;
   iron?: NumericInput;
+  caffeine_mg?: NumericInput;
+  water_ml?: NumericInput;
+  alcohol_g?: NumericInput;
+  abv_percent?: NumericInput;
   glycemic_index?: string | null;
   custom_nutrients?: Record<string, unknown> | null;
   source?: string | null;
@@ -1288,6 +1310,10 @@ async function createFoodsInBulk(
                 iron = COALESCE($19, iron),
                 glycemic_index = COALESCE($20, glycemic_index),
                 custom_nutrients = COALESCE($21, custom_nutrients),
+                caffeine_mg = COALESCE($22, caffeine_mg),
+                water_ml = COALESCE($23, water_ml),
+                alcohol_g = COALESCE($24, alcohol_g),
+                abv_percent = COALESCE($25, abv_percent),
                 updated_at = now()
               WHERE id = $1`,
             [
@@ -1314,6 +1340,10 @@ async function createFoodsInBulk(
               // null (not {}) so the COALESCE above keeps the stored map when
               // the import carried no custom nutrients at all.
               variant.custom_nutrients ?? null,
+              sanitizeNumeric(variant.caffeine_mg),
+              sanitizeNumeric(variant.water_ml),
+              sanitizeNumeric(variant.alcohol_g),
+              sanitizeNumeric(variant.abv_percent),
             ]
           );
         } else {
@@ -1323,10 +1353,10 @@ async function createFoodsInBulk(
               saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
               cholesterol, sodium, potassium, dietary_fiber, sugars,
               vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients,
-              source, ai_confidence, allergens, traces, created_at, updated_at
+              source, ai_confidence, allergens, traces, caffeine_mg, water_ml, alcohol_g, abv_percent, created_at, updated_at
             ) VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-              $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, now(), now()
+              $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, now(), now()
             )`,
             [
               foodId,
@@ -1356,6 +1386,10 @@ async function createFoodsInBulk(
               variant.ai_confidence ?? null,
               variant.allergens ?? null,
               variant.traces ?? null,
+              sanitizeNumeric(variant.caffeine_mg),
+              sanitizeNumeric(variant.water_ml),
+              sanitizeNumeric(variant.alcohol_g),
+              sanitizeNumeric(variant.abv_percent),
             ]
           );
         }
@@ -1555,6 +1589,9 @@ async function updateFoodVariantNutrition(
         calcium = $19,
         iron = $20,
         custom_nutrients = COALESCE($21::jsonb, custom_nutrients),
+        caffeine_mg = $22,
+        water_ml = $23,
+        alcohol_g = $24,
         updated_at = now()
       WHERE id = $1`,
       [
@@ -1581,6 +1618,9 @@ async function updateFoodVariantNutrition(
         nutritionData.custom_nutrients
           ? JSON.stringify(nutritionData.custom_nutrients)
           : null,
+        sanitizeNumeric(nutritionData.caffeine_mg),
+        sanitizeNumeric(nutritionData.water_ml),
+        sanitizeNumeric(nutritionData.alcohol_g),
       ]
     );
   } finally {

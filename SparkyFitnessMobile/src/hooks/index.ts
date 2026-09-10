@@ -39,12 +39,23 @@ export {
 } from './useMealPlans';
 export { useMealPlanNutrition } from './useMealPlanNutrition';
 export { useMealSearch } from './useMealSearch';
+export {
+  useWaterContainersQuery,
+  useDrinkPresetCatalogQuery,
+  useCreateWaterContainerMutation,
+  useUpdateWaterContainerMutation,
+  useDeleteWaterContainerMutation,
+  useSetPrimaryWaterContainerMutation,
+  useReorderWaterContainersMutation,
+  useAddDrinkPresetMutation,
+} from './useWaterContainers';
 export { useExternalProviders } from './useExternalProviders';
 export { useExternalFoodSearch } from './useExternalFoodSearch';
 export { useAllProvidersSearch } from './useAllProvidersSearch';
 export type { ProviderSearchResult } from './useAllProvidersSearch';
 export { useMealTypes } from './useMealTypes';
 export { useDeleteFood } from './useDeleteFood';
+export { useCaffeineKinetics } from './useCaffeineKinetics';
 export { useFoodVariants } from './useFoodVariants';
 export type { StepsDataPoint, WeightDataPoint } from './useMeasurementsRange';
 export { useHealthTrends } from './useHealthTrends';

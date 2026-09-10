@@ -33,6 +33,9 @@ export interface FoodFormData {
   iron: string;
   vitaminA: string;
   vitaminC: string;
+  caffeineMg: string;
+  waterMl: string;
+  alcoholG: string;
 }
 
 export type NumericFoodFormField =
@@ -51,7 +54,10 @@ export type NumericFoodFormField =
   | 'calcium'
   | 'iron'
   | 'vitaminA'
-  | 'vitaminC';
+  | 'vitaminC'
+  | 'caffeineMg'
+  | 'waterMl'
+  | 'alcoholG';
 
 export const NUMERIC_FOOD_FORM_FIELDS: NumericFoodFormField[] = [
   'servingSize',
@@ -70,6 +76,9 @@ export const NUMERIC_FOOD_FORM_FIELDS: NumericFoodFormField[] = [
   'iron',
   'vitaminA',
   'vitaminC',
+  'caffeineMg',
+  'waterMl',
+  'alcoholG',
 ];
 
 export const NUMERIC_FOOD_FORM_FIELD_SET = new Set<keyof FoodFormData>(
@@ -110,6 +119,9 @@ export const NUTRITION_FIELDS: (keyof FoodFormData)[] = [
   'iron',
   'vitaminA',
   'vitaminC',
+  'caffeineMg',
+  'waterMl',
+  'alcoholG',
 ];
 
 const EMPTY_FORM: FoodFormData = {
@@ -133,6 +145,9 @@ const EMPTY_FORM: FoodFormData = {
   iron: '',
   vitaminA: '',
   vitaminC: '',
+  caffeineMg: '',
+  waterMl: '',
+  alcoholG: '',
 };
 
 export const FORM_DRAFT_UNIT_ID = '__food-form-draft-unit__';
@@ -178,6 +193,12 @@ export function buildDisplayFormState(
     iron: formatInitialNumericValue(initialValues?.iron, 'nutrient'),
     vitaminA: formatInitialNumericValue(initialValues?.vitaminA, 'nutrient'),
     vitaminC: formatInitialNumericValue(initialValues?.vitaminC, 'nutrient'),
+    caffeineMg: formatInitialNumericValue(
+      initialValues?.caffeineMg,
+      'nutrient'
+    ),
+    waterMl: formatInitialNumericValue(initialValues?.waterMl, 'nutrient'),
+    alcoholG: formatInitialNumericValue(initialValues?.alcoholG, 'nutrient'),
   };
 }
 
@@ -242,6 +263,9 @@ export function applyVariantToFormState(
     iron: formatFoodFormNumber(variant.iron, 'nutrient'),
     vitaminA: formatFoodFormNumber(variant.vitamin_a, 'nutrient'),
     vitaminC: formatFoodFormNumber(variant.vitamin_c, 'nutrient'),
+    caffeineMg: formatFoodFormNumber(variant.caffeine_mg, 'nutrient'),
+    waterMl: formatFoodFormNumber(variant.water_ml, 'nutrient'),
+    alcoholG: formatFoodFormNumber(variant.alcohol_g, 'nutrient'),
   };
 }
 
@@ -278,6 +302,9 @@ export function applyCompatibleDraftToFormState(
     iron: formatFoodFormNumber(scaledVariant.iron, 'nutrient'),
     vitaminA: formatFoodFormNumber(scaledVariant.vitamin_a, 'nutrient'),
     vitaminC: formatFoodFormNumber(scaledVariant.vitamin_c, 'nutrient'),
+    caffeineMg: formatFoodFormNumber(scaledVariant.caffeine_mg, 'nutrient'),
+    waterMl: formatFoodFormNumber(scaledVariant.water_ml, 'nutrient'),
+    alcoholG: formatFoodFormNumber(scaledVariant.alcohol_g, 'nutrient'),
   };
 }
 
@@ -301,6 +328,9 @@ export function buildPreciseNumericValuesFromVariant(
     iron: toPreciseFormString(variant.iron),
     vitaminA: toPreciseFormString(variant.vitamin_a),
     vitaminC: toPreciseFormString(variant.vitamin_c),
+    caffeineMg: toPreciseFormString(variant.caffeine_mg),
+    waterMl: toPreciseFormString(variant.water_ml),
+    alcoholG: toPreciseFormString(variant.alcohol_g),
   });
 }
 
@@ -333,6 +363,11 @@ export function scaleCompatibleDraftVariant(
     iron: (variant.iron ?? 0) * ratio,
     vitamin_a: (variant.vitamin_a ?? 0) * ratio,
     vitamin_c: (variant.vitamin_c ?? 0) * ratio,
+    caffeine_mg: (variant.caffeine_mg ?? 0) * ratio,
+    water_ml: (variant.water_ml ?? 0) * ratio,
+    alcohol_g: (variant.alcohol_g ?? 0) * ratio,
+    // Not scaled: a concentration, not an amount (see the type comment).
+    abv_percent: variant.abv_percent,
     dietary_fiber: (variant.dietary_fiber ?? 0) * ratio,
     polyunsaturated_fat: (variant.polyunsaturated_fat ?? 0) * ratio,
     monounsaturated_fat: (variant.monounsaturated_fat ?? 0) * ratio,
@@ -381,6 +416,12 @@ export function getScaledVariantNumericValue(
       return variant.vitamin_a ?? 0;
     case 'vitaminC':
       return variant.vitamin_c ?? 0;
+    case 'caffeineMg':
+      return variant.caffeine_mg ?? 0;
+    case 'waterMl':
+      return variant.water_ml ?? 0;
+    case 'alcoholG':
+      return variant.alcohol_g ?? 0;
   }
 }
 
