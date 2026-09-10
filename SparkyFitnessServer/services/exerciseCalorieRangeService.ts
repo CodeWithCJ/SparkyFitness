@@ -37,6 +37,8 @@ export interface ResolvedExerciseCalorieDay {
 interface CheckInStepsRow {
   entry_date: string;
   steps?: number | string | null;
+  weight?: number | string | null;
+  height?: number | string | null;
 }
 
 export async function getResolvedExerciseCaloriesRange(
@@ -61,14 +63,13 @@ export async function getResolvedExerciseCaloriesRange(
         return [];
       }),
     measurementRepository
-      .getLatestWeightHeight(userId)
+      .getLatestWeightHeight(userId, startDate)
       .catch(() => ({ weightKg: null, heightCm: null })),
   ]);
 
-  const stepsByDate = new Map<string, number>();
-  for (const row of checkInRows as CheckInStepsRow[]) {
-    stepsByDate.set(row.entry_date, Number(row.steps) || 0);
-  }
+  const checkInByDate = new Map(
+    (checkInRows as CheckInStepsRow[]).map((row) => [row.entry_date, row])
+  );
 
   const splitByDate = new Map(splits.map((split) => [split.entry_date, split]));
 
@@ -77,20 +78,24 @@ export async function getResolvedExerciseCaloriesRange(
   // produces no row at all -- and that day's step calories would vanish from the totals
   // the health-summary and 30-day tools report. That shape is common: it is exactly the
   // steps-only day from issue #2094.
-  const dates = new Set([...splitByDate.keys(), ...stepsByDate.keys()]);
+  const dates = new Set([...splitByDate.keys(), ...checkInByDate.keys()]);
 
   const byDate = new Map<string, ResolvedExerciseCalorieDay>();
+  let { weightKg, heightCm } = latestWeightHeight;
   for (const date of [...dates].sort()) {
+    const checkIn = checkInByDate.get(date);
+    if (Number(checkIn?.weight) > 0) weightKg = Number(checkIn?.weight);
+    if (Number(checkIn?.height) > 0) heightCm = Number(checkIn?.height);
     const split = splitByDate.get(date);
     const activeCalories = Number(split?.active_calories) || 0;
     const loggedCalories = Number(split?.other_calories) || 0;
     const activitySteps = Number(split?.activity_steps) || 0;
 
     const stepCalories = resolveBackgroundStepCalories({
-      totalSteps: stepsByDate.get(date) ?? 0,
+      totalSteps: Number(checkIn?.steps) || 0,
       activitySteps,
-      weightKg: latestWeightHeight.weightKg,
-      heightCm: latestWeightHeight.heightCm,
+      weightKg,
+      heightCm,
     });
 
     const resolved = resolveExerciseCalories(

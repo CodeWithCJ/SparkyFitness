@@ -135,7 +135,7 @@ export async function getDailySummaryRange({
       : null,
     includeCheckin
       ? measurementRepository
-          .getLatestWeightHeight(targetUserId)
+          .getLatestWeightHeight(targetUserId, startDate)
           .catch(() => ({ weightKg: null, heightCm: null }))
       : { weightKg: null, heightCm: null },
     userRepository.getUserProfile(targetUserId),
@@ -249,8 +249,8 @@ export async function getDailySummaryRange({
       ? resolveBackgroundStepCalories({
           totalSteps,
           activitySteps: exercise.activitySteps,
-          weightKg: latestWeightHeight.weightKg,
-          heightCm: latestWeightHeight.heightCm,
+          weightKg: Number(carried.weight ?? latestWeightHeight.weightKg),
+          heightCm: Number(carried.height ?? latestWeightHeight.heightCm),
         })
       : 0;
 

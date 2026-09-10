@@ -464,3 +464,71 @@ describe('range mechanics', () => {
     }
   });
 });
+
+test('step calories use independently carried measurements for each report date', async () => {
+  vi.mocked(measurementRepository.getLatestWeightHeight).mockResolvedValue({
+    weightKg: 120,
+    heightCm: 200,
+  });
+  vi.mocked(
+    measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate
+  ).mockResolvedValue({ weight: '80', height: '180' });
+  vi.mocked(
+    measurementRepository.getCheckInMeasurementsByDateRange
+  ).mockResolvedValue([
+    { entry_date: '2026-08-11', steps: 10000, weight: 0, height: -1 },
+    { entry_date: '2026-08-09', steps: 10000, weight: '100', height: null },
+    { entry_date: '2026-08-08', steps: 10000 },
+    { entry_date: '2026-08-10', steps: 10000, height: '200' },
+  ]);
+  vi.mocked(
+    exerciseEntryRepository.getDailyExerciseCalorieSplitRange
+  ).mockResolvedValue([]);
+
+  const { days } = await getDailySummaryRange({
+    actorUserId: USER,
+    targetUserId: USER,
+    startDate: '2026-08-08',
+    endDate: '2026-08-11',
+    includeCheckin: true,
+  });
+
+  expect(days.map((day) => [day.date, day.stepCalories])).toEqual([
+    ['2026-08-08', 316],
+    ['2026-08-09', 395],
+    ['2026-08-10', 439],
+    ['2026-08-11', 439],
+  ]);
+});
+
+test('uses the earliest later height until dated measurements are available', async () => {
+  vi.mocked(measurementRepository.getLatestWeightHeight).mockResolvedValue({
+    weightKg: 80,
+    heightCm: 200,
+  });
+  vi.mocked(
+    measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate
+  ).mockResolvedValue({ weight: '80', height: null });
+  vi.mocked(
+    measurementRepository.getCheckInMeasurementsByDateRange
+  ).mockResolvedValue([
+    { entry_date: '2026-08-08', steps: 10000 },
+    { entry_date: '2026-08-09', steps: 10000, height: '200' },
+    { entry_date: '2026-08-10', steps: 10000, weight: '100' },
+  ]);
+  vi.mocked(
+    exerciseEntryRepository.getDailyExerciseCalorieSplitRange
+  ).mockResolvedValue([]);
+
+  const { days } = await runRange();
+
+  expect(days.map((day) => [day.date, day.stepCalories])).toEqual([
+    ['2026-08-08', 351],
+    ['2026-08-09', 351],
+    ['2026-08-10', 439],
+    ['2026-08-11', 0],
+  ]);
+  expect(
+    measurementRepository.getLatestWeightHeight
+  ).toHaveBeenCalledExactlyOnceWith(USER, '2026-08-08');
+});
