@@ -603,7 +603,9 @@ async function getLatestCheckInMeasurementsOnOrBeforeDate(
          (SELECT muscle_mass_kg FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND muscle_mass_kg IS NOT NULL AND muscle_mass_kg > 0 ORDER BY entry_date DESC LIMIT 1) as muscle_mass_kg,
          (SELECT bone_mass_kg FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND bone_mass_kg IS NOT NULL AND bone_mass_kg > 0 ORDER BY entry_date DESC LIMIT 1) as bone_mass_kg,
          (SELECT body_water_percentage FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND body_water_percentage IS NOT NULL AND body_water_percentage > 0 ORDER BY entry_date DESC LIMIT 1) as body_water_percentage,
-         (SELECT bmr FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND bmr IS NOT NULL AND bmr > 0 ORDER BY entry_date DESC LIMIT 1) as bmr,
+         -- Exact date, like steps: a measured BMR applies to the day it was taken
+         -- and no other, so days without a reading fall back to the user's formula.
+         (SELECT bmr FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2 AND bmr IS NOT NULL AND bmr > 0 LIMIT 1) as bmr,
          le.created_at,
          le.updated_at,
          le.created_by_user_id,
@@ -1475,6 +1477,20 @@ async function getExternalBmrByDateRange(
     client.release();
   }
 }
+/**
+ * Most recent check-in values for a user, one column at a time, unbounded by date.
+ *
+ * Body metrics (weight, height, circumferences, composition) carry forward because
+ * there is no alternative source for a day without a reading — you weigh something
+ * today whether or not you stepped on the scale.
+ *
+ * `bmr` is deliberately NOT one of those and must not be read from here for a
+ * per-date calculation. A measured BMR has a fallback the others lack — the user's
+ * chosen formula, which tracks their current weight — so a stale reading is strictly
+ * worse than recomputing. Read it from the check-in row for the date being computed
+ * instead (see AdaptiveTdeeService). Reading it from here applied a value recorded
+ * today to dates weeks earlier (issue #2395).
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getLatestMeasurement(userId: any) {
   const client = await getClient(userId); // User-specific operation
@@ -1494,7 +1510,6 @@ async function getLatestMeasurement(userId: any) {
          (SELECT muscle_mass_kg FROM check_in_measurements WHERE user_id = $1 AND muscle_mass_kg IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as muscle_mass_kg,
          (SELECT bone_mass_kg FROM check_in_measurements WHERE user_id = $1 AND bone_mass_kg IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as bone_mass_kg,
          (SELECT body_water_percentage FROM check_in_measurements WHERE user_id = $1 AND body_water_percentage IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as body_water_percentage,
-         (SELECT bmr FROM check_in_measurements WHERE user_id = $1 AND bmr IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as bmr,
          (SELECT created_at FROM check_in_measurements WHERE user_id = $1 ORDER BY entry_date DESC LIMIT 1) as created_at,
          (SELECT updated_at FROM check_in_measurements WHERE user_id = $1 ORDER BY entry_date DESC LIMIT 1) as updated_at`,
       [userId]
@@ -1521,20 +1536,29 @@ async function getCustomMeasurementOwnerId(id: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMostRecentMeasurement(userId: any, measurementType: any) {
+async function getMostRecentMeasurement(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  measurementType: any,
+  onDate?: string
+) {
   // SECURITY: Whitelist allowed measurement columns to prevent SQL injection via dynamic column names
   if (!ALLOWED_CHECK_IN_COLUMNS.includes(measurementType)) {
     throw new Error(`Invalid measurement type requested: ${measurementType}`);
   }
   const client = await getClient(userId); // User-specific operation
   try {
+    // `onDate` pins the lookup to a single day rather than "most recent ever".
+    // Callers use it for measured BMR, which only applies on the day it was taken.
+    const dayFilter = onDate ? 'AND entry_date = $2' : '';
+    const params = onDate ? [userId, onDate] : [userId];
     const result = await client.query(
       `SELECT ${measurementType} FROM check_in_measurements
-       WHERE user_id = $1 AND ${measurementType} IS NOT NULL
+       WHERE user_id = $1 ${dayFilter} AND ${measurementType} IS NOT NULL
        ORDER BY entry_date DESC, updated_at DESC
        LIMIT 1`,
-      [userId]
+      params
     );
     return result.rows[0];
   } finally {

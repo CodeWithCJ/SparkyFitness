@@ -1,5 +1,9 @@
 import { z } from 'zod/v4';
-import { isDayString } from '@workspace/shared';
+import {
+  isDayString,
+  MIN_MEASURED_BMR_KCAL,
+  MAX_MEASURED_BMR_KCAL,
+} from '@workspace/shared';
 
 const coerceLegacyNumber = (value: unknown) => {
   if (typeof value !== 'string') {
@@ -92,8 +96,12 @@ const boundedNullableOptionalLegacyNumber = (min: number, max: number) =>
 // numeric(5,2) columns, so 999.99 is the largest storable mass.
 const smartScaleMassKg = boundedNullableOptionalLegacyNumber(0, 999.99);
 const percentage = boundedNullableOptionalLegacyNumber(0, 100);
-// numeric(6,1) column for BMR kcal (300 to 10000 kcal).
-const smartScaleBmrKcal = boundedNullableOptionalLegacyNumber(300, 10000);
+// numeric(6,1) column for BMR kcal. Bounds are shared with every consumer that
+// decides whether a measured BMR may replace the formula estimate.
+const smartScaleBmrKcal = boundedNullableOptionalLegacyNumber(
+  MIN_MEASURED_BMR_KCAL,
+  MAX_MEASURED_BMR_KCAL
+);
 
 export const UpsertWaterIntakeBodySchema = z
   .object({

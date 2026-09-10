@@ -133,10 +133,15 @@ export const saveCustomMeasurement = async (
 };
 
 export const getMostRecentMeasurement = async (
-  measurementType: string
+  measurementType: string,
+  onDate?: string
 ): Promise<RecentCheckInMeasurementsResponse | null> => {
+  // `onDate` pins the lookup to a single day instead of the newest value ever
+  // recorded. Used for measured BMR, which only applies on the day it was taken.
   const response = await apiCall(
-    `/measurements/most-recent/${measurementType}`
+    `/measurements/most-recent/${measurementType}${
+      onDate ? `?date=${encodeURIComponent(onDate)}` : ''
+    }`
   );
 
   // if there are no entries the backend returns an empty object

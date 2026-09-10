@@ -155,6 +155,10 @@ describe('getDashboardStats includeCheckin gate', () => {
   });
 
   test('includeCheckin=true applies check-in measured BMR when present', async () => {
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+      ...basePreferences,
+      use_external_bmr: true,
+    } as never);
     vi.mocked(
       measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate
     ).mockResolvedValue({ weight: 80, height: 180, bmr: 1950 } as never);

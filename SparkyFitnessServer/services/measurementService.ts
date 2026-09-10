@@ -1754,11 +1754,16 @@ async function deleteCustomMeasurementEntry(authenticatedUserId: any, id: any) {
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMostRecentMeasurement(userId: any, measurementType: any) {
+async function getMostRecentMeasurement(
+  userId: any,
+  measurementType: any,
+  onDate?: string
+) {
   try {
     const measurement = await measurementRepository.getMostRecentMeasurement(
       userId,
-      measurementType
+      measurementType,
+      onDate
     );
     return measurement;
   } catch (error) {

@@ -804,7 +804,7 @@
     "exerciseCaloriesDescription": "How much of your exercise calories are added back to your daily goal.",
     "activityLevel": "Activity Level",
     "activityBaseline": "Used as a baseline for TDEE.",
-    "adaptiveFallback": "Acts as a fallback until you have enough tracking data.",
+    "adaptiveFallback": "The fallback estimate until you have enough tracking data — and it keeps setting the plausibility limits afterwards. Your measured TDEE is capped to within ±500 kcal of BMR × this multiplier.",
     "allowNegative": "Allow Lower Fallback Projection",
     "negativeDescription": "When a device total is unavailable, let the BMR + active calories fallback lower your target.",
     "includeResting": "Include Resting Calories",
@@ -874,7 +874,10 @@
       "standardDescription": "Uses the higher of your estimated RMR and the clinical minimum.",
       "customDescription": "Replaces the standard floor with your chosen minimum. Health recommendations remain visible.",
       "disabledDescription": "Stops automatic target clamping. Health warnings remain visible."
-    }
+    },
+    "useExternalBmr": "Use measured BMR from check-ins and synced devices",
+    "useExternalBmrHint": "Off by default — your chosen formula is always used until you turn this on. When enabled, a BMR recorded on a check-in or synced from a smart scale or health provider replaces the formula for that day, provided it is physiologically plausible for you.",
+    "useExternalBmrIosNote": "Apple Health’s Resting Energy already includes light daily activity, so consider setting Activity Level to None (×1.0) to avoid counting it twice."
   },
   "dashboardSettings": {
     "updateFailed": "Failed to update setting.",
@@ -2012,7 +2015,7 @@
       "feetInchesNumber": "Enter a number for feet and inches.",
       "bodyFatRange": "Body fat % must be between 0 and 100.",
       "bodyWaterRange": "Body water % must be between 0 and 100.",
-      "bmrRange": "BMR must be between 300 and 10000 kcal."
+      "bmrRange": "BMR must be between 600 and 6000 kcal."
     },
     "nothingToSave": "Nothing to save",
     "enterValue": "Enter or clear at least one value.",

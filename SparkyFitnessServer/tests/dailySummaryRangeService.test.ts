@@ -200,6 +200,43 @@ const runRange = () =>
     includeCheckin: true,
   });
 
+describe('measured BMR is scoped to its own day', () => {
+  /**
+   * Reports read this endpoint while the Diary reads the per-date path. Carrying a
+   * measured BMR forward here made the two disagree about the same day: one
+   * reading on Aug 9 reported `measured` for Aug 10 and 11 as well.
+   */
+  test('applies a measured BMR only on the date it was recorded', async () => {
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+      ...PREFERENCES,
+      use_external_bmr: true,
+    });
+    vi.mocked(
+      measurementRepository.getCheckInMeasurementsByDateRange
+    ).mockResolvedValue(
+      DATES.map((date) => ({
+        entry_date: date,
+        steps: FIXTURE[date].steps,
+        ...MEASUREMENT,
+        // A single reading, well inside the plausibility band against the 2000
+        // kcal formula estimate the bmrService mock returns.
+        bmr: date === '2026-08-09' ? 2200 : null,
+      })) as never
+    );
+
+    const { days } = await runRange();
+    const byDate = new Map(days.map((d) => [d.date, d]));
+
+    expect(byDate.get('2026-08-09')?.bmr).toBe(2200);
+    expect(byDate.get('2026-08-09')?.bmrSource).toBe('measured');
+
+    for (const date of ['2026-08-10', '2026-08-11'] as const) {
+      expect(byDate.get(date)?.bmrSource).toBe('formula');
+      expect(byDate.get(date)?.bmr).not.toBe(2200);
+    }
+  });
+});
+
 describe('parity with the per-date Diary path', () => {
   /**
    * The structural guard for issue #2094.

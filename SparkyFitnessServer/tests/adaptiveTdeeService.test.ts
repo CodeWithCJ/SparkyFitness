@@ -38,6 +38,7 @@ describe('AdaptiveTdeeService', () => {
     preferenceRepository.getUserPreferences.mockResolvedValue({
       bmr_algorithm: 'Mifflin-St Jeor',
       activity_level: 'moderate',
+      use_external_bmr: true,
     });
     // Mock weight entries spanning 90 days
     const weightEntries = [];
@@ -110,6 +111,7 @@ describe('AdaptiveTdeeService', () => {
       preferences: {
         bmr_algorithm: 'Mifflin-St Jeor',
         activity_level: 'moderate',
+        use_external_bmr: true,
       },
       latestMeasurement: { weight: 80, height: 180 },
       checkInMeasurements: [
@@ -144,6 +146,7 @@ describe('AdaptiveTdeeService', () => {
     preferenceRepository.getUserPreferences.mockResolvedValue({
       bmr_algorithm: 'Mifflin-St Jeor',
       activity_level: 'moderate',
+      use_external_bmr: true,
     });
     // Mock weight entries spanning 90 days
     const weightEntries = [];
@@ -203,6 +206,7 @@ describe('AdaptiveTdeeService', () => {
       preferences: {
         bmr_algorithm: 'Mifflin-St Jeor',
         activity_level: 'moderate',
+        use_external_bmr: true,
       },
       latestMeasurement: { weight: 80, height: 180 },
       checkInMeasurements: [
@@ -287,6 +291,7 @@ describe('AdaptiveTdeeService', () => {
       preferences: {
         bmr_algorithm: 'Mifflin-St Jeor',
         activity_level: 'moderate',
+        use_external_bmr: true,
       },
       latestMeasurement: { weight: 80, height: 180 },
       checkInMeasurements: Array.from({ length: 28 }, (_, i) => ({
@@ -336,6 +341,7 @@ describe('AdaptiveTdeeService', () => {
       preferences: {
         bmr_algorithm: 'Mifflin-St Jeor',
         activity_level: 'moderate',
+        use_external_bmr: true,
       },
       latestMeasurement: { weight: 80, height: 180 },
       checkInMeasurements,
@@ -365,6 +371,7 @@ describe('AdaptiveTdeeService', () => {
       preferences: {
         bmr_algorithm: 'Mifflin-St Jeor',
         activity_level: 'moderate',
+        use_external_bmr: true,
       },
       latestMeasurement: { weight: 80, height: 180 },
       checkInMeasurements: Array.from({ length: 70 }, (_, i) => ({
@@ -414,6 +421,7 @@ describe('AdaptiveTdeeService', () => {
       preferences: {
         bmr_algorithm: 'Mifflin-St Jeor',
         activity_level: 'moderate',
+        use_external_bmr: true,
       },
       latestMeasurement: { weight: 80, height: 180 },
       checkInMeasurements,
@@ -426,5 +434,98 @@ describe('AdaptiveTdeeService', () => {
     const result = computeAdaptiveTdeeFromData(testData, calculationDateStr);
     // 2000 kcal intake + (~0.88 kg smoothed weight loss * 6000) / 28 = ~2190 kcal
     expect(result.tdee).toBe(2190);
+  });
+
+  describe('measured BMR is scoped to its own day', () => {
+    // Regression cover for issue #2395. `latestMeasurement` is fetched once and
+    // reused across a whole date range, so reading BMR from it let a value recorded
+    // today set the fallback TDEE — and therefore the +/-500 plausibility clamp —
+    // for dates weeks earlier. BMR must come from the row for the date being computed.
+    const buildData = (
+      checkInMeasurements: Array<{
+        entry_date: string;
+        weight: number;
+        bmr?: number;
+      }>,
+      latestMeasurement: { weight: number; height: number } = {
+        weight: 80,
+        height: 180,
+      }
+    ) => ({
+      profile: { date_of_birth: '1990-01-01', gender: 'male' },
+      preferences: {
+        bmr_algorithm: 'Mifflin-St Jeor',
+        activity_level: 'moderate',
+        use_external_bmr: true,
+      },
+      latestMeasurement,
+      checkInMeasurements,
+      // Only two weight entries and no calorie history, so the result is the
+      // BMR-derived fallback and the effect of BMR is directly observable.
+      nutritionData: [],
+    });
+
+    const weights = [
+      {
+        entry_date: format(subDays(calculationDate, 47), 'yyyy-MM-dd'),
+        weight: 80,
+      },
+      { entry_date: format(calculationDate, 'yyyy-MM-dd'), weight: 79 },
+    ];
+
+    beforeEach(() => {
+      // @ts-expect-error mocked module
+      bmrService.calculateBmr.mockReturnValue(1800);
+      bmrService.ActivityMultiplier = { moderate: 1.55 };
+    });
+
+    test('uses a measured BMR recorded on the calculation date', () => {
+      const data = buildData(
+        weights.map((w) =>
+          w.entry_date === calculationDateStr ? { ...w, bmr: 2200 } : w
+        )
+      );
+
+      const result = computeAdaptiveTdeeFromData(data, calculationDateStr);
+
+      expect(result.tdee).toBe(Math.round(2200 * 1.55));
+    });
+
+    test('ignores a measured BMR recorded on a different day', () => {
+      const data = buildData(
+        weights.map((w) =>
+          w.entry_date === calculationDateStr ? w : { ...w, bmr: 2200 }
+        )
+      );
+
+      const result = computeAdaptiveTdeeFromData(data, calculationDateStr);
+
+      expect(result.tdee).toBe(Math.round(1800 * 1.55));
+    });
+
+    test('ignores a measured BMR carried on latestMeasurement', () => {
+      // `LatestMeasurement` no longer declares `bmr` at all, so this asserts the
+      // snapshot cannot smuggle one in even when the row carries the column.
+      const data = {
+        ...buildData(weights),
+        latestMeasurement: { weight: 80, height: 180, bmr: 2200 },
+      };
+
+      const result = computeAdaptiveTdeeFromData(data, calculationDateStr);
+
+      expect(result.tdee).toBe(Math.round(1800 * 1.55));
+    });
+
+    test('ignores an out-of-bounds measured BMR on the calculation date', () => {
+      const data = buildData(
+        weights.map((w) =>
+          w.entry_date === calculationDateStr ? { ...w, bmr: 350 } : w
+        )
+      );
+
+      const result = computeAdaptiveTdeeFromData(data, calculationDateStr);
+
+      expect(result.tdee).toBe(Math.round(1800 * 1.55));
+    });
   });
 });

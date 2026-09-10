@@ -11,6 +11,8 @@ import {
   todayInZone,
   dayToPickerDate,
   ENERGY_DENSITY_KCAL_PER_KG,
+  ADAPTIVE_TDEE_CLAMP_KCAL,
+  isUsableMeasuredBmr,
 } from '@workspace/shared';
 const tdeeCache = new NodeCache({ stdTTL: 3600 }); // 1 hour cache
 interface UserProfile {
@@ -21,18 +23,23 @@ interface UserProfile {
 interface UserPreferences {
   bmr_algorithm?: string | null;
   activity_level?: string | null;
+  use_external_bmr?: boolean | null;
 }
 
 interface LatestMeasurement {
   weight?: string | number | null;
   height?: string | number | null;
   body_fat_percentage?: string | number | null;
-  bmr?: string | number | null;
+  // No `bmr` here on purpose: this snapshot is fetched once and reused across a
+  // whole date range, so a BMR read from it would apply a reading taken today to
+  // every earlier date. Measured BMR comes from the per-date check-in row instead.
 }
 
 interface CheckInMeasurement {
   entry_date: string | Date;
   weight: string | number | null;
+  /** Measured BMR for this exact day, when one was recorded. */
+  bmr?: string | number | null;
 }
 
 interface NutritionDataEntry {
@@ -58,6 +65,27 @@ interface AdaptiveTdeeResult {
   avgIntake?: number;
   daysOfData: number;
   lastCalculated: string;
+  /**
+   * Derivation terms for the Active branch, so the UI can show how the estimate
+   * was reached rather than only its inputs and result. Absent on the fallback
+   * branch, which has its own (BMR x multiplier) explanation.
+   */
+  startWeightTrend?: number;
+  endWeightTrend?: number;
+  weightChangeKg?: number;
+  /** Length of the TDEE window in days (28), which the weight trend spans. */
+  daysInWindow?: number;
+  /** First and last day of that window, as YYYY-MM-DD. */
+  windowStartDate?: string;
+  windowEndDate?: string;
+  dailyWeightChangeKg?: number;
+  /** The weight-trend term in kcal — the gap between average intake and TDEE. */
+  weightChangeCalories?: number;
+  /** Estimate before the +/-500 plausibility cap. */
+  rawTdee?: number;
+  wasClamped?: boolean;
+  clampMin?: number;
+  clampMax?: number;
 }
 
 function computeAdaptiveTdeeFromData(
@@ -107,26 +135,32 @@ function computeAdaptiveTdeeFromData(
   }
 
   const gender = profile?.gender || 'male';
-  const measuredBmr = latestMeasurement?.bmr
-    ? parseFloat(String(latestMeasurement.bmr))
-    : null;
+  // A measured BMR counts only on the day it was recorded, so read it from this
+  // date's check-in row rather than from `latestMeasurement`. The latter is fetched
+  // once and reused across a whole range, which let a reading taken today set the
+  // fallback TDEE — and therefore the +/-500 plausibility clamp — for dates weeks
+  // earlier (issue #2395).
+  const measuredBmr =
+    checkInMeasurements.find(
+      (m) => String(m.entry_date).slice(0, 10) === calculationDateStr
+    )?.bmr ?? null;
+  const formulaBmr =
+    bmrService.calculateBmr(
+      bmrAlgorithm,
+      weightKg,
+      heightCm,
+      age,
+      gender as 'male' | 'female',
+      latestMeasurement?.body_fat_percentage
+        ? parseFloat(String(latestMeasurement.body_fat_percentage))
+        : undefined
+    ) ||
+    10 * weightKg + 6.25 * heightCm - 5 * age + (gender === 'male' ? 5 : -161);
   const baseBmr =
-    measuredBmr && measuredBmr >= 300 && measuredBmr <= 10000
-      ? measuredBmr
-      : bmrService.calculateBmr(
-          bmrAlgorithm,
-          weightKg,
-          heightCm,
-          age,
-          gender as 'male' | 'female',
-          latestMeasurement?.body_fat_percentage
-            ? parseFloat(String(latestMeasurement.body_fat_percentage))
-            : undefined
-        ) ||
-        10 * weightKg +
-          6.25 * heightCm -
-          5 * age +
-          (gender === 'male' ? 5 : -161);
+    preferences?.use_external_bmr &&
+    isUsableMeasuredBmr(measuredBmr, formulaBmr)
+      ? parseFloat(String(measuredBmr))
+      : formulaBmr;
 
   const fallbackTdee = baseBmr * multiplier;
 
@@ -281,13 +315,18 @@ function computeAdaptiveTdeeFromData(
   // TDEE = (Avg_Daily_Intake) - (Avg_Daily_Weight_Change_kg * kcal_per_kg)
   // Losing weight on a given intake means expenditure exceeded it, so a negative
   // dailyWeightChange raises the estimate above intake.
-  let adaptiveTdee =
+  const rawAdaptiveTdee =
     avgDailyIntake - dailyWeightChange * ENERGY_DENSITY_KCAL_PER_KG;
   // Plausibility capping: +/- 500 kcal from the BMR-based estimate. Clinical
   // calorie floors are a goal policy and are applied later, not to TDEE itself.
-  const maxTdee = fallbackTdee + 500;
-  const minTdee = Math.max(0, fallbackTdee - 500);
-  adaptiveTdee = Math.min(Math.max(adaptiveTdee, minTdee), maxTdee);
+  const maxTdee = fallbackTdee + ADAPTIVE_TDEE_CLAMP_KCAL;
+  const minTdee = Math.max(0, fallbackTdee - ADAPTIVE_TDEE_CLAMP_KCAL);
+  const adaptiveTdee = Math.min(Math.max(rawAdaptiveTdee, minTdee), maxTdee);
+  // Whether the clamp actually moved the number. When it did, the displayed TDEE
+  // is not `intake + weight term` and the arithmetic on screen would not
+  // reconcile, so the UI has to say the cap bound rather than leave the reader to
+  // work out why the figures do not add up.
+  const wasClamped = Math.round(adaptiveTdee) !== Math.round(rawAdaptiveTdee);
 
   // Find tracking age of weight logging (weightEntries is sorted by date ascending)
   let trackingAgeWeeks = 0;
@@ -337,6 +376,34 @@ function computeAdaptiveTdeeFromData(
     avgIntake: Math.round(avgDailyIntake),
     daysOfData: filteredCalories.length,
     lastCalculated: new Date().toISOString(),
+    // Derivation terms, so the UI can show how the number was reached instead of
+    // only its inputs and result.
+    windowStartDate: calculationWindow[0]
+      ? format(calculationWindow[0].date, 'yyyy-MM-dd')
+      : undefined,
+    windowEndDate: calculationWindow[calculationWindow.length - 1]
+      ? format(
+          calculationWindow[calculationWindow.length - 1]!.date,
+          'yyyy-MM-dd'
+        )
+      : undefined,
+    startWeightTrend: Math.round(startWeightTrend * 10) / 10,
+    endWeightTrend: Math.round(endWeightTrend * 10) / 10,
+    weightChangeKg: Math.round(weightChange * 100) / 100,
+    daysInWindow,
+    // Four decimals, not three: the UI multiplies this by the energy density to
+    // show its working, and at 3dp a -0.0185 kg/day trend prints as -0.018 and
+    // reproduces 108 kcal against a stated 111.
+    dailyWeightChangeKg: Math.round(dailyWeightChange * 10000) / 10000,
+    // Derived from the two rounded figures the UI actually prints, not rounded
+    // independently: otherwise "2026 + 110" renders next to a total of 2137 and
+    // the explanation undermines itself.
+    weightChangeCalories:
+      Math.round(rawAdaptiveTdee) - Math.round(avgDailyIntake),
+    rawTdee: Math.round(rawAdaptiveTdee),
+    wasClamped,
+    clampMin: Math.round(minTdee),
+    clampMax: Math.round(maxTdee),
   };
 }
 

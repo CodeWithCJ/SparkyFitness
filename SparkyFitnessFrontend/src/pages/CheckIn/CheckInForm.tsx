@@ -12,7 +12,11 @@ import { Switch } from '@/components/ui/switch';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useTranslation } from 'react-i18next';
 import { UnitInput } from '@/components/ui/UnitInput';
-import { CustomCategoriesResponse } from '@workspace/shared';
+import {
+  CustomCategoriesResponse,
+  MIN_MEASURED_BMR_KCAL,
+  MAX_MEASURED_BMR_KCAL,
+} from '@workspace/shared';
 import { CheckInPlaceholders } from '@/types/checkin';
 import { History } from 'lucide-react';
 import {
@@ -368,8 +372,8 @@ export const CheckInForm: React.FC<CheckInFormProps> = ({
               <Input
                 id="bmr"
                 type="number"
-                min="300"
-                max="10000"
+                min={MIN_MEASURED_BMR_KCAL}
+                max={MAX_MEASURED_BMR_KCAL}
                 step="1"
                 value={bmr}
                 onChange={(e) => setBmr(e.target.value)}

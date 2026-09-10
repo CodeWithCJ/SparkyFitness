@@ -18,6 +18,40 @@ Your Basal Metabolic Rate (BMR) represents the energy your body requires to perf
 
 _Note: Weight (`W`) is in kg, Height (`H`) is in cm, and Age (`A`) is in years._
 
+### Measured BMR
+
+If a smart scale or a connected health app reports a BMR, SparkyFitness can use that
+measured value for that day instead of the formula above, and the calculation
+breakdown on the Diary labels it **Measured**.
+
+This is **off by default**. Turn on **Use measured BMR from check-ins and synced
+devices** in Calculation Settings to enable it; until you do, your chosen formula
+is always used.
+
+- **It counts only on the day it was recorded.** A measured BMR is never carried
+  forward. Days without a reading fall back to your chosen formula, so turning the
+  sync off restores the formula the next day — you do not have to delete anything.
+- **Implausible readings are ignored.** A value must fall between 600 and 6,000
+  kcal. When your profile is complete enough to produce a formula estimate, it must
+  *also* land within 60–160% of that estimate; if it is not — for example when
+  height or date of birth is missing — the absolute bounds decide on their own. A
+  partial-day figure or a mis-mapped metric is discarded and the formula is used
+  instead. The second check matters because a value can look reasonable on its own
+  and still be impossible for your body.
+- **Readings for a day that has not finished are refused.** Some providers report
+  BMR as a running daily total rather than a rate, so a sync partway through the
+  day hands back part of the day's figure. Only completed days are accepted.
+- **It also sets your safety floor.** The Standard Adaptive Safety Floor uses the
+  higher of your RMR and the clinical minimum, and your measured BMR *is* that RMR
+  when one is available. So a measured value that differs from the formula moves
+  the floor under your calorie goal, not just the estimate above it.
+
+To stop using measured values, turn the setting off in Calculation Settings. That
+covers every source at once. You can also disable BMR sync at the provider — on
+Apple Health and Health Connect that is a per-metric setting, so you can keep
+syncing weight and body fat while dropping BMR. Garmin has no per-metric control,
+which is why the Calculation Settings toggle exists.
+
 ---
 
 ## 2. Body Fat Algorithms
@@ -48,7 +82,8 @@ This setting determines **how physical activity changes your calorie budget** th
 - **Adaptive TDEE:** Dynamically computes your metabolic expenditure by correlating your actual weight changes with your historical calorie intake over the last 28 days. _(Best for high-precision tracking)._
   - **Expenditure (Adaptive TDEE):** On the Diary page, "Expenditure" represents your calculated Total Daily Energy Expenditure (TDEE). This is the baseline number from which your deficit/surplus is subtracted.
   - **Fallback Behavior:** If you have insufficient history (less than 14 days of weight and calorie data, or fewer than 7 days of calorie entries ≥ 200 kcal), the system will use a fallback estimate based on the standard `BMR × Activity Multiplier` formula until enough data is collected.
-  - **The formula:** `TDEE = Average Daily Calories - (Daily Weight Change in kg × 6,000 kcal/kg)`.
+  - **The formula:** `TDEE = Average Daily Calories - (Daily Weight Change in kg × 6,000 kcal/kg)`. The average covers only days with at least 200 kcal logged — unlogged days are skipped, not counted as zero — while the weight change spans the whole 28-day window.
+  - **Plausibility cap:** the result is capped to within ±500 kcal of `BMR × Activity Multiplier`. Your **Activity Level** therefore keeps mattering after Adaptive goes live: it does not feed the estimate, but it sets the window the estimate is allowed to land in. A level set well below your real activity can hold a genuinely higher measured expenditure down, and the Diary's calculation breakdown says so when the cap binds.
 
     The `6,000 kcal/kg` term is an energy density — how many calories a kilogram of body weight represents — which is what lets a weight trend be converted into calories. If you ate 2,000 kcal/day and lost 0.5 kg over 14 days, that lost weight represents about 3,000 kcal your body burned beyond what you ate, or ~214 kcal/day, so your true expenditure was ~2,214 kcal/day.
 
@@ -116,7 +151,7 @@ Under the Adaptive method the floor applies whenever the calculated target falls
 > [!TIP]
 > If a goal mode appears to have no effect, the Standard floor is binding. That is usually about your **activity level**, not your body size. With the fallback estimate (TDEE = RMR × activity multiplier) and RMR as the binding half, the floor bites once your deficit exceeds roughly `1 - 1/activityMultiplier` — about 17% at **Sedentary** (×1.2), and 0% at **None** (×1.0), where every deficit mode returns the same target. Once Adaptive has enough history it uses your _measured_ TDEE, so the real limit is how far your expenditure sits above your RMR. A sedentary man and a sedentary woman of very different sizes hit the same ceiling.
 >
-> If you are still on the fallback estimate, check your **Activity Level** and profile data first, since they set the ceiling there and are the most common things to have understated. Once Adaptive is using measured TDEE the setting no longer feeds the calculation, and the ceiling reflects your real expenditure instead. If your target has been agreed with a qualified clinician and still falls below the Standard floor, choose a **Custom minimum** or **Disabled**. Very small adults may find the clinical minimum sits above their own maintenance, in which case those two options are the only way to set a deficit at all. Very low calorie targets can carry health risks and may require medical supervision.
+> If you are still on the fallback estimate, check your **Activity Level** and profile data first, since they set the ceiling there and are the most common things to have understated. Once Adaptive is using measured TDEE the setting no longer feeds the estimate itself, and the ceiling reflects your real expenditure — but it still sets the ±500 kcal plausibility cap around `BMR × Activity Multiplier`, so an understated level can still hold your measured TDEE down. If your target has been agreed with a qualified clinician and still falls below the Standard floor, choose a **Custom minimum** or **Disabled**. Very small adults may find the clinical minimum sits above their own maintenance, in which case those two options are the only way to set a deficit at all. Very low calorie targets can carry health risks and may require medical supervision.
 
 ---
 

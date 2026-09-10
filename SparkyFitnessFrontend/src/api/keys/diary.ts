@@ -8,8 +8,14 @@ export const dailyProgressKeys = {
   all: ['dailyProgress'] as const,
   steps: (date: string) => [...dailyProgressKeys.all, 'steps', date] as const,
   measurements: {
-    mostRecent: (type: string) =>
-      [...dailyProgressKeys.all, 'measurements', 'recent', type] as const,
+    mostRecent: (type: string, onDate?: string) =>
+      [
+        ...dailyProgressKeys.all,
+        'measurements',
+        'recent',
+        type,
+        ...(onDate ? [onDate] : []),
+      ] as const,
   },
   adaptiveTdee: (date: string) =>
     [...dailyProgressKeys.all, 'adaptiveTdee', date] as const,

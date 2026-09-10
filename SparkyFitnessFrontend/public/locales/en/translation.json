@@ -779,7 +779,9 @@
     "saveSuccessDesc": "Calculation settings saved successfully!",
     "selectBmrAlgorithm": "Select BMR Algorithm",
     "selectBodyFatAlgorithm": "Select Body Fat Algorithm",
-    "selectEnergyUnitPlaceholder": "Select energy unit"
+    "selectEnergyUnitPlaceholder": "Select energy unit",
+    "useExternalBmr": "Use measured BMR from check-ins and synced devices",
+    "useExternalBmrHint": "Off by default — your chosen formula is always used until you turn this on. When enabled, a BMR recorded on a check-in or synced from a smart scale or health provider replaces the formula for that day, provided it is physiologically plausible for you. Some devices report BMR as a running daily total rather than a rate, which is why this is opt-in."
   },
   "aboutDialog": {
     "title": "About SparkyFitness",
@@ -2072,7 +2074,7 @@
       "activityModerate": "Moderately active (×1.55)",
       "activityNone": "None (×1.0)",
       "activityNotMuch": "Sedentary (×1.2)",
-      "adaptiveActivityHint": "In Adaptive mode, this setting acts as a fallback until you have enough tracking data.",
+      "adaptiveActivityHint": "In Adaptive mode this is the fallback estimate until you have enough tracking data — and it keeps setting the plausibility limits afterwards. Your measured TDEE is capped to within ±500 kcal of BMR × this multiplier, so a level set too low can hold a genuinely higher expenditure down.",
       "adaptiveGoal": "Adaptive Goal",
       "adaptiveGoalDescription": "Your calorie goal is derived from your measured expenditure, by comparing your logged intake against your weight trend over the last 28 days. This is the most accurate option once you have a few weeks of consistent weight and food logging.",
       "allowNegativeAdjustment": "Allow the fallback projection to lower the target",
@@ -2211,7 +2213,8 @@
       "unsafeLossText": "Losing more than 1.5% of body weight per week is considered excessive. This rate dramatically increases risks of severe muscle loss, lethargy, hormonal imbalances, and nutritional deficiencies. Please choose a less aggressive goal mode.",
       "calibrationDescription": "Sparky's Adaptive TDEE engine requires at least {{required}} days of consistent tracking to calculate your metabolism accurately (currently using fallback estimates). To speed up calibration:",
       "calibrationWeightTip": "Log weight at least 3-4 times per week.",
-      "calibrationFoodTip": "Log food intake daily (>200 kcal/day)."
+      "calibrationFoodTip": "Log food intake daily (>200 kcal/day).",
+      "livePreviewSavedNote": "BMR and body fat update as you change settings. Expenditure is calculated on the server from your saved settings, so it and the final target only change after you save."
     },
     "mfa": {
       "confirmPassword": "Confirm Password to Continue",
@@ -2260,7 +2263,7 @@
       "surplus": "Surplus",
       "deficit": "Deficit",
       "adaptiveFormula": "Formula: Average Daily Calories − (Daily Weight Change in kg × {{kcalPerKg}} kcal/kg)",
-      "adaptiveFormulaExplainer": "{{kcalPerKg}} kcal/kg is how much energy a kilogram of body weight represents, so your weight trend can be converted into calories. Body weight lost or gained is a mix of fat (~9,441 kcal/kg) and lean tissue and water (~1,816 kcal/kg), and {{kcalPerKg}} reflects a typical blend.",
+      "adaptiveFormulaExplainer": "{{kcalPerKg}} kcal/kg is how much energy a kilogram of body weight represents, so your weight trend can be converted into calories. Body weight lost or gained is a mix of fat (~{{fatPerKg}} kcal/kg) and lean tissue and water (~{{leanPerKg}} kcal/kg), and {{kcalPerKg}} reflects a typical blend.",
       "adjustment": "Adjustment",
       "goalAdjustmentLabel": "Goal Adjustment:"
     },
@@ -2785,7 +2788,8 @@
     "addSuccess": "Food added successfully.",
     "calculateExplanation": {
       "bmrMeasured": "Measured",
-      "bmrMeasuredDesc": "Using your measured BMR. No formula applied.",
+      "bmrMeasuredDesc": "Using a measured BMR of {{value}} {{unit}} recorded for this day, from a smart scale or health app sync. Your {{algorithm}} formula is not applied.",
+      "bmrMeasuredScope": "A measured value only counts on the day it was recorded. Days without one fall back to the formula. To stop using measured values, turn off “Use measured BMR from check-ins and synced devices” in Calculation Settings.",
       "dialogDescription": "Step-by-step breakdown of how your daily energy target is calculated.",
       "todayTarget": "How today's target is calculated",
       "bmrTitle": "1. Basal Metabolic Rate (BMR)",
@@ -2851,7 +2855,20 @@
       "fallbackBaselineDetail": "BMR ({{bmr}}) × Activity Multiplier ({{multiplier}}) = {{result}} {{unit}} (Fallback used: not enough history [<{{required}} days]; raw calculation of {{raw}} {{unit}} bypassed)",
       "adaptiveTdeeExpenditure": "Adaptive TDEE (Expenditure)",
       "adaptiveManualGoal": "Adaptive Manual Calorie Goal",
-      "targetSafeRange": "✓ Target is in safe range above metabolic safety floor."
+      "targetSafeRange": "✓ Target is in safe range above metabolic safety floor.",
+      "weightTrendTerm": "Weight trend: {{start}} → {{end}} kg ({{change}} kg across all {{days}} days of the window) = {{daily}} kg/day — 7-day averages of your logged weights, not the readings themselves, with missing days filled in between the ones either side",
+      "weightTrendCalories": "Energy from that trend: −({{daily}} kg/day × {{kcalPerKg}} kcal/kg) ≈ {{value}}",
+      "tdeeSum": "({{intake}} {{sign}} {{delta}})",
+      "adaptiveClamped": "Raw estimate of {{raw}} {{unit}} was capped to {{capped}} {{unit}}, the plausibility limit of ±{{band}} {{unit}} around your BMR-based estimate ({{min}}–{{max}} {{unit}}).",
+      "intakeWindow": "(mean of {{logged}} logged days between {{start}} and {{end}}; days under 200 kcal are excluded, not counted as zero)",
+      "adaptivePlausibilityBand": "Plausibility limits from your activity level (×{{multiplier}}): {{min}}–{{max}} {{unit}}. The estimate is inside this range, so it is used as calculated.",
+      "adjustmentMode": "Daily calorie goal adjustment: {{mode}}",
+      "deviceProjectionCaveat": "In this mode your Diary target comes from your device’s total calories projected to midnight, which is not known here. The figures below are the stored-goal derivation and will differ from what the Diary shows.",
+      "modeAdaptive": "Adaptive Goal",
+      "modeDynamic": "Dynamic Goal",
+      "modeFixed": "Fixed Goal",
+      "modePercentage": "Percentage Earn-Back",
+      "modeDevice": "Device Projection"
     },
     "copyAllError": "Failed to copy entire day.",
     "copyAllFromYesterday": "Copy all from yesterday",
