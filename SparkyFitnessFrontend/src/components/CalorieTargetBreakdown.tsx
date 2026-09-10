@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
+import { CONVERSION_FACTORS, kgToLbs } from '@/utils/unitConversions';
 import {
   getBmrAlgorithmLabel,
   getBodyFatAlgorithmLabel,
@@ -100,10 +101,31 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
   bmrSource,
 }) => {
   const { t } = useTranslation();
-  const { energyUnit, convertEnergy } = usePreferences();
+  const { energyUnit, convertEnergy, weightUnit = 'kg' } = usePreferences();
   const bmrAlgorithmLabel = getBmrAlgorithmLabel(t, bmrAlgorithm);
   const bodyFatAlgorithmLabel = getBodyFatAlgorithmLabel(t, bodyFatAlgorithm);
   const goalModeLabel = getGoalModeLabel(t, goalMode);
+
+  // Adaptive TDEE stores mass in kg. Convert the shown working to the
+  // configured unit so the trend matches every other weight display. Stones
+  // rates use pounds: a per-stone energy density is not a useful working figure.
+  const trendMassUnit: 'kg' | 'lbs' =
+    weightUnit === 'lbs' || weightUnit === 'st_lbs' ? 'lbs' : 'kg';
+  const trendMassUnitName = trendMassUnit === 'lbs' ? 'pound' : 'kilogram';
+  const kcalPerTrendUnit =
+    trendMassUnit === 'lbs'
+      ? Math.round(ENERGY_DENSITY_KCAL_PER_KG * CONVERSION_FACTORS.LBS_TO_KG)
+      : ENERGY_DENSITY_KCAL_PER_KG;
+  const fatPerTrendUnit =
+    trendMassUnit === 'lbs'
+      ? Math.round(FAT_KCAL_PER_KG * CONVERSION_FACTORS.LBS_TO_KG)
+      : FAT_KCAL_PER_KG;
+  const leanPerTrendUnit =
+    trendMassUnit === 'lbs'
+      ? Math.round(LEAN_TISSUE_KCAL_PER_KG * CONVERSION_FACTORS.LBS_TO_KG)
+      : LEAN_TISSUE_KCAL_PER_KG;
+  const toTrendMass = (kg: number) =>
+    trendMassUnit === 'lbs' ? kgToLbs(kg) : kg;
 
   const isAdaptiveMethod = goalModeCalculationMethod === 'adaptive';
   // Same label matrix as the CalculationSettings Live Preview (shared t() keys):
@@ -608,18 +630,27 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
             <div className="font-semibold text-foreground">
               {t(
                 'settings.breakdown.adaptiveFormula',
-                'Formula: Average Daily Calories − (Daily Weight Change in kg × {{kcalPerKg}} kcal/kg)',
-                { kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG }
+                'Formula: Average Daily Calories − (Daily Weight Change in {{unit}} × {{kcalPerUnit}} kcal/{{unit}})',
+                {
+                  kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG,
+                  kcalPerUnit: kcalPerTrendUnit,
+                  unit: trendMassUnit,
+                }
               )}
             </div>
             <p className="text-muted-foreground">
               {t(
                 'settings.breakdown.adaptiveFormulaExplainer',
-                '{{kcalPerKg}} kcal/kg is how much energy a kilogram of body weight represents, so your weight trend can be converted into calories. Body weight lost or gained is a mix of fat (~{{fatPerKg}} kcal/kg) and lean tissue and water (~{{leanPerKg}} kcal/kg), and {{kcalPerKg}} reflects a typical blend.',
+                '{{kcalPerUnit}} kcal/{{unit}} is how much energy a {{unitName}} of body weight represents, so your weight trend can be converted into calories. Body weight lost or gained is a mix of fat (~{{fatPerUnit}} kcal/{{unit}}) and lean tissue and water (~{{leanPerUnit}} kcal/{{unit}}), and {{kcalPerUnit}} reflects a typical blend.',
                 {
                   kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG,
+                  kcalPerUnit: kcalPerTrendUnit,
+                  unit: trendMassUnit,
+                  unitName: trendMassUnitName,
                   fatPerKg: FAT_KCAL_PER_KG.toLocaleString(),
+                  fatPerUnit: fatPerTrendUnit.toLocaleString(),
                   leanPerKg: LEAN_TISSUE_KCAL_PER_KG.toLocaleString(),
+                  leanPerUnit: leanPerTrendUnit.toLocaleString(),
                 }
               )}
             </p>
@@ -832,17 +863,22 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                     <li>
                       {t(
                         'diary.calculateExplanation.weightTrendTerm',
-                        'Weight trend: {{start}} → {{end}} kg ({{change}} kg across all {{days}} days of the window) = {{daily}} kg/day — 7-day averages of your logged weights, not the readings themselves, with missing days filled in between the ones either side',
+                        'Weight trend: {{start}} → {{end}} {{unit}} ({{change}} {{unit}} across all {{days}} days of the window) = {{daily}} {{unit}}/day — 7-day averages of your logged weights, not the readings themselves, with missing days filled in between the ones either side',
                         {
-                          start: adaptiveTdeeData.startWeightTrend ?? 0,
-                          end: adaptiveTdeeData.endWeightTrend ?? 0,
-                          change: (
+                          start: toTrendMass(
+                            adaptiveTdeeData.startWeightTrend ?? 0
+                          ).toFixed(1),
+                          end: toTrendMass(
+                            adaptiveTdeeData.endWeightTrend ?? 0
+                          ).toFixed(1),
+                          change: toTrendMass(
                             adaptiveTdeeData.weightChangeKg ?? 0
                           ).toFixed(2),
                           days: adaptiveTdeeData.daysInWindow ?? 0,
-                          daily: (
+                          daily: toTrendMass(
                             adaptiveTdeeData.dailyWeightChangeKg ?? 0
                           ).toFixed(4),
+                          unit: trendMassUnit,
                         }
                       )}
                     </li>
@@ -852,12 +888,14 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                     <li>
                       {t(
                         'diary.calculateExplanation.weightTrendCalories',
-                        'Energy from that trend: −({{daily}} kg/day × {{kcalPerKg}} kcal/kg) ≈ {{value}}',
+                        'Energy from that trend: −({{daily}} {{unit}}/day × {{kcalPerUnit}} kcal/{{unit}}) ≈ {{value}}',
                         {
-                          daily: (
+                          daily: toTrendMass(
                             adaptiveTdeeData.dailyWeightChangeKg ?? 0
                           ).toFixed(4),
                           kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG,
+                          kcalPerUnit: kcalPerTrendUnit,
+                          unit: trendMassUnit,
                           // Negated on purpose. The server computes
                           // rawTdee = avgIntake − dailyWeightChange × 6000, so the
                           // term added to intake is minus the product of the two
