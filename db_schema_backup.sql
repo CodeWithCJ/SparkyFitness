@@ -1323,6 +1323,37 @@ $_$;
 
 
 --
+-- Name: sf_volume_unit_to_ml(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sf_volume_unit_to_ml(unit text) RETURNS numeric
+    LANGUAGE sql IMMUTABLE
+    AS $$
+SELECT CASE lower(btrim(coalesce(unit, '')))
+    WHEN 'ml'     THEN 1
+    WHEN 'l'      THEN 1000
+    WHEN 'liter'  THEN 1000
+    WHEN 'liters' THEN 1000
+    WHEN 'cup'    THEN 236.588
+    WHEN 'cups'   THEN 236.588
+    WHEN 'tbsp'   THEN 14.7868
+    WHEN 'tsp'    THEN 4.92892
+    WHEN 'fl oz'  THEN 29.5735
+    WHEN 'floz'   THEN 29.5735
+    WHEN 'fl_oz'  THEN 29.5735
+    ELSE NULL          -- 'oz' is a WEIGHT ounce in the food vocabulary
+END::numeric;
+$$;
+
+
+--
+-- Name: FUNCTION sf_volume_unit_to_ml(unit text); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.sf_volume_unit_to_ml(unit text) IS 'Food serving unit -> millilitres, NULL for non-volume units. Returns NULL for ''oz'' by design: in the food vocabulary oz is a weight ounce. The water-container vocabulary is separate and treats oz as fluid.';
+
+
+--
 -- Name: trigger_set_timestamp(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2328,6 +2359,9 @@ CREATE TABLE public.food_entries (
     entry_time time without time zone,
     images jsonb DEFAULT '[]'::jsonb NOT NULL,
     notes text,
+    caffeine_mg numeric,
+    water_ml numeric,
+    alcohol_g numeric,
     CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL)))),
     CONSTRAINT food_entries_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text)),
     CONSTRAINT food_entries_serving_size_positive CHECK ((serving_size > (0)::numeric))
@@ -2360,6 +2394,27 @@ COMMENT ON COLUMN public.food_entries.entry_time IS 'Optional wall-clock local t
 --
 
 COMMENT ON COLUMN public.food_entries.notes IS 'Per-occurrence markdown note for a single diary entry. Never derived from foods.notes.';
+
+
+--
+-- Name: COLUMN food_entries.caffeine_mg; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entries.caffeine_mg IS 'Log-time snapshot of the variant''s caffeine_mg. NULL on rows predating this column.';
+
+
+--
+-- Name: COLUMN food_entries.water_ml; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entries.water_ml IS 'Log-time snapshot of the variant''s water_ml. NULL on rows predating this column.';
+
+
+--
+-- Name: COLUMN food_entries.alcohol_g; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entries.alcohol_g IS 'Log-time snapshot of the variant''s alcohol_g. NULL on rows predating this column.';
 
 
 --
@@ -2481,11 +2536,44 @@ CREATE TABLE public.food_variants (
     ai_confidence text,
     allergens text[],
     traces text[],
+    caffeine_mg numeric DEFAULT 0,
+    water_ml numeric DEFAULT 0,
+    alcohol_g numeric DEFAULT 0,
+    abv_percent numeric,
+    CONSTRAINT food_variants_abv_percent_range CHECK (((abv_percent IS NULL) OR ((abv_percent >= (0)::numeric) AND (abv_percent <= (100)::numeric)))),
     CONSTRAINT food_variants_ai_confidence_check CHECK (((ai_confidence = ANY (ARRAY['high'::text, 'medium'::text, 'low'::text])) OR (ai_confidence IS NULL))),
     CONSTRAINT food_variants_glycemic_index_check CHECK ((glycemic_index = ANY (ARRAY['None'::text, 'Very Low'::text, 'Low'::text, 'Medium'::text, 'High'::text, 'Very High'::text]))),
     CONSTRAINT food_variants_serving_size_positive CHECK ((serving_size > (0)::numeric)),
     CONSTRAINT food_variants_source_check CHECK ((source = ANY (ARRAY['manual'::text, 'ai_estimate'::text, 'imported'::text])))
 );
+
+
+--
+-- Name: COLUMN food_variants.caffeine_mg; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_variants.caffeine_mg IS 'Caffeine in milligrams per serving_size of this variant. First-class column rather than a custom nutrient so it can be trended, goal-tracked, and imported from providers by alias (see shared/src/nutrients/micronutrientCatalog.ts, fixedField: caffeine_mg).';
+
+
+--
+-- Name: COLUMN food_variants.water_ml; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_variants.water_ml IS 'Water content in millilitres per serving_size of this variant. 0/NULL means "unknown"; readers then fall back to the logged volume when the entry''s unit is a volume unit (see public.sf_volume_unit_to_ml). NOTE: ''oz'' in the food unit vocabulary is a WEIGHT ounce and is NOT a volume fallback; ''fl oz'' is.';
+
+
+--
+-- Name: COLUMN food_variants.alcohol_g; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_variants.alcohol_g IS 'Grams of pure ethanol per serving_size. INFORMATIONAL ONLY -- never converted to calories; the calories column already includes them. Standard-drink counts are derived from user_preferences.standard_drink_grams, never stored.';
+
+
+--
+-- Name: COLUMN food_variants.abv_percent; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_variants.abv_percent IS 'Alcohol by volume, 0-100. Derivation metadata for alcohol_g (grams = volume_ml * abv/100 * 0.789), not a nutrient. NOTE: OpenFoodFacts'' alcohol_100g field is ABV and maps HERE, not to alcohol_g. USDA nutrient 1018 is grams/100 g and maps to alcohol_g.';
 
 
 --
@@ -2581,7 +2669,9 @@ CREATE TABLE public.goal_presets (
     dinner_percentage numeric,
     snacks_percentage numeric,
     custom_nutrients jsonb DEFAULT '{}'::jsonb,
-    custom_meal_percentages jsonb DEFAULT '{}'::jsonb
+    custom_meal_percentages jsonb DEFAULT '{}'::jsonb,
+    caffeine_mg numeric,
+    alcohol_g numeric
 );
 
 
@@ -2679,8 +2769,32 @@ CREATE TABLE public.meal_foods (
     custom_nutrients jsonb,
     child_meal_id uuid,
     item_type character varying(50) DEFAULT 'food'::character varying NOT NULL,
+    caffeine_mg numeric,
+    water_ml numeric,
+    alcohol_g numeric,
     CONSTRAINT chk_meal_foods_item_type CHECK (((((item_type)::text = 'food'::text) AND (food_id IS NOT NULL) AND (child_meal_id IS NULL)) OR (((item_type)::text = 'meal'::text) AND (food_id IS NULL))))
 );
+
+
+--
+-- Name: COLUMN meal_foods.caffeine_mg; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.meal_foods.caffeine_mg IS 'Log-time snapshot of the variant''s caffeine_mg. NULL on rows predating this column.';
+
+
+--
+-- Name: COLUMN meal_foods.water_ml; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.meal_foods.water_ml IS 'Log-time snapshot of the variant''s water_ml. NULL on rows predating this column.';
+
+
+--
+-- Name: COLUMN meal_foods.alcohol_g; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.meal_foods.alcohol_g IS 'Log-time snapshot of the variant''s alcohol_g. NULL on rows predating this column.';
 
 
 --
@@ -3784,8 +3898,24 @@ CREATE TABLE public.user_goals (
     snacks_percentage numeric,
     water_goal_ml numeric(10,3),
     custom_nutrients jsonb DEFAULT '{}'::jsonb,
-    custom_meal_percentages jsonb DEFAULT '{}'::jsonb
+    custom_meal_percentages jsonb DEFAULT '{}'::jsonb,
+    caffeine_mg numeric,
+    alcohol_g numeric
 );
+
+
+--
+-- Name: COLUMN user_goals.caffeine_mg; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_goals.caffeine_mg IS 'Daily caffeine ceiling in mg. NULL means "use the default" (400, FDA: not generally associated with dangerous effects in healthy adults). Direction defaults to "maximum" via shared BUILTIN_MAXIMUM_GOAL_NUTRIENTS.';
+
+
+--
+-- Name: COLUMN user_goals.alcohol_g; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_goals.alcohol_g IS 'Daily ethanol ceiling in grams. NULL means "use the default" (28 g = 2 US standard drinks, the higher of the two sex-specific US Dietary Guidelines figures -- a default that scolds is worse than one the user raises). Displayed as standard drinks via user_preferences.standard_drink_grams.';
 
 
 --
@@ -3992,14 +4122,22 @@ CREATE TABLE public.user_preferences (
     openfoodfacts_backfill_pending boolean DEFAULT false NOT NULL,
     openfoodfacts_product_language text DEFAULT 'en'::text NOT NULL,
     chart_scale_mode text DEFAULT 'time'::text NOT NULL,
+    add_food_water_to_intake boolean DEFAULT false NOT NULL,
+    standard_drink_grams numeric(5,2) DEFAULT 14.00 NOT NULL,
+    weekly_alcohol_limit_g numeric(7,2),
+    caffeine_half_life_hours numeric(3,1) DEFAULT 5.0 NOT NULL,
+    target_bedtime time without time zone DEFAULT '22:30:00'::time without time zone NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
+    CONSTRAINT user_preferences_caffeine_half_life_range CHECK (((caffeine_half_life_hours >= 2.0) AND (caffeine_half_life_hours <= 8.0))),
     CONSTRAINT user_preferences_calorie_safety_floor_mode_check CHECK ((calorie_safety_floor_mode = ANY (ARRAY['standard'::text, 'custom'::text, 'disabled'::text]))),
     CONSTRAINT user_preferences_calorie_safety_floor_value_check CHECK (((calorie_safety_floor_value >= 800) AND (calorie_safety_floor_value <= 5000))),
     CONSTRAINT user_preferences_chart_scale_mode_check CHECK ((chart_scale_mode = ANY (ARRAY['time'::text, 'point'::text]))),
     CONSTRAINT user_preferences_openfoodfacts_product_language_check CHECK ((openfoodfacts_product_language ~ '^[a-z]{2}$'::text)),
+    CONSTRAINT user_preferences_standard_drink_grams_range CHECK (((standard_drink_grams > (0)::numeric) AND (standard_drink_grams <= (50)::numeric))),
     CONSTRAINT user_preferences_time_format_check CHECK ((time_format = ANY (ARRAY['HH:mm'::text, 'h:mm A'::text, 'h:mm a'::text]))),
-    CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
+    CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text))),
+    CONSTRAINT user_preferences_weekly_alcohol_limit_positive CHECK (((weekly_alcohol_limit_g IS NULL) OR (weekly_alcohol_limit_g > (0)::numeric)))
 );
 
 
@@ -4067,6 +4205,41 @@ COMMENT ON COLUMN public.user_preferences.chart_scale_mode IS 'Date-axis layout 
 
 
 --
+-- Name: COLUMN user_preferences.add_food_water_to_intake; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.add_food_water_to_intake IS 'When true, water_ml on logged food entries (explicit column, or the volume fallback via sf_volume_unit_to_ml) is folded into the daily water total alongside water_intake_entries. A food entry already represented by a linked water_intake_entries row (food_entry_id) is excluded, so nothing double-counts. Default false: opt-in only, so no existing user sees a change on upgrade.';
+
+
+--
+-- Name: COLUMN user_preferences.standard_drink_grams; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.standard_drink_grams IS 'Grams of ethanol in one standard drink for this user''s jurisdiction. US 14, UK 8 (one unit), AU/EU 10, CA 13.45, JP 20. Display divisor only.';
+
+
+--
+-- Name: COLUMN user_preferences.weekly_alcohol_limit_g; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.weekly_alcohol_limit_g IS 'Optional weekly ethanol ceiling in grams (NULL = none). Weekly because every published guideline is weekly (UK CMO: 14 units/week) and the daily goal system has no weekly concept. Rolled up from reportRepository.getDailyNutritionTotalsRange, not a stored aggregate.';
+
+
+--
+-- Name: COLUMN user_preferences.caffeine_half_life_hours; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.caffeine_half_life_hours IS 'Elimination half-life used for the "active caffeine" estimate, 2-8 h, default 5. Population estimate, not a measurement.';
+
+
+--
+-- Name: COLUMN user_preferences.target_bedtime; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.target_bedtime IS 'The user''s intended bedtime, local wall-clock. First consumer is the caffeine cutoff; deliberately generic so a future sleep-goal feature reuses it rather than adding a second bedtime.';
+
+
+--
 -- Name: user_water_containers; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4079,8 +4252,58 @@ CREATE TABLE public.user_water_containers (
     is_primary boolean DEFAULT false,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    servings_per_container integer DEFAULT 1 NOT NULL
+    servings_per_container integer DEFAULT 1 NOT NULL,
+    hydration_factor numeric(4,3) DEFAULT 1.000 NOT NULL,
+    linked_food_id uuid,
+    linked_variant_id uuid,
+    linked_meal_type_id uuid,
+    linked_quantity numeric DEFAULT 1 NOT NULL,
+    is_quick_add boolean DEFAULT false NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    CONSTRAINT user_water_containers_hydration_factor_range CHECK (((hydration_factor >= (0)::numeric) AND (hydration_factor <= (2)::numeric)))
 );
+
+
+--
+-- Name: COLUMN user_water_containers.volume; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_water_containers.volume IS 'Millilitres one press of "+" logs for an UNLINKED container. On a LINKED container it is instead an override meaning "the glass holds more liquid than the food itself" -- a cordial concentrate, an electrolyte tablet, a powder -- and 0 means "no override, take the volume from the linked food".';
+
+
+--
+-- Name: COLUMN user_water_containers.hydration_factor; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_water_containers.hydration_factor IS 'Multiplier applied to this container''s water credit (0-2, default 1.0). Scales ONLY hydration; a linked food''s calories, macros, caffeine and alcohol always count in full.';
+
+
+--
+-- Name: COLUMN user_water_containers.linked_food_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_water_containers.linked_food_id IS 'When set, pressing "+" on this container also logs this food to the diary and links the two rows. SET NULL on food deletion so the container survives as a plain water container.';
+
+
+--
+-- Name: COLUMN user_water_containers.linked_quantity; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_water_containers.linked_quantity IS 'How much of the linked food one press of "+" logs, in the linked variant''s own serving unit. Replaces servings_per_container for linked containers: the diary entry, and every nutrient on it, scales with this. Meaningless without linked_food_id; always 1 for unlinked containers.';
+
+
+--
+-- Name: COLUMN user_water_containers.is_quick_add; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_water_containers.is_quick_add IS 'True for a quick-add drink preset: rendered as a tile grid rather than in the hydration carousel, and never eligible to be the primary container.';
+
+
+--
+-- Name: COLUMN user_water_containers.sort_order; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_water_containers.sort_order IS 'User-arranged order within its group (presets or containers). Ties fall back to created_at.';
 
 
 --
@@ -4271,7 +4494,9 @@ CREATE TABLE public.water_intake_entries (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by_user_id uuid,
     logged_at timestamp with time zone DEFAULT now() NOT NULL,
-    source_id character varying(255)
+    source_id character varying(255),
+    food_entry_id uuid,
+    hydration_factor numeric(4,3)
 );
 
 
@@ -4280,6 +4505,20 @@ CREATE TABLE public.water_intake_entries (
 --
 
 COMMENT ON COLUMN public.water_intake_entries.source_id IS 'Provider-stable record id for idempotent re-sync (e.g. HealthKit uuid, Health Connect metadata.id). NULL for manual or pre-migration synced entries.';
+
+
+--
+-- Name: COLUMN water_intake_entries.food_entry_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.water_intake_entries.food_entry_id IS 'Set when this drink was logged by a container linked to a food (#2115): the diary entry created alongside it. A food entry referenced here is EXCLUDED from the food-derived water sum, so its water is counted exactly once -- here, scaled by hydration_factor. NULL for every manual or provider-synced drink.';
+
+
+--
+-- Name: COLUMN water_intake_entries.hydration_factor; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.water_intake_entries.hydration_factor IS 'The factor in force when this drink was logged, snapshotted like container_name so later container edits do not rewrite history. NULL on rows predating the column (treat as 1.0).';
 
 
 --
@@ -4915,6 +5154,14 @@ ALTER TABLE ONLY public.external_provider_types
 
 ALTER TABLE ONLY public.fasting_logs
     ADD CONSTRAINT fasting_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: food_entries food_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.food_entries
+    ADD CONSTRAINT food_entries_pkey PRIMARY KEY (id);
 
 
 --
@@ -6467,6 +6714,13 @@ CREATE INDEX idx_user_nutrient_goal_preferences_user_id ON public.user_nutrient_
 
 
 --
+-- Name: idx_user_water_containers_user_quick_add; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_water_containers_user_quick_add ON public.user_water_containers USING btree (user_id, is_quick_add, sort_order);
+
+
+--
 -- Name: idx_verification_identifier; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6478,6 +6732,13 @@ CREATE INDEX idx_verification_identifier ON public.verification USING btree (ide
 --
 
 CREATE INDEX idx_vitals_user_date ON public.vitals_entries USING btree (user_id, entry_date DESC, "timestamp" DESC);
+
+
+--
+-- Name: idx_water_intake_entries_food_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_water_intake_entries_food_entry_id ON public.water_intake_entries USING btree (food_entry_id) WHERE (food_entry_id IS NOT NULL);
 
 
 --
@@ -8122,6 +8383,30 @@ ALTER TABLE ONLY public.user_preferences
 
 
 --
+-- Name: user_water_containers user_water_containers_linked_food_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_water_containers
+    ADD CONSTRAINT user_water_containers_linked_food_id_fkey FOREIGN KEY (linked_food_id) REFERENCES public.foods(id) ON DELETE SET NULL;
+
+
+--
+-- Name: user_water_containers user_water_containers_linked_meal_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_water_containers
+    ADD CONSTRAINT user_water_containers_linked_meal_type_id_fkey FOREIGN KEY (linked_meal_type_id) REFERENCES public.meal_types(id) ON DELETE SET NULL;
+
+
+--
+-- Name: user_water_containers user_water_containers_linked_variant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_water_containers
+    ADD CONSTRAINT user_water_containers_linked_variant_id_fkey FOREIGN KEY (linked_variant_id) REFERENCES public.food_variants(id) ON DELETE SET NULL;
+
+
+--
 -- Name: user_water_containers user_water_containers_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8159,6 +8444,14 @@ ALTER TABLE ONLY public.water_intake_entries
 
 ALTER TABLE ONLY public.water_intake_entries
     ADD CONSTRAINT water_intake_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: water_intake_entries water_intake_entries_food_entry_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.water_intake_entries
+    ADD CONSTRAINT water_intake_entries_food_entry_id_fkey FOREIGN KEY (food_entry_id) REFERENCES public.food_entries(id) ON DELETE CASCADE;
 
 
 --
@@ -10475,6 +10768,13 @@ GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO sparky_app;
 --
 
 GRANT ALL ON FUNCTION public.sf_try_numeric(txt text) TO sparky_app;
+
+
+--
+-- Name: FUNCTION sf_volume_unit_to_ml(unit text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.sf_volume_unit_to_ml(unit text) TO sparky_app;
 
 
 --
