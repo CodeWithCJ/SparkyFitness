@@ -1226,6 +1226,7 @@ function ActiveWorkoutExerciseCard({
             // In preview mode ('view'), display the calculated progression weight if goal was hit
             const effectiveSetWeight =
               readOnly &&
+              excludePresetEntryId == null &&
               progressionResult?.goalAchieved &&
               progressionResult.status === 'PROGRESSION_WEIGHT_INCREASE'
                 ? weightToKg(progressionResult.suggestedWeight, weightUnit)

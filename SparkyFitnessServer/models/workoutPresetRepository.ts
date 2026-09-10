@@ -393,10 +393,10 @@ async function addExerciseToWorkoutPreset(
   sets: any,
   sortOrder = 0,
   progressionMode = 'rep_goal',
-  repGoal = null,
-  incrementType = 'weight',
-  incrementValue = 5.0,
-  equipmentBrand = null
+  repGoal: number | null = null,
+  incrementType: 'weight' | 'reps' = 'weight',
+  incrementValue: number = 5.0,
+  equipmentBrand: string | null = null
 ) {
   const client = await getClient(userId); // User-specific operation
   try {

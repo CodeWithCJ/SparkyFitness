@@ -870,7 +870,7 @@ function ActiveWorkoutSetRow({
         }
         onBlur={isEdit ? undefined : () => commitWeight(weightDraft)}
         onFocus={() => onActivateSet?.(setId, 'weight')}
-        keyboardType="number-pad"
+        keyboardType="decimal-pad"
         accessibilityLabel={t('activeWorkout.setRow.weight', {
           defaultValue: 'Weight',
         })}

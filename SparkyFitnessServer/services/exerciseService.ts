@@ -1988,7 +1988,7 @@ async function createGroupedWorkoutSession(
                    AND ee.exercise_id = $2
                    AND ees.reps IS NOT NULL 
                    AND ees.reps > 0
-                   AND ee.exercise_preset_entry_id != $3
+                   AND ee.exercise_preset_entry_id IS DISTINCT FROM $3
                  ORDER BY ee.entry_date DESC, ee.created_at DESC, ees.set_number ASC
                  LIMIT 50`,
                 [userId, ex.exercise_id, presetEntry.id]
