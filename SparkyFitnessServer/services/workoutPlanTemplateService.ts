@@ -3,8 +3,51 @@ import workoutPresetRepository from '../models/workoutPresetRepository.js';
 import exerciseRepository from '../models/exerciseRepository.js';
 import { log } from '../config/logging.js';
 import { resolveTemplateStartDay } from '../utils/timezoneLoader.js';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createWorkoutPlanTemplate(userId: any, planData: any) {
+
+export interface WorkoutPlanAssignmentSetInput {
+  id?: number | string | null;
+  set_number: number;
+  set_type?: string | null;
+  reps?: number | null;
+  weight?: number | null;
+  duration?: number | null;
+  rest_time?: number | null;
+  notes?: string | null;
+}
+
+export interface WorkoutPlanAssignmentInput {
+  id?: number | string | null;
+  day_of_week: number;
+  workout_preset_id?: number | string | null;
+  exercise_id?: string | null;
+  sort_order?: number | null;
+  sets?: WorkoutPlanAssignmentSetInput[] | null;
+}
+
+export interface CreateWorkoutPlanTemplateInput {
+  plan_name: string;
+  description?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  is_active?: boolean | null;
+  assignments?: WorkoutPlanAssignmentInput[] | null;
+  currentClientDate?: string | null;
+}
+
+export interface UpdateWorkoutPlanTemplateInput {
+  plan_name?: string;
+  description?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  is_active?: boolean | null;
+  assignments?: WorkoutPlanAssignmentInput[] | null;
+  currentClientDate?: string | null;
+}
+
+async function createWorkoutPlanTemplate(
+  userId: string,
+  planData: CreateWorkoutPlanTemplateInput
+) {
   log(
     'info',
     'createWorkoutPlanTemplate service - received planData:',
@@ -70,10 +113,10 @@ async function createWorkoutPlanTemplate(userId: any, planData: any) {
     }
     return newPlan;
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     log(
       'error',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `Error creating workout plan template for user ${userId}: ${error.message}`,
+      `Error creating workout plan template for user ${userId}: ${message}`,
       error
     );
     throw new Error('Failed to create workout plan template.', {
@@ -81,12 +124,18 @@ async function createWorkoutPlanTemplate(userId: any, planData: any) {
     });
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getWorkoutPlanTemplatesByUserId(userId: any) {
+
+async function getWorkoutPlanTemplatesByUserId(userId: string) {
   return workoutPlanTemplateRepository.getWorkoutPlanTemplatesByUserId(userId);
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getWorkoutPlanTemplateById(userId: any, templateId: any) {
+
+async function getWorkoutPlanTemplateById(
+  userId: string,
+  templateId: string | number
+) {
+  // RLS already gates read access (owner or family-shared via
+  // can_view_exercise_library). If the row comes back, the caller is allowed to
+  // see it; an extra owner check here would wrongly 403 shared templates.
   const template =
     await workoutPlanTemplateRepository.getWorkoutPlanTemplateById(
       templateId,
@@ -95,26 +144,13 @@ async function getWorkoutPlanTemplateById(userId: any, templateId: any) {
   if (!template) {
     throw new Error('Workout plan template not found.');
   }
-  const ownerId =
-    // @ts-expect-error TS(2554): Expected 2 arguments, but got 1.
-    await workoutPlanTemplateRepository.getWorkoutPlanTemplateOwnerId(
-      templateId
-    );
-  if (ownerId !== userId) {
-    throw new Error(
-      'Forbidden: You do not have access to this workout plan template.'
-    );
-  }
   return template;
 }
 
 async function updateWorkoutPlanTemplate(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  templateId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updateData: any
+  userId: string,
+  templateId: string | number,
+  updateData: UpdateWorkoutPlanTemplateInput
 ) {
   log(
     'info',
@@ -202,10 +238,10 @@ async function updateWorkoutPlanTemplate(
     }
     return updatedPlan;
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     log(
       'error',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `Error updating workout plan template ${templateId} for user ${userId}: ${error.message}`,
+      `Error updating workout plan template ${templateId} for user ${userId}: ${message}`,
       error
     );
     throw new Error('Failed to update workout plan template.', {
@@ -213,8 +249,11 @@ async function updateWorkoutPlanTemplate(
     });
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function deleteWorkoutPlanTemplate(userId: any, templateId: any) {
+
+async function deleteWorkoutPlanTemplate(
+  userId: string,
+  templateId: string | number
+) {
   log(
     'info',
     `deleteWorkoutPlanTemplate service - received templateId: ${templateId} for user: ${userId}`
@@ -257,10 +296,10 @@ async function deleteWorkoutPlanTemplate(userId: any, templateId: any) {
     log('info', `Workout plan template ${templateId} deleted successfully.`);
     return { message: 'Workout plan template deleted successfully.' };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     log(
       'error',
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      `Error deleting workout plan template ${templateId} for user ${userId}: ${error.message}`,
+      `Error deleting workout plan template ${templateId} for user ${userId}: ${message}`,
       error
     );
     throw new Error('Failed to delete workout plan template.', {
@@ -268,13 +307,14 @@ async function deleteWorkoutPlanTemplate(userId: any, templateId: any) {
     });
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getActiveWorkoutPlanForDate(userId: any, date: any) {
+
+async function getActiveWorkoutPlanForDate(userId: string, date: string) {
   return workoutPlanTemplateRepository.getActiveWorkoutPlanForDate(
     userId,
     date
   );
 }
+
 export { createWorkoutPlanTemplate };
 export { getWorkoutPlanTemplatesByUserId };
 export { getWorkoutPlanTemplateById };
