@@ -4,7 +4,11 @@ import { useUpsertCheckIn } from '../../src/hooks/useUpsertCheckIn';
 import { upsertCheckIn } from '../../src/services/api/measurementsApi';
 import { refreshHealthSyncCache } from '../../src/hooks/refreshHealthSyncCache';
 import { addLog } from '../../src/services/LogService';
-import { measurementsQueryKey } from '../../src/hooks/queryKeys';
+import {
+  latestMeasurementsOnOrBeforeQueryKey,
+  latestMeasurementsOnOrBeforeRootQueryKey,
+  measurementsQueryKey,
+} from '../../src/hooks/queryKeys';
 import type { CheckInMeasurement } from '../../src/types/measurements';
 import {
   createTestQueryClient,
@@ -115,5 +119,58 @@ describe('useUpsertCheckIn', () => {
       queryClient.getQueryData(measurementsQueryKey(entryDate))
     ).toBeUndefined();
     expect(mockRefreshHealthSyncCache).not.toHaveBeenCalled();
+  });
+
+  test('a save invalidates the carry-forward cache for other days too', async () => {
+    // Same `staleTime: Infinity` reasoning as the custom hints: a value saved
+    // for one day can be the newest "on or before" value for a later day, so
+    // that later cached day must be invalidated as well.
+    const otherDay = '2024-06-20';
+    queryClient.setQueryData(
+      latestMeasurementsOnOrBeforeQueryKey(entryDate),
+      {}
+    );
+    queryClient.setQueryData(
+      latestMeasurementsOnOrBeforeQueryKey(otherDay),
+      {}
+    );
+
+    mockUpsertCheckIn.mockResolvedValue({
+      entry_date: entryDate,
+      weight: 80.5,
+    });
+
+    const { result } = renderHook(() => useUpsertCheckIn(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({ entryDate, weight: 80.5 });
+    });
+
+    expect(
+      queryClient.getQueryState(latestMeasurementsOnOrBeforeQueryKey(otherDay))
+        ?.isInvalidated
+    ).toBe(true);
+  });
+
+  test('a successful save refreshes the carry-forward suggestions', async () => {
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+    mockUpsertCheckIn.mockResolvedValue({
+      entry_date: entryDate,
+      weight: 80.5,
+    });
+
+    const { result } = renderHook(() => useUpsertCheckIn(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({ entryDate, weight: 80.5 });
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: latestMeasurementsOnOrBeforeRootQueryKey,
+    });
   });
 });

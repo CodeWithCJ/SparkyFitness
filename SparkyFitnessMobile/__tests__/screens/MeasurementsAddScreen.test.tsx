@@ -9,12 +9,17 @@ import {
   skipDuplicatePressWindow,
 } from './helpers/nativeHeaderTestUtils';
 import MeasurementsAddScreen from '../../src/screens/MeasurementsAddScreen';
-import { useMeasurements } from '../../src/hooks/useMeasurements';
+import {
+  useLatestMeasurementsOnOrBefore,
+  useMeasurements,
+} from '../../src/hooks/useMeasurements';
 import { usePreferences } from '../../src/hooks/usePreferences';
+import { useProfile } from '../../src/hooks/useProfile';
 import { useUpsertCheckIn } from '../../src/hooks/useUpsertCheckIn';
 import {
   useCustomCategories,
   useCustomMeasurementsByDate,
+  useLatestManualCustomEntriesOnOrBefore,
   useSaveCustomMeasurement,
   useDeleteCustomMeasurement,
 } from '../../src/hooks/useCustomMeasurements';
@@ -30,10 +35,15 @@ type ScreenProps = RootStackScreenProps<'MeasurementsAdd'>;
 
 jest.mock('../../src/hooks/useMeasurements', () => ({
   useMeasurements: jest.fn(),
+  useLatestMeasurementsOnOrBefore: jest.fn(),
 }));
 
 jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: jest.fn(),
+}));
+
+jest.mock('../../src/hooks/useProfile', () => ({
+  useProfile: jest.fn(),
 }));
 
 jest.mock('../../src/hooks/useUpsertCheckIn', () => ({
@@ -43,6 +53,7 @@ jest.mock('../../src/hooks/useUpsertCheckIn', () => ({
 jest.mock('../../src/hooks/useCustomMeasurements', () => ({
   useCustomCategories: jest.fn(),
   useCustomMeasurementsByDate: jest.fn(),
+  useLatestManualCustomEntriesOnOrBefore: jest.fn(),
   useSaveCustomMeasurement: jest.fn(),
   useDeleteCustomMeasurement: jest.fn(),
 }));
@@ -86,9 +97,14 @@ jest.mock('@react-navigation/native', () => ({
 const mockUseMeasurements = useMeasurements as jest.MockedFunction<
   typeof useMeasurements
 >;
+const mockUseLatestMeasurementsOnOrBefore =
+  useLatestMeasurementsOnOrBefore as jest.MockedFunction<
+    typeof useLatestMeasurementsOnOrBefore
+  >;
 const mockUsePreferences = usePreferences as jest.MockedFunction<
   typeof usePreferences
 >;
+const mockUseProfile = useProfile as jest.MockedFunction<typeof useProfile>;
 const mockUseUpsertCheckIn = useUpsertCheckIn as jest.MockedFunction<
   typeof useUpsertCheckIn
 >;
@@ -98,6 +114,10 @@ const mockUseCustomCategories = useCustomCategories as jest.MockedFunction<
 const mockUseCustomMeasurementsByDate =
   useCustomMeasurementsByDate as jest.MockedFunction<
     typeof useCustomMeasurementsByDate
+  >;
+const mockUseLatestManualCustomEntriesOnOrBefore =
+  useLatestManualCustomEntriesOnOrBefore as jest.MockedFunction<
+    typeof useLatestManualCustomEntriesOnOrBefore
   >;
 const mockUseSaveCustomMeasurement =
   useSaveCustomMeasurement as jest.MockedFunction<
@@ -129,14 +149,50 @@ const setMeasurements = (measurements: Partial<CheckInMeasurement>) => {
   } as unknown as ReturnType<typeof useMeasurements>);
 };
 
+/**
+ * Previous-value lookup. Defaults to "no history", so every pre-existing
+ * expectation about placeholders and payloads is unchanged unless a test opts
+ * into a suggestion.
+ */
+const setLatestMeasurements = (
+  latest: Partial<CheckInMeasurement> | null = null
+) => {
+  mockUseLatestMeasurementsOnOrBefore.mockReturnValue({
+    latestMeasurements: latest as CheckInMeasurement | null,
+    isLoading: false,
+  } as unknown as ReturnType<typeof useLatestMeasurementsOnOrBefore>);
+};
+
 const setPreferences = (prefs: {
   default_weight_unit?: string;
   default_measurement_unit?: string;
+  body_fat_algorithm?: string;
+  timezone?: string;
 }) => {
   mockUsePreferences.mockReturnValue({
     preferences: prefs,
     isLoading: false,
   } as unknown as ReturnType<typeof usePreferences>);
+};
+
+const setProfile = (
+  profile: {
+    gender?: 'male' | 'female' | null;
+    date_of_birth?: string | null;
+  } = {}
+) => {
+  mockUseProfile.mockReturnValue({
+    profile: {
+      id: 'user-1',
+      full_name: null,
+      phone_number: null,
+      date_of_birth: profile.date_of_birth ?? null,
+      bio: null,
+      avatar_url: null,
+      gender: profile.gender ?? null,
+    },
+    isLoading: false,
+  } as unknown as ReturnType<typeof useProfile>);
 };
 
 const setCustomCategories = (categories: CustomCategory[]) => {
@@ -155,6 +211,22 @@ const setCustomEntries = (entries: CustomMeasurementEntry[]) => {
     isError: false,
     refetch: jest.fn(),
   } as unknown as ReturnType<typeof useCustomMeasurementsByDate>);
+};
+
+/** Previous manual custom values, keyed by category. Defaults to none. */
+const setLatestCustomEntries = (
+  entries: {
+    id: string;
+    category_id: string;
+    value: string;
+    entry_date: string;
+    source: string;
+  }[] = []
+) => {
+  mockUseLatestManualCustomEntriesOnOrBefore.mockReturnValue({
+    data: entries,
+    isLoading: false,
+  } as unknown as ReturnType<typeof useLatestManualCustomEntriesOnOrBefore>);
 };
 
 const customCategory = (overrides: Record<string, unknown> = {}) => ({
@@ -180,6 +252,11 @@ const customEntry = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+// The most recent render's client and route, so `rerenderScreen` can rebuild
+// the identical tree instead of mounting a fresh one.
+let lastQueryClient: QueryClient | null = null;
+let lastRoute: ScreenProps['route'] | null = null;
+
 const renderScreen = () => {
   const route: ScreenProps['route'] = {
     key: 'MeasurementsAdd-key',
@@ -189,6 +266,8 @@ const renderScreen = () => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  lastQueryClient = queryClient;
+  lastRoute = route;
   return render(
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider initialMetrics={{ insets, frame }}>
@@ -214,6 +293,43 @@ type Screen = ReturnType<typeof renderScreen>;
 
 const getInput = (screen: Screen, field: keyof typeof FIELD_INDEX) =>
   screen.getAllByPlaceholderText('0')[FIELD_INDEX[field]];
+
+/**
+ * Test-ID lookup for a standard field. Used by tests that involve a previous
+ * value, where the placeholder is no longer '0' and positional lookup would
+ * silently address the wrong input.
+ */
+const FIELD_TEST_ID: Record<string, string> = {
+  weight: 'field-weight',
+  bodyFatPercentage: 'field-bodyFatPercentage',
+  height: 'field-height',
+  neck: 'field-neck',
+  waist: 'field-waist',
+  hips: 'field-hips',
+  steps: 'field-steps',
+  muscleMassKg: 'field-muscleMassKg',
+  boneMassKg: 'field-boneMassKg',
+  bodyWaterPercentage: 'field-bodyWaterPercentage',
+  bmr: 'field-bmr',
+};
+const getField = (screen: Screen, field: keyof typeof FIELD_TEST_ID) =>
+  screen.getByTestId(FIELD_TEST_ID[field]);
+
+/**
+ * Re-renders the same element tree, which re-reads every mocked hook. This is
+ * how a background refetch is simulated: the query data changes under the
+ * screen without any user interaction.
+ */
+const rerenderScreen = (screen: Screen) => {
+  if (!lastQueryClient) throw new Error('renderScreen must run first');
+  screen.rerender(
+    <QueryClientProvider client={lastQueryClient}>
+      <SafeAreaProvider initialMetrics={{ insets, frame }}>
+        <MeasurementsAddScreen navigation={mockNavigation} route={lastRoute!} />
+      </SafeAreaProvider>
+    </QueryClientProvider>
+  );
+};
 
 let hasPressedSave = false;
 
@@ -256,6 +372,9 @@ describe('MeasurementsAddScreen — omitted vs null save semantics', () => {
     jest.clearAllMocks();
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     setMeasurements({});
+    setLatestMeasurements(null);
+    setLatestCustomEntries([]);
+    setProfile({});
     setPreferences({
       default_weight_unit: 'kg',
       default_measurement_unit: 'cm',
@@ -1525,5 +1644,534 @@ describe('MeasurementsAddScreen — custom measurements', () => {
       screen.getByLabelText('More categories ▾').props.accessibilityState
         ?.expanded
     ).toBe(false);
+  });
+});
+
+describe('MeasurementsAddScreen — previous-value hints', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    setMeasurements({});
+    setLatestMeasurements(null);
+    setLatestCustomEntries([]);
+    setProfile({});
+    setPreferences({
+      default_weight_unit: 'kg',
+      default_measurement_unit: 'cm',
+    });
+    mockUseUpsertCheckIn.mockReturnValue({
+      mutate,
+      mutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useUpsertCheckIn>);
+    mockUseCustomCategories.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useCustomCategories>);
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useCustomMeasurementsByDate>);
+    mockUseSaveCustomMeasurement.mockReturnValue({
+      mutate: jest.fn(),
+      mutateAsync: jest.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof useSaveCustomMeasurement>);
+    mockUseDeleteCustomMeasurement.mockReturnValue({
+      mutate: jest.fn(),
+      mutateAsync: jest.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof useDeleteCustomMeasurement>);
+  });
+
+  test('a previous value is displayed as a placeholder but is never submitted', async () => {
+    setLatestMeasurements({ weight: 80, waist: 90 });
+    const screen = renderScreen();
+
+    // Shown, not entered: the input is still empty and only the placeholder
+    // carries the suggestion.
+    expect(screen.queryByDisplayValue('80')).toBeNull();
+    expect(getField(screen, 'weight').props.placeholder).toBe('80');
+    expect(getField(screen, 'waist').props.placeholder).toBe('90');
+
+    // Saving an unrelated field must not carry the suggestion forward.
+    fireEvent.changeText(getField(screen, 'steps'), '5000');
+    await pressSave(screen);
+
+    const payload = savedPayload();
+    expect(Object.keys(payload).sort()).toEqual(['entryDate', 'steps']);
+    expect(payload.weight).toBeUndefined();
+    expect(payload.waist).toBeUndefined();
+  });
+
+  test('Use last copies the suggestion into the form as normal user input', async () => {
+    setLatestMeasurements({ weight: 80 });
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByTestId('use-last-weight'));
+
+    expect(getField(screen, 'weight').props.value).toBe('80');
+
+    // Adopted input behaves like typing: it is submitted normally.
+    await pressSave(screen);
+    expect(savedPayload()).toEqual({ entryDate: ENTRY_DATE, weight: 80 });
+  });
+
+  test('Use last adopts both inputs of a stones + lbs weight', async () => {
+    setLatestMeasurements({ weight: 80 });
+    setPreferences({
+      default_weight_unit: 'st_lbs',
+      default_measurement_unit: 'cm',
+    });
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByTestId('use-last-weight'));
+
+    // 80 kg = 12 st 8.4 lb; adopting has to fill the stones field too.
+    const displayed = screen.getAllByDisplayValue('8.4');
+    expect(displayed.length).toBeGreaterThan(0);
+    expect(screen.getAllByDisplayValue('12').length).toBeGreaterThan(0);
+  });
+
+  test('an actual value on the selected date wins over a previous value', async () => {
+    setMeasurements({ weight: 81 });
+    setLatestMeasurements({ weight: 80 });
+    const screen = renderScreen();
+
+    expect(screen.getByDisplayValue('81')).toBeTruthy();
+    // No competing suggestion is offered for a field the day already recorded.
+    expect(screen.queryByTestId('use-last-weight')).toBeNull();
+    expect(getField(screen, 'weight').props.placeholder).not.toBe('80');
+
+    await pressSave(screen);
+    // The day's own value is re-sent unchanged.
+    expect(savedPayload()).toEqual({ entryDate: ENTRY_DATE, weight: 81 });
+  });
+
+  test('a value recorded on the selected date is not replaced by a suggestion when cleared', async () => {
+    setMeasurements({ weight: 81 });
+    setLatestMeasurements({ weight: 80 });
+    const screen = renderScreen();
+
+    fireEvent.changeText(screen.getByDisplayValue('81'), '');
+    expect(screen.queryByTestId('use-last-weight')).toBeNull();
+
+    await pressSave(screen);
+    await confirmClearAlert();
+    expect(savedPayload()).toEqual({ entryDate: ENTRY_DATE, weight: null });
+  });
+
+  test('a refetch does not overwrite dirty standard input', async () => {
+    setLatestMeasurements({ weight: 80 });
+    const screen = renderScreen();
+
+    fireEvent.changeText(getField(screen, 'weight'), '82');
+
+    // A background refetch lands with a different recorded value.
+    setMeasurements({ weight: 75 });
+    await act(async () => {
+      rerenderScreen(screen);
+    });
+
+    // The user's input survives, and no suggestion is offered over it.
+    expect(getField(screen, 'weight').props.value).toBe('82');
+    expect(screen.queryByTestId('use-last-weight')).toBeNull();
+  });
+
+  test('hints follow the display unit of the field', async () => {
+    setLatestMeasurements({ waist: 90 });
+    setPreferences({
+      default_weight_unit: 'kg',
+      default_measurement_unit: 'inches',
+    });
+    const screen = renderScreen();
+
+    // 90 cm stored, shown in inches.
+    expect(getField(screen, 'waist').props.placeholder).toBe('35.4');
+  });
+
+  test('no suggestion control appears when there is no history', () => {
+    const screen = renderScreen();
+    expect(screen.queryByTestId('use-last-weight')).toBeNull();
+    expect(screen.queryByTestId('use-last-waist')).toBeNull();
+    expect(getField(screen, 'weight').props.placeholder).toBe('0');
+  });
+});
+
+describe('MeasurementsAddScreen — custom previous-value hints', () => {
+  const twoCategories = [
+    customCategory({ id: 'cat-1', name: 'Stress Level' }),
+    customCategory({ id: 'cat-2', name: 'Sleep Quality' }),
+  ];
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    setMeasurements({});
+    setLatestMeasurements(null);
+    setProfile({});
+    setPreferences({
+      default_weight_unit: 'kg',
+      default_measurement_unit: 'cm',
+    });
+    setCustomCategories(twoCategories);
+    setCustomEntries([]);
+    mockUseUpsertCheckIn.mockReturnValue({
+      mutate,
+      mutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useUpsertCheckIn>);
+    mockUseSaveCustomMeasurement.mockReturnValue({
+      mutate: jest.fn(),
+      mutateAsync: jest.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof useSaveCustomMeasurement>);
+    mockUseDeleteCustomMeasurement.mockReturnValue({
+      mutate: jest.fn(),
+      mutateAsync: jest.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof useDeleteCustomMeasurement>);
+  });
+
+  test('each category shows its own previous value and never a neighbour value', () => {
+    setLatestCustomEntries([
+      {
+        id: 'e1',
+        category_id: 'cat-1',
+        value: '5',
+        entry_date: '2024-06-01',
+        source: 'manual',
+      },
+    ]);
+    const screen = renderScreen();
+
+    expect(screen.getByTestId('custom-input-cat-1').props.placeholder).toBe(
+      '5'
+    );
+    // cat-2 has no history of its own: it must not borrow cat-1's value.
+    expect(screen.getByTestId('custom-input-cat-2').props.placeholder).toBe(
+      '0'
+    );
+    expect(screen.queryByTestId('use-last-custom-cat-2')).toBeNull();
+  });
+
+  test('Use last adopts a custom suggestion into editable form state', async () => {
+    setLatestCustomEntries([
+      {
+        id: 'e1',
+        category_id: 'cat-1',
+        value: '5',
+        entry_date: '2024-06-01',
+        source: 'manual',
+      },
+    ]);
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByTestId('use-last-custom-cat-1'));
+    expect(screen.getByTestId('custom-input-cat-1').props.value).toBe('5');
+
+    await pressSave(screen);
+    const saveMutation = mockUseSaveCustomMeasurement.mock.results[0].value as {
+      mutateAsync: jest.Mock;
+    };
+    expect(saveMutation.mutateAsync).toHaveBeenCalledWith({
+      category_id: 'cat-1',
+      value: 5,
+      entry_date: ENTRY_DATE,
+      source: 'manual',
+    });
+  });
+
+  test('a displayed custom suggestion alone creates no manual record', async () => {
+    setLatestCustomEntries([
+      {
+        id: 'e1',
+        category_id: 'cat-1',
+        value: '5',
+        entry_date: '2024-06-01',
+        source: 'manual',
+      },
+    ]);
+    const screen = renderScreen();
+
+    expect(screen.getByTestId('custom-input-cat-1').props.placeholder).toBe(
+      '5'
+    );
+
+    // Saving with only the suggestion on screen must be a no-op.
+    await pressSave(screen);
+
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'info',
+      text1: 'Nothing to save',
+      text2: 'Enter or clear at least one value.',
+    });
+    expect(mutateAsync).not.toHaveBeenCalled();
+    const saveMutation = mockUseSaveCustomMeasurement.mock.results[0].value as {
+      mutateAsync: jest.Mock;
+    };
+    expect(saveMutation.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  test('a manual value recorded on the selected date suppresses its own suggestion', () => {
+    setCustomEntries([customEntry({ category_id: 'cat-1', value: '7' })]);
+    setLatestCustomEntries([
+      {
+        id: 'e1',
+        category_id: 'cat-1',
+        value: '5',
+        entry_date: '2024-06-01',
+        source: 'manual',
+      },
+    ]);
+    const screen = renderScreen();
+
+    expect(screen.getByTestId('custom-input-cat-1').props.value).toBe('7');
+    expect(screen.queryByTestId('use-last-custom-cat-1')).toBeNull();
+  });
+
+  test('a synced entry on the selected date does not suppress the manual suggestion', () => {
+    setCustomEntries([
+      customEntry({
+        category_id: 'cat-1',
+        value: '3',
+        source: 'HealthConnect',
+      }),
+    ]);
+    setLatestCustomEntries([
+      {
+        id: 'e1',
+        category_id: 'cat-1',
+        value: '5',
+        entry_date: '2024-06-01',
+        source: 'manual',
+      },
+    ]);
+    const screen = renderScreen();
+
+    // The synced sample is not editable manual state, so the last manual value
+    // is still the right thing to offer.
+    expect(screen.getByTestId('use-last-custom-cat-1')).toBeTruthy();
+  });
+
+  test('a boolean category shows its previous value as text rather than a placeholder', () => {
+    setCustomCategories([
+      customCategory({
+        id: 'cat-bool',
+        name: 'Took Vitamins',
+        data_type: 'boolean',
+      }),
+    ]);
+    setLatestCustomEntries([
+      {
+        id: 'e1',
+        category_id: 'cat-bool',
+        value: 'true',
+        entry_date: '2024-06-01',
+        source: 'manual',
+      },
+    ]);
+    const screen = renderScreen();
+
+    expect(screen.getByText('Last: Yes')).toBeTruthy();
+    expect(screen.getByTestId('use-last-custom-cat-bool')).toBeTruthy();
+  });
+
+  test('surfaces a failed previous-value lookup instead of showing a bare 0', () => {
+    // A server without the endpoint answers 404. Without this note every
+    // custom field falls back to the generic '0' placeholder, which reads as
+    // "the previous value is zero" rather than "there is no previous value".
+    mockUseLatestManualCustomEntriesOnOrBefore.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+    } as unknown as ReturnType<typeof useLatestManualCustomEntriesOnOrBefore>);
+
+    const screen = renderScreen();
+
+    expect(screen.getByTestId('hints-unavailable')).toBeTruthy();
+  });
+
+  test('shows no failure note when the lookup succeeded with no history', () => {
+    setLatestCustomEntries([]);
+    const screen = renderScreen();
+
+    expect(screen.queryByTestId('hints-unavailable')).toBeNull();
+  });
+});
+
+describe('MeasurementsAddScreen — body fat calculator', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    setMeasurements({});
+    setLatestMeasurements(null);
+    setLatestCustomEntries([]);
+    setCustomCategories([]);
+    setCustomEntries([]);
+    setPreferences({
+      default_weight_unit: 'kg',
+      default_measurement_unit: 'cm',
+    });
+    mockUseUpsertCheckIn.mockReturnValue({
+      mutate,
+      mutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useUpsertCheckIn>);
+    mockUseCustomCategories.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useCustomCategories>);
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useCustomMeasurementsByDate>);
+    mockUseSaveCustomMeasurement.mockReturnValue({
+      mutate: jest.fn(),
+      mutateAsync: jest.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof useSaveCustomMeasurement>);
+    mockUseDeleteCustomMeasurement.mockReturnValue({
+      mutate: jest.fn(),
+      mutateAsync: jest.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof useDeleteCustomMeasurement>);
+  });
+
+  const fillNavyInputs = (screen: Screen) => {
+    fireEvent.changeText(getField(screen, 'height'), '180');
+    fireEvent.changeText(getField(screen, 'waist'), '90');
+    fireEvent.changeText(getField(screen, 'neck'), '40');
+  };
+
+  test('fills the Body Fat field without saving anything', async () => {
+    setProfile({ gender: 'male', date_of_birth: '1990-01-01' });
+    setPreferences({
+      default_weight_unit: 'kg',
+      default_measurement_unit: 'cm',
+      body_fat_algorithm: 'U.S. Navy',
+    });
+    const screen = renderScreen();
+    fillNavyInputs(screen);
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('calculate-body-fat'));
+    });
+
+    // Shared Navy result for 180/90/40.
+    expect(getField(screen, 'bodyFatPercentage').props.value).toBe('18.5');
+    // Calculating is not saving: the user still has to press Save.
+    expect(mutateAsync).not.toHaveBeenCalled();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  });
+
+  test('uses the BMI method when that is the configured algorithm', async () => {
+    setProfile({ gender: 'female', date_of_birth: '1996-01-01' });
+    setPreferences({
+      default_weight_unit: 'kg',
+      default_measurement_unit: 'cm',
+      body_fat_algorithm: 'BMI Method',
+    });
+    const screen = renderScreen();
+    fireEvent.changeText(getField(screen, 'weight'), '60');
+    fireEvent.changeText(getField(screen, 'height'), '165');
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('calculate-body-fat'));
+    });
+
+    const value = Number(getField(screen, 'bodyFatPercentage').props.value);
+    expect(value).toBeGreaterThan(0);
+    expect(value).toBeLessThan(100);
+  });
+
+  test('reports missing inputs instead of writing an invalid value', async () => {
+    setProfile({ gender: 'male', date_of_birth: '1990-01-01' });
+    setPreferences({
+      default_weight_unit: 'kg',
+      default_measurement_unit: 'cm',
+      body_fat_algorithm: 'U.S. Navy',
+    });
+    const screen = renderScreen();
+    // Height only; waist and neck are missing.
+    fireEvent.changeText(getField(screen, 'height'), '180');
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('calculate-body-fat'));
+    });
+
+    expect(getField(screen, 'bodyFatPercentage').props.value).toBe('');
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' })
+    );
+  });
+
+  test('reports a missing profile rather than calculating with no gender', async () => {
+    setProfile({});
+    setPreferences({
+      default_weight_unit: 'kg',
+      default_measurement_unit: 'cm',
+      body_fat_algorithm: 'U.S. Navy',
+    });
+    const screen = renderScreen();
+    fillNavyInputs(screen);
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('calculate-body-fat'));
+    });
+
+    expect(getField(screen, 'bodyFatPercentage').props.value).toBe('');
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' })
+    );
+  });
+
+  test('Use recent falls back to the last recorded measurements', async () => {
+    setProfile({ gender: 'male', date_of_birth: '1990-01-01' });
+    setPreferences({
+      default_weight_unit: 'kg',
+      default_measurement_unit: 'cm',
+      body_fat_algorithm: 'U.S. Navy',
+    });
+    // Nothing typed into waist or neck; both come from history.
+    setLatestMeasurements({ height: 180, waist: 90, neck: 40 });
+    const screen = renderScreen();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('calculate-body-fat'));
+    });
+
+    expect(getField(screen, 'bodyFatPercentage').props.value).toBe('18.5');
+    // The calculation used history without adopting it into the form.
+    expect(getField(screen, 'waist').props.value).toBe('');
+  });
+
+  test('Use recent off requires the form values to be filled in', async () => {
+    setProfile({ gender: 'male', date_of_birth: '1990-01-01' });
+    setPreferences({
+      default_weight_unit: 'kg',
+      default_measurement_unit: 'cm',
+      body_fat_algorithm: 'U.S. Navy',
+    });
+    setLatestMeasurements({ height: 180, waist: 90, neck: 40 });
+    const screen = renderScreen();
+
+    fireEvent(screen.getByRole('switch'), 'valueChange', false);
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('calculate-body-fat'));
+    });
+
+    expect(getField(screen, 'bodyFatPercentage').props.value).toBe('');
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' })
+    );
   });
 });

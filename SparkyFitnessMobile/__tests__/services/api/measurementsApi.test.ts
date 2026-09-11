@@ -2,9 +2,12 @@ import {
   upsertCheckIn,
   fetchMeasurements,
   fetchWaterIntakeRange,
+  fetchLatestCheckInMeasurementsOnOrBefore,
+  fetchLatestManualCustomEntriesOnOrBefore,
   serverSupportsPerRecordWater,
 } from '../../../src/services/api/measurementsApi';
 import { apiFetch } from '../../../src/services/api/apiClient';
+import { ApiError } from '../../../src/services/api/errors';
 import type { CheckInMeasurementRange } from '../../../src/types/measurements';
 
 jest.mock('../../../src/services/api/apiClient', () => ({
@@ -161,5 +164,612 @@ describe('fetchWaterIntakeRange', () => {
     await expect(
       fetchWaterIntakeRange('2026-08-01', '2026-08-30')
     ).resolves.toEqual(response);
+  });
+});
+
+describe('fetchLatestCheckInMeasurementsOnOrBefore', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('requests the carry-forward lookup for the given day', async () => {
+    mockApiFetch.mockResolvedValue({ weight: 80 });
+
+    await expect(
+      fetchLatestCheckInMeasurementsOnOrBefore('2026-05-10')
+    ).resolves.toEqual({ weight: 80 });
+
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint:
+          '/api/measurements/check-in/latest-on-or-before-date?date=2026-05-10',
+      })
+    );
+  });
+
+  test('encodes the day so a malformed value cannot break the URL', async () => {
+    mockApiFetch.mockResolvedValue({});
+
+    await fetchLatestCheckInMeasurementsOnOrBefore('2026-05-10?x=1');
+
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint:
+          '/api/measurements/check-in/latest-on-or-before-date?date=2026-05-10%3Fx%3D1',
+      })
+    );
+  });
+
+  test('normalises the empty-object response to null', async () => {
+    mockApiFetch.mockResolvedValue({});
+    await expect(
+      fetchLatestCheckInMeasurementsOnOrBefore('2026-05-10')
+    ).resolves.toBeNull();
+  });
+
+  test('normalises a null response to null', async () => {
+    mockApiFetch.mockResolvedValue(null);
+    await expect(
+      fetchLatestCheckInMeasurementsOnOrBefore('2026-05-10')
+    ).resolves.toBeNull();
+  });
+});
+
+describe('fetchLatestManualCustomEntriesOnOrBefore', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('requests one bulk lookup for every category', async () => {
+    const response = [
+      {
+        id: 'e1',
+        category_id: 'cat-1',
+        value: '5',
+        entry_date: '2026-05-04',
+        source: 'manual',
+      },
+    ];
+    mockApiFetch.mockResolvedValue(response);
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2026-05-10')
+    ).resolves.toEqual(response);
+
+    // One request, not one per category.
+    expect(mockApiFetch).toHaveBeenCalledTimes(1);
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint:
+          '/api/measurements/custom-entries/latest-manual-on-or-before-date?date=2026-05-10',
+      })
+    );
+  });
+});
+
+describe('fetchLatestManualCustomEntriesOnOrBefore — older-server fallback', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const listResponse = [
+    {
+      id: 'e1',
+      category_id: 'cat-1',
+      value: '5',
+      entry_date: '2024-06-01',
+      entry_hour: null,
+      entry_timestamp: '2024-06-01T00:00:00.000Z',
+      source: 'manual',
+    },
+    {
+      id: 'e2',
+      category_id: 'cat-1',
+      value: '9',
+      entry_date: '2024-06-10',
+      entry_hour: null,
+      entry_timestamp: '2024-06-10T00:00:00.000Z',
+      source: 'manual',
+    },
+    {
+      id: 'e3',
+      category_id: 'cat-2',
+      value: '3',
+      entry_date: '2024-06-02',
+      entry_hour: null,
+      entry_timestamp: '2024-06-02T00:00:00.000Z',
+      source: 'HealthConnect',
+    },
+  ];
+
+  test('falls back to the list endpoint when the bulk endpoint fails', async () => {
+    // An older server matches the literal path with /custom-entries/:date and
+    // fails inside Postgres, so the client sees a 500 rather than a 404.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(
+          new ApiError('Server error: 500 - invalid input syntax', 500)
+        );
+      }
+      return Promise.resolve(listResponse);
+    });
+
+    const result = await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    // cat-1 resolves to its newest manual entry; the synced cat-2 is omitted.
+    expect(result).toEqual([
+      {
+        id: 'e2',
+        category_id: 'cat-1',
+        value: '9',
+        entry_date: '2024-06-10',
+        source: 'manual',
+      },
+    ]);
+  });
+
+  test('the fallback requests the list once, never per category', async () => {
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 500', 500));
+      }
+      return Promise.resolve(listResponse);
+    });
+
+    await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    const listCalls = mockApiFetch.mock.calls.filter((call) =>
+      (call[0] as { endpoint: string }).endpoint.startsWith(
+        '/api/measurements/custom-entries?'
+      )
+    );
+    expect(listCalls).toHaveLength(1);
+  });
+
+  test('does not fall back when the bulk endpoint succeeds', async () => {
+    const bulk = [
+      {
+        id: 'b1',
+        category_id: 'cat-1',
+        value: '7',
+        entry_date: '2024-06-12',
+        source: 'manual',
+      },
+    ];
+    mockApiFetch.mockResolvedValue(bulk);
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).resolves.toEqual(bulk);
+    expect(mockApiFetch).toHaveBeenCalledTimes(1);
+  });
+
+  test('reports the original failure when both paths fail', async () => {
+    // The two requests must fail differently, or the assertion would pass
+    // whichever error propagated and would not prove the bulk one is preserved.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      return Promise.reject(
+        endpoint.includes('latest-manual-on-or-before-date')
+          ? new ApiError('Server error: 500 - bulk', 500)
+          : new ApiError('Server error: 503 - fallback', 503)
+      );
+    });
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).rejects.toThrow('Server error: 500 - bulk');
+  });
+});
+
+describe('fetchLatestManualCustomEntriesOnOrBefore — fallback scope', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const listCallCount = () =>
+    mockApiFetch.mock.calls.filter((call) =>
+      (call[0] as { endpoint: string }).endpoint.startsWith(
+        '/api/measurements/custom-entries?'
+      )
+    ).length;
+
+  test('a 401 does not trigger the compatibility request', async () => {
+    // `apiFetch` already called notifySessionExpired for this 401. Retrying
+    // would fire it a second time, so the user gets two session-expired
+    // prompts from one expired session.
+    mockApiFetch.mockRejectedValue(
+      new ApiError('Server error: 401 - Unauthorized', 401)
+    );
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).rejects.toThrow('401');
+    expect(listCallCount()).toBe(0);
+  });
+
+  test('a network failure does not trigger the compatibility request', async () => {
+    mockApiFetch.mockRejectedValue(new Error('Network request failed'));
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).rejects.toThrow('Network request failed');
+    expect(listCallCount()).toBe(0);
+  });
+
+  test('a 400 triggers the compatibility request', async () => {
+    // A server version that validates the shadowed date parameter answers 400.
+    // Pinning the fallback to 404/500 disabled it there and removed every hint,
+    // so any non-auth HTTP failure must be allowed to fall back.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(
+          new ApiError('Server error: 400 - invalid date', 400)
+        );
+      }
+      return Promise.resolve([]);
+    });
+
+    await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    expect(listCallCount()).toBe(1);
+  });
+
+  test('a 405 triggers the compatibility request', async () => {
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(
+          new ApiError('Server error: 405 - Method Not Allowed', 405)
+        );
+      }
+      return Promise.resolve([]);
+    });
+
+    await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    expect(listCallCount()).toBe(1);
+  });
+
+  test('a 403 does not trigger the compatibility request', async () => {
+    mockApiFetch.mockRejectedValue(
+      new ApiError('Server error: 403 - Forbidden', 403)
+    );
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).rejects.toThrow('403');
+    expect(listCallCount()).toBe(0);
+  });
+
+  test('a 404 triggers the compatibility request', async () => {
+    // The endpoint is absent on a server that predates it.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 404', 404));
+      }
+      return Promise.resolve([]);
+    });
+
+    await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    expect(listCallCount()).toBe(1);
+  });
+
+  test('a 500 triggers the compatibility request', async () => {
+    // The shadowing /custom-entries/:date route fails inside Postgres.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 500', 500));
+      }
+      return Promise.resolve([]);
+    });
+
+    await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    expect(listCallCount()).toBe(1);
+  });
+});
+
+describe('fetchLatestManualCustomEntriesOnOrBefore — truncated legacy history', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  /**
+   * Reads the page size off the request the client actually made, so these tests
+   * stay correct if the constant changes.
+   */
+  const pageSizeFromRequest = (endpoint: string): number => {
+    const match = /limit=(\d+)/.exec(endpoint);
+    if (!match) throw new Error(`no limit in endpoint: ${endpoint}`);
+    return Number(match[1]);
+  };
+
+  /**
+   * Answers the bulk request with a 500 (an older server) and the list request
+   * with `rows`, simulating a history of the requested page size.
+   */
+  const respondWithHistory = (
+    rows: (index: number) => Record<string, unknown>
+  ) => {
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 500', 500));
+      }
+      const size = pageSizeFromRequest(endpoint);
+      return Promise.resolve(
+        Array.from({ length: size }, (_, index) => rows(index))
+      );
+    });
+  };
+
+  const entry = (index: number, entryDate: string, value = '5') => ({
+    id: `e${index}`,
+    category_id: 'cat-1',
+    value,
+    entry_date: entryDate,
+    entry_hour: null,
+    entry_timestamp: `${entryDate}T00:00:00.000Z`,
+    source: 'manual',
+  });
+
+  test('a full page of post-date rows yields no hint rather than a stale one', async () => {
+    // Every row is after the selected day, so nothing qualifies. The result is
+    // empty, which shows no suggestion — never an older value presented as the
+    // latest one.
+    respondWithHistory((index) => entry(index, '2024-07-01'));
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).resolves.toEqual([]);
+  });
+
+  test('a full page still yields the hints it proves', async () => {
+    // THE regression guard for the reported bug. A sync-heavy account fills a
+    // whole page, and refusing that page removed every hint on the screen. The
+    // page does prove the categories it contains, so those hints must survive.
+    respondWithHistory((index) =>
+      entry(
+        index,
+        index === 0 ? '2024-06-10' : '2024-07-01',
+        index === 0 ? 'usable' : 'future'
+      )
+    );
+
+    const result = await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    expect(result).toEqual([
+      {
+        id: 'e0',
+        category_id: 'cat-1',
+        value: 'usable',
+        entry_date: '2024-06-10',
+        source: 'manual',
+      },
+    ]);
+  });
+
+  test('the newest on-or-before entry wins within a whole page', async () => {
+    // A short page is returned whole, so the reduction is the true answer and
+    // the newest pre-date row must beat the older one.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 500', 500));
+      }
+      return Promise.resolve([
+        {
+          id: 'newest',
+          category_id: 'cat-1',
+          value: 'newest',
+          entry_date: '2024-06-10',
+          entry_hour: null,
+          entry_timestamp: '2024-06-10T00:00:00.000Z',
+          source: 'manual',
+        },
+        {
+          id: 'older',
+          category_id: 'cat-1',
+          value: 'older',
+          entry_date: '2024-06-01',
+          entry_hour: null,
+          entry_timestamp: '2024-06-01T00:00:00.000Z',
+          source: 'manual',
+        },
+        {
+          id: 'future',
+          category_id: 'cat-1',
+          value: 'future',
+          entry_date: '2024-07-01',
+          entry_hour: null,
+          entry_timestamp: '2024-07-01T00:00:00.000Z',
+          source: 'manual',
+        },
+      ]);
+    });
+
+    const result = await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    expect(result).toEqual([
+      {
+        id: 'newest',
+        category_id: 'cat-1',
+        value: 'newest',
+        entry_date: '2024-06-10',
+        source: 'manual',
+      },
+    ]);
+  });
+
+  test('a short page is trusted and reduced normally', async () => {
+    // Fewer rows than the page size proves the history was returned whole.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 500', 500));
+      }
+      return Promise.resolve([
+        {
+          id: 'old',
+          category_id: 'cat-1',
+          value: '5',
+          entry_date: '2024-06-01',
+          entry_hour: null,
+          entry_timestamp: '2024-06-01T00:00:00.000Z',
+          source: 'manual',
+        },
+        {
+          id: 'new',
+          category_id: 'cat-1',
+          value: '9',
+          entry_date: '2024-06-10',
+          entry_hour: null,
+          entry_timestamp: '2024-06-10T00:00:00.000Z',
+          source: 'manual',
+        },
+      ]);
+    });
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).resolves.toEqual([
+      {
+        id: 'new',
+        category_id: 'cat-1',
+        value: '9',
+        entry_date: '2024-06-10',
+        source: 'manual',
+      },
+    ]);
+  });
+
+  test('asks for exactly one page, never one request per category', async () => {
+    respondWithHistory((index) => entry(index, '2024-07-01'));
+
+    await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    const listCalls = mockApiFetch.mock.calls.filter((call) =>
+      (call[0] as { endpoint: string }).endpoint.startsWith(
+        '/api/measurements/custom-entries?'
+      )
+    );
+    expect(listCalls).toHaveLength(1);
+  });
+});
+
+describe('fetchLatestManualCustomEntriesOnOrBefore — page provenance', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const pageSizeFromRequest = (endpoint: string): number => {
+    const match = /limit=(\d+)/.exec(endpoint);
+    if (!match) throw new Error(`no limit in endpoint: ${endpoint}`);
+    return Number(match[1]);
+  };
+
+  /** Serves the bulk request as missing and the list request with one full page. */
+  const fullPage = (rows: (index: number) => Record<string, unknown>) => {
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 500', 500));
+      }
+      const size = pageSizeFromRequest(endpoint);
+      return Promise.resolve(
+        Array.from({ length: size }, (_, index) => rows(index))
+      );
+    });
+  };
+
+  const row = (
+    index: number,
+    entryDate: string,
+    value: string,
+    source: string
+  ) => ({
+    id: `e${index}`,
+    category_id: 'cat-1',
+    value,
+    entry_date: entryDate,
+    entry_hour: null,
+    entry_timestamp: `${entryDate}T00:00:00.000Z`,
+    source,
+  });
+
+  test('a synced pre-date row is never offered, even on a full page', async () => {
+    // Provenance is the reduction's job, not the page guard's: a health-sync
+    // sample must never become a suggestion the user can adopt.
+    fullPage((index) =>
+      index === 0
+        ? row(0, '2024-06-10', '12000', 'HealthConnect')
+        : row(index, '2024-07-01', 'future', 'manual')
+    );
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).resolves.toEqual([]);
+  });
+
+  test('valid manual hints survive a whole page of synced and future rows', async () => {
+    // The other half of the guard: a usable manual row must still be returned.
+    // The page is short, so it is complete and the provenance filter is the only
+    // thing that decides, not truncation.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 500', 500));
+      }
+      return Promise.resolve([
+        row(0, '2024-06-01', 'synced', 'HealthConnect'),
+        row(1, '2024-06-10', '5', 'manual'),
+        row(2, '2024-07-01', 'future', 'manual'),
+      ]);
+    });
+
+    const result = await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    // The manual pre-date row wins; the synced pre-date row is never a
+    // suggestion and the future manual rows are out of range.
+    expect(result).toEqual([
+      {
+        id: 'e1',
+        category_id: 'cat-1',
+        value: '5',
+        entry_date: '2024-06-10',
+        source: 'manual',
+      },
+    ]);
+  });
+
+  test('synced rows never appear as suggestions from the legacy page', async () => {
+    fullPage((index) => row(index, '2024-06-10', String(index), 'HealthKit'));
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).resolves.toEqual([]);
+  });
+
+  test('a short page of only synced rows returns no hints without failing', async () => {
+    // Without truncation the empty reduction is the true answer, so no error and
+    // no suggestion: the distinction is completeness, not emptiness.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 500', 500));
+      }
+      return Promise.resolve([row(0, '2024-06-10', '12000', 'HealthConnect')]);
+    });
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).resolves.toEqual([]);
   });
 });

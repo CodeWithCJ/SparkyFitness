@@ -2,7 +2,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { upsertCheckIn } from '../services/api/measurementsApi';
-import { measurementsQueryKey } from './queryKeys';
+import {
+  latestMeasurementsOnOrBeforeRootQueryKey,
+  measurementsQueryKey,
+} from './queryKeys';
 import { refreshHealthSyncCache } from './refreshHealthSyncCache';
 import { addLog } from '../services/LogService';
 import type { CheckInMeasurement } from '../types/measurements';
@@ -32,6 +35,13 @@ export function useUpsertCheckIn(options?: { showErrorToast?: boolean }) {
         measurementsQueryKey(vars.entryDate),
         data
       );
+      // The saved row may now be the newest value on or before any cached day at
+      // or after it, so the whole carry-forward family has to be recomputed.
+      // `staleTime` is Infinity app-wide, so a later cached day would otherwise
+      // keep serving its pre-save suggestion.
+      queryClient.invalidateQueries({
+        queryKey: latestMeasurementsOnOrBeforeRootQueryKey,
+      });
       refreshHealthSyncCache(queryClient);
     },
     onError: (error) => {

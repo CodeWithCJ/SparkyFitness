@@ -43,3 +43,13 @@ export interface SaveCustomMeasurementPayload {
   notes?: string;
   source?: string;
 }
+
+/**
+ * One row of the per-category "latest manual value on or before a date" lookup
+ * that backs previous-value hints.
+ *
+ * The shape is owned by `@workspace/shared` because the web check-in consumes
+ * the same endpoint; re-exported here so existing importers keep their path and
+ * the two clients cannot drift apart.
+ */
+export type { LatestManualCustomEntry } from '@workspace/shared';

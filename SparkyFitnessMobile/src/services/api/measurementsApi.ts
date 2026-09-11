@@ -1,4 +1,5 @@
 import { apiFetch } from './apiClient';
+import { ApiError } from './errors';
 import { getTodayDate } from '../../utils/dateUtils';
 
 import type {
@@ -17,8 +18,11 @@ import type {
 import type {
   CustomCategory,
   CustomMeasurementEntry,
+  LatestManualCustomEntry,
   SaveCustomMeasurementPayload,
 } from '../../types/customMeasurements';
+import { reduceLatestManualEntries } from '../../utils/measurementHistory';
+import { isManualSource } from '../../utils/customMeasurementsForm';
 
 /**
  * Fetches measurements for a given date.
@@ -201,6 +205,117 @@ export const fetchWaterIntakeRange = async (
     serviceName: 'Measurements API',
     operation: 'fetch water intake range',
   });
+};
+
+/**
+ * Per-field carry-forward lookup: the newest recorded value on or before the
+ * given day, one entry per standard field.
+ *
+ * The plain `/check-in/:date` endpoint carries forward too, but this one answers
+ * `null` rather than `{}` when the user has no history at all, and it is not
+ * shared with the read path the diary uses for a single day's real values.
+ * `steps` and `bmr` are deliberately same-day only on the server.
+ */
+export const fetchLatestCheckInMeasurementsOnOrBefore = async (
+  date: string
+): Promise<CheckInMeasurement | null> => {
+  const result = await apiFetch<CheckInMeasurement | null>({
+    endpoint: `/api/measurements/check-in/latest-on-or-before-date?date=${encodeURIComponent(date)}`,
+    serviceName: 'Measurements API',
+    operation: 'fetch latest check-in measurements on or before date',
+  });
+  if (!result || Object.keys(result).length === 0) return null;
+  return result;
+};
+
+/**
+ * Page size for the legacy list fallback. The bulk endpoint needs no bound, so
+ * this only applies to a server that predates it.
+ *
+ * A sync-heavy account accumulates one custom row per metric per day, so the
+ * page has to be generous: every category whose newest eligible value falls
+ * outside it comes back without a suggestion. It stays bounded, and the bulk
+ * endpoint does not use it at all.
+ */
+const CUSTOM_ENTRY_HINT_FALLBACK_LIMIT = 2000;
+
+/**
+ * Latest manual value per custom category on or before the given day.
+ *
+ * The preferred path is one bulk request that resolves every category
+ * server-side. A server that predates that endpoint cannot serve it, and the
+ * failure mode is deceptive: `/custom-entries/:date` also matches this literal
+ * path, accepts `latest-manual-on-or-before-date` as its date parameter, and
+ * only fails once Postgres rejects the value — so the client sees a 500, not a
+ * 404. Rather than surface that as "no history", fall back to the long-standing
+ * list endpoint and narrow it here.
+ *
+ * The legacy endpoint cannot express this query: it accepts `limit` but no
+ * offset and no date bound, and the per-category range endpoint does not return
+ * `source`, so it cannot separate a manual value from a health-sync sample.
+ * Paging is therefore impossible, so the fallback asks for one generous page and
+ * returns whatever it proves. See the note on the reduction below for what a
+ * truncated page can and cannot answer.
+ *
+ * Both consequences only affect servers without the bulk endpoint.
+ */
+export const fetchLatestManualCustomEntriesOnOrBefore = async (
+  date: string
+): Promise<LatestManualCustomEntry[]> => {
+  try {
+    return await apiFetch<LatestManualCustomEntry[]>({
+      endpoint: `/api/measurements/custom-entries/latest-manual-on-or-before-date?date=${encodeURIComponent(date)}`,
+      serviceName: 'Measurements API',
+      operation: 'fetch latest manual custom entries on or before date',
+    });
+  } catch (error) {
+    // Any HTTP failure from the bulk request means this server cannot serve it,
+    // so the list fallback is worth one request. The exact status is not a
+    // reliable signal: it depends on the server version, ranging from 404 (no
+    // route), through the 500 a shadowing `/custom-entries/:date` produces when
+    // it reads the literal path as a date, to a 400 if a newer server validates
+    // that parameter. Pinning the set to 404/500 once silently disabled the
+    // fallback on a server that answered 400.
+    //
+    // Two cases must not retry. A 401/403 is an auth answer, and `apiFetch`
+    // already called `notifySessionExpired` for a 401, so retrying would notify
+    // the user twice. A non-HTTP failure (network, timeout) would just spend a
+    // second request on a connection that is already struggling.
+    if (!(error instanceof ApiError)) throw error;
+    if (error.statusCode === 401 || error.statusCode === 403) throw error;
+
+    // Kept outside the request's own try/catch so a truncation failure
+    // propagates as-is instead of being replaced by the bulk error.
+    let entries: CustomMeasurementEntry[];
+    try {
+      entries = await apiFetch<CustomMeasurementEntry[]>({
+        endpoint: `/api/measurements/custom-entries?limit=${CUSTOM_ENTRY_HINT_FALLBACK_LIMIT}&orderBy=entry_timestamp.desc`,
+        serviceName: 'Measurements API',
+        operation: 'fetch custom entries for previous-value hints',
+      });
+    } catch {
+      // Both paths failed: report the original failure, which describes the
+      // preferred request rather than the fallback.
+      throw error;
+    }
+
+    // Reduce the page and return what it proves. The page is ordered newest
+    // first, so for any category with an eligible entry inside it, that entry is
+    // also the newest overall: everything left outside is older.
+    //
+    // A full page means some categories may have their only eligible value
+    // further back, and those categories simply come back without a suggestion.
+    // That is a missing hint, never a wrong one, and it is the honest limit of
+    // this endpoint: it takes `limit` but no offset, so the client cannot page
+    // further, and the per-category range endpoint omits `source`, so it cannot
+    // tell a manual value from a health-sync sample.
+    //
+    // Refusing the whole page instead is not an acceptable alternative. It was
+    // tried and it removes hints for every category as soon as a heavy sync
+    // history fills one page, which is far worse than one category quietly
+    // lacking a suggestion. Only a server without the bulk endpoint reaches here.
+    return reduceLatestManualEntries(entries, date, isManualSource);
+  }
 };
 
 /**

@@ -15,6 +15,7 @@ import {
   useCheckInMeasurementsForDate,
   useLatestCheckInMeasurements,
   useExistingCustomMeasurements,
+  useLatestManualCustomEntriesOnOrBefore,
   useRecentCustomMeasurements,
   useRecentStandardMeasurements,
   useSaveCheckInMeasurementsMutation,
@@ -181,6 +182,10 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
   const { data: existingCheckIn } = useCheckInMeasurementsForDate(selectedDate);
   const { data: latestCheckIn } = useLatestCheckInMeasurements(selectedDate);
   const { data: existingCustom } = useExistingCustomMeasurements(selectedDate);
+  // Previous manual values per custom category, shown as placeholders so past
+  // entries give context without being resubmitted.
+  const { data: latestManualCustom = [] } =
+    useLatestManualCustomEntriesOnOrBefore(selectedDate);
   const { data: existingMood } = useMoodEntryByDate(selectedDate);
 
   const { data: recentCustom = [] } = useRecentCustomMeasurements();
@@ -191,6 +196,32 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     endDate
   );
   const { data: recentFasting = [] } = useFastingHistory(10, 0);
+
+  /**
+   * Per-category previous values, keyed by category id.
+   *
+   * Only categories the check-in actually renders are considered, and a
+   * category whose selected day already holds a value keeps that value as the
+   * editable one: the hint is only offered while its input is empty.
+   */
+  const customPlaceholders = useMemo(() => {
+    const placeholders: Record<string, number | string | null> = {};
+
+    for (const entry of latestManualCustom) {
+      const category = customCategories.find((c) => c.id === entry.category_id);
+      if (!category) continue;
+      if (existingCustom?.some((m) => m.category_id === entry.category_id)) {
+        continue;
+      }
+
+      // Numeric categories keep the metric string the API returned; UnitInput
+      // converts it for display. Text categories use it verbatim.
+      placeholders[entry.category_id] =
+        category.data_type === 'numeric' ? entry.value : entry.value;
+    }
+
+    return placeholders;
+  }, [latestManualCustom, customCategories, existingCustom]);
 
   const [useMostRecentForCalculation, setUseMostRecentForCalculation] =
     useState(true);
@@ -791,6 +822,7 @@ export const useCheckInLogic = (currentUserId: string | undefined) => {
     bmr,
     customCategories,
     customNotes,
+    customPlaceholders,
     customValues,
     handleCalculateBodyFat,
     handleDeleteMeasurementClick,

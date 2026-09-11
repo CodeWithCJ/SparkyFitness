@@ -3182,6 +3182,7 @@
     "failedToLoadCategories": "Failed to load custom categories.",
     "failedToLoadExistingCheckIn": "Failed to load existing check-in data.",
     "failedToLoadExistingCustom": "Failed to load existing custom measurements.",
+    "failedToLoadPreviousCustom": "Failed to load previous custom values.",
     "failedToLoadMostRecent": "Failed to load most recent measurement.",
     "failedToLoadRecentCustom": "Failed to load recent custom measurements.",
     "failedToLoadRecentStandard": "Failed to load recent standard measurements.",

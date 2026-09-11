@@ -36,6 +36,7 @@ const CheckIn = () => {
     customCategories,
     customNotes,
     customValues,
+    customPlaceholders,
     handleCalculateBodyFat,
     handleDeleteMeasurementClick,
     handleSubmit,
@@ -217,6 +218,7 @@ const CheckIn = () => {
             bmr={bmr}
             customCategories={customCategories}
             customNotes={customNotes}
+            customPlaceholders={customPlaceholders}
             customValues={customValues}
             handleCalculateBodyFat={handleCalculateBodyFat}
             handleSubmit={handleSubmit}
