@@ -7,6 +7,7 @@ import {
   serverSupportsPerRecordWater,
 } from '../../../src/services/api/measurementsApi';
 import { apiFetch } from '../../../src/services/api/apiClient';
+import { ApiError } from '../../../src/services/api/errors';
 import type { CheckInMeasurementRange } from '../../../src/types/measurements';
 
 jest.mock('../../../src/services/api/apiClient', () => ({
@@ -243,5 +244,113 @@ describe('fetchLatestManualCustomEntriesOnOrBefore', () => {
           '/api/measurements/custom-entries/latest-manual-on-or-before-date?date=2026-05-10',
       })
     );
+  });
+});
+
+describe('fetchLatestManualCustomEntriesOnOrBefore — older-server fallback', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const listResponse = [
+    {
+      id: 'e1',
+      category_id: 'cat-1',
+      value: '5',
+      entry_date: '2024-06-01',
+      entry_hour: null,
+      entry_timestamp: '2024-06-01T00:00:00.000Z',
+      source: 'manual',
+    },
+    {
+      id: 'e2',
+      category_id: 'cat-1',
+      value: '9',
+      entry_date: '2024-06-10',
+      entry_hour: null,
+      entry_timestamp: '2024-06-10T00:00:00.000Z',
+      source: 'manual',
+    },
+    {
+      id: 'e3',
+      category_id: 'cat-2',
+      value: '3',
+      entry_date: '2024-06-02',
+      entry_hour: null,
+      entry_timestamp: '2024-06-02T00:00:00.000Z',
+      source: 'HealthConnect',
+    },
+  ];
+
+  test('falls back to the list endpoint when the bulk endpoint fails', async () => {
+    // An older server matches the literal path with /custom-entries/:date and
+    // fails inside Postgres, so the client sees a 500 rather than a 404.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(
+          new ApiError('Server error: 500 - invalid input syntax', 500)
+        );
+      }
+      return Promise.resolve(listResponse);
+    });
+
+    const result = await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    // cat-1 resolves to its newest manual entry; the synced cat-2 is omitted.
+    expect(result).toEqual([
+      {
+        id: 'e2',
+        category_id: 'cat-1',
+        value: '9',
+        entry_date: '2024-06-10',
+        source: 'manual',
+      },
+    ]);
+  });
+
+  test('the fallback requests the list once, never per category', async () => {
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 500', 500));
+      }
+      return Promise.resolve(listResponse);
+    });
+
+    await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    const listCalls = mockApiFetch.mock.calls.filter((call) =>
+      (call[0] as { endpoint: string }).endpoint.startsWith(
+        '/api/measurements/custom-entries?'
+      )
+    );
+    expect(listCalls).toHaveLength(1);
+  });
+
+  test('does not fall back when the bulk endpoint succeeds', async () => {
+    const bulk = [
+      {
+        id: 'b1',
+        category_id: 'cat-1',
+        value: '7',
+        entry_date: '2024-06-12',
+        source: 'manual',
+      },
+    ];
+    mockApiFetch.mockResolvedValue(bulk);
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).resolves.toEqual(bulk);
+    expect(mockApiFetch).toHaveBeenCalledTimes(1);
+  });
+
+  test('reports the original failure when both paths fail', async () => {
+    mockApiFetch.mockRejectedValue(new ApiError('Server error: 500', 500));
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).rejects.toThrow('Server error: 500');
   });
 });

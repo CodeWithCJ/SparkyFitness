@@ -48,6 +48,8 @@ export function useLatestManualCustomEntriesOnOrBefore(
   date: string,
   options?: { enabled?: boolean }
 ) {
+  // Returns the whole query so a caller can tell "no earlier value" apart from
+  // "the lookup itself failed" — the two look identical on screen otherwise.
   return useQuery({
     queryKey: latestManualCustomEntriesQueryKey(date),
     // A failure here only costs the hint, so it must never surface as the

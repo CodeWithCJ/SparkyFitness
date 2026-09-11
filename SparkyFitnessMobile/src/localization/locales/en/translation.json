@@ -2053,6 +2053,7 @@
       "loadError": "Couldn't load custom measurements.",
       "deleteEntry": "Delete {{label}} entry",
       "lastValue": "Last: {{value}}",
+      "previousUnavailable": "Couldn't load previous values. Your server may need updating.",
       "moreCategories": "More categories ▾",
       "hideCategories": "Hide categories ▴",
       "hideCategoriesToggle": "Hide categories ▴",

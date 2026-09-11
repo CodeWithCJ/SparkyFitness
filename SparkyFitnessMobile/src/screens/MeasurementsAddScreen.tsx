@@ -275,7 +275,9 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   } = useCustomMeasurementsByDate(selectedDate);
   // Previous-value suggestions for custom categories. Gated on there being an
   // eligible category so an account without custom measurements pays nothing.
-  const { data: latestManualCustomEntries } =
+  // The failure flag is surfaced in the UI because a failed lookup and "this
+  // category has no earlier value" otherwise look identical on screen.
+  const { data: latestManualCustomEntries, isError: isCustomHintError } =
     useLatestManualCustomEntriesOnOrBefore(selectedDate, {
       enabled: (customCategories ?? []).some(isDailyCustomCategory),
     });
@@ -1785,6 +1787,21 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       defaultValue: 'Custom Measurements',
                     })}
                   </Text>
+                  {isCustomHintError ? (
+                    // Distinguishes "the previous-value lookup failed" from
+                    // "this category has no earlier value", which look the same
+                    // otherwise: both leave the input on its empty placeholder.
+                    <Text
+                      className="text-xs italic mb-3"
+                      style={{ color: textSecondary }}
+                      testID="custom-hints-unavailable"
+                    >
+                      {t('measurements.custom.previousUnavailable', {
+                        defaultValue:
+                          "Couldn't load previous values. Your server may need updating.",
+                      })}
+                    </Text>
+                  ) : null}
                   {primaryCustomCategories.map(renderCustomCategory)}
                   {moreCustomCategories.length > 0 && (
                     <>

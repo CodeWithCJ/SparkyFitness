@@ -19,6 +19,8 @@ import type {
   LatestManualCustomEntry,
   SaveCustomMeasurementPayload,
 } from '../../types/customMeasurements';
+import { reduceLatestManualEntries } from '../../utils/measurementHistory';
+import { isManualSource } from '../../utils/customMeasurementsForm';
 
 /**
  * Fetches measurements for a given date.
@@ -225,20 +227,50 @@ export const fetchLatestCheckInMeasurementsOnOrBefore = async (
 };
 
 /**
+ * How many entries the fallback list request pulls. The bulk endpoint needs no
+ * such bound, so this is only the compatibility path's ceiling.
+ */
+const CUSTOM_ENTRY_HINT_FALLBACK_LIMIT = 500;
+
+/**
  * Latest manual value per custom category on or before the given day.
  *
- * One request resolves every category, so the Daily editor's previous-value
- * hints do not fan out per category. The server filters to manual sources, so
- * health-sync samples are never returned as suggestions.
+ * The preferred path is one bulk request that resolves every category
+ * server-side. A server that predates that endpoint cannot serve it, and the
+ * failure mode is deceptive: `/custom-entries/:date` also matches this literal
+ * path, accepts `latest-manual-on-or-before-date` as its date parameter, and
+ * only fails once Postgres rejects the value — so the client sees a 500, not a
+ * 404. Rather than surface that as "no history", fall back to the long-standing
+ * list endpoint and narrow it here.
+ *
+ * The fallback is bounded by `CUSTOM_ENTRY_HINT_FALLBACK_LIMIT` entries, newest
+ * first, so it can miss a very old value on a category whose other entries have
+ * since pushed it past the bound. That is a deliberate trade against an N+1
+ * request per category, and it disappears entirely once the server is updated.
  */
 export const fetchLatestManualCustomEntriesOnOrBefore = async (
   date: string
 ): Promise<LatestManualCustomEntry[]> => {
-  return apiFetch<LatestManualCustomEntry[]>({
-    endpoint: `/api/measurements/custom-entries/latest-manual-on-or-before-date?date=${encodeURIComponent(date)}`,
-    serviceName: 'Measurements API',
-    operation: 'fetch latest manual custom entries on or before date',
-  });
+  try {
+    return await apiFetch<LatestManualCustomEntry[]>({
+      endpoint: `/api/measurements/custom-entries/latest-manual-on-or-before-date?date=${encodeURIComponent(date)}`,
+      serviceName: 'Measurements API',
+      operation: 'fetch latest manual custom entries on or before date',
+    });
+  } catch (error) {
+    try {
+      const entries = await apiFetch<CustomMeasurementEntry[]>({
+        endpoint: `/api/measurements/custom-entries?limit=${CUSTOM_ENTRY_HINT_FALLBACK_LIMIT}&orderBy=entry_timestamp.desc`,
+        serviceName: 'Measurements API',
+        operation: 'fetch custom entries for previous-value hints',
+      });
+      return reduceLatestManualEntries(entries ?? [], date, isManualSource);
+    } catch {
+      // Both paths failed: report the original failure, which describes the
+      // preferred request rather than the fallback.
+      throw error;
+    }
+  }
 };
 
 /**

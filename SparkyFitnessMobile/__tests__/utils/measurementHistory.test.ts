@@ -2,6 +2,7 @@ import {
   deriveCustomFieldHints,
   deriveStandardFieldHints,
   hasSelectedDayValue,
+  reduceLatestManualEntries,
   selectedDayCustomValues,
   selectedDayDisplayValues,
   shouldOfferCustomHint,
@@ -346,5 +347,164 @@ describe('shouldOfferCustomHint', () => {
         hints,
       })
     ).toBe(false);
+  });
+});
+
+describe('reduceLatestManualEntries', () => {
+  const entry = (overrides: Record<string, unknown> = {}) => ({
+    id: 'e1',
+    category_id: 'cat-1',
+    value: '5',
+    entry_date: '2024-06-01',
+    entry_hour: null,
+    entry_timestamp: '2024-06-01T00:00:00.000Z',
+    source: 'manual',
+    ...overrides,
+  });
+
+  it('keeps the newest value per category on or before the day', () => {
+    const result = reduceLatestManualEntries(
+      [
+        entry({
+          id: 'a',
+          category_id: 'cat-1',
+          value: '5',
+          entry_date: '2024-06-01',
+        }),
+        entry({
+          id: 'b',
+          category_id: 'cat-1',
+          value: '9',
+          entry_date: '2024-06-10',
+        }),
+        entry({
+          id: 'c',
+          category_id: 'cat-2',
+          value: '3',
+          entry_date: '2024-06-02',
+        }),
+      ],
+      '2024-06-15',
+      isManualSource
+    );
+
+    expect(result).toEqual([
+      {
+        id: 'b',
+        category_id: 'cat-1',
+        value: '9',
+        entry_date: '2024-06-10',
+        source: 'manual',
+      },
+      {
+        id: 'c',
+        category_id: 'cat-2',
+        value: '3',
+        entry_date: '2024-06-02',
+        source: 'manual',
+      },
+    ]);
+  });
+
+  it('never suggests a value recorded after the selected day', () => {
+    const result = reduceLatestManualEntries(
+      [
+        entry({ id: 'past', value: '5', entry_date: '2024-06-01' }),
+        entry({ id: 'future', value: '99', entry_date: '2024-07-01' }),
+      ],
+      '2024-06-15',
+      isManualSource
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toBe('5');
+  });
+
+  it('ignores synced entries so a health sample is never a suggestion', () => {
+    const result = reduceLatestManualEntries(
+      [
+        entry({ id: 'sync', value: '12000', source: 'HealthConnect' }),
+        entry({ id: 'null', value: '7', source: null }),
+        entry({ id: 'manual', value: '5', source: 'manual' }),
+      ],
+      '2024-06-15',
+      isManualSource
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toBe('5');
+  });
+
+  it('breaks a same-day tie on the newest timestamp', () => {
+    const result = reduceLatestManualEntries(
+      [
+        entry({
+          id: 'old',
+          value: 'OLD',
+          entry_date: '2024-06-10',
+          entry_timestamp: '2024-06-10T08:00:00.000Z',
+        }),
+        entry({
+          id: 'new',
+          value: 'NEW',
+          entry_date: '2024-06-10',
+          entry_timestamp: '2024-06-10T20:00:00.000Z',
+        }),
+      ],
+      '2024-06-15',
+      isManualSource
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toBe('NEW');
+  });
+
+  it('skips entries with no usable value', () => {
+    const result = reduceLatestManualEntries(
+      [
+        entry({ id: 'blank', value: '' }),
+        entry({ id: 'null', value: null as unknown as string }),
+      ],
+      '2024-06-15',
+      isManualSource
+    );
+
+    expect(result).toEqual([]);
+  });
+
+  it('returns one row per category and never merges two', () => {
+    const result = reduceLatestManualEntries(
+      [
+        entry({ id: 'a', category_id: 'cat-1', value: '1' }),
+        entry({ id: 'b', category_id: 'cat-2', value: '2' }),
+        entry({ id: 'c', category_id: 'cat-3', value: '3' }),
+      ],
+      '2024-06-15',
+      isManualSource
+    );
+
+    expect(result.map((r) => r.category_id).sort()).toEqual([
+      'cat-1',
+      'cat-2',
+      'cat-3',
+    ]);
+  });
+
+  it('always labels the result manual, so the shape matches the bulk endpoint', () => {
+    const result = reduceLatestManualEntries(
+      [entry({ source: 'Manual' })],
+      '2024-06-15',
+      // A permissive predicate to prove the label is not copied from the source.
+      () => true
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].source).toBe('manual');
+  });
+
+  it('handles an empty list', () => {
+    expect(reduceLatestManualEntries([], '2024-06-15', isManualSource)).toEqual(
+      []
+    );
   });
 });

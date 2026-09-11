@@ -1,5 +1,9 @@
+import { compareDays } from '@workspace/shared';
 import type { CheckInMeasurement } from '../types/measurements';
-import type { LatestManualCustomEntry } from '../types/customMeasurements';
+import type {
+  CustomMeasurementEntry,
+  LatestManualCustomEntry,
+} from '../types/customMeasurements';
 import {
   FIELD_FORM_KEYS,
   buildStandardFormFromMeasurement,
@@ -117,6 +121,56 @@ export function shouldOfferStandardHint(params: {
 }
 
 export type CustomFieldHints = Record<string, string>;
+
+/**
+ * Narrows a list of custom entries to the newest MANUAL value per category on
+ * or before `date`.
+ *
+ * Only used against a server that predates the bulk hint endpoint, where the
+ * client has to narrow the list itself. The result is shaped exactly like the
+ * bulk endpoint's response so both paths feed the same derivation.
+ *
+ * Ordering mirrors the server's query: the newest day wins, and within a day
+ * the newest timestamp wins. Entries after the selected day are ignored, so a
+ * day in the past cannot suggest a value recorded later than it.
+ */
+export function reduceLatestManualEntries(
+  entries: readonly CustomMeasurementEntry[],
+  date: string,
+  isManual: (source: string | null | undefined) => boolean
+): LatestManualCustomEntry[] {
+  const best = new Map<string, CustomMeasurementEntry>();
+
+  for (const entry of entries) {
+    if (!isManual(entry.source)) continue;
+    if (entry.value == null || entry.value === '') continue;
+    if (compareDays(entry.entry_date, date) > 0) continue;
+
+    const current = best.get(entry.category_id);
+    if (current == null || isNewerEntry(entry, current)) {
+      best.set(entry.category_id, entry);
+    }
+  }
+
+  return [...best.values()].map((entry) => ({
+    id: entry.id,
+    category_id: entry.category_id,
+    value: entry.value,
+    entry_date: entry.entry_date,
+    // Always the literal 'manual': a non-manual entry never reaches here.
+    source: 'manual',
+  }));
+}
+
+/** Newest day first, then newest timestamp; a missing timestamp loses. */
+function isNewerEntry(
+  candidate: CustomMeasurementEntry,
+  current: CustomMeasurementEntry
+): boolean {
+  const byDay = compareDays(candidate.entry_date, current.entry_date);
+  if (byDay !== 0) return byDay > 0;
+  return (candidate.entry_timestamp ?? '') > (current.entry_timestamp ?? '');
+}
 
 /**
  * Previous manual values for custom Daily categories, keyed by category id.

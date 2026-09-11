@@ -1980,6 +1980,28 @@ describe('MeasurementsAddScreen — custom previous-value hints', () => {
     expect(screen.getByText('Last: Yes')).toBeTruthy();
     expect(screen.getByTestId('use-last-custom-cat-bool')).toBeTruthy();
   });
+
+  test('surfaces a failed previous-value lookup instead of showing a bare 0', () => {
+    // A server without the endpoint answers 404. Without this note every
+    // custom field falls back to the generic '0' placeholder, which reads as
+    // "the previous value is zero" rather than "there is no previous value".
+    mockUseLatestManualCustomEntriesOnOrBefore.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+    } as unknown as ReturnType<typeof useLatestManualCustomEntriesOnOrBefore>);
+
+    const screen = renderScreen();
+
+    expect(screen.getByTestId('custom-hints-unavailable')).toBeTruthy();
+  });
+
+  test('shows no failure note when the lookup succeeded with no history', () => {
+    setLatestCustomEntries([]);
+    const screen = renderScreen();
+
+    expect(screen.queryByTestId('custom-hints-unavailable')).toBeNull();
+  });
 });
 
 describe('MeasurementsAddScreen — body fat calculator', () => {
