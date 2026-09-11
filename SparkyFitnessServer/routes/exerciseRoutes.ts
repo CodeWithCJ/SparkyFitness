@@ -781,7 +781,10 @@ router.get('/wger-filters', authenticate, async (req, res, next) => {
  */
 router.get('/names', authenticate, async (req, res, next) => {
   try {
-    const { muscle, equipment } = req.query;
+    const muscle =
+      typeof req.query.muscle === 'string' ? req.query.muscle : undefined;
+    const equipment =
+      typeof req.query.equipment === 'string' ? req.query.equipment : undefined;
     const exerciseNames = await reportRepository.getExerciseNames(
       req.userId,
       muscle,
