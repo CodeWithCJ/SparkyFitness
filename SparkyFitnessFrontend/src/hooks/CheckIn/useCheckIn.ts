@@ -10,6 +10,7 @@ import {
   loadLatestCheckInMeasurements,
   loadCheckInMeasurementsForDate,
   loadExistingCustomMeasurements,
+  loadLatestManualCustomEntriesOnOrBefore,
   saveCheckInMeasurements,
   saveCustomMeasurement,
   getMostRecentMeasurement,
@@ -96,6 +97,27 @@ export const useExistingCustomMeasurements = (date: string) => {
       errorMessage: i18n.t(
         'checkIn.failedToLoadExistingCustom',
         'Failed to load existing custom measurements.'
+      ),
+    },
+  });
+};
+
+/**
+ * Previous manual value per custom category, used as the check-in's
+ * previous-value hints.
+ *
+ * Kept separate from `useExistingCustomMeasurements`, which answers what was
+ * recorded on the selected day: the form needs both so a suggestion is never
+ * mistaken for an actual value.
+ */
+export const useLatestManualCustomEntriesOnOrBefore = (date: string) => {
+  return useQuery({
+    queryKey: checkInKeys.latestManualCustom(date),
+    queryFn: () => loadLatestManualCustomEntriesOnOrBefore(date),
+    meta: {
+      errorMessage: i18n.t(
+        'checkIn.failedToLoadPreviousCustom',
+        'Failed to load previous custom values.'
       ),
     },
   });

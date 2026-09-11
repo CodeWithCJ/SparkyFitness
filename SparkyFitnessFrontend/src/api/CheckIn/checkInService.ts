@@ -10,6 +10,8 @@ import {
   UpdateCustomMeasurementsRequest,
   recentCheckInMeasurementsSchema,
   RecentCheckInMeasurementsResponse,
+  LatestManualCustomEntry,
+  latestManualCustomEntrySchema,
 } from '@workspace/shared';
 import z from 'zod';
 
@@ -99,6 +101,24 @@ export const loadCheckInMeasurementsForDate = async (
     selectedDate
   );
   return rows[0] ?? null;
+};
+
+/**
+ * Latest manual value per custom category on or before the given day.
+ *
+ * One request resolves every category server-side, which is what lets the
+ * check-in show a previous-value hint per custom category without an N+1 query.
+ * The server filters to manual sources, so a health-sync sample is never
+ * returned as something the user could adopt.
+ */
+export const loadLatestManualCustomEntriesOnOrBefore = async (
+  selectedDate: string
+): Promise<LatestManualCustomEntry[]> => {
+  const response = await apiCall(
+    `/measurements/custom-entries/latest-manual-on-or-before-date?date=${encodeURIComponent(selectedDate)}`,
+    { method: 'GET', suppress404Toast: true }
+  );
+  return z.array(latestManualCustomEntrySchema).parse(response ?? []);
 };
 
 export const loadExistingCustomMeasurements = async (

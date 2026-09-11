@@ -11,6 +11,8 @@ export const checkInKeys = {
     [...checkInKeys.all, 'dayCheckIn', date] as const,
   existingCustom: (date: string) =>
     [...checkInKeys.all, 'existingCustom', date] as const,
+  latestManualCustom: (date: string) =>
+    [...checkInKeys.all, 'latestManualCustom', date] as const,
   mostRecent: (type: string) =>
     [...checkInKeys.all, 'mostRecent', type] as const,
   customEntries: (categoryId: string, userId?: string) =>

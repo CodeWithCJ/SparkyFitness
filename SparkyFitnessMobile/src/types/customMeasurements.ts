@@ -48,14 +48,8 @@ export interface SaveCustomMeasurementPayload {
  * One row of the per-category "latest manual value on or before a date" lookup
  * that backs previous-value hints.
  *
- * Deliberately narrower than `CustomMeasurementEntry`: the endpoint resolves one
- * row per category and returns only what a hint needs, so there is no category
- * join and no notes/timestamps to misread as an editable entry.
+ * The shape is owned by `@workspace/shared` because the web check-in consumes
+ * the same endpoint; re-exported here so existing importers keep their path and
+ * the two clients cannot drift apart.
  */
-export interface LatestManualCustomEntry {
-  id: string;
-  category_id: string;
-  value: string;
-  entry_date: string;
-  source: string;
-}
+export type { LatestManualCustomEntry } from '@workspace/shared';
