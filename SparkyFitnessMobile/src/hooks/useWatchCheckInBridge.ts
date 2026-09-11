@@ -280,15 +280,13 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   const watchContainers: WatchContainerPayload[] = useMemo(
     () =>
       (containers ?? []).flatMap((container) => {
-        // Null means the container is linked to a food, so its amount lives on
-        // the food rather than in millilitres. Such a container is dropped
-        // rather than sent: every square on the watch is "tap to add this many
-        // ml", and the bottle's fill and queued line are both fractions of a
-        // millilitre goal. There is nothing honest for it to draw, and the
-        // phone's own gauge describes the press in words instead — which a
-        // watch square has no room for.
-        const servingVolumeMl = getServingVolume(container);
-        if (servingVolumeMl == null) return [];
+        // For standard containers, getServingVolume computes the volume per serving.
+        // For food-linked containers, fall back to the linked variant's water volume or container volume.
+        const servingVolumeMl =
+          getServingVolume(container) ??
+          (container.linked_variant_water_ml != null
+            ? Number(container.linked_variant_water_ml)
+            : container.volume || 0);
 
         return [
           {

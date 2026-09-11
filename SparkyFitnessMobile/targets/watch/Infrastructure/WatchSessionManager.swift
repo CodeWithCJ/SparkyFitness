@@ -76,7 +76,13 @@ final class WatchSessionManager: NSObject, ObservableObject {
             deferredTransfers.append(payload)
             return
         }
-        WCSession.default.transferUserInfo(payload)
+        if WCSession.default.isReachable {
+            WCSession.default.sendMessage(payload, replyHandler: nil) { _ in
+                WCSession.default.transferUserInfo(payload)
+            }
+        } else {
+            WCSession.default.transferUserInfo(payload)
+        }
     }
 
     private func flushDeferredTransfers() {
@@ -84,7 +90,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
         let queued = deferredTransfers
         deferredTransfers.removeAll()
         for payload in queued {
-            WCSession.default.transferUserInfo(payload)
+            transfer(payload)
         }
     }
 
@@ -108,7 +114,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
         // pending check-in twice.
         guard isActivated else { return }
         for checkIn in store.retryable {
-            WCSession.default.transferUserInfo(OutboundPayloads.checkIn(checkIn))
+            transfer(OutboundPayloads.checkIn(checkIn))
         }
     }
 
