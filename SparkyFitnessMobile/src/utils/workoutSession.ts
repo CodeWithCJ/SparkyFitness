@@ -848,7 +848,7 @@ export function resolveAssumedSetValues(
         effectivePreviousWeight ??
         planned?.weight ??
         lastEffective[tier].weight,
-      reps: planned?.reps ?? null,
+      reps: planned?.reps ?? previous?.reps ?? lastEffective[tier].reps,
       duration:
         previous?.duration ??
         planned?.duration ??

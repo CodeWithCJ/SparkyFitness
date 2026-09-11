@@ -206,6 +206,7 @@ interface ActiveWorkoutExerciseCardProps {
     key: string,
     handle: SetRowAccessoryHandle | null
   ) => void;
+  onUpdateProgression?: (exerciseId: string, patch: any) => void;
 }
 
 /**
@@ -285,6 +286,7 @@ function ActiveWorkoutExerciseCard({
   onToggleComplete,
   onEditFieldChange,
   onRegisterAccessoryHandle,
+  onUpdateProgression,
 }: ActiveWorkoutExerciseCardProps) {
   const { t } = useTranslation();
   const readOnly = mode === 'view';
@@ -344,22 +346,32 @@ function ActiveWorkoutExerciseCard({
   const progressionResult = useMemo(() => {
     if (!exercise.rep_goal && exercise.progression_mode !== 'fixed')
       return null;
+    // Count only working sets (exclude warmups)
+    const workingSets = exercise.sets.filter((s) => s.set_type !== 'warmup');
+    const targetSets = workingSets.length || 3;
+
     const config: ExerciseProgressionConfig = {
       progressionMode: (exercise.progression_mode as any) ?? 'rep_goal',
-      targetSets: exercise.sets.length || 3,
+      targetSets,
       repGoal: exercise.rep_goal,
       incrementType: exercise.increment_type ?? 'weight',
       incrementValue: exercise.increment_value ?? 2.5,
       equipmentBrand: exercise.equipment_brand ?? null,
     };
 
+    // Filter out warmup sets from previous session history
+    const workingPreviousSets = (previousSessionSets || []).filter(
+      (s: any) => s.setType !== 'warmup'
+    );
+    const firstWorking = workingPreviousSets[0];
+
     const lastPerformance: LastExercisePerformance | null =
-      previousSessionSets && previousSessionSets.length > 0
+      workingPreviousSets.length > 0
         ? {
-            baseWeight: previousSessionSets[0]?.weight
-              ? weightFromKg(previousSessionSets[0].weight, weightUnit)
+            baseWeight: firstWorking?.weight
+              ? weightFromKg(firstWorking.weight, weightUnit)
               : 0,
-            sets: previousSessionSets.map((s, idx) => ({
+            sets: workingPreviousSets.map((s, idx) => ({
               setNumber: idx + 1,
               reps: s.reps ?? 0,
               weight: s.weight ? weightFromKg(s.weight, weightUnit) : 0,
@@ -399,9 +411,9 @@ function ActiveWorkoutExerciseCard({
 
   const handleCommitProgression = useCallback(
     (patch: any) => {
-      onCommitField?.(exercise.id, patch);
+      onUpdateProgression?.(exercise.id, patch);
     },
-    [exercise.id, onCommitField]
+    [exercise.id, onUpdateProgression]
   );
 
   // Assumed (placeholder) weight/reps per row — live only. Resolved from the
@@ -1224,17 +1236,7 @@ function ActiveWorkoutExerciseCard({
             const nextSet = exercise.sets[index + 1];
 
             // In preview mode ('view'), display the calculated progression weight if goal was hit
-            const effectiveSetWeight =
-              readOnly &&
-              excludePresetEntryId == null &&
-              progressionResult?.goalAchieved &&
-              progressionResult.status === 'PROGRESSION_WEIGHT_INCREASE'
-                ? weightToKg(progressionResult.suggestedWeight, weightUnit)
-                : set.weight;
-
-            const effectiveSet = readOnly
-              ? { ...set, weight: effectiveSetWeight }
-              : set;
+            const effectiveSet = set;
 
             return (
               <React.Fragment key={renderKey}>
