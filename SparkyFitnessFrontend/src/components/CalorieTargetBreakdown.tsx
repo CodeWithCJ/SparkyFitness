@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
+import { CONVERSION_FACTORS, kgToLbs } from '@/utils/unitConversions';
 import {
   getBmrAlgorithmLabel,
   getBodyFatAlgorithmLabel,
@@ -100,10 +101,31 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
   bmrSource,
 }) => {
   const { t } = useTranslation();
-  const { energyUnit, convertEnergy } = usePreferences();
+  const { energyUnit, convertEnergy, weightUnit = 'kg' } = usePreferences();
   const bmrAlgorithmLabel = getBmrAlgorithmLabel(t, bmrAlgorithm);
   const bodyFatAlgorithmLabel = getBodyFatAlgorithmLabel(t, bodyFatAlgorithm);
   const goalModeLabel = getGoalModeLabel(t, goalMode);
+
+  // Adaptive TDEE stores mass in kg. Convert the shown working to the
+  // configured unit so the trend matches every other weight display. Stones
+  // rates use pounds: a per-stone energy density is not a useful working figure.
+  const trendMassUnit: 'kg' | 'lbs' =
+    weightUnit === 'lbs' || weightUnit === 'st_lbs' ? 'lbs' : 'kg';
+  const trendMassUnitName = trendMassUnit === 'lbs' ? 'pound' : 'kilogram';
+  const kcalPerTrendUnit =
+    trendMassUnit === 'lbs'
+      ? Math.round(ENERGY_DENSITY_KCAL_PER_KG * CONVERSION_FACTORS.LBS_TO_KG)
+      : ENERGY_DENSITY_KCAL_PER_KG;
+  const fatPerTrendUnit =
+    trendMassUnit === 'lbs'
+      ? Math.round(FAT_KCAL_PER_KG * CONVERSION_FACTORS.LBS_TO_KG)
+      : FAT_KCAL_PER_KG;
+  const leanPerTrendUnit =
+    trendMassUnit === 'lbs'
+      ? Math.round(LEAN_TISSUE_KCAL_PER_KG * CONVERSION_FACTORS.LBS_TO_KG)
+      : LEAN_TISSUE_KCAL_PER_KG;
+  const toTrendMass = (kg: number) =>
+    trendMassUnit === 'lbs' ? kgToLbs(kg) : kg;
 
   const isAdaptiveMethod = goalModeCalculationMethod === 'adaptive';
   // Same label matrix as the CalculationSettings Live Preview (shared t() keys):
@@ -606,22 +628,33 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
           </div>
           <div className="text-muted-foreground text-sm bg-muted/40 p-1.5 rounded border border-border/60 space-y-1 text-left">
             <div className="font-semibold text-foreground">
-              {t(
-                'settings.breakdown.adaptiveFormula',
-                'Formula: Average Daily Calories − (Daily Weight Change in kg × {{kcalPerKg}} kcal/kg)',
-                { kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG }
-              )}
+              {t('settings.breakdown.adaptiveFormula', {
+                defaultValue:
+                  'Formula: Average Daily Calories − (Daily Weight Change in {{massUnit}} × {{kcalPerUnit}} kcal/{{massUnit}})',
+                // de/es/ru still interpolate {{kcalPerKg}} into a string that
+                // says "kg". Keep that placeholder on the kg constant so a
+                // pounds user does not see "2722 kcal/kg". English uses
+                // kcalPerUnit + massUnit, which track the configured unit.
+                kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG,
+                kcalPerUnit: kcalPerTrendUnit,
+                massUnit: trendMassUnit,
+                unit: trendMassUnit,
+              })}
             </div>
             <p className="text-muted-foreground">
-              {t(
-                'settings.breakdown.adaptiveFormulaExplainer',
-                '{{kcalPerKg}} kcal/kg is how much energy a kilogram of body weight represents, so your weight trend can be converted into calories. Body weight lost or gained is a mix of fat (~{{fatPerKg}} kcal/kg) and lean tissue and water (~{{leanPerKg}} kcal/kg), and {{kcalPerKg}} reflects a typical blend.',
-                {
-                  kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG,
-                  fatPerKg: FAT_KCAL_PER_KG.toLocaleString(),
-                  leanPerKg: LEAN_TISSUE_KCAL_PER_KG.toLocaleString(),
-                }
-              )}
+              {t('settings.breakdown.adaptiveFormulaExplainer', {
+                defaultValue:
+                  '{{kcalPerUnit}} kcal/{{massUnit}} is how much energy a {{unitName}} of body weight represents, so your weight trend can be converted into calories. Body weight lost or gained is a mix of fat (~{{fatPerUnit}} kcal/{{massUnit}}) and lean tissue and water (~{{leanPerUnit}} kcal/{{massUnit}}), and {{kcalPerUnit}} reflects a typical blend.',
+                kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG,
+                kcalPerUnit: kcalPerTrendUnit,
+                massUnit: trendMassUnit,
+                unit: trendMassUnit,
+                unitName: trendMassUnitName,
+                fatPerKg: FAT_KCAL_PER_KG.toLocaleString(),
+                fatPerUnit: fatPerTrendUnit.toLocaleString(),
+                leanPerKg: LEAN_TISSUE_KCAL_PER_KG.toLocaleString(),
+                leanPerUnit: leanPerTrendUnit.toLocaleString(),
+              })}
             </p>
             {previewResult.insufficientHistory ? (
               <div className="space-y-2 mt-1">
@@ -830,55 +863,60 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                   {typeof adaptiveTdeeData?.weightChangeCalories ===
                     'number' && (
                     <li>
-                      {t(
-                        'diary.calculateExplanation.weightTrendTerm',
-                        'Weight trend: {{start}} → {{end}} kg ({{change}} kg across all {{days}} days of the window) = {{daily}} kg/day — 7-day averages of your logged weights, not the readings themselves, with missing days filled in between the ones either side',
-                        {
-                          start: adaptiveTdeeData.startWeightTrend ?? 0,
-                          end: adaptiveTdeeData.endWeightTrend ?? 0,
-                          change: (
-                            adaptiveTdeeData.weightChangeKg ?? 0
-                          ).toFixed(2),
-                          days: adaptiveTdeeData.daysInWindow ?? 0,
-                          daily: (
-                            adaptiveTdeeData.dailyWeightChangeKg ?? 0
-                          ).toFixed(4),
-                        }
-                      )}
+                      {t('diary.calculateExplanation.weightTrendTerm', {
+                        defaultValue:
+                          'Weight trend: {{start}} → {{end}} ({{change}} across all {{days}} days of the window) = {{daily}} {{massUnit}}/day — 7-day averages of your logged weights, not the readings themselves, with missing days filled in between the ones either side',
+                        start: `${toTrendMass(
+                          adaptiveTdeeData.startWeightTrend ?? 0
+                        ).toFixed(1)} ${trendMassUnit}`,
+                        end: `${toTrendMass(
+                          adaptiveTdeeData.endWeightTrend ?? 0
+                        ).toFixed(1)} ${trendMassUnit}`,
+                        change: `${toTrendMass(
+                          adaptiveTdeeData.weightChangeKg ?? 0
+                        ).toFixed(2)} ${trendMassUnit}`,
+                        days: adaptiveTdeeData.daysInWindow ?? 0,
+                        daily: toTrendMass(
+                          adaptiveTdeeData.dailyWeightChangeKg ?? 0
+                        ).toFixed(4),
+                        unit: trendMassUnit,
+                        massUnit: trendMassUnit,
+                      })}
                     </li>
                   )}
                   {typeof adaptiveTdeeData?.weightChangeCalories ===
                     'number' && (
                     <li>
-                      {t(
-                        'diary.calculateExplanation.weightTrendCalories',
-                        'Energy from that trend: −({{daily}} kg/day × {{kcalPerKg}} kcal/kg) ≈ {{value}}',
-                        {
-                          daily: (
-                            adaptiveTdeeData.dailyWeightChangeKg ?? 0
-                          ).toFixed(4),
-                          kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG,
-                          // Negated on purpose. The server computes
-                          // rawTdee = avgIntake − dailyWeightChange × 6000, so the
-                          // term added to intake is minus the product of the two
-                          // factors printed here. Without the sign the line reads
-                          // '−0.0185 × 6000 = +111', which is the wrong number in
-                          // the one panel built for checking the arithmetic.
-                          // Approximate, deliberately. The intake and the total
-                          // are each rounded on their own, so the difference
-                          // between them can sit a kcal away from what the
-                          // rounded daily rate multiplies out to. The sum line
-                          // below is the one that has to reconcile exactly, and
-                          // it does; claiming '=' here would be the false half.
-                          // Evaluated against the kcal constant so the equation
-                          // reproduces, with the converted figure appended when the
-                          // viewer reads another unit. The energy densities are
-                          // reference values from the literature — restating them as
-                          // 25,104 kJ/kg would make the sum work and the citation
-                          // unrecognisable.
-                          value: adaptiveDeltaText,
-                        }
-                      )}
+                      {t('diary.calculateExplanation.weightTrendCalories', {
+                        defaultValue:
+                          'Energy from that trend: −({{daily}} {{massUnit}}/day × {{kcalPerUnit}} kcal/{{massUnit}}) ≈ {{value}}',
+                        daily: toTrendMass(
+                          adaptiveTdeeData.dailyWeightChangeKg ?? 0
+                        ).toFixed(4),
+                        kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG,
+                        kcalPerUnit: kcalPerTrendUnit,
+                        unit: trendMassUnit,
+                        massUnit: trendMassUnit,
+                        // Negated on purpose. The server computes
+                        // rawTdee = avgIntake − dailyWeightChange × 6000, so the
+                        // term added to intake is minus the product of the two
+                        // factors printed here. Without the sign the line reads
+                        // '−0.0185 × 6000 = +111', which is the wrong number in
+                        // the one panel built for checking the arithmetic.
+                        // Approximate, deliberately. The intake and the total
+                        // are each rounded on their own, so the difference
+                        // between them can sit a kcal away from what the
+                        // rounded daily rate multiplies out to. The sum line
+                        // below is the one that has to reconcile exactly, and
+                        // it does; claiming '=' here would be the false half.
+                        // Evaluated against the kcal constant so the equation
+                        // reproduces, with the converted figure appended when the
+                        // viewer reads another unit. The energy densities are
+                        // reference values from the literature — restating them as
+                        // 25,104 kJ/kg would make the sum work and the citation
+                        // unrecognisable.
+                        value: adaptiveDeltaText,
+                      })}
                     </li>
                   )}
                   <li>
