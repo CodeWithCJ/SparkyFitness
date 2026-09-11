@@ -387,12 +387,12 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
           {/* Energy Breakdown */}
           <div className="grid grid-cols-3 gap-2 text-center text-sm">
             {/* Eaten */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-center text-lg font-bold text-green-600">
-                <Utensils className="w-4 h-4 mr-1" />
-                {display.eaten}
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center justify-center text-lg font-bold text-green-600 whitespace-nowrap">
+                <Utensils className="w-4 h-4 mr-1 shrink-0" />
+                <span>{display.eaten}</span>
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500 whitespace-nowrap">
                 {getEnergyUnitString(energyUnit)}{' '}
                 {t('exercise.dailyProgress.eaten', 'eaten')}
               </div>
@@ -402,12 +402,12 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="space-y-1 cursor-help">
-                    <div className="flex items-center justify-center text-lg font-bold text-orange-600">
-                      <Flame className="w-4 h-4 mr-1" />
-                      {display.burnedTotal}
+                  <div className="space-y-1 cursor-help min-w-0">
+                    <div className="flex items-center justify-center text-lg font-bold text-orange-600 whitespace-nowrap">
+                      <Flame className="w-4 h-4 mr-1 shrink-0" />
+                      <span>{display.burnedTotal}</span>
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 whitespace-nowrap">
                       {getEnergyUnitString(energyUnit)}{' '}
                       {t('exercise.dailyProgress.burned', 'burned')}
                     </div>
@@ -492,14 +492,20 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
             </TooltipProvider>
 
             {/* Goal */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-center text-lg font-bold dark:text-slate-400 text-gray-900">
-                <Flag className="w-4 h-4 mr-1" />
-                {isTargetBand
-                  ? `${targetMinConverted}–${targetMaxConverted}`
-                  : display.goal}
+            <div className="space-y-1 min-w-0">
+              <div
+                className={`flex items-center justify-center font-bold dark:text-slate-400 text-gray-900 whitespace-nowrap ${
+                  isTargetBand ? 'text-[14px] sm:text-[15px]' : 'text-lg'
+                }`}
+              >
+                <Flag className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-0.5 sm:mr-1 shrink-0" />
+                <span>
+                  {isTargetBand
+                    ? `${targetMinConverted}–${targetMaxConverted}`
+                    : display.goal}
+                </span>
               </div>
-              <div className="text-xs dark:text-slate-400 text-gray-500">
+              <div className="text-xs dark:text-slate-400 text-gray-500 whitespace-nowrap">
                 {getEnergyUnitString(energyUnit)}{' '}
                 {t('exercise.dailyProgress.goal', 'goal')}
               </div>
