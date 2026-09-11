@@ -13,6 +13,7 @@ import {
   CONNECTION_CHECK_TIMEOUT_MS,
   DEFAULT_API_TIMEOUT_MS,
   fetchWithTimeout,
+  withTimeout,
 } from '../../utils/concurrency';
 
 // Re-exported so existing `import { LoginError } from '.../authService'` call
@@ -267,21 +268,53 @@ const parseAuthErrorText = (errorText: string): string => {
   return errorText.trim();
 };
 
-export const clearAuthCookies = async (): Promise<void> => {
-  await new Promise<void>((resolve) => {
+/**
+ * How long to wait for the native cookie jar to answer. Android's
+ * `ForwardingCookieHandler.clearCookies` is `cookieManager?.removeAllCookies`,
+ * and `cookieManager` is null whenever the WebView provider is missing -- a
+ * case React Native handles by returning null rather than throwing. The call
+ * then does nothing *and never invokes the callback*, so without a deadline the
+ * promise, and the identity change awaiting it, would hang forever.
+ */
+const COOKIE_CLEAR_TIMEOUT_MS = 3_000;
+
+/**
+ * Empties the native HTTP cookie jar.
+ *
+ * Returns whether the jar can be considered cleared. False means a session
+ * cookie may still be on the wire, which matters because a server that
+ * resolves it ahead of our Bearer token would answer as the previous account,
+ * so failures are logged as errors rather than passed over.
+ */
+export const clearAuthCookies = async (): Promise<boolean> => {
+  if (!networkingModule) {
+    addLog(
+      '[AuthService] No Networking module: auth cookies were left in place.',
+      'ERROR'
+    );
+    return false;
+  }
+
+  const cleared = new Promise<boolean>((resolve, reject) => {
     try {
-      networkingModule?.clearCookies(() => resolve());
-      if (!networkingModule) {
-        resolve();
-      }
+      // The callback's boolean reports whether anything was *removed*, not
+      // whether the sweep worked: Android answers false for an already-empty
+      // jar. Being called at all is the success signal.
+      networkingModule.clearCookies(() => resolve(true));
     } catch (error) {
-      addLog(
-        `[AuthService] Failed to clear auth cookies: ${getErrorMessage(error)}`,
-        'WARNING'
-      );
-      resolve();
+      reject(error);
     }
   });
+
+  try {
+    return await withTimeout(cleared, COOKIE_CLEAR_TIMEOUT_MS, 'Cookie clear');
+  } catch (error) {
+    addLog(
+      `[AuthService] Failed to clear auth cookies: ${getErrorMessage(error)}`,
+      'ERROR'
+    );
+    return false;
+  }
 };
 
 /**

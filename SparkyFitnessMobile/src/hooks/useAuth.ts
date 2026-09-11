@@ -50,7 +50,15 @@ export function useAuth() {
       // server resolves the stale cookie ahead of the Bearer token this app
       // sends and answers as the account we just left. Awaited, unlike the
       // image sweep below, because the next request must not overtake it.
-      await clearAuthCookies();
+      // A failure is reported rather than passed over: it leaves a session
+      // cookie that a server which prefers it over the Bearer token would
+      // answer from, so the reader needs to know the sweep did not happen.
+      if (!(await clearAuthCookies())) {
+        addLog(
+          'Identity changed but the cookie jar was not cleared; requests may still carry the previous session.',
+          'ERROR'
+        );
+      }
       // The image caches go too, but for data at rest rather than for what the
       // next account can see: every server-backed image URI carries a uuid --
       // `check-in-photos/file/{uuid}` and `/uploads/{domain}/{id}/{uuid}-name`

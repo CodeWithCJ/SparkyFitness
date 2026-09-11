@@ -15,7 +15,7 @@ import { createTestQueryClient, createQueryWrapper } from './queryTestUtils';
 import type { QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/authService', () => ({
-  clearAuthCookies: jest.fn().mockResolvedValue(undefined),
+  clearAuthCookies: jest.fn().mockResolvedValue(true),
   setOnSessionExpired: jest.fn(),
   setOnNoConfigs: jest.fn(),
   setOnIdentityChanged: jest.fn(),
@@ -182,6 +182,43 @@ describe('useAuth', () => {
       await pending;
     });
     expect(settled).toBe(true);
+  });
+
+  test('a cookie jar that could not be cleared is reported', async () => {
+    // The native sweep can fail without throwing: no Networking module, or a
+    // missing WebView provider leaving the callback uncalled. Passing that over
+    // would leave the previous account's session cookie on the wire silently.
+    mockClearAuthCookies.mockResolvedValueOnce(false);
+
+    renderUseAuth();
+    await act(async () => {});
+    mockAddLog.mockClear();
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      await identityChangedCb();
+    });
+
+    expect(mockAddLog).toHaveBeenCalledWith(
+      expect.stringContaining('cookie jar was not cleared'),
+      'ERROR'
+    );
+  });
+
+  test('a cleared cookie jar reports nothing', async () => {
+    renderUseAuth();
+    await act(async () => {});
+    mockAddLog.mockClear();
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      await identityChangedCb();
+    });
+
+    expect(mockAddLog).not.toHaveBeenCalledWith(
+      expect.stringContaining('cookie jar'),
+      'ERROR'
+    );
   });
 
   test('a rejected image cache clear is reported, not swallowed', async () => {

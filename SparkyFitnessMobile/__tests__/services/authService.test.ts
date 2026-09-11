@@ -10,7 +10,6 @@ import {
   verifyTotp,
   sendEmailOtp,
   verifyEmailOtp,
-  clearAuthCookies,
   _requestPasskeyRegistrationTicket,
   addPasskey,
   _clearTrustedOriginCache,
@@ -649,8 +648,60 @@ describe('authService', () => {
   // --- clearAuthCookies ---
 
   describe('clearAuthCookies', () => {
-    test('resolves when NativeModules.Networking is undefined', async () => {
-      await expect(clearAuthCookies()).resolves.toBeUndefined();
+    // `networkingModule` is read once at import, so each case installs its own
+    // fake and loads the service fresh against it.
+    // isolateModules rather than resetModules: the latter empties the registry
+    // the rest of this file is still holding references into, which breaks the
+    // mocks of tests that run afterwards.
+    const loadWithNetworking = (
+      networking: unknown
+    ): (() => Promise<boolean>) => {
+      let clear!: () => Promise<boolean>;
+      jest.isolateModules(() => {
+        const rn = require('react-native');
+        rn.NativeModules.Networking = networking;
+        clear = require('../../src/services/api/authService').clearAuthCookies;
+      });
+      return clear;
+    };
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    test('reports failure when NativeModules.Networking is missing', async () => {
+      await expect(loadWithNetworking(undefined)()).resolves.toBe(false);
+    });
+
+    test('treats an already-empty jar as cleared', async () => {
+      // Android's callback reports whether anything was *removed*, so an empty
+      // jar answers false. Being called at all is the success signal; reading
+      // that boolean as failure would cry wolf on every clean switch.
+      const clear = loadWithNetworking({
+        clearCookies: (cb: (result: boolean) => void) => cb(false),
+      });
+      await expect(clear()).resolves.toBe(true);
+    });
+
+    test('reports failure when the native call throws', async () => {
+      const clear = loadWithNetworking({
+        clearCookies: () => {
+          throw new Error('no cookie manager');
+        },
+      });
+      await expect(clear()).resolves.toBe(false);
+    });
+
+    test('gives up instead of hanging when the callback never fires', async () => {
+      // ForwardingCookieHandler is `cookieManager?.removeAllCookies`, and
+      // cookieManager is null when the WebView provider is missing: the call
+      // does nothing and never calls back. Without a deadline this would stall
+      // the identity change awaiting it forever.
+      jest.useFakeTimers();
+      const clear = loadWithNetworking({ clearCookies: () => {} });
+      const pending = clear();
+      jest.advanceTimersByTime(3_000);
+      await expect(pending).resolves.toBe(false);
     });
   });
 
