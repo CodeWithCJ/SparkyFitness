@@ -24,6 +24,10 @@ import {
   searchTandoorFoods,
   searchNorishFoods,
 } from './foodIntegrationService.js';
+import {
+  rankProviderMatches,
+  type ProviderFoodItem,
+} from '../utils/foodRanking.js';
 
 import type { ProviderType } from '../constants/foodProviders.js';
 import type { OpenFoodFactsCredentialScope } from '../integrations/openfoodfacts/openFoodFactsAuth.js';
@@ -442,5 +446,15 @@ export async function searchProviderFoods(
     }
   }
 
-  return { foods, pagination };
+  // All VALID_PROVIDER_TYPES are food providers (see constants/foodProviders.ts),
+  // so every case above lands here and gets ranked once, in one place, rather
+  // than duplicating the sort per-case. Without this, providers that list
+  // branded/processed items ahead of the plain whole food a user actually
+  // searched for (e.g. OpenFoodFacts for "chicken breast") passed that raw
+  // order straight through to the manual search UI and the mobile app — only
+  // the chatbot/photo-import path (via foodProviderLookupService.ts) ranked
+  // its results.
+  const ranked = rankProviderMatches(foods as ProviderFoodItem[], query);
+
+  return { foods: ranked, pagination };
 }

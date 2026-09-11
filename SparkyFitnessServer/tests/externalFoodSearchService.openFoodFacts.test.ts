@@ -42,7 +42,10 @@ vi.mock('../integrations/swissfood/swissFoodService.js', () => ({
 
 import externalProviderService from '../services/externalProviderService.js';
 import preferenceService from '../services/preferenceService.js';
-import { searchOpenFoodFacts } from '../integrations/openfoodfacts/openFoodFactsService.js';
+import {
+  searchOpenFoodFacts,
+  mapOpenFoodFactsProduct,
+} from '../integrations/openfoodfacts/openFoodFactsService.js';
 import {
   resolveOpenFoodFactsProviderId,
   searchProviderFoods,
@@ -168,5 +171,52 @@ describe('searchProviderFoods OpenFoodFacts pagination', () => {
       7,
       'global'
     );
+  });
+});
+
+describe('searchProviderFoods ranking', () => {
+  it('ranks a plain whole food ahead of a branded product for the same query', async () => {
+    vi.mocked(preferenceService.getUserPreferences).mockResolvedValue({
+      language: 'en',
+    });
+    // OpenFoodFacts itself returns the branded item first -- this is the raw,
+    // unranked provider order that reaches the UI today.
+    vi.mocked(searchOpenFoodFacts).mockResolvedValue({
+      products: [
+        {
+          code: '1',
+          product_name: 'Chicken Breast (Value Pack)',
+          brands: 'Acme Foods',
+          nutriments: {},
+        },
+        {
+          code: '2',
+          product_name: 'Chicken Breast',
+          brands: '',
+          nutriments: {},
+        },
+      ],
+      pagination: { page: 1, pageSize: 20, totalCount: 2, hasMore: false },
+    });
+    vi.mocked(mapOpenFoodFactsProduct).mockImplementation(
+      // @ts-expect-error test double only needs the fields the code under test reads
+      (p: { product_name?: string; brands?: string }) => ({
+        name: p.product_name ?? '',
+        brand: p.brands || '',
+        provider_type: 'openfoodfacts',
+      })
+    );
+
+    const result = await searchProviderFoods(
+      USER_ID,
+      'openfoodfacts',
+      'chicken breast',
+      {}
+    );
+
+    expect(result.foods.map((f) => (f as { name: string }).name)).toEqual([
+      'Chicken Breast',
+      'Chicken Breast (Value Pack)',
+    ]);
   });
 });
