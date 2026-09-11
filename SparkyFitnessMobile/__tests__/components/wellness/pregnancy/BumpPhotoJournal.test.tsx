@@ -29,6 +29,19 @@ jest.mock('../../../../src/hooks/usePregnancyPhotos', () => ({
   }),
 }));
 
+// Bump photos are fetched through the authenticated, owner-checked route, so
+// the component builds sources via this hook rather than a public /uploads URL.
+const mockGetPhotoSource = jest.fn((id: string) => ({
+  uri: `https://example.com/api/v2/pregnancy/photos/file/${id}`,
+  headers: { Authorization: 'Bearer test' },
+}));
+jest.mock('../../../../src/hooks/usePregnancyPhotoSource', () => ({
+  usePregnancyPhotoSource: () => ({
+    getPhotoSource: mockGetPhotoSource,
+    isReady: true,
+  }),
+}));
+
 jest.mock('../../../../src/hooks/useServerConfigs', () => ({
   useServerConfigs: () => ({
     activeConfig: { id: 'cfg-1', url: 'https://example.com' },
@@ -58,7 +71,6 @@ describe('BumpPhotoJournal', () => {
           pregnancy_id: 'p1',
           week: 12,
           entry_date: '2026-01-01',
-          file_path: 'uploads/pregnancy/u1/p1/w12-1.jpg',
           notes: null,
         },
       ],

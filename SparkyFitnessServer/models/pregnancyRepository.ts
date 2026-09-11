@@ -16,8 +16,13 @@ const KICK_COLS = `id, user_id, pregnancy_id, started_at, ended_at, kick_count, 
 const CONTRACTION_COLS = `id, user_id, pregnancy_id, started_at, ended_at, intensity,
   created_at, updated_at`;
 
+// Response columns only. file_path is deliberately omitted: the on-disk layout
+// is a server detail and bump photos are owner-only reproductive-health data,
+// so clients fetch bytes through GET /api/v2/pregnancy/photos/file/:id rather
+// than the public /uploads static mount. user_id is redundant (always the
+// caller). Internal queries that need file_path select it explicitly.
 const PHOTO_COLS =
-  'id, user_id, pregnancy_id, week, entry_date, file_path, notes, created_at, updated_at';
+  'id, pregnancy_id, week, entry_date, notes, created_at, updated_at';
 
 const CHECKLIST_COLS = `id, user_id, pregnancy_id, template_key, custom_title, week, completed_at,
   dismissed, created_at, updated_at`;
@@ -332,14 +337,41 @@ async function listPhotos(userId: string, pregnancyId: string) {
   }
 }
 
-async function deletePhoto(userId: string, id: string): Promise<boolean> {
+/**
+ * Returns the stored file_path of a photo the caller owns, or null. Scoped both
+ * by the explicit user_id filter (this file's convention) and by RLS through
+ * getClient. Kept free of fs/path work so this module stays pure data access;
+ * pregnancyService resolves and validates the path.
+ */
+async function getPhotoFilePath(
+  userId: string,
+  id: string
+): Promise<string | null> {
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      'DELETE FROM pregnancy_photos WHERE user_id = $1 AND id = $2 RETURNING id',
+      'SELECT file_path FROM pregnancy_photos WHERE user_id = $1 AND id = $2',
       [userId, id]
     );
-    return (result.rowCount ?? 0) > 0;
+    return result.rows[0]?.file_path ?? null;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Deletes the row and returns its file_path so the caller can remove the file
+ * from disk, or null when nothing was deleted. Call through
+ * pregnancyService.deletePhoto so the on-disk file is cleaned up too.
+ */
+async function deletePhoto(userId: string, id: string): Promise<string | null> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      'DELETE FROM pregnancy_photos WHERE user_id = $1 AND id = $2 RETURNING file_path',
+      [userId, id]
+    );
+    return result.rows[0]?.file_path ?? null;
   } finally {
     client.release();
   }
@@ -637,6 +669,7 @@ export default {
   listContractions,
   createPhoto,
   listPhotos,
+  getPhotoFilePath,
   deletePhoto,
   listChecklist,
   upsertChecklistItem,

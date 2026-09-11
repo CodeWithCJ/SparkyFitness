@@ -1,7 +1,6 @@
 import express, { RequestHandler } from 'express';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
 import {
   CreatePregnancyBodySchema,
   UpdatePregnancyBodySchema,
@@ -23,11 +22,7 @@ import checkInPhotoUpload, {
 import { loadUserTimezone } from '../../utils/timezoneLoader.js';
 import { todayInZone, gestationalAge } from '@workspace/shared';
 import { log } from '../../config/logging.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const baseUploadsDir = process.env.SPARKY_FITNESS_UPLOADS_DIR
-  ? path.resolve(process.env.SPARKY_FITNESS_UPLOADS_DIR)
-  : path.join(__dirname, '..', '..', 'uploads');
+import { UPLOADS_BASE_DIR } from '../../utils/uploadsPath.js';
 
 const router = express.Router();
 
@@ -257,7 +252,7 @@ const uploadPhoto: RequestHandler = async (req, res, next) => {
     const fileName = `w${week}-${Date.now()}.${ext}`;
     const relPath = path.join(relDir, fileName);
     const absDir = path.join(
-      baseUploadsDir,
+      UPLOADS_BASE_DIR,
       'pregnancy',
       req.userId,
       pregnancyId
@@ -302,12 +297,65 @@ const deletePhoto: RequestHandler = async (req, res, next) => {
       res.status(400).json({ error: 'Invalid photo id' });
       return;
     }
-    const ok = await pregnancyRepository.deletePhoto(req.userId, id);
+    const ok = await pregnancyService.deletePhoto(req.userId, id);
     if (!ok) {
       res.status(404).json({ error: 'Photo not found' });
       return;
     }
     res.status(204).send();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @swagger
+ * /v2/pregnancy/photos/file/{id}:
+ *   get:
+ *     summary: Serve a bump photo image (authenticated, owner only)
+ *     tags: [Women's Health]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: The image file.
+ *         content:
+ *           image/*:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Photo not found or not accessible.
+ */
+const getPhotoFile: RequestHandler = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (typeof id !== 'string' || !UUID_RE.test(id)) {
+      res.status(400).json({ error: 'Invalid photo id' });
+      return;
+    }
+    const absolutePath = await pregnancyService.getPhotoFile(req.userId, id);
+    if (!absolutePath) {
+      res.status(404).json({ error: 'Photo not found' });
+      return;
+    }
+    // Pin the file to its declared type; matches the check-in file route.
+    // Deliberately no Content-Disposition: attachment, which would stop the
+    // image rendering in <img>.
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.sendFile(absolutePath, (err) => {
+      if (err && !res.headersSent) {
+        log('error', `Failed to send pregnancy photo ${id}`, err);
+        res.status(500).json({ error: 'Failed to serve photo' });
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -439,6 +487,13 @@ router.get('/contractions', listContractionsHandler);
 
 router.post('/photos', checkInPhotoUpload.single('photo'), uploadPhoto);
 router.get('/photos', listPhotos);
+// No checkPermissionMiddleware here, unlike the check-in equivalent: check-in
+// photos are delegatable via the 'checkin' permission, but pregnancy data is
+// owner-only and is never shared or delegated (db/rls_policies.sql uses
+// create_owner_policy for pregnancy_photos). Adding a permission guard here
+// would grant family members access to bump photos. Owner scoping comes from
+// req.userId + RLS in pregnancyRepository.getPhotoFilePath.
+router.get('/photos/file/:id', getPhotoFile);
 router.delete('/photos/:id', deletePhoto);
 
 router.get('/checklist', getChecklist);

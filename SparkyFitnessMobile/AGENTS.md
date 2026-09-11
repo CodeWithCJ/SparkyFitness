@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-09-05_
+_Last updated: 2026-09-11_
 
 SparkyFitness Mobile is a React Native 0.85 + Expo SDK 56 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -281,7 +281,7 @@ All endpoints require auth headers, and proxy headers are injected before auth h
 
 - `healthDataApi.ts` - `POST /api/health-data`, identity checks, chunking, timeout, retry, session-expiry handling.
 - `dailySummaryApi.ts`, `goalsApi.ts`, `measurementsApi.ts`, `preferencesApi.ts` - daily summary, goals, check-ins, water, timezone bootstrap, nutrient display preferences.
-- `checkInPhotosApi.ts` - progress photos: the gallery (every photo with that day's weight, in one request), a day's photos, the days that have any, multipart upload and delete. Image bytes come from the authenticated `/file/{id}` route, so `useCheckInPhotoSource` attaches auth and proxy headers and memoizes each source by photo id.
+- `checkInPhotosApi.ts` - progress photos: the gallery (every photo with that day's weight, in one request), a day's photos, the days that have any, multipart upload and delete. Image bytes come from the authenticated `/file/{id}` route, so `useCheckInPhotoSource` attaches auth and proxy headers and memoizes each source by photo id. It is a thin wrapper over `useAuthedImageSource`, the shared hook behind every authenticated image (see also `usePregnancyPhotoSource` for bump photos); that hook also refuses to build a source over plaintext HTTP outside `__DEV__`, so the session token never goes out in clear.
 - `foodEntriesApi.ts`, `foodEntryMealsApi.ts`, `foodsApi.ts`, `mealsApi.ts`, `mealTypesApi.ts`, `mealPlansApi.ts` - diary food entries, grouped logged meals, saved foods/variants/barcodes, saved meals, meal types, and recurring meal plans.
 - `externalFoodSearchApi.ts`, `aiSettingsApi.ts`, `aiConversionApi.ts` - provider-agnostic food search/details/barcode, label/photo estimate, AI availability, unit conversion.
 - `exerciseApi.ts`, `externalExerciseSearchApi.ts`, `workoutPresetsApi.ts` - exercise history, suggested/search/import flows, preset/individual exercise sessions, workout presets.

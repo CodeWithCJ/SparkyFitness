@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
@@ -15,12 +14,12 @@ import {
   usePregnancyPhotos,
   usePregnancyPhotoMutations,
 } from '../../../hooks/usePregnancyPhotos';
-import { useServerConfigs } from '../../../hooks/useServerConfigs';
-import { normalizeUrl } from '../../../services/api/apiClient';
+import { usePregnancyPhotoSource } from '../../../hooks/usePregnancyPhotoSource';
 import { getApiErrorMessage } from '../../../services/api/errors';
 import { formatDate } from '../../../utils/dateUtils';
 import ActionSheet, { type ActionSheetRef } from '../../ActionSheet';
 import Icon from '../../Icon';
+import SafeImage from '../../SafeImage';
 import type { BumpPhoto } from '../../../types/womensHealth';
 
 interface BumpPhotoJournalProps {
@@ -39,7 +38,7 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({
   const { photos, isLoading } = usePregnancyPhotos(pregnancyId);
   const { uploadAsync, isUploading, deleteAsync } =
     usePregnancyPhotoMutations();
-  const { activeConfig } = useServerConfigs();
+  const { getPhotoSource } = usePregnancyPhotoSource();
   const [accentColor, dangerColor] = useCSSVariable([
     '--color-accent-primary',
     '--color-icon-danger',
@@ -48,10 +47,6 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({
   const actionSheetRef = useRef<ActionSheetRef>(null);
   const pickerLock = useRef(false);
   const [selectedPhoto, setSelectedPhoto] = useState<BumpPhoto | null>(null);
-
-  const baseUrl = activeConfig ? normalizeUrl(activeConfig.url) : null;
-  const photoUri = (filePath: string) =>
-    baseUrl ? `${baseUrl}/${filePath}` : undefined;
 
   const pickAndUpload = async (source: 'camera' | 'library') => {
     if (pickerLock.current) return;
@@ -173,10 +168,15 @@ const BumpPhotoJournal: React.FC<BumpPhotoJournalProps> = ({
                 }
                 className="items-center"
               >
-                <Image
-                  source={{ uri: photoUri(photo.file_path) }}
-                  className="w-24 h-24 rounded-xl bg-raised"
-                  resizeMode="cover"
+                <SafeImage
+                  source={getPhotoSource(photo.id)}
+                  style={{ width: 96, height: 96, borderRadius: 12 }}
+                  contentFit="cover"
+                  fallback={
+                    <View className="w-24 h-24 rounded-xl bg-raised items-center justify-center">
+                      <Icon name="camera" size={20} color={accentColor} />
+                    </View>
+                  }
                 />
                 <Text className="text-text-secondary text-xs mt-1">
                   {t('bumpPhotos.week', {
