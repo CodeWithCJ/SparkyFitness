@@ -1,0 +1,40 @@
+name: PR Validation Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/scripts/pr-policy.cjs"
+      - ".github/scripts/pr-validation.test.cjs"
+      - ".github/workflows/pr-validation.yml"
+      - ".github/workflows/pr-validation-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/scripts/pr-policy.cjs"
+      - ".github/scripts/pr-validation.test.cjs"
+      - ".github/workflows/pr-validation.yml"
+      - ".github/workflows/pr-validation-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: pnpm install --filter . --frozen-lockfile --ignore-scripts
+      - run: node --test .github/scripts/pr-validation.test.cjs
