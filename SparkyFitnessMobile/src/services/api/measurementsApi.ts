@@ -1,4 +1,5 @@
 import { apiFetch } from './apiClient';
+import { ApiError } from './errors';
 import { getTodayDate } from '../../utils/dateUtils';
 import type {
   CheckInMeasurement,
@@ -258,6 +259,13 @@ export const fetchLatestManualCustomEntriesOnOrBefore = async (
       operation: 'fetch latest manual custom entries on or before date',
     });
   } catch (error) {
+    // Only the two shapes an older server can produce warrant a second request.
+    // A 401 already triggered `notifySessionExpired` inside `apiFetch`, so
+    // retrying would notify the user twice; a network failure or timeout would
+    // just spend a second request on a connection that is already struggling.
+    const status = error instanceof ApiError ? error.statusCode : undefined;
+    if (status !== 404 && status !== 500) throw error;
+
     try {
       const entries = await apiFetch<CustomMeasurementEntry[]>({
         endpoint: `/api/measurements/custom-entries?limit=${CUSTOM_ENTRY_HINT_FALLBACK_LIMIT}&orderBy=entry_timestamp.desc`,

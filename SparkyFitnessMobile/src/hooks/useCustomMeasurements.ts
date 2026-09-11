@@ -10,6 +10,7 @@ import {
 import {
   customCategoriesQueryKey,
   customMeasurementsByDateQueryKey,
+  latestManualCustomEntriesRootQueryKey,
   latestManualCustomEntriesQueryKey,
 } from './queryKeys';
 import { refreshHealthSyncCache } from './refreshHealthSyncCache';
@@ -86,10 +87,12 @@ export function useSaveCustomMeasurement() {
       queryClient.invalidateQueries({
         queryKey: customMeasurementsByDateQueryKey(vars.entry_date),
       });
-      // Today's own row is now the newest value on or before today, so the
-      // suggestion for this day has to be recomputed rather than left stale.
+      // The saved row can now be the newest value on or before ANY cached day at
+      // or after it, not just its own. Invalidating the whole family is required
+      // because `staleTime` is Infinity app-wide: a later day already cached
+      // would otherwise keep serving the pre-save suggestion.
       queryClient.invalidateQueries({
-        queryKey: latestManualCustomEntriesQueryKey(vars.entry_date),
+        queryKey: latestManualCustomEntriesRootQueryKey,
       });
       refreshHealthSyncCache(queryClient);
     },
@@ -109,9 +112,10 @@ export function useDeleteCustomMeasurement() {
       queryClient.invalidateQueries({
         queryKey: customMeasurementsByDateQueryKey(vars.entryDate),
       });
-      // A deleted entry must stop being the suggestion for this day.
+      // A deleted entry must stop being the suggestion for every cached day that
+      // could have been resolving to it, for the same `staleTime` reason.
       queryClient.invalidateQueries({
-        queryKey: latestManualCustomEntriesQueryKey(vars.entryDate),
+        queryKey: latestManualCustomEntriesRootQueryKey,
       });
       refreshHealthSyncCache(queryClient);
     },

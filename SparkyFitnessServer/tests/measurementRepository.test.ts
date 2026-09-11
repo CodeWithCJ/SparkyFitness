@@ -107,6 +107,15 @@ describe('measurementRepository.getLatestManualCustomEntriesOnOrBeforeDate', () 
     return mockClient.query.mock.calls[0][0] as string;
   };
 
+  it('binds the user and the day in order and scopes the client to the user', async () => {
+    // A swap of the two parameters would keep every other assertion green while
+    // returning another user's rows, so the binding order is asserted directly.
+    await runQuery();
+
+    expect(mockClient.query.mock.calls[0][1]).toEqual(['user-1', '2026-05-10']);
+    expect(vi.mocked(getClient)).toHaveBeenCalledWith('user-1');
+  });
+
   it('resolves one row per category in a single query', async () => {
     const sql = await runQuery();
     expect(sql).toContain('DISTINCT ON (cm.category_id)');

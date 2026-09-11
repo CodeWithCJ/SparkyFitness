@@ -1303,12 +1303,9 @@ async function getCustomMeasurementEntriesByDate(
  * user can adopt into a manual entry.
  */
 async function getLatestManualCustomEntriesOnOrBeforeDate(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  targetUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  date: any
+  authenticatedUserId: string,
+  targetUserId: string,
+  date: string
 ) {
   try {
     const entries =

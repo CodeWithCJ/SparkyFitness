@@ -1379,6 +1379,8 @@ router.delete(
  *           or before the date are omitted entirely.
  *       400:
  *         description: The date query parameter was missing or not a valid YYYY-MM-DD day.
+ *       403:
+ *         description: Forbidden (lacks checkin_read permission for the target user).
  */
 // Registered before /custom-entries/:date so the literal segment is not
 // swallowed by the date parameter route.

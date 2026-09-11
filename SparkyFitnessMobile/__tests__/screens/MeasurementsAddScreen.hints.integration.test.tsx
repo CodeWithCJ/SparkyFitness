@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import MeasurementsAddScreen from '../../src/screens/MeasurementsAddScreen';
 import { apiFetch } from '../../src/services/api/apiClient';
+import { ApiError } from '../../src/services/api/errors';
 import type { RootStackScreenProps } from '../../src/types/navigation';
 
 /**
@@ -273,13 +274,16 @@ describe('MeasurementsAddScreen — hint wiring against the real API layer', () 
   });
 
   test('a server without the custom lookup endpoint reports it on screen', async () => {
-    // Reproduces the real-world case: an older server 404s the new endpoint.
-    // Every custom field would otherwise sit on its generic '0' placeholder
-    // with nothing to say why, which is indistinguishable from "no history".
+    // Reproduces the real-world case: an older server lacks the custom bulk
+    // endpoint, so every custom field would otherwise sit on its generic '0'
+    // placeholder with nothing to say why — indistinguishable from "no
+    // history". The standard lookup is answered normally here, so the note can
+    // only come from the custom failure.
     mockApiFetch.mockImplementation((options: unknown) => {
       const { endpoint } = options as FetchCall;
       const responses = {
         ...baseResponses(),
+        '/api/measurements/check-in/latest-on-or-before-date': { weight: 80 },
         '/api/measurements/custom-categories': [
           {
             id: 'cat-1',
@@ -292,18 +296,23 @@ describe('MeasurementsAddScreen — hint wiring against the real API layer', () 
         ],
       } as Record<string, unknown>;
 
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new Error('Server error: 404 - Not Found'));
+      }
       const key = Object.keys(responses).find((candidate) =>
         endpoint.startsWith(candidate)
       );
-      if (key) return Promise.resolve(responses[key]);
-      // Everything else, including the unknown hint endpoint, is a 404.
-      return Promise.reject(new Error('Server error: 404 - Not Found'));
+      return Promise.resolve(key ? responses[key] : []);
     });
 
     const screen = renderScreen();
 
     await waitFor(() => {
-      expect(screen.getByTestId('custom-hints-unavailable')).toBeTruthy();
+      expect(screen.getByTestId('hints-unavailable')).toBeTruthy();
+    });
+    // The standard hints still work, so the note is specifically about custom.
+    await waitFor(() => {
+      expect(screen.getByTestId('field-weight').props.placeholder).toBe('80');
     });
     // The custom input still renders and stays usable.
     expect(screen.getByTestId('custom-input-cat-1')).toBeTruthy();
@@ -319,9 +328,15 @@ describe('MeasurementsAddScreen — hint wiring against the real API layer', () 
       const { endpoint } = options as FetchCall;
 
       if (endpoint.includes('latest-manual-on-or-before-date')) {
-        // What the shadowing /custom-entries/:date route produces.
+        // What the shadowing /custom-entries/:date route produces. It must be an
+        // ApiError: the fallback is deliberately limited to the status codes an
+        // older server can produce, so a bare Error (no status) would not — and
+        // should not — trigger it.
         return Promise.reject(
-          new Error('Server error: 500 - invalid input syntax for type date')
+          new ApiError(
+            'Server error: 500 - invalid input syntax for type date',
+            500
+          )
         );
       }
       if (endpoint.startsWith('/api/measurements/custom-entries?')) {
@@ -376,6 +391,6 @@ describe('MeasurementsAddScreen — hint wiring against the real API layer', () 
     });
     expect(screen.getByTestId('use-last-custom-cat-1')).toBeTruthy();
     // The fallback worked, so no "server may need updating" note is shown.
-    expect(screen.queryByTestId('custom-hints-unavailable')).toBeNull();
+    expect(screen.queryByTestId('hints-unavailable')).toBeNull();
   });
 });

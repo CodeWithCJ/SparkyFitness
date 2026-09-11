@@ -9,6 +9,7 @@ import {
 import {
   customMeasurementsByDateQueryKey,
   latestManualCustomEntriesQueryKey,
+  latestManualCustomEntriesRootQueryKey,
 } from '../../src/hooks/queryKeys';
 import {
   fetchCustomCategories,
@@ -343,8 +344,45 @@ describe('useCustomMeasurements', () => {
       });
 
       expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: latestManualCustomEntriesQueryKey(testDate),
+        queryKey: latestManualCustomEntriesRootQueryKey,
       });
+    });
+
+    test('a save invalidates the suggestion cache for OTHER cached days too', async () => {
+      // The regression this guards: `staleTime` is Infinity app-wide, so
+      // invalidating only the saved day left a later day serving its pre-save
+      // suggestion. Both dates must be invalidated by the save.
+      const otherDay = '2024-06-20';
+      queryClient.setQueryData(latestManualCustomEntriesQueryKey(testDate), []);
+      queryClient.setQueryData(latestManualCustomEntriesQueryKey(otherDay), []);
+
+      mockSaveCustomMeasurement.mockResolvedValue({
+        id: 'e1',
+        category_id: 'cat-1',
+        value: '5',
+        entry_date: testDate,
+      });
+
+      const { result } = renderHook(() => useSaveCustomMeasurement(), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          category_id: 'cat-1',
+          value: 5,
+          entry_date: testDate,
+        });
+      });
+
+      expect(
+        queryClient.getQueryState(latestManualCustomEntriesQueryKey(testDate))
+          ?.isInvalidated
+      ).toBe(true);
+      expect(
+        queryClient.getQueryState(latestManualCustomEntriesQueryKey(otherDay))
+          ?.isInvalidated
+      ).toBe(true);
     });
 
     test('a deleted entry refreshes the suggestions', async () => {
@@ -360,7 +398,7 @@ describe('useCustomMeasurements', () => {
       });
 
       expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: latestManualCustomEntriesQueryKey(testDate),
+        queryKey: latestManualCustomEntriesRootQueryKey,
       });
     });
   });

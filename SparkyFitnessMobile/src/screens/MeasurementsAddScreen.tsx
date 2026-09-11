@@ -236,9 +236,10 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     isLoading,
     refetch: refetchMeasurements,
   } = useMeasurements({ date: selectedDate });
-  const { latestMeasurements } = useLatestMeasurementsOnOrBefore({
-    date: selectedDate,
-  });
+  const { latestMeasurements, isError: isStandardHintError } =
+    useLatestMeasurementsOnOrBefore({
+      date: selectedDate,
+    });
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   const { profile } = useProfile();
   // Weight supports a third "stones + lbs" mode that renders as two inputs.
@@ -526,7 +527,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         case 'profile-required':
           return t('measurements.bodyFat.profileRequired', {
             defaultValue:
-              'Your profile needs a date of birth and gender for this calculation.',
+              'Set your gender in your profile to use this calculation.',
           });
         case 'bmi-required-fields':
           return t('measurements.bodyFat.bmiRequiredFields', {
@@ -1408,6 +1409,22 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         ) : (
           <>
+            {isStandardHintError || isCustomHintError ? (
+              // One note for both lookups: a failed lookup and "this field has
+              // no earlier value" are otherwise indistinguishable on screen,
+              // because both leave the input on its empty placeholder — which
+              // for a numeric field reads as a real zero.
+              <Text
+                className="text-xs italic mb-4"
+                style={{ color: textSecondary }}
+                testID="hints-unavailable"
+              >
+                {t('measurements.previousUnavailable', {
+                  defaultValue:
+                    "Couldn't load previous values. Your server may need updating.",
+                })}
+              </Text>
+            ) : null}
             <View className="mb-4">
               {renderFieldLabel('weight', weightLabel)}
               {weightMode === 'st_lbs' ? (
@@ -1787,21 +1804,6 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       defaultValue: 'Custom Measurements',
                     })}
                   </Text>
-                  {isCustomHintError ? (
-                    // Distinguishes "the previous-value lookup failed" from
-                    // "this category has no earlier value", which look the same
-                    // otherwise: both leave the input on its empty placeholder.
-                    <Text
-                      className="text-xs italic mb-3"
-                      style={{ color: textSecondary }}
-                      testID="custom-hints-unavailable"
-                    >
-                      {t('measurements.custom.previousUnavailable', {
-                        defaultValue:
-                          "Couldn't load previous values. Your server may need updating.",
-                      })}
-                    </Text>
-                  ) : null}
                   {primaryCustomCategories.map(renderCustomCategory)}
                   {moreCustomCategories.length > 0 && (
                     <>

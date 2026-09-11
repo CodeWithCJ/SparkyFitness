@@ -1993,14 +1993,14 @@ describe('MeasurementsAddScreen — custom previous-value hints', () => {
 
     const screen = renderScreen();
 
-    expect(screen.getByTestId('custom-hints-unavailable')).toBeTruthy();
+    expect(screen.getByTestId('hints-unavailable')).toBeTruthy();
   });
 
   test('shows no failure note when the lookup succeeded with no history', () => {
     setLatestCustomEntries([]);
     const screen = renderScreen();
 
-    expect(screen.queryByTestId('custom-hints-unavailable')).toBeNull();
+    expect(screen.queryByTestId('hints-unavailable')).toBeNull();
   });
 });
 

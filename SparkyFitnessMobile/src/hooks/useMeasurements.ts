@@ -76,5 +76,10 @@ export function useLatestMeasurementsOnOrBefore({
   return {
     latestMeasurements: query.data,
     isLoading: query.isLoading,
+    // Surfaced so the screen can tell a failed lookup apart from "no earlier
+    // value". Both leave the inputs on their empty placeholder, which reads as a
+    // real zero for a numeric field, so the failure must be visible rather than
+    // reaching only the app log.
+    isError: query.isError,
   };
 }

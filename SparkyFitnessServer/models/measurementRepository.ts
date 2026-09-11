@@ -949,10 +949,8 @@ async function getCustomMeasurementEntriesByDate(userId: any, date: any) {
  * NULL` mirrors the filter the custom-entries list endpoint already applies.
  */
 async function getLatestManualCustomEntriesOnOrBeforeDate(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  date: any
+  userId: string,
+  date: string
 ) {
   const client = await getClient(userId); // User-specific operation
   try {

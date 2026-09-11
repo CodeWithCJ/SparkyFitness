@@ -347,10 +347,96 @@ describe('fetchLatestManualCustomEntriesOnOrBefore — older-server fallback', (
   });
 
   test('reports the original failure when both paths fail', async () => {
-    mockApiFetch.mockRejectedValue(new ApiError('Server error: 500', 500));
+    // The two requests must fail differently, or the assertion would pass
+    // whichever error propagated and would not prove the bulk one is preserved.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      return Promise.reject(
+        endpoint.includes('latest-manual-on-or-before-date')
+          ? new ApiError('Server error: 500 - bulk', 500)
+          : new ApiError('Server error: 503 - fallback', 503)
+      );
+    });
 
     await expect(
       fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
-    ).rejects.toThrow('Server error: 500');
+    ).rejects.toThrow('Server error: 500 - bulk');
+  });
+});
+
+describe('fetchLatestManualCustomEntriesOnOrBefore — fallback scope', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const listCallCount = () =>
+    mockApiFetch.mock.calls.filter((call) =>
+      (call[0] as { endpoint: string }).endpoint.startsWith(
+        '/api/measurements/custom-entries?'
+      )
+    ).length;
+
+  test('a 401 does not trigger the compatibility request', async () => {
+    // `apiFetch` already called notifySessionExpired for this 401. Retrying
+    // would fire it a second time, so the user gets two session-expired
+    // prompts from one expired session.
+    mockApiFetch.mockRejectedValue(
+      new ApiError('Server error: 401 - Unauthorized', 401)
+    );
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).rejects.toThrow('401');
+    expect(listCallCount()).toBe(0);
+  });
+
+  test('a network failure does not trigger the compatibility request', async () => {
+    mockApiFetch.mockRejectedValue(new Error('Network request failed'));
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).rejects.toThrow('Network request failed');
+    expect(listCallCount()).toBe(0);
+  });
+
+  test('a 403 does not trigger the compatibility request', async () => {
+    mockApiFetch.mockRejectedValue(
+      new ApiError('Server error: 403 - Forbidden', 403)
+    );
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).rejects.toThrow('403');
+    expect(listCallCount()).toBe(0);
+  });
+
+  test('a 404 triggers the compatibility request', async () => {
+    // The endpoint is absent on a server that predates it.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 404', 404));
+      }
+      return Promise.resolve([]);
+    });
+
+    await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    expect(listCallCount()).toBe(1);
+  });
+
+  test('a 500 triggers the compatibility request', async () => {
+    // The shadowing /custom-entries/:date route fails inside Postgres.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 500', 500));
+      }
+      return Promise.resolve([]);
+    });
+
+    await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    expect(listCallCount()).toBe(1);
   });
 });

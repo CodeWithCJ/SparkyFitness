@@ -2037,13 +2037,14 @@
     "willBeCleared": "Will be cleared",
     "useLast": "Use last",
     "useLastFor": "Use last {{label}} value",
+    "previousUnavailable": "Couldn't load previous values. Your server may need updating.",
     "bodyFat": {
       "calculate": "Calculate",
       "useRecent": "Use recent",
       "calculateFailedTitle": "Could not calculate body fat",
       "calculatedTitle": "Body fat calculated",
       "calculatedMessage": "Review the value, then save to keep it.",
-      "profileRequired": "Your profile needs a date of birth and gender for this calculation.",
+      "profileRequired": "Set your gender in your profile to use this calculation.",
       "bmiRequiredFields": "Weight, height, age, and gender are required for BMI Method.",
       "navyRequiredFields": "Gender, height, waist, neck, and (if female) hips measurements are required for U.S. Navy Method.",
       "uncomputable": "These measurements do not produce a valid body fat percentage. Check the waist, neck, height, and hips values."
@@ -2053,7 +2054,6 @@
       "loadError": "Couldn't load custom measurements.",
       "deleteEntry": "Delete {{label}} entry",
       "lastValue": "Last: {{value}}",
-      "previousUnavailable": "Couldn't load previous values. Your server may need updating.",
       "moreCategories": "More categories ▾",
       "hideCategories": "Hide categories ▴",
       "hideCategoriesToggle": "Hide categories ▴",

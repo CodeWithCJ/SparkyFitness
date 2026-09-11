@@ -420,6 +420,18 @@ describe('reduceLatestManualEntries', () => {
     expect(result[0].value).toBe('5');
   });
 
+  it('keeps a value recorded on the selected day itself', () => {
+    // "on or before" is the contract; the day itself must not be excluded.
+    const result = reduceLatestManualEntries(
+      [entry({ id: 'same-day', value: '42', entry_date: '2024-06-15' })],
+      '2024-06-15',
+      isManualSource
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].value).toBe('42');
+  });
+
   it('ignores synced entries so a health sample is never a suggestion', () => {
     const result = reduceLatestManualEntries(
       [

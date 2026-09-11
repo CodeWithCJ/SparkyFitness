@@ -183,9 +183,8 @@ describe('standardFieldMetricValue', () => {
     ).toBeNull();
   });
 
-  test('does not invent a value for a partially filled two-input field', () => {
-    // Stones filled, pounds blank: the pair is only meaningful as a whole and
-    // the save path treats a wholly blank pair as omitted.
+  test('treats a wholly blank two-input field as omitted', () => {
+    // Both halves blank is "no value", which the save path omits.
     expect(
       standardFieldMetricValue(
         'weight',
@@ -193,5 +192,27 @@ describe('standardFieldMetricValue', () => {
         { weightMode: 'st_lbs', bodyUnit: 'cm', heightMode: 'cm' }
       )
     ).toBeNull();
+  });
+
+  test('treats a blank half of a two-input field as zero, like the save path', () => {
+    // Stones filled, pounds blank: `handleSave` parses a blank subfield as 0,
+    // so the calculator has to read the same value rather than inventing null.
+    expect(
+      standardFieldMetricValue(
+        'weight',
+        form({ weightStones: '12', weight: '' }),
+        { weightMode: 'st_lbs', bodyUnit: 'cm', heightMode: 'cm' }
+      )
+    ).toBeCloseTo(76.2, 1);
+  });
+
+  test('reads a feet + inches height with a blank inches half as zero inches', () => {
+    expect(
+      standardFieldMetricValue(
+        'height',
+        form({ heightFeet: '6', height: '' }),
+        { weightMode: 'kg', bodyUnit: 'cm', heightMode: 'ft_in' }
+      )
+    ).toBeCloseTo(182.88, 1);
   });
 });
