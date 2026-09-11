@@ -1,6 +1,5 @@
 import { apiFetch } from './apiClient';
 import { ApiError } from './errors';
-import { compareDays } from '@workspace/shared';
 import { getTodayDate } from '../../utils/dateUtils';
 import type {
   CheckInMeasurement,
@@ -295,31 +294,35 @@ export const fetchLatestManualCustomEntriesOnOrBefore = async (
       throw error;
     }
 
-    // A full page means more entries exist beyond it, and those are all older
-    // than everything fetched. That is only a problem when the page itself holds
-    // nothing on or before `date`: the reduction would come back empty and claim
-    // there are no previous values, while the answer may well sit in the part
-    // that was not fetched. Fail loudly for that case so the screen asks the
-    // user to update the server.
+    // Reduce first, then decide whether the page could prove anything. Deriving
+    // the guard from the reduction instead of a parallel predicate is the point:
+    // an earlier version asked only "does the page hold an entry on or before
+    // the day?", which a health-sync sample satisfies while the reduction
+    // discards it. The page then looked usable, produced no hints, and the screen
+    // showed empty fields with nothing to explain them. Reusing the reduction
+    // makes that class of drift impossible.
+    const hints = reduceLatestManualEntries(entries, date, isManualSource);
+
+    // A full page means more entries exist beyond it. When the reduction is also
+    // empty, nothing usable was found and the answer may sit in the unfetched
+    // part, so fail loudly rather than report "no previous values".
     //
-    // When the page does contain an entry on or before `date`, the reduction is
-    // sound as-is: entries beyond the page are older by construction, so they
-    // cannot outrank the newest on-or-before entry the page already holds. A
-    // category whose entire history is older than the page is simply omitted,
-    // which shows no suggestion rather than a wrong one.
-    const pageReachesSelectedDay = entries.some(
-      (entry) => compareDays(entry.entry_date, date) <= 0
-    );
+    // A non-empty reduction is sound and is returned as-is. Entries beyond the
+    // page are older by `entry_timestamp`, and for the `Daily` categories this
+    // editor renders the server stores a timestamp on the entry's own day, so
+    // the unfetched tail cannot outrank a fetched on-or-before entry. A category
+    // whose entire history is older than the page is simply absent, which shows
+    // no suggestion rather than a wrong one.
     if (
-      entries.length >= CUSTOM_ENTRY_HINT_FALLBACK_LIMIT &&
-      !pageReachesSelectedDay
+      hints.length === 0 &&
+      entries.length >= CUSTOM_ENTRY_HINT_FALLBACK_LIMIT
     ) {
       throw new Error(
-        `Custom measurement history exceeds ${CUSTOM_ENTRY_HINT_FALLBACK_LIMIT} entries and none fall on or before ${date}, so previous values cannot be resolved on this server version.`
+        `Custom measurement history exceeds ${CUSTOM_ENTRY_HINT_FALLBACK_LIMIT} entries and none on or before ${date} are usable, so previous values cannot be resolved on this server version.`
       );
     }
 
-    return reduceLatestManualEntries(entries, date, isManualSource);
+    return hints;
   }
 };
 

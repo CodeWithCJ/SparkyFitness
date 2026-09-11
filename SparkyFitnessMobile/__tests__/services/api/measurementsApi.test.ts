@@ -605,3 +605,111 @@ describe('fetchLatestManualCustomEntriesOnOrBefore — truncated legacy history'
     expect(listCalls).toHaveLength(1);
   });
 });
+
+describe('fetchLatestManualCustomEntriesOnOrBefore — page provenance', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const pageSizeFromRequest = (endpoint: string): number => {
+    const match = /limit=(\d+)/.exec(endpoint);
+    if (!match) throw new Error(`no limit in endpoint: ${endpoint}`);
+    return Number(match[1]);
+  };
+
+  /** Serves the bulk request as missing and the list request with one full page. */
+  const fullPage = (rows: (index: number) => Record<string, unknown>) => {
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 500', 500));
+      }
+      const size = pageSizeFromRequest(endpoint);
+      return Promise.resolve(
+        Array.from({ length: size }, (_, index) => rows(index))
+      );
+    });
+  };
+
+  const row = (
+    index: number,
+    entryDate: string,
+    value: string,
+    source: string
+  ) => ({
+    id: `e${index}`,
+    category_id: 'cat-1',
+    value,
+    entry_date: entryDate,
+    entry_hour: null,
+    entry_timestamp: `${entryDate}T00:00:00.000Z`,
+    source,
+  });
+
+  test('a full page whose only pre-date row is synced is refused, not reported as empty', async () => {
+    // THE regression this guards. The old predicate asked only whether any row
+    // fell on or before the day, so this synced row satisfied it, the reduction
+    // discarded it, and the caller received [] — which the screen renders as
+    // empty fields with no note, i.e. "this category has no history", while the
+    // user's real manual history may sit beyond the page.
+    fullPage((index) =>
+      index === 0
+        ? row(0, '2024-06-10', '12000', 'HealthConnect')
+        : row(index, '2024-07-01', 'future', 'manual')
+    );
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).rejects.toThrow(/history exceeds/);
+  });
+
+  test('valid manual hints survive a full page of synced and future rows', async () => {
+    // The other half of the guard: a usable manual row must still be returned,
+    // not thrown away by an over-eager provenance check.
+    fullPage((index) => {
+      if (index === 0) return row(0, '2024-06-01', 'synced', 'HealthConnect');
+      if (index === 1) return row(1, '2024-06-10', '5', 'manual');
+      if (index === 2) return row(2, '2024-07-01', 'future', 'manual');
+      return row(index, '2024-07-02', 'future', 'manual');
+    });
+
+    const result = await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    // The manual pre-date row wins; the synced pre-date row is never a
+    // suggestion and the future manual rows are out of range.
+    expect(result).toEqual([
+      {
+        id: 'e1',
+        category_id: 'cat-1',
+        value: '5',
+        entry_date: '2024-06-10',
+        source: 'manual',
+      },
+    ]);
+  });
+
+  test('synced rows never appear as suggestions from the legacy page', async () => {
+    fullPage((index) => row(index, '2024-06-10', String(index), 'HealthKit'));
+
+    // Nothing usable in the page, so it fails rather than surfacing a sample.
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).rejects.toThrow(/history exceeds/);
+  });
+
+  test('a short page of only synced rows returns no hints without failing', async () => {
+    // Without truncation the empty reduction is the true answer, so no error and
+    // no suggestion: the distinction is completeness, not emptiness.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 500', 500));
+      }
+      return Promise.resolve([row(0, '2024-06-10', '12000', 'HealthConnect')]);
+    });
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).resolves.toEqual([]);
+  });
+});
