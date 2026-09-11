@@ -531,7 +531,10 @@ async function processPolarSleep(
           else if (stageCode === 4) stageType = 'deep';
           else if (stageCode === 6) stageType = 'awake'; // 6 is short interruption
           // Note: Stage 5 (Unknown) falls through to "light" sleep per review suggestion
-          const stageStartMs = current.startMs;
+          // Keys carry minute precision while bedtime carries seconds, so the
+          // first stage may read a few seconds early; the session starts at
+          // bedtime.
+          const stageStartMs = Math.max(current.startMs, bedtimeMs);
           const nextStartMs =
             i < sortedStages.length - 1 ? sortedStages[i + 1].startMs : wakeMs;
           const stageEndMs = Number.isFinite(wakeMs)

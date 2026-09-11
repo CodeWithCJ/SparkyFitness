@@ -146,9 +146,9 @@ describe('processPolarSleep hypnogram stages (issue #2431)', () => {
     expect(stageCalls()).toEqual([
       {
         stage_type: 'awake',
-        start_time: '2026-07-14T20:39:00.000Z',
+        start_time: '2026-07-14T20:39:07.000Z',
         end_time: '2026-07-14T20:50:00.000Z',
-        duration_in_seconds: 660,
+        duration_in_seconds: 653,
       },
       {
         stage_type: 'deep',
@@ -177,7 +177,7 @@ describe('processPolarSleep hypnogram stages (issue #2431)', () => {
     const total = stages.reduce((sum, s) => sum + s.duration_in_seconds, 0);
     const nightSeconds =
       (Date.parse('2026-07-15T07:00:00+03:00') -
-        Date.parse('2026-07-14T23:39:00+03:00')) /
+        Date.parse('2026-07-14T23:39:07+03:00')) /
       1000;
     expect(total).toBe(nightSeconds);
     expect(stages.at(-1)?.end_time).toBe('2026-07-15T04:00:00.000Z');
@@ -206,7 +206,7 @@ describe('processPolarSleep hypnogram stages (issue #2431)', () => {
       } as never,
     ]);
     expect(stageCalls().map((s) => [s.stage_type, s.start_time])).toEqual([
-      ['awake', '2026-07-14T20:39:00.000Z'],
+      ['awake', '2026-07-14T20:39:07.000Z'],
       ['deep', '2026-07-14T20:50:00.000Z'],
       ['rem', '2026-07-14T23:10:00.000Z'],
       ['awake', '2026-07-15T03:40:00.000Z'],
