@@ -27,10 +27,7 @@ export function useWorkoutPlanAssignments(
   const { loggingLevel } = usePreferences();
 
   const { data: presetData } = useWorkoutPresets(user?.id);
-  const workoutPresets = useMemo(
-    () => presetData?.pages.flatMap((page) => page.presets) ?? [],
-    [presetData]
-  );
+  const workoutPresets = useMemo(() => presetData?.presets ?? [], [presetData]);
 
   const [assignments, setAssignments] = useState<WorkoutPlanAssignment[]>(
     () =>

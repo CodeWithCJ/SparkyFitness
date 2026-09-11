@@ -79,10 +79,7 @@ const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
     isFetching: isSearchFetching,
   } = useSearchWorkoutPresets(debouncedSearchTerm, user?.id);
 
-  const allPresets = useMemo(
-    () => presetData?.pages.flatMap((page) => page.presets) ?? [],
-    [presetData]
-  );
+  const allPresets = useMemo(() => presetData?.presets ?? [], [presetData]);
 
   const [ownershipFilter, setOwnershipFilter] = useState<
     'all' | 'mine' | 'family' | 'public'

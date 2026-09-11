@@ -1,7 +1,7 @@
 import {
   useMutation,
   useQueryClient,
-  useInfiniteQuery,
+  keepPreviousData,
   useQuery,
 } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -17,17 +17,17 @@ import { presetKeys } from '@/api/keys/exercises';
 
 // --- Queries ---
 
-export const useWorkoutPresets = (userId?: string, limit: number = 10) => {
+export const useWorkoutPresets = (
+  userId?: string,
+  page: number = 1,
+  limit: number = 10
+) => {
   const { t } = useTranslation();
 
-  return useInfiniteQuery({
-    queryKey: presetKeys.infinite(userId, limit),
-    queryFn: ({ pageParam = 1 }) => getWorkoutPresets(pageParam, limit),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage, allPages) => {
-      const totalLoaded = allPages.length * limit;
-      return lastPage.total > totalLoaded ? allPages.length + 1 : undefined;
-    },
+  return useQuery({
+    queryKey: presetKeys.list(page, limit),
+    queryFn: () => getWorkoutPresets(page, limit),
+    placeholderData: keepPreviousData,
     enabled: !!userId,
     meta: {
       errorMessage: t(

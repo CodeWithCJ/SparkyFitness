@@ -1227,7 +1227,6 @@
     "editPresetTooltip": "Edit this preset",
     "deletePresetTooltip": "Delete this preset",
     "loading": "Loading...",
-    "loadMore": "Load More",
     "noExercisesInPreset": "No exercises in this preset",
     "failedToLoadPresets": "Failed to load workout presets.",
     "createSuccess": "Workout preset created successfully.",
