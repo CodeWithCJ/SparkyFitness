@@ -19,6 +19,14 @@ function scaleProviderNutrients(
 // Using native fetch (standard in Node 22+)
 const USDA_API_BASE_URL = 'https://api.nal.usda.gov/fdc/v1';
 
+// USDA's default search mixes Branded (manufacturer SKU) results in with
+// Foundation/SR Legacy/Survey (FNDDS) generic entries. A plain query like
+// "chicken breast" with no dataType filter returns only Branded noise (Giant
+// Eagle, Tyson, Jennie-O, ...) and no generic match at all; restricting to
+// the non-branded datasets by default is what surfaces the clean generic
+// entry for an ordinary staple-food search.
+const DEFAULT_USDA_SEARCH_DATA_TYPES = 'Foundation,SR Legacy,Survey (FNDDS)';
+
 const STANDARD_UNITS = new Set([
   'g',
   'ml',
@@ -94,7 +102,8 @@ async function searchUsdaFoods(
   query: string,
   apiKey: string | undefined,
   page = 1,
-  pageSize = 50
+  pageSize = 50,
+  dataType: string = DEFAULT_USDA_SEARCH_DATA_TYPES
 ): Promise<
   UsdaSearchResponse & {
     pagination: {
@@ -106,7 +115,14 @@ async function searchUsdaFoods(
   }
 > {
   try {
-    const searchUrl = `${USDA_API_BASE_URL}/foods/search?query=${encodeURIComponent(query)}&pageNumber=${page}&pageSize=${pageSize}&api_key=${apiKey || ''}`;
+    const searchParams = new URLSearchParams({
+      query,
+      pageNumber: String(page),
+      pageSize: String(pageSize),
+      api_key: apiKey || '',
+      dataType,
+    });
+    const searchUrl = `${USDA_API_BASE_URL}/foods/search?${searchParams.toString()}`;
     const response = await fetch(searchUrl, { method: 'GET' });
     log('debug', 'USDA API Search Response Status:', response.status);
     if (!response.ok) {
