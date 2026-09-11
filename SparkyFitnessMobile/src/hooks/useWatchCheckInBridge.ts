@@ -280,9 +280,6 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   const watchContainers: WatchContainerPayload[] = useMemo(
     () =>
       (containers ?? []).flatMap((container) => {
-        // Same formula the phone's own +/- buttons use (getServingVolume) — the
-        // watch must add exactly what a phone tap would, not its own guess.
-        //
         // Null means the container is linked to a food, so its amount lives on
         // the food rather than in millilitres. Such a container is dropped
         // rather than sent: every square on the watch is "tap to add this many

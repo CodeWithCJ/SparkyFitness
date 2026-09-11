@@ -286,11 +286,12 @@ final class WatchSessionManager: NSObject, ObservableObject {
         // field: the two water figures already travel for the Water page's
         // bottle, and a third field carrying their ratio would be a second
         // version of the same truth to keep in step.
-        let waterMl = incoming.water?.consumedMl ?? 0
-        ComplicationPublisher.publish(
-            waterProgress: incoming.waterProgress(ml: waterMl) ?? 0,
-            for: day
-        )
+        if let water = incoming.water {
+            ComplicationPublisher.publish(
+                waterProgress: incoming.waterProgress(ml: water.consumedMl) ?? 0,
+                for: day
+            )
+        }
     }
 
     /// Marks one check-in saved or failed once the phone reports the server

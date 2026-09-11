@@ -68,14 +68,3 @@ export interface WaterIntakeResponse {
   water_ml: number;
   entry_date: string;
 }
-
-/**
- * One individual logged drink, as returned by
- * `GET /api/v2/measurements/water-intake/:date/log`.
- *
- * Distinct from `WaterIntake` above, which is the day's rolled-up total:
- * these are the underlying per-drink rows, each independently deletable via
- * `DELETE /api/v2/measurements/water-intake/log/:id`. `container_name` and
- * `container_id` are null for entries that didn't come from a container at
- * all (water synced in from Apple Health, for example).
- */

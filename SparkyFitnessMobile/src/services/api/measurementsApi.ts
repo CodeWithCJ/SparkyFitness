@@ -305,7 +305,7 @@ export const fetchWaterIntakeLog = async (
   date: string
 ): Promise<WaterIntakeLogEntry[]> => {
   return apiFetch<WaterIntakeLogEntry[]>({
-    endpoint: `/api/v2/measurements/water-intake/${date}/log`,
+    endpoint: `/api/v2/measurements/water-intake/${encodeURIComponent(date)}/log`,
     serviceName: 'Measurements API',
     operation: 'fetch water intake log',
   });
