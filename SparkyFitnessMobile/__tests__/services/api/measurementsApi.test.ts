@@ -503,43 +503,69 @@ describe('fetchLatestManualCustomEntriesOnOrBefore — truncated legacy history'
     ).rejects.toThrow(/history exceeds/);
   });
 
-  test('a full page that reaches the selected day is reduced, not rejected', async () => {
-    // The page holds entries on or before the selected day, so the newest of
-    // them IS the global newest for its category: anything beyond the page is
-    // older by construction. Rejecting here would disable hints for large
-    // histories for no reason.
+  test('a full page is refused even when it holds a usable manual row', async () => {
+    // A full page can resolve one category while another category's only
+    // eligible value sits beyond the page. Absence then means either "no
+    // history" or "not fetched", and the two are indistinguishable without a
+    // per-category request. So the page is refused rather than returned with a
+    // possible silent gap.
     respondWithHistory((index) =>
       entry(
         index,
-        index % 2 === 0 ? '2024-06-10' : '2024-07-01',
-        index % 2 === 0 ? `v${index}` : 'future'
+        index === 0 ? '2024-06-10' : '2024-07-01',
+        index === 0 ? 'usable' : 'future'
       )
     );
 
-    const result = await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
-
-    // Every returned row is on or before the selected day, and no post-date row
-    // leaks into the result.
-    expect(result.length).toBeGreaterThan(0);
-    for (const row of result) {
-      expect(row.entry_date <= '2024-06-15').toBe(true);
-    }
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).rejects.toThrow(/history exceeds/);
   });
 
-  test('the newest on-or-before entry in a full page wins', async () => {
-    // Pins the ordering claim: later pre-date rows in the page must beat earlier
-    // ones, since the page is newest-first and the reduction picks the newest.
-    respondWithHistory((index) => {
-      if (index === 0) return entry(0, '2024-06-10', 'newest');
-      if (index === 1) return entry(1, '2024-06-01', 'older');
-      return entry(index, '2024-07-01', 'future');
+  test('the newest on-or-before entry wins within a whole page', async () => {
+    // A short page is returned whole, so the reduction is the true answer and
+    // the newest pre-date row must beat the older one.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 500', 500));
+      }
+      return Promise.resolve([
+        {
+          id: 'newest',
+          category_id: 'cat-1',
+          value: 'newest',
+          entry_date: '2024-06-10',
+          entry_hour: null,
+          entry_timestamp: '2024-06-10T00:00:00.000Z',
+          source: 'manual',
+        },
+        {
+          id: 'older',
+          category_id: 'cat-1',
+          value: 'older',
+          entry_date: '2024-06-01',
+          entry_hour: null,
+          entry_timestamp: '2024-06-01T00:00:00.000Z',
+          source: 'manual',
+        },
+        {
+          id: 'future',
+          category_id: 'cat-1',
+          value: 'future',
+          entry_date: '2024-07-01',
+          entry_hour: null,
+          entry_timestamp: '2024-07-01T00:00:00.000Z',
+          source: 'manual',
+        },
+      ]);
     });
 
     const result = await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
 
     expect(result).toEqual([
       {
-        id: 'e0',
+        id: 'newest',
         category_id: 'cat-1',
         value: 'newest',
         entry_date: '2024-06-10',
@@ -663,14 +689,20 @@ describe('fetchLatestManualCustomEntriesOnOrBefore — page provenance', () => {
     ).rejects.toThrow(/history exceeds/);
   });
 
-  test('valid manual hints survive a full page of synced and future rows', async () => {
-    // The other half of the guard: a usable manual row must still be returned,
-    // not thrown away by an over-eager provenance check.
-    fullPage((index) => {
-      if (index === 0) return row(0, '2024-06-01', 'synced', 'HealthConnect');
-      if (index === 1) return row(1, '2024-06-10', '5', 'manual');
-      if (index === 2) return row(2, '2024-07-01', 'future', 'manual');
-      return row(index, '2024-07-02', 'future', 'manual');
+  test('valid manual hints survive a whole page of synced and future rows', async () => {
+    // The other half of the guard: a usable manual row must still be returned.
+    // The page is short, so it is complete and the provenance filter is the only
+    // thing that decides, not truncation.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 500', 500));
+      }
+      return Promise.resolve([
+        row(0, '2024-06-01', 'synced', 'HealthConnect'),
+        row(1, '2024-06-10', '5', 'manual'),
+        row(2, '2024-07-01', 'future', 'manual'),
+      ]);
     });
 
     const result = await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');

@@ -247,18 +247,11 @@ const CUSTOM_ENTRY_HINT_FALLBACK_LIMIT = 1000;
  * The legacy endpoint cannot express this query: it accepts `limit` but no
  * offset and no date bound, and the per-category range endpoint does not return
  * `source`, so it cannot separate a manual value from a health-sync sample.
- * Paging is therefore impossible, so the fallback asks for the newest page and
- * reasons about what that page can prove.
- *
- * The page is ordered newest-first, so an entry left outside it is always older
- * than every entry inside it. That makes the reduction sound for anything it
- * returns: for a category with an entry on or before `date` inside the page,
- * that entry is the newest such entry overall, because anything older sits
- * further back still. The one case it cannot speak for is a page holding no
- * entry on or before `date` at all — the reduction would then be empty and claim
- * "no previous values" while older history may exist unfetched. That case fails
- * loudly instead, so the screen asks for a server update rather than showing an
- * empty field as though it were the answer.
+ * Paging is therefore impossible, so the fallback asks for one page and only
+ * trusts a page that came back short: a short page was returned whole, while a
+ * full page may have dropped the newest value of any category. A full page is
+ * reported as a failure so the screen asks for a server update rather than
+ * showing a set that may be silently incomplete.
  *
  * Both consequences only affect servers without the bulk endpoint.
  */
@@ -294,35 +287,33 @@ export const fetchLatestManualCustomEntriesOnOrBefore = async (
       throw error;
     }
 
-    // Reduce first, then decide whether the page could prove anything. Deriving
-    // the guard from the reduction instead of a parallel predicate is the point:
-    // an earlier version asked only "does the page hold an entry on or before
-    // the day?", which a health-sync sample satisfies while the reduction
-    // discards it. The page then looked usable, produced no hints, and the screen
-    // showed empty fields with nothing to explain them. Reusing the reduction
-    // makes that class of drift impossible.
-    const hints = reduceLatestManualEntries(entries, date, isManualSource);
-
-    // A full page means more entries exist beyond it. When the reduction is also
-    // empty, nothing usable was found and the answer may sit in the unfetched
-    // part, so fail loudly rather than report "no previous values".
+    // A full page means the history was cut off, and a cut-off page cannot be
+    // treated as an answer at all.
     //
-    // A non-empty reduction is sound and is returned as-is. Entries beyond the
-    // page are older by `entry_timestamp`, and for the `Daily` categories this
-    // editor renders the server stores a timestamp on the entry's own day, so
-    // the unfetched tail cannot outrank a fetched on-or-before entry. A category
-    // whose entire history is older than the page is simply absent, which shows
-    // no suggestion rather than a wrong one.
-    if (
-      hints.length === 0 &&
-      entries.length >= CUSTOM_ENTRY_HINT_FALLBACK_LIMIT
-    ) {
+    // The tempting refinement — return the hints the page does prove and let the
+    // rest be absent — is not sound here, and no predicate fixes it. The page is
+    // global across every category, so a full page can resolve category A while
+    // category B's only eligible value sits beyond it. Absence of B from the
+    // reduction then means either "B has no history" (a correct empty answer) or
+    // "B's history was not fetched" (a wrong one), and the two are
+    // indistinguishable without per-category requests, which would be an N+1.
+    // Paging cannot close the gap either: the legacy endpoint takes `limit` but
+    // no offset, and the per-category range endpoint omits `source`, so it cannot
+    // tell a manual value from a health-sync sample.
+    //
+    // Refuse the page instead, so the screen reports that previous values could
+    // not be loaded rather than presenting a set that may be missing categories
+    // without saying so. Only a server without the bulk endpoint reaches here.
+    if (entries.length >= CUSTOM_ENTRY_HINT_FALLBACK_LIMIT) {
       throw new Error(
-        `Custom measurement history exceeds ${CUSTOM_ENTRY_HINT_FALLBACK_LIMIT} entries and none on or before ${date} are usable, so previous values cannot be resolved on this server version.`
+        `Custom measurement history exceeds ${CUSTOM_ENTRY_HINT_FALLBACK_LIMIT} entries, so a complete set of previous values cannot be resolved on this server version.`
       );
     }
 
-    return hints;
+    // A page shorter than the limit was returned whole, so the reduction is the
+    // true answer: manual sources only, nothing after the selected day, newest
+    // first per category.
+    return reduceLatestManualEntries(entries, date, isManualSource);
   }
 };
 
