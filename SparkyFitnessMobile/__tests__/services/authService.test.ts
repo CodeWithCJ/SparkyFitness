@@ -4,6 +4,8 @@ import {
   notifySessionExpired,
   setOnNoConfigs,
   notifyNoConfigs,
+  setOnIdentityChanged,
+  notifyIdentityChanged,
   login,
   LoginError,
   fetchMfaFactors,
@@ -16,6 +18,7 @@ import {
   _setTrustedOriginCache,
 } from '../../src/services/api/authService';
 import { ServerConfig } from '../../src/services/storage';
+import * as LogService from '../../src/services/LogService';
 import { TimeoutError } from '../../src/utils/concurrency';
 import * as WebBrowser from 'expo-web-browser';
 
@@ -46,6 +49,7 @@ describe('authService', () => {
     // Clear stale callbacks between tests
     setOnSessionExpired(() => {});
     setOnNoConfigs(() => {});
+    setOnIdentityChanged(() => {});
   });
 
   afterEach(() => {
@@ -126,6 +130,41 @@ describe('authService', () => {
     test('no-op when no callback registered', () => {
       setOnNoConfigs(undefined as any);
       expect(() => notifyNoConfigs()).not.toThrow();
+    });
+  });
+
+  describe('setOnIdentityChanged / notifyIdentityChanged', () => {
+    test('registered callback is awaited', async () => {
+      const order: string[] = [];
+      setOnIdentityChanged(async () => {
+        await Promise.resolve();
+        order.push('handler');
+      });
+
+      await notifyIdentityChanged();
+      order.push('caller');
+
+      // Callers refetch straight after this resolves, so a handler that has
+      // not finished clearing the cookie jar would let the next request out
+      // carrying the previous account's session.
+      expect(order).toEqual(['handler', 'caller']);
+    });
+
+    test('an unregistered handler is reported, not passed over', async () => {
+      const addLogSpy = jest
+        .spyOn(LogService, 'addLog')
+        .mockResolvedValue(undefined);
+      setOnIdentityChanged(undefined as any);
+
+      await expect(notifyIdentityChanged()).resolves.toBeUndefined();
+
+      // The screens that change identity no longer clear anything themselves,
+      // so with nothing registered the previous account's caches survive the
+      // switch and nothing else would say so.
+      expect(addLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('no handler registered'),
+        'ERROR'
+      );
     });
   });
 

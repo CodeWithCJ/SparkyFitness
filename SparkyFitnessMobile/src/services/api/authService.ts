@@ -101,7 +101,18 @@ export const setOnIdentityChanged = (cb: () => void | Promise<void>): void => {
  * this app sends, so the reply would describe the account we just left.
  */
 export const notifyIdentityChanged = async (): Promise<void> => {
-  await onIdentityChangedCallback?.();
+  if (!onIdentityChangedCallback) {
+    // The screens that change identity no longer drop anything themselves, so
+    // an unregistered handler means the previous account's caches survive the
+    // switch in silence. Nothing here can recover them -- the caches belong to
+    // the tree that failed to register -- but it must not pass unnoticed.
+    addLog(
+      "[AuthService] Identity changed with no handler registered; the previous account's caches were left in place.",
+      'ERROR'
+    );
+    return;
+  }
+  await onIdentityChangedCallback();
 };
 
 let pendingProxyHeaders: Record<string, string> = {};
