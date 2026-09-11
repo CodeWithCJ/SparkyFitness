@@ -14,6 +14,7 @@ import FastingProtocolSheet, {
 import EndFastSheet, { type EndFastSheetRef } from '../components/EndFastSheet';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useCurrentFast, useFastingStats } from '../hooks/useFasting';
+import { usePreferences } from '../hooks/usePreferences';
 import { useFastingTimer } from '../hooks/useFastingTimer';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import { formatFastingStats, formatTime } from '../utils/fasting';
@@ -53,6 +54,7 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
   const dateLocale = translationI18n.language.startsWith('pl')
     ? 'pl-PL'
     : 'en-US';
+  const { preferences } = usePreferences();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const protocolSheetRef = useRef<FastingProtocolSheetRef>(null);
@@ -296,7 +298,8 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
               <DetailRow
                 label={t('fastingDetail.started', { defaultValue: 'Started' })}
                 value={`${formatDateLabel(toLocalDateString(currentFast.start_time), t, dateLocale)}, ${formatTime(
-                  currentFast.start_time
+                  currentFast.start_time,
+                  preferences?.time_format
                 )}`}
               />
               {currentFast.target_end_time && (
@@ -304,7 +307,10 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
                   label={t('fastingDetail.goalReached', {
                     defaultValue: 'Goal reached',
                   })}
-                  value={formatTime(currentFast.target_end_time)}
+                  value={formatTime(
+                    currentFast.target_end_time,
+                    preferences?.time_format
+                  )}
                 />
               )}
 

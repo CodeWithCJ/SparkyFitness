@@ -1,5 +1,7 @@
 import { localDateToDay } from '@workspace/shared';
 import type { TFunction } from 'i18next';
+import type { EntryTimeFormat } from './entryTimeDisplay';
+import { formatDateToTimeLabel } from './entryTimeDisplay';
 
 /**
  * Converts a timestamp to a local date string (YYYY-MM-DD).
@@ -80,7 +82,8 @@ export interface RelativeTimeTranslator {
 export const formatRelativeTime = (
   timestamp: Date | null,
   translate: RelativeTimeTranslator,
-  locale: string
+  locale: string,
+  timeFormat?: EntryTimeFormat | null
 ): string => {
   if (!timestamp)
     return translate('date.neverSynced', { defaultValue: 'Never synced' });
@@ -90,10 +93,7 @@ export const formatRelativeTime = (
   const diffMinutes = Math.floor(diffSeconds / 60);
   const diffHours = Math.floor(diffMinutes / 60);
   const diffDays = Math.floor(diffHours / 24);
-  const time = timestamp.toLocaleTimeString(locale, {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  const time = formatDateToTimeLabel(timestamp, timeFormat, locale);
 
   if (diffSeconds < 60)
     return translate('date.justNow', { defaultValue: 'Just now' });

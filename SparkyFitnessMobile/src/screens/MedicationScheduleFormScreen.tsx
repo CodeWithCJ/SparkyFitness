@@ -19,6 +19,7 @@ import {
   useUpdateMedicationSchedule,
   useDeleteMedicationSchedule,
 } from '../hooks/useMedications';
+import { usePreferences } from '../hooks/usePreferences';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import FormInput from '../components/FormInput';
@@ -171,6 +172,7 @@ const MedicationScheduleFormScreen: React.FC<
     : 'en-US';
   const { medicationId, scheduleId } = route.params;
   const isEditing = !!scheduleId;
+  const { preferences } = usePreferences();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -626,7 +628,11 @@ const MedicationScheduleFormScreen: React.FC<
                   )}
                   <Text className="text-base text-text-secondary">
                     {form.timeOfDay
-                      ? formatLocalizedTimeOfDay(form.timeOfDay)
+                      ? formatLocalizedTimeOfDay(
+                          form.timeOfDay,
+                          undefined,
+                          preferences?.time_format
+                        )
                       : t('medications.schedule.none', {
                           defaultValue: 'None',
                         })}
@@ -968,6 +974,7 @@ const MedicationScheduleFormScreen: React.FC<
       <TimeSheet
         ref={timeSheetRef}
         value={form.timeOfDay}
+        timeFormat={preferences?.time_format}
         onSelectTime={(time) => updateField('timeOfDay', time)}
       />
       <CalendarSheet

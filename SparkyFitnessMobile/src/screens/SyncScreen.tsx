@@ -90,7 +90,7 @@ import type {
   HealthMetricStates,
   HealthDataDisplayState,
 } from '../types/healthRecords';
-import { useSyncHealthData } from '../hooks';
+import { useSyncHealthData, usePreferences } from '../hooks';
 import type { RootStackScreenProps } from '../types/navigation';
 import { fetchHealthDisplayData } from '../services/healthDataDisplay';
 import { shareHealthDiagnosticReport } from '../services/healthDiagnosticService';
@@ -104,6 +104,7 @@ interface TimeRangeOption {
 
 const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   const { t } = useTranslation();
+  const { preferences } = usePreferences();
   const appLocale = useAppLocale();
   const dateLocale = appLocale;
   const timeRangeOptions = useMemo<TimeRangeOption[]>(
@@ -832,10 +833,20 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
                       defaultValue: 'Last synced:',
                     })}
                   </Text>{' '}
-                  {formatRelativeTime(new Date(lastSyncedTime), t, dateLocale)}
+                  {formatRelativeTime(
+                    new Date(lastSyncedTime),
+                    t,
+                    dateLocale,
+                    preferences?.time_format
+                  )}
                 </>
               ) : (
-                formatRelativeTime(null, t, dateLocale)
+                formatRelativeTime(
+                  null,
+                  t,
+                  dateLocale,
+                  preferences?.time_format
+                )
               )
             ) : (
               ' '

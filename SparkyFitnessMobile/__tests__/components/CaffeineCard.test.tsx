@@ -51,6 +51,12 @@ jest.mock('victory-native', () => {
   };
 });
 
+let mockPreferences = { time_format: 'HH:mm' };
+
+jest.mock('../../src/hooks/usePreferences', () => ({
+  usePreferences: () => ({ preferences: mockPreferences }),
+}));
+
 const NOW = new Date('2026-09-05T14:00:00.000Z').getTime();
 
 const baseKinetics: CaffeineActiveResponse = {
@@ -76,6 +82,10 @@ const baseKinetics: CaffeineActiveResponse = {
 };
 
 describe('CaffeineCard (mobile)', () => {
+  beforeEach(() => {
+    mockPreferences = { time_format: 'HH:mm' };
+  });
+
   it('renders the curve and the threshold as separate series', () => {
     render(
       <CaffeineCard kinetics={baseKinetics} nowMs={NOW} isLoading={false} />
@@ -86,11 +96,22 @@ describe('CaffeineCard (mobile)', () => {
     expect(screen.getByLabelText('threshold')).toBeTruthy();
   });
 
-  it('shows the cutoff time when one is still ahead', () => {
+  it('shows the cutoff time when one is still ahead in 24h format', () => {
+    mockPreferences = { time_format: 'HH:mm' };
     render(
       <CaffeineCard kinetics={baseKinetics} nowMs={NOW} isLoading={false} />
     );
     expect(screen.getByText('17:45')).toBeTruthy();
+    expect(screen.getByText('At 22:30')).toBeTruthy();
+  });
+
+  it('shows the cutoff time when one is still ahead in 12h format', () => {
+    mockPreferences = { time_format: 'h:mm A' };
+    render(
+      <CaffeineCard kinetics={baseKinetics} nowMs={NOW} isLoading={false} />
+    );
+    expect(screen.getByText('5:45 PM')).toBeTruthy();
+    expect(screen.getByText('At 10:30 PM')).toBeTruthy();
   });
 
   // The web card and this one read the same cutoff_state, so "already over"

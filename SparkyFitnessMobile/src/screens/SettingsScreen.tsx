@@ -74,7 +74,12 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const syncSubtitle = lastSyncedTime
     ? t('settings.lastSynced', {
         defaultValue: 'Last synced {{time}}',
-        time: formatRelativeTime(new Date(lastSyncedTime), t, dateLocale),
+        time: formatRelativeTime(
+          new Date(lastSyncedTime),
+          t,
+          dateLocale,
+          userPreferences?.time_format
+        ),
       })
     : t('date.neverSynced', { defaultValue: 'Never synced' });
 

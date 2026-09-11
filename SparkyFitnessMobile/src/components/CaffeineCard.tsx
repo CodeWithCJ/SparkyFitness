@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { CartesianChart, Line } from 'victory-native';
 import { DashPathEffect } from '@shopify/react-native-skia';
 import { useCSSVariable } from 'uniwind';
-import { getAppLocale } from '../localization/i18n';
 import {
   activeCaffeineAt,
   caffeineCurve,
@@ -13,15 +12,13 @@ import {
 import type { CaffeineActiveResponse } from '@workspace/shared';
 import { makeChartFont, CHART_LABEL_FONT_SIZE } from './charts/chartFormatting';
 import LineSeriesMark from './charts/LineSeriesMark';
+import { usePreferences } from '../hooks/usePreferences';
+import {
+  formatDateToTimeLabel,
+  formatTimeLabel,
+} from '../utils/entryTimeDisplay';
 
 const font = makeChartFont(CHART_LABEL_FONT_SIZE);
-
-/** Local HH:MM for an instant, in the app's locale rather than the device's. */
-const clockLabel = (instant: string | number) =>
-  new Date(instant).toLocaleTimeString(getAppLocale(), {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 
 type CaffeineCardProps = {
   kinetics: CaffeineActiveResponse | undefined;
@@ -41,11 +38,17 @@ const CaffeineCard: React.FC<CaffeineCardProps> = ({
   isLoading,
 }) => {
   const { t } = useTranslation();
+  const { preferences } = usePreferences();
   const [accentColor, dangerColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-icon-danger',
     '--color-text-muted',
   ]) as [string, string, string];
+
+  const clockLabel = (value: number | string | Date) => {
+    const d = value instanceof Date ? value : new Date(value);
+    return formatDateToTimeLabel(d, preferences?.time_format);
+  };
 
   const bedtimeMs = kinetics ? new Date(kinetics.bedtime_at).getTime() : 0;
 
@@ -119,7 +122,10 @@ const CaffeineCard: React.FC<CaffeineCardProps> = ({
 
   const cutoffText =
     kinetics.cutoff_state === 'by' && kinetics.latest_safe_dose_time
-      ? kinetics.latest_safe_dose_time
+      ? formatTimeLabel(
+          kinetics.latest_safe_dose_time,
+          preferences?.time_format
+        )
       : kinetics.cutoff_state === 'passed'
         ? t('caffeine.cutoffPassed', { defaultValue: 'Too late' })
         : kinetics.cutoff_state === 'over'
@@ -149,7 +155,10 @@ const CaffeineCard: React.FC<CaffeineCardProps> = ({
           <Text className="text-text-muted text-xs">
             {t('caffeine.atBedtime', { defaultValue: 'At {{time}}' }).replace(
               '{{time}}',
-              kinetics.target_bedtime
+              formatTimeLabel(
+                kinetics.target_bedtime,
+                preferences?.time_format
+              ) ?? kinetics.target_bedtime
             )}
           </Text>
           <Text className="text-text-primary text-2xl font-bold">

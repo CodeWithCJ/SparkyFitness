@@ -12,6 +12,7 @@ import {
   useDeleteMedicationEntry,
   useLogDose,
 } from '../hooks/useMedications';
+import { usePreferences } from '../hooks/usePreferences';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -26,7 +27,7 @@ import {
   localizedDescribeSchedule,
   formatLocalizedTimeOfDay,
 } from '../utils/medicationScheduleLocalization';
-import { getAppLocale } from '../localization';
+import { formatDateToTimeLabel } from '../utils/entryTimeDisplay';
 import { getDeviceTimezone, formatDateLabel } from '../utils/dateUtils';
 import type { RootStackScreenProps } from '../types/navigation';
 import {
@@ -48,6 +49,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({
     ? 'pl-PL'
     : 'en-US';
   const { medicationId } = route.params;
+  const { preferences } = usePreferences();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -142,10 +144,10 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({
         t('medications.detail.removeDoseMessage', {
           defaultValue: 'Remove this logged dose from {{time}}?',
           time: entry.taken_at
-            ? new Date(entry.taken_at).toLocaleTimeString(getAppLocale(), {
-                hour: 'numeric',
-                minute: '2-digit',
-              })
+            ? formatDateToTimeLabel(
+                new Date(entry.taken_at),
+                preferences?.time_format
+              )
             : t('medications.detail.today', { defaultValue: 'today' }),
         }),
         [
@@ -174,7 +176,7 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({
         ]
       );
     },
-    [deleteEntryMutation, t]
+    [deleteEntryMutation, preferences?.time_format, t]
   );
 
   const header = useScreenHeader({
@@ -262,8 +264,16 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({
                   onSkip={() => logDose(due, 'skipped')}
                   title={
                     due.schedule.time_of_day
-                      ? formatLocalizedTimeOfDay(due.schedule.time_of_day)
-                      : localizedDescribeSchedule(t, due.schedule)
+                      ? formatLocalizedTimeOfDay(
+                          due.schedule.time_of_day,
+                          undefined,
+                          preferences?.time_format
+                        )
+                      : localizedDescribeSchedule(
+                          t,
+                          due.schedule,
+                          preferences?.time_format
+                        )
                   }
                   subtitle={
                     formatDose(due.medication, due.schedule) ?? undefined
@@ -296,9 +306,9 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({
                       <View className="flex-1">
                         <Text className="text-base text-text-primary">
                           {dose.taken_at
-                            ? new Date(dose.taken_at).toLocaleTimeString(
-                                getAppLocale(),
-                                { hour: 'numeric', minute: '2-digit' }
+                            ? formatDateToTimeLabel(
+                                new Date(dose.taken_at),
+                                preferences?.time_format
                               )
                             : t('medications.detail.logged', {
                                 defaultValue: 'Logged',
@@ -354,9 +364,12 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({
                 </Text>
               </TouchableOpacity>
             </View>
-            {(med.schedules ?? []).map((sched, index) => {
+            {med.schedules?.map((sched, index) => {
               const parts: string[] = [];
-              if (sched.dose_amount != null) {
+              if (
+                sched.dose_amount != null &&
+                sched.dose_amount !== med.dose_amount
+              ) {
                 const scheduleDose = formatDose(med, sched);
                 if (scheduleDose != null) parts.push(scheduleDose);
               }
@@ -383,7 +396,11 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({
                   >
                     <View className="flex-1">
                       <Text className="text-base text-text-primary">
-                        {localizedDescribeSchedule(t, sched)}
+                        {localizedDescribeSchedule(
+                          t,
+                          sched,
+                          preferences?.time_format
+                        )}
                       </Text>
                       {subtitle !== '' && (
                         <Text className="text-sm text-text-muted mt-0.5">

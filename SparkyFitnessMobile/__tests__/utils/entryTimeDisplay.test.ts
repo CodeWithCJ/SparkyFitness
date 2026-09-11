@@ -1,5 +1,8 @@
 import { initializeI18n } from '../../src/localization/i18n';
-import { formatTimeLabel } from '../../src/utils/entryTimeDisplay';
+import {
+  formatTimeLabel,
+  is12HourTimeFormat,
+} from '../../src/utils/entryTimeDisplay';
 
 describe('entry time display respects account time_format', () => {
   beforeAll(async () => {
@@ -25,5 +28,13 @@ describe('entry time display respects account time_format', () => {
     expect(formatTimeLabel(null, 'HH:mm')).toBeNull();
     expect(formatTimeLabel('', 'HH:mm')).toBeNull();
     expect(formatTimeLabel('not-a-time', 'HH:mm')).toBeNull();
+  });
+
+  test('is12HourTimeFormat resolves 12h vs 24h correctly', () => {
+    expect(is12HourTimeFormat('HH:mm')).toBe(false);
+    expect(is12HourTimeFormat('h:mm A')).toBe(true);
+    expect(is12HourTimeFormat('h:mm a')).toBe(true);
+    // In English locale default, should be 12-hour
+    expect(is12HourTimeFormat()).toBe(true);
   });
 });

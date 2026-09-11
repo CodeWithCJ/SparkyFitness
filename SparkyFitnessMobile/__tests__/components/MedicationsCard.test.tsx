@@ -18,6 +18,10 @@ jest.mock('../../src/hooks/useMedications', () => ({
   useLogDose: jest.fn(),
 }));
 
+jest.mock('../../src/hooks/usePreferences', () => ({
+  usePreferences: () => ({ preferences: { time_format: 'h:mm A' } }),
+}));
+
 jest.mock('../../src/stores/diaryDateStore', () => ({
   useDiaryDateStore: (selector: (s: { selectedDate: string }) => unknown) =>
     selector({ selectedDate: '2026-07-29' }),
