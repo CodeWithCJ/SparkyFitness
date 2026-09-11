@@ -1831,5 +1831,42 @@ describe('openFoodFactsService', () => {
       const result = mapOpenFoodFactsProduct(product);
       expect(result.variants).toBeUndefined();
     });
+
+    it('does not add a household variant when serving_quantity is absent (no verified metric link)', () => {
+      // Synthetic reproduction of the corruption bug, not a specific barcode
+      // we've confirmed live. The corruption mechanism itself -- a product's
+      // unscaled per-100g values getting mislabeled under a household unit --
+      // was confirmed against a live product; this exact fixture is a
+      // deliberate construction of the logical gap that causes it: OFF gives
+      // a parseable household descriptor ("2 tbsp (28 g)") but never declares
+      // serving_quantity, so the metric variant stays on the 100g basis
+      // (never scaled to 28 g). Reusing its values under the "2 tbsp" label
+      // would show ~462 kcal/2 tbsp instead of the true ~130 kcal.
+      const product = {
+        product_name: 'Synthetic No-Serving-Quantity Product',
+        brands: 'Test Brand',
+        code: '0000000000000',
+        serving_size: '2 tbsp (28 g)',
+        nutrition_data_per: '100g',
+        nutriments: {
+          'energy-kcal_100g': 462,
+          proteins_100g: 5,
+          carbohydrates_100g: 64,
+          fat_100g: 25,
+        },
+      };
+      const result = mapOpenFoodFactsProduct(product);
+
+      // No serving_quantity was declared, so there is no verified physical
+      // link between "2 tbsp" and any gram amount -- emitting a household
+      // variant here would just relabel the unscaled 100g numbers as "2 tbsp".
+      expect(result.variants).toBeUndefined();
+
+      // The default/metric variant must still correctly reflect the 100g
+      // fallback basis (unaffected by the household-variant fix).
+      expect(result.default_variant.serving_size).toBe(100);
+      expect(result.default_variant.serving_unit).toBe('g');
+      expect(result.default_variant.calories).toBe(462);
+    });
   });
 });
