@@ -17,6 +17,7 @@ import {
   saveCustomMeasurement,
   deleteCustomMeasurement,
 } from '../../src/services/api/measurementsApi';
+import { addLog } from '../../src/services/LogService';
 import {
   createTestQueryClient,
   createQueryWrapper,
@@ -294,6 +295,26 @@ describe('useCustomMeasurements', () => {
       expect(
         mockFetchLatestManualCustomEntriesOnOrBefore
       ).not.toHaveBeenCalled();
+    });
+
+    test('logs a failed lookup instead of failing silently', async () => {
+      // A server without the endpoint answers 404; without this the editor
+      // shows its empty placeholder for every custom field and looks like it
+      // has no previous values at all.
+      mockFetchLatestManualCustomEntriesOnOrBefore.mockRejectedValue(
+        new Error('Server error: 404 - Not Found')
+      );
+
+      renderHook(() => useLatestManualCustomEntriesOnOrBefore(testDate), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(addLog).toHaveBeenCalledWith(
+          expect.stringContaining('previous custom measurement values'),
+          'WARNING'
+        );
+      });
     });
   });
 

@@ -3,6 +3,7 @@ import {
   fetchLatestCheckInMeasurementsOnOrBefore,
   fetchMeasurements,
 } from '../services/api/measurementsApi';
+import { addLog } from '../services/LogService';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import {
   latestMeasurementsOnOrBeforeQueryKey,
@@ -49,10 +50,26 @@ export function useLatestMeasurementsOnOrBefore({
 }: UseMeasurementsOptions) {
   const query = useQuery({
     queryKey: latestMeasurementsOnOrBeforeQueryKey(date),
-    queryFn: () => fetchLatestCheckInMeasurementsOnOrBefore(date),
-    enabled,
     // A failure here only costs the hint, so it must never surface as the
-    // screen's load error or block the form.
+    // screen's load error or block the form. It is logged rather than swallowed
+    // because the visible symptom is otherwise indistinguishable from "there is
+    // no earlier measurement": every field quietly falls back to its empty
+    // placeholder, which reads as a real zero for numeric inputs. The error is
+    // rethrown so React Query still records the failure.
+    queryFn: async () => {
+      try {
+        return await fetchLatestCheckInMeasurementsOnOrBefore(date);
+      } catch (error) {
+        addLog(
+          `Failed to load previous measurement values: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+          'WARNING'
+        );
+        throw error;
+      }
+    },
+    enabled,
     retry: false,
   });
 

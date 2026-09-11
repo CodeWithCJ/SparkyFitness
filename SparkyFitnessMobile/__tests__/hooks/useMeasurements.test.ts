@@ -11,6 +11,7 @@ import {
   fetchLatestCheckInMeasurementsOnOrBefore,
   fetchMeasurements,
 } from '../../src/services/api/measurementsApi';
+import { addLog } from '../../src/services/LogService';
 import {
   createTestQueryClient,
   createQueryWrapper,
@@ -26,6 +27,10 @@ jest.mock('@react-navigation/native', () => ({
   useFocusEffect: jest.fn((callback) => {
     callback();
   }),
+}));
+
+jest.mock('../../src/services/LogService', () => ({
+  addLog: jest.fn(),
 }));
 
 const mockFetchMeasurements = fetchMeasurements as jest.MockedFunction<
@@ -237,6 +242,27 @@ describe('useMeasurements', () => {
       expect(latestMeasurementsOnOrBeforeQueryKey(testDate)).not.toEqual(
         measurementsQueryKey(testDate)
       );
+    });
+
+    test('logs a failed lookup instead of failing silently', async () => {
+      // The symptom of a failed lookup is an empty suggestion on every field,
+      // which for a numeric input is indistinguishable from a real zero. The
+      // failure has to reach the app log so it can be told apart from "this
+      // field genuinely has no earlier value".
+      mockFetchLatestCheckInMeasurementsOnOrBefore.mockRejectedValue(
+        new Error('Server error: 404 - Not Found')
+      );
+
+      renderHook(() => useLatestMeasurementsOnOrBefore({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(addLog).toHaveBeenCalledWith(
+          expect.stringContaining('previous measurement values'),
+          'WARNING'
+        );
+      });
     });
   });
 });

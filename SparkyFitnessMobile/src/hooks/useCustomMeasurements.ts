@@ -50,10 +50,26 @@ export function useLatestManualCustomEntriesOnOrBefore(
 ) {
   return useQuery({
     queryKey: latestManualCustomEntriesQueryKey(date),
-    queryFn: () => fetchLatestManualCustomEntriesOnOrBefore(date),
-    enabled: !!date && (options?.enabled ?? true),
     // A failure here only costs the hint, so it must never surface as the
-    // screen's load error or block the form.
+    // screen's load error or block the form. It is logged rather than swallowed
+    // because the visible symptom is otherwise indistinguishable from "this
+    // category genuinely has no earlier value": a server without the endpoint
+    // answers 404 and every field quietly falls back to its empty placeholder.
+    // The error is rethrown so React Query still records the failure.
+    queryFn: async () => {
+      try {
+        return await fetchLatestManualCustomEntriesOnOrBefore(date);
+      } catch (error) {
+        addLog(
+          `Failed to load previous custom measurement values: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+          'WARNING'
+        );
+        throw error;
+      }
+    },
+    enabled: !!date && (options?.enabled ?? true),
     retry: false,
   });
 }
