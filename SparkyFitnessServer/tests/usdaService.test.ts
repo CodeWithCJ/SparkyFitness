@@ -23,11 +23,6 @@ describe('searchUsdaFoods', () => {
     );
   }
 
-  // With no dataType filter, USDA's default search mixes in Branded (manufacturer
-  // SKU) results and can bury or fully hide the clean Foundation/SR Legacy/Survey
-  // generic entries behind branded noise (e.g. "chicken breast" returned 8 Branded
-  // products and zero generic matches). Restricting to the non-branded datasets by
-  // default is what surfaces the generic entry for a plain staple-food search.
   it('requests the non-branded datasets by default, correctly URL-encoded', async () => {
     const fetchMock = vi.fn().mockResolvedValue(searchResponse());
     globalThis.fetch = fetchMock;
@@ -41,11 +36,8 @@ describe('searchUsdaFoods', () => {
     expect(searchParams.get('dataType')).toBe(
       'Foundation,SR Legacy,Survey (FNDDS)'
     );
-    // Belt-and-suspenders: the decoded assertion above would also pass a
-    // hand-rolled template string that left the value's raw space and
-    // parentheses on the wire (the WHATWG URL parser tolerates those in a
-    // query component), so also assert the query string itself carries no
-    // literal, unencoded space or parenthesis character.
+    // Catches an unencoded space/paren surviving on the wire even though
+    // the decoded assertion above would still pass.
     const rawQuery = requestedUrl.split('?')[1];
     expect(rawQuery).not.toMatch(/[ ()]/);
   });

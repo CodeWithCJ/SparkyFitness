@@ -19,12 +19,8 @@ function scaleProviderNutrients(
 // Using native fetch (standard in Node 22+)
 const USDA_API_BASE_URL = 'https://api.nal.usda.gov/fdc/v1';
 
-// USDA's default search mixes Branded (manufacturer SKU) results in with
-// Foundation/SR Legacy/Survey (FNDDS) generic entries. A plain query like
-// "chicken breast" with no dataType filter returns only Branded noise (Giant
-// Eagle, Tyson, Jennie-O, ...) and no generic match at all; restricting to
-// the non-branded datasets by default is what surfaces the clean generic
-// entry for an ordinary staple-food search.
+// Excludes Branded (manufacturer SKU noise) by default so a plain query like
+// "chicken breast" reaches the generic entry instead of retail duplicates.
 const DEFAULT_USDA_SEARCH_DATA_TYPES = 'Foundation,SR Legacy,Survey (FNDDS)';
 
 const STANDARD_UNITS = new Set([
