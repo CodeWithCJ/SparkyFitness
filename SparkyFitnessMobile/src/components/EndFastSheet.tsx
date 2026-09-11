@@ -22,7 +22,9 @@ import Toast from 'react-native-toast-message';
 import Icon from './Icon';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import { useEndFast } from '../hooks/useFasting';
+import { usePreferences } from '../hooks/usePreferences';
 import { formatHoursMinutes, formatDateTime } from '../utils/fasting';
+import { is12HourTimeFormat } from '../utils/entryTimeDisplay';
 import { dateTypeToDate } from './TimeSheet';
 import { addLog } from '../services/LogService';
 import type { FastingLog } from '../types/fasting';
@@ -40,7 +42,10 @@ interface EndFastSheetProps {
 const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(
   ({ onEnded }, ref) => {
     const { t } = useTranslation();
+    const { preferences } = usePreferences();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
+
+    const use12Hours = is12HourTimeFormat(preferences?.time_format);
 
     const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary] =
       useCSSVariable([
@@ -216,6 +221,7 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(
             timePicker
             initialView="time"
             hideHeader
+            use12Hours={use12Hours}
             onChange={onChange}
             styles={pickerStyles}
           />
@@ -255,7 +261,7 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(
 
           {renderRow(
             t('fastingEdit.started', { defaultValue: 'Started' }),
-            formatDateTime(startDate),
+            formatDateTime(startDate, preferences?.time_format),
             'start'
           )}
           {openPicker === 'start' &&
@@ -263,7 +269,7 @@ const EndFastSheet = forwardRef<EndFastSheetRef, EndFastSheetProps>(
 
           {renderRow(
             t('fastingEdit.ended', { defaultValue: 'Ended' }),
-            formatDateTime(endDate),
+            formatDateTime(endDate, preferences?.time_format),
             'end'
           )}
           {openPicker === 'end' && renderInlinePicker(endDate, handleEndChange)}

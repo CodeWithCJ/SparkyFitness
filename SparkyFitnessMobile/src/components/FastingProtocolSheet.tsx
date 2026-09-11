@@ -24,6 +24,8 @@ import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import Icon from './Icon';
 import StepperInput from './StepperInput';
 import { useStartFast } from '../hooks/useFasting';
+import { usePreferences } from '../hooks/usePreferences';
+import { is12HourTimeFormat } from '../utils/entryTimeDisplay';
 import {
   FASTING_PRESETS,
   DEFAULT_PRESET_ID,
@@ -98,7 +100,10 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>(
   (_props, ref) => {
     const { t } = useTranslation();
     const appLocale = useAppLocale();
+    const { preferences } = usePreferences();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
+
+    const use12Hours = is12HourTimeFormat(preferences?.time_format);
 
     const [surfaceBg, textMuted, accentPrimary, textPrimary, textSecondary] =
       useCSSVariable([
@@ -175,8 +180,9 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>(
           weekday: 'short',
           hour: 'numeric',
           minute: '2-digit',
+          hour12: use12Hours,
         }),
-      [appLocale, startDate]
+      [appLocale, startDate, use12Hours]
     );
 
     const handleStart = () => {
@@ -358,6 +364,7 @@ const FastingProtocolSheet = forwardRef<FastingProtocolSheetRef>(
               mode="single"
               date={startDate}
               timePicker
+              use12Hours={use12Hours}
               onChange={handleStartChange}
               components={{
                 IconPrev: (

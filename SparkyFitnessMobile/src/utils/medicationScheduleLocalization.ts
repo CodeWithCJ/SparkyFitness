@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next';
 import { getAppLocale } from '../localization';
 import type { SharedScheduleRule } from '@workspace/shared';
+import { formatTimeLabel, type EntryTimeFormat } from './entryTimeDisplay';
 
 type ScheduleFields = Pick<
   SharedScheduleRule,
@@ -115,14 +116,19 @@ function localizedFrequency(t: TFunction, schedule: ScheduleFields): string {
 
 export function localizedDescribeSchedule(
   t: TFunction,
-  schedule: ScheduleFields
+  schedule: ScheduleFields,
+  timeFormat?: EntryTimeFormat | null
 ): string {
   const frequency = localizedFrequency(t, schedule);
   if (schedule.schedule_type_id !== 'prn' && schedule.time_of_day) {
     return t('medications.scheduleSummary.at', {
       defaultValue: '{{frequency}} at {{time}}',
       frequency,
-      time: formatLocalizedTimeOfDay(schedule.time_of_day),
+      time: formatLocalizedTimeOfDay(
+        schedule.time_of_day,
+        undefined,
+        timeFormat
+      ),
     });
   }
   return frequency;
@@ -142,7 +148,8 @@ function scheduleFrequencyIdentity(schedule: ScheduleFields): string {
 
 export function localizedDescribeSchedules(
   t: TFunction,
-  schedules: (ScheduleFields & { active?: boolean | null })[]
+  schedules: (ScheduleFields & { active?: boolean | null })[],
+  timeFormat?: EntryTimeFormat | null
 ): string {
   if (schedules.length === 0) {
     return t('medications.scheduleSummary.asNeeded', {
@@ -172,7 +179,7 @@ export function localizedDescribeSchedules(
         return frequency;
       const formattedTimes = [...new Set(times)]
         .sort()
-        .map((time) => formatLocalizedTimeOfDay(time));
+        .map((time) => formatLocalizedTimeOfDay(time, undefined, timeFormat));
       return t('medications.scheduleSummary.at', {
         defaultValue: '{{frequency}} at {{time}}',
         frequency,
@@ -184,8 +191,13 @@ export function localizedDescribeSchedules(
 
 export function formatLocalizedTimeOfDay(
   timeOfDay: string,
-  locale = getAppLocale()
+  locale = getAppLocale(),
+  timeFormat?: EntryTimeFormat | null
 ): string {
+  if (timeFormat) {
+    const formatted = formatTimeLabel(timeOfDay, timeFormat);
+    if (formatted) return formatted;
+  }
   const [hours, minutes] = timeOfDay.split(':').map(Number);
   if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return timeOfDay;
   return new Date(2000, 0, 1, hours, minutes).toLocaleTimeString(locale, {

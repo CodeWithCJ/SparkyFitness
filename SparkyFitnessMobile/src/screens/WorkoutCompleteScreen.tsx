@@ -42,7 +42,8 @@ import { getActiveServerConfig } from '../services/storage';
 import { fireSuccessHaptic } from '../services/haptics';
 import { withAlpha } from '../utils/colors';
 import { distanceFromKm, weightFromKg } from '../utils/unitConversions';
-import { formatLocalizedNumber, getAppLocale } from '../localization';
+import { formatLocalizedNumber } from '../localization';
+import { formatDateToTimeLabel } from '../utils/entryTimeDisplay';
 import { setsDurationMinutes } from '@workspace/shared';
 import {
   buildPresetUpdateExercises,
@@ -573,12 +574,9 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
     summary.averageRpe != null ? getRpeTone(summary.averageRpe) : null;
   const rpeToneColor = String(useCSSVariable(RPE_TONE_VARS[rpeTone ?? 'easy']));
 
-  const finishedTimeText = new Date(finishedAt).toLocaleTimeString(
-    getAppLocale(),
-    {
-      hour: 'numeric',
-      minute: '2-digit',
-    }
+  const finishedTimeText = formatDateToTimeLabel(
+    new Date(finishedAt),
+    preferences?.time_format
   );
 
   const sessionForDetail = refreshedSession ?? session;

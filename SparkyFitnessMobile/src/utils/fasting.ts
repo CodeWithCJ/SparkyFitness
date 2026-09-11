@@ -3,22 +3,34 @@ import { getAppLocale, formatLocalizedNumber } from '../localization';
 import { getMetabolicStage, type MetabolicStage } from '../constants/fasting';
 import { toLocalDateString, formatDateLabel, normalizeDate } from './dateUtils';
 import type { FastingLog, FastingStats } from '../types/fasting';
+import {
+  formatDateToTimeLabel,
+  is12HourTimeFormat,
+  type EntryTimeFormat,
+} from './entryTimeDisplay';
 const MS_PER_HOUR = 1000 * 60 * 60;
-/** Formats an ISO timestamp's local time of day, e.g. "6:32 PM". */
-export function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString(getAppLocale(), {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+/** Formats an ISO timestamp's local time of day, e.g. "6:32 PM" or "18:32". */
+export function formatTime(
+  iso: string,
+  timeFormat?: EntryTimeFormat | null
+): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return formatDateToTimeLabel(d, timeFormat);
 }
-/** Formats a Date as a short weekday + date + time label, e.g. "Mon, Jun 3, 6:32 PM". */
-export function formatDateTime(date: Date): string {
+/** Formats a Date as a short weekday + date + time label, e.g. "Mon, Jun 3, 6:32 PM" or "Mon, Jun 3, 18:32". */
+export function formatDateTime(
+  date: Date,
+  timeFormat?: EntryTimeFormat | null
+): string {
+  const is12H = is12HourTimeFormat(timeFormat);
   return date.toLocaleString(getAppLocale(), {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
+    hour12: is12H,
   });
 }
 /** Formats an elapsed duration as HH:MM:SS (hours are not capped at 24). */

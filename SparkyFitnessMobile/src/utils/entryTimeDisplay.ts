@@ -76,3 +76,37 @@ export function formatHourLabel(
     ...(usesMeridiem ? { hour12: true } : {}),
   });
 }
+
+/**
+ * Determines whether the given time format (or the active locale default)
+ * uses 12-hour (AM/PM) or 24-hour presentation.
+ */
+export function is12HourTimeFormat(
+  timeFormat?: EntryTimeFormat | null
+): boolean {
+  if (timeFormat === 'HH:mm') return false;
+  if (timeFormat === 'h:mm A' || timeFormat === 'h:mm a') return true;
+
+  // Fall back to the app locale default
+  try {
+    const testDate = new Date(2020, 0, 1, 13, 0, 0);
+    const formatted = testDate.toLocaleTimeString(getAppLocale(), {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+    return !formatted.includes('13');
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Formats a Date instance as a clock time string respecting the time format preference.
+ */
+export function formatDateToTimeLabel(
+  date: Date,
+  timeFormat?: EntryTimeFormat | null
+): string {
+  const hhmm = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  return formatTimeLabel(hhmm, timeFormat) ?? hhmm;
+}

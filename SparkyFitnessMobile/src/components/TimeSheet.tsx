@@ -13,6 +13,11 @@ import { useCSSVariable } from 'uniwind';
 import DateTimePicker, { type DateType } from 'react-native-ui-datepicker';
 import Button from './ui/Button';
 import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
+import { usePreferences } from '../hooks/usePreferences';
+import {
+  is12HourTimeFormat,
+  type EntryTimeFormat,
+} from '../utils/entryTimeDisplay';
 
 /** Normalizes the picker's 6-way `DateType` into a JS `Date`. */
 export function dateTypeToDate(date: DateType): Date | null {
@@ -48,12 +53,18 @@ export interface TimeSheetRef {
 interface TimeSheetProps {
   value: string; // '' or 'HH:MM'
   onSelectTime: (time: string) => void;
+  timeFormat?: EntryTimeFormat | null;
 }
 
 const TimeSheet = forwardRef<TimeSheetRef, TimeSheetProps>(
-  ({ value, onSelectTime }, ref) => {
+  ({ value, onSelectTime, timeFormat }, ref) => {
     const { t } = useTranslation();
+    const { preferences } = usePreferences();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
+
+    const use12Hours = is12HourTimeFormat(
+      timeFormat !== undefined ? timeFormat : preferences?.time_format
+    );
 
     const [surfaceBg, textMuted, accentPrimary, textPrimary, borderSubtle] =
       useCSSVariable([
@@ -131,7 +142,7 @@ const TimeSheet = forwardRef<TimeSheetRef, TimeSheetProps>(
             timePicker
             initialView="time"
             hideHeader
-            use12Hours
+            use12Hours={use12Hours}
             onChange={handleChange}
             styles={pickerStyles}
             // The wheels render 5 rows of 44px; the default 300px container

@@ -24,6 +24,7 @@ import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
 import FastingEditSheet, { type FastingEditSheetRef } from './FastingEditSheet';
 import { FastingProtocolBadge } from './FastingSharedComponents';
 import { useFastingHistory, useDeleteFast } from '../hooks/useFasting';
+import { usePreferences } from '../hooks/usePreferences';
 import {
   formatHoursMinutes,
   relativeDayLabel,
@@ -52,6 +53,7 @@ const FastingHistoryRow: React.FC<FastingHistoryRowProps> = ({
   textMuted,
   t,
 }) => {
+  const { preferences } = usePreferences();
   const dayLabel = relativeDayLabel(
     toLocalDateString(fast.end_time ?? fast.start_time),
     t
@@ -61,8 +63,8 @@ const FastingHistoryRow: React.FC<FastingHistoryRowProps> = ({
       ? formatHoursMinutes(fast.duration_minutes * 60000, t)
       : '—';
   const timeRangeLabel = fast.end_time
-    ? `${formatTime(fast.start_time)} → ${formatTime(fast.end_time)}`
-    : formatTime(fast.start_time);
+    ? `${formatTime(fast.start_time, preferences?.time_format)} → ${formatTime(fast.end_time, preferences?.time_format)}`
+    : formatTime(fast.start_time, preferences?.time_format);
 
   const renderRightActions = () => (
     <DeleteRowAction onPress={() => onDelete(fast)} className="ml-4" />

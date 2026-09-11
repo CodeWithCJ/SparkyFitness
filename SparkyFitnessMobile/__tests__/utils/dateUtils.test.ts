@@ -183,5 +183,15 @@ describe('with a pinned clock', () => {
       expect(older).not.toMatch(/^Yesterday/);
       expect(older).toContain(' at ');
     });
+
+    test('formats time according to timeFormat parameter (12h vs 24h)', () => {
+      const yesterdayDate = minutesAgo(30 * 60); // 30 hours ago -> Yesterday at 16:30 / 4:30 PM
+      expect(
+        formatRelativeTime(yesterdayDate, englishTranslator, 'en-US', 'HH:mm')
+      ).toMatch(/Yesterday at \d{2}:\d{2}$/);
+      expect(
+        formatRelativeTime(yesterdayDate, englishTranslator, 'en-US', 'h:mm A')
+      ).toMatch(/Yesterday at \d{1,2}:\d{2} (AM|PM)$/);
+    });
   });
 });

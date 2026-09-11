@@ -26,6 +26,10 @@ jest.mock('../../src/hooks/useMedications', () => ({
   useDeleteMedicationSchedule: jest.fn(),
 }));
 
+jest.mock('../../src/hooks/usePreferences', () => ({
+  usePreferences: () => ({ preferences: {} }),
+}));
+
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
   return {
