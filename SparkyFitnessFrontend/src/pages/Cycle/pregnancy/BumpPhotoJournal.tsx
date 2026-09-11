@@ -75,7 +75,10 @@ export default function BumpPhotoJournal({
             {photos.map((p) => (
               <div key={p.id} className="group relative">
                 <img
-                  src={`/${p.file_path}`}
+                  // Served through the authenticated, owner-checked route (the
+                  // session cookie travels with the same-origin request), not
+                  // the public /uploads static mount.
+                  src={`/api/v2/pregnancy/photos/file/${p.id}`}
                   alt={t('pregnancy.photos.weekAlt', 'Week {{n}} bump photo', {
                     n: p.week,
                   })}

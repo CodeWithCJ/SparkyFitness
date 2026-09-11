@@ -70,7 +70,7 @@ Paths are relative to each package root. `—` means that layer does not exist f
 | Feature | Backend | Frontend | Mobile | Shared |
 |---------|---------|----------|--------|--------|
 | **Cycle** | `routes/v2/cycleRoutes.ts`, `schemas/cycleSchemas.ts`, `services/cycleService.ts`, `models/cycleRepository.ts` | `pages/Cycle/` `api/Cycle/` `hooks/useCycle.ts` (flat) | — | tables `cycles`, `cycle_daily_entries`, `cycle_settings` (no `Cycle*.zod.ts`) |
-| **Pregnancy** | `routes/v2/pregnancyRoutes.ts`, `schemas/pregnancySchemas.ts`, `services/pregnancyService.ts`, `models/pregnancyRepository.ts` | `api/Pregnancy/` `hooks/usePregnancy.ts` (no page) | — | (no `Pregnancy*.zod.ts`) |
+| **Pregnancy** | `routes/v2/pregnancyRoutes.ts`, `schemas/pregnancySchemas.ts`, `services/pregnancyService.ts`, `models/pregnancyRepository.ts`, `utils/uploadsPath.ts` (photo bytes) | `api/Pregnancy/` `hooks/usePregnancy.ts`, `pages/Cycle/pregnancy/` | `hooks/usePregnancyPhotoSource.ts`, `components/wellness/pregnancy/` | (no `Pregnancy*.zod.ts`) |
 
 ### Reporting & Analytics
 

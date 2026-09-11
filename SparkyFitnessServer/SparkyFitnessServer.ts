@@ -404,12 +404,42 @@ const uploadsStaticOptions = {
   },
   headers: uploadsSecurityHeaders,
 };
-// Check-in progress photos are sensitive. Block direct access via the public
-// static mounts so they can only be reached through the authenticated,
-// ownership-checked route (GET /api/measurements/check-in-photos/file/:id).
+// Check-in progress photos and pregnancy bump photos are sensitive. Block
+// direct access via the public static mounts so they can only be reached
+// through their authenticated, ownership-checked routes:
+//   GET /api/measurements/check-in-photos/file/:id   (check-in)
+//   GET /api/v2/pregnancy/photos/file/:id            (pregnancy)
+// Check-in is delegatable via the 'checkin' permission; pregnancy is
+// owner-only reproductive-health data and is never shared or delegated, so its
+// route deliberately carries no permission middleware.
 // 404 (not 403) so we don't confirm whether a given path exists.
-app.use(['/uploads/check-in', '/api/uploads/check-in'], (_req, res) => {
-  res.status(404).end();
+// This block MUST stay above the express.static mounts below — moving it after
+// them silently re-exposes every file. tests/uploadsStaticMount.test.ts guards
+// both the behavior and the source ordering.
+const SENSITIVE_UPLOAD_SUBTREES = new Set(['check-in', 'pregnancy']);
+app.use(['/uploads', '/api/uploads'], (req, res, next) => {
+  // Match the path the way serve-static resolves it, not the way it was
+  // written: a prefix test against the raw URL would not account for percent-
+  // encoded separators or `..` segments, which serve-static decodes and
+  // normalizes before it looks for a file. So decode once (as it does),
+  // normalize, and test the resulting first segment.
+  let decodedPath: string;
+  try {
+    decodedPath = decodeURIComponent(req.path);
+  } catch {
+    // Malformed percent-encoding never reaches a real file.
+    res.status(400).end();
+    return;
+  }
+  const normalized = path.posix.normalize(decodedPath.replace(/\\/g, '/'));
+  // Lowercased because Express routing and macOS/Windows filesystems are all
+  // case-insensitive, so /uploads/Pregnancy/... reaches the same bytes.
+  const firstSegment = normalized.split('/').filter(Boolean)[0]?.toLowerCase();
+  if (firstSegment && SENSITIVE_UPLOAD_SUBTREES.has(firstSegment)) {
+    res.status(404).end();
+    return;
+  }
+  next();
 });
 app.use('/api/uploads', express.static(UPLOADS_BASE_DIR, uploadsStaticOptions));
 app.use('/uploads', express.static(UPLOADS_BASE_DIR, uploadsStaticOptions));

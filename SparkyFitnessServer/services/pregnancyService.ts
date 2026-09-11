@@ -1,4 +1,7 @@
+import fs from 'fs';
 import pregnancyRepository from '../models/pregnancyRepository.js';
+import { log } from '../config/logging.js';
+import { resolveUploadPathWithinRoot } from '../utils/uploadsPath.js';
 import {
   gestationalAge,
   babyWeek,
@@ -214,8 +217,83 @@ function normalizeDay(value: string | Date): string {
   return value.slice(0, 10);
 }
 
+/**
+ * Resolves the absolute path of a bump photo the caller owns, or null.
+ *
+ * Bump photos are owner-only reproductive-health data: they are excluded from
+ * the public /uploads static mount, so this is the only way to reach the bytes.
+ * Returns null (never throws) for a missing row, a non-owner, a path that
+ * escapes the uploads root, or a file that is gone from disk, so the route can
+ * answer a uniform 404 without confirming which case it was.
+ */
+async function getPhotoFile(
+  userId: string,
+  photoId: string
+): Promise<string | null> {
+  const filePath = await pregnancyRepository.getPhotoFilePath(userId, photoId);
+  if (!filePath) {
+    return null;
+  }
+  const absolute = resolveUploadPathWithinRoot(filePath);
+  if (!absolute) {
+    log(
+      'warn',
+      `Rejected pregnancy photo path outside uploads root: ${filePath}`
+    );
+    return null;
+  }
+  // Confirm the file is actually on disk so a missing file yields a clean 404
+  // at the route instead of a 500 from sendFile. Photos uploaded before the
+  // SPARKY_FITNESS_UPLOADS_DIR fix on a custom uploads directory land here.
+  try {
+    await fs.promises.access(absolute);
+  } catch {
+    return null;
+  }
+  return absolute;
+}
+
+/**
+ * Deletes a bump photo row and its file. Returns false when the row did not
+ * exist or the caller does not own it.
+ */
+async function deletePhoto(userId: string, photoId: string): Promise<boolean> {
+  const filePath = await pregnancyRepository.deletePhoto(userId, photoId);
+  if (!filePath) {
+    return false;
+  }
+  // Guard the stored path before deleting: unlink is destructive, so a
+  // tampered file_path must not be able to reach outside the uploads root.
+  const absolute = resolveUploadPathWithinRoot(filePath);
+  if (!absolute) {
+    log(
+      'warn',
+      `Refused to delete pregnancy photo path outside uploads root: ${filePath}`
+    );
+    return true;
+  }
+  try {
+    await fs.promises.unlink(absolute);
+    log('debug', `Deleted pregnancy photo file: ${absolute}`);
+  } catch (err) {
+    // The DB row is already deleted (the source of truth), so don't fail the
+    // request over the file. A missing file is expected; log anything else so
+    // the orphaned file can be cleaned up later.
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+      log(
+        'error',
+        `Failed to delete pregnancy photo file ${absolute} for photo ${photoId}`,
+        err
+      );
+    }
+  }
+  return true;
+}
+
 export default {
   getOverview,
   getContractionAnalysis,
   resolveDueDate,
+  getPhotoFile,
+  deletePhoto,
 };

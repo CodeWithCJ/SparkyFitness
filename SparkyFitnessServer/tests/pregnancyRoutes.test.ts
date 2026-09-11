@@ -1,4 +1,15 @@
-import { vi, beforeEach, describe, expect, it } from 'vitest';
+import {
+  vi,
+  beforeAll,
+  afterAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vitest';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 // @ts-expect-error supertest has no bundled types in this project
 import request from 'supertest';
 import express from 'express';
@@ -15,6 +26,8 @@ vi.mock('../services/pregnancyService.js', async (importOriginal) => {
       ...actual.default,
       getOverview: vi.fn(),
       getContractionAnalysis: vi.fn(),
+      getPhotoFile: vi.fn(),
+      deletePhoto: vi.fn(),
     },
   };
 });
@@ -109,5 +122,78 @@ describe('Pregnancy Routes V2', () => {
       '/api/v2/pregnancy/00000000-0000-0000-0000-000000000000'
     );
     expect(res.statusCode).toBe(404);
+  });
+});
+
+describe('Pregnancy bump photos', () => {
+  const PHOTO_ID = '11111111-1111-4111-8111-111111111111';
+  let tempFile: string;
+
+  beforeAll(async () => {
+    tempFile = path.join(os.tmpdir(), `sparky-bump-${process.pid}.jpg`);
+    await fs.writeFile(tempFile, Buffer.from([0xff, 0xd8, 0xff, 0xdb]));
+  });
+
+  afterAll(async () => {
+    await fs.rm(tempFile, { force: true });
+  });
+
+  beforeEach(() => vi.clearAllMocks());
+
+  // file_path is a server-side storage detail; clients address photos by id.
+  it('omits file_path from the photo list', async () => {
+    vi.mocked(pregnancyRepository.listPhotos).mockResolvedValue([
+      { id: PHOTO_ID, pregnancy_id: 'p1', week: 12, notes: null },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ] as any);
+    const res = await request(app).get(
+      '/api/v2/pregnancy/photos?pregnancy_id=p1'
+    );
+    expect(res.statusCode).toBe(200);
+    expect(res.body[0]).not.toHaveProperty('file_path');
+  });
+
+  it('serves an owned photo with nosniff', async () => {
+    vi.mocked(pregnancyService.getPhotoFile).mockResolvedValue(tempFile);
+    const res = await request(app).get(
+      `/api/v2/pregnancy/photos/file/${PHOTO_ID}`
+    );
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+    expect(pregnancyService.getPhotoFile).toHaveBeenCalledWith(
+      'testUser',
+      PHOTO_ID
+    );
+  });
+
+  // Non-owner, deleted row, and missing-file all collapse to null at the
+  // service so the route cannot confirm which case it was.
+  it('404s when the service resolves nothing', async () => {
+    vi.mocked(pregnancyService.getPhotoFile).mockResolvedValue(null);
+    const res = await request(app).get(
+      `/api/v2/pregnancy/photos/file/${PHOTO_ID}`
+    );
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('rejects a non-UUID id without touching the service', async () => {
+    const res = await request(app).get(
+      '/api/v2/pregnancy/photos/file/not-a-uuid'
+    );
+    expect(res.statusCode).toBe(400);
+    expect(pregnancyService.getPhotoFile).not.toHaveBeenCalled();
+  });
+
+  it('deletes through the service so the file is removed too', async () => {
+    vi.mocked(pregnancyService.deletePhoto).mockResolvedValue(true);
+    const res = await request(app).delete(
+      `/api/v2/pregnancy/photos/${PHOTO_ID}`
+    );
+    expect(res.statusCode).toBe(204);
+    expect(pregnancyService.deletePhoto).toHaveBeenCalledWith(
+      'testUser',
+      PHOTO_ID
+    );
+    expect(pregnancyRepository.deletePhoto).not.toHaveBeenCalled();
   });
 });

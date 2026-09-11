@@ -1,38 +1,18 @@
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
+import {
+  resolveUploadPath,
+  resolveUploadPathWithinRoot,
+} from '../utils/uploadsPath.js';
 import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
-import { fileURLToPath } from 'url';
 import { localDateToDay } from '@workspace/shared';
 import type {
   CheckInPhotoResponse,
   CheckInPhotoWithWeight,
   PhotoType,
 } from '../schemas/checkInPhotoSchemas.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Mirror the uploads-root resolution used elsewhere (SparkyFitnessServer.ts,
-// routes/exerciseRoutes.ts, utils/imageDownloader.ts, services/backupService.ts)
-// so a custom uploads location is honored instead of always writing under
-// SparkyFitnessServer/uploads.
-const baseUploadsDir = process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY
-  ? path.resolve(process.env.SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY)
-  : path.join(__dirname, '..', 'uploads');
-
-// Stored file_path values are rooted at the logical 'uploads/' directory
-// (e.g. 'uploads/check-in/<user>/<date>/front.jpg') so records stay portable
-// across deployments. Resolve them against the configured uploads root,
-// stripping the leading 'uploads' segment. resolveFilePath('uploads') therefore
-// returns baseUploadsDir, keeping the path-traversal guard in getPhotoFileById
-// correct under a custom uploads directory.
-const resolveFilePath = (relativePath: string) => {
-  const segments = relativePath.split(/[/\\]/).filter(Boolean);
-  if (segments[0] === 'uploads') segments.shift();
-  return path.join(baseUploadsDir, ...segments);
-};
 
 const safeUnlink = async (absolutePath: string) => {
   try {
@@ -176,7 +156,7 @@ export const upsertPhoto = async (
     entryDate,
     fileName
   );
-  const finalPath = resolveFilePath(relativePath);
+  const finalPath = resolveUploadPath(relativePath);
   // Write to a unique temp file first; only promote it to the final name after
   // the DB commit succeeds. This way a failed upsert never leaves an orphan and
   // never clobbers the existing photo when replacing one with the same name.
@@ -228,7 +208,17 @@ export const upsertPhoto = async (
     // Remove the previous file only when the name changed (e.g. a different
     // extension); a same-name replace was already overwritten by the rename.
     if (oldRelativePath && oldRelativePath !== relativePath) {
-      await safeUnlink(resolveFilePath(oldRelativePath));
+      // Guard the stored path before deleting: unlink is destructive, so a
+      // tampered file_path must not be able to reach outside the uploads root.
+      const oldAbsolute = resolveUploadPathWithinRoot(oldRelativePath);
+      if (oldAbsolute) {
+        await safeUnlink(oldAbsolute);
+      } else {
+        log(
+          'warn',
+          `Refused to delete check-in photo path outside uploads root: ${oldRelativePath}`
+        );
+      }
     }
 
     const r = result.rows[0];
@@ -276,12 +266,8 @@ export const getPhotoFileById = async (
     if (!filePath) {
       return null;
     }
-    const absolute = resolveFilePath(filePath);
-    const uploadsRoot = resolveFilePath('uploads');
-    if (
-      absolute !== uploadsRoot &&
-      !absolute.startsWith(uploadsRoot + path.sep)
-    ) {
+    const absolute = resolveUploadPathWithinRoot(filePath);
+    if (!absolute) {
       log(
         'warn',
         `Rejected check-in photo path outside uploads root: ${filePath}`
@@ -315,7 +301,14 @@ export const deletePhoto = async (
     if (result.rows.length === 0) {
       return false;
     }
-    const filePath = resolveFilePath(result.rows[0].file_path);
+    const filePath = resolveUploadPathWithinRoot(result.rows[0].file_path);
+    if (!filePath) {
+      log(
+        'warn',
+        `Refused to delete check-in photo path outside uploads root: ${result.rows[0].file_path}`
+      );
+      return true;
+    }
     try {
       await fs.promises.unlink(filePath);
       log('debug', `Deleted check-in photo file: ${filePath}`);

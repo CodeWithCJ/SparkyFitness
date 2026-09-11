@@ -112,7 +112,6 @@ export interface BumpPhoto {
   pregnancy_id: string;
   week: number;
   entry_date: string;
-  file_path: string;
   notes: string | null;
 }
 
