@@ -383,7 +383,7 @@ function ActiveWorkoutExerciseCard({
   }, [
     exercise.rep_goal,
     exercise.progression_mode,
-    exercise.sets.length,
+    exercise.sets,
     exercise.increment_type,
     exercise.increment_value,
     exercise.equipment_brand,
