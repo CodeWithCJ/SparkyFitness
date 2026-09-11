@@ -775,13 +775,24 @@ router.get('/wger-filters', authenticate, async (req, res, next) => {
  *             schema:
  *               type: array
  *               items:
- *                 type: string
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                     format: uuid
+ *                     description: Exercise ID.
+ *                   name:
+ *                     type: string
+ *                     description: Exercise name.
  *       500:
  *         description: Server error.
  */
 router.get('/names', authenticate, async (req, res, next) => {
   try {
-    const { muscle, equipment } = req.query;
+    const muscle =
+      typeof req.query.muscle === 'string' ? req.query.muscle : undefined;
+    const equipment =
+      typeof req.query.equipment === 'string' ? req.query.equipment : undefined;
     const exerciseNames = await reportRepository.getExerciseNames(
       req.userId,
       muscle,

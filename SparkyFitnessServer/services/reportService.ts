@@ -157,7 +157,6 @@ async function getReportsData(
         endDate,
         customNutrients
       ),
-      // @ts-expect-error TS(2554): Expected 6 arguments, but got 3.
       reportRepository.getExerciseEntries(targetUserId, startDate, endDate),
       reportRepository.getMeasurementData(targetUserId, startDate, endDate),
       measurementRepository.getCustomCategories(targetUserId),
