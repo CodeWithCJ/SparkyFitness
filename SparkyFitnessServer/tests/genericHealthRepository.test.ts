@@ -216,6 +216,68 @@ describe('Generic Health & Workout Telemetry Repositories', () => {
     );
   });
 
+  it('getDailyHealthMetrics selects daily health metrics with episodic metric carry-forward subqueries', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 'daily-1',
+          user_id: 'user-1',
+          entry_date: '2026-07-29',
+          source_provider: 'garmin',
+          total_steps: 8000,
+          vo2_max: 52.5,
+          fitness_age: 28.0,
+          lactate_threshold_bpm: 168,
+          lactate_threshold_speed_mps: 3.85,
+          walking_asymmetry_percentage: 1.2,
+          hill_score: 65,
+          race_prediction_5k_seconds: 1200,
+          race_prediction_10k_seconds: 2500,
+          race_prediction_half_marathon_seconds: 5600,
+          race_prediction_marathon_seconds: 12000,
+          endurance_score: 72,
+        },
+      ],
+    });
+
+    const rows = await genericHealthRepo.getDailyHealthMetrics(
+      'user-1',
+      'actor-1',
+      '2026-07-29',
+      '2026-07-30'
+    );
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].vo2_max).toBe(52.5);
+    expect(rows[0].fitness_age).toBe(28.0);
+    expect(rows[0].lactate_threshold_bpm).toBe(168);
+    expect(rows[0].hill_score).toBe(65);
+    expect(rows[0].endurance_score).toBe(72);
+
+    const sql = String(mockQuery.mock.calls[0]?.[0]);
+    // Verifies carry-forward subqueries for episodic metrics
+    expect(sql).toMatch(
+      /COALESCE\(\s*dhm\.vo2_max,\s*\(SELECT vo2_max FROM daily_health_metrics d2[\s\S]*WHERE d2\.user_id = dhm\.user_id[\s\S]*AND d2\.source_provider = dhm\.source_provider[\s\S]*AND d2\.entry_date < dhm\.entry_date[\s\S]*AND d2\.vo2_max IS NOT NULL[\s\S]*ORDER BY d2\.entry_date DESC LIMIT 1\)\s*\) AS vo2_max/
+    );
+    expect(sql).toMatch(
+      /COALESCE\(\s*dhm\.fitness_age,\s*\(SELECT fitness_age FROM daily_health_metrics d2/
+    );
+    expect(sql).toMatch(
+      /COALESCE\(\s*dhm\.lactate_threshold_bpm,\s*\(SELECT lactate_threshold_bpm FROM daily_health_metrics d2/
+    );
+    expect(sql).toMatch(
+      /COALESCE\(\s*dhm\.hill_score,\s*\(SELECT hill_score FROM daily_health_metrics d2/
+    );
+    expect(sql).toMatch(
+      /COALESCE\(\s*dhm\.endurance_score,\s*\(SELECT endurance_score FROM daily_health_metrics d2/
+    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.any(String), [
+      'user-1',
+      '2026-07-29',
+      '2026-07-30',
+    ]);
+  });
+
   it('bulkInsertExerciseEntryLaps should query exercise_entry_laps', async () => {
     mockQuery.mockResolvedValueOnce({
       rows: [
