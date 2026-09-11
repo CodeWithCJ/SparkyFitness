@@ -1970,7 +1970,7 @@ async function createGroupedWorkoutSession(
           const incrementType =
             presetEx?.increment_type || ex.increment_type || 'weight';
           const incrementValue =
-            Number(presetEx?.increment_value ?? ex.increment_value) || 2.5;
+            Number(presetEx?.increment_value ?? ex.increment_value) || 5.0;
           const equipmentBrand =
             presetEx?.equipment_brand || ex.equipment_brand;
 

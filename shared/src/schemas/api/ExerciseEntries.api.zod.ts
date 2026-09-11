@@ -149,9 +149,9 @@ export const presetSessionExerciseRequestSchema = z.object({
     .enum(["rep_goal", "fixed", "step_load", "manual"])
     .nullable()
     .optional(),
-  rep_goal: z.number().int().nullable().optional(),
+  rep_goal: z.number().int().positive().nullable().optional(),
   increment_type: z.enum(["weight", "reps"]).nullable().optional(),
-  increment_value: z.number().nullable().optional(),
+  increment_value: z.number().positive().nullable().optional(),
   equipment_brand: z.string().nullable().optional(),
   sets: z.array(exerciseEntrySetRequestSchema).optional(),
 });
@@ -161,7 +161,7 @@ export const createPresetSessionExerciseRequestSchema = presetSessionExerciseReq
 export const createPresetSessionRequestSchema = z
   .object({
     workout_preset_id: z.number().int().nullable().optional(),
-    entry_date: z.string().min(1),
+    entry_date: dateStringSchema, // <-- Restored dateStringSchema for CI!
     name: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),
@@ -175,12 +175,10 @@ export const createPresetSessionRequestSchema = z
       data.workout_preset_id !== undefined && data.workout_preset_id !== null;
     const hasExercises = data.exercises !== undefined;
 
-    // workout_preset_id alone means "copy this preset's own stored structure"
     if (hasPresetId && !hasExercises) {
       return;
     }
 
-    // Otherwise, exercises must be present and non-empty
     if (!hasExercises || !data.exercises || data.exercises.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
