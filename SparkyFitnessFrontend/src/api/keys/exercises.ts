@@ -23,12 +23,15 @@ export const exerciseKeys = {
 export const presetKeys = {
   all: ['workoutPresets'] as const,
   lists: () => [...presetKeys.all, 'list'] as const,
-  list: (page: number, limit: number) =>
-    [...presetKeys.lists(), { page, limit }] as const,
+  /**
+   * Key for one page of workout presets. It is scoped to the signed-in user so
+   * a cached page can never be handed back after the session switches account,
+   * matching the shape of `presetKeys.search` below.
+   */
+  list: (userId: string | undefined, page: number, limit: number) =>
+    [...presetKeys.lists(), { userId, page, limit }] as const,
   details: () => [...presetKeys.all, 'detail'] as const,
   detail: (id: string) => [...presetKeys.details(), id] as const,
-  infinite: (userId?: string, limit: number = 10) =>
-    [...presetKeys.lists(), 'infinite', { userId, limit }] as const,
   search: (searchTerm: string, userId?: string, limit: number = 10) =>
     [...presetKeys.lists(), 'search', { searchTerm, userId, limit }] as const,
 };

@@ -1,9 +1,4 @@
-import {
-  useMutation,
-  useQueryClient,
-  useInfiniteQuery,
-  useQuery,
-} from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   getWorkoutPresets,
@@ -17,17 +12,24 @@ import { presetKeys } from '@/api/keys/exercises';
 
 // --- Queries ---
 
-export const useWorkoutPresets = (userId?: string, limit: number = 10) => {
+/**
+ * Loads one page of the workout presets visible to the signed-in user.
+ *
+ * The query key carries the user id and no previous page is kept as
+ * placeholder data: the endpoint resolves the acting user from the session, so
+ * a page fetched for one account must never be rendered for another. Changing
+ * page therefore shows the table's loading state until the new page arrives.
+ */
+export const useWorkoutPresets = (
+  userId?: string,
+  page: number = 1,
+  limit: number = 10
+) => {
   const { t } = useTranslation();
 
-  return useInfiniteQuery({
-    queryKey: presetKeys.infinite(userId, limit),
-    queryFn: ({ pageParam = 1 }) => getWorkoutPresets(pageParam, limit),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage, allPages) => {
-      const totalLoaded = allPages.length * limit;
-      return lastPage.total > totalLoaded ? allPages.length + 1 : undefined;
-    },
+  return useQuery({
+    queryKey: presetKeys.list(userId, page, limit),
+    queryFn: () => getWorkoutPresets(page, limit),
     enabled: !!userId,
     meta: {
       errorMessage: t(

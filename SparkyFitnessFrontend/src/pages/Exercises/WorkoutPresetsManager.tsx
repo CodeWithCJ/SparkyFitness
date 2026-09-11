@@ -15,7 +15,6 @@ import {
   Edit,
   Trash2,
   CalendarPlus,
-  Loader2,
   Layers,
   Dumbbell,
   CheckSquare,
@@ -75,19 +74,32 @@ const WorkoutPresetsManager = () => {
   const [selectedPreset, setSelectedPreset] = useState<WorkoutPreset | null>(
     null
   );
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  const { data, fetchNextPage, hasNextPage, isLoading, isFetchingNextPage } =
-    useWorkoutPresets(user?.id);
+  const { data, isLoading, isFetching } = useWorkoutPresets(
+    user?.id,
+    currentPage,
+    itemsPerPage
+  );
 
   const { mutateAsync: createPreset } = useCreateWorkoutPresetMutation();
   const { mutateAsync: updatePreset } = useUpdateWorkoutPresetMutation();
   const { mutateAsync: deletePreset } = useDeleteWorkoutPresetMutation();
   const { mutateAsync: logWorkoutPreset } = useLogWorkoutPresetMutation();
 
-  const presets = React.useMemo(
-    () => data?.pages.flatMap((page) => page.presets) ?? [],
-    [data]
-  );
+  const presets = React.useMemo(() => data?.presets ?? [], [data]);
+  const totalPresets = data?.total ?? 0;
+  const totalPages = Math.ceil(totalPresets / itemsPerPage);
+
+  // Deleting every preset on the last page (or shrinking the page size) can
+  // leave the request pointing past the end of the list, which would render an
+  // empty table next to a stale page number. Fall back to the last real page.
+  React.useEffect(() => {
+    if (data && totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [data, totalPages, currentPage]);
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
@@ -485,28 +497,22 @@ const WorkoutPresetsManager = () => {
                 isEditMode ? columns : columns.filter((c) => c.id !== 'select')
               }
               data={presets}
-              isLoading={isLoading}
+              isLoading={isLoading || isFetching}
+              manualPagination
+              pageCount={totalPages}
+              pagination={{
+                pageIndex: currentPage - 1,
+                pageSize: itemsPerPage,
+              }}
+              onPaginationChange={(pageIndex, pageSize) => {
+                if (pageSize !== itemsPerPage) {
+                  setItemsPerPage(pageSize);
+                  setCurrentPage(1);
+                } else {
+                  setCurrentPage(pageIndex + 1);
+                }
+              }}
             />
-          )}
-
-          {hasNextPage && (
-            <div className="flex justify-center pt-4">
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  fetchNextPage();
-                  clearSelection();
-                }}
-                disabled={isFetchingNextPage}
-                className="text-gray-500"
-              >
-                {isFetchingNextPage ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  t('workoutPresetsManager.loadMore', 'Load more')
-                )}
-              </Button>
-            </div>
           )}
         </CardContent>
       </Card>
