@@ -277,9 +277,12 @@ export function useWorkoutPlanAssignments(
     [selectedDayForAssignment]
   );
 
-  // The preset query only holds one page, so an assignment's own
-  // workout_preset_name (joined by the backend, or carried over when the preset
-  // was added) is the only reliable name for presets beyond the first page.
+  /**
+   * Resolves the display name of an assignment. The preset query only holds one
+   * page, so the assignment's own `workout_preset_name` (joined by the backend,
+   * or carried over when the preset was added) is the only reliable name for
+   * presets beyond the first page.
+   */
   const resolvePresetName = useCallback(
     (assignment: WorkoutPlanAssignment) =>
       assignment.workout_preset_name ??
