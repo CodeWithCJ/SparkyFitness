@@ -22,7 +22,8 @@ export type EntryTimeFormat = 'HH:mm' | 'h:mm A' | 'h:mm a';
  */
 export function formatTimeLabel(
   time: string | null | undefined,
-  timeFormat?: EntryTimeFormat | null
+  timeFormat?: EntryTimeFormat | null,
+  locale: string = getAppLocale()
 ): string | null {
   const hourMinute = toHourMinute(time);
   if (!hourMinute) return null;
@@ -30,23 +31,21 @@ export function formatTimeLabel(
   // 24-hour account preference: the stored value is already 'HH:mm'.
   if (timeFormat === 'HH:mm') return hourMinute;
 
-  // 12-hour account preference: render with AM/PM per the app locale.
+  const [hours, minutes] = hourMinute.split(':').map(Number);
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+
+  // 12-hour account preference: render with AM/PM per the specified locale.
   if (timeFormat === 'h:mm A' || timeFormat === 'h:mm a') {
-    const [hours, minutes] = hourMinute.split(':').map(Number);
-    const date = new Date();
-    date.setHours(hours, minutes, 0, 0);
-    return date.toLocaleTimeString(getAppLocale(), {
+    return date.toLocaleTimeString(locale, {
       hour: 'numeric',
       minute: '2-digit',
       hour12: true,
     });
   }
 
-  // No preference: fall back to the app locale's default convention.
-  const [hours, minutes] = hourMinute.split(':').map(Number);
-  const date = new Date();
-  date.setHours(hours, minutes, 0, 0);
-  return date.toLocaleTimeString(getAppLocale(), {
+  // No preference: fall back to the locale's default convention.
+  return date.toLocaleTimeString(locale, {
     hour: 'numeric',
     minute: '2-digit',
   });
@@ -62,7 +61,8 @@ export function formatTimeLabel(
  */
 export function formatHourLabel(
   hour24: number,
-  timeFormat?: EntryTimeFormat | null
+  timeFormat?: EntryTimeFormat | null,
+  locale: string = getAppLocale()
 ): string {
   // 24-hour account preference: zero-padded so a column of hours stays aligned.
   if (timeFormat === 'HH:mm') return String(hour24).padStart(2, '0');
@@ -71,7 +71,7 @@ export function formatHourLabel(
   date.setHours(hour24, 0, 0, 0);
 
   const usesMeridiem = timeFormat === 'h:mm A' || timeFormat === 'h:mm a';
-  return date.toLocaleTimeString(getAppLocale(), {
+  return date.toLocaleTimeString(locale, {
     hour: 'numeric',
     ...(usesMeridiem ? { hour12: true } : {}),
   });
@@ -82,15 +82,16 @@ export function formatHourLabel(
  * uses 12-hour (AM/PM) or 24-hour presentation.
  */
 export function is12HourTimeFormat(
-  timeFormat?: EntryTimeFormat | null
+  timeFormat?: EntryTimeFormat | null,
+  locale: string = getAppLocale()
 ): boolean {
   if (timeFormat === 'HH:mm') return false;
   if (timeFormat === 'h:mm A' || timeFormat === 'h:mm a') return true;
 
-  // Fall back to the app locale default
+  // Fall back to the locale default
   try {
     const testDate = new Date(2020, 0, 1, 13, 0, 0);
-    const formatted = testDate.toLocaleTimeString(getAppLocale(), {
+    const formatted = testDate.toLocaleTimeString(locale, {
       hour: 'numeric',
       minute: '2-digit',
     });
@@ -105,8 +106,21 @@ export function is12HourTimeFormat(
  */
 export function formatDateToTimeLabel(
   date: Date,
-  timeFormat?: EntryTimeFormat | null
+  timeFormat?: EntryTimeFormat | null,
+  locale: string = getAppLocale()
 ): string {
-  const hhmm = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-  return formatTimeLabel(hhmm, timeFormat) ?? hhmm;
+  if (timeFormat === 'HH:mm') {
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  }
+  if (timeFormat === 'h:mm A' || timeFormat === 'h:mm a') {
+    return date.toLocaleTimeString(locale, {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  }
+  return date.toLocaleTimeString(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }

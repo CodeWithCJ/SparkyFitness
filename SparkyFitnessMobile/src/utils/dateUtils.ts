@@ -93,7 +93,7 @@ export const formatRelativeTime = (
   const diffMinutes = Math.floor(diffSeconds / 60);
   const diffHours = Math.floor(diffMinutes / 60);
   const diffDays = Math.floor(diffHours / 24);
-  const time = formatDateToTimeLabel(timestamp, timeFormat);
+  const time = formatDateToTimeLabel(timestamp, timeFormat, locale);
 
   if (diffSeconds < 60)
     return translate('date.justNow', { defaultValue: 'Just now' });
