@@ -40,6 +40,7 @@ import {
   fetchAuthSettings,
   loginWithOidc,
   loginWithPasskey,
+  notifyIdentityChanged,
   type MfaFactors,
   type AuthSettings,
   type OidcProvider,
@@ -282,6 +283,11 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       proxyHeaders: cleanedHeaders(),
       ...overrides,
     });
+    // saveServerConfig ends in setActiveServerConfig, so whatever was just
+    // saved is now the account the app reads. Signing in here can be a
+    // different person on the same server, and adding a server is a different
+    // one outright, so the caches from before cannot be carried over.
+    await notifyIdentityChanged();
   };
 
   // --- Sign In flow ---
@@ -748,6 +754,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         ...authFields,
         proxyHeaders: cleanedHeaders(),
       });
+      // Same reason as saveConfig above: this re-activates the configuration,
+      // and the edit may have repointed it at another server or swapped a
+      // session for an API key belonging to someone else.
+      await notifyIdentityChanged();
       addLog('Server configuration updated.', 'INFO');
       onSuccess();
     } catch (err) {

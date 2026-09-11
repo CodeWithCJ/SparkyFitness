@@ -11,7 +11,10 @@ import {
   setActiveServerConfig,
   type ServerConfig,
 } from '../../src/services/storage';
-import { notifyNoConfigs } from '../../src/services/api/authService';
+import {
+  notifyIdentityChanged,
+  notifyNoConfigs,
+} from '../../src/services/api/authService';
 import { useServerConfigs, useServerConnection } from '../../src/hooks';
 
 const mockGoBack = jest.fn();
@@ -39,6 +42,7 @@ jest.mock('../../src/services/storage', () => ({
 }));
 
 jest.mock('../../src/services/api/authService', () => ({
+  notifyIdentityChanged: jest.fn(),
   notifyNoConfigs: jest.fn(),
 }));
 
@@ -94,6 +98,9 @@ const mockDeleteServerConfig = deleteServerConfig as jest.MockedFunction<
 >;
 const mockNotifyNoConfigs = notifyNoConfigs as jest.MockedFunction<
   typeof notifyNoConfigs
+>;
+const mockNotifyIdentityChanged = notifyIdentityChanged as jest.MockedFunction<
+  typeof notifyIdentityChanged
 >;
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
@@ -157,6 +164,69 @@ describe('ServerSettingsScreen', () => {
       expect(mockDeleteServerConfig).toHaveBeenCalledWith('a');
       expect(mockSetActiveServerConfig).toHaveBeenCalledWith('b');
       expect(mockNotifyNoConfigs).not.toHaveBeenCalled();
+      // The app is now on another account, so the caches have to go.
+      expect(mockNotifyIdentityChanged).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  test('does not announce an identity change when deleting a non-active server', async () => {
+    const active = buildConfig('a', 'https://a.example.com');
+    const other = buildConfig('b', 'https://b.example.com');
+
+    mockUseServerConfigs.mockReturnValue({
+      allConfigs: [active, other],
+      activeConfig: active,
+      refetch: jest.fn(),
+      isLoading: false,
+    });
+
+    mockGetAllServerConfigs.mockResolvedValue([active]);
+
+    const { getByLabelText } = renderScreen();
+
+    fireEvent.press(getByLabelText('Options for https://b.example.com'));
+
+    const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
+    const deleteButton = alertButtons.find((b: any) => b.text === 'Delete');
+
+    await act(async () => {
+      await deleteButton.onPress();
+    });
+
+    await waitFor(() => {
+      expect(mockDeleteServerConfig).toHaveBeenCalledWith('b');
+    });
+    expect(mockSetActiveServerConfig).not.toHaveBeenCalled();
+    expect(mockNotifyIdentityChanged).not.toHaveBeenCalled();
+  });
+
+  test('announces an identity change when activating a different server', async () => {
+    const active = buildConfig('a', 'https://a.example.com');
+    const other = buildConfig('b', 'https://b.example.com');
+
+    mockUseServerConfigs.mockReturnValue({
+      allConfigs: [active, other],
+      activeConfig: active,
+      refetch: jest.fn(),
+      isLoading: false,
+    });
+
+    const { getByLabelText } = renderScreen();
+
+    fireEvent.press(getByLabelText('Options for https://b.example.com'));
+
+    const alertButtons = (Alert.alert as jest.Mock).mock.calls[0][2];
+    const setActiveButton = alertButtons.find(
+      (b: any) => b.text === 'Set Active'
+    );
+
+    await act(async () => {
+      await setActiveButton.onPress();
+    });
+
+    await waitFor(() => {
+      expect(mockSetActiveServerConfig).toHaveBeenCalledWith('b');
+      expect(mockNotifyIdentityChanged).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -185,6 +255,8 @@ describe('ServerSettingsScreen', () => {
     await waitFor(() => {
       expect(mockDeleteServerConfig).toHaveBeenCalledWith('only');
       expect(mockSetActiveServerConfig).not.toHaveBeenCalled();
+      // Nothing is left to read the caches, but the next server added would.
+      expect(mockNotifyIdentityChanged).toHaveBeenCalledTimes(1);
     });
 
     // The "Success" alert should have buttons; press OK to fire notifyNoConfigs

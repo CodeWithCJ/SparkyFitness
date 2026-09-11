@@ -68,10 +68,31 @@ export async function bridgeBearerAuthHeader(
   );
   const cookieHeader = signed.split(';')[0];
   const existingCookie = req.headers.cookie;
-  req.headers.cookie =
+  // Drop any session cookie the client already sent before appending ours.
+  // Cookie parsing is first-wins (better-call's parseCookies skips a repeated
+  // name), so appending to a stale `session_token` would leave the Bearer
+  // token silently ignored and authenticate the request as whoever the cookie
+  // belongs to. That happens whenever one client holds sessions for two
+  // accounts on the same host -- the mobile app's cookie jar is per host, not
+  // per configured server -- so an explicit Authorization header has to win.
+  // Other cookies are preserved untouched.
+  const cookieNameOf = (part: string): string => {
+    const eq = part.indexOf('=');
+    // A valueless part is not a `name=value` pair; keep it as-is rather than
+    // letting a negative index mangle the name we compare against.
+    return eq === -1 ? part : part.slice(0, eq).trim();
+  };
+  const preservedCookies =
     typeof existingCookie === 'string' && existingCookie
-      ? `${existingCookie}; ${cookieHeader}`
-      : cookieHeader;
+      ? existingCookie
+          .split(';')
+          .map((part) => part.trim())
+          .filter((part) => part !== '' && cookieNameOf(part) !== cookieName)
+          .join('; ')
+      : '';
+  req.headers.cookie = preservedCookies
+    ? `${preservedCookies}; ${cookieHeader}`
+    : cookieHeader;
   delete req.headers.authorization;
   log(
     'debug',

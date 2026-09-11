@@ -11,6 +11,7 @@ import {
   verifyEmailOtp,
   fetchAuthSettings,
   type AuthSettings,
+  notifyIdentityChanged,
 } from '../../src/services/api/authService';
 import { saveServerConfig } from '../../src/services/storage';
 
@@ -28,6 +29,7 @@ jest.mock('../../src/services/api/authService', () => ({
   fetchAuthSettings: jest.fn(),
   loginWithOidc: jest.fn(),
   loginWithPasskey: jest.fn(),
+  notifyIdentityChanged: jest.fn(),
 }));
 
 jest.mock('../../src/services/storage', () => ({
@@ -64,6 +66,9 @@ const mockVerifyEmailOtp = verifyEmailOtp as jest.MockedFunction<
 >;
 const mockFetchAuthSettings = fetchAuthSettings as jest.MockedFunction<
   typeof fetchAuthSettings
+>;
+const mockNotifyIdentityChanged = notifyIdentityChanged as jest.MockedFunction<
+  typeof notifyIdentityChanged
 >;
 const mockSaveServerConfig = saveServerConfig as jest.MockedFunction<
   typeof saveServerConfig
@@ -339,6 +344,35 @@ describe('ServerConfigModal', () => {
         })
       );
       expect(onSuccess).toHaveBeenCalled();
+    });
+
+    // saveServerConfig ends in setActiveServerConfig, so a sign-in here always
+    // leaves the app reading a different account than the one it had cached.
+    it('announces the identity change so the caches are dropped', async () => {
+      mockLogin.mockResolvedValue({
+        type: 'success',
+        sessionToken: 'new-session-token',
+        user: { email: 'someone-else@example.com' },
+      });
+
+      const result = renderModal({ onSuccess: jest.fn() });
+      await waitForForm(result);
+      await enterUrl(result);
+
+      fireEvent.changeText(
+        result.getByPlaceholderText(EMAIL_PLACEHOLDER),
+        'someone-else@example.com'
+      );
+      fireEvent.changeText(
+        result.getByPlaceholderText('Password'),
+        'password123'
+      );
+
+      await act(async () => {
+        pressConnectButton(result);
+      });
+
+      expect(mockNotifyIdentityChanged).toHaveBeenCalledTimes(1);
     });
 
     it('strips trailing slash from server URL', async () => {
