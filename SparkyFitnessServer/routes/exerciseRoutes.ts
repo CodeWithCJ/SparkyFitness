@@ -775,7 +775,15 @@ router.get('/wger-filters', authenticate, async (req, res, next) => {
  *             schema:
  *               type: array
  *               items:
- *                 type: string
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                     format: uuid
+ *                     description: Exercise ID.
+ *                   name:
+ *                     type: string
+ *                     description: Exercise name.
  *       500:
  *         description: Server error.
  */

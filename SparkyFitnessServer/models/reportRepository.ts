@@ -14,6 +14,13 @@ async function getNutritionData(
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
+    const params: (string | number)[] = [userId, startDate, endDate];
+    const customNutrientParamIndexes: number[] = [];
+    customNutrients.forEach((cn) => {
+      params.push(cn.name);
+      customNutrientParamIndexes.push(params.length);
+    });
+
     const standardNutrientsSelectOuter = FOOD_VARIANT_NUTRIENT_FIELDS.map(
       (nutrient) =>
         `SUM(${nutrient}) AS ${nutrient},\n         COALESCE(SUM(${nutrient}) FILTER (WHERE nutrient_source = 'food'), 0) AS food_${nutrient},\n         COALESCE(SUM(${nutrient}) FILTER (WHERE nutrient_source = 'supplement'), 0) AS supplement_${nutrient}`
@@ -30,10 +37,10 @@ async function getNutritionData(
         `(COALESCE(fe.${nutrient}, 0) * fe.quantity / fe.serving_size) AS ${nutrient}`
     ).join(',\n           ');
     const customNutrientsSelectInner1 = customNutrients
-      .map((cn) => {
+      .map((cn, idx) => {
         const ident = cn.name.replace(/"/g, '""');
-        const lit = cn.name.replace(/'/g, "''");
-        return `(COALESCE(NULLIF(fe.custom_nutrients->>'${lit}', '')::numeric, 0) * fe.quantity / fe.serving_size) AS "${ident}"`;
+        const paramIdx = customNutrientParamIndexes[idx];
+        return `(COALESCE(NULLIF(fe.custom_nutrients->>$${paramIdx}, '')::numeric, 0) * fe.quantity / fe.serving_size) AS "${ident}"`;
       })
       .join(',\n           ');
     // Note: fe_meal.quantity is already scaled, so do NOT multiply by fem.quantity
@@ -42,10 +49,10 @@ async function getNutritionData(
         `SUM(COALESCE(fe_meal.${nutrient}, 0) * fe_meal.quantity / fe_meal.serving_size) AS ${nutrient}`
     ).join(',\n           ');
     const customNutrientsSelectInner2 = customNutrients
-      .map((cn) => {
+      .map((cn, idx) => {
         const ident = cn.name.replace(/"/g, '""');
-        const lit = cn.name.replace(/'/g, "''");
-        return `SUM(COALESCE(NULLIF(fe_meal.custom_nutrients->>'${lit}', '')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${ident}"`;
+        const paramIdx = customNutrientParamIndexes[idx];
+        return `SUM(COALESCE(NULLIF(fe_meal.custom_nutrients->>$${paramIdx}, '')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${ident}"`;
       })
       .join(',\n           ');
     // Each snapshot holds ONE dose's payload; multiply by the dose count taken in this
@@ -62,10 +69,10 @@ async function getNutritionData(
         `(COALESCE(public.sf_try_numeric(me.nutrients_snapshot->>'${nutrient}'), 0) * ${doseScale('me')}) AS ${nutrient}`
     ).join(',\n           ');
     const customNutrientsSelectSupplement = customNutrients
-      .map((cn) => {
+      .map((cn, idx) => {
         const ident = cn.name.replace(/"/g, '""');
-        const lit = cn.name.replace(/'/g, "''");
-        return `(COALESCE(public.sf_try_numeric(me.nutrients_snapshot->'custom_nutrients'->>'${lit}'), 0) * ${doseScale('me')}) AS "${ident}"`;
+        const paramIdx = customNutrientParamIndexes[idx];
+        return `(COALESCE(public.sf_try_numeric(me.nutrients_snapshot->'custom_nutrients'->>$${paramIdx}), 0) * ${doseScale('me')}) AS "${ident}"`;
       })
       .join(',\n           ');
     const result = await client.query(
@@ -118,7 +125,7 @@ async function getNutritionData(
        ) AS combined_nutrition
        GROUP BY entry_date
        ORDER BY entry_date`,
-      [userId, startDate, endDate]
+      params
     );
     return result.rows;
   } finally {
@@ -133,12 +140,14 @@ async function getTabularFoodData(
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
+    const params: (string | number)[] = [userId, startDate, endDate];
     // Generate dynamic SQL parts for custom nutrients
     const customNutrientsSelectCTE = customNutrients
       .map((cn) => {
         const ident = cn.name.replace(/"/g, '""');
-        const lit = cn.name.replace(/'/g, "''");
-        return `(COALESCE(NULLIF(fe.custom_nutrients->>'${lit}', '')::numeric, 0) * fe.quantity / fe.serving_size) AS "${ident}"`;
+        params.push(cn.name);
+        const paramIdx = params.length;
+        return `(COALESCE(NULLIF(fe.custom_nutrients->>$${paramIdx}, '')::numeric, 0) * fe.quantity / fe.serving_size) AS "${ident}"`;
       })
       .join(',\n          ');
     const customNutrientsSelectOuter = customNutrients
@@ -343,7 +352,7 @@ async function getTabularFoodData(
         fem.user_id, 
         fem.quantity
       ORDER BY entry_date, sort_order ASC, food_name ASC`,
-      [userId, startDate, endDate]
+      params
     );
     return result.rows;
   } finally {
@@ -408,6 +417,13 @@ async function getMiniNutritionTrends(
 ) {
   const client = await getClient(userId); // User-specific operation
   try {
+    const params: (string | number)[] = [userId, startDate, endDate];
+    const customNutrientParamIndexes: number[] = [];
+    customNutrients.forEach((cn) => {
+      params.push(cn.name);
+      customNutrientParamIndexes.push(params.length);
+    });
+
     // Generate dynamic SQL parts for custom nutrients
     // Note: Standard nutrients use "total_" prefix in the outer select of the existing query.
     // For custom nutrients, I will use their name directly to match the service mapping.
@@ -418,18 +434,18 @@ async function getMiniNutritionTrends(
       })
       .join(',\n         ');
     const customNutrientsSelectInner1 = customNutrients
-      .map((cn) => {
+      .map((cn, idx) => {
         const ident = cn.name.replace(/"/g, '""');
-        const lit = cn.name.replace(/'/g, "''");
-        return `(COALESCE(NULLIF(fe.custom_nutrients->>'${lit}', '')::numeric, 0) * fe.quantity / fe.serving_size) AS "${ident}"`;
+        const paramIdx = customNutrientParamIndexes[idx];
+        return `(COALESCE(NULLIF(fe.custom_nutrients->>$${paramIdx}, '')::numeric, 0) * fe.quantity / fe.serving_size) AS "${ident}"`;
       })
       .join(',\n           ');
     // Note: fe_meal.quantity is already scaled, so do NOT multiply by fem.quantity
     const customNutrientsSelectInner2 = customNutrients
-      .map((cn) => {
+      .map((cn, idx) => {
         const ident = cn.name.replace(/"/g, '""');
-        const lit = cn.name.replace(/'/g, "''");
-        return `SUM(COALESCE(NULLIF(fe_meal.custom_nutrients->>'${lit}', '')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${ident}"`;
+        const paramIdx = customNutrientParamIndexes[idx];
+        return `SUM(COALESCE(NULLIF(fe_meal.custom_nutrients->>$${paramIdx}, '')::numeric, 0) * fe_meal.quantity / fe_meal.serving_size) AS "${ident}"`;
       })
       .join(',\n           ');
     const result = await client.query(
@@ -521,7 +537,7 @@ async function getMiniNutritionTrends(
        ) AS combined_nutrition
        GROUP BY entry_date
        ORDER BY entry_date`,
-      [userId, startDate, endDate]
+      params
     );
     return result.rows;
   } finally {

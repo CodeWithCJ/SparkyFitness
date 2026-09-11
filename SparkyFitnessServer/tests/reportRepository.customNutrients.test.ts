@@ -15,7 +15,7 @@ vi.mock('../db/poolManager', () => ({
   getClient: vi.fn(),
 }));
 
-describe('reportRepository — custom nutrient SQL escaping', () => {
+describe('reportRepository — custom nutrient parameterization and SQL escaping', () => {
   let mockClient: MockDbClient;
   const userId = uuidv4();
 
@@ -26,7 +26,7 @@ describe('reportRepository — custom nutrient SQL escaping', () => {
 
   afterEach(() => vi.clearAllMocks());
 
-  it('getTabularFoodData safely escapes quotes in custom nutrient names', async () => {
+  it('getTabularFoodData binds custom nutrient JSON keys as query parameters and escapes identifiers', async () => {
     const customNutrients = [
       { name: "St. John's Wort" },
       { name: 'Vitamin "Special" B' },
@@ -41,9 +41,19 @@ describe('reportRepository — custom nutrient SQL escaping', () => {
 
     expect(mockClient.query).toHaveBeenCalledTimes(1);
     const sql = String(mockClient.query.mock.calls[0][0]);
+    const params = mockClient.query.mock.calls[0][1];
 
-    // Check JSON extract escaping for single quotes
-    expect(sql).toContain("fe.custom_nutrients->>'St. John''s Wort'");
+    // Check JSON extract uses parameter placeholders
+    expect(sql).toContain('fe.custom_nutrients->>$4');
+    expect(sql).toContain('fe.custom_nutrients->>$5');
+    // Check parameters passed to query
+    expect(params).toEqual([
+      userId,
+      '2026-07-01',
+      '2026-07-01',
+      "St. John's Wort",
+      'Vitamin "Special" B',
+    ]);
     // Check identifier escaping for double quotes
     expect(sql).toContain('AS "St. John\'s Wort"');
     expect(sql).toContain('AS "Vitamin ""Special"" B"');
@@ -53,7 +63,7 @@ describe('reportRepository — custom nutrient SQL escaping', () => {
     );
   });
 
-  it('getNutritionData safely escapes quotes in custom nutrient names', async () => {
+  it('getNutritionData binds custom nutrient JSON keys as query parameters and escapes identifiers', async () => {
     const customNutrients = [
       { name: "St. John's Wort" },
       { name: 'Vitamin "Special" B' },
@@ -63,13 +73,23 @@ describe('reportRepository — custom nutrient SQL escaping', () => {
 
     expect(mockClient.query).toHaveBeenCalledTimes(1);
     const sql = String(mockClient.query.mock.calls[0][0]);
+    const params = mockClient.query.mock.calls[0][1];
 
-    // Check JSON extract escaping
-    expect(sql).toContain("fe.custom_nutrients->>'St. John''s Wort'");
-    expect(sql).toContain("fe_meal.custom_nutrients->>'St. John''s Wort'");
-    expect(sql).toContain(
-      "me.nutrients_snapshot->'custom_nutrients'->>'St. John''s Wort'"
-    );
+    // Check JSON extract uses parameter placeholders
+    expect(sql).toContain('fe.custom_nutrients->>$4');
+    expect(sql).toContain('fe_meal.custom_nutrients->>$4');
+    expect(sql).toContain("me.nutrients_snapshot->'custom_nutrients'->>$4");
+    expect(sql).toContain('fe.custom_nutrients->>$5');
+    expect(sql).toContain('fe_meal.custom_nutrients->>$5');
+    expect(sql).toContain("me.nutrients_snapshot->'custom_nutrients'->>$5");
+    // Check parameters passed to query
+    expect(params).toEqual([
+      userId,
+      '2026-07-01',
+      '2026-07-01',
+      "St. John's Wort",
+      'Vitamin "Special" B',
+    ]);
     // Check identifier escaping
     expect(sql).toContain('SUM("St. John\'s Wort") AS "St. John\'s Wort"');
     expect(sql).toContain(
@@ -77,7 +97,7 @@ describe('reportRepository — custom nutrient SQL escaping', () => {
     );
   });
 
-  it('getMiniNutritionTrends safely escapes quotes in custom nutrient names', async () => {
+  it('getMiniNutritionTrends binds custom nutrient JSON keys as query parameters and escapes identifiers', async () => {
     const customNutrients = [
       { name: "St. John's Wort" },
       { name: 'Vitamin "Special" B' },
@@ -92,10 +112,21 @@ describe('reportRepository — custom nutrient SQL escaping', () => {
 
     expect(mockClient.query).toHaveBeenCalledTimes(1);
     const sql = String(mockClient.query.mock.calls[0][0]);
+    const params = mockClient.query.mock.calls[0][1];
 
-    // Check JSON extract escaping
-    expect(sql).toContain("fe.custom_nutrients->>'St. John''s Wort'");
-    expect(sql).toContain("fe_meal.custom_nutrients->>'St. John''s Wort'");
+    // Check JSON extract uses parameter placeholders
+    expect(sql).toContain('fe.custom_nutrients->>$4');
+    expect(sql).toContain('fe_meal.custom_nutrients->>$4');
+    expect(sql).toContain('fe.custom_nutrients->>$5');
+    expect(sql).toContain('fe_meal.custom_nutrients->>$5');
+    // Check parameters passed to query
+    expect(params).toEqual([
+      userId,
+      '2026-07-01',
+      '2026-07-01',
+      "St. John's Wort",
+      'Vitamin "Special" B',
+    ]);
     // Check identifier escaping
     expect(sql).toContain('SUM("St. John\'s Wort") AS "St. John\'s Wort"');
     expect(sql).toContain(
