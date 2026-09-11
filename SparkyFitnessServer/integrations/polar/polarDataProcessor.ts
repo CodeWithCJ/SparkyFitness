@@ -41,6 +41,33 @@ const parsePolarToUTC = (timeStr: any) => {
   return new Date(timeStr).toISOString();
 };
 /**
+ * Resolve a hypnogram wall-clock key ("HH:MM", recording zone) to a UTC instant.
+ *
+ * The key is placed on the calendar day of `anchorMs` (the bedtime) as seen in
+ * the recording zone; when that lands before the anchor (minute granularity,
+ * the first key equals the sleep-start minute while bedtime carries seconds)
+ * the stage belongs to the next day. Nothing here consults the process zone.
+ */
+export const hypnogramStageStartMs = (
+  hhmm: string,
+  anchorMs: number,
+  utcOffsetMinutes: number
+): number => {
+  const [hours, minutes] = hhmm.split(':').map(Number);
+  const offsetMs = utcOffsetMinutes * 60_000;
+  const shifted = new Date(anchorMs + offsetMs);
+  const dayStartUtc = Date.UTC(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth(),
+    shifted.getUTCDate()
+  );
+  let stageMs = dayStartUtc + (hours * 60 + minutes) * 60_000 - offsetMs;
+  const anchorMinuteMs = anchorMs - (anchorMs % 60_000);
+  if (stageMs < anchorMinuteMs) stageMs += 24 * 60 * 60_000;
+  return stageMs;
+};
+
+/**
  * Maps Polar exercise types/names to SparkyFitness exercise entries.
  */
 
@@ -469,53 +496,61 @@ async function processPolarSleep(
         const stagesArray = Array.isArray(hypnogram)
           ? hypnogram
           : Object.entries(hypnogram).map(([time, value]) => ({ time, value }));
-        const sortedStages = stagesArray.sort((a, b) =>
-          a.time.localeCompare(b.time)
-        );
+        // Hypnogram keys are wall-clock HH:MM in the recording zone (the
+        // ±HH:MM suffix of sleep-start-time). Resolve each key against the
+        // bedtime in that zone (a key that reads earlier than bedtime belongs
+        // to the next day) and order the stages by the resolved instant: a
+        // string sort put the post-midnight stages before the evening ones,
+        // and reading the anchor with getHours()/setHours() tied the result to
+        // the process time zone. Both stretched "awake" far past the night
+        // (issue #2431). The last stage ends at the recorded wake time, and no
+        // stage runs past it.
+        const bedtimeMs = new Date(
+          parsePolarToUTC(startTime) as string
+        ).getTime();
+        const wakeMs = endTime
+          ? new Date(parsePolarToUTC(endTime) as string).getTime()
+          : Number.NaN;
+        const offsetMinutes = recordUtcOffsetMinutes ?? 0;
+        const sortedStages = stagesArray
+          .map((stage) => ({
+            value: stage.value,
+            startMs: hypnogramStageStartMs(
+              stage.time,
+              bedtimeMs,
+              offsetMinutes
+            ),
+          }))
+          .sort((a, b) => a.startMs - b.startMs);
         for (let i = 0; i < sortedStages.length; i++) {
           const current = sortedStages[i];
           const stageCode = current.value;
-          const timeStr = current.time;
           let stageType = 'light';
           if (stageCode === 0) stageType = 'awake';
           else if (stageCode === 1) stageType = 'rem';
           else if (stageCode === 4) stageType = 'deep';
           else if (stageCode === 6) stageType = 'awake'; // 6 is short interruption
           // Note: Stage 5 (Unknown) falls through to "light" sleep per review suggestion
-          // Construct start time for this stage
-          // @ts-expect-error TS(2769): No overload matches this call.
-          const stageStartTimeUTC = new Date(parsePolarToUTC(startTime));
-          const [hours, minutes] = timeStr.split(':').map(Number);
-          const startHours = stageStartTimeUTC.getHours();
-          if (hours < startHours) {
-            stageStartTimeUTC.setDate(stageStartTimeUTC.getDate() + 1);
-          }
-          stageStartTimeUTC.setHours(hours, minutes, 0, 0);
-          let durationSec = 0;
-          if (i < sortedStages.length - 1) {
-            const nextTimeStr = sortedStages[i + 1].time;
-            const nextDate = new Date(stageStartTimeUTC);
-            const [nH, nM] = nextTimeStr.split(':').map(Number);
-            if (nH < hours) nextDate.setDate(nextDate.getDate() + 1);
-            nextDate.setHours(nH, nM, 0, 0);
-            // @ts-expect-error TS(2362): The left-hand side of an arithmetic operation must... Remove this comment to see the full error message
-            durationSec = Math.round((nextDate - stageStartTimeUTC) / 1000);
-          } else {
-            // @ts-expect-error TS(2769): No overload matches this call.
-            const endDateUTC = new Date(parsePolarToUTC(endTime));
-            // @ts-expect-error TS(2362): The left-hand side of an arithmetic operation must... Remove this comment to see the full error message
-            durationSec = Math.round((endDateUTC - stageStartTimeUTC) / 1000);
-          }
+          // Keys carry minute precision while bedtime carries seconds, so the
+          // first stage may read a few seconds early; the session starts at
+          // bedtime.
+          const stageStartMs = Math.max(current.startMs, bedtimeMs);
+          const nextStartMs =
+            i < sortedStages.length - 1 ? sortedStages[i + 1].startMs : wakeMs;
+          const stageEndMs = Number.isFinite(wakeMs)
+            ? Math.min(nextStartMs, wakeMs)
+            : nextStartMs;
+          const durationSec = Number.isFinite(stageEndMs)
+            ? Math.round((stageEndMs - stageStartMs) / 1000)
+            : 0;
           if (durationSec > 0) {
             await sleepRepository.upsertSleepStageEvent(
               userId,
               entry.id,
               {
                 stage_type: stageType,
-                start_time: stageStartTimeUTC.toISOString(),
-                end_time: new Date(
-                  stageStartTimeUTC.getTime() + durationSec * 1000
-                ).toISOString(),
+                start_time: new Date(stageStartMs).toISOString(),
+                end_time: new Date(stageEndMs).toISOString(),
                 duration_in_seconds: durationSec,
               },
               createdByUserId
