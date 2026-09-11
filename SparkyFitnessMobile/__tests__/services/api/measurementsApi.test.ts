@@ -440,3 +440,135 @@ describe('fetchLatestManualCustomEntriesOnOrBefore — fallback scope', () => {
     expect(listCallCount()).toBe(1);
   });
 });
+
+describe('fetchLatestManualCustomEntriesOnOrBefore — truncated legacy history', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  /**
+   * Reads the page size off the request the client actually made, so these tests
+   * stay correct if the constant changes.
+   */
+  const pageSizeFromRequest = (endpoint: string): number => {
+    const match = /limit=(\d+)/.exec(endpoint);
+    if (!match) throw new Error(`no limit in endpoint: ${endpoint}`);
+    return Number(match[1]);
+  };
+
+  /**
+   * Answers the bulk request with a 500 (an older server) and the list request
+   * with `rows`, simulating a history of the requested page size.
+   */
+  const respondWithHistory = (
+    rows: (index: number) => Record<string, unknown>
+  ) => {
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 500', 500));
+      }
+      const size = pageSizeFromRequest(endpoint);
+      return Promise.resolve(
+        Array.from({ length: size }, (_, index) => rows(index))
+      );
+    });
+  };
+
+  const entry = (index: number, entryDate: string, value = '5') => ({
+    id: `e${index}`,
+    category_id: 'cat-1',
+    value,
+    entry_date: entryDate,
+    entry_hour: null,
+    entry_timestamp: `${entryDate}T00:00:00.000Z`,
+    source: 'manual',
+  });
+
+  test('a full page is refused instead of returning older values as the latest', async () => {
+    // THE regression: with more post-date rows than one page, the newest manual
+    // value on or before the selected day is never fetched. Returning the
+    // truncated tail would offer a value older than the real last one, and the
+    // user would adopt it believing it was the latest.
+    // The helper builds exactly one full page, so the throw below proves the
+    // truncation guard fired rather than the reduction returning [].
+    respondWithHistory((index) =>
+      // Every row is AFTER the selected day, so nothing on or before it is in
+      // the page — exactly the case that used to produce a wrong/empty hint.
+      entry(index, '2024-07-01')
+    );
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).rejects.toThrow(/history exceeds/);
+  });
+
+  test('a full page does not silently return the pre-date subset', async () => {
+    // Mixed page: some rows do qualify, which is what made the old behaviour
+    // look plausible while still being unverifiable.
+    respondWithHistory((index) =>
+      entry(index, index % 2 === 0 ? '2024-06-01' : '2024-07-01')
+    );
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).rejects.toThrow(/history exceeds/);
+  });
+
+  test('a short page is trusted and reduced normally', async () => {
+    // Fewer rows than the page size proves the history was returned whole.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(new ApiError('Server error: 500', 500));
+      }
+      return Promise.resolve([
+        {
+          id: 'old',
+          category_id: 'cat-1',
+          value: '5',
+          entry_date: '2024-06-01',
+          entry_hour: null,
+          entry_timestamp: '2024-06-01T00:00:00.000Z',
+          source: 'manual',
+        },
+        {
+          id: 'new',
+          category_id: 'cat-1',
+          value: '9',
+          entry_date: '2024-06-10',
+          entry_hour: null,
+          entry_timestamp: '2024-06-10T00:00:00.000Z',
+          source: 'manual',
+        },
+      ]);
+    });
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).resolves.toEqual([
+      {
+        id: 'new',
+        category_id: 'cat-1',
+        value: '9',
+        entry_date: '2024-06-10',
+        source: 'manual',
+      },
+    ]);
+  });
+
+  test('asks for exactly one page, never one request per category', async () => {
+    respondWithHistory((index) => entry(index, '2024-07-01'));
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
+    ).rejects.toThrow(/history exceeds/);
+
+    const listCalls = mockApiFetch.mock.calls.filter((call) =>
+      (call[0] as { endpoint: string }).endpoint.startsWith(
+        '/api/measurements/custom-entries?'
+      )
+    );
+    expect(listCalls).toHaveLength(1);
+  });
+});

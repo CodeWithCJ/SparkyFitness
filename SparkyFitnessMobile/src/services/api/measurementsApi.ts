@@ -228,10 +228,11 @@ export const fetchLatestCheckInMeasurementsOnOrBefore = async (
 };
 
 /**
- * How many entries the fallback list request pulls. The bulk endpoint needs no
- * such bound, so this is only the compatibility path's ceiling.
+ * How many entries the fallback list request pulls per request. The bulk
+ * endpoint needs no such bound, so this is only the compatibility path's page
+ * size, and the code below treats a full page as a failure rather than as data.
  */
-const CUSTOM_ENTRY_HINT_FALLBACK_LIMIT = 500;
+const CUSTOM_ENTRY_HINT_FALLBACK_LIMIT = 1000;
 
 /**
  * Latest manual value per custom category on or before the given day.
@@ -244,10 +245,15 @@ const CUSTOM_ENTRY_HINT_FALLBACK_LIMIT = 500;
  * 404. Rather than surface that as "no history", fall back to the long-standing
  * list endpoint and narrow it here.
  *
- * The fallback is bounded by `CUSTOM_ENTRY_HINT_FALLBACK_LIMIT` entries, newest
- * first, so it can miss a very old value on a category whose other entries have
- * since pushed it past the bound. That is a deliberate trade against an N+1
- * request per category, and it disappears entirely once the server is updated.
+ * The legacy endpoint can only be asked for the newest N entries: it accepts
+ * `limit` but no offset, no date bound, and the alternative per-category range
+ * endpoint does not return `source`, so it cannot tell a manual value from a
+ * health-sync sample. A full page therefore means the history was cut off, and
+ * the newest manual value for the selected day may sit in the part that was not
+ * fetched. Presenting the truncated remainder would offer a value that is older
+ * than the real last one, so a full page is reported as a failure instead: the
+ * caller shows "your server may need updating" rather than a stale suggestion.
+ * The bound only affects servers without the bulk endpoint.
  */
 export const fetchLatestManualCustomEntriesOnOrBefore = async (
   date: string
@@ -266,18 +272,34 @@ export const fetchLatestManualCustomEntriesOnOrBefore = async (
     const status = error instanceof ApiError ? error.statusCode : undefined;
     if (status !== 404 && status !== 500) throw error;
 
+    // Kept outside the request's own try/catch so a truncation failure
+    // propagates as-is instead of being replaced by the bulk error.
+    let entries: CustomMeasurementEntry[];
     try {
-      const entries = await apiFetch<CustomMeasurementEntry[]>({
+      entries = await apiFetch<CustomMeasurementEntry[]>({
         endpoint: `/api/measurements/custom-entries?limit=${CUSTOM_ENTRY_HINT_FALLBACK_LIMIT}&orderBy=entry_timestamp.desc`,
         serviceName: 'Measurements API',
         operation: 'fetch custom entries for previous-value hints',
       });
-      return reduceLatestManualEntries(entries ?? [], date, isManualSource);
     } catch {
       // Both paths failed: report the original failure, which describes the
       // preferred request rather than the fallback.
       throw error;
     }
+
+    // A full page means there were more entries than we asked for, so the part
+    // holding the newest manual value on or before `date` may not have been
+    // fetched. Returning the truncated remainder would show a suggestion older
+    // than the real last value — worse than showing none, because the user would
+    // adopt it as if it were the latest. Fail instead, so the screen asks the
+    // user to update the server.
+    if (entries.length >= CUSTOM_ENTRY_HINT_FALLBACK_LIMIT) {
+      throw new Error(
+        `Custom measurement history exceeds ${CUSTOM_ENTRY_HINT_FALLBACK_LIMIT} entries, so previous values cannot be resolved on this server version.`
+      );
+    }
+
+    return reduceLatestManualEntries(entries, date, isManualSource);
   }
 };
 
