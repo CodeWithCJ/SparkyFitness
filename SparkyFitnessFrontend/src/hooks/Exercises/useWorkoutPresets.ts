@@ -1,9 +1,4 @@
-import {
-  useMutation,
-  useQueryClient,
-  keepPreviousData,
-  useQuery,
-} from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   getWorkoutPresets,
@@ -17,6 +12,12 @@ import { presetKeys } from '@/api/keys/exercises';
 
 // --- Queries ---
 
+/**
+ * Loads one page of the workout presets visible to the signed-in user. The
+ * query key carries the user id, and the placeholder only reuses a previous
+ * page belonging to the same user, so a page cached for one account is never
+ * rendered for another.
+ */
 export const useWorkoutPresets = (
   userId?: string,
   page: number = 1,
@@ -25,9 +26,15 @@ export const useWorkoutPresets = (
   const { t } = useTranslation();
 
   return useQuery({
-    queryKey: presetKeys.list(page, limit),
+    queryKey: presetKeys.list(userId, page, limit),
     queryFn: () => getWorkoutPresets(page, limit),
-    placeholderData: keepPreviousData,
+    // Keep the table populated while the next page loads, but never across an
+    // account switch: without this guard `keepPreviousData` would briefly show
+    // the previous account's presets.
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery && presetKeys.listUserId(previousQuery.queryKey) === userId
+        ? previousData
+        : undefined,
     enabled: !!userId,
     meta: {
       errorMessage: t(

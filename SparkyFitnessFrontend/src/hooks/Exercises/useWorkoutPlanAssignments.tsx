@@ -241,6 +241,9 @@ export function useWorkoutPlanAssignments(
             day_of_week: selectedDayForAssignment,
             template_id: '',
             workout_preset_id: preset.id as string,
+            // Carried on the assignment so the copy/paste toasts can name the
+            // preset without searching a page of the preset list.
+            workout_preset_name: preset.name,
             exercise_id: undefined,
             sets: [],
           },
@@ -274,6 +277,16 @@ export function useWorkoutPlanAssignments(
     [selectedDayForAssignment]
   );
 
+  // The preset query only holds one page, so an assignment's own
+  // workout_preset_name (joined by the backend, or carried over when the preset
+  // was added) is the only reliable name for presets beyond the first page.
+  const resolvePresetName = useCallback(
+    (assignment: WorkoutPlanAssignment) =>
+      assignment.workout_preset_name ??
+      workoutPresets.find((p) => p.id === assignment.workout_preset_id)?.name,
+    [workoutPresets]
+  );
+
   const handleCopyAssignment = useCallback(
     (assignment: WorkoutPlanAssignment) => {
       setCopiedAssignment({ ...assignment });
@@ -283,13 +296,12 @@ export function useWorkoutPlanAssignments(
           itemName:
             assignment.exercise_name ||
             `${t('addWorkoutPlanDialog.presetLabel', 'Preset:')} ${
-              workoutPresets.find((p) => p.id === assignment.workout_preset_id)
-                ?.name
+              resolvePresetName(assignment) ?? ''
             }`,
         }),
       });
     },
-    [t, workoutPresets]
+    [t, resolvePresetName]
   );
 
   const handlePasteAssignment = useCallback(
@@ -313,14 +325,12 @@ export function useWorkoutPlanAssignments(
           itemName:
             newAssignment.exercise_name ||
             `${t('addWorkoutPlanDialog.presetLabel', 'Preset:')} ${
-              workoutPresets.find(
-                (p) => p.id === newAssignment.workout_preset_id
-              )?.name
+              resolvePresetName(newAssignment) ?? ''
             }`,
         }),
       });
     },
-    [copiedAssignment, t, workoutPresets]
+    [copiedAssignment, t, resolvePresetName]
   );
 
   const buildAssignmentsForSave = useCallback(
