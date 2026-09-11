@@ -182,7 +182,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
     // compare against, so announce the change unconditionally — signing back
     // into the same account costs a refetch, the other case would otherwise
     // show one person's diary to another.
-    notifyIdentityChanged();
+    await notifyIdentityChanged();
   };
 
   // --- Sign In ---

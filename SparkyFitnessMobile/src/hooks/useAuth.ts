@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import {
+  clearAuthCookies,
   setOnSessionExpired,
   setOnNoConfigs,
   setOnIdentityChanged,
@@ -38,8 +39,18 @@ export function useAuth() {
     });
     // Everything cached under the previous account has to go, or the new one
     // reads it until each query happens to refetch.
-    setOnIdentityChanged(() => {
+    setOnIdentityChanged(async () => {
       queryClient.clear();
+      // The cookie jar is the third thing carrying identity, and the only one
+      // that survives dropping every cache: it belongs to the native HTTP
+      // client and is keyed by host, not by configured server, so two accounts
+      // on one server share it. The sign-in paths already clear it for exactly
+      // this reason; the identity changes that skip sign-in (switching the
+      // active server, deleting it) reach here instead. Left in place, the
+      // server resolves the stale cookie ahead of the Bearer token this app
+      // sends and answers as the account we just left. Awaited, unlike the
+      // image sweep below, because the next request must not overtake it.
+      await clearAuthCookies();
       // The image caches go too, but for data at rest rather than for what the
       // next account can see: every server-backed image URI carries a uuid --
       // `check-in-photos/file/{uuid}` and `/uploads/{domain}/{id}/{uuid}-name`

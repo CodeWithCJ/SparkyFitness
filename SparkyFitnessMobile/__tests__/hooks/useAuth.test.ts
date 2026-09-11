@@ -2,6 +2,7 @@ import { renderHook, act } from '@testing-library/react-native';
 import { Image } from 'expo-image';
 import { useAuth } from '../../src/hooks/useAuth';
 import {
+  clearAuthCookies,
   setOnSessionExpired,
   setOnNoConfigs,
   setOnIdentityChanged,
@@ -14,6 +15,7 @@ import { createTestQueryClient, createQueryWrapper } from './queryTestUtils';
 import type { QueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/authService', () => ({
+  clearAuthCookies: jest.fn().mockResolvedValue(undefined),
   setOnSessionExpired: jest.fn(),
   setOnNoConfigs: jest.fn(),
   setOnIdentityChanged: jest.fn(),
@@ -54,6 +56,9 @@ const mockClearMemoryCache = Image.clearMemoryCache as jest.MockedFunction<
 const mockAddLog = addLog as jest.MockedFunction<typeof addLog>;
 const mockClearDiskCache = Image.clearDiskCache as jest.MockedFunction<
   typeof Image.clearDiskCache
+>;
+const mockClearAuthCookies = clearAuthCookies as jest.MockedFunction<
+  typeof clearAuthCookies
 >;
 
 describe('useAuth', () => {
@@ -130,6 +135,53 @@ describe('useAuth', () => {
     // so a departed account's progress photos would stay on the device.
     expect(mockClearMemoryCache).toHaveBeenCalledTimes(1);
     expect(mockClearDiskCache).toHaveBeenCalledTimes(1);
+  });
+
+  test('identity changed callback drops the cookie jar', async () => {
+    renderUseAuth();
+    await act(async () => {});
+
+    expect(mockClearAuthCookies).not.toHaveBeenCalled();
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      await identityChangedCb();
+    });
+
+    // The native cookie jar is keyed by host, so two accounts on one server
+    // share it. Left in place, the server resolves the previous account's
+    // session cookie ahead of the Bearer token and answers as that account.
+    expect(mockClearAuthCookies).toHaveBeenCalledTimes(1);
+  });
+
+  test('identity change does not settle until the cookies are gone', async () => {
+    let releaseCookieClear: () => void = () => {};
+    mockClearAuthCookies.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        releaseCookieClear = resolve;
+      })
+    );
+
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    let settled = false;
+    const pending = Promise.resolve(identityChangedCb()).then(() => {
+      settled = true;
+    });
+
+    // Callers await this before refetching. Resolving early would let the next
+    // request overtake the sweep and go out carrying the old session cookie,
+    // which is the whole failure this guards against.
+    await act(async () => {});
+    expect(settled).toBe(false);
+
+    releaseCookieClear();
+    await act(async () => {
+      await pending;
+    });
+    expect(settled).toBe(true);
   });
 
   test('a rejected image cache clear is reported, not swallowed', async () => {

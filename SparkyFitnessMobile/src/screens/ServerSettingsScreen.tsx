@@ -98,7 +98,7 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({
     }
     try {
       await setActiveServerConfig(configId);
-      notifyIdentityChanged();
+      await notifyIdentityChanged();
       await refetchServerConfigs();
       refetchConnection();
       Toast.show({
@@ -139,7 +139,7 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({
       // the same reason. With no configuration left there is nothing to read
       // the stale data, but it would still be there for the next one added.
       if (wasActive) {
-        notifyIdentityChanged();
+        await notifyIdentityChanged();
       }
       await invalidateServerConfigs();
       refetchConnection();

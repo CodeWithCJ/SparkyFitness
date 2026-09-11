@@ -78,9 +78,9 @@ export const notifyNoConfigs = (): void => {
   onNoConfigsCallback?.();
 };
 
-let onIdentityChangedCallback: (() => void) | null = null;
+let onIdentityChangedCallback: (() => void | Promise<void>) | null = null;
 
-export const setOnIdentityChanged = (cb: () => void): void => {
+export const setOnIdentityChanged = (cb: () => void | Promise<void>): void => {
   onIdentityChangedCallback = cb;
 };
 
@@ -93,9 +93,14 @@ export const setOnIdentityChanged = (cb: () => void): void => {
  * caches, which is why this mirrors the two callbacks above rather than reaching
  * for the query client from a screen: a new path that changes identity then has
  * one call to make instead of a list of caches to remember.
+ *
+ * Await it before issuing another request. Part of what the handler drops is
+ * the cookie jar, and a request that goes out first still carries the previous
+ * account's session cookie -- which the server prefers over the Bearer token
+ * this app sends, so the reply would describe the account we just left.
  */
-export const notifyIdentityChanged = (): void => {
-  onIdentityChangedCallback?.();
+export const notifyIdentityChanged = async (): Promise<void> => {
+  await onIdentityChangedCallback?.();
 };
 
 let pendingProxyHeaders: Record<string, string> = {};
