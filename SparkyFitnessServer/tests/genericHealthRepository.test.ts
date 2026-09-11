@@ -247,6 +247,7 @@ describe('Generic Health & Workout Telemetry Repositories', () => {
       '2026-07-30'
     );
 
+    expect(getClient).toHaveBeenCalledWith('user-1', 'actor-1');
     expect(rows).toHaveLength(1);
     expect(rows[0].vo2_max).toBe(52.5);
     expect(rows[0].fitness_age).toBe(28.0);

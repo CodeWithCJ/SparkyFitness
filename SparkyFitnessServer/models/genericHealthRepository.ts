@@ -365,13 +365,25 @@ export async function upsertDailyHealthMetrics(
   }
 }
 
+/**
+ * Retrieves daily wearable health metrics for a date range, carrying forward
+ * the most recent non-null values for episodic metrics (e.g. VO2 max, fitness
+ * age, lactate threshold, hill score, endurance score, race predictions) from
+ * earlier entries with the same user and source provider when dates lack fresh readings.
+ *
+ * @param userId - Target user whose daily health metrics are being requested.
+ * @param actingUserId - Authenticated user making the request (for RLS check).
+ * @param startDate - Range start date string (YYYY-MM-DD).
+ * @param endDate - Range end date string (YYYY-MM-DD).
+ * @returns Array of daily health metric records ordered by entry_date ascending.
+ */
 export async function getDailyHealthMetrics(
   userId: string,
   actingUserId: string,
   startDate: string,
   endDate: string
 ): Promise<DailyHealthMetrics[]> {
-  const client = await getClient(actingUserId);
+  const client = await getClient(userId, actingUserId);
   try {
     const res = (await client.query(
       `SELECT 
