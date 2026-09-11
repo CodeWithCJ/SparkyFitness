@@ -7,7 +7,6 @@ import type {
   WaterIntake,
   WaterContainer,
   WaterIntakeResponse,
-  WaterIntakeLogEntry,
 } from '../../types/measurements';
 import type {
   CreateWaterContainerBody,
@@ -327,23 +326,6 @@ export const changeWaterIntake = async (params: {
       change_drinks: params.changeDrinks,
       container_id: params.containerId,
     },
-  });
-};
-
-/**
- * Fetches the individual logged drinks for a date — the rows behind the day's
- * total, each with its own container, amount and timestamp.
- *
- * v2 endpoint: the v1 water routes only expose the rolled-up total and can't
- * address a single drink.
- */
-export const fetchWaterIntakeLog = async (
-  date: string
-): Promise<WaterIntakeLogEntry[]> => {
-  return apiFetch<WaterIntakeLogEntry[]>({
-    endpoint: `/api/v2/measurements/water-intake/${encodeURIComponent(date)}/log`,
-    serviceName: 'Measurements API',
-    operation: 'fetch water intake log',
   });
 };
 

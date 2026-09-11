@@ -79,15 +79,3 @@ export interface WaterIntakeResponse {
  * `container_id` are null for entries that didn't come from a container at
  * all (water synced in from Apple Health, for example).
  */
-export interface WaterIntakeLogEntry {
-  id: string;
-  entry_date: string;
-  water_ml: number;
-  container_id?: number | null;
-  container_name?: string | null;
-  /** 'manual' for a phone/watch tap; a provider name for synced records. */
-  source: string;
-  /** When the drink was logged — a full timestamp, not just the day. */
-  logged_at: string;
-  created_at: string;
-}
