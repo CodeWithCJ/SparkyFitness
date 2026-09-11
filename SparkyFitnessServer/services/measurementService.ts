@@ -1296,6 +1296,36 @@ async function getCustomMeasurementEntriesByDate(
     throw error;
   }
 }
+/**
+ * Latest manual value per custom category on or before `date`, one row per
+ * category. Backs the mobile Daily editor's previous-value hints; only manual
+ * sources are returned so a health-sync sample never becomes a suggestion the
+ * user can adopt into a manual entry.
+ */
+async function getLatestManualCustomEntriesOnOrBeforeDate(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  authenticatedUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  targetUserId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  date: any
+) {
+  try {
+    const entries =
+      await measurementRepository.getLatestManualCustomEntriesOnOrBeforeDate(
+        targetUserId,
+        date
+      );
+    return entries;
+  } catch (error) {
+    log(
+      'error',
+      `Error fetching latest manual custom entries on or before ${date} for user ${targetUserId} by ${authenticatedUserId}:`,
+      error
+    );
+    throw error;
+  }
+}
 async function getCheckInMeasurementsByDateRange(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticatedUserId: any,
@@ -1977,6 +2007,7 @@ export { updateCustomCategory };
 export { deleteCustomCategory };
 export { getCustomMeasurementEntries };
 export { getCustomMeasurementEntriesByDate };
+export { getLatestManualCustomEntriesOnOrBeforeDate };
 export { getCheckInMeasurementsByDateRange };
 export { getCustomMeasurementsByDateRange };
 export { calculateSleepScore };
@@ -2122,6 +2153,7 @@ export default {
   deleteCustomCategory,
   getCustomMeasurementEntries,
   getCustomMeasurementEntriesByDate,
+  getLatestManualCustomEntriesOnOrBeforeDate,
   getCheckInMeasurementsByDateRange,
   getCustomMeasurementsByDateRange,
   calculateSleepScore,

@@ -282,6 +282,22 @@ export type CustomMeasurementsRangeParam = z.infer<
   typeof CustomMeasurementsRangeParamSchema
 >;
 
+/**
+ * Query params for the "latest manual custom value per category on or before a
+ * date" lookup. The day is validated as a real calendar day rather than only a
+ * non-empty string (as `DateParamSchema` does), so a malformed value is a 400
+ * here instead of a database error surfacing as a 500.
+ */
+export const LatestCustomEntryQuerySchema = z
+  .object({
+    date: requiredDayString('date'),
+  })
+  .loose();
+
+export type LatestCustomEntryQuery = z.infer<
+  typeof LatestCustomEntryQuerySchema
+>;
+
 export const UpdateWaterIntakeLogTimeBodySchema = z
   .object({
     loggedAt: z.string().datetime({

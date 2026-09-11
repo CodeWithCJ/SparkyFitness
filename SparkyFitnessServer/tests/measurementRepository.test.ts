@@ -82,6 +82,58 @@ describe('measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate', () 
   });
 });
 
+describe('measurementRepository.getLatestManualCustomEntriesOnOrBeforeDate', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockClient: any;
+
+  beforeEach(() => {
+    mockClient = {
+      query: vi.fn(),
+      release: vi.fn(),
+    };
+    vi.mocked(getClient).mockResolvedValue(mockClient);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const runQuery = async () => {
+    mockClient.query.mockResolvedValue({ rows: [] });
+    await measurementRepository.getLatestManualCustomEntriesOnOrBeforeDate(
+      'user-1',
+      '2026-05-10'
+    );
+    return mockClient.query.mock.calls[0][0] as string;
+  };
+
+  it('resolves one row per category in a single query', async () => {
+    const sql = await runQuery();
+    expect(sql).toContain('DISTINCT ON (cm.category_id)');
+    expect(mockClient.query).toHaveBeenCalledTimes(1);
+    expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('bounds the lookup to on-or-before the requested day', async () => {
+    const sql = await runQuery();
+    expect(sql).toContain('cm.entry_date <= $2');
+    expect(sql).not.toContain('cm.entry_date = $2');
+  });
+
+  it('restricts suggestions to manual sources so a sync sample is never offered', async () => {
+    const sql = await runQuery();
+    expect(sql).toContain("cm.source = 'manual'");
+    expect(sql).toContain('cm.value IS NOT NULL');
+  });
+
+  it('orders by day then timestamp so the newest manual value wins', async () => {
+    const sql = await runQuery();
+    expect(sql).toContain(
+      'ORDER BY cm.category_id, cm.entry_date DESC, cm.entry_timestamp DESC, cm.id DESC'
+    );
+  });
+});
+
 describe('measurementRepository.upsertStepData', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockClient: any;

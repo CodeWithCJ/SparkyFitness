@@ -935,6 +935,49 @@ async function getCustomMeasurementEntriesByDate(userId: any, date: any) {
   }
 }
 
+/**
+ * Latest MANUAL value per custom category on or before a date — at most one row
+ * per category, resolved in a single query.
+ *
+ * The mobile Daily editor shows these as placeholder hints, so this exists to
+ * avoid an N+1 request per category (the list endpoint has no date filter at
+ * all, and `most-recent` only knows the fixed check-in columns).
+ *
+ * `source = 'manual'` is enforced here rather than left to the caller:
+ * health-sync samples are historical context that must never be adopted into a
+ * manual entry, so they are not suggestions in the first place. `value IS NOT
+ * NULL` mirrors the filter the custom-entries list endpoint already applies.
+ */
+async function getLatestManualCustomEntriesOnOrBeforeDate(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  date: any
+) {
+  const client = await getClient(userId); // User-specific operation
+  try {
+    const result = await client.query(
+      `SELECT DISTINCT ON (cm.category_id)
+              cm.id,
+              cm.category_id,
+              cm.value,
+              cm.entry_date::TEXT,
+              cm.source
+       FROM custom_measurements cm
+       JOIN custom_categories cc ON cm.category_id = cc.id
+       WHERE cm.user_id = $1
+         AND cm.entry_date <= $2
+         AND cm.source = 'manual'
+         AND cm.value IS NOT NULL
+       ORDER BY cm.category_id, cm.entry_date DESC, cm.entry_timestamp DESC, cm.id DESC`,
+      [userId, date]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 async function getCheckInMeasurementsByDateRange(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -1587,6 +1630,7 @@ export { updateCustomCategory };
 export { deleteCustomCategory };
 export { getCustomMeasurementEntries };
 export { getCustomMeasurementEntriesByDate };
+export { getLatestManualCustomEntriesOnOrBeforeDate };
 export { getCheckInMeasurementsByDateRange };
 export { getCustomMeasurementsByDateRange };
 export { getCustomCategoryOwnerId };
@@ -2125,6 +2169,7 @@ export default {
   deleteCustomCategory,
   getCustomMeasurementEntries,
   getCustomMeasurementEntriesByDate,
+  getLatestManualCustomEntriesOnOrBeforeDate,
   getCheckInMeasurementsByDateRange,
   getCustomMeasurementsByDateRange,
   getCustomCategoryOwnerId,

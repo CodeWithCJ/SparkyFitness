@@ -10,6 +10,7 @@ vi.mock('../services/measurementService.js', () => ({
   default: {
     processHealthData: vi.fn(),
     getWaterIntakeByDateRange: vi.fn(),
+    getLatestManualCustomEntriesOnOrBeforeDate: vi.fn(),
   },
 }));
 
@@ -292,5 +293,97 @@ describe('Measurement Routes - GET /api/measurements/water-intake-range/:startDa
     );
 
     expect(res.statusCode).toBe(500);
+  });
+});
+
+describe('Measurement Routes - GET /custom-entries/latest-manual-on-or-before-date', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns the per-category latest manual values and passes the day through', async () => {
+    vi.mocked(
+      measurementService.getLatestManualCustomEntriesOnOrBeforeDate
+    ).mockResolvedValue([
+      {
+        id: 'entry-1',
+        category_id: 'cat-1',
+        value: '72.5',
+        entry_date: '2026-05-04',
+        source: 'manual',
+      },
+    ]);
+
+    const res = await request(app).get(
+      '/api/measurements/custom-entries/latest-manual-on-or-before-date?date=2026-05-10'
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual([
+      {
+        id: 'entry-1',
+        category_id: 'cat-1',
+        value: '72.5',
+        entry_date: '2026-05-04',
+        source: 'manual',
+      },
+    ]);
+    // Both actor and target resolve to the authenticated user.
+    expect(
+      measurementService.getLatestManualCustomEntriesOnOrBeforeDate
+    ).toHaveBeenCalledWith('test-user-id', 'test-user-id', '2026-05-10');
+  });
+
+  it('is not captured by the /custom-entries/:date route', async () => {
+    // The literal segment and the date parameter share a prefix; if the literal
+    // route were registered second it would read as date="latest-manual-...".
+    vi.mocked(
+      measurementService.getLatestManualCustomEntriesOnOrBeforeDate
+    ).mockResolvedValue([]);
+
+    const res = await request(app).get(
+      '/api/measurements/custom-entries/latest-manual-on-or-before-date?date=2026-05-10'
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(
+      measurementService.getLatestManualCustomEntriesOnOrBeforeDate
+    ).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a missing date with 400', async () => {
+    const res = await request(app).get(
+      '/api/measurements/custom-entries/latest-manual-on-or-before-date'
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(
+      measurementService.getLatestManualCustomEntriesOnOrBeforeDate
+    ).not.toHaveBeenCalled();
+  });
+
+  it('rejects a malformed date with 400 instead of letting it reach the database', async () => {
+    const res = await request(app).get(
+      '/api/measurements/custom-entries/latest-manual-on-or-before-date?date=05-10-2026'
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(
+      measurementService.getLatestManualCustomEntriesOnOrBeforeDate
+    ).not.toHaveBeenCalled();
+  });
+
+  it('maps a Forbidden-prefixed service error to 403', async () => {
+    vi.mocked(
+      measurementService.getLatestManualCustomEntriesOnOrBeforeDate
+    ).mockRejectedValue(
+      new Error('Forbidden: You do not have permission to view this data.')
+    );
+
+    const res = await request(app).get(
+      '/api/measurements/custom-entries/latest-manual-on-or-before-date?date=2026-05-10'
+    );
+
+    expect(res.statusCode).toBe(403);
   });
 });
