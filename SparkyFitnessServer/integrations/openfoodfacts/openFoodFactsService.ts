@@ -812,28 +812,33 @@ function isOffLiquid(product: OffProduct): boolean {
 // duplicate the metric default (e.g. "28 g (28 g)").
 const METRIC_SERVING_UNITS = new Set(['g', 'ml', 'kg', 'l', 'oz']);
 
+interface HouseholdServing {
+  size: number | null;
+  unit: string | null;
+}
+
 // Extracts a household serving (e.g. "2 cookies") from OFF's free-text
 // serving_size string when it also states the equivalent metric weight/volume
-// in parentheses, e.g. "2 cookies (28 g)" or "1 cup (240 ml)". The parenthetical
-// is what confirms the household count maps to the same physical serving we
-// already computed from serving_quantity, so the household variant can safely
-// reuse the metric variant's nutrient values without any rescaling.
-//
-// Returns null when there is no such household descriptor (e.g. "28 g",
-// "250 ml") or when the descriptor is itself a metric unit, so a household
-// variant is only ever emitted for genuine piece/portion counts.
+// in parentheses, e.g. "2 cookies (28 g)". null/null when there's no such
+// descriptor, or the unit is itself metric.
 function parseOffHouseholdServing(
   servingSize: string | undefined
-): { size: number; unit: string } | null {
-  if (typeof servingSize !== 'string') return null;
+): HouseholdServing {
+  if (typeof servingSize !== 'string') return { size: null, unit: null };
   const match = servingSize.match(
     /^\s*([\d.,]+)\s+([^\d(][^(]*?)\s*\([^)]*\)\s*$/
   );
-  if (!match) return null;
+  if (!match) return { size: null, unit: null };
   const size = parseFloat(match[1].replace(',', '.'));
   const unit = normalizeServingUnit(match[2]);
-  if (!Number.isFinite(size) || size <= 0 || !unit) return null;
-  if (METRIC_SERVING_UNITS.has(unit)) return null;
+  if (
+    !Number.isFinite(size) ||
+    size <= 0 ||
+    !unit ||
+    METRIC_SERVING_UNITS.has(unit)
+  ) {
+    return { size: null, unit: null };
+  }
   return { size, unit };
 }
 
@@ -1186,13 +1191,16 @@ function mapOpenFoodFactsProduct(
     traces: normalizeAllergenTags(product.traces_tags),
   };
   // If OFF states an equivalent household serving (e.g. "2 cookies (28 g)"),
-  // surface it as a second, non-default variant so users can log by piece.
-  // It describes the SAME physical serving as the metric variant, so it reuses
-  // the exact same nutrient values — no rescaling. Only OFF's serving_unit is
-  // stored, mirroring how FatSecret/USDA store household units.
+  // surface it as a second, non-default variant so users can log by piece,
+  // reusing the metric variant's values (same physical serving, no rescaling).
+  // Only valid when declaredServingQuantity was actually declared — otherwise
+  // metricVariant is still on the unscaled 100g basis, and reusing it would
+  // mislabel those numbers under the household unit. Skip it in that case.
   const household = parseOffHouseholdServing(product.serving_size);
   const householdVariant =
-    household &&
+    declaredServingQuantity !== null &&
+    household.size !== null &&
+    household.unit !== null &&
     !(
       household.size === metricVariant.serving_size &&
       household.unit === metricVariant.serving_unit
