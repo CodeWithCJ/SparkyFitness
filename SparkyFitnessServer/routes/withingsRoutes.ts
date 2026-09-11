@@ -4,6 +4,8 @@ import { log } from '../config/logging.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import withingsServiceCentral from '../services/withingsService.js';
+import requireSelfActor from '../middleware/requireSelfMiddleware.js';
+import { OAuthStateError } from '../utils/oauthState.js';
 const router = express.Router();
 /**
  * @swagger
@@ -26,7 +28,9 @@ const router = express.Router();
 router.get(
   '/authorize',
   authMiddleware.authenticate,
-  checkPermissionMiddleware('diary'),
+  // Self-only, not checkPermissionMiddleware('diary'): on GET that resolves to
+  // diary_read, which would hand a read-only delegate the owner's client id.
+  requireSelfActor,
   async (req, res) => {
     try {
       const userId = req.userId; // Assuming user ID is available from authentication
@@ -58,13 +62,19 @@ router.get(
  *             type: object
  *             properties:
  *               code: { type: 'string' }
- *               state: { type: 'string' }
+ *               state:
+ *                 type: string
+ *                 description: The single-use nonce issued by /withings/authorize and returned by Withings. Never a user id.
  *               error: { type: 'string', nullable: true }
  *     responses:
  *       200:
  *         description: Successfully linked.
+ *       400:
+ *         description: Missing authorization code, or the OAuth state was invalid, expired, or already used.
+ *       403:
+ *         description: The state is not bound to the authenticated user.
  */
-router.post('/callback', async (req, res) => {
+router.post('/callback', authMiddleware.authenticate, async (req, res) => {
   try {
     const { code, state, error } = req.body;
     if (error) {
@@ -76,21 +86,27 @@ router.post('/callback', async (req, res) => {
         .status(400)
         .json({ message: 'Authorization code not received.' });
     }
-    // In a real application, 'state' should be validated against a stored value
-    // associated with the user who initiated the authorization flow.
-    // For now, we'll just log it.
-    log('info', `Withings OAuth callback received. State: ${state}`);
-    // Assuming we can derive userId from the state or a session,
-    // for this example, we'll need to pass a placeholder or retrieve it differently.
-    // In a production app, 'state' would typically contain a user identifier or a session ID.
-    // For simplicity, let's assume a fixed user ID for now, or pass it through state.
-    // containing the userId, which can be decrypted/verified here.
-    const userId = state; // The userId was passed in the state parameter
+    // `state` is never treated as a user id. The claim is scoped to the
+    // authenticated actor, so a state issued to another user matches no row and
+    // fails before any token exchange or provider-row write.
+    const actorUserId =
+      req.originalUserId || req.authenticatedUserId || req.userId;
     const tokenExchangeResult = await withingsService.exchangeCodeForTokens(
-      userId,
+      state,
       code,
-      `${process.env.SPARKY_FITNESS_FRONTEND_URL}/withings/callback`
+      `${process.env.SPARKY_FITNESS_FRONTEND_URL}/withings/callback`,
+      actorUserId
     );
+    // Belt and braces: the claim predicate already guarantees this holds.
+    if (tokenExchangeResult.ownerUserId !== actorUserId) {
+      log(
+        'warn',
+        `Withings callback owner ${tokenExchangeResult.ownerUserId} did not match actor ${actorUserId}.`
+      );
+      return res
+        .status(403)
+        .json({ message: 'Forbidden: OAuth state is not bound to this user.' });
+    }
     if (tokenExchangeResult.success) {
       res
         .status(200)
@@ -99,6 +115,14 @@ router.post('/callback', async (req, res) => {
       res.status(500).json({ message: 'Failed to connect Withings account.' });
     }
   } catch (error) {
+    // Every state failure returns one opaque 400 so the response never
+    // reveals which check rejected the value.
+    if (error instanceof OAuthStateError) {
+      log('warn', `Withings OAuth state rejected (${error.reason}).`);
+      return res
+        .status(400)
+        .json({ message: 'Invalid or expired authorization state.' });
+    }
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
     log('error', `Error handling Withings OAuth callback: ${error.message}`);
     res.status(500).json({

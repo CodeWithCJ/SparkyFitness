@@ -1,5 +1,4 @@
 import axios from 'axios';
-import crypto from 'crypto';
 import { getClient, getSystemClient } from '../../db/poolManager.js';
 import { encrypt, decrypt, ENCRYPTION_KEY } from '../../security/encryption.js';
 import { log } from '../../config/logging.js';
@@ -7,6 +6,7 @@ import polarDataProcessor from './polarDataProcessor.js';
 import { loadUserTimezone } from '../../utils/timezoneLoader.js';
 import { todayInZone, addDays } from '@workspace/shared';
 import { logRawResponse } from '../../utils/diagnosticLogger.js';
+import { claimOAuthState, persistOAuthState } from '../../utils/oauthState.js';
 const POLAR_AUTH_URL = 'https://flow.polar.com/oauth2/authorization';
 const POLAR_TOKEN_URL = 'https://polarremote.com/v2/oauth2/token';
 const POLAR_API_BASE_URL = 'https://www.polaraccesslink.com/v3';
@@ -15,29 +15,20 @@ const POLAR_API_BASE_URL = 'https://www.polaraccesslink.com/v3';
  */
 
 async function getAuthorizationUrl(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  redirectUri: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerId: any
+  userId: string,
+  redirectUri: string,
+  providerId?: string | null
 ) {
   const client = await getSystemClient();
   try {
-    const query = providerId
-      ? {
-          text: 'SELECT encrypted_app_id, app_id_iv, app_id_tag FROM external_data_providers WHERE id = $1 AND user_id = $2',
-          values: [providerId, userId],
-        }
-      : {
-          text: "SELECT encrypted_app_id, app_id_iv, app_id_tag FROM external_data_providers WHERE user_id = $1 AND provider_type = 'polar'",
-          values: [userId],
-        };
-    const result = await client.query(query.text, query.values);
-    if (result.rows.length === 0) {
-      throw new Error('Polar client credentials not found for user.');
-    }
-    const { encrypted_app_id, app_id_iv, app_id_tag } = result.rows[0];
+    // One statement issues the nonce and returns the credentials, so the
+    // client_id in this URL always belongs to the row holding the nonce.
+    const { state, encrypted_app_id, app_id_iv, app_id_tag } =
+      await persistOAuthState(client, {
+        userId,
+        providerType: 'polar',
+        providerId,
+      });
     const clientId = await decrypt(
       encrypted_app_id,
       app_id_iv,
@@ -45,18 +36,6 @@ async function getAuthorizationUrl(
       ENCRYPTION_KEY
     );
     const scope = 'accesslink.read_all';
-    const state = crypto.randomBytes(16).toString('hex');
-    // Store state in DB for validation during callback
-    const updateQuery = providerId
-      ? {
-          text: 'UPDATE external_data_providers SET oauth_state = $1 WHERE id = $2 AND user_id = $3',
-          values: [state, providerId, userId],
-        }
-      : {
-          text: "UPDATE external_data_providers SET oauth_state = $1 WHERE user_id = $2 AND provider_type = 'polar'",
-          values: [state, userId],
-        };
-    await client.query(updateQuery.text, updateQuery.values);
     return `${POLAR_AUTH_URL}?response_type=code&client_id=${clientId}&scope=${scope}&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}`;
   } finally {
     client.release();
@@ -66,57 +45,30 @@ async function getAuthorizationUrl(
  * Exchange authorization code for tokens.
  */
 async function exchangeCodeForTokens(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  code: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  state: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  redirectUri: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerId: any
+  state: unknown,
+  code: string,
+  redirectUri: string,
+  actorUserId: string
 ) {
   const client = await getSystemClient();
   try {
-    const providerQuery = providerId
-      ? {
-          text: `SELECT id, encrypted_app_id, app_id_iv, app_id_tag, encrypted_app_key, app_key_iv, app_key_tag, oauth_state
-                       FROM external_data_providers
-                       WHERE id = $1 AND user_id = $2`,
-          values: [providerId, userId],
-        }
-      : {
-          text: `SELECT id, encrypted_app_id, app_id_iv, app_id_tag, encrypted_app_key, app_key_iv, app_key_tag, oauth_state
-                       FROM external_data_providers
-                       WHERE oauth_state = $1 AND user_id = $2 AND provider_type = 'polar'`,
-          values: [state, userId],
-        };
-    const providerResult = await client.query(
-      providerQuery.text,
-      providerQuery.values
-    );
-    if (providerResult.rows.length === 0) {
-      throw new Error('Polar client credentials not found for user.');
-    }
+    // Replaces the old compare-then-use: the previous providerId branch reached
+    // the credential row by id+user_id with oauth_state absent from the lookup,
+    // and the only thing behind it was a non-atomic equality check.
     const {
       id: finalProviderId,
+      user_id: ownerUserId,
       encrypted_app_id,
       app_id_iv,
       app_id_tag,
       encrypted_app_key,
       app_key_iv,
       app_key_tag,
-      oauth_state: storedState,
-    } = providerResult.rows[0];
-    // Validate state to prevent CSRF
-    if (!storedState || storedState !== state) {
-      log(
-        'warn',
-        `[Polar] State mismatch for user ${userId}. Received: ${state}, Stored: ${storedState}`
-      );
-      throw new Error('Invalid OAuth state. Potential CSRF attack.');
-    }
+    } = await claimOAuthState(client, {
+      state,
+      providerType: 'polar',
+      actorUserId,
+    });
     const clientId = await decrypt(
       encrypted_app_id,
       app_id_iv,
@@ -180,7 +132,7 @@ async function exchangeCodeForTokens(
       });
       log(
         'info',
-        `User ${userId} (Polar ID: ${x_user_id}) is already registered with Polar AccessLink.`
+        `User ${ownerUserId} (Polar ID: ${x_user_id}) is already registered with Polar AccessLink.`
       );
     } catch (getError) {
       // If 404 or 403 (unauthorized might mean not registered yet?), proceed to register
@@ -192,7 +144,7 @@ async function exchangeCodeForTokens(
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         `User ${x_user_id} lookup status: ${getError.response ? getError.response.status : getError.message}. Proceeding to registration.`
       );
-      const inputBody = `<register><member-id>${userId}</member-id></register>`;
+      const inputBody = `<register><member-id>${ownerUserId}</member-id></register>`;
       try {
         await axios.post(`${POLAR_API_BASE_URL}/users`, inputBody, {
           headers: {
@@ -203,14 +155,14 @@ async function exchangeCodeForTokens(
         });
         log(
           'info',
-          `Successfully registered user ${userId} with Polar AccessLink.`
+          `Successfully registered user ${ownerUserId} with Polar AccessLink.`
         );
       } catch (regError) {
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         if (regError.response && regError.response.status === 409) {
           log(
             'info',
-            `User ${userId} already registered with Polar AccessLink (Conflict).`
+            `User ${ownerUserId} already registered with Polar AccessLink (Conflict).`
           );
           // @ts-expect-error TS(2571): Object is of type 'unknown'.
         } else if (regError.response && regError.response.status === 401) {
@@ -228,13 +180,13 @@ async function exchangeCodeForTokens(
           log(
             'error',
             // @ts-expect-error TS(2571): Object is of type 'unknown'.
-            `Error registering user ${userId} with Polar AccessLink: ${regError.message} - ${JSON.stringify(regError.response?.data)}`
+            `Error registering user ${ownerUserId} with Polar AccessLink: ${regError.message} - ${JSON.stringify(regError.response?.data)}`
           );
           throw regError;
         }
       }
     }
-    return { success: true, externalUserId: x_user_id };
+    return { success: true, externalUserId: x_user_id, ownerUserId };
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
     log('error', `Error exchanging Polar code for tokens: ${error.message}`);

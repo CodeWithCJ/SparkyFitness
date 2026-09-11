@@ -4,25 +4,7 @@ import { encrypt, decrypt, ENCRYPTION_KEY } from '../../security/encryption.js';
 import { log } from '../../config/logging.js';
 import withingsDataProcessor from './withingsDataProcessor.js';
 import { logRawResponse } from '../../utils/diagnosticLogger.js';
-// Helper function to interpolate parameters into a SQL query for logging
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function interpolateQuery(sql: any, params: any) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return sql.replace(/\$([0-9]+)/g, (match: any, p1: any) => {
-    const index = parseInt(p1, 10) - 1;
-    if (params[index] === undefined) {
-      return match; // Return original placeholder if param is missing
-    }
-    // Handle different types for proper SQL representation
-    if (typeof params[index] === 'string') {
-      return `'${params[index].replace(/'/g, "''")}'`; // Escape single quotes
-    }
-    if (params[index] instanceof Date) {
-      return `'${params[index].toISOString()}'`;
-    }
-    return params[index];
-  });
-}
+import { claimOAuthState, persistOAuthState } from '../../utils/oauthState.js';
 const WITHINGS_API_BASE_URL = 'https://wbsapi.withings.net';
 const WITHINGS_ACCOUNT_BASE_URL = 'https://account.withings.com';
 interface WithingsTokenBody {
@@ -97,20 +79,16 @@ async function requestWithingsToken(params: Record<string, string>) {
   );
 }
 // Function to construct the Withings authorization URL
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getAuthorizationUrl(userId: any) {
+async function getAuthorizationUrl(userId: string) {
   const client = await getSystemClient();
   try {
-    const result = await client.query(
-      `SELECT encrypted_app_id, app_id_iv, app_id_tag
-             FROM external_data_providers
-             WHERE user_id = $1 AND provider_type = 'withings'`,
-      [userId]
-    );
-    if (result.rows.length === 0) {
-      throw new Error('Withings client credentials not found for user.');
-    }
-    const { encrypted_app_id, app_id_iv, app_id_tag } = result.rows[0];
+    // Issuing the state and reading the client credentials is one statement, so
+    // the client_id in this URL always belongs to the row holding the nonce.
+    const { state, encrypted_app_id, app_id_iv, app_id_tag } =
+      await persistOAuthState(client, {
+        userId,
+        providerType: 'withings',
+      });
     const clientId = await decrypt(
       encrypted_app_id,
       app_id_iv,
@@ -118,37 +96,36 @@ async function getAuthorizationUrl(userId: any) {
       ENCRYPTION_KEY
     );
     const scope = 'user.info,user.metrics,user.activity,user.sleepevents'; // Define required scopes
-    const state = userId; // Use the userId as the state to identify the user on callback
-    // Store state in session or database to validate on callback
     return `${WITHINGS_ACCOUNT_BASE_URL}/oauth2_user/authorize2?response_type=code&client_id=${clientId}&scope=${scope}&redirect_uri=${process.env.SPARKY_FITNESS_FRONTEND_URL}/withings/callback&state=${state}`;
   } finally {
     client.release();
   }
 }
-// Function to exchange authorization code for access and refresh tokens
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function exchangeCodeForTokens(userId: any, code: any, redirectUri: any) {
+// Function to exchange authorization code for access and refresh tokens.
+// `userId` is deliberately absent from this signature: the owner is recovered
+// from the claimed state row, so no caller can name the row that gets written.
+async function exchangeCodeForTokens(
+  state: unknown,
+  code: string,
+  redirectUri: string,
+  actorUserId: string
+) {
   const client = await getSystemClient();
   try {
-    // Validate state parameter (implementation depends on where state is stored)
-    // For example, retrieve from session and compare
-    const providerResult = await client.query(
-      `SELECT encrypted_app_id, app_id_iv, app_id_tag, encrypted_app_key, app_key_iv, app_key_tag
-             FROM external_data_providers
-             WHERE user_id = $1 AND provider_type = 'withings'`,
-      [userId]
-    );
-    if (providerResult.rows.length === 0) {
-      throw new Error('Withings client credentials not found for user.');
-    }
     const {
+      id: providerRowId,
+      user_id: ownerUserId,
       encrypted_app_id,
       app_id_iv,
       app_id_tag,
       encrypted_app_key,
       app_key_iv,
       app_key_tag,
-    } = providerResult.rows[0];
+    } = await claimOAuthState(client, {
+      state,
+      providerType: 'withings',
+      actorUserId,
+    });
     const clientId = await decrypt(
       encrypted_app_id,
       app_id_iv,
@@ -197,49 +174,32 @@ async function exchangeCodeForTokens(userId: any, code: any, redirectUri: any) {
       scope,
       new Date(Date.now() + validExpiresIn * 1000),
       userid,
-      userId,
+      providerRowId,
     ];
-    log(
-      'info',
-      'Attempting to update database with payload:',
-      JSON.stringify(
-        {
-          encrypted_access_token: encryptedAccessToken.encryptedText,
-          scope: scope,
-          expires_in: expires_in,
-          external_user_id: userid,
-          user_id: userId,
-        },
-        null,
-        2
-      )
-    );
     try {
+      // Keyed on the claimed row's primary key: `provider_type` carries no
+      // uniqueness constraint, so a user_id predicate could fan out across rows.
+      // `oauth_state = NULL` is redundant after the claim, but states the invariant.
       const updateQuery = `UPDATE external_data_providers
                 SET encrypted_access_token = $1, access_token_iv = $2, access_token_tag = $3,
                     encrypted_refresh_token = $4, refresh_token_iv = $5, refresh_token_tag = $6,
-                    scope = $7, token_expires_at = $8, external_user_id = $9, is_active = TRUE, updated_at = NOW()
-                WHERE user_id = $10 AND provider_type = 'withings'`;
-      log('info', `Executing SQL query: ${updateQuery}`);
-      log('info', `With payload: ${JSON.stringify(updatePayload)}`);
-      log(
-        'info',
-        `Interpolated SQL query: ${interpolateQuery(updateQuery, updatePayload)}`
-      );
+                    scope = $7, token_expires_at = $8, external_user_id = $9,
+                    oauth_state = NULL, is_active = TRUE, updated_at = NOW()
+                WHERE id = $10`;
       const dbResult = await client.query(updateQuery, updatePayload);
       log(
         'info',
-        `Database update result for user ${userId}: ${dbResult.rowCount} rows updated.`
+        `Database update result for user ${ownerUserId}: ${dbResult.rowCount} rows updated.`
       );
     } catch (dbError) {
       log(
         'error',
-        `FATAL: Database update failed for user ${userId}:`,
+        `FATAL: Database update failed for user ${ownerUserId}:`,
         dbError
       );
       throw dbError; // Re-throw to ensure the outer catch block handles it
     }
-    return { success: true, userId: userid };
+    return { success: true, userId: userid, ownerUserId };
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
     log('error', `Error exchanging Withings code for tokens: ${error.message}`);
