@@ -446,14 +446,7 @@ export async function searchProviderFoods(
     }
   }
 
-  // All VALID_PROVIDER_TYPES are food providers (see constants/foodProviders.ts),
-  // so every case above lands here and gets ranked once, in one place, rather
-  // than duplicating the sort per-case. Without this, providers that list
-  // branded/processed items ahead of the plain whole food a user actually
-  // searched for (e.g. OpenFoodFacts for "chicken breast") passed that raw
-  // order straight through to the manual search UI and the mobile app — only
-  // the chatbot/photo-import path (via foodProviderLookupService.ts) ranked
-  // its results.
+  // All VALID_PROVIDER_TYPES are food providers, so this covers every case above.
   const ranked = rankProviderMatches(foods as ProviderFoodItem[], query);
 
   return { foods: ranked, pagination };

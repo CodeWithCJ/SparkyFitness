@@ -1,12 +1,6 @@
-// Shared ranking logic for external-provider food search results.
-//
-// Extracted out of `services/foodProviderLookupService.ts` so
-// `services/externalFoodSearchService.ts` can rank its own results without
-// creating a circular import: `foodProviderLookupService.ts` already imports
-// `searchProviderFoods` FROM `externalFoodSearchService.ts` for its own
-// provider-lookup loop, so `externalFoodSearchService.ts` cannot import
-// anything back from `foodProviderLookupService.ts`. This module sits below
-// both and depends on neither.
+// Extracted out of foodProviderLookupService.ts so externalFoodSearchService.ts
+// can use it too, without the circular import that would create (the former
+// already imports the latter). Depends on neither.
 
 export interface ProviderFoodVariant {
   id?: string;
