@@ -4,6 +4,7 @@ import {
   __resetSoundsForTests,
   isRestTimerSoundEnabled,
   playRestCompleteSound,
+  willPlayRestCompleteSound,
 } from '../../src/services/sounds';
 import {
   __resetAppPreferencesStoreForTests,
@@ -45,6 +46,19 @@ describe('sounds service', () => {
     it('is independent of the camera-shutter soundsEnabled preference', () => {
       useAppPreferencesStore.getState().setSoundsEnabled(false);
       expect(isRestTimerSoundEnabled()).toBe(true);
+    });
+  });
+
+  describe('willPlayRestCompleteSound', () => {
+    it('is true only while the app is active and the chime is enabled', () => {
+      expect(willPlayRestCompleteSound()).toBe(true);
+      setAppState('inactive');
+      expect(willPlayRestCompleteSound()).toBe(false);
+      setAppState('background');
+      expect(willPlayRestCompleteSound()).toBe(false);
+      setAppState('active');
+      useAppPreferencesStore.getState().setRestTimerSoundEnabled(false);
+      expect(willPlayRestCompleteSound()).toBe(false);
     });
   });
 

@@ -1,11 +1,11 @@
-import { Alert, Linking, Platform } from 'react-native';
+import { Alert, AppState, Linking, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import Toast from 'react-native-toast-message';
 import { addLog } from './LogService';
 import i18n from '../localization/i18n';
 import { fireSuccessHaptic } from './haptics';
-import { isRestTimerSoundEnabled, playRestCompleteSound } from './sounds';
+import { playRestCompleteSound, willPlayRestCompleteSound } from './sounds';
 import { ExactAlarmBridge } from './ExactAlarmBridge';
 import {
   useAppPreferencesStore,
@@ -170,15 +170,17 @@ export async function initNotifications(): Promise<void> {
       handleNotification: async (notification) => {
         const category = notification.request.content.categoryIdentifier;
         const isMedReminder = category === MEDICATION_REMINDER_CATEGORY;
-        // While the in-app chime owns the foreground rest cue, the rest ping's
-        // notification sound is muted so the two never double up; turning the
-        // chime off restores it.
-        const restPingMuted =
-          category === REST_COMPLETE_CATEGORY && isRestTimerSoundEnabled();
+        const isRestPing = category === REST_COMPLETE_CATEGORY;
+        // iOS also runs this while the app is frontmost-but-inactive (screen
+        // locking, app switcher), where the chime never plays — so there the
+        // ping carries the cue itself instead of being hidden as a duplicate.
+        const restPingOwnsCue =
+          isRestPing && AppState.currentState !== 'active';
         return {
-          shouldShowBanner: isMedReminder,
-          shouldShowList: isMedReminder,
-          shouldPlaySound: !restPingMuted,
+          shouldShowBanner: isMedReminder || restPingOwnsCue,
+          shouldShowList: isMedReminder || restPingOwnsCue,
+          // Muted only while the chime owns the cue, so the two never double up.
+          shouldPlaySound: !(isRestPing && willPlayRestCompleteSound()),
           shouldSetBadge: false,
         };
       },
@@ -351,6 +353,10 @@ export async function scheduleRestNotification(
         body: content?.body ?? exerciseName,
         sound: true,
         categoryIdentifier: REST_COMPLETE_CATEGORY,
+        // At the default `active` level a Focus mode delivers the alert
+        // silently, which defeats the point of a rest timer. Needs the
+        // entitlement in app.config.ts; iOS falls back to `active` without it.
+        interruptionLevel: 'timeSensitive',
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,

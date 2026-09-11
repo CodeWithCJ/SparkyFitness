@@ -23,13 +23,21 @@ export function isRestTimerSoundEnabled(): boolean {
 }
 
 /**
+ * Whether the chime would actually play right now. Callers that stand down in
+ * favour of it must test this, not the preference alone: it is foreground-only,
+ * so off screen the notification ping owns the cue.
+ */
+export function willPlayRestCompleteSound(): boolean {
+  return isRestTimerSoundEnabled() && AppState.currentState === 'active';
+}
+
+/**
  * Plays the rest-complete chime. Foreground-only by design — in the background
  * the scheduled notification's sound is the cue. Fire-and-forget: playback
  * failures log but never propagate into rest-state transitions.
  */
 export function playRestCompleteSound(): void {
-  if (!isRestTimerSoundEnabled()) return;
-  if (AppState.currentState !== 'active') return;
+  if (!willPlayRestCompleteSound()) return;
   void (async () => {
     try {
       if (!audioModeConfigured) {

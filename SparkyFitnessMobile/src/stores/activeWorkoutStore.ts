@@ -1425,7 +1425,12 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         ) {
           return;
         }
-        cancelCurrentRestNotification(rest);
+        // The ping is due this instant: cancelling it off screen races the OS
+        // delivery and can swallow the only cue there is. In the foreground
+        // the chime and haptic own the flip, so the redundant ping goes.
+        if (AppState.currentState === 'active') {
+          cancelCurrentRestNotification(rest);
+        }
         set({ rest: READY_REST });
         fireRestCompleteCue();
       },

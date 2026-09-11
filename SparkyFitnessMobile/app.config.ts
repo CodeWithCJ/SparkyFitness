@@ -164,6 +164,9 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       },
       entitlements: {
         'com.apple.security.application-groups': [getIosAppGroup()],
+        // Lets iOS honour the `timeSensitive` rest alert (see
+        // `scheduleRestNotification`); without it a Focus mode silences it.
+        'com.apple.developer.usernotifications.time-sensitive': true,
       },
       icon: './assets/icons/appicon.icon',
     },
