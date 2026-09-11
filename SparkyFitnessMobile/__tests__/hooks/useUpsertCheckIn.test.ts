@@ -4,7 +4,10 @@ import { useUpsertCheckIn } from '../../src/hooks/useUpsertCheckIn';
 import { upsertCheckIn } from '../../src/services/api/measurementsApi';
 import { refreshHealthSyncCache } from '../../src/hooks/refreshHealthSyncCache';
 import { addLog } from '../../src/services/LogService';
-import { measurementsQueryKey } from '../../src/hooks/queryKeys';
+import {
+  latestMeasurementsOnOrBeforeQueryKey,
+  measurementsQueryKey,
+} from '../../src/hooks/queryKeys';
 import type { CheckInMeasurement } from '../../src/types/measurements';
 import {
   createTestQueryClient,
@@ -115,5 +118,25 @@ describe('useUpsertCheckIn', () => {
       queryClient.getQueryData(measurementsQueryKey(entryDate))
     ).toBeUndefined();
     expect(mockRefreshHealthSyncCache).not.toHaveBeenCalled();
+  });
+
+  test('a successful save refreshes the carry-forward suggestions', async () => {
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+    mockUpsertCheckIn.mockResolvedValue({
+      entry_date: entryDate,
+      weight: 80.5,
+    });
+
+    const { result } = renderHook(() => useUpsertCheckIn(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({ entryDate, weight: 80.5 });
+    });
+
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: latestMeasurementsOnOrBeforeQueryKey(entryDate),
+    });
   });
 });

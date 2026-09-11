@@ -2,6 +2,8 @@ import {
   upsertCheckIn,
   fetchMeasurements,
   fetchWaterIntakeRange,
+  fetchLatestCheckInMeasurementsOnOrBefore,
+  fetchLatestManualCustomEntriesOnOrBefore,
   serverSupportsPerRecordWater,
 } from '../../../src/services/api/measurementsApi';
 import { apiFetch } from '../../../src/services/api/apiClient';
@@ -161,5 +163,85 @@ describe('fetchWaterIntakeRange', () => {
     await expect(
       fetchWaterIntakeRange('2026-08-01', '2026-08-30')
     ).resolves.toEqual(response);
+  });
+});
+
+describe('fetchLatestCheckInMeasurementsOnOrBefore', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('requests the carry-forward lookup for the given day', async () => {
+    mockApiFetch.mockResolvedValue({ weight: 80 });
+
+    await expect(
+      fetchLatestCheckInMeasurementsOnOrBefore('2026-05-10')
+    ).resolves.toEqual({ weight: 80 });
+
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint:
+          '/api/measurements/check-in/latest-on-or-before-date?date=2026-05-10',
+      })
+    );
+  });
+
+  test('encodes the day so a malformed value cannot break the URL', async () => {
+    mockApiFetch.mockResolvedValue({});
+
+    await fetchLatestCheckInMeasurementsOnOrBefore('2026-05-10?x=1');
+
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint:
+          '/api/measurements/check-in/latest-on-or-before-date?date=2026-05-10%3Fx%3D1',
+      })
+    );
+  });
+
+  test('normalises the empty-object response to null', async () => {
+    mockApiFetch.mockResolvedValue({});
+    await expect(
+      fetchLatestCheckInMeasurementsOnOrBefore('2026-05-10')
+    ).resolves.toBeNull();
+  });
+
+  test('normalises a null response to null', async () => {
+    mockApiFetch.mockResolvedValue(null);
+    await expect(
+      fetchLatestCheckInMeasurementsOnOrBefore('2026-05-10')
+    ).resolves.toBeNull();
+  });
+});
+
+describe('fetchLatestManualCustomEntriesOnOrBefore', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('requests one bulk lookup for every category', async () => {
+    const response = [
+      {
+        id: 'e1',
+        category_id: 'cat-1',
+        value: '5',
+        entry_date: '2026-05-04',
+        source: 'manual',
+      },
+    ];
+    mockApiFetch.mockResolvedValue(response);
+
+    await expect(
+      fetchLatestManualCustomEntriesOnOrBefore('2026-05-10')
+    ).resolves.toEqual(response);
+
+    // One request, not one per category.
+    expect(mockApiFetch).toHaveBeenCalledTimes(1);
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        endpoint:
+          '/api/measurements/custom-entries/latest-manual-on-or-before-date?date=2026-05-10',
+      })
+    );
   });
 });

@@ -2,13 +2,18 @@ import { renderHook, waitFor, act } from '@testing-library/react-native';
 import {
   useCustomCategories,
   useCustomMeasurementsByDate,
+  useLatestManualCustomEntriesOnOrBefore,
   useSaveCustomMeasurement,
   useDeleteCustomMeasurement,
 } from '../../src/hooks/useCustomMeasurements';
-import { customMeasurementsByDateQueryKey } from '../../src/hooks/queryKeys';
+import {
+  customMeasurementsByDateQueryKey,
+  latestManualCustomEntriesQueryKey,
+} from '../../src/hooks/queryKeys';
 import {
   fetchCustomCategories,
   fetchCustomMeasurementsByDate,
+  fetchLatestManualCustomEntriesOnOrBefore,
   saveCustomMeasurement,
   deleteCustomMeasurement,
 } from '../../src/services/api/measurementsApi';
@@ -21,6 +26,7 @@ import {
 jest.mock('../../src/services/api/measurementsApi', () => ({
   fetchCustomCategories: jest.fn(),
   fetchCustomMeasurementsByDate: jest.fn(),
+  fetchLatestManualCustomEntriesOnOrBefore: jest.fn(),
   saveCustomMeasurement: jest.fn(),
   deleteCustomMeasurement: jest.fn(),
 }));
@@ -48,6 +54,10 @@ const mockSaveCustomMeasurement = saveCustomMeasurement as jest.MockedFunction<
 const mockDeleteCustomMeasurement =
   deleteCustomMeasurement as jest.MockedFunction<
     typeof deleteCustomMeasurement
+  >;
+const mockFetchLatestManualCustomEntriesOnOrBefore =
+  fetchLatestManualCustomEntriesOnOrBefore as jest.MockedFunction<
+    typeof fetchLatestManualCustomEntriesOnOrBefore
   >;
 
 describe('useCustomMeasurements', () => {
@@ -242,6 +252,95 @@ describe('useCustomMeasurements', () => {
           queryKey: customMeasurementsByDateQueryKey('2024-06-15'),
         })
       );
+    });
+  });
+
+  describe('useLatestManualCustomEntriesOnOrBefore', () => {
+    const testDate = '2024-06-15';
+
+    test('fetches the per-category latest manual values for the day', async () => {
+      const entries = [
+        {
+          id: 'e1',
+          category_id: 'cat-1',
+          value: '5',
+          entry_date: '2024-06-01',
+          source: 'manual',
+        },
+      ];
+      mockFetchLatestManualCustomEntriesOnOrBefore.mockResolvedValue(entries);
+
+      const { result } = renderHook(
+        () => useLatestManualCustomEntriesOnOrBefore(testDate),
+        { wrapper: createQueryWrapper(queryClient) }
+      );
+
+      await waitFor(() => {
+        expect(result.current.data).toEqual(entries);
+      });
+      expect(mockFetchLatestManualCustomEntriesOnOrBefore).toHaveBeenCalledWith(
+        testDate
+      );
+    });
+
+    test('does not fetch when disabled', async () => {
+      renderHook(
+        () =>
+          useLatestManualCustomEntriesOnOrBefore(testDate, { enabled: false }),
+        { wrapper: createQueryWrapper(queryClient) }
+      );
+
+      await act(async () => {});
+      expect(
+        mockFetchLatestManualCustomEntriesOnOrBefore
+      ).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('suggestion cache invalidation', () => {
+    const testDate = '2024-06-15';
+
+    test('a saved custom value refreshes the suggestions', async () => {
+      const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+      mockSaveCustomMeasurement.mockResolvedValue({
+        id: 'e1',
+        category_id: 'cat-1',
+        value: '5',
+        entry_date: testDate,
+      });
+
+      const { result } = renderHook(() => useSaveCustomMeasurement(), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await act(async () => {
+        await result.current.mutateAsync({
+          category_id: 'cat-1',
+          value: 5,
+          entry_date: testDate,
+        });
+      });
+
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: latestManualCustomEntriesQueryKey(testDate),
+      });
+    });
+
+    test('a deleted entry refreshes the suggestions', async () => {
+      const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+      mockDeleteCustomMeasurement.mockResolvedValue(undefined);
+
+      const { result } = renderHook(() => useDeleteCustomMeasurement(), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await act(async () => {
+        await result.current.mutateAsync({ id: 'e1', entryDate: testDate });
+      });
+
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: latestManualCustomEntriesQueryKey(testDate),
+      });
     });
   });
 });
