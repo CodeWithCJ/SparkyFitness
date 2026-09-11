@@ -30,9 +30,6 @@ export const presetKeys = {
    */
   list: (userId: string | undefined, page: number, limit: number) =>
     [...presetKeys.lists(), { userId, page, limit }] as const,
-  /** The user a preset list key belongs to, for placeholder-data guards. */
-  listUserId: (queryKey: readonly unknown[]): string | undefined =>
-    (queryKey[2] as { userId?: string } | undefined)?.userId,
   details: () => [...presetKeys.all, 'detail'] as const,
   detail: (id: string) => [...presetKeys.details(), id] as const,
   search: (searchTerm: string, userId?: string, limit: number = 10) =>

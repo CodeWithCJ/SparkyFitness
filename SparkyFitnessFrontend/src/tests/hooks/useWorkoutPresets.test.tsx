@@ -71,7 +71,7 @@ describe('useWorkoutPresets cache isolation', () => {
 
     // The session switches account. Until the response for the new account
     // arrives there must be no preset data at all - the cached page of the
-    // previous account must not be reused as placeholder data.
+    // previous account must not be served for the new one.
     rerender({ userId: 'user-2' });
 
     expect(result.current.data).toBeUndefined();
@@ -85,7 +85,7 @@ describe('useWorkoutPresets cache isolation', () => {
     );
   });
 
-  it('keeps the previous page while the next page of the same user loads', async () => {
+  it('does not keep one page of presets visible while another user is loading', async () => {
     let resolveSecondPage: (value: PaginatedWorkoutPresets) => void = () =>
       undefined;
 
@@ -108,9 +108,11 @@ describe('useWorkoutPresets cache isolation', () => {
       expect(result.current.data?.presets).toEqual([presetFor('user-1')])
     );
 
+    // Paging is a fresh fetch with no placeholder: the previous page is not
+    // carried over, so a stale row can never be mistaken for the new page.
     rerender({ page: 2 });
 
-    expect(result.current.data?.presets).toEqual([presetFor('user-1')]);
+    expect(result.current.data).toBeUndefined();
 
     await act(async () => {
       resolveSecondPage({

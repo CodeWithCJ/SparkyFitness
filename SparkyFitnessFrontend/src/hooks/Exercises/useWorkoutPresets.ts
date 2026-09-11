@@ -13,10 +13,12 @@ import { presetKeys } from '@/api/keys/exercises';
 // --- Queries ---
 
 /**
- * Loads one page of the workout presets visible to the signed-in user. The
- * query key carries the user id, and the placeholder only reuses a previous
- * page belonging to the same user, so a page cached for one account is never
- * rendered for another.
+ * Loads one page of the workout presets visible to the signed-in user.
+ *
+ * The query key carries the user id and no previous page is kept as
+ * placeholder data: the endpoint resolves the acting user from the session, so
+ * a page fetched for one account must never be rendered for another. Changing
+ * page therefore shows the table's loading state until the new page arrives.
  */
 export const useWorkoutPresets = (
   userId?: string,
@@ -28,13 +30,6 @@ export const useWorkoutPresets = (
   return useQuery({
     queryKey: presetKeys.list(userId, page, limit),
     queryFn: () => getWorkoutPresets(page, limit),
-    // Keep the table populated while the next page loads, but never across an
-    // account switch: without this guard `keepPreviousData` would briefly show
-    // the previous account's presets.
-    placeholderData: (previousData, previousQuery) =>
-      previousQuery && presetKeys.listUserId(previousQuery.queryKey) === userId
-        ? previousData
-        : undefined,
     enabled: !!userId,
     meta: {
       errorMessage: t(
