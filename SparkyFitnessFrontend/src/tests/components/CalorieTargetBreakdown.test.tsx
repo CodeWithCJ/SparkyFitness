@@ -462,12 +462,12 @@ describe('CalorieTargetBreakdown weight-trend units', () => {
     )?.[1] as Record<string, unknown>;
     // de/es/ru still say "kg" with {{kcalPerKg}}; the per-lb figure belongs
     // only on kcalPerUnit, which English interpolates with massUnit.
-    expect(formulaVars.kcalPerKg).toBe(6000);
-    expect(formulaVars.kcalPerUnit).toBe(2722);
-    expect(explainerVars.kcalPerKg).toBe(6000);
-    expect(explainerVars.kcalPerUnit).toBe(2722);
-    expect(explainerVars.fatPerKg).toBe((9441).toLocaleString());
-    expect(explainerVars.leanPerKg).toBe((1816).toLocaleString());
+    expect(formulaVars['kcalPerKg']).toBe(6000);
+    expect(formulaVars['kcalPerUnit']).toBe(2722);
+    expect(explainerVars['kcalPerKg']).toBe(6000);
+    expect(explainerVars['kcalPerUnit']).toBe(2722);
+    expect(explainerVars['fatPerKg']).toBe((9441).toLocaleString());
+    expect(explainerVars['leanPerKg']).toBe((1816).toLocaleString());
   });
 
   it('prints stones-configured trends in pounds so the energy working stays a usable figure', () => {
