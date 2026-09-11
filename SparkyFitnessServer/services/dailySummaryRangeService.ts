@@ -87,6 +87,11 @@ function enumerateDays(startDate: string, endDate: string): string[] {
   return days;
 }
 
+/**
+ * Returns a balance for every day in the inclusive range without per-day queries.
+ * Step estimates can use the earliest later weight or height when no prior value
+ * exists; body-composition inputs for BMR remain prior-only.
+ */
 export async function getDailySummaryRange({
   actorUserId,
   targetUserId,
@@ -135,7 +140,7 @@ export async function getDailySummaryRange({
       : null,
     includeCheckin
       ? measurementRepository
-          .getLatestWeightHeight(targetUserId)
+          .getLatestWeightHeight(targetUserId, startDate)
           .catch(() => ({ weightKg: null, heightCm: null }))
       : { weightKg: null, heightCm: null },
     userRepository.getUserProfile(targetUserId),
@@ -249,8 +254,8 @@ export async function getDailySummaryRange({
       ? resolveBackgroundStepCalories({
           totalSteps,
           activitySteps: exercise.activitySteps,
-          weightKg: latestWeightHeight.weightKg,
-          heightCm: latestWeightHeight.heightCm,
+          weightKg: Number(carried.weight ?? latestWeightHeight.weightKg),
+          heightCm: Number(carried.height ?? latestWeightHeight.heightCm),
         })
       : 0;
 

@@ -1367,30 +1367,28 @@ async function deleteCustomMeasurement(id: any, userId: any) {
     client.release();
   }
 }
-/**
- * Weight and height for step-calorie estimation.
- *
- * Deliberately whole-table latest rather than latest-on-or-before the target day. The
- * Diary has always read it this way, and the acceptance criterion for #2094 is that
- * Reports agrees with the Diary -- date-scoping it here would make the two disagree again
- * for every day after a weight change. Note that BMR in the same balance *does* use
- * on-or-before, so the two are inconsistent with each other. Tracked separately; do not
- * "fix" one without the other.
- */
+/** Prefer prior measurements, falling back independently to the earliest later value. */
 async function getLatestWeightHeight(
-  userId: string
+  userId: string,
+  date: string
 ): Promise<{ weightKg: number | null; heightCm: number | null }> {
   const client = await getClient(userId);
   try {
     const result = await client.query(
       `SELECT
-         (SELECT weight FROM check_in_measurements
-           WHERE user_id = $1 AND weight IS NOT NULL AND weight > 0
-           ORDER BY entry_date DESC, updated_at DESC LIMIT 1) AS weight,
-         (SELECT height FROM check_in_measurements
-           WHERE user_id = $1 AND height IS NOT NULL AND height > 0
-           ORDER BY entry_date DESC, updated_at DESC LIMIT 1) AS height`,
-      [userId]
+         COALESCE((SELECT weight FROM check_in_measurements
+           WHERE user_id = $1 AND entry_date <= $2 AND weight IS NOT NULL AND weight > 0
+           ORDER BY entry_date DESC, updated_at DESC LIMIT 1),
+           (SELECT weight FROM check_in_measurements
+           WHERE user_id = $1 AND entry_date > $2 AND weight IS NOT NULL AND weight > 0
+           ORDER BY entry_date ASC, updated_at DESC LIMIT 1)) AS weight,
+         COALESCE((SELECT height FROM check_in_measurements
+           WHERE user_id = $1 AND entry_date <= $2 AND height IS NOT NULL AND height > 0
+           ORDER BY entry_date DESC, updated_at DESC LIMIT 1),
+           (SELECT height FROM check_in_measurements
+           WHERE user_id = $1 AND entry_date > $2 AND height IS NOT NULL AND height > 0
+           ORDER BY entry_date ASC, updated_at DESC LIMIT 1)) AS height`,
+      [userId, date]
     );
     const weight = parseFloat(result.rows[0]?.weight);
     const height = parseFloat(result.rows[0]?.height);
@@ -1420,7 +1418,7 @@ async function getStepCaloriesForDate(
   activitySteps: number
 ): Promise<number> {
   const [{ weightKg, heightCm }, totalSteps] = await Promise.all([
-    getLatestWeightHeight(userId),
+    getLatestWeightHeight(userId, date),
     getCheckInStepsForDate(userId, date),
   ]);
 

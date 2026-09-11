@@ -153,3 +153,36 @@ describe('measurementRepository.upsertStepData', () => {
     expect(insert.values).toEqual(['user-1', '2026-07-07', 4252, 'acting-1']);
   });
 });
+
+describe('measurementRepository.getLatestWeightHeight', () => {
+  it('prefers prior measurements and falls back to the earliest later value for each field', async () => {
+    const client = {
+      query: vi
+        .fn()
+        .mockResolvedValue({ rows: [{ weight: '80', height: '180' }] }),
+      release: vi.fn(),
+    };
+    vi.mocked(getClient).mockResolvedValue(client);
+
+    const result = await measurementRepository.getLatestWeightHeight(
+      'user-1',
+      '2026-08-08'
+    );
+
+    expect(result).toEqual({ weightKg: 80, heightCm: 180 });
+    const [sql, params] = client.query.mock.calls[0];
+    expect(params).toEqual(['user-1', '2026-08-08']);
+    for (const field of ['weight', 'height']) {
+      expect(sql).toContain(
+        `WHERE user_id = $1 AND entry_date <= $2 AND ${field} IS NOT NULL AND ${field} > 0`
+      );
+      expect(sql).toContain(
+        `WHERE user_id = $1 AND entry_date > $2 AND ${field} IS NOT NULL AND ${field} > 0`
+      );
+    }
+    expect(sql).toContain('COALESCE((SELECT weight');
+    expect(sql).toContain('COALESCE((SELECT height');
+    expect(sql).toContain('ORDER BY entry_date ASC, updated_at DESC LIMIT 1');
+    expect(client.release).toHaveBeenCalledOnce();
+  });
+});

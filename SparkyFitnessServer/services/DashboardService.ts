@@ -71,7 +71,7 @@ async function getDashboardStats(
         ? measurementRepository.getCheckInMeasurementsByDate(userId, date)
         : null,
       includeCheckin
-        ? measurementRepository.getLatestWeightHeight(userId)
+        ? measurementRepository.getLatestWeightHeight(userId, date)
         : { weightKg: null, heightCm: null },
       includeCheckin
         ? genericHealthRepository
