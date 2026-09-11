@@ -91,7 +91,8 @@ describe('Polar callback state binding', () => {
       .send({ code: 'code', state: validState(), providerId: 'other-row' });
 
     const call = polarIntegration.exchangeCodeForTokens.mock.calls[0];
-    expect(call).toHaveLength(3);
+    // state, code, redirectUri, actorUserId — the body's providerId is dropped.
+    expect(call).toHaveLength(4);
     expect(call).not.toContain('other-row');
   });
 

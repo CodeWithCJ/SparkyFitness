@@ -162,6 +162,7 @@ describe('claimOAuthState', () => {
     const row = await claimOAuthState(client, {
       state: issueOAuthState(NOW),
       providerType: 'withings',
+      actorUserId: 'owner-1',
       now: NOW,
     });
 
@@ -172,8 +173,10 @@ describe('claimOAuthState', () => {
     expect(sql).toContain('SET oauth_state = NULL');
     expect(sql).toContain('WHERE oauth_state = $1');
     expect(sql).toContain('RETURNING');
-    expect(sql).not.toContain('user_id =');
-    expect(values[1]).toBe('withings');
+    // The actor is part of the predicate, so a state belonging to another user
+    // matches no row rather than being caught after the fact.
+    expect(sql).toContain('user_id = $3');
+    expect(values).toEqual([expect.any(String), 'withings', 'owner-1']);
   });
 
   it.each([
@@ -184,7 +187,12 @@ describe('claimOAuthState', () => {
     async (reason, state) => {
       const client = mockClient();
       await expect(
-        claimOAuthState(client, { state, providerType: 'withings', now: NOW })
+        claimOAuthState(client, {
+          state,
+          providerType: 'withings',
+          actorUserId: 'owner-1',
+          now: NOW,
+        })
       ).rejects.toMatchObject({ reason });
       expect(client.query).not.toHaveBeenCalled();
     }
@@ -196,6 +204,7 @@ describe('claimOAuthState', () => {
       claimOAuthState(client, {
         state: issueOAuthState(NOW),
         providerType: 'withings',
+        actorUserId: 'owner-1',
         now: NOW,
       })
     ).rejects.toMatchObject({ reason: 'unknown' });
@@ -210,6 +219,7 @@ describe('claimOAuthState', () => {
       claimOAuthState(client, {
         state: issueOAuthState(NOW),
         providerType: 'withings',
+        actorUserId: 'owner-1',
         now: NOW,
       })
     ).rejects.toMatchObject({ reason: 'ambiguous' });
@@ -224,6 +234,7 @@ describe('claimOAuthState', () => {
       claimOAuthState(client, {
         state,
         providerType: 'withings',
+        actorUserId: 'owner-1',
         now: NOW + OAUTH_STATE_TTL_MS + 1,
       })
     ).rejects.toMatchObject({ reason: 'expired' });
@@ -233,11 +244,29 @@ describe('claimOAuthState', () => {
     expect(client.query.mock.calls[0][0]).toContain('SET oauth_state = NULL');
   });
 
+  it('does not claim a state that belongs to a different user', async () => {
+    // The predicate matches nothing, so the row is never returned and the real
+    // owner's nonce is left intact for their own flow to complete.
+    const client = mockClient({ rows: [], rowCount: 0 });
+
+    await expect(
+      claimOAuthState(client, {
+        state: issueOAuthState(NOW),
+        providerType: 'withings',
+        actorUserId: 'someone-else',
+        now: NOW,
+      })
+    ).rejects.toMatchObject({ reason: 'unknown' });
+
+    expect(client.query.mock.calls[0][1][2]).toBe('someone-else');
+  });
+
   it('exposes OAuthStateError as a typed error', async () => {
     const client = mockClient({ rows: [], rowCount: 0 });
     const error = await claimOAuthState(client, {
       state: issueOAuthState(NOW),
       providerType: 'polar',
+      actorUserId: 'owner-1',
       now: NOW,
     }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(OAuthStateError);

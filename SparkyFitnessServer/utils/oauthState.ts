@@ -197,6 +197,12 @@ export async function claimOAuthState(
   params: {
     state: unknown;
     providerType: OAuthStateProviderType;
+    /**
+     * The authenticated caller. Required, and bound into the claim predicate so
+     * a state issued to someone else matches no row at all. This is a session
+     * value, never a request field, so it can only narrow the match.
+     */
+    actorUserId: string;
     now?: number;
   }
 ): Promise<OAuthStateCredentialRow> {
@@ -211,15 +217,21 @@ export async function claimOAuthState(
     );
   }
 
+  // The actor is part of the predicate rather than a check on the returned row:
+  // a state belonging to another user must fail before anything is decrypted,
+  // any token is requested, or any row is written. Failing in the WHERE clause
+  // also leaves the real owner's nonce unconsumed, so a mismatched attempt
+  // cannot destroy an in-flight legitimate flow.
   const result = await client.query(
     `UPDATE external_data_providers
         SET oauth_state = NULL, updated_at = NOW()
       WHERE oauth_state = $1
         AND provider_type = $2
+        AND user_id = $3
       RETURNING id, user_id,
                 encrypted_app_id, app_id_iv, app_id_tag,
                 encrypted_app_key, app_key_iv, app_key_tag`,
-    [params.state, params.providerType]
+    [params.state, params.providerType, params.actorUserId]
   );
 
   // Covers forged state, cross-user substitution, and replay in one branch:
@@ -227,7 +239,7 @@ export async function claimOAuthState(
   if (!result.rowCount) {
     throw new OAuthStateError(
       'unknown',
-      `No ${params.providerType} provider row held the supplied OAuth state.`
+      `No ${params.providerType} provider row held the supplied OAuth state for this user.`
     );
   }
 

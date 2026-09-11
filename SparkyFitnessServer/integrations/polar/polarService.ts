@@ -47,7 +47,8 @@ async function getAuthorizationUrl(
 async function exchangeCodeForTokens(
   state: unknown,
   code: string,
-  redirectUri: string
+  redirectUri: string,
+  actorUserId: string
 ) {
   const client = await getSystemClient();
   try {
@@ -66,6 +67,7 @@ async function exchangeCodeForTokens(
     } = await claimOAuthState(client, {
       state,
       providerType: 'polar',
+      actorUserId,
     });
     const clientId = await decrypt(
       encrypted_app_id,

@@ -86,17 +86,18 @@ router.post('/callback', authMiddleware.authenticate, async (req, res) => {
         .status(400)
         .json({ message: 'Authorization code not received.' });
     }
-    // `state` is never treated as a user id. exchangeCodeForTokens claims it and
-    // recovers the owner from the row that held it.
+    // `state` is never treated as a user id. The claim is scoped to the
+    // authenticated actor, so a state issued to another user matches no row and
+    // fails before any token exchange or provider-row write.
+    const actorUserId =
+      req.originalUserId || req.authenticatedUserId || req.userId;
     const tokenExchangeResult = await withingsService.exchangeCodeForTokens(
       state,
       code,
-      `${process.env.SPARKY_FITNESS_FRONTEND_URL}/withings/callback`
+      `${process.env.SPARKY_FITNESS_FRONTEND_URL}/withings/callback`,
+      actorUserId
     );
-    // Redundant while linking is self-only, but it turns any future
-    // delegate-authorize path into a 403 instead of a silent cross-user write.
-    const actorUserId =
-      req.originalUserId || req.authenticatedUserId || req.userId;
+    // Belt and braces: the claim predicate already guarantees this holds.
     if (tokenExchangeResult.ownerUserId !== actorUserId) {
       log(
         'warn',

@@ -117,13 +117,15 @@ router.post('/callback', authMiddleware.authenticate, async (req, res) => {
         .status(400)
         .json({ message: 'Authorization code not received.' });
     }
+    const actorUserId =
+      req.originalUserId || req.authenticatedUserId || req.userId;
     const result = await polarIntegrationService.exchangeCodeForTokens(
       state,
       code,
-      redirectUri
+      redirectUri,
+      actorUserId
     );
-    const actorUserId =
-      req.originalUserId || req.authenticatedUserId || req.userId;
+    // Belt and braces: the claim predicate already guarantees this holds.
     if (result.ownerUserId !== actorUserId) {
       log(
         'warn',

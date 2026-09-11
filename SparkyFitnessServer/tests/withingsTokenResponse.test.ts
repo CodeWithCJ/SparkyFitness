@@ -155,7 +155,8 @@ describe('Withings token response validation', () => {
       exchangeCodeForTokens(
         validState(),
         'code',
-        'https://app.test/withings/callback'
+        'https://app.test/withings/callback',
+        USER_ID
       )
     ).rejects.toThrow(/304/);
 
@@ -202,7 +203,8 @@ describe('Withings token response validation', () => {
     await exchangeCodeForTokens(
       validState(),
       'auth-code',
-      'https://app.test/withings/callback'
+      'https://app.test/withings/callback',
+      USER_ID
     );
 
     const [url, body, config] = vi.mocked(axios.post).mock.calls[0];
@@ -243,7 +245,8 @@ describe('Withings OAuth state claim', () => {
     await exchangeCodeForTokens(
       validState(),
       'auth-code',
-      'https://app.test/withings/callback'
+      'https://app.test/withings/callback',
+      USER_ID
     );
 
     const claimSql = client.query.mock.calls[0][0] as string;
@@ -265,7 +268,8 @@ describe('Withings OAuth state claim', () => {
     await exchangeCodeForTokens(
       state,
       'auth-code',
-      'https://app.test/withings/callback'
+      'https://app.test/withings/callback',
+      USER_ID
     );
     expect(axios.post).toHaveBeenCalledTimes(1);
 
@@ -275,7 +279,8 @@ describe('Withings OAuth state claim', () => {
       exchangeCodeForTokens(
         state,
         'auth-code',
-        'https://app.test/withings/callback'
+        'https://app.test/withings/callback',
+        USER_ID
       )
     ).rejects.toMatchObject({ reason: 'unknown' });
 
@@ -295,7 +300,8 @@ describe('Withings OAuth state claim', () => {
     await exchangeCodeForTokens(
       validState(),
       'auth-code',
-      'https://app.test/withings/callback'
+      'https://app.test/withings/callback',
+      USER_ID
     );
 
     const logged = vi
