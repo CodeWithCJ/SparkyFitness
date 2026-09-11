@@ -38,12 +38,7 @@ const CYCLE_GALLERY_BASE: Omit<CycleRingContentInfo, 'day' | 'phase'> = {
 };
 
 type CycleGalleryPhase =
-  | 'menstrual'
-  | 'follicular'
-  | 'fertile'
-  | 'ovulation'
-  | 'luteal'
-  | 'late';
+  'menstrual' | 'follicular' | 'fertile' | 'ovulation' | 'luteal' | 'late';
 
 const CYCLE_GALLERY_STATES: {
   phaseKey: CycleGalleryPhase;

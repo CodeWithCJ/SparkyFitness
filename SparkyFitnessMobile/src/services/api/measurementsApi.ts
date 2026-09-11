@@ -7,14 +7,13 @@ import type {
   WaterIntake,
   WaterContainer,
   WaterIntakeResponse,
-  WaterIntakeLogEntry
+  WaterIntakeLogEntry,
 } from '../../types/measurements';
 import type {
   CustomCategory,
   CustomMeasurementEntry,
   SaveCustomMeasurementPayload,
 } from '../../types/customMeasurements';
-
 
 /**
  * Fetches measurements for a given date.
@@ -210,7 +209,9 @@ export const changeWaterIntake = async (params: {
  * v2 endpoint: the v1 water routes only expose the rolled-up total and can't
  * address a single drink.
  */
-export const fetchWaterIntakeLog = async (date: string): Promise<WaterIntakeLogEntry[]> => {
+export const fetchWaterIntakeLog = async (
+  date: string
+): Promise<WaterIntakeLogEntry[]> => {
   return apiFetch<WaterIntakeLogEntry[]>({
     endpoint: `/api/v2/measurements/water-intake/${encodeURIComponent(date)}/log`,
     serviceName: 'Measurements API',

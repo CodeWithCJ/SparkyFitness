@@ -138,9 +138,7 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
   // stripped anything. Registering first makes our delete run last, after
   // every other plugin has had its say — which is what "must come last"
   // actually requires.
-  const devPlugins = [
-    './plugins/withoutPushNotificationEntitlement',
-  ];
+  const devPlugins = ['./plugins/withoutPushNotificationEntitlement'];
 
   return {
     ...config,

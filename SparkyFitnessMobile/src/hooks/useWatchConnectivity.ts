@@ -23,15 +23,20 @@ const isSupported = Platform.OS === 'ios' && WatchConnectivity != null;
  */
 function subscribe(onStoreChange: () => void): () => void {
   if (!WatchConnectivity) return () => {};
-  const subscription = WatchConnectivity.addListener('onReachabilityChange', onStoreChange);
+  const subscription = WatchConnectivity.addListener(
+    'onReachabilityChange',
+    onStoreChange
+  );
   return () => subscription.remove();
 }
 
 // Both getters return a primitive, which is what makes them safe as snapshots:
 // `useSyncExternalStore` compares by identity and would loop forever on a
 // freshly-allocated object.
-const getIsReachable = () => (WatchConnectivity ? WatchConnectivity.isReachable() : false);
-const getIsPaired = () => (WatchConnectivity ? WatchConnectivity.isPaired() : false);
+const getIsReachable = () =>
+  WatchConnectivity ? WatchConnectivity.isReachable() : false;
+const getIsPaired = () =>
+  WatchConnectivity ? WatchConnectivity.isPaired() : false;
 const getFalse = () => false;
 
 /**
