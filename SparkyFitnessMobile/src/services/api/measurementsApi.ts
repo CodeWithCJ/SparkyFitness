@@ -1,5 +1,6 @@
 import { apiFetch } from './apiClient';
 import { ApiError } from './errors';
+import { compareDays } from '@workspace/shared';
 import { getTodayDate } from '../../utils/dateUtils';
 import type {
   CheckInMeasurement,
@@ -228,9 +229,8 @@ export const fetchLatestCheckInMeasurementsOnOrBefore = async (
 };
 
 /**
- * How many entries the fallback list request pulls per request. The bulk
- * endpoint needs no such bound, so this is only the compatibility path's page
- * size, and the code below treats a full page as a failure rather than as data.
+ * Page size for the legacy list fallback. The bulk endpoint needs no bound, so
+ * this only applies to a server that predates it.
  */
 const CUSTOM_ENTRY_HINT_FALLBACK_LIMIT = 1000;
 
@@ -245,15 +245,23 @@ const CUSTOM_ENTRY_HINT_FALLBACK_LIMIT = 1000;
  * 404. Rather than surface that as "no history", fall back to the long-standing
  * list endpoint and narrow it here.
  *
- * The legacy endpoint can only be asked for the newest N entries: it accepts
- * `limit` but no offset, no date bound, and the alternative per-category range
- * endpoint does not return `source`, so it cannot tell a manual value from a
- * health-sync sample. A full page therefore means the history was cut off, and
- * the newest manual value for the selected day may sit in the part that was not
- * fetched. Presenting the truncated remainder would offer a value that is older
- * than the real last one, so a full page is reported as a failure instead: the
- * caller shows "your server may need updating" rather than a stale suggestion.
- * The bound only affects servers without the bulk endpoint.
+ * The legacy endpoint cannot express this query: it accepts `limit` but no
+ * offset and no date bound, and the per-category range endpoint does not return
+ * `source`, so it cannot separate a manual value from a health-sync sample.
+ * Paging is therefore impossible, so the fallback asks for the newest page and
+ * reasons about what that page can prove.
+ *
+ * The page is ordered newest-first, so an entry left outside it is always older
+ * than every entry inside it. That makes the reduction sound for anything it
+ * returns: for a category with an entry on or before `date` inside the page,
+ * that entry is the newest such entry overall, because anything older sits
+ * further back still. The one case it cannot speak for is a page holding no
+ * entry on or before `date` at all — the reduction would then be empty and claim
+ * "no previous values" while older history may exist unfetched. That case fails
+ * loudly instead, so the screen asks for a server update rather than showing an
+ * empty field as though it were the answer.
+ *
+ * Both consequences only affect servers without the bulk endpoint.
  */
 export const fetchLatestManualCustomEntriesOnOrBefore = async (
   date: string
@@ -287,15 +295,27 @@ export const fetchLatestManualCustomEntriesOnOrBefore = async (
       throw error;
     }
 
-    // A full page means there were more entries than we asked for, so the part
-    // holding the newest manual value on or before `date` may not have been
-    // fetched. Returning the truncated remainder would show a suggestion older
-    // than the real last value — worse than showing none, because the user would
-    // adopt it as if it were the latest. Fail instead, so the screen asks the
+    // A full page means more entries exist beyond it, and those are all older
+    // than everything fetched. That is only a problem when the page itself holds
+    // nothing on or before `date`: the reduction would come back empty and claim
+    // there are no previous values, while the answer may well sit in the part
+    // that was not fetched. Fail loudly for that case so the screen asks the
     // user to update the server.
-    if (entries.length >= CUSTOM_ENTRY_HINT_FALLBACK_LIMIT) {
+    //
+    // When the page does contain an entry on or before `date`, the reduction is
+    // sound as-is: entries beyond the page are older by construction, so they
+    // cannot outrank the newest on-or-before entry the page already holds. A
+    // category whose entire history is older than the page is simply omitted,
+    // which shows no suggestion rather than a wrong one.
+    const pageReachesSelectedDay = entries.some(
+      (entry) => compareDays(entry.entry_date, date) <= 0
+    );
+    if (
+      entries.length >= CUSTOM_ENTRY_HINT_FALLBACK_LIMIT &&
+      !pageReachesSelectedDay
+    ) {
       throw new Error(
-        `Custom measurement history exceeds ${CUSTOM_ENTRY_HINT_FALLBACK_LIMIT} entries, so previous values cannot be resolved on this server version.`
+        `Custom measurement history exceeds ${CUSTOM_ENTRY_HINT_FALLBACK_LIMIT} entries and none fall on or before ${date}, so previous values cannot be resolved on this server version.`
       );
     }
 

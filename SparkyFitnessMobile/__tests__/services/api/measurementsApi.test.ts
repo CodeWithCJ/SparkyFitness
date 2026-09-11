@@ -503,16 +503,49 @@ describe('fetchLatestManualCustomEntriesOnOrBefore — truncated legacy history'
     ).rejects.toThrow(/history exceeds/);
   });
 
-  test('a full page does not silently return the pre-date subset', async () => {
-    // Mixed page: some rows do qualify, which is what made the old behaviour
-    // look plausible while still being unverifiable.
+  test('a full page that reaches the selected day is reduced, not rejected', async () => {
+    // The page holds entries on or before the selected day, so the newest of
+    // them IS the global newest for its category: anything beyond the page is
+    // older by construction. Rejecting here would disable hints for large
+    // histories for no reason.
     respondWithHistory((index) =>
-      entry(index, index % 2 === 0 ? '2024-06-01' : '2024-07-01')
+      entry(
+        index,
+        index % 2 === 0 ? '2024-06-10' : '2024-07-01',
+        index % 2 === 0 ? `v${index}` : 'future'
+      )
     );
 
-    await expect(
-      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
-    ).rejects.toThrow(/history exceeds/);
+    const result = await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    // Every returned row is on or before the selected day, and no post-date row
+    // leaks into the result.
+    expect(result.length).toBeGreaterThan(0);
+    for (const row of result) {
+      expect(row.entry_date <= '2024-06-15').toBe(true);
+    }
+  });
+
+  test('the newest on-or-before entry in a full page wins', async () => {
+    // Pins the ordering claim: later pre-date rows in the page must beat earlier
+    // ones, since the page is newest-first and the reduction picks the newest.
+    respondWithHistory((index) => {
+      if (index === 0) return entry(0, '2024-06-10', 'newest');
+      if (index === 1) return entry(1, '2024-06-01', 'older');
+      return entry(index, '2024-07-01', 'future');
+    });
+
+    const result = await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    expect(result).toEqual([
+      {
+        id: 'e0',
+        category_id: 'cat-1',
+        value: 'newest',
+        entry_date: '2024-06-10',
+        source: 'manual',
+      },
+    ]);
   });
 
   test('a short page is trusted and reduced normally', async () => {
