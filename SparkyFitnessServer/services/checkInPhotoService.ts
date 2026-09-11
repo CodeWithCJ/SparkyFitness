@@ -2,7 +2,7 @@ import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 import {
   resolveUploadPath,
-  isWithinUploadsRoot,
+  resolveUploadPathWithinRoot,
 } from '../utils/uploadsPath.js';
 import fs from 'fs';
 import path from 'path';
@@ -208,7 +208,17 @@ export const upsertPhoto = async (
     // Remove the previous file only when the name changed (e.g. a different
     // extension); a same-name replace was already overwritten by the rename.
     if (oldRelativePath && oldRelativePath !== relativePath) {
-      await safeUnlink(resolveUploadPath(oldRelativePath));
+      // Guard the stored path before deleting: unlink is destructive, so a
+      // tampered file_path must not be able to reach outside the uploads root.
+      const oldAbsolute = resolveUploadPathWithinRoot(oldRelativePath);
+      if (oldAbsolute) {
+        await safeUnlink(oldAbsolute);
+      } else {
+        log(
+          'warn',
+          `Refused to delete check-in photo path outside uploads root: ${oldRelativePath}`
+        );
+      }
     }
 
     const r = result.rows[0];
@@ -256,8 +266,8 @@ export const getPhotoFileById = async (
     if (!filePath) {
       return null;
     }
-    const absolute = resolveUploadPath(filePath);
-    if (!isWithinUploadsRoot(absolute)) {
+    const absolute = resolveUploadPathWithinRoot(filePath);
+    if (!absolute) {
       log(
         'warn',
         `Rejected check-in photo path outside uploads root: ${filePath}`
@@ -291,7 +301,14 @@ export const deletePhoto = async (
     if (result.rows.length === 0) {
       return false;
     }
-    const filePath = resolveUploadPath(result.rows[0].file_path);
+    const filePath = resolveUploadPathWithinRoot(result.rows[0].file_path);
+    if (!filePath) {
+      log(
+        'warn',
+        `Refused to delete check-in photo path outside uploads root: ${result.rows[0].file_path}`
+      );
+      return true;
+    }
     try {
       await fs.promises.unlink(filePath);
       log('debug', `Deleted check-in photo file: ${filePath}`);

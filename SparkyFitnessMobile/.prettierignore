@@ -30,6 +30,12 @@ src/localization/locales/
 targets/widget/Assets.xcassets/
 targets/widget/Info.plist
 targets/widget/generated.entitlements
+targets/watch/Assets.xcassets/
+targets/watch/Info.plist
+targets/watch/generated.entitlements
+targets/watch-widget/Assets.xcassets/
+targets/watch-widget/Info.plist
+targets/watch-widget/generated.entitlements
 
 # The native-header contract test (__tests__/navigation/nativeHeaderContract.test.ts)
 # parses the literal source of these two files — hardcoded indentation for the

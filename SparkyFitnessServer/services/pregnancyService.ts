@@ -1,10 +1,7 @@
 import fs from 'fs';
 import pregnancyRepository from '../models/pregnancyRepository.js';
 import { log } from '../config/logging.js';
-import {
-  resolveUploadPath,
-  isWithinUploadsRoot,
-} from '../utils/uploadsPath.js';
+import { resolveUploadPathWithinRoot } from '../utils/uploadsPath.js';
 import {
   gestationalAge,
   babyWeek,
@@ -237,8 +234,8 @@ async function getPhotoFile(
   if (!filePath) {
     return null;
   }
-  const absolute = resolveUploadPath(filePath);
-  if (!isWithinUploadsRoot(absolute)) {
+  const absolute = resolveUploadPathWithinRoot(filePath);
+  if (!absolute) {
     log(
       'warn',
       `Rejected pregnancy photo path outside uploads root: ${filePath}`
@@ -265,7 +262,16 @@ async function deletePhoto(userId: string, photoId: string): Promise<boolean> {
   if (!filePath) {
     return false;
   }
-  const absolute = resolveUploadPath(filePath);
+  // Guard the stored path before deleting: unlink is destructive, so a
+  // tampered file_path must not be able to reach outside the uploads root.
+  const absolute = resolveUploadPathWithinRoot(filePath);
+  if (!absolute) {
+    log(
+      'warn',
+      `Refused to delete pregnancy photo path outside uploads root: ${filePath}`
+    );
+    return true;
+  }
   try {
     await fs.promises.unlink(absolute);
     log('debug', `Deleted pregnancy photo file: ${absolute}`);

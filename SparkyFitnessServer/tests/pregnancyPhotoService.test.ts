@@ -1,4 +1,10 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
+import fs from 'fs';
+import path from 'path';
+import {
+  UPLOADS_BASE_DIR,
+  resolveUploadPathWithinRoot,
+} from '../utils/uploadsPath.js';
 import pregnancyRepository from '../models/pregnancyRepository.js';
 import pregnancyService from '../services/pregnancyService.js';
 
@@ -21,7 +27,6 @@ describe('pregnancyService.getPhotoFile', () => {
   it.each([
     'uploads/../../etc/passwd',
     'uploads/pregnancy/../../../../etc/passwd',
-    '/etc/passwd',
   ])('refuses a path escaping the uploads root: %s', async (stored) => {
     vi.mocked(pregnancyRepository.getPhotoFilePath).mockResolvedValue(stored);
     await expect(
@@ -51,6 +56,22 @@ describe('pregnancyService.deletePhoto', () => {
     ).resolves.toBe(false);
   });
 
+  // unlink is destructive, so a tampered file_path must never reach it.
+  it.each([
+    'uploads/../../etc/passwd',
+    'uploads/pregnancy/../../../../etc/passwd',
+  ])('does not unlink a path escaping the uploads root: %s', async (stored) => {
+    const unlinkSpy = vi
+      .spyOn(fs.promises, 'unlink')
+      .mockResolvedValue(undefined);
+    vi.mocked(pregnancyRepository.deletePhoto).mockResolvedValue(stored);
+
+    await pregnancyService.deletePhoto('user-1', PHOTO_ID);
+
+    expect(unlinkSpy).not.toHaveBeenCalled();
+    unlinkSpy.mockRestore();
+  });
+
   // The row is the source of truth: a missing file must not fail the request.
   it('still succeeds when the file is already gone from disk', async () => {
     vi.mocked(pregnancyRepository.deletePhoto).mockResolvedValue(
@@ -59,5 +80,21 @@ describe('pregnancyService.deletePhoto', () => {
     await expect(
       pregnancyService.deletePhoto('user-1', PHOTO_ID)
     ).resolves.toBe(true);
+  });
+});
+
+describe('uploads path resolution', () => {
+  // A leading slash does not escape: the resolver re-roots stored paths under
+  // the uploads directory, so '/etc/passwd' becomes '<uploads>/etc/passwd'.
+  // Only '..' segments can climb out, which is what the containment guard
+  // exists to catch.
+  it('re-roots an absolute-looking stored path inside the uploads root', () => {
+    expect(resolveUploadPathWithinRoot('/etc/passwd')).toBe(
+      path.join(UPLOADS_BASE_DIR, 'etc', 'passwd')
+    );
+  });
+
+  it('rejects a stored path that climbs out with ..', () => {
+    expect(resolveUploadPathWithinRoot('uploads/../../etc/passwd')).toBeNull();
   });
 });

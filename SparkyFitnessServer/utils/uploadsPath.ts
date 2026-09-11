@@ -38,3 +38,18 @@ export const isWithinUploadsRoot = (absolutePath: string): boolean => {
   const root = resolveUploadPath('uploads');
   return absolutePath === root || absolutePath.startsWith(root + path.sep);
 };
+
+/**
+ * Resolves a stored `file_path` and returns it only if it stays inside the
+ * uploads root, otherwise null.
+ *
+ * Prefer this over calling resolveUploadPath directly whenever the path comes
+ * from a database row: it keeps the containment check attached to the
+ * resolution, so a read or an unlink cannot accidentally skip it.
+ */
+export const resolveUploadPathWithinRoot = (
+  relativePath: string
+): string | null => {
+  const absolute = resolveUploadPath(relativePath);
+  return isWithinUploadsRoot(absolute) ? absolute : null;
+};

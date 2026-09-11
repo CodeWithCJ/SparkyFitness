@@ -33,7 +33,20 @@ export function useAuthedImageSource(pathPrefix: string) {
 
   useFocusEffect(
     useCallback(() => {
-      getActiveServerConfig().then(setConfig);
+      // Guard against a config read that rejects (storage failure) or resolves
+      // after the screen has lost focus, which would otherwise leave an
+      // unhandled rejection or apply a stale server's headers.
+      let active = true;
+      void getActiveServerConfig()
+        .then((nextConfig) => {
+          if (active) setConfig(nextConfig);
+        })
+        .catch(() => {
+          if (active) setConfig(null);
+        });
+      return () => {
+        active = false;
+      };
     }, [])
   );
 
