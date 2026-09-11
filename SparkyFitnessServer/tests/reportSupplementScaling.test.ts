@@ -42,7 +42,12 @@ describe('getNutritionData — supplement dose scaling', () => {
     expect(sql).toContain(
       "me.nutrients_snapshot->'custom_nutrients'->>$4), 0) * GREATEST(COALESCE(me.dose_amount_snapshot, 1), 0)"
     );
-    expect(mockClient.query.mock.calls[0][1]).toContain('Boron');
+    expect(mockClient.query.mock.calls[0][1]).toEqual([
+      userId,
+      '2026-07-01',
+      '2026-07-01',
+      'Boron',
+    ]);
     // The food arm must NOT be dose-scaled — that multiplier is supplement-only.
     expect(sql).not.toContain('fe.calories, 0) * GREATEST(');
   });
