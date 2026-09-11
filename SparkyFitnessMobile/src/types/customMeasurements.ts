@@ -43,3 +43,19 @@ export interface SaveCustomMeasurementPayload {
   notes?: string;
   source?: string;
 }
+
+/**
+ * One row of the per-category "latest manual value on or before a date" lookup
+ * that backs previous-value hints.
+ *
+ * Deliberately narrower than `CustomMeasurementEntry`: the endpoint resolves one
+ * row per category and returns only what a hint needs, so there is no category
+ * join and no notes/timestamps to misread as an editable entry.
+ */
+export interface LatestManualCustomEntry {
+  id: string;
+  category_id: string;
+  value: string;
+  entry_date: string;
+  source: string;
+}

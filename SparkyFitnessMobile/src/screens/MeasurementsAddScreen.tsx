@@ -22,30 +22,58 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
+import Switch from '../components/ui/Switch';
 import YesNoClearControl from '../components/YesNoClearControl';
 import CalendarSheet, {
   type CalendarSheetRef,
 } from '../components/CalendarSheet';
 import { FooterSaveBar } from '../components/FormScreenChrome';
-import { useMeasurements } from '../hooks/useMeasurements';
+import {
+  useLatestMeasurementsOnOrBefore,
+  useMeasurements,
+} from '../hooks/useMeasurements';
 import { useUpsertCheckIn } from '../hooks/useUpsertCheckIn';
 import { usePreferences } from '../hooks/usePreferences';
+import { useProfile } from '../hooks/useProfile';
 import { getTodayDate, addDays, formatDate } from '../utils/dateUtils';
 import {
   weightToKg,
-  weightFromKg,
   lengthToCm,
-  lengthFromCm,
-  cmToFeetInches,
   feetInchesToCm,
-  kgToStonesLbs,
   stonesLbsToKg,
 } from '../utils/unitConversions';
 import { parseDecimalInput } from '../utils/numericInput';
 import {
   MIN_MEASURED_BMR_KCAL,
   MAX_MEASURED_BMR_KCAL,
+  calculateAge,
 } from '@workspace/shared';
+import {
+  EMPTY_FORM,
+  FIELD_FORM_KEYS,
+  FORM_FIELD_KEYS,
+  buildStandardFormFromMeasurement,
+  formatNumberForInput,
+  standardFieldMetricValue,
+  type FieldKey,
+  type FormState,
+  type MeasurementUnitModes,
+} from '../utils/measurementForm';
+import {
+  deriveCustomFieldHints,
+  deriveStandardFieldHints,
+  selectedDayCustomValues,
+  selectedDayDisplayValues,
+  shouldOfferCustomHint,
+  shouldOfferStandardHint,
+  type StandardFieldHint,
+} from '../utils/measurementHistory';
+import {
+  calculateBodyFatPercentage,
+  resolveBodyFatInputs,
+  type BodyFatCalculationFailure,
+  type BodyFatMeasurementInputs,
+} from '../utils/bodyFatCalculator';
 import {
   syncCustomForm,
   buildCustomOps,
@@ -62,80 +90,12 @@ import { useDiaryDateStore } from '../stores/diaryDateStore';
 import {
   useCustomCategories,
   useCustomMeasurementsByDate,
+  useLatestManualCustomEntriesOnOrBefore,
   useSaveCustomMeasurement,
   useDeleteCustomMeasurement,
 } from '../hooks/useCustomMeasurements';
 
 type Props = RootStackScreenProps<'MeasurementsAdd'>;
-
-type FieldKey =
-  | 'weight'
-  | 'neck'
-  | 'waist'
-  | 'hips'
-  | 'steps'
-  | 'height'
-  | 'bodyFatPercentage'
-  | 'muscleMassKg'
-  | 'boneMassKg'
-  | 'bodyWaterPercentage'
-  | 'bmr';
-
-type FormState = Record<FieldKey, string> & {
-  heightFeet: string;
-  weightStones: string;
-};
-
-const EMPTY_FORM: FormState = {
-  weight: '',
-  neck: '',
-  waist: '',
-  hips: '',
-  steps: '',
-  height: '',
-  heightFeet: '',
-  weightStones: '',
-  bodyFatPercentage: '',
-  muscleMassKg: '',
-  boneMassKg: '',
-  bodyWaterPercentage: '',
-  bmr: '',
-};
-
-const FIELD_FORM_KEYS: Record<FieldKey, (keyof FormState)[]> = {
-  weight: ['weight', 'weightStones'],
-  neck: ['neck'],
-  waist: ['waist'],
-  hips: ['hips'],
-  steps: ['steps'],
-  height: ['height', 'heightFeet'],
-  bodyFatPercentage: ['bodyFatPercentage'],
-  muscleMassKg: ['muscleMassKg'],
-  boneMassKg: ['boneMassKg'],
-  bodyWaterPercentage: ['bodyWaterPercentage'],
-  bmr: ['bmr'],
-};
-
-const FORM_FIELD_KEYS: Record<keyof FormState, FieldKey> = {
-  weight: 'weight',
-  weightStones: 'weight',
-  neck: 'neck',
-  waist: 'waist',
-  hips: 'hips',
-  steps: 'steps',
-  height: 'height',
-  heightFeet: 'height',
-  bodyFatPercentage: 'bodyFatPercentage',
-  muscleMassKg: 'muscleMassKg',
-  boneMassKg: 'boneMassKg',
-  bodyWaterPercentage: 'bodyWaterPercentage',
-  bmr: 'bmr',
-};
-
-const formatNumberForInput = (value: number): string => {
-  // Round to 1 decimal place; trailing zeros are dropped by `String(...)`.
-  return String(Math.round(value * 10) / 10);
-};
 
 const joinWithAnd = (
   items: string[],
@@ -146,6 +106,38 @@ const joinWithAnd = (
   if (items.length === 1) return items[0];
   if (items.length === 2) return `${items[0]} ${conjunction} ${items[1]}`;
   return `${items.slice(0, -1).join(', ')}${finalSeparator}${items[items.length - 1]}`;
+};
+
+/**
+ * Compact `Use last` control.
+ *
+ * A previous value is only ever a suggestion, so adopting it has to be an
+ * explicit tap rather than something a placeholder does implicitly. Kept small
+ * and inline with the field label so eleven of them do not lengthen the form.
+ */
+const UseLastButton: React.FC<{
+  accentColor: string;
+  onPress: () => void;
+  accessibilityLabel: string;
+  testID: string;
+}> = ({ accentColor, onPress, accessibilityLabel, testID }) => {
+  const { t } = useTranslation();
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      testID={testID}
+      className="flex-row items-center gap-1"
+    >
+      <Icon name="history" size={13} color={accentColor} weight="medium" />
+      <Text className="text-xs font-medium" style={{ color: accentColor }}>
+        {t('measurements.useLast', { defaultValue: 'Use last' })}
+      </Text>
+    </TouchableOpacity>
+  );
 };
 
 /**
@@ -244,7 +236,11 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     isLoading,
     refetch: refetchMeasurements,
   } = useMeasurements({ date: selectedDate });
+  const { latestMeasurements } = useLatestMeasurementsOnOrBefore({
+    date: selectedDate,
+  });
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
+  const { profile } = useProfile();
   // Weight supports a third "stones + lbs" mode that renders as two inputs.
   const weightMode: 'kg' | 'lbs' | 'st_lbs' =
     preferences?.default_weight_unit ?? 'kg';
@@ -255,6 +251,12 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   // Height supports a third "feet + inches" mode that renders as two inputs.
   const heightMode: 'cm' | 'inches' | 'ft_in' =
     preferences?.default_measurement_unit ?? 'cm';
+
+  // Stable identity so the derivation memos below do not recompute per render.
+  const units: MeasurementUnitModes = useMemo(
+    () => ({ weightMode, bodyUnit, heightMode }),
+    [weightMode, bodyUnit, heightMode]
+  );
 
   const upsertMutation = useUpsertCheckIn({ showErrorToast: false });
   const saveCustomMutation = useSaveCustomMeasurement();
@@ -271,6 +273,12 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     isError: isCustomMeasurementsError,
     refetch: refetchCustomEntries,
   } = useCustomMeasurementsByDate(selectedDate);
+  // Previous-value suggestions for custom categories. Gated on there being an
+  // eligible category so an account without custom measurements pays nothing.
+  const { data: latestManualCustomEntries } =
+    useLatestManualCustomEntriesOnOrBefore(selectedDate, {
+      enabled: (customCategories ?? []).some(isDailyCustomCategory),
+    });
 
   // Filter BEFORE presentation: the manual Daily editor only exposes eligible
   // Daily categories. Health-sync categories (and Hourly/All/Unlimited) never
@@ -283,6 +291,32 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const dailyCustomCategories = useMemo(
     () => (customCategories ?? []).filter(isDailyCustomCategory),
     [customCategories]
+  );
+
+  /**
+   * Previous-value suggestions. These are display-only: they never enter
+   * `form` / `customForm`, so simply showing one can neither be submitted nor
+   * create an entry. `Use last` is the only way a suggestion becomes state.
+   *
+   * The selected day's own values win by construction — a suggestion is only
+   * offered while its input is empty and the day holds no value for that field.
+   */
+  const standardHints = useMemo(
+    () => deriveStandardFieldHints(latestMeasurements, units),
+    [latestMeasurements, units]
+  );
+  const selectedDayValues = useMemo(
+    () => selectedDayDisplayValues(measurements, units),
+    [measurements, units]
+  );
+  const customHints = useMemo(
+    () =>
+      deriveCustomFieldHints(dailyCustomCategories, latestManualCustomEntries),
+    [dailyCustomCategories, latestManualCustomEntries]
+  );
+  const selectedDayCustom = useMemo(
+    () => selectedDayCustomValues(customMeasurements, isManualSource),
+    [customMeasurements]
   );
 
   /** Server-backed manual entries for the CURRENT selected date only. Synced /
@@ -348,90 +382,11 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
 
-    const next: FormState = { ...EMPTY_FORM };
-    const prefilled = new Set<FieldKey>();
-    if (measurements) {
-      if (measurements.weight != null) {
-        if (weightMode === 'st_lbs') {
-          const { stones, lbs } = kgToStonesLbs(measurements.weight);
-          next.weightStones = String(stones);
-          next.weight = formatNumberForInput(lbs);
-        } else {
-          next.weight = formatNumberForInput(
-            weightFromKg(measurements.weight, weightMode)
-          );
-        }
-        prefilled.add('weight');
-      }
-      if (measurements.neck != null) {
-        next.neck = formatNumberForInput(
-          lengthFromCm(measurements.neck, bodyUnit)
-        );
-        prefilled.add('neck');
-      }
-      if (measurements.waist != null) {
-        next.waist = formatNumberForInput(
-          lengthFromCm(measurements.waist, bodyUnit)
-        );
-        prefilled.add('waist');
-      }
-      if (measurements.hips != null) {
-        next.hips = formatNumberForInput(
-          lengthFromCm(measurements.hips, bodyUnit)
-        );
-        prefilled.add('hips');
-      }
-      if (measurements.height != null) {
-        if (heightMode === 'ft_in') {
-          const { feet, inches } = cmToFeetInches(measurements.height);
-          next.heightFeet = String(feet);
-          next.height = formatNumberForInput(inches);
-        } else {
-          next.height = formatNumberForInput(
-            lengthFromCm(measurements.height, heightMode)
-          );
-        }
-        prefilled.add('height');
-      }
-      if (measurements.steps != null) {
-        next.steps = String(measurements.steps);
-        prefilled.add('steps');
-      }
-      if (measurements.body_fat_percentage != null) {
-        next.bodyFatPercentage = formatNumberForInput(
-          measurements.body_fat_percentage
-        );
-        prefilled.add('bodyFatPercentage');
-      }
-      if (measurements.muscle_mass_kg != null) {
-        next.muscleMassKg = formatNumberForInput(
-          weightFromKg(
-            measurements.muscle_mass_kg,
-            weightMode === 'st_lbs' ? 'kg' : weightMode
-          )
-        );
-        prefilled.add('muscleMassKg');
-      }
-      if (measurements.bone_mass_kg != null) {
-        next.boneMassKg = formatNumberForInput(
-          weightFromKg(
-            measurements.bone_mass_kg,
-            weightMode === 'st_lbs' ? 'kg' : weightMode
-          )
-        );
-        prefilled.add('boneMassKg');
-      }
-      if (measurements.body_water_percentage != null) {
-        next.bodyWaterPercentage = formatNumberForInput(
-          measurements.body_water_percentage
-        );
-        prefilled.add('bodyWaterPercentage');
-      }
-      if (measurements.bmr != null) {
-        next.bmr = formatNumberForInput(measurements.bmr);
-        prefilled.add('bmr');
-      }
-    }
+    const { values, prefilled } = buildStandardFormFromMeasurement(
+      measurements,
+      units
+    );
+    const next: FormState = { ...EMPTY_FORM, ...values };
     setForm((current) => {
       if (dirtyFields.size === 0) return next;
 
@@ -445,15 +400,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
       return merged;
     });
     setPrefilledKeys(prefilled);
-  }, [
-    selectedDate,
-    isLoading,
-    isPreferencesLoading,
-    measurements,
-    weightMode,
-    bodyUnit,
-    heightMode,
-  ]);
+  }, [selectedDate, isLoading, isPreferencesLoading, measurements, units]);
 
   // Reconcile the custom form with the latest server entries. A date change
   // resets the dirty set so the previous day's input is never carried over.
@@ -478,6 +425,37 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     dirtyFieldsRef.current.add(FORM_FIELD_KEYS[key]);
     setForm((prev) => ({ ...prev, [key]: value }));
   }, []);
+
+  /**
+   * Adopts a previous-value suggestion. This is the only path by which a hint
+   * becomes form state, and it deliberately runs through `updateField`, so the
+   * adopted value is dirty and behaves exactly like typed input from here on.
+   */
+  const adoptStandardHint = useCallback(
+    (field: FieldKey, hint: StandardFieldHint) => {
+      for (const formKey of FIELD_FORM_KEYS[field]) {
+        const nextValue = hint.adopt[formKey];
+        if (nextValue != null) updateField(formKey, nextValue);
+      }
+    },
+    [updateField]
+  );
+
+  /** The suggestion currently offered for a standard field, if any. */
+  const standardHintFor = useCallback(
+    (field: FieldKey): StandardFieldHint | undefined => {
+      const [primaryKey] = FIELD_FORM_KEYS[field];
+      return shouldOfferStandardHint({
+        currentRaw: form[primaryKey] ?? '',
+        selectedDayValues,
+        field,
+        hint: standardHints[field],
+      })
+        ? standardHints[field]
+        : undefined;
+    },
+    [form, selectedDayValues, standardHints]
+  );
 
   const handleSelectDate = useCallback((date: string) => {
     setSelectedDate(date);
@@ -536,6 +514,112 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     refetchCustomEntries();
     refetchMeasurements();
   }, [refetchCustomCategories, refetchCustomEntries, refetchMeasurements]);
+
+  // `Use Recent` mirrors the web check-in toggle and starts on, like web does.
+  const [useRecentForCalculation, setUseRecentForCalculation] = useState(true);
+
+  const bodyFatFailureMessage = useCallback(
+    (reason: BodyFatCalculationFailure) => {
+      switch (reason) {
+        case 'profile-required':
+          return t('measurements.bodyFat.profileRequired', {
+            defaultValue:
+              'Your profile needs a date of birth and gender for this calculation.',
+          });
+        case 'bmi-required-fields':
+          return t('measurements.bodyFat.bmiRequiredFields', {
+            defaultValue:
+              'Weight, height, age, and gender are required for BMI Method.',
+          });
+        case 'navy-required-fields':
+          return t('measurements.bodyFat.navyRequiredFields', {
+            defaultValue:
+              'Gender, height, waist, neck, and (if female) hips measurements are required for U.S. Navy Method.',
+          });
+        case 'uncomputable':
+          return t('measurements.bodyFat.uncomputable', {
+            defaultValue:
+              'These measurements do not produce a valid body fat percentage. Check the waist, neck, height, and hips values.',
+          });
+      }
+    },
+    [t]
+  );
+
+  /**
+   * Fills the Body Fat field from the configured algorithm. It only writes the
+   * field — saving stays with the user, exactly like the web Calculate button.
+   */
+  const handleCalculateBodyFat = useCallback(() => {
+    const formValues: BodyFatMeasurementInputs = {
+      weightKg: standardFieldMetricValue('weight', form, units),
+      heightCm: standardFieldMetricValue('height', form, units),
+      waistCm: standardFieldMetricValue('waist', form, units),
+      neckCm: standardFieldMetricValue('neck', form, units),
+      hipsCm: standardFieldMetricValue('hips', form, units),
+    };
+
+    // `latestMeasurements` is the newest value on or before the selected day,
+    // which is already loaded for the hints — so `Use Recent` needs no extra
+    // request, and editing a past day cannot pull in values recorded after it.
+    const recentValues: Partial<BodyFatMeasurementInputs> = {
+      weightKg: latestMeasurements?.weight ?? null,
+      heightCm: latestMeasurements?.height ?? null,
+      waistCm: latestMeasurements?.waist ?? null,
+      neckCm: latestMeasurements?.neck ?? null,
+      hipsCm: latestMeasurements?.hips ?? null,
+    };
+
+    const inputs = resolveBodyFatInputs({
+      useRecent: useRecentForCalculation,
+      formValues,
+      recentValues,
+    });
+
+    const age = profile?.date_of_birth
+      ? calculateAge(profile.date_of_birth, preferences?.timezone ?? undefined)
+      : 0;
+
+    const result = calculateBodyFatPercentage({
+      algorithm: preferences?.body_fat_algorithm,
+      gender: profile?.gender,
+      age,
+      inputs,
+    });
+
+    if (!result.ok) {
+      Toast.show({
+        type: 'error',
+        text1: t('measurements.bodyFat.calculateFailedTitle', {
+          defaultValue: 'Could not calculate body fat',
+        }),
+        text2: bodyFatFailureMessage(result.reason),
+      });
+      return;
+    }
+
+    // Dirty, so it behaves like typed input and is submitted by the next save.
+    updateField('bodyFatPercentage', formatNumberForInput(result.percentage));
+    Toast.show({
+      type: 'success',
+      text1: t('measurements.bodyFat.calculatedTitle', {
+        defaultValue: 'Body fat calculated',
+      }),
+      text2: t('measurements.bodyFat.calculatedMessage', {
+        defaultValue: 'Review the value, then save to keep it.',
+      }),
+    });
+  }, [
+    form,
+    units,
+    latestMeasurements,
+    useRecentForCalculation,
+    profile,
+    preferences,
+    updateField,
+    t,
+    bodyFatFailureMessage,
+  ]);
 
   const handleSave = useCallback(() => {
     type FieldResult =
@@ -1112,6 +1196,39 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     ) : null;
   };
 
+  /**
+   * A field label with the `Use last` control on the right when a previous
+   * value is on offer. The label row is the same height either way, so the
+   * control never adds vertical space to the form.
+   */
+  const renderFieldLabel = (field: FieldKey, label: string) => {
+    const hint = standardHintFor(field);
+    return (
+      <View className="flex-row items-center justify-between mb-1">
+        <Text className="text-text-secondary text-sm">{label}</Text>
+        {hint ? (
+          <UseLastButton
+            accentColor={accentPrimary}
+            onPress={() => adoptStandardHint(field, hint)}
+            accessibilityLabel={t('measurements.useLastFor', {
+              defaultValue: 'Use last {{label}} value',
+              label,
+            })}
+            testID={`use-last-${field}`}
+          />
+        ) : null}
+      </View>
+    );
+  };
+
+  /** Placeholder for a standard field's input: the suggestion, else the hint-free default. */
+  const standardPlaceholder = (field: FieldKey, fallback: string): string =>
+    standardHintFor(field)?.display ?? fallback;
+
+  /** Placeholder for the second input of a two-input field. */
+  const companionPlaceholder = (field: FieldKey, fallback: string): string =>
+    standardHintFor(field)?.companionDisplay ?? fallback;
+
   const header = useScreenHeader({
     title: t('screens.measurements', { defaultValue: 'Measurements' }),
     left: {
@@ -1149,12 +1266,36 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     const catForm = customForm[cat.id] ?? { rows: [], deleted: [] };
     const row = catForm.rows[0] ?? null;
 
+    // A previous value for this exact category, offered only while the field is
+    // empty and the selected day holds no manual value of its own.
+    const previousValue = shouldOfferCustomHint({
+      categoryId: cat.id,
+      currentValue: row?.value,
+      selectedDayValues: selectedDayCustom,
+      hints: customHints,
+    })
+      ? customHints[cat.id]
+      : undefined;
+
     return (
       <View key={cat.id} className="mb-4">
-        <Text className="text-text-secondary text-sm mb-1">
-          {label}
-          {suffix}
-        </Text>
+        <View className="flex-row items-center justify-between mb-1">
+          <Text className="text-text-secondary text-sm">
+            {label}
+            {suffix}
+          </Text>
+          {previousValue != null ? (
+            <UseLastButton
+              accentColor={accentPrimary}
+              onPress={() => setSingleCustomValue(cat.id, previousValue)}
+              accessibilityLabel={t('measurements.useLastFor', {
+                defaultValue: 'Use last {{label}} value',
+                label,
+              })}
+              testID={`use-last-custom-${cat.id}`}
+            />
+          ) : null}
+        </View>
         <View className="flex-row items-center gap-2">
           <View className="flex-1">
             {isBoolean ? (
@@ -1168,7 +1309,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 value={row?.value ?? ''}
                 onChangeText={(v) => setSingleCustomValue(cat.id, v)}
                 keyboardType={isNumeric ? 'decimal-pad' : 'default'}
-                placeholder={isNumeric ? '0' : ''}
+                placeholder={previousValue ?? (isNumeric ? '0' : '')}
                 accessibilityLabel={label}
                 returnKeyType="done"
                 testID={`custom-input-${cat.id}`}
@@ -1190,6 +1331,22 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             </TouchableOpacity>
           )}
         </View>
+        {isBoolean && previousValue != null ? (
+          <Text
+            className="text-xs italic mt-1"
+            style={{ color: textSecondary }}
+          >
+            {t('measurements.custom.lastValue', {
+              defaultValue: 'Last: {{value}}',
+              value:
+                previousValue === 'true'
+                  ? booleanLabels.yes
+                  : previousValue === 'false'
+                    ? booleanLabels.no
+                    : previousValue,
+            })}
+          </Text>
+        ) : null}
         {row?.entryId != null && row.value.trim() === '' ? (
           <Text
             className="text-xs italic mt-1"
@@ -1250,9 +1407,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         ) : (
           <>
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">
-                {weightLabel}
-              </Text>
+              {renderFieldLabel('weight', weightLabel)}
               {weightMode === 'st_lbs' ? (
                 <View className="flex-row gap-3">
                   <View className="flex-1">
@@ -1260,13 +1415,15 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       value={form.weightStones}
                       onChangeText={(v) => updateField('weightStones', v)}
                       keyboardType="number-pad"
-                      placeholder={t('measurements.units.st', {
-                        defaultValue: 'st',
-                      })}
+                      placeholder={companionPlaceholder(
+                        'weight',
+                        t('measurements.units.st', { defaultValue: 'st' })
+                      )}
                       accessibilityLabel={t(
                         'measurements.fields.weightStones',
                         { defaultValue: 'Weight in stones' }
                       )}
+                      testID="field-weightStones"
                       returnKeyType="done"
                     />
                   </View>
@@ -1275,13 +1432,15 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       value={form.weight}
                       onChangeText={(v) => updateField('weight', v)}
                       keyboardType="decimal-pad"
-                      placeholder={t('measurements.units.lb', {
-                        defaultValue: 'lb',
-                      })}
+                      placeholder={standardPlaceholder(
+                        'weight',
+                        t('measurements.units.lb', { defaultValue: 'lb' })
+                      )}
                       accessibilityLabel={t(
                         'measurements.fields.weightPounds',
                         { defaultValue: 'Weight in pounds' }
                       )}
+                      testID="field-weight"
                       returnKeyType="done"
                     />
                   </View>
@@ -1291,11 +1450,12 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   value={form.weight}
                   onChangeText={(v) => updateField('weight', v)}
                   keyboardType="decimal-pad"
-                  placeholder="0"
+                  placeholder={standardPlaceholder('weight', '0')}
                   accessibilityLabel={t('measurements.fields.weightWithUnit', {
                     defaultValue: 'Weight ({{unit}})',
                     unit: weightMode,
                   })}
+                  testID="field-weight"
                   returnKeyType="done"
                 />
               )}
@@ -1303,31 +1463,69 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">
-                {t('measurements.fields.bodyFatPercentage', {
+              {renderFieldLabel(
+                'bodyFatPercentage',
+                t('measurements.fields.bodyFatPercentage', {
                   defaultValue: 'Body fat %',
-                })}
-              </Text>
-              <FormInput
-                value={form.bodyFatPercentage}
-                onChangeText={(v) => updateField('bodyFatPercentage', v)}
-                keyboardType="decimal-pad"
-                placeholder="0"
-                accessibilityLabel={t('measurements.fields.bodyFatPercentage', {
-                  defaultValue: 'Body fat %',
-                })}
-                returnKeyType="done"
-              />
+                })
+              )}
+              <View className="flex-row items-center gap-2">
+                <View className="flex-1">
+                  <FormInput
+                    value={form.bodyFatPercentage}
+                    onChangeText={(v) => updateField('bodyFatPercentage', v)}
+                    keyboardType="decimal-pad"
+                    placeholder={standardPlaceholder('bodyFatPercentage', '0')}
+                    accessibilityLabel={t(
+                      'measurements.fields.bodyFatPercentage',
+                      { defaultValue: 'Body fat %' }
+                    )}
+                    testID="field-bodyFatPercentage"
+                    returnKeyType="done"
+                  />
+                </View>
+                <Button
+                  variant="secondary"
+                  onPress={handleCalculateBodyFat}
+                  className="py-2.5 px-3"
+                  accessibilityRole="button"
+                  accessibilityLabel={t('measurements.bodyFat.calculate', {
+                    defaultValue: 'Calculate',
+                  })}
+                  testID="calculate-body-fat"
+                >
+                  <Text className="text-sm font-semibold text-accent-primary">
+                    {t('measurements.bodyFat.calculate', {
+                      defaultValue: 'Calculate',
+                    })}
+                  </Text>
+                </Button>
+              </View>
+              <View className="flex-row items-center justify-end gap-2 mt-2">
+                <Switch
+                  value={useRecentForCalculation}
+                  onValueChange={setUseRecentForCalculation}
+                  accessibilityLabel={t('measurements.bodyFat.useRecent', {
+                    defaultValue: 'Use recent',
+                  })}
+                />
+                <Text className="text-text-secondary text-sm">
+                  {t('measurements.bodyFat.useRecent', {
+                    defaultValue: 'Use recent',
+                  })}
+                </Text>
+              </View>
               {renderClearHint('bodyFatPercentage')}
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">
-                {t('measurements.fields.heightWithUnit', {
+              {renderFieldLabel(
+                'height',
+                t('measurements.fields.heightWithUnit', {
                   defaultValue: 'Height ({{unit}})',
                   unit: heightSuffix,
-                })}
-              </Text>
+                })
+              )}
               {heightMode === 'ft_in' ? (
                 <View className="flex-row gap-3">
                   <View className="flex-1">
@@ -1335,12 +1533,14 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       value={form.heightFeet}
                       onChangeText={(v) => updateField('heightFeet', v)}
                       keyboardType="number-pad"
-                      placeholder={t('measurements.units.ft', {
-                        defaultValue: 'ft',
-                      })}
+                      placeholder={companionPlaceholder(
+                        'height',
+                        t('measurements.units.ft', { defaultValue: 'ft' })
+                      )}
                       accessibilityLabel={t('measurements.fields.heightFeet', {
                         defaultValue: 'Height in feet',
                       })}
+                      testID="field-heightFeet"
                       returnKeyType="done"
                     />
                   </View>
@@ -1349,13 +1549,15 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                       value={form.height}
                       onChangeText={(v) => updateField('height', v)}
                       keyboardType="decimal-pad"
-                      placeholder={t('measurements.units.in', {
-                        defaultValue: 'in',
-                      })}
+                      placeholder={standardPlaceholder(
+                        'height',
+                        t('measurements.units.in', { defaultValue: 'in' })
+                      )}
                       accessibilityLabel={t(
                         'measurements.fields.heightInches',
                         { defaultValue: 'Height in inches' }
                       )}
+                      testID="field-height"
                       returnKeyType="done"
                     />
                   </View>
@@ -1365,11 +1567,12 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   value={form.height}
                   onChangeText={(v) => updateField('height', v)}
                   keyboardType="decimal-pad"
-                  placeholder="0"
+                  placeholder={standardPlaceholder('height', '0')}
                   accessibilityLabel={t('measurements.fields.heightWithUnit', {
                     defaultValue: 'Height ({{unit}})',
                     unit: heightSuffix,
                   })}
+                  testID="field-height"
                   returnKeyType="done"
                 />
               )}
@@ -1377,159 +1580,175 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">
-                {t('measurements.fields.neckWithUnit', {
+              {renderFieldLabel(
+                'neck',
+                t('measurements.fields.neckWithUnit', {
                   defaultValue: 'Neck ({{unit}})',
                   unit: bodySuffix,
-                })}
-              </Text>
+                })
+              )}
               <FormInput
                 value={form.neck}
                 onChangeText={(v) => updateField('neck', v)}
                 keyboardType="decimal-pad"
-                placeholder="0"
+                placeholder={standardPlaceholder('neck', '0')}
                 accessibilityLabel={t('measurements.fields.neckWithUnit', {
                   defaultValue: 'Neck ({{unit}})',
                   unit: bodySuffix,
                 })}
+                testID="field-neck"
                 returnKeyType="done"
               />
               {renderClearHint('neck')}
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">
-                {t('measurements.fields.waistWithUnit', {
+              {renderFieldLabel(
+                'waist',
+                t('measurements.fields.waistWithUnit', {
                   defaultValue: 'Waist ({{unit}})',
                   unit: bodySuffix,
-                })}
-              </Text>
+                })
+              )}
               <FormInput
                 value={form.waist}
                 onChangeText={(v) => updateField('waist', v)}
                 keyboardType="decimal-pad"
-                placeholder="0"
+                placeholder={standardPlaceholder('waist', '0')}
                 accessibilityLabel={t('measurements.fields.waistWithUnit', {
                   defaultValue: 'Waist ({{unit}})',
                   unit: bodySuffix,
                 })}
+                testID="field-waist"
                 returnKeyType="done"
               />
               {renderClearHint('waist')}
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">
-                {t('measurements.fields.hipsWithUnit', {
+              {renderFieldLabel(
+                'hips',
+                t('measurements.fields.hipsWithUnit', {
                   defaultValue: 'Hips ({{unit}})',
                   unit: bodySuffix,
-                })}
-              </Text>
+                })
+              )}
               <FormInput
                 value={form.hips}
                 onChangeText={(v) => updateField('hips', v)}
                 keyboardType="decimal-pad"
-                placeholder="0"
+                placeholder={standardPlaceholder('hips', '0')}
                 accessibilityLabel={t('measurements.fields.hipsWithUnit', {
                   defaultValue: 'Hips ({{unit}})',
                   unit: bodySuffix,
                 })}
+                testID="field-hips"
                 returnKeyType="done"
               />
               {renderClearHint('hips')}
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">
-                {t('measurements.fields.steps', { defaultValue: 'Steps' })}
-              </Text>
+              {renderFieldLabel(
+                'steps',
+                t('measurements.fields.steps', { defaultValue: 'Steps' })
+              )}
               <FormInput
                 value={form.steps}
                 onChangeText={(v) => updateField('steps', v)}
                 keyboardType="number-pad"
-                placeholder="0"
+                placeholder={standardPlaceholder('steps', '0')}
                 accessibilityLabel={t('measurements.fields.steps', {
                   defaultValue: 'Steps',
                 })}
+                testID="field-steps"
                 returnKeyType="done"
               />
               {renderClearHint('steps')}
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">
-                {t('measurements.fields.muscleMassWithUnit', {
+              {renderFieldLabel(
+                'muscleMassKg',
+                t('measurements.fields.muscleMassWithUnit', {
                   defaultValue: 'Muscle mass ({{unit}})',
                   unit: weightMode === 'st_lbs' ? 'kg' : weightMode,
-                })}
-              </Text>
+                })
+              )}
               <FormInput
                 value={form.muscleMassKg}
                 onChangeText={(v) => updateField('muscleMassKg', v)}
                 keyboardType="decimal-pad"
-                placeholder="0"
+                placeholder={standardPlaceholder('muscleMassKg', '0')}
                 accessibilityLabel={t('measurements.fields.muscleMass', {
                   defaultValue: 'Muscle mass',
                 })}
+                testID="field-muscleMassKg"
                 returnKeyType="done"
               />
               {renderClearHint('muscleMassKg')}
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">
-                {t('measurements.fields.boneMassWithUnit', {
+              {renderFieldLabel(
+                'boneMassKg',
+                t('measurements.fields.boneMassWithUnit', {
                   defaultValue: 'Bone mass ({{unit}})',
                   unit: weightMode === 'st_lbs' ? 'kg' : weightMode,
-                })}
-              </Text>
+                })
+              )}
               <FormInput
                 value={form.boneMassKg}
                 onChangeText={(v) => updateField('boneMassKg', v)}
                 keyboardType="decimal-pad"
-                placeholder="0"
+                placeholder={standardPlaceholder('boneMassKg', '0')}
                 accessibilityLabel={t('measurements.fields.boneMass', {
                   defaultValue: 'Bone mass',
                 })}
+                testID="field-boneMassKg"
                 returnKeyType="done"
               />
               {renderClearHint('boneMassKg')}
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">
-                {t('measurements.fields.bodyWaterPercentage', {
+              {renderFieldLabel(
+                'bodyWaterPercentage',
+                t('measurements.fields.bodyWaterPercentage', {
                   defaultValue: 'Body water %',
-                })}
-              </Text>
+                })
+              )}
               <FormInput
                 value={form.bodyWaterPercentage}
                 onChangeText={(v) => updateField('bodyWaterPercentage', v)}
                 keyboardType="decimal-pad"
-                placeholder="0"
+                placeholder={standardPlaceholder('bodyWaterPercentage', '0')}
                 accessibilityLabel={t(
                   'measurements.fields.bodyWaterPercentage',
                   { defaultValue: 'Body water %' }
                 )}
+                testID="field-bodyWaterPercentage"
                 returnKeyType="done"
               />
               {renderClearHint('bodyWaterPercentage')}
             </View>
 
             <View className="mb-4">
-              <Text className="text-text-secondary text-sm mb-1">
-                {t('measurements.fields.bmrWithUnit', {
+              {renderFieldLabel(
+                'bmr',
+                t('measurements.fields.bmrWithUnit', {
                   defaultValue: 'BMR (kcal)',
-                })}
-              </Text>
+                })
+              )}
               <FormInput
                 value={form.bmr}
                 onChangeText={(v) => updateField('bmr', v)}
                 keyboardType="decimal-pad"
-                placeholder="0"
+                placeholder={standardPlaceholder('bmr', '0')}
                 accessibilityLabel={t('measurements.fields.bmr', {
                   defaultValue: 'BMR',
                 })}
+                testID="field-bmr"
                 returnKeyType="done"
               />
               {renderClearHint('bmr')}

@@ -2,7 +2,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { upsertCheckIn } from '../services/api/measurementsApi';
-import { measurementsQueryKey } from './queryKeys';
+import {
+  latestMeasurementsOnOrBeforeQueryKey,
+  measurementsQueryKey,
+} from './queryKeys';
 import { refreshHealthSyncCache } from './refreshHealthSyncCache';
 import { addLog } from '../services/LogService';
 import type { CheckInMeasurement } from '../types/measurements';
@@ -32,6 +35,11 @@ export function useUpsertCheckIn(options?: { showErrorToast?: boolean }) {
         measurementsQueryKey(vars.entryDate),
         data
       );
+      // The saved row may now be the newest value on or before its own day, so
+      // the carry-forward suggestion for that day has to be recomputed.
+      queryClient.invalidateQueries({
+        queryKey: latestMeasurementsOnOrBeforeQueryKey(vars.entryDate),
+      });
       refreshHealthSyncCache(queryClient);
     },
     onError: (error) => {

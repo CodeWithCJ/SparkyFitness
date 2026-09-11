@@ -16,6 +16,7 @@ import type {
 import type {
   CustomCategory,
   CustomMeasurementEntry,
+  LatestManualCustomEntry,
   SaveCustomMeasurementPayload,
 } from '../../types/customMeasurements';
 
@@ -199,6 +200,44 @@ export const fetchWaterIntakeRange = async (
     endpoint: `/api/measurements/water-intake-range/${startDate}/${endDate}`,
     serviceName: 'Measurements API',
     operation: 'fetch water intake range',
+  });
+};
+
+/**
+ * Per-field carry-forward lookup: the newest recorded value on or before the
+ * given day, one entry per standard field.
+ *
+ * The plain `/check-in/:date` endpoint carries forward too, but this one answers
+ * `null` rather than `{}` when the user has no history at all, and it is not
+ * shared with the read path the diary uses for a single day's real values.
+ * `steps` and `bmr` are deliberately same-day only on the server.
+ */
+export const fetchLatestCheckInMeasurementsOnOrBefore = async (
+  date: string
+): Promise<CheckInMeasurement | null> => {
+  const result = await apiFetch<CheckInMeasurement | null>({
+    endpoint: `/api/measurements/check-in/latest-on-or-before-date?date=${encodeURIComponent(date)}`,
+    serviceName: 'Measurements API',
+    operation: 'fetch latest check-in measurements on or before date',
+  });
+  if (!result || Object.keys(result).length === 0) return null;
+  return result;
+};
+
+/**
+ * Latest manual value per custom category on or before the given day.
+ *
+ * One request resolves every category, so the Daily editor's previous-value
+ * hints do not fan out per category. The server filters to manual sources, so
+ * health-sync samples are never returned as suggestions.
+ */
+export const fetchLatestManualCustomEntriesOnOrBefore = async (
+  date: string
+): Promise<LatestManualCustomEntry[]> => {
+  return apiFetch<LatestManualCustomEntry[]>({
+    endpoint: `/api/measurements/custom-entries/latest-manual-on-or-before-date?date=${encodeURIComponent(date)}`,
+    serviceName: 'Measurements API',
+    operation: 'fetch latest manual custom entries on or before date',
   });
 };
 

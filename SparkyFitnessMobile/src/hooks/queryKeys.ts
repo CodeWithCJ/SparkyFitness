@@ -131,6 +131,18 @@ export const customCategoriesQueryKey = ['customCategories'] as const;
 export const customMeasurementsByDateQueryKey = (date: string) =>
   ['customMeasurements', date] as const;
 
+/**
+ * Per-field carry-forward lookup (newest value on or before the day). Separate
+ * from `measurementsQueryKey`, which is strictly the day's own recorded row:
+ * the editor needs both to tell an actual value from a suggestion.
+ */
+export const latestMeasurementsOnOrBeforeQueryKey = (date: string) =>
+  ['measurementsLatestOnOrBefore', date] as const;
+
+/** Latest manual value per custom category on or before the day. */
+export const latestManualCustomEntriesQueryKey = (date: string) =>
+  ['customMeasurementsLatestManualOnOrBefore', date] as const;
+
 export const exerciseHistoryQueryKey = ['exerciseHistory'] as const;
 
 /** Per-exercise filtered history; extends the root so prefix invalidation covers it. */
