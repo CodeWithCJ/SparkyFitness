@@ -6,17 +6,16 @@ import format from 'pg-format';
 import { log } from '../config/logging.js';
 import exerciseRepository from './exercise.js';
 import activityDetailsRepository from './activityDetailsRepository.js';
+/**
+ * Updates a daily calorie import, retaining entries created against shared exercises.
+ * A matching exercise takes precedence; legacy matches require the same source.
+ */
 async function upsertExerciseEntryData(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  exerciseId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  caloriesBurned: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  date: any,
+  userId: string,
+  createdByUserId: string,
+  exerciseId: string,
+  caloriesBurned: number,
+  date: string,
   source = 'Health Data'
 ) {
   log('info', 'upsertExerciseEntryData received date parameter:', date);
@@ -48,8 +47,15 @@ async function upsertExerciseEntryData(
       );
     }
     const result = await client.query(
-      'SELECT id, calories_burned FROM exercise_entries WHERE user_id = $1 AND exercise_id = $2 AND entry_date = $3',
-      [userId, exerciseId, date]
+      `SELECT id, calories_burned FROM exercise_entries
+       WHERE user_id = $1 AND entry_date = $3
+         AND (exercise_id = $2 OR (
+           $4 = 'Active Calories' AND exercise_name = $4 AND source = $5
+           AND duration_minutes = 0 AND exercise_preset_entry_id IS NULL
+           AND source_id IS NULL
+         ))
+       ORDER BY (exercise_id = $2) DESC, created_at, id LIMIT 1`,
+      [userId, exerciseId, date, exerciseName, sourceValue]
     );
     existingEntry = result.rows[0];
   } catch (error) {
@@ -75,7 +81,7 @@ async function upsertExerciseEntryData(
     const updateClient = await getClient(userId);
     try {
       const updateResult = await updateClient.query(
-        'UPDATE exercise_entries SET calories_burned = $1, notes = $2, updated_by_user_id = $3, exercise_name = $4, source = $5, updated_at = now() WHERE id = $6 RETURNING *',
+        'UPDATE exercise_entries SET calories_burned = $1, notes = $2, updated_by_user_id = $3, exercise_name = $4, source = $5, exercise_id = $7, updated_at = now() WHERE id = $6 RETURNING *',
         [
           caloriesBurned,
           `Active calories logged from ${sourceLabel} (updated).`,
@@ -83,6 +89,7 @@ async function upsertExerciseEntryData(
           exerciseName,
           sourceValue,
           existingEntry.id,
+          exerciseId,
         ]
       );
       result = updateResult.rows[0];

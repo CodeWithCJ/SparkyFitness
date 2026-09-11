@@ -53,9 +53,9 @@ async function getExerciseOwnerId(id: any, userId: any) {
     client.release();
   }
 }
+/** Reuses the user's own active-calorie exercise, independently of library sharing. */
 async function getOrCreateActiveCaloriesExercise(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
+  userId: string,
   source = 'Health Data'
 ) {
   const exerciseName = 'Active Calories';
@@ -63,8 +63,8 @@ async function getOrCreateActiveCaloriesExercise(
   let exercise;
   try {
     const result = await client.query(
-      'SELECT id FROM exercises WHERE name = $1',
-      [exerciseName]
+      'SELECT id FROM exercises WHERE name = $1 AND user_id = $2 ORDER BY created_at, id LIMIT 1',
+      [exerciseName, userId]
     );
     exercise = result.rows[0];
   } catch (error) {
