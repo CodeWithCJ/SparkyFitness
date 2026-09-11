@@ -230,8 +230,13 @@ export const fetchLatestCheckInMeasurementsOnOrBefore = async (
 /**
  * Page size for the legacy list fallback. The bulk endpoint needs no bound, so
  * this only applies to a server that predates it.
+ *
+ * A sync-heavy account accumulates one custom row per metric per day, so the
+ * page has to be generous: every category whose newest eligible value falls
+ * outside it comes back without a suggestion. It stays bounded, and the bulk
+ * endpoint does not use it at all.
  */
-const CUSTOM_ENTRY_HINT_FALLBACK_LIMIT = 1000;
+const CUSTOM_ENTRY_HINT_FALLBACK_LIMIT = 2000;
 
 /**
  * Latest manual value per custom category on or before the given day.
@@ -247,11 +252,9 @@ const CUSTOM_ENTRY_HINT_FALLBACK_LIMIT = 1000;
  * The legacy endpoint cannot express this query: it accepts `limit` but no
  * offset and no date bound, and the per-category range endpoint does not return
  * `source`, so it cannot separate a manual value from a health-sync sample.
- * Paging is therefore impossible, so the fallback asks for one page and only
- * trusts a page that came back short: a short page was returned whole, while a
- * full page may have dropped the newest value of any category. A full page is
- * reported as a failure so the screen asks for a server update rather than
- * showing a set that may be silently incomplete.
+ * Paging is therefore impossible, so the fallback asks for one generous page and
+ * returns whatever it proves. See the note on the reduction below for what a
+ * truncated page can and cannot answer.
  *
  * Both consequences only affect servers without the bulk endpoint.
  */
@@ -265,12 +268,20 @@ export const fetchLatestManualCustomEntriesOnOrBefore = async (
       operation: 'fetch latest manual custom entries on or before date',
     });
   } catch (error) {
-    // Only the two shapes an older server can produce warrant a second request.
-    // A 401 already triggered `notifySessionExpired` inside `apiFetch`, so
-    // retrying would notify the user twice; a network failure or timeout would
-    // just spend a second request on a connection that is already struggling.
-    const status = error instanceof ApiError ? error.statusCode : undefined;
-    if (status !== 404 && status !== 500) throw error;
+    // Any HTTP failure from the bulk request means this server cannot serve it,
+    // so the list fallback is worth one request. The exact status is not a
+    // reliable signal: it depends on the server version, ranging from 404 (no
+    // route), through the 500 a shadowing `/custom-entries/:date` produces when
+    // it reads the literal path as a date, to a 400 if a newer server validates
+    // that parameter. Pinning the set to 404/500 once silently disabled the
+    // fallback on a server that answered 400.
+    //
+    // Two cases must not retry. A 401/403 is an auth answer, and `apiFetch`
+    // already called `notifySessionExpired` for a 401, so retrying would notify
+    // the user twice. A non-HTTP failure (network, timeout) would just spend a
+    // second request on a connection that is already struggling.
+    if (!(error instanceof ApiError)) throw error;
+    if (error.statusCode === 401 || error.statusCode === 403) throw error;
 
     // Kept outside the request's own try/catch so a truncation failure
     // propagates as-is instead of being replaced by the bulk error.
@@ -287,32 +298,21 @@ export const fetchLatestManualCustomEntriesOnOrBefore = async (
       throw error;
     }
 
-    // A full page means the history was cut off, and a cut-off page cannot be
-    // treated as an answer at all.
+    // Reduce the page and return what it proves. The page is ordered newest
+    // first, so for any category with an eligible entry inside it, that entry is
+    // also the newest overall: everything left outside is older.
     //
-    // The tempting refinement — return the hints the page does prove and let the
-    // rest be absent — is not sound here, and no predicate fixes it. The page is
-    // global across every category, so a full page can resolve category A while
-    // category B's only eligible value sits beyond it. Absence of B from the
-    // reduction then means either "B has no history" (a correct empty answer) or
-    // "B's history was not fetched" (a wrong one), and the two are
-    // indistinguishable without per-category requests, which would be an N+1.
-    // Paging cannot close the gap either: the legacy endpoint takes `limit` but
-    // no offset, and the per-category range endpoint omits `source`, so it cannot
+    // A full page means some categories may have their only eligible value
+    // further back, and those categories simply come back without a suggestion.
+    // That is a missing hint, never a wrong one, and it is the honest limit of
+    // this endpoint: it takes `limit` but no offset, so the client cannot page
+    // further, and the per-category range endpoint omits `source`, so it cannot
     // tell a manual value from a health-sync sample.
     //
-    // Refuse the page instead, so the screen reports that previous values could
-    // not be loaded rather than presenting a set that may be missing categories
-    // without saying so. Only a server without the bulk endpoint reaches here.
-    if (entries.length >= CUSTOM_ENTRY_HINT_FALLBACK_LIMIT) {
-      throw new Error(
-        `Custom measurement history exceeds ${CUSTOM_ENTRY_HINT_FALLBACK_LIMIT} entries, so a complete set of previous values cannot be resolved on this server version.`
-      );
-    }
-
-    // A page shorter than the limit was returned whole, so the reduction is the
-    // true answer: manual sources only, nothing after the selected day, newest
-    // first per category.
+    // Refusing the whole page instead is not an acceptable alternative. It was
+    // tried and it removes hints for every category as soon as a heavy sync
+    // history fills one page, which is far worse than one category quietly
+    // lacking a suggestion. Only a server without the bulk endpoint reaches here.
     return reduceLatestManualEntries(entries, date, isManualSource);
   }
 };

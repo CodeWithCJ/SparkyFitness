@@ -399,6 +399,41 @@ describe('fetchLatestManualCustomEntriesOnOrBefore — fallback scope', () => {
     expect(listCallCount()).toBe(0);
   });
 
+  test('a 400 triggers the compatibility request', async () => {
+    // A server version that validates the shadowed date parameter answers 400.
+    // Pinning the fallback to 404/500 disabled it there and removed every hint,
+    // so any non-auth HTTP failure must be allowed to fall back.
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(
+          new ApiError('Server error: 400 - invalid date', 400)
+        );
+      }
+      return Promise.resolve([]);
+    });
+
+    await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    expect(listCallCount()).toBe(1);
+  });
+
+  test('a 405 triggers the compatibility request', async () => {
+    mockApiFetch.mockImplementation((options: unknown) => {
+      const { endpoint } = options as { endpoint: string };
+      if (endpoint.includes('latest-manual-on-or-before-date')) {
+        return Promise.reject(
+          new ApiError('Server error: 405 - Method Not Allowed', 405)
+        );
+      }
+      return Promise.resolve([]);
+    });
+
+    await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    expect(listCallCount()).toBe(1);
+  });
+
   test('a 403 does not trigger the compatibility request', async () => {
     mockApiFetch.mockRejectedValue(
       new ApiError('Server error: 403 - Forbidden', 403)
@@ -485,30 +520,21 @@ describe('fetchLatestManualCustomEntriesOnOrBefore — truncated legacy history'
     source: 'manual',
   });
 
-  test('a full page is refused instead of returning older values as the latest', async () => {
-    // THE regression: with more post-date rows than one page, the newest manual
-    // value on or before the selected day is never fetched. Returning the
-    // truncated tail would offer a value older than the real last one, and the
-    // user would adopt it believing it was the latest.
-    // The helper builds exactly one full page, so the throw below proves the
-    // truncation guard fired rather than the reduction returning [].
-    respondWithHistory((index) =>
-      // Every row is AFTER the selected day, so nothing on or before it is in
-      // the page — exactly the case that used to produce a wrong/empty hint.
-      entry(index, '2024-07-01')
-    );
+  test('a full page of post-date rows yields no hint rather than a stale one', async () => {
+    // Every row is after the selected day, so nothing qualifies. The result is
+    // empty, which shows no suggestion — never an older value presented as the
+    // latest one.
+    respondWithHistory((index) => entry(index, '2024-07-01'));
 
     await expect(
       fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
-    ).rejects.toThrow(/history exceeds/);
+    ).resolves.toEqual([]);
   });
 
-  test('a full page is refused even when it holds a usable manual row', async () => {
-    // A full page can resolve one category while another category's only
-    // eligible value sits beyond the page. Absence then means either "no
-    // history" or "not fetched", and the two are indistinguishable without a
-    // per-category request. So the page is refused rather than returned with a
-    // possible silent gap.
+  test('a full page still yields the hints it proves', async () => {
+    // THE regression guard for the reported bug. A sync-heavy account fills a
+    // whole page, and refusing that page removed every hint on the screen. The
+    // page does prove the categories it contains, so those hints must survive.
     respondWithHistory((index) =>
       entry(
         index,
@@ -517,9 +543,17 @@ describe('fetchLatestManualCustomEntriesOnOrBefore — truncated legacy history'
       )
     );
 
-    await expect(
-      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
-    ).rejects.toThrow(/history exceeds/);
+    const result = await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
+
+    expect(result).toEqual([
+      {
+        id: 'e0',
+        category_id: 'cat-1',
+        value: 'usable',
+        entry_date: '2024-06-10',
+        source: 'manual',
+      },
+    ]);
   });
 
   test('the newest on-or-before entry wins within a whole page', async () => {
@@ -619,9 +653,7 @@ describe('fetchLatestManualCustomEntriesOnOrBefore — truncated legacy history'
   test('asks for exactly one page, never one request per category', async () => {
     respondWithHistory((index) => entry(index, '2024-07-01'));
 
-    await expect(
-      fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
-    ).rejects.toThrow(/history exceeds/);
+    await fetchLatestManualCustomEntriesOnOrBefore('2024-06-15');
 
     const listCalls = mockApiFetch.mock.calls.filter((call) =>
       (call[0] as { endpoint: string }).endpoint.startsWith(
@@ -672,12 +704,9 @@ describe('fetchLatestManualCustomEntriesOnOrBefore — page provenance', () => {
     source,
   });
 
-  test('a full page whose only pre-date row is synced is refused, not reported as empty', async () => {
-    // THE regression this guards. The old predicate asked only whether any row
-    // fell on or before the day, so this synced row satisfied it, the reduction
-    // discarded it, and the caller received [] — which the screen renders as
-    // empty fields with no note, i.e. "this category has no history", while the
-    // user's real manual history may sit beyond the page.
+  test('a synced pre-date row is never offered, even on a full page', async () => {
+    // Provenance is the reduction's job, not the page guard's: a health-sync
+    // sample must never become a suggestion the user can adopt.
     fullPage((index) =>
       index === 0
         ? row(0, '2024-06-10', '12000', 'HealthConnect')
@@ -686,7 +715,7 @@ describe('fetchLatestManualCustomEntriesOnOrBefore — page provenance', () => {
 
     await expect(
       fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
-    ).rejects.toThrow(/history exceeds/);
+    ).resolves.toEqual([]);
   });
 
   test('valid manual hints survive a whole page of synced and future rows', async () => {
@@ -723,10 +752,9 @@ describe('fetchLatestManualCustomEntriesOnOrBefore — page provenance', () => {
   test('synced rows never appear as suggestions from the legacy page', async () => {
     fullPage((index) => row(index, '2024-06-10', String(index), 'HealthKit'));
 
-    // Nothing usable in the page, so it fails rather than surfacing a sample.
     await expect(
       fetchLatestManualCustomEntriesOnOrBefore('2024-06-15')
-    ).rejects.toThrow(/history exceeds/);
+    ).resolves.toEqual([]);
   });
 
   test('a short page of only synced rows returns no hints without failing', async () => {
