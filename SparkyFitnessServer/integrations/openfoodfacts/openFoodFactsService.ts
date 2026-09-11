@@ -784,12 +784,6 @@ function deriveOffServingUnit(product: OffProduct): string {
 // duplicate the metric default (e.g. "28 g (28 g)").
 const METRIC_SERVING_UNITS = new Set(['g', 'ml', 'kg', 'l', 'oz']);
 
-// Result of parsing OFF's free-text serving_size for a household descriptor.
-// `size`/`unit` are both null when no such descriptor was found, rather than
-// returning null for the whole result — this keeps the "did we find a
-// household descriptor at all" question (this function's job) separate from
-// "is it safe to reuse the metric variant's values for it" (a question that
-// also depends on whether serving_quantity was declared, decided by the caller).
 interface HouseholdServing {
   size: number | null;
   unit: string | null;
@@ -797,16 +791,8 @@ interface HouseholdServing {
 
 // Extracts a household serving (e.g. "2 cookies") from OFF's free-text
 // serving_size string when it also states the equivalent metric weight/volume
-// in parentheses, e.g. "2 cookies (28 g)" or "1 cup (240 ml)". The parenthetical
-// only confirms that OFF believes the household count maps to that metric
-// amount — it says nothing about whether serving_quantity was ever declared,
-// so callers must not assume the household count matches metricVariant's basis
-// without checking that separately (see mapOpenFoodFactsProduct).
-//
-// Returns { size: null, unit: null } when there is no such household
-// descriptor (e.g. "28 g", "250 ml") or when the descriptor is itself a
-// metric unit, so a household serving is only ever reported for genuine
-// piece/portion counts.
+// in parentheses, e.g. "2 cookies (28 g)". null/null when there's no such
+// descriptor, or the unit is itself metric.
 function parseOffHouseholdServing(
   servingSize: string | undefined
 ): HouseholdServing {
@@ -1144,19 +1130,11 @@ function mapOpenFoodFactsProduct(
     traces: normalizeAllergenTags(product.traces_tags),
   };
   // If OFF states an equivalent household serving (e.g. "2 cookies (28 g)"),
-  // surface it as a second, non-default variant so users can log by piece.
-  // It describes the SAME physical serving as the metric variant, so it reuses
-  // the exact same nutrient values — no rescaling. Only OFF's serving_unit is
-  // stored, mirroring how FatSecret/USDA store household units.
-  //
-  // That reuse is only valid when declaredServingQuantity was actually present:
-  // metricVariant is scaled to declaredServingQuantity grams when OFF declared
-  // one, but falls back to the raw 100g-basis numbers when it didn't. Without
-  // a declared serving_quantity there is no verified link between the parsed
-  // household count and metricVariant's basis, so reusing its values would
-  // mislabel the (possibly very different) 100g numbers under the household
-  // unit — e.g. showing a product's per-100g calories as "2 tbsp". Skip
-  // emitting a household variant entirely in that case rather than guess.
+  // surface it as a second, non-default variant so users can log by piece,
+  // reusing the metric variant's values (same physical serving, no rescaling).
+  // Only valid when declaredServingQuantity was actually declared — otherwise
+  // metricVariant is still on the unscaled 100g basis, and reusing it would
+  // mislabel those numbers under the household unit. Skip it in that case.
   const household = parseOffHouseholdServing(product.serving_size);
   const householdVariant =
     declaredServingQuantity !== null &&
