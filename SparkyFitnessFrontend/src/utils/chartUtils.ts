@@ -28,18 +28,31 @@ export function calculateSmartYAxisDomain(
     useZeroBaseline?: boolean; // Force zero baseline
     minRangeThreshold?: number; // If range is small relative to max, use zero baseline
     forceMin?: number; // Force a specific minimum value for the Y-axis
+    additionalKeys?: string[]; // Additional data keys to consider (e.g. target min/max, goal)
   } = {}
 ): [number, number] | [number, string] | undefined {
-  const { marginPercent = 0.1, useZeroBaseline = false, forceMin } = options;
+  const {
+    marginPercent = 0.1,
+    useZeroBaseline = false,
+    forceMin,
+    additionalKeys = [],
+  } = options;
 
   if (!data || data.length === 0) {
     return undefined;
   }
 
-  // Extract valid numeric values
-  const values = data
-    .map((item) => (typeof item[dataKey] === 'number' ? item[dataKey] : null))
-    .filter((val): val is number => val !== null && !isNaN(val));
+  // Extract valid numeric values from primary key and any additional keys
+  const allKeys = [dataKey, ...additionalKeys];
+  const values: number[] = [];
+  for (const item of data) {
+    for (const key of allKeys) {
+      const val = item[key];
+      if (typeof val === 'number' && !isNaN(val)) {
+        values.push(val);
+      }
+    }
+  }
 
   if (values.length === 0) {
     return undefined;

@@ -47,7 +47,14 @@ export const DailyGoals = ({
   visibleNutrients,
   today,
 }: DailyGoalsProps) => {
-  const { energyUnit, convertEnergy, getEnergyUnitString } = usePreferences();
+  const {
+    energyUnit,
+    convertEnergy,
+    getEnergyUnitString,
+    goalMode,
+    goalModeCalculationMethod,
+    saveAllPreferences,
+  } = usePreferences();
   const { t } = useTranslation();
   const { user } = useAuth();
   const { data: customNutrients } = useCustomNutrients();
@@ -135,6 +142,17 @@ export const DailyGoals = ({
       finalGoals.protein_percentage = null;
       finalGoals.carbs_percentage = null;
       finalGoals.fat_percentage = null;
+    }
+    if (goalModeCalculationMethod === 'adaptive' || goalMode !== 'maintain') {
+      try {
+        await saveAllPreferences({
+          goalMode: 'maintain',
+          goalModeCalculationMethod: 'manual',
+        });
+      } catch (err) {
+        console.error('Failed to reset goal mode to maintain', err);
+        return;
+      }
     }
     await saveGoalsService({ date: today, goals: finalGoals, cascade: true });
   };

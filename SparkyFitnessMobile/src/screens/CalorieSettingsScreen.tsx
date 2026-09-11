@@ -27,6 +27,7 @@ import {
   convertEnergyValue,
   type CalorieSafetyFloorMode,
   type GoalMode,
+  type GoalModeCalculationMethod,
 } from '@workspace/shared';
 
 type CalorieSettingsScreenProps = RootStackScreenProps<'CalorieSettings'>;
@@ -41,6 +42,7 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
     useExternalBmr: prefs?.use_external_bmr ?? false,
     tdeeAllowNegativeAdjustment: prefs?.tdee_allow_negative_adjustment ?? false,
     goalMode: prefs?.goal_mode ?? 'maintain',
+    goalModeCalculationMethod: prefs?.goal_mode_calculation_method ?? 'manual',
     goalModeCustomPercentage: prefs?.goal_mode_custom_percentage ?? 0,
     calorieSafetyFloorMode: prefs?.calorie_safety_floor_mode ?? 'standard',
     calorieSafetyFloorValue:
@@ -124,7 +126,9 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
       value: 'recomp',
     },
     {
-      label: t('calorieSettings.goalMode.cut', { defaultValue: 'Cut (-15%)' }),
+      label: t('calorieSettings.goalMode.cut', {
+        defaultValue: 'Cut (-15%)',
+      }),
       value: 'cut',
     },
     {
@@ -148,6 +152,20 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
     {
       label: t('calorieSettings.goalMode.manual', {
         defaultValue: 'Manual (Custom %)',
+      }),
+      value: 'manual',
+    },
+  ];
+  const calculationMethodOptions = [
+    {
+      label: t('calorieSettings.goalMode.methodAdaptive', {
+        defaultValue: 'Adaptive',
+      }),
+      value: 'adaptive',
+    },
+    {
+      label: t('calorieSettings.goalMode.methodManual', {
+        defaultValue: 'Manual',
       }),
       value: 'manual',
     },
@@ -278,6 +296,15 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   const handleGoalModeChange = useCallback(
     (value: string) => {
       mutation.mutate({ goal_mode: value as GoalMode });
+    },
+    [mutation]
+  );
+
+  const handleGoalModeCalculationMethodChange = useCallback(
+    (value: string) => {
+      mutation.mutate({
+        goal_mode_calculation_method: value as GoalModeCalculationMethod,
+      });
     },
     [mutation]
   );
@@ -707,6 +734,24 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
                     'Positive adds calories; negative creates a deficit. Limited to ±40%.',
                 })}
               </Text>
+            </View>
+          )}
+          {normalized.mode !== 'tdee' && (
+            <View className="mt-4 pt-4 border-t border-border flex-row items-center justify-between">
+              <Text className="text-base font-semibold text-text-primary">
+                {t('calorieSettings.goalMode.calculationMethod', {
+                  defaultValue: 'Calculation Method',
+                })}
+              </Text>
+              <BottomSheetPicker
+                value={normalized.goalModeCalculationMethod}
+                options={calculationMethodOptions}
+                onSelect={handleGoalModeCalculationMethodChange}
+                title={t('calorieSettings.goalMode.calculationMethod', {
+                  defaultValue: 'Calculation Method',
+                })}
+                containerStyle={{ flex: 1, maxWidth: 200, marginLeft: 16 }}
+              />
             </View>
           )}
         </Animated.View>

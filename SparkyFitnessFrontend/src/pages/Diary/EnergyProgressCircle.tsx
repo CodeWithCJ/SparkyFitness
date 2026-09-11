@@ -24,12 +24,16 @@ export const EnergyCircle = ({
     targetBand !== undefined &&
     targetBand.eaten >= targetBand.min &&
     targetBand.eaten <= targetBand.max;
+  const isOverLimit =
+    targetBand !== undefined && targetBand.eaten > targetBand.max;
   const ringColorClass =
     targetBand === undefined
       ? 'text-green-500'
       : inRange
         ? 'text-green-500'
-        : 'text-amber-500';
+        : isOverLimit
+          ? 'text-red-500'
+          : 'text-amber-500';
 
   return (
     <div className="flex items-center justify-center">

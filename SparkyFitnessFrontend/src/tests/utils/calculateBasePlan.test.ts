@@ -159,13 +159,10 @@ describe('calculateBasePlan goal handling', () => {
     expect(plan!.finalDailyCalories).toBe(990);
   });
 
-  // Regression: onboarding persists goalMode, and the goal it saves is this
-  // finalDailyCalories -- which already has the adjustment applied. If the
-  // calculation method were left at its 'manual' default, goalService would
-  // treat the stored goal as a baseline and apply the adjustment AGAIN
-  // (cut => TDEE x 0.85 x 0.85). PersonalPlan therefore persists
-  // goalModeCalculationMethod: 'adaptive'; this pins the arithmetic that makes
-  // the double-application detectable if anyone changes it back.
+  // Regression: onboarding calculates finalDailyCalories with the primary goal
+  // adjustment baked in. That target is saved directly to user_goals, and
+  // PersonalPlan persists goalMode: 'maintain' with goalModeCalculationMethod: 'manual'.
+  // This verifies finalDailyCalories calculates the target adjustment exactly once.
   it('bakes the goal-mode adjustment into finalDailyCalories exactly once', () => {
     const plan = calculateBasePlan(
       { ...baseForm, primaryGoal: 'lose_weight' },

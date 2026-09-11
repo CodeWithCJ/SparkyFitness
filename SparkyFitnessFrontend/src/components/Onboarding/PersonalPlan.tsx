@@ -14,7 +14,6 @@ import { useSaveGoalsMutation } from '@/hooks/Goals/useGoals';
 import { calculateBasePlan } from '@/utils/nutritionCalculations';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import type { ActivityLevel } from '@/contexts/PreferencesContext';
-import { goalModeFromPrimaryGoal } from '@workspace/shared';
 import { useTranslation } from 'react-i18next';
 import { useSubmitOnboarding } from '@/hooks/Onboarding/useOnboarding';
 import { format } from 'date-fns';
@@ -270,17 +269,16 @@ const PersonalPlan = ({
     };
 
     // Update user preferences with selected units and algorithms.
-    // activityLevel and goalMode must be persisted here too: the calorie engine
-    // reads user_preferences, not onboarding_data, so without these a user who
+    // activityLevel must be persisted here: the calorie engine reads
+    // user_preferences, not onboarding_data, so without this a user who
     // answered "heavy" is silently treated as sedentary forever.
     //
-    // goalModeCalculationMethod must be persisted ALONGSIDE goalMode, and must
-    // be 'adaptive'. The goal saved below is calculateBasePlan's finalTarget,
-    // which already has the goal-mode adjustment applied. Under the 'manual'
-    // method (the column default) the engine treats the stored goal as the
-    // baseline and applies the adjustment a second time -- a 'cut' would serve
-    // TDEE x 0.85 x 0.85. 'adaptive' makes the engine derive its own baseline
-    // instead, which is exactly what calculateBasePlan modelled.
+    // The goal saved below in user_goals already represents the user's intended
+    // daily calorie target (factoring in the primary goal calculation or any custom
+    // edits made on the Personal Plan screen). Therefore, goalMode is persisted as
+    // 'maintain' (0% further adjustment) and goalModeCalculationMethod as 'manual',
+    // ensuring the target in user_goals is honored as-is and neither double-adjusted
+    // nor overridden by BMR formula re-derivation.
     await saveAllPreferences({
       weightUnit: weightUnit,
       measurementUnit: heightUnit,
@@ -294,8 +292,11 @@ const PersonalPlan = ({
       // Empty when the step was skipped; the column is a plain string, so guard
       // here rather than persisting '' and relying on every read site's default.
       activityLevel: (formData.activityLevel || 'not_much') as ActivityLevel,
-      goalMode: goalModeFromPrimaryGoal(formData.primaryGoal),
-      goalModeCalculationMethod: 'adaptive',
+      calorieGoalAdjustmentMode: formData.addBurnedCalories
+        ? 'dynamic'
+        : 'fixed',
+      goalMode: 'maintain',
+      goalModeCalculationMethod: 'manual',
     });
 
     const todayStr = format(new Date(), 'yyyy-MM-dd');
