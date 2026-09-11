@@ -70,6 +70,9 @@ const MEAL_FOODS_SELECT = `
          COALESCE(mf.vitamin_c, fv.vitamin_c)                     AS vitamin_c,
          COALESCE(mf.calcium, fv.calcium)                         AS calcium,
          COALESCE(mf.iron, fv.iron)                               AS iron,
+         COALESCE(mf.caffeine_mg, fv.caffeine_mg)                 AS caffeine_mg,
+         COALESCE(mf.water_ml, fv.water_ml)                       AS water_ml,
+         COALESCE(mf.alcohol_g, fv.alcohol_g)                     AS alcohol_g,
          COALESCE(mf.glycemic_index, fv.glycemic_index)           AS glycemic_index,
          COALESCE(mf.custom_nutrients, fv.custom_nutrients)       AS custom_nutrients
   FROM meal_foods mf
@@ -134,6 +137,9 @@ function buildMealFoodValues(mealId: string) {
       item.iron ?? null,
       item.glycemic_index ?? null,
       item.custom_nutrients ?? null,
+      item.caffeine_mg ?? null,
+      item.water_ml ?? null,
+      item.alcohol_g ?? null,
     ];
   };
 }
@@ -169,7 +175,7 @@ async function createMeal(mealData: MealInput) {
            saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
            cholesterol, sodium, potassium, dietary_fiber, sugars,
            vitamin_a, vitamin_c, calcium, iron, glycemic_index,
-           custom_nutrients
+           custom_nutrients, caffeine_mg, water_ml, alcohol_g
          ) VALUES %L RETURNING id`,
         mealFoodsValues
       );
@@ -352,7 +358,7 @@ async function updateMeal(
              saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
              cholesterol, sodium, potassium, dietary_fiber, sugars,
              vitamin_a, vitamin_c, calcium, iron, glycemic_index,
-             custom_nutrients
+             custom_nutrients, caffeine_mg, water_ml, alcohol_g
            ) VALUES %L RETURNING id`,
           mealFoodsValues
         );

@@ -80,6 +80,68 @@ describe('enhancedCustomFoodFormService', () => {
     expect(body2).not.toHaveProperty('serving_description');
   });
 
+  // Regression: every payload here is built field-by-field, and the run of
+  // numeric nutrients stopped at `iron` -- so caffeine, water, alcohol and ABV
+  // were silently dropped at the last hop. The values reached the form and the
+  // server column existed, but a food saved with them came back empty.
+  it('sends caffeine, water, alcohol and ABV when creating a new food', async () => {
+    mockApiCall.mockResolvedValueOnce({ id: 'food-1' });
+
+    await saveFood(
+      createFood(),
+      [
+        createVariant({
+          caffeine_mg: 95,
+          water_ml: 240,
+          alcohol_g: 14,
+          abv_percent: 5.2,
+        }),
+      ],
+      'user-1'
+    );
+
+    const body = mockApiCall.mock.calls[0]?.[1]?.body as any;
+    expect(body).toMatchObject({
+      caffeine_mg: 95,
+      water_ml: 240,
+      alcohol_g: 14,
+      abv_percent: 5.2,
+    });
+  });
+
+  it('sends caffeine, water, alcohol and ABV when updating an existing variant', async () => {
+    mockApiCall
+      .mockResolvedValueOnce(undefined) // PUT /foods/:id
+      .mockResolvedValueOnce([{ id: 'variant-1' }]) // existing variants
+      .mockResolvedValueOnce(undefined); // PUT /foods/food-variants/:id
+
+    await saveFood(
+      createFood({ id: 'food-1' }),
+      [
+        createVariant({
+          id: 'variant-1',
+          caffeine_mg: 95,
+          water_ml: 240,
+          alcohol_g: 14,
+          abv_percent: 5.2,
+        }),
+      ],
+      'user-1',
+      'food-1'
+    );
+
+    const variantPut = mockApiCall.mock.calls.find(
+      ([url, options]) =>
+        url === '/foods/food-variants/variant-1' && options?.method === 'PUT'
+    );
+    expect(variantPut?.[1]?.body).toMatchObject({
+      caffeine_mg: 95,
+      water_ml: 240,
+      alcohol_g: 14,
+      abv_percent: 5.2,
+    });
+  });
+
   // Regression: the create branch built its payload field-by-field and omitted
   // `images` entirely, so a provider photo carried through the edit form was
   // dropped at the last hop and the saved food had no image.

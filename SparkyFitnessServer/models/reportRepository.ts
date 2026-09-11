@@ -188,6 +188,9 @@ async function getTabularFoodData(
           (COALESCE(fe.vitamin_c, 0) * fe.quantity / fe.serving_size) AS vitamin_c,
           (COALESCE(fe.calcium, 0) * fe.quantity / fe.serving_size) AS calcium,
           (COALESCE(fe.iron, 0) * fe.quantity / fe.serving_size) AS iron,
+          (COALESCE(fe.caffeine_mg, 0) * fe.quantity / fe.serving_size) AS caffeine_mg,
+          (COALESCE(fe.water_ml, 0) * fe.quantity / fe.serving_size) AS water_ml,
+          (COALESCE(fe.alcohol_g, 0) * fe.quantity / fe.serving_size) AS alcohol_g,
           fe.serving_size,
           fe.serving_unit,
           fe.food_entry_meal_id${
@@ -228,6 +231,9 @@ async function getTabularFoodData(
         cfe.vitamin_c,
         cfe.calcium,
         cfe.iron,
+        cfe.caffeine_mg,
+        cfe.water_ml,
+        cfe.alcohol_g,
         cfe.serving_size,
         cfe.serving_unit,
         cfe.food_entry_meal_id${
@@ -315,6 +321,9 @@ async function getTabularFoodData(
         SUM(cfe_meal.vitamin_c) AS vitamin_c,
         SUM(cfe_meal.calcium) AS calcium,
         SUM(cfe_meal.iron) AS iron,
+        SUM(cfe_meal.caffeine_mg) AS caffeine_mg,
+        SUM(cfe_meal.water_ml) AS water_ml,
+        SUM(cfe_meal.alcohol_g) AS alcohol_g,
         1 AS serving_size, -- Treat meal as single serving unit for calculations
         'serving' AS serving_unit,
         fem.id AS food_entry_meal_id${
@@ -446,7 +455,9 @@ async function getMiniNutritionTrends(
          SUM(vitamin_a) AS total_vitamin_a,
          SUM(vitamin_c) AS total_vitamin_c,
          SUM(calcium) AS total_calcium,
-         SUM(iron) AS total_iron${
+         SUM(iron) AS total_iron,
+         SUM(caffeine_mg) AS total_caffeine_mg,
+         SUM(alcohol_g) AS total_alcohol_g${
            customNutrientsSelectOuter
              ? ',\n         ' + customNutrientsSelectOuter
              : ''
@@ -470,7 +481,9 @@ async function getMiniNutritionTrends(
            (COALESCE(fe.vitamin_a, 0) * fe.quantity / fe.serving_size) AS vitamin_a,
            (COALESCE(fe.vitamin_c, 0) * fe.quantity / fe.serving_size) AS vitamin_c,
            (COALESCE(fe.calcium, 0) * fe.quantity / fe.serving_size) AS calcium,
-           (COALESCE(fe.iron, 0) * fe.quantity / fe.serving_size) AS iron${
+           (COALESCE(fe.iron, 0) * fe.quantity / fe.serving_size) AS iron,
+           (COALESCE(fe.caffeine_mg, 0) * fe.quantity / fe.serving_size) AS caffeine_mg,
+           (COALESCE(fe.alcohol_g, 0) * fe.quantity / fe.serving_size) AS alcohol_g${
              customNutrientsSelectInner1
                ? ',\n           ' + customNutrientsSelectInner1
                : ''
@@ -498,7 +511,9 @@ async function getMiniNutritionTrends(
            SUM(COALESCE(fe_meal.vitamin_a, 0) * fe_meal.quantity / fe_meal.serving_size) AS vitamin_a,
            SUM(COALESCE(fe_meal.vitamin_c, 0) * fe_meal.quantity / fe_meal.serving_size) AS vitamin_c,
            SUM(COALESCE(fe_meal.calcium, 0) * fe_meal.quantity / fe_meal.serving_size) AS calcium,
-           SUM(COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) AS iron${
+           SUM(COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) AS iron,
+           SUM(COALESCE(fe_meal.caffeine_mg, 0) * fe_meal.quantity / fe_meal.serving_size) AS caffeine_mg,
+           SUM(COALESCE(fe_meal.alcohol_g, 0) * fe_meal.quantity / fe_meal.serving_size) AS alcohol_g${
              customNutrientsSelectInner2
                ? ',\n           ' + customNutrientsSelectInner2
                : ''

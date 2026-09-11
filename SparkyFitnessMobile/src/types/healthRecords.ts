@@ -295,6 +295,7 @@ export interface TransformedNutritionEntry extends RecordTimezoneMetadata {
   vitamin_c?: number;
   calcium?: number;
   iron?: number;
+  caffeine_mg?: number;
 }
 
 /** Union type for all possible transform outputs */

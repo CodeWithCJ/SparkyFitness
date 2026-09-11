@@ -6,6 +6,7 @@ import MealPercentageManager from '@/components/MealPercentageManager';
 import { Separator } from '@/components/ui/separator';
 
 import { NUTRIENT_CONFIG } from '@/constants/goals';
+import { NON_GOAL_NUTRIENT_KEYS } from '@workspace/shared';
 import { NutrientInput } from './NutrientInput';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useTranslation } from 'react-i18next';
@@ -46,7 +47,14 @@ export const DailyGoals = ({
   visibleNutrients,
   today,
 }: DailyGoalsProps) => {
-  const { energyUnit, convertEnergy, getEnergyUnitString } = usePreferences();
+  const {
+    energyUnit,
+    convertEnergy,
+    getEnergyUnitString,
+    goalMode,
+    goalModeCalculationMethod,
+    saveAllPreferences,
+  } = usePreferences();
   const { t } = useTranslation();
   const { user } = useAuth();
   const { data: customNutrients } = useCustomNutrients();
@@ -134,6 +142,17 @@ export const DailyGoals = ({
       finalGoals.protein_percentage = null;
       finalGoals.carbs_percentage = null;
       finalGoals.fat_percentage = null;
+    }
+    if (goalModeCalculationMethod === 'adaptive' || goalMode !== 'maintain') {
+      try {
+        await saveAllPreferences({
+          goalMode: 'maintain',
+          goalModeCalculationMethod: 'manual',
+        });
+      } catch (err) {
+        console.error('Failed to reset goal mode to maintain', err);
+        return;
+      }
     }
     await saveGoalsService({ date: today, goals: finalGoals, cascade: true });
   };
@@ -317,7 +336,9 @@ export const DailyGoals = ({
               )
               .map((key) => {
                 // Validate standard or custom nutrient
-                const isStandard = NUTRIENT_CONFIG.some((n) => n.id === key);
+                const isStandard =
+                  NUTRIENT_CONFIG.some((n) => n.id === key) &&
+                  !(NON_GOAL_NUTRIENT_KEYS as readonly string[]).includes(key);
                 const isCustom = customNutrients?.some((cn) => cn.name === key);
 
                 if (!isStandard && !isCustom) return null;

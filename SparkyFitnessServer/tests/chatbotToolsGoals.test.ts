@@ -3,6 +3,7 @@ import { todayInZone } from '@workspace/shared';
 import { buildGoalTools } from '../ai/tools/goalTools.js';
 import goalService from '../services/goalService.js';
 import goalRepository from '../models/goalRepository.js';
+import nutrientGoalPreferenceService from '../services/nutrientGoalPreferenceService.js';
 
 vi.mock('../services/goalService', () => ({
   default: {
@@ -13,6 +14,11 @@ vi.mock('../services/goalService', () => ({
 vi.mock('../models/goalRepository', () => ({
   default: {
     getGoalTimeline: vi.fn(),
+  },
+}));
+vi.mock('../services/nutrientGoalPreferenceService', () => ({
+  default: {
+    getEffectiveGoalTypes: vi.fn(),
   },
 }));
 vi.mock('../config/logging', () => ({
@@ -27,6 +33,9 @@ let tools: ReturnType<typeof buildGoalTools>;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(
+    nutrientGoalPreferenceService.getEffectiveGoalTypes
+  ).mockResolvedValue({});
   tools = buildGoalTools('user-1', 'UTC');
 });
 
@@ -296,7 +305,9 @@ describe('sparky_get_goal_snapshot', () => {
       opts
     );
 
-    expect(result).toBe(JSON.stringify(snapshotFields));
+    expect(result).toBe(
+      JSON.stringify({ ...snapshotFields, goal_directions: {} })
+    );
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
       'user-1',
       '2026-06-01',
@@ -310,12 +321,34 @@ describe('sparky_get_goal_snapshot', () => {
 
     const result = await tools.sparky_get_goal_snapshot.execute!({}, opts);
 
-    expect(result).toBe(JSON.stringify({ calories: 2000 }));
+    expect(result).toBe(
+      JSON.stringify({ calories: 2000, goal_directions: {} })
+    );
     expect(goalService.getUserGoals).toHaveBeenCalledWith(
       'user-1',
       todayInZone('UTC'),
       undefined,
       true
+    );
+  });
+
+  it('includes custom goal_directions from nutrientGoalPreferenceService', async () => {
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({ calories: 2000 });
+    vi.mocked(
+      nutrientGoalPreferenceService.getEffectiveGoalTypes
+    ).mockResolvedValue({
+      calories: { goalType: 'target', targetMin: 1800, targetMax: 2200 },
+    });
+
+    const result = await tools.sparky_get_goal_snapshot.execute!({}, opts);
+
+    expect(result).toBe(
+      JSON.stringify({
+        calories: 2000,
+        goal_directions: {
+          calories: { goalType: 'target', targetMin: 1800, targetMax: 2200 },
+        },
+      })
     );
   });
 

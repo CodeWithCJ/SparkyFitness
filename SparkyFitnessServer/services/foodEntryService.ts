@@ -15,6 +15,7 @@ import mealTypeRepository from '../models/mealType.js';
 import goalRepository from '../models/goalRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import reportRepository from '../models/reportRepository.js';
+import { getClient } from '../db/poolManager.js';
 import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
 import { buildFoodEntrySnapshot } from '../utils/foodEntrySnapshot.js';
 import Papa from 'papaparse';
@@ -24,6 +25,7 @@ import {
   foodEntryCopyFingerprint,
   hasExactReviewedFoodEntrySnapshot,
   isDayString,
+  foodVolumeToMl,
 } from '@workspace/shared';
 import customNutrientService from './customNutrientService.js';
 import { removeOrphanedImages } from '../middleware/imageUpload.js';
@@ -73,6 +75,9 @@ interface LoggedComponentEntry {
   vitamin_c?: number | null;
   calcium?: number | null;
   iron?: number | null;
+  caffeine_mg?: number | null;
+  water_ml?: number | null;
+  alcohol_g?: number | null;
   glycemic_index?: string | null;
   custom_nutrients?: Record<string, unknown> | null;
   [column: string]: unknown;
@@ -143,6 +148,13 @@ interface MealTypeRow {
   id: string;
   name: string;
   user_id: string | null;
+}
+
+/** A water ledger row linked back to the food entry that created it (#2115). */
+interface LinkedWaterEntryRow {
+  id: string;
+  entry_date: string;
+  source: string | null;
 }
 
 type HttpStatusError = Error & { statusCode: number };
@@ -244,6 +256,9 @@ const DIARY_IMPORT_NUTRIENT_FIELDS = [
   'vitamin_c',
   'calcium',
   'iron',
+  'caffeine_mg',
+  'water_ml',
+  'alcohol_g',
 ] as const;
 
 const isBlankCell = (value: unknown): boolean =>
@@ -813,6 +828,9 @@ async function updateFoodEntry(
         vitamin_c: variant.vitamin_c,
         calcium: variant.calcium,
         iron: variant.iron,
+        caffeine_mg: variant.caffeine_mg,
+        water_ml: variant.water_ml,
+        alcohol_g: variant.alcohol_g,
         glycemic_index: variant.glycemic_index,
         custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
       };
@@ -840,6 +858,9 @@ async function updateFoodEntry(
         vitamin_c: existingEntry.vitamin_c,
         calcium: existingEntry.calcium,
         iron: existingEntry.iron,
+        caffeine_mg: existingEntry.caffeine_mg,
+        water_ml: existingEntry.water_ml,
+        alcohol_g: existingEntry.alcohol_g,
         glycemic_index: existingEntry.glycemic_index,
         custom_nutrients: sanitizeCustomNutrients(
           existingEntry.custom_nutrients
@@ -869,6 +890,9 @@ async function updateFoodEntry(
       'vitamin_c',
       'calcium',
       'iron',
+      'caffeine_mg',
+      'water_ml',
+      'alcohol_g',
       'glycemic_index',
     ];
     for (const field of nutritionOverrideFields as (keyof FoodEntryInput)[]) {
@@ -920,6 +944,98 @@ async function updateFoodEntry(
       );
     }
 
+    // #2115: If this food entry is linked to a water intake ledger row,
+    // update the ledger row's water_ml and/or entry_date and recompute totals.
+    try {
+      // Ledger write and aggregate recompute share ONE client and ONE
+      // transaction. recomputeWaterAggregate takes a client precisely so a
+      // caller that already holds one does not have to acquire a second (the
+      // ...ForUser wrapper is for callers with no open transaction), so there
+      // is no nested-acquisition risk here. Splitting them, as this did before,
+      // could leave the ledger row rewritten and the daily aggregate stale --
+      // and unlike a delete, that divergence does not self-heal, because the
+      // aggregate is recomputed from ledger rows that are already wrong.
+      const client = await getClient(authenticatedUserId, actingUserId);
+      try {
+        await client.query('BEGIN');
+        const linkedRes = await client.query(
+          `SELECT id, entry_date, hydration_factor, source
+           FROM water_intake_entries
+           WHERE food_entry_id = $1 AND user_id = $2`,
+          [entryId, authenticatedUserId]
+        );
+        if (linkedRes.rows.length > 0) {
+          const linkedRow = linkedRes.rows[0];
+          const factor =
+            linkedRow.hydration_factor !== null &&
+            linkedRow.hydration_factor !== undefined
+              ? Number(linkedRow.hydration_factor)
+              : 1.0;
+
+          const updatedWater = Number(updatedEntry.water_ml);
+          const servingSize = Number(updatedEntry.serving_size);
+          const quantity = Number(updatedEntry.quantity) || 1;
+          let entryWaterMl = 0;
+
+          if (Number.isFinite(updatedWater) && updatedWater > 0) {
+            const scale =
+              Number.isFinite(servingSize) && servingSize > 0
+                ? quantity / servingSize
+                : quantity;
+            entryWaterMl = updatedWater * scale;
+          } else {
+            const volFallback = foodVolumeToMl(
+              quantity,
+              updatedEntry.unit || updatedEntry.serving_unit || ''
+            );
+            if (volFallback !== null) {
+              entryWaterMl = volFallback;
+            }
+          }
+
+          const newWaterMl = entryWaterMl * factor;
+          const oldDate = String(linkedRow.entry_date).substring(0, 10);
+          const newDate = String(updatedEntry.entry_date).substring(0, 10);
+
+          await client.query(
+            `UPDATE water_intake_entries
+             SET water_ml = $1, entry_date = $2
+             WHERE id = $3 AND user_id = $4`,
+            [newWaterMl, newDate, linkedRow.id, authenticatedUserId]
+          );
+
+          // Moving the entry to another day leaves two days to rebuild.
+          const dates = oldDate === newDate ? [newDate] : [newDate, oldDate];
+          const source = linkedRow.source || 'manual';
+          for (const date of dates) {
+            await measurementRepository.recomputeWaterAggregate(
+              client,
+              authenticatedUserId,
+              actingUserId,
+              date,
+              source
+            );
+          }
+        }
+        await client.query('COMMIT');
+      } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      // Non-fatal: the food entry itself is already saved, so reporting a
+      // failure here would misdescribe what happened. Logged at error, not
+      // warn -- the ledger row and the diary entry now disagree and nothing
+      // downstream repairs that on its own.
+      log(
+        'error',
+        `Food entry ${entryId} was updated but its linked water intake row was not; the water ring and the diary will disagree for that day:`,
+        err
+      );
+    }
+
     return updatedEntry;
   } catch (error) {
     log(
@@ -948,12 +1064,75 @@ async function deleteFoodEntry(authenticatedUserId: string, entryId: string) {
         'Forbidden: You do not have permission to delete this food entry.'
       );
     }
+
+    // #2115: note which days a linked water ledger row will disappear from, so
+    // their aggregates can be recomputed once the food entry is actually gone.
+    //
+    // The ledger rows themselves are NOT deleted here. water_intake_entries
+    // .food_entry_id is ON DELETE CASCADE, so removing the food entry removes
+    // them. Deleting them first would mean a failure in deleteFoodEntry below
+    // left the drink's water credit gone while the entry it belonged to stayed
+    // in the diary -- and the old code only logged that at warn level.
+    let linkedRows: LinkedWaterEntryRow[] = [];
+    try {
+      // Read on its own client and release before calling the repository:
+      // recomputeWaterAggregateForUser takes a pooled client of its own, and
+      // holding two at once for a single request can exhaust the pool.
+      const client = await getClient(authenticatedUserId);
+      try {
+        const linkedRes = await client.query(
+          `SELECT id, entry_date, source
+           FROM water_intake_entries
+           WHERE food_entry_id = $1 AND user_id = $2`,
+          [entryId, authenticatedUserId]
+        );
+        linkedRows = linkedRes.rows as LinkedWaterEntryRow[];
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      // A failed read costs an out-of-date aggregate, not lost data, and the
+      // next recompute for that day self-heals it. Deleting the entry is still
+      // the right outcome, so this does not abort the delete.
+      log(
+        'warn',
+        `Could not read linked water intake rows for food entry ${entryId}; the daily water aggregate may lag until the next recompute:`,
+        err
+      );
+    }
+
     const success = await foodRepository.deleteFoodEntry(
       entryId,
       authenticatedUserId
     );
     if (!success) {
       throw new Error('Food entry not found or not authorized to delete.');
+    }
+
+    // The CASCADE has fired by now. Recompute from what is left, per affected
+    // (date, source) pair -- recomputeWaterAggregate sums the ledger rather
+    // than applying a delta, so a repeat is harmless.
+    const recomputed = new Set<string>();
+    for (const row of linkedRows) {
+      const dateStr = String(row.entry_date).substring(0, 10);
+      const source = row.source || 'manual';
+      const key = `${dateStr}|${source}`;
+      if (recomputed.has(key)) continue;
+      recomputed.add(key);
+      try {
+        await measurementRepository.recomputeWaterAggregateForUser(
+          authenticatedUserId,
+          authenticatedUserId,
+          dateStr,
+          source
+        );
+      } catch (err) {
+        log(
+          'warn',
+          `Could not recompute the water aggregate for ${dateStr} after deleting food entry ${entryId}:`,
+          err
+        );
+      }
     }
     return true;
   } catch (error) {
@@ -1148,6 +1327,9 @@ async function copyFoodEntries(
           vitamin_c: entry.vitamin_c,
           calcium: entry.calcium,
           iron: entry.iron,
+          caffeine_mg: entry.caffeine_mg,
+          water_ml: entry.water_ml,
+          alcohol_g: entry.alcohol_g,
           glycemic_index: entry.glycemic_index,
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
           // The note travels with the entry it describes.
@@ -1315,6 +1497,9 @@ async function copyFoodEntriesFromUser(
           vitamin_c: entry.vitamin_c,
           calcium: entry.calcium,
           iron: entry.iron,
+          caffeine_mg: entry.caffeine_mg,
+          water_ml: entry.water_ml,
+          alcohol_g: entry.alcohol_g,
           glycemic_index: entry.glycemic_index,
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
           // The note travels with the entry it describes.
@@ -1452,6 +1637,9 @@ async function copySelectedFoodEntriesFromUser(
       vitamin_c: entry.vitamin_c,
       calcium: entry.calcium,
       iron: entry.iron,
+      caffeine_mg: entry.caffeine_mg,
+      water_ml: entry.water_ml,
+      alcohol_g: entry.alcohol_g,
       glycemic_index: entry.glycemic_index,
       custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
       // The note travels with the entry it describes.
@@ -1657,6 +1845,9 @@ async function copyFoodEntriesToUser(
           vitamin_c: entry.vitamin_c,
           calcium: entry.calcium,
           iron: entry.iron,
+          caffeine_mg: entry.caffeine_mg,
+          water_ml: entry.water_ml,
+          alcohol_g: entry.alcohol_g,
           glycemic_index: entry.glycemic_index,
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
           // The note travels with the entry it describes.
@@ -1952,6 +2143,9 @@ async function buildLeafFoodEntries(
         vitamin_c: (Number(component.vitamin_c) || 0) * multiplier,
         calcium: (Number(component.calcium) || 0) * multiplier,
         iron: (Number(component.iron) || 0) * multiplier,
+        caffeine_mg: (Number(component.caffeine_mg) || 0) * multiplier,
+        water_ml: (Number(component.water_ml) || 0) * multiplier,
+        alcohol_g: (Number(component.alcohol_g) || 0) * multiplier,
         glycemic_index: component.glycemic_index || null,
         custom_nutrients: component.custom_nutrients || null,
       });
@@ -2439,6 +2633,9 @@ async function updateFoodEntryMeal(
         vitamin_c: variant.vitamin_c,
         calcium: variant.calcium,
         iron: variant.iron,
+        caffeine_mg: variant.caffeine_mg,
+        water_ml: variant.water_ml,
+        alcohol_g: variant.alcohol_g,
         glycemic_index: variant.glycemic_index,
         custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
       };
@@ -2544,6 +2741,9 @@ async function getFoodEntryMealWithComponents(
     let totalVitaminC = 0;
     let totalCalcium = 0;
     let totalIron = 0;
+    let totalCaffeineMg = 0;
+    let totalWaterMl = 0;
+    let totalAlcoholG = 0;
     // Custom nutrient totals, keyed by the user's nutrient name.
     const totalCustomNutrients: Record<string, number> = {};
     let totalCarbsForGI = 0;
@@ -2568,6 +2768,9 @@ async function getFoodEntryMealWithComponents(
       totalVitaminC += (entry.vitamin_c || 0) * ratio;
       totalCalcium += (entry.calcium || 0) * ratio;
       totalIron += (entry.iron || 0) * ratio;
+      totalCaffeineMg += (entry.caffeine_mg || 0) * ratio;
+      totalWaterMl += (entry.water_ml || 0) * ratio;
+      totalAlcoholG += (entry.alcohol_g || 0) * ratio;
       // Aggregate custom nutrients
       if (
         entry.custom_nutrients &&
@@ -2633,6 +2836,9 @@ async function getFoodEntryMealWithComponents(
           vitamin_c: entry.vitamin_c,
           calcium: entry.calcium,
           iron: entry.iron,
+          caffeine_mg: entry.caffeine_mg,
+          water_ml: entry.water_ml,
+          alcohol_g: entry.alcohol_g,
           glycemic_index: entry.glycemic_index,
           custom_nutrients: entry.custom_nutrients,
           serving_size: Number(entry.serving_size ?? 0),
@@ -2657,6 +2863,9 @@ async function getFoodEntryMealWithComponents(
       vitamin_c: totalVitaminC,
       calcium: totalCalcium,
       iron: totalIron,
+      caffeine_mg: totalCaffeineMg,
+      water_ml: totalWaterMl,
+      alcohol_g: totalAlcoholG,
       custom_nutrients: totalCustomNutrients,
       glycemic_index: getGlycemicIndexCategory(aggregatedGlycemicIndex),
     };
@@ -2705,6 +2914,9 @@ async function getFoodEntryMealsByDate(
       let totalVitaminC = 0;
       let totalCalcium = 0;
       let totalIron = 0;
+      let totalCaffeineMg = 0;
+      let totalWaterMl = 0;
+      let totalAlcoholG = 0;
       // Custom nutrient totals, keyed by the user's nutrient name.
       const totalCustomNutrients: Record<string, number> = {};
       let totalProtein = 0;
@@ -2731,6 +2943,9 @@ async function getFoodEntryMealsByDate(
         totalVitaminC += (entry.vitamin_c || 0) * ratio;
         totalCalcium += (entry.calcium || 0) * ratio;
         totalIron += (entry.iron || 0) * ratio;
+        totalCaffeineMg += (entry.caffeine_mg || 0) * ratio;
+        totalWaterMl += (entry.water_ml || 0) * ratio;
+        totalAlcoholG += (entry.alcohol_g || 0) * ratio;
         // Aggregate custom nutrients
         if (
           entry.custom_nutrients &&
@@ -2835,6 +3050,15 @@ async function getFoodEntryMealsByDate(
           iron:
             (Number(entry.iron ?? 0) * Number(entry.quantity ?? 0)) /
             Number(entry.serving_size ?? 0),
+          caffeine_mg:
+            (Number(entry.caffeine_mg ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
+          water_ml:
+            (Number(entry.water_ml ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
+          alcohol_g:
+            (Number(entry.alcohol_g ?? 0) * Number(entry.quantity ?? 0)) /
+            Number(entry.serving_size ?? 0),
           glycemic_index: entry.glycemic_index,
           custom_nutrients: entry.custom_nutrients,
           serving_size: Number(entry.serving_size ?? 0),
@@ -2857,6 +3081,9 @@ async function getFoodEntryMealsByDate(
         vitamin_c: totalVitaminC,
         calcium: totalCalcium,
         iron: totalIron,
+        caffeine_mg: totalCaffeineMg,
+        water_ml: totalWaterMl,
+        alcohol_g: totalAlcoholG,
         custom_nutrients: totalCustomNutrients,
         glycemic_index: getGlycemicIndexCategory(aggregatedGlycemicIndex),
       });

@@ -5,6 +5,7 @@ import {
   MAX_CALORIE_SAFETY_FLOOR,
   MIN_CALORIE_SAFETY_FLOOR,
 } from "../../constants/calorieConstants.ts";
+import { CHART_SCALE_MODES } from "../../constants/chartConstants.ts";
 
 export const SUPPORTED_TIME_FORMATS = ["HH:mm", "h:mm A", "h:mm a"] as const;
 
@@ -40,6 +41,9 @@ export const userPreferencesSchema = z.object({
   sugar_calculation_algorithm: z.string(),
   added_sugar_algorithm: z.string(),
   auto_scale_open_food_facts_imports: z.boolean().nullable(),
+  auto_contribute_openfoodfacts: z.boolean(),
+  openfoodfacts_product_language: z.string().regex(/^[a-z]{2}$/),
+  openfoodfacts_backfill_pending: z.boolean(),
   exercise_calorie_percentage: z.number().nullable(),
   activity_level: z.string().nullable(),
   tdee_allow_negative_adjustment: z.boolean().nullable(),
@@ -63,6 +67,7 @@ export const userPreferencesSchema = z.object({
     .int()
     .min(MIN_CALORIE_SAFETY_FLOOR)
     .max(MAX_CALORIE_SAFETY_FLOOR),
+  chart_scale_mode: z.enum(CHART_SCALE_MODES),
   measurement_decimal_places: z.number().int().min(0),
   // Manually added (file is ts-to-zod generated; precedent: MealFoods.zod.ts). Keep on regen.
   use_external_bmr: z.boolean(),
@@ -71,6 +76,11 @@ export const userPreferencesSchema = z.object({
   auto_scale_online_imports: z.boolean().nullable().optional(),
   barcode_fallback_open_food_facts: z.boolean().nullable().optional(),
   add_exercise_water_to_goal: z.boolean().nullable().optional(),
+  add_food_water_to_intake: z.boolean().nullable().optional(),
+  standard_drink_grams: z.number().min(0).max(50),
+  weekly_alcohol_limit_g: z.number().positive().nullable().optional(),
+  caffeine_half_life_hours: z.number().min(2).max(8),
+  target_bedtime: z.string(),
 });
 
 export const userPreferencesInitializerSchema = z.object({
@@ -103,6 +113,12 @@ export const userPreferencesInitializerSchema = z.object({
   sugar_calculation_algorithm: z.string().optional(),
   added_sugar_algorithm: z.string().optional(),
   auto_scale_open_food_facts_imports: z.boolean().optional().nullable(),
+  auto_contribute_openfoodfacts: z.boolean().optional(),
+  openfoodfacts_product_language: z
+    .string()
+    .regex(/^[a-z]{2}$/)
+    .optional(),
+  openfoodfacts_backfill_pending: z.boolean().optional(),
   exercise_calorie_percentage: z.number().optional().nullable(),
   activity_level: z.string().optional().nullable(),
   tdee_allow_negative_adjustment: z.boolean().optional().nullable(),
@@ -131,6 +147,7 @@ export const userPreferencesInitializerSchema = z.object({
     .min(MIN_CALORIE_SAFETY_FLOOR)
     .max(MAX_CALORIE_SAFETY_FLOOR)
     .optional(),
+  chart_scale_mode: z.enum(CHART_SCALE_MODES).optional(),
   measurement_decimal_places: z.number().int().min(0).optional(),
   use_external_bmr: z.boolean().optional(),
   active_ai_service_id: z.string().uuid().nullable().optional(),
@@ -138,6 +155,11 @@ export const userPreferencesInitializerSchema = z.object({
   auto_scale_online_imports: z.boolean().optional().nullable(),
   barcode_fallback_open_food_facts: z.boolean().optional().nullable(),
   add_exercise_water_to_goal: z.boolean().optional().nullable(),
+  add_food_water_to_intake: z.boolean().optional().nullable(),
+  standard_drink_grams: z.number().min(0).max(50).optional(),
+  weekly_alcohol_limit_g: z.number().positive().nullable().optional(),
+  caffeine_half_life_hours: z.number().min(2).max(8).optional(),
+  target_bedtime: z.string().optional(),
 });
 
 export const userPreferencesMutatorSchema = z.object({
@@ -170,6 +192,12 @@ export const userPreferencesMutatorSchema = z.object({
   sugar_calculation_algorithm: z.string().optional(),
   added_sugar_algorithm: z.string().optional(),
   auto_scale_open_food_facts_imports: z.boolean().optional().nullable(),
+  auto_contribute_openfoodfacts: z.boolean().optional(),
+  openfoodfacts_product_language: z
+    .string()
+    .regex(/^[a-z]{2}$/)
+    .optional(),
+  openfoodfacts_backfill_pending: z.boolean().optional(),
   exercise_calorie_percentage: z.number().optional().nullable(),
   activity_level: z.string().optional().nullable(),
   tdee_allow_negative_adjustment: z.boolean().optional().nullable(),
@@ -198,6 +226,7 @@ export const userPreferencesMutatorSchema = z.object({
     .min(MIN_CALORIE_SAFETY_FLOOR)
     .max(MAX_CALORIE_SAFETY_FLOOR)
     .optional(),
+  chart_scale_mode: z.enum(CHART_SCALE_MODES).optional(),
   measurement_decimal_places: z.number().int().min(0).optional(),
   use_external_bmr: z.boolean().optional(),
   active_ai_service_id: z.string().uuid().nullable().optional(),
@@ -205,6 +234,11 @@ export const userPreferencesMutatorSchema = z.object({
   auto_scale_online_imports: z.boolean().optional().nullable(),
   barcode_fallback_open_food_facts: z.boolean().optional().nullable(),
   add_exercise_water_to_goal: z.boolean().optional().nullable(),
+  add_food_water_to_intake: z.boolean().optional().nullable(),
+  standard_drink_grams: z.number().min(0).max(50).optional(),
+  weekly_alcohol_limit_g: z.number().positive().nullable().optional(),
+  caffeine_half_life_hours: z.number().min(2).max(8).optional(),
+  target_bedtime: z.string().optional(),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;

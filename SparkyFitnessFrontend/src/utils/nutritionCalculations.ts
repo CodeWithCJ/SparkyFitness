@@ -3,6 +3,7 @@ import {
   resolveSupplementTotals,
   addSupplementCustomNutrients,
   FOOD_VARIANT_NUTRIENT_FIELDS,
+  foodVolumeToMl,
 } from '@workspace/shared';
 import { getDietTemplate } from '@/constants/dietTemplates';
 import { EMPTY_MEAL_TOTALS } from '@/constants/nutrients';
@@ -52,6 +53,8 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
       vitamin_c: 0,
       calcium: 0,
       iron: 0,
+      caffeine_mg: 0,
+      alcohol_g: 0,
       glycemic_index: 'None',
       water_ml: 0,
       custom_nutrients: {},
@@ -76,6 +79,15 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
     vitamin_c: Number(source.vitamin_c) || 0,
     calcium: Number(source.calcium) || 0,
     iron: Number(source.iron) || 0,
+    caffeine_mg: Number(source.caffeine_mg) || 0,
+    alcohol_g: Number(source.alcohol_g) || 0,
+    // Kept nullable rather than coerced to 0 like the rest: only a MISSING
+    // value falls back to the volume-unit heuristic below. A recorded 0 means
+    // the food genuinely holds no water and must survive to the caller.
+    water_ml:
+      source.water_ml === null || source.water_ml === undefined
+        ? null
+        : Number(source.water_ml) || 0,
     glycemic_index: source.glycemic_index,
     custom_nutrients: source.custom_nutrients || {},
   };
@@ -137,11 +149,31 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
     iron:
       (nutrientValuesPerReferenceSize.iron / effectiveReferenceSize) *
       entry.quantity,
+    caffeine_mg:
+      (nutrientValuesPerReferenceSize.caffeine_mg / effectiveReferenceSize) *
+      entry.quantity,
+    alcohol_g:
+      (nutrientValuesPerReferenceSize.alcohol_g / effectiveReferenceSize) *
+      entry.quantity,
     glycemic_index: nutrientValuesPerReferenceSize.glycemic_index, // Pass through glycemic_index
+    // Explicit water_ml wins (scaled like every other nutrient); when the food
+    // carries no water content at all, fall back to the logged volume for
+    // entries logged in a real volume unit (ml, l, cup, fl oz, ...) (#1557,
+    // #1629). Deliberately NOT 'oz' -- in the food unit vocabulary oz is a
+    // WEIGHT ounce (see shared/src/utils/servingSizeConversions.ts), so 4 oz
+    // of cheese must not read as 118 ml of water. Still unconsumed by
+    // calculateDayTotals on purpose: it is not in EMPTY_MEAL_TOTALS, because
+    // the water ring (not the macro grid) owns the day total once the #1557
+    // fold-in preference lands server-side. This field exists for the
+    // per-entry "this drink contributed X ml" affordance.
+    // An explicit 0 is an answer, not a blank: a drink recorded as containing
+    // no water must not have its volume guessed back in. Only a missing value
+    // falls through to the volume.
     water_ml:
-      entry.unit === 'ml' || entry.unit === 'liter' || entry.unit === 'oz'
-        ? entry.quantity
-        : 0, // Assuming water is tracked in ml, liter, or oz
+      nutrientValuesPerReferenceSize.water_ml != null
+        ? (nutrientValuesPerReferenceSize.water_ml / effectiveReferenceSize) *
+          entry.quantity
+        : (foodVolumeToMl(entry.quantity, entry.unit ?? '') ?? 0),
     custom_nutrients: Object.entries(
       nutrientValuesPerReferenceSize.custom_nutrients
     ).reduce(
@@ -217,6 +249,9 @@ export interface CalculatedNutrition {
   vitamin_c: number;
   calcium: number;
   iron: number;
+  caffeine_mg: number;
+  alcohol_g: number;
+  water_ml: number;
   custom_nutrients: Record<string, number>;
 }
 
@@ -248,6 +283,20 @@ export const calculateNutrition = (
     vitamin_c: (variant.vitamin_c || 0) * ratio,
     calcium: (variant.calcium || 0) * ratio,
     iron: (variant.iron || 0) * ratio,
+    caffeine_mg: (variant.caffeine_mg || 0) * ratio,
+    alcohol_g: (variant.alcohol_g || 0) * ratio,
+    // #1557/#1629: explicit water_ml wins (scaled like any other nutrient);
+    // with none recorded, fall back to the logged volume when serving_unit is a
+    // real volume unit -- never 'oz', which is a WEIGHT ounce in the food
+    // vocabulary. Same resolution calculateFoodEntryNutrition and the server's
+    // food-water formula use, so the figure shown per entry matches the one the
+    // day total credits. Deliberately absent from EMPTY_MEAL_TOTALS: the water
+    // ring owns the day total, this is only the per-entry contribution.
+    // As above: an explicit 0 wins, only a missing value falls back.
+    water_ml:
+      variant.water_ml != null
+        ? variant.water_ml * ratio
+        : (foodVolumeToMl(quantity, variant.serving_unit ?? '') ?? 0),
     custom_nutrients: {},
   };
 
@@ -355,6 +404,8 @@ export const calculateDayTotals = (
         vitamin_c: meal.vitamin_c || 0,
         iron: meal.iron || 0,
         calcium: meal.calcium || 0,
+        caffeine_mg: meal.caffeine_mg || 0,
+        alcohol_g: meal.alcohol_g || 0,
         custom_nutrients:
           (meal.custom_nutrients as Record<string, number>) || {},
       },
@@ -407,6 +458,8 @@ export const calculateDayTotals = (
       vitamin_c: 0,
       iron: 0,
       calcium: 0,
+      caffeine_mg: 0,
+      alcohol_g: 0,
       custom_nutrients: {} as Record<string, number>,
     }
   );
@@ -476,6 +529,12 @@ export const getMealTotals = (
       vitamin_c: 0,
       iron: 0,
       calcium: 0,
+      caffeine_mg: 0,
+      // Summed like any other nutrient so a meal can state the water it holds.
+      // The hydration ring still owns the DAY total -- this is the per-meal
+      // contribution, and calculateDayTotals deliberately does not read it.
+      water_ml: 0,
+      alcohol_g: 0,
       custom_nutrients: {} as Record<string, number>,
     }
   );
@@ -508,6 +567,9 @@ export const getEntryNutrition = (
       vitamin_c: item.vitamin_c || 0,
       iron: item.iron || 0,
       calcium: item.calcium || 0,
+      caffeine_mg: item.caffeine_mg || 0,
+      water_ml: item.water_ml || 0,
+      alcohol_g: item.alcohol_g || 0,
       custom_nutrients: (item.custom_nutrients as Record<string, number>) || {},
     };
   } else {

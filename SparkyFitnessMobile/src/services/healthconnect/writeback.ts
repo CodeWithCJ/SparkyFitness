@@ -8,6 +8,7 @@ import {
 } from 'react-native-health-connect';
 import { addLog } from '../LogService';
 import { fetchDailySummary } from '../api/dailySummaryApi';
+import { fetchWaterIntakeLog } from '../api/measurementsApi';
 import { resolveCollapsedFoodEntries } from '../../utils/loggedMealCollapse';
 import {
   loadHealthPreference,
@@ -19,6 +20,7 @@ import { loadLastWritebackTime, saveLastWritebackTime } from '../storage';
 import {
   foodEntryToNutritionRecord,
   waterMlToHydrationRecord,
+  waterLogEntryToHydrationRecord,
   computeWritebackDates,
 } from './writebackMappers';
 import {
@@ -181,20 +183,69 @@ const writeNutritionForDate = async (
   );
 };
 
+/**
+ * #1939, #1557: one record per manually-logged drink at its real logged_at
+ * timestamp, plus (if the user opted in to add_food_water_to_intake) one
+ * synthetic noon-anchored record for the water folded in from logged food,
+ * which has no ledger row of its own. Provider-synced (non-manual) ledger
+ * rows are never re-exported — same guard as the nutrition path's `!e.source`
+ * filter above, applied on the write side so it doesn't lean entirely on the
+ * read-side dedup.
+ */
+const buildHydrationRecords = async (
+  date: string,
+  summary: DailySummary,
+  version: number
+): Promise<{ records: HealthConnectRecord[]; deferred: boolean }> => {
+  const logEntries = await fetchWaterIntakeLog(date);
+  const records: HealthConnectRecord[] = [];
+
+  for (const entry of logEntries) {
+    if (entry.source !== 'manual') continue;
+    const record = waterLogEntryToHydrationRecord(entry, version);
+    if (record) records.push(record);
+  }
+
+  const foodMl = summary.waterIntakeBreakdown?.food_ml ?? 0;
+  let deferred = false;
+  if (foodMl > 0) {
+    const remainder = waterMlToHydrationRecord(date, foodMl, version);
+    if (remainder) {
+      records.push(remainder);
+    } else {
+      // Noon anchor still in the future for the synthetic remainder. Real
+      // ledger rows above never defer, but the remainder's absence would
+      // still understate the day, so treat the whole day as unresolved —
+      // matching the pre-per-entry deferral contract exactly.
+      deferred = true;
+    }
+  }
+
+  return { records, deferred };
+};
+
 const writeHydrationForDate = async (
   date: string,
   summary: DailySummary,
   version: number
 ): Promise<void> => {
-  const ml = summary.waterIntake ?? 0;
-  const record = waterMlToHydrationRecord(date, ml, version);
-  const records = record ? [record] : [];
+  let records: HealthConnectRecord[];
+  let deferred: boolean;
+  try {
+    ({ records, deferred } = await buildHydrationRecords(
+      date,
+      summary,
+      version
+    ));
+  } catch (error) {
+    addLog(
+      `[Writeback] Failed to load water log for ${date}: ${message(error)}`,
+      'ERROR'
+    );
+    return;
+  }
 
-  // A null record with water logged means the noon anchor is still in the
-  // future — the day's record can't be written yet. Bail before the signature
-  // check: storing the empty signature here would make every later pre-noon
-  // run report "unchanged" no matter how much the total moves.
-  if (ml > 0 && !record) {
+  if (deferred) {
     addLog(
       `[Writeback] Hydration ${date}: deferred — noon anchor still in the future`,
       'DEBUG'
@@ -216,7 +267,7 @@ const writeHydrationForDate = async (
   await saveWrittenIds('Hydration', date, recordIds(records));
   await saveWrittenSignature('Hydration', date, signature);
   addLog(
-    `[Writeback] Hydration ${date}: ${ml} ml -> wrote ${records.length} record(s)`,
+    `[Writeback] Hydration ${date}: wrote ${records.length} record(s)`,
     'INFO'
   );
 };

@@ -53,6 +53,27 @@ describe('FoodVariantSchema', () => {
       expect(result.data.serving_description).toBeUndefined();
     }
   });
+
+  it('accepts and round-trips caffeine_mg', () => {
+    const result = FoodVariantSchema.safeParse({
+      ...validVariant,
+      caffeine_mg: 63,
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.caffeine_mg).toBe(63);
+    }
+  });
+
+  it('accepts a variant with no caffeine_mg at all', () => {
+    const result = FoodVariantSchema.safeParse(validVariant);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.caffeine_mg).toBeUndefined();
+    }
+  });
 });
 
 describe('PaginationSchema', () => {

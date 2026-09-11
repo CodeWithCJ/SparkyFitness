@@ -6,6 +6,7 @@ import {
   authorizationStatusFor,
 } from '@kingstinct/react-native-healthkit';
 import { fetchDailySummary } from '../../../src/services/api/dailySummaryApi';
+import { fetchWaterIntakeLog } from '../../../src/services/api/measurementsApi';
 import {
   loadHealthPreference,
   saveHealthPreference,
@@ -19,6 +20,9 @@ import i18n, { initializeI18n } from '../../../src/localization/i18n';
 
 jest.mock('../../../src/services/api/dailySummaryApi', () => ({
   fetchDailySummary: jest.fn(),
+}));
+jest.mock('../../../src/services/api/measurementsApi', () => ({
+  fetchWaterIntakeLog: jest.fn(),
 }));
 jest.mock('../../../src/utils/loggedMealCollapse', () => ({
   resolveCollapsedFoodEntries: jest.fn((_date: string, entries: unknown) =>
@@ -43,6 +47,7 @@ const mockSaveQuantity = saveQuantitySample as jest.Mock;
 const mockDeleteObjects = deleteObjects as jest.Mock;
 const mockAuthStatus = authorizationStatusFor as jest.Mock;
 const mockSummary = fetchDailySummary as jest.Mock;
+const mockWaterLog = fetchWaterIntakeLog as jest.Mock;
 const mockLoadPref = loadHealthPreference as jest.Mock;
 const mockSavePref = saveHealthPreference as jest.Mock;
 
@@ -94,6 +99,24 @@ beforeEach(() => {
     ],
   });
   mockSummary.mockResolvedValue({ foodEntries: [foodEntry], waterIntake: 500 });
+  mockWaterLog.mockResolvedValue([]);
+});
+
+// One manually-logged drink at a real timestamp (#1939) — the default shape
+// a hydration test builds on top of.
+const manualLogEntry = (
+  waterMl = 500,
+  loggedAt = '2026-06-01T09:00:00.000Z'
+) => ({
+  id: 'log-1',
+  user_id: 'user-1',
+  entry_date: '2026-06-01',
+  water_ml: waterMl,
+  container_id: null,
+  container_name: null,
+  source: 'manual',
+  created_at: loggedAt,
+  logged_at: loggedAt,
 });
 
 describe('writebackPhase', () => {
@@ -255,6 +278,7 @@ describe('writebackPhase', () => {
       'writebackHydrationUuids:2026-06-01': ['old-water'],
     });
     mockSummary.mockResolvedValue({ foodEntries: [], waterIntake: 500 });
+    mockWaterLog.mockResolvedValue([manualLogEntry()]);
     mockDeleteObjects.mockRejectedValue(new Error('boom'));
     await writebackPhase(['2026-06-01']);
 
@@ -279,9 +303,10 @@ describe('writebackPhase', () => {
     nowSpy.mockRestore();
   });
 
-  it('writes a hydration sample and tracks its UUID', async () => {
+  it('writes a hydration sample per manually-logged drink at its real timestamp (#1939)', async () => {
     prefs({ writebackHydrationEnabled: true });
     mockSummary.mockResolvedValue({ foodEntries: [], waterIntake: 500 });
+    mockWaterLog.mockResolvedValue([manualLogEntry(500)]);
     await writebackPhase(['2026-06-01']);
     expect(mockSaveQuantity).toHaveBeenCalledWith(
       WATER,
@@ -294,14 +319,64 @@ describe('writebackPhase', () => {
     expect(store['writebackHydrationUuids:2026-06-01']).toEqual(['water-1']);
   });
 
-  it('deletes the previous water record when water drops to 0', async () => {
+  it('writes one sample per ledger row and never re-exports a provider-synced row', async () => {
+    prefs({ writebackHydrationEnabled: true });
+    mockSummary.mockResolvedValue({ foodEntries: [], waterIntake: 750 });
+    mockWaterLog.mockResolvedValue([
+      manualLogEntry(500, '2026-06-01T09:00:00.000Z'),
+      { ...manualLogEntry(250, '2026-06-01T15:00:00.000Z'), id: 'log-2' },
+      {
+        ...manualLogEntry(1000, '2026-06-01T08:00:00.000Z'),
+        id: 'log-3',
+        source: 'healthkit', // imported -- must not be re-exported
+      },
+    ]);
+    await writebackPhase(['2026-06-01']);
+    expect(mockSaveQuantity).toHaveBeenCalledTimes(2);
+    expect(mockSaveQuantity).not.toHaveBeenCalledWith(
+      WATER,
+      'mL',
+      1000,
+      expect.anything(),
+      expect.anything(),
+      expect.anything()
+    );
+  });
+
+  it('folds food-derived water into one synthetic noon-anchored sample (#1557, #1629)', async () => {
+    prefs({ writebackHydrationEnabled: true });
+    mockSummary.mockResolvedValue({
+      foodEntries: [],
+      waterIntake: 300,
+      waterIntakeBreakdown: {
+        water_ml: 300,
+        manual_ml: 0,
+        ledger_ml: 0,
+        food_ml: 300,
+      },
+    });
+    mockWaterLog.mockResolvedValue([]); // no ledger rows -- all from food
+    await writebackPhase(['2026-06-01']);
+    expect(mockSaveQuantity).toHaveBeenCalledTimes(1);
+    expect(mockSaveQuantity).toHaveBeenCalledWith(
+      WATER,
+      'mL',
+      300,
+      expect.any(Date),
+      expect.any(Date),
+      expect.anything()
+    );
+  });
+
+  it('deletes the previous water record when there is nothing left to write', async () => {
     prefs({
       writebackHydrationEnabled: true,
       'writebackHydrationUuids:2026-06-01': ['old-water'],
     });
     mockSummary.mockResolvedValue({ foodEntries: [], waterIntake: 0 });
+    mockWaterLog.mockResolvedValue([]);
     await writebackPhase(['2026-06-01']);
-    expect(mockSaveQuantity).not.toHaveBeenCalled(); // ml<=0 → no record
+    expect(mockSaveQuantity).not.toHaveBeenCalled();
     expect(mockDeleteObjects).toHaveBeenCalledWith(WATER, {
       uuids: ['old-water'],
     });
@@ -309,13 +384,26 @@ describe('writebackPhase', () => {
 
   // Regression: a pre-noon run used to store the empty signature, making every
   // later run that day report "unchanged — skipped" regardless of the total.
-  it('defers hydration without storing a signature while the noon anchor is in the future', async () => {
+  // Real ledger rows carry a concrete logged_at and never defer (this fixed
+  // the "hydration can't be written before noon" bug); only the synthetic
+  // food-water remainder still anchors to noon and can defer.
+  it('defers only the food-water remainder without storing a signature while the noon anchor is in the future', async () => {
     const d = new Date();
     d.setDate(d.getDate() + 1); // local tomorrow: noon anchor guaranteed future
     const tomorrow = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
     prefs({ writebackHydrationEnabled: true });
-    mockSummary.mockResolvedValue({ foodEntries: [], waterIntake: 750 });
+    mockSummary.mockResolvedValue({
+      foodEntries: [],
+      waterIntake: 750,
+      waterIntakeBreakdown: {
+        water_ml: 750,
+        manual_ml: 0,
+        ledger_ml: 0,
+        food_ml: 750,
+      },
+    });
+    mockWaterLog.mockResolvedValue([]);
     await writebackPhase([tomorrow]);
 
     expect(mockSaveQuantity).not.toHaveBeenCalled();

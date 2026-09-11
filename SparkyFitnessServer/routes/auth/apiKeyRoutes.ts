@@ -1,5 +1,6 @@
 import express from 'express';
 import { authenticate } from '../../middleware/authMiddleware.js';
+import { demoGuard } from '../../middleware/demoGuardMiddleware.js';
 import { auth } from '../../auth.js';
 const router = express.Router();
 // auth is required lazily within handlers to avoid early initialization issues during migrations
@@ -31,45 +32,50 @@ const router = express.Router();
  *       400:
  *         description: Invalid request body.
  */
-router.post('/user/generate-api-key', authenticate, async (req, res, next) => {
-  const { name, expiresIn } = req.body;
-  if (!name) {
-    return res.status(400).json({ error: 'Name is required' });
+router.post(
+  '/user/generate-api-key',
+  authenticate,
+  demoGuard,
+  async (req, res, next) => {
+    const { name, expiresIn } = req.body;
+    if (!name) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+    try {
+      // @ts-expect-error TS(2339): Property 'createApiKey' does not exist on type 'In... Remove this comment to see the full error message
+      const result = await auth.api.createApiKey({
+        // Better Auth's server API takes endpoint fields under `body`; the
+        // plugin declares /api-key/create with `body: createApiKeyBodySchema`.
+        // Passed flat, every field arrived undefined.
+        body: {
+          // Key the credential to the authenticated actor, never the switched
+          // context (req.userId). A family-sharing delegate acting on behalf of
+          // another user must not be able to mint/list/delete that user's API
+          // keys — doing so would let a narrow delegation (e.g. medications)
+          // escalate into full account takeover. Mirrors the isAdmin check in
+          // authMiddleware.ts, which also guards on the authenticated user.
+          //
+          // `userId` is a server-only field on the create schema, so this stays
+          // an explicit binding rather than a session lookup.
+          userId: req.authenticatedUserId,
+          name,
+          expiresIn: expiresIn || 31536000, // Default 1 year
+        },
+      });
+      res.status(201).json({
+        message: 'API key generated successfully',
+        apiKey: {
+          id: result.id,
+          key: result.key, // Only returned on creation
+          name: result.name,
+          createdAt: result.createdAt,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
   }
-  try {
-    // @ts-expect-error TS(2339): Property 'createApiKey' does not exist on type 'In... Remove this comment to see the full error message
-    const result = await auth.api.createApiKey({
-      // Better Auth's server API takes endpoint fields under `body`; the
-      // plugin declares /api-key/create with `body: createApiKeyBodySchema`.
-      // Passed flat, every field arrived undefined.
-      body: {
-        // Key the credential to the authenticated actor, never the switched
-        // context (req.userId). A family-sharing delegate acting on behalf of
-        // another user must not be able to mint/list/delete that user's API
-        // keys — doing so would let a narrow delegation (e.g. medications)
-        // escalate into full account takeover. Mirrors the isAdmin check in
-        // authMiddleware.ts, which also guards on the authenticated user.
-        //
-        // `userId` is a server-only field on the create schema, so this stays
-        // an explicit binding rather than a session lookup.
-        userId: req.authenticatedUserId,
-        name,
-        expiresIn: expiresIn || 31536000, // Default 1 year
-      },
-    });
-    res.status(201).json({
-      message: 'API key generated successfully',
-      apiKey: {
-        id: result.id,
-        key: result.key, // Only returned on creation
-        name: result.name,
-        createdAt: result.createdAt,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+);
 /**
  * @swagger
  * /identity/user/api-key/{apiKeyId}:
@@ -92,6 +98,7 @@ router.post('/user/generate-api-key', authenticate, async (req, res, next) => {
 router.delete(
   '/user/api-key/:apiKeyId',
   authenticate,
+  demoGuard,
   async (req, res, next) => {
     const { apiKeyId } = req.params;
     try {

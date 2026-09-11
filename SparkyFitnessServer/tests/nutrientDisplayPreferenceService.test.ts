@@ -86,6 +86,27 @@ describe('nutrientDisplayPreferenceService.getNutrientDisplayPreferences', () =>
     expect(diaryDesktopPref).toBeUndefined();
   });
 
+  it('includes caffeine_mg in both the default (summary) and predefined (food_database) nutrient lists', async () => {
+    // @ts-expect-error mocked
+    nutrientDisplayPreferenceRepository.getNutrientDisplayPreferences.mockResolvedValue(
+      []
+    );
+
+    const result =
+      await nutrientDisplayPreferenceService.getNutrientDisplayPreferences(
+        'user-1'
+      );
+
+    const summaryPref = result.find(
+      (p) => p.view_group === 'summary' && p.platform === 'desktop'
+    );
+    const foodDbPref = result.find(
+      (p) => p.view_group === 'food_database' && p.platform === 'desktop'
+    );
+    expect(summaryPref?.visible_nutrients).toContain('caffeine_mg');
+    expect(foodDbPref?.visible_nutrients).toContain('caffeine_mg');
+  });
+
   it('still returns the 12 standard view_group x platform rows plus the mobile-only diary row', async () => {
     // @ts-expect-error mocked
     nutrientDisplayPreferenceRepository.getNutrientDisplayPreferences.mockResolvedValue(

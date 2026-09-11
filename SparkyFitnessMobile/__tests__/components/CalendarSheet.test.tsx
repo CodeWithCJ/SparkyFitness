@@ -30,6 +30,7 @@ const pickerProps: {
   onMonthChange?: (month: number) => void;
   onYearChange?: (year: number) => void;
   initialView?: string;
+  components?: { Day?: (day: unknown) => React.ReactNode };
 } = {};
 let mockMountedInitialView: string | undefined;
 let mockMountCount = 0;
@@ -85,6 +86,9 @@ jest.mock('react-native-ui-datepicker', () => {
     pickerProps.onMonthChange = props.onMonthChange;
     pickerProps.onYearChange = props.onYearChange;
     pickerProps.initialView = mockMountedInitialView;
+    pickerProps.components = props.components as {
+      Day?: (day: unknown) => React.ReactNode;
+    };
   };
 
   return {
@@ -461,5 +465,92 @@ describe('CalendarSheet', () => {
     fireEvent.press(getByLabelText('cycleCalendar.selectYear'));
     expect(mockMountCount).toBe(3); // remount occurred
     expect(mockMountedInitialView).toBe('day'); // NOT stuck in year grid
+  });
+  describe('markedDates', () => {
+    /**
+     * The library types CalendarDay.date as `string`, but it actually hands the
+     * override its internal dayjs value. This models that: a valueOf-bearing
+     * object with no string methods, so reading it as a string would throw here
+     * exactly as it would on device.
+     */
+    const dayValue = (year: number, month: number, date: number) => {
+      const instant = new Date(year, month - 1, date, 12, 0).getTime();
+      return { valueOf: () => instant };
+    };
+
+    const calendarDay = (
+      year: number,
+      month: number,
+      date: number,
+      overrides: Record<string, unknown> = {}
+    ) => ({
+      text: String(date),
+      number: date,
+      date: dayValue(year, month, date),
+      isDisabled: false,
+      isCurrentMonth: true,
+      isToday: false,
+      isSelected: false,
+      ...overrides,
+    });
+
+    const renderDay = (
+      markedDates: string[],
+      day: ReturnType<typeof calendarDay>
+    ) => {
+      render(
+        <CalendarSheet
+          selectedDate="2026-08-23"
+          onSelectDate={jest.fn()}
+          markedDates={markedDates}
+        />
+      );
+      const Day = pickerProps.components?.Day;
+      if (!Day) throw new Error('expected a Day override to be supplied');
+      return render(<>{Day(day)}</>);
+    };
+
+    it('marks a day that has content', () => {
+      const { queryByTestId } = renderDay(
+        ['2026-08-20'],
+        calendarDay(2026, 8, 20)
+      );
+
+      expect(queryByTestId('calendar-day-marked')).toBeTruthy();
+    });
+
+    it('leaves other days unmarked', () => {
+      const { queryByTestId } = renderDay(
+        ['2026-08-20'],
+        calendarDay(2026, 8, 21)
+      );
+
+      expect(queryByTestId('calendar-day-marked')).toBeNull();
+      expect(queryByTestId('calendar-day-unmarked')).toBeTruthy();
+    });
+
+    it('still renders the day number', () => {
+      const { getByText } = renderDay(['2026-08-20'], calendarDay(2026, 8, 20));
+
+      expect(getByText('20')).toBeTruthy();
+    });
+
+    it('supplies no Day override when there is nothing to mark', () => {
+      // Ten screens already use this sheet; without marks they must keep the
+      // library's own cell rather than this reimplementation of it.
+      render(
+        <CalendarSheet selectedDate="2026-08-23" onSelectDate={jest.fn()} />
+      );
+      expect(pickerProps.components?.Day).toBeUndefined();
+
+      render(
+        <CalendarSheet
+          selectedDate="2026-08-23"
+          onSelectDate={jest.fn()}
+          markedDates={[]}
+        />
+      );
+      expect(pickerProps.components?.Day).toBeUndefined();
+    });
   });
 });

@@ -53,6 +53,10 @@ export const HC_NUTRIENT_COLUMNS: {
   { hcField: 'iron', column: 'iron', factor: G_TO_MG },
   { hcField: 'vitaminC', column: 'vitamin_c', factor: G_TO_MG },
   { hcField: 'vitaminA', column: 'vitamin_a', factor: G_TO_MCG },
+  // #1958: caffeine rides the existing food-correlation/Nutrition-record path
+  // like every other nutrient here, rather than a bespoke write. Health
+  // Connect's NutritionRecord has a native `caffeine` Mass field.
+  { hcField: 'caffeine', column: 'caffeine_mg', factor: G_TO_MG },
 ];
 
 // Strip float noise (4.949999999999999 -> 4.95). Significant figures (not fixed

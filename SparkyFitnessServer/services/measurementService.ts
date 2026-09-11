@@ -2,18 +2,46 @@ import { log } from '../config/logging.js';
 import measurementRepository from '../models/measurementRepository.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import {
+  pickMealTypeForTime,
+  userHourMinute,
   instantToDay,
   instantHourMinute,
   instantToDayWithOffset,
   instantHourMinuteWithOffset,
   isValidTimeZone,
   isDayString,
+  foodVolumeToMl,
 } from '@workspace/shared';
 import { userAge } from '../utils/dateHelpers.js';
 import userRepository from '../models/userRepository.js';
 import sleepRepository from '../models/sleepRepository.js';
 import exerciseEntryDb from '../models/exerciseEntry.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
+import foodRepository from '../models/foodRepository.js';
+import mealTypeRepository from '../models/mealType.js';
+import { buildFoodEntrySnapshot } from '../utils/foodEntrySnapshot.js';
+import type {
+  VariantNutritionSource,
+  FoodNameSource,
+} from '../utils/foodEntrySnapshot.js';
+import type { WaterContainerResponse } from '@workspace/shared';
+import hydrationTotalsService from './hydrationTotalsService.js';
+
+/**
+ * The parts of a linked container's food and variant this path actually reads.
+ *
+ * models/food.ts still returns untyped rows; rather than carry that `any`
+ * forward, these name the fields used here and stay assignable to
+ * buildFoodEntrySnapshot's inputs.
+ */
+interface LinkedContainerFood extends FoodNameSource {
+  id: string;
+  default_variant?: { id: string } | null;
+}
+
+interface LinkedContainerVariant extends VariantNutritionSource {
+  id: string;
+}
 import {
   resolveHandler,
   customMeasurementHandler,
@@ -478,16 +506,51 @@ async function getWaterIntake(
   date: string
 ) {
   try {
-    const waterData = await measurementRepository.getWaterIntakeByDate(
+    return await hydrationTotalsService.resolveWaterTotalsForDate(
       targetUserId,
+      authenticatedUserId,
       date
     );
-    // waterData will be { water_ml: SUM(...) } from the new repository logic
-    return waterData || { water_ml: 0 };
   } catch (error) {
     log(
       'error',
       `Error fetching water intake for user ${targetUserId} on ${date} by ${authenticatedUserId}:`,
+      error
+    );
+    throw error;
+  }
+}
+interface WaterTotalRow {
+  entry_date: string;
+  total_ml: string | number;
+}
+
+interface WaterIntakeDayTotal {
+  entry_date: string;
+  water_ml: number;
+}
+
+async function getWaterIntakeByDateRange(
+  authenticatedUserId: string,
+  targetUserId: string,
+  startDate: string,
+  endDate: string
+): Promise<WaterIntakeDayTotal[]> {
+  try {
+    const waterTotals = await measurementRepository.getWaterTotalsByDateRange(
+      targetUserId,
+      startDate,
+      endDate
+    );
+    // total_ml is a SUM, so pg hands it back as a string; normalize here so no caller parses.
+    return (waterTotals as WaterTotalRow[]).map((row) => ({
+      entry_date: row.entry_date,
+      water_ml: Number(row.total_ml) || 0,
+    }));
+  } catch (error) {
+    log(
+      'error',
+      `Error fetching water intake range for user ${targetUserId} from ${startDate} to ${endDate} by ${authenticatedUserId}:`,
       error
     );
     throw error;
@@ -501,61 +564,196 @@ async function upsertWaterIntake(
   containerId: number | null
 ) {
   try {
-    // 2. Determine amount per drink based on container
-    let amountPerDrink;
+    let amountPerDrink: number;
     let containerName: string | null = null;
+    let containerRow: WaterContainerResponse | null = null;
+
     if (containerId) {
-      const container = await waterContainerRepository.getWaterContainerById(
+      containerRow = await waterContainerRepository.getWaterContainerById(
         containerId,
         authenticatedUserId
       );
-      if (container) {
-        // Stored rows can carry servings_per_container = 0; clamp so the
-        // division can't produce Infinity
+      if (containerRow) {
         const servings = Math.max(
           1,
-          Number(container.servings_per_container) || 1
+          Number(containerRow.servings_per_container) || 1
         );
-        amountPerDrink = Number(container.volume) / servings;
-        containerName = container.name || null;
+        amountPerDrink = Number(containerRow.volume) / servings;
+        containerName = containerRow.name || null;
       } else {
-        // Fallback to default if container not found
         log(
           'warn',
           `Container with ID ${containerId} not found for user ${authenticatedUserId}. Using default amount per drink.`
         );
         amountPerDrink = 2000 / 8; // Default: 2000ml / 8 servings
-        containerId = null; // Reset to null so we don't violate FK constraints
+        containerId = null;
       }
     } else {
-      // Use default amount per drink if no container ID is provided
       amountPerDrink = 2000 / 8; // Default: 2000ml / 8 servings
     }
-    // 5. Log individual drink(s) into water_intake_entries.
+
+    const removedFoodEntryIds: string[] = [];
+
     if (changeDrinks > 0) {
-      // 5a. Additions: insert new log entries and update daily total
-      await measurementRepository.incrementWaterData(
-        authenticatedUserId,
-        actingUserId,
-        changeDrinks * amountPerDrink,
-        entryDate,
-        'manual'
-      );
+      // 5a. Additions: check if container is linked to a food (#2115)
+      let linkedFood: LinkedContainerFood | null = null;
+      let linkedVariant: LinkedContainerVariant | null = null;
+      let targetMealTypeId: string | null = null;
+
+      // How much of the linked food one press logs. Defaults to 1 so a
+      // container saved before this column existed behaves exactly as before.
+      const linkedQuantity =
+        Number(containerRow?.linked_quantity) > 0
+          ? Number(containerRow?.linked_quantity)
+          : 1;
+      // A volume on a LINKED container is an explicit override meaning "the
+      // glass holds more liquid than the food itself" (concentrate, tablet,
+      // powder). Unlinked containers always carry a volume, so this flag is
+      // only consulted inside the linked branch below.
+      const hasVolumeOverride =
+        Number(containerRow?.volume) > 0 && !!containerRow?.linked_food_id;
+
+      if (containerRow && containerRow.linked_food_id) {
+        linkedFood = await foodRepository.getFoodById(
+          containerRow.linked_food_id,
+          authenticatedUserId
+        );
+        if (linkedFood) {
+          const variantId =
+            containerRow.linked_variant_id || linkedFood.default_variant?.id;
+          if (variantId) {
+            linkedVariant = await foodRepository.getFoodVariantById(
+              variantId,
+              authenticatedUserId
+            );
+          }
+        }
+        if (containerRow.linked_meal_type_id) {
+          // An explicit link means "always this bucket" -- e.g. a custom
+          // "Drinks" meal type the user wants every drink to land in.
+          targetMealTypeId = containerRow.linked_meal_type_id;
+        } else {
+          // #2115: otherwise attribute the drink to when it actually happened.
+          // The same coffee is breakfast at 08:00 and dinner at 20:00, so a
+          // fixed bucket misreports a drink taken several times a day. The
+          // previous fallback took getAllMealTypes()[0], which put every drink
+          // all day into the first meal type.
+          //
+          // pickMealTypeForTime wraps the rule the diary, the photo estimate
+          // and mobile all use, so a drink pressed from a container lands in
+          // the same meal as the same food logged by hand a minute earlier.
+          const mealTypes: Array<{
+            id: string;
+            name: string;
+            default_time?: string | null;
+          }> = await mealTypeRepository.getAllMealTypes(authenticatedUserId);
+          // The meal times are wall-clock times in the user's own day, so
+          // "now" has to be read in their zone. Taking the server's clock put
+          // a 15:16 drink for a UTC-4 user at 19:16, a whole meal away.
+          const tz = await loadUserTimezone(authenticatedUserId);
+          targetMealTypeId =
+            pickMealTypeForTime(mealTypes, userHourMinute(tz))?.id ?? null;
+        }
+      }
+
       for (let i = 0; i < changeDrinks; i++) {
+        let createdFoodEntryId: string | null = null;
+        let drinkWaterMl = amountPerDrink;
+        const hydrationFactor =
+          containerRow?.hydration_factor !== undefined &&
+          containerRow?.hydration_factor !== null
+            ? Number(containerRow.hydration_factor)
+            : 1.0;
+
+        if (linkedFood && linkedVariant) {
+          const snapshot = buildFoodEntrySnapshot(linkedFood, linkedVariant);
+          const foodEntryInput = {
+            user_id: authenticatedUserId,
+            food_id: linkedFood.id,
+            variant_id: linkedVariant.id,
+            meal_type_id: targetMealTypeId,
+            // #2115: one press logs linked_quantity servings of the variant, so
+            // its calories, caffeine and alcohol all scale with the container.
+            // This was hardcoded to 1, leaving no way to say "my mug is two
+            // servings" and making servings_per_container meaningless here.
+            quantity: linkedQuantity,
+            unit: linkedVariant.serving_unit || 'serving',
+            entry_date: entryDate,
+            food_entry_meal_id: null,
+            meal_plan_template_id: null,
+            ...snapshot,
+          };
+
+          const createdEntry = await foodRepository.createFoodEntry(
+            foodEntryInput,
+            actingUserId
+          );
+          if (createdEntry?.id) {
+            createdFoodEntryId = createdEntry.id;
+          }
+
+          // Precedence, highest first:
+          //   1. the container's own volume, when the user set it as an
+          //      override. The food is then not the whole drink -- a cordial
+          //      concentrate, an electrolyte tablet or a powder in a 500 ml
+          //      glass -- and only the glass knows the hydration. This used to
+          //      sit LAST, so a volume typed on a linked container was silently
+          //      discarded whenever the food had any water of its own.
+          //   2. the food's own water, scaled the way every nutrient is: the
+          //      column holds the amount per serving_size, so consuming
+          //      linked_quantity of it is value * quantity / serving_size --
+          //      the same formula the diary and reports use. Omitting the
+          //      divisor turned a 250 ml drink holding 22 ml of water into
+          //      5500 ml, and looked plausible only at quantity 1.
+          //   3. the logged amount read as a volume, for foods served in ml/l.
+          //      No divisor there: the quantity is already an absolute amount
+          //      in a volume unit.
+          if (hasVolumeOverride) {
+            drinkWaterMl = amountPerDrink * hydrationFactor;
+          } else {
+            const foodExplicitWater = Number(linkedVariant.water_ml);
+            if (Number.isFinite(foodExplicitWater) && foodExplicitWater > 0) {
+              const servingSize = Number(linkedVariant.serving_size) || 0;
+              const consumedWater =
+                servingSize > 0
+                  ? (foodExplicitWater * linkedQuantity) / servingSize
+                  : foodExplicitWater;
+              drinkWaterMl = consumedWater * hydrationFactor;
+            } else {
+              const volFallback = foodVolumeToMl(
+                linkedQuantity,
+                linkedVariant.serving_unit || ''
+              );
+              drinkWaterMl =
+                volFallback !== null
+                  ? volFallback * hydrationFactor
+                  : amountPerDrink * hydrationFactor;
+            }
+          }
+        }
+
         await measurementRepository.insertWaterIntakeLog(
           authenticatedUserId,
           actingUserId,
           entryDate,
-          amountPerDrink,
+          drinkWaterMl,
           containerId || null,
           containerName,
-          'manual'
+          'manual',
+          null,
+          createdFoodEntryId,
+          hydrationFactor
         );
       }
+
+      await measurementRepository.recomputeWaterAggregateForUser(
+        authenticatedUserId,
+        actingUserId,
+        entryDate,
+        'manual'
+      );
     } else if (changeDrinks < 0) {
-      // 5b. Decrements: delete the most recent log entries and subtract
-      // their *actual* water_ml from the daily total. This avoids drift
-      // when log rows were recorded with different containers.
+      // 5b. Decrements: delete the most recent log entries and their linked food entries
       const logEntries = await measurementRepository.getWaterIntakeLogByDate(
         authenticatedUserId,
         entryDate,
@@ -563,35 +761,53 @@ async function upsertWaterIntake(
       );
       const requestedDrinks = Math.abs(changeDrinks);
       const entriesToRemove = Math.min(requestedDrinks, logEntries.length);
-      let actualMlRemoved = 0;
+
       for (let i = 0; i < entriesToRemove; i++) {
         const entry = logEntries[i];
         if (entry) {
-          actualMlRemoved += Number(entry.water_ml);
-          await measurementRepository.deleteWaterIntakeLog(
+          const deleted = await measurementRepository.deleteWaterIntakeLog(
             entry.id,
             authenticatedUserId
           );
+          if (deleted?.food_entry_id) {
+            removedFoodEntryIds.push(deleted.food_entry_id);
+            await foodRepository
+              .deleteFoodEntry(deleted.food_entry_id, authenticatedUserId)
+              .catch((err: unknown) => {
+                log(
+                  'warn',
+                  `Could not delete linked food entry ${deleted.food_entry_id}:`,
+                  err
+                );
+              });
+          }
         }
       }
-      // If there weren't enough individual log entries, remove remaining requested volume
-      if (entriesToRemove < requestedDrinks) {
-        const remainingDrinks = requestedDrinks - entriesToRemove;
-        actualMlRemoved += remainingDrinks * amountPerDrink;
-      }
-      await measurementRepository.incrementWaterData(
+      await measurementRepository.recomputeWaterAggregateForUser(
         authenticatedUserId,
         actingUserId,
-        -actualMlRemoved,
         entryDate,
         'manual'
       );
     }
-    // Return the latest aggregated record across all sources after the upsert
-    const finalRecord = await measurementRepository.getWaterIntakeByDate(
+
+    // Return the latest totals after the upsert, through the same owner the GET
+    // uses. Reading the ledger aggregate directly here made this endpoint
+    // report a water_ml that excluded food-derived water while GET
+    // /water-intake included it -- the same field, two values, for any user who
+    // had opted in to add_food_water_to_intake.
+    const finalRecord = await hydrationTotalsService.resolveWaterTotalsForDate(
       authenticatedUserId,
+      actingUserId,
       entryDate
     );
+
+    if (removedFoodEntryIds.length > 0) {
+      return {
+        ...finalRecord,
+        removedFoodEntryIds,
+      };
+    }
     return finalRecord;
   } catch (error) {
     log(
@@ -1718,11 +1934,16 @@ async function deleteCustomMeasurementEntry(authenticatedUserId: any, id: any) {
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMostRecentMeasurement(userId: any, measurementType: any) {
+async function getMostRecentMeasurement(
+  userId: any,
+  measurementType: any,
+  onDate?: string
+) {
   try {
     const measurement = await measurementRepository.getMostRecentMeasurement(
       userId,
-      measurementType
+      measurementType,
+      onDate
     );
     return measurement;
   } catch (error) {
@@ -1739,6 +1960,7 @@ export const getSleepEntriesByUserIdAndDateRange =
 export const deleteSleepEntry = sleepRepository.deleteSleepEntry;
 export { processHealthData };
 export { getWaterIntake };
+export { getWaterIntakeByDateRange };
 export { upsertWaterIntake };
 export { logWaterIntakeAmount };
 export { getWaterIntakeEntryById };
@@ -1818,11 +2040,25 @@ async function deleteWaterIntakeLogEntry(
       throw new Error('Water intake log entry not found.');
     }
 
-    // 3. Subtract the deleted amount from the daily total
-    await measurementRepository.incrementWaterData(
+    // 3. If linked to a food entry, delete it as well (#2115)
+    if (deleted.food_entry_id) {
+      await foodRepository
+        .deleteFoodEntry(deleted.food_entry_id, authenticatedUserId)
+        .catch((err: unknown) => {
+          log(
+            'warn',
+            `Could not delete linked food entry ${deleted.food_entry_id}:`,
+            err
+          );
+        });
+    }
+
+    // 4. Recompute the daily total from what's left in water_intake_entries
+    // (SUM-from-source-of-truth), rather than subtracting the deleted row's
+    // amount as an incremental delta.
+    await measurementRepository.recomputeWaterAggregateForUser(
       authenticatedUserId,
       actingUserId,
-      -Number(deleted.water_ml),
       deleted.entry_date,
       deleted.source || 'manual'
     );
@@ -1866,6 +2102,7 @@ export { updateWaterIntakeLogTime };
 export default {
   processHealthData,
   getWaterIntake,
+  getWaterIntakeByDateRange,
   upsertWaterIntake,
   logWaterIntakeAmount,
   getWaterIntakeEntryById,

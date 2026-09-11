@@ -50,6 +50,9 @@ export function loggedMealToFoodEntry(meal: FoodEntryMeal): FoodEntry {
     vitamin_c: meal.vitamin_c,
     calcium: meal.calcium,
     iron: meal.iron,
+    caffeine_mg: meal.caffeine_mg,
+    water_ml: meal.water_ml,
+    alcohol_g: meal.alcohol_g,
     glycemic_index: meal.glycemic_index,
     custom_nutrients: meal.custom_nutrients,
   };

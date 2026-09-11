@@ -515,6 +515,8 @@ describe('measured BMR override', () => {
     activity_level: 'not_much',
     calorie_goal_adjustment_mode: 'dynamic' as const,
     include_bmr_in_net_calories: true,
+    // The override is opt-in; this block exercises it turned on.
+    use_external_bmr: true,
   };
 
   test('prefers a check-in measured BMR over the formula calculation', () => {
@@ -530,8 +532,10 @@ describe('measured BMR override', () => {
     expect(balance.burned).toBe(1850);
   });
 
-  // A bad sample must not be able to zero out the day's target.
-  test.each([299, 10001, 0, -50])(
+  // A bad sample must not be able to zero out the day's target, nor become the RMR
+  // safety floor. 350 is the reading from issue #2395 that the old 300-10000 range
+  // let through and 600-6000 rejects.
+  test.each([599, 6001, 350, 0, -50])(
     'keeps the formula BMR when the check-in value %s is out of bounds',
     (value) => {
       const balance = computeCalorieBalance(
@@ -546,7 +550,27 @@ describe('measured BMR override', () => {
     }
   );
 
-  test.each([300, 10000])('accepts the boundary value %s', (value) => {
+  // Relative band: a reading can sit inside the absolute bounds and still be
+  // implausible for a particular body. BMR here is the formula estimate.
+  test.each([
+    [Math.round(BMR * 0.5), 'far below the formula estimate'],
+    [Math.round(BMR * 1.9), 'far above the formula estimate'],
+  ])('keeps the formula BMR when the measured value %s is %s', (value) => {
+    const balance = computeCalorieBalance(
+      inputs({
+        measurements: { weight: 80, height: 180, bmr: value },
+        userPreferences: prefs,
+      })
+    );
+
+    expect(balance.bmr).toBe(BMR);
+    expect(balance.bmrSource).toBe('formula');
+  });
+
+  test.each([
+    [Math.round(BMR * 0.7), 'below but within the band'],
+    [Math.round(BMR * 1.5), 'above but within the band'],
+  ])('accepts a measured value %s that is %s', (value) => {
     const balance = computeCalorieBalance(
       inputs({
         measurements: { weight: 80, height: 180, bmr: value },
@@ -557,6 +581,44 @@ describe('measured BMR override', () => {
     expect(balance.bmr).toBe(value);
     expect(balance.bmrSource).toBe('measured');
   });
+
+  test.each([BMR * 0.6, BMR * 1.6])(
+    'accepts the ratio boundary value %s',
+    (value) => {
+      const balance = computeCalorieBalance(
+        inputs({
+          measurements: { weight: 80, height: 180, bmr: value },
+          userPreferences: prefs,
+        })
+      );
+
+      expect(balance.bmr).toBe(value);
+      expect(balance.bmrSource).toBe('measured');
+    }
+  );
+
+  // With no profile there is no formula estimate to compare against, so only the
+  // absolute bounds apply. They must stay meaningful on their own: this is the
+  // path where the old 300-10000 range let issue #2395's 350 kcal reading through.
+  test.each([
+    [600, 'measured'],
+    [6000, 'measured'],
+    [350, 'formula'],
+    [9000, 'formula'],
+  ])(
+    'falls back to the absolute bounds without a formula estimate: %s',
+    (value, expectedSource) => {
+      const balance = computeCalorieBalance(
+        inputs({
+          measurements: { weight: 80, height: 180, bmr: value },
+          userPreferences: prefs,
+          userProfile: null,
+        })
+      );
+
+      expect(balance.bmrSource).toBe(expectedSource);
+    }
+  );
 
   test('falls back to formula BMR when check-in BMR is absent', () => {
     const balance = computeCalorieBalance(

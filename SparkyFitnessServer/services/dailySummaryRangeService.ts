@@ -59,12 +59,16 @@ interface CheckInRow {
 /**
  * Body-composition fields the BMR formula reads. Each is carried forward on its own,
  * mirroring the per-field subselects in `getLatestCheckInMeasurementsOnOrBeforeDate`.
+ *
+ * `bmr` is deliberately absent: a measured BMR describes the day it was recorded, so
+ * it is resolved per date below rather than carried. Leaving it here reported a
+ * single Sept 1 reading as `measured` for Sept 2 and 3 as well, which put this
+ * endpoint (Reports) and the Diary in disagreement about the same day.
  */
 const MEASUREMENT_FIELDS = [
   'weight',
   'height',
   'body_fat_percentage',
-  'bmr',
 ] as const satisfies readonly (keyof CalorieBalanceMeasurements)[];
 
 /**
@@ -83,6 +87,11 @@ function enumerateDays(startDate: string, endDate: string): string[] {
   return days;
 }
 
+/**
+ * Returns a balance for every day in the inclusive range without per-day queries.
+ * Step estimates can use the earliest later weight or height when no prior value
+ * exists; body-composition inputs for BMR remain prior-only.
+ */
 export async function getDailySummaryRange({
   actorUserId,
   targetUserId,
@@ -131,7 +140,7 @@ export async function getDailySummaryRange({
       : null,
     includeCheckin
       ? measurementRepository
-          .getLatestWeightHeight(targetUserId)
+          .getLatestWeightHeight(targetUserId, startDate)
           .catch(() => ({ weightKg: null, heightCm: null }))
       : { weightKg: null, heightCm: null },
     userRepository.getUserProfile(targetUserId),
@@ -202,8 +211,18 @@ export async function getDailySummaryRange({
     height: (seedMeasurement as CalorieBalanceMeasurements | null)?.height,
     body_fat_percentage: (seedMeasurement as CalorieBalanceMeasurements | null)
       ?.body_fat_percentage,
-    bmr: (seedMeasurement as CalorieBalanceMeasurements | null)?.bmr,
   };
+
+  // Exact-date lookup for the one field that is not carried forward.
+  const bmrByDate = new Map<string, string | number | null>();
+  for (const row of measurementsAsc) {
+    if (row.bmr !== null && row.bmr !== undefined && Number(row.bmr) > 0) {
+      bmrByDate.set(
+        String(row.entry_date).slice(0, 10),
+        row.bmr as string | number
+      );
+    }
+  }
 
   const days: DailyCalorieBalanceRow[] = [];
 
@@ -235,8 +254,8 @@ export async function getDailySummaryRange({
       ? resolveBackgroundStepCalories({
           totalSteps,
           activitySteps: exercise.activitySteps,
-          weightKg: latestWeightHeight.weightKg,
-          heightCm: latestWeightHeight.heightCm,
+          weightKg: Number(carried.weight ?? latestWeightHeight.weightKg),
+          heightCm: Number(carried.height ?? latestWeightHeight.heightCm),
         })
       : 0;
 
@@ -261,7 +280,7 @@ export async function getDailySummaryRange({
         adjustedGoalCalories: Number(dayGoals?.calories) || 2000,
         userProfile,
         userPreferences,
-        measurements: carried,
+        measurements: { ...carried, bmr: bmrByDate.get(date) ?? null },
         ...deviceProjectionSnapshot,
       }),
     });

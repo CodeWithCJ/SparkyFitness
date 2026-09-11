@@ -140,6 +140,19 @@ export function userHourMinute(tz: string): { hour: number; minute: number } {
   return instantHourMinute(new Date(), tz);
 }
 
+/**
+ * The current wall clock in a timezone as "HH:MM".
+ *
+ * Anything that compares "now" against a user's configured times -- meal
+ * default_time, an entry-time prefill -- needs the clock in the user's own
+ * zone, not the process's. Reading the server clock instead put a 15:16 drink
+ * for a UTC-4 user at 19:16, which lands on a different meal.
+ */
+export function clockInZone(tz: string): string {
+  const { hour, minute } = userHourMinute(tz);
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
 /** Returns the hour and minute of an instant in the given timezone. */
 export function instantHourMinute(
   ts: Date | string | number,

@@ -109,6 +109,9 @@ export interface CreateFoodVariantPayload {
   cholesterol?: number;
   vitamin_a?: number;
   vitamin_c?: number;
+  caffeine_mg?: number;
+  water_ml?: number;
+  alcohol_g?: number;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
   // AI-Assisted Unit Conversions provenance — optional; server defaults
@@ -153,6 +156,9 @@ export interface SaveFoodPayload {
   cholesterol?: number;
   vitamin_a?: number;
   vitamin_c?: number;
+  caffeine_mg?: number;
+  water_ml?: number;
+  alcohol_g?: number;
   is_custom?: boolean;
   is_quick_food?: boolean;
   is_default?: boolean;
@@ -228,6 +234,9 @@ export interface UpdateFoodVariantPayload {
   cholesterol?: number;
   vitamin_a?: number;
   vitamin_c?: number;
+  caffeine_mg?: number;
+  water_ml?: number;
+  alcohol_g?: number;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
 }

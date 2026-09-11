@@ -1,11 +1,15 @@
+import type { PoolClient } from 'pg';
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
+import foodRepository from './foodMisc.js';
+import preferenceRepository from './preferenceRepository.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
 import {
   resolveBackgroundStepCalories,
   isDayString,
   isValidTimeZone,
+  localDateToDay,
   todayInZone,
 } from '@workspace/shared';
 
@@ -603,7 +607,9 @@ async function getLatestCheckInMeasurementsOnOrBeforeDate(
          (SELECT muscle_mass_kg FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND muscle_mass_kg IS NOT NULL AND muscle_mass_kg > 0 ORDER BY entry_date DESC LIMIT 1) as muscle_mass_kg,
          (SELECT bone_mass_kg FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND bone_mass_kg IS NOT NULL AND bone_mass_kg > 0 ORDER BY entry_date DESC LIMIT 1) as bone_mass_kg,
          (SELECT body_water_percentage FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND body_water_percentage IS NOT NULL AND body_water_percentage > 0 ORDER BY entry_date DESC LIMIT 1) as body_water_percentage,
-         (SELECT bmr FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND bmr IS NOT NULL AND bmr > 0 ORDER BY entry_date DESC LIMIT 1) as bmr,
+         -- Exact date, like steps: a measured BMR applies to the day it was taken
+         -- and no other, so days without a reading fall back to the user's formula.
+         (SELECT bmr FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2 AND bmr IS NOT NULL AND bmr > 0 LIMIT 1) as bmr,
          le.created_at,
          le.updated_at,
          le.created_by_user_id,
@@ -1361,30 +1367,28 @@ async function deleteCustomMeasurement(id: any, userId: any) {
     client.release();
   }
 }
-/**
- * Weight and height for step-calorie estimation.
- *
- * Deliberately whole-table latest rather than latest-on-or-before the target day. The
- * Diary has always read it this way, and the acceptance criterion for #2094 is that
- * Reports agrees with the Diary -- date-scoping it here would make the two disagree again
- * for every day after a weight change. Note that BMR in the same balance *does* use
- * on-or-before, so the two are inconsistent with each other. Tracked separately; do not
- * "fix" one without the other.
- */
+/** Prefer prior measurements, falling back independently to the earliest later value. */
 async function getLatestWeightHeight(
-  userId: string
+  userId: string,
+  date: string
 ): Promise<{ weightKg: number | null; heightCm: number | null }> {
   const client = await getClient(userId);
   try {
     const result = await client.query(
       `SELECT
-         (SELECT weight FROM check_in_measurements
-           WHERE user_id = $1 AND weight IS NOT NULL AND weight > 0
-           ORDER BY entry_date DESC, updated_at DESC LIMIT 1) AS weight,
-         (SELECT height FROM check_in_measurements
-           WHERE user_id = $1 AND height IS NOT NULL AND height > 0
-           ORDER BY entry_date DESC, updated_at DESC LIMIT 1) AS height`,
-      [userId]
+         COALESCE((SELECT weight FROM check_in_measurements
+           WHERE user_id = $1 AND entry_date <= $2 AND weight IS NOT NULL AND weight > 0
+           ORDER BY entry_date DESC, updated_at DESC LIMIT 1),
+           (SELECT weight FROM check_in_measurements
+           WHERE user_id = $1 AND entry_date > $2 AND weight IS NOT NULL AND weight > 0
+           ORDER BY entry_date ASC, updated_at DESC LIMIT 1)) AS weight,
+         COALESCE((SELECT height FROM check_in_measurements
+           WHERE user_id = $1 AND entry_date <= $2 AND height IS NOT NULL AND height > 0
+           ORDER BY entry_date DESC, updated_at DESC LIMIT 1),
+           (SELECT height FROM check_in_measurements
+           WHERE user_id = $1 AND entry_date > $2 AND height IS NOT NULL AND height > 0
+           ORDER BY entry_date ASC, updated_at DESC LIMIT 1)) AS height`,
+      [userId, date]
     );
     const weight = parseFloat(result.rows[0]?.weight);
     const height = parseFloat(result.rows[0]?.height);
@@ -1414,7 +1418,7 @@ async function getStepCaloriesForDate(
   activitySteps: number
 ): Promise<number> {
   const [{ weightKg, heightCm }, totalSteps] = await Promise.all([
-    getLatestWeightHeight(userId),
+    getLatestWeightHeight(userId, date),
     getCheckInStepsForDate(userId, date),
   ]);
 
@@ -1475,6 +1479,20 @@ async function getExternalBmrByDateRange(
     client.release();
   }
 }
+/**
+ * Most recent check-in values for a user, one column at a time, unbounded by date.
+ *
+ * Body metrics (weight, height, circumferences, composition) carry forward because
+ * there is no alternative source for a day without a reading — you weigh something
+ * today whether or not you stepped on the scale.
+ *
+ * `bmr` is deliberately NOT one of those and must not be read from here for a
+ * per-date calculation. A measured BMR has a fallback the others lack — the user's
+ * chosen formula, which tracks their current weight — so a stale reading is strictly
+ * worse than recomputing. Read it from the check-in row for the date being computed
+ * instead (see AdaptiveTdeeService). Reading it from here applied a value recorded
+ * today to dates weeks earlier (issue #2395).
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getLatestMeasurement(userId: any) {
   const client = await getClient(userId); // User-specific operation
@@ -1494,7 +1512,6 @@ async function getLatestMeasurement(userId: any) {
          (SELECT muscle_mass_kg FROM check_in_measurements WHERE user_id = $1 AND muscle_mass_kg IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as muscle_mass_kg,
          (SELECT bone_mass_kg FROM check_in_measurements WHERE user_id = $1 AND bone_mass_kg IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as bone_mass_kg,
          (SELECT body_water_percentage FROM check_in_measurements WHERE user_id = $1 AND body_water_percentage IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as body_water_percentage,
-         (SELECT bmr FROM check_in_measurements WHERE user_id = $1 AND bmr IS NOT NULL ORDER BY entry_date DESC LIMIT 1) as bmr,
          (SELECT created_at FROM check_in_measurements WHERE user_id = $1 ORDER BY entry_date DESC LIMIT 1) as created_at,
          (SELECT updated_at FROM check_in_measurements WHERE user_id = $1 ORDER BY entry_date DESC LIMIT 1) as updated_at`,
       [userId]
@@ -1521,20 +1538,29 @@ async function getCustomMeasurementOwnerId(id: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getMostRecentMeasurement(userId: any, measurementType: any) {
+async function getMostRecentMeasurement(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  userId: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  measurementType: any,
+  onDate?: string
+) {
   // SECURITY: Whitelist allowed measurement columns to prevent SQL injection via dynamic column names
   if (!ALLOWED_CHECK_IN_COLUMNS.includes(measurementType)) {
     throw new Error(`Invalid measurement type requested: ${measurementType}`);
   }
   const client = await getClient(userId); // User-specific operation
   try {
+    // `onDate` pins the lookup to a single day rather than "most recent ever".
+    // Callers use it for measured BMR, which only applies on the day it was taken.
+    const dayFilter = onDate ? 'AND entry_date = $2' : '';
+    const params = onDate ? [userId, onDate] : [userId];
     const result = await client.query(
       `SELECT ${measurementType} FROM check_in_measurements
-       WHERE user_id = $1 AND ${measurementType} IS NOT NULL
+       WHERE user_id = $1 ${dayFilter} AND ${measurementType} IS NOT NULL
        ORDER BY entry_date DESC, updated_at DESC
        LIMIT 1`,
-      [userId]
+      params
     );
     return result.rows[0];
   } finally {
@@ -1544,6 +1570,8 @@ async function getMostRecentMeasurement(userId: any, measurementType: any) {
 export { upsertStepData };
 export { upsertWaterData };
 export { incrementWaterData };
+export { recomputeWaterAggregate };
+export { recomputeWaterAggregateForUser };
 export { getWaterIntakesByDates };
 export { getWaterIntakeEntryById };
 export { getWaterIntakeEntryOwnerId };
@@ -1583,14 +1611,21 @@ async function insertWaterIntakeLog(
   containerId: number | null,
   containerName: string | null,
   source = 'manual',
-  loggedAt: string | null = null
+  loggedAt: string | null = null,
+  // #2115: set when this drink was logged by a container linked to a food.
+  // hydrationFactor is snapshotted at log time -- editing the container later
+  // must not rewrite history, following container_name's existing precedent.
+  foodEntryId: string | null = null,
+  hydrationFactor: number | null = null,
+  client?: PoolClient
 ) {
-  const client = await getClient(actingUserId);
+  const ownClient = !client;
+  const activeClient = client ?? (await getClient(actingUserId));
   try {
-    const result = await client.query(
+    const result = await activeClient.query(
       `INSERT INTO water_intake_entries
-        (user_id, entry_date, water_ml, container_id, container_name, source, created_at, created_by_user_id, logged_at)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, COALESCE($8, NOW()))
+        (user_id, entry_date, water_ml, container_id, container_name, source, created_at, created_by_user_id, logged_at, food_entry_id, hydration_factor)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, COALESCE($8, NOW()), $9, $10)
        RETURNING *`,
       [
         userId,
@@ -1601,11 +1636,13 @@ async function insertWaterIntakeLog(
         source,
         actingUserId,
         loggedAt,
+        foodEntryId,
+        hydrationFactor,
       ]
     );
     return result.rows[0];
   } finally {
-    client.release();
+    if (ownClient) activeClient.release();
   }
 }
 
@@ -1632,6 +1669,78 @@ async function insertWaterIntakeLog(
  * wiping the user's tapped-in drink log because a CSV import omitted a
  * source column would destroy real data.
  */
+/**
+ * Recomputes and stores the water_intake daily aggregate for one
+ * (user, entry_date, source) from the CURRENT contents of water_intake_entries
+ * -- SUM-from-source-of-truth, not an incremental `+=`. This is what makes a
+ * caller idempotent: run it twice, or after a row was deleted by something
+ * that bypassed the service layer (e.g. an ON DELETE CASCADE from a linked
+ * food entry), and it converges on the correct total either way, unlike
+ * incrementWaterData's `water_intake.water_ml + $delta`, which only stays
+ * correct if every mutation that ever touched the ledger also called it with
+ * the right delta.
+ *
+ * Runs on the caller's own client so it can participate in an existing
+ * transaction (see upsertWaterIntakeSamples below).
+ */
+async function recomputeWaterAggregate(
+  client: PoolClient,
+  userId: string,
+  actingUserId: string,
+  entryDate: string,
+  source: string
+): Promise<number> {
+  const sumRes = await client.query(
+    `SELECT COALESCE(SUM(water_ml), 0) as total_ml
+     FROM water_intake_entries
+     WHERE user_id = $1 AND entry_date = $2 AND source = $3`,
+    [userId, entryDate, source]
+  );
+  const totalMl = Number(sumRes.rows[0]?.total_ml || 0);
+
+  await client.query(
+    `INSERT INTO water_intake (user_id, entry_date, water_ml, source, created_by_user_id, updated_by_user_id, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $5, NOW(), NOW())
+     ON CONFLICT (user_id, entry_date, source)
+     DO UPDATE SET water_ml = $3, updated_at = NOW(), updated_by_user_id = $5`,
+    [userId, entryDate, totalMl, source, actingUserId]
+  );
+
+  return totalMl;
+}
+
+/**
+ * Convenience wrapper around recomputeWaterAggregate for callers with no
+ * open transaction of their own (e.g. measurementService's manual +/- path).
+ * Opens and closes its own client/transaction, mirroring the
+ * createFoodWithClient/createFood split in models/food.ts.
+ */
+async function recomputeWaterAggregateForUser(
+  userId: string,
+  actingUserId: string,
+  entryDate: string,
+  source: string
+): Promise<number> {
+  const client = await getClient(userId, actingUserId);
+  try {
+    await client.query('BEGIN');
+    const totalMl = await recomputeWaterAggregate(
+      client,
+      userId,
+      actingUserId,
+      entryDate,
+      source
+    );
+    await client.query('COMMIT');
+    return totalMl;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function upsertWaterIntakeSamples(
   userId: string,
   actingUserId: string,
@@ -1787,20 +1896,12 @@ async function upsertWaterIntakeSamples(
     // (source, date) combination touched by this batch's samples.
     for (const [source, dates] of affectedDatesBySource) {
       for (const dateStr of dates) {
-        const sumRes = await client.query(
-          `SELECT COALESCE(SUM(water_ml), 0) as total_ml
-           FROM water_intake_entries
-           WHERE user_id = $1 AND entry_date = $2 AND source = $3`,
-          [userId, dateStr, source]
-        );
-        const totalMl = Number(sumRes.rows[0]?.total_ml || 0);
-
-        await client.query(
-          `INSERT INTO water_intake (user_id, entry_date, water_ml, source, created_by_user_id, updated_by_user_id, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $5, NOW(), NOW())
-           ON CONFLICT (user_id, entry_date, source)
-           DO UPDATE SET water_ml = $3, updated_at = NOW(), updated_by_user_id = $5`,
-          [userId, dateStr, totalMl, source, actingUserId]
+        await recomputeWaterAggregate(
+          client,
+          userId,
+          actingUserId,
+          dateStr,
+          source
         );
       }
     }
@@ -1840,11 +1941,11 @@ async function getWaterIntakeLogByDate(
   try {
     const result = await client.query(
       source
-        ? `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at
+        ? `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at, food_entry_id, hydration_factor
            FROM water_intake_entries
            WHERE user_id = $1 AND entry_date = $2 AND source = $3
            ORDER BY logged_at DESC`
-        : `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at
+        : `SELECT id, user_id, entry_date, water_ml, container_id, container_name, source, created_at, logged_at, food_entry_id, hydration_factor
            FROM water_intake_entries
            WHERE user_id = $1 AND entry_date = $2
            ORDER BY logged_at DESC`,
@@ -1856,16 +1957,23 @@ async function getWaterIntakeLogByDate(
   }
 }
 
-async function deleteWaterIntakeLog(id: string, userId: string) {
-  const client = await getClient(userId);
+// #2115: accepts an optional external client so a caller that also needs to
+// delete the linked food entry can do both under one transaction.
+async function deleteWaterIntakeLog(
+  id: string,
+  userId: string,
+  client?: PoolClient
+) {
+  const ownClient = !client;
+  const activeClient = client ?? (await getClient(userId));
   try {
-    const result = await client.query(
-      'DELETE FROM water_intake_entries WHERE id = $1 AND user_id = $2 RETURNING id, water_ml, entry_date, source',
+    const result = await activeClient.query(
+      'DELETE FROM water_intake_entries WHERE id = $1 AND user_id = $2 RETURNING id, water_ml, entry_date, source, food_entry_id',
       [id, userId]
     );
     return result.rows[0] || null;
   } finally {
-    client.release();
+    if (ownClient) activeClient.release();
   }
 }
 
@@ -1931,7 +2039,56 @@ async function getWaterTotalsByDateRange(
     query += ' GROUP BY entry_date ORDER BY entry_date ASC';
 
     const result = await client.query(query, queryParams);
-    return result.rows;
+    const rows = result.rows;
+
+    // Same opt-in gate as hydrationTotalsService.resolveWaterTotalsForDate
+    // (#1557, #1629), applied per-date here so the chatbot's water history
+    // and reports.trends agree with the Diary for an opted-in user.
+    const preferences = await preferenceRepository.getUserPreferences(userId);
+    if (!preferences?.add_food_water_to_intake || !startDate || !endDate) {
+      return rows;
+    }
+
+    const foodRows: Array<{
+      entry_date: string | Date;
+      food_ml: string | number;
+    }> = await foodRepository.getFoodDerivedWaterMlByDateRange(
+      userId,
+      startDate,
+      endDate
+    );
+    // entry_date rows to a plain YYYY-MM-DD key regardless of whether pg
+    // handed back a Date (raw column) or a string (TO_CHAR above).
+    // localDateToDay, not toISOString: pg parses a `date` column to local
+    // midnight, so converting through UTC lands on the previous day for every
+    // negative-offset zone -- food water would be credited to the wrong day.
+    const toDateKey = (value: string | Date): string =>
+      typeof value === 'string' ? value.slice(0, 10) : localDateToDay(value);
+
+    const foodMlByDate = new Map<string, number>(
+      foodRows.map((row) => [
+        toDateKey(row.entry_date),
+        Number(row.food_ml) || 0,
+      ])
+    );
+
+    const rowsTyped: Array<{
+      entry_date: string | Date;
+      total_ml: string | number;
+    }> = rows;
+    const mergedByDate = new Map<string, number>(
+      rowsTyped.map((row) => [
+        toDateKey(row.entry_date),
+        Number(row.total_ml) || 0,
+      ])
+    );
+    for (const [entryDate, foodMl] of foodMlByDate) {
+      mergedByDate.set(entryDate, (mergedByDate.get(entryDate) || 0) + foodMl);
+    }
+
+    return Array.from(mergedByDate.entries())
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([entry_date, total_ml]) => ({ entry_date, total_ml }));
   } finally {
     client.release();
   }
@@ -1941,6 +2098,8 @@ export default {
   upsertStepData,
   upsertWaterData,
   incrementWaterData,
+  recomputeWaterAggregate,
+  recomputeWaterAggregateForUser,
   getWaterIntakeByDate,
   getWaterIntakesByDates,
   getWaterIntakeEntryById,

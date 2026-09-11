@@ -20,13 +20,10 @@ import { useCSSVariable } from 'uniwind';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { toHourMinute } from '@workspace/shared';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  runOnJS,
-  useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
-  withSpring,
   type SharedValue,
 } from 'react-native-reanimated';
 
@@ -53,7 +50,11 @@ import { MEAL_CONFIG } from '../constants/meals';
 import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
 import {
   computeReorderTargetIndex,
-  computeReorderPreviewShift,
+  createReorderRowPanGesture,
+  REORDER_ROW_HEIGHT,
+  resetReorderDragPreview,
+  useReorderRowGeometry,
+  useReorderRowPreviewStyle,
 } from '../components/WorkoutReorderList';
 import type { IconName } from '../components/Icon';
 import type { MealType } from '../types/mealTypes';
@@ -72,13 +73,10 @@ import {
 
 type MealTypeSettingsScreenProps = RootStackScreenProps<'MealTypeSettings'>;
 
-/** Fixed row height for the drag geometry (all rows share the same density). */
-// The final settings mockup is a CONTINUOUS list of rows (border-b separators,
-// no margin between them), so the drag geometry uses the real rendered stride:
-// exactly ROW_HEIGHT. WorkoutReorderList's 8px gap does not apply here.
-const ROW_HEIGHT = 64;
-const ROW_GAP = 0;
-const LONG_PRESS_MS = 150;
+// The final settings mockup is a CONTINUOUS list of rows (border-b separators, no margin
+// between them), so the drag geometry uses the real rendered stride: exactly the shared
+// row height. WorkoutReorderList's own 8px item gap does not apply here.
+const ROW_HEIGHT = REORDER_ROW_HEIGHT;
 
 /** Canonical FILLED system icon for a system meal-type name (MEAL_CONFIG). */
 function getSystemMealTypeIcon(name: string): IconName {
@@ -90,101 +88,13 @@ function getSystemMealTypeIcon(name: string): IconName {
 /**
  * Module-scope CUSTOM meal-type row (stable component identity; gesture-driven).
  * System rows are rendered by the module-scope SystemMealTypeRow below — both
- * share useMealTypeRowDragPreviewStyle so the WHOLE unified list opens a real
- * live gap preview during a drag (active row floats, every other row springs
- * one stride toward the origin as the finger crosses it).
+ * share `useReorderRowPreviewStyle` so the WHOLE unified list opens a real live
+ * gap preview during a drag (active row floats, every other row springs one
+ * stride toward the origin as the finger crosses it). System rows therefore
+ * PARTICIPATE in the transient preview as passive siblings, but stay
+ * non-draggable and their persisted anchors are never rewritten — only custom
+ * sort_order is ever persisted (see moveCustomType / doPersist).
  */
-
-/**
- * Shared drag-preview animated style for BOTH row kinds (system + custom):
- * - the ACTIVE row floats (follows the finger, slight scale, lift shadow);
- * - every OTHER row — custom siblings AND system anchors — springs exactly
- *   one row stride toward the drag origin while it sits between the active
- *   row and the LIVE target index, so the list closes the old gap and opens
- *   the new one naturally (no stationary hole at the source position).
- *
- * System rows therefore PARTICIPATE in the transient visual preview as
- * passive siblings, but stay non-draggable and their persisted anchors are
- * never rewritten — only custom sort_order is ever persisted (see
- * moveCustomType / doPersist). Spring values match WorkoutReorderList so the
- * interaction feels like the app's existing reorder UI.
- *
- * During the commit handoff the active row keeps its FINAL translate
- * (`committingTranslate`) so the drop preview hands off to the reordered
- * render with no snap-back; the screen's post-render effect clears the shared
- * values only after the new unified order has rendered.
- */
-export function useMealTypeRowDragPreviewStyle(
-  rowIndex: number,
-  activeDragIndex: SharedValue<number>,
-  panY: SharedValue<number>,
-  committingTranslate: SharedValue<number>,
-  targetIndex: SharedValue<number>,
-  strides: number[]
-) {
-  return useAnimatedStyle(() => {
-    const active = activeDragIndex.value;
-    if (active === rowIndex) {
-      const ty =
-        committingTranslate.value !== 0
-          ? committingTranslate.value
-          : panY.value;
-      return {
-        transform: [{ translateY: ty }, { scale: 1.02 }],
-        zIndex: 10,
-        elevation: 8,
-        shadowOpacity: 0.16,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
-      };
-    }
-    // Reanimated applies animated styles as diffs — keys omitted from a later
-    // update keep their last value — so the lift shadow must be zeroed
-    // explicitly in every non-dragged branch.
-    if (active < 0) {
-      return {
-        transform: [{ translateY: 0 }, { scale: 1 }],
-        zIndex: 0,
-        elevation: 0,
-        shadowOpacity: 0,
-      };
-    }
-    const shift = computeReorderPreviewShift(
-      rowIndex,
-      active,
-      targetIndex.value,
-      strides[active]
-    );
-    return {
-      transform: [
-        { translateY: withSpring(shift, { damping: 44, stiffness: 960 }) },
-        { scale: 1 },
-      ],
-      zIndex: 0,
-      elevation: 0,
-      shadowOpacity: 0,
-    };
-  });
-}
-
-/**
- * Releases a frozen drag preview (active row float + sibling shifts) back to
- * idle. Called by the REJECTED-drop path (e.g. a full-gap drop): the gesture
- * already froze the preview in onEnd, so a rejection must clear the shared
- * values or the rows stay stuck translated. An ACCEPTED move resets through
- * the post-render effect instead (pendingDragResetRef), so the preview hands
- * off to the reordered render with no snap-back.
- */
-export function resetMealTypeDragPreview(
-  activeDragIndex: SharedValue<number>,
-  panY: SharedValue<number>,
-  committingTranslate: SharedValue<number>
-): void {
-  committingTranslate.value = 0;
-  activeDragIndex.value = -1;
-  panY.value = 0;
-}
-
 const CustomMealTypeRow: React.FC<{
   mt: MealType;
   index: number;
@@ -218,34 +128,16 @@ const CustomMealTypeRow: React.FC<{
   targetIndex,
   strides,
 }) => {
-  const dragGesture = Gesture.Pan()
-    .activateAfterLongPress(LONG_PRESS_MS)
-    .onStart(() => {
-      activeDragIndex.value = index;
-      panY.value = 0;
-    })
-    .onUpdate((event) => {
-      panY.value = event.translationY;
-    })
-    .onEnd(() => {
-      const from = activeDragIndex.value;
-      // Live UI-thread target (same calculation as the sibling preview uses),
-      // so the committed destination always matches the gap the user sees.
-      const to = targetIndex.value;
-      if (from >= 0 && from !== to) {
-        // Commit handoff (WorkoutReorderList pattern): keep the active row's
-        // final translate while the JS reorder state commits — no snap-back to
-        // origin before React re-renders the row at its destination.
-        committingTranslate.value = panY.value;
-        // Worklet → JS boundary: onMove must run on the JS thread.
-        runOnJS(onMove)(from, to);
-      } else {
-        activeDragIndex.value = -1;
-        panY.value = 0;
-      }
-    });
+  const dragGesture = createReorderRowPanGesture({
+    index,
+    activeDragIndex,
+    panY,
+    committingTranslate,
+    targetIndex,
+    onMove,
+  });
 
-  const previewStyle = useMealTypeRowDragPreviewStyle(
+  const previewStyle = useReorderRowPreviewStyle(
     index,
     activeDragIndex,
     panY,
@@ -369,7 +261,7 @@ const SystemMealTypeRow: React.FC<{
   targetIndex,
   strides,
 }) => {
-  const previewStyle = useMealTypeRowDragPreviewStyle(
+  const previewStyle = useReorderRowPreviewStyle(
     index,
     activeDragIndex,
     panY,
@@ -770,19 +662,9 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
     [systemTypes, currentGaps]
   );
 
-  // Drag geometry over the unified rows. Anchors and customs share the same
-  // row height, so every row has the same stride (ROW_HEIGHT + ROW_GAP).
-  const strides = unifiedRows.map(() => ROW_HEIGHT + ROW_GAP);
-  const offsets = useMemo(() => {
-    const out: number[] = [];
-    let acc = 0;
-    for (const stride of strides) {
-      out.push(acc);
-      acc += stride;
-    }
-    return out;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unifiedRows.length]);
+  // Drag geometry over the unified rows. Anchors and customs share the same row height,
+  // so every row has the same stride.
+  const { strides, offsets } = useReorderRowGeometry(unifiedRows.length);
   const activeDragIndex = useSharedValue(-1);
   const panY = useSharedValue(0);
   // Commit handoff: holds the active row's final translate until the new
@@ -961,7 +843,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
         !currentUnified[currentUnified.length - 1]?.isSystem
       ) {
         // Defensive anchor-bound guard: also release a frozen preview.
-        resetMealTypeDragPreview(activeDragIndex, panY, committingTranslate);
+        resetReorderDragPreview(activeDragIndex, panY, committingTranslate);
         return; // defensive: anchors must bound the list
       }
       const nextGaps = deriveGapsFromUnified(currentUnified);
@@ -980,7 +862,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
           // release it immediately so the dropped row and sibling shifts
           // spring back to their pre-drag positions (CodeRabbit P1 — the
           // post-render reset is only armed for ACCEPTED moves).
-          resetMealTypeDragPreview(activeDragIndex, panY, committingTranslate);
+          resetReorderDragPreview(activeDragIndex, panY, committingTranslate);
           return;
         }
       }
@@ -1009,7 +891,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   useEffect(() => {
     if (!pendingDragResetRef.current) return;
     pendingDragResetRef.current = false;
-    resetMealTypeDragPreview(activeDragIndex, panY, committingTranslate);
+    resetReorderDragPreview(activeDragIndex, panY, committingTranslate);
   }, [unifiedRows, committingTranslate, activeDragIndex, panY]);
 
   const onRefresh = useCallback(async () => {

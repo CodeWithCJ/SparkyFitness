@@ -18,6 +18,8 @@ import { WaterContainer } from '@/types/settings';
 interface WaterContainerContextType {
   activeContainer: WaterContainer | undefined | null;
   containers: WaterContainer[];
+  standardContainers: WaterContainer[];
+  quickAddPresets: WaterContainer[];
 }
 
 const WaterContainerContext = createContext<
@@ -29,50 +31,75 @@ export const WaterContainerProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const { water_display_unit } = usePreferences();
   const { user, loading } = useAuth();
-  const { activeUserId } = useActiveUser(); // Get activeUserId
+  const { activeUserId } = useActiveUser();
 
   const currentUserId = activeUserId || user?.id;
   const { data: containers = [], isSuccess } =
     useWaterContainersQuery(currentUserId);
   const { mutate: setPrimary } = useSetPrimaryWaterContainerMutation();
 
-  // container exists but no container is primary
+  const standardContainers = useMemo(
+    () => containers.filter((c) => !c.is_quick_add),
+    [containers]
+  );
+
+  const quickAddPresets = useMemo(
+    () => containers.filter((c) => !!c.is_quick_add),
+    [containers]
+  );
+
+  // If standard containers exist but none is primary, set the first standard container as primary
   useEffect(() => {
-    if (isSuccess && containers.length > 0) {
-      const hasPrimary = containers.some((c) => c.is_primary);
+    if (isSuccess && standardContainers.length > 0) {
+      const hasPrimary = standardContainers.some((c) => c.is_primary);
       if (!hasPrimary) {
-        const firstContainer = containers[0];
+        const firstContainer = standardContainers[0];
         if (firstContainer) {
           setPrimary(firstContainer.id);
         }
       }
     }
-  }, [containers, isSuccess, setPrimary]);
+  }, [standardContainers, isSuccess, setPrimary]);
 
   const activeContainer = useMemo(() => {
     if (loading || !currentUserId || !isSuccess) return null;
 
-    const primary = containers.find((c) => c.is_primary);
+    const primary = standardContainers.find((c) => c.is_primary);
     if (primary) return primary;
 
-    // Fallback, wenn keine Container in der Datenbank existieren
-    if (containers.length === 0) {
+    if (standardContainers.length === 0) {
       return {
-        id: -1, // Verhindert Type-Errors, da id oft number ist
+        id: -1,
         user_id: '',
         name: 'Default Container',
         volume: 2000,
         unit: water_display_unit,
         is_primary: true,
         servings_per_container: 8,
+        hydration_factor: 1.0,
+        is_quick_add: false,
+        sort_order: 0,
       } as WaterContainer;
     }
 
-    return containers[0];
-  }, [containers, currentUserId, isSuccess, loading, water_display_unit]);
+    return standardContainers[0];
+  }, [
+    standardContainers,
+    currentUserId,
+    isSuccess,
+    loading,
+    water_display_unit,
+  ]);
 
   return (
-    <WaterContainerContext.Provider value={{ activeContainer, containers }}>
+    <WaterContainerContext.Provider
+      value={{
+        activeContainer,
+        containers,
+        standardContainers,
+        quickAddPresets,
+      }}
+    >
       {children}
     </WaterContainerContext.Provider>
   );

@@ -1,4 +1,9 @@
 import { z } from 'zod/v4';
+import {
+  isDayString,
+  MIN_MEASURED_BMR_KCAL,
+  MAX_MEASURED_BMR_KCAL,
+} from '@workspace/shared';
 
 const coerceLegacyNumber = (value: unknown) => {
   if (typeof value !== 'string') {
@@ -91,13 +96,25 @@ const boundedNullableOptionalLegacyNumber = (min: number, max: number) =>
 // numeric(5,2) columns, so 999.99 is the largest storable mass.
 const smartScaleMassKg = boundedNullableOptionalLegacyNumber(0, 999.99);
 const percentage = boundedNullableOptionalLegacyNumber(0, 100);
-// numeric(6,1) column for BMR kcal (300 to 10000 kcal).
-const smartScaleBmrKcal = boundedNullableOptionalLegacyNumber(300, 10000);
+// numeric(6,1) column for BMR kcal. Bounds are shared with every consumer that
+// decides whether a measured BMR may replace the formula estimate.
+const smartScaleBmrKcal = boundedNullableOptionalLegacyNumber(
+  MIN_MEASURED_BMR_KCAL,
+  MAX_MEASURED_BMR_KCAL
+);
 
 export const UpsertWaterIntakeBodySchema = z
   .object({
     entry_date: requiredLegacyString('entry_date'),
-    change_drinks: requiredLegacyNumber,
+    // Bounded and integral because upsertWaterIntake loops once per drink, and
+    // since #2115 a single iteration can also insert a food_entries row. An
+    // unbounded (or fractional) value turned one request into an unbounded
+    // serial write loop. 100 presses of "+" in one call is already far past
+    // anything the UI issues.
+    change_drinks: z.preprocess(
+      coerceLegacyNumber,
+      z.number().int().min(-100).max(100)
+    ),
     container_id: nullableOptionalLegacyNumber,
     user_id: optionalLegacyString,
   })
@@ -227,6 +244,31 @@ export const DateRangeParamSchema = z
   .loose();
 
 export type DateRangeParam = z.infer<typeof DateRangeParamSchema>;
+
+const requiredDayString = (fieldName: string) =>
+  z.preprocess(
+    (value) => (typeof value === 'string' ? value.trim() : value),
+    z
+      .string()
+      .refine(isDayString, `${fieldName} must be a YYYY-MM-DD calendar date`)
+  );
+
+/**
+ * Date-range params that are actually validated as calendar days.
+ *
+ * `DateRangeParamSchema` only asserts a non-empty string, so a malformed date reaches the
+ * repository and surfaces as a database error rather than a 400. Fixing that schema in
+ * place would change the contract of the endpoints already using it, so new routes adopt
+ * this one instead and the older routes are migrated separately.
+ */
+export const StrictDateRangeParamSchema = z
+  .object({
+    startDate: requiredDayString('startDate'),
+    endDate: requiredDayString('endDate'),
+  })
+  .loose();
+
+export type StrictDateRangeParam = z.infer<typeof StrictDateRangeParamSchema>;
 
 export const CustomMeasurementsRangeParamSchema = z
   .object({

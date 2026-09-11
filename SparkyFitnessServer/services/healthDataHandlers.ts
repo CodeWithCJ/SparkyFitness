@@ -4,7 +4,6 @@ import exerciseDb from '../models/exercise.js';
 import exerciseEntryDb, {
   EXERCISE_ENTRY_TELEMETRY_COLUMNS,
 } from '../models/exerciseEntry.js';
-import activityDetailsRepository from '../models/activityDetailsRepository.js';
 import foodRepository from '../models/foodRepository.js';
 import moodRepository from '../models/moodRepository.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
@@ -22,11 +21,15 @@ import {
   type TelemetryGpsPoint,
 } from './workoutTelemetryDerivation.js';
 import { upsertSamplesByDay } from './healthMetricSampleWriter.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import {
   BUILT_IN_MOODS,
   instantToDay,
   MAX_HEALTH_TOTAL_CALORIES_PER_DAY,
+  MIN_MEASURED_BMR_KCAL,
+  MAX_MEASURED_BMR_KCAL,
+  todayInZone,
 } from '@workspace/shared';
 
 /**
@@ -289,6 +292,7 @@ const NUTRITION_DIRECT_COLUMNS = [
   'vitamin_c',
   'calcium',
   'iron',
+  'caffeine_mg',
 ] as const;
 
 // Maps the client's display label (dataEntry.source) to a stable provider tag
@@ -645,11 +649,11 @@ function prepareCheckInMeasurement(
       if (
         trimmed === '' ||
         !Number.isFinite(numericValue) ||
-        numericValue < 300 ||
-        numericValue > 10000
+        numericValue < MIN_MEASURED_BMR_KCAL ||
+        numericValue > MAX_MEASURED_BMR_KCAL
       ) {
         return {
-          error: `Invalid value for ${entry.type}. Must be between 300 and 10000 kcal.`,
+          error: `Invalid value for ${entry.type}. Must be between ${MIN_MEASURED_BMR_KCAL} and ${MAX_MEASURED_BMR_KCAL} kcal.`,
         };
       }
       return { measurements: { [canonical]: numericValue } };
@@ -673,6 +677,12 @@ function prepareCheckInMeasurement(
 // all valid records go through one bulkUpsertCheckInMeasurements call (one
 // client + one transaction), with same-date records merged server-side
 // (later record wins per column, matching the old sequential upserts).
+/**
+ * Sources whose BMR is a running daily total rather than a rate, so a value read
+ * before the day ends is only part of it.
+ */
+const ACCUMULATING_BMR_SOURCES = new Set(['garmin']);
+
 const checkInHandleBatch: HandleBatchFn = async (entries, ctx) => {
   const outcomes: HandlerOutcome[] = new Array(entries.length);
   const writes: Array<{
@@ -681,11 +691,53 @@ const checkInHandleBatch: HandleBatchFn = async (entries, ctx) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     measurements: Record<string, any>;
   }> = [];
+  // Garmin reports BMR as a daily *accumulation*, not a rate: `bmrKilocalories`
+  // sits in the daily summary beside `totalKilocalories`, so a sync while the day
+  // is still running hands back part of it. A 4am sync reported 716 kcal against a
+  // ~1800 kcal formula estimate (issue #2395), and a late-afternoon one is worse
+  // because it looks plausible enough to clear the ratio band.
+  //
+  // Scoped to those sources deliberately. HealthKit already keeps only fully
+  // elapsed days and stamps each one with D+1 — the day it applies to — so a
+  // blanket "refuse today" rejected precisely the value it is designed to send and
+  // stopped iOS storing any BMR at all. Health Connect's BasalMetabolicRate is an
+  // instantaneous rate and is fine on the current day too.
+  const isAccumulatingBmrSource = (entry: { source?: unknown }) =>
+    typeof entry?.source === 'string' &&
+    ACCUMULATING_BMR_SOURCES.has(entry.source.toLowerCase());
+  const hasGuardedBmrWrite = entries.some(
+    (e) =>
+      (e.entry?.type === 'bmr' || e.entry?.type === 'basal_metabolic_rate') &&
+      isAccumulatingBmrSource(e.entry)
+  );
+  const todayForUser = hasGuardedBmrWrite
+    ? todayInZone(await loadUserTimezone(ctx.userId))
+    : null;
   for (let i = 0; i < entries.length; i++) {
     const prepared = prepareCheckInMeasurement(entries[i].entry);
     if ('error' in prepared) {
       outcomes[i] = { status: 'error', error: prepared.error };
       continue;
+    }
+    if (
+      prepared.measurements.bmr !== undefined &&
+      todayForUser !== null &&
+      isAccumulatingBmrSource(entries[i].entry) &&
+      entries[i].parsedDate >= todayForUser
+    ) {
+      delete prepared.measurements.bmr;
+      log(
+        'info',
+        `healthDataHandlers: ignoring BMR for ${entries[i].parsedDate} from ${entries[i].entry?.source} — that source reports BMR as a daily total and the day is not complete in the user's timezone.`
+      );
+      if (Object.keys(prepared.measurements).length === 0) {
+        outcomes[i] = {
+          status: 'skipped',
+          reason:
+            'BMR is only accepted for a completed day, since some providers report it as a running daily total.',
+        };
+        continue;
+      }
     }
     writes.push({
       index: i,
@@ -1610,7 +1662,24 @@ const workoutHandler: HealthTypeHandler = {
           ...telemetry,
         },
         ctx.actingUserId,
-        source
+        source,
+        null,
+        // Stored inside the entry's own transaction rather than afterwards: a
+        // second sync of the same source range-deletes and re-inserts these
+        // rows, so a detail written against an already committed parent can hit
+        // a parent that is gone, which its RLS policy reports as a row-level
+        // security violation and the workout loses its raw data.
+        raw_data
+          ? {
+              activityDetail: {
+                provider_name: source,
+                detail_type: `${type}_raw_data`,
+                detail_data: JSON.stringify(raw_data),
+                created_by_user_id: ctx.actingUserId,
+                updated_by_user_id: ctx.actingUserId,
+              },
+            }
+          : {}
       );
       if (gpsPoints.length > 0 || hrSamples.length > 0 || entry.laps) {
         try {
@@ -1635,16 +1704,6 @@ const workoutHandler: HealthTypeHandler = {
             `[processHealthData] Saved workout ${exerciseEntry.id} but failed to persist its telemetry: ${message}`
           );
         }
-      }
-      if (raw_data) {
-        await activityDetailsRepository.createActivityDetail(ctx.userId, {
-          exercise_entry_id: exerciseEntry.id,
-          provider_name: source,
-          detail_type: `${type}_raw_data`,
-          detail_data: JSON.stringify(raw_data),
-          created_by_user_id: ctx.actingUserId,
-          updated_by_user_id: ctx.actingUserId,
-        });
       }
       return { status: 'success', data: exerciseEntry };
     } catch (workoutError) {

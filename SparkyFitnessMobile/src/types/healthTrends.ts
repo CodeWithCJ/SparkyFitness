@@ -16,3 +16,9 @@ export type HealthTrendSeries<TPoint> = {
   isLoading: boolean;
   isError: boolean;
 };
+
+/** A day's total water intake, in millilitres as the server stores it. */
+export type HydrationDataPoint = {
+  day: string;
+  milliliters: number;
+};

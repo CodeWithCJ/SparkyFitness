@@ -13,6 +13,19 @@ import { log } from './config/logging.js';
 import { authenticate } from './middleware/authMiddleware.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { applySignOutCookieCleanup } from './middleware/signOutCookieCleanup.js';
+import {
+  isDemoMode,
+  isDemoEmail,
+  isDemoPasswordResetToken,
+  getDemoEmail,
+  demoRestrictionGuard,
+} from './middleware/demoGuardMiddleware.js';
+import {
+  seedDemoUser,
+  purgeDemoUserIfExists,
+  scheduleDemoMidnightReset,
+} from './services/demoSeedService.js';
+import { fromNodeHeaders } from 'better-auth/node';
 import foodRoutes from './routes/foodRoutes.js';
 import favoritesRoutes from './routes/favoritesRoutes.js';
 // @ts-expect-error TS1192
@@ -77,11 +90,14 @@ import medicationRoutesV2 from './routes/v2/medicationRoutes.js';
 import symptomRoutesV2 from './routes/v2/symptomRoutes.js';
 import cycleRoutesV2 from './routes/v2/cycleRoutes.js';
 import pregnancyRoutesV2 from './routes/v2/pregnancyRoutes.js';
+import reportRoutesV2 from './routes/v2/reportRoutes.js';
+import nutritionKineticsRoutesV2 from './routes/v2/nutritionKineticsRoutes.js';
 import backupRoutes from './routes/backupRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 import reviewRoutes from './routes/reviewRoutes.js';
 import cron from 'node-cron';
 import { scheduleBackupsOnStartup } from './services/backupScheduler.js';
+import { scheduleOpenFoodFactsAutoSyncOnStartup } from './services/openFoodFactsAutoSyncScheduler.js';
 import externalProviderRepository from './models/externalProviderRepository.js';
 import garminService from './services/garminService.js';
 import { getGarminSyncPhaseErrors } from './services/garminSyncResult.js';
@@ -123,7 +139,21 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.set('trust proxy', 1); // Trust the first proxy immediately in front of me just internal nginx. external not required.
+// How many proxies sit in front of the app, deciding which X-Forwarded-For
+// entry Express reports as req.ip. The default of 1 covers the bundled setup,
+// where only the frontend container's nginx is in front. Add a hop for each
+// extra proxy (reverse proxy, tunnel connector, load balancer) or req.ip will
+// resolve to an internal address shared by every visitor.
+const trustedProxyHops = Number.parseInt(
+  process.env.SPARKY_FITNESS_TRUSTED_PROXY_HOPS ?? '',
+  10
+);
+app.set(
+  'trust proxy',
+  Number.isInteger(trustedProxyHops) && trustedProxyHops >= 0
+    ? trustedProxyHops
+    : 1
+);
 // 304s from ETag revalidation break the iOS mobile app (#1353).
 app.set('etag', false);
 const PORT = process.env.SPARKY_FITNESS_SERVER_PORT || 3010;
@@ -189,11 +219,17 @@ app.use(
   express.json({ limit: '1mb' }),
   cookieParser(),
   authenticate,
+  // /mcp mounts ahead of the global route table, so it needs the demo guard
+  // explicitly — the app-level one below never sees these requests.
+  demoRestrictionGuard,
   mcpRoutes
 );
 // Middleware to parse JSON bodies for all incoming requests
-// Increased limit to 50mb to accommodate image uploads
-app.use(express.json({ limit: '50mb' }));
+// Increased limit to 50mb to accommodate image uploads. A public demo instance
+// takes a much lower cap: the routes that need the headroom (image analysis,
+// uploads, FIT import) are blocked for the demo account anyway, and a 50mb
+// parse per request is a cheap way for an anonymous visitor to burn memory.
+app.use(express.json({ limit: isDemoMode() ? '2mb' : '50mb' }));
 app.use(cookieParser());
 // --- Better Auth Mounting Logic (Moved to after migrations) ---
 // @ts-expect-error TS7034
@@ -220,9 +256,87 @@ app.use(async (req, res, next) => {
     const isDiscovery =
       req.path === '/api/auth/settings' ||
       req.path === '/api/auth/mfa-factors' ||
+      req.path === '/api/auth/demo-login' ||
       req.path.startsWith('/api/auth/web-login');
     if (isDiscovery) {
       return next();
+    }
+
+    if (isDemoMode()) {
+      // Prefix matches throughout: exact equality misses trailing-slash and
+      // sub-path variants that Better Auth still routes.
+      const restrictedAuthPrefixes = [
+        '/api/auth/two-factor',
+        '/api/auth/passkey',
+        '/api/auth/api-key', // minting a key would outlive the daily reset
+        '/api/auth/change-password',
+        '/api/auth/set-password',
+        '/api/auth/change-email',
+        '/api/auth/update-user',
+        '/api/auth/delete-user',
+      ];
+      const isRestrictedAuthPath = restrictedAuthPrefixes.some(
+        (prefix) => req.path === prefix || req.path.startsWith(prefix + '/')
+      );
+
+      // Password-recovery endpoints are unauthenticated, so there is no session
+      // to match on — identify the account from the request itself, or the demo
+      // credential could be reset out from under the sandbox.
+      //
+      // The two request endpoints name it by address. `/reset-password` does
+      // not: it carries `{ newPassword, token }`, so the account has to be
+      // resolved from the token, which Better Auth accepts in either the body
+      // or the query string.
+      const recoveryPrefixes = [
+        '/api/auth/forget-password',
+        '/api/auth/request-password-reset',
+        '/api/auth/reset-password',
+      ];
+      const isRecoveryPath = recoveryPrefixes.some(
+        (prefix) => req.path === prefix || req.path.startsWith(prefix + '/')
+      );
+      if (
+        isRecoveryPath &&
+        (isDemoEmail(req.body?.email) ||
+          (await isDemoPasswordResetToken(
+            // `||`, not `??`: Better Auth resolves the token as
+            // `ctx.body.token || ctx.query?.token`, so an empty body token still
+            // falls through to the query string there and must here too.
+            req.body?.token || req.query?.token
+          )))
+      ) {
+        log(
+          'warn',
+          `[DEMO GUARD] Blocked password recovery on ${req.method} ${req.path} for the demo account`
+        );
+        return res.status(403).json({
+          error:
+            'This action is disabled on the demo account to keep the instance available for everyone.',
+          code: 'DEMO_ACTION_RESTRICTED',
+        });
+      }
+
+      if (isRestrictedAuthPath) {
+        try {
+          const { auth } = authModule;
+          const session = await auth.api.getSession({
+            headers: fromNodeHeaders(req.headers),
+          });
+          if (session?.user && isDemoEmail(session.user.email)) {
+            log(
+              'warn',
+              `[DEMO GUARD] Blocked Better Auth mutation on ${req.method} ${req.path} for demo user`
+            );
+            return res.status(403).json({
+              error:
+                'This action is disabled on the demo account to keep the instance available for everyone.',
+              code: 'DEMO_ACTION_RESTRICTED',
+            });
+          }
+        } catch {
+          // If session retrieval fails, fall through
+        }
+      }
     }
 
     // Translate Bearer token to cookie / x-api-key before passing to the Better
@@ -450,6 +564,7 @@ const isPublicApiDocsEnabled =
 const publicRoutes = [
   '/api/auth/settings',
   '/api/auth/mfa-factors',
+  '/api/auth/demo-login',
   '/api/auth/web-login',
   '/api/health',
   '/api/version',
@@ -478,6 +593,10 @@ app.use((req, res, next) => {
   }
   authenticate(req, res, next);
 });
+// Demo restrictions run once, here, ahead of the whole route table. Per-route
+// demoGuard calls remain as defense in depth, but this is what guarantees a
+// newly added route family is covered without anyone remembering to opt in.
+app.use(demoRestrictionGuard);
 // Test route
 app.get('/api/ping', (_req, res) =>
   res.json({ status: 'ok', time: new Date().toISOString() })
@@ -548,6 +667,8 @@ app.use('/api/v2/medications', medicationRoutesV2);
 app.use('/api/v2/symptoms', symptomRoutesV2);
 app.use('/api/v2/cycle', cycleRoutesV2);
 app.use('/api/v2/pregnancy', pregnancyRoutesV2);
+app.use('/api/v2/reports', reportRoutesV2);
+app.use('/api/v2/nutrition', nutritionKineticsRoutesV2);
 app.use('/api/workout-presets', workoutPresetRoutes);
 app.use('/api/workout-plan-templates', workoutPlanTemplateRoutes);
 app.use('/api/review', reviewRoutes);
@@ -845,6 +966,7 @@ applyMigrations()
       );
     }
     scheduleBackupsOnStartup();
+    await scheduleOpenFoodFactsAutoSyncOnStartup();
     scheduleSessionCleanup();
     scheduleWithingsSyncs();
     scheduleGarminSyncs();
@@ -855,10 +977,32 @@ applyMigrations()
     scheduleGoogleHealthSyncs();
     scheduleHevySyncs();
     if (process.env.SPARKY_FITNESS_ADMIN_EMAIL) {
+      // A demo account promoted to admin would hand every anonymous visitor the
+      // admin panel. Refuse the promotion rather than start up compromised.
+      if (isDemoMode() && isDemoEmail(process.env.SPARKY_FITNESS_ADMIN_EMAIL)) {
+        throw new Error(
+          `SPARKY_FITNESS_ADMIN_EMAIL matches the demo account (${getDemoEmail()}). ` +
+            'Refusing to grant admin to the public demo user — use a different admin address.'
+        );
+      }
       const adminUser = await userRepository.findUserByEmail(
         process.env.SPARKY_FITNESS_ADMIN_EMAIL
       );
       if (adminUser) await userRepository.updateUserRole(adminUser.id, 'admin');
+    }
+    if (process.env.SPARKY_FITNESS_DEMO_MODE === 'true') {
+      try {
+        await seedDemoUser();
+        scheduleDemoMidnightReset();
+      } catch (err) {
+        log('error', '[DEMO] Demo mode initialization failed:', err);
+      }
+    } else {
+      try {
+        await purgeDemoUserIfExists();
+      } catch (err) {
+        log('error', '[DEMO] Demo auto-purge check failed:', err);
+      }
     }
     const server = app.listen(PORT, () => {
       console.log(`DEBUG: Server started and listening on port ${PORT}`);

@@ -7,6 +7,7 @@ import DayNavigator from '@/components/DayNavigator';
 import NutritionSummaryCard, { DayTotals } from './NutritionSummaryCard';
 import DailyProgress from './DailyProgress';
 import WaterIntake from './WaterIntake';
+import CaffeineCard from './CaffeineCard';
 import MealCard from './MealCard';
 import ExerciseCard from './ExerciseCard';
 import DiaryWidgetGrid, { type DiaryWidget } from './DiaryWidgetGrid';
@@ -15,6 +16,7 @@ import {
   Flame,
   Salad,
   Droplet,
+  Coffee,
   UtensilsCrossed,
   Dumbbell,
   HeartPulse,
@@ -468,6 +470,16 @@ const Diary = () => {
           onExercisesLogged={() => setExercisesToLogFromPreset(undefined)}
         />
       ),
+    });
+
+    // Last in the registry to match its default tile, which sits below
+    // exercise; the grid positions by layout, but keeping the two in the same
+    // order stops the next reader wondering which one is authoritative.
+    list.push({
+      key: 'caffeine',
+      title: t('diary.caffeine.title', 'Caffeine Kinetics'),
+      icon: Coffee,
+      render: () => <CaffeineCard date={selectedDate} userId={activeUserId} />,
     });
 
     return list;

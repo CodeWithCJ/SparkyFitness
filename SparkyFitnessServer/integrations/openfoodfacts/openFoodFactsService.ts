@@ -3,14 +3,22 @@ import {
   invalidateOpenFoodFactsSession,
   DEFAULT_OFF_BASE_URL,
 } from './openFoodFactsAuth.js';
+import type { OpenFoodFactsCredentialScope } from './openFoodFactsAuth.js';
 import { log } from '../../config/logging.js';
-import { normalizeNutrientUnit } from '@workspace/shared';
+import {
+  normalizeNutrientUnit,
+  alcoholGramsForServing,
+} from '@workspace/shared';
 import package$0 from '../../package.json' with { type: 'json' };
 import {
   normalizeBarcode,
   normalizeServingUnit,
   altBarcode,
 } from '../../utils/foodUtils.js';
+import {
+  OPENFOODFACTS_INTERACTIVE_PRODUCT_READ_MAX_WAIT_MS,
+  withOpenFoodFactsProductReadPermit,
+} from '../../services/openFoodFactsProductReadRateLimitService.js';
 const { name, version } = package$0;
 const USER_AGENT = `${name}/${version} (https://github.com/CodeWithCJ/SparkyFitness)`;
 const SEARCH_A_LICIOUS_URL = 'https://search.openfoodfacts.org/search';
@@ -253,7 +261,8 @@ function rankSearchHits(
  */
 async function resolveOffRequestContext(
   authenticatedUserId?: string,
-  providerId?: string
+  providerId?: string,
+  credentialScope: OpenFoodFactsCredentialScope = 'personal'
 ): Promise<{ sessionCookie: string | null; baseUrl: string }> {
   if (!authenticatedUserId || !providerId) {
     return { sessionCookie: null, baseUrl: DEFAULT_OFF_BASE_URL };
@@ -261,7 +270,8 @@ async function resolveOffRequestContext(
   try {
     const { session, baseUrl } = await resolveOpenFoodFactsProvider(
       authenticatedUserId,
-      providerId
+      providerId,
+      credentialScope
     );
     return { sessionCookie: session, baseUrl };
   } catch (error) {
@@ -281,13 +291,15 @@ async function fetchOpenFoodFacts(
     providerId,
     sessionCookie,
     timeoutMs = OFF_FETCH_TIMEOUT_MS,
+    rateLimitProductRead = false,
   }: {
     authenticatedUserId?: string;
     providerId?: string;
     sessionCookie?: string | null;
     timeoutMs?: number;
+    rateLimitProductRead?: boolean;
   } = {}
-) {
+): Promise<Response> {
   const baseHeaders = { ...OFF_HEADERS };
 
   const headers = sessionCookie
@@ -298,14 +310,41 @@ async function fetchOpenFoodFacts(
   // answered near the end of the budget cannot double the wall-clock time.
   const requestDeadline = Date.now() + timeoutMs;
 
-  const response = await fetchWithTimeout(
-    url,
-    {
-      method: 'GET',
-      headers,
-    },
-    timeoutMs
-  );
+  const performGet = async (
+    requestHeaders: Record<string, string>
+  ): Promise<Response> => {
+    const operation = (): Promise<Response> => {
+      const remainingTimeoutMs = requestDeadline - Date.now();
+      if (remainingTimeoutMs <= 0) {
+        log('warn', `OpenFoodFacts request deadline exhausted: ${url}`);
+        return Promise.reject(
+          Object.assign(new Error('OpenFoodFacts request timed out'), {
+            status: 504,
+          })
+        );
+      }
+      return fetchWithTimeout(
+        url,
+        {
+          method: 'GET',
+          headers: requestHeaders,
+          redirect: 'manual',
+        },
+        remainingTimeoutMs
+      );
+    };
+
+    if (!rateLimitProductRead) return operation();
+    const remainingWaitBudget = Math.max(0, requestDeadline - Date.now());
+    return withOpenFoodFactsProductReadPermit(operation, {
+      maxWaitMs: Math.min(
+        OPENFOODFACTS_INTERACTIVE_PRODUCT_READ_MAX_WAIT_MS,
+        remainingWaitBudget
+      ),
+    });
+  };
+
+  const response = await performGet(headers);
 
   if (sessionCookie && (response.status === 429 || response.status >= 500)) {
     log(
@@ -322,14 +361,7 @@ async function fetchOpenFoodFacts(
         status: 504,
       });
     }
-    return fetchWithTimeout(
-      url,
-      {
-        method: 'GET',
-        headers: baseHeaders,
-      },
-      remainingTimeoutMs
-    );
+    return performGet(baseHeaders);
   }
 
   return response;
@@ -473,7 +505,8 @@ async function searchOpenFoodFacts(
   language = 'en',
   authenticatedUserId?: string,
   providerId?: string,
-  pageSize = 20
+  pageSize = 20,
+  credentialScope: OpenFoodFactsCredentialScope = 'personal'
 ): Promise<{
   products: OffProduct[];
   pagination: {
@@ -491,7 +524,8 @@ async function searchOpenFoodFacts(
     const fields = [...fieldSet];
     const { sessionCookie, baseUrl } = await resolveOffRequestContext(
       authenticatedUserId,
-      providerId
+      providerId,
+      credentialScope
     );
 
     // Search-a-licious is Open Food Facts' relevance-ranked full-text search
@@ -634,7 +668,8 @@ async function searchOpenFoodFactsByBarcodeFields(
   fields = OFF_FIELDS,
   language = 'en',
   authenticatedUserId?: string,
-  providerId?: string
+  providerId?: string,
+  credentialScope: OpenFoodFactsCredentialScope = 'personal'
 ): Promise<{
   status: number;
   status_verbose: string;
@@ -650,13 +685,15 @@ async function searchOpenFoodFactsByBarcodeFields(
     const fieldsParam = finalFields.join(',');
     const { sessionCookie, baseUrl } = await resolveOffRequestContext(
       authenticatedUserId,
-      providerId
+      providerId,
+      credentialScope
     );
     const searchUrl = `${baseUrl}/api/v2/product/${barcode}.json?fields=${fieldsParam}&lc=${language}`;
     const response = await fetchOpenFoodFacts(searchUrl, {
       authenticatedUserId,
       providerId,
       sessionCookie,
+      rateLimitProductRead: true,
     });
     if (!response.ok) {
       if (response.status === 404) {
@@ -686,6 +723,7 @@ async function searchOpenFoodFactsByBarcodeFields(
           authenticatedUserId,
           providerId,
           sessionCookie,
+          rateLimitProductRead: true,
         });
         if (altResponse.ok) {
           const altData = (await altResponse.json()) as {
@@ -742,7 +780,32 @@ function deriveOffServingUnit(product: OffProduct): string {
       return normalizeServingUnit(match[2]);
     }
   }
-  return 'g';
+  // Nothing in the record states a unit. Grams is right for food and wrong for
+  // every drink, and a product that reports an ABV is a drink: OpenFoodFacts
+  // publishes beverages per 100 ml, so a beer imported as "100 g" is our
+  // fallback showing through, not a mass the source actually claimed.
+  return isOffLiquid(product) ? 'ml' : 'g';
+}
+
+/**
+ * True when the record is a drink, judged only on evidence the record itself
+ * carries: an alcohol reading (published as % vol), or a pack quantity already
+ * measured in volume. Categories are not consulted -- they are free-text,
+ * multilingual and frequently absent, so they would guess where these do not.
+ */
+function isOffLiquid(product: OffProduct): boolean {
+  const nutriments = product.nutriments || {};
+  const abv =
+    parseOffNumber(nutriments['alcohol_100g']) ??
+    parseOffNumber(nutriments['alcohol_serving']) ??
+    parseOffNumber(nutriments['alcohol']);
+  if (abv !== null && abv > 0) return true;
+  const packUnit = product.product_quantity_unit;
+  if (typeof packUnit === 'string') {
+    const normalized = normalizeServingUnit(packUnit);
+    if (normalized === 'ml' || normalized === 'l') return true;
+  }
+  return false;
 }
 
 // Metric units that must never become a household variant — they would just
@@ -789,6 +852,7 @@ const GRAMS_TO_UNIT: Record<string, number> = {
 // OFF ships several `*_100g` fields that are scores/estimates, not nutrients.
 // They clutter the "add as alias" list and should never be offered, so skip them.
 const OFF_NON_NUTRIENT_KEYS = new Set([
+  'alcohol',
   'nova-group',
   'nutrition-score-fr',
   'nutrition-score-uk',
@@ -946,9 +1010,14 @@ function mapOpenFoodFactsProduct(
   const servingQuantity = declaredServingQuantity ?? 100;
   const servingSize = autoScale ? servingQuantity : 100;
   const scale = servingSize / 100;
+  const servingUnit = deriveOffServingUnit(product);
+  const rawAbv =
+    parseOffNumber(nutriments['alcohol_100g']) ??
+    parseOffNumber(nutriments['alcohol_serving']) ??
+    parseOffNumber(nutriments['alcohol']);
   const defaultVariant = {
     serving_size: servingSize,
-    serving_unit: deriveOffServingUnit(product),
+    serving_unit: servingUnit,
     calories: Math.round(
       getOffEnergyKcal100g(nutriments, declaredServingQuantity) * scale
     ),
@@ -1061,6 +1130,33 @@ function mapOpenFoodFactsProduct(
           scale *
           10
       ) / 10,
+    // OFF stores caffeine_100g in grams (mass-based, like sodium/iron/calcium
+    // above) -- x1000 converts to milligrams, matching every other mg-unit
+    // nutrient here.
+    caffeine_mg:
+      Math.round(
+        getOffNutrient100g(nutriments, 'caffeine', declaredServingQuantity) *
+          1000 *
+          scale *
+          10
+      ) / 10,
+    // OFF's water_100g is grams; water's density is ~1 g/ml, so grams and
+    // millilitres are numerically equivalent here -- no x1000 factor, just
+    // the same per-100g -> per-serving scale as calories/protein/fat.
+    water_ml:
+      Math.round(
+        getOffNutrient100g(nutriments, 'water', declaredServingQuantity) *
+          scale *
+          10
+      ) / 10,
+    // OpenFoodFacts stores alcohol_100g as % ABV (volume fraction * 100),
+    // NOT grams of ethanol per 100g. We extract it directly as abv_percent,
+    // and derive alcohol_g via grams = volume_ml * (abv/100) * 0.789.
+    abv_percent: rawAbv !== null && rawAbv >= 0 ? rawAbv : undefined,
+    alcohol_g:
+      rawAbv !== null && rawAbv >= 0
+        ? alcoholGramsForServing(servingSize, servingUnit, rawAbv)
+        : 0,
     ...(() => {
       const extracted = extractOffProviderNutrients(
         nutriments,

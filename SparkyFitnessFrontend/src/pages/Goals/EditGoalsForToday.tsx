@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import type { ExpandedGoals } from '@/types/goals';
+import { NON_GOAL_NUTRIENT_KEYS } from '@workspace/shared';
 import MealPercentageManager from '@/components/MealPercentageManager';
 import { Separator } from '@/components/ui/separator';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -132,7 +133,9 @@ const EditGoalsForm = ({
       'monounsaturated_fat',
       'trans_fat',
     ];
-    const merged = Array.from(new Set([...base, ...mustInclude]));
+    const merged = Array.from(new Set([...base, ...mustInclude])).filter(
+      (k) => !(NON_GOAL_NUTRIENT_KEYS as readonly string[]).includes(k)
+    );
 
     // Also include custom nutrients in the visibility list so they aren't filtered out by NutrientInput
     return [...merged, ...customNutrients.map((cn) => cn.name)];
@@ -446,7 +449,12 @@ const EditGoalsForm = ({
 const EditGoalsForToday = ({ selectedDate }: EditGoalsProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { formatDate } = usePreferences();
+  const {
+    formatDate,
+    goalMode,
+    goalModeCalculationMethod,
+    saveAllPreferences,
+  } = usePreferences();
   const [open, setOpen] = useState(false);
 
   const { data: serverGoals, isLoading } = useDailyGoals(selectedDate);
@@ -475,6 +483,18 @@ const EditGoalsForToday = ({ selectedDate }: EditGoalsProps) => {
       finalGoals.fat = Math.round(
         (adjustedCal * (finalGoals.fat_percentage || 0)) / 100 / 9
       );
+    }
+
+    if (goalModeCalculationMethod === 'adaptive' || goalMode !== 'maintain') {
+      try {
+        await saveAllPreferences({
+          goalMode: 'maintain',
+          goalModeCalculationMethod: 'manual',
+        });
+      } catch (err) {
+        console.error('Failed to reset goal mode to maintain', err);
+        return;
+      }
     }
 
     try {

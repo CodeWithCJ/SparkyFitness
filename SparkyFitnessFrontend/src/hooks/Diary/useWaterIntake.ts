@@ -12,6 +12,7 @@ import { waterIntakeKeys } from '@/api/keys/diary';
 import { isManualSource } from '@/utils/sourceLabels';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { toast } from '@/hooks/use-toast';
 import { useDiaryInvalidation } from '../useInvalidateKeys';
 
 export const useWaterGoalQuery = (date: string, userId?: string) => {
@@ -33,10 +34,16 @@ export const useWaterGoalQuery = (date: string, userId?: string) => {
   });
 };
 
-/** Day totals split by origin: `manualMl` is the part the "-" control can remove. */
+/**
+ * Day totals split by origin: `manualMl` is the part the "-" control can
+ * remove. `foodMl` is the food-derived portion folded in when the user has
+ * opted in to add_food_water_to_intake (#1557, #1629) -- 0 for an opted-out
+ * user or a server that predates the breakdown.
+ */
 interface WaterIntakeTotals {
   totalMl: number;
   manualMl: number;
+  foodMl: number;
 }
 
 const fetchWaterIntakeTotals = async (
@@ -53,7 +60,7 @@ const fetchWaterIntakeTotals = async (
         if (isManualSource(record.source)) acc.manualMl += ml;
         return acc;
       },
-      { totalMl: 0, manualMl: 0 }
+      { totalMl: 0, manualMl: 0, foodMl: 0 }
     );
   }
   if (waterData && waterData.water_ml !== undefined) {
@@ -67,9 +74,10 @@ const fetchWaterIntakeTotals = async (
         waterData.manual_ml !== undefined
           ? Number(waterData.manual_ml) || 0
           : totalMl,
+      foodMl: Number(waterData.food_ml) || 0,
     };
   }
-  return { totalMl: 0, manualMl: 0 };
+  return { totalMl: 0, manualMl: 0, foodMl: 0 };
 };
 
 /**
@@ -102,6 +110,15 @@ export const useManualWaterIntakeQuery = (date: string, userId?: string) => {
   });
 };
 
+/** Food-derived portion of the day's water total (#1557, #1629). 0 when the
+ * user hasn't opted in to add_food_water_to_intake. */
+export const useFoodWaterIntakeQuery = (date: string, userId?: string) => {
+  return useQuery({
+    ...waterIntakeTotalsOptions(date, userId),
+    select: (totals: WaterIntakeTotals) => totals.foodMl,
+  });
+};
+
 export const useUpdateWaterIntakeMutation = () => {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
@@ -109,7 +126,7 @@ export const useUpdateWaterIntakeMutation = () => {
   const invalidate = useDiaryInvalidation();
   return useMutation({
     mutationFn: (payload: UpdateWaterPayload) => updateWaterIntake(payload),
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({
         queryKey: waterIntakeKeys.daily(
           variables.entry_date,
@@ -121,6 +138,25 @@ export const useUpdateWaterIntakeMutation = () => {
         queryKey: waterIntakeKeys.log(variables.entry_date, variables.user_id),
       });
       invalidate();
+
+      if (
+        data &&
+        !Array.isArray(data) &&
+        'removedFoodEntryIds' in data &&
+        Array.isArray(data.removedFoodEntryIds) &&
+        data.removedFoodEntryIds.length > 0
+      ) {
+        toast({
+          title: t(
+            'foodDiary.waterIntake.linkedFoodRemovedTitle',
+            'Food Entry Removed'
+          ),
+          description: t(
+            'foodDiary.waterIntake.linkedFoodRemoved',
+            'Linked food entry was also removed from your food diary.'
+          ),
+        });
+      }
     },
     meta: {
       successMessage: t(

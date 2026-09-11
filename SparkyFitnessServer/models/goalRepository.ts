@@ -8,6 +8,7 @@ async function getGoalByDate(userId: any, selectedDate: any) {
                saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
                cholesterol, sodium, potassium, dietary_fiber, sugars,
                vitamin_a, vitamin_c, calcium, iron,
+               caffeine_mg, alcohol_g,
                target_exercise_calories_burned, target_exercise_duration_minutes,
                protein_percentage, carbs_percentage, fat_percentage,
                breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
@@ -34,6 +35,7 @@ async function getAllHistoricalGoals(userId: string) {
               saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
               cholesterol, sodium, potassium, dietary_fiber, sugars,
               vitamin_a, vitamin_c, calcium, iron,
+              caffeine_mg, alcohol_g,
               target_exercise_calories_burned, target_exercise_duration_minutes,
               protein_percentage, carbs_percentage, fat_percentage,
               breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
@@ -63,6 +65,7 @@ async function getGoalsInRange(
               saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
               cholesterol, sodium, potassium, dietary_fiber, sugars,
               vitamin_a, vitamin_c, calcium, iron,
+              caffeine_mg, alcohol_g,
               target_exercise_calories_burned, target_exercise_duration_minutes,
               protein_percentage, carbs_percentage, fat_percentage,
               breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
@@ -88,14 +91,15 @@ async function getMostRecentGoalBeforeDate(userId: any, selectedDate: any) {
                saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
                cholesterol, sodium, potassium, dietary_fiber, sugars,
                vitamin_a, vitamin_c, calcium, iron,
+               caffeine_mg, alcohol_g,
                target_exercise_calories_burned, target_exercise_duration_minutes,
                protein_percentage, carbs_percentage, fat_percentage,
                breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
                custom_meal_percentages, custom_nutrients
-       FROM user_goals
-       WHERE user_id = $1 AND (goal_date < $2 OR goal_date IS NULL)
-       ORDER BY goal_date DESC NULLS LAST
-       LIMIT 1`,
+        FROM user_goals
+        WHERE user_id = $1 AND (goal_date < $2 OR goal_date IS NULL)
+        ORDER BY goal_date DESC NULLS LAST
+        LIMIT 1`,
       [userId, selectedDate]
     );
     return result.rows[0];
@@ -116,9 +120,10 @@ async function upsertGoal(goalData: any) {
         target_exercise_calories_burned, target_exercise_duration_minutes,
         protein_percentage, carbs_percentage, fat_percentage,
         breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
-        custom_meal_percentages, custom_nutrients, created_at, updated_at
+        custom_meal_percentages, custom_nutrients, created_at, updated_at,
+        caffeine_mg, alcohol_g
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35)
       ON CONFLICT (user_id, COALESCE(goal_date, '1900-01-01'::date))
       DO UPDATE SET
         calories = EXCLUDED.calories,
@@ -150,6 +155,8 @@ async function upsertGoal(goalData: any) {
         snacks_percentage = EXCLUDED.snacks_percentage,
         custom_meal_percentages = EXCLUDED.custom_meal_percentages,
         custom_nutrients = EXCLUDED.custom_nutrients,
+        caffeine_mg = EXCLUDED.caffeine_mg,
+        alcohol_g = EXCLUDED.alcohol_g,
         updated_at = now()
       RETURNING *`,
       [
@@ -186,6 +193,8 @@ async function upsertGoal(goalData: any) {
         goalData.custom_nutrients || {},
         new Date(), // for created_at
         new Date(), // for updated_at
+        goalData.caffeine_mg,
+        goalData.alcohol_g,
       ]
     );
     return result.rows[0];

@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import {
+  MIN_MEASURED_BMR_KCAL,
+  MAX_MEASURED_BMR_KCAL,
+} from '@workspace/shared';
+import {
   dateSchema,
   optionalDateSchema,
   weightUnitEnum,
@@ -55,8 +59,8 @@ const logBiometricsSchema = z
       .describe('Body water percentage'),
     bmr: z.coerce
       .number()
-      .min(300)
-      .max(10000)
+      .min(MIN_MEASURED_BMR_KCAL)
+      .max(MAX_MEASURED_BMR_KCAL)
       .optional()
       .describe('Basal Metabolic Rate (BMR) in kcal'),
   })

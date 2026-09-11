@@ -10,6 +10,12 @@ import type {
   WaterIntakeLogEntry,
 } from '../../types/measurements';
 import type {
+  CreateWaterContainerBody,
+  UpdateWaterContainerBody,
+  DrinkPresetCatalogEntry,
+  WaterIntakeLogEntry,
+} from '@workspace/shared';
+import type {
   CustomCategory,
   CustomMeasurementEntry,
   SaveCustomMeasurementPayload,
@@ -78,6 +84,92 @@ export const fetchWaterContainers = async (): Promise<WaterContainer[]> => {
   });
 };
 
+/** Creates a water container, optionally linked to a food (#2115). */
+export const createWaterContainer = async (
+  body: CreateWaterContainerBody
+): Promise<WaterContainer> => {
+  return apiFetch<WaterContainer>({
+    endpoint: '/api/water-containers',
+    serviceName: 'Measurements API',
+    operation: 'create water container',
+    method: 'POST',
+    body,
+  });
+};
+
+/**
+ * Updates a water container. An explicit `null` on a link field unlinks it;
+ * an omitted field leaves it unchanged (see waterContainerRepository.ts on
+ * the server for the same present-vs-omitted distinction).
+ */
+export const updateWaterContainer = async (
+  id: number,
+  body: UpdateWaterContainerBody
+): Promise<WaterContainer> => {
+  return apiFetch<WaterContainer>({
+    endpoint: `/api/water-containers/${id}`,
+    serviceName: 'Measurements API',
+    operation: 'update water container',
+    method: 'PUT',
+    body,
+  });
+};
+
+export const deleteWaterContainer = async (id: number): Promise<void> => {
+  return apiFetch<void>({
+    endpoint: `/api/water-containers/${id}`,
+    serviceName: 'Measurements API',
+    operation: 'delete water container',
+    method: 'DELETE',
+  });
+};
+
+export const setPrimaryWaterContainer = async (
+  id: number
+): Promise<WaterContainer> => {
+  return apiFetch<WaterContainer>({
+    endpoint: `/api/water-containers/${id}/set-primary`,
+    serviceName: 'Measurements API',
+    operation: 'set primary water container',
+    method: 'PUT',
+  });
+};
+
+export const reorderWaterContainers = async (
+  containerIds: number[]
+): Promise<void> => {
+  return apiFetch<void>({
+    endpoint: '/api/water-containers/reorder',
+    serviceName: 'Measurements API',
+    operation: 'reorder water containers',
+    method: 'PUT',
+    body: { container_ids: containerIds },
+  });
+};
+
+export const fetchDrinkPresetCatalog = async (): Promise<
+  DrinkPresetCatalogEntry[]
+> => {
+  return apiFetch<DrinkPresetCatalogEntry[]>({
+    endpoint: '/api/water-containers/catalog',
+    serviceName: 'Measurements API',
+    operation: 'fetch drink preset catalog',
+  });
+};
+
+/** Materializes a catalog preset into a per-user food + linked container. */
+export const addDrinkPreset = async (
+  catalogId: string
+): Promise<WaterContainer> => {
+  return apiFetch<WaterContainer>({
+    endpoint: '/api/water-containers/presets',
+    serviceName: 'Measurements API',
+    operation: 'add drink preset',
+    method: 'POST',
+    body: { catalog_id: catalogId },
+  });
+};
+
 /**
  * Fetches measurements for a date range.
  */
@@ -89,6 +181,26 @@ export const fetchMeasurementsRange = async (
     endpoint: `/api/measurements/check-in-measurements-range/${startDate}/${endDate}`,
     serviceName: 'Measurements API',
     operation: 'fetch measurements range',
+  });
+};
+
+export type WaterIntakeRangeEntry = {
+  entry_date: string;
+  water_ml: number;
+};
+
+/**
+ * Fetches one water total per day that has logged water in the range. Days with no
+ * intake are absent from the response, not returned as zero.
+ */
+export const fetchWaterIntakeRange = async (
+  startDate: string,
+  endDate: string
+): Promise<WaterIntakeRangeEntry[]> => {
+  return apiFetch<WaterIntakeRangeEntry[]>({
+    endpoint: `/api/measurements/water-intake-range/${startDate}/${endDate}`,
+    serviceName: 'Measurements API',
+    operation: 'fetch water intake range',
   });
 };
 
@@ -184,6 +296,22 @@ export const deleteCustomMeasurement = async (id: string): Promise<void> => {
 /**
  * Changes water intake by adding or removing a drink.
  */
+/**
+ * Fetches the day's itemized water ledger (#1939): one row per logged drink,
+ * each carrying its real `logged_at` timestamp and `source`. Used by
+ * per-entry health writeback so each drink exports at the time it was
+ * actually logged instead of one noon-anchored day total.
+ */
+export const fetchWaterIntakeLog = async (
+  date: string
+): Promise<WaterIntakeLogEntry[]> => {
+  return apiFetch<WaterIntakeLogEntry[]>({
+    endpoint: `/api/v2/measurements/water-intake/${date}/log`,
+    serviceName: 'Measurements API',
+    operation: 'fetch water intake log',
+  });
+};
+
 export const changeWaterIntake = async (params: {
   entryDate: string;
   changeDrinks: number;

@@ -9,6 +9,18 @@ let mockAdjustmentMode:
   'dynamic' | 'adaptive' | 'fixed' | 'percentage' | 'tdee' | 'smart' =
   'dynamic';
 
+let mockGoalPreferences: Record<
+  string,
+  { goalType: string; targetMin?: number; targetMax?: number }
+> = {};
+
+jest.mock('@/hooks/Settings/useNutrientGoalPreferences', () => ({
+  useNutrientGoalPreferences: () => ({
+    data: mockGoalPreferences,
+    isLoading: false,
+  }),
+}));
+
 jest.mock('@/i18n', () => ({
   __esModule: true,
   default: {
@@ -106,6 +118,9 @@ const EMPTY_NUTRIENTS = {
   vitamin_c: 0,
   calcium: 0,
   iron: 0,
+  caffeine_mg: 0,
+  water_ml: 0,
+  alcohol_g: 0,
 };
 
 const day = (date: string, calories: number): NutritionData => ({
@@ -544,5 +559,38 @@ describe('NutritionPeriodSummary', () => {
 
     expect(screen.getByText('Counted 1 days')).toBeInTheDocument();
     expect(screen.queryByText(/excluded/i)).toBeNull();
+  });
+
+  it('calculates zero variance when calories fall inside target range', () => {
+    mockGoalPreferences = {
+      calories: { goalType: 'target', targetMin: 1500, targetMax: 1900 },
+    };
+
+    render(
+      <NutritionPeriodSummary
+        nutritionData={[
+          day('2026-08-01', 1660), // inside target (1500-1900) -> 0 variance
+          day('2026-08-02', 2000), // +100 over max (1900)
+          day('2026-08-03', 1400), // -100 under min (1500)
+        ]}
+        customNutrients={[]}
+        goals={{
+          '2026-08-01': goalFor(1700),
+          '2026-08-02': goalFor(1700),
+          '2026-08-03': goalFor(1700),
+        }}
+        calorieBalanceByDate={byDate([
+          balance({ date: '2026-08-01', eaten: 1660, goal: 1700 }),
+          balance({ date: '2026-08-02', eaten: 2000, goal: 1700 }),
+          balance({ date: '2026-08-03', eaten: 1400, goal: 1700 }),
+        ])}
+      />
+    );
+
+    expect(
+      screen.getByText(/1 of 3 days in target range/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText('Total Goal: 4500–5700 kcal')).toBeInTheDocument();
+    mockGoalPreferences = {};
   });
 });

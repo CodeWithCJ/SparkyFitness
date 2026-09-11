@@ -6,6 +6,7 @@ import {
   getGrantedPermissions,
 } from 'react-native-health-connect';
 import { fetchDailySummary } from '../../../src/services/api/dailySummaryApi';
+import { fetchWaterIntakeLog } from '../../../src/services/api/measurementsApi';
 import {
   loadHealthPreference,
   saveHealthPreference,
@@ -27,6 +28,9 @@ jest.mock('react-native-health-connect', () => ({
 }));
 jest.mock('../../../src/services/api/dailySummaryApi', () => ({
   fetchDailySummary: jest.fn(),
+}));
+jest.mock('../../../src/services/api/measurementsApi', () => ({
+  fetchWaterIntakeLog: jest.fn(),
 }));
 jest.mock('../../../src/utils/loggedMealCollapse', () => ({
   resolveCollapsedFoodEntries: jest.fn((_date: string, entries: unknown) =>
@@ -52,6 +56,7 @@ const mockDelete = deleteRecordsByUuids as jest.Mock;
 const mockDeleteByRange = deleteRecordsByTimeRange as jest.Mock;
 const mockGranted = getGrantedPermissions as jest.Mock;
 const mockSummary = fetchDailySummary as jest.Mock;
+const mockWaterLog = fetchWaterIntakeLog as jest.Mock;
 const mockLoadPref = loadHealthPreference as jest.Mock;
 const mockSavePref = saveHealthPreference as jest.Mock;
 
@@ -89,6 +94,24 @@ beforeEach(() => {
     { recordType: 'Hydration', accessType: 'write' },
   ]);
   mockSummary.mockResolvedValue({ foodEntries: [foodEntry], waterIntake: 500 });
+  mockWaterLog.mockResolvedValue([]);
+});
+
+// One manually-logged drink at a real timestamp (#1939) — the default shape
+// a hydration test builds on top of.
+const manualLogEntry = (
+  waterMl = 500,
+  loggedAt = '2026-06-01T09:00:00.000Z'
+) => ({
+  id: 'log-1',
+  user_id: 'user-1',
+  entry_date: '2026-06-01',
+  water_ml: waterMl,
+  container_id: null,
+  container_name: null,
+  source: 'manual',
+  created_at: loggedAt,
+  logged_at: loggedAt,
 });
 
 describe('writebackPhase', () => {
@@ -148,14 +171,67 @@ describe('writebackPhase', () => {
     expect(mockInsert).toHaveBeenCalledTimes(1);
   });
 
-  it('writes water and deletes the day record when water drops to 0', async () => {
+  it('writes one Hydration record per manually-logged drink at its real timestamp (#1939)', async () => {
+    prefs({ writebackHydrationEnabled: true });
+    mockSummary.mockResolvedValue({ foodEntries: [], waterIntake: 500 });
+    mockWaterLog.mockResolvedValue([manualLogEntry(500)]);
+    await writebackPhase(['2026-06-01']);
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    const record = mockInsert.mock.calls[0][0][0];
+    expect(record.recordType).toBe('Hydration');
+    expect(record.volume).toEqual({ value: 500, unit: 'milliliters' });
+  });
+
+  it('writes one record per ledger row and never re-exports a provider-synced row', async () => {
+    prefs({ writebackHydrationEnabled: true });
+    mockSummary.mockResolvedValue({ foodEntries: [], waterIntake: 750 });
+    mockWaterLog.mockResolvedValue([
+      manualLogEntry(500, '2026-06-01T09:00:00.000Z'),
+      { ...manualLogEntry(250, '2026-06-01T15:00:00.000Z'), id: 'log-2' },
+      {
+        ...manualLogEntry(1000, '2026-06-01T08:00:00.000Z'),
+        id: 'log-3',
+        source: 'health_connect', // imported -- must not be re-exported
+      },
+    ]);
+    await writebackPhase(['2026-06-01']);
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    const records = mockInsert.mock.calls[0][0];
+    expect(records).toHaveLength(2);
+    expect(
+      records.map((r: { volume: { value: number } }) => r.volume.value)
+    ).toEqual(expect.arrayContaining([500, 250]));
+  });
+
+  it('folds food-derived water into one synthetic noon-anchored record (#1557, #1629)', async () => {
+    prefs({ writebackHydrationEnabled: true });
+    mockSummary.mockResolvedValue({
+      foodEntries: [],
+      waterIntake: 300,
+      waterIntakeBreakdown: {
+        water_ml: 300,
+        manual_ml: 0,
+        ledger_ml: 0,
+        food_ml: 300,
+      },
+    });
+    mockWaterLog.mockResolvedValue([]);
+    await writebackPhase(['2026-06-01']);
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    const records = mockInsert.mock.calls[0][0];
+    expect(records).toHaveLength(1);
+    expect(records[0].volume).toEqual({ value: 300, unit: 'milliliters' });
+  });
+
+  it('writes water and deletes the day record when there is nothing left to write', async () => {
     prefs({
       writebackHydrationEnabled: true,
       'writebackHydrationIds:2026-06-01': ['sparky-water-2026-06-01-1'],
     });
     mockSummary.mockResolvedValue({ foodEntries: [], waterIntake: 0 });
+    mockWaterLog.mockResolvedValue([]);
     await writebackPhase(['2026-06-01']);
-    expect(mockInsert).not.toHaveBeenCalled(); // ml<=0 → no record
+    expect(mockInsert).not.toHaveBeenCalled(); // nothing to write
     expect(mockDelete).toHaveBeenCalledWith(
       'Hydration',
       [],
@@ -165,13 +241,25 @@ describe('writebackPhase', () => {
 
   // Regression: a pre-noon run used to store the empty signature, making every
   // later run that day report "unchanged — skipped" regardless of the total.
-  it('defers hydration without storing a signature while the noon anchor is in the future', async () => {
+  // Real ledger rows carry a concrete logged_at and never defer; only the
+  // synthetic food-water remainder still anchors to noon and can defer.
+  it('defers only the food-water remainder without storing a signature while the noon anchor is in the future', async () => {
     const d = new Date();
     d.setDate(d.getDate() + 1); // local tomorrow: noon anchor guaranteed future
     const tomorrow = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
     prefs({ writebackHydrationEnabled: true });
-    mockSummary.mockResolvedValue({ foodEntries: [], waterIntake: 750 });
+    mockSummary.mockResolvedValue({
+      foodEntries: [],
+      waterIntake: 750,
+      waterIntakeBreakdown: {
+        water_ml: 750,
+        manual_ml: 0,
+        ledger_ml: 0,
+        food_ml: 750,
+      },
+    });
+    mockWaterLog.mockResolvedValue([]);
     await writebackPhase([tomorrow]);
 
     expect(mockInsert).not.toHaveBeenCalled();

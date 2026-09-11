@@ -2,6 +2,7 @@ import nutrientGoalPreferenceRepository from '../models/nutrientGoalPreferenceRe
 import customNutrientService from './customNutrientService.js';
 import {
   BUILTIN_MAXIMUM_GOAL_NUTRIENTS,
+  NON_GOAL_NUTRIENT_KEYS,
   type NutrientGoalType,
 } from '@workspace/shared';
 
@@ -13,6 +14,7 @@ const BUILTIN_MAXIMUM_DEFAULTS: readonly string[] =
 
 // Predefined nutrient keys that can have a goal-direction preference, mirrors
 // nutrientDisplayPreferenceService's predefinedNutrients list (plus 'calories').
+// Note: water_ml is explicitly excluded (see NON_GOAL_NUTRIENT_KEYS).
 const PREDEFINED_NUTRIENT_KEYS = [
   'calories',
   'protein',
@@ -31,6 +33,8 @@ const PREDEFINED_NUTRIENT_KEYS = [
   'vitamin_c',
   'iron',
   'calcium',
+  'caffeine_mg',
+  'alcohol_g',
 ];
 
 export interface EffectiveGoalPreference {
@@ -78,6 +82,10 @@ async function isKnownNutrientKey(
   userId: string,
   nutrientKey: string
 ): Promise<boolean> {
+  // Gate 4: water_ml is permanently barred from the generic goal system
+  if ((NON_GOAL_NUTRIENT_KEYS as readonly string[]).includes(nutrientKey)) {
+    return false;
+  }
   if (PREDEFINED_NUTRIENT_KEYS.includes(nutrientKey)) return true;
   const customNutrients =
     await customNutrientService.getCustomNutrients(userId);
@@ -149,6 +157,9 @@ export {
   upsertGoalPreference,
   resetGoalPreference,
   renameGoalPreferenceKey,
+  builtinDefaultFor,
+  isKnownNutrientKey,
+  PREDEFINED_NUTRIENT_KEYS,
   BUILTIN_MAXIMUM_DEFAULTS,
 };
 export default {
@@ -156,5 +167,8 @@ export default {
   upsertGoalPreference,
   resetGoalPreference,
   renameGoalPreferenceKey,
+  builtinDefaultFor,
+  isKnownNutrientKey,
+  PREDEFINED_NUTRIENT_KEYS,
   BUILTIN_MAXIMUM_DEFAULTS,
 };

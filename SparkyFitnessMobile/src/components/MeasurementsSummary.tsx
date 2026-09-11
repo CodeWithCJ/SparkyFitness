@@ -4,10 +4,9 @@ import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import { MeasurementIcons, type MeasurementKind } from './icons/measurements';
 import {
-  weightFromKg,
+  formatWeightDisplay,
   lengthFromCm,
   cmToFeetInches,
-  kgToStonesLbs,
 } from '../utils/unitConversions';
 import type { CheckInMeasurement } from '../types/measurements';
 import type { CustomMeasurementEntry } from '../types/customMeasurements';
@@ -24,14 +23,6 @@ interface MeasurementsSummaryProps {
 
 const formatNumber = (value: number): string =>
   String(Math.round(value * 10) / 10);
-
-const formatWeight = (kg: number, mode: 'kg' | 'lbs' | 'st_lbs'): string => {
-  if (mode === 'st_lbs') {
-    const { stones, lbs } = kgToStonesLbs(kg);
-    return `${stones}st ${formatNumber(lbs)}lb`;
-  }
-  return `${formatNumber(weightFromKg(kg, mode))} ${mode}`;
-};
 
 const formatHeight = (cm: number, mode: 'cm' | 'inches' | 'ft_in'): string => {
   if (mode === 'ft_in') {
@@ -118,7 +109,7 @@ const MeasurementsSummary: React.FC<MeasurementsSummaryProps> = ({
     rows.push({
       kind: 'weight',
       label: localizedMeasurement('weight'),
-      value: formatWeight(measurements.weight, weightMode),
+      value: formatWeightDisplay(measurements.weight, weightMode),
     });
   if (measurements?.body_fat_percentage != null)
     rows.push({

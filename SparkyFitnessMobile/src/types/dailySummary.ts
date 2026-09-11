@@ -30,6 +30,12 @@ export interface DailySummary {
   exerciseCaloriesGoal: number;
   waterConsumed: number;
   waterGoal: number;
+  /**
+   * The portion of `waterConsumed` folded in from logged food's water content
+   * (#1557, #1629) -- 0 when the user hasn't opted in to add_food_water_to_intake,
+   * or on a server that predates the breakdown.
+   */
+  waterFromFood: number;
   foodEntries: FoodEntry[];
   /**
    * The day's supplement contribution, already folded into the macro and calorie figures

@@ -38,6 +38,9 @@ export const PREDEFINED_NUTRIENT_KEYS = [
   'vitamin_c',
   'calcium',
   'iron',
+  'caffeine_mg',
+  'water_ml',
+  'alcohol_g',
 ];
 
 export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
@@ -211,6 +214,43 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     decimals: 1,
     group: 'minerals',
   },
+  caffeine_mg: {
+    id: 'caffeine_mg',
+    label: 'nutrition.caffeine',
+    defaultLabel: 'Caffeine',
+    unit: 'mg',
+    color: 'text-amber-700 dark:text-amber-500',
+    chartColor: '#b45309', // amber-700
+    decimals: 0,
+    group: 'minerals',
+  },
+  // Required so the food form / food grids can render a water-content input
+  // and readout (CENTRAL_NUTRIENT_CONFIG drives NutrientFormGrid). Summed into
+  // meal totals like any other nutrient, so a meal can state the water it
+  // holds, but NOT into calculateDayTotals: the hydration ring owns the day
+  // figure through its own arm, and a second sum there would compete with it.
+  // See constants/goals.ts for the matching exclusion from the generic
+  // per-nutrient goal system.
+  water_ml: {
+    id: 'water_ml',
+    label: 'nutrition.waterContent',
+    defaultLabel: 'Water Content',
+    unit: 'ml',
+    color: 'text-sky-600 dark:text-sky-400',
+    chartColor: '#0284c7', // sky-600
+    decimals: 0,
+    group: 'minerals',
+  },
+  alcohol_g: {
+    id: 'alcohol_g',
+    label: 'nutrition.alcohol',
+    defaultLabel: 'Alcohol',
+    unit: 'g',
+    color: 'text-purple-600 dark:text-purple-400',
+    chartColor: '#9333ea', // purple-600
+    decimals: 1,
+    group: 'macros',
+  },
 };
 
 // Apply the shared "stay under" defaults (single source of truth in
@@ -240,6 +280,9 @@ export const EMPTY_MEAL_TOTALS: MealTotals = {
   vitamin_c: 0,
   iron: 0,
   calcium: 0,
+  caffeine_mg: 0,
+  water_ml: 0,
+  alcohol_g: 0,
   custom_nutrients: {},
 };
 

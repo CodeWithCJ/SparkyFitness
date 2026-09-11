@@ -16,6 +16,8 @@ export interface DailyGoals {
   vitamin_c?: number;
   calcium?: number;
   iron?: number;
+  caffeine_mg?: number;
+  alcohol_g?: number;
   water_goal_ml?: number;
   target_exercise_calories_burned?: number;
   target_exercise_duration_minutes?: number;

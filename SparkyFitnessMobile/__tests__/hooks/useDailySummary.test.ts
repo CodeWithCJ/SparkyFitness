@@ -88,6 +88,9 @@ const makeSummaryResponse = (overrides: Record<string, unknown> = {}) => ({
   ...(overrides.supplementTotals
     ? { supplementTotals: overrides.supplementTotals }
     : {}),
+  ...(overrides.waterIntakeBreakdown
+    ? { waterIntakeBreakdown: overrides.waterIntakeBreakdown }
+    : {}),
 });
 
 describe('useDailySummary', () => {
@@ -364,6 +367,47 @@ describe('useDailySummary', () => {
 
       expect(result.current.summary?.waterConsumed).toBe(750);
       expect(result.current.summary?.waterGoal).toBe(2500);
+    });
+
+    // #1557, #1629
+    test('waterFromFood reflects the breakdown when the server sends one', async () => {
+      mockFetchDailySummary.mockResolvedValue(
+        makeSummaryResponse({
+          waterIntake: 750,
+          waterIntakeBreakdown: {
+            water_ml: 750,
+            manual_ml: 500,
+            ledger_ml: 500,
+            food_ml: 250,
+          },
+        })
+      );
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.summary?.waterFromFood).toBe(250);
+    });
+
+    test('waterFromFood defaults to 0 on a server that predates the breakdown', async () => {
+      mockFetchDailySummary.mockResolvedValue(
+        makeSummaryResponse({ waterIntake: 500 })
+      );
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.summary?.waterFromFood).toBe(0);
     });
 
     test('includes server-computed stepCalories from daily summary response', async () => {

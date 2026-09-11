@@ -248,6 +248,10 @@ describe('mapOpenFoodFactsProduct', () => {
         vitamin_c: 0,
         calcium: 0,
         iron: 0,
+        caffeine_mg: 0,
+        water_ml: 0,
+        abv_percent: undefined,
+        alcohol_g: 0,
         is_default: true,
         allergens: null,
         traces: null,
@@ -416,6 +420,9 @@ describe('mapUsdaBarcodeProduct', () => {
         sugars: 20.8,
         calcium: 44,
         iron: 0.9,
+        caffeine_mg: 0,
+        water_ml: 0,
+        alcohol_g: 0,
         polyunsaturated_fat: 0,
         monounsaturated_fat: 0,
         vitamin_a: 0,
@@ -439,6 +446,9 @@ describe('mapUsdaBarcodeProduct', () => {
           sugars: 20.8,
           calcium: 44,
           iron: 0.9,
+          caffeine_mg: 0,
+          water_ml: 0,
+          alcohol_g: 0,
           polyunsaturated_fat: 0,
           monounsaturated_fat: 0,
           vitamin_a: 0,
@@ -461,6 +471,9 @@ describe('mapUsdaBarcodeProduct', () => {
           sugars: 56.3,
           calcium: 120,
           iron: 2.3,
+          caffeine_mg: 0,
+          water_ml: 0,
+          alcohol_g: 0,
           polyunsaturated_fat: 0,
           monounsaturated_fat: 0,
           vitamin_a: 0,
@@ -857,7 +870,8 @@ describe('lookupBarcode', () => {
       undefined,
       'fr',
       undefined,
-      undefined
+      undefined,
+      'personal'
     );
     expect(result.source).toBe('openfoodfacts');
     expect(result.food.name).toBe('Produit Français');
@@ -1115,11 +1129,12 @@ describe('lookupBarcode', () => {
     );
   });
 
-  it('passes (userId, provider.id) to OFF when OFF is the configured primary provider', async () => {
+  it('passes the global scope when a public OFF provider is configured', async () => {
     const offProvider = {
       id: 'prov-off-1',
       provider_type: 'openfoodfacts',
       is_active: true,
+      is_public: true,
     };
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     foodRepository.findFoodByBarcode.mockResolvedValue(null);
@@ -1142,7 +1157,8 @@ describe('lookupBarcode', () => {
       undefined,
       'en',
       TEST_USER_ID,
-      'prov-off-1'
+      'prov-off-1',
+      'global'
     );
   });
 
@@ -1168,7 +1184,8 @@ describe('lookupBarcode', () => {
       undefined,
       'en',
       TEST_USER_ID,
-      'prov-off-2'
+      'prov-off-2',
+      'personal'
     );
   });
 
@@ -1190,7 +1207,8 @@ describe('lookupBarcode', () => {
       undefined,
       'en',
       undefined,
-      undefined
+      undefined,
+      'personal'
     );
   });
 

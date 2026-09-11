@@ -8,8 +8,14 @@ export const dailyProgressKeys = {
   all: ['dailyProgress'] as const,
   steps: (date: string) => [...dailyProgressKeys.all, 'steps', date] as const,
   measurements: {
-    mostRecent: (type: string) =>
-      [...dailyProgressKeys.all, 'measurements', 'recent', type] as const,
+    mostRecent: (type: string, onDate?: string) =>
+      [
+        ...dailyProgressKeys.all,
+        'measurements',
+        'recent',
+        type,
+        ...(onDate ? [onDate] : []),
+      ] as const,
   },
   adaptiveTdee: (date: string) =>
     [...dailyProgressKeys.all, 'adaptiveTdee', date] as const,
@@ -47,4 +53,10 @@ export const waterIntakeKeys = {
     [...waterIntakeKeys.all, 'log', date, userId] as const,
   goals: (date: string, userId: string) =>
     ['goals', 'water', date, userId] as const,
+};
+
+export const caffeineKeys = {
+  all: ['caffeine'] as const,
+  active: (date: string, userId?: string) =>
+    [...caffeineKeys.all, 'active', date, userId ?? 'current'] as const,
 };

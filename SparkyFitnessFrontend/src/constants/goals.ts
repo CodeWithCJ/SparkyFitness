@@ -1,4 +1,6 @@
 import type { ExpandedGoals, WeeklyGoalPlan } from '@/types/goals';
+import { NON_GOAL_NUTRIENT_KEYS } from '@workspace/shared';
+import { CENTRAL_NUTRIENT_CONFIG } from './nutrients';
 
 export const DEFAULT_GOALS: ExpandedGoals = {
   calories: 2000,
@@ -19,6 +21,8 @@ export const DEFAULT_GOALS: ExpandedGoals = {
   vitamin_c: 90,
   calcium: 1000,
   iron: 18,
+  caffeine_mg: 400,
+  alcohol_g: 28,
   target_exercise_calories_burned: 0,
   target_exercise_duration_minutes: 0,
   protein_percentage: null,
@@ -30,10 +34,12 @@ export const DEFAULT_GOALS: ExpandedGoals = {
   snacks_percentage: 25,
 };
 
-import { CENTRAL_NUTRIENT_CONFIG } from './nutrients';
-
 export const NUTRIENT_CONFIG = [
-  ...Object.values(CENTRAL_NUTRIENT_CONFIG).filter((n) => n.id !== 'calories'),
+  ...Object.values(CENTRAL_NUTRIENT_CONFIG).filter(
+    (n) =>
+      n.id !== 'calories' &&
+      !(NON_GOAL_NUTRIENT_KEYS as readonly string[]).includes(n.id)
+  ),
 ];
 
 export const DEFAULT_PLAN: Partial<WeeklyGoalPlan> = {
@@ -71,6 +77,8 @@ export const PREDEFINED_GOAL_KEYS = [
   'vitamin_c',
   'calcium',
   'iron',
+  'caffeine_mg',
+  'alcohol_g',
   'target_exercise_calories_burned',
   'target_exercise_duration_minutes',
   'protein_percentage',

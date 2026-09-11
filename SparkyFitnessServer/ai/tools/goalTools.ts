@@ -4,6 +4,7 @@ import { todayInZone } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import goalService from '../../services/goalService.js';
 import goalRepository from '../../models/goalRepository.js';
+import nutrientGoalPreferenceService from '../../services/nutrientGoalPreferenceService.js';
 import { ERRORS, formatZodError } from './errors.js';
 import {
   dayString,
@@ -245,18 +246,22 @@ Actions:
         try {
           // adjust=true so the snapshot matches the goal-mode-calculated goal
           // shown on the Diary tab, consistent with the get_goals action above.
-          const goals = (await goalService.getUserGoals(
-            userId,
-            parsed.data.target_date || todayInZone(tz),
-            undefined,
-            true
-          )) as Record<string, unknown>;
+          const [goals, effectiveGoalTypes] = await Promise.all([
+            goalService.getUserGoals(
+              userId,
+              parsed.data.target_date || todayInZone(tz),
+              undefined,
+              true
+            ) as Promise<Record<string, unknown>>,
+            nutrientGoalPreferenceService.getEffectiveGoalTypes(userId),
+          ]);
           const data: Record<string, unknown> = {};
           for (const field of GOAL_SNAPSHOT_FIELDS) {
             if (field in goals) {
               data[field] = roundGoalValue(goals[field]);
             }
           }
+          data['goal_directions'] = effectiveGoalTypes;
           return formatJsonResult(data);
         } catch (error) {
           log('error', '[Goal Tool] sparky_get_goal_snapshot error:', error);

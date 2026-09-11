@@ -1,0 +1,143 @@
+{
+  "common": {
+    "save": "Salvar",
+    "saving": "Salvando…",
+    "back": "Voltar",
+    "showLess": "Mostrar menos",
+    "learnMore": "Aprenda mais",
+    "next": "Próximo",
+    "later": "Depois",
+    "close": "Fechar",
+    "cancel": "Cancelar",
+    "continue": "Continuar",
+    "retry": "Tentar novamente",
+    "details": "Detalhes",
+    "error": "Erro",
+    "delete": "Deletar",
+    "collapseSection": "Recolher esta seção",
+    "expandSection": "Expandir esta seção",
+    "itemCount_one": "{{count}} item",
+    "itemCount_many": "{{count}} itens",
+    "itemCount_other": "{{count}} itens",
+    "off": "Desativado",
+    "openSelectionMenu": "Abre o menu de seleção",
+    "selectOptionHint": "Toque duas vezes para selecionar esta opção",
+    "success": "Sucesso",
+    "clear": "Limpar",
+    "discardChanges": "Descartar mudanças",
+    "loadMore": "Carregar mais",
+    "edit": "Editar",
+    "connectionRetry": "Por favor cheque a sua conexão e tente novamente.",
+    "deleteItemTitle": "Deletar {{title}}?",
+    "tryAgain": "Por favor tente novamente.",
+    "yes": "Sim",
+    "no": "Não",
+    "and": "e",
+    "listFinalSeparator": ", e ",
+    "date": "Data",
+    "add": "Adicionar",
+    "loading": "Carregando...",
+    "pleaseTryAgain": "Por favor tente novamente.",
+    "ok": "OK",
+    "collapse": "recolher",
+    "expand": "expandir",
+    "removeFromFavorites": "Remover dos favoritos",
+    "addToFavorites": "Adicionar aos favoritos",
+    "goToSettings": "Ir para as configurações",
+    "notSet": "Não definido",
+    "deleting": "Deletando...",
+    "done": "Feito",
+    "none": "Nenhum",
+    "food": "Alimento",
+    "dismiss": "Dispensar",
+    "remove": "Remover",
+    "overwrite": "Overwrite",
+    "previousDay": ": dia anterior",
+    "nextDay": ": próximo dia",
+    "dismissMenu": "Dispensar menu",
+    "units": {
+      "cm": "cm"
+    },
+    "unknownDate": "Data desconhecida",
+    "selectOption": "Selecione uma opção",
+    "requestTimedOut": "Tempo limite da requisição atingido. Verifique sua conexão com o servidor.",
+    "nextStep": "Próximo passo",
+    "notNow": "Agora não"
+  },
+  "settings": {
+    "app": "Configurações do App",
+    "language": {
+      "title": "Idioma",
+      "system": "Sistema",
+      "english": "Inglês",
+      "polish": "Polonês",
+      "spanish": "Espanhol",
+      "pickerHint": "Abre o menu de seleção de idioma",
+      "changeFailed": "Não foi possível mudar o idioma",
+      "managedByIOS": "Gerenciado pelo iOS",
+      "iosSettingsHint": "Mude o idioma deste aplicativo nas Configurações do iOS",
+      "openSettingsFailed": "Não foi possível abrir as Configurações do iOS",
+      "iosSubtitle": "{{language}} · {{managedBy}}"
+    },
+    "lastSynced": "Última sincronização {{time}}",
+    "addServer": "Toque para adicionar um servidor",
+    "title": "Ajustes",
+    "shareReportFailed": "Falha ao enviar relatório de diagnóstico: {{error}}",
+    "serverConnected": "Ajustes do servidor. Conectado.",
+    "serverConnectionFailed": "Ajustes do servidor. Conexão falhou.",
+    "serverNotConfigured": "Ajustes do servidor. Servidor não está configurado.",
+    "rows": {
+      "server": "Servidor",
+      "healthSync": "Sincronização de dados de saúde",
+      "app": "Ajustes do App",
+      "calories": "Calorias e TMB",
+      "food": "Alimento",
+      "dashboard": "Painel",
+      "diary": "Diário",
+      "wellness": "Bem-estar",
+      "cyclePregnancy": "Ciclo e gravidez",
+      "workout": "Treino",
+      "whatsNew": "Novidades",
+      "logs": "Ver registros",
+      "about": "Sobre",
+      "shareReport": "Compartilhar relatório de diagnóstico"
+    },
+    "theme": {
+      "title": "Tema",
+      "light": "Claro",
+      "dark": "Escuro",
+      "amoled": "AMOLED",
+      "system": "Sistema"
+    },
+    "liquidGlass": {
+      "title": "Navegação Liquid Glass"
+    },
+    "notifications": {
+      "title": "Notificações",
+      "subtitle": "Temporizadores de descanso, objetivos de jejum e lembretes de meditação."
+    },
+    "cameraShutter": {
+      "title": "Obturador da câmera",
+      "subtitle": "Reproduzir um som ao fotografar."
+    }
+  },
+  "languageSettings": {
+    "subtitle": "Use o idioma do dispositivo ou escolha um idioma para o SparkyFitness."
+  },
+  "navigation": {
+    "settings": "Ajustes",
+    "library": "Biblioteca",
+    "presets": "Pré-definições",
+    "foods": "Alimentos",
+    "meals": "Refeições",
+    "exercises": "Exercícios",
+    "diary": "Diário",
+    "details": "Detalhes",
+    "dashboard": "Painel",
+    "add": "Adicionar",
+    "mealTypes": "Tipos de refeições"
+  },
+  "familyDiary": {
+    "title": "Diários familiares"
+  }
+}

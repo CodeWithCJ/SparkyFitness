@@ -35,6 +35,16 @@ jest.mock('../../src/components/SleepTimelineChart', () => {
   };
 });
 
+jest.mock('../../src/components/HydrationBarChart', () => {
+  const ReactModule = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: () =>
+      ReactModule.createElement(View, { testID: 'hydration-chart' }),
+  };
+});
+
 type PagerProps = React.ComponentProps<typeof HealthTrendsPager>;
 
 const emptySeries = <TPoint,>(): HealthTrendSeries<TPoint> => ({
@@ -92,12 +102,17 @@ const sleepSeries = sleepTrend({
   nightsWithData: 1,
 });
 
+const hydrationSeries = populated({ day: '2026-06-03', milliliters: 1500 });
+
 const baseProps = (): PagerProps => ({
   steps: stepsSeries,
   weight: emptySeries(),
   sleep: sleepTrend(),
+  hydration: emptySeries(),
   range: '7d',
   weightUnit: 'kg',
+  waterUnit: 'ml',
+  visibleTrends: ['steps', 'weight', 'sleep', 'hydration'],
   activePage: 0,
   onPageSelected: jest.fn(),
 });
@@ -112,7 +127,7 @@ const renderPager = (overrides: Partial<PagerProps> = {}) => {
 };
 
 const chartOrder = (): string[] =>
-  screen.getAllByTestId(/-chart$/).map((node) => node.props.testID as string);
+  screen.queryAllByTestId(/-chart$/).map((node) => node.props.testID as string);
 
 const dots = () => screen.queryAllByTestId(/^health-trends-dot-/);
 
@@ -169,12 +184,6 @@ describe('HealthTrendsPager', () => {
 
     expect(screen.getByTestId('sleep-chart')).toBeTruthy();
     expect(dots()).toHaveLength(2);
-  });
-
-  test('keeps steps visible even with no step data', () => {
-    renderPager({ steps: emptySeries(), weight: weightSeries });
-
-    expect(chartOrder()).toEqual(['steps-chart', 'weight-chart']);
   });
 
   test('clamps the active dot when activePage exceeds the page count', () => {
@@ -302,6 +311,156 @@ describe('HealthTrendsPager', () => {
       'sleep-chart',
     ]);
     expect(selectedDotIndex()).toBe(1);
+  });
+
+  test('renders pages in the order the user chose', () => {
+    renderPager({
+      hydration: hydrationSeries,
+      visibleTrends: ['hydration', 'steps'],
+    });
+
+    expect(chartOrder()).toEqual(['hydration-chart', 'steps-chart']);
+  });
+
+  test('omits a trend the user hid, even with data for it', () => {
+    renderPager({
+      weight: weightSeries,
+      visibleTrends: ['steps', 'sleep', 'hydration'],
+    });
+
+    expect(screen.queryByTestId('weight-chart')).toBeNull();
+  });
+
+  test('still hides a shown trend that has no data in this window', () => {
+    renderPager({
+      hydration: emptySeries(),
+      visibleTrends: ['steps', 'hydration'],
+    });
+
+    expect(chartOrder()).toEqual(['steps-chart']);
+  });
+
+  // `useHydrationRange` zero-fills every day in the window, so hydration's `data` is
+  // never empty and a `data.length` check would show the page to someone who has never
+  // logged water — the same trap sleep's padded series already sidesteps.
+  test('hides hydration when every day in the window is a zero fill', () => {
+    renderPager({
+      hydration: {
+        data: [
+          { day: '2026-06-01', milliliters: 0 },
+          { day: '2026-06-02', milliliters: 0 },
+          { day: '2026-06-03', milliliters: 0 },
+        ],
+        isLoading: false,
+        isError: false,
+      },
+      visibleTrends: ['steps', 'hydration'],
+    });
+
+    expect(chartOrder()).toEqual(['steps-chart']);
+  });
+
+  test('shows hydration when a single day in the window has water logged', () => {
+    renderPager({
+      hydration: {
+        data: [
+          { day: '2026-06-01', milliliters: 0 },
+          { day: '2026-06-02', milliliters: 250 },
+          { day: '2026-06-03', milliliters: 0 },
+        ],
+        isLoading: false,
+        isError: false,
+      },
+      visibleTrends: ['steps', 'hydration'],
+    });
+
+    expect(chartOrder()).toEqual(['steps-chart', 'hydration-chart']);
+  });
+
+  test('still falls back to hydration when its window is all zero fills', () => {
+    renderPager({
+      steps: emptySeries(),
+      weight: emptySeries(),
+      sleep: sleepTrend(),
+      hydration: {
+        data: [{ day: '2026-06-03', milliliters: 0 }],
+        isLoading: false,
+        isError: false,
+      },
+      visibleTrends: ['hydration', 'steps'],
+    });
+
+    expect(chartOrder()).toEqual(['hydration-chart']);
+  });
+
+  // The charts are mocked here, so this only asserts which page the fallback picks. That
+  // the page is not blank is each chart's own responsibility, covered by its empty-state
+  // test — see `WeightLineChart.test.tsx`, which is where the fallback used to render
+  // nothing at all.
+  test('falls back to the first shown trend when every shown trend is empty', () => {
+    renderPager({
+      steps: emptySeries(),
+      weight: emptySeries(),
+      sleep: sleepTrend(),
+      hydration: emptySeries(),
+      visibleTrends: ['hydration', 'steps'],
+    });
+
+    expect(chartOrder()).toEqual(['hydration-chart']);
+  });
+
+  test('renders the all-hidden card when nothing is visible', () => {
+    renderPager({ visibleTrends: [] });
+
+    expect(
+      screen.getByText(
+        'All graphs are hidden. Choose which to show in Dashboard Settings.'
+      )
+    ).toBeTruthy();
+    expect(screen.queryByTestId('pager-view')).toBeNull();
+    expect(chartOrder()).toEqual([]);
+  });
+
+  test('keeps sleep gated on nightsWithData rather than data.length', () => {
+    // The sleep series is padded to one entry per day, so `data` is never empty.
+    renderPager({
+      sleep: sleepTrend(),
+      visibleTrends: ['steps', 'sleep'],
+    });
+
+    expect(screen.queryByTestId('sleep-chart')).toBeNull();
+  });
+
+  test('keeps the user on the same trend across a pure reorder', () => {
+    const onPageSelected = jest.fn();
+    const { rerenderPager } = renderPager({
+      weight: weightSeries,
+      sleep: sleepSeries,
+      visibleTrends: ['steps', 'weight', 'sleep'],
+      activePage: 1,
+      onPageSelected,
+    });
+    expect(chartOrder()).toEqual([
+      'steps-chart',
+      'weight-chart',
+      'sleep-chart',
+    ]);
+
+    rerenderPager({
+      weight: weightSeries,
+      sleep: sleepSeries,
+      visibleTrends: ['weight', 'steps', 'sleep'],
+      activePage: 1,
+      onPageSelected,
+    });
+
+    expect(chartOrder()).toEqual([
+      'weight-chart',
+      'steps-chart',
+      'sleep-chart',
+    ]);
+    expect(pagerMock.setPageWithoutAnimation).toHaveBeenCalledWith(0);
+    expect(onPageSelected).toHaveBeenCalledWith(0);
   });
 
   test('forwards the selected page position', () => {

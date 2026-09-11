@@ -1,6 +1,7 @@
 import nutrientDisplayPreferenceRepository from '../models/nutrientDisplayPreferenceRepository.js';
 import { log } from '../config/logging.js';
 import customNutrientService from './customNutrientService.js';
+import { NON_GOAL_NUTRIENT_KEYS } from '@workspace/shared';
 
 // The shape of a `user_nutrient_display_preferences` row as this service reads it.
 interface NutrientDisplayPreferenceRow {
@@ -15,6 +16,8 @@ const defaultNutrients = [
   'fat',
   'dietary_fiber',
   'sugars',
+  'caffeine_mg',
+  'alcohol_g',
 ];
 const predefinedNutrients = [
   'calories',
@@ -35,6 +38,15 @@ const predefinedNutrients = [
   'iron',
   'calcium',
   'glycemic_index',
+  'caffeine_mg',
+  // Deliberately NOT in defaultNutrients: water already has a dedicated
+  // gauge on both web (WaterIntake.tsx) and mobile (HydrationGauge), so
+  // putting it in the compact summary/quick_info/diary surfaces would render
+  // the same number twice with different rounding. It stays here in
+  // predefinedNutrients so it appears in the food form (needed to enter a
+  // water content) and is one click from the summary.
+  'water_ml',
+  'alcohol_g',
 ];
 /**
  * The view groups a nutrient created from the Custom Nutrients settings page is made
@@ -73,6 +85,12 @@ async function addNutrientToSpecificViews(
     allKnownNutrients.push(nutrientName);
   }
   for (const group of targetGroups) {
+    if (
+      group === 'goal' &&
+      (NON_GOAL_NUTRIENT_KEYS as readonly string[]).includes(nutrientName)
+    ) {
+      continue;
+    }
     for (const platform of platforms) {
       const existing = rawUserPrefs.find(
         (p: NutrientDisplayPreferenceRow) =>
@@ -104,11 +122,18 @@ async function addNutrientToSpecificViews(
           'debug',
           `addNutrientToSpecificViews: Creating new record for ${group}/${platform} with all nutrients`
         );
+        const groupNutrients =
+          group === 'goal'
+            ? allKnownNutrients.filter(
+                (n) =>
+                  !(NON_GOAL_NUTRIENT_KEYS as readonly string[]).includes(n)
+              )
+            : allKnownNutrients;
         await upsertNutrientDisplayPreference(
           userId,
           group,
           platform,
-          allKnownNutrients
+          groupNutrients
         );
       }
     }
@@ -161,6 +186,10 @@ async function getAllNutrients(userId: any) {
     .map((cn: any) => cn.name); // Keep original casing for custom nutrients
   return [...predefinedNutrients, ...customNutrientNames];
 }
+const defaultGoalNutrients = predefinedNutrients.filter(
+  (n) => !(NON_GOAL_NUTRIENT_KEYS as readonly string[]).includes(n)
+);
+
 const defaultPreferences = [
   // Desktop
   {
@@ -181,7 +210,7 @@ const defaultPreferences = [
   {
     view_group: 'goal',
     platform: 'desktop',
-    visible_nutrients: predefinedNutrients,
+    visible_nutrients: defaultGoalNutrients,
   },
   {
     view_group: 'report_tabular',
@@ -220,7 +249,7 @@ const defaultPreferences = [
   {
     view_group: 'goal',
     platform: 'mobile',
-    visible_nutrients: predefinedNutrients,
+    visible_nutrients: defaultGoalNutrients,
   },
   {
     view_group: 'report_tabular',
@@ -277,11 +306,15 @@ async function getNutrientDisplayPreferences(userId: any) {
         // Ensure defaults for specific groups include all current nutrients
         if (
           group === 'food_database' ||
-          group === 'goal' ||
           group === 'report_tabular' ||
           group === 'report_chart'
         ) {
           prefToPush.visible_nutrients = allNutrientsDynamic;
+        } else if (group === 'goal') {
+          prefToPush.visible_nutrients = allNutrientsDynamic.filter(
+            (n: string) =>
+              !(NON_GOAL_NUTRIENT_KEYS as readonly string[]).includes(n)
+          );
         }
         completePreferences.push(prefToPush);
       }
@@ -339,6 +372,10 @@ async function resetNutrientDisplayPreference(
   let defaultVisibleNutrients;
   if (viewGroup === 'summary' || viewGroup === 'quick_info') {
     defaultVisibleNutrients = defaultNutrients; // Use the smaller default set for these
+  } else if (viewGroup === 'goal') {
+    defaultVisibleNutrients = allNutrientsDynamic.filter(
+      (n: string) => !(NON_GOAL_NUTRIENT_KEYS as readonly string[]).includes(n)
+    );
   } else {
     defaultVisibleNutrients = allNutrientsDynamic; // Use all nutrients for other view groups
   }
@@ -361,11 +398,15 @@ async function createDefaultNutrientPreferencesForUser(userId: any) {
   dynamicDefaultPreferences.forEach((pref: any) => {
     if (
       pref.view_group === 'food_database' ||
-      pref.view_group === 'goal' ||
       pref.view_group === 'report_tabular' ||
       pref.view_group === 'report_chart'
     ) {
       pref.visible_nutrients = allNutrientsDynamic;
+    } else if (pref.view_group === 'goal') {
+      pref.visible_nutrients = allNutrientsDynamic.filter(
+        (n: string) =>
+          !(NON_GOAL_NUTRIENT_KEYS as readonly string[]).includes(n)
+      );
     }
   });
   return await nutrientDisplayPreferenceRepository.createDefaultNutrientPreferences(

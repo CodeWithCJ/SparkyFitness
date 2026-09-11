@@ -32,13 +32,16 @@
  * a database is up.
  */
 import pg from 'pg';
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import exerciseDb from '../models/exercise.js';
+import exerciseEntryDb from '../models/exerciseEntry.js';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { getClient, getSystemClient, endPool } from '../db/poolManager.js';
 
 // Probe the app role RLS actually needs, with a short timeout, using a
-// standalone client (NOT the shared pools, whose error handler calls
-// process.exit). Returns false on any failure so the suite skips rather than
-// erroring when no DB is reachable.
+// standalone client. Returns false on any failure so the suite skips rather
+// than erroring when no DB is reachable.
 async function rlsTestDbReachable(): Promise<boolean> {
   if (process.env.SKIP_RLS_MATRIX === '1') return false;
   if (
@@ -166,6 +169,7 @@ describe.runIf(RUN)('RLS permission matrix', () => {
     cycle_test_entries: 'owner',
     cycles: 'owner',
     health_appointments: 'owner',
+    openfoodfacts_sync_queue: 'owner',
     pregnancies: 'owner',
     pregnancy_checklist_state: 'owner',
     pregnancy_contractions: 'owner',
@@ -250,6 +254,7 @@ describe.runIf(RUN)('RLS permission matrix', () => {
     workout_preset_exercises: 'custom',
     // system/internal: RLS-enabled with an explicit deny-all policy; only
     // getSystemClient (which bypasses RLS) touches it.
+    openfoodfacts_product_read_rate_limit: 'custom',
     passkey_registration_tickets: 'custom',
   };
 
@@ -830,6 +835,418 @@ describe.runIf(RUN)('RLS permission matrix', () => {
         touchColumn: 'serving_size',
         rowId: () => variantId,
       });
+    });
+  });
+});
+
+describe.runIf(RUN)('Active calorie imports with shared exercises', () => {
+  const users = [
+    '00000000-0000-4000-b300-000000000001',
+    '00000000-0000-4000-b300-000000000002',
+  ];
+  let sys: pg.PoolClient;
+
+  beforeAll(async () => {
+    sys = await getSystemClient();
+    for (const id of users) {
+      await sys.query(
+        'INSERT INTO public."user" (id, email, email_verified) VALUES ($1, $2, true)',
+        [id, `active-calories-${id}@example.test`]
+      );
+    }
+  });
+
+  beforeEach(async () => {
+    await sys.query(
+      'DELETE FROM exercise_entries WHERE user_id = ANY($1::uuid[])',
+      [users]
+    );
+    await sys.query(
+      'DELETE FROM exercise_preset_entries WHERE user_id = ANY($1::uuid[])',
+      [users]
+    );
+    await sys.query('DELETE FROM exercises WHERE user_id = ANY($1::uuid[])', [
+      users,
+    ]);
+    await sys.query('DELETE FROM family_access WHERE owner_user_id = $1', [
+      users[0],
+    ]);
+  });
+
+  afterAll(async () => {
+    try {
+      await sys.query(
+        'DELETE FROM exercise_entries WHERE user_id = ANY($1::uuid[])',
+        [users]
+      );
+      await sys.query('DELETE FROM exercises WHERE user_id = ANY($1::uuid[])', [
+        users,
+      ]);
+      await sys.query('DELETE FROM public."user" WHERE id = ANY($1::uuid[])', [
+        users,
+      ]);
+    } finally {
+      sys.release();
+      await endPool();
+    }
+  });
+
+  /** Imports the same daily HealthKit total through the production repositories. */
+  async function sync(calories: number) {
+    const exerciseId = await exerciseDb.getOrCreateActiveCaloriesExercise(
+      users[1],
+      'HealthKit'
+    );
+    return exerciseEntryDb.upsertExerciseEntryData(
+      users[1],
+      users[1],
+      exerciseId,
+      calories,
+      '2026-09-10',
+      'HealthKit'
+    );
+  }
+
+  it.each(['family', 'public'])(
+    'keeps one owned entry when %s sharing changes',
+    async (sharing) => {
+      await sys.query('DELETE FROM exercises WHERE user_id = ANY($1::uuid[])', [
+        users,
+      ]);
+      const sharedId = await exerciseDb.getOrCreateActiveCaloriesExercise(
+        users[0],
+        'HealthKit'
+      );
+      if (sharing === 'public') {
+        await sys.query(
+          'UPDATE exercises SET shared_with_public = true WHERE id = $1',
+          [sharedId]
+        );
+      } else {
+        await sys.query(
+          `INSERT INTO family_access (owner_user_id, family_user_id, family_email, access_permissions, is_active, status)
+         VALUES ($1, $2, $3, '{"can_view_exercise_library":true}', true, 'active')`,
+          [users[0], users[1], `active-calories-${users[1]}@example.test`]
+        );
+      }
+      expect((await exerciseDb.getExerciseById(sharedId, users[1])).id).toBe(
+        sharedId
+      );
+      const first = await sync(300);
+      const firstExercise = await exerciseDb.getExerciseById(
+        first.exercise_id,
+        users[1]
+      );
+      await sys.query(
+        'UPDATE family_access SET is_active = false WHERE owner_user_id = $1',
+        [users[0]]
+      );
+      await sys.query(
+        'UPDATE exercises SET shared_with_public = false WHERE id = $1',
+        [sharedId]
+      );
+      const second = await sync(350);
+      const rows = await sys.query(
+        `SELECT ee.id, ee.calories_burned, e.user_id AS exercise_owner
+       FROM exercise_entries ee JOIN exercises e ON e.id = ee.exercise_id
+       WHERE ee.user_id = $1`,
+        [users[1]]
+      );
+      expect(second.id).toBe(first.id);
+      expect(firstExercise.user_id).toBe(users[1]);
+      expect(rows.rows).toEqual([
+        { id: first.id, calories_burned: 350, exercise_owner: users[1] },
+      ]);
+    }
+  );
+
+  it('reuses an old import after its shared exercise becomes inaccessible', async () => {
+    const sharedId = await exerciseDb.getOrCreateActiveCaloriesExercise(
+      users[0],
+      'HealthKit'
+    );
+    const oldId = randomUUID();
+    await sys.query(
+      `INSERT INTO exercise_entries (id, user_id, exercise_id, entry_date, calories_burned, duration_minutes, exercise_name, source)
+       VALUES ($1, $2, $3, '2026-09-10', 300, 0, 'Active Calories', 'HealthKit')`,
+      [oldId, users[1], sharedId]
+    );
+    expect(
+      await exerciseDb.getExerciseById(sharedId, users[1])
+    ).toBeUndefined();
+    const updated = await sync(350);
+    const repeated = await sync(400);
+    expect(updated.id).toBe(oldId);
+    expect(repeated.id).toBe(oldId);
+    expect(repeated.exercise_id).not.toBe(sharedId);
+    expect(repeated.calories_burned).toBe(400);
+    expect(repeated.updated_by_user_id).toBe(users[1]);
+    expect(repeated.notes).toBe(
+      'Active calories logged from Apple Health (updated).'
+    );
+    const rows = await sys.query(
+      'SELECT id FROM exercise_entries WHERE user_id = $1',
+      [users[1]]
+    );
+    expect(rows.rows).toEqual([{ id: oldId }]);
+  });
+
+  it('updates the exact exercise match without altering an existing legacy duplicate', async () => {
+    const sharedId = await exerciseDb.getOrCreateActiveCaloriesExercise(
+      users[0],
+      'HealthKit'
+    );
+    const ownedId = await exerciseDb.getOrCreateActiveCaloriesExercise(
+      users[1],
+      'HealthKit'
+    );
+    const legacyId = randomUUID();
+    const exactId = randomUUID();
+    await sys.query(
+      `INSERT INTO exercise_entries (id, user_id, exercise_id, entry_date, calories_burned, duration_minutes, exercise_name, source, created_at)
+       VALUES ($1, $3, $4, '2026-09-10', 100, 0, 'Active Calories', 'HealthKit', '2026-09-09'),
+              ($2, $3, $5, '2026-09-10', 200, 0, 'Active Calories', 'HealthKit', '2026-09-10')`,
+      [legacyId, exactId, users[1], sharedId, ownedId]
+    );
+    const before = await sys.query(
+      'SELECT * FROM exercise_entries WHERE id = $1',
+      [legacyId]
+    );
+    const updated = await sync(350);
+    expect(updated.id).toBe(exactId);
+    expect(updated.calories_burned).toBe(350);
+    const after = await sys.query(
+      'SELECT * FROM exercise_entries WHERE id = $1',
+      [legacyId]
+    );
+    expect(after.rows).toEqual(before.rows);
+  });
+
+  it.each([
+    ['another user', { otherUser: true }],
+    ['another source', { source: 'Health Connect' }],
+    ['another date', { date: '2026-09-09' }],
+    ['a workout', { duration: 30 }],
+    ['a preset exercise', { preset: true }],
+    ['a provider activity', { sourceId: 'activity-1' }],
+    ['another exercise name', { name: 'Running' }],
+  ])('preserves %s when finding a legacy import', async (_label, change) => {
+    const sharedId = await exerciseDb.getOrCreateActiveCaloriesExercise(
+      users[0],
+      'HealthKit'
+    );
+    const untouchedId = randomUUID();
+    const values = {
+      otherUser: false,
+      preset: false,
+      source: 'HealthKit',
+      date: '2026-09-10',
+      duration: 0,
+      sourceId: null,
+      name: 'Active Calories',
+      ...change,
+    };
+    const presetId = values.preset ? randomUUID() : null;
+    if (presetId) {
+      await sys.query(
+        "INSERT INTO exercise_preset_entries (id, user_id, name, entry_date) VALUES ($1, $2, 'Active calorie fixture', '2026-09-10')",
+        [presetId, users[1]]
+      );
+    }
+    await sys.query(
+      `INSERT INTO exercise_entries (id, user_id, exercise_id, entry_date, calories_burned, duration_minutes, exercise_name, source, source_id, exercise_preset_entry_id)
+       VALUES ($1, $2, $3, $4, 123, $5, $6, $7, $8, $9)`,
+      [
+        untouchedId,
+        values.otherUser ? users[0] : users[1],
+        sharedId,
+        values.date,
+        values.duration,
+        values.name,
+        values.source,
+        values.sourceId,
+        presetId,
+      ]
+    );
+    const before = await sys.query(
+      'SELECT * FROM exercise_entries WHERE id = $1',
+      [untouchedId]
+    );
+    const imported = await sync(350);
+    expect(imported.id).not.toBe(untouchedId);
+    const after = await sys.query(
+      'SELECT * FROM exercise_entries WHERE id = $1',
+      [untouchedId]
+    );
+    expect(after.rows).toEqual(before.rows);
+  });
+
+  // This migration is unscoped; namespaced fixture IDs alone cannot protect a normal DB.
+  describe.runIf(
+    /(^|[_-])test([_-]|$)/i.test(process.env.SPARKY_FITNESS_DB_NAME ?? '')
+  )('historical cleanup', () => {
+    const migration = readFileSync(
+      new URL(
+        '../db/migrations/20260910180000_deduplicate_shared_active_calories.sql',
+        import.meta.url
+      ),
+      'utf8'
+    );
+    let legacyId: string;
+    let ownedId: string;
+
+    beforeEach(async () => {
+      const sharedExercise = await exerciseDb.getOrCreateActiveCaloriesExercise(
+        users[0],
+        'HealthKit'
+      );
+      const owned = await sync(300);
+      ownedId = owned.id;
+      legacyId = randomUUID();
+      await sys.query(
+        `INSERT INTO exercise_entries (id, user_id, exercise_id, entry_date, calories_burned, duration_minutes, notes, created_by_user_id, exercise_name, source)
+         VALUES ($1, $2, $3, '2026-09-10', 350, 0, 'Active calories logged from Apple Health.', $2, 'Active Calories', 'HealthKit')`,
+        [legacyId, users[1], sharedExercise]
+      );
+    });
+
+    /** Reads complete fixture rows so preservation checks include all metadata. */
+    async function entries() {
+      return (
+        await sys.query(
+          'SELECT * FROM exercise_entries WHERE user_id = ANY($1::uuid[]) ORDER BY id',
+          [users]
+        )
+      ).rows;
+    }
+
+    it.each([
+      ['a newer shared import', 400, '2026-09-09', '2026-09-10', false],
+      ['a newer lower owned import', 250, '2026-09-11', '2026-09-10', true],
+      [
+        'the higher total on tied timestamps',
+        300,
+        '2026-09-10',
+        '2026-09-10',
+        false,
+      ],
+      [
+        'the owned exercise on tied timestamps and totals',
+        350,
+        '2026-09-10',
+        '2026-09-10',
+        true,
+      ],
+    ] as const)(
+      'keeps %s',
+      async (_label, calories, ownedUpdated, legacyUpdated, keepOwned) => {
+        await sys.query(
+          'UPDATE exercise_entries SET calories_burned = $1, updated_at = $2 WHERE id = $3',
+          [calories, ownedUpdated, ownedId]
+        );
+        await sys.query(
+          'UPDATE exercise_entries SET updated_at = $1 WHERE id = $2',
+          [legacyUpdated, legacyId]
+        );
+        const before = await entries();
+        const survivor = before.find(
+          (row) => row.id === (keepOwned ? ownedId : legacyId)
+        );
+        await sys.query(migration);
+        expect(await entries()).toEqual([survivor]);
+        await sys.query(migration);
+        expect(await entries()).toEqual([survivor]);
+        const corrected = await sync(200);
+        expect(corrected.id).toBe(survivor.id);
+        expect(corrected.calories_burned).toBe(200);
+        expect((await entries()).map((row) => row.id)).toEqual([survivor.id]);
+      }
+    );
+
+    it.each([
+      ['manual notes', "notes = 'Evening walk'"],
+      ['missing creator', 'created_by_user_id = NULL'],
+      ['different creator', 'created_by_user_id = $2'],
+      ['different editor', 'updated_by_user_id = $2'],
+      ['workout duration', 'duration_minutes = 30'],
+      ['provider identity', "source_id = 'activity-1'"],
+      ['entry time', "entry_time = '12:00'"],
+      ['snapshot metadata', "image_url = 'https://example.test/workout.png'"],
+      ['telemetry', 'steps = 100'],
+      ['sort order', 'sort_order = 2'],
+      ['negative calories', 'calories_burned = -1'],
+      ['nonfinite calories', "calories_burned = 'NaN'::numeric"],
+      ['infinite calories', "calories_burned = 'Infinity'::numeric"],
+      ['another date', "entry_date = '2026-09-09'"],
+      [
+        'another source',
+        "source = 'Health Connect', notes = 'Active calories logged from Health Connect.'",
+      ],
+      ['another user', 'user_id = $2, created_by_user_id = $2'],
+    ])('preserves groups containing %s', async (_label, change) => {
+      await sys.query(
+        `UPDATE exercise_entries SET ${change} WHERE id = $1`,
+        change.includes('$2') ? [legacyId, users[0]] : [legacyId]
+      );
+      const before = await entries();
+      await sys.query(migration);
+      expect(await entries()).toEqual(before);
+    });
+
+    it.each([
+      [
+        'activity_details',
+        "INSERT INTO exercise_entry_activity_details (exercise_entry_id, provider_name, detail_type, detail_data) VALUES ($1, 'HealthKit', 'workout', '{}')",
+      ],
+      [
+        'sets',
+        'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number) VALUES ($1, 1)',
+      ],
+      [
+        'laps',
+        "INSERT INTO exercise_entry_laps (exercise_entry_id, user_id, entry_date, lap_index, start_time, end_time, duration_seconds) VALUES ($1, $2, '2026-09-10', 1, now(), now(), 0)",
+      ],
+      [
+        'gps_points',
+        "INSERT INTO exercise_entry_gps_points (exercise_entry_id, user_id, entry_date) VALUES ($1, $2, '2026-09-10')",
+      ],
+      [
+        'hr_zones',
+        "INSERT INTO exercise_entry_hr_zones (exercise_entry_id, user_id, entry_date, zone_index, seconds_in_zone) VALUES ($1, $2, '2026-09-10', 1, 60)",
+      ],
+    ])(
+      'preserves attached %s even when its owner differs',
+      async (table, insert) => {
+        await sys.query(
+          insert,
+          insert.includes('$2') ? [ownedId, users[0]] : [ownedId]
+        );
+        const before = await entries();
+        const children = await sys.query(
+          `SELECT * FROM exercise_entry_${table} WHERE exercise_entry_id = $1`,
+          [ownedId]
+        );
+        await sys.query(migration);
+        expect(await entries()).toEqual(before);
+        expect(
+          (
+            await sys.query(
+              `SELECT * FROM exercise_entry_${table} WHERE exercise_entry_id = $1`,
+              [ownedId]
+            )
+          ).rows
+        ).toEqual(children.rows);
+      }
+    );
+
+    it('preserves duplicates without evidence of a shared exercise', async () => {
+      await sys.query(
+        'UPDATE exercise_entries SET exercise_id = (SELECT exercise_id FROM exercise_entries WHERE id = $1) WHERE id = $2',
+        [ownedId, legacyId]
+      );
+      const before = await entries();
+      await sys.query(migration);
+      expect(await entries()).toEqual(before);
     });
   });
 });

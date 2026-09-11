@@ -99,6 +99,9 @@ function buildUpdatedFoodInfo(
     cholesterol: parseOptional(data.cholesterol),
     vitaminA: parseOptional(data.vitaminA),
     vitaminC: parseOptional(data.vitaminC),
+    caffeineMg: parseOptional(data.caffeineMg),
+    waterMl: parseOptional(data.waterMl),
+    alcoholG: parseOptional(data.alcoholG),
     variantId,
   };
 }
@@ -298,6 +301,9 @@ export function EditFoodMode({
       cholesterol: parseOptional(data.cholesterol),
       vitamin_a: parseOptional(data.vitaminA),
       vitamin_c: parseOptional(data.vitaminC),
+      caffeine_mg: parseOptional(data.caffeineMg),
+      water_ml: parseOptional(data.waterMl),
+      alcohol_g: parseOptional(data.alcoholG),
       polyunsaturated_fat: snapshot?.polyunsaturated_fat,
       monounsaturated_fat: snapshot?.monounsaturated_fat,
       glycemic_index: snapshot?.glycemic_index,

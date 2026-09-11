@@ -2,7 +2,58 @@ import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import preferenceService from '../services/preferenceService.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
+import {
+  OpenFoodFactsAutomaticSyncRequestSchema,
+  OpenFoodFactsAutomaticSyncResponseSchema,
+} from '@workspace/shared';
+import {
+  getOpenFoodFactsSyncSettings,
+  updateOpenFoodFactsSyncSettings,
+} from '../services/openFoodFactsSyncSettingsService.js';
 const router = express.Router();
+
+router.get(
+  '/openfoodfacts-contributions',
+  authenticate,
+  async (req, res, next) => {
+    try {
+      const settings = await getOpenFoodFactsSyncSettings(
+        req.authenticatedUserId
+      );
+      res
+        .status(200)
+        .json(OpenFoodFactsAutomaticSyncResponseSchema.parse(settings));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+router.put(
+  '/openfoodfacts-contributions',
+  authenticate,
+  async (req, res, next) => {
+    const parsed = OpenFoodFactsAutomaticSyncRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Invalid Open Food Facts automatic contribution settings.',
+        details: parsed.error.flatten().fieldErrors,
+      });
+    }
+
+    try {
+      const settings = await updateOpenFoodFactsSyncSettings(
+        req.authenticatedUserId,
+        parsed.data
+      );
+      res
+        .status(200)
+        .json(OpenFoodFactsAutomaticSyncResponseSchema.parse(settings));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 // Endpoint to bootstrap timezone from the device only if unset
 router.post('/bootstrap-timezone', authenticate, async (req, res, next) => {
   const { timezone } = req.body;

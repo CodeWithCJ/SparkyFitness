@@ -33,6 +33,9 @@ export interface FoodDisplayValues {
   cholesterol?: number;
   vitaminA?: number;
   vitaminC?: number;
+  caffeineMg?: number;
+  waterMl?: number;
+  alcoholG?: number;
 }
 
 export interface FoodVariantOptionData extends FoodDisplayValues {
@@ -211,6 +214,9 @@ export function foodInfoToDisplayValues(item: FoodInfoItem): FoodDisplayValues {
     potassium: item.potassium,
     calcium: item.calcium,
     iron: item.iron,
+    caffeineMg: item.caffeineMg,
+    waterMl: item.waterMl,
+    alcoholG: item.alcoholG,
     cholesterol: item.cholesterol,
     vitaminA: item.vitaminA,
     vitaminC: item.vitaminC,
@@ -236,6 +242,9 @@ export function unitVariantToDisplayValues(
     potassium: variant.potassium,
     calcium: variant.calcium,
     iron: variant.iron,
+    caffeineMg: variant.caffeine_mg,
+    waterMl: variant.water_ml,
+    alcoholG: variant.alcohol_g,
     cholesterol: variant.cholesterol,
     vitaminA: variant.vitamin_a,
     vitaminC: variant.vitamin_c,
@@ -263,6 +272,9 @@ export function foodInfoToUnitVariant(item: FoodInfoItem): FoodUnitVariant {
     vitamin_c: item.vitaminC,
     calcium: item.calcium,
     iron: item.iron,
+    caffeine_mg: item.caffeineMg,
+    water_ml: item.waterMl,
+    alcohol_g: item.alcoholG,
     custom_nutrients: item.customNutrients ?? null,
   };
 }
@@ -293,6 +305,9 @@ export function localVariantToUnitVariant(
     vitamin_c: variant.vitamin_c,
     calcium: variant.calcium,
     iron: variant.iron,
+    caffeine_mg: variant.caffeine_mg,
+    water_ml: variant.water_ml,
+    alcohol_g: variant.alcohol_g,
     glycemic_index: variant.glycemic_index,
     custom_nutrients: variant.custom_nutrients ?? null,
     // Forward AI provenance so the sheet's `selectedVariant.source` check
@@ -328,6 +343,9 @@ export function externalVariantToUnitVariant(
     vitamin_c: variant.vitamin_c,
     calcium: variant.calcium,
     iron: variant.iron,
+    caffeine_mg: variant.caffeine_mg,
+    water_ml: variant.water_ml,
+    alcohol_g: variant.alcohol_g,
   };
 }
 
@@ -520,6 +538,9 @@ export function buildLocalVariantOptions(
       potassium: base.potassium,
       calcium: base.calcium,
       iron: base.iron,
+      caffeineMg: base.caffeine_mg,
+      waterMl: base.water_ml,
+      alcoholG: base.alcohol_g,
       cholesterol: base.cholesterol,
       vitaminA: base.vitamin_a,
       vitaminC: base.vitamin_c,
@@ -572,6 +593,9 @@ export function buildExternalVariantOptions(
         potassium: base.potassium,
         calcium: base.calcium,
         iron: base.iron,
+        caffeineMg: base.caffeine_mg,
+        waterMl: base.water_ml,
+        alcoholG: base.alcohol_g,
         cholesterol: base.cholesterol,
         vitaminA: base.vitamin_a,
         vitaminC: base.vitamin_c,
@@ -665,6 +689,9 @@ export function buildCreateFoodVariantInput(
     potassium: variant.potassium,
     calcium: variant.calcium,
     iron: variant.iron,
+    caffeine_mg: variant.caffeine_mg,
+    water_ml: variant.water_ml,
+    alcohol_g: variant.alcohol_g,
     cholesterol: variant.cholesterol,
     vitamin_a: variant.vitamin_a,
     vitamin_c: variant.vitamin_c,
@@ -903,6 +930,9 @@ export function applyDisplayValuesToFoodInfo(
     potassium: displayValues.potassium,
     calcium: displayValues.calcium,
     iron: displayValues.iron,
+    caffeineMg: displayValues.caffeineMg,
+    waterMl: displayValues.waterMl,
+    alcoholG: displayValues.alcoholG,
     cholesterol: displayValues.cholesterol,
     vitaminA: displayValues.vitaminA,
     vitaminC: displayValues.vitaminC,

@@ -1,5 +1,9 @@
 import { apiCall } from '@/api/api';
 import { ExerciseDashboardData, ReportResponse } from '@/types/reports';
+import type {
+  AlcoholWeekResponse,
+  HydrationNutritionRangeResponse,
+} from '@workspace/shared';
 
 export const loadReportsData = async (
   startDate: string,
@@ -35,6 +39,37 @@ export const getExerciseDashboardData = async (
   if (exercise) params.append('exercise', exercise);
   const response = await apiCall(
     `/reports/exercise-dashboard?${params.toString()}`,
+    {
+      method: 'GET',
+    }
+  );
+  return response;
+};
+
+export const getAlcoholWeekReport = async (
+  date: string,
+  userId?: string
+): Promise<AlcoholWeekResponse> => {
+  const params = new URLSearchParams({ date });
+  if (userId) params.append('userId', userId);
+  const response = await apiCall(
+    `/v2/reports/alcohol-week?${params.toString()}`,
+    {
+      method: 'GET',
+    }
+  );
+  return response;
+};
+
+export const getHydrationNutritionRange = async (
+  startDate: string,
+  endDate: string,
+  userId?: string
+): Promise<HydrationNutritionRangeResponse> => {
+  const params = new URLSearchParams({ start: startDate, end: endDate });
+  if (userId) params.append('userId', userId);
+  const response = await apiCall(
+    `/v2/reports/hydration-nutrition-range?${params.toString()}`,
     {
       method: 'GET',
     }

@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { log } from '../../config/logging.js';
+import { forwardResponseHeaders } from '../../utils/forwardResponseHeaders.js';
 import globalSettingsRepository from '../../models/globalSettingsRepository.js';
 import oidcProviderRepository from '../../models/oidcProviderRepository.js';
 import userRepository from '../../models/userRepository.js';
@@ -12,6 +13,12 @@ import {
   mintRegistrationTicket,
   redeemRegistrationTicket,
 } from '../../services/passkeyTicketService.js';
+import { isDemoMode } from '../../middleware/demoGuardMiddleware.js';
+import { getClientIp } from '../../utils/clientIp.js';
+import {
+  getDemoCredentials,
+  seedDemoUser,
+} from '../../services/demoSeedService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,7 +42,7 @@ const mfaFactorsRateLimit = (() => {
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (req: any, res: any, next: any) => {
-    const ip = req.ip;
+    const ip = getClientIp(req);
     const now = Date.now();
     // Sweep at most once per window to avoid O(n) cleanup on every request.
     if (hits.size > 0 && now - lastSweepAt >= WINDOW_MS) {
@@ -119,6 +126,7 @@ router.get('/settings', async (req, res) => {
         auto_redirect: oidcAutoRedirectEnv,
       },
       signup_disabled: signupDisabled,
+      demo_mode: isDemoMode(),
     });
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -136,7 +144,92 @@ router.get('/settings', async (req, res) => {
         providers: [],
         auto_redirect: false,
       },
+      demo_mode: isDemoMode(),
     });
+  }
+});
+
+/**
+ * @swagger
+ * /auth/demo-login:
+ *   post:
+ *     summary: Authenticate seamlessly as the demo user in Demo Mode
+ *     tags: [Authentication]
+ *     responses:
+ *       200:
+ *         description: Demo login successful
+ *       404:
+ *         description: Demo mode is disabled
+ *       429:
+ *         description: Too many demo login attempts from this address
+ *       500:
+ *         description: Demo login failed or internal error
+ */
+// Re-seeding is an expensive multi-hundred-row transaction. Without a cooldown
+// an anonymous caller could amplify one cheap request into a full re-seed on
+// every 401, so cap how often the credential re-sync can fire.
+const DEMO_RESEED_COOLDOWN_MS = 5 * 60 * 1000;
+let lastDemoReseedAt = 0;
+// makeIpRateLimit is a hoisted function declaration defined further down, next
+// to the other limiters that use it.
+const demoLoginRateLimit = makeIpRateLimit(10, 60 * 1000);
+
+router.post('/demo-login', demoLoginRateLimit, async (req, res) => {
+  if (!isDemoMode()) {
+    return res
+      .status(404)
+      .json({ error: 'Demo mode is not enabled on this server.' });
+  }
+
+  try {
+    const { email, password } = getDemoCredentials();
+    const { auth } = authModule;
+
+    // Ensure demo user exists in database before attempting login
+    const existingUser = await userRepository.findUserByEmail(email);
+    if (!existingUser) {
+      log('info', '[AUTH CORE] Demo user not found for login. Seeding now...');
+      await seedDemoUser();
+    }
+
+    let response = await auth.api.signInEmail({
+      body: {
+        email,
+        password,
+      },
+      headers: fromNodeHeaders(req.headers),
+      asResponse: true,
+    });
+
+    // If password mismatch or 401 occurred (e.g. password out of sync), re-sync
+    // credentials and retry once — but no more often than the cooldown allows.
+    if (
+      response.status === 401 &&
+      Date.now() - lastDemoReseedAt > DEMO_RESEED_COOLDOWN_MS
+    ) {
+      lastDemoReseedAt = Date.now();
+      log(
+        'warn',
+        '[AUTH CORE] Demo login returned 401. Re-syncing demo credentials and retrying...'
+      );
+      await seedDemoUser();
+      response = await auth.api.signInEmail({
+        body: {
+          email,
+          password,
+        },
+        headers: fromNodeHeaders(req.headers),
+        asResponse: true,
+      });
+    }
+
+    forwardResponseHeaders(response.headers, res);
+
+    const body = await response.json();
+    return res.status(response.status).json(body);
+  } catch (error) {
+    log('error', '[AUTH CORE] Demo Login Error:', error);
+    return res.status(500).json({ error: 'Failed to authenticate demo user.' });
   }
 });
 /**
@@ -207,7 +300,7 @@ function makeIpRateLimit(max: number, windowMs: number) {
   let lastSweepAt = 0;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (req: any, res: any, next: any) => {
-    const ip = req.ip;
+    const ip = getClientIp(req);
     const now = Date.now();
     if (hits.size > 0 && now - lastSweepAt >= windowMs) {
       for (const [k, e] of hits) if (now - e.start >= windowMs) hits.delete(k);

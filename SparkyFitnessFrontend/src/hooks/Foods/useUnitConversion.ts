@@ -129,7 +129,9 @@ export function useUnitConversion({
 
   const convertibleUnits = useMemo(() => {
     const existingUnits = new Set(
-      variants.map((v) => v.serving_unit.toLowerCase())
+      variants
+        .map((v) => (v.serving_unit ? v.serving_unit.toLowerCase() : ''))
+        .filter(Boolean)
     );
     return ALL_CONVERSION_UNITS.filter(
       (u) => !existingUnits.has(u.toLowerCase())
@@ -172,6 +174,12 @@ export function useUnitConversion({
       vitamin_c: (base.vitamin_c || 0) * ratio,
       calcium: (base.calcium || 0) * ratio,
       iron: (base.iron || 0) * ratio,
+      caffeine_mg: (base.caffeine_mg || 0) * ratio,
+      water_ml: (base.water_ml || 0) * ratio,
+      alcohol_g: (base.alcohol_g || 0) * ratio,
+      // ABV is a property of the liquid, not a per-serving amount: carried
+      // across unchanged like glycemic_index.
+      abv_percent: base.abv_percent,
       custom_nutrients: Object.fromEntries(
         Object.entries(base.custom_nutrients || {}).map(([k, v]) => [
           k,

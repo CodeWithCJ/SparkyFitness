@@ -137,6 +137,34 @@ $$;
 
 
 --
+-- Name: cleanup_openfoodfacts_queue_on_opt_out(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.cleanup_openfoodfacts_queue_on_opt_out() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  DELETE FROM public.openfoodfacts_sync_queue WHERE user_id = NEW.user_id;
+  RETURN NULL;
+END;
+$$;
+
+
+--
+-- Name: cleanup_openfoodfacts_queue_on_preference_delete(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.cleanup_openfoodfacts_queue_on_preference_delete() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  DELETE FROM public.openfoodfacts_sync_queue WHERE user_id = OLD.user_id;
+  RETURN NULL;
+END;
+$$;
+
+
+--
 -- Name: clear_old_chat_history(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -444,6 +472,42 @@ CREATE FUNCTION public.current_user_id() RETURNS uuid
     LANGUAGE sql STABLE
     AS $$
   SELECT NULLIF(current_setting('app.user_id', true), '')::uuid;
+$$;
+
+
+--
+-- Name: eligible_openfoodfacts_foods(uuid[], uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.eligible_openfoodfacts_foods(target_food_ids uuid[] DEFAULT NULL::uuid[], target_user_id uuid DEFAULT NULL::uuid) RETURNS TABLE(food_id uuid, user_id uuid)
+    LANGUAGE sql STABLE
+    AS $$
+  SELECT food.id, food.user_id
+    FROM public.foods food
+    JOIN public.user_preferences preferences
+      ON preferences.user_id = food.user_id
+     AND preferences.auto_contribute_openfoodfacts = TRUE
+    JOIN public.global_settings settings
+      ON settings.id = 1
+     AND settings.allow_openfoodfacts_contributions = TRUE
+   WHERE food.user_id IS NOT NULL
+     AND (target_food_ids IS NULL OR food.id = ANY(target_food_ids))
+     AND (target_user_id IS NULL OR food.user_id = target_user_id)
+     AND food.is_custom IS TRUE
+     AND (food.provider_type IS NULL OR LOWER(BTRIM(food.provider_type)) = 'custom')
+     AND NULLIF(BTRIM(food.name), '') IS NOT NULL
+     AND public.normalize_openfoodfacts_gtin(food.barcode) IS NOT NULL
+     AND EXISTS (
+       SELECT 1
+         FROM public.food_variants variant
+        WHERE variant.food_id = food.id
+          AND variant.is_default IS TRUE
+          AND variant.serving_size > 0
+          AND LOWER(BTRIM(variant.serving_unit)) IN (
+            'g', 'kg', 'mg', 'oz', 'lb', 'lbs',
+            'ml', 'l', 'liter', 'liters', 'cup', 'cups', 'tbsp', 'tsp'
+          )
+     );
 $$;
 
 
@@ -900,6 +964,218 @@ $$;
 
 
 --
+-- Name: normalize_openfoodfacts_gtin(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.normalize_openfoodfacts_gtin(raw_code text) RETURNS text
+    LANGUAGE plpgsql IMMUTABLE STRICT PARALLEL SAFE
+    AS $_$
+DECLARE
+  normalized TEXT := BTRIM(raw_code);
+  weighted_sum INTEGER;
+  expected_check_digit INTEGER;
+BEGIN
+  IF normalized !~ '^[0-9]+$'
+     OR normalized ~ '^0+$'
+     OR CHAR_LENGTH(normalized) NOT IN (8, 9, 10, 11, 12, 13, 14) THEN
+    RETURN NULL;
+  END IF;
+
+  IF CHAR_LENGTH(normalized) BETWEEN 9 AND 12 THEN
+    normalized := LPAD(normalized, 13, '0');
+  ELSIF CHAR_LENGTH(normalized) = 14 AND LEFT(normalized, 1) = '0' THEN
+    normalized := SUBSTRING(normalized FROM 2);
+  END IF;
+
+  IF LEFT(normalized, 1) = '2'
+     OR (CHAR_LENGTH(normalized) = 13 AND LEFT(normalized, 2) = '02') THEN
+    RETURN NULL;
+  END IF;
+
+  SELECT COALESCE(
+           SUM(
+             SUBSTRING(normalized FROM position FOR 1)::INTEGER *
+             CASE
+               WHEN (CHAR_LENGTH(normalized) - position) % 2 = 1 THEN 3
+               ELSE 1
+             END
+           ),
+           0
+         )
+    INTO weighted_sum
+    FROM GENERATE_SERIES(1, CHAR_LENGTH(normalized) - 1) AS position;
+
+  expected_check_digit := (10 - (weighted_sum % 10)) % 10;
+  IF expected_check_digit <> RIGHT(normalized, 1)::INTEGER THEN
+    RETURN NULL;
+  END IF;
+
+  RETURN normalized;
+END;
+$_$;
+
+
+--
+-- Name: queue_openfoodfacts_food_updates(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.queue_openfoodfacts_food_updates() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  changed_food_ids UUID[];
+BEGIN
+  SELECT ARRAY_AGG(changed.id)
+    INTO changed_food_ids
+    FROM (
+      SELECT new_food.id
+        FROM new_foods new_food
+        JOIN old_foods old_food ON old_food.id = new_food.id
+       WHERE old_food.user_id IS DISTINCT FROM new_food.user_id
+          OR old_food.name IS DISTINCT FROM new_food.name
+          OR old_food.brand IS DISTINCT FROM new_food.brand
+          OR old_food.barcode IS DISTINCT FROM new_food.barcode
+          OR old_food.is_custom IS DISTINCT FROM new_food.is_custom
+          OR old_food.provider_type IS DISTINCT FROM new_food.provider_type
+    ) changed;
+
+  PERFORM public.refresh_openfoodfacts_sync_queue(changed_food_ids);
+  RETURN NULL;
+END;
+$$;
+
+
+--
+-- Name: queue_openfoodfacts_variant_deletes(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.queue_openfoodfacts_variant_deletes() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  changed_food_ids UUID[];
+BEGIN
+  SELECT ARRAY_AGG(DISTINCT variant.food_id)
+    INTO changed_food_ids
+    FROM old_variants variant
+   WHERE variant.is_default IS TRUE;
+
+  PERFORM public.refresh_openfoodfacts_sync_queue(changed_food_ids);
+  RETURN NULL;
+END;
+$$;
+
+
+--
+-- Name: queue_openfoodfacts_variant_inserts(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.queue_openfoodfacts_variant_inserts() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  changed_food_ids UUID[];
+BEGIN
+  SELECT ARRAY_AGG(DISTINCT variant.food_id)
+    INTO changed_food_ids
+    FROM new_variants variant
+   WHERE variant.is_default IS TRUE;
+
+  PERFORM public.refresh_openfoodfacts_sync_queue(changed_food_ids);
+  RETURN NULL;
+END;
+$$;
+
+
+--
+-- Name: queue_openfoodfacts_variant_updates(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.queue_openfoodfacts_variant_updates() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+  changed_food_ids UUID[];
+BEGIN
+  SELECT ARRAY_AGG(DISTINCT changed.food_id)
+    INTO changed_food_ids
+    FROM (
+      SELECT old_variant.food_id
+        FROM old_variants old_variant
+        JOIN new_variants new_variant ON new_variant.id = old_variant.id
+       WHERE (old_variant.is_default IS TRUE OR new_variant.is_default IS TRUE)
+         AND (
+           old_variant.food_id IS DISTINCT FROM new_variant.food_id OR
+           old_variant.serving_size IS DISTINCT FROM new_variant.serving_size OR
+           old_variant.serving_unit IS DISTINCT FROM new_variant.serving_unit OR
+           old_variant.calories IS DISTINCT FROM new_variant.calories OR
+           old_variant.protein IS DISTINCT FROM new_variant.protein OR
+           old_variant.carbs IS DISTINCT FROM new_variant.carbs OR
+           old_variant.fat IS DISTINCT FROM new_variant.fat OR
+           old_variant.saturated_fat IS DISTINCT FROM new_variant.saturated_fat OR
+           old_variant.trans_fat IS DISTINCT FROM new_variant.trans_fat OR
+           old_variant.cholesterol IS DISTINCT FROM new_variant.cholesterol OR
+           old_variant.sodium IS DISTINCT FROM new_variant.sodium OR
+           old_variant.potassium IS DISTINCT FROM new_variant.potassium OR
+           old_variant.dietary_fiber IS DISTINCT FROM new_variant.dietary_fiber OR
+           old_variant.sugars IS DISTINCT FROM new_variant.sugars OR
+           old_variant.vitamin_a IS DISTINCT FROM new_variant.vitamin_a OR
+           old_variant.vitamin_c IS DISTINCT FROM new_variant.vitamin_c OR
+           old_variant.calcium IS DISTINCT FROM new_variant.calcium OR
+           old_variant.iron IS DISTINCT FROM new_variant.iron OR
+           old_variant.is_default IS DISTINCT FROM new_variant.is_default
+         )
+      UNION
+      SELECT new_variant.food_id
+        FROM old_variants old_variant
+        JOIN new_variants new_variant ON new_variant.id = old_variant.id
+       WHERE (old_variant.is_default IS TRUE OR new_variant.is_default IS TRUE)
+         AND old_variant.food_id IS DISTINCT FROM new_variant.food_id
+    ) changed;
+
+  PERFORM public.refresh_openfoodfacts_sync_queue(changed_food_ids);
+  RETURN NULL;
+END;
+$$;
+
+
+--
+-- Name: refresh_openfoodfacts_sync_queue(uuid[]); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.refresh_openfoodfacts_sync_queue(changed_food_ids uuid[]) RETURNS void
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF COALESCE(CARDINALITY(changed_food_ids), 0) = 0 THEN
+    RETURN;
+  END IF;
+
+  DELETE FROM public.openfoodfacts_sync_queue queue
+   WHERE queue.food_id = ANY(changed_food_ids)
+     AND NOT EXISTS (
+       SELECT 1
+         FROM public.eligible_openfoodfacts_foods(changed_food_ids, NULL) eligible
+        WHERE eligible.food_id = queue.food_id
+     );
+
+  INSERT INTO public.openfoodfacts_sync_queue (food_id, user_id)
+  SELECT eligible.food_id, eligible.user_id
+    FROM public.eligible_openfoodfacts_foods(changed_food_ids, NULL) eligible
+  ON CONFLICT (food_id) DO UPDATE
+  SET user_id = EXCLUDED.user_id,
+      revision = nextval('public.openfoodfacts_sync_revision_seq'),
+      status = 'pending',
+      attempt_count = 0,
+      next_attempt_at = NOW(),
+      lease_expires_at = NULL,
+      last_error = NULL,
+      updated_at = NOW();
+END;
+$$;
+
+
+--
 -- Name: seed_global_providers_for_first_admin(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -955,6 +1231,53 @@ $$;
 
 
 --
+-- Name: set_openfoodfacts_backfill_on_global_enable(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.set_openfoodfacts_backfill_on_global_enable() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  UPDATE public.user_preferences
+     SET openfoodfacts_backfill_pending = TRUE,
+         updated_at = NOW()
+   WHERE auto_contribute_openfoodfacts IS TRUE;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: set_openfoodfacts_backfill_on_preference_insert(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.set_openfoodfacts_backfill_on_preference_insert() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  NEW.openfoodfacts_backfill_pending := NEW.auto_contribute_openfoodfacts;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: set_openfoodfacts_backfill_on_preference_update(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.set_openfoodfacts_backfill_on_preference_update() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+  IF OLD.auto_contribute_openfoodfacts IS DISTINCT FROM NEW.auto_contribute_openfoodfacts THEN
+    NEW.openfoodfacts_backfill_pending := NEW.auto_contribute_openfoodfacts;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: set_updated_at_timestamp(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -997,6 +1320,37 @@ SELECT CASE
     ELSE NULL
 END;
 $_$;
+
+
+--
+-- Name: sf_volume_unit_to_ml(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.sf_volume_unit_to_ml(unit text) RETURNS numeric
+    LANGUAGE sql IMMUTABLE
+    AS $$
+SELECT CASE lower(btrim(coalesce(unit, '')))
+    WHEN 'ml'     THEN 1
+    WHEN 'l'      THEN 1000
+    WHEN 'liter'  THEN 1000
+    WHEN 'liters' THEN 1000
+    WHEN 'cup'    THEN 236.588
+    WHEN 'cups'   THEN 236.588
+    WHEN 'tbsp'   THEN 14.7868
+    WHEN 'tsp'    THEN 4.92892
+    WHEN 'fl oz'  THEN 29.5735
+    WHEN 'floz'   THEN 29.5735
+    WHEN 'fl_oz'  THEN 29.5735
+    ELSE NULL          -- 'oz' is a WEIGHT ounce in the food vocabulary
+END::numeric;
+$$;
+
+
+--
+-- Name: FUNCTION sf_volume_unit_to_ml(unit text); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.sf_volume_unit_to_ml(unit text) IS 'Food serving unit -> millilitres, NULL for non-volume units. Returns NULL for ''oz'' by design: in the food vocabulary oz is a weight ounce. The water-container vocabulary is separate and treats oz as fluid.';
 
 
 --
@@ -1266,7 +1620,7 @@ CREATE TABLE public.check_in_measurements (
     bone_mass_kg numeric(5,2),
     body_water_percentage numeric(5,2),
     bmr numeric(6,1),
-    CONSTRAINT check_in_measurements_bmr_check CHECK (((bmr IS NULL) OR ((bmr >= (300)::numeric) AND (bmr <= (10000)::numeric))))
+    CONSTRAINT check_in_measurements_bmr_check CHECK (((bmr IS NULL) OR ((bmr >= (600)::numeric) AND (bmr <= (6000)::numeric))))
 );
 
 
@@ -1274,7 +1628,7 @@ CREATE TABLE public.check_in_measurements (
 -- Name: COLUMN check_in_measurements.bmr; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON COLUMN public.check_in_measurements.bmr IS 'Basal Metabolic Rate (BMR) in kcal, measured from smart weight scale or synced from health provider.';
+COMMENT ON COLUMN public.check_in_measurements.bmr IS 'Basal Metabolic Rate (BMR) in kcal, measured from smart weight scale or synced from health provider. Applies only to its own entry_date; days without a reading fall back to the user''s BMR formula.';
 
 
 --
@@ -2005,6 +2359,9 @@ CREATE TABLE public.food_entries (
     entry_time time without time zone,
     images jsonb DEFAULT '[]'::jsonb NOT NULL,
     notes text,
+    caffeine_mg numeric,
+    water_ml numeric,
+    alcohol_g numeric,
     CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL)))),
     CONSTRAINT food_entries_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text)),
     CONSTRAINT food_entries_serving_size_positive CHECK ((serving_size > (0)::numeric))
@@ -2037,6 +2394,27 @@ COMMENT ON COLUMN public.food_entries.entry_time IS 'Optional wall-clock local t
 --
 
 COMMENT ON COLUMN public.food_entries.notes IS 'Per-occurrence markdown note for a single diary entry. Never derived from foods.notes.';
+
+
+--
+-- Name: COLUMN food_entries.caffeine_mg; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entries.caffeine_mg IS 'Log-time snapshot of the variant''s caffeine_mg. NULL on rows predating this column.';
+
+
+--
+-- Name: COLUMN food_entries.water_ml; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entries.water_ml IS 'Log-time snapshot of the variant''s water_ml. NULL on rows predating this column.';
+
+
+--
+-- Name: COLUMN food_entries.alcohol_g; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entries.alcohol_g IS 'Log-time snapshot of the variant''s alcohol_g. NULL on rows predating this column.';
 
 
 --
@@ -2158,11 +2536,44 @@ CREATE TABLE public.food_variants (
     ai_confidence text,
     allergens text[],
     traces text[],
+    caffeine_mg numeric DEFAULT 0,
+    water_ml numeric DEFAULT 0,
+    alcohol_g numeric DEFAULT 0,
+    abv_percent numeric,
+    CONSTRAINT food_variants_abv_percent_range CHECK (((abv_percent IS NULL) OR ((abv_percent >= (0)::numeric) AND (abv_percent <= (100)::numeric)))),
     CONSTRAINT food_variants_ai_confidence_check CHECK (((ai_confidence = ANY (ARRAY['high'::text, 'medium'::text, 'low'::text])) OR (ai_confidence IS NULL))),
     CONSTRAINT food_variants_glycemic_index_check CHECK ((glycemic_index = ANY (ARRAY['None'::text, 'Very Low'::text, 'Low'::text, 'Medium'::text, 'High'::text, 'Very High'::text]))),
     CONSTRAINT food_variants_serving_size_positive CHECK ((serving_size > (0)::numeric)),
     CONSTRAINT food_variants_source_check CHECK ((source = ANY (ARRAY['manual'::text, 'ai_estimate'::text, 'imported'::text])))
 );
+
+
+--
+-- Name: COLUMN food_variants.caffeine_mg; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_variants.caffeine_mg IS 'Caffeine in milligrams per serving_size of this variant. First-class column rather than a custom nutrient so it can be trended, goal-tracked, and imported from providers by alias (see shared/src/nutrients/micronutrientCatalog.ts, fixedField: caffeine_mg).';
+
+
+--
+-- Name: COLUMN food_variants.water_ml; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_variants.water_ml IS 'Water content in millilitres per serving_size of this variant. 0/NULL means "unknown"; readers then fall back to the logged volume when the entry''s unit is a volume unit (see public.sf_volume_unit_to_ml). NOTE: ''oz'' in the food unit vocabulary is a WEIGHT ounce and is NOT a volume fallback; ''fl oz'' is.';
+
+
+--
+-- Name: COLUMN food_variants.alcohol_g; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_variants.alcohol_g IS 'Grams of pure ethanol per serving_size. INFORMATIONAL ONLY -- never converted to calories; the calories column already includes them. Standard-drink counts are derived from user_preferences.standard_drink_grams, never stored.';
+
+
+--
+-- Name: COLUMN food_variants.abv_percent; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_variants.abv_percent IS 'Alcohol by volume, 0-100. Derivation metadata for alcohol_g (grams = volume_ml * abv/100 * 0.789), not a nutrient. NOTE: OpenFoodFacts'' alcohol_100g field is ABV and maps HERE, not to alcohol_g. USDA nutrient 1018 is grams/100 g and maps to alcohol_g.';
 
 
 --
@@ -2208,8 +2619,16 @@ CREATE TABLE public.global_settings (
     mfa_mandatory boolean DEFAULT false,
     allow_user_ai_config boolean DEFAULT true NOT NULL,
     default_vision_ai_service_id uuid,
+    allow_openfoodfacts_contributions boolean DEFAULT false NOT NULL,
     CONSTRAINT single_row_check CHECK ((id = 1))
 );
+
+
+--
+-- Name: COLUMN global_settings.allow_openfoodfacts_contributions; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.global_settings.allow_openfoodfacts_contributions IS 'Server-wide gate for Open Food Facts contributions. Each single-food upload requires owner confirmation.';
 
 
 --
@@ -2250,7 +2669,9 @@ CREATE TABLE public.goal_presets (
     dinner_percentage numeric,
     snacks_percentage numeric,
     custom_nutrients jsonb DEFAULT '{}'::jsonb,
-    custom_meal_percentages jsonb DEFAULT '{}'::jsonb
+    custom_meal_percentages jsonb DEFAULT '{}'::jsonb,
+    caffeine_mg numeric,
+    alcohol_g numeric
 );
 
 
@@ -2348,8 +2769,32 @@ CREATE TABLE public.meal_foods (
     custom_nutrients jsonb,
     child_meal_id uuid,
     item_type character varying(50) DEFAULT 'food'::character varying NOT NULL,
+    caffeine_mg numeric,
+    water_ml numeric,
+    alcohol_g numeric,
     CONSTRAINT chk_meal_foods_item_type CHECK (((((item_type)::text = 'food'::text) AND (food_id IS NOT NULL) AND (child_meal_id IS NULL)) OR (((item_type)::text = 'meal'::text) AND (food_id IS NULL))))
 );
+
+
+--
+-- Name: COLUMN meal_foods.caffeine_mg; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.meal_foods.caffeine_mg IS 'Log-time snapshot of the variant''s caffeine_mg. NULL on rows predating this column.';
+
+
+--
+-- Name: COLUMN meal_foods.water_ml; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.meal_foods.water_ml IS 'Log-time snapshot of the variant''s water_ml. NULL on rows predating this column.';
+
+
+--
+-- Name: COLUMN meal_foods.alcohol_g; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.meal_foods.alcohol_g IS 'Log-time snapshot of the variant''s alcohol_g. NULL on rows predating this column.';
 
 
 --
@@ -2783,6 +3228,69 @@ CREATE TABLE public.onboarding_status (
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     onboarding_skipped boolean DEFAULT false NOT NULL
 );
+
+
+--
+-- Name: openfoodfacts_product_read_rate_limit; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.openfoodfacts_product_read_rate_limit (
+    id smallint DEFAULT 1 NOT NULL,
+    next_product_read_at timestamp with time zone DEFAULT '1970-01-01 00:00:00+00'::timestamp with time zone CONSTRAINT openfoodfacts_product_read_rate_l_next_product_read_at_not_null NOT NULL,
+    reservation_token uuid,
+    reservation_expires_at timestamp with time zone,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT openfoodfacts_product_read_rate_limit_reservation_check CHECK (((reservation_token IS NULL) = (reservation_expires_at IS NULL))),
+    CONSTRAINT openfoodfacts_product_read_rate_limit_singleton_check CHECK ((id = 1))
+);
+
+
+--
+-- Name: TABLE openfoodfacts_product_read_rate_limit; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.openfoodfacts_product_read_rate_limit IS 'System-only singleton leasing and spacing all Open Food Facts Product Opener product reads across server instances.';
+
+
+--
+-- Name: openfoodfacts_sync_revision_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.openfoodfacts_sync_revision_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: openfoodfacts_sync_queue; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.openfoodfacts_sync_queue (
+    food_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    revision bigint DEFAULT nextval('public.openfoodfacts_sync_revision_seq'::regclass) NOT NULL,
+    status text DEFAULT 'pending'::text NOT NULL,
+    attempt_count integer DEFAULT 0 NOT NULL,
+    next_attempt_at timestamp with time zone DEFAULT now() NOT NULL,
+    lease_expires_at timestamp with time zone,
+    last_error text,
+    last_succeeded_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT openfoodfacts_sync_queue_attempt_count_check CHECK ((attempt_count >= 0)),
+    CONSTRAINT openfoodfacts_sync_queue_revision_check CHECK ((revision > 0)),
+    CONSTRAINT openfoodfacts_sync_queue_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'processing'::text, 'failed'::text, 'succeeded'::text])))
+);
+
+
+--
+-- Name: TABLE openfoodfacts_sync_queue; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.openfoodfacts_sync_queue IS 'Durable, revision-safe state and history for automatic Open Food Facts product contributions.';
 
 
 --
@@ -3390,8 +3898,24 @@ CREATE TABLE public.user_goals (
     snacks_percentage numeric,
     water_goal_ml numeric(10,3),
     custom_nutrients jsonb DEFAULT '{}'::jsonb,
-    custom_meal_percentages jsonb DEFAULT '{}'::jsonb
+    custom_meal_percentages jsonb DEFAULT '{}'::jsonb,
+    caffeine_mg numeric,
+    alcohol_g numeric
 );
+
+
+--
+-- Name: COLUMN user_goals.caffeine_mg; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_goals.caffeine_mg IS 'Daily caffeine ceiling in mg. NULL means "use the default" (400, FDA: not generally associated with dangerous effects in healthy adults). Direction defaults to "maximum" via shared BUILTIN_MAXIMUM_GOAL_NUTRIENTS.';
+
+
+--
+-- Name: COLUMN user_goals.alcohol_g; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_goals.alcohol_g IS 'Daily ethanol ceiling in grams. NULL means "use the default" (28 g = 2 US standard drinks, the higher of the two sex-specific US Dietary Guidelines figures -- a default that scolds is worse than one the user raises). Displayed as standard drinks via user_preferences.standard_drink_grams.';
 
 
 --
@@ -3594,12 +4118,26 @@ CREATE TABLE public.user_preferences (
     food_search_all_providers_default boolean DEFAULT false NOT NULL,
     calorie_safety_floor_mode text DEFAULT 'standard'::text NOT NULL,
     calorie_safety_floor_value integer DEFAULT 1200 NOT NULL,
+    auto_contribute_openfoodfacts boolean DEFAULT false NOT NULL,
+    openfoodfacts_backfill_pending boolean DEFAULT false NOT NULL,
+    openfoodfacts_product_language text DEFAULT 'en'::text NOT NULL,
+    chart_scale_mode text DEFAULT 'time'::text NOT NULL,
+    add_food_water_to_intake boolean DEFAULT false NOT NULL,
+    standard_drink_grams numeric(5,2) DEFAULT 14.00 NOT NULL,
+    weekly_alcohol_limit_g numeric(7,2),
+    caffeine_half_life_hours numeric(3,1) DEFAULT 5.0 NOT NULL,
+    target_bedtime time without time zone DEFAULT '22:30:00'::time without time zone NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
+    CONSTRAINT user_preferences_caffeine_half_life_range CHECK (((caffeine_half_life_hours >= 2.0) AND (caffeine_half_life_hours <= 8.0))),
     CONSTRAINT user_preferences_calorie_safety_floor_mode_check CHECK ((calorie_safety_floor_mode = ANY (ARRAY['standard'::text, 'custom'::text, 'disabled'::text]))),
     CONSTRAINT user_preferences_calorie_safety_floor_value_check CHECK (((calorie_safety_floor_value >= 800) AND (calorie_safety_floor_value <= 5000))),
+    CONSTRAINT user_preferences_chart_scale_mode_check CHECK ((chart_scale_mode = ANY (ARRAY['time'::text, 'point'::text]))),
+    CONSTRAINT user_preferences_openfoodfacts_product_language_check CHECK ((openfoodfacts_product_language ~ '^[a-z]{2}$'::text)),
+    CONSTRAINT user_preferences_standard_drink_grams_range CHECK (((standard_drink_grams > (0)::numeric) AND (standard_drink_grams <= (50)::numeric))),
     CONSTRAINT user_preferences_time_format_check CHECK ((time_format = ANY (ARRAY['HH:mm'::text, 'h:mm A'::text, 'h:mm a'::text]))),
-    CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text)))
+    CONSTRAINT user_preferences_timezone_not_empty CHECK (((timezone IS NULL) OR (timezone <> ''::text))),
+    CONSTRAINT user_preferences_weekly_alcohol_limit_positive CHECK (((weekly_alcohol_limit_g IS NULL) OR (weekly_alcohol_limit_g > (0)::numeric)))
 );
 
 
@@ -3639,6 +4177,69 @@ COMMENT ON COLUMN public.user_preferences.calorie_safety_floor_value IS 'Custom 
 
 
 --
+-- Name: COLUMN user_preferences.auto_contribute_openfoodfacts; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.auto_contribute_openfoodfacts IS 'Dormant food-owner preference for a future automatic Open Food Facts contribution release.';
+
+
+--
+-- Name: COLUMN user_preferences.openfoodfacts_backfill_pending; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.openfoodfacts_backfill_pending IS 'Dormant internal cursor flag for a future bounded automatic catalog backfill.';
+
+
+--
+-- Name: COLUMN user_preferences.openfoodfacts_product_language; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.openfoodfacts_product_language IS 'Two-letter language code printed on the product packaging and used for Open Food Facts product names.';
+
+
+--
+-- Name: COLUMN user_preferences.chart_scale_mode; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.chart_scale_mode IS 'Date-axis layout for report charts: time (continuous, gaps preserved) or point (categorical, entries evenly spaced).';
+
+
+--
+-- Name: COLUMN user_preferences.add_food_water_to_intake; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.add_food_water_to_intake IS 'When true, water_ml on logged food entries (explicit column, or the volume fallback via sf_volume_unit_to_ml) is folded into the daily water total alongside water_intake_entries. A food entry already represented by a linked water_intake_entries row (food_entry_id) is excluded, so nothing double-counts. Default false: opt-in only, so no existing user sees a change on upgrade.';
+
+
+--
+-- Name: COLUMN user_preferences.standard_drink_grams; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.standard_drink_grams IS 'Grams of ethanol in one standard drink for this user''s jurisdiction. US 14, UK 8 (one unit), AU/EU 10, CA 13.45, JP 20. Display divisor only.';
+
+
+--
+-- Name: COLUMN user_preferences.weekly_alcohol_limit_g; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.weekly_alcohol_limit_g IS 'Optional weekly ethanol ceiling in grams (NULL = none). Weekly because every published guideline is weekly (UK CMO: 14 units/week) and the daily goal system has no weekly concept. Rolled up from reportRepository.getDailyNutritionTotalsRange, not a stored aggregate.';
+
+
+--
+-- Name: COLUMN user_preferences.caffeine_half_life_hours; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.caffeine_half_life_hours IS 'Elimination half-life used for the "active caffeine" estimate, 2-8 h, default 5. Population estimate, not a measurement.';
+
+
+--
+-- Name: COLUMN user_preferences.target_bedtime; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.target_bedtime IS 'The user''s intended bedtime, local wall-clock. First consumer is the caffeine cutoff; deliberately generic so a future sleep-goal feature reuses it rather than adding a second bedtime.';
+
+
+--
 -- Name: user_water_containers; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3651,8 +4252,58 @@ CREATE TABLE public.user_water_containers (
     is_primary boolean DEFAULT false,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    servings_per_container integer DEFAULT 1 NOT NULL
+    servings_per_container integer DEFAULT 1 NOT NULL,
+    hydration_factor numeric(4,3) DEFAULT 1.000 NOT NULL,
+    linked_food_id uuid,
+    linked_variant_id uuid,
+    linked_meal_type_id uuid,
+    linked_quantity numeric DEFAULT 1 NOT NULL,
+    is_quick_add boolean DEFAULT false NOT NULL,
+    sort_order integer DEFAULT 0 NOT NULL,
+    CONSTRAINT user_water_containers_hydration_factor_range CHECK (((hydration_factor >= (0)::numeric) AND (hydration_factor <= (2)::numeric)))
 );
+
+
+--
+-- Name: COLUMN user_water_containers.volume; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_water_containers.volume IS 'Millilitres one press of "+" logs for an UNLINKED container. On a LINKED container it is instead an override meaning "the glass holds more liquid than the food itself" -- a cordial concentrate, an electrolyte tablet, a powder -- and 0 means "no override, take the volume from the linked food".';
+
+
+--
+-- Name: COLUMN user_water_containers.hydration_factor; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_water_containers.hydration_factor IS 'Multiplier applied to this container''s water credit (0-2, default 1.0). Scales ONLY hydration; a linked food''s calories, macros, caffeine and alcohol always count in full.';
+
+
+--
+-- Name: COLUMN user_water_containers.linked_food_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_water_containers.linked_food_id IS 'When set, pressing "+" on this container also logs this food to the diary and links the two rows. SET NULL on food deletion so the container survives as a plain water container.';
+
+
+--
+-- Name: COLUMN user_water_containers.linked_quantity; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_water_containers.linked_quantity IS 'How much of the linked food one press of "+" logs, in the linked variant''s own serving unit. Replaces servings_per_container for linked containers: the diary entry, and every nutrient on it, scales with this. Meaningless without linked_food_id; always 1 for unlinked containers.';
+
+
+--
+-- Name: COLUMN user_water_containers.is_quick_add; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_water_containers.is_quick_add IS 'True for a quick-add drink preset: rendered as a tile grid rather than in the hydration carousel, and never eligible to be the primary container.';
+
+
+--
+-- Name: COLUMN user_water_containers.sort_order; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_water_containers.sort_order IS 'User-arranged order within its group (presets or containers). Ties fall back to created_at.';
 
 
 --
@@ -3843,7 +4494,9 @@ CREATE TABLE public.water_intake_entries (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by_user_id uuid,
     logged_at timestamp with time zone DEFAULT now() NOT NULL,
-    source_id character varying(255)
+    source_id character varying(255),
+    food_entry_id uuid,
+    hydration_factor numeric(4,3)
 );
 
 
@@ -3852,6 +4505,20 @@ CREATE TABLE public.water_intake_entries (
 --
 
 COMMENT ON COLUMN public.water_intake_entries.source_id IS 'Provider-stable record id for idempotent re-sync (e.g. HealthKit uuid, Health Connect metadata.id). NULL for manual or pre-migration synced entries.';
+
+
+--
+-- Name: COLUMN water_intake_entries.food_entry_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.water_intake_entries.food_entry_id IS 'Set when this drink was logged by a container linked to a food (#2115): the diary entry created alongside it. A food entry referenced here is EXCLUDED from the food-derived water sum, so its water is counted exactly once -- here, scaled by hydration_factor. NULL for every manual or provider-synced drink.';
+
+
+--
+-- Name: COLUMN water_intake_entries.hydration_factor; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.water_intake_entries.hydration_factor IS 'The factor in force when this drink was logged, snapshotted like container_name so later container edits do not rewrite history. NULL on rows predating the column (treat as 1.0).';
 
 
 --
@@ -4490,6 +5157,14 @@ ALTER TABLE ONLY public.fasting_logs
 
 
 --
+-- Name: food_entries food_entries_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.food_entries
+    ADD CONSTRAINT food_entries_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: food_entry_meals food_entry_meals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4751,6 +5426,22 @@ ALTER TABLE ONLY public.onboarding_status
 
 ALTER TABLE ONLY public.onboarding_status
     ADD CONSTRAINT onboarding_status_user_id_key UNIQUE (user_id);
+
+
+--
+-- Name: openfoodfacts_product_read_rate_limit openfoodfacts_product_read_rate_limit_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.openfoodfacts_product_read_rate_limit
+    ADD CONSTRAINT openfoodfacts_product_read_rate_limit_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: openfoodfacts_sync_queue openfoodfacts_sync_queue_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.openfoodfacts_sync_queue
+    ADD CONSTRAINT openfoodfacts_sync_queue_pkey PRIMARY KEY (food_id);
 
 
 --
@@ -6023,6 +6714,13 @@ CREATE INDEX idx_user_nutrient_goal_preferences_user_id ON public.user_nutrient_
 
 
 --
+-- Name: idx_user_water_containers_user_quick_add; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_user_water_containers_user_quick_add ON public.user_water_containers USING btree (user_id, is_quick_add, sort_order);
+
+
+--
 -- Name: idx_verification_identifier; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6034,6 +6732,13 @@ CREATE INDEX idx_verification_identifier ON public.verification USING btree (ide
 --
 
 CREATE INDEX idx_vitals_user_date ON public.vitals_entries USING btree (user_id, entry_date DESC, "timestamp" DESC);
+
+
+--
+-- Name: idx_water_intake_entries_food_entry_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_water_intake_entries_food_entry_id ON public.water_intake_entries USING btree (food_entry_id) WHERE (food_entry_id IS NOT NULL);
 
 
 --
@@ -6058,6 +6763,20 @@ CREATE INDEX idx_workout_preset_exercise_sets_preset_exercise_id ON public.worko
 
 
 --
+-- Name: openfoodfacts_sync_queue_due_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX openfoodfacts_sync_queue_due_idx ON public.openfoodfacts_sync_queue USING btree (next_attempt_at, lease_expires_at) WHERE (status = ANY (ARRAY['pending'::text, 'processing'::text]));
+
+
+--
+-- Name: openfoodfacts_sync_queue_user_status_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX openfoodfacts_sync_queue_user_status_idx ON public.openfoodfacts_sync_queue USING btree (user_id, status, updated_at DESC);
+
+
+--
 -- Name: sleep_entry_stages_entry_natural_key_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6076,6 +6795,20 @@ CREATE UNIQUE INDEX unique_active_pregnancy ON public.pregnancies USING btree (u
 --
 
 CREATE UNIQUE INDEX unique_backup_settings_row ON public.backup_settings USING btree (((id IS NOT NULL)));
+
+
+--
+-- Name: user_preferences cleanup_openfoodfacts_queue_on_opt_out; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER cleanup_openfoodfacts_queue_on_opt_out AFTER UPDATE OF auto_contribute_openfoodfacts ON public.user_preferences FOR EACH ROW WHEN (((old.auto_contribute_openfoodfacts IS TRUE) AND (new.auto_contribute_openfoodfacts IS FALSE))) EXECUTE FUNCTION public.cleanup_openfoodfacts_queue_on_opt_out();
+
+
+--
+-- Name: user_preferences cleanup_openfoodfacts_queue_on_preference_delete; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER cleanup_openfoodfacts_queue_on_preference_delete AFTER DELETE ON public.user_preferences FOR EACH ROW EXECUTE FUNCTION public.cleanup_openfoodfacts_queue_on_preference_delete();
 
 
 --
@@ -7274,6 +8007,22 @@ ALTER TABLE ONLY public.onboarding_status
 
 
 --
+-- Name: openfoodfacts_sync_queue openfoodfacts_sync_queue_food_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.openfoodfacts_sync_queue
+    ADD CONSTRAINT openfoodfacts_sync_queue_food_id_fkey FOREIGN KEY (food_id) REFERENCES public.foods(id) ON DELETE CASCADE;
+
+
+--
+-- Name: openfoodfacts_sync_queue openfoodfacts_sync_queue_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.openfoodfacts_sync_queue
+    ADD CONSTRAINT openfoodfacts_sync_queue_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: passkey_registration_tickets passkey_registration_tickets_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7634,6 +8383,30 @@ ALTER TABLE ONLY public.user_preferences
 
 
 --
+-- Name: user_water_containers user_water_containers_linked_food_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_water_containers
+    ADD CONSTRAINT user_water_containers_linked_food_id_fkey FOREIGN KEY (linked_food_id) REFERENCES public.foods(id) ON DELETE SET NULL;
+
+
+--
+-- Name: user_water_containers user_water_containers_linked_meal_type_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_water_containers
+    ADD CONSTRAINT user_water_containers_linked_meal_type_id_fkey FOREIGN KEY (linked_meal_type_id) REFERENCES public.meal_types(id) ON DELETE SET NULL;
+
+
+--
+-- Name: user_water_containers user_water_containers_linked_variant_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_water_containers
+    ADD CONSTRAINT user_water_containers_linked_variant_id_fkey FOREIGN KEY (linked_variant_id) REFERENCES public.food_variants(id) ON DELETE SET NULL;
+
+
+--
 -- Name: user_water_containers user_water_containers_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7671,6 +8444,14 @@ ALTER TABLE ONLY public.water_intake_entries
 
 ALTER TABLE ONLY public.water_intake_entries
     ADD CONSTRAINT water_intake_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: water_intake_entries water_intake_entries_food_entry_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.water_intake_entries
+    ADD CONSTRAINT water_intake_entries_food_entry_id_fkey FOREIGN KEY (food_entry_id) REFERENCES public.food_entries(id) ON DELETE CASCADE;
 
 
 --
@@ -7963,6 +8744,13 @@ CREATE POLICY delete_policy ON public.external_data_providers FOR DELETE USING (
 --
 
 CREATE POLICY delete_policy ON public.food_entries FOR DELETE USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: openfoodfacts_product_read_rate_limit deny_all_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY deny_all_policy ON public.openfoodfacts_product_read_rate_limit USING (false) WITH CHECK (false);
 
 
 --
@@ -8677,6 +9465,18 @@ ALTER TABLE public.onboarding_data ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.onboarding_status ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: openfoodfacts_product_read_rate_limit; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.openfoodfacts_product_read_rate_limit ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: openfoodfacts_sync_queue; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.openfoodfacts_sync_queue ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: api_key owner_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -8735,6 +9535,13 @@ CREATE POLICY owner_policy ON public.meal_plan_template_assignments USING (((EXI
   WHERE (f.id = meal_plan_template_assignments.food_id)))) OR (((item_type)::text = 'meal'::text) AND (EXISTS ( SELECT 1
    FROM public.meals m
   WHERE (m.id = meal_plan_template_assignments.meal_id)))))));
+
+
+--
+-- Name: openfoodfacts_sync_queue owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.openfoodfacts_sync_queue USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
 
 
 --
@@ -9614,6 +10421,20 @@ GRANT ALL ON FUNCTION public.check_family_access(p_family_user_id uuid, p_owner_
 
 
 --
+-- Name: FUNCTION cleanup_openfoodfacts_queue_on_opt_out(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.cleanup_openfoodfacts_queue_on_opt_out() TO sparky_app;
+
+
+--
+-- Name: FUNCTION cleanup_openfoodfacts_queue_on_preference_delete(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.cleanup_openfoodfacts_queue_on_preference_delete() TO sparky_app;
+
+
+--
 -- Name: FUNCTION clear_old_chat_history(); Type: ACL; Schema: public; Owner: -
 --
 
@@ -9709,6 +10530,13 @@ GRANT ALL ON FUNCTION public.create_user_preferences() TO sparky_app;
 --
 
 GRANT ALL ON FUNCTION public.current_user_id() TO sparky_app;
+
+
+--
+-- Name: FUNCTION eligible_openfoodfacts_foods(target_food_ids uuid[], target_user_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.eligible_openfoodfacts_foods(target_food_ids uuid[], target_user_id uuid) TO sparky_app;
 
 
 --
@@ -9838,6 +10666,48 @@ GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date d
 
 
 --
+-- Name: FUNCTION normalize_openfoodfacts_gtin(raw_code text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.normalize_openfoodfacts_gtin(raw_code text) TO sparky_app;
+
+
+--
+-- Name: FUNCTION queue_openfoodfacts_food_updates(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.queue_openfoodfacts_food_updates() TO sparky_app;
+
+
+--
+-- Name: FUNCTION queue_openfoodfacts_variant_deletes(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.queue_openfoodfacts_variant_deletes() TO sparky_app;
+
+
+--
+-- Name: FUNCTION queue_openfoodfacts_variant_inserts(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.queue_openfoodfacts_variant_inserts() TO sparky_app;
+
+
+--
+-- Name: FUNCTION queue_openfoodfacts_variant_updates(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.queue_openfoodfacts_variant_updates() TO sparky_app;
+
+
+--
+-- Name: FUNCTION refresh_openfoodfacts_sync_queue(changed_food_ids uuid[]); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.refresh_openfoodfacts_sync_queue(changed_food_ids uuid[]) TO sparky_app;
+
+
+--
 -- Name: FUNCTION seed_global_providers_for_first_admin(); Type: ACL; Schema: public; Owner: -
 --
 
@@ -9859,6 +10729,27 @@ GRANT ALL ON FUNCTION public.set_first_user_as_admin() TO sparky_app;
 
 
 --
+-- Name: FUNCTION set_openfoodfacts_backfill_on_global_enable(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.set_openfoodfacts_backfill_on_global_enable() TO sparky_app;
+
+
+--
+-- Name: FUNCTION set_openfoodfacts_backfill_on_preference_insert(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.set_openfoodfacts_backfill_on_preference_insert() TO sparky_app;
+
+
+--
+-- Name: FUNCTION set_openfoodfacts_backfill_on_preference_update(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.set_openfoodfacts_backfill_on_preference_update() TO sparky_app;
+
+
+--
 -- Name: FUNCTION set_updated_at_timestamp(); Type: ACL; Schema: public; Owner: -
 --
 
@@ -9877,6 +10768,13 @@ GRANT ALL ON FUNCTION public.set_user_id(user_id uuid) TO sparky_app;
 --
 
 GRANT ALL ON FUNCTION public.sf_try_numeric(txt text) TO sparky_app;
+
+
+--
+-- Name: FUNCTION sf_volume_unit_to_ml(unit text); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.sf_volume_unit_to_ml(unit text) TO sparky_app;
 
 
 --
@@ -10325,6 +11223,27 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_data TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.onboarding_status TO sparky_app;
+
+
+--
+-- Name: TABLE openfoodfacts_product_read_rate_limit; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.openfoodfacts_product_read_rate_limit TO sparky_app;
+
+
+--
+-- Name: SEQUENCE openfoodfacts_sync_revision_seq; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,USAGE ON SEQUENCE public.openfoodfacts_sync_revision_seq TO sparky_app;
+
+
+--
+-- Name: TABLE openfoodfacts_sync_queue; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.openfoodfacts_sync_queue TO sparky_app;
 
 
 --

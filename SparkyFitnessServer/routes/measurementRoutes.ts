@@ -14,9 +14,11 @@ import {
   DateParamSchema,
   UuidParamSchema,
   DateRangeParamSchema,
+  StrictDateRangeParamSchema,
   CustomMeasurementsRangeParamSchema,
   ImportHealthDataBodySchema,
 } from '../schemas/measurementSchemas.js';
+import { isDayString } from '@workspace/shared';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 const router = express.Router();
@@ -1514,6 +1516,81 @@ router.get(
 );
 /**
  * @swagger
+ * /measurements/water-intake-range/{startDate}/{endDate}:
+ *   get:
+ *     summary: Get water intake totals within a date range
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: startDate
+ *         required: true
+ *         description: Calendar day, YYYY-MM-DD.
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: path
+ *         name: endDate
+ *         required: true
+ *         description: Calendar day, YYYY-MM-DD.
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: One total per day that has logged water in the range.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   entry_date:
+ *                     type: string
+ *                     format: date
+ *                   water_ml:
+ *                     type: number
+ *                     description: Total water consumed that day, in milliliters.
+ *       400:
+ *         description: startDate or endDate is not a YYYY-MM-DD calendar date.
+ *       403:
+ *         description: Forbidden.
+ */
+router.get(
+  '/water-intake-range/:startDate/:endDate',
+  authenticate,
+  checkPermissionMiddleware('checkin'),
+  async (req, res, next) => {
+    const paramResult = StrictDateRangeParamSchema.safeParse(req.params);
+    if (!paramResult.success) {
+      return res.status(400).json({
+        error: paramResult.error.issues.map((i) => i.message).join(', '),
+      });
+    }
+    const { startDate, endDate } = paramResult.data;
+    try {
+      const waterTotals = await measurementService.getWaterIntakeByDateRange(
+        req.userId,
+
+        req.userId,
+        startDate,
+        endDate
+      );
+      res.status(200).json(waterTotals);
+    } catch (error) {
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      if (error.message.startsWith('Forbidden')) {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
+    }
+  }
+);
+/**
+ * @swagger
  * /measurements/custom-measurements-range/{categoryId}/{startDate}/{endDate}:
  *   get:
  *     summary: Get custom measurements within a date range
@@ -1593,9 +1670,21 @@ router.get(
  *         schema:
  *           type: string
  *         description: weight, steps, body_fat_percentage, etc.
+ *       - in: query
+ *         name: date
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: >-
+ *           Restrict the lookup to this single day (YYYY-MM-DD) instead of
+ *           returning the newest value ever recorded. Used for measured BMR,
+ *           which only applies on the day it was taken.
  *     responses:
  *       200:
  *         description: The most recent measurement.
+ *       400:
+ *         description: The date query parameter was present but not a valid YYYY-MM-DD day.
  */
 router.get(
   '/most-recent/:measurementType',
@@ -1603,10 +1692,27 @@ router.get(
   checkPermissionMiddleware('checkin'),
   async (req, res, next) => {
     const { measurementType } = req.params;
+    // Optional `?date=YYYY-MM-DD` pins the lookup to that single day instead of
+    // returning the newest value ever recorded. The Diary uses it for BMR, which
+    // is only meaningful on the day it was measured.
+    //
+    // A malformed date is rejected rather than ignored: silently dropping it would
+    // fall back to "newest ever", which for BMR is exactly the carry-forward this
+    // change removes — and the caller would get it with a 200 and no signal.
+    const rawDate = req.query.date;
+    if (rawDate !== undefined) {
+      if (typeof rawDate !== 'string' || !isDayString(rawDate)) {
+        return res
+          .status(400)
+          .json({ error: 'date must be a valid YYYY-MM-DD day string.' });
+      }
+    }
+    const onDate = typeof rawDate === 'string' ? rawDate : undefined;
     try {
       const measurement = await measurementService.getMostRecentMeasurement(
         req.userId,
-        measurementType
+        measurementType,
+        onDate
       );
       res.status(200).json(measurement);
     } catch (error) {

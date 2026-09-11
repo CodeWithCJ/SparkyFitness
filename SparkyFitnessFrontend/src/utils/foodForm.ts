@@ -32,6 +32,10 @@ export const formVariantToFoodVariant = (
   vitamin_c: variant.vitamin_c || 0,
   calcium: variant.calcium || 0,
   iron: variant.iron || 0,
+  caffeine_mg: variant.caffeine_mg || 0,
+  water_ml: variant.water_ml || 0,
+  alcohol_g: variant.alcohol_g || 0,
+  abv_percent: variant.abv_percent || 0,
 });
 
 // Helper to convert FoodVariant to FormFoodVariant (0 becomes empty string for display)
@@ -60,6 +64,10 @@ export const foodVariantToFormVariant = (
   vitamin_c: variant.vitamin_c === 0 ? undefined : variant.vitamin_c,
   calcium: variant.calcium === 0 ? undefined : variant.calcium,
   iron: variant.iron === 0 ? undefined : variant.iron,
+  caffeine_mg: variant.caffeine_mg === 0 ? undefined : variant.caffeine_mg,
+  water_ml: variant.water_ml === 0 ? undefined : variant.water_ml,
+  alcohol_g: variant.alcohol_g === 0 ? undefined : variant.alcohol_g,
+  abv_percent: variant.abv_percent === 0 ? undefined : variant.abv_percent,
 });
 
 export const sanitizeGlycemicIndexFrontend = (
@@ -110,6 +118,10 @@ export function createDefaultFormVariant(
     vitamin_c: undefined,
     calcium: undefined,
     iron: undefined,
+    caffeine_mg: undefined,
+    water_ml: undefined,
+    alcohol_g: undefined,
+    abv_percent: undefined,
     is_default: true,
     is_locked: false,
     glycemic_index: 'None' as GlycemicIndex,

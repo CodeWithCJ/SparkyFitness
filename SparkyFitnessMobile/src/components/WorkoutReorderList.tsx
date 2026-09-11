@@ -53,7 +53,8 @@ export const REORDER_ROW_HEIGHT = 64;
 /** Vertical gap between draggable items, carried as in-item bottom margin. */
 export const REORDER_ITEM_GAP = 8;
 
-const LONG_PRESS_MS = 150;
+/** Long press before a reorder drag engages, shared by every reorder surface. */
+export const REORDER_LONG_PRESS_MS = 150;
 const AUTO_SCROLL_EDGE = 80;
 const AUTO_SCROLL_SPEED = 8;
 
@@ -122,6 +123,170 @@ export function computeReorderPreviewShift(
     return stride;
   }
   return 0;
+}
+
+/**
+ * Drag geometry for a reorder list whose rows all share one height: the per-row stride
+ * and the running offset of each row's top edge, in the form
+ * `computeReorderTargetIndex` reads them.
+ *
+ * Uniform by construction, so the arrays depend on the row *count* rather than the rows
+ * themselves and stay referentially stable while the list keeps its shape — which matters
+ * because every row's animated style closes over `strides`.
+ */
+export function useReorderRowGeometry(
+  rowCount: number,
+  rowStride: number = REORDER_ROW_HEIGHT
+): { strides: number[]; offsets: number[] } {
+  return useMemo(
+    () => ({
+      strides: Array.from({ length: rowCount }, () => rowStride),
+      offsets: Array.from(
+        { length: rowCount },
+        (_, index) => index * rowStride
+      ),
+    }),
+    [rowCount, rowStride]
+  );
+}
+
+/**
+ * Shared drag-preview animated style for every row of a reorder list:
+ * - the ACTIVE row floats (follows the finger, slight scale, lift shadow);
+ * - every OTHER row springs exactly one row stride toward the drag origin while it sits
+ *   between the active row and the LIVE target index, so the list closes the old gap and
+ *   opens the new one naturally (no stationary hole at the source position).
+ *
+ * Non-draggable rows participate as passive siblings — Meal Types' system anchors, the
+ * Health Trends "Hidden" divider — so the WHOLE list previews the drop rather than only
+ * the part of it that can move.
+ *
+ * During the commit handoff the active row keeps its FINAL translate
+ * (`committingTranslate`) so the drop preview hands off to the reordered render with no
+ * snap-back; the caller's post-render effect clears the shared values only after the new
+ * order has rendered (see `resetReorderDragPreview`).
+ */
+export function useReorderRowPreviewStyle(
+  rowIndex: number,
+  activeDragIndex: SharedValue<number>,
+  panY: SharedValue<number>,
+  committingTranslate: SharedValue<number>,
+  targetIndex: SharedValue<number>,
+  strides: number[]
+) {
+  return useAnimatedStyle(() => {
+    const active = activeDragIndex.value;
+    if (active === rowIndex) {
+      const ty =
+        committingTranslate.value !== 0
+          ? committingTranslate.value
+          : panY.value;
+      return {
+        transform: [{ translateY: ty }, { scale: 1.02 }],
+        zIndex: 10,
+        elevation: 8,
+        shadowOpacity: 0.16,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+      };
+    }
+    // Reanimated applies animated styles as diffs — keys omitted from a later update keep
+    // their last value — so the lift shadow must be zeroed explicitly in every
+    // non-dragged branch.
+    if (active < 0) {
+      return {
+        transform: [{ translateY: 0 }, { scale: 1 }],
+        zIndex: 0,
+        elevation: 0,
+        shadowOpacity: 0,
+      };
+    }
+    const shift = computeReorderPreviewShift(
+      rowIndex,
+      active,
+      targetIndex.value,
+      strides[active]
+    );
+    return {
+      transform: [
+        { translateY: withSpring(shift, { damping: 44, stiffness: 960 }) },
+        { scale: 1 },
+      ],
+      zIndex: 0,
+      elevation: 0,
+      shadowOpacity: 0,
+    };
+  });
+}
+
+/**
+ * The long-press pan that drags one row of a reorder list.
+ *
+ * `onMove` is handed the live UI-thread target — the same value the sibling previews
+ * read — so the committed destination always matches the gap the user saw. Built fresh
+ * each render, because it closes over the row's current index.
+ */
+export function createReorderRowPanGesture({
+  index,
+  activeDragIndex,
+  panY,
+  committingTranslate,
+  targetIndex,
+  onMove,
+}: {
+  index: number;
+  activeDragIndex: SharedValue<number>;
+  panY: SharedValue<number>;
+  committingTranslate: SharedValue<number>;
+  targetIndex: SharedValue<number>;
+  onMove: (fromIndex: number, toIndex: number) => void;
+}) {
+  return Gesture.Pan()
+    .activateAfterLongPress(REORDER_LONG_PRESS_MS)
+    .onStart(() => {
+      activeDragIndex.value = index;
+      panY.value = 0;
+    })
+    .onUpdate((event) => {
+      panY.value = event.translationY;
+    })
+    .onEnd((_event, success) => {
+      const from = activeDragIndex.value;
+      const to = targetIndex.value;
+      // An ACTIVE pan that is cancelled or fails — the app backgrounds, a parent
+      // navigator gesture takes over — lands here too, with `success` false. Only a
+      // real drop may commit: treating a cancellation as one silently reorders the
+      // list, and persists it, on a move the user never finished making.
+      if (success && from >= 0 && from !== to) {
+        // Commit handoff: keep the active row's final translate while the JS reorder
+        // state commits — no snap-back to origin before React re-renders the row at its
+        // destination.
+        committingTranslate.value = panY.value;
+        // Worklet -> JS boundary: onMove must run on the JS thread.
+        runOnJS(onMove)(from, to);
+        return;
+      }
+      activeDragIndex.value = -1;
+      panY.value = 0;
+    });
+}
+
+/**
+ * Releases a frozen drag preview (active row float + sibling shifts) back to idle.
+ *
+ * Called by a REJECTED drop (Meal Types' full-gap case): the gesture already froze the
+ * preview in `onEnd`, so a rejection must clear the shared values or the rows stay stuck
+ * translated. An ACCEPTED move resets through the caller's post-render effect instead, so
+ * the preview hands off to the reordered render with no snap-back.
+ */
+export function resetReorderDragPreview(
+  activeDragIndex: SharedValue<number>,
+  panY: SharedValue<number>,
+  committingTranslate: SharedValue<number>
+): void {
+  committingTranslate.value = 0;
+  activeDragIndex.value = -1;
+  panY.value = 0;
 }
 
 interface ReorderItemRowProps {
@@ -214,7 +379,7 @@ function ReorderItemRow({
   const gesture = useMemo(
     () =>
       Gesture.Pan()
-        .activateAfterLongPress(LONG_PRESS_MS)
+        .activateAfterLongPress(REORDER_LONG_PRESS_MS)
         .onStart(() => {
           'worklet';
           activeIndex.value = index;

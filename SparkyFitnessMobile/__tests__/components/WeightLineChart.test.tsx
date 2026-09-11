@@ -93,7 +93,14 @@ describe('WeightLineChart', () => {
     expect(line.props.color).toBe('#888888');
   });
 
-  it('renders nothing when there is no weight data and the query is idle', () => {
-    expect(renderChart([]).toJSON()).toBeNull();
+  // The pager only reaches Weight with an empty window through its fallback, when no shown
+  // trend has data. Returning null there left the Health Trends heading over blank space,
+  // so this card carries its own empty state like Steps and Sleep do.
+  it('says there is no weight data when the window is empty and the query is idle', () => {
+    renderChart([]);
+
+    expect(screen.getByText('No weight data for this period')).toBeTruthy();
+    expect(screen.getByText('Weight')).toBeTruthy();
+    expect(screen.queryByTestId('cartesian-chart')).toBeNull();
   });
 });

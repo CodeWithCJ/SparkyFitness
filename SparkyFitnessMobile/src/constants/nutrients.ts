@@ -82,6 +82,21 @@ export const NUTRIENT_META: Record<string, NutrientMeta> = {
     unit: 'mg',
   },
   iron: { labelKey: 'nutrients.iron', defaultLabel: 'Iron', unit: 'mg' },
+  caffeine_mg: {
+    labelKey: 'nutrients.caffeine',
+    defaultLabel: 'Caffeine',
+    unit: 'mg',
+  },
+  water_ml: {
+    labelKey: 'nutrients.waterContent',
+    defaultLabel: 'Water Content',
+    unit: 'ml',
+  },
+  alcohol_g: {
+    labelKey: 'nutrients.alcohol',
+    defaultLabel: 'Alcohol',
+    unit: 'g',
+  },
   glycemic_index: {
     labelKey: 'nutrients.glycemicIndex',
     defaultLabel: 'Glycemic Index',
@@ -144,6 +159,12 @@ export function getNutrientLabel(
       return t('nutrients.calcium', { defaultValue: 'Calcium' });
     case 'iron':
       return t('nutrients.iron', { defaultValue: 'Iron' });
+    case 'caffeine_mg':
+      return t('nutrients.caffeine', { defaultValue: 'Caffeine' });
+    case 'water_ml':
+      return t('nutrients.waterContent', { defaultValue: 'Water Content' });
+    case 'alcohol_g':
+      return t('nutrients.alcohol', { defaultValue: 'Alcohol' });
     case 'glycemic_index':
       return t('nutrients.glycemicIndex', { defaultValue: 'Glycemic Index' });
     default:

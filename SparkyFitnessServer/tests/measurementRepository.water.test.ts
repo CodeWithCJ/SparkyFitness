@@ -267,6 +267,192 @@ describe('measurementRepository.upsertWaterIntakeSamples', () => {
   });
 });
 
+describe('measurementRepository.recomputeWaterAggregate', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockClient: any;
+
+  beforeEach(() => {
+    mockClient = {
+      query: vi.fn(),
+      release: vi.fn(),
+    };
+    vi.mocked(getClient).mockResolvedValue(mockClient);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('SUMs water_intake_entries for exactly this (user, date, source) and upserts that total', async () => {
+    mockClient.query.mockImplementation((text: string) => {
+      if (text.includes('SELECT COALESCE(SUM(water_ml)')) {
+        return Promise.resolve({ rows: [{ total_ml: '450' }] });
+      }
+      return Promise.resolve({ rows: [{}] });
+    });
+
+    const total = await measurementRepository.recomputeWaterAggregate(
+      mockClient,
+      'user-1',
+      'user-1',
+      '2026-09-05',
+      'manual'
+    );
+
+    expect(total).toBe(450);
+    const [sumText, sumValues] = mockClient.query.mock.calls[0];
+    expect(sumText).toContain('FROM water_intake_entries');
+    expect(sumValues).toEqual(['user-1', '2026-09-05', 'manual']);
+
+    const [upsertText, upsertValues] = mockClient.query.mock.calls[1];
+    expect(upsertText).toContain('ON CONFLICT (user_id, entry_date, source)');
+    expect(upsertText).toContain('DO UPDATE SET water_ml = $3');
+    expect(upsertValues).toEqual([
+      'user-1',
+      '2026-09-05',
+      450,
+      'manual',
+      'user-1',
+    ]);
+  });
+
+  it('is idempotent: running it twice in a row produces the same total both times', async () => {
+    mockClient.query.mockImplementation((text: string) => {
+      if (text.includes('SELECT COALESCE(SUM(water_ml)')) {
+        return Promise.resolve({ rows: [{ total_ml: '300' }] });
+      }
+      return Promise.resolve({ rows: [{}] });
+    });
+
+    const first = await measurementRepository.recomputeWaterAggregate(
+      mockClient,
+      'user-1',
+      'user-1',
+      '2026-09-05',
+      'manual'
+    );
+    const second = await measurementRepository.recomputeWaterAggregate(
+      mockClient,
+      'user-1',
+      'user-1',
+      '2026-09-05',
+      'manual'
+    );
+
+    expect(first).toBe(300);
+    expect(second).toBe(300);
+  });
+
+  it('scopes to the given (date, source) — a different source is not touched by the same call', async () => {
+    mockClient.query.mockImplementation((text: string) => {
+      if (text.includes('SELECT COALESCE(SUM(water_ml)')) {
+        return Promise.resolve({ rows: [{ total_ml: '100' }] });
+      }
+      return Promise.resolve({ rows: [{}] });
+    });
+
+    await measurementRepository.recomputeWaterAggregate(
+      mockClient,
+      'user-1',
+      'user-1',
+      '2026-09-05',
+      'manual'
+    );
+
+    // Exactly two queries ran (the SELECT SUM and the upsert) — nothing else
+    // in the day or for another source was queried or written.
+    expect(mockClient.query.mock.calls).toHaveLength(2);
+    const [, sumValues] = mockClient.query.mock.calls[0];
+    expect(sumValues[2]).toBe('manual');
+  });
+
+  it('returns 0 when the ledger has no rows for this (date, source), not NaN or null', async () => {
+    mockClient.query.mockImplementation((text: string) => {
+      if (text.includes('SELECT COALESCE(SUM(water_ml)')) {
+        return Promise.resolve({ rows: [{ total_ml: '0' }] });
+      }
+      return Promise.resolve({ rows: [{}] });
+    });
+
+    const total = await measurementRepository.recomputeWaterAggregate(
+      mockClient,
+      'user-1',
+      'user-1',
+      '2026-09-05',
+      'health_connect'
+    );
+
+    expect(total).toBe(0);
+    expect(Number.isNaN(total)).toBe(false);
+  });
+});
+
+describe('measurementRepository.recomputeWaterAggregateForUser', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockClient: any;
+
+  beforeEach(() => {
+    mockClient = {
+      query: vi.fn().mockImplementation((text: string) => {
+        if (text.includes('SELECT COALESCE(SUM(water_ml)')) {
+          return Promise.resolve({ rows: [{ total_ml: '250' }] });
+        }
+        return Promise.resolve({ rows: [{}] });
+      }),
+      release: vi.fn(),
+    };
+    vi.mocked(getClient).mockResolvedValue(mockClient);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('wraps the recompute in its own BEGIN/COMMIT and releases the client', async () => {
+    const total = await measurementRepository.recomputeWaterAggregateForUser(
+      'user-1',
+      'user-1',
+      '2026-09-05',
+      'manual'
+    );
+
+    expect(total).toBe(250);
+    const statements = mockClient.query.mock.calls.map(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (call: any[]) => call[0]
+    );
+    expect(statements[0]).toBe('BEGIN');
+    expect(statements[statements.length - 1]).toBe('COMMIT');
+    expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+
+  it('rolls back and releases the client when the recompute fails', async () => {
+    mockClient.query.mockImplementation((text: string) => {
+      if (text === 'BEGIN') return Promise.resolve();
+      if (text.includes('SELECT COALESCE(SUM(water_ml)')) {
+        return Promise.reject(new Error('connection lost'));
+      }
+      return Promise.resolve({ rows: [{}] });
+    });
+
+    await expect(
+      measurementRepository.recomputeWaterAggregateForUser(
+        'user-1',
+        'user-1',
+        '2026-09-05',
+        'manual'
+      )
+    ).rejects.toThrow('connection lost');
+
+    const statements = mockClient.query.mock.calls.map(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (call: any[]) => call[0]
+    );
+    expect(statements).toContain('ROLLBACK');
+    expect(mockClient.release).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('measurementRepository.incrementWaterData', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockClient: any;

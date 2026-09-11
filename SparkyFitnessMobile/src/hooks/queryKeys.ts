@@ -13,6 +13,9 @@ export const familyDailySummaryQueryKey = (
   date: string
 ) => ['familyDailySummary', familyUserId, date] as const;
 
+export const caffeineActiveQueryKey = (date: string) =>
+  ['caffeineActive', date] as const;
+
 export const measurementsQueryKey = (date: string) =>
   ['measurements', date] as const;
 
@@ -103,10 +106,30 @@ export const foodVariantsQueryKey = (foodId: string) =>
 export const measurementsRangeQueryKey = (startDate: string, endDate: string) =>
   ['measurementsRange', startDate, endDate] as const;
 
+export const waterIntakeRangeQueryKey = (startDate: string, endDate: string) =>
+  ['waterIntakeRange', startDate, endDate] as const;
+
 export const sleepRangeQueryKey = (startDate: string, endDate: string) =>
   ['sleepRange', startDate, endDate] as const;
 
 export const sleepDayQueryKey = (day: string) => ['sleep', 'day', day] as const;
+
+// --- Check-in progress photos ---
+/** Root, so an upload/delete can invalidate the gallery and every per-day list. */
+export const checkInPhotosRootQueryKey = ['checkInPhotos'] as const;
+/** Flat gallery (all photos + the weight logged that day). */
+export const checkInPhotoGalleryQueryKey = [
+  ...checkInPhotosRootQueryKey,
+  'gallery',
+] as const;
+/** The photos taken on one calendar day. */
+export const checkInPhotosByDateQueryKey = (date: string) =>
+  [...checkInPhotosRootQueryKey, 'byDate', date] as const;
+
+export const checkInPhotoDatesQueryKey = [
+  ...checkInPhotosRootQueryKey,
+  'dates',
+] as const;
 
 export const customCategoriesQueryKey = ['customCategories'] as const;
 export const customMeasurementsByDateQueryKey = (date: string) =>

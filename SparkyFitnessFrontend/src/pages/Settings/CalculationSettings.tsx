@@ -113,6 +113,7 @@ const CalculationSettings = () => {
     bmrAlgorithm: contextBmrAlgorithm,
     bodyFatAlgorithm: contextBodyFatAlgorithm,
     includeBmrInNetCalories: contextIncludeBmrInNetCalories,
+    useExternalBmr: contextUseExternalBmr,
     showNetCarbs: contextShowNetCarbs,
     fatBreakdownAlgorithm: contextFatBreakdownAlgorithm,
     mineralCalculationAlgorithm: contextMineralCalculationAlgorithm,
@@ -193,6 +194,7 @@ const CalculationSettings = () => {
   const [includeBmrInNetCalories, setIncludeBmrInNetCalories] = useState(
     contextIncludeBmrInNetCalories || false
   );
+  const [useExternalBmr, setUseExternalBmr] = useState(contextUseExternalBmr);
   const [showNetCarbs, setShowNetCarbs] = useState(
     contextShowNetCarbs || false
   );
@@ -232,6 +234,9 @@ const CalculationSettings = () => {
     }
     if (contextIncludeBmrInNetCalories !== undefined) {
       setIncludeBmrInNetCalories(contextIncludeBmrInNetCalories);
+    }
+    if (contextUseExternalBmr !== undefined) {
+      setUseExternalBmr(contextUseExternalBmr);
     }
     if (contextShowNetCarbs !== undefined) {
       setShowNetCarbs(contextShowNetCarbs);
@@ -296,6 +301,7 @@ const CalculationSettings = () => {
     contextBmrAlgorithm,
     contextBodyFatAlgorithm,
     contextIncludeBmrInNetCalories,
+    contextUseExternalBmr,
     contextShowNetCarbs,
     contextFatBreakdownAlgorithm,
     contextMineralCalculationAlgorithm,
@@ -322,6 +328,7 @@ const CalculationSettings = () => {
         bmrAlgorithm,
         bodyFatAlgorithm,
         includeBmrInNetCalories,
+        useExternalBmr,
         showNetCarbs,
         energyUnit, // Ensure energyUnit is included in saving
         fatBreakdownAlgorithm: fatBreakdownAlgorithm,
@@ -392,7 +399,7 @@ const CalculationSettings = () => {
     measuredBmr,
     weight: weightKg,
     height: heightCm,
-  } = useCalculatedBMR();
+  } = useCalculatedBMR({ bmrAlgorithm, useExternalBmr });
   const todayStr = todayInZone(timezone || 'UTC');
   const { data: adaptiveTdeeData } = useAdaptiveTdee(todayStr);
   const { data: goalsData } = useDiaryGoals(todayStr, false);
@@ -762,6 +769,31 @@ const CalculationSettings = () => {
 
       <div className="flex items-center space-x-2">
         <Checkbox
+          id="use-external-bmr"
+          checked={useExternalBmr}
+          onCheckedChange={(checked) => setUseExternalBmr(Boolean(checked))}
+        />
+        <div className="grid gap-1.5 leading-none">
+          <Label
+            htmlFor="use-external-bmr"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+          >
+            {t(
+              'calculationSettings.useExternalBmr',
+              'Use measured BMR from check-ins and synced devices'
+            )}
+          </Label>
+          <p className="text-sm text-muted-foreground">
+            {t(
+              'calculationSettings.useExternalBmrHint',
+              'Off by default — your chosen formula is always used until you turn this on. When enabled, a BMR recorded on a check-in or synced from a smart scale or health provider replaces the formula for that day, provided it is physiologically plausible for you. Some devices report BMR as a running daily total rather than a rate, which is why this is opt-in.'
+            )}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox
           id="show-net-carbs"
           checked={showNetCarbs}
           onCheckedChange={(checked) => setShowNetCarbs(Boolean(checked))}
@@ -1003,7 +1035,7 @@ const CalculationSettings = () => {
                   💡{' '}
                   {t(
                     'settings.calorieGoalAdjustment.adaptiveActivityHint',
-                    'In Adaptive mode, this setting acts as a fallback until you have enough tracking data.'
+                    'In Adaptive mode this is the fallback estimate until you have enough tracking data — and it keeps setting the plausibility limits afterwards. Your measured TDEE is capped to within ±500 kcal of BMR × this multiplier, so a level set too low can hold a genuinely higher expenditure down.'
                   )}
                 </p>
               )}
@@ -1463,6 +1495,16 @@ const CalculationSettings = () => {
           <div className="p-4 bg-muted/50 dark:bg-muted/30 border border-border rounded-xl space-y-2">
             <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
               {t('settings.goalMode.livePreview', 'Live Preview Calculation')}
+            </p>
+            {/* Adaptive TDEE is computed on the server from the *saved*
+                preferences, so an unsaved edit cannot move it or anything derived
+                from it. BMR and body fat are worked out here and do update as you
+                type, which makes the split invisible without saying so. */}
+            <p className="text-xs text-muted-foreground italic">
+              {t(
+                'settings.goalMode.livePreviewSavedNote',
+                'BMR and body fat update as you change settings. Expenditure is calculated on the server from your saved settings, so it and the final target only change after you save.'
+              )}
             </p>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-sm">
               <div>

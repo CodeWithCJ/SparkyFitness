@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { todayInZone } from '@workspace/shared';
 import {
   resolveHandler,
   customMeasurementHandler,
@@ -10,6 +11,7 @@ import {
 import measurementRepository from '../models/measurementRepository.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
+import type { WaterContainerResponse } from '@workspace/shared';
 
 vi.mock('../models/measurementRepository.js', () => ({
   default: {
@@ -187,7 +189,10 @@ describe('waterHandler.handleBatch', () => {
     vi.clearAllMocks();
     vi.mocked(
       waterContainerRepository.getPrimaryWaterContainerByUserId
-    ).mockResolvedValue({ id: 7, name: 'Big Bottle' });
+    ).mockResolvedValue({
+      id: 7,
+      name: 'Big Bottle',
+    } as unknown as WaterContainerResponse);
     vi.mocked(
       measurementRepository.upsertWaterIntakeSamples
     ).mockImplementation(
@@ -324,14 +329,40 @@ describe('bmrHandler.handleBatch', () => {
     expect(outcomes[0].status).toBe('success');
   });
 
+  it('refuses an in-progress day only for sources that accumulate', async () => {
+    // Garmin's bmrKilocalories is a running daily total, so a value read before
+    // the day ends is only part of it. HealthKit stamps each fully-elapsed day
+    // with D+1 and Health Connect sends an instantaneous rate, so both are valid
+    // on the current date — refusing today wholesale stopped iOS storing any BMR.
+    const today = todayInZone('UTC');
+    const outcomes = await bmrHandler.handleBatch!(
+      [
+        prepared({ type: 'bmr', value: '1650', source: 'garmin' }, today),
+        prepared(
+          { type: 'bmr', value: '1650', source: 'garmin' },
+          '2026-08-03'
+        ),
+        prepared({ type: 'bmr', value: '1650', source: 'HealthKit' }, today),
+      ],
+      ctx
+    );
+
+    expect(outcomes[0].status).toBe('skipped');
+    expect(outcomes[1].status).toBe('success');
+    expect(outcomes[2].status).toBe('success');
+  });
+
   it('rejects values with non-numeric suffixes or out of bounds', async () => {
     const outcomes = await bmrHandler.handleBatch!(
       [
         prepared({ type: 'bmr', value: '1650kcal' }),
         prepared({ type: 'bmr', value: '300xyz' }),
-        prepared({ type: 'bmr', value: '299' }),
-        prepared({ type: 'bmr', value: '10001' }),
+        prepared({ type: 'bmr', value: '599' }),
+        prepared({ type: 'bmr', value: '6001' }),
         prepared({ type: 'bmr', value: '' }),
+        // The reading from issue #2395: physiologically impossible for an adult,
+        // but inside the old 300-10000 range that shipped in v1.6.5.
+        prepared({ type: 'bmr', value: '350' }),
       ],
       ctx
     );
@@ -341,5 +372,19 @@ describe('bmrHandler.handleBatch', () => {
     expect(outcomes[2].status).toBe('error');
     expect(outcomes[3].status).toBe('error');
     expect(outcomes[4].status).toBe('error');
+    expect(outcomes[5].status).toBe('error');
+  });
+
+  it('accepts the 600 and 6000 boundary values', async () => {
+    const outcomes = await bmrHandler.handleBatch!(
+      [
+        prepared({ type: 'bmr', value: '600' }),
+        prepared({ type: 'bmr', value: '6000' }),
+      ],
+      ctx
+    );
+
+    expect(outcomes[0].status).not.toBe('error');
+    expect(outcomes[1].status).not.toBe('error');
   });
 });

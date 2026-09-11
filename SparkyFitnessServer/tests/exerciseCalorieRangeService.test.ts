@@ -197,3 +197,81 @@ describe('getResolvedExerciseCaloriesTotal', () => {
     expect(total).toBe(1287);
   });
 });
+
+describe('historical step measurements', () => {
+  test('uses the range seed and carries weight and height forward independently', async () => {
+    vi.mocked(
+      exerciseEntryRepository.getDailyExerciseCalorieSplitRange
+    ).mockResolvedValue([]);
+    vi.mocked(measurementRepository.getLatestWeightHeight).mockImplementation(
+      async (_user, date) =>
+        date === '2026-08-08'
+          ? { weightKg: 80, heightCm: 180 }
+          : { weightKg: 120, heightCm: 200 }
+    );
+    vi.mocked(
+      measurementRepository.getCheckInMeasurementsByDateRange
+    ).mockResolvedValue([
+      { entry_date: '2026-08-11', steps: 10000, weight: 0, height: -1 },
+      { entry_date: '2026-08-09', steps: 10000, weight: '100', height: null },
+      { entry_date: '2026-08-08', steps: 10000, weight: null, height: null },
+      { entry_date: '2026-08-10', steps: 10000, height: '200' },
+    ]);
+
+    const days = await getResolvedExerciseCaloriesRange(
+      USER,
+      '2026-08-08',
+      '2026-08-11'
+    );
+
+    expect(
+      [...days.values()].map((day) => [
+        day.date,
+        day.stepCalories,
+        day.calories,
+      ])
+    ).toEqual([
+      ['2026-08-08', 316, 316],
+      ['2026-08-09', 395, 395],
+      ['2026-08-10', 439, 439],
+      ['2026-08-11', 439, 439],
+    ]);
+    expect(
+      measurementRepository.getLatestWeightHeight
+    ).toHaveBeenCalledExactlyOnceWith(USER, '2026-08-08');
+    expect(
+      measurementRepository.getCheckInMeasurementsByDateRange
+    ).toHaveBeenCalledOnce();
+  });
+
+  test('uses the default weight when only height has been recorded', async () => {
+    vi.mocked(
+      exerciseEntryRepository.getDailyExerciseCalorieSplitRange
+    ).mockResolvedValue([]);
+    vi.mocked(measurementRepository.getLatestWeightHeight).mockResolvedValue({
+      weightKg: null,
+      heightCm: 180,
+    });
+    vi.mocked(
+      measurementRepository.getCheckInMeasurementsByDateRange
+    ).mockResolvedValue([
+      { entry_date: '2026-08-08', steps: 10000 },
+      { entry_date: '2026-08-09', height: 200 },
+      { entry_date: '2026-08-10', steps: 10000 },
+    ]);
+
+    const days = await getResolvedExerciseCaloriesRange(
+      USER,
+      '2026-08-08',
+      '2026-08-10'
+    );
+
+    expect(
+      [...days.values()].map((day) => [day.date, day.stepCalories])
+    ).toEqual([
+      ['2026-08-08', 276],
+      ['2026-08-09', 0],
+      ['2026-08-10', 307],
+    ]);
+  });
+});

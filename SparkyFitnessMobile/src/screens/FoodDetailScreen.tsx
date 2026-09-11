@@ -304,6 +304,14 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
         calcium:
           displayValues.calcium != null ? String(displayValues.calcium) : '',
         iron: displayValues.iron != null ? String(displayValues.iron) : '',
+        caffeineMg:
+          displayValues.caffeineMg != null
+            ? String(displayValues.caffeineMg)
+            : '',
+        waterMl:
+          displayValues.waterMl != null ? String(displayValues.waterMl) : '',
+        alcoholG:
+          displayValues.alcoholG != null ? String(displayValues.alcoholG) : '',
         cholesterol:
           displayValues.cholesterol != null
             ? String(displayValues.cholesterol)

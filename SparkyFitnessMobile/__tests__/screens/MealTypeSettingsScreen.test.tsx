@@ -4,10 +4,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Alert, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import Toast from 'react-native-toast-message';
-import MealTypeSettingsScreen, {
-  resetMealTypeDragPreview,
-  useMealTypeRowDragPreviewStyle,
-} from '../../src/screens/MealTypeSettingsScreen';
+import MealTypeSettingsScreen from '../../src/screens/MealTypeSettingsScreen';
+import {
+  resetReorderDragPreview,
+  useReorderRowPreviewStyle,
+} from '../../src/components/WorkoutReorderList';
 import {
   TIME_WHEEL_CONTAINER_HEIGHT,
   TIME_WHEEL_WRAPPER_HEIGHT,
@@ -135,7 +136,7 @@ function DragPreviewHarness({
   const panYValue = useSharedValue(panY);
   const committingTranslate = useSharedValue(committing);
   const targetIndex = useSharedValue(target);
-  const style = useMealTypeRowDragPreviewStyle(
+  const style = useReorderRowPreviewStyle(
     rowIndex,
     activeDragIndex,
     panYValue,
@@ -2291,12 +2292,12 @@ describe('Meal type drag preview — live sibling shift (device bugfix)', () => 
       { translateY: 129 },
       { scale: 1.02 },
     ]);
-    // resetMealTypeDragPreview is EXACTLY what the rejection path calls; after
+    // resetReorderDragPreview is EXACTLY what the rejection path calls; after
     // it, the row's preview style returns to idle (identity transform).
     const activeDragIndex = { value: 1 };
     const panY = { value: 0 };
     const committingTranslate = { value: 129 };
-    resetMealTypeDragPreview(
+    resetReorderDragPreview(
       activeDragIndex as any,
       panY as any,
       committingTranslate as any

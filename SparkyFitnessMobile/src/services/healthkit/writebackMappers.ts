@@ -62,6 +62,7 @@ const DIETARY_IDENTIFIER_BY_COLUMN: Record<
   iron: 'HKQuantityTypeIdentifierDietaryIron',
   vitamin_c: 'HKQuantityTypeIdentifierDietaryVitaminC',
   vitamin_a: 'HKQuantityTypeIdentifierDietaryVitaminA',
+  caffeine_mg: 'HKQuantityTypeIdentifierDietaryCaffeine',
 };
 
 // Sparky column → { HK identifier, HK unit }. Built from HC_NUTRIENT_COLUMNS so the

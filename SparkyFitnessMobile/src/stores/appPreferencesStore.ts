@@ -1,6 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import {
+  HEALTH_TREND_KEYS,
+  type HealthTrendKey,
+} from '../constants/healthTrends';
 import type { LanguagePreference } from '../localization';
 import type { OwnershipFilter } from '../utils/shareStatus';
 
@@ -17,6 +21,7 @@ const LEGACY_KEYS = {
   soundsEnabled: '@HealthConnect:soundsEnabled',
   notificationsEnabled: '@HealthConnect:notificationsEnabled',
   hydrationCardVisible: '@HealthConnect:hydrationCardVisible',
+  caffeineCardVisible: '@HealthConnect:caffeineCardVisible',
   fastingCardVisible: '@HealthConnect:fastingCardVisible',
   askSparkyVisible: '@HealthConnect:askSparkyVisible',
   liquidGlassTabBarEnabled: '@HealthConnect:liquidGlassTabBarEnabled',
@@ -37,10 +42,12 @@ export const PREFERENCE_DEFAULTS = {
   restTimerNotificationsEnabled: true,
   fastingGoalNotificationsEnabled: true,
   hydrationCardVisible: true,
+  caffeineCardVisible: true,
   fastingCardVisible: true,
   cycleCardVisible: true,
   askSparkyVisible: true,
   medicationsCardVisible: true,
+  progressPhotosCardVisible: true,
   medicationRemindersEnabled: true,
   medicationReminderRepeats: true,
   medicationReminderHideNames: false,
@@ -52,6 +59,8 @@ export const PREFERENCE_DEFAULTS = {
   restTimerSoundEnabled: true,
   workoutKeepAwakeEnabled: false,
   languagePreference: 'system' as LanguagePreference,
+  healthTrendOrder: [...HEALTH_TREND_KEYS] as HealthTrendKey[],
+  hiddenHealthTrends: [] as HealthTrendKey[],
   foodSearchOwnershipFilter: 'all' as OwnershipFilter,
   foodsLibraryOwnershipFilter: 'all' as OwnershipFilter,
   mealsLibraryOwnershipFilter: 'all' as OwnershipFilter,
@@ -68,10 +77,12 @@ export type AppPreferencesData = {
   restTimerNotificationsEnabled: boolean;
   fastingGoalNotificationsEnabled: boolean;
   hydrationCardVisible: boolean;
+  caffeineCardVisible: boolean;
   fastingCardVisible: boolean;
   cycleCardVisible: boolean;
   askSparkyVisible: boolean;
   medicationsCardVisible: boolean;
+  progressPhotosCardVisible: boolean;
   medicationRemindersEnabled: boolean;
   medicationReminderRepeats: boolean;
   medicationReminderHideNames: boolean;
@@ -83,6 +94,8 @@ export type AppPreferencesData = {
   restTimerSoundEnabled: boolean;
   workoutKeepAwakeEnabled: boolean;
   languagePreference: LanguagePreference;
+  healthTrendOrder: HealthTrendKey[];
+  hiddenHealthTrends: HealthTrendKey[];
   foodSearchOwnershipFilter: OwnershipFilter;
   foodsLibraryOwnershipFilter: OwnershipFilter;
   mealsLibraryOwnershipFilter: OwnershipFilter;
@@ -99,10 +112,12 @@ export interface AppPreferencesState extends AppPreferencesData {
   setRestTimerNotificationsEnabled: (value: boolean) => void;
   setFastingGoalNotificationsEnabled: (value: boolean) => void;
   setHydrationCardVisible: (value: boolean) => void;
+  setCaffeineCardVisible: (value: boolean) => void;
   setFastingCardVisible: (value: boolean) => void;
   setCycleCardVisible: (value: boolean) => void;
   setAskSparkyVisible: (value: boolean) => void;
   setMedicationsCardVisible: (value: boolean) => void;
+  setProgressPhotosCardVisible: (value: boolean) => void;
   setMedicationRemindersEnabled: (value: boolean) => void;
   setMedicationReminderRepeats: (value: boolean) => void;
   setMedicationReminderHideNames: (value: boolean) => void;
@@ -114,6 +129,10 @@ export interface AppPreferencesState extends AppPreferencesData {
   setRestTimerSoundEnabled: (value: boolean) => void;
   setWorkoutKeepAwakeEnabled: (value: boolean) => void;
   setLanguagePreference: (value: LanguagePreference) => void;
+  setHealthTrendLayout: (
+    order: HealthTrendKey[],
+    hiddenKeys: HealthTrendKey[]
+  ) => void;
   setFoodSearchOwnershipFilter: (value: OwnershipFilter) => void;
   setFoodsLibraryOwnershipFilter: (value: OwnershipFilter) => void;
   setMealsLibraryOwnershipFilter: (value: OwnershipFilter) => void;
@@ -174,11 +193,14 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setFastingGoalNotificationsEnabled: (value) =>
         set({ fastingGoalNotificationsEnabled: value }),
       setHydrationCardVisible: (value) => set({ hydrationCardVisible: value }),
+      setCaffeineCardVisible: (value) => set({ caffeineCardVisible: value }),
       setFastingCardVisible: (value) => set({ fastingCardVisible: value }),
       setCycleCardVisible: (value) => set({ cycleCardVisible: value }),
       setAskSparkyVisible: (value) => set({ askSparkyVisible: value }),
       setMedicationsCardVisible: (value) =>
         set({ medicationsCardVisible: value }),
+      setProgressPhotosCardVisible: (value) =>
+        set({ progressPhotosCardVisible: value }),
       setMedicationRemindersEnabled: (value) =>
         set({ medicationRemindersEnabled: value }),
       setMedicationReminderRepeats: (value) =>
@@ -197,6 +219,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setWorkoutKeepAwakeEnabled: (value) =>
         set({ workoutKeepAwakeEnabled: value }),
       setLanguagePreference: (value) => set({ languagePreference: value }),
+      setHealthTrendLayout: (order, hiddenKeys) =>
+        set({ healthTrendOrder: order, hiddenHealthTrends: hiddenKeys }),
       setFoodSearchOwnershipFilter: (value) =>
         set({ foodSearchOwnershipFilter: value }),
       setFoodsLibraryOwnershipFilter: (value) =>
@@ -223,10 +247,12 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         restTimerNotificationsEnabled: state.restTimerNotificationsEnabled,
         fastingGoalNotificationsEnabled: state.fastingGoalNotificationsEnabled,
         hydrationCardVisible: state.hydrationCardVisible,
+        caffeineCardVisible: state.caffeineCardVisible,
         fastingCardVisible: state.fastingCardVisible,
         cycleCardVisible: state.cycleCardVisible,
         askSparkyVisible: state.askSparkyVisible,
         medicationsCardVisible: state.medicationsCardVisible,
+        progressPhotosCardVisible: state.progressPhotosCardVisible,
         medicationRemindersEnabled: state.medicationRemindersEnabled,
         medicationReminderRepeats: state.medicationReminderRepeats,
         medicationReminderHideNames: state.medicationReminderHideNames,
@@ -240,6 +266,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         restTimerSoundEnabled: state.restTimerSoundEnabled,
         workoutKeepAwakeEnabled: state.workoutKeepAwakeEnabled,
         languagePreference: state.languagePreference,
+        healthTrendOrder: state.healthTrendOrder,
+        hiddenHealthTrends: state.hiddenHealthTrends,
         foodSearchOwnershipFilter: state.foodSearchOwnershipFilter,
         foodsLibraryOwnershipFilter: state.foodsLibraryOwnershipFilter,
         mealsLibraryOwnershipFilter: state.mealsLibraryOwnershipFilter,

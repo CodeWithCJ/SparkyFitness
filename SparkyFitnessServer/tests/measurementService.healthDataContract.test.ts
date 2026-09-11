@@ -151,7 +151,11 @@ describe('processHealthData per-record error contract', () => {
         ],
       }),
       actingUserId,
-      'HealthKit'
+      'HealthKit',
+      null,
+      // No raw provider dump on this payload, so no activity detail rides
+      // along in the entry's transaction.
+      {}
     );
   });
 
@@ -192,7 +196,11 @@ describe('processHealthData per-record error contract', () => {
         sets: [{ set_number: 1, set_type: 'Working Set', duration: 300 }],
       }),
       actingUserId,
-      'HealthKit'
+      'HealthKit',
+      null,
+      // No raw provider dump on this payload, so no activity detail rides
+      // along in the entry's transaction.
+      {}
     );
   });
 
@@ -229,7 +237,11 @@ describe('processHealthData per-record error contract', () => {
         sets: [{ set_number: 1, set_type: 'Working Set', duration: 300 }],
       }),
       actingUserId,
-      'HealthKit'
+      'HealthKit',
+      null,
+      // No raw provider dump on this payload, so no activity detail rides
+      // along in the entry's transaction.
+      {}
     );
   });
 

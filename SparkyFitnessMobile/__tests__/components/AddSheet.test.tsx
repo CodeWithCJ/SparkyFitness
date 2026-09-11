@@ -61,6 +61,7 @@ function renderAddSheet(
     onSyncHealthData: jest.fn(),
     onBarcodeScan: jest.fn(),
     onAddMeasurements: jest.fn(),
+    onAddProgressPhotos: jest.fn(),
     onAskSparky: jest.fn(),
     ...overrides,
   };
@@ -134,6 +135,22 @@ describe('AddSheet', () => {
 
     act(() => ref.current?.present());
     expect(getByText('Measurements')).toBeTruthy();
+  });
+
+  it('invokes onAddProgressPhotos when the Progress Photos row is pressed', () => {
+    const onAddProgressPhotos = jest.fn();
+    const onDismissWithoutAction = jest.fn();
+    const { ref, getByText } = renderAddSheet({
+      onAddProgressPhotos,
+      onDismissWithoutAction,
+    });
+
+    act(() => ref.current?.present());
+    fireEvent.press(getByText('Progress Photos'));
+    act(() => mockBottomSheetControls.onDismiss?.());
+
+    expect(onAddProgressPhotos).toHaveBeenCalledTimes(1);
+    expect(onDismissWithoutAction).not.toHaveBeenCalled();
   });
 
   it('invokes onSyncHealthData when the secondary Sync Health Data row is pressed', () => {

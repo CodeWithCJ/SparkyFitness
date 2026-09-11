@@ -33,6 +33,9 @@ export interface CreateFoodEntryPayload {
   potassium?: number;
   calcium?: number;
   iron?: number;
+  caffeine_mg?: number;
+  water_ml?: number;
+  alcohol_g?: number;
   cholesterol?: number;
   vitamin_a?: number;
   vitamin_c?: number;
@@ -82,6 +85,9 @@ export interface UpdateFoodEntryPayload {
   potassium?: number;
   calcium?: number;
   iron?: number;
+  caffeine_mg?: number;
+  water_ml?: number;
+  alcohol_g?: number;
   cholesterol?: number;
   vitamin_a?: number;
   vitamin_c?: number;

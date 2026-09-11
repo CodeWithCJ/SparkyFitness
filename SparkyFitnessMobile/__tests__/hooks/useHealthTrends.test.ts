@@ -1,6 +1,13 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { useHealthTrends } from '../../src/hooks/useHealthTrends';
-import { fetchMeasurementsRange } from '../../src/services/api/measurementsApi';
+import {
+  HEALTH_TREND_KEYS,
+  type HealthTrendKey,
+} from '../../src/constants/healthTrends';
+import {
+  fetchMeasurementsRange,
+  fetchWaterIntakeRange,
+} from '../../src/services/api/measurementsApi';
 import { fetchSleepEntries } from '../../src/services/api/sleepApi';
 import { ApiError } from '../../src/services/api/errors';
 import { getTodayDate } from '../../src/utils/dateUtils';
@@ -13,6 +20,7 @@ import {
 
 jest.mock('../../src/services/api/measurementsApi', () => ({
   fetchMeasurementsRange: jest.fn(),
+  fetchWaterIntakeRange: jest.fn(),
 }));
 
 jest.mock('../../src/services/api/sleepApi', () => ({
@@ -34,6 +42,9 @@ const mockFetchMeasurementsRange =
   fetchMeasurementsRange as jest.MockedFunction<typeof fetchMeasurementsRange>;
 const mockFetchSleepEntries = fetchSleepEntries as jest.MockedFunction<
   typeof fetchSleepEntries
+>;
+const mockFetchWaterIntakeRange = fetchWaterIntakeRange as jest.MockedFunction<
+  typeof fetchWaterIntakeRange
 >;
 
 const today = getTodayDate();
@@ -57,8 +68,15 @@ const sleepEntry = buildSleepEntry({
 
 let queryClient: QueryClient;
 
-const renderTrends = (range: '7d' | '30d' | '90d' = '7d', enabled = true) =>
-  renderHook(() => useHealthTrends({ range, enabled }), {
+// Every trend active unless a case is specifically about per-trend gating.
+const ALL_TRENDS: readonly HealthTrendKey[] = [...HEALTH_TREND_KEYS];
+
+const renderTrends = (
+  range: '7d' | '30d' | '90d' = '7d',
+  enabled = true,
+  activeTrends: readonly HealthTrendKey[] = ALL_TRENDS
+) =>
+  renderHook(() => useHealthTrends({ range, enabled, activeTrends }), {
     wrapper: createQueryWrapper(queryClient),
   });
 
@@ -67,6 +85,7 @@ beforeEach(() => {
   queryClient = createTestQueryClient();
   mockFetchMeasurementsRange.mockResolvedValue([]);
   mockFetchSleepEntries.mockResolvedValue([]);
+  mockFetchWaterIntakeRange.mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -224,6 +243,90 @@ describe('useHealthTrends', () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     expect(mockFetchMeasurementsRange).not.toHaveBeenCalled();
+    expect(mockFetchSleepEntries).not.toHaveBeenCalled();
+    expect(mockFetchWaterIntakeRange).not.toHaveBeenCalled();
+  });
+
+  test('returns a hydration series for the window', async () => {
+    mockFetchWaterIntakeRange.mockResolvedValue([
+      { entry_date: today, water_ml: 1500 },
+    ]);
+
+    const { result } = renderTrends();
+
+    await waitFor(() => {
+      expect(result.current.hydration.isLoading).toBe(false);
+    });
+
+    expect(result.current.hydration.data).toHaveLength(7);
+    expect(result.current.hydration.data.at(-1)).toEqual({
+      day: today,
+      milliliters: 1500,
+    });
+  });
+
+  test('issues no hydration request when hydration is not active', async () => {
+    renderTrends('7d', true, ['steps', 'weight', 'sleep']);
+
+    await waitFor(() => {
+      expect(mockFetchMeasurementsRange).toHaveBeenCalled();
+    });
+
+    expect(mockFetchWaterIntakeRange).not.toHaveBeenCalled();
+  });
+
+  test('issues no measurements request when neither steps nor weight is active', async () => {
+    const { result } = renderTrends('7d', true, ['hydration']);
+
+    await waitFor(() => {
+      expect(mockFetchWaterIntakeRange).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(result.current.hydration.isLoading).toBe(false);
+    });
+
+    expect(mockFetchMeasurementsRange).not.toHaveBeenCalled();
+    expect(result.current.hydration.data).toHaveLength(7);
+  });
+
+  test('still issues one measurements request when only weight is active', async () => {
+    // Steps and weight share one request, so weight alone still has to make it.
+    renderTrends('7d', true, ['weight']);
+
+    await waitFor(() => {
+      expect(mockFetchMeasurementsRange).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  test('refetch refreshes every active source', async () => {
+    const { result } = renderTrends('7d', true, ['steps', 'hydration']);
+
+    await waitFor(() => {
+      expect(mockFetchMeasurementsRange).toHaveBeenCalledTimes(1);
+      expect(mockFetchWaterIntakeRange).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(mockFetchMeasurementsRange).toHaveBeenCalledTimes(2);
+    expect(mockFetchWaterIntakeRange).toHaveBeenCalledTimes(2);
+  });
+
+  test('refetch leaves a hidden trend alone', async () => {
+    const { result } = renderTrends('7d', true, ['steps', 'hydration']);
+
+    await waitFor(() => {
+      expect(mockFetchMeasurementsRange).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    // `refetch()` ignores `enabled`, so this only holds because `useHealthTrends` skips
+    // the call itself. Without that, pull-to-refresh would fetch every hidden trend.
     expect(mockFetchSleepEntries).not.toHaveBeenCalled();
   });
 });

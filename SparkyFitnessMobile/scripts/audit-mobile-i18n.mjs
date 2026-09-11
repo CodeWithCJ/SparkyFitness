@@ -65,6 +65,15 @@ function printHumanReport() {
     }
   }
 
+  if ((report.unregisteredLocaleFindings ?? []).length > 0) {
+    console.log('\nUnregistered locale findings (non-blocking, not shipped):');
+    for (const e of report.unregisteredLocaleFindings) {
+      console.log(
+        `  - ${e.locale} ${e.rule}${e.key ? ` ${e.key}` : ''}: ${e.message ?? ''}`
+      );
+    }
+  }
+
   console.log('\n=== Summary ===');
   console.log(`source locale: ${summary.sourceLocale ?? 'en'}`);
   console.log(`fallback locale: ${summary.fallbackLocale ?? 'en'}`);

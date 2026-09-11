@@ -12,6 +12,15 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
+
+const require = createRequire(pathToFileURL(__filename));
+const androidQualifiers =
+  require('../../scripts/androidLocaleQualifiers.cjs') as {
+    localeFromAndroidDir: (name: string, source: string) => string | null;
+    androidDirForLocale: (locale: string, source: string) => string;
+  };
 
 const MOBILE_ROOT = path.resolve(__dirname, '../..');
 const generator = path.join(
@@ -874,13 +883,35 @@ describe('Android widget values-de can be added without Kotlin edits', () => {
     expect(pluginSource).not.toMatch(/values-en/);
   });
 
-  it('Android BCP-47 mapping: language-only uses values-<locale>, regional uses b+', () => {
-    // Verify the native validator's androidDirForLocale logic.
-    const validatorSource = fs.readFileSync(
-      path.join(MOBILE_ROOT, 'scripts/validate-native-widget-locales.mjs'),
-      'utf8'
-    );
-    expect(validatorSource).toContain('values-${locale}');
-    expect(validatorSource).toContain('values-b+');
+  it('Android qualifier mapping: language-only is values-<locale>, a region is -rXX and a script is b+', () => {
+    const { localeFromAndroidDir, androidDirForLocale } = androidQualifiers;
+
+    expect(androidDirForLocale('en', 'en')).toBe('values');
+    expect(androidDirForLocale('de', 'en')).toBe('values-de');
+    expect(androidDirForLocale('pt-BR', 'en')).toBe('values-pt-rBR');
+    expect(androidDirForLocale('yue-Hant', 'en')).toBe('values-b+yue+Hant');
+    // Android keeps legacy codes for a few languages, and Weblate writes them.
+    expect(androidDirForLocale('id', 'en')).toBe('values-in');
+    expect(androidDirForLocale('zh-Hans', 'en')).toBe('values-zh-rCN');
+
+    expect(localeFromAndroidDir('values', 'en')).toBe('en');
+    expect(localeFromAndroidDir('values-pt-rBR', 'en')).toBe('pt-BR');
+    expect(localeFromAndroidDir('values-b+yue+Hant', 'en')).toBe('yue-Hant');
+    expect(localeFromAndroidDir('values-in', 'en')).toBe('id');
+    expect(localeFromAndroidDir('drawable', 'en')).toBeNull();
+  });
+
+  it('does not read a non-locale Android qualifier as a locale', () => {
+    // `values-` is shared with every other qualifier, so a widget_strings.xml under
+    // values-night would otherwise be validated as a locale called "night".
+    for (const dir of [
+      'values-night',
+      'values-v31',
+      'values-sw600dp',
+      'values-land',
+      'values-xlarge',
+    ]) {
+      expect(androidQualifiers.localeFromAndroidDir(dir, 'en')).toBeNull();
+    }
   });
 });

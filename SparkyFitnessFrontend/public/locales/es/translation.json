@@ -126,12 +126,11 @@
       "netCalories": "Calorías Netas: {{netCalories}}",
       "netCaloriesBreakdown": "{{dailyIntakeCalories}} ingeridas - {{finalTotalCaloriesBurned}} quemadas",
       "dailyProgress": "Progreso diario",
-      "bmrSourceExternal": "Aplicación Salud",
       "targetBand": "objetivo {{min}}–{{max}}",
       "adaptiveTdee": "TDEE adaptativo",
       "adjustment": "Ajuste",
       "burnedEnergyBreakdown": "Desglose de energía quemada:",
-      "dailyBurn": "Gasto diario",
+      "dailyBurn": "Gasto proyectado",
       "dailyEnergyGoal": "Objetivo de energía diario",
       "dataPoints": "Puntos de datos",
       "days": "días",
@@ -144,12 +143,18 @@
       "netEnergyBreakdown": "{{dailyIntakeCalories}} consumidas - {{finalTotalCaloriesBurned}} quemadas",
       "profileIncompleteDesc": "Faltan el peso, la altura y la edad. Los objetivos de calorías podrían ser inexactos.",
       "profileIncompleteTitle": "Perfil incompleto",
-      "projectedBurn": "Proyectado (Día completo)",
+      "projectedBurn": "Proyectado TDEE",
       "sparkyfitnessBurned": "Quemado en SparkyFitness",
       "summaryUnavailableDesc": "No se pudo cargar el resumen diario de energía. Intenta recargar la página.",
       "summaryUnavailableTitle": "Resumen diario no disponible",
       "updateProfile": "Actualizar perfil",
-      "weightTrend": "Tendencia de peso"
+      "weightTrend": "Tendencia de peso",
+      "bmrSourceMeasured": "Medido",
+      "bmrSourceAlgorithm": "Algoritmo",
+      "goalModeTarget": "Objetivo del modo meta",
+      "healthConnectProjectionSource": "Calorías totales de Health Connect",
+      "fallbackProjectionSource": "Respaldo de TMB + calorías activas",
+      "legacyProjectionSource": "Proyección del dispositivo"
     },
     "editExerciseEntryDialog": {
       "setLabel": "Serie",
@@ -339,7 +344,7 @@
       "clearData": "Borrar datos",
       "confirmImport": "Confirmar e importar {{count}} entradas",
       "copied": "¡Copiado!",
-      "copyTooltip": "Copiar ",
+      "copyTooltip": "Copiar '{{value}}'",
       "customFieldsInfo": "Campo y valor de actividad son campos personalizados que puedes añadir a cada registro de ejercicio.",
       "dataCleared": "Se han borrado todos los datos analizados.",
       "description": "Sube un archivo CSV con tu historial de ejercicios. El sistema creará nuevos ejercicios o ajustes predeterminados si no existen, e importará tus entradas, series y detalles de actividad.",
@@ -348,7 +353,7 @@
       "emptyFile": "El archivo seleccionado está vacío.",
       "importSuccess": "Historial de ejercicios importado con éxito.",
       "invalidDate": "Fila {{rowNum}}: Formato de fecha no válido para '{{date}}'. Se esperaba {{format}}.",
-      "invalidSetNumber": "Fila {{rowNum}}: Número de serie no válido ",
+      "invalidSetNumber": "Fila {{rowNum}}: Número de serie no válido '{{value}}'.",
       "noDataToImport": "No hay datos válidos para importar.",
       "noFile": "Por favor, selecciona un archivo CSV para importar.",
       "parseError": "Error al analizar el CSV: {{error}}",
@@ -366,7 +371,7 @@
       },
       "title": "Importar historial de ejercicios",
       "unitsHint": "Unidades esperadas en CSV: Peso: {{weightUnit}}; Distancia: {{distanceUnit}}; Duración: Minutos; Tiempo de descanso: Segundos; Calorías quemadas: Calorías",
-      "validationError": "Fila {{rowNum}}: Falta el campo requerido ",
+      "validationError": "Fila {{rowNum}}: Falta el campo obligatorio «entry_date» o «exercise_name». Se omite la fila.",
       "copiedToClipboard": "'{{value}}' copiado al portapapeles.",
       "importError": "Error al importar el historial de ejercicios. Por favor, inténtalo de nuevo.",
       "partialImportError": "No se pudieron importar algunas entradas: {{details}}"
@@ -464,7 +469,9 @@
     "name": "Nombre",
     "presets": "plantillas",
     "startWorkout": "Iniciar entrenamiento",
-    "stats": "Estadísticas"
+    "stats": "Estadísticas",
+    "duplicate": "Duplicar",
+    "duplicateNameSuffix": "{{name}} (Copia)"
   },
   "workoutPlansManager": {
     "addPlanButton": "Añadir plan",
@@ -757,6 +764,14 @@
         "clientSecretPlaceholder": "Introduce el secreto de cliente de YAZIO",
         "allFieldsRequired": "Todos los campos (correo electrónico/usuario, contraseña, ID de cliente y secreto de cliente) son obligatorios.",
         "languageSupportHelp": "Las búsquedas de alimentos de YAZIO se adaptan automáticamente a tu idioma activo en SparkyFitness (compatible con inglés, alemán, francés, ruso, español, italiano, neerlandés, polaco, portugués, danés, finés, sueco, checo, húngaro, griego, noruego, turco, chino, japonés y coreano). Para otros idiomas, se utilizan por defecto los parámetros de la base de datos internacional estándar."
+      },
+      "oauthDashboards": {
+        "fallback": "panel para desarrolladores del proveedor",
+        "withings": "Panel para desarrolladores de Withings",
+        "fitbit": "Panel para desarrolladores de Fitbit",
+        "oura": "Portal para desarrolladores de Oura",
+        "googlehealth": "Google Cloud Console",
+        "polar": "Polar AccessLink Admin"
       }
     },
     "aiService": {
@@ -984,7 +999,7 @@
       "createSuccess": "¡Nueva clave API generada con éxito! Cópiala ahora, ya que no se volverá a mostrar.",
       "deleteError": "Error al eliminar la clave API",
       "deleteSuccess": "¡Clave API eliminada con éxito!",
-      "descriptionLabel": "Descripción (p. ej., ",
+      "descriptionLabel": "Descripción (p. ej., 'Atajo de Salud del iPhone')",
       "disabled": "Desactivado",
       "expires": "Caduca:",
       "expiresIn": "Caduca en",
@@ -993,7 +1008,7 @@
       "loadError": "Error al cargar las claves API",
       "never": "Nunca",
       "newKeyGenerated": "¡Nueva clave API generada!",
-      "placeholder": "Descripción (p. ej., ",
+      "placeholder": "Descripción (p. ej., 'Atajo de Salud del iPhone')",
       "updateError": "Error al actualizar la clave API",
       "updateSuccess": "¡Estado de la clave API actualizado con éxito!"
     },
@@ -1003,7 +1018,6 @@
       "currentEmail": "Correo actual",
       "enterNewEmail": "Introduce la nueva dirección de correo",
       "updateEmail": "Actualizar correo",
-      "verifyNewEmail": "Tendrás que verificar tu nueva dirección de correo",
       "changePassword": "Cambiar contraseña",
       "newPassword": "Nueva contraseña",
       "enterNewPassword": "Introduce la nueva contraseña",
@@ -1128,10 +1142,11 @@
       "remainingDynamic": "Objetivo diario - Energía neta (Tu objetivo aumenta a medida que te mueves)",
       "remainingFixed": "Objetivo diario - Consumidas (La actividad no cambia tu presupuesto)",
       "remainingPercentage": "Objetivo diario - (Consumidas - {{pct}}% del ejercicio quemado)",
-      "remainingTdee": "Objetivo diario − Consumidas + (Proyección de día completo − TDEE)",
+      "remainingTdee": "Gasto Proyectado × Objetivo − Consumidas",
       "remainingTitle": "Calorías restantes",
-      "tdeeFootnote": "* La proyección converge con la cifra real a medianoche. Requiere que la TMB se pueda calcular y un dispositivo que sincronice pasos o calorías activas.",
-      "title": "Cómo se calcularán tus calorías"
+      "tdeeFootnote": "Activa la opción «Calorías totales» en la sincronización con Health Connect. La estimación se ajusta al total del dispositivo a medianoche; como valor de reserva se utiliza la TMB más las calorías de actividad.",
+      "title": "Cómo se calcularán tus calorías",
+      "burnedTdee": "Calorías totales de Health Connect (respaldo de TMB + calorías activas)"
     },
     "calorieGoalAdjustment": {
       "activityHeavy": "Muy activo (×1.725)",
@@ -1142,8 +1157,8 @@
       "activityNotMuch": "Sedentario (×1.2)",
       "adaptiveActivityHint": "En el modo adaptativo, esta configuración actúa como alternativa hasta que tengas suficientes datos de seguimiento.",
       "adaptiveGoal": "Objetivo adaptativo",
-      "adaptiveGoalDescription": "El ",
-      "allowNegativeAdjustment": "Permitir ajuste negativo (penalizar por quemar menos que el TDEE)",
+      "adaptiveGoalDescription": "Tu objetivo calórico se calcula a partir de tu gasto energético medido, comparando la ingesta registrada con la evolución de tu peso durante los últimos 28 días. Esta es la opción más precisa una vez que hayas llevado un registro constante de tu peso y de lo que comes durante unas semanas.",
+      "allowNegativeAdjustment": "Permitir que la proyección de respaldo reduzca el objetivo",
       "dynamicGoal": "Objetivo dinámico",
       "dynamicGoalDescription": "Tu objetivo de calorías se ajustará dinámicamente según tu nivel de actividad diaria (p. ej., ejercicio, pasos). Es ideal para personas activas o cuyo nivel de actividad varía a diario.",
       "fixedGoal": "Objetivo fijo",
@@ -1152,8 +1167,9 @@
       "percentageGoalDescription": "Recupera solo un porcentaje determinado de tus calorías de ejercicio. Por ejemplo, un 50 % crea un margen de seguridad para evitar comer en exceso por estimaciones elevadas.",
       "percentageLabel": "Porcentaje de recuperación:",
       "tdeeGoal": "Proyección del dispositivo",
-      "tdeeGoalDescription": "Como MyFitnessPal con Apple Watch. SparkyFitness proyecta tu consumo de todo el día extrapolando los datos de tu dispositivo hasta la medianoche. El ajuste = proyección − TDEE.",
-      "title": "Ajuste del objetivo diario de calorías"
+      "tdeeGoalDescription": "Utiliza las calorías totales de Health Connect cuando están disponibles, proyecta el gasto actual hasta la medianoche y aplica el Objetivo directamente a ese TDEE. Si no hay un total del dispositivo disponible, utiliza como respaldo la TMB más las calorías activas.",
+      "title": "Ajuste del objetivo diario de calorías",
+      "tdeeActivityHint": "El nivel de actividad solo se utiliza en el respaldo de TMB + calorías activas cuando no hay un total del dispositivo disponible."
     },
     "dataImport": {
       "checkin": {
@@ -1194,7 +1210,7 @@
       "baselineEstimatedTdee": "TDEE estimado",
       "baselineManualGoal": "Línea base (Objetivo manual)",
       "calculationMethodLabel": "Método de cálculo",
-      "customPercentageLabel": "Porcentaje de déficit personalizado:",
+      "customPercentageLabel": "Porcentaje personalizado:",
       "goalModeLabel": "Modo de objetivo",
       "livePreview": "Cálculo de la vista previa en vivo",
       "measuredAdaptiveTdee": "TDEE adaptativo medido",
@@ -1207,7 +1223,48 @@
       "modeManual": "Manual (% personalizado)",
       "modeRecomp": "Recomposición corporal (-10%)",
       "subtitle": "Ajusta tu objetivo calórico diario según tu meta de composición corporal.",
-      "title": "Modo de objetivo"
+      "title": "Modo de objetivo",
+      "deviceProjectionHint": "En el modo de proyección del dispositivo, este porcentaje se aplica directamente al TDEE proyectado del dispositivo.",
+      "customPercentageHint": "Un valor positivo añade calorías (superávit) y uno negativo las reduce (déficit).",
+      "modeBulk": "Volumen (+20%)",
+      "modeLeanBulk": "Volumen Limpio (+10%)",
+      "coaching": {
+        "maintenanceTitle": "Asesoría de Mantenimiento",
+        "maintenanceText": "Las calorías de mantenimiento están diseñadas para mantener tu peso corporal relativamente estable. Enfócate en un consumo constante de proteínas (1.6–2.2 g/kg de peso corporal), entrenamiento de fuerza regular y en monitorear tus tendencias de peso a lo largo del tiempo para hacer pequeños ajustes.",
+        "aggressiveSurplusTitle": "Advertencia: Superávit Agresivo",
+        "aggressiveSurplusText": "Un superávit tan grande ganará grasa más rápido que músculo. La ganancia muscular está limitada por tu entrenamiento y recuperación, no por cuánto comas por encima de tu mantenimiento; más allá de aproximadamente el 0.5% del peso corporal por semana, el exceso es principalmente grasa. Combina esto con un programa exigente de entrenamiento de fuerza, mantén la proteína en 1.6–2.2 g/kg y reevalúa tu ritmo cada pocas semanas.",
+        "leanBulkTitle": "Recomendaciones para Volumen Limpio",
+        "leanBulkText": "Un superávit moderado apoya el crecimiento muscular mientras limita la ganancia de grasa. El entrenamiento de fuerza progresivo es lo que impulsa la ganancia: las calorías solo la permiten. Apunta a 1.6–2.2 g de proteína por kg de peso corporal. Ritmo objetivo de ganancia: ~0.1–0.5% del peso corporal/semana; más lento cuanto más experimentado estés.",
+        "highlyAggressiveDeficitTitle": "Advertencia: Déficit Muy Agresivo",
+        "highlyAggressiveDeficitText": "Déficit muy agresivo. Los déficits superiores al 25% aumentan significativamente el riesgo de pérdida muscular, disminución del rendimiento en el entrenamiento, hambre intensa y mala recuperación. Considera un déficit menor a menos que estés bajo supervisión profesional activa. Si vas a continuar, prioriza un alto consumo de proteína (2.2–2.5 g/kg) y el descanso.",
+        "aggressiveDeficitTitle": "Recomendaciones para Déficit Agresivo",
+        "aggressiveDeficitText": "Déficit agresivo para una rápida pérdida de grasa. Para prevenir la pérdida muscular, consume 2.2–2.5 g de proteína por kg de peso corporal, prioriza el sueño y considera volver al mantenimiento cada 6–8 semanas. Ritmo objetivo de pérdida: ~0.75–1.0% del peso corporal/semana.",
+        "standardDeficitTitle": "Recomendaciones para Déficit Estándar",
+        "standardDeficitText": "Déficit ideal para una pérdida de grasa constante mientras preservas tu masa magra. Enfócate en una ingesta elevada de proteínas (2.0–2.4 g/kg de peso corporal) y monitorea tus niveles de energía y recuperación. Ritmo objetivo de pérdida: ~0.5–0.75% del peso corporal/semana.",
+        "recompositionTitle": "Recomendaciones para Recomposición Corporal",
+        "recompositionText": "Ideal para recomposición corporal o una definición lenta. El ligero déficit calórico ayuda a preservar el rendimiento y el músculo mientras reduces la grasa corporal gradualmente. Apunta a 1.6–2.2 g de proteína por kg de peso corporal al día y mantén un programa constante de entrenamiento de fuerza. Ritmo objetivo de pérdida: ~0.25–0.5% del peso corporal/semana."
+      },
+      "appliedSurplus": "Superávit Aplicado:",
+      "appliedAdjustment": "Ajuste Aplicado:",
+      "appliedDeficit": "Déficit Aplicado:",
+      "projectedWeeklyGain": "Ganancia semanal proyectada:",
+      "projectedWeeklyLoss": "Pérdida semanal proyectada:",
+      "raisedToFloorTitle": "Objetivo elevado a tu mínimo de seguridad",
+      "safetyFloorCustom": "Mínimo personalizado",
+      "safetyFloorCustomHint": "Reemplaza el límite mínimo estándar con tu mínimo elegido. Las recomendaciones de salud seguirán visibles.",
+      "safetyFloorDisabled": "Desactivado",
+      "safetyFloorDisabledHint": "Detiene el ajuste automático del objetivo. Las advertencias de salud seguirán visibles; considera consultar a un médico para objetivos muy bajos.",
+      "safetyFloorModeLabel": "Límite Mínimo de Seguridad Adaptativo",
+      "safetyFloorStandard": "Estándar (TMB / mínimo clínico)",
+      "safetyFloorStandardHint": "Utiliza el valor más alto entre tu TMB estimada y el mínimo clínico (1,200 kcal para mujeres, 1,500 kcal para hombres).",
+      "safetyFloorValueLabel": "Mínimo personalizado",
+      "awaitingCalibrationTitle": "Esperando la Calibración de TDEE Adaptativo",
+      "modeUnreachableSuffix": "no alcanzable",
+      "customPercentageUnreachable": "Más profundo que el ~{{percent}}% que permite tu límite de seguridad; el objetivo se elevará a ese límite.",
+      "deficitCeilingHintEstimated": "En tu nivel de actividad actual, el déficit más profundo alcanzable es de aprox. {{percent}}%. Los modos más profundos se elevarán a tu límite de seguridad.",
+      "deficitCeilingHintMeasured": "Según tu TDEE medido, el déficit más profundo alcanzable es de aprox. {{percent}}%. Los modos más profundos se elevarán a tu límite de seguridad.",
+      "clampAdviceEstimated": ". Para perder peso más rápido, aumenta tu gasto mediante actividad o verifica que tu Nivel de Actividad no esté subestimado; este define el techo hasta que tengas suficiente historial para una base medida.",
+      "clampAdviceMeasured": ". Para perder peso más rápido, aumenta tu gasto real en lugar de reducir más la ingesta; tu base ya está medida, por lo que el ajuste del Nivel de Actividad ya no le afecta."
     },
     "mfa": {
       "confirmPassword": "Confirma la contraseña para continuar",
@@ -1235,7 +1292,7 @@
     "passkey": {
       "add": "Añadir clave de acceso",
       "addedOn": "Añadido el",
-      "description": "Las claves de acceso ofrecen una forma segura y sin contraseña de iniciar sesión usando tu dispositivo",
+      "description": "Las claves de acceso ofrecen una forma segura de iniciar sesión sin necesidad de contraseña, utilizando los datos biométricos de tu dispositivo o una llave de seguridad.",
       "namePlaceholder": "ej. Mi MacBook, Teléfono del trabajo",
       "newName": "Nombre de la clave de acceso (opcional)",
       "noPasskeys": "Aún no hay claves de acceso registradas.",
@@ -1248,6 +1305,29 @@
       "nutritionDiet": "Nutrición y dieta",
       "profileAccount": "Perfil y cuenta",
       "wellness": "Bienestar"
+    },
+    "breakdown": {
+      "goalSurplusLabel": "Superávit Objetivo:",
+      "goalDeficitLabel": "Déficit Objetivo:",
+      "goalMaintain": "Mantener (0% de cambio)",
+      "surplus": "Superávit",
+      "deficit": "Déficit",
+      "adaptiveFormula": "Fórmula: Calorías Diarias Promedio − (Cambio de Peso Diario en kg × {{kcalPerKg}} kcal/kg)",
+      "adaptiveFormulaExplainer": "{{kcalPerKg}} kcal/kg representa la energía de un kilogramo de peso corporal, permitiendo convertir tu tendencia de peso en calorías. El peso perdido o ganado es una mezcla de grasa (~9,441 kcal/kg) y tejido magro con agua (~1,816 kcal/kg), y {{kcalPerKg}} refleja una combinación típica.",
+      "adjustment": "Ajuste",
+      "goalAdjustmentLabel": "Ajuste Objetivo:"
+    },
+    "calorieBreakdown": {
+      "confidence": "Confianza: {{level}}",
+      "adaptiveConfidenceCaveat": "Basado en {{days}} día(s) de registros calóricos. Registrar menos ingesta de la real hace que esta estimación sea alta; registra de manera constante para mejorarla.",
+      "bodyFatUsed": "El valor medido anterior es utilizado por esta fórmula de TMB; la estimación se muestra como comparación.",
+      "bodyFatMissing": "{{algorithm}} utiliza la grasa corporal, pero no hay mediciones registradas; añade una para obtener un objetivo preciso.",
+      "bodyFatUnused": "Se muestra solo como referencia; {{algorithm}} no requiere la grasa corporal como dato de entrada.",
+      "belowRecommendedFloor": "⚠️ Advertencia: El presupuesto de calorías está por debajo del límite de seguridad recomendado ({{floor}} {{unit}}).",
+      "customFloorDescription": "límite mínimo de seguridad personalizado configurado",
+      "customFloorActive": "Hay un límite de seguridad personalizado activo; los límites recomendados aún se muestran arriba.",
+      "raisedToSafetyFloor": "⚠️ El presupuesto diario se elevó automáticamente al límite de seguridad.",
+      "safetyFloorDisabled": "El ajuste automático del límite de seguridad está desactivado; los límites recomendados aún se muestran arriba."
     }
   },
   "admin": {
@@ -1363,7 +1443,6 @@
       "idTokenSignedAlg": "Algoritmo de firma de ID Token",
       "userinfoSignedAlg": "Algoritmo de firma de Userinfo",
       "requestTimeout": "Tiempo de espera (ms)",
-      "redirectUriInfo": "La URI de redirección para tu proveedor OIDC debe ser: SPARKY_FITNESS_FRONTEND_URL/oidc-callback",
       "redirectUriCopied": "URI de redirección copiada al portapapeles.",
       "localhostWarning": "Asegúrate de que tu proveedor OIDC permite localhost o tu IP local para desarrollo.",
       "proxyWarning": "Si usas un proxy como Nginx Proxy Manager, asegúrate de configurar las siguientes cabeceras:",
@@ -1630,7 +1709,8 @@
     "view": "Ver detalles",
     "weight": "Peso",
     "workout": "Entrenamiento",
-    "caloriesUnit": "calorías"
+    "caloriesUnit": "calorías",
+    "mealSlot": "Momento de la Comida"
   },
   "diary": {
     "nutritionSummary": "Resumen nutricional",
@@ -1666,7 +1746,7 @@
     "replaceEntryPhoto": "Reemplazar foto",
     "removeEntryPhoto": "Eliminar foto",
     "entryPhotoOverrideHint": "Estas fotos solo se aplican a este registro. Arrastra para reordenarlas.",
-    "entryPhotoInheritedHint": "Se muestran las imágenes propias del alimento. Añade una foto para sustituirlas en este registro.",
+    "entryPhotoInheritedHint": "Se muestran las fotos actuales de la biblioteca. Añade fotos para usarlas en este registro.",
     "entryImageUploadFailedTitle": "Error al subir",
     "entryImageUploadFailed": "No se ha podido guardar la foto de este registro.",
     "entryImageRemoveFailedTitle": "Error al eliminar",
@@ -1690,7 +1770,9 @@
     "addSuccess": "Alimento añadido con éxito.",
     "calculateExplanation": {
       "dialogDescription": "Desglose paso a paso de cómo se calcula tu objetivo de energía diario.",
-      "todayTarget": "Cómo va hoy"
+      "todayTarget": "Cómo se calcula el objetivo de hoy",
+      "bmrMeasured": "Medido",
+      "bmrMeasuredDesc": "Usando tu TMB medida. Sin fórmula aplicada."
     },
     "copyAllError": "Error al copiar el día completo.",
     "copyAllFromYesterday": "Copiar todo lo de ayer",
@@ -1704,7 +1786,7 @@
     "copyFamilyMemberLabel": "Familiar",
     "copyFamilyMemberPlaceholder": "Seleccionar familiar",
     "copyFamilyNoConnections": "No se encontraron conexiones familiares autorizadas.",
-    "copyFamilyNoConnectionsHelp": "Tus familiares deben concederte ambos ",
+    "copyFamilyNoConnectionsHelp": "Tus familiares deben concederte los permisos \"Puede gestionar el diario\" y \"Puede usar mi biblioteca de alimentos y comidas\" para activar el uso compartido.",
     "copyFamilyNoDate": "Selecciona fechas de origen y destino válidas.",
     "copyFamilyNoMember": "Selecciona un familiar.",
     "copyFamilyTabFrom": "Copiar de la familia",
@@ -1888,7 +1970,8 @@
       "measurements": "Medidas",
       "photos": "Fotos",
       "sleep": "Sueño"
-    }
+    },
+    "bmr": "TMB (kcal)"
   },
   "sleepTimelineEditor": {
     "sleepTimeline": "Línea de tiempo del sueño",
@@ -2107,7 +2190,8 @@
     "mealUpdatedSuccessfully": "Comida actualizada con éxito.",
     "meals": "comidas",
     "name": "Nombre",
-    "removeFromFavorites": "Eliminar de favoritos"
+    "removeFromFavorites": "Eliminar de favoritos",
+    "createMeal": "Crear Comida"
   },
   "mealBuilder": {
     "errorTitle": "Error",
@@ -2137,7 +2221,6 @@
     "saveMealButton": "Guardar comida",
     "totalNutritionLabel": "Nutrición total:",
     "fullRecipeNutritionLabel": "Nutrición completa de la receta:",
-    "loggedNutritionLabel": "Nutrición registrada:",
     "totalServings": "Porciones totales",
     "totalAmount": "Cantidad total",
     "servingSize": "Tamaño de la porción",
@@ -2164,7 +2247,26 @@
     "linkedMealServingInfo": "Rinde {{totalServings}} × {{servingSize}} {{servingUnit}}",
     "mealAddedToMeal": "{{name}} añadido a la comida.",
     "updateEntryButton": "Actualizar entrada",
-    "updateLinkedMeal": "Actualizar"
+    "updateLinkedMeal": "Actualizar",
+    "loggedTab": "Registrado",
+    "diaryConsumedQuantityHint": "Qué cantidad del plato va a tu diario",
+    "invalidConsumedQuantity": "La cantidad consumida debe ser mayor que cero.",
+    "servingUnits": {
+      "serving": "porción",
+      "g": "gramos (g)",
+      "ml": "mililitros (ml)",
+      "oz": "onzas (oz)",
+      "cup": "taza",
+      "tbsp": "cucharada (cda)",
+      "tsp": "cucharadita (cdta)",
+      "piece": "pieza"
+    },
+    "entryTimeOptional": "Hora (opcional)",
+    "clear": "Limpiar",
+    "clearTime": "Borrar hora",
+    "setToCurrentTime": "Establecer a la hora local actual",
+    "ingredientResolveFailed": "No se pudo guardar el ingrediente \"{{foodName}}\". Por favor, inténtalo de nuevo.",
+    "now": "Ahora"
   },
   "mealPlanCalendar": {
     "title": "Plan de comida",
@@ -2247,7 +2349,9 @@
     "backOff": "Back-off",
     "restPause": "Rest-pause",
     "cluster": "Clúster",
-    "technique": "Técnica"
+    "technique": "Técnica",
+    "replaceExerciseButton": "Reemplazar ejercicio",
+    "duplicateExerciseButton": "Duplicar ejercicio"
   },
   "addWorkoutPlanDialog": {
     "editTitle": "Editar plan de entrenamiento",
@@ -2570,7 +2674,11 @@
     "stressTab": "Estrés",
     "totalEaten": "Total consumido",
     "totalGoal": "Objetivo total",
-    "uniqueExercises": "Ejercicios únicos"
+    "uniqueExercises": "Ejercicios únicos",
+    "daysCounted": "{{counted}} días contabilizados",
+    "daysCountedNoGoal": "Contabilizados {{counted}} de {{total}} días: los días sin objetivo de {{nutrient}} o sin nada registrado quedan excluidos",
+    "daysCountedPartial": "Contabilizados {{counted}} de {{total}} días: los días sin nada registrado quedan excluidos",
+    "failedToLoadCalorieBalance": "Error al cargar los datos del balance calórico."
   },
   "exerciseReportsDashboard": {
     "loadingExerciseData": "Cargando datos de ejercicio...",
@@ -2651,7 +2759,13 @@
     "waist": "Cintura",
     "hips": "Cadera",
     "dailySteps": "Pasos diarios",
-    "failedToLoadComparisonData": "No se pudieron cargar los datos de comparación."
+    "failedToLoadComparisonData": "No se pudieron cargar los datos de comparación.",
+    "height": "Estatura",
+    "bodyFatPercentage": "% de Grasa Corporal",
+    "muscleMass": "Masa Muscular",
+    "boneMass": "Masa Ósea",
+    "bodyWaterPercentage": "% de Agua Corporal",
+    "bmr": "TMB"
   },
   "reportsTables": {
     "foodDiaryTable": "Tabla de diario de comida",
@@ -2665,7 +2779,6 @@
     "reps": "Repeticiones",
     "weight": "Peso",
     "tonnage": "Tonelaje",
-    "durationMin": "Duración (min)",
     "restS": "Descanso (s)",
     "notes": "Notas",
     "caloriesBurned": "Calorías quemadas",
@@ -2682,7 +2795,11 @@
     "total": "Total",
     "durationSec": "Duración (s)",
     "allTables": "Todas las tablas",
-    "showTable": "Mostrar tabla"
+    "showTable": "Mostrar tabla",
+    "muscleMass": "Masa Muscular",
+    "boneMass": "Masa Ósea",
+    "bodyWaterPercentage": "% de Agua Corporal",
+    "bmr": "TMB"
   },
   "moodReports": {
     "title": "Informes de estado de ánimo",
@@ -2799,7 +2916,6 @@
     "csvHeadersTimeAsleepHours": "Tiempo dormido (h)",
     "csvHeadersScore": "Puntuación",
     "csvHeadersEfficiencyPercentage": "Eficiencia (%)",
-    "csvHeadersDebtHours": "Deuda (h)",
     "csvHeadersAwakePeriods": "Periodos despierto",
     "csvHeadersSource": "Fuente",
     "csvHeadersInsight": "Comentario",
@@ -3040,7 +3156,13 @@
     "calciumLabel": "Calcio (mg)",
     "ironLabel": "Hierro (mg)",
     "cancelButton": "Cancelar",
-    "saveFoodButton": "Guardar alimento"
+    "saveFoodButton": "Guardar alimento",
+    "syncConfirmationTitle": "¿Sincronizar entradas pasadas?",
+    "syncConfirmationDescription": "¿Quieres actualizar todas tus entradas pasadas en el diario para este alimento con la nueva información nutricional? Las entradas que no actualices conservarán sus valores originales.",
+    "syncConfirmationDescriptionWithPhotos": "¿Quieres actualizar todas tus entradas pasadas en el diario para este alimento con la nueva información nutricional y fotos? Actualizar las fotos reemplazará las fotos asignadas en entradas individuales del diario y no se podrá deshacer.",
+    "syncConfirmationConfirm": "Actualizar",
+    "syncConfirmationConfirmWithPhotos": "Actualizar nutrición y fotos",
+    "syncConfirmationNutritionOnly": "Actualizar solo nutrición"
   },
   "customMeasurements": {
     "title": "Mediciones personalizadas - {{date}}",
@@ -3470,14 +3592,14 @@
     },
     "scheduleDesc": {
       "atTime": " a las {{time}}",
-      "mealSuffix": " (comida de {{meal}})",
       "daily": "Diariamente",
       "weeklyOn": "Semanalmente los {{days}}",
       "everyNDays": "Cada {{n}} días",
       "cyclic": "Ciclo: {{on}} días activo, {{off}} días de descanso",
       "monthly": "Mensualmente el día {{day}}",
       "prn": "Según sea necesario (PRN)",
-      "taper": "Reducción progresiva / Titulación"
+      "taper": "Reducción progresiva / Titulación",
+      "mealRelationSuffix": " ({{meal}})"
     },
     "bodymap": {
       "label": "Mapa corporal de zonas de inyección"
@@ -3771,7 +3893,8 @@
       "after": "Después de comer",
       "before": "Antes de comer",
       "none": "Sin relación específica con la comida",
-      "with": "Con la comida"
+      "with": "Con la comida",
+      "awayFromMeals": "Fuera de las comidas"
     },
     "print": {
       "dates": "Período del informe:",
@@ -4200,7 +4323,7 @@
       "testLogged": "Prueba registrada",
       "testLoggedDesc": "Resultado de la prueba registrado con éxito.",
       "testLoggingTitle": "Pruebas de ovulación y embarazo",
-      "testLogsHistory": "Este ciclo",
+      "testLogsHistory": "Registros de pruebas de este ciclo",
       "testReady": "¡Has alcanzado los {{dpo}} DPO! Una prueba de embarazo registrada ahora es muy precisa. Usa la primera orina de la mañana para obtener la mejor concentración.",
       "twoWeekWaitTitle": "Espera de dos semanas (TWW)"
     }
@@ -4287,7 +4410,7 @@
     "title": "Importar datos de salud",
     "uploadCSV": "Subir CSV",
     "validationError": "Nada que importar",
-    "copiedValue": "Datos importados"
+    "copiedValue": "'{{value}}' copiados."
   },
   "diaryCsvImport": {
     "fileTooLarge": "El archivo seleccionado es demasiado grande. Sube un archivo menor a 25 MB.",
@@ -4295,7 +4418,7 @@
     "actions": "Acciones",
     "addRow": "Añadir fila",
     "clearData": "Borrar datos",
-    "dateMealTypeRequired": "Cada fila necesita un ",
+    "dateMealTypeRequired": "Cada fila debe incluir \"date\" y \"meal_type\".",
     "deleteRow": "Eliminar fila",
     "downloadTemplate": "Descargar plantilla",
     "emptyFile": "El archivo seleccionado está vacío.",
@@ -4309,7 +4432,7 @@
     "matchScope": "Buscar coincidencias de nombres de alimentos con",
     "matchScopeDescription": "Las coincidencias de food_name fuera de los ámbitos seleccionados se ignorarán y se creará un nuevo alimento en su lugar (usando las columnas de nutrientes de la fila).",
     "mealType": "Comida",
-    "overrideDescription": "Cuando una fila coincida con uno de tus alimentos, reescribir esa variante del alimento",
+    "overrideDescription": "Cuando una fila coincida con uno de tus alimentos, se actualizará la información nutricional guardada de esa variante con los valores importados. Solo se aplica a «Mis elementos»; las coincidencias con alimentos familiares y públicos están desactivadas.",
     "overrideLabel": "Sustituir la información nutricional existente con los valores importados",
     "parseText": "Analizar texto",
     "pasteFirst": "Por favor, pega primero algunos datos en formato CSV.",
@@ -4368,7 +4491,7 @@
   },
   "auth": {
     "emailExists": "Ya existe un usuario registrado con este correo electrónico.",
-    "invalidOrigin": "Acceso denegado: Esta conexión",
+    "invalidOrigin": "Acceso denegado: no se reconoce el origen de esta conexión. Si accedes desde una red local (LAN), esta dirección debe estar explícitamente autorizada.",
     "loginError": "Error al iniciar sesión. Por favor, verifica tus credenciales.",
     "loginSuccess": "¡Inicio de sesión con éxito!",
     "magicLinkError": "Error al solicitar el enlace mágico.",
@@ -4463,7 +4586,6 @@
     "withingsError": "No se pudo vincular la cuenta de Withings. Por favor, inténtalo de nuevo.",
     "withingsSuccess": "Tu cuenta de Withings se ha vinculado con éxito."
   },
-  "key": "texto",
   "mealCreation": {
     "convertToMeal": "Crear comida desde el diario",
     "description": "Descripción",
@@ -4486,12 +4608,28 @@
     "sortHelp": "Los números menores aparecen primero. (Desayuno=10, Almuerzo=20, Cena=40)",
     "sortOrderLabel": "Orden de clasificación",
     "title": "Categorías de comida",
-    "updateSuccess": "Categoría de comida actualizada."
+    "updateSuccess": "Categoría de comida actualizada.",
+    "chooseTarget": "Elige una categoría de comida…",
+    "deleteConfirmTitle": "¿Eliminar \"{{name}}\"?",
+    "deleteEmptyDescription": "Nada hace referencia a esta categoría de comida, por lo que puedes eliminarla de forma segura.",
+    "deleteEverything": "Eliminar todo",
+    "deleteInUseDescription": "Esta categoría de comida aún está en uso. Elige qué hacer con los siguientes registros.",
+    "forceDeleteWarning": "Eliminar todo borrará permanentemente estos registros, incluyendo la nutrición registrada. Esto no se puede deshacer.",
+    "impactFoodEntries": "{{count}} entradas del diario",
+    "impactLoadError": "No se pudo verificar qué usa esta categoría de comida. Inténtalo de nuevo.",
+    "impactLoggedMeals": "{{count}} comidas registradas",
+    "impactMealPlans": "{{count}} elementos planificados",
+    "impactTemplateAssignments": "{{count}} elementos de la plantilla del plan de comidas",
+    "moveAndDelete": "Mover elementos y eliminar",
+    "moveItemsHint": "La información nutricional, las fechas y las horas se conservarán. Solo cambiará la categoría de comida.",
+    "moveItemsTo": "Mover estos elementos a",
+    "warning": "¡Advertencia!"
   },
   "measurements": {
     "errorLoadingBodyFat": "Error al cargar la grasa corporal más reciente.",
     "errorLoadingHeight": "Error al cargar la altura más reciente.",
-    "errorLoadingWeight": "Error al cargar el peso más reciente."
+    "errorLoadingWeight": "Error al cargar el peso más reciente.",
+    "errorLoadingBmr": "No se pudo cargar el TMB más reciente."
   },
   "mfaChallenge": {
     "challengeTitle": "Desafío MFA",
@@ -4552,7 +4690,7 @@
       "week": "Semana {{n}}"
     },
     "checklist": {
-      "title": "Esta semana",
+      "title": "Lista de tareas de esta semana",
       "week": "Semana {{n}}"
     },
     "contractions": {
@@ -4694,5 +4832,83 @@
     "rpe": "RPE",
     "type": "Tipo",
     "weight": "peso"
+  },
+  "foodPhoto": {
+    "title": "Estimar a partir de una foto",
+    "captureDescription": "Añade una o más fotos de tu comida. ¡Un segundo ángulo ayuda mucho en platos apilados o combinados.",
+    "reviewDescription": "Revisa cada ingrediente antes de registrarlo. Al editar los gramos, se recalculará esa fila.",
+    "addPhotos": "Añadir fotos",
+    "photoAlt": "Foto de comida {{number}}",
+    "removePhoto": "Eliminar foto {{number}}",
+    "descriptionLabel": "Descripción (opcional)",
+    "descriptionPlaceholder": "ej. muslo de pollo, sin piel, cocinado con aceite de oliva",
+    "weightLabel": "Peso total en gramos (opcional)",
+    "weightHint": "El tamaño de la porción es donde la estimación por foto suele ser menos precisa. ¡Pesar el plato hará que tus datos sean mucho más confiables.",
+    "analyse": "Analizar foto",
+    "log": "Registrar en el diario",
+    "logged": "Estimación registrada",
+    "logFailedTitle": "No se pudo registrar la estimación",
+    "logFailedMessage": "Inténtalo de nuevo.",
+    "noIngredients": "Mantén al menos un ingrediente con un peso superior a cero.",
+    "emptyIngredients": "Se eliminaron todos los ingredientes. Cambia a \"Un solo alimento\" para registrar el plato como una única entrada.",
+    "removeIngredient": "Eliminar {{name}}",
+    "recalcFromGrams": "Recalcular a partir de gramos",
+    "tooManyPhotosTitle": "Demasiadas fotos",
+    "tooManyPhotosMessage": "Se pueden analizar hasta {{count}} fotos a la vez.",
+    "photosTooLargeTitle": "Fotos demasiado grandes",
+    "photosTooLargeMessage": "Elimina una foto o utiliza imágenes más pequeñas.",
+    "columns": {
+      "ingredient": "Ingrediente",
+      "grams": "Gramos",
+      "gramsFor": "Gramos para {{name}}",
+      "calories": "Calorías",
+      "protein": "Proteínas",
+      "carbs": "Carbohidratos",
+      "fat": "Grasas",
+      "fiber": "Fibra",
+      "sugar": "Azúcar",
+      "total": "Total"
+    },
+    "confidence": {
+      "high": "Probable",
+      "medium": "Posible",
+      "low": "Dudoso"
+    },
+    "match": {
+      "use": "Usar {{name}} de tus alimentos",
+      "using": "Usando {{name}}",
+      "summary": "{{count}} ingredientes coincidieron con alimentos ya existentes en tu biblioteca."
+    },
+    "mode": {
+      "label": "Guardar como",
+      "ingredientsAndMeal": "Ingredientes + comida reutilizable",
+      "ingredientsOnly": "Solo ingredientes",
+      "oneFood": "Un solo alimento",
+      "mealName": "Nombre de la comida",
+      "hintIngredientsAndMeal": "Cada ingrediente se convierte en su propio alimento y la comida se guarda para que puedas volver a registrarla sin foto.",
+      "hintIngredientsOnly": "Cada ingrediente se convierte en su propio alimento. No se guarda ninguna comida reutilizable.",
+      "hintOneFood": "Guarda todo el plato como un solo alimento, sin desglose."
+    },
+    "errors": {
+      "aiNotConfiguredTitle": "IA no configurada",
+      "aiNotConfiguredMessage": "Configura un proveedor de IA en Ajustes para usar la estimación por fotos.",
+      "providerNotAllowedTitle": "Proveedor de IA no permitido",
+      "providerNotAllowedMessage": "Este proveedor de IA apunta a una dirección de red privada. Pide a un administrador que lo configure globalmente.",
+      "photoTooLargeTitle": "Foto demasiado grande",
+      "photoTooLargeMessage": "Utiliza una imagen más pequeña.",
+      "unexpectedFormatTitle": "Formato de imagen no compatible",
+      "unexpectedFormatMessage": "Utiliza una imagen JPEG, PNG o WebP.",
+      "couldNotProcessTitle": "No se pudo procesar la foto",
+      "couldNotProcessMessage": "El proveedor bloqueó esta imagen. Intenta con otra toma.",
+      "timedOutTitle": "Tiempo de espera agotado en el proveedor de IA",
+      "timedOutMessage": "La estimación tardó demasiado. Inténtalo de nuevo o registra este alimento manualmente.",
+      "unreachableTitle": "No se pudo conectar con el proveedor de IA",
+      "unreachableMessage": "Inténtalo de nuevo o registra este alimento manualmente."
+    },
+    "analyzing": "Analizando la foto de tu comida...",
+    "analyzingHint": "Detectando ingredientes, porciones en gramos y macronutrientes",
+    "editInMealBuilder": "Editar en el Creador de Comidas",
+    "loggedSuccess": "Comida registrada con éxito en tu diario.",
+    "openInMealBuilder": "Abrir en el Creador de Comidas"
   }
 }

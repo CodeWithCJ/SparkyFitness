@@ -2,38 +2,42 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 
+const mockUsePreferences = jest.fn();
+const mockT = jest.fn(
+  (
+    key: string,
+    defaultValueOrOptions?: string | Record<string, unknown>,
+    values?: Record<string, unknown>
+  ) => {
+    const localizedLabels: Record<string, string> = {
+      'calculationSettings.bmrAlgorithmOptions.mifflinStJeor':
+        'Localized Mifflin',
+      'calculationSettings.bodyFatAlgorithmOptions.usNavy': 'Localized Navy',
+      'settings.goalMode.modeNames.leanBulk': 'Localized Lean Bulk',
+      'settings.goalMode.modeNames.manual': 'Localized Manual',
+      'settings.goalMode.modeNames.cut': 'Localized Cut',
+    };
+    if (key in localizedLabels) return localizedLabels[key];
+
+    const defaultValue =
+      typeof defaultValueOrOptions === 'string'
+        ? defaultValueOrOptions
+        : defaultValueOrOptions?.['defaultValue'];
+    const interpolationValues =
+      typeof defaultValueOrOptions === 'string'
+        ? values
+        : defaultValueOrOptions;
+
+    if (typeof defaultValue !== 'string') return key;
+    return defaultValue.replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
+      String(interpolationValues?.[name] ?? `{{${name}}}`)
+    );
+  }
+);
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    // Supports both t(key, fallback, values) and t(key, { defaultValue, ...values }).
-    t: (
-      key: string,
-      defaultValueOrOptions?: string | Record<string, unknown>,
-      values?: Record<string, unknown>
-    ) => {
-      const localizedLabels: Record<string, string> = {
-        'calculationSettings.bmrAlgorithmOptions.mifflinStJeor':
-          'Localized Mifflin',
-        'calculationSettings.bodyFatAlgorithmOptions.usNavy': 'Localized Navy',
-        'settings.goalMode.modeNames.leanBulk': 'Localized Lean Bulk',
-        'settings.goalMode.modeNames.manual': 'Localized Manual',
-        'settings.goalMode.modeNames.cut': 'Localized Cut',
-      };
-      if (key in localizedLabels) return localizedLabels[key];
-
-      const defaultValue =
-        typeof defaultValueOrOptions === 'string'
-          ? defaultValueOrOptions
-          : defaultValueOrOptions?.['defaultValue'];
-      const interpolationValues =
-        typeof defaultValueOrOptions === 'string'
-          ? values
-          : defaultValueOrOptions;
-
-      if (typeof defaultValue !== 'string') return key;
-      return defaultValue.replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
-        String(interpolationValues?.[name] ?? `{{${name}}}`)
-      );
-    },
+    t: (...args: Parameters<typeof mockT>) => mockT(...args),
   }),
   initReactI18next: {
     type: '3rdParty',
@@ -42,10 +46,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@/contexts/PreferencesContext', () => ({
-  usePreferences: () => ({
-    energyUnit: 'kcal',
-    convertEnergy: (value: number) => value,
-  }),
+  usePreferences: () => mockUsePreferences(),
 }));
 
 const defaultProps = {
@@ -91,6 +92,15 @@ const defaultProps = {
   adjustedManualGoal: 2000,
   activityMultiplier: 1.2,
 };
+
+beforeEach(() => {
+  mockT.mockClear();
+  mockUsePreferences.mockReturnValue({
+    energyUnit: 'kcal',
+    convertEnergy: (value: number) => value,
+    weightUnit: 'kg',
+  });
+});
 
 describe('CalorieTargetBreakdown baseline label', () => {
   it('uses translation keys for algorithm labels', () => {
@@ -387,5 +397,93 @@ describe('CalorieTargetBreakdown configured safety floor', () => {
     expect(
       screen.getByText(/below the recommended safety floor/i)
     ).toBeInTheDocument();
+  });
+});
+
+describe('CalorieTargetBreakdown weight-trend units', () => {
+  const trendProps = {
+    ...defaultProps,
+    adaptiveTdeeData: {
+      tdee: 2585,
+      isFallback: false,
+      daysOfData: 28,
+      avgIntake: 1971,
+      weightTrend: 110.9,
+      confidence: 'HIGH' as const,
+      startWeightTrend: 114.6,
+      endWeightTrend: 110.9,
+      weightChangeKg: -3.72,
+      daysInWindow: 28,
+      dailyWeightChangeKg: -0.1328,
+      weightChangeCalories: 797,
+      rawTdee: 2768,
+    },
+  };
+
+  it('prints the adaptive weight trend in kg by default', () => {
+    const { container } = render(<CalorieTargetBreakdown {...trendProps} />);
+
+    expect(
+      screen.getByText(/114\.6 kg → 110\.9 kg \(-3\.72 kg across all 28 days/)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/= -0\.1328 kg\/day/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Daily Weight Change in kg × 6000 kcal\/kg/)
+    ).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/\{\{/);
+  });
+
+  it('prints the adaptive weight trend in pounds when that unit is configured', () => {
+    mockUsePreferences.mockReturnValue({
+      energyUnit: 'kcal',
+      convertEnergy: (value: number) => value,
+      weightUnit: 'lbs',
+    });
+
+    const { container } = render(<CalorieTargetBreakdown {...trendProps} />);
+
+    expect(
+      screen.getByText(
+        /252\.6 lbs → 244\.5 lbs \(-8\.20 lbs across all 28 days/
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByText(/= -0\.2928 lbs\/day/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Daily Weight Change in lbs × 2722 kcal\/lbs/)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/114\.6 kg → 110\.9 kg/)).not.toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/\{\{/);
+
+    const formulaVars = mockT.mock.calls.find(
+      ([key]) => key === 'settings.breakdown.adaptiveFormula'
+    )?.[1] as Record<string, unknown>;
+    const explainerVars = mockT.mock.calls.find(
+      ([key]) => key === 'settings.breakdown.adaptiveFormulaExplainer'
+    )?.[1] as Record<string, unknown>;
+    // de/es/ru still say "kg" with {{kcalPerKg}}; the per-lb figure belongs
+    // only on kcalPerUnit, which English interpolates with massUnit.
+    expect(formulaVars['kcalPerKg']).toBe(6000);
+    expect(formulaVars['kcalPerUnit']).toBe(2722);
+    expect(explainerVars['kcalPerKg']).toBe(6000);
+    expect(explainerVars['kcalPerUnit']).toBe(2722);
+    expect(explainerVars['fatPerKg']).toBe((9441).toLocaleString());
+    expect(explainerVars['leanPerKg']).toBe((1816).toLocaleString());
+  });
+
+  it('prints stones-configured trends in pounds so the energy working stays a usable figure', () => {
+    mockUsePreferences.mockReturnValue({
+      energyUnit: 'kcal',
+      convertEnergy: (value: number) => value,
+      weightUnit: 'st_lbs',
+    });
+
+    const { container } = render(<CalorieTargetBreakdown {...trendProps} />);
+
+    expect(
+      screen.getByText(
+        /252\.6 lbs → 244\.5 lbs \(-8\.20 lbs across all 28 days/
+      )
+    ).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/\{\{/);
   });
 });

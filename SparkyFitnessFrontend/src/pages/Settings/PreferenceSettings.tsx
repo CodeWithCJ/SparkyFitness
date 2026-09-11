@@ -16,11 +16,13 @@ import { Switch } from '@/components/ui/switch';
 import { Save, Settings as SettingsIcon } from 'lucide-react';
 import { AccordionTrigger, AccordionContent } from '@/components/ui/accordion'; // Import Accordion components
 import { useTranslation } from 'react-i18next';
+import { STANDARD_DRINK_PRESETS } from '@workspace/shared';
 import {
   usePreferences,
   WeightUnit,
   MeasurementUnit,
 } from '@/contexts/PreferencesContext';
+import type { ChartScaleMode } from '@workspace/shared';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -43,6 +45,8 @@ export const PreferenceSettings = () => {
     setDateFormat,
     timeFormat,
     setTimeFormat,
+    chartScaleMode,
+    setChartScaleMode,
     itemDisplayLimit,
     setItemDisplayLimit, // Add itemDisplayLimit and setItemDisplayLimit
     autoScaleOpenFoodFactsImports,
@@ -58,6 +62,14 @@ export const PreferenceSettings = () => {
     setMeasurementDecimalPlaces,
     timezone,
     setTimezone,
+    standardDrinkGrams,
+    setStandardDrinkGrams,
+    weeklyAlcoholLimitG,
+    setWeeklyAlcoholLimitG,
+    caffeineHalfLifeHours,
+    setCaffeineHalfLifeHours,
+    targetBedtime,
+    setTargetBedtime,
     saveAllPreferences,
   } = usePreferences();
 
@@ -85,8 +97,13 @@ export const PreferenceSettings = () => {
         language,
         firstDayOfWeek,
         measurementDecimalPlaces,
+        chartScaleMode,
         timezone,
         loggingLevel: localLoggingLevel,
+        standardDrinkGrams,
+        weeklyAlcoholLimitG,
+        caffeineHalfLifeHours,
+        targetBedtime,
       });
       toast({
         title: t('settings.preferences.successTitle', 'Success'),
@@ -164,6 +181,35 @@ export const PreferenceSettings = () => {
                   {t(
                     'settings.preferences.timeFormat12Lower',
                     '12-hour am/pm (2:30 pm)'
+                  )}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="chart_scale_mode">
+              {t('settings.preferences.chartScaleMode', 'Chart Scale Mode')}
+            </Label>
+            <Select
+              value={chartScaleMode}
+              onValueChange={(value) =>
+                setChartScaleMode(value as ChartScaleMode)
+              }
+            >
+              <SelectTrigger id="chart_scale_mode">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="time">
+                  {t(
+                    'settings.preferences.chartScaleTime',
+                    'Time proportional (gaps between entries are visible)'
+                  )}
+                </SelectItem>
+                <SelectItem value="point">
+                  {t(
+                    'settings.preferences.chartScalePoint',
+                    'Evenly spaced (every entry gets the same width)'
                   )}
                 </SelectItem>
               </SelectContent>
@@ -263,6 +309,103 @@ export const PreferenceSettings = () => {
                 </SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <Label htmlFor="standard_drink_unit">
+              {t(
+                'settings.preferences.standardDrinkUnit',
+                'Standard Drink Unit'
+              )}
+            </Label>
+            <Select
+              value={String(standardDrinkGrams)}
+              onValueChange={(value) => setStandardDrinkGrams(Number(value))}
+            >
+              <SelectTrigger id="standard_drink_unit">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STANDARD_DRINK_PRESETS.map((preset) => (
+                  <SelectItem key={preset.code} value={String(preset.grams)}>
+                    {preset.label} ({preset.grams}g pure alcohol)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="weekly_alcohol_limit">
+              {t(
+                'settings.preferences.weeklyAlcoholLimit',
+                'Weekly Alcohol Limit (Standard Drinks)'
+              )}
+            </Label>
+            <Input
+              id="weekly_alcohol_limit"
+              type="number"
+              min={0}
+              step="0.5"
+              placeholder={t(
+                'settings.preferences.noWeeklyLimit',
+                'No limit set'
+              )}
+              value={
+                weeklyAlcoholLimitG != null && standardDrinkGrams > 0
+                  ? String(
+                      Math.round(
+                        (weeklyAlcoholLimitG / standardDrinkGrams) * 10
+                      ) / 10
+                    )
+                  : ''
+              }
+              onChange={(e) => {
+                const val = e.target.value.trim();
+                if (!val || parseFloat(val) <= 0) {
+                  setWeeklyAlcoholLimitG(null);
+                } else {
+                  setWeeklyAlcoholLimitG(
+                    parseFloat(
+                      (parseFloat(val) * standardDrinkGrams).toFixed(2)
+                    )
+                  );
+                }
+              }}
+            />
+          </div>
+          <div>
+            <Label htmlFor="caffeine_half_life">
+              {t(
+                'settings.preferences.caffeineHalfLife',
+                'Caffeine Half-Life (Hours)'
+              )}
+            </Label>
+            <Input
+              id="caffeine_half_life"
+              type="number"
+              min={2.0}
+              max={8.0}
+              step="0.1"
+              value={caffeineHalfLifeHours}
+              onChange={(e) =>
+                setCaffeineHalfLifeHours(
+                  Math.min(
+                    8.0,
+                    Math.max(2.0, parseFloat(e.target.value) || 5.0)
+                  )
+                )
+              }
+            />
+          </div>
+          <div>
+            <Label htmlFor="target_bedtime">
+              {t('settings.preferences.targetBedtime', 'Target Bedtime')}
+            </Label>
+            <Input
+              id="target_bedtime"
+              type="time"
+              value={targetBedtime}
+              onChange={(e) => setTargetBedtime(e.target.value)}
+            />
           </div>
           <div>
             <Label htmlFor="measurement_decimal_places">

@@ -8,6 +8,39 @@ const GITHUB_RAW_BASE_URL =
 const EXERCISES_PATH = 'exercises'; // No leading slash for API
 // Initialize cache for GitHub API responses (e.g., 1 hour TTL)
 const githubCache = new NodeCache({ stdTTL: 3600 });
+const DATASET_TTL_MS = 60 * 60 * 1000;
+// Bound a stalled shared download so it cannot block every exercise search indefinitely.
+const DATASET_REQUEST_TIMEOUT_MS = 15 * 1000;
+// Avoid hammering GitHub and making every search wait during an upstream outage.
+const STALE_RETRY_INTERVAL_MS = 5 * 60 * 1000;
+
+interface FreeExercise {
+  name: string;
+  equipment?: string;
+  primaryMuscles?: string[];
+  secondaryMuscles?: string[];
+}
+
+interface DatasetHolder {
+  data: FreeExercise[];
+  fetchedAt: number;
+}
+
+function isExerciseDataset(value: unknown): value is FreeExercise[] {
+  if (!Array.isArray(value) || value.length === 0) return false;
+  return value.every(
+    (exercise: unknown) =>
+      typeof exercise === 'object' &&
+      exercise !== null &&
+      'name' in exercise &&
+      typeof exercise.name === 'string'
+  );
+}
+
+let dataset: DatasetHolder | null = null;
+let exercisesDatasetPromise: Promise<FreeExercise[]> | null = null;
+let lastDatasetFetchFailureAt: number | null = null;
+
 class FreeExerciseDBService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   exerciseList: any;
@@ -51,6 +84,68 @@ class FreeExerciseDBService {
       return null;
     }
   }
+  async getAllExercises(): Promise<FreeExercise[]> {
+    const now = Date.now();
+    if (dataset && now - dataset.fetchedAt < DATASET_TTL_MS) {
+      return dataset.data;
+    }
+    if (
+      lastDatasetFetchFailureAt !== null &&
+      now - lastDatasetFetchFailureAt < STALE_RETRY_INTERVAL_MS
+    ) {
+      if (dataset) {
+        return dataset.data;
+      }
+      log(
+        'warn',
+        '[FreeExerciseDBService] Skipping exercise dataset fetch during retry interval after a cold-start failure'
+      );
+      throw new Error('Exercise dataset fetch retry interval is active');
+    }
+    if (!exercisesDatasetPromise) {
+      const exercisesJsonUrl = `${GITHUB_RAW_BASE_URL}/dist/exercises.json`;
+      const currentPromise = axios
+        .get<unknown>(exercisesJsonUrl, {
+          timeout: DATASET_REQUEST_TIMEOUT_MS,
+        })
+        .then((response) => {
+          if (!isExerciseDataset(response.data)) {
+            log(
+              'warn',
+              '[FreeExerciseDBService] Rejected invalid exercise dataset response'
+            );
+            throw new Error('Invalid exercise dataset response');
+          }
+          if (exercisesDatasetPromise === currentPromise) {
+            dataset = { data: response.data, fetchedAt: Date.now() };
+            lastDatasetFetchFailureAt = null;
+          }
+          return response.data;
+        })
+        .catch((error: unknown) => {
+          if (exercisesDatasetPromise === currentPromise) {
+            lastDatasetFetchFailureAt = Date.now();
+          }
+          if (dataset) {
+            const age = Date.now() - dataset.fetchedAt;
+            log(
+              'warn',
+              `[FreeExerciseDBService] Serving stale exercise dataset after a refresh failure; age: ${age}ms`,
+              error instanceof Error ? error.message : error
+            );
+            return dataset.data;
+          }
+          throw error;
+        })
+        .finally(() => {
+          if (exercisesDatasetPromise === currentPromise) {
+            exercisesDatasetPromise = null;
+          }
+        });
+      exercisesDatasetPromise = currentPromise;
+    }
+    return exercisesDatasetPromise;
+  }
   async searchExercises(
     query: string | null | undefined,
     equipmentFilter: string[] = [],
@@ -58,43 +153,26 @@ class FreeExerciseDBService {
     limit = 50,
     offset = 0
   ) {
-    const cacheKey = `search_exercises_${query}_${equipmentFilter.join(',')}_${muscleGroupFilter.join(',')}_${limit}_${offset}`;
-    const cachedResults = githubCache.get(cacheKey);
-    if (cachedResults) {
-      console.log(
-        `[FreeExerciseDBService] Cache hit for search query: ${query}, equipment: ${equipmentFilter}, muscles: ${muscleGroupFilter}, limit: ${limit}, offset: ${offset}`
-      );
-      return cachedResults;
-    }
     try {
-      const exercisesJsonUrl =
-        'https://api.github.com/repos/yuhonas/free-exercise-db/contents/dist/exercises.json';
-      console.log(
-        `[FreeExerciseDBService] Fetching exercises from: ${exercisesJsonUrl}`
-      );
-      const response = await axios.get(exercisesJsonUrl, {
-        headers: { Accept: 'application/vnd.github.raw+json' },
-      });
-      const allExercises = response.data;
+      const allExercises = await this.getAllExercises();
 
       // 1. Filter by equipment and muscle group first
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const preFiltered = allExercises.filter((exercise: any) => {
+      const preFiltered = allExercises.filter((exercise) => {
         const matchesEquipment =
           equipmentFilter.length === 0 ||
           (exercise.equipment &&
             equipmentFilter.some((filter) =>
-              exercise.equipment.includes(filter)
+              exercise.equipment?.includes(filter)
             ));
         const matchesMuscleGroup =
           muscleGroupFilter.length === 0 ||
           (exercise.primaryMuscles &&
             muscleGroupFilter.some((filter) =>
-              exercise.primaryMuscles.includes(filter)
+              exercise.primaryMuscles?.includes(filter)
             )) ||
           (exercise.secondaryMuscles &&
             muscleGroupFilter.some((filter) =>
-              exercise.secondaryMuscles.includes(filter)
+              exercise.secondaryMuscles?.includes(filter)
             ));
         return matchesEquipment && matchesMuscleGroup;
       });
@@ -102,7 +180,7 @@ class FreeExerciseDBService {
       // 2. Filter and sort by search query using the shared utility
       const filteredExercises = filterAndSortByTerms(
         preFiltered,
-        (ex: any) => ex.name,
+        (exercise) => exercise.name,
         query || ''
       );
 
@@ -111,14 +189,12 @@ class FreeExerciseDBService {
         offset,
         offset + limit
       );
-      const result = { exercises: paginatedExercises, totalCount };
-      githubCache.set(cacheKey, result);
-      return result;
+      return { exercises: paginatedExercises, totalCount };
     } catch (error) {
-      console.error(
+      log(
+        'error',
         `[FreeExerciseDBService] Error searching exercises for query "${query}" with limit ${limit}:`,
-        // @ts-expect-error TS(2571): Object is of type 'unknown'.
-        error.message
+        error instanceof Error ? error.message : error
       );
       return { exercises: [], totalCount: 0 };
     }
@@ -136,5 +212,13 @@ class FreeExerciseDBService {
     return imageUrl;
   }
 }
+
+export function resetFreeExerciseDBCache() {
+  githubCache.flushAll();
+  dataset = null;
+  exercisesDatasetPromise = null;
+  lastDatasetFetchFailureAt = null;
+}
+
 const freeExerciseDBService = new FreeExerciseDBService();
 export default freeExerciseDBService;

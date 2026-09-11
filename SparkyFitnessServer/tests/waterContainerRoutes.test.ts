@@ -62,6 +62,8 @@ describe('Water Container Routes', () => {
           unit: 'ml',
           is_primary: false,
           servings_per_container: 1,
+          is_quick_add: false,
+          sort_order: 0,
         }
       );
     });

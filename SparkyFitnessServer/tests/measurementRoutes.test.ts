@@ -9,6 +9,7 @@ import measurementRoutes from '../routes/measurementRoutes.js';
 vi.mock('../services/measurementService.js', () => ({
   default: {
     processHealthData: vi.fn(),
+    getWaterIntakeByDateRange: vi.fn(),
   },
 }));
 
@@ -200,5 +201,96 @@ describe('Measurement Routes - POST /health-data', () => {
       error:
         'Invalid health data format. All entries must be non-null objects.',
     });
+  });
+});
+
+describe('Measurement Routes - GET /api/measurements/water-intake-range/:startDate/:endDate', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns the service rows with 200', async () => {
+    const rows = [{ entry_date: '2026-08-30', water_ml: 750 }];
+    vi.mocked(measurementService.getWaterIntakeByDateRange).mockResolvedValue(
+      rows
+    );
+
+    const res = await request(app).get(
+      '/api/measurements/water-intake-range/2026-08-01/2026-08-30'
+    );
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual(rows);
+  });
+
+  it('forwards the validated window to the service', async () => {
+    vi.mocked(measurementService.getWaterIntakeByDateRange).mockResolvedValue(
+      []
+    );
+
+    await request(app).get(
+      '/api/measurements/water-intake-range/2026-08-01/2026-08-30'
+    );
+
+    expect(measurementService.getWaterIntakeByDateRange).toHaveBeenCalledWith(
+      'test-user-id',
+      'test-user-id',
+      '2026-08-01',
+      '2026-08-30'
+    );
+  });
+
+  it('rejects a malformed date with 400 before reaching the service', async () => {
+    vi.mocked(measurementService.getWaterIntakeByDateRange).mockResolvedValue(
+      []
+    );
+
+    const res = await request(app).get(
+      '/api/measurements/water-intake-range/not-a-date/2026-08-30'
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toContain('startDate');
+    expect(measurementService.getWaterIntakeByDateRange).not.toHaveBeenCalled();
+  });
+
+  it('rejects a well-formed but impossible date with 400', async () => {
+    vi.mocked(measurementService.getWaterIntakeByDateRange).mockResolvedValue(
+      []
+    );
+
+    const res = await request(app).get(
+      '/api/measurements/water-intake-range/2026-02-30/2026-08-30'
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(measurementService.getWaterIntakeByDateRange).not.toHaveBeenCalled();
+  });
+
+  it('maps a Forbidden-prefixed service error to 403', async () => {
+    vi.mocked(measurementService.getWaterIntakeByDateRange).mockRejectedValue(
+      new Error('Forbidden: You do not have permission to view this data.')
+    );
+
+    const res = await request(app).get(
+      '/api/measurements/water-intake-range/2026-08-01/2026-08-30'
+    );
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body).toEqual({
+      error: 'Forbidden: You do not have permission to view this data.',
+    });
+  });
+
+  it('passes any other service error to the error handler', async () => {
+    vi.mocked(measurementService.getWaterIntakeByDateRange).mockRejectedValue(
+      new Error('boom')
+    );
+
+    const res = await request(app).get(
+      '/api/measurements/water-intake-range/2026-08-01/2026-08-30'
+    );
+
+    expect(res.statusCode).toBe(500);
   });
 });

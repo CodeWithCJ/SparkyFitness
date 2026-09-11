@@ -109,4 +109,52 @@ describe('sparky_get_dashboard', () => {
 
     expect(result).toBe(DB_ERROR_TEXT);
   });
+
+  it('renders target range details and status when calorieGoalType is target', async () => {
+    svc.getDashboardStats.mockResolvedValue({
+      ...STATS,
+      eaten: 1800,
+      calorieGoalType: {
+        goalType: 'target',
+        targetMin: 1600,
+        targetMax: 1900,
+      },
+    });
+
+    const result = await tools.sparky_get_dashboard.execute!(
+      { action: 'daily_summary', date: '2026-02-01' },
+      opts
+    );
+
+    expect(result).toContain(
+      '- Remaining: 100 kcal before reaching upper target limit (1900 kcal)'
+    );
+    expect(result).toContain(
+      '- Goal: Target Range 1600–1900 kcal (Baseline: 2000 kcal)'
+    );
+    expect(result).toContain(
+      '- Target Status: Within target range (1600–1900 kcal)'
+    );
+  });
+
+  it('renders minimum floor status when calorieGoalType is minimum', async () => {
+    svc.getDashboardStats.mockResolvedValue({
+      ...STATS,
+      eaten: 1800,
+      goal: 2000,
+      calorieGoalType: {
+        goalType: 'minimum',
+      },
+    });
+
+    const result = await tools.sparky_get_dashboard.execute!(
+      { action: 'daily_summary', date: '2026-02-01' },
+      opts
+    );
+
+    expect(result).toContain('- Goal: Minimum Floor 2000 kcal');
+    expect(result).toContain(
+      '- Target Status: 200 kcal needed to reach minimum floor'
+    );
+  });
 });

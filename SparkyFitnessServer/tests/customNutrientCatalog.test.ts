@@ -138,6 +138,21 @@ describe('customNutrientService.ensureCatalogNutrients', () => {
     ]);
   });
 
+  it('never creates a custom nutrient for caffeine — it is a fixed column', async () => {
+    const { createSpy } = stub([]);
+
+    const result = await customNutrientService.ensureCatalogNutrients(USER, [
+      'caffeine',
+    ]);
+
+    // caffeine_mg is a first-class food_variants column (#1958); shadowing it
+    // with a custom nutrient of the same name would double-count it.
+    expect(createSpy).not.toHaveBeenCalled();
+    expect(result.resolved).toEqual([
+      { catalogId: 'caffeine', name: 'Caffeine', fixedField: 'caffeine_mg' },
+    ]);
+  });
+
   it('is idempotent — an existing nutrient of the same name is reused', async () => {
     const { createSpy } = stub([
       { name: 'Vitamin D', unit: 'µg', aliases: [] },

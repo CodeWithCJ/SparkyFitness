@@ -50,6 +50,9 @@ interface MealTotals {
   vitamin_a?: number;
   vitamin_c?: number;
   iron?: number;
+  caffeine_mg?: number;
+  water_ml?: number;
+  alcohol_g?: number;
   calcium?: number;
   glycemic_index?: GlycemicIndex;
   custom_nutrients?: Record<string, number>;
@@ -194,6 +197,11 @@ const MealCard = ({
     'vitamin_c',
     'iron',
     'calcium',
+    'caffeine_mg',
+    // Summable like the rest: a meal states the water it holds. The hydration
+    // ring still owns the day total, which is computed from its own arm.
+    'water_ml',
+    'alcohol_g',
   ];
 
   // Add custom nutrient names to summable nutrients list if they exist

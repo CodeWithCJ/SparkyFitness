@@ -2,6 +2,7 @@ import goalService from './goalService.js';
 import foodEntryService from './foodEntryService.js';
 import { getExerciseEntriesByDateV2 } from './exerciseEntryHistoryService.js';
 import measurementRepository from '../models/measurementRepository.js';
+import hydrationTotalsService from './hydrationTotalsService.js';
 import foodRepository from '../models/foodMisc.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
@@ -47,8 +48,8 @@ export async function getDailySummary({
     foodEntryService.getFoodEntriesByDate(actorUserId, targetUserId, date),
     getExerciseEntriesByDateV2(targetUserId, date),
     includeCheckin
-      ? measurementRepository
-          .getWaterIntakeByDate(targetUserId, date)
+      ? hydrationTotalsService
+          .resolveWaterTotalsForDate(targetUserId, actorUserId, date)
           .catch((error: unknown) => {
             log(
               'warn',
@@ -181,7 +182,17 @@ export async function getDailySummary({
     goals,
     foodEntries,
     exerciseSessions,
-    waterIntake: parseFloat(waterResult?.water_ml) || 0,
+    waterIntake: parseFloat(String(waterResult?.water_ml)) || 0,
+    // Present only when includeCheckin fetched water at all, so a caller that
+    // opted out of checkin data doesn't get a misleading all-zero breakdown.
+    waterIntakeBreakdown: waterResult
+      ? {
+          water_ml: parseFloat(String(waterResult.water_ml)) || 0,
+          manual_ml: parseFloat(String(waterResult.manual_ml)) || 0,
+          ledger_ml: parseFloat(String(waterResult.ledger_ml)) || 0,
+          food_ml: parseFloat(String(waterResult.food_ml)) || 0,
+        }
+      : null,
     stepCalories,
     calorieBalance,
     adjustedGoals: computedAdjustedGoals,

@@ -1,0 +1,64 @@
+import { ShieldCheck } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
+
+export const OpenFoodFactsAdminContributionSettings = () => {
+  const { t } = useTranslation();
+  const { data: settings, isLoading: settingsLoading } = useSettings();
+  const { mutate: updateSettings, isPending } = useUpdateSettings();
+
+  if (settingsLoading || !settings) {
+    return null;
+  }
+
+  const handleChange = (enabled: boolean) => {
+    updateSettings({
+      ...settings,
+      allow_openfoodfacts_contributions: enabled,
+    });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <ShieldCheck className="h-5 w-5" aria-hidden />
+          {t(
+            'settings.foodExerciseDataProviders.openFoodFacts.adminTitle',
+            'Open Food Facts contributions'
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <Label htmlFor="allow-openfoodfacts-contributions">
+            {t(
+              'settings.foodExerciseDataProviders.openFoodFacts.serverGateLabel',
+              'Allow Open Food Facts contributions on this server'
+            )}
+          </Label>
+          <Switch
+            id="allow-openfoodfacts-contributions"
+            checked={settings.allow_openfoodfacts_contributions}
+            disabled={isPending}
+            onCheckedChange={handleChange}
+            aria-describedby="openfoodfacts-server-gate-help"
+          />
+        </div>
+
+        <p
+          id="openfoodfacts-server-gate-help"
+          className="text-sm text-muted-foreground"
+        >
+          {t(
+            'settings.foodExerciseDataProviders.openFoodFacts.serverGateHelp',
+            'This server switch makes manual contributions available. Each user must preview and confirm one product and their own photo before publishing. Global credentials are an optional fallback for users without a personal account.'
+          )}
+        </p>
+      </CardContent>
+    </Card>
+  );
+};

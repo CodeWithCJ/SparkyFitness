@@ -15,6 +15,13 @@ import { Wind } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
 import {
+  createDateTickFormatter,
+  createTimeSyncMethod,
+  getTimeXAxisProps,
+  prepareTimeChartData,
+  REPORTS_CHART_SYNC_ID,
+} from '@/utils/chartUtils';
+import {
   CustomCategoriesResponse,
   CustomMeasurementsResponse,
 } from '@workspace/shared';
@@ -69,7 +76,7 @@ const RespirationCard: React.FC<RespirationCardProps> = ({
   measurementsData,
 }) => {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone } = usePreferences();
+  const { formatDateInUserTimezone, chartScaleMode } = usePreferences();
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -170,6 +177,23 @@ const RespirationCard: React.FC<RespirationCardProps> = ({
   }, [respirationCategories, measurementsData, formatDateInUserTimezone]);
 
   // Check if we have sleep/awake data or just average
+  // Separate from transformedData: the stats and "latest entry" readouts below
+  // must keep every raw row, in the order it was built.
+  const chartData = useMemo(
+    () => prepareTimeChartData(transformedData, chartScaleMode),
+    [transformedData, chartScaleMode]
+  );
+
+  const syncMethod = useMemo(() => createTimeSyncMethod(), []);
+
+  // In time mode the axis label Recharts hands the tooltip is a numeric
+  // timestamp, not the day string, so the header needs the same formatter the
+  // ticks use.
+  const formatChartDate = useMemo(
+    () => createDateTickFormatter(formatDateInUserTimezone),
+    [formatDateInUserTimezone]
+  );
+
   const hasSleepAwakeData = transformedData.some(
     (d) => d.sleepAvg !== null || d.awakeAvg !== null
   );
@@ -298,21 +322,25 @@ const RespirationCard: React.FC<RespirationCardProps> = ({
                 minHeight={0}
                 debounce={100}
               >
-                <LineChart data={transformedData} syncId="nutrition-charts">
+                <LineChart
+                  data={chartData}
+                  syncId={REPORTS_CHART_SYNC_ID}
+                  syncMethod={syncMethod}
+                >
                   <CartesianGrid
                     strokeDasharray="3 3"
                     vertical={false}
                     stroke="hsl(var(--border))"
                   />
                   <XAxis
-                    dataKey="date"
+                    {...getTimeXAxisProps({
+                      chartScaleMode,
+                      formatDate: formatDateInUserTimezone,
+                    })}
                     fontSize={11}
                     tickLine={false}
                     stroke="hsl(var(--muted-foreground))"
                     tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    tickFormatter={(value) =>
-                      formatDateInUserTimezone(parseISO(value), 'MMM dd')
-                    }
                   />
                   <YAxis
                     domain={[8, 24]}
@@ -351,7 +379,7 @@ const RespirationCard: React.FC<RespirationCardProps> = ({
                         labels[String(name ?? '')] || String(name ?? ''),
                       ];
                     }}
-                    labelFormatter={(label) => label}
+                    labelFormatter={formatChartDate}
                   />
                   <Legend
                     formatter={(value) => {

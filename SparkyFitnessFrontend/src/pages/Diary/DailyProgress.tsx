@@ -202,6 +202,42 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     ),
   };
 
+  const calorieGoalPref = goalTypePreferences?.['calories'];
+  const isTargetBand =
+    calorieGoalPref?.goalType === 'target' &&
+    calorieGoalPref.targetMin !== undefined &&
+    calorieGoalPref.targetMin !== null &&
+    calorieGoalPref.targetMax !== undefined &&
+    calorieGoalPref.targetMax !== null;
+
+  const targetMinConverted =
+    isTargetBand && calorieGoalPref?.targetMin != null
+      ? Math.round(convertEnergy(calorieGoalPref.targetMin, 'kcal', energyUnit))
+      : undefined;
+
+  const targetMaxConverted =
+    isTargetBand && calorieGoalPref?.targetMax != null
+      ? Math.round(convertEnergy(calorieGoalPref.targetMax, 'kcal', energyUnit))
+      : undefined;
+
+  // When a calorie target range is set, the upper bound (targetMax) serves as the budget ceiling.
+  const effectiveTargetGoal = isTargetBand ? targetMaxConverted! : display.goal;
+  const exerciseBonus = Math.max(
+    0,
+    display.remaining - (display.goal - display.eaten)
+  );
+  const effectiveRemaining = isTargetBand
+    ? Math.round(effectiveTargetGoal - display.eaten + exerciseBonus)
+    : display.remaining;
+  const effectiveProgress =
+    isTargetBand && effectiveTargetGoal > 0
+      ? Math.max(
+          0,
+          ((effectiveTargetGoal - effectiveRemaining) / effectiveTargetGoal) *
+            100
+        )
+      : calorieProgress;
+
   const displayWeight = weightData?.weight || 70;
   const displayHeight = heightData?.height || 170;
   const displayBodyFat = bodyFatData?.body_fat_percentage ?? 0;
@@ -321,8 +357,8 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
         <div className="space-y-4">
           {/* Energy Circle */}
           <EnergyCircle
-            remaining={display.remaining}
-            progress={calorieProgress}
+            remaining={effectiveRemaining}
+            progress={effectiveProgress}
             unit={energyUnit}
             targetBand={
               goalTypePreferences?.['calories']?.goalType === 'target' &&
@@ -351,12 +387,12 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
           {/* Energy Breakdown */}
           <div className="grid grid-cols-3 gap-2 text-center text-sm">
             {/* Eaten */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-center text-lg font-bold text-green-600">
-                <Utensils className="w-4 h-4 mr-1" />
-                {display.eaten}
+            <div className="space-y-1 min-w-0">
+              <div className="flex items-center justify-center text-lg font-bold text-green-600 whitespace-nowrap">
+                <Utensils className="w-4 h-4 mr-1 shrink-0" />
+                <span>{display.eaten}</span>
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-gray-500 whitespace-nowrap">
                 {getEnergyUnitString(energyUnit)}{' '}
                 {t('exercise.dailyProgress.eaten', 'eaten')}
               </div>
@@ -366,12 +402,12 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="space-y-1 cursor-help">
-                    <div className="flex items-center justify-center text-lg font-bold text-orange-600">
-                      <Flame className="w-4 h-4 mr-1" />
-                      {display.burnedTotal}
+                  <div className="space-y-1 cursor-help min-w-0">
+                    <div className="flex items-center justify-center text-lg font-bold text-orange-600 whitespace-nowrap">
+                      <Flame className="w-4 h-4 mr-1 shrink-0" />
+                      <span>{display.burnedTotal}</span>
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 whitespace-nowrap">
                       {getEnergyUnitString(energyUnit)}{' '}
                       {t('exercise.dailyProgress.burned', 'burned')}
                     </div>
@@ -456,12 +492,20 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
             </TooltipProvider>
 
             {/* Goal */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-center text-lg font-bold dark:text-slate-400 text-gray-900">
-                <Flag className="w-4 h-4 mr-1" />
-                {display.goal}
+            <div className="space-y-1 min-w-0">
+              <div
+                className={`flex items-center justify-center font-bold dark:text-slate-400 text-gray-900 whitespace-nowrap ${
+                  isTargetBand ? 'text-[14px] sm:text-[15px]' : 'text-lg'
+                }`}
+              >
+                <Flag className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-0.5 sm:mr-1 shrink-0" />
+                <span>
+                  {isTargetBand
+                    ? `${targetMinConverted}–${targetMaxConverted}`
+                    : display.goal}
+                </span>
               </div>
-              <div className="text-xs dark:text-slate-400 text-gray-500">
+              <div className="text-xs dark:text-slate-400 text-gray-500 whitespace-nowrap">
                 {getEnergyUnitString(energyUnit)}{' '}
                 {t('exercise.dailyProgress.goal', 'goal')}
               </div>
@@ -748,9 +792,9 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
               <span>
                 {t('exercise.dailyProgress.dailyProgress', 'Daily Progress')}
               </span>
-              <span>{Math.round(calorieProgress)}%</span>
+              <span>{Math.round(effectiveProgress)}%</span>
             </div>
-            <Progress value={calorieProgress} className="h-2" />
+            <Progress value={effectiveProgress} className="h-2" />
           </div>
 
           {/* Calorie Math Breakdown Dropdown */}

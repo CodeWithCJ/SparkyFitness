@@ -1,5 +1,6 @@
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
+import type { PoolClient } from 'pg';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function _createActivityDetailWithClient(client: any, detail: any) {
   const {
@@ -297,24 +298,27 @@ async function deleteActivityDetail(userId: any, id: any) {
   }
 }
 async function _deleteActivityDetailsByEntryIdAndProviderWithClient(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerName: any
+  client: PoolClient,
+  userId: string,
+  entryId: string,
+  providerName: string,
+  detailType?: string
 ) {
   const query = `
         DELETE FROM exercise_entry_activity_details
         WHERE (exercise_entry_id = $1 OR exercise_preset_entry_id = $1)
           AND provider_name = $2
+          AND ($4::text IS NULL OR detail_type = $4)
           AND (exercise_entry_id IN (SELECT id FROM exercise_entries WHERE user_id = $3)
                OR exercise_preset_entry_id IN (SELECT id FROM exercise_preset_entries WHERE user_id = $3));
     `;
   try {
-    const result = await client.query(query, [entryId, providerName, userId]);
+    const result = await client.query(query, [
+      entryId,
+      providerName,
+      userId,
+      detailType ?? null,
+    ]);
     log(
       'debug',
       `Successfully deleted ${result.rowCount} activity details for entry ID ${entryId} and provider ${providerName}.`

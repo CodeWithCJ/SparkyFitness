@@ -40,6 +40,8 @@ export interface DayTotals {
   vitamin_c?: number;
   iron?: number;
   calcium?: number;
+  caffeine_mg?: number;
+  alcohol_g?: number;
   custom_nutrients?: Record<string, number>;
 }
 

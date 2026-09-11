@@ -11,6 +11,10 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { createUploadMiddleware } from '../middleware/uploadMiddleware.js';
+import {
+  demoGuard,
+  demoUploadGuard,
+} from '../middleware/demoGuardMiddleware.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { fileURLToPath } from 'url';
 import { isEntryTimeString } from '@workspace/shared';
@@ -274,6 +278,7 @@ router.get('/by-date', authenticate, async (req, res, next) => {
 router.post(
   '/',
   authenticate,
+  demoUploadGuard,
   upload.single('image'),
   async (req, res, next) => {
     try {
@@ -704,6 +709,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
 router.put(
   '/:id',
   authenticate,
+  demoUploadGuard,
   upload.single('image'),
   async (req, res, next) => {
     const { id } = req.params;
@@ -757,7 +763,7 @@ router.put(
     }
     const uuidRegex =
       /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-    if (!id || !uuidRegex.test(id)) {
+    if (!id || typeof id !== 'string' || !uuidRegex.test(id)) {
       return res.status(400).json({
         error: 'Exercise Entry ID is required and must be a valid UUID.',
       });
@@ -1126,10 +1132,12 @@ const fitUpload = multer({
  *                         type: string
  *       400:
  *         description: No files uploaded, or the upload exceeded size/count limits.
+ *       403:
+ *         description: Demo mode accounts cannot import FIT workout files.
  *       500:
  *         description: Failed to import FIT files.
  */
-router.post('/import-fit', authenticate, (req, res, next) => {
+router.post('/import-fit', authenticate, demoGuard, (req, res, next) => {
   fitUpload.array('files', 10)(req, res, async (uploadError: unknown) => {
     if (uploadError) {
       if (uploadError instanceof multer.MulterError) {

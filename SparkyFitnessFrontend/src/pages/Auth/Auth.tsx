@@ -12,7 +12,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { Zap, Loader2, Fingerprint, AlertCircle } from 'lucide-react';
+import { Zap, Loader2, Fingerprint, AlertCircle, Sparkles } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info, error } from '@/utils/logging';
@@ -27,10 +27,12 @@ import {
   useAuthSettings,
   useInitiateOidcLoginMutation,
   useLoginUserMutation,
+  useDemoLoginMutation,
   useRegisterUserMutation,
   useRequestMagicLinkMutation,
 } from '@/hooks/Auth/useAuth';
 import { MagicLinkRequestDialog } from './MagicLinkRequestDialog';
+import { DemoDisclaimerDialog } from './DemoDisclaimerDialog';
 import { useQueryClient } from '@tanstack/react-query';
 import { AuthResponse } from '@/types/auth';
 import { getErrorMessage } from '@/utils/api';
@@ -57,11 +59,14 @@ const Auth = () => {
   // State for Magic Link Request Dialog
   const [isMagicLinkRequestDialogOpen, setIsMagicLinkRequestDialogOpen] =
     useState(false);
+  const [isDemoDisclaimerOpen, setIsDemoDisclaimerOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
   const { data: loginSettings } = useAuthSettings();
   const { mutateAsync: loginUser } = useLoginUserMutation();
+  const { mutateAsync: demoLogin, isPending: isDemoLoginPending } =
+    useDemoLoginMutation();
   const { mutateAsync: registerUser } = useRegisterUserMutation();
   const { mutateAsync: requestMagicLink } = useRequestMagicLinkMutation();
   const { mutateAsync: initiateOidcLogin } = useInitiateOidcLoginMutation();
@@ -87,9 +92,10 @@ const Auth = () => {
             throw new Error('Provider undefined');
           }
 
-          // AUTO-REDIRECT LOGIC: Only when email is disabled, auto_redirect is enabled (e.g. SPARKY_FITNESS_OIDC_AUTO_REDIRECT), and exactly 1 OIDC provider is active
+          // AUTO-REDIRECT LOGIC: Only when email is disabled, auto_redirect is enabled, demo_mode is false, and exactly 1 OIDC provider is active
           if (
             loginSettings.oidc.auto_redirect &&
+            !loginSettings.demo_mode &&
             !loginSettings.email.enabled &&
             !authUser &&
             !authLoading
@@ -718,6 +724,29 @@ const Auth = () => {
                     )}
                 </div>
               )}
+              {loginSettings?.demo_mode && (
+                <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <Button
+                    type="button"
+                    variant="default"
+                    className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold py-2.5 shadow-md flex items-center justify-center gap-2 transition-all hover:scale-[1.01]"
+                    onClick={() => setIsDemoDisclaimerOpen(true)}
+                    disabled={loading || isDemoLoginPending}
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    {t(
+                      'auth.exploreDemo',
+                      '🚀 Explore Live Demo (1-Click Login)'
+                    )}
+                  </Button>
+                  <p className="text-center text-xs text-muted-foreground mt-1">
+                    {t(
+                      'auth.demoSubtext',
+                      'Interactive sandbox • Resets daily at 00:00 UTC'
+                    )}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
@@ -730,6 +759,32 @@ const Auth = () => {
           initialEmail={email}
         />
       )}
+      <DemoDisclaimerDialog
+        isOpen={isDemoDisclaimerOpen}
+        onClose={() => setIsDemoDisclaimerOpen(false)}
+        onConfirm={async () => {
+          try {
+            setLoading(true);
+            const res = await demoLogin();
+            if (res.userId) {
+              signIn(
+                res.userId,
+                res.userId,
+                res.email || 'demo@sparkyfitness.com',
+                res.role || 'user',
+                true,
+                res.fullName || 'Demo User'
+              );
+            }
+          } catch (err) {
+            console.error('Demo Login failed:', err);
+          } finally {
+            setLoading(false);
+            setIsDemoDisclaimerOpen(false);
+          }
+        }}
+        loading={loading || isDemoLoginPending}
+      />
     </>
   );
 };

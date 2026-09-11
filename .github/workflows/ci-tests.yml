@@ -57,6 +57,7 @@ jobs:
               - 'SparkyFitnessServer/utils/applyRlsPolicies.ts'
               - 'SparkyFitnessServer/tests/migrate.script.ts'
               - 'SparkyFitnessServer/tests/rlsPermissionMatrix.integration.test.ts'
+              - 'SparkyFitnessServer/tests/stravaActivityDetailCleanup.integration.test.ts'
               - 'SparkyFitnessServer/package.json'
               - '.github/workflows/ci-tests.yml'
 
@@ -252,8 +253,8 @@ jobs:
       # The schema + RLS policies are now applied and the non-superuser app role
       # exists, so the permission matrix can verify every table's real RLS
       # behaviour as the app role (superuser DB user seeds, app role is enforced).
-      - name: Verify RLS permission matrix
-        run: pnpm exec vitest run tests/rlsPermissionMatrix.integration.test.ts
+      - name: Verify RLS permission matrix and Strava cleanup
+        run: pnpm exec vitest run tests/rlsPermissionMatrix.integration.test.ts tests/stravaActivityDetailCleanup.integration.test.ts
         env:
           # Default-on (SKIP_RLS_MATRIX unset) — runs against the Postgres this
           # job provisions, with policies already applied by the steps above.

@@ -295,6 +295,12 @@ export function calculateMealNutrition(entries: FoodEntry[]): MealNutrition {
       cholesterol: optionalSum(entries, 'cholesterol'),
       vitaminA: optionalSum(entries, 'vitamin_a'),
       vitaminC: optionalSum(entries, 'vitamin_c'),
+      caffeineMg: optionalSum(entries, 'caffeine_mg'),
+      // Summed like the rest so a meal states the water it holds, matching
+      // web's MealCard. The hydration gauge still owns the day figure, which
+      // comes from its own arm rather than from here.
+      waterMl: optionalSum(entries, 'water_ml'),
+      alcoholG: optionalSum(entries, 'alcohol_g'),
     },
     customNutrients: calculateCustomNutrientTotals(entries),
   };

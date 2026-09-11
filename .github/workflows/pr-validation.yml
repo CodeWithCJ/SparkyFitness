@@ -72,12 +72,23 @@ jobs:
             const hasBackendChanges  = changedFiles.some(f => f.startsWith('SparkyFitnessServer/'));
             const hasMobileChanges   = changedFiles.some(f => f.startsWith('SparkyFitnessMobile/'));
 
+            // Every non-English translation file is owned by Weblate and arrives
+            // through the sync workflow.
             const localesRoot = 'SparkyFitnessFrontend/public/locales/';
+            const mobileLocalesRoot = 'SparkyFitnessMobile/src/localization/locales/';
+            const mobileNativeSurfaces = [
+              /^SparkyFitnessMobile\/locales\/(?!en\.json$)[^/]+\.json$/,
+              /^SparkyFitnessMobile\/targets\/android-widget\/res\/values-[^/]+\/widget_strings\.xml$/,
+              /^SparkyFitnessMobile\/targets\/widget\/(?!en\.lproj\/)[^/]+\.lproj\/Localizable\.strings$/,
+            ];
             const nonEnLocaleFiles = changedFiles.filter(f =>
-              f.startsWith(localesRoot) && !f.startsWith(`${localesRoot}en/`)
+              (f.startsWith(localesRoot) && !f.startsWith(`${localesRoot}en/`)) ||
+              (f.startsWith(mobileLocalesRoot) && !f.startsWith(`${mobileLocalesRoot}en/`)) ||
+              mobileNativeSurfaces.some(re => re.test(f))
             );
             const hasEnTranslationChange = changedFiles.some(f =>
-              f === `${localesRoot}en/translation.json`
+              f === `${localesRoot}en/translation.json` ||
+              f === `${mobileLocalesRoot}en/translation.json`
             );
             const hasSQLChanges = changedFiles.some(f => f.includes('rls_policies.sql'));
 
@@ -215,7 +226,8 @@ jobs:
             }
             if (nonEnLocaleFiles.length > 0) {
               errors.push(
-                `**[MANDATORY]** Only the \`en\` translation file may be modified. ` +
+                `**[MANDATORY]** Only the \`en\` translation files may be modified. ` +
+                `Every other language is owned by Weblate and arrives through the sync workflow. ` +
                 `Remove changes to: ${nonEnLocaleFiles.map(f => '`' + f + '`').join(', ')}.`
               );
             }

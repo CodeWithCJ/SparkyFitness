@@ -1,9 +1,17 @@
 import fs from 'fs';
 import path from 'path';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import {
   SHIPPED_LOCALES,
   SOURCE_LOCALE,
 } from '../../src/localization/localeRegistry';
+
+const require = createRequire(pathToFileURL(__filename));
+const { localeFromAndroidDir } =
+  require('../../scripts/androidLocaleQualifiers.cjs') as {
+    localeFromAndroidDir: (name: string, source: string) => string | null;
+  };
 
 const TARGETS_ROOT = path.join(__dirname, '../../targets/android-widget');
 
@@ -19,22 +27,14 @@ const RES_ROOT = path.join(TARGETS_ROOT, 'res');
 
 /**
  * Discover every Android widget resource directory below `res/`, mapping
- * locale tags the same way the native validator does (`values` → source,
- * `values-de` → `de`, `values-b+de+DE` → `de-DE`).
+ * locale tags with the same helper the native validator uses.
  */
 function discoverWidgetLocaleDirs(): Map<string, string> {
   const result = new Map<string, string>();
   for (const entry of fs.readdirSync(RES_ROOT, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    if (entry.name === 'values') {
-      result.set(SOURCE_LOCALE, entry.name);
-    } else if (entry.name.startsWith('values-')) {
-      const qualifier = entry.name.slice('values-'.length);
-      const locale = qualifier.startsWith('b+')
-        ? qualifier.slice(2).replaceAll('+', '-')
-        : qualifier;
-      result.set(locale, entry.name);
-    }
+    const locale = localeFromAndroidDir(entry.name, SOURCE_LOCALE);
+    if (locale) result.set(locale, entry.name);
   }
   return result;
 }
@@ -169,7 +169,7 @@ describe('Android widget localization contract', () => {
     });
 
     it('does not keep resource keys that lost their consumer after the resize removal', () => {
-      for (const locale of WIDGET_LOCALE_DIRS.keys()) {
+      for (const locale of SHIPPED_WIDGET_LOCALES) {
         const resources = new Set(
           readWidgetStringResources(locale).map((r) => r.name)
         );
@@ -222,8 +222,11 @@ describe('Android widget localization contract', () => {
       }
     });
 
-    it('does not use i18next placeholder syntax in any Android widget XML', () => {
-      for (const locale of WIDGET_LOCALE_DIRS.keys()) {
+    // Weblate writes a directory long before anyone ships it, so these assertions
+    // cover the source and the registered locales; the rest are candidates and are
+    // reported by the native validator instead.
+    it('does not use i18next placeholder syntax in any shipped Android widget XML', () => {
+      for (const locale of SHIPPED_WIDGET_LOCALES) {
         for (const resource of readWidgetStringResources(locale)) {
           expect(resource.value).not.toMatch(/\{\{/);
           expect(resource.value).not.toMatch(/\}\}/);

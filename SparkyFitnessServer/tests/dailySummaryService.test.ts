@@ -396,6 +396,46 @@ describe('dailySummaryService', () => {
 
   describe('external BMR override', () => {
     // Use dynamic mode so calorieBalance.bmr reflects the resolved BMR directly
+    beforeEach(() => {
+      // The override is opt-in, so these cases enable it explicitly.
+      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+        bmr_algorithm: 'Mifflin-St Jeor',
+        activity_level: 'not_much',
+        calorie_goal_adjustment_mode: 'tdee',
+        exercise_calorie_percentage: 100,
+        include_bmr_in_net_calories: false,
+        tdee_allow_negative_adjustment: false,
+        use_external_bmr: true,
+        timezone: 'UTC',
+      });
+    });
+
+    test('ignores the measured value when the opt-in is off', async () => {
+      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+        bmr_algorithm: 'Mifflin-St Jeor',
+        activity_level: 'not_much',
+        calorie_goal_adjustment_mode: 'tdee',
+        exercise_calorie_percentage: 100,
+        include_bmr_in_net_calories: false,
+        tdee_allow_negative_adjustment: false,
+        use_external_bmr: false,
+        timezone: 'UTC',
+      });
+      vi.mocked(
+        measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate
+      ).mockResolvedValue({ weight: 80, height: 180, bmr: 1500 } as never);
+
+      const result = await getDailySummary({
+        actorUserId,
+        targetUserId,
+        date,
+        includeCheckin: true,
+      });
+
+      expect(result.calorieBalance.bmr).toBe(1800);
+      expect(result.calorieBalance.bmrSource).toBe('formula');
+    });
+
     test('overrides formula BMR with the check-in measured value', async () => {
       vi.mocked(
         measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate

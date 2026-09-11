@@ -15,7 +15,15 @@ import {
   feetInchesToCm,
   kgToStonesLbs,
   stonesLbsToKg,
+  formatWeightDisplay,
+  getServingVolume,
+  volumeFromMl,
+  formatVolumeForUnit,
 } from '../../src/utils/unitConversions';
+import i18n, {
+  getAppLocale,
+  initializeI18n,
+} from '../../src/localization/i18n';
 
 describe('unitConversions', () => {
   describe('lbsToKg', () => {
@@ -277,6 +285,31 @@ describe('unitConversions', () => {
     });
   });
 
+  describe('formatWeightDisplay in st_lbs', () => {
+    // The split is exact but the display rounds to one decimal, so a weight
+    // just under a stone boundary rounds its remainder up to 14lb - which is by
+    // definition the next stone, not a pound count that can be shown.
+    it.each([
+      [63.48, '9st 13.9lb'],
+      [63.49, '10st 0lb'],
+      [63.5, '10st 0lb'],
+      [63.51, '10st 0lb'],
+      [6.35, '1st 0lb'],
+      [80, '12st 8.4lb'],
+      [0, '0st 0lb'],
+    ])('formats %d kg as %s', (kg, expected) => {
+      expect(formatWeightDisplay(kg, 'st_lbs')).toBe(expected);
+    });
+
+    it('never renders 14lb across the whole plausible range', () => {
+      for (let tenths = 0; tenths <= 3000; tenths++) {
+        expect(formatWeightDisplay(tenths / 10, 'st_lbs')).not.toMatch(
+          / 14lb$/
+        );
+      }
+    });
+  });
+
   describe('stonesLbsToKg', () => {
     it('combines 1st 0lb → ~6.35029 kg', () => {
       expect(stonesLbsToKg(1, 0)).toBeCloseTo(6.35029, 4);
@@ -302,6 +335,91 @@ describe('unitConversions', () => {
       const kg = stonesLbsToKg(stones, lbs);
       const split = kgToStonesLbs(kg);
       expect(stonesLbsToKg(split.stones, split.lbs)).toBeCloseTo(kg, 4);
+    });
+  });
+
+  describe('volume helpers', () => {
+    // formatVolumeForUnit formats through formatLocalizedNumber, so the expected text
+    // is whatever the app's `en` locale produces rather than a hardcoded separator.
+    beforeAll(async () => {
+      await initializeI18n('en');
+    });
+
+    beforeEach(async () => {
+      await i18n.changeLanguage('en');
+    });
+
+    describe('volumeFromMl', () => {
+      it('returns millilitres unchanged', () => {
+        expect(volumeFromMl(500, 'ml')).toBe(500);
+      });
+
+      it('converts to fluid ounces', () => {
+        expect(volumeFromMl(1000, 'oz')).toBeCloseTo(33.814, 3);
+      });
+
+      it('converts to litres', () => {
+        expect(volumeFromMl(1500, 'liter')).toBe(1.5);
+      });
+
+      it('falls back to millilitres for an unknown unit', () => {
+        expect(volumeFromMl(500, 'gallons')).toBe(500);
+      });
+    });
+
+    describe('formatVolumeForUnit', () => {
+      it('applies the per-unit decimal rule', () => {
+        const locale = getAppLocale();
+
+        expect(formatVolumeForUnit(1234.567, 'ml')).toBe(
+          (1235).toLocaleString(locale)
+        );
+        expect(formatVolumeForUnit(33.8140227, 'oz')).toBe(
+          (33.8).toLocaleString(locale, { maximumFractionDigits: 1 })
+        );
+        expect(formatVolumeForUnit(1.2345, 'liter')).toBe(
+          (1.23).toLocaleString(locale, { maximumFractionDigits: 2 })
+        );
+      });
+    });
+  });
+  // A container linked to a food carries volume 0 on purpose: its amount lives
+  // on the food. Dividing that by servings gave 0, which the dashboard gauge
+  // rendered as "0 ml per container" beside a +/- that appeared to do nothing.
+  describe('getServingVolume', () => {
+    it('divides a plain container by its servings', () => {
+      expect(
+        getServingVolume({ volume: 2000, servings_per_container: 8 })
+      ).toBe(250);
+    });
+
+    it('treats a missing serving count as one serving', () => {
+      expect(getServingVolume({ volume: 500 })).toBe(500);
+      expect(
+        getServingVolume({ volume: 500, servings_per_container: null })
+      ).toBe(500);
+    });
+
+    it('reports a linked container as having no millilitre figure', () => {
+      expect(
+        getServingVolume({
+          volume: 0,
+          servings_per_container: 1,
+          linked_food_id: 'food-1',
+        })
+      ).toBeNull();
+    });
+
+    it('reports null for a linked container even when a volume was stored', () => {
+      // An override volume means "the glass holds more than the food", not
+      // "this is what one press credits".
+      expect(
+        getServingVolume({
+          volume: 500,
+          servings_per_container: 1,
+          linked_food_id: 'food-1',
+        })
+      ).toBeNull();
     });
   });
 });

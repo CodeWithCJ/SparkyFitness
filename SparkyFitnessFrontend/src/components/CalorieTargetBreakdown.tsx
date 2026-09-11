@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
+import { CONVERSION_FACTORS, kgToLbs } from '@/utils/unitConversions';
 import {
   getBmrAlgorithmLabel,
   getBodyFatAlgorithmLabel,
@@ -20,6 +21,9 @@ import {
   ADAPTIVE_TDEE_GOAL_MIN_DAYS,
   getGoalModeAdjustment,
   ENERGY_DENSITY_KCAL_PER_KG,
+  FAT_KCAL_PER_KG,
+  LEAN_TISSUE_KCAL_PER_KG,
+  ADAPTIVE_TDEE_CLAMP_KCAL,
   type CalorieTargetResult,
 } from '@workspace/shared';
 
@@ -31,6 +35,19 @@ interface AdaptiveTdeeData {
   avgIntake?: number;
   weightTrend?: number | null;
   confidence?: 'HIGH' | 'MEDIUM' | 'LOW';
+  // Derivation terms for the Active branch (see AdaptiveTdeeService).
+  startWeightTrend?: number;
+  endWeightTrend?: number;
+  weightChangeKg?: number;
+  daysInWindow?: number;
+  windowStartDate?: string;
+  windowEndDate?: string;
+  dailyWeightChangeKg?: number;
+  weightChangeCalories?: number;
+  rawTdee?: number;
+  wasClamped?: boolean;
+  clampMin?: number;
+  clampMax?: number;
 }
 
 interface CalorieTargetBreakdownProps {
@@ -84,10 +101,31 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
   bmrSource,
 }) => {
   const { t } = useTranslation();
-  const { energyUnit, convertEnergy } = usePreferences();
+  const { energyUnit, convertEnergy, weightUnit = 'kg' } = usePreferences();
   const bmrAlgorithmLabel = getBmrAlgorithmLabel(t, bmrAlgorithm);
   const bodyFatAlgorithmLabel = getBodyFatAlgorithmLabel(t, bodyFatAlgorithm);
   const goalModeLabel = getGoalModeLabel(t, goalMode);
+
+  // Adaptive TDEE stores mass in kg. Convert the shown working to the
+  // configured unit so the trend matches every other weight display. Stones
+  // rates use pounds: a per-stone energy density is not a useful working figure.
+  const trendMassUnit: 'kg' | 'lbs' =
+    weightUnit === 'lbs' || weightUnit === 'st_lbs' ? 'lbs' : 'kg';
+  const trendMassUnitName = trendMassUnit === 'lbs' ? 'pound' : 'kilogram';
+  const kcalPerTrendUnit =
+    trendMassUnit === 'lbs'
+      ? Math.round(ENERGY_DENSITY_KCAL_PER_KG * CONVERSION_FACTORS.LBS_TO_KG)
+      : ENERGY_DENSITY_KCAL_PER_KG;
+  const fatPerTrendUnit =
+    trendMassUnit === 'lbs'
+      ? Math.round(FAT_KCAL_PER_KG * CONVERSION_FACTORS.LBS_TO_KG)
+      : FAT_KCAL_PER_KG;
+  const leanPerTrendUnit =
+    trendMassUnit === 'lbs'
+      ? Math.round(LEAN_TISSUE_KCAL_PER_KG * CONVERSION_FACTORS.LBS_TO_KG)
+      : LEAN_TISSUE_KCAL_PER_KG;
+  const toTrendMass = (kg: number) =>
+    trendMassUnit === 'lbs' ? kgToLbs(kg) : kg;
 
   const isAdaptiveMethod = goalModeCalculationMethod === 'adaptive';
   // Same label matrix as the CalculationSettings Live Preview (shared t() keys):
@@ -134,6 +172,49 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
   const displayBmrVal = Math.round(
     convertEnergy(previewResult.rmr, 'kcal', energyUnit)
   );
+
+  // Adaptive TDEE derivation, in the units actually shown. The server reconciles
+  // its figures in kcal, but converting and rounding each one independently breaks
+  // the sum again in kJ — 2100 + 100 kcal renders as 8786 + 418 = 9204 kJ beside a
+  // total of 9205. So the delta is derived from the two displayed numbers rather
+  // than converted on its own, and the arithmetic holds in either unit.
+  const adjustmentModeLabel =
+    {
+      adaptive: t('diary.calculateExplanation.modeAdaptive', 'Adaptive Goal'),
+      dynamic: t('diary.calculateExplanation.modeDynamic', 'Dynamic Goal'),
+      fixed: t('diary.calculateExplanation.modeFixed', 'Fixed Goal'),
+      percentage: t(
+        'diary.calculateExplanation.modePercentage',
+        'Percentage Earn-Back'
+      ),
+      tdee: t('diary.calculateExplanation.modeDevice', 'Device Projection'),
+      smart: t('diary.calculateExplanation.modeDevice', 'Device Projection'),
+    }[calorieGoalAdjustmentMode] ?? calorieGoalAdjustmentMode;
+
+  const displayAdaptiveIntake = Math.round(
+    convertEnergy(adaptiveTdeeData?.avgIntake || 0, 'kcal', energyUnit)
+  );
+  const displayAdaptiveRawTdee = Math.round(
+    convertEnergy(adaptiveTdeeData?.rawTdee || 0, 'kcal', energyUnit)
+  );
+  // Against the raw estimate, not the capped one: when the cap binds the total no
+  // longer equals intake plus trend, and the trend row still has to state the real
+  // trend rather than be bent to match a capped total.
+  const displayAdaptiveDelta = displayAdaptiveRawTdee - displayAdaptiveIntake;
+  // In kcal the equation stands alone; in any other unit the kcal result is shown
+  // first (so the multiplication checks out) with the converted value beside it.
+  const adaptiveDeltaKcal =
+    Math.round(adaptiveTdeeData?.rawTdee || 0) -
+    Math.round(adaptiveTdeeData?.avgIntake || 0);
+  const signedKcal = `${adaptiveDeltaKcal >= 0 ? '+' : '−'}${Math.abs(
+    adaptiveDeltaKcal
+  )} kcal`;
+  const adaptiveDeltaText =
+    energyUnit === 'kcal'
+      ? signedKcal
+      : `${signedKcal} (${
+          displayAdaptiveDelta >= 0 ? '+' : '−'
+        }${Math.abs(displayAdaptiveDelta)} ${getEnergyUnitString(energyUnit)})`;
 
   // Inputs are printed at the precision the formula actually evaluates at. Rounding
   // weight to one decimal made the panel unable to reproduce its own answer: a stored
@@ -417,30 +498,39 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
           </span>
         </div>
         {isMeasuredBmr ? (
-          <div className="text-muted-foreground text-sm bg-muted/40 p-1.5 rounded border border-border/60">
-            {t(
-              'diary.calculateExplanation.bmrMeasuredDesc',
-              'Using your measured BMR. No formula applied.'
-            )}
+          <div className="text-muted-foreground text-sm bg-muted/40 p-1.5 rounded border border-border/60 space-y-1">
+            <div>
+              {t('diary.calculateExplanation.bmrMeasuredDesc', {
+                defaultValue:
+                  'Using a measured BMR of {{value}} {{unit}} recorded for this day, from a smart scale or health app sync. Your {{algorithm}} formula is not applied.',
+                value: displayBmrVal,
+                unit: getEnergyUnitString(energyUnit),
+                algorithm: bmrAlgorithmLabel,
+              })}
+            </div>
+            <div>
+              {t(
+                'diary.calculateExplanation.bmrMeasuredScope',
+                'A measured value only counts on the day it was recorded. Days without one fall back to the formula. To stop using measured values, turn off “Use measured BMR from check-ins and synced devices” in Calculation Settings.'
+              )}
+            </div>
           </div>
         ) : (
           <pre className="text-muted-foreground font-sans whitespace-pre-line text-sm bg-muted/40 p-1.5 rounded border border-border/60">
             {bmrMathText()}
           </pre>
         )}
-        {!isMeasuredBmr && (
-          <div className="flex justify-between items-center bg-muted/50 dark:bg-muted/40 p-1.5 rounded mt-1">
-            <span>
-              {t(
-                'diary.calculateExplanation.restingMetabolism',
-                'Resting Metabolism (RMR/BMR):'
-              )}
-            </span>
-            <span className="font-semibold text-foreground">
-              {displayBmrVal} {getEnergyUnitString(energyUnit)}
-            </span>
-          </div>
-        )}
+        <div className="flex justify-between items-center bg-muted/50 dark:bg-muted/40 p-1.5 rounded mt-1">
+          <span>
+            {t(
+              'diary.calculateExplanation.restingMetabolism',
+              'Resting Metabolism (RMR/BMR):'
+            )}
+          </span>
+          <span className="font-semibold text-foreground">
+            {displayBmrVal} {getEnergyUnitString(energyUnit)}
+          </span>
+        </div>
       </div>
 
       {/* Step 2: Body Fat Percentage */}
@@ -497,6 +587,26 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
         </p>
       </div>
 
+      {/* Which Daily Calorie Goal Adjustment mode produced this. Without it the
+          panel reads as the only possible derivation, and under Device Projection
+          it is not even the one the Diary will use. */}
+      <div className="text-xs text-muted-foreground">
+        {t(
+          'diary.calculateExplanation.adjustmentMode',
+          'Daily calorie goal adjustment: {{mode}}',
+          { mode: adjustmentModeLabel }
+        )}
+        {calorieGoalAdjustmentMode === 'tdee' && (
+          <span className="text-amber-600 dark:text-amber-500">
+            {' '}
+            {t(
+              'diary.calculateExplanation.deviceProjectionCaveat',
+              'In this mode your Diary target comes from your device’s total calories projected to midnight, which is not known here. The figures below are the stored-goal derivation and will differ from what the Diary shows.'
+            )}
+          </span>
+        )}
+      </div>
+
       {/* Step 3: Adaptive TDEE (Expenditure) */}
       {isAdaptiveMethod && (
         <div className="space-y-1">
@@ -518,18 +628,33 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
           </div>
           <div className="text-muted-foreground text-sm bg-muted/40 p-1.5 rounded border border-border/60 space-y-1 text-left">
             <div className="font-semibold text-foreground">
-              {t(
-                'settings.breakdown.adaptiveFormula',
-                'Formula: Average Daily Calories − (Daily Weight Change in kg × {{kcalPerKg}} kcal/kg)',
-                { kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG }
-              )}
+              {t('settings.breakdown.adaptiveFormula', {
+                defaultValue:
+                  'Formula: Average Daily Calories − (Daily Weight Change in {{massUnit}} × {{kcalPerUnit}} kcal/{{massUnit}})',
+                // de/es/ru still interpolate {{kcalPerKg}} into a string that
+                // says "kg". Keep that placeholder on the kg constant so a
+                // pounds user does not see "2722 kcal/kg". English uses
+                // kcalPerUnit + massUnit, which track the configured unit.
+                kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG,
+                kcalPerUnit: kcalPerTrendUnit,
+                massUnit: trendMassUnit,
+                unit: trendMassUnit,
+              })}
             </div>
             <p className="text-muted-foreground">
-              {t(
-                'settings.breakdown.adaptiveFormulaExplainer',
-                '{{kcalPerKg}} kcal/kg is how much energy a kilogram of body weight represents, so your weight trend can be converted into calories. Body weight lost or gained is a mix of fat (~9,441 kcal/kg) and lean tissue and water (~1,816 kcal/kg), and {{kcalPerKg}} reflects a typical blend.',
-                { kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG }
-              )}
+              {t('settings.breakdown.adaptiveFormulaExplainer', {
+                defaultValue:
+                  '{{kcalPerUnit}} kcal/{{massUnit}} is how much energy a {{unitName}} of body weight represents, so your weight trend can be converted into calories. Body weight lost or gained is a mix of fat (~{{fatPerUnit}} kcal/{{massUnit}}) and lean tissue and water (~{{leanPerUnit}} kcal/{{massUnit}}), and {{kcalPerUnit}} reflects a typical blend.',
+                kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG,
+                kcalPerUnit: kcalPerTrendUnit,
+                massUnit: trendMassUnit,
+                unit: trendMassUnit,
+                unitName: trendMassUnitName,
+                fatPerKg: FAT_KCAL_PER_KG.toLocaleString(),
+                fatPerUnit: fatPerTrendUnit.toLocaleString(),
+                leanPerKg: LEAN_TISSUE_KCAL_PER_KG.toLocaleString(),
+                leanPerUnit: leanPerTrendUnit.toLocaleString(),
+              })}
             </p>
             {previewResult.insufficientHistory ? (
               <div className="space-y-2 mt-1">
@@ -714,15 +839,86 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                       'diary.calculateExplanation.averageDailyIntake',
                       'Average daily calorie intake:'
                     )}{' '}
-                    {Math.round(
-                      convertEnergy(
-                        adaptiveTdeeData?.avgIntake || 0,
-                        'kcal',
-                        energyUnit
-                      )
-                    )}{' '}
-                    {getEnergyUnitString(energyUnit)}
+                    {displayAdaptiveIntake} {getEnergyUnitString(energyUnit)}
+                    {adaptiveTdeeData?.windowStartDate &&
+                      adaptiveTdeeData?.windowEndDate && (
+                        // The average covers only days that were actually logged,
+                        // not every day in the window — days under 200 kcal are
+                        // skipped rather than counted as zero. Saying so is what
+                        // makes the "under-logging reads high" caveat make sense.
+                        <span className="text-muted-foreground">
+                          {' '}
+                          {t(
+                            'diary.calculateExplanation.intakeWindow',
+                            '(mean of {{logged}} logged days between {{start}} and {{end}}; days under 200 kcal are excluded, not counted as zero)',
+                            {
+                              logged: adaptiveTdeeData?.daysOfData ?? 0,
+                              start: adaptiveTdeeData.windowStartDate,
+                              end: adaptiveTdeeData.windowEndDate,
+                            }
+                          )}
+                        </span>
+                      )}
                   </li>
+                  {typeof adaptiveTdeeData?.weightChangeCalories ===
+                    'number' && (
+                    <li>
+                      {t('diary.calculateExplanation.weightTrendTerm', {
+                        defaultValue:
+                          'Weight trend: {{start}} → {{end}} ({{change}} across all {{days}} days of the window) = {{daily}} {{massUnit}}/day — 7-day averages of your logged weights, not the readings themselves, with missing days filled in between the ones either side',
+                        start: `${toTrendMass(
+                          adaptiveTdeeData.startWeightTrend ?? 0
+                        ).toFixed(1)} ${trendMassUnit}`,
+                        end: `${toTrendMass(
+                          adaptiveTdeeData.endWeightTrend ?? 0
+                        ).toFixed(1)} ${trendMassUnit}`,
+                        change: `${toTrendMass(
+                          adaptiveTdeeData.weightChangeKg ?? 0
+                        ).toFixed(2)} ${trendMassUnit}`,
+                        days: adaptiveTdeeData.daysInWindow ?? 0,
+                        daily: toTrendMass(
+                          adaptiveTdeeData.dailyWeightChangeKg ?? 0
+                        ).toFixed(4),
+                        unit: trendMassUnit,
+                        massUnit: trendMassUnit,
+                      })}
+                    </li>
+                  )}
+                  {typeof adaptiveTdeeData?.weightChangeCalories ===
+                    'number' && (
+                    <li>
+                      {t('diary.calculateExplanation.weightTrendCalories', {
+                        defaultValue:
+                          'Energy from that trend: −({{daily}} {{massUnit}}/day × {{kcalPerUnit}} kcal/{{massUnit}}) ≈ {{value}}',
+                        daily: toTrendMass(
+                          adaptiveTdeeData.dailyWeightChangeKg ?? 0
+                        ).toFixed(4),
+                        kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG,
+                        kcalPerUnit: kcalPerTrendUnit,
+                        unit: trendMassUnit,
+                        massUnit: trendMassUnit,
+                        // Negated on purpose. The server computes
+                        // rawTdee = avgIntake − dailyWeightChange × 6000, so the
+                        // term added to intake is minus the product of the two
+                        // factors printed here. Without the sign the line reads
+                        // '−0.0185 × 6000 = +111', which is the wrong number in
+                        // the one panel built for checking the arithmetic.
+                        // Approximate, deliberately. The intake and the total
+                        // are each rounded on their own, so the difference
+                        // between them can sit a kcal away from what the
+                        // rounded daily rate multiplies out to. The sum line
+                        // below is the one that has to reconcile exactly, and
+                        // it does; claiming '=' here would be the false half.
+                        // Evaluated against the kcal constant so the equation
+                        // reproduces, with the converted figure appended when the
+                        // viewer reads another unit. The energy densities are
+                        // reference values from the literature — restating them as
+                        // 25,104 kJ/kg would make the sum work and the citation
+                        // unrecognisable.
+                        value: adaptiveDeltaText,
+                      })}
+                    </li>
+                  )}
                   <li>
                     {t(
                       'diary.calculateExplanation.calculatedExpenditure',
@@ -736,8 +932,108 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                       )
                     )}{' '}
                     {getEnergyUnitString(energyUnit)}
+                    {typeof adaptiveTdeeData?.weightChangeCalories ===
+                      'number' &&
+                      !adaptiveTdeeData?.wasClamped && (
+                        <span className="text-muted-foreground">
+                          {' '}
+                          {t(
+                            'diary.calculateExplanation.tdeeSum',
+                            '({{intake}} {{sign}} {{delta}})',
+                            {
+                              intake: displayAdaptiveIntake,
+                              sign: displayAdaptiveDelta < 0 ? '−' : '+',
+                              delta: Math.abs(displayAdaptiveDelta),
+                            }
+                          )}
+                        </span>
+                      )}
                   </li>
                 </ul>
+                {typeof adaptiveTdeeData?.clampMin === 'number' &&
+                  typeof adaptiveTdeeData?.clampMax === 'number' &&
+                  !adaptiveTdeeData?.wasClamped && (
+                    // Stated even when it does not bite: the band is set by the
+                    // activity level, and a user whose expenditure is being held
+                    // down has no way to discover that unless the limits are
+                    // visible before they start clipping.
+                    <p className="text-xs text-muted-foreground">
+                      {t(
+                        'diary.calculateExplanation.adaptivePlausibilityBand',
+                        'Plausibility limits from your activity level (×{{multiplier}}): {{min}}–{{max}} {{unit}}. The estimate is inside this range, so it is used as calculated.',
+                        {
+                          multiplier: activityMultiplier.toFixed(3),
+                          min: Math.round(
+                            convertEnergy(
+                              adaptiveTdeeData.clampMin,
+                              'kcal',
+                              energyUnit
+                            )
+                          ),
+                          max: Math.round(
+                            convertEnergy(
+                              adaptiveTdeeData.clampMax,
+                              'kcal',
+                              energyUnit
+                            )
+                          ),
+                          unit: getEnergyUnitString(energyUnit),
+                        }
+                      )}
+                    </p>
+                  )}
+                {adaptiveTdeeData?.wasClamped && (
+                  // Without this the arithmetic above simply would not add up to
+                  // the number shown, which is exactly the "my TDEE moved and I
+                  // cannot see why" confusion this panel exists to prevent.
+                  <p className="text-xs text-amber-600 dark:text-amber-500">
+                    {t(
+                      'diary.calculateExplanation.adaptiveClamped',
+                      'Raw estimate of {{raw}} {{unit}} was capped to {{capped}} {{unit}}, the plausibility limit of ±{{band}} {{unit}} around your BMR-based estimate ({{min}}–{{max}} {{unit}}).',
+                      {
+                        // The band is defined in kcal; printing a bare 500 beside
+                        // converted bounds claimed a range 4x narrower than the one
+                        // shown next to it.
+                        band: Math.round(
+                          convertEnergy(
+                            ADAPTIVE_TDEE_CLAMP_KCAL,
+                            'kcal',
+                            energyUnit
+                          )
+                        ),
+                        raw: Math.round(
+                          convertEnergy(
+                            adaptiveTdeeData?.rawTdee || 0,
+                            'kcal',
+                            energyUnit
+                          )
+                        ),
+                        capped: Math.round(
+                          convertEnergy(
+                            adaptiveTdeeData?.tdee || 0,
+                            'kcal',
+                            energyUnit
+                          )
+                        ),
+                        min: Math.round(
+                          convertEnergy(
+                            adaptiveTdeeData?.clampMin || 0,
+                            'kcal',
+                            energyUnit
+                          )
+                        ),
+                        max: Math.round(
+                          convertEnergy(
+                            adaptiveTdeeData?.clampMax || 0,
+                            'kcal',
+                            energyUnit
+                          )
+                        ),
+                        unit: getEnergyUnitString(energyUnit),
+                      }
+                    )}
+                  </p>
+                )}
               </div>
             )}
           </div>
