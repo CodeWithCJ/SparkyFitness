@@ -1,5 +1,6 @@
 import { apiFetch } from './apiClient';
 import { getTodayDate } from '../../utils/dateUtils';
+
 import type {
   CheckInMeasurement,
   CheckInMeasurementRange,
@@ -304,7 +305,7 @@ export const fetchWaterIntakeLog = async (
   date: string
 ): Promise<WaterIntakeLogEntry[]> => {
   return apiFetch<WaterIntakeLogEntry[]>({
-    endpoint: `/api/v2/measurements/water-intake/${date}/log`,
+    endpoint: `/api/v2/measurements/water-intake/${encodeURIComponent(date)}/log`,
     serviceName: 'Measurements API',
     operation: 'fetch water intake log',
   });
@@ -325,5 +326,18 @@ export const changeWaterIntake = async (params: {
       change_drinks: params.changeDrinks,
       container_id: params.containerId,
     },
+  });
+};
+
+/**
+ * Deletes one logged drink. The server also decrements the day's total, so
+ * callers only need to refresh — no separate total adjustment.
+ */
+export const deleteWaterIntakeLogEntry = async (id: string): Promise<void> => {
+  await apiFetch<unknown>({
+    endpoint: `/api/v2/measurements/water-intake/log/${encodeURIComponent(id)}`,
+    serviceName: 'Measurements API',
+    operation: 'delete water intake log entry',
+    method: 'DELETE',
   });
 };

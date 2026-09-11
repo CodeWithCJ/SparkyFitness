@@ -1,0 +1,14 @@
+{
+  "images": [
+    {
+      "filename": "App-Icon-1024x1024@1x.png",
+      "idiom": "universal",
+      "size": "1024x1024",
+      "platform": "watchos"
+    }
+  ],
+  "info": {
+    "version": 1,
+    "author": "expo"
+  }
+}
