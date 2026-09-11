@@ -151,6 +151,7 @@ export const DailyGoals = ({
         });
       } catch (err) {
         console.error('Failed to reset goal mode to maintain', err);
+        return;
       }
     }
     await saveGoalsService({ date: today, goals: finalGoals, cascade: true });

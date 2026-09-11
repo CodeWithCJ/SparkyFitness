@@ -493,6 +493,7 @@ const EditGoalsForToday = ({ selectedDate }: EditGoalsProps) => {
         });
       } catch (err) {
         console.error('Failed to reset goal mode to maintain', err);
+        return;
       }
     }
 
