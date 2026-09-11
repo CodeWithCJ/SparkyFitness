@@ -26,9 +26,15 @@ vi.mock('../security/encryption.js', () => ({
 
 const USER_ID = 'user-1';
 
+// A well-formed, unexpired state. The claim is mocked at the pg layer, so this
+// only has to satisfy the grammar and TTL check in utils/oauthState.ts.
+const validState = () => `${'a'.repeat(64)}.${Date.now()}`;
+
 // The provider row both flows read before talking to Withings. Values are
 // irrelevant because decrypt is stubbed; only the row's presence matters.
 const PROVIDER_ROW = {
+  id: 'provider-row-1',
+  user_id: USER_ID,
   encrypted_app_id: 'a',
   app_id_iv: 'b',
   app_id_tag: 'c',
@@ -147,7 +153,7 @@ describe('Withings token response validation', () => {
 
     await expect(
       exchangeCodeForTokens(
-        USER_ID,
+        validState(),
         'code',
         'https://app.test/withings/callback'
       )
@@ -194,7 +200,7 @@ describe('Withings token response validation', () => {
     });
 
     await exchangeCodeForTokens(
-      USER_ID,
+      validState(),
       'auth-code',
       'https://app.test/withings/callback'
     );
@@ -213,5 +219,93 @@ describe('Withings token response validation', () => {
     expect(config?.headers?.['Content-Type']).toBe(
       'application/x-www-form-urlencoded'
     );
+  });
+});
+
+describe('Withings OAuth state claim', () => {
+  const okTokenResponse = {
+    data: {
+      status: 0,
+      body: {
+        access_token: 'at',
+        refresh_token: 'rt',
+        expires_in: 3600,
+        scope: 'user.metrics',
+        userid: 'other-withings-user',
+      },
+    },
+  };
+
+  it('derives the write target from the claimed row, not from any argument', async () => {
+    const client = mockClient();
+    vi.mocked(axios.post).mockResolvedValue(okTokenResponse);
+
+    await exchangeCodeForTokens(
+      validState(),
+      'auth-code',
+      'https://app.test/withings/callback'
+    );
+
+    const claimSql = client.query.mock.calls[0][0] as string;
+    expect(claimSql).toContain('SET oauth_state = NULL');
+    expect(client.query.mock.calls[0][1][1]).toBe('withings');
+
+    const [updateSql, updateValues] = client.query.mock.calls[1];
+    // Keyed on the claimed row's primary key, never on a user id.
+    expect(updateSql).toContain('WHERE id = $10');
+    expect(updateSql).not.toContain('user_id = $10');
+    expect(updateValues[9]).toBe('provider-row-1');
+  });
+
+  it('aborts a replayed state before contacting Withings', async () => {
+    const client = mockClient();
+    vi.mocked(axios.post).mockResolvedValue(okTokenResponse);
+    const state = validState();
+
+    await exchangeCodeForTokens(
+      state,
+      'auth-code',
+      'https://app.test/withings/callback'
+    );
+    expect(axios.post).toHaveBeenCalledTimes(1);
+
+    // The second claim finds nothing: the first one already cleared the nonce.
+    client.query.mockResolvedValueOnce({ rows: [], rowCount: 0 });
+    await expect(
+      exchangeCodeForTokens(
+        state,
+        'auth-code',
+        'https://app.test/withings/callback'
+      )
+    ).rejects.toMatchObject({ reason: 'unknown' });
+
+    // No second token request was made for the replayed code.
+    expect(axios.post).toHaveBeenCalledTimes(1);
+  });
+
+  it('never writes token material to the logs', async () => {
+    mockClient();
+    vi.mocked(encrypt).mockResolvedValue({
+      encryptedText: 'ENC-ACCESS-SECRET',
+      iv: 'IV-SECRET',
+      tag: 'TAG-SECRET',
+    });
+    vi.mocked(axios.post).mockResolvedValue(okTokenResponse);
+
+    await exchangeCodeForTokens(
+      validState(),
+      'auth-code',
+      'https://app.test/withings/callback'
+    );
+
+    const logged = vi
+      .mocked(log)
+      .mock.calls.flat()
+      .map((arg) => (typeof arg === 'string' ? arg : JSON.stringify(arg)))
+      .join(' ');
+
+    expect(logged).not.toContain('ENC-ACCESS-SECRET');
+    expect(logged).not.toContain('IV-SECRET');
+    expect(logged).not.toContain('TAG-SECRET');
   });
 });

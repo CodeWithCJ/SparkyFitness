@@ -91,3 +91,17 @@ describe('integration routers reject switched-context delegates lacking diary ac
     });
   }
 });
+
+// Account linking is self-only, so it must fail for a delegate even when the
+// diary permission gate would allow the request. This is the property that
+// keeps an owner's OAuth client id out of a read-only delegate's hands.
+describe('integration routers refuse delegated account linking', () => {
+  for (const [mount, router] of cases) {
+    it(`${mount} GET /authorize returns 403 for a switched delegate even when permission is granted`, async () => {
+      permissionState.allow = true;
+      const app = appWith(mount, router);
+      const res = await request(app).get(`${mount}/authorize`);
+      expect(res.statusCode).toBe(403);
+    });
+  }
+});

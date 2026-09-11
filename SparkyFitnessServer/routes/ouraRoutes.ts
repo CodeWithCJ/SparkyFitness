@@ -2,6 +2,7 @@ import express from 'express';
 import ouraIntegrationService from '../integrations/oura/ouraService.js';
 import ouraService from '../services/ouraService.js';
 import { log } from '../config/logging.js';
+import requireSelfActor from '../middleware/requireSelfMiddleware.js';
 import authMiddleware from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import { CallbackBodySchema, SyncBodySchema } from '../schemas/ouraSchemas.js';
@@ -21,7 +22,9 @@ const router = express.Router();
 router.get(
   '/authorize',
   authMiddleware.authenticate,
-  checkPermissionMiddleware('diary'),
+  // Self-only: the diary gate resolves to diary_read on GET, which would expose
+  // the owner's OAuth client id to a read-only delegate.
+  requireSelfActor,
   async (req, res) => {
     try {
       const userId = req.userId;
