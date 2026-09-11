@@ -24,6 +24,11 @@ interface DashboardStatsView {
   stepCalories: number;
   bmr: number;
   unit: string;
+  calorieGoalType?: {
+    goalType: string;
+    targetMin?: number | null;
+    targetMax?: number | null;
+  };
 }
 
 export function buildDashboardTools(userId: string, tz: string) {
@@ -55,15 +60,57 @@ export function buildDashboardTools(userId: string, tz: string) {
                 date
               )) as unknown as DashboardStatsView;
               const unit = stats.unit;
+              const goalTypeInfo = stats.calorieGoalType;
+              let goalLine = `- Goal: ${stats.goal} ${unit}`;
+              let remainingLine = `- Remaining: ${stats.remaining} ${unit}`;
+              const extraLines: string[] = [];
+
+              if (
+                goalTypeInfo?.goalType === 'target' &&
+                typeof goalTypeInfo.targetMin === 'number' &&
+                typeof goalTypeInfo.targetMax === 'number'
+              ) {
+                goalLine = `- Goal: Target Range ${goalTypeInfo.targetMin}–${goalTypeInfo.targetMax} ${unit} (Baseline: ${stats.goal} ${unit})`;
+                const inRange =
+                  stats.eaten >= goalTypeInfo.targetMin &&
+                  stats.eaten <= goalTypeInfo.targetMax;
+                const remainingToMax = Math.max(
+                  0,
+                  goalTypeInfo.targetMax - stats.eaten
+                );
+                remainingLine = `- Remaining: ${remainingToMax} ${unit} before reaching upper target limit (${goalTypeInfo.targetMax} ${unit})`;
+                extraLines.push(
+                  `- Target Status: ${
+                    inRange
+                      ? `Within target range (${goalTypeInfo.targetMin}–${goalTypeInfo.targetMax} ${unit})`
+                      : stats.eaten > goalTypeInfo.targetMax
+                        ? `${stats.eaten - goalTypeInfo.targetMax} ${unit} above upper target limit`
+                        : `${goalTypeInfo.targetMin - stats.eaten} ${unit} below lower target limit`
+                  }`
+                );
+              } else if (goalTypeInfo?.goalType === 'minimum') {
+                goalLine = `- Goal: Minimum Floor ${stats.goal} ${unit}`;
+                extraLines.push(
+                  `- Target Status: ${
+                    stats.eaten >= stats.goal
+                      ? `Reached minimum floor (+${stats.eaten - stats.goal} ${unit})`
+                      : `${stats.goal - stats.eaten} ${unit} needed to reach minimum floor`
+                  }`
+                );
+              } else if (goalTypeInfo?.goalType === 'maximum') {
+                goalLine = `- Goal: Maximum Limit ${stats.goal} ${unit}`;
+              }
+
               return [
                 `# Daily Summary (${date})`,
                 '',
                 `- Eaten: ${stats.eaten} ${unit}`,
                 `- Burned: ${stats.burned} ${unit}`,
-                `- Remaining: ${stats.remaining} ${unit}`,
-                `- Goal: ${stats.goal} ${unit}`,
+                remainingLine,
+                goalLine,
                 `- Net: ${stats.net} ${unit}`,
                 `- Progress: ${stats.progress}%`,
+                ...extraLines,
                 `- Steps: ${stats.steps} (${stats.stepCalories} ${unit})`,
                 `- BMR: ${stats.bmr} ${unit}`,
               ].join('\n');

@@ -4,6 +4,7 @@ import exerciseEntryRepository from '../models/exerciseEntry.js';
 import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
+import nutrientGoalPreferenceService from './nutrientGoalPreferenceService.js';
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import { log } from '../config/logging.js';
 import { resolveBackgroundStepCalories } from '@workspace/shared';
@@ -35,6 +36,7 @@ async function getDashboardStats(
       exerciseSplits,
       userProfile,
       userPreferences,
+      effectiveGoalTypes,
       measurements,
       checkInMeasurements,
       latestWeightHeight,
@@ -61,6 +63,7 @@ async function getDashboardStats(
       ),
       userRepository.getUserProfile(userId),
       preferenceRepository.getUserPreferences(userId),
+      nutrientGoalPreferenceService.getEffectiveGoalTypes(userId),
       includeCheckin
         ? measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(
             userId,
@@ -137,6 +140,8 @@ async function getDashboardStats(
       ...deviceProjectionSnapshot,
     });
 
+    const calorieGoalType = effectiveGoalTypes?.['calories'];
+
     return {
       eaten: balance.eaten,
       burned: balance.burned,
@@ -148,6 +153,13 @@ async function getDashboardStats(
       stepCalories,
       bmr: balance.bmr,
       unit: 'kcal',
+      calorieGoalType: calorieGoalType
+        ? {
+            goalType: calorieGoalType.goalType,
+            targetMin: calorieGoalType.targetMin,
+            targetMax: calorieGoalType.targetMax,
+          }
+        : undefined,
     };
   } catch (error) {
     log(

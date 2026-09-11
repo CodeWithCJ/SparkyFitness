@@ -45,6 +45,12 @@ vi.mock('../models/genericHealthRepository.js', () => ({
   getHealthConnectTotalCaloriesByDateRange: vi.fn(),
 }));
 
+vi.mock('../services/nutrientGoalPreferenceService.js', () => ({
+  default: {
+    getEffectiveGoalTypes: vi.fn().mockResolvedValue({}),
+  },
+}));
+
 vi.mock('../services/bmrService.js', () => ({
   default: {
     calculateBmr: vi.fn().mockReturnValue(1800),

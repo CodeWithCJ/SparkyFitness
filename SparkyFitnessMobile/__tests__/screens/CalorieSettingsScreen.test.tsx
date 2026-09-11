@@ -122,6 +122,20 @@ describe('CalorieSettingsScreen', () => {
     expect(mockMutate).toHaveBeenCalledWith({ goal_mode: 'recomp' });
   });
 
+  it('offers and saves Goal Mode calculation method on Android', () => {
+    const { getByText } = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
+
+    expect(getByText('Adaptive')).toBeTruthy();
+    expect(getByText('Manual')).toBeTruthy();
+
+    fireEvent.press(getByText('Adaptive'));
+    expect(mockMutate).toHaveBeenCalledWith({
+      goal_mode_calculation_method: 'adaptive',
+    });
+  });
+
   it('saves the measured-BMR opt-in against the shared preference', () => {
     // Same `use_external_bmr` column the web Calculation Settings writes, so the
     // two clients stay in step without any sync of their own.

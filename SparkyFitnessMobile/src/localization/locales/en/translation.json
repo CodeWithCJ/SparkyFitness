@@ -869,6 +869,9 @@
       "leanBulk": "Lean Bulk (+10%)",
       "bulk": "Bulk (+20%)",
       "manual": "Manual (Custom %)",
+      "calculationMethod": "Calculation Method",
+      "methodAdaptive": "Adaptive",
+      "methodManual": "Manual",
       "customPercentage": "Custom percentage",
       "customPercentageDescription": "Positive adds calories; negative creates a deficit. Limited to ±40%."
     },

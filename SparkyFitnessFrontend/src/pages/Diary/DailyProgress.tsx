@@ -202,6 +202,42 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     ),
   };
 
+  const calorieGoalPref = goalTypePreferences?.['calories'];
+  const isTargetBand =
+    calorieGoalPref?.goalType === 'target' &&
+    calorieGoalPref.targetMin !== undefined &&
+    calorieGoalPref.targetMin !== null &&
+    calorieGoalPref.targetMax !== undefined &&
+    calorieGoalPref.targetMax !== null;
+
+  const targetMinConverted =
+    isTargetBand && calorieGoalPref?.targetMin != null
+      ? Math.round(convertEnergy(calorieGoalPref.targetMin, 'kcal', energyUnit))
+      : undefined;
+
+  const targetMaxConverted =
+    isTargetBand && calorieGoalPref?.targetMax != null
+      ? Math.round(convertEnergy(calorieGoalPref.targetMax, 'kcal', energyUnit))
+      : undefined;
+
+  // When a calorie target range is set, the upper bound (targetMax) serves as the budget ceiling.
+  const effectiveTargetGoal = isTargetBand ? targetMaxConverted! : display.goal;
+  const exerciseBonus = Math.max(
+    0,
+    display.remaining - (display.goal - display.eaten)
+  );
+  const effectiveRemaining = isTargetBand
+    ? Math.round(effectiveTargetGoal - display.eaten + exerciseBonus)
+    : display.remaining;
+  const effectiveProgress =
+    isTargetBand && effectiveTargetGoal > 0
+      ? Math.max(
+          0,
+          ((effectiveTargetGoal - effectiveRemaining) / effectiveTargetGoal) *
+            100
+        )
+      : calorieProgress;
+
   const displayWeight = weightData?.weight || 70;
   const displayHeight = heightData?.height || 170;
   const displayBodyFat = bodyFatData?.body_fat_percentage ?? 0;
@@ -321,8 +357,8 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
         <div className="space-y-4">
           {/* Energy Circle */}
           <EnergyCircle
-            remaining={display.remaining}
-            progress={calorieProgress}
+            remaining={effectiveRemaining}
+            progress={effectiveProgress}
             unit={energyUnit}
             targetBand={
               goalTypePreferences?.['calories']?.goalType === 'target' &&
@@ -459,7 +495,9 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
             <div className="space-y-1">
               <div className="flex items-center justify-center text-lg font-bold dark:text-slate-400 text-gray-900">
                 <Flag className="w-4 h-4 mr-1" />
-                {display.goal}
+                {isTargetBand
+                  ? `${targetMinConverted}–${targetMaxConverted}`
+                  : display.goal}
               </div>
               <div className="text-xs dark:text-slate-400 text-gray-500">
                 {getEnergyUnitString(energyUnit)}{' '}
@@ -748,9 +786,9 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
               <span>
                 {t('exercise.dailyProgress.dailyProgress', 'Daily Progress')}
               </span>
-              <span>{Math.round(calorieProgress)}%</span>
+              <span>{Math.round(effectiveProgress)}%</span>
             </div>
-            <Progress value={calorieProgress} className="h-2" />
+            <Progress value={effectiveProgress} className="h-2" />
           </div>
 
           {/* Calorie Math Breakdown Dropdown */}

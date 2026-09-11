@@ -449,7 +449,12 @@ const EditGoalsForm = ({
 const EditGoalsForToday = ({ selectedDate }: EditGoalsProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { formatDate } = usePreferences();
+  const {
+    formatDate,
+    goalMode,
+    goalModeCalculationMethod,
+    saveAllPreferences,
+  } = usePreferences();
   const [open, setOpen] = useState(false);
 
   const { data: serverGoals, isLoading } = useDailyGoals(selectedDate);
@@ -478,6 +483,17 @@ const EditGoalsForToday = ({ selectedDate }: EditGoalsProps) => {
       finalGoals.fat = Math.round(
         (adjustedCal * (finalGoals.fat_percentage || 0)) / 100 / 9
       );
+    }
+
+    if (goalModeCalculationMethod === 'adaptive' || goalMode !== 'maintain') {
+      try {
+        await saveAllPreferences({
+          goalMode: 'maintain',
+          goalModeCalculationMethod: 'manual',
+        });
+      } catch (err) {
+        console.error('Failed to reset goal mode to maintain', err);
+      }
     }
 
     try {
