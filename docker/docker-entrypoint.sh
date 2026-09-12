@@ -23,10 +23,17 @@ mkdir -p /var/run/nginx \
      /var/cache/nginx/scgi \
      /etc/nginx/conf.d 2>/dev/null || true
 
+# nginx.conf references ${NGINX_RATE_LIMIT} directly, and envsubst replaces an
+# unset or empty variable with an empty string -- which would render
+# "rate=;" and make nginx fail to start. Every supported deployment path
+# (Dockerfile ENV, compose, Helm) already supplies a default, so this only
+# guards someone passing the variable through explicitly empty.
+export NGINX_RATE_LIMIT="${NGINX_RATE_LIMIT:-5r/s}"
+
 echo "Starting SparkyFitness Frontend as ${NGINX_PERMISSION_MODE} with environment variables:"
 echo "  SPARKY_FITNESS_SERVER_HOST=${SPARKY_FITNESS_SERVER_HOST}"
 echo "  SPARKY_FITNESS_SERVER_PORT=${SPARKY_FITNESS_SERVER_PORT}"
-echo "  NGINX_RATE_LIMIT=${NGINX_RATE_LIMIT:-5r/s}"
+echo "  NGINX_RATE_LIMIT=${NGINX_RATE_LIMIT}"
 echo "  NGINX_LISTEN_PORT=${NGINX_LISTEN_PORT}"
 echo "  NGINX_ACCESS_LOG=${NGINX_ACCESS_LOG}"
 echo "  NGINX_ERROR_LOG=${NGINX_ERROR_LOG}"

@@ -104,8 +104,11 @@ export const useAuthSettings = () => {
   return useQuery({
     queryKey: authKeys.settings,
     queryFn: getLoginSettings,
-    staleTime: 0,
-    refetchOnMount: 'always',
+    // Login settings change only when the operator edits server config, so a
+    // short stale window is plenty. `staleTime: 0` with `refetchOnMount:
+    // 'always'` handed the Auth page a new object identity on every refetch,
+    // re-running the effect that arms the 800ms OIDC auto-redirect timer.
+    staleTime: 1000 * 60 * 5,
   });
 };
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -135,67 +135,99 @@ const Auth = () => {
   ]);
 
   // Passkey Conditional UI (Autofill)
+  //
+  // `loggingLevel` is deliberately NOT a dependency. It arrives from
+  // PreferencesContext after mount, and including it re-ran this effect and
+  // started a *second* concurrent conditional `navigator.credentials.get()`,
+  // which aborts the first -- the AbortError swallowed below. Read it through a
+  // ref so a preferences load cannot disturb an in-flight request.
+  const loggingLevelRef = useRef(loggingLevel);
+  loggingLevelRef.current = loggingLevel;
+  const passkeyAutofillStartedRef = useRef(false);
+
   useEffect(() => {
+    // Only attempt if not already logged in, and only ever once per mount.
+    if (authUser || authLoading || passkeyAutofillStartedRef.current) {
+      return;
+    }
+
     const initPasskeyAutofill = async () => {
       if (
-        window.PublicKeyCredential &&
-        PublicKeyCredential.isConditionalMediationAvailable
+        !window.PublicKeyCredential ||
+        !PublicKeyCredential.isConditionalMediationAvailable
       ) {
-        const isAvailable =
-          await PublicKeyCredential.isConditionalMediationAvailable();
-        if (isAvailable) {
-          debug(
-            loggingLevel,
-            'Auth: Passkey Conditional UI available. Starting autofill prompt.'
-          );
-          try {
-            await authClient.signIn.passkey({
-              autoFill: true,
-              fetchOptions: {
-                onSuccess() {
-                  info(loggingLevel, 'Auth: Passkey autofill successful.');
-                  navigate('/');
-                },
-                onError(ctx: { error: { message?: string; name?: string } }) {
-                  // Silently ignore "Authentication was not completed" or AbortError
-                  if (
-                    ctx.error.message?.includes(
-                      'Authentication was not completed'
-                    ) ||
-                    ctx.error.name === 'AbortError'
-                  ) {
-                    debug(
-                      loggingLevel,
-                      'Auth: Passkey autofill dismissed or interrupted.'
-                    );
-                    return;
-                  }
-                  error(
-                    loggingLevel,
-                    'Auth: Passkey autofill error:',
-                    ctx.error
-                  );
-                },
-              },
-            });
-          } catch (err: unknown) {
-            if (err instanceof Error && err.name === 'AbortError') {
-              debug(loggingLevel, 'Auth: Passkey autofill aborted.');
-            } else {
-              debug(
-                loggingLevel,
-                'Auth: Passkey autofill silently ignored or failed.'
+        return;
+      }
+      const isAvailable =
+        await PublicKeyCredential.isConditionalMediationAvailable();
+      if (!isAvailable) {
+        return;
+      }
+
+      // Conditional mediation throws if no input advertising `webauthn` as the
+      // last autocomplete token is in the DOM when it is called. The sign-in
+      // form carries one, but it is not mounted on every branch of this page
+      // (the MFA challenge replaces it), so check rather than throw.
+      if (!document.querySelector('input[autocomplete$="webauthn"]')) {
+        debug(
+          loggingLevelRef.current,
+          'Auth: No webauthn autocomplete input mounted; skipping passkey autofill.'
+        );
+        return;
+      }
+
+      debug(
+        loggingLevelRef.current,
+        'Auth: Passkey Conditional UI available. Starting autofill prompt.'
+      );
+      passkeyAutofillStartedRef.current = true;
+      try {
+        await authClient.signIn.passkey({
+          autoFill: true,
+          fetchOptions: {
+            onSuccess() {
+              info(
+                loggingLevelRef.current,
+                'Auth: Passkey autofill successful.'
               );
-            }
-          }
+              navigate('/');
+            },
+            onError(ctx: { error: { message?: string; name?: string } }) {
+              // Silently ignore "Authentication was not completed" or AbortError
+              if (
+                ctx.error.message?.includes(
+                  'Authentication was not completed'
+                ) ||
+                ctx.error.name === 'AbortError'
+              ) {
+                debug(
+                  loggingLevelRef.current,
+                  'Auth: Passkey autofill dismissed or interrupted.'
+                );
+                return;
+              }
+              error(
+                loggingLevelRef.current,
+                'Auth: Passkey autofill error:',
+                ctx.error
+              );
+            },
+          },
+        });
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          debug(loggingLevelRef.current, 'Auth: Passkey autofill aborted.');
+        } else {
+          debug(
+            loggingLevelRef.current,
+            'Auth: Passkey autofill silently ignored or failed.'
+          );
         }
       }
     };
-    // Only attempt if not already logged in
-    if (!authUser && !authLoading) {
-      initPasskeyAutofill();
-    }
-  }, [authUser, authLoading, loggingLevel, navigate]);
+
+    initPasskeyAutofill();
+  }, [authUser, authLoading, navigate]);
 
   const triggerMfaChallenge = useCallback(
     async (

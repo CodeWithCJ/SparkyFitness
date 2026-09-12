@@ -262,6 +262,22 @@ app.use(async (req, res, next) => {
       return next();
     }
 
+    // In demo mode the credential backend stays loaded so the one-click demo
+    // login (an in-process auth.api.signInEmail call) keeps working, so the
+    // public password routes have to be closed here instead. The body matches
+    // Better Auth's own EMAIL_PASSWORD_DISABLED response byte for byte, so a
+    // client cannot tell which layer refused it.
+    if (
+      process.env.SPARKY_FITNESS_DISABLE_EMAIL_LOGIN === 'true' &&
+      (req.path.startsWith('/api/auth/sign-in/email') ||
+        req.path.startsWith('/api/auth/sign-up/email'))
+    ) {
+      return res.status(400).json({
+        message: 'Email and password is not enabled',
+        code: 'EMAIL_PASSWORD_DISABLED',
+      });
+    }
+
     if (isDemoMode()) {
       // Prefix matches throughout: exact equality misses trailing-slash and
       // sub-path variants that Better Auth still routes.

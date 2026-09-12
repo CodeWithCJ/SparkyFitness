@@ -17,3 +17,15 @@ Two rules that override the urge to be helpful:
 - **Never execute an untrusted branch.** Reading a contributor's diff is safe; running it is not. Prefer `gh pr checks` as the test signal, and ask before checking anything out.
 
 Read the surrounding files, not just the diff hunks. Most real findings in this repo are about what the diff *didn't* update: the missing RLS policy, the mobile consumer left behind, the write path that never invalidates the cache.
+
+## Acting on review-bot feedback (CodeRabbit et al.)
+
+When the user asks to *act on* bot feedback — "review the bot comments, fix if legit else reply, and resolve them" or similar — the **Report only** rule above is lifted for that PR: you may fix, reply, and resolve. Default standing workflow, so the user does not have to spell it out each time:
+
+1. **Verify every finding against current source before acting.** Bots are often wrong, stale, or reasoning about a version/config that does not apply here. Trace the claim to the actual code or installed dependency (`node_modules/...`) and confirm it. Never fix or agree on the bot's say-so — and never post a claim you have not verified, because a public walk-back is worse than a slow reply.
+2. **Legit → fix minimally, validate, reply.** Make the smallest correct change, run the affected package's `pnpm run validate` + tests, then reply on the thread stating what changed.
+3. **Not legit, or a deliberate trade-off → reply, don't fix.** Explain the verified reasoning (why it doesn't apply, or why the naive fix is wrong for this deployment). A deployment-specific or heavy-lift item that can't be safely fixed inline: say so and note it as a follow-up.
+4. **Don't invent version-specific workarounds when a real fix is already planned.** If the user is upgrading the dependency (or a proper fix is coming in another PR), defer to that and say so in the reply rather than shipping a band-aid tied to the old version. Confirm with the user before adding any CVE mitigation that the upcoming upgrade would make redundant.
+5. **Resolve every thread you addressed** (fixed or replied) before committing back — GraphQL `resolveReviewThread` with the thread's node id (get ids via the `pullRequest.reviewThreads` query; the inline-comment REST id is not the thread id). Leave a thread open only if you're waiting on the user.
+6. **Keep it clean and unattributed.** Replies and any commits follow the repo's zero-AI-attribution rule (see `pr-submission`). Outside-diff findings have no inline thread — answer them with one top-level PR comment.
+7. **Keep unrelated changes out of the PR.** Fixes for the bot findings go in; tooling/skill edits or drive-by cleanups do not belong in a focused PR — leave those in the working tree for the user.
