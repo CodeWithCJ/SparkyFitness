@@ -426,7 +426,10 @@ async function getAllUsers(
 async function deleteUser(userId: string) {
   const client = await getSystemClient(); // System client for deleting user (admin operation)
   try {
-    // Delete from "user" (this should trigger cascades for session, account, etc.)
+    await client.query('BEGIN'); // Start transaction for atomicity
+    // Everything the user owns goes with them. Diary entries belonging to other
+    // users survive because the library foreign keys null their pointer instead
+    // of cascading; the entry carries its own snapshot of name and nutrition.
     const result = await client.query(
       'DELETE FROM "user" WHERE id = $1 RETURNING id',
       [userId]

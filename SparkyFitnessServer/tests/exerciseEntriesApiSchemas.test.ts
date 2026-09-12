@@ -464,6 +464,34 @@ describe('Exercise entry API schemas', () => {
       });
       expect(withNull.success).toBe(true);
     });
+
+    // Deleting a library exercise nulls the pointer instead of cascading
+    // (20260912150000_preserve_data_on_user_and_library_deletes.sql), so an
+    // entry that outlived its exercise has to survive the response parse --
+    // the routes parse with this schema before replying, and a throw here
+    // would take out the whole diary for everyone who logged that exercise.
+    it('accepts an entry whose library exercise has been deleted', () => {
+      const orphaned = runSchema('exerciseEntryResponseSchema', {
+        ...baseEntryResponse,
+        exercise_id: null,
+        superset_group: null,
+        exercise_snapshot: {
+          id: null,
+          name: 'Deleted Exercise',
+          category: null,
+          images: null,
+          primary_muscles: null,
+          secondary_muscles: null,
+          equipment: null,
+          instructions: null,
+          force: null,
+          level: null,
+          mechanic: null,
+        },
+      });
+      expect(orphaned.success).toBe(true);
+      expect(orphaned.data.exercise_id).toBeNull();
+    });
   });
 
   describe('set duration (integer seconds)', () => {

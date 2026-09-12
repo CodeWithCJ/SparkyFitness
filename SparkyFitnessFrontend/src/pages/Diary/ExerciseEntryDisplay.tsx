@@ -366,6 +366,10 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
             onClick={() => {
               setExerciseToPlay({
                 ...snapshot!,
+                // The snapshot keeps the instructions after the library
+                // exercise is deleted; the modal only uses the id to detect a
+                // change of subject, so the entry's own id identifies it.
+                id: snapshot!.id ?? exerciseEntry.id,
               });
               setIsPlaybackModalOpen(true);
             }}
@@ -378,19 +382,22 @@ const ExerciseEntryDisplay: React.FC<ExerciseEntryDisplayProps> = ({
           onClick={() => handleEdit(exerciseEntry)}
           colorClass="hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/50"
         />
-        {snapshot?.user_id === currentUserId && (
-          <ActionButton
-            icon={<Settings className="w-3.5 h-3.5" />}
-            label={t(
-              'exerciseCard.editExerciseInDatabase',
-              'Edit Exercise in Database'
-            )}
-            onClick={() =>
-              handleEditExerciseDatabase(exerciseEntry.exercise_id)
-            }
-            colorClass="hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700"
-          />
-        )}
+        {/* Editing the library exercise needs a library exercise to edit. */}
+        {snapshot?.id &&
+          exerciseEntry.exercise_id &&
+          snapshot.user_id === currentUserId && (
+            <ActionButton
+              icon={<Settings className="w-3.5 h-3.5" />}
+              label={t(
+                'exerciseCard.editExerciseInDatabase',
+                'Edit Exercise in Database'
+              )}
+              onClick={() =>
+                handleEditExerciseDatabase(exerciseEntry.exercise_id!)
+              }
+              colorClass="hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700"
+            />
+          )}
         <ActionButton
           icon={<Trash2 className="w-3.5 h-3.5" />}
           label={t('exerciseCard.deleteEntry', 'Delete Entry')}

@@ -403,11 +403,14 @@ export const CaffeineCard = ({ date, userId }: CaffeineCardProps) => {
               {/* A dose whose time was assumed rather than logged is drawn
                   hollow: the payload carries that per dose, and the card used
                   to say so only once, for the whole day. */}
-              {doses.map((dose) => {
+              {doses.map((dose, idx) => {
                 const doseMs = new Date(dose.at).getTime();
                 return (
                   <ReferenceDot
-                    key={`${dose.at}-${dose.mg}`}
+                    // Time plus amount is not unique: the same drink logged
+                    // twice at the same minute collides. Index it, as the dose
+                    // list below already does.
+                    key={`${dose.at}-${idx}`}
                     x={doseMs}
                     y={activeCaffeineAt(doses, doseMs, half_life_hours)}
                     r={4}

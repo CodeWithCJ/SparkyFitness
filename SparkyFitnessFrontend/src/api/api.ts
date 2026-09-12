@@ -13,9 +13,41 @@ interface ApiCallOptions extends RequestInit {
   responseType?: 'json' | 'text' | 'blob'; // Add responseType option
 }
 
-class HttpApiError extends Error {}
+export class HttpApiError extends Error {
+  // Carries the HTTP status and any server-supplied error code so callers --
+  // notably the React Query retry policy -- can tell a client error that will
+  // never succeed on retry from a transient server error that might.
+  readonly status: number;
+  readonly code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = 'HttpApiError';
+    this.status = status;
+    this.code = code;
+  }
+}
 
 export const API_BASE_URL = '/api';
+
+// Requests the server has refused for this session with a DEMO_ code, mapped
+// to the message it gave. Module scope, so it resets on reload; cleared on any
+// sign-in or sign-out so a later non-demo session starts from a clean slate.
+//
+// Keyed on method *and* path. The demo guard blocks `/api/identity` only for
+// mutating methods, so a path-only key would let a refused PUT answer the GET
+// that the same screen depends on -- turning a read-only demo into a broken one.
+// Replaced wholesale rather than cleared, so a request that was already in
+// flight when the session changed writes its verdict into the map nobody reads
+// any more instead of seeding the new session with the old account's refusals.
+let demoRestrictedEndpoints = new Map<string, string>();
+
+const demoRestrictionKey = (method: string, endpoint: string): string =>
+  `${method.toUpperCase()} ${endpoint}`;
+
+export const clearDemoRestrictions = (): void => {
+  demoRestrictedEndpoints = new Map<string, string>();
+};
 //export const API_BASE_URL = 'http://192.168.1.111:3010';
 
 // A single-use guard so a reload triggered by gateway interception (see
@@ -88,6 +120,22 @@ export async function apiCall<T = any>(
   const isAbsoluteUrl = /^https?:\/\//.test(endpoint);
   const isExternal = options?.externalApi || isAbsoluteUrl;
   let url = isExternal ? endpoint : `${API_BASE_URL}${endpoint}`;
+
+  const method = (options?.method || 'GET').toUpperCase();
+  // Captured for the lifetime of this request; see demoRestrictedEndpoints.
+  const restrictionCache = demoRestrictedEndpoints;
+
+  // A demo restriction is a standing policy for the whole session, not a
+  // transient failure, so asking again can only ever get the same answer.
+  // Several blocked endpoints are polled by components that mount on every
+  // screen, which turned a permanent "no" into thousands of requests a minute
+  // against the server. Answer from here instead of going back to the network.
+  const demoRestriction = restrictionCache.get(
+    demoRestrictionKey(method, endpoint)
+  );
+  if (demoRestriction !== undefined) {
+    throw new HttpApiError(demoRestriction, 403, 'DEMO_ACTION_RESTRICTED');
+  }
 
   if (options?.params) {
     // Filter out undefined values to prevent them from becoming the string "undefined" in URLSearchParams
@@ -224,18 +272,43 @@ export async function apiCall<T = any>(
         );
         return null as unknown as T; // Return null for 404 with suppression
       } else {
-        toast({
-          title: 'API Error',
-          description: errorMessage,
-          variant: 'destructive',
-        });
+        const errorCode = errorData.code ? String(errorData.code) : undefined;
+        const isDemoRestriction = errorCode?.startsWith('DEMO_') ?? false;
+        // DEMO_UPLOAD_RESTRICTED is deliberately not memoized: the guard
+        // decides it from the request's content type, not its route, so the
+        // same method and path can legitimately be allowed with a JSON body.
+        // Uploads are click-driven anyway, so there is no polling flood to
+        // head off here.
+        if (
+          isDemoRestriction &&
+          errorCode !== 'DEMO_UPLOAD_RESTRICTED' &&
+          !isExternal
+        ) {
+          restrictionCache.set(
+            demoRestrictionKey(method, endpoint),
+            errorMessage
+          );
+        }
+        // Demo-account restrictions are a standing policy, not an incident: the
+        // blocked endpoints are polled by components that mount on every page,
+        // so toasting each rejection buries the screen in identical popups and
+        // makes real errors impossible to spot. Only reads are silenced --
+        // a write is something the visitor just clicked, and swallowing that
+        // leaves them staring at a button that appears to do nothing.
+        if (!isDemoRestriction || method !== 'GET') {
+          toast({
+            title: 'API Error',
+            description: errorMessage,
+            variant: 'destructive',
+          });
+        }
         if (
           errorMessage.includes('Authentication: Invalid or expired token.')
         ) {
           localStorage.removeItem('token');
           // window.location.reload(); // Removed aggressive reload, causing loops
         }
-        throw new HttpApiError(errorMessage);
+        throw new HttpApiError(errorMessage, response.status, errorCode);
       }
     }
 

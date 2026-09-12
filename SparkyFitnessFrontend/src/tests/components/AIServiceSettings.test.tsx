@@ -130,7 +130,7 @@ jest.mock('@/hooks/use-toast', () => ({
 }));
 
 // Mock useAuth
-const mockUser = { id: 'user1', email: 'test@example.com' };
+const mockUser = { id: 'user1', email: 'test@example.com', isDemo: false };
 jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: mockUser }),
 }));

@@ -2,7 +2,9 @@ import { WorkoutPresetSet } from './workout';
 
 export interface ExerciseEntry {
   id: string;
-  exercise_id: string;
+  // Null once the underlying library exercise is deleted; the entry keeps its
+  // own snapshot (name, calories) and still renders.
+  exercise_id: string | null;
   duration_minutes: number;
   calories_burned: number;
   entry_date: string;

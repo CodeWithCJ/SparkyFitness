@@ -140,8 +140,14 @@ router.delete('/users/:userId', async (req, res, next) => {
     }
     const success = await userRepository.deleteUser(userId);
     if (success) {
-      await logAdminAction(req.userId, userId, 'USER_DELETED', {
+      // target_user_id is deliberately null: the row it would point at no
+      // longer exists, and a foreign key cannot reference a deleted user. The
+      // identity is preserved in details instead, so the entry still says who
+      // was removed. Logging after the delete (not before) keeps a failed
+      // deletion from leaving a log entry claiming it succeeded.
+      await logAdminAction(req.userId, null, 'USER_DELETED', {
         deletedUserId: userId,
+        deletedUserEmail: user.email,
       });
       res.status(200).json({ message: 'User deleted successfully.' });
     } else {
