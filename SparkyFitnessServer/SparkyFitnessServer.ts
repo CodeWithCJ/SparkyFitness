@@ -289,15 +289,6 @@ app.use(async (req, res, next) => {
         '/api/auth/change-email',
         '/api/auth/update-user',
         '/api/auth/delete-user',
-        // SSRF stopgap for @better-auth/sso < 1.6.11 (CVE-2026-53513): the
-        // plugin's /sso/register and /sso/update-provider accept
-        // attacker-controlled OIDC endpoint URLs and fetch them server-side,
-        // reachable by any session with no role gate. Anyone can obtain a
-        // session here via the one-click demo login, so block the whole SSO
-        // management surface for the sandbox until better-auth is upgraded.
-        // The register/update writes are the exploit; listing is closed too
-        // since the sandbox never provisions providers anyway.
-        '/api/auth/sso',
       ];
       const isRestrictedAuthPath = restrictedAuthPrefixes.some(
         (prefix) => req.path === prefix || req.path.startsWith(prefix + '/')
