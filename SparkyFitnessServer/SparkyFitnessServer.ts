@@ -268,7 +268,6 @@ app.use(async (req, res, next) => {
       const restrictedAuthPrefixes = [
         '/api/auth/two-factor',
         '/api/auth/passkey',
-        '/api/auth/api-key', // minting a key would outlive the daily reset
         '/api/auth/change-password',
         '/api/auth/set-password',
         '/api/auth/change-email',
@@ -278,6 +277,16 @@ app.use(async (req, res, next) => {
       const isRestrictedAuthPath = restrictedAuthPrefixes.some(
         (prefix) => req.path === prefix || req.path.startsWith(prefix + '/')
       );
+
+      // API keys are read-only for the sandbox rather than invisible: minting
+      // one would outlive the daily reset, but listing the account's own keys
+      // gives away nothing (Better Auth returns the key itself only at
+      // creation) and blocking the read just makes the settings screen throw.
+      const isApiKeyPath =
+        req.path === '/api/auth/api-key' ||
+        req.path.startsWith('/api/auth/api-key/');
+      const isRestrictedApiKeyPath =
+        isApiKeyPath && req.method.toUpperCase() !== 'GET';
 
       // Password-recovery endpoints are unauthenticated, so there is no session
       // to match on — identify the account from the request itself, or the demo
@@ -316,7 +325,7 @@ app.use(async (req, res, next) => {
         });
       }
 
-      if (isRestrictedAuthPath) {
+      if (isRestrictedAuthPath || isRestrictedApiKeyPath) {
         try {
           const { auth } = authModule;
           const session = await auth.api.getSession({
