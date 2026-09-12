@@ -70,6 +70,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   // so the backstop effect below cannot duplicate the request the sync effect
   // is already making.
   const identityLookupRef = React.useRef<string | null>(null);
+  // The live user and manual-sign-in timestamp, readable from an async callback
+  // that would otherwise close over whatever they were when it started.
+  const currentUserRef = React.useRef<User | null>(null);
+  const lastManualSignInRef = React.useRef(0);
 
   // Only show global loading during initial hydration (isSyncing).
   // Ignoring sessionLoading avoids unmounting components (like Auth/MFA) during background re-fetches.
@@ -202,6 +206,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       });
   }, [user]);
 
+  useEffect(() => {
+    currentUserRef.current = user;
+  }, [user]);
+
   // 2. Cleanup Effect: Handles Logout / Session expiry
   useEffect(() => {
     if (!session && !sessionLoading) {
@@ -209,6 +217,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       const isSticky = now - lastManualSignIn < 2000;
 
       if (user !== null && !isSticky) {
+        // The account this probe is asking about. A sign-in can complete while
+        // it is still in flight, and logging out the account that just arrived
+        // because the previous one turned out to be gone is worse than leaving
+        // a stale user on screen for one more session tick.
+        const probedUserId = user.id;
         // Better Auth's own session fetch bypasses apiCall, so an upstream
         // auth gateway (e.g. Cloudflare Access) intercepting that request can
         // resolve session to null without SparkyFitness ever seeing it. Before
@@ -218,6 +231,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         // trigger a re-auth reload itself rather than resolving here.
         apiCall('/ping')
           .then(() => {
+            if (
+              currentUserRef.current?.id !== probedUserId ||
+              Date.now() - lastManualSignInRef.current < 2000
+            ) {
+              console.log(
+                '[Auth Hook] Session probe finished after the account changed; leaving the current user alone.'
+              );
+              return;
+            }
             console.log('[Auth Hook] No session found, clearing user state.');
             setUser(null);
             identityLookupRef.current = null;
@@ -279,6 +301,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       // Force a fresh identity lookup: this may be a different account than the
       // one the previous lookup answered for.
       identityLookupRef.current = null;
+      lastManualSignInRef.current = Date.now();
       setLastManualSignIn(Date.now());
       setUser({
         id: userId,

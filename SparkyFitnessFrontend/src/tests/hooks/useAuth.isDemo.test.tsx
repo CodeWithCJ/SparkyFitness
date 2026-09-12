@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { fetchIdentityUser } from '@/api/Auth/auth';
+import { apiCall } from '@/api/api';
 
 let sessionState: { data: unknown; isPending: boolean } = {
   data: null,
@@ -28,6 +29,7 @@ jest.mock('@/api/api', () => ({
 }));
 
 const mockFetchIdentityUser = jest.mocked(fetchIdentityUser);
+const mockApiCall = jest.mocked(apiCall);
 
 const renderProvider = () =>
   renderHook(() => useAuth(), { wrapper: AuthProvider });
@@ -35,6 +37,7 @@ const renderProvider = () =>
 describe('AuthProvider demo status resolution', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockApiCall.mockResolvedValue({});
     sessionState = { data: null, isPending: false };
     mockFetchIdentityUser.mockResolvedValue({
       activeUserId: 'u1',
@@ -116,5 +119,67 @@ describe('AuthProvider demo status resolution', () => {
     });
 
     await waitFor(() => expect(result.current.user?.isDemo).toBe(true));
+  });
+});
+
+describe('AuthProvider session cleanup probe', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    sessionState = { data: null, isPending: false };
+    mockFetchIdentityUser.mockResolvedValue({
+      activeUserId: 'u1',
+      activeUserEmail: 'a@example.com',
+      activeUserFullName: 'A',
+      fullName: 'A',
+      isDemo: false,
+    });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  // The probe confirms a vanished session is a real logout rather than a
+  // gateway swallowing the session fetch. It can outlive the account it was
+  // asking about, and logging out whoever signed in meanwhile is worse than
+  // leaving a stale user on screen for one more tick.
+  it('does not log out an account that signed in while the probe was in flight', async () => {
+    let finishProbe: (() => void) | undefined;
+    mockApiCall.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishProbe = () => resolve({});
+        })
+    );
+
+    const { result } = renderProvider();
+
+    act(() => {
+      result.current.signIn('a', 'a', 'a@example.com', 'user', false);
+    });
+    expect(result.current.user?.id).toBe('a');
+
+    // Past the manual sign-in grace window, so the cleanup effect runs.
+    act(() => {
+      jest.advanceTimersByTime(3000);
+    });
+    await act(async () => {
+      result.current.signIn('a', 'a', 'a@example.com', 'user', false);
+      jest.advanceTimersByTime(3000);
+    });
+
+    await waitFor(() => expect(finishProbe).toBeDefined());
+
+    // A different account arrives before the probe answers.
+    act(() => {
+      result.current.signIn('b', 'b', 'b@example.com', 'user', false);
+    });
+
+    await act(async () => {
+      finishProbe!();
+    });
+
+    expect(result.current.user?.id).toBe('b');
   });
 });
