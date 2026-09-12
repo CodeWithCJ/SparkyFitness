@@ -1,4 +1,3 @@
-import { useAuth } from '@/hooks/useAuth';
 import { exerciseSearchKeys } from '@/api/keys/exercises';
 import {
   externalProviderKeys,
@@ -79,23 +78,17 @@ export const useCreateExternalProviderMutation = () => {
 };
 
 export const useExternalProviders = (userId?: string) => {
-  const { user } = useAuth();
   return useQuery({
     queryKey: [...externalProviderKeys.lists(), 'enriched'],
     queryFn: getEnrichedProviders,
-    enabled: !!userId && user?.isDemo === false,
+    enabled: !!userId,
   });
 };
 export const useExternalProvidersQuery = () => {
-  const { user } = useAuth();
   return useQuery({
     queryKey: externalProviderKeys.lists(),
     queryFn: getExternalDataProviders,
     staleTime: 1000 * 60 * 60 * 24,
-    // /api/external-providers is blocked for the demo sandbox server-side.
-    // These hooks are consumed by components that mount on most screens, so
-    // firing a request that can only 403 turns a standing policy into a flood.
-    enabled: user?.isDemo === false,
   });
 };
 export const useUpdateExternalProviderMutation = () => {

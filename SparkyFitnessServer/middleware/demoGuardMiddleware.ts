@@ -124,15 +124,21 @@ const DEMO_BLOCKED_PREFIXES = [
   '/api/admin', // privileged surface (defense in depth behind the role check)
   '/api/integrations', // Garmin/Fitbit/Oura/Strava/Polar/Hevy/Google OAuth binding
   '/api/withings',
-  '/api/external-providers', // provider config accepts operator-supplied base URLs
 ];
 
 /**
  * Namespaces where reads are fine but writes are not. `/api/identity` is the
  * whole account-management cluster: credentials, MFA, passkeys, API keys,
  * family sharing, and the profile row that carries the demo marker.
+ *
+ * `/api/external-providers` is here rather than in the deny list because the
+ * providers a visitor needs in order to *use* the demo -- the free food and
+ * exercise databases that need no key -- are read through it. Creating or
+ * editing one is what accepts an operator-supplied base URL, and that is a
+ * write. The list endpoints already strip `app_key` from everyone and
+ * `app_id` from non-owners, so a read exposes no credential.
  */
-const DEMO_READONLY_PREFIXES = ['/api/identity'];
+const DEMO_READONLY_PREFIXES = ['/api/identity', '/api/external-providers'];
 
 /**
  * Endpoints that ingest a file, image, or bulk document *without* multipart —

@@ -426,7 +426,6 @@ describe('Demo Mode Infrastructure', () => {
       '/api/admin/global-settings',
       '/api/integrations/strava/connect',
       '/api/withings/link',
-      '/api/external-providers',
     ])('blocks %s on any method', (path) => {
       const { res, next } = run(path);
       expect(next).not.toHaveBeenCalled();
@@ -444,6 +443,23 @@ describe('Demo Mode Infrastructure', () => {
       const root = run('/', 'POST', {}, '/mcp');
       expect(root.next).not.toHaveBeenCalled();
       expect(root.res.status).toHaveBeenCalledWith(403);
+    });
+
+    // The sandbox has to be usable, not merely non-destructive: the free food
+    // and exercise databases need no key and cost the operator nothing, so a
+    // visitor must be able to read the provider list in order to search at all.
+    // Creating or editing a provider is where an operator-supplied base URL
+    // enters, and that stays blocked.
+    it('blocks mutations under /api/external-providers but allows reads', () => {
+      const read = run('/api/external-providers', 'GET');
+      expect(read.next).toHaveBeenCalled();
+      expect(read.res.status).not.toHaveBeenCalled();
+
+      for (const method of ['POST', 'PUT', 'PATCH', 'DELETE']) {
+        const write = run('/api/external-providers', method);
+        expect(write.next).not.toHaveBeenCalled();
+        expect(write.res.status).toHaveBeenCalledWith(403);
+      }
     });
 
     it('blocks mutations under /api/identity but allows reads', () => {
