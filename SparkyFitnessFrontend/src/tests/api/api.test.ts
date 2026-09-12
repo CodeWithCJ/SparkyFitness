@@ -187,6 +187,26 @@ describe('apiCall demo restriction handling', () => {
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
+  it('does not let a request in flight across a sign-out seed the next session', async () => {
+    let releaseDemoResponse: (() => void) | undefined;
+    jest.mocked(global.fetch).mockImplementation(() =>
+      releaseDemoResponse
+        ? Promise.resolve(makeResponse({ body: '{"ok":true}' }))
+        : new Promise<Response>((resolve) => {
+            releaseDemoResponse = () => resolve(demoResponse());
+          })
+    );
+
+    const blocked = apiCall('/external-providers');
+    // The session ends while that request is still outstanding.
+    clearDemoRestrictions();
+    releaseDemoResponse!();
+    await expect(blocked).rejects.toThrow('Disabled on the demo account.');
+
+    await expect(apiCall('/external-providers')).resolves.toEqual({ ok: true });
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
   it('silences the toast for a polled read but not for a write the user clicked', async () => {
     jest.mocked(global.fetch).mockResolvedValue(demoResponse());
 

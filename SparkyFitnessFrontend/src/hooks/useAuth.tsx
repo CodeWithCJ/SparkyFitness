@@ -107,15 +107,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       };
 
       //console.log('[Auth Hook] Setting user state from session:', sessionUser.id);
+      // Endpoint refusals are per-account, and not every sign-in route goes
+      // through this hook's signIn (passkey and OIDC just let the session
+      // appear). Drop them whenever the effective account actually changes, so
+      // a regular user can never inherit the demo sandbox's cached "no".
+      if (user?.id !== extUser.id) {
+        clearDemoRestrictions();
+      }
       setUser(sessionUser);
 
       // Fetch Authoritative Data (Active Context)
       // This runs on every session update to ensure we are strictly in sync with the backend.
-      identityLookupRef.current = extUser.id;
+      // Pinned to the account it was issued for: a lookup can settle after the
+      // session has moved on, and answering for the wrong account is worse than
+      // not answering at all.
+      const identityUserId = extUser.id;
+      identityLookupRef.current = identityUserId;
       fetchIdentityUser()
         .then((realUserData) => {
           setUser((prev) => {
-            if (!prev) return prev;
+            if (!prev || prev.id !== identityUserId) return prev;
             if (
               prev.activeUserId === realUserData.activeUserId &&
               prev.fullName === realUserData.fullName &&
@@ -145,7 +156,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           // them for a perfectly ordinary user. The server-side demo guard is
           // the real enforcement; this flag only saves a doomed request.
           setUser((prev) =>
-            prev && prev.isDemo === undefined
+            prev && prev.id === identityUserId && prev.isDemo === undefined
               ? { ...prev, isDemo: false }
               : prev
           );
@@ -210,6 +221,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             console.log('[Auth Hook] No session found, clearing user state.');
             setUser(null);
             identityLookupRef.current = null;
+            clearDemoRestrictions();
             queryClient.clear();
           })
           .catch((err) => {

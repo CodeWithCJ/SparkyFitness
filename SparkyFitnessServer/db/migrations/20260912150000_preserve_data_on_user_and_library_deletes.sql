@@ -28,6 +28,17 @@ BEGIN;
 -- foods/food_variants and reads fe.* for name and nutrition.
 -- ---------------------------------------------------------------------------
 
+-- chk_food_or_meal_id (20251023221501_add_meal_id_to_food_entries.sql) demands
+-- exactly one of food_id/meal_id. Nulling food_id on a food-logged entry leaves
+-- both null, so the check would reject the delete and the foreign key rule below
+-- would never get to preserve anything. Relax it to what it is actually there to
+-- prevent -- an entry claiming to be both a food and a meal -- and let an entry
+-- whose library row is gone stand on its own snapshot.
+ALTER TABLE public.food_entries
+  DROP CONSTRAINT IF EXISTS chk_food_or_meal_id,
+  ADD CONSTRAINT chk_food_or_meal_id
+    CHECK (food_id IS NULL OR meal_id IS NULL);
+
 ALTER TABLE public.food_entries
   DROP CONSTRAINT IF EXISTS fk_food_entries_food_id,
   DROP CONSTRAINT IF EXISTS food_entries_food_id_fkey,

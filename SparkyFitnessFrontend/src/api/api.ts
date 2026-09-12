@@ -37,13 +37,16 @@ export const API_BASE_URL = '/api';
 // Keyed on method *and* path. The demo guard blocks `/api/identity` only for
 // mutating methods, so a path-only key would let a refused PUT answer the GET
 // that the same screen depends on -- turning a read-only demo into a broken one.
-const demoRestrictedEndpoints = new Map<string, string>();
+// Replaced wholesale rather than cleared, so a request that was already in
+// flight when the session changed writes its verdict into the map nobody reads
+// any more instead of seeding the new session with the old account's refusals.
+let demoRestrictedEndpoints = new Map<string, string>();
 
 const demoRestrictionKey = (method: string, endpoint: string): string =>
   `${method.toUpperCase()} ${endpoint}`;
 
 export const clearDemoRestrictions = (): void => {
-  demoRestrictedEndpoints.clear();
+  demoRestrictedEndpoints = new Map<string, string>();
 };
 //export const API_BASE_URL = 'http://192.168.1.111:3010';
 
@@ -119,13 +122,15 @@ export async function apiCall<T = any>(
   let url = isExternal ? endpoint : `${API_BASE_URL}${endpoint}`;
 
   const method = (options?.method || 'GET').toUpperCase();
+  // Captured for the lifetime of this request; see demoRestrictedEndpoints.
+  const restrictionCache = demoRestrictedEndpoints;
 
   // A demo restriction is a standing policy for the whole session, not a
   // transient failure, so asking again can only ever get the same answer.
   // Several blocked endpoints are polled by components that mount on every
   // screen, which turned a permanent "no" into thousands of requests a minute
   // against the server. Answer from here instead of going back to the network.
-  const demoRestriction = demoRestrictedEndpoints.get(
+  const demoRestriction = restrictionCache.get(
     demoRestrictionKey(method, endpoint)
   );
   if (demoRestriction !== undefined) {
@@ -279,7 +284,7 @@ export async function apiCall<T = any>(
           errorCode !== 'DEMO_UPLOAD_RESTRICTED' &&
           !isExternal
         ) {
-          demoRestrictedEndpoints.set(
+          restrictionCache.set(
             demoRestrictionKey(method, endpoint),
             errorMessage
           );

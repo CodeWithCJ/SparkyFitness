@@ -61,6 +61,33 @@ const upload = multer({
  *     responses:
  *       200:
  *         description: The user's profile information.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 authenticatedUserId:
+ *                   type: string
+ *                   format: uuid
+ *                 authenticatedUserEmail:
+ *                   type: string
+ *                 role:
+ *                   type: string
+ *                 activeUserId:
+ *                   type: string
+ *                   format: uuid
+ *                 activeUserEmail:
+ *                   type: string
+ *                 activeUserFullName:
+ *                   type: string
+ *                   nullable: true
+ *                 isDemo:
+ *                   type: boolean
+ *                   description: >
+ *                     True when the authenticated account is the demo sandbox.
+ *                     Clients use it to skip calls the demo guard will refuse.
+ *                     Keyed on the authenticated identity, never the active
+ *                     context, so switching context cannot shed it.
  *       404:
  *         description: User not found.
  */
