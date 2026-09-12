@@ -34,6 +34,12 @@ export const workoutPresetExerciseResponseSchema = z.object({
   category: z.string().nullable(),
   modality: exerciseModalitySchema.optional(),
   superset_group: z.number().int().nullable(),
+  // Progression & Equipment Fields
+  progression_mode: z.enum(["rep_goal", "fixed", "step_load", "manual"]).nullable().optional(),
+  rep_goal: z.number().int().nullable().optional(),
+  increment_type: z.enum(["weight", "reps"]).nullable().optional(),
+  increment_value: z.number().nullable().optional(),
+  equipment_brand: z.string().nullable().optional(),
   sets: z.array(workoutPresetSetResponseSchema),
 });
 
@@ -75,14 +81,37 @@ export const workoutPresetSetRequestSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
-export const workoutPresetExerciseRequestSchema = z.object({
-  /** UUID, or an external source id resolved server-side (free-exercise-db). */
-  exercise_id: z.string().min(1),
-  image_url: z.string().nullable().optional(),
-  sort_order: z.number().int().min(0).optional(),
-  superset_group: z.number().int().nullable().optional(),
-  sets: z.array(workoutPresetSetRequestSchema).optional(),
-});
+export const workoutPresetExerciseRequestSchema = z
+  .object({
+    /** UUID, or an external source id resolved server-side (free-exercise-db). */
+    exercise_id: z.string().min(1),
+    image_url: z.string().nullable().optional(),
+    sort_order: z.number().int().min(0).optional(),
+    superset_group: z.number().int().nullable().optional(),
+    // Progression & Equipment Fields
+    progression_mode: z
+      .enum(["rep_goal", "fixed", "step_load", "manual"])
+      .nullable()
+      .optional(),
+    rep_goal: z.number().int().positive().nullable().optional(),
+    increment_type: z.enum(["weight", "reps"]).nullable().optional(),
+    increment_value: z.number().positive().nullable().optional(),
+    equipment_brand: z.string().nullable().optional(),
+    sets: z.array(workoutPresetSetRequestSchema).optional(),
+  })
+  .superRefine((val, ctx) => {
+    if (
+      val.increment_type === "reps" &&
+      val.increment_value != null &&
+      !Number.isInteger(val.increment_value)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Rep increment must be a whole number integer",
+        path: ["increment_value"],
+      });
+    }
+  });
 
 export const workoutPresetCreateRequestSchema = z.object({
   // Ownership comes from the authenticated request (req.userId), never the

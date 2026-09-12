@@ -360,10 +360,7 @@ function ActiveWorkoutSetRow({
     isLive && set.weight == null && assumed?.weight != null
       ? formatDisplayWeight(assumed.weight, weightUnit)
       : null;
-  const assumedRepsText =
-    isLive && set.reps == null && assumed?.reps != null
-      ? String(assumed.reps)
-      : null;
+
   const assumedDurationText =
     isLive && effectiveDurationSec == null && assumed?.duration != null
       ? String(assumed.duration)
@@ -900,7 +897,9 @@ function ActiveWorkoutSetRow({
           defaultValue: 'Reps',
         })}
         className="w-16"
-        placeholder={isEdit ? '–' : (assumedRepsText ?? '–')}
+        placeholder={
+          isEdit ? '–' : assumed?.reps != null ? String(assumed.reps) : '–'
+        }
         flat
       />
     </View>

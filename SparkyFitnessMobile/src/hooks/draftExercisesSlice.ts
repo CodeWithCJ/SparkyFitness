@@ -26,6 +26,14 @@ export function generateClientId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2);
 }
 
+export type ExerciseProgressionPatch = {
+  progressionMode?: 'rep_goal' | 'fixed' | 'step_load' | 'manual' | null;
+  repGoal?: number | null;
+  incrementType?: 'weight' | 'reps' | null;
+  incrementValue?: number | null;
+  equipmentBrand?: string | null;
+};
+
 export type DraftExercisesAction =
   | {
       type: 'ADD_EXERCISE';
@@ -77,6 +85,11 @@ export type DraftExercisesAction =
       calories: string;
     }
   | { type: 'SET_EXERCISE_NOTES'; exerciseClientId: string; notes: string }
+  | {
+      type: 'SET_EXERCISE_PROGRESSION';
+      exerciseClientId: string;
+      patch: ExerciseProgressionPatch;
+    }
   | { type: 'SUPERSET_WITH'; currentClientId: string; pickedClientId: string }
   | { type: 'UNGROUP_EXERCISE'; clientId: string }
   | { type: 'REORDER_EXERCISES'; fromItemIndex: number; toItemIndex: number };
@@ -96,6 +109,11 @@ export function draftExercisesReducer(
           exerciseCategory: action.exercise.category,
           exerciseModality: action.exercise.modality ?? null,
           images: action.exercise.images ?? [],
+          progressionMode: 'rep_goal',
+          repGoal: null,
+          incrementType: 'weight',
+          incrementValue: 5,
+          equipmentBrand: null,
           sets: [
             {
               clientId: action.setClientId,
@@ -318,6 +336,16 @@ export function draftExercisesReducer(
       );
     }
 
+    case 'SET_EXERCISE_PROGRESSION': {
+      return exercises.map((exercise) => {
+        if (exercise.clientId !== action.exerciseClientId) return exercise;
+        return {
+          ...exercise,
+          ...action.patch,
+        };
+      });
+    }
+
     case 'SUPERSET_WITH':
       return supersetDraftExercises(
         exercises,
@@ -384,6 +412,10 @@ export function useDraftExerciseActions(
   setExerciseRest: (exerciseClientId: string, seconds: number) => void;
   setExerciseCalories: (exerciseClientId: string, calories: string) => void;
   setExerciseNotes: (exerciseClientId: string, notes: string) => void;
+  setExerciseProgression: (
+    exerciseClientId: string,
+    patch: ExerciseProgressionPatch
+  ) => void;
   supersetWith: (currentClientId: string, pickedClientId: string) => void;
   ungroupExercise: (clientId: string) => void;
   reorderExercises: (fromItemIndex: number, toItemIndex: number) => void;
@@ -519,6 +551,17 @@ export function useDraftExerciseActions(
       setExerciseNotes: (exerciseClientId: string, notes: string) => {
         exercisesModifiedRef.current = true;
         dispatch({ type: 'SET_EXERCISE_NOTES', exerciseClientId, notes });
+      },
+      setExerciseProgression: (
+        exerciseClientId: string,
+        patch: ExerciseProgressionPatch
+      ) => {
+        exercisesModifiedRef.current = true;
+        dispatch({
+          type: 'SET_EXERCISE_PROGRESSION',
+          exerciseClientId,
+          patch,
+        });
       },
       supersetWith: (currentClientId: string, pickedClientId: string) => {
         exercisesModifiedRef.current = true;

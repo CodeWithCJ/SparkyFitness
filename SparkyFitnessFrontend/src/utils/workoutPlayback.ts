@@ -7,6 +7,11 @@ import {
 } from '@workspace/shared';
 import type { WorkoutPreset, WorkoutPresetSet } from '@/types/workout';
 
+import {
+  evaluateProgression,
+  type ExerciseProgressionConfig,
+} from '@workspace/shared';
+
 export const DEFAULT_REST_SECONDS = 90;
 export const WORKOUT_PLAYBACK_SET_GRID_CLASSES =
   'grid w-full min-w-[48rem] grid-cols-4 gap-2 sm:grid-cols-[7rem_10rem_5rem_6rem_6rem_6rem] sm:gap-x-6 sm:gap-y-2';
@@ -20,6 +25,22 @@ export interface WorkoutPlaybackRestTimer {
   target_end_timestamp_ms?: number | null;
   target_exercise_index?: number;
   target_set_index?: number;
+}
+export interface WorkoutPlaybackExerciseDraft {
+  exercise_id: string;
+  exercise_name: string;
+  modality?: ExerciseModality;
+  image_url?: string;
+  notes: string | null;
+  started_at?: string | null;
+  ended_at?: string | null;
+  // Progression fields
+  progression_mode?: string | null;
+  rep_goal?: number | null;
+  increment_type?: 'weight' | 'reps' | null;
+  increment_value?: number | null;
+  equipment_brand?: string | null;
+  sets: WorkoutPlaybackSetDraft[];
 }
 
 export interface WorkoutPlaybackSetDraft extends WorkoutPresetSet {
@@ -300,34 +321,50 @@ export function createWorkoutPlaybackDraftFromPreset(
   const createdAt = nowIso();
 
   const exercises: WorkoutPlaybackExerciseDraft[] = preset.exercises.map(
-    (exercise, exerciseIndex) => ({
-      exercise_id: exercise.exercise_id,
-      exercise_name:
-        exercise.exercise_name ||
-        exercise.exercise?.name ||
-        `Exercise ${exerciseIndex + 1}`,
-      image_url: exercise.image_url || exercise.exercise?.images?.[0],
-      modality: resolveExerciseModality(
-        exercise.modality ?? exercise.exercise?.modality,
-        exercise.category ?? exercise.exercise?.category
-      ),
-      notes: null,
-      started_at: null,
-      ended_at: null,
-      sets: exercise.sets.map((set, setIndex) => ({
-        set_number: set.set_number ?? setIndex + 1,
-        set_type: set.set_type ?? 'Working Set',
-        reps: set.reps ?? null,
-        weight: set.weight ?? null,
-        duration: set.duration ?? null,
-        distance: set.distance ?? null,
-        rest_time: set.rest_time ?? DEFAULT_REST_SECONDS,
-        notes: set.notes ?? null,
-        rpe: set.rpe ?? null,
-        completed: false,
-        completed_at: null,
-      })),
-    })
+    (exercise, exerciseIndex) => {
+      const progressionMode = (exercise as any).progression_mode || 'rep_goal';
+
+      return {
+        exercise_id: exercise.exercise_id,
+        exercise_name:
+          exercise.exercise_name ||
+          exercise.exercise?.name ||
+          `Exercise ${exerciseIndex + 1}`,
+        image_url: exercise.image_url || exercise.exercise?.images?.[0],
+        modality: resolveExerciseModality(
+          exercise.modality ?? exercise.exercise?.modality,
+          exercise.category ?? exercise.exercise?.category
+        ),
+        notes: (exercise as any).notes ?? null,
+        started_at: null,
+        ended_at: null,
+        // Preserve progression settings
+        progression_mode: (exercise as any).progression_mode || 'rep_goal',
+        rep_goal: (exercise as any).rep_goal ?? null,
+        increment_type: (exercise as any).increment_type || 'weight',
+        increment_value: (exercise as any).increment_value ?? 2.5,
+        equipment_brand: (exercise as any).equipment_brand ?? null,
+        sets: exercise.sets.map((set, setIndex) => {
+          const initialWeight = set.weight ?? null;
+          const initialReps =
+            progressionMode === 'rep_goal' ? null : (set.reps ?? null);
+
+          return {
+            set_number: set.set_number ?? setIndex + 1,
+            set_type: set.set_type ?? 'Working Set',
+            reps: initialReps,
+            weight: initialWeight,
+            duration: set.duration ?? null,
+            distance: set.distance ?? null,
+            rest_time: set.rest_time ?? DEFAULT_REST_SECONDS,
+            notes: set.notes ?? null,
+            rpe: set.rpe ?? null,
+            completed: false,
+            completed_at: null,
+          };
+        }),
+      };
+    }
   );
 
   const draft: WorkoutPlaybackDraft = {

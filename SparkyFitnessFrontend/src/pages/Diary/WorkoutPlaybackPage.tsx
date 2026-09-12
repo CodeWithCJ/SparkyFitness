@@ -7,6 +7,11 @@ import { Card, CardDescription, CardHeader } from '@/components/ui/card';
 import { useCreatePresetSessionMutation } from '@/hooks/Exercises/useExerciseEntries';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import {
+  evaluateProgression,
+  type ExerciseProgressionConfig,
+  type LastExercisePerformance,
+} from '@workspace/shared';
+import {
   DEFAULT_REST_SECONDS,
   addWorkoutSetToExercise,
   clearWorkoutPlaybackDraftFromStorage,
@@ -139,6 +144,121 @@ const WorkoutPlaybackPage = () => {
 
   const { mutateAsync: createPresetSession, isPending: isSaving } =
     useCreatePresetSessionMutation();
+
+  // Auto-evaluate progression overload for uncompleted exercises on load
+  const progressionCheckedRef = useRef(false);
+  useEffect(() => {
+    if (!draft || progressionCheckedRef.current) return;
+    progressionCheckedRef.current = true;
+
+    const evaluateDraftProgression = async () => {
+      let hasChanges = false;
+      const updatedExercises = await Promise.all(
+        draft.exercises.map(async (exercise) => {
+          if (exercise.sets.some((s) => s.completed)) return exercise;
+
+          try {
+            const response = await fetch(
+              `/api/v2/exercises/${exercise.exercise_id}/stats`,
+              { credentials: 'include' }
+            );
+
+            if (!response.ok) return exercise;
+            const stats = await response.json();
+            const previousSessionSets = stats?.recentSessions?.[0]?.sets;
+
+            if (previousSessionSets && previousSessionSets.length > 0) {
+              const rawKg = previousSessionSets[0].weight
+                ? Number(previousSessionSets[0].weight)
+                : 0;
+              const baseWeightInLbs =
+                weightUnit === 'lbs' && rawKg > 0 ? rawKg * 2.20462 : rawKg;
+
+              const lastPerf: LastExercisePerformance = {
+                baseWeight: baseWeightInLbs,
+                sets: previousSessionSets.map((s: any, idx: number) => ({
+                  setNumber: idx + 1,
+                  reps: Number(s.reps) || 0,
+                  weight: s.weight
+                    ? weightUnit === 'lbs'
+                      ? Number(s.weight) * 2.20462
+                      : Number(s.weight)
+                    : 0,
+                })),
+              };
+
+              const config: ExerciseProgressionConfig = {
+                progressionMode:
+                  (exercise as any).progression_mode || 'rep_goal',
+                targetSets: exercise.sets.length || 5,
+                repGoal: (exercise as any).rep_goal,
+                incrementType: (exercise as any).increment_type || 'weight',
+                incrementValue:
+                  Number((exercise as any).increment_value) || 2.5,
+                equipmentBrand: (exercise as any).equipment_brand,
+              };
+
+              const progression = evaluateProgression(config, lastPerf);
+
+              if (progression.goalAchieved) {
+                // Case A: Weight Progression -> Store in KG so desktop displays exact LBS
+                if (config.incrementType === 'weight' && baseWeightInLbs > 0) {
+                  hasChanges = true;
+                  const targetKg =
+                    weightUnit === 'lbs'
+                      ? progression.suggestedWeight / 2.20462
+                      : progression.suggestedWeight;
+
+                  return {
+                    ...exercise,
+                    sets: exercise.sets.map((s) => ({
+                      ...s,
+                      weight: targetKg,
+                    })),
+                  };
+                }
+
+                // Case B: Rep Progression (Hyperextensions, Step-load) -> Update reps!
+                if (
+                  config.incrementType === 'reps' ||
+                  (exercise as any).progression_mode === 'step_load'
+                ) {
+                  hasChanges = true;
+                  const numSets = exercise.sets.length || 5;
+                  const baseReps = Math.floor(
+                    progression.suggestedRepGoal / numSets
+                  );
+                  const remainder = progression.suggestedRepGoal % numSets;
+
+                  return {
+                    ...exercise,
+                    sets: exercise.sets.map((s, idx) => ({
+                      ...s,
+                      reps: baseReps + (idx < remainder ? 1 : 0), // Sets update to 16 reps!
+                    })),
+                  };
+                }
+              }
+            }
+          } catch (e) {
+            console.error(
+              'Failed checking progression for desktop exercise',
+              e
+            );
+          }
+          return exercise;
+        })
+      );
+
+      if (hasChanges) {
+        setDraft((current) =>
+          current ? { ...current, exercises: updatedExercises } : current
+        );
+      }
+    };
+
+    void evaluateDraftProgression();
+  }, [draft, weightUnit]);
 
   useEffect(() => {
     if (scrubbedRouteStateRef.current || !routeState?.draft) {
