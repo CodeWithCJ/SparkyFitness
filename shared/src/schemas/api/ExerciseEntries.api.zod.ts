@@ -287,7 +287,10 @@ export const updateExerciseEntryRequestSchema = createExerciseEntryRequestSchema
 export const exerciseEntryResponseSchema = z
   .object({
     id: z.string(),
-    exercise_id: z.string(),
+    // Nulled rather than cascaded when the library exercise is deleted
+    // (20260912150000_preserve_data_on_user_and_library_deletes.sql), so the
+    // entry outlives it. Parsing a preserved entry would throw otherwise.
+    exercise_id: z.string().nullable(),
     duration_minutes: z.number(),
     calories_burned: z.number(),
     entry_date: z.string().nullable(),
@@ -300,7 +303,12 @@ export const exerciseEntryResponseSchema = z
     exercise_preset_entry_id: z.string().nullable().optional(),
     created_at: z.string().nullable().optional(),
     sets: z.array(exerciseEntrySetResponseSchema),
-    exercise_snapshot: exerciseSnapshotResponseSchema.nullable(),
+    // Entry snapshots outlive the library row they were copied from, so their
+    // id can be null. The base schema keeps a required id because it is also
+    // used for live library and search results, where one always exists.
+    exercise_snapshot: exerciseSnapshotResponseSchema
+      .extend({ id: z.string().nullable() })
+      .nullable(),
     activity_details: z.array(activityDetailResponseSchema),
     steps: z.number().nullable().optional(),
     category: z.string().nullable().optional(),

@@ -686,9 +686,13 @@ const EditExerciseEntryDialog = ({
   const handleSave = async () => {
     info(loggingLevel, 'EditExerciseEntryDialog: saving entry:', entry.id);
     try {
-      const exerciseData = await queryClient.fetchQuery(
-        exerciseDetailsOptions(entry.exercise_id)
-      );
+      // An entry whose library exercise has been deleted keeps its snapshot but
+      // has nothing left to look up, so skip the fetch and fall back.
+      const exerciseData = entry.exercise_id
+        ? await queryClient.fetchQuery(
+            exerciseDetailsOptions(entry.exercise_id)
+          )
+        : null;
       const caloriesPerHour =
         (exerciseData as { calories_per_hour?: number })?.calories_per_hour ||
         300;
@@ -1025,8 +1029,11 @@ const EditExerciseEntryDialog = ({
             />
           </div>
 
-          {/* Exercise history */}
-          <ExerciseHistoryDisplay exerciseId={entry.exercise_id} />
+          {/* Exercise history — keyed to the library exercise, so there is
+              nothing to show once that has been deleted. */}
+          {entry.exercise_id && (
+            <ExerciseHistoryDisplay exerciseId={entry.exercise_id} />
+          )}
 
           {/* ── Advanced (collapsible) ── */}
           <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
