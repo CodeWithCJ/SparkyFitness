@@ -1475,7 +1475,7 @@ COMMENT ON TABLE public.account IS 'Better Auth account table - stores credentia
 
 CREATE TABLE public.admin_activity_logs (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    admin_user_id uuid NOT NULL,
+    admin_user_id uuid,
     target_user_id uuid,
     action_type character varying(255) NOT NULL,
     details jsonb,
@@ -1904,7 +1904,7 @@ COMMENT ON COLUMN public.day_classification_cache.day_of_week IS '0=Sun, 1=Mon, 
 CREATE TABLE public.exercise_entries (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
     user_id uuid NOT NULL,
-    exercise_id uuid NOT NULL,
+    exercise_id uuid,
     duration_minutes numeric NOT NULL,
     calories_burned numeric NOT NULL,
     entry_date date DEFAULT CURRENT_DATE,
@@ -2362,7 +2362,7 @@ CREATE TABLE public.food_entries (
     caffeine_mg numeric,
     water_ml numeric,
     alcohol_g numeric,
-    CONSTRAINT chk_food_or_meal_id CHECK ((((food_id IS NOT NULL) AND (meal_id IS NULL)) OR ((food_id IS NULL) AND (meal_id IS NOT NULL)))),
+    CONSTRAINT chk_food_or_meal_id CHECK (((food_id IS NULL) OR (meal_id IS NULL))),
     CONSTRAINT food_entries_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text)),
     CONSTRAINT food_entries_serving_size_positive CHECK ((serving_size > (0)::numeric))
 );
@@ -7195,7 +7195,7 @@ ALTER TABLE ONLY public.account
 --
 
 ALTER TABLE ONLY public.admin_activity_logs
-    ADD CONSTRAINT admin_activity_logs_admin_user_id_fkey FOREIGN KEY (admin_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+    ADD CONSTRAINT admin_activity_logs_admin_user_id_fkey FOREIGN KEY (admin_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -7203,7 +7203,15 @@ ALTER TABLE ONLY public.admin_activity_logs
 --
 
 ALTER TABLE ONLY public.admin_activity_logs
-    ADD CONSTRAINT admin_activity_logs_target_user_id_fkey FOREIGN KEY (target_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+    ADD CONSTRAINT admin_activity_logs_target_user_id_fkey FOREIGN KEY (target_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
+
+
+--
+-- Name: ai_service_settings ai_service_settings_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ai_service_settings
+    ADD CONSTRAINT ai_service_settings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -7228,6 +7236,14 @@ ALTER TABLE ONLY public.check_in_measurements
 
 ALTER TABLE ONLY public.check_in_measurements
     ADD CONSTRAINT check_in_measurements_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: check_in_measurements check_in_measurements_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.check_in_measurements
+    ADD CONSTRAINT check_in_measurements_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -7263,6 +7279,14 @@ ALTER TABLE ONLY public.custom_categories
 
 
 --
+-- Name: custom_categories custom_categories_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.custom_categories
+    ADD CONSTRAINT custom_categories_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: custom_measurements custom_measurements_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7276,6 +7300,14 @@ ALTER TABLE ONLY public.custom_measurements
 
 ALTER TABLE ONLY public.custom_measurements
     ADD CONSTRAINT custom_measurements_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: custom_measurements custom_measurements_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.custom_measurements
+    ADD CONSTRAINT custom_measurements_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -7339,7 +7371,7 @@ ALTER TABLE ONLY public.day_classification_cache
 --
 
 ALTER TABLE ONLY public.exercise_entries
-    ADD CONSTRAINT exercise_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+    ADD CONSTRAINT exercise_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -7355,7 +7387,15 @@ ALTER TABLE ONLY public.exercise_entries
 --
 
 ALTER TABLE ONLY public.exercise_entries
-    ADD CONSTRAINT exercise_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+    ADD CONSTRAINT exercise_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
+
+
+--
+-- Name: exercise_entries exercise_entries_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercise_entries
+    ADD CONSTRAINT exercise_entries_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -7479,11 +7519,27 @@ ALTER TABLE ONLY public.exercise_preset_entries
 
 
 --
+-- Name: exercises exercises_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercises
+    ADD CONSTRAINT exercises_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: external_data_providers external_data_providers_provider_type_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.external_data_providers
     ADD CONSTRAINT external_data_providers_provider_type_fkey FOREIGN KEY (provider_type) REFERENCES public.external_provider_types(id);
+
+
+--
+-- Name: external_data_providers external_data_providers_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.external_data_providers
+    ADD CONSTRAINT external_data_providers_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -7523,7 +7579,7 @@ ALTER TABLE ONLY public.user_preferences
 --
 
 ALTER TABLE ONLY public.exercise_entries
-    ADD CONSTRAINT fk_exercise_entries_exercise_id FOREIGN KEY (exercise_id) REFERENCES public.exercises(id) ON DELETE CASCADE;
+    ADD CONSTRAINT fk_exercise_entries_exercise_id FOREIGN KEY (exercise_id) REFERENCES public.exercises(id) ON DELETE SET NULL;
 
 
 --
@@ -7539,7 +7595,7 @@ ALTER TABLE ONLY public.meal_plan_template_assignments
 --
 
 ALTER TABLE ONLY public.food_entries
-    ADD CONSTRAINT fk_food_entries_food_id FOREIGN KEY (food_id) REFERENCES public.foods(id) ON DELETE CASCADE;
+    ADD CONSTRAINT fk_food_entries_food_id FOREIGN KEY (food_id) REFERENCES public.foods(id) ON DELETE SET NULL;
 
 
 --
@@ -7571,7 +7627,7 @@ ALTER TABLE ONLY public.food_variants
 --
 
 ALTER TABLE ONLY public.food_entries
-    ADD CONSTRAINT food_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+    ADD CONSTRAINT food_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -7603,7 +7659,7 @@ ALTER TABLE ONLY public.food_entries
 --
 
 ALTER TABLE ONLY public.food_entries
-    ADD CONSTRAINT food_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+    ADD CONSTRAINT food_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -7676,6 +7732,14 @@ ALTER TABLE ONLY public.food_favorites
 
 ALTER TABLE ONLY public.food_favorites
     ADD CONSTRAINT food_favorites_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: foods foods_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.foods
+    ADD CONSTRAINT foods_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -7963,7 +8027,7 @@ ALTER TABLE ONLY public.medications
 --
 
 ALTER TABLE ONLY public.mood_entries
-    ADD CONSTRAINT mood_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id);
+    ADD CONSTRAINT mood_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -7971,7 +8035,7 @@ ALTER TABLE ONLY public.mood_entries
 --
 
 ALTER TABLE ONLY public.mood_entries
-    ADD CONSTRAINT mood_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id);
+    ADD CONSTRAINT mood_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -8147,7 +8211,7 @@ ALTER TABLE ONLY public.session
 --
 
 ALTER TABLE ONLY public.sleep_entries
-    ADD CONSTRAINT sleep_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id);
+    ADD CONSTRAINT sleep_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -8155,7 +8219,7 @@ ALTER TABLE ONLY public.sleep_entries
 --
 
 ALTER TABLE ONLY public.sleep_entries
-    ADD CONSTRAINT sleep_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id);
+    ADD CONSTRAINT sleep_entries_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -8171,7 +8235,7 @@ ALTER TABLE ONLY public.sleep_entries
 --
 
 ALTER TABLE ONLY public.sleep_entry_stages
-    ADD CONSTRAINT sleep_entry_stages_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id);
+    ADD CONSTRAINT sleep_entry_stages_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -8187,7 +8251,7 @@ ALTER TABLE ONLY public.sleep_entry_stages
 --
 
 ALTER TABLE ONLY public.sleep_entry_stages
-    ADD CONSTRAINT sleep_entry_stages_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id);
+    ADD CONSTRAINT sleep_entry_stages_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -8204,6 +8268,14 @@ ALTER TABLE ONLY public.sleep_entry_stages
 
 ALTER TABLE ONLY public.sleep_need_calculations
     ADD CONSTRAINT sleep_need_calculations_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: sparky_chat_history sparky_chat_history_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.sparky_chat_history
+    ADD CONSTRAINT sparky_chat_history_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -8295,6 +8367,14 @@ ALTER TABLE ONLY public.user_dashboard_layouts
 
 
 --
+-- Name: user_goals user_goals_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_goals
+    ADD CONSTRAINT user_goals_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: user_ignored_updates user_ignored_updates_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8383,6 +8463,14 @@ ALTER TABLE ONLY public.user_preferences
 
 
 --
+-- Name: user_preferences user_preferences_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_preferences
+    ADD CONSTRAINT user_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: user_water_containers user_water_containers_linked_food_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8443,7 +8531,7 @@ ALTER TABLE ONLY public.water_intake_entries
 --
 
 ALTER TABLE ONLY public.water_intake_entries
-    ADD CONSTRAINT water_intake_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id);
+    ADD CONSTRAINT water_intake_entries_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -8468,6 +8556,14 @@ ALTER TABLE ONLY public.water_intake_entries
 
 ALTER TABLE ONLY public.water_intake
     ADD CONSTRAINT water_intake_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
+
+
+--
+-- Name: water_intake water_intake_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.water_intake
+    ADD CONSTRAINT water_intake_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
