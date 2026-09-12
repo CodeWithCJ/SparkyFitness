@@ -13,6 +13,7 @@ import i18n from './i18n';
 import { getUserLoggingLevel } from './utils/userPreferences.ts';
 import { toast } from './hooks/use-toast.ts';
 import { error } from '@/utils/logging';
+import { HttpApiError } from './api/api.ts';
 
 declare module '@tanstack/react-query' {
   interface Register {
@@ -100,7 +101,19 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: true,
       refetchOnReconnect: true,
       refetchOnMount: true,
-      retry: 1,
+      // A 4xx is a verdict, not a hiccup: retrying an authorization or
+      // validation failure just doubles the failed requests and the noise.
+      // Only server and network errors are worth a second attempt.
+      retry: (failureCount, err) => {
+        const status =
+          err instanceof HttpApiError
+            ? err.status
+            : (err as { status?: number })?.status;
+        if (typeof status === 'number' && status >= 400 && status < 500) {
+          return false;
+        }
+        return failureCount < 1;
+      },
       retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30000),
     },
     mutations: {

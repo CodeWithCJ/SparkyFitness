@@ -15,14 +15,20 @@ import {
   CreateAiServiceSettingsRequest,
   UpdateAiServiceSettingsRequest,
 } from '@workspace/shared';
+import { useAuth } from '@/hooks/useAuth';
 
 // Query hooks for fetching data
 export const useAIServices = () => {
   const { t } = useTranslation();
+  const { user } = useAuth();
 
   return useQuery({
     queryKey: aiServiceKeys.user(),
     queryFn: () => getAIServices(),
+    // Wait until the identity lookup has actually told us which account this
+    // is. Firing on "not yet known" means every page load spends one doomed
+    // 403 against an endpoint the demo sandbox can never use.
+    enabled: user?.isDemo === false,
     meta: {
       errorMessage: t(
         'settings.aiService.userSettings.errorLoading',
@@ -34,11 +40,15 @@ export const useAIServices = () => {
 
 export const useActiveAIService = (enabled: boolean) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
 
   return useQuery({
     queryKey: aiServiceKeys.active(),
     queryFn: () => getActiveAiServiceSetting(),
-    enabled,
+    // The demo sandbox is barred from /api/chat server-side, so asking can only
+    // ever return 403. Skip it rather than firing a request whose answer is
+    // already known.
+    enabled: enabled && user?.isDemo === false,
     meta: {
       errorMessage: t(
         'settings.aiService.userSettings.errorLoading',

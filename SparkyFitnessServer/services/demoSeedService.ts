@@ -37,6 +37,26 @@ async function hasDemoMarker(
   return typeof bio === 'string' && bio.includes(DEMO_ACCOUNT_MARKER);
 }
 
+/**
+ * Writes the sandbox marker on its own connection so it commits independently
+ * of the seeding transaction. Only ever called on the path where this process
+ * just created the account, so an account that predates demo mode is never
+ * marked and stays protected by the guard.
+ */
+async function stampDemoMarker(userId: string): Promise<void> {
+  const client = await getSystemClient();
+  try {
+    await client.query(
+      `UPDATE profiles
+         SET bio = $2, updated_at = NOW()
+       WHERE id = $1`,
+      [userId, `${DEMO_ACCOUNT_MARKER} — Daily sandbox resetting at 00:00 UTC`]
+    );
+  } finally {
+    client.release();
+  }
+}
+
 // Generated once per process when no server secret is configured, so the
 // credential stays stable for the lifetime of the server without ever being
 // derivable from the source.
@@ -389,6 +409,13 @@ export async function seedDemoUser(): Promise<string> {
           fullName
         );
         log('info', `[DEMO] Demo user account created with ID: ${userId}`);
+        // Stamp the sandbox marker immediately, outside this transaction.
+        // createUser commits on its own client, so the account survives a
+        // rollback while everything below does not. Without the marker written
+        // just as durably, a seed that fails partway leaves a committed demo
+        // account that the safety guard can never touch again, and demo mode
+        // stays wedged until someone edits the database by hand.
+        await stampDemoMarker(userId);
       } else {
         userId = user.id;
 
@@ -624,9 +651,9 @@ async function populateDemoDataForUser(
        dietary_fiber, sugars, caffeine_mg, quantity, serving_size, serving_unit, entry_date, entry_time, images, created_at
      )
      VALUES
-     (gen_random_uuid(), $1, $2, $3, 'Oatmeal with Blueberries & Almond Butter', 420, 14, 58, 16, 7, 12, 0, 80, 80, 'g', $6, '08:15', '{}', NOW()),
-     (gen_random_uuid(), $1, $4, $5, 'Grilled Chicken Breast with Jasmine Rice & Broccoli', 650, 52, 68, 14, 5, 2, 0, 350, 350, 'g', $6, '12:45', '{}', NOW()),
-     (gen_random_uuid(), $1, $7, $8, 'Double Espresso & Fresh Apple', 100, 1, 25, 0.2, 4, 19, 126, 180, 180, 'g', $6, '15:30', '{}', NOW())`,
+     (gen_random_uuid(), $1, $2, $3, 'Oatmeal with Blueberries & Almond Butter', 420, 14, 58, 16, 7, 12, 0, 80, 80, 'g', $6, '08:15', '[]', NOW()),
+     (gen_random_uuid(), $1, $4, $5, 'Grilled Chicken Breast with Jasmine Rice & Broccoli', 650, 52, 68, 14, 5, 2, 0, 350, 350, 'g', $6, '12:45', '[]', NOW()),
+     (gen_random_uuid(), $1, $7, $8, 'Double Espresso & Fresh Apple', 100, 1, 25, 0.2, 4, 19, 126, 180, 180, 'g', $6, '15:30', '[]', NOW())`,
     [
       userId,
       foodOatmealId,
@@ -672,10 +699,10 @@ async function populateDemoDataForUser(
        dietary_fiber, sugars, caffeine_mg, quantity, serving_size, serving_unit, entry_date, entry_time, images, created_at
      )
      VALUES
-     (gen_random_uuid(), $1, $2, $3, 'Avocado Toast with 2 Poached Eggs', 510, 22, 45, 28, 8, 3, 0, 220, 220, 'g', $10, '08:30', '{}', NOW()),
-     (gen_random_uuid(), $1, $4, $5, 'Fresh Salmon Poke Bowl', 720, 44, 75, 26, 6, 8, 0, 400, 400, 'g', $10, '13:00', '{}', NOW()),
-     (gen_random_uuid(), $1, $6, $7, 'Lean Flank Steak with Roasted Sweet Potatoes', 680, 48, 55, 22, 6, 6, 0, 380, 380, 'g', $10, '19:15', '{}', NOW()),
-     (gen_random_uuid(), $1, $8, $9, 'Greek Yogurt with Raw Honey', 220, 18, 24, 4, 0, 20, 0, 170, 170, 'g', $10, '21:00', '{}', NOW())`,
+     (gen_random_uuid(), $1, $2, $3, 'Avocado Toast with 2 Poached Eggs', 510, 22, 45, 28, 8, 3, 0, 220, 220, 'g', $10, '08:30', '[]', NOW()),
+     (gen_random_uuid(), $1, $4, $5, 'Fresh Salmon Poke Bowl', 720, 44, 75, 26, 6, 8, 0, 400, 400, 'g', $10, '13:00', '[]', NOW()),
+     (gen_random_uuid(), $1, $6, $7, 'Lean Flank Steak with Roasted Sweet Potatoes', 680, 48, 55, 22, 6, 6, 0, 380, 380, 'g', $10, '19:15', '[]', NOW()),
+     (gen_random_uuid(), $1, $8, $9, 'Greek Yogurt with Raw Honey', 220, 18, 24, 4, 0, 20, 0, 170, 170, 'g', $10, '21:00', '[]', NOW())`,
     [
       userId,
       foodAvocadoId,

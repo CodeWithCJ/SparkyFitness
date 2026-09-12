@@ -5,7 +5,7 @@ export const exerciseEntriesIdSchema = z.string();
 export const exerciseEntriesSchema = z.object({
   id: exerciseEntriesIdSchema,
   user_id: z.string(),
-  exercise_id: z.string(),
+  exercise_id: z.string().nullable(),
   duration_minutes: z.number(),
   calories_burned: z.number(),
   entry_date: z.date().nullable(),
@@ -85,7 +85,7 @@ export const exerciseEntriesSchema = z.object({
 export const exerciseEntriesInitializerSchema = z.object({
   id: exerciseEntriesIdSchema.optional(),
   user_id: z.string(),
-  exercise_id: z.string(),
+  exercise_id: z.string().optional().nullable(),
   duration_minutes: z.number(),
   calories_burned: z.number(),
   entry_date: z.date().optional().nullable(),

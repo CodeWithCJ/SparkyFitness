@@ -1,6 +1,9 @@
 import express from 'express';
 import { authenticate } from '../../middleware/authMiddleware.js';
-import { demoGuard } from '../../middleware/demoGuardMiddleware.js';
+import {
+  demoGuard,
+  isDemoEmail,
+} from '../../middleware/demoGuardMiddleware.js';
 import authService from '../../services/authService.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'mult... Remove this comment to see the full error message
 import multer from 'multer';
@@ -78,6 +81,11 @@ router.get('/user', authenticate, async (req, res, next) => {
       activeUserId: activeUser.id,
       activeUserEmail: activeUser.email,
       activeUserFullName: activeUser.full_name,
+      // Lets the client skip calls to endpoints the demo guard will refuse
+      // anyway. Keyed on the authenticated identity, never the active context,
+      // so switching context cannot shed the restriction -- same rule the
+      // server-side guard follows.
+      isDemo: isDemoEmail(authenticatedUser.email),
     });
   } catch (error) {
     // Use a more specific error check if available from the service layer

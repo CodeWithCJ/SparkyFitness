@@ -11,7 +11,7 @@ const userIdSchema = z.any();
 
 export const adminActivityLogsSchema = z.object({
   id: adminActivityLogsIdSchema,
-  admin_user_id: userIdSchema,
+  admin_user_id: userIdSchema.nullable(),
   target_user_id: userIdSchema.nullable(),
   action_type: z.string(),
   details: z.unknown().nullable(),
@@ -20,7 +20,7 @@ export const adminActivityLogsSchema = z.object({
 
 export const adminActivityLogsInitializerSchema = z.object({
   id: adminActivityLogsIdSchema.optional(),
-  admin_user_id: userIdSchema,
+  admin_user_id: userIdSchema.optional().nullable(),
   target_user_id: userIdSchema.optional().nullable(),
   action_type: z.string(),
   details: z.unknown().optional().nullable(),
@@ -29,7 +29,7 @@ export const adminActivityLogsInitializerSchema = z.object({
 
 export const adminActivityLogsMutatorSchema = z.object({
   id: adminActivityLogsIdSchema.optional(),
-  admin_user_id: userIdSchema.optional(),
+  admin_user_id: userIdSchema.optional().nullable(),
   target_user_id: userIdSchema.optional().nullable(),
   action_type: z.string().optional(),
   details: z.unknown().optional().nullable(),

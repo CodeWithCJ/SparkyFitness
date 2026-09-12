@@ -22,6 +22,8 @@ export interface IdentityUserResponse {
   fullName: string | null;
   activeUserFullName?: string;
   activeUserEmail: string;
+  /** True when the authenticated account is the demo sandbox. */
+  isDemo?: boolean;
 }
 
 export interface SwitchContextResponse {

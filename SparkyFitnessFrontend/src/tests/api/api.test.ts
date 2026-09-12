@@ -1,4 +1,8 @@
-import { apiCall, gatewayReloadRuntime } from '@/api/api';
+import {
+  apiCall,
+  clearDemoRestrictions,
+  gatewayReloadRuntime,
+} from '@/api/api';
 import { toast } from '@/hooks/use-toast';
 
 jest.mock('@/hooks/use-toast', () => ({
@@ -122,5 +126,76 @@ describe('apiCall gateway interception handling', () => {
     await flushMicrotasks();
 
     expect(mockReload).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('apiCall demo restriction handling', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    sessionStorage.clear();
+    clearDemoRestrictions();
+    global.fetch = jest.fn();
+  });
+
+  const demoResponse = (code = 'DEMO_ACTION_RESTRICTED') =>
+    makeResponse({
+      status: 403,
+      body: JSON.stringify({ error: 'Disabled on the demo account.', code }),
+    });
+
+  it('answers a repeated blocked GET from the memo instead of the network', async () => {
+    jest.mocked(global.fetch).mockResolvedValue(demoResponse());
+
+    await expect(apiCall('/external-providers')).rejects.toThrow(
+      'Disabled on the demo account.'
+    );
+    await expect(apiCall('/external-providers')).rejects.toThrow(
+      'Disabled on the demo account.'
+    );
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not let a blocked write answer the read on the same path', async () => {
+    jest
+      .mocked(global.fetch)
+      .mockResolvedValueOnce(demoResponse())
+      .mockResolvedValueOnce(makeResponse({ body: '{"id":"profile-1"}' }));
+
+    await expect(
+      apiCall('/identity/profiles', { method: 'PUT', body: '{}' })
+    ).rejects.toThrow('Disabled on the demo account.');
+    await expect(apiCall('/identity/profiles')).resolves.toEqual({
+      id: 'profile-1',
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('never memoizes an upload rejection, which depends on the content type', async () => {
+    jest
+      .mocked(global.fetch)
+      .mockResolvedValue(demoResponse('DEMO_UPLOAD_RESTRICTED'));
+
+    await expect(
+      apiCall('/identity/profiles/avatar', { method: 'POST', body: '{}' })
+    ).rejects.toThrow('Disabled on the demo account.');
+    await expect(
+      apiCall('/identity/profiles/avatar', { method: 'POST', body: '{}' })
+    ).rejects.toThrow('Disabled on the demo account.');
+
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('silences the toast for a polled read but not for a write the user clicked', async () => {
+    jest.mocked(global.fetch).mockResolvedValue(demoResponse());
+
+    await expect(apiCall('/chat/ai-service-settings')).rejects.toThrow();
+    expect(mockToast).not.toHaveBeenCalled();
+
+    await expect(
+      apiCall('/identity/mfa/email-toggle', { method: 'POST', body: '{}' })
+    ).rejects.toThrow();
+    expect(mockToast).toHaveBeenCalledTimes(1);
   });
 });
