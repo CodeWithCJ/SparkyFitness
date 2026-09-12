@@ -252,3 +252,123 @@ describe('/mfa-factors inline rate limiter', () => {
     expect(results2[0]).toBeNull();
   });
 });
+
+/**
+ * SparkyFitness' own `customRules` (auth.ts). These override Better Auth's
+ * 3-per-10s default on the credential-checking endpoints.
+ *
+ * The default is a tight burst but resets every 10s, so it permits 18 failed
+ * logins a minute indefinitely. Intrusion-detection tooling watching POST 401s
+ * (e.g. CrowdSec's generic 401 rule: a leaky bucket of capacity 5 draining one
+ * per 10s) treats that sustained rate as a brute force and bans the client IP
+ * at the edge — taking a legitimate user who fumbled their password with it.
+ * Capping the sustained rate instead keeps failures permanently under that
+ * threshold.
+ */
+describe('SparkyFitness sign-in customRules', () => {
+  const SIGN_IN_WINDOW = 60;
+  const SIGN_IN_MAX = 4;
+  const CUSTOM_RULES = {
+    '/sign-in/email': { window: SIGN_IN_WINDOW, max: SIGN_IN_MAX },
+    '/two-factor/*': { window: SIGN_IN_WINDOW, max: SIGN_IN_MAX },
+    '/email-otp/verify-email': { window: SIGN_IN_WINDOW, max: SIGN_IN_MAX },
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let onRequestRateLimit: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let onResponseRateLimit: any;
+
+  beforeAll(async () => {
+    const mod = await import(
+      path.resolve(
+        __dirname,
+        '../node_modules/better-auth/dist/api/rate-limiter/index.mjs'
+      )
+    );
+    onRequestRateLimit = mod.onRequestRateLimit;
+    onResponseRateLimit = mod.onResponseRateLimit;
+  });
+
+  function makeCustomContext() {
+    const config = {
+      ...RATE_LIMIT_CONFIG,
+      customRules: CUSTOM_RULES,
+    };
+    return {
+      baseURL: BASE_URL,
+      rateLimit: { ...config },
+      options: {
+        rateLimit: { ...config },
+        plugins: [],
+        advanced: { trustProxy: true },
+        trustedOrigins: ['https://example.com'],
+      },
+    };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function send(endpoint: any, count: any, ip: any) {
+    const ctx = makeCustomContext();
+    const results = [];
+    for (let i = 0; i < count; i++) {
+      const req = makeRequest(endpoint, ip);
+      const result = await onRequestRateLimit(req, ctx);
+      results.push(result);
+      if (result === undefined) {
+        await onResponseRateLimit(req, ctx);
+      }
+    }
+    return results;
+  }
+
+  it('allows SIGN_IN_MAX attempts on /sign-in/email', async () => {
+    const results = await send('/sign-in/email', SIGN_IN_MAX, '10.3.0.1');
+    expect(results.filter((r) => r?.status === 429)).toHaveLength(0);
+  });
+
+  it('blocks the attempt after SIGN_IN_MAX, so failures cannot reach the IDS threshold', async () => {
+    const results = await send('/sign-in/email', SIGN_IN_MAX + 1, '10.3.0.2');
+    expect(results.filter((r) => r === undefined)).toHaveLength(SIGN_IN_MAX);
+    expect(results.filter((r) => r?.status === 429)).toHaveLength(1);
+  });
+
+  it('caps sustained rate below Better Auth default: 10 rapid attempts yield at most SIGN_IN_MAX 401s', async () => {
+    const results = await send('/sign-in/email', 10, '10.3.0.3');
+    // Without customRules the default (3 per 10s) would let far more through
+    // over the same span; here everything past the cap is a 429, which the
+    // 401-based IDS rules do not count.
+    expect(results.filter((r) => r === undefined)).toHaveLength(SIGN_IN_MAX);
+  });
+
+  it('applies the same cap to two-factor verification via the wildcard rule', async () => {
+    const results = await send(
+      '/two-factor/verify-totp',
+      SIGN_IN_MAX + 1,
+      '10.3.0.4'
+    );
+    expect(results.filter((r) => r?.status === 429)).toHaveLength(1);
+  });
+
+  it('gives each path its own budget, so one MFA login does not exhaust sign-in', async () => {
+    const ip = '10.3.0.5';
+    const signIn = await send('/sign-in/email', SIGN_IN_MAX, ip);
+    const sendOtp = await send('/two-factor/send-otp', SIGN_IN_MAX, ip);
+    const verifyOtp = await send('/two-factor/verify-otp', SIGN_IN_MAX, ip);
+    for (const r of [signIn, sendOtp, verifyOtp]) {
+      expect(r.filter((x) => x?.status === 429)).toHaveLength(0);
+    }
+  });
+
+  it('tracks budgets per client IP', async () => {
+    await send('/sign-in/email', SIGN_IN_MAX + 1, '10.3.1.1');
+    const other = await send('/sign-in/email', 1, '10.3.1.2');
+    expect(other[0]).toBeUndefined();
+  });
+
+  it('leaves unlisted auth endpoints on the permissive default', async () => {
+    // /api/auth/settings and friends must not inherit the sign-in cap.
+    const results = await send('/get-session', SIGN_IN_MAX + 2, '10.3.2.1');
+    expect(results.filter((r) => r?.status === 429)).toHaveLength(0);
+  });
+});

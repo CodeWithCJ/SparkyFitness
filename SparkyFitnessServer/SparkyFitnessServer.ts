@@ -262,6 +262,22 @@ app.use(async (req, res, next) => {
       return next();
     }
 
+    // In demo mode the credential backend stays loaded so the one-click demo
+    // login (an in-process auth.api.signInEmail call) keeps working, so the
+    // public password routes have to be closed here instead. The body matches
+    // Better Auth's own EMAIL_PASSWORD_DISABLED response byte for byte, so a
+    // client cannot tell which layer refused it.
+    if (
+      process.env.SPARKY_FITNESS_DISABLE_EMAIL_LOGIN === 'true' &&
+      (req.path.startsWith('/api/auth/sign-in/email') ||
+        req.path.startsWith('/api/auth/sign-up/email'))
+    ) {
+      return res.status(400).json({
+        message: 'Email and password is not enabled',
+        code: 'EMAIL_PASSWORD_DISABLED',
+      });
+    }
+
     if (isDemoMode()) {
       // Prefix matches throughout: exact equality misses trailing-slash and
       // sub-path variants that Better Auth still routes.
@@ -273,6 +289,15 @@ app.use(async (req, res, next) => {
         '/api/auth/change-email',
         '/api/auth/update-user',
         '/api/auth/delete-user',
+        // SSRF stopgap for @better-auth/sso < 1.6.11 (CVE-2026-53513): the
+        // plugin's /sso/register and /sso/update-provider accept
+        // attacker-controlled OIDC endpoint URLs and fetch them server-side,
+        // reachable by any session with no role gate. Anyone can obtain a
+        // session here via the one-click demo login, so block the whole SSO
+        // management surface for the sandbox until better-auth is upgraded.
+        // The register/update writes are the exploit; listing is closed too
+        // since the sandbox never provisions providers anyway.
+        '/api/auth/sso',
       ];
       const isRestrictedAuthPath = restrictedAuthPrefixes.some(
         (prefix) => req.path === prefix || req.path.startsWith(prefix + '/')

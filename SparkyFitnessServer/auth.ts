@@ -21,6 +21,7 @@ import { sso } from '@better-auth/sso';
 import { expo } from '@better-auth/expo';
 import { expoSsoCookieRelay } from './utils/expoSsoCookieRelay.js';
 import { passkey } from '@better-auth/passkey';
+import { isDemoMode } from './middleware/demoGuardMiddleware.js';
 
 const hashAsync = promisify(bcrypt.hash);
 const compareAsync = promisify(bcrypt.compare);
@@ -115,6 +116,30 @@ async function syncTrustedProviders() {
 }
 // Initial sync on startup - deferred to SparkyFitnessServer.js after migrations
 // syncTrustedProviders().catch(err => console.error('[AUTH] Startup sync failed:', err));
+/**
+ * Window and attempt cap for the credential-checking auth endpoints.
+ *
+ * Two properties of Better Auth's limiter drive these numbers:
+ *  - the counter increments on *every* response, successes included, so this
+ *    caps total sign-in traffic per IP, not just failures; and
+ *  - the window only resets after a full `window` of silence (each counted
+ *    request refreshes `lastRequest`), so a long window lets a client that
+ *    keeps retrying hold itself blocked.
+ *
+ * Both argue for a short window. 60s also keeps sustained failures under the
+ * threshold an upstream IDS watches for (see the `customRules` comment below),
+ * while self-healing after a minute of quiet. Raise these if your instance
+ * sits behind a shared or carrier-NAT address with many users.
+ */
+const SIGN_IN_WINDOW =
+  Number.parseInt(
+    process.env.SPARKY_FITNESS_SIGN_IN_RATELIMIT_WINDOW ?? '',
+    10
+  ) || 60;
+const SIGN_IN_MAX =
+  Number.parseInt(process.env.SPARKY_FITNESS_SIGN_IN_RATELIMIT_MAX ?? '', 10) ||
+  4;
+
 const apiKeyPlugin = apiKey({
   enableSessionForAPIKeys: true, // Required for getSession to work with API Keys
   rateLimit: {
@@ -215,10 +240,39 @@ const auth = betterAuth({
     enabled: true,
     window: 60,
     max: 100,
+    // Credential checks answer 401, which intrusion-detection tooling reads as
+    // a brute-force signal. A common scenario (CrowdSec's generic 401 rule)
+    // burns an IP after six POST 401s arriving faster than one per 10s. Better
+    // Auth's own default for /sign-in is 3 per 10s -- a tight burst but 18/min
+    // sustained, so a user fumbling their password manager can emit six 401s
+    // in ~20s and get the whole IP banned at the edge for hours.
+    //
+    // Capping sustained rate (4/min) rather than burst is what fixes that: the
+    // 5th attempt in a minute gets a local 429, which such rules do not count,
+    // so failures can never accumulate to the ban threshold. This is stricter
+    // than the default for sustained guessing and no looser for bursts.
+    //
+    // Deliberately short: successes count toward the same budget, so this is a
+    // ceiling on all sign-in traffic from one address. Instances behind a
+    // shared or carrier-NAT IP with many users should raise SIGN_IN_MAX.
+    customRules: {
+      '/sign-in/email': { window: SIGN_IN_WINDOW, max: SIGN_IN_MAX },
+      '/two-factor/*': { window: SIGN_IN_WINDOW, max: SIGN_IN_MAX },
+      '/email-otp/verify-email': { window: SIGN_IN_WINDOW, max: SIGN_IN_MAX },
+    },
   },
   // Email/Password authentication
   emailAndPassword: {
-    enabled: process.env.SPARKY_FITNESS_DISABLE_EMAIL_LOGIN !== 'true',
+    // The demo sandbox signs its user in through auth.api.signInEmail(), an
+    // in-process call that this same flag switches off -- so honouring
+    // DISABLE_EMAIL_LOGIN here takes the demo's one-click button down with it
+    // (400 EMAIL_PASSWORD_DISABLED) while the operator only meant to hide the
+    // password form. Keep the credential backend loaded in demo mode and close
+    // the *public* route instead; SparkyFitnessServer.ts refuses
+    // /api/auth/sign-in/email and /sign-up/email with the identical response
+    // Better Auth would have sent, so nothing outside can tell the difference.
+    enabled:
+      isDemoMode() || process.env.SPARKY_FITNESS_DISABLE_EMAIL_LOGIN !== 'true',
     requireEmailVerification: false,
     minPasswordLength: 8,
     sendResetPassword: async ({ user, url }) => {
