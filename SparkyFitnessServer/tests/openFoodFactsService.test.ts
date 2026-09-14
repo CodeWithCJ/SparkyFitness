@@ -1831,5 +1831,29 @@ describe('openFoodFactsService', () => {
       const result = mapOpenFoodFactsProduct(product);
       expect(result.variants).toBeUndefined();
     });
+
+    it('does not add a household variant when serving_quantity is absent (no verified metric link)', () => {
+      // Synthetic (not a specific confirmed-live barcode), constructed to hit
+      // the gap: a parseable household descriptor with no serving_quantity.
+      const product = {
+        product_name: 'Synthetic No-Serving-Quantity Product',
+        brands: 'Test Brand',
+        code: '0000000000000',
+        serving_size: '2 tbsp (28 g)',
+        nutrition_data_per: '100g',
+        nutriments: {
+          'energy-kcal_100g': 462,
+          proteins_100g: 5,
+          carbohydrates_100g: 64,
+          fat_100g: 25,
+        },
+      };
+      const result = mapOpenFoodFactsProduct(product);
+
+      expect(result.variants).toBeUndefined();
+      expect(result.default_variant.serving_size).toBe(100);
+      expect(result.default_variant.serving_unit).toBe('g');
+      expect(result.default_variant.calories).toBe(462);
+    });
   });
 });
