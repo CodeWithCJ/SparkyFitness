@@ -82,6 +82,7 @@ export const ProviderSpecificFields = ({
     'strava',
     'polar',
     'hevy',
+    'liftosaur',
   ].includes(provider.provider_type || '');
 
   const providerDashboard =
@@ -157,7 +158,9 @@ export const ProviderSpecificFields = ({
               ? 'Client Secret'
               : provider.provider_type === 'yazio'
                 ? 'YAZIO Password'
-                : 'API Key / App Key'}
+                : provider.provider_type === 'liftosaur'
+                  ? 'Liftosaur API Key'
+                  : 'API Key / App Key'}
           </Label>
           <Input
             id="new_app_key"
@@ -166,7 +169,11 @@ export const ProviderSpecificFields = ({
             onChange={(e) =>
               setProvider((prev) => ({ ...prev, app_key: e.target.value }))
             }
-            placeholder="Enter Key"
+            placeholder={
+              provider.provider_type === 'liftosaur'
+                ? 'Enter Liftosaur API Key (lftsk_...)'
+                : 'Enter Key'
+            }
             autoComplete="off"
           />
         </div>
@@ -518,6 +525,14 @@ export const ProviderSpecificFields = ({
         </p>
       )}
 
+      {provider.provider_type === 'liftosaur' && (
+        <p className="text-sm text-muted-foreground col-span-2">
+          Generate an API key in the Liftosaur app: Settings &#62; API Keys
+          (starts with <span className="font-mono">lftsk_</span>). A Liftosaur
+          Pro subscription is required to use the Liftosaur API.
+        </p>
+      )}
+
       {provider.provider_type === 'nutritionix' && (
         <p className="text-sm text-muted-foreground col-span-2">
           Get your App ID and App Key from the{' '}
@@ -568,7 +583,9 @@ export const ProviderSpecificFields = ({
         </p>
       )}
 
-      {['hevy', 'polar'].includes(provider.provider_type || '') && (
+      {['hevy', 'polar', 'liftosaur'].includes(
+        provider.provider_type || ''
+      ) && (
         <div className="flex items-center space-x-2 col-span-2">
           <Switch
             id="full_sync_on_connect"

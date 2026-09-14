@@ -21,6 +21,7 @@ import {
   useConnectWithingsMutation,
   useLoginGarminMutation,
   useSyncHevyMutation,
+  useSyncLiftosaurMutation,
 } from '@/hooks/Integrations/useIntegrations';
 import {
   useCreateExternalProviderMutation,
@@ -55,6 +56,8 @@ const AddExternalProviderForm = ({
   const { data: providerTypes } = useExternalProviderTypesQuery();
   const { mutateAsync: syncHevyData, isPending: isSyncingHevy } =
     useSyncHevyMutation();
+  const { mutateAsync: syncLiftosaurData, isPending: isSyncingLiftosaur } =
+    useSyncLiftosaurMutation();
   const { mutateAsync: loginGarmin, isPending: isLoggingInGarmin } =
     useLoginGarminMutation();
   const { mutateAsync: createExternalProvider, isPending: isCreatingProvider } =
@@ -77,6 +80,7 @@ const AddExternalProviderForm = ({
 
   const isAnyIntegrationPending =
     isSyncingHevy ||
+    isSyncingLiftosaur ||
     isLoggingInGarmin ||
     isCreatingProvider ||
     isCreatingGlobal ||
@@ -201,6 +205,19 @@ const AddExternalProviderForm = ({
       if (newProvider.provider_type === 'hevy' && newProvider.is_active) {
         try {
           await syncHevyData({
+            fullSync: fullSyncOnConnect,
+            providerId: createdProvider.id,
+          });
+        } catch (error: unknown) {
+          if (error instanceof Error) {
+            console.error(error);
+          }
+        }
+      }
+
+      if (newProvider.provider_type === 'liftosaur' && newProvider.is_active) {
+        try {
+          await syncLiftosaurData({
             fullSync: fullSyncOnConnect,
             providerId: createdProvider.id,
           });

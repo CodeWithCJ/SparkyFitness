@@ -6,11 +6,14 @@ import {
   linkWithingsAccount,
   linkStravaAccount,
   syncHevyData,
+  syncLiftosaurData,
+  LiftosaurSyncResult,
   loginGarmin,
   GarminLoginPayload,
 } from '@/api/Integrations/integrations';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '@/hooks/use-toast';
 
 import {
   handleConnectWithings,
@@ -33,6 +36,7 @@ import {
   handleConnectStrava,
   handleDisconnectStrava,
   handleManualSyncStrava,
+  handleDisconnectLiftosaur,
   fetchGarminStatus,
   GarminMfaPayload,
   resumeGarminLogin,
@@ -187,6 +191,77 @@ export const useSyncHevyMutation = () => {
         'integrations.hevySyncError',
         'Hevy sync failed. Please check your API key in settings.'
       ),
+    },
+  });
+};
+
+interface SyncLiftosaurVariables {
+  fullSync?: boolean;
+  providerId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export const useSyncLiftosaurMutation = () => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const invalidateDiary = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: ({
+      fullSync = false,
+      providerId,
+      startDate,
+      endDate,
+    }: SyncLiftosaurVariables) =>
+      syncLiftosaurData(fullSync, providerId, startDate, endDate),
+    onSuccess: (data: LiftosaurSyncResult) => {
+      queryClient.invalidateQueries({
+        queryKey: externalProviderKeys.lists(),
+      });
+      invalidateDiary();
+
+      const workoutsImp = data?.workoutsImported ?? data?.processedCount ?? 0;
+      const workoutsExp = data?.workoutsExported ?? 0;
+      const measImp = data?.measurementsImported ?? 0;
+      const measExp = data?.measurementsExported ?? 0;
+
+      toast({
+        title: t(
+          'integrations.liftosaurSyncSuccessTitle',
+          'Liftosaur synced successfully'
+        ),
+        description: t(
+          'integrations.liftosaurSyncDetails',
+          'Synced: {{workoutsImported}} workouts imported, {{workoutsExported}} workouts exported, {{measurementsImported}} measurements imported, {{measurementsExported}} measurements exported.',
+          {
+            workoutsImported: workoutsImp,
+            workoutsExported: workoutsExp,
+            measurementsImported: measImp,
+            measurementsExported: measExp,
+          }
+        ),
+      });
+    },
+    meta: {
+      errorMessage: t(
+        'integrations.liftosaurSyncError',
+        'Liftosaur sync failed. Please check your API key in settings.'
+      ),
+    },
+  });
+};
+
+export const useDisconnectLiftosaurMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (providerId?: string) => handleDisconnectLiftosaur(providerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: externalProviderKeys.lists(),
+      });
     },
   });
 };

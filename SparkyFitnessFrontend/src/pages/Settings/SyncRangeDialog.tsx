@@ -66,6 +66,8 @@ const SyncRangeDialog = ({
         return 'Garmin';
       case 'hevy':
         return 'Hevy';
+      case 'liftosaur':
+        return 'Liftosaur';
       case 'withings':
         return 'Withings';
       case 'googlehealth':

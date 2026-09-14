@@ -469,6 +469,40 @@ const fetchHevyStatus = async (): Promise<HevyStatusResponse> => {
   return apiCall('/integrations/hevy/status');
 };
 
+export interface LiftosaurStatusResponse {
+  connected: boolean;
+  lastSyncAt: string | null;
+}
+
+export const fetchLiftosaurStatus = async (
+  providerId?: string
+): Promise<LiftosaurStatusResponse> => {
+  return apiCall(
+    providerId
+      ? `/integrations/liftosaur/status?providerId=${encodeURIComponent(providerId)}`
+      : '/integrations/liftosaur/status'
+  );
+};
+
+export const handleDisconnectLiftosaur = async (providerId?: string) => {
+  if (
+    !confirm(
+      'Are you sure you want to disconnect from Liftosaur? This will deactivate the integration until you re-enable it.'
+    )
+  )
+    return;
+
+  try {
+    await apiCall(`/integrations/liftosaur/disconnect`, {
+      method: 'POST',
+      body: JSON.stringify({ providerId }),
+    });
+  } catch (error: unknown) {
+    console.error('Error disconnecting from Liftosaur:', error);
+    throw error;
+  }
+};
+
 const fetchStravaStatus = async (): Promise<OAuthStatusResponse> => {
   return apiCall('/integrations/strava/status');
 };
@@ -538,6 +572,14 @@ export const getEnrichedProviders = async (): Promise<
             enriched.hevy_last_sync_at = status.lastSyncAt;
             break;
           }
+          case 'liftosaur': {
+            const status = await fetchLiftosaurStatus(provider.id);
+            enriched.liftosaur_connect_status = status.connected
+              ? 'connected'
+              : 'disconnected';
+            enriched.liftosaur_last_sync_at = status.lastSyncAt;
+            break;
+          }
           case 'strava': {
             if (provider.has_token) {
               const status = await fetchStravaStatus();
@@ -561,6 +603,9 @@ export const getEnrichedProviders = async (): Promise<
         }
         if (provider.provider_type === 'hevy') {
           enriched.hevy_connect_status = 'disconnected';
+        }
+        if (provider.provider_type === 'liftosaur') {
+          enriched.liftosaur_connect_status = 'disconnected';
         }
       }
 

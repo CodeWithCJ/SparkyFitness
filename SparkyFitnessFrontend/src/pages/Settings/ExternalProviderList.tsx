@@ -280,6 +280,7 @@ const ExternalProviderList = ({
         editData.provider_type === 'oura' ||
         editData.provider_type === 'googlehealth' ||
         editData.provider_type === 'hevy' ||
+        editData.provider_type === 'liftosaur' ||
         editData.provider_type === 'strava' ||
         editData.provider_type === 'polar'
           ? editData.sync_frequency
@@ -398,6 +399,7 @@ const ExternalProviderList = ({
       oura_token_expires: provider.oura_token_expires || '',
       polar_last_sync_at: provider.polar_last_sync_at || '',
       polar_token_expires: provider.polar_token_expires || '',
+      liftosaur_last_sync_at: provider.liftosaur_last_sync_at || '',
     });
   };
 

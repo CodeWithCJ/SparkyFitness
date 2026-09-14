@@ -1017,7 +1017,7 @@ async function getCustomMeasurementsByDateRange(
   const client = await getClient(userId); // User-specific operation
   try {
     let query =
-      'SELECT category_id, entry_date AS date, entry_hour AS hour, value, entry_timestamp AS timestamp FROM custom_measurements WHERE user_id = $1 AND category_id = $2 AND entry_date BETWEEN $3 AND $4';
+      'SELECT category_id, entry_date AS date, entry_hour AS hour, value, entry_timestamp AS timestamp, source FROM custom_measurements WHERE user_id = $1 AND category_id = $2 AND entry_date BETWEEN $3 AND $4';
     const queryParams = [userId, categoryId, startDate, endDate];
     if (source) {
       query += ' AND source = $5';

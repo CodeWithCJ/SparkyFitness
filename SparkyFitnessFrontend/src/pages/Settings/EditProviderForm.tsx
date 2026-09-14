@@ -885,6 +885,30 @@ export const EditProviderForm = ({
           </p>
         </>
       )}
+      {editData.provider_type === 'liftosaur' && (
+        <>
+          <div>
+            <Label>Liftosaur API Key</Label>
+            <Input
+              type="password"
+              value={editData.app_key || ''}
+              onChange={(e) =>
+                setEditData((prev) => ({
+                  ...prev,
+                  app_key: e.target.value,
+                }))
+              }
+              placeholder="Enter Liftosaur API Key (lftsk_...)"
+              autoComplete="off"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground col-span-2">
+            Generate an API key in the Liftosaur app: Settings &#62; API Keys
+            (starts with <span className="font-mono">lftsk_</span>). A Liftosaur
+            Pro subscription is required to use the Liftosaur API.
+          </p>
+        </>
+      )}
       {(editData.provider_type === 'withings' ||
         editData.provider_type === 'garmin' ||
         editData.provider_type === 'fitbit' ||
@@ -892,7 +916,8 @@ export const EditProviderForm = ({
         editData.provider_type === 'googlehealth' ||
         editData.provider_type === 'strava' ||
         editData.provider_type === 'polar' ||
-        editData.provider_type === 'hevy') && (
+        editData.provider_type === 'hevy' ||
+        editData.provider_type === 'liftosaur') && (
         <div>
           <Label htmlFor="edit_sync_frequency">Sync Frequency</Label>
           <Select

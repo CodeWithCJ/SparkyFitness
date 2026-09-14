@@ -34,6 +34,8 @@ import {
   useManualSyncPolarMutation,
   useManualSyncStravaMutation,
   useSyncHevyMutation,
+  useSyncLiftosaurMutation,
+  useDisconnectLiftosaurMutation,
 } from '@/hooks/Integrations/useIntegrations';
 import {
   useDeleteExternalProviderMutation,
@@ -171,6 +173,12 @@ export const ProviderCard = ({
   } = useManualSyncGoogleHealthMutation();
   const { mutate: syncHevyData, isPending: isSyncHevyPending } =
     useSyncHevyMutation();
+  const { mutate: syncLiftosaurData, isPending: isSyncLiftosaurPending } =
+    useSyncLiftosaurMutation();
+  const {
+    mutate: handleDisconnectLiftosaur,
+    isPending: isDisconnectLiftosaurPending,
+  } = useDisconnectLiftosaurMutation();
 
   const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
 
@@ -214,6 +222,14 @@ export const ProviderCard = ({
           endDate,
         });
         break;
+      case 'liftosaur':
+        syncLiftosaurData({
+          fullSync: false,
+          providerId: provider.id,
+          startDate,
+          endDate,
+        });
+        break;
     }
   };
 
@@ -243,7 +259,9 @@ export const ProviderCard = ({
     isSyncGoogleHealthPending ||
     isSyncPolarPending ||
     isSyncStravaPending ||
-    isSyncHevyPending;
+    isSyncHevyPending ||
+    isSyncLiftosaurPending ||
+    isDisconnectLiftosaurPending;
 
   const handleToggleActive = async (providerId: string, isActive: boolean) => {
     try {
@@ -319,7 +337,8 @@ export const ProviderCard = ({
       provider.has_token ||
       provider.garmin_connect_status === 'linked' ||
       provider.garmin_connect_status === 'connected' ||
-      provider.hevy_connect_status === 'connected';
+      provider.hevy_connect_status === 'connected' ||
+      provider.liftosaur_connect_status === 'connected';
 
     switch (provider.provider_type) {
       case 'withings':
@@ -391,6 +410,15 @@ export const ProviderCard = ({
           disconnect: null,
           sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.hevy_last_sync_at,
+          tokenExpires: null,
+          hasToken: isLinked && provider.is_active,
+        };
+      case 'liftosaur':
+        return {
+          connect: null,
+          disconnect: () => handleDisconnectLiftosaur(provider.id),
+          sync: () => setIsSyncDialogOpen(true),
+          lastSync: provider.liftosaur_last_sync_at,
           tokenExpires: null,
           hasToken: isLinked && provider.is_active,
         };
@@ -636,6 +664,7 @@ export const ProviderCard = ({
         'polar',
         'garmin',
         'hevy',
+        'liftosaur',
         'strava',
       ].includes(provider.provider_type) && (
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-2 text-xs text-yellow-800 dark:text-yellow-200 mt-2 flex items-center gap-1">
