@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-09-13_
+_Last updated: 2026-09-15_
 
 SparkyFitness Mobile is a React Native 0.86 + Expo SDK 57 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -250,7 +250,8 @@ npx expo prebuild --clean
 - Many visual components read CSS variables with `useCSSVariable`, especially Skia charts and themed controls.
 - Animate Skia paths from Reanimated `useSharedValue` / `useDerivedValue`, not Skia's deprecated animation API.
 - `Icon.tsx` maps semantic names to SF Symbols on iOS and Ionicons on Android; verify identifiers before adding icons.
-- Use shared primitives where they fit: `FormInput`, `Button`, `SettingsRow`, `SettingsRowGroup`, `SegmentedControl`, `StepperInput`, `BottomSheetPicker`, `CalendarSheet`, `DateRangeSheet`, `AnchoredMenu`, and `FormScreenChrome`.
+- Use shared primitives where they fit: `FormInput`, `Button`, `SettingsRow`, `SettingsRowGroup`, `SegmentedControl`, `StepperInput`, `BottomSheetPicker`, `CalendarSheet`, `DateRangeSheet`, `AnchoredMenu`, `FooterActionBar`, and `FormScreenChrome`.
+- An action pinned below a list goes in `FooterActionBar`, never a hand-rolled `View` with flat bottom padding. A list's own `contentContainerStyle` inset does not reach a sibling pinned under it, so a flat padding leaves the action beneath Android's navigation bar; the component applies `Math.max(insets.bottom, 16)` in one place so the next screen cannot rediscover that. `FormScreenChrome`'s `FooterSaveBar` stays separate — it is the save-specific variant, with a top divider and the duplicate-press guard.
 - `DateRangeSheet` takes optional `title` and `confirmLabel`; they default to the writeback removal wording, so a consumer that is not removing anything (the time-lapse) must pass its own. It also takes `markedDates`, like `CalendarSheet`: both dot their days through the shared `useMarkedDayComponent` (`components/calendarMarkedDays.tsx`), which inverts the dot on a selected day and on either end of a range, and supplies no `Day` override at all when there is nothing to mark so every other caller keeps the library's own cell.
 - `BottomSheetPicker`, `CalendarSheet`, and sheets shown over native modals use `FullWindowOverlay` on iOS to avoid nested-provider inset bugs.
 - Keep button text and compact cards within their stable dimensions across mobile sizes. Avoid layout shifts from dynamic labels, loading states, or icon swaps.

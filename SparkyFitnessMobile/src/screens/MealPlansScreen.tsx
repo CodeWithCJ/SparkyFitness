@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
+import FooterActionBar from '../components/FooterActionBar';
 import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
 import Button from '../components/ui/Button';
@@ -393,11 +394,11 @@ const MealPlansScreen: React.FC<MealPlansScreenProps> = ({ navigation }) => {
       {header}
       {content()}
       {mealPlans.length > 0 && !isLoading && !isError ? (
-        <View className="px-4 pb-4 bg-background">
+        <FooterActionBar>
           <Button onPress={() => navigation.navigate('MealPlanForm')}>
             {t('mealPlans.create', { defaultValue: 'Create meal plan' })}
           </Button>
-        </View>
+        </FooterActionBar>
       ) : null}
     </View>
   );
