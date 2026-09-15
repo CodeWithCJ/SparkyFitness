@@ -99,9 +99,30 @@ describe('WorkoutSettingsScreen', () => {
     expect(useAppPreferencesStore.getState().restTimerSoundEnabled).toBe(false);
   });
 
+  it('toggles the silent-mode preference from the switch', () => {
+    const { getByLabelText } = renderScreen();
+    const silentToggle = getByLabelText('Play rest timer sound in silent mode');
+    expect(silentToggle.props.value).toBe(false);
+
+    fireEvent(silentToggle, 'valueChange', true);
+    expect(useAppPreferencesStore.getState().restTimerSoundInSilentMode).toBe(
+      true
+    );
+  });
+
+  it('disables the silent-mode switch while the chime itself is off', () => {
+    useAppPreferencesStore.getState().setRestTimerSoundEnabled(false);
+    const { getByLabelText } = renderScreen();
+    expect(
+      getByLabelText('Play rest timer sound in silent mode').props.disabled
+    ).toBe(true);
+  });
+
   it('toggles the keep screen awake preference from the switch', () => {
-    const { getAllByRole } = renderScreen();
-    const [, keepAwakeToggle] = getAllByRole('switch');
+    // Queried by label, not position: the row order shifts whenever a switch
+    // is added above this one.
+    const { getByLabelText } = renderScreen();
+    const keepAwakeToggle = getByLabelText('Keep screen awake');
     expect(keepAwakeToggle.props.value).toBe(false);
 
     fireEvent(keepAwakeToggle, 'valueChange', true);

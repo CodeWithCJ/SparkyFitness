@@ -61,6 +61,29 @@ describe('sounds service', () => {
       });
     });
 
+    it('opts into silent-mode playback when the preference is on', async () => {
+      useAppPreferencesStore.getState().setRestTimerSoundInSilentMode(true);
+      playRestCompleteSound();
+      await flush();
+      expect(mockSetAudioMode).toHaveBeenCalledWith({
+        playsInSilentMode: true,
+        interruptionMode: 'mixWithOthers',
+      });
+    });
+
+    it('re-applies the audio mode when the silent-mode preference changes', async () => {
+      playRestCompleteSound();
+      await flush();
+      useAppPreferencesStore.getState().setRestTimerSoundInSilentMode(true);
+      playRestCompleteSound();
+      await flush();
+      expect(mockSetAudioMode).toHaveBeenCalledTimes(2);
+      expect(mockSetAudioMode).toHaveBeenLastCalledWith({
+        playsInSilentMode: true,
+        interruptionMode: 'mixWithOthers',
+      });
+    });
+
     it('creates the player once and replays from the start on later calls', async () => {
       playRestCompleteSound();
       await flush();

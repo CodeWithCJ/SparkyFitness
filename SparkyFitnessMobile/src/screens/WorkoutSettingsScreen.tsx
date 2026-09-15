@@ -32,6 +32,12 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
   const setRestTimerSoundEnabled = useAppPreferencesStore(
     (s) => s.setRestTimerSoundEnabled
   );
+  const restTimerSoundInSilentMode = useAppPreferencesStore(
+    (s) => s.restTimerSoundInSilentMode
+  );
+  const setRestTimerSoundInSilentMode = useAppPreferencesStore(
+    (s) => s.setRestTimerSoundInSilentMode
+  );
   const workoutKeepAwakeEnabled = useAppPreferencesStore(
     (s) => s.workoutKeepAwakeEnabled
   );
@@ -105,6 +111,28 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
               accessibilityLabel={t('workoutSettings.restSoundAccessibility', {
                 defaultValue: 'Rest timer sound',
               })}
+            />
+          }
+        />
+
+        <SettingsRow
+          title={t('workoutSettings.restSoundSilent', {
+            defaultValue: 'Play in silent mode',
+          })}
+          subtitle={t('workoutSettings.restSoundSilentSubtitle', {
+            defaultValue:
+              'Let the rest chime sound while the app is open even with the ringer muted. Alerts that arrive with the app closed still follow your silent mode.',
+          })}
+          subtitleNumberOfLines={0}
+          rightAccessory={
+            <Switch
+              value={restTimerSoundInSilentMode}
+              onValueChange={setRestTimerSoundInSilentMode}
+              disabled={!restTimerSoundEnabled}
+              accessibilityLabel={t(
+                'workoutSettings.restSoundSilentAccessibility',
+                { defaultValue: 'Play rest timer sound in silent mode' }
+              )}
             />
           }
         />

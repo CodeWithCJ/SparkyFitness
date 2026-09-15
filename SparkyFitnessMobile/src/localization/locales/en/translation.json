@@ -970,9 +970,12 @@
     "defaultRestAccessibility": "Default rest period, {{duration}}",
     "restSound": "Rest timer sound",
     "restSoundSubtitle": "Play a sound when the rest timer ends while the app is open.",
+    "restSoundSilent": "Play in silent mode",
+    "restSoundSilentSubtitle": "Let the rest chime sound while the app is open even with the ringer muted. Alerts that arrive with the app closed still follow your silent mode.",
     "keepAwake": "Keep screen awake",
     "keepAwakeSubtitle": "Prevent the screen from sleeping while a workout is active.",
     "restSoundAccessibility": "Rest timer sound",
+    "restSoundSilentAccessibility": "Play rest timer sound in silent mode",
     "keepAwakeAccessibility": "Keep screen awake"
   },
   "restPeriod": {
