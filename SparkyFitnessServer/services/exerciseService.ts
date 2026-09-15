@@ -1928,10 +1928,11 @@ async function createGroupedWorkoutSession(
       exercises,
       workoutPlanAssignmentId = null,
     } = sessionData;
-    let presetEntry;
-    let exerciseDefinitions;
-    let childEntrySource = source;
-    let preserveLegacyPresetDurationFallback = false;
+    let presetEntry: any;
+    let exerciseDefinitions: any;
+    const childEntrySource = source;
+    const preserveLegacyPresetDurationFallback = false;
+
     if (workout_preset_id !== undefined && workout_preset_id !== null) {
       const workoutPreset = await workoutPresetRepository.getWorkoutPresetById(
         workout_preset_id,
@@ -1957,19 +1958,33 @@ async function createGroupedWorkoutSession(
           },
           actingUserId
         );
-      if (exercises !== undefined) {
-        // Client supplied its own exercise/set structure (e.g. a live
-        // workout's Hevy-style placeholders) — use it verbatim. The entry is
-        // still tagged to the preset (for recentSessions stats scoping), but
-        // keeps its own source and stays nested-edit-able like any other
-        // client-authored session, unlike a pure workout_preset_id start
-        // (source 'Workout Preset', not in EDITABLE_SOURCES).
-        exerciseDefinitions = exercises;
-      } else {
-        exerciseDefinitions = workoutPreset.exercises || [];
-        childEntrySource = 'Workout Preset';
-        preserveLegacyPresetDurationFallback = true;
-      }
+
+      // Client supplied its own exercise/set structure (e.g. a live
+      // workout's Hevy-style placeholders) — use it verbatim. The entry is
+      // still tagged to the preset (for recentSessions stats scoping), but
+      // keeps its own source and stays nested-edit-able like any other
+      // client-authored session, unlike a pure workout_preset_id start
+      // (source 'Workout Preset', not in EDITABLE_SOURCES).
+      const rawExercises =
+        exercises !== undefined ? exercises : workoutPreset.exercises || [];
+
+      exerciseDefinitions = rawExercises.map((ex: any) => {
+        const presetEx = workoutPreset.exercises?.find(
+          (p: any) => p.exercise_id === ex.exercise_id
+        );
+
+        return {
+          ...ex,
+          rep_goal: presetEx?.rep_goal ?? ex.rep_goal ?? null,
+          increment_type: presetEx?.increment_type ?? ex.increment_type ?? null,
+          increment_value:
+            presetEx?.increment_value ?? ex.increment_value ?? null,
+          equipment_brand:
+            presetEx?.equipment_brand ?? ex.equipment_brand ?? null,
+          progression_mode:
+            presetEx?.progression_mode ?? ex.progression_mode ?? null,
+        };
+      });
     } else {
       presetEntry =
         await exercisePresetEntryRepository.createExercisePresetEntryWithClient(
@@ -1987,6 +2002,7 @@ async function createGroupedWorkoutSession(
         );
       exerciseDefinitions = exercises || [];
     }
+
     await createGroupedExerciseEntriesWithClient(
       client,
       userId,

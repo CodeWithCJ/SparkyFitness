@@ -56,6 +56,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
     handleRemoveExercise,
     handleDuplicateExercise,
     handleSetChange,
+    handleExerciseFieldChange,
     handleAddSet,
     handleDuplicateSet,
     handleRemoveSet,
@@ -172,6 +173,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
                         onRemoveSet={handleRemoveSet}
                         onAddSet={handleAddSet}
                         onReorderSets={handleReorderSets}
+                        onExerciseFieldChange={handleExerciseFieldChange}
                         simplified
                       />
                     );

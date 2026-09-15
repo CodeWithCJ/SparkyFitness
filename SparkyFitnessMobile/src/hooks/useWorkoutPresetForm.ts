@@ -71,6 +71,12 @@ export function presetFormReducer(
           exerciseModality: exercise.modality ?? null,
           images: exercise.image_url ? [exercise.image_url] : [],
           supersetGroup: exercise.superset_group ?? null,
+          // Progression & Equipment Fields
+          progressionMode: exercise.progression_mode ?? 'rep_goal',
+          repGoal: exercise.rep_goal ?? null,
+          incrementType: exercise.increment_type ?? 'weight',
+          incrementValue: exercise.increment_value ?? 5,
+          equipmentBrand: exercise.equipment_brand ?? null,
           sets: exercise.sets.map((set, setIdx) => ({
             clientId: action.clientIds[exerciseIdx].setClientIds[setIdx],
             restTime: set.rest_time,
@@ -93,7 +99,7 @@ export function presetFormReducer(
                     )
                   )
                 : '',
-            setType: set.set_type ?? undefined,
+            setType: (set.set_type as any) ?? undefined,
             duration: set.duration,
             notes: set.notes,
           })),
@@ -119,7 +125,7 @@ export function presetFormReducer(
           sets: exercise.sets.map((set, setIdx) => ({
             clientId: action.clientIds[exerciseIdx].setClientIds[setIdx],
             restTime: set.rest_time,
-            setType: set.set_type ?? undefined,
+            setType: (set.set_type as any) ?? undefined,
             duration: set.duration,
             notes: set.notes,
             weight:
@@ -173,6 +179,7 @@ export function useWorkoutPresetForm() {
     updateSetField,
     updateSetMeta,
     setExerciseRest,
+    setExerciseProgression,
     supersetWith,
     ungroupExercise,
     reorderExercises,
@@ -209,7 +216,7 @@ export function useWorkoutPresetForm() {
       });
       return clientIds.map((c) => c.exerciseClientId);
     },
-    [exercisesModifiedRef]
+    [exercisesModifiedRef, dispatch]
   );
 
   const populateFromSession = useCallback(
@@ -237,7 +244,7 @@ export function useWorkoutPresetForm() {
         clientIds,
       });
     },
-    [exercisesModifiedRef]
+    [exercisesModifiedRef, dispatch]
   );
 
   return {
@@ -253,6 +260,7 @@ export function useWorkoutPresetForm() {
     updateSetField,
     updateSetMeta,
     setExerciseRest,
+    setExerciseProgression,
     supersetWith,
     ungroupExercise,
     reorderExercises,

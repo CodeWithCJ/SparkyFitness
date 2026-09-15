@@ -74,6 +74,7 @@ interface PresetFormBodyProps {
   ) => void;
   removeSet: (exerciseClientId: string, setClientId: string) => void;
   setExerciseRest: (exerciseClientId: string, seconds: number) => void;
+  setExerciseProgression: (exerciseClientId: string, patch: any) => void;
   supersetWith: (currentClientId: string, pickedClientId: string) => void;
   ungroupExercise: (clientId: string) => void;
   reorderExercises: (fromItemIndex: number, toItemIndex: number) => void;
@@ -100,6 +101,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
   updateSetMeta,
   removeSet,
   setExerciseRest,
+  setExerciseProgression,
   supersetWith,
   ungroupExercise,
   reorderExercises,
@@ -168,6 +170,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
           removeSet={removeSet}
           onAddSet={exerciseSetEditing.handleAddSet}
           onRemoveExercise={exerciseSetEditing.handleRemoveExercise}
+          setExerciseProgression={setExerciseProgression}
           setExerciseRest={setExerciseRest}
           onReplaceExercise={onReplaceExercise}
           onDuplicateExercise={onDuplicateExercise}
@@ -221,6 +224,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({
     updateSetField,
     updateSetMeta,
     setExerciseRest,
+    setExerciseProgression,
     supersetWith,
     ungroupExercise,
     reorderExercises,
@@ -406,6 +410,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({
         updateSetMeta={updateSetMeta}
         removeSet={removeSet}
         setExerciseRest={setExerciseRest}
+        setExerciseProgression={setExerciseProgression}
         supersetWith={supersetWith}
         ungroupExercise={ungroupExercise}
         reorderExercises={reorderExercises}
@@ -499,6 +504,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({
     updateSetField,
     updateSetMeta,
     setExerciseRest,
+    setExerciseProgression,
     supersetWith,
     ungroupExercise,
     reorderExercises,
@@ -674,6 +680,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({
         updateSetField={updateSetField}
         updateSetMeta={updateSetMeta}
         removeSet={removeSet}
+        setExerciseProgression={setExerciseProgression}
         setExerciseRest={setExerciseRest}
         supersetWith={supersetWith}
         ungroupExercise={ungroupExercise}

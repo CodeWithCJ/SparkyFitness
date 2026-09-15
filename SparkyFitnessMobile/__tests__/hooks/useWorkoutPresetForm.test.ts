@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import { renderHook, act } from '@testing-library/react-native';
 import {
   presetFormReducer,
@@ -92,6 +93,11 @@ describe('presetFormReducer', () => {
       exerciseCategory: 'strength',
       exerciseModality: null,
       images: ['bench.png'],
+      progressionMode: 'rep_goal',
+      repGoal: null,
+      incrementType: 'weight',
+      incrementValue: 5,
+      equipmentBrand: null,
       sets: [
         {
           clientId: 's1',
@@ -241,7 +247,7 @@ describe('presetFormReducer', () => {
       expect(next.exercises[0].sets[0].setType).toBe('warmup');
       expect(next.exercises[0].sets[1].setType).toBeUndefined();
 
-      const payload = buildPresetExercisesPayload(next.exercises, 'kg');
+      const payload = buildPresetExercisesPayload(next.exercises, 'kg', 'km');
       expect(payload[0].sets[0].set_type).toBe('warmup');
       // Preset sets have no rpe column; a stray rpe patch must not leak out.
       expect(payload[0].sets[0]).not.toHaveProperty('rpe');
@@ -290,7 +296,7 @@ describe('presetFormReducer', () => {
       ]);
       expect(next.exercises[1].sets.map((s) => s.restTime)).toEqual([60]);
 
-      const payload = buildPresetExercisesPayload(next.exercises, 'kg');
+      const payload = buildPresetExercisesPayload(next.exercises, 'kg', 'km');
       expect(payload.map((e) => e.superset_group)).toEqual([1, 1, null]);
     });
 
@@ -360,7 +366,7 @@ describe('presetFormReducer', () => {
   describe('POPULATE_FROM_PRESET', () => {
     function preset(overrides: Partial<WorkoutPreset> = {}): WorkoutPreset {
       return {
-        id: 'p1',
+        id: 1,
         user_id: 'u1',
         name: 'Imported',
         description: 'from server',
@@ -369,14 +375,14 @@ describe('presetFormReducer', () => {
         updated_at: '',
         exercises: [
           {
-            id: 'pe1',
+            id: 1,
             exercise_id: 'ex-1',
             image_url: 'img.png',
             exercise_name: 'Squat',
             category: 'legs',
             sets: [
               {
-                id: 'ps1',
+                id: 1,
                 set_number: 1,
                 set_type: 'working',
                 reps: 5,
@@ -386,7 +392,7 @@ describe('presetFormReducer', () => {
                 notes: 'go deep',
               },
               {
-                id: 'ps2',
+                id: 2,
                 set_number: 2,
                 set_type: 'warmup',
                 reps: null,
@@ -521,14 +527,14 @@ describe('presetFormReducer', () => {
         description: null,
         exercises: [
           {
-            id: 'pe1',
+            id: 1,
             exercise_id: 'ex-9',
             image_url: null,
             exercise_name: 'Plank',
             category: null,
             sets: [
               {
-                id: 'ps1',
+                id: 1,
                 set_number: 1,
                 set_type: 'working',
                 reps: null,
@@ -712,7 +718,7 @@ describe('presetFormReducer', () => {
       expect(next.exercises[0].serverId).toBeUndefined();
       expect(next.exercises[0].notes).toBeUndefined();
 
-      const payload = buildPresetExercisesPayload(next.exercises, 'kg');
+      const payload = buildPresetExercisesPayload(next.exercises, 'kg', 'km');
       expect(payload[0].sets[0]).not.toHaveProperty('rpe');
       expect(payload[0].sets[0]).not.toHaveProperty('completed_at');
     });
@@ -958,7 +964,7 @@ describe('useWorkoutPresetForm', () => {
     expect(result.current.exercisesModifiedRef.current).toBe(true);
 
     const preset: WorkoutPreset = {
-      id: 'p1',
+      id: 1,
       user_id: 'u1',
       name: 'Imported',
       description: 'server desc',
@@ -967,14 +973,14 @@ describe('useWorkoutPresetForm', () => {
       updated_at: '',
       exercises: [
         {
-          id: 'pe1',
+          id: 1,
           exercise_id: 'ex-1',
           image_url: null,
           exercise_name: 'Squat',
           category: 'legs',
           sets: [
             {
-              id: 'ps1',
+              id: 1,
               set_number: 1,
               set_type: 'working',
               reps: 5,

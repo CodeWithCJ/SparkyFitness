@@ -1,12 +1,13 @@
+import { getClient } from '../db/poolManager.js';
 import workoutPresetRepository from '../models/workoutPresetRepository.js';
 import exerciseRepository from '../models/exerciseRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function createWorkoutPreset(userId: any, presetData: any) {
-  // Validate and resolve exercise_ids
   for (const ex of presetData.exercises) {
-    ex.exercise_id = await resolveExerciseIdToUuid(ex.exercise_id, userId); // Resolve to UUID
+    ex.exercise_id = await resolveExerciseIdToUuid(ex.exercise_id, userId);
     const exercise = await exerciseRepository.getExerciseById(
       ex.exercise_id,
       userId
@@ -14,32 +15,32 @@ async function createWorkoutPreset(userId: any, presetData: any) {
     if (!exercise) {
       throw new Error(`Exercise with ID ${ex.exercise_id} not found.`);
     }
-    // Ensure duration and notes are numbers/strings if they exist
-    if (ex.duration !== undefined && typeof ex.duration !== 'number') {
-      throw new Error(
-        `Duration for exercise ${ex.exercise_id} must be a number.`
-      );
-    }
-    if (ex.notes !== undefined && typeof ex.notes !== 'string') {
-      throw new Error(`Notes for exercise ${ex.exercise_id} must be a string.`);
-    }
   }
-  // Ownership always comes from the authenticated request — the body's
-  // user_id (if any) is stripped by the schema and must not be trusted.
-  return workoutPresetRepository.createWorkoutPreset({
+  const created = await workoutPresetRepository.createWorkoutPreset({
     ...presetData,
     user_id: userId,
   });
+  return created;
 }
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getWorkoutPresets(userId: any, page: any, limit: any) {
-  return workoutPresetRepository.getWorkoutPresets(userId, page, limit);
+async function getWorkoutPresets(userId: any, page = 1, limit = 10) {
+  const client = await getClient(userId);
+  try {
+    const result = await workoutPresetRepository.getWorkoutPresets(
+      userId,
+      page,
+      limit
+    );
+
+    return result;
+  } finally {
+    client.release();
+  }
 }
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getWorkoutPresetById(userId: any, presetId: any) {
-  // RLS already gates read access (owner, public, or family-shared via
-  // can_view_exercise_library). If the row comes back, the caller is allowed to
-  // see it; an extra owner/public check here would wrongly 403 shared presets.
   const preset = await workoutPresetRepository.getWorkoutPresetById(
     presetId,
     userId
@@ -51,11 +52,8 @@ async function getWorkoutPresetById(userId: any, presetId: any) {
 }
 
 async function updateWorkoutPreset(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   presetId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   updateData: any
 ) {
   const ownerId = await workoutPresetRepository.getWorkoutPresetOwnerId(
@@ -67,10 +65,9 @@ async function updateWorkoutPreset(
       'Forbidden: You do not have permission to update this workout preset.'
     );
   }
-  // Validate and resolve exercise_ids if exercises are being updated
   if (updateData.exercises) {
     for (const ex of updateData.exercises) {
-      ex.exercise_id = await resolveExerciseIdToUuid(ex.exercise_id, userId); // Resolve to UUID
+      ex.exercise_id = await resolveExerciseIdToUuid(ex.exercise_id, userId);
       const exercise = await exerciseRepository.getExerciseById(
         ex.exercise_id,
         userId
@@ -78,25 +75,16 @@ async function updateWorkoutPreset(
       if (!exercise) {
         throw new Error(`Exercise with ID ${ex.exercise_id} not found.`);
       }
-      // Ensure duration and notes are numbers/strings if they exist
-      if (ex.duration !== undefined && typeof ex.duration !== 'number') {
-        throw new Error(
-          `Duration for exercise ${ex.exercise_id} must be a number.`
-        );
-      }
-      if (ex.notes !== undefined && typeof ex.notes !== 'string') {
-        throw new Error(
-          `Notes for exercise ${ex.exercise_id} must be a string.`
-        );
-      }
     }
   }
-  return workoutPresetRepository.updateWorkoutPreset(
+  const updated = await workoutPresetRepository.updateWorkoutPreset(
     presetId,
     userId,
     updateData
   );
+  return updated;
 }
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function deleteWorkoutPreset(userId: any, presetId: any) {
   const ownerId = await workoutPresetRepository.getWorkoutPresetOwnerId(
@@ -117,18 +105,21 @@ async function deleteWorkoutPreset(userId: any, presetId: any) {
   }
   return { message: 'Workout preset deleted successfully.' };
 }
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function searchWorkoutPresets(searchTerm: any, userId: any, limit: any) {
   if (limit === null || limit === undefined) {
     const preferences = await preferenceRepository.getUserPreferences(userId);
     limit = preferences ? preferences.item_display_limit : 10;
   }
-  return workoutPresetRepository.searchWorkoutPresets(
+  const presets = await workoutPresetRepository.searchWorkoutPresets(
     searchTerm,
     userId,
     limit
   );
+  return presets;
 }
+
 export { createWorkoutPreset };
 export { getWorkoutPresets };
 export { getWorkoutPresetById };
