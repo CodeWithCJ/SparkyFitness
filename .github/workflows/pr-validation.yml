@@ -15,7 +15,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: pr-validation-${{ github.event.pull_request.number }}-${{ github.event_name == 'pull_request_target' && 'write' || 'read' }}
+  group: pr-validation-${{ github.event.pull_request.number }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:

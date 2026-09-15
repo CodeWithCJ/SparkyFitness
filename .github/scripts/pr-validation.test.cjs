@@ -213,7 +213,7 @@ test('policy checkout uses the PR base, never the review merge ref', () => {
   assert.equal(checkout.with['persist-credentials'], false);
 });
 
-test('reviews cannot cancel target-event writes', () => {
+test('different PR events cannot cancel each other', () => {
   const group = (eventName) =>
     workflow.concurrency.group.replace(/\$\{\{(.*?)\}\}/g, (_, expression) =>
       new Function('github', `return ${expression}`)({
@@ -222,8 +222,13 @@ test('reviews cannot cancel target-event writes', () => {
       }),
     );
   assert.notEqual(group('pull_request_target'), group('pull_request_review'));
-  assert.equal(
+  assert.notEqual(
+    group('pull_request_target'),
+    group('pull_request_review_comment'),
+  );
+  assert.notEqual(
     group('pull_request_review'),
     group('pull_request_review_comment'),
   );
+  assert.equal(workflow.concurrency['cancel-in-progress'], true);
 });
