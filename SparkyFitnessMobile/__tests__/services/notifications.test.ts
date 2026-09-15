@@ -77,6 +77,13 @@ const mockDismiss =
   >;
 const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
 
+function setAppState(state: string): void {
+  Object.defineProperty(AppState, 'currentState', {
+    get: () => state,
+    configurable: true,
+  });
+}
+
 describe('notifications service', () => {
   beforeEach(async () => {
     await initializeI18n('en');
@@ -96,6 +103,7 @@ describe('notifications service', () => {
     mockGetPresented.mockReset().mockResolvedValue([]);
     mockDismiss.mockReset().mockResolvedValue(undefined as any);
     mockToastShow.mockClear();
+    setAppState('active');
     Object.defineProperty(Platform, 'OS', {
       get: () => 'ios',
       configurable: true,
@@ -210,6 +218,23 @@ describe('notifications service', () => {
       expect(result.shouldPlaySound).toBe(true);
     });
 
+    it('hides the rest ping while the app is on screen', async () => {
+      const handler = await getHandler();
+      const result = await handler(notificationWith('rest-complete'));
+      expect(result.shouldShowBanner).toBe(false);
+      expect(result.shouldShowList).toBe(false);
+    });
+
+    it('sounds and shows the rest ping when the app is only inactive', async () => {
+      // The chime is foreground-only, so here the ping is the only cue left.
+      setAppState('inactive');
+      const handler = await getHandler();
+      const result = await handler(notificationWith('rest-complete'));
+      expect(result.shouldPlaySound).toBe(true);
+      expect(result.shouldShowBanner).toBe(true);
+      expect(result.shouldShowList).toBe(true);
+    });
+
     it('keeps sound for non-rest notifications regardless of the chime preference', async () => {
       const handler = await getHandler();
       const medReminder = await handler(
@@ -265,7 +290,9 @@ describe('notifications service', () => {
         content: expect.objectContaining({
           title: 'Rest complete',
           body: 'Bench Press',
+          sound: true,
           categoryIdentifier: 'rest-complete',
+          interruptionLevel: 'timeSensitive',
         }),
         trigger: expect.objectContaining({
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,

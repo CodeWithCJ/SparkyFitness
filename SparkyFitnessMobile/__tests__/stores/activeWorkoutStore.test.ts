@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 import type { PresetSessionResponse } from '@workspace/shared';
 import {
   __resetActiveWorkoutStoreForTests,
@@ -65,6 +66,13 @@ const mockSelectionHaptic = fireSelectionHaptic as jest.MockedFunction<
 >;
 
 const FIXED_NOW = 1_700_000_000_000;
+
+function setAppState(state: string): void {
+  Object.defineProperty(AppState, 'currentState', {
+    get: () => state,
+    configurable: true,
+  });
+}
 
 function makeSession(
   overrides?: Partial<PresetSessionResponse>
@@ -232,6 +240,7 @@ describe('activeWorkoutStore', () => {
     mockNewUuid.mockImplementation(() => `uuid-${++uuidSeq}`);
     jest.useFakeTimers();
     jest.setSystemTime(new Date(FIXED_NOW));
+    setAppState('active');
     await AsyncStorage.clear();
   });
 
@@ -1818,6 +1827,15 @@ describe('activeWorkoutStore', () => {
       expect(rest.scheduledNotificationId).toBeNull();
       expect(mockCancel).toHaveBeenCalledWith('notif-abc');
       expect(mockHaptic).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps the due ping scheduled when the app is not active', () => {
+      // Off screen the ping is the only cue: cancelling it races its delivery.
+      setAppState('background');
+      jest.setSystemTime(new Date(FIXED_NOW + 60_001));
+      useActiveWorkoutStore.getState().markRestReady();
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('ready');
+      expect(mockCancel).not.toHaveBeenCalled();
     });
 
     it('leaves activeSetId untouched (cursor stays until user completes the set)', () => {
