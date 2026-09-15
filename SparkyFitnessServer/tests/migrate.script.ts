@@ -1,6 +1,5 @@
 // Standalone migration runner used by CI to prove a fresh install boots cleanly.
-import { applyMigrations } from '../utils/dbMigrations.js';
-import { applyRlsPolicies } from '../utils/applyRlsPolicies.js';
+import { initializeDatabase } from '../utils/initializeDatabase.js';
 import { endPool } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 
@@ -10,8 +9,7 @@ import { log } from '../config/logging.js';
 // so a failure closing the pool can't surface as an unhandled rejection.
 async function run() {
   try {
-    await applyMigrations();
-    await applyRlsPolicies();
+    await initializeDatabase();
     log('info', 'Migration check completed successfully.');
   } catch (error) {
     log('error', 'Migration check failed:', error);

@@ -38,17 +38,15 @@ const serverSource = fs.readFileSync(
 
 describe('Boot order: migrations run before any application module loads', () => {
   it('applies migrations in index.ts before importing the server module', () => {
-    const migrationsAt = indexSource.indexOf('applyMigrations()');
-    const rlsAt = indexSource.indexOf('applyRlsPolicies()');
+    const migrationsAt = indexSource.indexOf('await initializeDatabase()');
     const serverImportAt = indexSource.indexOf(
       "await import('./SparkyFitnessServer.js')"
     );
 
     expect(
       migrationsAt,
-      'index.ts must call applyMigrations()'
+      'index.ts must await initializeDatabase()'
     ).toBeGreaterThan(-1);
-    expect(rlsAt, 'index.ts must call applyRlsPolicies()').toBeGreaterThan(-1);
     expect(
       serverImportAt,
       'index.ts must import SparkyFitnessServer.js'
@@ -56,40 +54,24 @@ describe('Boot order: migrations run before any application module loads', () =>
 
     expect(
       migrationsAt,
-      'applyMigrations() must run BEFORE the server module is imported, or Better Auth caches a schema mismatch for the life of the process'
+      'initializeDatabase() must finish BEFORE the server module is imported, or Better Auth caches a schema mismatch for the life of the process'
     ).toBeLessThan(serverImportAt);
-    expect(
-      rlsAt,
-      'applyRlsPolicies() must run before the server module is imported'
-    ).toBeLessThan(serverImportAt);
-    expect(
-      migrationsAt,
-      'applyMigrations() must run before applyRlsPolicies()'
-    ).toBeLessThan(rlsAt);
   });
 
-  it('imports the migration modules dynamically, not statically', () => {
+  it('imports the database initializer dynamically, not statically', () => {
     // db/poolManager.ts builds both pg pools at module load from process.env.
     // A static import here is hoisted above dotenv.config()/loadSecrets() and
     // would freeze the pools with empty connection config.
     expect(
       indexSource,
-      'dbMigrations must be imported dynamically (see comment in index.ts)'
-    ).toContain("await import('./utils/dbMigrations.js')");
-    expect(
-      indexSource,
-      'applyRlsPolicies must be imported dynamically (see comment in index.ts)'
-    ).toContain("await import('./utils/applyRlsPolicies.js')");
+      'initializeDatabase must be imported dynamically (see comment in index.ts)'
+    ).toContain("await import('./utils/initializeDatabase.js')");
 
     expect(
-      /^import\s+.*\bfrom\s+'\.\/utils\/dbMigrations\.js'/m.test(indexSource),
-      'index.ts must NOT statically import dbMigrations.js — ESM hoisting would run it before dotenv/loadSecrets'
-    ).toBe(false);
-    expect(
-      /^import\s+.*\bfrom\s+'\.\/utils\/applyRlsPolicies\.js'/m.test(
+      /^import\s+.*\bfrom\s+'\.\/utils\/initializeDatabase\.js'/m.test(
         indexSource
       ),
-      'index.ts must NOT statically import applyRlsPolicies.js — ESM hoisting would run it before dotenv/loadSecrets'
+      'index.ts must NOT statically import initializeDatabase.js — ESM hoisting would run it before dotenv/loadSecrets'
     ).toBe(false);
   });
 
@@ -98,7 +80,7 @@ describe('Boot order: migrations run before any application module loads', () =>
     const secretsAt = indexSource.indexOf('loadSecrets()');
     const preflightAt = indexSource.indexOf('runPreflightChecks()');
     const migrationsAt = indexSource.indexOf(
-      "await import('./utils/dbMigrations.js')"
+      "await import('./utils/initializeDatabase.js')"
     );
 
     // indexOf() returns -1 for a missing token, and -1 is less than any real
@@ -125,6 +107,7 @@ describe('Boot order: migrations run before any application module loads', () =>
       'migrations belong in index.ts only — a second boot path here reintroduces the race'
     ).not.toContain('applyMigrations');
     expect(serverSource).not.toContain('applyRlsPolicies');
+    expect(serverSource).not.toContain('initializeDatabase');
   });
 
   it('exits the process when startup fails', () => {

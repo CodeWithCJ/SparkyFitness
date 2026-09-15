@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import type { PoolClient } from 'pg';
 import { getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 import { grantPermissions } from '../db/grantPermissions.js';
@@ -8,8 +9,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const migrationsDir = path.join(__dirname, '../db/migrations');
-async function applyMigrations() {
-  const client = await getSystemClient();
+/** Applies pending migrations and grants; the caller retains any supplied client. */
+async function applyMigrations(existingClient: PoolClient | null = null) {
+  const client = existingClient || (await getSystemClient());
   try {
     // The preflightChecks.js script now ensures these variables are set.
     const appUserRaw = process.env.SPARKY_FITNESS_APP_DB_USER;
@@ -48,8 +50,7 @@ async function applyMigrations() {
       'SELECT name FROM system.schema_migrations ORDER BY name'
     );
     const appliedMigrations = new Set(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      appliedMigrationsResult.rows.map((row: any) => row.name)
+      appliedMigrationsResult.rows.map((row: { name: string }) => row.name)
     );
     log('info', 'Applied migrations:', Array.from(appliedMigrations));
     const migrationFiles = fs
@@ -74,13 +75,13 @@ async function applyMigrations() {
       }
     }
     // After all migrations are applied, grant necessary permissions to the app user
-    await grantPermissions();
+    await grantPermissions(client);
     log('info', 'Permissions granted to application user.');
   } catch (error) {
     log('error', 'Error applying migrations:', error);
     throw error;
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
 export { applyMigrations };

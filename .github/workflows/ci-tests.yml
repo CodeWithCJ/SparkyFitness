@@ -55,7 +55,9 @@ jobs:
               - 'SparkyFitnessServer/db/grantPermissions.ts'
               - 'SparkyFitnessServer/utils/dbMigrations.ts'
               - 'SparkyFitnessServer/utils/applyRlsPolicies.ts'
+              - 'SparkyFitnessServer/utils/initializeDatabase.ts'
               - 'SparkyFitnessServer/tests/migrate.script.ts'
+              - 'SparkyFitnessServer/tests/initializeDatabase.integration.test.ts'
               - 'SparkyFitnessServer/tests/rlsPermissionMatrix.integration.test.ts'
               - 'SparkyFitnessServer/tests/stravaActivityDetailCleanup.integration.test.ts'
               - 'SparkyFitnessServer/package.json'
@@ -237,10 +239,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # First run applies every migration against empty DB
-      # Second run reapplies the always reapplied rls policies, simulating restart
-      - name: Apply migrations on an empty database (twice = restart simulation)
-        run: pnpm run test:migrations && pnpm run test:migrations
+      # One runner initializes the empty database; the other reapplies after the lock is released.
+      - name: Initialize an empty database from two processes
+        run: |
+          pnpm run test:migrations &
+          first_pid=$!
+          pnpm run test:migrations &
+          second_pid=$!
+          migration_status=0
+          wait "$first_pid" || migration_status=1
+          wait "$second_pid" || migration_status=1
+          exit "$migration_status"
         env:
           SPARKY_FITNESS_DB_HOST: localhost
           SPARKY_FITNESS_DB_PORT: "5432"
@@ -253,8 +262,11 @@ jobs:
       # The schema + RLS policies are now applied and the non-superuser app role
       # exists, so the permission matrix can verify every table's real RLS
       # behaviour as the app role (superuser DB user seeds, app role is enforced).
-      - name: Verify RLS permission matrix, Strava cleanup and Better Auth schema
-        run: pnpm exec vitest run tests/rlsPermissionMatrix.integration.test.ts tests/stravaActivityDetailCleanup.integration.test.ts tests/betterAuthSchemaCheck.integration.test.ts
+      - name: Verify RLS, Strava cleanup, Better Auth schema and startup locking
+        run: |
+          pnpm exec vitest run tests/rlsPermissionMatrix.integration.test.ts tests/stravaActivityDetailCleanup.integration.test.ts tests/betterAuthSchemaCheck.integration.test.ts
+          # Initialization reapplies policies, so run it after the other database tests.
+          RUN_DATABASE_INITIALIZATION_TEST=1 pnpm exec vitest run tests/initializeDatabase.integration.test.ts
         env:
           # Default-on (SKIP_RLS_MATRIX unset) — runs against the Postgres this
           # job provisions, with policies already applied by the steps above.
