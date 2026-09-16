@@ -3,6 +3,7 @@ import {
   addDays,
   todayInZone,
   ENERGY_DENSITY_KCAL_PER_KG,
+  moodValueToChatScore,
 } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import coachRepository from '../../models/coachRepository.js';
@@ -267,7 +268,10 @@ async function detectPatterns(
           (sum: number, r: any) => sum + Number(r.mood_value),
           0
         ) / highCalDays.length;
-      if (avgHighCalMood > 7)
+      // Read on the 1-10 scale this threshold was written for. Compared against
+      // the stored 10-100 value it was true of every mood on record, so the
+      // pattern was reported whenever the days existed, whatever the moods were.
+      if (moodValueToChatScore(avgHighCalMood) > 7)
         patterns.push(
           'High calorie days (>2500) are associated with higher reported mood.'
         );

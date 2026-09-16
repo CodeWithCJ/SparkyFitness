@@ -186,3 +186,19 @@ export function representativeMoodValue(tags: string[], fallback = 50): number {
 export function moodByName(name: string): MoodDef | null {
   return BUILT_IN_MOODS.find((m) => m.name === name) ?? null;
 }
+
+/**
+ * The 1-10 score a conversation talks in ("I'm an 8 today"), as a stored mood
+ * value. The chatbot asks for that scale because it reads naturally out loud,
+ * but `mood_value` is a 10-100 field, and an 8 stored verbatim lands in the
+ * `sad` band along with every other score the chat can produce.
+ */
+export function chatScoreToMoodValue(score: number): number {
+  const clamped = Math.min(10, Math.max(1, Math.round(score)));
+  return clamped * 10;
+}
+
+/** A stored mood value as the 1-10 score the chatbot speaks in. */
+export function moodValueToChatScore(value: number): number {
+  return Math.min(10, Math.max(1, Math.round(value / 10)));
+}
