@@ -15,6 +15,8 @@ import {
   resetDatabaseInaccessibleCount,
   getDatabaseInaccessibleCount,
 } from '../../../src/services/healthkit/index';
+import { createTelemetryRunContext } from '../../../src/services/shared/telemetryBudget';
+import { _resetEnrichedSessionCacheForTests } from '../../../src/services/shared/enrichedSessionCache';
 
 import {
   isHealthDataAvailable,
@@ -2695,5 +2697,150 @@ describe('readEarliestSampleDetailed', () => {
     expect(result.records).toEqual([]);
     expect(result.error).toContain('Protected health data');
     expect(getDatabaseInaccessibleCount()).toBe(1);
+  });
+});
+
+// The Workout tests above go through readHealthRecords, which pins a ZERO
+// budget — so ctx.claim() fails immediately and handleWorkout's telemetry
+// branch never runs. Everything below therefore calls readHealthRecordsDetailed
+// with a real budgeted context, which is the only way to reach the cache gate
+// and the grace-window allocation on this platform.
+describe('handleWorkout telemetry caching and budget allocation', () => {
+  const HR_ID = 'HKQuantityTypeIdentifierHeartRate';
+
+  const hoursAgo = (h: number) =>
+    new Date(Date.now() - h * 60 * 60 * 1000).toISOString();
+
+  const workout = (
+    uuid: string,
+    endDate: string | undefined,
+    startDate = hoursAgo(25)
+  ) => ({
+    uuid,
+    startDate,
+    endDate,
+    workoutActivityType: 52,
+    duration: 3600,
+    totalEnergyBurned: { unit: 'kcal', quantity: 300 },
+    totalDistance: { unit: 'm', quantity: 4000 },
+    getStatistic: jest.fn().mockResolvedValue(undefined),
+    getWorkoutRoutes: jest.fn().mockResolvedValue([]),
+  });
+
+  /** Heart rate for every workout, or for none. */
+  const withHeartRate = (present: boolean) => {
+    mockQueryQuantitySamples.mockImplementation(async (identifier: string) =>
+      present && identifier === HR_ID
+        ? [{ startDate: hoursAgo(2), quantity: 132 }]
+        : []
+    );
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    _resetEnrichedSessionCacheForTests();
+    await initHealthConnect();
+    mockQueryQuantitySamples.mockResolvedValue([]);
+  });
+
+  const readWorkouts = async (budget: number) => {
+    const ctx = createTelemetryRunContext({ budget, interactive: true });
+    await readHealthRecordsDetailed(
+      'Workout',
+      new Date(hoursAgo(48)),
+      new Date(),
+      ctx
+    );
+    return ctx.drainCollected();
+  };
+
+  test('a recent workout that found heart rate is staged for the reuse cache', async () => {
+    const end = hoursAgo(2);
+    mockQueryWorkoutSamples.mockResolvedValue([workout('w-hr', end)]);
+    withHeartRate(true);
+
+    expect(await readWorkouts(3)).toEqual([`w-hr:${end}`]);
+  });
+
+  test('a recent workout with no heart rate is NOT staged, so a later sync retries it (#2300)', async () => {
+    mockQueryWorkoutSamples.mockResolvedValue([workout('w-nohr', hoursAgo(2))]);
+    withHeartRate(false);
+
+    expect(await readWorkouts(3)).toEqual([]);
+  });
+
+  test('an old workout with no heart rate IS staged once the grace window closes', async () => {
+    const end = hoursAgo(30);
+    mockQueryWorkoutSamples.mockResolvedValue([
+      workout('w-old', end, hoursAgo(31)),
+    ]);
+    withHeartRate(false);
+
+    expect(await readWorkouts(3)).toEqual([`w-old:${end}`]);
+  });
+
+  test('an unusable end date never reaches the cache gate — the overlap filter drops it first', async () => {
+    // new Date('not-a-date') is Invalid, so every overlapsDateRange comparison
+    // is false and the workout is filtered out before any telemetry work. The
+    // unparseable-end-time fallback inside shouldCacheEnrichedSession is
+    // therefore defensive only on this platform; nothing is staged, and the
+    // workout is not silently cached as complete either.
+    mockQueryWorkoutSamples.mockResolvedValue([
+      workout('w-baddate', 'not-a-date'),
+    ]);
+    withHeartRate(false);
+
+    expect(await readWorkouts(3)).toEqual([]);
+  });
+
+  test('grace-window workouts cannot take the whole budget from the backlog (#2191)', async () => {
+    // Newest-first, as the native query returns them: three inside the grace
+    // window, then an older one standing in for the backlog. A budget of 3
+    // caps grace claims at 2, so the third recent workout yields its slot and
+    // the older one is still reached.
+    const r1 = hoursAgo(2);
+    const r2 = hoursAgo(3);
+    const r3 = hoursAgo(4);
+    const old = hoursAgo(30);
+    mockQueryWorkoutSamples.mockResolvedValue([
+      workout('recent-1', r1),
+      workout('recent-2', r2),
+      workout('recent-3', r3),
+      workout('backlog', old, hoursAgo(31)),
+    ]);
+    // Heart rate everywhere, so anything enriched stages and the assertion
+    // reads purely as an allocation result.
+    withHeartRate(true);
+
+    const staged = await readWorkouts(3);
+
+    expect(staged).toHaveLength(3);
+    expect(staged).toEqual(
+      expect.arrayContaining([
+        `recent-1:${r1}`,
+        `recent-2:${r2}`,
+        `backlog:${old}`,
+      ])
+    );
+    expect(staged).not.toContain(`recent-3:${r3}`);
+  });
+
+  test('a wider budget lifts the cap and reaches all four', async () => {
+    // Same four workouts. The cap is half the budget, so 6 allows 3 grace
+    // claims and every workout is reached — proving the exclusion above is the
+    // cap at work and not an unrelated filter.
+    const r1 = hoursAgo(2);
+    const r2 = hoursAgo(3);
+    const r3 = hoursAgo(4);
+    const old = hoursAgo(30);
+    mockQueryWorkoutSamples.mockResolvedValue([
+      workout('recent-1', r1),
+      workout('recent-2', r2),
+      workout('recent-3', r3),
+      workout('backlog', old, hoursAgo(31)),
+    ]);
+    withHeartRate(true);
+
+    expect(await readWorkouts(6)).toHaveLength(4);
   });
 });
