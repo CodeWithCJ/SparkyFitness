@@ -1461,6 +1461,7 @@ export const enrichExerciseSessions = async (
   let skippedInvalid = 0;
   let skippedAlreadyCollected = 0;
   const allowGraceWindowClaim = createGraceWindowClaimLimiter(ctx.budget);
+  const deferredGraceSessions: unknown[] = [];
   for (const record of byNewest) {
     const rec = record as Record<string, unknown>;
     if (typeof rec.startTime !== 'string' || typeof rec.endTime !== 'string') {
@@ -1489,10 +1490,23 @@ export const enrichExerciseSessions = async (
     // Sessions inside the grace window come back every sync until their heart
     // rate lands (#2300), and this loop runs newest-first — so they are capped
     // at a share of the budget rather than allowed to take all of it, or the
-    // older backlog behind them would never advance (#2191).
+    // older backlog behind them would never advance (#2191). Deferred, not
+    // dropped: the second pass below returns the reservation if the backlog it
+    // was held for turned out to be empty.
     if (!allowGraceWindowClaim(isWithinTelemetryGracePeriod(rec.endTime))) {
+      deferredGraceSessions.push(record);
       continue;
     }
+    if (!ctx.claim()) break;
+    telemetryAllowed.add(record);
+  }
+
+  // The reservation is a floor for the backlog, not a ceiling on the run. Once
+  // the walk above has offered every backlog session a slot, anything still
+  // unspent goes back to the sessions the cap deferred — otherwise a user with
+  // a drained backlog would collect fewer per run than before the cap existed.
+  // Still newest-first, since that is the order they were deferred in.
+  for (const record of deferredGraceSessions) {
     if (!ctx.claim()) break;
     telemetryAllowed.add(record);
   }

@@ -1113,6 +1113,7 @@ const handleWorkout: RecordHandler = async (
   const startedAtMs = Date.now();
   let skippedAlreadyCollected = 0;
   const allowGraceWindowClaim = createGraceWindowClaimLimiter(ctx.budget);
+  const deferredGraceWorkouts: unknown[] = [];
   for (const w of filteredWorkouts) {
     // Already-collected workouts neither consume a slot nor get re-read, so a
     // bounded budget works through the backlog across syncs instead of
@@ -1124,12 +1125,25 @@ const handleWorkout: RecordHandler = async (
     // Workouts inside the grace window come back every sync until their heart
     // rate lands (#2300), and this loop runs newest-first — so they are capped
     // at a share of the budget rather than allowed to take all of it, or the
-    // older backlog behind them would never advance (#2191).
+    // older backlog behind them would never advance (#2191). Deferred, not
+    // dropped: the second pass below returns the reservation if the backlog it
+    // was held for turned out to be empty.
     if (
       !allowGraceWindowClaim(isWithinTelemetryGracePeriod(workoutEndDate(w)))
     ) {
+      deferredGraceWorkouts.push(w);
       continue;
     }
+    if (!ctx.claim()) break;
+    telemetryAllowed.add(w);
+  }
+
+  // The reservation is a floor for the backlog, not a ceiling on the run. Once
+  // the walk above has offered every backlog workout a slot, anything still
+  // unspent goes back to the workouts the cap deferred — otherwise a user with
+  // a drained backlog would collect fewer per run than before the cap existed.
+  // Still newest-first, since that is the order they were deferred in.
+  for (const w of deferredGraceWorkouts) {
     if (!ctx.claim()) break;
     telemetryAllowed.add(w);
   }

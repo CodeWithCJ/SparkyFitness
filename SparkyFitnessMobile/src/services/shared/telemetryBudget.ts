@@ -115,6 +115,11 @@ export const createTelemetryRunContext = (options?: {
  * reordering is what keeps the #2300 fix working for a user who also has a
  * large backlog, since a backlog-first rule would defer the retry past the
  * 24h window it has to happen in.
+ *
+ * The share is a floor for the backlog, not a ceiling on the run: callers defer
+ * the sessions this denies and offer them the budget again once every backlog
+ * session has had its chance, so a drained backlog does not leave slots unspent
+ * and collect fewer sessions per run than before the cap existed.
  */
 export const createGraceWindowClaimLimiter = (
   budget: number

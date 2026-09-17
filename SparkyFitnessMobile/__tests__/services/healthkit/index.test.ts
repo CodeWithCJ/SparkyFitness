@@ -2707,6 +2707,7 @@ describe('readEarliestSampleDetailed', () => {
 // and the grace-window allocation on this platform.
 describe('handleWorkout telemetry caching and budget allocation', () => {
   const HR_ID = 'HKQuantityTypeIdentifierHeartRate';
+  const SPEED_ID = 'HKQuantityTypeIdentifierRunningSpeed';
 
   const hoursAgo = (h: number) =>
     new Date(Date.now() - h * 60 * 60 * 1000).toISOString();
@@ -2769,6 +2770,40 @@ describe('handleWorkout telemetry caching and budget allocation', () => {
     expect(await readWorkouts(3)).toEqual([]);
   });
 
+  test('speed without heart rate does NOT count as collected (#2300)', async () => {
+    // The gate has to be heart rate specifically, not "some telemetry came
+    // back". A workout carrying speed but no heart rate is the shape that was
+    // being cached permanently before the wearable's samples landed, so a
+    // regression to a generic has-telemetry check must fail here rather than
+    // pass because every series happened to be empty.
+    const end = hoursAgo(2);
+    mockQueryWorkoutSamples.mockResolvedValue([workout('w-speed', end)]);
+    mockQueryQuantitySamples.mockImplementation(async (identifier: string) =>
+      identifier === SPEED_ID
+        ? [
+            { startDate: hoursAgo(3), quantity: 3.1 },
+            { startDate: hoursAgo(2), quantity: 3.4 },
+          ]
+        : []
+    );
+
+    expect(await readWorkouts(3)).toEqual([]);
+  });
+
+  test('speed AND heart rate together is staged, so the speed case is not just an empty read', async () => {
+    const end = hoursAgo(2);
+    mockQueryWorkoutSamples.mockResolvedValue([workout('w-both', end)]);
+    mockQueryQuantitySamples.mockImplementation(async (identifier: string) => {
+      if (identifier === SPEED_ID)
+        return [{ startDate: hoursAgo(2), quantity: 3.4 }];
+      if (identifier === HR_ID)
+        return [{ startDate: hoursAgo(2), quantity: 141 }];
+      return [];
+    });
+
+    expect(await readWorkouts(3)).toEqual([`w-both:${end}`]);
+  });
+
   test('an old workout with no heart rate IS staged once the grace window closes', async () => {
     const end = hoursAgo(30);
     mockQueryWorkoutSamples.mockResolvedValue([
@@ -2822,6 +2857,53 @@ describe('handleWorkout telemetry caching and budget allocation', () => {
         `backlog:${old}`,
       ])
     );
+    expect(staged).not.toContain(`recent-3:${r3}`);
+  });
+
+  test('unspent budget goes back to the deferred recent workouts when there is no backlog', async () => {
+    // The cap reserves a slot for the backlog. With no backlog to spend it on,
+    // stranding it would collect 2 per run where the pre-cap code collected 3 —
+    // a throughput regression the reservation was never meant to cause.
+    const r1 = hoursAgo(2);
+    const r2 = hoursAgo(3);
+    const r3 = hoursAgo(4);
+    mockQueryWorkoutSamples.mockResolvedValue([
+      workout('recent-1', r1),
+      workout('recent-2', r2),
+      workout('recent-3', r3),
+    ]);
+    withHeartRate(true);
+
+    const staged = await readWorkouts(3);
+
+    expect(staged).toHaveLength(3);
+    expect(staged).toEqual(
+      expect.arrayContaining([
+        `recent-1:${r1}`,
+        `recent-2:${r2}`,
+        `recent-3:${r3}`,
+      ])
+    );
+  });
+
+  test('the handback never outbids the backlog — it only spends what is left', async () => {
+    // Same three recent workouts, but now a backlog workout exists. It must
+    // still get the reserved slot; the deferred recent one gets nothing,
+    // because there is nothing left to hand back.
+    const r3 = hoursAgo(4);
+    const old = hoursAgo(30);
+    mockQueryWorkoutSamples.mockResolvedValue([
+      workout('recent-1', hoursAgo(2)),
+      workout('recent-2', hoursAgo(3)),
+      workout('recent-3', r3),
+      workout('backlog', old, hoursAgo(31)),
+    ]);
+    withHeartRate(true);
+
+    const staged = await readWorkouts(3);
+
+    expect(staged).toHaveLength(3);
+    expect(staged).toContain(`backlog:${old}`);
     expect(staged).not.toContain(`recent-3:${r3}`);
   });
 
