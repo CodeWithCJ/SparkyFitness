@@ -202,27 +202,50 @@ async function preCleanEntriesBySourceAndDate(
     userId: string,
     startDate: string,
     endDate: string,
-    source: string
+    source: string,
+    excludedExerciseName?: string,
+    keepSourceIds?: string[]
   ) => Promise<unknown>
 ) {
   if (entries.length === 0) return;
   const daysBySource: Record<string, Set<string>> = {};
+  // Records this payload will re-insert anyway. They are held back from the
+  // delete so the write path updates them in place instead, which preserves the
+  // telemetry a summary-only re-send does not carry — the route, laps and
+  // heart-rate zones hang off exercise_entry_id with ON DELETE CASCADE, so
+  // deleting the parent first destroys them and the re-insert cannot restore
+  // what the client never sent (#2300).
+  const keepIdsBySource: Record<string, Set<string>> = {};
   for (const entry of entries) {
     const source = entry.source || 'manual';
     const resolved = resolveHealthEntryDate(entry, fallbackTimezone);
     if (!resolved) continue;
     (daysBySource[source] ??= new Set()).add(resolved.parsedDate);
+    if (typeof entry.source_id === 'string' && entry.source_id.length > 0) {
+      (keepIdsBySource[source] ??= new Set()).add(entry.source_id);
+    }
   }
   for (const source of Object.keys(daysBySource)) {
     const days = [...daysBySource[source]].sort();
     if (days.length === 0) continue;
     const startDate = days[0];
     const endDate = days[days.length - 1];
+    const keepSourceIds = [...(keepIdsBySource[source] ?? [])];
     log(
       'info',
-      `[processHealthData] Pre-cleanup: Deleting existing ${label} for source '${source}' from ${startDate} to ${endDate}.`
+      `[processHealthData] Pre-cleanup: Deleting existing ${label} for source '${source}' from ${startDate} to ${endDate}` +
+        (keepSourceIds.length > 0
+          ? `, keeping ${keepSourceIds.length} re-sent record(s) for in-place update.`
+          : '.')
     );
-    await deleteFn(userId, startDate, endDate, source);
+    await deleteFn(
+      userId,
+      startDate,
+      endDate,
+      source,
+      undefined,
+      keepSourceIds
+    );
   }
 }
 
