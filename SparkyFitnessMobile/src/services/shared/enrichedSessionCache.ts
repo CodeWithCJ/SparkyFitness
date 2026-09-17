@@ -44,6 +44,46 @@ const UNSCOPED = 'none';
 export const MAX_ENRICHED_SESSION_KEYS = 500;
 
 /**
+ * Grace period (in milliseconds) before a session with no telemetry is
+ * permanently cached.
+ *
+ * It is common for a session and its heart rate or route to come from different
+ * apps or sync at different times (e.g. Google Fit creates the activity first,
+ * and Gadgetbridge or a wearable syncs heart rate minutes or hours later).
+ *
+ * Caching an empty telemetry result immediately would permanently lock out
+ * late-arriving samples. Within this 24-hour window, sessions without telemetry
+ * remain uncached so subsequent syncs retry collection. After the grace period
+ * expires, empty sessions are cached permanently to avoid infinite re-queries.
+ */
+export const SESSION_TELEMETRY_GRACE_PERIOD_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Determines whether a session should be recorded in the enriched session cache.
+ *
+ * @param hasTelemetry Whether the collection actually extracted telemetry (HR, GPS, cadence, etc.)
+ * @param sessionEndTime Optional end timestamp of the session
+ * @param nowMs Current time in milliseconds (defaults to Date.now(), injected for tests)
+ */
+export const shouldCacheEnrichedSession = (
+  hasTelemetry: boolean,
+  sessionEndTime?: string | Date | null,
+  nowMs: number = Date.now()
+): boolean => {
+  if (hasTelemetry) return true;
+  if (!sessionEndTime) return true;
+  const endMs =
+    typeof sessionEndTime === 'string'
+      ? Date.parse(sessionEndTime)
+      : sessionEndTime instanceof Date
+        ? sessionEndTime.getTime()
+        : NaN;
+  if (!Number.isFinite(endMs)) return true;
+
+  return nowMs - endMs >= SESSION_TELEMETRY_GRACE_PERIOD_MS;
+};
+
+/**
  * Identity plus a change marker, so a session that is still being written to
  * (a workout that has not finished syncing from the watch, a record edited
  * afterwards) is re-collected rather than frozen at its first reading.

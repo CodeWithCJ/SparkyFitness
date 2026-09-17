@@ -21,7 +21,10 @@ import {
   isQuotaExceededError,
 } from '../shared/quotaError';
 import { type TelemetryRunContext } from '../shared/telemetryBudget';
-import { hasEnrichedSession } from '../shared/enrichedSessionCache';
+import {
+  hasEnrichedSession,
+  shouldCacheEnrichedSession,
+} from '../shared/enrichedSessionCache';
 import {
   createConcurrencyLimiter,
   runTasksInBatches,
@@ -1656,9 +1659,10 @@ export const enrichExerciseSessions = async (
           if (kcal != null) telemetry.active_calories = kcal;
           enrichedFields.telemetry = telemetry;
         }
-        // Recorded even when the session turned out to have nothing beyond its
-        // summary: the reads that established that are exactly what we must not
-        // repeat every sync. A later edit to the record changes its cache key.
+        // Recorded when the session has telemetry, or when an empty session has
+        // aged past the grace period (so manual/summary-only workouts are not
+        // checked infinitely). Recent empty sessions remain uncached so late-arriving
+        // wearable samples (e.g. from Gadgetbridge, Zepp, etc.) can be collected (#2300).
         //
         // Not recorded when the bundle came back `incomplete` — a failed read is
         // not the same answer as an empty one, and this cache has no expiry, so
@@ -1668,7 +1672,17 @@ export const enrichExerciseSessions = async (
         // route-consent dialog, so collectSessionRoute returns no route for a
         // session awaiting consent — caching that would make the next foreground
         // sync skip it and the route would never be collected at all.
-        if (ctx.interactive && !bundle.incomplete) {
+        const hasTelemetry = Boolean(
+          bundle.gps_points?.length ||
+          bundle.hr_samples?.length ||
+          bundle.laps?.length ||
+          (bundle.telemetry && Object.keys(bundle.telemetry).length > 0)
+        );
+        const canCache = shouldCacheEnrichedSession(
+          hasTelemetry,
+          rec.endTime as string
+        );
+        if (ctx.interactive && !bundle.incomplete && canCache) {
           ctx.stageCollected(sessionCacheKey(record));
         }
       }

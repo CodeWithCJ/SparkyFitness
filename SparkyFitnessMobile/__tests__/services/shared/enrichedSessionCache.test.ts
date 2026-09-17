@@ -6,6 +6,7 @@ import {
   hasEnrichedSession,
   markEnrichedSessions,
   sessionTelemetryKey,
+  shouldCacheEnrichedSession,
 } from '../../../src/services/shared/enrichedSessionCache';
 import { getActiveServerConfigId } from '../../../src/services/storage';
 
@@ -154,5 +155,62 @@ describe('enrichedSessionCache', () => {
 
     expect(await hasEnrichedSession('rec-1:m')).toBe(false);
     expect(await AsyncStorage.getItem(keyFor('server-a'))).toBeNull();
+  });
+
+  describe('shouldCacheEnrichedSession', () => {
+    const baseNow = Date.parse('2026-09-17T12:00:00Z');
+
+    it('returns true when telemetry was collected, regardless of session age', () => {
+      // Recent session with telemetry
+      expect(
+        shouldCacheEnrichedSession(true, '2026-09-17T11:30:00Z', baseNow)
+      ).toBe(true);
+
+      // Old session with telemetry
+      expect(
+        shouldCacheEnrichedSession(true, '2026-09-10T12:00:00Z', baseNow)
+      ).toBe(true);
+    });
+
+    it('returns false when no telemetry was found and session is within the 24h grace window', () => {
+      // 1 hour ago
+      expect(
+        shouldCacheEnrichedSession(false, '2026-09-17T11:00:00Z', baseNow)
+      ).toBe(false);
+
+      // 23 hours ago
+      expect(
+        shouldCacheEnrichedSession(false, '2026-09-16T13:00:00Z', baseNow)
+      ).toBe(false);
+
+      // Date instance
+      expect(
+        shouldCacheEnrichedSession(
+          false,
+          new Date('2026-09-17T10:00:00Z'),
+          baseNow
+        )
+      ).toBe(false);
+    });
+
+    it('returns true when no telemetry was found but session is older than the 24h grace window', () => {
+      // Exactly 24 hours ago
+      expect(
+        shouldCacheEnrichedSession(false, '2026-09-16T12:00:00Z', baseNow)
+      ).toBe(true);
+
+      // 48 hours ago
+      expect(
+        shouldCacheEnrichedSession(false, '2026-09-15T12:00:00Z', baseNow)
+      ).toBe(true);
+    });
+
+    it('returns true as safe fallback when session end time is missing or invalid', () => {
+      expect(shouldCacheEnrichedSession(false, null, baseNow)).toBe(true);
+      expect(shouldCacheEnrichedSession(false, undefined, baseNow)).toBe(true);
+      expect(shouldCacheEnrichedSession(false, 'invalid-date', baseNow)).toBe(
+        true
+      );
+    });
   });
 });

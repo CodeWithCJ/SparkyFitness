@@ -39,6 +39,7 @@ import {
 import {
   hasEnrichedSession,
   sessionTelemetryKey,
+  shouldCacheEnrichedSession,
 } from '../shared/enrichedSessionCache';
 import {
   createConcurrencyLimiter,
@@ -1260,11 +1261,26 @@ const handleWorkout: RecordHandler = async (
         if (bundle.hr_samples) record.hr_samples = bundle.hr_samples;
         if (bundle.laps) record.laps = bundle.laps;
         Object.assign(telemetry, bundle.telemetry);
-        // Recorded even when the workout had nothing beyond its summary: the
-        // reads that established that are exactly what must not repeat. A bundle
-        // that came back `incomplete` is a failed read, not an empty one, and is
+        // Recorded when the workout has telemetry, or when an empty workout has
+        // aged past the grace period (so manual/summary-only workouts are not
+        // checked infinitely). Recent empty workouts remain uncached so late-arriving
+        // wearable samples can be collected (#2300).
+        //
+        // A bundle that came back `incomplete` is a failed read, not an empty one, and is
         // left uncached so the next sync retries it.
-        if (!bundle.incomplete) ctx.stageCollected(workoutCacheKey(w));
+        const hasTelemetry = Boolean(
+          bundle.gps_points?.length ||
+          bundle.hr_samples?.length ||
+          bundle.laps?.length ||
+          (bundle.telemetry && Object.keys(bundle.telemetry).length > 0)
+        );
+        const canCache = shouldCacheEnrichedSession(
+          hasTelemetry,
+          (w as unknown as { endDate?: string | Date }).endDate
+        );
+        if (!bundle.incomplete && canCache) {
+          ctx.stageCollected(workoutCacheKey(w));
+        }
       }
 
       if (Object.keys(telemetry).length > 0) record.telemetry = telemetry;
