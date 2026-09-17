@@ -16,7 +16,8 @@ jest.mock('../../../src/services/storage', () => ({
 }));
 
 const mockActiveConfig = getActiveServerConfigId as jest.Mock;
-const keyFor = (scope: string) => `@SparkyFitness/enrichedSessions:${scope}`;
+const keyFor = (scope: string) => `@SparkyFitness/enrichedSessions.v2:${scope}`;
+const v1KeyFor = (scope: string) => `@SparkyFitness/enrichedSessions:${scope}`;
 
 describe('enrichedSessionCache', () => {
   beforeEach(async () => {
@@ -73,6 +74,43 @@ describe('enrichedSessionCache', () => {
       expect(
         await AsyncStorage.getItem('@SparkyFitness/enrichedSessions')
       ).toBeNull();
+    });
+
+    it('never reads v1 entries, so a session cached before the heart-rate gate is re-collected (#2300)', async () => {
+      // v1 entries mean "some telemetry was found", which is what left workouts
+      // stranded without their heart rate. They must not suppress collection.
+      await AsyncStorage.setItem(
+        v1KeyFor('server-a'),
+        JSON.stringify(['rec-1:m'])
+      );
+
+      expect(await hasEnrichedSession('rec-1:m')).toBe(false);
+    });
+
+    it('sweeps the v1 per-server keys so they do not linger', async () => {
+      await AsyncStorage.setItem(
+        v1KeyFor('server-a'),
+        JSON.stringify(['rec-1:m'])
+      );
+      await AsyncStorage.setItem(
+        v1KeyFor('server-b'),
+        JSON.stringify(['rec-2:m'])
+      );
+
+      await hasEnrichedSession('anything');
+
+      expect(await AsyncStorage.getItem(v1KeyFor('server-a'))).toBeNull();
+      expect(await AsyncStorage.getItem(v1KeyFor('server-b'))).toBeNull();
+    });
+
+    it('leaves unrelated app keys alone while sweeping', async () => {
+      await AsyncStorage.setItem('@SparkyFitness/app-preferences', '{"a":1}');
+
+      await hasEnrichedSession('anything');
+
+      expect(await AsyncStorage.getItem('@SparkyFitness/app-preferences')).toBe(
+        '{"a":1}'
+      );
     });
 
     it('falls back to an unscoped bucket when no server is configured', async () => {

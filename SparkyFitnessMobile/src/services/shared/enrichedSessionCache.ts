@@ -19,14 +19,26 @@ import type { WorkoutTelemetry } from '../../types/healthRecords';
  * takes the identity and change marker each platform can supply.
  */
 
-const STORAGE_KEY_PREFIX = '@SparkyFitness/enrichedSessions';
+// v2: entries written before the heart-rate gate mean "some telemetry was
+// found", which is not the claim this cache is supposed to make. A session
+// cached under that rule is never re-collected, so every workout already
+// recorded there would keep its missing heart rate for good (#2300). Bumping
+// the prefix abandons them in one step — no upgrade hook, no version flag to
+// get wrong, and a restored Android auto-backup of the v1 data is simply never
+// read. The cost is one round of re-collection per session, bounded by the
+// per-run telemetry budget.
+const STORAGE_KEY_PREFIX = '@SparkyFitness/enrichedSessions.v2';
 
 /**
- * The unscoped key this cache first shipped with. Never read: its entries mean
- * "some server has this telemetry", which is exactly the ambiguity the scoping
- * below removes. It is deleted on first load so it does not linger.
+ * Key prefixes this cache has shipped with and no longer reads: the original
+ * unscoped key, whose entries meant "some server has this telemetry" and so
+ * could suppress collection for a server that had never seen the session, and
+ * the v1 per-server keys abandoned by the heart-rate gate above.
+ *
+ * Swept on first load so they do not linger. Best effort throughout — an
+ * orphaned key costs storage, never correctness.
  */
-const LEGACY_STORAGE_KEY = STORAGE_KEY_PREFIX;
+const LEGACY_STORAGE_KEY_PREFIXES = ['@SparkyFitness/enrichedSessions'];
 
 /**
  * Scope used when no server is configured or the lookup fails.
@@ -201,6 +213,25 @@ let cacheScope: string | null = null;
 let loadPromise: Promise<string[]> | null = null;
 let legacyKeyCleared = false;
 
+/**
+ * Removes every key written under a prefix this cache no longer reads, matching
+ * both the bare prefix and its per-server `:scope` suffixes. Never throws: the
+ * caller is a cache load, and losing a sweep only leaves dead bytes behind.
+ */
+const sweepLegacyKeys = async (): Promise<void> => {
+  try {
+    const keys = await AsyncStorage.getAllKeys();
+    const stale = keys.filter((key) =>
+      LEGACY_STORAGE_KEY_PREFIXES.some(
+        (prefix) => key === prefix || key.startsWith(`${prefix}:`)
+      )
+    );
+    if (stale.length > 0) await AsyncStorage.multiRemove(stale);
+  } catch {
+    // Best effort.
+  }
+};
+
 const readScope = async (scope: string): Promise<string[]> => {
   try {
     const raw = await AsyncStorage.getItem(storageKeyForScope(scope));
@@ -227,9 +258,9 @@ const load = async (): Promise<string[]> => {
     cacheIndex = new Set(keys);
     if (!legacyKeyCleared) {
       legacyKeyCleared = true;
-      // Best effort: nothing reads it any more, so a failure costs only the
-      // orphaned entry.
-      await AsyncStorage.removeItem(LEGACY_STORAGE_KEY).catch(() => undefined);
+      // Best effort: nothing reads these any more, so a failure costs only the
+      // orphaned entries.
+      await sweepLegacyKeys();
     }
     return keys;
   })().finally(() => {
