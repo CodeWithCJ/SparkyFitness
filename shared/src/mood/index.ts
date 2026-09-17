@@ -187,6 +187,36 @@ export function moodByName(name: string): MoodDef | null {
   return BUILT_IN_MOODS.find((m) => m.name === name) ?? null;
 }
 
+/** The range `mood_entries.mood_value` carries, and what clients may store. */
+export const MOOD_VALUE_MIN = 10;
+export const MOOD_VALUE_MAX = 100;
+
+/**
+ * A client-supplied mood value as the column can hold it, or null when it is
+ * not a number at all.
+ *
+ * Bringing it into range rather than rejecting it is deliberate: the column is
+ * `integer NOT NULL` on a 10-100 scale, but the value arrives from whichever
+ * build of a client happens to be running, and a stale one that sends a 9
+ * should still be able to save its day. Clamping keeps it in the band it meant
+ * — a 9 was Sad and 10 is Sad — where a rejection would just lose the entry.
+ */
+export function clampStoredMoodValue(value: unknown): number | null {
+  // Deliberately not a bare `Number(value)`: that reads null, '', false and []
+  // as 0, which would clamp each of them to a real mood the caller never sent.
+  const numeric =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim() !== ""
+        ? Number(value)
+        : Number.NaN;
+  if (!Number.isFinite(numeric)) return null;
+  return Math.min(
+    MOOD_VALUE_MAX,
+    Math.max(MOOD_VALUE_MIN, Math.round(numeric)),
+  );
+}
+
 /**
  * The 1-10 score a conversation talks in ("I'm an 8 today"), as a stored mood
  * value. The chatbot asks for that scale because it reads naturally out loud,

@@ -6,6 +6,7 @@ import {
   moodByName,
   chatScoreToMoodValue,
   moodValueToChatScore,
+  clampStoredMoodValue,
 } from '@workspace/shared';
 
 describe('moodValueToTag', () => {
@@ -84,6 +85,38 @@ describe('the chatbot 1-10 scale', () => {
     expect(chatScoreToMoodValue(11)).toBe(100);
     expect(moodValueToChatScore(0)).toBe(1);
     expect(moodValueToChatScore(1000)).toBe(10);
+  });
+});
+
+describe('clampStoredMoodValue', () => {
+  it('leaves a value the column can already hold', () => {
+    expect(clampStoredMoodValue(10)).toBe(10);
+    expect(clampStoredMoodValue(70)).toBe(70);
+    expect(clampStoredMoodValue(100)).toBe(100);
+  });
+
+  it('keeps an out-of-range value in the band it meant', () => {
+    // 8 is what the check-in picker wrote for Sad before #2495, and 10 is Sad
+    // too, so the day survives the clamp with its mood intact.
+    expect(moodValueToTag(clampStoredMoodValue(8)!)).toBe('sad');
+    expect(clampStoredMoodValue(8)).toBe(10);
+    expect(clampStoredMoodValue(140)).toBe(100);
+  });
+
+  it('rounds to what an integer column can hold', () => {
+    expect(clampStoredMoodValue(62.4)).toBe(62);
+    expect(clampStoredMoodValue('70')).toBe(70);
+  });
+
+  it('reports anything that is not a number rather than guessing', () => {
+    expect(clampStoredMoodValue('great')).toBeNull();
+    expect(clampStoredMoodValue(Infinity)).toBeNull();
+    // Each of these is 0 to `Number()`, which would clamp to a real mood.
+    expect(clampStoredMoodValue(null)).toBeNull();
+    expect(clampStoredMoodValue(undefined)).toBeNull();
+    expect(clampStoredMoodValue('')).toBeNull();
+    expect(clampStoredMoodValue(false)).toBeNull();
+    expect(clampStoredMoodValue([])).toBeNull();
   });
 });
 
