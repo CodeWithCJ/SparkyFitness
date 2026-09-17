@@ -13,6 +13,14 @@ import {
 } from '../stores/appPreferencesStore';
 
 const CHANNEL_ID = 'workout-timer';
+/**
+ * Android-only sibling of `CHANNEL_ID` whose sound plays on the alarm stream,
+ * which the ringer's silent mode does not mute. Used for the rest ping only
+ * while `restTimerSoundInSilentMode` is on; everyone else keeps `CHANNEL_ID`
+ * untouched, so no existing channel has to be recreated to carry this and
+ * nobody loses the per-channel settings they had.
+ */
+const ALARM_CHANNEL_ID = 'workout-timer-alarm';
 const FASTING_CHANNEL_ID = 'fasting';
 export const MEDICATION_REMINDER_CHANNEL_ID = 'medication-reminders';
 const EXACT_ALARM_PROMPT_KEY = '@SparkyFitness/exactAlarmPromptShown';
@@ -53,6 +61,18 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
       ),
       importance: Notifications.AndroidImportance.HIGH,
       enableVibrate: true,
+    });
+    await Notifications.setNotificationChannelAsync(ALARM_CHANNEL_ID, {
+      name: notificationCopy(
+        'notifications.channels.workoutTimerAlarm',
+        'Workout timer (silent mode)'
+      ),
+      importance: Notifications.AndroidImportance.HIGH,
+      enableVibrate: true,
+      // Alarm usage is what carries the sound past a muted ringer, the way an
+      // alarm clock does. Unlike bypassing Do Not Disturb it needs no special
+      // access — but it plays at alarm volume, so it is opt-in only.
+      audioAttributes: { usage: Notifications.AndroidAudioUsage.ALARM },
     });
     await Notifications.setNotificationChannelAsync(FASTING_CHANNEL_ID, {
       name: notificationCopy('notifications.channels.fasting', 'Fasting'),
@@ -355,7 +375,12 @@ export async function scheduleRestNotification(
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds,
-        channelId: CHANNEL_ID,
+        // The alarm-stream channel only when the user asked for silent-mode
+        // playback; ignored on iOS, which has no equivalent short of the
+        // Critical Alerts entitlement.
+        channelId: prefs.restTimerSoundInSilentMode
+          ? ALARM_CHANNEL_ID
+          : CHANNEL_ID,
       },
     });
     return id;

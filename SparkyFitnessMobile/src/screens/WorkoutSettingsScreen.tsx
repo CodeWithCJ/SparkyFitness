@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, ScrollView } from 'react-native';
+import { Platform, View, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import RestPeriodSheet, {
@@ -119,10 +119,17 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
           title={t('workoutSettings.restSoundSilent', {
             defaultValue: 'Play in silent mode',
           })}
-          subtitle={t('workoutSettings.restSoundSilentSubtitle', {
-            defaultValue:
-              'Let the rest chime sound while the app is open even with the ringer muted. Alerts that arrive with the app closed still follow your silent mode.',
-          })}
+          subtitle={
+            Platform.OS === 'android'
+              ? t('workoutSettings.restSoundSilentSubtitleAndroid', {
+                  defaultValue:
+                    'Sound the rest timer even with the ringer muted, including while the app is closed. It uses the alarm channel, so it plays at alarm volume.',
+                })
+              : t('workoutSettings.restSoundSilentSubtitleIos', {
+                  defaultValue:
+                    'Let the rest chime sound while the app is open even with the ringer muted. Alerts that arrive with the app closed still follow your silent mode.',
+                })
+          }
           subtitleNumberOfLines={0}
           rightAccessory={
             <Switch

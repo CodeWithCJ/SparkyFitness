@@ -156,6 +156,23 @@ describe('notifications service', () => {
       );
     });
 
+    it('creates an alarm-stream Android channel for silent-mode rests', async () => {
+      Object.defineProperty(Platform, 'OS', {
+        get: () => 'android',
+        configurable: true,
+      });
+      await initNotifications();
+      expect(mockSetChannel).toHaveBeenCalledWith(
+        'workout-timer-alarm',
+        expect.objectContaining({
+          importance: Notifications.AndroidImportance.HIGH,
+          audioAttributes: {
+            usage: Notifications.AndroidAudioUsage.ALARM,
+          },
+        })
+      );
+    });
+
     it('creates a dedicated fasting Android channel', async () => {
       Object.defineProperty(Platform, 'OS', {
         get: () => 'android',
@@ -273,6 +290,25 @@ describe('notifications service', () => {
           channelId: 'workout-timer',
         }),
       });
+    });
+
+    it('routes to the alarm channel only while silent-mode playback is on', async () => {
+      await scheduleRestNotification('Bench Press', 60);
+      expect(mockSchedule).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          trigger: expect.objectContaining({ channelId: 'workout-timer' }),
+        })
+      );
+
+      useAppPreferencesStore.getState().setRestTimerSoundInSilentMode(true);
+      await scheduleRestNotification('Bench Press', 60);
+      expect(mockSchedule).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          trigger: expect.objectContaining({
+            channelId: 'workout-timer-alarm',
+          }),
+        })
+      );
     });
 
     it('sweeps stale delivered rest pings, leaving other notifications alone', async () => {
