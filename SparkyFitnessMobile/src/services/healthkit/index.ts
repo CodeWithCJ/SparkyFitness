@@ -33,15 +33,12 @@ import {
   type WorkoutProxyLike,
 } from './workoutTelemetry';
 import {
-  createGraceWindowClaimLimiter,
   createTelemetryRunContext,
   type TelemetryRunContext,
 } from '../shared/telemetryBudget';
 import {
   hasEnrichedSession,
-  isWithinTelemetryGracePeriod,
   sessionTelemetryKey,
-  shouldCacheEnrichedSession,
 } from '../shared/enrichedSessionCache';
 import {
   createConcurrencyLimiter,
@@ -69,9 +66,6 @@ interface HealthKitWorkoutLike {
   uuid?: string;
   endDate?: string | Date;
 }
-
-const workoutEndDate = (workout: unknown): string | Date | undefined =>
-  (workout as HealthKitWorkoutLike | undefined)?.endDate;
 
 /**
  * Telemetry-collection cache key for a HealthKit workout. endDate moves if the
@@ -1112,8 +1106,6 @@ const handleWorkout: RecordHandler = async (
   const telemetryAllowed = new Set<unknown>();
   const startedAtMs = Date.now();
   let skippedAlreadyCollected = 0;
-  const allowGraceWindowClaim = createGraceWindowClaimLimiter(ctx.budget);
-  const deferredGraceWorkouts: unknown[] = [];
   for (const w of filteredWorkouts) {
     // Already-collected workouts neither consume a slot nor get re-read, so a
     // bounded budget works through the backlog across syncs instead of
@@ -1122,28 +1114,6 @@ const handleWorkout: RecordHandler = async (
       skippedAlreadyCollected++;
       continue;
     }
-    // Workouts inside the grace window come back every sync until their heart
-    // rate lands (#2300), and this loop runs newest-first — so they are capped
-    // at a share of the budget rather than allowed to take all of it, or the
-    // older backlog behind them would never advance (#2191). Deferred, not
-    // dropped: the second pass below returns the reservation if the backlog it
-    // was held for turned out to be empty.
-    if (
-      !allowGraceWindowClaim(isWithinTelemetryGracePeriod(workoutEndDate(w)))
-    ) {
-      deferredGraceWorkouts.push(w);
-      continue;
-    }
-    if (!ctx.claim()) break;
-    telemetryAllowed.add(w);
-  }
-
-  // The reservation is a floor for the backlog, not a ceiling on the run. Once
-  // the walk above has offered every backlog workout a slot, anything still
-  // unspent goes back to the workouts the cap deferred — otherwise a user with
-  // a drained backlog would collect fewer per run than before the cap existed.
-  // Still newest-first, since that is the order they were deferred in.
-  for (const w of deferredGraceWorkouts) {
     if (!ctx.claim()) break;
     telemetryAllowed.add(w);
   }
@@ -1295,17 +1265,20 @@ const handleWorkout: RecordHandler = async (
         if (bundle.hr_samples) record.hr_samples = bundle.hr_samples;
         if (bundle.laps) record.laps = bundle.laps;
         Object.assign(telemetry, bundle.telemetry);
-        // Recorded when the workout has telemetry, or when an empty workout has
-        // aged past the grace period (so manual/summary-only workouts are not
-        // checked infinitely). Recent empty workouts remain uncached so late-arriving
-        // wearable samples can be collected (#2300).
-        //
-        // A bundle that came back `incomplete` is a failed read, not an empty one, and is
+        // Recorded even when the workout had nothing beyond its summary: the
+        // reads that established that are exactly what must not repeat. A bundle
+        // that came back `incomplete` is a failed read, not an empty one, and is
         // left uncached so the next sync retries it.
-        const canCache = shouldCacheEnrichedSession(bundle, workoutEndDate(w));
-        if (!bundle.incomplete && canCache) {
-          ctx.stageCollected(workoutCacheKey(w));
-        }
+        //
+        // No grace window here, unlike Health Connect. The #2300 case is heart
+        // rate written by another app and joined to the session by time overlap,
+        // which HealthKit cannot express: collectWorkoutSeries queries
+        // `filter: { workout }`, so a sample not associated with this workout is
+        // invisible however often it is re-read. The two cases that do arrive
+        // late are already covered — a workout still being written moves its
+        // endDate and so its cache key, and a failed or locked read comes back
+        // `incomplete`. Retrying here would cost every sync and buy nothing.
+        if (!bundle.incomplete) ctx.stageCollected(workoutCacheKey(w));
       }
 
       if (Object.keys(telemetry).length > 0) record.telemetry = telemetry;
