@@ -336,7 +336,15 @@ export const markEnrichedSessions = async (
   return run;
 };
 
-/** Test/reset seam — also used when a user clears app data from Settings. */
+/**
+ * Reset seam for tests.
+ *
+ * No Settings action calls this: there is no in-app way to clear the cache, so
+ * a session wrongly recorded here stays uncollected until its key changes or
+ * the storage prefix is bumped (see STORAGE_KEY_PREFIX). Wiring it to a
+ * "re-collect telemetry" control is the obvious use, and the reason to keep it
+ * exported rather than fold it into the test helper below.
+ */
 export const clearEnrichedSessions = async (): Promise<void> => {
   const scope = await activeScope();
   cache = [];
