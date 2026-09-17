@@ -6,3 +6,7 @@ pnpm-lock.yaml
 package-lock.json
 # Vendored third-party bundles (e.g. self-hosted @simplewebauthn browser lib)
 *.min.js
+# Local provider fixtures (gitignored at the repo root, so prettier's default
+# ignore path never sees the rule: it looks for .gitignore beside the working
+# directory, and the rule lives in the root one as SparkyFitnessServer/mock_data/).
+mock_data/
