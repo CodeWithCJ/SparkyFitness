@@ -20,9 +20,13 @@ import {
   isClientUnavailableError,
   isQuotaExceededError,
 } from '../shared/quotaError';
-import { type TelemetryRunContext } from '../shared/telemetryBudget';
+import {
+  createGraceWindowClaimLimiter,
+  type TelemetryRunContext,
+} from '../shared/telemetryBudget';
 import {
   hasEnrichedSession,
+  isWithinTelemetryGracePeriod,
   shouldCacheEnrichedSession,
 } from '../shared/enrichedSessionCache';
 import {
@@ -1456,6 +1460,7 @@ export const enrichExerciseSessions = async (
   const startedAtMs = Date.now();
   let skippedInvalid = 0;
   let skippedAlreadyCollected = 0;
+  const allowGraceWindowClaim = createGraceWindowClaimLimiter(ctx.budget);
   for (const record of byNewest) {
     const rec = record as Record<string, unknown>;
     if (typeof rec.startTime !== 'string' || typeof rec.endTime !== 'string') {
@@ -1479,6 +1484,13 @@ export const enrichExerciseSessions = async (
     // re-picking the same newest few every run (#2191).
     if (await hasEnrichedSession(sessionCacheKey(record))) {
       skippedAlreadyCollected++;
+      continue;
+    }
+    // Sessions inside the grace window come back every sync until their heart
+    // rate lands (#2300), and this loop runs newest-first — so they are capped
+    // at a share of the budget rather than allowed to take all of it, or the
+    // older backlog behind them would never advance (#2191).
+    if (!allowGraceWindowClaim(isWithinTelemetryGracePeriod(rec.endTime))) {
       continue;
     }
     if (!ctx.claim()) break;
@@ -1672,14 +1684,8 @@ export const enrichExerciseSessions = async (
         // route-consent dialog, so collectSessionRoute returns no route for a
         // session awaiting consent — caching that would make the next foreground
         // sync skip it and the route would never be collected at all.
-        const hasTelemetry = Boolean(
-          bundle.gps_points?.length ||
-          bundle.hr_samples?.length ||
-          bundle.laps?.length ||
-          (bundle.telemetry && Object.keys(bundle.telemetry).length > 0)
-        );
         const canCache = shouldCacheEnrichedSession(
-          hasTelemetry,
+          bundle,
           rec.endTime as string
         );
         if (ctx.interactive && !bundle.incomplete && canCache) {

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getActiveServerConfigId } from '../storage';
+import type { WorkoutTelemetry } from '../../types/healthRecords';
 
 /**
  * Remembers which workout sessions already had their telemetry collected.
@@ -44,43 +45,106 @@ const UNSCOPED = 'none';
 export const MAX_ENRICHED_SESSION_KEYS = 500;
 
 /**
- * Grace period (in milliseconds) before a session with no telemetry is
+ * Grace period (in milliseconds) before a session with no heart rate telemetry is
  * permanently cached.
  *
- * It is common for a session and its heart rate or route to come from different
- * apps or sync at different times (e.g. Google Fit creates the activity first,
- * and Gadgetbridge or a wearable syncs heart rate minutes or hours later).
+ * It is common for a session and its heart rate to come from different apps or
+ * sync at different times (e.g. Google Fit creates a walking/running activity with
+ * speed or cadence first, and Gadgetbridge or a wearable syncs heart rate minutes
+ * or hours later).
  *
- * Caching an empty telemetry result immediately would permanently lock out
- * late-arriving samples. Within this 24-hour window, sessions without telemetry
- * remain uncached so subsequent syncs retry collection. After the grace period
- * expires, empty sessions are cached permanently to avoid infinite re-queries.
+ * Caching an incomplete telemetry result immediately would permanently lock out
+ * late-arriving heart rate samples (#2300). Within this 24-hour window, sessions
+ * without heart rate remain uncached so subsequent syncs retry collection. After
+ * the grace period expires, sessions without heart rate are cached permanently to
+ * avoid infinite re-queries on phone-only or manual workouts.
+ *
+ * Note on sync windows: the cache being open is necessary but not sufficient —
+ * something still has to re-read the session. Background sync reads from
+ * (cursor - 6h), so HR landing within that overlap is picked up headlessly;
+ * HR arriving later is only re-read by a foreground sync whose configured
+ * range still covers that day. The window is deliberately wider than the 6h
+ * overlap so a manual sync can recover what background sync has moved past.
  */
 export const SESSION_TELEMETRY_GRACE_PERIOD_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Determines whether a session should be recorded in the enriched session cache.
+ * Structural view of a platform telemetry bundle.
  *
- * @param hasTelemetry Whether the collection actually extracted telemetry (HR, GPS, cadence, etc.)
- * @param sessionEndTime Optional end timestamp of the session
- * @param nowMs Current time in milliseconds (defaults to Date.now(), injected for tests)
+ * Declared here rather than imported so `shared/` keeps no dependency on either
+ * provider; both `SessionTelemetryBundle` types assign to it structurally.
  */
-export const shouldCacheEnrichedSession = (
-  hasTelemetry: boolean,
+export interface SessionTelemetryBundleLike {
+  gps_points?: readonly unknown[];
+  hr_samples?: readonly unknown[];
+  laps?: readonly unknown[];
+  telemetry?: WorkoutTelemetry;
+  incomplete?: boolean;
+}
+
+/**
+ * Checks if a session bundle contains heart rate telemetry.
+ *
+ * Heart rate is the primary metric written asynchronously by wearables
+ * (smart rings, fitness bands, smartwatches) into Health Connect / HealthKit.
+ */
+export const hasHeartRateTelemetry = (
+  bundle: SessionTelemetryBundleLike | null | undefined
+): boolean => {
+  if (!bundle) return false;
+  if (Array.isArray(bundle.hr_samples) && bundle.hr_samples.length > 0) {
+    return true;
+  }
+  return typeof bundle.telemetry?.avg_heart_rate === 'number';
+};
+
+/**
+ * Whether a session is young enough that its heart rate could still arrive.
+ *
+ * Also what tells a grace-window re-read apart from genuine backlog in the
+ * budget claim: a session this recent is either being collected for the first
+ * time or retried for its heart rate, and either way it is work this run may
+ * repeat next run. Anything older is a one-shot read that must not be crowded
+ * out by it — see `createGraceWindowClaimLimiter` in telemetryBudget.ts.
+ *
+ * An unreadable or missing end time is reported as outside the window, so the
+ * fallback everywhere is the old behaviour: cache once, read once.
+ */
+export const isWithinTelemetryGracePeriod = (
   sessionEndTime?: string | Date | null,
   nowMs: number = Date.now()
 ): boolean => {
-  if (hasTelemetry) return true;
-  if (!sessionEndTime) return true;
+  if (!sessionEndTime) return false;
   const endMs =
     typeof sessionEndTime === 'string'
       ? Date.parse(sessionEndTime)
       : sessionEndTime instanceof Date
         ? sessionEndTime.getTime()
         : NaN;
-  if (!Number.isFinite(endMs)) return true;
+  if (!Number.isFinite(endMs)) return false;
 
-  return nowMs - endMs >= SESSION_TELEMETRY_GRACE_PERIOD_MS;
+  return nowMs - endMs < SESSION_TELEMETRY_GRACE_PERIOD_MS;
+};
+
+/**
+ * Determines whether a session should be recorded in the enriched session cache.
+ *
+ * A session is cached immediately if it already carries heart rate telemetry.
+ * If heart rate telemetry is missing, the session remains uncached during the
+ * 24-hour grace window so subsequent syncs can pick up late-arriving samples
+ * from wearables.
+ *
+ * @param bundle The collected telemetry bundle
+ * @param sessionEndTime Optional end timestamp of the session
+ * @param nowMs Current time in milliseconds (defaults to Date.now(), injected for tests)
+ */
+export const shouldCacheEnrichedSession = (
+  bundle: SessionTelemetryBundleLike | null | undefined,
+  sessionEndTime?: string | Date | null,
+  nowMs: number = Date.now()
+): boolean => {
+  if (hasHeartRateTelemetry(bundle)) return true;
+  return !isWithinTelemetryGracePeriod(sessionEndTime, nowMs);
 };
 
 /**

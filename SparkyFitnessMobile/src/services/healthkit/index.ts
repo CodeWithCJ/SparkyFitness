@@ -33,11 +33,13 @@ import {
   type WorkoutProxyLike,
 } from './workoutTelemetry';
 import {
+  createGraceWindowClaimLimiter,
   createTelemetryRunContext,
   type TelemetryRunContext,
 } from '../shared/telemetryBudget';
 import {
   hasEnrichedSession,
+  isWithinTelemetryGracePeriod,
   sessionTelemetryKey,
   shouldCacheEnrichedSession,
 } from '../shared/enrichedSessionCache';
@@ -63,15 +65,23 @@ const TELEMETRY_CONCURRENCY = 2;
 /** Shared across overlapping runs, so the cap is a real ceiling. */
 const limitTelemetry = createConcurrencyLimiter(TELEMETRY_CONCURRENCY);
 
+interface HealthKitWorkoutLike {
+  uuid?: string;
+  endDate?: string | Date;
+}
+
+const workoutEndDate = (workout: unknown): string | Date | undefined =>
+  (workout as HealthKitWorkoutLike | undefined)?.endDate;
+
 /**
  * Telemetry-collection cache key for a HealthKit workout. endDate moves if the
  * workout is still being written, so a session in flight is re-collected
  * rather than frozen at its first reading.
  */
 const workoutCacheKey = (workout: unknown): string | null => {
-  const w = workout as { uuid?: string; endDate?: string | Date };
-  const end = w.endDate instanceof Date ? w.endDate.toISOString() : w.endDate;
-  return sessionTelemetryKey(w.uuid, end);
+  const w = workout as HealthKitWorkoutLike | undefined;
+  const end = w?.endDate instanceof Date ? w.endDate.toISOString() : w?.endDate;
+  return sessionTelemetryKey(w?.uuid, end);
 };
 
 // Track if HealthKit is available on this device
@@ -1102,12 +1112,22 @@ const handleWorkout: RecordHandler = async (
   const telemetryAllowed = new Set<unknown>();
   const startedAtMs = Date.now();
   let skippedAlreadyCollected = 0;
+  const allowGraceWindowClaim = createGraceWindowClaimLimiter(ctx.budget);
   for (const w of filteredWorkouts) {
     // Already-collected workouts neither consume a slot nor get re-read, so a
     // bounded budget works through the backlog across syncs instead of
     // re-picking the same newest few every run (#2191).
     if (await hasEnrichedSession(workoutCacheKey(w))) {
       skippedAlreadyCollected++;
+      continue;
+    }
+    // Workouts inside the grace window come back every sync until their heart
+    // rate lands (#2300), and this loop runs newest-first — so they are capped
+    // at a share of the budget rather than allowed to take all of it, or the
+    // older backlog behind them would never advance (#2191).
+    if (
+      !allowGraceWindowClaim(isWithinTelemetryGracePeriod(workoutEndDate(w)))
+    ) {
       continue;
     }
     if (!ctx.claim()) break;
@@ -1268,16 +1288,7 @@ const handleWorkout: RecordHandler = async (
         //
         // A bundle that came back `incomplete` is a failed read, not an empty one, and is
         // left uncached so the next sync retries it.
-        const hasTelemetry = Boolean(
-          bundle.gps_points?.length ||
-          bundle.hr_samples?.length ||
-          bundle.laps?.length ||
-          (bundle.telemetry && Object.keys(bundle.telemetry).length > 0)
-        );
-        const canCache = shouldCacheEnrichedSession(
-          hasTelemetry,
-          (w as unknown as { endDate?: string | Date }).endDate
-        );
+        const canCache = shouldCacheEnrichedSession(bundle, workoutEndDate(w));
         if (!bundle.incomplete && canCache) {
           ctx.stageCollected(workoutCacheKey(w));
         }

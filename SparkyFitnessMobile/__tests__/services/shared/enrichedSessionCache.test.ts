@@ -4,6 +4,7 @@ import {
   _resetEnrichedSessionCacheForTests,
   clearEnrichedSessions,
   hasEnrichedSession,
+  hasHeartRateTelemetry,
   markEnrichedSessions,
   sessionTelemetryKey,
   shouldCacheEnrichedSession,
@@ -157,58 +158,99 @@ describe('enrichedSessionCache', () => {
     expect(await AsyncStorage.getItem(keyFor('server-a'))).toBeNull();
   });
 
-  describe('shouldCacheEnrichedSession', () => {
-    const baseNow = Date.parse('2026-09-17T12:00:00Z');
-
-    it('returns true when telemetry was collected, regardless of session age', () => {
-      // Recent session with telemetry
+  describe('hasHeartRateTelemetry', () => {
+    it('is true for an hr series or a device-reported average', () => {
       expect(
-        shouldCacheEnrichedSession(true, '2026-09-17T11:30:00Z', baseNow)
+        hasHeartRateTelemetry({ hr_samples: [{ t: 't', bpm: 120 }] })
       ).toBe(true);
-
-      // Old session with telemetry
       expect(
-        shouldCacheEnrichedSession(true, '2026-09-10T12:00:00Z', baseNow)
+        hasHeartRateTelemetry({ telemetry: { avg_heart_rate: 118 } })
       ).toBe(true);
     });
 
-    it('returns false when no telemetry was found and session is within the 24h grace window', () => {
+    it('is false for non-HR telemetry, which is the #2300 case', () => {
+      // A Google Fit walk yields Speed and StepsCadence from its own summary
+      // long before the ring's heart rate lands. Treating that as "collected"
+      // is what locked the session out for good.
+      expect(
+        hasHeartRateTelemetry({
+          telemetry: { avg_speed_mps: 1.4, avg_cadence: 108 },
+          gps_points: [{ t: 't', lat: 1, lon: 2 }],
+        })
+      ).toBe(false);
+    });
+
+    it('is false for an empty bundle or none at all', () => {
+      expect(hasHeartRateTelemetry({})).toBe(false);
+      expect(hasHeartRateTelemetry({ hr_samples: [] })).toBe(false);
+      expect(hasHeartRateTelemetry(null)).toBe(false);
+      expect(hasHeartRateTelemetry(undefined)).toBe(false);
+    });
+  });
+
+  describe('shouldCacheEnrichedSession', () => {
+    const baseNow = Date.parse('2026-09-17T12:00:00Z');
+    const withHr = { hr_samples: [{ t: 't', bpm: 120 }] };
+    const noHr = {};
+
+    it('caches a session that carries heart rate, regardless of age', () => {
+      expect(
+        shouldCacheEnrichedSession(withHr, '2026-09-17T11:30:00Z', baseNow)
+      ).toBe(true);
+      expect(
+        shouldCacheEnrichedSession(withHr, '2026-09-10T12:00:00Z', baseNow)
+      ).toBe(true);
+    });
+
+    it('does not cache a recent session that has telemetry but no heart rate (#2300)', () => {
+      // The regression the grace window exists for: speed/cadence present,
+      // HR still to arrive from the wearable.
+      expect(
+        shouldCacheEnrichedSession(
+          { telemetry: { avg_speed_mps: 1.4, avg_cadence: 108 } },
+          '2026-09-17T11:00:00Z',
+          baseNow
+        )
+      ).toBe(false);
+    });
+
+    it('does not cache a session without heart rate inside the 24h grace window', () => {
       // 1 hour ago
       expect(
-        shouldCacheEnrichedSession(false, '2026-09-17T11:00:00Z', baseNow)
+        shouldCacheEnrichedSession(noHr, '2026-09-17T11:00:00Z', baseNow)
       ).toBe(false);
 
       // 23 hours ago
       expect(
-        shouldCacheEnrichedSession(false, '2026-09-16T13:00:00Z', baseNow)
+        shouldCacheEnrichedSession(noHr, '2026-09-16T13:00:00Z', baseNow)
       ).toBe(false);
 
       // Date instance
       expect(
         shouldCacheEnrichedSession(
-          false,
+          noHr,
           new Date('2026-09-17T10:00:00Z'),
           baseNow
         )
       ).toBe(false);
     });
 
-    it('returns true when no telemetry was found but session is older than the 24h grace window', () => {
+    it('caches a session without heart rate once it is older than the grace window', () => {
       // Exactly 24 hours ago
       expect(
-        shouldCacheEnrichedSession(false, '2026-09-16T12:00:00Z', baseNow)
+        shouldCacheEnrichedSession(noHr, '2026-09-16T12:00:00Z', baseNow)
       ).toBe(true);
 
       // 48 hours ago
       expect(
-        shouldCacheEnrichedSession(false, '2026-09-15T12:00:00Z', baseNow)
+        shouldCacheEnrichedSession(noHr, '2026-09-15T12:00:00Z', baseNow)
       ).toBe(true);
     });
 
-    it('returns true as safe fallback when session end time is missing or invalid', () => {
-      expect(shouldCacheEnrichedSession(false, null, baseNow)).toBe(true);
-      expect(shouldCacheEnrichedSession(false, undefined, baseNow)).toBe(true);
-      expect(shouldCacheEnrichedSession(false, 'invalid-date', baseNow)).toBe(
+    it('caches as a safe fallback when the session end time is missing or invalid', () => {
+      expect(shouldCacheEnrichedSession(noHr, null, baseNow)).toBe(true);
+      expect(shouldCacheEnrichedSession(noHr, undefined, baseNow)).toBe(true);
+      expect(shouldCacheEnrichedSession(noHr, 'invalid-date', baseNow)).toBe(
         true
       );
     });

@@ -2713,6 +2713,66 @@ describe('enrichExerciseSessions bounded fan-out and reuse (#2191)', () => {
     expect(await hasEnrichedSession(sessionCacheKey(s1))).toBe(true);
   });
 
+  test('a recent session with speed but no heart rate is NOT cached (#2300)', async () => {
+    // The reported case: Google Fit writes the walk with its own speed and
+    // cadence, and the ring's heart rate lands in Health Connect hours later.
+    // Caching on "any telemetry" locked that session out for good, so the
+    // gate has to be heart rate specifically.
+    const recentStartTime = new Date(
+      Date.now() - 2 * 60 * 60 * 1000
+    ).toISOString();
+    mockReadRecords.mockImplementation(async (type) => {
+      if (type === 'Speed') {
+        return {
+          records: [
+            {
+              samples: [
+                {
+                  time: recentStartTime,
+                  speed: { inMetersPerSecond: 1.4 },
+                },
+              ],
+            },
+          ],
+        };
+      }
+      return { records: [] };
+    });
+    const s1 = session('s1', recentStartTime);
+
+    await enrichAndUpload([s1], createTelemetryRunContext());
+
+    expect(await hasEnrichedSession(sessionCacheKey(s1))).toBe(false);
+  });
+
+  test('an old session with speed but no heart rate IS cached (#2300)', async () => {
+    // Past the grace window the answer is final: a phone-only walk genuinely
+    // has no heart rate, and re-reading it every sync is what #2191 fixed.
+    const oldStartTime = '2024-01-10T10:00:00.000Z';
+    mockReadRecords.mockImplementation(async (type) => {
+      if (type === 'Speed') {
+        return {
+          records: [
+            {
+              samples: [
+                {
+                  time: oldStartTime,
+                  speed: { inMetersPerSecond: 1.4 },
+                },
+              ],
+            },
+          ],
+        };
+      }
+      return { records: [] };
+    });
+    const s1 = session('s1', oldStartTime);
+
+    await enrichAndUpload([s1], createTelemetryRunContext());
+
+    expect(await hasEnrichedSession(sessionCacheKey(s1))).toBe(true);
+  });
+
   test('a generic native read failure is not cached as empty telemetry', async () => {
     // Neither proof the series is absent nor a stable authorization result.
     // The default has to be "retry", because caching it is permanent.
