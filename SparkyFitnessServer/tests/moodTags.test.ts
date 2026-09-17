@@ -4,6 +4,8 @@ import {
   moodValueToTag,
   representativeMoodValue,
   moodByName,
+  chatScoreToMoodValue,
+  moodValueToChatScore,
 } from '@workspace/shared';
 
 describe('moodValueToTag', () => {
@@ -38,6 +40,50 @@ describe('representativeMoodValue', () => {
       const def = moodByName(tag)!;
       expect(back).toBeLessThanOrEqual(def.band!);
     }
+  });
+});
+
+describe('the chatbot 1-10 scale', () => {
+  it('spreads the ten scores across the bands instead of bunching them in sad', () => {
+    // Stored verbatim, all ten landed in `sad`, whose band runs to 15.
+    const bands = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) =>
+      moodValueToTag(chatScoreToMoodValue(score))
+    );
+
+    expect(bands).toEqual([
+      'sad',
+      'angry',
+      'worried',
+      'neutral',
+      'thoughtful',
+      'calm',
+      'confident',
+      'happy',
+      'excited',
+      'excited',
+    ]);
+  });
+
+  it('round-trips every score it can be given', () => {
+    for (let score = 1; score <= 10; score += 1) {
+      expect(moodValueToChatScore(chatScoreToMoodValue(score))).toBe(score);
+    }
+  });
+
+  it('reads back a value written by any other client', () => {
+    // Garmin writes 15/25/.../95; the check-in picker writes 10/20/.../95.
+    expect(moodValueToChatScore(10)).toBe(1);
+    expect(moodValueToChatScore(15)).toBe(2);
+    expect(moodValueToChatScore(50)).toBe(5);
+    expect(moodValueToChatScore(95)).toBe(10);
+    expect(moodValueToChatScore(100)).toBe(10);
+  });
+
+  it('keeps a score inside 1-10 whatever it is handed', () => {
+    expect(chatScoreToMoodValue(0)).toBe(10);
+    expect(chatScoreToMoodValue(11)).toBe(100);
+    expect(moodValueToChatScore(0)).toBe(1);
+    expect(moodValueToChatScore(1000)).toBe(10);
   });
 });
 

@@ -403,7 +403,8 @@ describe('sparky_get_30_day_trends', () => {
     vi.mocked(getResolvedExerciseCaloriesTotal).mockResolvedValue(2400);
     vi.mocked(coachRepository.get30DayMoodAggregates).mockResolvedValue({
       entries: 10,
-      avg_mood: '7.44',
+      // Stored on the 10-100 scale; surfaced to the model as 7.4/10.
+      avg_mood: '74.4',
     });
     vi.mocked(coachRepository.get30DaySleepAggregates).mockResolvedValue({
       entries: 9,
@@ -484,12 +485,19 @@ describe('sparky_get_30_day_trends', () => {
     });
     vi.mocked(coachRepository.get30DayWeightSeries).mockResolvedValue([]);
 
-    await tools.sparky_get_30_day_trends.execute!({}, opts);
+    const result = (await tools.sparky_get_30_day_trends.execute!(
+      {},
+      opts
+    )) as string;
 
     expect(coachRepository.get30DayFoodAggregates).toHaveBeenCalledWith(
       'user-1',
       todayInZone('UTC')
     );
+    // The repository coalesces to 0 for "no entries". Scaling keeps that; the
+    // score conversion would floor it to 1 and invent a mood nobody logged.
+    const parsed = JSON.parse(result.replace('# 30-Day Trends\n\n', ''));
+    expect(parsed.mood).toEqual({ entries: 0, avg_mood: 0 });
   });
 
   it('maps repository failures to DB_ERROR', async () => {

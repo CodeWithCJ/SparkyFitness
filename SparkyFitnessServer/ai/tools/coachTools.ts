@@ -3,7 +3,7 @@ import {
   addDays,
   todayInZone,
   ENERGY_DENSITY_KCAL_PER_KG,
-  moodValueToChatScore,
+  chatScoreToMoodValue,
 } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import coachRepository from '../../models/coachRepository.js';
@@ -197,7 +197,11 @@ async function get30DayTrends(
     },
     mood: {
       entries: mood.entries,
-      avg_mood: Number(Number(mood.avg_mood).toFixed(1)),
+      // On the 1-10 scale these tools speak, keeping the decimal because this
+      // is an average rather than a score someone picked. Deliberately not
+      // `moodValueToChatScore`, which floors at 1: the repository coalesces to
+      // 0 for "no entries", and turning that into a 1 would invent a mood.
+      avg_mood: Number((Number(mood.avg_mood) / 10).toFixed(1)),
     },
     sleep: {
       entries: sleep.entries,
@@ -268,10 +272,12 @@ async function detectPatterns(
           (sum: number, r: any) => sum + Number(r.mood_value),
           0
         ) / highCalDays.length;
-      // Read on the 1-10 scale this threshold was written for. Compared against
-      // the stored 10-100 value it was true of every mood on record, so the
-      // pattern was reported whenever the days existed, whatever the moods were.
-      if (moodValueToChatScore(avgHighCalMood) > 7)
+      // The threshold is 7 on the 1-10 scale it was written for, expressed on
+      // the scale the value is stored in. Compared against the stored value as
+      // a bare 7 it was true of every mood on record, so the pattern was
+      // reported whenever the days existed, whatever the moods were. Converting
+      // the average instead would round it, quietly moving the cut to 7.5.
+      if (avgHighCalMood > chatScoreToMoodValue(7))
         patterns.push(
           'High calorie days (>2500) are associated with higher reported mood.'
         );

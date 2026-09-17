@@ -92,7 +92,7 @@ router.put('/display-preferences', async (req, res, next) => {
  *             properties:
  *               mood_value:
  *                 type: integer
- *                 description: The mood value (e.g., 1-5).
+ *                 description: Mood intensity on a 10-100 scale; see the MoodEntry schema for the band boundaries.
  *               notes:
  *                 type: string
  *                 description: Optional notes about the mood.
@@ -303,6 +303,7 @@ router.get('/date/:entryDate', async (req, res, next) => {
  *             properties:
  *               mood_value:
  *                 type: integer
+ *                 description: Mood intensity on a 10-100 scale; see the MoodEntry schema for the band boundaries.
  *               notes:
  *                 type: string
  *     responses:
