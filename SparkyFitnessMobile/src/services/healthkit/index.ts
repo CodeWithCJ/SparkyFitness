@@ -62,20 +62,15 @@ const TELEMETRY_CONCURRENCY = 2;
 /** Shared across overlapping runs, so the cap is a real ceiling. */
 const limitTelemetry = createConcurrencyLimiter(TELEMETRY_CONCURRENCY);
 
-interface HealthKitWorkoutLike {
-  uuid?: string;
-  endDate?: string | Date;
-}
-
 /**
  * Telemetry-collection cache key for a HealthKit workout. endDate moves if the
  * workout is still being written, so a session in flight is re-collected
  * rather than frozen at its first reading.
  */
 const workoutCacheKey = (workout: unknown): string | null => {
-  const w = workout as HealthKitWorkoutLike | undefined;
-  const end = w?.endDate instanceof Date ? w.endDate.toISOString() : w?.endDate;
-  return sessionTelemetryKey(w?.uuid, end);
+  const w = workout as { uuid?: string; endDate?: string | Date };
+  const end = w.endDate instanceof Date ? w.endDate.toISOString() : w.endDate;
+  return sessionTelemetryKey(w.uuid, end);
 };
 
 // Track if HealthKit is available on this device
