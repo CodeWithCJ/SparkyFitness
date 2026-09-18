@@ -35,7 +35,11 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
-const mockNavigation = { goBack: jest.fn(), setOptions: jest.fn() } as any;
+const mockNavigation = {
+  goBack: jest.fn(),
+  setOptions: jest.fn(),
+  navigate: jest.fn(),
+} as any;
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => mockNavigation,
@@ -122,6 +126,14 @@ describe('WorkoutSettingsScreen', () => {
     expect(useAppPreferencesStore.getState().restTimerSoundInSilentMode).toBe(
       true
     );
+  });
+
+  it('sends the user to notification settings for the background alert', () => {
+    // The chime and the background alert are configured on separate screens;
+    // this row is what makes the second one findable from the first.
+    const { getByText } = renderScreen();
+    fireEvent.press(getByText('Rest timer notifications'));
+    expect(navigation.navigate).toHaveBeenCalledWith('NotificationSettings');
   });
 
   it('toggles the keep screen awake preference from the switch', () => {

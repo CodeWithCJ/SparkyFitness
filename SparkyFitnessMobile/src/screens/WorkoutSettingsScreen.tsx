@@ -18,7 +18,9 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 type WorkoutSettingsScreenProps = RootStackScreenProps<'WorkoutSettings'>;
 
-const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
+const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
+  navigation,
+}) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -141,6 +143,21 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
               )}
             />
           }
+        />
+
+        {/* The background alert lives on the notification screen, so the two
+            halves of "tell me when rest is over" sit in different places.
+            Point at the other half rather than duplicating the toggle. */}
+        <SettingsRow
+          title={t('workoutSettings.restNotifications', {
+            defaultValue: 'Rest timer notifications',
+          })}
+          subtitle={t('workoutSettings.restNotificationsSubtitle', {
+            defaultValue:
+              'Alerts when a rest period ends while the app is closed are set up in Notifications.',
+          })}
+          subtitleNumberOfLines={0}
+          onPress={() => navigation.navigate('NotificationSettings')}
         />
 
         <SettingsRow
