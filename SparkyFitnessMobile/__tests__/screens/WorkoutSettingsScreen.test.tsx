@@ -110,12 +110,18 @@ describe('WorkoutSettingsScreen', () => {
     );
   });
 
-  it('disables the silent-mode switch while the chime itself is off', () => {
+  it('keeps the silent-mode switch usable while the chime itself is off', () => {
+    // The preference also routes the Android rest ping to the alarm channel,
+    // so "no chime on screen, but wake me in my pocket" is a valid setup.
     useAppPreferencesStore.getState().setRestTimerSoundEnabled(false);
     const { getByLabelText } = renderScreen();
-    expect(
-      getByLabelText('Play rest timer sound in silent mode').props.disabled
-    ).toBe(true);
+    const silentToggle = getByLabelText('Play rest timer sound in silent mode');
+    expect(silentToggle.props.disabled).toBeFalsy();
+
+    fireEvent(silentToggle, 'valueChange', true);
+    expect(useAppPreferencesStore.getState().restTimerSoundInSilentMode).toBe(
+      true
+    );
   });
 
   it('toggles the keep screen awake preference from the switch', () => {

@@ -135,7 +135,6 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = () => {
             <Switch
               value={restTimerSoundInSilentMode}
               onValueChange={setRestTimerSoundInSilentMode}
-              disabled={!restTimerSoundEnabled}
               accessibilityLabel={t(
                 'workoutSettings.restSoundSilentAccessibility',
                 { defaultValue: 'Play rest timer sound in silent mode' }
