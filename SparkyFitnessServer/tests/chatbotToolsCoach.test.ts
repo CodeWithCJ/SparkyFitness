@@ -403,7 +403,8 @@ describe('sparky_get_30_day_trends', () => {
     vi.mocked(getResolvedExerciseCaloriesTotal).mockResolvedValue(2400);
     vi.mocked(coachRepository.get30DayMoodAggregates).mockResolvedValue({
       entries: 10,
-      avg_mood: '7.44',
+      // Stored on the 10-100 scale; surfaced to the model as 7.4/10.
+      avg_mood: '74.4',
     });
     vi.mocked(coachRepository.get30DaySleepAggregates).mockResolvedValue({
       entries: 9,
@@ -484,12 +485,19 @@ describe('sparky_get_30_day_trends', () => {
     });
     vi.mocked(coachRepository.get30DayWeightSeries).mockResolvedValue([]);
 
-    await tools.sparky_get_30_day_trends.execute!({}, opts);
+    const result = (await tools.sparky_get_30_day_trends.execute!(
+      {},
+      opts
+    )) as string;
 
     expect(coachRepository.get30DayFoodAggregates).toHaveBeenCalledWith(
       'user-1',
       todayInZone('UTC')
     );
+    // The repository coalesces to 0 for "no entries". Scaling keeps that; the
+    // score conversion would floor it to 1 and invent a mood nobody logged.
+    const parsed = JSON.parse(result.replace('# 30-Day Trends\n\n', ''));
+    expect(parsed.mood).toEqual({ entries: 0, avg_mood: 0 });
   });
 
   it('maps repository failures to DB_ERROR', async () => {
@@ -526,7 +534,8 @@ function makeCorrelationRow(
     iron: '8',
     duration_in_seconds: 28800,
     sleep_score: 80,
-    mood_value: 6,
+    // Stored on the 10-100 scale the column holds: a calm 6/10.
+    mood_value: 60,
     ...overrides,
   };
 }
@@ -556,7 +565,7 @@ function expectedCorrelation(
       ...(overrides.nutrition as Record<string, unknown>),
     },
     sleep_score: 'sleep_score' in overrides ? overrides.sleep_score : 80,
-    mood_value: 'mood_value' in overrides ? overrides.mood_value : 6,
+    mood_value: 'mood_value' in overrides ? overrides.mood_value : 60,
   };
 }
 
@@ -608,7 +617,7 @@ describe('sparky_detect_patterns', () => {
         sodium: '2400',
         calories: '2600',
         sleep_score: 60,
-        mood_value: 8,
+        mood_value: 80,
       })
     );
     const normalDays = [
@@ -641,8 +650,29 @@ describe('sparky_detect_patterns', () => {
       expectedCorrelation('2026-06-10', {
         nutrition: { sugars: 60, sodium: 2400, calories: 2600 },
         sleep_score: 60,
-        mood_value: 8,
+        mood_value: 80,
       })
+    );
+  });
+
+  // The threshold was written for a 1-10 score but compared against the stored
+  // 10-100 value, which every mood on record clears. The pattern was reported
+  // whenever three high-calorie days existed, whatever the mood on them was.
+  it('does not claim a mood pattern when the high-calorie days were low mood', async () => {
+    vi.mocked(coachRepository.getDailyCorrelationRows).mockResolvedValue(
+      ['2026-06-10', '2026-06-09', '2026-06-08'].map((d) =>
+        makeCorrelationRow(d, { calories: '2600', mood_value: 20 })
+      )
+    );
+
+    const result = (await tools.sparky_detect_patterns.execute!(
+      { days: 14 },
+      opts
+    )) as string;
+
+    const parsed = JSON.parse(result.replace('# Pattern Detection\n\n', ''));
+    expect(parsed.detected_patterns).not.toContain(
+      'High calorie days (>2500) are associated with higher reported mood.'
     );
   });
 

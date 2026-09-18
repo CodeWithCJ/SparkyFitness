@@ -1,4 +1,5 @@
 import express from 'express';
+import { clampStoredMoodValue } from '@workspace/shared';
 import moodRepository from '../models/moodRepository.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
@@ -92,7 +93,7 @@ router.put('/display-preferences', async (req, res, next) => {
  *             properties:
  *               mood_value:
  *                 type: integer
- *                 description: The mood value (e.g., 1-5).
+ *                 description: Mood intensity on a 10-100 scale; see the MoodEntry schema for the band boundaries.
  *               notes:
  *                 type: string
  *                 description: Optional notes about the mood.
@@ -126,9 +127,18 @@ router.post('/', async (req, res, next) => {
     if (mood_value === null || mood_value === undefined) {
       return res.status(400).json({ message: 'Mood value is required.' });
     }
+    // The column is `integer NOT NULL` on a 10-100 scale, and this route was
+    // the one path to it that checked neither. That is how values below the
+    // scale reached the table: before #2495 the check-in picker wrote the raw
+    // band midpoint, 8 for Sad. Anything unparseable is rejected here rather
+    // than left to fail on the column, which would leak its name in the error.
+    const storedMoodValue = clampStoredMoodValue(mood_value);
+    if (storedMoodValue === null) {
+      return res.status(400).json({ message: 'Mood value must be a number.' });
+    }
     const newMoodEntry = await moodRepository.createOrUpdateMoodEntry(
       userId,
-      mood_value,
+      storedMoodValue,
       notes,
       entry_date,
       Array.isArray(mood_tags) ? mood_tags : null
@@ -303,6 +313,7 @@ router.get('/date/:entryDate', async (req, res, next) => {
  *             properties:
  *               mood_value:
  *                 type: integer
+ *                 description: Mood intensity on a 10-100 scale; see the MoodEntry schema for the band boundaries.
  *               notes:
  *                 type: string
  *     responses:
@@ -313,11 +324,23 @@ router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const { mood_value, notes, mood_tags } = req.body;
+    // Same clamp as the create path. An absent value is left for the UPDATE's
+    // COALESCE to keep whatever the row already holds, so only a supplied one
+    // is brought into range.
+    let storedMoodValue: number | null = null;
+    if (mood_value !== null && mood_value !== undefined) {
+      storedMoodValue = clampStoredMoodValue(mood_value);
+      if (storedMoodValue === null) {
+        return res
+          .status(400)
+          .json({ message: 'Mood value must be a number.' });
+      }
+    }
     const updatedMoodEntry = await moodRepository.updateMoodEntry(
       id,
 
       req.userId,
-      mood_value,
+      storedMoodValue,
       notes,
       Array.isArray(mood_tags) ? mood_tags : null
     );
